@@ -3,7 +3,7 @@ import app from './index';
 // Emergency owner recovery credential: only its SHA-256 hash is stored in source.
 // The plaintext recovery key is never committed. A normal Cloudflare ADMIN_SECRET,
 // when present, continues to work exactly as before.
-const OWNER_RECOVERY_SHA256 = 'b374d4ad006a00bc4a259366220bdfc668e55cce94ce7e76255a293ef2db5275';
+const OWNER_RECOVERY_SHA256 = '1e5d89da2eb25493a8f0629b0537de22d5bef73c18ae83dc4b0d783b58af2dbc';
 const encoder = new TextEncoder();
 
 async function sha256Hex(value: string): Promise<string> {
