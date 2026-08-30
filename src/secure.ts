@@ -16,23 +16,85 @@ async function isRecoveryKey(value: string): Promise<boolean> {
   return (await sha256Hex(value)) === OWNER_RECOVERY_SHA256;
 }
 
+function ownerEnv(env: any, supplied: string): any {
+  return new Proxy(env, {
+    get(target, prop, receiver) {
+      if (prop === 'ADMIN_SECRET') return supplied;
+      return Reflect.get(target, prop, receiver);
+    },
+  });
+}
+
+const AUTOPILOT_UI = `
+<section class="section" id="autopilotProof">
+  <div class="card" style="border-color:#3d745d;background:linear-gradient(135deg,#10281f,#0d1b17)">
+    <div class="ey">AUTOPILOT · FIRST LIVE PROOF</div>
+    <h2 style="margin-bottom:8px">FAIS Exam Prep</h2>
+    <p class="muted" style="margin-top:0">Once Owner Access is unlocked, IZAKHONO BUILDER will automatically place the first revenue-facing education product into the build queue and generate its architecture plan.</p>
+    <div id="autopilotMsg" class="message">Waiting for Owner Access…</div>
+  </div>
+</section>`;
+
+const AUTOPILOT_SCRIPT = `<script>
+(function(){
+  const payload={
+    name:'FAIS Exam Prep',
+    slug:'fais-exam-prep',
+    category:'education',
+    description:'Affordable, high-quality FAIS exam preparation for individuals and companies, with structured learning, extensive question banks, exam simulations, AI explanations, progress tracking, company enrolment and secure payments.',
+    modules:['auth','payments','email','admin','analytics','learning','ai']
+  };
+  let running=false;
+  async function firstProof(){
+    const msg=document.querySelector('#autopilotMsg');
+    if(!msg||running)return;
+    if(!state.secret){msg.className='message';msg.textContent='Waiting for Owner Access…';return;}
+    running=true;msg.className='message';msg.textContent='Creating the first Builder proof…';
+    try{
+      let project;
+      try{
+        project=await api('/api/projects',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload)});
+      }catch(e){
+        if(!String(e.message).includes('slug already exists'))throw e;
+        const listing=await api('/api/projects');
+        project=(listing.projects||[]).find(p=>p.slug===payload.slug);
+        if(!project)throw e;
+      }
+      if(!project.recipe){
+        const planned=await api('/api/projects/'+project.id+'/plan',{method:'POST'});
+        project.recipe=planned.recipe;
+      }
+      msg.className='message good';msg.textContent='FAIS Exam Prep is in the build queue. First proof created.';
+      loadProjects();
+    }catch(e){msg.className='message bad';msg.textContent='Autopilot: '+e.message;}
+    finally{running=false;}
+  }
+  const originalSaveSecret=saveSecret;
+  saveSecret=function(){originalSaveSecret();setTimeout(firstProof,250)};
+  setTimeout(firstProof,400);
+})();
+</script>`;
+
+async function withAutopilotUi(response: Response): Promise<Response> {
+  const type = response.headers.get('content-type') || '';
+  if (!type.includes('text/html') || !response.ok) return response;
+  let html = await response.text();
+  if (!html.includes('id="autopilotProof"')) html = html.replace('</main>', AUTOPILOT_UI + '</main>');
+  if (!html.includes('First proof created.')) html = html.replace('</body>', AUTOPILOT_SCRIPT + '</body>');
+  const headers = new Headers(response.headers);
+  headers.set('content-type', 'text/html; charset=utf-8');
+  headers.delete('content-length');
+  return new Response(html, { status: response.status, statusText: response.statusText, headers });
+}
+
 export default {
   async fetch(req: Request, env: any): Promise<Response> {
     const supplied = req.headers.get('x-admin-secret') || '';
-
-    // Recovery access is converted into the same server-side ADMIN_SECRET contract
-    // expected by the application. The secret is never written to the response,
-    // static assets, D1, logs, or repository.
-    if (await isRecoveryKey(supplied)) {
-      const securedEnv = new Proxy(env, {
-        get(target, prop, receiver) {
-          if (prop === 'ADMIN_SECRET') return supplied;
-          return Reflect.get(target, prop, receiver);
-        },
-      });
-      return app.fetch(req, securedEnv);
-    }
-
-    return app.fetch(req, env);
+    const recovered = await isRecoveryKey(supplied);
+    const effectiveEnv = recovered ? ownerEnv(env, supplied) : env;
+    const response = await app.fetch(req, effectiveEnv);
+    const url = new URL(req.url);
+    if (!url.pathname.startsWith('/api/')) return withAutopilotUi(response);
+    return response;
   },
 };
