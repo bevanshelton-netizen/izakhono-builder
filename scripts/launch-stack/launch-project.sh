@@ -9,7 +9,7 @@ OPTION="${3:-}"
 MANIFEST="$REPO/.izakhono.json"
 [ -f "$MANIFEST" ] || { echo 'Repository has no .izakhono.json contract.'; exit 1; }
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SLUG="$(jq -r '.slug // empty' "$MANIFEST")"
 [[ "$SLUG" =~ ^[a-z0-9][a-z0-9-]{1,48}[a-z0-9]$ ]] || { echo 'Unsafe project slug.'; exit 1; }
 COMMIT="$(git -C "$REPO" rev-parse HEAD 2>/dev/null || echo local-source)"
@@ -34,10 +34,10 @@ if jq -e '.alpha.rehearsal == true' "$MANIFEST" >/dev/null 2>&1; then
 fi
 
 if [ "$OPTION" = '--with-db' ] && [ ! -f "/opt/izakhono/secrets/${SLUG}.db.env" ]; then
-  bash "$ROOT_DIR/scripts/launch-stack/provision-project-db.sh" "$SLUG"
+  bash "$SCRIPT_DIR/provision-project-db.sh" "$SLUG"
 fi
 
-bash "$ROOT_DIR/scripts/launch-stack/deploy-app.sh" "$REPO" "$DOMAIN" --require-public
+bash "$SCRIPT_DIR/deploy-app.sh" "$REPO" "$DOMAIN" --require-public
 
 FINISHED="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 EVIDENCE_DIR=/opt/izakhono/evidence

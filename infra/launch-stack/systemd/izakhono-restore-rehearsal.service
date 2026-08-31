@@ -1,0 +1,9 @@
+[Unit]
+Description=IZAKHONO latest-backup isolated restore rehearsal
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/opt/izakhono/bin/verify-latest-backup.sh
+Nice=10

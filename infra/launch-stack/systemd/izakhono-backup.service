@@ -1,0 +1,9 @@
+[Unit]
+Description=IZAKHONO Launch Stack backup
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/opt/izakhono/bin/backup-stack.sh
+Nice=10
