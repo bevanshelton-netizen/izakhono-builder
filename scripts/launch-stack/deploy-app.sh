@@ -24,10 +24,10 @@ PORT="$(jq -r '.container_port // empty' "$MANIFEST")"
 HEALTH="$(jq -r '.health_path // empty' "$MANIFEST")"
 
 [[ "$SLUG" =~ ^[a-z0-9][a-z0-9-]{1,48}[a-z0-9]$ ]] || { echo 'Unsafe slug.'; exit 1; }
-[[ "$PORT" =~ ^[0-9]{2,5}$ ]] && [ "$PORT" -ge 1 ] && [ "$PORT" -le 65535 ] || { echo 'Invalid port.'; exit 1; }
-[[ "$HEALTH" =~ ^/[A-Za-z0-9._~!$\&'()*+,;=:@%/-]*$ ]] || { echo 'A safe HTTP health_path is required.'; exit 1; }
+[[ "$PORT" =~ ^[0-9]{1,5}$ ]] && [ "$PORT" -ge 1 ] && [ "$PORT" -le 65535 ] || { echo 'Invalid port.'; exit 1; }
+[[ "$HEALTH" =~ ^/[A-Za-z0-9._~:/?%+=,@-]*$ ]] || { echo 'A safe HTTP health_path is required.'; exit 1; }
 for P in "$CONTEXT" "$DOCKERFILE"; do
-  [ -n "$P" ] && [[ "$P" != /* ]] && [[ "/$P/" != *"/../"* ]] || { echo 'Unsafe repository path in manifest.'; exit 1; }
+  [ -n "$P" ] && [[ "$P" != /* ]] && [[ "$P" != *\\* ]] && [[ "/$P/" != *"/../"* ]] || { echo 'Unsafe repository path in manifest.'; exit 1; }
 done
 [ -d "$REPO/$CONTEXT" ] || { echo 'Build context missing.'; exit 1; }
 [ -f "$REPO/$DOCKERFILE" ] || { echo 'Dockerfile missing.'; exit 1; }
@@ -49,7 +49,7 @@ SITE_BAK="$SITE.bak"
 mkdir -p "$STATE_DIR" "$SITE_DIR"
 
 echo "Building $SLUG from $RELEASE..."
-docker build --pull -f "$REPO/$DOCKERFILE" -t "$IMAGE" "$REPO/$CONTEXT"
+docker build -f "$REPO/$DOCKERFILE" -t "$IMAGE" "$REPO/$CONTEXT"
 docker tag "$IMAGE" "$REGISTRY_IMAGE"
 docker push "$REGISTRY_IMAGE" >/dev/null
 
