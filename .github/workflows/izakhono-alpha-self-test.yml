@@ -1,0 +1,25 @@
+name: IZAKHONO Alpha Core Self Test
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/izakhono-build-to-alpha.yml'
+      - '.github/workflows/izakhono-alpha-self-test.yml'
+      - 'fixtures/smoke/**'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/izakhono-build-to-alpha.yml'
+      - '.github/workflows/izakhono-alpha-self-test.yml'
+      - 'fixtures/smoke/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  alpha-core:
+    uses: ./.github/workflows/izakhono-build-to-alpha.yml
+    with:
+      manifest_path: fixtures/smoke/.izakhono.json
