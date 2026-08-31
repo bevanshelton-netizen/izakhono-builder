@@ -47,7 +47,7 @@ jobs:
         shell: bash
         run: |
           python - <<'PY'
-          import json, os
+          import json, os, re
           from pathlib import Path, PurePosixPath
 
           raw_manifest = os.environ.get('MANIFEST_PATH', '.izakhono.json').replace('\\', '/')
@@ -65,6 +65,13 @@ jobs:
           missing = [k for k in required if k not in data]
           if missing:
               raise SystemExit('Missing IZAKHONO fields: ' + ', '.join(missing))
+
+          name = str(data['name']).strip()
+          slug = str(data['slug']).strip()
+          if not name or len(name) > 120:
+              raise SystemExit('name must contain 1-120 characters')
+          if not re.fullmatch(r'[a-z0-9]+(?:-[a-z0-9]+)*', slug):
+              raise SystemExit('slug must use lowercase letters, digits and single hyphens')
 
           def safe_repo_path(key):
               raw = str(data[key]).replace('\\', '/')
@@ -84,15 +91,16 @@ jobs:
           if not 1 <= port <= 65535:
               raise SystemExit('container_port out of range')
           health = str(data['health_path'])
-          if not health.startswith('/') or '\n' in health or '\r' in health:
-              raise SystemExit('health_path must be a single absolute HTTP path')
+          if not health.startswith('/') or '\n' in health or '\r' in health or len(health) > 200:
+              raise SystemExit('health_path must be one short absolute HTTP path')
 
           alpha = data.get('alpha') or {}
+          for key in ('preflight','rehearsal','windows_package'):
+              if not isinstance(alpha.get(key, False), bool):
+                  raise SystemExit(f'alpha.{key} must be boolean')
           preflight = bool(alpha.get('preflight', False))
           rehearsal = bool(alpha.get('rehearsal', False))
           windows_package = bool(alpha.get('windows_package', False))
-          if preflight and not (root / 'scripts/izakhono/alpha-preflight.sh').is_file():
-              raise SystemExit('alpha.preflight=true requires scripts/izakhono/alpha-preflight.sh')
           if rehearsal and not (root / 'scripts/izakhono/alpha-rehearsal.sh').is_file():
               raise SystemExit('alpha.rehearsal=true requires scripts/izakhono/alpha-rehearsal.sh')
           if windows_package and not (root / 'scripts/izakhono/package-alpha.ps1').is_file():
@@ -100,8 +108,8 @@ jobs:
 
           out = Path(os.environ['GITHUB_OUTPUT'])
           with out.open('a', encoding='utf-8') as f:
-              f.write(f"name={data['name']}\n")
-              f.write(f"slug={data['slug']}\n")
+              f.write(f"name={name}\n")
+              f.write(f"slug={slug}\n")
               f.write(f"context={context}\n")
               f.write(f"dockerfile={dockerfile}\n")
               f.write(f"port={port}\n")
@@ -109,7 +117,7 @@ jobs:
               f.write(f"preflight={'true' if preflight else 'false'}\n")
               f.write(f"rehearsal={'true' if rehearsal else 'false'}\n")
               f.write(f"windows_package={'true' if windows_package else 'false'}\n")
-          print(f"[PASS] IZAKHONO contract loaded for {data['name']}")
+          print(f"[PASS] IZAKHONO contract loaded for {name}")
           PY
 
   preflight:
@@ -120,7 +128,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
-      - name: Run repository-reviewed preflight
+
+      - name: Central fixed preflight policy
         if: needs.validate.outputs.preflight == 'true'
         shell: bash
         env:
@@ -130,11 +139,76 @@ jobs:
           IZAKHONO_DOCKERFILE: ${{ needs.validate.outputs.dockerfile }}
           IZAKHONO_CONTAINER_PORT: ${{ needs.validate.outputs.port }}
           IZAKHONO_HEALTH_PATH: ${{ needs.validate.outputs.health }}
-        run: bash scripts/izakhono/alpha-preflight.sh
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import os, re
+          from pathlib import Path
+
+          name = os.environ['IZAKHONO_APP_NAME']
+          slug = os.environ['IZAKHONO_APP_SLUG']
+          context = Path(os.environ['IZAKHONO_BUILD_CONTEXT'])
+          dockerfile = Path(os.environ['IZAKHONO_DOCKERFILE'])
+          port = int(os.environ['IZAKHONO_CONTAINER_PORT'])
+          health = os.environ['IZAKHONO_HEALTH_PATH']
+
+          if not re.fullmatch(r'[a-z0-9]+(?:-[a-z0-9]+)*', slug):
+              raise SystemExit('[FAIL] Application slug is not deployment-safe.')
+          if not context.is_dir() or not dockerfile.is_file():
+              raise SystemExit('[FAIL] Build context or Dockerfile is missing.')
+          if not 1 <= port <= 65535:
+              raise SystemExit('[FAIL] Container port is invalid.')
+          if not health.startswith('/') or '\n' in health or '\r' in health:
+              raise SystemExit('[FAIL] Health path is invalid.')
+
+          secret_patterns = [
+              re.compile(r'BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY', re.I),
+              re.compile(r'service_role\s*[=:]\s*[^<\s]+', re.I),
+              re.compile(r'ADMIN_SECRET\s*=\s*[^$<{\s][^\s]*', re.I),
+              re.compile(r'sk-[A-Za-z0-9_-]{20,}', re.I),
+          ]
+          skip_dirs = {'.git', 'node_modules', '.next', 'dist', 'build', '.cache'}
+          candidates = []
+          if context.is_file():
+              candidates.append(context)
+          else:
+              for p in context.rglob('*'):
+                  if not p.is_file() or any(part in skip_dirs for part in p.parts):
+                      continue
+                  if p.stat().st_size > 2_000_000 or p.suffix.lower() in {'.png','.jpg','.jpeg','.gif','.webp','.ico','.zip','.gz','.pdf','.woff','.woff2'}:
+                      continue
+                  candidates.append(p)
+          if dockerfile not in candidates:
+              candidates.append(dockerfile)
+
+          for p in candidates:
+              try:
+                  text = p.read_text(encoding='utf-8')
+              except (UnicodeDecodeError, OSError):
+                  continue
+              for pattern in secret_patterns:
+                  if pattern.search(text):
+                      raise SystemExit(f'[FAIL] Obvious credential material detected in {p}.')
+
+          docker_text = dockerfile.read_text(encoding='utf-8')
+          if re.search(r'^\s*ADD\s+https?://', docker_text, re.I | re.M):
+              raise SystemExit('[FAIL] Remote URL ADD is not allowed in the Alpha Dockerfile.')
+
+          summary = os.environ.get('GITHUB_STEP_SUMMARY')
+          if summary:
+              with open(summary, 'a', encoding='utf-8') as f:
+                  f.write('# IZAKHONO CENTRAL PREFLIGHT\n\n')
+                  f.write(f'Application: **{name}**\n\n')
+                  f.write(f'Build context: `{context}`\n\n')
+                  f.write(f'Health gate: `{health}` on port `{port}`\n\n')
+                  f.write('✅ Central fixed preflight passed. The caller repository supplied no executable preflight policy.\n')
+          print(f'[PASS] Central IZAKHONO preflight passed for {name}.')
+          PY
+
       - name: Record no-op preflight
         if: needs.validate.outputs.preflight != 'true'
         shell: bash
-        run: echo '[PASS] No project-specific preflight requested.'
+        run: echo '[PASS] Central preflight was not requested by this manifest.'
 
   container-gate:
     name: Build + health gate
@@ -240,7 +314,7 @@ jobs:
             echo '# IZAKHONO BUILD TO ALPHA'
             echo
             echo "Contract: **${VALIDATE}**"
-            echo "Project preflight: **${PREFLIGHT}**"
+            echo "Central preflight: **${PREFLIGHT}**"
             echo "Container + health: **${CONTAINER}**"
             echo "Rehearsal: **${REHEARSAL}**"
             echo "Windows package: **${WINDOWS}**"
