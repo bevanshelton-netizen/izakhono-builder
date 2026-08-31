@@ -8,7 +8,6 @@ on:
       - '.github/workflows/izakhono-alpha-self-test.yml'
       - 'fixtures/smoke/**'
       - 'fixtures/studypal-canary/**'
-      - 'scripts/izakhono/alpha-preflight.sh'
   push:
     branches: [main]
     paths:
@@ -16,7 +15,6 @@ on:
       - '.github/workflows/izakhono-alpha-self-test.yml'
       - 'fixtures/smoke/**'
       - 'fixtures/studypal-canary/**'
-      - 'scripts/izakhono/alpha-preflight.sh'
   workflow_dispatch:
 
 permissions:
