@@ -14,7 +14,7 @@ command -v docker >/dev/null
 command -v openssl >/dev/null
 docker compose version >/dev/null
 
-install -d -m 0750 "$TARGET" "$TARGET/sites" /opt/izakhono/{secrets,state,backups}
+install -d -m 0750 "$TARGET" "$TARGET/sites" /opt/izakhono/{secrets,state,backups,evidence}
 cp "$SOURCE/docker-compose.yml" "$TARGET/docker-compose.yml"
 cp "$SOURCE/Caddyfile" "$TARGET/Caddyfile"
 cp "$SOURCE/sites/00-host-health.caddy" "$TARGET/sites/00-host-health.caddy"

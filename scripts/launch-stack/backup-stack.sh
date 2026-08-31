@@ -11,13 +11,13 @@ set +a
 
 STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
 DEST="/opt/izakhono/backups/$STAMP"
-mkdir -p "$DEST"
+mkdir -p "$DEST" /opt/izakhono/evidence
 umask 077
 
 docker exec -e PGPASSWORD="$POSTGRES_PASSWORD" izakhono-postgres \
   pg_dumpall -U "$POSTGRES_USER" | gzip -9 > "$DEST/postgres-all.sql.gz"
 
-tar -C /opt/izakhono -czf "$DEST/control-plane.tgz" launch-stack/Caddyfile launch-stack/sites state secrets
+tar -C /opt/izakhono -czf "$DEST/control-plane.tgz" launch-stack/Caddyfile launch-stack/sites state secrets evidence
 
 cd /opt/izakhono/launch-stack
 docker compose stop registry >/dev/null

@@ -22,7 +22,7 @@ if ! docker compose version >/dev/null 2>&1; then
 fi
 
 systemctl enable --now docker
-install -d -m 0750 /opt/izakhono/{launch-stack,secrets,state,backups}
+install -d -m 0750 /opt/izakhono/{launch-stack,secrets,state,backups,evidence}
 
 if [ "$HARDEN" = true ]; then
   ufw allow OpenSSH
