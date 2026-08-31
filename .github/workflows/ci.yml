@@ -49,10 +49,9 @@ jobs:
           if not str(data['health_path']).startswith('/'):
               raise SystemExit('template health_path must start with /')
           alpha = data.get('alpha') or {}
-          if not isinstance(alpha.get('rehearsal', False), bool):
-              raise SystemExit('alpha.rehearsal must be boolean')
-          if not isinstance(alpha.get('windows_package', False), bool):
-              raise SystemExit('alpha.windows_package must be boolean')
+          for key in ('preflight','rehearsal','windows_package'):
+              if not isinstance(alpha.get(key, False), bool):
+                  raise SystemExit(f'alpha.{key} must be boolean')
           print('[PASS] IZAKHONO Fast Build manifest template is valid.')
           PY
 
@@ -65,6 +64,8 @@ jobs:
           required = [
               'workflow_call:',
               'Validate IZAKHONO manifest',
+              'Project preflight',
+              'scripts/izakhono/alpha-preflight.sh',
               'Build application',
               'Health gate',
               'Database / application rehearsal',
