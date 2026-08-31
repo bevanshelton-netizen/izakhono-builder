@@ -1,0 +1,75 @@
+services:
+  caddy:
+    image: caddy:2.10.2-alpine
+    container_name: izakhono-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./sites:/etc/caddy/sites:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - izakhono_public
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/healthz"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  postgres:
+    image: postgres:17-alpine
+    container_name: izakhono-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - izakhono_private
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  registry:
+    image: registry:2.8.3
+    container_name: izakhono-registry
+    restart: unless-stopped
+    environment:
+      REGISTRY_HTTP_SECRET: ${REGISTRY_HTTP_SECRET}
+      REGISTRY_STORAGE_DELETE_ENABLED: "true"
+    ports:
+      - "127.0.0.1:5000:5000"
+    volumes:
+      - registry_data:/var/lib/registry
+    networks:
+      - izakhono_private
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:5000/v2/"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  caddy_data:
+    name: izakhono_caddy_data
+  caddy_config:
+    name: izakhono_caddy_config
+  postgres_data:
+    name: izakhono_postgres_data
+  registry_data:
+    name: izakhono_registry_data
+
+networks:
+  izakhono_public:
+    name: izakhono_public
+  izakhono_private:
+    name: izakhono_private
+    internal: true
