@@ -8,16 +8,21 @@ fi
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 SOURCE="$ROOT_DIR/infra/launch-stack"
+TOOLS="$ROOT_DIR/scripts/launch-stack"
 TARGET=/opt/izakhono/launch-stack
+BIN=/opt/izakhono/bin
 
 command -v docker >/dev/null
 command -v openssl >/dev/null
 docker compose version >/dev/null
 
-install -d -m 0750 "$TARGET" "$TARGET/sites" /opt/izakhono/{secrets,state,backups,evidence}
+install -d -m 0750 "$TARGET" "$TARGET/sites" "$BIN" /opt/izakhono/{secrets,state,backups,evidence}
 cp "$SOURCE/docker-compose.yml" "$TARGET/docker-compose.yml"
 cp "$SOURCE/Caddyfile" "$TARGET/Caddyfile"
 cp "$SOURCE/sites/00-host-health.caddy" "$TARGET/sites/00-host-health.caddy"
+for script in "$TOOLS"/*.sh; do
+  install -m 0750 "$script" "$BIN/$(basename "$script")"
+done
 
 ENV_FILE="$TARGET/.env"
 if [ ! -f "$ENV_FILE" ]; then
@@ -43,6 +48,7 @@ for i in $(seq 1 45); do
   registry="$(docker inspect -f '{{.State.Health.Status}}' izakhono-registry 2>/dev/null || true)"
   if [ "$caddy" = healthy ] && [ "$postgres" = healthy ] && [ "$registry" = healthy ]; then
     echo '[PASS] IZAKHONO Launch Stack is healthy.'
+    echo 'Host-local operator tools installed under /opt/izakhono/bin.'
     echo 'Gateway: ports 80/443; PostgreSQL: private network; registry: localhost:5000.'
     echo 'Secrets remain mode-0600 on this host.'
     exit 0
