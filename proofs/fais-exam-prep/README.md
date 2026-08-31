@@ -18,5 +18,6 @@ The validation gate performs a TypeScript check and a Cloudflare Wrangler deploy
 - `/` serves the generated static landing page.
 - `/api/health` returns a generated health contract.
 - `/api/features` returns the selected module flags.
+- The isolated `proof/fais-exam-prep` branch routes its Cloudflare preview directly to this generated bundle rather than to the Builder application.
 
 No production credentials are committed in this proof bundle.
