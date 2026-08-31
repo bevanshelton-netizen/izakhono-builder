@@ -123,6 +123,13 @@ jobs:
       - name: Run repository-reviewed preflight
         if: needs.validate.outputs.preflight == 'true'
         shell: bash
+        env:
+          IZAKHONO_APP_NAME: ${{ needs.validate.outputs.name }}
+          IZAKHONO_APP_SLUG: ${{ needs.validate.outputs.slug }}
+          IZAKHONO_BUILD_CONTEXT: ${{ needs.validate.outputs.context }}
+          IZAKHONO_DOCKERFILE: ${{ needs.validate.outputs.dockerfile }}
+          IZAKHONO_CONTAINER_PORT: ${{ needs.validate.outputs.port }}
+          IZAKHONO_HEALTH_PATH: ${{ needs.validate.outputs.health }}
         run: bash scripts/izakhono/alpha-preflight.sh
       - name: Record no-op preflight
         if: needs.validate.outputs.preflight != 'true'
