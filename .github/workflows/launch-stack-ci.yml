@@ -44,6 +44,8 @@ jobs:
           grep -Fq 'internal: true' infra/launch-stack/docker-compose.yml
           grep -Fq -- '--require-public' scripts/launch-stack/deploy-app.sh
           grep -Fq 'refusing silent credential rotation' scripts/launch-stack/provision-project-db.sh
+          grep -Fq '/opt/izakhono/bin' scripts/launch-stack/init-stack.sh
+          grep -Fq 'PUBLIC_HTTPS_HEALTH_GATE=pass' scripts/launch-stack/launch-project.sh
 
       - name: Validate Docker Compose model
         env:
@@ -59,6 +61,11 @@ jobs:
             -v "$PWD/infra/launch-stack/Caddyfile:/etc/caddy/Caddyfile:ro" \
             -v "$PWD/infra/launch-stack/sites:/etc/caddy/sites:ro" \
             caddy:2.10.2-alpine caddy validate --config /etc/caddy/Caddyfile
+
+      - name: Validate systemd automation units
+        run: |
+          set -euo pipefail
+          systemd-analyze verify infra/launch-stack/systemd/*.service infra/launch-stack/systemd/*.timer
 
       - name: Validate no production secrets are committed
         run: |
