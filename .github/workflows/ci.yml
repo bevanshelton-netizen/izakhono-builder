@@ -1,0 +1,79 @@
+name: IZAKHONO Builder CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck + Wrangler dry run
+        run: npm run validate
+
+      - name: Validate Fast Build templates
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path, PurePosixPath
+
+          p = Path('templates/izakhono.manifest.example.json')
+          data = json.loads(p.read_text(encoding='utf-8'))
+          for key in ('name','slug','build_context','dockerfile_path','container_port','health_path'):
+              if key not in data:
+                  raise SystemExit(f'missing template field: {key}')
+          for key in ('build_context','dockerfile_path'):
+              q = PurePosixPath(str(data[key]))
+              if q.is_absolute() or '..' in q.parts:
+                  raise SystemExit(f'unsafe template path: {key}')
+          if not 1 <= int(data['container_port']) <= 65535:
+              raise SystemExit('template port out of range')
+          if not str(data['health_path']).startswith('/'):
+              raise SystemExit('template health_path must start with /')
+          alpha = data.get('alpha') or {}
+          if not isinstance(alpha.get('rehearsal', False), bool):
+              raise SystemExit('alpha.rehearsal must be boolean')
+          if not isinstance(alpha.get('windows_package', False), bool):
+              raise SystemExit('alpha.windows_package must be boolean')
+          print('[PASS] IZAKHONO Fast Build manifest template is valid.')
+          PY
+
+      - name: Parse reusable workflow
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          text = Path('.github/workflows/izakhono-build-to-alpha.yml').read_text(encoding='utf-8')
+          required = [
+              'workflow_call:',
+              'Validate IZAKHONO manifest',
+              'Build application',
+              'Health gate',
+              'Database / application rehearsal',
+              'Package Windows Alpha kit',
+              'One clear Alpha result',
+          ]
+          missing = [item for item in required if item not in text]
+          if missing:
+              raise SystemExit('Reusable Alpha workflow missing: ' + ', '.join(missing))
+          print('[PASS] Reusable IZAKHONO Build to Alpha workflow contract present.')
+          PY
