@@ -65,6 +65,10 @@ jobs:
       - name: Validate systemd automation units
         run: |
           set -euo pipefail
+          sudo install -d -m 0755 /opt/izakhono/bin
+          for name in backup-stack.sh health-check.sh verify-latest-backup.sh; do
+            sudo ln -sf /bin/true "/opt/izakhono/bin/$name"
+          done
           systemd-analyze verify infra/launch-stack/systemd/*.service infra/launch-stack/systemd/*.timer
 
       - name: Validate no production secrets are committed
