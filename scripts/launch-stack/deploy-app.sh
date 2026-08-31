@@ -22,6 +22,9 @@ CONTEXT="$(jq -r '.build_context // empty' "$MANIFEST")"
 DOCKERFILE="$(jq -r '.dockerfile_path // empty' "$MANIFEST")"
 PORT="$(jq -r '.container_port // empty' "$MANIFEST")"
 HEALTH="$(jq -r '.health_path // empty' "$MANIFEST")"
+READINESS_REQUIRED="$(jq -r 'if .commercial.readiness_required == true then "true" else "false" end' "$MANIFEST")"
+READINESS_PATH="$(jq -r '.commercial.readiness_path // empty' "$MANIFEST")"
+READINESS_FIELD="$(jq -r '.commercial.readiness_field // empty' "$MANIFEST")"
 
 [[ "$SLUG" =~ ^[a-z0-9][a-z0-9-]{1,48}[a-z0-9]$ ]] || { echo 'Unsafe slug.'; exit 1; }
 [[ "$PORT" =~ ^[0-9]{1,5}$ ]] && [ "$PORT" -ge 1 ] && [ "$PORT" -le 65535 ] || { echo 'Invalid port.'; exit 1; }
@@ -31,6 +34,12 @@ for P in "$CONTEXT" "$DOCKERFILE"; do
 done
 [ -d "$REPO/$CONTEXT" ] || { echo 'Build context missing.'; exit 1; }
 [ -f "$REPO/$DOCKERFILE" ] || { echo 'Dockerfile missing.'; exit 1; }
+
+if [ "$READINESS_REQUIRED" = true ]; then
+  [ "$MODE" = '--require-public' ] || { echo 'Commercial readiness requires the public HTTPS publication mode.'; exit 1; }
+  [[ "$READINESS_PATH" =~ ^/[A-Za-z0-9._~:/?%+=,@-]*$ ]] || { echo 'commercial.readiness_path is unsafe.'; exit 1; }
+  [[ "$READINESS_FIELD" =~ ^[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)*$ ]] || { echo 'commercial.readiness_field must be a dotted JSON field path.'; exit 1; }
+fi
 
 docker inspect izakhono-caddy >/dev/null 2>&1 || { echo 'Launch stack is not running.'; exit 1; }
 
@@ -87,10 +96,15 @@ ${DOMAIN} {
 EOF
 mv "$SITE.new" "$SITE"
 
+revert_candidate() {
+  [ -f "$SITE_BAK" ] && mv "$SITE_BAK" "$SITE" || rm -f "$SITE"
+  docker exec izakhono-caddy caddy reload --config /etc/caddy/Caddyfile >/dev/null 2>&1 || true
+  docker rm -f "$CONTAINER" >/dev/null 2>&1 || true
+}
+
 if ! docker exec izakhono-caddy caddy validate --config /etc/caddy/Caddyfile >/dev/null; then
   echo '[FAIL] Caddy rejected the candidate route.'
-  [ -f "$SITE_BAK" ] && mv "$SITE_BAK" "$SITE" || rm -f "$SITE"
-  docker rm -f "$CONTAINER" >/dev/null 2>&1 || true
+  revert_candidate
   exit 1
 fi
 docker exec izakhono-caddy caddy reload --config /etc/caddy/Caddyfile >/dev/null
@@ -103,11 +117,27 @@ if [ "$MODE" = '--require-public' ]; then
   done
   if [ "$public_ok" -ne 1 ]; then
     echo '[FAIL] Public HTTPS gate failed; reverting route.'
-    [ -f "$SITE_BAK" ] && mv "$SITE_BAK" "$SITE" || rm -f "$SITE"
-    docker exec izakhono-caddy caddy reload --config /etc/caddy/Caddyfile >/dev/null || true
-    docker rm -f "$CONTAINER" >/dev/null 2>&1 || true
+    revert_candidate
     exit 1
   fi
+fi
+
+if [ "$READINESS_REQUIRED" = true ]; then
+  readiness_ok=0
+  for i in $(seq 1 15); do
+    if body="$(curl -fsS --connect-timeout 5 --max-time 10 "https://${DOMAIN}${READINESS_PATH}" 2>/dev/null)" \
+      && printf '%s' "$body" | jq -e --arg p "$READINESS_FIELD" 'getpath($p | split(".")) == true' >/dev/null 2>&1; then
+      readiness_ok=1
+      break
+    fi
+    sleep 2
+  done
+  if [ "$readiness_ok" -ne 1 ]; then
+    echo '[FAIL] Application commercial-readiness gate did not return true; reverting route.'
+    revert_candidate
+    exit 1
+  fi
+  echo "[PASS] Application commercial-readiness gate: ${READINESS_PATH} -> ${READINESS_FIELD}=true"
 fi
 
 rm -f "$SITE_BAK"
