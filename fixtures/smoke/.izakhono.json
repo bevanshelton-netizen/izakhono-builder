@@ -8,6 +8,7 @@
   "health_path": "/health",
   "branch": "main",
   "alpha": {
+    "preflight": true,
     "rehearsal": false,
     "windows_package": false
   }
