@@ -1,5 +1,7 @@
 name: IZAKHONO Alpha Core Self Test
 
+# The safety preflight lives inside the reusable Builder workflow. Caller repositories
+# provide only the declarative manifest and build context; they do not supply preflight code.
 on:
   pull_request:
     branches: [main]
