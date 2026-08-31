@@ -1,19 +1,10 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "izakhono-builder",
-  "main": "src/secure.ts",
+  "main": "proofs/fais-exam-prep/src/index.ts",
   "compatibility_date": "2026-08-01",
   "assets": {
-    "directory": "./public",
+    "directory": "./proofs/fais-exam-prep/public",
     "binding": "ASSETS"
-  },
-  "d1_databases": [
-    {
-      "binding": "DB",
-      "migrations_dir": "migrations","database_id": "a59d44af-22cc-4967-8b00-03c817d7a7dd","database_name": "izakhono-builder"
-    }
-  ],
-  "vars": {
-    "APP_ENV": "production"
   }
 }
