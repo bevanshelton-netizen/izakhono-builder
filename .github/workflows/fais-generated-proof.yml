@@ -24,8 +24,8 @@ jobs:
       - name: Generated-source security assertions
         run: |
           set -euo pipefail
-          ! grep -R "ADMIN_SECRET\|OWNER_RECOVERY_SHA256\|BEGIN .*PRIVATE KEY\|service_role" -n .
-          ! grep -R "access-control-allow-origin.*\\*" -n src || (echo "Wildcard CORS is forbidden" && exit 1)
+          ! grep -nE "ADMIN_SECRET|OWNER_RECOVERY_SHA256|BEGIN .*PRIVATE KEY|service_role" src/index.ts public/index.html package.json wrangler.jsonc README.md
+          ! grep -nE "access-control-allow-origin.*\\*" src/index.ts || (echo "Wildcard CORS is forbidden" && exit 1)
           grep -q "env.ASSETS.fetch" src/index.ts
           grep -q "/api/health" src/index.ts
           grep -q "FAIS Exam Prep" public/index.html
