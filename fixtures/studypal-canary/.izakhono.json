@@ -1,0 +1,15 @@
+{
+  "version": 2,
+  "name": "StudyPal Alpha Canary",
+  "slug": "studypal-alpha-canary",
+  "build_context": "fixtures/studypal-canary",
+  "dockerfile_path": "fixtures/studypal-canary/Dockerfile",
+  "container_port": 8091,
+  "health_path": "/ready",
+  "branch": "main",
+  "alpha": {
+    "preflight": true,
+    "rehearsal": false,
+    "windows_package": false
+  }
+}
