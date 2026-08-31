@@ -19,7 +19,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: izakhono-alpha-${{ github.repository }}-${{ github.ref }}
+  group: izakhono-alpha-${{ github.repository }}-${{ github.ref }}-${{ inputs.manifest_path || '.izakhono.json' }}
   cancel-in-progress: true
 
 jobs:
