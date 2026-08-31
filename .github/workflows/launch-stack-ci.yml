@@ -46,6 +46,10 @@ jobs:
           grep -Fq 'refusing silent credential rotation' scripts/launch-stack/provision-project-db.sh
           grep -Fq '/opt/izakhono/bin' scripts/launch-stack/init-stack.sh
           grep -Fq 'PUBLIC_HTTPS_HEALTH_GATE=pass' scripts/launch-stack/launch-project.sh
+          grep -Fq 'commercial.readiness_required' scripts/launch-stack/deploy-app.sh
+          grep -Fq 'readiness_field must be a dotted JSON field path' scripts/launch-stack/deploy-app.sh
+          grep -Fq 'Application commercial-readiness gate did not return true; reverting route.' scripts/launch-stack/deploy-app.sh
+          grep -Fq 'APP_DECLARED_COMMERCIAL_READINESS=' scripts/launch-stack/launch-project.sh
 
       - name: Validate Docker Compose model
         env:
