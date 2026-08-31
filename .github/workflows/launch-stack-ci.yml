@@ -1,0 +1,67 @@
+name: IZAKHONO Launch Stack CI
+
+on:
+  pull_request:
+    paths:
+      - 'infra/launch-stack/**'
+      - 'scripts/launch-stack/**'
+      - 'docs/LAUNCH-STACK-V1.md'
+      - '.github/workflows/launch-stack-ci.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'infra/launch-stack/**'
+      - 'scripts/launch-stack/**'
+      - 'docs/LAUNCH-STACK-V1.md'
+      - '.github/workflows/launch-stack-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Shell syntax
+        run: |
+          set -euo pipefail
+          for script in scripts/launch-stack/*.sh; do
+            echo "Checking $script"
+            bash -n "$script"
+          done
+
+      - name: Safety invariants
+        run: |
+          set -euo pipefail
+          ! grep -R --line-number -E '(^|[[:space:]])eval([[:space:]]|$)' scripts/launch-stack
+          ! grep -R --line-number -E 'curl[^|]*\|[[:space:]]*(bash|sh)' scripts/launch-stack
+          ! grep -R --line-number -E 'chmod[[:space:]]+777|--privileged' scripts/launch-stack infra/launch-stack
+          grep -Fq '127.0.0.1:5000:5000' infra/launch-stack/docker-compose.yml
+          grep -Fq 'internal: true' infra/launch-stack/docker-compose.yml
+          grep -Fq -- '--require-public' scripts/launch-stack/deploy-app.sh
+          grep -Fq 'refusing silent credential rotation' scripts/launch-stack/provision-project-db.sh
+
+      - name: Validate Docker Compose model
+        env:
+          POSTGRES_USER: izakhono_root
+          POSTGRES_PASSWORD: ci-only-not-production
+          POSTGRES_DB: izakhono
+          REGISTRY_HTTP_SECRET: ci-only-not-production
+        run: docker compose -f infra/launch-stack/docker-compose.yml config >/dev/null
+
+      - name: Validate Caddy configuration
+        run: |
+          docker run --rm \
+            -v "$PWD/infra/launch-stack/Caddyfile:/etc/caddy/Caddyfile:ro" \
+            -v "$PWD/infra/launch-stack/sites:/etc/caddy/sites:ro" \
+            caddy:2.10.2-alpine caddy validate --config /etc/caddy/Caddyfile
+
+      - name: Validate no production secrets are committed
+        run: |
+          set -euo pipefail
+          ! grep -R --line-number -E 'POSTGRES_PASSWORD=[A-Fa-f0-9]{32,}|REGISTRY_HTTP_SECRET=[A-Fa-f0-9]{32,}' infra scripts docs
+          echo 'LAUNCH_STACK_VALIDATION=PASS'
