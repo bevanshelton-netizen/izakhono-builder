@@ -1,0 +1,31 @@
+name: FAIS Generated Proof Gate
+
+on:
+  push:
+    branches: [proof/fais-exam-prep]
+    paths:
+      - 'proofs/fais-exam-prep/**'
+      - '.github/workflows/fais-generated-proof.yml'
+
+jobs:
+  validate-generated-app:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: proofs/fais-exam-prep
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install
+      - run: npm run typecheck
+      - run: npx wrangler deploy --dry-run
+      - name: Generated-source security assertions
+        run: |
+          set -euo pipefail
+          ! grep -R "ADMIN_SECRET\|OWNER_RECOVERY_SHA256\|BEGIN .*PRIVATE KEY\|service_role" -n .
+          ! grep -R "access-control-allow-origin.*\\*" -n src || (echo "Wildcard CORS is forbidden" && exit 1)
+          grep -q "env.ASSETS.fetch" src/index.ts
+          grep -q "/api/health" src/index.ts
+          grep -q "FAIS Exam Prep" public/index.html
