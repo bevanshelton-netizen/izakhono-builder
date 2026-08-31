@@ -65,7 +65,8 @@ jobs:
               'workflow_call:',
               'Validate IZAKHONO manifest',
               'Project preflight',
-              'scripts/izakhono/alpha-preflight.sh',
+              'Central fixed preflight policy',
+              'caller repository supplied no executable preflight policy',
               'Build application',
               'Health gate',
               'Database / application rehearsal',
@@ -75,5 +76,7 @@ jobs:
           missing = [item for item in required if item not in text]
           if missing:
               raise SystemExit('Reusable Alpha workflow missing: ' + ', '.join(missing))
-          print('[PASS] Reusable IZAKHONO Build to Alpha workflow contract present.')
+          if 'run: bash scripts/izakhono/alpha-preflight.sh' in text:
+              raise SystemExit('Central Alpha workflow must not execute caller-provided preflight shell.')
+          print('[PASS] Central IZAKHONO Build to Alpha trust boundary is present.')
           PY
