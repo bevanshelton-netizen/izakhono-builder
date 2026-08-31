@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "name": "IZAKHONO Alpha Smoke",
+  "slug": "izakhono-alpha-smoke",
+  "build_context": "fixtures/smoke",
+  "dockerfile_path": "fixtures/smoke/Dockerfile",
+  "container_port": 8080,
+  "health_path": "/health",
+  "branch": "main",
+  "alpha": {
+    "rehearsal": false,
+    "windows_package": false
+  }
+}
