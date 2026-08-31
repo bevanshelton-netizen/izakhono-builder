@@ -33,6 +33,7 @@ jobs:
       dockerfile: ${{ steps.contract.outputs.dockerfile }}
       port: ${{ steps.contract.outputs.port }}
       health: ${{ steps.contract.outputs.health }}
+      preflight: ${{ steps.contract.outputs.preflight }}
       rehearsal: ${{ steps.contract.outputs.rehearsal }}
       windows_package: ${{ steps.contract.outputs.windows_package }}
     steps:
@@ -87,8 +88,11 @@ jobs:
               raise SystemExit('health_path must be a single absolute HTTP path')
 
           alpha = data.get('alpha') or {}
+          preflight = bool(alpha.get('preflight', False))
           rehearsal = bool(alpha.get('rehearsal', False))
           windows_package = bool(alpha.get('windows_package', False))
+          if preflight and not (root / 'scripts/izakhono/alpha-preflight.sh').is_file():
+              raise SystemExit('alpha.preflight=true requires scripts/izakhono/alpha-preflight.sh')
           if rehearsal and not (root / 'scripts/izakhono/alpha-rehearsal.sh').is_file():
               raise SystemExit('alpha.rehearsal=true requires scripts/izakhono/alpha-rehearsal.sh')
           if windows_package and not (root / 'scripts/izakhono/package-alpha.ps1').is_file():
@@ -102,14 +106,32 @@ jobs:
               f.write(f"dockerfile={dockerfile}\n")
               f.write(f"port={port}\n")
               f.write(f"health={health}\n")
+              f.write(f"preflight={'true' if preflight else 'false'}\n")
               f.write(f"rehearsal={'true' if rehearsal else 'false'}\n")
               f.write(f"windows_package={'true' if windows_package else 'false'}\n")
           print(f"[PASS] IZAKHONO contract loaded for {data['name']}")
           PY
 
+  preflight:
+    name: Project preflight
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Run repository-reviewed preflight
+        if: needs.validate.outputs.preflight == 'true'
+        shell: bash
+        run: bash scripts/izakhono/alpha-preflight.sh
+      - name: Record no-op preflight
+        if: needs.validate.outputs.preflight != 'true'
+        shell: bash
+        run: echo '[PASS] No project-specific preflight requested.'
+
   container-gate:
     name: Build + health gate
-    needs: validate
+    needs: [validate, preflight]
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
@@ -194,12 +216,13 @@ jobs:
   result:
     name: One clear Alpha result
     if: always()
-    needs: [validate, container-gate, rehearsal, windows-package]
+    needs: [validate, preflight, container-gate, rehearsal, windows-package]
     runs-on: ubuntu-latest
     steps:
       - name: PASS or FAIL
         env:
           VALIDATE: ${{ needs.validate.result }}
+          PREFLIGHT: ${{ needs.preflight.result }}
           CONTAINER: ${{ needs.container-gate.result }}
           REHEARSAL: ${{ needs.rehearsal.result }}
           WINDOWS: ${{ needs.windows-package.result }}
@@ -210,13 +233,14 @@ jobs:
             echo '# IZAKHONO BUILD TO ALPHA'
             echo
             echo "Contract: **${VALIDATE}**"
+            echo "Project preflight: **${PREFLIGHT}**"
             echo "Container + health: **${CONTAINER}**"
             echo "Rehearsal: **${REHEARSAL}**"
             echo "Windows package: **${WINDOWS}**"
             echo
           } >> "$GITHUB_STEP_SUMMARY"
 
-          if [[ "$VALIDATE" == success && "$CONTAINER" == success ]] && ok_optional "$REHEARSAL" && ok_optional "$WINDOWS"; then
+          if [[ "$VALIDATE" == success && "$PREFLIGHT" == success && "$CONTAINER" == success ]] && ok_optional "$REHEARSAL" && ok_optional "$WINDOWS"; then
             echo '## ✅ ALPHA BUILD: PASS' >> "$GITHUB_STEP_SUMMARY"
             echo '[PASS] IZAKHONO Build to Alpha completed.'
             exit 0
