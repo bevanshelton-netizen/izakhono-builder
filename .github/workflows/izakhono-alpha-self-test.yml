@@ -7,12 +7,14 @@ on:
       - '.github/workflows/izakhono-build-to-alpha.yml'
       - '.github/workflows/izakhono-alpha-self-test.yml'
       - 'fixtures/smoke/**'
+      - 'scripts/izakhono/alpha-preflight.sh'
   push:
     branches: [main]
     paths:
       - '.github/workflows/izakhono-build-to-alpha.yml'
       - '.github/workflows/izakhono-alpha-self-test.yml'
       - 'fixtures/smoke/**'
+      - 'scripts/izakhono/alpha-preflight.sh'
   workflow_dispatch:
 
 permissions:
