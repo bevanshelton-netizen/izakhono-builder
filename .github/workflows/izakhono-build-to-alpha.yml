@@ -1,0 +1,227 @@
+name: IZAKHONO Build to Alpha
+
+on:
+  workflow_call:
+    inputs:
+      manifest_path:
+        description: Repository-relative IZAKHONO manifest path
+        required: false
+        type: string
+        default: .izakhono.json
+  workflow_dispatch:
+    inputs:
+      manifest_path:
+        description: Repository-relative IZAKHONO manifest path
+        required: false
+        default: .izakhono.json
+
+permissions:
+  contents: read
+
+concurrency:
+  group: izakhono-alpha-${{ github.repository }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Read safe build contract
+    runs-on: ubuntu-latest
+    outputs:
+      name: ${{ steps.contract.outputs.name }}
+      slug: ${{ steps.contract.outputs.slug }}
+      context: ${{ steps.contract.outputs.context }}
+      dockerfile: ${{ steps.contract.outputs.dockerfile }}
+      port: ${{ steps.contract.outputs.port }}
+      health: ${{ steps.contract.outputs.health }}
+      rehearsal: ${{ steps.contract.outputs.rehearsal }}
+      windows_package: ${{ steps.contract.outputs.windows_package }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Validate IZAKHONO manifest
+        id: contract
+        env:
+          MANIFEST_PATH: ${{ inputs.manifest_path || '.izakhono.json' }}
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json, os
+          from pathlib import Path, PurePosixPath
+
+          raw_manifest = os.environ.get('MANIFEST_PATH', '.izakhono.json').replace('\\', '/')
+          manifest_path = PurePosixPath(raw_manifest)
+          if manifest_path.is_absolute() or '..' in manifest_path.parts:
+              raise SystemExit('manifest_path must stay inside the repository')
+
+          root = Path('.')
+          manifest_file = root / manifest_path
+          if not manifest_file.is_file():
+              raise SystemExit(f'IZAKHONO manifest not found: {manifest_path}')
+
+          data = json.loads(manifest_file.read_text(encoding='utf-8'))
+          required = ('name','slug','build_context','dockerfile_path','container_port','health_path')
+          missing = [k for k in required if k not in data]
+          if missing:
+              raise SystemExit('Missing IZAKHONO fields: ' + ', '.join(missing))
+
+          def safe_repo_path(key):
+              raw = str(data[key]).replace('\\', '/')
+              p = PurePosixPath(raw)
+              if p.is_absolute() or '..' in p.parts:
+                  raise SystemExit(f'{key} must stay inside the repository')
+              return raw
+
+          context = safe_repo_path('build_context')
+          dockerfile = safe_repo_path('dockerfile_path')
+          if not (root / context).is_dir():
+              raise SystemExit(f'Build context missing: {context}')
+          if not (root / dockerfile).is_file():
+              raise SystemExit(f'Dockerfile missing: {dockerfile}')
+
+          port = int(data['container_port'])
+          if not 1 <= port <= 65535:
+              raise SystemExit('container_port out of range')
+          health = str(data['health_path'])
+          if not health.startswith('/') or '\n' in health or '\r' in health:
+              raise SystemExit('health_path must be a single absolute HTTP path')
+
+          alpha = data.get('alpha') or {}
+          rehearsal = bool(alpha.get('rehearsal', False))
+          windows_package = bool(alpha.get('windows_package', False))
+          if rehearsal and not (root / 'scripts/izakhono/alpha-rehearsal.sh').is_file():
+              raise SystemExit('alpha.rehearsal=true requires scripts/izakhono/alpha-rehearsal.sh')
+          if windows_package and not (root / 'scripts/izakhono/package-alpha.ps1').is_file():
+              raise SystemExit('alpha.windows_package=true requires scripts/izakhono/package-alpha.ps1')
+
+          out = Path(os.environ['GITHUB_OUTPUT'])
+          with out.open('a', encoding='utf-8') as f:
+              f.write(f"name={data['name']}\n")
+              f.write(f"slug={data['slug']}\n")
+              f.write(f"context={context}\n")
+              f.write(f"dockerfile={dockerfile}\n")
+              f.write(f"port={port}\n")
+              f.write(f"health={health}\n")
+              f.write(f"rehearsal={'true' if rehearsal else 'false'}\n")
+              f.write(f"windows_package={'true' if windows_package else 'false'}\n")
+          print(f"[PASS] IZAKHONO contract loaded for {data['name']}")
+          PY
+
+  container-gate:
+    name: Build + health gate
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Build application
+        shell: bash
+        env:
+          APP_NAME: ${{ needs.validate.outputs.name }}
+          APP_SLUG: ${{ needs.validate.outputs.slug }}
+          BUILD_CONTEXT: ${{ needs.validate.outputs.context }}
+          DOCKERFILE: ${{ needs.validate.outputs.dockerfile }}
+        run: |
+          image="${APP_SLUG}:izakhono-alpha-${GITHUB_SHA::12}"
+          docker build \
+            --label "za.co.izakhono.product=${APP_NAME}" \
+            --label "za.co.izakhono.commit=${GITHUB_SHA}" \
+            --label "za.co.izakhono.channel=alpha" \
+            -f "$DOCKERFILE" -t "$image" "$BUILD_CONTEXT"
+          echo "IZAKHONO_IMAGE=$image" >> "$GITHUB_ENV"
+
+      - name: Health gate
+        shell: bash
+        env:
+          APP_PORT: ${{ needs.validate.outputs.port }}
+          HEALTH_PATH: ${{ needs.validate.outputs.health }}
+        run: |
+          docker run -d --name izakhono-alpha -p "127.0.0.1:18000:${APP_PORT}" "$IZAKHONO_IMAGE"
+          trap 'docker logs izakhono-alpha || true; docker rm -f izakhono-alpha || true' EXIT
+          for _ in $(seq 1 45); do
+            if curl --fail --silent --show-error "http://127.0.0.1:18000${HEALTH_PATH}" >/tmp/izakhono-health; then
+              cat /tmp/izakhono-health
+              echo '[PASS] IZAKHONO container health gate passed.'
+              exit 0
+            fi
+            sleep 2
+          done
+          echo '[FAIL] IZAKHONO container did not become healthy.' >&2
+          exit 1
+
+  rehearsal:
+    name: Database / application rehearsal
+    if: needs.validate.outputs.rehearsal == 'true'
+    needs: [validate, container-gate]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Run repository-reviewed Alpha rehearsal
+        shell: bash
+        run: bash scripts/izakhono/alpha-rehearsal.sh
+
+  windows-package:
+    name: Package Windows Alpha kit
+    if: needs.validate.outputs.windows_package == 'true'
+    needs: [validate, container-gate]
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Run repository-reviewed Windows packager
+        shell: pwsh
+        run: .\scripts\izakhono\package-alpha.ps1
+      - name: Require package output
+        shell: pwsh
+        run: |
+          if (-not (Test-Path '.\dist\izakhono-alpha')) { throw 'Expected dist/izakhono-alpha output was not created.' }
+          $files = Get-ChildItem '.\dist\izakhono-alpha' -File -Recurse
+          if (-not $files) { throw 'Alpha package output is empty.' }
+          Write-Host "[PASS] Alpha package output contains $($files.Count) file(s)."
+      - name: Retain package when quota permits
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          name: izakhono-alpha-${{ needs.validate.outputs.slug }}
+          path: dist/izakhono-alpha/**
+          retention-days: 7
+
+  result:
+    name: One clear Alpha result
+    if: always()
+    needs: [validate, container-gate, rehearsal, windows-package]
+    runs-on: ubuntu-latest
+    steps:
+      - name: PASS or FAIL
+        env:
+          VALIDATE: ${{ needs.validate.result }}
+          CONTAINER: ${{ needs.container-gate.result }}
+          REHEARSAL: ${{ needs.rehearsal.result }}
+          WINDOWS: ${{ needs.windows-package.result }}
+        shell: bash
+        run: |
+          ok_optional() { [[ "$1" == success || "$1" == skipped ]]; }
+          {
+            echo '# IZAKHONO BUILD TO ALPHA'
+            echo
+            echo "Contract: **${VALIDATE}**"
+            echo "Container + health: **${CONTAINER}**"
+            echo "Rehearsal: **${REHEARSAL}**"
+            echo "Windows package: **${WINDOWS}**"
+            echo
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          if [[ "$VALIDATE" == success && "$CONTAINER" == success ]] && ok_optional "$REHEARSAL" && ok_optional "$WINDOWS"; then
+            echo '## ✅ ALPHA BUILD: PASS' >> "$GITHUB_STEP_SUMMARY"
+            echo '[PASS] IZAKHONO Build to Alpha completed.'
+            exit 0
+          fi
+
+          echo '## ❌ ALPHA BUILD: FAIL' >> "$GITHUB_STEP_SUMMARY"
+          echo 'No promotion should occur until the failed gate is corrected.' >> "$GITHUB_STEP_SUMMARY"
+          exit 1
