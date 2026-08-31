@@ -1,0 +1,11 @@
+[Unit]
+Description=Verify latest IZAKHONO backup every Sunday
+
+[Timer]
+OnCalendar=Sun *-*-* 04:00:00
+Persistent=true
+RandomizedDelaySec=20min
+Unit=izakhono-restore-rehearsal.service
+
+[Install]
+WantedBy=timers.target
