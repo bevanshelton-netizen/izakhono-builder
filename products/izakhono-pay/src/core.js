@@ -23,6 +23,15 @@ export function safeEqualText(a, b) {
   return timingSafeEqual(aa, bb);
 }
 
+export function merchantWebhookSignature(rawBody, timestamp, secret) {
+  return createHmac('sha256', secret).update(`${timestamp}.${rawBody}`).digest('hex');
+}
+
+export function verifyMerchantWebhookSignature(rawBody, timestamp, signature, secret) {
+  if (!timestamp || !signature || !secret) return false;
+  return safeEqualText(merchantWebhookSignature(rawBody, timestamp, secret), signature);
+}
+
 export function payfastEncode(value) {
   return encodeURIComponent(String(value).trim())
     .replace(/%20/g, '+')
@@ -104,7 +113,7 @@ export function ipv4InCidr(ip, cidr) {
   const ipInt = ipToInt(ip);
   const netInt = ipToInt(network);
   if (ipInt === null || netInt === null || !Number.isInteger(bits) || bits < 0 || bits > 32) return false;
-  const mask = bits === 0 ? 0 : (0xffffffff << (32 - bits)) >>> 0;
+  const mask = bits === 0 ? 0 : (0xffffffff << (32 - bits))) >>> 0;
   return (ipInt & mask) === (netInt & mask);
 }
 
