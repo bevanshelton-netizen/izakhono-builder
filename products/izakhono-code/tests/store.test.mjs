@@ -1,0 +1,3 @@
+import test from 'node:test'; import assert from 'node:assert/strict'; import { mkdtemp } from 'node:fs/promises'; import { tmpdir } from 'node:os'; import path from 'node:path'; import { Store, safeSlug } from '../src/store.mjs';
+test('safe repository names are normalized and traversal is rejected',()=>{assert.equal(safeSlug('My Platform'),'my-platform');assert.throws(()=>safeSlug('../escape'))});
+test('state mutations are persistent and serialized',async()=>{const dir=await mkdtemp(path.join(tmpdir(),'izakhono-code-'));const store=await new Store(dir).init();await Promise.all(Array.from({length:20},(_,i)=>store.mutate(s=>s.issues.push({i}))));assert.equal((await store.load()).issues.length,20)});
