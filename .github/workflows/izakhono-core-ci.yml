@@ -1,0 +1,87 @@
+name: IZAKHONO Core CI
+
+on:
+  pull_request:
+    paths:
+      - 'products/izakhono-core/**'
+      - 'infra/launch-stack/**'
+      - 'scripts/launch-stack/**'
+      - '.github/workflows/izakhono-core-ci.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'products/izakhono-core/**'
+      - 'infra/launch-stack/**'
+      - 'scripts/launch-stack/**'
+      - '.github/workflows/izakhono-core-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  core:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: izakhono_core_ci
+          POSTGRES_PASSWORD: izakhono-core-ci-only-password
+          POSTGRES_DB: izakhono_core_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U izakhono_core_ci -d izakhono_core_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install Core dependencies
+        working-directory: products/izakhono-core
+        run: npm install --ignore-scripts --no-audit --no-fund
+
+      - name: Syntax check
+        working-directory: products/izakhono-core
+        run: npm run check
+
+      - name: Project/auth/data/storage/realtime isolation E2E
+        working-directory: products/izakhono-core
+        env:
+          PGHOST: 127.0.0.1
+          PGPORT: '5432'
+          PGUSER: izakhono_core_ci
+          PGPASSWORD: izakhono-core-ci-only-password
+          PGDATABASE: izakhono_core_ci
+        run: npm run test:e2e
+
+      - name: Build self-hosted Core image
+        run: docker build -t izakhono/core:ci products/izakhono-core
+
+      - name: Validate Launch Stack compose includes Core safely
+        env:
+          POSTGRES_USER: izakhono_root
+          POSTGRES_PASSWORD: ci-only-not-production
+          POSTGRES_DB: izakhono
+          REGISTRY_HTTP_SECRET: ci-only-not-production
+          IZAKHONO_CORE_JWT_SECRET: ci-jwt-secret-0123456789-abcdefghijklmnopqrstuvwxyz
+          IZAKHONO_CORE_ADMIN_TOKEN: ci-admin-token-0123456789-abcdefghijklmnopqrstuvwxyz
+          IZAKHONO_CORE_ALLOWED_ORIGINS: https://example.test
+        run: |
+          docker tag izakhono/core:ci izakhono/core:0.1.0
+          docker compose -f infra/launch-stack/docker-compose.yml config >/dev/null
+          grep -Fq 'container_name: izakhono-core' infra/launch-stack/docker-compose.yml
+          grep -Fq 'izakhono_core_storage' infra/launch-stack/docker-compose.yml
+          grep -Fq 'IZAKHONO_CORE_JWT_SECRET' scripts/launch-stack/init-stack.sh
+          grep -Fq 'izakhono-core' scripts/launch-stack/health-check.sh
+
+      - name: Secret and unsafe-shell guard
+        run: |
+          set -euo pipefail
+          ! grep -R --line-number -E 'IZAKHONO_CORE_(JWT_SECRET|ADMIN_TOKEN)=[A-Fa-f0-9]{64,}' products/izakhono-core infra/launch-stack scripts/launch-stack
+          ! grep -R --line-number -E '(^|[[:space:]])eval([[:space:]]|$)|curl[^|]*\|[[:space:]]*(bash|sh)|chmod[[:space:]]+777|--privileged' products/izakhono-core scripts/launch-stack
+          echo 'IZAKHONO_CORE_CI=PASS'
