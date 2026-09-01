@@ -2,6 +2,11 @@ name: Deploy IZAKHONO PAY Sandbox
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'products/izakhono-pay/**'
+      - '.github/workflows/izakhono-pay-sandbox-deploy.yml'
 
 permissions:
   contents: read
@@ -22,10 +27,10 @@ jobs:
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       ADMIN_SECRET: ${{ secrets.IZAKHONO_PAY_ADMIN_SECRET }}
-      PAYSTACK_SECRET_KEY: ${{ secrets.PAYSTACK_TEST_SECRET_KEY }}
-      PAYFAST_MERCHANT_ID: ${{ secrets.PAYFAST_SANDBOX_MERCHANT_ID }}
-      PAYFAST_MERCHANT_KEY: ${{ secrets.PAYFAST_SANDBOX_MERCHANT_KEY }}
-      PAYFAST_PASSPHRASE: ${{ secrets.PAYFAST_SANDBOX_PASSPHRASE }}
+      # Official public PayFast sandbox credentials. These never move real money.
+      PAYFAST_MERCHANT_ID: '10004002'
+      PAYFAST_MERCHANT_KEY: 'q1cd2rdny4a53'
+      PAYFAST_PASSPHRASE: 'payfast'
 
     steps:
       - uses: actions/checkout@v4
@@ -40,18 +45,32 @@ jobs:
       - name: Verify payment core before deployment
         run: npm run check
 
-      - name: Require sandbox-only credentials
+      - name: Prepare sandbox admin secret
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "${ADMIN_SECRET:-}" ]; then
+            generated="$(openssl rand -hex 32)"
+            echo "::add-mask::$generated"
+            echo "ADMIN_SECRET=$generated" >> "$GITHUB_ENV"
+            echo 'Using an ephemeral sandbox admin secret for this proof run.' >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Require Cloudflare deployment connection
         shell: bash
         run: |
           set -euo pipefail
           missing=0
-          for name in CLOUDFLARE_ACCOUNT_ID CLOUDFLARE_API_TOKEN ADMIN_SECRET PAYSTACK_SECRET_KEY PAYFAST_MERCHANT_ID PAYFAST_MERCHANT_KEY PAYFAST_PASSPHRASE; do
+          for name in CLOUDFLARE_ACCOUNT_ID CLOUDFLARE_API_TOKEN; do
             if [ -z "${!name:-}" ]; then
-              echo "Missing required sandbox secret: $name" >&2
+              echo "Missing required Cloudflare secret: $name" >&2
               missing=1
             fi
           done
-          test "$missing" -eq 0
+          if [ "$missing" -ne 0 ]; then
+            echo 'Add the two Cloudflare GitHub Actions secrets, then re-run this sandbox workflow.' >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
 
       - name: Bootstrap Worker and auto-provision sandbox D1
         run: npx wrangler deploy --config wrangler.sandbox.jsonc
@@ -69,7 +88,6 @@ jobs:
             printf '%s' "$value" | npx wrangler secret put "$name" --config wrangler.sandbox.jsonc >/dev/null
           }
           put_secret ADMIN_SECRET "$ADMIN_SECRET"
-          put_secret PAYSTACK_SECRET_KEY "$PAYSTACK_SECRET_KEY"
           put_secret PAYFAST_MERCHANT_ID "$PAYFAST_MERCHANT_ID"
           put_secret PAYFAST_MERCHANT_KEY "$PAYFAST_MERCHANT_KEY"
           put_secret PAYFAST_PASSPHRASE "$PAYFAST_PASSPHRASE"
@@ -84,11 +102,12 @@ jobs:
           {
             echo '## IZAKHONO PAY Sandbox'
             echo
+            echo 'PayFast-first proof mode: card/EFT integration path, no real money.'
             if [ -n "$url" ]; then
               echo "Sandbox URL: $url"
             else
               echo 'Deployment completed. Open the Wrangler deployment output above for the workers.dev URL.'
             fi
             echo
-            echo 'Merchant apps remain staged until their per-merchant API key, webhook secret, approved return origin and sandbox payment proof are configured.'
+            echo 'Next gate: provision KORA merchant credentials, run one PayFast sandbox checkout, verify ITN/ledger paid status, then prepare live merchant credentials.'
           } >> "$GITHUB_STEP_SUMMARY"
