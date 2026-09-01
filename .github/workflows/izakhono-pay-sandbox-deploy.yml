@@ -56,29 +56,41 @@ jobs:
             echo 'Using an ephemeral sandbox admin secret for this proof run.' >> "$GITHUB_STEP_SUMMARY"
           fi
 
-      - name: Require Cloudflare deployment connection
+      - name: Select Cloudflare deployment mode
         shell: bash
         run: |
           set -euo pipefail
-          missing=0
-          for name in CLOUDFLARE_ACCOUNT_ID CLOUDFLARE_API_TOKEN; do
-            if [ -z "${!name:-}" ]; then
-              echo "Missing required Cloudflare secret: $name" >&2
-              missing=1
-            fi
-          done
-          if [ "$missing" -ne 0 ]; then
-            echo 'Add the two Cloudflare GitHub Actions secrets, then re-run this sandbox workflow.' >> "$GITHUB_STEP_SUMMARY"
-            exit 1
+          if [ -n "${CLOUDFLARE_ACCOUNT_ID:-}" ] && [ -n "${CLOUDFLARE_API_TOKEN:-}" ]; then
+            echo 'DEPLOY_FLAGS=' >> "$GITHUB_ENV"
+            echo 'TEMPORARY_DEPLOY=false' >> "$GITHUB_ENV"
+            echo 'Using the connected permanent Cloudflare account.' >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo 'DEPLOY_FLAGS=--temporary' >> "$GITHUB_ENV"
+            echo 'TEMPORARY_DEPLOY=true' >> "$GITHUB_ENV"
+            echo 'No permanent Cloudflare credentials found; using a temporary Cloudflare preview account for sandbox proof.' >> "$GITHUB_STEP_SUMMARY"
           fi
 
       - name: Bootstrap Worker and auto-provision sandbox D1
-        run: npx wrangler deploy --config wrangler.sandbox.jsonc
+        id: bootstrap
+        shell: bash
+        run: |
+          set -euo pipefail
+          output="$(npx wrangler deploy ${DEPLOY_FLAGS:-} --config wrangler.sandbox.jsonc \
+            --var ADMIN_SECRET:"$ADMIN_SECRET" \
+            --var PAYFAST_MERCHANT_ID:"$PAYFAST_MERCHANT_ID" \
+            --var PAYFAST_MERCHANT_KEY:"$PAYFAST_MERCHANT_KEY" \
+            --var PAYFAST_PASSPHRASE:"$PAYFAST_PASSPHRASE")"
+          printf '%s\n' "$output"
+          url="$(printf '%s\n' "$output" | grep -Eo 'https://[^[:space:]]+\.workers\.dev' | tail -1 || true)"
+          claim="$(printf '%s\n' "$output" | grep -Eo 'https://dash\.cloudflare\.com/claim-preview\?claimToken=[^[:space:]]+' | tail -1 || true)"
+          echo "worker_url=$url" >> "$GITHUB_OUTPUT"
+          echo "claim_url=$claim" >> "$GITHUB_OUTPUT"
 
       - name: Apply D1 migrations
         run: npx wrangler d1 migrations apply DB --remote --yes --config wrangler.sandbox.jsonc
 
-      - name: Install server-only payment secrets
+      - name: Install server-only payment secrets on permanent account
+        if: env.TEMPORARY_DEPLOY == 'false'
         shell: bash
         run: |
           set -euo pipefail
@@ -93,12 +105,26 @@ jobs:
           put_secret PAYFAST_PASSPHRASE "$PAYFAST_PASSPHRASE"
 
       - name: Final sandbox deployment
+        id: final
         shell: bash
         run: |
           set -euo pipefail
-          output="$(npx wrangler deploy --config wrangler.sandbox.jsonc)"
+          if [ "${TEMPORARY_DEPLOY:-false}" = 'true' ]; then
+            output="$(npx wrangler deploy --temporary --config wrangler.sandbox.jsonc \
+              --var ADMIN_SECRET:"$ADMIN_SECRET" \
+              --var PAYFAST_MERCHANT_ID:"$PAYFAST_MERCHANT_ID" \
+              --var PAYFAST_MERCHANT_KEY:"$PAYFAST_MERCHANT_KEY" \
+              --var PAYFAST_PASSPHRASE:"$PAYFAST_PASSPHRASE")"
+          else
+            output="$(npx wrangler deploy --config wrangler.sandbox.jsonc)"
+          fi
           printf '%s\n' "$output"
           url="$(printf '%s\n' "$output" | grep -Eo 'https://[^[:space:]]+\.workers\.dev' | tail -1 || true)"
+          claim="$(printf '%s\n' "$output" | grep -Eo 'https://dash\.cloudflare\.com/claim-preview\?claimToken=[^[:space:]]+' | tail -1 || true)"
+          if [ -z "$url" ]; then url='${{ steps.bootstrap.outputs.worker_url }}'; fi
+          if [ -z "$claim" ]; then claim='${{ steps.bootstrap.outputs.claim_url }}'; fi
+          echo "worker_url=$url" >> "$GITHUB_OUTPUT"
+          echo "claim_url=$claim" >> "$GITHUB_OUTPUT"
           {
             echo '## IZAKHONO PAY Sandbox'
             echo
@@ -106,8 +132,21 @@ jobs:
             if [ -n "$url" ]; then
               echo "Sandbox URL: $url"
             else
-              echo 'Deployment completed. Open the Wrangler deployment output above for the workers.dev URL.'
+              echo 'Deployment completed, but the workers.dev URL was not parsed from Wrangler output.'
+            fi
+            if [ -n "$claim" ]; then
+              echo
+              echo "Temporary account claim URL: $claim"
+              echo 'Claim within the Cloudflare deadline if you want to keep this temporary Worker and D1 database.'
             fi
             echo
             echo 'Next gate: provision KORA merchant credentials, run one PayFast sandbox checkout, verify ITN/ledger paid status, then prepare live merchant credentials.'
           } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Verify hosted sandbox health
+        if: steps.final.outputs.worker_url != ''
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --retry 6 --retry-delay 2 "${{ steps.final.outputs.worker_url }}/api/health" | tee /tmp/izakhono-pay-health.json
+          grep -q '"service":"IZAKHONO PAY"' /tmp/izakhono-pay-health.json
