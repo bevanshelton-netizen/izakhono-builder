@@ -95,8 +95,58 @@ jobs:
           if "'  pull_request_target:'" in repo or '"  pull_request_target:"' in repo:
               raise SystemExit('Generated preview workflow must not emit pull_request_target.')
           if "private: false" in repo:
-              raise SystemExit('Repository publisher must not create public repositories by default.')
-          print('[PASS] Repository autopilot is private-by-default, non-overwriting, CI-ready and credential-gated.')
+              raise SystemExit('External repository publisher must not create public repositories by default.')
+          print('[PASS] Optional external repository mirror remains private-by-default and credential-gated.')
+          PY
+
+      - name: Validate sovereign internal repository
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          sovereign = Path('src/sovereign.ts').read_text(encoding='utf-8')
+          internal = Path('src/internal-repository.ts').read_text(encoding='utf-8')
+          migration = Path('migrations/0002_internal_repositories.sql').read_text(encoding='utf-8')
+          wrangler = json.loads(Path('wrangler.jsonc').read_text(encoding='utf-8'))
+
+          sovereign_required = [
+              "import secureApp from './secure'",
+              'commitInternalRepository',
+              '/internal-repository',
+              "source_of_truth: 'izakhono-internal'",
+              "next_gate: 'internal_repository_committed'",
+              "internal_repository_authority: 'primary'",
+              "external_repository_role: 'optional_mirror'",
+          ]
+          internal_required = [
+              'builder_internal_repositories',
+              'builder_internal_repo_commits',
+              "visibility TEXT NOT NULL DEFAULT 'private'",
+              'content_hash TEXT NOT NULL',
+              'UNIQUE(project_id, content_hash)',
+              'canonicalFiles',
+              "crypto.subtle.digest('SHA-256'",
+              'reused_existing_snapshot',
+          ]
+          migration_required = [
+              'CREATE TABLE IF NOT EXISTS builder_internal_repositories',
+              'CREATE TABLE IF NOT EXISTS builder_internal_repo_commits',
+              "CHECK (visibility = 'private')",
+              'UNIQUE(project_id, content_hash)',
+          ]
+
+          missing = [f'sovereign:{x}' for x in sovereign_required if x not in sovereign]
+          missing += [f'internal:{x}' for x in internal_required if x not in internal]
+          missing += [f'migration:{x}' for x in migration_required if x not in migration]
+          if missing:
+              raise SystemExit('Sovereign repository contract missing: ' + ', '.join(missing))
+          if wrangler.get('main') != 'src/sovereign.ts':
+              raise SystemExit('Live Worker entry point must be the sovereign repository layer.')
+          if 'GITHUB_AUTOMATION_TOKEN' in internal or 'CLOUDFLARE_API_TOKEN' in internal:
+              raise SystemExit('Internal repository must not depend on external provider credentials.')
+          print('[PASS] IZAKHONO internal repository is private, immutable-by-content and provider-independent.')
           PY
 
       - name: Validate Owner UI repository controls
@@ -111,11 +161,14 @@ jobs:
           Path('/tmp/izakhono-owner-ui.js').write_text(script, encoding='utf-8')
           required = [
               '/api/automation-capabilities',
+              'internal_repository',
+              'IZAKHONO repository is the source of truth',
+              '/internal-repository',
+              'IZAKHONO repo committed',
               'github_repository_publish',
-              'Publish private repository',
+              'Mirror to private GitHub repo',
               '/publish-repository',
               'Open revision preview',
-              'repository published',
               'if(!state.capabilities?.github_repository_publish)',
               'No browser credential is required or accepted.',
           ]
@@ -124,7 +177,7 @@ jobs:
               raise SystemExit('Owner UI repository controls missing: ' + ', '.join(missing))
           if 'GITHUB_AUTOMATION_TOKEN' in html or 'CLOUDFLARE_API_TOKEN' in html:
               raise SystemExit('Owner UI must not request or expose provider automation secrets.')
-          print('[PASS] Owner UI exposes repository state while keeping publishing capability server-gated.')
+          print('[PASS] Owner UI makes IZAKHONO the source of truth and external GitHub an optional mirror.')
           PY
           node --check /tmp/izakhono-owner-ui.js
 
