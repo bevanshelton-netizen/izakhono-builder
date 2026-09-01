@@ -99,6 +99,35 @@ jobs:
           print('[PASS] Repository autopilot is private-by-default, non-overwriting, CI-ready and credential-gated.')
           PY
 
+      - name: Validate Owner UI repository controls
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          html = Path('public/index.html').read_text(encoding='utf-8')
+          if '<script>' not in html or '</script>' not in html:
+              raise SystemExit('Owner UI script block is missing.')
+          script = html.rsplit('<script>', 1)[1].split('</script>', 1)[0]
+          Path('/tmp/izakhono-owner-ui.js').write_text(script, encoding='utf-8')
+          required = [
+              '/api/automation-capabilities',
+              'github_repository_publish',
+              'Publish private repository',
+              '/publish-repository',
+              'Open revision preview',
+              'repository published',
+              'if(!state.capabilities?.github_repository_publish)',
+              'No browser credential is required or accepted.',
+          ]
+          missing = [item for item in required if item not in html]
+          if missing:
+              raise SystemExit('Owner UI repository controls missing: ' + ', '.join(missing))
+          if 'GITHUB_AUTOMATION_TOKEN' in html or 'CLOUDFLARE_API_TOKEN' in html:
+              raise SystemExit('Owner UI must not request or expose provider automation secrets.')
+          print('[PASS] Owner UI exposes repository state while keeping publishing capability server-gated.')
+          PY
+          node --check /tmp/izakhono-owner-ui.js
+
       - name: Validate Fast Build templates
         shell: bash
         run: |
