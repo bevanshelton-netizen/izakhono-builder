@@ -2,10 +2,17 @@ $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 $data = Join-Path $env:ProgramData 'Izakhono\Code'
 $log = Join-Path $data 'startup-diagnostic.log'
+$transcriptStarted = $false
 
 try {
   New-Item -ItemType Directory -Force -Path $data | Out-Null
-  Start-Transcript -Path $log -Force | Out-Null
+  try {
+    Start-Transcript -Path $log -Append | Out-Null
+    $transcriptStarted = $true
+  }
+  catch {
+    Write-Host '[WARN] Diagnostic transcript is busy; startup will continue.' -ForegroundColor Yellow
+  }
   Write-Host '==================================================' -ForegroundColor Green
   Write-Host ' IZAKHONO CODE - COMPLETE ALPHA OWNER NODE' -ForegroundColor Green
   Write-Host '==================================================' -ForegroundColor Green
@@ -52,5 +59,7 @@ catch {
   exit 1
 }
 finally {
-  try { Stop-Transcript | Out-Null } catch {}
+  if ($transcriptStarted) {
+    try { Stop-Transcript | Out-Null } catch {}
+  }
 }
