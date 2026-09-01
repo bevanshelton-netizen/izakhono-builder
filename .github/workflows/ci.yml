@@ -28,6 +28,24 @@ jobs:
       - name: Typecheck + Wrangler dry run
         run: npm run validate
 
+      - name: Validate generated Worker asset contract
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          text = Path('src/secure.ts').read_text(encoding='utf-8')
+          required = [
+              "assets: { directory: './public', binding: 'ASSETS' }",
+              "if (env.ASSETS) return env.ASSETS.fetch(req);",
+              "name: 'static_asset_fallback'",
+              "worker.includes('env.ASSETS.fetch(req)')",
+          ]
+          missing = [item for item in required if item not in text]
+          if missing:
+              raise SystemExit('Generated Worker static asset contract missing: ' + ', '.join(missing))
+          print('[PASS] Generated Workers must route non-API requests through the ASSETS binding.')
+          PY
+
       - name: Validate Fast Build templates
         shell: bash
         run: |
