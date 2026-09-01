@@ -38,6 +38,36 @@ services:
       timeout: 5s
       retries: 10
 
+  core:
+    image: izakhono/core:0.1.0
+    container_name: izakhono-core
+    restart: unless-stopped
+    environment:
+      PGHOST: postgres
+      PGPORT: "5432"
+      PGUSER: ${POSTGRES_USER}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      PGDATABASE: ${POSTGRES_DB}
+      PORT: "8787"
+      IZAKHONO_CORE_JWT_SECRET: ${IZAKHONO_CORE_JWT_SECRET}
+      IZAKHONO_CORE_ADMIN_TOKEN: ${IZAKHONO_CORE_ADMIN_TOKEN}
+      IZAKHONO_CORE_ALLOWED_ORIGINS: ${IZAKHONO_CORE_ALLOWED_ORIGINS:-}
+      IZAKHONO_CORE_TRUST_PROXY: "true"
+      IZAKHONO_CORE_STORAGE_DIR: /data/storage
+    volumes:
+      - core_storage:/data/storage
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - izakhono_public
+      - izakhono_private
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8787/healthz').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
   registry:
     image: registry:2.8.3
     container_name: izakhono-registry
@@ -64,6 +94,8 @@ volumes:
     name: izakhono_caddy_config
   postgres_data:
     name: izakhono_postgres_data
+  core_storage:
+    name: izakhono_core_storage
   registry_data:
     name: izakhono_registry_data
 
