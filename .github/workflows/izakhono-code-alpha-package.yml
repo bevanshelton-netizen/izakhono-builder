@@ -3,7 +3,9 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
-    paths: ['.github/workflows/izakhono-code-alpha-package.yml']
+    paths:
+      - '.github/workflows/izakhono-code-alpha-package.yml'
+      - 'products/izakhono-code/**'
 permissions:
   contents: write
 concurrency:
@@ -19,6 +21,24 @@ jobs:
       - name: Verify Complete Alpha
         working-directory: products/izakhono-code
         run: npm test
+      - name: Validate Windows launcher
+        shell: pwsh
+        run: |
+          $launcher = Resolve-Path 'products\izakhono-code\scripts\START-IZAKHONO-CODE.ps1'
+          $tokens = $null
+          $errors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile(
+            $launcher,
+            [ref]$tokens,
+            [ref]$errors
+          ) | Out-Null
+          if ($errors.Count -gt 0) {
+            $errors | ForEach-Object { Write-Error $_.Message }
+            throw 'PowerShell launcher syntax validation failed.'
+          }
+          if (-not (Test-Path 'products\izakhono-code\START-IZAKHONO-CODE.cmd')) {
+            throw 'The stay-open Windows launcher is missing.'
+          }
       - name: Build traceable Windows package
         id: bundle
         shell: pwsh

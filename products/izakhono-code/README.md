@@ -15,7 +15,13 @@ Owner-controlled, local-first developer platform integrated into IZAKHONO CLOUD.
 
 ## Start on the dedicated Windows laptop
 
-Install Node.js 20+ and Git for Windows, then run:
+Install Node.js 20+ and Git for Windows, then double-click:
+
+`START-IZAKHONO-CODE.cmd`
+
+The launcher keeps the window open when a prerequisite or startup check fails and writes a diagnostic log to `C:\ProgramData\Izakhono\Code\startup-diagnostic.log`.
+
+Advanced PowerShell launch:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\START-IZAKHONO-CODE.ps1
