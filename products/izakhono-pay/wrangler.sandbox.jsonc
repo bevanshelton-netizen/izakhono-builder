@@ -1,4 +1,5 @@
 {
+  // Sandbox proof configuration; production remains fail-closed.
   "$schema": "../../node_modules/wrangler/config-schema.json",
   "name": "izakhono-pay-sandbox",
   "main": "src/index.js",
