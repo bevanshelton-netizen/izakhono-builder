@@ -2,7 +2,7 @@
 set -euo pipefail
 
 fail=0
-for c in izakhono-caddy izakhono-postgres izakhono-registry; do
+for c in izakhono-caddy izakhono-postgres izakhono-core izakhono-registry; do
   status="$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' "$c" 2>/dev/null || echo missing)"
   printf '%-24s %s\n' "$c" "$status"
   [ "$status" = healthy ] || fail=1
