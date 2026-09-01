@@ -18,7 +18,7 @@
   "vars": {
     "APP_ENV": "sandbox",
     "PAYMENT_MODE": "sandbox",
-    "PAYSTACK_ENABLED": "true",
+    "PAYSTACK_ENABLED": "false",
     "PAYFAST_ENABLED": "true",
     "PAYFAST_SANDBOX": "true",
     "PAYFAST_REQUIRE_IP": "true",
