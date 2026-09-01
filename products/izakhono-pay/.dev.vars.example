@@ -1,0 +1,14 @@
+# Never commit real values. Copy to .dev.vars for local use only.
+ADMIN_SECRET=replace-me
+IZAKHONO_INTERNAL_API_KEY=replace-me
+
+# Paystack: use your own test or live secret key.
+PAYSTACK_SECRET_KEY=
+
+# PayFast: use your own merchant credentials in production.
+PAYFAST_MERCHANT_ID=
+PAYFAST_MERCHANT_KEY=
+PAYFAST_PASSPHRASE=
+
+# mock | sandbox | live
+PAYMENT_MODE=mock
