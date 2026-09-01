@@ -42,9 +42,13 @@ function adminAuthorized(req, env) {
   return Boolean(env.ADMIN_SECRET && secret && safeEqualText(secret, env.ADMIN_SECRET));
 }
 
-function clientAuthorized(req, env) {
-  const key = req.headers.get('x-izakhono-key') || '';
-  return Boolean(env.IZAKHONO_INTERNAL_API_KEY && key && safeEqualText(key, env.IZAKHONO_INTERNAL_API_KEY));
+async function authorizeMerchant(req, env) {
+  const key = cleanText(req.headers.get('x-izakhono-key') || '', 512);
+  const slug = cleanText(req.headers.get('x-izakhono-app') || '', 60).toLowerCase();
+  if (!key || !slug) return null;
+  const keyHash = sha256Hex(key);
+  return env.DB.prepare("SELECT id,slug,display_name,status,fortress_required FROM merchant_apps WHERE slug=? AND api_key_hash=? AND status='active'")
+    .bind(slug, keyHash).first();
 }
 
 async function parseJson(req) {
@@ -60,6 +64,14 @@ async function findIntentById(env, intentId) {
   return env.DB.prepare('SELECT * FROM payment_intents WHERE id=?').bind(intentId).first();
 }
 
+async function findMerchantIntentById(env, merchantSlug, intentId) {
+  return env.DB.prepare('SELECT * FROM payment_intents WHERE id=? AND app_slug=?').bind(intentId, merchantSlug).first();
+}
+
+async function findIntentByIdempotency(env, appSlug, idempotencyKey) {
+  return env.DB.prepare('SELECT * FROM payment_intents WHERE app_slug=? AND idempotency_key=?').bind(appSlug, idempotencyKey).first();
+}
+
 async function recordEvent(env, provider, eventType, fingerprint, intentId, payload, verified = true) {
   try {
     await env.DB.prepare('INSERT INTO payment_events(id,provider,fingerprint,event_type,intent_id,payload_json,verified) VALUES(?,?,?,?,?,?,?)')
@@ -70,9 +82,58 @@ async function recordEvent(env, provider, eventType, fingerprint, intentId, payl
   }
 }
 
+async function recordFortressEvent(env, { severity = 'medium', category, source, merchantSlug = null, intentId = null, details = {} }) {
+  try {
+    const fingerprint = sha256Hex(`${category}:${source}:${merchantSlug || ''}:${intentId || ''}:${crypto.randomUUID()}`);
+    await env.DB.prepare('INSERT INTO fortress_security_events(id,severity,category,source,merchant_slug,intent_id,fingerprint,details_json,fortress_status) VALUES(?,?,?,?,?,?,?,?,?)')
+      .bind(id('sec'), severity, category, source, merchantSlug, intentId, fingerprint, JSON.stringify(details).slice(0, 12000), 'pending').run();
+  } catch {
+    // Payment processing must not depend on the alpha FORTRESS outbox being available.
+  }
+}
+
 async function markPaid(env, intentId, providerReference = null) {
   await env.DB.prepare("UPDATE payment_intents SET status='paid',provider_reference=COALESCE(?,provider_reference),paid_at=COALESCE(paid_at,CURRENT_TIMESTAMP),updated_at=CURRENT_TIMESTAMP WHERE id=? AND status!='paid'")
     .bind(providerReference, intentId).run();
+}
+
+function metadataJson(input) {
+  const raw = JSON.stringify(input && typeof input === 'object' && !Array.isArray(input) ? input : {});
+  if (raw.length > 8000) throw new Error('metadata is too large');
+  return raw;
+}
+
+function normalizeIntent(intent) {
+  return {
+    id: intent.id,
+    reference: intent.reference,
+    app_slug: intent.app_slug,
+    amount_minor: Number(intent.amount_minor),
+    currency: intent.currency,
+    customer_email: intent.customer_email,
+    description: intent.description,
+    requested_provider: intent.requested_provider,
+    routed_provider: intent.routed_provider,
+    status: intent.status,
+    provider_reference: intent.provider_reference || null,
+    checkout_method: intent.checkout_method || null,
+    checkout_url: intent.checkout_url || null,
+    created_at: intent.created_at,
+    updated_at: intent.updated_at,
+    paid_at: intent.paid_at || null
+  };
+}
+
+function renderIntent(req, env, intent) {
+  const output = normalizeIntent(intent);
+  if (intent.status === 'requires_action' && intent.routed_provider === 'payfast') {
+    const origin = new URL(req.url).origin;
+    const pf = buildPayfastCheckout({ env, intent, origin });
+    output.checkout_method = 'form_post';
+    output.checkout_url = pf.endpoint;
+    output.form_fields = pf.fields;
+  }
+  return output;
 }
 
 async function initializePaystack(env, intent, origin) {
@@ -100,63 +161,102 @@ async function initializePaystack(env, intent, origin) {
   };
 }
 
-async function initializeIntent(req, env, input, { demo = false } = {}) {
+async function initializeIntent(req, env, input, { demo = false, merchantSlug = null } = {}) {
   const amountMinor = Number(input.amount_minor);
   const currency = cleanText(input.currency || 'ZAR', 3).toUpperCase();
   const email = cleanText(input.email, 254).toLowerCase();
   const description = cleanText(input.description || 'IZAKHONO PAY transaction', 180);
   const requestedProvider = cleanText(input.provider || 'smart', 20).toLowerCase();
-  const appSlug = demo ? 'demo' : cleanText(input.app_slug || req.headers.get('x-izakhono-app') || 'internal', 60).toLowerCase();
+  const appSlug = demo ? 'demo' : cleanText(merchantSlug, 60).toLowerCase();
+  const idempotencyKey = demo ? null : cleanText(req.headers.get('idempotency-key') || '', 120);
+  let metadata;
+  try { metadata = metadataJson(input.metadata); }
+  catch { return fail('metadata must be a small JSON object', 422, 'invalid_metadata'); }
 
   if (!Number.isSafeInteger(amountMinor) || amountMinor < 100 || amountMinor > 1000000000) return fail('amount_minor must be an integer between 100 and 1,000,000,000', 422, 'invalid_amount');
   if (!validEmail(email)) return fail('A valid customer email is required', 422, 'invalid_email');
   if (currency !== 'ZAR') return fail('Alpha currently supports ZAR checkout only; international cards can still be accepted by enabled providers where the merchant account permits it.', 422, 'unsupported_currency');
   if (!['smart','paystack','payfast'].includes(requestedProvider)) return fail('provider must be smart, paystack, or payfast', 422, 'invalid_provider');
-
+  if (!demo && !/^[A-Za-z0-9._:-]{8,120}$/.test(idempotencyKey)) return fail('A stable 8-120 character Idempotency-Key header is required', 422, 'invalid_idempotency_key');
+  if (!demo && !appSlug) return fail('Merchant identity is required', 401, 'unauthorized');
   if (demo && env.PAYMENT_MODE !== 'mock') return fail('Public demo checkout is disabled outside mock mode', 403, 'demo_disabled');
+
+  const fingerprint = demo ? null : sha256Hex(JSON.stringify({ appSlug, amountMinor, currency, email, description, requestedProvider, metadata }));
+
+  if (!demo) {
+    const existing = await findIntentByIdempotency(env, appSlug, idempotencyKey);
+    if (existing) {
+      if (existing.idempotency_fingerprint !== fingerprint) {
+        await recordFortressEvent(env, {
+          severity: 'high', category: 'payment.idempotency_mismatch', source: 'izakhono-pay', merchantSlug: appSlug, intentId: existing.id,
+          details: { idempotency_key_hash: sha256Hex(idempotencyKey) }
+        });
+        return fail('This idempotency key was already used for a different payment request', 409, 'idempotency_mismatch');
+      }
+      return response({ ok: true, idempotent_replay: true, intent: renderIntent(req, env, existing) }, 200);
+    }
+  }
 
   const routedProvider = demo ? 'mock' : chooseProvider(env, currency, requestedProvider);
   if (!routedProvider) return fail('No configured provider can safely handle this transaction', 503, 'no_provider');
-
   if (routedProvider === 'payfast' && amountMinor < 500) return fail('PayFast live transactions must be at least R5.00', 422, 'provider_minimum');
 
   const intent = {
     id: id('pi'),
     reference: paymentReference(),
-    app_slug: appSlug || 'internal',
+    app_slug: appSlug || 'demo',
     amount_minor: amountMinor,
     currency,
     customer_email: email,
     description,
     requested_provider: requestedProvider,
-    routed_provider: routedProvider
+    routed_provider: routedProvider,
+    status: 'created',
+    idempotency_key: idempotencyKey,
+    idempotency_fingerprint: fingerprint,
+    metadata_json: metadata
   };
 
-  await env.DB.prepare('INSERT INTO payment_intents(id,reference,app_slug,amount_minor,currency,customer_email,description,requested_provider,routed_provider,status,metadata_json) VALUES(?,?,?,?,?,?,?,?,?,?,?)')
-    .bind(intent.id, intent.reference, intent.app_slug, intent.amount_minor, intent.currency, intent.customer_email, intent.description, intent.requested_provider, intent.routed_provider, 'created', JSON.stringify(input.metadata || {})).run();
+  try {
+    await env.DB.prepare('INSERT INTO payment_intents(id,reference,app_slug,amount_minor,currency,customer_email,description,requested_provider,routed_provider,status,metadata_json,idempotency_key,idempotency_fingerprint) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)')
+      .bind(intent.id, intent.reference, intent.app_slug, intent.amount_minor, intent.currency, intent.customer_email, intent.description, intent.requested_provider, intent.routed_provider, intent.status, intent.metadata_json, intent.idempotency_key, intent.idempotency_fingerprint).run();
+  } catch (error) {
+    if (!demo) {
+      const existing = await findIntentByIdempotency(env, appSlug, idempotencyKey);
+      if (existing && existing.idempotency_fingerprint === fingerprint) {
+        return response({ ok: true, idempotent_replay: true, intent: renderIntent(req, env, existing) }, 200);
+      }
+    }
+    throw error;
+  }
 
   const origin = new URL(req.url).origin;
   try {
     if (routedProvider === 'mock') {
       const token = crypto.randomUUID().replaceAll('-', '') + crypto.randomUUID().replaceAll('-', '');
+      const checkoutUrl = `${origin}/mock-checkout.html?intent=${encodeURIComponent(intent.id)}&token=${encodeURIComponent(token)}`;
       await env.DB.prepare("UPDATE payment_intents SET status='requires_action',checkout_method='redirect',checkout_url=?,checkout_token_hash=?,updated_at=CURRENT_TIMESTAMP WHERE id=?")
-        .bind(`${origin}/mock-checkout.html?intent=${encodeURIComponent(intent.id)}&token=${encodeURIComponent(token)}`, sha256Hex(token), intent.id).run();
-      return response({ ok: true, intent: { ...intent, status: 'requires_action', checkout_method: 'redirect', checkout_url: `${origin}/mock-checkout.html?intent=${encodeURIComponent(intent.id)}&token=${encodeURIComponent(token)}` } }, 201);
+        .bind(checkoutUrl, sha256Hex(token), intent.id).run();
+      return response({ ok: true, intent: { ...normalizeIntent({ ...intent, status: 'requires_action', checkout_method: 'redirect', checkout_url: checkoutUrl }), checkout_url: checkoutUrl } }, 201);
     }
 
     if (routedProvider === 'paystack') {
       const checkout = await initializePaystack(env, intent, origin);
       await env.DB.prepare("UPDATE payment_intents SET status='requires_action',checkout_url=?,checkout_method=?,provider_reference=?,updated_at=CURRENT_TIMESTAMP WHERE id=?")
         .bind(checkout.checkout_url, checkout.checkout_method, checkout.provider_reference, intent.id).run();
-      return response({ ok: true, intent: { ...intent, status: 'requires_action', ...checkout } }, 201);
+      return response({ ok: true, intent: { ...normalizeIntent({ ...intent, status: 'requires_action', ...checkout }), ...checkout } }, 201);
     }
 
     const pf = buildPayfastCheckout({ env, intent, origin });
     await env.DB.prepare("UPDATE payment_intents SET status='requires_action',checkout_url=?,checkout_method='form_post',updated_at=CURRENT_TIMESTAMP WHERE id=?")
       .bind(pf.endpoint, intent.id).run();
-    return response({ ok: true, intent: { ...intent, status: 'requires_action', checkout_method: 'form_post', checkout_url: pf.endpoint, form_fields: pf.fields } }, 201);
+    return response({ ok: true, intent: { ...normalizeIntent({ ...intent, status: 'requires_action', checkout_method: 'form_post', checkout_url: pf.endpoint }), checkout_method: 'form_post', checkout_url: pf.endpoint, form_fields: pf.fields } }, 201);
   } catch (error) {
     await env.DB.prepare("UPDATE payment_intents SET status='failed',updated_at=CURRENT_TIMESTAMP WHERE id=?").bind(intent.id).run();
+    await recordFortressEvent(env, {
+      severity: 'high', category: 'payment.provider_initialization_failed', source: routedProvider, merchantSlug: intent.app_slug, intentId: intent.id,
+      details: { provider: routedProvider }
+    });
     return fail(error instanceof Error ? error.message : 'Provider initialization failed', 502, 'provider_error');
   }
 }
@@ -165,7 +265,10 @@ async function handlePaystackWebhook(req, env) {
   if (!env.PAYSTACK_SECRET_KEY) return fail('Paystack webhook is not configured', 503, 'provider_unconfigured');
   const raw = await req.text();
   const signature = req.headers.get('x-paystack-signature') || '';
-  if (!verifyPaystackSignature(raw, signature, env.PAYSTACK_SECRET_KEY)) return fail('Invalid Paystack signature', 401, 'invalid_signature');
+  if (!verifyPaystackSignature(raw, signature, env.PAYSTACK_SECRET_KEY)) {
+    await recordFortressEvent(env, { severity: 'high', category: 'webhook.invalid_signature', source: 'paystack', details: { payload_hash: sha256Hex(raw) } });
+    return fail('Invalid Paystack signature', 401, 'invalid_signature');
+  }
   const event = JSON.parse(raw);
   const reference = event?.data?.reference;
   const intent = reference ? await findIntentByReference(env, reference) : null;
@@ -176,7 +279,10 @@ async function handlePaystackWebhook(req, env) {
   if (event?.event === 'charge.success' && intent) {
     const amountMatches = Number(event?.data?.amount) === Number(intent.amount_minor);
     const currencyMatches = String(event?.data?.currency || '').toUpperCase() === intent.currency;
-    if (!amountMatches || !currencyMatches) return fail('Verified webhook did not match the expected amount/currency', 409, 'payment_mismatch');
+    if (!amountMatches || !currencyMatches) {
+      await recordFortressEvent(env, { severity: 'critical', category: 'payment.amount_or_currency_mismatch', source: 'paystack', merchantSlug: intent.app_slug, intentId: intent.id, details: { reference } });
+      return fail('Verified webhook did not match the expected amount/currency', 409, 'payment_mismatch');
+    }
     await markPaid(env, intent.id, String(event?.data?.id || reference));
   }
   return response({ ok: true });
@@ -190,17 +296,25 @@ async function handlePayfastWebhook(req, env) {
   const intent = reference ? await findIntentByReference(env, reference) : null;
   if (!intent) return fail('Unknown PayFast payment reference', 404, 'unknown_reference');
 
-  if (!verifyPayfastItnSignature(raw, env.PAYFAST_PASSPHRASE || '')) return fail('Invalid PayFast signature', 401, 'invalid_signature');
+  if (!verifyPayfastItnSignature(raw, env.PAYFAST_PASSPHRASE || '')) {
+    await recordFortressEvent(env, { severity: 'high', category: 'webhook.invalid_signature', source: 'payfast', merchantSlug: intent.app_slug, intentId: intent.id, details: { reference } });
+    return fail('Invalid PayFast signature', 401, 'invalid_signature');
+  }
 
   if (env.PAYFAST_REQUIRE_IP !== 'false') {
     const ip = req.headers.get('cf-connecting-ip') || '';
-    const cidrs = cleanText(env.PAYFAST_ALLOWED_CIDRS || '', 1000)
-      .split(',').map((s) => s.trim()).filter(Boolean);
-    if (!payfastIpAllowed(ip, cidrs.length ? cidrs : PAYFAST_DEFAULT_CIDRS)) return fail('PayFast source IP was not allow-listed', 401, 'invalid_source');
+    const cidrs = cleanText(env.PAYFAST_ALLOWED_CIDRS || '', 1000).split(',').map((s) => s.trim()).filter(Boolean);
+    if (!payfastIpAllowed(ip, cidrs.length ? cidrs : PAYFAST_DEFAULT_CIDRS)) {
+      await recordFortressEvent(env, { severity: 'high', category: 'webhook.invalid_source', source: 'payfast', merchantSlug: intent.app_slug, intentId: intent.id, details: { reference } });
+      return fail('PayFast source IP was not allow-listed', 401, 'invalid_source');
+    }
   }
 
   const amountGross = Number(params.get('amount_gross'));
-  if (!Number.isFinite(amountGross) || Math.abs(amountGross - Number(intent.amount_minor) / 100) > 0.01) return fail('PayFast amount did not match the payment intent', 409, 'payment_mismatch');
+  if (!Number.isFinite(amountGross) || Math.abs(amountGross - Number(intent.amount_minor) / 100) > 0.01) {
+    await recordFortressEvent(env, { severity: 'critical', category: 'payment.amount_mismatch', source: 'payfast', merchantSlug: intent.app_slug, intentId: intent.id, details: { reference } });
+    return fail('PayFast amount did not match the payment intent', 409, 'payment_mismatch');
+  }
 
   const host = env.PAYFAST_SANDBOX === 'true' || env.PAYMENT_MODE === 'sandbox' ? 'sandbox.payfast.co.za' : 'www.payfast.co.za';
   const validation = await fetch(`https://${host}/eng/query/validate`, {
@@ -209,7 +323,10 @@ async function handlePayfastWebhook(req, env) {
     body: buildPayfastItnParamString(raw)
   });
   const validationText = (await validation.text()).trim();
-  if (!validation.ok || validationText !== 'VALID') return fail('PayFast server confirmation failed', 401, 'provider_confirmation_failed');
+  if (!validation.ok || validationText !== 'VALID') {
+    await recordFortressEvent(env, { severity: 'high', category: 'webhook.provider_confirmation_failed', source: 'payfast', merchantSlug: intent.app_slug, intentId: intent.id, details: { reference } });
+    return fail('PayFast server confirmation failed', 401, 'provider_confirmation_failed');
+  }
 
   const fingerprint = sha256Hex(`payfast:${raw}`);
   const payload = Object.fromEntries(params.entries());
@@ -239,7 +356,7 @@ async function handleApi(req, env, url) {
 
   if (url.pathname === '/api/health' && req.method === 'GET') {
     const row = await env.DB.prepare('SELECT 1 AS ok').first();
-    return response({ ok: row?.ok === 1, service: 'IZAKHONO PAY', version: '0.1.0', mode: env.PAYMENT_MODE || 'mock', env: env.APP_ENV || 'alpha' });
+    return response({ ok: row?.ok === 1, service: 'IZAKHONO PAY', version: '0.2.0', mode: env.PAYMENT_MODE || 'mock', env: env.APP_ENV || 'alpha' });
   }
 
   if (url.pathname === '/api/v1/capabilities' && req.method === 'GET') {
@@ -252,6 +369,8 @@ async function handleApi(req, env, url) {
         payfast: { enabled: env.PAYFAST_ENABLED !== 'false', configured: providerConfigured(env, 'payfast'), sandbox: env.PAYFAST_SANDBOX === 'true' || env.PAYMENT_MODE === 'sandbox' }
       },
       methods: ['card','eft','capitec_pay','qr','wallets_where_supported'],
+      merchant_auth: 'per-merchant-key',
+      idempotency_required: true,
       note: 'Payment methods are ultimately determined by the connected merchant account and provider.'
     });
   }
@@ -262,22 +381,26 @@ async function handleApi(req, env, url) {
   }
 
   if (url.pathname === '/api/demo/mock-complete' && req.method === 'POST') return handleMockComplete(req, env);
-
   if (url.pathname === '/api/webhooks/paystack' && req.method === 'POST') return handlePaystackWebhook(req, env);
   if (url.pathname === '/api/webhooks/payfast' && req.method === 'POST') return handlePayfastWebhook(req, env);
 
   if (url.pathname === '/api/v1/intents' && req.method === 'POST') {
-    if (!clientAuthorized(req, env)) return fail('Missing or invalid IZAKHONO API key', 401, 'unauthorized');
+    const merchant = await authorizeMerchant(req, env);
+    if (!merchant) {
+      await recordFortressEvent(env, { severity: 'medium', category: 'merchant.auth_failed', source: 'izakhono-pay', merchantSlug: cleanText(req.headers.get('x-izakhono-app') || '', 60).toLowerCase() || null });
+      return fail('Missing, inactive, or invalid merchant credentials', 401, 'unauthorized');
+    }
     const input = await parseJson(req);
-    return initializeIntent(req, env, input);
+    return initializeIntent(req, env, input, { merchantSlug: merchant.slug });
   }
 
   const intentMatch = url.pathname.match(/^\/api\/v1\/intents\/([^/]+)$/);
   if (intentMatch && req.method === 'GET') {
-    if (!clientAuthorized(req, env)) return fail('Missing or invalid IZAKHONO API key', 401, 'unauthorized');
-    const intent = await findIntentById(env, intentMatch[1]);
+    const merchant = await authorizeMerchant(req, env);
+    if (!merchant) return fail('Missing, inactive, or invalid merchant credentials', 401, 'unauthorized');
+    const intent = await findMerchantIntentById(env, merchant.slug, intentMatch[1]);
     if (!intent) return fail('Payment intent not found', 404, 'not_found');
-    return response({ ok: true, intent });
+    return response({ ok: true, intent: renderIntent(req, env, intent) });
   }
 
   if (url.pathname === '/api/admin/summary' && req.method === 'GET') {
