@@ -38,6 +38,26 @@ function validEmail(email) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) && email.length <= 254;
 }
 
+function validateMerchantReturnUrl(rawValue, allowedOrigin) {
+  const raw = cleanText(rawValue, 1200);
+  if (!raw) return null;
+  const allowed = cleanText(allowedOrigin, 1000);
+  if (!allowed) throw new Error('Merchant return origin is not configured');
+  let url;
+  let origin;
+  try {
+    url = new URL(raw);
+    origin = new URL(allowed);
+  } catch {
+    throw new Error('Merchant return URL is invalid');
+  }
+  if (url.protocol !== 'https:' || origin.protocol !== 'https:' || url.username || url.password || origin.username || origin.password) {
+    throw new Error('Merchant return URLs must use HTTPS');
+  }
+  if (url.origin !== origin.origin) throw new Error('Merchant return URL is outside the approved origin');
+  return url.toString();
+}
+
 function adminAuthorized(req, env) {
   const secret = req.headers.get('x-admin-secret') || '';
   return Boolean(env.ADMIN_SECRET && secret && safeEqualText(secret, env.ADMIN_SECRET));
@@ -48,7 +68,7 @@ async function authorizeMerchant(req, env) {
   const slug = cleanText(req.headers.get('x-izakhono-app') || '', 60).toLowerCase();
   if (!key || !slug) return null;
   const keyHash = sha256Hex(key);
-  return env.DB.prepare("SELECT id,slug,display_name,status,fortress_required FROM merchant_apps WHERE slug=? AND api_key_hash=? AND status='active'")
+  return env.DB.prepare("SELECT id,slug,display_name,status,fortress_required,return_origin FROM merchant_apps WHERE slug=? AND api_key_hash=? AND status='active'")
     .bind(slug, keyHash).first();
 }
 
@@ -146,7 +166,7 @@ async function initializePaystack(env, intent, origin) {
     amount: String(intent.amount_minor),
     currency: intent.currency,
     reference: intent.reference,
-    callback_url: `${origin}/?payment=return&reference=${encodeURIComponent(intent.reference)}`,
+    callback_url: intent.return_url || `${origin}/?payment=return&reference=${encodeURIComponent(intent.reference)}`,
     metadata: JSON.stringify({ intent_id: intent.id, app_slug: intent.app_slug })
   };
   const res = await fetch('https://api.paystack.co/transaction/initialize', {
@@ -165,17 +185,26 @@ async function initializePaystack(env, intent, origin) {
   };
 }
 
-async function initializeIntent(req, env, input, { demo = false, merchantSlug = null } = {}) {
+async function initializeIntent(req, env, input, { demo = false, merchant = null } = {}) {
   const amountMinor = Number(input.amount_minor);
   const currency = cleanText(input.currency || 'ZAR', 3).toUpperCase();
   const email = cleanText(input.email, 254).toLowerCase();
   const description = cleanText(input.description || 'IZAKHONO PAY transaction', 180);
   const requestedProvider = cleanText(input.provider || 'smart', 20).toLowerCase();
-  const appSlug = demo ? 'demo' : cleanText(merchantSlug, 60).toLowerCase();
+  const appSlug = demo ? 'demo' : cleanText(merchant?.slug || '', 60).toLowerCase();
   const idempotencyKey = demo ? null : cleanText(req.headers.get('idempotency-key') || '', 120);
   let metadata;
-  try { metadata = metadataJson(input.metadata); }
-  catch { return fail('metadata must be a small JSON object', 422, 'invalid_metadata'); }
+  let returnUrl = null;
+  let cancelUrl = null;
+  try {
+    metadata = metadataJson(input.metadata);
+    if (!demo) {
+      returnUrl = validateMerchantReturnUrl(input.return_url, merchant?.return_origin);
+      cancelUrl = validateMerchantReturnUrl(input.cancel_url, merchant?.return_origin);
+    }
+  } catch (error) {
+    return fail(error instanceof Error ? error.message : 'Invalid merchant checkout URL', 422, 'invalid_return_url');
+  }
 
   if (!Number.isSafeInteger(amountMinor) || amountMinor < 100 || amountMinor > 1000000000) return fail('amount_minor must be an integer between 100 and 1,000,000,000', 422, 'invalid_amount');
   if (!validEmail(email)) return fail('A valid customer email is required', 422, 'invalid_email');
@@ -185,7 +214,7 @@ async function initializeIntent(req, env, input, { demo = false, merchantSlug = 
   if (!demo && !appSlug) return fail('Merchant identity is required', 401, 'unauthorized');
   if (demo && env.PAYMENT_MODE !== 'mock') return fail('Public demo checkout is disabled outside mock mode', 403, 'demo_disabled');
 
-  const fingerprint = demo ? null : sha256Hex(JSON.stringify({ appSlug, amountMinor, currency, email, description, requestedProvider, metadata }));
+  const fingerprint = demo ? null : sha256Hex(JSON.stringify({ appSlug, amountMinor, currency, email, description, requestedProvider, metadata, returnUrl, cancelUrl }));
 
   if (!demo) {
     const existing = await findIntentByIdempotency(env, appSlug, idempotencyKey);
@@ -218,12 +247,14 @@ async function initializeIntent(req, env, input, { demo = false, merchantSlug = 
     status: 'created',
     idempotency_key: idempotencyKey,
     idempotency_fingerprint: fingerprint,
-    metadata_json: metadata
+    metadata_json: metadata,
+    return_url: returnUrl,
+    cancel_url: cancelUrl
   };
 
   try {
-    await env.DB.prepare('INSERT INTO payment_intents(id,reference,app_slug,amount_minor,currency,customer_email,description,requested_provider,routed_provider,status,metadata_json,idempotency_key,idempotency_fingerprint) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)')
-      .bind(intent.id, intent.reference, intent.app_slug, intent.amount_minor, intent.currency, intent.customer_email, intent.description, intent.requested_provider, intent.routed_provider, intent.status, intent.metadata_json, intent.idempotency_key, intent.idempotency_fingerprint).run();
+    await env.DB.prepare('INSERT INTO payment_intents(id,reference,app_slug,amount_minor,currency,customer_email,description,requested_provider,routed_provider,status,metadata_json,idempotency_key,idempotency_fingerprint,return_url,cancel_url) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)')
+      .bind(intent.id, intent.reference, intent.app_slug, intent.amount_minor, intent.currency, intent.customer_email, intent.description, intent.requested_provider, intent.routed_provider, intent.status, intent.metadata_json, intent.idempotency_key, intent.idempotency_fingerprint, intent.return_url, intent.cancel_url).run();
   } catch (error) {
     if (!demo) {
       const existing = await findIntentByIdempotency(env, appSlug, idempotencyKey);
@@ -360,7 +391,7 @@ async function handleApi(req, env, url) {
 
   if (url.pathname === '/api/health' && req.method === 'GET') {
     const row = await env.DB.prepare('SELECT 1 AS ok').first();
-    return response({ ok: row?.ok === 1, service: 'IZAKHONO PAY', version: '0.2.1', mode: env.PAYMENT_MODE || 'mock', env: env.APP_ENV || 'alpha' });
+    return response({ ok: row?.ok === 1, service: 'IZAKHONO PAY', version: '0.2.2', mode: env.PAYMENT_MODE || 'mock', env: env.APP_ENV || 'alpha' });
   }
 
   if (url.pathname === '/api/v1/capabilities' && req.method === 'GET') {
@@ -376,6 +407,7 @@ async function handleApi(req, env, url) {
       merchant_auth: 'per-merchant-key',
       idempotency_required: true,
       merchant_webhooks: 'signed-hmac-sha256',
+      merchant_return_urls: 'allowlisted-https-origin',
       note: 'Payment methods are ultimately determined by the connected merchant account and provider.'
     });
   }
@@ -396,7 +428,7 @@ async function handleApi(req, env, url) {
       return fail('Missing, inactive, or invalid merchant credentials', 401, 'unauthorized');
     }
     const input = await parseJson(req);
-    return initializeIntent(req, env, input, { merchantSlug: merchant.slug });
+    return initializeIntent(req, env, input, { merchant });
   }
 
   const intentMatch = url.pathname.match(/^\/api\/v1\/intents\/([^/]+)$/);
