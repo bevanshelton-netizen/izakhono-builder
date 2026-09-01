@@ -10,8 +10,18 @@ Visual, free-first application factory for IZAKHONO projects.
 - track build/deploy status
 - store project history in D1
 - protect owner operations with a server-side secret
+- generate repository-ready Worker applications with CI and isolated-preview workflows
+- optionally publish validated generated apps into new private GitHub repositories through server-side automation
 - deploy on Cloudflare's free-first stack
 - reuse one central **IZAKHONO Build to Alpha** gate across Docker-capable projects
+
+## Repository Autopilot v1
+
+Generated Worker applications now leave the factory as repository-ready packages rather than loose source files. Each bundle includes least-privilege CI, a credential-gated isolated-preview workflow, private-by-default repository metadata, local-secret exclusions and a versioned Builder technical preview.
+
+The Builder can publish a validated generated bundle into a new GitHub repository when its runtime has the required server-side GitHub automation credential. It refuses to overwrite an existing repository, and provider preview credentials are never generated into source.
+
+See `docs/REPOSITORY-AUTOPILOT-V1.md`.
 
 ## Fast Build v0.2
 
@@ -29,6 +39,8 @@ See `docs/FAST-BUILD-V0.2.md` and `templates/izakhono.manifest.example.json`.
 
 - no production secrets committed to source control
 - no arbitrary Owner-mode shell execution
+- generated repository publication defaults to private and refuses overwrite
+- generated provider previews use `pull_request`, never `pull_request_target`
 - immutable policy pins for generated/copyable Alpha caller workflows
 - failed health gates are not promoted
 - artifact retention is convenience, not proof of software correctness
