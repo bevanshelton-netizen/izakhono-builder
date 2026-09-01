@@ -22,7 +22,7 @@ test('smart ZAR routing prefers configured Paystack, then PayFast', () => {
 });
 
 test('non-ZAR currency fails closed in alpha', () => {
-  assert.equal(chooseProvider({ PAYMENT_MODE: 'live', PAYSTACK_SECRET_KEY: 'sk_live_x' }, 'USD', 'smart'), null);
+  assert.equal(chooseProvider({ PAYMENT_MODE: 'live', PAYSTACK_SECRET_KEY: 'configured-test-key' }, 'USD', 'smart'), null);
 });
 
 test('PayFast encoding uses plus for spaces and uppercase percent escapes', () => {
