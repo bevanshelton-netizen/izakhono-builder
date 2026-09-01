@@ -53,6 +53,50 @@ jobs:
           npx wrangler deploy --dry-run --config fixtures/generated-worker-canary/wrangler.jsonc
           echo '[PASS] Generated Worker + static asset canary typechecks and passes Wrangler dry run.'
 
+      - name: Validate repository autopilot contract
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          secure = Path('src/secure.ts').read_text(encoding='utf-8')
+          repo = Path('src/repository.ts').read_text(encoding='utf-8')
+
+          secure_required = [
+              'generatedRepositoryFiles',
+              'validateRepositoryFiles',
+              '/api/automation-capabilities',
+              '/publish-repository',
+              "next_gate: validation.passed ? 'repository_publish_ready'",
+              'repository_ready: true',
+              'versioned_preview_revision',
+          ]
+          repo_required = [
+              "visibility: 'private'",
+              'overwrite_existing: false',
+              'GITHUB_AUTOMATION_TOKEN',
+              'GITHUB_OWNER',
+              "createPath = kind === 'org'",
+              '/git/blobs',
+              '/git/trees',
+              '/git/commits',
+              '/git/refs/heads/',
+              '${{ secrets.CLOUDFLARE_API_TOKEN }}',
+              '${{ secrets.CLOUDFLARE_ACCOUNT_ID }}',
+              'Repository already exists; IZAKHONO will not overwrite it.',
+          ]
+
+          missing = [f'secure:{x}' for x in secure_required if x not in secure]
+          missing += [f'repository:{x}' for x in repo_required if x not in repo]
+          if missing:
+              raise SystemExit('Repository autopilot contract missing: ' + ', '.join(missing))
+          if 'pull_request_target' in repo:
+              raise SystemExit('Generated preview workflow must not use pull_request_target.')
+          if "private: false" in repo:
+              raise SystemExit('Repository publisher must not create public repositories by default.')
+          print('[PASS] Repository autopilot is private-by-default, non-overwriting, CI-ready and credential-gated.')
+          PY
+
       - name: Validate Fast Build templates
         shell: bash
         run: |
