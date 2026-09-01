@@ -46,6 +46,13 @@ jobs:
           print('[PASS] Generated Workers must route non-API requests through the ASSETS binding.')
           PY
 
+      - name: Build generated Worker canary
+        shell: bash
+        run: |
+          npx tsc --noEmit --target ES2022 --lib ES2022,DOM --module ESNext fixtures/generated-worker-canary/src/index.ts
+          npx wrangler deploy --dry-run --config fixtures/generated-worker-canary/wrangler.jsonc
+          echo '[PASS] Generated Worker + static asset canary typechecks and passes Wrangler dry run.'
+
       - name: Validate Fast Build templates
         shell: bash
         run: |
