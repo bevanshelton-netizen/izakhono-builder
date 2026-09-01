@@ -55,11 +55,13 @@ export function buildPayfastCheckout({ env, intent, origin }) {
   const sandbox = env.PAYFAST_SANDBOX === 'true' || env.PAYMENT_MODE === 'sandbox';
   const endpoint = sandbox ? 'https://sandbox.payfast.co.za/eng/process' : 'https://www.payfast.co.za/eng/process';
   const amount = (intent.amount_minor / 100).toFixed(2);
+  const returnUrl = intent.return_url || `${origin}/?payment=return&reference=${encodeURIComponent(intent.reference)}`;
+  const cancelUrl = intent.cancel_url || `${origin}/?payment=cancelled&reference=${encodeURIComponent(intent.reference)}`;
   const entries = [
     ['merchant_id', env.PAYFAST_MERCHANT_ID],
     ['merchant_key', env.PAYFAST_MERCHANT_KEY],
-    ['return_url', `${origin}/?payment=return&reference=${encodeURIComponent(intent.reference)}`],
-    ['cancel_url', `${origin}/?payment=cancelled&reference=${encodeURIComponent(intent.reference)}`],
+    ['return_url', returnUrl],
+    ['cancel_url', cancelUrl],
     ['notify_url', `${origin}/api/webhooks/payfast`],
     ['email_address', intent.customer_email],
     ['m_payment_id', intent.reference],
