@@ -12,6 +12,14 @@ A normal Docker-capable application should need only:
 
 The shared IZAKHONO workflow then validates repository-relative paths, builds the real container, labels it with product and Git provenance, starts it, and requires the declared health endpoint to pass.
 
+## Immutable central policy pin
+
+The caller workflow must reference the central Builder policy by an exact 40-character Git commit SHA, not by a moving branch such as `@main` or `@master`.
+
+This makes the application trust boundary reviewable and repeatable: a future Builder change cannot silently alter an already-onboarded application's Alpha gates. Moving an application to a newer central policy therefore requires an explicit reviewed pin update after the new policy has passed Builder CI and canary proof.
+
+The checked-in caller template is CI-validated so a mutable branch reference cannot be reintroduced accidentally.
+
 ## Optional project-specific gates
 
 Projects that need deeper Alpha proof can enable two reviewed extensions in `.izakhono.json`:
