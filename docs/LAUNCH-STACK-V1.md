@@ -1,6 +1,6 @@
 # IZAKHONO Launch Stack v1
 
-IZAKHONO Launch Stack is the provider-neutral runtime layer that lets a Docker-capable Linux host publish multiple IZAKHONO applications without requiring Vercel, Netlify, Render or Supabase for the basic hosting path.
+IZAKHONO Launch Stack is the provider-neutral runtime layer that lets owner-controlled compute publish multiple IZAKHONO applications without requiring Vercel, Netlify, Render or Supabase for the basic hosting path.
 
 ## What v1 owns
 
@@ -22,7 +22,7 @@ IZAKHONO Launch Stack is the provider-neutral runtime layer that lets a Docker-c
 
 ## What remains external by nature or by deliberate choice
 
-- a physical/virtual Linux machine and internet connection
+- a physical/virtual machine and internet connection
 - DNS registration/delegation
 - certificate authority connectivity for public TLS issuance
 - banking/payment rails such as PayFast
@@ -31,9 +31,9 @@ IZAKHONO Launch Stack is the provider-neutral runtime layer that lets a Docker-c
 
 These are replaceable suppliers rather than application-platform dependencies.
 
-## First-host sequence
+## First-host sequence: Linux
 
-On an Ubuntu/Debian x86-64 or ARM64 machine checked out to this repository, the preferred first-host path is now one command:
+On an Ubuntu/Debian x86-64 or ARM64 machine checked out to this repository, the preferred first-host path is one command:
 
 ```bash
 sudo bash scripts/launch-stack/first-host.sh
@@ -48,6 +48,24 @@ sudo bash scripts/launch-stack/bootstrap-host.sh --harden
 sudo bash scripts/launch-stack/init-stack.sh
 sudo bash scripts/launch-stack/install-automation.sh
 ```
+
+## First-host sequence: existing Windows computer
+
+For a Windows 10/11 x64 owner-controlled computer, double-click:
+
+```text
+scripts\launch-stack\START-IZAKHONO-OWNER-HOST.cmd
+```
+
+The launcher requests Windows administrator approval, verifies basic RAM/disk capacity, enables WSL2 and Ubuntu when needed, arranges one automatic continuation after the required Windows restart, enables systemd, and runs the same reviewed Linux first-host installer inside WSL. It then creates a Windows TCP bridge for ports 80/443, opens only those Windows firewall ports, and installs a logon task that refreshes the bridge if the WSL address changes.
+
+The one-click launcher also makes a best-effort UPnP request for router TCP 80/443 mappings **after** the local IZAKHONO stack is healthy. If the router does not support safe automatic mapping, setup remains healthy locally and commercial publication stays fail-closed until the network can expose those ports or another owner-approved edge is used.
+
+This Windows bridge is intended as a revenue-first owner-host and migration bridge. It is not equivalent to a redundant datacentre: power, home/office internet, router behaviour and Windows logon availability remain operational dependencies. It should later become a secondary/edge node once dedicated owner-controlled Linux hardware is affordable.
+
+The Windows script never asks for SSH private keys, cloud passwords, PayFast credentials or application secrets.
+
+## Launch an application
 
 For an application that needs PostgreSQL:
 

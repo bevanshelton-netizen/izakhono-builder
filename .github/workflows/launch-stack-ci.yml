@@ -34,6 +34,25 @@ jobs:
             bash -n "$script"
           done
 
+      - name: PowerShell owner-host syntax
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $tokens = $null
+          $errors = $null
+          [void][System.Management.Automation.Language.Parser]::ParseFile(
+            (Resolve-Path 'scripts/launch-stack/windows-owner-host.ps1'),
+            [ref]$tokens,
+            [ref]$errors
+          )
+          if ($errors.Count -gt 0) {
+            $errors | Format-List | Out-String | Write-Error
+          }
+          $launcher = Get-Content -Raw 'scripts/launch-stack/START-IZAKHONO-OWNER-HOST.cmd'
+          if ($launcher -notmatch 'windows-owner-host\.ps1' -or $launcher -notmatch 'AttemptRouterMapping') {
+            throw 'Windows one-click launcher is not wired to the reviewed owner-host script.'
+          }
+
       - name: Safety invariants
         run: |
           set -euo pipefail
@@ -50,6 +69,12 @@ jobs:
           grep -Fq 'readiness_field must be a dotted JSON field path' scripts/launch-stack/deploy-app.sh
           grep -Fq 'Application commercial-readiness gate did not return true; reverting route.' scripts/launch-stack/deploy-app.sh
           grep -Fq 'APP_DECLARED_COMMERCIAL_READINESS=' scripts/launch-stack/launch-project.sh
+          grep -Fq 'Microsoft-Windows-Subsystem-Linux' scripts/launch-stack/windows-owner-host.ps1
+          grep -Fq 'VirtualMachinePlatform' scripts/launch-stack/windows-owner-host.ps1
+          grep -Fq 'IZAKHONO HTTP' scripts/launch-stack/windows-owner-host.ps1
+          grep -Fq 'IZAKHONO HTTPS' scripts/launch-stack/windows-owner-host.ps1
+          grep -Fq 'Public launch will stay fail-closed' scripts/launch-stack/windows-owner-host.ps1
+          ! grep -Fq -- '--privileged' scripts/launch-stack/windows-owner-host.ps1
 
       - name: Validate Docker Compose model
         env:
