@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "wrangler dev",
-    "typecheck": "tsc --noEmit --target ES2022 --lib ES2022,DOM,DOM.Iterable --module ESNext src/index.ts && tsc --noEmit --target ES2022 --lib ES2022,DOM,DOM.Iterable --module ESNext src/repository.ts && tsc --noEmit --noCheck --target ES2022 --lib ES2022,DOM,DOM.Iterable --module ESNext src/runtime.ts src/secure.ts",
+    "typecheck": "tsc --noEmit --target ES2022 --lib ES2022,DOM,DOM.Iterable --module ESNext src/index.ts && tsc --noEmit --target ES2022 --lib ES2022,DOM,DOM.Iterable --module ESNext src/repository.ts src/internal-repository.ts && tsc --noEmit --noCheck --target ES2022 --lib ES2022,DOM,DOM.Iterable --module ESNext src/secure.ts src/sovereign.ts",
     "deploy:first": "wrangler deploy",
     "db:migrate": "wrangler d1 migrations apply DB --remote",
     "deploy": "wrangler deploy && wrangler d1 migrations apply DB --remote && wrangler deploy",
