@@ -1,0 +1,28 @@
+{
+  // Production config. Merchant applications remain staged until separately activated.
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "izakhono-pay",
+  "main": "src/index.js",
+  "compatibility_date": "2026-08-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "izakhono-pay",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "vars": {
+    "APP_ENV": "production",
+    "PAYMENT_MODE": "live",
+    "PAYSTACK_ENABLED": "false",
+    "PAYFAST_ENABLED": "true",
+    "PAYFAST_SANDBOX": "false",
+    "PAYFAST_REQUIRE_IP": "true",
+    "MERCHANT_WEBHOOK_ALLOWED_HOSTS": "kora-network.vercel.app"
+  }
+}
