@@ -26,10 +26,6 @@ function Quote-Argument([string]$Value) {
     return '"' + ($Value -replace '"', '\"') + '"'
 }
 
-function Quote-Bash([string]$Value) {
-    return "'" + ($Value -replace "'", "'\"'\"'") + "'"
-}
-
 function Get-InstalledDistros {
     $items = @()
     try {
@@ -52,7 +48,7 @@ function Ensure-Admin {
     if ($NoRestart) { $args += '-NoRestart' }
     if ($AttemptRouterMapping) { $args += '-AttemptRouterMapping' }
     if ($StatusOnly) { $args += '-StatusOnly' }
-    Start-Process -FilePath 'PowerShell.exe' -Verb RunAs -ArgumentList ($args | ForEach-Object { Quote-Argument $_ })
+    Start-Process -FilePath 'PowerShell.exe' -Verb RunAs -ArgumentList (($args | ForEach-Object { Quote-Argument $_ }) -join ' ')
     exit 0
 }
 
@@ -135,8 +131,7 @@ function Get-RepoRootInWsl {
 function Install-IzakhonoStack {
     Write-Stage 'Install owner-controlled IZAKHONO Launch Stack'
     $wslRoot = Get-RepoRootInWsl
-    $command = "cd $(Quote-Bash $wslRoot) && bash scripts/launch-stack/first-host.sh"
-    & wsl.exe -d $Distro -u root -- bash -lc $command
+    & wsl.exe -d $Distro -u root --cd $wslRoot -- bash scripts/launch-stack/first-host.sh
     if ($LASTEXITCODE -ne 0) { throw '[FAIL] IZAKHONO first-host installation failed inside WSL.' }
 }
 
@@ -156,7 +151,8 @@ function Install-PortProxyRefresh {
 `$ErrorActionPreference = 'Stop'
 `$distro = '$escapedDistro'
 & wsl.exe -d `$distro -u root -- bash -lc 'systemctl start docker >/dev/null 2>&1 || true; cd /opt/izakhono/launch-stack && docker compose up -d >/dev/null 2>&1 || true'
-`$ip = (& wsl.exe -d `$distro -u root -- bash -lc "hostname -I | tr ' ' '\n' | grep -E '^[0-9]+(\\.[0-9]+){3}`$' | head -n1" | Select-Object -First 1).Trim()
+`$ipLine = & wsl.exe -d `$distro -u root -- hostname -I
+`$ip = (`$ipLine -split '\s+' | Where-Object { `$_ -match '^[0-9]+(\.[0-9]+){3}$' } | Select-Object -First 1)
 if (-not `$ip) { throw 'No WSL IPv4 address available.' }
 foreach (`$port in 80,443) {
     & netsh interface portproxy delete v4tov4 listenaddress=0.0.0.0 listenport=`$port 2>`$null | Out-Null
@@ -176,7 +172,7 @@ foreach (`$port in 80,443) {
 
     $taskName = 'IZAKHONO Owner Host Refresh'
     $userId = [Security.Principal.WindowsIdentity]::GetCurrent().Name
-    $action = New-ScheduledTaskAction -Execute 'PowerShell.exe' -Argument "-NoProfile -ExecutionPolicy Bypass -File $(Quote-Argument $refreshPath)"
+    $action = New-ScheduledTaskAction -Execute 'PowerShell.exe' -Argument ("-NoProfile -ExecutionPolicy Bypass -File " + (Quote-Argument $refreshPath))
     $trigger = New-ScheduledTaskTrigger -AtLogOn -User $userId
     $principal = New-ScheduledTaskPrincipal -UserId $userId -LogonType Interactive -RunLevel Highest
     Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger -Principal $principal -Force | Out-Null
