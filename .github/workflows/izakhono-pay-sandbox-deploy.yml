@@ -1,0 +1,94 @@
+name: Deploy IZAKHONO PAY Sandbox
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: izakhono-pay-sandbox-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy-sandbox:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: izakhono-pay-sandbox
+    defaults:
+      run:
+        working-directory: products/izakhono-pay
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      ADMIN_SECRET: ${{ secrets.IZAKHONO_PAY_ADMIN_SECRET }}
+      PAYSTACK_SECRET_KEY: ${{ secrets.PAYSTACK_TEST_SECRET_KEY }}
+      PAYFAST_MERCHANT_ID: ${{ secrets.PAYFAST_SANDBOX_MERCHANT_ID }}
+      PAYFAST_MERCHANT_KEY: ${{ secrets.PAYFAST_SANDBOX_MERCHANT_KEY }}
+      PAYFAST_PASSPHRASE: ${{ secrets.PAYFAST_SANDBOX_PASSPHRASE }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install sandbox deploy tooling
+        run: npm install --no-audit --no-fund
+
+      - name: Verify payment core before deployment
+        run: npm run check
+
+      - name: Require sandbox-only credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          missing=0
+          for name in CLOUDFLARE_ACCOUNT_ID CLOUDFLARE_API_TOKEN ADMIN_SECRET PAYSTACK_SECRET_KEY PAYFAST_MERCHANT_ID PAYFAST_MERCHANT_KEY PAYFAST_PASSPHRASE; do
+            if [ -z "${!name:-}" ]; then
+              echo "Missing required sandbox secret: $name" >&2
+              missing=1
+            fi
+          done
+          test "$missing" -eq 0
+
+      - name: Bootstrap Worker and auto-provision sandbox D1
+        run: npx wrangler deploy --config wrangler.sandbox.jsonc
+
+      - name: Apply D1 migrations
+        run: npx wrangler d1 migrations apply DB --remote --yes --config wrangler.sandbox.jsonc
+
+      - name: Install server-only payment secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          put_secret() {
+            local name="$1"
+            local value="$2"
+            printf '%s' "$value" | npx wrangler secret put "$name" --config wrangler.sandbox.jsonc >/dev/null
+          }
+          put_secret ADMIN_SECRET "$ADMIN_SECRET"
+          put_secret PAYSTACK_SECRET_KEY "$PAYSTACK_SECRET_KEY"
+          put_secret PAYFAST_MERCHANT_ID "$PAYFAST_MERCHANT_ID"
+          put_secret PAYFAST_MERCHANT_KEY "$PAYFAST_MERCHANT_KEY"
+          put_secret PAYFAST_PASSPHRASE "$PAYFAST_PASSPHRASE"
+
+      - name: Final sandbox deployment
+        shell: bash
+        run: |
+          set -euo pipefail
+          output="$(npx wrangler deploy --config wrangler.sandbox.jsonc)"
+          printf '%s\n' "$output"
+          url="$(printf '%s\n' "$output" | grep -Eo 'https://[^[:space:]]+\.workers\.dev' | tail -1 || true)"
+          {
+            echo '## IZAKHONO PAY Sandbox'
+            echo
+            if [ -n "$url" ]; then
+              echo "Sandbox URL: $url"
+            else
+              echo 'Deployment completed. Open the Wrangler deployment output above for the workers.dev URL.'
+            fi
+            echo
+            echo 'Merchant apps remain staged until their per-merchant API key, webhook secret, approved return origin and sandbox payment proof are configured.'
+          } >> "$GITHUB_STEP_SUMMARY"
