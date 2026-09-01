@@ -5,6 +5,7 @@ on:
     paths:
       - 'infra/launch-stack/**'
       - 'scripts/launch-stack/**'
+      - 'products/izakhono-core/**'
       - 'docs/LAUNCH-STACK-V1.md'
       - '.github/workflows/launch-stack-ci.yml'
   push:
@@ -12,6 +13,7 @@ on:
     paths:
       - 'infra/launch-stack/**'
       - 'scripts/launch-stack/**'
+      - 'products/izakhono-core/**'
       - 'docs/LAUNCH-STACK-V1.md'
       - '.github/workflows/launch-stack-ci.yml'
   workflow_dispatch:
@@ -70,6 +72,12 @@ jobs:
           ! grep -R --line-number -E 'chmod[[:space:]]+777|--privileged' scripts/launch-stack infra/launch-stack
           grep -Fq '127.0.0.1:5000:5000' infra/launch-stack/docker-compose.yml
           grep -Fq 'internal: true' infra/launch-stack/docker-compose.yml
+          grep -Fq 'container_name: izakhono-core' infra/launch-stack/docker-compose.yml
+          grep -Fq 'izakhono_core_storage' infra/launch-stack/docker-compose.yml
+          grep -Fq 'IZAKHONO_CORE_JWT_SECRET' scripts/launch-stack/init-stack.sh
+          grep -Fq 'IZAKHONO_CORE_ADMIN_TOKEN' scripts/launch-stack/init-stack.sh
+          grep -Fq 'izakhono-core' scripts/launch-stack/health-check.sh
+          grep -Fq 'core-storage.tgz' scripts/launch-stack/backup-stack.sh
           grep -Fq -- '--require-public' scripts/launch-stack/deploy-app.sh
           grep -Fq 'refusing silent credential rotation' scripts/launch-stack/provision-project-db.sh
           grep -Fq '/opt/izakhono/bin' scripts/launch-stack/init-stack.sh
@@ -96,6 +104,9 @@ jobs:
           POSTGRES_PASSWORD: ci-only-not-production
           POSTGRES_DB: izakhono
           REGISTRY_HTTP_SECRET: ci-only-not-production
+          IZAKHONO_CORE_JWT_SECRET: ci-jwt-secret-0123456789-abcdefghijklmnopqrstuvwxyz
+          IZAKHONO_CORE_ADMIN_TOKEN: ci-admin-token-0123456789-abcdefghijklmnopqrstuvwxyz
+          IZAKHONO_CORE_ALLOWED_ORIGINS: https://example.test
         run: docker compose -f infra/launch-stack/docker-compose.yml config >/dev/null
 
       - name: Validate Caddy configuration
@@ -117,5 +128,5 @@ jobs:
       - name: Validate no production secrets are committed
         run: |
           set -euo pipefail
-          ! grep -R --line-number -E 'POSTGRES_PASSWORD=[A-Fa-f0-9]{32,}|REGISTRY_HTTP_SECRET=[A-Fa-f0-9]{32,}' infra scripts docs
+          ! grep -R --line-number -E 'POSTGRES_PASSWORD=[A-Fa-f0-9]{32,}|REGISTRY_HTTP_SECRET=[A-Fa-f0-9]{32,}|IZAKHONO_CORE_(JWT_SECRET|ADMIN_TOKEN)=[A-Fa-f0-9]{32,}' infra scripts docs products/izakhono-core
           echo 'LAUNCH_STACK_VALIDATION=PASS'
