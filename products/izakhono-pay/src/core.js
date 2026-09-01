@@ -113,7 +113,7 @@ export function ipv4InCidr(ip, cidr) {
   const ipInt = ipToInt(ip);
   const netInt = ipToInt(network);
   if (ipInt === null || netInt === null || !Number.isInteger(bits) || bits < 0 || bits > 32) return false;
-  const mask = bits === 0 ? 0 : (0xffffffff << (32 - bits))) >>> 0;
+  const mask = bits === 0 ? 0 : (0xffffffff << (32 - bits)) >>> 0;
   return (ipInt & mask) === (netInt & mask);
 }
 
