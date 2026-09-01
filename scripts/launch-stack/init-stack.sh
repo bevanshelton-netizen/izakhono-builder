@@ -49,11 +49,8 @@ IZAKHONO_CORE_ALLOWED_ORIGINS=
 EOF
   chmod 600 "$ENV_FILE"
 else
-  if ! grep -q '^IZAKHONO_CORE_JWT_SECRET=' "$ENV_FILE"; then
-    echo 'Existing Launch Stack predates IZAKHONO Core secrets.'
-    echo 'Run /opt/izakhono/bin/upgrade-core-secrets.sh before re-running initialization.'
-    exit 1
-  fi
+  # Existing hosts are upgraded in place without rotating any existing credentials.
+  bash "$BIN/upgrade-core-secrets.sh"
 fi
 
 echo 'Building owner-controlled IZAKHONO Core runtime...'
