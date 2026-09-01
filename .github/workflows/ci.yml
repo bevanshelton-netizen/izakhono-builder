@@ -32,7 +32,7 @@ jobs:
         shell: bash
         run: |
           python - <<'PY'
-          import json
+          import json, re
           from pathlib import Path, PurePosixPath
 
           p = Path('templates/izakhono.manifest.example.json')
@@ -52,7 +52,15 @@ jobs:
           for key in ('preflight','rehearsal','windows_package'):
               if not isinstance(alpha.get(key, False), bool):
                   raise SystemExit(f'alpha.{key} must be boolean')
-          print('[PASS] IZAKHONO Fast Build manifest template is valid.')
+
+          caller = Path('templates/call-izakhono-alpha.yml').read_text(encoding='utf-8')
+          policy = r'bevanshelton-netizen/izakhono-builder/\.github/workflows/izakhono-build-to-alpha\.yml@([0-9a-f]{40})'
+          match = re.search(policy, caller)
+          if not match:
+              raise SystemExit('Alpha caller template must pin the Builder policy to an immutable 40-character commit SHA.')
+          if '@main' in caller or '@master' in caller:
+              raise SystemExit('Alpha caller template must not follow a mutable branch.')
+          print(f'[PASS] IZAKHONO Fast Build templates are valid; caller policy pin={match.group(1)}.')
           PY
 
       - name: Parse reusable workflow
