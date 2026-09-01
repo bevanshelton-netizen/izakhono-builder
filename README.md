@@ -19,6 +19,8 @@ The reusable Alpha gate lives at `.github/workflows/izakhono-build-to-alpha.yml`
 
 A target repository supplies a small `.izakhono.json` contract and the caller workflow from `templates/call-izakhono-alpha.yml`. IZAKHONO then validates safe repository paths, builds the declared Docker application, labels the image with Git/product provenance, starts it, and requires its HTTP health gate to pass.
 
+The caller template pins the central policy to an **immutable reviewed commit SHA** rather than a moving branch such as `main`. Policy upgrades therefore require an explicit reviewed pin change instead of silently changing existing project trust boundaries.
+
 Projects may also opt into reviewed project-specific Alpha rehearsal and Windows packaging using fixed script paths. The Owner interface does **not** accept arbitrary shell commands.
 
 See `docs/FAST-BUILD-V0.2.md` and `templates/izakhono.manifest.example.json`.
@@ -27,6 +29,7 @@ See `docs/FAST-BUILD-V0.2.md` and `templates/izakhono.manifest.example.json`.
 
 - no production secrets committed to source control
 - no arbitrary Owner-mode shell execution
+- immutable policy pins for generated/copyable Alpha caller workflows
 - failed health gates are not promoted
 - artifact retention is convenience, not proof of software correctness
 - CI validation is not a substitute for real public hosting, DNS/TLS, disaster recovery, physical-device testing, code signing, external security review, privacy/legal approval or customer acceptance
