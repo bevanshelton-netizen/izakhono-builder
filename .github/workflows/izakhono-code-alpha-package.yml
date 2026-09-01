@@ -1,0 +1,58 @@
+name: IZAKHONO CODE Alpha Package
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/izakhono-code-alpha-package.yml']
+permissions:
+  contents: write
+concurrency:
+  group: izakhono-code-alpha-package
+  cancel-in-progress: false
+jobs:
+  package:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with: { node-version: 22 }
+      - name: Verify Complete Alpha
+        working-directory: products/izakhono-code
+        run: npm test
+      - name: Build traceable Windows package
+        id: bundle
+        shell: pwsh
+        run: |
+          $short = $env:GITHUB_SHA.Substring(0, 12)
+          $stage = Join-Path $env:RUNNER_TEMP 'IZAKHONO-CODE'
+          Copy-Item 'products\izakhono-code' $stage -Recurse
+          @(
+            "PRODUCT=IZAKHONO CODE",
+            "VERSION=0.1.0-alpha",
+            "GIT_COMMIT=$env:GITHUB_SHA",
+            "CHANNEL=Complete Alpha/owner testing only",
+            "COMMERCIAL_READY=false"
+          ) | Set-Content -Encoding ASCII (Join-Path $stage 'BUILD-METADATA.txt')
+          $zip = "izakhono-code-complete-alpha-$short.zip"
+          Compress-Archive -Path $stage -DestinationPath $zip -CompressionLevel Optimal
+          $hash = (Get-FileHash $zip -Algorithm SHA256).Hash
+          "$hash  $zip" | Set-Content -Encoding ASCII "$zip.sha256"
+          "zip=$zip" | Out-File $env:GITHUB_OUTPUT -Append
+          "tag=izakhono-code-alpha-$short-run-$env:GITHUB_RUN_NUMBER" | Out-File $env:GITHUB_OUTPUT -Append
+      - name: Publish owner-testing prerelease
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ZIP: ${{ steps.bundle.outputs.zip }}
+          TAG: ${{ steps.bundle.outputs.tag }}
+        run: |
+          @"
+          IZAKHONO CODE Complete Alpha for the dedicated owner laptop.
+
+          Includes local Git repositories, browser owner console, issues,
+          pull-request records, allow-listed CI, releases and package records.
+
+          Owner testing only. Not commercial GA. Node.js 20+ and Git for Windows
+          are required. Verify the SHA-256 attachment before installation.
+          "@ | Set-Content -Encoding UTF8 'release-notes.md'
+          gh release create $env:TAG $env:ZIP "$env:ZIP.sha256" --repo $env:GITHUB_REPOSITORY --target $env:GITHUB_SHA --title "IZAKHONO CODE 0.1.0 Complete Alpha" --notes-file release-notes.md --prerelease
