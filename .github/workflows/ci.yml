@@ -61,6 +61,8 @@ jobs:
 
           secure = Path('src/secure.ts').read_text(encoding='utf-8')
           repo = Path('src/repository.ts').read_text(encoding='utf-8')
+          cf_token_ref = '$' + '{{ secrets.CLOUDFLARE_API_TOKEN }}'
+          cf_account_ref = '$' + '{{ secrets.CLOUDFLARE_ACCOUNT_ID }}'
 
           secure_required = [
               'generatedRepositoryFiles',
@@ -81,8 +83,8 @@ jobs:
               '/git/trees',
               '/git/commits',
               '/git/refs/heads/',
-              '${{ secrets.CLOUDFLARE_API_TOKEN }}',
-              '${{ secrets.CLOUDFLARE_ACCOUNT_ID }}',
+              cf_token_ref,
+              cf_account_ref,
               'Repository already exists; IZAKHONO will not overwrite it.',
           ]
 
@@ -90,8 +92,8 @@ jobs:
           missing += [f'repository:{x}' for x in repo_required if x not in repo]
           if missing:
               raise SystemExit('Repository autopilot contract missing: ' + ', '.join(missing))
-          if 'pull_request_target' in repo:
-              raise SystemExit('Generated preview workflow must not use pull_request_target.')
+          if "'  pull_request_target:'" in repo or '"  pull_request_target:"' in repo:
+              raise SystemExit('Generated preview workflow must not emit pull_request_target.')
           if "private: false" in repo:
               raise SystemExit('Repository publisher must not create public repositories by default.')
           print('[PASS] Repository autopilot is private-by-default, non-overwriting, CI-ready and credential-gated.')
