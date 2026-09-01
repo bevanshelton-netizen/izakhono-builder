@@ -33,14 +33,21 @@ These are replaceable suppliers rather than application-platform dependencies.
 
 ## First-host sequence
 
-On an Ubuntu/Debian machine checked out to this repository:
+On an Ubuntu/Debian x86-64 or ARM64 machine checked out to this repository, the preferred first-host path is now one command:
+
+```bash
+sudo bash scripts/launch-stack/first-host.sh
+```
+
+The installer fails early on an unsupported OS/CPU, less than 2 GB RAM, or critically low disk space. It hardens the host, installs Docker prerequisites, initializes Caddy/PostgreSQL/the local registry, installs fixed operator tools under `/opt/izakhono/bin`, enables local health checks, daily backups and weekly restore rehearsals, and performs a host health proof. It does not claim any public application live until DNS and the public HTTPS gate are actually proven.
+
+The underlying steps remain available individually for recovery or diagnostics:
 
 ```bash
 sudo bash scripts/launch-stack/bootstrap-host.sh --harden
 sudo bash scripts/launch-stack/init-stack.sh
+sudo bash scripts/launch-stack/install-automation.sh
 ```
-
-Initialization installs fixed operator tools under `/opt/izakhono/bin` and schedules local health checks, daily backups and weekly restore rehearsals with systemd timers.
 
 For an application that needs PostgreSQL:
 
