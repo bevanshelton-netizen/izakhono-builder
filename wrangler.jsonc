@@ -1,7 +1,7 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "izakhono-builder",
-  "main": "src/runtime.ts",
+  "main": "src/sovereign.ts",
   "compatibility_date": "2026-08-01",
   "assets": {
     "directory": "./public",
