@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>IZAKHONO PAY — One checkout. Many rails.</title>
+  <meta name="description" content="African-first payment orchestration portal for local and international commerce." />
+  <style>
+    :root{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#f8fafc;background:#07120f;color-scheme:dark}
+    *{box-sizing:border-box}body{margin:0;min-height:100vh;background:radial-gradient(circle at 15% 10%,#155e75 0,transparent 30%),radial-gradient(circle at 85% 20%,#7c3aed 0,transparent 28%),linear-gradient(160deg,#04100c,#07131d 58%,#120b20);background-attachment:fixed}
+    a{color:inherit}.shell{max-width:1180px;margin:auto;padding:28px}.nav{display:flex;align-items:center;justify-content:space-between;gap:18px}.brand{font-weight:950;letter-spacing:-.04em;font-size:clamp(24px,4vw,38px)}.brand span{background:linear-gradient(90deg,#34d399,#fbbf24,#60a5fa);-webkit-background-clip:text;color:transparent}.pill{font-size:12px;padding:8px 12px;border:1px solid #ffffff25;border-radius:999px;background:#ffffff0c}.hero{padding:82px 0 50px;display:grid;grid-template-columns:1.15fr .85fr;gap:48px;align-items:center}.eyebrow{font-size:13px;letter-spacing:.16em;text-transform:uppercase;color:#a7f3d0;font-weight:800}.hero h1{font-size:clamp(48px,8vw,92px);line-height:.92;letter-spacing:-.065em;margin:16px 0 24px}.hero h1 em{font-style:normal;background:linear-gradient(90deg,#34d399,#fbbf24,#f472b6,#60a5fa);-webkit-background-clip:text;color:transparent}.hero p{font-size:19px;line-height:1.6;color:#cbd5e1;max-width:720px}.badges{display:flex;gap:10px;flex-wrap:wrap;margin-top:28px}.badge{border:1px solid #ffffff1f;background:#ffffff0b;padding:10px 14px;border-radius:14px;color:#dbeafe;font-weight:700}.card{border:1px solid #ffffff21;background:linear-gradient(180deg,#ffffff14,#ffffff08);box-shadow:0 24px 80px #0008;border-radius:28px;padding:24px;backdrop-filter:blur(18px)}.paycard h2,.section h2{margin-top:0}.field{display:grid;gap:8px;margin:14px 0}.field label{font-size:12px;color:#a5b4fc;font-weight:800;text-transform:uppercase;letter-spacing:.08em}.field input,.field select{width:100%;padding:14px 15px;border-radius:14px;border:1px solid #ffffff26;background:#03071299;color:#fff;font:inherit}.amountrow{display:grid;grid-template-columns:1fr 1fr;gap:12px}.btn{border:0;border-radius:14px;padding:15px 18px;font-weight:900;font-size:15px;cursor:pointer}.btn.primary{width:100%;margin-top:8px;background:linear-gradient(90deg,#34d399,#fbbf24);color:#052e16}.btn.secondary{background:#ffffff10;color:white;border:1px solid #ffffff22}.status{min-height:44px;margin-top:14px;padding:12px 14px;border-radius:12px;background:#02061799;color:#cbd5e1;font-size:13px;white-space:pre-wrap;word-break:break-word}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin:28px 0 60px}.feature{padding:22px;border-radius:22px;border:1px solid #ffffff17;background:#ffffff08}.feature strong{display:block;font-size:18px;margin-bottom:8px}.feature p{margin:0;color:#aebed0;line-height:1.55}.section{padding:28px 0 70px}.dashHead{display:flex;justify-content:space-between;gap:12px;align-items:center}.metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:18px 0}.metric{padding:18px;border-radius:18px;background:#02061790;border:1px solid #ffffff14}.metric small{color:#94a3b8}.metric b{display:block;font-size:28px;margin-top:5px}.tableWrap{overflow:auto;border:1px solid #ffffff16;border-radius:16px}table{width:100%;border-collapse:collapse;min-width:760px;background:#02061772}th,td{text-align:left;padding:12px;border-bottom:1px solid #ffffff10;font-size:13px}th{color:#93c5fd}footer{padding:30px 0 50px;color:#94a3b8;font-size:13px}.warning{border-left:3px solid #fbbf24;padding:12px 14px;background:#fbbf240e;color:#fde68a;border-radius:8px;margin-top:16px}
+    @media(max-width:840px){.hero{grid-template-columns:1fr;padding-top:54px}.grid{grid-template-columns:1fr}.metrics{grid-template-columns:1fr}.shell{padding:20px}.amountrow{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <nav class="nav"><div class="brand">IZAKHONO <span>PAY</span></div><div class="pill" id="mode">Checking mode…</div></nav>
+    <section class="hero">
+      <div>
+        <div class="eyebrow">Built in Africa • Designed for the world</div>
+        <h1>One checkout.<br><em>Many rails.</em></h1>
+        <p>IZAKHONO PAY is the orchestration layer above payment providers. Your apps integrate once; the router chooses an available payment rail, keeps one transaction ledger, and verifies provider callbacks before anything is marked paid.</p>
+        <div class="badges"><span class="badge">Paystack adapter</span><span class="badge">PayFast adapter</span><span class="badge">Smart routing</span><span class="badge">Verified webhooks</span><span class="badge">Single ledger</span></div>
+      </div>
+      <div class="card paycard">
+        <h2>Alpha checkout simulator</h2>
+        <p style="color:#94a3b8">No card details are collected here. Mock mode tests the end-to-end intent and ledger flow.</p>
+        <form id="payForm">
+          <div class="amountrow"><div class="field"><label>Amount (R)</label><input id="amount" type="number" min="1" step="0.01" value="399.00" required></div><div class="field"><label>Route</label><select id="provider"><option value="smart">Smart route</option><option value="paystack">Paystack</option><option value="payfast">PayFast</option></select></div></div>
+          <div class="field"><label>Customer email</label><input id="email" type="email" value="demo@example.com" required></div>
+          <div class="field"><label>Description</label><input id="description" value="IZAKHONO platform subscription" maxlength="180"></div>
+          <button class="btn primary" type="submit">Create secure payment intent</button>
+        </form>
+        <div class="status" id="checkoutStatus">Ready.</div>
+        <div class="warning">Commercial traffic stays disabled until live merchant credentials, compliance review, production database, DNS/TLS and provider webhook configuration are complete.</div>
+      </div>
+    </section>
+
+    <section class="grid">
+      <div class="feature"><strong>One API</strong><p>Every IZAKHONO platform can create a payment intent through one stable endpoint instead of implementing each gateway separately.</p></div>
+      <div class="feature"><strong>Provider isolation</strong><p>A transaction has one routed provider at a time. We never submit the same charge to both gateways, preventing accidental double charging.</p></div>
+      <div class="feature"><strong>Fail-closed ledger</strong><p>Redirects do not equal payment. Only a verified webhook with matching amount and currency can move an intent to paid.</p></div>
+    </section>
+
+    <section class="section card">
+      <div class="dashHead"><div><div class="eyebrow">Operations</div><h2>Unified transaction dashboard</h2></div><button class="btn secondary" id="loadDash">Load with admin secret</button></div>
+      <div class="metrics"><div class="metric"><small>Payment intents</small><b id="mIntents">—</b></div><div class="metric"><small>Paid transactions</small><b id="mPaid">—</b></div><div class="metric"><small>Paid value</small><b id="mValue">—</b></div></div>
+      <div class="tableWrap"><table><thead><tr><th>Reference</th><th>App</th><th>Amount</th><th>Provider</th><th>Status</th><th>Created</th></tr></thead><tbody id="rows"><tr><td colspan="6" style="color:#64748b">Enter the server-side admin secret to load operational data.</td></tr></tbody></table></div>
+    </section>
+    <footer>IZAKHONO PAY alpha • Payment orchestration software, not a bank. Provider availability and payment methods depend on the connected merchant accounts and applicable regulation.</footer>
+  </main>
+<script>
+const statusEl=document.querySelector('#checkoutStatus');
+const modeEl=document.querySelector('#mode');
+fetch('/api/v1/capabilities').then(r=>r.json()).then(d=>{modeEl.textContent=`${(d.mode||'alpha').toUpperCase()} • ZAR`; if(d.mode!=='mock') statusEl.textContent='Public simulator is disabled outside mock mode. Use the authenticated API for sandbox/live integration testing.'}).catch(()=>modeEl.textContent='ALPHA');
+
+document.querySelector('#payForm').addEventListener('submit',async(e)=>{
+  e.preventDefault();
+  const amount=Math.round(Number(document.querySelector('#amount').value)*100);
+  statusEl.textContent='Creating payment intent…';
+  try{
+    const r=await fetch('/api/demo/intents',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({amount_minor:amount,currency:'ZAR',email:document.querySelector('#email').value,description:document.querySelector('#description').value,provider:document.querySelector('#provider').value})});
+    const d=await r.json();
+    if(!r.ok) throw new Error(d?.error?.message||'Unable to create intent');
+    statusEl.textContent=`${d.intent.reference}\nRouted to: ${d.intent.routed_provider}\nStatus: ${d.intent.status}`;
+    if(d.intent.checkout_method==='redirect') location.href=d.intent.checkout_url;
+    if(d.intent.checkout_method==='form_post'){
+      const f=document.createElement('form');f.method='POST';f.action=d.intent.checkout_url;
+      Object.entries(d.intent.form_fields||{}).forEach(([k,v])=>{const i=document.createElement('input');i.type='hidden';i.name=k;i.value=v;f.appendChild(i)});
+      document.body.appendChild(f);f.submit();
+    }
+  }catch(err){statusEl.textContent=err.message}
+});
+
+document.querySelector('#loadDash').addEventListener('click',async()=>{
+  const secret=prompt('Admin secret (kept only for this request):'); if(!secret)return;
+  try{
+    const r=await fetch('/api/admin/summary',{headers:{'x-admin-secret':secret}}); const d=await r.json(); if(!r.ok)throw new Error(d?.error?.message||'Dashboard unavailable');
+    document.querySelector('#mIntents').textContent=d.totals?.intents??0; document.querySelector('#mPaid').textContent=d.totals?.paid_count??0; document.querySelector('#mValue').textContent=new Intl.NumberFormat('en-ZA',{style:'currency',currency:'ZAR'}).format((Number(d.totals?.paid_minor)||0)/100);
+    document.querySelector('#rows').innerHTML=(d.recent||[]).map(x=>`<tr><td>${esc(x.reference)}</td><td>${esc(x.app_slug)}</td><td>${money(x.amount_minor)}</td><td>${esc(x.routed_provider||'—')}</td><td>${esc(x.status)}</td><td>${esc(x.created_at)}</td></tr>`).join('')||'<tr><td colspan="6">No transactions yet.</td></tr>';
+  }catch(err){alert(err.message)}
+});
+function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]))}
+function money(v){return new Intl.NumberFormat('en-ZA',{style:'currency',currency:'ZAR'}).format(Number(v||0)/100)}
+</script>
+</body></html>

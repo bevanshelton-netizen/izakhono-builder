@@ -1,0 +1,41 @@
+name: IZAKHONO PAY Alpha CI
+
+on:
+  push:
+    branches: [main, build/izakhono-pay-alpha]
+    paths:
+      - 'products/izakhono-pay/**'
+      - '.github/workflows/izakhono-pay-ci.yml'
+  pull_request:
+    paths:
+      - 'products/izakhono-pay/**'
+      - '.github/workflows/izakhono-pay-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: products/izakhono-pay
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install pinned toolchain
+        run: npm install --ignore-scripts
+      - name: Unit and syntax checks
+        run: npm run check
+      - name: Verify product layout
+        run: node scripts/verify-layout.mjs
+      - name: Bundle Cloudflare Worker without production bindings
+        run: npx wrangler deploy --dry-run --config wrangler.ci.jsonc
+      - name: Fail if obvious live secrets were committed
+        run: |
+          if grep -R -E --exclude='.dev.vars.example' --exclude='*.md' '(sk_live_[A-Za-z0-9]|PAYFAST_PASSPHRASE=.+|ADMIN_SECRET=.+|IZAKHONO_INTERNAL_API_KEY=.+)' .; then
+            echo 'Potential production secret detected in source tree.' >&2
+            exit 1
+          fi
