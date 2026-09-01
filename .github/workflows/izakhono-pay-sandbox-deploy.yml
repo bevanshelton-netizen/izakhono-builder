@@ -62,10 +62,12 @@ jobs:
           set -euo pipefail
           if [ -n "${CLOUDFLARE_ACCOUNT_ID:-}" ] && [ -n "${CLOUDFLARE_API_TOKEN:-}" ]; then
             echo 'DEPLOY_FLAGS=' >> "$GITHUB_ENV"
+            echo 'D1_FLAGS=--remote' >> "$GITHUB_ENV"
             echo 'TEMPORARY_DEPLOY=false' >> "$GITHUB_ENV"
             echo 'Using the connected permanent Cloudflare account.' >> "$GITHUB_STEP_SUMMARY"
           else
             echo 'DEPLOY_FLAGS=--temporary' >> "$GITHUB_ENV"
+            echo 'D1_FLAGS=--remote --temporary' >> "$GITHUB_ENV"
             echo 'TEMPORARY_DEPLOY=true' >> "$GITHUB_ENV"
             echo 'No permanent Cloudflare credentials found; using a temporary Cloudflare preview account for sandbox proof.' >> "$GITHUB_STEP_SUMMARY"
           fi
@@ -87,7 +89,8 @@ jobs:
           echo "worker_url=$url" >> "$GITHUB_OUTPUT"
 
       - name: Apply D1 migrations
-        run: npx wrangler d1 migrations apply DB --remote --config wrangler.sandbox.jsonc
+        shell: bash
+        run: npx wrangler d1 migrations apply DB ${D1_FLAGS:- --remote} --config wrangler.sandbox.jsonc
 
       - name: Install server-only payment secrets on permanent account
         if: env.TEMPORARY_DEPLOY == 'false'
