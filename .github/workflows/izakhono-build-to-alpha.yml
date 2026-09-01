@@ -38,7 +38,7 @@ jobs:
       windows_package: ${{ steps.contract.outputs.windows_package }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@v4
 
       - name: Validate IZAKHONO manifest
         id: contract
@@ -127,7 +127,7 @@ jobs:
     timeout-minutes: 20
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@v4
 
       - name: Central fixed preflight policy
         if: needs.validate.outputs.preflight == 'true'
@@ -217,7 +217,7 @@ jobs:
     timeout-minutes: 25
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@v4
 
       - name: Build application
         shell: bash
@@ -262,7 +262,7 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@v4
       - name: Run repository-reviewed Alpha rehearsal
         shell: bash
         run: bash scripts/izakhono/alpha-rehearsal.sh
@@ -275,7 +275,7 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@v4
       - name: Run repository-reviewed Windows packager
         shell: pwsh
         run: .\scripts\izakhono\package-alpha.ps1
