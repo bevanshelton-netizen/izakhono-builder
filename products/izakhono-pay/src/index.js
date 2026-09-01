@@ -10,6 +10,7 @@ import {
   verifyPayfastItnSignature,
   verifyPaystackSignature
 } from './core.js';
+import { dispatchMerchantPaymentPaid } from './merchant-webhooks.js';
 
 const JSON_HEADERS = { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' };
 
@@ -95,6 +96,9 @@ async function recordFortressEvent(env, { severity = 'medium', category, source,
 async function markPaid(env, intentId, providerReference = null) {
   await env.DB.prepare("UPDATE payment_intents SET status='paid',provider_reference=COALESCE(?,provider_reference),paid_at=COALESCE(paid_at,CURRENT_TIMESTAMP),updated_at=CURRENT_TIMESTAMP WHERE id=? AND status!='paid'")
     .bind(providerReference, intentId).run();
+  const paidIntent = await findIntentById(env, intentId);
+  if (paidIntent) await dispatchMerchantPaymentPaid(env, paidIntent);
+  return paidIntent;
 }
 
 function metadataJson(input) {
@@ -356,7 +360,7 @@ async function handleApi(req, env, url) {
 
   if (url.pathname === '/api/health' && req.method === 'GET') {
     const row = await env.DB.prepare('SELECT 1 AS ok').first();
-    return response({ ok: row?.ok === 1, service: 'IZAKHONO PAY', version: '0.2.0', mode: env.PAYMENT_MODE || 'mock', env: env.APP_ENV || 'alpha' });
+    return response({ ok: row?.ok === 1, service: 'IZAKHONO PAY', version: '0.2.1', mode: env.PAYMENT_MODE || 'mock', env: env.APP_ENV || 'alpha' });
   }
 
   if (url.pathname === '/api/v1/capabilities' && req.method === 'GET') {
@@ -371,6 +375,7 @@ async function handleApi(req, env, url) {
       methods: ['card','eft','capitec_pay','qr','wallets_where_supported'],
       merchant_auth: 'per-merchant-key',
       idempotency_required: true,
+      merchant_webhooks: 'signed-hmac-sha256',
       note: 'Payment methods are ultimately determined by the connected merchant account and provider.'
     });
   }
