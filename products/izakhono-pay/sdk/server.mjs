@@ -14,6 +14,18 @@ function requireText(value, name) {
   return text;
 }
 
+function optionalHttpsUrl(value, name) {
+  if (value === undefined || value === null || value === '') return undefined;
+  const text = requireText(value, name);
+  try {
+    const url = new URL(text);
+    if (url.protocol !== 'https:' || url.username || url.password) throw new Error('unsafe');
+    return url.toString();
+  } catch {
+    throw new IzakhonoPayError(`${name} must be a valid HTTPS URL`, { status: 422, code: 'invalid_return_url' });
+  }
+}
+
 function requireIdempotencyKey(value) {
   const key = requireText(value, 'idempotencyKey');
   if (!/^[A-Za-z0-9._:-]{8,120}$/.test(key)) {
@@ -67,11 +79,13 @@ export class IzakhonoPayClient {
     return payload;
   }
 
-  async createIntent({ amountMinor, currency = 'ZAR', email, description, provider = 'smart', metadata = {}, idempotencyKey }) {
+  async createIntent({ amountMinor, currency = 'ZAR', email, description, provider = 'smart', metadata = {}, idempotencyKey, returnUrl, cancelUrl }) {
     if (!Number.isSafeInteger(amountMinor) || amountMinor <= 0) {
       throw new IzakhonoPayError('amountMinor must be a positive integer', { status: 422, code: 'invalid_amount' });
     }
     const stableKey = requireIdempotencyKey(idempotencyKey);
+    const safeReturnUrl = optionalHttpsUrl(returnUrl, 'returnUrl');
+    const safeCancelUrl = optionalHttpsUrl(cancelUrl, 'cancelUrl');
     const payload = await this.request('/api/v1/intents', {
       method: 'POST',
       idempotencyKey: stableKey,
@@ -82,6 +96,8 @@ export class IzakhonoPayClient {
         description,
         provider,
         metadata,
+        ...(safeReturnUrl ? { return_url: safeReturnUrl } : {}),
+        ...(safeCancelUrl ? { cancel_url: safeCancelUrl } : {}),
       },
     });
     return payload.intent;
