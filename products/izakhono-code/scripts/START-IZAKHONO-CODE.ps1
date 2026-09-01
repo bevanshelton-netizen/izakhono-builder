@@ -22,7 +22,15 @@ try {
 
   $tokenFile = Join-Path $data 'owner-token.txt'
   if (-not (Test-Path $tokenFile)) {
-    [Convert]::ToHexString([Security.Cryptography.RandomNumberGenerator]::GetBytes(32)) | Set-Content -NoNewline $tokenFile
+    $tokenBytes = New-Object byte[] 32
+    $tokenGenerator = [Security.Cryptography.RandomNumberGenerator]::Create()
+    try {
+      $tokenGenerator.GetBytes($tokenBytes)
+    }
+    finally {
+      $tokenGenerator.Dispose()
+    }
+    ([BitConverter]::ToString($tokenBytes) -replace '-', '') | Set-Content -NoNewline $tokenFile
   }
   $env:IZAKHONO_CODE_OWNER_TOKEN = Get-Content $tokenFile -Raw
   $env:IZAKHONO_CODE_DATA = Join-Path $data 'data'
