@@ -80,14 +80,14 @@ jobs:
             --var PAYFAST_MERCHANT_ID:"$PAYFAST_MERCHANT_ID" \
             --var PAYFAST_MERCHANT_KEY:"$PAYFAST_MERCHANT_KEY" \
             --var PAYFAST_PASSPHRASE:"$PAYFAST_PASSPHRASE")"
-          printf '%s\n' "$output"
           url="$(printf '%s\n' "$output" | grep -Eo 'https://[^[:space:]]+\.workers\.dev' | tail -1 || true)"
           claim="$(printf '%s\n' "$output" | grep -Eo 'https://dash\.cloudflare\.com/claim-preview\?claimToken=[^[:space:]]+' | tail -1 || true)"
+          if [ -n "$claim" ]; then echo "::add-mask::$claim"; fi
+          printf '%s\n' "$output" | sed -E 's#https://dash\.cloudflare\.com/claim-preview\?claimToken=[^[:space:]]+#<temporary-claim-url-masked>#g'
           echo "worker_url=$url" >> "$GITHUB_OUTPUT"
-          echo "claim_url=$claim" >> "$GITHUB_OUTPUT"
 
       - name: Apply D1 migrations
-        run: npx wrangler d1 migrations apply DB --remote --yes --config wrangler.sandbox.jsonc
+        run: npx wrangler d1 migrations apply DB --remote --config wrangler.sandbox.jsonc
 
       - name: Install server-only payment secrets on permanent account
         if: env.TEMPORARY_DEPLOY == 'false'
@@ -118,13 +118,12 @@ jobs:
           else
             output="$(npx wrangler deploy --config wrangler.sandbox.jsonc)"
           fi
-          printf '%s\n' "$output"
           url="$(printf '%s\n' "$output" | grep -Eo 'https://[^[:space:]]+\.workers\.dev' | tail -1 || true)"
           claim="$(printf '%s\n' "$output" | grep -Eo 'https://dash\.cloudflare\.com/claim-preview\?claimToken=[^[:space:]]+' | tail -1 || true)"
+          if [ -n "$claim" ]; then echo "::add-mask::$claim"; fi
+          printf '%s\n' "$output" | sed -E 's#https://dash\.cloudflare\.com/claim-preview\?claimToken=[^[:space:]]+#<temporary-claim-url-masked>#g'
           if [ -z "$url" ]; then url='${{ steps.bootstrap.outputs.worker_url }}'; fi
-          if [ -z "$claim" ]; then claim='${{ steps.bootstrap.outputs.claim_url }}'; fi
           echo "worker_url=$url" >> "$GITHUB_OUTPUT"
-          echo "claim_url=$claim" >> "$GITHUB_OUTPUT"
           {
             echo '## IZAKHONO PAY Sandbox'
             echo
@@ -134,10 +133,9 @@ jobs:
             else
               echo 'Deployment completed, but the workers.dev URL was not parsed from Wrangler output.'
             fi
-            if [ -n "$claim" ]; then
+            if [ "${TEMPORARY_DEPLOY:-false}" = 'true' ]; then
               echo
-              echo "Temporary account claim URL: $claim"
-              echo 'Claim within the Cloudflare deadline if you want to keep this temporary Worker and D1 database.'
+              echo 'Temporary Cloudflare account used for this proof. Claim token intentionally omitted from public CI output.'
             fi
             echo
             echo 'Next gate: provision KORA merchant credentials, run one PayFast sandbox checkout, verify ITN/ledger paid status, then prepare live merchant credentials.'
