@@ -14,6 +14,14 @@ function requireText(value, name) {
   return text;
 }
 
+function requireIdempotencyKey(value) {
+  const key = requireText(value, 'idempotencyKey');
+  if (!/^[A-Za-z0-9._:-]{8,120}$/.test(key)) {
+    throw new IzakhonoPayError('idempotencyKey must be 8-120 safe characters', { status: 422, code: 'invalid_idempotency_key' });
+  }
+  return key;
+}
+
 export class IzakhonoPayClient {
   constructor({ baseUrl, apiKey, appSlug, fetchImpl = globalThis.fetch } = {}) {
     this.baseUrl = requireText(baseUrl, 'IZAKHONO_PAY_URL').replace(/\/$/, '');
@@ -63,16 +71,16 @@ export class IzakhonoPayClient {
     if (!Number.isSafeInteger(amountMinor) || amountMinor <= 0) {
       throw new IzakhonoPayError('amountMinor must be a positive integer', { status: 422, code: 'invalid_amount' });
     }
+    const stableKey = requireIdempotencyKey(idempotencyKey);
     const payload = await this.request('/api/v1/intents', {
       method: 'POST',
-      idempotencyKey,
+      idempotencyKey: stableKey,
       body: {
         amount_minor: amountMinor,
         currency,
         email,
         description,
         provider,
-        app_slug: this.appSlug,
         metadata,
       },
     });
