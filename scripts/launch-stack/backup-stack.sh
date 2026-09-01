@@ -20,16 +20,25 @@ docker exec -e PGPASSWORD="$POSTGRES_PASSWORD" izakhono-postgres \
 tar -C /opt/izakhono -czf "$DEST/control-plane.tgz" launch-stack/Caddyfile launch-stack/sites state secrets evidence
 
 cd /opt/izakhono/launch-stack
-docker compose stop registry >/dev/null
+# Pause mutable local object services only while their volumes are snapshotted.
+docker compose stop core registry >/dev/null
+restart_services() { docker compose start core registry >/dev/null 2>&1 || true; }
+trap restart_services EXIT
+
+docker run --rm -v izakhono_core_storage:/data:ro -v "$DEST":/backup alpine:3.22 \
+  tar -C /data -czf /backup/core-storage.tgz .
 docker run --rm -v izakhono_registry_data:/data:ro -v "$DEST":/backup alpine:3.22 \
   tar -C /data -czf /backup/registry-data.tgz .
-docker compose start registry >/dev/null
+
+restart_services
+trap - EXIT
 
 (
   cd "$DEST"
-  sha256sum postgres-all.sql.gz control-plane.tgz registry-data.tgz > SHA256SUMS
+  sha256sum postgres-all.sql.gz control-plane.tgz core-storage.tgz registry-data.tgz > SHA256SUMS
 )
 chmod -R go-rwx "$DEST"
 
 echo "[PASS] Backup created at $DEST"
+echo '[PASS] PostgreSQL, Core object storage, control-plane state and retained registry images are included.'
 echo 'This is a same-host backup. Commercial disaster recovery still requires an encrypted off-host copy and a tested restore.'
