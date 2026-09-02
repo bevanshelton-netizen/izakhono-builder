@@ -1,4 +1,5 @@
 import http from 'node:http'
+import { handlePolicyRequest } from './policy-runtime.mjs'
 
 const originalCreateServer = http.createServer.bind(http)
 const allowedOrigins = new Set((process.env.IZAKHONO_CORE_ALLOWED_ORIGINS || '').split(',').map(value => value.trim()).filter(Boolean))
@@ -34,17 +35,22 @@ http.createServer = function createSafeServer(...args) {
         : originalWriteHead(statusCode, statusMessage, headers)
     }
 
-    Promise.resolve(listener(req, res)).catch(error => {
-      const status = Number.isInteger(error?.status) && error.status >= 400 && error.status <= 599 ? error.status : 500
-      if (status >= 500) console.error('unhandled request error', error)
-      if (res.headersSent) {
-        res.destroy()
-        return
-      }
-      const message = status >= 500 ? 'Internal server error' : (error?.message || 'Request failed')
-      res.writeHead(status, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' })
-      res.end(JSON.stringify({ error: message }))
-    })
+    Promise.resolve()
+      .then(async () => {
+        if (await handlePolicyRequest(req, res)) return
+        return listener(req, res)
+      })
+      .catch(error => {
+        const status = Number.isInteger(error?.status) && error.status >= 400 && error.status <= 599 ? error.status : 500
+        if (status >= 500) console.error('unhandled request error', error)
+        if (res.headersSent) {
+          res.destroy()
+          return
+        }
+        const message = status >= 500 ? 'Internal server error' : (error?.message || 'Request failed')
+        res.writeHead(status, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' })
+        res.end(JSON.stringify({ error: message }))
+      })
   }
 
   return originalCreateServer(...args)
