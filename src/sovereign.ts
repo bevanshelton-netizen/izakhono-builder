@@ -5,6 +5,11 @@ import {
   readInternalRepositoryCommit,
 } from './internal-repository';
 
+const ALLOWED_MODULES = new Set([
+  'leads', 'auth', 'uploads', 'payments', 'email', 'admin',
+  'analytics', 'marketplace', 'learning', 'video', 'ai',
+]);
+
 function json(data: unknown, status = 200, source?: Response): Response {
   const headers = source ? new Headers(source.headers) : new Headers();
   headers.set('content-type', 'application/json; charset=utf-8');
@@ -48,6 +53,42 @@ async function internalRepositoryRoute(req: Request, env: any, url: URL): Promis
   return json({ ok: true, repository: { slug: repository.slug, visibility: repository.visibility, head_commit_id: repository.head_commit_id }, commit });
 }
 
+async function editModulesRoute(req: Request, env: any, url: URL): Promise<Response | null> {
+  if (req.method !== 'PATCH') return null;
+  const match = url.pathname.match(/^\/api\/projects\/([^/]+)\/modules$/);
+  if (!match) return null;
+  if (!(await ownerAuthorized(req, env))) return json({ ok: false, error: 'Unauthorized' }, 401);
+
+  let payload: any = null;
+  try { payload = await req.json(); } catch { return json({ ok: false, error: 'Expected application/json' }, 400); }
+  if (!Array.isArray(payload?.modules)) return json({ ok: false, error: 'modules must be an array' }, 400);
+
+  const modules = Array.from(new Set(payload.modules.filter((m: unknown) => typeof m === 'string' && ALLOWED_MODULES.has(m))));
+  if (!modules.length) return json({ ok: false, error: 'Select at least one valid module' }, 400);
+
+  const projectId = match[1];
+  const project = await env.DB.prepare('SELECT id FROM builder_projects WHERE id=?').bind(projectId).first<any>();
+  if (!project) return json({ ok: false, error: 'Project not found' }, 404);
+
+  await env.DB.prepare("UPDATE builder_projects SET modules_json=?,build_recipe_json=NULL,status='draft',updated_at=CURRENT_TIMESTAMP WHERE id=?")
+    .bind(JSON.stringify(modules), projectId).run();
+  await env.DB.prepare('INSERT INTO builder_events(id,project_id,event_type,detail) VALUES(?,?,?,?)')
+    .bind(`evt_${crypto.randomUUID().replaceAll('-', '')}`, projectId, 'project.modules_changed', modules.join(',')).run();
+
+  const planUrl = new URL(req.url);
+  planUrl.pathname = `/api/projects/${encodeURIComponent(projectId)}/plan`;
+  const planned = await secureApp.fetch(new Request(planUrl.toString(), { method: 'POST', headers: req.headers }), env);
+  if (!planned.ok) return json({ ok: false, error: 'Modules were updated, but the build plan could not be regenerated.' }, 500);
+
+  return json({
+    ok: true,
+    id: projectId,
+    modules,
+    status: 'planned',
+    message: 'Modules updated and build plan regenerated. Existing IZAKHONO repository history is preserved.',
+  });
+}
+
 async function enrichCapabilities(req: Request, env: any, response: Response): Promise<Response> {
   if (!response.ok) return response;
   let data: any = {};
@@ -59,6 +100,7 @@ async function enrichCapabilities(req: Request, env: any, response: Response): P
       internal_repository: true,
       internal_repository_authority: 'primary',
       external_repository_role: 'optional_mirror',
+      project_module_editing: true,
     },
   }, response.status, response);
 }
@@ -108,12 +150,48 @@ async function commitValidatedBundle(req: Request, env: any, projectId: string, 
   }
 }
 
+const MODULE_EDITOR_SCRIPT = `<script>
+(function(){
+  if(typeof projectCard!=='function'||typeof api!=='function')return;
+  const originalProjectCard=projectCard;
+  projectCard=function(p){
+    let html=originalProjectCard(p);
+    if(!Array.isArray(p.modules)||p.modules.includes('payments'))return html;
+    const button='<button class="btn" onclick="addPayments(\''+p.id+'\')">Add Payments</button>';
+    return html.replace('</div></article>',button+'</div></article>');
+  };
+  window.addPayments=async function(id){
+    const p=state.projects.get(id);if(!p)return;
+    if(!confirm('Add the Payments module and regenerate this project build plan? Existing IZAKHONO repository history will be preserved.'))return;
+    try{
+      const modules=Array.from(new Set([...(p.modules||[]),'payments']));
+      const d=await api('/api/projects/'+id+'/modules',{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify({modules})});
+      await loadProjects();
+      alert(d.message+' Next: Regenerate package.');
+    }catch(e){alert(e.message)}
+  };
+})();
+</script>`;
+
+async function withModuleEditor(response: Response): Promise<Response> {
+  if (!response.ok || !(response.headers.get('content-type') || '').includes('text/html')) return response;
+  let html = await response.text();
+  if (!html.includes("window.addPayments=async function")) html = html.replace('</body>', MODULE_EDITOR_SCRIPT + '</body>');
+  const headers = new Headers(response.headers);
+  headers.set('content-type', 'text/html; charset=utf-8');
+  headers.delete('content-length');
+  return new Response(html, { status: response.status, statusText: response.statusText, headers });
+}
+
 export default {
   async fetch(req: Request, env: any): Promise<Response> {
     const url = new URL(req.url);
 
     const internal = await internalRepositoryRoute(req, env, url);
     if (internal) return internal;
+
+    const moduleEdit = await editModulesRoute(req, env, url);
+    if (moduleEdit) return moduleEdit;
 
     const response = await secureApp.fetch(req, env);
 
@@ -126,6 +204,7 @@ export default {
       return commitValidatedBundle(req, env, validation[1], response);
     }
 
+    if (!url.pathname.startsWith('/api/')) return withModuleEditor(response);
     return response;
   },
 };
