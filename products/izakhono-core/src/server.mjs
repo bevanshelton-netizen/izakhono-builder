@@ -3,6 +3,7 @@ import http from 'node:http'
 const originalCreateServer = http.createServer.bind(http)
 const allowedOrigins = new Set((process.env.IZAKHONO_CORE_ALLOWED_ORIGINS || '').split(',').map(value => value.trim()).filter(Boolean))
 let policyModulePromise = null
+let policyGuardPromise = null
 
 function corsHeaderFor(req) {
   const origin = req.headers.origin
@@ -10,10 +11,18 @@ function corsHeaderFor(req) {
 }
 
 async function tryPolicyRequest(req, res) {
-  if (!String(req.url || '').startsWith('/v2/')) return false
-  policyModulePromise ||= import('./policy-runtime.mjs')
-  const policyModule = await policyModulePromise
-  return policyModule.handlePolicyRequest(req, res)
+  const rawUrl = String(req.url || '')
+  if (rawUrl.startsWith('/v2/')) {
+    policyModulePromise ||= import('./policy-runtime.mjs')
+    const policyModule = await policyModulePromise
+    return policyModule.handlePolicyRequest(req, res)
+  }
+  if (rawUrl.startsWith('/v1/data/')) {
+    policyGuardPromise ||= import('./policy-guard.mjs')
+    const guard = await policyGuardPromise
+    return guard.guardLegacyScopeData(req, res)
+  }
+  return false
 }
 
 http.createServer = function createSafeServer(...args) {
