@@ -1,0 +1,1 @@
+Worker-first routing is intentionally enabled for the Builder static UI so sovereign owner controls can render reliably. This note records the operational reason for the configuration change and does not modify project data.
