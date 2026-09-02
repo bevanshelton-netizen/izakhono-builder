@@ -6,6 +6,7 @@ let policyModulePromise = null
 let policyGuardPromise = null
 let actionModulePromise = null
 let relationModulePromise = null
+let rpcModulePromise = null
 
 function corsHeaderFor(req) {
   const origin = req.headers.origin
@@ -14,6 +15,11 @@ function corsHeaderFor(req) {
 
 async function tryPolicyRequest(req, res) {
   const rawUrl = String(req.url || '')
+  if (rawUrl.startsWith('/v3/rpc/')) {
+    rpcModulePromise ||= import('./rpc-runtime.mjs')
+    const rpcModule = await rpcModulePromise
+    return rpcModule.handleRpcRequest(req, res)
+  }
   if (rawUrl.startsWith('/v3/relations/')) {
     relationModulePromise ||= import('./relation-runtime.mjs')
     const relationModule = await relationModulePromise
