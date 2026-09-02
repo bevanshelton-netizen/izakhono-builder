@@ -4,6 +4,7 @@ const originalCreateServer = http.createServer.bind(http)
 const allowedOrigins = new Set((process.env.IZAKHONO_CORE_ALLOWED_ORIGINS || '').split(',').map(value => value.trim()).filter(Boolean))
 let policyModulePromise = null
 let policyGuardPromise = null
+let actionModulePromise = null
 
 function corsHeaderFor(req) {
   const origin = req.headers.origin
@@ -12,6 +13,11 @@ function corsHeaderFor(req) {
 
 async function tryPolicyRequest(req, res) {
   const rawUrl = String(req.url || '')
+  if (rawUrl.startsWith('/v3/actions/')) {
+    actionModulePromise ||= import('./action-runtime.mjs')
+    const actionModule = await actionModulePromise
+    return actionModule.handleActionRequest(req, res)
+  }
   if (rawUrl.startsWith('/v2/')) {
     policyModulePromise ||= import('./policy-runtime.mjs')
     const policyModule = await policyModulePromise
