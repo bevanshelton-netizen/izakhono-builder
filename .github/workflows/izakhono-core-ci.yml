@@ -99,6 +99,16 @@ jobs:
           PGDATABASE: izakhono_core_ci
         run: npm run test:relations
 
+      - name: Policy-aware named read RPC E2E
+        working-directory: products/izakhono-core
+        env:
+          PGHOST: 127.0.0.1
+          PGPORT: '5432'
+          PGUSER: izakhono_core_ci
+          PGPASSWORD: izakhono-core-ci-only-password
+          PGDATABASE: izakhono_core_ci
+        run: npm run test:rpcs
+
       - name: Build self-hosted Core image
         run: docker build -t izakhono/core:ci products/izakhono-core
 
@@ -136,4 +146,10 @@ jobs:
           grep -Fq 'nestedPolicyEnforcement: true' products/izakhono-core/src/relation-runtime.mjs
           grep -Fq 'arbitrarySql: false' products/izakhono-core/src/relation-runtime.mjs
           grep -Fq 'mutations: false' products/izakhono-core/src/relation-runtime.mjs
+          grep -Fq 'namedReadProcedures: true' products/izakhono-core/src/rpc-runtime.mjs
+          grep -Fq 'policyAwareCentreScope: true' products/izakhono-core/src/rpc-runtime.mjs
+          grep -Fq 'readOnlyTransactions: true' products/izakhono-core/src/rpc-runtime.mjs
+          grep -Fq 'arbitrarySql: false' products/izakhono-core/src/rpc-runtime.mjs
+          grep -Fq 'mutations: false' products/izakhono-core/src/rpc-runtime.mjs
+          grep -Fq 'dynamicProcedureRegistration: false' products/izakhono-core/src/rpc-runtime.mjs
           echo 'IZAKHONO_CORE_CI=PASS'
