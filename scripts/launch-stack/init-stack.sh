@@ -54,7 +54,7 @@ else
 fi
 
 echo 'Building owner-controlled IZAKHONO Core runtime...'
-docker build -t izakhono/core:0.1.0 "$CORE_SOURCE"
+docker build -t izakhono/core:0.2.0 "$CORE_SOURCE"
 
 cd "$TARGET"
 docker compose config >/dev/null

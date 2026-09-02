@@ -39,7 +39,7 @@ services:
       retries: 10
 
   core:
-    image: izakhono/core:0.1.0
+    image: izakhono/core:0.2.0
     container_name: izakhono-core
     restart: unless-stopped
     environment:
