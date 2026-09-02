@@ -1,12 +1,19 @@
 import http from 'node:http'
-import { handlePolicyRequest } from './policy-runtime.mjs'
 
 const originalCreateServer = http.createServer.bind(http)
 const allowedOrigins = new Set((process.env.IZAKHONO_CORE_ALLOWED_ORIGINS || '').split(',').map(value => value.trim()).filter(Boolean))
+let policyModulePromise = null
 
 function corsHeaderFor(req) {
   const origin = req.headers.origin
   return origin && (allowedOrigins.has(origin) || allowedOrigins.has('*')) ? origin : null
+}
+
+async function tryPolicyRequest(req, res) {
+  if (!String(req.url || '').startsWith('/v2/')) return false
+  policyModulePromise ||= import('./policy-runtime.mjs')
+  const policyModule = await policyModulePromise
+  return policyModule.handlePolicyRequest(req, res)
 }
 
 http.createServer = function createSafeServer(...args) {
@@ -37,7 +44,7 @@ http.createServer = function createSafeServer(...args) {
 
     Promise.resolve()
       .then(async () => {
-        if (await handlePolicyRequest(req, res)) return
+        if (await tryPolicyRequest(req, res)) return
         return listener(req, res)
       })
       .catch(error => {
