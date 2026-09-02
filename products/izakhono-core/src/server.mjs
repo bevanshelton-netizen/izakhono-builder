@@ -79,3 +79,5 @@ http.createServer = function createSafeServer(...args) {
 }
 
 await import('./runtime.mjs')
+policyModulePromise ||= import('./policy-runtime.mjs')
+await policyModulePromise
