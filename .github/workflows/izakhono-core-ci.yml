@@ -79,6 +79,16 @@ jobs:
           PGDATABASE: izakhono_core_ci
         run: npm run test:policy-guard
 
+      - name: Trusted atomic scoped actions E2E
+        working-directory: products/izakhono-core
+        env:
+          PGHOST: 127.0.0.1
+          PGPORT: '5432'
+          PGUSER: izakhono_core_ci
+          PGPASSWORD: izakhono-core-ci-only-password
+          PGDATABASE: izakhono_core_ci
+        run: npm run test:actions
+
       - name: Build self-hosted Core image
         run: docker build -t izakhono/core:ci products/izakhono-core
 
@@ -109,4 +119,7 @@ jobs:
           grep -Fq "mode IN ('owner', 'project', 'scope')" products/izakhono-core/sql/002_policy_engine.sql
           grep -Fq 'scopedRoleCrud: true' products/izakhono-core/src/policy-runtime.mjs
           grep -Fq 'IZAKHONO_SCOPE_POLICY_V2_REQUIRED' products/izakhono-core/src/policy-guard.mjs
+          grep -Fq 'trustedScopedActions: true' products/izakhono-core/src/action-runtime.mjs
+          grep -Fq 'arbitrarySql: false' products/izakhono-core/src/action-runtime.mjs
+          grep -Fq "!['insert', 'patch'].includes(op)" products/izakhono-core/src/action-runtime.mjs
           echo 'IZAKHONO_CORE_CI=PASS'
