@@ -152,14 +152,8 @@ async function commitValidatedBundle(req: Request, env: any, projectId: string, 
 
 const MODULE_EDITOR_SCRIPT = `<script>
 (function(){
-  if(typeof projectCard!=='function'||typeof api!=='function')return;
-  const originalProjectCard=projectCard;
-  projectCard=function(p){
-    let html=originalProjectCard(p);
-    if(!Array.isArray(p.modules)||p.modules.includes('payments'))return html;
-    const button='<button class="btn" onclick="addPayments(\''+p.id+'\')">Add Payments</button>';
-    return html.replace('</div></article>',button+'</div></article>');
-  };
+  if(typeof api!=='function'||typeof state==='undefined')return;
+
   window.addPayments=async function(id){
     const p=state.projects.get(id);if(!p)return;
     if(!confirm('Add the Payments module and regenerate this project build plan? Existing IZAKHONO repository history will be preserved.'))return;
@@ -170,17 +164,42 @@ const MODULE_EDITOR_SCRIPT = `<script>
       alert(d.message+' Next: Regenerate package.');
     }catch(e){alert(e.message)}
   };
+
+  function ensurePaymentButtons(){
+    const cards=Array.from(document.querySelectorAll('#projects .project'));
+    const projects=Array.from(state.projects.values());
+    cards.forEach(function(card,index){
+      const p=projects[index];
+      if(!p||!Array.isArray(p.modules)||p.modules.includes('payments'))return;
+      const actions=card.querySelector('.projectActions');
+      if(!actions||actions.querySelector('[data-add-payments]'))return;
+      const button=document.createElement('button');
+      button.className='btn';
+      button.type='button';
+      button.textContent='Add Payments';
+      button.setAttribute('data-add-payments','1');
+      button.addEventListener('click',function(){window.addPayments(p.id)});
+      actions.appendChild(button);
+    });
+  }
+
+  const projectsRoot=document.querySelector('#projects');
+  if(projectsRoot)new MutationObserver(ensurePaymentButtons).observe(projectsRoot,{childList:true,subtree:true});
+  setTimeout(ensurePaymentButtons,0);
 })();
 </script>`;
 
-async function withModuleEditor(response: Response): Promise<Response> {
-  if (!response.ok || !(response.headers.get('content-type') || '').includes('text/html')) return response;
-  let html = await response.text();
-  if (!html.includes("window.addPayments=async function")) html = html.replace('</body>', MODULE_EDITOR_SCRIPT + '</body>');
+async function withModuleEditor(response: Response, url: URL): Promise<Response> {
+  if (!response.ok) return response;
+  if (url.pathname !== '/' && url.pathname !== '/index.html') return response;
+  const html = await response.clone().text();
+  if (!html.includes('</body>')) return response;
+  const injected = html.includes("data-add-payments") ? html : html.replace('</body>', MODULE_EDITOR_SCRIPT + '</body>');
   const headers = new Headers(response.headers);
   headers.set('content-type', 'text/html; charset=utf-8');
+  headers.set('cache-control', 'no-store');
   headers.delete('content-length');
-  return new Response(html, { status: response.status, statusText: response.statusText, headers });
+  return new Response(injected, { status: response.status, statusText: response.statusText, headers });
 }
 
 export default {
@@ -204,7 +223,7 @@ export default {
       return commitValidatedBundle(req, env, validation[1], response);
     }
 
-    if (!url.pathname.startsWith('/api/')) return withModuleEditor(response);
+    if (!url.pathname.startsWith('/api/')) return withModuleEditor(response, url);
     return response;
   },
 };
