@@ -89,6 +89,16 @@ jobs:
           PGDATABASE: izakhono_core_ci
         run: npm run test:actions
 
+      - name: Policy-aware relational reads E2E
+        working-directory: products/izakhono-core
+        env:
+          PGHOST: 127.0.0.1
+          PGPORT: '5432'
+          PGUSER: izakhono_core_ci
+          PGPASSWORD: izakhono-core-ci-only-password
+          PGDATABASE: izakhono_core_ci
+        run: npm run test:relations
+
       - name: Build self-hosted Core image
         run: docker build -t izakhono/core:ci products/izakhono-core
 
@@ -122,4 +132,8 @@ jobs:
           grep -Fq 'trustedScopedActions: true' products/izakhono-core/src/action-runtime.mjs
           grep -Fq 'arbitrarySql: false' products/izakhono-core/src/action-runtime.mjs
           grep -Fq "!['insert', 'patch'].includes(op)" products/izakhono-core/src/action-runtime.mjs
+          grep -Fq 'policyAwareRelationalRead: true' products/izakhono-core/src/relation-runtime.mjs
+          grep -Fq 'nestedPolicyEnforcement: true' products/izakhono-core/src/relation-runtime.mjs
+          grep -Fq 'arbitrarySql: false' products/izakhono-core/src/relation-runtime.mjs
+          grep -Fq 'mutations: false' products/izakhono-core/src/relation-runtime.mjs
           echo 'IZAKHONO_CORE_CI=PASS'
