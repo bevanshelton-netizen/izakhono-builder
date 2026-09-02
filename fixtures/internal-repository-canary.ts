@@ -138,7 +138,7 @@ class FakeD1 {
   now(): string { this.tick += 1; return new Date(1_800_000_000_000 + this.tick * 1000).toISOString(); }
 }
 
-function assert(condition: unknown, message: string): asserts condition {
+function assert(condition: unknown, message: string): void {
   if (!condition) throw new Error(`[FAIL] ${message}`);
 }
 
@@ -206,5 +206,5 @@ async function main() {
 
 main().catch(error => {
   console.error(error instanceof Error ? error.message : error);
-  process.exit(1);
+  throw error;
 });
