@@ -1,0 +1,19 @@
+[Unit]
+Description=IZAKHONO Control Plane
+After=izakhono-node.service network-online.target
+Wants=network-online.target
+Requires=izakhono-node.service
+
+[Service]
+Type=simple
+EnvironmentFile=/etc/izakhono/control.env
+ExecStart=/usr/bin/python3 /opt/izakhono-control/control.py
+Restart=always
+RestartSec=3
+User=root
+NoNewPrivileges=true
+ProtectHome=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

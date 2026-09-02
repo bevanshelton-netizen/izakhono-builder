@@ -1,0 +1,19 @@
+[Unit]
+Description=IZAKHONO Node Agent
+After=docker.service network-online.target
+Wants=network-online.target
+Requires=docker.service
+
+[Service]
+Type=simple
+EnvironmentFile=/etc/izakhono/node.env
+ExecStart=/usr/bin/python3 /opt/izakhono-node/node_agent.py
+Restart=always
+RestartSec=3
+User=root
+NoNewPrivileges=true
+ProtectHome=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
