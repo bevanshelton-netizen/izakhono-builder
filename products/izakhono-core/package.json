@@ -5,13 +5,14 @@
   "type": "module",
   "scripts": {
     "start": "node src/server.mjs",
-    "check": "node --check src/server.mjs && node --check src/policy-runtime.mjs && node --check src/policy-guard.mjs && node --check src/action-runtime.mjs && node --check src/relation-runtime.mjs && node --check test/e2e.mjs && node --check test/policy-e2e.mjs && node --check test/policy-legacy-guard-e2e.mjs && node --check test/trusted-actions-e2e.mjs && node --check test/relational-read-e2e.mjs",
+    "check": "node --check src/server.mjs && node --check src/policy-runtime.mjs && node --check src/policy-guard.mjs && node --check src/action-runtime.mjs && node --check src/relation-runtime.mjs && node --check src/rpc-runtime.mjs && node --check test/e2e.mjs && node --check test/policy-e2e.mjs && node --check test/policy-legacy-guard-e2e.mjs && node --check test/trusted-actions-e2e.mjs && node --check test/relational-read-e2e.mjs && node --check test/named-read-rpc-e2e.mjs",
     "test:e2e": "node test/e2e.mjs",
     "test:policy": "node test/policy-e2e.mjs",
     "test:policy-guard": "node test/policy-legacy-guard-e2e.mjs",
     "test:actions": "node test/trusted-actions-e2e.mjs",
     "test:relations": "node test/relational-read-e2e.mjs",
-    "test": "npm run test:e2e && npm run test:policy && npm run test:policy-guard && npm run test:actions && npm run test:relations"
+    "test:rpcs": "node test/named-read-rpc-e2e.mjs",
+    "test": "npm run test:e2e && npm run test:policy && npm run test:policy-guard && npm run test:actions && npm run test:relations && npm run test:rpcs"
   },
   "dependencies": {
     "pg": "8.16.3",
