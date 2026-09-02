@@ -149,6 +149,13 @@ jobs:
           print('[PASS] IZAKHONO internal repository is private, immutable-by-content and provider-independent.')
           PY
 
+      - name: Exercise internal repository behavior
+        shell: bash
+        run: |
+          rm -rf /tmp/izakhono-internal-canary
+          npx tsc --target ES2022 --lib ES2022,DOM --module commonjs --moduleResolution node --skipLibCheck --outDir /tmp/izakhono-internal-canary src/internal-repository.ts fixtures/internal-repository-canary.ts
+          node /tmp/izakhono-internal-canary/fixtures/internal-repository-canary.js
+
       - name: Validate Owner UI repository controls
         shell: bash
         run: |
