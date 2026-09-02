@@ -64,6 +64,7 @@ CREATE INDEX IF NOT EXISTS idx_reconciliation_matches_intent
 CREATE TABLE IF NOT EXISTS reconciliation_exceptions (
   id TEXT PRIMARY KEY,
   run_id TEXT NOT NULL,
+  app_slug TEXT NOT NULL,
   settlement_id TEXT NOT NULL,
   intent_id TEXT,
   reason TEXT NOT NULL,
