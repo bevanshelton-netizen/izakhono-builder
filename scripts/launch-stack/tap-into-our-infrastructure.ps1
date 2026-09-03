@@ -78,10 +78,16 @@ function Wait-ForHostReady {
 
 function Stage-ReviewedPlatform([hashtable]$Platform) {
     Write-Host "`n=== Stage $($Platform.Name) on our own infrastructure ===" -ForegroundColor Cyan
-    $repo = $Platform.Repository.Replace("'", "'\"'\"'")
-    $commit = $Platform.Commit.Replace("'", "'\"'\"'")
-    $slug = $Platform.Slug.Replace("'", "'\"'\"'")
-    $linux = "set -euo pipefail; apt-get update >/dev/null; apt-get install -y git >/dev/null; /opt/izakhono/bin/stage-reviewed-public-project.sh '$repo' '$commit' '$slug'"
+    if ($Platform.Repository -notmatch '^https://github\.com/bevanshelton-netizen/[A-Za-z0-9._-]+\.git$') {
+        throw '[FAIL] Reviewed platform repository is outside the owner namespace.'
+    }
+    if ($Platform.Commit -notmatch '^[0-9a-f]{40}$') {
+        throw '[FAIL] Reviewed platform commit is not an immutable SHA.'
+    }
+    if ($Platform.Slug -notmatch '^[a-z0-9][a-z0-9-]{1,48}[a-z0-9]$') {
+        throw '[FAIL] Reviewed platform slug is unsafe.'
+    }
+    $linux = "set -euo pipefail; apt-get update >/dev/null; apt-get install -y git >/dev/null; /opt/izakhono/bin/stage-reviewed-public-project.sh '$($Platform.Repository)' '$($Platform.Commit)' '$($Platform.Slug)'"
     & wsl.exe -d $Distro -u root -- bash -lc $linux
     if ($LASTEXITCODE -ne 0) {
         throw "[FAIL] $($Platform.Name) did not complete the IZAKHONO local staging gate."
