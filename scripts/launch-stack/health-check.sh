@@ -8,6 +8,28 @@ for c in izakhono-caddy izakhono-postgres izakhono-core izakhono-registry; do
   [ "$status" = healthy ] || fail=1
 done
 
+for service in izakhono-node izakhono-control; do
+  if systemctl is-active --quiet "$service" 2>/dev/null; then
+    printf '%-24s active\n' "$service"
+  else
+    printf '%-24s UNHEALTHY\n' "$service"
+    fail=1
+  fi
+done
+
+if curl -fsS --max-time 5 http://127.0.0.1:9191/healthz >/dev/null 2>&1; then
+  printf '%-24s healthy\n' 'izakhono-node-api'
+else
+  printf '%-24s UNHEALTHY\n' 'izakhono-node-api'
+  fail=1
+fi
+if curl -fsS --max-time 5 http://127.0.0.1:9292/healthz >/dev/null 2>&1; then
+  printf '%-24s healthy\n' 'izakhono-control-api'
+else
+  printf '%-24s UNHEALTHY\n' 'izakhono-control-api'
+  fail=1
+fi
+
 shopt -s nullglob
 for state in /opt/izakhono/state/*.current; do
   line="$(cat "$state")"
