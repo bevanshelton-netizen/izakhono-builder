@@ -94,9 +94,15 @@ jobs:
           ! grep -Fq -- '--privileged' scripts/launch-stack/windows-owner-host.ps1
           grep -Fq 'COMMERCIAL_PUBLICATION=false' scripts/launch-stack/stage-project.sh
           grep -Fq 'PUBLIC_HTTPS_GATE=not-run' scripts/launch-stack/stage-project.sh
-          grep -Fq 'stage-project.sh /srv/izakhono/repos/the-chancellor' scripts/launch-stack/tap-into-our-infrastructure.ps1
-          grep -Fq 'snapshot-sources.sh /srv/izakhono/repos' scripts/launch-stack/tap-into-our-infrastructure.ps1
-          ! grep -Fq 'launch-project.sh /srv/izakhono/repos/the-chancellor' scripts/launch-stack/tap-into-our-infrastructure.ps1
+          grep -Fq 'https://github.com/bevanshelton-netizen/*.git' scripts/launch-stack/stage-reviewed-public-project.sh
+          grep -Fq 'A full immutable 40-character commit SHA is required.' scripts/launch-stack/stage-reviewed-public-project.sh
+          grep -Fq '/opt/izakhono/bin/stage-project.sh' scripts/launch-stack/stage-reviewed-public-project.sh
+          grep -Fq 'COMMERCIAL_PUBLICATION=false' scripts/launch-stack/stage-reviewed-public-project.sh
+          grep -Fq "Slug = 'the-chancellor'" scripts/launch-stack/tap-into-our-infrastructure.ps1
+          grep -Fq "Slug = 'allegro-vibez'" scripts/launch-stack/tap-into-our-infrastructure.ps1
+          grep -Eq "Commit = '[0-9a-f]{40}'" scripts/launch-stack/tap-into-our-infrastructure.ps1
+          grep -Fq 'stage-reviewed-public-project.sh' scripts/launch-stack/tap-into-our-infrastructure.ps1
+          ! grep -Fq 'launch-project.sh' scripts/launch-stack/tap-into-our-infrastructure.ps1
 
       - name: Validate Docker Compose model
         env:
