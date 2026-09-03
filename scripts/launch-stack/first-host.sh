@@ -61,6 +61,11 @@ bash "$SCRIPT_DIR/bootstrap-host.sh" --harden
 echo 'Starting the owner-controlled Launch Stack...'
 bash "$SCRIPT_DIR/init-stack.sh"
 
+echo 'Installing the owner-controlled IZAKHONO Code + Control + Node deployment path...'
+SOVEREIGN_INSTALLER="$ROOT_DIR/scripts/install-sovereign-deploy.sh"
+[ -f "$SOVEREIGN_INSTALLER" ] || { echo '[FAIL] Sovereign deployment installer is missing.'; exit 1; }
+bash "$SOVEREIGN_INSTALLER"
+
 echo 'Installing autonomous health, backup and restore-rehearsal timers...'
 bash "$SCRIPT_DIR/install-automation.sh"
 
@@ -83,6 +88,10 @@ The host now owns:
 - Docker application runtime
 - PostgreSQL
 - local OCI registry
+- IZAKHONO Core
+- IZAKHONO Code repository root
+- IZAKHONO Control deployment API
+- IZAKHONO Node deployment agent
 - rollback state
 - fixed launch tools
 - recurring health checks
