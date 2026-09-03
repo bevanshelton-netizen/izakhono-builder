@@ -8,7 +8,22 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
-$TaskName = 'IZAKHONO Stage First Revenue App'
+$TaskName = 'IZAKHONO Stage Reviewed Platform Fleet'
+
+$ReviewedPlatforms = @(
+    @{
+        Name = 'THE CHANCELLOR'
+        Slug = 'the-chancellor'
+        Repository = 'https://github.com/bevanshelton-netizen/the-chancellor.git'
+        Commit = '803fd8fdb5d5de3c59a9f2c8047e177bee2a9e68'
+    },
+    @{
+        Name = 'ALLEGRO-VIBEZ'
+        Slug = 'allegro-vibez'
+        Repository = 'https://github.com/bevanshelton-netizen/allegro-vibez.git'
+        Commit = '53cf53a20f730c953701877c7e7195ed3a3015e5'
+    }
+)
 
 function Test-IsAdministrator {
     $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
@@ -45,7 +60,7 @@ function Remove-StagingContinuation {
 
 function Test-HostReady {
     try {
-        & wsl.exe -d $Distro -u root -- bash -lc 'test -x /opt/izakhono/bin/stage-project.sh && docker inspect izakhono-caddy >/dev/null 2>&1 && docker inspect izakhono-postgres >/dev/null 2>&1 && docker inspect izakhono-registry >/dev/null 2>&1'
+        & wsl.exe -d $Distro -u root -- bash -lc 'test -x /opt/izakhono/bin/stage-project.sh && test -x /opt/izakhono/bin/stage-reviewed-public-project.sh && docker inspect izakhono-caddy >/dev/null 2>&1 && docker inspect izakhono-postgres >/dev/null 2>&1 && docker inspect izakhono-registry >/dev/null 2>&1 && docker inspect izakhono-core >/dev/null 2>&1'
         return ($LASTEXITCODE -eq 0)
     } catch {
         return $false
@@ -61,27 +76,15 @@ function Wait-ForHostReady {
     throw '[FAIL] IZAKHONO owner-host foundation did not become ready within 20 minutes.'
 }
 
-function Stage-FirstRevenueApp {
-    Write-Host "`n=== Stage THE CHANCELLOR on our own infrastructure ===" -ForegroundColor Cyan
-    $linux = @'
-set -euo pipefail
-apt-get update >/dev/null
-apt-get install -y git >/dev/null
-install -d -m 0750 /srv/izakhono/repos
-if [ -d /srv/izakhono/repos/the-chancellor/.git ]; then
-  git -C /srv/izakhono/repos/the-chancellor fetch --prune origin main
-  git -C /srv/izakhono/repos/the-chancellor checkout -f main
-  git -C /srv/izakhono/repos/the-chancellor reset --hard origin/main
-else
-  rm -rf /srv/izakhono/repos/the-chancellor
-  git clone --depth 1 --branch main https://github.com/bevanshelton-netizen/the-chancellor.git /srv/izakhono/repos/the-chancellor
-fi
-/opt/izakhono/bin/stage-project.sh /srv/izakhono/repos/the-chancellor
-/opt/izakhono/bin/snapshot-sources.sh /srv/izakhono/repos
-'@
+function Stage-ReviewedPlatform([hashtable]$Platform) {
+    Write-Host "`n=== Stage $($Platform.Name) on our own infrastructure ===" -ForegroundColor Cyan
+    $repo = $Platform.Repository.Replace("'", "'\"'\"'")
+    $commit = $Platform.Commit.Replace("'", "'\"'\"'")
+    $slug = $Platform.Slug.Replace("'", "'\"'\"'")
+    $linux = "set -euo pipefail; apt-get update >/dev/null; apt-get install -y git >/dev/null; /opt/izakhono/bin/stage-reviewed-public-project.sh '$repo' '$commit' '$slug'"
     & wsl.exe -d $Distro -u root -- bash -lc $linux
     if ($LASTEXITCODE -ne 0) {
-        throw '[FAIL] THE CHANCELLOR did not complete the IZAKHONO local staging gate.'
+        throw "[FAIL] $($Platform.Name) did not complete the IZAKHONO local staging gate."
     }
 }
 
@@ -99,9 +102,12 @@ if (-not $Resume) {
 }
 
 Wait-ForHostReady
-Stage-FirstRevenueApp
+foreach ($platform in $ReviewedPlatforms) {
+    Stage-ReviewedPlatform $platform
+}
 Remove-StagingContinuation
 
-Write-Host "`n[PASS] THE CHANCELLOR IS NOW STAGED ON OUR OWN IZAKHONO INFRASTRUCTURE." -ForegroundColor Green
-Write-Host 'The internal container health gate passed and a portable source snapshot was created.'
-Write-Host 'This does not cut over the live commercial domain. Public HTTPS and paid-traffic readiness remain fail-closed until the real domain is intentionally pointed at this host.'
+Write-Host "`n[PASS] REVIEWED IZAKHONO PLATFORM FLEET IS STAGED ON OUR OWN INFRASTRUCTURE." -ForegroundColor Green
+Write-Host 'THE CHANCELLOR and ALLEGRO-VIBEZ were fetched at immutable reviewed commits, built locally, placed in our registry and passed internal health gates.'
+Write-Host 'Portable source snapshots and checksummed staging evidence were created on the owner host.'
+Write-Host 'This does not cut over a commercial domain or enable live payments. Public HTTPS and each application readiness gate remain fail-closed until an intentional launch.'
