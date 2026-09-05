@@ -173,18 +173,55 @@ class Handler(BaseHTTPRequestHandler):
             raise ValueError("invalid_json") from e
 
     def do_GET(self):
-        p = urlparse(self.path).path
+        parsed = urlparse(self.path)
+        p = parsed.path
         if p in ("/", "/index.html"):
             return self._send(200, HTML, "text/html; charset=utf-8")
         if p == "/healthz":
             online, _ = backend_status()
-            return self.out(200, {"ok": True, "service": "izakhono-work", "version": "0.1.0", "model_backend": "online" if online else "offline"})
+            return self.out(200, {"ok": True, "service": "izakhono-work", "version": "0.2.0", "model_backend": "online" if online else "offline", "builder": True})
+        if p.startswith("/preview/"):
+            try:
+                rest = p[len("/preview/"):]
+                project_name, _, tail = rest.partition("/")
+                target = safe_preview_path(project_name, tail)
+                if not target.exists() or not target.is_file():
+                    return self.out(404, {"error": "preview_file_not_found"})
+                ctype = mimetypes.guess_type(str(target))[0] or "application/octet-stream"
+                return self._send(200, target.read_bytes(), ctype)
+            except Exception as e:
+                return self.out(400, {"error": str(e)})
         if not self.authed():
             return self.out(401, {"error": "unauthorized"})
         if p == "/api/status":
             online, models = backend_status()
             installed = DEFAULT_MODEL in models or any(m.split(":")[0] == DEFAULT_MODEL.split(":")[0] and m.endswith(DEFAULT_MODEL.split(":")[-1]) for m in models)
-            return self.out(200, {"ok": True, "backend": "online" if online else "offline", "model": DEFAULT_MODEL, "model_installed": installed, "installed_models": models, "usage_credit_gate": False})
+            return self.out(200, {"ok": True, "backend": "online" if online else "offline", "model": DEFAULT_MODEL, "builder_model": BUILDER_MODEL, "model_installed": installed, "installed_models": models, "usage_credit_gate": False, "builder": True, "projects": len(WORKSPACE.list_projects())})
+        if p == "/api/projects":
+            return self.out(200, {"items": WORKSPACE.list_projects()})
+        if p.startswith("/api/projects/"):
+            rest = p[len("/api/projects/"):]
+            name, _, action = rest.partition("/")
+            name = safe_slug(name)
+            try:
+                if action == "tree":
+                    return self.out(200, {"project": name, "items": WORKSPACE.tree(name)})
+                if action == "file":
+                    q = parse_qs(parsed.query)
+                    rel = (q.get("path") or [""])[0]
+                    return self.out(200, {"project": name, "path": rel, "content": WORKSPACE.read_file(name, rel)})
+                if action == "checkpoints":
+                    return self.out(200, {"project": name, "items": WORKSPACE.list_checkpoints(name)})
+                if action == "export":
+                    project = WORKSPACE.ensure_project(name)
+                    bio = io.BytesIO()
+                    with zipfile.ZipFile(bio, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+                        for item in project.rglob("*"):
+                            if item.is_file() and ".izakhono" not in item.parts:
+                                zf.write(item, item.relative_to(project).as_posix())
+                    return self._send(200, bio.getvalue(), "application/zip", {"Content-Disposition": 'attachment; filename="' + name + '.zip"'})
+            except Exception as e:
+                return self.out(400, {"error": str(e)})
         if p == "/api/conversations":
             with db_connect() as db:
                 rows = db.execute("SELECT id,title,created_at,updated_at FROM conversations ORDER BY updated_at DESC LIMIT 100").fetchall()
