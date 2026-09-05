@@ -1,0 +1,56 @@
+name: IZAKHONO WORK Standalone Windows
+
+on:
+  pull_request:
+    paths:
+      - 'products/izakhono-work/app.py'
+      - 'products/izakhono-work/windows_owner.py'
+      - '.github/workflows/izakhono-work-standalone-windows.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'products/izakhono-work/app.py'
+      - 'products/izakhono-work/windows_owner.py'
+      - '.github/workflows/izakhono-work-standalone-windows.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Install PyInstaller
+        shell: pwsh
+        run: python -m pip install --disable-pip-version-check pyinstaller
+
+      - name: Build standalone owner executable
+        shell: pwsh
+        run: |
+          pyinstaller --clean --onefile --name IZAKHONO-WORK --paths products/izakhono-work products/izakhono-work/windows_owner.py
+          if (-not (Test-Path 'dist/IZAKHONO-WORK.exe')) { throw 'Standalone executable was not produced.' }
+
+      - name: Bundle self-test
+        shell: pwsh
+        run: |
+          $out = & .\dist\IZAKHONO-WORK.exe --self-test
+          $out
+          $joined = $out -join [Environment]::NewLine
+          if ($joined -notmatch 'IZAKHONO_WORK_STANDALONE_SELF_TEST=PASS') {
+            throw 'Standalone self-test did not pass.'
+          }
+
+      - name: Upload Windows owner build
+        uses: actions/upload-artifact@v4
+        with:
+          name: IZAKHONO-WORK-WINDOWS-OWNER
+          path: dist/IZAKHONO-WORK.exe
+          if-no-files-found: error
+          retention-days: 30
