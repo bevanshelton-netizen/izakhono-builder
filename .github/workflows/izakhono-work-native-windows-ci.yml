@@ -1,0 +1,34 @@
+name: IZAKHONO WORK Native Windows CI
+
+on:
+  pull_request:
+    paths:
+      - 'products/izakhono-work/install-windows-native.ps1'
+      - '.github/workflows/izakhono-work-native-windows-ci.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'products/izakhono-work/install-windows-native.ps1'
+      - '.github/workflows/izakhono-work-native-windows-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Parse native installer
+        shell: pwsh
+        run: |
+          $null = [scriptblock]::Create((Get-Content 'products/izakhono-work/install-windows-native.ps1' -Raw))
+      - name: Validate native owner path
+        shell: pwsh
+        run: |
+          $text = Get-Content 'products/izakhono-work/install-windows-native.ps1' -Raw
+          if ($text -notmatch '127\.0\.0\.1:9393') { throw 'Workspace must remain localhost-only' }
+          if ($text -notmatch '127\.0\.0\.1:11434') { throw 'Model runtime must remain localhost-only' }
+          if ($text -notmatch 'IZAKHONO_WORK_TOKEN = ""') { throw 'Local owner mode must not require a pasted token' }
+          if ($text -match '(?im)^\s*docker(\.exe)?\s') { throw 'Native Windows path must not execute Docker' }
