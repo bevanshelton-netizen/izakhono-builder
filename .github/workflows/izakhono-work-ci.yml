@@ -1,0 +1,37 @@
+name: IZAKHONO WORK CI
+
+on:
+  pull_request:
+    paths:
+      - 'products/izakhono-work/**'
+      - '.github/workflows/izakhono-work-ci.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'products/izakhono-work/**'
+      - '.github/workflows/izakhono-work-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Python syntax
+        run: python3 -m py_compile products/izakhono-work/app.py products/izakhono-work/test_smoke.py
+      - name: Shell syntax
+        run: bash -n products/izakhono-work/install.sh
+      - name: Owner-workspace smoke test
+        run: python3 products/izakhono-work/test_smoke.py
+      - name: Safety invariants
+        run: |
+          set -euo pipefail
+          ! grep -R --line-number -E 'curl[^|]*\|[[:space:]]*(bash|sh)' products/izakhono-work
+          ! grep -R --line-number -E 'chmod[[:space:]]+777|--privileged' products/izakhono-work
+          ! grep -R --line-number -E 'IZAKHONO_WORK_TOKEN=[A-Fa-f0-9]{32,}' products/izakhono-work
+          grep -Fq '127.0.0.1:11434:11434' products/izakhono-work/install.sh
+          grep -Fq 'IZAKHONO_WORK_HOST=127.0.0.1' products/izakhono-work/install.sh
+          grep -Fq 'usage_credit_gate' products/izakhono-work/app.py
