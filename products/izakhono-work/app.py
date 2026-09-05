@@ -294,10 +294,37 @@ class Handler(BaseHTTPRequestHandler):
                 db.commit()
                 title = db.execute("SELECT title FROM conversations WHERE id=?", (cid,)).fetchone()["title"]
             return self.out(200, {"answer": answer, "title": title, "model": model})
+        if p == "/api/build":
+            try:
+                data = self.body_json()
+                spec = str(data.get("spec", "")).strip()
+                project_name = data.get("project_name")
+                model = str(data.get("model", BUILDER_MODEL)).strip() or BUILDER_MODEL
+                if not spec:
+                    return self.out(400, {"error": "build_spec_required"})
+
+                def model_call(messages):
+                    return ollama_chat(messages, model=model, force_json=True, timeout=300)
+
+                result = BuilderEngine(WORKSPACE, model_call).build(spec, project_name)
+                result["builder_model"] = model
+                return self.out(200, result)
+            except Exception as e:
+                return self.out(500, {"error": "build_failed", "detail": parse_backend_error(e)})
+        if p.startswith("/api/projects/") and p.endswith("/restore"):
+            try:
+                rest = p[len("/api/projects/"):]
+                name = safe_slug(rest.split("/", 1)[0])
+                data = self.body_json()
+                checkpoint = str(data.get("checkpoint", ""))
+                WORKSPACE.restore_checkpoint(name, checkpoint)
+                return self.out(200, {"ok": True, "project": name, "checkpoint": checkpoint})
+            except Exception as e:
+                return self.out(400, {"error": str(e)})
         return self.out(404, {"error": "not_found"})
 
 
 if __name__ == "__main__":
     db_connect().close()
-    print(f"IZAKHONO WORK listening on http://{HOST}:{PORT} using {OLLAMA_URL} model={DEFAULT_MODEL}")
+    print(f"IZAKHONO WORK v0.2 listening on http://{HOST}:{PORT} model={DEFAULT_MODEL} builder_model={BUILDER_MODEL}")
     ThreadingHTTPServer((HOST, PORT), Handler).serve_forever()
