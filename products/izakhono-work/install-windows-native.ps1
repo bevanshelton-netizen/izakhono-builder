@@ -20,22 +20,38 @@ function Find-Ollama {
   return $null
 }
 
+function Test-PythonRuntime([string]$Path) {
+  if (-not $Path) { return $false }
+  if ($Path -match '\\WindowsApps\\') { return $false }
+  try {
+    $output = & $Path --version 2>&1
+    return ($LASTEXITCODE -eq 0 -and ($output -join " ") -match '^Python\s+3\.')
+  } catch {
+    return $false
+  }
+}
+
 function Find-Python {
-  $cmd = Get-Command python.exe -ErrorAction SilentlyContinue
-  if ($cmd) { return $cmd.Source }
-  $cmd = Get-Command py.exe -ErrorAction SilentlyContinue
-  if ($cmd) { return $cmd.Source }
   $roots = @(
     (Join-Path $env:LOCALAPPDATA "Programs\Python"),
     (Join-Path $env:ProgramFiles "Python")
   )
   foreach ($root in $roots) {
     if (Test-Path $root) {
-      $hit = Get-ChildItem $root -Recurse -Filter python.exe -ErrorAction SilentlyContinue |
-        Sort-Object FullName -Descending | Select-Object -First 1
-      if ($hit) { return $hit.FullName }
+      $hits = Get-ChildItem $root -Recurse -Filter python.exe -ErrorAction SilentlyContinue |
+        Sort-Object FullName -Descending
+      foreach ($hit in $hits) {
+        if (Test-PythonRuntime $hit.FullName) { return $hit.FullName }
+      }
     }
   }
+
+  $cmd = Get-Command python.exe -ErrorAction SilentlyContinue
+  if ($cmd -and (Test-PythonRuntime $cmd.Source)) { return $cmd.Source }
+
+  $cmd = Get-Command py.exe -ErrorAction SilentlyContinue
+  if ($cmd -and (Test-PythonRuntime $cmd.Source)) { return $cmd.Source }
+
   return $null
 }
 
@@ -79,9 +95,13 @@ if (-not $python) {
   $args = @("install","--id","Python.Python.3.13","--exact","--accept-package-agreements","--accept-source-agreements","--silent")
   & $winget @args
   if ($LASTEXITCODE -ne 0) { Fail "Python installation failed." 24 }
-  Start-Sleep -Seconds 2
+  Start-Sleep -Seconds 4
   $python = Find-Python
-  if (-not $python) { Fail "Python installed but could not be located." 25 }
+  if (-not $python) {
+    $expected = Join-Path $env:LOCALAPPDATA "Programs\Python\Python313\python.exe"
+    if ((Test-Path $expected) -and (Test-PythonRuntime $expected)) { $python = $expected }
+  }
+  if (-not $python) { Fail "Python installed but Windows is still resolving the Microsoft Store alias instead of the real runtime." 25 }
 }
 
 if (-not $Model) {
