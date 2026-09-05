@@ -1,0 +1,22 @@
+[Unit]
+Description=IZAKHONO WORK owner AI workspace
+After=network-online.target docker.service
+Wants=network-online.target
+Requires=docker.service
+
+[Service]
+Type=simple
+EnvironmentFile=/etc/izakhono/work.env
+ExecStart=/usr/bin/python3 /opt/izakhono-work/app.py
+Restart=on-failure
+RestartSec=3
+User=root
+Group=root
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ReadWritePaths=/var/lib/izakhono-work
+
+[Install]
+WantedBy=multi-user.target
