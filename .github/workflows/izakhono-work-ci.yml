@@ -21,7 +21,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Python syntax
-        run: python3 -m py_compile products/izakhono-work/app.py products/izakhono-work/test_smoke.py
+        run: python3 -m py_compile products/izakhono-work/app.py products/izakhono-work/builder_core.py products/izakhono-work/test_smoke.py products/izakhono-work/test_builder.py
       - name: Shell syntax
         run: bash -n products/izakhono-work/install.sh
       - name: PowerShell syntax
@@ -31,6 +31,10 @@ jobs:
           $null = [scriptblock]::Create((Get-Content 'products/izakhono-work/takeover.ps1' -Raw))
       - name: Owner-workspace smoke test
         run: python3 products/izakhono-work/test_smoke.py
+      - name: Restricted builder test
+        run: |
+          cd products/izakhono-work
+          python3 test_builder.py
       - name: Safety invariants
         run: |
           set -euo pipefail
@@ -48,3 +52,7 @@ jobs:
           grep -Fq 'OWNER NODE = READY' products/izakhono-work/takeover.ps1
           grep -Fq '127.0.0.1:9393' products/izakhono-work/takeover.ps1
           grep -Fq '127.0.0.1:11434' products/izakhono-work/takeover.ps1
+          grep -Fq 'BuilderEngine' products/izakhono-work/app.py
+          grep -Fq 'path_outside_project' products/izakhono-work/builder_core.py
+          grep -Fq 'builder_core.py' products/izakhono-work/takeover.ps1
+          ! grep -Fq 'shell=True' products/izakhono-work/builder_core.py
