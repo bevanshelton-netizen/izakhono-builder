@@ -34,11 +34,11 @@ HTML = r'''<!doctype html>
 <script>
 const S={id:null,attachments:[]}; const $=id=>document.getElementById(id);
 function headers(){const h={'Content-Type':'application/json'};const t=$('token').value.trim();if(t)h['Authorization']='Bearer '+t;return h}
-async function api(path,opts={}){opts.headers={...(opts.headers||{}),...headers()};const r=await fetch(path,opts);let j={};try{j=await r.json()}catch{}if(!r.ok)throw new Error(j.error||j.detail||('HTTP '+r.status));return j}
+async function api(path,opts={}){opts.headers={...(opts.headers||{}),...headers()};const r=await fetch(path,opts);let j={};try{j=await r.json()}catch{}if(!r.ok)throw new Error(j.detail||j.error||('HTTP '+r.status));return j}
 function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function banner(msg){$('banner').textContent=msg;$('banner').style.display=msg?'block':'none'}
 function bubble(role,text){$('empty')?.remove();const d=document.createElement('div');d.className='bubble '+(role==='user'?'user':'assistant');d.textContent=text;$('messages').appendChild(d);$('messages').scrollTop=$('messages').scrollHeight}
-async function refresh(){try{const s=await api('/api/status');$('runtime').textContent=`${s.backend==='online'?'Local model online':'Model backend offline'} • ${s.model}`;banner(s.backend==='online'?'':`Local model backend is offline. Start Ollama on the owner node.`)}catch(e){banner(e.message)}try{const d=await api('/api/conversations');$('threads').innerHTML=d.items.map(x=>`<div class="thread ${x.id===S.id?'active':''}" data-id="${x.id}">${esc(x.title||'Conversation')}</div>`).join('');document.querySelectorAll('.thread').forEach(el=>el.onclick=()=>load(el.dataset.id))}catch(e){}}
+async function refresh(){try{const s=await api('/api/status');const ready=s.backend==='online'&&s.model_installed!==false;$('runtime').textContent=`${ready?'Local model ready':(s.backend==='online'?'Model not installed':'Model backend offline')} • ${s.model}`;banner(ready?'':(s.backend==='online'?`Configured model ${s.model} is not installed on this owner node yet.`:`Local model backend is offline. Start Ollama on the owner node.`))}catch(e){banner(e.message)}try{const d=await api('/api/conversations');$('threads').innerHTML=d.items.map(x=>`<div class="thread ${x.id===S.id?'active':''}" data-id="${x.id}">${esc(x.title||'Conversation')}</div>`).join('');document.querySelectorAll('.thread').forEach(el=>el.onclick=()=>load(el.dataset.id))}catch(e){}}
 async function newChat(){const d=await api('/api/conversations',{method:'POST',body:JSON.stringify({})});S.id=d.id;$('messages').innerHTML='<div class="empty" id="empty"><h1>Your work. <span>Your compute.</span></h1><p>Start a new owner-controlled conversation.</p></div>';$('title').textContent='New conversation';await refresh()}
 async function load(id){S.id=id;const d=await api('/api/conversations/'+id);$('title').textContent=d.title;$('messages').innerHTML='';if(!d.messages.length)$('messages').innerHTML='<div class="empty" id="empty"><h1>Your work. <span>Your compute.</span></h1></div>';d.messages.forEach(m=>bubble(m.role,m.content));await refresh()}
 function filesPrompt(){if(!S.attachments.length)return '';return '\n\nAttached local files:\n'+S.attachments.map(f=>`\n--- ${f.name} ---\n${f.text}`).join('\n')}
@@ -129,7 +129,8 @@ class Handler(BaseHTTPRequestHandler):
             return self.out(401, {"error": "unauthorized"})
         if p == "/api/status":
             online, models = backend_status()
-            return self.out(200, {"ok": True, "backend": "online" if online else "offline", "model": DEFAULT_MODEL, "installed_models": models, "usage_credit_gate": False})
+            installed = DEFAULT_MODEL in models or any(m.split(":")[0] == DEFAULT_MODEL.split(":")[0] and m.endswith(DEFAULT_MODEL.split(":")[-1]) for m in models)
+            return self.out(200, {"ok": True, "backend": "online" if online else "offline", "model": DEFAULT_MODEL, "model_installed": installed, "installed_models": models, "usage_credit_gate": False})
         if p == "/api/conversations":
             with db_connect() as db:
                 rows = db.execute("SELECT id,title,created_at,updated_at FROM conversations ORDER BY updated_at DESC LIMIT 100").fetchall()
@@ -185,7 +186,13 @@ class Handler(BaseHTTPRequestHandler):
                 if not answer:
                     raise RuntimeError("model_returned_empty_answer")
             except urllib.error.HTTPError as e:
-                detail = e.read().decode(errors="replace")[:400]
+                detail_raw = e.read().decode(errors="replace")[:400]
+                detail = detail_raw
+                try:
+                    parsed = json.loads(detail_raw)
+                    detail = str(parsed.get("error") or detail_raw)
+                except Exception:
+                    pass
                 return self.out(502, {"error": "model_backend_error", "detail": detail})
             except Exception as e:
                 return self.out(502, {"error": "model_backend_unreachable", "detail": str(e)[:300]})
