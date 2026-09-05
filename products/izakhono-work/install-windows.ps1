@@ -69,10 +69,9 @@ if (-not $ollamaExists) {
   if ($LASTEXITCODE -ne 0) { Fail "Could not start the local model runtime." 31 }
 } else {
   docker start izakhono-ollama *> $null
-  $networks = docker inspect -f "{{range `$k,`$v := .NetworkSettings.Networks}}{{printf `"%s`n`" `$k}}{{end}}" izakhono-ollama
-  if ($networks -notcontains $Network) {
-    docker network connect $Network izakhono-ollama *> $null
-  }
+  # Connecting an already-connected container returns a harmless non-zero code.
+  docker network connect $Network izakhono-ollama *> $null 2>&1
+  $global:LASTEXITCODE = 0
 }
 
 $ollamaReady = $false
