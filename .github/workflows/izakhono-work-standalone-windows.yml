@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - 'products/izakhono-work/app.py'
+      - 'products/izakhono-work/builder_core.py'
       - 'products/izakhono-work/windows_owner.py'
       - '.github/workflows/izakhono-work-standalone-windows.yml'
   push:
