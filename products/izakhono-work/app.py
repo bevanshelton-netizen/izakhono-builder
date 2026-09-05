@@ -1,23 +1,34 @@
 #!/usr/bin/env python3
 import hmac
+import io
 import json
+import mimetypes
 import os
 import sqlite3
+import sys
 import time
+import zipfile
 import urllib.error
 import urllib.request
 import uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import urlparse
+from urllib.parse import parse_qs, unquote, urlparse
+
+HERE = Path(__file__).resolve().parent
+if str(HERE) not in sys.path:
+    sys.path.insert(0, str(HERE))
+from builder_core import BuilderEngine, BuilderError, WorkspaceManager, safe_slug
 
 HOST = os.getenv("IZAKHONO_WORK_HOST", "127.0.0.1")
 PORT = int(os.getenv("IZAKHONO_WORK_PORT", "9393"))
 TOKEN = os.getenv("IZAKHONO_WORK_TOKEN", "")
 OLLAMA_URL = os.getenv("IZAKHONO_OLLAMA_URL", "http://127.0.0.1:11434").rstrip("/")
 DEFAULT_MODEL = os.getenv("IZAKHONO_WORK_MODEL", "qwen3:4b")
+BUILDER_MODEL = os.getenv("IZAKHONO_WORK_BUILDER_MODEL", DEFAULT_MODEL)
 DATA_DIR = Path(os.getenv("IZAKHONO_WORK_DATA", "/var/lib/izakhono-work"))
 DB_PATH = DATA_DIR / "work.db"
+WORKSPACE = WorkspaceManager(DATA_DIR)
 MAX_BODY = 1_000_000
 MAX_CONTEXT_MESSAGES = 40
 
@@ -85,7 +96,7 @@ def title_for(message):
 
 
 class Handler(BaseHTTPRequestHandler):
-    server_version = "IzakhonoWork/0.1"
+    server_version = "IzakhonoWork/0.2"
 
     def log_message(self, fmt, *args):
         print(f"{self.client_address[0]} - {fmt % args}")
