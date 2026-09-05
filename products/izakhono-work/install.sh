@@ -17,11 +17,10 @@ install -m 0644 "$PRODUCT_DIR/izakhono-work.service" /etc/systemd/system/izakhon
 
 if [[ ! -f /etc/izakhono/work.env ]]; then
   umask 077
-  OWNER_TOKEN="$(python3 -c 'import secrets; print(secrets.token_hex(32))')"
   cat > /etc/izakhono/work.env <<EOF
 IZAKHONO_WORK_HOST=127.0.0.1
 IZAKHONO_WORK_PORT=9393
-IZAKHONO_WORK_TOKEN=$OWNER_TOKEN
+IZAKHONO_WORK_TOKEN=
 IZAKHONO_WORK_DATA=/var/lib/izakhono-work
 IZAKHONO_OLLAMA_URL=http://127.0.0.1:11434
 IZAKHONO_WORK_MODEL=$MODEL
@@ -59,5 +58,6 @@ curl -fsS --max-time 5 http://127.0.0.1:9393/healthz >/dev/null
 printf 'IZAKHONO_WORK=READY\n'
 printf 'Local workspace: http://127.0.0.1:9393\n'
 printf 'Model: %s\n' "$MODEL"
-printf 'Owner token is stored only in /etc/izakhono/work.env. Do not paste it into chat or source control.\n'
+printf 'Local owner mode has no bearer-token prompt because the service is bound to localhost only.\n'
 printf 'No usage-credit gate is implemented. Capacity is bounded by owner hardware, storage and power.\n'
+printf 'Add authenticated IZAKHONO edge access before allowing remote devices.\n'
