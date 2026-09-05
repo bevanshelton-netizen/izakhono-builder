@@ -34,7 +34,7 @@ HTML = r'''<!doctype html>
 <script>
 const S={id:null,attachments:[]}; const $=id=>document.getElementById(id);
 function headers(){const h={'Content-Type':'application/json'};const t=$('token').value.trim();if(t)h['Authorization']='Bearer '+t;return h}
-async function api(path,opts={}){opts.headers={...(opts.headers||{}),...headers()};const r=await fetch(path,opts);let j={};try{j=await r.json()}catch{}if(!r.ok)throw new Error(j.error||j.detail||('HTTP '+r.status));return j}
+async function api(path,opts={}){opts.headers={...(opts.headers||{}),...headers()};const r=await fetch(path,opts);let j={};try{j=await r.json()}catch{}if(!r.ok)throw new Error(j.detail||j.error||('HTTP '+r.status));return j}
 function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function banner(msg){$('banner').textContent=msg;$('banner').style.display=msg?'block':'none'}
 function bubble(role,text){$('empty')?.remove();const d=document.createElement('div');d.className='bubble '+(role==='user'?'user':'assistant');d.textContent=text;$('messages').appendChild(d);$('messages').scrollTop=$('messages').scrollHeight}
@@ -129,7 +129,8 @@ class Handler(BaseHTTPRequestHandler):
             return self.out(401, {"error": "unauthorized"})
         if p == "/api/status":
             online, models = backend_status()
-            return self.out(200, {"ok": True, "backend": "online" if online else "offline", "model": DEFAULT_MODEL, "installed_models": models, "usage_credit_gate": False})
+            installed = DEFAULT_MODEL in models or any(m.split(":")[0] == DEFAULT_MODEL.split(":")[0] and m.endswith(DEFAULT_MODEL.split(":")[-1]) for m in models)
+            return self.out(200, {"ok": True, "backend": "online" if online else "offline", "model": DEFAULT_MODEL, "model_installed": installed, "installed_models": models, "usage_credit_gate": False})
         if p == "/api/conversations":
             with db_connect() as db:
                 rows = db.execute("SELECT id,title,created_at,updated_at FROM conversations ORDER BY updated_at DESC LIMIT 100").fetchall()
@@ -185,7 +186,13 @@ class Handler(BaseHTTPRequestHandler):
                 if not answer:
                     raise RuntimeError("model_returned_empty_answer")
             except urllib.error.HTTPError as e:
-                detail = e.read().decode(errors="replace")[:400]
+                detail_raw = e.read().decode(errors="replace")[:400]
+                detail = detail_raw
+                try:
+                    parsed = json.loads(detail_raw)
+                    detail = str(parsed.get("error") or detail_raw)
+                except Exception:
+                    pass
                 return self.out(502, {"error": "model_backend_error", "detail": detail})
             except Exception as e:
                 return self.out(502, {"error": "model_backend_unreachable", "detail": str(e)[:300]})
