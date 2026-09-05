@@ -197,6 +197,8 @@ function Start-IzakhonoWork([string]$Python, [string]$ModelName) {
 function Test-IzakhonoChat {
   Write-Log "Testing browser-to-workspace-to-model chat path..."
   try {
+    $health = Invoke-RestMethod -Uri "http://127.0.0.1:9393/healthz" -TimeoutSec 10
+    if (-not $health.builder) { Fail "IZAKHONO WORK BUILD engine is not active." 62 }
     $conv = Invoke-RestMethod -Method Post -Uri "http://127.0.0.1:9393/api/conversations" -ContentType "application/json" -Body "{}" -TimeoutSec 10
     $body = @{
       conversation_id = [string]$conv.id
