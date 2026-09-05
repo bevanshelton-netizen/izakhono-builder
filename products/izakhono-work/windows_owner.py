@@ -251,7 +251,12 @@ def write_owner_proof(model: str):
         "usage_credit_gate": False,
         "model_inference": False,
         "response_chars": 0,
+        "builder_available": False,
     }
+    try:
+        proof["builder_available"] = bool(http_json(HEALTH_URL, timeout=5).get("builder"))
+    except Exception:
+        pass
     try:
         result = http_json(
             f"{OLLAMA_URL}/api/chat",
