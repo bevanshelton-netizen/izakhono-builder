@@ -1,6 +1,6 @@
 FROM python:3.13-slim
 WORKDIR /app
-COPY app.py /app/app.py
+COPY app.py builder_core.py /app/
 RUN mkdir -p /data && useradd --system --uid 10001 izakhono && chown -R izakhono:izakhono /app /data
 USER izakhono
 ENV IZAKHONO_WORK_HOST=0.0.0.0 \

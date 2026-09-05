@@ -251,7 +251,12 @@ def write_owner_proof(model: str):
         "usage_credit_gate": False,
         "model_inference": False,
         "response_chars": 0,
+        "builder_available": False,
     }
+    try:
+        proof["builder_available"] = bool(http_json(HEALTH_URL, timeout=5).get("builder"))
+    except Exception:
+        pass
     try:
         result = http_json(
             f"{OLLAMA_URL}/api/chat",
@@ -281,6 +286,10 @@ def run_self_test() -> int:
     assert "IZAKHONO WORK" in app.HTML
     assert app.HOST == "127.0.0.1"
     assert app.PORT == 9393
+    assert app.Handler.server_version == "IzakhonoWork/0.2"
+    assert app.WORKSPACE.projects.exists()
+    from builder_core import safe_slug
+    assert safe_slug("My AI Platform") == "My-AI-Platform"
     print("IZAKHONO_WORK_STANDALONE_SELF_TEST=PASS")
     return 0
 

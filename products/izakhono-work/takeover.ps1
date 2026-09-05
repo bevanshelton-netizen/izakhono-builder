@@ -10,9 +10,11 @@ $ProgressPreference = "SilentlyContinue"
 $Root = Join-Path $env:LOCALAPPDATA "IzakhonoWork"
 $Data = Join-Path $Root "data"
 $App = Join-Path $Root "app.py"
+$Builder = Join-Path $Root "builder_core.py"
 $StartScript = Join-Path $Root "start-izakhono-work.ps1"
 $Log = Join-Path ([Environment]::GetFolderPath("Desktop")) "IZAKHONO-WORK-TAKEOVER.log"
 $AppUrl = "https://raw.githubusercontent.com/bevanshelton-netizen/izakhono-builder/main/products/izakhono-work/app.py"
+$BuilderUrl = "https://raw.githubusercontent.com/bevanshelton-netizen/izakhono-builder/main/products/izakhono-work/builder_core.py"
 
 function Write-Log([string]$Message) {
   $stamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
@@ -195,6 +197,8 @@ function Start-IzakhonoWork([string]$Python, [string]$ModelName) {
 function Test-IzakhonoChat {
   Write-Log "Testing browser-to-workspace-to-model chat path..."
   try {
+    $health = Invoke-RestMethod -Uri "http://127.0.0.1:9393/healthz" -TimeoutSec 10
+    if (-not $health.builder) { Fail "IZAKHONO WORK BUILD engine is not active." 62 }
     $conv = Invoke-RestMethod -Method Post -Uri "http://127.0.0.1:9393/api/conversations" -ContentType "application/json" -Body "{}" -TimeoutSec 10
     $body = @{
       conversation_id = [string]$conv.id
@@ -239,8 +243,9 @@ try {
 
   New-Item -ItemType Directory -Force -Path $Root, $Data | Out-Null
 
-  Write-Log "Downloading latest IZAKHONO WORK app..."
+  Write-Log "Downloading latest IZAKHONO WORK app and builder engine..."
   Invoke-WebRequest -UseBasicParsing -Uri $AppUrl -OutFile $App
+  Invoke-WebRequest -UseBasicParsing -Uri $BuilderUrl -OutFile $Builder
 
   Start-Ollama $ollama
 
@@ -262,6 +267,7 @@ try {
   Write-Host ("Model: " + $Model)
   Write-Host "Starts automatically with Windows: YES"
   Write-Host "End-to-end local chat test: PASS"
+  Write-Host "Local BUILD engine installed: YES"
   Write-Host ("Log: " + $Log)
   Write-Host ""
   Write-Log "Owner-node takeover completed successfully."

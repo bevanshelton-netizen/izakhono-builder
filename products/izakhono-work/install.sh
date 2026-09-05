@@ -13,6 +13,7 @@ OLLAMA_IMAGE="${IZAKHONO_OLLAMA_IMAGE:-ollama/ollama:latest}"
 
 install -d -m 0755 /opt/izakhono-work /var/lib/izakhono-work /etc/izakhono
 install -m 0755 "$PRODUCT_DIR/app.py" /opt/izakhono-work/app.py
+install -m 0644 "$PRODUCT_DIR/builder_core.py" /opt/izakhono-work/builder_core.py
 install -m 0644 "$PRODUCT_DIR/izakhono-work.service" /etc/systemd/system/izakhono-work.service
 
 if [[ ! -f /etc/izakhono/work.env ]]; then
