@@ -79,6 +79,44 @@ def json_request(url, payload=None, timeout=180):
         return json.loads(r.read().decode())
 
 
+def ollama_chat(messages, model=DEFAULT_MODEL, force_json=False, timeout=300):
+    payload = {"model": model, "stream": False, "messages": messages}
+    if force_json:
+        payload["format"] = "json"
+        payload["options"] = {"temperature": 0.15}
+    result = json_request(OLLAMA_URL + "/api/chat", payload, timeout=timeout)
+    answer = str(result.get("message", {}).get("content", "")).strip()
+    if not answer:
+        raise RuntimeError("model_returned_empty_answer")
+    return answer
+
+
+def parse_backend_error(e):
+    if isinstance(e, urllib.error.HTTPError):
+        raw = e.read().decode(errors="replace")[:800]
+        try:
+            return str(json.loads(raw).get("error") or raw)
+        except Exception:
+            return raw
+    return str(e)[:500]
+
+
+def safe_preview_path(project_name, tail):
+    project = WORKSPACE.ensure_project(project_name)
+    rel = unquote(tail or "index.html").replace("\\", "/").lstrip("/")
+    if not rel:
+        rel = "index.html"
+    parts = Path(rel).parts
+    if ".." in parts or ".izakhono" in parts:
+        raise BuilderError("invalid_preview_path")
+    target = (project / rel).resolve()
+    if project.resolve() not in target.parents and target != project.resolve():
+        raise BuilderError("invalid_preview_path")
+    if target.is_dir():
+        target = target / "index.html"
+    return target
+
+
 def backend_status():
     try:
         data = json_request(OLLAMA_URL + "/api/tags", timeout=3)
@@ -104,7 +142,7 @@ class Handler(BaseHTTPRequestHandler):
     def log_message(self, fmt, *args):
         print(f"{self.client_address[0]} - {fmt % args}")
 
-    def _send(self, code, body, content_type="application/json; charset=utf-8"):
+    def _send(self, code, body, content_type="application/json; charset=utf-8", headers=None):
         data = body if isinstance(body, bytes) else body.encode()
         self.send_response(code)
         self.send_header("Content-Type", content_type)
@@ -112,6 +150,8 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Cache-Control", "no-store")
         self.send_header("X-Content-Type-Options", "nosniff")
         self.send_header("Referrer-Policy", "no-referrer")
+        for k, v in (headers or {}).items():
+            self.send_header(k, v)
         self.end_headers()
         self.wfile.write(data)
 
