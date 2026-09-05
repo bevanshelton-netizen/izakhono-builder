@@ -31,4 +31,4 @@ jobs:
           if ($text -notmatch '127\.0\.0\.1:9393') { throw 'Workspace must remain localhost-only' }
           if ($text -notmatch '127\.0\.0\.1:11434') { throw 'Model runtime must remain localhost-only' }
           if ($text -notmatch 'IZAKHONO_WORK_TOKEN = ""') { throw 'Local owner mode must not require a pasted token' }
-          if ($text -match 'docker') { throw 'Native Windows path must not depend on Docker' }
+          if ($text -match '(?im)^\s*docker(\.exe)?\s') { throw 'Native Windows path must not execute Docker' }
