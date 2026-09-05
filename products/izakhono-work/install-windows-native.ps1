@@ -74,7 +74,9 @@ function Http-Healthy([string]$Url) {
 
 $ProductDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $AppSource = Join-Path $ProductDir "app.py"
+$BuilderSource = Join-Path $ProductDir "builder_core.py"
 if (-not (Test-Path $AppSource)) { Fail "IZAKHONO WORK app.py is missing." 21 }
+if (-not (Test-Path $BuilderSource)) { Fail "IZAKHONO WORK builder_core.py is missing." 21 }
 
 $winget = Ensure-Winget
 
@@ -116,9 +118,11 @@ if (-not $Model) {
 $Root = Join-Path $env:LOCALAPPDATA "IzakhonoWork"
 $Data = Join-Path $Root "data"
 $App = Join-Path $Root "app.py"
+$Builder = Join-Path $Root "builder_core.py"
 $Launcher = Join-Path $Root "start-izakhono-work.ps1"
 New-Item -ItemType Directory -Force -Path $Root, $Data | Out-Null
 Copy-Item -Force $AppSource $App
+Copy-Item -Force $BuilderSource $Builder
 
 if (-not (Http-Healthy "http://127.0.0.1:11434/api/tags")) {
   Start-Process -FilePath $ollama -ArgumentList @("serve") -WindowStyle Hidden
