@@ -281,6 +281,10 @@ def run_self_test() -> int:
     assert "IZAKHONO WORK" in app.HTML
     assert app.HOST == "127.0.0.1"
     assert app.PORT == 9393
+    assert app.Handler.server_version == "IzakhonoWork/0.2"
+    assert app.WORKSPACE.projects.exists()
+    from builder_core import safe_slug
+    assert safe_slug("My AI Platform") == "My-AI-Platform"
     print("IZAKHONO_WORK_STANDALONE_SELF_TEST=PASS")
     return 0
 
