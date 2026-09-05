@@ -65,3 +65,30 @@ The application still supports `IZAKHONO_WORK_TOKEN` when a bearer-token boundar
 There is no artificial message quota in the application. Model throughput depends on the hardware. A smaller model can make an ordinary laptop responsive; a GPU owner node can later run larger models and serve more simultaneous users.
 
 “Unlimited access” therefore means **no vendor message-credit counter inside IZAKHONO WORK**. It does not mean infinite CPU, GPU, RAM, storage, electricity or bandwidth.
+
+
+## BUILD mode
+
+IZAKHONO WORK now includes a local software-building mode. BUILD gives the local model a restricted project workspace under the owner's IZAKHONO WORK data directory.
+
+BUILD can:
+- create project folders and text/code files
+- inspect only the current project tree
+- read files inside the project
+- create before/after checkpoints
+- validate JSON and Python syntax, and JavaScript syntax when Node is available
+- preview projects that contain an `index.html`
+- export a project as a ZIP
+
+BUILD does **not** expose an unrestricted shell to the model. Generated code is not automatically executed. This keeps the default owner-node boundary materially safer while still letting the model create complete dependency-light applications.
+
+The first builder release deliberately favors standalone HTML/CSS/JavaScript and Python-standard-library projects. More powerful package installation, test execution and deployment capabilities should be added as explicit, auditable permissions rather than silently granting arbitrary host execution.
+
+## Builder activation on the existing owner laptop
+
+Re-run the owner-node takeover after this release is merged. The takeover refreshes both `app.py` and `builder_core.py`, preserves the existing local model/data, restarts IZAKHONO WORK, verifies local chat, restores Windows autostart, and opens the workspace.
+
+The upgraded UI exposes two modes:
+
+- **CHAT** — local assistant conversations.
+- **BUILD** — owner-controlled software creation with project checkpoints, validation, preview and ZIP export.
