@@ -33,6 +33,7 @@ def db_connect():
     db.execute("PRAGMA journal_mode=WAL")
     db.execute("""CREATE TABLE IF NOT EXISTS entitlements(
       id TEXT PRIMARY KEY,
+      entity_id TEXT NOT NULL,
       subject TEXT NOT NULL,
       product_slug TEXT NOT NULL,
       plan_slug TEXT NOT NULL,
@@ -43,11 +44,12 @@ def db_connect():
       source_reference TEXT,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL,
-      UNIQUE(subject, product_slug)
+      UNIQUE(entity_id, subject, product_slug)
     )""")
     db.execute("""CREATE TABLE IF NOT EXISTS events(
       event_id TEXT PRIMARY KEY,
       event_type TEXT NOT NULL,
+      entity_id TEXT,
       subject TEXT,
       product_slug TEXT,
       payload_json TEXT NOT NULL,
@@ -108,6 +110,7 @@ def grant_from_payment(db, payload):
 
     intent = payload.get("intent") or {}
     metadata = intent.get("metadata") or {}
+    entity_id = clean_slug(metadata.get("access_entity_id"), "entity_id")
     subject = clean_subject(metadata.get("access_subject") or metadata.get("customer_email"))
     product = clean_slug(metadata.get("access_product"), "product")
     plan = clean_slug(metadata.get("access_plan") or "subscriber", "plan")
@@ -117,13 +120,13 @@ def grant_from_payment(db, payload):
 
     existing_event = db.execute("SELECT event_id FROM events WHERE event_id=?", (event_id,)).fetchone()
     if existing_event:
-        row = db.execute("SELECT * FROM entitlements WHERE source_event_id=? OR (subject=? AND product_slug=?)",
-                         (event_id, subject, product)).fetchone()
+        row = db.execute("SELECT * FROM entitlements WHERE source_event_id=? OR (entity_id=? AND subject=? AND product_slug=?)",
+                         (event_id, entity_id, subject, product)).fetchone()
         return dict(row) if row else None
 
     now = datetime.now(timezone.utc)
-    current = db.execute("SELECT * FROM entitlements WHERE subject=? AND product_slug=?",
-                         (subject, product)).fetchone()
+    current = db.execute("SELECT * FROM entitlements WHERE entity_id=? AND subject=? AND product_slug=?",
+                         (entity_id, subject, product)).fetchone()
 
     if current and current["expires_at"]:
         current_expiry = parse_iso(current["expires_at"])
@@ -133,23 +136,23 @@ def grant_from_payment(db, payload):
     expires = base + timedelta(days=days)
 
     db.execute(
-        "INSERT INTO events(event_id,event_type,subject,product_slug,payload_json,received_at) VALUES(?,?,?,?,?,?)",
-        (event_id, "payment.paid", subject, product, json.dumps(payload)[:100000], now_iso()),
+        "INSERT INTO events(event_id,event_type,entity_id,subject,product_slug,payload_json,received_at) VALUES(?,?,?,?,?,?,?)",
+        (event_id, "payment.paid", entity_id, subject, product, json.dumps(payload)[:100000], now_iso()),
     )
 
     if current:
         db.execute("""UPDATE entitlements
           SET plan_slug=?,status='active',starts_at=?,expires_at=?,source_event_id=?,source_reference=?,updated_at=?
-          WHERE subject=? AND product_slug=?""",
-          (plan, current["starts_at"], expires.isoformat(), event_id, str(intent.get("reference") or ""), now_iso(), subject, product))
+          WHERE entity_id=? AND subject=? AND product_slug=?""",
+          (plan, current["starts_at"], expires.isoformat(), event_id, str(intent.get("reference") or ""), now_iso(), entity_id, subject, product))
     else:
         db.execute("""INSERT INTO entitlements(
-          id,subject,product_slug,plan_slug,status,starts_at,expires_at,source_event_id,source_reference,created_at,updated_at
-        ) VALUES(?,?,?,?,?,?,?,?,?,?,?)""",
-          ("ent_"+uuid.uuid4().hex, subject, product, plan, "active", now.isoformat(), expires.isoformat(),
+          id,entity_id,subject,product_slug,plan_slug,status,starts_at,expires_at,source_event_id,source_reference,created_at,updated_at
+        ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)""",
+          ("ent_"+uuid.uuid4().hex, entity_id, subject, product, plan, "active", now.isoformat(), expires.isoformat(),
            event_id, str(intent.get("reference") or ""), now_iso(), now_iso()))
     db.commit()
-    row = db.execute("SELECT * FROM entitlements WHERE subject=? AND product_slug=?", (subject, product)).fetchone()
+    row = db.execute("SELECT * FROM entitlements WHERE entity_id=? AND subject=? AND product_slug=?", (entity_id, subject, product)).fetchone()
     return dict(row)
 
 def normalized_access(row):
@@ -169,6 +172,7 @@ def normalized_access(row):
     return {
         "active": active,
         "entitlement": {
+            "entity_id": row["entity_id"],
             "subject": row["subject"],
             "product": row["product_slug"],
             "plan": row["plan_slug"],
@@ -235,11 +239,12 @@ class Handler(BaseHTTPRequestHandler):
                 return response(self, 401, {"ok": False, "error": "unauthorized"})
             try:
                 payload = json.loads(self.read_body().decode())
+                entity_id = clean_slug(payload.get("entity_id"), "entity_id")
                 subject = clean_subject(payload.get("subject"))
                 product = clean_slug(payload.get("product"), "product")
                 with db_connect() as db:
-                    row = db.execute("SELECT * FROM entitlements WHERE subject=? AND product_slug=?",
-                                     (subject, product)).fetchone()
+                    row = db.execute("SELECT * FROM entitlements WHERE entity_id=? AND subject=? AND product_slug=?",
+                                     (entity_id, subject, product)).fetchone()
                 return response(self, 200, {"ok": True, **normalized_access(row)})
             except (ValueError, json.JSONDecodeError) as e:
                 return response(self, 422, {"ok": False, "error": str(e)})
