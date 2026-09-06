@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <title>FAISReady — RE Exam Preparation</title>
+  <meta name="description" content="Mobile-first South African regulatory-exam preparation for RE1, RE3, RE4 and RE5.">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="brand"><span class="brand-mark">FR</span><div><strong>FAISReady</strong><small>Regulatory Exam Preparation</small></div></div>
+    <nav><a href="#courses">Courses</a><a href="#mock">Mock Quiz</a><a href="#dashboard">Dashboard</a><a href="#enrol">Enrol</a></nav>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="hero-copy">
+        <span class="eyebrow">SOUTH AFRICA • MOBILE FIRST • OWNER CONTROLLED</span>
+        <h1>Prepare for your RE exam with a clear plan, practice and progress tracking.</h1>
+        <p class="lead">Study RE1, RE3, RE4 and RE5 with focused learning paths, mock questions and a simple learner dashboard.</p>
+        <div class="hero-price"><span>Launch package</span><strong>R399</strong><small>One preparation package. Payments are not active yet.</small></div>
+        <div class="cta-row">
+          <a class="btn primary" href="#enrol">Join the R399 Launch List</a>
+          <a class="btn secondary" href="#mock">Start RE Preparation</a>
+        </div>
+        <p class="fine">Independent exam-preparation platform. No FSCA endorsement, pass guarantee or active payment processing is claimed.</p>
+      </div>
+      <div class="hero-card">
+        <div class="score-ring"><span id="heroProgress">0%</span></div>
+        <h3>Your readiness snapshot</h3>
+        <p id="heroStatus">Choose a course and complete a mock quiz to begin tracking your progress.</p>
+        <div class="mini-grid">
+          <div><strong id="attemptCount">0</strong><span>Attempts</span></div>
+          <div><strong id="bestScore">0%</strong><span>Best score</span></div>
+          <div><strong id="leadCount">0</strong><span>Saved enquiries</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="trust-strip">
+      <div><strong>4</strong><span>RE preparation tracks</span></div>
+      <div><strong>Local</strong><span>Browser progress storage</span></div>
+      <div><strong>CSV</strong><span>Lead export for follow-up</span></div>
+      <div><strong>Disabled</strong><span>Payments until verified</span></div>
+    </section>
+
+    <section class="section" id="courses">
+      <div class="section-head"><span class="eyebrow">COURSE PATHWAYS</span><h2>Choose the exam you are preparing for</h2><p>Each course gives you a focused preparation route, practice access and readiness tracking.</p></div>
+      <div class="course-grid">
+        <article class="course-card" data-course="RE1"><span class="course-code">RE1</span><h3>RE1 Preparation</h3><p>For learners preparing for the RE1 regulatory examination.</p><ul><li>Study plan</li><li>Mock questions</li><li>Progress tracking</li></ul><button class="course-btn" data-course="RE1">Choose RE1</button></article>
+        <article class="course-card" data-course="RE3"><span class="course-code">RE3</span><h3>RE3 Preparation</h3><p>Structured preparation support for the RE3 regulatory examination.</p><ul><li>Topic checkpoints</li><li>Practice scoring</li><li>Readiness view</li></ul><button class="course-btn" data-course="RE3">Choose RE3</button></article>
+        <article class="course-card" data-course="RE4"><span class="course-code">RE4</span><h3>RE4 Preparation</h3><p>Mobile-first RE4 preparation with clear progress and practice.</p><ul><li>Guided revision</li><li>Mock assessment</li><li>Study progress</li></ul><button class="course-btn" data-course="RE4">Choose RE4</button></article>
+        <article class="course-card" data-course="RE5"><span class="course-code">RE5</span><h3>RE5 Preparation</h3><p>Focused RE5 exam preparation for individual learners and teams.</p><ul><li>Exam practice</li><li>Scoring history</li><li>Team-ready leads</li></ul><button class="course-btn" data-course="RE5">Choose RE5</button></article>
+      </div>
+    </section>
+
+    <section class="section split" id="mock">
+      <div>
+        <span class="eyebrow">INTERACTIVE MOCK</span><h2>Test your readiness</h2>
+        <p>Select a course, answer the questions and save your score locally on this device.</p>
+        <label class="field">Preparation track<select id="quizCourse"><option>RE1</option><option>RE3</option><option>RE4</option><option>RE5</option></select></label>
+        <button id="startQuiz" class="btn primary">Start mock quiz</button>
+      </div>
+      <div class="quiz-card" id="quizCard">
+        <div class="quiz-empty">Your mock quiz will appear here.</div>
+      </div>
+    </section>
+
+    <section class="section" id="dashboard">
+      <div class="section-head"><span class="eyebrow">LEARNER DASHBOARD</span><h2>Your preparation progress</h2></div>
+      <div class="dashboard-grid">
+        <div class="panel"><span>Selected course</span><strong id="selectedCourse">Not selected</strong><small>Choose a course above to set your learning path.</small></div>
+        <div class="panel"><span>Latest score</span><strong id="latestScore">0%</strong><small>Your most recent mock result.</small></div>
+        <div class="panel"><span>Best score</span><strong id="dashboardBest">0%</strong><small>Your highest saved mock result.</small></div>
+        <div class="panel"><span>Readiness</span><strong id="readinessLabel">Not started</strong><small id="readinessAdvice">Complete a mock quiz to unlock guidance.</small></div>
+      </div>
+      <div class="progress-shell"><div id="progressBar"></div></div>
+    </section>
+
+    <section class="section split" id="enrol">
+      <div>
+        <span class="eyebrow">R399 LAUNCH LIST</span><h2>Register your interest</h2>
+        <p>Save the lead locally for follow-up. No money is collected on this page.</p>
+        <form id="learnerForm" class="form-card">
+          <label class="field">Full name<input name="name" required></label>
+          <label class="field">Mobile number<input name="mobile" required></label>
+          <label class="field">Email<input name="email" type="email"></label>
+          <label class="field">Exam<select name="course"><option>RE1</option><option>RE3</option><option>RE4</option><option>RE5</option></select></label>
+          <label class="check"><input type="checkbox" required> I consent to being contacted about FAISReady preparation.</label>
+          <button class="btn primary" type="submit">Join the R399 Launch List</button>
+        </form>
+      </div>
+      <div>
+        <span class="eyebrow">BUSINESS & INSTITUTIONAL</span><h2>Train teams or run a pilot</h2>
+        <form id="businessForm" class="form-card">
+          <label class="field">Organisation<input name="organisation" required></label>
+          <label class="field">Contact person<input name="contact" required></label>
+          <label class="field">Email<input name="email" type="email" required></label>
+          <label class="field">Enquiry type<select name="type"><option>Employer / Team Enquiry</option><option>Institutional Pilot</option></select></label>
+          <label class="field">Estimated learners<input name="learners" type="number" min="1" value="10"></label>
+          <button class="btn secondary" type="submit">Send enquiry</button>
+        </form>
+        <button id="exportLeads" class="text-btn">Export saved leads as CSV</button>
+      </div>
+    </section>
+
+    <section class="section payment-box" id="payment">
+      <div><span class="eyebrow">PAYMENT STATUS</span><h2>Payments are intentionally disabled</h2><p>FAISReady is collecting launch interest only. Payment activation must remain off until merchant setup, settlement routing, ITN/webhook verification, pricing controls and reconciliation are tested.</p></div>
+      <div class="status-badge">NOT LIVE</div>
+    </section>
+  </main>
+
+  <footer><div><strong>FAISReady</strong><p>Owner-controlled launch build.</p></div><p>© 2026 • Independent exam-preparation platform</p></footer>
+
+  <div class="toast" id="toast" role="status"></div>
+  <script src="app.js"></script>
+</body>
+</html>
