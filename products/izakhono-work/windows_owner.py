@@ -21,7 +21,7 @@ PORT = 9393
 OLLAMA_PORT = 11434
 HEALTH_URL = f"http://{HOST}:{PORT}/healthz"
 OLLAMA_URL = f"http://{HOST}:{OLLAMA_PORT}"
-EXPECTED_WORK_VERSION = "0.2.3"
+EXPECTED_WORK_VERSION = "1.0.0"
 
 
 def local_root() -> Path:
@@ -321,7 +321,7 @@ def run_self_test() -> int:
     assert "IZAKHONO WORK" in app.HTML
     assert app.HOST == "127.0.0.1"
     assert app.PORT == 9393
-    assert app.Handler.server_version == "IzakhonoWork/0.2"
+    assert app.Handler.server_version == "IzakhonoWork/1.0"
     assert app.WORK_VERSION == EXPECTED_WORK_VERSION
     assert app.WORKSPACE.projects.exists()
     from builder_core import safe_slug
