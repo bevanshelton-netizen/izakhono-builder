@@ -1,0 +1,48 @@
+{
+  "version": 1,
+  "default": "deny",
+  "principles": {
+    "owner_controlled_runtime": true,
+    "external_ai_optional_only": true,
+    "external_ai_runtime_dependency_forbidden": true,
+    "entity_scope_required": true,
+    "secrets_export_forbidden": true
+  },
+  "data_classes": {
+    "allowed_external": [
+      "public",
+      "non_sensitive",
+      "internal_sanitized"
+    ],
+    "forbidden_external": [
+      "credentials",
+      "passwords",
+      "private_keys",
+      "raw_auth_tokens",
+      "payment_card_data",
+      "banking_credentials",
+      "personal_sensitive",
+      "customer_private_data",
+      "private_source_secrets",
+      "database_dump"
+    ]
+  },
+  "external_ai": {
+    "mode": "advisory_only",
+    "allowed_purposes": [
+      "research",
+      "advisory",
+      "non_sensitive_code_review",
+      "public_content_generation",
+      "sanitized_debugging"
+    ],
+    "forbidden_purposes": [
+      "core_runtime_inference_dependency",
+      "identity_authority",
+      "payment_authority",
+      "entitlement_authority",
+      "secret_storage",
+      "customer_system_of_record"
+    ]
+  }
+}
