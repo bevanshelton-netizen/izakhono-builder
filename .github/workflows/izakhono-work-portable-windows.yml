@@ -41,6 +41,7 @@ jobs:
           Copy-Item products/izakhono-work/portable-windows/START-IZAKHONO-WORK.cmd bundle/START-IZAKHONO-WORK.cmd
           Copy-Item products/izakhono-work/portable-windows/VERIFY-OWNER-NODE.ps1 bundle/VERIFY-OWNER-NODE.ps1
           Copy-Item products/izakhono-work/portable-windows/VERIFY-OWNER-NODE.cmd bundle/VERIFY-OWNER-NODE.cmd
+          Copy-Item products/izakhono-work/portable-windows/IZAKHONO-WORK-ONE-CLICK.cmd bundle/IZAKHONO-WORK-ONE-CLICK.cmd
 
       - name: Smoke test portable Python and builder
         shell: pwsh
@@ -49,6 +50,15 @@ jobs:
           .\python.exe -c "import sqlite3, json, pathlib; import app, builder_core; assert app.WORK_VERSION == '0.2.2'; print('IZAKHONO_PORTABLE_IMPORT=PASS')"
           .\python.exe ..\products\izakhono-work\test_builder.py
           Pop-Location
+
+      - name: Validate one-click bootstrap contract
+        shell: pwsh
+        run: |
+          $cmd = Get-Content products/izakhono-work/portable-windows/IZAKHONO-WORK-ONE-CLICK.cmd -Raw
+          if ($cmd -notmatch '67b976b5427656f81f7ac76a00301f41d8879368') { throw 'One-click source is not commit-pinned.' }
+          if ($cmd -notmatch 'VERIFY-OWNER-NODE.ps1') { throw 'One-click verifier handoff is missing.' }
+          if ($cmd -match 'Add-MpPreference|Set-MpPreference|exclusion|DisableRealtimeMonitoring') { throw 'Security bypass detected.' }
+          Write-Host 'IZAKHONO_ONE_CLICK_CONTRACT=PASS'
 
       - name: Create portable owner ZIP
         shell: pwsh
