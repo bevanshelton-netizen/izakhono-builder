@@ -3,7 +3,7 @@ $ErrorActionPreference = "Stop"
 $Base = "http://127.0.0.1:9393"
 
 $health = Invoke-RestMethod -Uri "$Base/healthz" -TimeoutSec 5
-if (-not $health.ok -or $health.version -ne "0.2.3") {
+if (-not $health.ok -or $health.version -ne "1.0.0") {
   throw "IZAKHONO WORK 0.2.2 is not ready."
 }
 
@@ -36,6 +36,11 @@ for ($i=0; $i -lt 900; $i++) {
     Write-Host "Files: $fileCount"
     Write-Host "Validation: PASS"
     Write-Host "Content proof: PASS"
+    $status = Invoke-RestMethod -Uri "$Base/api/status" -TimeoutSec 10
+    if ($status.version -ne "1.0.0" -or -not $status.builder) { throw "Runtime status contract did not report IZAKHONO WORK v1 builder ready." }
+    $validation = Invoke-RestMethod -Uri "$Base/api/projects/OWNER-NODE-PROOF/validate" -TimeoutSec 10
+    if (-not $validation.ok) { throw "Project validation endpoint did not pass." }
+    Write-Host "Runtime contract: PASS"
     if ($result.preview_url) {
       Start-Process "$Base$($result.preview_url)"
     }
