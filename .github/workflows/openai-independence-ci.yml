@@ -1,0 +1,39 @@
+name: OpenAI Independence CI
+
+on:
+  pull_request:
+    paths:
+      - 'products/**'
+      - 'src/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'scripts/audit-openai-dependency.py'
+      - 'OPENAI-INDEPENDENCE.md'
+      - '.github/workflows/openai-independence-ci.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'products/**'
+      - 'src/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'scripts/audit-openai-dependency.py'
+      - 'OPENAI-INDEPENDENCE.md'
+      - '.github/workflows/openai-independence-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Audit prohibited OpenAI runtime dependencies
+        run: python3 scripts/audit-openai-dependency.py
+      - name: Owner-only AI gateway contract
+        run: |
+          set -euo pipefail
+          grep -Fq 'IZAKHONO_AI_OWNER_ONLY' products/izakhono-ai-gateway/app.py
+          grep -Fq '"external_ai_providers": False' products/izakhono-ai-gateway/app.py
