@@ -30,24 +30,6 @@
     ]
   };
 
-  function loadRainbowGraphic(){
-    var image = qs("rainbowImage");
-    if(!image) return;
-    var pieces = [0,1,2,3].map(function(i){
-      return fetch("assets/rainbow-clean-" + i + ".b64").then(function(response){
-        if(!response.ok) throw new Error("rainbow_clean_asset_" + i + "_failed");
-        return response.text();
-      });
-    });
-    Promise.all(pieces).then(function(parts){
-      image.src = "data:image/webp;base64," + parts.join("").replace(/\s+/g,"");
-    }).catch(function(){
-      image.style.display = "none";
-      var frame = document.querySelector(".rainbow-frame");
-      if(frame) frame.classList.add("asset-failed");
-    });
-  }
-
   function readJson(key, fallback){
     try{
       var raw = localStorage.getItem(key);
@@ -248,7 +230,6 @@
   }
 
   document.addEventListener("DOMContentLoaded", function(){
-    loadRainbowGraphic();
     var course = selectedCourse();
     if(course) setCourse(course);
 
