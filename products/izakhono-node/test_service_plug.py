@@ -6,7 +6,7 @@ from pathlib import Path
 
 tmp=tempfile.TemporaryDirectory()
 os.environ["IZAKHONO_NODE_ROOT"]=tmp.name
-spec=importlib.util.spec_from_file_location("iznode",Path(__file__).resolve().parents[1]/"node_agent.py")
+spec=importlib.util.spec_from_file_location("iznode",Path(__file__).resolve().parent/"node_agent.py")
 m=importlib.util.module_from_spec(spec)
 spec.loader.exec_module(m)
 
