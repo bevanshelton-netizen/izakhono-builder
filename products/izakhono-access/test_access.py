@@ -23,6 +23,7 @@ payload = {
     "intent": {
         "reference": "IZP-001",
         "metadata": {
+            "access_entity_id": "faisready-entity",
             "access_subject": "customer@example.com",
             "access_product": "faisready",
             "access_plan": "monthly",
@@ -34,6 +35,7 @@ payload = {
 with app.db_connect() as db:
     first = app.grant_from_payment(db, payload)
     second = app.grant_from_payment(db, payload)
+    assert first["entity_id"] == "faisready-entity"
     assert first["subject"] == "customer@example.com"
     assert first["product_slug"] == "faisready"
     assert second["source_event_id"] == "evt_test_001"
