@@ -35,11 +35,28 @@ def verify(headers,body):
     return True,''
 
 def valid_job(j):
-    required=['app','repo','ref','container_port','health_path']
+    mode=str(j.get('mode') or 'single')
+    if mode not in ('single','compose'): return False,'invalid mode'
+
+    required=['app','repo','ref']
     if any(not j.get(k) for k in required): return False,'missing required field'
     if not str(j['app']).replace('-','').replace('_','').isalnum(): return False,'invalid app'
     if not str(j['repo']).startswith(('https://','ssh://','git@')): return False,'invalid repo'
-    if not str(j['health_path']).startswith('/'): return False,'invalid health path'
+
+    if mode=='single':
+        if not j.get('container_port') or not j.get('health_path'): return False,'missing single-service field'
+        if not str(j['health_path']).startswith('/'): return False,'invalid health path'
+        try:
+            port=int(j['container_port'])
+            if port<1 or port>65535: return False,'invalid container port'
+        except Exception:
+            return False,'invalid container port'
+    else:
+        if not j.get('compose_file') or not j.get('health_url'): return False,'missing compose-service field'
+        health=str(j['health_url'])
+        if not health.startswith(('http://127.0.0.1:','http://localhost:','https://127.0.0.1:','https://localhost:')):
+            return False,'compose health_url must be localhost'
+
     env=str(j.get('env_file',''))
     if env and not Path(env).resolve().as_posix().startswith('/etc/izakhono/apps/'):
         return False,'env_file must live under /etc/izakhono/apps'
