@@ -14,6 +14,7 @@ ACCESS_URL = os.getenv("IZAKHONO_ACCESS_URL", "http://127.0.0.1:9494").rstrip("/
 ACCESS_KEY = os.getenv("IZAKHONO_ACCESS_INTERNAL_KEY", "")
 OLLAMA_URL = os.getenv("IZAKHONO_OLLAMA_URL", "http://127.0.0.1:11434").rstrip("/")
 DEFAULT_MODEL = os.getenv("IZAKHONO_AI_MODEL", "qwen3:4b")
+OWNER_ONLY = os.getenv("IZAKHONO_AI_OWNER_ONLY", "true").lower() != "false"
 MAX_BODY = 1_000_000
 
 def send_json(handler, status, obj):
@@ -51,6 +52,8 @@ def check_access(entity_id, subject, product):
     )
 
 def model_chat(messages, model):
+    if not OWNER_ONLY:
+        raise RuntimeError("external_ai_providers_disabled")
     return http_json(
         OLLAMA_URL + "/api/chat",
         {"model": model, "stream": False, "messages": messages},
@@ -82,6 +85,8 @@ class Handler(BaseHTTPRequestHandler):
                 "usage_credit_gate": False,
                 "subscriber_message_quota": None,
                 "default_model": DEFAULT_MODEL,
+                "owner_only": OWNER_ONLY,
+                "external_ai_providers": False,
             })
         return send_json(self, 404, {"ok": False, "error": "not_found"})
 
@@ -127,6 +132,7 @@ class Handler(BaseHTTPRequestHandler):
             "ok": True,
             "answer": answer,
             "model": model,
+            "owner_only": OWNER_ONLY,
             "identity": {"entity_id": entity_id, "subject": subject},
             "subscription": {
                 "active": True,

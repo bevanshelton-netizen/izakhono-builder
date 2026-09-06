@@ -2,7 +2,7 @@
 
 IZAKHONO's owner-controlled AI product layer.
 
-This is **not OpenAI's proprietary ChatGPT software and does not claim to be a future OpenAI model**. "10" is the IZAKHONO product generation name. The goal is to deliver a ChatGPT-class user experience while keeping identity, subscriptions, conversations, model routing and business data behind IZAKHONO-owned platform contracts.
+"10" is the IZAKHONO product generation name. The goal is to deliver a world-class conversational AI experience while keeping identity, subscriptions, conversations, model routing and business data behind IZAKHONO-owned platform contracts.
 
 ## Built now
 
