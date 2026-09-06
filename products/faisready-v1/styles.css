@@ -31,9 +31,9 @@ h1{font-size:clamp(2.45rem,5.8vw,5.25rem);line-height:.97;letter-spacing:-.055em
 h2{font-size:clamp(2rem,4vw,3.5rem);line-height:1.03;letter-spacing:-.035em;color:var(--blue);margin:.35em 0 .35em}
 h3{color:var(--blue)}
 
-.hero-brand{display:flex;align-items:baseline;flex-wrap:wrap;gap:.04em;font-size:clamp(4.8rem,11vw,10.5rem);line-height:.72;letter-spacing:-.085em;font-weight:1000;margin:0 0 28px;color:var(--blue);text-shadow:0 8px 28px rgba(5,43,89,.08)}
-.hero-brand span{color:var(--blue)}
-.hero-brand strong{color:var(--gold);font-weight:1000}
+.hero-brand{display:flex;align-items:baseline;flex-wrap:nowrap;white-space:nowrap;gap:0;font-size:clamp(3.6rem,7.2vw,7.4rem);line-height:.82;letter-spacing:-.075em;font-weight:1000;margin:0 0 28px;max-width:100%;text-shadow:0 8px 28px rgba(5,43,89,.08)}
+.hero-brand .brand-fais{color:var(--blue)}
+.hero-brand .brand-ready{color:var(--gold);font-weight:1000}
 .hero-kicker{display:flex;align-items:center;gap:9px;color:#35506e;font-size:.8rem;font-weight:1000;letter-spacing:.12em;margin:0 0 14px}
 .sa-dot{width:11px;height:11px;border-radius:50%;background:linear-gradient(135deg,#007749 0 48%,#ffb81c 48% 70%,#de3831 70%);box-shadow:0 0 0 4px rgba(0,119,73,.08)}
 .energy-strip{display:flex;align-items:center;justify-content:center;gap:clamp(14px,3vw,38px);padding:15px 20px;background:linear-gradient(90deg,#031f43,#0b4f93,#031f43);color:white;font-size:clamp(.72rem,1.4vw,.95rem);font-weight:1000;letter-spacing:.17em;white-space:nowrap;overflow:hidden}
@@ -116,7 +116,7 @@ footer p{margin:3px 0 0}
   nav{display:none}
 }
 @media(max-width:620px){
-  .site-header{padding:10px 14px}.brand-mark{width:46px;height:46px;border-radius:14px}.brand strong{font-size:1.62rem}.brand small{font-size:.52rem;letter-spacing:.1em}.hero-brand{font-size:clamp(4rem,22vw,6.4rem);margin-bottom:22px}.hero-kicker{font-size:.68rem;letter-spacing:.08em}.energy-strip{justify-content:flex-start;overflow:auto;scrollbar-width:none}
+  .site-header{padding:10px 14px}.brand-mark{width:46px;height:46px;border-radius:14px}.brand strong{font-size:1.62rem}.brand small{font-size:.52rem;letter-spacing:.1em}.hero-brand{font-size:clamp(3.25rem,16vw,5.4rem);margin-bottom:22px;letter-spacing:-.07em}.hero-kicker{font-size:.68rem;letter-spacing:.08em}.energy-strip{justify-content:flex-start;overflow:auto;scrollbar-width:none}
   .hero,.section{padding-left:18px;padding-right:18px}
   .course-grid,.dashboard-grid,.trust-strip{grid-template-columns:1fr}
   .hero-card{padding:22px}
