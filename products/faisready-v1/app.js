@@ -30,6 +30,24 @@
     ]
   };
 
+  function loadApprovedRainbowGraphic(){
+    var image = qs("rainbowImage");
+    if(!image) return;
+    var pieces = [0,1,2,3,4,5,6].map(function(i){
+      return fetch("assets/approved-photo-" + i + ".b64").then(function(response){
+        if(!response.ok) throw new Error("approved_photo_" + i + "_failed");
+        return response.text();
+      });
+    });
+    Promise.all(pieces).then(function(parts){
+      image.src = "data:image/webp;base64," + parts.join("").replace(/\s+/g,"");
+    }).catch(function(){
+      image.style.display = "none";
+      var frame = document.querySelector(".rainbow-frame");
+      if(frame) frame.classList.add("asset-failed");
+    });
+  }
+
   function readJson(key, fallback){
     try{
       var raw = localStorage.getItem(key);
@@ -230,6 +248,7 @@
   }
 
   document.addEventListener("DOMContentLoaded", function(){
+    loadApprovedRainbowGraphic();
     var course = selectedCourse();
     if(course) setCourse(course);
 
