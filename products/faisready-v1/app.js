@@ -33,9 +33,9 @@
   function loadRainbowGraphic(){
     var image = qs("rainbowImage");
     if(!image) return;
-    var pieces = [0,1,2,3,4].map(function(i){
-      return fetch("assets/rainbow-" + i + ".b64").then(function(response){
-        if(!response.ok) throw new Error("rainbow_asset_" + i + "_failed");
+    var pieces = [0,1,2,3].map(function(i){
+      return fetch("assets/rainbow-clean-" + i + ".b64").then(function(response){
+        if(!response.ok) throw new Error("rainbow_clean_asset_" + i + "_failed");
         return response.text();
       });
     });
