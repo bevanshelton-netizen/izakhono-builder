@@ -52,8 +52,10 @@ jobs:
           blocked = [
               "payfast.co.za/eng/process",
               "checkout.stripe.com",
-              "guaranteed pass",
-              "fsca endorsed",
+              "we guarantee a pass",
+              "guaranteed results",
+              "endorsed by the fsca",
+              "fsca-approved preparation",
           ]
           for item in blocked:
               assert item not in lowered, item
