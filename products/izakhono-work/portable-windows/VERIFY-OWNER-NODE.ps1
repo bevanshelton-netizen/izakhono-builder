@@ -23,11 +23,19 @@ for ($i=0; $i -lt 900; $i++) {
     if (-not $result.validation_ok) { throw "Build completed but validation failed." }
     $fileCount = @($result.files | Where-Object { $_.type -eq "file" }).Count
     if ($fileCount -lt 1) { throw "Build completed without files." }
+    $index = @($result.files | Where-Object { $_.type -eq "file" -and $_.path -eq "index.html" })
+    if ($index.Count -ne 1) { throw "Build did not create index.html." }
+    $file = Invoke-RestMethod -Uri "$Base/api/projects/OWNER-NODE-PROOF/file?path=index.html" -TimeoutSec 10
+    $html = [string]$file.content
+    foreach ($required in @("IZAKHONO OWNER NODE ACTIVE", "6 September 2026", "Built locally on the owner laptop")) {
+      if ($html -notlike "*$required*") { throw "index.html is missing required proof text: $required" }
+    }
     Write-Host ""
     Write-Host "IZAKHONO_OWNER_NODE_BUILD_PROOF=PASS"
     Write-Host "Project: $($result.project)"
     Write-Host "Files: $fileCount"
     Write-Host "Validation: PASS"
+    Write-Host "Content proof: PASS"
     if ($result.preview_url) {
       Start-Process "$Base$($result.preview_url)"
     }

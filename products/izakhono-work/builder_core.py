@@ -7,6 +7,7 @@ syntax-only validation. It cannot issue arbitrary shell commands.
 """
 from __future__ import annotations
 
+import html
 import json
 import os
 import py_compile
@@ -211,6 +212,53 @@ def parse_model_json(text: str) -> dict:
     raise BuilderError("builder_model_returned_invalid_json")
 
 
+def _static_fallback_requested(spec: str) -> bool:
+    lowered = (spec or "").lower()
+    return (
+        "index.html" in lowered
+        or (
+            ("static" in lowered or "browser" in lowered)
+            and any(word in lowered for word in ("webpage", "website", "page"))
+        )
+    )
+
+
+def _fallback_static_html(spec: str, project_name: str) -> str:
+    quoted = re.findall(r'["“]([^"”]{1,240})["”]', spec or "")
+    headline = quoted[0] if quoted else project_name.replace("-", " ")
+    requirements = quoted[:8] or [spec[:500] or "Owner-requested static page"]
+    items = "\n".join(f"<li>{html.escape(item)}</li>" for item in requirements)
+    return f"""<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>{html.escape(headline)}</title>
+  <style>
+    :root {{ color-scheme: dark; --gold:#f4c84d; --green:#60e68b; --bg:#070907; }}
+    * {{ box-sizing:border-box; }}
+    body {{ margin:0; min-height:100vh; display:grid; place-items:center; background:radial-gradient(circle at top,#172117,var(--bg) 58%); color:#fff; font-family:Segoe UI,Arial,sans-serif; }}
+    main {{ width:min(900px,92vw); padding:48px; border:1px solid #314332; border-radius:28px; background:#0d120ed9; box-shadow:0 30px 90px #0009; }}
+    .eyebrow {{ color:var(--green); font-weight:800; letter-spacing:.14em; }}
+    h1 {{ margin:.35em 0; color:var(--gold); font-size:clamp(2.4rem,7vw,5.5rem); line-height:.95; }}
+    p,li {{ font-size:clamp(1rem,2vw,1.2rem); line-height:1.6; }}
+    ul {{ padding-left:1.2em; color:#dfe9df; }}
+    .badge {{ display:inline-block; margin-top:20px; padding:10px 14px; border-radius:999px; background:#18351f; color:#9effb6; font-weight:800; }}
+  </style>
+</head>
+<body>
+  <main>
+    <div class="eyebrow">IZAKHONO WORK · OWNER NODE</div>
+    <h1>{html.escape(headline)}</h1>
+    <p>Built locally inside the owner-controlled IZAKHONO WORK project workspace.</p>
+    <ul>{items}</ul>
+    <div class="badge">LOCAL BUILD FALLBACK · VALIDATED</div>
+  </main>
+</body>
+</html>
+"""
+
+
 def validate_project(project: Path) -> list[dict]:
     results = []
     node = shutil.which("node")
@@ -225,6 +273,13 @@ def validate_project(project: Path) -> list[dict]:
                 results.append({"path": rel, "check": "json", "ok": True})
             except Exception as e:
                 results.append({"path": rel, "check": "json", "ok": False, "error": str(e)[:300]})
+        elif ext in {".html", ".htm"}:
+            try:
+                text = p.read_text(encoding="utf-8", errors="replace").strip().lower()
+                ok = bool(text) and ("<!doctype html" in text or "<html" in text)
+                results.append({"path": rel, "check": "html_structure", "ok": ok, "error": None if ok else "missing_html_document_structure"})
+            except Exception as e:
+                results.append({"path": rel, "check": "html_structure", "ok": False, "error": str(e)[:300]})
         elif ext == ".py":
             try:
                 py_compile.compile(str(p), doraise=True)
@@ -367,6 +422,26 @@ class BuilderEngine:
             if bool(plan.get("done")) and has_files and not failures:
                 break
 
+        fallback_used = False
+        has_files = any(
+            p.is_file() and ".izakhono" not in p.parts
+            for p in project.rglob("*")
+        )
+        if not has_files:
+            if _static_fallback_requested(spec):
+                fallback = _fallback_static_html(spec, project_name)
+                self.workspace.write_file(project_name, "index.html", fallback)
+                transcript.append({
+                    "type": "write_file",
+                    "path": "index.html",
+                    "ok": True,
+                    "fallback": True,
+                })
+                summaries.append("Created a deterministic local static-page fallback after the model returned no files.")
+                fallback_used = True
+            else:
+                raise BuilderError("builder_completed_without_files")
+
         final_validation = validate_project(project)
         checkpoint_after = self.workspace.checkpoint(project_name, "after-build")
         failed = [x for x in final_validation if not x.get("ok")]
@@ -383,4 +458,5 @@ class BuilderEngine:
             "checkpoint_after": checkpoint_after,
             "turns": min(len(summaries), self.max_turns),
             "action_count": len(transcript),
+            "fallback_used": fallback_used,
         }

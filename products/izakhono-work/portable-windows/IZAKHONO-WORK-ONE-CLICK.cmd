@@ -11,7 +11,7 @@ echo needed for IZAKHONO WORK, starts it, and runs OWNER-NODE-PROOF.
 echo.
 
 set "ROOT=%LOCALAPPDATA%\IzakhonoWork\portable-0.2.2"
-set "SRC=https://raw.githubusercontent.com/bevanshelton-netizen/izakhono-builder/67b976b5427656f81f7ac76a00301f41d8879368/products/izakhono-work"
+set "SRC=https://raw.githubusercontent.com/bevanshelton-netizen/izakhono-builder/cafe5725ba3d486fa2918c406f150e1298109dff/products/izakhono-work"
 set "PYURL=https://www.python.org/ftp/python/3.13.7/python-3.13.7-embed-amd64.zip"
 
 if not exist "%ROOT%" mkdir "%ROOT%"
