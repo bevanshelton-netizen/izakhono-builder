@@ -3,7 +3,7 @@ $ErrorActionPreference = "Stop"
 $Base = "http://127.0.0.1:9393"
 
 $health = Invoke-RestMethod -Uri "$Base/healthz" -TimeoutSec 5
-if (-not $health.ok -or $health.version -ne "0.2.2") {
+if (-not $health.ok -or $health.version -ne "0.2.3") {
   throw "IZAKHONO WORK 0.2.2 is not ready."
 }
 
