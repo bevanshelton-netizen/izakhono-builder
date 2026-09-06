@@ -35,8 +35,8 @@ threading.Thread(target=m.serve_forever,daemon=True).start()
 spec=importlib.util.spec_from_file_location("gateway",Path(__file__).with_name("app.py"))
 g=importlib.util.module_from_spec(spec); spec.loader.exec_module(g)
 
-assert g.check_access("active@example.com","faisready")["active"] is True
-assert g.check_access("inactive@example.com","faisready")["active"] is False
+assert g.check_access("faisready-entity","active@example.com","faisready")["active"] is True
+assert g.check_access("faisready-entity","inactive@example.com","faisready")["active"] is False
 assert g.model_chat([{"role":"user","content":"hello"}],"qwen3:4b")["message"]["content"]=="mock-response"
 
 print("IZAKHONO_AI_GATEWAY_TEST=PASS")
