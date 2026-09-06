@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>IZAKHONO ADS — AI Advertising Command Centre</title>
+  <meta name="description" content="IZAKHONO ADS is an owner-controlled AI advertising command centre for campaigns, creatives, video ads, budgets, leads and performance.">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark">IA</div>
+        <div>
+          <strong>IZAKHONO ADS</strong>
+          <small>AI ADVERTISING COMMAND CENTRE</small>
+        </div>
+      </div>
+      <nav id="nav">
+        <button class="nav-btn active" data-view="dashboard">Dashboard</button>
+        <button class="nav-btn" data-view="campaigns">Campaigns</button>
+        <button class="nav-btn" data-view="creative">Creative Studio</button>
+        <button class="nav-btn" data-view="video">Video Studio</button>
+        <button class="nav-btn" data-view="audiences">Audiences</button>
+        <button class="nav-btn" data-view="budget">Budget Lab</button>
+        <button class="nav-btn" data-view="leads">Lead Centre</button>
+        <button class="nav-btn" data-view="analytics">Analytics</button>
+        <button class="nav-btn" data-view="integrations">Integrations</button>
+      </nav>
+      <div class="sidebar-note">
+        <span class="status-dot"></span>
+        OWNER-CONTROLLED ALPHA
+        <small>Campaign publishing remains paused until a real ad account is connected and approved.</small>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">BUILT IN AFRICA FOR THE WORLD</p>
+          <h1>IZAKHONO ADS</h1>
+          <p class="subline">Plan, create, render, approve, launch and optimise advertising from one owner-controlled command centre.</p>
+        </div>
+        <div class="top-actions">
+          <span class="pill green">LOCAL-FIRST</span>
+          <span class="pill gold">VIDEO INCLUDED</span>
+          <button id="newCampaignBtn" class="primary">+ New Campaign</button>
+        </div>
+      </header>
+
+      <section id="dashboard" class="view active">
+        <div class="hero-grid">
+          <article class="hero-card">
+            <p class="eyebrow">CURRENT PRIORITY</p>
+            <h2>FAISReady Launch Campaign</h2>
+            <p>South Africa's Regulatory Examination Preparation Platform — RE1 • RE3 • RE4 • RE5.</p>
+            <div class="hero-actions">
+              <button class="primary" data-jump="creative">Create Ads</button>
+              <button class="secondary" data-jump="video">Build Video</button>
+            </div>
+          </article>
+          <article class="score-card">
+            <div class="score-ring"><span id="readinessScore">78</span>%</div>
+            <div>
+              <strong>Launch readiness</strong>
+              <p id="readinessText">Creative, offer and tracking ready. Live publishing stays gated until account integrations are connected.</p>
+            </div>
+          </article>
+        </div>
+
+        <div class="metric-grid">
+          <article><span>Campaigns</span><strong id="metricCampaigns">1</strong><small>1 draft / paused</small></article>
+          <article><span>Creatives</span><strong id="metricCreatives">6</strong><small>Images + copy variants</small></article>
+          <article><span>Video assets</span><strong id="metricVideos">0</strong><small>Render your first WebM ad</small></article>
+          <article><span>Tracked leads</span><strong id="metricLeads">0</strong><small>Local owner storage</small></article>
+        </div>
+
+        <div class="panel-grid">
+          <article class="panel">
+            <div class="panel-head"><h3>AI Campaign Copilot</h3><span class="pill green">ACTIVE</span></div>
+            <p>Creates positioning, ad variants, CTAs, platform adaptations, risk flags and campaign checklists.</p>
+            <div class="prompt-row">
+              <input id="copilotPrompt" value="Launch FAISReady nationally with a hopeful career-development message and a R399 preparation offer.">
+              <button id="copilotRun" class="primary">Generate Plan</button>
+            </div>
+            <div id="copilotOutput" class="output-card">Your campaign plan will appear here.</div>
+          </article>
+
+          <article class="panel">
+            <div class="panel-head"><h3>Publishing Guard</h3><span class="pill gold">PAUSED BY DEFAULT</span></div>
+            <ul class="checklist">
+              <li class="ok">Offer and CTA defined</li>
+              <li class="ok">UTM tracking available</li>
+              <li class="ok">Video and image creative tools available</li>
+              <li class="warn">Meta / Google / TikTok / YouTube accounts not connected</li>
+              <li class="warn">No ad spend can be activated without owner approval</li>
+            </ul>
+          </article>
+        </div>
+      </section>
+
+      <section id="campaigns" class="view">
+        <div class="section-head">
+          <div><p class="eyebrow">CAMPAIGN CONTROL</p><h2>Campaigns</h2></div>
+          <button id="duplicateCampaign" class="secondary">Duplicate FAISReady</button>
+        </div>
+        <div id="campaignList" class="cards"></div>
+      </section>
+
+      <section id="creative" class="view">
+        <div class="section-head"><div><p class="eyebrow">AI CREATIVE ENGINE</p><h2>Creative Studio</h2></div></div>
+        <div class="studio-grid">
+          <article class="panel form-panel">
+            <label>Brand / product<input id="creativeBrand" value="FAISReady"></label>
+            <label>Offer<input id="creativeOffer" value="Regulatory Examination preparation for RE1, RE3, RE4 and RE5"></label>
+            <label>Price / hook<input id="creativePrice" value="R399 launch package"></label>
+            <label>Audience<input id="creativeAudience" value="South Africans entering or progressing in financial services"></label>
+            <label>Tone
+              <select id="creativeTone">
+                <option>Hopeful and empowering</option>
+                <option>Professional and confident</option>
+                <option>Urgent and action-driven</option>
+                <option>Warm and supportive</option>
+              </select>
+            </label>
+            <label>Platform
+              <select id="creativePlatform">
+                <option>Facebook / Instagram</option>
+                <option>TikTok</option>
+                <option>YouTube</option>
+                <option>LinkedIn</option>
+                <option>Google Display</option>
+              </select>
+            </label>
+            <button id="generateCreative" class="primary">Generate Ad Pack</button>
+          </article>
+
+          <article class="panel">
+            <div class="panel-head"><h3>Generated Copy</h3><button id="copyCreative" class="ghost">Copy</button></div>
+            <div id="creativeOutput" class="creative-output"></div>
+          </article>
+
+          <article class="panel">
+            <div class="panel-head"><h3>Instant Image Ad</h3><span class="pill gold">PNG EXPORT</span></div>
+            <canvas id="imageCanvas" width="1080" height="1080"></canvas>
+            <div class="button-row">
+              <button id="renderImage" class="secondary">Render Square Ad</button>
+              <button id="downloadImage" class="primary">Download PNG</button>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section id="video" class="view">
+        <div class="section-head">
+          <div><p class="eyebrow">BUILT-IN VIDEO ADS</p><h2>Video Studio</h2><p>Create animated short-form ads in the browser — no external editor required.</p></div>
+          <span class="pill green">WEBM RENDERER</span>
+        </div>
+        <div class="studio-grid video-grid">
+          <article class="panel form-panel">
+            <label>Video title<input id="videoTitle" value="Your next financial-services opportunity starts here"></label>
+            <label>Brand<input id="videoBrand" value="FAISReady"></label>
+            <label>Primary message<textarea id="videoMessage">Prepare for RE1, RE3, RE4 and RE5 with structured learning, practice and progress tools.</textarea></label>
+            <label>Offer<input id="videoOffer" value="R399 launch package"></label>
+            <label>Call to action<input id="videoCta" value="START PREPARING"></label>
+            <label>Format
+              <select id="videoFormat">
+                <option value="1080x1920">Vertical 9:16 — Reels / TikTok / Shorts</option>
+                <option value="1080x1080">Square 1:1 — Facebook / Instagram</option>
+                <option value="1280x720">Landscape 16:9 — YouTube</option>
+              </select>
+            </label>
+            <label>Length
+              <select id="videoLength">
+                <option value="12">12 seconds</option>
+                <option value="15" selected>15 seconds</option>
+                <option value="20">20 seconds</option>
+              </select>
+            </label>
+            <button id="buildStoryboard" class="secondary">Generate Storyboard</button>
+            <button id="renderVideo" class="primary">Render Video</button>
+            <div id="renderStatus" class="mini-status">Ready.</div>
+          </article>
+
+          <article class="panel">
+            <div class="panel-head"><h3>Storyboard</h3><span class="pill gold">AUTO</span></div>
+            <div id="storyboard" class="storyboard"></div>
+          </article>
+
+          <article class="panel video-preview-panel">
+            <div class="panel-head"><h3>Video Preview</h3><span class="pill green">ANIMATED</span></div>
+            <canvas id="videoCanvas" width="540" height="960"></canvas>
+            <video id="videoPreview" controls playsinline></video>
+            <div class="button-row">
+              <button id="downloadVideo" class="primary" disabled>Download Video</button>
+            </div>
+            <small class="helper">This alpha renders WebM video locally in your browser. MP4 transcoding and AI voice/video model connectors are planned as optional modules.</small>
+          </article>
+        </div>
+      </section>
+
+      <section id="audiences" class="view">
+        <div class="section-head"><div><p class="eyebrow">AUDIENCE INTELLIGENCE</p><h2>Audiences</h2></div></div>
+        <div class="cards">
+          <article class="panel"><h3>Financial Services Starters</h3><p>People entering insurance, advice, banking, compliance and related financial-services roles.</p><div class="tag-row"><span>South Africa</span><span>Career development</span><span>Insurance</span><span>Banking</span></div></article>
+          <article class="panel"><h3>RE Preparation Intent</h3><p>High-intent prospects actively looking for RE1, RE3, RE4 or RE5 preparation.</p><div class="tag-row"><span>RE1</span><span>RE3</span><span>RE4</span><span>RE5</span></div></article>
+          <article class="panel"><h3>Retargeting Pool</h3><p>Site visitors, lead-form starters and content viewers can be grouped once consented tracking is connected.</p><div class="tag-row"><span>Website</span><span>Video viewers</span><span>Lead forms</span></div></article>
+        </div>
+      </section>
+
+      <section id="budget" class="view">
+        <div class="section-head"><div><p class="eyebrow">SPEND CONTROL</p><h2>Budget Lab</h2></div></div>
+        <div class="panel-grid">
+          <article class="panel form-panel">
+            <label>Daily budget (R)<input id="dailyBudget" type="number" value="100" min="0"></label>
+            <label>Campaign days<input id="campaignDays" type="number" value="5" min="1"></label>
+            <label>Estimated cost per lead (R)<input id="targetCpl" type="number" value="35" min="1"></label>
+            <button id="calcBudget" class="primary">Calculate</button>
+          </article>
+          <article class="panel">
+            <div class="metric-big"><span>Total planned spend</span><strong id="totalSpend">R500</strong></div>
+            <div class="metric-big"><span>Estimated leads</span><strong id="estimatedLeads">14</strong></div>
+            <p class="helper">Estimates are planning aids only. Real ad-platform delivery varies by auction conditions, creative performance, audience and account history.</p>
+          </article>
+        </div>
+      </section>
+
+      <section id="leads" class="view">
+        <div class="section-head">
+          <div><p class="eyebrow">OWNER LEAD CENTRE</p><h2>Leads</h2></div>
+          <button id="exportLeads" class="secondary">Export CSV</button>
+        </div>
+        <article class="panel">
+          <form id="leadForm" class="lead-form">
+            <input id="leadName" placeholder="Name" required>
+            <input id="leadContact" placeholder="Phone or email" required>
+            <input id="leadSource" value="FAISReady Campaign" placeholder="Source">
+            <button class="primary">Add Lead</button>
+          </form>
+          <div id="leadTable"></div>
+        </article>
+      </section>
+
+      <section id="analytics" class="view">
+        <div class="section-head"><div><p class="eyebrow">PERFORMANCE INTELLIGENCE</p><h2>Analytics</h2></div></div>
+        <div class="metric-grid">
+          <article><span>Impressions</span><strong>—</strong><small>Connect an ad account</small></article>
+          <article><span>Clicks</span><strong>—</strong><small>Connect an ad account</small></article>
+          <article><span>Leads</span><strong id="analyticsLeads">0</strong><small>Local tracked leads</small></article>
+          <article><span>ROAS</span><strong>—</strong><small>Requires spend + revenue data</small></article>
+        </div>
+        <article class="panel">
+          <h3>Optimisation Engine</h3>
+          <p>When real platform data is connected, IZAKHONO ADS will compare creative variants, placements, audiences and cost efficiency, then recommend budget shifts without automatically spending money.</p>
+        </article>
+      </section>
+
+      <section id="integrations" class="view">
+        <div class="section-head"><div><p class="eyebrow">CHANNEL CONNECTORS</p><h2>Integrations</h2></div></div>
+        <div class="cards integration-cards">
+          <article class="panel"><h3>Meta Ads</h3><p>Facebook + Instagram campaign publishing and reporting.</p><span class="pill gold">NOT CONNECTED</span></article>
+          <article class="panel"><h3>Google Ads</h3><p>Search, Display and YouTube campaign publishing and reporting.</p><span class="pill gold">NOT CONNECTED</span></article>
+          <article class="panel"><h3>TikTok Ads</h3><p>Short-form video campaign publishing and reporting.</p><span class="pill gold">NOT CONNECTED</span></article>
+          <article class="panel"><h3>LinkedIn Ads</h3><p>Professional and B2B campaign publishing and reporting.</p><span class="pill gold">NOT CONNECTED</span></article>
+          <article class="panel"><h3>IZAKHONO AI Gateway</h3><p>Owner-controlled AI copy, creative scoring, compliance review and future generation models.</p><span class="pill green">ARCHITECTURE READY</span></article>
+          <article class="panel"><h3>IZAKHONO PAY</h3><p>Revenue attribution and customer value signals when the payment layer is commercially ready.</p><span class="pill green">ARCHITECTURE READY</span></article>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div id="toast" class="toast"></div>
+  <script src="app.js"></script>
+</body>
+</html>
