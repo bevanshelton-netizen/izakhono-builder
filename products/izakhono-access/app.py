@@ -155,6 +155,84 @@ def grant_from_payment(db, payload):
     row = db.execute("SELECT * FROM entitlements WHERE entity_id=? AND subject=? AND product_slug=?", (entity_id, subject, product)).fetchone()
     return dict(row)
 
+
+def grant_bundle_from_payment(db, payload):
+    event_id = str(payload.get("event_id") or "")
+    if payload.get("event") != "payment.paid" or not event_id:
+        raise ValueError("unsupported_event")
+
+    intent = payload.get("intent") or {}
+    metadata = intent.get("metadata") or {}
+    grants = metadata.get("access_grants")
+    if not isinstance(grants, list) or not grants:
+        single = grant_from_payment(db, payload)
+        return [single] if single else []
+    if len(grants) > 100:
+        raise ValueError("too_many_access_grants")
+
+    subject_default = clean_subject(metadata.get("access_subject") or metadata.get("customer_email"))
+    existing_event = db.execute("SELECT event_id FROM events WHERE event_id=?", (event_id,)).fetchone()
+    if existing_event:
+        rows = db.execute(
+            "SELECT * FROM entitlements WHERE source_event_id LIKE ? ORDER BY entity_id,product_slug",
+            (event_id + ":%",),
+        ).fetchall()
+        return [dict(row) for row in rows]
+
+    normalized = []
+    for grant in grants:
+        if not isinstance(grant, dict):
+            raise ValueError("invalid_access_grant")
+        entity_id = clean_slug(grant.get("entity_id"), "entity_id")
+        product = clean_slug(grant.get("product"), "product")
+        plan = clean_slug(grant.get("plan") or metadata.get("access_plan") or "umbrella", "plan")
+        days = int(grant.get("period_days") or metadata.get("access_period_days") or 30)
+        if days < 1 or days > 3660:
+            raise ValueError("invalid_access_period_days")
+        subject = clean_subject(grant.get("subject") or subject_default)
+        normalized.append((entity_id, subject, product, plan, days))
+
+    db.execute(
+        "INSERT INTO events(event_id,event_type,entity_id,subject,product_slug,payload_json,received_at) VALUES(?,?,?,?,?,?,?)",
+        (event_id, "payment.paid", None, subject_default, "izakhono-one", json.dumps(payload)[:100000], now_iso()),
+    )
+
+    now = datetime.now(timezone.utc)
+    out = []
+    for entity_id, subject, product, plan, days in normalized:
+        current = db.execute(
+            "SELECT * FROM entitlements WHERE entity_id=? AND subject=? AND product_slug=?",
+            (entity_id, subject, product),
+        ).fetchone()
+        if current and current["expires_at"]:
+            current_expiry = parse_iso(current["expires_at"])
+            base = current_expiry if current_expiry > now else now
+        else:
+            base = now
+        expires = base + timedelta(days=days)
+        source_id = f"{event_id}:{entity_id}:{product}"
+
+        if current:
+            db.execute("""UPDATE entitlements
+              SET plan_slug=?,status='active',starts_at=?,expires_at=?,source_event_id=?,source_reference=?,updated_at=?
+              WHERE entity_id=? AND subject=? AND product_slug=?""",
+              (plan, current["starts_at"], expires.isoformat(), source_id,
+               str(intent.get("reference") or ""), now_iso(), entity_id, subject, product))
+        else:
+            db.execute("""INSERT INTO entitlements(
+              id,entity_id,subject,product_slug,plan_slug,status,starts_at,expires_at,source_event_id,source_reference,created_at,updated_at
+            ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)""",
+              ("ent_"+uuid.uuid4().hex, entity_id, subject, product, plan, "active", now.isoformat(),
+               expires.isoformat(), source_id, str(intent.get("reference") or ""), now_iso(), now_iso()))
+        row = db.execute(
+            "SELECT * FROM entitlements WHERE entity_id=? AND subject=? AND product_slug=?",
+            (entity_id, subject, product),
+        ).fetchone()
+        out.append(dict(row))
+    db.commit()
+    return out
+
+
 def normalized_access(row):
     if not row:
         return {
@@ -229,8 +307,13 @@ class Handler(BaseHTTPRequestHandler):
             try:
                 payload = json.loads(raw.decode())
                 with db_connect() as db:
-                    entitlement = grant_from_payment(db, payload)
-                return response(self, 200, {"ok": True, "entitlement": entitlement})
+                    entitlements = grant_bundle_from_payment(db, payload)
+                return response(self, 200, {
+                    "ok": True,
+                    "entitlement": entitlements[0] if entitlements else None,
+                    "entitlements": entitlements,
+                    "umbrella": len(entitlements) > 1,
+                })
             except (ValueError, json.JSONDecodeError) as e:
                 return response(self, 422, {"ok": False, "error": str(e)})
 
