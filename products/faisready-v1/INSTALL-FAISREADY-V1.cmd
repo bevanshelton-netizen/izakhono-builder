@@ -13,7 +13,7 @@ echo.
 set "BASE=http://127.0.0.1:9393"
 set "ROOT=%LOCALAPPDATA%\IzakhonoWork\data\projects\FAISReady-v1"
 set "TEMPBUILD=%TEMP%\FAISREADY-V1-%RANDOM%"
-set "SRC=https://raw.githubusercontent.com/bevanshelton-netizen/izakhono-builder/af0165e2ea7a23f31120ee95922ff52136184489/products/faisready-v1"
+set "SRC=https://raw.githubusercontent.com/bevanshelton-netizen/izakhono-builder/b24f0edce7849217d077702097f3ef8a5b1aef88/products/faisready-v1"
 
 echo [1/5] Checking IZAKHONO WORK v1...
 powershell.exe -NoProfile -Command "$ErrorActionPreference='Stop'; $h=Invoke-RestMethod -Uri '%BASE%/healthz' -TimeoutSec 4; if(-not $h.ok -or $h.version -ne '1.0.0'){ throw 'IZAKHONO WORK v1.0.0 is not running.' }; Write-Host 'IZAKHONO_WORK_V1=READY'"

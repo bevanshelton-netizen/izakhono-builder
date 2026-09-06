@@ -69,7 +69,7 @@ jobs:
         run: |
           from pathlib import Path
           cmd = Path("products/faisready-v1/INSTALL-FAISREADY-V1.cmd").read_text(encoding="utf-8")
-          assert "af0165e2ea7a23f31120ee95922ff52136184489" in cmd
+          assert "b24f0edce7849217d077702097f3ef8a5b1aef88" in cmd
           assert "FAISREADY_V1_OWNER_BUILD=PASS" in cmd
           assert "/api/projects/FAISReady-v1/validate" in cmd
           assert "Add-MpPreference" not in cmd
