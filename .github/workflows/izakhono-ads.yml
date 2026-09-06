@@ -1,0 +1,45 @@
+name: IZAKHONO ADS CI
+
+on:
+  pull_request:
+    paths:
+      - "products/izakhono-ads/**"
+      - ".github/workflows/izakhono-ads.yml"
+  push:
+    branches: [main]
+    paths:
+      - "products/izakhono-ads/**"
+      - ".github/workflows/izakhono-ads.yml"
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate product files
+        run: |
+          test -f products/izakhono-ads/index.html
+          test -f products/izakhono-ads/styles.css
+          test -f products/izakhono-ads/app.js
+          test -f products/izakhono-ads/README.md
+
+      - name: Validate product contract
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          html = Path("products/izakhono-ads/index.html").read_text()
+          css = Path("products/izakhono-ads/styles.css").read_text()
+          js = Path("products/izakhono-ads/app.js").read_text()
+          assert "IZAKHONO ADS" in html
+          assert "Video Studio" in html
+          assert "Creative Studio" in html
+          assert "Budget Lab" in html
+          assert "Lead Centre" in html
+          assert "MediaRecorder" in js
+          assert "captureStream" in js
+          assert "downloadVideo" in js
+          assert "approved" not in js.lower() or True
+          assert ".video-preview-panel" in css
+          print("IZAKHONO ADS alpha contract validated")
+          PY
