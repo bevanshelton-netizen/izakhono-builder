@@ -6,6 +6,7 @@ import mimetypes
 import os
 import sqlite3
 import sys
+import threading
 import time
 import zipfile
 import urllib.error
@@ -29,6 +30,8 @@ BUILDER_MODEL = os.getenv("IZAKHONO_WORK_BUILDER_MODEL", DEFAULT_MODEL)
 DATA_DIR = Path(os.getenv("IZAKHONO_WORK_DATA", str(Path.home() / ".izakhono-work")))
 DB_PATH = DATA_DIR / "work.db"
 WORKSPACE = WorkspaceManager(DATA_DIR)
+BUILD_JOBS = {}
+BUILD_JOBS_LOCK = threading.Lock()
 MAX_BODY = 1_000_000
 MAX_CONTEXT_MESSAGES = 40
 
@@ -56,7 +59,8 @@ async function refresh(){try{const s=await api('/api/status');const ready=s.back
 async function newChat(){const d=await api('/api/conversations',{method:'POST',body:JSON.stringify({})});S.id=d.id;setMode('chat');$('messages').innerHTML='<div class="empty" id="empty"><h1>Your work. <span>Your compute.</span></h1><p>Start a new owner-controlled conversation.</p></div>';$('title').textContent='New conversation';await refresh()}
 async function load(id){S.id=id;setMode('chat');const d=await api('/api/conversations/'+id);$('title').textContent=d.title;$('messages').innerHTML='';if(!d.messages.length)$('messages').innerHTML='<div class="empty" id="empty"><h1>Your work. <span>Your compute.</span></h1></div>';d.messages.forEach(m=>bubble(m.role,m.content));await refresh()}
 function filesPrompt(){if(!S.attachments.length)return '';return '\n\nAttached local files:\n'+S.attachments.map(f=>'\n--- '+f.name+' ---\n'+f.text).join('\n')}
-async function send(){let text=$('input').value.trim();if(!text)return;$('input').value='';$('send').disabled=true;banner('');if(S.mode==='build'){bubble('user',text);banner('BUILDING LOCALLY - creating files, checkpointing and validating. This can take a few minutes.');try{const d=await api('/api/build',{method:'POST',body:JSON.stringify({spec:text+filesPrompt(),project_name:$('projectName').value.trim()||null})});S.project=d.project;$('projectName').value=d.project;S.attachments=[];$('files').innerHTML='';banner('');renderBuild(d);await refresh()}catch(e){bubble('assistant','Build failed: '+e.message);banner(e.message)}finally{$('send').disabled=false;$('input').focus()}return}if(!S.id)await newChat();const display=text+(S.attachments.length?'\n\n['+S.attachments.length+' local file(s) attached]':'');bubble('user',display);try{const d=await api('/api/chat',{method:'POST',body:JSON.stringify({conversation_id:S.id,message:text+filesPrompt()})});bubble('assistant',d.answer);$('title').textContent=d.title;S.attachments=[];$('files').innerHTML='';await refresh()}catch(e){bubble('assistant','Request failed: '+e.message);banner(e.message)}finally{$('send').disabled=false;$('input').focus()}}
+async function waitForBuild(jobId){for(let i=0;i<360;i++){await new Promise(r=>setTimeout(r,2000));const j=await api('/api/builds/'+encodeURIComponent(jobId));if(j.status==='complete')return j.result;if(j.status==='failed')throw new Error(j.error||'Build failed');banner('BUILDING LOCALLY - '+(j.status||'running')+'. The workspace stays responsive while the model builds.')}throw new Error('Build timed out after 12 minutes')}
+async function send(){let text=$('input').value.trim();if(!text)return;$('input').value='';$('send').disabled=true;banner('');if(S.mode==='build'){bubble('user',text);banner('STARTING LOCAL BUILD...');try{const started=await api('/api/build',{method:'POST',body:JSON.stringify({spec:text+filesPrompt(),project_name:$('projectName').value.trim()||null})});const d=await waitForBuild(started.job_id);S.project=d.project;$('projectName').value=d.project;S.attachments=[];$('files').innerHTML='';banner('');renderBuild(d);await refresh()}catch(e){bubble('assistant','Build failed: '+e.message);banner(e.message)}finally{$('send').disabled=false;$('input').focus()}return}if(!S.id)await newChat();const display=text+(S.attachments.length?'\n\n['+S.attachments.length+' local file(s) attached]':'');bubble('user',display);try{const d=await api('/api/chat',{method:'POST',body:JSON.stringify({conversation_id:S.id,message:text+filesPrompt()})});bubble('assistant',d.answer);$('title').textContent=d.title;S.attachments=[];$('files').innerHTML='';await refresh()}catch(e){bubble('assistant','Request failed: '+e.message);banner(e.message)}finally{$('send').disabled=false;$('input').focus()}}
 $('send').onclick=send;$('newChat').onclick=()=>newChat().catch(e=>banner(e.message));$('chatMode').onclick=()=>setMode('chat');$('buildMode').onclick=()=>setMode('build');$('input').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send()}});$('token').value=localStorage.getItem('izakhonoWorkToken')||'';$('token').onchange=()=>{localStorage.setItem('izakhonoWorkToken',$('token').value);refresh()};$('file').onchange=async e=>{S.attachments=[];for(const f of [...e.target.files].slice(0,5)){let t=await f.text();S.attachments.push({name:f.name,text:t.slice(0,120000)})}$('files').innerHTML=S.attachments.map(f=>'<span class="file-chip">'+esc(f.name)+'</span>').join('')};refresh();
 </script></body></html>'''
 
@@ -115,6 +119,33 @@ def safe_preview_path(project_name, tail):
     if target.is_dir():
         target = target / "index.html"
     return target
+
+
+def run_build_job(job_id, spec, project_name, model):
+    with BUILD_JOBS_LOCK:
+        BUILD_JOBS[job_id] = {"id": job_id, "status": "running", "started_at": int(time.time())}
+    try:
+        def model_call(messages):
+            return ollama_chat(messages, model=model, force_json=True, timeout=300)
+        result = BuilderEngine(WORKSPACE, model_call).build(spec, project_name)
+        result["builder_model"] = model
+        with BUILD_JOBS_LOCK:
+            BUILD_JOBS[job_id] = {
+                "id": job_id,
+                "status": "complete",
+                "started_at": BUILD_JOBS.get(job_id, {}).get("started_at", int(time.time())),
+                "finished_at": int(time.time()),
+                "result": result,
+            }
+    except Exception as e:
+        with BUILD_JOBS_LOCK:
+            BUILD_JOBS[job_id] = {
+                "id": job_id,
+                "status": "failed",
+                "started_at": BUILD_JOBS.get(job_id, {}).get("started_at", int(time.time())),
+                "finished_at": int(time.time()),
+                "error": parse_backend_error(e),
+            }
 
 
 def backend_status():
@@ -197,6 +228,13 @@ class Handler(BaseHTTPRequestHandler):
             online, models = backend_status()
             installed = DEFAULT_MODEL in models or any(m.split(":")[0] == DEFAULT_MODEL.split(":")[0] and m.endswith(DEFAULT_MODEL.split(":")[-1]) for m in models)
             return self.out(200, {"ok": True, "backend": "online" if online else "offline", "model": DEFAULT_MODEL, "builder_model": BUILDER_MODEL, "model_installed": installed, "installed_models": models, "usage_credit_gate": False, "builder": True, "projects": len(WORKSPACE.list_projects())})
+        if p.startswith("/api/builds/"):
+            job_id = p.rsplit("/", 1)[-1]
+            with BUILD_JOBS_LOCK:
+                job = BUILD_JOBS.get(job_id)
+            if not job:
+                return self.out(404, {"error": "build_job_not_found"})
+            return self.out(200, job)
         if p == "/api/projects":
             return self.out(200, {"items": WORKSPACE.list_projects()})
         if p.startswith("/api/projects/"):
@@ -302,15 +340,18 @@ class Handler(BaseHTTPRequestHandler):
                 model = str(data.get("model", BUILDER_MODEL)).strip() or BUILDER_MODEL
                 if not spec:
                     return self.out(400, {"error": "build_spec_required"})
-
-                def model_call(messages):
-                    return ollama_chat(messages, model=model, force_json=True, timeout=300)
-
-                result = BuilderEngine(WORKSPACE, model_call).build(spec, project_name)
-                result["builder_model"] = model
-                return self.out(200, result)
+                job_id = uuid.uuid4().hex
+                with BUILD_JOBS_LOCK:
+                    BUILD_JOBS[job_id] = {"id": job_id, "status": "queued", "started_at": int(time.time())}
+                thread = threading.Thread(
+                    target=run_build_job,
+                    args=(job_id, spec, project_name, model),
+                    daemon=True,
+                )
+                thread.start()
+                return self.out(202, {"job_id": job_id, "status": "queued"})
             except Exception as e:
-                return self.out(500, {"error": "build_failed", "detail": parse_backend_error(e)})
+                return self.out(500, {"error": "build_start_failed", "detail": parse_backend_error(e)})
         if p.startswith("/api/projects/") and p.endswith("/restore"):
             try:
                 rest = p[len("/api/projects/"):]
