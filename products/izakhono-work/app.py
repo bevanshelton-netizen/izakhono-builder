@@ -210,7 +210,7 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(200, HTML, "text/html; charset=utf-8")
         if p == "/healthz":
             online, _ = backend_status()
-            return self.out(200, {"ok": True, "service": "izakhono-work", "version": "0.2.0", "model_backend": "online" if online else "offline", "builder": True})
+            return self.out(200, {"ok": True, "service": "izakhono-work", "version": "0.2.1", "model_backend": "online" if online else "offline", "builder": True, "build_transport": "background_jobs"})
         if p.startswith("/preview/"):
             try:
                 rest = p[len("/preview/"):]
