@@ -30,11 +30,10 @@ jobs:
           test -f products/faisready-v1/RELEASE-CHECKLIST.md
           test -f products/faisready-v1/PAYMENT-INTEGRATION.md
           test -f products/faisready-v1/INSTALL-FAISREADY-V1.cmd
-          test -f products/faisready-v1/assets/rainbow-0.b64
-          test -f products/faisready-v1/assets/rainbow-1.b64
-          test -f products/faisready-v1/assets/rainbow-2.b64
-          test -f products/faisready-v1/assets/rainbow-3.b64
-          test -f products/faisready-v1/assets/rainbow-4.b64
+          test -f products/faisready-v1/assets/rainbow-clean-0.b64
+          test -f products/faisready-v1/assets/rainbow-clean-1.b64
+          test -f products/faisready-v1/assets/rainbow-clean-2.b64
+          test -f products/faisready-v1/assets/rainbow-clean-3.b64
 
       - name: Verify product claims and content
         shell: python
@@ -53,9 +52,15 @@ jobs:
           assert "localStorage" in js
           assert "text/csv" in js
           assert 'id="rainbowImage"' in html
-          assert 'assets/rainbow-' in js
-          chunks = [Path(f"products/faisready-v1/assets/rainbow-{i}.b64").read_text(encoding="utf-8").strip() for i in range(5)]
-          assert len("".join(chunks)) > 50000
+          assert 'assets/rainbow-clean-' in js
+          import base64
+          chunks = [Path(f"products/faisready-v1/assets/rainbow-clean-{i}.b64").read_text(encoding="utf-8").strip() for i in range(4)]
+          encoded = "".join(chunks)
+          assert len(encoded) > 50000
+          raw = base64.b64decode(encoded, validate=True)
+          assert raw[:4] == b"RIFF"
+          assert raw[8:12] == b"WEBP"
+          assert len(raw) > 40000
           assert "PAYMENTS_ACTIVE=false" in pay
           lowered = (html + js).lower()
           blocked = [
@@ -78,7 +83,7 @@ jobs:
         run: |
           from pathlib import Path
           cmd = Path("products/faisready-v1/INSTALL-FAISREADY-V1.cmd").read_text(encoding="utf-8")
-          assert "830b2ccb9a67f92940bff99f706ecbea0f4f4dd8" in cmd
+          assert "9a132a80d8e41f681849f4049d7e162efccbc108" in cmd
           assert "FAISREADY_V1_OWNER_BUILD=PASS" in cmd
           assert "/api/projects/FAISReady-v1/validate" in cmd
           assert "Add-MpPreference" not in cmd
@@ -92,7 +97,7 @@ jobs:
           cp products/faisready-v1/styles.css dist/FAISReady-v1/
           cp products/faisready-v1/app.js dist/FAISReady-v1/
           mkdir -p dist/FAISReady-v1/assets
-          cp products/faisready-v1/assets/rainbow-*.b64 dist/FAISReady-v1/assets/
+          cp products/faisready-v1/assets/rainbow-clean-*.b64 dist/FAISReady-v1/assets/
           cp products/faisready-v1/README.md dist/FAISReady-v1/
           cp products/faisready-v1/RELEASE-CHECKLIST.md dist/FAISReady-v1/
           cp products/faisready-v1/PAYMENT-INTEGRATION.md dist/FAISReady-v1/
