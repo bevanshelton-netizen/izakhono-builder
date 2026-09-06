@@ -1,0 +1,33 @@
+name: IZAKHONO AI GATEWAY CI
+
+on:
+  pull_request:
+    paths:
+      - 'products/izakhono-ai-gateway/**'
+      - '.github/workflows/izakhono-ai-gateway-ci.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'products/izakhono-ai-gateway/**'
+      - '.github/workflows/izakhono-ai-gateway-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Syntax
+        run: python3 -m py_compile products/izakhono-ai-gateway/app.py products/izakhono-ai-gateway/test_gateway.py
+      - name: Gateway tests
+        run: python3 products/izakhono-ai-gateway/test_gateway.py
+      - name: Subscriber policy
+        run: |
+          set -euo pipefail
+          grep -Fq 'usage_credit_gate' products/izakhono-ai-gateway/app.py
+          grep -Fq 'message_quota' products/izakhono-ai-gateway/app.py
+          grep -Fq 'subscription_required' products/izakhono-ai-gateway/app.py
+          ! grep -R --line-number -E 'IZAKHONO_AI_GATEWAY_INTERNAL_KEY=.+' products/izakhono-ai-gateway
