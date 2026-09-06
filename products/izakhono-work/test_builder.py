@@ -49,6 +49,34 @@ with tempfile.TemporaryDirectory() as td:
     assert (Path(td) / "projects" / "builder-smoke" / "index.html").exists()
     assert (Path(td) / "projects" / "builder-smoke" / "config.json").exists()
 
+
+    # A real owner laptop can occasionally get a syntactically valid model plan
+    # with no file actions. Static-page requests must still produce a concrete,
+    # validated artifact rather than being reported as a successful zero-file build.
+    def empty_model_call(_messages):
+        return json.dumps({
+            "summary": "No file actions emitted.",
+            "done": True,
+            "actions": []
+        })
+
+    fallback = BuilderEngine(ws, empty_model_call, max_turns=2).build(
+        'Create one complete static webpage in index.html. Display "IZAKHONO OWNER NODE ACTIVE", "6 September 2026", and "Built locally on the owner laptop".',
+        "owner-node-proof-fallback"
+    )
+    assert fallback["fallback_used"] is True
+    assert fallback["validation_ok"] is True
+    assert fallback["preview_url"] == "/preview/owner-node-proof-fallback/"
+    fallback_html = ws.read_file("owner-node-proof-fallback", "index.html")
+    assert "IZAKHONO OWNER NODE ACTIVE" in fallback_html
+    assert "6 September 2026" in fallback_html
+    assert "Built locally on the owner laptop" in fallback_html
+
+    assert_raises(lambda: BuilderEngine(ws, empty_model_call, max_turns=1).build(
+        "Create an unspecified backend service",
+        "must-not-fake-output"
+    ))
+
     assert_raises(lambda: ws.write_file("builder-smoke", "../escape.txt", "no"))
 
     ws.write_file("restore-test", "note.txt", "version-one")
