@@ -9,7 +9,7 @@ $ErrorActionPreference = "Stop"
 $Root = Split-Path -Parent $MyInvocation.MyCommand.Path
 $Python = Join-Path $Root "python.exe"
 $App = Join-Path $Root "app.py"
-$ExpectedVersion = "0.2.3"
+$ExpectedVersion = "1.0.0"
 $HealthUrl = "http://127.0.0.1:9393/healthz"
 $OllamaUrl = "http://127.0.0.1:11434"
 $Data = Join-Path $env:LOCALAPPDATA "IzakhonoWork\data"
@@ -124,6 +124,25 @@ for ($i=0; $i -lt 60; $i++) {
     Write-Host "Workspace: http://127.0.0.1:9393"
     Write-Host "Model: $Model"
     Write-Host "No usage-credit gate."
+
+    $desktop = [Environment]::GetFolderPath("Desktop")
+    if ($desktop) {
+      $shortcut = Join-Path $desktop "IZAKHONO WORK.url"
+      @"
+[InternetShortcut]
+URL=http://127.0.0.1:9393
+"@ | Set-Content -Path $shortcut -Encoding ASCII
+    }
+
+    $startup = Join-Path $env:APPDATA "Microsoft\Windows\Start Menu\Programs\Startup"
+    if (Test-Path $startup) {
+      $startupCmd = Join-Path $startup "IZAKHONO WORK.cmd"
+      @"
+@echo off
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$PSCommandPath" -NoBrowser
+"@ | Set-Content -Path $startupCmd -Encoding ASCII
+    }
+
     if (-not $NoBrowser) { Start-Process "http://127.0.0.1:9393" }
     exit 0
   }
