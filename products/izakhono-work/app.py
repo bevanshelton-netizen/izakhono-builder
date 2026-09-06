@@ -19,7 +19,7 @@ from urllib.parse import parse_qs, unquote, urlparse
 HERE = Path(__file__).resolve().parent
 if str(HERE) not in sys.path:
     sys.path.insert(0, str(HERE))
-from builder_core import BuilderEngine, BuilderError, WorkspaceManager, safe_slug
+from builder_core import BuilderEngine, BuilderError, WorkspaceManager, safe_slug, validate_project
 
 HOST = os.getenv("IZAKHONO_WORK_HOST", "127.0.0.1")
 PORT = int(os.getenv("IZAKHONO_WORK_PORT", "9393"))
@@ -27,7 +27,7 @@ TOKEN = os.getenv("IZAKHONO_WORK_TOKEN", "")
 OLLAMA_URL = os.getenv("IZAKHONO_OLLAMA_URL", "http://127.0.0.1:11434").rstrip("/")
 DEFAULT_MODEL = os.getenv("IZAKHONO_WORK_MODEL", "qwen3:4b")
 BUILDER_MODEL = os.getenv("IZAKHONO_WORK_BUILDER_MODEL", DEFAULT_MODEL)
-WORK_VERSION = "0.2.3"
+WORK_VERSION = "1.0.0"
 DATA_DIR = Path(os.getenv("IZAKHONO_WORK_DATA", str(Path.home() / ".izakhono-work")))
 DB_PATH = DATA_DIR / "work.db"
 WORKSPACE = WorkspaceManager(DATA_DIR)
@@ -35,6 +35,7 @@ BUILD_JOBS = {}
 BUILD_JOBS_LOCK = threading.Lock()
 MAX_BODY = 1_000_000
 MAX_CONTEXT_MESSAGES = 40
+MAX_JOB_HISTORY = 200
 
 SYSTEM_PROMPT = os.getenv(
     "IZAKHONO_WORK_SYSTEM_PROMPT",
@@ -73,8 +74,54 @@ def db_connect():
     db.execute("PRAGMA journal_mode=WAL")
     db.execute("CREATE TABLE IF NOT EXISTS conversations (id TEXT PRIMARY KEY, title TEXT NOT NULL, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)")
     db.execute("CREATE TABLE IF NOT EXISTS messages (id INTEGER PRIMARY KEY AUTOINCREMENT, conversation_id TEXT NOT NULL, role TEXT NOT NULL, content TEXT NOT NULL, created_at INTEGER NOT NULL, FOREIGN KEY(conversation_id) REFERENCES conversations(id) ON DELETE CASCADE)")
+    db.execute("CREATE TABLE IF NOT EXISTS build_jobs (id TEXT PRIMARY KEY, status TEXT NOT NULL, started_at INTEGER NOT NULL, finished_at INTEGER, payload TEXT NOT NULL)")
     db.commit()
     return db
+
+
+
+def persist_build_job(job):
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    payload = json.dumps(job, separators=(",", ":"), ensure_ascii=False)
+    with db_connect() as db:
+        db.execute(
+            "INSERT INTO build_jobs(id,status,started_at,finished_at,payload) VALUES(?,?,?,?,?) "
+            "ON CONFLICT(id) DO UPDATE SET status=excluded.status,started_at=excluded.started_at,finished_at=excluded.finished_at,payload=excluded.payload",
+            (
+                str(job.get("id", "")),
+                str(job.get("status", "unknown")),
+                int(job.get("started_at") or int(time.time())),
+                job.get("finished_at"),
+                payload,
+            ),
+        )
+        db.execute(
+            "DELETE FROM build_jobs WHERE id IN (SELECT id FROM build_jobs ORDER BY started_at DESC LIMIT -1 OFFSET ?)",
+            (MAX_JOB_HISTORY,),
+        )
+        db.commit()
+
+
+def load_build_job(job_id):
+    with BUILD_JOBS_LOCK:
+        job = BUILD_JOBS.get(job_id)
+    if job:
+        return job
+    with db_connect() as db:
+        row = db.execute("SELECT payload FROM build_jobs WHERE id=?", (job_id,)).fetchone()
+    if not row:
+        return None
+    try:
+        return json.loads(row["payload"])
+    except Exception:
+        return None
+
+
+def project_validation(name):
+    project = WORKSPACE.ensure_project(name)
+    results = validate_project(project)
+    failures = [x for x in results if not x.get("ok")]
+    return {"project": name, "ok": not failures, "results": results}
 
 
 def json_request(url, payload=None, timeout=180):
@@ -130,6 +177,8 @@ def safe_preview_path(project_name, tail):
 def run_build_job(job_id, spec, project_name, model):
     with BUILD_JOBS_LOCK:
         BUILD_JOBS[job_id] = {"id": job_id, "status": "running", "started_at": int(time.time())}
+        running_job = dict(BUILD_JOBS[job_id])
+    persist_build_job(running_job)
     try:
         def model_call(messages):
             return ollama_chat(messages, model=model, force_json=True, timeout=900)
@@ -143,6 +192,8 @@ def run_build_job(job_id, spec, project_name, model):
                 "finished_at": int(time.time()),
                 "result": result,
             }
+            finished_job = dict(BUILD_JOBS[job_id])
+        persist_build_job(finished_job)
     except Exception as e:
         with BUILD_JOBS_LOCK:
             BUILD_JOBS[job_id] = {
@@ -152,6 +203,8 @@ def run_build_job(job_id, spec, project_name, model):
                 "finished_at": int(time.time()),
                 "error": parse_backend_error(e),
             }
+            failed_job = dict(BUILD_JOBS[job_id])
+        persist_build_job(failed_job)
 
 
 def backend_status():
@@ -174,7 +227,7 @@ def title_for(message):
 
 
 class Handler(BaseHTTPRequestHandler):
-    server_version = "IzakhonoWork/0.2"
+    server_version = "IzakhonoWork/1.0"
 
     def log_message(self, fmt, *args):
         print(f"{self.client_address[0]} - {fmt % args}")
@@ -233,11 +286,10 @@ class Handler(BaseHTTPRequestHandler):
         if p == "/api/status":
             online, models = backend_status()
             installed = DEFAULT_MODEL in models or any(m.split(":")[0] == DEFAULT_MODEL.split(":")[0] and m.endswith(DEFAULT_MODEL.split(":")[-1]) for m in models)
-            return self.out(200, {"ok": True, "backend": "online" if online else "offline", "model": DEFAULT_MODEL, "builder_model": BUILDER_MODEL, "model_installed": installed, "installed_models": models, "usage_credit_gate": False, "builder": True, "projects": len(WORKSPACE.list_projects())})
+            return self.out(200, {"ok": True, "version": WORK_VERSION, "backend": "online" if online else "offline", "model": DEFAULT_MODEL, "builder_model": BUILDER_MODEL, "model_installed": installed, "installed_models": models, "usage_credit_gate": False, "builder": True, "projects": len(WORKSPACE.list_projects()), "data_dir": str(DATA_DIR)})
         if p.startswith("/api/builds/"):
             job_id = p.rsplit("/", 1)[-1]
-            with BUILD_JOBS_LOCK:
-                job = BUILD_JOBS.get(job_id)
+            job = load_build_job(job_id)
             if not job:
                 return self.out(404, {"error": "build_job_not_found"})
             return self.out(200, job)
@@ -256,6 +308,8 @@ class Handler(BaseHTTPRequestHandler):
                     return self.out(200, {"project": name, "path": rel, "content": WORKSPACE.read_file(name, rel)})
                 if action == "checkpoints":
                     return self.out(200, {"project": name, "items": WORKSPACE.list_checkpoints(name)})
+                if action == "validate":
+                    return self.out(200, project_validation(name))
                 if action == "export":
                     project = WORKSPACE.ensure_project(name)
                     bio = io.BytesIO()
@@ -349,6 +403,8 @@ class Handler(BaseHTTPRequestHandler):
                 job_id = uuid.uuid4().hex
                 with BUILD_JOBS_LOCK:
                     BUILD_JOBS[job_id] = {"id": job_id, "status": "queued", "started_at": int(time.time())}
+                    queued_job = dict(BUILD_JOBS[job_id])
+                persist_build_job(queued_job)
                 thread = threading.Thread(
                     target=run_build_job,
                     args=(job_id, spec, project_name, model),
@@ -358,6 +414,38 @@ class Handler(BaseHTTPRequestHandler):
                 return self.out(202, {"job_id": job_id, "status": "queued"})
             except Exception as e:
                 return self.out(500, {"error": "build_start_failed", "detail": parse_backend_error(e)})
+        if p.startswith("/api/projects/") and p.endswith("/file"):
+            try:
+                rest = p[len("/api/projects/"):]
+                name = safe_slug(rest.split("/", 1)[0])
+                data = self.body_json()
+                rel = str(data.get("path", "")).strip()
+                content = str(data.get("content", ""))
+                if not rel:
+                    return self.out(400, {"error": "file_path_required"})
+                checkpoint = WORKSPACE.checkpoint(name, "before-owner-save")
+                saved = WORKSPACE.write_file(name, rel, content)
+                validation = project_validation(name)
+                return self.out(200, {"ok": True, "project": name, "saved": saved, "checkpoint": checkpoint, "validation": validation})
+            except Exception as e:
+                return self.out(400, {"error": str(e)})
+        if p.startswith("/api/projects/") and p.endswith("/validate"):
+            try:
+                rest = p[len("/api/projects/"):]
+                name = safe_slug(rest.split("/", 1)[0])
+                return self.out(200, project_validation(name))
+            except Exception as e:
+                return self.out(400, {"error": str(e)})
+        if p.startswith("/api/projects/") and p.endswith("/checkpoint"):
+            try:
+                rest = p[len("/api/projects/"):]
+                name = safe_slug(rest.split("/", 1)[0])
+                data = self.body_json()
+                label = str(data.get("label", "owner-checkpoint"))
+                checkpoint = WORKSPACE.checkpoint(name, label)
+                return self.out(201, {"ok": True, "project": name, "checkpoint": checkpoint})
+            except Exception as e:
+                return self.out(400, {"error": str(e)})
         if p.startswith("/api/projects/") and p.endswith("/restore"):
             try:
                 rest = p[len("/api/projects/"):]
