@@ -47,7 +47,7 @@ jobs:
         shell: pwsh
         run: |
           Push-Location bundle
-          .\python.exe -c "import sqlite3, json, pathlib; import app, builder_core; assert app.WORK_VERSION == '0.2.2'; print('IZAKHONO_PORTABLE_IMPORT=PASS')"
+          .\python.exe -c "import sqlite3, json, pathlib; import app, builder_core; assert app.WORK_VERSION == '0.2.3'; print('IZAKHONO_PORTABLE_IMPORT=PASS')"
           .\python.exe ..\products\izakhono-work\test_builder.py
           Pop-Location
 
@@ -63,12 +63,12 @@ jobs:
       - name: Create portable owner ZIP
         shell: pwsh
         run: |
-          Compress-Archive -Path bundle\* -DestinationPath IZAKHONO-WORK-PORTABLE-OWNER-0.2.2.zip -CompressionLevel Optimal
+          Compress-Archive -Path bundle\* -DestinationPath IZAKHONO-WORK-PORTABLE-OWNER-0.2.3.zip -CompressionLevel Optimal
 
       - name: Upload portable owner bundle
         uses: actions/upload-artifact@v4
         with:
-          name: IZAKHONO-WORK-PORTABLE-OWNER-0.2.2
-          path: IZAKHONO-WORK-PORTABLE-OWNER-0.2.2.zip
+          name: IZAKHONO-WORK-PORTABLE-OWNER-0.2.3
+          path: IZAKHONO-WORK-PORTABLE-OWNER-0.2.3.zip
           if-no-files-found: error
           retention-days: 30
