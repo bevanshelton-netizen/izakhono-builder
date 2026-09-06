@@ -50,6 +50,40 @@ def endpoint_up(url: str) -> bool:
         return False
 
 
+def owner_health() -> dict:
+    try:
+        data = http_json(HEALTH_URL, timeout=3)
+        return data if isinstance(data, dict) else {}
+    except Exception:
+        return {}
+
+
+def stop_incompatible_owner():
+    health = owner_health()
+    if not health:
+        return
+    if health.get("service") != "izakhono-work":
+        raise RuntimeError("Port 9393 is already used by another local service.")
+    if health.get("build_transport") == "background_jobs":
+        return
+    print("Upgrading the existing IZAKHONO WORK service...")
+    command = (
+        "$c=Get-NetTCPConnection -LocalPort 9393 -State Listen -ErrorAction SilentlyContinue | "
+        "Select-Object -First 1; if($c){Stop-Process -Id $c.OwningProcess -Force}"
+    )
+    subprocess.run(
+        ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", command],
+        check=False,
+        capture_output=True,
+        creationflags=hidden_creation_flags(),
+    )
+    for _ in range(30):
+        if not endpoint_up(HEALTH_URL):
+            return
+        time.sleep(0.5)
+    raise RuntimeError("The older IZAKHONO WORK service could not be stopped for upgrade.")
+
+
 def total_ram_gb() -> float:
     class MEMORYSTATUSEX(ctypes.Structure):
         _fields_ = [
@@ -312,8 +346,10 @@ def main() -> int:
     if ensure_managed_copy(args):
         return 0
 
-    if endpoint_up(HEALTH_URL):
-        print("IZAKHONO WORK is already running.")
+    stop_incompatible_owner()
+    health = owner_health()
+    if health.get("build_transport") == "background_jobs":
+        print("IZAKHONO WORK is already running with the current BUILD engine.")
         if not args.no_browser:
             webbrowser.open("http://127.0.0.1:9393")
         return 0
