@@ -27,6 +27,7 @@ TOKEN = os.getenv("IZAKHONO_WORK_TOKEN", "")
 OLLAMA_URL = os.getenv("IZAKHONO_OLLAMA_URL", "http://127.0.0.1:11434").rstrip("/")
 DEFAULT_MODEL = os.getenv("IZAKHONO_WORK_MODEL", "qwen3:4b")
 BUILDER_MODEL = os.getenv("IZAKHONO_WORK_BUILDER_MODEL", DEFAULT_MODEL)
+WORK_VERSION = "0.2.2"
 DATA_DIR = Path(os.getenv("IZAKHONO_WORK_DATA", str(Path.home() / ".izakhono-work")))
 DB_PATH = DATA_DIR / "work.db"
 WORKSPACE = WorkspaceManager(DATA_DIR)
@@ -59,7 +60,7 @@ async function refresh(){try{const s=await api('/api/status');const ready=s.back
 async function newChat(){const d=await api('/api/conversations',{method:'POST',body:JSON.stringify({})});S.id=d.id;setMode('chat');$('messages').innerHTML='<div class="empty" id="empty"><h1>Your work. <span>Your compute.</span></h1><p>Start a new owner-controlled conversation.</p></div>';$('title').textContent='New conversation';await refresh()}
 async function load(id){S.id=id;setMode('chat');const d=await api('/api/conversations/'+id);$('title').textContent=d.title;$('messages').innerHTML='';if(!d.messages.length)$('messages').innerHTML='<div class="empty" id="empty"><h1>Your work. <span>Your compute.</span></h1></div>';d.messages.forEach(m=>bubble(m.role,m.content));await refresh()}
 function filesPrompt(){if(!S.attachments.length)return '';return '\n\nAttached local files:\n'+S.attachments.map(f=>'\n--- '+f.name+' ---\n'+f.text).join('\n')}
-async function waitForBuild(jobId){for(let i=0;i<360;i++){await new Promise(r=>setTimeout(r,2000));const j=await api('/api/builds/'+encodeURIComponent(jobId));if(j.status==='complete')return j.result;if(j.status==='failed')throw new Error(j.error||'Build failed');banner('BUILDING LOCALLY - '+(j.status||'running')+'. The workspace stays responsive while the model builds.')}throw new Error('Build timed out after 12 minutes')}
+async function waitForBuild(jobId){for(let i=0;i<900;i++){await new Promise(r=>setTimeout(r,2000));const j=await api('/api/builds/'+encodeURIComponent(jobId));if(j.status==='complete')return j.result;if(j.status==='failed')throw new Error(j.error||'Build failed');banner('BUILDING LOCALLY - '+(j.status||'running')+'. The workspace stays responsive while the model builds.')}throw new Error('Build is still running after 30 minutes. Leave IZAKHONO WORK open and retry after checking the local model status.')}
 async function send(){let text=$('input').value.trim();if(!text)return;$('input').value='';$('send').disabled=true;banner('');if(S.mode==='build'){bubble('user',text);banner('STARTING LOCAL BUILD...');try{const started=await api('/api/build',{method:'POST',body:JSON.stringify({spec:text+filesPrompt(),project_name:$('projectName').value.trim()||null})});const d=await waitForBuild(started.job_id);S.project=d.project;$('projectName').value=d.project;S.attachments=[];$('files').innerHTML='';banner('');renderBuild(d);await refresh()}catch(e){bubble('assistant','Build failed: '+e.message);banner(e.message)}finally{$('send').disabled=false;$('input').focus()}return}if(!S.id)await newChat();const display=text+(S.attachments.length?'\n\n['+S.attachments.length+' local file(s) attached]':'');bubble('user',display);try{const d=await api('/api/chat',{method:'POST',body:JSON.stringify({conversation_id:S.id,message:text+filesPrompt()})});bubble('assistant',d.answer);$('title').textContent=d.title;S.attachments=[];$('files').innerHTML='';await refresh()}catch(e){bubble('assistant','Request failed: '+e.message);banner(e.message)}finally{$('send').disabled=false;$('input').focus()}}
 $('send').onclick=send;$('newChat').onclick=()=>newChat().catch(e=>banner(e.message));$('chatMode').onclick=()=>setMode('chat');$('buildMode').onclick=()=>setMode('build');$('input').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send()}});$('token').value=localStorage.getItem('izakhonoWorkToken')||'';$('token').onchange=()=>{localStorage.setItem('izakhonoWorkToken',$('token').value);refresh()};$('file').onchange=async e=>{S.attachments=[];for(const f of [...e.target.files].slice(0,5)){let t=await f.text();S.attachments.push({name:f.name,text:t.slice(0,120000)})}$('files').innerHTML=S.attachments.map(f=>'<span class="file-chip">'+esc(f.name)+'</span>').join('')};refresh();
 </script></body></html>'''
@@ -87,7 +88,12 @@ def ollama_chat(messages, model=DEFAULT_MODEL, force_json=False, timeout=300):
     payload = {"model": model, "stream": False, "messages": messages}
     if force_json:
         payload["format"] = "json"
-        payload["options"] = {"temperature": 0.15}
+        # Qwen3 can spend a long time in reasoning mode before emitting the JSON
+        # actions the builder needs. BUILD is an execution planner, so disable
+        # hidden thinking and bound generation for predictable owner-laptop latency.
+        payload["think"] = False
+        payload["options"] = {"temperature": 0, "num_predict": 4096}
+        payload["keep_alive"] = "30m"
     result = json_request(OLLAMA_URL + "/api/chat", payload, timeout=timeout)
     answer = str(result.get("message", {}).get("content", "")).strip()
     if not answer:
@@ -126,7 +132,7 @@ def run_build_job(job_id, spec, project_name, model):
         BUILD_JOBS[job_id] = {"id": job_id, "status": "running", "started_at": int(time.time())}
     try:
         def model_call(messages):
-            return ollama_chat(messages, model=model, force_json=True, timeout=300)
+            return ollama_chat(messages, model=model, force_json=True, timeout=900)
         result = BuilderEngine(WORKSPACE, model_call).build(spec, project_name)
         result["builder_model"] = model
         with BUILD_JOBS_LOCK:
@@ -210,7 +216,7 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(200, HTML, "text/html; charset=utf-8")
         if p == "/healthz":
             online, _ = backend_status()
-            return self.out(200, {"ok": True, "service": "izakhono-work", "version": "0.2.1", "model_backend": "online" if online else "offline", "builder": True, "build_transport": "background_jobs"})
+            return self.out(200, {"ok": True, "service": "izakhono-work", "version": WORK_VERSION, "model_backend": "online" if online else "offline", "builder": True, "build_transport": "background_jobs"})
         if p.startswith("/preview/"):
             try:
                 rest = p[len("/preview/"):]
@@ -367,5 +373,5 @@ class Handler(BaseHTTPRequestHandler):
 
 if __name__ == "__main__":
     db_connect().close()
-    print(f"IZAKHONO WORK v0.2 listening on http://{HOST}:{PORT} model={DEFAULT_MODEL} builder_model={BUILDER_MODEL}")
+    print(f"IZAKHONO WORK v{WORK_VERSION} listening on http://{HOST}:{PORT} model={DEFAULT_MODEL} builder_model={BUILDER_MODEL}")
     ThreadingHTTPServer((HOST, PORT), Handler).serve_forever()
