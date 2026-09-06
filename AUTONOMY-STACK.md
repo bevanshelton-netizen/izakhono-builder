@@ -30,7 +30,7 @@ Goal: make IZAKHONO increasingly owner-controlled while keeping safe fallbacks a
 9. **IZAKHONO DESK** — customer support, tickets, CRM-lite and subscriber service.
 10. **IZAKHONO ANALYTICS** — product, revenue, funnel and cohort reporting.
 11. **IZAKHONO MEDIA** — controlled media storage, streaming and delivery for KORA/ALLEGRO.
-12. **IZAKHONO AI GATEWAY** — model routing across owner-hosted models and optional external providers without locking products to one vendor.
+12. **IZAKHONO AI GATEWAY** — model routing across owner-hosted models without locking products to one model implementation.
 
 ## Design rule
 
@@ -73,3 +73,8 @@ Revenue-first sequence:
 10. media-scale layers
 
 Each layer is only called operational after CI proof plus a real owner-node validation.
+
+
+## AI independence rule
+
+IZAKHONO commercial products must operate without any required OpenAI account, API key, hosted inference endpoint, usage quota or SDK dependency. Owner-hosted inference is the default production architecture.
