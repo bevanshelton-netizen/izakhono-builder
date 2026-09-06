@@ -40,12 +40,12 @@ def http_json(url, payload=None, headers=None, timeout=120):
     with urllib.request.urlopen(req, timeout=timeout) as res:
         return json.loads(res.read().decode())
 
-def check_access(subject, product):
+def check_access(entity_id, subject, product):
     if not ACCESS_KEY:
         raise RuntimeError("access_service_key_missing")
     return http_json(
         ACCESS_URL + "/api/v1/check",
-        {"subject": subject, "product": product},
+        {"entity_id": entity_id, "subject": subject, "product": product},
         {"x-izakhono-access-key": ACCESS_KEY},
         timeout=10,
     )
@@ -97,15 +97,16 @@ class Handler(BaseHTTPRequestHandler):
         except Exception:
             return send_json(self, 400, {"ok": False, "error": "invalid_json"})
 
+        entity_id = str(payload.get("entity_id") or "").strip().lower()
         subject = str(payload.get("subject") or "").strip().lower()
         product = str(payload.get("product") or "").strip().lower()
         model = str(payload.get("model") or DEFAULT_MODEL).strip()
         messages = payload.get("messages")
-        if not subject or not product or not isinstance(messages, list) or not messages:
-            return send_json(self, 422, {"ok": False, "error": "subject_product_messages_required"})
+        if not entity_id or not subject or not product or not isinstance(messages, list) or not messages:
+            return send_json(self, 422, {"ok": False, "error": "entity_subject_product_messages_required"})
 
         try:
-            access = check_access(subject, product)
+            access = check_access(entity_id, subject, product)
         except Exception as exc:
             return send_json(self, 503, {"ok": False, "error": "access_service_unavailable", "detail": str(exc)[:200]})
 
@@ -126,6 +127,7 @@ class Handler(BaseHTTPRequestHandler):
             "ok": True,
             "answer": answer,
             "model": model,
+            "identity": {"entity_id": entity_id, "subject": subject},
             "subscription": {
                 "active": True,
                 "usage_credit_gate": False,
