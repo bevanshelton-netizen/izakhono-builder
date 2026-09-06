@@ -1,0 +1,34 @@
+name: IZAKHONO FORTRESS CI
+
+on:
+  pull_request:
+    paths:
+      - 'products/izakhono-fortress/**'
+      - 'FORTRESS-BOUNDARY.md'
+      - '.github/workflows/izakhono-fortress-ci.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'products/izakhono-fortress/**'
+      - 'FORTRESS-BOUNDARY.md'
+      - '.github/workflows/izakhono-fortress-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  fortress:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate policy JSON
+        run: python3 -m json.tool products/izakhono-fortress/policy.json >/dev/null
+      - name: Validate Python
+        run: |
+          python3 -m py_compile products/izakhono-fortress/guard.py
+          python3 -m py_compile products/izakhono-fortress/test_guard.py
+      - name: Test FORTRESS policy
+        run: python3 products/izakhono-fortress/test_guard.py
+      - name: Preserve OpenAI independence standard
+        run: python3 scripts/audit-openai-dependency.py
