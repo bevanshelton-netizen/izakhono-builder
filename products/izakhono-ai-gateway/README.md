@@ -43,9 +43,14 @@ The gateway is an internal service. Public products should authenticate their ow
 
 ## Next routing phase
 
-Add owner model pools, GPU nodes, health-aware routing, queueing, and optional external-provider fallback behind the same contract. Products should never hard-code a model vendor directly.
+Add owner model pools, GPU nodes, health-aware routing and queueing behind the same contract. Products must never hard-code an outside AI vendor directly.
 
 
 ## Entity boundary
 
 The gateway requires an `entity_id` and passes it to IZAKHONO ACCESS. A subscription in one operating entity cannot unlock AI capacity in another entity.
+
+
+## Independence mode
+
+The gateway defaults to `IZAKHONO_AI_OWNER_ONLY=true`. External hosted AI providers are disabled in the owner runtime contract.
