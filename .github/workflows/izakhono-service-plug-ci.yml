@@ -1,0 +1,28 @@
+name: IZAKHONO Service Plug CI
+
+on:
+  pull_request:
+    paths:
+      - 'products/izakhono-node/**'
+      - '.github/workflows/izakhono-service-plug-ci.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'products/izakhono-node/**'
+      - '.github/workflows/izakhono-service-plug-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  service-plug:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate Python
+        run: |
+          python3 -m py_compile products/izakhono-node/node_agent.py
+          python3 products/izakhono-node/test_service_plug.py
+      - name: Validate deployer shell
+        run: bash -n products/izakhono-node/deploy.sh
