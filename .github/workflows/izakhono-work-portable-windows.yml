@@ -55,7 +55,7 @@ jobs:
         shell: pwsh
         run: |
           $cmd = Get-Content products/izakhono-work/portable-windows/IZAKHONO-WORK-ONE-CLICK.cmd -Raw
-          if ($cmd -notmatch 'cafe5725ba3d486fa2918c406f150e1298109dff') { throw 'One-click source is not commit-pinned.' }
+          if ($cmd -notmatch 'a78b3c4ec6f73f51b5cfe657486920edf0a30cbe') { throw 'One-click source is not commit-pinned.' }
           if ($cmd -notmatch 'VERIFY-OWNER-NODE.ps1') { throw 'One-click verifier handoff is missing.' }
           if ($cmd -match 'Add-MpPreference|Set-MpPreference|exclusion|DisableRealtimeMonitoring') { throw 'Security bypass detected.' }
           Write-Host 'IZAKHONO_ONE_CLICK_CONTRACT=PASS'
