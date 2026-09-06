@@ -29,6 +29,7 @@ Body:
 
 ```json
 {
+  "entity_id": "faisready-entity",
   "subject": "customer@example.com",
   "product": "faisready",
   "model": "qwen3:4b",
@@ -43,3 +44,8 @@ The gateway is an internal service. Public products should authenticate their ow
 ## Next routing phase
 
 Add owner model pools, GPU nodes, health-aware routing, queueing, and optional external-provider fallback behind the same contract. Products should never hard-code a model vendor directly.
+
+
+## Entity boundary
+
+The gateway requires an `entity_id` and passes it to IZAKHONO ACCESS. A subscription in one operating entity cannot unlock AI capacity in another entity.

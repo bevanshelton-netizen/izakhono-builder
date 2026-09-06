@@ -1,0 +1,45 @@
+name: IZAKHONO INTELLIGENCE 10 CI
+
+on:
+  pull_request:
+    paths:
+      - 'products/izakhono-intelligence/**'
+      - 'products/izakhono-access/**'
+      - 'products/izakhono-ai-gateway/**'
+      - '.github/workflows/izakhono-intelligence-ci.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'products/izakhono-intelligence/**'
+      - 'products/izakhono-access/**'
+      - 'products/izakhono-ai-gateway/**'
+      - '.github/workflows/izakhono-intelligence-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Syntax
+        run: |
+          python3 -m py_compile products/izakhono-intelligence/app.py products/izakhono-intelligence/test_intelligence.py
+          python3 -m py_compile products/izakhono-access/app.py products/izakhono-access/test_access.py
+          python3 -m py_compile products/izakhono-ai-gateway/app.py products/izakhono-ai-gateway/test_gateway.py
+      - name: Intelligence tests
+        run: python3 products/izakhono-intelligence/test_intelligence.py
+      - name: Access tests
+        run: python3 products/izakhono-access/test_access.py
+      - name: Gateway tests
+        run: python3 products/izakhono-ai-gateway/test_gateway.py
+      - name: Architecture invariants
+        run: |
+          set -euo pipefail
+          grep -Fq 'entity_id' products/izakhono-intelligence/app.py
+          grep -Fq 'IZAKHONO_ID_URL' products/izakhono-intelligence/app.py
+          grep -Fq 'IZAKHONO_AI_GATEWAY_URL' products/izakhono-intelligence/app.py
+          grep -Fq 'usage_credit_gate' products/izakhono-ai-gateway/app.py
+          grep -Fq 'UNIQUE(entity_id, subject, product_slug)' products/izakhono-access/app.py

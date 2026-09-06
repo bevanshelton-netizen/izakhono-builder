@@ -26,6 +26,7 @@ IZAKHONO PAY should include these metadata fields on subscription intents:
 
 ```json
 {
+  "access_entity_id": "faisready-entity",
   "access_subject": "customer@example.com",
   "access_product": "faisready",
   "access_plan": "monthly",
@@ -48,7 +49,7 @@ POST /api/v1/check
 x-izakhono-access-key: <internal-key>
 content-type: application/json
 
-{"subject":"customer@example.com","product":"faisready"}
+{"entity_id":"faisready-entity","subject":"customer@example.com","product":"faisready"}
 ```
 
 An active response contains `usage_credit_gate: false`, `message_quota: null`, and `session_quota: null`.
@@ -61,3 +62,8 @@ An active response contains `usage_credit_gate: false`, `message_quota: null`, a
 - secrets are environment-only
 - no card data is stored
 - this service grants access only; settlement truth remains with IZAKHONO PAY
+
+
+## Entity isolation
+
+Every entitlement is scoped by `entity_id + subject + product`. The same email address can hold different subscriptions in separate entities without the records becoming interchangeable.
