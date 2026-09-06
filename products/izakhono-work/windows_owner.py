@@ -21,7 +21,7 @@ PORT = 9393
 OLLAMA_PORT = 11434
 HEALTH_URL = f"http://{HOST}:{PORT}/healthz"
 OLLAMA_URL = f"http://{HOST}:{OLLAMA_PORT}"
-EXPECTED_WORK_VERSION = "0.2.2"
+EXPECTED_WORK_VERSION = "0.2.3"
 
 
 def local_root() -> Path:
