@@ -1,0 +1,36 @@
+name: IZAKHONO ID CI
+
+on:
+  pull_request:
+    paths:
+      - 'products/izakhono-id/**'
+      - 'ENTITY-BOUNDARY.md'
+      - '.github/workflows/izakhono-id-ci.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'products/izakhono-id/**'
+      - 'ENTITY-BOUNDARY.md'
+      - '.github/workflows/izakhono-id-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Syntax
+        run: python3 -m py_compile products/izakhono-id/app.py products/izakhono-id/test_id.py
+      - name: Entity isolation tests
+        run: python3 products/izakhono-id/test_id.py
+      - name: Security invariants
+        run: |
+          set -euo pipefail
+          grep -Fq 'entity_id' products/izakhono-id/app.py
+          grep -Fq 'token_hash' products/izakhono-id/app.py
+          grep -Fq 'PBKDF2_ITERATIONS' products/izakhono-id/app.py
+          grep -Fq 'entity_membership_required' products/izakhono-id/app.py
+          ! grep -R --line-number -E 'IZAKHONO_ID_(ADMIN|INTERNAL)_KEY=.+' products/izakhono-id
