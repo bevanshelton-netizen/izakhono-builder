@@ -1,0 +1,33 @@
+name: IZAKHONO LEDGER CI
+
+on:
+  pull_request:
+    paths:
+      - 'products/izakhono-ledger/**'
+      - '.github/workflows/izakhono-ledger-ci.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'products/izakhono-ledger/**'
+      - '.github/workflows/izakhono-ledger-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Syntax
+        run: python3 -m py_compile products/izakhono-ledger/app.py products/izakhono-ledger/test_ledger.py
+      - name: Double-entry tests
+        run: python3 products/izakhono-ledger/test_ledger.py
+      - name: Financial invariants
+        run: |
+          set -euo pipefail
+          grep -Fq 'transaction_not_balanced' products/izakhono-ledger/app.py
+          grep -Fq 'entity_id' products/izakhono-ledger/app.py
+          grep -Fq 'BEGIN IMMEDIATE' products/izakhono-ledger/app.py
+          ! grep -R --line-number -E 'IZAKHONO_LEDGER_INTERNAL_KEY=.+' products/izakhono-ledger
