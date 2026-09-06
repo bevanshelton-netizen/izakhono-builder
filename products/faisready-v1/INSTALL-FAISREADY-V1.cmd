@@ -13,7 +13,7 @@ echo.
 set "BASE=http://127.0.0.1:9393"
 set "ROOT=%LOCALAPPDATA%\IzakhonoWork\data\projects\FAISReady-v1"
 set "TEMPBUILD=%TEMP%\FAISREADY-V1-%RANDOM%"
-set "SRC=https://raw.githubusercontent.com/bevanshelton-netizen/izakhono-builder/b24f0edce7849217d077702097f3ef8a5b1aef88/products/faisready-v1"
+set "SRC=https://raw.githubusercontent.com/bevanshelton-netizen/izakhono-builder/830b2ccb9a67f92940bff99f706ecbea0f4f4dd8/products/faisready-v1"
 
 echo [1/5] Checking IZAKHONO WORK v1...
 powershell.exe -NoProfile -Command "$ErrorActionPreference='Stop'; $h=Invoke-RestMethod -Uri '%BASE%/healthz' -TimeoutSec 4; if(-not $h.ok -or $h.version -ne '1.0.0'){ throw 'IZAKHONO WORK v1.0.0 is not running.' }; Write-Host 'IZAKHONO_WORK_V1=READY'"
@@ -30,7 +30,7 @@ if errorlevel 1 (
 echo [2/5] Downloading reviewed FAISReady v1 files...
 if exist "%TEMPBUILD%" rmdir /s /q "%TEMPBUILD%"
 mkdir "%TEMPBUILD%"
-powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "$ErrorActionPreference='Stop'; $files=@('index.html','styles.css','app.js','README.md','RELEASE-CHECKLIST.md','PAYMENT-INTEGRATION.md'); foreach($f in $files){ Invoke-WebRequest -UseBasicParsing -Uri ('%SRC%/'+$f) -OutFile (Join-Path '%TEMPBUILD%' $f) }"
+powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "$ErrorActionPreference='Stop'; $files=@('index.html','styles.css','app.js','README.md','RELEASE-CHECKLIST.md','PAYMENT-INTEGRATION.md'); foreach($f in $files){ Invoke-WebRequest -UseBasicParsing -Uri ('%SRC%/'+$f) -OutFile (Join-Path '%TEMPBUILD%' $f) }; $assets=Join-Path '%TEMPBUILD%' 'assets'; New-Item -ItemType Directory -Force -Path $assets | Out-Null; 0..4 | ForEach-Object { Invoke-WebRequest -UseBasicParsing -Uri ('%SRC%/assets/rainbow-'+$_+'.b64') -OutFile (Join-Path $assets ('rainbow-'+$_+'.b64')) }"
 if errorlevel 1 goto :fail
 
 echo [3/5] Backing up any existing local FAISReady project...
@@ -38,11 +38,11 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "$ErrorActionPreferen
 if errorlevel 1 goto :fail
 
 echo [4/5] Installing into the owner-controlled workspace...
-powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "$ErrorActionPreference='Stop'; $root='%ROOT%'; New-Item -ItemType Directory -Force -Path $root | Out-Null; New-Item -ItemType Directory -Force -Path (Join-Path $root '.izakhono\checkpoints') | Out-Null; Copy-Item '%TEMPBUILD%\*' $root -Force; $meta=Join-Path $root '.izakhono\project.json'; if(-not (Test-Path $meta)){ @{name='FAISReady-v1';created_at=[int][double]::Parse((Get-Date -UFormat %%s));initial_spec='Reviewed FAISReady v1 owner launch product'} | ConvertTo-Json | Set-Content -Path $meta -Encoding UTF8 }"
+powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "$ErrorActionPreference='Stop'; $root='%ROOT%'; New-Item -ItemType Directory -Force -Path $root | Out-Null; New-Item -ItemType Directory -Force -Path (Join-Path $root '.izakhono\checkpoints') | Out-Null; Copy-Item '%TEMPBUILD%\*' $root -Force -Recurse; $meta=Join-Path $root '.izakhono\project.json'; if(-not (Test-Path $meta)){ @{name='FAISReady-v1';created_at=[int][double]::Parse((Get-Date -UFormat %%s));initial_spec='Reviewed FAISReady v1 owner launch product'} | ConvertTo-Json | Set-Content -Path $meta -Encoding UTF8 }"
 if errorlevel 1 goto :fail
 
 echo [5/5] Validating and opening local preview...
-powershell.exe -NoProfile -Command "$ErrorActionPreference='Stop'; $v=Invoke-RestMethod -Uri '%BASE%/api/projects/FAISReady-v1/validate' -TimeoutSec 10; if(-not $v.ok){ $v | ConvertTo-Json -Depth 6; throw 'FAISReady validation failed.' }; $t=Invoke-RestMethod -Uri '%BASE%/api/projects/FAISReady-v1/tree' -TimeoutSec 10; $count=@($t.items | Where-Object { $_.type -eq 'file' }).Count; if($count -lt 6){ throw 'FAISReady project is incomplete.' }; Write-Host ''; Write-Host 'FAISREADY_V1_OWNER_BUILD=PASS'; Write-Host ('Files: '+$count); Write-Host 'Validation: PASS';"
+powershell.exe -NoProfile -Command "$ErrorActionPreference='Stop'; $v=Invoke-RestMethod -Uri '%BASE%/api/projects/FAISReady-v1/validate' -TimeoutSec 10; if(-not $v.ok){ $v | ConvertTo-Json -Depth 6; throw 'FAISReady validation failed.' }; $t=Invoke-RestMethod -Uri '%BASE%/api/projects/FAISReady-v1/tree' -TimeoutSec 10; $count=@($t.items | Where-Object { $_.type -eq 'file' }).Count; if($count -lt 11){ throw 'FAISReady project is incomplete.' }; Write-Host ''; Write-Host 'FAISREADY_V1_OWNER_BUILD=PASS'; Write-Host ('Files: '+$count); Write-Host 'Validation: PASS';"
 if errorlevel 1 goto :fail
 
 start "" "%BASE%/preview/FAISReady-v1/"
