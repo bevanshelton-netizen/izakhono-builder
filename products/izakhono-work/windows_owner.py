@@ -21,6 +21,7 @@ PORT = 9393
 OLLAMA_PORT = 11434
 HEALTH_URL = f"http://{HOST}:{PORT}/healthz"
 OLLAMA_URL = f"http://{HOST}:{OLLAMA_PORT}"
+EXPECTED_WORK_VERSION = "0.2.2"
 
 
 def local_root() -> Path:
@@ -64,7 +65,7 @@ def stop_incompatible_owner():
         return
     if health.get("service") != "izakhono-work":
         raise RuntimeError("Port 9393 is already used by another local service.")
-    if health.get("build_transport") == "background_jobs":
+    if health.get("build_transport") == "background_jobs" and health.get("version") == EXPECTED_WORK_VERSION:
         return
     print("Upgrading the existing IZAKHONO WORK service...")
     command = (
@@ -321,6 +322,7 @@ def run_self_test() -> int:
     assert app.HOST == "127.0.0.1"
     assert app.PORT == 9393
     assert app.Handler.server_version == "IzakhonoWork/0.2"
+    assert app.WORK_VERSION == EXPECTED_WORK_VERSION
     assert app.WORKSPACE.projects.exists()
     from builder_core import safe_slug
     assert safe_slug("My AI Platform") == "My-AI-Platform"
@@ -348,7 +350,7 @@ def main() -> int:
 
     stop_incompatible_owner()
     health = owner_health()
-    if health.get("build_transport") == "background_jobs":
+    if health.get("build_transport") == "background_jobs" and health.get("version") == EXPECTED_WORK_VERSION:
         print("IZAKHONO WORK is already running with the current BUILD engine.")
         if not args.no_browser:
             webbrowser.open("http://127.0.0.1:9393")
