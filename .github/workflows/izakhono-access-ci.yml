@@ -1,0 +1,34 @@
+name: IZAKHONO ACCESS CI
+
+on:
+  pull_request:
+    paths:
+      - 'products/izakhono-access/**'
+      - '.github/workflows/izakhono-access-ci.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'products/izakhono-access/**'
+      - '.github/workflows/izakhono-access-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Python syntax
+        run: python3 -m py_compile products/izakhono-access/app.py products/izakhono-access/test_access.py
+      - name: Entitlement tests
+        run: python3 products/izakhono-access/test_access.py
+      - name: Safety invariants
+        run: |
+          set -euo pipefail
+          grep -Fq 'usage_credit_gate' products/izakhono-access/app.py
+          grep -Fq 'message_quota' products/izakhono-access/app.py
+          grep -Fq 'x-izakhono-access-key' products/izakhono-access/app.py
+          ! grep -R --line-number -E 'IZAKHONO_PAY_WEBHOOK_SECRET=.+' products/izakhono-access
+          ! grep -R --line-number -E 'IZAKHONO_ACCESS_INTERNAL_KEY=.+' products/izakhono-access
