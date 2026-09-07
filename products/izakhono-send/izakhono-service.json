@@ -1,0 +1,10 @@
+{
+  "app": "izakhono-send",
+  "repo": "https://github.com/bevanshelton-netizen/izakhono-builder.git",
+  "ref": "main",
+  "container_port": 8787,
+  "health_path": "/healthz",
+  "dockerfile": "products/izakhono-send/Dockerfile",
+  "data_path": "/data",
+  "env_file": "/etc/izakhono/apps/izakhono-send.env"
+}
