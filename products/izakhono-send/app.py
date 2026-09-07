@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import hashlib,hmac,json,mimetypes,os,re,secrets,shutil,sqlite3,threading,time,urllib.parse,webbrowser
+import hashlib,hmac,json,mimetypes,os,re,secrets,shutil,sqlite3,sys,threading,time,urllib.parse,webbrowser
 from http.server import BaseHTTPRequestHandler,ThreadingHTTPServer
 from pathlib import Path
 
@@ -270,4 +270,6 @@ def main():
     except KeyboardInterrupt:pass
     finally:server.server_close()
 
-if __name__=="__main__":main()
+if __name__=="__main__":
+    if "--version" in sys.argv:print("IZAKHONO SEND v"+VERSION)
+    else:main()
