@@ -150,6 +150,12 @@ class H(BaseHTTPRequestHandler):
         if path.startswith("/t/"):return self.out(200,PUBLIC.encode(),"text/html; charset=utf-8")
         if path.startswith("/api/v1/public/"):return self.public_meta(path)
         if path.startswith("/d/"):return self.download(path)
+        if path=="/api/v1/transfers":
+            if not self.authed():return self.out(401,{"error":"unauthorized"})
+            q=urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query);entity=(q.get("entity_id") or [""])[0].strip()
+            if not entity:return self.out(400,{"error":"entity_id_required"})
+            with db() as con:rows=con.execute("SELECT id,entity_id,title,created_at,expires_at,file_count,total_bytes,download_count,max_downloads FROM transfers WHERE entity_id=? ORDER BY created_at DESC LIMIT 100",(entity,)).fetchall()
+            return self.out(200,{"transfers":[dict(r) for r in rows]})
         return self.out(404,{"error":"not_found"})
     def do_HEAD(self):
         path=urllib.parse.urlparse(self.path).path
