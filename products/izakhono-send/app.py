@@ -3,7 +3,7 @@ import hashlib,hmac,json,mimetypes,os,re,secrets,shutil,sqlite3,sys,threading,ti
 from http.server import BaseHTTPRequestHandler,ThreadingHTTPServer
 from pathlib import Path
 
-VERSION="1.0.0"
+VERSION="1.0.1"
 HOST=os.getenv("IZAKHONO_SEND_HOST","127.0.0.1")
 PORT=int(os.getenv("IZAKHONO_SEND_PORT","8787"))
 PUBLIC_BASE=os.getenv("IZAKHONO_SEND_PUBLIC_BASE","").rstrip("/")
@@ -16,7 +16,7 @@ if os.name=="nt":
     ROOT=Path(os.getenv("IZAKHONO_SEND_ROOT",str(Path(os.getenv("LOCALAPPDATA",str(Path.home())))/"IzakhonoSend"))).resolve()
 else:
     ROOT=Path(os.getenv("IZAKHONO_SEND_ROOT","/var/lib/izakhono-send")).resolve()
-OBJECTS=ROOT/"objects";DB_PATH=ROOT/"send.db";TOKEN_FILE=ROOT/"admin-token.txt"
+OBJECTS=ROOT/"objects";DB_PATH=ROOT/"send.db";TOKEN_FILE=ROOT/"admin-token.txt";PROOF_FILE=ROOT/"activation-proof.json"
 
 def ts(): return int(time.time())
 def ensure_root():
@@ -261,10 +261,24 @@ class H(BaseHTTPRequestHandler):
                 if not chunk:break
                 self.wfile.write(chunk);remaining-=len(chunk)
 
+def write_proof(status,error=""):
+    ensure_root()
+    data={"product":"IZAKHONO SEND","version":VERSION,"status":status,"host":HOST,"port":PORT,"health_url":"http://127.0.0.1:"+str(PORT)+"/healthz","generated_at":int(time.time())}
+    if error:data["error"]=error[:500]
+    PROOF_FILE.write_text(json.dumps(data,indent=2),encoding="utf-8")
+
 def main():
     init_db();purge();threading.Thread(target=cleaner,daemon=True).start()
-    server=ThreadingHTTPServer((HOST,PORT),H);owner_url="http://127.0.0.1:"+str(PORT)+"/#owner="+urllib.parse.quote(ADMIN_TOKEN)
-    print("IZAKHONO SEND v"+VERSION);print("Listening on "+HOST+":"+str(PORT));print("Owner token file: "+str(TOKEN_FILE));print("Owner URL: "+owner_url)
+    owner_url="http://127.0.0.1:"+str(PORT)+"/#owner="+urllib.parse.quote(ADMIN_TOKEN)
+    print("IZAKHONO SEND v"+VERSION);print("Owner token file: "+str(TOKEN_FILE));print("Owner URL: "+owner_url)
+    try:
+        server=ThreadingHTTPServer((HOST,PORT),H)
+    except OSError as e:
+        write_proof("BLOCKED",str(e))
+        print("IZAKHONO SEND could not bind to "+HOST+":"+str(PORT)+": "+str(e))
+        raise SystemExit(2)
+    write_proof("ACTIVE")
+    print("Listening on "+HOST+":"+str(PORT));print("Activation proof: "+str(PROOF_FILE))
     if os.name=="nt" and os.getenv("IZAKHONO_SEND_NO_BROWSER","").lower() not in ("1","true","yes"):threading.Timer(1.0,lambda:webbrowser.open(owner_url)).start()
     try:server.serve_forever()
     except KeyboardInterrupt:pass
