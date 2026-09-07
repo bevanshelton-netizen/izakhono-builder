@@ -92,5 +92,5 @@ assert status==410
 
 server.shutdown()
 server.server_close()
-tmp.cleanup()
+thread.join(timeout=5)
 print("IZAKHONO_SEND_TEST=PASS")
