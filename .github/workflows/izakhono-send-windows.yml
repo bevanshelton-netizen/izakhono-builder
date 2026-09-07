@@ -1,0 +1,41 @@
+name: IZAKHONO SEND Windows EXE
+
+on:
+  pull_request:
+    paths:
+      - 'products/izakhono-send/**'
+      - '.github/workflows/izakhono-send-windows.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'products/izakhono-send/**'
+      - '.github/workflows/izakhono-send-windows.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Unit and functional test
+        run: python products/izakhono-send/test_send.py
+      - name: Build standalone EXE
+        run: |
+          python -m pip install --disable-pip-version-check pyinstaller
+          pyinstaller --onefile --name IZAKHONO-SEND products/izakhono-send/app.py
+      - name: Verify EXE
+        run: .\dist\IZAKHONO-SEND.exe --version
+      - name: SHA256
+        shell: powershell
+        run: Get-FileHash .\dist\IZAKHONO-SEND.exe -Algorithm SHA256 | Format-List
+      - uses: actions/upload-artifact@v4
+        with:
+          name: IZAKHONO-SEND-WINDOWS
+          path: dist/IZAKHONO-SEND.exe
+          if-no-files-found: error
