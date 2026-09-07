@@ -1,0 +1,34 @@
+name: IZAKHONO SEND CI
+
+on:
+  pull_request:
+    paths:
+      - 'products/izakhono-send/**'
+      - '.github/workflows/izakhono-send-ci.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'products/izakhono-send/**'
+      - '.github/workflows/izakhono-send-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Compile
+        run: python -m py_compile products/izakhono-send/app.py
+      - name: Functional test
+        run: python products/izakhono-send/test_send.py
+      - name: Container build
+        run: docker build -f products/izakhono-send/Dockerfile -t izakhono/send:test products/izakhono-send
+      - name: OpenAI/WeTransfer runtime independence
+        run: |
+          ! grep -RniE 'api\.openai\.com|wetransfer\.com|we\.tl' products/izakhono-send --exclude=README.md
