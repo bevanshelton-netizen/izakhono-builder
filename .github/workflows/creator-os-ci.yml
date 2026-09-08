@@ -1,0 +1,42 @@
+name: Creator OS CI
+
+on:
+  pull_request:
+    paths:
+      - "products/izakhono-artist-protect/**"
+      - "products/izakhono-revenue/**"
+      - "products/izakhono-clearset/**"
+      - "products/creator-os/**"
+      - "src/index.ts"
+      - ".github/workflows/creator-os-ci.yml"
+  push:
+    branches: [main]
+    paths:
+      - "products/izakhono-artist-protect/**"
+      - "products/izakhono-revenue/**"
+      - "products/izakhono-clearset/**"
+      - "products/creator-os/**"
+      - "src/index.ts"
+
+jobs:
+  creator-os:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Artist Protect
+        run: cd products/izakhono-artist-protect && npm run check
+      - name: Revenue
+        run: cd products/izakhono-revenue && npm run check
+      - name: CLEARSET
+        run: cd products/izakhono-clearset && npm run check
+      - name: Policy invariants
+        run: |
+          grep -q "artist_protect" src/index.ts
+          grep -q "clearset" src/index.ts
+          grep -q "default platform share is 10%" products/creator-os/README.md
+          grep -q "No money labelled available" products/creator-os/README.md
+          echo "IZAKHONO_CREATOR_OS_SOFTWARE=PASS"
+          echo "LIVE_PAYMENT_AND_REAL_SETTLEMENT_PROOF=PENDING"
