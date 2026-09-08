@@ -28,6 +28,11 @@ const MODULES = {
   learning: { label: 'Learning', detail: 'Courses, lessons, assessments and progress.' },
   video: { label: 'Video', detail: 'Creator/media publishing foundation.' },
   ai: { label: 'AI Assistant', detail: 'Provider-neutral AI adapter with usage controls.' },
+  revenue: { label: 'Revenue Engine', detail: 'Offers, bookings, invoices, fulfilment and payment handoff.' },
+  artist_protect: { label: 'Artist Protect', detail: 'Rights, splits, contract guardrails, disputes and evidence.' },
+  career: { label: 'Creator Career', detail: 'Launch, grow, revive and relaunch pathways with campaign state.' },
+  media_handoff: { label: 'Media Handoff', detail: 'Server-side rights-gated handoff between IZAKHONO media platforms.' },
+  clearset: { label: 'CLEARSET', detail: 'Obligation classification, reserves, settlement and available-cash calculation.' },
 } as const;
 type ModuleKey = keyof typeof MODULES;
 
@@ -83,6 +88,11 @@ function buildRecipe(project: any, modules: ModuleKey[]) {
   if (modules.includes('analytics')) architecture.push('first-party event ledger');
   if (modules.includes('admin')) architecture.push('protected operations dashboard');
   if (modules.includes('leads')) architecture.push('lead capture and CRM workflow');
+  if (modules.includes('revenue')) architecture.push('offer catalogue + booking + invoicing + fulfilment + payment handoff');
+  if (modules.includes('artist_protect')) architecture.push('rights passport + split validation + contract shield + dispute/evidence ledger');
+  if (modules.includes('career')) architecture.push('creator career pathway engine: launch / grow / revive / relaunch');
+  if (modules.includes('media_handoff')) architecture.push('server-to-server media handoff with identity linking, rights gates and moderation');
+  if (modules.includes('clearset')) architecture.push('gross-to-available obligation engine with tax/reserve classification and settlement ledger');
 
   return {
     engine: 'IZAKHONO BUILDER',

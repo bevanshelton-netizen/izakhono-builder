@@ -1,0 +1,2 @@
+ADMIN_SECRET=replace-with-long-random-admin-secret
+# Apps are provisioned with hashed API keys in artist_protect_apps.
