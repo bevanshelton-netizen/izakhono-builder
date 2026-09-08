@@ -1,0 +1,52 @@
+apiVersion: izakhono.africa/v1
+kind: NodeCluster
+metadata:
+  name: izakhono-production
+spec:
+  preferredPrimary: node01
+  failoverOrder:
+    - node02
+    - node03
+    - node04
+  controlPlaneQuorum:
+    members:
+      - node01
+      - node02
+      - node03
+    minimumHealthy: 2
+  nodes:
+    - name: node01
+      role: primary
+      controlPlane: true
+      schedulable: true
+      backupTarget: false
+    - name: node02
+      role: backup-1
+      controlPlane: true
+      schedulable: true
+      backupTarget: false
+    - name: node03
+      role: backup-2
+      controlPlane: true
+      schedulable: true
+      backupTarget: false
+    - name: node04
+      role: backup-3-dr
+      controlPlane: false
+      schedulable: true
+      backupTarget: true
+  security:
+    publicIngressOnlyThrough: IZAKHONO_EDGE
+    secretsEncryption: true
+    podNetworkEncryption: wireguard-native
+    publicDatabasePorts: false
+    publicAdminPorts: false
+  backup:
+    etcdSnapshotHours: 6
+    encryptedRepository: true
+    restoreTestRequired: true
+  readiness:
+    requireFourReadyNodes: true
+    requireControlledPrimaryFailureTest: true
+    requireBackupRestoreTest: true
+    requireExternalEdgeTest: true
