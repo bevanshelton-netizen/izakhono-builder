@@ -1,0 +1,22 @@
+apiVersion: helm.cattle.io/v1
+kind: HelmChart
+metadata:
+  name: izakhono-longhorn
+  namespace: kube-system
+spec:
+  repo: https://charts.longhorn.io
+  chart: longhorn
+  version: 1.12.1
+  targetNamespace: longhorn-system
+  createNamespace: true
+  valuesContent: |-
+    persistence:
+      defaultClass: true
+      defaultClassReplicaCount: 3
+      defaultDataLocality: best-effort
+    defaultSettings:
+      defaultReplicaCount: 3
+      defaultDataPath: /srv/izakhono/longhorn
+      replicaSoftAntiAffinity: false
+      storageMinimalAvailablePercentage: 15
+      upgradeChecker: false

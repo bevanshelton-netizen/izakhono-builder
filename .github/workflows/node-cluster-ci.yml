@@ -26,6 +26,8 @@ jobs:
           bash -n infra/node-cluster/join-replica.sh
           bash -n infra/node-cluster/backup.sh
           bash -n infra/node-cluster/verify-cluster.sh
+          bash -n infra/node-cluster/storage/install-storage.sh
+          bash -n infra/node-cluster/storage/verify-storage.sh
 
       - name: Architecture invariants
         run: |
@@ -36,6 +38,15 @@ jobs:
           grep -q "wireguard-native" infra/node-cluster/bootstrap-primary.sh
           grep -q "NODE 04 is intentionally a worker/DR node" infra/node-cluster/join-replica.sh
 
+      - name: Replicated storage invariants
+        run: |
+          grep -q "version: 1.12.1" infra/node-cluster/storage/longhorn-1.12.1.yaml
+          grep -q "defaultClassReplicaCount: 3" infra/node-cluster/storage/longhorn-1.12.1.yaml
+          grep -q "defaultReplicaCount: 3" infra/node-cluster/storage/longhorn-1.12.1.yaml
+          grep -q "defaultDataPath: /srv/izakhono/longhorn" infra/node-cluster/storage/longhorn-1.12.1.yaml
+          grep -q "upgradeChecker: false" infra/node-cluster/storage/longhorn-1.12.1.yaml
+          grep -q "storageClassName: longhorn" infra/node-cluster/storage/verify-storage.sh
+
       - name: Secret hygiene
         run: |
           ! grep -R -E 'K3S_TOKEN=.{8,}|RESTIC_PASSWORD_FILE=.*password[^[:space:]]+' infra/node-cluster/cluster.env.example
@@ -43,4 +54,5 @@ jobs:
       - name: Cluster build proof
         run: |
           echo "IZAKHONO_NODE_CLUSTER_SOFTWARE=PASS"
+          echo "IZAKHONO_DATA_SOFTWARE=PASS"
           echo "PHYSICAL_NODE_VALIDATION=PENDING"
