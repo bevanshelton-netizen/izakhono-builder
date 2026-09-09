@@ -51,7 +51,8 @@ jobs:
           $ErrorActionPreference = 'Stop'
           foreach ($path in @(
             'scripts/launch-stack/windows-owner-host.ps1',
-            'scripts/launch-stack/tap-into-our-infrastructure.ps1'
+            'scripts/launch-stack/tap-into-our-infrastructure.ps1',
+            'scripts/launch-stack/enable-actions-runner.ps1'
           )) {
             $tokens = $null
             $errors = $null
@@ -71,6 +72,10 @@ jobs:
           $tapLauncher = Get-Content -Raw 'scripts/launch-stack/TAP-INTO-OUR-INFRASTRUCTURE.cmd'
           if ($tapLauncher -notmatch 'tap-into-our-infrastructure\.ps1') {
             throw 'Tap-in launcher is not wired to the reviewed IZAKHONO staging orchestrator.'
+          }
+          $runnerLauncher = Get-Content -Raw 'scripts/launch-stack/START-IZAKHONO-ACTIONS-RUNNER.cmd'
+          if ($runnerLauncher -notmatch 'enable-actions-runner\.ps1') {
+            throw 'Runner launcher is not wired to the reviewed secure activation script.'
           }
 
       - name: Safety invariants
@@ -120,6 +125,13 @@ jobs:
           grep -Eq "Commit = '[0-9a-f]{40}'" scripts/launch-stack/tap-into-our-infrastructure.ps1
           grep -Fq 'stage-reviewed-public-project.sh' scripts/launch-stack/tap-into-our-infrastructure.ps1
           ! grep -Fq 'launch-project.sh' scripts/launch-stack/tap-into-our-infrastructure.ps1
+          grep -Fq '2.337.0' scripts/launch-stack/install-actions-runner.sh
+          grep -Fq '70920811a4f8ad4328818682bca5c6469c1c942fab52448868071d0063816613' scripts/launch-stack/install-actions-runner.sh
+          grep -Fq 'IZAKHONO_GITHUB_RUNNER_TOKEN' scripts/launch-stack/install-actions-runner.sh
+          grep -Fq 'TOKEN_STORED=false' scripts/launch-stack/install-actions-runner.sh
+          grep -Fq 'self-hosted,linux,x64' scripts/launch-stack/install-actions-runner.sh
+          grep -Fq 'Read-Host' scripts/launch-stack/enable-actions-runner.ps1
+          grep -Fq 'AsSecureString' scripts/launch-stack/enable-actions-runner.ps1
 
       - name: Validate Docker Compose model
         env:
