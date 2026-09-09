@@ -12,6 +12,8 @@ REPO="$(get repo)"
 REF="$(get ref)"
 MODE="$(get mode)"
 MODE="${MODE:-single}"
+ENVIRONMENT="$(get environment)"
+ENVIRONMENT="${ENVIRONMENT:-staging}"
 PORT="$(get container_port)"
 HEALTH="$(get health_path)"
 HEALTH_URL="$(get health_url)"
@@ -25,13 +27,29 @@ DOCKERFILE="${DOCKERFILE:-Dockerfile}"
 COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.yml}"
 DATA_PATH="${DATA_PATH:-/app/data}"
 
-[[ "$APP" =~ ^[a-zA-Z0-9_-]+$ ]] || exit 21
-[[ "$MODE" == "single" || "$MODE" == "compose" ]] || { echo "invalid-mode" >&2; exit 22; }
+[[ "$APP" =~ ^[a-zA-Z0-9][a-zA-Z0-9_-]{1,62}[a-zA-Z0-9]$ ]] || { echo invalid-app >&2; exit 21; }
+[[ "$MODE" == "single" || "$MODE" == "compose" ]] || { echo invalid-mode >&2; exit 22; }
+[[ "$ENVIRONMENT" == "staging" || "$ENVIRONMENT" == "production" ]] || { echo invalid-environment >&2; exit 22; }
+
+case "$REPO" in
+  file:///srv/izakhono-code/repos/*.git) ;;
+  https://github.com/bevanshelton-netizen/*.git) ;;
+  *) echo "repo-not-approved" >&2; exit 23 ;;
+esac
+[[ "$REPO" != *".."* ]] || { echo unsafe-repo >&2; exit 23; }
+
+if [[ "$ENVIRONMENT" == "production" ]]; then
+  [[ "$REF" =~ ^[0-9a-f]{40}$ ]] || { echo "production-ref-must-be-immutable-sha" >&2; exit 24; }
+fi
+
+if [[ -n "$PUBLIC_URL" ]]; then
+  [[ "$PUBLIC_URL" == https://* ]] || { echo "public-url-must-use-https" >&2; exit 24; }
+fi
 
 if [[ -n "$ENV_FILE" ]]; then
   ENV_REAL="$(readlink -f "$ENV_FILE")"
-  [[ "$ENV_REAL" == /etc/izakhono/apps/* ]] || { echo bad-env-path; exit 24; }
-  [[ -f "$ENV_REAL" ]] || { echo missing-env; exit 25; }
+  [[ "$ENV_REAL" == /etc/izakhono/apps/* ]] || { echo bad-env-path; exit 25; }
+  [[ -f "$ENV_REAL" ]] || { echo missing-env; exit 26; }
 fi
 
 ROOT="/var/lib/izakhono-node/apps/$APP"
@@ -51,12 +69,20 @@ git -C "$SRC" checkout --detach "$REF"
 SHA="$(git -C "$SRC" rev-parse HEAD)"
 SHORT="${SHA:0:12}"
 
+if [[ "$ENVIRONMENT" == "production" && "$SHA" != "$REF" ]]; then
+  echo "resolved-sha-does-not-match-requested-production-sha" >&2
+  exit 27
+fi
+
+echo "IZAKHONO_NODE_SOURCE=$REPO"
+echo "IZAKHONO_NODE_RESOLVED_COMMIT=$SHA"
+echo "IZAKHONO_NODE_ENVIRONMENT=$ENVIRONMENT"
+
 if [[ "$MODE" == "compose" ]]; then
-  need docker
-  docker compose version >/dev/null 2>&1 || { echo "missing docker compose" >&2; exit 26; }
-  [[ -f "$SRC/$COMPOSE_FILE" ]] || { echo "missing-compose-file" >&2; exit 27; }
+  docker compose version >/dev/null 2>&1 || { echo "missing docker compose" >&2; exit 28; }
+  [[ -f "$SRC/$COMPOSE_FILE" ]] || { echo "missing-compose-file" >&2; exit 29; }
   [[ "$HEALTH_URL" == http://127.0.0.1:* || "$HEALTH_URL" == http://localhost:* || "$HEALTH_URL" == https://127.0.0.1:* || "$HEALTH_URL" == https://localhost:* ]] || {
-    echo "compose-health-url-must-be-localhost" >&2; exit 28;
+    echo "compose-health-url-must-be-localhost" >&2; exit 30;
   }
 
   PROJECT="izakhono-$APP"
@@ -74,7 +100,7 @@ if [[ "$MODE" == "compose" ]]; then
   done
 
   rollback_compose(){
-    echo rollback >&2
+    echo "IZAKHONO_NODE_ROLLBACK=compose" >&2
     if [[ -n "$PREV_SHA" ]]; then
       git -C "$SRC" checkout --detach "$PREV_SHA" || true
       "${DC[@]}" build || true
@@ -84,18 +110,23 @@ if [[ "$MODE" == "compose" ]]; then
     fi
   }
 
-  [[ "$pass" == 1 ]] || { "${DC[@]}" ps || true; "${DC[@]}" logs --tail=200 || true; rollback_compose; exit 30; }
+  [[ "$pass" == 1 ]] || {
+    "${DC[@]}" ps || true
+    "${DC[@]}" logs --tail=200 || true
+    rollback_compose
+    exit 31
+  }
 
   if [[ -n "$PUBLIC_URL" ]]; then
     curl -fsS --max-time 15 "$PUBLIC_URL" >/dev/null || { rollback_compose; exit 32; }
   fi
 
-  printf '{"ok":true,"app":"%s","commit":"%s","mode":"compose","compose_file":"%s"}\n' "$APP" "$SHA" "$COMPOSE_FILE"
+  printf '{"ok":true,"app":"%s","commit":"%s","environment":"%s","mode":"compose","compose_file":"%s"}\n' "$APP" "$SHA" "$ENVIRONMENT" "$COMPOSE_FILE"
   exit 0
 fi
 
-[[ "$PORT" =~ ^[0-9]+$ ]] || exit 22
-[[ "$HEALTH" == /* ]] || exit 23
+[[ "$PORT" =~ ^[0-9]+$ ]] || exit 33
+[[ "$HEALTH" == /* ]] || exit 34
 
 IMAGE="izakhono/$APP:$SHORT"
 CANARY="${APP}-canary"
@@ -108,7 +139,7 @@ docker volume create "$VOL" >/dev/null
 docker volume create "$CANARY_VOL" >/dev/null
 docker rm -f "$CANARY" >/dev/null 2>&1 || true
 
-ARGS=(run -d --name "$CANARY" --label "izakhono.app=$APP" --label "izakhono.commit=$SHA" -p 127.0.0.1::"$PORT" -v "$CANARY_VOL:$DATA_PATH")
+ARGS=(run -d --name "$CANARY" --label "izakhono.app=$APP" --label "izakhono.commit=$SHA" --label "izakhono.environment=$ENVIRONMENT" -p 127.0.0.1::"$PORT" -v "$CANARY_VOL:$DATA_PATH")
 [[ -n "$ENV_FILE" ]] && ARGS+=(--env-file "$ENV_FILE")
 ARGS+=("$IMAGE")
 docker "${ARGS[@]}" >/dev/null
@@ -119,18 +150,23 @@ for _ in $(seq 1 45); do
   if curl -fsS --max-time 5 "http://127.0.0.1:$HOST_PORT$HEALTH" >/dev/null; then pass=1; break; fi
   sleep 2
 done
-[[ "$pass" == 1 ]] || { docker logs "$CANARY" || true; docker rm -f "$CANARY" || true; echo canary-failed; exit 30; }
+[[ "$pass" == 1 ]] || {
+  docker logs "$CANARY" || true
+  docker rm -f "$CANARY" || true
+  echo canary-failed
+  exit 35
+}
 
 PREV_IMAGE="$(docker inspect -f '{{.Config.Image}}' "$PROD" 2>/dev/null || true)"
 docker rm -f "$PROD" >/dev/null 2>&1 || true
 docker rm -f "$CANARY" >/dev/null 2>&1 || true
 
-PROD_ARGS=(run -d --name "$PROD" --restart unless-stopped --label "izakhono.app=$APP" --label "izakhono.commit=$SHA" -p "127.0.0.1:$PORT:$PORT" -v "$VOL:$DATA_PATH")
+PROD_ARGS=(run -d --name "$PROD" --restart unless-stopped --label "izakhono.app=$APP" --label "izakhono.commit=$SHA" --label "izakhono.environment=$ENVIRONMENT" -p "127.0.0.1:$PORT:$PORT" -v "$VOL:$DATA_PATH")
 [[ -n "$ENV_FILE" ]] && PROD_ARGS+=(--env-file "$ENV_FILE")
 PROD_ARGS+=("$IMAGE")
 
 rollback(){
-  echo rollback >&2
+  echo "IZAKHONO_NODE_ROLLBACK=single" >&2
   docker rm -f "$PROD" >/dev/null 2>&1 || true
   if [[ -n "$PREV_IMAGE" ]]; then
     RB=(run -d --name "$PROD" --restart unless-stopped -p "127.0.0.1:$PORT:$PORT" -v "$VOL:$DATA_PATH")
@@ -146,9 +182,10 @@ for _ in $(seq 1 45); do
   if curl -fsS --max-time 5 "http://127.0.0.1:$PORT$HEALTH" >/dev/null; then pass=1; break; fi
   sleep 2
 done
-[[ "$pass" == 1 ]] || { rollback; exit 31; }
+[[ "$pass" == 1 ]] || { rollback; exit 36; }
+
 if [[ -n "$PUBLIC_URL" ]]; then
-  curl -fsS --max-time 15 "${PUBLIC_URL%/}$HEALTH" >/dev/null || { rollback; exit 32; }
+  curl -fsS --max-time 15 "${PUBLIC_URL%/}$HEALTH" >/dev/null || { rollback; exit 37; }
 fi
 
-printf '{"ok":true,"app":"%s","commit":"%s","image":"%s","mode":"single"}\n' "$APP" "$SHA" "$IMAGE"
+printf '{"ok":true,"app":"%s","commit":"%s","environment":"%s","image":"%s","mode":"single"}\n' "$APP" "$SHA" "$ENVIRONMENT" "$IMAGE"
