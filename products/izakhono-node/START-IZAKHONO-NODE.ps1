@@ -12,16 +12,17 @@ if ($distros -notcontains $Distro) {
 }
 
 $windowsProduct = (Resolve-Path $PSScriptRoot).Path
-$escaped = $windowsProduct.Replace("'", "'\''")
-$linuxProduct = (& wsl.exe -d $Distro -- bash -lc "wslpath -a '$escaped'").Trim()
-if (-not $linuxProduct) { throw '[FAIL] Could not map the IZAKHONO Node product folder into WSL.' }
+$linuxProduct = (& wsl.exe -d $Distro -- wslpath -a "$windowsProduct").Trim()
+if (-not $linuxProduct) {
+    throw '[FAIL] Could not map the IZAKHONO Node product folder into WSL.'
+}
 
 Write-Host ''
 Write-Host 'IZAKHONO NODE 01' -ForegroundColor Cyan
 Write-Host 'Installing NODE + CONTROL on our owner host...'
 Write-Host ''
 
-& wsl.exe -d $Distro -u root -- bash -lc "cd '$linuxProduct' && ./install.sh"
+& wsl.exe -d $Distro -u root -- bash "$linuxProduct/install.sh"
 if ($LASTEXITCODE -ne 0) {
     throw "[FAIL] IZAKHONO Node installer stopped with exit code $LASTEXITCODE."
 }
