@@ -1,0 +1,15 @@
+{
+  "version": 2,
+  "name": "StudyPal",
+  "slug": "studypal",
+  "build_context": ".",
+  "dockerfile_path": "Dockerfile",
+  "container_port": 3000,
+  "health_path": "/healthz",
+  "branch": "main",
+  "alpha": {
+    "preflight": true,
+    "rehearsal": false,
+    "windows_package": false
+  }
+}
