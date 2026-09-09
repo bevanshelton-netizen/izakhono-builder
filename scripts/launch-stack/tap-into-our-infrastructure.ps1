@@ -21,7 +21,7 @@ $ReviewedPlatforms = @(
         Name = 'ALLEGRO-VIBEZ'
         Slug = 'allegro-vibez'
         Repository = 'https://github.com/bevanshelton-netizen/allegro-vibez.git'
-        Commit = '53cf53a20f730c953701877c7e7195ed3a3015e5'
+        Commit = '78c674834d193fa5df01fc451abd8dbb406f12d6'
     }
 )
 
