@@ -36,6 +36,7 @@ ok, err = module.valid_job({
     "container_port": 8080,
     "health_path": "/healthz",
     "public_url": "https://allegro.example.test",
+    "public_build_env_file": "/etc/izakhono/apps/allegro-vibez.public-build.env",
 })
 assert ok, err
 
@@ -49,6 +50,17 @@ ok, err = module.valid_job({
     "health_path": "/healthz",
 })
 assert not ok and "immutable" in err
+
+ok, err = module.valid_job({
+    "app": "bad-build-env",
+    "repo": "file:///srv/izakhono-code/repos/allegro-vibez.git",
+    "ref": "main",
+    "mode": "single",
+    "container_port": 8080,
+    "health_path": "/healthz",
+    "public_build_env_file": "/tmp/browser.env",
+})
+assert not ok and "public_build_env_file" in err
 
 ok, err = module.valid_job({
     "app": "bad-source",
