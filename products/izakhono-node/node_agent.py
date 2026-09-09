@@ -205,6 +205,12 @@ def valid_job(job):
         if not resolved.startswith("/etc/izakhono/apps/"):
             return False, "env_file must live under /etc/izakhono/apps"
 
+    public_build_env_file = str(job.get("public_build_env_file") or "")
+    if public_build_env_file:
+        resolved = Path(public_build_env_file).resolve().as_posix()
+        if not resolved.startswith("/etc/izakhono/apps/"):
+            return False, "public_build_env_file must live under /etc/izakhono/apps"
+
     return True, ""
 
 
@@ -364,6 +370,7 @@ class Handler(BaseHTTPRequestHandler):
                     "docker_canary",
                     "rollback",
                     "compose",
+                    "public_build_env",
                     "deployment_proof",
                 ],
             })
