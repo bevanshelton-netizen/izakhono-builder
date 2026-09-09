@@ -1,0 +1,50 @@
+name: IZAKHONO Node CI
+
+on:
+  pull_request:
+    paths:
+      - "products/izakhono-node/**"
+      - "products/izakhono-control/**"
+      - ".github/workflows/izakhono-node-ci.yml"
+  push:
+    branches: [main]
+    paths:
+      - "products/izakhono-node/**"
+      - "products/izakhono-control/**"
+      - ".github/workflows/izakhono-node-ci.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  node:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Python syntax
+        run: |
+          python3 -m py_compile products/izakhono-node/node_agent.py
+          python3 -m py_compile products/izakhono-control/control.py
+      - name: Shell syntax
+        run: |
+          bash -n products/izakhono-node/deploy.sh
+          bash -n products/izakhono-node/install.sh
+      - name: Node security and deployment tests
+        run: python3 products/izakhono-node/test_service_plug.py
+      - name: Control source-routing tests
+        run: python3 products/izakhono-control/test_control.py
+      - name: Sovereignty invariants
+        run: |
+          grep -q "file:///srv/izakhono-code/repos/" products/izakhono-node/node_agent.py
+          grep -q "production ref must be an immutable" products/izakhono-node/node_agent.py
+          grep -q "deployment_proof" products/izakhono-node/node_agent.py
+          grep -q "GITHUB_RUNNER_REQUIRED=false" products/izakhono-node/install.sh
+          grep -q "source == \"izakhono-code\"" products/izakhono-control/control.py
+      - name: Secret hygiene
+        run: |
+          ! grep -R -E 'IZAKHONO_NODE_SECRET=[A-Za-z0-9_-]{20,}|IZAKHONO_CONTROL_TOKEN=[A-Za-z0-9_-]{20,}' products/izakhono-node products/izakhono-control
+      - name: Software proof
+        run: |
+          echo "IZAKHONO_NODE_V1_SOFTWARE=PASS"
+          echo "GITHUB_ACTIONS_RUNTIME_DEPENDENCY=false"
+          echo "PHYSICAL_NODE_ACTIVATION=PENDING"
