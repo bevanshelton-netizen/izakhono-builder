@@ -25,10 +25,12 @@ jobs:
         run: |
           python3 -m py_compile products/izakhono-node/node_agent.py
           python3 -m py_compile products/izakhono-control/control.py
+          python3 -m py_compile products/izakhono-control/izakhonoctl.py
       - name: Shell syntax
         run: |
           bash -n products/izakhono-node/deploy.sh
           bash -n products/izakhono-node/install.sh
+          bash -n products/izakhono-node/prepare-allegro.sh
       - name: Node security and deployment tests
         run: python3 products/izakhono-node/test_service_plug.py
       - name: Control source-routing tests
@@ -40,6 +42,10 @@ jobs:
           grep -q "deployment_proof" products/izakhono-node/node_agent.py
           grep -q "GITHUB_RUNNER_REQUIRED=false" products/izakhono-node/install.sh
           grep -q "source == \"izakhono-code\"" products/izakhono-control/control.py
+          grep -q "public_build_env_file" products/izakhono-node/node_agent.py
+          grep -q "VITE_IZAKHONO_CORE_URL|VITE_IZAKHONO_PROJECT|VITE_IZAKHONO_PUBLIC_KEY" products/izakhono-node/deploy.sh
+          grep -q '"repository": "allegro-vibez"' products/izakhono-node/profiles/allegro-vibez.production.json
+          grep -q "IZAKHONO CONTROL → IZAKHONO NODE" products/izakhono-node/prepare-allegro.sh
       - name: Secret hygiene
         run: |
           ! grep -R -E 'IZAKHONO_NODE_SECRET=[A-Za-z0-9_-]{20,}|IZAKHONO_CONTROL_TOKEN=[A-Za-z0-9_-]{20,}' products/izakhono-node products/izakhono-control

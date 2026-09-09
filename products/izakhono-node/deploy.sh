@@ -19,6 +19,7 @@ HEALTH="$(get health_path)"
 HEALTH_URL="$(get health_url)"
 PUBLIC_URL="$(get public_url)"
 ENV_FILE="$(get env_file)"
+PUBLIC_BUILD_ENV_FILE="$(get public_build_env_file)"
 DOCKERFILE="$(get dockerfile)"
 COMPOSE_FILE="$(get compose_file)"
 DATA_PATH="$(get data_path)"
@@ -52,6 +53,31 @@ if [[ -n "$ENV_FILE" ]]; then
   [[ -f "$ENV_REAL" ]] || { echo missing-env; exit 26; }
 fi
 
+BUILD_ARGS=()
+if [[ -n "$PUBLIC_BUILD_ENV_FILE" ]]; then
+  BUILD_REAL="$(readlink -f "$PUBLIC_BUILD_ENV_FILE")"
+  [[ "$BUILD_REAL" == /etc/izakhono/apps/* ]] || { echo bad-public-build-env-path; exit 26; }
+  [[ -f "$BUILD_REAL" ]] || { echo missing-public-build-env; exit 26; }
+
+  while IFS= read -r LINE || [[ -n "$LINE" ]]; do
+    [[ -z "$LINE" || "$LINE" == \#* ]] && continue
+    KEY="${LINE%%=*}"
+    VALUE="${LINE#*=}"
+    [[ "$KEY" != "$LINE" ]] || { echo malformed-public-build-env >&2; exit 26; }
+    case "$KEY" in
+      VITE_IZAKHONO_CORE_URL|VITE_IZAKHONO_PROJECT|VITE_IZAKHONO_PUBLIC_KEY|VITE_KORA_URL|VITE_ALLEGRO_RADIO_STREAM_URL) ;;
+      *) echo "public-build-key-not-approved:$KEY" >&2; exit 26 ;;
+    esac
+    if printf "%s" "$LINE" | LC_ALL=C grep -q "[[:cntrl:]]"; then
+      echo bad-public-build-value >&2; exit 26
+    fi
+    if [[ "$ENVIRONMENT" == "production" && "$KEY" == "VITE_IZAKHONO_CORE_URL" ]]; then
+      [[ "$VALUE" == https://* ]] || { echo production-core-url-must-use-https >&2; exit 26; }
+    fi
+    BUILD_ARGS+=(--build-arg "$KEY=$VALUE")
+    export "$KEY=$VALUE"
+  done <"$BUILD_REAL"
+fi
 ROOT="/var/lib/izakhono-node/apps/$APP"
 SRC="$ROOT/source"
 mkdir -p "$ROOT"
@@ -134,7 +160,7 @@ PROD="$APP"
 VOL="${APP}_data"
 CANARY_VOL="${APP}_canary_data"
 
-docker build --pull -f "$SRC/$DOCKERFILE" -t "$IMAGE" "$SRC"
+docker build --pull "${BUILD_ARGS[@]}" -f "$SRC/$DOCKERFILE" -t "$IMAGE" "$SRC"
 docker volume create "$VOL" >/dev/null
 docker volume create "$CANARY_VOL" >/dev/null
 docker rm -f "$CANARY" >/dev/null 2>&1 || true
