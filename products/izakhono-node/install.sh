@@ -21,15 +21,18 @@ docker info >/dev/null 2>&1 || {
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CONTROL_SRC="$(cd "$HERE/../izakhono-control" && pwd)"
 
-install -d -m 0755 /opt/izakhono-node /opt/izakhono-control
+install -d -m 0755 /opt/izakhono-node /opt/izakhono-node/profiles /opt/izakhono-control
 install -d -m 0700 /etc/izakhono
 install -d -m 0750 /etc/izakhono/apps
 install -d -m 0750 /var/lib/izakhono-node/jobs /var/lib/izakhono-node/evidence /var/lib/izakhono-node/apps
 
 install -m 0755 "$HERE/node_agent.py" /opt/izakhono-node/node_agent.py
 install -m 0755 "$HERE/deploy.sh" /opt/izakhono-node/deploy.sh
+install -m 0755 "$HERE/prepare-allegro.sh" /opt/izakhono-node/prepare-allegro.sh
+install -m 0644 "$HERE/profiles/allegro-vibez.production.json" /opt/izakhono-node/profiles/allegro-vibez.production.json
 install -m 0644 "$HERE/izakhono-node.service" /etc/systemd/system/izakhono-node.service
 install -m 0755 "$CONTROL_SRC/control.py" /opt/izakhono-control/control.py
+install -m 0755 "$CONTROL_SRC/izakhonoctl.py" /opt/izakhono-control/izakhonoctl.py
 install -m 0644 "$CONTROL_SRC/izakhono-control.service" /etc/systemd/system/izakhono-control.service
 
 NODE_ENV=/etc/izakhono/node.env
@@ -111,5 +114,7 @@ echo "[PASS] IZAKHONO NODE 01 is active."
 echo "Node:    http://127.0.0.1:9191"
 echo "Control: http://127.0.0.1:9292"
 echo "Owner token: $OWNER_TOKEN_FILE"
+echo "Owner CLI: /opt/izakhono-control/izakhonoctl.py"
+echo "ALLEGRO profile: /opt/izakhono-node/profiles/allegro-vibez.production.json"
 echo "Evidence: $EVIDENCE"
 echo "GitHub Actions runner registration is not required for IZAKHONO NODE jobs."
