@@ -6,7 +6,7 @@ tmp=tempfile.TemporaryDirectory()
 os.environ["IZAKHONO_RUNNER_DB"]=str(Path(tmp.name)/"runner.db")
 os.environ["IZAKHONO_RUNNER_SECRET"]="test-secret"
 
-spec=importlib.util.spec_from_file_location("runner",Path(__file__).with_name("app.py"))
+spec=importlib.util.spec_from_file_location("runner",Path(__file__).with_name("runner_service.py"))
 m=importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
 
 task={"id":"t1","entity_id":"e1","title":"x","instruction":"x","task_mode":"condition_watch","runner_spec":{"type":"website_watch","url":"https://example.com"}}
