@@ -22,7 +22,7 @@
       "onboardedToIzakhonoSpace": true,
       "paymentGateway": "izakhono-pay",
       "paymentMode": "sandbox",
-      "status": "awaiting-production-acceptance"
+      "status": "checkout-wired-awaiting-sandbox-e2e"
     },
     {
       "slug": "the-chancellor",
