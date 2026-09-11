@@ -1,0 +1,68 @@
+{
+  "version": 1,
+  "updated": "2026-09-11",
+  "policy": {
+    "defaultCurrency": "ZAR",
+    "defaultProvider": "smart",
+    "modes": ["mock", "sandbox", "live"],
+    "liveRequires": [
+      "merchant_onboarding_complete",
+      "live_provider_credentials",
+      "webhook_registration_complete",
+      "tls_and_production_domain",
+      "production_database",
+      "legal_and_privacy_readiness",
+      "end_to_end_payment_acceptance_passed"
+    ]
+  },
+  "apps": [
+    {
+      "slug": "allegro-vibez",
+      "repository": "bevanshelton-netizen/allegro-vibez",
+      "onboardedToIzakhonoSpace": true,
+      "paymentGateway": "izakhono-pay",
+      "paymentMode": "sandbox",
+      "status": "awaiting-production-acceptance"
+    },
+    {
+      "slug": "the-chancellor",
+      "repository": "bevanshelton-netizen/the-chancellor",
+      "onboardedToIzakhonoSpace": true,
+      "paymentGateway": "izakhono-pay",
+      "paymentMode": "sandbox",
+      "status": "awaiting-deployment"
+    },
+    {
+      "slug": "edubuild-ecd360",
+      "repository": "bevanshelton-netizen/edubuild-ecd360",
+      "onboardedToIzakhonoSpace": true,
+      "paymentGateway": "izakhono-pay",
+      "paymentMode": "sandbox",
+      "status": "awaiting-deployment"
+    },
+    {
+      "slug": "legacy-mart",
+      "repository": "bevanshelton-netizen/bevanshelton-netizen-legacymart",
+      "onboardedToIzakhonoSpace": true,
+      "paymentGateway": "izakhono-pay",
+      "paymentMode": "sandbox",
+      "status": "awaiting-deployment"
+    },
+    {
+      "slug": "portfolio-migration-workspace",
+      "repository": "bevanshelton-netizen/Downloads",
+      "onboardedToIzakhonoSpace": true,
+      "paymentGateway": "izakhono-pay",
+      "paymentMode": "sandbox",
+      "status": "child-apps-require-individual-manifests"
+    },
+    {
+      "slug": "nextradefinx",
+      "repository": "bevanshelton-netizen/nextradefinx",
+      "onboardedToIzakhonoSpace": true,
+      "paymentGateway": "izakhono-pay",
+      "paymentMode": "disabled",
+      "status": "regulated-financial-scope-review-required"
+    }
+  ]
+}
