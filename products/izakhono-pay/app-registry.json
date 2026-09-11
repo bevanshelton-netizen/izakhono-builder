@@ -1,5 +1,5 @@
 {
-  "version": 3,
+  "version": 4,
   "updated": "2026-09-11",
   "policy": {
     "defaultCurrency": "ZAR",
@@ -38,7 +38,7 @@
       "onboardedToIzakhonoSpace": true,
       "paymentGateway": "izakhono-pay",
       "paymentMode": "sandbox",
-      "status": "awaiting-deployment"
+      "status": "gateway-adapter-wired-awaiting-deployment"
     },
     {
       "slug": "legacy-mart",
@@ -46,7 +46,7 @@
       "onboardedToIzakhonoSpace": true,
       "paymentGateway": "izakhono-pay",
       "paymentMode": "sandbox",
-      "status": "awaiting-deployment"
+      "status": "gateway-adapter-wired-awaiting-deployment"
     },
     {
       "slug": "faisready",
@@ -73,7 +73,7 @@
       "onboardedToIzakhonoSpace": true,
       "paymentGateway": "izakhono-pay",
       "paymentMode": "sandbox",
-      "status": "awaiting-deployment"
+      "status": "gateway-adapter-wired-awaiting-deployment"
     },
     {
       "slug": "izakhono-cloud",
@@ -82,7 +82,7 @@
       "onboardedToIzakhonoSpace": true,
       "paymentGateway": "izakhono-pay",
       "paymentMode": "sandbox",
-      "status": "awaiting-deployment"
+      "status": "gateway-adapter-wired-awaiting-deployment"
     },
     {
       "slug": "izakhono-group",
@@ -91,7 +91,7 @@
       "onboardedToIzakhonoSpace": true,
       "paymentGateway": "izakhono-pay",
       "paymentMode": "sandbox",
-      "status": "awaiting-deployment"
+      "status": "gateway-adapter-wired-awaiting-deployment"
     },
     {
       "slug": "bevan-shelton-racing",
@@ -100,7 +100,7 @@
       "onboardedToIzakhonoSpace": true,
       "paymentGateway": "izakhono-pay",
       "paymentMode": "sandbox",
-      "status": "awaiting-deployment"
+      "status": "gateway-adapter-wired-awaiting-deployment"
     },
     {
       "slug": "portfolio-migration-workspace",
