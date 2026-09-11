@@ -1,0 +1,35 @@
+name: IZAKHONO TASKS CI
+
+on:
+  pull_request:
+    paths:
+      - 'products/izakhono-tasks/**'
+      - '.github/workflows/izakhono-tasks-ci.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'products/izakhono-tasks/**'
+      - '.github/workflows/izakhono-tasks-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  tasks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Syntax
+        run: python3 -m py_compile products/izakhono-tasks/app.py
+      - name: Tests
+        run: python3 products/izakhono-tasks/test_tasks.py
+      - name: Container build
+        run: docker build -t izakhono/tasks:test products/izakhono-tasks
+      - name: No artificial active-task cap
+        run: |
+          grep -q '"active_task_limit":None' products/izakhono-tasks/app.py
+          grep -q 'artificial_task_cap' products/izakhono-tasks/app.py
