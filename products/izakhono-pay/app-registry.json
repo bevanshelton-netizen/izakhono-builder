@@ -1,5 +1,5 @@
 {
-  "version": 2,
+  "version": 3,
   "updated": "2026-09-11",
   "policy": {
     "defaultCurrency": "ZAR",
@@ -22,7 +22,7 @@
       "onboardedToIzakhonoSpace": true,
       "paymentGateway": "izakhono-pay",
       "paymentMode": "sandbox",
-      "status": "checkout-wired-awaiting-sandbox-e2e"
+      "status": "production-ui-deployed-checkout-wired-awaiting-sandbox-e2e"
     },
     {
       "slug": "the-chancellor",
@@ -30,7 +30,7 @@
       "onboardedToIzakhonoSpace": true,
       "paymentGateway": "izakhono-pay",
       "paymentMode": "sandbox",
-      "status": "awaiting-deployment"
+      "status": "production-deployed-payment-adapter-wired-awaiting-sandbox-e2e"
     },
     {
       "slug": "edubuild-ecd360",
@@ -55,7 +55,7 @@
       "onboardedToIzakhonoSpace": true,
       "paymentGateway": "izakhono-pay",
       "paymentMode": "sandbox",
-      "status": "awaiting-live-payment-acceptance"
+      "status": "production-deployed-awaiting-live-payment-acceptance"
     },
     {
       "slug": "kora",
@@ -64,7 +64,7 @@
       "onboardedToIzakhonoSpace": true,
       "paymentGateway": "izakhono-pay",
       "paymentMode": "sandbox",
-      "status": "awaiting-deployment"
+      "status": "production-deployed-gateway-registered-awaiting-sandbox-e2e"
     },
     {
       "slug": "doxa-sure",
