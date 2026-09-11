@@ -36,6 +36,7 @@ CREATE TABLE IF NOT EXISTS tasks(
   instruction TEXT NOT NULL,
   schedule_json TEXT NOT NULL,
   task_mode TEXT NOT NULL DEFAULT 'scheduled',
+  runner_json TEXT,
   enabled INTEGER NOT NULL DEFAULT 1,
   created_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL,
@@ -70,6 +71,9 @@ def db():
 
 with db() as c:
     c.executescript(SCHEMA)
+    columns={row["name"] for row in c.execute("PRAGMA table_info(tasks)").fetchall()}
+    if "runner_json" not in columns:
+        c.execute("ALTER TABLE tasks ADD COLUMN runner_json TEXT")
 
 def now_ts():
     return int(time.time())
@@ -139,6 +143,8 @@ def task_to_dict(row):
     d=dict(row)
     d["enabled"]=bool(d["enabled"])
     d["schedule"]=json.loads(d.pop("schedule_json"))
+    raw_runner=d.pop("runner_json",None)
+    d["runner_spec"]=json.loads(raw_runner) if raw_runner else {"type":"instruction"}
     return d
 
 def run_to_dict(row):
@@ -157,13 +163,20 @@ def create_task(payload):
     schedule=payload.get("schedule")
     next_run=schedule_next(schedule)
     mode=validate_mode(payload.get("task_mode"))
+    runner_spec=payload.get("runner_spec") or {"type":"instruction"}
+    if not isinstance(runner_spec,dict):
+        raise ValueError("runner_spec must be an object")
+    runner_type=str(runner_spec.get("type","instruction"))
+    if runner_type not in ("instruction","website_watch","json_watch","http_watch","github_public_watch"):
+        raise ValueError("unsupported runner_spec type")
     tid="tsk_"+uuid.uuid4().hex
     ts=now_ts()
     with db() as c:
         c.execute("""INSERT INTO tasks
-        (id,entity_id,title,instruction,schedule_json,task_mode,enabled,created_at,updated_at,next_run_at)
-        VALUES(?,?,?,?,?,?,?,?,?,?)""",
-        (tid,entity,title,instruction,json.dumps(schedule,separators=(",",":")),mode,1,ts,ts,next_run))
+        (id,entity_id,title,instruction,schedule_json,task_mode,runner_json,enabled,created_at,updated_at,next_run_at)
+        VALUES(?,?,?,?,?,?,?,?,?,?,?)""",
+        (tid,entity,title,instruction,json.dumps(schedule,separators=(",",":")),mode,
+         json.dumps(runner_spec,separators=(",",":")),1,ts,ts,next_run))
         row=c.execute("SELECT * FROM tasks WHERE id=?",(tid,)).fetchone()
     return task_to_dict(row)
 
@@ -213,7 +226,8 @@ def post_runner(task, run_id, scheduled_for):
             "entity_id":task["entity_id"],
             "title":task["title"],
             "instruction":task["instruction"],
-            "task_mode":task["task_mode"]
+            "task_mode":task["task_mode"],
+            "runner_spec":task.get("runner_spec") or {"type":"instruction"}
         },
         "scheduled_for":scheduled_for
     },separators=(",",":")).encode()
@@ -319,6 +333,13 @@ button.alt{background:#202834;color:#fff}.row{display:flex;gap:8px;flex-wrap:wra
 <label>Title</label><input id="title" placeholder="PayFast approval watch">
 <label>Instruction</label><textarea id="instruction" placeholder="Check the current state and report only when something meaningful changes."></textarea>
 <label>Mode</label><select id="mode"><option value="scheduled">Scheduled</option><option value="condition_watch">Condition watch</option></select>
+<label>Action</label><select id="runnerType" onchange="runnerFields()">
+<option value="instruction">Instruction only</option>
+<option value="website_watch">Watch website</option>
+<option value="json_watch">Watch JSON/API</option>
+<option value="github_public_watch">Watch public GitHub</option>
+</select>
+<div id="runner-fields"></div>
 <label>Schedule</label><select id="kind" onchange="scheduleFields()">
 <option value="interval">Every N minutes</option><option value="daily">Daily</option><option value="weekly">Weekly</option><option value="once">One time</option>
 </select>
@@ -339,6 +360,18 @@ const api=async(path,opt={})=>{
   if(token) opt.headers.Authorization='Bearer '+token;
   const r=await fetch(path,opt); const j=await r.json(); if(!r.ok) throw new Error(j.error||r.statusText); return j;
 };
+function runnerFields(){
+ const t=runnerType.value, el=document.getElementById('runner-fields');
+ if(t==='instruction') el.innerHTML='<div class="meta">Runs the instruction through the connected owner runner when available.</div>';
+ if(t==='website_watch'||t==='json_watch') el.innerHTML='<label>URL</label><input id="targetUrl" placeholder="https://example.com/status">';
+ if(t==='github_public_watch') el.innerHTML='<label>Repository</label><input id="repoName" placeholder="owner/repository"><label>Watch</label><select id="ghEndpoint"><option value="commits">Commits</option><option value="pulls">Pull requests</option><option value="issues">Issues</option><option value="releases/latest">Latest release</option></select>';
+}
+function runnerValue(){
+ const t=runnerType.value;
+ if(t==='instruction') return {type:t};
+ if(t==='website_watch'||t==='json_watch') return {type:t,url:targetUrl.value};
+ if(t==='github_public_watch') return {type:t,repo:repoName.value,endpoint:ghEndpoint.value};
+}
 function scheduleFields(){
  const k=kind.value, el=document.getElementById('schedule-fields');
  if(k==='interval') el.innerHTML='<label>Minutes</label><input id="minutes" type="number" min="1" value="60">';
@@ -356,7 +389,7 @@ function scheduleValue(){
 async function createTask(){
  msg.textContent='';
  try{
-  await api('/api/v1/tasks',{method:'POST',body:JSON.stringify({entity_id:entity.value,title:title.value,instruction:instruction.value,task_mode:mode.value,schedule:scheduleValue()})});
+  await api('/api/v1/tasks',{method:'POST',body:JSON.stringify({entity_id:entity.value,title:title.value,instruction:instruction.value,task_mode:mode.value,runner_spec:runnerValue(),schedule:scheduleValue()})});
   title.value='';instruction.value='';msg.textContent='Task created.';loadTasks();
  }catch(e){msg.textContent=e.message}
 }
@@ -370,7 +403,7 @@ async function loadTasks(){
 async function toggle(id,enabled){await api('/api/v1/tasks/'+id+'/'+(enabled?'pause':'resume'),{method:'POST',body:'{}'});loadTasks()}
 async function removeTask(id){await api('/api/v1/tasks/'+id,{method:'DELETE'});loadTasks()}
 function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
-scheduleFields();loadTasks();
+runnerFields();scheduleFields();loadTasks();
 </script></body></html>"""
 
 class H(BaseHTTPRequestHandler):
