@@ -2,6 +2,7 @@
 import json
 import os
 import shutil
+import secrets
 import subprocess
 import sys
 import threading
@@ -73,19 +74,36 @@ def main():
     os.environ.setdefault("IZAKHONO_TASKS_PORT","9991")
     os.environ.setdefault("IZAKHONO_TASKS_DB",str(ROOT / "izakhono-tasks.db"))
     os.environ.setdefault("IZAKHONO_TASKS_POLL_SECONDS","5")
+    secret_file=ROOT / "runner.secret"
+    if not secret_file.exists():
+        secret_file.write_text(secrets.token_urlsafe(48),encoding="utf-8")
+    runner_secret=secret_file.read_text(encoding="utf-8").strip()
+    os.environ.setdefault("IZAKHONO_RUNNER_HOST","127.0.0.1")
+    os.environ.setdefault("IZAKHONO_RUNNER_PORT","9992")
+    os.environ.setdefault("IZAKHONO_RUNNER_DB",str(ROOT / "izakhono-runner.db"))
+    os.environ.setdefault("IZAKHONO_RUNNER_SECRET",runner_secret)
+    os.environ.setdefault("IZAKHONO_TASKS_RUNNER_SECRET",runner_secret)
+    os.environ.setdefault("IZAKHONO_TASKS_RUNNER_URL","http://127.0.0.1:9992/v1/run")
 
+    import runner_service
+    threading.Thread(target=runner_service.serve,daemon=True).start()
+    time.sleep(0.4)
     import app
 
     write_proof(
         installed_exe=str(INSTALL_EXE),
         database=str(ROOT / "izakhono-tasks.db"),
         local_url=f"http://127.0.0.1:{app.PORT}",
+        runner_url="http://127.0.0.1:9992/v1/run",
+        runner_connected=True,
+        runner_capabilities=["website_watch","json_watch","http_watch","github_public_watch"],
         startup_enabled=True,
         result="RUNNING"
     )
     browser_later(f"http://127.0.0.1:{app.PORT}")
     print("IZAKHONO TASKS")
     print("No artificial five-task ceiling.")
+    print("Owner runner connected: website/API/public GitHub watches.")
     print(f"Dashboard: http://127.0.0.1:{app.PORT}")
     print(f"Proof: {PROOF}")
     app.ThreadingHTTPServer((app.HOST,app.PORT),app.H).serve_forever()

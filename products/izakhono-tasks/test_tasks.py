@@ -19,10 +19,12 @@ for i in range(25):
         "title":f"Task {i}",
         "instruction":"Do the scheduled work.",
         "task_mode":"scheduled",
+        "runner_spec":{"type":"website_watch","url":"https://example.com"} if i==0 else {"type":"instruction"},
         "schedule":{"kind":"interval","seconds":3600}
     }))
 assert len(m.list_tasks("entity-a"))==25
 assert all(t["enabled"] for t in m.list_tasks("entity-a"))
+assert created[0]["runner_spec"]["type"]=="website_watch"
 
 # Entity isolation.
 m.create_task({
