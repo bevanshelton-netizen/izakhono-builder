@@ -1,0 +1,45 @@
+name: IZAKHONO TASKS Windows Owner EXE
+
+on:
+  pull_request:
+    paths:
+      - 'products/izakhono-tasks/**'
+      - '.github/workflows/izakhono-tasks-windows-owner.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'products/izakhono-tasks/**'
+      - '.github/workflows/izakhono-tasks-windows-owner.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Core tests
+        run: python products/izakhono-tasks/test_tasks.py
+      - name: Wrapper self-test
+        env:
+          PYTHONPATH: products/izakhono-tasks
+        run: python products/izakhono-tasks/windows_owner.py --self-test
+      - name: Build EXE
+        run: |
+          python -m pip install --disable-pip-version-check pyinstaller
+          pyinstaller --onefile --name IZAKHONO-TASKS --paths products/izakhono-tasks --hidden-import app products/izakhono-tasks/windows_owner.py
+      - name: Verify EXE
+        run: .\dist\IZAKHONO-TASKS.exe --self-test
+      - name: SHA256
+        shell: powershell
+        run: Get-FileHash .\dist\IZAKHONO-TASKS.exe -Algorithm SHA256 | Format-List
+      - uses: actions/upload-artifact@v4
+        with:
+          name: IZAKHONO-TASKS-WINDOWS-OWNER
+          path: dist/IZAKHONO-TASKS.exe
+          if-no-files-found: error

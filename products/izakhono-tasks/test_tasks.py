@@ -49,4 +49,5 @@ except ValueError:
     pass
 
 print("IZAKHONO_TASKS_TEST=PASS")
-tmp.cleanup()
+# Windows may hold SQLite WAL handles briefly after test completion; let the OS temp cleaner remove them.
+
