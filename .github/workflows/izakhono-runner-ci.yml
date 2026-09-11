@@ -1,0 +1,38 @@
+name: IZAKHONO RUNNER CI
+
+on:
+  pull_request:
+    paths:
+      - 'products/izakhono-runner/**'
+      - 'products/izakhono-tasks/**'
+      - '.github/workflows/izakhono-runner-ci.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'products/izakhono-runner/**'
+      - 'products/izakhono-tasks/**'
+      - '.github/workflows/izakhono-runner-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  runner:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Syntax
+        run: |
+          python3 -m py_compile products/izakhono-runner/runner_service.py
+          python3 -m py_compile products/izakhono-runner/app.py
+          python3 -m py_compile products/izakhono-tasks/app.py
+      - name: Runner tests
+        run: python3 products/izakhono-runner/test_runner.py
+      - name: TASKS tests
+        run: python3 products/izakhono-tasks/test_tasks.py
+      - name: Container build
+        run: docker build -t izakhono/runner:test products/izakhono-runner
