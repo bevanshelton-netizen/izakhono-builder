@@ -4,11 +4,13 @@ on:
   pull_request:
     paths:
       - 'products/izakhono-tasks/**'
+      - 'products/izakhono-runner/**'
       - '.github/workflows/izakhono-tasks-windows-owner.yml'
   push:
     branches: [main]
     paths:
       - 'products/izakhono-tasks/**'
+      - 'products/izakhono-runner/**'
       - '.github/workflows/izakhono-tasks-windows-owner.yml'
   workflow_dispatch:
 
@@ -32,7 +34,7 @@ jobs:
       - name: Build EXE
         run: |
           python -m pip install --disable-pip-version-check pyinstaller
-          pyinstaller --onefile --name IZAKHONO-TASKS --paths products/izakhono-tasks --hidden-import app products/izakhono-tasks/windows_owner.py
+          pyinstaller --onefile --name IZAKHONO-TASKS --paths products/izakhono-tasks --paths products/izakhono-runner --hidden-import app --hidden-import runner_service products/izakhono-tasks/windows_owner.py
       - name: Verify EXE
         run: .\dist\IZAKHONO-TASKS.exe --self-test
       - name: SHA256
