@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "updated": "2026-09-11",
   "policy": {
     "defaultCurrency": "ZAR",
@@ -49,12 +49,66 @@
       "status": "awaiting-deployment"
     },
     {
+      "slug": "faisready",
+      "repository": "bevanshelton-netizen/Downloads",
+      "workspacePath": "FAISReady",
+      "onboardedToIzakhonoSpace": true,
+      "paymentGateway": "izakhono-pay",
+      "paymentMode": "sandbox",
+      "status": "awaiting-live-payment-acceptance"
+    },
+    {
+      "slug": "kora",
+      "repository": "bevanshelton-netizen/Downloads",
+      "workspacePath": "kora",
+      "onboardedToIzakhonoSpace": true,
+      "paymentGateway": "izakhono-pay",
+      "paymentMode": "sandbox",
+      "status": "awaiting-deployment"
+    },
+    {
+      "slug": "doxa-sure",
+      "repository": "bevanshelton-netizen/Downloads",
+      "workspacePath": "doxa-sure",
+      "onboardedToIzakhonoSpace": true,
+      "paymentGateway": "izakhono-pay",
+      "paymentMode": "sandbox",
+      "status": "awaiting-deployment"
+    },
+    {
+      "slug": "izakhono-cloud",
+      "repository": "bevanshelton-netizen/Downloads",
+      "workspacePath": "izakhono-cloud",
+      "onboardedToIzakhonoSpace": true,
+      "paymentGateway": "izakhono-pay",
+      "paymentMode": "sandbox",
+      "status": "awaiting-deployment"
+    },
+    {
+      "slug": "izakhono-group",
+      "repository": "bevanshelton-netizen/Downloads",
+      "workspacePath": "izakhono-group",
+      "onboardedToIzakhonoSpace": true,
+      "paymentGateway": "izakhono-pay",
+      "paymentMode": "sandbox",
+      "status": "awaiting-deployment"
+    },
+    {
+      "slug": "bevan-shelton-racing",
+      "repository": "bevanshelton-netizen/Downloads",
+      "workspacePath": "bevan-shelton-racing",
+      "onboardedToIzakhonoSpace": true,
+      "paymentGateway": "izakhono-pay",
+      "paymentMode": "sandbox",
+      "status": "awaiting-deployment"
+    },
+    {
       "slug": "portfolio-migration-workspace",
       "repository": "bevanshelton-netizen/Downloads",
       "onboardedToIzakhonoSpace": true,
       "paymentGateway": "izakhono-pay",
       "paymentMode": "sandbox",
-      "status": "child-apps-require-individual-manifests"
+      "status": "child-apps-registered-individually"
     },
     {
       "slug": "nextradefinx",
