@@ -1,11 +1,20 @@
 const http = require("http");
+const https = require("https");
 const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
 const { selectNode } = require("./engine/scheduler");
+const { isLoopback } = require("./engine/security");
 const { loadState, saveState } = require("./lib/store");
 
 const PORT = Number(process.env.PORT || 8080);
+const BIND_HOST = process.env.IZ_BIND_HOST || "127.0.0.1";
+const TLS_CERT_FILE = process.env.IZ_TLS_CERT_FILE || "";
+const TLS_KEY_FILE = process.env.IZ_TLS_KEY_FILE || "";
+const TLS_ENABLED = Boolean(TLS_CERT_FILE && TLS_KEY_FILE);
+if (!isLoopback(BIND_HOST) && !TLS_ENABLED) {
+  throw new Error("refusing_non_loopback_without_tls");
+}
 const publicDir = path.join(__dirname, "public");
 
 const seedState = {
@@ -79,7 +88,7 @@ function collect(req) {
   });
 }
 
-const server = http.createServer(async (req, res) => {
+const requestHandler = async (req, res) => {
   const url = new URL(req.url, `http://${req.headers.host || "localhost"}`);
   const adminToken = process.env.IZ_ADMIN_TOKEN || "";
   const operatorAuth = () => {
@@ -233,8 +242,16 @@ const server = http.createServer(async (req, res) => {
 
   if (url.pathname.startsWith("/api/")) return json(res, 404, { error: "api_route_not_found" });
   serveStatic(req, res);
-});
+};
 
-server.listen(PORT, "0.0.0.0", () => {
-  console.log(`IZAKHONO Containers listening on http://0.0.0.0:${PORT}`);
+const server = TLS_ENABLED
+  ? https.createServer({
+      cert: fs.readFileSync(TLS_CERT_FILE),
+      key: fs.readFileSync(TLS_KEY_FILE)
+    }, requestHandler)
+  : http.createServer(requestHandler);
+
+server.listen(PORT, BIND_HOST, () => {
+  const scheme = TLS_ENABLED ? "https" : "http";
+  console.log(`IZAKHONO Containers listening on ${scheme}://${BIND_HOST}:${PORT}`);
 });
