@@ -1,0 +1,68 @@
+name: IZAKHONO Builder Controlled Deploy
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'public/**'
+      - 'migrations/**'
+      - 'wrangler.jsonc'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/deploy.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Check deployment credentials
+        id: gate
+        shell: bash
+        run: |
+          if [ -n "$CLOUDFLARE_API_TOKEN" ] && [ -n "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+            echo "IZAKHONO_BUILDER_DEPLOY_GATE=READY"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "IZAKHONO_BUILDER_DEPLOY_GATE=BLOCKED_CREDENTIALS_NOT_CONFIGURED"
+          fi
+
+      - name: Checkout
+        if: steps.gate.outputs.ready == 'true'
+        uses: actions/checkout@v7
+
+      - name: Set up Node
+        if: steps.gate.outputs.ready == 'true'
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+
+      - name: Install dependencies
+        if: steps.gate.outputs.ready == 'true'
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: Validate candidate
+        if: steps.gate.outputs.ready == 'true'
+        run: npm run validate
+
+      - name: Apply D1 migrations
+        if: steps.gate.outputs.ready == 'true'
+        run: npx wrangler d1 migrations apply DB --remote
+
+      - name: Deploy Builder
+        if: steps.gate.outputs.ready == 'true'
+        run: npx wrangler deploy
+
+      - name: Record blocked deployment
+        if: steps.gate.outputs.ready != 'true'
+        run: |
+          echo "Deployment not attempted."
+          echo "Configure CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID repository secrets to enable the controlled deploy."
