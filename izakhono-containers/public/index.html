@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>IZAKHONO Containers</title>
+  <meta name="description" content="Build, secure, ship and run containers on infrastructure you own." />
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="mark">IZ</div>
+      <div><strong>IZAKHONO</strong><span>CONTAINERS</span></div>
+    </div>
+    <nav>
+      <button class="nav active" data-view="overview">Overview</button>
+      <button class="nav" data-view="registry">Registry</button>
+      <button class="nav" data-view="builds">Build Cloud</button>
+      <button class="nav" data-view="deployments">Deployments</button>
+      <button class="nav" data-view="nodes">Nodes</button>
+      <button class="nav" data-view="security">Security</button>
+      <button class="nav" data-view="teams">Teams & Access</button>
+    </nav>
+    <div class="sidebar-foot">
+      <span class="dot"></span> IZAKHONO Fabric online
+    </div>
+  </aside>
+
+  <main>
+    <header>
+      <div>
+        <p class="eyebrow">OWNER-CONTROLLED CLOUD INFRASTRUCTURE</p>
+        <h1 id="viewTitle">Container Command Centre</h1>
+      </div>
+      <div class="header-actions">
+        <button class="ghost" id="copyLogin">Copy login command</button>
+        <button class="primary" id="newBuild">+ New build</button>
+      </div>
+    </header>
+
+    <section class="hero">
+      <div>
+        <span class="pill">Docker + OCI compatible</span>
+        <h2>Build once. Run anywhere. <em>Own the platform.</em></h2>
+        <p>Images, automated builds, vulnerability gates, deployments and your physical IZAKHONO Nodes in one control plane.</p>
+      </div>
+      <div class="terminal">
+        <div class="terminal-top"><i></i><i></i><i></i><span>izakhono-cli</span></div>
+        <pre><b>$</b> iz login registry.izakhono.africa
+<span>✓ authenticated</span>
+<b>$</b> iz build -t izakhono/allegro:latest .
+<span>✓ signed · scanned · pushed</span>
+<b>$</b> iz deploy allegro --node ISN-01
+<span>✓ deployment healthy</span></pre>
+      </div>
+    </section>
+
+    <section class="stats" id="stats"></section>
+
+    <section class="grid two">
+      <article class="panel">
+        <div class="panel-head"><div><span class="kicker">REGISTRY</span><h3>Images</h3></div><button class="link" data-jump="registry">View all</button></div>
+        <div id="images"></div>
+      </article>
+      <article class="panel">
+        <div class="panel-head"><div><span class="kicker">BUILD CLOUD</span><h3>Recent builds</h3></div><button class="link" data-jump="builds">Open builds</button></div>
+        <div id="builds"></div>
+      </article>
+    </section>
+
+    <section class="grid two">
+      <article class="panel">
+        <div class="panel-head"><div><span class="kicker">YOUR INFRASTRUCTURE</span><h3>IZAKHONO Nodes</h3></div><span class="health">All systems healthy</span></div>
+        <div id="nodes"></div>
+      </article>
+      <article class="panel accent">
+        <span class="kicker">WHY THIS IS BETTER</span>
+        <h3>One platform from source to sovereign runtime.</h3>
+        <ul class="feature-list">
+          <li><b>Zero lock-in:</b> native OCI images + Dockerfile compatibility.</li>
+          <li><b>One-click Africa edge:</b> deploy to IZAKHONO-owned nodes.</li>
+          <li><b>Security before push:</b> signing, SBOM and vulnerability policy gates.</li>
+          <li><b>Lower operating cost:</b> registry, CI, deploy and observability unified.</li>
+          <li><b>Private by default:</b> projects, secrets and images stay under your control.</li>
+        </ul>
+      </article>
+    </section>
+
+    <section class="panel deploy-panel">
+      <div>
+        <span class="kicker">UNIFIED DEPLOY</span>
+        <h3>Send any image to any IZAKHONO Node</h3>
+        <p>No separate hosting dashboard required. The registry and your compute fabric speak the same language.</p>
+      </div>
+      <form id="deployForm">
+        <input name="app" placeholder="App name" value="Allegro Radio" />
+        <input name="image" placeholder="Image" value="izakhono/allegro-web:latest" />
+        <select name="node" id="nodeSelect"></select>
+        <button class="primary" type="submit">Deploy now</button>
+      </form>
+      <div id="deployResult"></div>
+    </section>
+
+    <footer>IZAKHONO Containers · Built in Africa for infrastructure independence.</footer>
+  </main>
+
+  <dialog id="buildDialog">
+    <form method="dialog" id="buildForm">
+      <div class="dialog-head"><h3>Start a build</h3><button value="cancel" class="x">×</button></div>
+      <label>Project<input name="project" placeholder="e.g. kora-network" required /></label>
+      <label>Commit / branch<input name="commit" value="main" /></label>
+      <p>IZAKHONO Build Cloud will create an OCI image, generate an SBOM, scan it, sign it and push only if policy passes.</p>
+      <button class="primary" value="default" type="submit">Queue build</button>
+      <div id="buildResult"></div>
+    </form>
+  </dialog>
+
+  <script src="/app.js"></script>
+</body>
+</html>
