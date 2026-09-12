@@ -46,11 +46,12 @@ jobs:
           grep -q '"healthyNodes"' /tmp/dashboard.json
       - name: Verify Engine node registration and dispatch
         env:
+          IZ_ADMIN_TOKEN: ci-admin-token
           IZ_NODE_ENROLL_TOKEN: dev-only-change-me
         run: |
           curl --fail --silent -X POST http://127.0.0.1:8080/api/engine/nodes/register             -H 'content-type: application/json'             -H 'x-iz-node-token: dev-only-change-me'             -d '{"name":"CI-NODE-01","region":"CI"}' | tee /tmp/register.json
           grep -q '"ok":true' /tmp/register.json
-          curl --fail --silent -X POST http://127.0.0.1:8080/api/deployments             -H 'content-type: application/json'             -d '{"app":"ci-smoke","image":"alpine:latest","node":"CI-NODE-01"}' | tee /tmp/deploy.json
+          curl --fail --silent -X POST http://127.0.0.1:8080/api/deployments             -H 'content-type: application/json'             -H 'x-iz-admin-token: ci-admin-token'             -d '{"app":"ci-smoke","image":"alpine:latest","node":"CI-NODE-01"}' | tee /tmp/deploy.json
           grep -q '"status":"queued"' /tmp/deploy.json
           curl --fail --silent 'http://127.0.0.1:8080/api/engine/workloads/next?node=CI-NODE-01'             -H 'x-iz-node-token: dev-only-change-me' | tee /tmp/workload.json
           grep -q '"status":"claimed"' /tmp/workload.json
