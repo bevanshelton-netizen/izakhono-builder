@@ -2,11 +2,18 @@ services:
   control:
     build: .
     container_name: izakhono-containers-control
+    env_file:
+      - .env
+    environment:
+      IZ_DATA_DIR: /var/lib/izakhono-containers
     ports:
       - "8080:8080"
     restart: unless-stopped
+    volumes:
+      - control-data:/var/lib/izakhono-containers
     depends_on:
       - registry
+
   registry:
     image: registry:2
     container_name: izakhono-registry
@@ -16,5 +23,8 @@ services:
     volumes:
       - registry-data:/var/lib/registry
       - ./registry/config.yml:/etc/docker/registry/config.yml:ro
+      - ./registry/auth:/auth:ro
+
 volumes:
+  control-data:
   registry-data:
