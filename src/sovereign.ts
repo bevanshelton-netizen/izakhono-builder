@@ -93,7 +93,7 @@ async function faisPaymentsRepairApi(req: Request, env: any, url: URL): Promise<
   if (url.pathname !== '/api/owner-actions/fais-add-payments' || req.method !== 'POST') return null;
   if (!(await ownerAuthorized(req, env))) return json({ ok: false, error: 'Unauthorized' }, 401);
 
-  const project = await env.DB.prepare('SELECT id,slug,modules_json FROM builder_projects WHERE slug=?').bind('fais-exam-prep').first<any>();
+  const project = await env.DB.prepare("SELECT id,slug,modules_json FROM builder_projects WHERE slug IN ('faisready','fais-exam-prep') ORDER BY CASE slug WHEN 'faisready' THEN 0 ELSE 1 END LIMIT 1").first<any>();
   if (!project) return json({ ok: false, error: 'FAIS Exam Prep project not found' }, 404);
   const current = safeJson(project.modules_json, []);
   if (!Array.isArray(current)) return json({ ok: false, error: 'FAIS module state is invalid' }, 500);
