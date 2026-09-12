@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>IZAKHONO Containers — Alpha</title>
+<meta name="description" content="Owner-controlled container infrastructure built in Africa. Docker and OCI compatible.">
+<style>
+:root{--bg:#06100c;--panel:#0d1b15;--line:#223a30;--text:#f6f8f7;--muted:#9fb0a7;--green:#39e58f;--gold:#d9b45c}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 75% 0,#173c2a 0,transparent 34%),var(--bg);color:var(--text);font-family:Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,sans-serif}
+.wrap{max-width:1180px;margin:auto;padding:24px}header{display:flex;justify-content:space-between;align-items:center;padding:8px 0 48px}.brand{display:flex;align-items:center;gap:12px}.mark{width:42px;height:42px;border:1px solid var(--gold);border-radius:12px;display:grid;place-items:center;color:var(--gold);font-weight:900}.brand span{display:block;font-size:11px;letter-spacing:.16em;color:var(--muted)}.badge{border:1px solid #2f5e49;color:#a4f3c9;border-radius:99px;padding:7px 11px;font-size:12px}
+.hero{display:grid;grid-template-columns:1.15fr .85fr;gap:32px;align-items:center;padding:48px 0}.eyebrow{color:var(--gold);letter-spacing:.16em;font-size:12px;font-weight:800}.hero h1{font-size:64px;line-height:.98;margin:12px 0 18px;letter-spacing:-.04em}.hero h1 em{font-style:normal;color:var(--green)}.hero p{font-size:19px;line-height:1.6;color:#b7c6be;max-width:700px}.actions{display:flex;gap:12px;margin-top:26px;flex-wrap:wrap}.btn{display:inline-block;padding:12px 17px;border-radius:10px;text-decoration:none;font-weight:800}.primary{background:var(--green);color:#041109}.secondary{border:1px solid #365548;color:#fff}
+.terminal{background:#020705;border:1px solid #264238;border-radius:15px;overflow:hidden;box-shadow:0 30px 80px #0008}.top{height:38px;border-bottom:1px solid #20352c;display:flex;gap:6px;align-items:center;padding:0 14px;color:#70867b;font-size:11px}.top i{width:8px;height:8px;border-radius:50%;background:#355045}.terminal pre{margin:0;padding:22px;line-height:1.85;color:#ced9d3;white-space:pre-wrap;font-size:13px}.terminal b{color:var(--gold)}.terminal .ok{color:var(--green)}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:38px 0}.card{background:linear-gradient(145deg,#0d1b15,#0a1611);border:1px solid var(--line);border-radius:14px;padding:22px}.card h3{margin:7px 0 9px}.card p{color:var(--muted);margin:0;line-height:1.6}.section{margin:60px 0}.section h2{font-size:34px;margin:8px 0 10px}.flow{background:#0b1712;border:1px solid var(--line);border-radius:16px;padding:24px;font-weight:800;letter-spacing:.02em;overflow:auto;white-space:nowrap}.flow strong{color:var(--green)}.notice{background:#122219;border:1px solid #2a493a;border-radius:14px;padding:20px;color:#c7d5ce}.notice b{color:#fff}.status{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.stat{background:#0b1712;border:1px solid var(--line);border-radius:12px;padding:17px}.stat span{display:block;color:var(--muted);font-size:12px}.stat strong{display:block;margin-top:6px;font-size:18px;color:var(--green)}footer{border-top:1px solid var(--line);margin-top:60px;padding:28px 0;color:#65796f;font-size:12px}
+@media(max-width:850px){.hero{grid-template-columns:1fr}.hero h1{font-size:48px}.grid,.status{grid-template-columns:1fr 1fr}}@media(max-width:560px){header{align-items:flex-start;gap:20px}.hero h1{font-size:39px}.grid,.status{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+<div class="brand"><div class="mark">IZ</div><div><b>IZAKHONO</b><span>CONTAINERS</span></div></div>
+<div class="badge">ALPHA · OWNER-CONTROLLED CLOUD</div>
+</header>
+
+<section class="hero">
+<div>
+<div class="eyebrow">BUILT IN AFRICA · BUILT TO OWN</div>
+<h1>Build. Ship. Run. <em>Own the stack.</em></h1>
+<p>IZAKHONO Containers is a Docker- and OCI-compatible container platform designed to combine registry, builds, security, deployments and sovereign compute nodes in one system.</p>
+<div class="actions">
+<a class="btn primary" href="#platform">Explore the platform</a>
+<a class="btn secondary" href="#status">Alpha status</a>
+</div>
+</div>
+<div class="terminal">
+<div class="top"><i></i><i></i><i></i><span>izakhono-cli preview</span></div>
+<pre><b>$</b> iz build -t izakhono/app:latest .
+<span class="ok">✓ built · signed · scanned</span>
+<b>$</b> iz push izakhono/app:latest
+<span class="ok">✓ stored in IZAKHONO Registry</span>
+<b>$</b> iz deploy app --grid sovereign
+<span class="ok">✓ scheduled on IZAKHONO Engine</span></pre>
+</div>
+</section>
+
+<section id="platform" class="grid">
+<div class="card"><div class="eyebrow">REGISTRY</div><h3>OCI-native image storage</h3><p>Private and public repositories with a migration path from Docker Hub and other OCI registries.</p></div>
+<div class="card"><div class="eyebrow">BUILD CLOUD</div><h3>Build once, ship clean</h3><p>Dockerfile-compatible builds with planned SBOM generation, signing, caching and security gates.</p></div>
+<div class="card"><div class="eyebrow">ENGINE</div><h3>Run on infrastructure you own</h3><p>Schedule workloads directly onto IZAKHONO Sovereign Nodes instead of depending on a separate host.</p></div>
+<div class="card"><div class="eyebrow">SECURITY</div><h3>Fail closed by design</h3><p>Private control-plane defaults, operator authentication and TLS-required non-loopback operation.</p></div>
+<div class="card"><div class="eyebrow">GRID</div><h3>Africa-first node fabric</h3><p>Designed for multiple owner-controlled nodes, regional mirrors, local bandwidth efficiency and resilient routing.</p></div>
+<div class="card"><div class="eyebrow">COMPATIBILITY</div><h3>No forced rewrite</h3><p>Keep Dockerfiles and OCI images while moving deployment control into the IZAKHONO ecosystem.</p></div>
+</section>
+
+<section class="section">
+<div class="eyebrow">THE IZAKHONO PIPELINE</div>
+<h2>One path from code to sovereign runtime.</h2>
+<div class="flow">IZAKHONO CODE → BUILD → REGISTRY → SECURITY → <strong>IZAKHONO ENGINE</strong> → SOVEREIGN NODE → APPLICATION</div>
+</section>
+
+<section id="status" class="section">
+<div class="eyebrow">ALPHA LAUNCH STATUS</div>
+<h2>Public product surface live. Runtime remains gated.</h2>
+<div class="status">
+<div class="stat"><span>Core container platform</span><strong>MERGED</strong></div>
+<div class="stat"><span>CI launch gate</span><strong>PASSING</strong></div>
+<div class="stat"><span>ISN-01 bridge</span><strong>MERGED</strong></div>
+<div class="stat"><span>Production runtime</span><strong>GATED</strong></div>
+</div>
+</section>
+
+<div class="notice"><b>Security boundary:</b> This Alpha page is informational and read-only. It does not expose the IZAKHONO Engine control plane, registry administration, deployment credentials, node enrollment secrets or customer workloads. Production runtime promotion follows verified ISN-01 machine proof and private-grid hardening.</div>
+
+<footer>IZAKHONO Containers · Alpha · Built in Africa for infrastructure independence.</footer>
+</div>
+</body>
+</html>
