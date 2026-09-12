@@ -1,0 +1,69 @@
+name: IZAKHONO Containers CI
+
+on:
+  pull_request:
+    paths:
+      - "izakhono-containers/**"
+      - ".github/workflows/izakhono-containers-ci.yml"
+  push:
+    branches: [main]
+    paths:
+      - "izakhono-containers/**"
+
+jobs:
+  control-plane-smoke:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: izakhono-containers
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Syntax check
+        run: |
+          node --check server.js
+          node --check engine/scheduler.js
+          node --check engine/agent.js
+      - name: Boot control plane
+        env:
+          IZ_ADMIN_TOKEN: ci-admin-token
+          IZ_NODE_ENROLL_TOKEN: dev-only-change-me
+          IZ_DATA_DIR: /tmp/izakhono-state
+        run: |
+          node server.js > /tmp/izakhono-containers.log 2>&1 &
+          echo $! > /tmp/izakhono-containers.pid
+          sleep 2
+      - name: Verify health
+        run: |
+          curl --fail --silent http://127.0.0.1:8080/api/health | tee /tmp/health.json
+          grep -q '"ok":true' /tmp/health.json
+          grep -q '"OCI-ready"' /tmp/health.json
+      - name: Verify dashboard
+        run: |
+          curl --fail --silent http://127.0.0.1:8080/api/dashboard | tee /tmp/dashboard.json
+          grep -q '"healthyNodes"' /tmp/dashboard.json
+      - name: Verify Engine node registration and dispatch
+        env:
+          IZ_ADMIN_TOKEN: ci-admin-token
+          IZ_NODE_ENROLL_TOKEN: dev-only-change-me
+        run: |
+          curl --fail --silent -X POST http://127.0.0.1:8080/api/engine/nodes/register             -H 'content-type: application/json'             -H 'x-iz-node-token: dev-only-change-me'             -d '{"name":"CI-NODE-01","region":"CI"}' | tee /tmp/register.json
+          grep -q '"ok":true' /tmp/register.json
+          curl --fail --silent -X POST http://127.0.0.1:8080/api/deployments             -H 'content-type: application/json'             -H 'x-iz-admin-token: ci-admin-token'             -d '{"app":"ci-smoke","image":"alpine:latest","node":"CI-NODE-01"}' | tee /tmp/deploy.json
+          grep -q '"status":"queued"' /tmp/deploy.json
+          curl --fail --silent 'http://127.0.0.1:8080/api/engine/workloads/next?node=CI-NODE-01'             -H 'x-iz-node-token: dev-only-change-me' | tee /tmp/workload.json
+          grep -q '"status":"claimed"' /tmp/workload.json
+      - name: Verify persisted state
+        run: |
+          test -s /tmp/izakhono-state/state.json
+          grep -q '"ci-smoke"' /tmp/izakhono-state/state.json
+      - name: Verify operator auth rejects bad token
+        run: |
+          code=$(curl -s -o /tmp/reject.json -w '%{http_code}' -X POST http://127.0.0.1:8080/api/builds             -H 'content-type: application/json'             -H 'x-iz-admin-token: wrong-token'             -d '{"project":"must-not-run"}')
+          test "$code" = "401"
+          grep -q '"invalid_operator_token"' /tmp/reject.json
+      - name: Show logs on failure
+        if: failure()
+        run: cat /tmp/izakhono-containers.log || true
