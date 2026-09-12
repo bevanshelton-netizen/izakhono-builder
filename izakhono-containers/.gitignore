@@ -1,0 +1,4 @@
+data/
+registry/auth/htpasswd
+.env
+*.log
