@@ -27,6 +27,10 @@ jobs:
           node --check engine/scheduler.js
           node --check engine/agent.js
       - name: Boot control plane
+        env:
+          IZ_ADMIN_TOKEN: ci-admin-token
+          IZ_NODE_ENROLL_TOKEN: dev-only-change-me
+          IZ_DATA_DIR: /tmp/izakhono-state
         run: |
           node server.js > /tmp/izakhono-containers.log 2>&1 &
           echo $! > /tmp/izakhono-containers.pid
@@ -50,6 +54,15 @@ jobs:
           grep -q '"status":"queued"' /tmp/deploy.json
           curl --fail --silent 'http://127.0.0.1:8080/api/engine/workloads/next?node=CI-NODE-01'             -H 'x-iz-node-token: dev-only-change-me' | tee /tmp/workload.json
           grep -q '"status":"claimed"' /tmp/workload.json
+      - name: Verify persisted state
+        run: |
+          test -s /tmp/izakhono-state/state.json
+          grep -q '"ci-smoke"' /tmp/izakhono-state/state.json
+      - name: Verify operator auth rejects bad token
+        run: |
+          code=$(curl -s -o /tmp/reject.json -w '%{http_code}' -X POST http://127.0.0.1:8080/api/builds             -H 'content-type: application/json'             -H 'x-iz-admin-token: wrong-token'             -d '{"project":"must-not-run"}')
+          test "$code" = "401"
+          grep -q '"invalid_operator_token"' /tmp/reject.json
       - name: Show logs on failure
         if: failure()
         run: cat /tmp/izakhono-containers.log || true
