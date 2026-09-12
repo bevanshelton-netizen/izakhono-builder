@@ -26,6 +26,16 @@ jobs:
           node --check server.js
           node --check engine/scheduler.js
           node --check engine/agent.js
+          node --check engine/security.js
+          node --check engine/state-store.js
+      - name: Reject unsafe non-loopback HTTP bind
+        run: |
+          set +e
+          IZ_BIND_HOST=0.0.0.0 node server.js >/tmp/unsafe-bind.log 2>&1
+          code=$?
+          set -e
+          test "$code" -ne 0
+          grep -q 'refusing_non_loopback_without_tls' /tmp/unsafe-bind.log
       - name: Boot control plane
         env:
           IZ_ADMIN_TOKEN: ci-admin-token
