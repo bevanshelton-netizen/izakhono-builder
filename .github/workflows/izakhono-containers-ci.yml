@@ -1,0 +1,42 @@
+name: IZAKHONO Containers CI
+
+on:
+  pull_request:
+    paths:
+      - "izakhono-containers/**"
+      - ".github/workflows/izakhono-containers-ci.yml"
+  push:
+    branches: [main]
+    paths:
+      - "izakhono-containers/**"
+
+jobs:
+  control-plane-smoke:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: izakhono-containers
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Syntax check
+        run: node --check server.js
+      - name: Boot control plane
+        run: |
+          node server.js > /tmp/izakhono-containers.log 2>&1 &
+          echo $! > /tmp/izakhono-containers.pid
+          sleep 2
+      - name: Verify health
+        run: |
+          curl --fail --silent http://127.0.0.1:8080/api/health | tee /tmp/health.json
+          grep -q '"ok":true' /tmp/health.json
+          grep -q '"OCI-ready"' /tmp/health.json
+      - name: Verify dashboard
+        run: |
+          curl --fail --silent http://127.0.0.1:8080/api/dashboard | tee /tmp/dashboard.json
+          grep -q '"healthyNodes"' /tmp/dashboard.json
+      - name: Show logs on failure
+        if: failure()
+        run: cat /tmp/izakhono-containers.log || true
