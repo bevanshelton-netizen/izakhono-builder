@@ -3,11 +3,12 @@ const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
 const { selectNode } = require("./engine/scheduler");
+const { loadState, saveState } = require("./lib/store");
 
 const PORT = Number(process.env.PORT || 8080);
 const publicDir = path.join(__dirname, "public");
 
-const state = {
+const seedState = {
   images: [
     { name: "izakhono/allegro-web", tag: "latest", size: "186 MB", scan: "clean", updated: "2 min ago" },
     { name: "izakhono/kora-network", tag: "prod", size: "214 MB", scan: "clean", updated: "18 min ago" },
@@ -28,6 +29,10 @@ const state = {
     { app: "KORA", image: "izakhono/kora-network:prod", node: "ISN-EDGE-01", status: "running", url: "https://kora.izakhono.local" }
   ]
 };
+
+const state = loadState(seedState);
+
+function persist(){ saveState(state); }
 
 function json(res, status, body) {
   const data = JSON.stringify(body);
@@ -76,6 +81,13 @@ function collect(req) {
 
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://${req.headers.host || "localhost"}`);
+  const adminToken = process.env.IZ_ADMIN_TOKEN || "";
+  const operatorAuth = () => {
+    if (!adminToken) return { ok:false, status:503, error:"operator_auth_not_configured" };
+    const supplied = req.headers["x-iz-admin-token"];
+    if (supplied !== adminToken) return { ok:false, status:401, error:"invalid_operator_token" };
+    return { ok:true };
+  };
 
   if (req.method === "GET" && url.pathname === "/api/health") {
     return json(res, 200, { ok: true, service: "izakhono-containers", version: "0.1.0", runtime: "OCI-ready" });
@@ -116,6 +128,7 @@ const server = http.createServer(async (req, res) => {
       node.status = "online";
       node.region = body.region || node.region;
       node.lastSeen = new Date().toISOString();
+      persist();
       return json(res, 200, { ok: true, node });
     } catch (e) { return json(res, 400, { error: e.message }); }
   }
@@ -132,6 +145,7 @@ const server = http.createServer(async (req, res) => {
       node.memory = Number(body.memory || 0);
       node.workloads = Number(body.workloads || 0);
       node.lastSeen = new Date().toISOString();
+      persist();
       return json(res, 200, { ok: true, node });
     } catch (e) { return json(res, 400, { error: e.message }); }
   }
@@ -143,6 +157,7 @@ const server = http.createServer(async (req, res) => {
     if (workload) {
       workload.status = "claimed";
       workload.claimedAt = new Date().toISOString();
+      persist();
     }
     return json(res, 200, { workload });
   }
@@ -161,11 +176,14 @@ const server = http.createServer(async (req, res) => {
       workload.updatedAt = new Date().toISOString();
       const deployment = state.deployments.find(d => d.id === workload.deploymentId);
       if (deployment) deployment.status = workload.status;
+      persist();
       return json(res, 200, { ok: true, workload });
     } catch (e) { return json(res, 400, { error: e.message }); }
   }
 
   if (req.method === "POST" && url.pathname === "/api/builds") {
+    const auth = operatorAuth();
+    if (!auth.ok) return json(res, auth.status, { error: auth.error });
     try {
       const body = await collect(req);
       const build = {
@@ -176,11 +194,14 @@ const server = http.createServer(async (req, res) => {
         commit: body.commit || "main"
       };
       state.builds.unshift(build);
+      persist();
       return json(res, 202, { message: "Build accepted by IZAKHONO Build Cloud", build });
     } catch (e) { return json(res, 400, { error: e.message }); }
   }
 
   if (req.method === "POST" && url.pathname === "/api/deployments") {
+    const auth = operatorAuth();
+    if (!auth.ok) return json(res, auth.status, { error: auth.error });
     try {
       const body = await collect(req);
       const targetNode = selectNode(state.nodes, body.node || null);
@@ -205,6 +226,7 @@ const server = http.createServer(async (req, res) => {
       };
       state.deployments.unshift(deployment);
       state.workloads.unshift(workload);
+      persist();
       return json(res, 202, { message: "Deployment scheduled on IZAKHONO Engine", deployment, workload });
     } catch (e) { return json(res, 400, { error: e.message }); }
   }
