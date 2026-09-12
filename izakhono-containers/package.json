@@ -1,0 +1,11 @@
+{
+  "name": "izakhono-containers",
+  "version": "0.1.0",
+  "private": true,
+  "description": "IZAKHONO Containers — owner-controlled OCI registry, builds, deployments and node management.",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "engines": { "node": ">=20" }
+}
