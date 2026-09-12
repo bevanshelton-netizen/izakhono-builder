@@ -2,6 +2,7 @@ const http = require("http");
 const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
+const { selectNode } = require("./engine/scheduler");
 
 const PORT = Number(process.env.PORT || 8080);
 const publicDir = path.join(__dirname, "public");
@@ -21,6 +22,7 @@ const state = {
     { name: "ISN-01", region: "Johannesburg", status: "online", cpu: 31, memory: 47, workloads: 7 },
     { name: "ISN-EDGE-01", region: "Roodepoort", status: "online", cpu: 18, memory: 39, workloads: 4 }
   ],
+  workloads: [],
   deployments: [
     { app: "Allegro", image: "izakhono/allegro-web:latest", node: "ISN-01", status: "running", url: "https://allegro.izakhono.local" },
     { app: "KORA", image: "izakhono/kora-network:prod", node: "ISN-EDGE-01", status: "running", url: "https://kora.izakhono.local" }
@@ -97,6 +99,72 @@ const server = http.createServer(async (req, res) => {
   if (req.method === "GET" && url.pathname === "/api/nodes") return json(res, 200, state.nodes);
   if (req.method === "GET" && url.pathname === "/api/deployments") return json(res, 200, state.deployments);
 
+  const nodeToken = req.headers["x-iz-node-token"];
+  const expectedNodeToken = process.env.IZ_NODE_ENROLL_TOKEN || "dev-only-change-me";
+  const engineAuth = () => nodeToken && nodeToken === expectedNodeToken;
+
+  if (req.method === "POST" && url.pathname === "/api/engine/nodes/register") {
+    if (!engineAuth()) return json(res, 401, { error: "invalid_node_token" });
+    try {
+      const body = await collect(req);
+      if (!body.name) return json(res, 400, { error: "node_name_required" });
+      let node = state.nodes.find(n => n.name === body.name);
+      if (!node) {
+        node = { name: body.name, region: body.region || "unknown", status: "online", cpu: 0, memory: 0, workloads: 0 };
+        state.nodes.push(node);
+      }
+      node.status = "online";
+      node.region = body.region || node.region;
+      node.lastSeen = new Date().toISOString();
+      return json(res, 200, { ok: true, node });
+    } catch (e) { return json(res, 400, { error: e.message }); }
+  }
+
+  if (req.method === "POST" && url.pathname === "/api/engine/nodes/heartbeat") {
+    if (!engineAuth()) return json(res, 401, { error: "invalid_node_token" });
+    try {
+      const body = await collect(req);
+      const node = state.nodes.find(n => n.name === body.name);
+      if (!node) return json(res, 404, { error: "node_not_registered" });
+      node.status = "online";
+      node.region = body.region || node.region;
+      node.cpu = Number(body.cpu || 0);
+      node.memory = Number(body.memory || 0);
+      node.workloads = Number(body.workloads || 0);
+      node.lastSeen = new Date().toISOString();
+      return json(res, 200, { ok: true, node });
+    } catch (e) { return json(res, 400, { error: e.message }); }
+  }
+
+  if (req.method === "GET" && url.pathname === "/api/engine/workloads/next") {
+    if (!engineAuth()) return json(res, 401, { error: "invalid_node_token" });
+    const nodeName = url.searchParams.get("node");
+    const workload = state.workloads.find(w => w.node === nodeName && w.status === "queued") || null;
+    if (workload) {
+      workload.status = "claimed";
+      workload.claimedAt = new Date().toISOString();
+    }
+    return json(res, 200, { workload });
+  }
+
+  if (req.method === "POST" && /^\/api\/engine\/workloads\/[^/]+\/status$/.test(url.pathname)) {
+    if (!engineAuth()) return json(res, 401, { error: "invalid_node_token" });
+    try {
+      const id = url.pathname.split("/")[4];
+      const body = await collect(req);
+      const workload = state.workloads.find(w => w.id === id);
+      if (!workload) return json(res, 404, { error: "workload_not_found" });
+      workload.status = body.status || workload.status;
+      workload.containerId = body.containerId || workload.containerId;
+      workload.containerName = body.containerName || workload.containerName;
+      workload.error = body.error || null;
+      workload.updatedAt = new Date().toISOString();
+      const deployment = state.deployments.find(d => d.id === workload.deploymentId);
+      if (deployment) deployment.status = workload.status;
+      return json(res, 200, { ok: true, workload });
+    } catch (e) { return json(res, 400, { error: e.message }); }
+  }
+
   if (req.method === "POST" && url.pathname === "/api/builds") {
     try {
       const body = await collect(req);
@@ -115,16 +183,29 @@ const server = http.createServer(async (req, res) => {
   if (req.method === "POST" && url.pathname === "/api/deployments") {
     try {
       const body = await collect(req);
+      const targetNode = selectNode(state.nodes, body.node || null);
       const deployment = {
         id: crypto.randomUUID(),
         app: body.app || "New App",
         image: body.image || "izakhono/app:latest",
-        node: body.node || state.nodes[0].name,
-        status: "deploying",
-        url: body.url || null
+        node: targetNode.name,
+        status: "queued",
+        url: body.url || null,
+        createdAt: new Date().toISOString()
+      };
+      const workload = {
+        id: crypto.randomUUID(),
+        deploymentId: deployment.id,
+        app: deployment.app,
+        image: deployment.image,
+        node: targetNode.name,
+        port: body.port ? Number(body.port) : null,
+        status: "queued",
+        createdAt: new Date().toISOString()
       };
       state.deployments.unshift(deployment);
-      return json(res, 202, { message: "Deployment scheduled on IZAKHONO Node fabric", deployment });
+      state.workloads.unshift(workload);
+      return json(res, 202, { message: "Deployment scheduled on IZAKHONO Engine", deployment, workload });
     } catch (e) { return json(res, 400, { error: e.message }); }
   }
 
