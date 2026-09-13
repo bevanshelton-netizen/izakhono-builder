@@ -11,9 +11,11 @@ TOKEN="${2:-${IZAKHONO_GITHUB_RUNNER_TOKEN:-}}"
 RUNNER_VERSION="${IZAKHONO_ACTIONS_RUNNER_VERSION:-2.337.0}"
 RUNNER_SHA256="${IZAKHONO_ACTIONS_RUNNER_SHA256:-70920811a4f8ad4328818682bca5c6469c1c942fab52448868071d0063816613}"
 RUNNER_USER="${IZAKHONO_ACTIONS_RUNNER_USER:-izakhono-runner}"
-RUNNER_NAME="${IZAKHONO_ACTIONS_RUNNER_NAME:-izakhono-node-01}"
+RUNNER_INSTANCE="${IZAKHONO_ACTIONS_RUNNER_INSTANCE:-default}"
+RUNNER_NAME="${IZAKHONO_ACTIONS_RUNNER_NAME:-izakhono-node-01-${RUNNER_INSTANCE}}"
 RUNNER_LABELS="${IZAKHONO_ACTIONS_RUNNER_LABELS:-izakhono}"
-RUNNER_HOME=/opt/izakhono/actions-runner
+RUNNER_BASE=/opt/izakhono/actions-runners
+RUNNER_HOME="$RUNNER_BASE/$RUNNER_INSTANCE"
 EVIDENCE_DIR=/opt/izakhono/evidence
 
 [[ "$REPO_URL" =~ ^https://github\.com/bevanshelton-netizen/[A-Za-z0-9._-]+$ ]] || {
@@ -24,6 +26,7 @@ EVIDENCE_DIR=/opt/izakhono/evidence
   echo 'A valid short-lived GitHub runner registration token is required through IZAKHONO_GITHUB_RUNNER_TOKEN or argument 2.'
   exit 2
 }
+[[ "$RUNNER_INSTANCE" =~ ^[a-z0-9][a-z0-9-]{1,48}[a-z0-9]$ ]] || { echo 'Unsafe runner instance.'; exit 2; }
 [[ "$RUNNER_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo 'Unsafe runner version.'; exit 2; }
 [[ "$RUNNER_SHA256" =~ ^[0-9a-f]{64}$ ]] || { echo 'Unsafe runner SHA-256.'; exit 2; }
 [[ "$RUNNER_USER" =~ ^[a-z_][a-z0-9_-]{0,31}$ ]] || { echo 'Unsafe runner user.'; exit 2; }
@@ -37,7 +40,7 @@ apt-get update >/dev/null
 apt-get install -y --no-install-recommends ca-certificates curl git tar >/dev/null
 
 if ! id "$RUNNER_USER" >/dev/null 2>&1; then
-  useradd --system --create-home --home-dir "$RUNNER_HOME" --shell /bin/bash "$RUNNER_USER"
+  useradd --system --create-home --home-dir "$RUNNER_BASE" --shell /bin/bash "$RUNNER_USER"
 fi
 getent group docker >/dev/null 2>&1 && usermod -aG docker "$RUNNER_USER"
 install -d -o "$RUNNER_USER" -g "$RUNNER_USER" -m 0750 "$RUNNER_HOME"
@@ -83,6 +86,7 @@ umask 077
 cat > "$evidence" <<EOF
 IZAKHONO_ACTIONS_RUNNER_PROOF_VERSION=1
 REPOSITORY=$REPO_URL
+RUNNER_INSTANCE=$RUNNER_INSTANCE
 RUNNER_NAME=$RUNNER_NAME
 LABELS=self-hosted,linux,x64,$RUNNER_LABELS
 RUNNER_VERSION=$RUNNER_VERSION
