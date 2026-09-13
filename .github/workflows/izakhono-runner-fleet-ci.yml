@@ -1,0 +1,52 @@
+name: IZAKHONO Runner Fleet CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/launch-stack/install-actions-runner.sh'
+      - 'scripts/launch-stack/enable-actions-runner-fleet.ps1'
+      - 'scripts/launch-stack/START-IZAKHONO-RUNNER-FLEET.cmd'
+      - '.github/workflows/izakhono-runner-fleet-ci.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'scripts/launch-stack/install-actions-runner.sh'
+      - 'scripts/launch-stack/enable-actions-runner-fleet.ps1'
+      - 'scripts/launch-stack/START-IZAKHONO-RUNNER-FLEET.cmd'
+      - '.github/workflows/izakhono-runner-fleet-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Shell syntax
+        run: bash -n scripts/launch-stack/install-actions-runner.sh
+      - name: PowerShell parse
+        shell: pwsh
+        run: |
+          $tokens = $null
+          $errors = $null
+          [void][System.Management.Automation.Language.Parser]::ParseFile(
+            (Resolve-Path 'scripts/launch-stack/enable-actions-runner-fleet.ps1'),
+            [ref]$tokens,
+            [ref]$errors
+          )
+          if ($errors.Count) {
+            $errors | ForEach-Object { Write-Error $_.Message }
+            exit 1
+          }
+      - name: Security contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q 'registration-token' scripts/launch-stack/enable-actions-runner-fleet.ps1
+          grep -q 'read -r IZAKHONO_GITHUB_RUNNER_TOKEN' scripts/launch-stack/enable-actions-runner-fleet.ps1
+          grep -q 'TOKEN_STORED=false' scripts/launch-stack/install-actions-runner.sh
+          grep -q 'IZAKHONO_ACTIONS_RUNNER_INSTANCE' scripts/launch-stack/install-actions-runner.sh
+          ! grep -Eqi '(github_pat_|ghp_|gho_|ghu_|ghs_)[A-Za-z0-9_]{20,}' scripts/launch-stack/install-actions-runner.sh scripts/launch-stack/enable-actions-runner-fleet.ps1
