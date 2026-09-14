@@ -1,6 +1,7 @@
 import secureApp from './secure';
 import { ventureFactoryRoute } from './venture-factory';
 import { reviewLoopRoute } from './reviewloop';
+import { bidForgeRoute } from './bidforge';
 import {
   commitInternalRepository,
   listInternalRepository,
@@ -235,6 +236,9 @@ export default {
 
     const reviewLoop = await reviewLoopRoute(req, env, url);
     if (reviewLoop) return reviewLoop;
+
+    const bidForge = await bidForgeRoute(req, env, url);
+    if (bidForge) return bidForge;
 
     const venture = await ventureFactoryRoute(req, env, url, () => ownerAuthorized(req, env));
     if (venture) return venture;
