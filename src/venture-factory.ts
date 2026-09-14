@@ -88,7 +88,7 @@ function esc(input: unknown) {
 }
 
 async function ensureSchema(env: Env) {
-  await env.DB.prepare(\`
+  await env.DB.prepare(`
     CREATE TABLE IF NOT EXISTS venture_experiments (
       slug TEXT PRIMARY KEY,
       name TEXT NOT NULL,
@@ -100,8 +100,8 @@ async function ensureSchema(env: Env) {
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
       updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     )
-  \`).run();
-  await env.DB.prepare(\`
+  `).run();
+  await env.DB.prepare(`
     CREATE TABLE IF NOT EXISTS venture_leads (
       id TEXT PRIMARY KEY,
       venture_slug TEXT NOT NULL,
@@ -112,8 +112,8 @@ async function ensureSchema(env: Env) {
       source TEXT,
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     )
-  \`).run();
-  await env.DB.prepare(\`
+  `).run();
+  await env.DB.prepare(`
     CREATE TABLE IF NOT EXISTS venture_events (
       id TEXT PRIMARY KEY,
       venture_slug TEXT NOT NULL,
@@ -121,8 +121,8 @@ async function ensureSchema(env: Env) {
       detail TEXT,
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     )
-  \`).run();
-  await env.DB.prepare(\`
+  `).run();
+  await env.DB.prepare(`
     CREATE TABLE IF NOT EXISTS venture_revenue (
       id TEXT PRIMARY KEY,
       venture_slug TEXT NOT NULL,
@@ -130,13 +130,13 @@ async function ensureSchema(env: Env) {
       occurred_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
       note TEXT
     )
-  \`).run();
+  `).run();
 }
 
 async function seed(env: Env) {
   await ensureSchema(env);
   for (const v of VENTURES) {
-    await env.DB.prepare(\`
+    await env.DB.prepare(`
       INSERT INTO venture_experiments(slug,name,category,audience,promise,monthly_price_zar,status)
       VALUES(?,?,?,?,?,?,'testing')
       ON CONFLICT(slug) DO UPDATE SET
@@ -146,13 +146,13 @@ async function seed(env: Env) {
         promise=excluded.promise,
         monthly_price_zar=excluded.monthly_price_zar,
         updated_at=CURRENT_TIMESTAMP
-    \`).bind(v.slug, v.name, v.category, v.audience, v.promise, v.monthly_price_zar).run();
+    `).bind(v.slug, v.name, v.category, v.audience, v.promise, v.monthly_price_zar).run();
   }
 }
 
 async function portfolio(env: Env) {
   await seed(env);
-  const rows = await env.DB.prepare(\`
+  const rows = await env.DB.prepare(`
     SELECT v.*,
       (SELECT COUNT(*) FROM venture_leads l WHERE l.venture_slug=v.slug) AS leads,
       (SELECT COUNT(*) FROM venture_events e WHERE e.venture_slug=v.slug AND e.event_type='view') AS views,
@@ -160,7 +160,7 @@ async function portfolio(env: Env) {
         WHERE r.venture_slug=v.slug AND r.occurred_at >= datetime('now','-30 days')),0) AS revenue_30d
     FROM venture_experiments v
     ORDER BY revenue_30d DESC, leads DESC, name ASC
-  \`).all<any>();
+  `).all<any>();
   return (rows.results || []).map((r: any) => ({
     ...r,
     decision: Number(r.revenue_30d || 0) >= KEEP_THRESHOLD_ZAR ? 'KEEP' : 'TEST_OR_SELL',
@@ -169,8 +169,8 @@ async function portfolio(env: Env) {
 }
 
 function shell(title: string, body: string) {
-  return \`<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>\${esc(title)}</title><style>
+  return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${esc(title)}</title><style>
 *{box-sizing:border-box}body{margin:0;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#071018;color:#f5f7fb}
 a{color:inherit}.wrap{max-width:1120px;margin:auto;padding:28px}.nav{display:flex;justify-content:space-between;gap:18px;align-items:center;margin-bottom:50px}
 .brand{font-weight:900;letter-spacing:.08em}.muted{color:#9ca9ba}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:18px}
@@ -182,27 +182,27 @@ p{line-height:1.6}.price{font-size:30px;font-weight:900;margin-top:auto}.btn{dis
 input{width:100%;padding:14px 15px;border-radius:12px;border:1px solid #304254;background:#0c1722;color:white;font:inherit}.small{font-size:12px;color:#8d9bab}
 .notice{margin-top:12px;min-height:24px}.kicker{font-weight:900;letter-spacing:.14em;text-transform:uppercase;font-size:12px;margin-bottom:18px}
 .metric{font-size:13px;color:#a9b8c8;margin-top:6px}
-</style></head><body><div class="wrap">\${body}</div></body></html>\`;
+</style></head><body><div class="wrap">${body}</div></body></html>`;
 }
 
 async function publicIndex(env: Env) {
   const items = await portfolio(env);
-  const cards = items.map((v: any) => \`
+  const cards = items.map((v: any) => `
     <article class="card">
-      <span class="tag">\${esc(v.category)}</span>
-      <h2>\${esc(v.name)}</h2>
-      <p class="muted">\${esc(v.promise)}</p>
-      <div class="price">R\${Number(v.monthly_price_zar).toLocaleString('en-ZA')}<span class="muted" style="font-size:14px"> / month</span></div>
-      <a class="btn" href="/venture/\${encodeURIComponent(v.slug)}" style="margin-top:16px">View founding offer</a>
-    </article>\`).join('');
-  return new Response(shell('IZAKHONO Venture Lab', \`
+      <span class="tag">${esc(v.category)}</span>
+      <h2>${esc(v.name)}</h2>
+      <p class="muted">${esc(v.promise)}</p>
+      <div class="price">R${Number(v.monthly_price_zar).toLocaleString('en-ZA')}<span class="muted" style="font-size:14px"> / month</span></div>
+      <a class="btn" href="/venture/${encodeURIComponent(v.slug)}" style="margin-top:16px">View founding offer</a>
+    </article>`).join('');
+  return new Response(shell('IZAKHONO Venture Lab', `
     <div class="nav"><div class="brand">IZAKHONO VENTURE LAB</div><div class="muted">Build · Test · Keep or Sell</div></div>
     <section class="hero"><div class="kicker">Live market experiments</div>
       <h1>Small software businesses built to prove demand.</h1>
       <p class="muted">We launch focused products, listen to real customers and invest harder in the ones that earn their place.</p>
     </section>
-    <section class="grid">\${cards}</section>
-  \`), { headers: { 'content-type':'text/html; charset=utf-8' }});
+    <section class="grid">${cards}</section>
+  `), { headers: { 'content-type':'text/html; charset=utf-8' }});
 }
 
 async function venturePage(env: Env, slug: string) {
@@ -210,19 +210,19 @@ async function venturePage(env: Env, slug: string) {
   const v = await env.DB.prepare('SELECT * FROM venture_experiments WHERE slug=?').bind(slug).first<any>();
   if (!v) return new Response('Not found', { status:404 });
   await env.DB.prepare('INSERT INTO venture_events(id,venture_slug,event_type,detail) VALUES(?,?,?,?)')
-    .bind(\`evt_\${crypto.randomUUID().replaceAll('-','')}\`, slug, 'view', 'landing').run();
+    .bind(`evt_${crypto.randomUUID().replaceAll('-','')}`, slug, 'view', 'landing').run();
 
   const base = VENTURES.find(x => x.slug === slug);
   const accent = base?.accent || '#F4B942';
   const hero = base?.hero || v.promise;
-  return new Response(shell(v.name, \`
+  return new Response(shell(v.name, `
     <div class="nav"><a href="/ventures" class="brand" style="text-decoration:none">IZAKHONO VENTURE LAB</a><span class="tag">Founding beta</span></div>
     <section class="hero">
-      <div class="kicker" style="color:\${accent}">\${esc(v.category)}</div>
-      <h1>\${esc(hero)}</h1>
-      <p>\${esc(v.promise)}</p>
-      <p class="muted"><strong>Built for:</strong> \${esc(v.audience)}</p>
-      <div class="price" style="margin:24px 0">Founding plan: R\${Number(v.monthly_price_zar).toLocaleString('en-ZA')} / month</div>
+      <div class="kicker" style="color:${accent}">${esc(v.category)}</div>
+      <h1>${esc(hero)}</h1>
+      <p>${esc(v.promise)}</p>
+      <p class="muted"><strong>Built for:</strong> ${esc(v.audience)}</p>
+      <div class="price" style="margin:24px 0">Founding plan: R${Number(v.monthly_price_zar).toLocaleString('en-ZA')} / month</div>
       <form id="lead" class="form">
         <input name="name" placeholder="Your name" maxlength="100">
         <input name="email" type="email" placeholder="Email address" maxlength="180">
@@ -239,13 +239,13 @@ async function venturePage(env: Env, slug: string) {
         const f=new FormData(form);
         const payload={name:f.get('name'),email:f.get('email'),phone:f.get('phone'),consent:f.get('consent')==='on',source:'venture-landing'};
         try{
-          const r=await fetch('/api/venture/\${encodeURIComponent(slug)}/lead',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload)});
+          const r=await fetch('/api/venture/${encodeURIComponent(slug)}/lead',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload)});
           const d=await r.json(); if(!r.ok) throw new Error(d.error||'Could not submit');
           form.reset(); msg.textContent='You are on the founding list. We will contact you with access.';
         }catch(err){msg.textContent=err.message||String(err)}
       });
     </script>
-  \`), { headers: { 'content-type':'text/html; charset=utf-8', 'cache-control':'no-store' }});
+  `), { headers: { 'content-type':'text/html; charset=utf-8', 'cache-control':'no-store' }});
 }
 
 export async function ventureFactoryRoute(
@@ -271,9 +271,9 @@ export async function ventureFactoryRoute(
     const exists = await env.DB.prepare('SELECT slug FROM venture_experiments WHERE slug=?').bind(lead[1]).first<any>();
     if (!exists) return json({ ok:false, error:'Venture not found' },404);
     await env.DB.prepare('INSERT INTO venture_leads(id,venture_slug,name,email,phone,consent,source) VALUES(?,?,?,?,?,?,?)')
-      .bind(\`lead_\${crypto.randomUUID().replaceAll('-','')}\`, lead[1], String(b.name||'').trim().slice(0,100), email, phone, 1, String(b.source||'').slice(0,100)).run();
+      .bind(`lead_${crypto.randomUUID().replaceAll('-','')}`, lead[1], String(b.name||'').trim().slice(0,100), email, phone, 1, String(b.source||'').slice(0,100)).run();
     await env.DB.prepare('INSERT INTO venture_events(id,venture_slug,event_type,detail) VALUES(?,?,?,?)')
-      .bind(\`evt_\${crypto.randomUUID().replaceAll('-','')}\`, lead[1], 'lead', b.source || '').run();
+      .bind(`evt_${crypto.randomUUID().replaceAll('-','')}`, lead[1], 'lead', b.source || '').run();
     return json({ ok:true });
   }
 
@@ -300,7 +300,7 @@ export async function ventureFactoryRoute(
     if (!row) return json({ ok:false, error:'Venture not found' },404);
     const occurred = typeof b.occurred_at === 'string' && b.occurred_at ? b.occurred_at.slice(0,32) : new Date().toISOString();
     await env.DB.prepare('INSERT INTO venture_revenue(id,venture_slug,amount_zar,occurred_at,note) VALUES(?,?,?,?,?)')
-      .bind(\`rev_\${crypto.randomUUID().replaceAll('-','')}\`, revenue[1], amount, occurred, String(b.note||'').slice(0,300)).run();
+      .bind(`rev_${crypto.randomUUID().replaceAll('-','')}`, revenue[1], amount, occurred, String(b.note||'').slice(0,300)).run();
     const all = await portfolio(env);
     const current = all.find((x: any) => x.slug === revenue[1]);
     return json({ ok:true, venture:current });
