@@ -1,4 +1,5 @@
 import secureApp from './secure';
+import { ventureFactoryRoute } from './venture-factory';
 import {
   commitInternalRepository,
   listInternalRepository,
@@ -8,6 +9,7 @@ import {
 const ALLOWED_MODULES = new Set([
   'leads', 'auth', 'uploads', 'payments', 'email', 'admin',
   'analytics', 'marketplace', 'learning', 'video', 'ai',
+  'revenue', 'artist_protect', 'career', 'media_handoff', 'clearset',
 ]);
 
 function json(data: unknown, status = 200, source?: Response): Response {
@@ -229,6 +231,9 @@ async function withModuleEditor(response: Response, url: URL): Promise<Response>
 export default {
   async fetch(req: Request, env: any): Promise<Response> {
     const url = new URL(req.url);
+
+    const venture = await ventureFactoryRoute(req, env, url, () => ownerAuthorized(req, env));
+    if (venture) return venture;
 
     const repairPage = faisPaymentsRepairPage(url);
     if (repairPage && req.method === 'GET') return repairPage;
