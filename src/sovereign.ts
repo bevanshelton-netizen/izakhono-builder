@@ -1,5 +1,6 @@
 import secureApp from './secure';
 import { ventureFactoryRoute } from './venture-factory';
+import { reviewLoopRoute } from './reviewloop';
 import {
   commitInternalRepository,
   listInternalRepository,
@@ -231,6 +232,9 @@ async function withModuleEditor(response: Response, url: URL): Promise<Response>
 export default {
   async fetch(req: Request, env: any): Promise<Response> {
     const url = new URL(req.url);
+
+    const reviewLoop = await reviewLoopRoute(req, env, url);
+    if (reviewLoop) return reviewLoop;
 
     const venture = await ventureFactoryRoute(req, env, url, () => ownerAuthorized(req, env));
     if (venture) return venture;
