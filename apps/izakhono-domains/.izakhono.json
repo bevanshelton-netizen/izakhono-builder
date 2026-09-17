@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "name": "IZAKHONO DOMAINS",
+  "slug": "izakhono-domains",
+  "build_context": ".",
+  "dockerfile_path": "Dockerfile",
+  "container_port": 3000,
+  "health_path": "/health",
+  "branch": "main",
+  "alpha": {"preflight": false, "rehearsal": false, "windows_package": false}
+}
