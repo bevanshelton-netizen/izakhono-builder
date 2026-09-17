@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>IZAKHONO DOMAINS — Find it. Own it. Build on it.</title>
+<meta name="description" content="Search, register, transfer and manage domains from one African-built domain platform." />
+<style>
+:root{--bg:#06100e;--panel:#0c1b17;--line:#23483a;--text:#f5fff9;--muted:#a4bdb2;--green:#69f2a5;--gold:#ffd46f;--cyan:#65d6ff;--red:#ff8f8f}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 80% 0,#173d32 0,transparent 30%),linear-gradient(180deg,#06100e,#071512);color:var(--text);font-family:Inter,system-ui,Arial,sans-serif;min-height:100vh}.wrap{max-width:1180px;margin:auto;padding:0 22px}.top{display:flex;align-items:center;justify-content:space-between;padding:22px 0}.brand{font-weight:950;letter-spacing:.08em;font-size:20px}.brand span{color:var(--green)}.pill{border:1px solid var(--line);padding:7px 10px;border-radius:999px;color:var(--muted);font-size:12px}.hero{padding:76px 0 40px;text-align:center}.ey{color:var(--green);font-size:12px;font-weight:900;letter-spacing:.18em}.hero h1{font-size:clamp(46px,8vw,88px);line-height:.92;letter-spacing:-.05em;margin:14px auto 20px;max-width:1000px}.hero h1 em{font-style:normal;color:var(--green)}.hero p{max-width:740px;margin:0 auto;color:var(--muted);font-size:19px;line-height:1.6}.search{max-width:920px;margin:36px auto 0;background:rgba(12,27,23,.94);border:1px solid var(--line);border-radius:22px;padding:14px;display:flex;gap:10px;box-shadow:0 20px 60px #0007}.search input{flex:1;border:0;background:#06100e;color:white;border-radius:14px;padding:18px;font-size:18px;outline:0}.btn{border:0;border-radius:14px;padding:0 22px;font-weight:900;cursor:pointer;background:linear-gradient(135deg,var(--green),var(--cyan));color:#03100c}.btn.secondary{background:#10261f;color:white;border:1px solid var(--line)}.state{max-width:920px;margin:14px auto 0;display:none;text-align:left;border:1px solid var(--line);background:#0a1915;border-radius:18px;padding:16px}.state.on{display:block}.domain{font-weight:950;font-size:22px}.good{color:var(--green)}.bad{color:var(--red)}.unknown{color:var(--gold)}.small{color:var(--muted);font-size:12px;line-height:1.5}.row{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;padding:44px 0 78px}.card{border:1px solid var(--line);background:linear-gradient(180deg,#0c1b17,#091511);border-radius:20px;padding:22px}.card b{font-size:20px}.card p{color:var(--muted);line-height:1.55}.status{padding:18px 0 70px;text-align:center;color:var(--muted);font-size:12px}.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--gold);margin-right:7px}.dot.live{background:var(--green);box-shadow:0 0 12px #69f2a577}.banner{margin-top:30px;border:1px solid #4e4320;background:#1b1708;border-radius:16px;padding:14px 16px;color:#ffe69a;font-size:13px;line-height:1.5}.footer{border-top:1px solid var(--line);padding:28px 0 40px;color:var(--muted);font-size:12px;text-align:center}@media(max-width:760px){.grid{grid-template-columns:1fr}.search{flex-direction:column}.btn{min-height:52px}.top .pill{display:none}.hero{padding-top:52px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top"><div class="brand">IZAKHONO <span>DOMAINS</span></div><div class="pill">African-built domain control</div></header>
+  <main>
+    <section class="hero">
+      <div class="ey">YOUR NAME ON THE INTERNET</div>
+      <h1>Find it. <em>Own it.</em><br/>Build on it.</h1>
+      <p>Search domains, bring your existing domains across, manage DNS and renewals, and grow into hosting and SSL — all from one platform.</p>
+      <form class="search" id="searchForm"><input id="domainInput" autocomplete="off" placeholder="yourbusiness.co.za" required /><button class="btn">Search domain</button></form>
+      <div class="state" id="result"></div>
+      <div class="banner">Starter-domain promotions will be subsidised by us — not based on unstable “free domain” ownership. Customers must retain normal registrant rights and renewal visibility.</div>
+    </section>
+    <section class="grid">
+      <div class="card"><div class="ey">SEARCH & REGISTER</div><b>One clean storefront</b><p>Search popular global and South African extensions. Registration pricing will come from the connected registrar in real time.</p></div>
+      <div class="card"><div class="ey">CONTROL</div><b>DNS, renewals & transfers</b><p>A customer dashboard is the next layer: nameservers, DNS records, renewal dates, transfers, contacts and locks.</p></div>
+      <div class="card"><div class="ey">BUSINESS MODEL</div><b>Domains + services</b><p>Earn on domain margin, hosting, SSL, business email, websites and premium support — while selected starter offers can be subsidised.</p></div>
+    </section>
+    <div class="status"><span class="dot" id="dot"></span><span id="providerText">Checking registrar connection…</span></div>
+  </main>
+  <footer class="footer">IZAKHONO DOMAINS · Registrar integrations are server-side · Payment is only enabled after authoritative availability and price confirmation</footer>
+</div>
+<script>
+const form=document.getElementById('searchForm'),input=document.getElementById('domainInput'),result=document.getElementById('result');
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]))}
+async function status(){try{const r=await fetch('/api/provider-status');const d=await r.json();dot.className='dot '+(d.registration_live?'live':'');providerText.textContent=d.registration_live?'Registrar + iKhokha connected — registration can be enabled':'Discovery mode — registrar provisioning/payment adapter still to be connected';}catch{providerText.textContent='Provider status unavailable'}}
+form.addEventListener('submit',async e=>{e.preventDefault();let v=input.value.trim().toLowerCase();if(!v.includes('.'))v += '.co.za';result.className='state on';result.innerHTML='<div class="small">Checking '+esc(v)+'…</div>';try{const r=await fetch('/api/domain-check?domain='+encodeURIComponent(v));const d=await r.json();if(!r.ok)throw new Error(d.error||'Search failed');const cls=d.status==='possibly_available'?'good':d.status==='registered'?'bad':'unknown';const label=d.status==='possibly_available'?'Possibly available':d.status==='registered'?'Already registered':'Status unknown';result.innerHTML=`<div class="row"><div><div class="domain">${esc(d.domain)}</div><div class="${cls}"><b>${label}</b></div></div>${d.status==='possibly_available'?'<button class="btn secondary" id="buy">Continue</button>':''}</div><p class="small">${esc(d.note)}</p>`;const buy=document.getElementById('buy');if(buy)buy.onclick=async()=>{buy.disabled=true;buy.textContent='Checking checkout…';const c=await fetch('/api/checkout',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({domain:d.domain})});const x=await c.json();if(c.ok&&x.checkout_url){location.href=x.checkout_url}else{buy.disabled=false;buy.textContent='Continue';alert(x.error||'Checkout is not ready yet.')}}}catch(err){result.innerHTML='<div class="bad"><b>'+esc(err.message)+'</b></div>'}});
+status();
+</script>
+</body>
+</html>
