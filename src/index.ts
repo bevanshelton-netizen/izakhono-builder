@@ -68,7 +68,7 @@ function normalizeModules(value: unknown): ModuleKey[] {
 }
 function buildRecipe(project: any, modules: ModuleKey[]) {
   const files = [
-    'package.json', 'wrangler.jsonc', 'src/index.ts', 'public/index.html',
+    'package.json', 'wrangler.jsonc', 'src/index.ts', 'public/index.html', 'public/share-widget.js',
     'migrations/0001_core.sql', 'scripts/bootstrap.sh', '.github/workflows/ci.yml'
   ];
   const architecture: string[] = [
@@ -76,7 +76,8 @@ function buildRecipe(project: any, modules: ModuleKey[]) {
     'D1 relational database with migrations',
     'same-origin CORS and server-side admin secret',
     'GitHub Actions validation gate',
-    'one-command bootstrap and deploy'
+    'one-command bootstrap and deploy',
+    'native Web Share API button with clipboard fallback'
   ];
   if (modules.includes('uploads') || modules.includes('video')) architecture.push('R2 object/media storage');
   if (modules.includes('auth')) architecture.push('secure hashed sessions and role checks');
