@@ -92,5 +92,5 @@ function closeModal(){overlay.classList.remove('on')}
 createForm.addEventListener('submit',async e=>{e.preventDefault();createMsg.className='message';if(!state.secret){createMsg.className='message bad';createMsg.textContent='Unlock the builder first.';return}const fd=new FormData(createForm);const payload={name:fd.get('name'),slug:String(fd.get('slug')||'').toLowerCase(),category:fd.get('category'),description:fd.get('description'),modules:fd.getAll('module')};createMsg.textContent='Creating project…';try{const p=await api('/api/projects',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload)});await api(`/api/projects/${p.id}/plan`,{method:'POST'});createMsg.className='message good';createMsg.textContent='Project created and build plan generated. Generate the repository package from the build queue.';createForm.reset();await loadProjects()}catch(err){createMsg.className='message bad';createMsg.textContent=err.message}});
 health();loadModules();if(state.secret)unlockOwner();
 </script>
-</body>
+<script src="/share-widget.js" defer></script></body>
 </html>
