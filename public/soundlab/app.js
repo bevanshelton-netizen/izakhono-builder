@@ -124,5 +124,15 @@
     if(!current)return;jsonDownload({schema:'soundlab.media-handoff.v1',source:'SOUNDLAB AI',project_id:current.projectId,title:trackTitle.textContent,created_at:current.createdAt,audio:{format:'wav',duration_seconds:current.seconds,bpm:current.bpm,stems_available:true},creative:{prompt:current.text,genre:current.genre,mood:current.mood,energy:current.energy},targets:['allegro','kora'],rights_gate:{third_party_samples:false,upstream_provider:'none-local-engine',review_required_before_public_distribution:true}},'soundlab-'+current.projectId+'-handoff.json');
   });
 
+  const shareSite=$('#shareSite');
+  if(shareSite)shareSite.addEventListener('click',async()=>{
+    const payload={title:'SOUNDLAB AI',text:'Create original music, stems and WAV exports with SOUNDLAB AI.',url:location.href.split('#')[0]};
+    try{
+      if(navigator.share){await navigator.share(payload);return}
+      await navigator.clipboard.writeText(payload.url);
+      const old=shareSite.textContent;shareSite.textContent='Link copied';setTimeout(()=>shareSite.textContent=old,1600);
+    }catch{}
+  });
+
   prompt.value='Uplifting amapiano instrumental for a fashion launch with warm piano, deep log drum and a confident ending.';
 })();
