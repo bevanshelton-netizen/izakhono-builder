@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>SOUNDLAB AI — Create Original Music</title>
+  <meta name="description" content="Create original instrumental music, stems and export-ready audio from a prompt. Built as a standalone IZAKHONO portfolio product with Allegro/KORA integration hooks.">
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="#top" aria-label="SOUNDLAB AI home">
+      <span class="brandMark">S</span>
+      <span><strong>SOUNDLAB AI</strong><small>MAKE MUSIC. OWN THE WORKFLOW.</small></span>
+    </a>
+    <nav>
+      <a href="#studio">Studio</a>
+      <a href="#business">Business</a>
+      <a href="#pricing">Pricing</a>
+    </nav>
+    <a class="topCta" href="#studio">Create a track</a>
+  </header>
+
+  <main id="top">
+    <section class="hero">
+      <div class="heroCopy">
+        <div class="kicker">AI MUSIC STUDIO · STANDALONE + EMBEDDED</div>
+        <h1>Turn an idea into <span>original music.</span></h1>
+        <p>Describe what you need, choose a genre and mood, then generate an instrumental preview with separate drums, bass, chords and melody stems. No third-party API is required for the first engine.</p>
+        <div class="heroButtons">
+          <a class="primary" href="#studio">Generate now</a>
+          <a class="secondary" href="#business">See the business model</a>
+        </div>
+        <div class="trustRow">
+          <span>✓ Browser-native engine</span>
+          <span>✓ WAV export</span>
+          <span>✓ Stem controls</span>
+          <span>✓ API/provider-ready architecture</span>
+        </div>
+      </div>
+      <div class="visual" aria-hidden="true">
+        <div class="orb orb1"></div><div class="orb orb2"></div>
+        <div class="waveCard">
+          <div class="waveHead"><b>LIVE COMPOSITION</b><span id="heroBpm">112 BPM</span></div>
+          <div class="bars">
+            <i style="--h:40%"></i><i style="--h:72%"></i><i style="--h:55%"></i><i style="--h:88%"></i><i style="--h:63%"></i><i style="--h:94%"></i><i style="--h:48%"></i><i style="--h:78%"></i><i style="--h:68%"></i><i style="--h:91%"></i><i style="--h:58%"></i><i style="--h:76%"></i>
+          </div>
+          <div class="trackPills"><span>DRUMS</span><span>BASS</span><span>CHORDS</span><span>MELODY</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="studioWrap" id="studio">
+      <div class="sectionTitle">
+        <div><span class="kicker">SOUNDLAB STUDIO</span><h2>Compose in seconds.</h2></div>
+        <div class="engineBadge"><span class="liveDot"></span><b>Local Engine v1</b><small>External engine adapters optional</small></div>
+      </div>
+
+      <div class="studioGrid">
+        <div class="panel controls">
+          <label class="field">
+            <span>Describe the track</span>
+            <textarea id="prompt" maxlength="240" placeholder="Example: Uplifting amapiano instrumental for a 30-second fashion launch with warm piano, deep log drum and a confident ending."></textarea>
+          </label>
+
+          <div class="two">
+            <label class="field"><span>Genre</span><select id="genre">
+              <option value="amapiano">Amapiano</option><option value="afrobeats">Afrobeats</option><option value="gqom">Gqom</option><option value="house">House</option><option value="hiphop">Hip-Hop</option><option value="gospel">Gospel</option><option value="cinematic">Cinematic</option><option value="lofi">Lo-Fi</option><option value="afrosoul">Afro Soul</option><option value="kpop">K-Pop</option><option value="bollywood">Bollywood</option>
+            </select></label>
+            <label class="field"><span>Mood</span><select id="mood">
+              <option value="uplifting">Uplifting</option><option value="energetic">Energetic</option><option value="chill">Chill</option><option value="dark">Dark</option><option value="epic">Epic</option><option value="romantic">Romantic</option><option value="corporate">Corporate</option>
+            </select></label>
+          </div>
+
+          <div class="three">
+            <label class="field"><span>Length</span><select id="duration"><option value="15">15 sec</option><option value="30" selected>30 sec</option><option value="60">60 sec</option><option value="90">90 sec</option></select></label>
+            <label class="field"><span>Tempo</span><select id="tempo"><option value="auto" selected>Auto</option><option value="90">90 BPM</option><option value="100">100 BPM</option><option value="112">112 BPM</option><option value="120">120 BPM</option><option value="128">128 BPM</option><option value="140">140 BPM</option></select></label>
+            <label class="field"><span>Energy</span><select id="energy"><option value="low">Low</option><option value="medium" selected>Medium</option><option value="high">High</option></select></label>
+          </div>
+
+          <div class="actions">
+            <button id="generate" class="primary button">Generate track</button>
+            <button id="variation" class="secondary button" disabled>New variation</button>
+          </div>
+          <p class="fine">The local engine creates audio in your browser and uses no sampled commercial recording. Provider adapters can later route premium jobs to SOUNDRAW or another licensed engine.</p>
+        </div>
+
+        <div class="panel output">
+          <div class="outputTop">
+            <div><span class="kicker">OUTPUT</span><h3 id="trackTitle">Your track will appear here</h3></div>
+            <span class="status" id="status">READY</span>
+          </div>
+
+          <div class="playerBox">
+            <audio id="player" controls preload="metadata"></audio>
+            <div class="meta"><span id="metaGenre">—</span><span id="metaBpm">— BPM</span><span id="metaDuration">— sec</span></div>
+          </div>
+
+          <div class="stemSection">
+            <div class="stemHead"><b>STEMS</b><small>Tap to mute/unmute in the mix</small></div>
+            <div class="stems">
+              <button class="stem active" data-stem="drums"><span>◉</span><b>Drums</b><small>Kick · snare · hats</small></button>
+              <button class="stem active" data-stem="bass"><span>◉</span><b>Bass</b><small>Low-end groove</small></button>
+              <button class="stem active" data-stem="chords"><span>◉</span><b>Chords</b><small>Harmony bed</small></button>
+              <button class="stem active" data-stem="melody"><span>◉</span><b>Melody</b><small>Top-line motif</small></button>
+            </div>
+          </div>
+
+          <div class="downloadGrid">
+            <a id="downloadMix" class="download disabled" href="#" download><b>Download WAV</b><small>Master mix</small></a>
+            <button id="downloadStems" class="download" disabled><b>Export stems</b><small>4 separate WAV files</small></button>
+            <button id="receipt" class="download" disabled><b>Generation receipt</b><small>Project metadata JSON</small></button>
+            <button id="handoff" class="download" disabled><b>Allegro/KORA handoff</b><small>Export integration package</small></button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="business" id="business">
+      <div class="sectionTitle"><div><span class="kicker">ONE ENGINE · MULTIPLE REVENUE LINES</span><h2>Sell it directly. Embed it everywhere.</h2></div></div>
+      <div class="businessGrid">
+        <article><span>01</span><h3>Standalone creator SaaS</h3><p>Creators, agencies, filmmakers, podcasters and businesses generate and export music directly from SOUNDLAB AI.</p></article>
+        <article><span>02</span><h3>Embedded creator tool</h3><p>Expose the generator inside Allegro, KORA and IZAKHONO Studio while keeping SOUNDLAB as its own customer-facing business.</p></article>
+        <article><span>03</span><h3>API & white-label</h3><p>Charge other applications for metered generation, stems and soundtrack creation through a provider-neutral API layer.</p></article>
+        <article><span>04</span><h3>Licensing & marketplace</h3><p>Track generation provenance, project usage and future creator licensing without tying the product to one upstream engine.</p></article>
+      </div>
+    </section>
+
+    <section class="integrations">
+      <div><span class="kicker">INTEGRATION LAYER</span><h2>Built to connect without becoming dependent.</h2><p>SOUNDLAB owns the user interface, project format, metadata, generation receipts and platform handoff. External music engines are interchangeable adapters.</p></div>
+      <div class="integrationStack">
+        <div class="integration live"><b>SOUNDLAB Local Engine</b><span>ACTIVE</span></div>
+        <div class="integration"><b>SOUNDRAW Adapter</b><span>READY FOR API KEY</span></div>
+        <div class="integration"><b>Allegro / KORA Handoff</b><span>EXPORT CONTRACT READY</span></div>
+        <div class="integration"><b>iKhokha Checkout</b><span>PAYMENT SLOT READY</span></div>
+      </div>
+    </section>
+
+    <section class="pricing" id="pricing">
+      <div class="sectionTitle"><div><span class="kicker">LAUNCH MONETISATION</span><h2>Simple routes to revenue.</h2></div><p class="pricingNote">Launch prices are working defaults and can be changed before public checkout is activated.</p></div>
+      <div class="priceGrid">
+        <article><small>PAY AS YOU GO</small><h3>R49 <span>/ track</span></h3><p>Full WAV + stems + generation receipt.</p><button disabled>Checkout slot</button></article>
+        <article class="featured"><small>CREATOR</small><h3>R199 <span>/ month</span></h3><p>Higher monthly generation allowance, project library and handoff exports.</p><button disabled>iKhokha slot</button></article>
+        <article><small>STUDIO</small><h3>R699 <span>/ month</span></h3><p>Team projects, client exports and priority premium-engine routing.</p><button disabled>Checkout slot</button></article>
+        <article><small>API / WHITE-LABEL</small><h3>Custom</h3><p>Metered B2B generation and branded deployments.</p><button disabled>Sales slot</button></article>
+      </div>
+    </section>
+  </main>
+
+  <footer><div><b>SOUNDLAB AI</b><span>Standalone AI music creation platform · provider-neutral by design</span></div><span>Technical preview v1</span></footer>
+  <script src="./app.js"></script>
+</body>
+</html>
