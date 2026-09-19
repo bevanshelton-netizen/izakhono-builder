@@ -256,6 +256,8 @@ async function publicAiCoreHost(req: Request, env: any, url: URL): Promise<Respo
   const assetUrl = new URL(req.url);
   if (url.pathname === '/' || url.pathname === '/index.html') {
     assetUrl.pathname = '/ai-core/index.html';
+  } else if (url.pathname === '/super-accountant' || url.pathname === '/super-accountant/') {
+    assetUrl.pathname = '/ai-core/super-accountant/index.html';
   } else if (!url.pathname.startsWith('/ai-core/')) {
     return Response.redirect('https://' + AI_CORE_HOST + '/', 302);
   }
