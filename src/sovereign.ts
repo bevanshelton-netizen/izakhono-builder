@@ -230,9 +230,62 @@ async function withModuleEditor(response: Response, url: URL): Promise<Response>
   return new Response(injected, { status: response.status, statusText: response.statusText, headers });
 }
 
+const AI_CORE_HOST = 'ai.izakhono.co.za';
+
+async function publicAiCoreHost(req: Request, env: any, url: URL): Promise<Response | null> {
+  if (url.hostname !== AI_CORE_HOST) return null;
+
+  if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/owner-actions/')) {
+    return new Response('Not found', {
+      status: 404,
+      headers: { 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'no-store' },
+    });
+  }
+
+  if (req.method !== 'GET' && req.method !== 'HEAD') {
+    return new Response('Method not allowed', {
+      status: 405,
+      headers: {
+        allow: 'GET, HEAD',
+        'content-type': 'text/plain; charset=utf-8',
+        'cache-control': 'no-store',
+      },
+    });
+  }
+
+  const assetUrl = new URL(req.url);
+  if (url.pathname === '/' || url.pathname === '/index.html') {
+    assetUrl.pathname = '/ai-core/index.html';
+  } else if (!url.pathname.startsWith('/ai-core/')) {
+    return Response.redirect('https://' + AI_CORE_HOST + '/', 302);
+  }
+
+  const response = await env.ASSETS.fetch(new Request(assetUrl.toString(), req));
+  const headers = new Headers(response.headers);
+  headers.set('x-content-type-options', 'nosniff');
+  headers.set('referrer-policy', 'strict-origin-when-cross-origin');
+  headers.set('permissions-policy', 'camera=(), microphone=(), geolocation=()');
+  if ((response.headers.get('content-type') || '').includes('text/html')) {
+    headers.set(
+      'content-security-policy',
+      "default-src 'self'; connect-src 'self' https://yfawrenhudjomhnglfhq.supabase.co; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'"
+    );
+    headers.set('cache-control', 'public, max-age=0, must-revalidate');
+  }
+  headers.delete('content-length');
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
+}
+
 export default {
   async fetch(req: Request, env: any): Promise<Response> {
     const url = new URL(req.url);
+
+    const publicAi = await publicAiCoreHost(req, env, url);
+    if (publicAi) return publicAi;
 
     const reviewLoop = await reviewLoopRoute(req, env, url);
     if (reviewLoop) return reviewLoop;
