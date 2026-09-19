@@ -50,7 +50,7 @@ var KEY='sb_publishable_3KY--8Y_uuKEdfdumC2txg__OWTRo2p';
 var STORE='iz_core_session_v1';
 var session=null,current=null;
 var services=[
-{key:'super-accountant',code:'SA',name:'Super Accountant',status:'core',why:'Bookkeeping, tax-readiness, payroll, cashflow, CSI, assets and business protection.',url:null,kw:['account','bookkeep','tax','sars','irs','payroll','vat','expense','cashflow','cfo','asset','csi','insurance']},
+{key:'super-accountant',code:'SA',name:'Super Accountant',status:'live',why:'Bookkeeping, tax-readiness, payroll, cashflow, CSI, assets and business protection.',url:(location.hostname==='ai.izakhono.co.za'?'/super-accountant/':'/ai-core/super-accountant/'),kw:['account','bookkeep','tax','sars','irs','payroll','vat','expense','cashflow','cfo','asset','csi','insurance']},
 {key:'worknow',code:'WN',name:'WorkNow',status:'live',why:'Job seekers, recruiters, employers, local jobs and international work-readiness.',url:'https://worknow-sa.vercel.app',kw:['job','work','staff','employee','employ','recruit','cv','career','vacancy','nurse','doctor']},
 {key:'studio',code:'ST',name:'IZAKHONO Studio',status:'core',why:'Advertising, design, websites, campaigns, graphics, social content and creative production.',url:null,kw:['advert','marketing','poster','graphic','logo','website','social','campaign','design','video']},
 {key:'faisready',code:'FR',name:'FAISReady',status:'live',why:'Focused preparation for FAIS regulatory exams.',url:'https://faisready-revenue.vercel.app',kw:['re1','re 1','re5','re 5','fais','key individual','representative']},
