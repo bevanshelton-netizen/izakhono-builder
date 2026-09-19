@@ -18,5 +18,11 @@
   ],
   "vars": {
     "APP_ENV": "production"
-  }
+  },
+  "routes": [
+    {
+      "pattern": "ai.izakhono.co.za",
+      "custom_domain": true
+    }
+  ]
 }
