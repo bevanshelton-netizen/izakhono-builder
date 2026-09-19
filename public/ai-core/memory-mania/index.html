@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0b1020">
+<title>Memory Mania — Brain Battle</title>
+<meta name="description" content="Memory Mania is a fast, colourful memory-training game. Play free, build streaks and train recall.">
+<style>
+:root{
+  --bg:#090d19;--panel:#11182d;--card:#151f39;--line:#2a385d;--text:#f8fbff;--muted:#a9b6d4;
+  --gold:#ffca52;--cyan:#4de7ff;--purple:#8b5cf6;--pink:#ff6fb5;--orange:#ff8a3d;--green:#51e0a6;--red:#ff667a;
+}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:
+radial-gradient(circle at 20% 0%,rgba(77,231,255,.13),transparent 26rem),
+radial-gradient(circle at 95% 15%,rgba(139,92,246,.16),transparent 28rem),
+linear-gradient(180deg,#080c18,#0c1325 45%,#080c18);
+color:var(--text);font-family:"Trebuchet MS","Segoe UI",Arial,sans-serif;min-height:100vh}
+button,a{font:inherit}.shell{max-width:1180px;margin:0 auto;padding:20px}.topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:6px 0 18px}.brand-mini{font-weight:1000;letter-spacing:.06em}.share{border:1px solid var(--line);background:#121a30;color:var(--text);border-radius:14px;padding:11px 15px;cursor:pointer;font-weight:900}.hero{position:relative;overflow:hidden;border:1px solid var(--line);border-radius:30px;padding:clamp(22px,4vw,48px);background:
+radial-gradient(circle at 78% 28%,rgba(139,92,246,.24),transparent 24rem),
+radial-gradient(circle at 15% 90%,rgba(77,231,255,.15),transparent 26rem),
+linear-gradient(145deg,#111a32,#10172a)}
+.hero-grid{display:grid;grid-template-columns:1.25fr .75fr;align-items:center;gap:28px}.kicker{display:inline-flex;gap:8px;border:1px solid var(--line);background:rgba(255,255,255,.04);padding:7px 11px;border-radius:999px;font-size:12px;font-weight:1000;letter-spacing:.12em}
+.logo{margin:20px 0 0;font-family:Impact,"Arial Black","Trebuchet MS",sans-serif;font-size:clamp(56px,9vw,118px);line-height:.77;letter-spacing:-.035em;text-transform:uppercase}
+.logo .memory{display:block;color:var(--gold);text-shadow:0 5px 0 #714311,0 12px 30px rgba(255,202,82,.18)}
+.logo .mania{display:block;margin-top:9px;color:var(--cyan);text-shadow:0 5px 0 #135878,0 12px 30px rgba(77,231,255,.18)}
+.subtitle{font-weight:1000;letter-spacing:.22em;margin-top:18px}.lead{max-width:650px;color:var(--muted);line-height:1.6;font-size:17px}.actions{display:flex;flex-wrap:wrap;gap:12px;margin-top:22px}
+.cta{border:0;border-radius:18px;padding:15px 24px;font-weight:1000;cursor:pointer;font-size:18px}.cta.primary{background:linear-gradient(135deg,var(--gold),var(--orange));color:#211508;box-shadow:0 7px 0 #7b4714,0 18px 40px rgba(255,156,55,.2)}.cta.secondary{background:#151e36;color:var(--text);border:1px solid var(--line)}
+.mascot-wrap{display:grid;place-items:center;min-height:300px;position:relative}.orb{position:absolute;width:260px;height:260px;border-radius:50%;background:radial-gradient(circle,rgba(77,231,255,.26),rgba(139,92,246,.12),transparent 68%);filter:blur(4px)}
+.mascot{width:min(320px,80vw);filter:drop-shadow(0 20px 24px rgba(0,0,0,.28));animation:float 2.6s ease-in-out infinite}@keyframes float{50%{transform:translateY(-10px) rotate(1deg)}}@media(prefers-reduced-motion:reduce){.mascot{animation:none}}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:24px}.stat{background:#11192f;border:1px solid var(--line);border-radius:18px;padding:15px;text-align:center}.stat .big{font-size:22px;font-weight:1000}.muted{color:var(--muted)}
+.section{margin-top:28px}.section-head{display:flex;align-items:end;justify-content:space-between;gap:12px;margin-bottom:12px}.section h2{margin:0;font-family:Impact,"Arial Black",sans-serif;letter-spacing:.02em;font-size:34px}.modes{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.mode{position:relative;overflow:hidden;min-height:190px;border:0;border-radius:25px;padding:19px;text-align:left;color:white;cursor:pointer;box-shadow:0 15px 30px rgba(0,0,0,.18);transition:transform .17s ease}
+.mode:hover{transform:translateY(-5px)}.mode:before,.mode:after{content:"";position:absolute;border-radius:50%;background:rgba(255,255,255,.10)}.mode:before{width:130px;height:130px;right:-38px;top:-40px}.mode:after{width:80px;height:80px;left:-28px;bottom:-34px}.mode1{background:linear-gradient(145deg,#087d75,#18b9ab)}.mode2{background:linear-gradient(145deg,#7623c8,#d231db)}.mode3{background:linear-gradient(145deg,#1d4ed8,#0ea5e9)}.mode4{background:linear-gradient(145deg,#c2410c,#ff783d)}
+.icon{width:62px;height:62px;border-radius:18px;display:grid;place-items:center;background:rgba(255,255,255,.14);font-size:34px;position:relative}.mode h3{font-size:22px;margin:28px 0 5px;position:relative}.mode p{margin:0;opacity:.88;position:relative;font-size:13px}
+.game{display:none;border:1px solid var(--line);border-radius:28px;background:linear-gradient(145deg,#111a31,#0e162a);padding:22px;margin-top:18px}.game.active{display:block}.game-top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}.pill{border:1px solid var(--line);background:#151e36;border-radius:999px;padding:8px 12px;font-weight:1000}.game-cards,.choice-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-top:20px}.memory-card,.choice{min-height:100px;border:1px solid var(--line);background:#17223e;border-radius:20px;display:grid;place-items:center;font-size:48px}.choice{cursor:pointer;color:var(--text)}.choice.selected{outline:3px solid var(--cyan);background:#183d4a}.hint{margin-top:16px;color:var(--muted);text-align:center}.game-actions{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin-top:18px}
+.plan-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}.plan{border:1px solid var(--line);border-radius:26px;padding:22px;background:#121a30}.plan.plus{background:linear-gradient(145deg,rgba(255,202,82,.13),rgba(139,92,246,.08)),#121a30}.plan.pro{background:linear-gradient(145deg,rgba(139,92,246,.16),rgba(255,111,181,.08)),#121a30}.plan .price{font-size:34px;font-weight:1000}.badge{display:inline-block;border-radius:999px;padding:6px 10px;background:var(--gold);color:#241706;font-size:11px;font-weight:1000}
+.team{display:flex;align-items:center;gap:18px;border:1px solid var(--line);background:#121a30;border-radius:26px;padding:22px}.team .emoji{font-size:54px}.footer{margin:32px 0 10px;text-align:center;color:var(--muted);font-size:13px}.notice{display:none;margin-top:14px;border:1px solid var(--line);background:#10192f;border-radius:18px;padding:14px;color:var(--muted)}.notice.show{display:block}
+@media(max-width:900px){.hero-grid{grid-template-columns:1fr}.mascot-wrap{min-height:240px}.stats{grid-template-columns:repeat(2,1fr)}.modes{grid-template-columns:repeat(2,1fr)}.game-cards,.choice-grid{grid-template-columns:repeat(3,1fr)}}@media(max-width:560px){.shell{padding:14px}.hero{border-radius:24px;padding:22px}.logo{font-size:58px}.modes,.plan-grid{grid-template-columns:1fr}.stats{grid-template-columns:repeat(2,1fr)}.game-cards,.choice-grid{grid-template-columns:repeat(2,1fr)}.team{align-items:flex-start}.section h2{font-size:29px}}
+</style>
+</head>
+<body>
+<main class="shell">
+  <div class="topbar"><div class="brand-mini">🧠 MEMORY MANIA</div><button id="shareBtn" class="share" type="button">↗ Share game</button></div>
+
+  <section class="hero">
+    <div class="hero-grid">
+      <div>
+        <div class="kicker">⚡ TRAIN • PLAY • REMEMBER</div>
+        <h1 class="logo"><span class="memory">MEMORY</span><span class="mania">MANIA</span></h1>
+        <div class="subtitle">BRAIN BATTLE</div>
+        <p class="lead">Small games. Big brain gains. Build stronger recall with fast, colourful challenges that make remembering feel like play.</p>
+        <div class="actions">
+          <button id="playHero" class="cta primary" type="button">▶ PLAY FREE</button>
+          <a class="cta secondary" href="#plans" style="text-decoration:none">👑 SEE PREMIUM</a>
+        </div>
+      </div>
+      <div class="mascot-wrap" aria-label="Memory Mania brain mascot">
+        <div class="orb"></div>
+        <svg class="mascot" viewBox="0 0 320 300" role="img" aria-label="Smiling brain mascot wearing sunglasses">
+          <defs><linearGradient id="bp" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#ff789d"/><stop offset="1" stop-color="#f45fc3"/></linearGradient><linearGradient id="sg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#55efff"/><stop offset="1" stop-color="#3576ff"/></linearGradient></defs>
+          <ellipse cx="160" cy="263" rx="94" ry="17" fill="rgba(77,231,255,.18)"/>
+          <path d="M89 117c-22-48 29-82 66-51 24-38 80-13 74 30 44 7 49 59 17 80 16 44-37 73-71 45-30 37-91 13-79-34-43-13-43-59-7-70z" fill="url(#bp)" stroke="#be2a77" stroke-width="6"/>
+          <path d="M102 82c15 13 15 31 5 44M145 59c-10 19 1 35 17 44M190 65c-11 15-9 33 12 43M79 132c20-6 37 6 39 27M221 117c24 3 32 23 27 40M123 184c7-16 23-25 43-18M180 171c12 3 20 12 24 25" fill="none" stroke="#de377f" stroke-width="8" stroke-linecap="round" opacity=".8"/>
+          <path d="M82 122l66 5-8 40-54-5zM154 127l66-5-4 41-56 4z" fill="url(#sg)" stroke="#092941" stroke-width="8" stroke-linejoin="round"/><path d="M146 137h17" stroke="#092941" stroke-width="10" stroke-linecap="round"/>
+          <path d="M128 187c18 22 43 22 61 0" fill="none" stroke="#7e1f47" stroke-width="8" stroke-linecap="round"/>
+          <path d="M91 212c-24 6-33 24-25 40M223 211c25 4 37 22 30 40" fill="none" stroke="#f45fc3" stroke-width="11" stroke-linecap="round"/>
+          <rect x="55" y="241" width="48" height="26" rx="13" fill="#2864ee"/><rect x="219" y="241" width="48" height="26" rx="13" fill="#2864ee"/>
+          <g fill="#ffca52"><path d="M55 42l5 12 12 5-12 5-5 12-5-12-12-5 12-5z"/><path d="M267 66l4 9 9 4-9 4-4 9-4-9-9-4 9-4z"/></g>
+        </svg>
+      </div>
+    </div>
+    <div class="stats">
+      <div class="stat"><div>🏆</div><div class="big" id="scoreTop">0</div><div class="muted">Score</div></div>
+      <div class="stat"><div>🔥</div><div class="big" id="streakTop">0</div><div class="muted">Streak</div></div>
+      <div class="stat"><div>❤️❤️❤️</div><div class="big" id="livesTop">3</div><div class="muted">Lives</div></div>
+      <div class="stat"><div>👑</div><div class="big" id="levelTop">1</div><div class="muted">Level</div></div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-head"><div><div class="muted" style="font-weight:1000;letter-spacing:.12em;font-size:12px">CHOOSE YOUR CHALLENGE</div><h2>Pick a brain battle</h2></div><div class="muted">Tap any mode to play</div></div>
+    <div class="modes">
+      <button class="mode mode1" data-mode="words"><div class="icon">🔤</div><h3>Word Rush</h3><p>Words • Memory • Speed</p></button>
+      <button class="mode mode2" data-mode="emoji"><div class="icon">🤣</div><h3>Emoji Chaos</h3><p>See • Match • Recall</p></button>
+      <button class="mode mode3" data-mode="numbers"><div class="icon" style="font-size:24px;font-weight:1000">123</div><h3>Number Ninja</h3><p>Numbers • Focus • Recall</p></button>
+      <button class="mode mode4" data-mode="mixed"><div class="icon">🧩</div><h3>Mega Mix</h3><p>Ultimate brain challenge</p></button>
+    </div>
+
+    <div id="game" class="game">
+      <div class="game-top"><div><div class="muted" style="font-size:12px;font-weight:1000">LIVE ROUND</div><h2 id="gameTitle" style="margin:3px 0 0;font-size:28px">Emoji Chaos</h2></div><div class="pill" id="timer">6s</div></div>
+      <div id="studyCards" class="game-cards"></div>
+      <div id="choiceArea" style="display:none">
+        <div class="hint">They’re gone. Pick the <strong id="pickCount">5</strong> items you remember.</div>
+        <div id="choices" class="choice-grid"></div>
+        <div class="game-actions"><button id="lockBtn" class="cta primary" type="button">LOCK IT IN 🔒</button><button id="restartBtn" class="cta secondary" type="button">Restart</button></div>
+      </div>
+      <div id="result" class="notice"></div>
+    </div>
+  </section>
+
+  <section id="plans" class="section">
+    <div class="section-head"><div><div class="muted" style="font-weight:1000;letter-spacing:.12em;font-size:12px">MORE TRAINING</div><h2>Premium plans</h2></div><div class="muted">Free play remains available</div></div>
+    <div class="plan-grid">
+      <div class="plan plus"><span class="badge">MOST POPULAR</span><h3 style="font-size:26px;margin-bottom:6px">👑 Memory Mania Plus</h3><p class="muted">No ads • Unlimited play • Advanced stats • Extra challenges</p><div class="price">R79<span style="font-size:15px">/month</span></div><button class="cta secondary planBtn" data-plan="Plus" type="button" style="margin-top:15px">Choose Plus</button></div>
+      <div class="plan pro"><span class="badge" style="background:#8b5cf6;color:white">PRO</span><h3 style="font-size:26px;margin-bottom:6px">🤖 Memory Mania Pro</h3><p class="muted">AI memory plans • Deep reports • Personalised challenges</p><div class="price">R149<span style="font-size:15px">/month</span></div><button class="cta secondary planBtn" data-plan="Pro" type="button" style="margin-top:15px">Choose Pro</button></div>
+    </div>
+    <div id="planNotice" class="notice">Premium checkout is being connected to the IZAKHONO payment stack. Free play is live now.</div>
+  </section>
+
+  <section class="section team"><div class="emoji">🏫</div><div><h2 style="margin:0">Schools & Teams</h2><p class="muted" style="margin:7px 0 0">Class competitions, staff training, custom learning packs and progress dashboards are part of the institutional roadmap.</p></div></section>
+
+  <div class="footer">Memory Mania™ • Built on IZAKHONO infrastructure • Public Beta</div>
+</main>
+
+<script>
+(()=> {
+  const poolEmoji=['🐯','🚀','🍕','🎸','👑','⚽','🌈','🐘','💎','🍎','🎂','🚗','🐙','⭐','🦄'];
+  const poolWords=['tiger','rocket','pizza','guitar','crown','football','rainbow','elephant','diamond','apple','cake','car','octopus','star','unicorn'];
+  let mode='emoji',score=0,streak=0,lives=3,level=1,target=[],selected=new Set(),tick=null;
+  const $=id=>document.getElementById(id);
+  const shuffle=a=>{a=[...a];for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a};
+  const sync=()=>{$('scoreTop').textContent=score;$('streakTop').textContent=streak;$('livesTop').textContent=lives;$('levelTop').textContent=level};
+  function itemsForMode(){
+    if(mode==='emoji') return shuffle(poolEmoji);
+    if(mode==='words') return shuffle(poolWords);
+    if(mode==='numbers') return shuffle(Array.from({length:20},(_,i)=>String(10+i*4+((i*7)%9))));
+    return shuffle([...poolEmoji.slice(0,7),...poolWords.slice(0,7),'27','48','63','91']);
+  }
+  function title(){return mode==='words'?'Word Rush':mode==='emoji'?'Emoji Chaos':mode==='numbers'?'Number Ninja':'Mega Mix'}
+  function start(){
+    if(tick)clearInterval(tick);selected.clear();$('result').className='notice';$('choiceArea').style.display='none';
+    $('game').classList.add('active');$('gameTitle').textContent=title();$('game').scrollIntoView({behavior:'smooth',block:'start'});
+    const count=Math.min(5+Math.floor((level-1)/2),7);target=itemsForMode().slice(0,count);$('pickCount').textContent=count;
+    $('studyCards').style.display='grid';$('studyCards').innerHTML=target.map(x=>'<div class="memory-card">'+x+'</div>').join('');
+    let t=Math.max(4,7-Math.floor(level/3));$('timer').textContent=t+'s';
+    tick=setInterval(()=>{t--; $('timer').textContent=Math.max(0,t)+'s'; if(t<=0){clearInterval(tick);tick=null;showChoices()}},1000)
+  }
+  function showChoices(){
+    $('studyCards').style.display='none';$('choiceArea').style.display='block';
+    const count=target.length,source=itemsForMode();const decoys=source.filter(x=>!target.includes(x)).slice(0,count);
+    const options=shuffle([...target,...decoys]);$('choices').innerHTML=options.map(x=>'<button type="button" class="choice" data-x="'+x+'">'+x+'</button>').join('');
+    document.querySelectorAll('.choice').forEach(btn=>btn.addEventListener('click',()=>{
+      const x=btn.dataset.x;if(selected.has(x)){selected.delete(x);btn.classList.remove('selected')}else if(selected.size<count){selected.add(x);btn.classList.add('selected')}
+    }));
+  }
+  function judge(){
+    const hits=target.filter(x=>selected.has(x)).length, perfect=hits===target.length;
+    if(perfect){score+=500*level;streak++;level=Math.min(10,level+(streak%2===0?1:0));$('result').innerHTML='🏆 <strong>Perfect recall!</strong> You remembered all '+target.length+' items. +'+(500*level)+' points.'}
+    else{score+=hits*80;streak=0;if(hits<Math.ceil(target.length*.6))lives=Math.max(0,lives-1);$('result').innerHTML=(hits>=Math.ceil(target.length*.7)?'🔥':'🧠')+' <strong>'+hits+'/'+target.length+' remembered.</strong> The correct set was: '+target.join(' ') }
+    $('result').className='notice show';sync(); if(lives===0){$('result').innerHTML+=' <strong>Brain battery empty — press Restart for a fresh run.</strong>'}
+  }
+  document.querySelectorAll('.mode').forEach(b=>b.addEventListener('click',()=>{mode=b.dataset.mode;start()}));
+  $('playHero').addEventListener('click',()=>{mode='emoji';start()});$('lockBtn').addEventListener('click',judge);$('restartBtn').addEventListener('click',()=>{score=0;streak=0;lives=3;level=1;sync();start()});
+  document.querySelectorAll('.planBtn').forEach(b=>b.addEventListener('click',()=>{const n=$('planNotice');n.textContent=b.dataset.plan+' selected. Secure IZAKHONO/iKhokha checkout will be enabled when the product checkout link is assigned. Free play is already live.';n.className='notice show'}));
+  $('shareBtn').addEventListener('click',async()=>{const data={title:'Memory Mania — Brain Battle',text:'Try Memory Mania, a fun memory-training game.',url:location.href};try{if(navigator.share)await navigator.share(data);else{prompt('Copy this link:',location.href)}}catch(_){}});
+  sync();
+})();
+</script>
+</body>
+</html>
