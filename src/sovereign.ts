@@ -253,11 +253,33 @@ async function publicAiCoreHost(req: Request, env: any, url: URL): Promise<Respo
     });
   }
 
+  const cleanPath = url.pathname.length > 1 ? url.pathname.replace(/\/+$/, '') : url.pathname;
+  const externalRoutes: Record<string, string> = {
+    '/worknow': 'https://worknow-sa.vercel.app',
+    '/faisready': 'https://faisready-revenue.vercel.app',
+    '/mandatory-exams': 'https://mandatory-regulatory-exams.vercel.app',
+    '/auto-ai': 'https://auto-ai-eosin.vercel.app',
+    '/allegro': 'https://allegro-vibez.vercel.app',
+    '/kora': 'https://kora-network.vercel.app',
+    '/growth': 'https://izakhono-growth-os.vercel.app',
+    '/revenue': 'https://izakhono-revenue-os.vercel.app',
+  };
+  if (externalRoutes[cleanPath]) {
+    return Response.redirect(externalRoutes[cleanPath], 302);
+  }
+
+  const nativeRoutes: Record<string, string> = {
+    '/super-accountant': '/ai-core/super-accountant/index.html',
+    '/studio': '/ai-core/studio/index.html',
+    '/edubuild': '/ai-core/edubuild/index.html',
+    '/doxa-sure': '/ai-core/doxa-sure/index.html',
+  };
+
   const assetUrl = new URL(req.url);
-  if (url.pathname === '/' || url.pathname === '/index.html') {
+  if (cleanPath === '/' || cleanPath === '/index.html') {
     assetUrl.pathname = '/ai-core/index.html';
-  } else if (url.pathname === '/super-accountant' || url.pathname === '/super-accountant/') {
-    assetUrl.pathname = '/ai-core/super-accountant/index.html';
+  } else if (nativeRoutes[cleanPath]) {
+    assetUrl.pathname = nativeRoutes[cleanPath];
   } else if (!url.pathname.startsWith('/ai-core/')) {
     return Response.redirect('https://' + AI_CORE_HOST + '/', 302);
   }
