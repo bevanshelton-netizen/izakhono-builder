@@ -1,0 +1,25 @@
+name: StudyPal IZAKHONO Alpha
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "products/studypal/**"
+      - ".github/workflows/studypal-alpha.yml"
+      - ".github/workflows/izakhono-build-to-alpha.yml"
+  push:
+    branches: [main]
+    paths:
+      - "products/studypal/**"
+      - ".github/workflows/studypal-alpha.yml"
+      - ".github/workflows/izakhono-build-to-alpha.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  alpha:
+    uses: ./.github/workflows/izakhono-build-to-alpha.yml
+    with:
+      manifest_path: products/studypal/.izakhono.json
