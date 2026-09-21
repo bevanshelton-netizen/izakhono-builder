@@ -2,6 +2,7 @@ import secureApp from './secure';
 import { ventureFactoryRoute } from './venture-factory';
 import { reviewLoopRoute } from './reviewloop';
 import { bidForgeRoute } from './bidforge';
+import { COMMANDS, commandStats, commandSummary, findCommand } from './commands';
 import {
   commitInternalRepository,
   listInternalRepository,
@@ -230,6 +231,178 @@ async function withModuleEditor(response: Response, url: URL): Promise<Response>
   return new Response(injected, { status: response.status, statusText: response.statusText, headers });
 }
 
+
+function commandParts(input: string) {
+  const clean = String(input || '').trim().replace(/^\/+/, '');
+  const match = clean.match(/^(\S+)(?:\s+([\s\S]*))?$/);
+  return { token: (match?.[1] || '').toLowerCase(), args: (match?.[2] || '').trim() };
+}
+
+async function commandResponseData(response: Response): Promise<any> {
+  try { return await response.clone().json(); } catch { return {}; }
+}
+
+async function commandProject(env: any, slug: string): Promise<any | null> {
+  return env.DB.prepare('SELECT * FROM builder_projects WHERE slug=?').bind(String(slug || '').toLowerCase()).first<any>();
+}
+
+function compactCommandProject(project: any) {
+  const recipe = safeJson(project?.build_recipe_json, null);
+  return {
+    id: project?.id,
+    name: project?.name,
+    slug: project?.slug,
+    category: project?.category,
+    modules: safeJson(project?.modules_json, []),
+    status: project?.status,
+    updated_at: project?.updated_at,
+    revision: recipe?.generated?.revision || null,
+    validation_passed: Boolean(recipe?.generated?.validation?.passed),
+    internal_repository: recipe?.generated?.internal_repository || null,
+  };
+}
+
+async function commandSecureRequest(req: Request, env: any, path: string): Promise<Response> {
+  const target = new URL(req.url);
+  target.pathname = path;
+  target.search = '';
+  return secureApp.fetch(new Request(target.toString(), { method: 'POST', headers: req.headers }), env);
+}
+
+async function commandApiRoute(req: Request, env: any, url: URL): Promise<Response | null> {
+  const catalogue = url.pathname === '/api/commands' && req.method === 'GET';
+  const run = url.pathname === '/api/commands/run' && req.method === 'POST';
+  if (!catalogue && !run) return null;
+  if (!(await ownerAuthorized(req, env))) return json({ ok: false, error: 'Unauthorized' }, 401);
+
+  if (catalogue) {
+    return json({
+      ok: true,
+      stats: commandStats(),
+      commands: COMMANDS.map(commandSummary),
+      execution_boundary: 'Only whitelisted IZAKHONO actions execute. Workflow commands open structured workflows; no arbitrary shell execution is accepted.',
+    });
+  }
+
+  let payload: any = null;
+  try { payload = await req.json(); } catch { return json({ ok: false, error: 'Expected application/json' }, 400); }
+  const input = String(payload?.input || '').trim();
+  if (!input) return json({ ok: false, error: 'Enter a command.' }, 400);
+
+  const parts = commandParts(input);
+  const definition = findCommand(input);
+  if (!definition) return json({ ok: false, error: 'Unknown command /' + parts.token + '. Use /commands to browse the catalogue.' }, 404);
+  if (definition.requiresArg && !parts.args) return json({ ok: false, error: '/' + definition.name + ' requires a project slug.' }, 400);
+
+  if (definition.kind === 'launcher') {
+    return json({ ok: true, command: definition.name, kind: definition.kind, navigate: definition.path, message: definition.label + ' launcher ready.' });
+  }
+  if (definition.kind === 'workflow') {
+    return json({ ok: true, command: definition.name, kind: definition.kind, args: parts.args, workflow: commandSummary(definition), message: 'Structured workflow opened. Provider-specific or irreversible actions remain explicit approval gates.' });
+  }
+  if (definition.name === 'commands') {
+    return json({ ok: true, command: 'commands', kind: 'action', message: String(COMMANDS.length) + ' owner commands are available.', data: { stats: commandStats() } });
+  }
+  if (definition.name === 'health') {
+    const row = await env.DB.prepare('SELECT 1 AS ok').first<any>();
+    return json({ ok: row?.ok === 1, command: 'health', kind: 'action', message: row?.ok === 1 ? 'IZAKHONO command engine and Builder database are responding.' : 'Database health proof failed.', data: { database: row?.ok === 1 ? 'ready' : 'unverified', command_engine: 'ready' } }, row?.ok === 1 ? 200 : 503);
+  }
+  if (definition.name === 'portfolio') {
+    const rows = await env.DB.prepare('SELECT * FROM builder_projects ORDER BY updated_at DESC').all<any>();
+    const projects = (rows.results || []).map(compactCommandProject);
+    return json({ ok: true, command: 'portfolio', kind: 'action', message: String(projects.length) + ' projects loaded.', data: { projects } });
+  }
+
+  const slug = parts.args.split(/\s+/)[0].toLowerCase();
+  const project = await commandProject(env, slug);
+  if (!project) return json({ ok: false, error: 'Project slug "' + slug + '" was not found.' }, 404);
+
+  if (definition.name === 'project') {
+    return json({ ok: true, command: 'project', kind: 'action', message: project.name + ' status loaded.', data: compactCommandProject(project) });
+  }
+  if (definition.name === 'repo') {
+    const repository = await listInternalRepository(env, project.id);
+    if (!repository) return json({ ok: false, error: 'Internal repository not found. Validate and commit the project first.' }, 404);
+    return json({ ok: true, command: 'repo', kind: 'action', message: project.name + ' internal repository loaded.', data: repository });
+  }
+  if (definition.name === 'payments') {
+    const current = safeJson(project.modules_json, []);
+    const modules = Array.from(new Set([...(Array.isArray(current) ? current : []), 'payments']));
+    const editUrl = new URL(req.url);
+    editUrl.pathname = '/api/projects/' + encodeURIComponent(project.id) + '/modules';
+    editUrl.search = '';
+    const edited = await editModulesRoute(new Request(editUrl.toString(), {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json', 'x-admin-secret': req.headers.get('x-admin-secret') || '' },
+      body: JSON.stringify({ modules }),
+    }), env, editUrl);
+    if (!edited) return json({ ok: false, error: 'Module editor unavailable.' }, 500);
+    const data = await commandResponseData(edited);
+    if (!edited.ok) return json(data, edited.status);
+    return json({ ok: true, command: 'payments', kind: 'action', message: Array.isArray(current) && current.includes('payments') ? 'Payments is already enabled for ' + project.name + '.' : 'Payments added to ' + project.name + '; build plan regenerated.', data });
+  }
+
+  const projectPath = '/api/projects/' + encodeURIComponent(project.id);
+  if (definition.name === 'plan') {
+    const response = await commandSecureRequest(req, env, projectPath + '/plan');
+    const data = await commandResponseData(response);
+    if (!response.ok) return json(data, response.status);
+    return json({ ok: true, command: 'plan', kind: 'action', message: project.name + ' build plan generated.', data });
+  }
+  if (definition.name === 'generate') {
+    const response = await commandSecureRequest(req, env, projectPath + '/generate');
+    const data = await commandResponseData(response);
+    if (!response.ok) return json(data, response.status);
+    return json({ ok: true, command: 'generate', kind: 'action', message: project.name + ' repository-ready package generated.', data });
+  }
+  if (definition.name === 'validate') {
+    const response = await commandSecureRequest(req, env, projectPath + '/validate-generated');
+    const committed = await commitValidatedBundle(req, env, project.id, response);
+    const data = await commandResponseData(committed);
+    if (!committed.ok) return json(data, committed.status);
+    return json({ ok: true, command: 'validate', kind: 'action', message: project.name + ' passed validation and was committed to the IZAKHONO internal repository.', preview: data.preview || null, data });
+  }
+  if (definition.name === 'launch') {
+    const planned = await commandSecureRequest(req, env, projectPath + '/plan');
+    const plannedData = await commandResponseData(planned);
+    if (!planned.ok) return json({ ok: false, error: plannedData.error || 'Planning failed.', stage: 'plan' }, planned.status);
+    const generated = await commandSecureRequest(req, env, projectPath + '/generate');
+    const generatedData = await commandResponseData(generated);
+    if (!generated.ok) return json({ ok: false, error: generatedData.error || 'Generation failed.', stage: 'generate' }, generated.status);
+    const validated = await commandSecureRequest(req, env, projectPath + '/validate-generated');
+    const committed = await commitValidatedBundle(req, env, project.id, validated);
+    const validatedData = await commandResponseData(committed);
+    if (!committed.ok) return json({ ok: false, error: validatedData.error || 'Validation or internal commit failed.', stage: 'validate' }, committed.status);
+    return json({
+      ok: true,
+      command: 'launch',
+      kind: 'action',
+      message: project.name + ' completed plan → generate → validate → IZAKHONO internal commit. This is a technical proof, not a claim that public production hosting is verified.',
+      preview: validatedData.preview || null,
+      data: { project: { id: project.id, name: project.name, slug: project.slug }, generated: generatedData.generated || null, validation: validatedData.validation || null, internal_repository: validatedData.internal_repository || null },
+    });
+  }
+
+  return json({ ok: false, error: 'Action /' + definition.name + ' has no executor.' }, 501);
+}
+
+async function commandCentrePage(req: Request, env: any, url: URL): Promise<Response | null> {
+  if (url.pathname !== '/commands' && url.pathname !== '/commands/') return null;
+  if (req.method !== 'GET' && req.method !== 'HEAD') return new Response('Method not allowed', { status: 405, headers: { allow: 'GET, HEAD' } });
+  const assetUrl = new URL(req.url);
+  assetUrl.pathname = '/commands/index.html';
+  assetUrl.search = '';
+  const response = await env.ASSETS.fetch(new Request(assetUrl.toString(), req));
+  const headers = new Headers(response.headers);
+  headers.set('cache-control', 'no-store');
+  headers.set('x-content-type-options', 'nosniff');
+  headers.set('referrer-policy', 'same-origin');
+  headers.set('permissions-policy', 'camera=(), microphone=(), geolocation=()');
+  headers.set('content-security-policy', "default-src 'self'; connect-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'");
+  headers.delete('content-length');
+  return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
+}
+
 const AI_CORE_HOST = 'ai.izakhono.co.za';
 
 async function publicAiCoreHost(req: Request, env: any, url: URL): Promise<Response | null> {
@@ -307,6 +480,12 @@ async function publicAiCoreHost(req: Request, env: any, url: URL): Promise<Respo
 export default {
   async fetch(req: Request, env: any): Promise<Response> {
     const url = new URL(req.url);
+
+    const commandsApi = await commandApiRoute(req, env, url);
+    if (commandsApi) return commandsApi;
+
+    const commandsPage = await commandCentrePage(req, env, url);
+    if (commandsPage) return commandsPage;
 
     const publicAi = await publicAiCoreHost(req, env, url);
     if (publicAi) return publicAi;
