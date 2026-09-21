@@ -1,0 +1,8 @@
+{
+  "product": "IZAKHONO COMMANDS",
+  "version": "1.0.0",
+  "expected_route": "/commands",
+  "source_commit": "78ae90eb212da343dfba2c3c4dbcf5811303dcf7",
+  "deploy_trigger": "github-actions-cloudflare",
+  "readiness_claim": "technical deployment marker only; public reachability must be independently verified"
+}
