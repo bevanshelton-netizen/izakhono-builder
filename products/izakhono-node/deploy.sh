@@ -65,7 +65,7 @@ if [[ -n "$PUBLIC_BUILD_ENV_FILE" ]]; then
     VALUE="${LINE#*=}"
     [[ "$KEY" != "$LINE" ]] || { echo malformed-public-build-env >&2; exit 26; }
     case "$KEY" in
-      VITE_IZAKHONO_CORE_URL|VITE_IZAKHONO_PROJECT|VITE_IZAKHONO_PUBLIC_KEY|VITE_KORA_URL|VITE_ALLEGRO_RADIO_STREAM_URL) ;;
+      VITE_IZAKHONO_CORE_URL|VITE_IZAKHONO_PROJECT|VITE_IZAKHONO_PUBLIC_KEY|VITE_IZAKHONO_ANALYTICS_URL|VITE_KORA_URL|VITE_ALLEGRO_RADIO_STREAM_URL) ;;
       *) echo "public-build-key-not-approved:$KEY" >&2; exit 26 ;;
     esac
     if printf "%s" "$LINE" | LC_ALL=C grep -q "[[:cntrl:]]"; then
