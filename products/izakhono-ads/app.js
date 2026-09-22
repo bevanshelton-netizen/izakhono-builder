@@ -9,14 +9,16 @@
     creativeCount: 6,
     videoCount: 0,
     videoBlob: null,
-    storyboard: []
+    storyboard: [],
+    createPackage: null
   };
 
   const STORAGE = {
     campaigns:"izakhono_ads_campaigns_v1",
     leads:"izakhono_ads_leads_v1",
     creativeCount:"izakhono_ads_creatives_v1",
-    videoCount:"izakhono_ads_videos_v1"
+    videoCount:"izakhono_ads_videos_v1",
+    createPackage:"izakhono_ads_create_package_v1"
   };
 
   function read(key, fallback){
@@ -41,20 +43,11 @@
   function money(n){ return "R" + Math.round(Number(n || 0)).toLocaleString("en-ZA"); }
 
   function initState(){
-    state.campaigns = read(STORAGE.campaigns, [{
-      id:"faisready-launch",
-      name:"FAISReady National Launch",
-      product:"FAISReady",
-      goal:"Lead generation",
-      status:"Draft / Paused",
-      channels:["Facebook","Instagram","TikTok","YouTube"],
-      budget:500,
-      offer:"R399 launch package",
-      note:"South Africa's Regulatory Examination Preparation Platform — RE1 • RE3 • RE4 • RE5."
-    }]);
+    state.campaigns = read(STORAGE.campaigns, []);
     state.leads = read(STORAGE.leads, []);
-    state.creativeCount = read(STORAGE.creativeCount, 6);
+    state.creativeCount = read(STORAGE.creativeCount, 0);
     state.videoCount = read(STORAGE.videoCount, 0);
+    state.createPackage = read(STORAGE.createPackage, null);
   }
 
   function switchView(id){
@@ -89,9 +82,10 @@
       wrap.appendChild(el);
     });
     $("metricCampaigns").textContent = state.campaigns.length;
-    $$(".campaign-create").forEach(b=>b.addEventListener("click",()=>{
+    $(".campaign-create").forEach(b=>b.addEventListener("click",()=>{
+      if(!requireCreatePackage("Creative workflow")) return;
       switchView("creative");
-      toast("Campaign loaded into Creative Studio.");
+      toast("Verified IZAKHONO CREATE package loaded.");
     }));
     $$(".campaign-edit").forEach(b=>b.addEventListener("click",()=>{
       const c = state.campaigns.find(x=>x.id===b.dataset.id);
@@ -104,35 +98,66 @@
     }));
   }
 
+  function validCreatePackage(pkg){
+    return !!pkg && pkg.schema==="izakhono.marketing.package.v1" && pkg.source==="IZAKHONO CREATE" && !!pkg.product && !!pkg.campaign_name && !!pkg.creative;
+  }
+
+  function hasCreatePackage(){
+    return validCreatePackage(state.createPackage);
+  }
+
+  function requireCreatePackage(action){
+    if(hasCreatePackage()) return true;
+    toast((action||"This action")+" requires an IZAKHONO CREATE package.");
+    switchView("integrations");
+    return false;
+  }
+
+  function importCreatePackage(file){
+    const reader=new FileReader();
+    reader.onload=()=>{
+      try{
+        const pkg=JSON.parse(reader.result);
+        if(!validCreatePackage(pkg)) throw new Error("Invalid CREATE package");
+        state.createPackage=pkg;
+        save(STORAGE.createPackage,pkg);
+        const campaign={
+          id:(pkg.attribution&&pkg.attribution.campaign_id)||("create-"+Date.now()),
+          name:pkg.campaign_name,
+          product:pkg.product,
+          goal:"Distribution from IZAKHONO CREATE",
+          status:"CREATE verified / Paused",
+          channels:Array.isArray(pkg.channels)?pkg.channels:[],
+          budget:0,
+          offer:pkg.offer||"",
+          note:"Creative source verified as IZAKHONO CREATE. Spend and publishing remain separately gated."
+        };
+        state.campaigns=[campaign,...state.campaigns.filter(x=>x.id!==campaign.id)];
+        save(STORAGE.campaigns,state.campaigns);
+        $("creativeBrand").value=pkg.product||"IZAKHONO";
+        $("creativeOffer").value=pkg.offer||pkg.campaign_name||"";
+        $("creativePrice").value="";
+        renderCampaigns();
+        switchView("campaigns");
+        toast("IZAKHONO CREATE package verified and imported.");
+      }catch(_){
+        toast("Rejected: not a valid IZAKHONO CREATE campaign package.");
+      }
+    };
+    reader.readAsText(file);
+  }
+
   function newCampaign(){
-    const name = prompt("New campaign name","New IZAKHONO Campaign");
-    if(!name) return;
-    state.campaigns.unshift({
-      id:"cmp-"+Date.now(),
-      name:name.trim(),
-      product:name.trim(),
-      goal:"Lead generation",
-      status:"Draft / Paused",
-      channels:["Facebook","Instagram"],
-      budget:500,
-      offer:"",
-      note:"New owner-controlled campaign. Publishing remains paused."
-    });
-    save(STORAGE.campaigns,state.campaigns);
-    renderCampaigns();
-    switchView("campaigns");
-    toast("Campaign created in paused state.");
+    $("createPackageInput").click();
   }
 
   function duplicateCampaign(){
-    const base = state.campaigns[0];
-    state.campaigns.unshift({...base,id:"cmp-"+Date.now(),name:base.name+" — Copy",status:"Draft / Paused"});
-    save(STORAGE.campaigns,state.campaigns);
-    renderCampaigns();
-    toast("Campaign duplicated.");
+    toast("Duplicate or revise the campaign in IZAKHONO CREATE, then import the new package.");
+    switchView("integrations");
   }
 
   function runCopilot(){
+    if(!requireCreatePackage("Campaign copilot")) return;
     const promptText = $("copilotPrompt").value.trim();
     const output = $("copilotOutput");
     if(!promptText){ output.textContent="Describe the campaign first."; return; }
@@ -196,6 +221,7 @@ Generate 3–5 creative variants and one 15-second vertical video, then compare 
   }
 
   function generateCreative(){
+    if(!requireCreatePackage("Creative generation")) return;
     const d = creativeData();
     const variants = creativeVariants(d);
     $("creativeOutput").innerHTML = variants.map(v=>`
@@ -228,6 +254,7 @@ Generate 3–5 creative variants and one 15-second vertical video, then compare 
   }
 
   function drawImageAd(){
+    if(!requireCreatePackage("Image rendering")) return;
     const canvas=$("imageCanvas"),ctx=canvas.getContext("2d");
     const d=creativeData();
     const w=canvas.width,h=canvas.height;
@@ -261,6 +288,7 @@ Generate 3–5 creative variants and one 15-second vertical video, then compare 
   }
 
   function buildStoryboard(){
+    if(!requireCreatePackage("Video storyboard")) return [];
     const title=$("videoTitle").value.trim();
     const message=$("videoMessage").value.trim();
     const offer=$("videoOffer").value.trim();
@@ -327,6 +355,7 @@ Generate 3–5 creative variants and one 15-second vertical video, then compare 
   }
 
   async function renderVideo(){
+    if(!requireCreatePackage("Video rendering")) return;
     const canvas=$("videoCanvas");
     const status=$("renderStatus");
     const scenes=state.storyboard.length?state.storyboard:buildStoryboard();
@@ -462,6 +491,7 @@ Generate 3–5 creative variants and one 15-second vertical video, then compare 
   function bind(){
     bindNavigation();
     $("newCampaignBtn").addEventListener("click",newCampaign);
+    $("createPackageInput").addEventListener("change",e=>{const file=e.target.files[0];if(file) importCreatePackage(file);e.target.value="";});
     $("duplicateCampaign").addEventListener("click",duplicateCampaign);
     $("copilotRun").addEventListener("click",runCopilot);
     $("generateCreative").addEventListener("click",generateCreative);
@@ -484,8 +514,13 @@ Generate 3–5 creative variants and one 15-second vertical video, then compare 
     renderLeads();
     $("metricCreatives").textContent=state.creativeCount;
     $("metricVideos").textContent=state.videoCount;
-    generateCreative();
-    buildStoryboard();
+    if(hasCreatePackage()){
+      generateCreative();
+      buildStoryboard();
+    }else{
+      $("creativeOutput").innerHTML='<div class="output-card">Import a verified IZAKHONO CREATE campaign package to unlock the creative workflow.</div>';
+      $("storyboard").innerHTML='<div class="output-card">Video workflow locked until IZAKHONO CREATE supplies the campaign package.</div>';
+    }
     calculateBudget();
   }
 

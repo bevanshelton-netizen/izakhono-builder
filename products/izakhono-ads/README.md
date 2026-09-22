@@ -1,13 +1,18 @@
 # IZAKHONO ADS
 
-Owner-controlled AI advertising command centre.
+Owner-controlled advertising distribution, measurement and campaign-control centre downstream of IZAKHONO CREATE.
+
+## Mandatory creative-source rule
+
+IZAKHONO ADS does not create an independent portfolio campaign from scratch. A valid `izakhono.marketing.package.v1` file with `source = IZAKHONO CREATE` is required to unlock creative and video workflow. Campaign duplication/revision is sent back to CREATE.
 
 ## Alpha capabilities
 
 - Campaign dashboard and paused-by-default campaign workflow
-- AI campaign copilot using deterministic local templates
+- CREATE-package verification gate before campaign creative workflow
+- campaign copilot using deterministic local templates after CREATE intake
 - Multi-platform copy generation
-- Square image-ad renderer with PNG export
+- downstream image-ad renderer with PNG export after CREATE intake
 - Built-in animated video studio
 - 9:16, 1:1 and 16:9 video formats
 - Local WebM video rendering using Canvas + MediaRecorder

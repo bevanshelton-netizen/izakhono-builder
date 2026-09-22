@@ -20,7 +20,7 @@
       <nav id="nav">
         <button class="nav-btn active" data-view="dashboard">Dashboard</button>
         <button class="nav-btn" data-view="campaigns">Campaigns</button>
-        <button class="nav-btn" data-view="creative">Creative Studio</button>
+        <button class="nav-btn" data-view="creative">CREATE Intake</button>
         <button class="nav-btn" data-view="video">Video Studio</button>
         <button class="nav-btn" data-view="audiences">Audiences</button>
         <button class="nav-btn" data-view="budget">Budget Lab</button>
@@ -40,12 +40,12 @@
         <div>
           <p class="eyebrow">BUILT IN AFRICA FOR THE WORLD</p>
           <h1>IZAKHONO ADS</h1>
-          <p class="subline">Plan, create, render, approve, launch and optimise advertising from one owner-controlled command centre.</p>
+          <p class="subline">Receive IZAKHONO CREATE campaign packages, control distribution, launch through approved connectors and measure performance.</p>
         </div>
         <div class="top-actions">
           <span class="pill green">LOCAL-FIRST</span>
           <span class="pill gold">VIDEO INCLUDED</span>
-          <button id="newCampaignBtn" class="primary">+ New Campaign</button>
+          <input id="createPackageInput" type="file" accept="application/json" hidden><button id="newCampaignBtn" class="primary">+ Import CREATE Package</button>
         </div>
       </header>
 
@@ -56,7 +56,7 @@
             <h2>FAISReady Launch Campaign</h2>
             <p>South Africa's Regulatory Examination Preparation Platform — RE1 • RE3 • RE4 • RE5.</p>
             <div class="hero-actions">
-              <button class="primary" data-jump="creative">Create Ads</button>
+              <button class="primary" data-jump="creative">Open CREATE Intake</button>
               <button class="secondary" data-jump="video">Build Video</button>
             </div>
           </article>
@@ -109,7 +109,7 @@
       </section>
 
       <section id="creative" class="view">
-        <div class="section-head"><div><p class="eyebrow">AI CREATIVE ENGINE</p><h2>Creative Studio</h2></div></div>
+        <div class="section-head"><div><p class="eyebrow">MANDATORY CREATIVE SOURCE</p><h2>IZAKHONO CREATE Intake</h2><p>Creative generation is gated until a valid IZAKHONO CREATE campaign package is imported.</p></div></div>
         <div class="studio-grid">
           <article class="panel form-panel">
             <label>Brand / product<input id="creativeBrand" value="FAISReady"></label>
@@ -259,6 +259,7 @@
       <section id="integrations" class="view">
         <div class="section-head"><div><p class="eyebrow">CHANNEL CONNECTORS</p><h2>Integrations</h2></div></div>
         <div class="cards integration-cards">
+          <article class="panel"><h3>IZAKHONO CREATE</h3><p>Compulsory source of portfolio campaign briefs, copy, designs, brand control and approved marketing packages.</p><span class="pill green">REQUIRED CREATIVE SOURCE</span></article>
           <article class="panel"><h3>Meta Ads</h3><p>Facebook + Instagram campaign publishing and reporting.</p><span class="pill gold">NOT CONNECTED</span></article>
           <article class="panel"><h3>Google Ads</h3><p>Search, Display and YouTube campaign publishing and reporting.</p><span class="pill gold">NOT CONNECTED</span></article>
           <article class="panel"><h3>TikTok Ads</h3><p>Short-form video campaign publishing and reporting.</p><span class="pill gold">NOT CONNECTED</span></article>
