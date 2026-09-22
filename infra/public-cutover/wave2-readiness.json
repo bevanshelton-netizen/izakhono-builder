@@ -2,7 +2,7 @@
   "schema": "izakhono.public-cutover.wave2-readiness.v2",
   "wave": 2,
   "generated_date": "2026-09-22",
-  "status": "BLOCKED_WITH_QUALIFIED_EXTERNAL_EVIDENCE",
+  "status": "PARTIAL_PUBLIC_CONTROLLED_PILOT_LEGACYMART_BLOCKED",
   "policy": "owned-first-externally-reversible",
   "backend_resilience": {
     "provider": "Supabase",
@@ -23,25 +23,33 @@
       "profile": "products/izakhono-node/profiles/wave2/edubuild-ecd360.production.json",
       "owned_target": "NODE01 via IZAKHONO EDGE/TLS",
       "external_candidate": "https://edubuild-ecd360-staging.onrender.com",
-      "candidate_role": "verified-staging-emergency-bridge",
-      "external_status": "REACHABILITY_VERIFIED_STAGING_NOT_PRODUCTION",
+      "candidate_role": "current-public-controlled-pilot",
+      "external_status": "EXTERNAL_LIVE_VERIFIED_CONTROLLED_PILOT",
       "external_evidence": {
         "vantage": "github-hosted-runner",
         "root_status": 200,
         "health_path": "/health.json",
         "health_status": 200,
-        "health_service": "Edu-Build ECD360",
-        "health_phase": "8.1-hardened",
-        "health_environment": "staging-capable",
-        "probe_run_id": 35767105078
+        "go_live_path": "/go-live.json",
+        "route_audit_run_id": 35771385546,
+        "release_hardening_merge": "207f9c30213f22872558bf602a21a1ebdf9bd94a",
+        "status_manifest_merge": "6a298bf05211d56a186d84d39c0314f801882345",
+        "dedicated_backend": "tzjnhmrvqbisiegpgxcg",
+        "dedicated_backend_status": "ACTIVE_HEALTHY",
+        "security_ci": "PASS",
+        "alpha_gate": "PASS",
+        "commercial_gate": "readyForPaidTraffic=false",
+        "live_payments": false,
+        "real_child_data": false,
+        "real_payroll_finalisation": false
       },
       "verification_paths": [
         "/",
         "/health.json"
       ],
       "promotion_blockers": [
-        "External route is explicitly staging-capable and has not been classified as production.",
-        "Owned NODE01/EDGE public DNS/TLS acceptance is not yet proven."
+        "NODE01/EDGE public DNS/TLS acceptance is not yet proven for owned promotion.",
+        "Paid traffic, live payments, real child data and payroll finalisation remain separately gated."
       ],
       "cutover_allowed": false
     },
