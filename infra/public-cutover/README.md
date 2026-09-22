@@ -37,6 +37,8 @@ with the two hostnames. It verifies local service health and creates Caddy snipp
 
 The snippets are staged only. They are not copied into the live Caddy import directory automatically.
 
+Run `ACTIVATE-WAVE1-EDGE.ps1` first without `-Apply` for a dry-run health check. Only after the hostname/DNS plan has been reviewed should it be run with `-Apply`; that copies the staged snippets into the live Caddy sites directory, validates the Caddy configuration and reloads the owned EDGE.
+
 ## Phase C — DNS/TLS/public acceptance
 
 After the approved DNS records point to the owned EDGE and the staged Caddy routes have been reviewed/activated, run:
