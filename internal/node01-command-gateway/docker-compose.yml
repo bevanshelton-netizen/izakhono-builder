@@ -1,0 +1,16 @@
+services:
+  izakhono-commands:
+    build:
+      context: .
+      dockerfile: internal/node01-command-gateway/Dockerfile
+    container_name: izakhono-commands-node01
+    restart: unless-stopped
+    environment:
+      IZAKHONO_BIND_HOST: 0.0.0.0
+      IZAKHONO_COMMAND_PORT: 8091
+      IZAKHONO_LOCAL_COMMAND_ORIGIN: ${IZAKHONO_LOCAL_COMMAND_ORIGIN:-http://host.docker.internal:8787}
+      IZAKHONO_EXTERNAL_COMMAND_ORIGIN: ${IZAKHONO_EXTERNAL_COMMAND_ORIGIN:-https://yfawrenhudjomhnglfhq.supabase.co/functions/v1/izakhono-commands}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "127.0.0.1:8091:8091"
