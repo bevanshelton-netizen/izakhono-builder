@@ -61,3 +61,10 @@ Required flow:
 `Product -> IZAKHONO CREATE -> izakhono.marketing.package.v1 -> IZAKHONO ADS -> approved external channel -> product conversion surface`
 
 This rule applies automatically to current and future portfolio products. CREATE approval does not authorise spend; live advertising remains subject to channel credentials, legal/compliance readiness, tracking and owner approval.
+
+
+## Infrastructure directive inheritance — 22 September 2026
+
+The current central Builder policy requires `.izakhono.json` **version 3** for platforms that migrate to the new shared policy. Version 3 records the infrastructure circular's required inheritance fields and restricts deployment status to the four approved evidence-based labels.
+
+Existing platform repositories pinned to an older immutable Builder workflow are migrated deliberately; the central policy does not silently rewrite their trust boundary. No migrated platform may claim `OWNED LIVE VERIFIED` without the required owned-route and recovery evidence.
