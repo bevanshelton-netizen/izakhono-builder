@@ -12,12 +12,20 @@ TARGETS = [
         "base": "https://edubuild-ecd360-staging.onrender.com",
         "role": "reachable-staging-emergency-bridge",
         "paths": ["/", "/health.json"],
+        "expected_content_types": {
+            "/": None,
+            "/health.json": "application/json",
+        },
     },
     {
         "slug": "legacymart",
-        "base": "https://yfawrenhudjomhnglfhq.supabase.co/functions/v1/legacymart-makers",
-        "role": "external-resilience-public-storefront-no-payments",
-        "paths": ["/", "/health"],
+        "base": "https://bevanshelton-netizen.github.io/bevanshelton-netizen-legacymart",
+        "role": "github-pages-professional-fallback-pending-repository-enablement",
+        "paths": ["/", "/health.json"],
+        "expected_content_types": {
+            "/": "text/html",
+            "/health.json": "application/json",
+        },
     },
 ]
 
@@ -28,7 +36,7 @@ def probe(url):
         req = urllib.request.Request(
             url,
             headers={
-                "User-Agent": "IZAKHONO-Wave2-External-Probe/1.1",
+                "User-Agent": "IZAKHONO-Wave2-External-Probe/1.2",
                 "Accept": "*/*",
                 "Cache-Control": "no-cache",
             },
@@ -84,10 +92,14 @@ for target in TARGETS:
     for path in target["paths"]:
         result = probe(target["base"].rstrip("/") + path)
         result["path"] = path
-        item["paths"].append(result)
-        if not result.get("ok"):
+        expected = target.get("expected_content_types", {}).get(path)
+        actual = (result.get("content_type") or "").lower()
+        result["expected_content_type"] = expected
+        result["content_type_ok"] = True if not expected else actual.startswith(expected)
+        if not result.get("ok") or not result["content_type_ok"]:
             item["reachable"] = False
             all_ok = False
+        item["paths"].append(result)
     results.append(item)
 
 report = {
@@ -95,10 +107,10 @@ report = {
     "generated_at": datetime.now(timezone.utc).isoformat(),
     "vantage": "github-hosted-runner",
     "policy": "owned-first-externally-reversible",
-    "overall": "REACHABILITY_PASS_REQUIRES_CLASSIFICATION" if all_ok else "BLOCKED",
+    "overall": "REACHABILITY_AND_MIME_PASS_REQUIRES_CLASSIFICATION" if all_ok else "BLOCKED",
     "note": (
-        "Reachability is evidence only. ECD360 remains staging, LegacyMart payments remain disabled, "
-        "and neither result proves NODE01/EDGE readiness."
+        "Reachability and browser MIME are evidence only. ECD360 remains staging, "
+        "LegacyMart payments remain disabled, and neither result proves NODE01/EDGE readiness."
     ),
     "results": results,
 }
