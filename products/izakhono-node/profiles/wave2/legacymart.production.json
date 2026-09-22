@@ -1,0 +1,13 @@
+{
+  "source": "izakhono-code",
+  "repository": "bevanshelton-netizen-legacymart",
+  "app": "legacymart",
+  "ref": "70f1de418ee899300c00ffa3b11632c1ab76a843",
+  "environment": "production",
+  "mode": "single",
+  "container_port": 3000,
+  "health_path": "/health",
+  "data_path": "/app/data",
+  "dockerfile": "Dockerfile",
+  "env_file": "/etc/izakhono/apps/legacymart.env"
+}
