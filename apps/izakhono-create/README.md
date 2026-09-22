@@ -1,6 +1,8 @@
 # IZAKHONO CREATE
 
-Owner-controlled visual design studio for IZAKHONO AFRICA.
+Owner-controlled visual design and mandatory portfolio marketing source for IZAKHONO AFRICA.
+
+All portfolio advertising and marketing creative must originate here before handoff to IZAKHONO ADS.
 
 ## MVP
 - canvas editor with drag-to-move layers
@@ -13,6 +15,7 @@ Owner-controlled visual design studio for IZAKHONO AFRICA.
 - local browser save/restore
 - PNG export
 - open JSON project export/import
+- `izakhono.marketing.package.v1` export for controlled handoff to IZAKHONO ADS
 - dependency-free static build for NODE 01
 - portable to Cloudflare/Vercel as resilience routes
 
