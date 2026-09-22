@@ -1,0 +1,51 @@
+services:
+  create:
+    build:
+      context: ../../apps/izakhono-create
+    container_name: izakhono-create
+    restart: unless-stopped
+    networks:
+      - marketing
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1/healthz"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  ads:
+    build:
+      context: ../../products/izakhono-ads
+    container_name: izakhono-ads
+    restart: unless-stopped
+    networks:
+      - marketing
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1/healthz"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  gateway:
+    image: nginx:1.27-alpine
+    container_name: izakhono-marketing-gateway
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8100:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      create:
+        condition: service_healthy
+      ads:
+        condition: service_healthy
+    networks:
+      - marketing
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1/healthz"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+networks:
+  marketing:
+    name: izakhono_marketing
