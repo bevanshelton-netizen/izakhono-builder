@@ -19,22 +19,25 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install live-image and VM dependencies
+      - name: Install VM dependency
         run: |
           sudo apt-get update
-          sudo apt-get install -y             live-build debootstrap squashfs-tools xorriso isolinux syslinux-common             qemu-system-x86 qemu-utils
+          sudo apt-get install -y qemu-system-x86 qemu-utils
 
-      - name: Privacy and source gates
-        working-directory: products/izakhono-os
-        run: bash ./test-source.sh
-
-      - name: Build IZAKHONO OS ISO
-        working-directory: products/izakhono-os
-        run: sudo bash ./build.sh
+      - name: Build with Debian Trixie live-build
+        run: |
+          docker run --privileged --rm             -v "${GITHUB_WORKSPACE}:/workspace"             -w /workspace/products/izakhono-os             debian:trixie-slim             bash -lc '
+              set -euo pipefail
+              apt-get update
+              apt-get install -y                 live-build debootstrap squashfs-tools xorriso                 isolinux syslinux-common ca-certificates python3
+              bash ./test-source.sh
+              bash ./build.sh
+            '
 
       - name: Normalize artifact names
         working-directory: products/izakhono-os
         run: |
+          sudo chown -R "${USER}:${USER}" .
           cp live-image-amd64.hybrid.iso IZAKHONO-OS-alpha-amd64.iso
           sha256sum IZAKHONO-OS-alpha-amd64.iso > IZAKHONO-OS-alpha-amd64.iso.sha256
 
