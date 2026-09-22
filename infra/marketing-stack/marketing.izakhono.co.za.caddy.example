@@ -1,0 +1,10 @@
+# Activate this in infra/launch-stack/sites only after DNS points
+# marketing.izakhono.co.za to the owned public edge and local health passes.
+#
+# On the Windows/Docker Desktop owner host, the existing Caddy container can
+# reach the loopback-published marketing gateway through host.docker.internal.
+
+marketing.izakhono.co.za {
+  encode zstd gzip
+  reverse_proxy host.docker.internal:8100
+}
