@@ -38,6 +38,12 @@ External infrastructure is:
 
 Supabase may remain in use for data, authentication, storage or resilience where already approved. Its replacement or migration requires a separate, tested data plan; hosting migration alone does not authorize a database cutover.
 
+## Hybrid live operating mode
+
+When a verified external production route is carrying users while the owned route is still being proven, the platform operates in **HYBRID LIVE** mode. This is an operating mode, not an additional evidence label: the platform remains **EXTERNAL LIVE VERIFIED** until the owned public cutover gates pass.
+
+In HYBRID LIVE mode, verified external traffic, backend, data, auth, payment or resilience services remain available while NODE01/EDGE is prepared. An owned-route failure must fail closed or fail back without taking the verified external route offline. See `infra/public-cutover/HYBRID-LIVE-STANDARD.md`.
+
 ## Public cutover gates
 
 An owned deployment may be called **OWNED LIVE VERIFIED** only when all of the following pass:
