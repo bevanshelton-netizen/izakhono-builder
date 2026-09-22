@@ -50,3 +50,14 @@ No application may be switched to `live` merely because its UI is deployed. Live
 ## Deployment objective
 
 The deployment factory should consume the app registry, verify the payment mode, validate that browser code contains no merchant secrets, and block any release marked `live` if the required payment-readiness gates are incomplete.
+
+
+## Shared marketing standard — 22 September 2026
+
+All portfolio advertising and marketing creative must originate in **IZAKHONO CREATE**. IZAKHONO ADS is the downstream distribution, scheduling, connector, lead-attribution and measurement layer.
+
+Required flow:
+
+`Product -> IZAKHONO CREATE -> izakhono.marketing.package.v1 -> IZAKHONO ADS -> approved external channel -> product conversion surface`
+
+This rule applies automatically to current and future portfolio products. CREATE approval does not authorise spend; live advertising remains subject to channel credentials, legal/compliance readiness, tracking and owner approval.
