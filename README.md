@@ -43,7 +43,9 @@ The caller template pins the central policy to an **immutable reviewed commit SH
 
 Projects may also opt into reviewed project-specific Alpha rehearsal and Windows packaging using fixed script paths. The Owner interface does **not** accept arbitrary shell commands.
 
-See `docs/FAST-BUILD-V0.2.md` and `templates/izakhono.manifest.example.json`.
+Current policy adoption uses manifest v3, which also enforces the portfolio-wide owned-first, externally reversible infrastructure directive and approved evidence-based deployment status labels. Older immutable policy pins remain unchanged until explicitly migrated.
+
+See `docs/FAST-BUILD-V0.2.md`, `docs/INFRASTRUCTURE-DIRECTIVE-INHERITANCE.md` and `templates/izakhono.manifest.example.json`.
 
 ## Safety and readiness
 
