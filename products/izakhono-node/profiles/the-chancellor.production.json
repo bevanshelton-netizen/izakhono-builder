@@ -9,5 +9,5 @@
   "health_path": "/api/health",
   "data_path": "/app/data",
   "dockerfile": "Dockerfile",
-  "public_build_env_file": "/etc/izakhono/apps/the-chancellor.public-build.env"
+  "env_file": "/etc/izakhono/apps/the-chancellor.env"
 }
