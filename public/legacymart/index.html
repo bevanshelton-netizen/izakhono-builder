@@ -3,25 +3,31 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="theme-color" content="#fffaf0">
-<title>LegacyMart Makers — Buy. Sell. Build Legacy.</title>
-<meta name="description" content="LegacyMart Makers is an IZAKHONO-owned marketplace for independent makers, brands and creators.">
+<meta name="theme-color" content="#f5f1e9">
+<title>LegacyMart — Independent Brands. Original Work.</title>
+<meta name="description" content="LegacyMart is an African-born marketplace for independent brands, makers and creators.">
 <style>
-:root{--ink:#16130f;--muted:#6f665b;--paper:#fffaf0;--card:#fff;--line:#e8dfd0;--gold:#d79f32;--deep:#241a12;--green:#2e6a4f;--soft:#f4ead8;--r:24px}
-*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:linear-gradient(180deg,#fffdf8 0,#f7efe2 100%);color:var(--ink);font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif}
-a{color:inherit;text-decoration:none}button{font:inherit}.wrap{max-width:1280px;margin:auto;padding:0 22px}
-header{position:sticky;top:0;z-index:20;background:#fffaf0e8;backdrop-filter:blur(16px);border-bottom:1px solid #eadfce}
-.top{min-height:72px;display:flex;align-items:center;justify-content:space-between;gap:16px}.brand{display:flex;align-items:center;gap:12px}.mark{width:46px;height:46px;border-radius:15px;background:linear-gradient(145deg,#2a1c12,#6c4a20);display:grid;place-items:center;color:#ffd98d;font-weight:950;letter-spacing:-.05em}.brand b{font-size:18px}.brand small{display:block;color:var(--muted);font-size:10px;letter-spacing:.12em;text-transform:uppercase}.nav{display:flex;gap:8px;flex-wrap:wrap}.btn{border:1px solid var(--line);background:#fff;color:var(--ink);padding:11px 14px;border-radius:12px;font-weight:800;cursor:pointer}.btn.primary{background:var(--deep);color:#fff5df;border-color:var(--deep)}.btn:disabled{cursor:not-allowed;opacity:.55}
-.hero{display:grid;grid-template-columns:1.15fr .85fr;gap:36px;align-items:center;padding:72px 0 42px}.eyebrow{font-size:12px;font-weight:950;letter-spacing:.18em;text-transform:uppercase;color:var(--green)}h1{font-size:clamp(52px,8vw,104px);line-height:.9;letter-spacing:-.06em;margin:16px 0 22px}.lead{font-size:clamp(18px,2vw,24px);line-height:1.5;color:#5c534a;max-width:740px}.heroBtns{display:flex;gap:10px;flex-wrap:wrap;margin-top:26px}
-.collage{min-height:480px;position:relative;display:grid;place-items:center}.tile{position:absolute;border:1px solid #eadcc7;background:#fff;border-radius:22px;box-shadow:0 22px 60px #7e5b2b1c;display:grid;place-items:center;text-align:center;padding:18px}.tile .ico{font-size:48px}.tile b{display:block;margin-top:8px}.t1{width:46%;height:42%;left:5%;top:5%;transform:rotate(-5deg)}.t2{width:43%;height:38%;right:4%;top:16%;transform:rotate(5deg)}.t3{width:43%;height:37%;left:16%;bottom:3%;transform:rotate(4deg)}.t4{width:35%;height:31%;right:4%;bottom:5%;transform:rotate(-6deg)}
-.strip{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:10px 0 50px}.stat{background:#fff;border:1px solid var(--line);border-radius:18px;padding:18px}.stat b{font-size:24px;display:block}.stat span{color:var(--muted);font-size:12px}
-.section{padding:38px 0}.section h2{font-size:clamp(34px,5vw,58px);letter-spacing:-.045em;margin:0 0 8px}.sub{color:var(--muted);line-height:1.6;max-width:760px}.notice{margin-top:18px;background:#fff7dc;border:1px solid #edcf7e;border-radius:16px;padding:15px 17px;line-height:1.5;color:#5e4816}
-.toolbar{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin:24px 0 16px}.filters{display:flex;gap:8px;flex-wrap:wrap}.chip{border:1px solid var(--line);background:#fff;border-radius:999px;padding:8px 11px;font-size:12px;font-weight:850}.chip.on{background:var(--deep);color:#fff;border-color:var(--deep)}
-.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}.card{background:var(--card);border:1px solid var(--line);border-radius:22px;overflow:hidden;display:flex;flex-direction:column;min-height:420px}.visual{height:190px;background:radial-gradient(circle at 30% 20%,#fff7d7 0,transparent 35%),linear-gradient(145deg,#efe0c6,#d9c29e);display:grid;place-items:center;font-size:70px}.cardbody{padding:18px;display:flex;flex-direction:column;flex:1}.seller{font-size:10px;letter-spacing:.12em;text-transform:uppercase;font-weight:900;color:var(--green)}.card h3{font-size:22px;letter-spacing:-.025em;margin:8px 0}.desc{color:var(--muted);line-height:1.45;font-size:14px}.price{font-size:25px;font-weight:950;margin-top:auto;padding-top:16px}.cardActions{display:flex;gap:8px;margin-top:12px}.status{font-size:11px;font-weight:900;color:#7a5a11}.loading{grid-column:1/-1;padding:40px;text-align:center;background:#fff;border:1px dashed #cfbea4;border-radius:22px;color:var(--muted)}
-.pilot{display:grid;grid-template-columns:1fr 1fr;gap:18px}.panel{border-radius:24px;padding:26px;background:#fff;border:1px solid var(--line)}.panel.dark{background:var(--deep);color:#fff1d8;border-color:var(--deep)}.panel p{line-height:1.6}.panel.dark p{color:#dcccb6}
-footer{margin-top:55px;background:#21170f;color:#f8ead2;padding:34px 0}.foot{display:flex;justify-content:space-between;gap:24px;flex-wrap:wrap}.foot small{color:#bcae99;max-width:680px;line-height:1.6}
-@media(max-width:1000px){.hero{grid-template-columns:1fr}.collage{min-height:390px}.grid{grid-template-columns:repeat(2,1fr)}.strip{grid-template-columns:repeat(2,1fr)}}
-@media(max-width:620px){.nav .hideSmall{display:none}.hero{padding-top:48px}.collage{min-height:330px}.grid{grid-template-columns:1fr}.pilot{grid-template-columns:1fr}.strip{grid-template-columns:1fr 1fr}.tile .ico{font-size:38px}}
+:root{--ink:#11110f;--muted:#6b675f;--paper:#f5f1e9;--white:#fff;--line:#ded8ce;--black:#171714;--sand:#dfd3bf;--olive:#59604b;--gold:#ae8a4a;--r:18px}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--paper);color:var(--ink);font-family:Arial,Helvetica,sans-serif}
+a{color:inherit;text-decoration:none}button{font:inherit}.wrap{max-width:1380px;margin:auto;padding:0 28px}
+header{position:sticky;top:0;z-index:30;background:#f5f1e9ed;backdrop-filter:blur(16px);border-bottom:1px solid var(--line)}
+.top{min-height:76px;display:flex;align-items:center;justify-content:space-between;gap:24px}.brand{display:flex;align-items:center;gap:14px}.mark{width:42px;height:42px;border:1px solid #222;display:grid;place-items:center;font:700 18px Georgia,serif;letter-spacing:-.05em}.brand strong{font:700 20px Georgia,serif;letter-spacing:.02em}.brand small{display:block;margin-top:2px;color:var(--muted);font-size:9px;letter-spacing:.2em;text-transform:uppercase}
+nav{display:flex;align-items:center;gap:24px;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}.share{border:1px solid #111;background:#111;color:white;padding:11px 15px;cursor:pointer}
+.hero{display:grid;grid-template-columns:1.02fr .98fr;min-height:660px;border-bottom:1px solid var(--line)}
+.heroCopy{padding:84px 7vw 70px 0;display:flex;flex-direction:column;justify-content:center}.kicker{font-size:11px;letter-spacing:.22em;text-transform:uppercase;font-weight:800;color:var(--olive)}
+h1{font:500 clamp(60px,7vw,112px)/.88 Georgia,"Times New Roman",serif;letter-spacing:-.055em;margin:18px 0 28px}.lead{max-width:700px;color:#514e48;font-size:20px;line-height:1.55}.heroActions{display:flex;gap:10px;flex-wrap:wrap;margin-top:30px}.btn{display:inline-flex;align-items:center;justify-content:center;min-height:46px;padding:0 18px;border:1px solid #222;background:transparent;font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;cursor:pointer}.btn.dark{background:#161614;color:#fff}.btn:disabled{opacity:.48;cursor:not-allowed}
+.heroArt{position:relative;overflow:hidden;background:#d9cfbf;min-height:660px}.heroArt:before{content:"";position:absolute;inset:0;background:linear-gradient(135deg,#eee7dc00,#5c554b25),radial-gradient(circle at 72% 22%,#fff9 0 10%,transparent 34%)}
+.editorialCard{position:absolute;background:#f4eee4;border:1px solid #c9beae;box-shadow:0 25px 65px #322c2425;overflow:hidden}.ec1{left:8%;top:8%;width:52%;height:68%;transform:rotate(-3deg)}.ec2{right:4%;bottom:6%;width:49%;height:58%;transform:rotate(4deg)}.ecLabel{position:absolute;left:18px;bottom:16px;font-size:10px;font-weight:800;letter-spacing:.18em;text-transform:uppercase}.garment{width:100%;height:100%;display:grid;place-items:center}.garment svg{width:78%;height:78%}
+.heroStamp{position:absolute;right:7%;top:8%;width:116px;height:116px;border:1px solid #222;border-radius:50%;display:grid;place-items:center;text-align:center;font-size:10px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;transform:rotate(8deg);background:#f5f1e9cc}
+.qualities{display:grid;grid-template-columns:repeat(4,1fr);border-bottom:1px solid var(--line)}.quality{padding:24px 20px;border-right:1px solid var(--line)}.quality:last-child{border-right:0}.quality b{display:block;font:600 20px Georgia,serif;margin-bottom:5px}.quality span{color:var(--muted);font-size:12px;line-height:1.45}
+.section{padding:76px 0}.sectionHead{display:flex;justify-content:space-between;gap:30px;align-items:end;margin-bottom:30px}.section h2{font:500 clamp(42px,5vw,68px)/.95 Georgia,serif;letter-spacing:-.04em;margin:8px 0}.section p{color:var(--muted);line-height:1.65}.note{max-width:420px;font-size:12px;border-top:1px solid #9c958a;padding-top:12px}
+.toolbar{display:flex;justify-content:space-between;gap:20px;align-items:center;margin:0 0 20px}.filters{display:flex;gap:8px}.chip{border:1px solid #b9b2a8;background:transparent;padding:8px 13px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;cursor:pointer}.chip.on{background:#171714;color:white;border-color:#171714}.status{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}.product{background:#fff;border:1px solid var(--line);display:flex;flex-direction:column;min-height:520px}.productVisual{height:310px;background:linear-gradient(150deg,#eee7dc,#d6cbbb);display:grid;place-items:center;overflow:hidden}.productVisual svg{width:72%;height:72%;filter:drop-shadow(0 20px 18px #352b2030)}.productBody{padding:20px;display:flex;flex-direction:column;flex:1}.storeline{font-size:9px;font-weight:800;letter-spacing:.17em;text-transform:uppercase;color:var(--olive)}.product h3{font:600 23px/1.08 Georgia,serif;margin:9px 0}.desc{font-size:13px;line-height:1.55;color:var(--muted)}.price{font:600 23px Georgia,serif;margin-top:auto;padding-top:18px}.availability{font-size:10px;text-transform:uppercase;letter-spacing:.12em;color:#806c47;margin-top:5px}.productActions{display:flex;gap:8px;margin-top:16px}.productActions .btn{flex:1;min-height:42px;font-size:10px}
+.sellBand{background:#181815;color:#f4efe7;padding:62px 6vw;display:grid;grid-template-columns:1fr 1fr;gap:60px;align-items:center}.sellBand h2{font:500 clamp(42px,5vw,72px)/.95 Georgia,serif;margin:0}.sellBand p{color:#c8c1b7;font-size:17px;line-height:1.65}.sellBand .btn{border-color:#f5f1e9;color:#f5f1e9}
+footer{padding:38px 0 46px;border-top:1px solid var(--line)}.foot{display:flex;justify-content:space-between;gap:24px;flex-wrap:wrap}.foot b{font:600 18px Georgia,serif}.foot small{display:block;color:var(--muted);line-height:1.6;max-width:720px;margin-top:6px}
+.loading{grid-column:1/-1;padding:60px;text-align:center;background:#fff;border:1px solid var(--line);color:var(--muted)}
+@media(max-width:1050px){.hero{grid-template-columns:1fr}.heroCopy{padding-right:0}.heroArt{min-height:560px}.qualities{grid-template-columns:repeat(2,1fr)}.quality:nth-child(2){border-right:0}.quality:nth-child(-n+2){border-bottom:1px solid var(--line)}.grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:650px){.wrap{padding:0 18px}nav a{display:none}.hero{min-height:auto}.heroCopy{padding:56px 0 45px}.heroArt{min-height:440px}.heroStamp{width:92px;height:92px;font-size:8px}.qualities{grid-template-columns:1fr 1fr}.section{padding:56px 0}.sectionHead{display:block}.note{margin-top:18px}.toolbar{align-items:flex-start;flex-direction:column}.grid{grid-template-columns:1fr}.productVisual{height:360px}.sellBand{grid-template-columns:1fr;padding:48px 24px}.foot{display:block}}
 </style>
 </head>
 <body>
@@ -29,75 +35,77 @@ footer{margin-top:55px;background:#21170f;color:#f8ead2;padding:34px 0}.foot{dis
   <div class="wrap top">
     <a class="brand" href="/">
       <span class="mark">LM</span>
-      <span><b>LegacyMart Makers</b><small>IZAKHONO marketplace</small></span>
+      <span><strong>LegacyMart</strong><small>Independent marketplace</small></span>
     </a>
-    <nav class="nav">
-      <a class="btn hideSmall" href="#shop">Shop</a>
-      <a class="btn hideSmall" href="#sell">Sell</a>
-      <button class="btn primary" id="shareBtn">Share LegacyMart</button>
+    <nav>
+      <a href="#collection">Collection</a>
+      <a href="#sell">Sell with us</a>
+      <button class="share" id="shareBtn">Share</button>
     </nav>
   </div>
 </header>
 
-<main class="wrap">
-  <section class="hero">
-    <div>
-      <div class="eyebrow">African-born • Built for independent makers</div>
-      <h1>Buy. Sell.<br>Build legacy.</h1>
-      <p class="lead">A marketplace for handmade, creative, personalised and independent products — starting with our owner-operated BEVAN SHELTON™ reference shop.</p>
-      <div class="heroBtns">
-        <a class="btn primary" href="#shop">Explore the pilot shop</a>
-        <a class="btn" href="#sell">Sell on LegacyMart</a>
+<main>
+  <div class="wrap">
+    <section class="hero">
+      <div class="heroCopy">
+        <div class="kicker">African-born • Independent by design</div>
+        <h1>Original work deserves a proper marketplace.</h1>
+        <p class="lead">LegacyMart brings independent brands, makers and creators into one beautifully curated place—beginning with the official BEVAN SHELTON™ founding store.</p>
+        <div class="heroActions">
+          <a class="btn dark" href="#collection">Shop the collection</a>
+          <a class="btn" href="#sell">Sell on LegacyMart</a>
+        </div>
       </div>
-    </div>
-    <div class="collage" aria-label="Marketplace product collage">
-      <div class="tile t1"><div><span class="ico">🧥</span><b>Fashion</b></div></div>
-      <div class="tile t2"><div><span class="ico">🎨</span><b>Creative goods</b></div></div>
-      <div class="tile t3"><div><span class="ico">📚</span><b>Books & digital</b></div></div>
-      <div class="tile t4"><div><span class="ico">🧵</span><b>Made to order</b></div></div>
-    </div>
-  </section>
-
-  <section class="strip" aria-label="Platform facts">
-    <div class="stat"><b id="shopCount">1</b><span>active pilot shop</span></div>
-    <div class="stat"><b id="listingCount">4</b><span>published pilot listings</span></div>
-    <div class="stat"><b>RLS</b><span>public catalogue data protected</span></div>
-    <div class="stat"><b>Hybrid</b><span>external bridge + owned target</span></div>
-  </section>
-
-  <section class="section" id="shop">
-    <div class="eyebrow">Live catalogue</div>
-    <h2>BEVAN SHELTON™ reference shop</h2>
-    <p class="sub">The first seller is owner-operated so we can prove listings, fulfilment, fees and customer experience before opening the marketplace to wider sellers.</p>
-    <div class="notice"><b>Pilot checkout boundary:</b> the catalogue is public, but checkout remains disabled on these trial listings until the payment and settlement gate is verified end to end.</div>
-    <div class="toolbar">
-      <div class="filters" id="filters"><button class="chip on" data-category="all">All</button><button class="chip" data-category="Fashion & Accessories">Fashion</button></div>
-      <span class="status" id="dataStatus">Loading verified catalogue…</span>
-    </div>
-    <div class="grid" id="catalogue"><div class="loading">Loading LegacyMart catalogue…</div></div>
-  </section>
-
-  <section class="section" id="sell">
-    <div class="pilot">
-      <div class="panel dark">
-        <div class="eyebrow" style="color:#f0c968">For makers & sellers</div>
-        <h2 style="font-size:40px;margin:10px 0">Your shop should feel like yours.</h2>
-        <p>LegacyMart is being built for independent creators, clothing labels, authors, artisans, educators and small businesses — with transparent marketplace rules and no automatic third-party payouts before verification.</p>
+      <div class="heroArt" aria-label="BEVAN SHELTON fashion collection">
+        <div class="editorialCard ec1">
+          <div class="garment">
+            <svg viewBox="0 0 300 340" aria-hidden="true"><path d="M104 48 72 72 28 143l42 25 22-33v155h116V135l22 33 42-25-44-71-32-24-25 24h-42z" fill="#1c1c1b"/><path d="M126 54c2 22 46 22 48 0" fill="none" stroke="#cab990" stroke-width="7"/><path d="M111 183h78" stroke="#cab990" stroke-width="4"/><text x="150" y="205" text-anchor="middle" fill="#cab990" font-size="15" font-family="Georgia">BEVAN SHELTON</text></svg>
+          </div><div class="ecLabel">Signature Hoodie</div>
+        </div>
+        <div class="editorialCard ec2">
+          <div class="garment">
+            <svg viewBox="0 0 300 340" aria-hidden="true"><path d="M96 55 70 72 34 129l36 22 22-31v169h116V120l22 31 36-22-36-57-26-17-32 22h-44z" fill="#eee8dc"/><path d="M117 58c1 20 65 20 66 0" fill="none" stroke="#181817" stroke-width="6"/><path d="M105 174h90" stroke="#181817" stroke-width="3"/><text x="150" y="197" text-anchor="middle" fill="#181817" font-size="14" font-family="Georgia">BEVAN SHELTON</text></svg>
+          </div><div class="ecLabel">Essential Tee</div>
+        </div>
+        <div class="heroStamp">Founding<br>Store<br>South Africa</div>
       </div>
-      <div class="panel">
-        <div class="eyebrow">Reference pilot</div>
-        <h2 style="font-size:40px;margin:10px 0">Prove it with our own brand first.</h2>
-        <p>The BEVAN SHELTON™ store is the controlled reference shop. Once ordering, fulfilment, refunds, settlement and seller controls are proven, the same infrastructure can be opened to external sellers.</p>
-        <a class="btn primary" href="#shop">View pilot listings</a>
+    </section>
+
+    <section class="qualities">
+      <div class="quality"><b>Independent brands</b><span>Designed to give original businesses a credible place to trade.</span></div>
+      <div class="quality"><b>Curated discovery</b><span>A cleaner marketplace experience built around quality, not clutter.</span></div>
+      <div class="quality"><b>Made-to-order friendly</b><span>Built for creators who produce in thoughtful runs and custom sizes.</span></div>
+      <div class="quality"><b>Built from Africa</b><span>Local roots, professional standards and global ambition.</span></div>
+    </section>
+
+    <section class="section" id="collection">
+      <div class="sectionHead">
+        <div>
+          <div class="kicker">Founding collection</div>
+          <h2>BEVAN SHELTON™</h2>
+          <p>Premium branded essentials from LegacyMart's first official store.</p>
+        </div>
+        <div class="note">Secure online ordering is being activated after final payment verification. Browse and share the collection now.</div>
       </div>
-    </div>
+      <div class="toolbar">
+        <div class="filters"><button class="chip on" data-category="all">All</button><button class="chip" data-category="Fashion & Accessories">Fashion</button></div>
+        <span class="status" id="dataStatus">Connecting catalogue</span>
+      </div>
+      <div class="grid" id="catalogue"><div class="loading">Loading collection…</div></div>
+    </section>
+  </div>
+
+  <section class="sellBand" id="sell">
+    <div><div class="kicker" style="color:#cdb98f">Sell on LegacyMart</div><h2>Your brand should look established from day one.</h2></div>
+    <div><p>LegacyMart is being built for fashion labels, artisans, authors, designers, educators and independent businesses that want a polished storefront and a marketplace that respects their identity.</p><a class="btn" href="#collection">See the founding store</a></div>
   </section>
 </main>
 
 <footer>
   <div class="wrap foot">
-    <div><b>LegacyMart Makers</b><br><small>Operated by IZAKHONO AFRICA (PTY) LTD.</small></div>
-    <small>This external resilience storefront reads only active shops and published listings through Supabase row-level security. IZAKHONO-owned NODE01/EDGE remains the target technical home. Checkout is not represented as live until separately verified.</small>
+    <div><b>LegacyMart</b><small>Operated by IZAKHONO AFRICA (PTY) LTD.</small></div>
+    <small>Independent marketplace for original brands, makers and creators. Product availability and ordering status are shown on each listing. © 2026 IZAKHONO AFRICA.</small>
   </div>
 </footer>
 
@@ -110,56 +118,40 @@ const fallbackListings=[
  {slug:'branded-golfer',title:'BEVAN SHELTON™ Branded Golfer',description:'Smart branded golfer for corporate, club and lifestyle wear.',category:'Fashion & Accessories',price_cents:25000,currency:'ZAR',attributes:{pricing_label:'From',checkout_enabled:false}},
  {slug:'branded-tee',title:'BEVAN SHELTON™ Branded Tee',description:'BEVAN SHELTON™ branded T-shirt for custom, team and lifestyle orders.',category:'Fashion & Accessories',price_cents:19000,currency:'ZAR',attributes:{pricing_label:'From',checkout_enabled:false}}
 ];
-let listings=fallbackListings;
-let category='all';
-const icons={hoodie:'🧥',tracksuit:'👟',golfer:'👕',tee:'👕'};
+let listings=fallbackListings,category='all';
 
-function money(cents,currency='ZAR'){
-  try{return new Intl.NumberFormat('en-ZA',{style:'currency',currency,minimumFractionDigits:0}).format((Number(cents)||0)/100)}
-  catch{return 'R'+((Number(cents)||0)/100).toFixed(0)}
-}
-function iconFor(slug=''){for(const k of Object.keys(icons))if(slug.includes(k))return icons[k];return '🛍️'}
 function esc(v=''){return String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function money(cents,currency='ZAR'){try{return new Intl.NumberFormat('en-ZA',{style:'currency',currency,minimumFractionDigits:0}).format((Number(cents)||0)/100)}catch{return 'R'+((Number(cents)||0)/100).toFixed(0)}}
+function art(slug=''){
+ const dark=slug.includes('hoodie')||slug.includes('tracksuit'),fill=dark?'#1b1b1a':'#eee8dc',accent=dark?'#cbb88b':'#181817';
+ if(slug.includes('tracksuit')) return '<svg viewBox="0 0 300 340" aria-hidden="true"><path d="M88 45 57 68 31 135l42 16 23-44v88h108v-88l23 44 42-16-26-67-31-23-29 22h-66z" fill="'+fill+'"/><path d="M113 51c1 21 73 21 74 0" fill="none" stroke="'+accent+'" stroke-width="6"/><path d="M103 207h41l-16 112H78zM156 207h41l25 112h-50z" fill="'+fill+'"/><path d="M150 207v108" stroke="'+accent+'" stroke-width="4"/></svg>';
+ if(slug.includes('hoodie')) return '<svg viewBox="0 0 300 340" aria-hidden="true"><path d="M104 54 74 76 31 145l40 24 23-35v154h112V134l23 35 40-24-43-69-30-22-23 22h-46z" fill="'+fill+'"/><path d="M123 59c4 24 50 24 54 0" fill="none" stroke="'+accent+'" stroke-width="7"/><path d="M119 85c-23 16-31 44-22 67M181 85c23 16 31 44 22 67" fill="none" stroke="'+accent+'" stroke-width="4"/><path d="M112 190h76" stroke="'+accent+'" stroke-width="3"/></svg>';
+ return '<svg viewBox="0 0 300 340" aria-hidden="true"><path d="M95 58 67 76 31 137l38 22 24-36v166h114V123l24 36 38-22-36-61-28-18-31 22h-48z" fill="'+fill+'"/><path d="M116 61c2 22 66 22 68 0" fill="none" stroke="'+accent+'" stroke-width="6"/><path d="M109 174h82" stroke="'+accent+'" stroke-width="3"/></svg>';
+}
 function render(){
-  const visible=listings.filter(x=>category==='all'||x.category===category);
-  const root=document.querySelector('#catalogue');
-  root.innerHTML=visible.map(x=>{
-    const a=x.attributes||{};
-    const enabled=a.checkout_enabled===true;
-    const label=a.pricing_label?esc(a.pricing_label)+' ':'';
-    return '<article class="card"><div class="visual">'+iconFor(x.slug)+'</div><div class="cardbody"><span class="seller">BEVAN SHELTON™ • pilot seller</span><h3>'+esc(x.title)+'</h3><p class="desc">'+esc(x.description||'')+'</p><div class="price">'+label+money(x.price_cents,x.currency)+'</div><div class="cardActions"><button class="btn primary" '+(enabled?'':'disabled')+'>'+(enabled?'Buy now':'Checkout staged')+'</button><button class="btn" onclick="shareItem(\''+esc(x.title).replace(/&#39;/g,'')+'\')">Share</button></div></div></article>';
-  }).join('') || '<div class="loading">No published listings in this category.</div>';
+ const visible=listings.filter(x=>category==='all'||x.category===category);
+ document.querySelector('#catalogue').innerHTML=visible.map(x=>{
+  const a=x.attributes||{},enabled=a.checkout_enabled===true,label=a.pricing_label?esc(a.pricing_label)+' ':'';
+  return '<article class="product"><div class="productVisual">'+art(x.slug)+'</div><div class="productBody"><span class="storeline">Official BEVAN SHELTON™ Store</span><h3>'+esc(x.title)+'</h3><p class="desc">'+esc(x.description||'')+'</p><div class="price">'+label+money(x.price_cents,x.currency)+'</div><div class="availability">'+(enabled?'Available online':'Online ordering opening shortly')+'</div><div class="productActions"><button class="btn dark" '+(enabled?'':'disabled')+'>'+(enabled?'Buy now':'Ordering soon')+'</button><button class="btn" onclick="shareItem(\''+esc(x.title).replace(/&#39;/g,'')+'\')">Share</button></div></div></article>';
+ }).join('')||'<div class="loading">No products are currently published in this category.</div>';
 }
 async function loadCatalogue(){
-  const headers={apikey:SB_KEY,accept:'application/json'};
-  try{
-    const [shopsRes,listingsRes]=await Promise.all([
-      fetch(SB_URL+'/rest/v1/lm_shops?select=id,slug,name,status&status=eq.active',{headers}),
-      fetch(SB_URL+'/rest/v1/lm_listings?select=id,shop_id,slug,title,description,category,product_type,price_cents,currency,image_urls,attributes,status,published_at&status=eq.published&order=published_at.desc',{headers})
-    ]);
-    if(!shopsRes.ok||!listingsRes.ok)throw new Error('catalogue API unavailable');
-    const shops=await shopsRes.json(), live=await listingsRes.json();
-    const active=new Set(shops.map(s=>s.id));
-    const clean=live.filter(x=>active.has(x.shop_id));
-    if(clean.length) listings=clean;
-    document.querySelector('#shopCount').textContent=String(shops.length);
-    document.querySelector('#listingCount').textContent=String(clean.length||listings.length);
-    document.querySelector('#dataStatus').textContent='Verified live catalogue';
-  }catch(e){
-    document.querySelector('#dataStatus').textContent='Resilience catalogue shown';
-  }
-  render();
+ const headers={apikey:SB_KEY,accept:'application/json'};
+ try{
+  const [shopsRes,listingsRes]=await Promise.all([
+   fetch(SB_URL+'/rest/v1/lm_shops?select=id,slug,name,status&status=eq.active',{headers}),
+   fetch(SB_URL+'/rest/v1/lm_listings?select=id,shop_id,slug,title,description,category,product_type,price_cents,currency,image_urls,attributes,status,published_at&status=eq.published&order=published_at.desc',{headers})
+  ]);
+  if(!shopsRes.ok||!listingsRes.ok)throw new Error('catalogue unavailable');
+  const shops=await shopsRes.json(),live=await listingsRes.json(),active=new Set(shops.map(s=>s.id)),clean=live.filter(x=>active.has(x.shop_id));
+  if(clean.length)listings=clean;
+  document.querySelector('#dataStatus').textContent='Collection current';
+ }catch{document.querySelector('#dataStatus').textContent='Collection available'}
+ render();
 }
-document.querySelectorAll('[data-category]').forEach(btn=>btn.addEventListener('click',()=>{
-  document.querySelectorAll('[data-category]').forEach(b=>b.classList.remove('on'));
-  btn.classList.add('on'); category=btn.dataset.category||'all'; render();
-}));
-async function shareItem(title){
-  const data={title:'LegacyMart Makers',text:title+' on LegacyMart Makers',url:location.href};
-  if(navigator.share){try{await navigator.share(data);return}catch{}}
-  try{await navigator.clipboard.writeText(location.href);alert('LegacyMart link copied.')}catch{}
-}
-document.querySelector('#shareBtn').addEventListener('click',()=>shareItem('LegacyMart Makers'));
+document.querySelectorAll('[data-category]').forEach(btn=>btn.addEventListener('click',()=>{document.querySelectorAll('[data-category]').forEach(b=>b.classList.remove('on'));btn.classList.add('on');category=btn.dataset.category||'all';render()}));
+async function shareItem(title){const data={title:'LegacyMart',text:title+' on LegacyMart',url:location.href};if(navigator.share){try{await navigator.share(data);return}catch{}}try{await navigator.clipboard.writeText(location.href);alert('LegacyMart link copied.')}catch{}}
+document.querySelector('#shareBtn').addEventListener('click',()=>shareItem('LegacyMart'));
 loadCatalogue();
 </script>
 </body>
