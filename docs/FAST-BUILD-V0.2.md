@@ -52,3 +52,12 @@ CI Alpha validation does not prove public DNS/TLS, persistent production hosting
 ## Free-first principle
 
 The workflow itself is provider-neutral for Docker builds and does not require Supabase, Vercel, Netlify or another application platform. GitHub-hosted runner use is subject to the repository/account's GitHub Actions allowance; real public hosting still requires compute somewhere.
+
+
+## Infrastructure directive inheritance
+
+The current central policy requires **IZAKHONO manifest v3**. In addition to the Docker/health contract, v3 records the platform operator/trading name, authoritative source, owned target, verified public route, reversible external fallback, dependencies and evidence-based status label.
+
+This implements the 22 September 2026 portfolio infrastructure circular without silently changing older applications: existing caller workflows remain pinned to their earlier immutable policy SHA until they are explicitly migrated.
+
+See `docs/INFRASTRUCTURE-DIRECTIVE-INHERITANCE.md`.
