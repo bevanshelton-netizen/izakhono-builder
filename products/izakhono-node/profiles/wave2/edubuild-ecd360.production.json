@@ -1,0 +1,13 @@
+{
+  "source": "izakhono-code",
+  "repository": "edubuild-ecd360",
+  "app": "edubuild-ecd360",
+  "ref": "b99401b3610d35a98907e0cb89e8f469a1c88a77",
+  "environment": "production",
+  "mode": "single",
+  "container_port": 8080,
+  "health_path": "/healthz",
+  "data_path": "/app/data",
+  "dockerfile": "Dockerfile",
+  "public_build_env_file": "/etc/izakhono/apps/edubuild-ecd360.public-build.env"
+}
