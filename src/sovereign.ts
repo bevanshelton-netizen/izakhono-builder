@@ -403,6 +403,49 @@ async function commandCentrePage(req: Request, env: any, url: URL): Promise<Resp
   return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
 }
 
+
+const LEGACYMART_HOST = 'legacymart.izakhono.co.za';
+
+async function publicLegacyMartHost(req: Request, env: any, url: URL): Promise<Response | null> {
+  if (url.hostname !== LEGACYMART_HOST) return null;
+
+  if (req.method !== 'GET' && req.method !== 'HEAD') {
+    return new Response('Method not allowed', {
+      status: 405,
+      headers: { allow: 'GET, HEAD', 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'no-store' },
+    });
+  }
+
+  const cleanPath = url.pathname.length > 1 ? url.pathname.replace(/\/+$/, '') : url.pathname;
+  const assetUrl = new URL(req.url);
+  if (cleanPath === '/' || cleanPath === '/index.html') {
+    assetUrl.pathname = '/legacymart/index.html';
+  } else if (cleanPath === '/health' || cleanPath === '/health.json') {
+    assetUrl.pathname = '/legacymart/health.json';
+  } else {
+    return Response.redirect('https://' + LEGACYMART_HOST + '/', 302);
+  }
+  assetUrl.search = '';
+
+  const response = await env.ASSETS.fetch(new Request(assetUrl.toString(), req));
+  const headers = new Headers(response.headers);
+  headers.set('x-content-type-options', 'nosniff');
+  headers.set('referrer-policy', 'strict-origin-when-cross-origin');
+  headers.set('permissions-policy', 'camera=(), microphone=(), geolocation=()');
+  headers.set('x-izakhono-route', 'external-resilience-cloudflare');
+  if ((response.headers.get('content-type') || '').includes('text/html')) {
+    headers.set(
+      'content-security-policy',
+      "default-src 'self'; connect-src https://yfawrenhudjomhnglfhq.supabase.co; img-src 'self' data: https:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; base-uri 'self'; frame-ancestors 'none'; form-action 'none'"
+    );
+    headers.set('cache-control', 'public, max-age=0, must-revalidate');
+  } else {
+    headers.set('cache-control', 'no-store');
+  }
+  headers.delete('content-length');
+  return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
+}
+
 const AI_CORE_HOST = 'ai.izakhono.co.za';
 
 async function publicAiCoreHost(req: Request, env: any, url: URL): Promise<Response | null> {
@@ -486,6 +529,9 @@ export default {
 
     const commandsPage = await commandCentrePage(req, env, url);
     if (commandsPage) return commandsPage;
+
+    const legacyMart = await publicLegacyMartHost(req, env, url);
+    if (legacyMart) return legacyMart;
 
     const publicAi = await publicAiCoreHost(req, env, url);
     if (publicAi) return publicAi;

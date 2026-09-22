@@ -23,6 +23,10 @@
     {
       "pattern": "ai.izakhono.co.za",
       "custom_domain": true
+    },
+    {
+      "pattern": "legacymart.izakhono.co.za",
+      "custom_domain": true
     }
   ]
 }

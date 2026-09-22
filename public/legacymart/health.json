@@ -1,0 +1,8 @@
+{
+  "service": "LegacyMart Makers external resilience storefront",
+  "status": "ok",
+  "environment": "external-bridge",
+  "payments": "not-enabled",
+  "data_source": "Supabase WebStart public RLS catalogue",
+  "owned_target": "NODE01 via IZAKHONO EDGE/TLS"
+}
