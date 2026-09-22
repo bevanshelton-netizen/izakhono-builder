@@ -73,7 +73,7 @@ const tpl=[
 {name:'Business Promo',bg:'#E9FFFB',fg:'#141B34',a:'#14B8A6',k:'BUSINESS GROWTH',h:'TURN ATTENTION INTO ACTION',b:'Clear value. Clear next step. Stronger brand recall.'},
 {name:'Event Poster',bg:'#0A1028',fg:'#fff',a:'#8A70FF',k:'LIVE / THIS WEEK',h:'OWN THE MOMENT',b:'Event creative with energy and depth.'}
 ];
-let s={w:1080,h:1080,bg:'#fff,e:[],sel:null,z:1},hist=[],fut=[],drag=null,timer;
+let s={w:1080,h:1080,bg:'#fff',e:[],sel:null,z:1},hist=[],fut=[],drag=null,timer;
 const uid=()=>Math.random().toString(36).slice(2)+Date.now().toString(36),clone=()=>JSON.parse(JSON.stringify({...s,sel:null})),sel=()=>s.e.find(e=>e.id===s.sel);
 function toast(m){const t=$('toast');t.textContent=m;t.classList.add('on');clearTimeout(timer);timer=setTimeout(()=>t.classList.remove('on'),1500)}
 function push(){hist.push(clone());if(hist.length>50)hist.shift();fut=[];buttons()}
