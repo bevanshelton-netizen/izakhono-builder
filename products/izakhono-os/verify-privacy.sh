@@ -29,11 +29,13 @@ else
   echo "PASS: no known analytics marker detected in IZAKHONO OS config"
 fi
 
-if grep -R -E -i -n 'telemetry.*true|analytics.*true' "${ROOT}/config"; then
-  echo "FAIL: telemetry/analytics appears enabled"
+# Match explicit enablement keys only. Do not treat safety controls such as
+# "DisableTelemetry": true as telemetry being enabled.
+if grep -R -E -i -n   'toolkit\.telemetry\.enabled[^[:alnum:]]*(=|:|",)[[:space:]]*true|datareporting\.healthreport\.uploadEnabled[^[:alnum:]]*(=|:|",)[[:space:]]*true|analytics[._-]?enabled[^[:alnum:]]*(=|:|",)[[:space:]]*true'   "${ROOT}/config"; then
+  echo "FAIL: an explicit telemetry/analytics enable flag was detected"
   fail=1
 else
-  echo "PASS: no enabled telemetry/analytics flag detected"
+  echo "PASS: no explicit telemetry/analytics enable flag detected"
 fi
 
 if [[ "${fail}" -ne 0 ]]; then
