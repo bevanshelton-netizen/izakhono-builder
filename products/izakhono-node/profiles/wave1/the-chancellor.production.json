@@ -1,0 +1,13 @@
+{
+  "source": "izakhono-code",
+  "repository": "the-chancellor",
+  "app": "the-chancellor",
+  "ref": "f9d058c5e8657fb31b4c907f6c0d4f919b224c55",
+  "environment": "production",
+  "mode": "single",
+  "container_port": 3000,
+  "health_path": "/api/health",
+  "data_path": "/app/data",
+  "dockerfile": "Dockerfile",
+  "env_file": "/etc/izakhono/apps/the-chancellor.env"
+}
