@@ -27,6 +27,7 @@ lb config \
   --binary-images iso-hybrid \
   --debian-installer live \
   --archive-areas "main contrib non-free-firmware" \
+  --security false \
   --apt-recommends true \
   --bootappend-live "boot=live components quiet splash username=izakhono hostname=izakhono-os"
 
