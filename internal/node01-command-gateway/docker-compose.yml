@@ -1,7 +1,7 @@
 services:
   izakhono-commands:
     build:
-      context: .
+      context: ../..
       dockerfile: internal/node01-command-gateway/Dockerfile
     container_name: izakhono-commands-node01
     restart: unless-stopped
@@ -14,3 +14,13 @@ services:
       - "host.docker.internal:host-gateway"
     ports:
       - "127.0.0.1:8091:8091"
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:8091/healthz').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
