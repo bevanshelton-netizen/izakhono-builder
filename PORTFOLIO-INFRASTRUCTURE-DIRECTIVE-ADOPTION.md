@@ -26,6 +26,8 @@ No adoption entry may be interpreted as **OWNED LIVE VERIFIED** unless the circu
 
 ### Wave 1 — Allegro-Vibez + The Chancellor
 
+- Operating mode: **HYBRID LIVE** — verified external production continues serving users while NODE01/EDGE is the owned promotion target.
+- Hybrid manifest: `infra/public-cutover/wave1-hybrid-live.json`.
 - Cutover package merged in Builder commit `ca55a75463be78aa770afdf9881f5d93f3f16e3e`.
 - Immutable NODE01 deployment refs are prepared.
 - External production fallbacks remain preserved.
