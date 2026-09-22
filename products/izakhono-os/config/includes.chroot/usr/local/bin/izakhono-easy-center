@@ -1,17 +1,150 @@
 #!/usr/bin/env python3
+import locale
 import shutil
 import subprocess
 import sys
+
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont
 from PyQt6.QtWidgets import QApplication, QGridLayout, QLabel, QMessageBox, QPushButton, QVBoxLayout, QWidget
 
+TRANSLATIONS = {
+    "en": {
+        "title": "What would you like to do?",
+        "subtitle": "Everything important is one tap away. No tracking.",
+        "internet": "🌍  Internet",
+        "files": "📁  My Files",
+        "apps": "🧩  Apps",
+        "settings": "⚙️  Settings",
+        "updates": "🛡️  Updates",
+        "help": "✨  Help Me",
+        "privacy": "🔒  Privacy",
+        "footer": "Advanced tools remain available from the desktop menu. IZAKHONO OS never hides the full computer from you."
+    },
+    "es": {
+        "title": "¿Qué te gustaría hacer?",
+        "subtitle": "Todo lo importante está a un toque. Sin rastreo.",
+        "internet": "🌍  Internet",
+        "files": "📁  Mis archivos",
+        "apps": "🧩  Aplicaciones",
+        "settings": "⚙️  Configuración",
+        "updates": "🛡️  Actualizaciones",
+        "help": "✨  Ayúdame",
+        "privacy": "🔒  Privacidad",
+        "footer": "Las herramientas avanzadas siguen disponibles en el menú del escritorio."
+    },
+    "fr": {
+        "title": "Que voulez-vous faire ?",
+        "subtitle": "L’essentiel est à un clic. Aucun suivi.",
+        "internet": "🌍  Internet",
+        "files": "📁  Mes fichiers",
+        "apps": "🧩  Applications",
+        "settings": "⚙️  Paramètres",
+        "updates": "🛡️  Mises à jour",
+        "help": "✨  Aidez-moi",
+        "privacy": "🔒  Confidentialité",
+        "footer": "Les outils avancés restent disponibles dans le menu du bureau."
+    },
+    "pt": {
+        "title": "O que você gostaria de fazer?",
+        "subtitle": "Tudo o que importa está a um toque. Sem rastreamento.",
+        "internet": "🌍  Internet",
+        "files": "📁  Meus arquivos",
+        "apps": "🧩  Aplicativos",
+        "settings": "⚙️  Configurações",
+        "updates": "🛡️  Atualizações",
+        "help": "✨  Ajude-me",
+        "privacy": "🔒  Privacidade",
+        "footer": "As ferramentas avançadas continuam disponíveis no menu da área de trabalho."
+    },
+    "ar": {
+        "title": "ماذا تريد أن تفعل؟",
+        "subtitle": "كل ما تحتاجه على بُعد لمسة واحدة. بلا تتبع.",
+        "internet": "🌍  الإنترنت",
+        "files": "📁  ملفاتي",
+        "apps": "🧩  التطبيقات",
+        "settings": "⚙️  الإعدادات",
+        "updates": "🛡️  التحديثات",
+        "help": "✨  ساعدني",
+        "privacy": "🔒  الخصوصية",
+        "footer": "تظل الأدوات المتقدمة متاحة من قائمة سطح المكتب."
+    },
+    "hi": {
+        "title": "आप क्या करना चाहेंगे?",
+        "subtitle": "हर जरूरी चीज़ एक टैप दूर। कोई ट्रैकिंग नहीं।",
+        "internet": "🌍  इंटरनेट",
+        "files": "📁  मेरी फ़ाइलें",
+        "apps": "🧩  ऐप्स",
+        "settings": "⚙️  सेटिंग्स",
+        "updates": "🛡️  अपडेट",
+        "help": "✨  मेरी मदद करें",
+        "privacy": "🔒  गोपनीयता",
+        "footer": "उन्नत टूल डेस्कटॉप मेनू में उपलब्ध रहते हैं।"
+    },
+    "zh": {
+        "title": "您想做什么？",
+        "subtitle": "重要功能，一点即达。绝不跟踪。",
+        "internet": "🌍  互联网",
+        "files": "📁  我的文件",
+        "apps": "🧩  应用",
+        "settings": "⚙️  设置",
+        "updates": "🛡️  更新",
+        "help": "✨  帮助我",
+        "privacy": "🔒  隐私",
+        "footer": "高级工具仍可从桌面菜单使用。"
+    },
+    "sw": {
+        "title": "Ungependa kufanya nini?",
+        "subtitle": "Kila muhimu ni mguso mmoja tu. Hakuna ufuatiliaji.",
+        "internet": "🌍  Intaneti",
+        "files": "📁  Faili Zangu",
+        "apps": "🧩  Programu",
+        "settings": "⚙️  Mipangilio",
+        "updates": "🛡️  Masasisho",
+        "help": "✨  Nisaidie",
+        "privacy": "🔒  Faragha",
+        "footer": "Zana za kina bado zinapatikana kwenye menyu ya eneo-kazi."
+    },
+    "zu": {
+        "title": "Ungathanda ukwenzani?",
+        "subtitle": "Konke okubalulekile kutholakala ngokuthinta kanye. Akukho ukulandelelwa.",
+        "internet": "🌍  I-inthanethi",
+        "files": "📁  Amafayela Ami",
+        "apps": "🧩  Izinhlelo",
+        "settings": "⚙️  Izilungiselelo",
+        "updates": "🛡️  Izibuyekezo",
+        "help": "✨  Ngisize",
+        "privacy": "🔒  Ubumfihlo",
+        "footer": "Amathuluzi athuthukile asatholakala kumenyu yedeskithophu."
+    },
+    "id": {
+        "title": "Apa yang ingin Anda lakukan?",
+        "subtitle": "Semua yang penting hanya satu ketukan. Tanpa pelacakan.",
+        "internet": "🌍  Internet",
+        "files": "📁  File Saya",
+        "apps": "🧩  Aplikasi",
+        "settings": "⚙️  Pengaturan",
+        "updates": "🛡️  Pembaruan",
+        "help": "✨  Bantu Saya",
+        "privacy": "🔒  Privasi",
+        "footer": "Alat lanjutan tetap tersedia dari menu desktop."
+    }
+}
+
+def system_language():
+    tag = locale.getlocale()[0] or "en"
+    code = tag.split("_")[0].lower()
+    return code if code in TRANSLATIONS else "en"
+
+LANG = system_language()
+T = TRANSLATIONS[LANG]
+
 APPS = [
-    ("🌍  Internet", ["firefox-esr"]),
-    ("📁  My Files", ["dolphin"]),
-    ("🧩  Apps", ["plasma-discover"]),
-    ("⚙️  Settings", ["systemsettings"]),
-    ("🛡️  Updates", ["plasma-discover", "--mode", "Update"]),
+    (T["internet"], ["firefox-esr"]),
+    (T["files"], ["dolphin"]),
+    (T["apps"], ["plasma-discover"]),
+    (T["settings"], ["systemsettings"]),
+    (T["updates"], ["plasma-discover", "--mode", "Update"]),
 ]
 
 def launch(command):
@@ -25,17 +158,19 @@ class EasyCenter(QWidget):
         super().__init__()
         self.setWindowTitle("IZAKHONO OS — Easy Center")
         self.setMinimumSize(860, 620)
+        if LANG == "ar":
+            self.setLayoutDirection(Qt.LayoutDirection.RightToLeft)
 
         outer = QVBoxLayout(self)
         outer.setContentsMargins(36, 30, 36, 30)
         outer.setSpacing(18)
 
-        title = QLabel("What would you like to do?")
+        title = QLabel(T["title"])
         title.setFont(QFont("", 28, 700))
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         outer.addWidget(title)
 
-        subtitle = QLabel("Everything important is one tap away. No tracking.")
+        subtitle = QLabel(T["subtitle"])
         subtitle.setFont(QFont("", 14))
         subtitle.setAlignment(Qt.AlignmentFlag.AlignCenter)
         outer.addWidget(subtitle)
@@ -50,13 +185,13 @@ class EasyCenter(QWidget):
             button.clicked.connect(lambda checked=False, c=command: launch(c))
             grid.addWidget(button, i // 2, i % 2)
 
-        help_button = QPushButton("✨  Help Me")
+        help_button = QPushButton(T["help"])
         help_button.setMinimumHeight(96)
         help_button.setFont(QFont("", 17, 600))
         help_button.clicked.connect(self.help_me)
         grid.addWidget(help_button, 2, 1)
 
-        privacy_button = QPushButton("🔒  Privacy")
+        privacy_button = QPushButton(T["privacy"])
         privacy_button.setMinimumHeight(96)
         privacy_button.setFont(QFont("", 17, 600))
         privacy_button.clicked.connect(self.privacy)
@@ -64,7 +199,7 @@ class EasyCenter(QWidget):
 
         outer.addLayout(grid)
 
-        footer = QLabel("Advanced tools remain available from the desktop menu. IZAKHONO OS never hides the full computer from you.")
+        footer = QLabel(T["footer"])
         footer.setWordWrap(True)
         footer.setAlignment(Qt.AlignmentFlag.AlignCenter)
         outer.addWidget(footer)
@@ -87,8 +222,7 @@ class EasyCenter(QWidget):
             "• No profiling\n"
             "• No silent analytics\n"
             "• No automatic crash upload\n\n"
-            "Websites, internet providers and independently installed apps are outside the OS guarantee, "
-            "so IZAKHONO also uses strong anti-tracking defaults."
+            "Websites, internet providers and independently installed apps are outside the OS guarantee."
         )
 
 app = QApplication(sys.argv)
