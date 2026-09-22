@@ -1,0 +1,51 @@
+name: IZAKHONO OS ISO Fallback
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - "feat/izakhono-os-alpha"
+    paths:
+      - "products/izakhono-os/**"
+      - ".github/workflows/izakhono-os-iso-fallback.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  build-iso:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install live-image dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y live-build debootstrap squashfs-tools xorriso isolinux syslinux-common
+
+      - name: Privacy and source gates
+        working-directory: products/izakhono-os
+        run: bash ./test-source.sh
+
+      - name: Build IZAKHONO OS ISO
+        working-directory: products/izakhono-os
+        run: sudo bash ./build.sh
+
+      - name: Normalize artifact names
+        working-directory: products/izakhono-os
+        run: |
+          cp live-image-amd64.hybrid.iso IZAKHONO-OS-alpha-amd64.iso
+          sha256sum IZAKHONO-OS-alpha-amd64.iso > IZAKHONO-OS-alpha-amd64.iso.sha256
+          printf '%s\n'             'status=BUILD_ONLY'             'privacy_gate=passed'             'vm_boot=not_yet_verified'             'hardware=not_yet_verified' > BUILD-STATUS.txt
+
+      - name: Upload boot-image candidate
+        uses: actions/upload-artifact@v4
+        with:
+          name: IZAKHONO-OS-alpha-amd64
+          path: |
+            products/izakhono-os/IZAKHONO-OS-alpha-amd64.iso
+            products/izakhono-os/IZAKHONO-OS-alpha-amd64.iso.sha256
+            products/izakhono-os/BUILD-STATUS.txt
+          if-no-files-found: error
+          retention-days: 7
