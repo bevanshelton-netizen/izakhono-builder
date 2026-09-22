@@ -1,0 +1,51 @@
+{
+  "schema": "izakhono.hybrid-live.v1",
+  "generated_date": "2026-09-22",
+  "policy": "owned-first-externally-reversible",
+  "mode": "HYBRID_LIVE",
+  "evidence_status": "EXTERNAL LIVE VERIFIED",
+  "traffic_authority": "external_verified_production",
+  "owned_promotion_target": "NODE01 via IZAKHONO EDGE/TLS",
+  "external_backend_resilience": {
+    "provider": "Supabase",
+    "project": "IZAKHONO WebStart",
+    "project_ref": "yfawrenhudjomhnglfhq",
+    "project_url": "https://yfawrenhudjomhnglfhq.supabase.co",
+    "verified_account_status": "ACTIVE_HEALTHY",
+    "active_function_examples": [
+      "izakhono-gateway",
+      "izakhono-commands",
+      "allegro-vibez-live",
+      "allegro-music-api",
+      "allegro-creator-api",
+      "izakhono-checkout-api",
+      "izakhono-ikhokha-webhook",
+      "izakhono-payment-health"
+    ],
+    "migration_rule": "Do not remove or replace data/auth/payment/backend dependencies merely because public hosting moves to NODE01. Migrate each dependency under its own tested plan."
+  },
+  "apps": [
+    {
+      "slug": "allegro-vibez",
+      "immutable_ref": "127ee36415a5c975e51413eabb2aee508c6e45c7",
+      "current_public_route": "https://allegro-vibez-g5c7s8xj3-bevan2.vercel.app",
+      "external_failback": "https://allegro-vibez-79622wjli-bevan2.vercel.app",
+      "external_provider": "Vercel",
+      "external_state": "READY",
+      "owned_hostname": "allegro.izakhonoafrica.co.za",
+      "owned_state": "PROMOTION_PENDING_NODE_EDGE_DNS_TLS_PUBLIC_ACCEPTANCE",
+      "remove_external_after_owned_promotion": false
+    },
+    {
+      "slug": "the-chancellor",
+      "immutable_ref": "f9d058c5e8657fb31b4c907f6c0d4f919b224c55",
+      "current_public_route": "https://the-chancellor-62u1zf1lc-bevan2.vercel.app",
+      "external_failback": "https://the-chancellor-e07wn6vc4-bevan2.vercel.app",
+      "external_provider": "Vercel",
+      "external_state": "READY",
+      "owned_hostname": "chancellor.izakhonoafrica.co.za",
+      "owned_state": "PROMOTION_PENDING_NODE_EDGE_DNS_TLS_PUBLIC_ACCEPTANCE",
+      "remove_external_after_owned_promotion": false
+    }
+  ]
+}
