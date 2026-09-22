@@ -20,3 +20,22 @@ This register tracks the first onboarded repositories against the portfolio-wide
 All current and future deployable platforms must migrate through the same v3 policy before being promoted under the current central Builder standard.
 
 No adoption entry may be interpreted as **OWNED LIVE VERIFIED** unless the circular's real NODE/EDGE/DNS/TLS, backup, restore and rollback gates have passed.
+
+
+## Cutover execution status — 22 September 2026
+
+### Wave 1 — Allegro-Vibez + The Chancellor
+
+- Cutover package merged in Builder commit `ca55a75463be78aa770afdf9881f5d93f3f16e3e`.
+- Immutable NODE01 deployment refs are prepared.
+- External production fallbacks remain preserved.
+- Physical NODE01 execution and real owned-hostname DNS/TLS verification are still required before either platform can be labelled **OWNED LIVE VERIFIED**.
+- Current status remains **EXTERNAL LIVE VERIFIED** until those gates pass.
+
+### Wave 2 — Edu-Build ECD360 + LegacyMart
+
+- Fallback-readiness package merged in Builder commit `36f39e9385ce8fc05b425bb9dd46bb1ff5afc6fe`.
+- Immutable NODE01 profiles are prepared.
+- ECD360 has a recorded Render staging route only; it is not being treated as production.
+- LegacyMart has a Render blueprint but no verified public external URL recorded.
+- Wave 2 remains blocked from NODE01 execution until both external safety routes are qualified and product-specific readiness gates pass.
