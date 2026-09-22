@@ -4,3 +4,4 @@ chmod 0755 /usr/local/bin/izakhono-easy-center
 chmod 0755 /usr/local/bin/izakhono-welcome
 chmod 0755 /usr/local/bin/izakhono-privacy-center
 chmod 0755 /usr/local/bin/izakhono-migrate
+systemctl enable izakhono-boot-proof.service
