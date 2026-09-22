@@ -1,0 +1,17 @@
+# IZAKHONO EDGE/TLS snippet for NODE01.
+# Use this on the owned reverse proxy once DNS for the chosen hostname points to NODE01.
+#
+# commands.izakhono.co.za {
+#   encode zstd gzip
+#   reverse_proxy 127.0.0.1:8091
+# }
+#
+# If ai.izakhono.co.za is already handled by the same owned proxy:
+#
+# ai.izakhono.co.za {
+#   @commands path /commands /commands/* /api/commands /api/commands/*
+#   handle @commands {
+#     reverse_proxy 127.0.0.1:8091
+#   }
+#   # Preserve the existing handler for all other paths.
+# }
