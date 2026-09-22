@@ -10,13 +10,13 @@ TARGETS = [
     {
         "slug": "edubuild-ecd360",
         "base": "https://edubuild-ecd360-staging.onrender.com",
-        "role": "staging-emergency-bridge-candidate",
+        "role": "reachable-staging-emergency-bridge",
         "paths": ["/", "/health.json"],
     },
     {
         "slug": "legacymart",
-        "base": "https://legacymart.onrender.com",
-        "role": "production-fallback-candidate-from-render-service-name",
+        "base": "https://yfawrenhudjomhnglfhq.supabase.co/functions/v1/legacymart-makers",
+        "role": "external-resilience-public-storefront-no-payments",
         "paths": ["/", "/health"],
     },
 ]
@@ -28,7 +28,7 @@ def probe(url):
         req = urllib.request.Request(
             url,
             headers={
-                "User-Agent": "IZAKHONO-Wave2-External-Probe/1.0",
+                "User-Agent": "IZAKHONO-Wave2-External-Probe/1.1",
                 "Accept": "*/*",
                 "Cache-Control": "no-cache",
             },
@@ -41,6 +41,7 @@ def probe(url):
                 return {
                     "ok": 200 <= status < 400,
                     "status": status,
+                    "content_type": resp.headers.get("content-type"),
                     "final_url": resp.geturl(),
                     "elapsed_ms": round((time.time() - started) * 1000),
                     "body_sample": body[:240].decode("utf-8", errors="replace"),
@@ -50,6 +51,7 @@ def probe(url):
             last_error = {
                 "ok": False,
                 "status": int(exc.code),
+                "content_type": exc.headers.get("content-type") if exc.headers else None,
                 "final_url": exc.geturl(),
                 "elapsed_ms": round((time.time() - started) * 1000),
                 "error": str(exc),
@@ -59,6 +61,7 @@ def probe(url):
             last_error = {
                 "ok": False,
                 "status": None,
+                "content_type": None,
                 "final_url": url,
                 "elapsed_ms": round((time.time() - started) * 1000),
                 "error": f"{type(exc).__name__}: {exc}",
@@ -94,8 +97,8 @@ report = {
     "policy": "owned-first-externally-reversible",
     "overall": "REACHABILITY_PASS_REQUIRES_CLASSIFICATION" if all_ok else "BLOCKED",
     "note": (
-        "Reachability is evidence only. It does not promote staging to production, "
-        "does not authorize payments, and does not prove NODE01/EDGE readiness."
+        "Reachability is evidence only. ECD360 remains staging, LegacyMart payments remain disabled, "
+        "and neither result proves NODE01/EDGE readiness."
     ),
     "results": results,
 }
