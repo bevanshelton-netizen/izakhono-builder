@@ -1,0 +1,43 @@
+name: Wave 2 External Probe
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/public-cutover/probe-wave2-external.py'
+      - '.github/workflows/wave2-external-probe.yml'
+      - 'infra/public-cutover/wave2-readiness.json'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Probe Wave 2 external candidates
+        run: python3 scripts/public-cutover/probe-wave2-external.py
+
+      - name: Add evidence to job summary
+        if: always()
+        run: |
+          {
+            echo '## Wave 2 external reachability evidence'
+            echo
+            echo 'This is reachability evidence only. It does not classify staging as production.'
+            echo
+            echo '```json'
+            cat wave2-external-probe.json
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload probe evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: wave2-external-probe
+          path: wave2-external-probe.json
+          if-no-files-found: error
