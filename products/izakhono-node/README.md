@@ -152,3 +152,22 @@ Third-party source mirrors may still be used while repositories are being migrat
 ## Readiness boundary
 
 CI can prove the software rules, syntax and security invariants. It cannot prove the actual Windows laptop, WSL environment, Docker daemon, disks, network, public TLS route or power resilience until NODE 01 is activated on the physical machine and the evidence checks pass.
+
+
+## Public cutover wave 1 — Allegro + The Chancellor
+
+The first owned-route migration wave is packaged under `infra/public-cutover/`.
+
+Run `RUN-NODE01-WAVE1-LOCAL.cmd` on the owner host to deploy the exact reviewed production commits through IZAKHONO CONTROL and prove localhost health before touching DNS.
+
+Wave 1 rules:
+
+- IZAKHONO CODE is attempted first.
+- GitHub mirror source is permitted only when the internal repository itself is unavailable.
+- Build, runtime or health failures do not trigger a mirror retry.
+- Existing external production routes remain active.
+- The local wave does not supply `public_url`, alter DNS or activate EDGE routes.
+- Real owned hostnames are staged later with `STAGE-WAVE1-EDGE.ps1`.
+- `ACTIVATE-WAVE1-EDGE.ps1` defaults to dry-run and requires `-Apply` for Caddy changes.
+- `VERIFY-WAVE1-PUBLIC.ps1` is the final DNS/TLS/HTTPS/fallback acceptance gate.
+- No platform becomes **OWNED LIVE VERIFIED** merely because the local wave passes.
