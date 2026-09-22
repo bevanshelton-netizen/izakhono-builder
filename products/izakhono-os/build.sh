@@ -29,7 +29,7 @@ lb config \
   --archive-areas "main contrib non-free-firmware" \
   --security false \
   --apt-recommends true \
-  --bootappend-live "boot=live components quiet splash username=izakhono hostname=izakhono-os"
+  --bootappend-live "boot=live components username=izakhono hostname=izakhono-os console=tty0 console=ttyS0,115200n8"
 
 lb build
 
