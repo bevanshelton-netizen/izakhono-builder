@@ -24,7 +24,7 @@ class EasyCenter(QWidget):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("IZAKHONO OS — Easy Center")
-        self.setMinimumSize(860, 560)
+        self.setMinimumSize(860, 620)
 
         outer = QVBoxLayout(self)
         outer.setContentsMargins(36, 30, 36, 30)
@@ -54,7 +54,14 @@ class EasyCenter(QWidget):
         help_button.setMinimumHeight(96)
         help_button.setFont(QFont("", 17, 600))
         help_button.clicked.connect(self.help_me)
-        grid.addWidget(help_button, len(APPS) // 2, len(APPS) % 2)
+        grid.addWidget(help_button, 2, 1)
+
+        privacy_button = QPushButton("🔒  Privacy")
+        privacy_button.setMinimumHeight(96)
+        privacy_button.setFont(QFont("", 17, 600))
+        privacy_button.clicked.connect(self.privacy)
+        grid.addWidget(privacy_button, 3, 0, 1, 2)
+
         outer.addLayout(grid)
 
         footer = QLabel("Advanced tools remain available from the desktop menu. IZAKHONO OS never hides the full computer from you.")
@@ -68,6 +75,20 @@ class EasyCenter(QWidget):
             "Help Me",
             "Ask IZAKHONO will become a safe plain-language assistant.\n\n"
             "This alpha does not send prompts or diagnostics to a cloud service and does not execute arbitrary system commands."
+        )
+
+    def privacy(self):
+        QMessageBox.information(
+            self,
+            "IZAKHONO Privacy Guarantee",
+            "IZAKHONO OS itself does not track you.\n\n"
+            "• No behavioural telemetry\n"
+            "• No advertising ID\n"
+            "• No profiling\n"
+            "• No silent analytics\n"
+            "• No automatic crash upload\n\n"
+            "Websites, internet providers and independently installed apps are outside the OS guarantee, "
+            "so IZAKHONO also uses strong anti-tracking defaults."
         )
 
 app = QApplication(sys.argv)
