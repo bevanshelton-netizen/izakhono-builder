@@ -1,0 +1,27 @@
+name: IZAKHONO OS Alpha
+
+on:
+  pull_request:
+    paths:
+      - "products/izakhono-os/**"
+      - ".github/workflows/izakhono-os-alpha.yml"
+  push:
+    branches:
+      - "feat/izakhono-os-alpha"
+    paths:
+      - "products/izakhono-os/**"
+      - ".github/workflows/izakhono-os-alpha.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  source-quality:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: products/izakhono-os
+    steps:
+      - uses: actions/checkout@v4
+      - name: Source quality and privacy gate
+        run: bash ./test-source.sh
