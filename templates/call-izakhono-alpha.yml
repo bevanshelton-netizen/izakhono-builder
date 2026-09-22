@@ -13,6 +13,6 @@ permissions:
 jobs:
   alpha:
     # Immutable reviewed policy pin. Upgrade this SHA only through a reviewed Builder change.
-    uses: bevanshelton-netizen/izakhono-builder/.github/workflows/izakhono-build-to-alpha.yml@efbb9fc15f95d9123a12079bf11f9d8a22769edc
+    uses: bevanshelton-netizen/izakhono-builder/.github/workflows/izakhono-build-to-alpha.yml@6d791da96ee2c20a0701258d3d4674e0c50e7291
     with:
       manifest_path: .izakhono.json
