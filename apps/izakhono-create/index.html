@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>IZAKHONO CREATE — Design Studio</title>
+<style>
+:root{--ink:#151a2d;--muted:#6c7388;--line:#e5e7ef;--soft:#f4f6fb;--violet:#6c4cf1;--teal:#14b8a6;--gold:#f4b740}
+*{box-sizing:border-box}html,body{height:100%;margin:0;font-family:Inter,system-ui,Segoe UI,sans-serif;color:var(--ink);background:#f6f7fb}button,input,textarea,select{font:inherit}button{cursor:pointer}
+.app{height:100%;display:flex;flex-direction:column;overflow:hidden}.top{height:68px;background:#fff;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:14px;padding:0 16px}.brand{display:flex;align-items:center;gap:10px;min-width:215px}.mark{width:40px;height:40px;border-radius:13px;display:grid;place-items:center;color:#fff;font-weight:900;background:linear-gradient(140deg,#141b34,#6c4cf1 58%,#14b8a6)}.brand b{font-size:14px;letter-spacing:.04em}.brand b span{color:var(--violet)}.brand small{display:block;color:var(--muted);font-size:9px;margin-top:3px;letter-spacing:.08em}
+.name{border:0;background:#fafbfe;border-radius:9px;padding:9px 12px;font-weight:800;text-align:center;flex:1;max-width:270px}.top select{border:1px solid var(--line);border-radius:9px;padding:8px;background:#fff}.actions{margin-left:auto;display:flex;gap:7px}.btn{border:1px solid var(--line);border-radius:9px;background:#fff;padding:9px 12px;font-weight:800}.primary{background:linear-gradient(135deg,#6c4cf1,#8168f5);color:#fff;border:0}.btn:disabled{opacity:.45}
+.grid{display:grid;grid-template-columns:70px 270px minmax(420px,1fr) 270px;flex:1;min-height:0}.rail{background:#151a2d;padding:10px 7px;display:flex;flex-direction:column;gap:5px}.rail button{border:0;background:transparent;color:#b5bdd1;border-radius:11px;padding:10px 5px;font-size:10px;font-weight:800}.rail button span{display:block;font-size:20px;margin-bottom:3px}.rail button.active,.rail button:hover{background:#2a3150;color:#fff}
+.panel,.inspect{background:#fff;overflow:auto;padding:16px;border-right:1px solid var(--line)}.inspect{border-right:0;border-left:1px solid var(--line)}h2,h3{margin:0 0 12px;letter-spacing:-.02em}.eye{font-size:9px;font-weight:900;color:var(--violet);letter-spacing:.16em;margin-bottom:5px}.muted{font-size:11px;line-height:1.45;color:var(--muted)}.input,.select,.textarea{width:100%;border:1px solid var(--line);border-radius:9px;padding:9px;background:#fff;outline:none}.textarea{resize:vertical}.label{font-size:9px;text-transform:uppercase;letter-spacing:.1em;font-weight:900;color:#73798e;display:block;margin:11px 0 5px}.wide{width:100%;margin-top:9px}
+.templates{display:grid;grid-template-columns:1fr 1fr;gap:9px}.tpl{border:1px solid var(--line);border-radius:11px;overflow:hidden;background:#fff;padding:0;text-align:left}.tpl div{height:86px;padding:9px;font-size:13px;font-weight:900;display:flex;align-items:flex-end}.tpl small{display:block;padding:7px 8px;font-size:9px;font-weight:800}
+.toolrow{display:grid;grid-template-columns:1fr 1fr;gap:8px}.tool{border:1px solid var(--line);border-radius:10px;background:#fff;padding:13px 7px;font-weight:800;font-size:10px}.swatches{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.sw{height:42px;border-radius:10px;border:1px solid var(--line)}
+.hidden{display:none!important}.stagewrap{background:#eef0f6;display:flex;flex-direction:column;min-width:0}.stagetop{height:40px;border-bottom:1px solid #dfe2eb;display:flex;align-items:center;justify-content:space-between;padding:0 12px;font-size:10px;color:#747b8d}.stage{flex:1;display:grid;place-items:center;overflow:auto;padding:28px}.shadow{background:#fff;box-shadow:0 20px 60px rgba(30,34,60,.17);line-height:0}canvas{display:block;touch-action:none;background:#fff}.hint{text-align:center;font-size:9px;color:#7b8190;padding:7px;border-top:1px solid #dfe2eb}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:8px}.layer{display:flex;justify-content:space-between;align-items:center;border:1px solid var(--line);padding:8px;border-radius:9px;margin:6px 0;font-size:10px;font-weight:800}.layer.on{border-color:#ad9ff7;background:#faf9ff}.layer button{border:0;background:transparent}
+.empty{text-align:center;color:var(--muted);padding:40px 10px;font-size:11px}.drop{display:block;border:1px dashed #aaa0df;background:#faf9ff;border-radius:12px;padding:22px;text-align:center;font-weight:900}
+.toast{position:fixed;right:18px;bottom:18px;background:#151a2d;color:#fff;padding:10px 13px;border-radius:9px;font-size:11px;font-weight:800;opacity:0;transition:.2s}.toast.on{opacity:1}
+@media(max-width:1100px){.grid{grid-template-columns:64px 250px minmax(360px,1fr)}.inspect{display:none}}@media(max-width:720px){.grid{grid-template-columns:58px 1fr}.panel{display:none}.stagewrap{grid-column:2}.top select,.name{display:none}.brand{min-width:160px}}
+</style>
+</head>
+<body>
+<div class="app">
+<header class="top">
+  <div class="brand"><div class="mark">IC</div><div><b>IZAKHONO <span>CREATE</span></b><small>DESIGN • CAMPAIGNS • BRAND</small></div></div>
+  <input id="name" class="name" value="Untitled Design">
+  <select id="preset"><option value="1080x1080">Square 1080×1080</option><option value="1080x1350">Portrait 1080×1350</option><option value="1080x1920">Story 1080×1920</option><option value="1920x1080">Presentation 1920×1080</option></select>
+  <div class="actions"><button id="undo" class="btn">↶</button><button id="redo" class="btn">↷</button><button id="save" class="btn">Save</button><button id="projectout" class="btn">Project JSON</button><label for="projectin" class="btn" style="cursor:pointer">Import</label><input id="projectin" type="file" accept="application/json" hidden><button id="export" class="btn primary">Export PNG</button></div>
+</header>
+<main class="grid">
+<nav class="rail">
+ <button class="tab active" data-tab="templates"><span>▦</span>Templates</button>
+ <button class="tab" data-tab="smart"><span>✦</span>Smart</button>
+ <button class="tab" data-tab="text"><span>T</span>Text</button>
+ <button class="tab" data-tab="elements"><span>◇</span>Elements</button>
+ <button class="tab" data-tab="uploads"><span>↑</span>Uploads</button>
+ <button class="tab" data-tab="brand"><span>◆</span>Brand</button>
+ <button class="tab" data-tab="layers"><span>≡</span>Layers</button>
+</nav>
+<aside class="panel">
+ <section data-view="templates"><div class="eye">START FAST</div><h2>Templates</h2><div id="templates" class="templates"></div></section>
+ <section data-view="smart" class="hidden"><div class="eye">SMART LAYOUT</div><h2>Brief → design</h2><p class="muted">A provider-independent layout engine now; connect IZAKHONO AI Gateway next for generated copy and imagery.</p><textarea id="brief" class="textarea" rows="6" placeholder="Black Friday offer for school uniforms, 25% off, energetic and premium."></textarea><button id="build" class="btn primary wide">Create layout</button></section>
+ <section data-view="text" class="hidden"><div class="eye">TYPE</div><h2>Add text</h2><button class="btn wide addtext" data-size="94">Add heading</button><button class="btn wide addtext" data-size="58">Add subheading</button><input id="quick" class="input" style="margin-top:12px" placeholder="Type custom text"><button id="quickadd" class="btn wide">Add custom text</button></section>
+ <section data-view="elements" class="hidden"><div class="eye">BUILD</div><h2>Elements</h2><div class="toolrow"><button class="tool shape" data-shape="rect">Rectangle</button><button class="tool shape" data-shape="circle">Circle</button></div><label class="label">Background</label><input id="bg" type="color" value="#ffffff" class="input"></section>
+ <section data-view="uploads" class="hidden"><div class="eye">YOUR MEDIA</div><h2>Uploads</h2><label class="drop" for="upload">Upload PNG / JPG / WEBP</label><input id="upload" type="file" accept="image/*" hidden><p class="muted">The MVP keeps uploads in the browser until persistent media storage is connected.</p></section>
+ <section data-view="brand" class="hidden"><div class="eye">BRAND CONTROL</div><h2>Brand kit</h2><div class="swatches"><button class="sw" data-color="#141B34" style="background:#141B34"></button><button class="sw" data-color="#6C4CF1" style="background:#6C4CF1"></button><button class="sw" data-color="#14B8A6" style="background:#14B8A6"></button><button class="sw" data-color="#F4B740" style="background:#F4B740"></button></div><input id="brandtext" class="input" style="margin-top:12px" value="IZAKHONO AFRICA"><button id="brandadd" class="btn wide">Add brand lockup</button></section>
+ <section data-view="layers" class="hidden"><div class="eye">STRUCTURE</div><h2>Layers</h2><div id="layers"></div></section>
+</aside>
+<section class="stagewrap">
+ <div class="stagetop"><span id="status">Local workspace ready</span><span><button id="minus" class="btn">−</button> <span id="zoom">Fit</span> <button id="plus" class="btn">+</button></span></div>
+ <div id="stage" class="stage"><div class="shadow"><canvas id="c" width="1080" height="1080"></canvas></div></div>
+ <div class="hint">Drag to move • Delete removes • Ctrl/Cmd+Z undo • PNG export is local</div>
+</section>
+<aside class="inspect">
+ <div class="eye">INSPECTOR</div><h3 id="selname">Nothing selected</h3>
+ <div id="empty" class="empty">Select a layer to edit its position, size, colour and text.</div>
+ <div id="props" class="hidden">
+  <div id="textprops"><label class="label">Text</label><textarea id="ptext" class="textarea" rows="3"></textarea><label class="label">Font size</label><input id="pfont" class="input" type="number" min="8" max="400"></div>
+  <div class="two"><div><label class="label">X</label><input id="px" class="input" type="number"></div><div><label class="label">Y</label><input id="py" class="input" type="number"></div></div>
+  <div class="two"><div><label class="label">Width</label><input id="pw" class="input" type="number"></div><div><label class="label">Height</label><input id="ph" class="input" type="number"></div></div>
+  <label class="label">Colour</label><input id="pcolor" class="input" type="color">
+  <div class="toolrow" style="margin-top:12px"><button id="dup" class="btn">Duplicate</button><button id="del" class="btn">Delete</button><button id="front" class="btn">Forward</button><button id="back" class="btn">Backward</button></div>
+ </div>
+</aside>
+</main>
+</div>
+<div id="toast" class="toast"></div>
+<script>
+(()=>{const $=id=>document.getElementById(id),c=$('c'),x=c.getContext('2d'),stage=$('stage'),imgs=new Map();
+const tpl=[
+{name:'Royal Sale',bg:'#151A2D',fg:'#fff',a:'#F4B740',k:'PREMIUM OFFER',h:'MAKE IT UNMISSABLE',b:'Bold campaign creative built for fast action.'},
+{name:'Product Launch',bg:'#F3F0FF',fg:'#191D31',a:'#6C4CF1',k:'NEW RELEASE',h:'BUILT TO STAND OUT',b:'Clean launch creative with a confident premium rhythm.'},
+{name:'Business Promo',bg:'#E9FFFB',fg:'#141B34',a:'#14B8A6',k:'BUSINESS GROWTH',h:'TURN ATTENTION INTO ACTION',b:'Clear value. Clear next step. Stronger brand recall.'},
+{name:'Event Poster',bg:'#0A1028',fg:'#fff',a:'#8A70FF',k:'LIVE / THIS WEEK',h:'OWN THE MOMENT',b:'Event creative with energy and depth.'}
+];
+let s={w:1080,h:1080,bg:'#fff',e:[],sel:null,z:1},hist=[],fut=[],drag=null,timer;
+const uid=()=>Math.random().toString(36).slice(2)+Date.now().toString(36),clone=()=>JSON.parse(JSON.stringify({...s,sel:null})),sel=()=>s.e.find(e=>e.id===s.sel);
+function toast(m){const t=$('toast');t.textContent=m;t.classList.add('on');clearTimeout(timer);timer=setTimeout(()=>t.classList.remove('on'),1500)}
+function push(){hist.push(clone());if(hist.length>50)hist.shift();fut=[];buttons()}
+function change(fn){push();fn();draw();layers();props();$('status').textContent='Unsaved changes'}
+function buttons(){$('undo').disabled=!hist.length;$('redo').disabled=!fut.length}
+function fit(){const z=Math.min((stage.clientWidth-60)/s.w,(stage.clientHeight-60)/s.h,1);s.z=Math.max(.08,z);css();$('zoom').textContent='Fit'}
+function css(){c.style.width=Math.round(s.w*s.z)+'px';c.style.height=Math.round(s.h*s.z)+'px'}
+function rr(a,b,w,h,r){x.beginPath();x.roundRect(a,b,w,h,r);x.fill()}
+function wrap(t,m,font){x.save();x.font=font;const out=[];String(t).split('\n').forEach(p=>{let q='';p.split(' ').forEach(w=>{const z=q?q+' '+w:w;if(x.measureText(z).width>m&&q){out.push(q);q=w}else q=z});out.push(q)});x.restore();return out}
+function item(e){x.save();if(e.type==='rect'){x.fillStyle=e.color;rr(e.x,e.y,e.w,e.h,18)}else if(e.type==='circle'){x.fillStyle=e.color;x.beginPath();x.ellipse(e.x+e.w/2,e.y+e.h/2,e.w/2,e.h/2,0,0,Math.PI*2);x.fill()}else if(e.type==='text'){x.fillStyle=e.color;x.font=(e.weight||800)+' '+e.size+'px Arial';x.textBaseline='top';const ls=wrap(e.text,e.w,x.font),lh=e.size*1.05;ls.forEach((l,i)=>x.fillText(l,e.x,e.y+i*lh));e.h=Math.max(lh,ls.length*lh)}else if(e.type==='image'){let im=imgs.get(e.src);if(!im){im=new Image();im.onload=()=>{imgs.set(e.src,im);draw()};im.src=e.src;imgs.set(e.src,im)}if(im.complete&&im.naturalWidth){x.save();x.beginPath();x.roundRect(e.x,e.y,e.w,e.h,18);x.clip();const ir=im.naturalWidth/im.naturalHeight,er=e.w/e.h;let sx=0,sy=0,sw=im.naturalWidth,sh=im.naturalHeight;if(ir>er){sw=sh*er;sx=(im.naturalWidth-sw)/2}else{sh=sw/er;sy=(im.naturalHeight-sh)/2}x.drawImage(im,sx,sy,sw,sh,e.x,e.y,e.w,e.h);x.restore()}}x.restore()}
+function draw(){x.clearRect(0,0,c.width,c.height);x.fillStyle=s.bg;x.fillRect(0,0,c.width,c.height);s.e.forEach(item);const e=sel();if(e){x.save();x.strokeStyle='#6C4CF1';x.lineWidth=3;x.setLineDash([10,8]);x.strokeRect(e.x-7,e.y-7,e.w+14,e.h+14);x.restore()}}
+function hit(px,py){for(let i=s.e.length-1;i>=0;i--){const e=s.e[i];if(px>=e.x&&px<=e.x+e.w&&py>=e.y&&py<=e.y+e.h)return e}return null}
+function point(ev){const r=c.getBoundingClientRect();return{x:(ev.clientX-r.left)*c.width/r.width,y:(ev.clientY-r.top)*c.height/r.height}}
+c.onpointerdown=e=>{const p=point(e),h=hit(p.x,p.y);s.sel=h?h.id:null;draw();layers();props();if(h){drag={id:h.id,x:p.x,y:p.y,ox:h.x,oy:h.y,m:false};c.setPointerCapture(e.pointerId)}};
+c.onpointermove=e=>{if(!drag)return;const p=point(e),q=s.e.find(v=>v.id===drag.id);if(!q)return;if(!drag.m&&Math.hypot(p.x-drag.x,p.y-drag.y)>2){push();drag.m=true}if(drag.m){q.x=Math.round(drag.ox+p.x-drag.x);q.y=Math.round(drag.oy+p.y-drag.y);draw();props()}};
+c.onpointerup=()=>{drag=null;$('status').textContent='Unsaved changes'};
+function addText(text='Heading',size=92){change(()=>{const e={id:uid(),type:'text',name:'Text',text,x:s.w*.12,y:s.h*.18,w:s.w*.72,h:size*1.1,size,weight:800,color:'#141B34'};s.e.push(e);s.sel=e.id})}
+function addShape(type){change(()=>{const e={id:uid(),type,name:type==='rect'?'Rectangle':'Circle',x:s.w*.3,y:s.h*.35,w:s.w*.28,h:s.w*.18,color:'#6C4CF1'};s.e.push(e);s.sel=e.id})}
+function apply(t,headline){change(()=>{s.bg=t.bg;$('bg').value=t.bg;s.e=[];const W=s.w,H=s.h;s.e.push({id:uid(),type:'rect',name:'Accent',x:W*.08,y:H*.08,w:W*.18,h:H*.016,color:t.a},{id:uid(),type:'text',name:'Kicker',text:t.k,x:W*.08,y:H*.14,w:W*.75,h:40,size:Math.max(22,W*.023),weight:800,color:t.a},{id:uid(),type:'text',name:'Headline',text:headline||t.h,x:W*.08,y:H*.25,w:W*.82,h:H*.3,size:Math.max(60,W*.078),weight:900,color:t.fg},{id:uid(),type:'text',name:'Body',text:t.b,x:W*.08,y:H*.7,w:W*.68,h:H*.12,size:Math.max(24,W*.027),weight:500,color:t.fg},{id:uid(),type:'rect',name:'CTA',x:W*.08,y:H*.84,w:W*.35,h:H*.07,color:t.a},{id:uid(),type:'text',name:'CTA text',text:'CREATE • SHARE • GROW',x:W*.11,y:H*.858,w:W*.3,h:H*.04,size:Math.max(18,W*.018),weight:900,color:t.bg});s.sel=null})}
+function templates(){const d=$('templates');d.innerHTML='';tpl.forEach(t=>{const b=document.createElement('button');b.className='tpl';b.innerHTML='<div style="background:'+t.bg+';color:'+t.fg+'">'+t.h+'</div><small>'+t.name+'</small>';b.onclick=()=>apply(t);d.appendChild(b)})}
+function layers(){const d=$('layers');d.innerHTML='';[...s.e].reverse().forEach(e=>{const r=document.createElement('div');r.className='layer'+(e.id===s.sel?' on':'');r.innerHTML='<span>'+e.name+'</span><button>●</button>';r.onclick=()=>{s.sel=e.id;draw();layers();props()};d.appendChild(r)});if(!s.e.length)d.innerHTML='<p class="muted">No layers yet.</p>'}
+function props(){const e=sel();$('empty').classList.toggle('hidden',!!e);$('props').classList.toggle('hidden',!e);$('selname').textContent=e?e.name:'Nothing selected';if(!e)return;$('textprops').classList.toggle('hidden',e.type!=='text');if(e.type==='text'){$('ptext').value=e.text;$('pfont').value=Math.round(e.size)}$('px').value=Math.round(e.x);$('py').value=Math.round(e.y);$('pw').value=Math.round(e.w);$('ph').value=Math.round(e.h);$('pcolor').value=e.color||'#141b34'}
+function prop(k,v){const e=sel();if(e)change(()=>e[k]=v)}
+function del(){if(!s.sel)return;change(()=>{s.e=s.e.filter(e=>e.id!==s.sel);s.sel=null})}
+function dup(){const e=sel();if(!e)return;change(()=>{const q=JSON.parse(JSON.stringify(e));q.id=uid();q.x+=25;q.y+=25;q.name+=' copy';s.e.push(q);s.sel=q.id})}
+function layerMove(n){const e=sel();if(!e)return;const i=s.e.findIndex(q=>q.id===e.id),j=Math.max(0,Math.min(s.e.length-1,i+n));if(i===j)return;change(()=>{const q=s.e.splice(i,1)[0];s.e.splice(j,0,q)})}
+function undo(){if(!hist.length)return;fut.push(clone());s=hist.pop();c.width=s.w;c.height=s.h;$('bg').value=s.bg;fit();draw();layers();props();buttons()}
+function redo(){if(!fut.length)return;hist.push(clone());s=fut.pop();c.width=s.w;c.height=s.h;$('bg').value=s.bg;fit();draw();layers();props();buttons()}
+function save(){localStorage.setItem('izakhono-create',JSON.stringify({name:$('name').value,state:clone()}));$('status').textContent='Saved locally';toast('Saved locally')}
+function restore(){try{const p=JSON.parse(localStorage.getItem('izakhono-create'));if(p&&p.state){s={...s,...p.state,sel:null};$('name').value=p.name||'Untitled Design';c.width=s.w;c.height=s.h;$('bg').value=s.bg;return true}}catch{}return false}
+function exportPng(){const keep=s.sel;s.sel=null;draw();const a=document.createElement('a');a.download=($('name').value||'design').replace(/[^a-z0-9-_]+/gi,'-')+'.png';a.href=c.toDataURL('image/png');a.click();s.sel=keep;draw();toast('PNG exported')}
+function projectOut(){const b=new Blob([JSON.stringify({product:'IZAKHONO CREATE',version:1,name:$('name').value||'Untitled Design',state:clone()},null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='izakhono-create-project.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),0);toast('Project JSON exported')}
+function projectIn(file){const r=new FileReader();r.onload=()=>{try{const p=JSON.parse(r.result);if(!p.state||!p.state.w||!p.state.h)throw new Error('invalid');push();s={...s,...p.state,sel:null};$('name').value=p.name||'Imported Design';c.width=s.w;c.height=s.h;$('bg').value=s.bg;fit();draw();layers();props();toast('Project imported')}catch{toast('Invalid project file')}};r.readAsText(file)}
+document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{document.querySelectorAll('.tab').forEach(q=>q.classList.toggle('active',q===b));document.querySelectorAll('[data-view]').forEach(v=>v.classList.toggle('hidden',v.dataset.view!==b.dataset.tab))});
+document.querySelectorAll('.addtext').forEach(b=>b.onclick=()=>addText(b.dataset.size==94?'Heading':'Subheading',+b.dataset.size));document.querySelectorAll('.shape').forEach(b=>b.onclick=()=>addShape(b.dataset.shape));document.querySelectorAll('.sw').forEach(b=>b.onclick=()=>{const e=sel();e?prop('color',b.dataset.color):change(()=>{s.bg=b.dataset.color;$('bg').value=s.bg})});
+$('quickadd').onclick=()=>{const v=$('quick').value.trim();if(v)addText(v,64)};$('brandadd').onclick=()=>addText($('brandtext').value||'IZAKHONO AFRICA',42);$('build').onclick=()=>{const v=$('brief').value.trim();if(!v)return toast('Add a brief first');const low=v.toLowerCase();let t=/sale|offer|discount/.test(low)?tpl[0]:/event|concert|show/.test(low)?tpl[3]:/business|service|corporate/.test(low)?tpl[2]:tpl[1];apply({...t,b:'Built from your brief in IZAKHONO CREATE. Refine every layer before publishing.'},v.toUpperCase().slice(0,64));toast('Smart layout created')};
+$('bg').oninput=e=>change(()=>s.bg=e.target.value);$('undo').onclick=undo;$('redo').onclick=redo;$('save').onclick=save;$('projectout').onclick=projectOut;$('projectin').onchange=e=>{const f=e.target.files[0];if(f)projectIn(f);e.target.value=''};$('export').onclick=exportPng;$('del').onclick=del;$('dup').onclick=dup;$('front').onclick=()=>layerMove(1);$('back').onclick=()=>layerMove(-1);
+$('ptext').onchange=e=>prop('text',e.target.value);$('pfont').onchange=e=>prop('size',Math.max(8,+e.target.value||8));$('px').onchange=e=>prop('x',+e.target.value||0);$('py').onchange=e=>prop('y',+e.target.value||0);$('pw').onchange=e=>prop('w',Math.max(1,+e.target.value||1));$('ph').onchange=e=>prop('h',Math.max(1,+e.target.value||1));$('pcolor').oninput=e=>prop('color',e.target.value);
+$('upload').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{const im=new Image();im.onload=()=>{imgs.set(r.result,im);let z=Math.min(s.w*.65/im.width,s.h*.65/im.height,1),w=im.width*z,h=im.height*z;change(()=>{const q={id:uid(),type:'image',name:f.name,x:(s.w-w)/2,y:(s.h-h)/2,w,h,src:r.result,color:'#fff'};s.e.push(q);s.sel=q.id})};im.src=r.result};r.readAsDataURL(f);e.target.value=''};
+$('preset').onchange=e=>{if(!confirm('Changing size starts a blank design. Continue?'))return;const [w,h]=e.target.value.split('x').map(Number);change(()=>{s.w=w;s.h=h;s.e=[];s.sel=null;s.bg='#fff';c.width=w;c.height=h;$('bg').value='#ffffff'});fit()};
+$('plus').onclick=()=>{s.z=Math.min(1.6,s.z*1.15);css();$('zoom').textContent=Math.round(s.z*100)+'%'};$('minus').onclick=()=>{s.z=Math.max(.07,s.z/1.15);css();$('zoom').textContent=Math.round(s.z*100)+'%'};
+document.onkeydown=e=>{const typing=['INPUT','TEXTAREA','SELECT'].includes(e.target.tagName);if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='z'){e.preventDefault();e.shiftKey?redo():undo()}else if((e.key==='Delete'||e.key==='Backspace')&&!typing){e.preventDefault();del()}else if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='d'&&!typing){e.preventDefault();dup()}};
+window.onresize=()=>setTimeout(fit,80);templates();buttons();if(!restore()){apply(tpl[1]);hist=[];fut=[];buttons()}draw();layers();props();setTimeout(fit,50);
+})();
+</script>
+</body>
+</html>
