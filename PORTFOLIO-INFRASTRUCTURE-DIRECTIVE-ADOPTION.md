@@ -36,8 +36,11 @@ No adoption entry may be interpreted as **OWNED LIVE VERIFIED** unless the circu
 
 ### Wave 2 — Edu-Build ECD360 + LegacyMart
 
-- Fallback-readiness package merged in Builder commit `36f39e9385ce8fc05b425bb9dd46bb1ff5afc6fe`.
+- Fallback-readiness package merged in Builder commit `36f39e9385ce8fc05b425bb9dd46bb1ff5afc6fe`; current evidence register is `infra/public-cutover/wave2-readiness.json` v2.
 - Immutable NODE01 profiles are prepared.
-- ECD360 has a recorded Render staging route only; it is not being treated as production.
-- LegacyMart has a Render blueprint but no verified public external URL recorded.
-- Wave 2 remains blocked from NODE01 execution until both external safety routes are qualified and product-specific readiness gates pass.
+- ECD360 Render staging was independently probed from a GitHub-hosted runner: `/` and `/health.json` both returned HTTP 200. Its own health document identifies the environment as `staging-capable`, so it remains **REACHABILITY VERIFIED — STAGING, NOT PRODUCTION**.
+- LegacyMart's expected Render route returned HTTP 404 on both `/` and `/health` and is rejected as a fallback.
+- LegacyMart's professional storefront is built and passed its Alpha build/health gates. Its Supabase WebStart catalogue backend is **ACTIVE_HEALTHY**, RLS-protected, with one active BEVAN SHELTON™ reference shop and four published listings; checkout remains disabled until payment verification.
+- The prepared Cloudflare fallback is blocked because the Builder deployment workflow has no Cloudflare credentials configured.
+- The prepared GitHub Pages fallback is blocked because creating the Pages site requires repository administration that the connected GitHub integration does not have.
+- Wave 2 therefore remains **BLOCKED WITH QUALIFIED EXTERNAL EVIDENCE**. No platform may be labelled external-production-live or owned-live until the relevant public route, payment/readiness, NODE01, DNS and TLS gates pass.
