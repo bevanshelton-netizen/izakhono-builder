@@ -10,14 +10,22 @@ TARGETS = [
     {
         "slug": "edubuild-ecd360",
         "base": "https://edubuild-ecd360-staging.onrender.com",
-        "role": "staging-emergency-bridge-candidate",
+        "role": "reachable-staging-emergency-bridge",
         "paths": ["/", "/health.json"],
+        "expected_content_types": {
+            "/": None,
+            "/health.json": "application/json",
+        },
     },
     {
         "slug": "legacymart",
-        "base": "https://legacymart.onrender.com",
-        "role": "production-fallback-candidate-from-render-service-name",
-        "paths": ["/", "/health"],
+        "base": "https://bevanshelton-netizen.github.io/bevanshelton-netizen-legacymart",
+        "role": "github-pages-professional-fallback-pending-repository-enablement",
+        "paths": ["/", "/health.json"],
+        "expected_content_types": {
+            "/": "text/html",
+            "/health.json": "application/json",
+        },
     },
 ]
 
@@ -28,7 +36,7 @@ def probe(url):
         req = urllib.request.Request(
             url,
             headers={
-                "User-Agent": "IZAKHONO-Wave2-External-Probe/1.0",
+                "User-Agent": "IZAKHONO-Wave2-External-Probe/1.2",
                 "Accept": "*/*",
                 "Cache-Control": "no-cache",
             },
@@ -41,6 +49,7 @@ def probe(url):
                 return {
                     "ok": 200 <= status < 400,
                     "status": status,
+                    "content_type": resp.headers.get("content-type"),
                     "final_url": resp.geturl(),
                     "elapsed_ms": round((time.time() - started) * 1000),
                     "body_sample": body[:240].decode("utf-8", errors="replace"),
@@ -50,6 +59,7 @@ def probe(url):
             last_error = {
                 "ok": False,
                 "status": int(exc.code),
+                "content_type": exc.headers.get("content-type") if exc.headers else None,
                 "final_url": exc.geturl(),
                 "elapsed_ms": round((time.time() - started) * 1000),
                 "error": str(exc),
@@ -59,6 +69,7 @@ def probe(url):
             last_error = {
                 "ok": False,
                 "status": None,
+                "content_type": None,
                 "final_url": url,
                 "elapsed_ms": round((time.time() - started) * 1000),
                 "error": f"{type(exc).__name__}: {exc}",
@@ -81,10 +92,14 @@ for target in TARGETS:
     for path in target["paths"]:
         result = probe(target["base"].rstrip("/") + path)
         result["path"] = path
-        item["paths"].append(result)
-        if not result.get("ok"):
+        expected = target.get("expected_content_types", {}).get(path)
+        actual = (result.get("content_type") or "").lower()
+        result["expected_content_type"] = expected
+        result["content_type_ok"] = True if not expected else actual.startswith(expected)
+        if not result.get("ok") or not result["content_type_ok"]:
             item["reachable"] = False
             all_ok = False
+        item["paths"].append(result)
     results.append(item)
 
 report = {
@@ -92,10 +107,10 @@ report = {
     "generated_at": datetime.now(timezone.utc).isoformat(),
     "vantage": "github-hosted-runner",
     "policy": "owned-first-externally-reversible",
-    "overall": "REACHABILITY_PASS_REQUIRES_CLASSIFICATION" if all_ok else "BLOCKED",
+    "overall": "REACHABILITY_AND_MIME_PASS_REQUIRES_CLASSIFICATION" if all_ok else "BLOCKED",
     "note": (
-        "Reachability is evidence only. It does not promote staging to production, "
-        "does not authorize payments, and does not prove NODE01/EDGE readiness."
+        "Reachability and browser MIME are evidence only. ECD360 remains staging, "
+        "LegacyMart payments remain disabled, and neither result proves NODE01/EDGE readiness."
     ),
     "results": results,
 }
