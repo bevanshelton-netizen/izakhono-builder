@@ -1,0 +1,32 @@
+{
+  "schema": "izakhono.public-cutover.wave.v1",
+  "wave": 1,
+  "status": "PREPARED_NOT_EXECUTED",
+  "policy": "owned-first-externally-reversible",
+  "apps": [
+    {
+      "slug": "allegro-vibez",
+      "profile": "products/izakhono-node/profiles/wave1/allegro-vibez.production.json",
+      "immutable_ref": "127ee36415a5c975e51413eabb2aee508c6e45c7",
+      "local_health_url": "http://127.0.0.1:8080/healthz",
+      "public_health_path": "/healthz",
+      "current_external_route": "https://allegro-vibez-g5c7s8xj3-bevan2.vercel.app",
+      "external_fallback": "https://allegro-vibez-79622wjli-bevan2.vercel.app",
+      "owned_hostname": "UNASSIGNED",
+      "edge_upstream": "host.docker.internal:8080"
+    },
+    {
+      "slug": "the-chancellor",
+      "profile": "products/izakhono-node/profiles/wave1/the-chancellor.production.json",
+      "immutable_ref": "f9d058c5e8657fb31b4c907f6c0d4f919b224c55",
+      "local_health_url": "http://127.0.0.1:3000/api/health",
+      "public_health_path": "/api/health",
+      "readiness_path": "/api/go-live",
+      "readiness_field": "readyForPaidTraffic",
+      "current_external_route": "https://the-chancellor-lj3req3r7-bevan2.vercel.app",
+      "external_fallback": "https://the-chancellor-e07wn6vc4-bevan2.vercel.app",
+      "owned_hostname": "UNASSIGNED",
+      "edge_upstream": "host.docker.internal:3000"
+    }
+  ]
+}
