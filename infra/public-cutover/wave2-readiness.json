@@ -1,8 +1,21 @@
 {
-  "schema": "izakhono.public-cutover.wave2-readiness.v1",
+  "schema": "izakhono.public-cutover.wave2-readiness.v2",
   "wave": 2,
-  "status": "BLOCKED_PENDING_RENDERABLE_EXTERNAL_STOREFRONT",
+  "generated_date": "2026-09-22",
+  "status": "BLOCKED_WITH_QUALIFIED_EXTERNAL_EVIDENCE",
   "policy": "owned-first-externally-reversible",
+  "backend_resilience": {
+    "provider": "Supabase",
+    "project": "IZAKHONO WebStart",
+    "project_ref": "yfawrenhudjomhnglfhq",
+    "account_status": "ACTIVE_HEALTHY",
+    "legacymart_data_evidence": {
+      "rls_enabled": true,
+      "active_shops": 1,
+      "published_listings": 4,
+      "checkout_enabled": false
+    }
+  },
   "apps": [
     {
       "slug": "edubuild-ecd360",
@@ -10,10 +23,26 @@
       "profile": "products/izakhono-node/profiles/wave2/edubuild-ecd360.production.json",
       "owned_target": "NODE01 via IZAKHONO EDGE/TLS",
       "external_candidate": "https://edubuild-ecd360-staging.onrender.com",
-      "candidate_role": "reachable-staging-emergency-bridge",
-      "external_status": "REACHABLE_STAGING_NOT_PRODUCTION",
-      "verification_paths": ["/", "/health.json"],
-      "evidence": "GitHub-hosted external probe run 35767105078 returned HTTP 200 for both paths.",
+      "candidate_role": "verified-staging-emergency-bridge",
+      "external_status": "REACHABILITY_VERIFIED_STAGING_NOT_PRODUCTION",
+      "external_evidence": {
+        "vantage": "github-hosted-runner",
+        "root_status": 200,
+        "health_path": "/health.json",
+        "health_status": 200,
+        "health_service": "Edu-Build ECD360",
+        "health_phase": "8.1-hardened",
+        "health_environment": "staging-capable",
+        "probe_run_id": 35767105078
+      },
+      "verification_paths": [
+        "/",
+        "/health.json"
+      ],
+      "promotion_blockers": [
+        "External route is explicitly staging-capable and has not been classified as production.",
+        "Owned NODE01/EDGE public DNS/TLS acceptance is not yet proven."
+      ],
       "cutover_allowed": false
     },
     {
@@ -21,24 +50,54 @@
       "immutable_ref": "70f1de418ee899300c00ffa3b11632c1ab76a843",
       "profile": "products/izakhono-node/profiles/wave2/legacymart.production.json",
       "owned_target": "NODE01 via IZAKHONO EDGE/TLS",
-      "external_candidate": "https://bevanshelton-netizen.github.io/bevanshelton-netizen-legacymart/",
-      "candidate_role": "github-pages-professional-fallback-pending-repository-enablement",
-      "external_status": "NOT_YET_PUBLIC",
-      "verification_paths": ["/", "/health.json"],
-      "storefront_source_repo": "bevanshelton-netizen/bevanshelton-netizen-legacymart",
-      "storefront_source_commit": "290d2bf007aabd0a08654181eab4ed600223c643",
-      "storefront_alpha_status": "PASS",
-      "pages_deployment_workflow": ".github/workflows/legacymart-pages.yml",
-      "pages_deployment_result": "BLOCKED_REPOSITORY_PAGES_NOT_ENABLED_AND_WORKFLOW_TOKEN_CANNOT_CREATE_SITE",
-      "pages_evidence": "GitHub Pages runs 35768652160 and 35768841281 failed at Configure Pages before artifact upload. The second run used enablement=true and GitHub returned Resource not accessible by integration.",
-      "previous_render_candidate": "https://legacymart.onrender.com",
-      "previous_render_result": "HTTP_404_ROOT_AND_HEALTH",
-      "supabase_backend": "ACTIVE_HEALTHY_RLS_CATALOGUE_AND_HEALTH_AVAILABLE",
-      "supabase_html_hosting_result": "NOT_SUITABLE_HTML_AND_XHTML_RETURN_TEXT_PLAIN",
-      "cloudflare_candidate": "https://legacymart.izakhono.co.za",
-      "cloudflare_result": "CODE_READY_DEPLOY_BLOCKED_CLOUDFLARE_API_TOKEN_NOT_CONFIGURED",
-      "payments": "DISABLED_PENDING_END_TO_END_VERIFICATION",
-      "manual_unblock": "Enable GitHub Pages for the LegacyMart repository with Source=GitHub Actions, then rerun the existing Pages deployment workflow.",
+      "external_status": "FALLBACK_BUILT_PUBLICATION_BLOCKED",
+      "external_candidates": [
+        {
+          "provider": "Render",
+          "route": "https://legacymart.onrender.com",
+          "status": "REJECTED_404",
+          "evidence": {
+            "vantage": "github-hosted-runner",
+            "root_status": 404,
+            "health_path": "/health",
+            "health_status": 404,
+            "probe_run_id": 35767105078
+          }
+        },
+        {
+          "provider": "Cloudflare Worker",
+          "route": "https://legacymart.izakhono.co.za",
+          "status": "DEPLOYMENT_BLOCKED_MISSING_CREDENTIALS",
+          "evidence": {
+            "builder_merge": "4fe4b37b2cd6edbdde3c4c1d241436c6f1539e4a",
+            "deployment_run_id": 35768375896,
+            "gate": "BLOCKED_CREDENTIALS_NOT_CONFIGURED"
+          }
+        },
+        {
+          "provider": "GitHub Pages",
+          "route": "https://bevanshelton-netizen.github.io/bevanshelton-netizen-legacymart/",
+          "status": "DEPLOYMENT_BLOCKED_REPOSITORY_ADMIN_ENABLEMENT",
+          "evidence": {
+            "legacymart_merge": "6933d21bbadce6adbfd6a4cc2954813bffb2fd8e",
+            "deployment_run_id": 35769393233,
+            "error": "Resource not accessible by integration when creating Pages site"
+          }
+        }
+      ],
+      "storefront_status": "PROFESSIONAL_BUILD_COMPLETE",
+      "storefront_evidence": {
+        "builder_merge": "4fe4b37b2cd6edbdde3c4c1d241436c6f1539e4a",
+        "legacymart_merge": "bb0528f18423f2dd6fdf743bbbeb291ac054a875",
+        "alpha_build_and_health": "PASS"
+      },
+      "payment_status": "CHECKOUT_DISABLED_UNTIL_VERIFIED",
+      "promotion_blockers": [
+        "No verified external public storefront route is currently published.",
+        "Cloudflare deploy requires repository deployment credentials.",
+        "GitHub Pages creation requires repository administration not available to the connected GitHub integration.",
+        "Owned NODE01/EDGE public DNS/TLS acceptance is not yet proven."
+      ],
       "cutover_allowed": false
     }
   ]
