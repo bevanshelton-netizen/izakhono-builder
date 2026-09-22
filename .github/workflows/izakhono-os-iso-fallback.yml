@@ -31,6 +31,22 @@ jobs:
               apt-get update
               apt-get install -y                 live-build debootstrap squashfs-tools xorriso                 isolinux syslinux-common ca-certificates python3
               bash ./test-source.sh
+
+              echo "== Package preflight =="
+              failed=0
+              while IFS= read -r package; do
+                package="${package%%#*}"
+                package="$(printf "%s" "${package}" | xargs)"
+                [ -z "${package}" ] && continue
+                if apt-cache show "${package}" >/dev/null 2>&1; then
+                  echo "PASS package: ${package}"
+                else
+                  echo "FAIL package: ${package}"
+                  failed=1
+                fi
+              done < config/package-lists/izakhono-os.list.chroot
+              [ "${failed}" -eq 0 ]
+
               bash ./build.sh
             '
 
