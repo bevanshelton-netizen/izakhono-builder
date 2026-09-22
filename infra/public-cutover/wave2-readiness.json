@@ -1,0 +1,36 @@
+{
+  "schema": "izakhono.public-cutover.wave2-readiness.v1",
+  "wave": 2,
+  "status": "BLOCKED_PENDING_EXTERNAL_FALLBACK_QUALIFICATION",
+  "policy": "owned-first-externally-reversible",
+  "apps": [
+    {
+      "slug": "edubuild-ecd360",
+      "immutable_ref": "b99401b3610d35a98907e0cb89e8f469a1c88a77",
+      "profile": "products/izakhono-node/profiles/wave2/edubuild-ecd360.production.json",
+      "owned_target": "NODE01 via IZAKHONO EDGE/TLS",
+      "external_candidate": "https://edubuild-ecd360-staging.onrender.com",
+      "candidate_role": "staging-emergency-bridge-candidate",
+      "external_status": "UNVERIFIED_NOT_PRODUCTION",
+      "verification_paths": [
+        "/",
+        "/health.json"
+      ],
+      "cutover_allowed": false
+    },
+    {
+      "slug": "legacymart",
+      "immutable_ref": "70f1de418ee899300c00ffa3b11632c1ab76a843",
+      "profile": "products/izakhono-node/profiles/wave2/legacymart.production.json",
+      "owned_target": "NODE01 via IZAKHONO EDGE/TLS",
+      "external_candidate": "UNASSIGNED",
+      "candidate_role": "production-fallback-required",
+      "external_status": "UNVERIFIED",
+      "verification_paths": [
+        "/",
+        "/health"
+      ],
+      "cutover_allowed": false
+    }
+  ]
+}
