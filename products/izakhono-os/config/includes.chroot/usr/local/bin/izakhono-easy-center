@@ -1,0 +1,77 @@
+#!/usr/bin/env python3
+import shutil
+import subprocess
+import sys
+from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QFont
+from PyQt6.QtWidgets import QApplication, QGridLayout, QLabel, QMessageBox, QPushButton, QVBoxLayout, QWidget
+
+APPS = [
+    ("🌍  Internet", ["firefox-esr"]),
+    ("📁  My Files", ["dolphin"]),
+    ("🧩  Apps", ["plasma-discover"]),
+    ("⚙️  Settings", ["systemsettings"]),
+    ("🛡️  Updates", ["plasma-discover", "--mode", "Update"]),
+]
+
+def launch(command):
+    if not shutil.which(command[0]):
+        QMessageBox.warning(None, "Not available", f"{command[0]} is not available in this build yet.")
+        return
+    subprocess.Popen(command, start_new_session=True)
+
+class EasyCenter(QWidget):
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle("IZAKHONO OS — Easy Center")
+        self.setMinimumSize(860, 560)
+
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(36, 30, 36, 30)
+        outer.setSpacing(18)
+
+        title = QLabel("What would you like to do?")
+        title.setFont(QFont("", 28, 700))
+        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        outer.addWidget(title)
+
+        subtitle = QLabel("Everything important is one tap away. No tracking.")
+        subtitle.setFont(QFont("", 14))
+        subtitle.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        outer.addWidget(subtitle)
+
+        grid = QGridLayout()
+        grid.setSpacing(16)
+
+        for i, (label, command) in enumerate(APPS):
+            button = QPushButton(label)
+            button.setMinimumHeight(96)
+            button.setFont(QFont("", 17, 600))
+            button.clicked.connect(lambda checked=False, c=command: launch(c))
+            grid.addWidget(button, i // 2, i % 2)
+
+        help_button = QPushButton("✨  Help Me")
+        help_button.setMinimumHeight(96)
+        help_button.setFont(QFont("", 17, 600))
+        help_button.clicked.connect(self.help_me)
+        grid.addWidget(help_button, len(APPS) // 2, len(APPS) % 2)
+        outer.addLayout(grid)
+
+        footer = QLabel("Advanced tools remain available from the desktop menu. IZAKHONO OS never hides the full computer from you.")
+        footer.setWordWrap(True)
+        footer.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        outer.addWidget(footer)
+
+    def help_me(self):
+        QMessageBox.information(
+            self,
+            "Help Me",
+            "Ask IZAKHONO will become a safe plain-language assistant.\n\n"
+            "This alpha does not send prompts or diagnostics to a cloud service and does not execute arbitrary system commands."
+        )
+
+app = QApplication(sys.argv)
+app.setApplicationName("IZAKHONO Easy Center")
+center = EasyCenter()
+center.show()
+sys.exit(app.exec())
