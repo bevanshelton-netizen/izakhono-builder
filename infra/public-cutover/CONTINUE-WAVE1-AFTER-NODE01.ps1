@@ -36,6 +36,12 @@ function Assert-LocalProof([string]$Path) {
   }
 }
 
+function Invoke-ChildScript([string]$Script,[string[]]$Arguments=@()) {
+  & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $Script @Arguments
+  $rc=$LASTEXITCODE
+  if($rc -ne 0){ throw "Child gate failed ($rc): $Script" }
+}
+
 Assert-LocalProof $NodeReport
 
 $stage=Join-Path $PSScriptRoot 'STAGE-WAVE1-EDGE.ps1'
@@ -48,12 +54,10 @@ foreach($script in @($stage,$activate,$verify)){
 
 Write-Host '[PASS] NODE01 local owned report accepted.' -ForegroundColor Green
 Write-Host '[1/3] Staging EDGE routes...'
-& $stage -AllegroHostname $AllegroHostname -ChancellorHostname $ChancellorHostname
-if($LASTEXITCODE -ne 0){ throw 'Wave 1 EDGE staging failed.' }
+Invoke-ChildScript $stage @('-AllegroHostname',$AllegroHostname,'-ChancellorHostname',$ChancellorHostname)
 
 Write-Host '[2/3] Running EDGE dry-run...'
-& $activate
-if($LASTEXITCODE -ne 0){ throw 'Wave 1 EDGE dry-run failed.' }
+Invoke-ChildScript $activate
 
 if(-not $ApplyEdge){
   Write-Host ''
@@ -64,14 +68,10 @@ if(-not $ApplyEdge){
 }
 
 Write-Host '[2/3] Activating reviewed EDGE routes...'
-& $activate -Apply
-if($LASTEXITCODE -ne 0){ throw 'Wave 1 EDGE activation failed. Keep the external routes authoritative.' }
+Invoke-ChildScript $activate @('-Apply')
 
 Write-Host '[3/3] Running public DNS/TLS/HTTPS acceptance...'
-& $verify -AllegroHostname $AllegroHostname -ChancellorHostname $ChancellorHostname
-if($LASTEXITCODE -ne 0){
-  throw 'Public acceptance did not pass. Keep or revert to the verified external production routes.'
-}
+Invoke-ChildScript $verify @('-AllegroHostname',$AllegroHostname,'-ChancellorHostname',$ChancellorHostname)
 
 Write-Host ''
 Write-Host '[PASS] Wave 1 public acceptance gates passed.' -ForegroundColor Green
