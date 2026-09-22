@@ -36,6 +36,10 @@ jobs:
       preflight: ${{ steps.contract.outputs.preflight }}
       rehearsal: ${{ steps.contract.outputs.rehearsal }}
       windows_package: ${{ steps.contract.outputs.windows_package }}
+      infra_status: ${{ steps.contract.outputs.infra_status }}
+      owned_target: ${{ steps.contract.outputs.owned_target }}
+      public_route: ${{ steps.contract.outputs.public_route }}
+      fallback_route: ${{ steps.contract.outputs.fallback_route }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -61,13 +65,22 @@ jobs:
               raise SystemExit(f'IZAKHONO manifest not found: {manifest_path}')
 
           data = json.loads(manifest_file.read_text(encoding='utf-8'))
-          required = ('name','slug','build_context','dockerfile_path','container_port','health_path')
+          if int(data.get('version', 0)) != 3:
+              raise SystemExit('IZAKHONO manifest version 3 is required by the current infrastructure directive policy')
+
+          required = ('name','slug','operator','trading_name','build_context','dockerfile_path','container_port','health_path','infrastructure')
           missing = [k for k in required if k not in data]
           if missing:
               raise SystemExit('Missing IZAKHONO fields: ' + ', '.join(missing))
 
           name = str(data['name']).strip()
           slug = str(data['slug']).strip()
+          operator = str(data['operator']).strip()
+          trading_name = str(data['trading_name']).strip()
+          if not operator or len(operator) > 160:
+              raise SystemExit('operator must contain 1-160 characters')
+          if not trading_name or len(trading_name) > 160:
+              raise SystemExit('trading_name must contain 1-160 characters')
           if not name or len(name) > 120:
               raise SystemExit('name must contain 1-120 characters')
           if not re.fullmatch(r'[a-z0-9]+(?:-[a-z0-9]+)*', slug):
@@ -94,6 +107,60 @@ jobs:
           if not health.startswith('/') or '\n' in health or '\r' in health or len(health) > 200:
               raise SystemExit('health_path must be one short absolute HTTP path')
 
+          infra = data.get('infrastructure') or {}
+          infra_required = (
+              'policy','authoritative_source','owned_target','current_public_route',
+              'external_fallback','status_label','data_dependencies','auth_dependencies',
+              'payment_dependencies','backup_evidence','restore_evidence','rollback_evidence'
+          )
+          infra_missing = [k for k in infra_required if k not in infra]
+          if infra_missing:
+              raise SystemExit('Missing infrastructure directive fields: ' + ', '.join(infra_missing))
+
+          policy = str(infra['policy']).strip()
+          if policy != 'owned-first-externally-reversible':
+              raise SystemExit('infrastructure.policy must be owned-first-externally-reversible')
+
+          authoritative_source = str(infra['authoritative_source']).strip()
+          owned_target = str(infra['owned_target']).strip()
+          public_route = str(infra['current_public_route']).strip()
+          fallback_route = str(infra['external_fallback']).strip()
+          infra_status = str(infra['status_label']).strip()
+          if not authoritative_source or not owned_target:
+              raise SystemExit('authoritative_source and owned_target must be declared')
+
+          allowed_status = {
+              'BUILT / VERIFIED LOCALLY',
+              'EXTERNAL LIVE VERIFIED',
+              'OWNED LIVE VERIFIED',
+              'NOT YET PUBLIC',
+          }
+          if infra_status not in allowed_status:
+              raise SystemExit('status_label must use an approved IZAKHONO evidence label')
+
+          for dep_key in ('data_dependencies','auth_dependencies','payment_dependencies'):
+              if not isinstance(infra[dep_key], list) or any(not isinstance(v, str) for v in infra[dep_key]):
+                  raise SystemExit(f'infrastructure.{dep_key} must be an array of strings')
+
+          def is_https(value):
+              return value.startswith('https://') and len(value) > len('https://')
+
+          placeholders = {'NOT_YET_VERIFIED','NONE','PENDING','N/A'}
+          if infra_status == 'EXTERNAL LIVE VERIFIED':
+              if not is_https(public_route):
+                  raise SystemExit('EXTERNAL LIVE VERIFIED requires an HTTPS current_public_route')
+              if fallback_route in placeholders:
+                  raise SystemExit('EXTERNAL LIVE VERIFIED requires an explicit external_fallback or failback route')
+          if infra_status == 'OWNED LIVE VERIFIED':
+              if not is_https(public_route):
+                  raise SystemExit('OWNED LIVE VERIFIED requires an HTTPS current_public_route')
+              if owned_target.upper() in {'NODE01','PENDING','NOT_YET_VERIFIED'}:
+                  raise SystemExit('OWNED LIVE VERIFIED requires a concrete owned target/route, not a placeholder')
+              for evidence_key in ('backup_evidence','restore_evidence','rollback_evidence'):
+                  evidence = str(infra[evidence_key]).strip()
+                  if evidence.upper() in placeholders or not evidence:
+                      raise SystemExit(f'OWNED LIVE VERIFIED requires {evidence_key}')
+
           alpha = data.get('alpha') or {}
           for key in ('preflight','rehearsal','windows_package'):
               if not isinstance(alpha.get(key, False), bool):
@@ -117,7 +184,11 @@ jobs:
               f.write(f"preflight={'true' if preflight else 'false'}\n")
               f.write(f"rehearsal={'true' if rehearsal else 'false'}\n")
               f.write(f"windows_package={'true' if windows_package else 'false'}\n")
-          print(f"[PASS] IZAKHONO contract loaded for {name}")
+              f.write(f"infra_status={infra_status}\n")
+              f.write(f"owned_target={owned_target}\n")
+              f.write(f"public_route={public_route}\n")
+              f.write(f"fallback_route={fallback_route}\n")
+          print(f"[PASS] IZAKHONO contract loaded for {name} with infrastructure status: {infra_status}")
           PY
 
   preflight:
@@ -307,6 +378,10 @@ jobs:
           CONTAINER: ${{ needs.container-gate.result }}
           REHEARSAL: ${{ needs.rehearsal.result }}
           WINDOWS: ${{ needs.windows-package.result }}
+          INFRA_STATUS: ${{ needs.validate.outputs.infra_status }}
+          OWNED_TARGET: ${{ needs.validate.outputs.owned_target }}
+          PUBLIC_ROUTE: ${{ needs.validate.outputs.public_route }}
+          FALLBACK_ROUTE: ${{ needs.validate.outputs.fallback_route }}
         shell: bash
         run: |
           ok_optional() { [[ "$1" == success || "$1" == skipped ]]; }
@@ -318,6 +393,11 @@ jobs:
             echo "Container + health: **${CONTAINER}**"
             echo "Rehearsal: **${REHEARSAL}**"
             echo "Windows package: **${WINDOWS}**"
+            echo
+            echo "Infrastructure status: **${INFRA_STATUS}**"
+            echo "Owned target: \`${OWNED_TARGET}\`"
+            echo "Current public route: \`${PUBLIC_ROUTE}\`"
+            echo "External fallback: \`${FALLBACK_ROUTE}\`"
             echo
           } >> "$GITHUB_STEP_SUMMARY"
 
