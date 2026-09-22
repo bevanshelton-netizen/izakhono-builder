@@ -23,7 +23,7 @@
       "public_health_path": "/api/health",
       "readiness_path": "/api/go-live",
       "readiness_field": "readyForPaidTraffic",
-      "current_external_route": "https://the-chancellor-lj3req3r7-bevan2.vercel.app",
+      "current_external_route": "https://the-chancellor-62u1zf1lc-bevan2.vercel.app",
       "external_fallback": "https://the-chancellor-e07wn6vc4-bevan2.vercel.app",
       "owned_hostname": "UNASSIGNED",
       "edge_upstream": "host.docker.internal:3000"
