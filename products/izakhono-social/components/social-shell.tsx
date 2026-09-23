@@ -98,14 +98,14 @@ export default function SocialShell() {
     <main className="appShell">
       <header className="topbar">
         <div className="brandWrap">
-          <div className="brandMark">IS</div>
-          <div><div className="brand">IZAKHONO SOCIAL</div><div className="tagline">People, not profiling.</div></div>
+          <div className="brandMark">C</div>
+          <div><div className="brand">CONNECTA</div><div className="tagline">People. Communities. Connected.</div></div>
         </div>
         <label className="search"><span>⌕</span><input aria-label="Search" placeholder="Search people, groups and posts" /></label>
         <div className="topActions"><button className="iconButton" aria-label="Messages">✦</button><button className="profileButton"><span className="avatar small">BS</span><span>My profile</span></button></div>
       </header>
 
-      <div className="privacyStrip"><strong>100% no behavioural profiling.</strong> No advertising IDs. No silent tracking. Your feed controls belong to you.</div>
+      <div className="privacyStrip"><strong>People, not profiling.</strong> No advertising IDs. No silent tracking. Your feed controls belong to you.</div>
 
       <div className="threeColumn">
         <aside className="leftRail">
@@ -123,7 +123,7 @@ export default function SocialShell() {
 
         <section className="feed">
           <div className="heroCard">
-            <div><div className="eyebrow">A social network with boundaries</div><h1>Connect to people.<br/><span>Not an algorithm.</span></h1><p>Friends, families, creators, schools, clubs and communities in one clean social space.</p></div>
+            <div><div className="eyebrow">CONNECTA</div><h1>Connect to people.<br/><span>Build real community.</span></h1><p>Friends, families, creators, schools, clubs, businesses and communities in one clean social space.</p></div>
             <div className="heroSeal"><strong>SAFE</strong><span>by design</span></div>
           </div>
 
