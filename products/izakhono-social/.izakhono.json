@@ -1,9 +1,9 @@
 {
   "version": 3,
-  "name": "IZAKHONO SOCIAL",
-  "slug": "izakhono-social",
+  "name": "CONNECTA",
+  "slug": "connecta",
   "operator": "IZAKHONO AFRICA (PTY) LTD",
-  "trading_name": "IZAKHONO SOCIAL",
+  "trading_name": "CONNECTA",
   "build_context": "products/izakhono-social",
   "dockerfile_path": "products/izakhono-social/Dockerfile",
   "container_port": 3000,
