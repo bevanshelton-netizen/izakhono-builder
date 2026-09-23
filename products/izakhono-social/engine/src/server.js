@@ -58,6 +58,7 @@ const MEDIA_ROOT = path.resolve(process.env.MEDIA_ROOT || '/var/lib/connecta/med
 const MAX_JSON_BYTES = Number(process.env.MAX_JSON_BYTES || 1_000_000);
 const MAX_MEDIA_BYTES = Number(process.env.MAX_MEDIA_BYTES || 25 * 1024 * 1024);
 const SESSION_DAYS = Math.min(Math.max(Number(process.env.SESSION_DAYS || 30), 1), 90);
+const REGISTER_RATE_LIMIT = Math.min(Math.max(Number(process.env.REGISTER_RATE_LIMIT || 8), 1), 200);
 const OWNER_KEY = process.env.CONNECTA_OWNER_KEY || '';
 const ALLOWED_ORIGINS = new Set(
   (process.env.ALLOWED_ORIGINS || '')
@@ -197,7 +198,7 @@ async function createSession(client, accountId) {
 }
 
 async function register(req, res) {
-  if (!(await rateLimit(`register:${remoteKey(req)}`, 8, 3600))) {
+  if (!(await rateLimit(`register:${remoteKey(req)}`, REGISTER_RATE_LIMIT, 3600))) {
     return send(res, 429, { ok: false, error: 'Too many registration attempts' });
   }
 
