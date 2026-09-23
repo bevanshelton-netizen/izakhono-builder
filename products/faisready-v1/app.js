@@ -271,7 +271,7 @@
       var data = serializeForm(event.currentTarget);
       saveLead("learner", data);
       event.currentTarget.reset();
-      toast("Launch-list interest saved locally");
+      toast("FAISReady follow-up request saved locally");
     });
 
     qs("businessForm").addEventListener("submit", function(event){
@@ -281,6 +281,24 @@
       event.currentTarget.reset();
       toast("Business enquiry saved locally");
     });
+
+    var shareButton = qs("shareFAISReady");
+    if(shareButton){
+      shareButton.addEventListener("click", function(){
+        var payload = {
+          title: "FAISReady — RE Exam Preparation",
+          text: "Prepare for RE1, RE3, RE4 and RE5 with FAISReady.",
+          url: window.location.href.split("#")[0]
+        };
+        if(navigator.share){
+          navigator.share(payload).catch(function(){});
+        }else if(navigator.clipboard && navigator.clipboard.writeText){
+          navigator.clipboard.writeText(payload.url).then(function(){ toast("FAISReady link copied"); });
+        }else{
+          toast("Copy this page link to share FAISReady");
+        }
+      });
+    }
 
     qs("exportLeads").addEventListener("click", exportLeads);
     renderDashboard();
