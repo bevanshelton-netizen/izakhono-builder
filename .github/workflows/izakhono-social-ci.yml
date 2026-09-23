@@ -3,7 +3,7 @@ name: CONNECTA CI
 on:
   push:
     branches:
-      - product/connecta-perceptual-media-protection
+      - 'product/connecta-*'
     paths:
       - 'products/izakhono-social/**'
       - '.github/workflows/izakhono-social-ci.yml'
@@ -68,12 +68,13 @@ jobs:
           CONNECTA_DB_PASSWORD: ci-only-password
           CONNECTA_OWNER_KEY: ci-only-owner-key
         run: docker compose -f docker-compose.owned.yml config
-      - name: Boot owned database and engine
+      - name: Boot owned CONNECTA stack
         working-directory: products/izakhono-social
         env:
           CONNECTA_DB_PASSWORD: ci-only-password
           CONNECTA_OWNER_KEY: ci-only-owner-key
-        run: docker compose -f docker-compose.owned.yml up -d --build postgres engine
+          CONNECTA_PORT: '3080'
+        run: docker compose -f docker-compose.owned.yml up -d --build postgres engine web
       - name: Verify CONNECTA ENGINE health
         working-directory: products/izakhono-social
         env:
@@ -88,6 +89,18 @@ jobs:
           done
           docker compose -f docker-compose.owned.yml logs engine postgres
           exit 1
+      - name: Verify web-to-engine secure runtime
+        working-directory: products/izakhono-social
+        env:
+          CONNECTA_DB_PASSWORD: ci-only-password
+          CONNECTA_OWNER_KEY: ci-only-owner-key
+          CONNECTA_WEB_URL: http://127.0.0.1:3080
+        run: |
+          for i in $(seq 1 45); do
+            if curl -fsS --max-time 5 http://127.0.0.1:3080/health >/dev/null; then break; fi
+            sleep 2
+          done
+          node scripts/smoke-web-runtime.mjs
       - name: Exercise growth flywheel
         working-directory: products/izakhono-social
         env:
