@@ -3,7 +3,7 @@ name: CONNECTA CI
 on:
   push:
     branches:
-      - product/connecta-perceptual-media-protection
+      - 'product/connecta-*'
     paths:
       - 'products/izakhono-social/**'
       - '.github/workflows/izakhono-social-ci.yml'
