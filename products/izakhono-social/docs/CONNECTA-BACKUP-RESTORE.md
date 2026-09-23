@@ -7,7 +7,7 @@ CONNECTA public cutover is blocked until a backup has been created and a non-des
 From the CONNECTA repository directory:
 
 ```bash
-CONNECTA_COMPOSE_PROJECT=izakhono-connecta ./ops/backup.sh /var/backups/connecta
+CONNECTA_COMPOSE_PROJECT=izakhono-connecta bash ops/backup.sh /var/backups/connecta
 ```
 
 The backup bundle contains:
@@ -22,7 +22,7 @@ No passwords, owner keys or authentication secrets are intentionally written int
 ## Non-destructive restore proof
 
 ```bash
-CONNECTA_COMPOSE_PROJECT=izakhono-connecta ./ops/restore-test.sh /var/backups/connecta/connecta-<timestamp>
+CONNECTA_COMPOSE_PROJECT=izakhono-connecta bash ops/restore-test.sh /var/backups/connecta/connecta-<timestamp>
 ```
 
 This restores the database into a temporary database and the media archive into a temporary Docker volume, validates the CONNECTA schema and media count, then destroys the temporary targets. Production remains untouched.
@@ -32,7 +32,7 @@ This restores the database into a temporary database and the media archive into 
 A real restore is intentionally guarded:
 
 ```bash
-CONNECTA_COMPOSE_PROJECT=izakhono-connecta ./ops/restore.sh /var/backups/connecta/connecta-<timestamp> --confirm-destructive
+CONNECTA_COMPOSE_PROJECT=izakhono-connecta bash ops/restore.sh /var/backups/connecta/connecta-<timestamp> --confirm-destructive
 ```
 
 This stops the web/engine services, recreates the CONNECTA database, restores the media volume, restarts the stack and requires the full `/health` gate to pass.
