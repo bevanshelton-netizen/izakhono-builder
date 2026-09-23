@@ -174,7 +174,7 @@ export async function discoverCommunities(respond, account, limit = 30) {
   const result = await query(
     `select c.id,c.slug,c.name,c.description,c.created_at,
             count(cm.account_id)::int as member_count,
-            bool_or(cm.account_id=$1 and cm.status='active') as joined
+            coalesce(bool_or(cm.account_id=$1 and cm.status='active'),false) as joined
        from communities c
        left join community_members cm on cm.community_id=c.id
       where c.status='active' and c.visibility='public'
@@ -269,22 +269,31 @@ export async function redeemCommunityInvite(respond, account, inviteCode) {
     if (!result.rowCount) return { error: 'Community invite is invalid or expired' };
     const invite = result.rows[0];
 
+    const redemption = await client.query(
+      `insert into community_invite_redemptions(invite_id,account_id)
+       values($1,$2)
+       on conflict do nothing
+       returning invite_id`,
+      [invite.id, account.id],
+    );
     await client.query(
       `insert into community_members(community_id,account_id,role,status)
        values($1,$2,'member','active')
        on conflict(community_id,account_id) do update set status='active'`,
       [invite.community_id, account.id],
     );
-    await client.query(
-      'update community_invites set use_count=use_count+1 where id=$1',
-      [invite.id],
-    );
-    return { communityId: invite.community_id };
+    if (redemption.rowCount) {
+      await client.query(
+        'update community_invites set use_count=use_count+1 where id=$1',
+        [invite.id],
+      );
+    }
+    return { communityId: invite.community_id, newlyRedeemed: Boolean(redemption.rowCount) };
   });
 
   if (outcome.error) return respond(409, { ok: false, error: outcome.error });
   await markMilestone(account.id, 'first_community_at');
-  return respond(200, { ok: true, communityId: outcome.communityId });
+  return respond(200, { ok: true, communityId: outcome.communityId, newlyRedeemed: outcome.newlyRedeemed });
 }
 
 export async function growthSummary(respond) {
