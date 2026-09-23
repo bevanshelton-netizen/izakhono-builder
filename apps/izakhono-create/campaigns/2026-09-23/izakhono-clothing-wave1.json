@@ -1,0 +1,52 @@
+{
+  "schema": "izakhono.marketing.package.v1",
+  "source": "IZAKHONO CREATE",
+  "created_at": "2026-09-23T19:47:00Z",
+  "product": "Izakhono Africa Clothing Manufacturing",
+  "campaign_name": "Izakhono Clothing — Institutional Quote Drive",
+  "creative": {
+    "brief": "Generate qualified school, sports-club, corporate and organisational quote requests for uniforms, apparel, sports kits and PPE.",
+    "key_message": "Custom clothing for teams, schools and organisations — built around your quantities, branding and deadline.",
+    "formats": [
+      "1080x1080 product showcase",
+      "1080x1920 short video",
+      "WhatsApp catalogue card",
+      "corporate quote banner"
+    ],
+    "hooks": [
+      "Need uniforms for your school or team?",
+      "Ordering branded apparel in quantity?",
+      "Send your quantities, sizes and deadline for a quote."
+    ],
+    "compliance_notes": [
+      "Confirm product availability, pricing, lead time and delivery terms before publication.",
+      "Do not publish unverified turnaround guarantees.",
+      "Use customer logos or team identities only with appropriate permission."
+    ]
+  },
+  "channels": [
+    "WhatsApp",
+    "local search/SEO",
+    "direct institutional sales",
+    "schools",
+    "sports clubs",
+    "corporate procurement",
+    "Facebook",
+    "Instagram"
+  ],
+  "offer": "Request a quote for school uniforms, sports kits, corporate wear, hoodies, tracksuits, tees, golfers, caps and PPE.",
+  "cta": "Request a quote",
+  "approval": {
+    "creative_source_verified": true,
+    "owner_spend_approved": false,
+    "publish_ready": false
+  },
+  "attribution": {
+    "campaign_id": "create-izakhono-clothing-wave1-20260923"
+  },
+  "policy": {
+    "distribution_system": "IZAKHONO ADS",
+    "owned_infrastructure_first": true,
+    "external_routes_reversible": true
+  }
+}
