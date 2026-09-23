@@ -1,0 +1,56 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: connecta
+      POSTGRES_USER: connecta
+      POSTGRES_PASSWORD: ${CONNECTA_DB_PASSWORD:?Set CONNECTA_DB_PASSWORD}
+    volumes:
+      - connecta_postgres:/var/lib/postgresql/data
+      - ./db:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U connecta -d connecta"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks: [connecta_private]
+
+  engine:
+    build:
+      context: ./engine
+    restart: unless-stopped
+    environment:
+      PORT: "4100"
+      DATABASE_URL: postgres://connecta:${CONNECTA_DB_PASSWORD}@postgres:5432/connecta
+      CONNECTA_OWNER_KEY: ${CONNECTA_OWNER_KEY:?Set CONNECTA_OWNER_KEY}
+      MEDIA_ROOT: /var/lib/connecta/media
+      ALLOWED_ORIGINS: ${CONNECTA_ALLOWED_ORIGINS:-}
+    volumes:
+      - connecta_media:/var/lib/connecta/media
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks: [connecta_private]
+
+  web:
+    build:
+      context: .
+    restart: unless-stopped
+    environment:
+      CONNECTA_ENGINE_URL: http://engine:4100
+      NEXT_TELEMETRY_DISABLED: "1"
+    depends_on:
+      - engine
+    ports:
+      - "${CONNECTA_PORT:-3080}:3000"
+    networks:
+      - connecta_private
+
+networks:
+  connecta_private:
+    driver: bridge
+
+volumes:
+  connecta_postgres:
+  connecta_media:
