@@ -1,3 +1,5 @@
+import sharp from 'sharp';
+
 const base = process.env.CONNECTA_ENGINE_URL || 'http://127.0.0.1:4100';
 
 async function api(path, { method='GET', token, body, expect } = {}) {
@@ -69,7 +71,16 @@ const first = await api('/v1/media', {
   token:owner.token,
   body:{mediaType:'image',mimeType:'image/png'},
 });
-const bytes = new TextEncoder().encode('connecta-media-copy-test');
+const bytes = await sharp({
+  create: {
+    width: 64,
+    height: 64,
+    channels: 3,
+    background: { r: 40, g: 120, b: 200 },
+  },
+}).composite([
+  { input: Buffer.from('<svg width="64" height="64"><rect x="8" y="8" width="18" height="40" fill="white"/><circle cx="43" cy="32" r="12" fill="black"/></svg>') }
+]).png().toBuffer();
 await upload(`/v1/media/${first.media.id}/content`, owner.token, bytes);
 
 const second = await api('/v1/media', {
