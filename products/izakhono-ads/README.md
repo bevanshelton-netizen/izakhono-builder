@@ -29,3 +29,7 @@ No external ad account is connected in this alpha. No campaign can spend money o
 ## Video note
 
 The alpha renders animated WebM video locally in supported browsers such as current Chrome/Edge. MP4 transcoding, AI voice-over, avatar generation and external video-model connectors can be added as owner-controlled modules without changing the campaign data model.
+
+## CEO Growth Board
+
+IZAKHONO ADS ships the portfolio growth registry and exposes an interactive **CEO Growth** board. Before distribution, the owner can inspect each product's target audience, primary CTA, activation event, retention loop, referral loop, revenue model, approved channel mix and partnership targets. The registry is validated against IZAKHONO CREATE in CI so the two control planes cannot silently drift.
