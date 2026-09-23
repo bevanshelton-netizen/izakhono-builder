@@ -13,8 +13,12 @@ It is designed so the social network can continue to operate without Meta, Googl
 - user-controlled feed modes
 - deterministic Balanced feed based only on explicit relationships + recency
 - posts, comments and reactions
-- baseline server-side text moderation
-- report intake and moderation queue
+- zero-tolerance server-side text moderation for cyberbullying, threats, doxxing and other prohibited categories
+- report-triggered protective account locks and safety separation
+- confirmed-violation account disablement with formal safety/legal compliance warnings
+- blocked-account appeal intake
+- protected-identity anti-cloning / impersonation detection
+- report intake and urgent moderation queue
 - owner moderation decisions
 - local filesystem media storage on the owned host
 - audit trail restricted to security/moderation operations
@@ -47,6 +51,8 @@ There is no advertising ID, cross-site tracking identity, dwell-time score or hi
 - `POST /v1/follows/:accountId`
 - `POST /v1/connections/:accountId`
 - `POST /v1/reports`
+- `POST /v1/safety/appeals`
+- `GET /v1/me/notices`
 - `POST /v1/invites`
 - `GET /v1/invites`
 - `POST /v1/invites/:code/redeem`
@@ -60,6 +66,8 @@ There is no advertising ID, cross-site tracking identity, dwell-time score or hi
 - `GET /v1/media/:id/content`
 - `GET /v1/admin/moderation`
 - `PATCH /v1/admin/moderation/:caseId`
+- `GET /v1/admin/identity-alerts`
+- `POST /v1/admin/identities/:accountId/protect`
 - `GET /v1/admin/growth`
 
 ## NODE01 deployment
