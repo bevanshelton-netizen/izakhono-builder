@@ -1,4 +1,17 @@
 const HARD_BLOCKS = [
+  ['cyberbullying', [
+    /\b(kill yourself|go kill yourself|kys|you should die|hope you die)\b/i,
+    /\b(everyone|everybody|all of you)\b.{0,35}\b(harass|bully|attack|humiliate|shame)\b/i,
+    /\b(harass|bully|attack|humiliate|shame)\b.{0,35}\b(@[a-z0-9._-]+|this person|him|her|them)\b/i,
+  ]],
+  ['threats', [
+    /\b(i will|i'm going to|we will|we're going to)\b.{0,30}\b(kill|hurt|beat|attack|shoot|stab)\b/i,
+    /\b(coming for you|watch your back|you are dead)\b/i,
+  ]],
+  ['doxxing', [
+    /\b(here is|their|his|her)\b.{0,30}\b(home address|private address|phone number)\b/i,
+    /\b(dox|doxx|doxxing)\b.{0,30}\b(@[a-z0-9._-]+|him|her|them|this person)\b/i,
+  ]],
   ['child-sexual-exploitation', [
     /child\s*(porn|sexual|nude|nudes|explicit)/i,
     /minor\s*(porn|sexual|nude|nudes|explicit)/i,
