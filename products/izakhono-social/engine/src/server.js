@@ -40,6 +40,16 @@ import {
   safetyReport,
   scanIdentityClone,
 } from './safety.js';
+import {
+  decideBusinessVerification,
+  duplicateMediaCheck,
+  listBusinessVerifications,
+  listNotifications,
+  markNotificationRead,
+  publicBusiness,
+  shareContent,
+  submitBusinessVerification,
+} from './trust.js';
 
 const PORT = Number(process.env.PORT || 4100);
 const MEDIA_ROOT = path.resolve(process.env.MEDIA_ROOT || '/var/lib/connecta/media');
@@ -596,12 +606,28 @@ async function uploadMedia(req, res, account, mediaId) {
     `update media_assets set byte_size=$1,sha256=$2,moderation_state='review' where id=$3`,
     [bytes.length, sha256, mediaId],
   );
+  const duplicate = await duplicateMediaCheck({
+    suspectedMediaId: mediaId,
+    suspectedOwnerId: account.id,
+    sha256,
+  });
   await query(
     `insert into moderation_cases(source,target_type,target_id,category,severity,state,rationale)
-     values('automatic','media',$1,'media-review-required',2,'open','Uploaded media requires review before public distribution')`,
-    [mediaId],
+     values('automatic','media',$1,$2,$3,'open',$4)`,
+    [
+      mediaId,
+      duplicate ? 'possible-content-copy' : 'media-review-required',
+      duplicate ? 4 : 2,
+      duplicate
+        ? 'Exact-file match to media previously uploaded by another account; owner alerted and review required.'
+        : 'Uploaded media requires review before public distribution',
+    ],
   );
-  return send(res, 200, { ok: true, media: { id: mediaId, byteSize: bytes.length, sha256, state: 'review' } });
+  return send(res, 200, {
+    ok: true,
+    media: { id: mediaId, byteSize: bytes.length, sha256, state: 'review' },
+    duplicateOwnerAlert: Boolean(duplicate),
+  });
 }
 
 async function moderationQueue(req, res) {
@@ -684,6 +710,13 @@ async function route(req, res) {
 
   if (req.method === 'POST' && url.pathname === '/v1/auth/register') return register(req, res);
   if (req.method === 'POST' && url.pathname === '/v1/auth/login') return login(req, res);
+
+  const publicBusinessMatch = url.pathname.match(/^\/v1\/businesses\/([0-9a-f-]+)$/i);
+  if (req.method === 'GET' && publicBusinessMatch) {
+    const business = await publicBusiness(publicBusinessMatch[1]);
+    if (!business) return send(res, 404, { ok: false, error: 'Verified business not found' });
+    return send(res, 200, { ok: true, business, verified: true });
+  }
   if (req.method === 'POST' && url.pathname === '/v1/safety/appeals') {
     if (!(await rateLimit(`appeal:${remoteKey(req)}`, 10, 3600))) {
       return send(res, 429, { ok: false, error: 'Appeal rate limit reached' });
@@ -725,6 +758,25 @@ async function route(req, res) {
     if (!requireOwner(req, res)) return;
     return send(res, 200, { ok: true, alerts: await listIdentityAlerts() });
   }
+  if (req.method === 'GET' && url.pathname === '/v1/admin/business-verifications') {
+    if (!requireOwner(req, res)) return;
+    return send(res, 200, { ok: true, businesses: await listBusinessVerifications() });
+  }
+  const businessDecisionMatch = url.pathname.match(/^\/v1\/admin\/businesses\/([0-9a-f-]+)\/verification$/i);
+  if (req.method === 'PATCH' && businessDecisionMatch) {
+    if (!requireOwner(req, res)) return;
+    const body = await readJson(req);
+    const action = typeof body.action === 'string' ? body.action : '';
+    const note = typeof body.note === 'string' ? body.note.trim().slice(0, 1000) : '';
+    const result = await decideBusinessVerification({
+      businessId: businessDecisionMatch[1],
+      action,
+      reviewer: 'owner',
+      note,
+    });
+    if (result.error) return send(res, 400, { ok: false, error: result.error });
+    return send(res, 200, { ok: true, ...result });
+  }
   const identityProtect = url.pathname.match(/^\/v1\/admin\/identities\/([0-9a-f-]+)\/protect$/i);
   if (req.method === 'POST' && identityProtect) {
     if (!requireOwner(req, res)) return;
@@ -747,9 +799,56 @@ async function route(req, res) {
   if (req.method === 'GET' && url.pathname === '/v1/me/notices') {
     return send(res, 200, { ok: true, notices: await listSafetyNotices(account.id) });
   }
+  if (req.method === 'GET' && url.pathname === '/v1/notifications') {
+    return send(res, 200, { ok: true, notifications: await listNotifications(account.id) });
+  }
+  const notificationReadMatch = url.pathname.match(/^\/v1\/notifications\/([0-9a-f-]+)\/read$/i);
+  if (req.method === 'POST' && notificationReadMatch) {
+    const notification = await markNotificationRead(account.id, notificationReadMatch[1]);
+    if (!notification) return send(res, 404, { ok: false, error: 'Notification not found' });
+    return send(res, 200, { ok: true, notification });
+  }
+  if (req.method === 'POST' && url.pathname === '/v1/businesses/apply') {
+    const body = await readJson(req);
+    const result = await submitBusinessVerification(account.id, body);
+    if (result.error) return send(res, 400, { ok: false, error: result.error });
+    return send(res, 201, { ok: true, ...result, verified: false });
+  }
   if (req.method === 'GET' && url.pathname === '/v1/feed') return feed(req, res, account);
   if (req.method === 'POST' && url.pathname === '/v1/posts') return createPost(req, res, account);
   if (req.method === 'POST' && url.pathname === '/v1/reports') return reportTarget(req, res, account);
+  if (req.method === 'POST' && url.pathname === '/v1/shares') {
+    const body = await readJson(req);
+    const sourceType = typeof body.sourceType === 'string' ? body.sourceType : '';
+    const sourceId = typeof body.sourceId === 'string' ? body.sourceId : '';
+    const commentary = typeof body.commentary === 'string' ? body.commentary.trim().slice(0, 1000) : '';
+    if (!sourceId) return send(res, 400, { ok: false, error: 'sourceId required' });
+    if (commentary) {
+      const moderation = moderateText(commentary);
+      if (moderation.action === 'block') {
+        const enforcement = await automaticViolation({
+          accountId: account.id,
+          targetType: 'account',
+          targetId: account.id,
+          category: moderation.categories[0] || 'harassment',
+          rationale: moderation.reason,
+        });
+        return send(res, 423, { ok: false, blocked: true, moderation, enforcement });
+      }
+      if (moderation.action === 'review') {
+        return send(res, 422, { ok: false, error: 'Share commentary requires review before publishing', moderation });
+      }
+    }
+    const result = await shareContent({
+      sharerId: account.id,
+      sourceType,
+      sourceId,
+      commentary,
+    });
+    if (result.error) return send(res, 400, { ok: false, error: result.error });
+    await audit('content.shared', account.id, sourceType, sourceId, { originalOwnerId: result.originalOwnerId });
+    return send(res, 201, { ok: true, ...result, ownerAlerted: true });
+  }
   if (req.method === 'POST' && url.pathname === '/v1/media') return createMedia(req, res, account);
   if (req.method === 'POST' && url.pathname === '/v1/invites') {
     const body = await readJson(req);
