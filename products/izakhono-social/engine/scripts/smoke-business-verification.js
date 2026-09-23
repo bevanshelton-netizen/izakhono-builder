@@ -50,4 +50,39 @@ const earlyVerify = await call(`/v1/admin/businesses/${businessId}/verification`
 });
 if (earlyVerify.response.status !== 400) throw new Error('verification evidence gate did not block');
 
-console.log(JSON.stringify({ok:true,businessId,gate:true}));
+const evidenceA = await call(`/v1/businesses/${businessId}/evidence`, {
+  method:'POST',
+  token:account.token,
+  body:{evidenceType:'owner_identity',reference:`ci://owner/${suffix}`},
+});
+const evidenceB = await call(`/v1/businesses/${businessId}/evidence`, {
+  method:'POST',
+  token:account.token,
+  body:{evidenceType:'registration_record',reference:`ci://registration/${suffix}`},
+});
+if (!evidenceA.response.ok || !evidenceB.response.ok) throw new Error('business evidence submission failed');
+
+for (const item of [evidenceA.data.evidence,evidenceB.data.evidence]) {
+  const decision = await call(`/v1/admin/businesses/${businessId}/evidence/${item.id}`, {
+    method:'PATCH',
+    owner:true,
+    body:{action:'accepted',note:'CI evidence accepted'},
+  });
+  if (!decision.response.ok) throw new Error('business evidence review failed');
+}
+
+const finalVerify = await call(`/v1/admin/businesses/${businessId}/verification`, {
+  method:'PATCH',
+  owner:true,
+  body:{action:'verified',note:'evidence-backed verification'},
+});
+if (!finalVerify.response.ok || finalVerify.data.business.verification_state !== 'verified') {
+  throw new Error('evidence-backed business verification failed');
+}
+
+const publicResult = await call(`/v1/businesses/${businessId}`);
+if (!publicResult.response.ok || publicResult.data.business.verification_state !== 'verified') {
+  throw new Error('verified business public view failed');
+}
+
+console.log(JSON.stringify({ok:true,businessId,gate:true,verified:true}));
