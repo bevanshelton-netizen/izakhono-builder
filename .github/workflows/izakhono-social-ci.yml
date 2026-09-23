@@ -98,6 +98,18 @@ jobs:
           CONNECTA_DB_PASSWORD: ci-only-password
           CONNECTA_OWNER_KEY: ci-only-owner-key
         run: docker compose -f docker-compose.owned.yml exec -T engine node scripts/smoke-safety.js
+      - name: Exercise content-owner alerts
+        working-directory: products/izakhono-social
+        env:
+          CONNECTA_DB_PASSWORD: ci-only-password
+          CONNECTA_OWNER_KEY: ci-only-owner-key
+        run: docker compose -f docker-compose.owned.yml exec -T engine node scripts/smoke-content-alerts.js
+      - name: Exercise evidence-backed business verification
+        working-directory: products/izakhono-social
+        env:
+          CONNECTA_DB_PASSWORD: ci-only-password
+          CONNECTA_OWNER_KEY: ci-only-owner-key
+        run: docker compose -f docker-compose.owned.yml exec -T engine node scripts/smoke-business-verification.js
       - name: Show logs on failure
         if: failure()
         working-directory: products/izakhono-social
