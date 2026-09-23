@@ -17,6 +17,19 @@ import {
   validatePassword,
   verifyPassword,
 } from './security.js';
+import {
+  createCommunity,
+  createCommunityInvite,
+  createInvite,
+  discoverCommunities,
+  growthSummary,
+  initializeOnboarding,
+  joinCommunity,
+  listInvites,
+  markMilestone,
+  redeemCommunityInvite,
+  redeemInvite,
+} from './growth.js';
 
 const PORT = Number(process.env.PORT || 4100);
 const MEDIA_ROOT = path.resolve(process.env.MEDIA_ROOT || '/var/lib/connecta/media');
@@ -196,6 +209,7 @@ async function register(req, res) {
          values($1,$2,$3)`,
         [accountId, password.salt, password.hash],
       );
+      await initializeOnboarding(client, accountId);
       const token = await createSession(client, accountId);
       return { accountId, token };
     });
@@ -330,6 +344,7 @@ async function createPost(req, res, account) {
   });
 
   await audit('post.created', account.id, 'post', result.id, { moderationState });
+  if (moderationState === 'allowed') await markMilestone(account.id, 'first_post_at');
   return send(res, 201, { ok: true, post: result, moderation });
 }
 
@@ -381,6 +396,7 @@ async function follow(req, res, account, targetId) {
      on conflict do nothing`,
     [account.id, targetId],
   );
+  await markMilestone(account.id, 'first_follow_at');
   return send(res, 200, { ok: true });
 }
 
@@ -395,6 +411,7 @@ async function connect(req, res, account, targetId) {
   } catch (error) {
     if (String(error?.code) !== '23505') throw error;
   }
+  await markMilestone(account.id, 'first_connection_at');
   return send(res, 200, { ok: true, status: 'pending' });
 }
 
@@ -575,6 +592,10 @@ async function route(req, res) {
   if (req.method === 'POST' && url.pathname === '/v1/auth/login') return login(req, res);
 
   if (req.method === 'GET' && url.pathname === '/v1/admin/moderation') return moderationQueue(req, res);
+  if (req.method === 'GET' && url.pathname === '/v1/admin/growth') {
+    if (!requireOwner(req, res)) return;
+    return growthSummary((status, data) => send(res, status, data));
+  }
   const adminCase = url.pathname.match(/^\/v1\/admin\/moderation\/([0-9a-f-]+)$/i);
   if (req.method === 'PATCH' && adminCase) return resolveModeration(req, res, adminCase[1]);
 
@@ -590,6 +611,24 @@ async function route(req, res) {
   if (req.method === 'POST' && url.pathname === '/v1/posts') return createPost(req, res, account);
   if (req.method === 'POST' && url.pathname === '/v1/reports') return reportTarget(req, res, account);
   if (req.method === 'POST' && url.pathname === '/v1/media') return createMedia(req, res, account);
+  if (req.method === 'POST' && url.pathname === '/v1/invites') {
+    const body = await readJson(req);
+    return createInvite((status, data) => send(res, status, data), account, body);
+  }
+  if (req.method === 'GET' && url.pathname === '/v1/invites') {
+    return listInvites((status, data) => send(res, status, data), account);
+  }
+  if (req.method === 'POST' && url.pathname === '/v1/communities') {
+    const body = await readJson(req);
+    return createCommunity((status, data) => send(res, status, data), account, body);
+  }
+  if (req.method === 'GET' && url.pathname === '/v1/communities/discover') {
+    return discoverCommunities(
+      (status, data) => send(res, status, data),
+      account,
+      url.searchParams.get('limit'),
+    );
+  }
 
   const postComment = url.pathname.match(/^\/v1\/posts\/([0-9a-f-]+)\/comments$/i);
   if (req.method === 'POST' && postComment) return createComment(req, res, account, postComment[1]);
@@ -602,6 +641,36 @@ async function route(req, res) {
 
   const connectionMatch = url.pathname.match(/^\/v1\/connections\/([0-9a-f-]+)$/i);
   if (req.method === 'POST' && connectionMatch) return connect(req, res, account, connectionMatch[1]);
+
+  const inviteRedeem = url.pathname.match(/^\/v1\/invites\/([^/]+)\/redeem$/);
+  if (req.method === 'POST' && inviteRedeem) {
+    return redeemInvite((status, data) => send(res, status, data), account, inviteRedeem[1]);
+  }
+
+  const communityJoin = url.pathname.match(/^\/v1\/communities\/([0-9a-f-]+)\/join$/i);
+  if (req.method === 'POST' && communityJoin) {
+    return joinCommunity((status, data) => send(res, status, data), account, communityJoin[1]);
+  }
+
+  const communityInvite = url.pathname.match(/^\/v1\/communities\/([0-9a-f-]+)\/invites$/i);
+  if (req.method === 'POST' && communityInvite) {
+    const body = await readJson(req);
+    return createCommunityInvite(
+      (status, data) => send(res, status, data),
+      account,
+      communityInvite[1],
+      body,
+    );
+  }
+
+  const communityInviteRedeem = url.pathname.match(/^\/v1\/community-invites\/([^/]+)\/redeem$/);
+  if (req.method === 'POST' && communityInviteRedeem) {
+    return redeemCommunityInvite(
+      (status, data) => send(res, status, data),
+      account,
+      communityInviteRedeem[1],
+    );
+  }
 
   const uploadMatch = url.pathname.match(/^\/v1\/media\/([0-9a-f-]+)\/content$/i);
   if (req.method === 'PUT' && uploadMatch) return uploadMedia(req, res, account, uploadMatch[1]);
