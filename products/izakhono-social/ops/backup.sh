@@ -18,7 +18,15 @@ echo "[1/4] PostgreSQL backup..."
 "${DC[@]}" exec -T postgres   pg_dump -U connecta -d connecta -Fc --no-owner --no-acl > "$DEST/connecta-db.dump"
 
 echo "[2/4] Media backup..."
-docker run --rm   -v "${PROJECT}_connecta_media:/source:ro"   -v "$DEST:/backup"   postgres:17-alpine   sh -lc 'cd /source && tar -czf /backup/connecta-media.tar.gz .'
+HOST_UID="$(id -u)"
+HOST_GID="$(id -g)"
+docker run --rm \
+  -e HOST_UID="$HOST_UID" \
+  -e HOST_GID="$HOST_GID" \
+  -v "${PROJECT}_connecta_media:/source:ro" \
+  -v "$DEST:/backup" \
+  postgres:17-alpine \
+  sh -lc 'cd /source && tar -czf /backup/connecta-media.tar.gz . && chown "$HOST_UID:$HOST_GID" /backup/connecta-media.tar.gz'
 
 MEDIA_FILES="$(docker run --rm -v "${PROJECT}_connecta_media:/source:ro" postgres:17-alpine sh -lc 'find /source -type f | wc -l' | tr -d '[:space:]')"
 DB_BYTES="$(wc -c < "$DEST/connecta-db.dump" | tr -d '[:space:]')"
