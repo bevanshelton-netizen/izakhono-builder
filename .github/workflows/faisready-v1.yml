@@ -46,9 +46,9 @@ jobs:
           js = Path("products/faisready-v1/app.js").read_text(encoding="utf-8")
           pay = Path("products/faisready-v1/PAYMENT-INTEGRATION.md").read_text(encoding="utf-8")
           required = [
-              "FAISReady", "R399", "RE1", "RE3", "RE4", "RE5",
-              "Join the R399 Launch List", "Employer / Team Enquiry",
-              "Institutional Pilot", "Payments are intentionally disabled"
+              "FAISReady", "R399", "R299", "R549", "RE1", "RE3", "RE4", "RE5",
+              "Buy RE5 Complete", "Employer / Team Enquiry",
+              "Institutional Pilot", "RE5 LIVE", "OTHERS GATED"
           ]
           for item in required:
               assert item in html, item
@@ -64,7 +64,10 @@ jobs:
           assert raw[:4] == b"RIFF"
           assert raw[8:12] == b"WEBP"
           assert len(raw) == 49868
-          assert "PAYMENTS_ACTIVE=false" in pay
+          assert "RE5_DIRECT_CHECKOUT_LINKED=true" in pay
+          assert "AUTOMATED_ENTITLEMENT=false" in pay
+          assert "OTHER_CHECKOUTS_ACTIVE=false" in pay
+          assert "https://pay.ikhokha.com/izakhono/buy/re5completeprepara" in html
           lowered = (html + js).lower()
           blocked = [
               "payfast.co.za/eng/process",
