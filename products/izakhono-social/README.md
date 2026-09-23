@@ -1,6 +1,6 @@
-# IZAKHONO SOCIAL
+# CONNECTA
 
-A privacy-first, safety-led social network product built for IZAKHONO AFRICA.
+A privacy-first, safety-led social network built for IZAKHONO AFRICA and designed for a global community.
 
 ## Product promise
 
@@ -17,13 +17,14 @@ A privacy-first, safety-led social network product built for IZAKHONO AFRICA.
 
 ## Current implementation
 
-This first product slice is an interactive Next.js 16 application with:
+CONNECTA is an interactive Next.js 16 application with:
 - responsive social feed
 - post composer
 - baseline server-side text moderation
 - block/review/allow outcomes
 - safety and standards pages
 - health endpoint
+- portable Postgres social graph
 - standalone Docker production build
 - IZAKHONO manifest for NODE01 owned-first deployment
 
@@ -51,11 +52,11 @@ GET /health
 ## Next engineering gates
 
 1. Add production identity/authentication and account recovery.
-2. Add durable social graph, posts, comments, reactions, groups and message storage.
+2. Connect the durable social graph, posts, comments, reactions, groups and message storage to the application.
 3. Add encrypted transport and stricter private-message authorization.
 4. Add media upload pipeline plus image/video moderation.
 5. Add report queue, human moderation console and appeals.
 6. Add minor-safety defaults and guardian/age-assurance strategy.
 7. Add owned database/object-storage adapters with reversible external fallback.
 8. Add abuse prevention, spam controls, rate limiting and device/session security.
-9. Verify NODE01 build and public HTTPS route before calling the product live.
+9. Verify NODE01 build and public HTTPS route before calling CONNECTA live.
