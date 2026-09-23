@@ -1,0 +1,67 @@
+{
+  "schema": "izakhono.wave1.conversion.v1",
+  "effective_date": "2026-09-23",
+  "objective": "Verify the full customer path from public landing page to CTA to payment or qualified lead handoff before scaling distribution.",
+  "rules": [
+    "No product may be marked VERIFIED_CONVERSION_READY without public HTTPS evidence and a working primary CTA.",
+    "A payment product also requires a verified checkout or payment handoff.",
+    "A lead-generation product requires a verified form, WhatsApp, email or quote-request handoff.",
+    "Do not mark a product live based only on CI, source code, DNS configuration or an internal preview.",
+    "Use IZAKHONO-owned infrastructure first; external routes remain reversible."
+  ],
+  "products": [
+    {
+      "slug": "faisready",
+      "display_name": "FAISReady",
+      "public_url": "https://faisready.co.za/",
+      "primary_cta": "Start preparing",
+      "revenue_route": "iKhokha checkout / approved payment handoff",
+      "share_route": "WhatsApp/share action",
+      "public_https": "UNVERIFIED",
+      "primary_cta_status": "UNVERIFIED",
+      "revenue_route_status": "UNVERIFIED",
+      "share_route_status": "UNVERIFIED",
+      "conversion_status": "BLOCKED_PENDING_PUBLIC_VERIFICATION",
+      "evidence_notes": [
+        "The public domain was not retrievable through the current external verification tool on 23 September 2026.",
+        "Campaign package exists, but publishing must remain paused until the public customer journey is verified end to end."
+      ]
+    },
+    {
+      "slug": "edu-build-institute",
+      "display_name": "Edu-Build Institute",
+      "public_url": "https://edubuildshelton.org.za/",
+      "primary_cta": "Enrol / Request campus information",
+      "revenue_route": "Application/enrolment lead followed by approved fee payment",
+      "share_route": "WhatsApp/share action",
+      "public_https": "VERIFIED",
+      "primary_cta_status": "VERIFIED_WITH_CONTENT_FIXES_REQUIRED",
+      "revenue_route_status": "PARTIAL_NOT_END_TO_END_VERIFIED",
+      "share_route_status": "UNVERIFIED",
+      "conversion_status": "BLOCKED_CONTENT_AND_HANDOFF_FIXES",
+      "evidence_notes": [
+        "Public pages were indexed and reachable on 23 September 2026.",
+        "Public pages expose Apply Online / Enroll Now actions.",
+        "Visible zero-value counters weaken trust and should be removed or populated with verified figures.",
+        "Level 4 credits are inconsistent across public pages: 131 credits on the home/courses pages versus 140 credits in a campus FAQ. Publish only the currently verified qualification data."
+      ]
+    },
+    {
+      "slug": "izakhono-clothing",
+      "display_name": "Izakhono Africa Clothing Manufacturing",
+      "public_url": "https://izakhonoafrica.co.za/",
+      "primary_cta": "Request a quote",
+      "revenue_route": "Qualified quote -> accepted order/deposit",
+      "share_route": "WhatsApp catalogue/share action",
+      "public_https": "UNVERIFIED",
+      "primary_cta_status": "UNVERIFIED",
+      "revenue_route_status": "UNVERIFIED",
+      "share_route_status": "UNVERIFIED",
+      "conversion_status": "BLOCKED_PENDING_PUBLIC_VERIFICATION",
+      "evidence_notes": [
+        "The public domain was not retrievable through the current external verification tool on 23 September 2026.",
+        "Campaign package exists, but quote capture, WhatsApp sharing and order/deposit handoff require external verification."
+      ]
+    }
+  ]
+}
