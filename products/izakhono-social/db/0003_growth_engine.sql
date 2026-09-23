@@ -47,6 +47,13 @@ create table if not exists community_invites (
   created_at timestamptz not null default now()
 );
 
+create table if not exists community_invite_redemptions (
+  invite_id uuid not null references community_invites(id) on delete cascade,
+  account_id uuid not null references accounts(id) on delete cascade,
+  redeemed_at timestamptz not null default now(),
+  primary key(invite_id, account_id)
+);
+
 create or replace view connecta_growth_summary as
 select
   (select count(*) from accounts where status='active') as active_accounts,
