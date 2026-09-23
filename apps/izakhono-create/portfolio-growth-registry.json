@@ -1,0 +1,1148 @@
+{
+  "schema": "izakhono.portfolio.growth.v1",
+  "effective_date": "2026-09-23",
+  "owner": "IZAKHONO AFRICA portfolio",
+  "operating_model": "Product -> IZAKHONO CREATE -> IZAKHONO ADS -> Audience -> Activation -> Retention -> Referral -> Revenue",
+  "principles": [
+    "Every product must solve one obvious problem for one primary audience before broad expansion.",
+    "Organic distribution and partnerships are preferred before paid acquisition.",
+    "Every public product must have a share loop, referral loop or partner-distribution loop.",
+    "Activation measures a meaningful user outcome, not registration alone.",
+    "Retention comes from recurring utility, community, workflow or content value.",
+    "No behavioural surveillance, dark patterns, fake scarcity, spam or deceptive claims.",
+    "Regulated claims remain subject to product-specific legal and compliance gates.",
+    "IZAKHONO CREATE is the creative source of record and IZAKHONO ADS is the distribution/control layer."
+  ],
+  "portfolio_kpis": [
+    "activated_users_or_accounts",
+    "qualified_leads",
+    "activation_rate",
+    "retained_active_accounts",
+    "referrals_or_shares",
+    "partner_sourced_accounts",
+    "conversion_to_revenue",
+    "gross_revenue",
+    "contribution_margin",
+    "support_or_safety_backlog",
+    "infrastructure_cost_per_active_account"
+  ],
+  "archetypes": {
+    "community_network": {
+      "acquisition": [
+        "founding communities",
+        "creator/organiser recruitment",
+        "WhatsApp and direct invites",
+        "public share links"
+      ],
+      "retention": [
+        "community activity",
+        "direct relationships",
+        "events",
+        "useful recurring feed"
+      ],
+      "revenue": [
+        "business tools",
+        "events",
+        "marketplace/services",
+        "contextual sponsorship"
+      ]
+    },
+    "education": {
+      "acquisition": [
+        "campus/cohort partnerships",
+        "schools and employers",
+        "student referrals",
+        "search and social proof"
+      ],
+      "retention": [
+        "learning progress",
+        "assessment milestones",
+        "cohort/community support",
+        "certification journey"
+      ],
+      "revenue": [
+        "course fees",
+        "bundles",
+        "institutional seats",
+        "value-added services"
+      ]
+    },
+    "creator_media": {
+      "acquisition": [
+        "artist/creator onboarding",
+        "content sharing",
+        "events",
+        "cross-promotion across portfolio media"
+      ],
+      "retention": [
+        "publishing",
+        "audience relationships",
+        "rights/revenue tools",
+        "live programming"
+      ],
+      "revenue": [
+        "subscriptions where justified",
+        "ticketing",
+        "creator services",
+        "marketplace/commissions",
+        "contextual sponsorship"
+      ]
+    },
+    "commerce": {
+      "acquisition": [
+        "product-led creative",
+        "catalogue sharing",
+        "community and team sales",
+        "referrals"
+      ],
+      "retention": [
+        "repeat purchase",
+        "seasonal drops",
+        "team/school/business accounts",
+        "after-sales service"
+      ],
+      "revenue": [
+        "direct sales",
+        "bulk contracts",
+        "custom orders"
+      ]
+    },
+    "b2b_service": {
+      "acquisition": [
+        "founder-led sales",
+        "partner channels",
+        "case studies",
+        "demo/assessment offers"
+      ],
+      "retention": [
+        "workflow integration",
+        "dashboards",
+        "account reviews",
+        "measurable business outcomes"
+      ],
+      "revenue": [
+        "subscription",
+        "service fees",
+        "enterprise contracts",
+        "implementation"
+      ]
+    },
+    "trust_financial_security": {
+      "acquisition": [
+        "bank/insurer/employer partnerships",
+        "trust-led content",
+        "referrals",
+        "enterprise demos"
+      ],
+      "retention": [
+        "continuous protection/compliance utility",
+        "alerts",
+        "dashboards",
+        "integrations"
+      ],
+      "revenue": [
+        "enterprise licensing",
+        "API usage",
+        "subscription/service fees"
+      ],
+      "guardrails": [
+        "no misleading financial claims",
+        "security claims require evidence",
+        "privacy by design"
+      ]
+    },
+    "developer_infrastructure": {
+      "acquisition": [
+        "mandatory portfolio adoption",
+        "developer documentation",
+        "reference deployments",
+        "enterprise technical partnerships"
+      ],
+      "retention": [
+        "workflow lock-in avoided through utility",
+        "reliability",
+        "APIs",
+        "automation"
+      ],
+      "revenue": [
+        "internal efficiency",
+        "enterprise licensing/support",
+        "usage-based infrastructure where appropriate"
+      ]
+    },
+    "industrial_program": {
+      "acquisition": [
+        "investor/industrial partner outreach",
+        "government/development finance engagement",
+        "prototype evidence",
+        "B2B contracts"
+      ],
+      "retention": [
+        "programme milestones",
+        "partner reporting",
+        "engineering evidence"
+      ],
+      "revenue": [
+        "contracts",
+        "licensing",
+        "manufacturing",
+        "JV/investment"
+      ]
+    }
+  },
+  "products": [
+    {
+      "slug": "connecta",
+      "display_name": "CONNECTA",
+      "archetype": "community_network",
+      "primary_audience": "people, families, creators, clubs, schools, businesses and communities",
+      "primary_cta": "Join CONNECTA",
+      "activation_event": "complete profile plus one real relationship/community action and one published interaction",
+      "retention_loop": "relationships + communities + events + controlled feed",
+      "referral_loop": "personal and community invite codes plus public sharing",
+      "revenue_model": "premium organiser/business tools, events, marketplace and contextual sponsorship",
+      "primary_channels": [
+        "WhatsApp",
+        "organic social",
+        "community organisers",
+        "schools/clubs/churches",
+        "creator partnerships"
+      ],
+      "partnership_targets": [
+        "schools",
+        "sports clubs",
+        "community organisations",
+        "creators",
+        "SME groups"
+      ],
+      "regulated": false
+    },
+    {
+      "slug": "faisready",
+      "display_name": "FAISReady",
+      "archetype": "education",
+      "primary_audience": "people preparing for financial-services regulatory examinations",
+      "primary_cta": "Start preparing",
+      "activation_event": "begin a paid/approved learning pathway and complete first study milestone",
+      "retention_loop": "study streaks, progress, practice and exam-readiness milestones",
+      "referral_loop": "learner referrals, employer/brokerage cohorts and shareable results/progress",
+      "revenue_model": "course and bundle sales",
+      "primary_channels": [
+        "Google/search intent",
+        "LinkedIn",
+        "Facebook/Instagram",
+        "employer/brokerage partnerships",
+        "WhatsApp"
+      ],
+      "partnership_targets": [
+        "FSPs",
+        "brokerages",
+        "banks",
+        "insurers",
+        "training partners"
+      ],
+      "regulated": true
+    },
+    {
+      "slug": "kora",
+      "display_name": "KORA",
+      "archetype": "creator_media",
+      "primary_audience": "artists, fans, event audiences and entertainment communities",
+      "primary_cta": "Listen / Watch / Follow / Buy tickets",
+      "activation_event": "follow an artist or consume/save first piece of content",
+      "retention_loop": "new releases, live shows, creator relationships and personalised explicit follows",
+      "referral_loop": "artist fan invites and shareable releases/events",
+      "revenue_model": "ticketing, creator services, subscriptions where justified, commissions and sponsorship",
+      "primary_channels": [
+        "artist audiences",
+        "WhatsApp",
+        "TikTok/Reels/Shorts",
+        "YouTube",
+        "radio/cross-promotion"
+      ],
+      "partnership_targets": [
+        "artists",
+        "venues",
+        "promoters",
+        "labels",
+        "festivals"
+      ],
+      "regulated": false
+    },
+    {
+      "slug": "allegro-vibez",
+      "display_name": "ALLEGRO VIBEZ + Allegro Radio",
+      "archetype": "creator_media",
+      "primary_audience": "artists, listeners, radio audiences and music businesses",
+      "primary_cta": "Listen / Join as an artist",
+      "activation_event": "artist publishes catalogue/profile or listener follows first artist/show",
+      "retention_loop": "radio programming, releases, profiles, rights and creator tools",
+      "referral_loop": "artist onboarding, programme sharing and live audience invitations",
+      "revenue_model": "creator services, bookings, commissions, sponsorship and media revenue",
+      "primary_channels": [
+        "radio",
+        "artists",
+        "music communities",
+        "short video",
+        "events"
+      ],
+      "partnership_targets": [
+        "artists",
+        "venues",
+        "rights organisations",
+        "music schools",
+        "advertisers"
+      ],
+      "regulated": false
+    },
+    {
+      "slug": "edu-build-institute",
+      "display_name": "Edu-Build Institute",
+      "archetype": "education",
+      "primary_audience": "ECD practitioners, students, centres and employers",
+      "primary_cta": "Enrol / Request campus information",
+      "activation_event": "qualified lead becomes enrolled learner or confirmed campus cohort",
+      "retention_loop": "classes, assessments, campus support and qualification progression",
+      "referral_loop": "student/alumni referrals and campus/community partnerships",
+      "revenue_model": "tuition, institutional cohorts, bursaries and related services",
+      "primary_channels": [
+        "campuses",
+        "WhatsApp",
+        "Facebook",
+        "schools/ECD centres",
+        "employer/community partnerships"
+      ],
+      "partnership_targets": [
+        "ECD centres",
+        "schools",
+        "employers",
+        "funders",
+        "municipal/community organisations"
+      ],
+      "regulated": true
+    },
+    {
+      "slug": "edubuild-ecd360",
+      "display_name": "Edu-Build 360 / ECD360",
+      "archetype": "education",
+      "primary_audience": "students, facilitators, ECD centres and families",
+      "primary_cta": "Enter the campus / Enrol",
+      "activation_event": "first verified learning or operational workflow completed",
+      "retention_loop": "classes, learner progress, centre operations and family services",
+      "referral_loop": "campus cohorts and centre referrals",
+      "revenue_model": "institutional/platform fees, course revenue and services",
+      "primary_channels": [
+        "Edu-Build campuses",
+        "ECD centres",
+        "student referrals",
+        "training partnerships"
+      ],
+      "partnership_targets": [
+        "ECD centres",
+        "schools",
+        "training providers",
+        "funders"
+      ],
+      "regulated": true
+    },
+    {
+      "slug": "studypal",
+      "display_name": "StudyPal / WeLearn",
+      "archetype": "education",
+      "primary_audience": "learners, students, parents and educators",
+      "primary_cta": "Start learning",
+      "activation_event": "complete first guided lesson/assessment",
+      "retention_loop": "daily learning utility, progress, curriculum coverage and revision",
+      "referral_loop": "student/parent sharing, class cohorts and educator invites",
+      "revenue_model": "subscription, school/institutional seats and premium learning tools",
+      "primary_channels": [
+        "schools",
+        "parents",
+        "student communities",
+        "search",
+        "short-form education content"
+      ],
+      "partnership_targets": [
+        "schools",
+        "tutors",
+        "education NGOs",
+        "employers"
+      ],
+      "regulated": false
+    },
+    {
+      "slug": "matric-rewrite-academy",
+      "display_name": "Matric Rewrite Academy",
+      "archetype": "education",
+      "primary_audience": "Grade 12 rewrite and exam-preparation learners",
+      "primary_cta": "Start your rewrite preparation",
+      "activation_event": "enrol and complete first subject diagnostic",
+      "retention_loop": "subject progress, practice tests and exam calendar",
+      "referral_loop": "learner referrals and school/community partners",
+      "revenue_model": "course fees and subject bundles",
+      "primary_channels": [
+        "TikTok/Reels",
+        "Facebook",
+        "WhatsApp",
+        "schools",
+        "search"
+      ],
+      "partnership_targets": [
+        "schools",
+        "youth organisations",
+        "tutors"
+      ],
+      "regulated": true
+    },
+    {
+      "slug": "doxa-sure",
+      "display_name": "DOXA-SURE",
+      "archetype": "trust_financial_security",
+      "primary_audience": "households and customers seeking protection/financial resilience services",
+      "primary_cta": "Get assessed / Request protection options",
+      "activation_event": "complete secure needs assessment or qualified lead handoff",
+      "retention_loop": "protection dashboard, renewals, alerts and service support",
+      "referral_loop": "customer/partner referrals",
+      "revenue_model": "approved service/lead/partner revenue subject to regulatory boundaries",
+      "primary_channels": [
+        "trusted partners",
+        "search",
+        "education content",
+        "direct referrals"
+      ],
+      "partnership_targets": [
+        "banks",
+        "insurers",
+        "assistance providers",
+        "employers"
+      ],
+      "regulated": true
+    },
+    {
+      "slug": "the-chancellor",
+      "display_name": "The Chancellor",
+      "archetype": "b2b_service",
+      "primary_audience": "SMEs and business owners needing growth/readiness support",
+      "primary_cta": "Run a Business Readiness Audit",
+      "activation_event": "complete audit and receive actionable roadmap",
+      "retention_loop": "adviser workflow, milestones, client portal and recurring reviews",
+      "referral_loop": "business-network referrals and accountant/bank partnerships",
+      "revenue_model": "advisory, subscriptions, implementation and partner services",
+      "primary_channels": [
+        "LinkedIn",
+        "SME networks",
+        "banks",
+        "chambers",
+        "direct founder outreach"
+      ],
+      "partnership_targets": [
+        "banks",
+        "accountants",
+        "SME associations",
+        "funders"
+      ],
+      "regulated": false
+    },
+    {
+      "slug": "bevan-shelton",
+      "display_name": "BEVAN SHELTON",
+      "archetype": "commerce",
+      "primary_audience": "premium apparel, lifestyle and golf customers",
+      "primary_cta": "Shop the collection",
+      "activation_event": "first purchase or qualified custom-order request",
+      "retention_loop": "drops, seasonal products, clubs/teams and repeat purchase",
+      "referral_loop": "customer sharing, ambassadors and club/team referrals",
+      "revenue_model": "direct retail, bulk orders and collaborations",
+      "primary_channels": [
+        "Instagram",
+        "TikTok",
+        "WhatsApp",
+        "golf/sport communities",
+        "events"
+      ],
+      "partnership_targets": [
+        "clubs",
+        "retail partners",
+        "corporates",
+        "influencers"
+      ],
+      "regulated": false
+    },
+    {
+      "slug": "izakhono-clothing",
+      "display_name": "Izakhono Africa Clothing Manufacturing",
+      "archetype": "commerce",
+      "primary_audience": "schools, clubs, teams, businesses and organisations buying uniforms/apparel/PPE",
+      "primary_cta": "Request a quote",
+      "activation_event": "qualified quote request with quantities/specification",
+      "retention_loop": "repeat institutional orders and account management",
+      "referral_loop": "school/club/business referrals and sample-driven sales",
+      "revenue_model": "manufacturing contracts and direct orders",
+      "primary_channels": [
+        "direct sales",
+        "WhatsApp",
+        "schools",
+        "sports clubs",
+        "corporate procurement"
+      ],
+      "partnership_targets": [
+        "schools",
+        "clubs",
+        "retailers",
+        "corporates",
+        "procurement networks"
+      ],
+      "regulated": false
+    },
+    {
+      "slug": "shelton-vehicle-manufacturing",
+      "display_name": "SHELTON Vehicle Manufacturing",
+      "archetype": "industrial_program",
+      "primary_audience": "investors, DFIs, government, engineering partners and fleet buyers",
+      "primary_cta": "Engage on engineering/prototype/investment",
+      "activation_event": "qualified partner enters diligence or technical workstream",
+      "retention_loop": "prototype milestones, engineering evidence and partner reporting",
+      "referral_loop": "industrial ecosystem introductions",
+      "revenue_model": "vehicle sales, industrial contracts, licensing, JV/investment",
+      "primary_channels": [
+        "direct executive outreach",
+        "industry events",
+        "DFIs",
+        "government",
+        "technical media"
+      ],
+      "partnership_targets": [
+        "IDC/DFIs",
+        "OEM suppliers",
+        "engineering firms",
+        "fleet buyers",
+        "government"
+      ],
+      "regulated": true
+    },
+    {
+      "slug": "shelton-cad",
+      "display_name": "SHELTON CAD Engineering OS",
+      "archetype": "developer_infrastructure",
+      "primary_audience": "engineering teams in mobility, aerospace, marine and heavy industry",
+      "primary_cta": "Request pilot / Run engineering workflow",
+      "activation_event": "complete first real design/engineering project workflow",
+      "retention_loop": "PDM/CAD workflow utility and team collaboration",
+      "referral_loop": "engineering-team adoption and partner pilots",
+      "revenue_model": "enterprise licensing/support and services",
+      "primary_channels": [
+        "engineering partners",
+        "LinkedIn",
+        "technical demos",
+        "industrial programmes"
+      ],
+      "partnership_targets": [
+        "engineering firms",
+        "universities",
+        "OEM suppliers"
+      ],
+      "regulated": false
+    },
+    {
+      "slug": "izakhono-sovereign-infrastructure",
+      "display_name": "IZAKHONO Cloud / Core / Sovereign Infrastructure",
+      "archetype": "developer_infrastructure",
+      "primary_audience": "IZAKHONO products first, then enterprises needing controlled infrastructure",
+      "primary_cta": "Migrate a workload / Request deployment",
+      "activation_event": "first production workload runs with backup/restore evidence",
+      "retention_loop": "reliable hosting, storage, deployment and observability",
+      "referral_loop": "portfolio adoption and technical partner references",
+      "revenue_model": "internal cost saving, hosting/support and enterprise infrastructure services",
+      "primary_channels": [
+        "portfolio adoption",
+        "developer documentation",
+        "enterprise technical sales"
+      ],
+      "partnership_targets": [
+        "data centres",
+        "network providers",
+        "enterprise IT"
+      ],
+      "regulated": false
+    },
+    {
+      "slug": "izakhono-containers",
+      "display_name": "IZAKHONO Containers",
+      "archetype": "developer_infrastructure",
+      "primary_audience": "developers and platform operators",
+      "primary_cta": "Build and publish a container",
+      "activation_event": "first validated image built and deployed",
+      "retention_loop": "CI/CD, registry and deployment workflow",
+      "referral_loop": "developer team adoption",
+      "revenue_model": "internal efficiency and future enterprise tooling/support",
+      "primary_channels": [
+        "developer docs",
+        "portfolio engineering",
+        "technical communities"
+      ],
+      "partnership_targets": [
+        "developers",
+        "software teams",
+        "enterprises"
+      ],
+      "regulated": false
+    },
+    {
+      "slug": "izakhono-code",
+      "display_name": "IZAKHONO Code",
+      "archetype": "developer_infrastructure",
+      "primary_audience": "developers and product teams needing repositories/CI/CD",
+      "primary_cta": "Create/import a repository",
+      "activation_event": "first code change passes owned CI and deploy gate",
+      "retention_loop": "daily development workflow",
+      "referral_loop": "team/repository invitations",
+      "revenue_model": "internal productivity plus future enterprise hosting/support",
+      "primary_channels": [
+        "portfolio adoption",
+        "developer communities",
+        "technical demos"
+      ],
+      "partnership_targets": [
+        "software teams",
+        "universities",
+        "enterprises"
+      ],
+      "regulated": false
+    },
+    {
+      "slug": "izakhono-pay",
+      "display_name": "IZAKHONO PAY",
+      "archetype": "trust_financial_security",
+      "primary_audience": "portfolio merchants first, then approved businesses needing payment orchestration",
+      "primary_cta": "Connect a merchant/payment route",
+      "activation_event": "first verified payment and reconciliation",
+      "retention_loop": "payment operations, settlement and reconciliation",
+      "referral_loop": "portfolio adoption and merchant partner referrals",
+      "revenue_model": "approved transaction/platform/service fees",
+      "primary_channels": [
+        "portfolio products",
+        "merchant partnerships",
+        "enterprise sales"
+      ],
+      "partnership_targets": [
+        "banks",
+        "payment providers",
+        "merchants"
+      ],
+      "regulated": true
+    },
+    {
+      "slug": "shelton-fortress",
+      "display_name": "SHELTON Fortress",
+      "archetype": "trust_financial_security",
+      "primary_audience": "banks, businesses and customers needing fraud/pre-transaction trust controls",
+      "primary_cta": "Request pilot / Integrate API",
+      "activation_event": "first production-like risk decision with measurable outcome",
+      "retention_loop": "continuous fraud intelligence and API integration",
+      "referral_loop": "bank/enterprise references and channel partners",
+      "revenue_model": "enterprise licensing, API and managed service",
+      "primary_channels": [
+        "banks",
+        "insurers",
+        "enterprise security teams",
+        "executive outreach"
+      ],
+      "partnership_targets": [
+        "banks",
+        "insurers",
+        "payment providers",
+        "cybersecurity partners"
+      ],
+      "regulated": true
+    },
+    {
+      "slug": "roaches-with-attitude",
+      "display_name": "Roaches With Attitude",
+      "archetype": "creator_media",
+      "primary_audience": "animation/comedy audiences and licensing partners",
+      "primary_cta": "Watch / Follow / Share",
+      "activation_event": "watch first episode/clip and follow franchise",
+      "retention_loop": "episodic releases, characters and community",
+      "referral_loop": "shareable clips and KORA cross-promotion",
+      "revenue_model": "media, sponsorship, licensing and merchandise",
+      "primary_channels": [
+        "KORA",
+        "YouTube",
+        "TikTok/Reels",
+        "social sharing"
+      ],
+      "partnership_targets": [
+        "animators",
+        "broadcasters",
+        "brands",
+        "licensing partners"
+      ],
+      "regulated": false
+    },
+    {
+      "slug": "sheltonair",
+      "display_name": "SHELTONAir",
+      "archetype": "industrial_program",
+      "primary_audience": "aviation investors, engineers, suppliers and institutional partners",
+      "primary_cta": "Engage on programme partnership",
+      "activation_event": "qualified technical/investment workstream",
+      "retention_loop": "engineering milestones and partner reporting",
+      "referral_loop": "aviation ecosystem introductions",
+      "revenue_model": "engineering, manufacturing, licensing and JV opportunities",
+      "primary_channels": [
+        "direct executive outreach",
+        "aviation industry",
+        "technical partners"
+      ],
+      "partnership_targets": [
+        "aviation suppliers",
+        "universities",
+        "DFIs",
+        "government"
+      ],
+      "regulated": true
+    },
+    {
+      "slug": "jkmr-holdings",
+      "display_name": "JKMR Holdings",
+      "archetype": "industrial_program",
+      "primary_audience": "mining investors, JV partners, rights holders and offtakers",
+      "primary_cta": "Enter project diligence",
+      "activation_event": "qualified partner accesses verified project data room",
+      "retention_loop": "project milestones, diligence and partner reporting",
+      "referral_loop": "industry introductions",
+      "revenue_model": "JV, mining operations, royalties/offtake and project finance",
+      "primary_channels": [
+        "direct investor outreach",
+        "mining networks",
+        "DFIs",
+        "industry events"
+      ],
+      "partnership_targets": [
+        "investors",
+        "miners",
+        "offtakers",
+        "DFIs",
+        "technical consultants"
+      ],
+      "regulated": true
+    },
+    {
+      "slug": "creator-os",
+      "display_name": "Creator OS",
+      "archetype": "creator_media",
+      "primary_audience": "creators managing careers, rights and revenue",
+      "primary_cta": "Start creator workspace",
+      "activation_event": "create first project/campaign/rights record",
+      "retention_loop": "creator workflow and revenue tools",
+      "referral_loop": "creator collaborations",
+      "revenue_model": "subscription/services",
+      "primary_channels": [
+        "creator networks",
+        "KORA/Allegro",
+        "workshops"
+      ],
+      "partnership_targets": [
+        "artists",
+        "labels",
+        "creative organisations"
+      ],
+      "regulated": false
+    },
+    {
+      "slug": "faisready-v1",
+      "display_name": "FAISReady v1",
+      "archetype": "education",
+      "primary_audience": "FAISReady product operations",
+      "primary_cta": "Start preparation",
+      "activation_event": "first learning milestone",
+      "retention_loop": "progress and assessments",
+      "referral_loop": "learner/employer cohorts",
+      "revenue_model": "course fees",
+      "primary_channels": [
+        "FAISReady public channels"
+      ],
+      "partnership_targets": [
+        "FSPs",
+        "employers"
+      ],
+      "regulated": true
+    },
+    {
+      "slug": "izakhono-access",
+      "display_name": "IZAKHONO Access",
+      "archetype": "developer_infrastructure",
+      "primary_audience": "portfolio identity/access consumers",
+      "primary_cta": "Integrate access",
+      "activation_event": "first protected application login",
+      "retention_loop": "shared identity utility",
+      "referral_loop": "portfolio adoption",
+      "revenue_model": "internal efficiency / enterprise access services",
+      "primary_channels": [
+        "portfolio engineering"
+      ],
+      "partnership_targets": [
+        "portfolio apps",
+        "enterprise IT"
+      ],
+      "regulated": false
+    },
+    {
+      "slug": "izakhono-ads",
+      "display_name": "IZAKHONO ADS",
+      "archetype": "b2b_service",
+      "primary_audience": "portfolio marketers and approved external businesses",
+      "primary_cta": "Launch an approved campaign",
+      "activation_event": "first CREATE-approved campaign reaches a verified channel",
+      "retention_loop": "campaign operations and measurement",
+      "referral_loop": "portfolio adoption and business referrals",
+      "revenue_model": "marketing services/platform fees",
+      "primary_channels": [
+        "portfolio adoption",
+        "SME networks"
+      ],
+      "partnership_targets": [
+        "ad networks",
+        "businesses",
+        "agencies"
+      ],
+      "regulated": false
+    },
+    {
+      "slug": "izakhono-ai-gateway",
+      "display_name": "IZAKHONO AI Gateway",
+      "archetype": "developer_infrastructure",
+      "primary_audience": "portfolio developers and enterprises needing provider-neutral AI routing",
+      "primary_cta": "Route first AI request",
+      "activation_event": "first successful governed model request",
+      "retention_loop": "cost/control/reliability",
+      "referral_loop": "developer adoption",
+      "revenue_model": "usage/support",
+      "primary_channels": [
+        "portfolio engineering",
+        "developer documentation"
+      ],
+      "partnership_targets": [
+        "AI providers",
+        "enterprise developers"
+      ],
+      "regulated": false
+    },
+    {
+      "slug": "izakhono-artist-protect",
+      "display_name": "IZAKHONO Artist Protect",
+      "archetype": "creator_media",
+      "primary_audience": "artists and creative businesses",
+      "primary_cta": "Protect a work / record rights",
+      "activation_event": "create first rights passport/split record",
+      "retention_loop": "rights, contracts and disputes",
+      "referral_loop": "collaborator invites",
+      "revenue_model": "creator services/subscription",
+      "primary_channels": [
+        "artists",
+        "KORA",
+        "Allegro",
+        "creative organisations"
+      ],
+      "partnership_targets": [
+        "artists",
+        "lawyers",
+        "rights organisations"
+      ],
+      "regulated": false
+    },
+    {
+      "slug": "izakhono-clearset",
+      "display_name": "IZAKHONO CLEARSET",
+      "archetype": "trust_financial_security",
+      "primary_audience": "portfolio finance/revenue operations",
+      "primary_cta": "Classify and settle obligations",
+      "activation_event": "first reconciled obligation cycle",
+      "retention_loop": "ongoing cash/obligation control",
+      "referral_loop": "portfolio adoption",
+      "revenue_model": "internal efficiency / enterprise finance tooling",
+      "primary_channels": [
+        "portfolio finance"
+      ],
+      "partnership_targets": [
+        "accountants",
+        "finance teams"
+      ],
+      "regulated": true
+    },
+    {
+      "slug": "izakhono-control",
+      "display_name": "IZAKHONO Control",
+      "archetype": "developer_infrastructure",
+      "primary_audience": "portfolio owners/operators",
+      "primary_cta": "Connect a platform",
+      "activation_event": "first platform controlled/observed centrally",
+      "retention_loop": "operations control",
+      "referral_loop": "portfolio adoption",
+      "revenue_model": "internal efficiency",
+      "primary_channels": [
+        "portfolio operations"
+      ],
+      "partnership_targets": [
+        "platform teams"
+      ],
+      "regulated": false
+    },
+    {
+      "slug": "izakhono-core",
+      "display_name": "IZAKHONO Core",
+      "archetype": "developer_infrastructure",
+      "primary_audience": "all portfolio applications",
+      "primary_cta": "Adopt core service",
+      "activation_event": "first production dependency on owned core",
+      "retention_loop": "shared core utility",
+      "referral_loop": "portfolio adoption",
+      "revenue_model": "internal efficiency / future enterprise services",
+      "primary_channels": [
+        "portfolio engineering"
+      ],
+      "partnership_targets": [
+        "platform teams"
+      ],
+      "regulated": false
+    },
+    {
+      "slug": "izakhono-fortress",
+      "display_name": "IZAKHONO Fortress",
+      "archetype": "trust_financial_security",
+      "primary_audience": "portfolio and enterprise security consumers",
+      "primary_cta": "Run security/trust pilot",
+      "activation_event": "first verified protection decision",
+      "retention_loop": "continuous security utility",
+      "referral_loop": "enterprise references",
+      "revenue_model": "licensing/API/services",
+      "primary_channels": [
+        "portfolio adoption",
+        "enterprise sales"
+      ],
+      "partnership_targets": [
+        "banks",
+        "enterprises",
+        "security teams"
+      ],
+      "regulated": true
+    },
+    {
+      "slug": "izakhono-id",
+      "display_name": "IZAKHONO ID",
+      "archetype": "developer_infrastructure",
+      "primary_audience": "portfolio identity consumers",
+      "primary_cta": "Create/integrate identity",
+      "activation_event": "first verified identity flow",
+      "retention_loop": "identity utility",
+      "referral_loop": "portfolio adoption",
+      "revenue_model": "internal efficiency / enterprise identity services",
+      "primary_channels": [
+        "portfolio engineering"
+      ],
+      "partnership_targets": [
+        "platform teams",
+        "enterprises"
+      ],
+      "regulated": true
+    },
+    {
+      "slug": "izakhono-intelligence",
+      "display_name": "IZAKHONO Intelligence",
+      "archetype": "b2b_service",
+      "primary_audience": "portfolio decision-makers and future enterprise clients",
+      "primary_cta": "Run first decision workflow",
+      "activation_event": "first actionable intelligence output",
+      "retention_loop": "recurring decision support",
+      "referral_loop": "portfolio adoption/case studies",
+      "revenue_model": "subscription/services",
+      "primary_channels": [
+        "portfolio operations",
+        "enterprise sales"
+      ],
+      "partnership_targets": [
+        "businesses",
+        "data providers"
+      ],
+      "regulated": false
+    },
+    {
+      "slug": "izakhono-ledger",
+      "display_name": "IZAKHONO Ledger",
+      "archetype": "trust_financial_security",
+      "primary_audience": "portfolio finance systems and enterprise finance teams",
+      "primary_cta": "Post first governed ledger entry",
+      "activation_event": "first reconciled transaction cycle",
+      "retention_loop": "financial system-of-record utility",
+      "referral_loop": "portfolio adoption",
+      "revenue_model": "internal efficiency / enterprise services",
+      "primary_channels": [
+        "portfolio finance"
+      ],
+      "partnership_targets": [
+        "finance teams",
+        "accountants"
+      ],
+      "regulated": true
+    },
+    {
+      "slug": "izakhono-node",
+      "display_name": "IZAKHONO Node",
+      "archetype": "developer_infrastructure",
+      "primary_audience": "portfolio infrastructure operators",
+      "primary_cta": "Deploy workload",
+      "activation_event": "first healthy workload",
+      "retention_loop": "compute/runtime utility",
+      "referral_loop": "portfolio adoption",
+      "revenue_model": "internal efficiency / hosting",
+      "primary_channels": [
+        "portfolio engineering"
+      ],
+      "partnership_targets": [
+        "infrastructure teams"
+      ],
+      "regulated": false
+    },
+    {
+      "slug": "izakhono-revenue",
+      "display_name": "IZAKHONO Revenue",
+      "archetype": "b2b_service",
+      "primary_audience": "portfolio products and businesses needing offers/invoicing/fulfilment",
+      "primary_cta": "Launch first offer",
+      "activation_event": "first completed revenue workflow",
+      "retention_loop": "revenue operations",
+      "referral_loop": "portfolio adoption",
+      "revenue_model": "internal efficiency / SaaS/services",
+      "primary_channels": [
+        "portfolio products",
+        "SME partners"
+      ],
+      "partnership_targets": [
+        "businesses",
+        "accountants"
+      ],
+      "regulated": false
+    },
+    {
+      "slug": "izakhono-runner",
+      "display_name": "IZAKHONO Runner",
+      "archetype": "developer_infrastructure",
+      "primary_audience": "portfolio CI/automation users",
+      "primary_cta": "Run first job",
+      "activation_event": "first successful governed job",
+      "retention_loop": "automation workflow",
+      "referral_loop": "developer team adoption",
+      "revenue_model": "internal efficiency / enterprise automation",
+      "primary_channels": [
+        "portfolio engineering"
+      ],
+      "partnership_targets": [
+        "software teams"
+      ],
+      "regulated": false
+    },
+    {
+      "slug": "izakhono-send",
+      "display_name": "IZAKHONO SEND",
+      "archetype": "b2b_service",
+      "primary_audience": "people and businesses needing controlled file transfer",
+      "primary_cta": "Send a file",
+      "activation_event": "first successful recipient download",
+      "retention_loop": "repeat trusted transfers",
+      "referral_loop": "recipient becomes sender",
+      "revenue_model": "storage/transfer tiers and business plans",
+      "primary_channels": [
+        "portfolio cross-promotion",
+        "SMEs",
+        "professional services"
+      ],
+      "partnership_targets": [
+        "businesses",
+        "creative teams"
+      ],
+      "regulated": false
+    },
+    {
+      "slug": "izakhono-tasks",
+      "display_name": "IZAKHONO Tasks",
+      "archetype": "b2b_service",
+      "primary_audience": "teams needing task/work management",
+      "primary_cta": "Create first project/task",
+      "activation_event": "first assigned task completed",
+      "retention_loop": "daily team workflow",
+      "referral_loop": "team invitations",
+      "revenue_model": "team subscription/services",
+      "primary_channels": [
+        "portfolio teams",
+        "SMEs"
+      ],
+      "partnership_targets": [
+        "businesses",
+        "project teams"
+      ],
+      "regulated": false
+    },
+    {
+      "slug": "izakhono-work",
+      "display_name": "IZAKHONO WORK",
+      "archetype": "b2b_service",
+      "primary_audience": "portfolio teams and businesses",
+      "primary_cta": "Start workspace",
+      "activation_event": "first useful workflow completed",
+      "retention_loop": "daily workspace utility",
+      "referral_loop": "team invitations",
+      "revenue_model": "business subscription/services",
+      "primary_channels": [
+        "portfolio adoption",
+        "SMEs"
+      ],
+      "partnership_targets": [
+        "businesses",
+        "teams"
+      ],
+      "regulated": false
+    },
+    {
+      "slug": "izakhono-create",
+      "display_name": "IZAKHONO CREATE",
+      "archetype": "b2b_service",
+      "primary_audience": "all portfolio brands and businesses needing creative production",
+      "primary_cta": "Create campaign asset",
+      "activation_event": "first approved campaign package exported",
+      "retention_loop": "continuous creative workflow",
+      "referral_loop": "portfolio/business adoption",
+      "revenue_model": "creative platform/services",
+      "primary_channels": [
+        "mandatory portfolio use",
+        "SMEs",
+        "creators"
+      ],
+      "partnership_targets": [
+        "portfolio products",
+        "businesses",
+        "agencies"
+      ],
+      "regulated": false
+    },
+    {
+      "slug": "izakhono-domains",
+      "display_name": "IZAKHONO Domains",
+      "archetype": "developer_infrastructure",
+      "primary_audience": "portfolio apps and businesses needing domain/DNS control",
+      "primary_cta": "Connect domain",
+      "activation_event": "first verified DNS/TLS route",
+      "retention_loop": "domain operations",
+      "referral_loop": "portfolio/business adoption",
+      "revenue_model": "domain/DNS services",
+      "primary_channels": [
+        "portfolio engineering",
+        "SMEs"
+      ],
+      "partnership_targets": [
+        "registrars",
+        "hosting/network providers"
+      ],
+      "regulated": false
+    }
+  ]
+}
