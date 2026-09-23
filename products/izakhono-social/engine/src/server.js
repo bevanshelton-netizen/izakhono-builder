@@ -147,15 +147,15 @@ async function rateLimit(key, limit, seconds) {
        values($1,now(),1)
        on conflict(bucket_key) do update set
          window_started_at = case
-           when rate_limit_buckets.window_started_at < now() - ($3 || ' seconds')::interval then now()
+           when rate_limit_buckets.window_started_at < now() - ($2 || ' seconds')::interval then now()
            else rate_limit_buckets.window_started_at
          end,
          hit_count = case
-           when rate_limit_buckets.window_started_at < now() - ($3 || ' seconds')::interval then 1
+           when rate_limit_buckets.window_started_at < now() - ($2 || ' seconds')::interval then 1
            else rate_limit_buckets.hit_count + 1
          end
        returning hit_count`,
-    [key, limit, String(seconds)],
+    [key, String(seconds)],
   );
   return Number(result.rows[0]?.hit_count || 0) <= limit;
 }
