@@ -101,6 +101,22 @@ jobs:
             sleep 2
           done
           node scripts/smoke-web-runtime.mjs
+      - name: Verify recovery scripts
+        working-directory: products/izakhono-social
+        run: bash -n ops/backup.sh ops/restore-test.sh ops/restore.sh
+      - name: Prove non-destructive backup and restore
+        working-directory: products/izakhono-social
+        env:
+          CONNECTA_DB_PASSWORD: ci-only-password
+          CONNECTA_OWNER_KEY: ci-only-owner-key
+          CONNECTA_COMPOSE_PROJECT: izakhono-social
+        run: |
+          rm -rf /tmp/connecta-ci-backups
+          mkdir -p /tmp/connecta-ci-backups
+          bash ops/backup.sh /tmp/connecta-ci-backups | tee /tmp/connecta-backup.log
+          BACKUP_DIR="$(tail -n 1 /tmp/connecta-backup.log)"
+          test -d "$BACKUP_DIR"
+          bash ops/restore-test.sh "$BACKUP_DIR"
       - name: Exercise growth flywheel
         working-directory: products/izakhono-social
         env:
