@@ -1,0 +1,40 @@
+name: IZAKHONO SOCIAL CI
+
+on:
+  push:
+    branches:
+      - product/izakhono-social-v1
+    paths:
+      - 'products/izakhono-social/**'
+      - '.github/workflows/izakhono-social-ci.yml'
+  pull_request:
+    paths:
+      - 'products/izakhono-social/**'
+      - '.github/workflows/izakhono-social-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: products/izakhono-social
+    env:
+      NEXT_TELEMETRY_DISABLED: '1'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Use Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: products/izakhono-social/package.json
+      - name: Install exact declared dependencies
+        run: npm install --no-audit --no-fund
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Production build
+        run: npm run build
