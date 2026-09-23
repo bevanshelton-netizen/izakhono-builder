@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "start": "node src/server.js",
-    "check": "node --check src/server.js && node --check src/security.js && node --check src/moderation.js && node --check src/safety.js && node --check src/growth.js && node --check src/db.js",
+    "check": "node --check src/server.js && node --check src/security.js && node --check src/moderation.js && node --check src/safety-utils.js && node --check src/safety.js && node --check src/growth.js && node --check src/db.js",
     "test": "node --test",
     "migrate": "node scripts/migrate.js"
   },
