@@ -42,5 +42,10 @@
     "cta",
     "approval",
     "attribution"
-  ]
+  ],
+  "growth_system_of_record": "apps/izakhono-create/portfolio-growth-registry.json",
+  "ceo_growth_directive": "IZAKHONO-PORTFOLIO-CEO-GROWTH-DIRECTIVE.md",
+  "portfolio_growth_required": true,
+  "growth_model": "Acquisition -> Activation -> Retention -> Referral -> Revenue -> Partnerships",
+  "measurement_rule": "Aggregate first-party operational metrics only; no behavioural surveillance."
 }
