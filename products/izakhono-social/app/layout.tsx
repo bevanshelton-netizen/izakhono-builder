@@ -2,8 +2,8 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'IZAKHONO SOCIAL — People, not profiling',
-  description: 'A privacy-first social network built around real people, communities and strong safety standards.',
+  title: 'CONNECTA — People, communities, connected',
+  description: 'A privacy-first social network for people, families, creators, organisations and communities.',
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

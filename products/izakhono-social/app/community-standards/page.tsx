@@ -3,7 +3,7 @@ import Link from 'next/link';
 export default function CommunityStandardsPage() {
   return (
     <main className="policyPage">
-      <Link href="/" className="backLink">← Back to IZAKHONO SOCIAL</Link>
+      <Link href="/" className="backLink">← Back to CONNECTA</Link>
       <div className="eyebrow">Community Standards</div>
       <h1>Connect freely. Do not exploit people.</h1>
       <p className="lead">These launch standards apply to posts, comments, messages, profiles, groups, pages, live video, ads and marketplace activity.</p>

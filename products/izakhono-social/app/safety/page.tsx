@@ -3,7 +3,7 @@ import Link from 'next/link';
 export default function SafetyPage() {
   return (
     <main className="policyPage">
-      <Link href="/" className="backLink">← Back to IZAKHONO SOCIAL</Link>
+      <Link href="/" className="backLink">← Back to CONNECTA</Link>
       <div className="eyebrow">Safety Centre</div>
       <h1>Safety is part of the product architecture.</h1>
       <p className="lead">We do not build engagement by rewarding harmful material. People can report content, block accounts and appeal moderation decisions.</p>

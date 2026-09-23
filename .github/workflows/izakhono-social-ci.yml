@@ -1,9 +1,9 @@
-name: IZAKHONO SOCIAL CI
+name: CONNECTA CI
 
 on:
   push:
     branches:
-      - product/izakhono-social-v1
+      - product/community-connect-name
     paths:
       - 'products/izakhono-social/**'
       - '.github/workflows/izakhono-social-ci.yml'
