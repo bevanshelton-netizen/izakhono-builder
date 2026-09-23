@@ -19,7 +19,8 @@ It is designed so the social network can continue to operate without Meta, Googl
 - blocked-account appeal intake
 - protected-identity anti-cloning / impersonation detection
 - owner notifications whenever CONNECTA shares another account's public post or media
-- exact-file duplicate-media detection with original-owner alerts and review hold
+- exact-file duplicate-media detection with earlier-uploader alerts and review hold
+- local perceptual image fingerprints for cropped/resized/recompressed copy detection
 - evidence-backed business verification; verified badge cannot be purchased
 - private first-party notification inbox
 - report intake and urgent moderation queue
