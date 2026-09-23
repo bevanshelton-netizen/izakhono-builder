@@ -23,6 +23,14 @@ create index if not exists sessions_account_active_idx
   on sessions(account_id, expires_at desc)
   where revoked_at is null;
 
+create unique index if not exists reactions_post_unique_idx
+  on reactions(actor_id, post_id, kind)
+  where post_id is not null;
+
+create unique index if not exists reactions_comment_unique_idx
+  on reactions(actor_id, comment_id, kind)
+  where comment_id is not null;
+
 create table if not exists rate_limit_buckets (
   bucket_key text primary key,
   window_started_at timestamptz not null,
