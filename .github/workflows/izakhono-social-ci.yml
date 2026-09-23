@@ -3,7 +3,7 @@ name: CONNECTA CI
 on:
   push:
     branches:
-      - product/community-connect-name
+      - product/connecta-sovereign-engine-v1
     paths:
       - 'products/izakhono-social/**'
       - '.github/workflows/izakhono-social-ci.yml'
@@ -16,7 +16,7 @@ permissions:
   contents: read
 
 jobs:
-  verify:
+  verify-web:
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -32,9 +32,71 @@ jobs:
           node-version: '22'
           cache: npm
           cache-dependency-path: products/izakhono-social/package.json
-      - name: Install exact declared dependencies
+      - name: Install web dependencies
         run: npm install --no-audit --no-fund
-      - name: Typecheck
+      - name: Typecheck web
         run: npm run typecheck
-      - name: Production build
+      - name: Production build web
         run: npm run build
+
+  verify-engine:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: products/izakhono-social/engine
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Use Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install engine dependencies
+        run: npm install --no-audit --no-fund
+      - name: Syntax check
+        run: npm run check
+      - name: Unit tests
+        run: npm test
+      - name: Build sovereign engine image
+        working-directory: products/izakhono-social
+        run: docker build -f engine/Dockerfile -t connecta-engine:ci .
+      - name: Validate owned compose stack
+        working-directory: products/izakhono-social
+        env:
+          CONNECTA_DB_PASSWORD: ci-only-password
+          CONNECTA_OWNER_KEY: ci-only-owner-key
+        run: docker compose -f docker-compose.owned.yml config
+      - name: Boot owned database and engine
+        working-directory: products/izakhono-social
+        env:
+          CONNECTA_DB_PASSWORD: ci-only-password
+          CONNECTA_OWNER_KEY: ci-only-owner-key
+        run: docker compose -f docker-compose.owned.yml up -d --build postgres engine
+      - name: Verify CONNECTA ENGINE health
+        working-directory: products/izakhono-social
+        env:
+          CONNECTA_DB_PASSWORD: ci-only-password
+          CONNECTA_OWNER_KEY: ci-only-owner-key
+        run: |
+          for i in $(seq 1 30); do
+            if docker compose -f docker-compose.owned.yml exec -T engine node -e "fetch('http://127.0.0.1:4100/health').then(async r=>{if(!r.ok)process.exit(1); const j=await r.json(); if(!j.providerIndependent || j.behaviouralTracking!==false) process.exit(1)})"; then
+              exit 0
+            fi
+            sleep 2
+          done
+          docker compose -f docker-compose.owned.yml logs engine postgres
+          exit 1
+      - name: Show logs on failure
+        if: failure()
+        working-directory: products/izakhono-social
+        env:
+          CONNECTA_DB_PASSWORD: ci-only-password
+          CONNECTA_OWNER_KEY: ci-only-owner-key
+        run: docker compose -f docker-compose.owned.yml logs engine postgres || true
+      - name: Stop owned stack
+        if: always()
+        working-directory: products/izakhono-social
+        env:
+          CONNECTA_DB_PASSWORD: ci-only-password
+          CONNECTA_OWNER_KEY: ci-only-owner-key
+        run: docker compose -f docker-compose.owned.yml down -v || true
