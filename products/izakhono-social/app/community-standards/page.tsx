@@ -16,6 +16,8 @@ export default function CommunityStandardsPage() {
         <li><strong>No illegal drug trade or promotion.</strong> No buying, selling, distribution, recruitment or instructional facilitation of illegal drug activity.</li>
         <li><strong>No gang recruitment or criminal glorification.</strong> No recruiting into gangs or celebrating violent criminal conduct.</li>
         <li><strong>No scams or deceptive identity use.</strong> Fraud, phishing, fake payment requests and deceptive accounts are prohibited.</li>
+        <li><strong>Respect content ownership and attribution.</strong> Do not strip attribution, falsely claim another person&apos;s post or picture as your own, or re-upload copied material to mislead people. CONNECTA records share provenance and can alert the original owner.</li>
+        <li><strong>No fake business verification.</strong> Do not misrepresent a business as verified, forge evidence, or imitate a verified business identity. Only CONNECTA can issue the verified-business badge after review.</li>
         <li><strong>No malicious reporting.</strong> Knowingly false reports intended to silence or disable another person are prohibited.</li>
         <li><strong>Public-interest exceptions are contextual.</strong> News, education, prevention, research, recovery and history may discuss restricted subjects without promoting them.</li>
       </ol>
