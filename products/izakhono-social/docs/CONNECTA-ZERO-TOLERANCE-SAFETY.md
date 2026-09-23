@@ -47,6 +47,23 @@ The safety engine includes high-confidence blocking signals for:
 
 The automated detector is only one layer. Contextual or ambiguous material can be reviewed rather than automatically punished.
 
+## Picture/media provenance protection
+
+CONNECTA protects media provenance in two layers:
+
+- **Exact-file match:** SHA-256 identifies byte-for-byte re-uploads deterministically.
+- **Altered-image signal:** local perceptual fingerprints compare normalised image structure, including center-crop variants, so cropped, resized or recompressed copies can be detected.
+
+A high-confidence altered-image match:
+- places the newer upload into review;
+- records the earlier CONNECTA upload and account;
+- alerts the earlier uploader;
+- records similarity distances for moderator review.
+
+Perceptual similarity is a safety/provenance signal, **not an automatic copyright or legal ownership finding**. Similar-looking images, authorised re-use, journalism, parody, commentary and other lawful/contextual uses require human review.
+
+CONNECTA does not use this fingerprint system for face recognition, advertising or behavioural profiling.
+
 ## Account cloning / impersonation defence
 
 CONNECTA uses protected identities and identity-similarity scanning.

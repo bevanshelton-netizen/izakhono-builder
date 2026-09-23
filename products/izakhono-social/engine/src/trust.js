@@ -1,4 +1,5 @@
 import { query, transaction } from './db.js';
+import { compareFingerprints } from './media-fingerprint.js';
 
 async function notify(client, { accountId, kind, actorId = null, targetType = null, targetId = null, title, body }) {
   await client.query(
@@ -123,6 +124,105 @@ export async function duplicateMediaCheck({ suspectedMediaId, suspectedOwnerId, 
       body: 'CONNECTA detected an exact-file match to media you previously uploaded. The new upload has been held for review and your ownership record has been preserved.',
     });
     return { originalMediaId: first.id, originalOwnerId: first.owner_id };
+  });
+}
+
+export async function saveMediaFingerprint({ mediaId, ownerId, fingerprint }) {
+  if (!fingerprint) return null;
+  const result = await query(
+    `insert into media_fingerprints(
+       media_id,owner_id,algorithm,phash_primary,phash_variants,dhash_primary,width,height
+     ) values($1,$2,$3,$4,$5::jsonb,$6,$7,$8)
+     on conflict(media_id) do update set
+       algorithm=excluded.algorithm,
+       phash_primary=excluded.phash_primary,
+       phash_variants=excluded.phash_variants,
+       dhash_primary=excluded.dhash_primary,
+       width=excluded.width,
+       height=excluded.height
+     returning media_id,algorithm,width,height`,
+    [
+      mediaId,
+      ownerId,
+      fingerprint.algorithm,
+      fingerprint.phashPrimary,
+      JSON.stringify(fingerprint.phashVariants),
+      fingerprint.dhashPrimary,
+      fingerprint.width,
+      fingerprint.height,
+    ],
+  );
+  return result.rows[0] || null;
+}
+
+export async function perceptualMediaCheck({ suspectedMediaId, suspectedOwnerId, fingerprint }) {
+  if (!fingerprint) return null;
+
+  const candidates = await query(
+    `select mf.media_id,mf.owner_id,mf.algorithm,mf.phash_primary,mf.phash_variants,
+            mf.dhash_primary,mf.width,mf.height,m.created_at
+       from media_fingerprints mf
+       join media_assets m on m.id=mf.media_id
+      where mf.owner_id<>$1 and mf.media_id<>$2
+      order by m.created_at asc
+      limit 5000`,
+    [suspectedOwnerId, suspectedMediaId],
+  );
+
+  let best=null;
+  for (const row of candidates.rows) {
+    const comparison=compareFingerprints(fingerprint,{
+      phashPrimary:row.phash_primary,
+      phashVariants:Array.isArray(row.phash_variants)?row.phash_variants:[],
+      dhashPrimary:row.dhash_primary,
+      width:row.width,
+      height:row.height,
+      algorithm:row.algorithm,
+    });
+    if (!comparison?.strong) continue;
+    if (!best || comparison.phashDistance < best.comparison.phashDistance ||
+      (comparison.phashDistance === best.comparison.phashDistance && comparison.dhashDistance < best.comparison.dhashDistance)) {
+      best={row,comparison};
+    }
+  }
+  if (!best) return null;
+
+  return transaction(async (client) => {
+    await client.query(
+      `insert into content_duplicate_alerts(
+         original_media_id,original_owner_id,suspected_media_id,suspected_owner_id,
+         match_type,similarity_score,phash_distance,dhash_distance,algorithm
+       ) values($1,$2,$3,$4,'perceptual_hash',$5,$6,$7,$8)
+       on conflict(original_media_id,suspected_media_id) do nothing`,
+      [
+        best.row.media_id,
+        best.row.owner_id,
+        suspectedMediaId,
+        suspectedOwnerId,
+        best.comparison.score,
+        best.comparison.phashDistance,
+        best.comparison.dhashDistance,
+        fingerprint.algorithm,
+      ],
+    );
+    await client.query("update media_assets set moderation_state='review' where id=$1",[suspectedMediaId]);
+    await notify(client,{
+      accountId:best.row.owner_id,
+      kind:'content_duplicate_detected',
+      actorId:suspectedOwnerId,
+      targetType:'media',
+      targetId:suspectedMediaId,
+      title:'Possible altered copy of your picture detected',
+      body:'CONNECTA found a high-confidence perceptual match to media you uploaded earlier. The new upload has been held for review. This alert is a similarity signal, not a final copyright or ownership finding.',
+    });
+    return {
+      originalMediaId:best.row.media_id,
+      originalOwnerId:best.row.owner_id,
+      similarityScore:best.comparison.score,
+      phashDistance:best.comparison.phashDistance,
+      dhashDistance:best.comparison.dhashDistance,
+      matchType:'perceptual_hash',
+    };
   });
 }
 

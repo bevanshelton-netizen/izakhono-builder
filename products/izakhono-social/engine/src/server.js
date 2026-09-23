@@ -3,6 +3,8 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { createHash, randomUUID } from 'node:crypto';
 
+import { fingerprintImage, supportsPerceptualFingerprint } from './media-fingerprint.js';
+
 import { query, transaction } from './db.js';
 import { moderateText } from './moderation.js';
 import {
@@ -46,9 +48,11 @@ import {
   decideBusinessVerification,
   duplicateMediaCheck,
   listBusinessVerifications,
+  perceptualMediaCheck,
   listNotifications,
   markNotificationRead,
   publicBusiness,
+  saveMediaFingerprint,
   shareContent,
   submitBusinessVerification,
 } from './trust.js';
@@ -590,7 +594,7 @@ async function createMedia(req, res, account) {
 
 async function uploadMedia(req, res, account, mediaId) {
   const result = await query(
-    `select id,owner_id,object_key,mime_type,moderation_state
+    `select id,owner_id,object_key,media_type,mime_type,moderation_state
        from media_assets where id=$1 limit 1`,
     [mediaId],
   );
@@ -601,35 +605,89 @@ async function uploadMedia(req, res, account, mediaId) {
   }
 
   const bytes = await readRaw(req, MAX_MEDIA_BYTES);
+  const sha256 = createHash('sha256').update(bytes).digest('hex');
+
+  let fingerprint = null;
+  if (media.media_type === 'image' && supportsPerceptualFingerprint(media.mime_type)) {
+    try {
+      fingerprint = await fingerprintImage(bytes, media.mime_type);
+    } catch {
+      await query(
+        `update media_assets
+            set byte_size=$1,sha256=$2,moderation_state='blocked'
+          where id=$3`,
+        [bytes.length, sha256, mediaId],
+      );
+      return send(res, 422, {
+        ok: false,
+        error: 'The uploaded file could not be validated as a supported image.',
+      });
+    }
+  }
+
   const diskPath = path.join(MEDIA_ROOT, media.object_key);
   await mkdir(path.dirname(diskPath), { recursive: true });
   await writeFile(diskPath, bytes, { mode: 0o600 });
-  const sha256 = createHash('sha256').update(bytes).digest('hex');
+
   await query(
-    `update media_assets set byte_size=$1,sha256=$2,moderation_state='review' where id=$3`,
-    [bytes.length, sha256, mediaId],
+    `update media_assets
+        set byte_size=$1,sha256=$2,perceptual_hash=$3,moderation_state='review'
+      where id=$4`,
+    [bytes.length, sha256, fingerprint?.phashPrimary || null, mediaId],
   );
+
+  if (fingerprint) {
+    await saveMediaFingerprint({
+      mediaId,
+      ownerId: account.id,
+      fingerprint,
+    });
+  }
+
   const duplicate = await duplicateMediaCheck({
     suspectedMediaId: mediaId,
     suspectedOwnerId: account.id,
     sha256,
   });
+
+  const altered = duplicate || !fingerprint
+    ? null
+    : await perceptualMediaCheck({
+        suspectedMediaId: mediaId,
+        suspectedOwnerId: account.id,
+        fingerprint,
+      });
+
+  const copySignal = duplicate || altered;
+  const copyKind = duplicate ? 'exact-file' : altered ? 'altered-image' : null;
+
   await query(
     `insert into moderation_cases(source,target_type,target_id,category,severity,state,rationale)
      values('automatic','media',$1,$2,$3,'open',$4)`,
     [
       mediaId,
-      duplicate ? 'possible-content-copy' : 'media-review-required',
-      duplicate ? 4 : 2,
+      copySignal ? 'possible-content-copy' : 'media-review-required',
+      copySignal ? 4 : 2,
       duplicate
-        ? 'Exact-file match to media previously uploaded by another account; owner alerted and review required.'
-        : 'Uploaded media requires review before public distribution',
+        ? 'Exact-file match to media previously uploaded by another account; earlier uploader alerted and review required.'
+        : altered
+          ? 'High-confidence perceptual image match detected after normalisation/crop analysis; earlier uploader alerted and review required.'
+          : 'Uploaded media requires review before public distribution',
     ],
   );
+
   return send(res, 200, {
     ok: true,
-    media: { id: mediaId, byteSize: bytes.length, sha256, state: 'review' },
+    media: {
+      id: mediaId,
+      byteSize: bytes.length,
+      sha256,
+      perceptualHash: fingerprint?.phashPrimary || null,
+      state: 'review',
+    },
     duplicateOwnerAlert: Boolean(duplicate),
+    alteredCopyOwnerAlert: Boolean(altered),
+    copySignal: copyKind,
   });
 }
 
