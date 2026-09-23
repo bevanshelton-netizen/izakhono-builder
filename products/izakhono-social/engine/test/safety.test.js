@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { identitySkeleton, similarity, normalizeSafetyCategory } from '../src/safety.js';
+import { identitySkeleton, similarity, normalizeSafetyCategory } from '../src/safety-utils.js';
 
 test('identity skeleton collapses common clone tricks', () => {
   assert.equal(identitySkeleton('@Safe.Person-01'), 'safepersonol');
