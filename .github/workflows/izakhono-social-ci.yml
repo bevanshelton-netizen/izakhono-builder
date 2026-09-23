@@ -44,6 +44,8 @@ jobs:
     defaults:
       run:
         working-directory: products/izakhono-social/engine
+    env:
+      CONNECTA_REGISTER_RATE_LIMIT: '100'
     steps:
       - name: Checkout
         uses: actions/checkout@v4
