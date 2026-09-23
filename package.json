@@ -8,7 +8,8 @@
     "deploy:first": "wrangler deploy",
     "db:migrate": "wrangler d1 migrations apply DB --remote",
     "deploy": "wrangler deploy && wrangler d1 migrations apply DB --remote && wrangler deploy",
-    "validate": "npm run typecheck && wrangler deploy --dry-run"
+    "validate": "npm run validate:portfolio-growth && npm run typecheck && wrangler deploy --dry-run",
+    "validate:portfolio-growth": "node scripts/validate-portfolio-growth.mjs"
   },
   "devDependencies": {
     "typescript": "5.9.2",
