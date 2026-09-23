@@ -525,6 +525,109 @@ Generate 3–5 creative variants and one 15-second vertical video, then compare 
     $("exportLeads").addEventListener("click",exportLeads);
   }
 
+  async function initCeoGrowthBoard(){
+    let registry;
+    try{
+      const response=await fetch("portfolio-growth-registry.json",{cache:"no-store"});
+      if(!response.ok) throw new Error("registry unavailable");
+      registry=await response.json();
+    }catch(_){
+      return;
+    }
+
+    const products=Array.isArray(registry.products)?registry.products:[];
+    if(!products.length) return;
+
+    const style=document.createElement("style");
+    style.textContent=`
+      .ceo-growth-launch{position:fixed;right:18px;bottom:72px;z-index:80;border:0;border-radius:999px;padding:12px 16px;background:#081b32;color:#fff;font-weight:900;box-shadow:0 12px 30px rgba(0,0,0,.24)}
+      .ceo-growth-overlay{position:fixed;inset:0;z-index:90;background:rgba(4,12,25,.68);display:none;align-items:center;justify-content:center;padding:20px}
+      .ceo-growth-overlay.on{display:flex}
+      .ceo-growth-panel{width:min(980px,96vw);max-height:90vh;overflow:auto;background:#fff;border-radius:20px;padding:22px;box-shadow:0 30px 80px rgba(0,0,0,.35)}
+      .ceo-growth-head{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:16px}
+      .ceo-growth-head h2{margin:0}.ceo-growth-close{border:0;background:#eef2f6;border-radius:10px;padding:8px 11px;font-weight:900}
+      .ceo-growth-controls{display:grid;grid-template-columns:1fr 220px;gap:10px;margin-bottom:16px}
+      .ceo-growth-controls input,.ceo-growth-controls select{border:1px solid #d8e0e8;border-radius:10px;padding:10px}
+      .ceo-growth-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+      .ceo-growth-card{border:1px solid #dfe6ec;border-radius:14px;padding:14px;background:#fafcfd}
+      .ceo-growth-card span{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:#718096;font-weight:900;margin-bottom:5px}
+      .ceo-growth-card strong,.ceo-growth-card p{margin:0;font-size:13px;line-height:1.45}
+      .ceo-growth-products{display:grid;gap:7px;margin-top:16px}
+      .ceo-growth-row{display:grid;grid-template-columns:1.2fr .8fr 1fr auto;gap:8px;align-items:center;border-top:1px solid #edf1f4;padding:9px 0;font-size:12px}
+      .ceo-growth-row button{border:1px solid #d7dfe6;background:#fff;border-radius:8px;padding:6px 9px;font-weight:800}
+      @media(max-width:760px){.ceo-growth-grid{grid-template-columns:1fr}.ceo-growth-controls{grid-template-columns:1fr}.ceo-growth-row{grid-template-columns:1fr auto}.ceo-growth-row span:nth-child(2),.ceo-growth-row span:nth-child(3){display:none}}
+    `;
+    document.head.appendChild(style);
+
+    const launch=document.createElement("button");
+    launch.className="ceo-growth-launch";
+    launch.textContent="CEO Growth";
+    document.body.appendChild(launch);
+
+    const overlay=document.createElement("div");
+    overlay.className="ceo-growth-overlay";
+    overlay.innerHTML=`
+      <section class="ceo-growth-panel" role="dialog" aria-modal="true" aria-label="Portfolio CEO Growth Board">
+        <div class="ceo-growth-head"><div><small>PORTFOLIO OPERATING SYSTEM</small><h2>CEO Growth Board</h2></div><button class="ceo-growth-close">Close</button></div>
+        <div class="ceo-growth-controls">
+          <input id="ceoGrowthSearch" placeholder="Search product or audience">
+          <select id="ceoGrowthArchetype"><option value="">All growth archetypes</option></select>
+        </div>
+        <div id="ceoGrowthDetail" class="ceo-growth-grid"></div>
+        <div id="ceoGrowthProducts" class="ceo-growth-products"></div>
+      </section>`;
+    document.body.appendChild(overlay);
+
+    const archetype=$("ceoGrowthArchetype");
+    Object.keys(registry.archetypes||{}).sort().forEach(key=>{
+      const option=document.createElement("option"); option.value=key; option.textContent=key.replaceAll("_"," ");
+      archetype.appendChild(option);
+    });
+
+    function show(product){
+      const detail=$("ceoGrowthDetail");
+      const cells=[
+        ["Audience",product.primary_audience],
+        ["Primary CTA",product.primary_cta],
+        ["Activation",product.activation_event],
+        ["Retention loop",product.retention_loop],
+        ["Referral loop",product.referral_loop],
+        ["Revenue",product.revenue_model],
+        ["Primary channels",(product.primary_channels||[]).join(", ")],
+        ["Partnership targets",(product.partnership_targets||[]).join(", ")]
+      ];
+      detail.innerHTML=cells.map(([label,value])=>`<article class="ceo-growth-card"><span>${escapeHtml(label)}</span><p>${escapeHtml(value)}</p></article>`).join("");
+    }
+
+    function render(){
+      const q=$("ceoGrowthSearch").value.trim().toLowerCase();
+      const type=archetype.value;
+      const filtered=products.filter(p=>{
+        if(type && p.archetype!==type) return false;
+        if(!q) return true;
+        return [p.display_name,p.slug,p.primary_audience,p.primary_cta].some(v=>String(v||"").toLowerCase().includes(q));
+      });
+      $("ceoGrowthProducts").innerHTML=filtered.map(p=>`
+        <div class="ceo-growth-row">
+          <strong>${escapeHtml(p.display_name)}</strong>
+          <span>${escapeHtml(p.archetype.replaceAll("_"," "))}</span>
+          <span>${escapeHtml(p.primary_cta)}</span>
+          <button data-growth-slug="${escapeHtml(p.slug)}">Open</button>
+        </div>`).join("") || '<div class="output-card">No portfolio products match this filter.</div>';
+      $("#ceoGrowthProducts [data-growth-slug]").forEach(btn=>btn.addEventListener("click",()=>{
+        const product=products.find(p=>p.slug===btn.dataset.growthSlug);
+        if(product) show(product);
+      }));
+      if(filtered.length) show(filtered[0]);
+    }
+
+    launch.addEventListener("click",()=>{overlay.classList.add("on");render();});
+    overlay.querySelector(".ceo-growth-close").addEventListener("click",()=>overlay.classList.remove("on"));
+    overlay.addEventListener("click",e=>{if(e.target===overlay) overlay.classList.remove("on");});
+    $("ceoGrowthSearch").addEventListener("input",render);
+    archetype.addEventListener("change",render);
+  }
+
   function init(){
     initState();
     bind();
@@ -541,6 +644,7 @@ Generate 3–5 creative variants and one 15-second vertical video, then compare 
       $("storyboard").innerHTML='<div class="output-card">Video workflow locked until IZAKHONO CREATE supplies the campaign package.</div>';
     }
     calculateBudget();
+    initCeoGrowthBoard();
     if(handedOff){ switchView("campaigns"); toast("Campaign received directly from IZAKHONO CREATE."); }
   }
 
