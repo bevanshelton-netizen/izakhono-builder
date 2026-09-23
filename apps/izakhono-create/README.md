@@ -29,3 +29,7 @@ Health check: `GET /healthz`.
 
 ## Next tranche
 Accounts/team workspaces; persistent object storage; template marketplace; IZAKHONO AI Gateway for copy/image/background removal/translation; intelligent resize/reflow; video/animation timeline; PDF/SVG/MP4/GIF export; collaboration/approvals/version history; direct social publishing; iKhokha entitlements.
+
+## Portfolio CEO Growth
+
+IZAKHONO CREATE is also the creative front door for the Portfolio CEO Growth System. Product-specific audience, CTA, activation, retention, referral, revenue, channel and partnership contracts live in `portfolio-growth-registry.json`. CREATE must use those contracts when producing campaign packages.
