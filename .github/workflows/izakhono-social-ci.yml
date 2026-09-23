@@ -3,7 +3,7 @@ name: CONNECTA CI
 on:
   push:
     branches:
-      - product/connecta-sovereign-engine-v1
+      - product/connecta-zero-tolerance-safety
     paths:
       - 'products/izakhono-social/**'
       - '.github/workflows/izakhono-social-ci.yml'
@@ -44,6 +44,8 @@ jobs:
     defaults:
       run:
         working-directory: products/izakhono-social/engine
+    env:
+      CONNECTA_REGISTER_RATE_LIMIT: '100'
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -92,6 +94,24 @@ jobs:
           CONNECTA_DB_PASSWORD: ci-only-password
           CONNECTA_OWNER_KEY: ci-only-owner-key
         run: docker compose -f docker-compose.owned.yml exec -T engine node scripts/smoke-growth.js
+      - name: Exercise zero-tolerance safety
+        working-directory: products/izakhono-social
+        env:
+          CONNECTA_DB_PASSWORD: ci-only-password
+          CONNECTA_OWNER_KEY: ci-only-owner-key
+        run: docker compose -f docker-compose.owned.yml exec -T engine node scripts/smoke-safety.js
+      - name: Exercise content-owner alerts
+        working-directory: products/izakhono-social
+        env:
+          CONNECTA_DB_PASSWORD: ci-only-password
+          CONNECTA_OWNER_KEY: ci-only-owner-key
+        run: docker compose -f docker-compose.owned.yml exec -T engine node scripts/smoke-content-alerts.js
+      - name: Exercise evidence-backed business verification
+        working-directory: products/izakhono-social
+        env:
+          CONNECTA_DB_PASSWORD: ci-only-password
+          CONNECTA_OWNER_KEY: ci-only-owner-key
+        run: docker compose -f docker-compose.owned.yml exec -T engine node scripts/smoke-business-verification.js
       - name: Show logs on failure
         if: failure()
         working-directory: products/izakhono-social

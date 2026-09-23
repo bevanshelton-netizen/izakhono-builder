@@ -30,12 +30,35 @@ import {
   redeemCommunityInvite,
   redeemInvite,
 } from './growth.js';
+import {
+  automaticViolation,
+  clearSafetyCase,
+  confirmViolation,
+  listIdentityAlerts,
+  listSafetyNotices,
+  protectIdentity,
+  safetyReport,
+  scanIdentityClone,
+} from './safety.js';
+import {
+  addBusinessEvidence,
+  decideBusinessEvidence,
+  decideBusinessVerification,
+  duplicateMediaCheck,
+  listBusinessVerifications,
+  listNotifications,
+  markNotificationRead,
+  publicBusiness,
+  shareContent,
+  submitBusinessVerification,
+} from './trust.js';
 
 const PORT = Number(process.env.PORT || 4100);
 const MEDIA_ROOT = path.resolve(process.env.MEDIA_ROOT || '/var/lib/connecta/media');
 const MAX_JSON_BYTES = Number(process.env.MAX_JSON_BYTES || 1_000_000);
 const MAX_MEDIA_BYTES = Number(process.env.MAX_MEDIA_BYTES || 25 * 1024 * 1024);
 const SESSION_DAYS = Math.min(Math.max(Number(process.env.SESSION_DAYS || 30), 1), 90);
+const REGISTER_RATE_LIMIT = Math.min(Math.max(Number(process.env.REGISTER_RATE_LIMIT || 8), 1), 200);
 const OWNER_KEY = process.env.CONNECTA_OWNER_KEY || '';
 const ALLOWED_ORIGINS = new Set(
   (process.env.ALLOWED_ORIGINS || '')
@@ -175,7 +198,7 @@ async function createSession(client, accountId) {
 }
 
 async function register(req, res) {
-  if (!(await rateLimit(`register:${remoteKey(req)}`, 8, 3600))) {
+  if (!(await rateLimit(`register:${remoteKey(req)}`, REGISTER_RATE_LIMIT, 3600))) {
     return send(res, 429, { ok: false, error: 'Too many registration attempts' });
   }
 
@@ -189,6 +212,21 @@ async function register(req, res) {
   if (!validHandle(handle)) return send(res, 400, { ok: false, error: 'Handle must be 3-40 characters using letters, numbers, dot, underscore or hyphen' });
   if (!displayName) return send(res, 400, { ok: false, error: 'Display name required' });
   if (passwordError) return send(res, 400, { ok: false, error: passwordError });
+
+  const cloneSignal = await scanIdentityClone({ handle, displayName });
+  if (cloneSignal) {
+    await audit('identity.clone_registration_blocked', null, 'account', cloneSignal.account_id, {
+      attemptedHandle: handle,
+      attemptedDisplayName: displayName,
+      score: cloneSignal.score,
+    });
+    return send(res, 409, {
+      ok: false,
+      error: 'This account identity is too similar to a protected CONNECTA account.',
+      category: 'account-cloning',
+      next: 'Choose a clearly distinct identity or use the legitimate account recovery/verification process.',
+    });
+  }
 
   const password = await hashPassword(body.password);
   try {
@@ -239,8 +277,24 @@ async function login(req, res) {
   );
 
   const row = result.rows[0];
-  const valid = row && row.status === 'active' && await verifyPassword(body.password || '', row.password_salt, row.password_hash);
-  if (!valid) return send(res, 401, { ok: false, error: 'Invalid credentials' });
+  const validPassword = row && await verifyPassword(body.password || '', row.password_salt, row.password_hash);
+  if (!validPassword) return send(res, 401, { ok: false, error: 'Invalid credentials' });
+
+  if (row.status !== 'active') {
+    const noticeResult = await query(
+      `select id,notice_type,title,body,delivered_at
+         from safety_notices where account_id=$1
+        order by delivered_at desc limit 1`,
+      [row.id],
+    );
+    return send(res, 423, {
+      ok: false,
+      blocked: true,
+      status: row.status,
+      notice: noticeResult.rows[0] || null,
+      appealEndpoint: '/v1/safety/appeals',
+    });
+  }
 
   const token = await transaction((client) => createSession(client, row.id));
   await audit('session.created', row.id, 'account', row.id);
@@ -257,7 +311,12 @@ async function feed(req, res, account) {
   const mode = allowedModes.has(url.searchParams.get('mode')) ? url.searchParams.get('mode') : 'balanced';
   const limit = Math.min(Math.max(Number(url.searchParams.get('limit') || 30), 1), 100);
 
-  let where = `p.deleted_at is null and p.moderation_state='allowed' and p.visibility='public'`;
+  let where = `p.deleted_at is null and p.moderation_state='allowed' and p.visibility='public'
+    and not exists(
+      select 1 from safety_blocks sb
+      where (sb.blocker_id=$1 and sb.blocked_id=p.author_id)
+         or (sb.blocker_id=p.author_id and sb.blocked_id=$1)
+    )`;
   let score = '0';
 
   if (mode === 'following') {
@@ -271,6 +330,11 @@ async function feed(req, res, account) {
     )`;
   } else if (mode === 'communities') {
     where = `p.deleted_at is null and p.moderation_state='allowed'
+      and not exists(
+        select 1 from safety_blocks sb
+        where (sb.blocker_id=$1 and sb.blocked_id=p.author_id)
+           or (sb.blocker_id=p.author_id and sb.blocked_id=$1)
+      )
       and p.community_id is not null
       and exists(select 1 from community_members cm
         where cm.account_id=$1 and cm.community_id=p.community_id and cm.status='active')`;
@@ -315,8 +379,25 @@ async function createPost(req, res, account) {
 
   const moderation = moderateText(text);
   if (moderation.action === 'block') {
-    await audit('post.blocked_before_publish', account.id, null, null, { categories: moderation.categories });
-    return send(res, 422, { ok: false, moderation });
+    const category = moderation.categories[0] || 'harassment';
+    const enforcement = await automaticViolation({
+      accountId: account.id,
+      targetType: 'account',
+      targetId: account.id,
+      category,
+      rationale: moderation.reason,
+    });
+    await audit('post.blocked_before_publish', account.id, 'account', account.id, {
+      categories: moderation.categories,
+      enforcementCaseId: enforcement.caseId,
+    });
+    return send(res, 423, {
+      ok: false,
+      blocked: true,
+      moderation,
+      enforcement,
+      message: 'CONNECTA zero-tolerance safety enforcement has disabled this account.',
+    });
   }
 
   const visibility = ['public', 'connections', 'community', 'private'].includes(body.visibility)
@@ -354,7 +435,23 @@ async function createComment(req, res, account, postId) {
   if (!text) return send(res, 400, { ok: false, error: 'Comment body required' });
 
   const moderation = moderateText(text);
-  if (moderation.action === 'block') return send(res, 422, { ok: false, moderation });
+  if (moderation.action === 'block') {
+    const category = moderation.categories[0] || 'harassment';
+    const enforcement = await automaticViolation({
+      accountId: account.id,
+      targetType: 'account',
+      targetId: account.id,
+      category,
+      rationale: moderation.reason,
+    });
+    return send(res, 423, {
+      ok: false,
+      blocked: true,
+      moderation,
+      enforcement,
+      message: 'CONNECTA zero-tolerance safety enforcement has disabled this account.',
+    });
+  }
   const state = moderation.action === 'review' ? 'review' : 'allowed';
 
   const result = await transaction(async (client) => {
@@ -391,6 +488,13 @@ async function react(req, res, account, postId) {
 
 async function follow(req, res, account, targetId) {
   if (targetId === account.id) return send(res, 400, { ok: false, error: 'Cannot follow yourself' });
+  const blocked = await query(
+    `select 1 from safety_blocks
+      where (blocker_id=$1 and blocked_id=$2) or (blocker_id=$2 and blocked_id=$1)
+      limit 1`,
+    [account.id, targetId],
+  );
+  if (blocked.rowCount) return send(res, 403, { ok: false, error: 'Safety block prevents this interaction' });
   await query(
     `insert into follows(follower_id,followed_id) values($1,$2)
      on conflict do nothing`,
@@ -402,6 +506,13 @@ async function follow(req, res, account, targetId) {
 
 async function connect(req, res, account, targetId) {
   if (targetId === account.id) return send(res, 400, { ok: false, error: 'Cannot connect to yourself' });
+  const blocked = await query(
+    `select 1 from safety_blocks
+      where (blocker_id=$1 and blocked_id=$2) or (blocker_id=$2 and blocked_id=$1)
+      limit 1`,
+    [account.id, targetId],
+  );
+  if (blocked.rowCount) return send(res, 403, { ok: false, error: 'Safety block prevents this interaction' });
   try {
     await query(
       `insert into connections(requester_id,addressee_id,status)
@@ -416,6 +527,10 @@ async function connect(req, res, account, targetId) {
 }
 
 async function reportTarget(req, res, account) {
+  if (!(await rateLimit(`report:${account.id}`, 20, 3600))) {
+    return send(res, 429, { ok: false, error: 'Report rate limit reached' });
+  }
+
   const body = await readJson(req);
   const allowedTypes = ['account', 'post', 'comment', 'message', 'community', 'media'];
   if (!allowedTypes.includes(body.targetType) || typeof body.targetId !== 'string') {
@@ -425,20 +540,32 @@ async function reportTarget(req, res, account) {
   const detail = typeof body.detail === 'string' ? body.detail.trim().slice(0, 2000) : '';
   if (!reason) return send(res, 400, { ok: false, error: 'Reason required' });
 
-  const result = await transaction(async (client) => {
-    const report = await client.query(
-      `insert into reports(reporter_id,target_type,target_id,reason,detail)
-       values($1,$2,$3,$4,$5) returning id`,
-      [account.id, body.targetType, body.targetId, reason, detail],
-    );
-    await client.query(
-      `insert into moderation_cases(source,target_type,target_id,category,severity,state,rationale)
-       values('user_report',$1,$2,$3,2,'open',$4)`,
-      [body.targetType, body.targetId, reason, detail],
-    );
-    return report.rows[0];
+  const result = await safetyReport({
+    reporterId: account.id,
+    targetType: body.targetType,
+    targetId: body.targetId,
+    reason,
+    detail,
   });
-  return send(res, 201, { ok: true, reportId: result.id });
+  if (result.error) return send(res, 404, { ok: false, error: result.error });
+
+  await audit('safety.report_lock_applied', account.id, body.targetType, body.targetId, {
+    reportId: result.reportId,
+    caseId: result.caseId,
+    category: result.category,
+    duplicate: result.duplicate,
+  });
+
+  return send(res, result.duplicate ? 200 : 201, {
+    ok: true,
+    reportId: result.reportId,
+    caseId: result.caseId || null,
+    category: result.category,
+    protectiveLock: !result.duplicate,
+    message: result.duplicate
+      ? 'This safety report is already under review.'
+      : 'Report accepted. CONNECTA applied an immediate protective safety lock pending urgent review.',
+  });
 }
 
 async function createMedia(req, res, account) {
@@ -482,12 +609,28 @@ async function uploadMedia(req, res, account, mediaId) {
     `update media_assets set byte_size=$1,sha256=$2,moderation_state='review' where id=$3`,
     [bytes.length, sha256, mediaId],
   );
+  const duplicate = await duplicateMediaCheck({
+    suspectedMediaId: mediaId,
+    suspectedOwnerId: account.id,
+    sha256,
+  });
   await query(
     `insert into moderation_cases(source,target_type,target_id,category,severity,state,rationale)
-     values('automatic','media',$1,'media-review-required',2,'open','Uploaded media requires review before public distribution')`,
-    [mediaId],
+     values('automatic','media',$1,$2,$3,'open',$4)`,
+    [
+      mediaId,
+      duplicate ? 'possible-content-copy' : 'media-review-required',
+      duplicate ? 4 : 2,
+      duplicate
+        ? 'Exact-file match to media previously uploaded by another account; owner alerted and review required.'
+        : 'Uploaded media requires review before public distribution',
+    ],
   );
-  return send(res, 200, { ok: true, media: { id: mediaId, byteSize: bytes.length, sha256, state: 'review' } });
+  return send(res, 200, {
+    ok: true,
+    media: { id: mediaId, byteSize: bytes.length, sha256, state: 'review' },
+    duplicateOwnerAlert: Boolean(duplicate),
+  });
 }
 
 async function moderationQueue(req, res) {
@@ -505,43 +648,23 @@ async function moderationQueue(req, res) {
 async function resolveModeration(req, res, caseId) {
   if (!requireOwner(req, res)) return;
   const body = await readJson(req);
-  const allowedActions = ['none', 'limit', 'remove', 'suspend', 'disable'];
-  const action = allowedActions.includes(body.action) ? body.action : 'none';
-  const state = action === 'none' ? 'cleared' : 'actioned';
   const note = typeof body.note === 'string' ? body.note.trim().slice(0, 2000) : '';
 
-  const result = await transaction(async (client) => {
-    const locked = await client.query('select * from moderation_cases where id=$1 for update', [caseId]);
-    if (!locked.rowCount) return null;
-    const item = locked.rows[0];
-    await client.query(
-      `update moderation_cases
-          set state=$1,action=$2,rationale=case when $3='' then rationale else $3 end,
-              reviewer_subject='owner',updated_at=now()
-        where id=$4`,
-      [state, action, note, caseId],
-    );
-    if (item.target_type === 'post') {
-      await client.query(
-        `update posts set moderation_state=$1 where id=$2`,
-        [action === 'none' ? 'allowed' : 'removed', item.target_id],
-      );
-    } else if (item.target_type === 'comment') {
-      await client.query(
-        `update comments set moderation_state=$1 where id=$2`,
-        [action === 'none' ? 'allowed' : 'removed', item.target_id],
-      );
-    } else if (item.target_type === 'media') {
-      await client.query(
-        `update media_assets set moderation_state=$1 where id=$2`,
-        [action === 'none' ? 'allowed' : 'removed', item.target_id],
-      );
-    }
-    return item;
-  });
+  if (body.action === 'none' || body.action === 'clear' || body.action === 'reverse') {
+    const result = await clearSafetyCase(caseId, 'owner', note);
+    if (!result) return send(res, 404, { ok: false, error: 'Moderation case not found' });
+    return send(res, 200, { ok: true, state: 'cleared', action: 'none', ...result });
+  }
 
+  const result = await confirmViolation(caseId, 'owner', note);
   if (!result) return send(res, 404, { ok: false, error: 'Moderation case not found' });
-  return send(res, 200, { ok: true, state, action });
+  return send(res, 200, {
+    ok: true,
+    state: 'actioned',
+    action: 'disable',
+    ...result,
+    message: 'Confirmed violation: account disabled and formal safety/legal compliance warning issued.',
+  });
 }
 
 async function mediaContent(req, res, account, mediaId) {
@@ -591,10 +714,93 @@ async function route(req, res) {
   if (req.method === 'POST' && url.pathname === '/v1/auth/register') return register(req, res);
   if (req.method === 'POST' && url.pathname === '/v1/auth/login') return login(req, res);
 
+  const publicBusinessMatch = url.pathname.match(/^\/v1\/businesses\/([0-9a-f-]+)$/i);
+  if (req.method === 'GET' && publicBusinessMatch) {
+    const business = await publicBusiness(publicBusinessMatch[1]);
+    if (!business) return send(res, 404, { ok: false, error: 'Verified business not found' });
+    return send(res, 200, { ok: true, business, verified: true });
+  }
+  if (req.method === 'POST' && url.pathname === '/v1/safety/appeals') {
+    if (!(await rateLimit(`appeal:${remoteKey(req)}`, 10, 3600))) {
+      return send(res, 429, { ok: false, error: 'Appeal rate limit reached' });
+    }
+    const b = await readJson(req);
+    const email = normalizeEmail(b.email);
+    const statement = typeof b.statement === 'string' ? b.statement.trim().slice(0, 4000) : '';
+    const caseId = typeof b.caseId === 'string' ? b.caseId : '';
+    if (!email || !caseId || !statement) return send(res, 400, { ok: false, error: 'Email, caseId and statement are required' });
+    const auth = await query(
+      `select a.id,c.password_salt,c.password_hash
+         from accounts a join password_credentials c on c.account_id=a.id
+        where lower(a.email)=lower($1) limit 1`,
+      [email],
+    );
+    const row = auth.rows[0];
+    const verified = row && await verifyPassword(b.password || '', row.password_salt, row.password_hash);
+    if (!verified) return send(res, 401, { ok: false, error: 'Invalid credentials' });
+    const enforcement = await query(
+      'select 1 from account_enforcements where account_id=$1 and moderation_case_id=$2 limit 1',
+      [row.id, caseId],
+    );
+    if (!enforcement.rowCount) return send(res, 404, { ok: false, error: 'Safety case not found for this account' });
+    const appeal = await query(
+      `insert into appeals(moderation_case_id,appellant_id,statement)
+       values($1,$2,$3) returning id,state,created_at`,
+      [caseId, row.id, statement],
+    );
+    await audit('safety.appeal_submitted', row.id, 'account', row.id, { caseId, appealId: appeal.rows[0].id });
+    return send(res, 201, { ok: true, appeal: appeal.rows[0] });
+  }
+
   if (req.method === 'GET' && url.pathname === '/v1/admin/moderation') return moderationQueue(req, res);
   if (req.method === 'GET' && url.pathname === '/v1/admin/growth') {
     if (!requireOwner(req, res)) return;
     return growthSummary((status, data) => send(res, status, data));
+  }
+  if (req.method === 'GET' && url.pathname === '/v1/admin/identity-alerts') {
+    if (!requireOwner(req, res)) return;
+    return send(res, 200, { ok: true, alerts: await listIdentityAlerts() });
+  }
+  if (req.method === 'GET' && url.pathname === '/v1/admin/business-verifications') {
+    if (!requireOwner(req, res)) return;
+    return send(res, 200, { ok: true, businesses: await listBusinessVerifications() });
+  }
+  const businessEvidenceDecisionMatch = url.pathname.match(/^\/v1\/admin\/businesses\/([0-9a-f-]+)\/evidence\/([0-9a-f-]+)$/i);
+  if (req.method === 'PATCH' && businessEvidenceDecisionMatch) {
+    if (!requireOwner(req, res)) return;
+    const body = await readJson(req);
+    const result = await decideBusinessEvidence({
+      businessId: businessEvidenceDecisionMatch[1],
+      evidenceId: businessEvidenceDecisionMatch[2],
+      action: typeof body.action === 'string' ? body.action : '',
+      reviewer: 'owner',
+      note: typeof body.note === 'string' ? body.note : '',
+    });
+    if (result.error) return send(res, 400, { ok: false, error: result.error });
+    return send(res, 200, { ok: true, ...result });
+  }
+  const businessDecisionMatch = url.pathname.match(/^\/v1\/admin\/businesses\/([0-9a-f-]+)\/verification$/i);
+  if (req.method === 'PATCH' && businessDecisionMatch) {
+    if (!requireOwner(req, res)) return;
+    const body = await readJson(req);
+    const action = typeof body.action === 'string' ? body.action : '';
+    const note = typeof body.note === 'string' ? body.note.trim().slice(0, 1000) : '';
+    const result = await decideBusinessVerification({
+      businessId: businessDecisionMatch[1],
+      action,
+      reviewer: 'owner',
+      note,
+    });
+    if (result.error) return send(res, 400, { ok: false, error: result.error });
+    return send(res, 200, { ok: true, ...result });
+  }
+  const identityProtect = url.pathname.match(/^\/v1\/admin\/identities\/([0-9a-f-]+)\/protect$/i);
+  if (req.method === 'POST' && identityProtect) {
+    if (!requireOwner(req, res)) return;
+    const result = await protectIdentity(identityProtect[1], 'verified');
+    if (!result) return send(res, 404, { ok: false, error: 'Account not found' });
+    await audit('identity.protected', null, 'account', identityProtect[1], { verificationState: 'verified' });
+    return send(res, 200, { ok: true, identity: result });
   }
   const adminCase = url.pathname.match(/^\/v1\/admin\/moderation\/([0-9a-f-]+)$/i);
   if (req.method === 'PATCH' && adminCase) return resolveModeration(req, res, adminCase[1]);
@@ -607,9 +813,66 @@ async function route(req, res) {
     return send(res, 200, { ok: true });
   }
   if (req.method === 'GET' && url.pathname === '/v1/me') return send(res, 200, { ok: true, account });
+  if (req.method === 'GET' && url.pathname === '/v1/me/notices') {
+    return send(res, 200, { ok: true, notices: await listSafetyNotices(account.id) });
+  }
+  if (req.method === 'GET' && url.pathname === '/v1/notifications') {
+    return send(res, 200, { ok: true, notifications: await listNotifications(account.id) });
+  }
+  const notificationReadMatch = url.pathname.match(/^\/v1\/notifications\/([0-9a-f-]+)\/read$/i);
+  if (req.method === 'POST' && notificationReadMatch) {
+    const notification = await markNotificationRead(account.id, notificationReadMatch[1]);
+    if (!notification) return send(res, 404, { ok: false, error: 'Notification not found' });
+    return send(res, 200, { ok: true, notification });
+  }
+  if (req.method === 'POST' && url.pathname === '/v1/businesses/apply') {
+    const body = await readJson(req);
+    const result = await submitBusinessVerification(account.id, body);
+    if (result.error) return send(res, 400, { ok: false, error: result.error });
+    return send(res, 201, { ok: true, ...result, verified: false });
+  }
+  const businessEvidenceMatch = url.pathname.match(/^\/v1\/businesses\/([0-9a-f-]+)\/evidence$/i);
+  if (req.method === 'POST' && businessEvidenceMatch) {
+    const body = await readJson(req);
+    const result = await addBusinessEvidence(account.id, businessEvidenceMatch[1], body);
+    if (result.error) return send(res, 400, { ok: false, error: result.error });
+    return send(res, 201, { ok: true, ...result });
+  }
   if (req.method === 'GET' && url.pathname === '/v1/feed') return feed(req, res, account);
   if (req.method === 'POST' && url.pathname === '/v1/posts') return createPost(req, res, account);
   if (req.method === 'POST' && url.pathname === '/v1/reports') return reportTarget(req, res, account);
+  if (req.method === 'POST' && url.pathname === '/v1/shares') {
+    const body = await readJson(req);
+    const sourceType = typeof body.sourceType === 'string' ? body.sourceType : '';
+    const sourceId = typeof body.sourceId === 'string' ? body.sourceId : '';
+    const commentary = typeof body.commentary === 'string' ? body.commentary.trim().slice(0, 1000) : '';
+    if (!sourceId) return send(res, 400, { ok: false, error: 'sourceId required' });
+    if (commentary) {
+      const moderation = moderateText(commentary);
+      if (moderation.action === 'block') {
+        const enforcement = await automaticViolation({
+          accountId: account.id,
+          targetType: 'account',
+          targetId: account.id,
+          category: moderation.categories[0] || 'harassment',
+          rationale: moderation.reason,
+        });
+        return send(res, 423, { ok: false, blocked: true, moderation, enforcement });
+      }
+      if (moderation.action === 'review') {
+        return send(res, 422, { ok: false, error: 'Share commentary requires review before publishing', moderation });
+      }
+    }
+    const result = await shareContent({
+      sharerId: account.id,
+      sourceType,
+      sourceId,
+      commentary,
+    });
+    if (result.error) return send(res, 400, { ok: false, error: result.error });
+    await audit('content.shared', account.id, sourceType, sourceId, { originalOwnerId: result.originalOwnerId });
+    return send(res, 201, { ok: true, ...result, ownerAlerted: true });
+  }
   if (req.method === 'POST' && url.pathname === '/v1/media') return createMedia(req, res, account);
   if (req.method === 'POST' && url.pathname === '/v1/invites') {
     const body = await readJson(req);

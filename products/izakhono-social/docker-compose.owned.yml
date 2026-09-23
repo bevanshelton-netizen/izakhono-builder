@@ -27,6 +27,7 @@ services:
       CONNECTA_OWNER_KEY: ${CONNECTA_OWNER_KEY:?Set CONNECTA_OWNER_KEY}
       MEDIA_ROOT: /var/lib/connecta/media
       ALLOWED_ORIGINS: ${CONNECTA_ALLOWED_ORIGINS:-}
+      REGISTER_RATE_LIMIT: ${CONNECTA_REGISTER_RATE_LIMIT:-8}
     volumes:
       - connecta_media:/var/lib/connecta/media
     depends_on:

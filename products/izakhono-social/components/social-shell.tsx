@@ -46,7 +46,7 @@ const seedPosts: Post[] = [
   },
 ];
 
-const nav = ['Home', 'Connections', 'Communities', 'Messages', 'Pages', 'Events', 'Watch', 'Marketplace'];
+const nav = ['Home', 'Notifications', 'Connections', 'Communities', 'Messages', 'Pages', 'Events', 'Watch', 'Marketplace'];
 
 export default function SocialShell() {
   const [posts, setPosts] = useState(seedPosts);
@@ -149,7 +149,7 @@ export default function SocialShell() {
 
         <aside className="rightRail">
           <div className="safetyCard"><div className="shield">✓</div><div><div className="eyebrow">Safety Centre</div><h3>Clean social, enforced.</h3></div>
-            <div className="safetyRules"><span>No drugs</span><span>No porn</span><span>No gang recruitment</span><span>Zero tolerance for child sexual exploitation</span></div>
+            <div className="safetyRules"><span>No cyberbullying</span><span>No threats or doxxing</span><span>No account cloning</span><span>Owner alerts on shares/copies</span><span>Businesses verified before badge</span><span>No drugs or porn</span><span>No gang recruitment</span><span>Zero tolerance for child sexual exploitation</span></div>
             <Link href="/safety" className="primaryLink">See how safety works →</Link>
           </div>
 
