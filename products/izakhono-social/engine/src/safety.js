@@ -347,10 +347,18 @@ export async function scanIdentityClone({ handle, displayName }) {
   for (const candidate of rows.rows) {
     const handleScore = similarity(h, candidate.handle_skeleton);
     const displayScore = similarity(d, candidate.display_name_skeleton);
-    const score = Math.max(handleScore, displayScore * 0.92);
-    if (!best || score > best.score) best = { ...candidate, score, handleScore, displayScore };
+    const strongHandleClone = handleScore >= 0.88;
+    const combinedClone = handleScore >= 0.72 && displayScore >= 0.95;
+    const score = strongHandleClone
+      ? handleScore
+      : combinedClone
+        ? (handleScore * 0.65 + displayScore * 0.35)
+        : 0;
+    if (score > 0 && (!best || score > best.score)) {
+      best = { ...candidate, score, handleScore, displayScore };
+    }
   }
-  return best && best.score >= 0.88 ? best : null;
+  return best;
 }
 
 export async function createIdentityAlert({ suspectedAccountId, protectedAccountId, signal, score, detail }) {
