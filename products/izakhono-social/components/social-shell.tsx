@@ -149,7 +149,7 @@ export default function SocialShell() {
 
         <aside className="rightRail">
           <div className="safetyCard"><div className="shield">✓</div><div><div className="eyebrow">Safety Centre</div><h3>Clean social, enforced.</h3></div>
-            <div className="safetyRules"><span>No drugs</span><span>No porn</span><span>No gang recruitment</span><span>Zero tolerance for child sexual exploitation</span></div>
+            <div className="safetyRules"><span>No cyberbullying</span><span>No threats or doxxing</span><span>No account cloning</span><span>No drugs or porn</span><span>No gang recruitment</span><span>Zero tolerance for child sexual exploitation</span></div>
             <Link href="/safety" className="primaryLink">See how safety works →</Link>
           </div>
 
