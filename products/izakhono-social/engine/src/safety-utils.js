@@ -1,3 +1,20 @@
+export const PROTECTIVE_LOCK_NOTICE = {
+  title: 'CONNECTA SAFETY LOCK — ACTION REQUIRED',
+  body:
+    'Your CONNECTA account has been temporarily restricted following a safety report or high-confidence safety signal. ' +
+    'You may not contact the reporting person or use another account to evade this restriction. Evidence relevant to the safety case may be preserved. ' +
+    'The restriction will be reviewed urgently. A false or malicious report is itself a serious standards violation. You may appeal through CONNECTA safety review.',
+};
+
+export const FORMAL_VIOLATION_WARNING = {
+  title: 'FORMAL CONNECTA SAFETY & LEGAL COMPLIANCE WARNING',
+  body:
+    'CONNECTA has disabled this account following a confirmed violation of the Community Standards. ' +
+    'Do not evade the restriction by creating, cloning or using another account. Relevant records may be preserved for safety, dispute handling and lawful requests. ' +
+    'Where conduct may be unlawful or creates a credible risk of harm, CONNECTA may refer or disclose information to appropriate authorities or affected persons when permitted or required by law. ' +
+    'This notice is a platform enforcement decision and is not, by itself, a finding of criminal or civil liability. You may submit an appeal for independent review.',
+};
+
 export const ZERO_TOLERANCE_CATEGORIES = new Set([
   'cyberbullying',
   'harassment',
