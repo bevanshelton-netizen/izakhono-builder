@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
+import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 type Account = {
   id: string;
@@ -65,13 +65,14 @@ const feedModes = [
 ] as const;
 
 async function api<T = any>(path: string, options: RequestInit = {}): Promise<{ response: Response; data: T }> {
+  const headers = new Headers(options.headers);
+  headers.set('accept', 'application/json');
+  if (options.body && !(options.body instanceof FormData) && !headers.has('content-type')) {
+    headers.set('content-type', 'application/json');
+  }
   const response = await fetch('/api/connecta' + path, {
     ...options,
-    headers: {
-      accept: 'application/json',
-      ...(options.body instanceof FormData ? {} : options.body ? { 'content-type': 'application/json' } : {}),
-      ...(options.headers || {}),
-    },
+    headers,
     cache: 'no-store',
   });
   const data = await response.json().catch(() => ({ ok: false, error: 'Invalid CONNECTA response' })) as T;
@@ -181,6 +182,7 @@ export default function SocialShell() {
   const [communityName, setCommunityName] = useState('');
   const [communityDescription, setCommunityDescription] = useState('');
   const [inviteLabel, setInviteLabel] = useState('Founder invite');
+  const inviteHandled = useRef(false);
 
   const displayName = account?.display_name || account?.displayName || account?.handle || 'CONNECTA member';
   const unread = notifications.filter((item) => !item.read_at).length;
@@ -219,6 +221,20 @@ export default function SocialShell() {
   }, [feedMode]);
 
   useEffect(() => { void hydrate(); }, [hydrate]);
+
+  useEffect(() => {
+    if (!account || inviteHandled.current || typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get('invite');
+    if (!code) return;
+    inviteHandled.current = true;
+    void api<any>('/v1/invites/' + encodeURIComponent(code) + '/redeem', { method: 'POST' }).then(({ response, data }) => {
+      setStatus(response.ok ? 'Founder invite accepted. Welcome to CONNECTA.' : data?.error || 'This invite could not be redeemed.');
+      params.delete('invite');
+      const query = params.toString();
+      window.history.replaceState({}, '', window.location.pathname + (query ? '?' + query : ''));
+    });
+  }, [account]);
 
   async function publish(event: FormEvent) {
     event.preventDefault();
