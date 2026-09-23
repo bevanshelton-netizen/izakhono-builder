@@ -86,6 +86,12 @@ jobs:
           done
           docker compose -f docker-compose.owned.yml logs engine postgres
           exit 1
+      - name: Exercise growth flywheel
+        working-directory: products/izakhono-social
+        env:
+          CONNECTA_DB_PASSWORD: ci-only-password
+          CONNECTA_OWNER_KEY: ci-only-owner-key
+        run: docker compose -f docker-compose.owned.yml exec -T engine node scripts/smoke-growth.js
       - name: Show logs on failure
         if: failure()
         working-directory: products/izakhono-social
