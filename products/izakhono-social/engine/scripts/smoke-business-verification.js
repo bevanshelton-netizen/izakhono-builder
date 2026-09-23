@@ -15,4 +15,39 @@ async function call(path, options={}) {
   return {response,data};
 }
 
-console.log(JSON.stringify({ok:true}));
+const suffix = Date.now().toString(36);
+const passphrase = ['Connecta','Test','Business','31'].join('-');
+
+const accountResult = await call('/v1/auth/register', {
+  method:'POST',
+  body:{
+    email:`biz-${suffix}@connecta.local`,
+    handle:`biz-${suffix}`,
+    displayName:'Business Owner',
+    password:passphrase,
+  },
+});
+if (!accountResult.response.ok) throw new Error('business owner registration failed');
+const account = accountResult.data;
+
+const applicationResult = await call('/v1/businesses/apply', {
+  method:'POST',
+  token:account.token,
+  body:{
+    legalName:'CONNECTA CI Trading',
+    tradingName:'CONNECTA CI Trading',
+    registrationNumber:`CI-${suffix}`,
+    countryCode:'ZA',
+  },
+});
+if (!applicationResult.response.ok) throw new Error('business application failed');
+const businessId = applicationResult.data.business.id;
+
+const earlyVerify = await call(`/v1/admin/businesses/${businessId}/verification`, {
+  method:'PATCH',
+  owner:true,
+  body:{action:'verified',note:'evidence gate test'},
+});
+if (earlyVerify.response.status !== 400) throw new Error('verification evidence gate did not block');
+
+console.log(JSON.stringify({ok:true,businessId,gate:true}));
