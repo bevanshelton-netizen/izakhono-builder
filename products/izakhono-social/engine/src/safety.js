@@ -1,12 +1,21 @@
 import { query, transaction } from './db.js';
 import {
+  FORMAL_VIOLATION_WARNING,
+  PROTECTIVE_LOCK_NOTICE,
   ZERO_TOLERANCE_CATEGORIES,
   identitySkeleton,
   normalizeSafetyCategory,
   similarity,
 } from './safety-utils.js';
 
-export { ZERO_TOLERANCE_CATEGORIES, identitySkeleton, normalizeSafetyCategory, similarity } from './safety-utils.js';
+export {
+  FORMAL_VIOLATION_WARNING,
+  PROTECTIVE_LOCK_NOTICE,
+  ZERO_TOLERANCE_CATEGORIES,
+  identitySkeleton,
+  normalizeSafetyCategory,
+  similarity,
+} from './safety-utils.js';
 
 async function targetAccount(client, targetType, targetId) {
   const lookups = {
