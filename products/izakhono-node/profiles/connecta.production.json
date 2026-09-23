@@ -1,0 +1,12 @@
+{
+  "source": "izakhono-code",
+  "repository": "izakhono-builder",
+  "repo": "https://github.com/bevanshelton-netizen/izakhono-builder.git",
+  "app": "connecta",
+  "ref": "__REF__",
+  "environment": "production",
+  "mode": "compose",
+  "compose_file": "products/izakhono-social/docker-compose.owned.yml",
+  "health_url": "http://127.0.0.1:3080/health",
+  "env_file": "/etc/izakhono/apps/connecta.env"
+}
