@@ -188,6 +188,64 @@ export async function submitBusinessVerification(accountId, body = {}) {
   }
 }
 
+export async function addBusinessEvidence(accountId, businessId, body = {}) {
+  const allowed = new Set([
+    'owner_identity',
+    'registration_record',
+    'business_bank_account',
+    'business_address',
+    'domain_control',
+    'tax_record',
+    'other',
+  ]);
+  const evidenceType = String(body.evidenceType || '').trim();
+  const reference = String(body.reference || '').trim().slice(0, 1000);
+  const checksum = String(body.checksumSha256 || '').trim().toLowerCase().slice(0, 64) || null;
+
+  if (!allowed.has(evidenceType) || !reference) {
+    return { error: 'Valid evidenceType and reference are required' };
+  }
+
+  const owned = await query(
+    'select id from businesses where id=$1 and owner_id=$2 limit 1',
+    [businessId, accountId],
+  );
+  if (!owned.rowCount) return { error: 'Business not found' };
+
+  const result = await query(
+    `insert into business_verification_evidence(
+       business_id,evidence_type,reference,checksum_sha256
+     ) values($1,$2,$3,$4)
+     returning id,evidence_type,state,created_at`,
+    [businessId, evidenceType, reference, checksum],
+  );
+  return { evidence: result.rows[0] };
+}
+
+export async function decideBusinessEvidence({ businessId, evidenceId, action, reviewer='owner', note='' }) {
+  if (!['accepted','rejected'].includes(action)) return { error: 'Unsupported evidence action' };
+  const result = await query(
+    `update business_verification_evidence
+        set state=$1,reviewer_subject=$2,review_note=$3,reviewed_at=now()
+      where id=$4 and business_id=$5
+      returning id,evidence_type,state,reviewed_at`,
+    [action, reviewer, String(note || '').slice(0,1000), evidenceId, businessId],
+  );
+  if (!result.rowCount) return { error: 'Verification evidence not found' };
+  return { evidence: result.rows[0] };
+}
+
+async function verificationEvidenceSummary(client, businessId) {
+  const result = await client.query(
+    `select evidence_type,count(*)::int as accepted_count
+       from business_verification_evidence
+      where business_id=$1 and state='accepted'
+      group by evidence_type`,
+    [businessId],
+  );
+  return new Map(result.rows.map((row) => [row.evidence_type, Number(row.accepted_count)]));
+}
+
 export async function listBusinessVerifications() {
   const result = await query(
     `select b.*,p.handle as owner_handle,p.display_name as owner_name
@@ -209,17 +267,39 @@ export async function decideBusinessVerification({ businessId, action, reviewer 
     if (!locked.rowCount) return { error: 'Business not found' };
     const business = locked.rows[0];
 
+    let verificationLevel = business.verification_level;
+    if (action === 'verified') {
+      const evidence = await verificationEvidenceSummary(client, businessId);
+      const hasOwnerIdentity = (evidence.get('owner_identity') || 0) > 0;
+      const hasRegistration = (evidence.get('registration_record') || 0) > 0;
+      const hasBank = (evidence.get('business_bank_account') || 0) > 0;
+      const hasAddress = (evidence.get('business_address') || 0) > 0;
+      const hasDomain = (evidence.get('domain_control') || 0) > 0;
+
+      if (business.registration_number) {
+        if (!hasOwnerIdentity || !hasRegistration) {
+          return { error: 'Registered businesses require accepted owner-identity and registration-record evidence before verification' };
+        }
+        verificationLevel = (hasBank || hasDomain || hasAddress) ? 'enhanced' : 'registered_business';
+      } else {
+        if (!hasOwnerIdentity || !hasBank || !hasAddress) {
+          return { error: 'Unregistered businesses require accepted owner-identity, business-bank-account and business-address evidence before verification' };
+        }
+        verificationLevel = hasDomain ? 'enhanced' : 'basic';
+      }
+    }
+
     const updated = await client.query(
       `update businesses set
           verification_state=$1,
-          verification_level=case when $1='verified' then 'registered_business' else verification_level end,
+          verification_level=case when $1='verified' then $5 else verification_level end,
           verified_at=case when $1='verified' then now() else verified_at end,
           verified_by=case when $1='verified' then $2 else verified_by end,
           rejection_reason=case when $1='rejected' then $3 else rejection_reason end,
           updated_at=now()
         where id=$4
         returning id,owner_id,legal_name,trading_name,country_code,verification_state,verification_level,verified_at`,
-      [action, reviewer, String(note || '').slice(0, 1000), businessId],
+      [action, reviewer, String(note || '').slice(0, 1000), businessId, verificationLevel],
     );
 
     await client.query(
