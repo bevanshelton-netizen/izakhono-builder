@@ -41,6 +41,8 @@ import {
   scanIdentityClone,
 } from './safety.js';
 import {
+  addBusinessEvidence,
+  decideBusinessEvidence,
   decideBusinessVerification,
   duplicateMediaCheck,
   listBusinessVerifications,
@@ -762,6 +764,20 @@ async function route(req, res) {
     if (!requireOwner(req, res)) return;
     return send(res, 200, { ok: true, businesses: await listBusinessVerifications() });
   }
+  const businessEvidenceDecisionMatch = url.pathname.match(/^\/v1\/admin\/businesses\/([0-9a-f-]+)\/evidence\/([0-9a-f-]+)$/i);
+  if (req.method === 'PATCH' && businessEvidenceDecisionMatch) {
+    if (!requireOwner(req, res)) return;
+    const body = await readJson(req);
+    const result = await decideBusinessEvidence({
+      businessId: businessEvidenceDecisionMatch[1],
+      evidenceId: businessEvidenceDecisionMatch[2],
+      action: typeof body.action === 'string' ? body.action : '',
+      reviewer: 'owner',
+      note: typeof body.note === 'string' ? body.note : '',
+    });
+    if (result.error) return send(res, 400, { ok: false, error: result.error });
+    return send(res, 200, { ok: true, ...result });
+  }
   const businessDecisionMatch = url.pathname.match(/^\/v1\/admin\/businesses\/([0-9a-f-]+)\/verification$/i);
   if (req.method === 'PATCH' && businessDecisionMatch) {
     if (!requireOwner(req, res)) return;
@@ -813,6 +829,13 @@ async function route(req, res) {
     const result = await submitBusinessVerification(account.id, body);
     if (result.error) return send(res, 400, { ok: false, error: result.error });
     return send(res, 201, { ok: true, ...result, verified: false });
+  }
+  const businessEvidenceMatch = url.pathname.match(/^\/v1\/businesses\/([0-9a-f-]+)\/evidence$/i);
+  if (req.method === 'POST' && businessEvidenceMatch) {
+    const body = await readJson(req);
+    const result = await addBusinessEvidence(account.id, businessEvidenceMatch[1], body);
+    if (result.error) return send(res, 400, { ok: false, error: result.error });
+    return send(res, 201, { ok: true, ...result });
   }
   if (req.method === 'GET' && url.pathname === '/v1/feed') return feed(req, res, account);
   if (req.method === 'POST' && url.pathname === '/v1/posts') return createPost(req, res, account);
