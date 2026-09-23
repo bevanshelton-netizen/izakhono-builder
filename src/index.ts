@@ -33,6 +33,7 @@ const MODULES = {
   career: { label: 'Creator Career', detail: 'Launch, grow, revive and relaunch pathways with campaign state.' },
   media_handoff: { label: 'Media Handoff', detail: 'Server-side rights-gated handoff between IZAKHONO media platforms.' },
   clearset: { label: 'CLEARSET', detail: 'Obligation classification, reserves, settlement and available-cash calculation.' },
+  growth: { label: 'CEO Growth Engine', detail: 'Acquisition, activation, retention, referral, revenue and partnership growth contract.' },
 } as const;
 type ModuleKey = keyof typeof MODULES;
 
@@ -94,6 +95,7 @@ function buildRecipe(project: any, modules: ModuleKey[]) {
   if (modules.includes('career')) architecture.push('creator career pathway engine: launch / grow / revive / relaunch');
   if (modules.includes('media_handoff')) architecture.push('server-to-server media handoff with identity linking, rights gates and moderation');
   if (modules.includes('clearset')) architecture.push('gross-to-available obligation engine with tax/reserve classification and settlement ledger');
+  if (modules.includes('growth')) architecture.push('CEO growth contract: acquisition + activation + retention + referral + revenue + partnerships; CREATE -> ADS distribution governance');
 
   return {
     engine: 'IZAKHONO BUILDER',
@@ -137,6 +139,7 @@ async function api(req: Request, env: Env, url: URL): Promise<Response> {
     const b = await body(req);
     const name = cleanText(b.name, 100), slug = cleanText(b.slug, 60).toLowerCase(), category = cleanText(b.category || 'general', 60), description = cleanText(b.description || '', 600);
     const modules = normalizeModules(b.modules);
+    if (!modules.includes('growth')) modules.push('growth');
     if (!name || !validSlug(slug)) return fail(req, env, 'A name and valid lowercase slug are required');
     const projectId = id('prj');
     try {

@@ -69,6 +69,18 @@ Distribution should cover the social channels actually connected and authorised 
 ## Visual hierarchy
 **Platform name → what it does → proof/demo visual → primary action → share → secondary detail.**
 
+## Growth-loop requirement
+
+Every revenue-facing public platform must define and implement:
+- its activation event — the first meaningful user outcome;
+- its retention loop — why a useful user comes back;
+- its referral/share/partner loop — how one successful user or partner can create another;
+- its revenue event — what converts value into sustainable revenue.
+
+A landing page is not considered growth-ready merely because it has traffic or a signup button. The primary CTA must lead toward the product's defined activation event.
+
+The source of truth for product-specific growth contracts is `apps/izakhono-create/portfolio-growth-registry.json`.
+
 ## Acceptance test
 Show only the first screen to someone with no prior context for five seconds. They should be able to answer:
 1. What is this platform called?
