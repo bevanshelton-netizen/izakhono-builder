@@ -18,6 +18,10 @@ It is designed so the social network can continue to operate without Meta, Googl
 - confirmed-violation account disablement with formal safety/legal compliance warnings
 - blocked-account appeal intake
 - protected-identity anti-cloning / impersonation detection
+- owner notifications whenever CONNECTA shares another account's public post or media
+- exact-file duplicate-media detection with original-owner alerts and review hold
+- evidence-backed business verification; verified badge cannot be purchased
+- private first-party notification inbox
 - report intake and urgent moderation queue
 - owner moderation decisions
 - local filesystem media storage on the owned host
@@ -51,6 +55,12 @@ There is no advertising ID, cross-site tracking identity, dwell-time score or hi
 - `POST /v1/follows/:accountId`
 - `POST /v1/connections/:accountId`
 - `POST /v1/reports`
+- `POST /v1/shares`
+- `GET /v1/notifications`
+- `POST /v1/notifications/:id/read`
+- `POST /v1/businesses/apply`
+- `POST /v1/businesses/:id/evidence`
+- `GET /v1/businesses/:id` (verified businesses only)
 - `POST /v1/safety/appeals`
 - `GET /v1/me/notices`
 - `POST /v1/invites`
@@ -68,6 +78,9 @@ There is no advertising ID, cross-site tracking identity, dwell-time score or hi
 - `PATCH /v1/admin/moderation/:caseId`
 - `GET /v1/admin/identity-alerts`
 - `POST /v1/admin/identities/:accountId/protect`
+- `GET /v1/admin/business-verifications`
+- `PATCH /v1/admin/businesses/:id/evidence/:evidenceId`
+- `PATCH /v1/admin/businesses/:id/verification`
 - `GET /v1/admin/growth`
 
 ## NODE01 deployment
