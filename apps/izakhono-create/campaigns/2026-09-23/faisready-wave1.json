@@ -1,0 +1,50 @@
+{
+  "schema": "izakhono.marketing.package.v1",
+  "source": "IZAKHONO CREATE",
+  "created_at": "2026-09-23T19:47:00Z",
+  "product": "FAISReady",
+  "campaign_name": "FAISReady — Start Preparing",
+  "creative": {
+    "brief": "Convert high-intent South African regulatory-exam candidates into paid FAISReady learners with clear course choices, mobile-first creative and immediate checkout.",
+    "key_message": "Prepare with structure. Practise with purpose. Move toward your regulatory-exam goal.",
+    "formats": [
+      "1080x1080 social",
+      "1080x1920 vertical video",
+      "1200x628 LinkedIn/search social",
+      "WhatsApp share card"
+    ],
+    "hooks": [
+      "Preparing for RE1?",
+      "Preparing for RE5?",
+      "Build a structured exam-preparation routine."
+    ],
+    "compliance_notes": [
+      "FAISReady provides preparation and learning support; it is not the official regulatory examination body.",
+      "Do not guarantee a pass or employment outcome.",
+      "Confirm product pricing and checkout before publication."
+    ]
+  },
+  "channels": [
+    "Google/search intent",
+    "LinkedIn",
+    "Facebook",
+    "Instagram",
+    "WhatsApp",
+    "FSP and brokerage partnerships"
+  ],
+  "offer": "RE1 preparation R399; RE5 Complete R299; RE5 Bundle R549, subject to checkout verification.",
+  "cta": "Start preparing",
+  "approval": {
+    "creative_source_verified": true,
+    "owner_spend_approved": false,
+    "publish_ready": false
+  },
+  "attribution": {
+    "campaign_id": "create-faisready-wave1-20260923"
+  },
+  "policy": {
+    "distribution_system": "IZAKHONO ADS",
+    "owned_infrastructure_first": true,
+    "external_routes_reversible": true
+  }
+}
