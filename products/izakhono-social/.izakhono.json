@@ -1,0 +1,31 @@
+{
+  "version": 3,
+  "name": "IZAKHONO SOCIAL",
+  "slug": "izakhono-social",
+  "operator": "IZAKHONO AFRICA (PTY) LTD",
+  "trading_name": "IZAKHONO SOCIAL",
+  "build_context": "products/izakhono-social",
+  "dockerfile_path": "products/izakhono-social/Dockerfile",
+  "container_port": 3000,
+  "health_path": "/health",
+  "branch": "main",
+  "infrastructure": {
+    "policy": "owned-first-externally-reversible",
+    "authoritative_source": "IZAKHONO CODE / Forge",
+    "owned_target": "NODE01",
+    "current_public_route": "NOT_YET_VERIFIED",
+    "external_fallback": "NOT_YET_VERIFIED",
+    "status_label": "BUILDING",
+    "data_dependencies": [],
+    "auth_dependencies": [],
+    "payment_dependencies": [],
+    "backup_evidence": "PENDING",
+    "restore_evidence": "PENDING",
+    "rollback_evidence": "PENDING"
+  },
+  "alpha": {
+    "preflight": true,
+    "rehearsal": false,
+    "windows_package": false
+  }
+}
