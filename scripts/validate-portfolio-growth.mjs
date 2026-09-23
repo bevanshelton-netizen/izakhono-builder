@@ -3,9 +3,11 @@ import fs from 'node:fs';
 const marketingPath = 'apps/izakhono-create/portfolio-marketing-registry.json';
 const growthPath = 'apps/izakhono-create/portfolio-growth-registry.json';
 const seedPath = 'migrations/0003_seed_active_portfolio.sql';
+const adsGrowthPath = 'products/izakhono-ads/portfolio-growth-registry.json';
 
 const marketing = JSON.parse(fs.readFileSync(marketingPath, 'utf8'));
 const growth = JSON.parse(fs.readFileSync(growthPath, 'utf8'));
+const adsGrowth = JSON.parse(fs.readFileSync(adsGrowthPath, 'utf8'));
 const seed = fs.readFileSync(seedPath, 'utf8');
 
 const requiredFields = [
@@ -15,6 +17,9 @@ const requiredFields = [
 ];
 
 const errors = [];
+if (JSON.stringify(growth) !== JSON.stringify(adsGrowth)) {
+  errors.push('IZAKHONO CREATE and IZAKHONO ADS growth registries have drifted');
+}
 const products = new Map();
 for (const product of growth.products || []) {
   for (const field of requiredFields) {
