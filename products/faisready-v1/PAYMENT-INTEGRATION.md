@@ -1,10 +1,13 @@
 # FAISReady Payment Integration Gate
 
-FAISReady v1 deliberately ships with payment processing disabled.
+FAISReady v1 exposes only payment routes whose exact production checkout destination has been captured and approved. The recorded RE5 Complete Preparation iKhokha Buy Button may be linked directly; all other checkout routes remain gated until their exact production links and commercial controls are verified.
 
-## R399 offer
+## Current offers
 
-The page may advertise the intended R399 launch package and collect expressions of interest. It must not present a functional checkout or claim that payments are live until the conditions below are met.
+- RE5 Complete Preparation — R299 — direct recorded iKhokha Buy Button route.
+- RE1 Complete Preparation — R399 — payment link not recorded in this repository; follow-up route only.
+- RE1 + RE5 Bundle — R549 — exact production checkout link is not recorded in this repository; follow-up route only.
+- RE3 / RE4 — preparation pathways; no checkout is exposed until the commercial route is approved.
 
 ## Activation requirements
 
@@ -19,10 +22,12 @@ The page may advertise the intended R399 launch package and collect expressions 
 9. Refund and reversal states remove or adjust entitlement correctly.
 10. Audit records include the order, notification, verification result and reconciliation state.
 11. End-to-end production payment testing has been completed.
-12. Only after the above passes may the "Join the R399 Launch List" CTA be changed to an active payment CTA.
+12. Only a payment route with an exact approved production destination may appear as a direct checkout CTA. Automated entitlement must not be granted until webhook, amount/reference and reconciliation controls pass.
 
 ## Current state
 
-PAYMENTS_ACTIVE=false
+RE5_DIRECT_CHECKOUT_LINKED=true
+AUTOMATED_ENTITLEMENT=false
+OTHER_CHECKOUTS_ACTIVE=false
 
-The product is safe to use for lead generation and local preparation demonstrations without collecting money.
+The RE5 button is a direct handoff to the recorded iKhokha Buy Button. FAISReady does not yet claim automatic post-payment entitlement or reconciliation. RE1, RE3, RE4 and bundle routes remain follow-up/gated until their exact production checkout destinations are captured and verified.
