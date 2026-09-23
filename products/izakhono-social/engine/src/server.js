@@ -368,7 +368,7 @@ async function react(req, res, account, postId) {
   await query(
     `insert into reactions(actor_id,post_id,kind)
      values($1,$2,$3)
-     on conflict(actor_id,post_id,comment_id,kind) do nothing`,
+     on conflict do nothing`,
     [account.id, postId, kind],
   );
   return send(res, 200, { ok: true, kind });
