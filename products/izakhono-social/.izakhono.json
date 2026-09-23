@@ -1,5 +1,5 @@
 {
-  "version": 3,
+  "version": 4,
   "name": "CONNECTA",
   "slug": "connecta",
   "operator": "IZAKHONO AFRICA (PTY) LTD",
@@ -14,18 +14,22 @@
     "authoritative_source": "IZAKHONO CODE / Forge",
     "owned_target": "NODE01",
     "current_public_route": "NOT_YET_VERIFIED",
-    "external_fallback": "NOT_YET_VERIFIED",
-    "status_label": "BUILDING",
-    "data_dependencies": [],
-    "auth_dependencies": [],
+    "external_fallback": "PREPARED_NOT_VERIFIED",
+    "status_label": "NOT YET PUBLIC",
+    "data_dependencies": [
+      "CONNECTA-owned PostgreSQL"
+    ],
+    "auth_dependencies": [
+      "CONNECTA ENGINE local authentication"
+    ],
     "payment_dependencies": [],
-    "backup_evidence": "PENDING",
-    "restore_evidence": "PENDING",
-    "rollback_evidence": "PENDING"
+    "backup_evidence": "PENDING_NODE01_PROOF",
+    "restore_evidence": "PENDING_NODE01_PROOF",
+    "rollback_evidence": "COMPOSE_ROLLBACK_PACKAGED_NOT_MACHINE_VERIFIED"
   },
   "alpha": {
     "preflight": true,
-    "rehearsal": false,
-    "windows_package": false
+    "rehearsal": true,
+    "windows_package": true
   }
 }
