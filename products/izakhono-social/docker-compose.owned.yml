@@ -18,7 +18,8 @@ services:
 
   engine:
     build:
-      context: ./engine
+      context: .
+      dockerfile: engine/Dockerfile
     restart: unless-stopped
     environment:
       PORT: "4100"
