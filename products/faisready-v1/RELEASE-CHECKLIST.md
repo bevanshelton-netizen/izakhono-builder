@@ -5,7 +5,8 @@
 - [x] RE3 preparation card
 - [x] RE4 preparation card
 - [x] RE5 preparation card
-- [x] R399 launch offer displayed
+- [x] RE5 R299 direct iKhokha checkout displayed
+- [x] RE1 R399 and R549 bundle retained as gated follow-up routes until exact checkout links are recorded
 - [x] mobile-first responsive layout
 - [x] learner dashboard
 - [x] mock quiz and score history
@@ -15,7 +16,8 @@
 - [x] institutional pilot option
 - [x] local lead persistence
 - [x] CSV lead export
-- [x] payment CTA disabled
+- [x] only recorded RE5 checkout is exposed; unverified checkout routes remain gated
+- [x] share action available
 - [x] no FSCA endorsement or pass-guarantee claim
 
 ## Owner-laptop acceptance
@@ -35,7 +37,8 @@
 - [ ] production domain and TLS configured
 - [ ] monitoring/logging configured
 - [ ] backups and restore tested
-- [ ] payment merchant verification complete
+- [ ] merchant/payment evidence archived for every exposed production checkout
+- [ ] RE5 payment-to-entitlement acceptance test complete
 - [ ] ITN/webhook signature/amount/reference verification complete
 - [ ] reconciliation tested against real settlement evidence
 - [ ] refund/cancellation handling defined
@@ -44,4 +47,4 @@
 
 ## Launch rule
 
-Do not mark payment or public-commercial readiness complete from the owner-laptop proof alone.
+Do not mark full public-commercial readiness complete from source code, owner-laptop proof or a visible Buy Button alone. RE5 checkout availability and payment-to-entitlement completion are separate gates.
