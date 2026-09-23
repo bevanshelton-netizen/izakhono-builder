@@ -230,7 +230,7 @@
         d.contact || d.name || "",
         d.mobile || "",
         d.email || "",
-        d.course || d.type || "",
+        d.offer || d.course || d.type || "",
         d.learners || ""
       ]);
     });
