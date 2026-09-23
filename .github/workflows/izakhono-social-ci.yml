@@ -3,7 +3,7 @@ name: CONNECTA CI
 on:
   push:
     branches:
-      - product/connecta-zero-tolerance-safety
+      - product/connecta-perceptual-media-protection
     paths:
       - 'products/izakhono-social/**'
       - '.github/workflows/izakhono-social-ci.yml'
@@ -112,6 +112,12 @@ jobs:
           CONNECTA_DB_PASSWORD: ci-only-password
           CONNECTA_OWNER_KEY: ci-only-owner-key
         run: docker compose -f docker-compose.owned.yml exec -T engine node scripts/smoke-business-verification.js
+      - name: Exercise altered-image owner protection
+        working-directory: products/izakhono-social
+        env:
+          CONNECTA_DB_PASSWORD: ci-only-password
+          CONNECTA_OWNER_KEY: ci-only-owner-key
+        run: docker compose -f docker-compose.owned.yml exec -T engine node scripts/smoke-perceptual-media.js
       - name: Show logs on failure
         if: failure()
         working-directory: products/izakhono-social
