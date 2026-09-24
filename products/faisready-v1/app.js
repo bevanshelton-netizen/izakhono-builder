@@ -63,6 +63,33 @@
 
   function qs(id){ return document.getElementById(id); }
 
+  function fabricEndpoint(){
+    var meta = document.querySelector('meta[name="izakhono-fabric-endpoint"]');
+    return String(window.IZAKHONO_FABRIC_ENDPOINT || (meta && meta.content) || "").replace(/\/$/,"");
+  }
+
+  function newRef(prefix){
+    if(window.crypto && typeof window.crypto.randomUUID === "function") return prefix + "-" + window.crypto.randomUUID();
+    return prefix + "-" + Date.now() + "-" + Math.random().toString(16).slice(2);
+  }
+
+  function emitFabric(eventType, subjectRef, payload){
+    var endpoint = fabricEndpoint();
+    if(!endpoint) return Promise.resolve({skipped:true});
+    return fetch(endpoint + "/api/fabric/intake", {
+      method: "POST",
+      headers: {"content-type":"application/json"},
+      body: JSON.stringify(Object.assign({
+        platform_id: "faisready",
+        event_type: eventType,
+        subject_ref: subjectRef
+      }, payload || {}))
+    }).then(function(response){
+      if(!response.ok && response.status !== 202) throw new Error("fabric_" + response.status);
+      return response.json().catch(function(){ return {ok:true}; });
+    }).catch(function(){ return {queuedLocally:true}; });
+  }
+
   function toast(message){
     var el = qs("toast");
     el.textContent = message;
@@ -200,13 +227,33 @@
 
   function saveLead(kind, data){
     var list = leads();
-    list.push({
+    var record = {
+      id: newRef("lead"),
       kind: kind,
       createdAt: new Date().toISOString(),
       data: data
-    });
+    };
+    list.push(record);
     writeJson(STORAGE.leads, list.slice(-500));
     renderDashboard();
+    return record;
+  }
+
+  function latestLead(){
+    var list = leads();
+    return list.length ? list[list.length - 1] : null;
+  }
+
+  function leadContact(record){
+    var d = record && record.data || {};
+    return {
+      name: d.name || d.contact || "",
+      email: d.email || "",
+      phone: d.mobile || "",
+      company: d.organisation || "",
+      role: record && record.kind === "business" ? "business enquiry" : "learner",
+      source: "faisready-web"
+    };
   }
 
   function csvCell(value){
@@ -269,17 +316,39 @@
     qs("learnerForm").addEventListener("submit", function(event){
       event.preventDefault();
       var data = serializeForm(event.currentTarget);
-      saveLead("learner", data);
+      var record = saveLead("learner", data);
+      emitFabric("lead.created", record.id, {
+        contact: leadContact(record),
+        opportunity: {
+          title: data.offer || "FAISReady learner enquiry",
+          value: /R399/.test(data.offer||"") ? 399 : (/R549/.test(data.offer||"") ? 549 : 0),
+          currency: "ZAR",
+          next_action: "Contact learner about selected preparation pathway",
+          source: "faisready-web"
+        },
+        note: "Learner requested payment / enrolment follow-up."
+      });
       event.currentTarget.reset();
-      toast("FAISReady follow-up request saved locally");
+      toast("FAISReady follow-up request saved");
     });
 
     qs("businessForm").addEventListener("submit", function(event){
       event.preventDefault();
       var data = serializeForm(event.currentTarget);
-      saveLead("business", data);
+      var record = saveLead("business", data);
+      emitFabric("lead.created", record.id, {
+        contact: leadContact(record),
+        opportunity: {
+          title: (data.organisation || "Business") + " — " + (data.type || "FAISReady enquiry"),
+          value: 0,
+          currency: "ZAR",
+          next_action: "Qualify employer / institutional requirement",
+          source: "faisready-web"
+        },
+        note: "Estimated learners: " + (data.learners || "not supplied")
+      });
       event.currentTarget.reset();
-      toast("Business enquiry saved locally");
+      toast("Business enquiry saved");
     });
 
     var shareButton = qs("shareFAISReady");
@@ -299,6 +368,24 @@
         }
       });
     }
+
+    Array.prototype.forEach.call(document.querySelectorAll('a[href*="pay.ikhokha.com/izakhono/buy/re5completeprepara"]'), function(link){
+      link.addEventListener("click", function(){
+        var record = latestLead();
+        if(!record) return;
+        emitFabric("checkout.started", record.id, {
+          contact: leadContact(record),
+          opportunity: {
+            title: "RE5 Complete Preparation",
+            value: 299,
+            currency: "ZAR",
+            next_action: "Confirm verified iKhokha payment through reconciliation path",
+            source: "faisready-web"
+          },
+          note: "Customer opened the verified RE5 iKhokha checkout. This is not payment confirmation."
+        });
+      });
+    });
 
     qs("exportLeads").addEventListener("click", exportLeads);
     renderDashboard();

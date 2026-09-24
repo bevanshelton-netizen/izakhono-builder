@@ -1,0 +1,27 @@
+{
+  "version": 4,
+  "name": "IZAKHONO APP FABRIC Gateway",
+  "slug": "izakhono-app-fabric-gateway",
+  "operator": "IZAKHONO AFRICA (PTY) LTD",
+  "trading_name": "IZAKHONO APP FABRIC",
+  "build_context": "products/izakhono-fabric/gateway",
+  "dockerfile_path": "products/izakhono-fabric/gateway/Dockerfile",
+  "container_port": 8090,
+  "health_path": "/health",
+  "branch": "main",
+  "infrastructure": {
+    "policy": "owned-first-externally-reversible",
+    "authoritative_source": "IZAKHONO CODE / Forge",
+    "owned_target": "NODE01",
+    "current_public_route": "INTERNAL_SERVICE_NOT_PUBLIC",
+    "external_fallback": "PREPARED_ONLY_IF_REQUIRED",
+    "status_label": "NOT YET PUBLIC",
+    "data_dependencies": ["persistent APP FABRIC outbox volume", "IZAKHONO CRM"],
+    "auth_dependencies": ["IZAKHONO_FABRIC_INTERNAL_TOKEN", "FORTRESS / EDGE for any public intake"],
+    "payment_dependencies": [],
+    "backup_evidence": "PENDING_NODE01_PROOF",
+    "restore_evidence": "PENDING_NODE01_PROOF",
+    "rollback_evidence": "CONTAINER_ROLLBACK_PACKAGED_NOT_MACHINE_VERIFIED"
+  },
+  "alpha": {"preflight": true, "rehearsal": true, "windows_package": false}
+}

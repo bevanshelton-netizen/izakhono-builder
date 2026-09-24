@@ -1,0 +1,52 @@
+{
+  "version": 1,
+  "platforms": {
+    "faisready": {
+      "entity_id": "izakhono-africa",
+      "platform_id": "faisready",
+      "public_events": ["lead.created", "checkout.started"],
+      "stages": {
+        "lead.created": "Lead",
+        "lead.qualified": "Qualified",
+        "checkout.started": "Checkout started",
+        "entitlement.activated": "Active learner",
+        "customer.won": "Won",
+        "customer.lost": "Lost"
+      },
+      "default_title": "FAISReady opportunity"
+    },
+    "edu-build": {
+      "entity_id": "edu-build-shelton",
+      "platform_id": "edu-build",
+      "public_events": [],
+      "stages": {
+        "lead.created": "Enquiry",
+        "lead.qualified": "Qualified",
+        "enrolment.application_started": "Application",
+        "enrolment.documents_ready": "Documents",
+        "enrolment.funding_ready": "Fee / funding",
+        "enrolment.completed": "Enrolled",
+        "customer.lost": "Lost"
+      },
+      "default_title": "Edu-Build enrolment opportunity"
+    },
+    "izakhono-clothing": {
+      "entity_id": "izakhono-africa",
+      "platform_id": "izakhono-clothing",
+      "public_events": ["lead.created", "quote.requested"],
+      "stages": {
+        "lead.created": "New enquiry",
+        "quote.requested": "New enquiry",
+        "lead.qualified": "Qualified",
+        "quote.prepared": "Quote prepared",
+        "quote.sent": "Quote sent",
+        "order.confirmed": "Deposit / PO",
+        "production.started": "In production",
+        "order.delivered": "Delivered",
+        "customer.won": "Won",
+        "customer.lost": "Lost"
+      },
+      "default_title": "Clothing order opportunity"
+    }
+  }
+}

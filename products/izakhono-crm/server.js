@@ -154,6 +154,7 @@ function dealPayload(body, scope) {
     stage: cleanString(body.stage || "New", 120),
     owner: cleanString(body.owner, 160),
     source: cleanString(body.source, 120),
+    external_ref: cleanString(body.external_ref, 200),
     next_action: cleanString(body.next_action, 500),
     next_action_due: cleanString(body.next_action_due, 40)
   };
@@ -234,23 +235,31 @@ async function handler(req, res) {
       const body = await readBody(req);
       const store = await readStore();
       const payload = contactPayload(body.contact || body, scope);
-      if (!payload.name && !payload.email && !payload.phone && !payload.company) {
-        return json(res, 400, { error: "lead must include a name, email, phone or company" });
-      }
-      let contact = scoped(store.contacts, scope).find((row) =>
+      const dp = (body.deal || body.create_deal) ? dealPayload(body.deal || body, scope) : null;
+      let deal = dp?.external_ref ? scoped(store.deals, scope).find((row) => row.external_ref === dp.external_ref) || null : null;
+      const hasContactInput = Boolean(payload.name || payload.email || payload.phone || payload.company);
+      let contact = hasContactInput ? scoped(store.contacts, scope).find((row) =>
         (payload.email && row.email === payload.email) || (payload.phone && row.phone === payload.phone)
-      );
+      ) : null;
+      if (!contact && deal?.contact_id) {
+        contact = scoped(store.contacts, scope).find((row) => row.id === deal.contact_id) || null;
+      }
+      if (!contact && !hasContactInput) {
+        return json(res, 400, { error: "new lead intake needs contact data; deal-only updates require an existing external_ref" });
+      }
       if (!contact) {
         contact = { id: id("contact"), ...payload, created_at: now(), updated_at: now() };
         store.contacts.push(contact);
-      } else {
+      } else if (hasContactInput) {
         Object.assign(contact, payload, { updated_at: now() });
       }
-      let deal = null;
-      if (body.deal || body.create_deal) {
-        const dp = dealPayload(body.deal || body, scope);
-        deal = { id: id("deal"), ...dp, contact_id: contact.id, created_at: now(), updated_at: now() };
-        store.deals.push(deal);
+      if (dp) {
+        if (deal) {
+          Object.assign(deal, dp, { contact_id: contact.id, updated_at: now() });
+        } else {
+          deal = { id: id("deal"), ...dp, contact_id: contact.id, created_at: now(), updated_at: now() };
+          store.deals.push(deal);
+        }
       }
       store.activities.push({
         id: id("activity"), ...scope, contact_id: contact.id, deal_id: deal?.id || "",
@@ -309,7 +318,7 @@ async function handler(req, res) {
       const row = store.deals.find((d) => d.id === dealId && d.entity_id === scope.entity_id && d.platform_id === scope.platform_id);
       if (!row) return json(res, 404, { error: "deal not found" });
       const body = await readBody(req);
-      const allowed = ["title","value","currency","stage","owner","source","next_action","next_action_due","contact_id"];
+      const allowed = ["title","value","currency","stage","owner","source","external_ref","next_action","next_action_due","contact_id"];
       const previousStage = row.stage;
       for (const key of allowed) if (key in body) row[key] = key === "value" ? Number(body[key] || 0) : cleanString(body[key], key === "next_action" ? 500 : 240);
       row.updated_at = now();

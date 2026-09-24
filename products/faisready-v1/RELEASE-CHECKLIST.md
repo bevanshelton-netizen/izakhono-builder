@@ -18,6 +18,8 @@
 - [x] CSV lead export
 - [x] only recorded RE5 checkout is exposed; unverified checkout routes remain gated
 - [x] share action available
+- [x] APP FABRIC lead + checkout-start adapter built with no browser secret
+- [x] checkout-start event explicitly does not claim payment success
 - [x] no FSCA endorsement or pass-guarantee claim
 
 ## Owner-laptop acceptance
@@ -32,6 +34,7 @@
 - [ ] mobile viewport checked
 
 ## Before public production
+- [ ] APP FABRIC production gateway endpoint configured and origin allow-listed
 - [ ] owner-controlled production persistence connected
 - [ ] POPIA/privacy notices and retention process reviewed
 - [ ] production domain and TLS configured
