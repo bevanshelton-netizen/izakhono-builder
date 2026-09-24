@@ -1,0 +1,29 @@
+name: IZAKHONO APP FABRIC External Bridge Probe
+
+on:
+  pull_request:
+    paths:
+      - "infra/app-fabric-runtime/external/**"
+      - "infra/app-fabric-runtime/external-resilience.json"
+      - "products/faisready-v1/**"
+      - "products/izakhono-clothing-intake/**"
+      - ".github/workflows/izakhono-app-fabric-external-probe.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify external bridge health
+        run: |
+          curl -fsS 'https://yfawrenhudjomhnglfhq.supabase.co/functions/v1/izakhono-gateway-event'             | jq -e '.ok == true and .fabric_bridge == true and .mode == "hybrid-external-resilience" and .payment_confirmation == false'
+      - name: Verify FAISReady CORS preflight without writing data
+        run: |
+          headers="$(mktemp)"
+          curl -fsS -o /dev/null -D "$headers" -X OPTIONS             -H 'Origin: https://faisready.co.za'             'https://yfawrenhudjomhnglfhq.supabase.co/functions/v1/izakhono-gateway-event'
+          grep -qi '^access-control-allow-origin: https://faisready.co.za' "$headers"
