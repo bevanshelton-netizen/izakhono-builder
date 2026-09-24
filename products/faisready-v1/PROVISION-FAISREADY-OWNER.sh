@@ -46,7 +46,7 @@ if [ -n "$PROJECT_KEY" ]; then
   OPEN_BODY=$(jq -nc --arg key "$PROJECT_KEY" '{project:"faisready",rotate:true,allow_signup:true,public_key:$key}')
   core_post "/v1/admin/projects" "$IZAKHONO_CORE_ADMIN_TOKEN" "" "$OPEN_BODY" >/dev/null
 else
-  CREATE=$(core_post "/v1/admin/projects" "$IZAKHONO_CORE_ADMIN_TOKEN" "" '{"project":"faisready","allow_signup":true}')
+  CREATE=$(core_post "/v1/admin/projects" "$IZAKHONO_CORE_ADMIN_TOKEN" "" '{"project":"faisready","rotate":true,"allow_signup":true}')
   PROJECT_KEY=$(printf '%s' "$CREATE" | jq -r '.public_key')
 fi
 [ -n "$PROJECT_KEY" ] && [ "$PROJECT_KEY" != null ] || { echo '[STOP] Could not provision FAISReady Core project.'; exit 1; }
