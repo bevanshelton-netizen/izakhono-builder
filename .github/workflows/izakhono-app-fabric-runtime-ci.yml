@@ -65,11 +65,10 @@ jobs:
 
       - name: Prove non-writing Gateway to CRM integration
         run: |
-          curl -fsS http://127.0.0.1:18080/health | jq -e '.ok == true'
-          curl -fsS http://127.0.0.1:18090/health | jq -e '.ok == true and .public_intake == false'
-          curl -fsS -X POST -H 'Authorization: Bearer ci-internal-token'             http://127.0.0.1:18090/api/fabric/selftest             | jq -e '.ok == true and .mode == "non-writing" and .crm.dry_run == true'
-          status=$(curl -sS -o /tmp/public.json -w '%{http_code}' -X POST             -H 'content-type: application/json'             -d '{"platform_id":"faisready","event_type":"lead.created","subject_ref":"ci","contact":{"email":"ci@example.test"}}'             http://127.0.0.1:18090/api/fabric/intake)
-          test "$status" = "503"
+          docker exec izakhono-crm node -e "fetch('http://127.0.0.1:8080/health').then(r=>r.json()).then(v=>{if(!v.ok)process.exit(1);console.log(JSON.stringify(v))})"
+          docker exec izakhono-app-fabric-gateway node -e "fetch('http://127.0.0.1:8090/health').then(r=>r.json()).then(v=>{if(!v.ok||v.public_intake!==false)process.exit(1);console.log(JSON.stringify(v))})"
+          docker exec izakhono-app-fabric-gateway node -e "fetch('http://127.0.0.1:8090/api/fabric/selftest',{method:'POST',headers:{authorization:'Bearer '+process.env.IZAKHONO_FABRIC_INTERNAL_TOKEN}}).then(async r=>{const v=await r.json();if(!r.ok||!v.ok||v.mode!=='non-writing'||v.crm?.dry_run!==true)process.exit(1);console.log(JSON.stringify(v))})"
+          docker exec izakhono-app-fabric-gateway node -e "fetch('http://127.0.0.1:8090/api/fabric/intake',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({platform_id:'faisready',event_type:'lead.created',subject_ref:'ci',contact:{email:'ci@example.test'}})}).then(r=>{if(r.status!==503)process.exit(1);console.log('public intake fail-closed')})"
 
       - name: Runtime logs on failure
         if: failure()
