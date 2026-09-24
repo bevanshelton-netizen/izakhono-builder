@@ -44,6 +44,8 @@ jobs:
           node --check products/faisready-v1/app.js
           grep -q 'eventType, subjectRef' products/faisready-v1/app.js
           grep -q 'checkout.started' products/faisready-v1/app.js
+          grep -q 'yfawrenhudjomhnglfhq.supabase.co/functions/v1/izakhono-gateway-event' products/faisready-v1/app.js
+          grep -q 'fabric_bridge' products/faisready-v1/app.js
       - name: Verify clothing quote adapter
         working-directory: products/izakhono-clothing-intake
         run: |

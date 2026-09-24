@@ -7,4 +7,6 @@ test("clothing quote intake is wired only to quote.requested",()=>{
   assert.match(app,/event_type:"quote\.requested"/);
   assert.doesNotMatch(app,/payment\.confirmed/);
   assert.match(app,/localStorage/);
+  assert.match(app,/yfawrenhudjomhnglfhq\.supabase\.co\/functions\/v1\/izakhono-gateway-event/);
+  assert.match(app,/fabric_bridge:true/);
 });

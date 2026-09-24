@@ -123,12 +123,20 @@ function buildRecipe(project: any, modules: ModuleKey[]) {
     version: '0.1',
     app: { name: project.name, slug: project.slug, category: project.category, description: project.description },
     modules,
-    infrastructure_policy: 'free-first',
+    infrastructure_policy: 'owned-first-externally-reversible',
+    app_fabric: {
+      primary: 'https://fabric.izakhonoafrica.co.za',
+      external_resilience: 'https://yfawrenhudjomhnglfhq.supabase.co/functions/v1/izakhono-gateway-event',
+      failover: 'primary-then-external',
+      event_scope: 'commercial relationship events only',
+      payment_confirmation: 'verified product payment/reconciliation path only'
+    },
     files,
     architecture,
     deployment: {
-      provider: 'Cloudflare',
+      provider: 'IZAKHONO Runtime / EDGE primary with approved external resilience',
       command: './scripts/bootstrap.sh',
+      failback: 'Preserve verified external route until owned public acceptance and rollback proof pass.',
       paid_upgrade_trigger: 'Only when demand, revenue, scale, compliance or a hard technical requirement justifies it.'
     },
     security: [
