@@ -22,6 +22,19 @@
 - [x] checkout-start event explicitly does not claim payment success
 - [x] no FSCA endorsement or pass-guarantee claim
 
+## Owner portal + merch
+- [x] public merchandise storefront added
+- [x] hoodie R550, golfer R250 and tee R190 seeded from approved IZAKHONO apparel pricing
+- [x] cart and size selection
+- [x] server-side merch order intake into scoped IZAKHONO CRM
+- [x] no fabricated merch payment URLs
+- [x] /owner portal added
+- [x] owner browser code contains no CRM admin token or Core project key
+- [x] NODE01 owner-provisioning script added
+- [ ] owner account provisioned on NODE01
+- [ ] merchandise stock / delivery acceptance completed
+- [ ] exact iKhokha merch payment routes approved where direct checkout is desired
+
 ## Owner-laptop acceptance
 - [ ] project installed under IZAKHONO WORK owner workspace
 - [ ] local preview opens
