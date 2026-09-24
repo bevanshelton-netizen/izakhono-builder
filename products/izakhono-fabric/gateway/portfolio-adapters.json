@@ -1,0 +1,630 @@
+{
+  "version": 2,
+  "source": "products/izakhono-crm/portfolio-crm-registry.json",
+  "platforms": {
+    "izakhono-clothing": {
+      "entity_id": "izakhono-africa",
+      "platform_id": "izakhono-clothing",
+      "active": true,
+      "public_events": [
+        "lead.created",
+        "quote.requested"
+      ],
+      "stages": {
+        "lead.created": "New enquiry",
+        "quote.requested": "New enquiry",
+        "lead.qualified": "Qualified",
+        "quote.prepared": "Quote prepared",
+        "quote.sent": "Quote sent",
+        "order.confirmed": "Deposit / PO",
+        "production.started": "In production",
+        "order.delivered": "Delivered",
+        "customer.won": "Won",
+        "customer.lost": "Lost"
+      },
+      "allowed_stages": [
+        "New enquiry",
+        "Qualified",
+        "Quote prepared",
+        "Quote sent",
+        "Deposit / PO",
+        "In production",
+        "Delivered",
+        "Won",
+        "Lost"
+      ],
+      "default_title": "Clothing order opportunity"
+    },
+    "kora": {
+      "entity_id": "izakhono-africa",
+      "platform_id": "kora",
+      "active": true,
+      "public_events": [],
+      "stages": {
+        "lead.created": "New",
+        "lead.qualified": "Qualified",
+        "customer.won": "Won",
+        "customer.lost": "Lost"
+      },
+      "allowed_stages": [
+        "New",
+        "Qualified",
+        "Proposal",
+        "Commercial review",
+        "Contracting",
+        "Onboarding",
+        "Won",
+        "Lost"
+      ],
+      "default_title": "KORA opportunity"
+    },
+    "kora-cinema": {
+      "entity_id": "izakhono-africa",
+      "platform_id": "kora-cinema",
+      "active": true,
+      "public_events": [],
+      "stages": {
+        "lead.created": "New",
+        "lead.qualified": "Qualified",
+        "customer.won": "Won",
+        "customer.lost": "Lost"
+      },
+      "allowed_stages": [
+        "New",
+        "Qualified",
+        "Rights review",
+        "Proposal",
+        "Commercial review",
+        "Contracting",
+        "Won",
+        "Lost"
+      ],
+      "default_title": "KORA Cinema opportunity"
+    },
+    "kora-gospel-tv": {
+      "entity_id": "izakhono-africa",
+      "platform_id": "kora-gospel-tv",
+      "active": true,
+      "public_events": [],
+      "stages": {
+        "lead.created": "New",
+        "lead.qualified": "Qualified",
+        "customer.won": "Won",
+        "customer.lost": "Lost"
+      },
+      "allowed_stages": [
+        "New",
+        "Qualified",
+        "Proposal",
+        "Review",
+        "Contracting",
+        "Onboarding",
+        "Won",
+        "Lost"
+      ],
+      "default_title": "KORA Gospel TV opportunity"
+    },
+    "kora-kids": {
+      "entity_id": "izakhono-africa",
+      "platform_id": "kora-kids",
+      "active": true,
+      "public_events": [],
+      "stages": {
+        "lead.created": "New",
+        "lead.qualified": "Qualified",
+        "customer.won": "Won",
+        "customer.lost": "Lost"
+      },
+      "allowed_stages": [
+        "New",
+        "Qualified",
+        "Safeguarding / rights review",
+        "Proposal",
+        "Contracting",
+        "Onboarding",
+        "Won",
+        "Lost"
+      ],
+      "default_title": "KORA Kids opportunity"
+    },
+    "allegro-vibez": {
+      "entity_id": "izakhono-africa",
+      "platform_id": "allegro-vibez",
+      "active": true,
+      "public_events": [],
+      "stages": {
+        "lead.created": "New",
+        "lead.qualified": "Qualified",
+        "customer.lost": "Lost"
+      },
+      "allowed_stages": [
+        "New",
+        "Qualified",
+        "Rights data",
+        "Offer",
+        "Agreement",
+        "Onboarding",
+        "Active",
+        "Lost"
+      ],
+      "default_title": "Allegro-Vibez opportunity"
+    },
+    "allegro-radio": {
+      "entity_id": "izakhono-africa",
+      "platform_id": "allegro-radio",
+      "active": true,
+      "public_events": [],
+      "stages": {
+        "lead.created": "New",
+        "lead.qualified": "Qualified",
+        "customer.won": "Won",
+        "customer.lost": "Lost"
+      },
+      "allowed_stages": [
+        "New",
+        "Qualified",
+        "Proposal",
+        "Schedule / package",
+        "Agreement",
+        "Active",
+        "Won",
+        "Lost"
+      ],
+      "default_title": "Allegro Radio opportunity"
+    },
+    "edu-build": {
+      "entity_id": "edu-build-shelton",
+      "platform_id": "edu-build",
+      "active": true,
+      "public_events": [],
+      "stages": {
+        "lead.created": "Enquiry",
+        "lead.qualified": "Qualified",
+        "enrolment.application_started": "Application",
+        "enrolment.documents_ready": "Documents",
+        "enrolment.funding_ready": "Fee / funding",
+        "enrolment.completed": "Enrolled",
+        "customer.lost": "Lost"
+      },
+      "allowed_stages": [
+        "Enquiry",
+        "Qualified",
+        "Application",
+        "Documents",
+        "Fee / funding",
+        "Enrolled",
+        "Active learner",
+        "Completed",
+        "Lost"
+      ],
+      "default_title": "Edu-Build enrolment opportunity"
+    },
+    "ecd360": {
+      "entity_id": "edu-build-shelton",
+      "platform_id": "ecd360",
+      "active": true,
+      "public_events": [],
+      "stages": {
+        "lead.created": "Enquiry",
+        "lead.qualified": "Qualified",
+        "customer.won": "Won",
+        "customer.lost": "Lost"
+      },
+      "allowed_stages": [
+        "Enquiry",
+        "Qualified",
+        "Demo",
+        "Proposal",
+        "Agreement",
+        "Onboarding",
+        "Active",
+        "Won",
+        "Lost"
+      ],
+      "default_title": "ECD360 opportunity"
+    },
+    "faisready": {
+      "entity_id": "izakhono-africa",
+      "platform_id": "faisready",
+      "active": true,
+      "public_events": [
+        "lead.created",
+        "checkout.started"
+      ],
+      "stages": {
+        "lead.created": "Lead",
+        "lead.qualified": "Qualified",
+        "checkout.started": "Checkout started",
+        "entitlement.activated": "Active learner",
+        "customer.won": "Won",
+        "customer.lost": "Lost"
+      },
+      "allowed_stages": [
+        "Lead",
+        "Qualified",
+        "Offer selected",
+        "Checkout started",
+        "Paid",
+        "Entitled",
+        "Active learner",
+        "Won",
+        "Lost"
+      ],
+      "default_title": "FAISReady opportunity"
+    },
+    "doxa-sure": {
+      "entity_id": "izakhono-africa",
+      "platform_id": "doxa-sure",
+      "active": true,
+      "public_events": [],
+      "stages": {
+        "lead.created": "New",
+        "lead.qualified": "Qualified",
+        "customer.won": "Won",
+        "customer.lost": "Lost"
+      },
+      "allowed_stages": [
+        "New",
+        "Qualified",
+        "Needs review",
+        "Offer",
+        "Accepted",
+        "Active",
+        "Won",
+        "Lost"
+      ],
+      "default_title": "DOXA-SURE opportunity"
+    },
+    "auto-ai": {
+      "entity_id": "izakhono-africa",
+      "platform_id": "auto-ai",
+      "active": true,
+      "public_events": [],
+      "stages": {
+        "lead.created": "Lead",
+        "lead.qualified": "Qualified",
+        "customer.won": "Won",
+        "customer.lost": "Lost"
+      },
+      "allowed_stages": [
+        "Lead",
+        "Qualified",
+        "Report requested",
+        "Paid",
+        "Delivered",
+        "Repeat / fleet",
+        "Won",
+        "Lost"
+      ],
+      "default_title": "AUTO AI opportunity"
+    },
+    "learner-driver-sa": {
+      "entity_id": "izakhono-africa",
+      "platform_id": "learner-driver-sa",
+      "active": true,
+      "public_events": [],
+      "stages": {
+        "lead.created": "Lead",
+        "lead.qualified": "Qualified",
+        "customer.won": "Won",
+        "customer.lost": "Lost"
+      },
+      "allowed_stages": [
+        "Lead",
+        "Qualified",
+        "Course",
+        "Paid",
+        "Active",
+        "Driving school referral",
+        "Won",
+        "Lost"
+      ],
+      "default_title": "Learner Driver SA opportunity"
+    },
+    "worknow": {
+      "entity_id": "izakhono-africa",
+      "platform_id": "worknow",
+      "active": true,
+      "public_events": [],
+      "stages": {
+        "lead.created": "Prospect",
+        "lead.qualified": "Qualified",
+        "customer.won": "Won",
+        "customer.lost": "Lost"
+      },
+      "allowed_stages": [
+        "Prospect",
+        "Qualified",
+        "Demo",
+        "Package",
+        "Agreement",
+        "Onboarding",
+        "Hiring",
+        "Won",
+        "Lost"
+      ],
+      "default_title": "WorkNow opportunity"
+    },
+    "memory-mania": {
+      "entity_id": "izakhono-africa",
+      "platform_id": "memory-mania",
+      "active": true,
+      "public_events": [],
+      "stages": {
+        "lead.created": "Lead",
+        "customer.won": "Won",
+        "customer.lost": "Lost"
+      },
+      "allowed_stages": [
+        "Lead",
+        "Trial",
+        "Offer",
+        "Paid",
+        "Active",
+        "Renewal",
+        "Won",
+        "Lost"
+      ],
+      "default_title": "Memory Mania opportunity"
+    },
+    "music-school": {
+      "entity_id": "izakhono-africa",
+      "platform_id": "music-school",
+      "active": true,
+      "public_events": [],
+      "stages": {
+        "lead.created": "Enquiry",
+        "lead.qualified": "Qualified",
+        "customer.won": "Won",
+        "customer.lost": "Lost"
+      },
+      "allowed_stages": [
+        "Enquiry",
+        "Qualified",
+        "Instrument / course",
+        "Offer",
+        "Paid",
+        "Active",
+        "Renewal",
+        "Won",
+        "Lost"
+      ],
+      "default_title": "Music School opportunity"
+    },
+    "recording-studio": {
+      "entity_id": "izakhono-africa",
+      "platform_id": "recording-studio",
+      "active": true,
+      "public_events": [],
+      "stages": {
+        "lead.created": "Enquiry",
+        "lead.qualified": "Qualified",
+        "customer.won": "Won",
+        "customer.lost": "Lost"
+      },
+      "allowed_stages": [
+        "Enquiry",
+        "Qualified",
+        "Package",
+        "Booking",
+        "Paid",
+        "Session",
+        "Repeat",
+        "Won",
+        "Lost"
+      ],
+      "default_title": "Recording Studio opportunity"
+    },
+    "crowne-by-netty": {
+      "entity_id": "TBD_LEGAL_ENTITY",
+      "platform_id": "crowne-by-netty",
+      "active": false,
+      "public_events": [],
+      "stages": {
+        "lead.created": "Lead",
+        "lead.qualified": "Qualified",
+        "customer.won": "Won",
+        "customer.lost": "Lost"
+      },
+      "allowed_stages": [
+        "Lead",
+        "Qualified",
+        "Quote / cart",
+        "Paid / PO",
+        "Fulfilment",
+        "Repeat",
+        "Won",
+        "Lost"
+      ],
+      "default_title": "CROWNÉ by Netty opportunity"
+    },
+    "supercool": {
+      "entity_id": "izakhono-africa",
+      "platform_id": "supercool",
+      "active": true,
+      "public_events": [],
+      "stages": {
+        "lead.created": "Lead",
+        "lead.qualified": "Qualified",
+        "customer.won": "Won",
+        "customer.lost": "Lost"
+      },
+      "allowed_stages": [
+        "Lead",
+        "Qualified",
+        "Brief",
+        "Quote",
+        "Deposit",
+        "Build",
+        "Handover",
+        "Won",
+        "Lost"
+      ],
+      "default_title": "Business Websites / Supercool opportunity"
+    },
+    "zeely-style": {
+      "entity_id": "izakhono-africa",
+      "platform_id": "zeely-style",
+      "active": true,
+      "public_events": [],
+      "stages": {
+        "lead.created": "Lead",
+        "lead.qualified": "Qualified",
+        "customer.won": "Won",
+        "customer.lost": "Lost"
+      },
+      "allowed_stages": [
+        "Lead",
+        "Trial",
+        "Qualified",
+        "Offer",
+        "Paid",
+        "Active",
+        "Renewal",
+        "Won",
+        "Lost"
+      ],
+      "default_title": "ZEELY-style Growth Platform opportunity"
+    },
+    "the-chancellor": {
+      "entity_id": "izakhono-africa",
+      "platform_id": "the-chancellor",
+      "active": true,
+      "public_events": [],
+      "stages": {
+        "lead.created": "Lead",
+        "lead.qualified": "Qualified",
+        "customer.won": "Won",
+        "customer.lost": "Lost"
+      },
+      "allowed_stages": [
+        "Lead",
+        "Qualified",
+        "Offer",
+        "Checkout / agreement",
+        "Active",
+        "Renewal",
+        "Won",
+        "Lost"
+      ],
+      "default_title": "The Chancellor opportunity"
+    },
+    "fortress": {
+      "entity_id": "izakhono-africa",
+      "platform_id": "fortress",
+      "active": true,
+      "public_events": [],
+      "stages": {
+        "lead.created": "Target account",
+        "customer.won": "Won",
+        "customer.lost": "Lost"
+      },
+      "allowed_stages": [
+        "Target account",
+        "Discovery",
+        "Technical validation",
+        "Pilot design",
+        "Pilot",
+        "Procurement / legal",
+        "Production agreement",
+        "Won",
+        "Lost"
+      ],
+      "default_title": "FORTRESS opportunity"
+    },
+    "izakhono-code": {
+      "entity_id": "izakhono-africa",
+      "platform_id": "izakhono-code",
+      "active": true,
+      "public_events": [],
+      "stages": {
+        "lead.created": "Lead",
+        "lead.qualified": "Qualified",
+        "customer.won": "Won",
+        "customer.lost": "Lost"
+      },
+      "allowed_stages": [
+        "Lead",
+        "Qualified",
+        "Trial",
+        "Technical review",
+        "Offer",
+        "Active",
+        "Renewal",
+        "Won",
+        "Lost"
+      ],
+      "default_title": "IZAKHONO Code opportunity"
+    },
+    "izakhono-work": {
+      "entity_id": "izakhono-africa",
+      "platform_id": "izakhono-work",
+      "active": true,
+      "public_events": [],
+      "stages": {
+        "lead.created": "Lead",
+        "lead.qualified": "Qualified",
+        "customer.won": "Won",
+        "customer.lost": "Lost"
+      },
+      "allowed_stages": [
+        "Lead",
+        "Qualified",
+        "Trial",
+        "Deployment review",
+        "Offer",
+        "Active",
+        "Renewal",
+        "Won",
+        "Lost"
+      ],
+      "default_title": "IZAKHONO Work opportunity"
+    },
+    "izakhono-cloud": {
+      "entity_id": "izakhono-africa",
+      "platform_id": "izakhono-cloud",
+      "active": true,
+      "public_events": [],
+      "stages": {
+        "lead.created": "Lead",
+        "lead.qualified": "Qualified",
+        "customer.won": "Won",
+        "customer.lost": "Lost"
+      },
+      "allowed_stages": [
+        "Lead",
+        "Qualified",
+        "Sizing",
+        "Technical review",
+        "Offer",
+        "Provisioning",
+        "Active",
+        "Won",
+        "Lost"
+      ],
+      "default_title": "IZAKHONO Cloud opportunity"
+    },
+    "izakhono-send": {
+      "entity_id": "izakhono-africa",
+      "platform_id": "izakhono-send",
+      "active": true,
+      "public_events": [],
+      "stages": {
+        "lead.created": "Lead",
+        "customer.won": "Won",
+        "customer.lost": "Lost"
+      },
+      "allowed_stages": [
+        "Lead",
+        "Trial",
+        "Offer",
+        "Paid",
+        "Active",
+        "Renewal",
+        "Won",
+        "Lost"
+      ],
+      "default_title": "IZAKHONO Send opportunity"
+    }
+  }
+}
