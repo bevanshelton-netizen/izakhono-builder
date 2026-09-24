@@ -56,6 +56,26 @@ test("CRM health, scoped intake and summary", async () => {
 });
 
 
+test("dry-run intake validates without persistence", async () => {
+  await waitForHealth();
+  const before = await fetch(`http://127.0.0.1:${port}/api/summary`, { headers: scopedHeaders }).then((r) => r.json());
+  const r = await fetch(`http://127.0.0.1:${port}/api/intake?dry_run=true`, {
+    method: "POST",
+    headers: scopedHeaders,
+    body: JSON.stringify({
+      contact: { name: "Dry Run", email: "dryrun@example.test" },
+      create_deal: true,
+      deal: { title: "Validation only", stage: "Lead", external_ref: "dry-run-only" }
+    })
+  });
+  assert.equal(r.status, 200);
+  const body = await r.json();
+  assert.equal(body.dry_run, true);
+  const after = await fetch(`http://127.0.0.1:${port}/api/summary`, { headers: scopedHeaders }).then((r) => r.json());
+  assert.equal(after.contacts, before.contacts);
+  assert.equal(after.open_deals, before.open_deals);
+});
+
 test("external_ref makes repeated platform events idempotent", async () => {
   await waitForHealth();
   const event = {
