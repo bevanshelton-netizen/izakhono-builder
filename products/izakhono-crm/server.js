@@ -235,24 +235,25 @@ async function handler(req, res) {
       const body = await readBody(req);
       const store = await readStore();
       const payload = contactPayload(body.contact || body, scope);
-      if (!payload.name && !payload.email && !payload.phone && !payload.company) {
-        return json(res, 400, { error: "lead must include a name, email, phone or company" });
-      }
-      let contact = scoped(store.contacts, scope).find((row) =>
+      const dp = (body.deal || body.create_deal) ? dealPayload(body.deal || body, scope) : null;
+      let deal = dp?.external_ref ? scoped(store.deals, scope).find((row) => row.external_ref === dp.external_ref) || null : null;
+      const hasContactInput = Boolean(payload.name || payload.email || payload.phone || payload.company);
+      let contact = hasContactInput ? scoped(store.contacts, scope).find((row) =>
         (payload.email && row.email === payload.email) || (payload.phone && row.phone === payload.phone)
-      );
+      ) : null;
+      if (!contact && deal?.contact_id) {
+        contact = scoped(store.contacts, scope).find((row) => row.id === deal.contact_id) || null;
+      }
+      if (!contact && !hasContactInput) {
+        return json(res, 400, { error: "new lead intake needs contact data; deal-only updates require an existing external_ref" });
+      }
       if (!contact) {
         contact = { id: id("contact"), ...payload, created_at: now(), updated_at: now() };
         store.contacts.push(contact);
-      } else {
+      } else if (hasContactInput) {
         Object.assign(contact, payload, { updated_at: now() });
       }
-      let deal = null;
-      if (body.deal || body.create_deal) {
-        const dp = dealPayload(body.deal || body, scope);
-        if (dp.external_ref) {
-          deal = scoped(store.deals, scope).find((row) => row.external_ref === dp.external_ref) || null;
-        }
+      if (dp) {
         if (deal) {
           Object.assign(deal, dp, { contact_id: contact.id, updated_at: now() });
         } else {
