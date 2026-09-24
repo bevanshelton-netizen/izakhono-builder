@@ -1,0 +1,102 @@
+#!/usr/bin/env python3
+import shutil
+import subprocess
+import sys
+from pathlib import Path
+
+from PyQt6.QtCore import Qt
+from PyQt6.QtWidgets import QApplication, QFrame, QLabel, QPushButton, QVBoxLayout, QWidget
+
+MARKER = Path.home() / ".config" / "izakhono-os" / "welcome-complete"
+QSS = Path("/usr/share/izakhono-os/theme/izakhono.qss")
+
+def style():
+    try:
+        return QSS.read_text(encoding="utf-8")
+    except OSError:
+        return ""
+
+def launch(command):
+    if shutil.which(command):
+        subprocess.Popen([command], start_new_session=True)
+
+class Welcome(QWidget):
+    def __init__(self):
+        super().__init__()
+        self.setObjectName("Shell")
+        self.setWindowTitle("Welcome to IZAKHONO OS")
+        self.setMinimumSize(820, 620)
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(46, 40, 46, 40)
+        layout.setSpacing(18)
+
+        brand = QLabel("IZAKHONO OS")
+        brand.setObjectName("Brand")
+        brand.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(brand)
+
+        title = QLabel("Welcome to a simpler computer.")
+        title.setObjectName("Title")
+        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(title)
+
+        tagline = QLabel("Your computer. Made simple. No tracking.")
+        tagline.setObjectName("Subtitle")
+        tagline.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(tagline)
+
+        badge = QLabel("🔒  No behavioural telemetry · No advertising ID · No forced cloud account")
+        badge.setObjectName("PrivacyBadge")
+        badge.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        badge.setWordWrap(True)
+        layout.addWidget(badge)
+
+        panel = QFrame()
+        panel.setObjectName("Panel")
+        panel_layout = QVBoxLayout(panel)
+        panel_layout.setContentsMargins(26, 24, 26, 24)
+        panel_layout.setSpacing(12)
+
+        body = QLabel(
+            "<b>Try it without fear.</b><br><br>"
+            "Use Internet, My Files, Apps, Settings and Updates from one Easy Center. "
+            "Your advanced desktop tools are still there when you need them.<br><br>"
+            "Moving from Windows? The migration assistant can inspect likely source drives, "
+            "but this Alpha will not delete, format or overwrite your old files."
+        )
+        body.setWordWrap(True)
+        panel_layout.addWidget(body)
+        layout.addWidget(panel)
+
+        migration = QPushButton("📦  Preview Move My Things")
+        migration.clicked.connect(lambda: launch("izakhono-migrate"))
+        layout.addWidget(migration)
+
+        privacy = QPushButton("🔒  Open Privacy Center")
+        privacy.clicked.connect(lambda: launch("izakhono-privacy-center"))
+        layout.addWidget(privacy)
+
+        start = QPushButton("Start using IZAKHONO OS")
+        start.setObjectName("Primary")
+        start.clicked.connect(self.finish)
+        layout.addWidget(start)
+
+    def finish(self):
+        MARKER.parent.mkdir(parents=True, exist_ok=True)
+        MARKER.write_text("complete\n", encoding="utf-8")
+        launch("izakhono-easy-center")
+        self.close()
+
+def main():
+    if MARKER.exists():
+        return
+    app = QApplication(sys.argv)
+    app.setApplicationName("IZAKHONO Welcome")
+    app.setStyleSheet(style())
+    window = Welcome()
+    window.show()
+    sys.exit(app.exec())
+
+if __name__ == "__main__":
+    main()

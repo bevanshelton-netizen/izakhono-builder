@@ -1,0 +1,231 @@
+#!/usr/bin/env python3
+import locale
+import shutil
+import subprocess
+import sys
+from pathlib import Path
+
+from PyQt6.QtCore import Qt
+from PyQt6.QtWidgets import (
+    QApplication, QFrame, QGridLayout, QHBoxLayout, QLabel, QLineEdit,
+    QMessageBox, QPushButton, QVBoxLayout, QWidget
+)
+
+QSS = Path("/usr/share/izakhono-os/theme/izakhono.qss")
+
+TRANSLATIONS = {
+    "en": {
+        "title": "What would you like to do?",
+        "subtitle": "Everything important is one tap away. No tracking.",
+        "internet": "🌍  Internet", "files": "📁  My Files", "apps": "🧩  Apps",
+        "settings": "⚙️  Settings", "updates": "🛡️  Updates", "help": "✨  Help Me",
+        "privacy": "🔒  Privacy Center", "move": "📦  Move My Things",
+        "search": "Type what you want to do — Wi-Fi, files, apps, privacy…",
+        "footer": "Simple on the surface. Full Linux power remains available when you want it."
+    },
+    "es": {
+        "title": "¿Qué te gustaría hacer?", "subtitle": "Todo lo importante está a un toque. Sin rastreo.",
+        "internet": "🌍  Internet", "files": "📁  Mis archivos", "apps": "🧩  Aplicaciones",
+        "settings": "⚙️  Configuración", "updates": "🛡️  Actualizaciones", "help": "✨  Ayúdame",
+        "privacy": "🔒  Centro de privacidad", "move": "📦  Mover mis cosas",
+        "search": "Escribe lo que quieres hacer — Wi-Fi, archivos, aplicaciones…",
+        "footer": "Simple por fuera. Toda la potencia de Linux sigue disponible."
+    },
+    "fr": {
+        "title": "Que voulez-vous faire ?", "subtitle": "L’essentiel est à un clic. Aucun suivi.",
+        "internet": "🌍  Internet", "files": "📁  Mes fichiers", "apps": "🧩  Applications",
+        "settings": "⚙️  Paramètres", "updates": "🛡️  Mises à jour", "help": "✨  Aidez-moi",
+        "privacy": "🔒  Centre de confidentialité", "move": "📦  Déplacer mes affaires",
+        "search": "Écrivez ce que vous voulez faire — Wi-Fi, fichiers, applications…",
+        "footer": "Simple en surface. Toute la puissance de Linux reste disponible."
+    },
+    "pt": {
+        "title": "O que você gostaria de fazer?", "subtitle": "Tudo o que importa está a um toque. Sem rastreamento.",
+        "internet": "🌍  Internet", "files": "📁  Meus arquivos", "apps": "🧩  Aplicativos",
+        "settings": "⚙️  Configurações", "updates": "🛡️  Atualizações", "help": "✨  Ajude-me",
+        "privacy": "🔒  Central de privacidade", "move": "📦  Mover minhas coisas",
+        "search": "Digite o que deseja fazer — Wi-Fi, arquivos, aplicativos…",
+        "footer": "Simples por fora. Todo o poder do Linux continua disponível."
+    },
+    "ar": {
+        "title": "ماذا تريد أن تفعل؟", "subtitle": "كل ما تحتاجه على بُعد لمسة واحدة. بلا تتبع.",
+        "internet": "🌍  الإنترنت", "files": "📁  ملفاتي", "apps": "🧩  التطبيقات",
+        "settings": "⚙️  الإعدادات", "updates": "🛡️  التحديثات", "help": "✨  ساعدني",
+        "privacy": "🔒  مركز الخصوصية", "move": "📦  انقل ملفاتي",
+        "search": "اكتب ما تريد فعله — واي فاي، ملفات، تطبيقات…",
+        "footer": "بسيط في الواجهة، وقوة لينكس الكاملة متاحة عند الحاجة."
+    },
+    "hi": {
+        "title": "आप क्या करना चाहेंगे?", "subtitle": "हर जरूरी चीज़ एक टैप दूर। कोई ट्रैकिंग नहीं।",
+        "internet": "🌍  इंटरनेट", "files": "📁  मेरी फ़ाइलें", "apps": "🧩  ऐप्स",
+        "settings": "⚙️  सेटिंग्स", "updates": "🛡️  अपडेट", "help": "✨  मेरी मदद करें",
+        "privacy": "🔒  गोपनीयता केंद्र", "move": "📦  मेरी चीज़ें लाएँ",
+        "search": "जो करना है लिखें — वाई-फाई, फ़ाइलें, ऐप्स…",
+        "footer": "ऊपर से सरल। जरूरत पर पूरी Linux शक्ति उपलब्ध।"
+    },
+    "zh": {
+        "title": "您想做什么？", "subtitle": "重要功能，一点即达。绝不跟踪。",
+        "internet": "🌍  互联网", "files": "📁  我的文件", "apps": "🧩  应用",
+        "settings": "⚙️  设置", "updates": "🛡️  更新", "help": "✨  帮助我",
+        "privacy": "🔒  隐私中心", "move": "📦  搬移我的资料",
+        "search": "输入您想做的事 — Wi-Fi、文件、应用…",
+        "footer": "表面简单，需要时仍保留完整 Linux 能力。"
+    },
+    "sw": {
+        "title": "Ungependa kufanya nini?", "subtitle": "Kila muhimu ni mguso mmoja tu. Hakuna ufuatiliaji.",
+        "internet": "🌍  Intaneti", "files": "📁  Faili Zangu", "apps": "🧩  Programu",
+        "settings": "⚙️  Mipangilio", "updates": "🛡️  Masasisho", "help": "✨  Nisaidie",
+        "privacy": "🔒  Kituo cha Faragha", "move": "📦  Hamisha Vitu Vyangu",
+        "search": "Andika unachotaka kufanya — Wi-Fi, faili, programu…",
+        "footer": "Rahisi juu. Nguvu kamili ya Linux bado ipo unapoitaka."
+    },
+    "zu": {
+        "title": "Ungathanda ukwenzani?", "subtitle": "Konke okubalulekile kutholakala ngokuthinta kanye. Akukho ukulandelelwa.",
+        "internet": "🌍  I-inthanethi", "files": "📁  Amafayela Ami", "apps": "🧩  Izinhlelo",
+        "settings": "⚙️  Izilungiselelo", "updates": "🛡️  Izibuyekezo", "help": "✨  Ngisize",
+        "privacy": "🔒  Isikhungo Sobumfihlo", "move": "📦  Hambisa Izinto Zami",
+        "search": "Bhala ofuna ukukwenza — Wi-Fi, amafayela, izinhlelo…",
+        "footer": "Kulula ngaphandle. Amandla aphelele e-Linux asekhona uma uwadinga."
+    },
+    "id": {
+        "title": "Apa yang ingin Anda lakukan?", "subtitle": "Semua yang penting hanya satu ketukan. Tanpa pelacakan.",
+        "internet": "🌍  Internet", "files": "📁  File Saya", "apps": "🧩  Aplikasi",
+        "settings": "⚙️  Pengaturan", "updates": "🛡️  Pembaruan", "help": "✨  Bantu Saya",
+        "privacy": "🔒  Pusat Privasi", "move": "📦  Pindahkan Barang Saya",
+        "search": "Ketik yang ingin Anda lakukan — Wi-Fi, file, aplikasi…",
+        "footer": "Sederhana di permukaan. Kekuatan penuh Linux tetap tersedia."
+    }
+}
+
+def system_language():
+    tag = locale.getlocale()[0] or "en"
+    code = tag.split("_")[0].lower()
+    return code if code in TRANSLATIONS else "en"
+
+def read_style():
+    try:
+        return QSS.read_text(encoding="utf-8")
+    except OSError:
+        return ""
+
+LANG = system_language()
+T = TRANSLATIONS[LANG]
+
+ACTIONS = [
+    ("internet", ["firefox-esr"]),
+    ("files", ["dolphin"]),
+    ("apps", ["plasma-discover"]),
+    ("settings", ["systemsettings"]),
+    ("updates", ["plasma-discover", "--mode", "Update"]),
+    ("move", ["izakhono-migrate"]),
+    ("privacy", ["izakhono-privacy-center"]),
+]
+
+def launch(command):
+    if not shutil.which(command[0]):
+        QMessageBox.warning(None, "Not available", f"{command[0]} is not available in this build yet.")
+        return
+    subprocess.Popen(command, start_new_session=True)
+
+class EasyCenter(QWidget):
+    def __init__(self):
+        super().__init__()
+        self.setObjectName("Shell")
+        self.setWindowTitle("IZAKHONO OS — Easy Center")
+        self.setMinimumSize(960, 720)
+        if LANG == "ar":
+            self.setLayoutDirection(Qt.LayoutDirection.RightToLeft)
+
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(38, 32, 38, 30)
+        outer.setSpacing(18)
+
+        top = QHBoxLayout()
+        brand = QLabel("IZAKHONO OS")
+        brand.setObjectName("Brand")
+        top.addWidget(brand)
+        top.addStretch()
+        privacy_badge = QLabel("🔒  NO TRACKING")
+        privacy_badge.setObjectName("PrivacyBadge")
+        top.addWidget(privacy_badge)
+        outer.addLayout(top)
+
+        hero = QFrame()
+        hero.setObjectName("Hero")
+        hero_layout = QVBoxLayout(hero)
+        hero_layout.setContentsMargins(30, 26, 30, 26)
+        hero_layout.setSpacing(9)
+
+        title = QLabel(T["title"])
+        title.setObjectName("Title")
+        hero_layout.addWidget(title)
+
+        subtitle = QLabel(T["subtitle"])
+        subtitle.setObjectName("Subtitle")
+        hero_layout.addWidget(subtitle)
+
+        self.search = QLineEdit()
+        self.search.setPlaceholderText(T["search"])
+        self.search.returnPressed.connect(self.run_search)
+        hero_layout.addWidget(self.search)
+        outer.addWidget(hero)
+
+        grid = QGridLayout()
+        grid.setSpacing(14)
+        for i, (key, command) in enumerate(ACTIONS[:6]):
+            button = QPushButton(T[key])
+            if key == "move":
+                button.setObjectName("DangerFree")
+            button.clicked.connect(lambda checked=False, c=command: launch(c))
+            grid.addWidget(button, i // 2, i % 2)
+
+        help_button = QPushButton(T["help"])
+        help_button.clicked.connect(self.help_me)
+        grid.addWidget(help_button, 3, 0)
+
+        privacy_button = QPushButton(T["privacy"])
+        privacy_button.clicked.connect(lambda: launch(["izakhono-privacy-center"]))
+        grid.addWidget(privacy_button, 3, 1)
+        outer.addLayout(grid)
+
+        footer = QLabel(T["footer"])
+        footer.setObjectName("Muted")
+        footer.setWordWrap(True)
+        footer.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        outer.addWidget(footer)
+
+    def run_search(self):
+        q = self.search.text().strip().lower()
+        if not q:
+            return
+        mapping = [
+            (("wifi", "wi-fi", "internet", "browser", "web"), ["firefox-esr"]),
+            (("file", "document", "picture", "photo", "folder"), ["dolphin"]),
+            (("app", "software", "install"), ["plasma-discover"]),
+            (("setting", "display", "sound", "bluetooth", "printer"), ["systemsettings"]),
+            (("update", "upgrade"), ["plasma-discover", "--mode", "Update"]),
+            (("privacy", "tracking", "telemetry"), ["izakhono-privacy-center"]),
+            (("move", "migrate", "windows", "transfer", "import"), ["izakhono-migrate"]),
+        ]
+        for words, command in mapping:
+            if any(word in q for word in words):
+                launch(command)
+                return
+        self.help_me(q)
+
+    def help_me(self, question=""):
+        prompt = f"\n\nYou asked: {question}" if question else ""
+        QMessageBox.information(
+            self,
+            "Help Me",
+            "Ask IZAKHONO is being built as a safe plain-language assistant." + prompt +
+            "\n\nIn this Alpha it stays local, sends no prompts to a cloud service, "
+            "and cannot execute arbitrary system commands."
+        )
+
+app = QApplication(sys.argv)
+app.setApplicationName("IZAKHONO Easy Center")
+app.setStyleSheet(read_style())
+center = EasyCenter()
+center.show()
+sys.exit(app.exec())
