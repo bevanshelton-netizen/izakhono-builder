@@ -89,7 +89,13 @@ jobs:
         run: |
           from pathlib import Path
           cmd = Path("products/faisready-v1/INSTALL-FAISREADY-V1.cmd").read_text(encoding="utf-8")
-          assert "e62226ed68dfe906318661ac7f09ea71bf7cefe4" in cmd
+          assert "ffafed323524e0ab77895ac30d5d5e9218d04d6c" in cmd
+          assert "e62226ed68dfe906318661ac7f09ea71bf7cefe4" not in cmd
+          assert "Payments remain disabled until separately verified." not in cmd
+          assert "RE5 R299 iKhokha handoff is enabled in the validated release." in cmd
+          assert "Automated entitlement remains disabled; payment alone does not grant access." in cmd
+          assert "RE1, RE3, RE4 and bundle offers remain gated." in cmd
+          assert "no FSCA endorsement and no pass guarantee" in cmd
           assert "FAISREADY_V1_OWNER_BUILD=PASS" in cmd
           assert "/api/projects/FAISReady-v1/validate" in cmd
           assert "Add-MpPreference" not in cmd
