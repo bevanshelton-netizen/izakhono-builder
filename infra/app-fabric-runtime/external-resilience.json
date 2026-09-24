@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "policy": "owned-first-externally-reversible",
+  "primary_owned": {
+    "endpoint": "https://fabric.izakhonoafrica.co.za",
+    "status": "PACKAGED_AWAITING_NODE01_EDGE_PROOF"
+  },
+  "external_resilience": {
+    "provider": "Supabase WebStart",
+    "project_ref": "yfawrenhudjomhnglfhq",
+    "function": "izakhono-gateway-event",
+    "function_version": 3,
+    "endpoint": "https://yfawrenhudjomhnglfhq.supabase.co/functions/v1/izakhono-gateway-event",
+    "status": "EXTERNAL_BRIDGE_VERIFIED",
+    "health_http_status": 200,
+    "synthetic_faisready_event_http_status": 202,
+    "synthetic_event_persisted": true,
+    "synthetic_event_removed_after_test": true
+  },
+  "routing": "primary-then-external",
+  "external_to_owned_forwarding": "automatic on each accepted external event; queued backlog attempts are flushed in small batches",
+  "payment_confirmation": "not accepted on public APP FABRIC intake",
+  "enabled_public_platforms": [
+    "faisready",
+    "izakhono-clothing",
+    "edu-build:lead-only"
+  ]
+}
