@@ -1,0 +1,35 @@
+name: IZAKHONO CRM CI
+
+on:
+  pull_request:
+    paths:
+      - "products/izakhono-crm/**"
+      - ".github/workflows/izakhono-crm-ci.yml"
+  push:
+    branches: [main]
+    paths:
+      - "products/izakhono-crm/**"
+      - ".github/workflows/izakhono-crm-ci.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Syntax
+        working-directory: products/izakhono-crm
+        run: npm run check
+      - name: Tests
+        working-directory: products/izakhono-crm
+        run: npm test
+      - name: Registry JSON
+        run: node -e "JSON.parse(require('fs').readFileSync('products/izakhono-crm/portfolio-crm-registry.json','utf8')); console.log('registry ok')"
+      - name: Container build
+        run: docker build -t izakhono/crm:ci products/izakhono-crm
