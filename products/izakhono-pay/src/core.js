@@ -112,7 +112,7 @@ export function buildIkhokhaRequest({ env, intent, origin }) {
 }
 
 export function providerConfigured(env, provider) {
-  if (provider === 'ikhokha') return env.IKHOKHA_ENABLED !== 'false' && Boolean(env.IKHOKHA_APP_ID && env.IKHOKHA_APP_SECRET);
+  if (provider === 'ikhokha') return env.IKHOKHA_ENABLED !== 'false' && env.PAYMENT_MODE === 'live' && (env.IKHOKHA_MODE || 'live') === 'live' && Boolean(env.IKHOKHA_APP_ID && env.IKHOKHA_APP_SECRET);
   if (provider === 'paystack') return env.PAYSTACK_ENABLED !== 'false' && Boolean(env.PAYSTACK_SECRET_KEY);
   if (provider === 'payfast') {
     return env.PAYFAST_ENABLED !== 'false' && Boolean(env.PAYFAST_MERCHANT_ID && env.PAYFAST_MERCHANT_KEY);
