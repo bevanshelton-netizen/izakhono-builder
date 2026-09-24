@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "check": "node --check resolve.mjs",
+    "check": "node --check resolve.mjs && node --check client/hybrid-browser.mjs",
     "test": "node --test test.mjs"
   }
 }
