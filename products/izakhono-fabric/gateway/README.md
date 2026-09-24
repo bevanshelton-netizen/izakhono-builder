@@ -11,13 +11,13 @@ The Gateway converts approved product events into scoped IZAKHONO CRM activity w
 
 Public intake never accepts payment-confirmation events. Verified payment truth stays with the product's approved payment/webhook/reconciliation route.
 
-## Wave 1
+## Portfolio coverage
 
-- FAISReady
-- Edu-Build Institute
-- Izakhono Clothing Manufacturing
+The Gateway registry now covers every platform listed in the canonical IZAKHONO CRM portfolio registry. Wave 1 has concrete source adapters for FAISReady, Edu-Build Institute and Izakhono Clothing Manufacturing.
 
-The registry maps product events to each platform's own CRM stages.
+All other registered products can use the authenticated `opportunity.stage_changed` event immediately from their server-side adapters. The requested stage is accepted only when it exactly matches that platform's approved CRM stage list.
+
+A platform with an unresolved legal entity is fail-closed and cannot emit CRM events until its entity boundary is approved.
 
 ## Security
 
