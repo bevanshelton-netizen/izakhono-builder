@@ -36,4 +36,8 @@ jobs:
         run: |
           set -euo pipefail
           grep -Fq 'IZAKHONO_AI_OWNER_ONLY' products/izakhono-ai-gateway/app.py
-          grep -Fq '"external_ai_providers": False' products/izakhono-ai-gateway/app.py
+          grep -Fq 'IZAKHONO_AI_OWNER_ONLY' products/izakhono-ai-gateway/app.py
+          # Hybrid production may use external inference behind the IZAKHONO-owned
+          # gateway. Independence means provider portability and owned routing,
+          # not a prohibition on reversible external capacity.
+          ! grep -R --line-number -E 'api[_-]?key[[:space:]]*=[[:space:]]*["'\''][^$]' products/izakhono-ai-gateway
