@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "updated": "2026-09-24",
+  "wave": 1,
+  "platforms": {
+    "faisready": {
+      "source_adapter": "BUILT",
+      "crm_stage_mapping": "BUILT",
+      "public_gateway_route": "CONFIGURATION_REQUIRED",
+      "verified_payment_boundary": "UNCHANGED",
+      "production_connected": false
+    },
+    "edu-build": {
+      "source_adapter": "BUILT_IN_EDUBUILD_BRANCH",
+      "crm_stage_mapping": "BUILT",
+      "server_secret_proxy": "BUILT_IN_EDUBUILD_BRANCH",
+      "protected_child_data_mirrored": false,
+      "production_connected": false
+    },
+    "izakhono-clothing": {
+      "quote_intake_module": "BUILT",
+      "crm_stage_mapping": "BUILT",
+      "public_gateway_route": "CONFIGURATION_REQUIRED",
+      "production_connected": false
+    }
+  },
+  "launch_rule": "No platform is marked APP FABRIC production-connected until the real gateway route, secrets/origin controls and end-to-end CRM event are verified."
+}
