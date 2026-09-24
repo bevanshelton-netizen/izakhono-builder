@@ -53,9 +53,9 @@ function requireAdmin(req, res) {
 }
 
 function requireIngest(req, res) {
-  const required = INGEST_TOKEN || ADMIN_TOKEN;
-  if (!required) return true;
-  if (safeEqual(bearer(req), required)) return true;
+  if (!INGEST_TOKEN && !ADMIN_TOKEN) return true;
+  const token = bearer(req);
+  if ((INGEST_TOKEN && safeEqual(token, INGEST_TOKEN)) || (ADMIN_TOKEN && safeEqual(token, ADMIN_TOKEN))) return true;
   json(res, 401, { error: "unauthorized" });
   return false;
 }
