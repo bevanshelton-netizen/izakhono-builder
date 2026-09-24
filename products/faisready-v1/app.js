@@ -63,9 +63,14 @@
 
   function qs(id){ return document.getElementById(id); }
 
-  function fabricEndpoint(){
+  function fabricEndpoints(){
     var meta = document.querySelector('meta[name="izakhono-fabric-endpoint"]');
-    return String(window.IZAKHONO_FABRIC_ENDPOINT || (meta && meta.content) || "").replace(/\/$/,"");
+    var primary = String(window.IZAKHONO_FABRIC_ENDPOINT || (meta && meta.content) || "").replace(/\/$/,"");
+    var external = "https://yfawrenhudjomhnglfhq.supabase.co/functions/v1/izakhono-gateway-event";
+    var endpoints = [];
+    if(primary) endpoints.push(primary);
+    if(endpoints.indexOf(external) === -1) endpoints.push(external);
+    return endpoints;
   }
 
   function newRef(prefix){
@@ -73,21 +78,32 @@
     return prefix + "-" + Date.now() + "-" + Math.random().toString(16).slice(2);
   }
 
-  function emitFabric(eventType, subjectRef, payload){
-    var endpoint = fabricEndpoint();
-    if(!endpoint) return Promise.resolve({skipped:true});
-    return fetch(endpoint + "/api/fabric/intake", {
-      method: "POST",
-      headers: {"content-type":"application/json"},
-      body: JSON.stringify(Object.assign({
-        platform_id: "faisready",
-        event_type: eventType,
-        subject_ref: subjectRef
-      }, payload || {}))
-    }).then(function(response){
-      if(!response.ok && response.status !== 202) throw new Error("fabric_" + response.status);
-      return response.json().catch(function(){ return {ok:true}; });
-    }).catch(function(){ return {queuedLocally:true}; });
+  async function emitFabric(eventType, subjectRef, payload){
+    var endpoints = fabricEndpoints();
+    var body = Object.assign({
+      fabric_bridge: true,
+      platform_id: "faisready",
+      event_type: eventType,
+      subject_ref: subjectRef
+    }, payload || {});
+    var last = null;
+    for(var i=0;i<endpoints.length;i++){
+      var endpoint = endpoints[i];
+      var url = /supabase\.co\/functions\/v1\//.test(endpoint) ? endpoint : endpoint + "/api/fabric/intake";
+      try{
+        var response = await fetch(url,{
+          method:"POST",
+          headers:{"content-type":"application/json"},
+          body:JSON.stringify(body)
+        });
+        var result = await response.json().catch(function(){ return {}; });
+        if(response.ok || response.status === 202){
+          return Object.assign({route:i===0 && endpoints.length>1 ? "primary" : "external-resilience"},result);
+        }
+        last = new Error("fabric_" + response.status);
+      }catch(error){ last = error; }
+    }
+    return {queuedLocally:true,error:last ? String(last.message || last) : "fabric unavailable"};
   }
 
   function toast(message){
