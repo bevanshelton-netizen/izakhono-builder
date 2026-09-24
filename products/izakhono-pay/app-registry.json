@@ -1,10 +1,14 @@
 {
-  "version": 4,
-  "updated": "2026-09-11",
+  "version": 5,
+  "updated": "2026-09-24",
   "policy": {
     "defaultCurrency": "ZAR",
     "defaultProvider": "smart",
-    "modes": ["mock", "sandbox", "live"],
+    "modes": [
+      "mock",
+      "sandbox",
+      "live"
+    ],
     "liveRequires": [
       "merchant_onboarding_complete",
       "live_provider_credentials",
@@ -117,6 +121,16 @@
       "paymentGateway": "izakhono-pay",
       "paymentMode": "disabled",
       "status": "regulated-financial-scope-review-required"
+    },
+    {
+      "slug": "izakhono-create",
+      "repository": "bevanshelton-netizen/izakhono-builder",
+      "workspacePath": "apps/izakhono-create",
+      "onboardedToIzakhonoSpace": true,
+      "paymentGateway": "izakhono-pay",
+      "preferredProvider": "iKhokha",
+      "paymentMode": "disabled",
+      "status": "free-ready-pro-entitlement-wired-awaiting-ikHokha-checkout-adapter-and-e2e"
     }
   ]
 }
