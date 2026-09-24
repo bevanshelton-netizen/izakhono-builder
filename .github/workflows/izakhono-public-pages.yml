@@ -1,6 +1,12 @@
 name: IZAKHONO Public Pages
 
 on:
+  pull_request:
+    paths:
+      - 'izakhono-containers/launch/**'
+      - 'products/izakhono-social/public-external/**'
+      - 'products/faisready-v1/**'
+      - '.github/workflows/izakhono-public-pages.yml'
   push:
     branches: [main]
     paths:
@@ -16,14 +22,11 @@ permissions:
   id-token: write
 
 concurrency:
-  group: github-pages
+  group: github-pages-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
-  deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+  build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -65,7 +68,7 @@ jobs:
           </html>
           HTML
 
-          # Make the public footer owner link stay inside the FAISReady subpath.
+          # Keep the public footer owner link inside the FAISReady subpath.
           python - <<'PY'
           from pathlib import Path
           p=Path("_site/faisready/index.html")
@@ -107,12 +110,19 @@ jobs:
           assert all(i.get("checkout_url") is None or i["checkout_url"].startswith("https://pay.ikhokha.com/") for i in merch["items"])
           print("FAISREADY_GITHUB_PAGES_GATE=PASS")
 
-      - uses: actions/configure-pages@v5
-
       - uses: actions/upload-pages-artifact@v4
         with:
           path: _site
 
+  deploy:
+    if: github.event_name != 'pull_request'
+    needs: build
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/configure-pages@v5
       - name: Deploy consolidated IZAKHONO Pages
         id: deployment
         uses: actions/deploy-pages@v4
