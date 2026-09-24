@@ -1,0 +1,21 @@
+# Review before activation.
+# Replace __FABRIC_HOSTNAME__ with the approved public hostname.
+# Public intake remains fail-closed in the runtime env until explicitly enabled.
+
+__FABRIC_HOSTNAME__ {
+  encode zstd gzip
+
+  @fabric_intake path /api/fabric/intake
+  handle @fabric_intake {
+    reverse_proxy izakhono-app-fabric-gateway:8090
+  }
+
+  @fabric_health path /health
+  handle @fabric_health {
+    reverse_proxy izakhono-app-fabric-gateway:8090
+  }
+
+  handle {
+    respond "IZAKHONO APP FABRIC" 404
+  }
+}
