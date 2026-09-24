@@ -41,11 +41,11 @@ Gateway outbox
       +-- durable retry volume
 ```
 
-Host loopback diagnostic ports are bound only to `127.0.0.1`:
-- CRM: `18080`
-- APP FABRIC: `18090`
+Neither service publishes a host port.
 
-They are not public-listening ports.
+- CRM is reachable only on the private IZAKHONO Docker network.
+- APP FABRIC is reachable by the owned Caddy/EDGE container on the shared IZAKHONO Docker network.
+- Runtime diagnostics execute inside the containers, so no host-side admin port has to be exposed.
 
 ## Public EDGE stage
 
