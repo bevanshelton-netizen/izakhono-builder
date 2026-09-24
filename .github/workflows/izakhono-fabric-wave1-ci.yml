@@ -1,0 +1,53 @@
+name: IZAKHONO APP FABRIC Wave 1 CI
+
+on:
+  pull_request:
+    paths:
+      - "products/izakhono-crm/**"
+      - "products/izakhono-fabric/gateway/**"
+      - "products/izakhono-fabric/wave1-status.json"
+      - "products/faisready-v1/**"
+      - "products/izakhono-clothing-intake/**"
+      - ".github/workflows/izakhono-fabric-wave1-ci.yml"
+  push:
+    branches: [main]
+    paths:
+      - "products/izakhono-crm/**"
+      - "products/izakhono-fabric/gateway/**"
+      - "products/faisready-v1/**"
+      - "products/izakhono-clothing-intake/**"
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Verify CRM event upserts
+        working-directory: products/izakhono-crm
+        run: |
+          npm run check
+          npm test
+      - name: Verify APP FABRIC Gateway
+        working-directory: products/izakhono-fabric/gateway
+        run: |
+          npm run check
+          npm test
+      - name: Verify FAISReady adapter
+        run: |
+          node --check products/faisready-v1/app.js
+          grep -q 'eventType, subjectRef' products/faisready-v1/app.js
+          grep -q 'checkout.started' products/faisready-v1/app.js
+      - name: Verify clothing quote adapter
+        working-directory: products/izakhono-clothing-intake
+        run: |
+          npm run check
+          npm test
+      - name: Build Gateway container
+        run: docker build -t izakhono/app-fabric-gateway:ci products/izakhono-fabric/gateway
