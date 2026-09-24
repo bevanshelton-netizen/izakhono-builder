@@ -11,7 +11,7 @@
 <body id="top">
   <header class="site-header">
     <a class="brand" href="#top" aria-label="FAISReady home"><span class="brand-mark">FR</span><div><strong>FAIS<span>Ready</span></strong><small>REGULATORY EXAM PREPARATION</small></div></a>
-    <nav><a href="#courses">Courses</a><a href="#mock">Mock Quiz</a><a href="#dashboard">Dashboard</a><a href="#enrol">Enrol</a></nav>
+    <nav><a href="#courses">Courses</a><a href="#mock">Mock Quiz</a><a href="#dashboard">Dashboard</a><a href="#shop">Shop</a><a href="#enrol">Enrol</a></nav>
   </header>
 
   <main>
@@ -125,13 +125,37 @@
       </div>
     </section>
 
+
+    <section class="section shop-section" id="shop">
+      <div class="section-head"><span class="eyebrow">FAISREADY MERCH</span><h2>Wear the journey. Build the brand.</h2><p>FAISReady merchandise for learners, facilitators, teams and institutions. Build your order here; stock, delivery and the verified iKhokha payment route are confirmed before payment.</p></div>
+      <div class="shop-grid" id="merchGrid"><div class="shop-loading">Loading FAISReady merchandise…</div></div>
+      <div class="shop-cart">
+        <div>
+          <span class="eyebrow">YOUR ORDER</span>
+          <h3>Merch cart</h3>
+          <div id="merchCartLines" class="cart-lines"><p class="fine">Your cart is empty.</p></div>
+          <div class="cart-total"><span>Merchandise subtotal</span><strong id="merchCartTotal">R0</strong></div>
+          <p class="fine">Delivery is confirmed separately. A cart or order request is not proof of payment. Only an exact verified iKhokha payment route may be used.</p>
+        </div>
+        <form id="merchOrderForm" class="form-card">
+          <label class="field">Full name<input name="name" required></label>
+          <label class="field">Mobile number<input name="mobile" required></label>
+          <label class="field">Email<input name="email" type="email"></label>
+          <label class="field">Delivery / collection details<textarea name="delivery" rows="3" placeholder="Area, delivery request or collection note"></textarea></label>
+          <label class="check"><input type="checkbox" required> I consent to being contacted to confirm stock, fulfilment and the verified payment route.</label>
+          <button class="btn primary" type="submit">Submit merch order</button>
+          <button class="text-btn" id="clearMerchCart" type="button">Clear cart</button>
+        </form>
+      </div>
+    </section>
+
     <section class="section payment-box" id="payment">
       <div><span class="eyebrow">PAYMENT STATUS</span><h2>RE5 has a verified iKhokha checkout</h2><p>RE5 Complete Preparation at R299 links directly to the recorded iKhokha Buy Button. RE1, RE3, RE4 and the R549 bundle remain gated until their exact production checkout links and entitlement/reconciliation controls are captured and verified.</p></div>
       <div class="status-badge">RE5 LIVE • OTHERS GATED</div>
     </section>
   </main>
 
-  <footer><div><strong>FAISReady</strong><p>Owner-controlled launch build.</p></div><p>© 2026 • Independent exam-preparation platform</p></footer>
+  <footer><div><strong>FAISReady</strong><p>Owner-controlled launch build.</p></div><p>© 2026 • Independent exam-preparation platform • <a href="/owner/">Owner Portal</a></p></footer>
 
   <div class="toast" id="toast" role="status"></div>
   <script src="app.js"></script>
