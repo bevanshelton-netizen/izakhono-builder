@@ -94,6 +94,7 @@ jobs:
           node --check products/faisready-v1/app.js
           node --check products/faisready-v1/server.js
           node --check products/faisready-v1/owner/owner.js
+          bash -n products/faisready-v1/PROVISION-FAISREADY-OWNER.sh
 
       - name: Verify owner and merchandise security boundaries
         shell: python
