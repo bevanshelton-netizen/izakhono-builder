@@ -37,6 +37,26 @@ test("public FAISReady lead maps to scoped CRM intake",async()=>{
   assert.equal(seen.body.deal.external_ref,"faisready:lead-1");
 });
 
+test("internal generic stage progression works for every registered platform",async()=>{
+  const r=await fetch(`http://127.0.0.1:${gatewayPort}/api/fabric/event`,{
+    method:"POST",
+    headers:{"content-type":"application/json","authorization":"Bearer internal-test"},
+    body:JSON.stringify({platform_id:"kora",event_type:"opportunity.stage_changed",subject_ref:"partner-1",contact:{name:"Partner",email:"partner@example.test"},opportunity:{title:"Distribution partner",stage:"Commercial review"}})
+  });
+  assert.equal(r.status,201);
+  assert.equal(seen.headers["x-platform-id"],"kora");
+  assert.equal(seen.body.deal.stage,"Commercial review");
+});
+
+test("invalid portfolio stage is rejected",async()=>{
+  const r=await fetch(`http://127.0.0.1:${gatewayPort}/api/fabric/event`,{
+    method:"POST",
+    headers:{"content-type":"application/json","authorization":"Bearer internal-test"},
+    body:JSON.stringify({platform_id:"kora",event_type:"opportunity.stage_changed",subject_ref:"partner-1",opportunity:{stage:"Made up stage"}})
+  });
+  assert.equal(r.status,400);
+});
+
 test("public payment confirmation is rejected",async()=>{
   const r=await fetch(`http://127.0.0.1:${gatewayPort}/api/fabric/intake`,{
     method:"POST",
