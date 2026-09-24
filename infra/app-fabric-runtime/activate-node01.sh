@@ -67,7 +67,7 @@ done
 [ "${FABRIC_STATE:-}" = healthy ] || { echo "[FAIL] APP FABRIC state: ${FABRIC_STATE:-missing}"; exit 1; }
 
 echo '[4/5] Running authenticated non-writing gateway -> CRM proof...'
-SELFTEST="$(curl -fsS -X POST -H "Authorization: Bearer $IZAKHONO_FABRIC_INTERNAL_TOKEN" http://127.0.0.1:18090/api/fabric/selftest)"
+SELFTEST="$(docker exec izakhono-app-fabric-gateway node -e "fetch('http://127.0.0.1:8090/api/fabric/selftest',{method:'POST',headers:{authorization:'Bearer '+process.env.IZAKHONO_FABRIC_INTERNAL_TOKEN}}).then(async r=>{const t=await r.text();if(!r.ok){console.error(t);process.exit(1)};process.stdout.write(t)}).catch(e=>{console.error(e);process.exit(1)})")"
 echo "$SELFTEST" | jq -e '.ok == true and .mode == "non-writing" and .crm.dry_run == true' >/dev/null
 
 echo '[5/5] Recording owned runtime evidence...'
@@ -75,15 +75,15 @@ STARTED="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 COMMIT="$(git -C "$REPO_ROOT" rev-parse HEAD 2>/dev/null || echo local-source)"
 CRM_IMAGE="$(docker inspect -f '{{.Image}}' izakhono-crm)"
 FABRIC_IMAGE="$(docker inspect -f '{{.Image}}' izakhono-app-fabric-gateway)"
-PUBLIC_ENABLED="$(echo "$SELFTEST" >/dev/null; curl -fsS http://127.0.0.1:18090/health | jq -r '.public_intake')"
+PUBLIC_ENABLED="$(docker exec izakhono-app-fabric-gateway node -e "fetch('http://127.0.0.1:8090/health').then(r=>r.json()).then(v=>process.stdout.write(String(v.public_intake))).catch(()=>process.exit(1))")"
 
 jq -n   --arg schema 'izakhono.app-fabric.node01.report.v1'   --arg generated "$STARTED"   --arg commit "$COMMIT"   --arg crm_state "$CRM_STATE"   --arg fabric_state "$FABRIC_STATE"   --arg crm_image "$CRM_IMAGE"   --arg fabric_image "$FABRIC_IMAGE"   --argjson public_intake "$PUBLIC_ENABLED"   '{
     schema:$schema,
     generated_at:$generated,
     git_commit:$commit,
     overall:"PASS_INTERNAL_OWNED",
-    crm:{health:$crm_state,image:$crm_image,host_loopback:"127.0.0.1:18080"},
-    fabric:{health:$fabric_state,image:$fabric_image,host_loopback:"127.0.0.1:18090",public_intake:$public_intake},
+    crm:{health:$crm_state,image:$crm_image,network_exposure:"private-docker-network-only"},
+    fabric:{health:$fabric_state,image:$fabric_image,network_exposure:"shared-docker-network-for-caddy-only",public_intake:$public_intake},
     integration:{gateway_to_crm:"PASS_NON_WRITING"},
     secrets:{location:"/opt/izakhono/secrets/app-fabric-runtime.env",mode:"owner-only",values_exported:false},
     persistence:{crm_volume:"izakhono_crm_data",outbox_volume:"izakhono_fabric_outbox"},
