@@ -75,8 +75,7 @@ export function buildPayfastCheckout({ env, intent, origin }) {
 }
 
 export function ikhokhaEscape(value) {
-  return String(value).replace(/[\\"']/g, '\\export function providerConfigured(env, provider) {
-  if (provider === 'paystack') return env.PAYSTACK_ENABLED !== 'false' && Boolean(env.PAYSTACK_SECRET_KEY);').replace(/\u0000/g, '\\0');
+  return String(value).replace(/[\\\"']/g, '\\$&').replace(/\u0000/g, '\\0');
 }
 
 export function ikhokhaPayloadToSign(path, rawBody = '') {
