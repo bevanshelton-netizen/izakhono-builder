@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://izakhonoafrica.co.za/schemas/examready-pack-v1.json",
+  "title": "IZAKHONO ExamReady Qualification Pack v1",
+  "type": "object",
+  "required": ["id","vertical","jurisdiction","exam_body","title","syllabus_version","official_exam_languages","topics","reviewed_at"],
+  "properties": {
+    "id": {"type":"string","minLength":3},
+    "vertical": {"type":"string","minLength":2},
+    "jurisdiction": {"type":"string","minLength":2},
+    "exam_body": {"type":"string","minLength":2},
+    "title": {"type":"string","minLength":2},
+    "syllabus_version": {"type":"string","minLength":1},
+    "official_exam_languages": {"type":"array","minItems":1,"items":{"type":"string"}},
+    "supported_learning_languages": {"type":"array","items":{"type":"string"}},
+    "reviewed_at": {"type":"string","format":"date"},
+    "external_credential_awarded": {"const": false},
+    "topics": {
+      "type":"array","minItems":1,
+      "items":{
+        "type":"object","required":["id","title","objectives"],
+        "properties":{
+          "id":{"type":"string"},"title":{"type":"string"},
+          "objectives":{"type":"array","minItems":1,"items":{"type":"string"}},
+          "tutor_assets":{"type":"array","items":{"type":"object","properties":{
+            "kind":{"enum":["video","worked-example","visual","audio","transcript"]},
+            "language":{"type":"string"},"uri":{"type":"string"},"expert_reviewed":{"type":"boolean"}
+          }}}
+        }
+      }
+    }
+  }
+}
