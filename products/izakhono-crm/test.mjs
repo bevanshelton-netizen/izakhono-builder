@@ -77,6 +77,18 @@ test("external_ref makes repeated platform events idempotent", async () => {
   const matches = deals.items.filter((d) => d.external_ref === "faisready:lead-123");
   assert.equal(matches.length, 1);
   assert.equal(matches[0].stage, "Checkout started");
+
+  const dealOnly = await fetch(`http://127.0.0.1:${port}/api/intake`, {
+    method: "POST",
+    headers: scopedHeaders,
+    body: JSON.stringify({
+      create_deal: true,
+      deal: { title: "RE5 preparation", stage: "Active learner", external_ref: "faisready:lead-123" }
+    })
+  });
+  assert.equal(dealOnly.status, 201);
+  const updated = await fetch(`http://127.0.0.1:${port}/api/deals`, { headers: scopedHeaders }).then((r) => r.json());
+  assert.equal(updated.items.find((d) => d.external_ref === "faisready:lead-123").stage, "Active learner");
 });
 
 test.after(async () => {
