@@ -7,7 +7,8 @@ IZAKHONO PAY is the payment-orchestration layer for IZAKHONO products. Applicati
 ## Alpha scope
 
 - One payment-intent API for all internal applications
-- Smart routing between Paystack and PayFast for ZAR
+- Smart routing for ZAR with iKhokha preferred when its verified live API credentials are enabled, then Paystack and PayFast fallbacks
+- iKhokha iK Pay API hosted payment-link initialization and signed callback verification
 - Paystack hosted checkout initialization
 - PayFast signed Custom Integration form-post checkout
 - Paystack HMAC-SHA512 webhook verification
@@ -36,6 +37,8 @@ Store with Cloudflare secrets or your deployment platform's secret manager; neve
 
 - `ADMIN_SECRET`
 - `IZAKHONO_INTERNAL_API_KEY`
+- `IKHOKHA_APP_ID`
+- `IKHOKHA_APP_SECRET`
 - `PAYSTACK_SECRET_KEY`
 - `PAYFAST_MERCHANT_ID`
 - `PAYFAST_MERCHANT_KEY`
@@ -92,3 +95,16 @@ The response returns either a hosted redirect or a PayFast `form_post` target an
 ## Next commercial phase
 
 Add country/currency-specific adapters, per-merchant API keys, OAuth-style application credentials, reconciliation jobs, refund orchestration, subscriptions, disputes, settlement reporting, observability, rate limiting, fraud rules and the required South African/international payment-industry approvals before offering the service to unrelated third-party merchants.
+
+
+## iKhokha adapter
+
+IZAKHONO PAY now contains an iK Pay API adapter for custom-built applications.
+
+- Payment-link requests are sent to iKhokha's public payment API with the required `IK-APPID` and HMAC-SHA256 `IK-SIGN` headers.
+- Amounts are sent in minor units (cents) and ZAR remains the only enabled IZAKHONO PAY alpha currency.
+- iKhokha callbacks arrive at `POST /api/webhooks/ikhokha` and are signature-verified before a payment intent can be marked paid.
+- A successful, verified callback then follows the existing signed merchant-webhook path so IZAKHONO ACCESS can grant the subscribed entitlement.
+- The smart router prefers iKhokha only when `PAYMENT_MODE=live`, `IKHOKHA_MODE=live`, and the required iKhokha credentials are configured. This is intentionally fail-closed because the current public iK Pay documentation exposes the live request contract; the repository does not assume an undocumented sandbox mode.
+
+Do not mark iKhokha checkout live until the real merchant API keys are configured, the callback URL is registered and reachable over production HTTPS, and an end-to-end payment → webhook → entitlement acceptance test passes.

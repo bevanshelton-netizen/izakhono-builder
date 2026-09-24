@@ -1,5 +1,7 @@
 import {
   PAYFAST_DEFAULT_CIDRS,
+  buildIkhokhaRequest,
+  ikhokhaSignature,
   buildPayfastCheckout,
   buildPayfastItnParamString,
   chooseProvider,
@@ -7,6 +9,7 @@ import {
   providerConfigured,
   safeEqualText,
   sha256Hex,
+  verifyIkhokhaSignature,
   verifyPayfastItnSignature,
   verifyPaystackSignature
 } from './core.js';
@@ -185,6 +188,33 @@ async function initializePaystack(env, intent, origin) {
   };
 }
 
+async function initializeIkhokha(env, intent, origin) {
+  const endpoint = 'https://api.ikhokha.com/public-api/v1/api/payment';
+  const payload = buildIkhokhaRequest({ env, intent, origin });
+  const raw = JSON.stringify(payload);
+  const path = new URL(endpoint).pathname;
+  const signature = ikhokhaSignature(path, raw, env.IKHOKHA_APP_SECRET);
+  const res = await fetch(endpoint, {
+    method: 'POST',
+    headers: {
+      accept: 'application/json',
+      'content-type': 'application/json',
+      'IK-APPID': env.IKHOKHA_APP_ID,
+      'IK-SIGN': signature
+    },
+    body: raw
+  });
+  const data = await res.json().catch(() => null);
+  if (!res.ok || data?.responseCode !== '00' || !data?.paylinkUrl) {
+    throw new Error(`iKhokha initialization failed (${res.status})`);
+  }
+  return {
+    checkout_url: data.paylinkUrl,
+    checkout_method: 'redirect',
+    provider_reference: data.paylinkID || intent.reference
+  };
+}
+
 async function initializeIntent(req, env, input, { demo = false, merchant = null } = {}) {
   const amountMinor = Number(input.amount_minor);
   const currency = cleanText(input.currency || 'ZAR', 3).toUpperCase();
@@ -209,7 +239,7 @@ async function initializeIntent(req, env, input, { demo = false, merchant = null
   if (!Number.isSafeInteger(amountMinor) || amountMinor < 100 || amountMinor > 1000000000) return fail('amount_minor must be an integer between 100 and 1,000,000,000', 422, 'invalid_amount');
   if (!validEmail(email)) return fail('A valid customer email is required', 422, 'invalid_email');
   if (currency !== 'ZAR') return fail('Alpha currently supports ZAR checkout only; international cards can still be accepted by enabled providers where the merchant account permits it.', 422, 'unsupported_currency');
-  if (!['smart','paystack','payfast'].includes(requestedProvider)) return fail('provider must be smart, paystack, or payfast', 422, 'invalid_provider');
+  if (!['smart','ikhokha','paystack','payfast'].includes(requestedProvider)) return fail('provider must be smart, ikhokha, paystack, or payfast', 422, 'invalid_provider');
   if (!demo && !/^[A-Za-z0-9._:-]{8,120}$/.test(idempotencyKey)) return fail('A stable 8-120 character Idempotency-Key header is required', 422, 'invalid_idempotency_key');
   if (!demo && !appSlug) return fail('Merchant identity is required', 401, 'unauthorized');
   if (demo && env.PAYMENT_MODE !== 'mock') return fail('Public demo checkout is disabled outside mock mode', 403, 'demo_disabled');
@@ -275,6 +305,13 @@ async function initializeIntent(req, env, input, { demo = false, merchant = null
       return response({ ok: true, intent: { ...normalizeIntent({ ...intent, status: 'requires_action', checkout_method: 'redirect', checkout_url: checkoutUrl }), checkout_url: checkoutUrl } }, 201);
     }
 
+    if (routedProvider === 'ikhokha') {
+      const checkout = await initializeIkhokha(env, intent, origin);
+      await env.DB.prepare("UPDATE payment_intents SET status='requires_action',checkout_url=?,checkout_method=?,provider_reference=?,updated_at=CURRENT_TIMESTAMP WHERE id=?")
+        .bind(checkout.checkout_url, checkout.checkout_method, checkout.provider_reference, intent.id).run();
+      return response({ ok: true, intent: { ...normalizeIntent({ ...intent, status: 'requires_action', ...checkout }), ...checkout } }, 201);
+    }
+
     if (routedProvider === 'paystack') {
       const checkout = await initializePaystack(env, intent, origin);
       await env.DB.prepare("UPDATE payment_intents SET status='requires_action',checkout_url=?,checkout_method=?,provider_reference=?,updated_at=CURRENT_TIMESTAMP WHERE id=?")
@@ -294,6 +331,33 @@ async function initializeIntent(req, env, input, { demo = false, merchant = null
     });
     return fail(error instanceof Error ? error.message : 'Provider initialization failed', 502, 'provider_error');
   }
+}
+
+
+async function handleIkhokhaWebhook(req, env) {
+  if (!env.IKHOKHA_APP_ID || !env.IKHOKHA_APP_SECRET) return fail('iKhokha webhook is not configured', 503, 'provider_unconfigured');
+  const raw = await req.text();
+  const appId = req.headers.get('ik-appid') || '';
+  const signature = req.headers.get('ik-sign') || '';
+  const event = JSON.parse(raw);
+  if (event && typeof event === 'object') delete event.text;
+  const signedBody = JSON.stringify(event);
+  if (!safeEqualText(appId, env.IKHOKHA_APP_ID) || !verifyIkhokhaSignature('/api/webhooks/ikhokha', signedBody, signature, env.IKHOKHA_APP_SECRET)) {
+    await recordFortressEvent(env, { severity: 'high', category: 'webhook.invalid_signature', source: 'ikhokha', details: { payload_hash: sha256Hex(raw) } });
+    return fail('Invalid iKhokha signature', 401, 'invalid_signature');
+  }
+  const reference = cleanText(event?.externalTransactionID || '', 120);
+  const intent = reference ? await findIntentByReference(env, reference) : null;
+  if (!intent || intent.routed_provider !== 'ikhokha') return fail('Unknown iKhokha payment reference', 404, 'unknown_reference');
+
+  const fingerprint = sha256Hex(`ikhokha:${raw}`);
+  const fresh = await recordEvent(env, 'ikhokha', `payment.${String(event?.status || 'unknown').toLowerCase()}`, fingerprint, intent.id, event, true);
+  if (!fresh) return response({ ok: true, duplicate: true });
+
+  if (event?.status === 'SUCCESS' && event?.responseCode === '00') {
+    await markPaid(env, intent.id, cleanText(event?.paylinkID || intent.provider_reference || reference, 180));
+  }
+  return response({ ok: true });
 }
 
 async function handlePaystackWebhook(req, env) {
@@ -400,6 +464,7 @@ async function handleApi(req, env, url) {
       mode: env.PAYMENT_MODE || 'mock',
       currencies: ['ZAR'],
       providers: {
+        ikhokha: { enabled: env.IKHOKHA_ENABLED !== 'false', configured: providerConfigured(env, 'ikhokha') },
         paystack: { enabled: env.PAYSTACK_ENABLED !== 'false', configured: providerConfigured(env, 'paystack') },
         payfast: { enabled: env.PAYFAST_ENABLED !== 'false', configured: providerConfigured(env, 'payfast'), sandbox: env.PAYFAST_SANDBOX === 'true' || env.PAYMENT_MODE === 'sandbox' }
       },
@@ -418,6 +483,7 @@ async function handleApi(req, env, url) {
   }
 
   if (url.pathname === '/api/demo/mock-complete' && req.method === 'POST') return handleMockComplete(req, env);
+  if (url.pathname === '/api/webhooks/ikhokha' && req.method === 'POST') return handleIkhokhaWebhook(req, env);
   if (url.pathname === '/api/webhooks/paystack' && req.method === 'POST') return handlePaystackWebhook(req, env);
   if (url.pathname === '/api/webhooks/payfast' && req.method === 'POST') return handlePayfastWebhook(req, env);
 
