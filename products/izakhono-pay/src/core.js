@@ -74,7 +74,45 @@ export function buildPayfastCheckout({ env, intent, origin }) {
   return { endpoint, fields };
 }
 
+export function ikhokhaEscape(value) {
+  return String(value).replace(/[\\"']/g, '\\export function providerConfigured(env, provider) {
+  if (provider === 'paystack') return env.PAYSTACK_ENABLED !== 'false' && Boolean(env.PAYSTACK_SECRET_KEY);').replace(/\u0000/g, '\\0');
+}
+
+export function ikhokhaPayloadToSign(path, rawBody = '') {
+  return ikhokhaEscape(`${path}${rawBody}`);
+}
+
+export function ikhokhaSignature(path, rawBody, secret) {
+  return createHmac('sha256', secret).update(ikhokhaPayloadToSign(path, rawBody)).digest('hex');
+}
+
+export function verifyIkhokhaSignature(path, rawBody, signature, secret) {
+  if (!signature || !secret) return false;
+  return safeEqualText(ikhokhaSignature(path, rawBody, secret), signature);
+}
+
+export function buildIkhokhaRequest({ env, intent, origin }) {
+  const callbackUrl = `${origin}/api/webhooks/ikhokha`;
+  const successPageUrl = intent.return_url || `${origin}/?payment=return&reference=${encodeURIComponent(intent.reference)}`;
+  const failurePageUrl = intent.cancel_url || `${origin}/?payment=failed&reference=${encodeURIComponent(intent.reference)}`;
+  const cancelUrl = intent.cancel_url || `${origin}/?payment=cancelled&reference=${encodeURIComponent(intent.reference)}`;
+  return {
+    entityID: env.IKHOKHA_APP_ID,
+    externalEntityID: intent.app_slug,
+    amount: Number(intent.amount_minor),
+    currency: intent.currency,
+    requesterUrl: origin,
+    mode: env.IKHOKHA_MODE || 'live',
+    description: intent.description || 'IZAKHONO PAY transaction',
+    paymentReference: intent.reference,
+    externalTransactionID: intent.reference,
+    urls: { callbackUrl, successPageUrl, failurePageUrl, cancelUrl }
+  };
+}
+
 export function providerConfigured(env, provider) {
+  if (provider === 'ikhokha') return env.IKHOKHA_ENABLED !== 'false' && Boolean(env.IKHOKHA_APP_ID && env.IKHOKHA_APP_SECRET);
   if (provider === 'paystack') return env.PAYSTACK_ENABLED !== 'false' && Boolean(env.PAYSTACK_SECRET_KEY);
   if (provider === 'payfast') {
     return env.PAYFAST_ENABLED !== 'false' && Boolean(env.PAYFAST_MERCHANT_ID && env.PAYFAST_MERCHANT_KEY);
@@ -89,6 +127,7 @@ export function chooseProvider(env, currency, requested = 'smart') {
   if (mode === 'mock') return 'mock';
   if (code !== 'ZAR') return null;
   if (requested !== 'smart') return providerConfigured(env, requested) ? requested : null;
+  if (providerConfigured(env, 'ikhokha')) return 'ikhokha';
   if (providerConfigured(env, 'paystack')) return 'paystack';
   if (providerConfigured(env, 'payfast')) return 'payfast';
   return null;
