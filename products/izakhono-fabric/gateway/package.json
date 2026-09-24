@@ -1,0 +1,11 @@
+{
+  "name": "@izakhono/fabric-gateway",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node server.mjs",
+    "check": "node --check server.mjs && node -e \"JSON.parse(require('fs').readFileSync('wave1-adapters.json','utf8'))\"",
+    "test": "node --test test.mjs"
+  }
+}
