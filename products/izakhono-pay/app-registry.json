@@ -130,7 +130,7 @@
       "paymentGateway": "izakhono-pay",
       "preferredProvider": "iKhokha",
       "paymentMode": "disabled",
-      "status": "free-ready-pro-entitlement-wired-awaiting-ikHokha-checkout-adapter-and-e2e"
+      "status": "one-click-free-pro-built-ikHokha-adapter-built-awaiting-live-keys-renderer-and-e2e"
     }
   ]
 }
