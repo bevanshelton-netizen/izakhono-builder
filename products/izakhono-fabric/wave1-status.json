@@ -11,11 +11,12 @@
       "production_connected": false
     },
     "edu-build": {
-      "source_adapter": "BUILT_IN_EDUBUILD_BRANCH",
+      "source_adapter": "MERGED",
       "crm_stage_mapping": "BUILT",
-      "server_secret_proxy": "BUILT_IN_EDUBUILD_BRANCH",
+      "server_secret_proxy": "MERGED",
       "protected_child_data_mirrored": false,
-      "production_connected": false
+      "production_connected": false,
+      "merge_commit": "1abbae56690003b3d236d488e338fc57f8e61cf9"
     },
     "izakhono-clothing": {
       "quote_intake_module": "BUILT",
