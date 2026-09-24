@@ -6,6 +6,6 @@
   "scripts": {
     "start": "node server.mjs",
     "check": "node --check server.mjs && node -e \"JSON.parse(require('fs').readFileSync('portfolio-adapters.json','utf8'))\"",
-    "test": "node --test test.mjs"
+    "test": "node --test test.mjs registry-selftest.mjs"
   }
 }
