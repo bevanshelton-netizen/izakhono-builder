@@ -1,0 +1,78 @@
+name: FAISReady Safe External Fallback
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'products/faisready-v1/**'
+      - '.github/workflows/faisready-safe-fallback.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: faisready-safe-external-fallback
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Require external fallback credentials
+        shell: bash
+        run: |
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+
+      - name: Stage public-only FAISReady fallback
+        shell: bash
+        run: |
+          set -euo pipefail
+          ROOT=products/faisready-v1
+          OUT="$ROOT/public-fallback"
+          rm -rf "$OUT"
+          mkdir -p "$OUT/assets" "$OUT/owner"
+          cp "$ROOT/index.html" "$ROOT/styles.css" "$ROOT/app.js" "$ROOT/merch.json" "$OUT/"
+          cp "$ROOT"/assets/approved-photo-*.b64 "$OUT/assets/"
+          cat > "$OUT/owner/index.html" <<'HTML'
+          <!doctype html>
+          <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+          <title>FAISReady Owner Portal</title><meta name="robots" content="noindex,nofollow">
+          <style>body{margin:0;font-family:system-ui;background:#eef7ff;color:#102033;display:grid;place-items:center;min-height:100vh}.card{max-width:650px;margin:24px;padding:34px;border-radius:24px;background:#fff;box-shadow:0 20px 60px #052b5920}.brand{font-size:2rem;font-weight:900;color:#052b59}.brand span{color:#d8ac43}a{display:inline-block;margin-top:16px;padding:12px 16px;border-radius:10px;background:#052b59;color:#fff;text-decoration:none;font-weight:800}</style>
+          </head><body><main class="card"><div class="brand">FAIS<span>Ready</span></div><h1>Owner Portal is protected on IZAKHONO-owned infrastructure.</h1><p>This external resilience route never accepts owner credentials. Owner access is served only through the verified NODE01 / IZAKHONO Core route.</p><a href="/">Return to FAISReady</a></main></body></html>
+          HTML
+          test ! -f "$OUT/server.js"
+          test ! -f "$OUT/PROVISION-FAISREADY-OWNER.sh"
+          test ! -f "$OUT/.izakhono.json"
+
+      - name: Verify public payment and owner boundaries
+        shell: python
+        run: |
+          import json
+          from pathlib import Path
+          root = Path("products/faisready-v1/public-fallback")
+          html = (root / "index.html").read_text(encoding="utf-8")
+          js = (root / "app.js").read_text(encoding="utf-8")
+          merch = json.loads((root / "merch.json").read_text(encoding="utf-8"))
+          assert "https://pay.ikhokha.com/izakhono/buy/re5completeprepara" in html
+          assert "RE1, RE3, RE4 and bundle payment routes stay gated" in html
+          assert "re5-and-re1-complete-p" not in html.lower()
+          assert "CRM_ADMIN_TOKEN" not in js
+          assert "FAISREADY_CORE_PROJECT_KEY" not in js
+          assert all(i.get("checkout_url") is None or i["checkout_url"].startswith("https://pay.ikhokha.com/") for i in merch["items"])
+          print("FAISREADY_SAFE_FALLBACK_GATE=PASS")
+
+      - name: Deploy verified public assets to Cloudflare Workers
+        run: npx wrangler deploy --config products/faisready-v1/wrangler-fallback.jsonc
+
+      - name: Record fallback status
+        run: |
+          echo "FAISREADY_EXTERNAL_FALLBACK=DEPLOYED"
+          echo "AUTHORITATIVE_ROUTE=NODE01_PENDING_VERIFICATION"
+          echo "OWNER_PORTAL_EXTERNAL=FAIL_CLOSED"
