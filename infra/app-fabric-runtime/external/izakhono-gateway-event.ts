@@ -6,43 +6,53 @@ const BRIDGE_ORIGIN="https://bridge.izakhonoafrica.co.za";
 const allowedPlatforms=new Set(["gateway","social-command","webstart","kora","faisready","matric-rewrite","command-center","containers","chancellor","allegro","yenzanow"]);
 const allowedEvents=new Set(["gateway_view","platform_open","platform_share","revenue_cta"]);
 
-const fabricPlatforms:Record<string,any>={
-  "faisready":{
-    entity_id:"izakhono-africa",
-    stages:{"lead.created":"Lead","checkout.started":"Checkout started"},
-    origin:(o:string)=>o.includes("faisready")||o.endsWith("-bevan2.vercel.app")
-  },
-  "izakhono-clothing":{
-    entity_id:"izakhono-africa",
-    stages:{"lead.created":"New enquiry","quote.requested":"New enquiry"},
-    origin:(o:string)=>o.includes("izakhonoafrica.co.za")||o.includes("izakhono-online.com")
-  },
-  "edu-build":{
-    entity_id:"edu-build-shelton",
-    stages:{"lead.created":"Enquiry"},
-    origin:(o:string)=>o.includes("edubuildshelton.org.za")
-  }
+const fabricPlatforms:Record<string,{entity_id:string;events:Record<string,string>;origins?:string[]}>={
+  "izakhono-clothing":{entity_id:"izakhono-africa",events:{"lead.created":"New enquiry","quote.requested":"New enquiry"},origins:["https://izakhonoafrica.co.za","https://www.izakhonoafrica.co.za","https://izakhono-online.com","https://www.izakhono-online.com"]},
+  "kora":{entity_id:"izakhono-africa",events:{"lead.created":"New"},origins:["https://kora-network.vercel.app"]},
+  "kora-cinema":{entity_id:"izakhono-africa",events:{"lead.created":"New"}},
+  "kora-gospel-tv":{entity_id:"izakhono-africa",events:{"lead.created":"New"}},
+  "kora-kids":{entity_id:"izakhono-africa",events:{"lead.created":"New"}},
+  "allegro-vibez":{entity_id:"izakhono-africa",events:{"lead.created":"New"},origins:["https://allegro-vibez.vercel.app"]},
+  "allegro-radio":{entity_id:"izakhono-africa",events:{"lead.created":"New"},origins:["https://allegro-vibez.vercel.app"]},
+  "edu-build":{entity_id:"edu-build-shelton",events:{"lead.created":"Enquiry"},origins:["https://edubuildshelton.org.za","https://www.edubuildshelton.org.za"]},
+  "ecd360":{entity_id:"edu-build-shelton",events:{"lead.created":"Enquiry"},origins:["https://edubuildshelton.org.za","https://www.edubuildshelton.org.za"]},
+  "faisready":{entity_id:"izakhono-africa",events:{"lead.created":"Lead","checkout.started":"Checkout started"},origins:["https://faisready.co.za","https://www.faisready.co.za","https://faisready-revenue.vercel.app"]},
+  "doxa-sure":{entity_id:"izakhono-africa",events:{"lead.created":"New"}},
+  "auto-ai":{entity_id:"izakhono-africa",events:{"lead.created":"Lead"},origins:["https://auto-ai.vercel.app"]},
+  "learner-driver-sa":{entity_id:"izakhono-africa",events:{"lead.created":"Lead"}},
+  "worknow":{entity_id:"izakhono-africa",events:{"lead.created":"Prospect"},origins:["https://worknow-sa.vercel.app"]},
+  "memory-mania":{entity_id:"izakhono-africa",events:{"lead.created":"Lead"}},
+  "music-school":{entity_id:"izakhono-africa",events:{"lead.created":"Enquiry"}},
+  "recording-studio":{entity_id:"izakhono-africa",events:{"lead.created":"Enquiry"}},
+  "supercool":{entity_id:"izakhono-africa",events:{"lead.created":"Lead"}},
+  "zeely-style":{entity_id:"izakhono-africa",events:{"lead.created":"Lead"}},
+  "the-chancellor":{entity_id:"izakhono-africa",events:{"lead.created":"Lead"},origins:["https://the-chancellor.vercel.app","https://the-chancellor-1eiq.vercel.app"]},
+  "fortress":{entity_id:"izakhono-africa",events:{"lead.created":"Target account"}},
+  "izakhono-code":{entity_id:"izakhono-africa",events:{"lead.created":"Lead"}},
+  "izakhono-work":{entity_id:"izakhono-africa",events:{"lead.created":"Lead"}},
+  "izakhono-cloud":{entity_id:"izakhono-africa",events:{"lead.created":"Lead"}},
+  "izakhono-send":{entity_id:"izakhono-africa",events:{"lead.created":"Lead"}}
 };
 
-const exactFabricOrigins=new Set([
-  "https://faisready.co.za","https://www.faisready.co.za","https://faisready-revenue.vercel.app",
-  "https://izakhonoafrica.co.za","https://www.izakhonoafrica.co.za",
-  "https://izakhono-online.com","https://www.izakhono-online.com",
-  "https://edubuildshelton.org.za","https://www.edubuildshelton.org.za"
-]);
+const exactFabricOrigins=new Set(Object.values(fabricPlatforms).flatMap(p=>p.origins||[]));
 
 function clean(v:unknown,max=120){return String(v??"").trim().slice(0,max)}
 function refHost(value:string){try{return value?new URL(value).hostname.slice(0,180):""}catch{return ""}}
-function fabricOriginAllowed(origin:string){
-  if(exactFabricOrigins.has(origin)) return true;
-  if(/^https:\/\/[a-z0-9.-]+\.izakhonoafrica\.co\.za$/i.test(origin)) return true;
-  if(/^https:\/\/[a-z0-9.-]+\.edubuildshelton\.org\.za$/i.test(origin)) return true;
-  if(/^https:\/\/[a-z0-9-]+-[a-z0-9-]+-bevan2\.vercel\.app$/i.test(origin)) return true;
-  return false;
+function firstPartyOrigin(origin:string){
+  try{
+    const host=new URL(origin).hostname.toLowerCase();
+    return host==="izakhonoafrica.co.za"||host.endsWith(".izakhonoafrica.co.za")||
+      host==="edubuildshelton.org.za"||host.endsWith(".edubuildshelton.org.za");
+  }catch{return false}
+}
+function platformOriginAllowed(origin:string,platformId?:string){
+  if(firstPartyOrigin(origin)) return true;
+  if(!platformId) return exactFabricOrigins.has(origin);
+  return fabricPlatforms[platformId]?.origins?.includes(origin)===true;
 }
 function headers(origin:string|null){
   let allowedOrigin="https://yfawrenhudjomhnglfhq.supabase.co";
-  if(origin?.endsWith(".supabase.co")||origin==="https://yfawrenhudjomhnglfhq.supabase.co"||(origin&&fabricOriginAllowed(origin))) allowedOrigin=origin;
+  if(origin&&(origin.endsWith(".supabase.co")||platformOriginAllowed(origin))) allowedOrigin=origin;
   return {
     "content-type":"application/json",
     "access-control-allow-origin":allowedOrigin,
@@ -64,10 +74,10 @@ function normalizeFabric(body:any,origin:string){
   const platformId=clean(body?.platform_id,80);
   const platform=fabricPlatforms[platformId];
   if(!platform) throw Object.assign(new Error("Platform is not enabled on the external bridge"),{status:404});
-  if(!platform.origin(origin)) throw Object.assign(new Error("Origin is not approved for this platform"),{status:403});
+  if(!platformOriginAllowed(origin,platformId)) throw Object.assign(new Error("Origin is not approved for this platform"),{status:403});
   const eventType=clean(body?.event_type,100);
   if(eventType==="payment.confirmed") throw Object.assign(new Error("Payment confirmation is not accepted on public intake"),{status:403});
-  const stage=platform.stages[eventType];
+  const stage=platform.events[eventType];
   if(!stage) throw Object.assign(new Error("Event type is not approved for public bridge intake"),{status:403});
   const subjectRef=clean(body?.subject_ref||body?.external_ref||body?.event_id,180);
   if(!subjectRef) throw Object.assign(new Error("subject_ref is required"),{status:400});
@@ -118,7 +128,6 @@ async function flushQueued(){
   return {attempted:(rows||[]).length,forwarded};
 }
 async function handleFabric(body:any,origin:string,h:Record<string,string>){
-  if(!origin||!fabricOriginAllowed(origin)) return new Response(JSON.stringify({error:"Origin not allowed"}),{status:403,headers:h});
   const e=normalizeFabric(body,origin);
   await rest("izakhono_fabric_external_events?on_conflict=dedupe_key",{
     method:"POST",headers:{prefer:"resolution=ignore-duplicates,return=minimal"},
@@ -149,10 +158,11 @@ Deno.serve(async(req)=>{
   const h=headers(origin);
   if(req.method==="GET") return new Response(JSON.stringify({
     ok:true,service:"izakhono-gateway-event",fabric_bridge:true,mode:"hybrid-external-resilience",
-    owned_target:"fabric.izakhonoafrica.co.za",payment_confirmation:false
+    owned_target:"fabric.izakhonoafrica.co.za",payment_confirmation:false,
+    public_platform_count:Object.keys(fabricPlatforms).length
   }),{status:200,headers:h});
   if(req.method==="OPTIONS"){
-    if(origin&&!(origin.endsWith(".supabase.co")||fabricOriginAllowed(origin))) return new Response(JSON.stringify({error:"Origin not allowed"}),{status:403,headers:h});
+    if(origin&&!(origin.endsWith(".supabase.co")||platformOriginAllowed(origin))) return new Response(JSON.stringify({error:"Origin not allowed"}),{status:403,headers:h});
     return new Response("ok",{headers:h});
   }
   if(req.method!=="POST") return new Response(JSON.stringify({error:"Method not allowed"}),{status:405,headers:h});
