@@ -29,6 +29,14 @@ jobs:
           test -f products/faisready-v1/README.md
           test -f products/faisready-v1/RELEASE-CHECKLIST.md
           test -f products/faisready-v1/PAYMENT-INTEGRATION.md
+          test -f products/faisready-v1/merch.json
+          test -f products/faisready-v1/server.js
+          test -f products/faisready-v1/Dockerfile
+          test -f products/faisready-v1/.izakhono.json
+          test -f products/faisready-v1/PROVISION-FAISREADY-OWNER.sh
+          test -f products/faisready-v1/owner/index.html
+          test -f products/faisready-v1/owner/owner.css
+          test -f products/faisready-v1/owner/owner.js
           test -f products/faisready-v1/INSTALL-FAISREADY-V1.cmd
           test -f products/faisready-v1/assets/approved-photo-0.b64
           test -f products/faisready-v1/assets/approved-photo-1.b64
@@ -81,21 +89,60 @@ jobs:
               assert item not in lowered, item
           print("FAISREADY_CONTENT_GATE=PASS")
 
-      - name: Check JavaScript syntax
-        run: node --check products/faisready-v1/app.js
+      - name: Check JavaScript and owner-server syntax
+        run: |
+          node --check products/faisready-v1/app.js
+          node --check products/faisready-v1/server.js
+          node --check products/faisready-v1/owner/owner.js
+          bash -n products/faisready-v1/PROVISION-FAISREADY-OWNER.sh
+
+      - name: Verify owner and merchandise security boundaries
+        shell: python
+        run: |
+          import json
+          from pathlib import Path
+          html = Path("products/faisready-v1/index.html").read_text(encoding="utf-8")
+          app = Path("products/faisready-v1/app.js").read_text(encoding="utf-8")
+          owner = Path("products/faisready-v1/owner/owner.js").read_text(encoding="utf-8")
+          server = Path("products/faisready-v1/server.js").read_text(encoding="utf-8")
+          manifest = json.loads(Path("products/faisready-v1/.izakhono.json").read_text(encoding="utf-8"))
+          merch = json.loads(Path("products/faisready-v1/merch.json").read_text(encoding="utf-8"))
+          assert 'id="shop"' in html
+          assert '/owner/' in html
+          assert '/api/merch/order' in app
+          assert '/api/owner/signin' in owner
+          assert 'CRM_ADMIN_TOKEN' not in owner
+          assert 'FAISREADY_CORE_PROJECT_KEY' not in owner
+          assert 'CRM_ADMIN_TOKEN' in server
+          assert 'FAISREADY_CORE_PROJECT_KEY' in server
+          assert manifest["infrastructure"]["policy"] == "owned-first-externally-reversible"
+          assert manifest["commercial"]["readiness_required"] is True
+          assert manifest["commercial"]["readiness_path"] == "/readiness"
+          for item in merch["items"]:
+              url = item.get("checkout_url")
+              assert url is None or url.startswith("https://pay.ikhokha.com/")
+          priced = {i["id"]: i["price"] for i in merch["items"] if i.get("price") is not None}
+          assert priced["faisready-hoodie"] == 550
+          assert priced["faisready-golfer"] == 250
+          assert priced["faisready-tee"] == 190
+          print("FAISREADY_OWNER_MERCH_GATE=PASS")
 
       - name: Verify one-click installer pin
         shell: python
         run: |
           from pathlib import Path
           cmd = Path("products/faisready-v1/INSTALL-FAISREADY-V1.cmd").read_text(encoding="utf-8")
-          assert "ffafed323524e0ab77895ac30d5d5e9218d04d6c" in cmd
+          assert "fd840eda1d221b9e505434ee5f6f946c5e36b15e" in cmd
+          assert "ffafed323524e0ab77895ac30d5d5e9218d04d6c" not in cmd
           assert "e62226ed68dfe906318661ac7f09ea71bf7cefe4" not in cmd
           assert "Payments remain disabled until separately verified." not in cmd
           assert "RE5 R299 iKhokha handoff is enabled in the validated release." in cmd
           assert "Automated entitlement remains disabled; payment alone does not grant access." in cmd
           assert "RE1, RE3, RE4 and bundle offers remain gated." in cmd
           assert "no FSCA endorsement and no pass guarantee" in cmd
+          assert "merch.json" in cmd
+          assert "owner.js" in cmd
+          assert "if($count -lt 17)" in cmd
           assert "FAISREADY_V1_OWNER_BUILD=PASS" in cmd
           assert "/api/projects/FAISReady-v1/validate" in cmd
           assert "Add-MpPreference" not in cmd
@@ -105,14 +152,7 @@ jobs:
       - name: Package owner launch bundle
         run: |
           mkdir -p dist/FAISReady-v1
-          cp products/faisready-v1/index.html dist/FAISReady-v1/
-          cp products/faisready-v1/styles.css dist/FAISReady-v1/
-          cp products/faisready-v1/app.js dist/FAISReady-v1/
-          mkdir -p dist/FAISReady-v1/assets
-          cp products/faisready-v1/assets/approved-photo-*.b64 dist/FAISReady-v1/assets/
-          cp products/faisready-v1/README.md dist/FAISReady-v1/
-          cp products/faisready-v1/RELEASE-CHECKLIST.md dist/FAISReady-v1/
-          cp products/faisready-v1/PAYMENT-INTEGRATION.md dist/FAISReady-v1/
+          cp -R products/faisready-v1/. dist/FAISReady-v1/
           cp products/faisready-v1/INSTALL-FAISREADY-V1.cmd dist/
           cd dist
           zip -r FAISREADY-V1-OWNER-LAUNCH.zip FAISReady-v1 INSTALL-FAISREADY-V1.cmd

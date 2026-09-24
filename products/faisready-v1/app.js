@@ -406,4 +406,141 @@
     qs("exportLeads").addEventListener("click", exportLeads);
     renderDashboard();
   });
+
+  var MERCH_STORAGE = "faisready.merch.cart";
+  var merchCatalog = [];
+
+  function moneyZar(value){
+    return new Intl.NumberFormat("en-ZA",{style:"currency",currency:"ZAR",maximumFractionDigits:0}).format(Number(value||0));
+  }
+
+  function merchCart(){
+    return readJson(MERCH_STORAGE, []);
+  }
+
+  function saveMerchCart(items){
+    writeJson(MERCH_STORAGE, items);
+    renderMerchCart();
+  }
+
+  function findMerch(id){
+    return merchCatalog.find(function(item){ return item.id === id; });
+  }
+
+  function addMerch(id, size){
+    var item = findMerch(id);
+    if(!item) return;
+    if(item.quote_only){
+      var form = qs("merchOrderForm");
+      if(form) form.scrollIntoView({behavior:"smooth",block:"center"});
+      toast("Tell us what your team needs and we will prepare the merch quote");
+      return;
+    }
+    if(item.sizes && item.sizes.length && !size){
+      toast("Choose a size first");
+      return;
+    }
+    var cart = merchCart();
+    var existing = cart.find(function(line){ return line.id === id && line.size === (size || ""); });
+    if(existing) existing.qty = Math.min(50, Number(existing.qty || 0) + 1);
+    else cart.push({id:id,size:size||"",qty:1});
+    saveMerchCart(cart);
+    toast(item.name + " added to cart");
+  }
+
+  function removeMerch(index){
+    var cart = merchCart();
+    cart.splice(index,1);
+    saveMerchCart(cart);
+  }
+
+  function renderMerchCatalog(){
+    var grid = qs("merchGrid");
+    if(!grid) return;
+    grid.textContent = "";
+    merchCatalog.filter(function(item){return item.active;}).forEach(function(item){
+      var card = document.createElement("article");
+      card.className = "merch-card";
+      var badge = document.createElement("span");
+      badge.className = "course-code";
+      badge.textContent = item.quote_only ? "TEAM" : "MERCH";
+      var h = document.createElement("h3"); h.textContent = item.name;
+      var p = document.createElement("p"); p.textContent = item.description || "";
+      var price = document.createElement("strong"); price.className = "merch-price"; price.textContent = item.quote_only ? "Custom quote" : moneyZar(item.price);
+      card.appendChild(badge); card.appendChild(h); card.appendChild(p); card.appendChild(price);
+      var size = null;
+      if(item.sizes && item.sizes.length){
+        size = document.createElement("select"); size.className = "merch-size";
+        var blank = document.createElement("option"); blank.value=""; blank.textContent="Choose size"; size.appendChild(blank);
+        item.sizes.forEach(function(s){var o=document.createElement("option");o.value=s;o.textContent=s;size.appendChild(o);});
+        card.appendChild(size);
+      }
+      var b=document.createElement("button"); b.type="button"; b.className="btn primary"; b.textContent=item.quote_only?"Request team merch quote":"Add to cart";
+      b.addEventListener("click",function(){ addMerch(item.id,size?size.value:""); });
+      card.appendChild(b);
+      grid.appendChild(card);
+    });
+  }
+
+  function renderMerchCart(){
+    var lines = qs("merchCartLines"), totalEl = qs("merchCartTotal");
+    if(!lines || !totalEl) return;
+    var cart=merchCart(), total=0;
+    lines.textContent="";
+    if(!cart.length){
+      var empty=document.createElement("p"); empty.className="fine"; empty.textContent="Your cart is empty."; lines.appendChild(empty);
+      totalEl.textContent=moneyZar(0); return;
+    }
+    cart.forEach(function(line,index){
+      var item=findMerch(line.id); if(!item) return;
+      var qty=Math.max(1,Number(line.qty||1)); total += Number(item.price||0)*qty;
+      var row=document.createElement("div"); row.className="cart-line";
+      var label=document.createElement("span"); label.textContent=qty+" × "+item.name+(line.size?" — "+line.size:"");
+      var amount=document.createElement("strong"); amount.textContent=moneyZar(Number(item.price||0)*qty);
+      var remove=document.createElement("button"); remove.type="button"; remove.textContent="Remove"; remove.className="cart-remove"; remove.addEventListener("click",function(){removeMerch(index);});
+      row.appendChild(label); row.appendChild(amount); row.appendChild(remove); lines.appendChild(row);
+    });
+    totalEl.textContent=moneyZar(total);
+  }
+
+  async function submitMerchOrder(form){
+    var cart=merchCart();
+    if(!cart.length){ toast("Add merchandise to your cart first"); return; }
+    var data=serializeForm(form);
+    var payload={name:data.name,mobile:data.mobile,email:data.email||"",delivery:data.delivery||"",items:cart};
+    try{
+      var response=await fetch("/api/merch/order",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(payload)});
+      var result=await response.json().catch(function(){return {};});
+      if(!response.ok) throw new Error(result.error||"Merch order service unavailable");
+      saveMerchCart([]);
+      form.reset();
+      toast("Order "+result.order_ref+" saved — we will confirm stock and iKhokha payment");
+    }catch(error){
+      var total=0;
+      cart.forEach(function(line){var item=findMerch(line.id); if(item) total+=Number(item.price||0)*Number(line.qty||1);});
+      var record=saveLead("merch",payload);
+      emitFabric("order.requested",record.id,{
+        contact:{name:data.name,email:data.email||"",phone:data.mobile||"",source:"faisready-merch"},
+        opportunity:{title:"FAISReady Merch order",value:total,currency:"ZAR",next_action:"Confirm stock, fulfilment and verified iKhokha payment route",source:"faisready-merch"},
+        note:"Merch order captured through resilience route. Payment has not been confirmed."
+      });
+      saveMerchCart([]);
+      form.reset();
+      toast("Order request saved for follow-up");
+    }
+  }
+
+  window.addEventListener("DOMContentLoaded", function(){
+    fetch("merch.json").then(function(r){if(!r.ok) throw new Error("catalog unavailable");return r.json();}).then(function(data){
+      merchCatalog=(data.items||[]).filter(function(item){return item.active;});
+      renderMerchCatalog(); renderMerchCart();
+    }).catch(function(){
+      var grid=qs("merchGrid"); if(grid) grid.textContent="Merchandise catalogue is temporarily unavailable.";
+    });
+    var form=qs("merchOrderForm");
+    if(form) form.addEventListener("submit",function(event){event.preventDefault();submitMerchOrder(event.currentTarget);});
+    var clear=qs("clearMerchCart");
+    if(clear) clear.addEventListener("click",function(){saveMerchCart([]);toast("Merch cart cleared");});
+  });
+
 })();

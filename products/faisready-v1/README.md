@@ -44,3 +44,19 @@ FAISReady is an independent preparation product. It must not imply FSCA endorsem
 ## Current launch purpose
 
 The goal of this version is to start generating measurable demand and leads immediately while the payment and production-service layers remain safely gated.
+
+
+## Owner portal and merchandise
+
+- Public owner route: `/owner/`
+- Authentication: IZAKHONO Core project `faisready`; no owner password is embedded in browser source.
+- Administrative CRM data is proxied server-side so `CRM_ADMIN_TOKEN` never enters the browser.
+- Merchandise catalogue: `merch.json`.
+- Merchandise orders enter the FAISReady-scoped IZAKHONO CRM pipeline through the server-side ingest token.
+- A merchandise cart/order request is not payment confirmation.
+- Merchandise checkout links remain fail-closed until an exact approved iKhokha production route is recorded.
+- Run `PROVISION-FAISREADY-OWNER.sh` as root on NODE01 to create the initial owner account and fail-closed runtime environment.
+
+## Owned publication
+
+FAISReady now includes a NODE01 container contract in `.izakhono.json`. The commercial readiness endpoint is `/readiness`. It returns `commercial_ready=true` only when the NODE01 runtime has owner authentication and CRM order intake provisioned and the explicit commercial readiness flag is enabled after final acceptance.

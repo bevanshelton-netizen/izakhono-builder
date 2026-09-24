@@ -1,0 +1,36 @@
+{
+  "version": 4,
+  "name": "FAISReady",
+  "slug": "faisready",
+  "operator": "IZAKHONO AFRICA (PTY) LTD",
+  "trading_name": "FAISReady",
+  "build_context": ".",
+  "dockerfile_path": "Dockerfile",
+  "container_port": 3000,
+  "health_path": "/healthz",
+  "branch": "main",
+  "commercial": {
+    "readiness_required": true,
+    "readiness_path": "/readiness",
+    "readiness_field": "commercial_ready"
+  },
+  "infrastructure": {
+    "policy": "owned-first-externally-reversible",
+    "authoritative_source": "IZAKHONO CODE / Builder",
+    "owned_target": "NODE01 via IZAKHONO WORK/RUNTIME",
+    "current_public_route": "NOT_YET_VERIFIED",
+    "external_fallback": "PREPARED_NOT_VERIFIED",
+    "status_label": "NOT YET PUBLIC",
+    "data_dependencies": ["IZAKHONO CRM scoped to FAISReady"],
+    "auth_dependencies": ["IZAKHONO Core project faisready"],
+    "payment_dependencies": ["iKhokha verified checkout links only"],
+    "backup_evidence": "PENDING_NODE01_PROOF",
+    "restore_evidence": "PENDING_NODE01_PROOF",
+    "rollback_evidence": "IZAKHONO RUNTIME candidate rollback gate"
+  },
+  "alpha": {
+    "preflight": false,
+    "rehearsal": false,
+    "windows_package": false
+  }
+}

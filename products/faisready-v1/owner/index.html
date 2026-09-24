@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>FAISReady Owner Portal</title>
+  <meta name="robots" content="noindex,nofollow">
+  <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/owner/owner.css">
+</head>
+<body class="owner-page">
+  <main class="owner-shell">
+    <header class="owner-head">
+      <a class="brand" href="/" aria-label="Back to FAISReady"><span class="brand-mark">FR</span><div><strong>FAIS<span>Ready</span></strong><small>OWNER CONTROL CENTRE</small></div></a>
+      <a class="btn secondary" href="/">Public site</a>
+    </header>
+
+    <section class="owner-login" id="loginPanel">
+      <span class="eyebrow">SECURE OWNER ACCESS</span>
+      <h1>FAISReady Owner Portal</h1>
+      <p>Sign in through IZAKHONO Core. No owner password is stored in the website source.</p>
+      <form id="ownerLogin" class="form-card owner-form">
+        <label class="field">Email<input name="email" type="email" autocomplete="username" required></label>
+        <label class="field">Password<input name="password" type="password" autocomplete="current-password" required></label>
+        <button class="btn primary" type="submit">Sign in</button>
+      </form>
+      <p class="fine" id="loginStatus">Owner access stays locked until NODE01 provisioning is complete.</p>
+    </section>
+
+    <section id="portal" hidden>
+      <div class="owner-toolbar">
+        <div><span class="eyebrow">OWNER</span><h2 id="ownerIdentity">FAISReady</h2></div>
+        <div class="cta-row"><button id="refreshOwner" class="btn secondary">Refresh</button><button id="signOutOwner" class="btn primary">Sign out</button></div>
+      </div>
+      <div class="owner-grid" id="ownerStats">
+        <article class="panel"><span>Contacts</span><strong id="statContacts">0</strong></article>
+        <article class="panel"><span>Open opportunities</span><strong id="statOpen">0</strong></article>
+        <article class="panel"><span>Pipeline value</span><strong id="statPipeline">R0</strong></article>
+        <article class="panel"><span>Merch orders</span><strong id="statMerch">0</strong></article>
+      </div>
+
+      <section class="owner-card">
+        <div class="section-head"><span class="eyebrow">MERCH</span><h2>Merchandise orders</h2><p>Orders are enquiries until stock, delivery and the verified iKhokha payment route are confirmed.</p></div>
+        <div class="table-wrap"><table><thead><tr><th>Order</th><th>Value</th><th>Stage</th><th>Next action</th></tr></thead><tbody id="merchRows"></tbody></table></div>
+      </section>
+
+      <section class="owner-card">
+        <div class="section-head"><span class="eyebrow">CRM</span><h2>Recent opportunities</h2></div>
+        <div class="table-wrap"><table><thead><tr><th>Opportunity</th><th>Value</th><th>Stage</th><th>Updated</th></tr></thead><tbody id="dealRows"></tbody></table></div>
+      </section>
+
+      <section class="owner-card">
+        <div class="section-head"><span class="eyebrow">NEXT ACTIONS</span><h2>Owner attention</h2></div>
+        <ul id="ownerInsights" class="owner-insights"></ul>
+      </section>
+    </section>
+  </main>
+  <div class="toast" id="toast" role="status"></div>
+  <script src="/owner/owner.js"></script>
+</body>
+</html>

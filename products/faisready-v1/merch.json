@@ -1,0 +1,44 @@
+{
+  "currency": "ZAR",
+  "payment_provider": "iKhokha",
+  "checkout_mode": "verified-link-only",
+  "items": [
+    {
+      "id": "faisready-hoodie",
+      "name": "FAISReady Signature Hoodie",
+      "description": "Premium branded study and lifestyle hoodie.",
+      "price": 550,
+      "sizes": ["S","M","L","XL","2XL","3XL","4XL","5XL","6XL"],
+      "active": true,
+      "checkout_url": null
+    },
+    {
+      "id": "faisready-golfer",
+      "name": "FAISReady Golf Shirt",
+      "description": "Smart branded golfer for learners, facilitators and teams.",
+      "price": 250,
+      "sizes": ["S","M","L","XL","2XL","3XL","4XL","5XL","6XL"],
+      "active": true,
+      "checkout_url": null
+    },
+    {
+      "id": "faisready-tee",
+      "name": "FAISReady T-Shirt",
+      "description": "Everyday branded tee for study days, events and teams.",
+      "price": 190,
+      "sizes": ["S","M","L","XL","2XL","3XL","4XL","5XL","6XL"],
+      "active": true,
+      "checkout_url": null
+    },
+    {
+      "id": "faisready-team-pack",
+      "name": "FAISReady Team Merch Pack",
+      "description": "Custom branded merchandise for employers, training groups and institutions.",
+      "price": null,
+      "sizes": [],
+      "active": true,
+      "checkout_url": null,
+      "quote_only": true
+    }
+  ]
+}
