@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import crypto from "node:crypto";
 
 const here=path.dirname(fileURLToPath(import.meta.url));
-const registry=JSON.parse(await fs.readFile(path.join(here,"wave1-adapters.json"),"utf8"));
+const registry=JSON.parse(await fs.readFile(path.join(here,"portfolio-adapters.json"),"utf8"));
 const HOST=process.env.HOST||"127.0.0.1";
 const PORT=Number(process.env.PORT||8090);
 const CRM_URL=(process.env.IZAKHONO_CRM_URL||"http://127.0.0.1:8080").replace(/\/$/,"");
@@ -29,7 +29,11 @@ function response(res,status,body,extra={}){
 function bearer(req){const v=req.headers.authorization||"";return v.startsWith("Bearer ")?v.slice(7):""}
 function safeEqual(a,b){if(!a||!b)return false;const aa=Buffer.from(a),bb=Buffer.from(b);return aa.length===bb.length&&crypto.timingSafeEqual(aa,bb)}
 async function readBody(req,limit=128*1024){let size=0;const chunks=[];for await(const chunk of req){size+=chunk.length;if(size>limit)throw Object.assign(new Error("body too large"),{status:413});chunks.push(chunk)}if(!chunks.length)return{};try{return JSON.parse(Buffer.concat(chunks).toString("utf8"))}catch{throw Object.assign(new Error("invalid json"),{status:400})}}
-function platformConfig(id){return registry.platforms[clean(id,80)]||null}
+function platformConfig(id){
+  const platform=registry.platforms[clean(id,80)]||null;
+  if(platform&&!platform.active) throw Object.assign(new Error("platform adapter is blocked pending legal/entity configuration"),{status:409});
+  return platform;
+}
 function publicOriginAllowed(req){
   const origin=clean(req.headers.origin,400);
   if(!origin)return ALLOW_ORIGINLESS;
@@ -37,10 +41,14 @@ function publicOriginAllowed(req){
 }
 function normalizeEvent(body,platform){
   const type=clean(body.event_type,100);
-  const stage=platform.stages[type];
-  if(!stage)throw Object.assign(new Error("event type is not approved for this platform"),{status:400});
   const contact=body.contact&&typeof body.contact==="object"?body.contact:{};
   const opportunity=body.opportunity&&typeof body.opportunity==="object"?body.opportunity:{};
+  let stage=platform.stages[type];
+  if(type==="opportunity.stage_changed"){
+    stage=clean(opportunity.stage,120);
+    if(!platform.allowed_stages.includes(stage)) throw Object.assign(new Error("stage is not approved for this platform"),{status:400});
+  }
+  if(!stage)throw Object.assign(new Error("event type is not approved for this platform"),{status:400});
   const subjectRef=clean(body.subject_ref||body.external_ref||body.event_id,180)||eventId();
   const value=Number(opportunity.value||0);
   return {
