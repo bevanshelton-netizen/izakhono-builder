@@ -5,8 +5,13 @@ if [ "${EUID:-$(id -u)}" -ne 0 ]; then echo '[STOP] Run as root.'; exit 1; fi
 HOSTNAME="${1:-}"
 ORIGINS="${2:-}"
 MODE="${3:-}"
+BRIDGE_ORIGIN='https://bridge.izakhonoafrica.co.za'
 [[ "$HOSTNAME" =~ ^[A-Za-z0-9.-]+$ ]] || { echo 'Usage: prepare-edge.sh <hostname> <comma-separated-allowed-origins> [--apply]'; exit 2; }
 [ -n "$ORIGINS" ] || { echo '[STOP] At least one exact allowed browser origin is required.'; exit 2; }
+case ",$ORIGINS," in
+  *",$BRIDGE_ORIGIN,"*) ;;
+  *) ORIGINS="$ORIGINS,$BRIDGE_ORIGIN" ;;
+esac
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ENV_FILE=/opt/izakhono/secrets/app-fabric-runtime.env
