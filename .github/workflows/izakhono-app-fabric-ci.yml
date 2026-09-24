@@ -1,0 +1,38 @@
+name: IZAKHONO APP FABRIC CI
+
+on:
+  pull_request:
+    paths:
+      - "products/izakhono-fabric/**"
+      - "src/index.ts"
+      - "docs/PORTFOLIO-APP-FABRIC-INHERITANCE.md"
+      - ".github/workflows/izakhono-app-fabric-ci.yml"
+  push:
+    branches: [main]
+    paths:
+      - "products/izakhono-fabric/**"
+      - "src/index.ts"
+      - "docs/PORTFOLIO-APP-FABRIC-INHERITANCE.md"
+      - ".github/workflows/izakhono-app-fabric-ci.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Validate APP FABRIC
+        working-directory: products/izakhono-fabric
+        run: |
+          npm run check
+          npm test
+      - name: Validate capability registry JSON
+        run: node -e "JSON.parse(require('fs').readFileSync('products/izakhono-fabric/capabilities.json','utf8')); console.log('capabilities registry ok')"
+      - name: Typecheck Builder
+        run: npm run typecheck
