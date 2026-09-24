@@ -6,27 +6,27 @@ const BRIDGE_ORIGIN="https://bridge.izakhonoafrica.co.za";
 const allowedPlatforms=new Set(["gateway","social-command","webstart","kora","faisready","matric-rewrite","command-center","containers","chancellor","allegro","yenzanow"]);
 const allowedEvents=new Set(["gateway_view","platform_open","platform_share","revenue_cta"]);
 
-const fabricPlatforms:Record<string,{entity_id:string;events:Record<string,string>;origins?:string[]}>={
+const fabricPlatforms:Record<string,{entity_id:string;events:Record<string,string>;origins?:string[];vercelPrefixes?:string[]}>={
   "izakhono-clothing":{entity_id:"izakhono-africa",events:{"lead.created":"New enquiry","quote.requested":"New enquiry"},origins:["https://izakhonoafrica.co.za","https://www.izakhonoafrica.co.za","https://izakhono-online.com","https://www.izakhono-online.com"]},
-  "kora":{entity_id:"izakhono-africa",events:{"lead.created":"New"},origins:["https://kora-network.vercel.app"]},
+  "kora":{entity_id:"izakhono-africa",events:{"lead.created":"New"},origins:["https://kora-network.vercel.app"],vercelPrefixes:["kora-network"]},
   "kora-cinema":{entity_id:"izakhono-africa",events:{"lead.created":"New"}},
   "kora-gospel-tv":{entity_id:"izakhono-africa",events:{"lead.created":"New"}},
   "kora-kids":{entity_id:"izakhono-africa",events:{"lead.created":"New"}},
-  "allegro-vibez":{entity_id:"izakhono-africa",events:{"lead.created":"New"},origins:["https://allegro-vibez.vercel.app"]},
+  "allegro-vibez":{entity_id:"izakhono-africa",events:{"lead.created":"New"},origins:["https://allegro-vibez.vercel.app"],vercelPrefixes:["allegro-vibez"]},
   "allegro-radio":{entity_id:"izakhono-africa",events:{"lead.created":"New"},origins:["https://allegro-vibez.vercel.app"]},
   "edu-build":{entity_id:"edu-build-shelton",events:{"lead.created":"Enquiry"},origins:["https://edubuildshelton.org.za","https://www.edubuildshelton.org.za"]},
   "ecd360":{entity_id:"edu-build-shelton",events:{"lead.created":"Enquiry"},origins:["https://edubuildshelton.org.za","https://www.edubuildshelton.org.za"]},
-  "faisready":{entity_id:"izakhono-africa",events:{"lead.created":"Lead","checkout.started":"Checkout started"},origins:["https://faisready.co.za","https://www.faisready.co.za","https://faisready-revenue.vercel.app"]},
-  "doxa-sure":{entity_id:"izakhono-africa",events:{"lead.created":"New"}},
-  "auto-ai":{entity_id:"izakhono-africa",events:{"lead.created":"Lead"},origins:["https://auto-ai.vercel.app"]},
-  "learner-driver-sa":{entity_id:"izakhono-africa",events:{"lead.created":"Lead"}},
-  "worknow":{entity_id:"izakhono-africa",events:{"lead.created":"Prospect"},origins:["https://worknow-sa.vercel.app"]},
+  "faisready":{entity_id:"izakhono-africa",events:{"lead.created":"Lead","checkout.started":"Checkout started"},origins:["https://faisready.co.za","https://www.faisready.co.za","https://faisready-revenue.vercel.app"],vercelPrefixes:["faisready-revenue"]},
+  "doxa-sure":{entity_id:"izakhono-africa",events:{"lead.created":"New"},origins:["https://doxahosting.co.za","https://www.doxahosting.co.za","https://bevanshelton-netizen.github.io"]},
+  "auto-ai":{entity_id:"izakhono-africa",events:{"lead.created":"Lead","checkout.started":"Quote requested"},origins:["https://auto-ai.vercel.app","https://auto-ai-eosin.vercel.app"],vercelPrefixes:["auto","auto-ai"]},
+  "learner-driver-sa":{entity_id:"izakhono-africa",events:{"lead.created":"Lead"},origins:["https://learner-driver-sa-bevan2.vercel.app"],vercelPrefixes:["learner-driver-sa"]},
+  "worknow":{entity_id:"izakhono-africa",events:{"lead.created":"Prospect"},origins:["https://worknow-sa.vercel.app"],vercelPrefixes:["worknow","worknow-sa"]},
   "memory-mania":{entity_id:"izakhono-africa",events:{"lead.created":"Lead"}},
   "music-school":{entity_id:"izakhono-africa",events:{"lead.created":"Enquiry"}},
   "recording-studio":{entity_id:"izakhono-africa",events:{"lead.created":"Enquiry"}},
   "supercool":{entity_id:"izakhono-africa",events:{"lead.created":"Lead"}},
   "zeely-style":{entity_id:"izakhono-africa",events:{"lead.created":"Lead"}},
-  "the-chancellor":{entity_id:"izakhono-africa",events:{"lead.created":"Lead"},origins:["https://the-chancellor.vercel.app","https://the-chancellor-1eiq.vercel.app"]},
+  "the-chancellor":{entity_id:"izakhono-africa",events:{"lead.created":"Lead"},origins:["https://the-chancellor.vercel.app","https://the-chancellor-1eiq.vercel.app"],vercelPrefixes:["the-chancellor"]},
   "fortress":{entity_id:"izakhono-africa",events:{"lead.created":"Target account"}},
   "izakhono-code":{entity_id:"izakhono-africa",events:{"lead.created":"Lead"}},
   "izakhono-work":{entity_id:"izakhono-africa",events:{"lead.created":"Lead"}},
@@ -47,8 +47,16 @@ function firstPartyOrigin(origin:string){
 }
 function platformOriginAllowed(origin:string,platformId?:string){
   if(firstPartyOrigin(origin)) return true;
-  if(!platformId) return exactFabricOrigins.has(origin);
-  return fabricPlatforms[platformId]?.origins?.includes(origin)===true;
+  if(exactFabricOrigins.has(origin)) return true;
+  try{
+    const host=new URL(origin).hostname.toLowerCase();
+    if(!host.endsWith("-bevan2.vercel.app")) return false;
+    if(!platformId){
+      return Object.values(fabricPlatforms).some(cfg=>(cfg.vercelPrefixes||[]).some(prefix=>host.startsWith(prefix.toLowerCase()+"-")));
+    }
+    const cfg=fabricPlatforms[platformId];
+    return (cfg?.vercelPrefixes||[]).some(prefix=>host.startsWith(prefix.toLowerCase()+"-"));
+  }catch{return false}
 }
 function headers(origin:string|null){
   let allowedOrigin="https://yfawrenhudjomhnglfhq.supabase.co";

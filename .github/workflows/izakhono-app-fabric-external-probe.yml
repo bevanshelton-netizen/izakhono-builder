@@ -34,7 +34,10 @@ jobs:
             'https://faisready.co.za' \
             'https://allegro-vibez.vercel.app' \
             'https://the-chancellor.vercel.app' \
-            'https://fortress.izakhonoafrica.co.za'
+            'https://fortress.izakhonoafrica.co.za' \
+            'https://auto-fqvr5jlsb-bevan2.vercel.app' \
+            'https://learner-driver-sa-bevan2.vercel.app' \
+            'https://bevanshelton-netizen.github.io'
           do
             headers="$(mktemp)"
             curl -fsS -o /dev/null -D "$headers" -X OPTIONS -H "Origin: $origin" \

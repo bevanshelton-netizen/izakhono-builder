@@ -1,5 +1,5 @@
 {
-  "version": 2,
+  "version": 3,
   "policy": "owned-first-externally-reversible",
   "primary_owned": {
     "endpoint": "https://fabric.izakhonoafrica.co.za",
@@ -9,7 +9,7 @@
     "provider": "Supabase WebStart",
     "project_ref": "yfawrenhudjomhnglfhq",
     "function": "izakhono-gateway-event",
-    "function_version": 4,
+    "function_version": 7,
     "endpoint": "https://yfawrenhudjomhnglfhq.supabase.co/functions/v1/izakhono-gateway-event",
     "status": "EXTERNAL_BRIDGE_VERIFIED",
     "health_http_status": 200,
@@ -23,7 +23,13 @@
       "fortress"
     ],
     "synthetic_wave2_events_persisted": true,
-    "synthetic_wave2_rows_removed_after_test": true
+    "synthetic_wave2_rows_removed_after_test": true,
+    "product_scoped_vercel_preview_origins": true,
+    "auto_ai_checkout_started_verified": true,
+    "auto_ai_checkout_started_http_status": 202,
+    "auto_ai_checkout_stage": "Quote requested",
+    "auto_ai_synthetic_rows_removed_after_test": true,
+    "vercel_preflight_fix_verified_in_code": true
   },
   "routing": "primary-then-external",
   "external_to_owned_forwarding": "automatic on each accepted external event; queued backlog attempts are flushed in small batches",
@@ -57,5 +63,21 @@
   ],
   "blocked_public_platforms": {
     "crowne-by-netty": "legal entity unresolved in canonical CRM registry"
+  },
+  "source_rollout": {
+    "kora": [
+      "creator application",
+      "live-event application",
+      "advertiser relationship"
+    ],
+    "doxa-sure": [
+      "public protection enquiry"
+    ],
+    "learner-driver-sa": [
+      "driving-school partner signup"
+    ],
+    "auto-ai": [
+      "checkout started; payment remains external to APP FABRIC"
+    ]
   }
 }
