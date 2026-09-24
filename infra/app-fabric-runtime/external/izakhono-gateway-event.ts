@@ -47,12 +47,14 @@ function firstPartyOrigin(origin:string){
 }
 function platformOriginAllowed(origin:string,platformId?:string){
   if(firstPartyOrigin(origin)) return true;
-  if(!platformId) return exactFabricOrigins.has(origin);
-  const cfg=fabricPlatforms[platformId];
-  if(cfg?.origins?.includes(origin)===true) return true;
+  if(exactFabricOrigins.has(origin)) return true;
   try{
     const host=new URL(origin).hostname.toLowerCase();
     if(!host.endsWith("-bevan2.vercel.app")) return false;
+    if(!platformId){
+      return Object.values(fabricPlatforms).some(cfg=>(cfg.vercelPrefixes||[]).some(prefix=>host.startsWith(prefix.toLowerCase()+"-")));
+    }
+    const cfg=fabricPlatforms[platformId];
     return (cfg?.vercelPrefixes||[]).some(prefix=>host.startsWith(prefix.toLowerCase()+"-"));
   }catch{return false}
 }
