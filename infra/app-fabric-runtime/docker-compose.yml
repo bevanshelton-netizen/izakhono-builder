@@ -14,8 +14,6 @@ services:
       CRM_INGEST_TOKEN: ${CRM_INGEST_TOKEN}
     volumes:
       - crm_data:/data
-    ports:
-      - "127.0.0.1:18080:8080"
     networks:
       - private
     healthcheck:
@@ -44,8 +42,6 @@ services:
       FABRIC_OUTBOX_FILE: /data/outbox.json
     volumes:
       - fabric_outbox:/data
-    ports:
-      - "127.0.0.1:18090:8090"
     depends_on:
       crm:
         condition: service_healthy
