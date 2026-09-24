@@ -2,6 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   chooseProvider,
+  ikhokhaSignature,
+  verifyIkhokhaSignature,
   ipv4InCidr,
   md5Hex,
   payfastEncode,
@@ -14,7 +16,25 @@ test('mock mode always routes to mock', () => {
   assert.equal(chooseProvider({ PAYMENT_MODE: 'mock' }, 'ZAR', 'smart'), 'mock');
 });
 
-test('smart ZAR routing prefers configured Paystack, then PayFast', () => {
+test('smart ZAR routing prefers configured iKhokha in verified live mode', () => {
+  const env = { PAYMENT_MODE: 'live', IKHOKHA_MODE: 'live', IKHOKHA_APP_ID: 'app', IKHOKHA_APP_SECRET: 'secret', PAYSTACK_SECRET_KEY: 'sk_live_x' };
+  assert.equal(chooseProvider(env, 'ZAR', 'smart'), 'ikhokha');
+});
+
+test('iKhokha stays disabled outside live mode', () => {
+  const env = { PAYMENT_MODE: 'sandbox', IKHOKHA_MODE: 'live', IKHOKHA_APP_ID: 'app', IKHOKHA_APP_SECRET: 'secret', PAYSTACK_SECRET_KEY: 'sk_test_x' };
+  assert.equal(chooseProvider(env, 'ZAR', 'smart'), 'paystack');
+});
+
+test('iKhokha HMAC verification accepts only the correct signature', () => {
+  const raw = JSON.stringify({ externalTransactionID: 'IZP-123', status: 'SUCCESS', responseCode: '00' });
+  const secret = 'test-secret';
+  const sig = ikhokhaSignature('/api/webhooks/ikhokha', raw, secret);
+  assert.equal(verifyIkhokhaSignature('/api/webhooks/ikhokha', raw, sig, secret), true);
+  assert.equal(verifyIkhokhaSignature('/api/webhooks/ikhokha', raw, sig.slice(0, -1) + '0', secret), false);
+});
+
+test('smart ZAR routing prefers configured Paystack, then PayFast when iKhokha is unavailable', () => {
   const paystack = { PAYMENT_MODE: 'sandbox', PAYSTACK_SECRET_KEY: 'sk_test_x', PAYFAST_MERCHANT_ID: '1', PAYFAST_MERCHANT_KEY: 'k' };
   assert.equal(chooseProvider(paystack, 'ZAR', 'smart'), 'paystack');
   const payfast = { PAYMENT_MODE: 'sandbox', PAYSTACK_ENABLED: 'false', PAYFAST_MERCHANT_ID: '1', PAYFAST_MERCHANT_KEY: 'k' };
