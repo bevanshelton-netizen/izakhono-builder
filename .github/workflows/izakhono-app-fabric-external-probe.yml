@@ -21,9 +21,24 @@ jobs:
       - uses: actions/checkout@v4
       - name: Verify external bridge health
         run: |
-          curl -fsS 'https://yfawrenhudjomhnglfhq.supabase.co/functions/v1/izakhono-gateway-event'             | jq -e '.ok == true and .fabric_bridge == true and .mode == "hybrid-external-resilience" and .payment_confirmation == false'
+          curl -fsS 'https://yfawrenhudjomhnglfhq.supabase.co/functions/v1/izakhono-gateway-event'             | jq -e '.ok == true and .fabric_bridge == true and .mode == "hybrid-external-resilience" and .payment_confirmation == false and .public_platform_count >= 25'
       - name: Verify FAISReady CORS preflight without writing data
         run: |
           headers="$(mktemp)"
           curl -fsS -o /dev/null -D "$headers" -X OPTIONS             -H 'Origin: https://faisready.co.za'             'https://yfawrenhudjomhnglfhq.supabase.co/functions/v1/izakhono-gateway-event'
           grep -qi '^access-control-allow-origin: https://faisready.co.za' "$headers"
+
+      - name: Verify portfolio product CORS without writing data
+        run: |
+          for origin in \
+            'https://faisready.co.za' \
+            'https://allegro-vibez.vercel.app' \
+            'https://the-chancellor.vercel.app' \
+            'https://fortress.izakhonoafrica.co.za'
+          do
+            headers="$(mktemp)"
+            curl -fsS -o /dev/null -D "$headers" -X OPTIONS -H "Origin: $origin" \
+              'https://yfawrenhudjomhnglfhq.supabase.co/functions/v1/izakhono-gateway-event'
+            grep -qi "^access-control-allow-origin: $origin" "$headers"
+            rm -f "$headers"
+          done
