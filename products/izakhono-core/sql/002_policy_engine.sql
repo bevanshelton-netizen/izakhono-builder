@@ -3,7 +3,14 @@ BEGIN;
 ALTER TABLE iz_core_table_policies
   ADD COLUMN IF NOT EXISTS scope_field text,
   ADD COLUMN IF NOT EXISTS read_roles text[] NOT NULL DEFAULT '{}'::text[],
-  ADD COLUMN IF NOT EXISTS write_roles text[] NOT NULL DEFAULT '{}'::text[];
+  ADD COLUMN IF NOT EXISTS write_roles text[] NOT NULL DEFAULT '{}'::text[],
+  ADD COLUMN IF NOT EXISTS anonymous_select boolean NOT NULL DEFAULT false,
+  ADD COLUMN IF NOT EXISTS anonymous_insert boolean NOT NULL DEFAULT false,
+  ADD COLUMN IF NOT EXISTS anonymous_insert_fields text[] NOT NULL DEFAULT '{}'::text[],
+  ADD COLUMN IF NOT EXISTS anonymous_owner_field text;
+
+ALTER TABLE iz_core_rows
+  ALTER COLUMN created_by DROP NOT NULL;
 
 ALTER TABLE iz_core_table_policies
   DROP CONSTRAINT IF EXISTS iz_core_table_policies_mode_check;
