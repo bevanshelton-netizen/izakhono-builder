@@ -13,7 +13,7 @@ echo.
 set "BASE=http://127.0.0.1:9393"
 set "ROOT=%LOCALAPPDATA%\IzakhonoWork\data\projects\FAISReady-v1"
 set "TEMPBUILD=%TEMP%\FAISREADY-V1-%RANDOM%"
-set "SRC=https://raw.githubusercontent.com/bevanshelton-netizen/izakhono-builder/e62226ed68dfe906318661ac7f09ea71bf7cefe4/products/faisready-v1"
+set "SRC=https://raw.githubusercontent.com/bevanshelton-netizen/izakhono-builder/ffafed323524e0ab77895ac30d5d5e9218d04d6c/products/faisready-v1"
 
 echo [1/5] Checking IZAKHONO WORK v1...
 powershell.exe -NoProfile -Command "$ErrorActionPreference='Stop'; $h=Invoke-RestMethod -Uri '%BASE%/healthz' -TimeoutSec 4; if(-not $h.ok -or $h.version -ne '1.0.0'){ throw 'IZAKHONO WORK v1.0.0 is not running.' }; Write-Host 'IZAKHONO_WORK_V1=READY'"
@@ -52,7 +52,10 @@ echo                FAISReady v1 BUILD PASSED
 echo ============================================================
 echo.
 echo The real launch product is installed inside IZAKHONO WORK.
-echo Payments remain disabled until separately verified.
+echo RE5 R299 iKhokha handoff is enabled in the validated release.
+echo Automated entitlement remains disabled; payment alone does not grant access.
+echo RE1, RE3, RE4 and bundle offers remain gated.
+echo Independent preparation only: no FSCA endorsement and no pass guarantee.
 echo.
 rmdir /s /q "%TEMPBUILD%" >nul 2>&1
 pause
