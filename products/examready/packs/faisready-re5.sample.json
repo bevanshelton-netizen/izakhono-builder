@@ -1,0 +1,16 @@
+{
+  "id":"za-fais-re5-prep",
+  "vertical":"FAISReady",
+  "jurisdiction":"South Africa",
+  "exam_body":"External regulatory examination body",
+  "title":"RE5 Preparation",
+  "syllabus_version":"current-verified-before-publication",
+  "official_exam_languages":["en"],
+  "supported_learning_languages":["en","af","zu","xh","nso","tn","st","ts","ss","ve","nr","nso"],
+  "reviewed_at":"2026-09-24",
+  "external_credential_awarded":false,
+  "topics":[
+    {"id":"foundations","title":"Regulatory foundations","objectives":["Understand the verified syllabus concepts mapped to this preparation pack."],"tutor_assets":[]},
+    {"id":"application","title":"Applied examination practice","objectives":["Apply verified concepts to original ExamReady practice scenarios."],"tutor_assets":[]}
+  ]
+}
