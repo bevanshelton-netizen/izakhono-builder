@@ -17,7 +17,7 @@ test('mock mode always routes to mock', () => {
 });
 
 test('smart ZAR routing prefers configured iKhokha in verified live mode', () => {
-  const env = { PAYMENT_MODE: 'live', IKHOKHA_MODE: 'live', IKHOKHA_APP_ID: 'app', IKHOKHA_APP_SECRET: 'secret', PAYSTACK_SECRET_KEY: 'sk_live_x' };
+  const env = { PAYMENT_MODE: 'live', IKHOKHA_MODE: 'live', IKHOKHA_APP_ID: 'app', IKHOKHA_APP_SECRET: 'secret', PAYSTACK_SECRET_KEY: 'configured-test-key' };
   assert.equal(chooseProvider(env, 'ZAR', 'smart'), 'ikhokha');
 });
 
