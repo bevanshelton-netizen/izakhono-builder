@@ -1,0 +1,37 @@
+{
+  "version": 4,
+  "name": "IZAKHONO CRM",
+  "slug": "izakhono-crm",
+  "operator": "IZAKHONO AFRICA (PTY) LTD",
+  "trading_name": "IZAKHONO CRM",
+  "build_context": "products/izakhono-crm",
+  "dockerfile_path": "products/izakhono-crm/Dockerfile",
+  "container_port": 8080,
+  "health_path": "/health",
+  "branch": "main",
+  "infrastructure": {
+    "policy": "owned-first-externally-reversible",
+    "authoritative_source": "IZAKHONO CODE / Forge",
+    "owned_target": "NODE01",
+    "current_public_route": "NOT_YET_VERIFIED",
+    "external_fallback": "NONE_REQUIRED_FOR_INTERNAL_ADMIN_V1",
+    "status_label": "NOT YET PUBLIC",
+    "data_dependencies": [
+      "Owner-node durable CRM data volume; PostgreSQL / IZAKHONO Core migration target"
+    ],
+    "auth_dependencies": [
+      "FORTRESS / IZAKHONO Access at public edge",
+      "CRM_ADMIN_TOKEN for direct administrative API protection",
+      "CRM_INGEST_TOKEN for platform intake"
+    ],
+    "payment_dependencies": [],
+    "backup_evidence": "PENDING_NODE01_PROOF",
+    "restore_evidence": "PENDING_NODE01_PROOF",
+    "rollback_evidence": "CONTAINER_ROLLBACK_PACKAGED_NOT_MACHINE_VERIFIED"
+  },
+  "alpha": {
+    "preflight": true,
+    "rehearsal": true,
+    "windows_package": false
+  }
+}
