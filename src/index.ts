@@ -21,7 +21,15 @@ const MODULES = {
   auth: { label: 'Accounts & Auth', detail: 'User sessions, roles and protected routes.' },
   uploads: { label: 'File Uploads', detail: 'R2-backed file and media storage.' },
   payments: { label: 'Payments', detail: 'Payment-intent ledger and provider adapter.' },
-  email: { label: 'Email & Notifications', detail: 'Transactional queue and provider adapter.' },
+  email: { label: 'Email', detail: 'Transactional queue and swappable delivery provider adapter.' },
+  notifications: { label: 'Notifications', detail: 'In-app, push-ready and event-driven notification workflows.' },
+  chat: { label: 'Chat', detail: 'Scoped realtime messaging foundation with moderation and audit hooks.' },
+  speech: { label: 'AI Speech', detail: 'Owner-AI speech generation adapter with explicit cost and capacity controls.' },
+  transcription: { label: 'AI Transcription', detail: 'Owner-AI audio transcription adapter with protected file handling.' },
+  recurring: { label: 'Recurring Events', detail: 'Scheduled and condition-driven workflows through IZAKHONO TASKS.' },
+  roles: { label: 'Roles & Permissions', detail: 'Role, scope and row-grant governance using IZAKHONO Core policy primitives.' },
+  integrations: { label: 'API Integrations', detail: 'Connector boundary for internal services and approved external APIs.' },
+  publish: { label: 'Publish & Release', detail: 'Web/PWA release recipe plus gated mobile-store packaging and submission evidence.' },
   admin: { label: 'Admin Dashboard', detail: 'Operational control and reporting.' },
   analytics: { label: 'Analytics', detail: 'First-party events and product metrics.' },
   marketplace: { label: 'Marketplace', detail: 'Listings, bookings/orders and provider workflows.' },
@@ -36,6 +44,11 @@ const MODULES = {
   growth: { label: 'CEO Growth Engine', detail: 'Acquisition, activation, retention, referral, revenue and partnership growth contract.' },
 } as const;
 type ModuleKey = keyof typeof MODULES;
+
+const PORTFOLIO_BASELINE_MODULES: ModuleKey[] = [
+  'leads','auth','uploads','payments','email','notifications','chat','ai','speech','transcription',
+  'recurring','roles','integrations','admin','analytics','publish','growth'
+];
 
 function id(prefix: string) { return `${prefix}_${crypto.randomUUID().replaceAll('-', '')}`; }
 function cleanText(v: unknown, max: number) { return typeof v === 'string' ? v.trim().slice(0, max) : ''; }
@@ -84,7 +97,15 @@ function buildRecipe(project: any, modules: ModuleKey[]) {
   if (modules.includes('auth')) architecture.push('secure hashed sessions and role checks');
   if (modules.includes('payments')) architecture.push('payment intents + server-verified provider callbacks');
   if (modules.includes('email')) architecture.push('transactional email queue with swappable provider adapter');
+  if (modules.includes('notifications')) architecture.push('event-driven in-app notification bus with push-provider adapter boundary');
+  if (modules.includes('chat')) architecture.push('scoped realtime chat with moderation, retention and audit hooks');
   if (modules.includes('ai')) architecture.push('provider-neutral AI gateway; no browser API keys');
+  if (modules.includes('speech')) architecture.push('AI speech generation routed through owner-controlled AI capability adapters');
+  if (modules.includes('transcription')) architecture.push('AI transcription routed through owner-controlled AI capability adapters');
+  if (modules.includes('recurring')) architecture.push('recurring and condition-driven workflows through IZAKHONO TASKS');
+  if (modules.includes('roles')) architecture.push('role/scope/row-grant permissions through IZAKHONO Core policy primitives');
+  if (modules.includes('integrations')) architecture.push('approved connector gateway for internal and external APIs');
+  if (modules.includes('publish')) architecture.push('owned-first web/PWA publish plan plus signed mobile-store packaging gates');
   if (modules.includes('marketplace')) architecture.push('listing/order/booking workflow schema');
   if (modules.includes('learning')) architecture.push('course/lesson/assessment/progress schema');
   if (modules.includes('analytics')) architecture.push('first-party event ledger');
@@ -139,7 +160,7 @@ async function api(req: Request, env: Env, url: URL): Promise<Response> {
     const b = await body(req);
     const name = cleanText(b.name, 100), slug = cleanText(b.slug, 60).toLowerCase(), category = cleanText(b.category || 'general', 60), description = cleanText(b.description || '', 600);
     const modules = normalizeModules(b.modules);
-    if (!modules.includes('growth')) modules.push('growth');
+    for (const required of PORTFOLIO_BASELINE_MODULES) if (!modules.includes(required)) modules.push(required);
     if (!name || !validSlug(slug)) return fail(req, env, 'A name and valid lowercase slug are required');
     const projectId = id('prj');
     try {

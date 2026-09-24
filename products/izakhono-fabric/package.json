@@ -1,0 +1,10 @@
+{
+  "name": "@izakhono/app-fabric",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check": "node --check resolve.mjs",
+    "test": "node --test test.mjs"
+  }
+}
