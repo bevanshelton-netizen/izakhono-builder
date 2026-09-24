@@ -1,6 +1,6 @@
 FROM node:22-alpine
 WORKDIR /app
-COPY package.json server.mjs wave1-adapters.json ./
+COPY package.json server.mjs portfolio-adapters.json ./
 RUN mkdir -p /data && chown -R node:node /app /data
 USER node
 ENV HOST=0.0.0.0
