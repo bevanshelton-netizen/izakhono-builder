@@ -81,3 +81,25 @@ SOURCE BUILT
 ```
 
 Payment success remains outside the public intake API. Payment-confirmed states must still come from each product's verified payment/reconciliation route.
+
+
+## Hybrid external resilience
+
+APP FABRIC now has an already-verified external bridge on the existing IZAKHONO WebStart infrastructure:
+
+`https://yfawrenhudjomhnglfhq.supabase.co/functions/v1/izakhono-gateway-event`
+
+The operating order is:
+
+```text
+product
+  -> owned APP FABRIC endpoint when verified/reachable
+  -> external resilience bridge on failure/unavailability
+  -> durable external event/opportunity mirror
+  -> automatic forwarding attempt to owned APP FABRIC
+  -> small queued-backlog flush on later events
+```
+
+The external bridge does not replace the owned engine. It preserves commercial intake while NODE01/EDGE is unavailable and automatically attempts to hand accepted events back to the owned endpoint.
+
+Public payment confirmation is deliberately excluded from both browser-facing APP FABRIC routes. Payment truth stays with the product's verified payment and reconciliation path.
