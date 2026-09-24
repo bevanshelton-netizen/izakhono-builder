@@ -2,11 +2,6 @@ name: FAISReady Safe External Fallback
 
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - 'products/faisready-v1/**'
-      - '.github/workflows/faisready-safe-fallback.yml'
 
 permissions:
   contents: read

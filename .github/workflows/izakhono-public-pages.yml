@@ -7,13 +7,6 @@ on:
       - 'products/izakhono-social/public-external/**'
       - 'products/faisready-v1/**'
       - '.github/workflows/izakhono-public-pages.yml'
-  push:
-    branches: [main]
-    paths:
-      - 'izakhono-containers/launch/**'
-      - 'products/izakhono-social/public-external/**'
-      - 'products/faisready-v1/**'
-      - '.github/workflows/izakhono-public-pages.yml'
   workflow_dispatch:
 
 permissions:
@@ -115,7 +108,7 @@ jobs:
           path: _site
 
   deploy:
-    if: github.event_name != 'pull_request'
+    if: github.event_name == 'workflow_dispatch'
     needs: build
     environment:
       name: github-pages
