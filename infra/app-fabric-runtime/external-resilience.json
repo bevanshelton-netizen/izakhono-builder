@@ -9,7 +9,7 @@
     "provider": "Supabase WebStart",
     "project_ref": "yfawrenhudjomhnglfhq",
     "function": "izakhono-gateway-event",
-    "function_version": 6,
+    "function_version": 7,
     "endpoint": "https://yfawrenhudjomhnglfhq.supabase.co/functions/v1/izakhono-gateway-event",
     "status": "EXTERNAL_BRIDGE_VERIFIED",
     "health_http_status": 200,
@@ -28,7 +28,8 @@
     "auto_ai_checkout_started_verified": true,
     "auto_ai_checkout_started_http_status": 202,
     "auto_ai_checkout_stage": "Quote requested",
-    "auto_ai_synthetic_rows_removed_after_test": true
+    "auto_ai_synthetic_rows_removed_after_test": true,
+    "vercel_preflight_fix_verified_in_code": true
   },
   "routing": "primary-then-external",
   "external_to_owned_forwarding": "automatic on each accepted external event; queued backlog attempts are flushed in small batches",
