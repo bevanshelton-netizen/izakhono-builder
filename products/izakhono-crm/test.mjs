@@ -55,6 +55,30 @@ test("CRM health, scoped intake and summary", async () => {
   assert.equal(otherScope.open_deals, 0);
 });
 
+
+test("external_ref makes repeated platform events idempotent", async () => {
+  await waitForHealth();
+  const event = {
+    contact: { name: "Repeat Lead", email: "repeat@example.test", source: "fabric-test" },
+    create_deal: true,
+    deal: { title: "RE5 preparation", value: 299, currency: "ZAR", stage: "Lead", external_ref: "faisready:lead-123" }
+  };
+  const first = await fetch(`http://127.0.0.1:${port}/api/intake`, {
+    method: "POST", headers: scopedHeaders, body: JSON.stringify(event)
+  });
+  assert.equal(first.status, 201);
+  event.deal.stage = "Checkout started";
+  const second = await fetch(`http://127.0.0.1:${port}/api/intake`, {
+    method: "POST", headers: scopedHeaders, body: JSON.stringify(event)
+  });
+  assert.equal(second.status, 201);
+
+  const deals = await fetch(`http://127.0.0.1:${port}/api/deals`, { headers: scopedHeaders }).then((r) => r.json());
+  const matches = deals.items.filter((d) => d.external_ref === "faisready:lead-123");
+  assert.equal(matches.length, 1);
+  assert.equal(matches[0].stage, "Checkout started");
+});
+
 test.after(async () => {
   child.kill("SIGTERM");
   await fs.rm(dir, { recursive: true, force: true });
