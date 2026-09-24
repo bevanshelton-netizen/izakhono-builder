@@ -1,0 +1,70 @@
+services:
+  crm:
+    build:
+      context: ../../products/izakhono-crm
+      dockerfile: Dockerfile
+    image: izakhono/crm:local
+    container_name: izakhono-crm
+    restart: unless-stopped
+    environment:
+      HOST: 0.0.0.0
+      PORT: "8080"
+      CRM_DATA_FILE: /data/crm.json
+      CRM_ADMIN_TOKEN: ${CRM_ADMIN_TOKEN}
+      CRM_INGEST_TOKEN: ${CRM_INGEST_TOKEN}
+    volumes:
+      - crm_data:/data
+    networks:
+      - private
+    healthcheck:
+      test: ["CMD","node","-e","fetch('http://127.0.0.1:8080/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+
+  fabric:
+    build:
+      context: ../../products/izakhono-fabric/gateway
+      dockerfile: Dockerfile
+    image: izakhono/app-fabric-gateway:local
+    container_name: izakhono-app-fabric-gateway
+    restart: unless-stopped
+    environment:
+      HOST: 0.0.0.0
+      PORT: "8090"
+      IZAKHONO_CRM_URL: http://crm:8080
+      IZAKHONO_CRM_INGEST_TOKEN: ${CRM_INGEST_TOKEN}
+      IZAKHONO_FABRIC_INTERNAL_TOKEN: ${IZAKHONO_FABRIC_INTERNAL_TOKEN}
+      IZAKHONO_FABRIC_PUBLIC_INTAKE: ${IZAKHONO_FABRIC_PUBLIC_INTAKE:-false}
+      IZAKHONO_FABRIC_ALLOWED_ORIGINS: ${IZAKHONO_FABRIC_ALLOWED_ORIGINS:-}
+      IZAKHONO_FABRIC_ALLOW_ORIGINLESS: ${IZAKHONO_FABRIC_ALLOW_ORIGINLESS:-false}
+      FABRIC_OUTBOX_FILE: /data/outbox.json
+    volumes:
+      - fabric_outbox:/data
+    depends_on:
+      crm:
+        condition: service_healthy
+    networks:
+      - public
+      - private
+    healthcheck:
+      test: ["CMD","node","-e","fetch('http://127.0.0.1:8090/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+
+volumes:
+  crm_data:
+    name: izakhono_crm_data
+  fabric_outbox:
+    name: izakhono_fabric_outbox
+
+networks:
+  public:
+    external: true
+    name: izakhono_public
+  private:
+    external: true
+    name: izakhono_private

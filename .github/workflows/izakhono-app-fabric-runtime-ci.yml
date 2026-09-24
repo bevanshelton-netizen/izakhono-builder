@@ -1,0 +1,81 @@
+name: IZAKHONO APP FABRIC NODE01 Runtime CI
+
+on:
+  pull_request:
+    paths:
+      - "products/izakhono-crm/**"
+      - "products/izakhono-fabric/gateway/**"
+      - "infra/app-fabric-runtime/**"
+      - "START-APP-FABRIC-NODE01.cmd"
+      - "VERIFY-APP-FABRIC-NODE01.cmd"
+      - ".github/workflows/izakhono-app-fabric-runtime-ci.yml"
+  push:
+    branches: [main]
+    paths:
+      - "products/izakhono-crm/**"
+      - "products/izakhono-fabric/gateway/**"
+      - "infra/app-fabric-runtime/**"
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Unit verification
+        run: |
+          (cd products/izakhono-crm && npm run check && npm test)
+          (cd products/izakhono-fabric/gateway && npm run check && npm test)
+          bash -n infra/app-fabric-runtime/activate-node01.sh
+          bash -n infra/app-fabric-runtime/verify-node01.sh
+          bash -n infra/app-fabric-runtime/prepare-edge.sh
+
+      - name: Prepare isolated runtime environment
+        run: |
+          docker network create izakhono_public
+          docker network create --internal izakhono_private
+          cat > /tmp/app-fabric-runtime.env <<'EOF'
+          CRM_ADMIN_TOKEN=ci-admin-token
+          CRM_INGEST_TOKEN=ci-ingest-token
+          IZAKHONO_FABRIC_INTERNAL_TOKEN=ci-internal-token
+          IZAKHONO_FABRIC_PUBLIC_INTAKE=false
+          IZAKHONO_FABRIC_ALLOWED_ORIGINS=
+          IZAKHONO_FABRIC_ALLOW_ORIGINLESS=false
+          EOF
+
+      - name: Build and start owned runtime topology
+        run: |
+          docker compose --env-file /tmp/app-fabric-runtime.env -f infra/app-fabric-runtime/docker-compose.yml build
+          docker compose --env-file /tmp/app-fabric-runtime.env -f infra/app-fabric-runtime/docker-compose.yml up -d
+          for i in $(seq 1 30); do
+            crm=$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' izakhono-crm 2>/dev/null || true)
+            fabric=$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' izakhono-app-fabric-gateway 2>/dev/null || true)
+            if [ "$crm" = healthy ] && [ "$fabric" = healthy ]; then exit 0; fi
+            sleep 2
+          done
+          docker ps -a
+          exit 1
+
+      - name: Prove non-writing Gateway to CRM integration
+        run: |
+          docker exec izakhono-crm node -e "fetch('http://127.0.0.1:8080/health').then(r=>r.json()).then(v=>{if(!v.ok)process.exit(1);console.log(JSON.stringify(v))})"
+          docker exec izakhono-app-fabric-gateway node -e "fetch('http://127.0.0.1:8090/health').then(r=>r.json()).then(v=>{if(!v.ok||v.public_intake!==false)process.exit(1);console.log(JSON.stringify(v))})"
+          docker exec izakhono-app-fabric-gateway node -e "fetch('http://127.0.0.1:8090/api/fabric/selftest',{method:'POST',headers:{authorization:'Bearer '+process.env.IZAKHONO_FABRIC_INTERNAL_TOKEN}}).then(async r=>{const v=await r.json();if(!r.ok||!v.ok||v.mode!=='non-writing'||v.crm?.dry_run!==true)process.exit(1);console.log(JSON.stringify(v))})"
+          docker exec izakhono-app-fabric-gateway node -e "fetch('http://127.0.0.1:8090/api/fabric/intake',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({platform_id:'faisready',event_type:'lead.created',subject_ref:'ci',contact:{email:'ci@example.test'}})}).then(r=>{if(r.status!==503)process.exit(1);console.log('public intake fail-closed')})"
+
+      - name: Runtime logs on failure
+        if: failure()
+        run: |
+          docker logs izakhono-crm || true
+          docker logs izakhono-app-fabric-gateway || true
+
+      - name: Tear down
+        if: always()
+        run: docker compose --env-file /tmp/app-fabric-runtime.env -f infra/app-fabric-runtime/docker-compose.yml down -v || true

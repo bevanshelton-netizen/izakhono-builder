@@ -79,10 +79,11 @@ function normalizeEvent(body,platform){
 async function readOutbox(){try{const v=JSON.parse(await fs.readFile(OUTBOX_FILE,"utf8"));return Array.isArray(v)?v:[]}catch(e){if(e.code==="ENOENT")return[];throw e}}
 async function writeOutbox(items){writeChain=writeChain.then(async()=>{await fs.mkdir(path.dirname(OUTBOX_FILE),{recursive:true});const tmp=`${OUTBOX_FILE}.${process.pid}.tmp`;await fs.writeFile(tmp,JSON.stringify(items,null,2),{mode:0o600});await fs.rename(tmp,OUTBOX_FILE)});return writeChain}
 async function queue(item,error){const items=await readOutbox();items.push({...item,queued_at:now(),last_error:clean(error?.message||error,500)});await writeOutbox(items.slice(-5000))}
-async function sendToCrm(platform,event){
+async function sendToCrm(platform,event,{dryRun=false}={}){
   const headers={"content-type":"application/json","x-entity-id":platform.entity_id,"x-platform-id":platform.platform_id};
   if(CRM_TOKEN)headers.authorization=`Bearer ${CRM_TOKEN}`;
-  const r=await fetch(`${CRM_URL}/api/intake`,{method:"POST",headers,body:JSON.stringify({contact:event.contact,create_deal:true,deal:event.deal,note:event.note})});
+  const suffix=dryRun?"?dry_run=true":"";
+  const r=await fetch(`${CRM_URL}/api/intake${suffix}`,{method:"POST",headers,body:JSON.stringify({contact:event.contact,create_deal:true,deal:event.deal,note:event.note})});
   if(!r.ok)throw new Error(`CRM returned ${r.status}: ${(await r.text()).slice(0,200)}`);
   return r.json();
 }
@@ -106,6 +107,19 @@ async function replay(){
   await writeOutbox(remaining);
   return {delivered,remaining:remaining.length};
 }
+async function selftest(){
+  const platform=platformConfig("faisready");
+  if(!platform) throw new Error("FAISReady registry entry is unavailable");
+  const event=normalizeEvent({
+    event_type:"lead.created",
+    subject_ref:"runtime-selftest",
+    contact:{name:"IZAKHONO Runtime Selftest",email:"selftest@invalid.local",source:"runtime-selftest"},
+    opportunity:{title:"APP FABRIC runtime selftest",value:0,currency:"ZAR",source:"runtime-selftest"},
+    note:"Non-writing APP FABRIC to CRM validation."
+  },platform);
+  const crm=await sendToCrm(platform,event,{dryRun:true});
+  return {ok:true,mode:"non-writing",crm};
+}
 
 const server=http.createServer(async(req,res)=>{
   try{
@@ -127,6 +141,10 @@ const server=http.createServer(async(req,res)=>{
     if(req.method==="POST"&&url.pathname==="/api/fabric/replay"){
       if(!INTERNAL_TOKEN||!safeEqual(bearer(req),INTERNAL_TOKEN))return response(res,401,{error:"unauthorized"});
       return response(res,200,{ok:true,...await replay()});
+    }
+    if(req.method==="POST"&&url.pathname==="/api/fabric/selftest"){
+      if(!INTERNAL_TOKEN||!safeEqual(bearer(req),INTERNAL_TOKEN))return response(res,401,{error:"unauthorized"});
+      return response(res,200,await selftest());
     }
     return response(res,404,{error:"not found"});
   }catch(error){console.error(error);return response(res,error.status||500,{error:error.status?error.message:"internal server error"})}

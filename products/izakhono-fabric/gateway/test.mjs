@@ -12,7 +12,7 @@ const tmp=await fs.mkdtemp(path.join(os.tmpdir(),"izakhono-fabric-"));
 let seen=null;
 const crm=http.createServer(async(req,res)=>{
   const chunks=[];for await(const c of req)chunks.push(c);
-  seen={headers:req.headers,body:JSON.parse(Buffer.concat(chunks).toString("utf8"))};
+  seen={url:req.url,headers:req.headers,body:JSON.parse(Buffer.concat(chunks).toString("utf8"))};
   res.writeHead(201,{"content-type":"application/json"});res.end(JSON.stringify({contact:{id:"c1"},deal:{id:"d1"}}));
 });
 await new Promise(resolve=>crm.listen(crmPort,"127.0.0.1",resolve));
@@ -55,6 +55,18 @@ test("invalid portfolio stage is rejected",async()=>{
     body:JSON.stringify({platform_id:"kora",event_type:"opportunity.stage_changed",subject_ref:"partner-1",opportunity:{stage:"Made up stage"}})
   });
   assert.equal(r.status,400);
+});
+
+test("authenticated runtime selftest validates CRM without a write",async()=>{
+  const r=await fetch(`http://127.0.0.1:${gatewayPort}/api/fabric/selftest`,{
+    method:"POST",
+    headers:{"authorization":"Bearer internal-test"}
+  });
+  assert.equal(r.status,200);
+  const body=await r.json();
+  assert.equal(body.ok,true);
+  assert.match(seen.url,/dry_run=true/);
+  assert.equal(seen.headers["x-platform-id"],"faisready");
 });
 
 test("public payment confirmation is rejected",async()=>{

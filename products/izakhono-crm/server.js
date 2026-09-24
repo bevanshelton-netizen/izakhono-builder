@@ -261,6 +261,16 @@ async function handler(req, res) {
           store.deals.push(deal);
         }
       }
+      if (url.searchParams.get("dry_run") === "true") {
+        return json(res, 200, {
+          ok: true,
+          dry_run: true,
+          scope,
+          contact_valid: true,
+          deal_valid: Boolean(dp),
+          external_ref: dp?.external_ref || ""
+        });
+      }
       store.activities.push({
         id: id("activity"), ...scope, contact_id: contact.id, deal_id: deal?.id || "",
         type: "lead_intake", note: cleanString(body.note || "Lead captured", 1000),
