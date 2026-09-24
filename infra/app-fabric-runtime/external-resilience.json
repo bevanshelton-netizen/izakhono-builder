@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "policy": "owned-first-externally-reversible",
   "primary_owned": {
     "endpoint": "https://fabric.izakhonoafrica.co.za",
@@ -9,20 +9,53 @@
     "provider": "Supabase WebStart",
     "project_ref": "yfawrenhudjomhnglfhq",
     "function": "izakhono-gateway-event",
-    "function_version": 3,
+    "function_version": 4,
     "endpoint": "https://yfawrenhudjomhnglfhq.supabase.co/functions/v1/izakhono-gateway-event",
     "status": "EXTERNAL_BRIDGE_VERIFIED",
     "health_http_status": 200,
     "synthetic_faisready_event_http_status": 202,
     "synthetic_event_persisted": true,
-    "synthetic_event_removed_after_test": true
+    "synthetic_event_removed_after_test": true,
+    "portfolio_lead_bridge": true,
+    "synthetic_wave2_platforms": [
+      "allegro-vibez",
+      "the-chancellor",
+      "fortress"
+    ],
+    "synthetic_wave2_events_persisted": true,
+    "synthetic_wave2_rows_removed_after_test": true
   },
   "routing": "primary-then-external",
   "external_to_owned_forwarding": "automatic on each accepted external event; queued backlog attempts are flushed in small batches",
   "payment_confirmation": "not accepted on public APP FABRIC intake",
   "enabled_public_platforms": [
-    "faisready",
     "izakhono-clothing",
-    "edu-build:lead-only"
-  ]
+    "kora",
+    "kora-cinema",
+    "kora-gospel-tv",
+    "kora-kids",
+    "allegro-vibez",
+    "allegro-radio",
+    "edu-build",
+    "ecd360",
+    "faisready",
+    "doxa-sure",
+    "auto-ai",
+    "learner-driver-sa",
+    "worknow",
+    "memory-mania",
+    "music-school",
+    "recording-studio",
+    "supercool",
+    "zeely-style",
+    "the-chancellor",
+    "fortress",
+    "izakhono-code",
+    "izakhono-work",
+    "izakhono-cloud",
+    "izakhono-send"
+  ],
+  "blocked_public_platforms": {
+    "crowne-by-netty": "legal entity unresolved in canonical CRM registry"
+  }
 }
