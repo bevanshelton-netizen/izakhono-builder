@@ -1,6 +1,7 @@
 import {
   PAYFAST_DEFAULT_CIDRS,
   buildIkhokhaRequest,
+  ikhokhaSignature,
   buildPayfastCheckout,
   buildPayfastItnParamString,
   chooseProvider,
@@ -192,7 +193,6 @@ async function initializeIkhokha(env, intent, origin) {
   const payload = buildIkhokhaRequest({ env, intent, origin });
   const raw = JSON.stringify(payload);
   const path = new URL(endpoint).pathname;
-  const { ikhokhaSignature } = await import('./core.js');
   const signature = ikhokhaSignature(path, raw, env.IKHOKHA_APP_SECRET);
   const res = await fetch(endpoint, {
     method: 'POST',
@@ -339,12 +339,13 @@ async function handleIkhokhaWebhook(req, env) {
   const raw = await req.text();
   const appId = req.headers.get('ik-appid') || '';
   const signature = req.headers.get('ik-sign') || '';
-  if (!safeEqualText(appId, env.IKHOKHA_APP_ID) || !verifyIkhokhaSignature('/api/webhooks/ikhokha', raw, signature, env.IKHOKHA_APP_SECRET)) {
+  const event = JSON.parse(raw);
+  if (event && typeof event === 'object') delete event.text;
+  const signedBody = JSON.stringify(event);
+  if (!safeEqualText(appId, env.IKHOKHA_APP_ID) || !verifyIkhokhaSignature('/api/webhooks/ikhokha', signedBody, signature, env.IKHOKHA_APP_SECRET)) {
     await recordFortressEvent(env, { severity: 'high', category: 'webhook.invalid_signature', source: 'ikhokha', details: { payload_hash: sha256Hex(raw) } });
     return fail('Invalid iKhokha signature', 401, 'invalid_signature');
   }
-
-  const event = JSON.parse(raw);
   const reference = cleanText(event?.externalTransactionID || '', 120);
   const intent = reference ? await findIntentByReference(env, reference) : null;
   if (!intent || intent.routed_provider !== 'ikhokha') return fail('Unknown iKhokha payment reference', 404, 'unknown_reference');
