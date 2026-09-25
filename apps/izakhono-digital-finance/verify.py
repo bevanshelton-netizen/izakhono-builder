@@ -17,8 +17,11 @@ required = [
     "institutional-offers.json",
     "automation.json",
     "assessment-blueprint.json",
+    "adapter-contracts.json",
     "automation_engine.py",
+    "automation_store.py",
     "test_automation.py",
+    "test_automation_store.py",
     "engine.py",
     "healthz",
 ]
@@ -35,6 +38,7 @@ locales = json.loads((ROOT / "locales.json").read_text(encoding="utf-8"))
 offers = json.loads((ROOT / "institutional-offers.json").read_text(encoding="utf-8"))
 automation = json.loads((ROOT / "automation.json").read_text(encoding="utf-8"))
 assessment_blueprint = json.loads((ROOT / "assessment-blueprint.json").read_text(encoding="utf-8"))
+adapter_contracts = json.loads((ROOT / "adapter-contracts.json").read_text(encoding="utf-8"))
 
 assert curriculum["schema"] == "izakhono.digital.finance.curriculum.v1"
 assert curriculum["operator"] == "IZAKHONO AFRICA (PTY) LTD"
@@ -80,6 +84,9 @@ assert len(automation["governance_gates"]) >= 6
 assert automation["thresholds"]["completion_pass_percent"] == 80
 assert assessment_blueprint["schema"] == "izakhono.digital.finance.assessment.blueprint.v1"
 assert all("answer keys" not in str(item).lower() for item in assessment_blueprint.get("assessment_types", []))
+assert adapter_contracts["schema"] == "izakhono.digital.finance.adapter.contracts.v1"
+assert len(adapter_contracts["adapters"]) >= 6
+assert all(item["state"] == "pending_connection" for item in adapter_contracts["adapters"])
 
 html = (ROOT / "index.html").read_text(encoding="utf-8")
 js = (ROOT / "app.js").read_text(encoding="utf-8")
@@ -107,6 +114,11 @@ assert 'id="institutionGrid"' in html
 assert 'id="proposalInstitution"' in html
 assert "/api/v1/offers" in js
 assert "/api/v1/automation/evaluate" in js
+engine_source = (ROOT / "engine.py").read_text(encoding="utf-8")
+assert "/api/v1/admin/automation/event" in engine_source
+assert "/api/v1/admin/automation/report" in engine_source
+assert "/api/v1/admin/automation/outbox" in engine_source
+assert "IZAKHONO_DF_ADMIN_TOKEN" in engine_source
 assert 'id="runAutomationDemo"' in html
 assert "Human governance gates" in html
 assert "90–95%" in html
