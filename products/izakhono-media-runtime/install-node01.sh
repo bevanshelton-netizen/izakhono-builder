@@ -2,12 +2,15 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$ROOT_DIR/../.." && pwd)"
 REPORT="${1:-/tmp/izakhono-create-media-report.json}"
 APP_DIR="/opt/izakhono-media-runtime"
+CREATE_DIR="/opt/izakhono-create"
 COMFY_DIR="/opt/izakhono-comfyui"
 ENV_DIR="/etc/izakhono/apps"
 ENV_FILE="$ENV_DIR/izakhono-create-media.env"
 MEDIA_SERVICE="/etc/systemd/system/izakhono-media-runtime.service"
+GATEWAY_SERVICE="/etc/systemd/system/izakhono-create-media-gateway.service"
 COMFY_SERVICE="/etc/systemd/system/izakhono-comfyui.service"
 
 if [ "$(id -u)" -ne 0 ]; then
@@ -15,8 +18,9 @@ if [ "$(id -u)" -ne 0 ]; then
   exit 1
 fi
 
-mkdir -p "$APP_DIR" "$ENV_DIR" "$(dirname "$REPORT")"
+mkdir -p "$APP_DIR" "$CREATE_DIR" "$ENV_DIR" "$(dirname "$REPORT")"
 install -m 0755 "$ROOT_DIR/app.py" "$APP_DIR/app.py"
+install -m 0755 "$REPO_ROOT/apps/izakhono-create/media-gateway.py" "$CREATE_DIR/media-gateway.py"
 
 command -v python3 >/dev/null 2>&1 || { echo "[STOP] python3 missing" >&2; exit 1; }
 command -v git >/dev/null 2>&1 || { echo "[STOP] git missing" >&2; exit 1; }
@@ -57,6 +61,10 @@ IZAKHONO_MEDIA_HOST=127.0.0.1
 IZAKHONO_MEDIA_PORT=9696
 IZAKHONO_MEDIA_INTERNAL_KEY=$KEY
 IZAKHONO_COMFYUI_URL=http://127.0.0.1:8188
+IZAKHONO_MEDIA_RENDER_URL=http://127.0.0.1:9696
+IZAKHONO_CREATE_MEDIA_HOST=127.0.0.1
+IZAKHONO_CREATE_MEDIA_PORT=9695
+IZAKHONO_MEDIA_ALLOW_EXTERNAL_FALLBACK=false
 IZAKHONO_MEDIA_CHECKPOINT=
 IZAKHONO_MEDIA_JOB_TIMEOUT=420
 EOF
@@ -112,8 +120,31 @@ ProtectHome=true
 WantedBy=multi-user.target
 EOF
 
+
+cat > "$GATEWAY_SERVICE" <<EOF
+[Unit]
+Description=IZAKHONO CREATE Media Gateway
+After=network.target izakhono-media-runtime.service
+Wants=izakhono-media-runtime.service
+
+[Service]
+Type=simple
+EnvironmentFile=$ENV_FILE
+WorkingDirectory=$CREATE_DIR
+ExecStart=/usr/bin/python3 $CREATE_DIR/media-gateway.py
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
 systemctl daemon-reload
-systemctl enable izakhono-comfyui.service izakhono-media-runtime.service >/dev/null
+systemctl enable izakhono-comfyui.service izakhono-media-runtime.service izakhono-create-media-gateway.service >/dev/null
 
 echo "[4/6] Starting local services..."
 systemctl restart izakhono-comfyui.service
@@ -122,32 +153,39 @@ for i in $(seq 1 90); do
   sleep 2
 done
 systemctl restart izakhono-media-runtime.service
+systemctl restart izakhono-create-media-gateway.service
 sleep 2
 
 echo "[5/6] Checking runtime health..."
 HTTP_CODE="$(curl -sS -o /tmp/izakhono-media-health.json -w '%{http_code}' http://127.0.0.1:9696/healthz || true)"
 HEALTH="$(cat /tmp/izakhono-media-health.json 2>/dev/null || echo '{}')"
+GATEWAY_CODE="$(curl -sS -o /tmp/izakhono-media-gateway-health.json -w '%{http_code}' http://127.0.0.1:9695/media/healthz || true)"
+GATEWAY_HEALTH="$(cat /tmp/izakhono-media-gateway-health.json 2>/dev/null || echo '{}')"
 
 CHECKPOINT="$(sed -n 's/^IZAKHONO_MEDIA_CHECKPOINT=//p' "$ENV_FILE" | tail -1)"
 READY=false
-if [ "$HTTP_CODE" = "200" ]; then READY=true; fi
+if [ "$HTTP_CODE" = "200" ] && [ "$GATEWAY_CODE" = "200" ]; then READY=true; fi
 
 echo "[6/6] Writing evidence report..."
-python3 - "$REPORT" "$READY" "$HTTP_CODE" "$CHECKPOINT" "$GPU_JSON" "$HEALTH" <<'PY'
+python3 - "$REPORT" "$READY" "$HTTP_CODE" "$GATEWAY_CODE" "$CHECKPOINT" "$GPU_JSON" "$HEALTH" "$GATEWAY_HEALTH" <<'PY'
 import json,sys,datetime
-path, ready, code, checkpoint, gpu_raw, health_raw = sys.argv[1:]
+path, ready, code, gateway_code, checkpoint, gpu_raw, health_raw, gateway_health_raw = sys.argv[1:]
 try: gpu=json.loads(gpu_raw)
 except Exception: gpu={"available":False}
 try: health=json.loads(health_raw)
 except Exception: health={}
+try: gateway_health=json.loads(gateway_health_raw)
+except Exception: gateway_health={}
 report={
   "schema":"izakhono.create.media.node01.v1",
   "generated_at":datetime.datetime.now(datetime.timezone.utc).isoformat(),
   "ready":ready.lower()=="true",
-  "http_code":int(code) if code.isdigit() else None,
+  "runtime_http_code":int(code) if code.isdigit() else None,
+  "gateway_http_code":int(gateway_code) if gateway_code.isdigit() else None,
   "checkpoint":checkpoint or None,
   "gpu":gpu,
   "health":health,
+  "gateway_health":gateway_health,
   "next_action":None if ready.lower()=="true" else (
     "Place an owner-approved checkpoint in /opt/izakhono-comfyui/models/checkpoints and set IZAKHONO_MEDIA_CHECKPOINT in /etc/izakhono/apps/izakhono-create-media.env, then rerun."
     if not checkpoint else
