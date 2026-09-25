@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>IZAKHONO Venture Factory</title>
+<meta name="description" content="Turn one business idea into a build, launch, monetisation and validation plan.">
+<style>
+*{box-sizing:border-box}body{margin:0;background:#05080d;color:#f6f8fb;font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+.wrap{max-width:1180px;margin:auto;padding:24px}.nav{display:flex;justify-content:space-between;gap:14px;align-items:center;padding:8px 0 34px}
+.brand{font-weight:950;letter-spacing:.08em}.chip{border:1px solid #26384c;border-radius:999px;padding:7px 10px;font-size:12px;color:#9fb1c7}
+.hero{padding:34px 0 26px}.hero h1{font-size:clamp(42px,8vw,86px);line-height:.92;margin:0 0 18px;max-width:1050px}
+.grad{background:linear-gradient(90deg,#ff4f8b,#ff934f,#4fa6ff);-webkit-background-clip:text;background-clip:text;color:transparent}
+.hero p{max-width:800px;color:#9badc2;font-size:19px;line-height:1.6}.panel{background:#0b121c;border:1px solid #223348;border-radius:24px;padding:20px;margin:18px 0}
+label{display:block;font-size:11px;letter-spacing:.12em;color:#8296ad;margin:4px 0 8px;font-weight:800}
+textarea,input{width:100%;padding:15px 16px;border-radius:13px;border:1px solid #2b4057;background:#07101a;color:#fff;font:inherit}
+textarea{min-height:160px;resize:vertical}.grid{display:grid;grid-template-columns:2fr 1fr 1fr;gap:12px}.row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+button{border:0;border-radius:13px;padding:15px 18px;background:#fff;color:#07101a;font-weight:950;cursor:pointer}button:disabled{opacity:.55;cursor:wait}
+.note{color:#8194aa;font-size:12px;line-height:1.55}.results{display:none}.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:14px}
+.card{background:#0b121c;border:1px solid #223348;border-radius:20px;padding:18px}.card h3{margin:0 0 12px}.card p,.card li{color:#a6b6c9;line-height:1.55}
+.metric{font-size:31px;font-weight:950}.pill{display:inline-block;background:#132234;border-radius:999px;padding:7px 9px;font-size:12px;margin:4px 6px 0 0}
+pre{white-space:pre-wrap;word-break:break-word;background:#05090e;border:1px solid #1b2a3a;border-radius:14px;padding:14px;max-height:460px;overflow:auto}
+@media(max-width:760px){.grid{grid-template-columns:1fr}.nav{align-items:flex-start;flex-direction:column}.wrap{padding:16px}}
+</style>
+</head>
+<body>
+<main class="wrap">
+<div class="nav"><div class="brand">IZAKHONO VENTURE FACTORY</div><div class="chip">Powered by the IZAKHONO SUPER AI workflow</div></div>
+<section class="hero">
+<h1>Your idea. <span class="grad">Built. Launched. Monetized.</span></h1>
+<p>Describe a business idea. IZAKHONO turns it into a lean product plan, build stack, revenue model, acquisition plan and launch gates. Advertising spend and external account actions remain explicit approvals.</p>
+</section>
+<section class="panel">
+<label>OWNER RECOVERY KEY</label>
+<input id="key" type="password" autocomplete="off" placeholder="Required for the owner studio">
+<br><br>
+<label>DESCRIBE THE IDEA</label>
+<textarea id="idea" placeholder="Example: an AI platform for plumbers and electricians that quotes jobs, books customers and follows up automatically"></textarea>
+<div class="grid" style="margin-top:12px">
+<input id="country" value="South Africa" placeholder="Country">
+<input id="price" type="number" min="50" value="499" placeholder="Monthly price">
+<input id="target" type="number" min="1000" value="100000" placeholder="Target monthly revenue">
+</div>
+<div class="row" style="margin-top:14px">
+<button id="go">Build venture plan</button>
+<span class="note" id="status">No ad spend, payment or external account action will be triggered.</span>
+</div>
+</section>
+
+<section id="results" class="results">
+<div class="cards">
+<article class="card"><h3>Venture</h3><div class="metric" id="name"></div><p id="offer"></p><div id="tags"></div></article>
+<article class="card"><h3>Revenue target</h3><div class="metric" id="customers"></div><p id="rev"></p></article>
+<article class="card"><h3>Build stack</h3><ul id="stack"></ul></article>
+<article class="card"><h3>Go to market</h3><ul id="channels"></ul></article>
+<article class="card"><h3>Launch sequence</h3><ol id="launch"></ol></article>
+<article class="card"><h3>Our edge</h3><ul id="edge"></ul></article>
+</div>
+<div class="panel"><h3>Full structured plan</h3><pre id="raw"></pre></div>
+</section>
+</main>
+<script>
+var q=function(s){return document.querySelector(s)};
+var esc=function(v){return String(v).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c]})};
+var list=function(arr){return arr.map(function(x){return "<li>"+esc(x)+"</li>"}).join("")};
+q("#go").onclick=async function(){
+  var idea=q("#idea").value.trim();
+  if(!idea){q("#status").textContent="Describe the idea first.";return}
+  q("#go").disabled=true;q("#status").textContent="Building the venture plan...";
+  try{
+    var r=await fetch("/api/venture-factory/idea",{method:"POST",headers:{"content-type":"application/json","x-admin-secret":q("#key").value.trim()},body:JSON.stringify({
+      idea:idea,country:q("#country").value,monthly_price_zar:Number(q("#price").value),target_monthly_revenue_zar:Number(q("#target").value)
+    })});
+    var d=await r.json();if(!r.ok)throw new Error(d.error||"Plan failed");
+    var p=d.plan;
+    q("#name").textContent=p.venture.name;
+    q("#offer").textContent=p.venture.one_line_offer;
+    q("#tags").innerHTML="<span class='pill'>"+esc(p.venture.category)+"</span><span class='pill'>"+esc(p.venture.audience)+"</span>";
+    q("#customers").textContent=p.venture.customers_needed_for_target+" customers";
+    q("#rev").textContent="at R"+p.venture.monthly_price_zar.toLocaleString("en-ZA")+"/month to target R"+p.venture.target_monthly_revenue_zar.toLocaleString("en-ZA")+" MRR";
+    q("#stack").innerHTML=list([p.build.ai,p.build.database,p.build.payments,p.build.crm,p.build.marketing,p.build.deployment]);
+    q("#channels").innerHTML=list(p.go_to_market.channels.map(function(x){return x.channel+" — "+x.role}));
+    q("#launch").innerHTML=list(p.launch_sequence);
+    q("#edge").innerHTML=list(p.improvement_over_single_purpose_builders);
+    q("#raw").textContent=JSON.stringify(p,null,2);
+    q("#results").style.display="block";
+    q("#status").textContent="Plan built and saved in the Venture Factory.";
+  }catch(e){q("#status").textContent=e.message||String(e)}
+  finally{q("#go").disabled=false}
+};
+</script>
+</body>
+</html>
