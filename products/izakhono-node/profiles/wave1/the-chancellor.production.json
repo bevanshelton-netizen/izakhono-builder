@@ -2,7 +2,7 @@
   "source": "izakhono-code",
   "repository": "the-chancellor",
   "app": "the-chancellor",
-  "ref": "f9d058c5e8657fb31b4c907f6c0d4f919b224c55",
+  "ref": "640f3fbfed1d92bd0588f0ac706a6bb5a7308d17",
   "environment": "production",
   "mode": "single",
   "container_port": 3000,

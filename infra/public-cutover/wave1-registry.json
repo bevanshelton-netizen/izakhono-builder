@@ -7,7 +7,7 @@
     {
       "slug": "allegro-vibez",
       "profile": "products/izakhono-node/profiles/wave1/allegro-vibez.production.json",
-      "immutable_ref": "127ee36415a5c975e51413eabb2aee508c6e45c7",
+      "immutable_ref": "4db57e1ff8d890ca61541ed31777bef392d69d9e",
       "local_health_url": "http://127.0.0.1:8080/healthz",
       "public_health_path": "/healthz",
       "current_external_route": "https://allegro-vibez.vercel.app/",
@@ -22,7 +22,7 @@
     {
       "slug": "the-chancellor",
       "profile": "products/izakhono-node/profiles/wave1/the-chancellor.production.json",
-      "immutable_ref": "f9d058c5e8657fb31b4c907f6c0d4f919b224c55",
+      "immutable_ref": "640f3fbfed1d92bd0588f0ac706a6bb5a7308d17",
       "local_health_url": "http://127.0.0.1:3000/api/health",
       "public_health_path": "/api/health",
       "readiness_path": "/api/go-live",
@@ -44,5 +44,27 @@
     "identity": "ALL_CONFIGURED_MARKERS_REQUIRED",
     "evidence_date": "2026-09-25",
     "note": "Canonical public aliases verified through connected Vercel access. Deployment-specific fallback URLs may be protected; protected routes must not satisfy the public safety gate."
+  },
+  "ref_review": {
+    "reviewed_at": "2026-09-25",
+    "allegro_vibez": {
+      "ref": "4db57e1ff8d890ca61541ed31777bef392d69d9e",
+      "gates": [
+        "IZAKHONO Production Excellence",
+        "Build ALLEGRO-VIBEZ",
+        "IZAKHONO Build to Alpha"
+      ],
+      "result": "PASS"
+    },
+    "the_chancellor": {
+      "ref": "640f3fbfed1d92bd0588f0ac706a6bb5a7308d17",
+      "gates": [
+        "IZAKHONO Production Excellence",
+        "Chancellor v1 CI",
+        "Production Smoke Check",
+        "IZAKHONO Build to Alpha"
+      ],
+      "result": "PASS"
+    }
   }
 }
