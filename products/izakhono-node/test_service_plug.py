@@ -7,7 +7,7 @@ from pathlib import Path
 tmp = tempfile.TemporaryDirectory()
 os.environ["IZAKHONO_NODE_ROOT"] = tmp.name
 os.environ["IZAKHONO_NODE_SECRET"] = "test-secret-do-not-use"
-os.environ["IZAKHONO_NODE_ALLOWED_REPO_PREFIXES"] = "file:///srv/izakhono-code/repos/;https://github.com/bevanshelton-netizen/"
+os.environ["IZAKHONO_NODE_ALLOWED_REPO_PREFIXES"] = "file:///var/lib/izakhono-code/repos/;https://github.com/bevanshelton-netizen/"
 
 spec = importlib.util.spec_from_file_location(
     "iznode", Path(__file__).resolve().parent / "node_agent.py"
@@ -17,7 +17,7 @@ spec.loader.exec_module(module)
 
 ok, err = module.valid_job({
     "app": "allegro-radio",
-    "repo": "file:///srv/izakhono-code/repos/allegro-vibez.git",
+    "repo": "file:///var/lib/izakhono-code/repos/allegro-vibez.git",
     "ref": "main",
     "mode": "compose",
     "environment": "staging",
@@ -29,7 +29,7 @@ assert ok, err
 
 ok, err = module.valid_job({
     "app": "allegro-vibez",
-    "repo": "file:///srv/izakhono-code/repos/allegro-vibez.git",
+    "repo": "file:///var/lib/izakhono-code/repos/allegro-vibez.git",
     "ref": "a" * 40,
     "mode": "single",
     "environment": "production",
@@ -42,7 +42,7 @@ assert ok, err
 
 ok, err = module.valid_job({
     "app": "allegro-vibez",
-    "repo": "file:///srv/izakhono-code/repos/allegro-vibez.git",
+    "repo": "file:///var/lib/izakhono-code/repos/allegro-vibez.git",
     "ref": "main",
     "mode": "single",
     "environment": "production",
@@ -53,7 +53,7 @@ assert not ok and "immutable" in err
 
 ok, err = module.valid_job({
     "app": "bad-build-env",
-    "repo": "file:///srv/izakhono-code/repos/allegro-vibez.git",
+    "repo": "file:///var/lib/izakhono-code/repos/allegro-vibez.git",
     "ref": "main",
     "mode": "single",
     "container_port": 8080,
@@ -74,7 +74,7 @@ assert not ok and "allow-list" in err
 
 ok, err = module.valid_job({
     "app": "bad-public",
-    "repo": "file:///srv/izakhono-code/repos/example.git",
+    "repo": "file:///var/lib/izakhono-code/repos/example.git",
     "ref": "main",
     "mode": "compose",
     "compose_file": "docker-compose.yml",
