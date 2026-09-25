@@ -10,3 +10,8 @@ This directory contains the public static CONNECTA resilience frontend.
 - Distribution: intended to be served from an immutable Git commit through a free external CDN
 
 The external route must never replace the owned NODE01 route.
+
+
+## Architecture status
+
+The Supabase Edge backend referenced by this static bridge is transitional only. The canonical external deployment must run CONNECTA ENGINE 0.2.0 (or later) from `engine/Dockerfile`, using PostgreSQL plus a durable local or S3-compatible storage adapter. Do not treat the Edge reimplementation as the permanent CONNECTA authority.
