@@ -1,7 +1,7 @@
 {
   "schema": "izakhono.public-cutover.wave2-readiness.v2",
   "wave": 2,
-  "generated_date": "2026-09-22",
+  "generated_date": "2026-09-25",
   "status": "PARTIAL_PUBLIC_CONTROLLED_PILOT_LEGACYMART_BLOCKED",
   "policy": "owned-first-externally-reversible",
   "backend_resilience": {
@@ -41,7 +41,9 @@
         "commercial_gate": "readyForPaidTraffic=false",
         "live_payments": false,
         "real_child_data": false,
-        "real_payroll_finalisation": false
+        "real_payroll_finalisation": false,
+        "external_reprobe_run_id": 36089815234,
+        "external_reprobe_generated_at": "2026-09-25T03:19:10.200675+00:00"
       },
       "verification_paths": [
         "/",
@@ -89,7 +91,12 @@
           "evidence": {
             "legacymart_merge": "6933d21bbadce6adbfd6a4cc2954813bffb2fd8e",
             "deployment_run_id": 35769393233,
-            "error": "Resource not accessible by integration when creating Pages site"
+            "error": "Resource not accessible by integration when creating Pages site",
+            "external_reprobe_run_id": 36089815234,
+            "external_reprobe_generated_at": "2026-09-25T03:19:10.200675+00:00",
+            "root_status": 404,
+            "health_path": "/health.json",
+            "health_status": 404
           }
         }
       ],
@@ -109,5 +116,6 @@
       "cutover_allowed": false
     }
   ],
-  "last_external_reprobe_request": "2026-09-25"
+  "last_external_reprobe_request": "2026-09-25",
+  "last_external_reprobe_result": "ECD360_ROOT_200_HEALTH_200__LEGACYMART_PAGES_ROOT_404_HEALTH_404"
 }
