@@ -58,10 +58,12 @@ It does not depend on another IZAKHONO product engine.
 - no external font
 - no behavioural profiling
 - no customer PII collection in the current engine
-- learning progress stays in the learner's browser local storage
+- individual learning progress stays in the learner's browser local storage
+- protected institutional automation can persist **pseudonymous** learner state, events and action outbox records in SQLite
+- institutional stateful routes require an admin bearer token
 - CSP and baseline security headers are applied by the owned engine
 
-This is intentionally conservative. Persistent accounts, identity, certificates and enterprise workspaces require a separate protected data/auth layer before they are enabled.
+This is intentionally conservative. The product can persist pseudonymous workforce state without storing names, emails, phone numbers or identity numbers. Persistent identity, certificate naming and any other PII remain behind separate protected adapters.
 
 ## Payments
 
@@ -92,6 +94,12 @@ cd apps/izakhono-digital-finance
 python verify.py
 docker build -t izakhono-digital-finance .
 docker run --rm -p 8080:8080 izakhono-digital-finance
+
+# To enable protected institutional stateful administration:
+docker run --rm -p 8080:8080 \
+  -e IZAKHONO_DF_ADMIN_TOKEN='set-a-secret-outside-source-control' \
+  -v izakhono-df-data:/data \
+  izakhono-digital-finance
 ```
 
 Smoke checks:
@@ -125,9 +133,17 @@ The routine learner-administration decision layer is now implemented.
 - certificate eligibility decisions; and
 - management-reporting events.
 
-The API route is `POST /api/v1/automation/evaluate`.
+The public decision API is `POST /api/v1/automation/evaluate`.
 
-The current engine accepts **pseudonymous learner references only** and rejects unapproved fields. It does not persist learner records.
+Protected institutional automation APIs are:
+- `POST /api/v1/admin/automation/event` — evaluate and persist a pseudonymous learner event;
+- `GET /api/v1/admin/automation/report?institution_ref=...` — aggregate institution-level progress/reporting state;
+- `GET /api/v1/admin/automation/outbox?institution_ref=...` — pending reminder, governance, certificate and reporting actions for replaceable adapters;
+- `POST /api/v1/admin/automation/outbox/ack` — acknowledge a processed outbox action.
+
+These routes require `IZAKHONO_DF_ADMIN_TOKEN`.
+
+The public decision route accepts **pseudonymous learner references only** and rejects unapproved fields. In addition, protected institutional routes can persist pseudonymous learner state, decisions, events and an automation outbox in SQLite without storing customer PII.
 
 The operating target is **90–95% routine administration automation**, not a claim of zero accountable human governance.
 
@@ -137,23 +153,25 @@ Human review remains mandatory for regulatory-content changes, translation relea
 
 The automation core does not make the protected services disappear. End-to-end production automation still requires verified, replaceable adapters for:
 
-- identity/auth;
-- institutional rosters and persistent learner records;
+- protected identity/auth;
+- institutional roster provisioning/import;
 - payment entitlement;
 - notification/reminder delivery;
 - identity-aware certificate issuance; and
-- persistent institutional reporting.
+- any external dashboard/export destination required by an institution.
+
+The pseudonymous learner/event/outbox store and aggregate reporting API are now built into the independent product engine.
 
 The public repository deliberately contains an **assessment blueprint only**, not production answer keys. Production questions and scoring keys belong in a protected assessment service.
 
 ## Next protected tranche
 
 - protected IZAKHONO account/auth adapter
-- enterprise roster + persistent learner profile store
+- enterprise roster provisioning/import adapter
 - protected assessment service and question banks
 - identity-aware certificate issuer
 - automated notification/reminder adapter
-- persistent enterprise reporting/dashboard store
+- enterprise dashboard/export adapter
 - tutor/video layer
 - full reviewed multilingual course variants
 - verified iKhokha enrolment + entitlement

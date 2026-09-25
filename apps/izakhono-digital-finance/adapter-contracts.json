@@ -1,0 +1,90 @@
+{
+  "schema": "izakhono.digital.finance.adapter.contracts.v1",
+  "principle": "All protected services remain replaceable adapters. No external service controls the product engine.",
+  "adapters": [
+    {
+      "id": "identity_auth",
+      "purpose": "Map an authenticated institutional user to a pseudonymous learner_ref and role.",
+      "input": [
+        "institution_ref",
+        "external_subject"
+      ],
+      "output": [
+        "learner_ref",
+        "role",
+        "identity_verified"
+      ],
+      "pii_boundary": "PII stays in the protected identity service; the learning automation engine receives only pseudonymous references.",
+      "state": "pending_connection"
+    },
+    {
+      "id": "institutional_roster",
+      "purpose": "Provision and deactivate pseudonymous learners for an institutional cohort.",
+      "input": [
+        "institution_ref",
+        "learner_ref",
+        "role",
+        "active"
+      ],
+      "output": [
+        "roster_status"
+      ],
+      "state": "pending_connection"
+    },
+    {
+      "id": "payment_entitlement",
+      "purpose": "Confirm paid entitlement without exposing payment credentials to the learning engine.",
+      "input": [
+        "institution_ref",
+        "learner_ref",
+        "product_id"
+      ],
+      "output": [
+        "payment_entitled",
+        "entitlement_reference"
+      ],
+      "state": "pending_connection"
+    },
+    {
+      "id": "notification_delivery",
+      "purpose": "Consume reminder and governance outbox actions and deliver approved email/SMS/app notifications.",
+      "input": [
+        "outbox_action",
+        "learner_ref",
+        "institution_ref"
+      ],
+      "output": [
+        "delivery_status",
+        "delivery_reference"
+      ],
+      "state": "pending_connection"
+    },
+    {
+      "id": "certificate_issuer",
+      "purpose": "Issue an identity-aware IZAKHONO completion credential after eligibility and protected identity verification.",
+      "input": [
+        "learner_ref",
+        "institution_ref",
+        "programme_id",
+        "identity_verified"
+      ],
+      "output": [
+        "credential_reference",
+        "issued_at"
+      ],
+      "state": "pending_connection"
+    },
+    {
+      "id": "management_reporting",
+      "purpose": "Consume aggregated institutional progress and completion events for dashboards and exports.",
+      "input": [
+        "institution_ref",
+        "aggregate_metrics"
+      ],
+      "output": [
+        "report_reference"
+      ],
+      "state": "pending_connection"
+    }
+  ]
+}

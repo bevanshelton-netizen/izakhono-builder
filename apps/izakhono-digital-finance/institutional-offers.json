@@ -143,9 +143,9 @@
       },
       "automation": {
         "routine_admin_target": "90-95%",
-        "normal_path": "Automated onboarding decision, baseline routing, role-based learning, remediation, completion eligibility and reporting events.",
+        "normal_path": "Automated onboarding decision, baseline routing, role-based learning, progress/remediation, completion eligibility, pseudonymous state persistence, action outbox and institution-level reporting.",
         "governance": "Human review is retained for regulatory, identity, security, appeals, regulated-advice, policy-conflict and payment-dispute exceptions.",
-        "production_boundary": "Protected identity, roster, notification, certificate, reporting and payment-entitlement adapters must be connected before claiming end-to-end zero-touch production administration."
+        "production_boundary": "Pseudonymous learner state/reporting is built. Protected identity, roster import, notification, certificate and payment-entitlement adapters still require connection before claiming complete zero-touch production administration."
       }
     }
   ],

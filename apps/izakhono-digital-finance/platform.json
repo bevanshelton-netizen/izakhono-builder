@@ -20,7 +20,9 @@
     "learning_progress": "Browser-local in MVP",
     "analytics": "None",
     "tracking": "None",
-    "customer_records": "Not collected in MVP"
+    "customer_records": "Not collected in MVP",
+    "institutional_automation_state": "SQLite pseudonymous learner/event/outbox store; protected admin routes only",
+    "pii": "Not accepted by the workforce automation store"
   },
   "payments": {
     "preferred_gateway": "iKhokha",
@@ -80,10 +82,10 @@
     ]
   },
   "automation": {
-    "state": "AUTOMATION CORE BUILT / VERIFIED LOCALLY; protected production adapters pending",
+    "state": "AUTOMATION CORE + PSEUDONYMOUS STATE/OUTBOX/REPORTING BUILT / VERIFIED LOCALLY",
     "target_routine_administration": "90-95%",
     "decision_endpoint": "/api/v1/automation/evaluate",
-    "persistence": "Stateless in current engine",
+    "persistence": "SQLite pseudonymous learner state, events and automation outbox",
     "privacy": "Pseudonymous learner references only; unapproved/PII fields rejected",
     "automated_normal_path": [
       "onboarding decision",
@@ -107,11 +109,18 @@
     ],
     "production_adapters_pending": [
       "protected identity/auth",
-      "institutional roster store",
+      "institutional roster provisioning/import",
       "payment entitlement",
       "notification delivery",
-      "certificate issuer",
-      "management reporting store"
-    ]
+      "identity-aware certificate issuer",
+      "external dashboard/export adapter where required"
+    ],
+    "protected_admin_endpoints": [
+      "/api/v1/admin/automation/event",
+      "/api/v1/admin/automation/report",
+      "/api/v1/admin/automation/outbox",
+      "/api/v1/admin/automation/outbox/ack"
+    ],
+    "admin_auth": "Bearer token via IZAKHONO_DF_ADMIN_TOKEN"
   }
 }
