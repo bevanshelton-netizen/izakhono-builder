@@ -1,0 +1,145 @@
+{
+  "schema": "izakhono.portfolio.workstreams.v1",
+  "effective_date": "2026-09-25",
+  "source_of_truth": "IZAKHONO repositories / Forge / Builder",
+  "chat_threads_authoritative": false,
+  "policy": "Consolidate related work into one canonical portfolio programme; chats are historical context only.",
+  "execution_cycle": [
+    "BUILD",
+    "VERIFY",
+    "CONVERSION_GATE",
+    "GO_LIVE",
+    "CEO_ROLLOUT",
+    "MARKET",
+    "MEASURE",
+    "IMPROVE"
+  ],
+  "workstreams": [
+    {
+      "id": "sovereign-infrastructure",
+      "name": "Sovereign Infrastructure & Operating System",
+      "products": [
+        "izakhono-one",
+        "izakhono-os",
+        "izakhono-builder",
+        "izakhono-code",
+        "izakhono-forge",
+        "izakhono-core",
+        "izakhono-control",
+        "izakhono-cloud",
+        "izakhono-node",
+        "izakhono-edge",
+        "izakhono-work",
+        "izakhono-tasks",
+        "izakhono-send",
+        "izakhono-domains",
+        "izakhono-access",
+        "izakhono-id",
+        "izakhono-ai-gateway",
+        "izakhono-ledger",
+        "izakhono-revenue",
+        "izakhono-pay",
+        "izakhono-clearset"
+      ]
+    },
+    {
+      "id": "media-creator",
+      "name": "Media, Music, Entertainment & Creator Economy",
+      "products": [
+        "kora",
+        "kora-cinema",
+        "kora-kids",
+        "yhvh-gospel-tv",
+        "allegro-vibez",
+        "allegro-radio",
+        "music-school",
+        "recording-studio",
+        "creator-os",
+        "izakhono-artist-protect"
+      ]
+    },
+    {
+      "id": "education",
+      "name": "Education, Training & Qualifications",
+      "products": [
+        "edu-build-institute",
+        "edubuild-ecd360",
+        "faisready",
+        "matric-rewrite-academy",
+        "studypal",
+        "digital-finance-academy",
+        "blockchain-digital-finance-education"
+      ]
+    },
+    {
+      "id": "growth-creative",
+      "name": "Growth, Creative, Advertising & Business-Building",
+      "products": [
+        "izakhono-create",
+        "izakhono-ads",
+        "izakhono-creative-suite",
+        "zeely-style-platform",
+        "business-websites",
+        "supercool",
+        "growth-os",
+        "the-chancellor",
+        "social-command"
+      ]
+    },
+    {
+      "id": "commerce",
+      "name": "Commerce, Apparel & Marketplaces",
+      "products": [
+        "izakhono-clothing",
+        "bevan-shelton",
+        "legacymart",
+        "edu-build-shop",
+        "portfolio-merch"
+      ]
+    },
+    {
+      "id": "trust-finance-security",
+      "name": "Trust, Finance, Security & Business Operations",
+      "products": [
+        "izakhono-fortress",
+        "doxa-sure",
+        "super-accountant",
+        "financial-resilience",
+        "enterprise-trust-apis"
+      ]
+    },
+    {
+      "id": "work-services",
+      "name": "Work, Services & Opportunity Platforms",
+      "products": [
+        "worknow",
+        "yenzanow",
+        "employment-recruiter-tools",
+        "international-work-readiness"
+      ]
+    },
+    {
+      "id": "mobility-industrial",
+      "name": "Mobility, Automotive & Industrial Programmes",
+      "products": [
+        "auto-ai",
+        "learner-driver-sa",
+        "pimp-my-old-car",
+        "shelton-motor-company",
+        "jkmr-mining"
+      ]
+    }
+  ],
+  "portfolio_controls": {
+    "independent_engine_per_platform": true,
+    "owned_first": true,
+    "external_fallback_reversible": true,
+    "chatgpt_runtime_dependency": false,
+    "international_site_standard": true,
+    "creative_system": "IZAKHONO CREATE",
+    "distribution_system": "IZAKHONO ADS",
+    "crm_required": true,
+    "paid_spend_requires_explicit_authority": true,
+    "behavioural_surveillance": false
+  }
+}
