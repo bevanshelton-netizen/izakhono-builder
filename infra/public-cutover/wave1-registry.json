@@ -7,7 +7,7 @@
     {
       "slug": "allegro-vibez",
       "profile": "products/izakhono-node/profiles/wave1/allegro-vibez.production.json",
-      "immutable_ref": "4db57e1ff8d890ca61541ed31777bef392d69d9e",
+      "immutable_ref": "79221c38b64d977af59bb528e8915dc139e589fb",
       "local_health_url": "http://127.0.0.1:8080/healthz",
       "public_health_path": "/healthz",
       "current_external_route": "https://allegro-vibez.vercel.app/",
@@ -48,13 +48,14 @@
   "ref_review": {
     "reviewed_at": "2026-09-25",
     "allegro_vibez": {
-      "ref": "4db57e1ff8d890ca61541ed31777bef392d69d9e",
+      "ref": "79221c38b64d977af59bb528e8915dc139e589fb",
       "gates": [
         "IZAKHONO Production Excellence",
         "Build ALLEGRO-VIBEZ",
         "IZAKHONO Build to Alpha"
       ],
-      "result": "PASS"
+      "result": "PASS",
+      "note": "Core-first artist-booking release; PR tree passed IZAKHONO Production Excellence, Build ALLEGRO-VIBEZ, and Central Alpha Core before merge."
     },
     "the_chancellor": {
       "ref": "640f3fbfed1d92bd0588f0ac706a6bb5a7308d17",
