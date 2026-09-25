@@ -138,6 +138,10 @@
       `<option value="${esc(code)}">${esc(locale.name)}</option>`
     ).join("");
 
+    if (state.offers.offers.some(item => item.id === "fais-employee-empowerment")) {
+      els.proposalOffer.value = "fais-employee-empowerment";
+    }
+
     const sync = () => {
       const offer = state.offers.offers.find(item => item.id === els.proposalOffer.value);
       const institution = state.institutions.audiences.find(item => item.id === els.proposalInstitution.value);
@@ -153,6 +157,7 @@
         <div class="proposal-meta">
           <span>Language: ${esc(state.locales.locales[els.proposalLanguage.value]?.name || "")}</span>
           <span>Scale: ${esc(els.proposalScale.value)}</span>
+          ${offer.pricing ? `<span class="proposal-price">${esc(offer.pricing.display)}</span>` : ""}
         </div>
       `;
     };
@@ -495,7 +500,8 @@
 
     document.querySelectorAll("[data-enterprise-cta]").forEach(button => {
       button.addEventListener("click", () => {
-        toast("Enterprise enquiry workflow is the next commercial connection.");
+        document.querySelector("#programme-builder")?.scrollIntoView({ behavior: "smooth" });
+        toast("Choose your institution, programme, language and scale to generate a procurement-ready brief.");
       });
     });
 

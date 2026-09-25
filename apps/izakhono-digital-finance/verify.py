@@ -34,6 +34,8 @@ required = [
     "healthz",
 ]
 
+required.append("assets/digital-finance-hero.svg")
+
 for name in required:
     path = ROOT / name
     assert path.exists(), f"missing required file: {name}"
@@ -157,9 +159,14 @@ assert "/api/v1/learner/assessment/submit" in engine_source
 assert "/api/v1/learner/completion-record" in engine_source
 assert "/api/v1/completion/verify" in engine_source
 assert 'id="runAutomationDemo"' in html
+assert 'assets/digital-finance-hero.svg' in html
+assert "R1,000" in html
+assert "Financial-services workforce package" in html
 assert "Human governance gates" in html
 assert "90–95%" in html
 assert "navigator.clipboard" in js
+assert "fais-employee-empowerment" in js
+assert "var(--font-display)" in css
 worker_source = (ROOT / "external-worker.js").read_text(encoding="utf-8")
 assert "protected_owned_engine_required" in worker_source
 assert "/api/v1/admin/" in worker_source

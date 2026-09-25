@@ -4,6 +4,7 @@ WORKDIR /app
 COPY apps/izakhono-digital-finance/index.html ./
 COPY apps/izakhono-digital-finance/styles.css ./
 COPY apps/izakhono-digital-finance/app.js ./
+COPY apps/izakhono-digital-finance/assets ./assets
 COPY apps/izakhono-digital-finance/curriculum.json ./
 COPY apps/izakhono-digital-finance/platform.json ./
 COPY apps/izakhono-digital-finance/institutions.json ./

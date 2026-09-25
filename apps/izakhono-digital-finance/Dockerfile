@@ -1,5 +1,6 @@
 FROM python:3.12-alpine
 WORKDIR /app
+COPY assets ./assets
 COPY index.html styles.css app.js curriculum.json platform.json institutions.json locales.json institutional-offers.json automation.json assessment-blueprint.json adapter-contracts.json external-status.json EXTERNAL-LIVE-EVIDENCE.json healthz engine.py automation_engine.py automation_store.py learner_access.py assessment_service.py credential_service.py verify.py test_automation.py test_automation_store.py test_zero_touch.py ./
 RUN mkdir -p /data && python verify.py && python test_automation.py && python test_automation_store.py && python test_zero_touch.py
 EXPOSE 8080
