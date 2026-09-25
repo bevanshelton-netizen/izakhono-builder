@@ -1,5 +1,5 @@
 {
-  "version": 4,
+  "version": 5,
   "name": "IZAKHONO CRM",
   "slug": "izakhono-crm",
   "operator": "IZAKHONO AFRICA (PTY) LTD",
@@ -9,19 +9,29 @@
   "container_port": 8080,
   "health_path": "/health",
   "branch": "main",
+  "application_version": "0.2.0",
+  "capabilities": [
+    "venture-scoped CRM contacts and deals",
+    "role-based staff access",
+    "persistent configurable pipelines",
+    "deterministic automation rules",
+    "venture-scoped integration outbox",
+    "audited administrative changes"
+  ],
   "infrastructure": {
     "policy": "owned-first-externally-reversible",
     "authoritative_source": "IZAKHONO CODE / Forge",
     "owned_target": "NODE01",
     "current_public_route": "NOT_YET_VERIFIED",
-    "external_fallback": "NONE_REQUIRED_FOR_INTERNAL_ADMIN_V1",
-    "status_label": "NOT YET PUBLIC",
+    "external_fallback": "NONE_REQUIRED_FOR_INTERNAL_ADMIN_V2",
+    "status_label": "OWNED PACKAGE READY - NODE01 ACTIVATION NOT YET VERIFIED",
     "data_dependencies": [
       "Owner-node durable CRM data volume; PostgreSQL / IZAKHONO Core migration target"
     ],
     "auth_dependencies": [
       "FORTRESS / IZAKHONO Access at public edge",
-      "CRM_ADMIN_TOKEN for direct administrative API protection",
+      "CRM_STAFF_JSON or CRM_STAFF_FILE for scoped staff roles",
+      "CRM_ADMIN_TOKEN for owner break-glass administration",
       "CRM_INGEST_TOKEN for platform intake"
     ],
     "payment_dependencies": [],

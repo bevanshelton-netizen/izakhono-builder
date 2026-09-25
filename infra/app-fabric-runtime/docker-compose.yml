@@ -12,6 +12,8 @@ services:
       CRM_DATA_FILE: /data/crm.json
       CRM_ADMIN_TOKEN: ${CRM_ADMIN_TOKEN}
       CRM_INGEST_TOKEN: ${CRM_INGEST_TOKEN}
+      CRM_STAFF_JSON: ${CRM_STAFF_JSON:-}
+      CRM_ALLOW_INSECURE_LOCAL: "false"
     volumes:
       - crm_data:/data
     networks:
