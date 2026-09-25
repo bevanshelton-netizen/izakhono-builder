@@ -154,6 +154,14 @@ class AcademyHandler(BaseHTTPRequestHandler):
             self._json(read_json("platform.json"))
             return
 
+        if path == "/api/v1/institutions":
+            self._json(read_json("institutions.json"))
+            return
+
+        if path == "/api/v1/locales":
+            self._json(read_json("locales.json"))
+            return
+
         if path == "/api/v1/payment":
             self._json(
                 {
