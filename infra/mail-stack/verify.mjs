@@ -3,7 +3,8 @@ import path from "node:path";
 
 const here = path.dirname(new URL(import.meta.url).pathname);
 const file = path.join(here, "platform-identities.json");
-const cfg = JSON.parse(fs.readFileSync(file, "utf8"));\nconst readiness = JSON.parse(fs.readFileSync(path.join(here, "domain-readiness.json"), "utf8"));
+const cfg = JSON.parse(fs.readFileSync(file, "utf8"));
+const readiness = JSON.parse(fs.readFileSync(path.join(here, "domain-readiness.json"), "utf8"));
 
 const problems = [];
 const seenIds = new Set();
@@ -33,7 +34,12 @@ for (const p of cfg.platforms) {
 }
 
 if (!cfg.platforms.some(p => p.id === "kora")) problems.push("KORA identity missing");
-if (!cfg.platforms.some(p => p.id === "izakhono-africa")) problems.push("IZAKHONO AFRICA identity missing");\n\nfor (const [domain,state] of Object.entries(readiness.domains || {})) {\n  if (!state.status) problems.push(`domain readiness missing status: ${domain}`);\n  if (state.sender_enabled === true && state.status !== "LIVE_VERIFIED") problems.push(`sender enabled before LIVE_VERIFIED: ${domain}`);\n}
+if (!cfg.platforms.some(p => p.id === "izakhono-africa")) problems.push("IZAKHONO AFRICA identity missing");
+
+for (const [domain,state] of Object.entries(readiness.domains || {})) {
+  if (!state.status) problems.push(`domain readiness missing status: ${domain}`);
+  if (state.sender_enabled === true && state.status !== "LIVE_VERIFIED") problems.push(`sender enabled before LIVE_VERIFIED: ${domain}`);
+}
 
 if (problems.length) {
   console.error("IZAKHONO Mail Stack verification FAILED");
