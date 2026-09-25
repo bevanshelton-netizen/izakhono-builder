@@ -75,6 +75,9 @@ try {
       public_key:projectKey,
       allow_signup:true,
       table_policies:{
+        musician_vetting:'owner_action_only',
+        musician_ads:'owner_public_read_action_only',
+        musician_ad_responses:'owner_action_only',
         merch_products:'owner_public_read_action_only',
         merch_orders:'owner_action_only',
         merch_order_items:'owner_action_only',
@@ -86,38 +89,68 @@ try {
   const seller=await signup('seller@allegro.example.test')
   const buyer=await signup('buyer@allegro.example.test')
 
-  result=await call(`/v1/data/${project}/merch_products`,{
+  // Direct self-approval is forbidden.
+  result=await call(`/v1/data/${project}/musician_vetting`,{
     method:'POST',
     token:seller.access_token,
-    body:{data:{
-      id:'product-1',
-      seller_id:seller.user.id,
-      owner_kind:'creator',
-      title:'Synthetic Creator Tee',
-      description:'Synthetic commerce test item',
-      product_type:'tshirt',
-      price:250,
-      currency:'ZAR',
-      sizes:['M','L'],
-      colours:['Black'],
-      stock_quantity:10,
-      made_to_order:false,
-      active:true,
-    }},
+    body:{data:{user_id:seller.user.id,status:'approved',identity_checked:true,contact_checked:true,profile_checked:true}},
+  })
+  assert.equal(result.response.status,403)
+
+  // The user may only request vetting; approval stays on the protected admin route.
+  result=await call(`/v3/actions/${project}/allegro-request-vetting`,{
+    method:'POST',
+    token:seller.access_token,
+    body:{},
+  })
+  assert.equal(result.response.status,200,JSON.stringify(result.data))
+  assert.equal(result.data.vetting.status,'pending')
+
+  // Unapproved creators cannot publish merchandise.
+  result=await call(`/v3/actions/${project}/allegro-create-merch-product`,{
+    method:'POST',
+    token:seller.access_token,
+    body:{title:'Synthetic Creator Tee',description:'Synthetic commerce test item',product_type:'tshirt',price:250,currency:'ZAR',sizes:['M','L'],colours:['Black'],stock_quantity:10},
+  })
+  assert.equal(result.response.status,403)
+
+  result=await call(`/v3/admin/actions/${project}/allegro-review-vetting`,{
+    method:'POST',
+    key:null,
+    token:adminToken,
+    body:{user_id:seller.user.id,status:'approved',identity_checked:true,contact_checked:true,profile_checked:true,references_checked:false,organisation_checked:false},
+  })
+  assert.equal(result.response.status,200,JSON.stringify(result.data))
+  assert.equal(result.data.vetting.status,'approved')
+
+  result=await call(`/v3/actions/${project}/allegro-create-merch-product`,{
+    method:'POST',
+    token:seller.access_token,
+    body:{title:'Synthetic Creator Tee',description:'Synthetic commerce test item',product_type:'tshirt',price:250,currency:'ZAR',sizes:['M','L'],colours:['Black'],stock_quantity:10,made_to_order:false},
   })
   assert.equal(result.response.status,201,JSON.stringify(result.data))
+  const productId=result.data.product.id
+  assert.equal(result.data.product.owner_kind,'creator')
+  assert.equal(result.data.product.seller_id,seller.user.id)
 
+  // Public catalogue reads require only the browser-safe project key.
   result=await call(`/v1/data/${project}/merch_products?active=true&limit=10`)
   assert.equal(result.response.status,200,JSON.stringify(result.data))
   assert.equal(result.data.length,1)
-  assert.equal(result.data[0].id,'product-1')
+  assert.equal(result.data[0].id,productId)
 
-  result=await call(`/v1/data/${project}/merch_products/product-1`,{
-    method:'PATCH',
-    token:buyer.access_token,
-    body:{data:{title:'Attempted takeover'}},
+  result=await call(`/v2/data/${project}/merch_products?active=true&limit=10`)
+  assert.equal(result.response.status,200,JSON.stringify(result.data))
+  assert.equal(result.data.length,1)
+  assert.equal(result.data[0].id,productId)
+
+  // Even the product owner cannot bypass the trusted publication action.
+  result=await call(`/v1/data/${project}/merch_products`,{
+    method:'POST',
+    token:seller.access_token,
+    body:{data:{title:'Bypass product',price:1,active:true}},
   })
-  assert.equal(result.response.status,404)
+  assert.equal(result.response.status,403)
 
   result=await call(`/v1/data/${project}/merch_orders`,{
     method:'POST',
@@ -136,7 +169,7 @@ try {
   result=await call(`/v3/actions/${project}/allegro-create-merch-order`,{
     method:'POST',
     token:buyer.access_token,
-    body:{product_id:'product-1',quantity:2,size:'L',colour:'Black'},
+    body:{product_id:productId,quantity:2,size:'L',colour:'Black'},
   })
   assert.equal(result.response.status,200,JSON.stringify(result.data))
   assert.equal(result.data.subtotal,500)
@@ -156,16 +189,26 @@ try {
   result=await call(`/v3/actions/${project}/allegro-create-merch-order`,{
     method:'POST',
     token:buyer.access_token,
-    body:{product_id:'product-1',quantity:1,size:'XXL',colour:'Black'},
+    body:{product_id:productId,quantity:1,size:'XXL',colour:'Black'},
   })
   assert.equal(result.response.status,400)
 
+  // Approved vetting is also enforced for marketplace adverts.
+  result=await call(`/v3/actions/${project}/allegro-request-vetting`,{method:'POST',token:buyer.access_token,body:{}})
+  assert.equal(result.response.status,200)
+  result=await call(`/v3/actions/${project}/allegro-create-musician-ad`,{
+    method:'POST',token:buyer.access_token,
+    body:{title:'Need a jazz vocalist',description:'Seeking a vocalist for a synthetic recording collaboration.',poster_role:'Producer',looking_for:['Singer / vocalist'],genres:['Jazz']},
+  })
+  assert.equal(result.response.status,403)
+
   console.log('PASS IZAKHONO Core ALLEGRO commerce E2E')
-  console.log('  ✓ owner_public_read exposes approved catalogue rows without a user token')
-  console.log('  ✓ product writes remain owner-restricted')
-  console.log('  ✓ owner_action_only blocks forged direct order inserts on v1 and v2')
-  console.log('  ✓ trusted ALLEGRO order action enforces 10% creator marketplace fee server-side')
-  console.log('  ✓ invalid product options fail closed')
+  console.log('  ✓ self-approved vetting is blocked and admin review is required')
+  console.log('  ✓ creator merch publication requires approved vetting server-side')
+  console.log('  ✓ public catalogue reads work on v1 and v2 with the project key')
+  console.log('  ✓ generic product/order write bypasses are blocked')
+  console.log('  ✓ trusted order action enforces the 10% creator marketplace fee')
+  console.log('  ✓ invalid variants and unvetted marketplace participation fail closed')
 } finally {
   if (child.exitCode===null) {
     child.kill('SIGTERM')
