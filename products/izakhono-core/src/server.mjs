@@ -25,7 +25,7 @@ async function tryPolicyRequest(req, res) {
     const relationModule = await relationModulePromise
     return relationModule.handleRelationRequest(req, res)
   }
-  if (rawUrl.startsWith('/v3/actions/')) {
+  if (rawUrl.startsWith('/v3/actions/') || rawUrl.startsWith('/v3/admin/actions/')) {
     actionModulePromise ||= import('./action-runtime.mjs')
     const actionModule = await actionModulePromise
     return actionModule.handleActionRequest(req, res)
