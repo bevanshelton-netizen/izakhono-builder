@@ -1,0 +1,78 @@
+{
+  "schema": "izakhono.portfolio.launch.v1",
+  "effective_date": "2026-09-25",
+  "owner": "IZAKHONO AFRICA (PTY) LTD",
+  "objective": "Finish every portfolio product to its evidence-based launch gate, preserve verified live routes, and automatically move conversion-ready products into CEO rollout and marketing operations.",
+  "execution_model": "Build -> Verify -> Conversion Gate -> Launch -> Rollout -> Measure -> Improve",
+  "infrastructure": {
+    "owned_first": true,
+    "external_fallback_reversible": true,
+    "chatgpt_runtime_dependency": false,
+    "platform_specific_engine_required": true,
+    "live_requires_independent_https_verification": true
+  },
+  "launch_states": [
+    "BUILD_IN_PROGRESS",
+    "BUILT_VERIFIED_LOCALLY",
+    "EXTERNAL_LIVE_VERIFIED",
+    "OWNED_LIVE_VERIFIED",
+    "BLOCKED_COMPLIANCE_OR_SECURITY",
+    "BLOCKED_PUBLIC_VERIFICATION"
+  ],
+  "international_site_standard": {
+    "required": true,
+    "requirements": [
+      "Clear value proposition and primary CTA above the fold",
+      "Professional responsive layout for phone, tablet and desktop",
+      "Product-appropriate high-quality photography, illustration or original branded graphics",
+      "Consistent brand typography, spacing, visual hierarchy and accessible contrast",
+      "Fast-loading optimized media with descriptive alt text where meaningful",
+      "Trust, contact, privacy, terms, refund/cancellation and delivery pages where applicable",
+      "No placeholder counters, fabricated testimonials, fake scarcity or unsupported claims",
+      "Working lead, enrolment, checkout or quote journey appropriate to the product",
+      "Share actions and portfolio cross-promotion where suitable",
+      "SEO/social metadata, favicon/app identity and production error handling"
+    ]
+  },
+  "rollout": {
+    "ceo_strategy_required": true,
+    "start_when": "VERIFIED_CONVERSION_READY or equivalent product-specific verified conversion gate",
+    "systems": {
+      "creative": "IZAKHONO CREATE",
+      "distribution": "IZAKHONO ADS",
+      "crm": "IZAKHONO portfolio CRM",
+      "orchestration": "IZAKHONO-owned queues/workers",
+      "revenue": "product-approved payment or qualified-lead route"
+    },
+    "default_channels": [
+      "owned portfolio cross-promotion",
+      "website and share surfaces",
+      "email/CRM audiences with lawful permission",
+      "organic social publishing",
+      "partner and institutional outreach",
+      "search/discovery surfaces",
+      "approved external advertising networks"
+    ],
+    "rules": [
+      "Ready/live products enter rollout without waiting for unfinished products.",
+      "Unfinished products remain in completion lanes and must not be marketed as live.",
+      "IZAKHONO CREATE is the creative source of record; IZAKHONO ADS controls distribution.",
+      "Campaign publishing remains evidence-gated by a working customer journey.",
+      "Paid media spend requires an approved account, budget and spend authority; no silent spend.",
+      "Regulated products require product-specific compliance approval before claims or paid distribution.",
+      "Use aggregate first-party operational measurement; no behavioural surveillance or silent tracking.",
+      "Marketing assets must accurately portray the product and use appropriate professional imagery/graphics."
+    ]
+  },
+  "advertising_software": [
+    "IZAKHONO CREATE",
+    "IZAKHONO ADS",
+    "portfolio CRM",
+    "campaign attribution/UTM tooling",
+    "share/referral tooling",
+    "cross-promotion inventory",
+    "creative image/video generation",
+    "partner outreach workflows"
+  ],
+  "portfolio_rule": "Every current and future IZAKHONO product inherits this policy unless a signed product-specific exception supersedes it."
+}
