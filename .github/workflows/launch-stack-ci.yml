@@ -45,6 +45,8 @@ jobs:
           done
           python3 -m py_compile products/izakhono-control/control.py products/izakhono-node/node_agent.py products/izakhono-node/wave1_deploy.py
           python3 products/izakhono-node/test_wave1_safety.py
+          bundle_id="$(bash scripts/launch-stack/compute-wave1-bundle-id.sh)"
+          [[ "$bundle_id" =~ ^[0-9a-f]{64}$ ]]
 
       - name: PowerShell owner-host syntax
         shell: pwsh
@@ -107,6 +109,8 @@ jobs:
           grep -Fq 'BUILDER_BUNDLE_REF' scripts/install-sovereign-deploy.sh
           grep -Fq 'BUILDER_REF_PATH' products/izakhono-node/wave1_deploy.py
           grep -Fq 'builder_bundle_ref' products/izakhono-node/wave1_deploy.py
+          grep -Fq 'WAVE1_BUNDLE_SHA256' scripts/install-sovereign-deploy.sh
+          grep -Fq 'wave1_bundle_sha256' products/izakhono-node/wave1_deploy.py
           grep -Fq '127.0.0.1' scripts/install-sovereign-deploy.sh
           grep -Fq 'core-storage.tgz' scripts/launch-stack/backup-stack.sh
           grep -Fq -- '--require-public' scripts/launch-stack/deploy-app.sh
