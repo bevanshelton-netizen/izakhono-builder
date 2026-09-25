@@ -36,6 +36,7 @@ jobs:
           bash -n products/izakhono-node/sync-builder-to-code.sh
           python products/izakhono-control/test_control.py
           python products/izakhono-node/test_service_plug.py
+          node internal/node01-command-gateway/test.mjs
           docker compose -f internal/node01-command-gateway/docker-compose.yml config >/tmp/izakhono-node01-compose.yml
           docker compose -f internal/node01-command-gateway/docker-compose.yml build
           echo '[PASS] Command Gateway, CONTROL/NODE source contract, compose topology and container build are valid.'
