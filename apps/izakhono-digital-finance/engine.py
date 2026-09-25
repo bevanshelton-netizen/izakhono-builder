@@ -15,10 +15,12 @@ import json
 import mimetypes
 import os
 
+from assessment_service import AssessmentService
 from automation_engine import evaluate as evaluate_automation
 from automation_store import AutomationStore
-
-from automation_engine import evaluate as evaluate_automation
+from credential_service import issue_completion_record, verify_completion_record
+from learner_access import issue_token as issue_learner_token
+from learner_access import verify_token as verify_learner_token
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -29,7 +31,11 @@ HOST = os.getenv("IZAKHONO_DF_HOST", "0.0.0.0")
 PORT = int(os.getenv("IZAKHONO_DF_PORT", "8080"))
 STATE_DB = os.getenv("IZAKHONO_DF_STATE_DB", str(ROOT / ".data" / "izakhono-df.sqlite3"))
 ADMIN_TOKEN = os.getenv("IZAKHONO_DF_ADMIN_TOKEN", "")
+LEARNER_SIGNING_KEY = os.getenv("IZAKHONO_DF_LEARNER_SIGNING_KEY", "")
+CREDENTIAL_SIGNING_KEY = os.getenv("IZAKHONO_DF_CREDENTIAL_SIGNING_KEY", "")
+QUESTION_BANK = os.getenv("IZAKHONO_DF_QUESTION_BANK", "")
 STORE = AutomationStore(STATE_DB)
+ASSESSMENTS = AssessmentService(QUESTION_BANK) if QUESTION_BANK else None
 
 SECURITY_HEADERS = {
     "Content-Security-Policy": (
@@ -121,6 +127,42 @@ class AcademyHandler(BaseHTTPRequestHandler):
             return False
         return True
 
+    def _learner_claims(self) -> dict | None:
+        if not LEARNER_SIGNING_KEY:
+            self._json(
+                {
+                    "error": "learner_access_not_configured",
+                    "message": "Set IZAKHONO_DF_LEARNER_SIGNING_KEY before enabling learner access.",
+                },
+                HTTPStatus.SERVICE_UNAVAILABLE,
+            )
+            return None
+
+        supplied = self.headers.get("Authorization", "")
+        if not supplied.startswith("Bearer "):
+            self._json(
+                {"error": "unauthorized", "message": "Learner bearer token required."},
+                HTTPStatus.UNAUTHORIZED,
+            )
+            return None
+
+        try:
+            claims = verify_learner_token(LEARNER_SIGNING_KEY, supplied[7:])
+        except ValueError as exc:
+            self._json({"error": "unauthorized", "message": str(exc)}, HTTPStatus.UNAUTHORIZED)
+            return None
+
+        try:
+            learner = STORE.get_learner(claims["institution_ref"], claims["sub"])
+        except ValueError:
+            self._json({"error": "unauthorized", "message": "Learner is not provisioned."}, HTTPStatus.UNAUTHORIZED)
+            return None
+
+        if learner["role"] != claims.get("role"):
+            self._json({"error": "unauthorized", "message": "Learner role changed; request a new access token."}, HTTPStatus.UNAUTHORIZED)
+            return None
+        return claims
+
     def _read_json_body(self, max_bytes: int = 32768) -> dict | None:
         try:
             length = int(self.headers.get("Content-Length", "0"))
@@ -204,12 +246,15 @@ class AcademyHandler(BaseHTTPRequestHandler):
                     "tracking": False,
                     "analytics": False,
                     "automation": {
-                        "state": "CORE_AND_PSEUDONYMOUS_STATE_STORE_BUILT_VERIFIED_LOCALLY",
+                        "state": "ZERO_TOUCH_CORE_BUILT_VERIFIED_LOCALLY_PROTECTED_RUNTIME_CONFIGURATION_REQUIRED",
                         "routine_admin_target": "90-95%",
                         "decision_endpoint": "/api/v1/automation/evaluate",
                         "institutional_event_endpoint": "/api/v1/admin/automation/event",
                         "state_store": "SQLite pseudonymous learner state + event/outbox store",
                         "admin_auth_required": True,
+                        "learner_access_tokens": bool(LEARNER_SIGNING_KEY),
+                        "assessment_bank_configured": bool(ASSESSMENTS and ASSESSMENTS.available()),
+                        "completion_record_signing": bool(CREDENTIAL_SIGNING_KEY),
                         "human_governance": True,
                     },
                     "payment": {
@@ -274,6 +319,109 @@ class AcademyHandler(BaseHTTPRequestHandler):
                 self._json({"error": "invalid_request", "message": str(exc)}, HTTPStatus.BAD_REQUEST)
             return
 
+        if path == "/api/v1/learner/me":
+            claims = self._learner_claims()
+            if claims is None:
+                return
+            try:
+                learner = STORE.get_learner(claims["institution_ref"], claims["sub"])
+                self._json(
+                    {
+                        "learner_ref": learner["learner_ref"],
+                        "institution_ref": learner["institution_ref"],
+                        "role": learner["role"],
+                        "stage": learner["stage"],
+                        "learning_path": learner["learning_path"],
+                        "completed_modules": learner["completed_modules"],
+                        "total_modules": learner["total_modules"],
+                        "human_review": learner["human_review"],
+                    }
+                )
+            except ValueError as exc:
+                self._json({"error": "not_found", "message": str(exc)}, HTTPStatus.NOT_FOUND)
+            return
+
+        if path == "/api/v1/learner/actions":
+            claims = self._learner_claims()
+            if claims is None:
+                return
+            self._json(
+                {
+                    "learner_ref": claims["sub"],
+                    "actions": STORE.learner_actions(claims["institution_ref"], claims["sub"]),
+                }
+            )
+            return
+
+        if path == "/api/v1/learner/assessment":
+            claims = self._learner_claims()
+            if claims is None:
+                return
+            assessment_id = (query.get("assessment_id") or [""])[0]
+            if not ASSESSMENTS or not ASSESSMENTS.available():
+                self._json(
+                    {"error": "assessment_bank_not_configured"},
+                    HTTPStatus.SERVICE_UNAVAILABLE,
+                )
+                return
+            try:
+                self._json(ASSESSMENTS.present(assessment_id))
+            except ValueError as exc:
+                self._json({"error": "assessment_unavailable", "message": str(exc)}, HTTPStatus.BAD_REQUEST)
+            return
+
+        if path == "/api/v1/learner/completion-record":
+            claims = self._learner_claims()
+            if claims is None:
+                return
+            if not CREDENTIAL_SIGNING_KEY:
+                self._json(
+                    {"error": "credential_signing_not_configured"},
+                    HTTPStatus.SERVICE_UNAVAILABLE,
+                )
+                return
+            programme_id = (query.get("programme_id") or ["fais-employee-empowerment"])[0]
+            try:
+                learner = STORE.get_learner(claims["institution_ref"], claims["sub"])
+                if learner["last_decision"] not in {"completion_eligible", "certificate_eligible", "complete"}:
+                    self._json(
+                        {"error": "completion_not_eligible", "stage": learner["stage"]},
+                        HTTPStatus.CONFLICT,
+                    )
+                    return
+                record = issue_completion_record(
+                    CREDENTIAL_SIGNING_KEY,
+                    learner_ref=claims["sub"],
+                    institution_ref=claims["institution_ref"],
+                    programme_id=programme_id,
+                )
+                verified = verify_completion_record(CREDENTIAL_SIGNING_KEY, record)
+                STORE.store_credential(
+                    credential_ref=verified["credential_ref"],
+                    institution_ref=claims["institution_ref"],
+                    learner_ref=claims["sub"],
+                    programme_id=programme_id,
+                    record_token=record,
+                )
+                self._json({"record": record, "credential": verified})
+            except ValueError as exc:
+                self._json({"error": "completion_record_error", "message": str(exc)}, HTTPStatus.BAD_REQUEST)
+            return
+
+        if path == "/api/v1/completion/verify":
+            record = (query.get("record") or [""])[0]
+            if not CREDENTIAL_SIGNING_KEY:
+                self._json(
+                    {"error": "credential_signing_not_configured"},
+                    HTTPStatus.SERVICE_UNAVAILABLE,
+                )
+                return
+            try:
+                self._json({"valid": True, "credential": verify_completion_record(CREDENTIAL_SIGNING_KEY, record)})
+            except ValueError as exc:
+                self._json({"valid": False, "message": str(exc)}, HTTPStatus.BAD_REQUEST)
+            return
+
         if path == "/api/v1/payment":
             self._json(
                 {
@@ -302,6 +450,111 @@ class AcademyHandler(BaseHTTPRequestHandler):
             decision = evaluate_automation(payload, read_json("automation.json"))
             status = HTTPStatus.OK if decision.get("ok") else HTTPStatus.BAD_REQUEST
             self._json(decision, status)
+            return
+
+        if path == "/api/v1/admin/institution/license":
+            if not self._admin_authorized():
+                return
+            payload = self._read_json_body()
+            if payload is None:
+                return
+            try:
+                license_data = STORE.set_institution_license(
+                    str(payload.get("institution_ref") or ""),
+                    active=bool(payload.get("active", True)),
+                    seat_limit=int(payload.get("seat_limit") or 0),
+                    product_id=str(payload.get("product_id") or "fais-employee-empowerment"),
+                    price_per_employee=int(payload.get("price_per_employee") or 1000),
+                )
+                self._json({"ok": True, "license": license_data})
+            except (ValueError, TypeError) as exc:
+                self._json({"error": "invalid_license", "message": str(exc)}, HTTPStatus.BAD_REQUEST)
+            return
+
+        if path == "/api/v1/admin/roster/provision":
+            if not self._admin_authorized():
+                return
+            payload = self._read_json_body(max_bytes=1024 * 1024)
+            if payload is None:
+                return
+            try:
+                result = STORE.provision_roster(
+                    str(payload.get("institution_ref") or ""),
+                    payload.get("learners") or [],
+                )
+                self._json({"ok": True, "result": result})
+            except ValueError as exc:
+                self._json({"error": "roster_error", "message": str(exc)}, HTTPStatus.BAD_REQUEST)
+            return
+
+        if path == "/api/v1/admin/learner/access-token":
+            if not self._admin_authorized():
+                return
+            payload = self._read_json_body()
+            if payload is None:
+                return
+            if not LEARNER_SIGNING_KEY:
+                self._json({"error": "learner_access_not_configured"}, HTTPStatus.SERVICE_UNAVAILABLE)
+                return
+            institution_ref = str(payload.get("institution_ref") or "")
+            learner_ref = str(payload.get("learner_ref") or "")
+            try:
+                learner = STORE.get_learner(institution_ref, learner_ref)
+                token = issue_learner_token(
+                    LEARNER_SIGNING_KEY,
+                    learner_ref=learner_ref,
+                    institution_ref=institution_ref,
+                    role=learner["role"],
+                    ttl_seconds=int(payload.get("ttl_seconds") or 8 * 60 * 60),
+                )
+                self._json({"ok": True, "access_token": token, "expires_in": int(payload.get("ttl_seconds") or 8 * 60 * 60)})
+            except (ValueError, TypeError) as exc:
+                self._json({"error": "access_token_error", "message": str(exc)}, HTTPStatus.BAD_REQUEST)
+            return
+
+        if path == "/api/v1/learner/assessment/submit":
+            claims = self._learner_claims()
+            if claims is None:
+                return
+            payload = self._read_json_body()
+            if payload is None:
+                return
+            if not ASSESSMENTS or not ASSESSMENTS.available():
+                self._json({"error": "assessment_bank_not_configured"}, HTTPStatus.SERVICE_UNAVAILABLE)
+                return
+            assessment_id = str(payload.get("assessment_id") or "")
+            answers = payload.get("answers") or {}
+            if not isinstance(answers, dict):
+                self._json({"error": "answers_must_be_object"}, HTTPStatus.BAD_REQUEST)
+                return
+            try:
+                scored = ASSESSMENTS.score(assessment_id, answers)
+                learner = STORE.get_learner(claims["institution_ref"], claims["sub"])
+                assessment = ASSESSMENTS.present(assessment_id)
+                event = {
+                    "institution_ref": claims["institution_ref"],
+                    "learner_ref": claims["sub"],
+                    "role": learner["role"],
+                    "stage": "baseline" if assessment["type"] == "baseline" else "final_assessment",
+                }
+                if assessment["type"] == "baseline":
+                    event["baseline_score"] = scored["percent"]
+                else:
+                    event["final_score"] = scored["percent"]
+                    event["attempts"] = learner["attempts"] + 1
+                decision_payload = {key: value for key, value in event.items() if key != "institution_ref"}
+                decision = evaluate_automation(decision_payload, read_json("automation.json"))
+                stored = STORE.record_decision(event, decision)
+                self._json(
+                    {
+                        "ok": True,
+                        "score": scored,
+                        "decision": decision,
+                        "stored": stored,
+                    }
+                )
+            except ValueError as exc:
+                self._json({"error": "assessment_error", "message": str(exc)}, HTTPStatus.BAD_REQUEST)
             return
 
         if path == "/api/v1/admin/automation/event":
