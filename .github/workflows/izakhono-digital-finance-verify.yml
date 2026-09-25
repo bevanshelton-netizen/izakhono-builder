@@ -50,7 +50,7 @@ jobs:
           grep -q '"engine":"independent"' <(curl -fsS http://127.0.0.1:8080/api/v1/status)
           grep -q 'IZAKHONO Digital Finance Academy' /tmp/catalog.json
           grep -q 'Banks & Payment Institutions' /tmp/institutions.json
-          grep -q '"العربية"' /tmp/locales.json
+          grep -q '"ar"' /tmp/locales.json
 
       - name: Stop engine
         if: always()
