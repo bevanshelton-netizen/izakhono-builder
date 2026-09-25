@@ -1,0 +1,125 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 800" role="img" aria-labelledby="title desc">
+<title id="title">IZAKHONO Digital Finance global learning network</title>
+<desc id="desc">A premium abstract illustration of a connected globe, blockchain, payments, cyber security, compliance and institutional learning.</desc>
+<defs>
+  <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0" stop-color="#07131f"/>
+    <stop offset=".48" stop-color="#071019"/>
+    <stop offset="1" stop-color="#03070c"/>
+  </linearGradient>
+  <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0" stop-color="#fff0a6"/>
+    <stop offset=".35" stop-color="#f4c95d"/>
+    <stop offset="1" stop-color="#a96b10"/>
+  </linearGradient>
+  <linearGradient id="cyan" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0" stop-color="#87fff1"/>
+    <stop offset=".5" stop-color="#4fe2dd"/>
+    <stop offset="1" stop-color="#2797ff"/>
+  </linearGradient>
+  <radialGradient id="globe" cx=".35" cy=".28" r=".74">
+    <stop offset="0" stop-color="#153b59"/>
+    <stop offset=".5" stop-color="#09273c"/>
+    <stop offset="1" stop-color="#031019"/>
+  </radialGradient>
+  <filter id="cyanGlow" x="-50%" y="-50%" width="200%" height="200%">
+    <feGaussianBlur stdDeviation="7" result="b"/>
+    <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+  </filter>
+  <filter id="goldGlow" x="-50%" y="-50%" width="200%" height="200%">
+    <feGaussianBlur stdDeviation="6" result="b"/>
+    <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+  </filter>
+  <pattern id="grid" width="34" height="34" patternUnits="userSpaceOnUse">
+    <path d="M34 0H0V34" fill="none" stroke="#54d7e8" stroke-opacity=".08" stroke-width="1"/>
+  </pattern>
+</defs>
+
+<rect width="960" height="800" rx="46" fill="url(#bg)"/>
+<rect width="960" height="800" rx="46" fill="url(#grid)"/>
+<circle cx="784" cy="155" r="235" fill="#2f8fff" fill-opacity=".05"/>
+<circle cx="140" cy="705" r="210" fill="#5ef0d6" fill-opacity=".045"/>
+
+<!-- global orbit -->
+<circle cx="685" cy="334" r="238" fill="url(#globe)" stroke="#4bdcea" stroke-opacity=".38" stroke-width="2"/>
+<ellipse cx="685" cy="334" rx="238" ry="86" fill="none" stroke="#4bdcea" stroke-opacity=".28" stroke-width="2"/>
+<ellipse cx="685" cy="334" rx="238" ry="145" fill="none" stroke="#4bdcea" stroke-opacity=".18" stroke-width="1.5"/>
+<ellipse cx="685" cy="334" rx="82" ry="238" fill="none" stroke="#4bdcea" stroke-opacity=".18" stroke-width="1.5"/>
+<ellipse cx="685" cy="334" rx="154" ry="238" fill="none" stroke="#4bdcea" stroke-opacity=".13" stroke-width="1.5"/>
+
+<!-- abstract continents -->
+<path d="M612 218l36-16 44 11 22 25-18 19-37 4-20 22-25-8-13-29zM731 225l31-10 43 14 12 26-17 17-22-5-12 22-24 1-15-21 9-20zM596 318l26-17 30 8 13 28-17 22-8 36-30 20-27-8-10-28 10-29zM710 317l33-25 45 5 36 28-9 31-35 17-17 36-38 8-22-27 13-28-15-23zM779 432l31-16 29 10 7 28-28 21-31-7z" fill="#69ddea" fill-opacity=".15" stroke="#69ddea" stroke-opacity=".38" stroke-width="2"/>
+
+<!-- network arcs -->
+<path d="M503 369C585 177 774 128 894 252" fill="none" stroke="url(#gold)" stroke-width="2" stroke-opacity=".9"/>
+<path d="M517 445C610 251 803 245 909 360" fill="none" stroke="url(#cyan)" stroke-width="2" stroke-opacity=".78"/>
+<path d="M563 230C674 112 848 167 907 284" fill="none" stroke="url(#cyan)" stroke-width="1.5" stroke-opacity=".6"/>
+<path d="M579 496C685 381 824 392 885 501" fill="none" stroke="url(#gold)" stroke-width="1.6" stroke-opacity=".7"/>
+
+<!-- nodes -->
+<g fill="#f5cc63" filter="url(#goldGlow)">
+  <circle cx="548" cy="296" r="5"/><circle cx="631" cy="214" r="5"/><circle cx="737" cy="179" r="5"/>
+  <circle cx="842" cy="209" r="5"/><circle cx="891" cy="292" r="5"/><circle cx="822" cy="430" r="5"/>
+  <circle cx="721" cy="470" r="5"/><circle cx="607" cy="438" r="5"/>
+</g>
+
+<!-- glass cards left -->
+<g>
+  <rect x="60" y="155" width="270" height="176" rx="28" fill="#0c1d2a" fill-opacity=".92" stroke="#3fded8" stroke-opacity=".45"/>
+  <circle cx="119" cy="215" r="34" fill="#092838" stroke="#4de9de" stroke-width="2"/>
+  <path d="M108 196v38M130 196v38M100 206h38M100 224h38" stroke="#72fff1" stroke-width="5" stroke-linecap="round"/>
+  <text x="172" y="206" fill="#ffffff" font-family="Segoe UI,Arial,sans-serif" font-size="26" font-weight="800">BLOCKCHAIN</text>
+  <text x="172" y="236" fill="#8faec3" font-family="Segoe UI,Arial,sans-serif" font-size="15">Architecture • assets • custody</text>
+  <rect x="88" y="274" width="214" height="20" rx="10" fill="#143344"/>
+  <rect x="88" y="274" width="156" height="20" rx="10" fill="url(#cyan)"/>
+</g>
+
+<g>
+  <rect x="115" y="356" width="300" height="180" rx="28" fill="#101923" fill-opacity=".95" stroke="#f4c95d" stroke-opacity=".4"/>
+  <circle cx="177" cy="416" r="35" fill="#2b210e" stroke="#f4c95d" stroke-width="2"/>
+  <path d="M177 395l19 9v14c0 17-11 28-19 32-8-4-19-15-19-32v-14z" fill="none" stroke="#ffd86b" stroke-width="4"/>
+  <path d="M169 418l7 7 12-15" fill="none" stroke="#ffd86b" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="232" y="405" fill="#ffffff" font-family="Segoe UI,Arial,sans-serif" font-size="25" font-weight="800">CYBER + RISK</text>
+  <text x="232" y="435" fill="#a7aeb9" font-family="Segoe UI,Arial,sans-serif" font-size="15">Fraud • controls • escalation</text>
+  <g fill="#f4c95d">
+    <rect x="148" y="478" width="42" height="24" rx="5"/><rect x="200" y="462" width="42" height="40" rx="5" opacity=".8"/><rect x="252" y="442" width="42" height="60" rx="5" opacity=".6"/><rect x="304" y="422" width="42" height="80" rx="5" opacity=".45"/>
+  </g>
+</g>
+
+<!-- institutional card -->
+<g>
+  <rect x="70" y="584" width="390" height="144" rx="28" fill="#07131b" stroke="#69ddea" stroke-opacity=".3"/>
+  <text x="104" y="624" fill="#6eeadf" font-family="Segoe UI,Arial,sans-serif" font-size="14" font-weight="800" letter-spacing="3">INSTITUTIONAL WORKFORCE</text>
+  <text x="104" y="666" fill="#ffffff" font-family="Segoe UI,Arial,sans-serif" font-size="31" font-weight="900">R1,000</text>
+  <text x="238" y="665" fill="#f4c95d" font-family="Segoe UI,Arial,sans-serif" font-size="15" font-weight="800">PER EMPLOYEE</text>
+  <text x="104" y="700" fill="#92a7b6" font-family="Segoe UI,Arial,sans-serif" font-size="15">FAIS employee empowerment package</text>
+</g>
+
+<!-- right labels -->
+<g font-family="Segoe UI,Arial,sans-serif">
+  <rect x="557" y="600" width="332" height="128" rx="28" fill="#0a1620" fill-opacity=".94" stroke="#f4c95d" stroke-opacity=".33"/>
+  <text x="592" y="638" fill="#f4c95d" font-size="13" font-weight="800" letter-spacing="2.6">GLOBAL • MULTILINGUAL</text>
+  <text x="592" y="678" fill="#ffffff" font-size="27" font-weight="900">WORKFORCE AUTOPILOT</text>
+  <text x="592" y="708" fill="#9bb0bf" font-size="14">Role-based learning • automated routing • reporting</text>
+</g>
+
+<!-- icon strip -->
+<g transform="translate(455 60)">
+  <rect width="422" height="74" rx="22" fill="#07131b" fill-opacity=".9" stroke="#64eee2" stroke-opacity=".23"/>
+  <g transform="translate(28 18)" fill="none" stroke="#65e9df" stroke-width="3">
+    <rect x="0" y="7" width="44" height="31" rx="6"/><path d="M8 18h28M9 28h13"/>
+  </g>
+  <text x="88" y="31" fill="#ffffff" font-family="Segoe UI,Arial,sans-serif" font-size="14" font-weight="800">PAYMENTS</text>
+  <text x="88" y="53" fill="#8fa7b7" font-family="Segoe UI,Arial,sans-serif" font-size="12">Modern rails + digital money</text>
+  <line x1="214" y1="14" x2="214" y2="60" stroke="#ffffff" stroke-opacity=".1"/>
+  <g transform="translate(239 17)" fill="none" stroke="#f4c95d" stroke-width="3">
+    <path d="M22 0l19 8v14c0 14-9 24-19 29C12 46 3 36 3 22V8z"/>
+    <path d="M13 23l7 7 12-15"/>
+  </g>
+  <text x="296" y="31" fill="#ffffff" font-family="Segoe UI,Arial,sans-serif" font-size="14" font-weight="800">COMPLIANCE</text>
+  <text x="296" y="53" fill="#8fa7b7" font-family="Segoe UI,Arial,sans-serif" font-size="12">Governance + conduct</text>
+</g>
+
+<!-- subtle label -->
+<text x="495" y="768" fill="#648194" font-family="Segoe UI,Arial,sans-serif" font-size="12" letter-spacing="3">IZAKHONO DIGITAL FINANCE ACADEMY</text>
+</svg>
