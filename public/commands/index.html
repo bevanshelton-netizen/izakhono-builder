@@ -75,7 +75,7 @@
 </main>
 
 <script>
-const state={secret:sessionStorage.getItem('iz_command_secret')||'',commands:[],stats:null,category:'All',favorites:new Set(JSON.parse(localStorage.getItem('iz_command_favorites')||'[]')),recent:JSON.parse(localStorage.getItem('iz_command_recent')||'[]')};
+const bootstrapParams=new URLSearchParams(location.hash.replace(/^#/,''));const bootstrapOwner=bootstrapParams.get('owner');if(bootstrapOwner){sessionStorage.setItem('iz_command_secret',bootstrapOwner);history.replaceState(null,'',location.pathname+location.search)}\nconst state={secret:sessionStorage.getItem('iz_command_secret')||'',commands:[],stats:null,category:'All',favorites:new Set(JSON.parse(localStorage.getItem('iz_command_favorites')||'[]')),recent:JSON.parse(localStorage.getItem('iz_command_recent')||'[]')};
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
 const secret=$('#secret');secret.value=state.secret;
