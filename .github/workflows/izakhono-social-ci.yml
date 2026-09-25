@@ -62,12 +62,14 @@ jobs:
       - name: Build sovereign engine image
         working-directory: products/izakhono-social
         run: docker build -f engine/Dockerfile -t connecta-engine:ci .
-      - name: Validate owned compose stack
+      - name: Validate owned and portable compose stacks
         working-directory: products/izakhono-social
         env:
           CONNECTA_DB_PASSWORD: ci-only-password
           CONNECTA_OWNER_KEY: ci-only-owner-key
-        run: docker compose -f docker-compose.owned.yml config
+        run: |
+          docker compose -f docker-compose.owned.yml config
+          docker compose -f docker-compose.portable.yml config
       - name: Boot owned CONNECTA stack
         working-directory: products/izakhono-social
         env:
@@ -82,13 +84,95 @@ jobs:
           CONNECTA_OWNER_KEY: ci-only-owner-key
         run: |
           for i in $(seq 1 30); do
-            if docker compose -f docker-compose.owned.yml exec -T engine node -e "fetch('http://127.0.0.1:4100/health').then(async r=>{if(!r.ok)process.exit(1); const j=await r.json(); if(!j.providerIndependent || j.behaviouralTracking!==false) process.exit(1)})"; then
+            if docker compose -f docker-compose.owned.yml exec -T engine node -e "fetch('http://127.0.0.1:4100/health').then(async r=>{if(!r.ok)process.exit(1); const j=await r.json(); if(j.database!=='ok'||j.storage!=='ok'||j.providerIndependent!==true||j.productEngine!=='CONNECTA'||j.dependsOnAnotherProductEngine!==false||j.externalServicesReplaceableAdaptersOnly!==true||j.behaviouralTracking!==false) process.exit(1)})"; then
               exit 0
             fi
             sleep 2
           done
           docker compose -f docker-compose.owned.yml logs engine postgres
           exit 1
+      - name: Verify engine-owned schema bootstrap
+        working-directory: products/izakhono-social
+        env:
+          CONNECTA_DB_PASSWORD: ci-only-password
+          CONNECTA_OWNER_KEY: ci-only-owner-key
+        run: |
+          FILES=$(find db -maxdepth 1 -type f -name '[0-9]*.sql' | wc -l)
+          APPLIED=$(docker compose -f docker-compose.owned.yml exec -T postgres psql -U connecta -d connecta -Atc "select count(*) from connecta_schema_migrations;" | tr -d '[:space:]')
+          test "$APPLIED" = "$FILES"
+          docker compose -f docker-compose.owned.yml exec -T postgres psql -U connecta -d connecta -Atc "select count(*) from information_schema.tables where table_schema='public';" | grep -Eq '^[2-9][0-9]+
+        working-directory: products/izakhono-social
+        env:
+          CONNECTA_DB_PASSWORD: ci-only-password
+          CONNECTA_OWNER_KEY: ci-only-owner-key
+          CONNECTA_WEB_URL: http://127.0.0.1:3080
+        run: |
+          for i in $(seq 1 45); do
+            if curl -fsS --max-time 5 http://127.0.0.1:3080/health >/dev/null; then break; fi
+            sleep 2
+          done
+          node scripts/smoke-web-runtime.mjs
+      - name: Verify recovery scripts
+        working-directory: products/izakhono-social
+        run: bash -n ops/backup.sh ops/restore-test.sh ops/restore.sh
+      - name: Prove non-destructive backup and restore
+        working-directory: products/izakhono-social
+        env:
+          CONNECTA_DB_PASSWORD: ci-only-password
+          CONNECTA_OWNER_KEY: ci-only-owner-key
+          CONNECTA_COMPOSE_PROJECT: izakhono-social
+        run: |
+          rm -rf /tmp/connecta-ci-backups
+          mkdir -p /tmp/connecta-ci-backups
+          bash ops/backup.sh /tmp/connecta-ci-backups | tee /tmp/connecta-backup.log
+          BACKUP_DIR="$(tail -n 1 /tmp/connecta-backup.log)"
+          test -d "$BACKUP_DIR"
+          bash ops/restore-test.sh "$BACKUP_DIR"
+      - name: Exercise growth flywheel
+        working-directory: products/izakhono-social
+        env:
+          CONNECTA_DB_PASSWORD: ci-only-password
+          CONNECTA_OWNER_KEY: ci-only-owner-key
+        run: docker compose -f docker-compose.owned.yml exec -T engine node scripts/smoke-growth.js
+      - name: Exercise zero-tolerance safety
+        working-directory: products/izakhono-social
+        env:
+          CONNECTA_DB_PASSWORD: ci-only-password
+          CONNECTA_OWNER_KEY: ci-only-owner-key
+        run: docker compose -f docker-compose.owned.yml exec -T engine node scripts/smoke-safety.js
+      - name: Exercise content-owner alerts
+        working-directory: products/izakhono-social
+        env:
+          CONNECTA_DB_PASSWORD: ci-only-password
+          CONNECTA_OWNER_KEY: ci-only-owner-key
+        run: docker compose -f docker-compose.owned.yml exec -T engine node scripts/smoke-content-alerts.js
+      - name: Exercise evidence-backed business verification
+        working-directory: products/izakhono-social
+        env:
+          CONNECTA_DB_PASSWORD: ci-only-password
+          CONNECTA_OWNER_KEY: ci-only-owner-key
+        run: docker compose -f docker-compose.owned.yml exec -T engine node scripts/smoke-business-verification.js
+      - name: Exercise altered-image owner protection
+        working-directory: products/izakhono-social
+        env:
+          CONNECTA_DB_PASSWORD: ci-only-password
+          CONNECTA_OWNER_KEY: ci-only-owner-key
+        run: docker compose -f docker-compose.owned.yml exec -T engine node scripts/smoke-perceptual-media.js
+      - name: Show logs on failure
+        if: failure()
+        working-directory: products/izakhono-social
+        env:
+          CONNECTA_DB_PASSWORD: ci-only-password
+          CONNECTA_OWNER_KEY: ci-only-owner-key
+        run: docker compose -f docker-compose.owned.yml logs engine postgres || true
+      - name: Stop owned stack
+        if: always()
+        working-directory: products/izakhono-social
+        env:
+          CONNECTA_DB_PASSWORD: ci-only-password
+          CONNECTA_OWNER_KEY: ci-only-owner-key
+        run: docker compose -f docker-compose.owned.yml down -v || true
+
       - name: Verify web-to-engine secure runtime
         working-directory: products/izakhono-social
         env:
