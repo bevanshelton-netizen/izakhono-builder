@@ -1,0 +1,188 @@
+{
+  "schema": "izakhono.marketing.package.v1",
+  "source": "IZAKHONO CREATE",
+  "created_at": "2026-09-25T02:05:00Z",
+  "product": "ALLEGRO-VIBEZ",
+  "campaign_name": "WEAR THE MOVEMENT — ALLEGRO-VIBEZ 2026",
+  "creative": {
+    "brief": "Make ALLEGRO-VIBEZ impossible to ignore: a high-impact music-fashion-culture launch built around the 2026 merch drop, with aggressive editorial typography, bass-hit pacing, premium streetwear framing and African-born/global-energy positioning.",
+    "key_message": "MORE THAN MUSIC. A MOVEMENT.",
+    "campaign_lockup": [
+      "ALLEGRO-VIBEZ",
+      "WEAR THE MOVEMENT",
+      "MORE THAN MUSIC. A MOVEMENT."
+    ],
+    "visual_system": {
+      "palette": [
+        "deep black",
+        "metallic gold",
+        "cream",
+        "burgundy",
+        "electric cyan",
+        "magenta",
+        "violet"
+      ],
+      "motion": [
+        "bass-hit cuts",
+        "camera flash",
+        "glitch",
+        "whip pan",
+        "speed ramp",
+        "audio waveform sweeps",
+        "giant type impacts"
+      ],
+      "fashion_direction": [
+        "premium oversized streetwear",
+        "clean golf-shirt detailing",
+        "varsity/bomber outerwear",
+        "caps and bucket hats"
+      ],
+      "guardrail": "High-energy and confrontational in visual impact, never misleading, degrading or unsafe."
+    },
+    "confirmed_offer_products": [
+      {
+        "sku": "AV-TEE-MOV-BLK",
+        "name": "The Movement Oversized Tee",
+        "price_zar": 549,
+        "sizes": "XS–5XL",
+        "spec": "300gsm oversized"
+      },
+      {
+        "sku": "AV-TEE-AFR-CRM",
+        "name": "African-Born Oversized Tee",
+        "price_zar": 599,
+        "sizes": "XS–5XL",
+        "spec": "300gsm oversized"
+      },
+      {
+        "sku": "AV-TEE-CCS-BRG",
+        "name": "Creators. Culture. Sound. Tee",
+        "price_zar": 599,
+        "sizes": "XS–5XL",
+        "spec": "300gsm oversized"
+      },
+      {
+        "sku": "AV-TEE-ECO-WHT",
+        "name": "Creator Economy Oversized Tee",
+        "price_zar": 549,
+        "sizes": "XS–5XL",
+        "spec": "300gsm oversized"
+      }
+    ],
+    "preview_only_categories": [
+      "golf shirts",
+      "hoodies",
+      "jackets",
+      "caps",
+      "bucket hats",
+      "accessories"
+    ],
+    "formats": [
+      "30s master sizzle 16:9",
+      "15s cutdown 16:9 and 9:16",
+      "10s vertical impact cut",
+      "6s bumper",
+      "1080x1920 story/reel",
+      "1080x1350 feed poster",
+      "1080x1080 product impact card",
+      "radio 10s and 20s stings",
+      "website animated takeover"
+    ],
+    "master_script": [
+      {
+        "time": "0:00–0:02",
+        "visual": "Black. Gold waveform impact. ALLEGRO-VIBEZ lockup.",
+        "audio": "Single bass impact.",
+        "copy": "THIS IS NOT MERCH."
+      },
+      {
+        "time": "0:02–0:05",
+        "visual": "Half-second fashion cuts: black, cream, burgundy, hoodie, varsity, headwear.",
+        "audio": "Beat accelerates.",
+        "copy": "MUSIC. PEOPLE. CULTURE."
+      },
+      {
+        "time": "0:05–0:09",
+        "visual": "Models drive toward camera through night-city lighting.",
+        "audio": "Bass drop.",
+        "copy": "WEAR THE MOVEMENT."
+      },
+      {
+        "time": "0:09–0:14",
+        "visual": "Confirmed tees punch on screen one by one with prices.",
+        "audio": "Four impact hits.",
+        "copy": "R549 / R599 · 300GSM · XS–5XL"
+      },
+      {
+        "time": "0:14–0:18",
+        "visual": "Detail cuts: collar, print, jacket turn, cap, bucket hat, golf shirt.",
+        "audio": "Percussive edit.",
+        "copy": "LOUD. CLEAN. UNMISSABLE."
+      },
+      {
+        "time": "0:18–0:22",
+        "visual": "Studio, DJ, stage, photographer, crowd.",
+        "audio": "Crowd layer rises.",
+        "copy": "CREATORS WEAR IT. CULTURE MOVES IN IT."
+      },
+      {
+        "time": "0:22–0:26",
+        "visual": "Johannesburg energy to global-stage montage.",
+        "audio": "Beat drops out then explodes.",
+        "copy": "AFRICAN-BORN. GLOBAL ENERGY."
+      },
+      {
+        "time": "0:26–0:30",
+        "visual": "Black/gold end card with rapid typography impacts.",
+        "audio": "Final bass hit.",
+        "copy": "ALLEGRO-VIBEZ · MORE THAN MUSIC. A MOVEMENT. · WEAR IT."
+      }
+    ],
+    "channel_treatments": {
+      "ALLEGRO-VIBEZ": "Hero takeover, merch landing page, confirmed tee conversion and preview-interest capture.",
+      "Allegro Radio": "10s/20s sonic stings, presenter drop mentions and launch-countdown beds.",
+      "KORA": "Artist/creator amplification, performance-lifestyle cuts and culture-led discovery.",
+      "IZAKHONO ONE": "Portfolio discovery/search surface routing interested users to the verified ALLEGRO merch destination.",
+      "IZAKHONO CRM": "Capture product interest by category/SKU; separate confirmed-buy intent from preview-only interest.",
+      "IZAKHONO ADS": "Distribute only approved CREATE assets through connected channels; no spend without explicit approval."
+    },
+    "compliance_notes": [
+      "Only the four confirmed tees may display current prices and 300gsm/XS–5XL specifications.",
+      "Golf shirts, hoodies, jackets, caps, bucket hats and accessories remain preview/TBA until approved.",
+      "Do not claim iKhokha checkout live until genuine product Buy Button URLs are configured and verified.",
+      "No behavioural profiling, hidden tracking or dark-pattern urgency.",
+      "Use creator/model/customer likeness only with appropriate permission."
+    ]
+  },
+  "channels": [
+    "ALLEGRO-VIBEZ",
+    "Allegro Radio",
+    "KORA",
+    "IZAKHONO ONE",
+    "IZAKHONO CRM",
+    "IZAKHONO ADS",
+    "Instagram/Reels",
+    "TikTok/short video",
+    "YouTube/Shorts",
+    "WhatsApp sharing"
+  ],
+  "offer": "Shop the confirmed ALLEGRO-VIBEZ 2026 oversized tee drop and register interest for the wider fashion range.",
+  "cta": "WEAR THE MOVEMENT",
+  "approval": {
+    "creative_source_verified": true,
+    "owner_spend_approved": false,
+    "publish_ready": false
+  },
+  "attribution": {
+    "campaign_id": "create-allegro-wear-the-movement-20260925",
+    "campaign_family": "allegro-2026-merch"
+  },
+  "policy": {
+    "distribution_system": "IZAKHONO ADS",
+    "owned_infrastructure_first": true,
+    "external_routes_reversible": true,
+    "platform_engines_independent": true,
+    "no_cross_product_engine_dependency": true,
+    "external_services_replaceable_adapters_only": true
+  }
+}
