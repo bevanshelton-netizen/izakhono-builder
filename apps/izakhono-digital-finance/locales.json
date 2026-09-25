@@ -1,0 +1,117 @@
+{
+  "schema": "izakhono.digital.finance.locales.v1",
+  "default": "en",
+  "availability_note": "These launch packs localise the main institutional interface. Full course localisation is released per language only after translation and subject-matter review.",
+  "locales": {
+    "en": {
+      "name": "English",
+      "dir": "ltr",
+      "status": "interface-ready",
+      "hero_kicker": "GLOBAL INSTITUTIONAL DIGITAL-FINANCE CAPABILITY",
+      "hero_title": "Build digital-finance capability across your institution.",
+      "hero_body": "Train leaders, professionals and teams in blockchain, digital assets, payments, fintech, cyber risk and compliance — with multilingual, role-based learning built for institutional use.",
+      "institution_heading": "Built for institutions that need capability, not hype.",
+      "institution_body": "Deploy executive briefings, staff academies, specialist labs and customer education in the language and operating context your people use.",
+      "cta": "Explore institutional programmes"
+    },
+    "fr": {
+      "name": "Français",
+      "dir": "ltr",
+      "status": "interface-ready",
+      "hero_kicker": "CAPACITÉ INSTITUTIONNELLE MONDIALE EN FINANCE NUMÉRIQUE",
+      "hero_title": "Développez les compétences en finance numérique dans toute votre institution.",
+      "hero_body": "Formez dirigeants, professionnels et équipes à la blockchain, aux actifs numériques, aux paiements, à la fintech, au cyberrisque et à la conformité grâce à un apprentissage multilingue adapté aux institutions.",
+      "institution_heading": "Conçu pour les institutions qui recherchent des compétences, pas du battage médiatique.",
+      "institution_body": "Déployez des briefings exécutifs, des académies internes, des laboratoires spécialisés et des programmes d'éducation client dans la langue et le contexte de vos équipes.",
+      "cta": "Découvrir les programmes institutionnels"
+    },
+    "es": {
+      "name": "Español",
+      "dir": "ltr",
+      "status": "interface-ready",
+      "hero_kicker": "CAPACIDAD INSTITUCIONAL GLOBAL EN FINANZAS DIGITALES",
+      "hero_title": "Desarrolle capacidades de finanzas digitales en toda su institución.",
+      "hero_body": "Forme a líderes, profesionales y equipos en blockchain, activos digitales, pagos, fintech, riesgo cibernético y cumplimiento con aprendizaje multilingüe orientado a instituciones.",
+      "institution_heading": "Creado para instituciones que necesitan capacidad, no exageración.",
+      "institution_body": "Implemente sesiones ejecutivas, academias internas, laboratorios especializados y educación para clientes en el idioma y contexto operativo de su gente.",
+      "cta": "Explorar programas institucionales"
+    },
+    "pt": {
+      "name": "Português",
+      "dir": "ltr",
+      "status": "interface-ready",
+      "hero_kicker": "CAPACITAÇÃO INSTITUCIONAL GLOBAL EM FINANÇAS DIGITAIS",
+      "hero_title": "Desenvolva competências em finanças digitais em toda a sua instituição.",
+      "hero_body": "Capacite líderes, profissionais e equipas em blockchain, ativos digitais, pagamentos, fintech, risco cibernético e conformidade com aprendizagem multilingue para instituições.",
+      "institution_heading": "Criado para instituições que precisam de capacidade, não de hype.",
+      "institution_body": "Implemente briefings executivos, academias internas, laboratórios especializados e educação de clientes no idioma e contexto operacional das suas equipas.",
+      "cta": "Explorar programas institucionais"
+    },
+    "ar": {
+      "name": "العربية",
+      "dir": "rtl",
+      "status": "interface-ready",
+      "hero_kicker": "بناء القدرات المؤسسية العالمية في التمويل الرقمي",
+      "hero_title": "طوّر قدرات التمويل الرقمي في جميع أنحاء مؤسستك.",
+      "hero_body": "درّب القادة والمهنيين والفرق على البلوك تشين والأصول الرقمية والمدفوعات والتقنية المالية والمخاطر السيبرانية والامتثال من خلال تعلم متعدد اللغات مصمم للمؤسسات.",
+      "institution_heading": "مصمم للمؤسسات التي تحتاج إلى قدرات حقيقية، لا إلى ضجيج.",
+      "institution_body": "قدّم إحاطات تنفيذية وأكاديميات للموظفين ومختبرات متخصصة وتثقيفاً للعملاء باللغة والسياق التشغيلي المناسبين لمؤسستك.",
+      "cta": "استكشف البرامج المؤسسية"
+    },
+    "sw": {
+      "name": "Kiswahili",
+      "dir": "ltr",
+      "status": "interface-ready",
+      "hero_kicker": "UWEZO WA KIMATAIFA WA KITAASISI KATIKA FEDHA ZA KIDIJITALI",
+      "hero_title": "Jenga uwezo wa fedha za kidijitali katika taasisi yako.",
+      "hero_body": "Wajengee viongozi, wataalamu na timu uelewa wa blockchain, mali za kidijitali, malipo, fintech, hatari za mtandao na uzingatiaji kupitia mafunzo ya lugha nyingi kwa taasisi.",
+      "institution_heading": "Imejengwa kwa taasisi zinazohitaji uwezo halisi, si makelele.",
+      "institution_body": "Toa mafunzo kwa viongozi, akademia za wafanyakazi, maabara maalum na elimu kwa wateja kwa lugha na mazingira yanayofaa watu wako.",
+      "cta": "Chunguza programu za taasisi"
+    },
+    "zu": {
+      "name": "isiZulu",
+      "dir": "ltr",
+      "status": "interface-ready",
+      "hero_kicker": "AMAKHONO OMHLABA WEZIKHUNGO KWEZEZIMALI ZEDIJITHALI",
+      "hero_title": "Yakha amakhono ezezimali zedijithali kuyo yonke inhlangano yakho.",
+      "hero_body": "Qeqesha abaholi, ochwepheshe namathimba nge-blockchain, izimpahla zedijithali, izinkokhelo, i-fintech, ubungozi be-cyber nokuthobela imithetho ngokufunda ngezilimi eziningi okwenzelwe izikhungo.",
+      "institution_heading": "Yakhelwe izikhungo ezidinga amakhono angempela, hhayi umsindo.",
+      "institution_body": "Hambisa izifundo zabaholi, ama-academy abasebenzi, amalabhorethri akhethekile nemfundo yamakhasimende ngolimi nangesimo sokusebenza sabantu bakho.",
+      "cta": "Hlola izinhlelo zezikhungo"
+    },
+    "zh": {
+      "name": "中文",
+      "dir": "ltr",
+      "status": "interface-ready",
+      "hero_kicker": "全球机构数字金融能力建设",
+      "hero_title": "在整个机构内建立数字金融能力。",
+      "hero_body": "以多语言、面向机构的学习方式，培训领导者、专业人员和团队掌握区块链、数字资产、支付、金融科技、网络风险与合规知识。",
+      "institution_heading": "为真正需要能力建设的机构而设计，而不是追逐炒作。",
+      "institution_body": "以适合您团队的语言和运营环境，部署高管简报、员工学院、专业实验室和客户教育。",
+      "cta": "探索机构课程"
+    },
+    "hi": {
+      "name": "हिन्दी",
+      "dir": "ltr",
+      "status": "interface-ready",
+      "hero_kicker": "वैश्विक संस्थागत डिजिटल वित्त क्षमता",
+      "hero_title": "अपने पूरे संस्थान में डिजिटल वित्त क्षमता विकसित करें।",
+      "hero_body": "बहुभाषी, संस्थान-केंद्रित शिक्षा के माध्यम से नेताओं, पेशेवरों और टीमों को ब्लॉकचेन, डिजिटल एसेट्स, भुगतान, फिनटेक, साइबर जोखिम और अनुपालन में प्रशिक्षित करें।",
+      "institution_heading": "उन संस्थानों के लिए बनाया गया है जिन्हें वास्तविक क्षमता चाहिए, केवल प्रचार नहीं।",
+      "institution_body": "अपनी टीम की भाषा और संचालन संदर्भ में कार्यकारी ब्रीफिंग, स्टाफ अकादमी, विशेषज्ञ लैब और ग्राहक शिक्षा प्रदान करें।",
+      "cta": "संस्थागत कार्यक्रम देखें"
+    },
+    "de": {
+      "name": "Deutsch",
+      "dir": "ltr",
+      "status": "interface-ready",
+      "hero_kicker": "GLOBALE INSTITUTIONELLE KOMPETENZ FÜR DIGITALE FINANZEN",
+      "hero_title": "Bauen Sie digitale Finanzkompetenz in Ihrer gesamten Institution auf.",
+      "hero_body": "Schulen Sie Führungskräfte, Fachleute und Teams in Blockchain, digitalen Vermögenswerten, Zahlungsverkehr, FinTech, Cyberrisiken und Compliance – mehrsprachig und für institutionelle Anforderungen konzipiert.",
+      "institution_heading": "Für Institutionen, die Kompetenz brauchen – nicht Hype.",
+      "institution_body": "Setzen Sie Executive Briefings, Mitarbeiterakademien, Speziallabore und Kundenbildung in der Sprache und im Arbeitskontext Ihrer Teams ein.",
+      "cta": "Institutionelle Programme entdecken"
+    }
+  }
+}

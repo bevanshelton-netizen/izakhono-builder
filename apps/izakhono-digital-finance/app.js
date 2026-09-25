@@ -6,6 +6,9 @@
     activeTrack: "all",
     search: "",
     activeModule: null,
+    institutions: null,
+    locales: null,
+    currentLocale: localStorage.getItem("izakhono-digital-finance-locale") || "en",
     progress: loadProgress()
   };
 
@@ -19,6 +22,10 @@
     closeDrawer: document.querySelector("#closeDrawer"),
     toast: document.querySelector("#toast"),
     engineStatus: document.querySelector("#engineStatus"),
+    institutionGrid: document.querySelector("#institutionGrid"),
+    languageSelect: document.querySelector("#languageSelect"),
+    languageCloud: document.querySelector("#languageCloud"),
+    localeCount: document.querySelector("#localeCount"),
     year: document.querySelector("#year")
   };
 
@@ -50,6 +57,78 @@
     els.toast.classList.add("show");
     clearTimeout(toast.timer);
     toast.timer = setTimeout(() => els.toast.classList.remove("show"), 3000);
+  }
+
+  async function loadJsonWithFallback(apiPath, fileName) {
+    for (const source of [apiPath, fileName]) {
+      try {
+        const response = await fetch(source, { cache: "no-store" });
+        if (!response.ok) continue;
+        return await response.json();
+      } catch {
+        // Keep the owned-engine and static-resilience modes interchangeable.
+      }
+    }
+    throw new Error("Resource unavailable: " + fileName);
+  }
+
+  async function loadInstitutionalData() {
+    const [institutions, locales] = await Promise.all([
+      loadJsonWithFallback("/api/v1/institutions", "institutions.json"),
+      loadJsonWithFallback("/api/v1/locales", "locales.json")
+    ]);
+    state.institutions = institutions;
+    state.locales = locales;
+    renderInstitutions();
+    renderLanguageControls();
+    applyLocale(state.currentLocale);
+  }
+
+  function renderInstitutions() {
+    if (!state.institutions || !els.institutionGrid) return;
+    els.institutionGrid.innerHTML = state.institutions.audiences.map((item, index) => `
+      <article class="institution-card">
+        <div class="tag">0${index + 1}</div>
+        <h3>${esc(item.name)}</h3>
+        <p>${esc(item.value)}</p>
+        <div class="programme-list">
+          ${item.programmes.slice(0, 3).map(programme => `<span>${esc(programme)}</span>`).join("")}
+        </div>
+      </article>
+    `).join("");
+  }
+
+  function renderLanguageControls() {
+    if (!state.locales || !els.languageSelect || !els.languageCloud) return;
+    const entries = Object.entries(state.locales.locales);
+    els.languageSelect.innerHTML = entries.map(([code, locale]) =>
+      `<option value="${esc(code)}">${esc(locale.name)}</option>`
+    ).join("");
+    els.languageSelect.value = state.locales.locales[state.currentLocale] ? state.currentLocale : state.locales.default;
+    els.languageCloud.innerHTML = entries.map(([code, locale]) =>
+      `<button class="language-chip" type="button" data-locale="${esc(code)}">${esc(locale.name)}</button>`
+    ).join("");
+    if (els.localeCount) els.localeCount.textContent = String(entries.length);
+
+    els.languageSelect.addEventListener("change", event => applyLocale(event.target.value));
+    els.languageCloud.querySelectorAll("[data-locale]").forEach(button => {
+      button.addEventListener("click", () => applyLocale(button.dataset.locale));
+    });
+  }
+
+  function applyLocale(code) {
+    if (!state.locales) return;
+    const locale = state.locales.locales[code] || state.locales.locales[state.locales.default];
+    const activeCode = state.locales.locales[code] ? code : state.locales.default;
+    state.currentLocale = activeCode;
+    localStorage.setItem("izakhono-digital-finance-locale", activeCode);
+    document.documentElement.lang = activeCode;
+    document.documentElement.dir = locale.dir || "ltr";
+    if (els.languageSelect) els.languageSelect.value = activeCode;
+    document.querySelectorAll("[data-i18n]").forEach(node => {
+      const key = node.dataset.i18n;
+      if (locale[key]) node.textContent = locale[key];
+    });
   }
 
   async function loadCurriculum() {
@@ -282,12 +361,17 @@
     renderFilters();
     checkEngine();
 
-    try {
-      await loadCurriculum();
-      renderCourses();
-    } catch {
-      els.grid.innerHTML = '<div class="empty">The curriculum could not be loaded. The engine should fail closed rather than invent course content.</div>';
-    }
+    const jobs = [
+      loadCurriculum().then(renderCourses).catch(() => {
+        els.grid.innerHTML = '<div class="empty">The curriculum could not be loaded. The engine should fail closed rather than invent course content.</div>';
+      }),
+      loadInstitutionalData().catch(() => {
+        if (els.institutionGrid) {
+          els.institutionGrid.innerHTML = '<div class="empty">Institutional programme data is temporarily unavailable.</div>';
+        }
+      })
+    ];
+    await Promise.allSettled(jobs);
   }
 
   boot();

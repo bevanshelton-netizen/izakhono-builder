@@ -1,0 +1,66 @@
+{
+  "schema": "izakhono.digital.finance.institutions.v1",
+  "positioning": "A multilingual digital-finance capability platform for institutions that need staff, leaders, customers or stakeholders to understand blockchain, digital assets, payments, fintech, cyber risk and compliance.",
+  "audiences": [
+    {
+      "id": "banks",
+      "name": "Banks & Payment Institutions",
+      "value": "Board-to-frontline learning on digital assets, tokenisation, modern payments, fraud, cyber risk, governance and customer education.",
+      "programmes": ["Executive briefings", "Role-based staff academies", "Payments and digital-assets learning", "Fraud and cyber simulations", "Customer education"]
+    },
+    {
+      "id": "regulators",
+      "name": "Regulators, Central Banks & Public Institutions",
+      "value": "Technology-neutral education that separates concepts, architectures and risks from product hype, with jurisdiction-specific regulatory overlays.",
+      "programmes": ["Policy-maker briefings", "Supervisory upskilling", "CBDC and payments learning", "Financial-crime scenarios", "Public-awareness programmes"]
+    },
+    {
+      "id": "fintech",
+      "name": "FinTech, Crypto & Technology Companies",
+      "value": "Structured capability building across product, engineering, operations, compliance, customer support and leadership teams.",
+      "programmes": ["Product-team academies", "Smart-contract risk", "Tokenisation labs", "Compliance onboarding", "Enterprise architecture workshops"]
+    },
+    {
+      "id": "professional-services",
+      "name": "Audit, Accounting, Legal & Advisory Firms",
+      "value": "Cross-disciplinary digital-finance literacy for professionals advising clients on transactions, controls, governance, reporting and risk.",
+      "programmes": ["Partner briefings", "Client-team learning", "Risk and controls", "Tokenisation foundations", "Digital-asset governance"]
+    },
+    {
+      "id": "insurers",
+      "name": "Insurers & Risk Institutions",
+      "value": "Capability in digital-asset exposures, cyber incidents, fraud patterns, custody risk and emerging technology governance.",
+      "programmes": ["Risk-team learning", "Fraud defence", "Cyber and custody scenarios", "Leadership briefings", "Claims and controls workshops"]
+    },
+    {
+      "id": "universities",
+      "name": "Universities, Colleges & Training Networks",
+      "value": "A modular professional-learning layer that can supplement existing programmes without claiming to replace the institution's own accredited qualifications.",
+      "programmes": ["Co-branded short learning", "Faculty upskilling", "Executive education support", "Student enrichment", "Industry case labs"]
+    },
+    {
+      "id": "corporates",
+      "name": "Global Corporates & Industry Associations",
+      "value": "Practical digital-finance literacy for treasury, finance, procurement, technology, risk, innovation and executive teams.",
+      "programmes": ["Executive education", "Treasury and payments", "Innovation teams", "Risk and governance", "Member education"]
+    },
+    {
+      "id": "development",
+      "name": "Development Finance, NGOs & Multilateral Programmes",
+      "value": "Accessible learning for financial inclusion, digital payments, SME enablement, consumer protection and public-interest programmes.",
+      "programmes": ["Financial inclusion learning", "SME digital-finance capability", "Consumer protection", "Train-the-trainer", "Country programmes"]
+    }
+  ],
+  "delivery": {
+    "formats": ["Self-paced", "Cohort-based", "Live virtual", "Blended", "Executive briefing", "Train-the-trainer", "Private institutional academy"],
+    "branding": ["IZAKHONO", "Co-branded", "White-label subject to contract"],
+    "deployment": ["IZAKHONO-hosted", "Dedicated institutional tenant", "Private deployment where commercially and technically approved"],
+    "reporting": ["Learner progress", "Assessment outcomes", "Cohort completion", "Role-based dashboards", "Institutional export"],
+    "localisation": "Interface, examples, assessments and learning content can be localised by language and jurisdiction. A locale is only advertised as fully available after its content pack has passed translation and subject-matter review."
+  },
+  "commercial": {
+    "model": "Institutional licence, cohort fee or custom programme agreement",
+    "pricing": "Quote-based until standard enterprise packages are approved",
+    "payment_rule": "Institutional contracts and invoicing remain separate from consumer iKhokha checkout."
+  }
+}
