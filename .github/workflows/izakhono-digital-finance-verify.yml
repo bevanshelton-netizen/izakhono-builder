@@ -27,7 +27,9 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Verify product contract and privacy boundary
-        run: python verify.py
+        run: |
+          python verify.py
+          python test_automation.py
 
       - name: Start independent engine
         run: |
@@ -48,11 +50,18 @@ jobs:
           curl -fsS http://127.0.0.1:8080/api/v1/institutions | python -m json.tool > /tmp/institutions.json
           curl -fsS http://127.0.0.1:8080/api/v1/locales | python -m json.tool > /tmp/locales.json
           curl -fsS http://127.0.0.1:8080/api/v1/offers | python -m json.tool > /tmp/offers.json
+          curl -fsS http://127.0.0.1:8080/api/v1/automation | python -m json.tool > /tmp/automation.json
+          curl -fsS http://127.0.0.1:8080/api/v1/assessment-blueprint | python -m json.tool > /tmp/assessment-blueprint.json
+          curl -fsS -X POST http://127.0.0.1:8080/api/v1/automation/evaluate             -H 'Content-Type: application/json'             -d '{"learner_ref":"ci-demo","stage":"baseline","role":"compliance_risk","baseline_score":55}'             | python -m json.tool > /tmp/automation-decision.json
+          curl -fsS -X POST http://127.0.0.1:8080/api/v1/automation/evaluate             -H 'Content-Type: application/json'             -d '{"learner_ref":"ci-review","stage":"learning","exception_codes":["SECURITY_OR_FRAUD_SIGNAL"]}'             | python -m json.tool > /tmp/governance-decision.json
           grep -q '"engine":"independent"' <(curl -fsS http://127.0.0.1:8080/api/v1/status)
           grep -q 'IZAKHONO Digital Finance Academy' /tmp/catalog.json
           grep -q 'Banks & Payment Institutions' /tmp/institutions.json
           grep -q '"ar"' /tmp/locales.json
           grep -q 'Institutional Workforce Academy' /tmp/offers.json
+          grep -q 'automated_normal_path_human_governance_exceptions' /tmp/automation.json
+          grep -q '"path": "foundation"' /tmp/automation-decision.json
+          grep -q '"decision": "human_review"' /tmp/governance-decision.json
 
       - name: Stop engine
         if: always()
