@@ -32,5 +32,51 @@
     "accreditation_claim": false,
     "financial_advice": false,
     "education_only": true
+  },
+  "positioning": "Multilingual global institutional digital-finance capability platform, with individual learning retained as an open-access entry route.",
+  "institutional": {
+    "audiences": [
+      "banks",
+      "payment institutions",
+      "regulators",
+      "central banks",
+      "fintechs",
+      "insurers",
+      "professional services",
+      "universities and training networks",
+      "global corporates",
+      "industry associations",
+      "development finance",
+      "NGOs and multilateral programmes"
+    ],
+    "delivery": [
+      "executive briefing",
+      "workforce academy",
+      "specialist lab",
+      "private institutional academy",
+      "public/customer education"
+    ],
+    "commercial_model": "Quote-based institutional licence, cohort or custom programme agreement"
+  },
+  "localisation": {
+    "interface_locales": [
+      "en",
+      "fr",
+      "es",
+      "pt",
+      "ar",
+      "sw",
+      "zu",
+      "zh",
+      "hi",
+      "de"
+    ],
+    "full_course_rule": "A locale is only marketed as fully available after translation QA and subject-matter review.",
+    "layers": [
+      "interface",
+      "learning content",
+      "jurisdiction overlay",
+      "institution overlay"
+    ]
   }
 }
