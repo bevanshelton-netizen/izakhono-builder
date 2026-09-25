@@ -436,6 +436,12 @@ export async function ventureFactoryRoute(
   isOwner: () => Promise<boolean>,
 ): Promise<Response | null> {
   if (url.pathname === '/ventures' && req.method === 'GET') return publicIndex(env);
+  if ((url.pathname === '/venture-factory' || url.pathname === '/venture-factory/') && req.method === 'GET') {
+    const target = new URL(req.url);
+    target.pathname = '/venture-factory/index.html';
+    target.search = '';
+    return Response.redirect(target.toString(), 302);
+  }
 
   const landing = url.pathname.match(/^\/venture\/([a-z0-9-]+)$/);
   if (landing && req.method === 'GET') return venturePage(env, landing[1]);
