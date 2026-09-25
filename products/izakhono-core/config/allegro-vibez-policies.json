@@ -7,10 +7,12 @@
     "published_releases": "owner_public_read",
     "creator_wallets": "owner",
     "creator_subscriptions": "owner",
-    "musician_vetting": "owner",
-    "musician_ads": "owner_public_read",
+    "musician_vetting": "owner_action_only",
+    "musician_ads": "owner_public_read_action_only",
     "merch_products": "owner_public_read_action_only",
     "merch_orders": "owner_action_only",
-    "merch_order_items": "owner_action_only"
+    "merch_order_items": "owner_action_only",
+    "musician_ad_responses": "owner_action_only",
+    "musician_safety_reports": "owner"
   }
 }
