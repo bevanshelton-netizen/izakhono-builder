@@ -15,4 +15,5 @@ RUN addgroup -S connecta && adduser -S connecta -G connecta \
     && chown -R connecta:connecta /var/lib/connecta
 USER connecta
 EXPOSE 4100
-CMD ["node", "src/server.js"]
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=5 CMD node -e "fetch('http://127.0.0.1:4100/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"
+CMD ["sh", "-c", "node scripts/migrate.js && exec node src/server.js"]
