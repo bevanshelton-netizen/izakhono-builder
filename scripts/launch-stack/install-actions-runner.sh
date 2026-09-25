@@ -37,7 +37,7 @@ docker info >/dev/null 2>&1 || { echo 'Docker is not available. Start the IZAKHO
 
 export DEBIAN_FRONTEND=noninteractive
 apt-get update >/dev/null
-apt-get install -y --no-install-recommends ca-certificates curl git tar >/dev/null
+apt-get install -y --no-install-recommends ca-certificates curl git tar sudo >/dev/null
 
 if ! id "$RUNNER_USER" >/dev/null 2>&1; then
   useradd --system --create-home --home-dir "$RUNNER_BASE" --shell /bin/bash "$RUNNER_USER"
@@ -45,6 +45,19 @@ fi
 getent group docker >/dev/null 2>&1 && usermod -aG docker "$RUNNER_USER"
 install -d -o "$RUNNER_USER" -g "$RUNNER_USER" -m 0750 "$RUNNER_HOME"
 install -d -m 0750 "$EVIDENCE_DIR"
+
+WAVE1_BRIDGE=/opt/izakhono/bin/run-wave1-local-proof
+if [ -x "$WAVE1_BRIDGE" ]; then
+  SUDOERS_FILE=/etc/sudoers.d/izakhono-wave1-proof
+  tmp_sudoers="$(mktemp)"
+  printf '%s ALL=(root) NOPASSWD: %s\n' "$RUNNER_USER" "$WAVE1_BRIDGE" > "$tmp_sudoers"
+  chmod 0440 "$tmp_sudoers"
+  visudo -cf "$tmp_sudoers" >/dev/null
+  install -o root -g root -m 0440 "$tmp_sudoers" "$SUDOERS_FILE"
+  rm -f "$tmp_sudoers"
+else
+  echo '[WARN] Fixed Wave 1 proof bridge is not installed yet; rerun the owner-host foundation before executing Wave 1 proof.'
+fi
 
 cd "$RUNNER_HOME"
 
