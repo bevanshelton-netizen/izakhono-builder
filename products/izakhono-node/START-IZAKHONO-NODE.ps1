@@ -1,6 +1,6 @@
 #requires -Version 5.1
 [CmdletBinding()]
-param([string]$Distro = 'Ubuntu')
+param([string]$Distro = 'Ubuntu-24.04')
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
@@ -8,7 +8,11 @@ $ProgressPreference = 'SilentlyContinue'
 
 $distros = @(wsl.exe -l -q 2>$null | ForEach-Object { ($_ -replace "`0", '').Trim() } | Where-Object { $_ })
 if ($distros -notcontains $Distro) {
-    throw '[FAIL] IZAKHONO owner host is not installed. Run START-IZAKHONO-OWNER-HOST.cmd first.'
+    if ($Distro -eq 'Ubuntu-24.04' -and $distros -contains 'Ubuntu') {
+        $Distro = 'Ubuntu'
+    } else {
+        throw '[FAIL] IZAKHONO owner host is not installed. Run START-IZAKHONO-OWNER-HOST.cmd first.'
+    }
 }
 
 $windowsProduct = (Resolve-Path $PSScriptRoot).Path
