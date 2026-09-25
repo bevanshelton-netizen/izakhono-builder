@@ -20,6 +20,10 @@ required = [
     "adapter-contracts.json",
     "automation_engine.py",
     "automation_store.py",
+    "learner_access.py",
+    "assessment_service.py",
+    "credential_service.py",
+    "test_zero_touch.py",
     "test_automation.py",
     "test_automation_store.py",
     "engine.py",
@@ -86,7 +90,13 @@ assert assessment_blueprint["schema"] == "izakhono.digital.finance.assessment.bl
 assert all("answer keys" not in str(item).lower() for item in assessment_blueprint.get("assessment_types", []))
 assert adapter_contracts["schema"] == "izakhono.digital.finance.adapter.contracts.v1"
 assert len(adapter_contracts["adapters"]) >= 6
-assert all(item["state"] == "pending_connection" for item in adapter_contracts["adapters"])
+assert all(item.get("state") for item in adapter_contracts["adapters"])
+adapter_states = {item["id"]: item["state"] for item in adapter_contracts["adapters"]}
+assert adapter_states["institutional_roster"] == "built"
+assert adapter_states["management_reporting"] == "built"
+assert adapter_states["payment_entitlement"].startswith("institutional_license_entitlement_built")
+assert adapter_states["identity_auth"].startswith("pseudonymous_token_core_ready")
+assert adapter_states["certificate_issuer"].startswith("signed_pseudonymous_completion_record_built")
 
 html = (ROOT / "index.html").read_text(encoding="utf-8")
 js = (ROOT / "app.js").read_text(encoding="utf-8")
@@ -118,7 +128,17 @@ engine_source = (ROOT / "engine.py").read_text(encoding="utf-8")
 assert "/api/v1/admin/automation/event" in engine_source
 assert "/api/v1/admin/automation/report" in engine_source
 assert "/api/v1/admin/automation/outbox" in engine_source
+assert "PRIMARY KEY (institution_ref, learner_ref)" in (ROOT / "automation_store.py").read_text(encoding="utf-8")
 assert "IZAKHONO_DF_ADMIN_TOKEN" in engine_source
+assert "IZAKHONO_DF_LEARNER_SIGNING_KEY" in engine_source
+assert "IZAKHONO_DF_CREDENTIAL_SIGNING_KEY" in engine_source
+assert "IZAKHONO_DF_QUESTION_BANK" in engine_source
+assert "/api/v1/admin/institution/license" in engine_source
+assert "/api/v1/admin/roster/provision" in engine_source
+assert "/api/v1/admin/learner/access-token" in engine_source
+assert "/api/v1/learner/assessment/submit" in engine_source
+assert "/api/v1/learner/completion-record" in engine_source
+assert "/api/v1/completion/verify" in engine_source
 assert 'id="runAutomationDemo"' in html
 assert "Human governance gates" in html
 assert "90–95%" in html

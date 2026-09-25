@@ -15,7 +15,8 @@
         "identity_verified"
       ],
       "pii_boundary": "PII stays in the protected identity service; the learning automation engine receives only pseudonymous references.",
-      "state": "pending_connection"
+      "state": "pseudonymous_token_core_ready_external_sso_mapping_pending",
+      "note": "Admin-authorized pseudonymous learner access tokens are built. Institution-specific SSO/identity mapping can remain outside the learning engine."
     },
     {
       "id": "institutional_roster",
@@ -29,7 +30,8 @@
       "output": [
         "roster_status"
       ],
-      "state": "pending_connection"
+      "state": "built",
+      "note": "Protected roster provisioning accepts learner_ref + role only and enforces institutional seat limits."
     },
     {
       "id": "payment_entitlement",
@@ -43,7 +45,8 @@
         "payment_entitled",
         "entitlement_reference"
       ],
-      "state": "pending_connection"
+      "state": "institutional_license_entitlement_built_consumer_gateway_pending",
+      "note": "Active institutional licences automatically entitle provisioned learners. Consumer iKhokha checkout remains separately gated."
     },
     {
       "id": "notification_delivery",
@@ -57,7 +60,8 @@
         "delivery_status",
         "delivery_reference"
       ],
-      "state": "pending_connection"
+      "state": "in_app_action_feed_built_external_delivery_pending",
+      "note": "Learner/action outbox is built; email/SMS/app push requires a delivery adapter."
     },
     {
       "id": "certificate_issuer",
@@ -72,7 +76,8 @@
         "credential_reference",
         "issued_at"
       ],
-      "state": "pending_connection"
+      "state": "signed_pseudonymous_completion_record_built_named_identity_adapter_pending",
+      "note": "Signed completion records are built without PII. Named identity-aware certificates still require a protected identity adapter."
     },
     {
       "id": "management_reporting",
@@ -84,7 +89,8 @@
       "output": [
         "report_reference"
       ],
-      "state": "pending_connection"
+      "state": "built",
+      "note": "Protected institution-level aggregate reporting API is built; external BI/dashboard export is optional."
     }
   ]
 }

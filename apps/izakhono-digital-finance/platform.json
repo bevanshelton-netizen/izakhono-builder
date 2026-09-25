@@ -82,7 +82,7 @@
     ]
   },
   "automation": {
-    "state": "AUTOMATION CORE + PSEUDONYMOUS STATE/OUTBOX/REPORTING BUILT / VERIFIED LOCALLY",
+    "state": "ZERO-TOUCH CORE BUILT / VERIFIED LOCALLY; runtime secrets, protected question bank and optional external adapters pending",
     "target_routine_administration": "90-95%",
     "decision_endpoint": "/api/v1/automation/evaluate",
     "persistence": "SQLite pseudonymous learner state, events and automation outbox",
@@ -108,12 +108,12 @@
       "payment disputes or refunds"
     ],
     "production_adapters_pending": [
-      "protected identity/auth",
-      "institutional roster provisioning/import",
-      "payment entitlement",
-      "notification delivery",
-      "identity-aware certificate issuer",
-      "external dashboard/export adapter where required"
+      "institution-specific SSO or identity mapping when required",
+      "protected production question bank content",
+      "external email/SMS/push delivery when required",
+      "named identity-aware certificate rendering when required",
+      "consumer iKhokha checkout/settlement if individual sales are enabled",
+      "external BI/dashboard export when required"
     ],
     "protected_admin_endpoints": [
       "/api/v1/admin/automation/event",
@@ -121,6 +121,24 @@
       "/api/v1/admin/automation/outbox",
       "/api/v1/admin/automation/outbox/ack"
     ],
-    "admin_auth": "Bearer token via IZAKHONO_DF_ADMIN_TOKEN"
+    "admin_auth": "Bearer token via IZAKHONO_DF_ADMIN_TOKEN",
+    "zero_touch_core": {
+      "institutional_license_and_seat_entitlement": "built",
+      "pseudonymous_roster_provisioning": "built",
+      "learner_access_tokens": "built",
+      "automated_assessment_service": "built; protected runtime question bank required",
+      "remediation_and_completion_decisioning": "built",
+      "signed_pseudonymous_completion_records": "built",
+      "in_app_action_feed": "built",
+      "institutional_reporting": "built"
+    },
+    "runtime_secrets": [
+      "IZAKHONO_DF_ADMIN_TOKEN",
+      "IZAKHONO_DF_LEARNER_SIGNING_KEY",
+      "IZAKHONO_DF_CREDENTIAL_SIGNING_KEY"
+    ],
+    "runtime_mounts": [
+      "IZAKHONO_DF_QUESTION_BANK"
+    ]
   }
 }

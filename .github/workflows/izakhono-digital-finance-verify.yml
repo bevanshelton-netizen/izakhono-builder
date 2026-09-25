@@ -31,10 +31,31 @@ jobs:
           python verify.py
           python test_automation.py
           python test_automation_store.py
+          python test_zero_touch.py
 
       - name: Start independent engine
         run: |
-          IZAKHONO_DF_ADMIN_TOKEN=ci-admin-token IZAKHONO_DF_STATE_DB=/tmp/izakhono-df-ci.sqlite3 python engine.py > /tmp/izakhono-df.log 2>&1 &
+          cat > /tmp/izakhono-df-question-bank.json <<'JSON'
+          {
+            "schema":"izakhono.digital.finance.question-bank.v1",
+            "assessments":[
+              {
+                "id":"baseline",
+                "title":"Synthetic CI baseline",
+                "type":"baseline",
+                "questions":[
+                  {"id":"q1","domain":"payments","prompt":"Synthetic CI question","options":["A","B"],"correct_option":"B"}
+                ]
+              }
+            ]
+          }
+          JSON
+          IZAKHONO_DF_ADMIN_TOKEN=ci-admin-token \
+          IZAKHONO_DF_LEARNER_SIGNING_KEY=ci-learner-signing-key \
+          IZAKHONO_DF_CREDENTIAL_SIGNING_KEY=ci-credential-signing-key \
+          IZAKHONO_DF_QUESTION_BANK=/tmp/izakhono-df-question-bank.json \
+          IZAKHONO_DF_STATE_DB=/tmp/izakhono-df-ci.sqlite3 \
+          python engine.py > /tmp/izakhono-df.log 2>&1 &
           echo $! > /tmp/izakhono-df.pid
 
       - name: Smoke test owned-engine routes
@@ -70,6 +91,62 @@ jobs:
           grep -q '"learners": 1' /tmp/institution-report.json
           grep -q '"stage": "learning"' /tmp/stateful-decision.json
           grep -q 'schedule_reminder_event' /tmp/outbox.json
+          curl -fsS -X POST http://127.0.0.1:8080/api/v1/admin/institution/license \
+            -H 'Authorization: Bearer ci-admin-token' \
+            -H 'Content-Type: application/json' \
+            -d '{"institution_ref":"ci-zero-touch-bank","active":true,"seat_limit":2,"product_id":"fais-employee-empowerment","price_per_employee":1000}' \
+            | python -m json.tool > /tmp/license.json
+          grep -q '"price_per_employee": 1000' /tmp/license.json
+
+          curl -fsS -X POST http://127.0.0.1:8080/api/v1/admin/roster/provision \
+            -H 'Authorization: Bearer ci-admin-token' \
+            -H 'Content-Type: application/json' \
+            -d '{"institution_ref":"ci-zero-touch-bank","learners":[{"learner_ref":"ci-learner-1","role":"representative_adviser"}]}' \
+            | python -m json.tool > /tmp/roster.json
+          grep -q '"provisioned": 1' /tmp/roster.json
+
+          curl -fsS -X POST http://127.0.0.1:8080/api/v1/admin/learner/access-token \
+            -H 'Authorization: Bearer ci-admin-token' \
+            -H 'Content-Type: application/json' \
+            -d '{"institution_ref":"ci-zero-touch-bank","learner_ref":"ci-learner-1","ttl_seconds":3600}' \
+            > /tmp/access-token.json
+          python - <<'PY'
+          import json
+          d=json.load(open("/tmp/access-token.json"))
+          assert d["ok"] is True and d["access_token"]
+          open("/tmp/access-token.txt","w").write(d["access_token"])
+          PY
+          ACCESS_TOKEN="$(cat /tmp/access-token.txt)"
+
+          curl -fsS -H "Authorization: Bearer $ACCESS_TOKEN" \
+            'http://127.0.0.1:8080/api/v1/learner/me' \
+            | python -m json.tool > /tmp/learner-me.json
+          grep -q '"learner_ref": "ci-learner-1"' /tmp/learner-me.json
+
+          curl -fsS -H "Authorization: Bearer $ACCESS_TOKEN" \
+            'http://127.0.0.1:8080/api/v1/learner/assessment?assessment_id=baseline' \
+            | python -m json.tool > /tmp/baseline.json
+          grep -q 'Synthetic CI question' /tmp/baseline.json
+          test "$(grep -c 'correct_option' /tmp/baseline.json)" = "0"
+
+          curl -fsS -X POST http://127.0.0.1:8080/api/v1/learner/assessment/submit \
+            -H "Authorization: Bearer $ACCESS_TOKEN" \
+            -H 'Content-Type: application/json' \
+            -d '{"assessment_id":"baseline","answers":{"q1":"B"}}' \
+            | python -m json.tool > /tmp/scored-baseline.json
+          grep -q '"percent": 100' /tmp/scored-baseline.json
+          grep -q '"decision": "assign_learning_path"' /tmp/scored-baseline.json
+
+          curl -fsS -H "Authorization: Bearer $ACCESS_TOKEN" \
+            'http://127.0.0.1:8080/api/v1/learner/actions' \
+            | python -m json.tool > /tmp/learner-actions.json
+          grep -q 'learner_provisioned' /tmp/learner-actions.json
+
+          test "$(curl -s -o /tmp/pii-reject.json -w '%{http_code}' -X POST http://127.0.0.1:8080/api/v1/admin/roster/provision \
+            -H 'Authorization: Bearer ci-admin-token' \
+            -H 'Content-Type: application/json' \
+            -d '{"institution_ref":"ci-zero-touch-bank","learners":[{"learner_ref":"ci-learner-pii","role":"general_employee","email":"forbidden@example.com"}]}')" = "400"
+          grep -q 'roster_accepts_learner_ref_and_role_only' /tmp/pii-reject.json
 
       - name: Stop engine
         if: always()

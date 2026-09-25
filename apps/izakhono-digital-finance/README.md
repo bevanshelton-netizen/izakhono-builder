@@ -98,7 +98,11 @@ docker run --rm -p 8080:8080 izakhono-digital-finance
 # To enable protected institutional stateful administration:
 docker run --rm -p 8080:8080 \
   -e IZAKHONO_DF_ADMIN_TOKEN='set-a-secret-outside-source-control' \
+  -e IZAKHONO_DF_LEARNER_SIGNING_KEY='set-a-second-secret' \
+  -e IZAKHONO_DF_CREDENTIAL_SIGNING_KEY='set-a-third-secret' \
+  -e IZAKHONO_DF_QUESTION_BANK='/run/secrets/question-bank.json' \
   -v izakhono-df-data:/data \
+  -v /secure/question-bank.json:/run/secrets/question-bank.json:ro \
   izakhono-digital-finance
 ```
 
@@ -162,16 +166,25 @@ The automation core does not make the protected services disappear. End-to-end p
 
 The pseudonymous learner/event/outbox store and aggregate reporting API are now built into the independent product engine.
 
-The public repository deliberately contains an **assessment blueprint only**, not production answer keys. Production questions and scoring keys belong in a protected assessment service.
+The zero-touch core now also includes:
+- protected institutional licence and seat-limit management;
+- automatic learner entitlement for active institutional licences;
+- pseudonymous roster provisioning;
+- signed learner access tokens;
+- a runtime-mounted assessment service that never exposes answer keys to the browser;
+- automatic scoring into baseline/final automation decisions;
+- signed pseudonymous completion records with public cryptographic verification;
+- learner action feeds generated from the automation outbox.
+
+The public repository deliberately contains an **assessment blueprint only**, not production answer keys. Production questions and scoring keys are supplied at runtime through `IZAKHONO_DF_QUESTION_BANK`.
 
 ## Next protected tranche
 
-- protected IZAKHONO account/auth adapter
-- enterprise roster provisioning/import adapter
-- protected assessment service and question banks
-- identity-aware certificate issuer
-- automated notification/reminder adapter
-- enterprise dashboard/export adapter
+- institution-specific SSO/identity mapping where required
+- production assessment question-bank content and review workflow
+- external email/SMS/push delivery adapter where required
+- named identity-aware certificate rendering where required
+- external BI/dashboard export where required
 - tutor/video layer
 - full reviewed multilingual course variants
 - verified iKhokha enrolment + entitlement
@@ -209,3 +222,22 @@ The builder:
 - can copy or download a proposal brief for procurement/internal discussion.
 
 Programme definitions are sourced from `institutional-offers.json` and are also served from `/api/v1/offers` on the independent engine.
+
+
+## Zero-touch institutional lifecycle
+
+Once an institution has an approved commercial agreement and an active institutional licence, the product can run the ordinary employee path without IZAKHONO staff manually advancing each learner:
+
+1. an authorised institutional integration provisions pseudonymous employee references and roles;
+2. each provisioned employee receives automatic institutional entitlement;
+3. a short-lived signed learner access token is issued;
+4. the protected assessment service delivers a baseline without exposing answer keys;
+5. the automation engine assigns the appropriate learning path;
+6. progress/remediation decisions continue automatically;
+7. the final assessment feeds the same decision engine;
+8. eligible learners can receive a signed IZAKHONO professional completion record;
+9. learner actions and institution-level reporting are generated automatically.
+
+This is still **not** a promise of zero accountable human governance. Regulatory changes, identity anomalies, security/fraud incidents, appeals, regulated-advice escalations, policy conflicts and payment disputes remain human-review gates.
+
+For institutions that do not need named certificates or external email/SMS, the pseudonymous access + in-app action-feed model materially reduces the number of external services required.
