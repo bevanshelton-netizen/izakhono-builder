@@ -2,6 +2,16 @@ name: IZAKHONO NODE01 Recovery Kit
 
 on:
   workflow_dispatch:
+  pull_request:
+    paths:
+      - 'scripts/launch-stack/**'
+      - 'scripts/install-sovereign-deploy.sh'
+      - 'products/izakhono-node/**'
+      - 'products/izakhono-control/**'
+      - 'products/izakhono-code/**'
+      - 'infra/launch-stack/**'
+      - 'infra/public-cutover/**'
+      - '.github/workflows/node01-recovery-kit.yml'
   push:
     branches: [main]
     paths:
