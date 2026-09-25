@@ -16,7 +16,7 @@ PORT="$ENGINE_PORT" node src/server.js &
 ENGINE_PID=$!
 
 i=0
-until node -e "fetch('http://127.0.0.1:' + process.env.CONNECTA_INTERNAL_ENGINE_PORT + '/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))" CONNECTA_INTERNAL_ENGINE_PORT="$ENGINE_PORT"; do
+until node -e "fetch('http://127.0.0.1:' + process.argv[1] + '/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))" "$ENGINE_PORT"; do
   i=$((i+1))
   if [ "$i" -ge 60 ]; then
     echo "CONNECTA ENGINE failed readiness" >&2
