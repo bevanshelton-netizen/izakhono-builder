@@ -1,0 +1,13 @@
+[Unit]
+Description=Check NODE01 Wave 1 completion on IZAKHONO-owned scheduler
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=5min
+AccuracySec=30s
+RandomizedDelaySec=20s
+Persistent=true
+Unit=izakhono-wave1-watch.service
+
+[Install]
+WantedBy=timers.target
