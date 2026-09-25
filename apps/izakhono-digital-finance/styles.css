@@ -326,3 +326,26 @@ html[dir="rtl"] .language-cloud{justify-content:flex-start}
   .institution-badge{width:100%}
   .language-control select{max-width:94px}
 }
+
+.proposal-builder{
+  border:1px solid var(--line);border-radius:26px;padding:26px;
+  background:linear-gradient(145deg,#0e151d,#090e14);box-shadow:var(--shadow)
+}
+.proposal-controls{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.proposal-controls label{display:grid;gap:7px}
+.proposal-controls label>span{font-size:11px;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);font-weight:850}
+.proposal-controls select{
+  width:100%;border:1px solid #2a3848;border-radius:14px;background:#111820;color:#fff;
+  padding:12px 13px;outline:none
+}
+.proposal-output{
+  margin-top:18px;border:1px solid rgba(102,225,196,.2);border-radius:20px;
+  background:rgba(102,225,196,.045);padding:22px;min-height:180px
+}
+.proposal-output h3{font-size:24px;margin:8px 0}
+.proposal-output p{color:#b8c5d4;margin:8px 0}
+.proposal-eyebrow{font-size:10px;text-transform:uppercase;letter-spacing:.13em;color:var(--mint);font-weight:900}
+.proposal-meta{display:flex;gap:16px;flex-wrap:wrap;margin-top:18px;font-size:12px;color:#d0dae6}
+.proposal-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
+@media(max-width:920px){.proposal-controls{grid-template-columns:1fr 1fr}}
+@media(max-width:640px){.proposal-controls{grid-template-columns:1fr}}
