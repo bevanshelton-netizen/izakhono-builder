@@ -12,6 +12,8 @@ required = [
     "app.js",
     "curriculum.json",
     "platform.json",
+    "institutions.json",
+    "locales.json",
     "engine.py",
     "healthz",
 ]
@@ -23,6 +25,8 @@ for name in required:
 
 curriculum = json.loads((ROOT / "curriculum.json").read_text(encoding="utf-8"))
 platform = json.loads((ROOT / "platform.json").read_text(encoding="utf-8"))
+institutions = json.loads((ROOT / "institutions.json").read_text(encoding="utf-8"))
+locales = json.loads((ROOT / "locales.json").read_text(encoding="utf-8"))
 
 assert curriculum["schema"] == "izakhono.digital.finance.curriculum.v1"
 assert curriculum["operator"] == "IZAKHONO AFRICA (PTY) LTD"
@@ -48,6 +52,13 @@ assert platform["data"]["tracking"] == "None"
 assert platform["legal"]["degree_claim"] is False
 assert platform["legal"]["accreditation_claim"] is False
 assert platform["payments"]["state"] == "GATED_PENDING_VERIFIED_PRODUCT_CHECKOUT"
+assert institutions["schema"] == "izakhono.digital.finance.institutions.v1"
+assert len(institutions["audiences"]) >= 8
+assert institutions["commercial"]["model"]
+assert locales["schema"] == "izakhono.digital.finance.locales.v1"
+assert len(locales["locales"]) >= 10
+assert locales["locales"]["ar"]["dir"] == "rtl"
+assert all(item["status"] == "interface-ready" for item in locales["locales"].values())
 
 html = (ROOT / "index.html").read_text(encoding="utf-8")
 js = (ROOT / "app.js").read_text(encoding="utf-8")
@@ -68,6 +79,10 @@ for forbidden in (
 assert "university degree" in html.lower()
 assert "ikHokha".lower() in html.lower()
 assert "/api/v1/status" in js
+assert "/api/v1/institutions" in js
+assert "/api/v1/locales" in js
+assert 'id="languageSelect"' in html
+assert 'id="institutionGrid"' in html
 
 print(
     "IZAKHONO Digital Finance verification passed: "
