@@ -86,6 +86,37 @@ try {
   })
   assert.equal(result.response.status,201,JSON.stringify(result.data))
 
+  result=await call('/v1/admin/projects',{
+    method:'POST',
+    key:null,
+    token:adminToken,
+    body:{
+      project,
+      public_key:projectKey,
+      ensure:true,
+      allow_signup:true,
+      table_policies:{
+        musician_vetting:'owner_action_only',
+        musician_ads:'owner_public_read_action_only',
+        musician_ad_responses:'owner_action_only',
+        merch_products:'owner_public_read_action_only',
+        merch_orders:'owner_action_only',
+        merch_order_items:'owner_action_only',
+      },
+    },
+  })
+  assert.equal(result.response.status,200,JSON.stringify(result.data))
+  assert.equal(result.data.ensured,true)
+  assert.equal(result.data.public_key,projectKey)
+
+  result=await call('/v1/admin/projects',{
+    method:'POST',
+    key:null,
+    token:adminToken,
+    body:{project,public_key:'pk_wrong_allegro_0123456789_abcdefghijklmnopqrstuvwxyz',ensure:true,allow_signup:true},
+  })
+  assert.equal(result.response.status,409,JSON.stringify(result.data))
+
   const seller=await signup('seller@allegro.example.test')
   const buyer=await signup('buyer@allegro.example.test')
 
@@ -203,6 +234,7 @@ try {
   assert.equal(result.response.status,403)
 
   console.log('PASS IZAKHONO Core ALLEGRO commerce E2E')
+  console.log('  ✓ project ensure is idempotent and refuses silent public-key rotation')
   console.log('  ✓ self-approved vetting is blocked and admin review is required')
   console.log('  ✓ creator merch publication requires approved vetting server-side')
   console.log('  ✓ public catalogue reads work on v1 and v2 with the project key')
