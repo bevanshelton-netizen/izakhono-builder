@@ -116,7 +116,8 @@
       "Delivery options:",
       ...offer.delivery.map(item => "- " + item),
       "",
-      "Commercial basis: Quote-based institutional agreement.",
+      ...(offer.pricing ? ["Price: " + offer.pricing.display, ""] : []),
+      "Commercial basis: " + (offer.pricing ? offer.pricing.display + " for the standard employee package; separately scoped extras may apply." : "Quote-based institutional agreement."),
       "Accreditation boundary: This programme does not become a university degree or accredited qualification unless separately approved and evidenced.",
       "Localisation boundary: Full course language packs are marketed as available only after translation QA and subject-matter review."
     ].join("\n");
