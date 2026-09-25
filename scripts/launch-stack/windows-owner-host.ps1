@@ -150,7 +150,7 @@ function Install-PortProxyRefresh {
     $refresh = @"
 `$ErrorActionPreference = 'Stop'
 `$distro = '$escapedDistro'
-& wsl.exe -d `$distro -u root -- bash -lc 'systemctl start docker >/dev/null 2>&1 || true; cd /opt/izakhono/launch-stack && docker compose up -d >/dev/null 2>&1 || true'
+& wsl.exe -d `$distro -u root -- bash -lc 'systemctl start docker >/dev/null 2>&1 || true; systemctl start izakhono-node.service >/dev/null 2>&1 || true; systemctl start izakhono-control.service >/dev/null 2>&1 || true; find /etc/systemd/system -maxdepth 1 -type f -name "actions.runner.*.service" -printf "%f\\n" 2>/dev/null | xargs -r systemctl start >/dev/null 2>&1 || true; cd /opt/izakhono/launch-stack && docker compose up -d >/dev/null 2>&1 || true'
 `$ipLine = & wsl.exe -d `$distro -u root -- hostname -I
 `$ip = (`$ipLine -split '\s+' | Where-Object { `$_ -match '^[0-9]+(\.[0-9]+){3}$' } | Select-Object -First 1)
 if (-not `$ip) { throw 'No WSL IPv4 address available.' }
@@ -176,7 +176,14 @@ foreach (`$port in 80,443) {
     $trigger = New-ScheduledTaskTrigger -AtLogOn -User $userId
     $principal = New-ScheduledTaskPrincipal -UserId $userId -LogonType Interactive -RunLevel Highest
     Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger -Principal $principal -Force | Out-Null
+
+    $keepaliveName = 'IZAKHONO Owner Host Keepalive'
+    $keepaliveTrigger = New-ScheduledTaskTrigger -Once -At (Get-Date).AddMinutes(1) -RepetitionInterval (New-TimeSpan -Minutes 5) -RepetitionDuration (New-TimeSpan -Days 3650)
+    $keepaliveSettings = New-ScheduledTaskSettingsSet -StartWhenAvailable -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries
+    Register-ScheduledTask -TaskName $keepaliveName -Action $action -Trigger $keepaliveTrigger -Principal $principal -Settings $keepaliveSettings -Force | Out-Null
+
     Write-Host "Windows now forwards HTTP/HTTPS to WSL address $(Get-WslIPv4)."
+    Write-Host 'NODE01 keepalive now reasserts Docker, NODE/CONTROL, EDGE and registered IZAKHONO Actions runners every five minutes while this Windows user session is available.'
 }
 
 function Get-LanIPv4 {
