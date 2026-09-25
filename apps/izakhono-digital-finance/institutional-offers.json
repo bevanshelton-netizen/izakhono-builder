@@ -95,6 +95,37 @@
       "scale": [
         "Public / high-volume"
       ]
+    },
+    {
+      "id": "fais-employee-empowerment",
+      "name": "FAIS Digital Finance Employee Empowerment Package",
+      "audience": "South African FSPs, banks, insurers, brokerages, advisers, compliance teams, key individuals, representatives and crypto-asset businesses",
+      "outcomes": [
+        "Practical digital-finance literacy across regulated teams",
+        "Crypto-asset, payment, fraud and cyber-risk awareness",
+        "Role-specific learning for representatives, key individuals, compliance, operations and leadership",
+        "Better employee confidence when customers raise digital-asset and modern-payment questions",
+        "Optional alignment mapping to FAISReady exam-readiness pathways without replacing regulatory requirements"
+      ],
+      "delivery": [
+        "Executive and KI briefing",
+        "Representative and adviser learning pathway",
+        "Compliance and risk specialist pathway",
+        "Fraud/cyber scenario workshops",
+        "Private institutional academy"
+      ],
+      "scale": [
+        "20–10,000+ employees"
+      ],
+      "regulatory_boundary": [
+        "This package is employee empowerment and professional development, not a substitute for RE examinations, recognised qualifications, Class of Business training, product-specific training or any other applicable Fit and Proper requirement.",
+        "It must not be marketed as approved CPD unless the relevant CPD recognition/approval has been obtained for the specific activity.",
+        "For crypto-asset FSPs, course mapping may support internal competence development, but statutory requirements remain the responsibility of the FSP, key individual and representative."
+      ],
+      "cross_sell": {
+        "product": "FAISReady",
+        "relationship": "Optional companion for regulatory-exam preparation and workforce-readiness; the two products remain independently deployable."
+      }
     }
   ],
   "configuration": {
