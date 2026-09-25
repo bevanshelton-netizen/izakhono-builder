@@ -47,7 +47,7 @@ The launcher runs the installer inside Ubuntu/WSL and writes:
 
 `Desktop\IZAKHONO-CREATE-MEDIA-REPORT.json`
 
-The installer can install a local ComfyUI copy when it is absent. It does **not** silently download a model checkpoint or claim the GPU is suitable. The checkpoint remains an owner-controlled selection.
+The installer can install a local ComfyUI copy when it is absent. It does **not** silently download a model checkpoint or claim the GPU is suitable. The checkpoint remains an owner-controlled selection. The NODE01 evidence report only marks the stack ready when the runtime and gateway are healthy **and** an NVIDIA GPU is visible; CPU-only operation requires the owner to explicitly set `IZAKHONO_MEDIA_ALLOW_CPU=true` for a slow test.
 
 ### Checkpoint
 
@@ -70,5 +70,7 @@ returns HTTP 200 only when:
 1. the internal runtime key exists;
 2. local ComfyUI is reachable; and
 3. the configured checkpoint is visible to ComfyUI.
+
+The one-click NODE01 evidence gate is stricter: it also requires visible GPU compute unless CPU-only testing was explicitly enabled.
 
 Software CI cannot prove GPU availability, model download/licence acceptance, model quality, generation latency, public TLS, or the physical NODE01 runtime.
