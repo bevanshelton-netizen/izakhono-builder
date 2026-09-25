@@ -108,5 +108,6 @@
       ],
       "cutover_allowed": false
     }
-  ]
+  ],
+  "last_external_reprobe_request": "2026-09-25"
 }
