@@ -10,6 +10,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 REGISTRY_PATH = ROOT / "infra" / "public-cutover" / "wave1-registry.json"
 BUILDER_REF_PATH = ROOT / "BUILDER_REF"
+BUNDLE_SHA_PATH = ROOT / "BUNDLE_SHA256"
 CONTROL_URL = os.getenv("IZAKHONO_CONTROL_URL", "http://127.0.0.1:9292").rstrip("/")
 TOKEN_FILE = Path(os.getenv("IZAKHONO_CONTROL_TOKEN_FILE", "/etc/izakhono/control.owner-token"))
 TERMINAL = {"succeeded", "failed", "timed_out", "interrupted"}
@@ -178,8 +179,14 @@ def main():
         if BUILDER_REF_PATH.is_file()
         else "UNATTESTED"
     )
+    installed_bundle_sha = (
+        BUNDLE_SHA_PATH.read_text(encoding="utf-8").strip()
+        if BUNDLE_SHA_PATH.is_file()
+        else "UNATTESTED"
+    )
     report={
         "builder_bundle_ref":installed_builder_ref,
+        "wave1_bundle_sha256":installed_bundle_sha,
         "schema":"izakhono.node01.wave1.report.v1",
         "wave":registry.get("wave"),
         "policy":registry.get("policy"),
