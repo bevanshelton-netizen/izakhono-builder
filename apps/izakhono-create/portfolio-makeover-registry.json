@@ -1,0 +1,91 @@
+{
+  "schema": "izakhono.portfolio.makeover.v1",
+  "effective_date": "2026-09-25",
+  "policy": "No production redeploy until the platform reaches international-ready and then independently verified-live.",
+  "shared_foundation": "products/izakhono-fabric/experience/izakhono-global.css",
+  "validator": "scripts/validate-portfolio-experience.mjs",
+  "waves": [
+    {
+      "id": "wave-1-revenue-public",
+      "priority": "P0",
+      "platforms": [
+        "webstart",
+        "faisready",
+        "doxa-sure",
+        "auto-ai",
+        "learner-driver-sa",
+        "the-chancellor",
+        "worknow"
+      ],
+      "state": "makeover-in-progress"
+    },
+    {
+      "id": "wave-2-media",
+      "priority": "P0",
+      "platforms": [
+        "kora",
+        "kora-cinema",
+        "kora-kids",
+        "yhvh-gospel-tv",
+        "allegro-vibez",
+        "allegro-radio",
+        "music-school",
+        "recording-studio"
+      ],
+      "state": "queued"
+    },
+    {
+      "id": "wave-3-education-commerce",
+      "priority": "P1",
+      "platforms": [
+        "edu-build-institute",
+        "edubuild-ecd360",
+        "matric-rewrite-academy",
+        "studypal",
+        "izakhono-clothing",
+        "bevan-shelton",
+        "edu-build-shop"
+      ],
+      "state": "queued"
+    },
+    {
+      "id": "wave-4-sovereign-trust",
+      "priority": "P1",
+      "platforms": [
+        "izakhono-one",
+        "izakhono-os",
+        "izakhono-code",
+        "izakhono-work",
+        "izakhono-cloud",
+        "izakhono-send",
+        "izakhono-fortress",
+        "izakhono-pay"
+      ],
+      "state": "queued"
+    },
+    {
+      "id": "wave-5-growth-mobility",
+      "priority": "P2",
+      "platforms": [
+        "izakhono-create",
+        "izakhono-creative-suite",
+        "zeely-style-platform",
+        "business-websites",
+        "supercool",
+        "memory-mania",
+        "pimp-my-old-car",
+        "shelton-motor-company",
+        "jkmr-mining",
+        "yenzanow"
+      ],
+      "state": "queued"
+    }
+  ],
+  "required_states": [
+    "legacy",
+    "makeover-in-progress",
+    "visual-review",
+    "international-ready",
+    "verified-live"
+  ]
+}
