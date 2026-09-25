@@ -119,6 +119,8 @@ jobs:
           grep -Fq 'IZAKHONO HTTP' scripts/launch-stack/windows-owner-host.ps1
           grep -Fq 'IZAKHONO HTTPS' scripts/launch-stack/windows-owner-host.ps1
           grep -Fq 'Public launch will stay fail-closed' scripts/launch-stack/windows-owner-host.ps1
+          grep -Fq "Set-IniValue $lines 'general' 'instanceIdleTimeout' '-1'" scripts/launch-stack/windows-owner-host.ps1
+          grep -Fq "Set-IniValue $lines 'wsl2' 'vmIdleTimeout' '-1'" scripts/launch-stack/windows-owner-host.ps1
           ! grep -Fq -- '--privileged' scripts/launch-stack/windows-owner-host.ps1
           grep -Fq 'COMMERCIAL_PUBLICATION=false' scripts/launch-stack/stage-project.sh
           grep -Fq 'PUBLIC_HTTPS_GATE=not-run' scripts/launch-stack/stage-project.sh
