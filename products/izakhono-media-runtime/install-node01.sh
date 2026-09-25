@@ -27,10 +27,12 @@ command -v git >/dev/null 2>&1 || { echo "[STOP] git missing" >&2; exit 1; }
 command -v curl >/dev/null 2>&1 || { echo "[STOP] curl missing" >&2; exit 1; }
 
 GPU_JSON='{"available":false,"name":null,"memory_mb":null}'
+GPU_AVAILABLE=false
 if command -v nvidia-smi >/dev/null 2>&1; then
   GPU_NAME="$(nvidia-smi --query-gpu=name --format=csv,noheader 2>/dev/null | head -1 | sed 's/"/\\"/g' || true)"
   GPU_MEM="$(nvidia-smi --query-gpu=memory.total --format=csv,noheader,nounits 2>/dev/null | head -1 | tr -dc '0-9' || true)"
   if [ -n "$GPU_NAME" ]; then
+    GPU_AVAILABLE=true
     GPU_JSON="{\"available\":true,\"name\":\"$GPU_NAME\",\"memory_mb\":${GPU_MEM:-null}}"
   fi
 fi
@@ -65,6 +67,7 @@ IZAKHONO_MEDIA_RENDER_URL=http://127.0.0.1:9696
 IZAKHONO_CREATE_MEDIA_HOST=127.0.0.1
 IZAKHONO_CREATE_MEDIA_PORT=9695
 IZAKHONO_MEDIA_ALLOW_EXTERNAL_FALLBACK=false
+IZAKHONO_MEDIA_ALLOW_CPU=false
 IZAKHONO_MEDIA_CHECKPOINT=
 IZAKHONO_MEDIA_JOB_TIMEOUT=420
 EOF
@@ -164,7 +167,8 @@ GATEWAY_HEALTH="$(cat /tmp/izakhono-media-gateway-health.json 2>/dev/null || ech
 
 CHECKPOINT="$(sed -n 's/^IZAKHONO_MEDIA_CHECKPOINT=//p' "$ENV_FILE" | tail -1)"
 READY=false
-if [ "$HTTP_CODE" = "200" ] && [ "$GATEWAY_CODE" = "200" ]; then READY=true; fi
+ALLOW_CPU="$(sed -n 's/^IZAKHONO_MEDIA_ALLOW_CPU=//p' "$ENV_FILE" | tail -1 | tr '[:upper:]' '[:lower:]')"
+if [ "$HTTP_CODE" = "200" ] && [ "$GATEWAY_CODE" = "200" ] && { [ "$GPU_AVAILABLE" = "true" ] || [ "$ALLOW_CPU" = "true" ]; }; then READY=true; fi
 
 echo "[6/6] Writing evidence report..."
 python3 - "$REPORT" "$READY" "$HTTP_CODE" "$GATEWAY_CODE" "$CHECKPOINT" "$GPU_JSON" "$HEALTH" "$GATEWAY_HEALTH" <<'PY'
@@ -184,12 +188,13 @@ report={
   "gateway_http_code":int(gateway_code) if gateway_code.isdigit() else None,
   "checkpoint":checkpoint or None,
   "gpu":gpu,
+  "gpu_required_for_ready":True,
   "health":health,
   "gateway_health":gateway_health,
   "next_action":None if ready.lower()=="true" else (
     "Place an owner-approved checkpoint in /opt/izakhono-comfyui/models/checkpoints and set IZAKHONO_MEDIA_CHECKPOINT in /etc/izakhono/apps/izakhono-create-media.env, then rerun."
     if not checkpoint else
-    "Inspect ComfyUI/GPU readiness, checkpoint visibility and service logs; do not call generation live until /healthz returns HTTP 200."
+    "Confirm NVIDIA GPU visibility with nvidia-smi (or explicitly set IZAKHONO_MEDIA_ALLOW_CPU=true for a slow CPU-only test), then inspect ComfyUI/checkpoint/service health. Do not call generation live until the evidence report is ready=true."
   )
 }
 with open(path,"w",encoding="utf-8") as f: json.dump(report,f,indent=2)
