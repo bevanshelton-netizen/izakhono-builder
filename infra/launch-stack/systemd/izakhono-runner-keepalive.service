@@ -1,0 +1,15 @@
+[Unit]
+Description=IZAKHONO self-hosted runner keepalive
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/opt/izakhono/bin/keepalive-actions-runners.sh
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=read-only
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
