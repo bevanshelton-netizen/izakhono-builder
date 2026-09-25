@@ -46,3 +46,12 @@ Cross-entity flows require:
 Banking, insurance, credit, investment, payment and broadcasting operations may require different licences, capital, governance and local structures per country.
 
 Technology ownership can be centralised while regulated permissions remain local.
+
+
+## IZAKHONO Digital Finance Academy
+
+- **Operator:** IZAKHONO AFRICA (PTY) LTD.
+- **Product boundary:** Independent IZAKHONO professional-education product.
+- **EDU-BUILD boundary:** It is not an EDU-BUILD INSTITUTE – Shelton Campuses programme and must not inherit EDU-BUILD accreditation, qualifications, student records, certificates, payment records or branding.
+- **Regulatory claim boundary:** It may teach blockchain, fintech, digital assets, compliance and related subjects, but must not claim university, degree-awarding, accredited-qualification or regulated-advice status unless separately authorised and evidenced.
+- **Technology boundary:** It has its own independently deployable product engine. Shared IZAKHONO infrastructure is allowed; dependence on another product engine is not.

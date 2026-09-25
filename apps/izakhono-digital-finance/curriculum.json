@@ -1,0 +1,215 @@
+{
+  "schema": "izakhono.digital.finance.curriculum.v1",
+  "product": "IZAKHONO Digital Finance Academy",
+  "operator": "IZAKHONO AFRICA (PTY) LTD",
+  "positioning": "Independent professional learning platform for blockchain, digital finance, fintech and adjacent risk disciplines.",
+  "disclaimer": "Professional education only. Programmes are not university degrees and do not constitute financial, investment, legal or tax advice.",
+  "tracks": [
+    {
+      "id": "foundations",
+      "name": "Digital Finance Foundations",
+      "level": "Starter",
+      "commercial_tier": "Free",
+      "summary": "Understand the language, systems and risks behind blockchain, digital assets and modern payments.",
+      "estimated_hours": 6,
+      "modules": [
+        {
+          "id": "df-101",
+          "title": "How Digital Money Works",
+          "summary": "From bank ledgers and card networks to wallets, tokens and programmable money.",
+          "lessons": [
+            "Money, ledgers and settlement",
+            "Banks, payment rails and digital wallets",
+            "What makes a digital asset different",
+            "Custodial vs self-custodial models",
+            "Common myths, scams and risk signals"
+          ]
+        },
+        {
+          "id": "df-102",
+          "title": "Blockchain Fundamentals",
+          "summary": "Blocks, transactions, consensus, nodes, keys and the trust assumptions behind distributed ledgers.",
+          "lessons": [
+            "Distributed ledgers explained",
+            "Hashing, blocks and transaction history",
+            "Public and private keys",
+            "Consensus models",
+            "Public, private and permissioned networks"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "professional",
+      "name": "Blockchain & Digital Finance Professional Certificate",
+      "level": "Professional",
+      "commercial_tier": "Paid",
+      "summary": "A practical cross-functional programme for people working with fintech, payments, digital assets or blockchain-enabled business models.",
+      "estimated_hours": 40,
+      "modules": [
+        {
+          "id": "pro-201",
+          "title": "Blockchain Architecture",
+          "summary": "Design choices, network models, scalability, interoperability and practical architecture trade-offs.",
+          "lessons": [
+            "Network architecture and node roles",
+            "Consensus and finality",
+            "Scalability approaches",
+            "Interoperability and bridges",
+            "Permissioned enterprise networks",
+            "Architecture case study"
+          ]
+        },
+        {
+          "id": "pro-202",
+          "title": "Smart Contracts & Programmable Finance",
+          "summary": "How smart contracts work, where they fail and how to reason about their business use.",
+          "lessons": [
+            "Smart contract lifecycle",
+            "Oracles and external data",
+            "Token standards",
+            "Testing and audit concepts",
+            "Common vulnerabilities",
+            "Business process automation"
+          ]
+        },
+        {
+          "id": "pro-203",
+          "title": "Digital Assets, Tokenisation & Custody",
+          "summary": "Asset types, tokenisation models, custody, key management and operational controls.",
+          "lessons": [
+            "Crypto-assets and token categories",
+            "Tokenising real-world assets",
+            "Wallet and custody models",
+            "Key management and recovery",
+            "Market infrastructure",
+            "Operational control design"
+          ]
+        },
+        {
+          "id": "pro-204",
+          "title": "Payments, Stablecoins & CBDCs",
+          "summary": "Compare payment rails, stablecoins, central-bank digital currency concepts and settlement models.",
+          "lessons": [
+            "Payment system anatomy",
+            "Stablecoin models and reserves",
+            "CBDC concepts and design choices",
+            "Cross-border payments",
+            "Treasury and settlement risk",
+            "Merchant and business use cases"
+          ]
+        },
+        {
+          "id": "pro-205",
+          "title": "Regulation, Compliance & Financial Crime",
+          "summary": "A jurisdiction-aware framework for AML/CFT, sanctions, consumer protection, licensing and governance.",
+          "lessons": [
+            "Regulatory perimeter thinking",
+            "KYC, AML and transaction monitoring",
+            "Sanctions and screening",
+            "Consumer protection",
+            "Data protection and records",
+            "Governance and compliance evidence"
+          ]
+        },
+        {
+          "id": "pro-206",
+          "title": "Cybersecurity, Fraud & Digital-Asset Risk",
+          "summary": "Threat models for wallets, exchanges, smart contracts, payments, social engineering and fraud.",
+          "lessons": [
+            "Threat modelling",
+            "Account takeover and phishing",
+            "Wallet compromise",
+            "Smart contract exploits",
+            "Fraud detection and response",
+            "Incident containment and recovery"
+          ]
+        },
+        {
+          "id": "pro-207",
+          "title": "FinTech, AI & the Future of Finance",
+          "summary": "How AI, open finance, embedded finance and programmable systems are reshaping financial services.",
+          "lessons": [
+            "FinTech business models",
+            "Open banking and open finance",
+            "Embedded finance",
+            "AI for operations and risk",
+            "Responsible automation",
+            "Emerging market opportunities"
+          ]
+        },
+        {
+          "id": "pro-208",
+          "title": "Capstone: Build a Digital Finance Product Case",
+          "summary": "Create a defensible product proposal with architecture, customer value, risk controls and go-to-market logic.",
+          "lessons": [
+            "Problem definition",
+            "Customer and market case",
+            "Architecture outline",
+            "Risk and compliance map",
+            "Economics and operating model",
+            "Final presentation"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "specialist",
+      "name": "Specialist Labs",
+      "level": "Advanced",
+      "commercial_tier": "Paid",
+      "summary": "Short, deep programmes for professionals and teams that need practical capability in a specific domain.",
+      "estimated_hours": 12,
+      "modules": [
+        {
+          "id": "lab-tokenisation",
+          "title": "Tokenisation Lab",
+          "summary": "Design a tokenisation use case from legal rights and asset servicing through technology and operations.",
+          "lessons": [
+            "Asset and rights mapping",
+            "Token design",
+            "Custody and servicing",
+            "Controls and disclosures",
+            "Pilot design"
+          ]
+        },
+        {
+          "id": "lab-compliance",
+          "title": "Digital Asset Compliance Lab",
+          "summary": "Build a risk-based compliance operating model for a digital-asset or fintech product.",
+          "lessons": [
+            "Risk assessment",
+            "Customer due diligence",
+            "Monitoring rules",
+            "Escalations and reporting",
+            "Audit evidence"
+          ]
+        },
+        {
+          "id": "lab-fraud",
+          "title": "Fraud & Cyber Defence Lab",
+          "summary": "Hands-on defensive thinking for fraud patterns, wallet security, social engineering and incident response.",
+          "lessons": [
+            "Fraud pattern recognition",
+            "Wallet and credential security",
+            "Transaction anomaly thinking",
+            "Incident playbooks",
+            "Post-incident learning"
+          ]
+        },
+        {
+          "id": "lab-enterprise",
+          "title": "Blockchain for Enterprise Leaders",
+          "summary": "Evaluate blockchain proposals without hype and decide where distributed systems add genuine value.",
+          "lessons": [
+            "Use-case qualification",
+            "Build vs buy vs avoid",
+            "Enterprise architecture",
+            "Governance and vendors",
+            "ROI and adoption"
+          ]
+        }
+      ]
+    }
+  ]
+}
