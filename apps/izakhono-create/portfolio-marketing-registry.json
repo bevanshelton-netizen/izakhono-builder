@@ -1,12 +1,17 @@
 {
   "schema": "izakhono.marketing.registry.v1",
-  "effective_date": "2026-09-22",
+  "effective_date": "2026-09-25",
   "policy": "ALL_CURRENT_AND_FUTURE_IZAKHONO_PORTFOLIO_PRODUCTS",
   "creative_system_of_record": "IZAKHONO CREATE",
   "distribution_system": "IZAKHONO ADS",
+  "launch_policy": "apps/izakhono-create/portfolio-launch-policy.json",
   "owned_infrastructure_first": true,
   "external_routes_reversible": true,
   "publishing_default": "paused",
+  "auto_rollout_when_conversion_verified": true,
+  "paid_spend_requires_explicit_budget_authority": true,
+  "international_site_standard_required": true,
+  "advertising_stack_required": true,
   "current_internal_products": [
     "creator-os",
     "faisready-v1",
