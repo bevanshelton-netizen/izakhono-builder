@@ -292,7 +292,7 @@ async function commandApiRoute(req: Request, env: any, url: URL): Promise<Respon
   const parts = commandParts(input);
   const definition = findCommand(input);
   if (!definition) return json({ ok: false, error: 'Unknown command /' + parts.token + '. Use /commands to browse the catalogue.' }, 404);
-  if (definition.requiresArg && !parts.args) return json({ ok: false, error: '/' + definition.name + ' requires a project slug.' }, 400);
+  if (definition.requiresArg && !parts.args) return json({ ok: false, error: '/' + definition.name + ' requires an argument.' }, 400);
 
   if (definition.kind === 'launcher') {
     return json({ ok: true, command: definition.name, kind: definition.kind, navigate: definition.path, message: definition.label + ' launcher ready.' });
@@ -311,6 +311,16 @@ async function commandApiRoute(req: Request, env: any, url: URL): Promise<Respon
     const rows = await env.DB.prepare('SELECT * FROM builder_projects ORDER BY updated_at DESC').all<any>();
     const projects = (rows.results || []).map(compactCommandProject);
     return json({ ok: true, command: 'portfolio', kind: 'action', message: String(projects.length) + ' projects loaded.', data: { projects } });
+  }
+
+  if (['infra', 'node', 'deploy-status', 'job', 'deploy'].includes(definition.name)) {
+    return json({
+      ok: false,
+      command: definition.name,
+      error: 'This command executes only on the IZAKHONO-owned Command Gateway through CONTROL → NODE.',
+      execution_boundary: 'owned-node-required',
+      owned_route: 'http://127.0.0.1:8091/commands',
+    }, 503);
   }
 
   const slug = parts.args.split(/\s+/)[0].toLowerCase();
