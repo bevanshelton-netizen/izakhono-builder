@@ -19,7 +19,7 @@ curl -fsS http://127.0.0.1:9696/healthz
 echo
 echo
 echo "[SERVICES]"
-systemctl --no-pager --full status izakhono-comfyui.service izakhono-media-runtime.service | sed -n '1,80p'
+systemctl --no-pager --full status izakhono-comfyui.service izakhono-media-runtime.service izakhono-create-media-gateway.service | sed -n '1,120p'
 echo
 echo "[CONFIG]"
 if [ -f "$ENV_FILE" ]; then
