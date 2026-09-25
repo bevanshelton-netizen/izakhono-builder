@@ -27,6 +27,11 @@ const ACTIONS: CommandDefinition[] = [
   { name: 'repo', label: 'Internal Repository', category: 'Build & Deploy', description: 'Inspect IZAKHONO internal repository history for a project.', kind: 'action', requiresArg: true, aliases: ['repository'] },
   { name: 'payments', label: 'Add Payments', category: 'Revenue', description: 'Add the Payments module to an existing project and regenerate its build plan.', kind: 'action', requiresArg: true },
   { name: 'launch', label: 'Technical Launch Gate', category: 'Build & Deploy', description: 'Run plan → generate → validate → internal commit. Produces a technical preview, not a public-production claim.', kind: 'action', requiresArg: true, aliases: ['buildproof'] },
+  { name: 'infra', label: 'Owned Infrastructure Health', category: 'Owner Control', description: 'Inspect IZAKHONO owned infrastructure health from NODE01.', kind: 'action' },
+  { name: 'node', label: 'NODE Identity', category: 'Owner Control', description: 'Read IZAKHONO NODE identity and deployment capabilities through CONTROL.', kind: 'action' },
+  { name: 'deploy-status', label: 'Deployment Status', category: 'Build & Deploy', description: 'Load recent IZAKHONO NODE deployment jobs through CONTROL.', kind: 'action' },
+  { name: 'job', label: 'Deployment Job', category: 'Build & Deploy', description: 'Inspect one IZAKHONO NODE deployment job by ID.', kind: 'action', requiresArg: true },
+  { name: 'deploy', label: 'Owned Production Deploy', category: 'Build & Deploy', description: 'Submit an approved immutable production deployment to IZAKHONO CONTROL → NODE.', kind: 'action', requiresArg: true },
   { name: 'commands', label: 'Command Catalogue', category: 'Owner Control', description: 'List the full IZAKHONO command catalogue.', kind: 'action', aliases: ['help'] },
 ];
 

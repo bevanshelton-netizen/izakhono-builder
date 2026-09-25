@@ -50,7 +50,7 @@ IZAKHONO_NODE_SECRET=$NODE_SECRET
 IZAKHONO_NODE_ROOT=/var/lib/izakhono-node
 IZAKHONO_NODE_DEPLOYER=/opt/izakhono-node/deploy.sh
 IZAKHONO_NODE_JOB_TIMEOUT=2700
-IZAKHONO_NODE_ALLOWED_REPO_PREFIXES=file:///srv/izakhono-code/repos/;https://github.com/bevanshelton-netizen/
+IZAKHONO_NODE_ALLOWED_REPO_PREFIXES=file:///var/lib/izakhono-code/repos/;https://github.com/bevanshelton-netizen/
 EOF
   chmod 600 "$NODE_ENV"
 fi
@@ -73,7 +73,7 @@ IZAKHONO_CONTROL_PORT=9292
 IZAKHONO_CONTROL_TOKEN=$CONTROL_TOKEN
 IZAKHONO_NODE_URL=http://127.0.0.1:9191
 IZAKHONO_NODE_SECRET=$IZAKHONO_NODE_SECRET
-IZAKHONO_CODE_REPOS=/srv/izakhono-code/repos
+IZAKHONO_CODE_REPOS=/var/lib/izakhono-code/repos
 IZAKHONO_ALLOW_GITHUB_MIRROR=true
 EOF
 chmod 600 "$CONTROL_ENV"
@@ -103,7 +103,7 @@ CONTROL_URL=http://127.0.0.1:9292
 NODE_READY=true
 CONTROL_HEALTH=true
 GITHUB_RUNNER_REQUIRED=false
-IZAKHONO_CODE_SOURCE=/srv/izakhono-code/repos
+IZAKHONO_CODE_SOURCE=/var/lib/izakhono-code/repos
 OWNER_TOKEN_STORED=$OWNER_TOKEN_FILE
 EOF
 sha256sum "$EVIDENCE" >"$EVIDENCE.sha256"

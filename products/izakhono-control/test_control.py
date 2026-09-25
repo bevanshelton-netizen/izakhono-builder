@@ -5,7 +5,7 @@ from pathlib import Path
 
 os.environ["IZAKHONO_CONTROL_TOKEN"] = "owner-test"
 os.environ["IZAKHONO_NODE_SECRET"] = "node-test"
-os.environ["IZAKHONO_CODE_REPOS"] = "/srv/izakhono-code/repos"
+os.environ["IZAKHONO_CODE_REPOS"] = "/var/lib/izakhono-code/repos"
 
 spec = importlib.util.spec_from_file_location(
     "izcontrol", Path(__file__).resolve().parent / "control.py"
@@ -23,7 +23,7 @@ job = module.normalize_job({
     "container_port": 8080,
     "health_path": "/healthz",
 })
-assert job["repo"] == "file:///srv/izakhono-code/repos/allegro-vibez.git"
+assert job["repo"] == "file:///var/lib/izakhono-code/repos/allegro-vibez.git"
 assert job["idempotency_key"]
 assert job["environment"] == "production"
 

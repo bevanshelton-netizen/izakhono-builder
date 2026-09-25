@@ -31,13 +31,14 @@ jobs:
           bash -n products/izakhono-node/deploy.sh
           bash -n products/izakhono-node/install.sh
           bash -n products/izakhono-node/prepare-allegro.sh
+          bash -n products/izakhono-node/sync-builder-to-code.sh
       - name: Node security and deployment tests
         run: python3 products/izakhono-node/test_service_plug.py
       - name: Control source-routing tests
         run: python3 products/izakhono-control/test_control.py
       - name: Sovereignty invariants
         run: |
-          grep -q "file:///srv/izakhono-code/repos/" products/izakhono-node/node_agent.py
+          grep -q "file:///var/lib/izakhono-code/repos/" products/izakhono-node/node_agent.py
           grep -q "production ref must be an immutable" products/izakhono-node/node_agent.py
           grep -q "deployment_proof" products/izakhono-node/node_agent.py
           grep -q "GITHUB_RUNNER_REQUIRED=false" products/izakhono-node/install.sh

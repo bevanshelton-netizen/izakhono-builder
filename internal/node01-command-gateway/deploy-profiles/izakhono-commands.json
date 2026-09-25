@@ -1,0 +1,11 @@
+{
+  "name": "izakhono-commands",
+  "description": "IZAKHONO Command Centre on the owner-controlled NODE01 gateway.",
+  "source": "izakhono-code",
+  "repository": "izakhono-builder",
+  "app": "izakhono-commands",
+  "environment": "production",
+  "mode": "compose",
+  "compose_file": "internal/node01-command-gateway/docker-compose.yml",
+  "health_url": "http://127.0.0.1:8091/healthz"
+}

@@ -32,10 +32,10 @@
       <h1>Type it.<br><span>Run the workflow.</span></h1>
       <p class="lead">A single owner command palette for project builds, internal repositories, payment-module changes, platform launchers and repeatable business workflows. High-impact build commands execute only through existing guarded IZAKHONO APIs—there is no arbitrary shell execution.</p>
       <div class="lock">
-        <input id="secret" type="password" autocomplete="off" placeholder="Owner recovery key / Builder admin secret">
+        <input id="secret" type="password" autocomplete="off" placeholder="Owner command credential / Builder admin secret">
         <button class="btn primary" id="unlock">Unlock Command Centre</button>
       </div>
-      <div class="hint" id="unlockMsg">The secret stays in this browser session and is sent only as the existing owner header.</div>
+      <div class="hint" id="unlockMsg">The credential stays in this browser session. On NODE01 it authorizes the local Command Gateway, which keeps CONTROL credentials server-side.</div>
     </div>
     <div class="card stats">
       <div class="stat"><b id="total">—</b><span>COMMANDS</span></div>
@@ -62,7 +62,7 @@
           <button class="btn primary" id="run">Run</button>
           <div class="suggestions" id="suggestions"></div>
         </div>
-        <div class="hint">Examples: <b>/health</b> · <b>/portfolio</b> · <b>/project faisready</b> · <b>/payments faisready</b> · <b>/launch faisready</b> · <b>/sales school uniforms</b> · <b>/kora</b></div>
+        <div class="hint">Examples: <b>/health</b> · <b>/infra</b> · <b>/node</b> · <b>/deploy-status</b> · <b>/deploy izakhono-commands &lt;40-char-sha&gt;</b> · <b>/sales school uniforms</b> · <b>/kora</b></div>
         <div class="result" id="result"><div class="message">Unlock Owner Access, then type <b>/commands</b> or select any command below.</div></div>
       </section>
 
@@ -75,7 +75,7 @@
 </main>
 
 <script>
-const state={secret:sessionStorage.getItem('iz_command_secret')||'',commands:[],stats:null,category:'All',favorites:new Set(JSON.parse(localStorage.getItem('iz_command_favorites')||'[]')),recent:JSON.parse(localStorage.getItem('iz_command_recent')||'[]')};
+const bootstrapParams=new URLSearchParams(location.hash.replace(/^#/,''));const bootstrapOwner=bootstrapParams.get('owner');if(bootstrapOwner){sessionStorage.setItem('iz_command_secret',bootstrapOwner);history.replaceState(null,'',location.pathname+location.search)}\nconst state={secret:sessionStorage.getItem('iz_command_secret')||'',commands:[],stats:null,category:'All',favorites:new Set(JSON.parse(localStorage.getItem('iz_command_favorites')||'[]')),recent:JSON.parse(localStorage.getItem('iz_command_recent')||'[]')};
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
 const secret=$('#secret');secret.value=state.secret;
@@ -162,7 +162,7 @@ async function unlock(){
   try{
     const d=await api('/api/commands');state.commands=d.commands||[];state.stats=d.stats||{};
     $('#total').textContent=state.stats.total||state.commands.length;$('#actions').textContent=state.stats.actions||0;$('#workflows').textContent=state.stats.workflows||0;$('#categories').textContent=state.stats.categories||0;
-    $('#lockState').textContent='Owner unlocked';$('#lockState').classList.add('on');$('#unlockMsg').textContent='Command engine ready. High-impact actions remain gated through existing IZAKHONO owner APIs.';
+    $('#lockState').textContent='Owner unlocked';$('#lockState').classList.add('on');$('#unlockMsg').textContent='Command engine ready. On owned infrastructure, deployment actions execute through IZAKHONO CONTROL → NODE; external routes remain resilience-only.';
     renderCats();renderGrid();renderMini();$('#commandInput').focus();
   }catch(e){state.secret='';sessionStorage.removeItem('iz_command_secret');$('#lockState').textContent='Locked';$('#lockState').classList.remove('on');$('#unlockMsg').innerHTML='<span class="bad">'+esc(e.message)+'</span>'}
   finally{$('#unlock').disabled=false}
