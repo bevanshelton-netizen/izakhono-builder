@@ -207,6 +207,67 @@
       "state": "visual-review",
       "source": "bevanshelton-netizen/Downloads/bevan-shelton-racing",
       "deployment_blocked": true
+    },
+    "izakhono-studio": {
+      "state": "visual-review",
+      "source": "bevanshelton-netizen/Downloads/IZAKHONO-STUDIO",
+      "deployment_blocked": true,
+      "notes": "International creative-suite layer enabled; legacy portfolio-growth tracking bridge removed."
+    },
+    "matric-rewrite-academy": {
+      "state": "visual-review",
+      "source": "bevanshelton-netizen/Downloads/ports/matric-rewrite",
+      "deployment_blocked": true
+    },
+    "izakhono-one-ai": {
+      "state": "visual-review",
+      "source": "bevanshelton-netizen/Downloads/izakhono-one-ai/public",
+      "deployment_blocked": true
+    },
+    "mandatory-regulatory-exams": {
+      "state": "visual-review",
+      "source": "bevanshelton-netizen/Downloads/mandatory-regulatory-exams",
+      "deployment_blocked": true
+    },
+    "pdeready": {
+      "state": "visual-review",
+      "source": "bevanshelton-netizen/Downloads/mandatory-regulatory-exams/pdeready",
+      "deployment_blocked": true
+    },
+    "izakhono-group": {
+      "state": "visual-review",
+      "source": "bevanshelton-netizen/Downloads/izakhono-group",
+      "deployment_blocked": true
+    },
+    "yenzanow": {
+      "state": "visual-review",
+      "source": "bevanshelton-netizen/Downloads/ports/yenzanow",
+      "deployment_blocked": true
+    },
+    "search-discovery": {
+      "state": "visual-review",
+      "source": "bevanshelton-netizen/Downloads/search-discovery",
+      "deployment_blocked": true
+    },
+    "izakhono-commands": {
+      "state": "visual-review",
+      "source": "bevanshelton-netizen/Downloads/izakhono-commands",
+      "deployment_blocked": true
+    },
+    "izakhono-automations": {
+      "state": "visual-review",
+      "source": "bevanshelton-netizen/Downloads/izakhono-automations/static",
+      "deployment_blocked": true
+    },
+    "izakhono-command-center": {
+      "state": "visual-review",
+      "source": "bevanshelton-netizen/Downloads/ports/izakhono-command-center",
+      "deployment_blocked": true
+    },
+    "izakhono-containers": {
+      "state": "visual-review",
+      "source": "bevanshelton-netizen/Downloads/ports/izakhono-containers",
+      "deployment_blocked": true
     }
   }
 }
