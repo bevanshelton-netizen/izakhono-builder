@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 import hmac
+import ipaddress
 import json
 import os
+import socket
 import urllib.error
 import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -12,10 +14,65 @@ PORT = int(os.getenv("IZAKHONO_AI_GATEWAY_PORT", "9595"))
 INTERNAL_KEY = os.getenv("IZAKHONO_AI_GATEWAY_INTERNAL_KEY", "")
 ACCESS_URL = os.getenv("IZAKHONO_ACCESS_URL", "http://127.0.0.1:9494").rstrip("/")
 ACCESS_KEY = os.getenv("IZAKHONO_ACCESS_INTERNAL_KEY", "")
-OLLAMA_URL = os.getenv("IZAKHONO_OLLAMA_URL", "http://127.0.0.1:11434").rstrip("/")
-DEFAULT_MODEL = os.getenv("IZAKHONO_AI_MODEL", "qwen3:4b")
+
 OWNER_ONLY = os.getenv("IZAKHONO_AI_OWNER_ONLY", "true").lower() != "false"
-MAX_BODY = 1_000_000
+ALLOW_EXTERNAL = os.getenv("IZAKHONO_AI_ALLOW_EXTERNAL", "false").lower() == "true"
+MAX_BODY = int(os.getenv("IZAKHONO_AI_MAX_BODY", "1000000"))
+
+DEFAULT_MODEL = os.getenv("IZAKHONO_AI_MODEL", "qwen3:4b")
+OLLAMA_URL = os.getenv("IZAKHONO_OLLAMA_URL", "http://127.0.0.1:11434").rstrip("/")
+
+CAPABILITIES = {
+    "chat": {
+        "kind": "ollama_chat",
+        "url": OLLAMA_URL,
+        "model": os.getenv("IZAKHONO_AI_CHAT_MODEL", DEFAULT_MODEL),
+        "models_env": "IZAKHONO_AI_CHAT_MODELS",
+        "status": "ready",
+    },
+    "reasoning": {
+        "kind": "ollama_chat",
+        "url": OLLAMA_URL,
+        "model": os.getenv("IZAKHONO_AI_REASONING_MODEL", DEFAULT_MODEL),
+        "models_env": "IZAKHONO_AI_REASONING_MODELS",
+        "status": "ready",
+    },
+    "code": {
+        "kind": "ollama_chat",
+        "url": OLLAMA_URL,
+        "model": os.getenv("IZAKHONO_AI_CODE_MODEL", DEFAULT_MODEL),
+        "models_env": "IZAKHONO_AI_CODE_MODELS",
+        "status": "ready",
+    },
+    "image": {
+        "kind": "json_generate",
+        "url": os.getenv("IZAKHONO_IMAGE_URL", "").rstrip("/"),
+        "model": os.getenv("IZAKHONO_IMAGE_MODEL", "flux.1-schnell"),
+        "models_env": "IZAKHONO_IMAGE_MODELS",
+        "status": "adapter",
+    },
+    "video": {
+        "kind": "json_generate",
+        "url": os.getenv("IZAKHONO_VIDEO_URL", "").rstrip("/"),
+        "model": os.getenv("IZAKHONO_VIDEO_MODEL", "wan2.1"),
+        "models_env": "IZAKHONO_VIDEO_MODELS",
+        "status": "adapter",
+    },
+    "speech": {
+        "kind": "json_generate",
+        "url": os.getenv("IZAKHONO_SPEECH_URL", "").rstrip("/"),
+        "model": os.getenv("IZAKHONO_SPEECH_MODEL", "kokoro"),
+        "models_env": "IZAKHONO_SPEECH_MODELS",
+        "status": "adapter",
+    },
+    "transcription": {
+        "kind": "json_generate",
+        "url": os.getenv("IZAKHONO_TRANSCRIPTION_URL", "").rstrip("/"),
+        "model": os.getenv("IZAKHONO_TRANSCRIPTION_MODEL", "whisper"),
+        "models_env": "IZAKHONO_TRANSCRIPTION_MODELS",
+        "status": "adapter",
+    },
+}
 
 def send_json(handler, status, obj):
     body = json.dumps(obj, separators=(",", ":")).encode()
@@ -24,6 +81,7 @@ def send_json(handler, status, obj):
     handler.send_header("content-length", str(len(body)))
     handler.send_header("cache-control", "no-store")
     handler.send_header("x-content-type-options", "nosniff")
+    handler.send_header("referrer-policy", "no-referrer")
     handler.end_headers()
     handler.wfile.write(body)
 
@@ -39,7 +97,10 @@ def http_json(url, payload=None, headers=None, timeout=120):
         method="POST" if body is not None else "GET",
     )
     with urllib.request.urlopen(req, timeout=timeout) as res:
-        return json.loads(res.read().decode())
+        raw = res.read()
+        if not raw:
+            return {}
+        return json.loads(raw.decode())
 
 def check_access(entity_id, subject, product):
     if not ACCESS_KEY:
@@ -51,17 +112,132 @@ def check_access(entity_id, subject, product):
         timeout=10,
     )
 
-def model_chat(messages, model):
-    if not OWNER_ONLY:
-        raise RuntimeError("external_ai_providers_disabled")
+def is_private_ip(value):
+    try:
+        ip = ipaddress.ip_address(value)
+        return ip.is_loopback or ip.is_private or ip.is_link_local
+    except ValueError:
+        return False
+
+def host_allowed(url):
+    parsed = urlparse(url)
+    if parsed.scheme not in ("http", "https") or not parsed.hostname:
+        return False
+    host = parsed.hostname.lower()
+    explicit = {
+        h.strip().lower()
+        for h in os.getenv("IZAKHONO_AI_OWNER_HOSTS", "127.0.0.1,localhost").split(",")
+        if h.strip()
+    }
+    if host in explicit or host == "localhost":
+        return True
+    if is_private_ip(host):
+        return True
+    try:
+        for addr in socket.gethostbyname_ex(host)[2]:
+            if is_private_ip(addr):
+                return True
+    except OSError:
+        pass
+    return bool(ALLOW_EXTERNAL and not OWNER_ONLY)
+
+def allowed_models(capability):
+    cfg = CAPABILITIES[capability]
+    configured = os.getenv(cfg["models_env"], "")
+    values = [m.strip() for m in configured.split(",") if m.strip()]
+    if cfg["model"] not in values:
+        values.append(cfg["model"])
+    return values
+
+def select_model(capability, requested):
+    cfg = CAPABILITIES[capability]
+    model = str(requested or cfg["model"]).strip()
+    if model not in allowed_models(capability):
+        raise ValueError("model_not_allowed")
+    return model
+
+def normalize_messages(payload):
+    messages = payload.get("messages")
+    if isinstance(messages, list) and messages:
+        out = []
+        for item in messages[:100]:
+            if not isinstance(item, dict):
+                continue
+            role = str(item.get("role") or "").strip()
+            content = str(item.get("content") or "").strip()
+            if role in ("system", "user", "assistant", "tool") and content:
+                out.append({"role": role, "content": content[:100000]})
+        if out:
+            return out
+    prompt = str(payload.get("input") or payload.get("prompt") or "").strip()
+    return [{"role": "user", "content": prompt[:100000]}] if prompt else []
+
+def model_chat(messages, model, capability="chat"):
+    cfg = CAPABILITIES[capability]
+    if not cfg["url"]:
+        raise RuntimeError("capability_backend_unconfigured")
+    if OWNER_ONLY and not host_allowed(cfg["url"]):
+        raise RuntimeError("owner_route_required")
     return http_json(
-        OLLAMA_URL + "/api/chat",
+        cfg["url"] + "/api/chat",
         {"model": model, "stream": False, "messages": messages},
         timeout=300,
     )
 
+def json_generate(payload, model, capability):
+    cfg = CAPABILITIES[capability]
+    if not cfg["url"]:
+        raise RuntimeError("capability_backend_unconfigured")
+    if OWNER_ONLY and not host_allowed(cfg["url"]):
+        raise RuntimeError("owner_route_required")
+    request_payload = {
+        "model": model,
+        "input": payload.get("input"),
+        "prompt": payload.get("prompt"),
+        "options": payload.get("options") if isinstance(payload.get("options"), dict) else {},
+    }
+    return http_json(cfg["url"], request_payload, timeout=900)
+
+def execute_capability(payload):
+    capability = str(payload.get("capability") or "chat").strip().lower()
+    if capability not in CAPABILITIES:
+        raise ValueError("unsupported_capability")
+    model = select_model(capability, payload.get("model"))
+    cfg = CAPABILITIES[capability]
+    if cfg["kind"] == "ollama_chat":
+        messages = normalize_messages(payload)
+        if not messages:
+            raise ValueError("messages_or_input_required")
+        raw = model_chat(messages, model, capability)
+        output = str(raw.get("message", {}).get("content", "")).strip()
+        if not output:
+            raise RuntimeError("empty_model_response")
+        return capability, model, {"type": "text", "text": output}, raw
+    if cfg["kind"] == "json_generate":
+        if payload.get("input") in (None, "") and payload.get("prompt") in (None, ""):
+            raise ValueError("input_or_prompt_required")
+        raw = json_generate(payload, model, capability)
+        output = raw.get("output", raw.get("result", raw))
+        return capability, model, {"type": capability, "data": output}, raw
+    raise RuntimeError("capability_backend_invalid")
+
+def capability_summary():
+    items = []
+    for name, cfg in CAPABILITIES.items():
+        configured = bool(cfg["url"])
+        owner_route = bool(cfg["url"] and host_allowed(cfg["url"]))
+        items.append({
+            "capability": name,
+            "model": cfg["model"],
+            "allowed_models": allowed_models(name),
+            "configured": configured,
+            "owner_route": owner_route,
+            "status": "ready" if configured and owner_route else "needs_backend",
+        })
+    return items
+
 class Handler(BaseHTTPRequestHandler):
-    server_version = "IzakhonoAIGateway/0.1"
+    server_version = "IzakhonoSuperAI/0.2"
 
     def log_message(self, fmt, *args):
         print(f"{self.client_address[0]} - {fmt % args}")
@@ -79,20 +255,35 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         p = urlparse(self.path).path
         if p == "/healthz":
+            caps = capability_summary()
             return send_json(self, 200, {
                 "ok": True,
-                "service": "izakhono-ai-gateway",
+                "service": "izakhono-super-ai",
+                "version": "0.2",
                 "usage_credit_gate": False,
                 "subscriber_message_quota": None,
-                "default_model": DEFAULT_MODEL,
                 "owner_only": OWNER_ONLY,
-                "external_ai_providers": False,
+                "external_ai_providers_enabled": bool(ALLOW_EXTERNAL and not OWNER_ONLY),
+                "capabilities_ready": [x["capability"] for x in caps if x["status"] == "ready"],
+            })
+        if p == "/api/v1/capabilities":
+            if not self.authorized():
+                return send_json(self, 401, {"ok": False, "error": "unauthorized"})
+            return send_json(self, 200, {
+                "ok": True,
+                "service": "izakhono-super-ai",
+                "capabilities": capability_summary(),
+                "privacy": {
+                    "prompt_persistence": False,
+                    "behavioural_tracking": False,
+                    "advertising_ids": False,
+                },
             })
         return send_json(self, 404, {"ok": False, "error": "not_found"})
 
     def do_POST(self):
         p = urlparse(self.path).path
-        if p != "/api/v1/chat":
+        if p not in ("/api/v1/chat", "/api/v1/generate"):
             return send_json(self, 404, {"ok": False, "error": "not_found"})
         if not self.authorized():
             return send_json(self, 401, {"ok": False, "error": "unauthorized"})
@@ -105,10 +296,11 @@ class Handler(BaseHTTPRequestHandler):
         entity_id = str(payload.get("entity_id") or "").strip().lower()
         subject = str(payload.get("subject") or "").strip().lower()
         product = str(payload.get("product") or "").strip().lower()
-        model = str(payload.get("model") or DEFAULT_MODEL).strip()
-        messages = payload.get("messages")
-        if not entity_id or not subject or not product or not isinstance(messages, list) or not messages:
-            return send_json(self, 422, {"ok": False, "error": "entity_subject_product_messages_required"})
+        if not entity_id or not subject or not product:
+            return send_json(self, 422, {"ok": False, "error": "entity_subject_product_required"})
+
+        if p == "/api/v1/chat":
+            payload["capability"] = "chat"
 
         try:
             access = check_access(entity_id, subject, product)
@@ -119,19 +311,19 @@ class Handler(BaseHTTPRequestHandler):
             return send_json(self, 403, {"ok": False, "error": "subscription_required"})
 
         try:
-            result = model_chat(messages, model)
-            answer = str(result.get("message", {}).get("content", "")).strip()
-            if not answer:
-                raise RuntimeError("empty_model_response")
+            capability, model, output, _raw = execute_capability(payload)
+        except ValueError as exc:
+            return send_json(self, 422, {"ok": False, "error": str(exc)[:100]})
         except urllib.error.HTTPError as exc:
             return send_json(self, 502, {"ok": False, "error": "model_backend_error", "status": exc.code})
         except Exception as exc:
             return send_json(self, 502, {"ok": False, "error": "model_backend_unavailable", "detail": str(exc)[:200]})
 
-        return send_json(self, 200, {
+        response = {
             "ok": True,
-            "answer": answer,
+            "capability": capability,
             "model": model,
+            "output": output,
             "owner_only": OWNER_ONLY,
             "identity": {"entity_id": entity_id, "subject": subject},
             "subscription": {
@@ -141,8 +333,11 @@ class Handler(BaseHTTPRequestHandler):
                 "session_quota": None,
                 "fair_use": True,
             },
-        })
+        }
+        if capability == "chat":
+            response["answer"] = output["text"]
+        return send_json(self, 200, response)
 
 if __name__ == "__main__":
-    print(f"IZAKHONO AI GATEWAY listening on http://{HOST}:{PORT}")
+    print(f"IZAKHONO SUPER AI listening on http://{HOST}:{PORT}")
     ThreadingHTTPServer((HOST, PORT), Handler).serve_forever()
