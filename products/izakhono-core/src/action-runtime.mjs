@@ -4,6 +4,7 @@ import pg from 'pg'
 const { Pool } = pg
 const ACTION_VERSION = '0.2.0-actions-preview'
 const JWT_SECRET = process.env.IZAKHONO_CORE_JWT_SECRET || ''
+const ADMIN_TOKEN = process.env.IZAKHONO_CORE_ADMIN_TOKEN || ''
 const ALLOWED_ORIGINS = new Set((process.env.IZAKHONO_CORE_ALLOWED_ORIGINS || '').split(',').map(v => v.trim()).filter(Boolean))
 const pool = process.env.DATABASE_URL ? new Pool({ connectionString: process.env.DATABASE_URL }) : new Pool()
 
@@ -118,6 +119,10 @@ function sendJson(req, res, status, data) {
 function assertOrigin(req) {
   const origin = req.headers.origin
   if (origin && !ALLOWED_ORIGINS.has(origin) && !ALLOWED_ORIGINS.has('*')) throw httpError(403, 'Origin not allowed')
+}
+
+function requireAdmin(req) {
+  if (!ADMIN_TOKEN || !safeEqual(authHeaderToken(req), ADMIN_TOKEN)) throw httpError(401, 'Invalid admin token')
 }
 
 async function requireUser(req, project) {
@@ -266,6 +271,274 @@ async function atomicScopeBatch(req, res, project) {
 }
 
 
+
+
+function normalizeStringList(value, label, { minItems = 0, maxItems = 30, maxLength = 100 } = {}) {
+  if (value == null) value = []
+  if (!Array.isArray(value) || value.length < minItems || value.length > maxItems) {
+    throw httpError(400, `${label} must contain ${minItems}-${maxItems} values`)
+  }
+  return [...new Set(value.map(item => {
+    const text = String(item ?? '').trim()
+    if (!text || text.length > maxLength) throw httpError(400, `Invalid ${label} value`)
+    return text
+  }))]
+}
+
+async function allegroRequestVetting(req, res, project) {
+  if (req.method !== 'POST') throw httpError(405, 'Method not allowed')
+  const user = await requireUser(req, project)
+  const client = await pool.connect()
+  let row
+  try {
+    await client.query('BEGIN')
+    const existing = await client.query(
+      `SELECT row_id,data FROM iz_core_rows
+       WHERE project_id=$1 AND table_name='musician_vetting' AND created_by=$2
+       ORDER BY updated_at DESC LIMIT 1 FOR UPDATE`,
+      [project, user.id],
+    )
+    const now = new Date().toISOString()
+    const data = {
+      user_id: user.id,
+      status: 'pending',
+      verification_level: 'basic',
+      identity_checked: false,
+      contact_checked: false,
+      profile_checked: false,
+      references_checked: false,
+      organisation_checked: false,
+      safety_declaration_accepted: true,
+      reviewed_at: null,
+      expires_at: null,
+      review_note: null,
+      updated_at: now,
+    }
+    if (existing.rowCount) {
+      const status = String(existing.rows[0].data?.status || '')
+      if (!['rejected','expired'].includes(status)) throw httpError(409, 'A marketplace vetting request already exists')
+      const updated = await client.query(
+        `UPDATE iz_core_rows SET data=data || $4::jsonb,updated_at=now()
+         WHERE project_id=$1 AND table_name='musician_vetting' AND row_id=$2 AND created_by=$3
+         RETURNING row_id,data`,
+        [project, existing.rows[0].row_id, user.id, JSON.stringify(data)],
+      )
+      row = { ...(updated.rows[0].data || {}), id: updated.rows[0].row_id }
+    } else {
+      const id = randomUUID()
+      data.created_at = now
+      const inserted = await client.query(
+        `INSERT INTO iz_core_rows(project_id,table_name,row_id,data,created_by)
+         VALUES($1,'musician_vetting',$2,$3::jsonb,$4)
+         RETURNING row_id,data`,
+        [project, id, JSON.stringify(data), user.id],
+      )
+      row = { ...(inserted.rows[0].data || {}), id: inserted.rows[0].row_id }
+    }
+    await client.query('COMMIT')
+  } catch (error) {
+    try { await client.query('ROLLBACK') } catch {}
+    throw error
+  } finally {
+    client.release()
+  }
+  await audit(project, user.id, 'trusted_action.allegro_request_vetting', { vetting_id: row.id })
+  return sendJson(req, res, 200, { ok: true, vetting: row })
+}
+
+async function allegroReviewVetting(req, res, project) {
+  if (req.method !== 'POST') throw httpError(405, 'Method not allowed')
+  requireAdmin(req)
+  const body = await readJson(req)
+  let userResult
+  if (body.user_id) {
+    userResult = await pool.query('SELECT id,email FROM iz_core_users WHERE project_id=$1 AND id=$2', [project, String(body.user_id)])
+  } else if (body.email) {
+    userResult = await pool.query('SELECT id,email FROM iz_core_users WHERE project_id=$1 AND lower(email)=lower($2)', [project, String(body.email).trim()])
+  } else {
+    throw httpError(400, 'user_id or email required')
+  }
+  if (!userResult.rowCount) throw httpError(404, 'Project user not found')
+  const target = userResult.rows[0]
+  const allowed = new Set(['in_review','approved','rejected','suspended','expired'])
+  const status = String(body.status || '')
+  if (!allowed.has(status)) throw httpError(400, 'Invalid vetting status')
+  const checks = {
+    identity_checked: body.identity_checked === true,
+    contact_checked: body.contact_checked === true,
+    profile_checked: body.profile_checked === true,
+    references_checked: body.references_checked === true,
+    organisation_checked: body.organisation_checked === true,
+  }
+  if (status === 'approved' && !(checks.identity_checked && checks.contact_checked && checks.profile_checked)) {
+    throw httpError(400, 'Approval requires identity, contact and profile checks')
+  }
+  const reviewNote = body.review_note == null ? null : String(body.review_note).trim().slice(0, 2000)
+  const expiresAt = body.expires_at == null || body.expires_at === '' ? null : String(body.expires_at)
+  if (expiresAt && !Number.isFinite(Date.parse(expiresAt))) throw httpError(400, 'Invalid expires_at')
+  const found = await pool.query(
+    `SELECT row_id,data FROM iz_core_rows
+     WHERE project_id=$1 AND table_name='musician_vetting' AND created_by=$2
+     ORDER BY updated_at DESC LIMIT 1`,
+    [project, target.id],
+  )
+  if (!found.rowCount) throw httpError(404, 'Vetting request not found')
+  const now = new Date().toISOString()
+  const patch = {
+    status,
+    ...checks,
+    reviewed_at: now,
+    expires_at: expiresAt,
+    review_note: reviewNote,
+    updated_at: now,
+  }
+  const updated = await pool.query(
+    `UPDATE iz_core_rows SET data=data || $4::jsonb,updated_at=now()
+     WHERE project_id=$1 AND table_name='musician_vetting' AND row_id=$2 AND created_by=$3
+     RETURNING row_id,data`,
+    [project, found.rows[0].row_id, target.id, JSON.stringify(patch)],
+  )
+  await audit(project, target.id, 'admin_action.allegro_review_vetting', { status, checks })
+  return sendJson(req, res, 200, { ok: true, vetting: { ...(updated.rows[0].data || {}), id: updated.rows[0].row_id } })
+}
+
+async function allegroCreateMusicianAd(req, res, project) {
+  if (req.method !== 'POST') throw httpError(405, 'Method not allowed')
+  const user = await requireUser(req, project)
+  const body = await readJson(req)
+  const title = String(body.title || '').trim()
+  const description = String(body.description || '').trim()
+  if (title.length < 5 || title.length > 140) throw httpError(400, 'Advert title must contain 5-140 characters')
+  if (description.length < 20 || description.length > 3000) throw httpError(400, 'Advert description must contain 20-3000 characters')
+  const lookingFor = normalizeStringList(body.looking_for, 'looking_for', { minItems: 1, maxItems: 30 })
+  const genres = normalizeStringList(body.genres, 'genres', { minItems: 1, maxItems: 30 })
+  const engagementTypes = new Set(['collaboration','band_member','session_work','gig','tour','recording','songwriting','production','choir','other'])
+  const compensationTypes = new Set(['paid','unpaid','negotiable','royalty_split','expenses_only'])
+  const engagementType = String(body.engagement_type || 'collaboration')
+  const compensation = String(body.compensation || 'negotiable')
+  if (!engagementTypes.has(engagementType)) throw httpError(400, 'Invalid engagement type')
+  if (!compensationTypes.has(compensation)) throw httpError(400, 'Invalid compensation type')
+  const budget = body.budget_amount == null || body.budget_amount === '' ? null : Number(body.budget_amount)
+  if (budget != null && (!Number.isFinite(budget) || budget < 0 || budget > 100000000)) throw httpError(400, 'Invalid budget')
+  const currency = String(body.budget_currency || 'ZAR').toUpperCase()
+  if (!/^[A-Z]{3}$/.test(currency)) throw httpError(400, 'Invalid budget currency')
+
+  const client = await pool.connect()
+  let ad
+  try {
+    await client.query('BEGIN')
+    await requireApprovedAllegroVetting(client, project, user.id)
+    const id = randomUUID()
+    const now = new Date()
+    const expires = new Date(now.getTime() + 60 * 24 * 60 * 60 * 1000)
+    const data = {
+      owner_id: user.id,
+      title,
+      description,
+      poster_role: String(body.poster_role || '').trim().slice(0, 120),
+      looking_for: lookingFor,
+      genres,
+      country: body.country ? String(body.country).trim().slice(0, 120) : null,
+      city: body.city ? String(body.city).trim().slice(0, 120) : null,
+      remote_ok: body.remote_ok === true,
+      engagement_type: engagementType,
+      compensation,
+      budget_amount: budget == null ? null : roundMoney(budget),
+      budget_currency: currency,
+      audition_required: body.audition_required === true,
+      status: 'published',
+      created_at: now.toISOString(),
+      updated_at: now.toISOString(),
+      expires_at: expires.toISOString(),
+    }
+    const inserted = await client.query(
+      `INSERT INTO iz_core_rows(project_id,table_name,row_id,data,created_by)
+       VALUES($1,'musician_ads',$2,$3::jsonb,$4)
+       RETURNING row_id,data`,
+      [project, id, JSON.stringify(data), user.id],
+    )
+    await client.query('COMMIT')
+    ad = { ...(inserted.rows[0].data || {}), id: inserted.rows[0].row_id }
+  } catch (error) {
+    try { await client.query('ROLLBACK') } catch {}
+    throw error
+  } finally {
+    client.release()
+  }
+  await audit(project, user.id, 'trusted_action.allegro_create_musician_ad', { ad_id: ad.id })
+  return sendJson(req, res, 201, { ok: true, ad })
+}
+
+async function allegroCreateAdResponse(req, res, project) {
+  if (req.method !== 'POST') throw httpError(405, 'Method not allowed')
+  const user = await requireUser(req, project)
+  const body = await readJson(req)
+  const adId = validateRowId(body.ad_id)
+  const message = String(body.message || '').trim()
+  if (message.length < 20 || message.length > 2000) throw httpError(400, 'Response must contain 20-2000 characters')
+  let portfolioUrl = null
+  if (body.portfolio_url) {
+    portfolioUrl = String(body.portfolio_url).trim()
+    if (portfolioUrl.length > 2048) throw httpError(400, 'Portfolio URL is too long')
+    let parsed
+    try { parsed = new URL(portfolioUrl) } catch { throw httpError(400, 'Portfolio URL is invalid') }
+    if (!['https:','http:'].includes(parsed.protocol)) throw httpError(400, 'Portfolio URL must be HTTP(S)')
+  }
+  const proposedAmount = body.proposed_amount == null || body.proposed_amount === '' ? null : Number(body.proposed_amount)
+  if (proposedAmount != null && (!Number.isFinite(proposedAmount) || proposedAmount < 0 || proposedAmount > 100000000)) throw httpError(400, 'Invalid proposed amount')
+  const proposedCurrency = String(body.proposed_currency || 'ZAR').toUpperCase()
+  if (!/^[A-Z]{3}$/.test(proposedCurrency)) throw httpError(400, 'Invalid proposed currency')
+
+  const client = await pool.connect()
+  let responseRow
+  try {
+    await client.query('BEGIN')
+    await requireApprovedAllegroVetting(client, project, user.id)
+    const adResult = await client.query(
+      `SELECT row_id,data FROM iz_core_rows
+       WHERE project_id=$1 AND table_name='musician_ads' AND row_id=$2`,
+      [project, adId],
+    )
+    if (!adResult.rowCount) throw httpError(404, 'Advert not found')
+    const ad = adResult.rows[0].data || {}
+    if (ad.status !== 'published' || (ad.expires_at && Date.parse(String(ad.expires_at)) <= Date.now())) throw httpError(409, 'Advert is not open')
+    const duplicate = await client.query(
+      `SELECT 1 FROM iz_core_rows
+       WHERE project_id=$1 AND table_name='musician_ad_responses' AND created_by=$2 AND data->>'ad_id'=$3
+       LIMIT 1`,
+      [project, user.id, adId],
+    )
+    if (duplicate.rowCount) throw httpError(409, 'You have already responded to this advert')
+    const id = randomUUID()
+    const now = new Date().toISOString()
+    const data = {
+      ad_id: adId,
+      applicant_id: user.id,
+      message,
+      portfolio_url: portfolioUrl,
+      proposed_amount: proposedAmount == null ? null : roundMoney(proposedAmount),
+      proposed_currency: proposedCurrency,
+      status: 'submitted',
+      created_at: now,
+      updated_at: now,
+    }
+    const inserted = await client.query(
+      `INSERT INTO iz_core_rows(project_id,table_name,row_id,data,created_by)
+       VALUES($1,'musician_ad_responses',$2,$3::jsonb,$4)
+       RETURNING row_id,data`,
+      [project, id, JSON.stringify(data), user.id],
+    )
+    await client.query('COMMIT')
+    responseRow = { ...(inserted.rows[0].data || {}), id: inserted.rows[0].row_id }
+  } catch (error) {
+    try { await client.query('ROLLBACK') } catch {}
+    throw error
+  } finally {
+    client.release()
+  }
+  await audit(project, user.id, 'trusted_action.allegro_create_ad_response', { response_id: responseRow.id, ad_id: adId })
+  return sendJson(req, res, 201, { ok: true, response: responseRow })
+}
 
 function normalizeMerchText(value, label, { min = 0, max = 5000 } = {}) {
   const text = String(value ?? '').trim()
@@ -485,6 +758,10 @@ export async function handleActionRequest(req, res) {
         delete: false,
         arbitrarySql: false,
         browserServerSecrets: false,
+        allegroRequestVetting: true,
+        allegroAdminReviewVetting: true,
+        allegroCreateMusicianAd: true,
+        allegroCreateAdResponse: true,
         allegroCreateMerchOrder: true,
         allegroCreateMerchProduct: true,
         allegroCreatorMerchRequiresApprovedVetting: true,
@@ -498,6 +775,34 @@ export async function handleActionRequest(req, res) {
   if (match) {
     const project = validateProject(decodeURIComponent(match[1]))
     await atomicScopeBatch(req, res, project)
+    return true
+  }
+
+  match = url.pathname.match(/^\/v3\/admin\/actions\/([^/]+)\/allegro-review-vetting$/)
+  if (match) {
+    const project = validateProject(decodeURIComponent(match[1]))
+    await allegroReviewVetting(req, res, project)
+    return true
+  }
+
+  match = url.pathname.match(/^\/v3\/actions\/([^/]+)\/allegro-request-vetting$/)
+  if (match) {
+    const project = validateProject(decodeURIComponent(match[1]))
+    await allegroRequestVetting(req, res, project)
+    return true
+  }
+
+  match = url.pathname.match(/^\/v3\/actions\/([^/]+)\/allegro-create-musician-ad$/)
+  if (match) {
+    const project = validateProject(decodeURIComponent(match[1]))
+    await allegroCreateMusicianAd(req, res, project)
+    return true
+  }
+
+  match = url.pathname.match(/^\/v3\/actions\/([^/]+)\/allegro-create-ad-response$/)
+  if (match) {
+    const project = validateProject(decodeURIComponent(match[1]))
+    await allegroCreateAdResponse(req, res, project)
     return true
   }
 
