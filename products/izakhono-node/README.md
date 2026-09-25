@@ -36,14 +36,14 @@ Default local services:
 
 - IZAKHONO NODE: `http://127.0.0.1:9191`
 - IZAKHONO CONTROL: `http://127.0.0.1:9292`
-- IZAKHONO CODE repositories: `/srv/izakhono-code/repos/*.git`
+- IZAKHONO CODE repositories: `/var/lib/izakhono-code/repos/*.git`
 
 The services bind to loopback by default. Public application traffic must go through the reviewed IZAKHONO EDGE/TLS path; NODE management ports are not public application endpoints.
 
 ## Sovereignty rules
 
 1. **IZAKHONO CODE is the preferred source.**
-   Jobs using `source=izakhono-code` resolve to owner-controlled bare Git repositories under `/srv/izakhono-code/repos`.
+   Jobs using `source=izakhono-code` resolve to owner-controlled bare Git repositories under `/var/lib/izakhono-code/repos`.
 
 2. **GitHub is a temporary mirror only.**
    `source=github-mirror` remains available during migration and is restricted to the owner-controlled `bevanshelton-netizen` namespace. It can later be disabled with `IZAKHONO_ALLOW_GITHUB_MIRROR=false`.
