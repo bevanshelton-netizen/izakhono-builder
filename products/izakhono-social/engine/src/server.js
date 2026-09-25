@@ -1,11 +1,16 @@
 import http from 'node:http';
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
-import path from 'node:path';
 import { createHash, randomUUID } from 'node:crypto';
 
 import { fingerprintImage, supportsPerceptualFingerprint } from './media-fingerprint.js';
 
 import { query, transaction } from './db.js';
+import {
+  getMedia,
+  initializeStorage,
+  putMedia,
+  storageHealth,
+  storageInfo,
+} from './storage.js';
 import { moderateText } from './moderation.js';
 import {
   bearerToken,
@@ -58,7 +63,8 @@ import {
 } from './trust.js';
 
 const PORT = Number(process.env.PORT || 4100);
-const MEDIA_ROOT = path.resolve(process.env.MEDIA_ROOT || '/var/lib/connecta/media');
+const ENGINE_VERSION = process.env.CONNECTA_ENGINE_VERSION || '0.2.0';
+const ENGINE_INSTANCE = process.env.CONNECTA_ENGINE_INSTANCE || 'connecta-engine';
 const MAX_JSON_BYTES = Number(process.env.MAX_JSON_BYTES || 1_000_000);
 const MAX_MEDIA_BYTES = Number(process.env.MAX_MEDIA_BYTES || 25 * 1024 * 1024);
 const SESSION_DAYS = Math.min(Math.max(Number(process.env.SESSION_DAYS || 30), 1), 90);
@@ -71,7 +77,7 @@ const ALLOWED_ORIGINS = new Set(
     .filter(Boolean),
 );
 
-await mkdir(MEDIA_ROOT, { recursive: true });
+await initializeStorage();
 
 function send(res, status, data, extraHeaders = {}) {
   const body = JSON.stringify(data);
@@ -625,9 +631,7 @@ async function uploadMedia(req, res, account, mediaId) {
     }
   }
 
-  const diskPath = path.join(MEDIA_ROOT, media.object_key);
-  await mkdir(path.dirname(diskPath), { recursive: true });
-  await writeFile(diskPath, bytes, { mode: 0o600 });
+  await putMedia(media.object_key, bytes, media.mime_type);
 
   await query(
     `update media_assets
@@ -738,7 +742,7 @@ async function mediaContent(req, res, account, mediaId) {
   if (media.owner_id !== account.id && media.moderation_state !== 'allowed') {
     return send(res, 403, { ok: false, error: 'Media is not available' });
   }
-  const bytes = await readFile(path.join(MEDIA_ROOT, media.object_key)).catch(() => null);
+  const bytes = await getMedia(media.object_key).catch(() => null);
   if (!bytes) return send(res, 404, { ok: false, error: 'Media content missing' });
   res.writeHead(200, {
     'content-type': media.mime_type,
@@ -759,12 +763,20 @@ async function route(req, res) {
   const url = new URL(req.url, 'http://connecta.local');
   if (req.method === 'GET' && url.pathname === '/health') {
     const database = await query('select 1 as ok').then(() => 'ok').catch(() => 'error');
-    return send(res, database === 'ok' ? 200 : 503, {
-      ok: database === 'ok',
+    const storage = await storageHealth().then(() => 'ok').catch(() => 'error');
+    const healthy = database === 'ok' && storage === 'ok';
+    return send(res, healthy ? 200 : 503, {
+      ok: healthy,
       service: 'CONNECTA ENGINE',
-      version: '0.1.0',
+      version: ENGINE_VERSION,
+      instance: ENGINE_INSTANCE,
       database,
+      storage,
+      storageAdapter: storageInfo(),
       providerIndependent: true,
+      productEngine: 'CONNECTA',
+      dependsOnAnotherProductEngine: false,
+      externalServicesReplaceableAdaptersOnly: true,
       behaviouralTracking: false,
     });
   }
