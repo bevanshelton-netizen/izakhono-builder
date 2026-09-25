@@ -30,6 +30,7 @@
     proposalInstitution: document.querySelector("#proposalInstitution"),
     proposalOffer: document.querySelector("#proposalOffer"),
     proposalLanguage: document.querySelector("#proposalLanguage"),
+    proposalScale: document.querySelector("#proposalScale"),
     proposalOutput: document.querySelector("#proposalOutput"),
     copyProposal: document.querySelector("#copyProposal"),
     downloadProposal: document.querySelector("#downloadProposal"),
