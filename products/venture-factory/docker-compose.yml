@@ -1,0 +1,24 @@
+services:
+  venture-factory:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: izakhono-venture-factory
+    restart: unless-stopped
+    environment:
+      PORT: "9780"
+      VENTURE_FACTORY_HOST: "0.0.0.0"
+      VENTURE_FACTORY_DATA_DIR: "/data"
+      VENTURE_FACTORY_OWNER_KEY_FILE: "/run/secrets/venture_factory_owner_key"
+      IZAKHONO_SUPER_AI_URL: "http://host.docker.internal:9595"
+      IZAKHONO_SUPER_AI_INTERNAL_KEY_FILE: "/run/secrets/izakhono_ai_internal_key"
+      IZAKHONO_SUPER_AI_WORKFLOW_KEY_FILE: "/run/secrets/izakhono_ai_workflow_key"
+      VENTURE_FACTORY_PUBLIC_PLANNING: "false"
+    ports:
+      - "127.0.0.1:9780:9780"
+    volumes:
+      - venture-factory-data:/data
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+volumes:
+  venture-factory-data:
