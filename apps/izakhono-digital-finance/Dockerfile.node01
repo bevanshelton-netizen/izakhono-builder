@@ -1,0 +1,38 @@
+FROM python:3.12-alpine
+WORKDIR /app
+
+COPY apps/izakhono-digital-finance/index.html ./
+COPY apps/izakhono-digital-finance/styles.css ./
+COPY apps/izakhono-digital-finance/app.js ./
+COPY apps/izakhono-digital-finance/curriculum.json ./
+COPY apps/izakhono-digital-finance/platform.json ./
+COPY apps/izakhono-digital-finance/institutions.json ./
+COPY apps/izakhono-digital-finance/locales.json ./
+COPY apps/izakhono-digital-finance/institutional-offers.json ./
+COPY apps/izakhono-digital-finance/automation.json ./
+COPY apps/izakhono-digital-finance/assessment-blueprint.json ./
+COPY apps/izakhono-digital-finance/adapter-contracts.json ./
+COPY apps/izakhono-digital-finance/healthz ./
+COPY apps/izakhono-digital-finance/engine.py ./
+COPY apps/izakhono-digital-finance/automation_engine.py ./
+COPY apps/izakhono-digital-finance/automation_store.py ./
+COPY apps/izakhono-digital-finance/learner_access.py ./
+COPY apps/izakhono-digital-finance/assessment_service.py ./
+COPY apps/izakhono-digital-finance/credential_service.py ./
+COPY apps/izakhono-digital-finance/verify.py ./
+COPY apps/izakhono-digital-finance/test_automation.py ./
+COPY apps/izakhono-digital-finance/test_automation_store.py ./
+COPY apps/izakhono-digital-finance/test_zero_touch.py ./
+COPY apps/izakhono-digital-finance/external-worker.js ./
+COPY apps/izakhono-digital-finance/wrangler-fallback.jsonc ./
+
+RUN mkdir -p /data && python verify.py && python test_automation.py && python test_automation_store.py && python test_zero_touch.py
+
+EXPOSE 8080
+ENV IZAKHONO_DF_HOST=0.0.0.0
+ENV IZAKHONO_DF_PORT=8080
+ENV IZAKHONO_DF_STATE_DB=/data/izakhono-df.sqlite3
+VOLUME ["/data"]
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 CMD wget -q -O - http://127.0.0.1:8080/healthz || exit 1
+CMD ["python", "engine.py"]
