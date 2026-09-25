@@ -1,0 +1,73 @@
+{
+  "schema_version": 1,
+  "evidence_timestamp": "2026-09-25T12:37:01Z",
+  "evidence_source": "bevanshelton-netizen/Downloads GitHub Actions run 36135910683",
+  "activation_rule": "sender identities are disabled until status is LIVE_VERIFIED",
+  "domains": {
+    "izakhonoafrica.co.za": {
+      "status": "DNS_UNRESOLVED",
+      "sender_enabled": false,
+      "evidence": {
+        "ns": false,
+        "a": false,
+        "mx": false,
+        "spf": false,
+        "dmarc": false,
+        "dkim": false,
+        "registry": "reported available by .co.za registry diagnostic"
+      },
+      "next_action": "Confirm/restore domain registration and authoritative DNS ownership before adding any mail records."
+    },
+    "faisready.co.za": {
+      "status": "DNS_UNRESOLVED",
+      "sender_enabled": false,
+      "evidence": {
+        "ns": false,
+        "a": false,
+        "mx": false,
+        "spf": false,
+        "dmarc": false,
+        "dkim": false
+      },
+      "next_action": "Restore authoritative DNS, then configure MX/SPF/DKIM/DMARC and perform external send/reply tests."
+    },
+    "doxahosting.co.za": {
+      "status": "DNS_UNRESOLVED",
+      "sender_enabled": false,
+      "evidence": {
+        "ns": false,
+        "a": false,
+        "mx": false,
+        "spf": false,
+        "dmarc": false,
+        "dkim": false
+      },
+      "next_action": "Restore authoritative DNS, then configure MX/SPF/DKIM/DMARC and perform external send/reply tests."
+    },
+    "edubuildshelton.org.za": {
+      "status": "ROUTED_AUTH_PARTIAL",
+      "sender_enabled": false,
+      "evidence": {
+        "ns": [
+          "ns1.supercp.com",
+          "ns2.supercp.com",
+          "ns3.supercp.com",
+          "ns4.supercp.com"
+        ],
+        "a": [
+          "68.66.226.122"
+        ],
+        "mx": [
+          "0 mail.edubuildshelton.org.za"
+        ],
+        "spf": "v=spf1 a mx include:websitewelcome.com ~all",
+        "dkim_selector": "default",
+        "dkim_present": true,
+        "dmarc": false,
+        "inbound_test_sent": "2026-09-25T12:37:50Z",
+        "bounce_observed": false
+      },
+      "next_action": "Publish DMARC in monitoring mode, rotate any historical mailbox credentials, verify outbound DKIM/SPF alignment and complete external send/reply tests."
+    }
+  }
+}
