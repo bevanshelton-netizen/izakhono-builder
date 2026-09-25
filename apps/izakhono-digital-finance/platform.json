@@ -1,0 +1,36 @@
+{
+  "schema": "izakhono.platform.manifest.v1",
+  "platform_id": "izakhono-digital-finance",
+  "name": "IZAKHONO Digital Finance Academy",
+  "operator": "IZAKHONO AFRICA (PTY) LTD",
+  "trading_name": "IZAKHONO Digital Finance Academy",
+  "status": "BUILT / VERIFIED LOCALLY",
+  "authoritative_source": "bevanshelton-netizen/izakhono-builder:apps/izakhono-digital-finance",
+  "owned_target": "NODE01 via IZAKHONO CODE -> RUNTIME -> FORTRESS -> EDGE/TLS -> IZAKHONO DNS",
+  "public_route": null,
+  "external_fallback": "Static resilience deployment permitted; not verified yet.",
+  "engine": {
+    "type": "Independent Python 3 stdlib HTTP engine",
+    "entrypoint": "engine.py",
+    "health_endpoint": "/healthz",
+    "status_endpoint": "/api/v1/status",
+    "catalog_endpoint": "/api/v1/catalog"
+  },
+  "data": {
+    "learning_progress": "Browser-local in MVP",
+    "analytics": "None",
+    "tracking": "None",
+    "customer_records": "Not collected in MVP"
+  },
+  "payments": {
+    "preferred_gateway": "iKhokha",
+    "state": "GATED_PENDING_VERIFIED_PRODUCT_CHECKOUT",
+    "rule": "No checkout is presented as live until a product-specific payment URL, settlement path and entitlement flow are verified end-to-end."
+  },
+  "legal": {
+    "degree_claim": false,
+    "accreditation_claim": false,
+    "financial_advice": false,
+    "education_only": true
+  }
+}
