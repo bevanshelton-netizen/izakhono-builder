@@ -2,7 +2,7 @@
   "source": "izakhono-code",
   "repository": "allegro-vibez",
   "app": "allegro-vibez",
-  "ref": "4db57e1ff8d890ca61541ed31777bef392d69d9e",
+  "ref": "79221c38b64d977af59bb528e8915dc139e589fb",
   "environment": "production",
   "mode": "single",
   "container_port": 8080,
