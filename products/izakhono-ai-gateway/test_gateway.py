@@ -7,6 +7,8 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 os.environ["IZAKHONO_AI_GATEWAY_INTERNAL_KEY"] = "gateway-test"
+os.environ["IZAKHONO_AI_WORKFLOW_KEY"] = "workflow-test"
+os.environ["IZAKHONO_AI_WORKFLOW_PRODUCTS"] = "venture-factory,izakhono-builder"
 os.environ["IZAKHONO_ACCESS_INTERNAL_KEY"] = "access-test"
 os.environ["IZAKHONO_ACCESS_URL"] = "http://127.0.0.1:19494"
 os.environ["IZAKHONO_OLLAMA_URL"] = "http://127.0.0.1:19134"
@@ -74,6 +76,10 @@ spec.loader.exec_module(g)
 assert g.check_access("faisready-entity", "active@example.com", "faisready")["active"] is True
 assert g.check_access("faisready-entity", "inactive@example.com", "faisready")["active"] is False
 assert g.host_allowed("http://127.0.0.1:11434") is True
+assert g.workflow_key_allowed("workflow-test", "venture-factory") is True
+assert g.workflow_key_allowed("workflow-test", "izakhono-builder") is True
+assert g.workflow_key_allowed("workflow-test", "other-product") is False
+assert g.workflow_key_allowed("wrong-key", "venture-factory") is False
 
 chat_cap, chat_model, chat_output, _ = g.execute_capability({
     "capability": "chat",
@@ -107,6 +113,7 @@ assert caps["chat"]["status"] == "ready"
 assert caps["image"]["status"] == "ready"
 assert caps["video"]["status"] == "needs_backend"
 
+assert "venture-factory" in g.WORKFLOW_PRODUCTS
 print("IZAKHONO_SUPER_AI_TEST=PASS")
 a.shutdown()
 m.shutdown()

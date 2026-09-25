@@ -51,6 +51,7 @@ pre{white-space:pre-wrap;word-break:break-word;background:#05090e;border:1px sol
 <div class="cards">
 <article class="card"><h3>Venture</h3><div class="metric" id="name"></div><p id="offer"></p><div id="tags"></div></article>
 <article class="card"><h3>Revenue target</h3><div class="metric" id="customers"></div><p id="rev"></p></article>
+<article class="card"><h3>Intelligence</h3><div class="metric" id="intel"></div><p id="intel-note"></p></article>
 <article class="card"><h3>Build stack</h3><ul id="stack"></ul></article>
 <article class="card"><h3>Go to market</h3><ul id="channels"></ul></article>
 <article class="card"><h3>Launch sequence</h3><ol id="launch"></ol></article>
@@ -78,10 +79,18 @@ q("#go").onclick=async function(){
     q("#tags").innerHTML="<span class='pill'>"+esc(p.venture.category)+"</span><span class='pill'>"+esc(p.venture.audience)+"</span>";
     q("#customers").textContent=p.venture.customers_needed_for_target+" customers";
     q("#rev").textContent="at R"+p.venture.monthly_price_zar.toLocaleString("en-ZA")+"/month to target R"+p.venture.target_monthly_revenue_zar.toLocaleString("en-ZA")+" MRR";
+    q("#intel").textContent=p.intelligence&&p.intelligence.mode==="super-ai"?"SUPER AI":"Safe fallback";
+    q("#intel-note").textContent=p.intelligence&&p.intelligence.mode==="super-ai"
+      ?("Reasoning routed through IZAKHONO SUPER AI"+(p.intelligence.model?" · "+p.intelligence.model:""))
+      :"Deterministic plan used; SUPER AI was not required or not reachable.";
     q("#stack").innerHTML=list([p.build.ai,p.build.database,p.build.payments,p.build.crm,p.build.marketing,p.build.deployment]);
     q("#channels").innerHTML=list(p.go_to_market.channels.map(function(x){return x.channel+" — "+x.role}));
     q("#launch").innerHTML=list(p.launch_sequence);
-    q("#edge").innerHTML=list(p.improvement_over_single_purpose_builders);
+    var edge=(p.improvement_over_single_purpose_builders||[]).slice();
+    if(p.super_ai_enrichment&&Array.isArray(p.super_ai_enrichment.build_priorities)&&p.super_ai_enrichment.build_priorities.length){
+      edge=edge.concat(p.super_ai_enrichment.build_priorities.map(function(x){return "AI priority: "+x}));
+    }
+    q("#edge").innerHTML=list(edge);
     q("#raw").textContent=JSON.stringify(p,null,2);
     q("#results").style.display="block";
     q("#status").textContent="Plan built and saved in the Venture Factory.";

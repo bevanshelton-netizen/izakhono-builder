@@ -14,6 +14,8 @@ PORT = int(os.getenv("IZAKHONO_AI_GATEWAY_PORT", "9595"))
 INTERNAL_KEY = os.getenv("IZAKHONO_AI_GATEWAY_INTERNAL_KEY", "")
 ACCESS_URL = os.getenv("IZAKHONO_ACCESS_URL", "http://127.0.0.1:9494").rstrip("/")
 ACCESS_KEY = os.getenv("IZAKHONO_ACCESS_INTERNAL_KEY", "")
+WORKFLOW_KEY = os.getenv("IZAKHONO_AI_WORKFLOW_KEY", "")
+WORKFLOW_PRODUCTS = {x.strip().lower() for x in os.getenv("IZAKHONO_AI_WORKFLOW_PRODUCTS", "venture-factory,izakhono-builder").split(",") if x.strip()}
 
 OWNER_ONLY = os.getenv("IZAKHONO_AI_OWNER_ONLY", "true").lower() != "false"
 ALLOW_EXTERNAL = os.getenv("IZAKHONO_AI_ALLOW_EXTERNAL", "false").lower() == "true"
@@ -87,6 +89,14 @@ def send_json(handler, status, obj):
 
 def safe_equal(a, b):
     return hmac.compare_digest(str(a), str(b))
+
+def workflow_key_allowed(supplied, product):
+    return bool(
+        WORKFLOW_KEY
+        and supplied
+        and safe_equal(supplied, WORKFLOW_KEY)
+        and str(product or "").strip().lower() in WORKFLOW_PRODUCTS
+    )
 
 def http_json(url, payload=None, headers=None, timeout=120):
     body = None if payload is None else json.dumps(payload).encode()
@@ -246,6 +256,10 @@ class Handler(BaseHTTPRequestHandler):
         supplied = self.headers.get("x-izakhono-ai-key", "")
         return bool(INTERNAL_KEY and supplied and safe_equal(supplied, INTERNAL_KEY))
 
+    def workflow_authorized(self, product):
+        supplied = self.headers.get("x-izakhono-ai-workflow-key", "")
+        return workflow_key_allowed(supplied, product)
+
     def read_json(self):
         n = int(self.headers.get("content-length", "0") or "0")
         if n <= 0 or n > MAX_BODY:
@@ -264,6 +278,8 @@ class Handler(BaseHTTPRequestHandler):
                 "subscriber_message_quota": None,
                 "owner_only": OWNER_ONLY,
                 "external_ai_providers_enabled": bool(ALLOW_EXTERNAL and not OWNER_ONLY),
+                "workflow_mode_configured": bool(WORKFLOW_KEY),
+                "workflow_products": sorted(WORKFLOW_PRODUCTS),
                 "capabilities_ready": [x["capability"] for x in caps if x["status"] == "ready"],
             })
         if p == "/api/v1/capabilities":
@@ -296,19 +312,30 @@ class Handler(BaseHTTPRequestHandler):
         entity_id = str(payload.get("entity_id") or "").strip().lower()
         subject = str(payload.get("subject") or "").strip().lower()
         product = str(payload.get("product") or "").strip().lower()
-        if not entity_id or not subject or not product:
-            return send_json(self, 422, {"ok": False, "error": "entity_subject_product_required"})
+        access_mode = str(payload.get("access_mode") or "subscriber").strip().lower()
+        if not entity_id or not product:
+            return send_json(self, 422, {"ok": False, "error": "entity_product_required"})
 
         if p == "/api/v1/chat":
             payload["capability"] = "chat"
 
-        try:
-            access = check_access(entity_id, subject, product)
-        except Exception as exc:
-            return send_json(self, 503, {"ok": False, "error": "access_service_unavailable", "detail": str(exc)[:200]})
+        workflow_mode = access_mode == "workflow"
+        if workflow_mode:
+            if not self.workflow_authorized(product):
+                return send_json(self, 403, {"ok": False, "error": "workflow_not_authorized"})
+            if not subject:
+                subject = "izakhono-workflow"
+            access = {"active": True, "mode": "workflow"}
+        else:
+            if not subject:
+                return send_json(self, 422, {"ok": False, "error": "subject_required"})
+            try:
+                access = check_access(entity_id, subject, product)
+            except Exception as exc:
+                return send_json(self, 503, {"ok": False, "error": "access_service_unavailable", "detail": str(exc)[:200]})
 
-        if not access.get("active"):
-            return send_json(self, 403, {"ok": False, "error": "subscription_required"})
+            if not access.get("active"):
+                return send_json(self, 403, {"ok": False, "error": "subscription_required"})
 
         try:
             capability, model, output, _raw = execute_capability(payload)
@@ -326,7 +353,11 @@ class Handler(BaseHTTPRequestHandler):
             "output": output,
             "owner_only": OWNER_ONLY,
             "identity": {"entity_id": entity_id, "subject": subject},
-            "subscription": {
+            "authorization": {
+                "mode": "workflow" if workflow_mode else "subscriber",
+                "product": product,
+            },
+            "subscription": None if workflow_mode else {
                 "active": True,
                 "usage_credit_gate": False,
                 "message_quota": None,
