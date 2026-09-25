@@ -1,0 +1,43 @@
+name: IZAKHONO Venture Factory Engine CI
+
+on:
+  pull_request:
+    paths:
+      - 'products/venture-factory/**'
+      - 'internal/node01-command-gateway/deploy-profiles/venture-factory.json'
+      - 'START-VENTURE-FACTORY-NODE01.ps1'
+      - 'START-VENTURE-FACTORY-NODE01.cmd'
+      - '.github/workflows/venture-factory-engine-ci.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'products/venture-factory/**'
+      - 'internal/node01-command-gateway/deploy-profiles/venture-factory.json'
+      - 'START-VENTURE-FACTORY-NODE01.ps1'
+      - 'START-VENTURE-FACTORY-NODE01.cmd'
+      - '.github/workflows/venture-factory-engine-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax
+        run: node --check products/venture-factory/server.mjs && node --check products/venture-factory/test.mjs && node --check products/venture-factory/public/app.js
+      - name: Engine tests
+        run: node products/venture-factory/test.mjs
+      - name: Deployment profile contract
+        run: |
+          node -e "const p=require('./internal/node01-command-gateway/deploy-profiles/venture-factory.json'); if(p.mode!=='compose'||p.compose_file!=='products/venture-factory/docker-compose.yml'||p.health_url!=='http://127.0.0.1:9780/healthz') process.exit(1)"
+      - name: Privacy and spend gates
+        run: |
+          grep -Fq "tracking: false" products/venture-factory/server.mjs
+          grep -Fq "No advertising spend is launched without explicit approval" products/venture-factory/server.mjs
+          ! grep -R --line-number -E 'VENTURE_FACTORY_OWNER_KEY=.+|IZAKHONO_SUPER_AI_INTERNAL_KEY=.+' products/venture-factory START-VENTURE-FACTORY-NODE01.ps1

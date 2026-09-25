@@ -1,0 +1,11 @@
+{
+  "name": "venture-factory",
+  "description": "IZAKHONO Venture Factory independently deployable owner engine.",
+  "source": "izakhono-code",
+  "repository": "izakhono-builder",
+  "app": "venture-factory",
+  "environment": "production",
+  "mode": "compose",
+  "compose_file": "products/venture-factory/docker-compose.yml",
+  "health_url": "http://127.0.0.1:9780/healthz"
+}
