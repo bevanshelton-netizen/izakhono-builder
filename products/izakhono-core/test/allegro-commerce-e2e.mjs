@@ -75,7 +75,7 @@ try {
       public_key:projectKey,
       allow_signup:true,
       table_policies:{
-        merch_products:'owner_public_read',
+        merch_products:'owner_public_read_action_only',
         merch_orders:'owner_action_only',
         merch_order_items:'owner_action_only',
       },
