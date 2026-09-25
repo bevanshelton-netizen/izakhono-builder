@@ -8,10 +8,10 @@ echo "============================================================"
 command -v docker >/dev/null 2>&1 || { echo "[STOP] Docker is not installed."; exit 1; }
 
 echo "[1/4] Building owned command gateway..."
-docker compose -f internal/node01-command-gateway/docker-compose.yml build
+docker compose -p izakhono-izakhono-commands -f internal/node01-command-gateway/docker-compose.yml build
 
 echo "[2/4] Starting owned command gateway..."
-docker compose -f internal/node01-command-gateway/docker-compose.yml up -d
+docker compose -p izakhono-izakhono-commands -f internal/node01-command-gateway/docker-compose.yml up -d
 
 echo "[3/4] Checking NODE01 local health..."
 curl -fsS http://127.0.0.1:8091/healthz
