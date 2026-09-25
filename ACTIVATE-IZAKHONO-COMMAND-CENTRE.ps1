@@ -66,4 +66,7 @@ Write-Host ""
 Write-Host "Owner command credential remains protected in /etc/izakhono/commands.owner-token."
 Write-Host "Public EDGE/TLS is a separate verification gate."
 
-Start-Process "http://127.0.0.1:8091/commands"
+$ownerCredential = (& wsl.exe -d $Distro -u root -- bash -lc "cat /etc/izakhono/commands.owner-token") -join ""
+if (-not $ownerCredential.Trim()) { throw "[STOP] Owner command credential was not created." }
+$ownerUrl = "http://127.0.0.1:8091/commands#owner=$($ownerCredential.Trim())"
+Start-Process $ownerUrl
