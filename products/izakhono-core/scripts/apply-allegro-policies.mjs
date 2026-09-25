@@ -8,18 +8,19 @@ if (adminToken.length < 32) throw new Error('IZAKHONO_CORE_ADMIN_TOKEN is requir
 const config = JSON.parse(await readFile(new URL('../config/allegro-vibez-policies.json', import.meta.url), 'utf8'))
 const project = config.project
 
-for (const [table, mode] of Object.entries(config.policies || {})) {
+for (const [table, rawPolicy] of Object.entries(config.policies || {})) {
+  const spec = typeof rawPolicy === 'string' ? { mode: rawPolicy } : { ...rawPolicy }
   const response = await fetch(`${coreUrl}/v2/admin/policies`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${adminToken}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ project, table, mode }),
+    body: JSON.stringify({ project, table, ...spec }),
   })
   const text = await response.text()
-  if (!response.ok) throw new Error(`Failed to set ${table}=${mode}: HTTP ${response.status} ${text}`)
-  console.log(`[PASS] ${table} -> ${mode}`)
+  if (!response.ok) throw new Error(`Failed to set ${table}: HTTP ${response.status} ${text}`)
+  console.log(`[PASS] ${table} -> ${spec.mode}${spec.anonymous_insert ? ' + field-allowlisted public intake' : ''}`)
 }
 
 console.log(`[PASS] ALLEGRO policy manifest applied to ${project}`)

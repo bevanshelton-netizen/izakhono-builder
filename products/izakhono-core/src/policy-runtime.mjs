@@ -135,8 +135,12 @@ async function requireProject(project, key) {
   if (!result.rowCount) throw httpError(401, 'Invalid project key')
 }
 
-async function requireUser(req, project) {
+async function requireProjectKey(req, project) {
   await requireProject(project, String(req.headers['x-project-key'] || ''))
+}
+
+async function requireUser(req, project) {
+  await requireProjectKey(req, project)
   const payload = verifyAccessToken(authHeaderToken(req))
   if (payload.project !== project || payload.aud !== project) throw httpError(403, 'Token project mismatch')
   const result = await pool.query('SELECT id, project_id, email, disabled FROM iz_core_users WHERE id=$1 AND project_id=$2', [payload.sub, project])
@@ -167,11 +171,20 @@ async function audit(project, userId, eventType, detail = {}) {
 
 async function getPolicy(project, table) {
   const result = await pool.query(
-    `SELECT mode, scope_field, read_roles, write_roles
+    `SELECT mode, scope_field, read_roles, write_roles,
+            anonymous_insert, anonymous_insert_fields, anonymous_owner_field
      FROM iz_core_table_policies WHERE project_id=$1 AND table_name=$2`,
     [project, table],
   )
-  return result.rows[0] || { mode: 'owner', scope_field: null, read_roles: [], write_roles: [] }
+  return result.rows[0] || {
+    mode: 'owner',
+    scope_field: null,
+    read_roles: [],
+    write_roles: [],
+    anonymous_insert: false,
+    anonymous_insert_fields: [],
+    anonymous_owner_field: null,
+  }
 }
 
 async function accessContext(project, table, userId, policy) {
@@ -240,16 +253,42 @@ async function handlePolicyAdmin(req, res, action) {
     const readRoles = mode === 'scope' ? normalizeRoles(body.read_roles) : []
     const writeRoles = mode === 'scope' ? normalizeRoles(body.write_roles) : []
     if (mode === 'scope' && !readRoles.length) throw httpError(400, 'scope policy requires read_roles')
+    const anonymousInsert = body.anonymous_insert === true
+    const anonymousInsertFields = anonymousInsert
+      ? [...new Set((Array.isArray(body.anonymous_insert_fields) ? body.anonymous_insert_fields : []).map(validateField))]
+      : []
+    const anonymousOwnerField = anonymousInsert && body.anonymous_owner_field
+      ? validateField(body.anonymous_owner_field)
+      : null
+    if (anonymousInsert && !anonymousInsertFields.length) throw httpError(400, 'anonymous_insert requires anonymous_insert_fields')
+    if (anonymousOwnerField && !anonymousInsertFields.includes(anonymousOwnerField)) {
+      throw httpError(400, 'anonymous_owner_field must be included in anonymous_insert_fields')
+    }
     await pool.query(
-      `INSERT INTO iz_core_table_policies(project_id,table_name,mode,scope_field,read_roles,write_roles)
-       VALUES($1,$2,$3,$4,$5::text[],$6::text[])
+      `INSERT INTO iz_core_table_policies(
+         project_id,table_name,mode,scope_field,read_roles,write_roles,
+         anonymous_insert,anonymous_insert_fields,anonymous_owner_field
+       )
+       VALUES($1,$2,$3,$4,$5::text[],$6::text[],$7,$8::text[],$9)
        ON CONFLICT(project_id,table_name) DO UPDATE SET
          mode=EXCLUDED.mode, scope_field=EXCLUDED.scope_field,
-         read_roles=EXCLUDED.read_roles, write_roles=EXCLUDED.write_roles, updated_at=now()`,
-      [project, table, mode, scopeField, readRoles, writeRoles],
+         read_roles=EXCLUDED.read_roles, write_roles=EXCLUDED.write_roles,
+         anonymous_insert=EXCLUDED.anonymous_insert,
+         anonymous_insert_fields=EXCLUDED.anonymous_insert_fields,
+         anonymous_owner_field=EXCLUDED.anonymous_owner_field,
+         updated_at=now()`,
+      [project, table, mode, scopeField, readRoles, writeRoles, anonymousInsert, anonymousInsertFields, anonymousOwnerField],
     )
-    await audit(project, null, 'policy.updated', { table, mode, scope_field: scopeField, read_roles: readRoles, write_roles: writeRoles })
-    return sendJson(req, res, 200, { ok: true, project, table, mode, scope_field: scopeField, read_roles: readRoles, write_roles: writeRoles })
+    await audit(project, null, 'policy.updated', {
+      table, mode, scope_field: scopeField, read_roles: readRoles, write_roles: writeRoles,
+      anonymous_insert: anonymousInsert, anonymous_insert_fields: anonymousInsertFields,
+      anonymous_owner_field: anonymousOwnerField,
+    })
+    return sendJson(req, res, 200, {
+      ok: true, project, table, mode, scope_field: scopeField, read_roles: readRoles, write_roles: writeRoles,
+      anonymous_insert: anonymousInsert, anonymous_insert_fields: anonymousInsertFields,
+      anonymous_owner_field: anonymousOwnerField,
+    })
   }
 
   if (action === 'memberships') {
@@ -291,8 +330,45 @@ async function handlePolicyAdmin(req, res, action) {
 
 async function handleCollection(req, res, url, project, table) {
   const policy = await getPolicy(project, table)
+  const hasBearer = Boolean(authHeaderToken(req))
+
+  if (req.method === 'POST' && policy.anonymous_insert && !hasBearer) {
+    await requireProjectKey(req, project)
+    const body = await readJson(req)
+    if (!body.data || typeof body.data !== 'object' || Array.isArray(body.data)) throw httpError(400, 'data object required')
+    const data = { ...body.data }
+    const allowed = new Set(policy.anonymous_insert_fields || [])
+    const extra = Object.keys(data).filter(key => key !== 'id' && !allowed.has(key))
+    if (extra.length) throw httpError(403, `Anonymous insert rejected fields: ${extra.join(', ')}`)
+    const rowId = data.id ? validateRowId(data.id) : crypto.randomUUID()
+    delete data.id
+    let createdBy = null
+    if (policy.anonymous_owner_field) {
+      const ownerId = String(data[policy.anonymous_owner_field] || '')
+      if (!ownerId) throw httpError(400, 'Anonymous owner field is required')
+      const owner = await pool.query(
+        'SELECT id FROM iz_core_users WHERE project_id=$1 AND id::text=$2 AND disabled=false',
+        [project, ownerId],
+      )
+      if (!owner.rowCount) throw httpError(404, 'Anonymous intake owner is unavailable')
+      createdBy = owner.rows[0].id
+    }
+    try {
+      const inserted = await pool.query(
+        `INSERT INTO iz_core_rows(project_id,table_name,row_id,data,created_by)
+         VALUES($1,$2,$3,$4::jsonb,$5) RETURNING row_id,data`,
+        [project, table, rowId, JSON.stringify(data), createdBy],
+      )
+      await audit(project, createdBy, 'anonymous_data.insert', { table, row_id: rowId })
+      return sendJson(req, res, 201, publicRow(inserted.rows[0]))
+    } catch (error) {
+      if (error?.code === '23505') throw httpError(409, 'Row already exists')
+      throw error
+    }
+  }
+
   const publicRead = req.method === 'GET' && (policy.mode === 'owner_public_read' || policy.mode === 'owner_public_read_action_only')
-  if (publicRead) await requireProject(project, String(req.headers['x-project-key'] || ''))
+  if (publicRead) await requireProjectKey(req, project)
   const user = publicRead ? null : await requireUser(req, project)
   const ctx = await accessContext(project, table, user?.id || null, policy)
 
@@ -421,6 +497,8 @@ export async function handlePolicyRequest(req, res) {
         ownerPublicReadPolicy: true,
         ownerActionOnlyPolicy: true,
         ownerPublicReadActionOnlyPolicy: true,
+        anonymousFieldAllowlistedIntake: true,
+        anonymousOwnerAssignment: true,
         centreStyleIsolationPrimitive: true,
         scopedRealtime: false,
         relationalSelect: false,
