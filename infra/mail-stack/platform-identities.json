@@ -1,0 +1,411 @@
+{
+  "schema_version": 1,
+  "operator": "IZAKHONO AFRICA (PTY) LTD",
+  "shared_domain": "izakhonoafrica.co.za",
+  "generated_at_policy": "runtime",
+  "public_roles": [
+    "primary",
+    "support",
+    "partnerships",
+    "accounts",
+    "noreply"
+  ],
+  "platforms": [
+    {
+      "id": "izakhono-africa",
+      "name": "IZAKHONO AFRICA",
+      "slug": "info",
+      "domain": "izakhonoafrica.co.za",
+      "dedicated": true,
+      "exposure": "public"
+    },
+    {
+      "id": "kora",
+      "name": "KORA",
+      "slug": "kora",
+      "exposure": "public"
+    },
+    {
+      "id": "kora-cinema",
+      "name": "KORA Cinema",
+      "slug": "kora-cinema",
+      "exposure": "public"
+    },
+    {
+      "id": "kora-gospel-tv",
+      "name": "KORA Gospel TV",
+      "slug": "kora-gospel",
+      "exposure": "public"
+    },
+    {
+      "id": "kora-kids",
+      "name": "KORA Kids",
+      "slug": "kora-kids",
+      "exposure": "public"
+    },
+    {
+      "id": "yhvh-gospel-tv",
+      "name": "YHVH Gospel TV",
+      "slug": "yhvhtv",
+      "exposure": "public"
+    },
+    {
+      "id": "allegro-vibez",
+      "name": "Allegro-Vibez",
+      "slug": "allegro",
+      "exposure": "public"
+    },
+    {
+      "id": "allegro-radio",
+      "name": "Allegro Radio",
+      "slug": "allegro-radio",
+      "exposure": "public"
+    },
+    {
+      "id": "edubuild",
+      "name": "EDU-BUILD INSTITUTE – Shelton Campuses",
+      "slug": "info",
+      "domain": "edubuildshelton.org.za",
+      "dedicated": true,
+      "exposure": "public",
+      "operator": "Edu-Build Institute – Shelton Campuses (Pty) Ltd"
+    },
+    {
+      "id": "ecd360",
+      "name": "EDU-BUILD 360 / ECD360",
+      "slug": "ecd360",
+      "domain": "edubuildshelton.org.za",
+      "dedicated": false,
+      "exposure": "public",
+      "operator": "Edu-Build Institute – Shelton Campuses (Pty) Ltd"
+    },
+    {
+      "id": "faisready",
+      "name": "FAISReady",
+      "slug": "info",
+      "domain": "faisready.co.za",
+      "dedicated": true,
+      "exposure": "public"
+    },
+    {
+      "id": "doxasure",
+      "name": "DOXA-SURE",
+      "slug": "info",
+      "domain": "doxahosting.co.za",
+      "dedicated": true,
+      "exposure": "public"
+    },
+    {
+      "id": "auto-ai",
+      "name": "AUTO AI",
+      "slug": "autoai",
+      "exposure": "public"
+    },
+    {
+      "id": "learner-driver-sa",
+      "name": "Learner Driver SA",
+      "slug": "learners",
+      "exposure": "public"
+    },
+    {
+      "id": "worknow",
+      "name": "WorkNow",
+      "slug": "worknow",
+      "exposure": "public"
+    },
+    {
+      "id": "memory-mania",
+      "name": "Memory Mania",
+      "slug": "memorymania",
+      "exposure": "public"
+    },
+    {
+      "id": "music-school",
+      "name": "IZAKHONO Music School",
+      "slug": "musicschool",
+      "exposure": "public"
+    },
+    {
+      "id": "recording-studio",
+      "name": "IZAKHONO Recording Studio",
+      "slug": "studio",
+      "exposure": "public"
+    },
+    {
+      "id": "crowne",
+      "name": "CROWNÉ by Netty",
+      "slug": "crowne",
+      "exposure": "public"
+    },
+    {
+      "id": "zeely",
+      "name": "IZAKHONO Growth Studio",
+      "slug": "growthstudio",
+      "exposure": "public"
+    },
+    {
+      "id": "business-websites",
+      "name": "IZAKHONO Business Websites / WebStart",
+      "slug": "webstart",
+      "exposure": "public"
+    },
+    {
+      "id": "the-chancellor",
+      "name": "The Chancellor",
+      "slug": "chancellor",
+      "exposure": "public"
+    },
+    {
+      "id": "fortress",
+      "name": "FORTRESS",
+      "slug": "fortress",
+      "exposure": "public"
+    },
+    {
+      "id": "izakhono-code",
+      "name": "IZAKHONO CODE",
+      "slug": "code",
+      "exposure": "public"
+    },
+    {
+      "id": "izakhono-work",
+      "name": "IZAKHONO WORK",
+      "slug": "work",
+      "exposure": "public"
+    },
+    {
+      "id": "izakhono-cloud",
+      "name": "IZAKHONO CLOUD",
+      "slug": "cloud",
+      "exposure": "public"
+    },
+    {
+      "id": "izakhono-send",
+      "name": "IZAKHONO SEND",
+      "slug": "send",
+      "exposure": "public"
+    },
+    {
+      "id": "izakhono-one",
+      "name": "IZAKHONO ONE",
+      "slug": "one",
+      "exposure": "public"
+    },
+    {
+      "id": "izakhono-ai",
+      "name": "IZAKHONO AI",
+      "slug": "ai",
+      "exposure": "public"
+    },
+    {
+      "id": "izakhono-os",
+      "name": "IZAKHONO OS",
+      "slug": "os",
+      "exposure": "public"
+    },
+    {
+      "id": "izakhono-pay",
+      "name": "IZAKHONO PAY",
+      "slug": "pay",
+      "exposure": "public"
+    },
+    {
+      "id": "izakhono-domains",
+      "name": "IZAKHONO DOMAINS",
+      "slug": "domains",
+      "exposure": "public"
+    },
+    {
+      "id": "creative-suite",
+      "name": "IZAKHONO Creative Suite",
+      "slug": "creative",
+      "exposure": "public"
+    },
+    {
+      "id": "digital-finance-academy",
+      "name": "IZAKHONO Digital Finance Academy",
+      "slug": "digitalfinance",
+      "exposure": "public"
+    },
+    {
+      "id": "blockchain-academy",
+      "name": "IZAKHONO Blockchain Academy",
+      "slug": "blockchain",
+      "exposure": "public"
+    },
+    {
+      "id": "super-accountant",
+      "name": "SUPER ACCOUNTANT",
+      "slug": "superaccountant",
+      "exposure": "public"
+    },
+    {
+      "id": "yenzanow",
+      "name": "YenzaNow",
+      "slug": "yenzanow",
+      "exposure": "public"
+    },
+    {
+      "id": "pimp-my-old-car",
+      "name": "Pimp My Old Car",
+      "slug": "pimpmycar",
+      "exposure": "public"
+    },
+    {
+      "id": "vehicle-diagnostics",
+      "name": "Vehicle Diagnostics",
+      "slug": "diagnostics",
+      "exposure": "public"
+    },
+    {
+      "id": "matric-rewrite-academy",
+      "name": "Matric Rewrite Academy",
+      "slug": "matric",
+      "exposure": "public"
+    },
+    {
+      "id": "legacymart",
+      "name": "LegacyMart",
+      "slug": "legacymart",
+      "exposure": "public"
+    },
+    {
+      "id": "studypal",
+      "name": "StudyPal",
+      "slug": "studypal",
+      "exposure": "public"
+    },
+    {
+      "id": "ubuntu-ai-tutor",
+      "name": "Ubuntu AI Tutor",
+      "slug": "ubuntuai",
+      "exposure": "public"
+    },
+    {
+      "id": "ubuntu-market",
+      "name": "Ubuntu Market",
+      "slug": "ubuntumarket",
+      "exposure": "public"
+    },
+    {
+      "id": "bevan-shelton-clothing",
+      "name": "Bevan Shelton Clothing",
+      "slug": "clothing",
+      "exposure": "public"
+    },
+    {
+      "id": "creator-os",
+      "name": "Creator OS",
+      "slug": "creatoros",
+      "exposure": "internal"
+    },
+    {
+      "id": "examready",
+      "name": "ExamReady",
+      "slug": "examready",
+      "exposure": "public"
+    },
+    {
+      "id": "izakhono-access",
+      "name": "IZAKHONO ACCESS",
+      "slug": "access",
+      "exposure": "internal"
+    },
+    {
+      "id": "izakhono-ads",
+      "name": "IZAKHONO ADS",
+      "slug": "ads",
+      "exposure": "internal"
+    },
+    {
+      "id": "izakhono-artist-protect",
+      "name": "IZAKHONO ARTIST PROTECT",
+      "slug": "artistprotect",
+      "exposure": "public"
+    },
+    {
+      "id": "izakhono-clearset",
+      "name": "IZAKHONO CLEARSET",
+      "slug": "clearset",
+      "exposure": "internal"
+    },
+    {
+      "id": "izakhono-control",
+      "name": "IZAKHONO CONTROL",
+      "slug": "control",
+      "exposure": "internal"
+    },
+    {
+      "id": "izakhono-core",
+      "name": "IZAKHONO CORE",
+      "slug": "core",
+      "exposure": "internal"
+    },
+    {
+      "id": "izakhono-crm",
+      "name": "IZAKHONO CRM",
+      "slug": "crm",
+      "exposure": "public"
+    },
+    {
+      "id": "izakhono-fabric",
+      "name": "IZAKHONO FABRIC",
+      "slug": "fabric",
+      "exposure": "internal"
+    },
+    {
+      "id": "izakhono-id",
+      "name": "IZAKHONO ID",
+      "slug": "id",
+      "exposure": "public"
+    },
+    {
+      "id": "izakhono-intelligence",
+      "name": "IZAKHONO INTELLIGENCE",
+      "slug": "intelligence",
+      "exposure": "internal"
+    },
+    {
+      "id": "izakhono-ledger",
+      "name": "IZAKHONO LEDGER",
+      "slug": "ledger",
+      "exposure": "internal"
+    },
+    {
+      "id": "izakhono-media-runtime",
+      "name": "IZAKHONO MEDIA RUNTIME",
+      "slug": "media",
+      "exposure": "internal"
+    },
+    {
+      "id": "izakhono-node",
+      "name": "IZAKHONO NODE",
+      "slug": "node",
+      "exposure": "internal"
+    },
+    {
+      "id": "izakhono-revenue",
+      "name": "IZAKHONO REVENUE",
+      "slug": "revenue",
+      "exposure": "internal"
+    },
+    {
+      "id": "izakhono-runner",
+      "name": "IZAKHONO RUNNER",
+      "slug": "runner",
+      "exposure": "internal"
+    },
+    {
+      "id": "izakhono-social",
+      "name": "IZAKHONO SOCIAL",
+      "slug": "social",
+      "exposure": "public"
+    },
+    {
+      "id": "izakhono-tasks",
+      "name": "IZAKHONO TASKS",
+      "slug": "tasks",
+      "exposure": "internal"
+    }
+  ]
+}

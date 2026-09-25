@@ -8,8 +8,9 @@
     "deploy:first": "wrangler deploy",
     "db:migrate": "wrangler d1 migrations apply DB --remote",
     "deploy": "wrangler deploy && wrangler d1 migrations apply DB --remote && wrangler deploy",
-    "validate": "npm run validate:portfolio-growth && npm run typecheck && wrangler deploy --dry-run",
-    "validate:portfolio-growth": "node --check products/izakhono-ads/app.js && node scripts/validate-portfolio-growth.mjs && node scripts/validate-wave1-conversion.mjs"
+    "validate": "npm run validate:portfolio-growth && npm run validate:mail && npm run typecheck && wrangler deploy --dry-run",
+    "validate:portfolio-growth": "node --check products/izakhono-ads/app.js && node scripts/validate-portfolio-growth.mjs && node scripts/validate-wave1-conversion.mjs",
+    "validate:mail": "node infra/mail-stack/verify.mjs"
   },
   "devDependencies": {
     "typescript": "5.9.2",
