@@ -123,69 +123,7 @@ jobs:
           CONNECTA_DB_PASSWORD: ci-only-password
           CONNECTA_OWNER_KEY: ci-only-owner-key
         run: |
-          NETWORK=$(docker network ls --format '{{.Name}}' | grep '_connecta_private
-        working-directory: products/izakhono-social
-        run: bash -n ops/backup.sh ops/restore-test.sh ops/restore.sh
-      - name: Prove non-destructive backup and restore
-        working-directory: products/izakhono-social
-        env:
-          CONNECTA_DB_PASSWORD: ci-only-password
-          CONNECTA_OWNER_KEY: ci-only-owner-key
-          CONNECTA_COMPOSE_PROJECT: izakhono-social
-        run: |
-          rm -rf /tmp/connecta-ci-backups
-          mkdir -p /tmp/connecta-ci-backups
-          bash ops/backup.sh /tmp/connecta-ci-backups | tee /tmp/connecta-backup.log
-          BACKUP_DIR="$(tail -n 1 /tmp/connecta-backup.log)"
-          test -d "$BACKUP_DIR"
-          bash ops/restore-test.sh "$BACKUP_DIR"
-      - name: Exercise growth flywheel
-        working-directory: products/izakhono-social
-        env:
-          CONNECTA_DB_PASSWORD: ci-only-password
-          CONNECTA_OWNER_KEY: ci-only-owner-key
-        run: docker compose -f docker-compose.owned.yml exec -T engine node scripts/smoke-growth.js
-      - name: Exercise zero-tolerance safety
-        working-directory: products/izakhono-social
-        env:
-          CONNECTA_DB_PASSWORD: ci-only-password
-          CONNECTA_OWNER_KEY: ci-only-owner-key
-        run: docker compose -f docker-compose.owned.yml exec -T engine node scripts/smoke-safety.js
-      - name: Exercise content-owner alerts
-        working-directory: products/izakhono-social
-        env:
-          CONNECTA_DB_PASSWORD: ci-only-password
-          CONNECTA_OWNER_KEY: ci-only-owner-key
-        run: docker compose -f docker-compose.owned.yml exec -T engine node scripts/smoke-content-alerts.js
-      - name: Exercise evidence-backed business verification
-        working-directory: products/izakhono-social
-        env:
-          CONNECTA_DB_PASSWORD: ci-only-password
-          CONNECTA_OWNER_KEY: ci-only-owner-key
-        run: docker compose -f docker-compose.owned.yml exec -T engine node scripts/smoke-business-verification.js
-      - name: Exercise altered-image owner protection
-        working-directory: products/izakhono-social
-        env:
-          CONNECTA_DB_PASSWORD: ci-only-password
-          CONNECTA_OWNER_KEY: ci-only-owner-key
-        run: docker compose -f docker-compose.owned.yml exec -T engine node scripts/smoke-perceptual-media.js
-      - name: Show logs on failure
-        if: failure()
-        working-directory: products/izakhono-social
-        env:
-          CONNECTA_DB_PASSWORD: ci-only-password
-          CONNECTA_OWNER_KEY: ci-only-owner-key
-        run: docker compose -f docker-compose.owned.yml logs engine postgres || true
-      - name: Stop owned stack
-        if: always()
-        working-directory: products/izakhono-social
-        env:
-          CONNECTA_DB_PASSWORD: ci-only-password
-          CONNECTA_OWNER_KEY: ci-only-owner-key
-        run: |
-          docker rm -f connecta-external-ci >/dev/null 2>&1 || true
-          docker compose -f docker-compose.owned.yml down -v || true
- | head -n 1)
+          NETWORK=$(docker network ls --format '{{.Name}}' | awk '/_connecta_private$/{print; exit}')
           test -n "$NETWORK"
           docker rm -f connecta-external-ci >/dev/null 2>&1 || true
           docker run -d --name connecta-external-ci \
@@ -263,4 +201,6 @@ jobs:
         env:
           CONNECTA_DB_PASSWORD: ci-only-password
           CONNECTA_OWNER_KEY: ci-only-owner-key
-        run: docker compose -f docker-compose.owned.yml down -v || true
+        run: |
+          docker rm -f connecta-external-ci >/dev/null 2>&1 || true
+          docker compose -f docker-compose.owned.yml down -v || true
