@@ -8,6 +8,7 @@
     activeModule: null,
     institutions: null,
     locales: null,
+    offers: null,
     currentLocale: localStorage.getItem("izakhono-digital-finance-locale") || "en",
     progress: loadProgress()
   };
@@ -26,6 +27,13 @@
     languageSelect: document.querySelector("#languageSelect"),
     languageCloud: document.querySelector("#languageCloud"),
     localeCount: document.querySelector("#localeCount"),
+    proposalInstitution: document.querySelector("#proposalInstitution"),
+    proposalOffer: document.querySelector("#proposalOffer"),
+    proposalLanguage: document.querySelector("#proposalLanguage"),
+    proposalScale: document.querySelector("#proposalScale"),
+    proposalOutput: document.querySelector("#proposalOutput"),
+    copyProposal: document.querySelector("#copyProposal"),
+    downloadProposal: document.querySelector("#downloadProposal"),
     year: document.querySelector("#year")
   };
 
@@ -70,6 +78,106 @@
       }
     }
     throw new Error("Resource unavailable: " + fileName);
+  }
+
+  async function loadOffers() {
+    state.offers = await loadJsonWithFallback("/api/v1/offers", "institutional-offers.json");
+  }
+
+  function proposalText() {
+    if (!state.offers || !state.institutions || !state.locales) return "";
+    const institution = state.institutions.audiences.find(item => item.id === els.proposalInstitution.value);
+    const offer = state.offers.offers.find(item => item.id === els.proposalOffer.value);
+    const locale = state.locales.locales[els.proposalLanguage.value];
+    if (!institution || !offer || !locale) return "";
+
+    return [
+      "IZAKHONO DIGITAL FINANCE ACADEMY — INSTITUTIONAL PROGRAMME BRIEF",
+      "",
+      "Institution type: " + institution.name,
+      "Programme: " + offer.name,
+      "Language: " + locale.name,
+      "Scale: " + els.proposalScale.value,
+      "",
+      "Institutional value:",
+      institution.value,
+      "",
+      "Programme audience:",
+      offer.audience,
+      "",
+      "Expected outcomes:",
+      ...offer.outcomes.map(item => "- " + item),
+      "",
+      "Delivery options:",
+      ...offer.delivery.map(item => "- " + item),
+      "",
+      "Commercial basis: Quote-based institutional agreement.",
+      "Accreditation boundary: This programme does not become a university degree or accredited qualification unless separately approved and evidenced.",
+      "Localisation boundary: Full course language packs are marketed as available only after translation QA and subject-matter review."
+    ].join("\n");
+  }
+
+  function renderProposalBuilder() {
+    if (!state.offers || !state.institutions || !state.locales || !els.proposalOutput) return;
+
+    els.proposalInstitution.innerHTML = state.institutions.audiences.map(item =>
+      `<option value="${esc(item.id)}">${esc(item.name)}</option>`
+    ).join("");
+
+    els.proposalOffer.innerHTML = state.offers.offers.map(item =>
+      `<option value="${esc(item.id)}">${esc(item.name)}</option>`
+    ).join("");
+
+    els.proposalLanguage.innerHTML = Object.entries(state.locales.locales).map(([code, locale]) =>
+      `<option value="${esc(code)}">${esc(locale.name)}</option>`
+    ).join("");
+
+    const sync = () => {
+      const offer = state.offers.offers.find(item => item.id === els.proposalOffer.value);
+      const institution = state.institutions.audiences.find(item => item.id === els.proposalInstitution.value);
+      if (!offer || !institution) return;
+      els.proposalOutput.innerHTML = `
+        <div class="proposal-eyebrow">Tailored institutional brief</div>
+        <h3>${esc(offer.name)}</h3>
+        <p><strong>For:</strong> ${esc(institution.name)}</p>
+        <p>${esc(institution.value)}</p>
+        <div class="programme-list">
+          ${offer.outcomes.map(item => `<span>${esc(item)}</span>`).join("")}
+        </div>
+        <div class="proposal-meta">
+          <span>Language: ${esc(state.locales.locales[els.proposalLanguage.value]?.name || "")}</span>
+          <span>Scale: ${esc(els.proposalScale.value)}</span>
+        </div>
+      `;
+    };
+
+    [els.proposalInstitution, els.proposalOffer, els.proposalLanguage, els.proposalScale].forEach(control => {
+      control.addEventListener("change", sync);
+    });
+
+    els.copyProposal.addEventListener("click", async () => {
+      const textValue = proposalText();
+      try {
+        await navigator.clipboard.writeText(textValue);
+        toast("Institutional proposal brief copied.");
+      } catch {
+        toast("Copy unavailable on this device. Use Download brief instead.");
+      }
+    });
+
+    els.downloadProposal.addEventListener("click", () => {
+      const blob = new Blob([proposalText()], { type: "text/plain;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "izakhono-digital-finance-institutional-brief.txt";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    });
+
+    sync();
   }
 
   async function loadInstitutionalData() {
@@ -365,9 +473,12 @@
       loadCurriculum().then(renderCourses).catch(() => {
         els.grid.innerHTML = '<div class="empty">The curriculum could not be loaded. The engine should fail closed rather than invent course content.</div>';
       }),
-      loadInstitutionalData().catch(() => {
+      Promise.all([loadInstitutionalData(), loadOffers()]).then(renderProposalBuilder).catch(() => {
         if (els.institutionGrid) {
           els.institutionGrid.innerHTML = '<div class="empty">Institutional programme data is temporarily unavailable.</div>';
+        }
+        if (els.proposalOutput) {
+          els.proposalOutput.innerHTML = '<div class="empty">Institutional programme builder is temporarily unavailable.</div>';
         }
       })
     ];

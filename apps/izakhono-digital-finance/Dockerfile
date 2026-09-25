@@ -1,6 +1,6 @@
 FROM python:3.12-alpine
 WORKDIR /app
-COPY index.html styles.css app.js curriculum.json platform.json institutions.json locales.json healthz engine.py verify.py ./
+COPY index.html styles.css app.js curriculum.json platform.json institutions.json locales.json institutional-offers.json healthz engine.py verify.py ./
 RUN python verify.py
 EXPOSE 8080
 ENV IZAKHONO_DF_HOST=0.0.0.0

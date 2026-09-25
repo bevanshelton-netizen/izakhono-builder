@@ -104,6 +104,53 @@
       </div>
     </section>
 
+
+    <section class="section alt" id="programme-builder">
+      <div class="container">
+        <div class="section-head">
+          <div>
+            <div class="kicker">Institutional programme builder</div>
+            <h2>Shape a programme around your institution.</h2>
+            <p>Select the institutional audience, programme format, language and scale. The configuration stays on this device and produces a proposal brief without collecting personal data.</p>
+          </div>
+        </div>
+
+        <div class="proposal-builder">
+          <div class="proposal-controls">
+            <label>
+              <span>Institution type</span>
+              <select id="proposalInstitution"></select>
+            </label>
+            <label>
+              <span>Programme</span>
+              <select id="proposalOffer"></select>
+            </label>
+            <label>
+              <span>Language</span>
+              <select id="proposalLanguage"></select>
+            </label>
+            <label>
+              <span>Scale</span>
+              <select id="proposalScale">
+                <option value="10–40 people">10–40 people</option>
+                <option value="50–250 people">50–250 people</option>
+                <option value="250–1,000 people">250–1,000 people</option>
+                <option value="1,000–10,000 people">1,000–10,000 people</option>
+                <option value="10,000+ people">10,000+ people</option>
+              </select>
+            </label>
+          </div>
+          <div class="proposal-output" id="proposalOutput">
+            <div class="empty">Loading institutional programme options…</div>
+          </div>
+          <div class="proposal-actions">
+            <button class="btn primary" id="copyProposal">Copy proposal brief</button>
+            <button class="btn ghost" id="downloadProposal">Download brief</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <section class="section alt" id="learn">
       <div class="container">
         <div class="section-head">

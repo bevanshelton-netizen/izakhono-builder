@@ -1,0 +1,106 @@
+{
+  "schema": "izakhono.digital.finance.institutional.offers.v1",
+  "offers": [
+    {
+      "id": "executive-briefing",
+      "name": "Executive Digital Finance Briefing",
+      "audience": "Boards, executive committees and senior leaders",
+      "outcomes": [
+        "Shared digital-finance vocabulary",
+        "Strategic opportunity and risk map",
+        "Governance questions leaders should ask",
+        "Institution-specific next-step brief"
+      ],
+      "delivery": [
+        "90-minute virtual",
+        "Half-day facilitated",
+        "Board/Exco private session"
+      ],
+      "scale": [
+        "10–40 leaders"
+      ]
+    },
+    {
+      "id": "workforce-academy",
+      "name": "Institutional Workforce Academy",
+      "audience": "Cross-functional staff across business, risk, compliance, operations, product and technology",
+      "outcomes": [
+        "Role-based learning pathways",
+        "Assessment and cohort progress",
+        "Language-localised learning",
+        "Institutional terminology and policy overlays"
+      ],
+      "delivery": [
+        "Self-paced",
+        "Cohort-based",
+        "Blended"
+      ],
+      "scale": [
+        "50–10,000+ learners"
+      ]
+    },
+    {
+      "id": "specialist-lab",
+      "name": "Specialist Digital Finance Lab",
+      "audience": "Payments, product, innovation, cyber, fraud, compliance and risk teams",
+      "outcomes": [
+        "Applied scenarios",
+        "Team-specific capability",
+        "Capstone operating model or use case",
+        "Decision-ready risk and control output"
+      ],
+      "delivery": [
+        "1-week sprint",
+        "2–4 week lab",
+        "Private team workshop"
+      ],
+      "scale": [
+        "8–60 specialists"
+      ]
+    },
+    {
+      "id": "private-academy",
+      "name": "Private Institutional Academy",
+      "audience": "Institutions requiring dedicated, co-branded or private learning environments",
+      "outcomes": [
+        "Dedicated tenant",
+        "Role-based access",
+        "Institution-specific learning overlays",
+        "Approved branding and localisation"
+      ],
+      "delivery": [
+        "IZAKHONO-hosted tenant",
+        "Dedicated tenant",
+        "Private deployment subject to security review"
+      ],
+      "scale": [
+        "100–50,000+ learners"
+      ]
+    },
+    {
+      "id": "public-education",
+      "name": "Public & Customer Digital Finance Education",
+      "audience": "Banks, regulators, associations, public institutions, NGOs and development programmes",
+      "outcomes": [
+        "Plain-language learning",
+        "Consumer risk and scam awareness",
+        "Local-language public education",
+        "Custom community or customer pathways"
+      ],
+      "delivery": [
+        "Open public academy",
+        "Customer education hub",
+        "Campaign-linked microlearning"
+      ],
+      "scale": [
+        "Public / high-volume"
+      ]
+    }
+  ],
+  "configuration": {
+    "languages_source": "locales.json",
+    "institution_types_source": "institutions.json",
+    "contract_note": "Institutional pricing is quote-based and requires a signed commercial scope. Consumer iKhokha checkout is not used for institutional contracting.",
+    "accreditation_note": "Institutional delivery does not create a degree or accredited qualification unless separately approved and evidenced."
+  }
+}

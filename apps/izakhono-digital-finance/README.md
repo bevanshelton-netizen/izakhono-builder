@@ -137,3 +137,17 @@ See `INSTITUTIONAL-GO-TO-MARKET.md`.
 This does **not** mean all course content is already fully translated. The product deliberately distinguishes interface localisation from full learning-content localisation. A complete language pack must pass translation QA and subject-matter review before it is marketed as fully available.
 
 The institutional model supports four localisation layers: interface, learning content, jurisdiction overlay and institution-specific terminology/policy overlay.
+
+
+## Institutional programme builder
+
+The public interface includes a privacy-first institutional programme builder. An institution can select its sector, programme format, language and scale and generate a proposal brief locally in the browser.
+
+The builder:
+- does not collect personal data;
+- does not create a contract or quote;
+- does not grant paid access;
+- keeps institutional pricing quote-based;
+- can copy or download a proposal brief for procurement/internal discussion.
+
+Programme definitions are sourced from `institutional-offers.json` and are also served from `/api/v1/offers` on the independent engine.
