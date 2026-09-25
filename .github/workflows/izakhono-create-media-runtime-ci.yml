@@ -1,0 +1,51 @@
+name: IZAKHONO CREATE Media Runtime CI
+
+on:
+  pull_request:
+    paths:
+      - "products/izakhono-media-runtime/**"
+      - "apps/izakhono-create/media-gateway.py"
+      - "START-IZAKHONO-CREATE-MEDIA.cmd"
+      - ".github/workflows/izakhono-create-media-runtime-ci.yml"
+  push:
+    branches: [main]
+    paths:
+      - "products/izakhono-media-runtime/**"
+      - "apps/izakhono-create/media-gateway.py"
+      - "START-IZAKHONO-CREATE-MEDIA.cmd"
+      - ".github/workflows/izakhono-create-media-runtime-ci.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Python syntax
+        run: |
+          python3 -m py_compile products/izakhono-media-runtime/app.py
+          python3 -m py_compile products/izakhono-media-runtime/test_runtime.py
+          python3 -m py_compile apps/izakhono-create/media-gateway.py
+      - name: Runtime contract tests
+        run: python3 products/izakhono-media-runtime/test_runtime.py
+      - name: Shell syntax
+        run: |
+          bash -n products/izakhono-media-runtime/install-node01.sh
+          bash -n products/izakhono-media-runtime/verify-node01.sh
+      - name: Sovereignty and safety invariants
+        run: |
+          grep -q '127.0.0.1' products/izakhono-media-runtime/app.py
+          grep -q 'IZAKHONO_MEDIA_INTERNAL_KEY' products/izakhono-media-runtime/app.py
+          grep -q 'comfyui-local' products/izakhono-media-runtime/app.py
+          grep -q 'No outside image vendor is hard-coded' products/izakhono-media-runtime/README.md
+          grep -q 'No false LIVE status has been claimed' START-IZAKHONO-CREATE-MEDIA.cmd
+      - name: Secret hygiene
+        run: |
+          ! grep -R -E 'IZAKHONO_MEDIA_INTERNAL_KEY=[A-Za-z0-9_-]{24,}' products/izakhono-media-runtime apps/izakhono-create
+      - name: Software proof
+        run: |
+          echo "IZAKHONO_CREATE_MEDIA_SOFTWARE=PASS"
+          echo "NODE01_GPU_PROOF=PENDING_PHYSICAL_HOST"
+          echo "MODEL_CHECKPOINT_PROOF=PENDING_OWNER_HOST"

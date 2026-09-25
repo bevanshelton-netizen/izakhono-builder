@@ -9,6 +9,10 @@ from urllib.parse import urlparse
 HOST = os.getenv("IZAKHONO_CREATE_MEDIA_HOST", "127.0.0.1")
 PORT = int(os.getenv("IZAKHONO_CREATE_MEDIA_PORT", "9695"))
 RENDER_URL = os.getenv("IZAKHONO_MEDIA_RENDER_URL", "http://127.0.0.1:9696").rstrip("/")
+RENDER_KEY = os.getenv("IZAKHONO_MEDIA_INTERNAL_KEY", "")
+EXTERNAL_RENDER_URL = os.getenv("IZAKHONO_MEDIA_EXTERNAL_URL", "").rstrip("/")
+EXTERNAL_RENDER_KEY = os.getenv("IZAKHONO_MEDIA_EXTERNAL_KEY", "")
+ALLOW_EXTERNAL_FALLBACK = os.getenv("IZAKHONO_MEDIA_ALLOW_EXTERNAL_FALLBACK", "false").lower() == "true"
 ACCESS_URL = os.getenv("IZAKHONO_ACCESS_URL", "http://127.0.0.1:9494").rstrip("/")
 ACCESS_KEY = os.getenv("IZAKHONO_ACCESS_INTERNAL_KEY", "")
 ENTITY_ID = os.getenv("IZAKHONO_CREATE_ENTITY_ID", "izakhono-africa")
@@ -37,6 +41,14 @@ def post_json(url, payload, headers=None, timeout=300):
     )
     with urllib.request.urlopen(req, timeout=timeout) as res:
         return json.loads(res.read().decode())
+
+def call_renderer(url, key, payload, timeout=300):
+    if not url:
+        raise RuntimeError("renderer_url_missing")
+    headers = {}
+    if key:
+        headers["x-izakhono-media-key"] = key
+    return post_json(url + "/api/v1/generate", payload, headers=headers, timeout=timeout)
 
 def check_pro(subject):
     if not subject or not ACCESS_KEY:
@@ -96,6 +108,8 @@ class Handler(BaseHTTPRequestHandler):
                 "ok": True,
                 "service": "izakhono-create-media-gateway",
                 "owned_renderer": RENDER_URL,
+                "owned_renderer_key_configured": bool(RENDER_KEY),
+                "external_fallback_enabled": bool(ALLOW_EXTERNAL_FALLBACK and EXTERNAL_RENDER_URL),
                 "free_modes": sorted(FREE_MODES),
                 "pro_modes": sorted(PRO_MODES),
             })
@@ -133,21 +147,38 @@ class Handler(BaseHTTPRequestHandler):
                 "expires_at": entitlement.get("expires_at"),
             }
 
+        route = "owned"
+        owned_error = None
         try:
-            result = post_json(RENDER_URL + "/api/v1/generate", request_payload, timeout=300)
-        except urllib.error.HTTPError as exc:
-            return send_json(self, 502, {"ok": False, "error": "renderer_error", "status": exc.code})
+            if not RENDER_KEY:
+                raise RuntimeError("owned_renderer_key_missing")
+            result = call_renderer(RENDER_URL, RENDER_KEY, request_payload, timeout=300)
         except Exception as exc:
-            return send_json(self, 503, {
-                "ok": False,
-                "error": "owned_renderer_unavailable",
-                "detail": str(exc)[:160],
-            })
+            owned_error = str(exc)[:160]
+            if not (ALLOW_EXTERNAL_FALLBACK and EXTERNAL_RENDER_URL and EXTERNAL_RENDER_KEY):
+                return send_json(self, 503, {
+                    "ok": False,
+                    "error": "owned_renderer_unavailable",
+                    "detail": owned_error,
+                    "external_fallback_used": False,
+                })
+            route = "external-fallback"
+            try:
+                result = call_renderer(EXTERNAL_RENDER_URL, EXTERNAL_RENDER_KEY, request_payload, timeout=300)
+            except Exception as fallback_exc:
+                return send_json(self, 503, {
+                    "ok": False,
+                    "error": "all_renderers_unavailable",
+                    "owned_detail": owned_error,
+                    "fallback_detail": str(fallback_exc)[:160],
+                })
 
         if not isinstance(result, dict) or not result.get("ok"):
             return send_json(self, 502, {"ok": False, "error": "invalid_renderer_response"})
         result["plan"] = request_payload["plan"]
         result["access_enforced"] = request_payload["plan"] == "pro"
+        result["render_route"] = route
+        result["owned_first"] = True
         return send_json(self, 200, result)
 
 if __name__ == "__main__":
