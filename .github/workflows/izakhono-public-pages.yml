@@ -114,6 +114,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/configure-pages@v5
+        with:
+          enablement: true
       - name: Deploy consolidated IZAKHONO Pages
         id: deployment
         uses: actions/deploy-pages@v4
