@@ -73,6 +73,28 @@ jobs:
         run: |
           docker compose -f docker-compose.owned.yml config
           docker compose -f docker-compose.portable.yml config
+          docker compose -f docker-compose.external-test.yml config
+      - name: Boot one-container external bundle
+        working-directory: products/izakhono-social
+        run: docker compose -f docker-compose.external-test.yml up -d --build
+
+      - name: Verify external bundle runtime
+        working-directory: products/izakhono-social
+        env:
+          CONNECTA_WEB_URL: http://127.0.0.1:3081
+        run: |
+          for i in $(seq 1 60); do
+            if curl -fsS --max-time 5 http://127.0.0.1:3081/health >/dev/null; then break; fi
+            sleep 2
+          done
+          curl -fsS http://127.0.0.1:3081/health
+          node scripts/smoke-web-runtime.mjs
+
+      - name: Stop external bundle
+        if: always()
+        working-directory: products/izakhono-social
+        run: docker compose -f docker-compose.external-test.yml down -v || true
+
       - name: Boot owned CONNECTA stack
         working-directory: products/izakhono-social
         env:
