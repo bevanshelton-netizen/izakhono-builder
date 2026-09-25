@@ -1,0 +1,96 @@
+name: IZAKHONO NODE01 Recovery Kit
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'scripts/launch-stack/**'
+      - 'scripts/install-sovereign-deploy.sh'
+      - 'products/izakhono-node/**'
+      - 'products/izakhono-control/**'
+      - 'products/izakhono-code/**'
+      - 'infra/launch-stack/**'
+      - 'infra/public-cutover/**'
+      - '.github/workflows/node01-recovery-kit.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/launch-stack/**'
+      - 'scripts/install-sovereign-deploy.sh'
+      - 'products/izakhono-node/**'
+      - 'products/izakhono-control/**'
+      - 'products/izakhono-code/**'
+      - 'infra/launch-stack/**'
+      - 'infra/public-cutover/**'
+      - '.github/workflows/node01-recovery-kit.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate recovery source
+        shell: bash
+        run: |
+          set -euo pipefail
+          for script in scripts/launch-stack/*.sh scripts/install-sovereign-deploy.sh; do
+            bash -n "$script"
+          done
+          bundle_id="$(bash scripts/launch-stack/compute-wave1-bundle-id.sh)"
+          [[ "$bundle_id" =~ ^[0-9a-f]{64}$ ]]
+          test -f scripts/launch-stack/RECOVER-NODE01-WAVE1.cmd
+          test -f scripts/launch-stack/RECOVER-NODE01-WAVE1.ps1
+          test -f scripts/launch-stack/windows-owner-host.ps1
+
+      - name: Build immutable owner-host kit
+        shell: bash
+        run: |
+          set -euo pipefail
+          root="$GITHUB_WORKSPACE/dist/IZAKHONO-NODE01-RECOVERY-KIT"
+          rm -rf "$root"
+          mkdir -p "$root"
+
+          tar \
+            --exclude='.git' \
+            --exclude='./dist' \
+            -cf - . | tar -xf - -C "$root"
+
+          bundle_id="$(bash scripts/launch-stack/compute-wave1-bundle-id.sh)"
+          cat > "$root/RECOVERY-KIT-MANIFEST.txt" <<EOF
+          IZAKHONO_NODE01_RECOVERY_KIT_VERSION=1
+          BUILDER_REF=$GITHUB_SHA
+          WAVE1_BUNDLE_SHA256=$bundle_id
+          OWNED_FIRST=true
+          EXTERNAL_FALLBACKS_PRESERVED=true
+          PUBLIC_CUTOVER=false
+          LIVE_STATUS_REQUIRES_INDEPENDENT_HTTPS_VERIFICATION=true
+          EOF
+
+          cat > "$root/RUN-NODE01-RECOVERY-KIT.cmd" <<'EOF'
+          @echo off
+          setlocal
+          cd /d "%~dp0scripts\launch-stack"
+          call RECOVER-NODE01-WAVE1.cmd
+          set "EXITCODE=%ERRORLEVEL%"
+          exit /b %EXITCODE%
+          EOF
+
+          (
+            cd "$root"
+            find . -type f ! -name 'SHA256SUMS.txt' -print0 \
+              | sort -z \
+              | xargs -0 sha256sum
+          ) > "$root/SHA256SUMS.txt"
+
+      - name: Upload immutable recovery kit
+        uses: actions/upload-artifact@v4
+        with:
+          name: IZAKHONO-NODE01-RECOVERY-KIT
+          path: dist/IZAKHONO-NODE01-RECOVERY-KIT
+          if-no-files-found: error
+          retention-days: 30
