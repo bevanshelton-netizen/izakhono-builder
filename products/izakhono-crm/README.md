@@ -1,107 +1,128 @@
 # IZAKHONO CRM
 
-Portfolio-wide customer relationship and sales pipeline layer for IZAKHONO platforms.
+Portfolio-wide customer relationship, pipeline and staff operations engine for IZAKHONO platforms.
 
-## Goal
+## Current release: v0.2.0
 
-Give every customer-facing IZAKHONO platform the same core capabilities without buying a separate CRM for each product:
+The owned operations release adds:
 
-- customer and prospect records
-- platform-specific pipelines and deal stages
-- quote / enrolment / subscription / partnership tracking
-- tasks, reminders and next actions
-- mobile-friendly sales dashboard
-- lead-source attribution
-- deterministic follow-up insights
-- API-based lead intake
-- shared reporting with strict entity and platform isolation
-- future optional integration with the owner-controlled IZAKHONO AI Gateway
+- scoped staff roles: owner, admin, manager, agent, viewer and integration
+- legal-entity + platform scope enforcement on every staff identity
+- configurable persistent pipelines with deal-stage validation
+- deterministic automation rules for intake, deal creation, stage changes and activities
+- internal integration outbox for reliable platform hand-off
+- venture-scoped audit records for administrative and automation actions
+- fail-closed NODE01 production configuration
+- owner break-glass administration through CRM_ADMIN_TOKEN
 
-This package is an original IZAKHONO product. It does not copy monday.com branding, source code, protected assets or proprietary workflows.
+The engine remains dependency-light and deploys on IZAKHONO-owned NODE01 through the existing APP FABRIC runtime. No third-party CRM or identity provider is required.
 
-## Portfolio architecture
-
-Each platform keeps its own customer-facing brand and business workflow. IZAKHONO CRM is the shared administrative relationship engine behind them.
+## Architecture
 
 ```text
-Public platform / enquiry form / checkout / partner form
+IZAKHONO platform / internal adapter
         |
         v
-platform adapter -> IZAKHONO CRM intake API
+APP FABRIC -> CRM intake API
         |
-        +-> Contact
+        +-> Contact / organisation
         +-> Deal / opportunity
         +-> Activity / next action
-        +-> Dashboard / pipeline
+        +-> Pipeline
+        +-> Automation rules
+        +-> Integration outbox
+        +-> Audit trail
         |
         v
-IZAKHONO-owned data boundary -> FORTRESS / Access -> authorised staff
+NODE01 private network -> FORTRESS / Access -> EDGE / TLS
 ```
 
-Every record is scoped by both `entity_id` and `platform_id`. Cross-entity aggregation is not permitted by default.
+Every business record is scoped by both `entity_id` and `platform_id`. Cross-entity aggregation is denied by default.
 
-## Important privacy boundaries
+## Staff access
 
-- ECD360: CRM may store adult learner prospects, centre contacts and funder/employer contacts. It must not become a duplicate store for child profiles, classroom records, payroll or protected learner evidence.
-- WorkNow: CRM is for employer, recruiter, government and institutional commercial relationships. Jobseeker CV/profile data remains in the WorkNow product data boundary unless a separately approved data flow is implemented.
-- FORTRESS / financial-service work: CRM tracks institutional sales and partner relationships; it is not a fraud-decision store and must not hold banking credentials or transaction secrets.
-- Each operating company keeps its own customer, accounting and legal boundary as required by `PORTFOLIO-ENTITY-MAP.md`.
+Production staff identities are supplied with `CRM_STAFF_JSON` or `CRM_STAFF_FILE`. Tokens should be stored as SHA-256 hashes in the staff configuration.
 
-## API
+Example roles:
 
-Health:
+- `owner`: all scopes and capabilities
+- `admin`: full CRM operations, audit and export
+- `manager`: contacts, deals, activities, pipelines, automations and integrations
+- `agent`: contacts, deals and activities
+- `viewer`: read-only CRM access
+- `integration`: platform intake only
 
-`GET /health`
+Each staff record contains explicit entity/platform scopes. A staff token that is valid for FAISReady cannot access KORA unless KORA is separately granted.
 
-Administrative API calls require scope headers:
+`CRM_ADMIN_TOKEN` remains the owner break-glass credential. `CRM_INGEST_TOKEN` remains the internal platform-adapter credential.
+
+Production sets `CRM_ALLOW_INSECURE_LOCAL=false`.
+
+## Main API routes
+
+All scoped routes require:
 
 - `X-Entity-ID`
 - `X-Platform-ID`
 
-If `CRM_ADMIN_TOKEN` is configured, administrative API calls also require:
+Routes:
 
-`Authorization: Bearer <token>`
-
-Lead intake can use a separate `CRM_INGEST_TOKEN`.
-
-Main routes:
-
+- `GET /health`
+- `GET /api/me`
 - `GET /api/summary`
 - `GET|POST /api/contacts`
 - `GET|POST /api/deals`
 - `PATCH /api/deals/:id`
 - `GET|POST /api/activities`
+- `GET|PUT /api/pipeline`
+- `GET|POST /api/automations`
+- `PATCH /api/automations/:id`
+- `GET /api/integrations/outbox`
+- `POST /api/integrations/outbox/:id/ack`
 - `GET /api/insights`
 - `POST /api/intake`
+- `GET /api/audit`
 - `GET /api/export`
 
-The first release uses a durable JSON data file so it can run dependency-free on an owner node. Production scale should move the same scoped schema to PostgreSQL / IZAKHONO Core after migration tests pass.
+## Automation actions
 
-## Local run
+v0.2.0 supports deterministic internal actions:
+
+- create an activity
+- set a deal next action
+- set a deal owner
+- add a contact tag
+
+Automations do not silently send messages, move money or call unapproved external systems. Platform integrations consume the internal outbox and acknowledge events after their own authorised work completes.
+
+## Privacy boundaries
+
+- ECD360: CRM may store adult learner prospects, centre contacts and funder/employer contacts. It must not duplicate child profiles, classroom records, payroll or protected learner evidence.
+- WorkNow: CRM is for employer, recruiter, government and institutional commercial relationships. Jobseeker CV/profile data stays inside WorkNow unless a separately approved data flow is implemented.
+- FORTRESS / financial-service work: CRM tracks institutional sales and partner relationships. It is not a fraud-decision store and must not hold banking credentials or transaction secrets.
+- Every operating company keeps its own customer, accounting and legal boundary.
+
+## Owned runtime
+
+The production path is:
+
+`NODE01 -> private CRM container -> APP FABRIC -> FORTRESS / Access -> EDGE / TLS`
+
+Build and test:
 
 ```bash
 cd products/izakhono-crm
+npm run check
 npm test
-npm start
+docker build -t izakhono/crm:0.2.0 .
 ```
 
-Default local URL: `http://127.0.0.1:8080`.
+The APP FABRIC compose package injects `CRM_STAFF_JSON` from the owner-controlled runtime environment and disables insecure local fallback.
 
-For an owner-node container:
-
-```bash
-docker build -t izakhono/crm:0.1.0 .
-docker run --rm -p 127.0.0.1:8080:8080 \
-  -e CRM_ADMIN_TOKEN='replace-me' \
-  -e CRM_INGEST_TOKEN='replace-me-too' \
-  -v izakhono-crm-data:/data \
-  izakhono/crm:0.1.0
-```
-
-Do not expose the administrative port directly to the public internet. Public access must pass through the approved IZAKHONO Access / FORTRESS / EDGE path with TLS and authentication.
+Do not expose port 8080 directly to the public internet.
 
 ## Status
 
-This package is a portfolio CRM foundation, not a claim that every platform is already connected. A platform becomes CRM-connected only after its adapter is implemented and its intake / update flow passes an end-to-end test.
+The v0.2.0 package is ready for NODE01 activation after CI passes. It is not called public-live until NODE01 health, data persistence, role isolation, backup/restore, FORTRESS/EDGE routing and independent HTTPS verification pass.
 
-Infrastructure status follows the portfolio rule: owned-first, externally reversible. No public-live claim is made by this package alone.
+External infrastructure remains optional and reversible; it is not required for the internal CRM administration engine.
