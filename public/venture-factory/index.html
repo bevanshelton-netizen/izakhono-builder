@@ -43,6 +43,7 @@ pre{white-space:pre-wrap;word-break:break-word;background:#05090e;border:1px sol
 </div>
 <div class="row" style="margin-top:14px">
 <button id="go">Build venture plan</button>
+<button id="promote" style="display:none;background:#172536;color:#fff;border:1px solid #31465d">Build this venture</button>
 <span class="note" id="status">No ad spend, payment or external account action will be triggered.</span>
 </div>
 </section>
@@ -62,6 +63,7 @@ pre{white-space:pre-wrap;word-break:break-word;background:#05090e;border:1px sol
 </main>
 <script>
 var q=function(s){return document.querySelector(s)};
+var currentIdeaId="";
 var esc=function(v){return String(v).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c]})};
 var list=function(arr){return arr.map(function(x){return "<li>"+esc(x)+"</li>"}).join("")};
 q("#go").onclick=async function(){
@@ -73,7 +75,7 @@ q("#go").onclick=async function(){
       idea:idea,country:q("#country").value,monthly_price_zar:Number(q("#price").value),target_monthly_revenue_zar:Number(q("#target").value)
     })});
     var d=await r.json();if(!r.ok)throw new Error(d.error||"Plan failed");
-    var p=d.plan;
+    var p=d.plan;currentIdeaId=d.id||"";q("#promote").style.display=currentIdeaId?"inline-block":"none";
     q("#name").textContent=p.venture.name;
     q("#offer").textContent=p.venture.one_line_offer;
     q("#tags").innerHTML="<span class='pill'>"+esc(p.venture.category)+"</span><span class='pill'>"+esc(p.venture.audience)+"</span>";
@@ -96,6 +98,24 @@ q("#go").onclick=async function(){
     q("#status").textContent="Plan built and saved in the Venture Factory.";
   }catch(e){q("#status").textContent=e.message||String(e)}
   finally{q("#go").disabled=false}
+};
+
+q("#promote").onclick=async function(){
+  if(!currentIdeaId){q("#status").textContent="Build a venture plan first.";return}
+  q("#promote").disabled=true;q("#status").textContent="Creating Builder project, generating package and validating repository...";
+  try{
+    var r=await fetch("/api/venture-factory/ideas/"+encodeURIComponent(currentIdeaId)+"/build",{
+      method:"POST",
+      headers:{"x-admin-secret":q("#key").value.trim()}
+    });
+    var d=await r.json();if(!r.ok)throw new Error((d.stage?d.stage+": ":"")+(d.error||"Build failed"));
+    q("#status").textContent=d.message||"Venture built.";
+    if(d.project&&d.project.slug){
+      q("#raw").textContent=JSON.stringify(d,null,2)+"\n\n"+q("#raw").textContent;
+    }
+    q("#promote").textContent=d.already_built?"Already in Builder":"Built in IZAKHONO";
+  }catch(e){q("#status").textContent=e.message||String(e)}
+  finally{q("#promote").disabled=false}
 };
 </script>
 </body>
