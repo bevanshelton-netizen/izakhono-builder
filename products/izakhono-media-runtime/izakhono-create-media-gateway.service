@@ -1,0 +1,19 @@
+[Unit]
+Description=IZAKHONO CREATE Media Gateway
+After=network.target izakhono-media-runtime.service
+Wants=izakhono-media-runtime.service
+
+[Service]
+Type=simple
+EnvironmentFile=/etc/izakhono/apps/izakhono-create-media.env
+WorkingDirectory=/opt/izakhono-create
+ExecStart=/usr/bin/python3 /opt/izakhono-create/media-gateway.py
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target
