@@ -8,7 +8,6 @@ services:
       POSTGRES_PASSWORD: ${CONNECTA_DB_PASSWORD:?Set CONNECTA_DB_PASSWORD}
     volumes:
       - connecta_postgres:/var/lib/postgresql/data
-      - ./db:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U connecta -d connecta"]
       interval: 10s
@@ -28,6 +27,16 @@ services:
       MEDIA_ROOT: /var/lib/connecta/media
       ALLOWED_ORIGINS: ${CONNECTA_ALLOWED_ORIGINS:-}
       REGISTER_RATE_LIMIT: ${CONNECTA_REGISTER_RATE_LIMIT:-8}
+      CONNECTA_ENGINE_VERSION: "0.2.0"
+      CONNECTA_ENGINE_INSTANCE: ${CONNECTA_ENGINE_INSTANCE:-node01}
+      CONNECTA_STORAGE_DRIVER: ${CONNECTA_STORAGE_DRIVER:-local}
+      CONNECTA_S3_ENDPOINT: ${CONNECTA_S3_ENDPOINT:-}
+      CONNECTA_S3_REGION: ${CONNECTA_S3_REGION:-us-east-1}
+      CONNECTA_S3_BUCKET: ${CONNECTA_S3_BUCKET:-}
+      CONNECTA_S3_PREFIX: ${CONNECTA_S3_PREFIX:-connecta-media}
+      CONNECTA_S3_ACCESS_KEY_ID: ${CONNECTA_S3_ACCESS_KEY_ID:-}
+      CONNECTA_S3_SECRET_ACCESS_KEY: ${CONNECTA_S3_SECRET_ACCESS_KEY:-}
+      CONNECTA_S3_FORCE_PATH_STYLE: ${CONNECTA_S3_FORCE_PATH_STYLE:-}
     volumes:
       - connecta_media:/var/lib/connecta/media
     depends_on:
