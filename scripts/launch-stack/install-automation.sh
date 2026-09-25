@@ -10,7 +10,11 @@ for unit in "$SOURCE"/*.service "$SOURCE"/*.timer; do
   install -m 0644 "$unit" "/etc/systemd/system/$(basename "$unit")"
 done
 systemctl daemon-reload
-systemctl enable --now izakhono-health.timer izakhono-backup.timer izakhono-restore-rehearsal.timer
+timers=(izakhono-health.timer izakhono-backup.timer izakhono-restore-rehearsal.timer)
+if [ -f /etc/systemd/system/izakhono-wave1-watch.timer ]; then
+  timers+=(izakhono-wave1-watch.timer)
+fi
+systemctl enable --now "${timers[@]}"
 
-echo '[PASS] Host-local health checks, daily backups and weekly restore rehearsals are scheduled.'
+echo '[PASS] Host-local health checks, deployment watches, daily backups and weekly restore rehearsals are scheduled.'
 systemctl list-timers --all --no-pager 'izakhono-*' || true
