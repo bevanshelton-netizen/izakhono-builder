@@ -10,7 +10,7 @@ ALTER TABLE iz_core_table_policies
 
 ALTER TABLE iz_core_table_policies
   ADD CONSTRAINT iz_core_table_policies_mode_check
-  CHECK (mode IN ('owner', 'project', 'scope'));
+  CHECK (mode IN ('owner', 'project', 'scope', 'owner_public_read', 'owner_action_only'));
 
 CREATE TABLE IF NOT EXISTS iz_core_memberships (
   project_id text NOT NULL REFERENCES iz_core_projects(id) ON DELETE CASCADE,
