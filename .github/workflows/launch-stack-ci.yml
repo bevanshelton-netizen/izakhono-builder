@@ -75,7 +75,7 @@ jobs:
             throw 'Tap-in launcher is not wired to the reviewed IZAKHONO staging orchestrator.'
           }
           $recoveryLauncher = Get-Content -Raw 'scripts/launch-stack/RECOVER-NODE01-WAVE1.cmd'
-          if ($recoveryLauncher -notmatch 'RECOVER-NODE01-WAVE1\\.ps1') {
+          if ($recoveryLauncher -notmatch 'RECOVER-NODE01-WAVE1\.ps1') {
             throw 'NODE01 recovery launcher is not wired to the reviewed recovery script.'
           }
           $runnerLauncher = Get-Content -Raw 'scripts/launch-stack/START-IZAKHONO-ACTIONS-RUNNER.cmd'
