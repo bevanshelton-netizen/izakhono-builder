@@ -94,6 +94,127 @@ async function editModulesRoute(req: Request, env: any, url: URL): Promise<Respo
   });
 }
 
+
+function ventureSlug(input: string) {
+  return String(input || '')
+    .toLowerCase()
+    .normalize('NFKD')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 52) || 'venture';
+}
+
+async function secureJson(response: Response): Promise<any> {
+  try { return await response.clone().json(); } catch { return {}; }
+}
+
+async function ventureFactoryBuildRoute(req: Request, env: any, url: URL): Promise<Response | null> {
+  const match = url.pathname.match(/^\/api\/venture-factory\/ideas\/([^/]+)\/build$/);
+  if (!match || req.method !== 'POST') return null;
+  if (!(await ownerAuthorized(req, env))) return json({ ok: false, error: 'Unauthorized' }, 401);
+
+  const ideaId = decodeURIComponent(match[1]);
+  const ideaRow = await env.DB.prepare(
+    'SELECT id,idea,country,monthly_price_zar,target_monthly_revenue_zar,plan_json,created_at FROM venture_ideas WHERE id=?'
+  ).bind(ideaId).first<any>();
+  if (!ideaRow) return json({ ok: false, error: 'Venture idea not found' }, 404);
+
+  const plan = safeJson(ideaRow.plan_json, null);
+  if (!plan?.venture || !plan?.build) return json({ ok: false, error: 'Venture plan is incomplete' }, 409);
+
+  const name = String(plan.venture.name || 'IZAKHONO Venture').trim().slice(0, 100);
+  const baseSlug = ventureSlug(name);
+  const suffix = String(ideaId).replace(/[^a-z0-9]/gi, '').slice(-6).toLowerCase();
+  let slug = baseSlug;
+  const existing = await env.DB.prepare('SELECT id,name,slug,status FROM builder_projects WHERE slug=?').bind(slug).first<any>();
+  if (existing) {
+    const linked = await env.DB.prepare(
+      "SELECT detail FROM builder_events WHERE project_id=? AND event_type='venture_factory.promoted' ORDER BY created_at DESC LIMIT 1"
+    ).bind(existing.id).first<any>();
+    if (linked?.detail === ideaId) {
+      return json({
+        ok: true,
+        already_built: true,
+        project: existing,
+        message: 'This Venture Factory idea already has an IZAKHONO Builder project.',
+        public_live: false,
+      });
+    }
+    slug = (baseSlug.slice(0, Math.max(1, 52 - suffix.length - 1)) + '-' + suffix).replace(/-+$/,'');
+  }
+
+  const modules = Array.isArray(plan.build.product_modules) ? plan.build.product_modules : [
+    'auth','leads','ai','payments','admin','analytics','revenue','integrations','publish','growth'
+  ];
+  const description = String(
+    plan.venture.one_line_offer ||
+    ('Venture Factory project generated from idea: ' + String(ideaRow.idea || ''))
+  ).slice(0, 600);
+  const category = String(plan.venture.category || 'AI Workflow SaaS').slice(0, 60);
+
+  const createUrl = new URL(req.url);
+  createUrl.pathname = '/api/projects';
+  createUrl.search = '';
+  const createHeaders = new Headers(req.headers);
+  createHeaders.set('content-type', 'application/json');
+
+  const created = await secureApp.fetch(new Request(createUrl.toString(), {
+    method: 'POST',
+    headers: createHeaders,
+    body: JSON.stringify({ name, slug, category, description, modules }),
+  }), env);
+  const createdData = await secureJson(created);
+  if (!created.ok) return json({ ok: false, stage: 'create', ...createdData }, created.status);
+
+  const projectId = createdData.id;
+  if (!projectId) return json({ ok: false, stage: 'create', error: 'Builder did not return a project id' }, 500);
+
+  await env.DB.prepare('INSERT INTO builder_events(id,project_id,event_type,detail) VALUES(?,?,?,?)')
+    .bind(`evt_${crypto.randomUUID().replaceAll('-', '')}`, projectId, 'venture_factory.promoted', ideaId).run();
+
+  const callProject = async (action: string) => {
+    const target = new URL(req.url);
+    target.pathname = `/api/projects/${encodeURIComponent(projectId)}/${action}`;
+    target.search = '';
+    return secureApp.fetch(new Request(target.toString(), { method: 'POST', headers: req.headers }), env);
+  };
+
+  const planned = await callProject('plan');
+  const plannedData = await secureJson(planned);
+  if (!planned.ok) return json({ ok: false, stage: 'plan', project: createdData, ...plannedData }, planned.status);
+
+  const generated = await callProject('generate');
+  const generatedData = await secureJson(generated);
+  if (!generated.ok) return json({ ok: false, stage: 'generate', project: createdData, ...generatedData }, generated.status);
+
+  const validated = await callProject('validate-generated');
+  const committed = await commitValidatedBundle(req, env, projectId, validated);
+  const validationData = await secureJson(committed);
+  if (!committed.ok) return json({ ok: false, stage: 'validate', project: createdData, ...validationData }, committed.status);
+
+  return json({
+    ok: true,
+    project: {
+      id: projectId,
+      name,
+      slug,
+      category,
+      status: 'validated',
+    },
+    venture_idea_id: ideaId,
+    build: {
+      planned: true,
+      generated: true,
+      validation_passed: Boolean(validationData?.validation?.passed),
+      internal_repository: validationData?.internal_repository || null,
+      preview: validationData?.preview || null,
+    },
+    public_live: false,
+    next_gate: 'deployment-verification',
+    message: 'Venture promoted into IZAKHONO Builder, generated, validated and committed to the IZAKHONO internal repository. Public deployment remains gated.',
+  });
+}
+
 async function faisPaymentsRepairApi(req: Request, env: any, url: URL): Promise<Response | null> {
   if (url.pathname !== '/api/owner-actions/fais-add-payments' || req.method !== 'POST') return null;
   if (!(await ownerAuthorized(req, env))) return json({ ok: false, error: 'Unauthorized' }, 401);
@@ -545,6 +666,9 @@ export default {
 
     const publicAi = await publicAiCoreHost(req, env, url);
     if (publicAi) return publicAi;
+
+    const ventureBuild = await ventureFactoryBuildRoute(req, env, url);
+    if (ventureBuild) return ventureBuild;
 
     const reviewLoop = await reviewLoopRoute(req, env, url);
     if (reviewLoop) return reviewLoop;
