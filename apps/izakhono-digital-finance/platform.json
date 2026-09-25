@@ -4,11 +4,11 @@
   "name": "IZAKHONO Digital Finance Academy",
   "operator": "IZAKHONO AFRICA (PTY) LTD",
   "trading_name": "IZAKHONO Digital Finance Academy",
-  "status": "BUILT / VERIFIED LOCALLY",
+  "status": "EXTERNAL LIVE VERIFIED",
   "authoritative_source": "bevanshelton-netizen/izakhono-builder:apps/izakhono-digital-finance",
   "owned_target": "NODE01 via IZAKHONO CODE -> RUNTIME -> FORTRESS -> EDGE/TLS -> IZAKHONO DNS",
-  "public_route": null,
-  "external_fallback": "Static resilience deployment permitted; not verified yet.",
+  "public_route": "https://izakhono-digital-finance.vercel.app",
+  "external_fallback": "https://izakhono-digital-finance.vercel.app — Vercel production resilience route, deployment dpl_HgzMUrUE4Sv21sygEu2fdG9D1tG3",
   "engine": {
     "type": "Independent Python 3 stdlib HTTP engine",
     "entrypoint": "engine.py",
@@ -140,5 +140,25 @@
     "runtime_mounts": [
       "IZAKHONO_DF_QUESTION_BANK"
     ]
-  }
+  },
+  "external_live_evidence": {
+    "provider": "Vercel",
+    "deployment_id": "dpl_HgzMUrUE4Sv21sygEu2fdG9D1tG3",
+    "deployment_state": "READY",
+    "verified_at": "2026-09-25T03:10:04Z",
+    "checks": {
+      "root_https_200": true,
+      "expected_product_marker": true,
+      "healthz_https_200_ok": true,
+      "status_api_https_200": true,
+      "tracking_false": true,
+      "analytics_false": true,
+      "learner_writes_false": true,
+      "protected_admin_route_closed_404": true,
+      "protected_learner_route_closed_404": true,
+      "protected_automation_write_route_closed_404": true
+    },
+    "boundary": "External route serves public learning/institutional content only. Protected workforce automation remains on the owned engine."
+  },
+  "owned_public_status": "NOT YET OWNED LIVE VERIFIED; NODE01 deployment package is prepared and must pass machine-side plus DNS/TLS/EDGE/backup/rollback acceptance."
 }
