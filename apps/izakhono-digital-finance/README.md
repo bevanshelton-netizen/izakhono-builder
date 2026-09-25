@@ -1,6 +1,6 @@
 # IZAKHONO Digital Finance Academy
 
-Independent IZAKHONO-owned professional learning platform for blockchain, digital finance, fintech, digital assets, payments, cybersecurity, fraud defence and compliance.
+Independent IZAKHONO-owned, multilingual professional learning platform for blockchain, digital finance, fintech, digital assets, payments, cybersecurity, fraud defence and compliance — positioned for global institutional capability building as well as individual learning.
 
 **Operator:** IZAKHONO AFRICA (PTY) LTD  
 **Product ID:** `izakhono-digital-finance`  
@@ -120,3 +120,20 @@ An external route is not **EXTERNAL LIVE VERIFIED** until a named public URL is 
 - downloadable learning records
 - accessibility QA
 - jurisdiction-specific regulatory content reviewed against current sources
+
+
+## Global institutional positioning
+
+The institutional market is now a first-class product surface. Target users include banks and payment institutions, regulators and central banks, fintechs, insurers, audit/accounting/legal/advisory firms, universities and training networks, global corporates, industry associations, development-finance institutions, NGOs and multilateral programmes.
+
+Institutional delivery supports executive briefings, workforce academies, specialist labs, public/customer education and private institutional academies. Commercial terms remain quote-based until standard institutional packages are approved.
+
+See `INSTITUTIONAL-GO-TO-MARKET.md`.
+
+## Multilingual architecture
+
+`locales.json` provides the launch institutional interface packs for English, French, Spanish, Portuguese, Arabic, Kiswahili, isiZulu, Chinese, Hindi and German.
+
+This does **not** mean all course content is already fully translated. The product deliberately distinguishes interface localisation from full learning-content localisation. A complete language pack must pass translation QA and subject-matter review before it is marketed as fully available.
+
+The institutional model supports four localisation layers: interface, learning content, jurisdiction overlay and institution-specific terminology/policy overlay.
