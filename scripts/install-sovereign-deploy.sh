@@ -20,6 +20,11 @@ fi
 printf '%s\n' "$BUILDER_BUNDLE_REF" > "$WAVE1_ROOT/BUILDER_REF"
 chmod 0644 "$WAVE1_ROOT/BUILDER_REF"
 
+WAVE1_BUNDLE_SHA256="$(bash "$ROOT_DIR/scripts/launch-stack/compute-wave1-bundle-id.sh" "$ROOT_DIR")"
+[[ "$WAVE1_BUNDLE_SHA256" =~ ^[0-9a-f]{64}$ ]] || { echo '[FAIL] Invalid Wave 1 bundle digest.' >&2; exit 21; }
+printf '%s\n' "$WAVE1_BUNDLE_SHA256" > "$WAVE1_ROOT/BUNDLE_SHA256"
+chmod 0644 "$WAVE1_ROOT/BUNDLE_SHA256"
+
 install -m 0755 "$ROOT_DIR/products/izakhono-node/wave1_deploy.py" "$WAVE1_ROOT/products/izakhono-node/wave1_deploy.py"
 install -m 0644 "$ROOT_DIR/products/izakhono-node/profiles/wave1/allegro-vibez.production.json" "$WAVE1_ROOT/products/izakhono-node/profiles/wave1/allegro-vibez.production.json"
 install -m 0644 "$ROOT_DIR/products/izakhono-node/profiles/wave1/the-chancellor.production.json" "$WAVE1_ROOT/products/izakhono-node/profiles/wave1/the-chancellor.production.json"
