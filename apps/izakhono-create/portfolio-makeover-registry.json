@@ -119,6 +119,37 @@
       "source": "SOURCE_NOT_CONNECTED",
       "deployment_blocked": true,
       "blocker": "No connected owner source repository identified; do not fabricate or deploy."
+    },
+    "kora": {
+      "state": "visual-review",
+      "source": "bevanshelton-netizen/Downloads/kora-network",
+      "deployment_blocked": true,
+      "notes": "Global app layout upgraded; tracking scripts removed on makeover branch."
+    },
+    "kora-kids": {
+      "state": "visual-review",
+      "source": "bevanshelton-netizen/Downloads/ports/kora-kids",
+      "deployment_blocked": true
+    },
+    "yhvh-gospel-tv": {
+      "state": "visual-review",
+      "source": "bevanshelton-netizen/Downloads/ports/kora-gospel-tv",
+      "deployment_blocked": true
+    },
+    "memory-mania": {
+      "state": "visual-review",
+      "source": "bevanshelton-netizen/Downloads/memory-mania/public",
+      "deployment_blocked": true
+    },
+    "izakhono-one": {
+      "state": "visual-review",
+      "source": "bevanshelton-netizen/Downloads/izakhono-one",
+      "deployment_blocked": true
+    },
+    "digital-finance-academy": {
+      "state": "visual-review",
+      "source": "bevanshelton-netizen/Downloads/izakhono-digital-finance",
+      "deployment_blocked": true
     }
   }
 }
