@@ -50,6 +50,9 @@
         "privacy_consent",
         "source"
       ]
-    }
+    },
+    "artist_booking_settings": "owner",
+    "public_artist_booking_settings": "owner_public_read",
+    "artist_booking_events": "owner"
   }
 }
