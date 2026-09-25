@@ -78,5 +78,40 @@
       "jurisdiction overlay",
       "institution overlay"
     ]
+  },
+  "automation": {
+    "state": "AUTOMATION CORE BUILT / VERIFIED LOCALLY; protected production adapters pending",
+    "target_routine_administration": "90-95%",
+    "decision_endpoint": "/api/v1/automation/evaluate",
+    "persistence": "Stateless in current engine",
+    "privacy": "Pseudonymous learner references only; unapproved/PII fields rejected",
+    "automated_normal_path": [
+      "onboarding decision",
+      "baseline routing",
+      "role-based pathway assignment",
+      "progress decisioning",
+      "remediation routing",
+      "completion eligibility",
+      "certificate eligibility decision",
+      "management reporting event"
+    ],
+    "human_governance_required_for": [
+      "regulatory content changes",
+      "translation release approval",
+      "identity anomalies",
+      "security or fraud incidents",
+      "learner appeals",
+      "regulated-advice escalations",
+      "institution policy conflicts",
+      "payment disputes or refunds"
+    ],
+    "production_adapters_pending": [
+      "protected identity/auth",
+      "institutional roster store",
+      "payment entitlement",
+      "notification delivery",
+      "certificate issuer",
+      "management reporting store"
+    ]
   }
 }

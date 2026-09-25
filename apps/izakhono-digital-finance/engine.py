@@ -13,6 +13,10 @@ from __future__ import annotations
 import json
 import mimetypes
 import os
+
+from automation_engine import evaluate as evaluate_automation
+
+from automation_engine import evaluate as evaluate_automation
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -138,6 +142,12 @@ class AcademyHandler(BaseHTTPRequestHandler):
                     "status": "BUILT / VERIFIED LOCALLY",
                     "tracking": False,
                     "analytics": False,
+                    "automation": {
+                        "state": "CORE_BUILT_VERIFIED_LOCALLY_ADAPTERS_PENDING",
+                        "routine_admin_target": "90-95%",
+                        "decision_endpoint": "/api/v1/automation/evaluate",
+                        "human_governance": True,
+                    },
                     "payment": {
                         "gateway": "iKhokha",
                         "state": "GATED_PENDING_VERIFIED_PRODUCT_CHECKOUT",
@@ -166,6 +176,14 @@ class AcademyHandler(BaseHTTPRequestHandler):
             self._json(read_json("institutional-offers.json"))
             return
 
+        if path == "/api/v1/automation":
+            self._json(read_json("automation.json"))
+            return
+
+        if path == "/api/v1/assessment-blueprint":
+            self._json(read_json("assessment-blueprint.json"))
+            return
+
         if path == "/api/v1/payment":
             self._json(
                 {
@@ -185,10 +203,49 @@ class AcademyHandler(BaseHTTPRequestHandler):
         self._route()
 
     def do_POST(self) -> None:  # noqa: N802
+        path = urlparse(self.path).path
+
+        if path == "/api/v1/automation/evaluate":
+            try:
+                length = int(self.headers.get("Content-Length", "0"))
+            except ValueError:
+                length = 0
+
+            if length <= 0 or length > 32768:
+                self._json(
+                    {
+                        "error": "invalid_request_size",
+                        "message": "Automation decisions accept a small pseudonymous learner-state payload only.",
+                    },
+                    HTTPStatus.BAD_REQUEST,
+                )
+                return
+
+            try:
+                payload = json.loads(self.rfile.read(length).decode("utf-8"))
+            except (UnicodeDecodeError, json.JSONDecodeError):
+                self._json(
+                    {"error": "invalid_json", "message": "Request body must be valid JSON."},
+                    HTTPStatus.BAD_REQUEST,
+                )
+                return
+
+            if not isinstance(payload, dict):
+                self._json(
+                    {"error": "invalid_payload", "message": "Request body must be a JSON object."},
+                    HTTPStatus.BAD_REQUEST,
+                )
+                return
+
+            decision = evaluate_automation(payload, read_json("automation.json"))
+            status = HTTPStatus.OK if decision.get("ok") else HTTPStatus.BAD_REQUEST
+            self._json(decision, status)
+            return
+
         self._json(
             {
                 "error": "write_route_not_enabled",
-                "message": "This privacy-first MVP does not accept customer data or payment writes.",
+                "message": "Customer-data and payment write routes remain disabled. Only the stateless pseudonymous automation decision route is enabled.",
             },
             HTTPStatus.METHOD_NOT_ALLOWED,
         )

@@ -44,6 +44,9 @@ The word “certificate” describes an IZAKHONO professional completion credent
 - `/api/v1/status` — platform and engine status
 - `/api/v1/catalog` — curriculum
 - `/api/v1/platform` — deployment/product manifest
+- `/api/v1/automation` — workforce automation operating contract
+- `POST /api/v1/automation/evaluate` — stateless pseudonymous learner-state decision route
+- `/api/v1/assessment-blueprint` — protected assessment-service design contract
 - `/api/v1/payment` — explicit payment gate state
 
 It does not depend on another IZAKHONO product engine.
@@ -107,15 +110,52 @@ The owned route is not **OWNED LIVE VERIFIED** until the portfolio infrastructur
 
 An external route is not **EXTERNAL LIVE VERIFIED** until a named public URL is checked over HTTPS and the expected IZAKHONO experience is confirmed.
 
+## Workforce autopilot
+
+The routine learner-administration decision layer is now implemented.
+
+`automation_engine.py` is a stateless decision engine that can automate the normal path through:
+
+- onboarding;
+- baseline routing;
+- role-based pathway assignment;
+- progress decisions;
+- targeted remediation;
+- completion eligibility;
+- certificate eligibility decisions; and
+- management-reporting events.
+
+The API route is `POST /api/v1/automation/evaluate`.
+
+The current engine accepts **pseudonymous learner references only** and rejects unapproved fields. It does not persist learner records.
+
+The operating target is **90–95% routine administration automation**, not a claim of zero accountable human governance.
+
+Human review remains mandatory for regulatory-content changes, translation releases, identity anomalies, security/fraud incidents, learner appeals, regulated-advice escalations, institution-policy conflicts, and payment disputes/refunds.
+
+### Production adapters still required
+
+The automation core does not make the protected services disappear. End-to-end production automation still requires verified, replaceable adapters for:
+
+- identity/auth;
+- institutional rosters and persistent learner records;
+- payment entitlement;
+- notification/reminder delivery;
+- identity-aware certificate issuance; and
+- persistent institutional reporting.
+
+The public repository deliberately contains an **assessment blueprint only**, not production answer keys. Production questions and scoring keys belong in a protected assessment service.
+
 ## Next protected tranche
 
-- IZAKHONO account/auth integration
-- learner profile and persistent progress
-- assessment engine and question banks
-- identity-aware certificate issuance
+- protected IZAKHONO account/auth adapter
+- enterprise roster + persistent learner profile store
+- protected assessment service and question banks
+- identity-aware certificate issuer
+- automated notification/reminder adapter
+- persistent enterprise reporting/dashboard store
 - tutor/video layer
-- multilingual course variants
-- enterprise cohorts and admin
+- full reviewed multilingual course variants
 - verified iKhokha enrolment + entitlement
 - downloadable learning records
 - accessibility QA
@@ -147,7 +187,7 @@ The builder:
 - does not collect personal data;
 - does not create a contract or quote;
 - does not grant paid access;
-- keeps institutional pricing quote-based;
+- keeps most institutional pricing quote-based; the FAIS Digital Finance Employee Empowerment Package is fixed at **R1,000 per employee** before separately scoped private-academy setup, bespoke integration or custom localisation;
 - can copy or download a proposal brief for procurement/internal discussion.
 
 Programme definitions are sourced from `institutional-offers.json` and are also served from `/api/v1/offers` on the independent engine.

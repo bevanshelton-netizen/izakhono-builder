@@ -15,6 +15,10 @@ required = [
     "institutions.json",
     "locales.json",
     "institutional-offers.json",
+    "automation.json",
+    "assessment-blueprint.json",
+    "automation_engine.py",
+    "test_automation.py",
     "engine.py",
     "healthz",
 ]
@@ -29,6 +33,8 @@ platform = json.loads((ROOT / "platform.json").read_text(encoding="utf-8"))
 institutions = json.loads((ROOT / "institutions.json").read_text(encoding="utf-8"))
 locales = json.loads((ROOT / "locales.json").read_text(encoding="utf-8"))
 offers = json.loads((ROOT / "institutional-offers.json").read_text(encoding="utf-8"))
+automation = json.loads((ROOT / "automation.json").read_text(encoding="utf-8"))
+assessment_blueprint = json.loads((ROOT / "assessment-blueprint.json").read_text(encoding="utf-8"))
 
 assert curriculum["schema"] == "izakhono.digital.finance.curriculum.v1"
 assert curriculum["operator"] == "IZAKHONO AFRICA (PTY) LTD"
@@ -63,6 +69,17 @@ assert locales["locales"]["ar"]["dir"] == "rtl"
 assert all(item["status"] == "interface-ready" for item in locales["locales"].values())
 assert offers["schema"] == "izakhono.digital.finance.institutional.offers.v1"
 assert len(offers["offers"]) >= 5
+fais_offer = next(item for item in offers["offers"] if item["id"] == "fais-employee-empowerment")
+assert fais_offer["pricing"]["price"] == 1000
+assert fais_offer["pricing"]["currency"] == "ZAR"
+assert automation["schema"] == "izakhono.digital.finance.automation.v1"
+assert automation["mode"] == "automated_normal_path_human_governance_exceptions"
+assert automation["privacy"]["engine_state"] == "stateless"
+assert automation["no_human_claim"] is False
+assert len(automation["governance_gates"]) >= 6
+assert automation["thresholds"]["completion_pass_percent"] == 80
+assert assessment_blueprint["schema"] == "izakhono.digital.finance.assessment.blueprint.v1"
+assert all("answer keys" not in str(item).lower() for item in assessment_blueprint.get("assessment_types", []))
 
 html = (ROOT / "index.html").read_text(encoding="utf-8")
 js = (ROOT / "app.js").read_text(encoding="utf-8")
@@ -89,6 +106,10 @@ assert 'id="languageSelect"' in html
 assert 'id="institutionGrid"' in html
 assert 'id="proposalInstitution"' in html
 assert "/api/v1/offers" in js
+assert "/api/v1/automation/evaluate" in js
+assert 'id="runAutomationDemo"' in html
+assert "Human governance gates" in html
+assert "90–95%" in html
 assert "navigator.clipboard" in js
 
 print(

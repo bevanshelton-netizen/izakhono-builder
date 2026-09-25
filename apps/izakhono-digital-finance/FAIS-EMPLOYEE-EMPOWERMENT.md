@@ -146,3 +146,28 @@ IZAKHONO Digital Finance Academy + FAISReady
 - Head of Digital Assets / Innovation
 - Customer Experience / Contact Centre leadership
 - Procurement / Supplier Development as routing functions
+
+
+## Workforce autopilot
+
+The FAIS Employee Empowerment Package is being built for **90–95% routine administration automation**.
+
+The normal learner path can be automated across:
+- onboarding decisions;
+- baseline routing;
+- role-based learning assignment;
+- progress tracking decisions;
+- targeted remediation;
+- final completion eligibility;
+- certificate eligibility decisions; and
+- management-reporting events.
+
+Human governance remains intentionally reserved for regulatory-content changes, translation approval, identity anomalies, security/fraud incidents, learner appeals, regulated-advice escalations, institution-policy conflicts and payment disputes/refunds.
+
+The current automation core is stateless and uses pseudonymous learner references only. End-to-end production automation still requires protected identity/auth, roster, payment-entitlement, notification, certificate and reporting adapters.
+
+### Institutional price
+
+**R1,000 per employee** for the standard FAIS Digital Finance Employee Empowerment Package.
+
+Private-academy setup, bespoke integrations and custom localisation are scoped separately where required.

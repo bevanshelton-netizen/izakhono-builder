@@ -1,0 +1,198 @@
+{
+  "schema": "izakhono.digital.finance.automation.v1",
+  "product": "IZAKHONO Digital Finance Academy",
+  "mode": "automated_normal_path_human_governance_exceptions",
+  "promise": "Routine learner administration can run automatically once protected identity, payment, notification and institutional data adapters are connected. Human review is reserved for regulated, security-sensitive or exceptional cases.",
+  "privacy": {
+    "engine_state": "stateless",
+    "learner_reference": "pseudonymous learner_ref only",
+    "pii_rule": "The automation decision endpoint rejects names, emails, phone numbers, identity numbers and other unapproved fields.",
+    "persistence": "No learner record is stored by the current automation engine."
+  },
+  "thresholds": {
+    "baseline_foundation_max": 59,
+    "baseline_standard_max": 79,
+    "completion_pass_percent": 80,
+    "remediation_max_attempts": 2
+  },
+  "stages": [
+    {
+      "id": "onboarding",
+      "automated": true,
+      "action": "validate_enrolment",
+      "next": "baseline"
+    },
+    {
+      "id": "baseline",
+      "automated": true,
+      "action": "request_baseline_assessment",
+      "next": "path_assignment"
+    },
+    {
+      "id": "path_assignment",
+      "automated": true,
+      "action": "assign_role_and_score_path",
+      "next": "learning"
+    },
+    {
+      "id": "learning",
+      "automated": true,
+      "action": "monitor_module_progress",
+      "next": "final_assessment"
+    },
+    {
+      "id": "final_assessment",
+      "automated": true,
+      "action": "evaluate_completion_score",
+      "next": "remediation_or_completion"
+    },
+    {
+      "id": "remediation",
+      "automated": true,
+      "action": "assign_targeted_revision",
+      "next": "final_assessment"
+    },
+    {
+      "id": "completion",
+      "automated": true,
+      "action": "mark_completion_eligible",
+      "next": "certificate_eligibility"
+    },
+    {
+      "id": "certificate_eligibility",
+      "automated": true,
+      "action": "evaluate_certificate_eligibility",
+      "next": "reporting"
+    },
+    {
+      "id": "reporting",
+      "automated": true,
+      "action": "emit_management_report_event",
+      "next": "complete"
+    }
+  ],
+  "role_paths": {
+    "executive_ki": [
+      "df-101",
+      "df-102",
+      "pro-203",
+      "pro-204",
+      "pro-205",
+      "pro-206",
+      "lab-enterprise"
+    ],
+    "representative_adviser": [
+      "df-101",
+      "df-102",
+      "pro-203",
+      "pro-204",
+      "pro-205",
+      "pro-206"
+    ],
+    "compliance_risk": [
+      "df-101",
+      "df-102",
+      "pro-203",
+      "pro-205",
+      "pro-206",
+      "lab-compliance",
+      "lab-fraud"
+    ],
+    "operations_service": [
+      "df-101",
+      "df-102",
+      "pro-204",
+      "pro-206"
+    ],
+    "payments_innovation": [
+      "df-101",
+      "df-102",
+      "pro-201",
+      "pro-202",
+      "pro-203",
+      "pro-204",
+      "pro-207"
+    ],
+    "general_employee": [
+      "df-101",
+      "df-102",
+      "pro-204",
+      "pro-206"
+    ]
+  },
+  "score_paths": {
+    "foundation": "Add foundations before the assigned role path.",
+    "standard": "Use the assigned role path.",
+    "accelerated": "Allow foundation modules to be optional while preserving required risk/compliance modules."
+  },
+  "governance_gates": [
+    {
+      "code": "REGULATORY_CONTENT_CHANGE",
+      "owner": "qualified compliance/legal reviewer",
+      "reason": "New or changed regulatory interpretation must not be auto-published."
+    },
+    {
+      "code": "TRANSLATION_RELEASE",
+      "owner": "language reviewer + subject-matter reviewer",
+      "reason": "A full learning language pack requires review before being marketed as available."
+    },
+    {
+      "code": "IDENTITY_ANOMALY",
+      "owner": "authorised institutional administrator",
+      "reason": "Identity exceptions require accountable review before credential issuance."
+    },
+    {
+      "code": "SECURITY_OR_FRAUD_SIGNAL",
+      "owner": "security/fraud response",
+      "reason": "Potential compromise or abuse must be investigated."
+    },
+    {
+      "code": "LEARNER_APPEAL",
+      "owner": "authorised academic/programme reviewer",
+      "reason": "Disputed assessment or completion decisions require review."
+    },
+    {
+      "code": "REGULATED_ADVICE_ESCALATION",
+      "owner": "institution-designated authorised person",
+      "reason": "The learning platform must not provide regulated financial advice."
+    },
+    {
+      "code": "INSTITUTION_POLICY_CONFLICT",
+      "owner": "institution programme owner",
+      "reason": "Institution-specific policy overrides require approval."
+    },
+    {
+      "code": "PAYMENT_DISPUTE_OR_REFUND",
+      "owner": "commercial/support owner",
+      "reason": "Money disputes require an accountable process."
+    }
+  ],
+  "adapters": {
+    "protected_identity_auth": {
+      "state": "required_for_production",
+      "replaceable": true
+    },
+    "institutional_roster_store": {
+      "state": "required_for_production",
+      "replaceable": true
+    },
+    "payment_entitlement": {
+      "state": "required_for_paid_production",
+      "replaceable": true
+    },
+    "notification_delivery": {
+      "state": "required_for_automated_reminders",
+      "replaceable": true
+    },
+    "certificate_issuer": {
+      "state": "required_for_identity_aware_certificate",
+      "replaceable": true
+    },
+    "management_reporting_store": {
+      "state": "required_for_persistent_enterprise_reporting",
+      "replaceable": true
+    }
+  },
+  "certificate_rule": "The automation engine may determine eligibility automatically. Identity-aware certificate issuance remains disabled until the protected identity and certificate adapters are verified.",
+  "no_human_claim": false
+}

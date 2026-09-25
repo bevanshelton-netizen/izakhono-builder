@@ -9,6 +9,7 @@
     institutions: null,
     locales: null,
     offers: null,
+    automation: null,
     currentLocale: localStorage.getItem("izakhono-digital-finance-locale") || "en",
     progress: loadProgress()
   };
@@ -34,6 +35,10 @@
     proposalOutput: document.querySelector("#proposalOutput"),
     copyProposal: document.querySelector("#copyProposal"),
     downloadProposal: document.querySelector("#downloadProposal"),
+    automationRole: document.querySelector("#automationRole"),
+    automationScore: document.querySelector("#automationScore"),
+    runAutomationDemo: document.querySelector("#runAutomationDemo"),
+    automationResult: document.querySelector("#automationResult"),
     year: document.querySelector("#year")
   };
 
@@ -111,7 +116,8 @@
       "Delivery options:",
       ...offer.delivery.map(item => "- " + item),
       "",
-      "Commercial basis: Quote-based institutional agreement.",
+      ...(offer.pricing ? ["Price: " + offer.pricing.display, ""] : []),
+      "Commercial basis: " + (offer.pricing ? offer.pricing.display + " for the standard employee package; separately scoped extras may apply." : "Quote-based institutional agreement."),
       "Accreditation boundary: This programme does not become a university degree or accredited qualification unless separately approved and evidenced.",
       "Localisation boundary: Full course language packs are marketed as available only after translation QA and subject-matter review."
     ].join("\n");
@@ -180,6 +186,47 @@
     sync();
   }
 
+  async function runAutomationDemo() {
+    if (!els.automationResult || !els.runAutomationDemo) return;
+    els.runAutomationDemo.disabled = true;
+    els.automationResult.classList.remove("error");
+    els.automationResult.innerHTML = "<span>Running a stateless routing decision…</span>";
+
+    const payload = {
+      learner_ref: "demo-" + Date.now().toString(36),
+      stage: "baseline",
+      role: els.automationRole?.value || "general_employee",
+      baseline_score: Number(els.automationScore?.value || 0)
+    };
+
+    try {
+      const response = await fetch("/api/v1/automation/evaluate", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify(payload)
+      });
+      const data = await response.json();
+      if (!response.ok || !data.ok) throw new Error("Automation decision unavailable.");
+
+      const modules = (data.assigned_modules || []).map(module => "<span>" + esc(module) + "</span>").join("");
+      els.automationResult.innerHTML =
+        '<div class="proposal-eyebrow">Automated decision</div>' +
+        "<h3>" + esc(data.path || data.decision || "continue") + "</h3>" +
+        "<p><strong>Role:</strong> " + esc(data.role || payload.role) + " &nbsp; <strong>Next:</strong> " + esc(data.next_stage || "learning") + "</p>" +
+        (modules ? '<div class="programme-list">' + modules + "</div>" : "") +
+        '<p class="automation-note">No personal identity fields were sent or stored by this decision engine.</p>';
+    } catch {
+      els.automationResult.classList.add("error");
+      els.automationResult.innerHTML = "<span>The owned automation API is not available on this route. Static resilience mode does not pretend to execute server-side learner decisions.</span>";
+    } finally {
+      els.runAutomationDemo.disabled = false;
+    }
+  }
+
+  function bindAutomationDemo() {
+    if (!els.runAutomationDemo) return;
+    els.runAutomationDemo.addEventListener("click", runAutomationDemo);
+  }
   async function loadInstitutionalData() {
     const [institutions, locales] = await Promise.all([
       loadJsonWithFallback("/api/v1/institutions", "institutions.json"),
@@ -466,6 +513,7 @@
 
   async function boot() {
     bindStaticActions();
+    bindAutomationDemo();
     renderFilters();
     checkEngine();
 
