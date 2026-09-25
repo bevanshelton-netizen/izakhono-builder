@@ -10,10 +10,14 @@
       "immutable_ref": "127ee36415a5c975e51413eabb2aee508c6e45c7",
       "local_health_url": "http://127.0.0.1:8080/healthz",
       "public_health_path": "/healthz",
-      "current_external_route": "https://allegro-vibez-g5c7s8xj3-bevan2.vercel.app",
-      "external_fallback": "https://allegro-vibez-79622wjli-bevan2.vercel.app",
+      "current_external_route": "https://allegro-vibez.vercel.app/",
+      "external_fallback": "https://allegro-vibez-g5c7s8xj3-bevan2.vercel.app/",
       "owned_hostname": "allegro.izakhonoafrica.co.za",
-      "edge_upstream": "host.docker.internal:8080"
+      "edge_upstream": "host.docker.internal:8080",
+      "external_identity_markers": [
+        "ALLEGRO VIBEZ",
+        "Africa"
+      ]
     },
     {
       "slug": "the-chancellor",
@@ -23,10 +27,22 @@
       "public_health_path": "/api/health",
       "readiness_path": "/api/go-live",
       "readiness_field": "readyForPaidTraffic",
-      "current_external_route": "https://the-chancellor-62u1zf1lc-bevan2.vercel.app",
-      "external_fallback": "https://the-chancellor-e07wn6vc4-bevan2.vercel.app",
+      "current_external_route": "https://the-chancellor.vercel.app/",
+      "external_fallback": "https://the-chancellor-56n6gf9rj-bevan2.vercel.app/",
       "owned_hostname": "chancellor.izakhonoafrica.co.za",
-      "edge_upstream": "host.docker.internal:3000"
+      "edge_upstream": "host.docker.internal:3000",
+      "external_identity_markers": [
+        "The Chancellor",
+        "Business Growth Desk"
+      ]
     }
-  ]
+  ],
+  "external_probe_policy": {
+    "status": "HTTP_200_REQUIRED",
+    "redirects": "REJECTED",
+    "authentication_challenges": "REJECTED",
+    "identity": "ALL_CONFIGURED_MARKERS_REQUIRED",
+    "evidence_date": "2026-09-25",
+    "note": "Canonical public aliases verified through connected Vercel access. Deployment-specific fallback URLs may be protected; protected routes must not satisfy the public safety gate."
+  }
 }
