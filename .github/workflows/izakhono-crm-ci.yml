@@ -4,11 +4,13 @@ on:
   pull_request:
     paths:
       - "products/izakhono-crm/**"
+      - "infra/app-fabric-runtime/docker-compose.yml"
       - ".github/workflows/izakhono-crm-ci.yml"
   push:
     branches: [main]
     paths:
       - "products/izakhono-crm/**"
+      - "infra/app-fabric-runtime/docker-compose.yml"
       - ".github/workflows/izakhono-crm-ci.yml"
 
 permissions:
@@ -31,5 +33,13 @@ jobs:
         run: npm test
       - name: Registry JSON
         run: node -e "JSON.parse(require('fs').readFileSync('products/izakhono-crm/portfolio-crm-registry.json','utf8')); console.log('registry ok')"
+      - name: NODE01 compose configuration
+        working-directory: infra/app-fabric-runtime
+        env:
+          CRM_ADMIN_TOKEN: unit-test-owner-token
+          CRM_INGEST_TOKEN: unit-test-ingest-token
+          CRM_STAFF_JSON: '{"staff":[]}'
+          IZAKHONO_FABRIC_INTERNAL_TOKEN: unit-test-fabric-token
+        run: docker compose config >/tmp/izakhono-app-fabric-compose.yml
       - name: Container build
         run: docker build -t izakhono/crm:ci products/izakhono-crm
