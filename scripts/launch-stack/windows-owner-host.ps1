@@ -121,6 +121,75 @@ function Enable-WslSystemd {
     & wsl.exe -d $Distro -u root -- bash -lc 'systemctl is-system-running --wait >/dev/null 2>&1 || true'
 }
 
+function Set-IniValue([System.Collections.Generic.List[string]]$Lines, [string]$Section, [string]$Key, [string]$Value) {
+    $sectionHeader = "[$Section]"
+    $sectionIndex = -1
+    $nextSectionIndex = $Lines.Count
+
+    for ($i = 0; $i -lt $Lines.Count; $i++) {
+        $trimmed = $Lines[$i].Trim()
+        if ($trimmed -ieq $sectionHeader) {
+            $sectionIndex = $i
+            for ($j = $i + 1; $j -lt $Lines.Count; $j++) {
+                $candidate = $Lines[$j].Trim()
+                if ($candidate.StartsWith('[') -and $candidate.EndsWith(']')) {
+                    $nextSectionIndex = $j
+                    break
+                }
+            }
+            break
+        }
+    }
+
+    if ($sectionIndex -lt 0) {
+        if ($Lines.Count -gt 0 -and $Lines[$Lines.Count - 1].Trim()) {
+            [void]$Lines.Add('')
+        }
+        [void]$Lines.Add($sectionHeader)
+        [void]$Lines.Add("$Key=$Value")
+        return
+    }
+
+    for ($i = $sectionIndex + 1; $i -lt $nextSectionIndex; $i++) {
+        $candidate = $Lines[$i].Trim()
+        $equalsIndex = $candidate.IndexOf('=')
+        if ($equalsIndex -gt 0) {
+            $candidateKey = $candidate.Substring(0, $equalsIndex).Trim()
+            if ($candidateKey -ieq $Key) {
+                $Lines[$i] = "$Key=$Value"
+                return
+            }
+        }
+    }
+
+    $Lines.Insert($nextSectionIndex, "$Key=$Value")
+}
+
+function Ensure-WslAlwaysOn {
+    Write-Stage 'Keep NODE01 WSL owner host persistent'
+    $configPath = Join-Path $env:USERPROFILE '.wslconfig'
+    $lines = New-Object 'System.Collections.Generic.List[string]'
+
+    if (Test-Path $configPath) {
+        foreach ($line in [IO.File]::ReadAllLines($configPath)) {
+            [void]$lines.Add($line)
+        }
+    }
+
+    Set-IniValue $lines 'general' 'instanceIdleTimeout' '-1'
+    Set-IniValue $lines 'wsl2' 'vmIdleTimeout' '-1'
+
+    [IO.File]::WriteAllLines(
+        $configPath,
+        $lines,
+        [Text.UTF8Encoding]::new($false)
+    )
+
+    Write-Host "WSL persistence policy written to $configPath"
+    Write-Host 'NODE01 distribution and WSL2 VM idle auto-shutdown are disabled for this owner profile.'
+    Write-Host 'PERSISTENCE_POLICY_VERSION=1'
+}
+
 function Get-RepoRootInWsl {
     $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
     $wslPath = (& wsl.exe -d $Distro -u root -- wslpath -a -u $repoRoot 2>$null | Select-Object -First 1).Trim()
@@ -259,6 +328,7 @@ if (-not (Test-DistroInstalled $Distro)) {
 }
 
 Remove-ResumeTask
+Ensure-WslAlwaysOn
 Enable-WslSystemd
 Install-IzakhonoStack
 Install-PortProxyRefresh
