@@ -27,6 +27,8 @@ required = [
     "test_automation.py",
     "test_automation_store.py",
     "engine.py",
+    "external-worker.js",
+    "wrangler-fallback.jsonc",
     "healthz",
 ]
 
@@ -143,6 +145,15 @@ assert 'id="runAutomationDemo"' in html
 assert "Human governance gates" in html
 assert "90–95%" in html
 assert "navigator.clipboard" in js
+worker_source = (ROOT / "external-worker.js").read_text(encoding="utf-8")
+assert "protected_owned_engine_required" in worker_source
+assert "/api/v1/admin/" in worker_source
+assert "/api/v1/learner/" in worker_source
+assert "/api/v1/automation/evaluate" in worker_source
+assert "learner_writes: false" in worker_source
+wrangler = json.loads((ROOT / "wrangler-fallback.jsonc").read_text(encoding="utf-8"))
+assert wrangler["workers_dev"] is True
+assert wrangler["assets"]["binding"] == "ASSETS"
 
 print(
     "IZAKHONO Digital Finance verification passed: "

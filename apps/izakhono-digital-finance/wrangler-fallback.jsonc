@@ -1,0 +1,13 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "izakhono-digital-finance-resilience",
+  "main": "external-worker.js",
+  "compatibility_date": "2026-09-25",
+  "workers_dev": true,
+  "preview_urls": true,
+  "assets": {
+    "directory": "./public-fallback",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application"
+  }
+}
