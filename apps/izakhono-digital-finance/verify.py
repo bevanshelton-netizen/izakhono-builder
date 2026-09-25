@@ -29,6 +29,7 @@ required = [
     "test_automation.py",
     "test_automation_store.py",
     "engine.py",
+    "package.json",
     "external-worker.js",
     "wrangler-fallback.jsonc",
     "healthz",
@@ -43,6 +44,7 @@ for name in required:
 
 curriculum = json.loads((ROOT / "curriculum.json").read_text(encoding="utf-8"))
 platform = json.loads((ROOT / "platform.json").read_text(encoding="utf-8"))
+package_manifest = json.loads((ROOT / "package.json").read_text(encoding="utf-8"))
 institutions = json.loads((ROOT / "institutions.json").read_text(encoding="utf-8"))
 locales = json.loads((ROOT / "locales.json").read_text(encoding="utf-8"))
 offers = json.loads((ROOT / "institutional-offers.json").read_text(encoding="utf-8"))
@@ -71,6 +73,8 @@ assert len(module_ids) == len(set(module_ids)), "duplicate module id"
 assert lesson_count >= 30, "launch curriculum is unexpectedly thin"
 
 assert platform["platform_id"] == "izakhono-digital-finance"
+assert package_manifest["name"] == "izakhono-digital-finance"
+assert package_manifest["scripts"]["start"] == "python3 engine.py"
 assert platform["status"] == "EXTERNAL LIVE VERIFIED"
 assert platform["public_route"] == "https://izakhono-digital-finance.vercel.app"
 assert platform["engine"]["type"].startswith("Independent")
