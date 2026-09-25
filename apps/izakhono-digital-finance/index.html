@@ -20,6 +20,7 @@
       </a>
       <nav class="nav-links" aria-label="Main navigation">
         <a href="#institutions">Institutions</a>
+        <a href="#autopilot">Autopilot</a>
         <a href="#learn">Curriculum</a>
         <a href="#pathways">Pathways</a>
         <a href="#why">Platform</a>
@@ -147,6 +148,81 @@
             <button class="btn primary" id="copyProposal">Copy proposal brief</button>
             <button class="btn ghost" id="downloadProposal">Download brief</button>
           </div>
+        </div>
+      </div>
+    </section>
+
+
+    <section class="section" id="autopilot">
+      <div class="container">
+        <div class="section-head">
+          <div>
+            <div class="kicker">Workforce autopilot</div>
+            <h2>Automate the routine. Escalate only what needs accountable human judgement.</h2>
+            <p>
+              The IZAKHONO automation engine can route a pseudonymous learner through onboarding, baseline assessment, role-based learning, remediation, completion eligibility and reporting decisions. It does not store personal information in this engine.
+            </p>
+          </div>
+          <div class="automation-badge">
+            <strong>90–95%</strong>
+            <span>target routine administration automation</span>
+          </div>
+        </div>
+
+        <div class="automation-grid">
+          <article class="automation-card">
+            <div class="feature-icon">01</div>
+            <h3>Automatic onboarding</h3>
+            <p>Validate enrolment state, request a baseline assessment and assign the employee to a role-specific pathway.</p>
+          </article>
+          <article class="automation-card">
+            <div class="feature-icon">02</div>
+            <h3>Adaptive learning</h3>
+            <p>Use baseline and progress signals to assign foundation, standard or accelerated learning and targeted remediation.</p>
+          </article>
+          <article class="automation-card">
+            <div class="feature-icon">03</div>
+            <h3>Automatic completion logic</h3>
+            <p>Evaluate progress and assessment thresholds, determine completion eligibility and emit certificate/reporting events.</p>
+          </article>
+          <article class="automation-card human">
+            <div class="feature-icon">!</div>
+            <h3>Human governance gates</h3>
+            <p>Regulatory changes, identity anomalies, security incidents, appeals, payment disputes and regulated-advice escalations remain accountable human decisions.</p>
+          </article>
+        </div>
+
+        <div class="automation-console">
+          <div>
+            <div class="kicker">Live decision-engine demonstration</div>
+            <h3>See how an employee journey is routed.</h3>
+            <p>No name, email, phone number or identity number is used. The demo sends only a pseudonymous learner reference and learning-state values to the stateless automation engine.</p>
+          </div>
+          <div class="automation-controls">
+            <label>
+              <span>Employee role</span>
+              <select id="automationRole">
+                <option value="representative_adviser">Representative / Adviser</option>
+                <option value="executive_ki">Executive / Key Individual</option>
+                <option value="compliance_risk">Compliance / Risk</option>
+                <option value="operations_service">Operations / Service</option>
+                <option value="payments_innovation">Payments / Innovation</option>
+                <option value="general_employee">General employee</option>
+              </select>
+            </label>
+            <label>
+              <span>Baseline score</span>
+              <input id="automationScore" type="number" min="0" max="100" value="62" inputmode="numeric">
+            </label>
+            <button class="btn primary" id="runAutomationDemo">Run autopilot decision</button>
+          </div>
+          <div class="automation-result" id="automationResult">
+            <span>Ready to simulate a privacy-safe learner routing decision.</span>
+          </div>
+        </div>
+
+        <div class="notice">
+          Production-scale zero-touch administration still requires the protected identity/auth, institutional roster, payment entitlement, notification, certificate and reporting adapters to be connected and verified. The automation engine itself is built to keep those services replaceable.
         </div>
       </div>
     </section>
