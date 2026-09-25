@@ -2,6 +2,16 @@
 
 Canonical source for the IZAKHONO ONE access layer.
 
+## Flagship capability
+
+IZAKHONO Venture Factory is surfaced as a flagship capability inside IZAKHONO ONE.
+
+The intended workflow is:
+
+IDEA -> BUILD -> SELL -> MEASURE -> IMPROVE
+
+Venture Factory remains independently deployable and keeps its own execution gates. IZAKHONO ONE discovers and presents it, but does not falsely mark it public-live before the route is verified. IZAKHONO SUPER AI is also surfaced as a flagship infrastructure service.
+
 ## Engine
 The provider-neutral Node engine exposes `GET /health`, `GET /api/search?q=...`, `GET /api/resolve/:slug` and `GET /api/route/:slug`. A route is returned only when the registry marks it `verified` or `external-resilience`; gated services fail closed.
 
@@ -12,6 +22,6 @@ The provider-neutral Node engine exposes `GET /health`, `GET /api/search?q=...`,
 Run repository-root `RUN-IZAKHONO-ONE-NODE01.cmd`. It builds the same source, binds only to `127.0.0.1:8781`, verifies `/health`, and leaves public EDGE/TLS/DNS cutover as a separate gate.
 
 ## Promotion ladder
-SOURCE VERIFIED → NODE01 INTERNAL PASS → EDGE/TLS PASS → PUBLIC HTTPS 200 + VERIFIED EXPERIENCE → OWNED LIVE VERIFIED.
+SOURCE VERIFIED -> NODE01 INTERNAL PASS -> EDGE/TLS PASS -> PUBLIC HTTPS 200 + VERIFIED EXPERIENCE -> OWNED LIVE VERIFIED.
 
 The external route remains reversible fallback throughout.
