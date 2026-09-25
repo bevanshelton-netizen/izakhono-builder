@@ -15,6 +15,8 @@ import mimetypes
 import os
 
 from automation_engine import evaluate as evaluate_automation
+
+from automation_engine import evaluate as evaluate_automation
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
