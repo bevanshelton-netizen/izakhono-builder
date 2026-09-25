@@ -90,6 +90,14 @@ def send_json(handler, status, obj):
 def safe_equal(a, b):
     return hmac.compare_digest(str(a), str(b))
 
+def workflow_key_allowed(supplied, product):
+    return bool(
+        WORKFLOW_KEY
+        and supplied
+        and safe_equal(supplied, WORKFLOW_KEY)
+        and str(product or "").strip().lower() in WORKFLOW_PRODUCTS
+    )
+
 def http_json(url, payload=None, headers=None, timeout=120):
     body = None if payload is None else json.dumps(payload).encode()
     req = urllib.request.Request(
@@ -250,12 +258,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def workflow_authorized(self, product):
         supplied = self.headers.get("x-izakhono-ai-workflow-key", "")
-        return bool(
-            WORKFLOW_KEY
-            and supplied
-            and safe_equal(supplied, WORKFLOW_KEY)
-            and product in WORKFLOW_PRODUCTS
-        )
+        return workflow_key_allowed(supplied, product)
 
     def read_json(self):
         n = int(self.headers.get("content-length", "0") or "0")
