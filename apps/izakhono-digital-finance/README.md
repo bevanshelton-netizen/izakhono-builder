@@ -44,6 +44,9 @@ The word “certificate” describes an IZAKHONO professional completion credent
 - `/api/v1/status` — platform and engine status
 - `/api/v1/catalog` — curriculum
 - `/api/v1/platform` — deployment/product manifest
+- `/api/v1/automation` — workforce automation operating contract
+- `POST /api/v1/automation/evaluate` — stateless pseudonymous learner-state decision route
+- `/api/v1/assessment-blueprint` — protected assessment-service design contract
 - `/api/v1/payment` — explicit payment gate state
 
 It does not depend on another IZAKHONO product engine.
