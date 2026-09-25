@@ -1,0 +1,127 @@
+{
+  "schema": "izakhono.ads.campaign.v1",
+  "source": "IZAKHONO CREATE",
+  "campaign_id": "create-allegro-wear-the-movement-20260925",
+  "product": "ALLEGRO-VIBEZ",
+  "campaign_name": "WEAR THE MOVEMENT — ALLEGRO-VIBEZ 2026",
+  "state": "PAUSED_PENDING_CONNECTORS_AND_PUBLIC_VERIFICATION",
+  "destination": {
+    "route": "/merch",
+    "public_https_verified": false,
+    "checkout_verified": false,
+    "rule": "Do not mark live or activate paid distribution until independent HTTPS content verification succeeds."
+  },
+  "placements": [
+    {
+      "channel": "ALLEGRO-VIBEZ",
+      "format": "website takeover",
+      "status": "MERGED_PENDING_PUBLIC_VERIFICATION",
+      "cta": "WEAR THE MOVEMENT"
+    },
+    {
+      "channel": "Allegro Radio",
+      "format": "10s sting",
+      "status": "READY_FOR_APPROVED_ROTATION",
+      "script": "THIS IS NOT MERCH. THIS IS IDENTITY. ALLEGRO-VIBEZ. WEAR THE MOVEMENT."
+    },
+    {
+      "channel": "Allegro Radio",
+      "format": "20s sting",
+      "status": "READY_FOR_APPROVED_ROTATION",
+      "script": "Music. People. Culture. The ALLEGRO-VIBEZ 2026 drop is here. Premium 300gsm oversized tees from R549, sizes XS to 5XL. African-born. Global energy. ALLEGRO-VIBEZ — More Than Music. A Movement."
+    },
+    {
+      "channel": "KORA",
+      "format": "creator culture cutdowns",
+      "status": "READY_FOR_DESTINATION_VERIFICATION",
+      "cta": "See the ALLEGRO-VIBEZ 2026 drop"
+    },
+    {
+      "channel": "IZAKHONO ONE",
+      "format": "discovery tile/search feature",
+      "status": "READY_FOR_DESTINATION_VERIFICATION",
+      "cta": "Wear the Movement"
+    },
+    {
+      "channel": "IZAKHONO CRM",
+      "format": "interest capture",
+      "status": "READY",
+      "tags": [
+        "ALLEGRO_MERCH",
+        "SKU",
+        "CATEGORY",
+        "CONFIRMED_PRODUCT_INTEREST",
+        "PREVIEW_RANGE_INTEREST"
+      ]
+    },
+    {
+      "channel": "Instagram/Reels",
+      "format": "9:16 15s/10s/6s",
+      "status": "PAUSED_NO_CONNECTOR"
+    },
+    {
+      "channel": "TikTok/short video",
+      "format": "9:16 15s/10s/6s",
+      "status": "PAUSED_NO_CONNECTOR"
+    },
+    {
+      "channel": "YouTube/Shorts",
+      "format": "9:16 15s/10s/6s",
+      "status": "PAUSED_NO_CONNECTOR"
+    },
+    {
+      "channel": "WhatsApp sharing",
+      "format": "share card + 15s cutdown",
+      "status": "READY_FOR_DESTINATION_VERIFICATION"
+    }
+  ],
+  "organic_copy": [
+    "WEAR THE MOVEMENT. ALLEGRO-VIBEZ 2026.",
+    "THIS IS NOT MERCH. THIS IS IDENTITY.",
+    "AFRICAN-BORN. GLOBAL ENERGY.",
+    "CREATORS WEAR IT. CULTURE MOVES IN IT.",
+    "LOUD. CLEAN. UNMISSABLE."
+  ],
+  "confirmed_commerce": [
+    {
+      "sku": "AV-TEE-MOV-BLK",
+      "price_zar": 549,
+      "sizes": "XS–5XL",
+      "spec": "300gsm oversized"
+    },
+    {
+      "sku": "AV-TEE-AFR-CRM",
+      "price_zar": 599,
+      "sizes": "XS–5XL",
+      "spec": "300gsm oversized"
+    },
+    {
+      "sku": "AV-TEE-CCS-BRG",
+      "price_zar": 599,
+      "sizes": "XS–5XL",
+      "spec": "300gsm oversized"
+    },
+    {
+      "sku": "AV-TEE-ECO-WHT",
+      "price_zar": 549,
+      "sizes": "XS–5XL",
+      "spec": "300gsm oversized"
+    }
+  ],
+  "preview_only": [
+    "golf shirts",
+    "hoodies",
+    "jackets",
+    "caps",
+    "bucket hats",
+    "accessories"
+  ],
+  "controls": {
+    "paid_spend_authorised": false,
+    "channel_connectors_verified": false,
+    "behavioural_profiling": false,
+    "hidden_tracking": false,
+    "external_services_replaceable": true,
+    "owned_infrastructure_first": true
+  }
+}
