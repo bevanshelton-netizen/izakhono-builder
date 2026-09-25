@@ -9,7 +9,7 @@ import { WebSocketServer } from 'ws'
 const { Pool } = pg
 const scryptAsync = promisify(scrypt)
 
-const VERSION = '0.2.1'
+const VERSION = '0.2.0'
 const PORT = Number.parseInt(process.env.PORT || '8787', 10)
 const JWT_SECRET = process.env.IZAKHONO_CORE_JWT_SECRET || ''
 const ADMIN_TOKEN = process.env.IZAKHONO_CORE_ADMIN_TOKEN || ''
