@@ -1,6 +1,6 @@
 #requires -Version 5.1
 [CmdletBinding()]
-param([string]$Distro = 'Ubuntu')
+param([string]$Distro = 'Ubuntu-24.04')
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
@@ -14,7 +14,11 @@ function Step([string]$Text) {
 $repo = (Resolve-Path $PSScriptRoot).Path
 $distros = @(wsl.exe -l -q 2>$null | ForEach-Object { ($_ -replace "`0", '').Trim() } | Where-Object { $_ })
 if ($distros -notcontains $Distro) {
-    throw "[STOP] IZAKHONO owner host Ubuntu is not installed. Activate the owner host first."
+    if ($Distro -eq 'Ubuntu-24.04' -and $distros -contains 'Ubuntu') {
+        $Distro = 'Ubuntu'
+    } else {
+        throw "[STOP] IZAKHONO owner host Ubuntu is not installed. Activate the owner host first."
+    }
 }
 
 $linuxRepo = (& wsl.exe -d $Distro -- wslpath -a "$repo").Trim()
