@@ -741,7 +741,7 @@ async function allegroCreateMerchOrder(req, res, project) {
 
 export async function handleActionRequest(req, res) {
   const rawUrl = req.url || '/'
-  if (!rawUrl.startsWith('/v3/actions/')) return false
+  if (!rawUrl.startsWith('/v3/actions/') && !rawUrl.startsWith('/v3/admin/actions/')) return false
   assertOrigin(req)
   const url = new URL(rawUrl, `http://${req.headers.host || 'localhost'}`)
 
