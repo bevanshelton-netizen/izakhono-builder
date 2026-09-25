@@ -1,0 +1,60 @@
+name: IZAKHONO ONE External Resilience
+
+on:
+  pull_request:
+    paths:
+      - 'products/izakhono-one/**'
+      - '.github/workflows/izakhono-one-external-cloudflare.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'products/izakhono-one/**'
+      - '.github/workflows/izakhono-one-external-cloudflare.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: izakhono-one-external-resilience
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Validate IZAKHONO ONE source
+        run: |
+          node --check products/izakhono-one/server.mjs
+          node --check products/izakhono-one/public/engine.js
+          node --check products/izakhono-one/public/app.js
+          node -e "const r=require('./products/izakhono-one/public/registry.json'); if(r.engine.tracking!==false) process.exit(1); if(!['search','service-discovery','routing','health'].every(x=>r.engine.capabilities.includes(x))) process.exit(1); if(r.services.some(s=>s.status==='gated' && s.publicUrl)) process.exit(1)"
+      - name: Validate Cloudflare package
+        run: npx wrangler deploy --dry-run --config products/izakhono-one/wrangler.external.jsonc
+
+  deploy:
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    needs: validate
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Verify deployment credentials
+        shell: bash
+        run: |
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          echo "IZAKHONO_ONE_CLOUDFLARE_GATE=READY"
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Deploy isolated resilience Worker
+        run: npx wrangler deploy --config products/izakhono-one/wrangler.external.jsonc
