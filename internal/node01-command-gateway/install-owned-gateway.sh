@@ -21,9 +21,9 @@ fi
 
 bash "$ROOT/products/izakhono-node/sync-builder-to-code.sh" "$ROOT"
 
-docker compose -f "$HERE/docker-compose.yml" config >/dev/null
-docker compose -f "$HERE/docker-compose.yml" build
-docker compose -f "$HERE/docker-compose.yml" up -d --remove-orphans
+docker compose -p izakhono-izakhono-commands -f "$HERE/docker-compose.yml" config >/dev/null
+docker compose -p izakhono-izakhono-commands -f "$HERE/docker-compose.yml" build
+docker compose -p izakhono-izakhono-commands -f "$HERE/docker-compose.yml" up -d --remove-orphans
 
 for _ in $(seq 1 30); do
   if curl -fsS http://127.0.0.1:8091/healthz >/dev/null 2>&1; then
@@ -35,7 +35,7 @@ for _ in $(seq 1 30); do
   sleep 2
 done
 
-docker compose -f "$HERE/docker-compose.yml" ps || true
-docker compose -f "$HERE/docker-compose.yml" logs --tail=120 || true
+docker compose -p izakhono-izakhono-commands -f "$HERE/docker-compose.yml" ps || true
+docker compose -p izakhono-izakhono-commands -f "$HERE/docker-compose.yml" logs --tail=120 || true
 echo "[STOP] Command Centre gateway did not become healthy."
 exit 5
