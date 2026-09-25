@@ -8,12 +8,18 @@ services:
     environment:
       IZAKHONO_BIND_HOST: 0.0.0.0
       IZAKHONO_COMMAND_PORT: 8091
-      IZAKHONO_LOCAL_COMMAND_ORIGIN: ${IZAKHONO_LOCAL_COMMAND_ORIGIN:-http://host.docker.internal:8787}
+      IZAKHONO_CONTROL_ORIGIN: ${IZAKHONO_CONTROL_ORIGIN:-http://host.docker.internal:9292}
+      IZAKHONO_OWNER_HOST_ORIGIN: ${IZAKHONO_OWNER_HOST_ORIGIN:-http://host.docker.internal}
+      IZAKHONO_COMMAND_OWNER_TOKEN_FILE: /run/secrets/izakhono-commands-owner-token
+      IZAKHONO_CONTROL_TOKEN_FILE: /run/secrets/izakhono-control-owner-token
       IZAKHONO_EXTERNAL_COMMAND_ORIGIN: ${IZAKHONO_EXTERNAL_COMMAND_ORIGIN:-https://yfawrenhudjomhnglfhq.supabase.co/functions/v1/izakhono-commands}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     ports:
       - "127.0.0.1:8091:8091"
+    volumes:
+      - /etc/izakhono/commands.owner-token:/run/secrets/izakhono-commands-owner-token:ro
+      - /etc/izakhono/control.owner-token:/run/secrets/izakhono-control-owner-token:ro
     healthcheck:
       test:
         - CMD
