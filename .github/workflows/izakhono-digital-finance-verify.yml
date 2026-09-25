@@ -45,8 +45,12 @@ jobs:
           test "$(curl -fsS http://127.0.0.1:8080/healthz)" = "OK"
           curl -fsS http://127.0.0.1:8080/api/v1/status | python -m json.tool
           curl -fsS http://127.0.0.1:8080/api/v1/catalog | python -m json.tool > /tmp/catalog.json
+          curl -fsS http://127.0.0.1:8080/api/v1/institutions | python -m json.tool > /tmp/institutions.json
+          curl -fsS http://127.0.0.1:8080/api/v1/locales | python -m json.tool > /tmp/locales.json
           grep -q '"engine":"independent"' <(curl -fsS http://127.0.0.1:8080/api/v1/status)
           grep -q 'IZAKHONO Digital Finance Academy' /tmp/catalog.json
+          grep -q 'Banks & Payment Institutions' /tmp/institutions.json
+          grep -q '"العربية"' /tmp/locales.json
 
       - name: Stop engine
         if: always()
