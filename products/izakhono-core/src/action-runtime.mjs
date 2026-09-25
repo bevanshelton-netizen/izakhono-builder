@@ -70,6 +70,23 @@ function validateScope(value) {
   return scope
 }
 
+function roundMoney(value) {
+  return Math.round((Number(value) + Number.EPSILON) * 100) / 100
+}
+
+function validateMerchQuantity(value) {
+  const quantity = Number(value)
+  if (!Number.isInteger(quantity) || quantity < 1 || quantity > 100) throw httpError(400, 'Quantity must be an integer between 1 and 100')
+  return quantity
+}
+
+function normalizeOptionalChoice(value, allowed, label) {
+  if (value == null || value === '') return null
+  const choice = String(value)
+  if (Array.isArray(allowed) && allowed.length && !allowed.map(String).includes(choice)) throw httpError(400, `${label} is not available for this product`)
+  return choice
+}
+
 async function readJson(req) {
   const chunks = []
   let size = 0
@@ -248,6 +265,103 @@ async function atomicScopeBatch(req, res, project) {
   return sendJson(req, res, 200, { ok: true, action: 'atomic-scope-batch', scope_id: scopeId, results })
 }
 
+
+async function allegroCreateMerchOrder(req, res, project) {
+  if (req.method !== 'POST') throw httpError(405, 'Method not allowed')
+  const user = await requireUser(req, project)
+  const body = await readJson(req)
+  const productId = validateRowId(body.product_id)
+  const quantity = validateMerchQuantity(body.quantity)
+  const client = await pool.connect()
+  let response
+  try {
+    await client.query('BEGIN')
+    const found = await client.query(
+      `SELECT row_id,data,created_by FROM iz_core_rows
+       WHERE project_id=$1 AND table_name='merch_products' AND row_id=$2
+       FOR UPDATE`,
+      [project, productId],
+    )
+    if (!found.rowCount) throw httpError(404, 'Product unavailable')
+    const product = found.rows[0]
+    const data = product.data || {}
+    if (data.active !== true) throw httpError(409, 'Product unavailable')
+
+    const price = Number(data.price)
+    if (!Number.isFinite(price) || price < 0) throw httpError(409, 'Product has an invalid price')
+    const stock = data.stock_quantity == null ? null : Number(data.stock_quantity)
+    if (stock != null && (!Number.isInteger(stock) || stock < quantity)) throw httpError(409, 'Insufficient stock')
+
+    const ownerKind = data.owner_kind === 'platform' ? 'platform' : 'creator'
+    const sellerId = ownerKind === 'creator' ? product.created_by : null
+    const size = normalizeOptionalChoice(body.size, data.sizes, 'Size')
+    const colour = normalizeOptionalChoice(body.colour, data.colours, 'Colour')
+    const currency = /^[A-Z]{3}$/.test(String(data.currency || 'ZAR').toUpperCase()) ? String(data.currency || 'ZAR').toUpperCase() : 'ZAR'
+    const subtotal = roundMoney(price * quantity)
+    const fee = ownerKind === 'creator' ? roundMoney(subtotal * 0.10) : 0
+    const sellerNet = roundMoney(subtotal - fee)
+    const orderId = randomUUID()
+    const itemId = randomUUID()
+    const now = new Date().toISOString()
+
+    const orderData = {
+      buyer_id: user.id,
+      seller_id: sellerId,
+      owner_kind: ownerKind,
+      currency,
+      subtotal,
+      platform_fee_percent: 10,
+      platform_fee_amount: fee,
+      seller_net_amount: sellerNet,
+      shipping_amount: 0,
+      total_amount: subtotal,
+      status: 'payment_pending',
+      payment_provider: null,
+      payment_reference: null,
+      created_at: now,
+      updated_at: now,
+    }
+    const itemData = {
+      order_id: orderId,
+      product_id: productId,
+      quantity,
+      unit_price: roundMoney(price),
+      selected_size: size,
+      selected_colour: colour,
+      line_total: subtotal,
+      created_at: now,
+    }
+
+    await client.query(
+      `INSERT INTO iz_core_rows(project_id,table_name,row_id,data,created_by)
+       VALUES($1,'merch_orders',$2,$3::jsonb,$4)`,
+      [project, orderId, JSON.stringify(orderData), user.id],
+    )
+    await client.query(
+      `INSERT INTO iz_core_rows(project_id,table_name,row_id,data,created_by)
+       VALUES($1,'merch_order_items',$2,$3::jsonb,$4)`,
+      [project, itemId, JSON.stringify(itemData), user.id],
+    )
+    await client.query('COMMIT')
+    response = { ok: true, order_id: orderId, item_id: itemId, currency, subtotal, platform_fee_amount: fee, seller_net_amount: sellerNet }
+  } catch (error) {
+    try { await client.query('ROLLBACK') } catch {}
+    throw error
+  } finally {
+    client.release()
+  }
+
+  await audit(project, user.id, 'trusted_action.allegro_create_merch_order', {
+    order_id: response.order_id,
+    product_id: productId,
+    quantity,
+    currency: response.currency,
+    subtotal: response.subtotal,
+    platform_fee_amount: response.platform_fee_amount,
+  })
+  return sendJson(req, res, 200, response)
+}
+
 export async function handleActionRequest(req, res) {
   const rawUrl = req.url || '/'
   if (!rawUrl.startsWith('/v3/actions/')) return false
@@ -267,15 +381,24 @@ export async function handleActionRequest(req, res) {
         delete: false,
         arbitrarySql: false,
         browserServerSecrets: false,
+        allegroCreateMerchOrder: true,
+        allegroCreatorMerchFeePercent: 10,
       },
     })
     return true
   }
 
-  const match = url.pathname.match(/^\/v3\/actions\/([^/]+)\/atomic-scope-batch$/)
+  let match = url.pathname.match(/^\/v3\/actions\/([^/]+)\/atomic-scope-batch$/)
   if (match) {
     const project = validateProject(decodeURIComponent(match[1]))
     await atomicScopeBatch(req, res, project)
+    return true
+  }
+
+  match = url.pathname.match(/^\/v3\/actions\/([^/]+)\/allegro-create-merch-order$/)
+  if (match) {
+    const project = validateProject(decodeURIComponent(match[1]))
+    await allegroCreateMerchOrder(req, res, project)
     return true
   }
 
