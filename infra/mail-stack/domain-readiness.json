@@ -1,11 +1,11 @@
 {
   "schema_version": 1,
-  "evidence_timestamp": "2026-09-25T12:37:01Z",
-  "evidence_source": "bevanshelton-netizen/Downloads GitHub Actions run 36135910683",
+  "evidence_timestamp": "2026-09-25T12:46:08Z",
+  "evidence_source": "bevanshelton-netizen/Downloads GitHub Actions run 36136752143",
   "activation_rule": "sender identities are disabled until status is LIVE_VERIFIED",
   "domains": {
     "izakhonoafrica.co.za": {
-      "status": "DNS_UNRESOLVED",
+      "status": "DOMAIN_AVAILABLE_UNREGISTERED",
       "sender_enabled": false,
       "evidence": {
         "ns": false,
@@ -14,12 +14,12 @@
         "spf": false,
         "dmarc": false,
         "dkim": false,
-        "registry": "reported available by .co.za registry diagnostic"
+        "registry": "Available / no matching registry object on 25 Sep 2026"
       },
-      "next_action": "Confirm/restore domain registration and authoritative DNS ownership before adding any mail records."
+      "next_action": "Secure domain registration immediately, then establish authoritative DNS and MX/SPF/DKIM/DMARC before sender activation."
     },
     "faisready.co.za": {
-      "status": "DNS_UNRESOLVED",
+      "status": "DOMAIN_AVAILABLE_UNREGISTERED",
       "sender_enabled": false,
       "evidence": {
         "ns": false,
@@ -27,12 +27,13 @@
         "mx": false,
         "spf": false,
         "dmarc": false,
-        "dkim": false
+        "dkim": false,
+        "registry": "Available / no matching registry object on 25 Sep 2026"
       },
-      "next_action": "Restore authoritative DNS, then configure MX/SPF/DKIM/DMARC and perform external send/reply tests."
+      "next_action": "Secure domain registration immediately, then establish authoritative DNS and MX/SPF/DKIM/DMARC before sender activation."
     },
     "doxahosting.co.za": {
-      "status": "DNS_UNRESOLVED",
+      "status": "DOMAIN_AVAILABLE_UNREGISTERED",
       "sender_enabled": false,
       "evidence": {
         "ns": false,
@@ -40,9 +41,10 @@
         "mx": false,
         "spf": false,
         "dmarc": false,
-        "dkim": false
+        "dkim": false,
+        "registry": "Available / no matching registry object on 25 Sep 2026"
       },
-      "next_action": "Restore authoritative DNS, then configure MX/SPF/DKIM/DMARC and perform external send/reply tests."
+      "next_action": "Secure domain registration immediately, then establish authoritative DNS and MX/SPF/DKIM/DMARC before sender activation."
     },
     "edubuildshelton.org.za": {
       "status": "ROUTED_AUTH_PARTIAL",
