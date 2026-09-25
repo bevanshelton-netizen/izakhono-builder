@@ -290,9 +290,11 @@ async function handlePolicyAdmin(req, res, action) {
 }
 
 async function handleCollection(req, res, url, project, table) {
-  const user = await requireUser(req, project)
   const policy = await getPolicy(project, table)
-  const ctx = await accessContext(project, table, user.id, policy)
+  const publicRead = req.method === 'GET' && policy.mode === 'owner_public_read'
+  if (publicRead) await requireProject(project, String(req.headers['x-project-key'] || ''))
+  const user = publicRead ? null : await requireUser(req, project)
+  const ctx = await accessContext(project, table, user?.id || null, policy)
 
   if (req.method === 'GET') {
     const values = [project, table]
@@ -358,15 +360,17 @@ async function handleCollection(req, res, url, project, table) {
 }
 
 async function handleRow(req, res, project, table, rowId) {
-  const user = await requireUser(req, project)
   const policy = await getPolicy(project, table)
+  const publicRead = req.method === 'GET' && policy.mode === 'owner_public_read'
+  if (publicRead) await requireProject(project, String(req.headers['x-project-key'] || ''))
+  const user = publicRead ? null : await requireUser(req, project)
   const found = await pool.query(
     'SELECT row_id,data,created_by,updated_at FROM iz_core_rows WHERE project_id=$1 AND table_name=$2 AND row_id=$3',
     [project, table, rowId],
   )
   const row = found.rows[0]
   if (!row) throw httpError(404, 'Row not found')
-  const ctx = await accessContext(project, table, user.id, policy)
+  const ctx = await accessContext(project, table, user?.id || null, policy)
 
   if (req.method === 'GET') {
     if (!canRead(row, user, policy, ctx)) throw httpError(404, 'Row not found')
