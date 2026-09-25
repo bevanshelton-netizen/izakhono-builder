@@ -477,7 +477,7 @@ async function handleDataCollection(req, res, url, project, table) {
     const clauses = ['project_id=$1', 'table_name=$2']
     if (mode === 'owner' || mode === 'owner_action_only') {
       values.push(user.id)
-      clauses.push('created_by=
+      clauses.push('created_by=$' + values.length)
     }
     for (const [rawKey, value] of url.searchParams.entries()) {
       if (['order', 'limit', 'offset'].includes(rawKey)) continue
@@ -485,7 +485,7 @@ async function handleDataCollection(req, res, url, project, table) {
       values.push(key)
       const keyParam = values.length
       values.push(String(value))
-      clauses.push('data ->> 
+      clauses.push('data ->> $' + keyParam + ' = $' + values.length)
     }
     let orderSql = 'updated_at DESC'
     const order = url.searchParams.get('order')
@@ -493,7 +493,7 @@ async function handleDataCollection(req, res, url, project, table) {
       const match = order.match(/^([A-Za-z_][A-Za-z0-9_]{0,62})\.(asc|desc)$/)
       if (!match) return sendError(req, res, 400, 'Invalid order expression')
       const [, key, direction] = match
-      orderSql = key === 'id' ? `row_id ${direction.toUpperCase()}` : `(data ->> '${key}') ${direction.toUpperCase()}`
+      orderSql = key === 'id' ? 'row_id ' + direction.toUpperCase() : "(data ->> '" + key + "') " + direction.toUpperCase()
     }
     const limit = Math.min(200, Math.max(1, Number.parseInt(url.searchParams.get('limit') || '100', 10) || 100))
     const offset = Math.min(100000, Math.max(0, Number.parseInt(url.searchParams.get('offset') || '0', 10) || 0))
@@ -501,10 +501,8 @@ async function handleDataCollection(req, res, url, project, table) {
     const limitParam = values.length
     values.push(offset)
     const offsetParam = values.length
-    const result = await pool.query(
-      'SELECT row_id, data FROM iz_core_rows WHERE ' + clauses.join(' AND ') + ' ORDER BY ' + orderSql + ' LIMIT ,
-      values,
-    )
+    const query = 'SELECT row_id, data FROM iz_core_rows WHERE ' + clauses.join(' AND ') + ' ORDER BY ' + orderSql + ' LIMIT $' + limitParam + ' OFFSET $' + offsetParam
+    const result = await pool.query(query, values)
     return sendJson(req, res, 200, result.rows.map(rowToJson))
   }
 
@@ -534,7 +532,6 @@ async function handleDataCollection(req, res, url, project, table) {
 
   return sendError(req, res, 405, 'Method not allowed')
 }
-
 async function handleDataRow(req, res, project, table, id) {
   const user = await requireUser(req, project)
   const mode = await tablePolicy(project, table)
