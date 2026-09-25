@@ -14,7 +14,10 @@ timers=(izakhono-health.timer izakhono-backup.timer izakhono-restore-rehearsal.t
 if [ -f /etc/systemd/system/izakhono-wave1-watch.timer ]; then
   timers+=(izakhono-wave1-watch.timer)
 fi
+if [ -f /etc/systemd/system/izakhono-runner-keepalive.timer ]; then
+  timers+=(izakhono-runner-keepalive.timer)
+fi
 systemctl enable --now "${timers[@]}"
 
-echo '[PASS] Host-local health checks, deployment watches, daily backups and weekly restore rehearsals are scheduled.'
+echo '[PASS] Host-local health checks, deployment watches, runner keepalive, daily backups and weekly restore rehearsals are scheduled.'
 systemctl list-timers --all --no-pager 'izakhono-*' || true
