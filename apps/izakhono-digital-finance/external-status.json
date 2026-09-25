@@ -1,0 +1,20 @@
+{
+  "service": "izakhono-digital-finance",
+  "product": "IZAKHONO Digital Finance Academy",
+  "operator": "IZAKHONO AFRICA (PTY) LTD",
+  "engine": "external-static-resilience",
+  "mode": "external-resilience",
+  "status": "EXTERNAL LIVE VERIFIED",
+  "public_route": "https://izakhono-digital-finance.vercel.app",
+  "deployment_id": "dpl_HgzMUrUE4Sv21sygEu2fdG9D1tG3",
+  "tracking": false,
+  "analytics": false,
+  "learner_writes": false,
+  "payment": {
+    "enabled": false,
+    "gateway": "iKhokha",
+    "state": "GATED_PENDING_VERIFIED_PRODUCT_CHECKOUT"
+  },
+  "owned_engine_status": "NODE01 package prepared; owned public verification still pending",
+  "note": "Public learning and institutional resilience route. Protected workforce automation remains on the owned engine."
+}

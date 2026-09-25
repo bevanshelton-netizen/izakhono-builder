@@ -4,7 +4,7 @@ Independent IZAKHONO-owned, multilingual professional learning platform for bloc
 
 **Operator:** IZAKHONO AFRICA (PTY) LTD  
 **Product ID:** `izakhono-digital-finance`  
-**Current evidence label:** **BUILT / VERIFIED LOCALLY** after `verify.py` and HTTP smoke tests pass.  
+**Current evidence label:** **EXTERNAL LIVE VERIFIED** at `https://izakhono-digital-finance.vercel.app`. The owned NODE01 route remains separately gated.  
 **Relationship to EDU-BUILD:** None. This is a separate IZAKHONO product and must not inherit EDU-BUILD branding, accreditation claims, curriculum claims or student records.
 
 ## Product model
@@ -118,9 +118,17 @@ The owned route is not **OWNED LIVE VERIFIED** until the portfolio infrastructur
 
 ## External resilience
 
-`vercel.json` supports a static external resilience route. In static mode the learning UI and curriculum remain available and `app.js` automatically falls back from the engine API to `curriculum.json`.
+The verified public resilience route is:
 
-An external route is not **EXTERNAL LIVE VERIFIED** until a named public URL is checked over HTTPS and the expected IZAKHONO experience is confirmed.
+`https://izakhono-digital-finance.vercel.app`
+
+Evidence label: **EXTERNAL LIVE VERIFIED**.
+
+The verified deployment returned HTTPS 200 for the product root, `/healthz` and `/api/v1/status`; the expected IZAKHONO Digital Finance product marker was present; tracking and analytics are false; and protected learner/admin/automation write routes are unavailable on the external bridge.
+
+`vercel.json` makes the public static route reproducible. `app.js` falls back to the static curriculum and institutional manifests when the owned automation API is not present.
+
+This status does **not** imply **OWNED LIVE VERIFIED**. NODE01 still requires its own real-machine, EDGE, DNS/TLS, backup/restore and rollback acceptance. See `EXTERNAL-LIVE-EVIDENCE.json`.
 
 ## Workforce autopilot
 

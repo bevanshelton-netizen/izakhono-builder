@@ -46,7 +46,7 @@ jobs:
           python verify.py
           rm -rf public-fallback
           mkdir -p public-fallback
-          cp index.html styles.css app.js curriculum.json platform.json institutions.json locales.json institutional-offers.json automation.json assessment-blueprint.json healthz public-fallback/
+          cp index.html styles.css app.js curriculum.json platform.json institutions.json locales.json institutional-offers.json automation.json assessment-blueprint.json external-status.json EXTERNAL-LIVE-EVIDENCE.json healthz public-fallback/
           test ! -f public-fallback/engine.py
           test ! -f public-fallback/automation_store.py
           test ! -f public-fallback/learner_access.py

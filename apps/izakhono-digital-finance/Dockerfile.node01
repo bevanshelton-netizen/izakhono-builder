@@ -12,6 +12,8 @@ COPY apps/izakhono-digital-finance/institutional-offers.json ./
 COPY apps/izakhono-digital-finance/automation.json ./
 COPY apps/izakhono-digital-finance/assessment-blueprint.json ./
 COPY apps/izakhono-digital-finance/adapter-contracts.json ./
+COPY apps/izakhono-digital-finance/external-status.json ./
+COPY apps/izakhono-digital-finance/EXTERNAL-LIVE-EVIDENCE.json ./
 COPY apps/izakhono-digital-finance/healthz ./
 COPY apps/izakhono-digital-finance/engine.py ./
 COPY apps/izakhono-digital-finance/automation_engine.py ./

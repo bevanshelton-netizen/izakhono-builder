@@ -1,0 +1,50 @@
+{
+  "schema": "izakhono.digital.finance.external-live-evidence.v1",
+  "evidence_label": "EXTERNAL LIVE VERIFIED",
+  "observed_at": "2026-09-25T03:10:04Z",
+  "provider": "Vercel",
+  "project_id": "prj_tkZWiRmFblkTqkWJtiRJPipNH9or",
+  "deployment_id": "dpl_HgzMUrUE4Sv21sygEu2fdG9D1tG3",
+  "immutable_source_release": "7e22b01496530c94239f1b745b6ed0adc175b3fd",
+  "public_url": "https://izakhono-digital-finance.vercel.app",
+  "checks": [
+    {
+      "path": "/",
+      "status": 200,
+      "expected": "IZAKHONO DIGITAL FINANCE",
+      "result": "PASS"
+    },
+    {
+      "path": "/healthz",
+      "status": 200,
+      "expected": "OK",
+      "result": "PASS"
+    },
+    {
+      "path": "/api/v1/status",
+      "status": 200,
+      "expected": "external-static-resilience; tracking=false; analytics=false; learner_writes=false",
+      "result": "PASS"
+    },
+    {
+      "path": "/api/v1/admin/automation/report?institution_ref=probe",
+      "status": 404,
+      "expected": "protected admin route unavailable on external bridge",
+      "result": "PASS_FAIL_CLOSED"
+    },
+    {
+      "path": "/api/v1/learner/me",
+      "status": 404,
+      "expected": "protected learner route unavailable on external bridge",
+      "result": "PASS_FAIL_CLOSED"
+    },
+    {
+      "path": "/api/v1/automation/evaluate",
+      "status": 404,
+      "expected": "protected automation write route unavailable on external bridge",
+      "result": "PASS_FAIL_CLOSED"
+    }
+  ],
+  "payment_boundary": "iKhokha consumer checkout remains disabled/unverified on this route.",
+  "owned_boundary": "This evidence does not establish OWNED LIVE VERIFIED. NODE01 requires separate machine, EDGE, DNS, TLS, backup/restore and rollback evidence."
+}
