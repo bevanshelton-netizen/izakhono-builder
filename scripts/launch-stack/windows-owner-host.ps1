@@ -187,6 +187,7 @@ function Ensure-WslAlwaysOn {
 
     Write-Host "WSL persistence policy written to $configPath"
     Write-Host 'NODE01 distribution and WSL2 VM idle auto-shutdown are disabled for this owner profile.'
+    Write-Host 'PERSISTENCE_POLICY_VERSION=1'
 }
 
 function Get-RepoRootInWsl {
