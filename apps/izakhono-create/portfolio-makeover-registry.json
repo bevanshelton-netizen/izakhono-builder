@@ -150,6 +150,30 @@
       "state": "visual-review",
       "source": "bevanshelton-netizen/Downloads/izakhono-digital-finance",
       "deployment_blocked": true
+    },
+    "allegro-vibez": {
+      "state": "visual-review",
+      "source": "bevanshelton-netizen/allegro-vibez",
+      "deployment_blocked": true,
+      "notes": "International polish added; analytics startup and UTM attribution removed on makeover branch."
+    },
+    "edubuild-ecd360": {
+      "state": "visual-review",
+      "source": "bevanshelton-netizen/edubuild-ecd360",
+      "deployment_blocked": true,
+      "notes": "International campus/admin polish added; analytics startup removed; official EDU-BUILD colour identity preserved."
+    },
+    "izakhono-fortress": {
+      "state": "visual-review",
+      "source": "bevanshelton-netizen/SHELTON-FORTRESS",
+      "deployment_blocked": true,
+      "notes": "Bank/enterprise trust presentation upgraded; API/security engine unchanged."
+    },
+    "bevan-shelton": {
+      "state": "visual-review",
+      "source": "bevanshelton-netizen/bevanshelton-netizen-legacymart/public-site",
+      "deployment_blocked": true,
+      "notes": "Premium editorial reference-shop layer applied through existing premium CSS; staged checkout left untouched."
     }
   }
 }
