@@ -477,7 +477,5009 @@ async function handleDataCollection(req, res, url, project, table) {
     const clauses = ['project_id=$1', 'table_name=$2']
     if (mode === 'owner' || mode === 'owner_action_only') {
       values.push(user.id)
-      clauses.push(`created_by=${values.length}`)
+      clauses.push('created_by=
+    }
+    for (const [rawKey, value] of url.searchParams.entries()) {
+      if (['order', 'limit', 'offset'].includes(rawKey)) continue
+      const key = validateFilterKey(rawKey)
+      values.push(key)
+      const keyParam = values.length
+      values.push(String(value))
+      clauses.push('data ->> 
+    }
+    let orderSql = 'updated_at DESC'
+    const order = url.searchParams.get('order')
+    if (order) {
+      const match = order.match(/^([A-Za-z_][A-Za-z0-9_]{0,62})\.(asc|desc)$/)
+      if (!match) return sendError(req, res, 400, 'Invalid order expression')
+      const [, key, direction] = match
+      orderSql = key === 'id' ? `row_id ${direction.toUpperCase()}` : `(data ->> '${key}') ${direction.toUpperCase()}`
+    }
+    const limit = Math.min(200, Math.max(1, Number.parseInt(url.searchParams.get('limit') || '100', 10) || 100))
+    const offset = Math.min(100000, Math.max(0, Number.parseInt(url.searchParams.get('offset') || '0', 10) || 0))
+    values.push(limit)
+    const limitParam = values.length
+    values.push(offset)
+    const offsetParam = values.length
+    const result = await pool.query(
+      'SELECT row_id, data FROM iz_core_rows WHERE ' + clauses.join(' AND ') + ' ORDER BY ' + orderSql + ' LIMIT ,
+      values,
+    )
+    return sendJson(req, res, 200, result.rows.map(rowToJson))
+  }
+
+  if (req.method === 'POST') {
+    if (mode === 'owner_action_only') return sendError(req, res, 403, 'Direct writes are disabled for this table')
+    const body = await readJson(req)
+    if (!body.data || typeof body.data !== 'object' || Array.isArray(body.data)) return sendError(req, res, 400, 'data object required')
+    const payload = { ...body.data }
+    const id = payload.id ? validateRowId(payload.id) : randomUUID()
+    delete payload.id
+    try {
+      const result = await pool.query(
+        `INSERT INTO iz_core_rows(project_id, table_name, row_id, data, created_by)
+         VALUES($1,$2,$3,$4::jsonb,$5)
+         RETURNING row_id, data`,
+        [project, table, id, JSON.stringify(payload), user.id],
+      )
+      const row = rowToJson(result.rows[0])
+      await audit(project, user.id, 'data.insert', { table, id })
+      broadcast(project, mode, user.id, { type: 'row.changed', event: 'INSERT', table, row })
+      return sendJson(req, res, 201, row)
+    } catch (error) {
+      if (error?.code === '23505') return sendError(req, res, 409, 'Row already exists')
+      throw error
+    }
+  }
+
+  return sendError(req, res, 405, 'Method not allowed')
+}
+
+async function handleDataRow(req, res, project, table, id) {
+  const user = await requireUser(req, project)
+  const mode = await tablePolicy(project, table)
+  const ownerClause = isOwnerWriteMode(mode) ? ' AND created_by=$4' : ''
+  const baseValues = [project, table, id]
+
+  if (mode === 'owner_action_only' && (req.method === 'PATCH' || req.method === 'DELETE')) {
+    return sendError(req, res, 403, 'Direct writes are disabled for this table')
+  }
+
+  if (req.method === 'PATCH') {
+    const body = await readJson(req)
+    if (!body.data || typeof body.data !== 'object' || Array.isArray(body.data)) return sendError(req, res, 400, 'data object required')
+    const payload = { ...body.data }
+    delete payload.id
+    const values = [...baseValues, ...(isOwnerWriteMode(mode) ? [user.id] : []), JSON.stringify(payload)]
+    const jsonParam = values.length
+    const result = await pool.query(
+      `UPDATE iz_core_rows SET data=data || $${jsonParam}::jsonb, updated_at=now()
+       WHERE project_id=$1 AND table_name=$2 AND row_id=$3${ownerClause}
+       RETURNING row_id, data`,
+      values,
+    )
+    if (!result.rowCount) return sendError(req, res, 404, 'Row not found')
+    const row = rowToJson(result.rows[0])
+    await audit(project, user.id, 'data.update', { table, id })
+    broadcast(project, mode, user.id, { type: 'row.changed', event: 'UPDATE', table, row })
+    return sendJson(req, res, 200, row)
+  }
+
+  if (req.method === 'DELETE') {
+    const values = [...baseValues, ...(isOwnerWriteMode(mode) ? [user.id] : [])]
+    const result = await pool.query(
+      `DELETE FROM iz_core_rows WHERE project_id=$1 AND table_name=$2 AND row_id=$3${ownerClause} RETURNING row_id, data`,
+      values,
+    )
+    if (!result.rowCount) return sendError(req, res, 404, 'Row not found')
+    const row = rowToJson(result.rows[0])
+    await audit(project, user.id, 'data.delete', { table, id })
+    broadcast(project, mode, user.id, { type: 'row.changed', event: 'DELETE', table, row })
+    return sendJson(req, res, 200, row)
+  }
+
+  return sendError(req, res, 405, 'Method not allowed')
+}
+
+async function handleStorage(req, res, project, bucket, objectPath) {
+  const user = await requireUser(req, project)
+  const filePath = safeStoragePath(project, bucket, objectPath)
+
+  if (req.method === 'PUT') {
+    const existing = await pool.query(
+      'SELECT created_by FROM iz_core_storage_objects WHERE project_id=$1 AND bucket=$2 AND object_path=$3',
+      [project, bucket, objectPath],
+    )
+    if (existing.rowCount && existing.rows[0].created_by !== user.id) return sendError(req, res, 403, 'Storage object belongs to another user')
+    const content = await readBody(req, MAX_STORAGE_BYTES)
+    const digest = sha256(content)
+    const contentType = String(req.headers['content-type'] || 'application/octet-stream').slice(0, 200)
+    await mkdir(dirname(filePath), { recursive: true })
+    await writeFile(filePath, content, { mode: 0o600 })
+    await pool.query(
+      `INSERT INTO iz_core_storage_objects(project_id,bucket,object_path,created_by,content_type,byte_size,sha256)
+       VALUES($1,$2,$3,$4,$5,$6,$7)
+       ON CONFLICT(project_id,bucket,object_path)
+       DO UPDATE SET content_type=EXCLUDED.content_type, byte_size=EXCLUDED.byte_size, sha256=EXCLUDED.sha256, updated_at=now()`,
+      [project, bucket, objectPath, user.id, contentType, content.length, digest],
+    )
+    await audit(project, user.id, 'storage.put', { bucket, objectPath, bytes: content.length })
+    return sendJson(req, res, 201, { bucket, path: objectPath, size: content.length, sha256: digest })
+  }
+
+  if (req.method === 'GET') {
+    const result = await pool.query(
+      `SELECT content_type, byte_size, sha256 FROM iz_core_storage_objects
+       WHERE project_id=$1 AND bucket=$2 AND object_path=$3 AND created_by=$4`,
+      [project, bucket, objectPath, user.id],
+    )
+    if (!result.rowCount) return sendError(req, res, 404, 'Storage object not found')
+    let content
+    try { content = await readFile(filePath) } catch { return sendError(req, res, 404, 'Storage object file missing') }
+    const metadata = result.rows[0]
+    res.writeHead(200, {
+      'content-type': metadata.content_type,
+      'content-length': String(content.length),
+      'cache-control': 'private, no-store',
+      'x-content-type-options': 'nosniff',
+      'x-izakhono-sha256': metadata.sha256,
+    })
+    return res.end(content)
+  }
+
+  if (req.method === 'DELETE') {
+    const result = await pool.query(
+      `DELETE FROM iz_core_storage_objects
+       WHERE project_id=$1 AND bucket=$2 AND object_path=$3 AND created_by=$4
+       RETURNING object_path`,
+      [project, bucket, objectPath, user.id],
+    )
+    if (!result.rowCount) return sendError(req, res, 404, 'Storage object not found')
+    try { await unlink(filePath) } catch {}
+    await audit(project, user.id, 'storage.delete', { bucket, objectPath })
+    return sendJson(req, res, 200, { ok: true })
+  }
+
+  return sendError(req, res, 405, 'Method not allowed')
+}
+
+const server = http.createServer(async (req, res) => {
+  try {
+    if (!corsAllowed(req)) return sendError(req, res, 403, 'Origin not allowed')
+    if (req.method === 'OPTIONS') {
+      const headers = jsonHeaders(req)
+      headers['access-control-allow-methods'] = 'GET,POST,PATCH,PUT,DELETE,OPTIONS'
+      headers['access-control-allow-headers'] = 'Authorization,Content-Type,X-Project-Key'
+      headers['access-control-max-age'] = '600'
+      res.writeHead(204, headers)
+      return res.end()
+    }
+
+    const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`)
+
+    if (req.method === 'GET' && url.pathname === '/healthz') {
+      try {
+        await pool.query('SELECT 1')
+        return sendJson(req, res, 200, { ok: true, service: 'IZAKHONO Core', version: VERSION, storage: 'local-volume', database: 'postgresql' })
+      } catch {
+        return sendJson(req, res, 503, { ok: false, service: 'IZAKHONO Core', version: VERSION })
+      }
+    }
+
+    if (req.method === 'GET' && url.pathname === '/v1/capabilities') {
+      return sendJson(req, res, 200, {
+        service: 'IZAKHONO Core',
+        version: VERSION,
+        capabilities: {
+          passwordAuth: true,
+          refreshTokens: true,
+          projectIsolation: true,
+          ownerDefaultDataPolicy: true,
+          ownerPublicReadDataPolicy: true,
+          ownerActionOnlyDataPolicy: true,
+          projectSharedDataPolicy: true,
+          basicCrud: true,
+          storage: true,
+          realtime: true,
+          relationalSelect: false,
+          rpc: false,
+          edgeFunctions: false,
+          passwordRecovery: false,
+        },
+      })
+    }
+
+    if (req.method === 'POST' && url.pathname === '/v1/admin/projects') return handleAdminProject(req, res)
+
+    let match = url.pathname.match(/^\/v1\/auth\/([^/]+)\/(signup|signin|refresh|signout|me)$/)
+    if (match) {
+      const project = validateProjectId(decodeURIComponent(match[1]))
+      const action = match[2]
+      if (action === 'signup' && req.method === 'POST') return handleSignup(req, res, project)
+      if (action === 'signin' && req.method === 'POST') return handleSignin(req, res, project)
+      if (action === 'refresh' && req.method === 'POST') return handleRefresh(req, res, project)
+      if (action === 'signout' && req.method === 'POST') return handleSignout(req, res, project)
+      if (action === 'me' && req.method === 'GET') return handleMe(req, res, project)
+      return sendError(req, res, 405, 'Method not allowed')
+    }
+
+    match = url.pathname.match(/^\/v1\/data\/([^/]+)\/([^/]+)$/)
+    if (match) {
+      const project = validateProjectId(decodeURIComponent(match[1]))
+      const table = validateTable(decodeURIComponent(match[2]))
+      return handleDataCollection(req, res, url, project, table)
+    }
+
+    match = url.pathname.match(/^\/v1\/data\/([^/]+)\/([^/]+)\/([^/]+)$/)
+    if (match) {
+      const project = validateProjectId(decodeURIComponent(match[1]))
+      const table = validateTable(decodeURIComponent(match[2]))
+      const id = validateRowId(decodeURIComponent(match[3]))
+      return handleDataRow(req, res, project, table, id)
+    }
+
+    match = url.pathname.match(/^\/v1\/storage\/([^/]+)\/([^/]+)\/(.+)$/)
+    if (match) {
+      const project = validateProjectId(decodeURIComponent(match[1]))
+      const bucket = decodeURIComponent(match[2])
+      const objectPath = decodeURIComponent(match[3])
+      return handleStorage(req, res, project, bucket, objectPath)
+    }
+
+    return sendError(req, res, 404, 'Not found')
+  } catch (error) {
+    const status = Number.isInteger(error?.status) ? error.status : 500
+    if (status >= 500) console.error(error)
+    return sendError(req, res, status, status >= 500 ? 'Internal server error' : error.message)
+  }
+})
+
+server.on('upgrade', async (req, socket, head) => {
+  try {
+    const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`)
+    const match = url.pathname.match(/^\/v1\/realtime\/([^/]+)$/)
+    if (!match) throw Object.assign(new Error('Not found'), { status: 404 })
+    const project = validateProjectId(decodeURIComponent(match[1]))
+    const projectKey = url.searchParams.get('project_key') || ''
+    await projectForKey(project, projectKey)
+    const payload = verifyAccessToken(url.searchParams.get('access_token') || '')
+    if (payload.project !== project || payload.aud !== project) throw Object.assign(new Error('Token project mismatch'), { status: 403 })
+    const result = await pool.query('SELECT id, disabled FROM iz_core_users WHERE id=$1 AND project_id=$2', [payload.sub, project])
+    if (!result.rowCount || result.rows[0].disabled) throw Object.assign(new Error('User unavailable'), { status: 401 })
+    wss.handleUpgrade(req, socket, head, ws => {
+      ws.izakhonoContext = { project, userId: payload.sub }
+      wss.emit('connection', ws, req)
+    })
+  } catch (error) {
+    const status = Number.isInteger(error?.status) ? error.status : 401
+    socket.write(`HTTP/1.1 ${status} Unauthorized\r\nConnection: close\r\n\r\n`)
+    socket.destroy()
+  }
+})
+
+wss.on('connection', ws => {
+  ws.send(JSON.stringify({ type: 'ready', service: 'IZAKHONO Core', version: VERSION }))
+})
+
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(`IZAKHONO Core ${VERSION} listening on :${PORT}`)
+})
+
+async function shutdown(signal) {
+  console.log(`${signal}: shutting down IZAKHONO Core`)
+  for (const ws of wss.clients) ws.close(1001, 'server shutdown')
+  server.close(async () => {
+    await pool.end()
+    process.exit(0)
+  })
+  setTimeout(() => process.exit(1), 10000).unref()
+}
+
+process.on('SIGTERM', () => shutdown('SIGTERM'))
+process.on('SIGINT', () => shutdown('SIGINT'))
+ + values.length)
+    }
+    for (const [rawKey, value] of url.searchParams.entries()) {
+      if (['order', 'limit', 'offset'].includes(rawKey)) continue
+      const key = validateFilterKey(rawKey)
+      values.push(key)
+      const keyParam = values.length
+      values.push(String(value))
+      clauses.push(`data ->> ${keyParam} = ${values.length}`)
+    }
+    let orderSql = 'updated_at DESC'
+    const order = url.searchParams.get('order')
+    if (order) {
+      const match = order.match(/^([A-Za-z_][A-Za-z0-9_]{0,62})\.(asc|desc)$/)
+      if (!match) return sendError(req, res, 400, 'Invalid order expression')
+      const [, key, direction] = match
+      orderSql = key === 'id' ? `row_id ${direction.toUpperCase()}` : `(data ->> '${key}') ${direction.toUpperCase()}`
+    }
+    const limit = Math.min(200, Math.max(1, Number.parseInt(url.searchParams.get('limit') || '100', 10) || 100))
+    const offset = Math.min(100000, Math.max(0, Number.parseInt(url.searchParams.get('offset') || '0', 10) || 0))
+    values.push(limit)
+    const limitParam = values.length
+    values.push(offset)
+    const offsetParam = values.length
+    const result = await pool.query(
+      `SELECT row_id, data FROM iz_core_rows WHERE ${clauses.join(' AND ')} ORDER BY ${orderSql} LIMIT ${limitParam} OFFSET ${offsetParam}`,
+      values,
+    )
+    return sendJson(req, res, 200, result.rows.map(rowToJson))
+  }
+
+  if (req.method === 'POST') {
+    if (mode === 'owner_action_only') return sendError(req, res, 403, 'Direct writes are disabled for this table')
+    const body = await readJson(req)
+    if (!body.data || typeof body.data !== 'object' || Array.isArray(body.data)) return sendError(req, res, 400, 'data object required')
+    const payload = { ...body.data }
+    const id = payload.id ? validateRowId(payload.id) : randomUUID()
+    delete payload.id
+    try {
+      const result = await pool.query(
+        `INSERT INTO iz_core_rows(project_id, table_name, row_id, data, created_by)
+         VALUES($1,$2,$3,$4::jsonb,$5)
+         RETURNING row_id, data`,
+        [project, table, id, JSON.stringify(payload), user.id],
+      )
+      const row = rowToJson(result.rows[0])
+      await audit(project, user.id, 'data.insert', { table, id })
+      broadcast(project, mode, user.id, { type: 'row.changed', event: 'INSERT', table, row })
+      return sendJson(req, res, 201, row)
+    } catch (error) {
+      if (error?.code === '23505') return sendError(req, res, 409, 'Row already exists')
+      throw error
+    }
+  }
+
+  return sendError(req, res, 405, 'Method not allowed')
+}
+
+async function handleDataRow(req, res, project, table, id) {
+  const user = await requireUser(req, project)
+  const mode = await tablePolicy(project, table)
+  const ownerClause = isOwnerWriteMode(mode) ? ' AND created_by=$4' : ''
+  const baseValues = [project, table, id]
+
+  if (mode === 'owner_action_only' && (req.method === 'PATCH' || req.method === 'DELETE')) {
+    return sendError(req, res, 403, 'Direct writes are disabled for this table')
+  }
+
+  if (req.method === 'PATCH') {
+    const body = await readJson(req)
+    if (!body.data || typeof body.data !== 'object' || Array.isArray(body.data)) return sendError(req, res, 400, 'data object required')
+    const payload = { ...body.data }
+    delete payload.id
+    const values = [...baseValues, ...(isOwnerWriteMode(mode) ? [user.id] : []), JSON.stringify(payload)]
+    const jsonParam = values.length
+    const result = await pool.query(
+      `UPDATE iz_core_rows SET data=data || $${jsonParam}::jsonb, updated_at=now()
+       WHERE project_id=$1 AND table_name=$2 AND row_id=$3${ownerClause}
+       RETURNING row_id, data`,
+      values,
+    )
+    if (!result.rowCount) return sendError(req, res, 404, 'Row not found')
+    const row = rowToJson(result.rows[0])
+    await audit(project, user.id, 'data.update', { table, id })
+    broadcast(project, mode, user.id, { type: 'row.changed', event: 'UPDATE', table, row })
+    return sendJson(req, res, 200, row)
+  }
+
+  if (req.method === 'DELETE') {
+    const values = [...baseValues, ...(isOwnerWriteMode(mode) ? [user.id] : [])]
+    const result = await pool.query(
+      `DELETE FROM iz_core_rows WHERE project_id=$1 AND table_name=$2 AND row_id=$3${ownerClause} RETURNING row_id, data`,
+      values,
+    )
+    if (!result.rowCount) return sendError(req, res, 404, 'Row not found')
+    const row = rowToJson(result.rows[0])
+    await audit(project, user.id, 'data.delete', { table, id })
+    broadcast(project, mode, user.id, { type: 'row.changed', event: 'DELETE', table, row })
+    return sendJson(req, res, 200, row)
+  }
+
+  return sendError(req, res, 405, 'Method not allowed')
+}
+
+async function handleStorage(req, res, project, bucket, objectPath) {
+  const user = await requireUser(req, project)
+  const filePath = safeStoragePath(project, bucket, objectPath)
+
+  if (req.method === 'PUT') {
+    const existing = await pool.query(
+      'SELECT created_by FROM iz_core_storage_objects WHERE project_id=$1 AND bucket=$2 AND object_path=$3',
+      [project, bucket, objectPath],
+    )
+    if (existing.rowCount && existing.rows[0].created_by !== user.id) return sendError(req, res, 403, 'Storage object belongs to another user')
+    const content = await readBody(req, MAX_STORAGE_BYTES)
+    const digest = sha256(content)
+    const contentType = String(req.headers['content-type'] || 'application/octet-stream').slice(0, 200)
+    await mkdir(dirname(filePath), { recursive: true })
+    await writeFile(filePath, content, { mode: 0o600 })
+    await pool.query(
+      `INSERT INTO iz_core_storage_objects(project_id,bucket,object_path,created_by,content_type,byte_size,sha256)
+       VALUES($1,$2,$3,$4,$5,$6,$7)
+       ON CONFLICT(project_id,bucket,object_path)
+       DO UPDATE SET content_type=EXCLUDED.content_type, byte_size=EXCLUDED.byte_size, sha256=EXCLUDED.sha256, updated_at=now()`,
+      [project, bucket, objectPath, user.id, contentType, content.length, digest],
+    )
+    await audit(project, user.id, 'storage.put', { bucket, objectPath, bytes: content.length })
+    return sendJson(req, res, 201, { bucket, path: objectPath, size: content.length, sha256: digest })
+  }
+
+  if (req.method === 'GET') {
+    const result = await pool.query(
+      `SELECT content_type, byte_size, sha256 FROM iz_core_storage_objects
+       WHERE project_id=$1 AND bucket=$2 AND object_path=$3 AND created_by=$4`,
+      [project, bucket, objectPath, user.id],
+    )
+    if (!result.rowCount) return sendError(req, res, 404, 'Storage object not found')
+    let content
+    try { content = await readFile(filePath) } catch { return sendError(req, res, 404, 'Storage object file missing') }
+    const metadata = result.rows[0]
+    res.writeHead(200, {
+      'content-type': metadata.content_type,
+      'content-length': String(content.length),
+      'cache-control': 'private, no-store',
+      'x-content-type-options': 'nosniff',
+      'x-izakhono-sha256': metadata.sha256,
+    })
+    return res.end(content)
+  }
+
+  if (req.method === 'DELETE') {
+    const result = await pool.query(
+      `DELETE FROM iz_core_storage_objects
+       WHERE project_id=$1 AND bucket=$2 AND object_path=$3 AND created_by=$4
+       RETURNING object_path`,
+      [project, bucket, objectPath, user.id],
+    )
+    if (!result.rowCount) return sendError(req, res, 404, 'Storage object not found')
+    try { await unlink(filePath) } catch {}
+    await audit(project, user.id, 'storage.delete', { bucket, objectPath })
+    return sendJson(req, res, 200, { ok: true })
+  }
+
+  return sendError(req, res, 405, 'Method not allowed')
+}
+
+const server = http.createServer(async (req, res) => {
+  try {
+    if (!corsAllowed(req)) return sendError(req, res, 403, 'Origin not allowed')
+    if (req.method === 'OPTIONS') {
+      const headers = jsonHeaders(req)
+      headers['access-control-allow-methods'] = 'GET,POST,PATCH,PUT,DELETE,OPTIONS'
+      headers['access-control-allow-headers'] = 'Authorization,Content-Type,X-Project-Key'
+      headers['access-control-max-age'] = '600'
+      res.writeHead(204, headers)
+      return res.end()
+    }
+
+    const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`)
+
+    if (req.method === 'GET' && url.pathname === '/healthz') {
+      try {
+        await pool.query('SELECT 1')
+        return sendJson(req, res, 200, { ok: true, service: 'IZAKHONO Core', version: VERSION, storage: 'local-volume', database: 'postgresql' })
+      } catch {
+        return sendJson(req, res, 503, { ok: false, service: 'IZAKHONO Core', version: VERSION })
+      }
+    }
+
+    if (req.method === 'GET' && url.pathname === '/v1/capabilities') {
+      return sendJson(req, res, 200, {
+        service: 'IZAKHONO Core',
+        version: VERSION,
+        capabilities: {
+          passwordAuth: true,
+          refreshTokens: true,
+          projectIsolation: true,
+          ownerDefaultDataPolicy: true,
+          ownerPublicReadDataPolicy: true,
+          ownerActionOnlyDataPolicy: true,
+          projectSharedDataPolicy: true,
+          basicCrud: true,
+          storage: true,
+          realtime: true,
+          relationalSelect: false,
+          rpc: false,
+          edgeFunctions: false,
+          passwordRecovery: false,
+        },
+      })
+    }
+
+    if (req.method === 'POST' && url.pathname === '/v1/admin/projects') return handleAdminProject(req, res)
+
+    let match = url.pathname.match(/^\/v1\/auth\/([^/]+)\/(signup|signin|refresh|signout|me)$/)
+    if (match) {
+      const project = validateProjectId(decodeURIComponent(match[1]))
+      const action = match[2]
+      if (action === 'signup' && req.method === 'POST') return handleSignup(req, res, project)
+      if (action === 'signin' && req.method === 'POST') return handleSignin(req, res, project)
+      if (action === 'refresh' && req.method === 'POST') return handleRefresh(req, res, project)
+      if (action === 'signout' && req.method === 'POST') return handleSignout(req, res, project)
+      if (action === 'me' && req.method === 'GET') return handleMe(req, res, project)
+      return sendError(req, res, 405, 'Method not allowed')
+    }
+
+    match = url.pathname.match(/^\/v1\/data\/([^/]+)\/([^/]+)$/)
+    if (match) {
+      const project = validateProjectId(decodeURIComponent(match[1]))
+      const table = validateTable(decodeURIComponent(match[2]))
+      return handleDataCollection(req, res, url, project, table)
+    }
+
+    match = url.pathname.match(/^\/v1\/data\/([^/]+)\/([^/]+)\/([^/]+)$/)
+    if (match) {
+      const project = validateProjectId(decodeURIComponent(match[1]))
+      const table = validateTable(decodeURIComponent(match[2]))
+      const id = validateRowId(decodeURIComponent(match[3]))
+      return handleDataRow(req, res, project, table, id)
+    }
+
+    match = url.pathname.match(/^\/v1\/storage\/([^/]+)\/([^/]+)\/(.+)$/)
+    if (match) {
+      const project = validateProjectId(decodeURIComponent(match[1]))
+      const bucket = decodeURIComponent(match[2])
+      const objectPath = decodeURIComponent(match[3])
+      return handleStorage(req, res, project, bucket, objectPath)
+    }
+
+    return sendError(req, res, 404, 'Not found')
+  } catch (error) {
+    const status = Number.isInteger(error?.status) ? error.status : 500
+    if (status >= 500) console.error(error)
+    return sendError(req, res, status, status >= 500 ? 'Internal server error' : error.message)
+  }
+})
+
+server.on('upgrade', async (req, socket, head) => {
+  try {
+    const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`)
+    const match = url.pathname.match(/^\/v1\/realtime\/([^/]+)$/)
+    if (!match) throw Object.assign(new Error('Not found'), { status: 404 })
+    const project = validateProjectId(decodeURIComponent(match[1]))
+    const projectKey = url.searchParams.get('project_key') || ''
+    await projectForKey(project, projectKey)
+    const payload = verifyAccessToken(url.searchParams.get('access_token') || '')
+    if (payload.project !== project || payload.aud !== project) throw Object.assign(new Error('Token project mismatch'), { status: 403 })
+    const result = await pool.query('SELECT id, disabled FROM iz_core_users WHERE id=$1 AND project_id=$2', [payload.sub, project])
+    if (!result.rowCount || result.rows[0].disabled) throw Object.assign(new Error('User unavailable'), { status: 401 })
+    wss.handleUpgrade(req, socket, head, ws => {
+      ws.izakhonoContext = { project, userId: payload.sub }
+      wss.emit('connection', ws, req)
+    })
+  } catch (error) {
+    const status = Number.isInteger(error?.status) ? error.status : 401
+    socket.write(`HTTP/1.1 ${status} Unauthorized\r\nConnection: close\r\n\r\n`)
+    socket.destroy()
+  }
+})
+
+wss.on('connection', ws => {
+  ws.send(JSON.stringify({ type: 'ready', service: 'IZAKHONO Core', version: VERSION }))
+})
+
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(`IZAKHONO Core ${VERSION} listening on :${PORT}`)
+})
+
+async function shutdown(signal) {
+  console.log(`${signal}: shutting down IZAKHONO Core`)
+  for (const ws of wss.clients) ws.close(1001, 'server shutdown')
+  server.close(async () => {
+    await pool.end()
+    process.exit(0)
+  })
+  setTimeout(() => process.exit(1), 10000).unref()
+}
+
+process.on('SIGTERM', () => shutdown('SIGTERM'))
+process.on('SIGINT', () => shutdown('SIGINT'))
+ + keyParam + ' = 
+    }
+    let orderSql = 'updated_at DESC'
+    const order = url.searchParams.get('order')
+    if (order) {
+      const match = order.match(/^([A-Za-z_][A-Za-z0-9_]{0,62})\.(asc|desc)$/)
+      if (!match) return sendError(req, res, 400, 'Invalid order expression')
+      const [, key, direction] = match
+      orderSql = key === 'id' ? `row_id ${direction.toUpperCase()}` : `(data ->> '${key}') ${direction.toUpperCase()}`
+    }
+    const limit = Math.min(200, Math.max(1, Number.parseInt(url.searchParams.get('limit') || '100', 10) || 100))
+    const offset = Math.min(100000, Math.max(0, Number.parseInt(url.searchParams.get('offset') || '0', 10) || 0))
+    values.push(limit)
+    const limitParam = values.length
+    values.push(offset)
+    const offsetParam = values.length
+    const result = await pool.query(
+      `SELECT row_id, data FROM iz_core_rows WHERE ${clauses.join(' AND ')} ORDER BY ${orderSql} LIMIT ${limitParam} OFFSET ${offsetParam}`,
+      values,
+    )
+    return sendJson(req, res, 200, result.rows.map(rowToJson))
+  }
+
+  if (req.method === 'POST') {
+    if (mode === 'owner_action_only') return sendError(req, res, 403, 'Direct writes are disabled for this table')
+    const body = await readJson(req)
+    if (!body.data || typeof body.data !== 'object' || Array.isArray(body.data)) return sendError(req, res, 400, 'data object required')
+    const payload = { ...body.data }
+    const id = payload.id ? validateRowId(payload.id) : randomUUID()
+    delete payload.id
+    try {
+      const result = await pool.query(
+        `INSERT INTO iz_core_rows(project_id, table_name, row_id, data, created_by)
+         VALUES($1,$2,$3,$4::jsonb,$5)
+         RETURNING row_id, data`,
+        [project, table, id, JSON.stringify(payload), user.id],
+      )
+      const row = rowToJson(result.rows[0])
+      await audit(project, user.id, 'data.insert', { table, id })
+      broadcast(project, mode, user.id, { type: 'row.changed', event: 'INSERT', table, row })
+      return sendJson(req, res, 201, row)
+    } catch (error) {
+      if (error?.code === '23505') return sendError(req, res, 409, 'Row already exists')
+      throw error
+    }
+  }
+
+  return sendError(req, res, 405, 'Method not allowed')
+}
+
+async function handleDataRow(req, res, project, table, id) {
+  const user = await requireUser(req, project)
+  const mode = await tablePolicy(project, table)
+  const ownerClause = isOwnerWriteMode(mode) ? ' AND created_by=$4' : ''
+  const baseValues = [project, table, id]
+
+  if (mode === 'owner_action_only' && (req.method === 'PATCH' || req.method === 'DELETE')) {
+    return sendError(req, res, 403, 'Direct writes are disabled for this table')
+  }
+
+  if (req.method === 'PATCH') {
+    const body = await readJson(req)
+    if (!body.data || typeof body.data !== 'object' || Array.isArray(body.data)) return sendError(req, res, 400, 'data object required')
+    const payload = { ...body.data }
+    delete payload.id
+    const values = [...baseValues, ...(isOwnerWriteMode(mode) ? [user.id] : []), JSON.stringify(payload)]
+    const jsonParam = values.length
+    const result = await pool.query(
+      `UPDATE iz_core_rows SET data=data || $${jsonParam}::jsonb, updated_at=now()
+       WHERE project_id=$1 AND table_name=$2 AND row_id=$3${ownerClause}
+       RETURNING row_id, data`,
+      values,
+    )
+    if (!result.rowCount) return sendError(req, res, 404, 'Row not found')
+    const row = rowToJson(result.rows[0])
+    await audit(project, user.id, 'data.update', { table, id })
+    broadcast(project, mode, user.id, { type: 'row.changed', event: 'UPDATE', table, row })
+    return sendJson(req, res, 200, row)
+  }
+
+  if (req.method === 'DELETE') {
+    const values = [...baseValues, ...(isOwnerWriteMode(mode) ? [user.id] : [])]
+    const result = await pool.query(
+      `DELETE FROM iz_core_rows WHERE project_id=$1 AND table_name=$2 AND row_id=$3${ownerClause} RETURNING row_id, data`,
+      values,
+    )
+    if (!result.rowCount) return sendError(req, res, 404, 'Row not found')
+    const row = rowToJson(result.rows[0])
+    await audit(project, user.id, 'data.delete', { table, id })
+    broadcast(project, mode, user.id, { type: 'row.changed', event: 'DELETE', table, row })
+    return sendJson(req, res, 200, row)
+  }
+
+  return sendError(req, res, 405, 'Method not allowed')
+}
+
+async function handleStorage(req, res, project, bucket, objectPath) {
+  const user = await requireUser(req, project)
+  const filePath = safeStoragePath(project, bucket, objectPath)
+
+  if (req.method === 'PUT') {
+    const existing = await pool.query(
+      'SELECT created_by FROM iz_core_storage_objects WHERE project_id=$1 AND bucket=$2 AND object_path=$3',
+      [project, bucket, objectPath],
+    )
+    if (existing.rowCount && existing.rows[0].created_by !== user.id) return sendError(req, res, 403, 'Storage object belongs to another user')
+    const content = await readBody(req, MAX_STORAGE_BYTES)
+    const digest = sha256(content)
+    const contentType = String(req.headers['content-type'] || 'application/octet-stream').slice(0, 200)
+    await mkdir(dirname(filePath), { recursive: true })
+    await writeFile(filePath, content, { mode: 0o600 })
+    await pool.query(
+      `INSERT INTO iz_core_storage_objects(project_id,bucket,object_path,created_by,content_type,byte_size,sha256)
+       VALUES($1,$2,$3,$4,$5,$6,$7)
+       ON CONFLICT(project_id,bucket,object_path)
+       DO UPDATE SET content_type=EXCLUDED.content_type, byte_size=EXCLUDED.byte_size, sha256=EXCLUDED.sha256, updated_at=now()`,
+      [project, bucket, objectPath, user.id, contentType, content.length, digest],
+    )
+    await audit(project, user.id, 'storage.put', { bucket, objectPath, bytes: content.length })
+    return sendJson(req, res, 201, { bucket, path: objectPath, size: content.length, sha256: digest })
+  }
+
+  if (req.method === 'GET') {
+    const result = await pool.query(
+      `SELECT content_type, byte_size, sha256 FROM iz_core_storage_objects
+       WHERE project_id=$1 AND bucket=$2 AND object_path=$3 AND created_by=$4`,
+      [project, bucket, objectPath, user.id],
+    )
+    if (!result.rowCount) return sendError(req, res, 404, 'Storage object not found')
+    let content
+    try { content = await readFile(filePath) } catch { return sendError(req, res, 404, 'Storage object file missing') }
+    const metadata = result.rows[0]
+    res.writeHead(200, {
+      'content-type': metadata.content_type,
+      'content-length': String(content.length),
+      'cache-control': 'private, no-store',
+      'x-content-type-options': 'nosniff',
+      'x-izakhono-sha256': metadata.sha256,
+    })
+    return res.end(content)
+  }
+
+  if (req.method === 'DELETE') {
+    const result = await pool.query(
+      `DELETE FROM iz_core_storage_objects
+       WHERE project_id=$1 AND bucket=$2 AND object_path=$3 AND created_by=$4
+       RETURNING object_path`,
+      [project, bucket, objectPath, user.id],
+    )
+    if (!result.rowCount) return sendError(req, res, 404, 'Storage object not found')
+    try { await unlink(filePath) } catch {}
+    await audit(project, user.id, 'storage.delete', { bucket, objectPath })
+    return sendJson(req, res, 200, { ok: true })
+  }
+
+  return sendError(req, res, 405, 'Method not allowed')
+}
+
+const server = http.createServer(async (req, res) => {
+  try {
+    if (!corsAllowed(req)) return sendError(req, res, 403, 'Origin not allowed')
+    if (req.method === 'OPTIONS') {
+      const headers = jsonHeaders(req)
+      headers['access-control-allow-methods'] = 'GET,POST,PATCH,PUT,DELETE,OPTIONS'
+      headers['access-control-allow-headers'] = 'Authorization,Content-Type,X-Project-Key'
+      headers['access-control-max-age'] = '600'
+      res.writeHead(204, headers)
+      return res.end()
+    }
+
+    const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`)
+
+    if (req.method === 'GET' && url.pathname === '/healthz') {
+      try {
+        await pool.query('SELECT 1')
+        return sendJson(req, res, 200, { ok: true, service: 'IZAKHONO Core', version: VERSION, storage: 'local-volume', database: 'postgresql' })
+      } catch {
+        return sendJson(req, res, 503, { ok: false, service: 'IZAKHONO Core', version: VERSION })
+      }
+    }
+
+    if (req.method === 'GET' && url.pathname === '/v1/capabilities') {
+      return sendJson(req, res, 200, {
+        service: 'IZAKHONO Core',
+        version: VERSION,
+        capabilities: {
+          passwordAuth: true,
+          refreshTokens: true,
+          projectIsolation: true,
+          ownerDefaultDataPolicy: true,
+          ownerPublicReadDataPolicy: true,
+          ownerActionOnlyDataPolicy: true,
+          projectSharedDataPolicy: true,
+          basicCrud: true,
+          storage: true,
+          realtime: true,
+          relationalSelect: false,
+          rpc: false,
+          edgeFunctions: false,
+          passwordRecovery: false,
+        },
+      })
+    }
+
+    if (req.method === 'POST' && url.pathname === '/v1/admin/projects') return handleAdminProject(req, res)
+
+    let match = url.pathname.match(/^\/v1\/auth\/([^/]+)\/(signup|signin|refresh|signout|me)$/)
+    if (match) {
+      const project = validateProjectId(decodeURIComponent(match[1]))
+      const action = match[2]
+      if (action === 'signup' && req.method === 'POST') return handleSignup(req, res, project)
+      if (action === 'signin' && req.method === 'POST') return handleSignin(req, res, project)
+      if (action === 'refresh' && req.method === 'POST') return handleRefresh(req, res, project)
+      if (action === 'signout' && req.method === 'POST') return handleSignout(req, res, project)
+      if (action === 'me' && req.method === 'GET') return handleMe(req, res, project)
+      return sendError(req, res, 405, 'Method not allowed')
+    }
+
+    match = url.pathname.match(/^\/v1\/data\/([^/]+)\/([^/]+)$/)
+    if (match) {
+      const project = validateProjectId(decodeURIComponent(match[1]))
+      const table = validateTable(decodeURIComponent(match[2]))
+      return handleDataCollection(req, res, url, project, table)
+    }
+
+    match = url.pathname.match(/^\/v1\/data\/([^/]+)\/([^/]+)\/([^/]+)$/)
+    if (match) {
+      const project = validateProjectId(decodeURIComponent(match[1]))
+      const table = validateTable(decodeURIComponent(match[2]))
+      const id = validateRowId(decodeURIComponent(match[3]))
+      return handleDataRow(req, res, project, table, id)
+    }
+
+    match = url.pathname.match(/^\/v1\/storage\/([^/]+)\/([^/]+)\/(.+)$/)
+    if (match) {
+      const project = validateProjectId(decodeURIComponent(match[1]))
+      const bucket = decodeURIComponent(match[2])
+      const objectPath = decodeURIComponent(match[3])
+      return handleStorage(req, res, project, bucket, objectPath)
+    }
+
+    return sendError(req, res, 404, 'Not found')
+  } catch (error) {
+    const status = Number.isInteger(error?.status) ? error.status : 500
+    if (status >= 500) console.error(error)
+    return sendError(req, res, status, status >= 500 ? 'Internal server error' : error.message)
+  }
+})
+
+server.on('upgrade', async (req, socket, head) => {
+  try {
+    const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`)
+    const match = url.pathname.match(/^\/v1\/realtime\/([^/]+)$/)
+    if (!match) throw Object.assign(new Error('Not found'), { status: 404 })
+    const project = validateProjectId(decodeURIComponent(match[1]))
+    const projectKey = url.searchParams.get('project_key') || ''
+    await projectForKey(project, projectKey)
+    const payload = verifyAccessToken(url.searchParams.get('access_token') || '')
+    if (payload.project !== project || payload.aud !== project) throw Object.assign(new Error('Token project mismatch'), { status: 403 })
+    const result = await pool.query('SELECT id, disabled FROM iz_core_users WHERE id=$1 AND project_id=$2', [payload.sub, project])
+    if (!result.rowCount || result.rows[0].disabled) throw Object.assign(new Error('User unavailable'), { status: 401 })
+    wss.handleUpgrade(req, socket, head, ws => {
+      ws.izakhonoContext = { project, userId: payload.sub }
+      wss.emit('connection', ws, req)
+    })
+  } catch (error) {
+    const status = Number.isInteger(error?.status) ? error.status : 401
+    socket.write(`HTTP/1.1 ${status} Unauthorized\r\nConnection: close\r\n\r\n`)
+    socket.destroy()
+  }
+})
+
+wss.on('connection', ws => {
+  ws.send(JSON.stringify({ type: 'ready', service: 'IZAKHONO Core', version: VERSION }))
+})
+
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(`IZAKHONO Core ${VERSION} listening on :${PORT}`)
+})
+
+async function shutdown(signal) {
+  console.log(`${signal}: shutting down IZAKHONO Core`)
+  for (const ws of wss.clients) ws.close(1001, 'server shutdown')
+  server.close(async () => {
+    await pool.end()
+    process.exit(0)
+  })
+  setTimeout(() => process.exit(1), 10000).unref()
+}
+
+process.on('SIGTERM', () => shutdown('SIGTERM'))
+process.on('SIGINT', () => shutdown('SIGINT'))
+ + values.length)
+    }
+    for (const [rawKey, value] of url.searchParams.entries()) {
+      if (['order', 'limit', 'offset'].includes(rawKey)) continue
+      const key = validateFilterKey(rawKey)
+      values.push(key)
+      const keyParam = values.length
+      values.push(String(value))
+      clauses.push(`data ->> ${keyParam} = ${values.length}`)
+    }
+    let orderSql = 'updated_at DESC'
+    const order = url.searchParams.get('order')
+    if (order) {
+      const match = order.match(/^([A-Za-z_][A-Za-z0-9_]{0,62})\.(asc|desc)$/)
+      if (!match) return sendError(req, res, 400, 'Invalid order expression')
+      const [, key, direction] = match
+      orderSql = key === 'id' ? `row_id ${direction.toUpperCase()}` : `(data ->> '${key}') ${direction.toUpperCase()}`
+    }
+    const limit = Math.min(200, Math.max(1, Number.parseInt(url.searchParams.get('limit') || '100', 10) || 100))
+    const offset = Math.min(100000, Math.max(0, Number.parseInt(url.searchParams.get('offset') || '0', 10) || 0))
+    values.push(limit)
+    const limitParam = values.length
+    values.push(offset)
+    const offsetParam = values.length
+    const result = await pool.query(
+      `SELECT row_id, data FROM iz_core_rows WHERE ${clauses.join(' AND ')} ORDER BY ${orderSql} LIMIT ${limitParam} OFFSET ${offsetParam}`,
+      values,
+    )
+    return sendJson(req, res, 200, result.rows.map(rowToJson))
+  }
+
+  if (req.method === 'POST') {
+    if (mode === 'owner_action_only') return sendError(req, res, 403, 'Direct writes are disabled for this table')
+    const body = await readJson(req)
+    if (!body.data || typeof body.data !== 'object' || Array.isArray(body.data)) return sendError(req, res, 400, 'data object required')
+    const payload = { ...body.data }
+    const id = payload.id ? validateRowId(payload.id) : randomUUID()
+    delete payload.id
+    try {
+      const result = await pool.query(
+        `INSERT INTO iz_core_rows(project_id, table_name, row_id, data, created_by)
+         VALUES($1,$2,$3,$4::jsonb,$5)
+         RETURNING row_id, data`,
+        [project, table, id, JSON.stringify(payload), user.id],
+      )
+      const row = rowToJson(result.rows[0])
+      await audit(project, user.id, 'data.insert', { table, id })
+      broadcast(project, mode, user.id, { type: 'row.changed', event: 'INSERT', table, row })
+      return sendJson(req, res, 201, row)
+    } catch (error) {
+      if (error?.code === '23505') return sendError(req, res, 409, 'Row already exists')
+      throw error
+    }
+  }
+
+  return sendError(req, res, 405, 'Method not allowed')
+}
+
+async function handleDataRow(req, res, project, table, id) {
+  const user = await requireUser(req, project)
+  const mode = await tablePolicy(project, table)
+  const ownerClause = isOwnerWriteMode(mode) ? ' AND created_by=$4' : ''
+  const baseValues = [project, table, id]
+
+  if (mode === 'owner_action_only' && (req.method === 'PATCH' || req.method === 'DELETE')) {
+    return sendError(req, res, 403, 'Direct writes are disabled for this table')
+  }
+
+  if (req.method === 'PATCH') {
+    const body = await readJson(req)
+    if (!body.data || typeof body.data !== 'object' || Array.isArray(body.data)) return sendError(req, res, 400, 'data object required')
+    const payload = { ...body.data }
+    delete payload.id
+    const values = [...baseValues, ...(isOwnerWriteMode(mode) ? [user.id] : []), JSON.stringify(payload)]
+    const jsonParam = values.length
+    const result = await pool.query(
+      `UPDATE iz_core_rows SET data=data || $${jsonParam}::jsonb, updated_at=now()
+       WHERE project_id=$1 AND table_name=$2 AND row_id=$3${ownerClause}
+       RETURNING row_id, data`,
+      values,
+    )
+    if (!result.rowCount) return sendError(req, res, 404, 'Row not found')
+    const row = rowToJson(result.rows[0])
+    await audit(project, user.id, 'data.update', { table, id })
+    broadcast(project, mode, user.id, { type: 'row.changed', event: 'UPDATE', table, row })
+    return sendJson(req, res, 200, row)
+  }
+
+  if (req.method === 'DELETE') {
+    const values = [...baseValues, ...(isOwnerWriteMode(mode) ? [user.id] : [])]
+    const result = await pool.query(
+      `DELETE FROM iz_core_rows WHERE project_id=$1 AND table_name=$2 AND row_id=$3${ownerClause} RETURNING row_id, data`,
+      values,
+    )
+    if (!result.rowCount) return sendError(req, res, 404, 'Row not found')
+    const row = rowToJson(result.rows[0])
+    await audit(project, user.id, 'data.delete', { table, id })
+    broadcast(project, mode, user.id, { type: 'row.changed', event: 'DELETE', table, row })
+    return sendJson(req, res, 200, row)
+  }
+
+  return sendError(req, res, 405, 'Method not allowed')
+}
+
+async function handleStorage(req, res, project, bucket, objectPath) {
+  const user = await requireUser(req, project)
+  const filePath = safeStoragePath(project, bucket, objectPath)
+
+  if (req.method === 'PUT') {
+    const existing = await pool.query(
+      'SELECT created_by FROM iz_core_storage_objects WHERE project_id=$1 AND bucket=$2 AND object_path=$3',
+      [project, bucket, objectPath],
+    )
+    if (existing.rowCount && existing.rows[0].created_by !== user.id) return sendError(req, res, 403, 'Storage object belongs to another user')
+    const content = await readBody(req, MAX_STORAGE_BYTES)
+    const digest = sha256(content)
+    const contentType = String(req.headers['content-type'] || 'application/octet-stream').slice(0, 200)
+    await mkdir(dirname(filePath), { recursive: true })
+    await writeFile(filePath, content, { mode: 0o600 })
+    await pool.query(
+      `INSERT INTO iz_core_storage_objects(project_id,bucket,object_path,created_by,content_type,byte_size,sha256)
+       VALUES($1,$2,$3,$4,$5,$6,$7)
+       ON CONFLICT(project_id,bucket,object_path)
+       DO UPDATE SET content_type=EXCLUDED.content_type, byte_size=EXCLUDED.byte_size, sha256=EXCLUDED.sha256, updated_at=now()`,
+      [project, bucket, objectPath, user.id, contentType, content.length, digest],
+    )
+    await audit(project, user.id, 'storage.put', { bucket, objectPath, bytes: content.length })
+    return sendJson(req, res, 201, { bucket, path: objectPath, size: content.length, sha256: digest })
+  }
+
+  if (req.method === 'GET') {
+    const result = await pool.query(
+      `SELECT content_type, byte_size, sha256 FROM iz_core_storage_objects
+       WHERE project_id=$1 AND bucket=$2 AND object_path=$3 AND created_by=$4`,
+      [project, bucket, objectPath, user.id],
+    )
+    if (!result.rowCount) return sendError(req, res, 404, 'Storage object not found')
+    let content
+    try { content = await readFile(filePath) } catch { return sendError(req, res, 404, 'Storage object file missing') }
+    const metadata = result.rows[0]
+    res.writeHead(200, {
+      'content-type': metadata.content_type,
+      'content-length': String(content.length),
+      'cache-control': 'private, no-store',
+      'x-content-type-options': 'nosniff',
+      'x-izakhono-sha256': metadata.sha256,
+    })
+    return res.end(content)
+  }
+
+  if (req.method === 'DELETE') {
+    const result = await pool.query(
+      `DELETE FROM iz_core_storage_objects
+       WHERE project_id=$1 AND bucket=$2 AND object_path=$3 AND created_by=$4
+       RETURNING object_path`,
+      [project, bucket, objectPath, user.id],
+    )
+    if (!result.rowCount) return sendError(req, res, 404, 'Storage object not found')
+    try { await unlink(filePath) } catch {}
+    await audit(project, user.id, 'storage.delete', { bucket, objectPath })
+    return sendJson(req, res, 200, { ok: true })
+  }
+
+  return sendError(req, res, 405, 'Method not allowed')
+}
+
+const server = http.createServer(async (req, res) => {
+  try {
+    if (!corsAllowed(req)) return sendError(req, res, 403, 'Origin not allowed')
+    if (req.method === 'OPTIONS') {
+      const headers = jsonHeaders(req)
+      headers['access-control-allow-methods'] = 'GET,POST,PATCH,PUT,DELETE,OPTIONS'
+      headers['access-control-allow-headers'] = 'Authorization,Content-Type,X-Project-Key'
+      headers['access-control-max-age'] = '600'
+      res.writeHead(204, headers)
+      return res.end()
+    }
+
+    const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`)
+
+    if (req.method === 'GET' && url.pathname === '/healthz') {
+      try {
+        await pool.query('SELECT 1')
+        return sendJson(req, res, 200, { ok: true, service: 'IZAKHONO Core', version: VERSION, storage: 'local-volume', database: 'postgresql' })
+      } catch {
+        return sendJson(req, res, 503, { ok: false, service: 'IZAKHONO Core', version: VERSION })
+      }
+    }
+
+    if (req.method === 'GET' && url.pathname === '/v1/capabilities') {
+      return sendJson(req, res, 200, {
+        service: 'IZAKHONO Core',
+        version: VERSION,
+        capabilities: {
+          passwordAuth: true,
+          refreshTokens: true,
+          projectIsolation: true,
+          ownerDefaultDataPolicy: true,
+          ownerPublicReadDataPolicy: true,
+          ownerActionOnlyDataPolicy: true,
+          projectSharedDataPolicy: true,
+          basicCrud: true,
+          storage: true,
+          realtime: true,
+          relationalSelect: false,
+          rpc: false,
+          edgeFunctions: false,
+          passwordRecovery: false,
+        },
+      })
+    }
+
+    if (req.method === 'POST' && url.pathname === '/v1/admin/projects') return handleAdminProject(req, res)
+
+    let match = url.pathname.match(/^\/v1\/auth\/([^/]+)\/(signup|signin|refresh|signout|me)$/)
+    if (match) {
+      const project = validateProjectId(decodeURIComponent(match[1]))
+      const action = match[2]
+      if (action === 'signup' && req.method === 'POST') return handleSignup(req, res, project)
+      if (action === 'signin' && req.method === 'POST') return handleSignin(req, res, project)
+      if (action === 'refresh' && req.method === 'POST') return handleRefresh(req, res, project)
+      if (action === 'signout' && req.method === 'POST') return handleSignout(req, res, project)
+      if (action === 'me' && req.method === 'GET') return handleMe(req, res, project)
+      return sendError(req, res, 405, 'Method not allowed')
+    }
+
+    match = url.pathname.match(/^\/v1\/data\/([^/]+)\/([^/]+)$/)
+    if (match) {
+      const project = validateProjectId(decodeURIComponent(match[1]))
+      const table = validateTable(decodeURIComponent(match[2]))
+      return handleDataCollection(req, res, url, project, table)
+    }
+
+    match = url.pathname.match(/^\/v1\/data\/([^/]+)\/([^/]+)\/([^/]+)$/)
+    if (match) {
+      const project = validateProjectId(decodeURIComponent(match[1]))
+      const table = validateTable(decodeURIComponent(match[2]))
+      const id = validateRowId(decodeURIComponent(match[3]))
+      return handleDataRow(req, res, project, table, id)
+    }
+
+    match = url.pathname.match(/^\/v1\/storage\/([^/]+)\/([^/]+)\/(.+)$/)
+    if (match) {
+      const project = validateProjectId(decodeURIComponent(match[1]))
+      const bucket = decodeURIComponent(match[2])
+      const objectPath = decodeURIComponent(match[3])
+      return handleStorage(req, res, project, bucket, objectPath)
+    }
+
+    return sendError(req, res, 404, 'Not found')
+  } catch (error) {
+    const status = Number.isInteger(error?.status) ? error.status : 500
+    if (status >= 500) console.error(error)
+    return sendError(req, res, status, status >= 500 ? 'Internal server error' : error.message)
+  }
+})
+
+server.on('upgrade', async (req, socket, head) => {
+  try {
+    const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`)
+    const match = url.pathname.match(/^\/v1\/realtime\/([^/]+)$/)
+    if (!match) throw Object.assign(new Error('Not found'), { status: 404 })
+    const project = validateProjectId(decodeURIComponent(match[1]))
+    const projectKey = url.searchParams.get('project_key') || ''
+    await projectForKey(project, projectKey)
+    const payload = verifyAccessToken(url.searchParams.get('access_token') || '')
+    if (payload.project !== project || payload.aud !== project) throw Object.assign(new Error('Token project mismatch'), { status: 403 })
+    const result = await pool.query('SELECT id, disabled FROM iz_core_users WHERE id=$1 AND project_id=$2', [payload.sub, project])
+    if (!result.rowCount || result.rows[0].disabled) throw Object.assign(new Error('User unavailable'), { status: 401 })
+    wss.handleUpgrade(req, socket, head, ws => {
+      ws.izakhonoContext = { project, userId: payload.sub }
+      wss.emit('connection', ws, req)
+    })
+  } catch (error) {
+    const status = Number.isInteger(error?.status) ? error.status : 401
+    socket.write(`HTTP/1.1 ${status} Unauthorized\r\nConnection: close\r\n\r\n`)
+    socket.destroy()
+  }
+})
+
+wss.on('connection', ws => {
+  ws.send(JSON.stringify({ type: 'ready', service: 'IZAKHONO Core', version: VERSION }))
+})
+
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(`IZAKHONO Core ${VERSION} listening on :${PORT}`)
+})
+
+async function shutdown(signal) {
+  console.log(`${signal}: shutting down IZAKHONO Core`)
+  for (const ws of wss.clients) ws.close(1001, 'server shutdown')
+  server.close(async () => {
+    await pool.end()
+    process.exit(0)
+  })
+  setTimeout(() => process.exit(1), 10000).unref()
+}
+
+process.on('SIGTERM', () => shutdown('SIGTERM'))
+process.on('SIGINT', () => shutdown('SIGINT'))
+ + values.length)
+    }
+    let orderSql = 'updated_at DESC'
+    const order = url.searchParams.get('order')
+    if (order) {
+      const match = order.match(/^([A-Za-z_][A-Za-z0-9_]{0,62})\.(asc|desc)$/)
+      if (!match) return sendError(req, res, 400, 'Invalid order expression')
+      const [, key, direction] = match
+      orderSql = key === 'id' ? `row_id ${direction.toUpperCase()}` : `(data ->> '${key}') ${direction.toUpperCase()}`
+    }
+    const limit = Math.min(200, Math.max(1, Number.parseInt(url.searchParams.get('limit') || '100', 10) || 100))
+    const offset = Math.min(100000, Math.max(0, Number.parseInt(url.searchParams.get('offset') || '0', 10) || 0))
+    values.push(limit)
+    const limitParam = values.length
+    values.push(offset)
+    const offsetParam = values.length
+    const result = await pool.query(
+      `SELECT row_id, data FROM iz_core_rows WHERE ${clauses.join(' AND ')} ORDER BY ${orderSql} LIMIT ${limitParam} OFFSET ${offsetParam}`,
+      values,
+    )
+    return sendJson(req, res, 200, result.rows.map(rowToJson))
+  }
+
+  if (req.method === 'POST') {
+    if (mode === 'owner_action_only') return sendError(req, res, 403, 'Direct writes are disabled for this table')
+    const body = await readJson(req)
+    if (!body.data || typeof body.data !== 'object' || Array.isArray(body.data)) return sendError(req, res, 400, 'data object required')
+    const payload = { ...body.data }
+    const id = payload.id ? validateRowId(payload.id) : randomUUID()
+    delete payload.id
+    try {
+      const result = await pool.query(
+        `INSERT INTO iz_core_rows(project_id, table_name, row_id, data, created_by)
+         VALUES($1,$2,$3,$4::jsonb,$5)
+         RETURNING row_id, data`,
+        [project, table, id, JSON.stringify(payload), user.id],
+      )
+      const row = rowToJson(result.rows[0])
+      await audit(project, user.id, 'data.insert', { table, id })
+      broadcast(project, mode, user.id, { type: 'row.changed', event: 'INSERT', table, row })
+      return sendJson(req, res, 201, row)
+    } catch (error) {
+      if (error?.code === '23505') return sendError(req, res, 409, 'Row already exists')
+      throw error
+    }
+  }
+
+  return sendError(req, res, 405, 'Method not allowed')
+}
+
+async function handleDataRow(req, res, project, table, id) {
+  const user = await requireUser(req, project)
+  const mode = await tablePolicy(project, table)
+  const ownerClause = isOwnerWriteMode(mode) ? ' AND created_by=$4' : ''
+  const baseValues = [project, table, id]
+
+  if (mode === 'owner_action_only' && (req.method === 'PATCH' || req.method === 'DELETE')) {
+    return sendError(req, res, 403, 'Direct writes are disabled for this table')
+  }
+
+  if (req.method === 'PATCH') {
+    const body = await readJson(req)
+    if (!body.data || typeof body.data !== 'object' || Array.isArray(body.data)) return sendError(req, res, 400, 'data object required')
+    const payload = { ...body.data }
+    delete payload.id
+    const values = [...baseValues, ...(isOwnerWriteMode(mode) ? [user.id] : []), JSON.stringify(payload)]
+    const jsonParam = values.length
+    const result = await pool.query(
+      `UPDATE iz_core_rows SET data=data || $${jsonParam}::jsonb, updated_at=now()
+       WHERE project_id=$1 AND table_name=$2 AND row_id=$3${ownerClause}
+       RETURNING row_id, data`,
+      values,
+    )
+    if (!result.rowCount) return sendError(req, res, 404, 'Row not found')
+    const row = rowToJson(result.rows[0])
+    await audit(project, user.id, 'data.update', { table, id })
+    broadcast(project, mode, user.id, { type: 'row.changed', event: 'UPDATE', table, row })
+    return sendJson(req, res, 200, row)
+  }
+
+  if (req.method === 'DELETE') {
+    const values = [...baseValues, ...(isOwnerWriteMode(mode) ? [user.id] : [])]
+    const result = await pool.query(
+      `DELETE FROM iz_core_rows WHERE project_id=$1 AND table_name=$2 AND row_id=$3${ownerClause} RETURNING row_id, data`,
+      values,
+    )
+    if (!result.rowCount) return sendError(req, res, 404, 'Row not found')
+    const row = rowToJson(result.rows[0])
+    await audit(project, user.id, 'data.delete', { table, id })
+    broadcast(project, mode, user.id, { type: 'row.changed', event: 'DELETE', table, row })
+    return sendJson(req, res, 200, row)
+  }
+
+  return sendError(req, res, 405, 'Method not allowed')
+}
+
+async function handleStorage(req, res, project, bucket, objectPath) {
+  const user = await requireUser(req, project)
+  const filePath = safeStoragePath(project, bucket, objectPath)
+
+  if (req.method === 'PUT') {
+    const existing = await pool.query(
+      'SELECT created_by FROM iz_core_storage_objects WHERE project_id=$1 AND bucket=$2 AND object_path=$3',
+      [project, bucket, objectPath],
+    )
+    if (existing.rowCount && existing.rows[0].created_by !== user.id) return sendError(req, res, 403, 'Storage object belongs to another user')
+    const content = await readBody(req, MAX_STORAGE_BYTES)
+    const digest = sha256(content)
+    const contentType = String(req.headers['content-type'] || 'application/octet-stream').slice(0, 200)
+    await mkdir(dirname(filePath), { recursive: true })
+    await writeFile(filePath, content, { mode: 0o600 })
+    await pool.query(
+      `INSERT INTO iz_core_storage_objects(project_id,bucket,object_path,created_by,content_type,byte_size,sha256)
+       VALUES($1,$2,$3,$4,$5,$6,$7)
+       ON CONFLICT(project_id,bucket,object_path)
+       DO UPDATE SET content_type=EXCLUDED.content_type, byte_size=EXCLUDED.byte_size, sha256=EXCLUDED.sha256, updated_at=now()`,
+      [project, bucket, objectPath, user.id, contentType, content.length, digest],
+    )
+    await audit(project, user.id, 'storage.put', { bucket, objectPath, bytes: content.length })
+    return sendJson(req, res, 201, { bucket, path: objectPath, size: content.length, sha256: digest })
+  }
+
+  if (req.method === 'GET') {
+    const result = await pool.query(
+      `SELECT content_type, byte_size, sha256 FROM iz_core_storage_objects
+       WHERE project_id=$1 AND bucket=$2 AND object_path=$3 AND created_by=$4`,
+      [project, bucket, objectPath, user.id],
+    )
+    if (!result.rowCount) return sendError(req, res, 404, 'Storage object not found')
+    let content
+    try { content = await readFile(filePath) } catch { return sendError(req, res, 404, 'Storage object file missing') }
+    const metadata = result.rows[0]
+    res.writeHead(200, {
+      'content-type': metadata.content_type,
+      'content-length': String(content.length),
+      'cache-control': 'private, no-store',
+      'x-content-type-options': 'nosniff',
+      'x-izakhono-sha256': metadata.sha256,
+    })
+    return res.end(content)
+  }
+
+  if (req.method === 'DELETE') {
+    const result = await pool.query(
+      `DELETE FROM iz_core_storage_objects
+       WHERE project_id=$1 AND bucket=$2 AND object_path=$3 AND created_by=$4
+       RETURNING object_path`,
+      [project, bucket, objectPath, user.id],
+    )
+    if (!result.rowCount) return sendError(req, res, 404, 'Storage object not found')
+    try { await unlink(filePath) } catch {}
+    await audit(project, user.id, 'storage.delete', { bucket, objectPath })
+    return sendJson(req, res, 200, { ok: true })
+  }
+
+  return sendError(req, res, 405, 'Method not allowed')
+}
+
+const server = http.createServer(async (req, res) => {
+  try {
+    if (!corsAllowed(req)) return sendError(req, res, 403, 'Origin not allowed')
+    if (req.method === 'OPTIONS') {
+      const headers = jsonHeaders(req)
+      headers['access-control-allow-methods'] = 'GET,POST,PATCH,PUT,DELETE,OPTIONS'
+      headers['access-control-allow-headers'] = 'Authorization,Content-Type,X-Project-Key'
+      headers['access-control-max-age'] = '600'
+      res.writeHead(204, headers)
+      return res.end()
+    }
+
+    const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`)
+
+    if (req.method === 'GET' && url.pathname === '/healthz') {
+      try {
+        await pool.query('SELECT 1')
+        return sendJson(req, res, 200, { ok: true, service: 'IZAKHONO Core', version: VERSION, storage: 'local-volume', database: 'postgresql' })
+      } catch {
+        return sendJson(req, res, 503, { ok: false, service: 'IZAKHONO Core', version: VERSION })
+      }
+    }
+
+    if (req.method === 'GET' && url.pathname === '/v1/capabilities') {
+      return sendJson(req, res, 200, {
+        service: 'IZAKHONO Core',
+        version: VERSION,
+        capabilities: {
+          passwordAuth: true,
+          refreshTokens: true,
+          projectIsolation: true,
+          ownerDefaultDataPolicy: true,
+          ownerPublicReadDataPolicy: true,
+          ownerActionOnlyDataPolicy: true,
+          projectSharedDataPolicy: true,
+          basicCrud: true,
+          storage: true,
+          realtime: true,
+          relationalSelect: false,
+          rpc: false,
+          edgeFunctions: false,
+          passwordRecovery: false,
+        },
+      })
+    }
+
+    if (req.method === 'POST' && url.pathname === '/v1/admin/projects') return handleAdminProject(req, res)
+
+    let match = url.pathname.match(/^\/v1\/auth\/([^/]+)\/(signup|signin|refresh|signout|me)$/)
+    if (match) {
+      const project = validateProjectId(decodeURIComponent(match[1]))
+      const action = match[2]
+      if (action === 'signup' && req.method === 'POST') return handleSignup(req, res, project)
+      if (action === 'signin' && req.method === 'POST') return handleSignin(req, res, project)
+      if (action === 'refresh' && req.method === 'POST') return handleRefresh(req, res, project)
+      if (action === 'signout' && req.method === 'POST') return handleSignout(req, res, project)
+      if (action === 'me' && req.method === 'GET') return handleMe(req, res, project)
+      return sendError(req, res, 405, 'Method not allowed')
+    }
+
+    match = url.pathname.match(/^\/v1\/data\/([^/]+)\/([^/]+)$/)
+    if (match) {
+      const project = validateProjectId(decodeURIComponent(match[1]))
+      const table = validateTable(decodeURIComponent(match[2]))
+      return handleDataCollection(req, res, url, project, table)
+    }
+
+    match = url.pathname.match(/^\/v1\/data\/([^/]+)\/([^/]+)\/([^/]+)$/)
+    if (match) {
+      const project = validateProjectId(decodeURIComponent(match[1]))
+      const table = validateTable(decodeURIComponent(match[2]))
+      const id = validateRowId(decodeURIComponent(match[3]))
+      return handleDataRow(req, res, project, table, id)
+    }
+
+    match = url.pathname.match(/^\/v1\/storage\/([^/]+)\/([^/]+)\/(.+)$/)
+    if (match) {
+      const project = validateProjectId(decodeURIComponent(match[1]))
+      const bucket = decodeURIComponent(match[2])
+      const objectPath = decodeURIComponent(match[3])
+      return handleStorage(req, res, project, bucket, objectPath)
+    }
+
+    return sendError(req, res, 404, 'Not found')
+  } catch (error) {
+    const status = Number.isInteger(error?.status) ? error.status : 500
+    if (status >= 500) console.error(error)
+    return sendError(req, res, status, status >= 500 ? 'Internal server error' : error.message)
+  }
+})
+
+server.on('upgrade', async (req, socket, head) => {
+  try {
+    const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`)
+    const match = url.pathname.match(/^\/v1\/realtime\/([^/]+)$/)
+    if (!match) throw Object.assign(new Error('Not found'), { status: 404 })
+    const project = validateProjectId(decodeURIComponent(match[1]))
+    const projectKey = url.searchParams.get('project_key') || ''
+    await projectForKey(project, projectKey)
+    const payload = verifyAccessToken(url.searchParams.get('access_token') || '')
+    if (payload.project !== project || payload.aud !== project) throw Object.assign(new Error('Token project mismatch'), { status: 403 })
+    const result = await pool.query('SELECT id, disabled FROM iz_core_users WHERE id=$1 AND project_id=$2', [payload.sub, project])
+    if (!result.rowCount || result.rows[0].disabled) throw Object.assign(new Error('User unavailable'), { status: 401 })
+    wss.handleUpgrade(req, socket, head, ws => {
+      ws.izakhonoContext = { project, userId: payload.sub }
+      wss.emit('connection', ws, req)
+    })
+  } catch (error) {
+    const status = Number.isInteger(error?.status) ? error.status : 401
+    socket.write(`HTTP/1.1 ${status} Unauthorized\r\nConnection: close\r\n\r\n`)
+    socket.destroy()
+  }
+})
+
+wss.on('connection', ws => {
+  ws.send(JSON.stringify({ type: 'ready', service: 'IZAKHONO Core', version: VERSION }))
+})
+
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(`IZAKHONO Core ${VERSION} listening on :${PORT}`)
+})
+
+async function shutdown(signal) {
+  console.log(`${signal}: shutting down IZAKHONO Core`)
+  for (const ws of wss.clients) ws.close(1001, 'server shutdown')
+  server.close(async () => {
+    await pool.end()
+    process.exit(0)
+  })
+  setTimeout(() => process.exit(1), 10000).unref()
+}
+
+process.on('SIGTERM', () => shutdown('SIGTERM'))
+process.on('SIGINT', () => shutdown('SIGINT'))
+ + values.length)
+    }
+    for (const [rawKey, value] of url.searchParams.entries()) {
+      if (['order', 'limit', 'offset'].includes(rawKey)) continue
+      const key = validateFilterKey(rawKey)
+      values.push(key)
+      const keyParam = values.length
+      values.push(String(value))
+      clauses.push(`data ->> ${keyParam} = ${values.length}`)
+    }
+    let orderSql = 'updated_at DESC'
+    const order = url.searchParams.get('order')
+    if (order) {
+      const match = order.match(/^([A-Za-z_][A-Za-z0-9_]{0,62})\.(asc|desc)$/)
+      if (!match) return sendError(req, res, 400, 'Invalid order expression')
+      const [, key, direction] = match
+      orderSql = key === 'id' ? `row_id ${direction.toUpperCase()}` : `(data ->> '${key}') ${direction.toUpperCase()}`
+    }
+    const limit = Math.min(200, Math.max(1, Number.parseInt(url.searchParams.get('limit') || '100', 10) || 100))
+    const offset = Math.min(100000, Math.max(0, Number.parseInt(url.searchParams.get('offset') || '0', 10) || 0))
+    values.push(limit)
+    const limitParam = values.length
+    values.push(offset)
+    const offsetParam = values.length
+    const result = await pool.query(
+      `SELECT row_id, data FROM iz_core_rows WHERE ${clauses.join(' AND ')} ORDER BY ${orderSql} LIMIT ${limitParam} OFFSET ${offsetParam}`,
+      values,
+    )
+    return sendJson(req, res, 200, result.rows.map(rowToJson))
+  }
+
+  if (req.method === 'POST') {
+    if (mode === 'owner_action_only') return sendError(req, res, 403, 'Direct writes are disabled for this table')
+    const body = await readJson(req)
+    if (!body.data || typeof body.data !== 'object' || Array.isArray(body.data)) return sendError(req, res, 400, 'data object required')
+    const payload = { ...body.data }
+    const id = payload.id ? validateRowId(payload.id) : randomUUID()
+    delete payload.id
+    try {
+      const result = await pool.query(
+        `INSERT INTO iz_core_rows(project_id, table_name, row_id, data, created_by)
+         VALUES($1,$2,$3,$4::jsonb,$5)
+         RETURNING row_id, data`,
+        [project, table, id, JSON.stringify(payload), user.id],
+      )
+      const row = rowToJson(result.rows[0])
+      await audit(project, user.id, 'data.insert', { table, id })
+      broadcast(project, mode, user.id, { type: 'row.changed', event: 'INSERT', table, row })
+      return sendJson(req, res, 201, row)
+    } catch (error) {
+      if (error?.code === '23505') return sendError(req, res, 409, 'Row already exists')
+      throw error
+    }
+  }
+
+  return sendError(req, res, 405, 'Method not allowed')
+}
+
+async function handleDataRow(req, res, project, table, id) {
+  const user = await requireUser(req, project)
+  const mode = await tablePolicy(project, table)
+  const ownerClause = isOwnerWriteMode(mode) ? ' AND created_by=$4' : ''
+  const baseValues = [project, table, id]
+
+  if (mode === 'owner_action_only' && (req.method === 'PATCH' || req.method === 'DELETE')) {
+    return sendError(req, res, 403, 'Direct writes are disabled for this table')
+  }
+
+  if (req.method === 'PATCH') {
+    const body = await readJson(req)
+    if (!body.data || typeof body.data !== 'object' || Array.isArray(body.data)) return sendError(req, res, 400, 'data object required')
+    const payload = { ...body.data }
+    delete payload.id
+    const values = [...baseValues, ...(isOwnerWriteMode(mode) ? [user.id] : []), JSON.stringify(payload)]
+    const jsonParam = values.length
+    const result = await pool.query(
+      `UPDATE iz_core_rows SET data=data || $${jsonParam}::jsonb, updated_at=now()
+       WHERE project_id=$1 AND table_name=$2 AND row_id=$3${ownerClause}
+       RETURNING row_id, data`,
+      values,
+    )
+    if (!result.rowCount) return sendError(req, res, 404, 'Row not found')
+    const row = rowToJson(result.rows[0])
+    await audit(project, user.id, 'data.update', { table, id })
+    broadcast(project, mode, user.id, { type: 'row.changed', event: 'UPDATE', table, row })
+    return sendJson(req, res, 200, row)
+  }
+
+  if (req.method === 'DELETE') {
+    const values = [...baseValues, ...(isOwnerWriteMode(mode) ? [user.id] : [])]
+    const result = await pool.query(
+      `DELETE FROM iz_core_rows WHERE project_id=$1 AND table_name=$2 AND row_id=$3${ownerClause} RETURNING row_id, data`,
+      values,
+    )
+    if (!result.rowCount) return sendError(req, res, 404, 'Row not found')
+    const row = rowToJson(result.rows[0])
+    await audit(project, user.id, 'data.delete', { table, id })
+    broadcast(project, mode, user.id, { type: 'row.changed', event: 'DELETE', table, row })
+    return sendJson(req, res, 200, row)
+  }
+
+  return sendError(req, res, 405, 'Method not allowed')
+}
+
+async function handleStorage(req, res, project, bucket, objectPath) {
+  const user = await requireUser(req, project)
+  const filePath = safeStoragePath(project, bucket, objectPath)
+
+  if (req.method === 'PUT') {
+    const existing = await pool.query(
+      'SELECT created_by FROM iz_core_storage_objects WHERE project_id=$1 AND bucket=$2 AND object_path=$3',
+      [project, bucket, objectPath],
+    )
+    if (existing.rowCount && existing.rows[0].created_by !== user.id) return sendError(req, res, 403, 'Storage object belongs to another user')
+    const content = await readBody(req, MAX_STORAGE_BYTES)
+    const digest = sha256(content)
+    const contentType = String(req.headers['content-type'] || 'application/octet-stream').slice(0, 200)
+    await mkdir(dirname(filePath), { recursive: true })
+    await writeFile(filePath, content, { mode: 0o600 })
+    await pool.query(
+      `INSERT INTO iz_core_storage_objects(project_id,bucket,object_path,created_by,content_type,byte_size,sha256)
+       VALUES($1,$2,$3,$4,$5,$6,$7)
+       ON CONFLICT(project_id,bucket,object_path)
+       DO UPDATE SET content_type=EXCLUDED.content_type, byte_size=EXCLUDED.byte_size, sha256=EXCLUDED.sha256, updated_at=now()`,
+      [project, bucket, objectPath, user.id, contentType, content.length, digest],
+    )
+    await audit(project, user.id, 'storage.put', { bucket, objectPath, bytes: content.length })
+    return sendJson(req, res, 201, { bucket, path: objectPath, size: content.length, sha256: digest })
+  }
+
+  if (req.method === 'GET') {
+    const result = await pool.query(
+      `SELECT content_type, byte_size, sha256 FROM iz_core_storage_objects
+       WHERE project_id=$1 AND bucket=$2 AND object_path=$3 AND created_by=$4`,
+      [project, bucket, objectPath, user.id],
+    )
+    if (!result.rowCount) return sendError(req, res, 404, 'Storage object not found')
+    let content
+    try { content = await readFile(filePath) } catch { return sendError(req, res, 404, 'Storage object file missing') }
+    const metadata = result.rows[0]
+    res.writeHead(200, {
+      'content-type': metadata.content_type,
+      'content-length': String(content.length),
+      'cache-control': 'private, no-store',
+      'x-content-type-options': 'nosniff',
+      'x-izakhono-sha256': metadata.sha256,
+    })
+    return res.end(content)
+  }
+
+  if (req.method === 'DELETE') {
+    const result = await pool.query(
+      `DELETE FROM iz_core_storage_objects
+       WHERE project_id=$1 AND bucket=$2 AND object_path=$3 AND created_by=$4
+       RETURNING object_path`,
+      [project, bucket, objectPath, user.id],
+    )
+    if (!result.rowCount) return sendError(req, res, 404, 'Storage object not found')
+    try { await unlink(filePath) } catch {}
+    await audit(project, user.id, 'storage.delete', { bucket, objectPath })
+    return sendJson(req, res, 200, { ok: true })
+  }
+
+  return sendError(req, res, 405, 'Method not allowed')
+}
+
+const server = http.createServer(async (req, res) => {
+  try {
+    if (!corsAllowed(req)) return sendError(req, res, 403, 'Origin not allowed')
+    if (req.method === 'OPTIONS') {
+      const headers = jsonHeaders(req)
+      headers['access-control-allow-methods'] = 'GET,POST,PATCH,PUT,DELETE,OPTIONS'
+      headers['access-control-allow-headers'] = 'Authorization,Content-Type,X-Project-Key'
+      headers['access-control-max-age'] = '600'
+      res.writeHead(204, headers)
+      return res.end()
+    }
+
+    const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`)
+
+    if (req.method === 'GET' && url.pathname === '/healthz') {
+      try {
+        await pool.query('SELECT 1')
+        return sendJson(req, res, 200, { ok: true, service: 'IZAKHONO Core', version: VERSION, storage: 'local-volume', database: 'postgresql' })
+      } catch {
+        return sendJson(req, res, 503, { ok: false, service: 'IZAKHONO Core', version: VERSION })
+      }
+    }
+
+    if (req.method === 'GET' && url.pathname === '/v1/capabilities') {
+      return sendJson(req, res, 200, {
+        service: 'IZAKHONO Core',
+        version: VERSION,
+        capabilities: {
+          passwordAuth: true,
+          refreshTokens: true,
+          projectIsolation: true,
+          ownerDefaultDataPolicy: true,
+          ownerPublicReadDataPolicy: true,
+          ownerActionOnlyDataPolicy: true,
+          projectSharedDataPolicy: true,
+          basicCrud: true,
+          storage: true,
+          realtime: true,
+          relationalSelect: false,
+          rpc: false,
+          edgeFunctions: false,
+          passwordRecovery: false,
+        },
+      })
+    }
+
+    if (req.method === 'POST' && url.pathname === '/v1/admin/projects') return handleAdminProject(req, res)
+
+    let match = url.pathname.match(/^\/v1\/auth\/([^/]+)\/(signup|signin|refresh|signout|me)$/)
+    if (match) {
+      const project = validateProjectId(decodeURIComponent(match[1]))
+      const action = match[2]
+      if (action === 'signup' && req.method === 'POST') return handleSignup(req, res, project)
+      if (action === 'signin' && req.method === 'POST') return handleSignin(req, res, project)
+      if (action === 'refresh' && req.method === 'POST') return handleRefresh(req, res, project)
+      if (action === 'signout' && req.method === 'POST') return handleSignout(req, res, project)
+      if (action === 'me' && req.method === 'GET') return handleMe(req, res, project)
+      return sendError(req, res, 405, 'Method not allowed')
+    }
+
+    match = url.pathname.match(/^\/v1\/data\/([^/]+)\/([^/]+)$/)
+    if (match) {
+      const project = validateProjectId(decodeURIComponent(match[1]))
+      const table = validateTable(decodeURIComponent(match[2]))
+      return handleDataCollection(req, res, url, project, table)
+    }
+
+    match = url.pathname.match(/^\/v1\/data\/([^/]+)\/([^/]+)\/([^/]+)$/)
+    if (match) {
+      const project = validateProjectId(decodeURIComponent(match[1]))
+      const table = validateTable(decodeURIComponent(match[2]))
+      const id = validateRowId(decodeURIComponent(match[3]))
+      return handleDataRow(req, res, project, table, id)
+    }
+
+    match = url.pathname.match(/^\/v1\/storage\/([^/]+)\/([^/]+)\/(.+)$/)
+    if (match) {
+      const project = validateProjectId(decodeURIComponent(match[1]))
+      const bucket = decodeURIComponent(match[2])
+      const objectPath = decodeURIComponent(match[3])
+      return handleStorage(req, res, project, bucket, objectPath)
+    }
+
+    return sendError(req, res, 404, 'Not found')
+  } catch (error) {
+    const status = Number.isInteger(error?.status) ? error.status : 500
+    if (status >= 500) console.error(error)
+    return sendError(req, res, status, status >= 500 ? 'Internal server error' : error.message)
+  }
+})
+
+server.on('upgrade', async (req, socket, head) => {
+  try {
+    const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`)
+    const match = url.pathname.match(/^\/v1\/realtime\/([^/]+)$/)
+    if (!match) throw Object.assign(new Error('Not found'), { status: 404 })
+    const project = validateProjectId(decodeURIComponent(match[1]))
+    const projectKey = url.searchParams.get('project_key') || ''
+    await projectForKey(project, projectKey)
+    const payload = verifyAccessToken(url.searchParams.get('access_token') || '')
+    if (payload.project !== project || payload.aud !== project) throw Object.assign(new Error('Token project mismatch'), { status: 403 })
+    const result = await pool.query('SELECT id, disabled FROM iz_core_users WHERE id=$1 AND project_id=$2', [payload.sub, project])
+    if (!result.rowCount || result.rows[0].disabled) throw Object.assign(new Error('User unavailable'), { status: 401 })
+    wss.handleUpgrade(req, socket, head, ws => {
+      ws.izakhonoContext = { project, userId: payload.sub }
+      wss.emit('connection', ws, req)
+    })
+  } catch (error) {
+    const status = Number.isInteger(error?.status) ? error.status : 401
+    socket.write(`HTTP/1.1 ${status} Unauthorized\r\nConnection: close\r\n\r\n`)
+    socket.destroy()
+  }
+})
+
+wss.on('connection', ws => {
+  ws.send(JSON.stringify({ type: 'ready', service: 'IZAKHONO Core', version: VERSION }))
+})
+
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(`IZAKHONO Core ${VERSION} listening on :${PORT}`)
+})
+
+async function shutdown(signal) {
+  console.log(`${signal}: shutting down IZAKHONO Core`)
+  for (const ws of wss.clients) ws.close(1001, 'server shutdown')
+  server.close(async () => {
+    await pool.end()
+    process.exit(0)
+  })
+  setTimeout(() => process.exit(1), 10000).unref()
+}
+
+process.on('SIGTERM', () => shutdown('SIGTERM'))
+process.on('SIGINT', () => shutdown('SIGINT'))
+ + limitParam + ' OFFSET ,
+      values,
+    )
+    return sendJson(req, res, 200, result.rows.map(rowToJson))
+  }
+
+  if (req.method === 'POST') {
+    if (mode === 'owner_action_only') return sendError(req, res, 403, 'Direct writes are disabled for this table')
+    const body = await readJson(req)
+    if (!body.data || typeof body.data !== 'object' || Array.isArray(body.data)) return sendError(req, res, 400, 'data object required')
+    const payload = { ...body.data }
+    const id = payload.id ? validateRowId(payload.id) : randomUUID()
+    delete payload.id
+    try {
+      const result = await pool.query(
+        `INSERT INTO iz_core_rows(project_id, table_name, row_id, data, created_by)
+         VALUES($1,$2,$3,$4::jsonb,$5)
+         RETURNING row_id, data`,
+        [project, table, id, JSON.stringify(payload), user.id],
+      )
+      const row = rowToJson(result.rows[0])
+      await audit(project, user.id, 'data.insert', { table, id })
+      broadcast(project, mode, user.id, { type: 'row.changed', event: 'INSERT', table, row })
+      return sendJson(req, res, 201, row)
+    } catch (error) {
+      if (error?.code === '23505') return sendError(req, res, 409, 'Row already exists')
+      throw error
+    }
+  }
+
+  return sendError(req, res, 405, 'Method not allowed')
+}
+
+async function handleDataRow(req, res, project, table, id) {
+  const user = await requireUser(req, project)
+  const mode = await tablePolicy(project, table)
+  const ownerClause = isOwnerWriteMode(mode) ? ' AND created_by=$4' : ''
+  const baseValues = [project, table, id]
+
+  if (mode === 'owner_action_only' && (req.method === 'PATCH' || req.method === 'DELETE')) {
+    return sendError(req, res, 403, 'Direct writes are disabled for this table')
+  }
+
+  if (req.method === 'PATCH') {
+    const body = await readJson(req)
+    if (!body.data || typeof body.data !== 'object' || Array.isArray(body.data)) return sendError(req, res, 400, 'data object required')
+    const payload = { ...body.data }
+    delete payload.id
+    const values = [...baseValues, ...(isOwnerWriteMode(mode) ? [user.id] : []), JSON.stringify(payload)]
+    const jsonParam = values.length
+    const result = await pool.query(
+      `UPDATE iz_core_rows SET data=data || $${jsonParam}::jsonb, updated_at=now()
+       WHERE project_id=$1 AND table_name=$2 AND row_id=$3${ownerClause}
+       RETURNING row_id, data`,
+      values,
+    )
+    if (!result.rowCount) return sendError(req, res, 404, 'Row not found')
+    const row = rowToJson(result.rows[0])
+    await audit(project, user.id, 'data.update', { table, id })
+    broadcast(project, mode, user.id, { type: 'row.changed', event: 'UPDATE', table, row })
+    return sendJson(req, res, 200, row)
+  }
+
+  if (req.method === 'DELETE') {
+    const values = [...baseValues, ...(isOwnerWriteMode(mode) ? [user.id] : [])]
+    const result = await pool.query(
+      `DELETE FROM iz_core_rows WHERE project_id=$1 AND table_name=$2 AND row_id=$3${ownerClause} RETURNING row_id, data`,
+      values,
+    )
+    if (!result.rowCount) return sendError(req, res, 404, 'Row not found')
+    const row = rowToJson(result.rows[0])
+    await audit(project, user.id, 'data.delete', { table, id })
+    broadcast(project, mode, user.id, { type: 'row.changed', event: 'DELETE', table, row })
+    return sendJson(req, res, 200, row)
+  }
+
+  return sendError(req, res, 405, 'Method not allowed')
+}
+
+async function handleStorage(req, res, project, bucket, objectPath) {
+  const user = await requireUser(req, project)
+  const filePath = safeStoragePath(project, bucket, objectPath)
+
+  if (req.method === 'PUT') {
+    const existing = await pool.query(
+      'SELECT created_by FROM iz_core_storage_objects WHERE project_id=$1 AND bucket=$2 AND object_path=$3',
+      [project, bucket, objectPath],
+    )
+    if (existing.rowCount && existing.rows[0].created_by !== user.id) return sendError(req, res, 403, 'Storage object belongs to another user')
+    const content = await readBody(req, MAX_STORAGE_BYTES)
+    const digest = sha256(content)
+    const contentType = String(req.headers['content-type'] || 'application/octet-stream').slice(0, 200)
+    await mkdir(dirname(filePath), { recursive: true })
+    await writeFile(filePath, content, { mode: 0o600 })
+    await pool.query(
+      `INSERT INTO iz_core_storage_objects(project_id,bucket,object_path,created_by,content_type,byte_size,sha256)
+       VALUES($1,$2,$3,$4,$5,$6,$7)
+       ON CONFLICT(project_id,bucket,object_path)
+       DO UPDATE SET content_type=EXCLUDED.content_type, byte_size=EXCLUDED.byte_size, sha256=EXCLUDED.sha256, updated_at=now()`,
+      [project, bucket, objectPath, user.id, contentType, content.length, digest],
+    )
+    await audit(project, user.id, 'storage.put', { bucket, objectPath, bytes: content.length })
+    return sendJson(req, res, 201, { bucket, path: objectPath, size: content.length, sha256: digest })
+  }
+
+  if (req.method === 'GET') {
+    const result = await pool.query(
+      `SELECT content_type, byte_size, sha256 FROM iz_core_storage_objects
+       WHERE project_id=$1 AND bucket=$2 AND object_path=$3 AND created_by=$4`,
+      [project, bucket, objectPath, user.id],
+    )
+    if (!result.rowCount) return sendError(req, res, 404, 'Storage object not found')
+    let content
+    try { content = await readFile(filePath) } catch { return sendError(req, res, 404, 'Storage object file missing') }
+    const metadata = result.rows[0]
+    res.writeHead(200, {
+      'content-type': metadata.content_type,
+      'content-length': String(content.length),
+      'cache-control': 'private, no-store',
+      'x-content-type-options': 'nosniff',
+      'x-izakhono-sha256': metadata.sha256,
+    })
+    return res.end(content)
+  }
+
+  if (req.method === 'DELETE') {
+    const result = await pool.query(
+      `DELETE FROM iz_core_storage_objects
+       WHERE project_id=$1 AND bucket=$2 AND object_path=$3 AND created_by=$4
+       RETURNING object_path`,
+      [project, bucket, objectPath, user.id],
+    )
+    if (!result.rowCount) return sendError(req, res, 404, 'Storage object not found')
+    try { await unlink(filePath) } catch {}
+    await audit(project, user.id, 'storage.delete', { bucket, objectPath })
+    return sendJson(req, res, 200, { ok: true })
+  }
+
+  return sendError(req, res, 405, 'Method not allowed')
+}
+
+const server = http.createServer(async (req, res) => {
+  try {
+    if (!corsAllowed(req)) return sendError(req, res, 403, 'Origin not allowed')
+    if (req.method === 'OPTIONS') {
+      const headers = jsonHeaders(req)
+      headers['access-control-allow-methods'] = 'GET,POST,PATCH,PUT,DELETE,OPTIONS'
+      headers['access-control-allow-headers'] = 'Authorization,Content-Type,X-Project-Key'
+      headers['access-control-max-age'] = '600'
+      res.writeHead(204, headers)
+      return res.end()
+    }
+
+    const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`)
+
+    if (req.method === 'GET' && url.pathname === '/healthz') {
+      try {
+        await pool.query('SELECT 1')
+        return sendJson(req, res, 200, { ok: true, service: 'IZAKHONO Core', version: VERSION, storage: 'local-volume', database: 'postgresql' })
+      } catch {
+        return sendJson(req, res, 503, { ok: false, service: 'IZAKHONO Core', version: VERSION })
+      }
+    }
+
+    if (req.method === 'GET' && url.pathname === '/v1/capabilities') {
+      return sendJson(req, res, 200, {
+        service: 'IZAKHONO Core',
+        version: VERSION,
+        capabilities: {
+          passwordAuth: true,
+          refreshTokens: true,
+          projectIsolation: true,
+          ownerDefaultDataPolicy: true,
+          ownerPublicReadDataPolicy: true,
+          ownerActionOnlyDataPolicy: true,
+          projectSharedDataPolicy: true,
+          basicCrud: true,
+          storage: true,
+          realtime: true,
+          relationalSelect: false,
+          rpc: false,
+          edgeFunctions: false,
+          passwordRecovery: false,
+        },
+      })
+    }
+
+    if (req.method === 'POST' && url.pathname === '/v1/admin/projects') return handleAdminProject(req, res)
+
+    let match = url.pathname.match(/^\/v1\/auth\/([^/]+)\/(signup|signin|refresh|signout|me)$/)
+    if (match) {
+      const project = validateProjectId(decodeURIComponent(match[1]))
+      const action = match[2]
+      if (action === 'signup' && req.method === 'POST') return handleSignup(req, res, project)
+      if (action === 'signin' && req.method === 'POST') return handleSignin(req, res, project)
+      if (action === 'refresh' && req.method === 'POST') return handleRefresh(req, res, project)
+      if (action === 'signout' && req.method === 'POST') return handleSignout(req, res, project)
+      if (action === 'me' && req.method === 'GET') return handleMe(req, res, project)
+      return sendError(req, res, 405, 'Method not allowed')
+    }
+
+    match = url.pathname.match(/^\/v1\/data\/([^/]+)\/([^/]+)$/)
+    if (match) {
+      const project = validateProjectId(decodeURIComponent(match[1]))
+      const table = validateTable(decodeURIComponent(match[2]))
+      return handleDataCollection(req, res, url, project, table)
+    }
+
+    match = url.pathname.match(/^\/v1\/data\/([^/]+)\/([^/]+)\/([^/]+)$/)
+    if (match) {
+      const project = validateProjectId(decodeURIComponent(match[1]))
+      const table = validateTable(decodeURIComponent(match[2]))
+      const id = validateRowId(decodeURIComponent(match[3]))
+      return handleDataRow(req, res, project, table, id)
+    }
+
+    match = url.pathname.match(/^\/v1\/storage\/([^/]+)\/([^/]+)\/(.+)$/)
+    if (match) {
+      const project = validateProjectId(decodeURIComponent(match[1]))
+      const bucket = decodeURIComponent(match[2])
+      const objectPath = decodeURIComponent(match[3])
+      return handleStorage(req, res, project, bucket, objectPath)
+    }
+
+    return sendError(req, res, 404, 'Not found')
+  } catch (error) {
+    const status = Number.isInteger(error?.status) ? error.status : 500
+    if (status >= 500) console.error(error)
+    return sendError(req, res, status, status >= 500 ? 'Internal server error' : error.message)
+  }
+})
+
+server.on('upgrade', async (req, socket, head) => {
+  try {
+    const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`)
+    const match = url.pathname.match(/^\/v1\/realtime\/([^/]+)$/)
+    if (!match) throw Object.assign(new Error('Not found'), { status: 404 })
+    const project = validateProjectId(decodeURIComponent(match[1]))
+    const projectKey = url.searchParams.get('project_key') || ''
+    await projectForKey(project, projectKey)
+    const payload = verifyAccessToken(url.searchParams.get('access_token') || '')
+    if (payload.project !== project || payload.aud !== project) throw Object.assign(new Error('Token project mismatch'), { status: 403 })
+    const result = await pool.query('SELECT id, disabled FROM iz_core_users WHERE id=$1 AND project_id=$2', [payload.sub, project])
+    if (!result.rowCount || result.rows[0].disabled) throw Object.assign(new Error('User unavailable'), { status: 401 })
+    wss.handleUpgrade(req, socket, head, ws => {
+      ws.izakhonoContext = { project, userId: payload.sub }
+      wss.emit('connection', ws, req)
+    })
+  } catch (error) {
+    const status = Number.isInteger(error?.status) ? error.status : 401
+    socket.write(`HTTP/1.1 ${status} Unauthorized\r\nConnection: close\r\n\r\n`)
+    socket.destroy()
+  }
+})
+
+wss.on('connection', ws => {
+  ws.send(JSON.stringify({ type: 'ready', service: 'IZAKHONO Core', version: VERSION }))
+})
+
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(`IZAKHONO Core ${VERSION} listening on :${PORT}`)
+})
+
+async function shutdown(signal) {
+  console.log(`${signal}: shutting down IZAKHONO Core`)
+  for (const ws of wss.clients) ws.close(1001, 'server shutdown')
+  server.close(async () => {
+    await pool.end()
+    process.exit(0)
+  })
+  setTimeout(() => process.exit(1), 10000).unref()
+}
+
+process.on('SIGTERM', () => shutdown('SIGTERM'))
+process.on('SIGINT', () => shutdown('SIGINT'))
+ + values.length)
+    }
+    for (const [rawKey, value] of url.searchParams.entries()) {
+      if (['order', 'limit', 'offset'].includes(rawKey)) continue
+      const key = validateFilterKey(rawKey)
+      values.push(key)
+      const keyParam = values.length
+      values.push(String(value))
+      clauses.push(`data ->> ${keyParam} = ${values.length}`)
+    }
+    let orderSql = 'updated_at DESC'
+    const order = url.searchParams.get('order')
+    if (order) {
+      const match = order.match(/^([A-Za-z_][A-Za-z0-9_]{0,62})\.(asc|desc)$/)
+      if (!match) return sendError(req, res, 400, 'Invalid order expression')
+      const [, key, direction] = match
+      orderSql = key === 'id' ? `row_id ${direction.toUpperCase()}` : `(data ->> '${key}') ${direction.toUpperCase()}`
+    }
+    const limit = Math.min(200, Math.max(1, Number.parseInt(url.searchParams.get('limit') || '100', 10) || 100))
+    const offset = Math.min(100000, Math.max(0, Number.parseInt(url.searchParams.get('offset') || '0', 10) || 0))
+    values.push(limit)
+    const limitParam = values.length
+    values.push(offset)
+    const offsetParam = values.length
+    const result = await pool.query(
+      `SELECT row_id, data FROM iz_core_rows WHERE ${clauses.join(' AND ')} ORDER BY ${orderSql} LIMIT ${limitParam} OFFSET ${offsetParam}`,
+      values,
+    )
+    return sendJson(req, res, 200, result.rows.map(rowToJson))
+  }
+
+  if (req.method === 'POST') {
+    if (mode === 'owner_action_only') return sendError(req, res, 403, 'Direct writes are disabled for this table')
+    const body = await readJson(req)
+    if (!body.data || typeof body.data !== 'object' || Array.isArray(body.data)) return sendError(req, res, 400, 'data object required')
+    const payload = { ...body.data }
+    const id = payload.id ? validateRowId(payload.id) : randomUUID()
+    delete payload.id
+    try {
+      const result = await pool.query(
+        `INSERT INTO iz_core_rows(project_id, table_name, row_id, data, created_by)
+         VALUES($1,$2,$3,$4::jsonb,$5)
+         RETURNING row_id, data`,
+        [project, table, id, JSON.stringify(payload), user.id],
+      )
+      const row = rowToJson(result.rows[0])
+      await audit(project, user.id, 'data.insert', { table, id })
+      broadcast(project, mode, user.id, { type: 'row.changed', event: 'INSERT', table, row })
+      return sendJson(req, res, 201, row)
+    } catch (error) {
+      if (error?.code === '23505') return sendError(req, res, 409, 'Row already exists')
+      throw error
+    }
+  }
+
+  return sendError(req, res, 405, 'Method not allowed')
+}
+
+async function handleDataRow(req, res, project, table, id) {
+  const user = await requireUser(req, project)
+  const mode = await tablePolicy(project, table)
+  const ownerClause = isOwnerWriteMode(mode) ? ' AND created_by=$4' : ''
+  const baseValues = [project, table, id]
+
+  if (mode === 'owner_action_only' && (req.method === 'PATCH' || req.method === 'DELETE')) {
+    return sendError(req, res, 403, 'Direct writes are disabled for this table')
+  }
+
+  if (req.method === 'PATCH') {
+    const body = await readJson(req)
+    if (!body.data || typeof body.data !== 'object' || Array.isArray(body.data)) return sendError(req, res, 400, 'data object required')
+    const payload = { ...body.data }
+    delete payload.id
+    const values = [...baseValues, ...(isOwnerWriteMode(mode) ? [user.id] : []), JSON.stringify(payload)]
+    const jsonParam = values.length
+    const result = await pool.query(
+      `UPDATE iz_core_rows SET data=data || $${jsonParam}::jsonb, updated_at=now()
+       WHERE project_id=$1 AND table_name=$2 AND row_id=$3${ownerClause}
+       RETURNING row_id, data`,
+      values,
+    )
+    if (!result.rowCount) return sendError(req, res, 404, 'Row not found')
+    const row = rowToJson(result.rows[0])
+    await audit(project, user.id, 'data.update', { table, id })
+    broadcast(project, mode, user.id, { type: 'row.changed', event: 'UPDATE', table, row })
+    return sendJson(req, res, 200, row)
+  }
+
+  if (req.method === 'DELETE') {
+    const values = [...baseValues, ...(isOwnerWriteMode(mode) ? [user.id] : [])]
+    const result = await pool.query(
+      `DELETE FROM iz_core_rows WHERE project_id=$1 AND table_name=$2 AND row_id=$3${ownerClause} RETURNING row_id, data`,
+      values,
+    )
+    if (!result.rowCount) return sendError(req, res, 404, 'Row not found')
+    const row = rowToJson(result.rows[0])
+    await audit(project, user.id, 'data.delete', { table, id })
+    broadcast(project, mode, user.id, { type: 'row.changed', event: 'DELETE', table, row })
+    return sendJson(req, res, 200, row)
+  }
+
+  return sendError(req, res, 405, 'Method not allowed')
+}
+
+async function handleStorage(req, res, project, bucket, objectPath) {
+  const user = await requireUser(req, project)
+  const filePath = safeStoragePath(project, bucket, objectPath)
+
+  if (req.method === 'PUT') {
+    const existing = await pool.query(
+      'SELECT created_by FROM iz_core_storage_objects WHERE project_id=$1 AND bucket=$2 AND object_path=$3',
+      [project, bucket, objectPath],
+    )
+    if (existing.rowCount && existing.rows[0].created_by !== user.id) return sendError(req, res, 403, 'Storage object belongs to another user')
+    const content = await readBody(req, MAX_STORAGE_BYTES)
+    const digest = sha256(content)
+    const contentType = String(req.headers['content-type'] || 'application/octet-stream').slice(0, 200)
+    await mkdir(dirname(filePath), { recursive: true })
+    await writeFile(filePath, content, { mode: 0o600 })
+    await pool.query(
+      `INSERT INTO iz_core_storage_objects(project_id,bucket,object_path,created_by,content_type,byte_size,sha256)
+       VALUES($1,$2,$3,$4,$5,$6,$7)
+       ON CONFLICT(project_id,bucket,object_path)
+       DO UPDATE SET content_type=EXCLUDED.content_type, byte_size=EXCLUDED.byte_size, sha256=EXCLUDED.sha256, updated_at=now()`,
+      [project, bucket, objectPath, user.id, contentType, content.length, digest],
+    )
+    await audit(project, user.id, 'storage.put', { bucket, objectPath, bytes: content.length })
+    return sendJson(req, res, 201, { bucket, path: objectPath, size: content.length, sha256: digest })
+  }
+
+  if (req.method === 'GET') {
+    const result = await pool.query(
+      `SELECT content_type, byte_size, sha256 FROM iz_core_storage_objects
+       WHERE project_id=$1 AND bucket=$2 AND object_path=$3 AND created_by=$4`,
+      [project, bucket, objectPath, user.id],
+    )
+    if (!result.rowCount) return sendError(req, res, 404, 'Storage object not found')
+    let content
+    try { content = await readFile(filePath) } catch { return sendError(req, res, 404, 'Storage object file missing') }
+    const metadata = result.rows[0]
+    res.writeHead(200, {
+      'content-type': metadata.content_type,
+      'content-length': String(content.length),
+      'cache-control': 'private, no-store',
+      'x-content-type-options': 'nosniff',
+      'x-izakhono-sha256': metadata.sha256,
+    })
+    return res.end(content)
+  }
+
+  if (req.method === 'DELETE') {
+    const result = await pool.query(
+      `DELETE FROM iz_core_storage_objects
+       WHERE project_id=$1 AND bucket=$2 AND object_path=$3 AND created_by=$4
+       RETURNING object_path`,
+      [project, bucket, objectPath, user.id],
+    )
+    if (!result.rowCount) return sendError(req, res, 404, 'Storage object not found')
+    try { await unlink(filePath) } catch {}
+    await audit(project, user.id, 'storage.delete', { bucket, objectPath })
+    return sendJson(req, res, 200, { ok: true })
+  }
+
+  return sendError(req, res, 405, 'Method not allowed')
+}
+
+const server = http.createServer(async (req, res) => {
+  try {
+    if (!corsAllowed(req)) return sendError(req, res, 403, 'Origin not allowed')
+    if (req.method === 'OPTIONS') {
+      const headers = jsonHeaders(req)
+      headers['access-control-allow-methods'] = 'GET,POST,PATCH,PUT,DELETE,OPTIONS'
+      headers['access-control-allow-headers'] = 'Authorization,Content-Type,X-Project-Key'
+      headers['access-control-max-age'] = '600'
+      res.writeHead(204, headers)
+      return res.end()
+    }
+
+    const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`)
+
+    if (req.method === 'GET' && url.pathname === '/healthz') {
+      try {
+        await pool.query('SELECT 1')
+        return sendJson(req, res, 200, { ok: true, service: 'IZAKHONO Core', version: VERSION, storage: 'local-volume', database: 'postgresql' })
+      } catch {
+        return sendJson(req, res, 503, { ok: false, service: 'IZAKHONO Core', version: VERSION })
+      }
+    }
+
+    if (req.method === 'GET' && url.pathname === '/v1/capabilities') {
+      return sendJson(req, res, 200, {
+        service: 'IZAKHONO Core',
+        version: VERSION,
+        capabilities: {
+          passwordAuth: true,
+          refreshTokens: true,
+          projectIsolation: true,
+          ownerDefaultDataPolicy: true,
+          ownerPublicReadDataPolicy: true,
+          ownerActionOnlyDataPolicy: true,
+          projectSharedDataPolicy: true,
+          basicCrud: true,
+          storage: true,
+          realtime: true,
+          relationalSelect: false,
+          rpc: false,
+          edgeFunctions: false,
+          passwordRecovery: false,
+        },
+      })
+    }
+
+    if (req.method === 'POST' && url.pathname === '/v1/admin/projects') return handleAdminProject(req, res)
+
+    let match = url.pathname.match(/^\/v1\/auth\/([^/]+)\/(signup|signin|refresh|signout|me)$/)
+    if (match) {
+      const project = validateProjectId(decodeURIComponent(match[1]))
+      const action = match[2]
+      if (action === 'signup' && req.method === 'POST') return handleSignup(req, res, project)
+      if (action === 'signin' && req.method === 'POST') return handleSignin(req, res, project)
+      if (action === 'refresh' && req.method === 'POST') return handleRefresh(req, res, project)
+      if (action === 'signout' && req.method === 'POST') return handleSignout(req, res, project)
+      if (action === 'me' && req.method === 'GET') return handleMe(req, res, project)
+      return sendError(req, res, 405, 'Method not allowed')
+    }
+
+    match = url.pathname.match(/^\/v1\/data\/([^/]+)\/([^/]+)$/)
+    if (match) {
+      const project = validateProjectId(decodeURIComponent(match[1]))
+      const table = validateTable(decodeURIComponent(match[2]))
+      return handleDataCollection(req, res, url, project, table)
+    }
+
+    match = url.pathname.match(/^\/v1\/data\/([^/]+)\/([^/]+)\/([^/]+)$/)
+    if (match) {
+      const project = validateProjectId(decodeURIComponent(match[1]))
+      const table = validateTable(decodeURIComponent(match[2]))
+      const id = validateRowId(decodeURIComponent(match[3]))
+      return handleDataRow(req, res, project, table, id)
+    }
+
+    match = url.pathname.match(/^\/v1\/storage\/([^/]+)\/([^/]+)\/(.+)$/)
+    if (match) {
+      const project = validateProjectId(decodeURIComponent(match[1]))
+      const bucket = decodeURIComponent(match[2])
+      const objectPath = decodeURIComponent(match[3])
+      return handleStorage(req, res, project, bucket, objectPath)
+    }
+
+    return sendError(req, res, 404, 'Not found')
+  } catch (error) {
+    const status = Number.isInteger(error?.status) ? error.status : 500
+    if (status >= 500) console.error(error)
+    return sendError(req, res, status, status >= 500 ? 'Internal server error' : error.message)
+  }
+})
+
+server.on('upgrade', async (req, socket, head) => {
+  try {
+    const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`)
+    const match = url.pathname.match(/^\/v1\/realtime\/([^/]+)$/)
+    if (!match) throw Object.assign(new Error('Not found'), { status: 404 })
+    const project = validateProjectId(decodeURIComponent(match[1]))
+    const projectKey = url.searchParams.get('project_key') || ''
+    await projectForKey(project, projectKey)
+    const payload = verifyAccessToken(url.searchParams.get('access_token') || '')
+    if (payload.project !== project || payload.aud !== project) throw Object.assign(new Error('Token project mismatch'), { status: 403 })
+    const result = await pool.query('SELECT id, disabled FROM iz_core_users WHERE id=$1 AND project_id=$2', [payload.sub, project])
+    if (!result.rowCount || result.rows[0].disabled) throw Object.assign(new Error('User unavailable'), { status: 401 })
+    wss.handleUpgrade(req, socket, head, ws => {
+      ws.izakhonoContext = { project, userId: payload.sub }
+      wss.emit('connection', ws, req)
+    })
+  } catch (error) {
+    const status = Number.isInteger(error?.status) ? error.status : 401
+    socket.write(`HTTP/1.1 ${status} Unauthorized\r\nConnection: close\r\n\r\n`)
+    socket.destroy()
+  }
+})
+
+wss.on('connection', ws => {
+  ws.send(JSON.stringify({ type: 'ready', service: 'IZAKHONO Core', version: VERSION }))
+})
+
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(`IZAKHONO Core ${VERSION} listening on :${PORT}`)
+})
+
+async function shutdown(signal) {
+  console.log(`${signal}: shutting down IZAKHONO Core`)
+  for (const ws of wss.clients) ws.close(1001, 'server shutdown')
+  server.close(async () => {
+    await pool.end()
+    process.exit(0)
+  })
+  setTimeout(() => process.exit(1), 10000).unref()
+}
+
+process.on('SIGTERM', () => shutdown('SIGTERM'))
+process.on('SIGINT', () => shutdown('SIGINT'))
+ + keyParam + ' = 
+    }
+    let orderSql = 'updated_at DESC'
+    const order = url.searchParams.get('order')
+    if (order) {
+      const match = order.match(/^([A-Za-z_][A-Za-z0-9_]{0,62})\.(asc|desc)$/)
+      if (!match) return sendError(req, res, 400, 'Invalid order expression')
+      const [, key, direction] = match
+      orderSql = key === 'id' ? `row_id ${direction.toUpperCase()}` : `(data ->> '${key}') ${direction.toUpperCase()}`
+    }
+    const limit = Math.min(200, Math.max(1, Number.parseInt(url.searchParams.get('limit') || '100', 10) || 100))
+    const offset = Math.min(100000, Math.max(0, Number.parseInt(url.searchParams.get('offset') || '0', 10) || 0))
+    values.push(limit)
+    const limitParam = values.length
+    values.push(offset)
+    const offsetParam = values.length
+    const result = await pool.query(
+      `SELECT row_id, data FROM iz_core_rows WHERE ${clauses.join(' AND ')} ORDER BY ${orderSql} LIMIT ${limitParam} OFFSET ${offsetParam}`,
+      values,
+    )
+    return sendJson(req, res, 200, result.rows.map(rowToJson))
+  }
+
+  if (req.method === 'POST') {
+    if (mode === 'owner_action_only') return sendError(req, res, 403, 'Direct writes are disabled for this table')
+    const body = await readJson(req)
+    if (!body.data || typeof body.data !== 'object' || Array.isArray(body.data)) return sendError(req, res, 400, 'data object required')
+    const payload = { ...body.data }
+    const id = payload.id ? validateRowId(payload.id) : randomUUID()
+    delete payload.id
+    try {
+      const result = await pool.query(
+        `INSERT INTO iz_core_rows(project_id, table_name, row_id, data, created_by)
+         VALUES($1,$2,$3,$4::jsonb,$5)
+         RETURNING row_id, data`,
+        [project, table, id, JSON.stringify(payload), user.id],
+      )
+      const row = rowToJson(result.rows[0])
+      await audit(project, user.id, 'data.insert', { table, id })
+      broadcast(project, mode, user.id, { type: 'row.changed', event: 'INSERT', table, row })
+      return sendJson(req, res, 201, row)
+    } catch (error) {
+      if (error?.code === '23505') return sendError(req, res, 409, 'Row already exists')
+      throw error
+    }
+  }
+
+  return sendError(req, res, 405, 'Method not allowed')
+}
+
+async function handleDataRow(req, res, project, table, id) {
+  const user = await requireUser(req, project)
+  const mode = await tablePolicy(project, table)
+  const ownerClause = isOwnerWriteMode(mode) ? ' AND created_by=$4' : ''
+  const baseValues = [project, table, id]
+
+  if (mode === 'owner_action_only' && (req.method === 'PATCH' || req.method === 'DELETE')) {
+    return sendError(req, res, 403, 'Direct writes are disabled for this table')
+  }
+
+  if (req.method === 'PATCH') {
+    const body = await readJson(req)
+    if (!body.data || typeof body.data !== 'object' || Array.isArray(body.data)) return sendError(req, res, 400, 'data object required')
+    const payload = { ...body.data }
+    delete payload.id
+    const values = [...baseValues, ...(isOwnerWriteMode(mode) ? [user.id] : []), JSON.stringify(payload)]
+    const jsonParam = values.length
+    const result = await pool.query(
+      `UPDATE iz_core_rows SET data=data || $${jsonParam}::jsonb, updated_at=now()
+       WHERE project_id=$1 AND table_name=$2 AND row_id=$3${ownerClause}
+       RETURNING row_id, data`,
+      values,
+    )
+    if (!result.rowCount) return sendError(req, res, 404, 'Row not found')
+    const row = rowToJson(result.rows[0])
+    await audit(project, user.id, 'data.update', { table, id })
+    broadcast(project, mode, user.id, { type: 'row.changed', event: 'UPDATE', table, row })
+    return sendJson(req, res, 200, row)
+  }
+
+  if (req.method === 'DELETE') {
+    const values = [...baseValues, ...(isOwnerWriteMode(mode) ? [user.id] : [])]
+    const result = await pool.query(
+      `DELETE FROM iz_core_rows WHERE project_id=$1 AND table_name=$2 AND row_id=$3${ownerClause} RETURNING row_id, data`,
+      values,
+    )
+    if (!result.rowCount) return sendError(req, res, 404, 'Row not found')
+    const row = rowToJson(result.rows[0])
+    await audit(project, user.id, 'data.delete', { table, id })
+    broadcast(project, mode, user.id, { type: 'row.changed', event: 'DELETE', table, row })
+    return sendJson(req, res, 200, row)
+  }
+
+  return sendError(req, res, 405, 'Method not allowed')
+}
+
+async function handleStorage(req, res, project, bucket, objectPath) {
+  const user = await requireUser(req, project)
+  const filePath = safeStoragePath(project, bucket, objectPath)
+
+  if (req.method === 'PUT') {
+    const existing = await pool.query(
+      'SELECT created_by FROM iz_core_storage_objects WHERE project_id=$1 AND bucket=$2 AND object_path=$3',
+      [project, bucket, objectPath],
+    )
+    if (existing.rowCount && existing.rows[0].created_by !== user.id) return sendError(req, res, 403, 'Storage object belongs to another user')
+    const content = await readBody(req, MAX_STORAGE_BYTES)
+    const digest = sha256(content)
+    const contentType = String(req.headers['content-type'] || 'application/octet-stream').slice(0, 200)
+    await mkdir(dirname(filePath), { recursive: true })
+    await writeFile(filePath, content, { mode: 0o600 })
+    await pool.query(
+      `INSERT INTO iz_core_storage_objects(project_id,bucket,object_path,created_by,content_type,byte_size,sha256)
+       VALUES($1,$2,$3,$4,$5,$6,$7)
+       ON CONFLICT(project_id,bucket,object_path)
+       DO UPDATE SET content_type=EXCLUDED.content_type, byte_size=EXCLUDED.byte_size, sha256=EXCLUDED.sha256, updated_at=now()`,
+      [project, bucket, objectPath, user.id, contentType, content.length, digest],
+    )
+    await audit(project, user.id, 'storage.put', { bucket, objectPath, bytes: content.length })
+    return sendJson(req, res, 201, { bucket, path: objectPath, size: content.length, sha256: digest })
+  }
+
+  if (req.method === 'GET') {
+    const result = await pool.query(
+      `SELECT content_type, byte_size, sha256 FROM iz_core_storage_objects
+       WHERE project_id=$1 AND bucket=$2 AND object_path=$3 AND created_by=$4`,
+      [project, bucket, objectPath, user.id],
+    )
+    if (!result.rowCount) return sendError(req, res, 404, 'Storage object not found')
+    let content
+    try { content = await readFile(filePath) } catch { return sendError(req, res, 404, 'Storage object file missing') }
+    const metadata = result.rows[0]
+    res.writeHead(200, {
+      'content-type': metadata.content_type,
+      'content-length': String(content.length),
+      'cache-control': 'private, no-store',
+      'x-content-type-options': 'nosniff',
+      'x-izakhono-sha256': metadata.sha256,
+    })
+    return res.end(content)
+  }
+
+  if (req.method === 'DELETE') {
+    const result = await pool.query(
+      `DELETE FROM iz_core_storage_objects
+       WHERE project_id=$1 AND bucket=$2 AND object_path=$3 AND created_by=$4
+       RETURNING object_path`,
+      [project, bucket, objectPath, user.id],
+    )
+    if (!result.rowCount) return sendError(req, res, 404, 'Storage object not found')
+    try { await unlink(filePath) } catch {}
+    await audit(project, user.id, 'storage.delete', { bucket, objectPath })
+    return sendJson(req, res, 200, { ok: true })
+  }
+
+  return sendError(req, res, 405, 'Method not allowed')
+}
+
+const server = http.createServer(async (req, res) => {
+  try {
+    if (!corsAllowed(req)) return sendError(req, res, 403, 'Origin not allowed')
+    if (req.method === 'OPTIONS') {
+      const headers = jsonHeaders(req)
+      headers['access-control-allow-methods'] = 'GET,POST,PATCH,PUT,DELETE,OPTIONS'
+      headers['access-control-allow-headers'] = 'Authorization,Content-Type,X-Project-Key'
+      headers['access-control-max-age'] = '600'
+      res.writeHead(204, headers)
+      return res.end()
+    }
+
+    const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`)
+
+    if (req.method === 'GET' && url.pathname === '/healthz') {
+      try {
+        await pool.query('SELECT 1')
+        return sendJson(req, res, 200, { ok: true, service: 'IZAKHONO Core', version: VERSION, storage: 'local-volume', database: 'postgresql' })
+      } catch {
+        return sendJson(req, res, 503, { ok: false, service: 'IZAKHONO Core', version: VERSION })
+      }
+    }
+
+    if (req.method === 'GET' && url.pathname === '/v1/capabilities') {
+      return sendJson(req, res, 200, {
+        service: 'IZAKHONO Core',
+        version: VERSION,
+        capabilities: {
+          passwordAuth: true,
+          refreshTokens: true,
+          projectIsolation: true,
+          ownerDefaultDataPolicy: true,
+          ownerPublicReadDataPolicy: true,
+          ownerActionOnlyDataPolicy: true,
+          projectSharedDataPolicy: true,
+          basicCrud: true,
+          storage: true,
+          realtime: true,
+          relationalSelect: false,
+          rpc: false,
+          edgeFunctions: false,
+          passwordRecovery: false,
+        },
+      })
+    }
+
+    if (req.method === 'POST' && url.pathname === '/v1/admin/projects') return handleAdminProject(req, res)
+
+    let match = url.pathname.match(/^\/v1\/auth\/([^/]+)\/(signup|signin|refresh|signout|me)$/)
+    if (match) {
+      const project = validateProjectId(decodeURIComponent(match[1]))
+      const action = match[2]
+      if (action === 'signup' && req.method === 'POST') return handleSignup(req, res, project)
+      if (action === 'signin' && req.method === 'POST') return handleSignin(req, res, project)
+      if (action === 'refresh' && req.method === 'POST') return handleRefresh(req, res, project)
+      if (action === 'signout' && req.method === 'POST') return handleSignout(req, res, project)
+      if (action === 'me' && req.method === 'GET') return handleMe(req, res, project)
+      return sendError(req, res, 405, 'Method not allowed')
+    }
+
+    match = url.pathname.match(/^\/v1\/data\/([^/]+)\/([^/]+)$/)
+    if (match) {
+      const project = validateProjectId(decodeURIComponent(match[1]))
+      const table = validateTable(decodeURIComponent(match[2]))
+      return handleDataCollection(req, res, url, project, table)
+    }
+
+    match = url.pathname.match(/^\/v1\/data\/([^/]+)\/([^/]+)\/([^/]+)$/)
+    if (match) {
+      const project = validateProjectId(decodeURIComponent(match[1]))
+      const table = validateTable(decodeURIComponent(match[2]))
+      const id = validateRowId(decodeURIComponent(match[3]))
+      return handleDataRow(req, res, project, table, id)
+    }
+
+    match = url.pathname.match(/^\/v1\/storage\/([^/]+)\/([^/]+)\/(.+)$/)
+    if (match) {
+      const project = validateProjectId(decodeURIComponent(match[1]))
+      const bucket = decodeURIComponent(match[2])
+      const objectPath = decodeURIComponent(match[3])
+      return handleStorage(req, res, project, bucket, objectPath)
+    }
+
+    return sendError(req, res, 404, 'Not found')
+  } catch (error) {
+    const status = Number.isInteger(error?.status) ? error.status : 500
+    if (status >= 500) console.error(error)
+    return sendError(req, res, status, status >= 500 ? 'Internal server error' : error.message)
+  }
+})
+
+server.on('upgrade', async (req, socket, head) => {
+  try {
+    const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`)
+    const match = url.pathname.match(/^\/v1\/realtime\/([^/]+)$/)
+    if (!match) throw Object.assign(new Error('Not found'), { status: 404 })
+    const project = validateProjectId(decodeURIComponent(match[1]))
+    const projectKey = url.searchParams.get('project_key') || ''
+    await projectForKey(project, projectKey)
+    const payload = verifyAccessToken(url.searchParams.get('access_token') || '')
+    if (payload.project !== project || payload.aud !== project) throw Object.assign(new Error('Token project mismatch'), { status: 403 })
+    const result = await pool.query('SELECT id, disabled FROM iz_core_users WHERE id=$1 AND project_id=$2', [payload.sub, project])
+    if (!result.rowCount || result.rows[0].disabled) throw Object.assign(new Error('User unavailable'), { status: 401 })
+    wss.handleUpgrade(req, socket, head, ws => {
+      ws.izakhonoContext = { project, userId: payload.sub }
+      wss.emit('connection', ws, req)
+    })
+  } catch (error) {
+    const status = Number.isInteger(error?.status) ? error.status : 401
+    socket.write(`HTTP/1.1 ${status} Unauthorized\r\nConnection: close\r\n\r\n`)
+    socket.destroy()
+  }
+})
+
+wss.on('connection', ws => {
+  ws.send(JSON.stringify({ type: 'ready', service: 'IZAKHONO Core', version: VERSION }))
+})
+
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(`IZAKHONO Core ${VERSION} listening on :${PORT}`)
+})
+
+async function shutdown(signal) {
+  console.log(`${signal}: shutting down IZAKHONO Core`)
+  for (const ws of wss.clients) ws.close(1001, 'server shutdown')
+  server.close(async () => {
+    await pool.end()
+    process.exit(0)
+  })
+  setTimeout(() => process.exit(1), 10000).unref()
+}
+
+process.on('SIGTERM', () => shutdown('SIGTERM'))
+process.on('SIGINT', () => shutdown('SIGINT'))
+ + values.length)
+    }
+    for (const [rawKey, value] of url.searchParams.entries()) {
+      if (['order', 'limit', 'offset'].includes(rawKey)) continue
+      const key = validateFilterKey(rawKey)
+      values.push(key)
+      const keyParam = values.length
+      values.push(String(value))
+      clauses.push(`data ->> ${keyParam} = ${values.length}`)
+    }
+    let orderSql = 'updated_at DESC'
+    const order = url.searchParams.get('order')
+    if (order) {
+      const match = order.match(/^([A-Za-z_][A-Za-z0-9_]{0,62})\.(asc|desc)$/)
+      if (!match) return sendError(req, res, 400, 'Invalid order expression')
+      const [, key, direction] = match
+      orderSql = key === 'id' ? `row_id ${direction.toUpperCase()}` : `(data ->> '${key}') ${direction.toUpperCase()}`
+    }
+    const limit = Math.min(200, Math.max(1, Number.parseInt(url.searchParams.get('limit') || '100', 10) || 100))
+    const offset = Math.min(100000, Math.max(0, Number.parseInt(url.searchParams.get('offset') || '0', 10) || 0))
+    values.push(limit)
+    const limitParam = values.length
+    values.push(offset)
+    const offsetParam = values.length
+    const result = await pool.query(
+      `SELECT row_id, data FROM iz_core_rows WHERE ${clauses.join(' AND ')} ORDER BY ${orderSql} LIMIT ${limitParam} OFFSET ${offsetParam}`,
+      values,
+    )
+    return sendJson(req, res, 200, result.rows.map(rowToJson))
+  }
+
+  if (req.method === 'POST') {
+    if (mode === 'owner_action_only') return sendError(req, res, 403, 'Direct writes are disabled for this table')
+    const body = await readJson(req)
+    if (!body.data || typeof body.data !== 'object' || Array.isArray(body.data)) return sendError(req, res, 400, 'data object required')
+    const payload = { ...body.data }
+    const id = payload.id ? validateRowId(payload.id) : randomUUID()
+    delete payload.id
+    try {
+      const result = await pool.query(
+        `INSERT INTO iz_core_rows(project_id, table_name, row_id, data, created_by)
+         VALUES($1,$2,$3,$4::jsonb,$5)
+         RETURNING row_id, data`,
+        [project, table, id, JSON.stringify(payload), user.id],
+      )
+      const row = rowToJson(result.rows[0])
+      await audit(project, user.id, 'data.insert', { table, id })
+      broadcast(project, mode, user.id, { type: 'row.changed', event: 'INSERT', table, row })
+      return sendJson(req, res, 201, row)
+    } catch (error) {
+      if (error?.code === '23505') return sendError(req, res, 409, 'Row already exists')
+      throw error
+    }
+  }
+
+  return sendError(req, res, 405, 'Method not allowed')
+}
+
+async function handleDataRow(req, res, project, table, id) {
+  const user = await requireUser(req, project)
+  const mode = await tablePolicy(project, table)
+  const ownerClause = isOwnerWriteMode(mode) ? ' AND created_by=$4' : ''
+  const baseValues = [project, table, id]
+
+  if (mode === 'owner_action_only' && (req.method === 'PATCH' || req.method === 'DELETE')) {
+    return sendError(req, res, 403, 'Direct writes are disabled for this table')
+  }
+
+  if (req.method === 'PATCH') {
+    const body = await readJson(req)
+    if (!body.data || typeof body.data !== 'object' || Array.isArray(body.data)) return sendError(req, res, 400, 'data object required')
+    const payload = { ...body.data }
+    delete payload.id
+    const values = [...baseValues, ...(isOwnerWriteMode(mode) ? [user.id] : []), JSON.stringify(payload)]
+    const jsonParam = values.length
+    const result = await pool.query(
+      `UPDATE iz_core_rows SET data=data || $${jsonParam}::jsonb, updated_at=now()
+       WHERE project_id=$1 AND table_name=$2 AND row_id=$3${ownerClause}
+       RETURNING row_id, data`,
+      values,
+    )
+    if (!result.rowCount) return sendError(req, res, 404, 'Row not found')
+    const row = rowToJson(result.rows[0])
+    await audit(project, user.id, 'data.update', { table, id })
+    broadcast(project, mode, user.id, { type: 'row.changed', event: 'UPDATE', table, row })
+    return sendJson(req, res, 200, row)
+  }
+
+  if (req.method === 'DELETE') {
+    const values = [...baseValues, ...(isOwnerWriteMode(mode) ? [user.id] : [])]
+    const result = await pool.query(
+      `DELETE FROM iz_core_rows WHERE project_id=$1 AND table_name=$2 AND row_id=$3${ownerClause} RETURNING row_id, data`,
+      values,
+    )
+    if (!result.rowCount) return sendError(req, res, 404, 'Row not found')
+    const row = rowToJson(result.rows[0])
+    await audit(project, user.id, 'data.delete', { table, id })
+    broadcast(project, mode, user.id, { type: 'row.changed', event: 'DELETE', table, row })
+    return sendJson(req, res, 200, row)
+  }
+
+  return sendError(req, res, 405, 'Method not allowed')
+}
+
+async function handleStorage(req, res, project, bucket, objectPath) {
+  const user = await requireUser(req, project)
+  const filePath = safeStoragePath(project, bucket, objectPath)
+
+  if (req.method === 'PUT') {
+    const existing = await pool.query(
+      'SELECT created_by FROM iz_core_storage_objects WHERE project_id=$1 AND bucket=$2 AND object_path=$3',
+      [project, bucket, objectPath],
+    )
+    if (existing.rowCount && existing.rows[0].created_by !== user.id) return sendError(req, res, 403, 'Storage object belongs to another user')
+    const content = await readBody(req, MAX_STORAGE_BYTES)
+    const digest = sha256(content)
+    const contentType = String(req.headers['content-type'] || 'application/octet-stream').slice(0, 200)
+    await mkdir(dirname(filePath), { recursive: true })
+    await writeFile(filePath, content, { mode: 0o600 })
+    await pool.query(
+      `INSERT INTO iz_core_storage_objects(project_id,bucket,object_path,created_by,content_type,byte_size,sha256)
+       VALUES($1,$2,$3,$4,$5,$6,$7)
+       ON CONFLICT(project_id,bucket,object_path)
+       DO UPDATE SET content_type=EXCLUDED.content_type, byte_size=EXCLUDED.byte_size, sha256=EXCLUDED.sha256, updated_at=now()`,
+      [project, bucket, objectPath, user.id, contentType, content.length, digest],
+    )
+    await audit(project, user.id, 'storage.put', { bucket, objectPath, bytes: content.length })
+    return sendJson(req, res, 201, { bucket, path: objectPath, size: content.length, sha256: digest })
+  }
+
+  if (req.method === 'GET') {
+    const result = await pool.query(
+      `SELECT content_type, byte_size, sha256 FROM iz_core_storage_objects
+       WHERE project_id=$1 AND bucket=$2 AND object_path=$3 AND created_by=$4`,
+      [project, bucket, objectPath, user.id],
+    )
+    if (!result.rowCount) return sendError(req, res, 404, 'Storage object not found')
+    let content
+    try { content = await readFile(filePath) } catch { return sendError(req, res, 404, 'Storage object file missing') }
+    const metadata = result.rows[0]
+    res.writeHead(200, {
+      'content-type': metadata.content_type,
+      'content-length': String(content.length),
+      'cache-control': 'private, no-store',
+      'x-content-type-options': 'nosniff',
+      'x-izakhono-sha256': metadata.sha256,
+    })
+    return res.end(content)
+  }
+
+  if (req.method === 'DELETE') {
+    const result = await pool.query(
+      `DELETE FROM iz_core_storage_objects
+       WHERE project_id=$1 AND bucket=$2 AND object_path=$3 AND created_by=$4
+       RETURNING object_path`,
+      [project, bucket, objectPath, user.id],
+    )
+    if (!result.rowCount) return sendError(req, res, 404, 'Storage object not found')
+    try { await unlink(filePath) } catch {}
+    await audit(project, user.id, 'storage.delete', { bucket, objectPath })
+    return sendJson(req, res, 200, { ok: true })
+  }
+
+  return sendError(req, res, 405, 'Method not allowed')
+}
+
+const server = http.createServer(async (req, res) => {
+  try {
+    if (!corsAllowed(req)) return sendError(req, res, 403, 'Origin not allowed')
+    if (req.method === 'OPTIONS') {
+      const headers = jsonHeaders(req)
+      headers['access-control-allow-methods'] = 'GET,POST,PATCH,PUT,DELETE,OPTIONS'
+      headers['access-control-allow-headers'] = 'Authorization,Content-Type,X-Project-Key'
+      headers['access-control-max-age'] = '600'
+      res.writeHead(204, headers)
+      return res.end()
+    }
+
+    const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`)
+
+    if (req.method === 'GET' && url.pathname === '/healthz') {
+      try {
+        await pool.query('SELECT 1')
+        return sendJson(req, res, 200, { ok: true, service: 'IZAKHONO Core', version: VERSION, storage: 'local-volume', database: 'postgresql' })
+      } catch {
+        return sendJson(req, res, 503, { ok: false, service: 'IZAKHONO Core', version: VERSION })
+      }
+    }
+
+    if (req.method === 'GET' && url.pathname === '/v1/capabilities') {
+      return sendJson(req, res, 200, {
+        service: 'IZAKHONO Core',
+        version: VERSION,
+        capabilities: {
+          passwordAuth: true,
+          refreshTokens: true,
+          projectIsolation: true,
+          ownerDefaultDataPolicy: true,
+          ownerPublicReadDataPolicy: true,
+          ownerActionOnlyDataPolicy: true,
+          projectSharedDataPolicy: true,
+          basicCrud: true,
+          storage: true,
+          realtime: true,
+          relationalSelect: false,
+          rpc: false,
+          edgeFunctions: false,
+          passwordRecovery: false,
+        },
+      })
+    }
+
+    if (req.method === 'POST' && url.pathname === '/v1/admin/projects') return handleAdminProject(req, res)
+
+    let match = url.pathname.match(/^\/v1\/auth\/([^/]+)\/(signup|signin|refresh|signout|me)$/)
+    if (match) {
+      const project = validateProjectId(decodeURIComponent(match[1]))
+      const action = match[2]
+      if (action === 'signup' && req.method === 'POST') return handleSignup(req, res, project)
+      if (action === 'signin' && req.method === 'POST') return handleSignin(req, res, project)
+      if (action === 'refresh' && req.method === 'POST') return handleRefresh(req, res, project)
+      if (action === 'signout' && req.method === 'POST') return handleSignout(req, res, project)
+      if (action === 'me' && req.method === 'GET') return handleMe(req, res, project)
+      return sendError(req, res, 405, 'Method not allowed')
+    }
+
+    match = url.pathname.match(/^\/v1\/data\/([^/]+)\/([^/]+)$/)
+    if (match) {
+      const project = validateProjectId(decodeURIComponent(match[1]))
+      const table = validateTable(decodeURIComponent(match[2]))
+      return handleDataCollection(req, res, url, project, table)
+    }
+
+    match = url.pathname.match(/^\/v1\/data\/([^/]+)\/([^/]+)\/([^/]+)$/)
+    if (match) {
+      const project = validateProjectId(decodeURIComponent(match[1]))
+      const table = validateTable(decodeURIComponent(match[2]))
+      const id = validateRowId(decodeURIComponent(match[3]))
+      return handleDataRow(req, res, project, table, id)
+    }
+
+    match = url.pathname.match(/^\/v1\/storage\/([^/]+)\/([^/]+)\/(.+)$/)
+    if (match) {
+      const project = validateProjectId(decodeURIComponent(match[1]))
+      const bucket = decodeURIComponent(match[2])
+      const objectPath = decodeURIComponent(match[3])
+      return handleStorage(req, res, project, bucket, objectPath)
+    }
+
+    return sendError(req, res, 404, 'Not found')
+  } catch (error) {
+    const status = Number.isInteger(error?.status) ? error.status : 500
+    if (status >= 500) console.error(error)
+    return sendError(req, res, status, status >= 500 ? 'Internal server error' : error.message)
+  }
+})
+
+server.on('upgrade', async (req, socket, head) => {
+  try {
+    const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`)
+    const match = url.pathname.match(/^\/v1\/realtime\/([^/]+)$/)
+    if (!match) throw Object.assign(new Error('Not found'), { status: 404 })
+    const project = validateProjectId(decodeURIComponent(match[1]))
+    const projectKey = url.searchParams.get('project_key') || ''
+    await projectForKey(project, projectKey)
+    const payload = verifyAccessToken(url.searchParams.get('access_token') || '')
+    if (payload.project !== project || payload.aud !== project) throw Object.assign(new Error('Token project mismatch'), { status: 403 })
+    const result = await pool.query('SELECT id, disabled FROM iz_core_users WHERE id=$1 AND project_id=$2', [payload.sub, project])
+    if (!result.rowCount || result.rows[0].disabled) throw Object.assign(new Error('User unavailable'), { status: 401 })
+    wss.handleUpgrade(req, socket, head, ws => {
+      ws.izakhonoContext = { project, userId: payload.sub }
+      wss.emit('connection', ws, req)
+    })
+  } catch (error) {
+    const status = Number.isInteger(error?.status) ? error.status : 401
+    socket.write(`HTTP/1.1 ${status} Unauthorized\r\nConnection: close\r\n\r\n`)
+    socket.destroy()
+  }
+})
+
+wss.on('connection', ws => {
+  ws.send(JSON.stringify({ type: 'ready', service: 'IZAKHONO Core', version: VERSION }))
+})
+
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(`IZAKHONO Core ${VERSION} listening on :${PORT}`)
+})
+
+async function shutdown(signal) {
+  console.log(`${signal}: shutting down IZAKHONO Core`)
+  for (const ws of wss.clients) ws.close(1001, 'server shutdown')
+  server.close(async () => {
+    await pool.end()
+    process.exit(0)
+  })
+  setTimeout(() => process.exit(1), 10000).unref()
+}
+
+process.on('SIGTERM', () => shutdown('SIGTERM'))
+process.on('SIGINT', () => shutdown('SIGINT'))
+ + values.length)
+    }
+    let orderSql = 'updated_at DESC'
+    const order = url.searchParams.get('order')
+    if (order) {
+      const match = order.match(/^([A-Za-z_][A-Za-z0-9_]{0,62})\.(asc|desc)$/)
+      if (!match) return sendError(req, res, 400, 'Invalid order expression')
+      const [, key, direction] = match
+      orderSql = key === 'id' ? `row_id ${direction.toUpperCase()}` : `(data ->> '${key}') ${direction.toUpperCase()}`
+    }
+    const limit = Math.min(200, Math.max(1, Number.parseInt(url.searchParams.get('limit') || '100', 10) || 100))
+    const offset = Math.min(100000, Math.max(0, Number.parseInt(url.searchParams.get('offset') || '0', 10) || 0))
+    values.push(limit)
+    const limitParam = values.length
+    values.push(offset)
+    const offsetParam = values.length
+    const result = await pool.query(
+      `SELECT row_id, data FROM iz_core_rows WHERE ${clauses.join(' AND ')} ORDER BY ${orderSql} LIMIT ${limitParam} OFFSET ${offsetParam}`,
+      values,
+    )
+    return sendJson(req, res, 200, result.rows.map(rowToJson))
+  }
+
+  if (req.method === 'POST') {
+    if (mode === 'owner_action_only') return sendError(req, res, 403, 'Direct writes are disabled for this table')
+    const body = await readJson(req)
+    if (!body.data || typeof body.data !== 'object' || Array.isArray(body.data)) return sendError(req, res, 400, 'data object required')
+    const payload = { ...body.data }
+    const id = payload.id ? validateRowId(payload.id) : randomUUID()
+    delete payload.id
+    try {
+      const result = await pool.query(
+        `INSERT INTO iz_core_rows(project_id, table_name, row_id, data, created_by)
+         VALUES($1,$2,$3,$4::jsonb,$5)
+         RETURNING row_id, data`,
+        [project, table, id, JSON.stringify(payload), user.id],
+      )
+      const row = rowToJson(result.rows[0])
+      await audit(project, user.id, 'data.insert', { table, id })
+      broadcast(project, mode, user.id, { type: 'row.changed', event: 'INSERT', table, row })
+      return sendJson(req, res, 201, row)
+    } catch (error) {
+      if (error?.code === '23505') return sendError(req, res, 409, 'Row already exists')
+      throw error
+    }
+  }
+
+  return sendError(req, res, 405, 'Method not allowed')
+}
+
+async function handleDataRow(req, res, project, table, id) {
+  const user = await requireUser(req, project)
+  const mode = await tablePolicy(project, table)
+  const ownerClause = isOwnerWriteMode(mode) ? ' AND created_by=$4' : ''
+  const baseValues = [project, table, id]
+
+  if (mode === 'owner_action_only' && (req.method === 'PATCH' || req.method === 'DELETE')) {
+    return sendError(req, res, 403, 'Direct writes are disabled for this table')
+  }
+
+  if (req.method === 'PATCH') {
+    const body = await readJson(req)
+    if (!body.data || typeof body.data !== 'object' || Array.isArray(body.data)) return sendError(req, res, 400, 'data object required')
+    const payload = { ...body.data }
+    delete payload.id
+    const values = [...baseValues, ...(isOwnerWriteMode(mode) ? [user.id] : []), JSON.stringify(payload)]
+    const jsonParam = values.length
+    const result = await pool.query(
+      `UPDATE iz_core_rows SET data=data || $${jsonParam}::jsonb, updated_at=now()
+       WHERE project_id=$1 AND table_name=$2 AND row_id=$3${ownerClause}
+       RETURNING row_id, data`,
+      values,
+    )
+    if (!result.rowCount) return sendError(req, res, 404, 'Row not found')
+    const row = rowToJson(result.rows[0])
+    await audit(project, user.id, 'data.update', { table, id })
+    broadcast(project, mode, user.id, { type: 'row.changed', event: 'UPDATE', table, row })
+    return sendJson(req, res, 200, row)
+  }
+
+  if (req.method === 'DELETE') {
+    const values = [...baseValues, ...(isOwnerWriteMode(mode) ? [user.id] : [])]
+    const result = await pool.query(
+      `DELETE FROM iz_core_rows WHERE project_id=$1 AND table_name=$2 AND row_id=$3${ownerClause} RETURNING row_id, data`,
+      values,
+    )
+    if (!result.rowCount) return sendError(req, res, 404, 'Row not found')
+    const row = rowToJson(result.rows[0])
+    await audit(project, user.id, 'data.delete', { table, id })
+    broadcast(project, mode, user.id, { type: 'row.changed', event: 'DELETE', table, row })
+    return sendJson(req, res, 200, row)
+  }
+
+  return sendError(req, res, 405, 'Method not allowed')
+}
+
+async function handleStorage(req, res, project, bucket, objectPath) {
+  const user = await requireUser(req, project)
+  const filePath = safeStoragePath(project, bucket, objectPath)
+
+  if (req.method === 'PUT') {
+    const existing = await pool.query(
+      'SELECT created_by FROM iz_core_storage_objects WHERE project_id=$1 AND bucket=$2 AND object_path=$3',
+      [project, bucket, objectPath],
+    )
+    if (existing.rowCount && existing.rows[0].created_by !== user.id) return sendError(req, res, 403, 'Storage object belongs to another user')
+    const content = await readBody(req, MAX_STORAGE_BYTES)
+    const digest = sha256(content)
+    const contentType = String(req.headers['content-type'] || 'application/octet-stream').slice(0, 200)
+    await mkdir(dirname(filePath), { recursive: true })
+    await writeFile(filePath, content, { mode: 0o600 })
+    await pool.query(
+      `INSERT INTO iz_core_storage_objects(project_id,bucket,object_path,created_by,content_type,byte_size,sha256)
+       VALUES($1,$2,$3,$4,$5,$6,$7)
+       ON CONFLICT(project_id,bucket,object_path)
+       DO UPDATE SET content_type=EXCLUDED.content_type, byte_size=EXCLUDED.byte_size, sha256=EXCLUDED.sha256, updated_at=now()`,
+      [project, bucket, objectPath, user.id, contentType, content.length, digest],
+    )
+    await audit(project, user.id, 'storage.put', { bucket, objectPath, bytes: content.length })
+    return sendJson(req, res, 201, { bucket, path: objectPath, size: content.length, sha256: digest })
+  }
+
+  if (req.method === 'GET') {
+    const result = await pool.query(
+      `SELECT content_type, byte_size, sha256 FROM iz_core_storage_objects
+       WHERE project_id=$1 AND bucket=$2 AND object_path=$3 AND created_by=$4`,
+      [project, bucket, objectPath, user.id],
+    )
+    if (!result.rowCount) return sendError(req, res, 404, 'Storage object not found')
+    let content
+    try { content = await readFile(filePath) } catch { return sendError(req, res, 404, 'Storage object file missing') }
+    const metadata = result.rows[0]
+    res.writeHead(200, {
+      'content-type': metadata.content_type,
+      'content-length': String(content.length),
+      'cache-control': 'private, no-store',
+      'x-content-type-options': 'nosniff',
+      'x-izakhono-sha256': metadata.sha256,
+    })
+    return res.end(content)
+  }
+
+  if (req.method === 'DELETE') {
+    const result = await pool.query(
+      `DELETE FROM iz_core_storage_objects
+       WHERE project_id=$1 AND bucket=$2 AND object_path=$3 AND created_by=$4
+       RETURNING object_path`,
+      [project, bucket, objectPath, user.id],
+    )
+    if (!result.rowCount) return sendError(req, res, 404, 'Storage object not found')
+    try { await unlink(filePath) } catch {}
+    await audit(project, user.id, 'storage.delete', { bucket, objectPath })
+    return sendJson(req, res, 200, { ok: true })
+  }
+
+  return sendError(req, res, 405, 'Method not allowed')
+}
+
+const server = http.createServer(async (req, res) => {
+  try {
+    if (!corsAllowed(req)) return sendError(req, res, 403, 'Origin not allowed')
+    if (req.method === 'OPTIONS') {
+      const headers = jsonHeaders(req)
+      headers['access-control-allow-methods'] = 'GET,POST,PATCH,PUT,DELETE,OPTIONS'
+      headers['access-control-allow-headers'] = 'Authorization,Content-Type,X-Project-Key'
+      headers['access-control-max-age'] = '600'
+      res.writeHead(204, headers)
+      return res.end()
+    }
+
+    const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`)
+
+    if (req.method === 'GET' && url.pathname === '/healthz') {
+      try {
+        await pool.query('SELECT 1')
+        return sendJson(req, res, 200, { ok: true, service: 'IZAKHONO Core', version: VERSION, storage: 'local-volume', database: 'postgresql' })
+      } catch {
+        return sendJson(req, res, 503, { ok: false, service: 'IZAKHONO Core', version: VERSION })
+      }
+    }
+
+    if (req.method === 'GET' && url.pathname === '/v1/capabilities') {
+      return sendJson(req, res, 200, {
+        service: 'IZAKHONO Core',
+        version: VERSION,
+        capabilities: {
+          passwordAuth: true,
+          refreshTokens: true,
+          projectIsolation: true,
+          ownerDefaultDataPolicy: true,
+          ownerPublicReadDataPolicy: true,
+          ownerActionOnlyDataPolicy: true,
+          projectSharedDataPolicy: true,
+          basicCrud: true,
+          storage: true,
+          realtime: true,
+          relationalSelect: false,
+          rpc: false,
+          edgeFunctions: false,
+          passwordRecovery: false,
+        },
+      })
+    }
+
+    if (req.method === 'POST' && url.pathname === '/v1/admin/projects') return handleAdminProject(req, res)
+
+    let match = url.pathname.match(/^\/v1\/auth\/([^/]+)\/(signup|signin|refresh|signout|me)$/)
+    if (match) {
+      const project = validateProjectId(decodeURIComponent(match[1]))
+      const action = match[2]
+      if (action === 'signup' && req.method === 'POST') return handleSignup(req, res, project)
+      if (action === 'signin' && req.method === 'POST') return handleSignin(req, res, project)
+      if (action === 'refresh' && req.method === 'POST') return handleRefresh(req, res, project)
+      if (action === 'signout' && req.method === 'POST') return handleSignout(req, res, project)
+      if (action === 'me' && req.method === 'GET') return handleMe(req, res, project)
+      return sendError(req, res, 405, 'Method not allowed')
+    }
+
+    match = url.pathname.match(/^\/v1\/data\/([^/]+)\/([^/]+)$/)
+    if (match) {
+      const project = validateProjectId(decodeURIComponent(match[1]))
+      const table = validateTable(decodeURIComponent(match[2]))
+      return handleDataCollection(req, res, url, project, table)
+    }
+
+    match = url.pathname.match(/^\/v1\/data\/([^/]+)\/([^/]+)\/([^/]+)$/)
+    if (match) {
+      const project = validateProjectId(decodeURIComponent(match[1]))
+      const table = validateTable(decodeURIComponent(match[2]))
+      const id = validateRowId(decodeURIComponent(match[3]))
+      return handleDataRow(req, res, project, table, id)
+    }
+
+    match = url.pathname.match(/^\/v1\/storage\/([^/]+)\/([^/]+)\/(.+)$/)
+    if (match) {
+      const project = validateProjectId(decodeURIComponent(match[1]))
+      const bucket = decodeURIComponent(match[2])
+      const objectPath = decodeURIComponent(match[3])
+      return handleStorage(req, res, project, bucket, objectPath)
+    }
+
+    return sendError(req, res, 404, 'Not found')
+  } catch (error) {
+    const status = Number.isInteger(error?.status) ? error.status : 500
+    if (status >= 500) console.error(error)
+    return sendError(req, res, status, status >= 500 ? 'Internal server error' : error.message)
+  }
+})
+
+server.on('upgrade', async (req, socket, head) => {
+  try {
+    const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`)
+    const match = url.pathname.match(/^\/v1\/realtime\/([^/]+)$/)
+    if (!match) throw Object.assign(new Error('Not found'), { status: 404 })
+    const project = validateProjectId(decodeURIComponent(match[1]))
+    const projectKey = url.searchParams.get('project_key') || ''
+    await projectForKey(project, projectKey)
+    const payload = verifyAccessToken(url.searchParams.get('access_token') || '')
+    if (payload.project !== project || payload.aud !== project) throw Object.assign(new Error('Token project mismatch'), { status: 403 })
+    const result = await pool.query('SELECT id, disabled FROM iz_core_users WHERE id=$1 AND project_id=$2', [payload.sub, project])
+    if (!result.rowCount || result.rows[0].disabled) throw Object.assign(new Error('User unavailable'), { status: 401 })
+    wss.handleUpgrade(req, socket, head, ws => {
+      ws.izakhonoContext = { project, userId: payload.sub }
+      wss.emit('connection', ws, req)
+    })
+  } catch (error) {
+    const status = Number.isInteger(error?.status) ? error.status : 401
+    socket.write(`HTTP/1.1 ${status} Unauthorized\r\nConnection: close\r\n\r\n`)
+    socket.destroy()
+  }
+})
+
+wss.on('connection', ws => {
+  ws.send(JSON.stringify({ type: 'ready', service: 'IZAKHONO Core', version: VERSION }))
+})
+
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(`IZAKHONO Core ${VERSION} listening on :${PORT}`)
+})
+
+async function shutdown(signal) {
+  console.log(`${signal}: shutting down IZAKHONO Core`)
+  for (const ws of wss.clients) ws.close(1001, 'server shutdown')
+  server.close(async () => {
+    await pool.end()
+    process.exit(0)
+  })
+  setTimeout(() => process.exit(1), 10000).unref()
+}
+
+process.on('SIGTERM', () => shutdown('SIGTERM'))
+process.on('SIGINT', () => shutdown('SIGINT'))
+ + values.length)
+    }
+    for (const [rawKey, value] of url.searchParams.entries()) {
+      if (['order', 'limit', 'offset'].includes(rawKey)) continue
+      const key = validateFilterKey(rawKey)
+      values.push(key)
+      const keyParam = values.length
+      values.push(String(value))
+      clauses.push(`data ->> ${keyParam} = ${values.length}`)
+    }
+    let orderSql = 'updated_at DESC'
+    const order = url.searchParams.get('order')
+    if (order) {
+      const match = order.match(/^([A-Za-z_][A-Za-z0-9_]{0,62})\.(asc|desc)$/)
+      if (!match) return sendError(req, res, 400, 'Invalid order expression')
+      const [, key, direction] = match
+      orderSql = key === 'id' ? `row_id ${direction.toUpperCase()}` : `(data ->> '${key}') ${direction.toUpperCase()}`
+    }
+    const limit = Math.min(200, Math.max(1, Number.parseInt(url.searchParams.get('limit') || '100', 10) || 100))
+    const offset = Math.min(100000, Math.max(0, Number.parseInt(url.searchParams.get('offset') || '0', 10) || 0))
+    values.push(limit)
+    const limitParam = values.length
+    values.push(offset)
+    const offsetParam = values.length
+    const result = await pool.query(
+      `SELECT row_id, data FROM iz_core_rows WHERE ${clauses.join(' AND ')} ORDER BY ${orderSql} LIMIT ${limitParam} OFFSET ${offsetParam}`,
+      values,
+    )
+    return sendJson(req, res, 200, result.rows.map(rowToJson))
+  }
+
+  if (req.method === 'POST') {
+    if (mode === 'owner_action_only') return sendError(req, res, 403, 'Direct writes are disabled for this table')
+    const body = await readJson(req)
+    if (!body.data || typeof body.data !== 'object' || Array.isArray(body.data)) return sendError(req, res, 400, 'data object required')
+    const payload = { ...body.data }
+    const id = payload.id ? validateRowId(payload.id) : randomUUID()
+    delete payload.id
+    try {
+      const result = await pool.query(
+        `INSERT INTO iz_core_rows(project_id, table_name, row_id, data, created_by)
+         VALUES($1,$2,$3,$4::jsonb,$5)
+         RETURNING row_id, data`,
+        [project, table, id, JSON.stringify(payload), user.id],
+      )
+      const row = rowToJson(result.rows[0])
+      await audit(project, user.id, 'data.insert', { table, id })
+      broadcast(project, mode, user.id, { type: 'row.changed', event: 'INSERT', table, row })
+      return sendJson(req, res, 201, row)
+    } catch (error) {
+      if (error?.code === '23505') return sendError(req, res, 409, 'Row already exists')
+      throw error
+    }
+  }
+
+  return sendError(req, res, 405, 'Method not allowed')
+}
+
+async function handleDataRow(req, res, project, table, id) {
+  const user = await requireUser(req, project)
+  const mode = await tablePolicy(project, table)
+  const ownerClause = isOwnerWriteMode(mode) ? ' AND created_by=$4' : ''
+  const baseValues = [project, table, id]
+
+  if (mode === 'owner_action_only' && (req.method === 'PATCH' || req.method === 'DELETE')) {
+    return sendError(req, res, 403, 'Direct writes are disabled for this table')
+  }
+
+  if (req.method === 'PATCH') {
+    const body = await readJson(req)
+    if (!body.data || typeof body.data !== 'object' || Array.isArray(body.data)) return sendError(req, res, 400, 'data object required')
+    const payload = { ...body.data }
+    delete payload.id
+    const values = [...baseValues, ...(isOwnerWriteMode(mode) ? [user.id] : []), JSON.stringify(payload)]
+    const jsonParam = values.length
+    const result = await pool.query(
+      `UPDATE iz_core_rows SET data=data || $${jsonParam}::jsonb, updated_at=now()
+       WHERE project_id=$1 AND table_name=$2 AND row_id=$3${ownerClause}
+       RETURNING row_id, data`,
+      values,
+    )
+    if (!result.rowCount) return sendError(req, res, 404, 'Row not found')
+    const row = rowToJson(result.rows[0])
+    await audit(project, user.id, 'data.update', { table, id })
+    broadcast(project, mode, user.id, { type: 'row.changed', event: 'UPDATE', table, row })
+    return sendJson(req, res, 200, row)
+  }
+
+  if (req.method === 'DELETE') {
+    const values = [...baseValues, ...(isOwnerWriteMode(mode) ? [user.id] : [])]
+    const result = await pool.query(
+      `DELETE FROM iz_core_rows WHERE project_id=$1 AND table_name=$2 AND row_id=$3${ownerClause} RETURNING row_id, data`,
+      values,
+    )
+    if (!result.rowCount) return sendError(req, res, 404, 'Row not found')
+    const row = rowToJson(result.rows[0])
+    await audit(project, user.id, 'data.delete', { table, id })
+    broadcast(project, mode, user.id, { type: 'row.changed', event: 'DELETE', table, row })
+    return sendJson(req, res, 200, row)
+  }
+
+  return sendError(req, res, 405, 'Method not allowed')
+}
+
+async function handleStorage(req, res, project, bucket, objectPath) {
+  const user = await requireUser(req, project)
+  const filePath = safeStoragePath(project, bucket, objectPath)
+
+  if (req.method === 'PUT') {
+    const existing = await pool.query(
+      'SELECT created_by FROM iz_core_storage_objects WHERE project_id=$1 AND bucket=$2 AND object_path=$3',
+      [project, bucket, objectPath],
+    )
+    if (existing.rowCount && existing.rows[0].created_by !== user.id) return sendError(req, res, 403, 'Storage object belongs to another user')
+    const content = await readBody(req, MAX_STORAGE_BYTES)
+    const digest = sha256(content)
+    const contentType = String(req.headers['content-type'] || 'application/octet-stream').slice(0, 200)
+    await mkdir(dirname(filePath), { recursive: true })
+    await writeFile(filePath, content, { mode: 0o600 })
+    await pool.query(
+      `INSERT INTO iz_core_storage_objects(project_id,bucket,object_path,created_by,content_type,byte_size,sha256)
+       VALUES($1,$2,$3,$4,$5,$6,$7)
+       ON CONFLICT(project_id,bucket,object_path)
+       DO UPDATE SET content_type=EXCLUDED.content_type, byte_size=EXCLUDED.byte_size, sha256=EXCLUDED.sha256, updated_at=now()`,
+      [project, bucket, objectPath, user.id, contentType, content.length, digest],
+    )
+    await audit(project, user.id, 'storage.put', { bucket, objectPath, bytes: content.length })
+    return sendJson(req, res, 201, { bucket, path: objectPath, size: content.length, sha256: digest })
+  }
+
+  if (req.method === 'GET') {
+    const result = await pool.query(
+      `SELECT content_type, byte_size, sha256 FROM iz_core_storage_objects
+       WHERE project_id=$1 AND bucket=$2 AND object_path=$3 AND created_by=$4`,
+      [project, bucket, objectPath, user.id],
+    )
+    if (!result.rowCount) return sendError(req, res, 404, 'Storage object not found')
+    let content
+    try { content = await readFile(filePath) } catch { return sendError(req, res, 404, 'Storage object file missing') }
+    const metadata = result.rows[0]
+    res.writeHead(200, {
+      'content-type': metadata.content_type,
+      'content-length': String(content.length),
+      'cache-control': 'private, no-store',
+      'x-content-type-options': 'nosniff',
+      'x-izakhono-sha256': metadata.sha256,
+    })
+    return res.end(content)
+  }
+
+  if (req.method === 'DELETE') {
+    const result = await pool.query(
+      `DELETE FROM iz_core_storage_objects
+       WHERE project_id=$1 AND bucket=$2 AND object_path=$3 AND created_by=$4
+       RETURNING object_path`,
+      [project, bucket, objectPath, user.id],
+    )
+    if (!result.rowCount) return sendError(req, res, 404, 'Storage object not found')
+    try { await unlink(filePath) } catch {}
+    await audit(project, user.id, 'storage.delete', { bucket, objectPath })
+    return sendJson(req, res, 200, { ok: true })
+  }
+
+  return sendError(req, res, 405, 'Method not allowed')
+}
+
+const server = http.createServer(async (req, res) => {
+  try {
+    if (!corsAllowed(req)) return sendError(req, res, 403, 'Origin not allowed')
+    if (req.method === 'OPTIONS') {
+      const headers = jsonHeaders(req)
+      headers['access-control-allow-methods'] = 'GET,POST,PATCH,PUT,DELETE,OPTIONS'
+      headers['access-control-allow-headers'] = 'Authorization,Content-Type,X-Project-Key'
+      headers['access-control-max-age'] = '600'
+      res.writeHead(204, headers)
+      return res.end()
+    }
+
+    const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`)
+
+    if (req.method === 'GET' && url.pathname === '/healthz') {
+      try {
+        await pool.query('SELECT 1')
+        return sendJson(req, res, 200, { ok: true, service: 'IZAKHONO Core', version: VERSION, storage: 'local-volume', database: 'postgresql' })
+      } catch {
+        return sendJson(req, res, 503, { ok: false, service: 'IZAKHONO Core', version: VERSION })
+      }
+    }
+
+    if (req.method === 'GET' && url.pathname === '/v1/capabilities') {
+      return sendJson(req, res, 200, {
+        service: 'IZAKHONO Core',
+        version: VERSION,
+        capabilities: {
+          passwordAuth: true,
+          refreshTokens: true,
+          projectIsolation: true,
+          ownerDefaultDataPolicy: true,
+          ownerPublicReadDataPolicy: true,
+          ownerActionOnlyDataPolicy: true,
+          projectSharedDataPolicy: true,
+          basicCrud: true,
+          storage: true,
+          realtime: true,
+          relationalSelect: false,
+          rpc: false,
+          edgeFunctions: false,
+          passwordRecovery: false,
+        },
+      })
+    }
+
+    if (req.method === 'POST' && url.pathname === '/v1/admin/projects') return handleAdminProject(req, res)
+
+    let match = url.pathname.match(/^\/v1\/auth\/([^/]+)\/(signup|signin|refresh|signout|me)$/)
+    if (match) {
+      const project = validateProjectId(decodeURIComponent(match[1]))
+      const action = match[2]
+      if (action === 'signup' && req.method === 'POST') return handleSignup(req, res, project)
+      if (action === 'signin' && req.method === 'POST') return handleSignin(req, res, project)
+      if (action === 'refresh' && req.method === 'POST') return handleRefresh(req, res, project)
+      if (action === 'signout' && req.method === 'POST') return handleSignout(req, res, project)
+      if (action === 'me' && req.method === 'GET') return handleMe(req, res, project)
+      return sendError(req, res, 405, 'Method not allowed')
+    }
+
+    match = url.pathname.match(/^\/v1\/data\/([^/]+)\/([^/]+)$/)
+    if (match) {
+      const project = validateProjectId(decodeURIComponent(match[1]))
+      const table = validateTable(decodeURIComponent(match[2]))
+      return handleDataCollection(req, res, url, project, table)
+    }
+
+    match = url.pathname.match(/^\/v1\/data\/([^/]+)\/([^/]+)\/([^/]+)$/)
+    if (match) {
+      const project = validateProjectId(decodeURIComponent(match[1]))
+      const table = validateTable(decodeURIComponent(match[2]))
+      const id = validateRowId(decodeURIComponent(match[3]))
+      return handleDataRow(req, res, project, table, id)
+    }
+
+    match = url.pathname.match(/^\/v1\/storage\/([^/]+)\/([^/]+)\/(.+)$/)
+    if (match) {
+      const project = validateProjectId(decodeURIComponent(match[1]))
+      const bucket = decodeURIComponent(match[2])
+      const objectPath = decodeURIComponent(match[3])
+      return handleStorage(req, res, project, bucket, objectPath)
+    }
+
+    return sendError(req, res, 404, 'Not found')
+  } catch (error) {
+    const status = Number.isInteger(error?.status) ? error.status : 500
+    if (status >= 500) console.error(error)
+    return sendError(req, res, status, status >= 500 ? 'Internal server error' : error.message)
+  }
+})
+
+server.on('upgrade', async (req, socket, head) => {
+  try {
+    const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`)
+    const match = url.pathname.match(/^\/v1\/realtime\/([^/]+)$/)
+    if (!match) throw Object.assign(new Error('Not found'), { status: 404 })
+    const project = validateProjectId(decodeURIComponent(match[1]))
+    const projectKey = url.searchParams.get('project_key') || ''
+    await projectForKey(project, projectKey)
+    const payload = verifyAccessToken(url.searchParams.get('access_token') || '')
+    if (payload.project !== project || payload.aud !== project) throw Object.assign(new Error('Token project mismatch'), { status: 403 })
+    const result = await pool.query('SELECT id, disabled FROM iz_core_users WHERE id=$1 AND project_id=$2', [payload.sub, project])
+    if (!result.rowCount || result.rows[0].disabled) throw Object.assign(new Error('User unavailable'), { status: 401 })
+    wss.handleUpgrade(req, socket, head, ws => {
+      ws.izakhonoContext = { project, userId: payload.sub }
+      wss.emit('connection', ws, req)
+    })
+  } catch (error) {
+    const status = Number.isInteger(error?.status) ? error.status : 401
+    socket.write(`HTTP/1.1 ${status} Unauthorized\r\nConnection: close\r\n\r\n`)
+    socket.destroy()
+  }
+})
+
+wss.on('connection', ws => {
+  ws.send(JSON.stringify({ type: 'ready', service: 'IZAKHONO Core', version: VERSION }))
+})
+
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(`IZAKHONO Core ${VERSION} listening on :${PORT}`)
+})
+
+async function shutdown(signal) {
+  console.log(`${signal}: shutting down IZAKHONO Core`)
+  for (const ws of wss.clients) ws.close(1001, 'server shutdown')
+  server.close(async () => {
+    await pool.end()
+    process.exit(0)
+  })
+  setTimeout(() => process.exit(1), 10000).unref()
+}
+
+process.on('SIGTERM', () => shutdown('SIGTERM'))
+process.on('SIGINT', () => shutdown('SIGINT'))
+ + offsetParam,
+      values,
+    )
+    return sendJson(req, res, 200, result.rows.map(rowToJson))
+  }
+
+  if (req.method === 'POST') {
+    if (mode === 'owner_action_only') return sendError(req, res, 403, 'Direct writes are disabled for this table')
+    const body = await readJson(req)
+    if (!body.data || typeof body.data !== 'object' || Array.isArray(body.data)) return sendError(req, res, 400, 'data object required')
+    const payload = { ...body.data }
+    const id = payload.id ? validateRowId(payload.id) : randomUUID()
+    delete payload.id
+    try {
+      const result = await pool.query(
+        `INSERT INTO iz_core_rows(project_id, table_name, row_id, data, created_by)
+         VALUES($1,$2,$3,$4::jsonb,$5)
+         RETURNING row_id, data`,
+        [project, table, id, JSON.stringify(payload), user.id],
+      )
+      const row = rowToJson(result.rows[0])
+      await audit(project, user.id, 'data.insert', { table, id })
+      broadcast(project, mode, user.id, { type: 'row.changed', event: 'INSERT', table, row })
+      return sendJson(req, res, 201, row)
+    } catch (error) {
+      if (error?.code === '23505') return sendError(req, res, 409, 'Row already exists')
+      throw error
+    }
+  }
+
+  return sendError(req, res, 405, 'Method not allowed')
+}
+
+async function handleDataRow(req, res, project, table, id) {
+  const user = await requireUser(req, project)
+  const mode = await tablePolicy(project, table)
+  const ownerClause = isOwnerWriteMode(mode) ? ' AND created_by=$4' : ''
+  const baseValues = [project, table, id]
+
+  if (mode === 'owner_action_only' && (req.method === 'PATCH' || req.method === 'DELETE')) {
+    return sendError(req, res, 403, 'Direct writes are disabled for this table')
+  }
+
+  if (req.method === 'PATCH') {
+    const body = await readJson(req)
+    if (!body.data || typeof body.data !== 'object' || Array.isArray(body.data)) return sendError(req, res, 400, 'data object required')
+    const payload = { ...body.data }
+    delete payload.id
+    const values = [...baseValues, ...(isOwnerWriteMode(mode) ? [user.id] : []), JSON.stringify(payload)]
+    const jsonParam = values.length
+    const result = await pool.query(
+      `UPDATE iz_core_rows SET data=data || $${jsonParam}::jsonb, updated_at=now()
+       WHERE project_id=$1 AND table_name=$2 AND row_id=$3${ownerClause}
+       RETURNING row_id, data`,
+      values,
+    )
+    if (!result.rowCount) return sendError(req, res, 404, 'Row not found')
+    const row = rowToJson(result.rows[0])
+    await audit(project, user.id, 'data.update', { table, id })
+    broadcast(project, mode, user.id, { type: 'row.changed', event: 'UPDATE', table, row })
+    return sendJson(req, res, 200, row)
+  }
+
+  if (req.method === 'DELETE') {
+    const values = [...baseValues, ...(isOwnerWriteMode(mode) ? [user.id] : [])]
+    const result = await pool.query(
+      `DELETE FROM iz_core_rows WHERE project_id=$1 AND table_name=$2 AND row_id=$3${ownerClause} RETURNING row_id, data`,
+      values,
+    )
+    if (!result.rowCount) return sendError(req, res, 404, 'Row not found')
+    const row = rowToJson(result.rows[0])
+    await audit(project, user.id, 'data.delete', { table, id })
+    broadcast(project, mode, user.id, { type: 'row.changed', event: 'DELETE', table, row })
+    return sendJson(req, res, 200, row)
+  }
+
+  return sendError(req, res, 405, 'Method not allowed')
+}
+
+async function handleStorage(req, res, project, bucket, objectPath) {
+  const user = await requireUser(req, project)
+  const filePath = safeStoragePath(project, bucket, objectPath)
+
+  if (req.method === 'PUT') {
+    const existing = await pool.query(
+      'SELECT created_by FROM iz_core_storage_objects WHERE project_id=$1 AND bucket=$2 AND object_path=$3',
+      [project, bucket, objectPath],
+    )
+    if (existing.rowCount && existing.rows[0].created_by !== user.id) return sendError(req, res, 403, 'Storage object belongs to another user')
+    const content = await readBody(req, MAX_STORAGE_BYTES)
+    const digest = sha256(content)
+    const contentType = String(req.headers['content-type'] || 'application/octet-stream').slice(0, 200)
+    await mkdir(dirname(filePath), { recursive: true })
+    await writeFile(filePath, content, { mode: 0o600 })
+    await pool.query(
+      `INSERT INTO iz_core_storage_objects(project_id,bucket,object_path,created_by,content_type,byte_size,sha256)
+       VALUES($1,$2,$3,$4,$5,$6,$7)
+       ON CONFLICT(project_id,bucket,object_path)
+       DO UPDATE SET content_type=EXCLUDED.content_type, byte_size=EXCLUDED.byte_size, sha256=EXCLUDED.sha256, updated_at=now()`,
+      [project, bucket, objectPath, user.id, contentType, content.length, digest],
+    )
+    await audit(project, user.id, 'storage.put', { bucket, objectPath, bytes: content.length })
+    return sendJson(req, res, 201, { bucket, path: objectPath, size: content.length, sha256: digest })
+  }
+
+  if (req.method === 'GET') {
+    const result = await pool.query(
+      `SELECT content_type, byte_size, sha256 FROM iz_core_storage_objects
+       WHERE project_id=$1 AND bucket=$2 AND object_path=$3 AND created_by=$4`,
+      [project, bucket, objectPath, user.id],
+    )
+    if (!result.rowCount) return sendError(req, res, 404, 'Storage object not found')
+    let content
+    try { content = await readFile(filePath) } catch { return sendError(req, res, 404, 'Storage object file missing') }
+    const metadata = result.rows[0]
+    res.writeHead(200, {
+      'content-type': metadata.content_type,
+      'content-length': String(content.length),
+      'cache-control': 'private, no-store',
+      'x-content-type-options': 'nosniff',
+      'x-izakhono-sha256': metadata.sha256,
+    })
+    return res.end(content)
+  }
+
+  if (req.method === 'DELETE') {
+    const result = await pool.query(
+      `DELETE FROM iz_core_storage_objects
+       WHERE project_id=$1 AND bucket=$2 AND object_path=$3 AND created_by=$4
+       RETURNING object_path`,
+      [project, bucket, objectPath, user.id],
+    )
+    if (!result.rowCount) return sendError(req, res, 404, 'Storage object not found')
+    try { await unlink(filePath) } catch {}
+    await audit(project, user.id, 'storage.delete', { bucket, objectPath })
+    return sendJson(req, res, 200, { ok: true })
+  }
+
+  return sendError(req, res, 405, 'Method not allowed')
+}
+
+const server = http.createServer(async (req, res) => {
+  try {
+    if (!corsAllowed(req)) return sendError(req, res, 403, 'Origin not allowed')
+    if (req.method === 'OPTIONS') {
+      const headers = jsonHeaders(req)
+      headers['access-control-allow-methods'] = 'GET,POST,PATCH,PUT,DELETE,OPTIONS'
+      headers['access-control-allow-headers'] = 'Authorization,Content-Type,X-Project-Key'
+      headers['access-control-max-age'] = '600'
+      res.writeHead(204, headers)
+      return res.end()
+    }
+
+    const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`)
+
+    if (req.method === 'GET' && url.pathname === '/healthz') {
+      try {
+        await pool.query('SELECT 1')
+        return sendJson(req, res, 200, { ok: true, service: 'IZAKHONO Core', version: VERSION, storage: 'local-volume', database: 'postgresql' })
+      } catch {
+        return sendJson(req, res, 503, { ok: false, service: 'IZAKHONO Core', version: VERSION })
+      }
+    }
+
+    if (req.method === 'GET' && url.pathname === '/v1/capabilities') {
+      return sendJson(req, res, 200, {
+        service: 'IZAKHONO Core',
+        version: VERSION,
+        capabilities: {
+          passwordAuth: true,
+          refreshTokens: true,
+          projectIsolation: true,
+          ownerDefaultDataPolicy: true,
+          ownerPublicReadDataPolicy: true,
+          ownerActionOnlyDataPolicy: true,
+          projectSharedDataPolicy: true,
+          basicCrud: true,
+          storage: true,
+          realtime: true,
+          relationalSelect: false,
+          rpc: false,
+          edgeFunctions: false,
+          passwordRecovery: false,
+        },
+      })
+    }
+
+    if (req.method === 'POST' && url.pathname === '/v1/admin/projects') return handleAdminProject(req, res)
+
+    let match = url.pathname.match(/^\/v1\/auth\/([^/]+)\/(signup|signin|refresh|signout|me)$/)
+    if (match) {
+      const project = validateProjectId(decodeURIComponent(match[1]))
+      const action = match[2]
+      if (action === 'signup' && req.method === 'POST') return handleSignup(req, res, project)
+      if (action === 'signin' && req.method === 'POST') return handleSignin(req, res, project)
+      if (action === 'refresh' && req.method === 'POST') return handleRefresh(req, res, project)
+      if (action === 'signout' && req.method === 'POST') return handleSignout(req, res, project)
+      if (action === 'me' && req.method === 'GET') return handleMe(req, res, project)
+      return sendError(req, res, 405, 'Method not allowed')
+    }
+
+    match = url.pathname.match(/^\/v1\/data\/([^/]+)\/([^/]+)$/)
+    if (match) {
+      const project = validateProjectId(decodeURIComponent(match[1]))
+      const table = validateTable(decodeURIComponent(match[2]))
+      return handleDataCollection(req, res, url, project, table)
+    }
+
+    match = url.pathname.match(/^\/v1\/data\/([^/]+)\/([^/]+)\/([^/]+)$/)
+    if (match) {
+      const project = validateProjectId(decodeURIComponent(match[1]))
+      const table = validateTable(decodeURIComponent(match[2]))
+      const id = validateRowId(decodeURIComponent(match[3]))
+      return handleDataRow(req, res, project, table, id)
+    }
+
+    match = url.pathname.match(/^\/v1\/storage\/([^/]+)\/([^/]+)\/(.+)$/)
+    if (match) {
+      const project = validateProjectId(decodeURIComponent(match[1]))
+      const bucket = decodeURIComponent(match[2])
+      const objectPath = decodeURIComponent(match[3])
+      return handleStorage(req, res, project, bucket, objectPath)
+    }
+
+    return sendError(req, res, 404, 'Not found')
+  } catch (error) {
+    const status = Number.isInteger(error?.status) ? error.status : 500
+    if (status >= 500) console.error(error)
+    return sendError(req, res, status, status >= 500 ? 'Internal server error' : error.message)
+  }
+})
+
+server.on('upgrade', async (req, socket, head) => {
+  try {
+    const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`)
+    const match = url.pathname.match(/^\/v1\/realtime\/([^/]+)$/)
+    if (!match) throw Object.assign(new Error('Not found'), { status: 404 })
+    const project = validateProjectId(decodeURIComponent(match[1]))
+    const projectKey = url.searchParams.get('project_key') || ''
+    await projectForKey(project, projectKey)
+    const payload = verifyAccessToken(url.searchParams.get('access_token') || '')
+    if (payload.project !== project || payload.aud !== project) throw Object.assign(new Error('Token project mismatch'), { status: 403 })
+    const result = await pool.query('SELECT id, disabled FROM iz_core_users WHERE id=$1 AND project_id=$2', [payload.sub, project])
+    if (!result.rowCount || result.rows[0].disabled) throw Object.assign(new Error('User unavailable'), { status: 401 })
+    wss.handleUpgrade(req, socket, head, ws => {
+      ws.izakhonoContext = { project, userId: payload.sub }
+      wss.emit('connection', ws, req)
+    })
+  } catch (error) {
+    const status = Number.isInteger(error?.status) ? error.status : 401
+    socket.write(`HTTP/1.1 ${status} Unauthorized\r\nConnection: close\r\n\r\n`)
+    socket.destroy()
+  }
+})
+
+wss.on('connection', ws => {
+  ws.send(JSON.stringify({ type: 'ready', service: 'IZAKHONO Core', version: VERSION }))
+})
+
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(`IZAKHONO Core ${VERSION} listening on :${PORT}`)
+})
+
+async function shutdown(signal) {
+  console.log(`${signal}: shutting down IZAKHONO Core`)
+  for (const ws of wss.clients) ws.close(1001, 'server shutdown')
+  server.close(async () => {
+    await pool.end()
+    process.exit(0)
+  })
+  setTimeout(() => process.exit(1), 10000).unref()
+}
+
+process.on('SIGTERM', () => shutdown('SIGTERM'))
+process.on('SIGINT', () => shutdown('SIGINT'))
+ + values.length)
+    }
+    for (const [rawKey, value] of url.searchParams.entries()) {
+      if (['order', 'limit', 'offset'].includes(rawKey)) continue
+      const key = validateFilterKey(rawKey)
+      values.push(key)
+      const keyParam = values.length
+      values.push(String(value))
+      clauses.push(`data ->> ${keyParam} = ${values.length}`)
+    }
+    let orderSql = 'updated_at DESC'
+    const order = url.searchParams.get('order')
+    if (order) {
+      const match = order.match(/^([A-Za-z_][A-Za-z0-9_]{0,62})\.(asc|desc)$/)
+      if (!match) return sendError(req, res, 400, 'Invalid order expression')
+      const [, key, direction] = match
+      orderSql = key === 'id' ? `row_id ${direction.toUpperCase()}` : `(data ->> '${key}') ${direction.toUpperCase()}`
+    }
+    const limit = Math.min(200, Math.max(1, Number.parseInt(url.searchParams.get('limit') || '100', 10) || 100))
+    const offset = Math.min(100000, Math.max(0, Number.parseInt(url.searchParams.get('offset') || '0', 10) || 0))
+    values.push(limit)
+    const limitParam = values.length
+    values.push(offset)
+    const offsetParam = values.length
+    const result = await pool.query(
+      `SELECT row_id, data FROM iz_core_rows WHERE ${clauses.join(' AND ')} ORDER BY ${orderSql} LIMIT ${limitParam} OFFSET ${offsetParam}`,
+      values,
+    )
+    return sendJson(req, res, 200, result.rows.map(rowToJson))
+  }
+
+  if (req.method === 'POST') {
+    if (mode === 'owner_action_only') return sendError(req, res, 403, 'Direct writes are disabled for this table')
+    const body = await readJson(req)
+    if (!body.data || typeof body.data !== 'object' || Array.isArray(body.data)) return sendError(req, res, 400, 'data object required')
+    const payload = { ...body.data }
+    const id = payload.id ? validateRowId(payload.id) : randomUUID()
+    delete payload.id
+    try {
+      const result = await pool.query(
+        `INSERT INTO iz_core_rows(project_id, table_name, row_id, data, created_by)
+         VALUES($1,$2,$3,$4::jsonb,$5)
+         RETURNING row_id, data`,
+        [project, table, id, JSON.stringify(payload), user.id],
+      )
+      const row = rowToJson(result.rows[0])
+      await audit(project, user.id, 'data.insert', { table, id })
+      broadcast(project, mode, user.id, { type: 'row.changed', event: 'INSERT', table, row })
+      return sendJson(req, res, 201, row)
+    } catch (error) {
+      if (error?.code === '23505') return sendError(req, res, 409, 'Row already exists')
+      throw error
+    }
+  }
+
+  return sendError(req, res, 405, 'Method not allowed')
+}
+
+async function handleDataRow(req, res, project, table, id) {
+  const user = await requireUser(req, project)
+  const mode = await tablePolicy(project, table)
+  const ownerClause = isOwnerWriteMode(mode) ? ' AND created_by=$4' : ''
+  const baseValues = [project, table, id]
+
+  if (mode === 'owner_action_only' && (req.method === 'PATCH' || req.method === 'DELETE')) {
+    return sendError(req, res, 403, 'Direct writes are disabled for this table')
+  }
+
+  if (req.method === 'PATCH') {
+    const body = await readJson(req)
+    if (!body.data || typeof body.data !== 'object' || Array.isArray(body.data)) return sendError(req, res, 400, 'data object required')
+    const payload = { ...body.data }
+    delete payload.id
+    const values = [...baseValues, ...(isOwnerWriteMode(mode) ? [user.id] : []), JSON.stringify(payload)]
+    const jsonParam = values.length
+    const result = await pool.query(
+      `UPDATE iz_core_rows SET data=data || $${jsonParam}::jsonb, updated_at=now()
+       WHERE project_id=$1 AND table_name=$2 AND row_id=$3${ownerClause}
+       RETURNING row_id, data`,
+      values,
+    )
+    if (!result.rowCount) return sendError(req, res, 404, 'Row not found')
+    const row = rowToJson(result.rows[0])
+    await audit(project, user.id, 'data.update', { table, id })
+    broadcast(project, mode, user.id, { type: 'row.changed', event: 'UPDATE', table, row })
+    return sendJson(req, res, 200, row)
+  }
+
+  if (req.method === 'DELETE') {
+    const values = [...baseValues, ...(isOwnerWriteMode(mode) ? [user.id] : [])]
+    const result = await pool.query(
+      `DELETE FROM iz_core_rows WHERE project_id=$1 AND table_name=$2 AND row_id=$3${ownerClause} RETURNING row_id, data`,
+      values,
+    )
+    if (!result.rowCount) return sendError(req, res, 404, 'Row not found')
+    const row = rowToJson(result.rows[0])
+    await audit(project, user.id, 'data.delete', { table, id })
+    broadcast(project, mode, user.id, { type: 'row.changed', event: 'DELETE', table, row })
+    return sendJson(req, res, 200, row)
+  }
+
+  return sendError(req, res, 405, 'Method not allowed')
+}
+
+async function handleStorage(req, res, project, bucket, objectPath) {
+  const user = await requireUser(req, project)
+  const filePath = safeStoragePath(project, bucket, objectPath)
+
+  if (req.method === 'PUT') {
+    const existing = await pool.query(
+      'SELECT created_by FROM iz_core_storage_objects WHERE project_id=$1 AND bucket=$2 AND object_path=$3',
+      [project, bucket, objectPath],
+    )
+    if (existing.rowCount && existing.rows[0].created_by !== user.id) return sendError(req, res, 403, 'Storage object belongs to another user')
+    const content = await readBody(req, MAX_STORAGE_BYTES)
+    const digest = sha256(content)
+    const contentType = String(req.headers['content-type'] || 'application/octet-stream').slice(0, 200)
+    await mkdir(dirname(filePath), { recursive: true })
+    await writeFile(filePath, content, { mode: 0o600 })
+    await pool.query(
+      `INSERT INTO iz_core_storage_objects(project_id,bucket,object_path,created_by,content_type,byte_size,sha256)
+       VALUES($1,$2,$3,$4,$5,$6,$7)
+       ON CONFLICT(project_id,bucket,object_path)
+       DO UPDATE SET content_type=EXCLUDED.content_type, byte_size=EXCLUDED.byte_size, sha256=EXCLUDED.sha256, updated_at=now()`,
+      [project, bucket, objectPath, user.id, contentType, content.length, digest],
+    )
+    await audit(project, user.id, 'storage.put', { bucket, objectPath, bytes: content.length })
+    return sendJson(req, res, 201, { bucket, path: objectPath, size: content.length, sha256: digest })
+  }
+
+  if (req.method === 'GET') {
+    const result = await pool.query(
+      `SELECT content_type, byte_size, sha256 FROM iz_core_storage_objects
+       WHERE project_id=$1 AND bucket=$2 AND object_path=$3 AND created_by=$4`,
+      [project, bucket, objectPath, user.id],
+    )
+    if (!result.rowCount) return sendError(req, res, 404, 'Storage object not found')
+    let content
+    try { content = await readFile(filePath) } catch { return sendError(req, res, 404, 'Storage object file missing') }
+    const metadata = result.rows[0]
+    res.writeHead(200, {
+      'content-type': metadata.content_type,
+      'content-length': String(content.length),
+      'cache-control': 'private, no-store',
+      'x-content-type-options': 'nosniff',
+      'x-izakhono-sha256': metadata.sha256,
+    })
+    return res.end(content)
+  }
+
+  if (req.method === 'DELETE') {
+    const result = await pool.query(
+      `DELETE FROM iz_core_storage_objects
+       WHERE project_id=$1 AND bucket=$2 AND object_path=$3 AND created_by=$4
+       RETURNING object_path`,
+      [project, bucket, objectPath, user.id],
+    )
+    if (!result.rowCount) return sendError(req, res, 404, 'Storage object not found')
+    try { await unlink(filePath) } catch {}
+    await audit(project, user.id, 'storage.delete', { bucket, objectPath })
+    return sendJson(req, res, 200, { ok: true })
+  }
+
+  return sendError(req, res, 405, 'Method not allowed')
+}
+
+const server = http.createServer(async (req, res) => {
+  try {
+    if (!corsAllowed(req)) return sendError(req, res, 403, 'Origin not allowed')
+    if (req.method === 'OPTIONS') {
+      const headers = jsonHeaders(req)
+      headers['access-control-allow-methods'] = 'GET,POST,PATCH,PUT,DELETE,OPTIONS'
+      headers['access-control-allow-headers'] = 'Authorization,Content-Type,X-Project-Key'
+      headers['access-control-max-age'] = '600'
+      res.writeHead(204, headers)
+      return res.end()
+    }
+
+    const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`)
+
+    if (req.method === 'GET' && url.pathname === '/healthz') {
+      try {
+        await pool.query('SELECT 1')
+        return sendJson(req, res, 200, { ok: true, service: 'IZAKHONO Core', version: VERSION, storage: 'local-volume', database: 'postgresql' })
+      } catch {
+        return sendJson(req, res, 503, { ok: false, service: 'IZAKHONO Core', version: VERSION })
+      }
+    }
+
+    if (req.method === 'GET' && url.pathname === '/v1/capabilities') {
+      return sendJson(req, res, 200, {
+        service: 'IZAKHONO Core',
+        version: VERSION,
+        capabilities: {
+          passwordAuth: true,
+          refreshTokens: true,
+          projectIsolation: true,
+          ownerDefaultDataPolicy: true,
+          ownerPublicReadDataPolicy: true,
+          ownerActionOnlyDataPolicy: true,
+          projectSharedDataPolicy: true,
+          basicCrud: true,
+          storage: true,
+          realtime: true,
+          relationalSelect: false,
+          rpc: false,
+          edgeFunctions: false,
+          passwordRecovery: false,
+        },
+      })
+    }
+
+    if (req.method === 'POST' && url.pathname === '/v1/admin/projects') return handleAdminProject(req, res)
+
+    let match = url.pathname.match(/^\/v1\/auth\/([^/]+)\/(signup|signin|refresh|signout|me)$/)
+    if (match) {
+      const project = validateProjectId(decodeURIComponent(match[1]))
+      const action = match[2]
+      if (action === 'signup' && req.method === 'POST') return handleSignup(req, res, project)
+      if (action === 'signin' && req.method === 'POST') return handleSignin(req, res, project)
+      if (action === 'refresh' && req.method === 'POST') return handleRefresh(req, res, project)
+      if (action === 'signout' && req.method === 'POST') return handleSignout(req, res, project)
+      if (action === 'me' && req.method === 'GET') return handleMe(req, res, project)
+      return sendError(req, res, 405, 'Method not allowed')
+    }
+
+    match = url.pathname.match(/^\/v1\/data\/([^/]+)\/([^/]+)$/)
+    if (match) {
+      const project = validateProjectId(decodeURIComponent(match[1]))
+      const table = validateTable(decodeURIComponent(match[2]))
+      return handleDataCollection(req, res, url, project, table)
+    }
+
+    match = url.pathname.match(/^\/v1\/data\/([^/]+)\/([^/]+)\/([^/]+)$/)
+    if (match) {
+      const project = validateProjectId(decodeURIComponent(match[1]))
+      const table = validateTable(decodeURIComponent(match[2]))
+      const id = validateRowId(decodeURIComponent(match[3]))
+      return handleDataRow(req, res, project, table, id)
+    }
+
+    match = url.pathname.match(/^\/v1\/storage\/([^/]+)\/([^/]+)\/(.+)$/)
+    if (match) {
+      const project = validateProjectId(decodeURIComponent(match[1]))
+      const bucket = decodeURIComponent(match[2])
+      const objectPath = decodeURIComponent(match[3])
+      return handleStorage(req, res, project, bucket, objectPath)
+    }
+
+    return sendError(req, res, 404, 'Not found')
+  } catch (error) {
+    const status = Number.isInteger(error?.status) ? error.status : 500
+    if (status >= 500) console.error(error)
+    return sendError(req, res, status, status >= 500 ? 'Internal server error' : error.message)
+  }
+})
+
+server.on('upgrade', async (req, socket, head) => {
+  try {
+    const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`)
+    const match = url.pathname.match(/^\/v1\/realtime\/([^/]+)$/)
+    if (!match) throw Object.assign(new Error('Not found'), { status: 404 })
+    const project = validateProjectId(decodeURIComponent(match[1]))
+    const projectKey = url.searchParams.get('project_key') || ''
+    await projectForKey(project, projectKey)
+    const payload = verifyAccessToken(url.searchParams.get('access_token') || '')
+    if (payload.project !== project || payload.aud !== project) throw Object.assign(new Error('Token project mismatch'), { status: 403 })
+    const result = await pool.query('SELECT id, disabled FROM iz_core_users WHERE id=$1 AND project_id=$2', [payload.sub, project])
+    if (!result.rowCount || result.rows[0].disabled) throw Object.assign(new Error('User unavailable'), { status: 401 })
+    wss.handleUpgrade(req, socket, head, ws => {
+      ws.izakhonoContext = { project, userId: payload.sub }
+      wss.emit('connection', ws, req)
+    })
+  } catch (error) {
+    const status = Number.isInteger(error?.status) ? error.status : 401
+    socket.write(`HTTP/1.1 ${status} Unauthorized\r\nConnection: close\r\n\r\n`)
+    socket.destroy()
+  }
+})
+
+wss.on('connection', ws => {
+  ws.send(JSON.stringify({ type: 'ready', service: 'IZAKHONO Core', version: VERSION }))
+})
+
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(`IZAKHONO Core ${VERSION} listening on :${PORT}`)
+})
+
+async function shutdown(signal) {
+  console.log(`${signal}: shutting down IZAKHONO Core`)
+  for (const ws of wss.clients) ws.close(1001, 'server shutdown')
+  server.close(async () => {
+    await pool.end()
+    process.exit(0)
+  })
+  setTimeout(() => process.exit(1), 10000).unref()
+}
+
+process.on('SIGTERM', () => shutdown('SIGTERM'))
+process.on('SIGINT', () => shutdown('SIGINT'))
+ + keyParam + ' = 
+    }
+    let orderSql = 'updated_at DESC'
+    const order = url.searchParams.get('order')
+    if (order) {
+      const match = order.match(/^([A-Za-z_][A-Za-z0-9_]{0,62})\.(asc|desc)$/)
+      if (!match) return sendError(req, res, 400, 'Invalid order expression')
+      const [, key, direction] = match
+      orderSql = key === 'id' ? `row_id ${direction.toUpperCase()}` : `(data ->> '${key}') ${direction.toUpperCase()}`
+    }
+    const limit = Math.min(200, Math.max(1, Number.parseInt(url.searchParams.get('limit') || '100', 10) || 100))
+    const offset = Math.min(100000, Math.max(0, Number.parseInt(url.searchParams.get('offset') || '0', 10) || 0))
+    values.push(limit)
+    const limitParam = values.length
+    values.push(offset)
+    const offsetParam = values.length
+    const result = await pool.query(
+      `SELECT row_id, data FROM iz_core_rows WHERE ${clauses.join(' AND ')} ORDER BY ${orderSql} LIMIT ${limitParam} OFFSET ${offsetParam}`,
+      values,
+    )
+    return sendJson(req, res, 200, result.rows.map(rowToJson))
+  }
+
+  if (req.method === 'POST') {
+    if (mode === 'owner_action_only') return sendError(req, res, 403, 'Direct writes are disabled for this table')
+    const body = await readJson(req)
+    if (!body.data || typeof body.data !== 'object' || Array.isArray(body.data)) return sendError(req, res, 400, 'data object required')
+    const payload = { ...body.data }
+    const id = payload.id ? validateRowId(payload.id) : randomUUID()
+    delete payload.id
+    try {
+      const result = await pool.query(
+        `INSERT INTO iz_core_rows(project_id, table_name, row_id, data, created_by)
+         VALUES($1,$2,$3,$4::jsonb,$5)
+         RETURNING row_id, data`,
+        [project, table, id, JSON.stringify(payload), user.id],
+      )
+      const row = rowToJson(result.rows[0])
+      await audit(project, user.id, 'data.insert', { table, id })
+      broadcast(project, mode, user.id, { type: 'row.changed', event: 'INSERT', table, row })
+      return sendJson(req, res, 201, row)
+    } catch (error) {
+      if (error?.code === '23505') return sendError(req, res, 409, 'Row already exists')
+      throw error
+    }
+  }
+
+  return sendError(req, res, 405, 'Method not allowed')
+}
+
+async function handleDataRow(req, res, project, table, id) {
+  const user = await requireUser(req, project)
+  const mode = await tablePolicy(project, table)
+  const ownerClause = isOwnerWriteMode(mode) ? ' AND created_by=$4' : ''
+  const baseValues = [project, table, id]
+
+  if (mode === 'owner_action_only' && (req.method === 'PATCH' || req.method === 'DELETE')) {
+    return sendError(req, res, 403, 'Direct writes are disabled for this table')
+  }
+
+  if (req.method === 'PATCH') {
+    const body = await readJson(req)
+    if (!body.data || typeof body.data !== 'object' || Array.isArray(body.data)) return sendError(req, res, 400, 'data object required')
+    const payload = { ...body.data }
+    delete payload.id
+    const values = [...baseValues, ...(isOwnerWriteMode(mode) ? [user.id] : []), JSON.stringify(payload)]
+    const jsonParam = values.length
+    const result = await pool.query(
+      `UPDATE iz_core_rows SET data=data || $${jsonParam}::jsonb, updated_at=now()
+       WHERE project_id=$1 AND table_name=$2 AND row_id=$3${ownerClause}
+       RETURNING row_id, data`,
+      values,
+    )
+    if (!result.rowCount) return sendError(req, res, 404, 'Row not found')
+    const row = rowToJson(result.rows[0])
+    await audit(project, user.id, 'data.update', { table, id })
+    broadcast(project, mode, user.id, { type: 'row.changed', event: 'UPDATE', table, row })
+    return sendJson(req, res, 200, row)
+  }
+
+  if (req.method === 'DELETE') {
+    const values = [...baseValues, ...(isOwnerWriteMode(mode) ? [user.id] : [])]
+    const result = await pool.query(
+      `DELETE FROM iz_core_rows WHERE project_id=$1 AND table_name=$2 AND row_id=$3${ownerClause} RETURNING row_id, data`,
+      values,
+    )
+    if (!result.rowCount) return sendError(req, res, 404, 'Row not found')
+    const row = rowToJson(result.rows[0])
+    await audit(project, user.id, 'data.delete', { table, id })
+    broadcast(project, mode, user.id, { type: 'row.changed', event: 'DELETE', table, row })
+    return sendJson(req, res, 200, row)
+  }
+
+  return sendError(req, res, 405, 'Method not allowed')
+}
+
+async function handleStorage(req, res, project, bucket, objectPath) {
+  const user = await requireUser(req, project)
+  const filePath = safeStoragePath(project, bucket, objectPath)
+
+  if (req.method === 'PUT') {
+    const existing = await pool.query(
+      'SELECT created_by FROM iz_core_storage_objects WHERE project_id=$1 AND bucket=$2 AND object_path=$3',
+      [project, bucket, objectPath],
+    )
+    if (existing.rowCount && existing.rows[0].created_by !== user.id) return sendError(req, res, 403, 'Storage object belongs to another user')
+    const content = await readBody(req, MAX_STORAGE_BYTES)
+    const digest = sha256(content)
+    const contentType = String(req.headers['content-type'] || 'application/octet-stream').slice(0, 200)
+    await mkdir(dirname(filePath), { recursive: true })
+    await writeFile(filePath, content, { mode: 0o600 })
+    await pool.query(
+      `INSERT INTO iz_core_storage_objects(project_id,bucket,object_path,created_by,content_type,byte_size,sha256)
+       VALUES($1,$2,$3,$4,$5,$6,$7)
+       ON CONFLICT(project_id,bucket,object_path)
+       DO UPDATE SET content_type=EXCLUDED.content_type, byte_size=EXCLUDED.byte_size, sha256=EXCLUDED.sha256, updated_at=now()`,
+      [project, bucket, objectPath, user.id, contentType, content.length, digest],
+    )
+    await audit(project, user.id, 'storage.put', { bucket, objectPath, bytes: content.length })
+    return sendJson(req, res, 201, { bucket, path: objectPath, size: content.length, sha256: digest })
+  }
+
+  if (req.method === 'GET') {
+    const result = await pool.query(
+      `SELECT content_type, byte_size, sha256 FROM iz_core_storage_objects
+       WHERE project_id=$1 AND bucket=$2 AND object_path=$3 AND created_by=$4`,
+      [project, bucket, objectPath, user.id],
+    )
+    if (!result.rowCount) return sendError(req, res, 404, 'Storage object not found')
+    let content
+    try { content = await readFile(filePath) } catch { return sendError(req, res, 404, 'Storage object file missing') }
+    const metadata = result.rows[0]
+    res.writeHead(200, {
+      'content-type': metadata.content_type,
+      'content-length': String(content.length),
+      'cache-control': 'private, no-store',
+      'x-content-type-options': 'nosniff',
+      'x-izakhono-sha256': metadata.sha256,
+    })
+    return res.end(content)
+  }
+
+  if (req.method === 'DELETE') {
+    const result = await pool.query(
+      `DELETE FROM iz_core_storage_objects
+       WHERE project_id=$1 AND bucket=$2 AND object_path=$3 AND created_by=$4
+       RETURNING object_path`,
+      [project, bucket, objectPath, user.id],
+    )
+    if (!result.rowCount) return sendError(req, res, 404, 'Storage object not found')
+    try { await unlink(filePath) } catch {}
+    await audit(project, user.id, 'storage.delete', { bucket, objectPath })
+    return sendJson(req, res, 200, { ok: true })
+  }
+
+  return sendError(req, res, 405, 'Method not allowed')
+}
+
+const server = http.createServer(async (req, res) => {
+  try {
+    if (!corsAllowed(req)) return sendError(req, res, 403, 'Origin not allowed')
+    if (req.method === 'OPTIONS') {
+      const headers = jsonHeaders(req)
+      headers['access-control-allow-methods'] = 'GET,POST,PATCH,PUT,DELETE,OPTIONS'
+      headers['access-control-allow-headers'] = 'Authorization,Content-Type,X-Project-Key'
+      headers['access-control-max-age'] = '600'
+      res.writeHead(204, headers)
+      return res.end()
+    }
+
+    const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`)
+
+    if (req.method === 'GET' && url.pathname === '/healthz') {
+      try {
+        await pool.query('SELECT 1')
+        return sendJson(req, res, 200, { ok: true, service: 'IZAKHONO Core', version: VERSION, storage: 'local-volume', database: 'postgresql' })
+      } catch {
+        return sendJson(req, res, 503, { ok: false, service: 'IZAKHONO Core', version: VERSION })
+      }
+    }
+
+    if (req.method === 'GET' && url.pathname === '/v1/capabilities') {
+      return sendJson(req, res, 200, {
+        service: 'IZAKHONO Core',
+        version: VERSION,
+        capabilities: {
+          passwordAuth: true,
+          refreshTokens: true,
+          projectIsolation: true,
+          ownerDefaultDataPolicy: true,
+          ownerPublicReadDataPolicy: true,
+          ownerActionOnlyDataPolicy: true,
+          projectSharedDataPolicy: true,
+          basicCrud: true,
+          storage: true,
+          realtime: true,
+          relationalSelect: false,
+          rpc: false,
+          edgeFunctions: false,
+          passwordRecovery: false,
+        },
+      })
+    }
+
+    if (req.method === 'POST' && url.pathname === '/v1/admin/projects') return handleAdminProject(req, res)
+
+    let match = url.pathname.match(/^\/v1\/auth\/([^/]+)\/(signup|signin|refresh|signout|me)$/)
+    if (match) {
+      const project = validateProjectId(decodeURIComponent(match[1]))
+      const action = match[2]
+      if (action === 'signup' && req.method === 'POST') return handleSignup(req, res, project)
+      if (action === 'signin' && req.method === 'POST') return handleSignin(req, res, project)
+      if (action === 'refresh' && req.method === 'POST') return handleRefresh(req, res, project)
+      if (action === 'signout' && req.method === 'POST') return handleSignout(req, res, project)
+      if (action === 'me' && req.method === 'GET') return handleMe(req, res, project)
+      return sendError(req, res, 405, 'Method not allowed')
+    }
+
+    match = url.pathname.match(/^\/v1\/data\/([^/]+)\/([^/]+)$/)
+    if (match) {
+      const project = validateProjectId(decodeURIComponent(match[1]))
+      const table = validateTable(decodeURIComponent(match[2]))
+      return handleDataCollection(req, res, url, project, table)
+    }
+
+    match = url.pathname.match(/^\/v1\/data\/([^/]+)\/([^/]+)\/([^/]+)$/)
+    if (match) {
+      const project = validateProjectId(decodeURIComponent(match[1]))
+      const table = validateTable(decodeURIComponent(match[2]))
+      const id = validateRowId(decodeURIComponent(match[3]))
+      return handleDataRow(req, res, project, table, id)
+    }
+
+    match = url.pathname.match(/^\/v1\/storage\/([^/]+)\/([^/]+)\/(.+)$/)
+    if (match) {
+      const project = validateProjectId(decodeURIComponent(match[1]))
+      const bucket = decodeURIComponent(match[2])
+      const objectPath = decodeURIComponent(match[3])
+      return handleStorage(req, res, project, bucket, objectPath)
+    }
+
+    return sendError(req, res, 404, 'Not found')
+  } catch (error) {
+    const status = Number.isInteger(error?.status) ? error.status : 500
+    if (status >= 500) console.error(error)
+    return sendError(req, res, status, status >= 500 ? 'Internal server error' : error.message)
+  }
+})
+
+server.on('upgrade', async (req, socket, head) => {
+  try {
+    const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`)
+    const match = url.pathname.match(/^\/v1\/realtime\/([^/]+)$/)
+    if (!match) throw Object.assign(new Error('Not found'), { status: 404 })
+    const project = validateProjectId(decodeURIComponent(match[1]))
+    const projectKey = url.searchParams.get('project_key') || ''
+    await projectForKey(project, projectKey)
+    const payload = verifyAccessToken(url.searchParams.get('access_token') || '')
+    if (payload.project !== project || payload.aud !== project) throw Object.assign(new Error('Token project mismatch'), { status: 403 })
+    const result = await pool.query('SELECT id, disabled FROM iz_core_users WHERE id=$1 AND project_id=$2', [payload.sub, project])
+    if (!result.rowCount || result.rows[0].disabled) throw Object.assign(new Error('User unavailable'), { status: 401 })
+    wss.handleUpgrade(req, socket, head, ws => {
+      ws.izakhonoContext = { project, userId: payload.sub }
+      wss.emit('connection', ws, req)
+    })
+  } catch (error) {
+    const status = Number.isInteger(error?.status) ? error.status : 401
+    socket.write(`HTTP/1.1 ${status} Unauthorized\r\nConnection: close\r\n\r\n`)
+    socket.destroy()
+  }
+})
+
+wss.on('connection', ws => {
+  ws.send(JSON.stringify({ type: 'ready', service: 'IZAKHONO Core', version: VERSION }))
+})
+
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(`IZAKHONO Core ${VERSION} listening on :${PORT}`)
+})
+
+async function shutdown(signal) {
+  console.log(`${signal}: shutting down IZAKHONO Core`)
+  for (const ws of wss.clients) ws.close(1001, 'server shutdown')
+  server.close(async () => {
+    await pool.end()
+    process.exit(0)
+  })
+  setTimeout(() => process.exit(1), 10000).unref()
+}
+
+process.on('SIGTERM', () => shutdown('SIGTERM'))
+process.on('SIGINT', () => shutdown('SIGINT'))
+ + values.length)
+    }
+    for (const [rawKey, value] of url.searchParams.entries()) {
+      if (['order', 'limit', 'offset'].includes(rawKey)) continue
+      const key = validateFilterKey(rawKey)
+      values.push(key)
+      const keyParam = values.length
+      values.push(String(value))
+      clauses.push(`data ->> ${keyParam} = ${values.length}`)
+    }
+    let orderSql = 'updated_at DESC'
+    const order = url.searchParams.get('order')
+    if (order) {
+      const match = order.match(/^([A-Za-z_][A-Za-z0-9_]{0,62})\.(asc|desc)$/)
+      if (!match) return sendError(req, res, 400, 'Invalid order expression')
+      const [, key, direction] = match
+      orderSql = key === 'id' ? `row_id ${direction.toUpperCase()}` : `(data ->> '${key}') ${direction.toUpperCase()}`
+    }
+    const limit = Math.min(200, Math.max(1, Number.parseInt(url.searchParams.get('limit') || '100', 10) || 100))
+    const offset = Math.min(100000, Math.max(0, Number.parseInt(url.searchParams.get('offset') || '0', 10) || 0))
+    values.push(limit)
+    const limitParam = values.length
+    values.push(offset)
+    const offsetParam = values.length
+    const result = await pool.query(
+      `SELECT row_id, data FROM iz_core_rows WHERE ${clauses.join(' AND ')} ORDER BY ${orderSql} LIMIT ${limitParam} OFFSET ${offsetParam}`,
+      values,
+    )
+    return sendJson(req, res, 200, result.rows.map(rowToJson))
+  }
+
+  if (req.method === 'POST') {
+    if (mode === 'owner_action_only') return sendError(req, res, 403, 'Direct writes are disabled for this table')
+    const body = await readJson(req)
+    if (!body.data || typeof body.data !== 'object' || Array.isArray(body.data)) return sendError(req, res, 400, 'data object required')
+    const payload = { ...body.data }
+    const id = payload.id ? validateRowId(payload.id) : randomUUID()
+    delete payload.id
+    try {
+      const result = await pool.query(
+        `INSERT INTO iz_core_rows(project_id, table_name, row_id, data, created_by)
+         VALUES($1,$2,$3,$4::jsonb,$5)
+         RETURNING row_id, data`,
+        [project, table, id, JSON.stringify(payload), user.id],
+      )
+      const row = rowToJson(result.rows[0])
+      await audit(project, user.id, 'data.insert', { table, id })
+      broadcast(project, mode, user.id, { type: 'row.changed', event: 'INSERT', table, row })
+      return sendJson(req, res, 201, row)
+    } catch (error) {
+      if (error?.code === '23505') return sendError(req, res, 409, 'Row already exists')
+      throw error
+    }
+  }
+
+  return sendError(req, res, 405, 'Method not allowed')
+}
+
+async function handleDataRow(req, res, project, table, id) {
+  const user = await requireUser(req, project)
+  const mode = await tablePolicy(project, table)
+  const ownerClause = isOwnerWriteMode(mode) ? ' AND created_by=$4' : ''
+  const baseValues = [project, table, id]
+
+  if (mode === 'owner_action_only' && (req.method === 'PATCH' || req.method === 'DELETE')) {
+    return sendError(req, res, 403, 'Direct writes are disabled for this table')
+  }
+
+  if (req.method === 'PATCH') {
+    const body = await readJson(req)
+    if (!body.data || typeof body.data !== 'object' || Array.isArray(body.data)) return sendError(req, res, 400, 'data object required')
+    const payload = { ...body.data }
+    delete payload.id
+    const values = [...baseValues, ...(isOwnerWriteMode(mode) ? [user.id] : []), JSON.stringify(payload)]
+    const jsonParam = values.length
+    const result = await pool.query(
+      `UPDATE iz_core_rows SET data=data || $${jsonParam}::jsonb, updated_at=now()
+       WHERE project_id=$1 AND table_name=$2 AND row_id=$3${ownerClause}
+       RETURNING row_id, data`,
+      values,
+    )
+    if (!result.rowCount) return sendError(req, res, 404, 'Row not found')
+    const row = rowToJson(result.rows[0])
+    await audit(project, user.id, 'data.update', { table, id })
+    broadcast(project, mode, user.id, { type: 'row.changed', event: 'UPDATE', table, row })
+    return sendJson(req, res, 200, row)
+  }
+
+  if (req.method === 'DELETE') {
+    const values = [...baseValues, ...(isOwnerWriteMode(mode) ? [user.id] : [])]
+    const result = await pool.query(
+      `DELETE FROM iz_core_rows WHERE project_id=$1 AND table_name=$2 AND row_id=$3${ownerClause} RETURNING row_id, data`,
+      values,
+    )
+    if (!result.rowCount) return sendError(req, res, 404, 'Row not found')
+    const row = rowToJson(result.rows[0])
+    await audit(project, user.id, 'data.delete', { table, id })
+    broadcast(project, mode, user.id, { type: 'row.changed', event: 'DELETE', table, row })
+    return sendJson(req, res, 200, row)
+  }
+
+  return sendError(req, res, 405, 'Method not allowed')
+}
+
+async function handleStorage(req, res, project, bucket, objectPath) {
+  const user = await requireUser(req, project)
+  const filePath = safeStoragePath(project, bucket, objectPath)
+
+  if (req.method === 'PUT') {
+    const existing = await pool.query(
+      'SELECT created_by FROM iz_core_storage_objects WHERE project_id=$1 AND bucket=$2 AND object_path=$3',
+      [project, bucket, objectPath],
+    )
+    if (existing.rowCount && existing.rows[0].created_by !== user.id) return sendError(req, res, 403, 'Storage object belongs to another user')
+    const content = await readBody(req, MAX_STORAGE_BYTES)
+    const digest = sha256(content)
+    const contentType = String(req.headers['content-type'] || 'application/octet-stream').slice(0, 200)
+    await mkdir(dirname(filePath), { recursive: true })
+    await writeFile(filePath, content, { mode: 0o600 })
+    await pool.query(
+      `INSERT INTO iz_core_storage_objects(project_id,bucket,object_path,created_by,content_type,byte_size,sha256)
+       VALUES($1,$2,$3,$4,$5,$6,$7)
+       ON CONFLICT(project_id,bucket,object_path)
+       DO UPDATE SET content_type=EXCLUDED.content_type, byte_size=EXCLUDED.byte_size, sha256=EXCLUDED.sha256, updated_at=now()`,
+      [project, bucket, objectPath, user.id, contentType, content.length, digest],
+    )
+    await audit(project, user.id, 'storage.put', { bucket, objectPath, bytes: content.length })
+    return sendJson(req, res, 201, { bucket, path: objectPath, size: content.length, sha256: digest })
+  }
+
+  if (req.method === 'GET') {
+    const result = await pool.query(
+      `SELECT content_type, byte_size, sha256 FROM iz_core_storage_objects
+       WHERE project_id=$1 AND bucket=$2 AND object_path=$3 AND created_by=$4`,
+      [project, bucket, objectPath, user.id],
+    )
+    if (!result.rowCount) return sendError(req, res, 404, 'Storage object not found')
+    let content
+    try { content = await readFile(filePath) } catch { return sendError(req, res, 404, 'Storage object file missing') }
+    const metadata = result.rows[0]
+    res.writeHead(200, {
+      'content-type': metadata.content_type,
+      'content-length': String(content.length),
+      'cache-control': 'private, no-store',
+      'x-content-type-options': 'nosniff',
+      'x-izakhono-sha256': metadata.sha256,
+    })
+    return res.end(content)
+  }
+
+  if (req.method === 'DELETE') {
+    const result = await pool.query(
+      `DELETE FROM iz_core_storage_objects
+       WHERE project_id=$1 AND bucket=$2 AND object_path=$3 AND created_by=$4
+       RETURNING object_path`,
+      [project, bucket, objectPath, user.id],
+    )
+    if (!result.rowCount) return sendError(req, res, 404, 'Storage object not found')
+    try { await unlink(filePath) } catch {}
+    await audit(project, user.id, 'storage.delete', { bucket, objectPath })
+    return sendJson(req, res, 200, { ok: true })
+  }
+
+  return sendError(req, res, 405, 'Method not allowed')
+}
+
+const server = http.createServer(async (req, res) => {
+  try {
+    if (!corsAllowed(req)) return sendError(req, res, 403, 'Origin not allowed')
+    if (req.method === 'OPTIONS') {
+      const headers = jsonHeaders(req)
+      headers['access-control-allow-methods'] = 'GET,POST,PATCH,PUT,DELETE,OPTIONS'
+      headers['access-control-allow-headers'] = 'Authorization,Content-Type,X-Project-Key'
+      headers['access-control-max-age'] = '600'
+      res.writeHead(204, headers)
+      return res.end()
+    }
+
+    const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`)
+
+    if (req.method === 'GET' && url.pathname === '/healthz') {
+      try {
+        await pool.query('SELECT 1')
+        return sendJson(req, res, 200, { ok: true, service: 'IZAKHONO Core', version: VERSION, storage: 'local-volume', database: 'postgresql' })
+      } catch {
+        return sendJson(req, res, 503, { ok: false, service: 'IZAKHONO Core', version: VERSION })
+      }
+    }
+
+    if (req.method === 'GET' && url.pathname === '/v1/capabilities') {
+      return sendJson(req, res, 200, {
+        service: 'IZAKHONO Core',
+        version: VERSION,
+        capabilities: {
+          passwordAuth: true,
+          refreshTokens: true,
+          projectIsolation: true,
+          ownerDefaultDataPolicy: true,
+          ownerPublicReadDataPolicy: true,
+          ownerActionOnlyDataPolicy: true,
+          projectSharedDataPolicy: true,
+          basicCrud: true,
+          storage: true,
+          realtime: true,
+          relationalSelect: false,
+          rpc: false,
+          edgeFunctions: false,
+          passwordRecovery: false,
+        },
+      })
+    }
+
+    if (req.method === 'POST' && url.pathname === '/v1/admin/projects') return handleAdminProject(req, res)
+
+    let match = url.pathname.match(/^\/v1\/auth\/([^/]+)\/(signup|signin|refresh|signout|me)$/)
+    if (match) {
+      const project = validateProjectId(decodeURIComponent(match[1]))
+      const action = match[2]
+      if (action === 'signup' && req.method === 'POST') return handleSignup(req, res, project)
+      if (action === 'signin' && req.method === 'POST') return handleSignin(req, res, project)
+      if (action === 'refresh' && req.method === 'POST') return handleRefresh(req, res, project)
+      if (action === 'signout' && req.method === 'POST') return handleSignout(req, res, project)
+      if (action === 'me' && req.method === 'GET') return handleMe(req, res, project)
+      return sendError(req, res, 405, 'Method not allowed')
+    }
+
+    match = url.pathname.match(/^\/v1\/data\/([^/]+)\/([^/]+)$/)
+    if (match) {
+      const project = validateProjectId(decodeURIComponent(match[1]))
+      const table = validateTable(decodeURIComponent(match[2]))
+      return handleDataCollection(req, res, url, project, table)
+    }
+
+    match = url.pathname.match(/^\/v1\/data\/([^/]+)\/([^/]+)\/([^/]+)$/)
+    if (match) {
+      const project = validateProjectId(decodeURIComponent(match[1]))
+      const table = validateTable(decodeURIComponent(match[2]))
+      const id = validateRowId(decodeURIComponent(match[3]))
+      return handleDataRow(req, res, project, table, id)
+    }
+
+    match = url.pathname.match(/^\/v1\/storage\/([^/]+)\/([^/]+)\/(.+)$/)
+    if (match) {
+      const project = validateProjectId(decodeURIComponent(match[1]))
+      const bucket = decodeURIComponent(match[2])
+      const objectPath = decodeURIComponent(match[3])
+      return handleStorage(req, res, project, bucket, objectPath)
+    }
+
+    return sendError(req, res, 404, 'Not found')
+  } catch (error) {
+    const status = Number.isInteger(error?.status) ? error.status : 500
+    if (status >= 500) console.error(error)
+    return sendError(req, res, status, status >= 500 ? 'Internal server error' : error.message)
+  }
+})
+
+server.on('upgrade', async (req, socket, head) => {
+  try {
+    const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`)
+    const match = url.pathname.match(/^\/v1\/realtime\/([^/]+)$/)
+    if (!match) throw Object.assign(new Error('Not found'), { status: 404 })
+    const project = validateProjectId(decodeURIComponent(match[1]))
+    const projectKey = url.searchParams.get('project_key') || ''
+    await projectForKey(project, projectKey)
+    const payload = verifyAccessToken(url.searchParams.get('access_token') || '')
+    if (payload.project !== project || payload.aud !== project) throw Object.assign(new Error('Token project mismatch'), { status: 403 })
+    const result = await pool.query('SELECT id, disabled FROM iz_core_users WHERE id=$1 AND project_id=$2', [payload.sub, project])
+    if (!result.rowCount || result.rows[0].disabled) throw Object.assign(new Error('User unavailable'), { status: 401 })
+    wss.handleUpgrade(req, socket, head, ws => {
+      ws.izakhonoContext = { project, userId: payload.sub }
+      wss.emit('connection', ws, req)
+    })
+  } catch (error) {
+    const status = Number.isInteger(error?.status) ? error.status : 401
+    socket.write(`HTTP/1.1 ${status} Unauthorized\r\nConnection: close\r\n\r\n`)
+    socket.destroy()
+  }
+})
+
+wss.on('connection', ws => {
+  ws.send(JSON.stringify({ type: 'ready', service: 'IZAKHONO Core', version: VERSION }))
+})
+
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(`IZAKHONO Core ${VERSION} listening on :${PORT}`)
+})
+
+async function shutdown(signal) {
+  console.log(`${signal}: shutting down IZAKHONO Core`)
+  for (const ws of wss.clients) ws.close(1001, 'server shutdown')
+  server.close(async () => {
+    await pool.end()
+    process.exit(0)
+  })
+  setTimeout(() => process.exit(1), 10000).unref()
+}
+
+process.on('SIGTERM', () => shutdown('SIGTERM'))
+process.on('SIGINT', () => shutdown('SIGINT'))
+ + values.length)
+    }
+    let orderSql = 'updated_at DESC'
+    const order = url.searchParams.get('order')
+    if (order) {
+      const match = order.match(/^([A-Za-z_][A-Za-z0-9_]{0,62})\.(asc|desc)$/)
+      if (!match) return sendError(req, res, 400, 'Invalid order expression')
+      const [, key, direction] = match
+      orderSql = key === 'id' ? `row_id ${direction.toUpperCase()}` : `(data ->> '${key}') ${direction.toUpperCase()}`
+    }
+    const limit = Math.min(200, Math.max(1, Number.parseInt(url.searchParams.get('limit') || '100', 10) || 100))
+    const offset = Math.min(100000, Math.max(0, Number.parseInt(url.searchParams.get('offset') || '0', 10) || 0))
+    values.push(limit)
+    const limitParam = values.length
+    values.push(offset)
+    const offsetParam = values.length
+    const result = await pool.query(
+      `SELECT row_id, data FROM iz_core_rows WHERE ${clauses.join(' AND ')} ORDER BY ${orderSql} LIMIT ${limitParam} OFFSET ${offsetParam}`,
+      values,
+    )
+    return sendJson(req, res, 200, result.rows.map(rowToJson))
+  }
+
+  if (req.method === 'POST') {
+    if (mode === 'owner_action_only') return sendError(req, res, 403, 'Direct writes are disabled for this table')
+    const body = await readJson(req)
+    if (!body.data || typeof body.data !== 'object' || Array.isArray(body.data)) return sendError(req, res, 400, 'data object required')
+    const payload = { ...body.data }
+    const id = payload.id ? validateRowId(payload.id) : randomUUID()
+    delete payload.id
+    try {
+      const result = await pool.query(
+        `INSERT INTO iz_core_rows(project_id, table_name, row_id, data, created_by)
+         VALUES($1,$2,$3,$4::jsonb,$5)
+         RETURNING row_id, data`,
+        [project, table, id, JSON.stringify(payload), user.id],
+      )
+      const row = rowToJson(result.rows[0])
+      await audit(project, user.id, 'data.insert', { table, id })
+      broadcast(project, mode, user.id, { type: 'row.changed', event: 'INSERT', table, row })
+      return sendJson(req, res, 201, row)
+    } catch (error) {
+      if (error?.code === '23505') return sendError(req, res, 409, 'Row already exists')
+      throw error
+    }
+  }
+
+  return sendError(req, res, 405, 'Method not allowed')
+}
+
+async function handleDataRow(req, res, project, table, id) {
+  const user = await requireUser(req, project)
+  const mode = await tablePolicy(project, table)
+  const ownerClause = isOwnerWriteMode(mode) ? ' AND created_by=$4' : ''
+  const baseValues = [project, table, id]
+
+  if (mode === 'owner_action_only' && (req.method === 'PATCH' || req.method === 'DELETE')) {
+    return sendError(req, res, 403, 'Direct writes are disabled for this table')
+  }
+
+  if (req.method === 'PATCH') {
+    const body = await readJson(req)
+    if (!body.data || typeof body.data !== 'object' || Array.isArray(body.data)) return sendError(req, res, 400, 'data object required')
+    const payload = { ...body.data }
+    delete payload.id
+    const values = [...baseValues, ...(isOwnerWriteMode(mode) ? [user.id] : []), JSON.stringify(payload)]
+    const jsonParam = values.length
+    const result = await pool.query(
+      `UPDATE iz_core_rows SET data=data || $${jsonParam}::jsonb, updated_at=now()
+       WHERE project_id=$1 AND table_name=$2 AND row_id=$3${ownerClause}
+       RETURNING row_id, data`,
+      values,
+    )
+    if (!result.rowCount) return sendError(req, res, 404, 'Row not found')
+    const row = rowToJson(result.rows[0])
+    await audit(project, user.id, 'data.update', { table, id })
+    broadcast(project, mode, user.id, { type: 'row.changed', event: 'UPDATE', table, row })
+    return sendJson(req, res, 200, row)
+  }
+
+  if (req.method === 'DELETE') {
+    const values = [...baseValues, ...(isOwnerWriteMode(mode) ? [user.id] : [])]
+    const result = await pool.query(
+      `DELETE FROM iz_core_rows WHERE project_id=$1 AND table_name=$2 AND row_id=$3${ownerClause} RETURNING row_id, data`,
+      values,
+    )
+    if (!result.rowCount) return sendError(req, res, 404, 'Row not found')
+    const row = rowToJson(result.rows[0])
+    await audit(project, user.id, 'data.delete', { table, id })
+    broadcast(project, mode, user.id, { type: 'row.changed', event: 'DELETE', table, row })
+    return sendJson(req, res, 200, row)
+  }
+
+  return sendError(req, res, 405, 'Method not allowed')
+}
+
+async function handleStorage(req, res, project, bucket, objectPath) {
+  const user = await requireUser(req, project)
+  const filePath = safeStoragePath(project, bucket, objectPath)
+
+  if (req.method === 'PUT') {
+    const existing = await pool.query(
+      'SELECT created_by FROM iz_core_storage_objects WHERE project_id=$1 AND bucket=$2 AND object_path=$3',
+      [project, bucket, objectPath],
+    )
+    if (existing.rowCount && existing.rows[0].created_by !== user.id) return sendError(req, res, 403, 'Storage object belongs to another user')
+    const content = await readBody(req, MAX_STORAGE_BYTES)
+    const digest = sha256(content)
+    const contentType = String(req.headers['content-type'] || 'application/octet-stream').slice(0, 200)
+    await mkdir(dirname(filePath), { recursive: true })
+    await writeFile(filePath, content, { mode: 0o600 })
+    await pool.query(
+      `INSERT INTO iz_core_storage_objects(project_id,bucket,object_path,created_by,content_type,byte_size,sha256)
+       VALUES($1,$2,$3,$4,$5,$6,$7)
+       ON CONFLICT(project_id,bucket,object_path)
+       DO UPDATE SET content_type=EXCLUDED.content_type, byte_size=EXCLUDED.byte_size, sha256=EXCLUDED.sha256, updated_at=now()`,
+      [project, bucket, objectPath, user.id, contentType, content.length, digest],
+    )
+    await audit(project, user.id, 'storage.put', { bucket, objectPath, bytes: content.length })
+    return sendJson(req, res, 201, { bucket, path: objectPath, size: content.length, sha256: digest })
+  }
+
+  if (req.method === 'GET') {
+    const result = await pool.query(
+      `SELECT content_type, byte_size, sha256 FROM iz_core_storage_objects
+       WHERE project_id=$1 AND bucket=$2 AND object_path=$3 AND created_by=$4`,
+      [project, bucket, objectPath, user.id],
+    )
+    if (!result.rowCount) return sendError(req, res, 404, 'Storage object not found')
+    let content
+    try { content = await readFile(filePath) } catch { return sendError(req, res, 404, 'Storage object file missing') }
+    const metadata = result.rows[0]
+    res.writeHead(200, {
+      'content-type': metadata.content_type,
+      'content-length': String(content.length),
+      'cache-control': 'private, no-store',
+      'x-content-type-options': 'nosniff',
+      'x-izakhono-sha256': metadata.sha256,
+    })
+    return res.end(content)
+  }
+
+  if (req.method === 'DELETE') {
+    const result = await pool.query(
+      `DELETE FROM iz_core_storage_objects
+       WHERE project_id=$1 AND bucket=$2 AND object_path=$3 AND created_by=$4
+       RETURNING object_path`,
+      [project, bucket, objectPath, user.id],
+    )
+    if (!result.rowCount) return sendError(req, res, 404, 'Storage object not found')
+    try { await unlink(filePath) } catch {}
+    await audit(project, user.id, 'storage.delete', { bucket, objectPath })
+    return sendJson(req, res, 200, { ok: true })
+  }
+
+  return sendError(req, res, 405, 'Method not allowed')
+}
+
+const server = http.createServer(async (req, res) => {
+  try {
+    if (!corsAllowed(req)) return sendError(req, res, 403, 'Origin not allowed')
+    if (req.method === 'OPTIONS') {
+      const headers = jsonHeaders(req)
+      headers['access-control-allow-methods'] = 'GET,POST,PATCH,PUT,DELETE,OPTIONS'
+      headers['access-control-allow-headers'] = 'Authorization,Content-Type,X-Project-Key'
+      headers['access-control-max-age'] = '600'
+      res.writeHead(204, headers)
+      return res.end()
+    }
+
+    const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`)
+
+    if (req.method === 'GET' && url.pathname === '/healthz') {
+      try {
+        await pool.query('SELECT 1')
+        return sendJson(req, res, 200, { ok: true, service: 'IZAKHONO Core', version: VERSION, storage: 'local-volume', database: 'postgresql' })
+      } catch {
+        return sendJson(req, res, 503, { ok: false, service: 'IZAKHONO Core', version: VERSION })
+      }
+    }
+
+    if (req.method === 'GET' && url.pathname === '/v1/capabilities') {
+      return sendJson(req, res, 200, {
+        service: 'IZAKHONO Core',
+        version: VERSION,
+        capabilities: {
+          passwordAuth: true,
+          refreshTokens: true,
+          projectIsolation: true,
+          ownerDefaultDataPolicy: true,
+          ownerPublicReadDataPolicy: true,
+          ownerActionOnlyDataPolicy: true,
+          projectSharedDataPolicy: true,
+          basicCrud: true,
+          storage: true,
+          realtime: true,
+          relationalSelect: false,
+          rpc: false,
+          edgeFunctions: false,
+          passwordRecovery: false,
+        },
+      })
+    }
+
+    if (req.method === 'POST' && url.pathname === '/v1/admin/projects') return handleAdminProject(req, res)
+
+    let match = url.pathname.match(/^\/v1\/auth\/([^/]+)\/(signup|signin|refresh|signout|me)$/)
+    if (match) {
+      const project = validateProjectId(decodeURIComponent(match[1]))
+      const action = match[2]
+      if (action === 'signup' && req.method === 'POST') return handleSignup(req, res, project)
+      if (action === 'signin' && req.method === 'POST') return handleSignin(req, res, project)
+      if (action === 'refresh' && req.method === 'POST') return handleRefresh(req, res, project)
+      if (action === 'signout' && req.method === 'POST') return handleSignout(req, res, project)
+      if (action === 'me' && req.method === 'GET') return handleMe(req, res, project)
+      return sendError(req, res, 405, 'Method not allowed')
+    }
+
+    match = url.pathname.match(/^\/v1\/data\/([^/]+)\/([^/]+)$/)
+    if (match) {
+      const project = validateProjectId(decodeURIComponent(match[1]))
+      const table = validateTable(decodeURIComponent(match[2]))
+      return handleDataCollection(req, res, url, project, table)
+    }
+
+    match = url.pathname.match(/^\/v1\/data\/([^/]+)\/([^/]+)\/([^/]+)$/)
+    if (match) {
+      const project = validateProjectId(decodeURIComponent(match[1]))
+      const table = validateTable(decodeURIComponent(match[2]))
+      const id = validateRowId(decodeURIComponent(match[3]))
+      return handleDataRow(req, res, project, table, id)
+    }
+
+    match = url.pathname.match(/^\/v1\/storage\/([^/]+)\/([^/]+)\/(.+)$/)
+    if (match) {
+      const project = validateProjectId(decodeURIComponent(match[1]))
+      const bucket = decodeURIComponent(match[2])
+      const objectPath = decodeURIComponent(match[3])
+      return handleStorage(req, res, project, bucket, objectPath)
+    }
+
+    return sendError(req, res, 404, 'Not found')
+  } catch (error) {
+    const status = Number.isInteger(error?.status) ? error.status : 500
+    if (status >= 500) console.error(error)
+    return sendError(req, res, status, status >= 500 ? 'Internal server error' : error.message)
+  }
+})
+
+server.on('upgrade', async (req, socket, head) => {
+  try {
+    const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`)
+    const match = url.pathname.match(/^\/v1\/realtime\/([^/]+)$/)
+    if (!match) throw Object.assign(new Error('Not found'), { status: 404 })
+    const project = validateProjectId(decodeURIComponent(match[1]))
+    const projectKey = url.searchParams.get('project_key') || ''
+    await projectForKey(project, projectKey)
+    const payload = verifyAccessToken(url.searchParams.get('access_token') || '')
+    if (payload.project !== project || payload.aud !== project) throw Object.assign(new Error('Token project mismatch'), { status: 403 })
+    const result = await pool.query('SELECT id, disabled FROM iz_core_users WHERE id=$1 AND project_id=$2', [payload.sub, project])
+    if (!result.rowCount || result.rows[0].disabled) throw Object.assign(new Error('User unavailable'), { status: 401 })
+    wss.handleUpgrade(req, socket, head, ws => {
+      ws.izakhonoContext = { project, userId: payload.sub }
+      wss.emit('connection', ws, req)
+    })
+  } catch (error) {
+    const status = Number.isInteger(error?.status) ? error.status : 401
+    socket.write(`HTTP/1.1 ${status} Unauthorized\r\nConnection: close\r\n\r\n`)
+    socket.destroy()
+  }
+})
+
+wss.on('connection', ws => {
+  ws.send(JSON.stringify({ type: 'ready', service: 'IZAKHONO Core', version: VERSION }))
+})
+
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(`IZAKHONO Core ${VERSION} listening on :${PORT}`)
+})
+
+async function shutdown(signal) {
+  console.log(`${signal}: shutting down IZAKHONO Core`)
+  for (const ws of wss.clients) ws.close(1001, 'server shutdown')
+  server.close(async () => {
+    await pool.end()
+    process.exit(0)
+  })
+  setTimeout(() => process.exit(1), 10000).unref()
+}
+
+process.on('SIGTERM', () => shutdown('SIGTERM'))
+process.on('SIGINT', () => shutdown('SIGINT'))
+ + values.length)
     }
     for (const [rawKey, value] of url.searchParams.entries()) {
       if (['order', 'limit', 'offset'].includes(rawKey)) continue
