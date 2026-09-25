@@ -19,14 +19,17 @@
         </span>
       </a>
       <nav class="nav-links" aria-label="Main navigation">
-        <a href="#learn">Learn</a>
+        <a href="#institutions">Institutions</a>
+        <a href="#learn">Curriculum</a>
         <a href="#pathways">Pathways</a>
         <a href="#why">Platform</a>
-        <a href="#enterprise">Enterprise</a>
       </nav>
       <div class="nav-actions">
-        <button class="btn ghost" data-scroll="#learn">Explore</button>
-        <button class="btn primary" data-scroll="#learn">Start free</button>
+        <label class="language-control" aria-label="Language">
+          <span>🌐</span>
+          <select id="languageSelect" aria-label="Choose language"></select>
+        </label>
+        <button class="btn primary" data-scroll="#institutions" data-i18n="cta">Institutional programmes</button>
       </div>
     </div>
   </header>
@@ -35,18 +38,14 @@
     <section class="hero">
       <div class="container hero-grid">
         <div>
-          <span class="eyebrow"><span class="dot"></span> Built independently by IZAKHONO</span>
-          <h1>
-            Understand the
-            <span class="gradient-text">new financial system.</span>
-          </h1>
-          <p class="hero-copy">
-            Learn blockchain, digital assets, payments, tokenisation, fintech, cybersecurity and compliance without the hype.
-            Start with the fundamentals and progress into professional and specialist learning.
+          <span class="eyebrow"><span class="dot"></span> <span data-i18n="hero_kicker">GLOBAL INSTITUTIONAL DIGITAL-FINANCE CAPABILITY</span></span>
+          <h1 data-i18n="hero_title">Build digital-finance capability across your institution.</h1>
+          <p class="hero-copy" data-i18n="hero_body">
+            Train leaders, professionals and teams in blockchain, digital assets, payments, fintech, cyber risk and compliance — with multilingual, role-based learning built for institutional use.
           </p>
           <div class="hero-actions">
-            <button class="btn primary" data-scroll="#learn">Start learning free</button>
-            <button class="btn ghost" data-scroll="#pathways">See professional pathways</button>
+            <button class="btn primary" data-scroll="#institutions" data-i18n="cta">Explore institutional programmes</button>
+            <button class="btn ghost" data-scroll="#learn">Review curriculum</button>
           </div>
           <div class="hero-notes">
             <span class="hero-note"><b>✓</b> Independent IZAKHONO engine</span>
@@ -67,6 +66,40 @@
             <div class="metric"><strong>14</strong><span>launch modules</span></div>
             <div class="metric"><strong>0</strong><span>tracking pixels</span></div>
           </div>
+        </div>
+      </div>
+    </section>
+
+
+    <section class="section institutional-section" id="institutions">
+      <div class="container">
+        <div class="section-head">
+          <div>
+            <div class="kicker">Institutional learning</div>
+            <h2 data-i18n="institution_heading">Built for institutions that need capability, not hype.</h2>
+            <p data-i18n="institution_body">
+              Deploy executive briefings, staff academies, specialist labs and customer education in the language and operating context your people use.
+            </p>
+          </div>
+          <div class="institution-badge">
+            <strong id="localeCount">10</strong>
+            <span>launch interface languages</span>
+          </div>
+        </div>
+
+        <div class="institution-grid" id="institutionGrid">
+          <div class="empty">Loading institutional programmes…</div>
+        </div>
+
+        <div class="localisation-band">
+          <div>
+            <div class="kicker">Language + jurisdiction localisation</div>
+            <h3>One curriculum architecture. Local language. Local examples. Local rules.</h3>
+            <p>
+              IZAKHONO separates universal digital-finance concepts from country-specific regulatory overlays. Full course language packs are released only after translation and subject-matter review.
+            </p>
+          </div>
+          <div class="language-cloud" id="languageCloud" aria-label="Supported interface languages"></div>
         </div>
       </div>
     </section>
@@ -200,10 +233,10 @@
       <div class="container">
         <div class="enterprise">
           <div>
-            <div class="kicker">IZAKHONO for organisations</div>
-            <h2>Train teams that need to understand digital finance before they build, buy or regulate it.</h2>
+            <div class="kicker">Global institutional delivery</div>
+            <h2>Train the people who build, buy, govern, supervise, advise on or use digital finance.</h2>
             <p>
-              Enterprise delivery is designed for banks, fintechs, professional-services firms, SMEs, compliance teams, technology teams and leadership cohorts.
+              Institutional delivery is structured for banks, payment institutions, regulators, central banks, fintechs, insurers, professional-services firms, universities, corporates, development-finance organisations and industry associations.
             </p>
             <div class="hero-actions">
               <button class="btn primary" data-enterprise-cta>Enterprise programmes</button>
