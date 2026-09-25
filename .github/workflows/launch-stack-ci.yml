@@ -43,7 +43,8 @@ jobs:
             echo "Checking $script"
             bash -n "$script"
           done
-          python3 -m py_compile products/izakhono-control/control.py products/izakhono-node/node_agent.py
+          python3 -m py_compile products/izakhono-control/control.py products/izakhono-node/node_agent.py products/izakhono-node/wave1_deploy.py
+          python3 products/izakhono-node/test_wave1_safety.py
 
       - name: PowerShell owner-host syntax
         shell: pwsh
