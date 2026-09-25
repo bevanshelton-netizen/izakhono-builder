@@ -162,6 +162,10 @@ class AcademyHandler(BaseHTTPRequestHandler):
             self._json(read_json("locales.json"))
             return
 
+        if path == "/api/v1/offers":
+            self._json(read_json("institutional-offers.json"))
+            return
+
         if path == "/api/v1/payment":
             self._json(
                 {
