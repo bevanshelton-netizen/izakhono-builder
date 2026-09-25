@@ -1,0 +1,129 @@
+name: IZAKHONO Digital Finance External Resilience
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "apps/izakhono-digital-finance/**"
+      - ".github/workflows/izakhono-digital-finance-external-resilience.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: izakhono-digital-finance-external-resilience
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Require controlled deployment credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            echo "DIGITAL_FINANCE_EXTERNAL_DEPLOY=BLOCKED_CREDENTIALS_NOT_CONFIGURED"
+            exit 20
+          fi
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Stage public-only resilience assets
+        shell: bash
+        working-directory: apps/izakhono-digital-finance
+        run: |
+          set -euo pipefail
+          python verify.py
+          rm -rf public-fallback
+          mkdir -p public-fallback
+          cp index.html styles.css app.js curriculum.json platform.json institutions.json locales.json institutional-offers.json automation.json assessment-blueprint.json healthz public-fallback/
+          test ! -f public-fallback/engine.py
+          test ! -f public-fallback/automation_store.py
+          test ! -f public-fallback/learner_access.py
+          test ! -f public-fallback/credential_service.py
+
+      - name: Verify fail-closed external boundary
+        shell: python
+        working-directory: apps/izakhono-digital-finance
+        run: |
+          from pathlib import Path
+          worker = Path("external-worker.js").read_text(encoding="utf-8")
+          assert "protected_owned_engine_required" in worker
+          assert "/api/v1/admin/" in worker
+          assert "/api/v1/learner/" in worker
+          assert "/api/v1/automation/evaluate" in worker
+          assert "learner_writes: false" in worker
+          print("DIGITAL_FINANCE_EXTERNAL_BOUNDARY=PASS")
+
+      - name: Deploy public resilience route
+        id: deploy
+        shell: bash
+        working-directory: apps/izakhono-digital-finance
+        run: |
+          set -euo pipefail
+          npx --yes wrangler@4 deploy --config wrangler-fallback.jsonc 2>&1 | tee /tmp/digital-finance-wrangler.log
+          URL="$(grep -Eo 'https://[A-Za-z0-9._-]+\.workers\.dev' /tmp/digital-finance-wrangler.log | tail -1 || true)"
+          if [ -z "$URL" ]; then
+            echo "Could not determine workers.dev route from deploy output."
+            cat /tmp/digital-finance-wrangler.log
+            exit 21
+          fi
+          echo "url=$URL" >> "$GITHUB_OUTPUT"
+          echo "DIGITAL_FINANCE_EXTERNAL_URL=$URL"
+
+      - name: Independently verify HTTPS experience
+        shell: bash
+        env:
+          PUBLIC_URL: ${{ steps.deploy.outputs.url }}
+        run: |
+          set -euo pipefail
+          for i in 1 2 3 4 5 6; do
+            if curl -fsS --max-time 15 "$PUBLIC_URL/healthz" | grep -qx "OK"; then
+              break
+            fi
+            sleep 3
+          done
+          test "$(curl -fsS --max-time 15 "$PUBLIC_URL/healthz")" = "OK"
+          curl -fsS --max-time 15 "$PUBLIC_URL/" > /tmp/home.html
+          grep -q "IZAKHONO DIGITAL FINANCE" /tmp/home.html
+          curl -fsS --max-time 15 "$PUBLIC_URL/api/v1/status" > /tmp/status.json
+          python - <<'PY'
+          import json
+          d=json.load(open("/tmp/status.json"))
+          assert d["engine"] == "external-static-resilience"
+          assert d["learner_writes"] is False
+          assert d["tracking"] is False
+          PY
+          STATUS="$(curl -sS -o /tmp/protected.json -w '%{http_code}' -X POST "$PUBLIC_URL/api/v1/automation/evaluate" -H 'Content-Type: application/json' -d '{"learner_ref":"probe"}')"
+          test "$STATUS" = "503"
+          grep -q "protected_owned_engine_required" /tmp/protected.json
+          echo "DIGITAL_FINANCE_EXTERNAL_HTTPS_VERIFY=PASS"
+          echo "PUBLIC_URL=$PUBLIC_URL" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Record evidence
+        shell: bash
+        env:
+          PUBLIC_URL: ${{ steps.deploy.outputs.url }}
+        run: |
+          cat >> "$GITHUB_STEP_SUMMARY" <<EOF
+
+          ## IZAKHONO Digital Finance external resilience
+          - Public route: $PUBLIC_URL
+          - HTTPS root: PASS
+          - /healthz: PASS
+          - Product marker: PASS
+          - Tracking disabled: PASS
+          - Protected learner/admin writes fail closed: PASS
+          - Evidence label candidate: EXTERNAL LIVE VERIFIED
+          - Owned NODE01 route: still requires independent owner-machine + DNS/TLS acceptance
+          EOF
