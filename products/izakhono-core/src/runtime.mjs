@@ -299,7 +299,7 @@ function rowToJson(row) {
 }
 
 function isOwnerWriteMode(mode) {
-  return mode === 'owner' || mode === 'owner_public_read' || mode === 'owner_action_only'
+  return mode === 'owner' || mode === 'owner_public_read' || mode === 'owner_action_only' || mode === 'owner_public_read_action_only'
 }
 
 function broadcast(project, mode, actorUserId, payload) {
@@ -350,7 +350,7 @@ async function handleAdminProject(req, res) {
   for (const [tableRaw, modeRaw] of Object.entries(policies)) {
     const table = validateTable(tableRaw)
     const mode = String(modeRaw)
-    if (!['owner', 'project', 'owner_public_read', 'owner_action_only'].includes(mode)) return sendError(req, res, 400, `Invalid table policy for ${table}`)
+    if (!['owner', 'project', 'owner_public_read', 'owner_action_only', 'owner_public_read_action_only'].includes(mode)) return sendError(req, res, 400, `Invalid table policy for ${table}`)
     await pool.query(
       `INSERT INTO iz_core_table_policies(project_id, table_name, mode) VALUES($1,$2,$3)
        ON CONFLICT(project_id, table_name) DO UPDATE SET mode=EXCLUDED.mode, updated_at=now()`,
@@ -468,7 +468,7 @@ async function handleMe(req, res, project) {
 
 async function handleDataCollection(req, res, url, project, table) {
   const mode = await tablePolicy(project, table)
-  const publicRead = req.method === 'GET' && mode === 'owner_public_read'
+  const publicRead = req.method === 'GET' && (mode === 'owner_public_read' || mode === 'owner_public_read_action_only')
   const user = publicRead ? null : await requireUser(req, project)
   if (publicRead) await requireProject(req, project)
 
@@ -509,7 +509,7 @@ async function handleDataCollection(req, res, url, project, table) {
   }
 
   if (req.method === 'POST') {
-    if (mode === 'owner_action_only') return sendError(req, res, 403, 'Direct writes are disabled for this table')
+    if (mode === 'owner_action_only' || mode === 'owner_public_read_action_only') return sendError(req, res, 403, 'Direct writes are disabled for this table')
     const body = await readJson(req)
     if (!body.data || typeof body.data !== 'object' || Array.isArray(body.data)) return sendError(req, res, 400, 'data object required')
     const payload = { ...body.data }
@@ -541,7 +541,7 @@ async function handleDataRow(req, res, project, table, id) {
   const ownerClause = isOwnerWriteMode(mode) ? ' AND created_by=$4' : ''
   const baseValues = [project, table, id]
 
-  if (mode === 'owner_action_only' && (req.method === 'PATCH' || req.method === 'DELETE')) {
+  if ((mode === 'owner_action_only' || mode === 'owner_public_read_action_only') && (req.method === 'PATCH' || req.method === 'DELETE')) {
     return sendError(req, res, 403, 'Direct writes are disabled for this table')
   }
 
@@ -677,6 +677,7 @@ const server = http.createServer(async (req, res) => {
           ownerDefaultDataPolicy: true,
           ownerPublicReadDataPolicy: true,
           ownerActionOnlyDataPolicy: true,
+          ownerPublicReadActionOnlyDataPolicy: true,
           projectSharedDataPolicy: true,
           basicCrud: true,
           storage: true,
