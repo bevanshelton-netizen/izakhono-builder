@@ -331,19 +331,33 @@ async function handleAdminProject(req, res) {
   const body = await readJson(req)
   const project = validateProjectId(body.project)
   const rotate = body.rotate === true
+  const ensure = body.ensure === true
   const allowSignup = body.allow_signup === true
   const suppliedKey = body.public_key ? String(body.public_key) : ''
+  if (rotate && ensure) return sendError(req, res, 400, 'rotate and ensure cannot both be true')
+
+  const existing = await pool.query('SELECT id,public_key_hash FROM iz_core_projects WHERE id=$1', [project])
+  if (existing.rowCount && ensure) {
+    if (!suppliedKey) return sendError(req, res, 400, 'ensure=true requires the existing browser public key')
+    if (suppliedKey.length < 20 || suppliedKey.length > 200) return sendError(req, res, 400, 'public_key must contain 20-200 characters')
+    if (!safeEqual(existing.rows[0].public_key_hash, sha256(suppliedKey))) {
+      return sendError(req, res, 409, 'Existing project key does not match; ensure refuses rotation')
+    }
+  } else if (existing.rowCount && !rotate) {
+    return sendError(req, res, 409, 'Project already exists; use ensure=true with the current public key or rotate=true for an explicit rotation')
+  }
+
   const publicKey = suppliedKey || randomBytes(24).toString('base64url')
   if (publicKey.length < 20 || publicKey.length > 200) return sendError(req, res, 400, 'public_key must contain 20-200 characters')
-
-  const existing = await pool.query('SELECT id FROM iz_core_projects WHERE id=$1', [project])
-  if (existing.rowCount && !rotate) return sendError(req, res, 409, 'Project already exists; set rotate=true explicitly to rotate its public key')
 
   await pool.query(
     `INSERT INTO iz_core_projects(id, public_key_hash, allow_signup)
      VALUES($1,$2,$3)
-     ON CONFLICT(id) DO UPDATE SET public_key_hash=EXCLUDED.public_key_hash, allow_signup=EXCLUDED.allow_signup, updated_at=now()`,
-    [project, sha256(publicKey), allowSignup],
+     ON CONFLICT(id) DO UPDATE SET
+       public_key_hash=CASE WHEN $4 THEN iz_core_projects.public_key_hash ELSE EXCLUDED.public_key_hash END,
+       allow_signup=EXCLUDED.allow_signup,
+       updated_at=now()`,
+    [project, sha256(publicKey), allowSignup, ensure],
   )
 
   const policies = body.table_policies && typeof body.table_policies === 'object' ? body.table_policies : {}
@@ -358,8 +372,9 @@ async function handleAdminProject(req, res) {
     )
   }
 
-  await audit(project, null, existing.rowCount ? 'project.rotated' : 'project.created', { allow_signup: allowSignup, policies: Object.keys(policies) })
-  return sendJson(req, res, existing.rowCount ? 200 : 201, { project, public_key: publicKey, allow_signup: allowSignup })
+  const event = existing.rowCount ? (ensure ? 'project.ensured' : 'project.rotated') : 'project.created'
+  await audit(project, null, event, { allow_signup: allowSignup, policies: Object.keys(policies), ensure, rotate })
+  return sendJson(req, res, existing.rowCount ? 200 : 201, { project, public_key: publicKey, allow_signup: allowSignup, ensured: ensure && Boolean(existing.rowCount) })
 }
 
 async function handleSignup(req, res, project) {
@@ -675,6 +690,7 @@ const server = http.createServer(async (req, res) => {
           ownerPublicReadDataPolicy: true,
           ownerActionOnlyDataPolicy: true,
           ownerPublicReadActionOnlyDataPolicy: true,
+          nonRotatingProjectEnsure: true,
           projectSharedDataPolicy: true,
           basicCrud: true,
           storage: true,
