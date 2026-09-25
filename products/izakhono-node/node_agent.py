@@ -27,7 +27,7 @@ ALLOWED_REPO_PREFIXES = tuple(
     p.strip()
     for p in os.getenv(
         "IZAKHONO_NODE_ALLOWED_REPO_PREFIXES",
-        "file:///srv/izakhono-code/repos/;https://github.com/bevanshelton-netizen/",
+        "file:///var/lib/izakhono-code/repos/;https://github.com/bevanshelton-netizen/",
     ).split(";")
     if p.strip()
 )
@@ -132,7 +132,7 @@ def repo_allowed(repo):
     repo = str(repo or "")
     if not any(repo.startswith(prefix) for prefix in ALLOWED_REPO_PREFIXES):
         return False
-    if repo.startswith("file:///srv/izakhono-code/repos/"):
+    if repo.startswith("file:///var/lib/izakhono-code/repos/"):
         return repo.endswith(".git") and ".." not in repo
     if repo.startswith("https://github.com/bevanshelton-netizen/"):
         return repo.endswith(".git") and ".." not in repo
