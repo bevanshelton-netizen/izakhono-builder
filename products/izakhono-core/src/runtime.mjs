@@ -9,7 +9,7 @@ import { WebSocketServer } from 'ws'
 const { Pool } = pg
 const scryptAsync = promisify(scrypt)
 
-const VERSION = '0.1.0'
+const VERSION = '0.2.1'
 const PORT = Number.parseInt(process.env.PORT || '8787', 10)
 const JWT_SECRET = process.env.IZAKHONO_CORE_JWT_SECRET || ''
 const ADMIN_TOKEN = process.env.IZAKHONO_CORE_ADMIN_TOKEN || ''
@@ -298,13 +298,17 @@ function rowToJson(row) {
   return { ...(row.data || {}), id: row.row_id }
 }
 
+function isOwnerWriteMode(mode) {
+  return mode === 'owner' || mode === 'owner_public_read' || mode === 'owner_action_only'
+}
+
 function broadcast(project, mode, actorUserId, payload) {
   const body = JSON.stringify(payload)
   for (const ws of wss.clients) {
     if (ws.readyState !== ws.OPEN) continue
     const context = ws.izakhonoContext
     if (!context || context.project !== project) continue
-    if (mode === 'owner' && context.userId !== actorUserId) continue
+    if (isOwnerWriteMode(mode) && mode !== 'owner_public_read' && context.userId !== actorUserId) continue
     ws.send(body)
   }
 }
@@ -346,7 +350,7 @@ async function handleAdminProject(req, res) {
   for (const [tableRaw, modeRaw] of Object.entries(policies)) {
     const table = validateTable(tableRaw)
     const mode = String(modeRaw)
-    if (!['owner', 'project'].includes(mode)) return sendError(req, res, 400, `Invalid table policy for ${table}`)
+    if (!['owner', 'project', 'owner_public_read', 'owner_action_only'].includes(mode)) return sendError(req, res, 400, `Invalid table policy for ${table}`)
     await pool.query(
       `INSERT INTO iz_core_table_policies(project_id, table_name, mode) VALUES($1,$2,$3)
        ON CONFLICT(project_id, table_name) DO UPDATE SET mode=EXCLUDED.mode, updated_at=now()`,
@@ -463,14 +467,17 @@ async function handleMe(req, res, project) {
 }
 
 async function handleDataCollection(req, res, url, project, table) {
-  const user = await requireUser(req, project)
   const mode = await tablePolicy(project, table)
+  const publicRead = req.method === 'GET' && mode === 'owner_public_read'
+  const user = publicRead ? null : await requireUser(req, project)
+  if (publicRead) await requireProject(req, project)
+
   if (req.method === 'GET') {
     const values = [project, table]
     const clauses = ['project_id=$1', 'table_name=$2']
-    if (mode === 'owner') {
+    if (mode === 'owner' || mode === 'owner_action_only') {
       values.push(user.id)
-      clauses.push(`created_by=$${values.length}`)
+      clauses.push(`created_by=${values.length}`)
     }
     for (const [rawKey, value] of url.searchParams.entries()) {
       if (['order', 'limit', 'offset'].includes(rawKey)) continue
@@ -478,7 +485,7 @@ async function handleDataCollection(req, res, url, project, table) {
       values.push(key)
       const keyParam = values.length
       values.push(String(value))
-      clauses.push(`data ->> $${keyParam} = $${values.length}`)
+      clauses.push(`data ->> ${keyParam} = ${values.length}`)
     }
     let orderSql = 'updated_at DESC'
     const order = url.searchParams.get('order')
@@ -495,13 +502,14 @@ async function handleDataCollection(req, res, url, project, table) {
     values.push(offset)
     const offsetParam = values.length
     const result = await pool.query(
-      `SELECT row_id, data FROM iz_core_rows WHERE ${clauses.join(' AND ')} ORDER BY ${orderSql} LIMIT $${limitParam} OFFSET $${offsetParam}`,
+      `SELECT row_id, data FROM iz_core_rows WHERE ${clauses.join(' AND ')} ORDER BY ${orderSql} LIMIT ${limitParam} OFFSET ${offsetParam}`,
       values,
     )
     return sendJson(req, res, 200, result.rows.map(rowToJson))
   }
 
   if (req.method === 'POST') {
+    if (mode === 'owner_action_only') return sendError(req, res, 403, 'Direct writes are disabled for this table')
     const body = await readJson(req)
     if (!body.data || typeof body.data !== 'object' || Array.isArray(body.data)) return sendError(req, res, 400, 'data object required')
     const payload = { ...body.data }
@@ -530,15 +538,19 @@ async function handleDataCollection(req, res, url, project, table) {
 async function handleDataRow(req, res, project, table, id) {
   const user = await requireUser(req, project)
   const mode = await tablePolicy(project, table)
-  const ownerClause = mode === 'owner' ? ' AND created_by=$4' : ''
+  const ownerClause = isOwnerWriteMode(mode) ? ' AND created_by=$4' : ''
   const baseValues = [project, table, id]
+
+  if (mode === 'owner_action_only' && (req.method === 'PATCH' || req.method === 'DELETE')) {
+    return sendError(req, res, 403, 'Direct writes are disabled for this table')
+  }
 
   if (req.method === 'PATCH') {
     const body = await readJson(req)
     if (!body.data || typeof body.data !== 'object' || Array.isArray(body.data)) return sendError(req, res, 400, 'data object required')
     const payload = { ...body.data }
     delete payload.id
-    const values = [...baseValues, ...(mode === 'owner' ? [user.id] : []), JSON.stringify(payload)]
+    const values = [...baseValues, ...(isOwnerWriteMode(mode) ? [user.id] : []), JSON.stringify(payload)]
     const jsonParam = values.length
     const result = await pool.query(
       `UPDATE iz_core_rows SET data=data || $${jsonParam}::jsonb, updated_at=now()
@@ -554,7 +566,7 @@ async function handleDataRow(req, res, project, table, id) {
   }
 
   if (req.method === 'DELETE') {
-    const values = [...baseValues, ...(mode === 'owner' ? [user.id] : [])]
+    const values = [...baseValues, ...(isOwnerWriteMode(mode) ? [user.id] : [])]
     const result = await pool.query(
       `DELETE FROM iz_core_rows WHERE project_id=$1 AND table_name=$2 AND row_id=$3${ownerClause} RETURNING row_id, data`,
       values,
@@ -663,6 +675,8 @@ const server = http.createServer(async (req, res) => {
           refreshTokens: true,
           projectIsolation: true,
           ownerDefaultDataPolicy: true,
+          ownerPublicReadDataPolicy: true,
+          ownerActionOnlyDataPolicy: true,
           projectSharedDataPolicy: true,
           basicCrud: true,
           storage: true,
