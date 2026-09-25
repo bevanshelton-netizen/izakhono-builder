@@ -4,12 +4,19 @@ const grid=document.querySelector('#services');
 const status=document.querySelector('#engine-status');
 const count=document.querySelector('#service-count');
 function esc(value){return String(value).replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]))}
+function sortServices(services){
+  return [...services].sort((a,b)=>Number(Boolean(b.featured))-Number(Boolean(a.featured))||a.name.localeCompare(b.name));
+}
 function render(engine,services){
-  count.textContent=services.length+' services';
-  grid.innerHTML=services.map(service=>{
+  const sorted=sortServices(services);
+  count.textContent=sorted.length+' services';
+  grid.innerHTML=sorted.map(service=>{
     const open=engine.route(service.slug);
-    const action=open.ok?'<a class="button" href="'+esc(open.url)+'">Open resilience route</a>':'<span class="gate">Public route gated</span>';
-    return '<article class="card" id="service-'+esc(service.slug)+'"><div class="category">'+esc(service.category)+'</div><h3>'+esc(service.name)+'</h3><p>'+esc(service.description)+'</p><div class="card-footer"><span class="state state-'+esc(service.status)+'">'+esc(service.status)+'</span>'+action+'</div></article>';
+    const action=open.ok
+      ? '<a class="button" href="'+esc(open.url)+'">Open verified route</a>'
+      : '<span class="gate">'+(service.featured?'Launch gate pending':'Public route gated')+'</span>';
+    const feature=service.featured?'<span class="featured">FLAGSHIP</span>':'';
+    return '<article class="card '+(service.featured?'card-featured':'')+'" id="service-'+esc(service.slug)+'"><div class="card-top"><div class="category">'+esc(service.category)+'</div>'+feature+'</div><h3>'+esc(service.name)+'</h3><p>'+esc(service.description)+'</p><div class="card-footer"><span class="state state-'+esc(service.status)+'">'+esc(service.status)+'</span>'+action+'</div></article>';
   }).join('');
 }
 try{
