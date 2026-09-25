@@ -1,0 +1,51 @@
+{
+  "schema": "izakhono.digital.finance.assessment.blueprint.v1",
+  "purpose": "Protected assessment-service design contract. This file does not contain production answer keys.",
+  "assessment_types": [
+    {
+      "id": "baseline",
+      "questions": 20,
+      "time_minutes": 20,
+      "scored": true,
+      "use": "Route learner to foundation, standard or accelerated learning."
+    },
+    {
+      "id": "module_check",
+      "questions_per_module": 5,
+      "time_minutes": 8,
+      "scored": true,
+      "use": "Confirm understanding and trigger targeted remediation."
+    },
+    {
+      "id": "final",
+      "questions": 40,
+      "time_minutes": 45,
+      "scored": true,
+      "use": "Determine programme completion eligibility."
+    },
+    {
+      "id": "scenario",
+      "questions": 8,
+      "time_minutes": 30,
+      "scored": true,
+      "use": "Test escalation, fraud/cyber recognition and role-appropriate decisions."
+    }
+  ],
+  "domains": [
+    "digital money and payment rails",
+    "blockchain fundamentals",
+    "wallets, custody and key management",
+    "digital assets and tokenisation",
+    "fraud, phishing and social engineering",
+    "cybersecurity and account protection",
+    "compliance and escalation concepts",
+    "customer communication and conduct risk"
+  ],
+  "production_rules": [
+    "Answer keys must live in a protected assessment service, not in the public repository or browser bundle.",
+    "Question versions and scoring rules must be auditable.",
+    "Regulatory questions must carry jurisdiction and review-date metadata.",
+    "A failed assessment should trigger automated remediation before repeat assessment.",
+    "Assessment appeals are routed to a human governance gate."
+  ]
+}
