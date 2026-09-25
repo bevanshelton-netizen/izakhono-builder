@@ -27,7 +27,7 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: '22'
-      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: npm install --ignore-scripts --no-audit --no-fund
       - name: Validate IZAKHONO ONE source
         run: |
           node --check products/izakhono-one/server.mjs
@@ -55,6 +55,6 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: '22'
-      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: npm install --ignore-scripts --no-audit --no-fund
       - name: Deploy isolated resilience Worker
         run: npx wrangler deploy --config products/izakhono-one/wrangler.external.jsonc
