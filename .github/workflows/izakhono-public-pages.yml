@@ -6,6 +6,14 @@ on:
       - 'izakhono-containers/launch/**'
       - 'products/izakhono-social/public-external/**'
       - 'products/faisready-v1/**'
+      - 'products/izakhono-one/**'
+      - 'RUN-IZAKHONO-ONE-NODE01.cmd'
+      - '.github/workflows/izakhono-public-pages.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'products/izakhono-one/**'
+      - 'RUN-IZAKHONO-ONE-NODE01.cmd'
       - '.github/workflows/izakhono-public-pages.yml'
   workflow_dispatch:
 
@@ -23,56 +31,33 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-
       - name: Build consolidated public Pages artifact
         shell: bash
         run: |
           set -euo pipefail
           rm -rf _site
-          mkdir -p _site/connecta _site/faisready/assets _site/faisready/owner
-
-          # Preserve the existing IZAKHONO Containers Pages root.
+          mkdir -p _site/connecta _site/faisready/assets _site/faisready/owner _site/one
           cp izakhono-containers/launch/index.html _site/index.html
-
-          # Preserve CONNECTA at its established subpath.
           cp products/izakhono-social/public-external/index.html _site/connecta/index.html
-
-          # Publish public-only FAISReady assets.
           cp products/faisready-v1/index.html _site/faisready/index.html
           cp products/faisready-v1/styles.css _site/faisready/styles.css
           cp products/faisready-v1/app.js _site/faisready/app.js
           cp products/faisready-v1/merch.json _site/faisready/merch.json
           cp products/faisready-v1/assets/approved-photo-*.b64 _site/faisready/assets/
-
-          # Keep owner credentials off the external resilience route.
           cat > _site/faisready/owner/index.html <<'HTML'
           <!doctype html>
-          <html lang="en">
-          <head>
-            <meta charset="utf-8">
-            <meta name="viewport" content="width=device-width,initial-scale=1">
-            <meta name="robots" content="noindex,nofollow">
-            <title>FAISReady Owner Portal</title>
-            <style>
-              *{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;padding:24px;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;background:linear-gradient(135deg,#eef7ff,#fff8df);color:#102033}.card{max-width:720px;padding:36px;border:1px solid #dfe7f0;border-radius:26px;background:#fff;box-shadow:0 20px 60px rgba(5,43,89,.14)}.brand{font-size:2.25rem;font-weight:950;color:#052b59}.brand span{color:#d8ac43}h1{color:#052b59;line-height:1.05}p{line-height:1.6;color:#566579}a{display:inline-block;margin-top:12px;padding:12px 17px;border-radius:11px;background:#052b59;color:#fff;text-decoration:none;font-weight:850}
-            </style>
-          </head>
-          <body><main class="card"><div class="brand">FAIS<span>Ready</span></div><h1>Owner access stays on IZAKHONO-owned infrastructure.</h1><p>This public resilience route never accepts owner credentials. The authenticated FAISReady Owner Portal is served only through the verified NODE01 / IZAKHONO Core route.</p><a href="../">Return to FAISReady</a></main></body>
-          </html>
+          <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>FAISReady Owner Portal</title><style>*{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;padding:24px;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;background:linear-gradient(135deg,#eef7ff,#fff8df);color:#102033}.card{max-width:720px;padding:36px;border:1px solid #dfe7f0;border-radius:26px;background:#fff;box-shadow:0 20px 60px rgba(5,43,89,.14)}.brand{font-size:2.25rem;font-weight:950;color:#052b59}.brand span{color:#d8ac43}h1{color:#052b59;line-height:1.05}p{line-height:1.6;color:#566579}a{display:inline-block;margin-top:12px;padding:12px 17px;border-radius:11px;background:#052b59;color:#fff;text-decoration:none;font-weight:850}</style></head><body><main class="card"><div class="brand">FAIS<span>Ready</span></div><h1>Owner access stays on IZAKHONO-owned infrastructure.</h1><p>This public resilience route never accepts owner credentials. The authenticated FAISReady Owner Portal is served only through the verified NODE01 / IZAKHONO Core route.</p><a href="../">Return to FAISReady</a></main></body></html>
           HTML
-
-          # Keep the public footer owner link inside the FAISReady subpath.
           python - <<'PY'
           from pathlib import Path
           p=Path("_site/faisready/index.html")
-          s=p.read_text(encoding="utf-8")
-          s=s.replace('href="/owner/"','href="./owner/"')
+          s=p.read_text(encoding="utf-8").replace('href="/owner/"','href="./owner/"')
           p.write_text(s,encoding="utf-8")
           PY
-
+          cp products/izakhono-one/public/* _site/one/
           touch _site/.nojekyll
 
-      - name: Verify FAISReady public boundaries
+      - name: Verify public boundaries
         shell: python
         run: |
           import json
@@ -82,33 +67,46 @@ jobs:
           js=(root/"app.js").read_text(encoding="utf-8")
           owner=(root/"owner/index.html").read_text(encoding="utf-8")
           merch=json.loads((root/"merch.json").read_text(encoding="utf-8"))
-
           assert 'id="shop"' in html
           assert 'FAISREADY MERCH' in html
           assert "https://pay.ikhokha.com/izakhono/buy/re5completeprepara" in html
           assert "re5-and-re1-complete-p" not in html.lower()
           assert "RE1, RE3, RE4 and bundle payment routes stay gated" in html
           assert 'href="./owner/"' in html
-
           assert "CRM_ADMIN_TOKEN" not in js
           assert "FAISREADY_CORE_PROJECT_KEY" not in js
           assert "Owner access stays on IZAKHONO-owned infrastructure." in owner
           assert "<form" not in owner.lower()
           assert "password" not in owner.lower()
-
           priced={i["id"]:i["price"] for i in merch["items"] if i.get("price") is not None}
           assert priced["faisready-hoodie"] == 550
           assert priced["faisready-golfer"] == 250
           assert priced["faisready-tee"] == 190
           assert all(i.get("checkout_url") is None or i["checkout_url"].startswith("https://pay.ikhokha.com/") for i in merch["items"])
-          print("FAISREADY_GITHUB_PAGES_GATE=PASS")
+          one=Path("_site/one")
+          one_html=(one/"index.html").read_text(encoding="utf-8")
+          one_engine=(one/"engine.js").read_text(encoding="utf-8")
+          registry=json.loads((one/"registry.json").read_text(encoding="utf-8"))
+          health=json.loads((one/"health.json").read_text(encoding="utf-8"))
+          combined=(one_html+one_engine+(one/"app.js").read_text(encoding="utf-8")).lower()
+          assert "izakhono one" in one_html.lower()
+          assert set(["search","service-discovery","routing","health"]).issubset(set(registry["engine"]["capabilities"]))
+          assert registry["engine"]["tracking"] is False
+          assert health["tracking"] is False
+          assert "google-analytics" not in combined
+          assert "googletagmanager" not in combined
+          assert "facebook.com/tr" not in combined
+          for service in registry["services"]:
+              if service["status"] == "gated":
+                  assert service["publicUrl"] is None
+          print("IZAKHONO_ONE_EXTERNAL_GATE=PASS")
 
       - uses: actions/upload-pages-artifact@v4
         with:
           path: _site
 
   deploy:
-    if: github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'workflow_dispatch' || github.event_name == 'push'
     needs: build
     environment:
       name: github-pages

@@ -1,0 +1,14 @@
+{
+  "engine":{"name":"IZAKHONO ONE Engine","version":"1.0.0","capabilities":["search","service-discovery","routing","health"],"tracking":false},
+  "services":[
+    {"slug":"faisready","name":"FAISReady","category":"Education","description":"Regulatory exam preparation and learning support.","status":"external-resilience","publicUrl":"../faisready/"},
+    {"slug":"connecta","name":"CONNECTA","category":"Community","description":"IZAKHONO community and social platform.","status":"external-resilience","publicUrl":"../connecta/"},
+    {"slug":"kora","name":"KORA","category":"Media","description":"African entertainment, creators, live events and distribution.","status":"gated","publicUrl":null},
+    {"slug":"allegro-vibez","name":"ALLEGRO-VIBEZ","category":"Music","description":"Artists, rights, royalties, music and fan experiences.","status":"gated","publicUrl":null},
+    {"slug":"edu-build","name":"EDU-BUILD / ECD360","category":"Education","description":"Early childhood development training and digital learning.","status":"gated","publicUrl":null},
+    {"slug":"doxa-sure","name":"DOXA-SURE","category":"Resilience","description":"Insurance and resilience services through appropriate licensed structures.","status":"gated","publicUrl":null},
+    {"slug":"auto-ai","name":"AUTO AI","category":"Automotive","description":"Vehicle repair quote second opinions and diagnostic support.","status":"gated","publicUrl":null},
+    {"slug":"worknow","name":"WorkNow","category":"Employment","description":"Job-seeker and employer opportunity platform.","status":"gated","publicUrl":null},
+    {"slug":"izakhono-create","name":"IZAKHONO CREATE","category":"Creative","description":"Creative production, product media and campaign tooling.","status":"gated","publicUrl":null}
+  ]
+}
