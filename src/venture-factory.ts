@@ -4,7 +4,12 @@ type D1Stmt = {
   all<T = any>(): Promise<{ results?: T[] }>;
   run(): Promise<unknown>;
 };
-type Env = { DB: { prepare(sql: string): D1Stmt } };
+type Env = {
+  DB: { prepare(sql: string): D1Stmt };
+  IZAKHONO_SUPER_AI_URL?: string;
+  IZAKHONO_SUPER_AI_INTERNAL_KEY?: string;
+  IZAKHONO_SUPER_AI_WORKFLOW_KEY?: string;
+};
 
 const KEEP_THRESHOLD_ZAR = 100_000;
 
@@ -429,6 +434,138 @@ function buildIdeaPlan(idea: string, country: string, monthlyPrice: number, targ
   };
 }
 
+
+function cleanAiString(value: unknown, max = 800) {
+  return typeof value === 'string' ? value.trim().slice(0, max) : '';
+}
+
+function cleanAiList(value: unknown, maxItems = 12, maxItemLength = 500) {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((x: unknown) => typeof x === 'string')
+    .map((x: string) => x.trim().slice(0, maxItemLength))
+    .filter(Boolean)
+    .slice(0, maxItems);
+}
+
+function parseAiJson(text: string): any | null {
+  const trimmed = String(text || '').trim();
+  if (!trimmed) return null;
+  const unfenced = trimmed
+    .replace(/^\`\`\`(?:json)?\s*/i, '')
+    .replace(/\s*\`\`\`$/, '')
+    .trim();
+  try { return JSON.parse(unfenced); } catch {}
+  const start = unfenced.indexOf('{');
+  const end = unfenced.lastIndexOf('}');
+  if (start >= 0 && end > start) {
+    try { return JSON.parse(unfenced.slice(start, end + 1)); } catch {}
+  }
+  return null;
+}
+
+function superAiConfigured(env: Env) {
+  return Boolean(
+    env.IZAKHONO_SUPER_AI_URL &&
+    env.IZAKHONO_SUPER_AI_INTERNAL_KEY &&
+    env.IZAKHONO_SUPER_AI_WORKFLOW_KEY
+  );
+}
+
+async function enrichPlanWithSuperAI(env: Env, basePlan: any) {
+  const fallback = (reason: string) => ({
+    ...basePlan,
+    intelligence: {
+      mode: 'deterministic-fallback',
+      service: 'IZAKHONO Venture Factory',
+      super_ai: reason,
+      pricing_math_locked: true,
+      approval_gates_locked: true,
+    },
+  });
+
+  if (!superAiConfigured(env)) return fallback('not-configured');
+
+  const endpoint = String(env.IZAKHONO_SUPER_AI_URL || '').replace(/\/+$/, '') + '/api/v1/generate';
+  const prompt = [
+    'You are the market and product strategy layer inside IZAKHONO Venture Factory.',
+    'Enrich the venture below without changing its price, target revenue, revenue arithmetic, infrastructure policy, payment approval rules, ad-spend approval rules or legal/compliance gates.',
+    'Return ONLY valid JSON with these keys:',
+    'venture_name (string), one_line_offer (string), positioning (string), ideal_customer_profile (string),',
+    'market_hypotheses (array of strings), validation_questions (array of strings),',
+    'creative_hooks (array of strings), build_priorities (array of strings), risks_to_test (array of strings).',
+    'Do not invent competitor names, market shares, customer counts or verified facts. Phrase unverified market claims as hypotheses to test.',
+    'Venture:',
+    JSON.stringify({
+      idea: basePlan.idea,
+      venture: basePlan.venture,
+      market_validation: basePlan.market_validation,
+      build: basePlan.build,
+    }),
+  ].join('\n');
+
+  try {
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-izakhono-ai-key': String(env.IZAKHONO_SUPER_AI_INTERNAL_KEY || ''),
+        'x-izakhono-ai-workflow-key': String(env.IZAKHONO_SUPER_AI_WORKFLOW_KEY || ''),
+      },
+      body: JSON.stringify({
+        entity_id: 'izakhono-africa',
+        product: 'venture-factory',
+        access_mode: 'workflow',
+        capability: 'reasoning',
+        messages: [
+          { role: 'system', content: 'Return strict JSON only. Preserve locked commercial and approval fields.' },
+          { role: 'user', content: prompt },
+        ],
+      }),
+    });
+
+    if (!response.ok) return fallback('gateway-http-' + response.status);
+    const data: any = await response.json();
+    const raw = String(data?.output?.text || data?.answer || '').trim();
+    const ai = parseAiJson(raw);
+    if (!ai || typeof ai !== 'object' || Array.isArray(ai)) return fallback('invalid-ai-json');
+
+    const enrichment = {
+      positioning: cleanAiString(ai.positioning),
+      ideal_customer_profile: cleanAiString(ai.ideal_customer_profile),
+      market_hypotheses: cleanAiList(ai.market_hypotheses),
+      validation_questions: cleanAiList(ai.validation_questions),
+      creative_hooks: cleanAiList(ai.creative_hooks),
+      build_priorities: cleanAiList(ai.build_priorities),
+      risks_to_test: cleanAiList(ai.risks_to_test),
+    };
+
+    const ventureName = cleanAiString(ai.venture_name, 100);
+    const oneLineOffer = cleanAiString(ai.one_line_offer, 500);
+
+    return {
+      ...basePlan,
+      venture: {
+        ...basePlan.venture,
+        name: ventureName || basePlan.venture.name,
+        one_line_offer: oneLineOffer || basePlan.venture.one_line_offer,
+      },
+      intelligence: {
+        mode: 'super-ai',
+        service: 'IZAKHONO SUPER AI',
+        capability: 'reasoning',
+        model: cleanAiString(data?.model, 120) || null,
+        owner_only: data?.owner_only === true,
+        pricing_math_locked: true,
+        approval_gates_locked: true,
+      },
+      super_ai_enrichment: enrichment,
+    };
+  } catch {
+    return fallback('gateway-unavailable');
+  }
+}
+
 export async function ventureFactoryRoute(
   req: Request,
   env: Env,
@@ -471,6 +608,20 @@ export async function ventureFactoryRoute(
     return json({ ok:true, keep_threshold_zar:KEEP_THRESHOLD_ZAR, ventures:await portfolio(env) });
   }
 
+  if (url.pathname === '/api/venture-factory/health' && req.method === 'GET') {
+    await ensureSchema(env);
+    return json({
+      ok:true,
+      service:'IZAKHONO Venture Factory',
+      engine:'2.1',
+      super_ai_configured:superAiConfigured(env),
+      intelligence_mode:superAiConfigured(env) ? 'super-ai-with-safe-fallback' : 'deterministic-fallback',
+      ad_spend_autonomous:false,
+      external_account_mutation_autonomous:false,
+      tracking:false,
+    });
+  }
+
   if (url.pathname === '/api/venture-factory/ideas' && req.method === 'GET') {
     await ensureSchema(env);
     const rows = await env.DB.prepare('SELECT id,idea,country,monthly_price_zar,target_monthly_revenue_zar,plan_json,created_at FROM venture_ideas ORDER BY created_at DESC LIMIT 50').all<any>();
@@ -491,7 +642,8 @@ export async function ventureFactoryRoute(
     if (idea.length < 12) return json({ ok:false, error:'Describe the idea in at least 12 characters.' },400);
     if (!Number.isFinite(monthlyPrice) || monthlyPrice < 50 || monthlyPrice > 100000) return json({ ok:false, error:'monthly_price_zar must be between 50 and 100000.' },400);
     if (!Number.isFinite(targetMonthlyRevenue) || targetMonthlyRevenue < 1000 || targetMonthlyRevenue > 1000000000) return json({ ok:false, error:'target_monthly_revenue_zar is invalid.' },400);
-    const plan = buildIdeaPlan(idea, country, monthlyPrice, targetMonthlyRevenue);
+    const deterministicPlan = buildIdeaPlan(idea, country, monthlyPrice, targetMonthlyRevenue);
+    const plan = await enrichPlanWithSuperAI(env, deterministicPlan);
     const ideaId = 'idea_' + crypto.randomUUID().replaceAll('-','');
     await env.DB.prepare('INSERT INTO venture_ideas(id,idea,country,monthly_price_zar,target_monthly_revenue_zar,plan_json) VALUES(?,?,?,?,?,?)')
       .bind(ideaId, idea, country, monthlyPrice, targetMonthlyRevenue, JSON.stringify(plan)).run();
