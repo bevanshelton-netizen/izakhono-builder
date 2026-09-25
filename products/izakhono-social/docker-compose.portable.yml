@@ -12,8 +12,8 @@ services:
       test: ["CMD-SHELL", "pg_isready -U connecta -d connecta"]
       interval: 10s
       timeout: 5s
-      retries: 10
-    networks: [connecta_private]
+      retries: 12
+    networks: [connecta]
 
   engine:
     build:
@@ -24,12 +24,12 @@ services:
       PORT: "4100"
       DATABASE_URL: postgres://connecta:${CONNECTA_DB_PASSWORD}@postgres:5432/connecta
       CONNECTA_OWNER_KEY: ${CONNECTA_OWNER_KEY:?Set CONNECTA_OWNER_KEY}
-      MEDIA_ROOT: /var/lib/connecta/media
-      ALLOWED_ORIGINS: ${CONNECTA_ALLOWED_ORIGINS:-}
-      REGISTER_RATE_LIMIT: ${CONNECTA_REGISTER_RATE_LIMIT:-8}
       CONNECTA_ENGINE_VERSION: "0.2.0"
-      CONNECTA_ENGINE_INSTANCE: ${CONNECTA_ENGINE_INSTANCE:-node01}
+      CONNECTA_ENGINE_INSTANCE: ${CONNECTA_ENGINE_INSTANCE:-portable-01}
+      CONNECTA_DB_STARTUP_RETRIES: ${CONNECTA_DB_STARTUP_RETRIES:-30}
+      CONNECTA_DB_STARTUP_RETRY_MS: ${CONNECTA_DB_STARTUP_RETRY_MS:-2000}
       CONNECTA_STORAGE_DRIVER: ${CONNECTA_STORAGE_DRIVER:-local}
+      MEDIA_ROOT: /var/lib/connecta/media
       CONNECTA_S3_ENDPOINT: ${CONNECTA_S3_ENDPOINT:-}
       CONNECTA_S3_REGION: ${CONNECTA_S3_REGION:-us-east-1}
       CONNECTA_S3_BUCKET: ${CONNECTA_S3_BUCKET:-}
@@ -37,29 +37,20 @@ services:
       CONNECTA_S3_ACCESS_KEY_ID: ${CONNECTA_S3_ACCESS_KEY_ID:-}
       CONNECTA_S3_SECRET_ACCESS_KEY: ${CONNECTA_S3_SECRET_ACCESS_KEY:-}
       CONNECTA_S3_FORCE_PATH_STYLE: ${CONNECTA_S3_FORCE_PATH_STYLE:-}
+      ALLOWED_ORIGINS: ${CONNECTA_ALLOWED_ORIGINS:-}
+      REGISTER_RATE_LIMIT: ${CONNECTA_REGISTER_RATE_LIMIT:-8}
+      DB_POOL_SIZE: ${CONNECTA_DB_POOL_SIZE:-10}
     volumes:
       - connecta_media:/var/lib/connecta/media
     depends_on:
       postgres:
         condition: service_healthy
-    networks: [connecta_private]
-
-  web:
-    build:
-      context: .
-    restart: unless-stopped
-    environment:
-      CONNECTA_ENGINE_URL: http://engine:4100
-      NEXT_TELEMETRY_DISABLED: "1"
-    depends_on:
-      - engine
     ports:
-      - "${CONNECTA_PORT:-3080}:3000"
-    networks:
-      - connecta_private
+      - "${CONNECTA_ENGINE_PORT:-4100}:4100"
+    networks: [connecta]
 
 networks:
-  connecta_private:
+  connecta:
     driver: bridge
 
 volumes:

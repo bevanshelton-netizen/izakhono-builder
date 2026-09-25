@@ -62,12 +62,14 @@ jobs:
       - name: Build sovereign engine image
         working-directory: products/izakhono-social
         run: docker build -f engine/Dockerfile -t connecta-engine:ci .
-      - name: Validate owned compose stack
+      - name: Validate owned and portable compose stacks
         working-directory: products/izakhono-social
         env:
           CONNECTA_DB_PASSWORD: ci-only-password
           CONNECTA_OWNER_KEY: ci-only-owner-key
-        run: docker compose -f docker-compose.owned.yml config
+        run: |
+          docker compose -f docker-compose.owned.yml config
+          docker compose -f docker-compose.portable.yml config
       - name: Boot owned CONNECTA stack
         working-directory: products/izakhono-social
         env:
@@ -82,13 +84,24 @@ jobs:
           CONNECTA_OWNER_KEY: ci-only-owner-key
         run: |
           for i in $(seq 1 30); do
-            if docker compose -f docker-compose.owned.yml exec -T engine node -e "fetch('http://127.0.0.1:4100/health').then(async r=>{if(!r.ok)process.exit(1); const j=await r.json(); if(!j.providerIndependent || j.behaviouralTracking!==false) process.exit(1)})"; then
+            if docker compose -f docker-compose.owned.yml exec -T engine node -e "fetch('http://127.0.0.1:4100/health').then(async r=>{if(!r.ok)process.exit(1); const j=await r.json(); if(j.database!=='ok'||j.storage!=='ok'||j.providerIndependent!==true||j.productEngine!=='CONNECTA'||j.dependsOnAnotherProductEngine!==false||j.externalServicesReplaceableAdaptersOnly!==true||j.behaviouralTracking!==false) process.exit(1)})"; then
               exit 0
             fi
             sleep 2
           done
           docker compose -f docker-compose.owned.yml logs engine postgres
           exit 1
+      - name: Verify engine-owned schema bootstrap
+        working-directory: products/izakhono-social
+        env:
+          CONNECTA_DB_PASSWORD: ci-only-password
+          CONNECTA_OWNER_KEY: ci-only-owner-key
+        run: |
+          FILES=$(find db -maxdepth 1 -type f -name '[0-9]*.sql' | wc -l | tr -d '[:space:]')
+          APPLIED=$(docker compose -f docker-compose.owned.yml exec -T postgres psql -U connecta -d connecta -Atc "select count(*) from connecta_schema_migrations;" | tr -d '[:space:]')
+          test "$APPLIED" = "$FILES"
+          TABLES=$(docker compose -f docker-compose.owned.yml exec -T postgres psql -U connecta -d connecta -Atc "select count(*) from information_schema.tables where table_schema='public';" | tr -d '[:space:]')
+          test "$TABLES" -ge 20
       - name: Verify web-to-engine secure runtime
         working-directory: products/izakhono-social
         env:

@@ -1,5 +1,5 @@
 {
-  "version": 4,
+  "version": 5,
   "name": "CONNECTA",
   "slug": "connecta",
   "operator": "IZAKHONO AFRICA (PTY) LTD",
@@ -14,10 +14,11 @@
     "authoritative_source": "IZAKHONO CODE / Forge",
     "owned_target": "NODE01",
     "current_public_route": "NOT_YET_VERIFIED",
-    "external_fallback": "PREPARED_NOT_VERIFIED",
+    "external_fallback": "TRANSITION_BRIDGE_PRESENT_PORTABLE_ENGINE_HOST_PENDING",
     "status_label": "NOT YET PUBLIC",
     "data_dependencies": [
-      "CONNECTA-owned PostgreSQL"
+      "PostgreSQL wire-compatible database",
+      "Durable local volume or S3-compatible object storage"
     ],
     "auth_dependencies": [
       "CONNECTA ENGINE local authentication"
@@ -25,11 +26,29 @@
     "payment_dependencies": [],
     "backup_evidence": "PENDING_NODE01_PROOF",
     "restore_evidence": "PENDING_NODE01_PROOF",
-    "rollback_evidence": "COMPOSE_ROLLBACK_PACKAGED_NOT_MACHINE_VERIFIED"
+    "rollback_evidence": "COMPOSE_ROLLBACK_PACKAGED_NOT_MACHINE_VERIFIED",
+    "portability": "provider-neutral Docker/OCI + PostgreSQL + durable storage",
+    "supabase_edge_status": "temporary transition bridge only; not canonical CONNECTA engine"
   },
   "alpha": {
     "preflight": true,
     "rehearsal": true,
     "windows_package": true
+  },
+  "engine": {
+    "name": "CONNECTA ENGINE",
+    "version": "0.2.0",
+    "independently_deployable": true,
+    "product_specific": true,
+    "depends_on_other_product_engine": false,
+    "database_protocol": "PostgreSQL",
+    "storage_drivers": [
+      "local",
+      "s3-compatible"
+    ],
+    "self_migrating": true,
+    "migration_lock": "PostgreSQL advisory lock",
+    "provider_specific_application_logic": false,
+    "external_services": "replaceable infrastructure adapters only"
   }
 }
