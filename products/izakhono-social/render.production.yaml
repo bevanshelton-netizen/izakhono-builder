@@ -10,7 +10,7 @@ services:
     dockerfilePath: ./Dockerfile.external
     dockerContext: .
     healthCheckPath: /health
-    autoDeployTrigger: commit
+    autoDeployTrigger: checksPass
     disk:
       name: connecta-media
       mountPath: /var/lib/connecta/media
