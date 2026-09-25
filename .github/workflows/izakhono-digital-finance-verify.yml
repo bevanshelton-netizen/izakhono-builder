@@ -1,0 +1,57 @@
+name: IZAKHONO Digital Finance Verify
+
+on:
+  pull_request:
+    paths:
+      - "apps/izakhono-digital-finance/**"
+      - ".github/workflows/izakhono-digital-finance-verify.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "apps/izakhono-digital-finance/**"
+      - ".github/workflows/izakhono-digital-finance-verify.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    defaults:
+      run:
+        working-directory: apps/izakhono-digital-finance
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify product contract and privacy boundary
+        run: python verify.py
+
+      - name: Start independent engine
+        run: |
+          python engine.py > /tmp/izakhono-df.log 2>&1 &
+          echo $! > /tmp/izakhono-df.pid
+
+      - name: Smoke test owned-engine routes
+        run: |
+          for i in 1 2 3 4 5; do
+            if curl -fsS http://127.0.0.1:8080/healthz; then
+              break
+            fi
+            sleep 1
+          done
+          test "$(curl -fsS http://127.0.0.1:8080/healthz)" = "OK"
+          curl -fsS http://127.0.0.1:8080/api/v1/status | python -m json.tool
+          curl -fsS http://127.0.0.1:8080/api/v1/catalog | python -m json.tool > /tmp/catalog.json
+          grep -q '"engine":"independent"' <(curl -fsS http://127.0.0.1:8080/api/v1/status)
+          grep -q 'IZAKHONO Digital Finance Academy' /tmp/catalog.json
+
+      - name: Stop engine
+        if: always()
+        run: |
+          if [ -f /tmp/izakhono-df.pid ]; then
+            kill "$(cat /tmp/izakhono-df.pid)" || true
+          fi
+          cat /tmp/izakhono-df.log || true
