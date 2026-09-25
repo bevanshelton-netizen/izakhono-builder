@@ -28,8 +28,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          bash -n scripts/launch-stack/*.sh
-          bash -n scripts/install-sovereign-deploy.sh
+          for script in scripts/launch-stack/*.sh scripts/install-sovereign-deploy.sh; do
+            bash -n "$script"
+          done
           bundle_id="$(bash scripts/launch-stack/compute-wave1-bundle-id.sh)"
           [[ "$bundle_id" =~ ^[0-9a-f]{64}$ ]]
           test -f scripts/launch-stack/RECOVER-NODE01-WAVE1.cmd
