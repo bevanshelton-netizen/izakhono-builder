@@ -266,6 +266,110 @@ async function atomicScopeBatch(req, res, project) {
 }
 
 
+
+function normalizeMerchText(value, label, { min = 0, max = 5000 } = {}) {
+  const text = String(value ?? '').trim()
+  if (text.length < min || text.length > max) throw httpError(400, `${label} must contain ${min}-${max} characters`)
+  return text
+}
+
+function normalizeMerchList(value, label) {
+  if (value == null) return []
+  if (!Array.isArray(value) || value.length > 30) throw httpError(400, `${label} must be an array with at most 30 values`)
+  return [...new Set(value.map(item => normalizeMerchText(item, label, { min: 1, max: 80 })))]
+}
+
+async function requireApprovedAllegroVetting(client, project, userId) {
+  const result = await client.query(
+    `SELECT data FROM iz_core_rows
+     WHERE project_id=$1 AND table_name='musician_vetting' AND created_by=$2
+       AND data->>'status'='approved'
+     ORDER BY updated_at DESC LIMIT 1`,
+    [project, userId],
+  )
+  if (!result.rowCount) throw httpError(403, 'Approved ALLEGRO marketplace vetting is required')
+  const expiresAt = result.rows[0].data?.expires_at
+  if (expiresAt && Number.isFinite(Date.parse(String(expiresAt))) && Date.parse(String(expiresAt)) <= Date.now()) {
+    throw httpError(403, 'ALLEGRO marketplace vetting has expired')
+  }
+}
+
+async function allegroCreateMerchProduct(req, res, project) {
+  if (req.method !== 'POST') throw httpError(405, 'Method not allowed')
+  const user = await requireUser(req, project)
+  const body = await readJson(req)
+  const allowedTypes = new Set(['tshirt','hoodie','cap','jacket','poster','vinyl','cd','accessory','bundle','other'])
+  const title = normalizeMerchText(body.title, 'Product name', { min: 2, max: 160 })
+  const description = normalizeMerchText(body.description, 'Description', { min: 0, max: 5000 })
+  const productType = String(body.product_type || 'other')
+  if (!allowedTypes.has(productType)) throw httpError(400, 'Invalid product type')
+  const price = Number(body.price)
+  if (!Number.isFinite(price) || price < 0 || price > 10000000) throw httpError(400, 'Invalid product price')
+  const currency = String(body.currency || 'ZAR').toUpperCase()
+  if (!/^[A-Z]{3}$/.test(currency)) throw httpError(400, 'Invalid currency')
+  const sizes = normalizeMerchList(body.sizes, 'Sizes')
+  const colours = normalizeMerchList(body.colours, 'Colours')
+  let stockQuantity = null
+  if (body.stock_quantity != null && body.stock_quantity !== '') {
+    stockQuantity = Number(body.stock_quantity)
+    if (!Number.isInteger(stockQuantity) || stockQuantity < 0 || stockQuantity > 1000000) throw httpError(400, 'Invalid stock quantity')
+  }
+  let imageUrl = null
+  if (body.image_url) {
+    imageUrl = normalizeMerchText(body.image_url, 'Image URL', { min: 8, max: 2048 })
+    let parsed
+    try { parsed = new URL(imageUrl) } catch { throw httpError(400, 'Image URL must be valid HTTPS') }
+    if (parsed.protocol !== 'https:') throw httpError(400, 'Image URL must use HTTPS')
+  }
+
+  const client = await pool.connect()
+  let product
+  try {
+    await client.query('BEGIN')
+    await requireApprovedAllegroVetting(client, project, user.id)
+    const id = randomUUID()
+    const now = new Date().toISOString()
+    const data = {
+      seller_id: user.id,
+      owner_kind: 'creator',
+      title,
+      description,
+      product_type: productType,
+      price: roundMoney(price),
+      currency,
+      image_url: imageUrl,
+      sizes,
+      colours,
+      stock_quantity: stockQuantity,
+      made_to_order: body.made_to_order === true,
+      active: true,
+      created_at: now,
+      updated_at: now,
+    }
+    const inserted = await client.query(
+      `INSERT INTO iz_core_rows(project_id,table_name,row_id,data,created_by)
+       VALUES($1,'merch_products',$2,$3::jsonb,$4)
+       RETURNING row_id,data`,
+      [project, id, JSON.stringify(data), user.id],
+    )
+    await client.query('COMMIT')
+    product = { ...(inserted.rows[0].data || {}), id: inserted.rows[0].row_id }
+  } catch (error) {
+    try { await client.query('ROLLBACK') } catch {}
+    throw error
+  } finally {
+    client.release()
+  }
+
+  await audit(project, user.id, 'trusted_action.allegro_create_merch_product', {
+    product_id: product.id,
+    product_type: product.product_type,
+    currency: product.currency,
+    price: product.price,
+  })
+  return sendJson(req, res, 201, { ok: true, product })
+}
+
 async function allegroCreateMerchOrder(req, res, project) {
   if (req.method !== 'POST') throw httpError(405, 'Method not allowed')
   const user = await requireUser(req, project)
@@ -382,6 +486,8 @@ export async function handleActionRequest(req, res) {
         arbitrarySql: false,
         browserServerSecrets: false,
         allegroCreateMerchOrder: true,
+        allegroCreateMerchProduct: true,
+        allegroCreatorMerchRequiresApprovedVetting: true,
         allegroCreatorMerchFeePercent: 10,
       },
     })
@@ -392,6 +498,13 @@ export async function handleActionRequest(req, res) {
   if (match) {
     const project = validateProject(decodeURIComponent(match[1]))
     await atomicScopeBatch(req, res, project)
+    return true
+  }
+
+  match = url.pathname.match(/^\/v3\/actions\/([^/]+)\/allegro-create-merch-product$/)
+  if (match) {
+    const project = validateProject(decodeURIComponent(match[1]))
+    await allegroCreateMerchProduct(req, res, project)
     return true
   }
 
