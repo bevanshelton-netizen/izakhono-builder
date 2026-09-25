@@ -1,0 +1,14 @@
+{
+  "staff": [
+    {
+      "id": "sales-manager-01",
+      "name": "Sales Manager",
+      "role": "manager",
+      "token_sha256": "<sha256-of-long-random-token>",
+      "scopes": [
+        { "entity_id": "izakhono-africa", "platform_id": "faisready" },
+        { "entity_id": "izakhono-africa", "platform_id": "kora" }
+      ]
+    }
+  ]
+}
