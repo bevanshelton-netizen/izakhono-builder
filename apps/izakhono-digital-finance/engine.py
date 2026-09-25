@@ -142,6 +142,12 @@ class AcademyHandler(BaseHTTPRequestHandler):
                     "status": "BUILT / VERIFIED LOCALLY",
                     "tracking": False,
                     "analytics": False,
+                    "automation": {
+                        "state": "CORE_BUILT_VERIFIED_LOCALLY_ADAPTERS_PENDING",
+                        "routine_admin_target": "90-95%",
+                        "decision_endpoint": "/api/v1/automation/evaluate",
+                        "human_governance": True,
+                    },
                     "payment": {
                         "gateway": "iKhokha",
                         "state": "GATED_PENDING_VERIFIED_PRODUCT_CHECKOUT",
