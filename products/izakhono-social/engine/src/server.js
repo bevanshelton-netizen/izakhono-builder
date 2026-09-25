@@ -62,7 +62,7 @@ import {
   submitBusinessVerification,
 } from './trust.js';
 
-const PORT = Number(process.env.PORT || 4100);
+const PORT = Number(process.env.CONNECTA_ENGINE_PORT || process.env.PORT || 4100);
 const ENGINE_VERSION = process.env.CONNECTA_ENGINE_VERSION || '0.2.0';
 const ENGINE_INSTANCE = process.env.CONNECTA_ENGINE_INSTANCE || 'connecta-engine';
 const MAX_JSON_BYTES = Number(process.env.MAX_JSON_BYTES || 1_000_000);

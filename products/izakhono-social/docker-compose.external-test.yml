@@ -1,0 +1,38 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: connecta
+      POSTGRES_USER: connecta
+      POSTGRES_PASSWORD: ci-only-password
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U connecta -d connecta"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+    networks: [connecta]
+
+  bundle:
+    build:
+      context: .
+      dockerfile: Dockerfile.external
+    environment:
+      PORT: "3000"
+      CONNECTA_INTERNAL_ENGINE_PORT: "4100"
+      DATABASE_URL: postgres://connecta:ci-only-password@postgres:5432/connecta
+      CONNECTA_OWNER_KEY: ci-only-owner-key
+      CONNECTA_ENGINE_INSTANCE: external-bundle-ci
+      CONNECTA_ENGINE_VERSION: "0.2.0"
+      CONNECTA_STORAGE_DRIVER: local
+      CONNECTA_REGISTER_RATE_LIMIT: "100"
+      NEXT_TELEMETRY_DISABLED: "1"
+    ports:
+      - "3081:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks: [connecta]
+
+networks:
+  connecta:
+    driver: bridge

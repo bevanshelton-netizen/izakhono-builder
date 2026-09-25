@@ -1,0 +1,40 @@
+services:
+  - type: web
+    name: connecta-preview
+    runtime: docker
+    plan: free
+    region: frankfurt
+    repo: https://github.com/bevanshelton-netizen/izakhono-builder
+    branch: main
+    rootDir: products/izakhono-social
+    dockerfilePath: ./Dockerfile.external
+    dockerContext: .
+    healthCheckPath: /health
+    autoDeployTrigger: checksPass
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: connecta-preview-db
+          property: connectionString
+      - key: CONNECTA_OWNER_KEY
+        generateValue: true
+      - key: CONNECTA_ENGINE_INSTANCE
+        value: render-preview
+      - key: CONNECTA_ENGINE_VERSION
+        value: "0.2.0"
+      - key: CONNECTA_INTERNAL_ENGINE_PORT
+        value: "4100"
+      - key: CONNECTA_STORAGE_DRIVER
+        value: local
+      - key: CONNECTA_REGISTER_RATE_LIMIT
+        value: "8"
+      - key: NEXT_TELEMETRY_DISABLED
+        value: "1"
+
+databases:
+  - name: connecta-preview-db
+    plan: free
+    region: frankfurt
+    databaseName: connecta
+    user: connecta
+    ipAllowList: []
