@@ -16,7 +16,7 @@ PORT = int(os.getenv("IZAKHONO_CONTROL_PORT", "9292"))
 TOKEN = os.getenv("IZAKHONO_CONTROL_TOKEN", "")
 NODE = os.getenv("IZAKHONO_NODE_URL", "http://127.0.0.1:9191")
 NODE_SECRET = os.getenv("IZAKHONO_NODE_SECRET", "")
-CODE_REPOS = Path(os.getenv("IZAKHONO_CODE_REPOS", "/srv/izakhono-code/repos"))
+CODE_REPOS = Path(os.getenv("IZAKHONO_CODE_REPOS", "/var/lib/izakhono-code/repos"))
 ALLOW_GITHUB_MIRROR = os.getenv("IZAKHONO_ALLOW_GITHUB_MIRROR", "true").lower() == "true"
 
 SAFE_SLUG = re.compile(r"^[a-z0-9][a-z0-9._-]{1,62}[a-z0-9]$")
