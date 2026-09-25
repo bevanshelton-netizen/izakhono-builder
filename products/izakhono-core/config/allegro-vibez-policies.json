@@ -13,6 +13,43 @@
     "merch_orders": "owner_action_only",
     "merch_order_items": "owner_action_only",
     "musician_ad_responses": "owner_action_only",
-    "musician_safety_reports": "owner"
+    "musician_safety_reports": "owner",
+    "artist_booking_intake": {
+      "mode": "owner",
+      "anonymous_insert": true,
+      "anonymous_owner_field": "artist_id",
+      "anonymous_insert_fields": [
+        "artist_id",
+        "request_code",
+        "company_name",
+        "contact_name",
+        "contact_email",
+        "contact_phone",
+        "preferred_contact",
+        "performance_type",
+        "performance_other",
+        "event_date",
+        "event_time",
+        "event_visibility",
+        "venue_name",
+        "venue_address",
+        "city",
+        "country",
+        "event_description",
+        "expected_audience",
+        "proposed_budget",
+        "budget_currency",
+        "backline_provided",
+        "flights_hotel_provided",
+        "ground_transport_provided",
+        "visa_support_required",
+        "livestream_rights_requested",
+        "recording_rights_requested",
+        "merchandise_opportunity",
+        "special_requests",
+        "privacy_consent",
+        "source"
+      ]
+    }
   }
 }
