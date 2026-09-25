@@ -87,5 +87,38 @@
     "visual-review",
     "international-ready",
     "verified-live"
-  ]
+  ],
+  "platform_status": {
+    "faisready": {
+      "state": "visual-review",
+      "source": "bevanshelton-netizen/Downloads/FAISReady",
+      "deployment_blocked": true
+    },
+    "doxa-sure": {
+      "state": "visual-review",
+      "source": "bevanshelton-netizen/Downloads/doxa-sure",
+      "deployment_blocked": true
+    },
+    "auto-ai": {
+      "state": "visual-review",
+      "source": "bevanshelton-netizen/Downloads/auto-ai",
+      "deployment_blocked": true
+    },
+    "learner-driver-sa": {
+      "state": "visual-review",
+      "source": "bevanshelton-netizen/Downloads/learner-driver-sa-v6-live",
+      "deployment_blocked": true
+    },
+    "the-chancellor": {
+      "state": "visual-review",
+      "source": "bevanshelton-netizen/the-chancellor",
+      "deployment_blocked": true
+    },
+    "worknow": {
+      "state": "legacy",
+      "source": "SOURCE_NOT_CONNECTED",
+      "deployment_blocked": true,
+      "blocker": "No connected owner source repository identified; do not fabricate or deploy."
+    }
+  }
 }
