@@ -1,0 +1,43 @@
+FROM node:22-alpine AS web-deps
+WORKDIR /src/web
+COPY package.json ./
+RUN npm install --ignore-scripts --no-audit --no-fund
+
+FROM node:22-alpine AS web-build
+WORKDIR /src/web
+COPY --from=web-deps /src/web/node_modules ./node_modules
+COPY . .
+RUN mkdir -p public
+ENV NEXT_TELEMETRY_DISABLED=1
+RUN npm run build
+
+FROM node:22-alpine AS engine-deps
+WORKDIR /src/engine
+COPY engine/package.json ./
+RUN npm install --omit=dev --ignore-scripts --no-audit --no-fund
+
+FROM node:22-alpine AS runner
+WORKDIR /app
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+RUN apk add --no-cache tini \
+  && addgroup -S connecta \
+  && adduser -S connecta -G connecta \
+  && mkdir -p /app/web /app/engine /app/db /var/lib/connecta/media \
+  && chown -R connecta:connecta /app /var/lib/connecta
+
+COPY --from=web-build --chown=connecta:connecta /src/web/public /app/web/public
+COPY --from=web-build --chown=connecta:connecta /src/web/.next/standalone /app/web
+COPY --from=web-build --chown=connecta:connecta /src/web/.next/static /app/web/.next/static
+
+COPY --from=engine-deps --chown=connecta:connecta /src/engine/node_modules /app/engine/node_modules
+COPY --chown=connecta:connecta engine/src /app/engine/src
+COPY --chown=connecta:connecta engine/scripts /app/engine/scripts
+COPY --chown=connecta:connecta db /app/db
+COPY --chown=connecta:connecta ops/start-external.sh /app/start-external.sh
+RUN chmod 0555 /app/start-external.sh
+
+USER connecta
+EXPOSE 10000
+ENTRYPOINT ["/sbin/tini","--"]
+CMD ["/app/start-external.sh"]
