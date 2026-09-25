@@ -18,6 +18,8 @@ required = [
     "automation.json",
     "assessment-blueprint.json",
     "adapter-contracts.json",
+    "external-status.json",
+    "EXTERNAL-LIVE-EVIDENCE.json",
     "automation_engine.py",
     "automation_store.py",
     "learner_access.py",
@@ -45,6 +47,8 @@ offers = json.loads((ROOT / "institutional-offers.json").read_text(encoding="utf
 automation = json.loads((ROOT / "automation.json").read_text(encoding="utf-8"))
 assessment_blueprint = json.loads((ROOT / "assessment-blueprint.json").read_text(encoding="utf-8"))
 adapter_contracts = json.loads((ROOT / "adapter-contracts.json").read_text(encoding="utf-8"))
+external_status = json.loads((ROOT / "external-status.json").read_text(encoding="utf-8"))
+external_evidence = json.loads((ROOT / "EXTERNAL-LIVE-EVIDENCE.json").read_text(encoding="utf-8"))
 
 assert curriculum["schema"] == "izakhono.digital.finance.curriculum.v1"
 assert curriculum["operator"] == "IZAKHONO AFRICA (PTY) LTD"
@@ -65,6 +69,8 @@ assert len(module_ids) == len(set(module_ids)), "duplicate module id"
 assert lesson_count >= 30, "launch curriculum is unexpectedly thin"
 
 assert platform["platform_id"] == "izakhono-digital-finance"
+assert platform["status"] == "EXTERNAL LIVE VERIFIED"
+assert platform["public_route"] == "https://izakhono-digital-finance.vercel.app"
 assert platform["engine"]["type"].startswith("Independent")
 assert platform["data"]["tracking"] == "None"
 assert platform["legal"]["degree_claim"] is False
@@ -99,6 +105,15 @@ assert adapter_states["management_reporting"] == "built"
 assert adapter_states["payment_entitlement"].startswith("institutional_license_entitlement_built")
 assert adapter_states["identity_auth"].startswith("pseudonymous_token_core_ready")
 assert adapter_states["certificate_issuer"].startswith("signed_pseudonymous_completion_record_built")
+assert external_status["status"] == "EXTERNAL LIVE VERIFIED"
+assert external_status["public_route"] == platform["public_route"]
+assert external_status["tracking"] is False
+assert external_status["analytics"] is False
+assert external_status["learner_writes"] is False
+assert external_evidence["evidence_label"] == "EXTERNAL LIVE VERIFIED"
+assert external_evidence["public_url"] == platform["public_route"]
+assert external_evidence["deployment_id"] == "dpl_HgzMUrUE4Sv21sygEu2fdG9D1tG3"
+assert any(item["path"] == "/healthz" and item["result"] == "PASS" for item in external_evidence["checks"])
 
 html = (ROOT / "index.html").read_text(encoding="utf-8")
 js = (ROOT / "app.js").read_text(encoding="utf-8")
