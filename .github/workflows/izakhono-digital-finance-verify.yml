@@ -30,10 +30,11 @@ jobs:
         run: |
           python verify.py
           python test_automation.py
+          python test_automation_store.py
 
       - name: Start independent engine
         run: |
-          python engine.py > /tmp/izakhono-df.log 2>&1 &
+          IZAKHONO_DF_ADMIN_TOKEN=ci-admin-token IZAKHONO_DF_STATE_DB=/tmp/izakhono-df-ci.sqlite3 python engine.py > /tmp/izakhono-df.log 2>&1 &
           echo $! > /tmp/izakhono-df.pid
 
       - name: Smoke test owned-engine routes
@@ -62,6 +63,13 @@ jobs:
           grep -q 'automated_normal_path_human_governance_exceptions' /tmp/automation.json
           grep -q '"path": "foundation"' /tmp/automation-decision.json
           grep -q '"decision": "human_review"' /tmp/governance-decision.json
+          test "$(curl -s -o /tmp/noauth.json -w '%{http_code}' 'http://127.0.0.1:8080/api/v1/admin/automation/report?institution_ref=ci-bank')" = "401"
+          curl -fsS -X POST http://127.0.0.1:8080/api/v1/admin/automation/event -H 'Authorization: Bearer ci-admin-token' -H 'Content-Type: application/json' -d '{"institution_ref":"ci-bank","learner_ref":"ci-employee","stage":"learning","role":"representative_adviser","completed_modules":1,"total_modules":4}' | python -m json.tool > /tmp/stateful-decision.json
+          curl -fsS -H 'Authorization: Bearer ci-admin-token' 'http://127.0.0.1:8080/api/v1/admin/automation/report?institution_ref=ci-bank' | python -m json.tool > /tmp/institution-report.json
+          curl -fsS -H 'Authorization: Bearer ci-admin-token' 'http://127.0.0.1:8080/api/v1/admin/automation/outbox?institution_ref=ci-bank' | python -m json.tool > /tmp/outbox.json
+          grep -q '"learners": 1' /tmp/institution-report.json
+          grep -q '"stage": "learning"' /tmp/stateful-decision.json
+          grep -q 'schedule_reminder_event' /tmp/outbox.json
 
       - name: Stop engine
         if: always()
