@@ -13,6 +13,13 @@ install -m 0755 "$ROOT_DIR/products/izakhono-control/control.py" /opt/izakhono-c
 install -m 0644 "$ROOT_DIR/products/izakhono-control/izakhono-control.service" /etc/systemd/system/izakhono-control.service
 install -m 0755 "$ROOT_DIR/products/izakhono-code/create-repo.sh" /opt/izakhono-code/create-repo.sh
 install -m 0755 "$ROOT_DIR/products/izakhono-code/migrate-mirror.sh" /opt/izakhono-code/migrate-mirror.sh
+BUILDER_BUNDLE_REF="$(git -C "$ROOT_DIR" rev-parse HEAD 2>/dev/null || true)"
+if [[ ! "$BUILDER_BUNDLE_REF" =~ ^[0-9a-f]{40}$ ]]; then
+  BUILDER_BUNDLE_REF=UNATTESTED
+fi
+printf '%s\n' "$BUILDER_BUNDLE_REF" > "$WAVE1_ROOT/BUILDER_REF"
+chmod 0644 "$WAVE1_ROOT/BUILDER_REF"
+
 install -m 0755 "$ROOT_DIR/products/izakhono-node/wave1_deploy.py" "$WAVE1_ROOT/products/izakhono-node/wave1_deploy.py"
 install -m 0644 "$ROOT_DIR/products/izakhono-node/profiles/wave1/allegro-vibez.production.json" "$WAVE1_ROOT/products/izakhono-node/profiles/wave1/allegro-vibez.production.json"
 install -m 0644 "$ROOT_DIR/products/izakhono-node/profiles/wave1/the-chancellor.production.json" "$WAVE1_ROOT/products/izakhono-node/profiles/wave1/the-chancellor.production.json"
