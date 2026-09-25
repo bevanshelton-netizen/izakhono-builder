@@ -75,6 +75,20 @@ For larger employers:
 - executive dashboard;
 - optional integration with FAISReady.
 
+## Price
+
+**R1,000 per employee.**
+
+Examples:
+- 25 employees — **R25,000**
+- 50 employees — **R50,000**
+- 100 employees — **R100,000**
+- 250 employees — **R250,000**
+- 500 employees — **R500,000**
+- 1,000 employees — **R1,000,000**
+
+Private-academy setup, bespoke integrations and custom localisation can be scoped separately where required.
+
 ## Relationship with FAISReady
 
 FAISReady remains the exam-readiness and regulatory-preparation product.

@@ -125,6 +125,21 @@
       "cross_sell": {
         "product": "FAISReady",
         "relationship": "Optional companion for regulatory-exam preparation and workforce-readiness; the two products remain independently deployable."
+      },
+      "pricing": {
+        "currency": "ZAR",
+        "unit": "per employee",
+        "price": 1000,
+        "display": "R1,000 per employee",
+        "examples": {
+          "25_employees": "R25,000",
+          "50_employees": "R50,000",
+          "100_employees": "R100,000",
+          "250_employees": "R250,000",
+          "500_employees": "R500,000",
+          "1000_employees": "R1,000,000"
+        },
+        "note": "Private academy setup, bespoke integrations and custom localisation may be scoped separately."
       }
     }
   ],
