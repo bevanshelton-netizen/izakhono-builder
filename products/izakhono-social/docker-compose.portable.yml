@@ -1,0 +1,58 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: connecta
+      POSTGRES_USER: connecta
+      POSTGRES_PASSWORD: ${CONNECTA_DB_PASSWORD:?Set CONNECTA_DB_PASSWORD}
+    volumes:
+      - connecta_postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U connecta -d connecta"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    networks: [connecta]
+
+  engine:
+    build:
+      context: .
+      dockerfile: engine/Dockerfile
+    restart: unless-stopped
+    environment:
+      PORT: "4100"
+      DATABASE_URL: postgres://connecta:${CONNECTA_DB_PASSWORD}@postgres:5432/connecta
+      CONNECTA_OWNER_KEY: ${CONNECTA_OWNER_KEY:?Set CONNECTA_OWNER_KEY}
+      CONNECTA_ENGINE_VERSION: "0.2.0"
+      CONNECTA_ENGINE_INSTANCE: ${CONNECTA_ENGINE_INSTANCE:-portable-01}
+      CONNECTA_DB_STARTUP_RETRIES: ${CONNECTA_DB_STARTUP_RETRIES:-30}
+      CONNECTA_DB_STARTUP_RETRY_MS: ${CONNECTA_DB_STARTUP_RETRY_MS:-2000}
+      CONNECTA_STORAGE_DRIVER: ${CONNECTA_STORAGE_DRIVER:-local}
+      MEDIA_ROOT: /var/lib/connecta/media
+      CONNECTA_S3_ENDPOINT: ${CONNECTA_S3_ENDPOINT:-}
+      CONNECTA_S3_REGION: ${CONNECTA_S3_REGION:-us-east-1}
+      CONNECTA_S3_BUCKET: ${CONNECTA_S3_BUCKET:-}
+      CONNECTA_S3_PREFIX: ${CONNECTA_S3_PREFIX:-connecta-media}
+      CONNECTA_S3_ACCESS_KEY_ID: ${CONNECTA_S3_ACCESS_KEY_ID:-}
+      CONNECTA_S3_SECRET_ACCESS_KEY: ${CONNECTA_S3_SECRET_ACCESS_KEY:-}
+      CONNECTA_S3_FORCE_PATH_STYLE: ${CONNECTA_S3_FORCE_PATH_STYLE:-}
+      ALLOWED_ORIGINS: ${CONNECTA_ALLOWED_ORIGINS:-}
+      REGISTER_RATE_LIMIT: ${CONNECTA_REGISTER_RATE_LIMIT:-8}
+      DB_POOL_SIZE: ${CONNECTA_DB_POOL_SIZE:-10}
+    volumes:
+      - connecta_media:/var/lib/connecta/media
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "${CONNECTA_ENGINE_PORT:-4100}:4100"
+    networks: [connecta]
+
+networks:
+  connecta:
+    driver: bridge
+
+volumes:
+  connecta_postgres:
+  connecta_media:
