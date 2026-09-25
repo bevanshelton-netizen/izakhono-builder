@@ -76,7 +76,7 @@ class AutomationStore:
                 """
                 PRAGMA journal_mode=WAL;
                 CREATE TABLE IF NOT EXISTS learners (
-                    learner_ref TEXT PRIMARY KEY,
+                    learner_ref TEXT NOT NULL,
                     institution_ref TEXT NOT NULL,
                     role TEXT NOT NULL,
                     stage TEXT NOT NULL,
@@ -91,7 +91,8 @@ class AutomationStore:
                     last_decision TEXT,
                     human_review INTEGER NOT NULL DEFAULT 0,
                     created_at TEXT NOT NULL,
-                    updated_at TEXT NOT NULL
+                    updated_at TEXT NOT NULL,
+                    PRIMARY KEY (institution_ref, learner_ref)
                 );
 
                 CREATE INDEX IF NOT EXISTS idx_learners_institution
@@ -157,8 +158,8 @@ class AutomationStore:
 
         with self.connect() as conn:
             existing = conn.execute(
-                "SELECT * FROM learners WHERE learner_ref = ?",
-                (state["learner_ref"],),
+                "SELECT * FROM learners WHERE institution_ref = ? AND learner_ref = ?",
+                (state["institution_ref"], state["learner_ref"]),
             ).fetchone()
             created_at = existing["created_at"] if existing else now
 
@@ -185,7 +186,7 @@ class AutomationStore:
                     total_modules, identity_verified, payment_entitled,
                     last_decision, human_review, created_at, updated_at
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ON CONFLICT(learner_ref) DO UPDATE SET
+                ON CONFLICT(institution_ref, learner_ref) DO UPDATE SET
                     institution_ref=excluded.institution_ref,
                     role=excluded.role,
                     stage=excluded.stage,
@@ -498,8 +499,8 @@ class AutomationStore:
         with self.connect() as conn:
             for item in clean:
                 existing = conn.execute(
-                    "SELECT created_at FROM learners WHERE learner_ref = ?",
-                    (item["learner_ref"],),
+                    "SELECT created_at FROM learners WHERE institution_ref = ? AND learner_ref = ?",
+                    (institution_ref, item["learner_ref"]),
                 ).fetchone()
                 created_at = existing["created_at"] if existing else now
                 conn.execute(
@@ -510,7 +511,7 @@ class AutomationStore:
                         total_modules, identity_verified, payment_entitled,
                         last_decision, human_review, created_at, updated_at
                     ) VALUES (?, ?, ?, 'onboarding', NULL, NULL, NULL, 0, 0, 0, 0, 1, 'provisioned', 0, ?, ?)
-                    ON CONFLICT(learner_ref) DO UPDATE SET
+                    ON CONFLICT(institution_ref, learner_ref) DO UPDATE SET
                         institution_ref=excluded.institution_ref,
                         role=excluded.role,
                         payment_entitled=1,
