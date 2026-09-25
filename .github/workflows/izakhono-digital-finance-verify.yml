@@ -148,6 +148,13 @@ jobs:
             -d '{"institution_ref":"ci-zero-touch-bank","learners":[{"learner_ref":"ci-learner-pii","role":"general_employee","email":"forbidden@example.com"}]}')" = "400"
           grep -q 'roster_accepts_learner_ref_and_role_only' /tmp/pii-reject.json
 
+      - name: Validate NODE01 deployment package
+        shell: bash
+        run: |
+          python -m py_compile ../../products/izakhono-node/deploy-digital-finance.py
+          test -f Dockerfile.node01
+          docker build -f Dockerfile.node01 -t izakhono-digital-finance-node01 ../../
+
       - name: Stop engine
         if: always()
         run: |
