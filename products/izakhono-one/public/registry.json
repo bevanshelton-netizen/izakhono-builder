@@ -1,6 +1,8 @@
 {
-  "engine":{"name":"IZAKHONO ONE Engine","version":"1.0.0","capabilities":["search","service-discovery","routing","health"],"tracking":false},
+  "engine":{"name":"IZAKHONO ONE Engine","version":"1.1.0","capabilities":["search","service-discovery","routing","health","flagship-discovery"],"tracking":false},
   "services":[
+    {"slug":"venture-factory","name":"IZAKHONO Venture Factory","category":"Business Factory","description":"Turn one idea into a structured product, revenue, build, CRM, payment, marketing and launch plan powered by the IZAKHONO stack.","status":"gated","publicUrl":null,"featured":true},
+    {"slug":"izakhono-super-ai","name":"IZAKHONO SUPER AI","category":"Artificial Intelligence","description":"Provider-neutral intelligence layer for chat, reasoning, coding, media, speech and transcription across IZAKHONO products.","status":"gated","publicUrl":null,"featured":true},
     {"slug":"faisready","name":"FAISReady","category":"Education","description":"Regulatory exam preparation and learning support.","status":"external-resilience","publicUrl":"../faisready/"},
     {"slug":"connecta","name":"CONNECTA","category":"Community","description":"IZAKHONO community and social platform.","status":"external-resilience","publicUrl":"../connecta/"},
     {"slug":"kora","name":"KORA","category":"Media","description":"African entertainment, creators, live events and distribution.","status":"gated","publicUrl":null},
