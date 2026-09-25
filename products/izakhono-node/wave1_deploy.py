@@ -47,14 +47,33 @@ def control(method, path, payload=None, timeout=30):
     with urllib.request.urlopen(req, timeout=timeout) as response:
         return json.loads(response.read())
 
-def url_probe(url, timeout=12):
-    req = urllib.request.Request(url, method="GET", headers={"User-Agent":"IZAKHONO-NODE01-CUTOVER/1.0"})
+class NoRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
+
+
+def url_probe(url, timeout=12, expected_markers=None):
+    req = urllib.request.Request(url, method="GET", headers={"User-Agent":"IZAKHONO-NODE01-CUTOVER/2.0"})
+    opener = urllib.request.build_opener(NoRedirect)
     try:
-        with urllib.request.urlopen(req, timeout=timeout) as response:
-            response.read(1)
-            return {"ok": 200 <= response.status < 400, "status": response.status}
+        with opener.open(req, timeout=timeout) as response:
+            body = response.read(262144)
+            status = int(response.status)
+            text = body.decode("utf-8", errors="replace")
+            markers = [str(x) for x in (expected_markers or []) if str(x).strip()]
+            identity_ok = all(marker in text for marker in markers) if markers else True
+            return {
+                "ok": status == 200 and identity_ok,
+                "status": status,
+                "identity_ok": identity_ok,
+                "matched_markers": markers if identity_ok else [],
+            }
     except urllib.error.HTTPError as exc:
-        return {"ok": exc.code in (401,403), "status": exc.code}
+        return {
+            "ok": False,
+            "status": int(exc.code),
+            "redirect_location": exc.headers.get("Location"),
+        }
     except Exception as exc:
         return {"ok": False, "status": 0, "error": type(exc).__name__}
 
@@ -103,8 +122,9 @@ def deploy_app(app, report):
         report["apps"].append(entry)
         return False
 
-    current=url_probe(app["current_external_route"])
-    fallback=url_probe(app["external_fallback"])
+    markers=app.get("external_identity_markers") or []
+    current=url_probe(app["current_external_route"], expected_markers=markers)
+    fallback=url_probe(app["external_fallback"], expected_markers=markers)
     entry["prechecks"]["external_current"]=current
     entry["prechecks"]["external_fallback"]=fallback
     if not (current.get("ok") or fallback.get("ok")):
