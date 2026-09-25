@@ -96,3 +96,20 @@ VERIFY-IZAKHONO-MAIL-STACK.cmd
 ```
 
 The generated CSV is an operational register only. DNS/mailbox provisioning still requires access to the authoritative DNS and active mail transport.
+
+
+## Domain readiness
+
+Public sender activation is controlled by `domain-readiness.json`.
+
+Statuses:
+
+- `DNS_UNRESOLVED` — no usable public DNS evidence; sender disabled.
+- `ROUTED_AUTH_PARTIAL` — mail routing/authentication is partly present; sender disabled.
+- `LIVE_VERIFIED` — DNS authentication plus real external send/reply verification passed; sender may be enabled.
+
+The validator fails if any domain is marked `sender_enabled: true` before `LIVE_VERIFIED`.
+
+Current 25 September 2026 evidence shows:
+- `edubuildshelton.org.za`: MX/SPF/DKIM present, DMARC missing; not yet live-verified for portfolio relay use.
+- `izakhonoafrica.co.za`, `faisready.co.za`, `doxahosting.co.za`: no usable public DNS evidence in the diagnostic run; senders remain disabled.
