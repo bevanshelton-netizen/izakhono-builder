@@ -55,14 +55,6 @@ def sanitize_state(payload: dict[str, Any]) -> dict[str, Any]:
     clean = {key: payload[key] for key in STATE_FIELDS if key in payload}
     clean["learner_ref"] = learner_ref.strip()
     clean["institution_ref"] = institution_ref.strip()
-    clean.setdefault("role", "general_employee")
-    clean.setdefault("stage", "onboarding")
-    clean.setdefault("attempts", 0)
-    clean.setdefault("completed_modules", 0)
-    clean.setdefault("total_modules", 0)
-    clean.setdefault("identity_verified", False)
-    clean.setdefault("payment_entitled", False)
-    clean.setdefault("exception_codes", [])
     return clean
 
 
@@ -143,10 +135,25 @@ class AutomationStore:
 
         with self.connect() as conn:
             existing = conn.execute(
-                "SELECT created_at FROM learners WHERE learner_ref = ?",
+                "SELECT * FROM learners WHERE learner_ref = ?",
                 (state["learner_ref"],),
             ).fetchone()
             created_at = existing["created_at"] if existing else now
+
+            role = state.get("role") or (existing["role"] if existing else "general_employee")
+            stage = next_stage or (existing["stage"] if existing else "onboarding")
+            learning_path = learning_path or (existing["learning_path"] if existing else None)
+            baseline_score = state.get("baseline_score")
+            if baseline_score is None and existing:
+                baseline_score = existing["baseline_score"]
+            final_score = state.get("final_score")
+            if final_score is None and existing:
+                final_score = existing["final_score"]
+            attempts = int(state.get("attempts", existing["attempts"] if existing else 0) or 0)
+            completed_modules = int(state.get("completed_modules", existing["completed_modules"] if existing else 0) or 0)
+            total_modules = int(state.get("total_modules", existing["total_modules"] if existing else 0) or 0)
+            identity_verified = bool(state.get("identity_verified", bool(existing["identity_verified"]) if existing else False))
+            payment_entitled = bool(state.get("payment_entitled", bool(existing["payment_entitled"]) if existing else False))
 
             conn.execute(
                 """
@@ -175,16 +182,16 @@ class AutomationStore:
                 (
                     state["learner_ref"],
                     state["institution_ref"],
-                    state.get("role", "general_employee"),
-                    next_stage,
+                    role,
+                    stage,
                     learning_path,
-                    state.get("baseline_score"),
-                    state.get("final_score"),
-                    int(state.get("attempts", 0) or 0),
-                    int(state.get("completed_modules", 0) or 0),
-                    int(state.get("total_modules", 0) or 0),
-                    1 if state.get("identity_verified") else 0,
-                    1 if state.get("payment_entitled") else 0,
+                    baseline_score,
+                    final_score,
+                    attempts,
+                    completed_modules,
+                    total_modules,
+                    1 if identity_verified else 0,
+                    1 if payment_entitled else 0,
                     decision.get("decision"),
                     human_review,
                     created_at,
@@ -237,7 +244,7 @@ class AutomationStore:
             "stored": True,
             "learner_ref": state["learner_ref"],
             "institution_ref": state["institution_ref"],
-            "stage": next_stage,
+            "stage": stage,
             "decision": decision.get("decision"),
             "human_review": bool(human_review),
         }
