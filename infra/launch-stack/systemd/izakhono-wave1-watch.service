@@ -1,0 +1,16 @@
+[Unit]
+Description=IZAKHONO NODE01 Wave 1 completion watcher
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+EnvironmentFile=-/etc/izakhono/alerts.env
+ExecStart=/opt/izakhono/bin/watch-node01-wave1.sh
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=read-only
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
