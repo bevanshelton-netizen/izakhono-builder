@@ -34,12 +34,20 @@ mkdir -p "$APP_ROOT" "$DATA_DIR" /etc/izakhono/apps
 
 SOURCE="github-mirror"
 REPO_URL="https://github.com/bevanshelton-netizen/izakhono-builder.git"
-if [[ -d /var/lib/izakhono-code/repos/izakhono-builder.git ]]; then
+CANONICAL_CODE="/var/lib/izakhono-code/repos/izakhono-builder.git"
+LEGACY_CODE="/srv/izakhono-code/repos/izakhono-builder.git"
+
+if [[ ! -d "$CANONICAL_CODE" && -d "$LEGACY_CODE" ]]; then
+  echo "[NAV] Migrating legacy IZAKHONO CODE mirror to the canonical /var/lib location."
+  mkdir -p "$(dirname "$CANONICAL_CODE")"
+  git clone --mirror "file://$LEGACY_CODE" "$CANONICAL_CODE"
+fi
+
+if [[ -d "$CANONICAL_CODE" ]] && git --git-dir="$CANONICAL_CODE" cat-file -e "$RELEASE_REF^{commit}" 2>/dev/null; then
   SOURCE="izakhono-code"
-  REPO_URL="file:///var/lib/izakhono-code/repos/izakhono-builder.git"
-elif [[ -d /srv/izakhono-code/repos/izakhono-builder.git ]]; then
-  SOURCE="izakhono-code-legacy"
-  REPO_URL="file:///srv/izakhono-code/repos/izakhono-builder.git"
+  REPO_URL="file://$CANONICAL_CODE"
+elif [[ -d "$CANONICAL_CODE" ]]; then
+  echo "[NAV] Internal CODE exists but does not contain release $RELEASE_REF; using the approved mirror for this immutable release."
 fi
 
 echo "[NAV] Source preference resolved: $SOURCE"
@@ -127,14 +135,14 @@ PY
 done
 
 health="$(curl -fsS --max-time 8 "http://127.0.0.1:${NAV_ENGINE_PORT:-8788}/api/health" 2>/dev/null || true)"
-python3 - "$health" <<'PY'
+if ! python3 - "$health" <<'PY'
 import json,sys
 try: h=json.loads(sys.argv[1])
 except Exception: raise SystemExit(2)
 ok=h.get("routing")=="ready" and h.get("search")=="ready" and h.get("tiles")=="ready" and h.get("node01Required") is False
 raise SystemExit(0 if ok else 2)
 PY
-if [[ $? -ne 0 ]]; then
+then
   echo "[STOP] NAV owned services did not reach full readiness within the initialization window." >&2
   docker compose --env-file "$ENV_FILE" -p "$PROJECT" -f "$STACK/compose.yaml" ps >&2 || true
   exit 5
