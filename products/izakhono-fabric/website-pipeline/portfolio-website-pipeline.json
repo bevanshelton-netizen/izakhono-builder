@@ -1,0 +1,260 @@
+{
+  "schema": "izakhono.digital-growth.pipeline.v1",
+  "effective_date": "2026-09-26",
+  "owner": "IZAKHONO AFRICA (PTY) LTD",
+  "objective": "Turn a business or product brief into an international-grade website, original graphics, launch-ready advertising, CRM-connected lead flow and verified owned-first deployment without rebuilding the same plumbing for every product.",
+  "execution_chain": [
+    "Website Factory",
+    "Graphics & Media Studio",
+    "Advertising Engine",
+    "Lead & CRM Engine",
+    "Deployment & Verification Engine"
+  ],
+  "global_rules": {
+    "owned_infrastructure_first": true,
+    "external_infrastructure_reversible": true,
+    "platform_specific_engine_required": true,
+    "no_behavioural_tracking": true,
+    "no_advertising_ids": true,
+    "no_utm_or_referral_attribution": true,
+    "aggregate_first_party_measurement_only": true,
+    "paid_media_requires_explicit_budget_authority": true,
+    "no_unverified_claims": true,
+    "no_fake_testimonials": true,
+    "no_placeholder_launches": true,
+    "international_quality_gate_required": true,
+    "browser_visual_review_required": true,
+    "verified_https_required": true,
+    "live_claim_requires_verified_content": true
+  },
+  "departments": [
+    {
+      "id": "website-factory",
+      "name": "Website Factory",
+      "systems": [
+        "IZAKHONO WebStart",
+        "IZAKHONO Builder",
+        "IZAKHONO Fabric",
+        "platform-specific engine"
+      ],
+      "input": [
+        "business/product brief",
+        "brand manifest",
+        "legal entity",
+        "contact details",
+        "offer/CTA",
+        "compliance constraints"
+      ],
+      "output": [
+        "responsive website",
+        "three design directions where appropriate",
+        "SEO/social metadata",
+        "forms",
+        "legal-page requirements",
+        "quality report"
+      ],
+      "release_gate": [
+        "5-second clarity",
+        "mobile/tablet/desktop responsive",
+        "95+ international quality score",
+        "working CTA/form",
+        "no placeholder content",
+        "visual review"
+      ]
+    },
+    {
+      "id": "graphics-media-studio",
+      "name": "Graphics & Media Studio",
+      "systems": [
+        "IZAKHONO CREATE",
+        "IZAKHONO STUDIO",
+        "IZAKHONO Creative Suite",
+        "IZAKHONO SUPER AI media adapters"
+      ],
+      "input": [
+        "approved website brief",
+        "brand manifest",
+        "campaign brief",
+        "sector/product context"
+      ],
+      "output": [
+        "hero art",
+        "sector graphics",
+        "photography direction",
+        "social creative",
+        "display banners",
+        "video/storyboard assets",
+        "share images"
+      ],
+      "release_gate": [
+        "brand-correct",
+        "rights-clear/original",
+        "product-accurate",
+        "accessible alt-text plan",
+        "optimized media",
+        "no misleading imagery"
+      ]
+    },
+    {
+      "id": "advertising-engine",
+      "name": "Advertising Engine",
+      "systems": [
+        "IZAKHONO ADS",
+        "IZAKHONO SIGNAL",
+        "IZAKHONO Social",
+        "portfolio cross-promotion inventory"
+      ],
+      "input": [
+        "approved creative package",
+        "offer",
+        "CTA",
+        "audience/channel plan",
+        "budget authority if paid"
+      ],
+      "output": [
+        "organic distribution package",
+        "scheduled campaign package",
+        "partner outreach package",
+        "approved paid-media package"
+      ],
+      "release_gate": [
+        "destination live and verified",
+        "offer accurate",
+        "CTA working",
+        "legal/compliance approved",
+        "no surveillance tracking",
+        "paid spend explicitly approved"
+      ]
+    },
+    {
+      "id": "lead-crm-engine",
+      "name": "Lead & CRM Engine",
+      "systems": [
+        "IZAKHONO CRM",
+        "platform-specific lead intake",
+        "product payment/reconciliation engine"
+      ],
+      "input": [
+        "lead/enquiry/quote/enrolment/partner events"
+      ],
+      "output": [
+        "scoped contact",
+        "platform opportunity",
+        "stage",
+        "owner",
+        "next action",
+        "aggregate operational reporting"
+      ],
+      "release_gate": [
+        "entity_id present",
+        "platform_id present",
+        "protected product data remains in source system",
+        "payment truth comes only from payment/reconciliation path",
+        "no cross-entity merge by default"
+      ]
+    },
+    {
+      "id": "deployment-verification-engine",
+      "name": "Deployment & Verification Engine",
+      "systems": [
+        "IZAKHONO NODE",
+        "IZAKHONO RUNTIME",
+        "IZAKHONO EDGE/TLS",
+        "IZAKHONO DNS",
+        "reversible external hosting adapters"
+      ],
+      "input": [
+        "international-ready build",
+        "approved assets",
+        "environment/configuration",
+        "deployment manifest"
+      ],
+      "output": [
+        "owned-first deployment",
+        "external resilience route where required",
+        "health evidence",
+        "rollback evidence",
+        "verified public URL"
+      ],
+      "release_gate": [
+        "HTTPS 200",
+        "intended content verified",
+        "mobile/desktop browser review",
+        "critical journeys pass",
+        "rollback available",
+        "no false LIVE label"
+      ]
+    }
+  ],
+  "standard_flow": [
+    {
+      "state": "BRIEF_ACCEPTED",
+      "owner": "Website Factory"
+    },
+    {
+      "state": "DESIGN_DIRECTIONS_READY",
+      "owner": "Website Factory"
+    },
+    {
+      "state": "SITE_BUILT",
+      "owner": "Website Factory"
+    },
+    {
+      "state": "GRAPHICS_READY",
+      "owner": "Graphics & Media Studio"
+    },
+    {
+      "state": "INTERNATIONAL_REVIEW",
+      "owner": "Website Factory"
+    },
+    {
+      "state": "INTERNATIONAL_READY",
+      "owner": "Website Factory"
+    },
+    {
+      "state": "CRM_CONNECTED",
+      "owner": "Lead & CRM Engine"
+    },
+    {
+      "state": "DEPLOYED_CANDIDATE",
+      "owner": "Deployment & Verification Engine"
+    },
+    {
+      "state": "VERIFIED_LIVE",
+      "owner": "Deployment & Verification Engine"
+    },
+    {
+      "state": "ADVERTISING_READY",
+      "owner": "Advertising Engine"
+    }
+  ],
+  "fast_path": {
+    "goal": "ordinary brochure/corporate website foundations in minutes",
+    "reusable_work": [
+      "layout",
+      "responsive system",
+      "forms",
+      "SEO metadata",
+      "privacy baseline",
+      "quality checks",
+      "CRM adapter",
+      "deployment manifest"
+    ],
+    "custom_work_only_for": [
+      "brand identity",
+      "unique product UX",
+      "regulated flows",
+      "commerce/payment",
+      "special media",
+      "platform-specific functionality"
+    ]
+  },
+  "source_of_truth": {
+    "marketing_registry": "apps/izakhono-create/portfolio-marketing-registry.json",
+    "launch_policy": "products/izakhono-ads/portfolio-launch-policy.json",
+    "crm_standard": "docs/PORTFOLIO-CRM-INHERITANCE.md",
+    "crm_registry": "products/izakhono-crm/portfolio-crm-registry.json",
+    "infrastructure_directive": "PORTFOLIO-INFRASTRUCTURE-DIRECTIVE-ADOPTION.md",
+    "growth_directive": "IZAKHONO-PORTFOLIO-CEO-GROWTH-DIRECTIVE.md"
+  }
+}
