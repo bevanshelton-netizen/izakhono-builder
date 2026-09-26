@@ -1,0 +1,48 @@
+{
+  "schema": "izakhono.runtime.fabric.product.v1",
+  "product": "allegro-vibez",
+  "display_name": "ALLEGRO VIBEZ",
+  "release_id": "edc2294f6b98792e6459679a5ce07d4813e6f9f6",
+  "owned_hostname": "allegro.izakhonoafrica.co.za",
+  "health_path": "/healthz",
+  "release_identity": {
+    "product_field": "product",
+    "release_field": "release_id",
+    "runtime_class_field": "runtime_class",
+    "expected_runtime_class": "owned"
+  },
+  "traffic_policy": {
+    "preference": "OWNED_HEALTHY -> OWNED_HEALTHY_SECONDARY -> EXTERNAL_RESILIENCE -> FAIL_CLOSED",
+    "minimum_owned_healthy_for_owned_promotion": 1,
+    "external_resilience_must_remain_verified": true,
+    "single_node_launch_gate": false
+  },
+  "owned_targets": [
+    {
+      "name": "NODE01",
+      "environment_variable": "IZAKHONO_ALLEGRO_NODE01_URL",
+      "preference": 1
+    },
+    {
+      "name": "NODE02",
+      "environment_variable": "IZAKHONO_ALLEGRO_NODE02_URL",
+      "preference": 2
+    },
+    {
+      "name": "NODE03",
+      "environment_variable": "IZAKHONO_ALLEGRO_NODE03_URL",
+      "preference": 3
+    },
+    {
+      "name": "NODE04",
+      "environment_variable": "IZAKHONO_ALLEGRO_NODE04_URL",
+      "preference": 4
+    }
+  ],
+  "external_resilience": {
+    "name": "VERCEL_RESILIENCE",
+    "url": "https://allegro-vibez.vercel.app/",
+    "keep_operational": true,
+    "production_authority": false
+  }
+}
