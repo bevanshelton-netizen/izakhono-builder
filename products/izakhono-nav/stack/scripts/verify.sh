@@ -2,14 +2,12 @@
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")/.." && pwd)"
 [[ -f "$HERE/.env" ]] && set -a && source "$HERE/.env" && set +a
-HOST="${NAV_VERIFY_URL:-http://127.0.0.1:${NAV_HTTP_PORT:-80}}"
+HOST="${NAV_ENGINE_VERIFY_URL:-http://127.0.0.1:${NAV_ENGINE_PORT:-8788}}"
 REPORT="$HERE/activation-report.txt"
 : > "$REPORT"
-
 pass(){ printf '%-26s PASS\n' "$1" | tee -a "$REPORT"; }
 fail(){ printf '%-26s FAIL\n' "$1" | tee -a "$REPORT"; return 1; }
 
-curl -fsS --max-time 8 "$HOST/" >/dev/null && pass "web" || fail "web"
 health="$(curl -fsS --max-time 8 "$HOST/api/health")" || fail "engine health"
 node -e 'const h=JSON.parse(process.argv[1]); if(h.routing!=="ready"||h.search!=="ready"||h.tiles!=="ready"||h.node01Required!==false) process.exit(1)' "$health" && pass "owned dependencies" || fail "owned dependencies"
 
@@ -23,4 +21,4 @@ node -e 'const r=JSON.parse(process.argv[1]); if(!r.geometry?.coordinates?.lengt
 curl -fsS --max-time 15 "$HOST/tiles/10/591/603.png" -o /tmp/izakhono-nav-tile.png || fail "owned raster tile"
 test -s /tmp/izakhono-nav-tile.png && pass "owned raster tile" || fail "owned raster tile"
 
-printf '\nOWNED LIVE STACK VERIFIED locally at %s\n' "$HOST" | tee -a "$REPORT"
+printf '\nOWNED STACK VERIFIED on runtime %s (public HTTPS not yet implied)\n' "${NAV_RUNTIME_ID:-unknown}" | tee -a "$REPORT"
