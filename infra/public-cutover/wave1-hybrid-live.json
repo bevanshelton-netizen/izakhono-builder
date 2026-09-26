@@ -1,6 +1,6 @@
 {
   "schema": "izakhono.hybrid-live.v1",
-  "generated_date": "2026-09-22",
+  "generated_date": "2026-09-26",
   "policy": "owned-first-externally-reversible",
   "mode": "HYBRID_LIVE",
   "evidence_status": "EXTERNAL LIVE VERIFIED",
@@ -27,13 +27,13 @@
   "apps": [
     {
       "slug": "allegro-vibez",
-      "immutable_ref": "127ee36415a5c975e51413eabb2aee508c6e45c7",
+      "immutable_ref": "0b649ee6a5e88e489d0ebabc2280e4b2870fc105",
       "current_public_route": "https://allegro-vibez-g5c7s8xj3-bevan2.vercel.app",
       "external_failback": "https://allegro-vibez-79622wjli-bevan2.vercel.app",
       "external_provider": "Vercel",
       "external_state": "READY",
       "owned_hostname": "allegro.izakhonoafrica.co.za",
-      "owned_state": "PROMOTION_PENDING_NODE_EDGE_DNS_TLS_PUBLIC_ACCEPTANCE",
+      "owned_state": "PROMOTION_PENDING_NODE01_RUNNER_EDGE_DNS_TLS_PUBLIC_ACCEPTANCE",
       "remove_external_after_owned_promotion": false
     },
     {
