@@ -128,7 +128,7 @@ jobs:
           grep -Fq 'BUILDER_REF_PATH' products/izakhono-node/wave1_deploy.py
           grep -Fq -- '--only allegro-vibez' scripts/launch-stack/run-allegro-local-proof.sh
           grep -Fq 'public_cutover_performed' products/izakhono-node/wave1_deploy.py
-          grep -Fq "external_fallback_preserved=`$true" infra/public-cutover/PUSH-ALLEGRO-OWNED.ps1
+          grep -Fq 'external_fallback_preserved=$true' infra/public-cutover/PUSH-ALLEGRO-OWNED.ps1
           grep -Fq 'OWNED_PUBLIC_GATES_PASS' infra/public-cutover/VERIFY-ALLEGRO-PUBLIC.ps1
           grep -Fq 'host.docker.internal:8080' infra/public-cutover/STAGE-ALLEGRO-EDGE.ps1
           ! grep -Fq -- '--privileged' scripts/launch-stack/run-allegro-local-proof.sh infra/public-cutover/STAGE-ALLEGRO-EDGE.ps1 infra/public-cutover/ACTIVATE-ALLEGRO-EDGE.ps1 infra/public-cutover/PUSH-ALLEGRO-OWNED.ps1
