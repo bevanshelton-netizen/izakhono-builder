@@ -29,7 +29,7 @@ const launchers = {
   'faisready': 'https://faisready-revenue.vercel.app',
   'worknow': 'https://worknow-sa.vercel.app',
   'auto-ai': 'https://auto-ai-eosin.vercel.app',
-  'allegro': 'https://allegro-vibez.vercel.app',
+  'allegro': process.env.IZAKHONO_ALLEGRO_ORIGIN || 'https://allegro.izakhonoafrica.co.za',
   'growth': 'https://izakhono-growth-os.vercel.app',
   'revenue': 'https://izakhono-revenue-os.vercel.app',
 };
