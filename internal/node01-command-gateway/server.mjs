@@ -244,7 +244,11 @@ async function runCommand(req,res) {
     }
     try {
       const profile=await loadProfile(profileName);
-      const job={...profile,ref};
+      if (profile.approved_ref && profile.approved_ref !== ref) {
+        return json(res,409,{ok:false,error:'The requested commit is not the approved Runtime Fabric release for this profile.',data:{approved_ref:profile.approved_ref,requested_ref:ref}});
+      }
+      const {approved_ref: _approvedRef, ...deployProfile}=profile;
+      const job={...deployProfile,ref};
       const data=await controlRequest('POST','/v1/deploy',job);
       return json(res,202,{ok:true,command:'deploy',kind:'action',message:'Deployment accepted by IZAKHONO CONTROL and handed to NODE. Public-live status still requires health/EDGE verification.',data});
     } catch (e) {
