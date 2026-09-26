@@ -597,6 +597,25 @@ const server = http.createServer(async (req, res) => {
 
 
 
+    if (req.method === 'GET' && url.pathname === '/api/customer/offer') {
+      if (!customerMode) return json(res, 404, { ok: false, error: 'customer_mode_disabled' });
+      return json(res, 200, {
+        ok: true,
+        product: accessProduct,
+        plan: accessPlanSlug,
+        access_period_days: accessPeriodDays,
+        currency: 'ZAR',
+        amount_minor: paymentConfigured() ? priceMinor : null,
+        checkout_available: paymentConfigured(),
+        usage_policy: {
+          usage_credit_gate: false,
+          message_quota: null,
+          session_quota: null,
+          fair_use: true,
+        },
+      });
+    }
+
     if (req.method === 'POST' && url.pathname === '/api/customer/login') {
       if (!customerMode || !idUrl) return json(res, 404, { ok: false, error: 'customer_mode_disabled' });
       let body;
