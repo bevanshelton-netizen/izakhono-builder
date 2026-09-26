@@ -165,6 +165,18 @@ function Set-IniValue([System.Collections.Generic.List[string]]$Lines, [string]$
     $Lines.Insert($nextSectionIndex, "$Key=$Value")
 }
 
+function Ensure-OwnerHostPowerPolicy {
+    Write-Stage 'Keep NODE01 awake on owner AC power'
+    try {
+        & powercfg.exe /change standby-timeout-ac 0 | Out-Null
+        & powercfg.exe /change hibernate-timeout-ac 0 | Out-Null
+        Write-Host 'Windows system sleep and hibernation are disabled while connected to AC power.'
+        Write-Host 'Display sleep policy is unchanged.'
+    } catch {
+        Write-Warning "Could not update AC power policy: $($_.Exception.Message)"
+    }
+}
+
 function Ensure-WslAlwaysOn {
     Write-Stage 'Keep NODE01 WSL owner host persistent'
     $configPath = Join-Path $env:USERPROFILE '.wslconfig'
@@ -248,7 +260,7 @@ foreach (`$port in 80,443) {
 
     $keepaliveName = 'IZAKHONO Owner Host Keepalive'
     $keepaliveTrigger = New-ScheduledTaskTrigger -Once -At (Get-Date).AddMinutes(1) -RepetitionInterval (New-TimeSpan -Minutes 5) -RepetitionDuration (New-TimeSpan -Days 3650)
-    $keepaliveSettings = New-ScheduledTaskSettingsSet -StartWhenAvailable -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries
+    $keepaliveSettings = New-ScheduledTaskSettingsSet -StartWhenAvailable -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -WakeToRun
     Register-ScheduledTask -TaskName $keepaliveName -Action $action -Trigger $keepaliveTrigger -Principal $principal -Settings $keepaliveSettings -Force | Out-Null
 
     Write-Host "Windows now forwards HTTP/HTTPS to WSL address $(Get-WslIPv4)."
@@ -328,6 +340,7 @@ if (-not (Test-DistroInstalled $Distro)) {
 }
 
 Remove-ResumeTask
+Ensure-OwnerHostPowerPolicy
 Ensure-WslAlwaysOn
 Enable-WslSystemd
 Install-IzakhonoStack
