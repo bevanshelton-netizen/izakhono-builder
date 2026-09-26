@@ -65,6 +65,8 @@ services:
       NAV_ALLOWED_ORIGINS: ${NAV_ALLOWED_ORIGINS:-}
       NAV_TRUST_PROXY: "true"
     depends_on: [nav-router, nav-search, nav-tiles]
+    ports:
+      - "127.0.0.1:${NAV_ENGINE_PORT:-8788}:8788"
     networks: [nav-backplane]
 
   nav-web:
