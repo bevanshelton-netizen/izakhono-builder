@@ -2,7 +2,7 @@
   "source": "izakhono-code",
   "repository": "izakhono-builder",
   "app": "izakhono-nav",
-  "ref": "d098afc7aacafd77b8217a16841654e1ff05d4c9",
+  "ref": "00391d3987a5bd7247a7bf3fc881f6502bfd6d87",
   "environment": "production",
   "mode": "compose",
   "compose_file": "products/izakhono-nav/stack/compose.yaml",
