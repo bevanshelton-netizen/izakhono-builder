@@ -34,9 +34,19 @@ const id = jsonServer(async(req,res,send)=>{
   if(req.method==='POST' && req.url==='/api/v1/login'){
     const body=await readJson(req);
     if(body.email==='prospect@example.com' && body.password==='correct-horse-battery-staple' && body.entity_slug==='izakhono-africa'){
-      return send(200,{ok:true,access_token:'prospect-token',token_type:'Bearer',expires_at:'2099-01-01T00:00:00+00:00',subject:body.email,entity:{id:'entity-customer',slug:'izakhono-africa'},role:'member'});
+      return send(200,{ok:true,access_token:'prospect-token',token_type:'Bearer',expires_at:'2099-01-01T00:00:00+00:00',subject:body.email,entity:{id:'entity-customer',slug:'izakhono-africa'},role:'member',mfa:false});
+    }
+    if(body.email==='mfa@example.com' && body.password==='correct-horse-battery-staple' && body.entity_slug==='izakhono-africa'){
+      return send(202,{ok:true,mfa_required:true,challenge_token:'challenge-mfa-test',challenge_expires_at:'2099-01-01T00:00:00+00:00',methods:['totp','recovery_code'],subject:body.email,entity:{id:'entity-customer',slug:'izakhono-africa'}});
     }
     return send(401,{error:'invalid_credentials'});
+  }
+  if(req.method==='POST' && req.url==='/api/v1/login/mfa'){
+    const body=await readJson(req);
+    if(body.challenge_token==='challenge-mfa-test' && (body.code==='123456' || body.recovery_code==='ABCD-EFGH-IJKL-MNOP')){
+      return send(200,{ok:true,access_token:'mfa-token',token_type:'Bearer',expires_at:'2099-01-01T00:00:00+00:00',subject:'mfa@example.com',entity:{id:'entity-customer',slug:'izakhono-africa'},role:'member',mfa:true});
+    }
+    return send(401,{error:'invalid_mfa_code'});
   }
   if(req.method==='POST' && req.url==='/api/v1/logout') return send(200,{ok:true});
   if(req.method!=='POST' || req.url!=='/api/v1/internal/introspect') return send(404,{error:'not_found'});
@@ -44,6 +54,7 @@ const id = jsonServer(async(req,res,send)=>{
   const body=await readJson(req);
   if(body.token==='subscriber-token') return send(200,{ok:true,active:true,subject:'subscriber@example.com',entity_id:'entity-customer',entity_slug:'customer',role:'member'});
   if(body.token==='prospect-token') return send(200,{ok:true,active:true,subject:'prospect@example.com',entity_id:'entity-customer',entity_slug:'customer',role:'member'});
+  if(body.token==='mfa-token') return send(200,{ok:true,active:true,subject:'mfa@example.com',entity_id:'entity-customer',entity_slug:'customer',role:'member'});
   return send(200,{ok:true,active:false});
 });
 
@@ -131,6 +142,22 @@ try{
   });
   const loginBody=await login.json();
   if(!login.ok || loginBody.access_token!=='prospect-token') throw new Error('customer_login_failed');
+
+  const mfaLogin=await fetch('http://127.0.0.1:'+vfPort+'/api/customer/login',{
+    method:'POST',
+    headers:{'content-type':'application/json'},
+    body:JSON.stringify({email:'mfa@example.com',password:'correct-horse-battery-staple',entity_slug:'izakhono-africa'}),
+  });
+  const mfaLoginBody=await mfaLogin.json();
+  if(mfaLogin.status!==202 || mfaLoginBody.mfa_required!==true || mfaLoginBody.challenge_token!=='challenge-mfa-test') throw new Error('mfa_challenge_proxy_failed');
+
+  const mfaComplete=await fetch('http://127.0.0.1:'+vfPort+'/api/customer/login/mfa',{
+    method:'POST',
+    headers:{'content-type':'application/json'},
+    body:JSON.stringify({challenge_token:mfaLoginBody.challenge_token,code:'123456'}),
+  });
+  const mfaCompleteBody=await mfaComplete.json();
+  if(!mfaComplete.ok || mfaCompleteBody.access_token!=='mfa-token' || mfaCompleteBody.mfa!==true) throw new Error('mfa_completion_proxy_failed');
 
   const missing=await fetch('http://127.0.0.1:'+vfPort+'/api/plan',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(ideaPayload)});
   if(missing.status!==401) throw new Error('missing_auth_not_rejected');
