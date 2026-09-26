@@ -2,7 +2,8 @@
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")/.." && pwd)"
 [[ -f "$HERE/.env" ]] && set -a && source "$HERE/.env" && set +a
-DATA_DIR="${NAV_DATA_DIR:-$HERE/runtime-data}"
+RAW_DATA_DIR="${NAV_DATA_DIR:-runtime-data}"
+if [[ "$RAW_DATA_DIR" = /* ]]; then DATA_DIR="$RAW_DATA_DIR"; else DATA_DIR="$HERE/$RAW_DATA_DIR"; fi
 PBF="$DATA_DIR/osm/south-africa-latest.osm.pbf"
 OUT="$DATA_DIR/tiles/south-africa.pmtiles"
 STORE="$DATA_DIR/tilemaker-store"

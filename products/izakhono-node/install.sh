@@ -29,7 +29,9 @@ install -d -m 0750 /var/lib/izakhono-node/jobs /var/lib/izakhono-node/evidence /
 install -m 0755 "$HERE/node_agent.py" /opt/izakhono-node/node_agent.py
 install -m 0755 "$HERE/deploy.sh" /opt/izakhono-node/deploy.sh
 install -m 0755 "$HERE/prepare-allegro.sh" /opt/izakhono-node/prepare-allegro.sh
+install -m 0755 "$HERE/deploy-nav-owned.sh" /opt/izakhono-node/deploy-nav-owned.sh
 install -m 0644 "$HERE/profiles/allegro-vibez.production.json" /opt/izakhono-node/profiles/allegro-vibez.production.json
+install -m 0644 "$HERE/profiles/izakhono-nav.production.json" /opt/izakhono-node/profiles/izakhono-nav.production.json
 install -m 0644 "$HERE/izakhono-node.service" /etc/systemd/system/izakhono-node.service
 install -m 0755 "$CONTROL_SRC/control.py" /opt/izakhono-control/control.py
 install -m 0755 "$CONTROL_SRC/izakhonoctl.py" /opt/izakhono-control/izakhonoctl.py

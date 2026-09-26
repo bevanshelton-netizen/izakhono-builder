@@ -1,0 +1,11 @@
+{
+  "source": "izakhono-code",
+  "repository": "izakhono-builder",
+  "app": "izakhono-nav",
+  "ref": "348fa0203bb52f1c440b7a6cf8c9098d6b6bb9fd",
+  "environment": "production",
+  "mode": "compose",
+  "compose_file": "products/izakhono-nav/stack/compose.yaml",
+  "health_url": "http://127.0.0.1:8788/api/health",
+  "env_file": "/etc/izakhono/apps/izakhono-nav.env"
+}

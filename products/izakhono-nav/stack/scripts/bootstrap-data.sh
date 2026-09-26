@@ -3,7 +3,8 @@ set -euo pipefail
 HERE="$(cd "$(dirname "$0")/.." && pwd)"
 ENV_FILE="$HERE/.env"
 [[ -f "$ENV_FILE" ]] && set -a && source "$ENV_FILE" && set +a
-DATA_DIR="${NAV_DATA_DIR:-$HERE/runtime-data}"
+RAW_DATA_DIR="${NAV_DATA_DIR:-runtime-data}"
+if [[ "$RAW_DATA_DIR" = /* ]]; then DATA_DIR="$RAW_DATA_DIR"; else DATA_DIR="$HERE/$RAW_DATA_DIR"; fi
 PBF_URL="https://download.geofabrik.de/africa/south-africa-latest.osm.pbf"
 MD5_URL="${PBF_URL}.md5"
 mkdir -p "$DATA_DIR/osm" "$DATA_DIR/router" "$DATA_DIR/tiles" "$DATA_DIR/tilemaker-store"

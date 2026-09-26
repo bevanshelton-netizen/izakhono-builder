@@ -3,7 +3,8 @@ set -euo pipefail
 HERE="$(cd "$(dirname "$0")/.." && pwd)"
 "$HERE/scripts/preflight.sh"
 set -a; source "$HERE/.env"; set +a
-DATA_DIR="${NAV_DATA_DIR:-$HERE/runtime-data}"
+RAW_DATA_DIR="${NAV_DATA_DIR:-runtime-data}"
+if [[ "$RAW_DATA_DIR" = /* ]]; then DATA_DIR="$RAW_DATA_DIR"; else DATA_DIR="$HERE/$RAW_DATA_DIR"; fi
 if [[ ! -f "$DATA_DIR/osm/south-africa-latest.osm.pbf" ]]; then "$HERE/scripts/bootstrap-data.sh"; fi
 if [[ ! -f "$DATA_DIR/tiles/south-africa.pmtiles" ]]; then "$HERE/scripts/build-tiles.sh"; fi
 echo "Starting IZAKHONO NAV owned services..."

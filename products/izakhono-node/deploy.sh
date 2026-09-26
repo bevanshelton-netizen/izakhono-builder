@@ -33,7 +33,8 @@ DATA_PATH="${DATA_PATH:-/app/data}"
 [[ "$ENVIRONMENT" == "staging" || "$ENVIRONMENT" == "production" ]] || { echo invalid-environment >&2; exit 22; }
 
 case "$REPO" in
-  file:///srv/izakhono-code/repos/*.git) ;;
+  file:///var/lib/izakhono-code/repos/*.git) ;;
+  file:///srv/izakhono-code/repos/*.git) ;; # legacy owner-host path
   https://github.com/bevanshelton-netizen/*.git) ;;
   *) echo "repo-not-approved" >&2; exit 23 ;;
 esac
