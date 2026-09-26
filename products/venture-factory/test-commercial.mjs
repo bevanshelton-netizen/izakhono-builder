@@ -31,6 +31,14 @@ async function readJson(req) {
 }
 
 const id = jsonServer(async(req,res,send)=>{
+  if(req.method==='POST' && req.url==='/api/v1/login'){
+    const body=await readJson(req);
+    if(body.email==='prospect@example.com' && body.password==='correct-horse-battery-staple' && body.entity_slug==='izakhono-africa'){
+      return send(200,{ok:true,access_token:'prospect-token',token_type:'Bearer',expires_at:'2099-01-01T00:00:00+00:00',subject:body.email,entity:{id:'entity-customer',slug:'izakhono-africa'},role:'member'});
+    }
+    return send(401,{error:'invalid_credentials'});
+  }
+  if(req.method==='POST' && req.url==='/api/v1/logout') return send(200,{ok:true});
   if(req.method!=='POST' || req.url!=='/api/v1/internal/introspect') return send(404,{error:'not_found'});
   if(req.headers['x-izakhono-id-internal-key']!=='id-test') return send(401,{error:'unauthorized'});
   const body=await readJson(req);
@@ -116,6 +124,14 @@ try{
   const health=await waitForHealth();
   if(!health.customer_mode || !health.customer_stack_configured || !health.checkout_configured) throw new Error('commercial_health_contract_failed');
 
+  const login=await fetch('http://127.0.0.1:'+vfPort+'/api/customer/login',{
+    method:'POST',
+    headers:{'content-type':'application/json'},
+    body:JSON.stringify({email:'prospect@example.com',password:'correct-horse-battery-staple',entity_slug:'izakhono-africa'}),
+  });
+  const loginBody=await login.json();
+  if(!login.ok || loginBody.access_token!=='prospect-token') throw new Error('customer_login_failed');
+
   const missing=await fetch('http://127.0.0.1:'+vfPort+'/api/plan',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(ideaPayload)});
   if(missing.status!==401) throw new Error('missing_auth_not_rejected');
 
@@ -141,6 +157,12 @@ try{
   if(lastPayRequest?.body?.metadata?.access_product!=='venture-factory') throw new Error('access_metadata_missing');
   if(lastPayRequest?.body?.metadata?.access_subject!=='prospect@example.com') throw new Error('access_subject_missing');
   if(lastPayRequest?.body?.amount_minor!==49900) throw new Error('checkout_price_mismatch');
+
+  const logout=await fetch('http://127.0.0.1:'+vfPort+'/api/customer/logout',{
+    method:'POST',
+    headers:{'authorization':'Bearer prospect-token'},
+  });
+  if(!logout.ok) throw new Error('customer_logout_failed');
 
   const subscriber=await fetch('http://127.0.0.1:'+vfPort+'/api/plan',{method:'POST',headers:{'content-type':'application/json','authorization':'Bearer subscriber-token'},body:JSON.stringify(ideaPayload)});
   const subscriberBody=await subscriber.json();
