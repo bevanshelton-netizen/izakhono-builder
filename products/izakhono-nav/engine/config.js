@@ -4,8 +4,8 @@ const int = (value, fallback) => Number.isFinite(Number(value)) ? Number(value) 
 
 export const config = Object.freeze({
   product: 'IZAKHONO NAV ENGINE',
-  version: '1.0.0',
-  releaseId: process.env.NAV_RELEASE_ID || 'IZAKHONO-NAV-ENGINE-v1.0.0',
+  version: '1.1.0',
+  releaseId: process.env.NAV_RELEASE_ID || 'IZAKHONO-NAV-ENGINE-v1.1.0',
   runtimeId: process.env.NAV_RUNTIME_ID || process.env.HOSTNAME || 'NAV-RUNTIME-LOCAL',
   runtimeClass: process.env.NAV_RUNTIME_CLASS || 'owned',
   host: process.env.HOST || '0.0.0.0',
