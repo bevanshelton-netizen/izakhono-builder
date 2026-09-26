@@ -1,0 +1,43 @@
+name: IZAKHONO NAV Engine CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'products/izakhono-nav/engine/**'
+      - '.github/workflows/izakhono-nav-engine-ci.yml'
+  pull_request:
+    paths:
+      - 'products/izakhono-nav/engine/**'
+      - '.github/workflows/izakhono-nav-engine-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: products/izakhono-nav/engine
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax and unit tests
+        run: npm run check
+      - name: Boot engine and verify fail-closed contract
+        shell: bash
+        run: |
+          PORT=8799 NAV_RUNTIME_ID=NAV-CI node server.js >/tmp/nav-engine.log 2>&1 &
+          PID=$!
+          trap 'kill $PID || true' EXIT
+          for i in {1..30}; do
+            curl -fsS http://127.0.0.1:8799/v1/runtime >/tmp/runtime.json && break
+            sleep 0.2
+          done
+          node -e "const r=require('/tmp/runtime.json'); if(r.node01Required!==false) process.exit(1)"
+          code=$(curl -s -o /tmp/route.json -w '%{http_code}' 'http://127.0.0.1:8799/v1/route?start=28.0473,-26.2041&end=28.1000,-26.1000')
+          test "$code" = "503"
+          grep -q routing_unavailable /tmp/route.json
