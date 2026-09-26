@@ -39,4 +39,9 @@ jobs:
           grep -Fq 'email_verification_required' products/izakhono-id/app.py
           grep -Fq '/api/v1/change-password' products/izakhono-id/app.py
           grep -Fq '/api/v1/admin/revoke-user-sessions' products/izakhono-id/app.py
+          grep -Fq 'IZAKHONO_ID_MFA_MASTER_KEY' products/izakhono-id/app.py
+          grep -Fq '/api/v1/login/mfa' products/izakhono-id/app.py
+          grep -Fq '/api/v1/mfa/enroll/start' products/izakhono-id/app.py
+          grep -Fq 'mfa_recovery_codes' products/izakhono-id/app.py
+          grep -Fq 'login_challenges' products/izakhono-id/app.py
           ! grep -R --line-number -E 'IZAKHONO_ID_(ADMIN|INTERNAL)_KEY=.+' products/izakhono-id
