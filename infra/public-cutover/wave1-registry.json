@@ -7,7 +7,7 @@
     {
       "slug": "allegro-vibez",
       "profile": "products/izakhono-node/profiles/wave1/allegro-vibez.production.json",
-      "immutable_ref": "79221c38b64d977af59bb528e8915dc139e589fb",
+      "immutable_ref": "0b649ee6a5e88e489d0ebabc2280e4b2870fc105",
       "local_health_url": "http://127.0.0.1:8080/healthz",
       "public_health_path": "/healthz",
       "current_external_route": "https://allegro-vibez.vercel.app/",
@@ -46,16 +46,16 @@
     "note": "Canonical public aliases verified through connected Vercel access. Deployment-specific fallback URLs may be protected; protected routes must not satisfy the public safety gate."
   },
   "ref_review": {
-    "reviewed_at": "2026-09-25",
+    "reviewed_at": "2026-09-26",
     "allegro_vibez": {
-      "ref": "79221c38b64d977af59bb528e8915dc139e589fb",
+      "ref": "0b649ee6a5e88e489d0ebabc2280e4b2870fc105",
       "gates": [
         "IZAKHONO Production Excellence",
         "Build ALLEGRO-VIBEZ",
         "IZAKHONO Build to Alpha"
       ],
       "result": "PASS",
-      "note": "Core-first artist-booking release; PR tree passed IZAKHONO Production Excellence, Build ALLEGRO-VIBEZ, and Central Alpha Core before merge."
+      "note": "Founding Artists creator-growth release; public cutover remains pending NODE01 runner, EDGE, DNS and TLS acceptance."
     },
     "the_chancellor": {
       "ref": "640f3fbfed1d92bd0588f0ac706a6bb5a7308d17",
