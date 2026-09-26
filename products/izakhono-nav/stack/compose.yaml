@@ -13,7 +13,6 @@ services:
       use_tiles_ignore_pbf: "False"
     volumes:
       - ${NAV_DATA_DIR:-./runtime-data}/router:/custom_files
-      - ${NAV_DATA_DIR:-./runtime-data}/osm/south-africa-latest.osm.pbf:/custom_files/south-africa-latest.osm.pbf:ro
     networks: [nav-backplane]
 
   nav-search:
