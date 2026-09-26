@@ -46,11 +46,13 @@
     "offer",
     "cta",
     "approval",
-    "attribution"
+    "measurement"
   ],
   "growth_system_of_record": "apps/izakhono-create/portfolio-growth-registry.json",
   "ceo_growth_directive": "IZAKHONO-PORTFOLIO-CEO-GROWTH-DIRECTIVE.md",
   "portfolio_growth_required": true,
   "growth_model": "Acquisition -> Activation -> Retention -> Referral -> Revenue -> Partnerships",
-  "measurement_rule": "Aggregate first-party operational metrics only; no behavioural surveillance."
+  "measurement_rule": "Aggregate first-party operational metrics only; no behavioural surveillance, advertising IDs, UTM/referral identifiers or silent tracking.",
+  "website_pipeline": "products/izakhono-fabric/website-pipeline/portfolio-website-pipeline.json",
+  "production_chain": "Website Factory -> Graphics & Media Studio -> International Review -> CRM Connection -> Verified Deployment -> IZAKHONO ADS"
 }
