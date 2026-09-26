@@ -1,4 +1,4 @@
-{$NAV_PUBLIC_HOST:nav.izakhonoafrica.co.za} {
+:8080 {
   encode zstd gzip
 
   @engine path /health /api/* /v1/* /tiles/*
