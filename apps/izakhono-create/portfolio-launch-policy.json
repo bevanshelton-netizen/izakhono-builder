@@ -60,7 +60,7 @@
       "Campaign publishing remains evidence-gated by a working customer journey.",
       "Paid media spend requires an approved account, budget and spend authority; no silent spend.",
       "Regulated products require product-specific compliance approval before claims or paid distribution.",
-      "Use aggregate first-party operational measurement; no behavioural surveillance or silent tracking.",
+      "Use aggregate first-party operational measurement only; no behavioural surveillance, advertising IDs, UTM/referral identifiers or silent tracking.",
       "Marketing assets must accurately portray the product and use appropriate professional imagery/graphics."
     ]
   },
@@ -68,11 +68,12 @@
     "IZAKHONO CREATE",
     "IZAKHONO ADS",
     "portfolio CRM",
-    "campaign attribution/UTM tooling",
     "share/referral tooling",
     "cross-promotion inventory",
     "creative image/video generation",
-    "partner outreach workflows"
+    "partner outreach workflows",
+    "aggregate first-party operational measurement"
   ],
-  "portfolio_rule": "Every current and future IZAKHONO product inherits this policy unless a signed product-specific exception supersedes it."
+  "portfolio_rule": "Every current and future IZAKHONO product inherits this policy unless a signed product-specific exception supersedes it.",
+  "website_pipeline": "products/izakhono-fabric/website-pipeline/portfolio-website-pipeline.json"
 }
