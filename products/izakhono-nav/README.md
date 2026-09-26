@@ -2,7 +2,7 @@
 
 **Product:** IZAKHONO NAV  
 **Operator:** IZAKHONO AFRICA (PTY) LTD  
-**Current package:** v0.7  
+**Current package:** v0.8  
 **Status:** BUILT / VERIFIED LOCALLY  
 **Runtime policy:** IZAKHONO Runtime Fabric — no single node is a launch gate
 
@@ -12,7 +12,7 @@ IZAKHONO NAV is the portfolio's privacy-first multilingual voice navigation plat
 
 The application is packaged to run unchanged across approved Runtime Fabric targets. NODE01 is not required. Any healthy approved runtime may serve the same release, and EDGE may fail over between targets after health and release identity checks.
 
-## v0.7 runtime behavior
+## v0.8 runtime behavior
 
 - configurable runtime targets outside application logic;
 - health probing of all enabled NAV gateways;
@@ -41,3 +41,12 @@ No public-live claim is made by this record. A route becomes EXTERNAL LIVE VERIF
 3. Verify public HTTPS.
 4. Add a second independent target.
 5. Stop the preferred target during a controlled test and verify uninterrupted failover.
+
+
+## v0.8 public resilience deployment evidence
+
+The NAV resilience shell and edge route were merged through PR #237. Builder CI and OpenAI Independence CI passed.
+
+The production Cloudflare deployment was attempted by workflow run 36231538995 but stopped before deployment because the production environment has no `CLOUDFLARE_API_TOKEN` or `CLOUDFLARE_ACCOUNT_ID`. The controlled deploy run 36231539007 also skipped all deployment steps for the same reason.
+
+Therefore `https://ai.izakhono.co.za/nav/` is a candidate route only and is **not** recorded as public-live.
