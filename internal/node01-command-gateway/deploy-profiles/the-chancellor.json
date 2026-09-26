@@ -8,5 +8,5 @@
   "health_path": "/api/health",
   "data_path": "/app/data",
   "dockerfile": "Dockerfile",
-  "compose_file": "deploy/izakhono-compose.yml"
+  "env_file": "/etc/izakhono/apps/the-chancellor.env"
 }
