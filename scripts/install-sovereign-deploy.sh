@@ -5,7 +5,7 @@ for c in python3 git docker curl systemctl; do command -v "$c" >/dev/null || { e
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 WAVE1_ROOT=/opt/izakhono/wave1
 install -d -m 0755 /opt/izakhono-node /opt/izakhono-control /opt/izakhono-code /etc/izakhono/apps /var/lib/izakhono-node /srv/izakhono-code/repos
-install -d -m 0755 "$WAVE1_ROOT/products/izakhono-node/profiles/wave1" "$WAVE1_ROOT/infra/public-cutover" /opt/izakhono/bin /opt/izakhono/evidence
+install -d -m 0755 "$WAVE1_ROOT/products/izakhono-node/profiles/wave1" "$WAVE1_ROOT/infra/public-cutover" /opt/izakhono/runtime-fabric /opt/izakhono/bin /opt/izakhono/evidence
 install -m 0755 "$ROOT_DIR/products/izakhono-node/node_agent.py" /opt/izakhono-node/node_agent.py
 install -m 0755 "$ROOT_DIR/products/izakhono-node/deploy.sh" /opt/izakhono-node/deploy.sh
 install -m 0644 "$ROOT_DIR/products/izakhono-node/izakhono-node.service" /etc/systemd/system/izakhono-node.service
@@ -29,6 +29,7 @@ install -m 0755 "$ROOT_DIR/products/izakhono-node/wave1_deploy.py" "$WAVE1_ROOT/
 install -m 0644 "$ROOT_DIR/products/izakhono-node/profiles/wave1/allegro-vibez.production.json" "$WAVE1_ROOT/products/izakhono-node/profiles/wave1/allegro-vibez.production.json"
 install -m 0644 "$ROOT_DIR/products/izakhono-node/profiles/wave1/the-chancellor.production.json" "$WAVE1_ROOT/products/izakhono-node/profiles/wave1/the-chancellor.production.json"
 install -m 0644 "$ROOT_DIR/infra/public-cutover/wave1-registry.json" "$WAVE1_ROOT/infra/public-cutover/wave1-registry.json"
+install -m 0644 "$ROOT_DIR/infra/runtime-fabric/allegro-vibez.json" /opt/izakhono/runtime-fabric/allegro-vibez.json
 install -o root -g root -m 0755 "$ROOT_DIR/scripts/launch-stack/run-wave1-local-proof.sh" /opt/izakhono/bin/run-wave1-local-proof
 install -o root -g root -m 0755 "$ROOT_DIR/scripts/launch-stack/run-allegro-local-proof.sh" /opt/izakhono/bin/run-allegro-local-proof
 if ! id izakhono-code >/dev/null 2>&1; then useradd --system --create-home --home-dir /srv/izakhono-code --shell /usr/bin/git-shell izakhono-code; fi
