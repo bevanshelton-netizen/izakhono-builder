@@ -601,6 +601,49 @@ async function publicAiCoreHost(req: Request, env: any, url: URL): Promise<Respo
   }
 
   const cleanPath = url.pathname.length > 1 ? url.pathname.replace(/\/+$/, '') : url.pathname;
+
+  if (cleanPath === '/nav') {
+    return Response.redirect('https://' + AI_CORE_HOST + '/nav/', 302);
+  }
+
+  if (url.pathname.startsWith('/nav/')) {
+    const relative = url.pathname.slice('/nav/'.length) || 'index.html';
+    const mapped = relative === 'health' ? 'health.json' : relative;
+    const allowed = new Set(['index.html', 'manifest.webmanifest', 'sw.js', 'health.json']);
+    if (!allowed.has(mapped)) {
+      return new Response('Not found', {
+        status: 404,
+        headers: { 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'no-store' },
+      });
+    }
+
+    const navAssetUrl = new URL(req.url);
+    navAssetUrl.pathname = '/ai-core/nav/' + mapped;
+    navAssetUrl.search = '';
+    const navResponse = await env.ASSETS.fetch(new Request(navAssetUrl.toString(), req));
+    const navHeaders = new Headers(navResponse.headers);
+    navHeaders.set('x-content-type-options', 'nosniff');
+    navHeaders.set('referrer-policy', 'strict-origin-when-cross-origin');
+    navHeaders.set('permissions-policy', 'camera=(), geolocation=(self), microphone=(self)');
+    navHeaders.set('x-izakhono-route', 'external-resilience-cloudflare');
+    navHeaders.set('x-izakhono-product', 'IZAKHONO-NAV');
+    navHeaders.set('x-izakhono-release', 'v0.8-resilience');
+    navHeaders.set('cache-control', 'public, max-age=0, must-revalidate');
+    if (mapped === 'sw.js') navHeaders.set('service-worker-allowed', '/nav/');
+    if ((navResponse.headers.get('content-type') || '').includes('text/html')) {
+      navHeaders.set(
+        'content-security-policy',
+        "default-src 'self'; connect-src 'self' https://nominatim.openstreetmap.org https://router.project-osrm.org; img-src 'self' data: https:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; worker-src 'self'; manifest-src 'self'; base-uri 'self'; frame-ancestors 'none'; form-action 'none'"
+      );
+    }
+    navHeaders.delete('content-length');
+    return new Response(navResponse.body, {
+      status: navResponse.status,
+      statusText: navResponse.statusText,
+      headers: navHeaders,
+    });
+  }
+
   const externalRoutes: Record<string, string> = {
     '/worknow': 'https://worknow-sa.vercel.app',
     '/faisready': 'https://faisready-revenue.vercel.app',
