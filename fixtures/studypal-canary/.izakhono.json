@@ -1,12 +1,34 @@
 {
-  "version": 2,
+  "version": 3,
   "name": "StudyPal Alpha Canary",
   "slug": "studypal-alpha-canary",
+  "operator": "IZAKHONO AFRICA (PTY) LTD",
+  "trading_name": "StudyPal Alpha Canary",
   "build_context": "fixtures/studypal-canary",
   "dockerfile_path": "fixtures/studypal-canary/Dockerfile",
   "container_port": 8091,
   "health_path": "/ready",
   "branch": "main",
+  "infrastructure": {
+    "policy": "owned-first-externally-reversible",
+    "authoritative_source": "IZAKHONO CODE / owned source; GitHub mirror permitted for resilience",
+    "owned_target": "TEST-CONTAINER",
+    "current_public_route": "NOT_YET_VERIFIED",
+    "external_fallback": "PENDING",
+    "status_label": "BUILT / VERIFIED LOCALLY",
+    "data_dependencies": [
+      "REQUIRES_CURRENT_VERIFICATION"
+    ],
+    "auth_dependencies": [
+      "REQUIRES_CURRENT_VERIFICATION"
+    ],
+    "payment_dependencies": [
+      "REQUIRES_CURRENT_VERIFICATION"
+    ],
+    "backup_evidence": "PENDING",
+    "restore_evidence": "PENDING",
+    "rollback_evidence": "PENDING"
+  },
   "alpha": {
     "preflight": true,
     "rehearsal": false,
