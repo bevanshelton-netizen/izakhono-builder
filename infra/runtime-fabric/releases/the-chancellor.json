@@ -1,0 +1,27 @@
+{
+  "schema": "izakhono.runtime-fabric.release.v1",
+  "product": "the-chancellor",
+  "repository": "the-chancellor",
+  "approved_release_id": "eaece46fd4f23c06e449ed73df5ff1f368ff6e40",
+  "version": "v1-commercial",
+  "health_path": "/api/health",
+  "readiness_path": "/api/go-live",
+  "data_schema": "1",
+  "state_mode": "single-authoritative-writer",
+  "approved_runtime_classes": [
+    "owned",
+    "owned-cluster",
+    "external-resilience"
+  ],
+  "static_resilience": {
+    "url": "https://the-chancellor.vercel.app/",
+    "backend_capable": false
+  },
+  "rules": {
+    "require_matching_release_identity": true,
+    "require_health": true,
+    "require_readiness_before_paid_traffic": true,
+    "node01_required": false,
+    "external_fallback_must_remain_reversible": true
+  }
+}
