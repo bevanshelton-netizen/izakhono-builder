@@ -171,9 +171,19 @@ def deploy_app(app, report):
 def main():
     ap=argparse.ArgumentParser(description="IZAKHONO NODE01 cutover wave 1 local deployment")
     ap.add_argument("--report",default=str(ROOT/"IZAKHONO-NODE01-WAVE1-REPORT.json"))
+    ap.add_argument("--only", action="append", default=[], help="Deploy only the named Wave 1 slug; repeat for multiple slugs.")
     args=ap.parse_args()
 
     registry=load_json(REGISTRY_PATH)
+    known_slugs={str(app.get("slug") or "") for app in registry.get("apps",[])}
+    requested=[str(x).strip() for x in args.only if str(x).strip()]
+    unknown=[slug for slug in requested if slug not in known_slugs]
+    if unknown:
+        raise SystemExit("Unknown Wave 1 slug(s): "+", ".join(sorted(set(unknown))))
+    selected_apps=[
+        app for app in registry.get("apps",[])
+        if not requested or str(app.get("slug") or "") in set(requested)
+    ]
     installed_builder_ref = (
         BUILDER_REF_PATH.read_text(encoding="utf-8").strip()
         if BUILDER_REF_PATH.is_file()
@@ -194,6 +204,7 @@ def main():
         "node":None,
         "apps":[],
         "public_cutover_performed":False,
+        "selected_apps":[str(app.get("slug") or "") for app in selected_apps],
         "note":"This run deploys and verifies NODE01 locally only. It does not alter DNS, EDGE hostnames or external production routes."
     }
 
@@ -202,7 +213,7 @@ def main():
         if not report["node"].get("ready"):
             raise RuntimeError("IZAKHONO NODE01 is not ready")
         ok=True
-        for app in registry["apps"]:
+        for app in selected_apps:
             if not deploy_app(app,report):
                 ok=False
                 break
