@@ -1,0 +1,13 @@
+{
+  "name": "IZAKHONO NAV",
+  "short_name": "NAV",
+  "description": "Privacy-first multilingual voice GPS navigation.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#06100e",
+  "theme_color": "#07110f",
+  "lang": "en-ZA",
+  "categories": ["navigation","travel","utilities"],
+  "orientation": "any"
+}
