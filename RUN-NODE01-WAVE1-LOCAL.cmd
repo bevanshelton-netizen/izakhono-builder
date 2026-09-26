@@ -24,21 +24,38 @@ if "%LINUX_ROOT%"=="" (
 set REPORT=%USERPROFILE%\Desktop\IZAKHONO-NODE01-WAVE1-REPORT.json
 for /f "usebackq delims=" %%I in (`wsl.exe -d %DISTRO% -- wslpath -a "%REPORT%"`) do set LINUX_REPORT=%%I
 
-echo [1/3] Checking NODE01 readiness...
+echo [1/4] Checking NODE01 readiness...
 wsl.exe -d %DISTRO% -u root -- curl -fsS http://127.0.0.1:9191/readyz
 if errorlevel 1 (
   echo.
-  echo [STOP] NODE01 is not ready. Existing external production remains untouched.
+  echo [RECOVER] NODE01 is not ready. Running owned recovery path...
+  powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\launch-stack\RECOVER-NODE01-WAVE1.ps1" -Distro "%DISTRO%"
+  if errorlevel 1 (
+    echo.
+    echo [SAFE STOP] NODE01 recovery/proof did not pass.
+    echo Existing external production remains untouched.
+    exit /b 1
+  )
+  echo.
+  echo [RECOVERED] NODE01 recovery path completed.
+)
+
+echo [2/4] Rechecking NODE01 readiness...
+wsl.exe -d %DISTRO% -u root -- curl -fsS http://127.0.0.1:9191/readyz
+if errorlevel 1 (
+  echo.
+  echo [SAFE STOP] NODE01 is still not ready after recovery.
+  echo Existing external production remains untouched.
   exit /b 1
 )
 echo.
 
-echo [2/3] Running immutable local deployment wave...
+echo [3/4] Running immutable local deployment wave...
 wsl.exe -d %DISTRO% -u root -- python3 "%LINUX_ROOT%/products/izakhono-node/wave1_deploy.py" --report "%LINUX_REPORT%"
 set RC=%ERRORLEVEL%
 
 echo.
-echo [3/3] Report:
+echo [4/4] Report:
 if exist "%REPORT%" type "%REPORT%"
 
 echo.
