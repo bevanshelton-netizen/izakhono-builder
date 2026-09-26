@@ -67,3 +67,26 @@ curl -fsSI http://127.0.0.1:8091/commands
 ```
 
 Do not call the public hostname live until TLS and public reachability are independently verified.
+
+
+## ALLEGRO owned deployment
+
+ALLEGRO is an approved NODE01 Command Centre production profile.
+
+Submit only an immutable, reviewed 40-character commit:
+
+```
+/deploy allegro-vibez <40-character-commit-sha>
+```
+
+The Command Centre submits this directly to:
+
+`IZAKHONO COMMANDS -> CONTROL /v1/deploy -> NODE job queue`
+
+The profile uses the owner-controlled `izakhono-code/allegro-vibez` repository, requires the local browser-safe Core build environment, and performs NODE canary/health/rollback checks. Public EDGE/TLS publication remains a separate verified gate.
+
+The `/allegro` launcher defaults to the owned public route:
+
+`https://allegro.izakhonoafrica.co.za`
+
+An alternate owned route can be supplied with `IZAKHONO_ALLEGRO_ORIGIN`; no Vercel route is required for the launcher.
