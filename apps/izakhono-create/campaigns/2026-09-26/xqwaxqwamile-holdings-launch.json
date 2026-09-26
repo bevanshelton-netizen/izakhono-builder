@@ -1,0 +1,91 @@
+{
+  "schema": "izakhono.marketing.package.v1",
+  "product": "xqwaxqwamile-holdings",
+  "campaign_name": "Powering Resources. Building Tomorrow.",
+  "source": "IZAKHONO CREATE",
+  "status": "creative-production",
+  "legal_entity": "!XQWAXQWAMILÉ HOLDINGS (PTY) LTD",
+  "registration_number": "2017/315075/07",
+  "destination": "https://bevanshelton-netizen.github.io/Downloads/sites/xqwaxqwamile-holdings/",
+  "creative": {
+    "brand_direction": "international African industrial holding company",
+    "palette": [
+      "#06100d",
+      "#3ce2a2",
+      "#d9bd78",
+      "#f5f3ec"
+    ],
+    "hero_visual": "African industrial growth panorama combining clean energy, logistics, mining/resources and infrastructure with real people and machinery; premium editorial treatment; no generic office stock",
+    "required_assets": [
+      {
+        "id": "hero-wide",
+        "format": "16:9",
+        "purpose": "website hero and LinkedIn/Facebook banner"
+      },
+      {
+        "id": "energy",
+        "format": "4:3",
+        "purpose": "green hydrogen + solar sector visual"
+      },
+      {
+        "id": "resources",
+        "format": "4:3",
+        "purpose": "diamonds/resources sector visual"
+      },
+      {
+        "id": "logistics",
+        "format": "4:3",
+        "purpose": "ports, freight, logistics sector visual"
+      },
+      {
+        "id": "food-infrastructure",
+        "format": "4:3",
+        "purpose": "agriculture, fishing/processing, development/construction visual"
+      },
+      {
+        "id": "social-square",
+        "format": "1:1",
+        "purpose": "general corporate awareness ad"
+      },
+      {
+        "id": "social-story",
+        "format": "9:16",
+        "purpose": "story/reel cover"
+      }
+    ],
+    "rules": [
+      "original or rights-clear imagery only",
+      "African people and infrastructure must be represented authentically",
+      "no fabricated project sites, clients, certifications or government endorsements",
+      "no unverified GIA, association or diamond-school credential claims",
+      "no behavioural tracking or UTM/referral identifiers"
+    ]
+  },
+  "channels": [
+    "owned portfolio cross-promotion",
+    "organic LinkedIn",
+    "organic Facebook",
+    "organic Instagram",
+    "WhatsApp business sharing",
+    "partner and institutional outreach"
+  ],
+  "offer": "Strategic partnerships and project opportunities across energy, resources, logistics, food systems and infrastructure.",
+  "cta": "Discuss a partnership",
+  "approval": {
+    "website_verified": true,
+    "legal_claims_reviewed": true,
+    "graphics_required_before_distribution": true,
+    "paid_media_authorized": false
+  },
+  "measurement": {
+    "method": "aggregate first-party operational metrics",
+    "metrics": [
+      "qualified enquiries",
+      "partnership leads",
+      "investment leads",
+      "CRM stage progression"
+    ],
+    "behavioural_tracking": false,
+    "utm_referral_attribution": false
+  }
+}
