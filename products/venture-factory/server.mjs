@@ -458,7 +458,7 @@ const server = http.createServer(async (req, res) => {
 
     const buildMatch = url.pathname.match(/^\/api\/plans\/([^/]+)\/build$/);
     if (req.method === 'POST' && buildMatch) {
-      if (!authorized(req)) return json(res, 401, { ok: false, error: 'unauthorized' });
+      if (!ownerAuthorized(req)) return json(res, 401, { ok: false, error: 'unauthorized' });
       if (!builderConfigured()) return json(res, 503, { ok: false, error: 'builder_bridge_not_configured' });
 
       const planId = decodeURIComponent(buildMatch[1]);
@@ -502,13 +502,13 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (req.method === 'GET' && url.pathname === '/api/builds') {
-      if (!authorized(req)) return json(res, 401, { ok: false, error: 'unauthorized' });
+      if (!ownerAuthorized(req)) return json(res, 401, { ok: false, error: 'unauthorized' });
       const builds = await listBuilds(Math.min(100, Math.max(1, Number(url.searchParams.get('limit') || 50))));
       return json(res, 200, { ok: true, builds });
     }
 
     if (req.method === 'GET' && url.pathname === '/api/plans') {
-      if (!authorized(req)) return json(res, 401, { ok: false, error: 'unauthorized' });
+      if (!ownerAuthorized(req)) return json(res, 401, { ok: false, error: 'unauthorized' });
       const plans = await listPlans(Math.min(100, Math.max(1, Number(url.searchParams.get('limit') || 50))));
       return json(res, 200, { ok: true, plans });
     }
