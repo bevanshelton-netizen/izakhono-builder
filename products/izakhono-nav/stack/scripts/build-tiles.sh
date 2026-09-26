@@ -10,6 +10,6 @@ STORE="$DATA_DIR/tilemaker-store"
 mkdir -p "$(dirname "$OUT")" "$STORE"
 rm -f "$OUT.part"
 docker run --rm   -v "$DATA_DIR:/data"   ghcr.io/systemed/tilemaker:master   /data/osm/south-africa-latest.osm.pbf   --output /data/tiles/south-africa.pmtiles.part   --store /data/tilemaker-store
-mv "$OUT.part" "$OUT"
+mv "$TMP" "$OUT"
 sha256sum "$OUT" > "$OUT.sha256"
 echo "Built $OUT"
