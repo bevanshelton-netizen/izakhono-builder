@@ -87,10 +87,21 @@ jobs:
               | xargs -0 sha256sum
           ) > "$root/SHA256SUMS.txt"
 
+      - name: Verify packaged recovery tree before upload
+        shell: bash
+        run: |
+          set -euo pipefail
+          root="$GITHUB_WORKSPACE/dist/IZAKHONO-NODE01-RECOVERY-KIT"
+          (
+            cd "$root"
+            sha256sum -c SHA256SUMS.txt
+          )
+
       - name: Upload immutable recovery kit
         uses: actions/upload-artifact@v4
         with:
           name: IZAKHONO-NODE01-RECOVERY-KIT
           path: dist/IZAKHONO-NODE01-RECOVERY-KIT
           if-no-files-found: error
+          include-hidden-files: true
           retention-days: 30
