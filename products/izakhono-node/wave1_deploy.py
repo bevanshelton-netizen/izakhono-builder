@@ -29,6 +29,16 @@ def now():
 def load_json(path):
     return json.loads(Path(path).read_text(encoding="utf-8"))
 
+def select_apps(registry, requested=None):
+    requested=[str(x).strip() for x in (requested or []) if str(x).strip()]
+    apps=list(registry.get("apps",[]))
+    known_slugs={str(app.get("slug") or "") for app in apps}
+    unknown=[slug for slug in requested if slug not in known_slugs]
+    if unknown:
+        raise ValueError("Unknown Wave 1 slug(s): "+", ".join(sorted(set(unknown))))
+    wanted=set(requested)
+    return [app for app in apps if not wanted or str(app.get("slug") or "") in wanted]
+
 def token():
     raw = os.getenv("IZAKHONO_CONTROL_TOKEN", "").strip()
     if raw:
@@ -175,15 +185,11 @@ def main():
     args=ap.parse_args()
 
     registry=load_json(REGISTRY_PATH)
-    known_slugs={str(app.get("slug") or "") for app in registry.get("apps",[])}
     requested=[str(x).strip() for x in args.only if str(x).strip()]
-    unknown=[slug for slug in requested if slug not in known_slugs]
-    if unknown:
-        raise SystemExit("Unknown Wave 1 slug(s): "+", ".join(sorted(set(unknown))))
-    selected_apps=[
-        app for app in registry.get("apps",[])
-        if not requested or str(app.get("slug") or "") in set(requested)
-    ]
+    try:
+        selected_apps=select_apps(registry, requested)
+    except ValueError as exc:
+        raise SystemExit(str(exc))
     installed_builder_ref = (
         BUILDER_REF_PATH.read_text(encoding="utf-8").strip()
         if BUILDER_REF_PATH.is_file()
