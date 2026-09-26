@@ -1,0 +1,40 @@
+{
+  "schema": "izakhono.graphics.brief.v1",
+  "product": "xqwaxqwamile-holdings",
+  "owner_system": "IZAKHONO CREATE / IZAKHONO STUDIO / IZAKHONO Creative Suite",
+  "art_direction": "Premium African industrial investment photography and original composite graphics. Dark mineral green, emerald energy light, warm platinum/gold accents. Real people, real machinery, real infrastructure feel. Cinematic but credible.",
+  "compositions": [
+    {
+      "name": "Hero",
+      "scene": "Pan-African industrial landscape with hydrogen/solar infrastructure, freight/logistics, mine/resource processing and construction; diverse African engineers/operators in foreground; dawn light; premium annual-report photography aesthetic.",
+      "aspect_ratio": "16:9"
+    },
+    {
+      "name": "Energy",
+      "scene": "African engineers at a clean hydrogen and solar energy facility, industrial scale, technical realism, modern PPE, premium corporate photography.",
+      "aspect_ratio": "4:3"
+    },
+    {
+      "name": "Resources",
+      "scene": "Responsible diamond/mineral processing environment, geology and precision sorting cues, no luxury-jewellery clichés, premium industrial photography.",
+      "aspect_ratio": "4:3"
+    },
+    {
+      "name": "Logistics",
+      "scene": "Southern African logistics corridor with freight trucks, containers, port cranes and operations staff, modern and efficient, premium industrial photography.",
+      "aspect_ratio": "4:3"
+    },
+    {
+      "name": "Food & Development",
+      "scene": "Modern agriculture and food-processing foreground with construction/infrastructure development in the background, African operators and engineers, premium corporate photography.",
+      "aspect_ratio": "4:3"
+    }
+  ],
+  "restrictions": [
+    "do not imply ownership of depicted facilities",
+    "do not depict identifiable third-party brands",
+    "do not imply government partnership",
+    "do not use unlicensed stock",
+    "do not add certification badges or association logos without documentary approval"
+  ]
+}
