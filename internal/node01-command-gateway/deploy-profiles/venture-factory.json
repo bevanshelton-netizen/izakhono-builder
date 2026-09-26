@@ -7,5 +7,6 @@
   "environment": "production",
   "mode": "compose",
   "compose_file": "products/venture-factory/docker-compose.yml",
+  "env_file": "/etc/izakhono/apps/venture-factory.env",
   "health_url": "http://127.0.0.1:9780/healthz"
 }

@@ -279,6 +279,7 @@ class Handler(BaseHTTPRequestHandler):
                 "owner_only": OWNER_ONLY,
                 "external_ai_providers_enabled": bool(ALLOW_EXTERNAL and not OWNER_ONLY),
                 "workflow_mode_configured": bool(WORKFLOW_KEY),
+                "subscriber_access_configured": bool(ACCESS_KEY),
                 "workflow_products": sorted(WORKFLOW_PRODUCTS),
                 "capabilities_ready": [x["capability"] for x in caps if x["status"] == "ready"],
             })

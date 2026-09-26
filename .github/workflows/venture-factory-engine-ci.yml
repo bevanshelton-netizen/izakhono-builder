@@ -35,9 +35,14 @@ jobs:
         run: node products/venture-factory/test.mjs
       - name: Deployment profile contract
         run: |
-          node -e "const p=require('./internal/node01-command-gateway/deploy-profiles/venture-factory.json'); if(p.mode!=='compose'||p.compose_file!=='products/venture-factory/docker-compose.yml'||p.health_url!=='http://127.0.0.1:9780/healthz') process.exit(1)"
+          node -e "const p=require('./internal/node01-command-gateway/deploy-profiles/venture-factory.json'); if(p.mode!=='compose'||p.compose_file!=='products/venture-factory/docker-compose.yml'||p.health_url!=='http://127.0.0.1:9780/healthz'||p.env_file!=='/etc/izakhono/apps/venture-factory.env') process.exit(1)"
+      - name: PowerShell launcher syntax
+        shell: pwsh
+        run: |
+          [scriptblock]::Create((Get-Content 'START-VENTURE-FACTORY-NODE01.ps1' -Raw)) | Out-Null
+          [scriptblock]::Create((Get-Content 'products/izakhono-ai-gateway/START-IZAKHONO-SUPER-AI-NODE01.ps1' -Raw)) | Out-Null
       - name: Privacy and spend gates
         run: |
           grep -Fq "tracking: false" products/venture-factory/server.mjs
           grep -Fq "No advertising spend is launched without explicit approval" products/venture-factory/server.mjs
-          ! grep -R --line-number -E 'VENTURE_FACTORY_OWNER_KEY=.+|IZAKHONO_SUPER_AI_INTERNAL_KEY=.+' products/venture-factory START-VENTURE-FACTORY-NODE01.ps1
+          ! grep -R --line-number -E 'VENTURE_FACTORY_OWNER_KEY=[A-Fa-f0-9]{32,}|IZAKHONO_SUPER_AI_INTERNAL_KEY=[A-Fa-f0-9]{32,}|IZAKHONO_SUPER_AI_WORKFLOW_KEY=[A-Fa-f0-9]{32,}' products/venture-factory START-VENTURE-FACTORY-NODE01.ps1

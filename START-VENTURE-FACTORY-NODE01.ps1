@@ -14,10 +14,28 @@ function Write-ReceiptAndStop([string]$Message) {
     ('Generated: ' + (Get-Date -Format 'yyyy-MM-dd HH:mm:ss K'))
     'DEPLOYMENT_ACCEPTED=false'
     'LOCAL_HEALTH=UNVERIFIED'
+    'OWNER_ACCESS=UNVERIFIED'
     'PUBLIC_HTTPS=UNVERIFIED'
     ('DETAIL=' + $Message)
   ) | Set-Content -Path $receipt -Encoding UTF8
   throw $Message
+}
+
+function New-HexSecret([int]$Bytes = 32) {
+  $buffer = New-Object byte[] $Bytes
+  $rng = [Security.Cryptography.RandomNumberGenerator]::Create()
+  try { $rng.GetBytes($buffer) } finally { $rng.Dispose() }
+  return ([BitConverter]::ToString($buffer)).Replace('-', '').ToLowerInvariant()
+}
+
+function Read-EnvValue([string]$Content, [string]$Key) {
+  foreach ($line in ($Content -split "[
+]+")) {
+    if ($line.StartsWith($Key + '=')) {
+      return $line.Substring($Key.Length + 1).Trim()
+    }
+  }
+  return ''
 }
 
 $repo = (Resolve-Path $PSScriptRoot).Path
@@ -39,65 +57,125 @@ if ($distros -notcontains $Distro) {
   else { Write-ReceiptAndStop 'IZAKHONO owner-host Ubuntu is not installed.' }
 }
 
+Write-Host '[1/6] Preparing protected Venture Factory runtime secrets...' -ForegroundColor Cyan
+$envText = ((& wsl.exe -d $Distro -u root -- bash -lc "if [ -f /etc/izakhono/apps/venture-factory.env ]; then cat /etc/izakhono/apps/venture-factory.env; fi") -join "
+")
+$ownerKey = Read-EnvValue $envText 'VENTURE_FACTORY_OWNER_KEY'
+$aiInternalKey = Read-EnvValue $envText 'IZAKHONO_SUPER_AI_INTERNAL_KEY'
+$aiWorkflowKey = Read-EnvValue $envText 'IZAKHONO_SUPER_AI_WORKFLOW_KEY'
+
+if (-not $ownerKey -or -not $aiInternalKey -or -not $aiWorkflowKey) {
+  $ownerKey = New-HexSecret 32
+  $aiInternalKey = New-HexSecret 32
+  $aiWorkflowKey = New-HexSecret 32
+  $payload = @(
+    ('VENTURE_FACTORY_OWNER_KEY=' + $ownerKey)
+    'IZAKHONO_SUPER_AI_URL=http://host.docker.internal:9595'
+    ('IZAKHONO_SUPER_AI_INTERNAL_KEY=' + $aiInternalKey)
+    ('IZAKHONO_SUPER_AI_WORKFLOW_KEY=' + $aiWorkflowKey)
+    'VENTURE_FACTORY_PUBLIC_PLANNING=false'
+  ) -join "
+"
+
+  $payload | & wsl.exe -d $Distro -u root -- bash -lc "install -d -m 700 /etc/izakhono/apps && umask 077 && cat > /etc/izakhono/apps/venture-factory.env && chmod 600 /etc/izakhono/apps/venture-factory.env"
+  if ($LASTEXITCODE -ne 0) { Write-ReceiptAndStop 'Could not create protected Venture Factory env file.' }
+}
+
+$env:IZAKHONO_AI_GATEWAY_INTERNAL_KEY = $aiInternalKey
+$env:IZAKHONO_AI_WORKFLOW_KEY = $aiWorkflowKey
+$env:IZAKHONO_AI_WORKFLOW_PRODUCTS = 'venture-factory,izakhono-builder'
+if ([string]::IsNullOrWhiteSpace($env:IZAKHONO_AI_OWNER_ONLY)) { $env:IZAKHONO_AI_OWNER_ONLY = 'true' }
+if ([string]::IsNullOrWhiteSpace($env:IZAKHONO_AI_ALLOW_EXTERNAL)) { $env:IZAKHONO_AI_ALLOW_EXTERNAL = 'false' }
+
+Write-Host '[2/6] Verifying SUPER AI owner runtime...' -ForegroundColor Cyan
+$superAiState = 'FALLBACK'
 $superAi = Join-Path $repo 'products\izakhono-ai-gateway\START-IZAKHONO-SUPER-AI-NODE01.ps1'
 if (Test-Path $superAi) {
-  Write-Host '[1/4] Verifying SUPER AI owner runtime...' -ForegroundColor Cyan
-  try { & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $superAi } catch {
-    Write-Warning 'SUPER AI bootstrap did not pass. Venture Factory can still use deterministic fallback.'
+  try {
+    & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $superAi
+    $aiHealth = Invoke-RestMethod -Uri 'http://127.0.0.1:9595/healthz' -TimeoutSec 5
+    if ($aiHealth.ok -and $aiHealth.workflow_mode_configured) { $superAiState = 'VERIFIED' }
+  } catch {
+    Write-Warning 'SUPER AI did not pass. Venture Factory will remain usable through deterministic fallback.'
   }
 }
 
-Write-Host '[2/4] Activating owned Command Centre...' -ForegroundColor Cyan
+Write-Host '[3/6] Activating owned Command Centre...' -ForegroundColor Cyan
 $commandCentre = Join-Path $repo 'ACTIVATE-IZAKHONO-COMMAND-CENTRE.ps1'
 & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $commandCentre -Distro $Distro
 if ($LASTEXITCODE -ne 0) { Write-ReceiptAndStop 'IZAKHONO Command Centre activation failed.' }
 
-Write-Host '[3/4] Reading owner deployment credential...' -ForegroundColor Cyan
+Write-Host '[4/6] Reading owner deployment credential...' -ForegroundColor Cyan
 $token = ((& wsl.exe -d $Distro -u root -- bash -lc 'cat /etc/izakhono/commands.owner-token') -join '').Trim()
 if (-not $token) { Write-ReceiptAndStop 'Owner command credential is unavailable.' }
 
 $headers = @{ 'x-admin-secret' = $token; 'content-type' = 'application/json' }
 $body = @{ input = ('/deploy venture-factory ' + $sha) } | ConvertTo-Json -Compress
 
-Write-Host '[4/4] Handing deployment to IZAKHONO CONTROL -> NODE...' -ForegroundColor Cyan
+Write-Host '[5/6] Handing deployment to IZAKHONO CONTROL -> NODE...' -ForegroundColor Cyan
 try {
   $deployment = Invoke-RestMethod -Uri 'http://127.0.0.1:8091/api/commands/run' -Method Post -Headers $headers -Body $body -TimeoutSec 40
 } catch {
   Write-ReceiptAndStop ('Owned deployment request failed: ' + $_.Exception.Message)
 }
 
-Start-Sleep -Seconds 3
+$jobId = ''
+try { $jobId = [string]$deployment.data.id } catch {}
+
+Write-Host '[6/6] Waiting for local engine and owner-access verification...' -ForegroundColor Cyan
 $healthText = ''
 $localVerified = $false
-try {
-  $health = Invoke-RestMethod -Uri 'http://127.0.0.1:9780/healthz' -TimeoutSec 5
-  $healthText = ($health | ConvertTo-Json -Compress -Depth 8)
-  $localVerified = [bool]$health.ok
-} catch {
-  $healthText = 'UNREACHABLE: ' + $_.Exception.Message
+$ownerAccessVerified = $false
+for ($i = 0; $i -lt 90; $i++) {
+  try {
+    $health = Invoke-RestMethod -Uri 'http://127.0.0.1:9780/healthz' -TimeoutSec 4
+    if ($health.ok) {
+      $healthText = ($health | ConvertTo-Json -Compress -Depth 8)
+      $localVerified = $true
+      break
+    }
+  } catch {}
+  Start-Sleep -Seconds 2
+}
+
+if ($localVerified) {
+  try {
+    $planHeaders = @{ 'x-venture-factory-key' = $ownerKey }
+    $plans = Invoke-RestMethod -Uri 'http://127.0.0.1:9780/api/plans?limit=1' -Headers $planHeaders -TimeoutSec 5
+    if ($plans.ok) { $ownerAccessVerified = $true }
+  } catch {}
 }
 
 $desktop = [Environment]::GetFolderPath('Desktop')
 $receipt = Join-Path $desktop 'IZAKHONO-VENTURE-FACTORY-DEPLOYMENT.txt'
 $localState = if ($localVerified) { 'VERIFIED' } else { 'UNVERIFIED' }
+$ownerState = if ($ownerAccessVerified) { 'VERIFIED' } else { 'UNVERIFIED' }
 @(
   'IZAKHONO VENTURE FACTORY DEPLOYMENT'
   ('Generated: ' + (Get-Date -Format 'yyyy-MM-dd HH:mm:ss K'))
   ('COMMIT_SHA=' + $sha)
   ('DEPLOYMENT_ACCEPTED=' + [string][bool]$deployment.ok)
+  ('DEPLOYMENT_JOB_ID=' + $jobId)
   ('CONTROL_MESSAGE=' + [string]$deployment.message)
+  ('SUPER_AI_WORKFLOW=' + $superAiState)
   ('LOCAL_HEALTH=' + $localState)
+  ('OWNER_ACCESS=' + $ownerState)
   ('LOCAL_HEALTH_RESPONSE=' + $healthText)
+  'SECRETS_FILE=/etc/izakhono/apps/venture-factory.env'
+  'SECRETS_NOT_PRINTED=true'
   'PUBLIC_HTTPS=UNVERIFIED'
   'PUBLIC_LIVE_NOT_CLAIMED=true'
   'NEXT_GATE=EDGE_TLS_DNS_AND_VERIFIED_EXPERIENCE'
 ) | Set-Content -Path $receipt -Encoding UTF8
 
 Write-Host ''
-if ($localVerified) {
-  Write-Host '[PASS] Venture Factory owner runtime is responding locally.' -ForegroundColor Green
+if ($localVerified -and $ownerAccessVerified) {
+  Write-Host '[PASS] Venture Factory owner runtime and protected owner API are verified locally.' -ForegroundColor Green
+} elseif ($localVerified) {
+  Write-Warning 'Local runtime is healthy, but protected owner API verification did not pass.'
 } else {
   Write-Warning 'Deployment was accepted but local health is not yet verified.'
 }
+Write-Host ('SUPER AI workflow: ' + $superAiState)
 Write-Host ('Receipt: ' + $receipt)
 Write-Host 'Public-live status remains UNVERIFIED until EDGE/TLS/DNS and the actual experience are proven.'
