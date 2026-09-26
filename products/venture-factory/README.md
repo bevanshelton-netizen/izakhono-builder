@@ -32,3 +32,22 @@ A plan is not a live business. Promotion into IZAKHONO Builder and public deploy
 ## Live rule
 
 Do not call this service public-live until the owned route returns HTTPS 200 and the verified Venture Factory experience. An external resilience route does not replace the owned engine.
+
+
+## Builder promotion bridge
+
+The standalone engine can promote an owner-approved saved plan into IZAKHONO Builder.
+
+Required runtime settings:
+
+- `IZAKHONO_BUILDER_URL`
+- `IZAKHONO_BUILDER_ADMIN_KEY`
+
+Owner-only endpoints:
+
+- `POST /api/plans/:id/build`
+- `GET /api/builds`
+
+The build action creates the Builder project and runs its plan, generate and validation sequence. It persists a local build receipt and remains fail-closed: `public_live` stays `false` until the normal deployment verification gates pass.
+
+Enabling `VENTURE_FACTORY_PUBLIC_PLANNING=true` only opens plan creation. It does **not** expose saved plans, Builder promotion, build receipts or any owner action.
