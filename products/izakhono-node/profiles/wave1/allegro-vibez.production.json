@@ -2,12 +2,15 @@
   "source": "izakhono-code",
   "repository": "allegro-vibez",
   "app": "allegro-vibez",
-  "ref": "0b649ee6a5e88e489d0ebabc2280e4b2870fc105",
+  "ref": "edc2294f6b98792e6459679a5ce07d4813e6f9f6",
   "environment": "production",
   "mode": "single",
   "container_port": 8080,
   "health_path": "/healthz",
   "data_path": "/app/data",
   "dockerfile": "Dockerfile",
-  "public_build_env_file": "/etc/izakhono/apps/allegro-vibez.public-build.env"
+  "public_build_env_file": "/etc/izakhono/apps/allegro-vibez.public-build.env",
+  "release_build_arg": "IZAKHONO_RELEASE_ID",
+  "health_release_field": "release_id",
+  "health_product_field": "product"
 }
