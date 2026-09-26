@@ -23,6 +23,9 @@ PUBLIC_BUILD_ENV_FILE="$(get public_build_env_file)"
 DOCKERFILE="$(get dockerfile)"
 COMPOSE_FILE="$(get compose_file)"
 DATA_PATH="$(get data_path)"
+RELEASE_BUILD_ARG="$(get release_build_arg)"
+HEALTH_RELEASE_FIELD="$(get health_release_field)"
+HEALTH_PRODUCT_FIELD="$(get health_product_field)"
 
 DOCKERFILE="${DOCKERFILE:-Dockerfile}"
 COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.yml}"
@@ -47,6 +50,12 @@ fi
 if [[ -n "$PUBLIC_URL" ]]; then
   [[ "$PUBLIC_URL" == https://* ]] || { echo "public-url-must-use-https" >&2; exit 24; }
 fi
+if [[ -n "$RELEASE_BUILD_ARG" ]]; then
+  [[ "$RELEASE_BUILD_ARG" =~ ^[A-Z][A-Z0-9_]{1,63}$ ]] || { echo "invalid-release-build-arg" >&2; exit 24; }
+fi
+for field in "$HEALTH_RELEASE_FIELD" "$HEALTH_PRODUCT_FIELD"; do
+  [[ -z "$field" || "$field" =~ ^[A-Za-z][A-Za-z0-9_-]{0,63}$ ]] || { echo "invalid-health-identity-field" >&2; exit 24; }
+done
 
 if [[ -n "$ENV_FILE" ]]; then
   ENV_REAL="$(readlink -f "$ENV_FILE")"
@@ -104,6 +113,31 @@ fi
 echo "IZAKHONO_NODE_SOURCE=$REPO"
 echo "IZAKHONO_NODE_RESOLVED_COMMIT=$SHA"
 echo "IZAKHONO_NODE_ENVIRONMENT=$ENVIRONMENT"
+
+if [[ -n "$RELEASE_BUILD_ARG" ]]; then
+  BUILD_ARGS+=(--build-arg "$RELEASE_BUILD_ARG=$SHA")
+fi
+
+verify_release_identity(){
+  local url="$1"
+  [[ -n "$HEALTH_RELEASE_FIELD" ]] || return 0
+  local payload
+  payload="$(curl -fsS --max-time 5 "$url")" || return 1
+  python3 - "$payload" "$HEALTH_RELEASE_FIELD" "$SHA" "$HEALTH_PRODUCT_FIELD" "$APP" <<'PY'
+import json, sys
+payload, release_field, expected_release, product_field, expected_product = sys.argv[1:]
+try:
+    data = json.loads(payload)
+except Exception:
+    raise SystemExit(1)
+if str(data.get(release_field, "")) != expected_release:
+    raise SystemExit(1)
+if product_field and str(data.get(product_field, "")) != expected_product:
+    raise SystemExit(1)
+if data.get("ok") is not True:
+    raise SystemExit(1)
+PY
+}
 
 if [[ "$MODE" == "compose" ]]; then
   docker compose version >/dev/null 2>&1 || { echo "missing docker compose" >&2; exit 28; }
@@ -174,7 +208,8 @@ docker "${ARGS[@]}" >/dev/null
 HOST_PORT="$(docker port "$CANARY" "$PORT/tcp" | sed -E 's/.*:([0-9]+)$/\1/' | head -1)"
 pass=0
 for _ in $(seq 1 45); do
-  if curl -fsS --max-time 5 "http://127.0.0.1:$HOST_PORT$HEALTH" >/dev/null; then pass=1; break; fi
+  canary_url="http://127.0.0.1:$HOST_PORT$HEALTH"
+  if curl -fsS --max-time 5 "$canary_url" >/dev/null && verify_release_identity "$canary_url"; then pass=1; break; fi
   sleep 2
 done
 [[ "$pass" == 1 ]] || {
@@ -206,7 +241,8 @@ rollback(){
 docker "${PROD_ARGS[@]}" >/dev/null
 pass=0
 for _ in $(seq 1 45); do
-  if curl -fsS --max-time 5 "http://127.0.0.1:$PORT$HEALTH" >/dev/null; then pass=1; break; fi
+  prod_url="http://127.0.0.1:$PORT$HEALTH"
+  if curl -fsS --max-time 5 "$prod_url" >/dev/null && verify_release_identity "$prod_url"; then pass=1; break; fi
   sleep 2
 done
 [[ "$pass" == 1 ]] || { rollback; exit 36; }
