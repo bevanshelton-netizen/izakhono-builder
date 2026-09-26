@@ -1,0 +1,21 @@
+{$NAV_PUBLIC_HOST:nav.izakhonoafrica.co.za} {
+  encode zstd gzip
+
+  @engine path /health /api/* /v1/* /tiles/*
+  handle @engine {
+    reverse_proxy nav-engine:8788
+  }
+
+  handle {
+    root * /srv/nav
+    try_files {path} /index.html
+    file_server
+  }
+
+  header {
+    X-Content-Type-Options "nosniff"
+    Referrer-Policy "no-referrer"
+    Permissions-Policy "camera=(), geolocation=(self), microphone=(self)"
+    -Server
+  }
+}
