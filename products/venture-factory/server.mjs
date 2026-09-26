@@ -630,6 +630,17 @@ const server = http.createServer(async (req, res) => {
           headers: { 'content-type': 'application/json' },
           body: { email, password, entity_slug: entitySlug },
         });
+        if (login.mfa_required) {
+          return json(res, 202, {
+            ok: true,
+            mfa_required: true,
+            challenge_token: login.challenge_token,
+            challenge_expires_at: login.challenge_expires_at || null,
+            methods: Array.isArray(login.methods) ? login.methods : ['totp','recovery_code'],
+            subject: login.subject || email,
+            entity: login.entity || null,
+          });
+        }
         return json(res, 200, {
           ok: true,
           access_token: login.access_token,
@@ -638,12 +649,52 @@ const server = http.createServer(async (req, res) => {
           subject: login.subject || email,
           entity: login.entity || null,
           role: login.role || null,
+          mfa: login.mfa === true,
         });
       } catch (e) {
         const status = Number(e?.status) || 502;
         return json(res, status === 401 || status === 403 || status === 422 ? status : 502, {
           ok: false,
           error: cleanString(e?.message, 160) || 'login_failed',
+        });
+      }
+    }
+
+    if (req.method === 'POST' && url.pathname === '/api/customer/login/mfa') {
+      if (!customerMode || !idUrl) return json(res, 404, { ok: false, error: 'customer_mode_disabled' });
+      let body;
+      try { body = await readJson(req, 100_000); } catch { return json(res, 400, { ok: false, error: 'invalid_json' }); }
+      const challengeToken = cleanString(body.challenge_token, 300);
+      const code = cleanString(body.code, 20);
+      const recoveryCode = cleanString(body.recovery_code, 80);
+      if (!challengeToken || (!code && !recoveryCode)) {
+        return json(res, 422, { ok: false, error: 'challenge_and_factor_required' });
+      }
+      try {
+        const login = await requestJson(idUrl + '/api/v1/login/mfa', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: {
+            challenge_token: challengeToken,
+            ...(code ? { code } : {}),
+            ...(recoveryCode ? { recovery_code: recoveryCode } : {}),
+          },
+        });
+        return json(res, 200, {
+          ok: true,
+          access_token: login.access_token,
+          token_type: login.token_type || 'Bearer',
+          expires_at: login.expires_at || null,
+          subject: login.subject || null,
+          entity: login.entity || null,
+          role: login.role || null,
+          mfa: true,
+        });
+      } catch (e) {
+        const status = Number(e?.status) || 502;
+        return json(res, [401,403,422,429].includes(status) ? status : 502, {
+          ok: false,
+          error: cleanString(e?.message, 160) || 'mfa_login_failed',
         });
       }
     }

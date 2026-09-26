@@ -95,3 +95,17 @@ No commercial price is hard-coded into source. Customer mode remains disabled by
 ### Production gate
 
 IZAKHONO ID's current repository state is still an alpha identity boundary. Do not expose paid customer login broadly until MFA, account recovery, email verification, brute-force protection, audit/security controls and the rest of its documented production gates are completed. The customer-mode integration is built now so Venture Factory can plug into the hardened ID/ACCESS/PAY stack without redesigning its product engine later.
+
+
+## Customer MFA login
+
+Venture Factory supports IZAKHONO ID's TOTP MFA challenge flow without storing identity passwords or TOTP secrets itself.
+
+Customer login is two-stage when MFA is enabled:
+
+1. `POST /api/customer/login` forwards the password login to IZAKHONO ID.
+2. If ID returns `mfa_required`, Venture Factory returns the short-lived challenge without issuing a local session.
+3. `POST /api/customer/login/mfa` forwards either the authenticator code or one-time recovery code to IZAKHONO ID.
+4. Only after ID verifies the second factor is the bearer session returned and usable for ACCESS/PAY/plan creation.
+
+The browser stores only the bearer session in session storage. MFA challenges are held in memory and cleared on completion/logout. Builder promotion remains owner-only.
