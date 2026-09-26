@@ -20,6 +20,10 @@ ADMIN_KEY = os.getenv("IZAKHONO_ID_ADMIN_KEY", "")
 INTERNAL_KEY = os.getenv("IZAKHONO_ID_INTERNAL_KEY", "")
 SESSION_HOURS = int(os.getenv("IZAKHONO_ID_SESSION_HOURS", "12"))
 PBKDF2_ITERATIONS = int(os.getenv("IZAKHONO_ID_PBKDF2_ITERATIONS", "600000"))
+LOGIN_MAX_FAILURES = int(os.getenv("IZAKHONO_ID_LOGIN_MAX_FAILURES", "5"))
+LOGIN_WINDOW_SECONDS = int(os.getenv("IZAKHONO_ID_LOGIN_WINDOW_SECONDS", "900"))
+LOGIN_LOCK_SECONDS = int(os.getenv("IZAKHONO_ID_LOGIN_LOCK_SECONDS", "900"))
+REQUIRE_EMAIL_VERIFICATION = os.getenv("IZAKHONO_ID_REQUIRE_EMAIL_VERIFICATION", "true").lower() != "false"
 MAX_BODY = 200_000
 
 def now():
@@ -84,9 +88,19 @@ def db_connect():
       password_salt TEXT NOT NULL,
       password_hash TEXT NOT NULL,
       status TEXT NOT NULL DEFAULT 'active',
+      email_verified_at TEXT,
+      last_login_at TEXT,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
     )""")
+    user_columns = {row[1] for row in db.execute("PRAGMA table_info(users)").fetchall()}
+    if "email_verified_at" not in user_columns:
+        db.execute("ALTER TABLE users ADD COLUMN email_verified_at TEXT")
+        # Existing admin-provisioned accounts predate verification state and were already treated as trusted.
+        # Backfill only during the one-time schema migration; future unverified accounts remain unverified.
+        db.execute("UPDATE users SET email_verified_at=created_at WHERE email_verified_at IS NULL AND created_at IS NOT NULL")
+    if "last_login_at" not in user_columns:
+        db.execute("ALTER TABLE users ADD COLUMN last_login_at TEXT")
     db.execute("""CREATE TABLE IF NOT EXISTS memberships(
       id TEXT PRIMARY KEY,
       entity_id TEXT NOT NULL,
@@ -111,8 +125,88 @@ def db_connect():
       FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
       FOREIGN KEY(membership_id) REFERENCES memberships(id) ON DELETE CASCADE
     )""")
+    db.execute("""CREATE TABLE IF NOT EXISTS login_attempts(
+      fingerprint TEXT PRIMARY KEY,
+      failures INTEGER NOT NULL DEFAULT 0,
+      window_started_at INTEGER NOT NULL,
+      locked_until INTEGER,
+      updated_at INTEGER NOT NULL
+    )""")
+    db.execute("""CREATE TABLE IF NOT EXISTS audit_events(
+      id TEXT PRIMARY KEY,
+      event_type TEXT NOT NULL,
+      entity_id TEXT,
+      user_id TEXT,
+      subject_hash TEXT,
+      detail TEXT,
+      created_at TEXT NOT NULL
+    )""")
+    db.execute("CREATE INDEX IF NOT EXISTS idx_audit_events_created_at ON audit_events(created_at)")
+    db.execute("CREATE INDEX IF NOT EXISTS idx_audit_events_user ON audit_events(user_id,created_at)")
     db.commit()
     return db
+
+def subject_hash(value):
+    return sha256_hex(str(value or "").strip().lower()) if value else None
+
+def audit(db, event_type, entity_id=None, user_id=None, subject=None, detail=""):
+    db.execute(
+        "INSERT INTO audit_events(id,event_type,entity_id,user_id,subject_hash,detail,created_at) VALUES(?,?,?,?,?,?,?)",
+        (
+            "aud_" + uuid.uuid4().hex,
+            str(event_type)[:80],
+            entity_id,
+            user_id,
+            subject_hash(subject),
+            str(detail or "")[:1000],
+            now_iso(),
+        ),
+    )
+
+def login_fingerprint(entity_slug, email, client_ip):
+    raw = f"{str(entity_slug or '').lower()}|{str(email or '').lower()}|{str(client_ip or '')}"
+    return sha256_hex(raw)
+
+def login_guard(db, fingerprint):
+    row = db.execute("SELECT * FROM login_attempts WHERE fingerprint=?", (fingerprint,)).fetchone()
+    if not row:
+        return True, 0
+    current = int(time.time())
+    locked_until = int(row["locked_until"] or 0)
+    if locked_until > current:
+        return False, max(1, locked_until - current)
+    if current - int(row["window_started_at"]) > LOGIN_WINDOW_SECONDS:
+        db.execute("DELETE FROM login_attempts WHERE fingerprint=?", (fingerprint,))
+        db.commit()
+        return True, 0
+    return True, 0
+
+def record_login_failure(db, fingerprint):
+    current = int(time.time())
+    row = db.execute("SELECT * FROM login_attempts WHERE fingerprint=?", (fingerprint,)).fetchone()
+    if not row or current - int(row["window_started_at"]) > LOGIN_WINDOW_SECONDS:
+        failures = 1
+        started = current
+    else:
+        failures = int(row["failures"]) + 1
+        started = int(row["window_started_at"])
+    locked_until = current + LOGIN_LOCK_SECONDS if failures >= LOGIN_MAX_FAILURES else None
+    db.execute(
+        """INSERT INTO login_attempts(fingerprint,failures,window_started_at,locked_until,updated_at)
+           VALUES(?,?,?,?,?)
+           ON CONFLICT(fingerprint) DO UPDATE SET
+             failures=excluded.failures,
+             window_started_at=excluded.window_started_at,
+             locked_until=excluded.locked_until,
+             updated_at=excluded.updated_at""",
+        (fingerprint, failures, started, locked_until, current),
+    )
+    db.commit()
+    return failures, locked_until
+
+def clear_login_failures(db, fingerprint):
+    db.execute("DELETE FROM login_attempts WHERE fingerprint=?", (fingerprint,))
+    db.commit()
 
 def issue_session(db, entity, user, membership):
     token = secrets.token_urlsafe(48)
@@ -188,6 +282,13 @@ class Handler(BaseHTTPRequestHandler):
                 "service": "izakhono-id",
                 "entity_isolation": True,
                 "session_scope": "entity",
+                "email_verification_required": REQUIRE_EMAIL_VERIFICATION,
+                "login_rate_limit": {
+                    "max_failures": LOGIN_MAX_FAILURES,
+                    "window_seconds": LOGIN_WINDOW_SECONDS,
+                    "lock_seconds": LOGIN_LOCK_SECONDS,
+                },
+                "audit_events": True,
             })
         if p == "/api/v1/me":
             token = bearer_token(self)
@@ -245,8 +346,9 @@ class Handler(BaseHTTPRequestHandler):
                         return send_json(self, 409, {"ok": False, "error": "user_exists"})
                     user_id = "usr_" + uuid.uuid4().hex
                     ts = now_iso()
-                    db.execute("""INSERT INTO users(id,email,password_salt,password_hash,created_at,updated_at)
-                                  VALUES(?,?,?,?,?,?)""", (user_id, email, salt, digest, ts, ts))
+                    db.execute("""INSERT INTO users(id,email,password_salt,password_hash,email_verified_at,created_at,updated_at)
+                                  VALUES(?,?,?,?,?,?,?)""", (user_id, email, salt, digest, ts, ts, ts))
+                    audit(db, "user.admin_created", user_id=user_id, subject=email, detail="created_by_admin")
                     db.commit()
                 return send_json(self, 201, {"ok": True, "user": {"id": user_id, "email": email}})
             except (ValueError, json.JSONDecodeError) as exc:
@@ -275,23 +377,66 @@ class Handler(BaseHTTPRequestHandler):
             except (ValueError, json.JSONDecodeError) as exc:
                 return send_json(self, 422, {"ok": False, "error": str(exc)})
 
+        if p == "/api/v1/admin/revoke-user-sessions":
+            if not self.admin_authorized():
+                return send_json(self, 401, {"ok": False, "error": "unauthorized"})
+            try:
+                data = self.read_json()
+                email = clean_email(data.get("email"))
+                with db_connect() as db:
+                    user = db.execute("SELECT * FROM users WHERE email=?", (email,)).fetchone()
+                    if not user:
+                        return send_json(self, 404, {"ok": False, "error": "user_not_found"})
+                    ts = now_iso()
+                    db.execute("UPDATE sessions SET revoked_at=? WHERE user_id=? AND revoked_at IS NULL", (ts, user["id"]))
+                    audit(db, "sessions.admin_revoked", user_id=user["id"], subject=email)
+                    db.commit()
+                return send_json(self, 200, {"ok": True})
+            except (ValueError, json.JSONDecodeError) as exc:
+                return send_json(self, 422, {"ok": False, "error": str(exc)})
+
         if p == "/api/v1/login":
             try:
                 data = self.read_json()
                 entity_slug = clean_slug(data.get("entity_slug"), "entity_slug")
                 email = clean_email(data.get("email"))
                 password = str(data.get("password") or "")
+                fingerprint = login_fingerprint(entity_slug, email, self.client_address[0])
                 with db_connect() as db:
+                    allowed, retry_after = login_guard(db, fingerprint)
+                    if not allowed:
+                        audit(db, "login.rate_limited", subject=email, detail=f"retry_after={retry_after}")
+                        db.commit()
+                        return send_json(self, 429, {"ok": False, "error": "too_many_attempts", "retry_after_seconds": retry_after})
+
                     entity = db.execute("SELECT * FROM entities WHERE slug=? AND status='active'", (entity_slug,)).fetchone()
                     user = db.execute("SELECT * FROM users WHERE email=? AND status='active'", (email,)).fetchone()
                     if not entity or not user or not verify_password(password, user["password_salt"], user["password_hash"]):
+                        failures, locked_until = record_login_failure(db, fingerprint)
+                        audit(db, "login.failed", entity_id=entity["id"] if entity else None, user_id=user["id"] if user else None, subject=email, detail=f"failures={failures}")
+                        db.commit()
+                        if locked_until:
+                            return send_json(self, 429, {"ok": False, "error": "too_many_attempts", "retry_after_seconds": LOGIN_LOCK_SECONDS})
                         return send_json(self, 401, {"ok": False, "error": "invalid_credentials"})
+
+                    if REQUIRE_EMAIL_VERIFICATION and not user["email_verified_at"]:
+                        audit(db, "login.email_unverified", entity_id=entity["id"], user_id=user["id"], subject=email)
+                        db.commit()
+                        return send_json(self, 403, {"ok": False, "error": "email_verification_required"})
+
                     membership = db.execute("""SELECT * FROM memberships
                                                WHERE entity_id=? AND user_id=? AND status='active'""",
                                             (entity["id"], user["id"])).fetchone()
                     if not membership:
+                        audit(db, "login.membership_missing", entity_id=entity["id"], user_id=user["id"], subject=email)
+                        db.commit()
                         return send_json(self, 403, {"ok": False, "error": "entity_membership_required"})
+
+                    clear_login_failures(db, fingerprint)
                     token, session_id, expires_at = issue_session(db, entity, user, membership)
+                    db.execute("UPDATE users SET last_login_at=?,updated_at=? WHERE id=?", (now_iso(), now_iso(), user["id"]))
+                    audit(db, "login.succeeded", entity_id=entity["id"], user_id=user["id"], subject=email, detail=f"role={membership['role']}")
+                    db.commit()
                 return send_json(self, 200, {
                     "ok": True,
                     "access_token": token,
@@ -311,8 +456,34 @@ class Handler(BaseHTTPRequestHandler):
                 session = find_session(db, token)
                 if session:
                     db.execute("UPDATE sessions SET revoked_at=? WHERE id=?", (now_iso(), session["id"]))
+                    audit(db, "logout", entity_id=session["entity_id"], user_id=session["user_id"], subject=session["user_email"])
                     db.commit()
             return send_json(self, 200, {"ok": True})
+
+        if p == "/api/v1/change-password":
+            token = bearer_token(self)
+            try:
+                data = self.read_json()
+                current_password = str(data.get("current_password") or "")
+                new_password = str(data.get("new_password") or "")
+                with db_connect() as db:
+                    session = find_session(db, token)
+                    if not session:
+                        return send_json(self, 401, {"ok": False, "error": "invalid_session"})
+                    user = db.execute("SELECT * FROM users WHERE id=? AND status='active'", (session["user_id"],)).fetchone()
+                    if not user or not verify_password(current_password, user["password_salt"], user["password_hash"]):
+                        audit(db, "password.change_failed", entity_id=session["entity_id"], user_id=session["user_id"], subject=session["user_email"])
+                        db.commit()
+                        return send_json(self, 401, {"ok": False, "error": "invalid_current_password"})
+                    salt, digest = hash_password(new_password)
+                    ts = now_iso()
+                    db.execute("UPDATE users SET password_salt=?,password_hash=?,updated_at=? WHERE id=?", (salt, digest, ts, user["id"]))
+                    db.execute("UPDATE sessions SET revoked_at=? WHERE user_id=? AND id<>? AND revoked_at IS NULL", (ts, user["id"], session["id"]))
+                    audit(db, "password.changed", entity_id=session["entity_id"], user_id=session["user_id"], subject=session["user_email"])
+                    db.commit()
+                return send_json(self, 200, {"ok": True, "other_sessions_revoked": True})
+            except (ValueError, json.JSONDecodeError) as exc:
+                return send_json(self, 422, {"ok": False, "error": str(exc)})
 
         if p == "/api/v1/internal/introspect":
             if not self.internal_authorized():
