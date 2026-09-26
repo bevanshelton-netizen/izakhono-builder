@@ -2,7 +2,7 @@
   "schema": "izakhono.runtime-fabric.release.v1",
   "product": "the-chancellor",
   "repository": "the-chancellor",
-  "approved_release_id": "eaece46fd4f23c06e449ed73df5ff1f368ff6e40",
+  "approved_release_id": "31919732e0b58ff99b962fbce5fb75aa5e531b05",
   "version": "v1-commercial",
   "health_path": "/api/health",
   "readiness_path": "/api/go-live",
@@ -23,5 +23,15 @@
     "require_readiness_before_paid_traffic": true,
     "node01_required": false,
     "external_fallback_must_remain_reversible": true
+  },
+  "approved_at": "2026-09-26T16:23:12Z",
+  "evidence": {
+    "external_runtime": "https://the-chancellor.onrender.com",
+    "health": "HTTP 200",
+    "release_match": true,
+    "persistence_boot_count": 4,
+    "persistence_proven": true,
+    "ready_for_paid_traffic": true,
+    "blockers": []
   }
 }
