@@ -23,6 +23,7 @@ fi
 mv "$NEW" "$PBF"
 mv "$NEW.md5" "$PBF.md5.remote"
 printf '%s  %s\n' "$actual" "$(basename "$PBF")" > "$PBF.md5"
+ln -f "$PBF" "$DATA_DIR/router/south-africa-latest.osm.pbf"
 echo "OSM data changed. Rebuilding PMTiles..."
 "$HERE/scripts/build-tiles.sh"
 echo "Restarting Valhalla and Martin against the new dataset..."
