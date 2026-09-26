@@ -53,6 +53,32 @@
       "productionConclusion": "failure-at-credentials-gate",
       "controlledDeployRun": 36231539007,
       "controlledDeployConclusion": "blocked-and-skipped"
+    },
+    "engine": {
+      "name": "IZAKHONO NAV ENGINE",
+      "version": "1.0.0",
+      "path": "products/izakhono-nav/engine",
+      "independentlyDeployable": true,
+      "node01Required": false,
+      "port": 8788,
+      "healthPath": "/health",
+      "runtimePath": "/v1/runtime",
+      "capabilities": [
+        "routing-boundary",
+        "search-boundary",
+        "tile-boundary",
+        "runtime-identity",
+        "health",
+        "rate-limiting"
+      ],
+      "failClosedWhenBackendsUnavailable": true,
+      "resilienceAdaptersOptIn": true,
+      "privacy": {
+        "analytics": false,
+        "adIdentifiers": false,
+        "behaviouralTracking": false,
+        "rawQueryLogging": false
+      }
     }
   }
 }
