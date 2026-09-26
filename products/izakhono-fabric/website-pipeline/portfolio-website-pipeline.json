@@ -256,5 +256,31 @@
     "crm_registry": "products/izakhono-crm/portfolio-crm-registry.json",
     "infrastructure_directive": "PORTFOLIO-INFRASTRUCTURE-DIRECTIVE-ADOPTION.md",
     "growth_directive": "IZAKHONO-PORTFOLIO-CEO-GROWTH-DIRECTIVE.md"
-  }
+  },
+  "reference_implementations": [
+    {
+      "id": "xqwaxqwamile-holdings",
+      "name": "!XQWAXQWAMILÉ HOLDINGS (PTY) LTD",
+      "legal_entity": "!XQWAXQWAMILÉ HOLDINGS (PTY) LTD",
+      "registration_number": "2017/315075/07",
+      "state": "GRAPHICS_AND_CAMPAIGN_BUILD",
+      "website_source": "bevanshelton-netizen/Downloads/sites/xqwaxqwamile-holdings",
+      "public_verified_url": "https://bevanshelton-netizen.github.io/Downloads/sites/xqwaxqwamile-holdings/",
+      "departments": {
+        "website_factory": "COMPLETE_VERIFIED",
+        "graphics_media_studio": "IN_PROGRESS",
+        "advertising_engine": "PENDING_GRAPHICS",
+        "lead_crm_engine": "FORM_ACTIVE_CRM_ADAPTER_PENDING",
+        "deployment_verification_engine": "EXTERNAL_VERIFIED_OWNED_PENDING"
+      },
+      "deployment_blocked_for_next_revision": true,
+      "release_requirements": [
+        "original rights-clear hero and sector visuals",
+        "desktop and mobile visual review",
+        "lead to CRM adapter verification",
+        "campaign assets approved",
+        "new revision HTTPS/content verification"
+      ]
+    }
+  ]
 }
