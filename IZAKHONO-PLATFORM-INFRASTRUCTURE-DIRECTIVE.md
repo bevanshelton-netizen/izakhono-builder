@@ -1,130 +1,141 @@
 # IZAKHONO Platform Infrastructure Directive
 
-**Status:** Portfolio-wide operating directive  
-**Issued:** 22 September 2026  
-**Operator:** IZAKHONO AFRICA (PTY) LTD  
-**Policy:** Owned-first, externally reversible
+**Status:** Portfolio-wide operating directive
+**Issued:** 22 September 2026
+**Amended:** 26 September 2026
+**Operator:** IZAKHONO AFRICA (PTY) LTD
+**Policy:** Owned-first, node-agnostic, externally reversible
 
 ## Decision
 
-Every IZAKHONO platform will target IZAKHONO-owned infrastructure as its primary technical home. Verified external infrastructure may remain in service, or be restored immediately, whenever it is needed for public availability, revenue continuity, distribution, resilience or recovery.
+Every IZAKHONO platform targets IZAKHONO-owned infrastructure as its preferred technical home, but **no individual machine is allowed to become a launch gate**.
 
-No platform will be taken offline merely to demonstrate infrastructure ownership. A platform moves to the owned public route only after that route is proven healthy.
+The authoritative unit is the approved source plus immutable release artifact. NODE01, NODE02, NODE03, NODE04 and approved external resilience hosts are execution targets. The same release must be able to move between them without rebuilding.
+
+Verified external infrastructure may remain in service, or be restored immediately, whenever needed for public availability, revenue continuity, distribution, resilience or recovery.
+
+No platform will be taken offline merely to demonstrate infrastructure ownership.
 
 ## Authoritative architecture
 
-The intended owned path is:
+The operating path is:
 
-`ISN-01 / NODE01 → CODE / Forge → Data, Auth, Storage, Queue and Analytics → Runtime → FORTRESS → EDGE / TLS → IZAKHONO DNS`
+`CODE / Forge → signed immutable release → IZAKHONO Runtime Fabric → FORTRESS → EDGE / TLS → IZAKHONO DNS`
 
-- NODE01 is the primary authority.
-- NODE02–NODE04 are reserved for backup, recovery and future scaling.
-- Forge and IZAKHONO Code hold the authoritative source and package history.
+The Runtime Fabric may contain:
+
+- NODE01 and any other healthy IZAKHONO-owned runtime;
+- the four-node k3s cluster when its physical members are installed and verified;
+- approved external resilience runtimes.
+
+**No runtime node is the source of truth.**
+
+- NODE01 may be a preferred owned host, but is not the primary authority.
+- NODE02–NODE04 are peers/secondary capacity, not dormant machines that must wait for NODE01.
+- Forge and IZAKHONO Code hold authoritative source and package history.
 - FORTRESS controls security policy, secrets boundaries, health checks and audit evidence.
-- EDGE terminates public HTTPS and routes traffic only to healthy services.
-- Backups, restore tests and rollback instructions are mandatory before public cutover.
+- EDGE terminates public HTTPS and routes traffic only to healthy, approved release identities.
+- Backups, restore tests and rollback instructions remain mandatory.
+
+See `infra/runtime-fabric/README.md`.
+
+## Node failure rule
+
+A NODE01 failure must be treated as **one failed runtime**, not as a portfolio-wide blocker.
+
+If NODE01 is unhealthy:
+
+1. EDGE removes it from traffic.
+2. Operations test the next owned runtime.
+3. If no owned runtime is healthy, the approved external resilience route carries traffic.
+4. NODE01 is repaired independently.
+5. It receives traffic again only after fresh health and release-identity verification.
+
+The same rule applies to every node.
 
 ## External infrastructure rule
 
-Vercel, Cloudflare, GitHub Pages, Cloudflare Tunnel, Tailscale Funnel, a controlled VPS gateway, and other approved providers may be used as public bridges or fallbacks.
+Vercel, Cloudflare, GitHub Pages, Cloudflare Tunnel, Tailscale Funnel, a controlled VPS gateway, and other approved providers may be used as public bridges or fallbacks where technically suitable.
 
 External infrastructure is:
 
 - permitted for immediate launch and revenue continuity;
-- retained until the owned route passes all public verification gates;
+- retained until owned capacity passes public verification;
 - replaceable without changing the product's authoritative source or ownership;
-- suitable for failover when NODE01, EDGE, DNS or TLS is unavailable;
-- not the portfolio's ultimate source of truth.
+- suitable for failover when any owned node, EDGE, DNS or TLS path is unavailable;
+- not the portfolio's source of truth.
 
-Supabase may remain in use for data, authentication, storage or resilience where already approved. Its replacement or migration requires a separate, tested data plan; hosting migration alone does not authorize a database cutover.
+Supabase may remain in use for data, authentication, storage or resilience where separately approved. Hosting migration alone does not authorize a database cutover.
 
 ## Hybrid live operating mode
 
-When a verified external production route is carrying users while the owned route is still being proven, the platform operates in **HYBRID LIVE** mode. This is an operating mode, not an additional evidence label: the platform remains **EXTERNAL LIVE VERIFIED** until the owned public cutover gates pass.
+When a verified external production route is carrying users while owned capacity is still being proven, the platform operates in **HYBRID LIVE** mode.
 
-In HYBRID LIVE mode, verified external traffic, backend, data, auth, payment or resilience services remain available while NODE01/EDGE is prepared. An owned-route failure must fail closed or fail back without taking the verified external route offline. See `infra/public-cutover/HYBRID-LIVE-STANDARD.md`.
+An owned-runtime failure must fail over or fail back without taking the verified external route offline. See `infra/public-cutover/HYBRID-LIVE-STANDARD.md`.
 
 ## Public cutover gates
 
-An owned deployment may be called **OWNED LIVE VERIFIED** only when all of the following pass:
+An owned deployment may be called **OWNED LIVE VERIFIED** when at least one owned runtime serving the approved release passes:
 
-1. Application and dependency health checks pass on the real target machine.
-2. The public domain returns the expected application over HTTPS.
+1. Application and dependency health checks on the real target.
+2. Public domain returns the expected application over HTTPS.
 3. DNS, certificates and EDGE routing are valid and monitored.
-4. Backup creation and a restore test succeed.
-5. A tested rollback or external failback route exists.
+4. Backup creation and restore evidence required by the product pass.
+5. A tested rollback or failover route exists.
 6. Secrets, customer data and administrative interfaces remain protected.
 7. Product content, legal pages, claims and payment boundaries are approved.
 
-Until then, the last verified external production route remains active.
+Completion of the four-node cluster is **not** a prerequisite for an individual product to be publicly available.
 
 ## Status language
-
-Every platform must use one of these evidence-based labels:
 
 | Label | Meaning |
 |---|---|
 | **BUILT / VERIFIED LOCALLY** | Package and local tests pass; no public availability claim. |
 | **EXTERNAL LIVE VERIFIED** | A named external URL has passed a current public check. |
-| **OWNED LIVE VERIFIED** | IZAKHONO DNS, HTTPS, EDGE and application health have passed the cutover gates. |
+| **OWNED LIVE VERIFIED** | At least one IZAKHONO-owned runtime plus DNS/HTTPS/EDGE/application health has passed the gates. |
+| **FABRIC LIVE VERIFIED** | Two or more independent approved runtimes have passed and EDGE failover has been tested. |
 | **NOT YET PUBLIC** | No currently verified public route exists. |
 
-The words “live,” “launched,” or “deployed” must not be used without the matching evidence.
+The words “live,” “launched,” or “deployed” must not be used without matching evidence.
 
 ## Commercial and payment continuity
 
 - iKhokha is the preferred South African payment route where the specific product, links, reconciliation process and legal pages are ready.
-- Existing verified payment and lead-intake routes remain active until their replacements pass end-to-end testing.
+- Existing verified payment and lead-intake routes remain active until replacements pass end-to-end testing.
 - A hosting change must never silently change pricing, billing, customer records or settlement instructions.
 - Public fallback may be activated immediately to protect sales and customer access.
-
-## Platforms covered
-
-This directive applies to the full IZAKHONO portfolio, including:
-
-- KORA, KORA Cinema, KORA Gospel TV and KORA Kids
-- Allegro-Vibez and Allegro Radio
-- Edu-Build and ECD360
-- FAISReady and DOXA-SURE
-- AUTO AI and Learner Driver SA
-- WorkNow, Memory Mania, Music School and Recording Studio
-- CROWNÉ by Netty
-- ZEELY-style platform, Business Websites / Supercool and The Chancellor
-- FORTRESS, IZAKHONO Code, IZAKHONO Work, IZAKHONO Cloud and IZAKHONO Send
-- every future IZAKHONO product unless a signed product-specific exception supersedes this directive
 
 ## Required platform inheritance
 
 Each platform repository, package or deployment record must carry:
 
-- the operator name and applicable trading name;
-- its authoritative source location and approved commit/version;
-- its owned target and currently verified public route;
-- its external fallback route;
-- its data, authentication and payment dependencies;
+- operator name and applicable trading name;
+- authoritative source and approved release/version;
+- configured runtime targets;
+- currently verified public route;
+- external fallback route;
+- data, authentication and payment dependencies;
 - health, backup, restore and rollback evidence;
-- one of the approved status labels above.
+- approved status label.
 
-If a platform cannot prove its owned public route, it must continue using or revert to its last verified external route while the owned path is repaired.
+Applications must not hard-code NODE01 as their only runtime endpoint.
 
-## Current evidence position
+## Relationship to the node cluster
 
-The available IZAKHONO build records show a substantial sovereign stack with local validation, Forge import and mirroring, runtime packaging, health gates, backup/restore controls and platform launchers. They do **not**, by themselves, prove that NODE01 is presently reachable through public IZAKHONO DNS and HTTPS.
+`infra/node-cluster` remains the long-term owner-controlled HA design. Its control-plane quorum and four-node proof apply to the cluster itself. They must not be interpreted as a requirement to hold every product offline until all four physical nodes exist.
 
-Therefore the current portfolio position is:
-
-- IZAKHONO-owned infrastructure is the primary destination.
-- External infrastructure is an approved and reversible production bridge.
-- No existing verified external service is removed before owned public verification.
-- NODE01 public status remains unclaimed until a fresh machine-side and public-side verification report passes.
+The immediate operating layer is the node-agnostic Runtime Fabric.
 
 ## Immediate execution order
 
-1. Run the NODE01 guardian and health report on the owner machine.
-2. Verify EDGE reachability, public DNS and TLS from outside the IZAKHONO network.
-3. Record the current production and fallback URL for every platform.
-4. Preserve verified external routes while migrating one platform at a time.
-5. Promote only successful routes to **OWNED LIVE VERIFIED**.
-6. Fail back externally whenever an owned-route gate fails.
+1. Package each platform as an immutable, portable release.
+2. Register every available owned and external runtime target.
+3. Verify each target independently through its health endpoint.
+4. Configure EDGE to route only to healthy approved releases.
+5. Keep external resilience active whenever owned capacity is unavailable.
+6. Add NODE02–NODE04 as capacity when real machines are available.
+7. Test failure of every runtime—including NODE01—without interrupting a replicated/stateless service.
+8. Promote to **FABRIC LIVE VERIFIED** only after real failover evidence passes.
 
 This directive is effective immediately.
