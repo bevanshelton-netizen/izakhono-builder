@@ -54,10 +54,13 @@ function safeEqual(a, b) {
   return aa.length === bb.length && aa.length > 0 && timingSafeEqual(aa, bb);
 }
 
-function authorized(req) {
-  if (publicPlanning) return true;
+function ownerAuthorized(req) {
   const supplied = req.headers['x-venture-factory-key'] || '';
   return Boolean(ownerKey && safeEqual(supplied, ownerKey));
+}
+
+function planningAuthorized(req) {
+  return publicPlanning || ownerAuthorized(req);
 }
 
 async function readJson(req, max = 1_000_000) {
@@ -433,7 +436,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (req.method === 'POST' && url.pathname === '/api/plan') {
-      if (!authorized(req)) return json(res, 401, { ok: false, error: 'unauthorized' });
+      if (!planningAuthorized(req)) return json(res, 401, { ok: false, error: 'unauthorized' });
       let body;
       try { body = await readJson(req); } catch { return json(res, 400, { ok: false, error: 'invalid_json' }); }
 
