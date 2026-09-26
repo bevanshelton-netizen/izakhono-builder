@@ -98,6 +98,9 @@ def db_connect():
         db.execute("ALTER TABLE users ADD COLUMN email_verified_at TEXT")
     if "last_login_at" not in user_columns:
         db.execute("ALTER TABLE users ADD COLUMN last_login_at TEXT")
+    # Existing admin-provisioned accounts predate verification state and were already treated as trusted.
+    # Preserve that behavior during migration; future public registration can require explicit verification.
+    db.execute("UPDATE users SET email_verified_at=created_at WHERE email_verified_at IS NULL AND created_at IS NOT NULL")
     db.execute("""CREATE TABLE IF NOT EXISTS memberships(
       id TEXT PRIMARY KEY,
       entity_id TEXT NOT NULL,
