@@ -1,11 +1,21 @@
 {
   "schema": "izakhono.hybrid-live.v1",
   "generated_date": "2026-09-26",
-  "policy": "owned-first-externally-reversible",
+  "policy": "owned-first-externally-reversible-dual-path-resilient",
   "mode": "HYBRID_LIVE",
   "evidence_status": "EXTERNAL LIVE VERIFIED",
-  "traffic_authority": "external_verified_production",
+  "traffic_authority": "external_verified_production_until_owned_public_acceptance",
   "owned_promotion_target": "NODE01 via IZAKHONO EDGE/TLS",
+  "steady_state_strategy": {
+    "after_owned_promotion": "INTERNAL_PRIMARY_EXTERNAL_WARM_RESILIENCE",
+    "keep_external_operational": true,
+    "keep_external_health_verified": true,
+    "external_decommission_on_owned_promotion": false,
+    "active_active_stateless_traffic": "allowed_only_after_independent_verification",
+    "stateful_write_topology": "single-authoritative-writer-unless-tested-active-active-design-exists",
+    "automated_failover": "allowed_only-after-tested-health-state-session-payment-and-failback-controls",
+    "provider_lock_in": false
+  },
   "external_backend_resilience": {
     "provider": "Supabase",
     "project": "IZAKHONO WebStart",
@@ -32,8 +42,11 @@
       "external_failback": "https://allegro-vibez-79622wjli-bevan2.vercel.app",
       "external_provider": "Vercel",
       "external_state": "READY",
+      "external_role_after_owned_promotion": "warm-verified-resilience",
+      "external_keep_operational": true,
       "owned_hostname": "allegro.izakhonoafrica.co.za",
       "owned_state": "PROMOTION_PENDING_NODE01_RUNNER_EDGE_DNS_TLS_PUBLIC_ACCEPTANCE",
+      "owned_role_after_promotion": "primary",
       "remove_external_after_owned_promotion": false
     },
     {
@@ -43,8 +56,11 @@
       "external_failback": "https://the-chancellor-e07wn6vc4-bevan2.vercel.app",
       "external_provider": "Vercel",
       "external_state": "READY",
+      "external_role_after_owned_promotion": "warm-verified-resilience",
+      "external_keep_operational": true,
       "owned_hostname": "chancellor.izakhonoafrica.co.za",
       "owned_state": "PROMOTION_PENDING_NODE_EDGE_DNS_TLS_PUBLIC_ACCEPTANCE",
+      "owned_role_after_promotion": "primary",
       "remove_external_after_owned_promotion": false
     }
   ]
