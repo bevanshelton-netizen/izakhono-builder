@@ -87,6 +87,16 @@ class Wave1ExternalSafetyTests(unittest.TestCase):
         self.assertFalse(result["ok"])
         self.assertEqual(result["status"], 403)
 
+    def test_allegro_can_be_selected_independently(self):
+        registry={"apps":[{"slug":"allegro-vibez"},{"slug":"the-chancellor"}]}
+        selected=wave1.select_apps(registry,["allegro-vibez"])
+        self.assertEqual([item["slug"] for item in selected],["allegro-vibez"])
+
+    def test_unknown_selected_app_fails_closed(self):
+        registry={"apps":[{"slug":"allegro-vibez"}]}
+        with self.assertRaises(ValueError):
+            wave1.select_apps(registry,["unknown-app"])
+
 
 if __name__ == "__main__":
     unittest.main()
