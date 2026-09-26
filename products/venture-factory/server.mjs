@@ -11,6 +11,7 @@ const host = process.env.VENTURE_FACTORY_HOST || '0.0.0.0';
 const port = Number(process.env.PORT || process.env.VENTURE_FACTORY_PORT || 9780);
 const dataDir = process.env.VENTURE_FACTORY_DATA_DIR || path.join(here, 'data');
 const plansFile = path.join(dataDir, 'plans.jsonl');
+const buildsFile = path.join(dataDir, 'builds.jsonl');
 
 const ownerKey = process.env.VENTURE_FACTORY_OWNER_KEY || '';
 const publicPlanning = String(process.env.VENTURE_FACTORY_PUBLIC_PLANNING || 'false').toLowerCase() === 'true';
@@ -18,6 +19,9 @@ const publicPlanning = String(process.env.VENTURE_FACTORY_PUBLIC_PLANNING || 'fa
 const superAiUrl = String(process.env.IZAKHONO_SUPER_AI_URL || 'http://host.docker.internal:9595').replace(/\/$/, '');
 const superAiInternalKey = process.env.IZAKHONO_SUPER_AI_INTERNAL_KEY || '';
 const superAiWorkflowKey = process.env.IZAKHONO_SUPER_AI_WORKFLOW_KEY || '';
+
+const builderUrl = String(process.env.IZAKHONO_BUILDER_URL || '').replace(/\/$/, '');
+const builderAdminKey = process.env.IZAKHONO_BUILDER_ADMIN_KEY || '';
 
 function json(res, status, body, extra = {}) {
   const raw = Buffer.from(JSON.stringify(body));
@@ -50,10 +54,13 @@ function safeEqual(a, b) {
   return aa.length === bb.length && aa.length > 0 && timingSafeEqual(aa, bb);
 }
 
-function authorized(req) {
-  if (publicPlanning) return true;
+function ownerAuthorized(req) {
   const supplied = req.headers['x-venture-factory-key'] || '';
   return Boolean(ownerKey && safeEqual(supplied, ownerKey));
+}
+
+function planningAuthorized(req) {
+  return publicPlanning || ownerAuthorized(req);
 }
 
 async function readJson(req, max = 1_000_000) {
@@ -288,6 +295,109 @@ async function listPlans(limit = 50) {
   }
 }
 
+
+async function findPlan(id) {
+  const plans = await listPlans(500);
+  return plans.find(x => x.id === id) || null;
+}
+
+async function persistBuild(record) {
+  await fs.mkdir(dataDir, { recursive: true });
+  await fs.appendFile(buildsFile, JSON.stringify(record) + '\n', 'utf8');
+}
+
+async function listBuilds(limit = 50) {
+  try {
+    const raw = await fs.readFile(buildsFile, 'utf8');
+    return raw.trim().split('\n').filter(Boolean).slice(-limit).reverse().map(line => JSON.parse(line));
+  } catch (e) {
+    if (e?.code === 'ENOENT') return [];
+    throw e;
+  }
+}
+
+function builderConfigured() {
+  return Boolean(builderUrl && builderAdminKey);
+}
+
+async function builderRequest(method, pathname, body) {
+  if (!builderConfigured()) throw new Error('builder_bridge_not_configured');
+  const headers = {
+    'accept': 'application/json',
+    'x-admin-secret': builderAdminKey,
+  };
+  if (body !== undefined) headers['content-type'] = 'application/json';
+  const r = await fetch(builderUrl + pathname, {
+    method,
+    headers,
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+  let data = {};
+  try { data = await r.json(); } catch {}
+  if (!r.ok) {
+    const err = new Error(data?.error || ('builder_http_' + r.status));
+    err.status = r.status;
+    err.data = data;
+    throw err;
+  }
+  return data;
+}
+
+function slugify(value) {
+  return String(value || '')
+    .toLowerCase()
+    .normalize('NFKD')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 52) || 'venture';
+}
+
+async function promotePlanToBuilder(planRecord) {
+  const plan = planRecord?.plan;
+  if (!plan?.venture) throw new Error('venture_plan_incomplete');
+
+  const name = cleanString(plan.venture.name, 100) || 'IZAKHONO Venture';
+  const category = cleanString(plan.venture.category, 60) || 'AI Workflow SaaS';
+  const description = cleanString(plan.venture.one_line_offer, 600) || cleanString(plan.idea, 600);
+  const modules = [
+    'auth','leads','ai','payments','admin','analytics','revenue','integrations','publish','growth'
+  ];
+
+  const created = await builderRequest('POST', '/api/projects', {
+    name,
+    slug: slugify(name) + '-' + planRecord.id.slice(-6).toLowerCase(),
+    category,
+    description,
+    modules,
+  });
+
+  const projectId = created?.id;
+  if (!projectId) throw new Error('builder_project_id_missing');
+
+  const planned = await builderRequest('POST', '/api/projects/' + encodeURIComponent(projectId) + '/plan');
+  const generated = await builderRequest('POST', '/api/projects/' + encodeURIComponent(projectId) + '/generate');
+  const validated = await builderRequest('POST', '/api/projects/' + encodeURIComponent(projectId) + '/validate-generated');
+
+  return {
+    project: {
+      id: projectId,
+      name,
+      slug: created?.slug || null,
+      category,
+      status: 'validated',
+    },
+    stages: {
+      planned: Boolean(planned?.ok ?? true),
+      generated: Boolean(generated?.ok ?? true),
+      validated: Boolean(validated?.validation?.passed ?? validated?.ok ?? true),
+    },
+    repository: validated?.internal_repository || null,
+    preview: validated?.preview || null,
+    public_live: false,
+    next_gate: 'deployment-verification',
+  };
+}
+
 async function serveStatic(req, res, url) {
   let pathname = url.pathname === '/' ? '/index.html' : url.pathname;
   if (!['/index.html', '/app.js', '/styles.css'].includes(pathname)) return false;
@@ -317,6 +427,7 @@ const server = http.createServer(async (req, res) => {
         engine: '1.0.0',
         independently_deployable: true,
         super_ai_configured: Boolean(superAiInternalKey && superAiWorkflowKey),
+        builder_bridge_configured: builderConfigured(),
         public_planning: publicPlanning,
         tracking: false,
         ad_spend_autonomous: false,
@@ -325,7 +436,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (req.method === 'POST' && url.pathname === '/api/plan') {
-      if (!authorized(req)) return json(res, 401, { ok: false, error: 'unauthorized' });
+      if (!planningAuthorized(req)) return json(res, 401, { ok: false, error: 'unauthorized' });
       let body;
       try { body = await readJson(req); } catch { return json(res, 400, { ok: false, error: 'invalid_json' }); }
 
@@ -344,8 +455,60 @@ const server = http.createServer(async (req, res) => {
       return json(res, 200, { ok: true, ...record });
     }
 
+
+    const buildMatch = url.pathname.match(/^\/api\/plans\/([^/]+)\/build$/);
+    if (req.method === 'POST' && buildMatch) {
+      if (!ownerAuthorized(req)) return json(res, 401, { ok: false, error: 'unauthorized' });
+      if (!builderConfigured()) return json(res, 503, { ok: false, error: 'builder_bridge_not_configured' });
+
+      const planId = decodeURIComponent(buildMatch[1]);
+      const planRecord = await findPlan(planId);
+      if (!planRecord) return json(res, 404, { ok: false, error: 'plan_not_found' });
+
+      const existingBuilds = await listBuilds(500);
+      const previous = existingBuilds.find(x => x.plan_id === planId && x.status === 'validated');
+      if (previous) {
+        return json(res, 200, {
+          ok: true,
+          already_built: true,
+          build: previous,
+          public_live: false,
+        });
+      }
+
+      try {
+        const promoted = await promotePlanToBuilder(planRecord);
+        const record = {
+          id: 'vfb_' + randomUUID().replaceAll('-', ''),
+          plan_id: planId,
+          created_at: new Date().toISOString(),
+          status: 'validated',
+          ...promoted,
+        };
+        await persistBuild(record);
+        return json(res, 200, {
+          ok: true,
+          build: record,
+          message: 'Plan promoted into IZAKHONO Builder and validated. Public deployment remains a separate gate.',
+        });
+      } catch (e) {
+        const status = Number(e?.status) || 502;
+        return json(res, status, {
+          ok: false,
+          error: cleanString(e?.message, 160) || 'builder_bridge_failed',
+          public_live: false,
+        });
+      }
+    }
+
+    if (req.method === 'GET' && url.pathname === '/api/builds') {
+      if (!ownerAuthorized(req)) return json(res, 401, { ok: false, error: 'unauthorized' });
+      const builds = await listBuilds(Math.min(100, Math.max(1, Number(url.searchParams.get('limit') || 50))));
+      return json(res, 200, { ok: true, builds });
+    }
+
     if (req.method === 'GET' && url.pathname === '/api/plans') {
-      if (!authorized(req)) return json(res, 401, { ok: false, error: 'unauthorized' });
+      if (!ownerAuthorized(req)) return json(res, 401, { ok: false, error: 'unauthorized' });
       const plans = await listPlans(Math.min(100, Math.max(1, Number(url.searchParams.get('limit') || 50))));
       return json(res, 200, { ok: true, plans });
     }

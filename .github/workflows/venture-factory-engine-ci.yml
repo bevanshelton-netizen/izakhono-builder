@@ -45,4 +45,4 @@ jobs:
         run: |
           grep -Fq "tracking: false" products/venture-factory/server.mjs
           grep -Fq "No advertising spend is launched without explicit approval" products/venture-factory/server.mjs
-          ! grep -R --line-number -E 'VENTURE_FACTORY_OWNER_KEY=[A-Fa-f0-9]{32,}|IZAKHONO_SUPER_AI_INTERNAL_KEY=[A-Fa-f0-9]{32,}|IZAKHONO_SUPER_AI_WORKFLOW_KEY=[A-Fa-f0-9]{32,}' products/venture-factory START-VENTURE-FACTORY-NODE01.ps1
+          ! grep -R --line-number -E 'VENTURE_FACTORY_OWNER_KEY=[A-Fa-f0-9]{32,}|IZAKHONO_SUPER_AI_INTERNAL_KEY=[A-Fa-f0-9]{32,}|IZAKHONO_SUPER_AI_WORKFLOW_KEY=[A-Fa-f0-9]{32,}|IZAKHONO_BUILDER_ADMIN_KEY=[A-Fa-f0-9]{32,}' products/venture-factory START-VENTURE-FACTORY-NODE01.ps1
