@@ -33,4 +33,10 @@ jobs:
           grep -Fq 'token_hash' products/izakhono-id/app.py
           grep -Fq 'PBKDF2_ITERATIONS' products/izakhono-id/app.py
           grep -Fq 'entity_membership_required' products/izakhono-id/app.py
+          grep -Fq 'login_attempts' products/izakhono-id/app.py
+          grep -Fq 'audit_events' products/izakhono-id/app.py
+          grep -Fq 'too_many_attempts' products/izakhono-id/app.py
+          grep -Fq 'email_verification_required' products/izakhono-id/app.py
+          grep -Fq '/api/v1/change-password' products/izakhono-id/app.py
+          grep -Fq '/api/v1/admin/revoke-user-sessions' products/izakhono-id/app.py
           ! grep -R --line-number -E 'IZAKHONO_ID_(ADMIN|INTERNAL)_KEY=.+' products/izakhono-id
