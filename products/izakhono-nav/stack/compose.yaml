@@ -10,7 +10,7 @@ services:
       build_time_zones: "True"
       build_tar: "True"
       serve_tiles: "True"
-      use_tiles_ignore_pbf: "True"
+      use_tiles_ignore_pbf: "False"
     volumes:
       - ${NAV_DATA_DIR:-./runtime-data}/router:/custom_files
       - ${NAV_DATA_DIR:-./runtime-data}/osm/south-africa-latest.osm.pbf:/custom_files/south-africa-latest.osm.pbf:ro
