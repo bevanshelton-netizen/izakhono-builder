@@ -3,6 +3,8 @@ set -euo pipefail
 
 CODE_REPO="${IZAKHONO_WAVE1_CODE_REPO:-/var/lib/izakhono-code/repos/allegro-vibez.git}"
 MARKER_PATH="${IZAKHONO_WAVE1_MARKER_PATH:-deploy/IZAKHONO_WAVE1_NODE01}"
+MIRROR_REPO="${IZAKHONO_WAVE1_MIRROR_REPO:-bevanshelton-netizen/allegro-vibez}"
+ALLOW_MIRROR="${IZAKHONO_WAVE1_ALLOW_GITHUB_MIRROR:-true}"
 STATE_ROOT="${IZAKHONO_STATE_ROOT:-/opt/izakhono/state}"
 EVIDENCE_ROOT="${IZAKHONO_EVIDENCE_ROOT:-/opt/izakhono/evidence}"
 STATE_DIR="${STATE_ROOT}/wave1-request"
@@ -22,16 +24,12 @@ fi
 trap 'rmdir "$LOCK_DIR" >/dev/null 2>&1 || true' EXIT
 
 write_state() {
-  local status="$1"
-  local request_sha="$2"
-  local builder_ref="$3"
-  local allegro_ref="$4"
-  local source_sha="$5"
-  local detail="$6"
-  python3 - "${STATE_FILE}" "$status" "$request_sha" "$builder_ref" "$allegro_ref" "$source_sha" "$detail" <<'PY'
+  local status="$1" request_sha="$2" builder_ref="$3" allegro_ref="$4"
+  local source_sha="$5" source_name="$6" detail="$7"
+  python3 - "${STATE_FILE}" "$status" "$request_sha" "$builder_ref" "$allegro_ref" "$source_sha" "$source_name" "$detail" <<'PY'
 import json, os, sys, tempfile
 from datetime import datetime, timezone
-path,status,request_sha,builder_ref,allegro_ref,source_sha,detail=sys.argv[1:]
+path,status,request_sha,builder_ref,allegro_ref,source_sha,source_name,detail=sys.argv[1:]
 payload={
   "schema":"izakhono.wave1.request-watch.v1",
   "checked_at":datetime.now(timezone.utc).isoformat(),
@@ -40,7 +38,8 @@ payload={
   "builder_ref":builder_ref or None,
   "allegro_ref":allegro_ref or None,
   "source_commit":source_sha or None,
-  "source":"izakhono-code",
+  "source":source_name or None,
+  "source_priority":"izakhono-code-first",
   "execution_authority":"IZAKHONO NODE01",
   "github_actions_required":False,
   "public_cutover_performed":False,
@@ -58,20 +57,58 @@ print(json.dumps(payload,separators=(",",":")))
 PY
 }
 
-if [ ! -d "${CODE_REPO}" ]; then
-  write_state "HOLD_NO_OWNED_CODE_REPO" "" "" "" "" "Owned Allegro repository is not present in IZAKHONO CODE."
-  exit 0
+source_name=""
+source_sha=""
+marker=""
+
+if [ -d "${CODE_REPO}" ]; then
+  candidate_sha="$(git --git-dir="${CODE_REPO}" rev-parse refs/heads/main 2>/dev/null || true)"
+  candidate_marker="$(git --git-dir="${CODE_REPO}" show "refs/heads/main:${MARKER_PATH}" 2>/dev/null || true)"
+  if [[ "$candidate_sha" =~ ^[0-9a-f]{40}$ ]] && [ -n "$candidate_marker" ]; then
+    source_name="izakhono-code"
+    source_sha="$candidate_sha"
+    marker="$candidate_marker"
+  fi
 fi
 
-source_sha="$(git --git-dir="${CODE_REPO}" rev-parse refs/heads/main 2>/dev/null || true)"
-if [[ ! "$source_sha" =~ ^[0-9a-f]{40}$ ]]; then
-  write_state "HOLD_NO_MAIN_REF" "" "" "" "" "Owned Allegro repository has no valid main ref."
-  exit 0
+if [ -z "$marker" ] && [ "$ALLOW_MIRROR" = "true" ]; then
+  tmp_dir="$(mktemp -d)"
+  trap 'rm -rf "$tmp_dir"; rmdir "$LOCK_DIR" >/dev/null 2>&1 || true' EXIT
+  headers=(-H 'Accept: application/vnd.github+json' -H 'X-GitHub-Api-Version: 2022-11-28' -H 'User-Agent: IZAKHONO-NODE01-Owned-Wave1/1.0')
+  if [ -n "${IZAKHONO_GITHUB_TOKEN:-}" ]; then
+    headers+=(-H "Authorization: Bearer ${IZAKHONO_GITHUB_TOKEN}")
+  fi
+
+  if curl --fail --silent --show-error --location "${headers[@]}"       "https://api.github.com/repos/${MIRROR_REPO}/commits/main" -o "$tmp_dir/commit.json"     && curl --fail --silent --show-error --location "${headers[@]}"       "https://api.github.com/repos/${MIRROR_REPO}/contents/${MARKER_PATH}?ref=main" -o "$tmp_dir/marker.json"; then
+    readarray -t decoded < <(python3 - "$tmp_dir/commit.json" "$tmp_dir/marker.json" <<'PY'
+import base64,json,sys
+commit=json.load(open(sys.argv[1],encoding="utf-8"))
+item=json.load(open(sys.argv[2],encoding="utf-8"))
+sha=str(commit.get("sha") or "")
+content=str(item.get("content") or "").replace("\n","")
+try:
+    marker=base64.b64decode(content,validate=True).decode("utf-8")
+except Exception:
+    marker=""
+print(sha)
+print(base64.b64encode(marker.encode()).decode())
+PY
+)
+    candidate_sha="${decoded[0]:-}"
+    marker_b64="${decoded[1]:-}"
+    if [[ "$candidate_sha" =~ ^[0-9a-f]{40}$ ]] && [ -n "$marker_b64" ]; then
+      candidate_marker="$(printf '%s' "$marker_b64" | base64 -d 2>/dev/null || true)"
+      if [ -n "$candidate_marker" ]; then
+        source_name="github-mirror"
+        source_sha="$candidate_sha"
+        marker="$candidate_marker"
+      fi
+    fi
+  fi
 fi
 
-marker="$(git --git-dir="${CODE_REPO}" show "refs/heads/main:${MARKER_PATH}" 2>/dev/null || true)"
 if [ -z "$marker" ]; then
-  write_state "HOLD_NO_REQUEST_MARKER" "" "" "" "$source_sha" "Owned Allegro main has no Wave 1 request marker."
+  write_state "HOLD_NO_REQUEST_SOURCE" "" "" "" "" "" "No usable Wave 1 request was available from IZAKHONO CODE or the permitted mirror fallback."
   exit 0
 fi
 
@@ -82,28 +119,28 @@ mode="$(printf '%s\n' "$marker" | sed -n 's/^MODE=//p' | head -n1)"
 public_cutover="$(printf '%s\n' "$marker" | sed -n 's/^PUBLIC_CUTOVER=//p' | head -n1)"
 
 if [[ ! "$builder_ref" =~ ^[0-9a-f]{40}$ ]] || [[ ! "$allegro_ref" =~ ^[0-9a-f]{40}$ ]]; then
-  write_state "HOLD_INVALID_REQUEST" "$request_sha" "$builder_ref" "$allegro_ref" "$source_sha" "Wave 1 request does not contain immutable Builder/Allegro refs."
+  write_state "HOLD_INVALID_REQUEST" "$request_sha" "$builder_ref" "$allegro_ref" "$source_sha" "$source_name" "Wave 1 request does not contain immutable Builder/Allegro refs."
   exit 0
 fi
 if [ "$mode" != "LOCAL_OWNED_PROOF_ONLY" ] || [ "$public_cutover" != "false" ]; then
-  write_state "HOLD_UNSAFE_REQUEST" "$request_sha" "$builder_ref" "$allegro_ref" "$source_sha" "Only LOCAL_OWNED_PROOF_ONLY with PUBLIC_CUTOVER=false is permitted."
+  write_state "HOLD_UNSAFE_REQUEST" "$request_sha" "$builder_ref" "$allegro_ref" "$source_sha" "$source_name" "Only LOCAL_OWNED_PROOF_ONLY with PUBLIC_CUTOVER=false is permitted."
   exit 0
 fi
 
 if [ -f "${LAST_OK_FILE}" ] && [ "$(tr -d '\r\n' < "${LAST_OK_FILE}")" = "$request_sha" ]; then
-  write_state "PASS_ALREADY_EXECUTED" "$request_sha" "$builder_ref" "$allegro_ref" "$source_sha" "This owned request was already proven successfully."
+  write_state "PASS_ALREADY_EXECUTED" "$request_sha" "$builder_ref" "$allegro_ref" "$source_sha" "$source_name" "This request was already proven successfully."
   exit 0
 fi
 
 installed_builder_ref=""
 [ -f "${BUNDLE_ROOT}/BUILDER_REF" ] && installed_builder_ref="$(tr -d '\r\n' < "${BUNDLE_ROOT}/BUILDER_REF")"
 if [ "$installed_builder_ref" != "$builder_ref" ]; then
-  write_state "HOLD_BUILDER_BUNDLE_MISMATCH" "$request_sha" "$builder_ref" "$allegro_ref" "$source_sha" "Installed Wave 1 bundle does not match the requested Builder ref."
+  write_state "HOLD_BUILDER_BUNDLE_MISMATCH" "$request_sha" "$builder_ref" "$allegro_ref" "$source_sha" "$source_name" "Installed Wave 1 bundle does not match the requested Builder ref."
   exit 0
 fi
 
 [ -x "${BRIDGE}" ] || {
-  write_state "HOLD_BRIDGE_MISSING" "$request_sha" "$builder_ref" "$allegro_ref" "$source_sha" "Fixed local proof bridge is unavailable."
+  write_state "HOLD_BRIDGE_MISSING" "$request_sha" "$builder_ref" "$allegro_ref" "$source_sha" "$source_name" "Fixed local proof bridge is unavailable."
   exit 0
 }
 
@@ -112,11 +149,11 @@ systemctl start izakhono-node.service >/dev/null 2>&1 || true
 systemctl start izakhono-control.service >/dev/null 2>&1 || true
 
 if ! curl -fsS http://127.0.0.1:9191/readyz >/dev/null 2>&1 || ! curl -fsS http://127.0.0.1:9292/healthz >/dev/null 2>&1; then
-  write_state "HOLD_NODE_CONTROL_NOT_READY" "$request_sha" "$builder_ref" "$allegro_ref" "$source_sha" "NODE or CONTROL did not become healthy."
+  write_state "HOLD_NODE_CONTROL_NOT_READY" "$request_sha" "$builder_ref" "$allegro_ref" "$source_sha" "$source_name" "NODE or CONTROL did not become healthy."
   exit 0
 fi
 
-echo "[OWNED EXECUTION] Wave 1 request $request_sha from IZAKHONO CODE."
+echo "[OWNED EXECUTION] Wave 1 request $request_sha source=$source_name authority=NODE01."
 set +e
 "${BRIDGE}"
 rc=$?
@@ -124,10 +161,10 @@ set -e
 
 stamp="$(date -u +%Y%m%dT%H%M%SZ)"
 receipt="${EVIDENCE_DIR}/wave1-request-${stamp}.json"
-python3 - "${receipt}" "$request_sha" "$builder_ref" "$allegro_ref" "$source_sha" "$rc" <<'PY'
+python3 - "${receipt}" "$request_sha" "$builder_ref" "$allegro_ref" "$source_sha" "$source_name" "$rc" <<'PY'
 import json,sys
 from datetime import datetime,timezone
-path,request_sha,builder_ref,allegro_ref,source_sha,rc=sys.argv[1:]
+path,request_sha,builder_ref,allegro_ref,source_sha,source_name,rc=sys.argv[1:]
 payload={
  "schema":"izakhono.wave1.request-execution.v1",
  "executed_at":datetime.now(timezone.utc).isoformat(),
@@ -135,8 +172,10 @@ payload={
  "builder_ref":builder_ref,
  "allegro_ref":allegro_ref,
  "source_commit":source_sha,
- "source":"izakhono-code",
+ "source":source_name,
+ "source_priority":"izakhono-code-first",
  "execution_authority":"IZAKHONO NODE01",
+ "github_actions_required":False,
  "bridge":"fixed-no-argument-root-owned",
  "returncode":int(rc),
  "result":"PASS_LOCAL_OWNED" if int(rc)==0 else "STOPPED_SAFE",
@@ -152,9 +191,9 @@ chmod 0640 "${receipt}.sha256"
 if [ "$rc" -eq 0 ]; then
   printf '%s\n' "$request_sha" > "${LAST_OK_FILE}"
   chmod 0640 "${LAST_OK_FILE}"
-  write_state "PASS_LOCAL_OWNED" "$request_sha" "$builder_ref" "$allegro_ref" "$source_sha" "Owned request executed successfully through CONTROL -> NODE."
+  write_state "PASS_LOCAL_OWNED" "$request_sha" "$builder_ref" "$allegro_ref" "$source_sha" "$source_name" "Request executed successfully through CONTROL -> NODE."
   exit 0
 fi
 
-write_state "STOPPED_SAFE" "$request_sha" "$builder_ref" "$allegro_ref" "$source_sha" "Owned proof returned non-zero; public traffic was not changed."
+write_state "STOPPED_SAFE" "$request_sha" "$builder_ref" "$allegro_ref" "$source_sha" "$source_name" "Owned proof returned non-zero; public traffic was not changed."
 exit 0
