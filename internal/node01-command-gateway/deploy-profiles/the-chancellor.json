@@ -9,5 +9,5 @@
   "data_path": "/app/data",
   "dockerfile": "Dockerfile",
   "env_file": "/etc/izakhono/apps/the-chancellor.env",
-  "approved_ref": "eaece46fd4f23c06e449ed73df5ff1f368ff6e40"
+  "approved_ref": "31919732e0b58ff99b962fbce5fb75aa5e531b05"
 }
