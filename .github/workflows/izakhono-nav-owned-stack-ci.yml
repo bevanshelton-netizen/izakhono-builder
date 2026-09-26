@@ -1,0 +1,51 @@
+name: IZAKHONO NAV Owned Stack CI
+
+on:
+  pull_request:
+    paths:
+      - 'products/izakhono-nav/engine/**'
+      - 'products/izakhono-nav/stack/**'
+      - '.github/workflows/izakhono-nav-owned-stack-ci.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'products/izakhono-nav/engine/**'
+      - 'products/izakhono-nav/stack/**'
+      - '.github/workflows/izakhono-nav-owned-stack-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Engine syntax and unit tests
+        working-directory: products/izakhono-nav/engine
+        run: npm run check
+      - name: Shell syntax
+        run: |
+          for f in products/izakhono-nav/stack/scripts/*.sh; do bash -n "$f"; done
+      - name: Docker Compose contract
+        working-directory: products/izakhono-nav/stack
+        run: docker compose --env-file .env.example -f compose.yaml config >/tmp/nav-compose.yaml
+      - name: Client compatibility integration
+        shell: bash
+        run: |
+          node products/izakhono-nav/stack/test/mock-backends.mjs >/tmp/nav-mocks.log 2>&1 &
+          MOCK_PID=$!
+          NAV_ROUTER_URL=http://127.0.0.1:18882           NAV_SEARCH_URL=http://127.0.0.1:18883           NAV_TILE_TEMPLATE='http://127.0.0.1:18884/style/izakhono/{z}/{x}/{y}.png'           NAV_RUNTIME_ID=NAV-CI-OWNED           PORT=18888           node products/izakhono-nav/engine/server.js >/tmp/nav-engine.log 2>&1 &
+          ENGINE_PID=$!
+          trap 'kill $ENGINE_PID $MOCK_PID || true' EXIT
+          for i in {1..40}; do curl -fsS http://127.0.0.1:18888/api/health >/tmp/health.json && break; sleep .25; done
+          node -e 'const h=require("/tmp/health.json"); if(h.routing!=="ready"||h.search!=="ready"||h.tiles!=="ready"||h.node01Required!==false) process.exit(1)'
+          curl -fsS 'http://127.0.0.1:18888/api/search?q=Johannesburg' >/tmp/search.json
+          node -e 'const x=require("/tmp/search.json"); if(!Array.isArray(x)||!x.length||x[0].name.indexOf("Johannesburg")<0) process.exit(1)'
+          curl -fsS 'http://127.0.0.1:18888/api/route/driving/28.0473,-26.2041;28.0478,-26.1950' >/tmp/route.json
+          node -e 'const r=require("/tmp/route.json"); if(!r.geometry?.coordinates?.length||r.distance<=0||r.duration<=0||!r.legs?.[0]?.steps?.length) process.exit(1)'
+          curl -fsS 'http://127.0.0.1:18888/tiles/0/0/0.png' >/tmp/tile.png
+          test -s /tmp/tile.png

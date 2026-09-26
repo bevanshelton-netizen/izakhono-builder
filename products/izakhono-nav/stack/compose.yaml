@@ -1,0 +1,95 @@
+name: izakhono-nav-owned
+
+services:
+  nav-router:
+    image: ghcr.io/valhalla/valhalla-scripted:latest
+    restart: unless-stopped
+    environment:
+      server_threads: ${NAV_ROUTER_THREADS:-2}
+      build_admins: "True"
+      build_time_zones: "True"
+      build_tar: "True"
+      serve_tiles: "True"
+      use_tiles_ignore_pbf: "False"
+    volumes:
+      - ${NAV_DATA_DIR:-./runtime-data}/router:/custom_files
+    networks: [nav-backplane]
+
+  nav-search:
+    image: mediagis/nominatim:5.3
+    restart: unless-stopped
+    shm_size: ${NOMINATIM_SHM_SIZE:-2gb}
+    environment:
+      PBF_PATH: /nominatim/data/south-africa-latest.osm.pbf
+      REPLICATION_URL: https://download.geofabrik.de/africa/south-africa-updates/
+      UPDATE_MODE: continuous
+      IMPORT_WIKIPEDIA: "false"
+      IMPORT_STYLE: full
+      THREADS: ${NOMINATIM_THREADS:-4}
+      GUNICORN_WORKERS: ${NOMINATIM_WORKERS:-2}
+      NOMINATIM_PASSWORD: ${NOMINATIM_PASSWORD}
+      POSTGRES_SHARED_BUFFERS: ${POSTGRES_SHARED_BUFFERS:-2GB}
+      POSTGRES_MAINTENANCE_WORK_MEM: ${POSTGRES_MAINTENANCE_WORK_MEM:-4GB}
+      POSTGRES_EFFECTIVE_CACHE_SIZE: ${POSTGRES_EFFECTIVE_CACHE_SIZE:-8GB}
+    volumes:
+      - ${NAV_DATA_DIR:-./runtime-data}/osm:/nominatim/data:ro
+      - nav-search-db:/var/lib/postgresql/16/main
+      - nav-search-flatnode:/nominatim/flatnode
+    networks: [nav-backplane]
+
+  nav-tiles:
+    image: ghcr.io/maplibre/martin:1.16.1-full
+    restart: unless-stopped
+    command: ["--config","/config/martin.yaml"]
+    volumes:
+      - ./martin.yaml:/config/martin.yaml:ro
+      - ./style.json:/config/style.json:ro
+      - ${NAV_DATA_DIR:-./runtime-data}/tiles:/data/tiles:ro
+    networks: [nav-backplane]
+
+  nav-engine:
+    build:
+      context: ../engine
+    restart: unless-stopped
+    environment:
+      PORT: 8788
+      NAV_RUNTIME_ID: ${NAV_RUNTIME_ID:-NAV-OWNED-01}
+      NAV_RUNTIME_CLASS: owned
+      NAV_RELEASE_ID: ${NAV_RELEASE_ID:-IZAKHONO-NAV-OWNED-v1}
+      NAV_ROUTER_KIND: valhalla
+      NAV_ROUTER_URL: http://nav-router:8002
+      NAV_SEARCH_KIND: nominatim
+      NAV_SEARCH_URL: http://nav-search:8080
+      NAV_TILE_TEMPLATE: http://nav-tiles:3000/style/izakhono/{z}/{x}/{y}.png
+      NAV_ALLOW_RESILIENCE: "false"
+      NAV_ALLOWED_ORIGINS: ${NAV_ALLOWED_ORIGINS:-}
+      NAV_TRUST_PROXY: "true"
+    depends_on: [nav-router, nav-search, nav-tiles]
+    networks: [nav-backplane]
+
+  nav-edge:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    environment:
+      NAV_PUBLIC_HOST: ${NAV_PUBLIC_HOST:-nav.izakhonoafrica.co.za}
+    ports:
+      - "${NAV_HTTP_PORT:-80}:80"
+      - "${NAV_HTTPS_PORT:-443}:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ../../../public/ai-core/nav:/srv/nav:ro
+      - nav-caddy-data:/data
+      - nav-caddy-config:/config
+    depends_on: [nav-engine]
+    networks: [nav-backplane, nav-public]
+
+networks:
+  nav-backplane:
+    internal: true
+  nav-public:
+
+volumes:
+  nav-search-db:
+  nav-search-flatnode:
+  nav-caddy-data:
+  nav-caddy-config:

@@ -1,0 +1,14 @@
+listen_addresses: 0.0.0.0:3000
+on_invalid: abort
+cache:
+  size_mb: 256
+  expiry: 1h
+pmtiles:
+  sources:
+    south-africa: file:///data/tiles/south-africa.pmtiles
+styles:
+  rendering:
+    enabled: true
+    workers: 2
+  sources:
+    izakhono: /config/style.json

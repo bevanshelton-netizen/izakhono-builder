@@ -1,9 +1,10 @@
 {
   "ok": true,
   "product": "IZAKHONO NAV",
-  "version": "0.8.0-resilience",
-  "releaseId": "IZAKHONO-NAV-v0.8-resilience",
-  "runtimeClass": "external-resilience",
+  "version": "1.0.0",
+  "releaseId": "IZAKHONO-NAV-v1.0",
+  "artifact": "web-shell",
+  "runtimeClass": "determined-at-runtime",
   "node01Required": false,
   "privacy": {
     "analytics": false,
