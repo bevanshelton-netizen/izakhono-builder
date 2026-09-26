@@ -18,7 +18,7 @@ route_url="$HOST/api/route/driving/28.0473,-26.2041;28.0478,-26.1950"
 route="$(curl -fsS --max-time 15 "$route_url")" || fail "route"
 node -e 'const r=JSON.parse(process.argv[1]); if(!r.geometry?.coordinates?.length||!Number.isFinite(Number(r.distance))||!Number.isFinite(Number(r.duration))) process.exit(1)' "$route" && pass "route geometry" || fail "route geometry"
 
-curl -fsS --max-time 15 "$HOST/tiles/10/591/603.png" -o /tmp/izakhono-nav-tile.png || fail "owned raster tile"
+curl -fsS --max-time 15 "$HOST/tiles/10/591/589.png" -o /tmp/izakhono-nav-tile.png || fail "owned raster tile"
 test -s /tmp/izakhono-nav-tile.png && pass "owned raster tile" || fail "owned raster tile"
 
 printf '\nOWNED STACK VERIFIED on runtime %s (public HTTPS not yet implied)\n' "${NAV_RUNTIME_ID:-unknown}" | tee -a "$REPORT"
