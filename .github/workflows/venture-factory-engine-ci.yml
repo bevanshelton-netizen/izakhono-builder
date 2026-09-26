@@ -30,9 +30,11 @@ jobs:
         with:
           node-version: '22'
       - name: Syntax
-        run: node --check products/venture-factory/server.mjs && node --check products/venture-factory/test.mjs && node --check products/venture-factory/public/app.js
+        run: node --check products/venture-factory/server.mjs && node --check products/venture-factory/test.mjs && node --check products/venture-factory/test-commercial.mjs && node --check products/venture-factory/public/app.js
       - name: Engine tests
         run: node products/venture-factory/test.mjs
+      - name: Commercial access tests
+        run: node products/venture-factory/test-commercial.mjs
       - name: Deployment profile contract
         run: |
           node -e "const p=require('./internal/node01-command-gateway/deploy-profiles/venture-factory.json'); if(p.mode!=='compose'||p.compose_file!=='products/venture-factory/docker-compose.yml'||p.health_url!=='http://127.0.0.1:9780/healthz'||p.env_file!=='/etc/izakhono/apps/venture-factory.env') process.exit(1)"
@@ -45,4 +47,4 @@ jobs:
         run: |
           grep -Fq "tracking: false" products/venture-factory/server.mjs
           grep -Fq "No advertising spend is launched without explicit approval" products/venture-factory/server.mjs
-          ! grep -R --line-number -E 'VENTURE_FACTORY_OWNER_KEY=[A-Fa-f0-9]{32,}|IZAKHONO_SUPER_AI_INTERNAL_KEY=[A-Fa-f0-9]{32,}|IZAKHONO_SUPER_AI_WORKFLOW_KEY=[A-Fa-f0-9]{32,}|IZAKHONO_BUILDER_ADMIN_KEY=[A-Fa-f0-9]{32,}' products/venture-factory START-VENTURE-FACTORY-NODE01.ps1
+          ! grep -R --line-number -E 'VENTURE_FACTORY_OWNER_KEY=[A-Fa-f0-9]{32,}|IZAKHONO_SUPER_AI_INTERNAL_KEY=[A-Fa-f0-9]{32,}|IZAKHONO_SUPER_AI_WORKFLOW_KEY=[A-Fa-f0-9]{32,}|IZAKHONO_BUILDER_ADMIN_KEY=[A-Fa-f0-9]{32,}|IZAKHONO_ID_INTERNAL_KEY=[A-Fa-f0-9]{32,}|IZAKHONO_ACCESS_INTERNAL_KEY=[A-Fa-f0-9]{32,}|IZAKHONO_PAY_API_KEY=[A-Fa-f0-9]{32,}' products/venture-factory START-VENTURE-FACTORY-NODE01.ps1

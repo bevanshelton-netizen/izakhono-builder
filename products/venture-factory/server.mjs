@@ -23,6 +23,21 @@ const superAiWorkflowKey = process.env.IZAKHONO_SUPER_AI_WORKFLOW_KEY || '';
 const builderUrl = String(process.env.IZAKHONO_BUILDER_URL || '').replace(/\/$/, '');
 const builderAdminKey = process.env.IZAKHONO_BUILDER_ADMIN_KEY || '';
 
+const customerMode = String(process.env.VENTURE_FACTORY_CUSTOMER_MODE || 'false').toLowerCase() === 'true';
+const idUrl = String(process.env.IZAKHONO_ID_URL || '').replace(/\/$/, '');
+const idInternalKey = process.env.IZAKHONO_ID_INTERNAL_KEY || '';
+const accessUrl = String(process.env.IZAKHONO_ACCESS_URL || '').replace(/\/$/, '');
+const accessInternalKey = process.env.IZAKHONO_ACCESS_INTERNAL_KEY || '';
+const accessEntityId = String(process.env.VENTURE_FACTORY_ACCESS_ENTITY_ID || 'izakhono-africa').trim().toLowerCase();
+const accessProduct = 'venture-factory';
+const payUrl = String(process.env.IZAKHONO_PAY_URL || '').replace(/\/$/, '');
+const payApiKey = process.env.IZAKHONO_PAY_API_KEY || '';
+const payAppSlug = String(process.env.IZAKHONO_PAY_APP_SLUG || 'venture-factory').trim().toLowerCase();
+const priceMinor = Number(process.env.VENTURE_FACTORY_PRICE_MINOR || '0');
+const accessPlanSlug = String(process.env.VENTURE_FACTORY_ACCESS_PLAN || 'monthly').trim().toLowerCase();
+const accessPeriodDays = Number(process.env.VENTURE_FACTORY_ACCESS_PERIOD_DAYS || '30');
+const publicOrigin = String(process.env.VENTURE_FACTORY_PUBLIC_ORIGIN || '').replace(/\/$/, '');
+
 function json(res, status, body, extra = {}) {
   const raw = Buffer.from(JSON.stringify(body));
   res.writeHead(status, {
@@ -61,6 +76,113 @@ function ownerAuthorized(req) {
 
 function planningAuthorized(req) {
   return publicPlanning || ownerAuthorized(req);
+}
+
+function bearerToken(req) {
+  const value = String(req.headers.authorization || '').trim();
+  return value.toLowerCase().startsWith('bearer ') ? value.slice(7).trim() : '';
+}
+
+function customerStackConfigured() {
+  return Boolean(customerMode && idUrl && idInternalKey && accessUrl && accessInternalKey);
+}
+
+function paymentConfigured() {
+  return Boolean(payUrl && payApiKey && payAppSlug && Number.isSafeInteger(priceMinor) && priceMinor >= 100);
+}
+
+async function requestJson(url, { method = 'GET', headers = {}, body } = {}) {
+  const r = await fetch(url, {
+    method,
+    headers: { accept: 'application/json', ...headers },
+    body: body === undefined ? undefined : JSON.stringify(body),
+    redirect: 'error',
+  });
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) {
+    const err = new Error(data?.error || data?.error?.message || ('http_' + r.status));
+    err.status = r.status;
+    err.data = data;
+    throw err;
+  }
+  return data;
+}
+
+async function customerContext(req) {
+  if (!customerStackConfigured()) return null;
+  const token = bearerToken(req);
+  if (!token) return { authenticated: false, active: false, reason: 'missing_bearer_token' };
+
+  let identity;
+  try {
+    identity = await requestJson(idUrl + '/api/v1/internal/introspect', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-izakhono-id-internal-key': idInternalKey,
+      },
+      body: { token },
+    });
+  } catch {
+    return { authenticated: false, active: false, reason: 'identity_unavailable' };
+  }
+
+  if (!identity?.active) {
+    return { authenticated: false, active: false, reason: 'invalid_session' };
+  }
+
+  let access;
+  try {
+    access = await requestJson(accessUrl + '/api/v1/check', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-izakhono-access-key': accessInternalKey,
+      },
+      body: {
+        entity_id: accessEntityId,
+        subject: identity.subject,
+        product: accessProduct,
+      },
+    });
+  } catch {
+    return {
+      authenticated: true,
+      active: false,
+      identity,
+      reason: 'access_unavailable',
+    };
+  }
+
+  return {
+    authenticated: true,
+    active: access?.active === true,
+    identity,
+    entitlement: access?.entitlement || null,
+    usage_policy: access?.usage_policy || null,
+    reason: access?.active === true ? 'active' : 'subscription_required',
+  };
+}
+
+async function authorizePlanning(req) {
+  if (ownerAuthorized(req)) return { ok: true, mode: 'owner', customer: null };
+  if (publicPlanning) return { ok: true, mode: 'public', customer: null };
+  if (!customerMode) return { ok: false, status: 401, error: 'unauthorized' };
+
+  const customer = await customerContext(req);
+  if (!customer?.authenticated) {
+    return { ok: false, status: 401, error: customer?.reason || 'authentication_required', customer };
+  }
+  if (!customer.active) {
+    return {
+      ok: false,
+      status: 402,
+      error: customer.reason || 'subscription_required',
+      customer,
+      checkout_available: paymentConfigured(),
+    };
+  }
+  return { ok: true, mode: 'subscriber', customer };
 }
 
 async function readJson(req, max = 1_000_000) {
@@ -428,6 +550,9 @@ const server = http.createServer(async (req, res) => {
         independently_deployable: true,
         super_ai_configured: Boolean(superAiInternalKey && superAiWorkflowKey),
         builder_bridge_configured: builderConfigured(),
+        customer_mode: customerMode,
+        customer_stack_configured: customerStackConfigured(),
+        checkout_configured: paymentConfigured(),
         public_planning: publicPlanning,
         tracking: false,
         ad_spend_autonomous: false,
@@ -436,7 +561,14 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (req.method === 'POST' && url.pathname === '/api/plan') {
-      if (!planningAuthorized(req)) return json(res, 401, { ok: false, error: 'unauthorized' });
+      const authorization = await authorizePlanning(req);
+      if (!authorization.ok) {
+        return json(res, authorization.status || 401, {
+          ok: false,
+          error: authorization.error || 'unauthorized',
+          checkout_available: authorization.checkout_available === true,
+        });
+      }
       let body;
       try { body = await readJson(req); } catch { return json(res, 400, { ok: false, error: 'invalid_json' }); }
 
@@ -450,11 +582,172 @@ const server = http.createServer(async (req, res) => {
       if (!Number.isFinite(target) || target < 1000 || target > 1000000000) return json(res, 422, { ok: false, error: 'invalid_target_monthly_revenue_zar' });
 
       const plan = await enrichWithSuperAI(deterministicPlan(idea, country, price, target));
-      const record = { id: 'vf_' + randomUUID().replaceAll('-', ''), created_at: new Date().toISOString(), plan };
+      const record = {
+        id: 'vf_' + randomUUID().replaceAll('-', ''),
+        created_at: new Date().toISOString(),
+        access_mode: authorization.mode,
+        subject: authorization.customer?.identity?.subject || null,
+        entity_id: authorization.customer?.identity?.entity_id || null,
+        plan,
+      };
       await persistPlan(record);
       return json(res, 200, { ok: true, ...record });
     }
 
+
+
+
+    if (req.method === 'GET' && url.pathname === '/api/customer/offer') {
+      if (!customerMode) return json(res, 404, { ok: false, error: 'customer_mode_disabled' });
+      return json(res, 200, {
+        ok: true,
+        product: accessProduct,
+        plan: accessPlanSlug,
+        access_period_days: accessPeriodDays,
+        currency: 'ZAR',
+        amount_minor: paymentConfigured() ? priceMinor : null,
+        checkout_available: paymentConfigured(),
+        usage_policy: {
+          usage_credit_gate: false,
+          message_quota: null,
+          session_quota: null,
+          fair_use: true,
+        },
+      });
+    }
+
+    if (req.method === 'POST' && url.pathname === '/api/customer/login') {
+      if (!customerMode || !idUrl) return json(res, 404, { ok: false, error: 'customer_mode_disabled' });
+      let body;
+      try { body = await readJson(req, 100_000); } catch { return json(res, 400, { ok: false, error: 'invalid_json' }); }
+      const email = cleanString(body.email, 254).toLowerCase();
+      const password = typeof body.password === 'string' ? body.password : '';
+      const entitySlug = cleanString(body.entity_slug || 'izakhono-africa', 80).toLowerCase();
+      if (!email || !password || !entitySlug) return json(res, 422, { ok: false, error: 'email_password_entity_required' });
+      try {
+        const login = await requestJson(idUrl + '/api/v1/login', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: { email, password, entity_slug: entitySlug },
+        });
+        return json(res, 200, {
+          ok: true,
+          access_token: login.access_token,
+          token_type: login.token_type || 'Bearer',
+          expires_at: login.expires_at || null,
+          subject: login.subject || email,
+          entity: login.entity || null,
+          role: login.role || null,
+        });
+      } catch (e) {
+        const status = Number(e?.status) || 502;
+        return json(res, status === 401 || status === 403 || status === 422 ? status : 502, {
+          ok: false,
+          error: cleanString(e?.message, 160) || 'login_failed',
+        });
+      }
+    }
+
+    if (req.method === 'POST' && url.pathname === '/api/customer/logout') {
+      if (!customerMode || !idUrl) return json(res, 404, { ok: false, error: 'customer_mode_disabled' });
+      const token = bearerToken(req);
+      if (!token) return json(res, 401, { ok: false, error: 'authentication_required' });
+      try {
+        await requestJson(idUrl + '/api/v1/logout', {
+          method: 'POST',
+          headers: { authorization: 'Bearer ' + token, 'content-type': 'application/json' },
+          body: {},
+        });
+      } catch {}
+      return json(res, 200, { ok: true });
+    }
+
+    if (req.method === 'GET' && url.pathname === '/api/customer/session') {
+      if (!customerMode) return json(res, 404, { ok: false, error: 'customer_mode_disabled' });
+      const customer = await customerContext(req);
+      if (!customer?.authenticated) {
+        return json(res, 401, { ok: false, error: customer?.reason || 'authentication_required' });
+      }
+      return json(res, 200, {
+        ok: true,
+        subject: customer.identity?.subject || null,
+        entity_id: customer.identity?.entity_id || null,
+        entity_slug: customer.identity?.entity_slug || null,
+        role: customer.identity?.role || null,
+        access: {
+          active: customer.active,
+          entitlement: customer.entitlement,
+          usage_policy: customer.usage_policy,
+        },
+        checkout_available: paymentConfigured(),
+      });
+    }
+
+    if (req.method === 'POST' && url.pathname === '/api/customer/checkout') {
+      if (!customerMode) return json(res, 404, { ok: false, error: 'customer_mode_disabled' });
+      if (!paymentConfigured()) return json(res, 503, { ok: false, error: 'checkout_not_configured' });
+
+      const customer = await customerContext(req);
+      if (!customer?.authenticated) {
+        return json(res, 401, { ok: false, error: customer?.reason || 'authentication_required' });
+      }
+      if (customer.active) {
+        return json(res, 409, { ok: false, error: 'subscription_already_active', entitlement: customer.entitlement });
+      }
+
+      let body = {};
+      try { body = await readJson(req); } catch { body = {}; }
+      const requestedKey = String(req.headers['idempotency-key'] || body.idempotency_key || '').trim();
+      if (!/^[A-Za-z0-9._:-]{8,120}$/.test(requestedKey)) {
+        return json(res, 422, { ok: false, error: 'idempotency_key_required' });
+      }
+
+      const metadata = {
+        access_entity_id: accessEntityId,
+        access_subject: customer.identity.subject,
+        access_product: accessProduct,
+        access_plan: accessPlanSlug,
+        access_period_days: accessPeriodDays,
+      };
+      const returnUrl = publicOrigin ? publicOrigin + '/?payment=return' : undefined;
+      const cancelUrl = publicOrigin ? publicOrigin + '/?payment=cancel' : undefined;
+
+      try {
+        const intentData = await requestJson(payUrl + '/api/v1/intents', {
+          method: 'POST',
+          headers: {
+            'content-type': 'application/json',
+            'x-izakhono-key': payApiKey,
+            'x-izakhono-app': payAppSlug,
+            'idempotency-key': requestedKey,
+          },
+          body: {
+            amount_minor: priceMinor,
+            currency: 'ZAR',
+            email: customer.identity.subject,
+            description: 'IZAKHONO Venture Factory ' + accessPlanSlug + ' access',
+            provider: 'smart',
+            metadata,
+            ...(returnUrl ? { return_url: returnUrl } : {}),
+            ...(cancelUrl ? { cancel_url: cancelUrl } : {}),
+          },
+        });
+        return json(res, 201, {
+          ok: true,
+          pending: true,
+          plan: accessPlanSlug,
+          amount_minor: priceMinor,
+          currency: 'ZAR',
+          intent: intentData.intent || null,
+          note: 'Access remains locked until IZAKHONO PAY confirms payment and IZAKHONO ACCESS grants the entitlement.',
+        });
+      } catch (e) {
+        return json(res, Number(e?.status) || 502, {
+          ok: false,
+          error: cleanString(e?.message, 160) || 'checkout_failed',
+        });
+      }
+    }
 
     const buildMatch = url.pathname.match(/^\/api\/plans\/([^/]+)\/build$/);
     if (req.method === 'POST' && buildMatch) {

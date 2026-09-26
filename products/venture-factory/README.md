@@ -51,3 +51,47 @@ Owner-only endpoints:
 The build action creates the Builder project and runs its plan, generate and validation sequence. It persists a local build receipt and remains fail-closed: `public_live` stays `false` until the normal deployment verification gates pass.
 
 Enabling `VENTURE_FACTORY_PUBLIC_PLANNING=true` only opens plan creation. It does **not** expose saved plans, Builder promotion, build receipts or any owner action.
+
+
+## Commercial customer access
+
+Venture Factory now has an optional fail-closed customer mode that uses existing IZAKHONO identity, entitlement and payment infrastructure instead of inventing a separate account system.
+
+When `VENTURE_FACTORY_CUSTOMER_MODE=true`:
+
+- the browser/client presents an IZAKHONO ID bearer session;
+- Venture Factory introspects that session server-side through IZAKHONO ID;
+- Venture Factory checks the `venture-factory` entitlement through IZAKHONO ACCESS;
+- active subscribers can create plans without a separate message-credit counter;
+- inactive subscribers receive HTTP 402 with `checkout_available` when IZAKHONO PAY is configured;
+- `POST /api/customer/checkout` creates a pending IZAKHONO PAY intent with ACCESS metadata;
+- access does not unlock until PAY confirms payment and ACCESS grants the entitlement;
+- Builder promotion and saved-plan/build-list routes remain owner-only.
+
+Customer endpoints:
+
+- `GET /api/customer/session`
+- `POST /api/customer/checkout`
+
+Required commercial runtime settings:
+
+- `IZAKHONO_ID_URL`
+- `IZAKHONO_ID_INTERNAL_KEY`
+- `IZAKHONO_ACCESS_URL`
+- `IZAKHONO_ACCESS_INTERNAL_KEY`
+- `IZAKHONO_PAY_URL`
+- `IZAKHONO_PAY_API_KEY`
+- `VENTURE_FACTORY_PRICE_MINOR`
+- `VENTURE_FACTORY_PUBLIC_ORIGIN`
+
+Optional plan controls:
+
+- `VENTURE_FACTORY_ACCESS_PLAN` (default `monthly`)
+- `VENTURE_FACTORY_ACCESS_PERIOD_DAYS` (default `30`)
+- `VENTURE_FACTORY_ACCESS_ENTITY_ID` (default `izakhono-africa`)
+
+No commercial price is hard-coded into source. Customer mode remains disabled by default and the NODE01 launcher refuses to enable it unless the identity, entitlement, payment and price configuration is complete.
+
+### Production gate
+
+IZAKHONO ID's current repository state is still an alpha identity boundary. Do not expose paid customer login broadly until MFA, account recovery, email verification, brute-force protection, audit/security controls and the rest of its documented production gates are completed. The customer-mode integration is built now so Venture Factory can plug into the hardened ID/ACCESS/PAY stack without redesigning its product engine later.
