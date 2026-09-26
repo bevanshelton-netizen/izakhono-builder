@@ -63,23 +63,33 @@ $envText = ((& wsl.exe -d $Distro -u root -- bash -lc "if [ -f /etc/izakhono/app
 $ownerKey = Read-EnvValue $envText 'VENTURE_FACTORY_OWNER_KEY'
 $aiInternalKey = Read-EnvValue $envText 'IZAKHONO_SUPER_AI_INTERNAL_KEY'
 $aiWorkflowKey = Read-EnvValue $envText 'IZAKHONO_SUPER_AI_WORKFLOW_KEY'
+$builderUrl = Read-EnvValue $envText 'IZAKHONO_BUILDER_URL'
+$builderAdminKey = Read-EnvValue $envText 'IZAKHONO_BUILDER_ADMIN_KEY'
 
-if (-not $ownerKey -or -not $aiInternalKey -or -not $aiWorkflowKey) {
-  $ownerKey = New-HexSecret 32
-  $aiInternalKey = New-HexSecret 32
-  $aiWorkflowKey = New-HexSecret 32
-  $payload = @(
-    ('VENTURE_FACTORY_OWNER_KEY=' + $ownerKey)
-    'IZAKHONO_SUPER_AI_URL=http://host.docker.internal:9595'
-    ('IZAKHONO_SUPER_AI_INTERNAL_KEY=' + $aiInternalKey)
-    ('IZAKHONO_SUPER_AI_WORKFLOW_KEY=' + $aiWorkflowKey)
-    'VENTURE_FACTORY_PUBLIC_PLANNING=false'
-  ) -join "
-"
+if (-not $ownerKey) { $ownerKey = New-HexSecret 32 }
+if (-not $aiInternalKey) { $aiInternalKey = New-HexSecret 32 }
+if (-not $aiWorkflowKey) { $aiWorkflowKey = New-HexSecret 32 }
 
-  $payload | & wsl.exe -d $Distro -u root -- bash -lc "install -d -m 700 /etc/izakhono/apps && umask 077 && cat > /etc/izakhono/apps/venture-factory.env && chmod 600 /etc/izakhono/apps/venture-factory.env"
-  if ($LASTEXITCODE -ne 0) { Write-ReceiptAndStop 'Could not create protected Venture Factory env file.' }
+if (-not [string]::IsNullOrWhiteSpace($env:IZAKHONO_BUILDER_URL)) {
+  $builderUrl = $env:IZAKHONO_BUILDER_URL.Trim()
 }
+if (-not [string]::IsNullOrWhiteSpace($env:IZAKHONO_BUILDER_ADMIN_KEY)) {
+  $builderAdminKey = $env:IZAKHONO_BUILDER_ADMIN_KEY.Trim()
+}
+if (-not $builderUrl) { $builderUrl = 'http://host.docker.internal:8787' }
+
+$payload = @(
+  ('VENTURE_FACTORY_OWNER_KEY=' + $ownerKey)
+  'IZAKHONO_SUPER_AI_URL=http://host.docker.internal:9595'
+  ('IZAKHONO_SUPER_AI_INTERNAL_KEY=' + $aiInternalKey)
+  ('IZAKHONO_SUPER_AI_WORKFLOW_KEY=' + $aiWorkflowKey)
+  ('IZAKHONO_BUILDER_URL=' + $builderUrl)
+  ('IZAKHONO_BUILDER_ADMIN_KEY=' + $builderAdminKey)
+  'VENTURE_FACTORY_PUBLIC_PLANNING=false'
+) -join "`n"
+
+$payload | & wsl.exe -d $Distro -u root -- bash -lc "install -d -m 700 /etc/izakhono/apps && umask 077 && cat > /etc/izakhono/apps/venture-factory.env && chmod 600 /etc/izakhono/apps/venture-factory.env"
+if ($LASTEXITCODE -ne 0) { Write-ReceiptAndStop 'Could not create or refresh protected Venture Factory env file.' }
 
 $env:IZAKHONO_AI_GATEWAY_INTERNAL_KEY = $aiInternalKey
 $env:IZAKHONO_AI_WORKFLOW_KEY = $aiWorkflowKey
@@ -126,11 +136,13 @@ Write-Host '[6/6] Waiting for local engine and owner-access verification...' -Fo
 $healthText = ''
 $localVerified = $false
 $ownerAccessVerified = $false
+$builderBridgeState = 'NOT_CONFIGURED'
 for ($i = 0; $i -lt 90; $i++) {
   try {
     $health = Invoke-RestMethod -Uri 'http://127.0.0.1:9780/healthz' -TimeoutSec 4
     if ($health.ok) {
       $healthText = ($health | ConvertTo-Json -Compress -Depth 8)
+      if ($health.builder_bridge_configured) { $builderBridgeState = 'CONFIGURED' }
       $localVerified = $true
       break
     }
@@ -160,6 +172,7 @@ $ownerState = if ($ownerAccessVerified) { 'VERIFIED' } else { 'UNVERIFIED' }
   ('SUPER_AI_WORKFLOW=' + $superAiState)
   ('LOCAL_HEALTH=' + $localState)
   ('OWNER_ACCESS=' + $ownerState)
+  ('BUILDER_BRIDGE=' + $builderBridgeState)
   ('LOCAL_HEALTH_RESPONSE=' + $healthText)
   'SECRETS_FILE=/etc/izakhono/apps/venture-factory.env'
   'SECRETS_NOT_PRINTED=true'
@@ -177,5 +190,6 @@ if ($localVerified -and $ownerAccessVerified) {
   Write-Warning 'Deployment was accepted but local health is not yet verified.'
 }
 Write-Host ('SUPER AI workflow: ' + $superAiState)
+Write-Host ('Builder bridge: ' + $builderBridgeState)
 Write-Host ('Receipt: ' + $receipt)
 Write-Host 'Public-live status remains UNVERIFIED until EDGE/TLS/DNS and the actual experience are proven.'
