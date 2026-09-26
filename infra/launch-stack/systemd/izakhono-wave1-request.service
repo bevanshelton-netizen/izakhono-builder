@@ -1,0 +1,15 @@
+[Unit]
+Description=IZAKHONO NODE01 owned Wave 1 request executor
+After=network-online.target izakhono-node.service izakhono-control.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/opt/izakhono/bin/watch-node01-wave1-request.sh
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=read-only
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true

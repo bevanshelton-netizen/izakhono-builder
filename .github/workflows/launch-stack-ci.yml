@@ -148,6 +148,9 @@ jobs:
           grep -Fq 'Read-Host' scripts/launch-stack/enable-actions-runner.ps1
           grep -Fq 'AsSecureString' scripts/launch-stack/enable-actions-runner.ps1
           grep -Fq 'izakhono-runner-keepalive.timer' scripts/launch-stack/install-automation.sh
+          grep -Fq 'izakhono-wave1-request.timer' scripts/launch-stack/install-automation.sh
+          grep -Fq '/var/lib/izakhono-code/repos/allegro-vibez.git' scripts/launch-stack/watch-node01-wave1-request.sh
+          grep -Fq 'github_actions_required' scripts/launch-stack/watch-node01-wave1-request.sh
           grep -Fq "actions.runner.*.service" scripts/launch-stack/keepalive-actions-runners.sh
 
       - name: Validate Docker Compose model
@@ -172,7 +175,7 @@ jobs:
         run: |
           set -euo pipefail
           sudo install -d -m 0755 /opt/izakhono/bin
-          for name in backup-stack.sh health-check.sh verify-latest-backup.sh watch-node01-wave1.sh keepalive-actions-runners.sh; do
+          for name in backup-stack.sh health-check.sh verify-latest-backup.sh watch-node01-wave1.sh watch-node01-wave1-request.sh keepalive-actions-runners.sh; do
             sudo ln -sf /bin/true "/opt/izakhono/bin/$name"
           done
           systemd-analyze verify infra/launch-stack/systemd/*.service infra/launch-stack/systemd/*.timer

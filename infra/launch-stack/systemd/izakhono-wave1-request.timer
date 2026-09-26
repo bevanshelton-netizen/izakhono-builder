@@ -1,0 +1,12 @@
+[Unit]
+Description=Execute new IZAKHONO CODE Wave 1 requests on NODE01
+
+[Timer]
+OnBootSec=75s
+OnUnitActiveSec=60s
+AccuracySec=10s
+Persistent=true
+Unit=izakhono-wave1-request.service
+
+[Install]
+WantedBy=timers.target
