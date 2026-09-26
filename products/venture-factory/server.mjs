@@ -596,6 +596,53 @@ const server = http.createServer(async (req, res) => {
 
 
 
+
+    if (req.method === 'POST' && url.pathname === '/api/customer/login') {
+      if (!customerMode || !idUrl) return json(res, 404, { ok: false, error: 'customer_mode_disabled' });
+      let body;
+      try { body = await readJson(req, 100_000); } catch { return json(res, 400, { ok: false, error: 'invalid_json' }); }
+      const email = cleanString(body.email, 254).toLowerCase();
+      const password = typeof body.password === 'string' ? body.password : '';
+      const entitySlug = cleanString(body.entity_slug || 'izakhono-africa', 80).toLowerCase();
+      if (!email || !password || !entitySlug) return json(res, 422, { ok: false, error: 'email_password_entity_required' });
+      try {
+        const login = await requestJson(idUrl + '/api/v1/login', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: { email, password, entity_slug: entitySlug },
+        });
+        return json(res, 200, {
+          ok: true,
+          access_token: login.access_token,
+          token_type: login.token_type || 'Bearer',
+          expires_at: login.expires_at || null,
+          subject: login.subject || email,
+          entity: login.entity || null,
+          role: login.role || null,
+        });
+      } catch (e) {
+        const status = Number(e?.status) || 502;
+        return json(res, status === 401 || status === 403 || status === 422 ? status : 502, {
+          ok: false,
+          error: cleanString(e?.message, 160) || 'login_failed',
+        });
+      }
+    }
+
+    if (req.method === 'POST' && url.pathname === '/api/customer/logout') {
+      if (!customerMode || !idUrl) return json(res, 404, { ok: false, error: 'customer_mode_disabled' });
+      const token = bearerToken(req);
+      if (!token) return json(res, 401, { ok: false, error: 'authentication_required' });
+      try {
+        await requestJson(idUrl + '/api/v1/logout', {
+          method: 'POST',
+          headers: { authorization: 'Bearer ' + token, 'content-type': 'application/json' },
+          body: {},
+        });
+      } catch {}
+      return json(res, 200, { ok: true });
+    }
+
     if (req.method === 'GET' && url.pathname === '/api/customer/session') {
       if (!customerMode) return json(res, 404, { ok: false, error: 'customer_mode_disabled' });
       const customer = await customerContext(req);
