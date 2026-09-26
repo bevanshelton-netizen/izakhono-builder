@@ -15,8 +15,13 @@ where wsl.exe >nul 2>&1 || (
 
 set DISTRO=Ubuntu
 set REPORT=%USERPROFILE%\Desktop\IZAKHONO-NODE01-ALLEGRO-REPORT.json
+for /f "usebackq delims=" %%I in (`wsl.exe -d %DISTRO% -- wslpath -a "%CD%"`) do set LINUX_ROOT=%%I
+if "%LINUX_ROOT%"=="" (
+  echo [STOP] Could not map the reviewed IZAKHONO Builder checkout into WSL.
+  exit /b 1
+)
 
-echo [1/4] Checking NODE01 readiness...
+echo [1/5] Checking NODE01 readiness...
 wsl.exe -d %DISTRO% -u root -- curl -fsS http://127.0.0.1:9191/readyz >nul 2>&1
 if errorlevel 1 (
   echo [RECOVER] NODE01 is not ready. Activating owned Command Centre and deployment stack...
@@ -27,17 +32,25 @@ if errorlevel 1 (
   )
 )
 
-echo [2/4] Verifying NODE + CONTROL...
+echo [2/5] Verifying NODE + CONTROL...
 wsl.exe -d %DISTRO% -u root -- curl -fsS http://127.0.0.1:9191/readyz
 if errorlevel 1 exit /b 1
 wsl.exe -d %DISTRO% -u root -- curl -fsS http://127.0.0.1:9292/healthz
 if errorlevel 1 exit /b 1
 
-echo [3/4] Running fixed Allegro-only owned proof bridge...
+echo [3/5] Refreshing the attested sovereign deployment bundle...
+wsl.exe -d %DISTRO% -u root -- bash "%LINUX_ROOT%/scripts/install-sovereign-deploy.sh"
+if errorlevel 1 (
+  echo [SAFE STOP] Could not refresh the reviewed Builder bundle on NODE01.
+  echo No DNS, EDGE or public traffic change was made.
+  exit /b 1
+)
+
+echo [4/5] Running fixed Allegro-only owned proof bridge...
 wsl.exe -d %DISTRO% -u root -- /opt/izakhono/bin/run-allegro-local-proof
 set RC=%ERRORLEVEL%
 
-echo [4/4] Copying evidence...
+echo [5/5] Copying evidence...
 for /f "usebackq delims=" %%I in (`wsl.exe -d %DISTRO% -- wslpath -a "%REPORT%"`) do set LINUX_REPORT=%%I
 if not "%LINUX_REPORT%"=="" (
   wsl.exe -d %DISTRO% -u root -- bash -lc "cp /opt/izakhono/evidence/IZAKHONO-NODE01-ALLEGRO-REPORT.json '%LINUX_REPORT%' && chown $(stat -c %%u /mnt/c/Users 2>/dev/null || echo 0):$(stat -c %%g /mnt/c/Users 2>/dev/null || echo 0) '%LINUX_REPORT%' 2>/dev/null || true"
