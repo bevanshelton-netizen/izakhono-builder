@@ -1,0 +1,88 @@
+name: IZAKHONO NAV Owner Activation CI
+
+on:
+  pull_request:
+    paths:
+      - 'products/izakhono-node/deploy-nav-owned.sh'
+      - 'products/izakhono-node/deploy.sh'
+      - 'products/izakhono-node/install.sh'
+      - 'products/izakhono-node/START-IZAKHONO-NAV.*'
+      - 'products/izakhono-node/profiles/izakhono-nav.production.json'
+      - 'products/izakhono-nav/stack/**'
+      - 'infra/public-cutover/*NAV*'
+      - '.github/workflows/izakhono-nav-owner-activation-ci.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'products/izakhono-node/deploy-nav-owned.sh'
+      - 'products/izakhono-node/deploy.sh'
+      - 'products/izakhono-node/install.sh'
+      - 'products/izakhono-node/START-IZAKHONO-NAV.*'
+      - 'products/izakhono-node/profiles/izakhono-nav.production.json'
+      - 'products/izakhono-nav/stack/**'
+      - 'infra/public-cutover/*NAV*'
+      - '.github/workflows/izakhono-nav-owner-activation-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Shell syntax
+        run: |
+          bash -n products/izakhono-node/deploy-nav-owned.sh
+          bash -n products/izakhono-node/deploy.sh
+          bash -n products/izakhono-node/install.sh
+          for f in products/izakhono-nav/stack/scripts/*.sh; do bash -n "$f"; done
+      - name: Production profile contract
+        run: |
+          python3 - <<'PY'
+          import json,re
+          p=json.load(open('products/izakhono-node/profiles/izakhono-nav.production.json'))
+          assert p['app']=='izakhono-nav'
+          assert p['environment']=='production'
+          assert p['mode']=='compose'
+          assert re.fullmatch(r'[0-9a-f]{40}',p['ref'])
+          assert p['health_url'].startswith('http://127.0.0.1:')
+          assert p['env_file']=='/etc/izakhono/apps/izakhono-nav.env'
+          print(p['ref'])
+          PY
+          ref="$(python3 -c "import json; print(json.load(open('products/izakhono-node/profiles/izakhono-nav.production.json'))['ref'])")"
+          git cat-file -e "$ref^{commit}"
+          git show "$ref:products/izakhono-nav/stack/compose.yaml" | grep -q '127.0.0.1:.*NAV_WEB_PORT'
+          git show "$ref:products/izakhono-nav/stack/compose.yaml" | grep -q '127.0.0.1:.*NAV_ENGINE_PORT'
+      - name: Internal CODE path alignment
+        run: |
+          grep -q 'file:///var/lib/izakhono-code/repos/' products/izakhono-node/deploy.sh
+          grep -q '/var/lib/izakhono-code/repos/izakhono-builder.git' products/izakhono-node/deploy-nav-owned.sh
+      - name: No NAV host port 80/443 ownership
+        run: |
+          ! grep -Eq '"[^"]*:(80|443):(80|443)"' products/izakhono-nav/stack/compose.yaml
+          grep -q 'NAV_WEB_PORT' products/izakhono-nav/stack/compose.yaml
+          grep -q 'NAV_ENGINE_PORT' products/izakhono-nav/stack/compose.yaml
+      - name: PowerShell parse
+        shell: pwsh
+        run: |
+          $files=@(
+            'products/izakhono-node/START-IZAKHONO-NAV.ps1',
+            'infra/public-cutover/STAGE-NAV-EDGE.ps1',
+            'infra/public-cutover/ACTIVATE-NAV-EDGE.ps1',
+            'infra/public-cutover/VERIFY-NAV-PUBLIC.ps1',
+            'infra/public-cutover/RUN-NAV-OWNED-TO-END.ps1'
+          )
+          foreach($f in $files){
+            $tokens=$null; $errors=$null
+            [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path $f),[ref]$tokens,[ref]$errors) | Out-Null
+            if($errors.Count -gt 0){ $errors | Format-List | Out-String | Write-Error; exit 1 }
+          }
+      - name: Node and NAV test suites
+        run: |
+          python3 products/izakhono-node/test_service_plug.py
+          python3 products/izakhono-node/test_wave1_safety.py
+          cd products/izakhono-nav/engine
+          npm run check
