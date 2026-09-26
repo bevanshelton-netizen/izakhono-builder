@@ -1,0 +1,48 @@
+name: IZAKHONO Venture Factory EDGE CI
+
+on:
+  pull_request:
+    paths:
+      - 'infra/public-cutover/*VENTURE-FACTORY*'
+      - 'CUTOVER-VENTURE-FACTORY.*'
+      - '.github/workflows/venture-factory-edge-ci.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'infra/public-cutover/*VENTURE-FACTORY*'
+      - 'CUTOVER-VENTURE-FACTORY.*'
+      - '.github/workflows/venture-factory-edge-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: PowerShell syntax
+        shell: pwsh
+        run: |
+          $files = @(
+            'infra/public-cutover/STAGE-VENTURE-FACTORY-EDGE.ps1',
+            'infra/public-cutover/ACTIVATE-VENTURE-FACTORY-EDGE.ps1',
+            'infra/public-cutover/VERIFY-VENTURE-FACTORY-PUBLIC.ps1',
+            'CUTOVER-VENTURE-FACTORY.ps1'
+          )
+          foreach ($f in $files) {
+            [scriptblock]::Create((Get-Content $f -Raw)) | Out-Null
+          }
+      - name: Verify fail-closed live language
+        shell: bash
+        run: |
+          grep -Fq "PUBLIC_HTTPS=UNVERIFIED" START-VENTURE-FACTORY-NODE01.ps1
+          grep -Fq "OWNED_LIVE_VERIFIED" infra/public-cutover/VERIFY-VENTURE-FACTORY-PUBLIC.ps1
+          grep -Fq "NOT_READY_KEEP_FALLBACK" infra/public-cutover/VERIFY-VENTURE-FACTORY-PUBLIC.ps1
+          grep -Fq "https://ai.izakhono.co.za/venture-factory" infra/public-cutover/VERIFY-VENTURE-FACTORY-PUBLIC.ps1
+      - name: Verify EDGE upstream contract
+        shell: bash
+        run: |
+          grep -Fq "host.docker.internal:9780" infra/public-cutover/STAGE-VENTURE-FACTORY-EDGE.ps1
+          grep -Fq "venture.izakhono.co.za" infra/public-cutover/STAGE-VENTURE-FACTORY-EDGE.ps1
