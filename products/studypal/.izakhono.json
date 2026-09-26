@@ -1,12 +1,34 @@
 {
-  "version": 2,
+  "version": 3,
   "name": "StudyPal",
   "slug": "studypal",
+  "operator": "IZAKHONO AFRICA (PTY) LTD",
+  "trading_name": "StudyPal",
   "build_context": "products/studypal",
   "dockerfile_path": "products/studypal/Dockerfile",
   "container_port": 3000,
   "health_path": "/healthz",
   "branch": "main",
+  "infrastructure": {
+    "policy": "owned-first-externally-reversible",
+    "authoritative_source": "IZAKHONO CODE / owned source; GitHub mirror permitted for resilience",
+    "owned_target": "IZAKHONO Runtime Fabric",
+    "current_public_route": "NOT_YET_VERIFIED",
+    "external_fallback": "PENDING",
+    "status_label": "NOT YET PUBLIC",
+    "data_dependencies": [
+      "REQUIRES_CURRENT_VERIFICATION"
+    ],
+    "auth_dependencies": [
+      "REQUIRES_CURRENT_VERIFICATION"
+    ],
+    "payment_dependencies": [
+      "REQUIRES_CURRENT_VERIFICATION"
+    ],
+    "backup_evidence": "PENDING",
+    "restore_evidence": "PENDING",
+    "rollback_evidence": "PENDING"
+  },
   "alpha": {
     "preflight": true,
     "rehearsal": false,
