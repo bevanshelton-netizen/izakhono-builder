@@ -8,10 +8,16 @@ docker compose version >/dev/null || { echo "Docker Compose v2 is required." >&2
 command -v curl >/dev/null || { echo "curl is required." >&2; exit 2; }
 command -v md5sum >/dev/null || { echo "md5sum is required." >&2; exit 2; }
 if grep -q 'CHANGE-ME-BEFORE-FIRST-START' "$HERE/.env"; then
-  secret="$(head -c 64 /dev/urandom | base64 | tr -dc 'A-Za-z0-9' | head -c 40)"
+  secret="$(od -An -N24 -tx1 /dev/urandom | tr -d ' \\n')"
   sed -i "s/CHANGE-ME-BEFORE-FIRST-START/$secret/" "$HERE/.env"
   echo "Generated a private Nominatim database password in .env."
   set -a; source "$HERE/.env"; set +a
+fi
+if git -C "$HERE" rev-parse --show-toplevel >/dev/null 2>&1; then
+  root="$(git -C "$HERE" rev-parse --show-toplevel)"
+  exclude="$root/.git/info/exclude"
+  grep -qxF "products/izakhono-nav/stack/.env" "$exclude" 2>/dev/null || echo "products/izakhono-nav/stack/.env" >> "$exclude"
+  grep -qxF "products/izakhono-nav/stack/runtime-data/" "$exclude" 2>/dev/null || echo "products/izakhono-nav/stack/runtime-data/" >> "$exclude"
 fi
 ram_gb="$(awk '/MemTotal/{printf "%.0f",$2/1024/1024}' /proc/meminfo 2>/dev/null || echo 0)"
 disk_gb="$(df -Pk "${NAV_DATA_DIR:-$HERE/runtime-data}" 2>/dev/null | awk 'NR==2{printf "%.0f",$4/1024/1024}' || true)"
