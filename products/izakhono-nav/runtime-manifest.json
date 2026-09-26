@@ -7,10 +7,10 @@
   },
   "spec": {
     "operator": "IZAKHONO AFRICA (PTY) LTD",
-    "version": "0.8.0",
-    "releaseId": "IZAKHONO-NAV-v0.8",
+    "version": "1.0.0",
+    "releaseId": "IZAKHONO-NAV-v1.0",
     "artifactSha256": "6d458b36cd1fc93753152674739d98aacc21dd652f1fc65f79b6108611d7c0b0",
-    "status": "BUILT / VERIFIED LOCALLY",
+    "status": "BUILT / CI VERIFICATION PENDING",
     "runtimePolicy": "node-agnostic-runtime-fabric",
     "healthPath": "/api/health",
     "webHealthPath": "/health",
@@ -44,7 +44,8 @@
       "codeMerged": true,
       "deploymentAttempted": true,
       "deploymentVerified": false,
-      "blocker": "CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID are not configured in the GitHub production environment"
+      "blocker": "CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID are not configured in the GitHub production environment",
+      "requiredForLaunch": false
     },
     "deploymentEvidence": {
       "pullRequest": 237,
@@ -56,7 +57,7 @@
     },
     "engine": {
       "name": "IZAKHONO NAV ENGINE",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "path": "products/izakhono-nav/engine",
       "independentlyDeployable": true,
       "node01Required": false,
@@ -78,7 +79,33 @@
         "adIdentifiers": false,
         "behaviouralTracking": false,
         "rawQueryLogging": false
-      }
+      },
+      "clientCompatibility": [
+        "/api/health",
+        "/api/search",
+        "/api/route/{mode}/{coords}",
+        "/tiles/{z}/{x}/{y}.png"
+      ]
+    },
+    "ownedStack": {
+      "path": "products/izakhono-nav/stack",
+      "independentlyDeployable": true,
+      "node01Required": false,
+      "services": [
+        "nav-edge",
+        "nav-engine",
+        "nav-router",
+        "nav-search",
+        "nav-tiles"
+      ],
+      "routing": "Valhalla official scripted container",
+      "search": "Nominatim 5.3",
+      "maps": "tilemaker PMTiles + Martin 1.16.1-full",
+      "sourceData": "Geofabrik South Africa OSM PBF",
+      "updatePolicy": "Nominatim continuous replication + weekly controlled router/map refresh",
+      "activation": "scripts/activate.sh",
+      "verification": "scripts/verify.sh",
+      "publicLiveVerified": false
     }
   }
 }
