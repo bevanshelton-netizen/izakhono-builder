@@ -362,7 +362,7 @@ def find_session(db, token):
     if not token:
         return None
     row = db.execute("""SELECT s.*, e.slug AS entity_slug, e.display_name AS entity_name,
-                              u.email AS user_email, m.role AS membership_role,
+                              u.email AS user_email, u.mfa_enabled_at, m.role AS membership_role,
                               e.status AS entity_status, u.status AS user_status, m.status AS membership_status
                        FROM sessions s
                        JOIN entities e ON e.id=s.entity_id
@@ -428,6 +428,11 @@ class Handler(BaseHTTPRequestHandler):
                     "lock_seconds": LOGIN_LOCK_SECONDS,
                 },
                 "audit_events": True,
+                "mfa": {
+                    "totp_available": mfa_available(),
+                    "challenge_seconds": MFA_CHALLENGE_SECONDS,
+                    "max_attempts": MFA_MAX_ATTEMPTS,
+                },
             })
         if p == "/api/v1/me":
             token = bearer_token(self)
@@ -445,6 +450,10 @@ class Handler(BaseHTTPRequestHandler):
                 },
                 "role": session["membership_role"],
                 "session_expires_at": session["expires_at"],
+                "mfa": {
+                    "enabled": bool(session["mfa_enabled_at"]) if "mfa_enabled_at" in session.keys() else False,
+                    "totp_available": mfa_available(),
+                },
             })
         return send_json(self, 404, {"ok": False, "error": "not_found"})
 
@@ -572,9 +581,27 @@ class Handler(BaseHTTPRequestHandler):
                         return send_json(self, 403, {"ok": False, "error": "entity_membership_required"})
 
                     clear_login_failures(db, fingerprint)
+                    if user["mfa_enabled_at"]:
+                        if not mfa_available():
+                            audit(db, "login.mfa_unavailable", entity_id=entity["id"], user_id=user["id"], subject=email)
+                            db.commit()
+                            return send_json(self, 503, {"ok": False, "error": "mfa_service_unavailable"})
+                        challenge_token, challenge_id, challenge_expires_at = issue_login_challenge(db, entity, user, membership)
+                        audit(db, "login.mfa_required", entity_id=entity["id"], user_id=user["id"], subject=email, detail=f"challenge={challenge_id}")
+                        db.commit()
+                        return send_json(self, 202, {
+                            "ok": True,
+                            "mfa_required": True,
+                            "challenge_token": challenge_token,
+                            "challenge_expires_at": challenge_expires_at,
+                            "methods": ["totp", "recovery_code"],
+                            "entity": {"id": entity["id"], "slug": entity["slug"]},
+                            "subject": email,
+                        })
+
                     token, session_id, expires_at = issue_session(db, entity, user, membership)
                     db.execute("UPDATE users SET last_login_at=?,updated_at=? WHERE id=?", (now_iso(), now_iso(), user["id"]))
-                    audit(db, "login.succeeded", entity_id=entity["id"], user_id=user["id"], subject=email, detail=f"role={membership['role']}")
+                    audit(db, "login.succeeded", entity_id=entity["id"], user_id=user["id"], subject=email, detail=f"role={membership['role']};mfa=false")
                     db.commit()
                 return send_json(self, 200, {
                     "ok": True,
@@ -585,7 +612,195 @@ class Handler(BaseHTTPRequestHandler):
                     "entity": {"id": entity["id"], "slug": entity["slug"]},
                     "subject": email,
                     "role": membership["role"],
+                    "mfa": False,
                 })
+            except (ValueError, json.JSONDecodeError) as exc:
+                return send_json(self, 422, {"ok": False, "error": str(exc)})
+
+        if p == "/api/v1/login/mfa":
+            try:
+                data = self.read_json()
+                challenge_token = str(data.get("challenge_token") or "")
+                code = str(data.get("code") or "")
+                recovery = str(data.get("recovery_code") or "")
+                with db_connect() as db:
+                    challenge = find_login_challenge(db, challenge_token)
+                    if not challenge:
+                        return send_json(self, 401, {"ok": False, "error": "invalid_mfa_challenge"})
+
+                    valid = verify_totp(challenge["user_id"], code)
+                    used_recovery = False
+                    if not valid and recovery:
+                        valid = consume_recovery_code(db, challenge["user_id"], recovery)
+                        used_recovery = valid
+
+                    if not valid:
+                        attempts = int(challenge["attempts"] or 0) + 1
+                        consumed_at = now_iso() if attempts >= MFA_MAX_ATTEMPTS else None
+                        db.execute(
+                            "UPDATE login_challenges SET attempts=?,consumed_at=? WHERE id=?",
+                            (attempts, consumed_at, challenge["id"]),
+                        )
+                        audit(
+                            db,
+                            "login.mfa_failed",
+                            entity_id=challenge["entity_id"],
+                            user_id=challenge["user_id"],
+                            subject=challenge["user_email"],
+                            detail=f"attempts={attempts}",
+                        )
+                        db.commit()
+                        if attempts >= MFA_MAX_ATTEMPTS:
+                            return send_json(self, 429, {"ok": False, "error": "mfa_attempts_exceeded"})
+                        return send_json(self, 401, {"ok": False, "error": "invalid_mfa_code"})
+
+                    entity = db.execute("SELECT * FROM entities WHERE id=? AND status='active'", (challenge["entity_id"],)).fetchone()
+                    user = db.execute("SELECT * FROM users WHERE id=? AND status='active'", (challenge["user_id"],)).fetchone()
+                    membership = db.execute("SELECT * FROM memberships WHERE id=? AND status='active'", (challenge["membership_id"],)).fetchone()
+                    if not entity or not user or not membership:
+                        return send_json(self, 403, {"ok": False, "error": "mfa_context_inactive"})
+
+                    db.execute("UPDATE login_challenges SET consumed_at=? WHERE id=?", (now_iso(), challenge["id"]))
+                    token, session_id, expires_at = issue_session(db, entity, user, membership)
+                    db.execute("UPDATE users SET last_login_at=?,updated_at=? WHERE id=?", (now_iso(), now_iso(), user["id"]))
+                    audit(
+                        db,
+                        "login.succeeded",
+                        entity_id=entity["id"],
+                        user_id=user["id"],
+                        subject=user["email"],
+                        detail=f"role={membership['role']};mfa=true;recovery={str(used_recovery).lower()}",
+                    )
+                    db.commit()
+                return send_json(self, 200, {
+                    "ok": True,
+                    "access_token": token,
+                    "token_type": "Bearer",
+                    "session_id": session_id,
+                    "expires_at": expires_at,
+                    "entity": {"id": entity["id"], "slug": entity["slug"]},
+                    "subject": user["email"],
+                    "role": membership["role"],
+                    "mfa": True,
+                })
+            except (ValueError, json.JSONDecodeError) as exc:
+                return send_json(self, 422, {"ok": False, "error": str(exc)})
+
+        if p == "/api/v1/mfa/enroll/start":
+            token = bearer_token(self)
+            with db_connect() as db:
+                session = find_session(db, token)
+                if not session:
+                    return send_json(self, 401, {"ok": False, "error": "invalid_session"})
+                if not mfa_available():
+                    return send_json(self, 503, {"ok": False, "error": "mfa_not_configured"})
+                user = db.execute("SELECT * FROM users WHERE id=? AND status='active'", (session["user_id"],)).fetchone()
+                if not user:
+                    return send_json(self, 404, {"ok": False, "error": "user_not_found"})
+                if user["mfa_enabled_at"]:
+                    return send_json(self, 409, {"ok": False, "error": "mfa_already_enabled"})
+                secret = mfa_secret_base32(user["id"])
+                uri = otpauth_uri(user["id"], user["email"], session["entity_slug"])
+                audit(db, "mfa.enroll_started", entity_id=session["entity_id"], user_id=user["id"], subject=user["email"])
+                db.commit()
+            return send_json(self, 200, {
+                "ok": True,
+                "type": "totp",
+                "secret": secret,
+                "otpauth_uri": uri,
+                "digits": 6,
+                "period": 30,
+                "algorithm": "SHA1",
+            })
+
+        if p == "/api/v1/mfa/enroll/confirm":
+            token = bearer_token(self)
+            try:
+                data = self.read_json()
+                code = str(data.get("code") or "")
+                with db_connect() as db:
+                    session = find_session(db, token)
+                    if not session:
+                        return send_json(self, 401, {"ok": False, "error": "invalid_session"})
+                    user = db.execute("SELECT * FROM users WHERE id=? AND status='active'", (session["user_id"],)).fetchone()
+                    if not user:
+                        return send_json(self, 404, {"ok": False, "error": "user_not_found"})
+                    if user["mfa_enabled_at"]:
+                        return send_json(self, 409, {"ok": False, "error": "mfa_already_enabled"})
+                    if not verify_totp(user["id"], code):
+                        audit(db, "mfa.enroll_failed", entity_id=session["entity_id"], user_id=user["id"], subject=user["email"])
+                        db.commit()
+                        return send_json(self, 401, {"ok": False, "error": "invalid_mfa_code"})
+                    ts = now_iso()
+                    recovery_codes = replace_recovery_codes(db, user["id"])
+                    db.execute("UPDATE users SET mfa_enabled_at=?,updated_at=? WHERE id=?", (ts, ts, user["id"]))
+                    db.execute("UPDATE sessions SET revoked_at=? WHERE user_id=? AND id<>? AND revoked_at IS NULL", (ts, user["id"], session["id"]))
+                    audit(db, "mfa.enabled", entity_id=session["entity_id"], user_id=user["id"], subject=user["email"])
+                    db.commit()
+                return send_json(self, 200, {
+                    "ok": True,
+                    "mfa_enabled": True,
+                    "recovery_codes": recovery_codes,
+                    "recovery_codes_note": "Store these securely. Each code works once and will not be shown again.",
+                    "other_sessions_revoked": True,
+                })
+            except (ValueError, json.JSONDecodeError) as exc:
+                return send_json(self, 422, {"ok": False, "error": str(exc)})
+
+        if p == "/api/v1/mfa/recovery/regenerate":
+            token = bearer_token(self)
+            try:
+                data = self.read_json()
+                code = str(data.get("code") or "")
+                with db_connect() as db:
+                    session = find_session(db, token)
+                    if not session:
+                        return send_json(self, 401, {"ok": False, "error": "invalid_session"})
+                    user = db.execute("SELECT * FROM users WHERE id=? AND status='active'", (session["user_id"],)).fetchone()
+                    if not user or not user["mfa_enabled_at"]:
+                        return send_json(self, 409, {"ok": False, "error": "mfa_not_enabled"})
+                    if not verify_totp(user["id"], code):
+                        return send_json(self, 401, {"ok": False, "error": "invalid_mfa_code"})
+                    recovery_codes = replace_recovery_codes(db, user["id"])
+                    audit(db, "mfa.recovery_regenerated", entity_id=session["entity_id"], user_id=user["id"], subject=user["email"])
+                    db.commit()
+                return send_json(self, 200, {
+                    "ok": True,
+                    "recovery_codes": recovery_codes,
+                    "recovery_codes_note": "Previous recovery codes were invalidated.",
+                })
+            except (ValueError, json.JSONDecodeError) as exc:
+                return send_json(self, 422, {"ok": False, "error": str(exc)})
+
+        if p == "/api/v1/mfa/disable":
+            token = bearer_token(self)
+            try:
+                data = self.read_json()
+                password = str(data.get("current_password") or "")
+                code = str(data.get("code") or "")
+                recovery = str(data.get("recovery_code") or "")
+                with db_connect() as db:
+                    session = find_session(db, token)
+                    if not session:
+                        return send_json(self, 401, {"ok": False, "error": "invalid_session"})
+                    user = db.execute("SELECT * FROM users WHERE id=? AND status='active'", (session["user_id"],)).fetchone()
+                    if not user or not user["mfa_enabled_at"]:
+                        return send_json(self, 409, {"ok": False, "error": "mfa_not_enabled"})
+                    if not verify_password(password, user["password_salt"], user["password_hash"]):
+                        return send_json(self, 401, {"ok": False, "error": "invalid_current_password"})
+                    valid_factor = verify_totp(user["id"], code)
+                    if not valid_factor and recovery:
+                        valid_factor = consume_recovery_code(db, user["id"], recovery)
+                    if not valid_factor:
+                        return send_json(self, 401, {"ok": False, "error": "invalid_mfa_code"})
+                    ts = now_iso()
+                    db.execute("UPDATE users SET mfa_enabled_at=NULL,updated_at=? WHERE id=?", (ts, user["id"]))
+                    db.execute("DELETE FROM mfa_recovery_codes WHERE user_id=?", (user["id"],))
+                    db.execute("UPDATE login_challenges SET consumed_at=? WHERE user_id=? AND consumed_at IS NULL", (ts, user["id"]))
+                    db.execute("UPDATE sessions SET revoked_at=? WHERE user_id=? AND id<>? AND revoked_at IS NULL", (ts, user["id"], session["id"]))
+                    audit(db, "mfa.disabled", entity_id=session["entity_id"], user_id=user["id"], subject=user["email"])
+                    db.commit()
+                return send_json(self, 200, {"ok": True, "mfa_enabled": False, "other_sessions_revoked": True})
             except (ValueError, json.JSONDecodeError) as exc:
                 return send_json(self, 422, {"ok": False, "error": str(exc)})
 
