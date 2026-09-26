@@ -2,7 +2,7 @@
 
 **Product:** IZAKHONO NAV  
 **Operator:** IZAKHONO AFRICA (PTY) LTD  
-**Current package:** v0.8  
+**Current package:** v1.0  
 **Status:** BUILT / VERIFIED LOCALLY  
 **Runtime policy:** IZAKHONO Runtime Fabric — no single node is a launch gate
 
@@ -59,3 +59,12 @@ NAV now has its own independently deployable engine under `products/izakhono-nav
 The engine exposes runtime identity, health, routing, search and tile boundaries. It can run unchanged on any approved IZAKHONO Runtime Fabric target and does not require NODE01.
 
 It deliberately fails closed: without an approved routing/search backend it returns 503 instead of fabricating navigation results. External resilience adapters are opt-in only.
+
+
+## IZAKHONO NAV v1.0 — owned end-state
+
+The v1 owned stack lives under `products/izakhono-nav/stack` and combines NAV's own engine with Valhalla routing, Nominatim search, locally generated South Africa PMTiles, Martin raster rendering and Caddy edge/TLS.
+
+The web client and engine compatibility contracts are aligned. The stack is node-agnostic, external-host-independent by default, privacy-preserving, and includes first-run activation, OSM checksum verification, reboot persistence, scheduled map-data refresh and a full local verification script.
+
+Public-live status remains evidence-based: a real IZAKHONO-controlled runtime must complete the South Africa imports/builds and pass `stack/scripts/verify.sh`.
