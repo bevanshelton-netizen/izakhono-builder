@@ -1,5 +1,6 @@
 let currentPlanId='';
 let sessionToken=sessionStorage.getItem('izakhono-vf-session')||'';
+let mfaChallengeToken='';
 let customerOffer=null;
 
 const q=s=>document.querySelector(s);
@@ -70,17 +71,55 @@ q('#loginCustomer').addEventListener('click',async()=>{
   try{
     const r=await fetch('/api/customer/login',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({email,password,entity_slug:entity})});
     const d=await r.json();if(!r.ok)throw new Error(d.error||'Sign-in failed');
+    if(d.mfa_required){
+      mfaChallengeToken=d.challenge_token||'';
+      if(!mfaChallengeToken)throw new Error('Identity service did not return an MFA challenge.');
+      q('#mfaPanel').hidden=false;
+      q('#customerMfaCode').focus();
+      q('#customerPassword').value='';
+      setCustomerStatus('Multi-factor authentication required. Enter your authenticator or recovery code.');
+      return;
+    }
     sessionToken=d.access_token||'';if(!sessionToken)throw new Error('Identity service returned no session token');
     sessionStorage.setItem('izakhono-vf-session',sessionToken);
     q('#customerPassword').value='';
+    q('#mfaPanel').hidden=true;
+    mfaChallengeToken='';
     await refreshSession();
   }catch(e){setCustomerStatus(e.message||String(e))}
   finally{q('#loginCustomer').disabled=false}
 });
 
+q('#verifyMfa').addEventListener('click',async()=>{
+  const factor=q('#customerMfaCode').value.trim();
+  if(!mfaChallengeToken||!factor){setCustomerStatus('Enter your authenticator or recovery code.');return}
+  q('#verifyMfa').disabled=true;setCustomerStatus('Verifying multi-factor authentication…');
+  try{
+    const isTotp=/^\d{6}$/.test(factor.replace(/\s+/g,''));
+    const r=await fetch('/api/customer/login/mfa',{
+      method:'POST',
+      headers:{'content-type':'application/json'},
+      body:JSON.stringify({
+        challenge_token:mfaChallengeToken,
+        ...(isTotp?{code:factor}:{recovery_code:factor})
+      })
+    });
+    const d=await r.json();if(!r.ok)throw new Error(d.error||'MFA verification failed');
+    sessionToken=d.access_token||'';if(!sessionToken)throw new Error('Identity service returned no session token');
+    sessionStorage.setItem('izakhono-vf-session',sessionToken);
+    mfaChallengeToken='';
+    q('#customerMfaCode').value='';
+    q('#mfaPanel').hidden=true;
+    await refreshSession();
+  }catch(e){setCustomerStatus(e.message||String(e))}
+  finally{q('#verifyMfa').disabled=false}
+});
+
 q('#logoutCustomer').addEventListener('click',async()=>{
   try{if(sessionToken)await fetch('/api/customer/logout',{method:'POST',headers:{authorization:'Bearer '+sessionToken}})}catch{}
-  sessionToken='';sessionStorage.removeItem('izakhono-vf-session');sessionStorage.removeItem('izakhono-vf-checkout-key');
+  sessionToken='';mfaChallengeToken='';
+  sessionStorage.removeItem('izakhono-vf-session');sessionStorage.removeItem('izakhono-vf-checkout-key');
+  q('#mfaPanel').hidden=true;q('#customerMfaCode').value='';
   await refreshSession();
 });
 
