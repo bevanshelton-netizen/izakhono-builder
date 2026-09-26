@@ -50,3 +50,12 @@ The NAV resilience shell and edge route were merged through PR #237. Builder CI 
 The production Cloudflare deployment was attempted by workflow run 36231538995 but stopped before deployment because the production environment has no `CLOUDFLARE_API_TOKEN` or `CLOUDFLARE_ACCOUNT_ID`. The controlled deploy run 36231539007 also skipped all deployment steps for the same reason.
 
 Therefore `https://ai.izakhono.co.za/nav/` is a candidate route only and is **not** recorded as public-live.
+
+
+## IZAKHONO NAV ENGINE v1.0
+
+NAV now has its own independently deployable engine under `products/izakhono-nav/engine`.
+
+The engine exposes runtime identity, health, routing, search and tile boundaries. It can run unchanged on any approved IZAKHONO Runtime Fabric target and does not require NODE01.
+
+It deliberately fails closed: without an approved routing/search backend it returns 503 instead of fabricating navigation results. External resilience adapters are opt-in only.
