@@ -8,7 +8,7 @@ fi
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$HERE/../.." && pwd)"
-RELEASE_REF="${IZAKHONO_NAV_RELEASE_REF:-00391d3987a5bd7247a7bf3fc881f6502bfd6d87}"
+RELEASE_REF="${IZAKHONO_NAV_RELEASE_REF:-348fa0203bb52f1c440b7a6cf8c9098d6b6bb9fd}"
 PROFILE_TEMPLATE="$HERE/profiles/izakhono-nav.production.json"
 APP_ROOT="/var/lib/izakhono-node/apps/izakhono-nav"
 SRC="$APP_ROOT/source"
