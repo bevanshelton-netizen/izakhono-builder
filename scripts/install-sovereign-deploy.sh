@@ -30,6 +30,7 @@ install -m 0644 "$ROOT_DIR/products/izakhono-node/profiles/wave1/allegro-vibez.p
 install -m 0644 "$ROOT_DIR/products/izakhono-node/profiles/wave1/the-chancellor.production.json" "$WAVE1_ROOT/products/izakhono-node/profiles/wave1/the-chancellor.production.json"
 install -m 0644 "$ROOT_DIR/infra/public-cutover/wave1-registry.json" "$WAVE1_ROOT/infra/public-cutover/wave1-registry.json"
 install -o root -g root -m 0755 "$ROOT_DIR/scripts/launch-stack/run-wave1-local-proof.sh" /opt/izakhono/bin/run-wave1-local-proof
+install -o root -g root -m 0755 "$ROOT_DIR/scripts/launch-stack/run-allegro-local-proof.sh" /opt/izakhono/bin/run-allegro-local-proof
 if ! id izakhono-code >/dev/null 2>&1; then useradd --system --create-home --home-dir /srv/izakhono-code --shell /usr/bin/git-shell izakhono-code; fi
 chown -R izakhono-code:izakhono-code /srv/izakhono-code
 if [[ ! -f /etc/izakhono/node.env ]]; then
