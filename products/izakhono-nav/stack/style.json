@@ -1,0 +1,25 @@
+{
+  "version": 8,
+  "name": "IZAKHONO NAV Owned",
+  "metadata": {
+    "operator": "IZAKHONO AFRICA (PTY) LTD",
+    "data": "OpenStreetMap contributors"
+  },
+  "sources": {
+    "sa": {
+      "type": "vector",
+      "url": "http://127.0.0.1:3000/south-africa"
+    }
+  },
+  "layers": [
+    {"id":"background","type":"background","paint":{"background-color":"#eef3ef"}},
+    {"id":"landuse","type":"fill","source":"sa","source-layer":"landuse","paint":{"fill-color":"#e3eadf","fill-opacity":0.75}},
+    {"id":"park","type":"fill","source":"sa","source-layer":"park","paint":{"fill-color":"#cfe6cb","fill-opacity":0.85}},
+    {"id":"water","type":"fill","source":"sa","source-layer":"water","paint":{"fill-color":"#b8d8e8"}},
+    {"id":"waterway","type":"line","source":"sa","source-layer":"waterway","paint":{"line-color":"#9fcadf","line-width":1.2}},
+    {"id":"roads-casing","type":"line","source":"sa","source-layer":"transportation","paint":{"line-color":"#c7cdc9","line-width":4.0,"line-opacity":0.9}},
+    {"id":"roads","type":"line","source":"sa","source-layer":"transportation","paint":{"line-color":"#ffffff","line-width":2.4,"line-opacity":0.98}},
+    {"id":"boundaries","type":"line","source":"sa","source-layer":"boundary","paint":{"line-color":"#9aa69f","line-width":1.0,"line-dasharray":[3,2]}},
+    {"id":"buildings","type":"fill","source":"sa","source-layer":"building","minzoom":13,"paint":{"fill-color":"#d8d6cf","fill-outline-color":"#c5c2bb"}}
+  ]
+}
