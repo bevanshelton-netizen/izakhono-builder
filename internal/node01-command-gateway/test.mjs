@@ -5,6 +5,16 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
 
+const allegroProfile=JSON.parse(await fs.readFile('internal/node01-command-gateway/deploy-profiles/allegro-vibez.json','utf8'));
+assert.equal(allegroProfile.source,'izakhono-code');
+assert.equal(allegroProfile.repository,'allegro-vibez');
+assert.equal(allegroProfile.app,'allegro-vibez');
+assert.equal(allegroProfile.environment,'production');
+assert.equal(allegroProfile.mode,'single');
+assert.equal(allegroProfile.container_port,8080);
+assert.equal(allegroProfile.health_path,'/healthz');
+assert.equal(allegroProfile.public_build_env_file,'/etc/izakhono/apps/allegro-vibez.public-build.env');
+
 const tmp=await fs.mkdtemp(path.join(os.tmpdir(),'izakhono-command-test-'));
 const ownerFile=path.join(tmp,'owner');
 const controlFile=path.join(tmp,'control');
