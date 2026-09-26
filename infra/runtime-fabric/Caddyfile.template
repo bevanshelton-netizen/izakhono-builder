@@ -1,0 +1,18 @@
+# Template only. Substitute real internal/upstream addresses outside source control.
+# Caddy performs active health checks and skips unhealthy runtimes.
+#
+# Example use:
+# nav.example.com {
+#   import izakhono_fabric NODE01:8080 NODE02:8080 EXTERNAL_HOST:443
+# }
+
+(izakhono_fabric) {
+    reverse_proxy {args.0} {args.1} {args.2} {
+        lb_policy first
+        health_uri /health
+        health_interval 10s
+        health_timeout 3s
+        fail_duration 30s
+        max_fails 2
+    }
+}

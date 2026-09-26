@@ -1,19 +1,21 @@
 # IZAKHONO NODE CLUSTER v1
 
+> **Runtime Fabric boundary (26 Sep 2026):** This four-node cluster is the long-term owner-controlled HA target. It is not a prerequisite for public product availability and it must not make NODE01 a portfolio-wide launch gate. Products should first inherit the node-agnostic standard in `../runtime-fabric/README.md`.
+
 This directory turns IZAKHONO NODE from a single-machine runtime into a four-node owner-controlled cluster.
 
 ## Topology
 
 | Node | Preferred role | Cluster role | Backup role |
 | --- | --- | --- | --- |
-| NODE 01 | PRIMARY | k3s server/control-plane + worker | preferred edge/data/workload host |
-| NODE 02 | BACKUP 1 | k3s server/control-plane + worker | first failover target |
-| NODE 03 | BACKUP 2 | k3s server/control-plane + worker | second failover target |
-| NODE 04 | BACKUP 3 / DR | k3s worker + backup repository | third failover target and recovery store |
+| NODE 01 | bootstrap preference | k3s server/control-plane + worker | owned workload host |
+| NODE 02 | peer controller | k3s server/control-plane + worker | owned workload host |
+| NODE 03 | peer controller | k3s server/control-plane + worker | owned workload host |
+| NODE 04 | DR/workload | k3s worker + backup repository | recovery store |
 
-NODE 01 is the preferred primary, but production services must not depend on NODE 01 being alive.
+NODE01 may bootstrap this specific k3s cluster, but production applications must not depend on NODE01 being alive. Public launch/failover is governed by the Runtime Fabric, not by this cluster's bootstrap order.
 
-The cluster uses three control-plane members (NODE 01-03) so control-plane quorum survives one controller failure. NODE 04 is deliberately kept outside the etcd voting set so it can remain a simpler disaster-recovery and workload node.
+The cluster uses three control-plane members (NODE01-03) so control-plane quorum survives one controller failure. NODE04 remains outside the etcd voting set so it can act as a simpler disaster-recovery and workload node.
 
 ## Design goals
 
@@ -24,94 +26,37 @@ The cluster uses three control-plane members (NODE 01-03) so control-plane quoru
 - automatic workload rescheduling after node failure
 - scheduled etcd snapshots
 - encrypted service/data backups
-- explicit health proof before any node is called production-ready
+- explicit health proof before this cluster is called production-ready
 - public traffic exposed only through IZAKHONO EDGE
 - databases, admin panels and container ports remain private
 
-## Failover order
+## Cluster bootstrap order
 
-Preferred workload order:
-
-1. NODE 01
-2. NODE 02
-3. NODE 03
-4. NODE 04
-
-Kubernetes may reschedule workloads automatically when a node is unavailable. Stateful applications still require application-level replication and tested restore procedures; a cluster does not magically make a single-copy database highly available.
-
-## Minimum production hardware per node
-
-Recommended starting point:
-
-- x86_64 CPU, 8 cores minimum
-- 32 GB RAM minimum
-- 2 TB NVMe primary storage
-- second SSD/NVMe for local backup or mirrored storage
-- gigabit Ethernet minimum; 2.5 GbE preferred
-- UPS
-- Ubuntu Server 24.04 LTS or another supported hardened Linux distribution
-
-NODE 01 may start larger (16 cores / 64 GB RAM) if budget permits.
-
-## Network
-
-Use static private IP addresses for all four nodes. Do not expose the Kubernetes API, kubelet, etcd, Docker/containerd sockets, databases or admin panels directly to the public internet.
-
-Only IZAKHONO EDGE should receive public traffic.
-
-Recommended private names:
-
-- node01.izakhono.internal
-- node02.izakhono.internal
-- node03.izakhono.internal
-- node04.izakhono.internal
-
-## Installation order
+This order is only for forming this k3s cluster:
 
 1. Prepare all four Linux machines with static IPs, patched OS and SSH key access.
 2. Copy and edit `cluster.env.example` outside source control.
-3. On NODE 01 run:
-   `sudo ./bootstrap-primary.sh`
-4. Read the join token on NODE 01:
-   `sudo cat /var/lib/rancher/k3s/server/node-token`
-5. On NODE 02 and NODE 03 run:
-   `sudo ./join-replica.sh server`
-6. On NODE 04 run:
-   `sudo ./join-replica.sh worker`
-7. From NODE 01 run:
-   `sudo ./verify-cluster.sh`
-8. Configure encrypted backups and run:
-   `sudo ./backup.sh`
-9. Only after real-node proof should applications be migrated.
+3. On NODE01 run `sudo ./bootstrap-primary.sh`.
+4. Read the join token on NODE01.
+5. Join NODE02 and NODE03 as servers.
+6. Join NODE04 as a worker.
+7. Run `verify-cluster.sh` from an authorized admin host with cluster credentials.
+8. Configure encrypted backups and run `backup.sh`.
 
-## Application migration order
+Product releases do not wait for this procedure if another Runtime Fabric target is already healthy.
 
-Recommended first wave:
-
-1. ALLEGRO Radio
-2. IZAKHONO SEND
-3. KORA
-4. FAISReady
-5. IZAKHONO CORE shared services
-
-Payment settlement, authentication and production databases remain separately gated until their own replication, backup, security and restore tests pass.
-
-## Production proof
-
-The cluster is not production-ready merely because CI passes.
-
-Required real-world evidence:
+## Production proof for this cluster
 
 - all four physical nodes visible and Ready
-- NODE 01-03 etcd/control-plane quorum healthy
-- NODE 04 schedulable
-- encrypted backup completes and restore rehearsal succeeds
-- NODE 01 is powered down during a controlled test and a replicated stateless service remains available
-- NODE 01 returns and rejoins cleanly
+- NODE01-03 etcd/control-plane quorum healthy
+- NODE04 schedulable
+- encrypted backup and restore rehearsal succeed
+- each controller is failed individually during controlled tests
+- replicated/stateless service remains available
 - public edge routing is externally tested
 - UPS/power-loss recovery is tested
 - secrets are not stored in GitHub or application images
 
 ## Important boundary
 
-This repository builds the cluster software and operating procedure. It cannot prove the physical machines, LAN, UPS, public routing or disk durability until the actual hardware is installed and tested.
+This repository builds cluster software and operating procedures. It cannot prove physical machines, LAN, UPS, public routing or disk durability until real hardware is installed and tested.
