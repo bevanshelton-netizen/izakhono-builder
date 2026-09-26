@@ -9,5 +9,8 @@
   "health_path": "/healthz",
   "data_path": "/app/data",
   "dockerfile": "Dockerfile",
-  "public_build_env_file": "/etc/izakhono/apps/allegro-vibez.public-build.env"
+  "public_build_env_file": "/etc/izakhono/apps/allegro-vibez.public-build.env",
+  "release_build_arg": "IZAKHONO_RELEASE_ID",
+  "health_release_field": "release_id",
+  "health_product_field": "product"
 }
