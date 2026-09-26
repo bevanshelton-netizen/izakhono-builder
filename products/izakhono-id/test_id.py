@@ -18,6 +18,9 @@ os.environ["IZAKHONO_ID_LOGIN_MAX_FAILURES"]="3"
 os.environ["IZAKHONO_ID_LOGIN_WINDOW_SECONDS"]="60"
 os.environ["IZAKHONO_ID_LOGIN_LOCK_SECONDS"]="2"
 os.environ["IZAKHONO_ID_REQUIRE_EMAIL_VERIFICATION"]="true"
+os.environ["IZAKHONO_ID_MFA_MASTER_KEY"]="mfa-test-master-key-32-bytes-minimum-123456"
+os.environ["IZAKHONO_ID_MFA_CHALLENGE_SECONDS"]="60"
+os.environ["IZAKHONO_ID_MFA_MAX_ATTEMPTS"]="3"
 
 spec=importlib.util.spec_from_file_location("izakhono_id",Path(__file__).with_name("app.py"))
 app=importlib.util.module_from_spec(spec); spec.loader.exec_module(app)
@@ -36,6 +39,12 @@ with app.db_connect() as db:
                ("mem_a","ent_a","usr_1","admin",ts))
     db.execute("INSERT INTO memberships(id,entity_id,user_id,role,created_at) VALUES(?,?,?,?,?)",
                ("mem_b","ent_b","usr_1","member",ts))
+    mfa_salt,mfa_digest=app.hash_password("MfaStrongPass123!")
+    db.execute("""INSERT INTO users(id,email,password_salt,password_hash,email_verified_at,created_at,updated_at)
+                  VALUES(?,?,?,?,?,?,?)""",
+               ("usr_mfa","mfa@example.com",mfa_salt,mfa_digest,ts,ts,ts))
+    db.execute("INSERT INTO memberships(id,entity_id,user_id,role,created_at) VALUES(?,?,?,?,?)",
+               ("mem_mfa","ent_a","usr_mfa","member",ts))
     db.commit()
 
     entity_a=db.execute("SELECT * FROM entities WHERE id='ent_a'").fetchone()
@@ -160,12 +169,70 @@ try:
     status,_=request("/api/v1/me",headers=bearer2)
     assert status==401
 
+    # TOTP MFA enrollment and login challenge for a second user.
+    status,mfa_login=request("/api/v1/login","POST",{
+        "entity_slug":"entity-a",
+        "email":"mfa@example.com",
+        "password":"MfaStrongPass123!",
+    })
+    assert status==200 and mfa_login["ok"] and mfa_login["mfa"] is False
+    mfa_bearer={"authorization":"Bearer "+mfa_login["access_token"]}
+
+    status,enroll=request("/api/v1/mfa/enroll/start","POST",{},headers=mfa_bearer)
+    assert status==200 and enroll["type"]=="totp" and enroll["secret"] and enroll["otpauth_uri"].startswith("otpauth://totp/")
+
+    code=app.totp_code("usr_mfa")
+    status,confirmed=request("/api/v1/mfa/enroll/confirm","POST",{"code":code},headers=mfa_bearer)
+    assert status==200 and confirmed["mfa_enabled"] is True
+    recovery_codes=confirmed["recovery_codes"]
+    assert len(recovery_codes)==10
+
+    status,mfa_required=request("/api/v1/login","POST",{
+        "entity_slug":"entity-a",
+        "email":"mfa@example.com",
+        "password":"MfaStrongPass123!",
+    })
+    assert status==202 and mfa_required["mfa_required"] is True and mfa_required["challenge_token"]
+
+    status,mfa_complete=request("/api/v1/login/mfa","POST",{
+        "challenge_token":mfa_required["challenge_token"],
+        "code":app.totp_code("usr_mfa"),
+    })
+    assert status==200 and mfa_complete["ok"] and mfa_complete["mfa"] is True
+
+    # Recovery code is single-use and can complete a fresh MFA challenge.
+    status,mfa_required2=request("/api/v1/login","POST",{
+        "entity_slug":"entity-a",
+        "email":"mfa@example.com",
+        "password":"MfaStrongPass123!",
+    })
+    assert status==202
+    status,recovered=request("/api/v1/login/mfa","POST",{
+        "challenge_token":mfa_required2["challenge_token"],
+        "recovery_code":recovery_codes[0],
+    })
+    assert status==200 and recovered["mfa"] is True
+
+    status,mfa_required3=request("/api/v1/login","POST",{
+        "entity_slug":"entity-a",
+        "email":"mfa@example.com",
+        "password":"MfaStrongPass123!",
+    })
+    assert status==202
+    status,reused=request("/api/v1/login/mfa","POST",{
+        "challenge_token":mfa_required3["challenge_token"],
+        "recovery_code":recovery_codes[0],
+    })
+    assert status==401 and reused["error"]=="invalid_mfa_code"
+
     with app.db_connect() as db:
         events={r["event_type"] for r in db.execute("SELECT event_type FROM audit_events").fetchall()}
         assert "login.succeeded" in events
         assert "login.failed" in events
         assert "password.changed" in events
         assert "logout" in events
+        assert "mfa.enabled" in events
+        assert "login.mfa_required" in events
 
     print("IZAKHONO_ID_TEST=PASS")
 finally:
