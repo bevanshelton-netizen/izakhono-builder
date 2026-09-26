@@ -1,0 +1,12 @@
+{
+  "source": "izakhono-code",
+  "repository": "the-chancellor",
+  "app": "the-chancellor",
+  "environment": "production",
+  "mode": "single",
+  "container_port": 3000,
+  "health_path": "/api/health",
+  "data_path": "/app/data",
+  "dockerfile": "Dockerfile",
+  "compose_file": "deploy/izakhono-compose.yml"
+}
