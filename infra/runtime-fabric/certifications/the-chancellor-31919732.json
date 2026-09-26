@@ -1,0 +1,51 @@
+{
+  "schema": "izakhono.runtime-fabric.certification.v1",
+  "product": "the-chancellor",
+  "release_id": "31919732e0b58ff99b962fbce5fb75aa5e531b05",
+  "certified_at": "2026-09-26T16:23:12Z",
+  "status": "EXTERNAL_BACKEND_LIVE_VERIFIED",
+  "serving_target": {
+    "class": "external-resilience",
+    "provider": "Render",
+    "url": "https://the-chancellor.onrender.com",
+    "health_http": 200,
+    "go_live_http": 200,
+    "exact_release_match": true
+  },
+  "storage": {
+    "path": "/app/data",
+    "writable": true,
+    "fallback_active": false,
+    "persistence_boot_count": 4,
+    "persistence_proven": true
+  },
+  "commercial_gate": {
+    "ready_for_paid_traffic": true,
+    "blockers": [],
+    "warnings": [
+      "openai",
+      "communications"
+    ]
+  },
+  "payments": {
+    "mode": "live",
+    "configured": true,
+    "recurring_ready": true,
+    "real_money_transaction_certified": false,
+    "note": "Configuration/readiness is verified by /api/go-live. No real-money transaction was initiated by automated certification."
+  },
+  "ci": {
+    "chancellor_v1": "success",
+    "production_smoke": "success",
+    "production_excellence": "success",
+    "alpha_build_health": "success",
+    "builder_control_plane": "success"
+  },
+  "resilience": {
+    "static_fallback": "https://the-chancellor.vercel.app/",
+    "static_fallback_backend_capable": false,
+    "owned_runtime_eligible": true,
+    "node01_required": false
+  },
+  "routing_rule": "Prefer an approved healthy owned target when available; otherwise keep this verified external backend serving. Never rebuild merely to change runtime targets."
+}
