@@ -4,6 +4,9 @@ on:
   pull_request:
     paths:
       - 'infra/launch-stack/**'
+      - 'infra/public-cutover/**'
+      - 'RUN-NODE01-ALLEGRO-LOCAL.cmd'
+      - 'RUN-ALLEGRO-OWNED-PUSH.cmd'
       - 'scripts/launch-stack/**'
       - 'scripts/install-sovereign-deploy.sh'
       - 'products/izakhono-core/**'
@@ -16,6 +19,9 @@ on:
     branches: [main]
     paths:
       - 'infra/launch-stack/**'
+      - 'infra/public-cutover/**'
+      - 'RUN-NODE01-ALLEGRO-LOCAL.cmd'
+      - 'RUN-ALLEGRO-OWNED-PUSH.cmd'
       - 'scripts/launch-stack/**'
       - 'scripts/install-sovereign-deploy.sh'
       - 'products/izakhono-core/**'
@@ -56,7 +62,11 @@ jobs:
             'scripts/launch-stack/windows-owner-host.ps1',
             'scripts/launch-stack/tap-into-our-infrastructure.ps1',
             'scripts/launch-stack/enable-actions-runner.ps1',
-            'scripts/launch-stack/RECOVER-NODE01-WAVE1.ps1'
+            'scripts/launch-stack/RECOVER-NODE01-WAVE1.ps1',
+            'infra/public-cutover/STAGE-ALLEGRO-EDGE.ps1',
+            'infra/public-cutover/ACTIVATE-ALLEGRO-EDGE.ps1',
+            'infra/public-cutover/VERIFY-ALLEGRO-PUBLIC.ps1',
+            'infra/public-cutover/PUSH-ALLEGRO-OWNED.ps1'
           )) {
             $tokens = $null
             $errors = $null
@@ -80,6 +90,14 @@ jobs:
           $recoveryLauncher = Get-Content -Raw 'scripts/launch-stack/RECOVER-NODE01-WAVE1.cmd'
           if ($recoveryLauncher -notmatch 'RECOVER-NODE01-WAVE1\.ps1') {
             throw 'NODE01 recovery launcher is not wired to the reviewed recovery script.'
+          }
+          $allegroLocal = Get-Content -Raw 'RUN-NODE01-ALLEGRO-LOCAL.cmd'
+          if ($allegroLocal -notmatch 'run-allegro-local-proof') {
+            throw 'ALLEGRO local launcher is not wired to the fixed owned proof bridge.'
+          }
+          $allegroPush = Get-Content -Raw 'RUN-ALLEGRO-OWNED-PUSH.cmd'
+          if ($allegroPush -notmatch 'PUSH-ALLEGRO-OWNED\.ps1') {
+            throw 'ALLEGRO owned push launcher is not wired to the reviewed cutover orchestrator.'
           }
           $runnerLauncher = Get-Content -Raw 'scripts/launch-stack/START-IZAKHONO-ACTIONS-RUNNER.cmd'
           if ($runnerLauncher -notmatch 'enable-actions-runner\.ps1') {
@@ -108,6 +126,12 @@ jobs:
           grep -Fq 'IZAKHONO_CONTROL_TOKEN' scripts/install-sovereign-deploy.sh
           grep -Fq 'BUILDER_BUNDLE_REF' scripts/install-sovereign-deploy.sh
           grep -Fq 'BUILDER_REF_PATH' products/izakhono-node/wave1_deploy.py
+          grep -Fq -- '--only allegro-vibez' scripts/launch-stack/run-allegro-local-proof.sh
+          grep -Fq 'public_cutover_performed' products/izakhono-node/wave1_deploy.py
+          grep -Fq 'external_fallback_preserved=$true' infra/public-cutover/PUSH-ALLEGRO-OWNED.ps1
+          grep -Fq 'OWNED_PUBLIC_GATES_PASS' infra/public-cutover/VERIFY-ALLEGRO-PUBLIC.ps1
+          grep -Fq 'host.docker.internal:8080' infra/public-cutover/STAGE-ALLEGRO-EDGE.ps1
+          ! grep -Fq -- '--privileged' scripts/launch-stack/run-allegro-local-proof.sh infra/public-cutover/STAGE-ALLEGRO-EDGE.ps1 infra/public-cutover/ACTIVATE-ALLEGRO-EDGE.ps1 infra/public-cutover/PUSH-ALLEGRO-OWNED.ps1
           grep -Fq 'builder_bundle_ref' products/izakhono-node/wave1_deploy.py
           grep -Fq 'WAVE1_BUNDLE_SHA256' scripts/install-sovereign-deploy.sh
           grep -Fq 'wave1_bundle_sha256' products/izakhono-node/wave1_deploy.py
