@@ -1,0 +1,12 @@
+{
+  "source": "izakhono-code",
+  "repository": "allegro-vibez",
+  "app": "allegro-vibez",
+  "environment": "production",
+  "mode": "single",
+  "container_port": 8080,
+  "health_path": "/healthz",
+  "data_path": "/app/data",
+  "dockerfile": "Dockerfile",
+  "public_build_env_file": "/etc/izakhono/apps/allegro-vibez.public-build.env"
+}
