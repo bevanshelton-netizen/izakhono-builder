@@ -1,0 +1,560 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="theme-color" content="#07110f" />
+  <meta name="description" content="IZAKHONO NAV — owned-first, privacy-first multilingual voice navigation." />
+  <title>IZAKHONO NAV — Voice GPS</title>
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <style>
+:root{--bg:#06100e;--panel:#0d1a17;--panel2:#10231f;--text:#f4fbf8;--muted:#93aaa3;--green:#39e58c;--gold:#f3c969;--danger:#ff6961;--line:#203a33;--shadow:0 18px 60px rgba(0,0,0,.35)}
+*{box-sizing:border-box}html,body{margin:0;min-height:100%;font-family:Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:radial-gradient(circle at top,#0f2e25 0,#06100e 38%,#040806 100%);color:var(--text)}body{padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}button,input,select{font:inherit}.hidden{display:none!important}button:disabled{opacity:.45;cursor:not-allowed}#app{max-width:1180px;margin:auto;padding:18px}
+.topbar{display:flex;align-items:center;gap:14px;padding:8px 2px 18px}.brandcopy{min-width:0}.topbar h1{margin:0;font-size:clamp(1.25rem,3vw,2rem);letter-spacing:.08em}.topbar p{margin:2px 0 0;color:var(--muted)}.top-actions{margin-left:auto;display:flex;align-items:center;gap:8px}.privacy-pill,.network-pill{font-size:.67rem;font-weight:950;letter-spacing:.07em;padding:8px 10px;border:1px solid #265443;border-radius:999px;background:#0c211a;color:var(--green);white-space:nowrap}.network-pill.offline{color:var(--gold);border-color:#685b2b;background:#231f10}.brandmark{display:grid;place-items:center;width:52px;height:52px;border-radius:16px;background:linear-gradient(145deg,var(--green),#14734a);font-weight:1000;font-size:1.7rem;color:#032113;box-shadow:0 0 34px rgba(57,229,140,.25)}
+.card{background:linear-gradient(145deg,rgba(16,35,31,.94),rgba(8,19,17,.96));border:1px solid var(--line);border-radius:22px;box-shadow:var(--shadow)}.search-panel{padding:16px;margin-bottom:14px}.search-panel label,.voice-card label{display:block;font-size:.8rem;color:var(--muted);margin-bottom:8px}.search-row{display:grid;grid-template-columns:1fr auto auto;gap:8px}.search-row input{width:100%;background:#081411;border:1px solid #29453d;color:white;border-radius:14px;padding:14px 15px;outline:none}.search-row input:focus{border-color:var(--green);box-shadow:0 0 0 3px rgba(57,229,140,.09)}
+button{border:0;border-radius:13px;padding:11px 15px;cursor:pointer;font-weight:850}.primary{background:linear-gradient(135deg,var(--green),#28b871);color:#042113}.ghost{background:#11251f;color:white;border:1px solid #29453d}.danger{background:rgba(255,105,97,.15);color:#ffaaa6;border:1px solid rgba(255,105,97,.4)}.icon-btn{background:#122b24;color:white;font-size:1.1rem}.status{font-size:.78rem;color:var(--muted);min-height:1.1em;margin-top:8px}.status.bad{color:#ffaaa6}.mode-row{display:flex;gap:8px;margin-bottom:12px}.mode-btn{padding:8px 12px;background:#0a1714;border:1px solid #29453d;color:#b9ccc6}.mode-btn.active{background:#173b31;color:var(--green);border-color:#2d6b55}.quick-places{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}.place-chip{font-size:.72rem;padding:7px 10px;border-radius:999px;background:#0a1815;border:1px solid #213b34;color:#c8d7d2}
+.map-shell{height:min(58vh,560px);position:relative;overflow:hidden;margin-bottom:14px}.map-shell #map{height:100%;width:100%;background:#0c1714;position:relative;overflow:hidden;touch-action:none}.tile-layer,.marker-layer,.map-overlay{position:absolute;inset:0}.tile-layer img{position:absolute;user-select:none;pointer-events:none}.map-overlay{z-index:10;pointer-events:none}.route-polyline{stroke:var(--green);stroke-width:6;stroke-linecap:round;stroke-linejoin:round}.accuracy-ring{fill:rgba(57,229,140,.08);stroke:rgba(57,229,140,.55);stroke-width:1.5}.marker-layer{z-index:20;pointer-events:none}.map-marker{position:absolute;width:38px;height:38px;border-radius:50%;border:4px solid white;display:grid;place-items:center;background:var(--green);color:#04140f;padding:0;box-shadow:0 4px 18px #0008;pointer-events:auto}.map-marker.destination{background:var(--gold)}.map-marker.hazard{width:32px;height:32px;border-radius:11px;border:2px solid var(--gold);background:#101d19;color:white;font-size:1rem}.map-controls{position:absolute;z-index:30;top:14px;right:14px;display:grid;gap:5px}.map-controls button{width:40px;height:40px;padding:0;background:rgba(8,21,17,.94);color:white;border:1px solid #385f53}.map-attribution{position:absolute;z-index:25;right:8px;bottom:5px;font-size:.58rem;background:#07110fcc;padding:3px 6px;border-radius:5px;color:#c0cec9}.floating{position:absolute;z-index:50;width:46px;height:46px;border-radius:15px;background:rgba(8,21,17,.94);color:white;border:1px solid #385f53;box-shadow:0 8px 30px rgba(0,0,0,.35)}.locate{right:14px;bottom:72px}.recenter{right:14px;bottom:18px}.speed-badge,.gps-badge{position:absolute;z-index:50;padding:9px 12px;border-radius:12px;background:rgba(8,21,17,.92);border:1px solid #385f53;font-weight:900}.speed-badge{left:14px;bottom:14px}.gps-badge{left:14px;top:14px;font-size:.72rem;color:#b7cec7}
+.nav-grid{display:grid;grid-template-columns:1.6fr .9fr;gap:14px}.route-card,.voice-card{padding:18px}.section-head{display:flex;align-items:center;justify-content:space-between;gap:12px}.eyebrow{font-size:.72rem;letter-spacing:.16em;color:var(--green);font-weight:900}.route-card h2,.voice-card h2,.safety-card h2{margin:5px 0 12px}.trip-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.trip-stats div{background:#091713;border:1px solid #19372f;border-radius:14px;padding:12px}.trip-stats strong{display:block;font-size:1.05rem}.trip-stats span{font-size:.72rem;color:var(--muted)}.instruction{margin:14px 0 8px;padding:16px;border-radius:16px;background:linear-gradient(135deg,#173b31,#0c201b);border:1px solid #285948;font-size:1.05rem;font-weight:800;min-height:70px;display:flex;align-items:center}.route-state-row{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 12px}.route-state{font-size:.72rem;padding:5px 8px;border-radius:999px;background:#123226;color:var(--green);border:1px solid #255343}.muted-state{background:#0a1815;color:var(--muted);border-color:#213b34}.controls,.secondary-actions{display:flex;gap:8px;flex-wrap:wrap}.controls .primary{flex:1}.secondary-actions{margin-top:8px}.secondary-actions button{flex:1;min-width:150px}.muted{color:var(--muted);font-size:.86rem;line-height:1.45}.voice-card select,.safety-actions select{width:100%;background:#081411;color:white;border:1px solid #29453d;border-radius:12px;padding:11px;margin-bottom:12px}.voice-actions,.pack-row{display:flex;align-items:center;justify-content:space-between;gap:10px}.toggle{display:flex!important;align-items:center;gap:8px;margin:0!important}.toggle input{accent-color:var(--green)}.range{width:100%;accent-color:var(--green);margin:0 0 14px}.coverage{font-size:.72rem;color:#a9c6bc;margin-top:12px;padding:10px;border-radius:12px;background:#091713;border:1px solid #19372f}.pack-row{margin-top:10px}.mini-state{font-size:.68rem;color:var(--muted)}
+.safety-card{display:grid;grid-template-columns:1fr 1.6fr;gap:18px;align-items:center;padding:18px;margin-top:14px}.safety-card p{margin-bottom:0}.safety-actions{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}.safety-actions select{margin:0}.feature-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;margin-top:14px;overflow:hidden}.feature-strip>div{padding:16px;background:#0b1916}.feature-strip span{font-size:1.3rem;display:block}.feature-strip strong{display:block;margin:6px 0 2px}.feature-strip small{color:var(--muted)}
+@media(max-width:800px){#app{padding:12px}.nav-grid{grid-template-columns:1fr}.feature-strip{grid-template-columns:1fr 1fr}.safety-card{grid-template-columns:1fr}.safety-actions{grid-template-columns:1fr 1fr}.map-shell{height:52vh}.search-row{grid-template-columns:1fr auto}.search-row .primary{grid-column:1/-1}.topbar p{font-size:.8rem}.privacy-pill{display:none}.trip-stats{gap:6px}.trip-stats div{padding:10px}.voice-card{order:2}.secondary-actions button{min-width:120px}}
+@media(max-width:520px){.feature-strip{grid-template-columns:1fr}.safety-actions{grid-template-columns:1fr}.topbar{gap:10px}.brandmark{width:46px;height:46px}.topbar h1{font-size:1.08rem}.network-pill{display:none}.mode-row{overflow:auto}.mode-btn{white-space:nowrap}}
+.engine-owned{border-color:#4fd1a5!important;color:#b9ffe6!important}
+.engine-fallback{border-color:#ffc857!important;color:#ffe5a3!important}
+.engine-offline{border-color:#ff7f7f!important;color:#ffc0c0!important}
+
+</style>
+</head>
+<body>
+  <div id="app">
+    <header class="topbar">
+      <div class="brandmark" aria-hidden="true">N</div>
+      <div class="brandcopy"><h1>IZAKHONO NAV</h1><p>Own the road. Hear it your way.</p></div>
+      <div class="top-actions"><span id="providerPill" class="network-pill">ENGINE CHECK</span><span id="networkPill" class="network-pill">● ONLINE</span><span class="privacy-pill">🔒 PRIVATE</span><button id="installBtn" class="ghost hidden">Install</button></div>
+    </header>
+
+    <main>
+      <section class="search-panel card">
+        <div class="mode-row" aria-label="Travel mode">
+          <button class="mode-btn active" data-mode="driving">🚗 Drive</button>
+          <button class="mode-btn" data-mode="walking">🚶 Walk</button>
+          <button class="mode-btn" data-mode="cycling">🚲 Cycle</button>
+        </div>
+        <label for="destination">Where are you going?</label>
+        <div class="search-row">
+          <input id="destination" autocomplete="off" enterkeyhint="go" placeholder="Street, landmark, business or town" />
+          <button id="micBtn" class="icon-btn" title="Speak destination" aria-label="Speak destination">🎙️</button>
+          <button id="goBtn" class="primary">GO</button>
+        </div>
+        <div id="quickPlaces" class="quick-places"></div>
+        <div id="searchStatus" class="status" aria-live="polite">Ready</div>
+      </section>
+
+      <section class="map-shell card">
+        <div id="map" role="application" aria-label="Navigation map"></div>
+        <button id="locateBtn" class="floating locate" title="Use my location" aria-label="Use my location">◎</button>
+        <button id="recenterBtn" class="floating recenter" title="Recenter" aria-label="Recenter map">⌖</button>
+        <div id="speedBadge" class="speed-badge">-- km/h</div>
+        <div id="gpsBadge" class="gps-badge">GPS waiting</div>
+      </section>
+
+      <section class="nav-grid">
+        <article class="card route-card">
+          <div class="section-head"><div><span class="eyebrow">LIVE NAVIGATION</span><h2 id="routeTitle">No route selected</h2></div><button id="stopBtn" class="danger hidden">STOP</button></div>
+          <div class="trip-stats"><div><strong id="distance">—</strong><span>distance</span></div><div><strong id="duration">—</strong><span>ETA</span></div><div><strong id="arrival">—</strong><span>arrival</span></div></div>
+          <div id="nextInstruction" class="instruction">Choose a destination to begin.</div>
+          <div class="route-state-row"><span id="routeState" class="route-state">Idle</span><span id="offRouteState" class="route-state muted-state">Auto-reroute armed</span></div>
+          <div class="controls"><button id="prevStepBtn" class="ghost" disabled>←</button><button id="speakBtn" class="primary" disabled>🔊 Speak</button><button id="nextStepBtn" class="ghost" disabled>→</button></div>
+          <div class="secondary-actions"><button id="saveRouteBtn" class="ghost" disabled>⬇ Save route offline</button><button id="saveMapBtn" class="ghost" disabled>🗺 Save route map</button><button id="restoreRouteBtn" class="ghost">↻ Restore saved route</button><button id="favoriteBtn" class="ghost" disabled>☆ Favourite</button></div>
+        </article>
+
+        <article class="card voice-card">
+          <span class="eyebrow">VOICE ENGINE</span><h2>Language + dialect</h2>
+          <p class="muted">Uses compatible device voices immediately and accepts IZAKHONO-owned verified language/dialect packs without redesigning navigation.</p>
+          <label for="languageFilter">Language / locale</label><select id="languageFilter"></select>
+          <label for="voiceSelect">Voice / accent</label><select id="voiceSelect"></select>
+          <label for="voiceRate">Voice pace <span id="rateValue">0.95×</span></label><input id="voiceRate" class="range" type="range" min="0.7" max="1.25" value="0.95" step="0.05" />
+          <div class="voice-actions"><button id="testVoiceBtn" class="ghost">Test voice</button><label class="toggle"><input id="autoSpeak" type="checkbox" checked /> Auto-speak</label></div>
+          <div class="pack-row"><input id="voicePackInput" type="file" accept="application/json,.json" hidden /><button id="loadVoicePackBtn" class="ghost">＋ Load voice pack</button><span id="packCount" class="mini-state">0 imported</span></div>
+          <div id="voiceCoverage" class="coverage"></div>
+        </article>
+      </section>
+
+      <section class="card safety-card">
+        <div><span class="eyebrow">SAFETY + PRIVACY</span><h2>Driver-controlled safety tools</h2><p class="muted">Location sharing is explicit. Hazard reports remain only on this device unless you explicitly opt into a future shared traffic service unless the user explicitly opts into a future shared traffic service.</p></div>
+        <div class="safety-actions"><button id="shareLocationBtn" class="primary">📍 Share my location</button><button id="sosShareBtn" class="danger">SOS share location</button><button id="reportHazardBtn" class="ghost">⚠ Report hazard here</button><select id="hazardType" aria-label="Hazard type"><option value="Crash">Crash / collision</option><option value="Road hazard">Road hazard</option><option value="Pothole">Pothole</option><option value="Flooding">Flooding</option><option value="Road closed">Road closed</option><option value="Vehicle stopped">Vehicle stopped</option><option value="Police / emergency">Police / emergency activity</option></select><button id="clearHazardsBtn" class="ghost">Clear my reports</button></div>
+      </section>
+
+      <section class="feature-strip card">
+        <div><span>🧭</span><strong>Automatic navigation</strong><small>GPS step advance + missed-turn rerouting</small></div>
+        <div><span>🗣️</span><strong>Dialect-ready voice</strong><small>Device voices + verified IZAKHONO packs</small></div>
+        <div><span>⬇️</span><strong>Saved route resilience</strong><small>Route + owned tile corridor cache</small></div>
+        <div><span>🔒</span><strong>Privacy-first</strong><small>No ad IDs, analytics or behavioural tracking</small></div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+(() => {
+  'use strict';
+  const TILE=256;
+  const clamp=(v,min,max)=>Math.max(min,Math.min(max,v));
+  const lngToX=(lng,z)=>((lng+180)/360)*TILE*(2**z);
+  const latToY=(lat,z)=>{
+    const s=Math.sin(lat*Math.PI/180);
+    return (0.5-Math.log((1+s)/(1-s))/(4*Math.PI))*TILE*(2**z);
+  };
+  const xToLng=(x,z)=>x/(TILE*(2**z))*360-180;
+  const yToLat=(y,z)=>{
+    const n=Math.PI-2*Math.PI*y/(TILE*(2**z));
+    return 180/Math.PI*Math.atan(0.5*(Math.exp(n)-Math.exp(-n)));
+  };
+  class IzakhonoMap {
+    constructor(container, opts={}){
+      this.el=container; this.tileUrl=opts.tileUrl; this.attribution=opts.attribution||'';
+      this.center={lat:opts.lat||-26.2041,lng:opts.lng||28.0473}; this.zoom=opts.zoom||11;
+      this.markers=new Map(); this.route=[]; this.accuracy=null; this.drag=null;
+      this.el.innerHTML='<div class="tile-layer"></div><svg class="map-overlay" aria-hidden="true"><polyline class="route-polyline" fill="none"/></svg><div class="marker-layer"></div><div class="map-controls"><button data-map="zin" aria-label="Zoom in">+</button><button data-map="zout" aria-label="Zoom out">−</button></div><div class="map-attribution"></div>';
+      this.tiles=this.el.querySelector('.tile-layer'); this.svg=this.el.querySelector('.map-overlay'); this.poly=this.el.querySelector('.route-polyline'); this.markerLayer=this.el.querySelector('.marker-layer');
+      this.el.querySelector('.map-attribution').textContent=this.attribution.replace(/<[^>]*>/g,'');
+      this.el.querySelector('[data-map="zin"]').onclick=()=>this.setView(this.center.lat,this.center.lng,this.zoom+1);
+      this.el.querySelector('[data-map="zout"]').onclick=()=>this.setView(this.center.lat,this.center.lng,this.zoom-1);
+      this.el.addEventListener('pointerdown',e=>this.onDown(e)); window.addEventListener('pointermove',e=>this.onMove(e)); window.addEventListener('pointerup',()=>this.drag=null);
+      new ResizeObserver(()=>this.render()).observe(this.el); this.render();
+    }
+    tileSrc(x,y,z){ const n=2**z; const tx=((x%n)+n)%n; const ty=clamp(y,0,n-1); const sub=['a','b','c'][(Math.abs(tx+ty))%3]; return this.tileUrl.replace('{s}',sub).replace('{z}',z).replace('{x}',tx).replace('{y}',ty); }
+    setView(lat,lng,zoom=this.zoom){ this.center={lat:clamp(lat,-85.0511,85.0511),lng}; this.zoom=clamp(Math.round(zoom),2,19); this.render(); }
+    onDown(e){ this.drag={x:e.clientX,y:e.clientY,cx:lngToX(this.center.lng,this.zoom),cy:latToY(this.center.lat,this.zoom)}; this.el.setPointerCapture?.(e.pointerId); }
+    onMove(e){ if(!this.drag)return; const nx=this.drag.cx-(e.clientX-this.drag.x), ny=this.drag.cy-(e.clientY-this.drag.y); this.center={lat:yToLat(ny,this.zoom),lng:xToLng(nx,this.zoom)}; this.render(); }
+    setRoute(coords){ this.route=coords||[]; this.renderOverlay(); }
+    clearRoute(){ this.route=[]; this.renderOverlay(); }
+    addMarker(id,lat,lng,label,kind='default',title=''){ let m=this.markers.get(id); if(!m){m=document.createElement('button');m.type='button';m.className=`map-marker ${kind}`;this.markerLayer.appendChild(m);this.markers.set(id,m);} m.dataset.lat=lat;m.dataset.lng=lng;m.textContent=label;m.title=title;this.renderMarkers(); return m; }
+    removeMarker(id){ const m=this.markers.get(id); if(m){m.remove();this.markers.delete(id);} }
+    clearMarkers(prefix){ for(const [id,m] of [...this.markers]) if(!prefix||id.startsWith(prefix)){m.remove();this.markers.delete(id);} }
+    setAccuracy(lat,lng,meters){ this.accuracy={lat,lng,meters}; this.renderOverlay(); }
+    project(lat,lng){ const r=this.el.getBoundingClientRect(), cx=lngToX(this.center.lng,this.zoom), cy=latToY(this.center.lat,this.zoom); return {x:r.width/2+(lngToX(lng,this.zoom)-cx),y:r.height/2+(latToY(lat,this.zoom)-cy)}; }
+    fitBounds(coords,pad=42){ if(!coords?.length)return; let minLat=90,maxLat=-90,minLng=180,maxLng=-180; for(const c of coords){minLng=Math.min(minLng,c[0]);maxLng=Math.max(maxLng,c[0]);minLat=Math.min(minLat,c[1]);maxLat=Math.max(maxLat,c[1]);} const r=this.el.getBoundingClientRect(); let best=2; for(let z=19;z>=2;z--){const w=Math.abs(lngToX(maxLng,z)-lngToX(minLng,z)), h=Math.abs(latToY(maxLat,z)-latToY(minLat,z)); if(w<=Math.max(100,r.width-pad*2)&&h<=Math.max(100,r.height-pad*2)){best=z;break;}} this.setView((minLat+maxLat)/2,(minLng+maxLng)/2,best); }
+    render(){ const r=this.el.getBoundingClientRect(); if(!r.width||!r.height)return; const cx=lngToX(this.center.lng,this.zoom), cy=latToY(this.center.lat,this.zoom); const minX=Math.floor((cx-r.width/2)/TILE)-1, maxX=Math.floor((cx+r.width/2)/TILE)+1, minY=Math.floor((cy-r.height/2)/TILE)-1, maxY=Math.floor((cy+r.height/2)/TILE)+1; const frag=document.createDocumentFragment(); for(let y=minY;y<=maxY;y++)for(let x=minX;x<=maxX;x++){const img=document.createElement('img');img.alt='';img.draggable=false;img.loading='eager';img.src=this.tileSrc(x,y,this.zoom);img.style.left=`${r.width/2+(x*TILE-cx)}px`;img.style.top=`${r.height/2+(y*TILE-cy)}px`;img.width=TILE;img.height=TILE;frag.appendChild(img);} this.tiles.replaceChildren(frag); this.renderOverlay(); this.renderMarkers(); }
+    renderMarkers(){ for(const m of this.markers.values()){const p=this.project(+m.dataset.lat,+m.dataset.lng);m.style.transform=`translate(${p.x}px,${p.y}px) translate(-50%,-50%)`;}}
+    renderOverlay(){ const r=this.el.getBoundingClientRect(); this.svg.setAttribute('viewBox',`0 0 ${Math.max(1,r.width)} ${Math.max(1,r.height)}`); this.poly.setAttribute('points',this.route.map(c=>{const p=this.project(c[1],c[0]);return `${p.x},${p.y}`;}).join(' ')); let a=this.svg.querySelector('.accuracy-ring'); if(this.accuracy){if(!a){a=document.createElementNS('http://www.w3.org/2000/svg','circle');a.classList.add('accuracy-ring');this.svg.appendChild(a);} const p=this.project(this.accuracy.lat,this.accuracy.lng); const metersPerPx=156543.03392*Math.cos(this.accuracy.lat*Math.PI/180)/(2**this.zoom); a.setAttribute('cx',p.x);a.setAttribute('cy',p.y);a.setAttribute('r',Math.max(2,this.accuracy.meters/metersPerPx));} else a?.remove(); }
+  }
+  window.IzakhonoMap=IzakhonoMap;
+})();
+
+</script>
+  <script>
+window.IZAKHONO_CONFIG = {
+  appName: 'IZAKHONO NAV',
+  version: '0.7.0',
+  runtimeFabric: {
+    probeIntervalMs: 12000,
+    probeTimeoutMs: 2200,
+    requiredReleaseId: null,
+    failoverOnRequestError: true
+  },
+  providers: {
+    strategy: 'owned-first',
+    map: {
+      mode: 'owned-first',
+      ownedTileUrl: '/tiles/{z}/{x}/{y}.png',
+      fallbackTileUrl: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+      tileUrl: '/tiles/{z}/{x}/{y}.png',
+      attribution: '© OpenStreetMap contributors'
+    },
+    search: {
+      ownedEndpoint: '/api/search',
+      fallbackEndpoint: 'https://nominatim.openstreetmap.org/search'
+    },
+    route: {
+      ownedEndpoint: '/api/route',
+      fallbackProfiles: {
+        driving: 'https://router.project-osrm.org/route/v1/driving',
+        walking: null,
+        cycling: null
+      },
+      profiles: {
+        driving: { enabled: true },
+        walking: { enabled: true },
+        cycling: { enabled: true }
+      }
+    },
+    healthEndpoint: '/api/health',
+    tilesHealthEndpoint: '/tiles/health'
+  },
+  navigation: {
+    offRouteMeters: 85,
+    offRouteFixesBeforeReroute: 3,
+    rerouteCooldownMs: 25000,
+    maneuverAdvanceMeters: 30,
+    announceThresholdsMeters: [500, 200, 80],
+    wakeLockWhileNavigating: true
+  },
+  offline: {
+    routeCorridorTiles: true,
+    minZoom: 10,
+    maxZoom: 16,
+    maxTilesPerSave: 1200
+  },
+  privacy: {
+    analytics: false,
+    adIdentifiers: false,
+    behaviouralTracking: false,
+    cloudHistoryByDefault: false,
+    localHazardsOnly: true,
+    locationUploadByDefault: false
+  }
+};
+
+</script>
+  <script>
+// Deployment-side Runtime Fabric targets for IZAKHONO NAV.
+// This file is intentionally separate from the application logic so operators can
+// add/remove runtime targets without rebuilding NAV. Do not place secrets here.
+window.IZAKHONO_RUNTIME_TARGETS = [
+  {
+    id: 'same-origin',
+    name: 'Current runtime',
+    baseUrl: '',
+    class: 'auto',
+    priority: 10,
+    enabled: true
+  }
+];
+
+</script>
+  <script>
+(() => {
+  'use strict';
+
+  function normaliseBase(baseUrl) {
+    if (!baseUrl) return '';
+    return String(baseUrl).replace(/\/+$/, '');
+  }
+
+  function normaliseTarget(target, index = 0) {
+    const id = String(target?.id || target?.name || `target-${index + 1}`);
+    return {
+      id,
+      name: String(target?.name || id),
+      baseUrl: normaliseBase(target?.baseUrl || ''),
+      class: String(target?.class || 'unknown'),
+      priority: Number.isFinite(Number(target?.priority)) ? Number(target.priority) : 100 + index,
+      enabled: target?.enabled !== false
+    };
+  }
+
+  function selectHealthyTarget(results = []) {
+    return results
+      .filter(x => x && x.healthy)
+      .sort((a, b) => (a.target.priority - b.target.priority) || String(a.target.id).localeCompare(String(b.target.id)))[0] || null;
+  }
+
+  function sameSelection(a, b) {
+    return (a?.target?.id || null) === (b?.target?.id || null) &&
+      (a?.health?.releaseId || null) === (b?.health?.releaseId || null);
+  }
+
+  const api = { normaliseBase, normaliseTarget, selectHealthyTarget, sameSelection };
+  if (typeof module !== 'undefined' && module.exports) module.exports = api;
+  if (typeof window !== 'undefined') window.IZAKHONO_FABRIC_CORE = api;
+})();
+
+</script>
+  <script>
+(() => {
+  'use strict';
+  const core = window.IZAKHONO_FABRIC_CORE;
+  const cfg = window.IZAKHONO_CONFIG;
+  const rawTargets = Array.isArray(window.IZAKHONO_RUNTIME_TARGETS) ? window.IZAKHONO_RUNTIME_TARGETS : [];
+  const targets = rawTargets.map(core.normaliseTarget).filter(t => t.enabled);
+  if (!targets.length) targets.push(core.normaliseTarget({id:'same-origin',name:'Current runtime',baseUrl:'',class:'auto',priority:10}, 0));
+
+  const state = {
+    active: null,
+    results: [],
+    lastProbe: 0,
+    probing: null,
+    failures: 0
+  };
+
+  function urlFor(target, path) {
+    if (!target.baseUrl) return path;
+    return `${target.baseUrl}${path.startsWith('/') ? path : '/' + path}`;
+  }
+
+  async function probeTarget(target) {
+    const timeout = Number(cfg.runtimeFabric?.probeTimeoutMs || 2200);
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeout);
+    const started = performance.now();
+    try {
+      const r = await fetch(urlFor(target, cfg.providers.healthEndpoint), {cache:'no-store', signal:controller.signal});
+      let health = {};
+      try { health = await r.json(); } catch {}
+      const runtimeId = health.runtimeId || health.runtime_id || target.id;
+      const releaseId = health.releaseId || health.release_id || null;
+      const runtimeClass = health.runtimeClass || health.runtime_class || target.class;
+      const approvedRelease = !cfg.runtimeFabric?.requiredReleaseId || releaseId === cfg.runtimeFabric.requiredReleaseId;
+      const healthy = r.ok && health.routing === 'ready' && health.search === 'ready' && approvedRelease;
+      return {target, healthy, latencyMs: Math.round(performance.now() - started), health:{...health,runtimeId,releaseId,runtimeClass,approvedRelease}, status:r.status};
+    } catch (error) {
+      return {target, healthy:false, latencyMs:Math.round(performance.now() - started), health:{runtimeId:target.id,runtimeClass:target.class}, error:error?.name || 'probe-failed'};
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  async function probe({force=false}={}) {
+    const now = Date.now();
+    const interval = Number(cfg.runtimeFabric?.probeIntervalMs || 12000);
+    if (!force && state.probing) return state.probing;
+    if (!force && now - state.lastProbe < interval) return state;
+    state.lastProbe = now;
+    state.probing = (async () => {
+      const results = await Promise.all(targets.map(probeTarget));
+      const selected = core.selectHealthyTarget(results);
+      const changed = !core.sameSelection(state.active, selected);
+      state.results = results;
+      state.active = selected;
+      if (!selected) state.failures += 1; else state.failures = 0;
+      const detail = snapshot();
+      detail.changed = changed;
+      window.dispatchEvent(new CustomEvent('izakhono-fabric-state', {detail}));
+      return state;
+    })().finally(() => { state.probing = null; });
+    return state.probing;
+  }
+
+  function snapshot() {
+    return {
+      active: state.active ? JSON.parse(JSON.stringify(state.active)) : null,
+      results: state.results.map(x => JSON.parse(JSON.stringify(x))),
+      failures: state.failures,
+      targetCount: targets.length
+    };
+  }
+
+  function activeBaseUrl() { return state.active?.target?.baseUrl || ''; }
+  function activeUrl(path) { return urlFor(state.active?.target || targets[0], path); }
+
+  window.IZAKHONO_RUNTIME_FABRIC = {probe, snapshot, activeBaseUrl, activeUrl, targets};
+  probe({force:true});
+  setInterval(() => probe({force:true}), Number(cfg.runtimeFabric?.probeIntervalMs || 12000));
+})();
+
+</script>
+  <script>
+// IZAKHONO NAV voice registry.
+// A language is "device" when it is supplied by the operating system/browser.
+// A language/dialect becomes "IZAKHONO verified" only after a signed pack passes pronunciation QA.
+window.IZAKHONO_VOICE_REGISTRY = {
+  version: 1,
+  priorityLocales: [
+    { tag:'en-ZA', name:'English (South Africa)' },
+    { tag:'af-ZA', name:'Afrikaans' },
+    { tag:'zu-ZA', name:'isiZulu' },
+    { tag:'xh-ZA', name:'isiXhosa' },
+    { tag:'st-ZA', name:'Sesotho' },
+    { tag:'tn-ZA', name:'Setswana' },
+    { tag:'nso-ZA', name:'Sepedi / Northern Sotho' },
+    { tag:'ts-ZA', name:'Xitsonga' },
+    { tag:'ve-ZA', name:'Tshivenda' },
+    { tag:'ss-ZA', name:'siSwati' },
+    { tag:'nr-ZA', name:'isiNdebele' }
+  ],
+  verifiedPacks: [
+    {
+      id:'core-en-ZA',
+      locale:'en-ZA',
+      label:'English (South Africa) — core navigation phrases',
+      qa:'verified',
+      dialects:[],
+      phrases:{
+        routeReady:'Route ready. Voice navigation active.',
+        rerouting:'You are off route. Finding a new route.',
+        arrived:'You have arrived at your destination.'
+      }
+    }
+  ],
+  packContract: {
+    required:['id','locale','label','qa','phrases'],
+    qaStates:['draft','community-review','linguist-review','verified'],
+    rule:'Never advertise a dialect as supported until a real voice model and navigation phrase set pass pronunciation QA.'
+  }
+};
+
+</script>
+  <script>
+(() => {
+  'use strict';
+  const REQUIRED=['id','locale','label','qa','phrases'];
+  const allowedQa=['draft','community-review','linguist-review','verified'];
+  function validate(pack){
+    if(!pack||typeof pack!=='object') throw new Error('Voice pack must be a JSON object.');
+    for(const k of REQUIRED) if(!(k in pack)) throw new Error(`Voice pack is missing ${k}.`);
+    if(!allowedQa.includes(pack.qa)) throw new Error('Voice pack has an invalid QA state.');
+    if(typeof pack.phrases!=='object'||Array.isArray(pack.phrases)) throw new Error('Voice pack phrases must be an object.');
+    return pack;
+  }
+  async function fromFile(file){ const text=await file.text(); return validate(JSON.parse(text)); }
+  function save(pack){ const key='izakhono-nav-imported-voice-packs'; const list=JSON.parse(localStorage.getItem(key)||'[]').filter(x=>x.id!==pack.id); list.push(pack); localStorage.setItem(key,JSON.stringify(list)); return pack; }
+  function list(){ try{return JSON.parse(localStorage.getItem('izakhono-nav-imported-voice-packs')||'[]');}catch{return [];} }
+  window.IZAKHONO_VOICE_PACKS={validate,fromFile,save,list};
+})();
+
+</script>
+  <script>
+(() => {
+  'use strict';
+  const cfg=window.IZAKHONO_CONFIG;
+  const fabric=window.IZAKHONO_RUNTIME_FABRIC;
+  const state={owned:false,ownedRouting:false,ownedSearch:false,ownedTiles:false,lastProbe:0,activeRuntime:null,releaseId:null,runtimeClass:null};
+
+  async function timedFetch(url,opts={},ms=2500){const c=new AbortController(),t=setTimeout(()=>c.abort(),ms);try{return await fetch(url,{...opts,signal:c.signal});}finally{clearTimeout(t);}}
+  function absolute(path){return fabric?.activeUrl ? fabric.activeUrl(path) : path;}
+
+  async function probe({force=false}={}){
+    const now=Date.now(); if(!force&&now-state.lastProbe<5000)return state; state.lastProbe=now;
+    try{
+      if(fabric?.probe) await fabric.probe({force});
+      const snap=fabric?.snapshot?.(); const active=snap?.active;
+      if(active?.healthy){
+        const h=active.health||{};
+        state.ownedRouting=h.routing==='ready'; state.ownedSearch=h.search==='ready'; state.ownedTiles=h.tiles==='ready';
+        state.activeRuntime=h.runtimeId||active.target?.id||null; state.releaseId=h.releaseId||null; state.runtimeClass=h.runtimeClass||active.target?.class||null;
+      }else{
+        state.ownedRouting=state.ownedSearch=state.ownedTiles=false; state.activeRuntime=null; state.releaseId=null; state.runtimeClass=null;
+      }
+    }catch{state.ownedRouting=state.ownedSearch=state.ownedTiles=false;state.activeRuntime=null;}
+    state.owned=state.ownedRouting&&state.ownedSearch;
+    window.dispatchEvent(new CustomEvent('izakhono-provider-state',{detail:{...state}})); return state;
+  }
+
+  async function retryOnFabricFail(fn){
+    try{return await fn();}catch(first){
+      if(!cfg.runtimeFabric?.failoverOnRequestError||!fabric?.probe)throw first;
+      await fabric.probe({force:true});
+      return await fn();
+    }
+  }
+
+  async function fallbackGeocode(query){const url=new URL(cfg.providers.search.fallbackEndpoint);url.searchParams.set('q',query);url.searchParams.set('format','jsonv2');url.searchParams.set('limit','1');const r=await fetch(url,{headers:{'Accept-Language':navigator.language||'en'}});if(!r.ok)throw new Error('Destination search failed');const data=await r.json();if(!data.length)throw new Error('Destination not found');return {lat:+data[0].lat,lng:+data[0].lon,name:data[0].display_name};}
+  async function geocode(query){
+    const s=await probe();
+    if(s.ownedSearch){try{return await retryOnFabricFail(async()=>{const u=new URL(absolute(cfg.providers.search.ownedEndpoint),location.origin);u.searchParams.set('q',query);const r=await fetch(u);const data=await r.json();if(r.ok&&data.length){data[0].engine=`izakhono-fabric/${state.activeRuntime||'runtime'}`;return data[0];}throw new Error('Owned search runtime failed');});}catch{}}
+    const result=await fallbackGeocode(query); result.engine='resilience/nominatim'; return result;
+  }
+  async function fallbackRoute(start,dest,mode){const ep=cfg.providers.route.fallbackProfiles[mode];if(!ep)throw new Error(`${mode[0].toUpperCase()+mode.slice(1)} routing requires a healthy IZAKHONO NAV runtime.`);const coords=`${start.lng},${start.lat};${dest.lng},${dest.lat}`;const url=`${ep}/${coords}?overview=full&geometries=geojson&steps=true&alternatives=false`;const r=await fetch(url);const data=await r.json();if(!r.ok||data.code!=='Ok'||!data.routes?.length)throw new Error('No route found');return data.routes[0];}
+  async function route(start,dest,mode='driving'){
+    const s=await probe();const coords=`${start.lng},${start.lat};${dest.lng},${dest.lat}`;
+    if(s.ownedRouting){try{return await retryOnFabricFail(async()=>{const r=await fetch(absolute(`${cfg.providers.route.ownedEndpoint}/${mode}/${coords}`));const data=await r.json();if(r.ok&&data.geometry?.coordinates?.length){data.engine=`izakhono-fabric/${state.activeRuntime||'runtime'}`;return data;}throw new Error('Owned route runtime failed');});}catch{}}
+    const result=await fallbackRoute(start,dest,mode); result.engine='resilience/osrm'; return result;
+  }
+  function mapTileUrl(){const snap=fabric?.snapshot?.();const active=snap?.active;if(state.ownedTiles&&active?.target){const base=active.target.baseUrl||'';return base?`${base}${cfg.providers.map.ownedTileUrl}`:cfg.providers.map.ownedTileUrl;}return cfg.providers.map.fallbackTileUrl;}
+  function fabricSnapshot(){return fabric?.snapshot?.()||null;}
+  window.IZAKHONO_PROVIDERS={geocode,route,probe,state,mapTileUrl,fabricSnapshot};
+  window.addEventListener('izakhono-fabric-state',()=>probe({force:true}));
+  probe({force:true});
+})();
+
+</script>
+  <script>
+(() => {
+  'use strict';
+  const cfg=window.IZAKHONO_CONFIG;
+  const providers=window.IZAKHONO_PROVIDERS;
+  const registry=window.IZAKHONO_VOICE_REGISTRY||{priorityLocales:[],verifiedPacks:[]};
+  const packsApi=window.IZAKHONO_VOICE_PACKS;
+  const $=id=>document.getElementById(id);
+  const el={
+    dest:$('destination'),go:$('goBtn'),mic:$('micBtn'),status:$('searchStatus'),locate:$('locateBtn'),recenter:$('recenterBtn'),
+    voice:$('voiceSelect'),lang:$('languageFilter'),test:$('testVoiceBtn'),auto:$('autoSpeak'),rate:$('voiceRate'),rateValue:$('rateValue'),coverage:$('voiceCoverage'),
+    speak:$('speakBtn'),prev:$('prevStepBtn'),next:$('nextStepBtn'),title:$('routeTitle'),distance:$('distance'),duration:$('duration'),arrival:$('arrival'),
+    instruction:$('nextInstruction'),stop:$('stopBtn'),speed:$('speedBadge'),gps:$('gpsBadge'),install:$('installBtn'),routeState:$('routeState'),offRoute:$('offRouteState'),
+    hazardType:$('hazardType'),reportHazard:$('reportHazardBtn'),clearHazards:$('clearHazardsBtn'),shareLocation:$('shareLocationBtn'),network:$('networkPill'),
+    quickPlaces:$('quickPlaces'),saveRoute:$('saveRouteBtn'),restoreRoute:$('restoreRouteBtn'),favorite:$('favoriteBtn'),packInput:$('voicePackInput'),loadPack:$('loadVoicePackBtn'),packCount:$('packCount'),provider:$('providerPill'),saveMap:$('saveMapBtn'),sosShare:$('sosShareBtn')
+  };
+
+  const map=new window.IzakhonoMap($('map'),{lat:-26.2041,lng:28.0473,zoom:11,tileUrl:providers.mapTileUrl(),attribution:cfg.providers.map.attribution});
+  let currentPos=null,watchId=null,routeSteps=[],stepIndex=0,voices=[],deferredPrompt,activeDestination=null,activeRoute=null,routeCoords=[],routeBusy=false;
+  let offRouteFixes=0,lastRerouteAt=0,announcedThresholds=new Set(),mode='driving',wakeLock=null;
+  const store={
+    get:(k,d)=>{try{const v=JSON.parse(localStorage.getItem(k));return v??d;}catch{return d;}},
+    set:(k,v)=>localStorage.setItem(k,JSON.stringify(v))
+  };
+
+  function setStatus(msg,bad=false){el.status.textContent=msg;el.status.classList.toggle('bad',bad);}
+  function km(m){return m<1000?`${Math.max(0,Math.round(m))} m`:`${(m/1000).toFixed(m>10000?0:1)} km`;}
+  function mins(sec){const m=Math.max(0,Math.round(sec/60));return m<60?`${m} min`:`${Math.floor(m/60)}h ${m%60}m`;}
+  function toRad(v){return v*Math.PI/180;}
+  function haversine(a,b){const R=6371000,dLat=toRad(b.lat-a.lat),dLng=toRad(b.lng-a.lng);const x=Math.sin(dLat/2)**2+Math.cos(toRad(a.lat))*Math.cos(toRad(b.lat))*Math.sin(dLng/2)**2;return 2*R*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));}
+  function pointSegmentMeters(p,a,b){const lat0=toRad(p.lat),R=6371000,project=q=>({x:toRad(q.lng-p.lng)*Math.cos(lat0)*R,y:toRad(q.lat-p.lat)*R}),A=project(a),B=project(b),vx=B.x-A.x,vy=B.y-A.y,denom=vx*vx+vy*vy,t=denom?Math.max(0,Math.min(1,-(A.x*vx+A.y*vy)/denom)):0;return Math.hypot(A.x+t*vx,A.y+t*vy);}
+  function distanceToRoute(p){if(routeCoords.length<2)return Infinity;let min=Infinity;for(let i=1;i<routeCoords.length;i++){const a={lat:routeCoords[i-1][1],lng:routeCoords[i-1][0]},b={lat:routeCoords[i][1],lng:routeCoords[i][0]},d=pointSegmentMeters(p,a,b);if(d<min)min=d;if(min<12)break;}return min;}
+
+
+  function startNativeLocation(){try{window.IzakhonoNativeLocation?.start?.();}catch{}}
+  function stopNativeLocation(){try{window.IzakhonoNativeLocation?.stop?.();}catch{}}
+  function applyNativeLocation(detail){if(!detail)return;const lat=Number(detail.lat),lng=Number(detail.lng);if(!Number.isFinite(lat)||!Number.isFinite(lng))return;updateMe(lat,lng,Number(detail.accuracy)||0,Number(detail.speed)||0,detail.heading==null?null:Number(detail.heading));}
+
+  function updateMe(lat,lng,accuracy,speed,heading){currentPos={lat,lng,accuracy:accuracy||0,speed:speed||0,heading:heading??null};map.addMarker('me',lat,lng,'●','me','You');map.setAccuracy(lat,lng,accuracy||0);el.speed.textContent=(typeof speed==='number'&&speed>=0)?`${Math.round(speed*3.6)} km/h`:'-- km/h';el.gps.textContent=accuracy?`GPS ±${Math.round(accuracy)} m`:'GPS active';navigationTick();}
+  function locate(center=true){if(!navigator.geolocation){setStatus('Location is not supported by this device.',true);return;}setStatus('Getting your location…');navigator.geolocation.getCurrentPosition(p=>{updateMe(p.coords.latitude,p.coords.longitude,p.coords.accuracy,p.coords.speed,p.coords.heading);if(center)map.setView(p.coords.latitude,p.coords.longitude,16);setStatus('Location ready.');},e=>setStatus(`Location unavailable: ${e.message}`,true),{enableHighAccuracy:true,timeout:12000,maximumAge:3000});if(watchId===null){watchId=navigator.geolocation.watchPosition(p=>updateMe(p.coords.latitude,p.coords.longitude,p.coords.accuracy,p.coords.speed,p.coords.heading),()=>{}, {enableHighAccuracy:true,maximumAge:1500,timeout:15000});}}
+  async function ensureCurrentPosition(){if(currentPos)return;await new Promise((resolve,reject)=>navigator.geolocation.getCurrentPosition(p=>{updateMe(p.coords.latitude,p.coords.longitude,p.coords.accuracy,p.coords.speed,p.coords.heading);resolve();},reject,{enableHighAccuracy:true,timeout:12000}));}
+
+  function stepText(step){if(step?.instruction)return step.instruction;const m=step?.maneuver||{},mod=m.modifier?` ${m.modifier}`:'',road=step?.name?` onto ${step.name}`:'',type=m.type||'continue';if(type==='depart')return`Start${road}.`;if(type==='arrive')return'You have arrived at your destination.';if(type==='roundabout'||type==='rotary')return`Enter the roundabout${road}.`;if(type==='roundabout turn')return`At the roundabout, turn${mod}${road}.`;if(type==='turn')return`Turn${mod}${road}.`;if(type==='new name')return`Continue${road}.`;if(type==='merge')return`Merge${mod}${road}.`;if(type==='fork')return`Keep${mod}${road}.`;if(type==='end of road')return`At the end of the road, turn${mod}${road}.`;if(type==='on ramp')return`Take the ramp${mod}${road}.`;if(type==='off ramp')return`Take the exit${mod}${road}.`;if(type==='continue')return`Continue${mod}${road}.`;return`${type.charAt(0).toUpperCase()+type.slice(1)}${mod}${road}.`;}
+  function maneuverPoint(step){const loc=step?.maneuver?.location;return Array.isArray(loc)&&loc.length===2?{lng:+loc[0],lat:+loc[1]}:null;}
+  function distanceToCurrentManeuver(){if(!currentPos||!routeSteps.length)return null;const p=maneuverPoint(routeSteps[stepIndex]);return p?haversine(currentPos,p):null;}
+
+  function saveRecent(dest){const key='izakhono-nav-recents',list=store.get(key,[]).filter(x=>x.name!==dest.name);list.unshift({name:dest.name,lat:dest.lat,lng:dest.lng,at:Date.now()});store.set(key,list.slice(0,6));renderQuickPlaces();}
+  function toggleFavorite(){if(!activeDestination)return;const key='izakhono-nav-favorites',list=store.get(key,[]),idx=list.findIndex(x=>x.name===activeDestination.name);if(idx>=0){list.splice(idx,1);el.favorite.textContent='☆ Favourite';setStatus('Removed from favourites.');}else{list.unshift({name:activeDestination.name,lat:activeDestination.lat,lng:activeDestination.lng});el.favorite.textContent='★ Favourited';setStatus('Saved to favourites.');}store.set(key,list.slice(0,12));renderQuickPlaces();}
+  function refreshFavoriteState(){const list=store.get('izakhono-nav-favorites',[]);el.favorite.textContent=activeDestination&&list.some(x=>x.name===activeDestination.name)?'★ Favourited':'☆ Favourite';}
+  function renderQuickPlaces(){const favs=store.get('izakhono-nav-favorites',[]).slice(0,4),recent=store.get('izakhono-nav-recents',[]).slice(0,4),items=[...favs.map(x=>({...x,prefix:'★'})),...recent.filter(r=>!favs.some(f=>f.name===r.name)).map(x=>({...x,prefix:'↻'}))].slice(0,6);el.quickPlaces.replaceChildren(...items.map(item=>{const b=document.createElement('button');b.className='place-chip';b.textContent=`${item.prefix} ${item.name.split(',')[0]}`;b.title=item.name;b.onclick=async()=>{el.dest.value=item.name;try{await routeTo(item);}catch(e){setStatus(e.message||'Could not build route.',true);}};return b;}));}
+
+  async function routeTo(dest,{reroute=false,routeData=null}={}){if(routeBusy)return;routeBusy=true;try{await ensureCurrentPosition();const route=routeData||await providers.route(currentPos,dest,mode);activeDestination=dest;activeRoute=route;routeCoords=route.geometry?.coordinates||[];routeSteps=(route.legs||[]).flatMap(l=>l.steps||[]);stepIndex=routeSteps.length>1?1:0;announcedThresholds=new Set();offRouteFixes=0;map.setRoute(routeCoords);map.addMarker('destination',dest.lat,dest.lng,'✓','destination',dest.name);if(!reroute&&!routeData)map.fitBounds(routeCoords);el.title.textContent=dest.name.split(',')[0];el.distance.textContent=km(route.distance||0);el.duration.textContent=mins(route.duration||0);const arrival=new Date(Date.now()+(route.duration||0)*1000);el.arrival.textContent=arrival.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});el.stop.classList.remove('hidden');el.speak.disabled=false;el.prev.disabled=false;el.next.disabled=false;el.saveRoute.disabled=false;el.saveMap.disabled=!providers.state.ownedTiles;el.favorite.disabled=false;requestWakeLock();startNativeLocation();el.routeState.textContent=reroute?'Rerouted':routeData?'Saved route':'Navigating';el.offRoute.textContent=navigator.onLine?'Auto-reroute armed':'Offline rerouting unavailable';renderStep({announce:!reroute&&!routeData});refreshFavoriteState();if(!reroute&&!routeData)saveRecent(dest);if(reroute)speak('New route ready.');return route;}finally{routeBusy=false;}}
+  function renderStep({announce=false}={}){if(!routeSteps.length){el.instruction.textContent='Choose a destination to begin.';return;}const s=routeSteps[stepIndex],d=distanceToCurrentManeuver(),lead=(typeof d==='number'&&Number.isFinite(d))?`${km(d)} — `:(s.distance>0?`${km(s.distance)} — `:'');el.instruction.textContent=lead+stepText(s);el.prev.disabled=stepIndex===0;el.next.disabled=stepIndex===routeSteps.length-1;if(announce&&el.auto.checked)speakCurrent();}
+  function maybeAnnounceApproach(d){if(!el.auto.checked||stepIndex<0||!Number.isFinite(d))return;for(const threshold of cfg.navigation.announceThresholdsMeters||[500,200,80]){const key=`${stepIndex}:${threshold}`;if(d<=threshold&&!announcedThresholds.has(key)){announcedThresholds.add(key);speak(`${km(d)}. ${stepText(routeSteps[stepIndex])}`);break;}}}
+  function navigationTick(){if(!activeDestination||!routeSteps.length||!currentPos||routeBusy)return;const dManeuver=distanceToCurrentManeuver();if(Number.isFinite(dManeuver)){maybeAnnounceApproach(dManeuver);if(dManeuver<=cfg.navigation.maneuverAdvanceMeters&&stepIndex<routeSteps.length-1){stepIndex++;announcedThresholds=new Set();renderStep({announce:true});}}const deviation=distanceToRoute(currentPos),allowed=Math.max(cfg.navigation.offRouteMeters,(currentPos.accuracy||0)*1.8);if(deviation>allowed){offRouteFixes++;el.offRoute.textContent=`Off route ${Math.round(deviation)} m`;if(navigator.onLine&&offRouteFixes>=cfg.navigation.offRouteFixesBeforeReroute&&Date.now()-lastRerouteAt>cfg.navigation.rerouteCooldownMs){lastRerouteAt=Date.now();offRouteFixes=0;el.routeState.textContent='Rerouting';speak('You are off route. Finding a new route.');routeTo(activeDestination,{reroute:true}).catch(e=>setStatus(e.message||'Reroute failed.',true));}}else{offRouteFixes=0;el.offRoute.textContent=navigator.onLine?'Auto-reroute armed':'Offline rerouting unavailable';}if(haversine(currentPos,activeDestination)<35&&stepIndex>=routeSteps.length-2){el.routeState.textContent='Arrived';if(el.auto.checked)speak('You have arrived at your destination.');}}
+
+  function getSelectedVoice(){return voices.find(v=>`${v.name}@@${v.lang}`===el.voice.value)||voices.find(v=>v.name===el.voice.value)||voices[0];}
+  function speak(text){if(window.IzakhonoNativeVoice?.speak){try{window.IzakhonoNativeVoice.speak(text,parseFloat(el.rate.value)||0.95,el.lang.value||'');return;}catch{}}if(!('speechSynthesis'in window)){setStatus('Speech synthesis is not supported on this device.',true);return;}speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(text),v=getSelectedVoice();if(v){u.voice=v;u.lang=v.lang;}u.rate=parseFloat(el.rate.value)||0.95;speechSynthesis.speak(u);}
+  function speakCurrent(){if(routeSteps.length)speak(el.instruction.textContent.replace(/^.*? — /,''));}
+  function localeLabel(tag){return registry.priorityLocales.find(x=>x.tag===tag)?.name||tag;}
+  function allPacks(){return [...(registry.verifiedPacks||[]),...(packsApi?.list?.()||[])];}
+  function loadVoices(){voices=speechSynthesis?.getVoices?.()||[];const langs=[...new Set(voices.map(v=>v.lang).filter(Boolean))].sort((a,b)=>a.localeCompare(b)),priority=(registry.priorityLocales||[]).map(x=>x.tag);el.lang.innerHTML='';const all=document.createElement('option');all.value='';all.textContent=`All installed languages (${langs.length})`;el.lang.appendChild(all);[...new Set([...priority.filter(p=>langs.includes(p)),...langs])].forEach(l=>{const o=document.createElement('option');o.value=l;o.textContent=localeLabel(l);el.lang.appendChild(o);});const navLang=navigator.language||'';if(langs.includes(navLang))el.lang.value=navLang;else if(langs.includes('en-ZA'))el.lang.value='en-ZA';renderVoices();}
+  function renderVoices(){const filter=el.lang.value,shown=voices.filter(v=>!filter||v.lang===filter);el.voice.innerHTML='';shown.forEach(v=>{const o=document.createElement('option');o.value=`${v.name}@@${v.lang}`;o.textContent=`${v.name} — ${localeLabel(v.lang)}${v.localService?' • on device':''}`;el.voice.appendChild(o);});if(!shown.length){const o=document.createElement('option');o.textContent='No compatible device voice installed';o.value='';el.voice.appendChild(o);}const verified=allPacks().filter(p=>(!filter||p.locale===filter)&&p.qa==='verified').length;el.coverage.textContent=shown.length?`${shown.length} compatible voice${shown.length===1?'':'s'} available${verified?` • ${verified} verified IZAKHONO phrase pack${verified===1?'':'s'}`:''}`:'This locale needs a downloadable voice asset/pack.';el.packCount.textContent=`${packsApi?.list?.().length||0} imported`;}
+
+  async function startRoute(){const q=el.dest.value.trim();if(!q)return setStatus('Enter a destination.',true);if(!navigator.onLine)return setStatus('You are offline. Restore a saved route or reconnect to search.',true);try{el.go.disabled=true;setStatus('Finding destination…');const d=await providers.geocode(q);setStatus('Building route…');await routeTo(d);setStatus('Route ready. Automatic voice navigation active.');}catch(e){setStatus(e.message||'Could not build route.',true);}finally{el.go.disabled=false;}}
+  function stopNavigation(){routeSteps=[];stepIndex=0;activeDestination=null;activeRoute=null;routeCoords=[];offRouteFixes=0;announcedThresholds=new Set();map.clearRoute();map.removeMarker('destination');el.title.textContent='No route selected';el.distance.textContent=el.duration.textContent=el.arrival.textContent='—';el.instruction.textContent='Choose a destination to begin.';el.stop.classList.add('hidden');el.speak.disabled=el.prev.disabled=el.next.disabled=el.saveRoute.disabled=el.saveMap.disabled=el.favorite.disabled=true;releaseWakeLock();stopNativeLocation();el.routeState.textContent='Idle';el.offRoute.textContent='Auto-reroute armed';speechSynthesis?.cancel();setStatus('Navigation stopped.');}
+  function saveRouteOffline(){if(!activeRoute||!activeDestination)return;store.set('izakhono-nav-saved-route',{savedAt:Date.now(),mode,destination:activeDestination,route:activeRoute});setStatus('Current route and instructions saved on this device.');}
+  async function restoreSavedRoute(){const saved=store.get('izakhono-nav-saved-route',null);if(!saved)return setStatus('No saved route is available.',true);mode=saved.mode||'driving';document.querySelectorAll('.mode-btn').forEach(b=>b.classList.toggle('active',b.dataset.mode===mode));try{await routeTo(saved.destination,{routeData:saved.route});setStatus(`Saved route restored from ${new Date(saved.savedAt).toLocaleString()}.`);}catch(e){setStatus(e.message||'Could not restore saved route.',true);}}
+
+  function hazardEmoji(type){return({Crash:'💥','Road hazard':'⚠️',Pothole:'🕳️',Flooding:'🌊','Road closed':'⛔','Vehicle stopped':'🚗','Police / emergency':'🚨'})[type]||'⚠️';}
+  function getHazards(){return store.get('izakhono-nav-hazards',[]);}
+  function saveHazards(list){store.set('izakhono-nav-hazards',list.slice(-100));}
+  function drawHazards(){map.clearMarkers('hazard-');getHazards().forEach((h,i)=>map.addMarker(`hazard-${i}`,h.lat,h.lng,hazardEmoji(h.type),'hazard',`${h.type} — private local report`));}
+  function reportHazard(){if(!currentPos){setStatus('GPS location is required before reporting a hazard.',true);locate(false);return;}const list=getHazards();list.push({type:el.hazardType.value,lat:currentPos.lat,lng:currentPos.lng,at:Date.now()});saveHazards(list);drawHazards();setStatus(`${el.hazardType.value} saved privately on this device.`);}
+  async function shareLocation(){if(!currentPos){locate(false);setStatus('Getting your location before sharing…');return;}const text=`My current location: ${currentPos.lat.toFixed(6)}, ${currentPos.lng.toFixed(6)}. Accuracy about ${Math.round(currentPos.accuracy||0)} m.`;try{if(navigator.share){await navigator.share({title:'My location — IZAKHONO NAV',text});setStatus('Location shared using your chosen app.');}else{await navigator.clipboard.writeText(text);setStatus('Location copied to clipboard.');}}catch(e){if(e.name!=='AbortError')setStatus('Location sharing was not completed.',true);}}
+
+  async function requestWakeLock(){if(!cfg.navigation.wakeLockWhileNavigating||!('wakeLock'in navigator)||wakeLock)return;try{wakeLock=await navigator.wakeLock.request('screen');wakeLock.addEventListener('release',()=>wakeLock=null);}catch{}}
+  function releaseWakeLock(){try{wakeLock?.release();}catch{}wakeLock=null;}
+  function tileXY(lat,lng,z){const n=2**z,x=Math.floor((lng+180)/360*n),r=lat*Math.PI/180,y=Math.floor((1-Math.asinh(Math.tan(r))/Math.PI)/2*n);return{x,y};}
+  async function saveRouteMap(){if(!activeRoute||!routeCoords.length)return setStatus('Build a route first.',true);if(!providers.state.ownedTiles)return setStatus('Offline map saving is enabled only when IZAKHONO-owned tiles are active.',true);if(!navigator.serviceWorker?.controller)return setStatus('Offline map worker is not active yet. Reopen NAV after installation.',true);const urls=new Set(),min=cfg.offline.minZoom||10,max=cfg.offline.maxZoom||16,limit=cfg.offline.maxTilesPerSave||1200;const stride=Math.max(1,Math.floor(routeCoords.length/120));for(let i=0;i<routeCoords.length;i+=stride){const [lng,lat]=routeCoords[i];for(let z=min;z<=max;z++){const t=tileXY(lat,lng,z);for(let dx=-1;dx<=1;dx++)for(let dy=-1;dy<=1;dy++){urls.add(map.tileSrc(t.x+dx,t.y+dy,z));if(urls.size>=limit)break;}if(urls.size>=limit)break;}if(urls.size>=limit)break;}navigator.serviceWorker.controller.postMessage({type:'CACHE_URLS',urls:[...urls]});setStatus(`Saving ${urls.size} owned map tiles around this route for offline use…`);}
+  async function sosShare(){if(!currentPos){locate(false);return setStatus('Getting GPS fix for SOS sharing…');}const link=`https://www.openstreetmap.org/?mlat=${currentPos.lat.toFixed(6)}&mlon=${currentPos.lng.toFixed(6)}#map=17/${currentPos.lat.toFixed(6)}/${currentPos.lng.toFixed(6)}`;const text=`SOS: I am sharing my current location from IZAKHONO NAV. ${currentPos.lat.toFixed(6)}, ${currentPos.lng.toFixed(6)} (accuracy about ${Math.round(currentPos.accuracy||0)} m). ${link}`;try{if(navigator.share)await navigator.share({title:'SOS location',text});else{await navigator.clipboard.writeText(text);setStatus('SOS location copied to clipboard.');}}catch(e){if(e.name!=='AbortError')setStatus('SOS share was not completed.',true);}}
+  function updateProviderState(st){el.provider.classList.remove('engine-owned','engine-fallback','engine-offline');if(st.ownedRouting&&st.ownedSearch){const runtime=(st.activeRuntime||'FABRIC').toUpperCase();const owned=String(st.runtimeClass||'').toLowerCase().includes('owned');el.provider.textContent=`${owned?'OWNED':'FABRIC'} · ${runtime}`;el.provider.title=`Release ${st.releaseId||cfg.version}${st.ownedTiles?' · owned tiles ready':''}`;el.provider.classList.add('engine-owned');}else{el.provider.textContent=navigator.onLine?'RESILIENCE ADAPTER':'ENGINE OFFLINE';el.provider.title='No healthy IZAKHONO NAV runtime currently selected';el.provider.classList.add(navigator.onLine?'engine-fallback':'engine-offline');}const next=providers.mapTileUrl();if(map.tileUrl!==next){map.tileUrl=next;map.render();}if(activeRoute)el.saveMap.disabled=!st.ownedTiles;}
+
+  function setNetwork(){const online=navigator.onLine;el.network.textContent=online?'● ONLINE':'● OFFLINE';el.network.classList.toggle('offline',!online);if(!online&&activeDestination)el.offRoute.textContent='Offline rerouting unavailable';}
+  async function importVoicePack(file){try{const pack=await packsApi.fromFile(file);packsApi.save(pack);renderVoices();setStatus(`${pack.label} imported locally (${pack.qa}).`);}catch(e){setStatus(e.message||'Voice pack could not be imported.',true);}finally{el.packInput.value='';}}
+
+  el.go.addEventListener('click',startRoute);el.dest.addEventListener('keydown',e=>{if(e.key==='Enter')startRoute();});el.locate.addEventListener('click',()=>locate(true));el.recenter.addEventListener('click',()=>currentPos?map.setView(currentPos.lat,currentPos.lng,16):locate(true));
+  el.prev.addEventListener('click',()=>{if(stepIndex>0){stepIndex--;announcedThresholds=new Set();renderStep();}});el.next.addEventListener('click',()=>{if(stepIndex<routeSteps.length-1){stepIndex++;announcedThresholds=new Set();renderStep();}});el.speak.addEventListener('click',speakCurrent);el.test.addEventListener('click',()=>speak('IZAKHONO NAV voice guidance is ready.'));el.lang.addEventListener('change',renderVoices);el.rate.addEventListener('input',()=>{el.rateValue.textContent=`${Number(el.rate.value).toFixed(2)}×`;});el.stop.addEventListener('click',stopNavigation);
+  el.reportHazard.addEventListener('click',reportHazard);el.saveMap.addEventListener('click',saveRouteMap);el.sosShare.addEventListener('click',sosShare);el.clearHazards.addEventListener('click',()=>{localStorage.removeItem('izakhono-nav-hazards');drawHazards();setStatus('Your local hazard reports were cleared.');});el.shareLocation.addEventListener('click',shareLocation);el.saveRoute.addEventListener('click',saveRouteOffline);el.restoreRoute.addEventListener('click',restoreSavedRoute);el.favorite.addEventListener('click',toggleFavorite);el.loadPack.addEventListener('click',()=>el.packInput.click());el.packInput.addEventListener('change',()=>{const f=el.packInput.files?.[0];if(f)importVoicePack(f);});
+  document.querySelectorAll('.mode-btn').forEach(b=>b.addEventListener('click',()=>{mode=b.dataset.mode;document.querySelectorAll('.mode-btn').forEach(x=>x.classList.toggle('active',x===b));if(mode!=='driving'&&!providers.state.ownedRouting)setStatus(`${b.textContent.trim()} routing becomes active when the IZAKHONO-owned route engine is healthy.`);else setStatus(`${b.textContent.trim()} mode selected.`);}));
+
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;if(SR){el.mic.addEventListener('click',()=>{const rec=new SR(),v=getSelectedVoice();rec.lang=v?.lang||el.lang.value||navigator.language||'en-ZA';rec.interimResults=false;rec.maxAlternatives=1;setStatus('Listening for destination…');rec.onresult=e=>{el.dest.value=e.results[0][0].transcript;setStatus('Destination heard.');};rec.onerror=e=>setStatus(`Voice search unavailable: ${e.error}`,true);rec.start();});}else{el.mic.disabled=true;el.mic.title='Voice search is not supported by this browser';}
+  if('speechSynthesis'in window){loadVoices();speechSynthesis.onvoiceschanged=loadVoices;}else if(window.IzakhonoNativeVoice?.speak){el.coverage.textContent='Native IZAKHONO Android voice bridge ready.';}else{el.test.disabled=true;setStatus('This device does not expose a compatible text-to-speech engine.',true);}
+
+  window.addEventListener('izakhono-native-location',e=>applyNativeLocation(e.detail));window.addEventListener('izakhono-provider-state',e=>updateProviderState(e.detail));providers.probe().then(updateProviderState);renderQuickPlaces();drawHazards();setNetwork();locate(false);window.addEventListener('online',()=>{setNetwork();setStatus('Connection restored.');});window.addEventListener('offline',()=>{setNetwork();setStatus('Offline. Saved route and app shell remain available.');});
+  window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredPrompt=e;el.install.classList.remove('hidden');});el.install.addEventListener('click',async()=>{if(!deferredPrompt)return;deferredPrompt.prompt();await deferredPrompt.userChoice;deferredPrompt=null;el.install.classList.add('hidden');});if('serviceWorker'in navigator)navigator.serviceWorker.register('./sw.js').catch(()=>{});
+})();
+
+</script>
+</body>
+</html>
