@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import base64
 import hashlib
 import hmac
 import json
@@ -10,7 +11,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import urlparse
+from urllib.parse import quote, urlparse
 
 HOST = os.getenv("IZAKHONO_ID_HOST", "127.0.0.1")
 PORT = int(os.getenv("IZAKHONO_ID_PORT", "9696"))
@@ -24,6 +25,9 @@ LOGIN_MAX_FAILURES = int(os.getenv("IZAKHONO_ID_LOGIN_MAX_FAILURES", "5"))
 LOGIN_WINDOW_SECONDS = int(os.getenv("IZAKHONO_ID_LOGIN_WINDOW_SECONDS", "900"))
 LOGIN_LOCK_SECONDS = int(os.getenv("IZAKHONO_ID_LOGIN_LOCK_SECONDS", "900"))
 REQUIRE_EMAIL_VERIFICATION = os.getenv("IZAKHONO_ID_REQUIRE_EMAIL_VERIFICATION", "true").lower() != "false"
+MFA_MASTER_KEY = os.getenv("IZAKHONO_ID_MFA_MASTER_KEY", "")
+MFA_CHALLENGE_SECONDS = int(os.getenv("IZAKHONO_ID_MFA_CHALLENGE_SECONDS", "300"))
+MFA_MAX_ATTEMPTS = int(os.getenv("IZAKHONO_ID_MFA_MAX_ATTEMPTS", "5"))
 MAX_BODY = 200_000
 
 def now():
@@ -90,6 +94,7 @@ def db_connect():
       status TEXT NOT NULL DEFAULT 'active',
       email_verified_at TEXT,
       last_login_at TEXT,
+      mfa_enabled_at TEXT,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
     )""")
@@ -101,6 +106,8 @@ def db_connect():
         db.execute("UPDATE users SET email_verified_at=created_at WHERE email_verified_at IS NULL AND created_at IS NOT NULL")
     if "last_login_at" not in user_columns:
         db.execute("ALTER TABLE users ADD COLUMN last_login_at TEXT")
+    if "mfa_enabled_at" not in user_columns:
+        db.execute("ALTER TABLE users ADD COLUMN mfa_enabled_at TEXT")
     db.execute("""CREATE TABLE IF NOT EXISTS memberships(
       id TEXT PRIMARY KEY,
       entity_id TEXT NOT NULL,
@@ -132,6 +139,29 @@ def db_connect():
       locked_until INTEGER,
       updated_at INTEGER NOT NULL
     )""")
+    db.execute("""CREATE TABLE IF NOT EXISTS login_challenges(
+      id TEXT PRIMARY KEY,
+      token_hash TEXT NOT NULL UNIQUE,
+      entity_id TEXT NOT NULL,
+      user_id TEXT NOT NULL,
+      membership_id TEXT NOT NULL,
+      attempts INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL,
+      expires_at TEXT NOT NULL,
+      consumed_at TEXT,
+      FOREIGN KEY(entity_id) REFERENCES entities(id) ON DELETE CASCADE,
+      FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
+      FOREIGN KEY(membership_id) REFERENCES memberships(id) ON DELETE CASCADE
+    )""")
+    db.execute("""CREATE TABLE IF NOT EXISTS mfa_recovery_codes(
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      code_hash TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      used_at TEXT,
+      UNIQUE(user_id,code_hash),
+      FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+    )""")
     db.execute("""CREATE TABLE IF NOT EXISTS audit_events(
       id TEXT PRIMARY KEY,
       event_type TEXT NOT NULL,
@@ -145,6 +175,115 @@ def db_connect():
     db.execute("CREATE INDEX IF NOT EXISTS idx_audit_events_user ON audit_events(user_id,created_at)")
     db.commit()
     return db
+
+def mfa_available():
+    return len(MFA_MASTER_KEY) >= 32
+
+def mfa_secret_bytes(user_id):
+    if not mfa_available():
+        raise ValueError("mfa_not_configured")
+    return hmac.new(
+        MFA_MASTER_KEY.encode(),
+        f"izakhono-id:mfa:v1:{user_id}".encode(),
+        hashlib.sha256,
+    ).digest()[:20]
+
+def mfa_secret_base32(user_id):
+    return base64.b32encode(mfa_secret_bytes(user_id)).decode().rstrip("=")
+
+def totp_code(user_id, at_time=None):
+    current = int(time.time() if at_time is None else at_time)
+    counter = current // 30
+    digest = hmac.new(
+        mfa_secret_bytes(user_id),
+        counter.to_bytes(8, "big"),
+        hashlib.sha1,
+    ).digest()
+    offset = digest[-1] & 0x0F
+    value = int.from_bytes(digest[offset:offset+4], "big") & 0x7FFFFFFF
+    return f"{value % 1000000:06d}"
+
+def verify_totp(user_id, code, window=1):
+    candidate = str(code or "").strip().replace(" ", "")
+    if len(candidate) != 6 or not candidate.isdigit() or not mfa_available():
+        return False
+    current = int(time.time())
+    return any(safe_equal(totp_code(user_id, current + step * 30), candidate) for step in range(-window, window + 1))
+
+def otpauth_uri(user_id, email, entity_slug):
+    secret = mfa_secret_base32(user_id)
+    label = quote(f"IZAKHONO:{email}", safe="")
+    issuer = quote("IZAKHONO", safe="")
+    return f"otpauth://totp/{label}?secret={secret}&issuer={issuer}&algorithm=SHA1&digits=6&period=30"
+
+def recovery_code():
+    raw = secrets.token_hex(8).upper()
+    return "-".join(raw[i:i+4] for i in range(0, len(raw), 4))
+
+def recovery_hash(code):
+    normalized = str(code or "").strip().upper().replace("-", "").replace(" ", "")
+    return sha256_hex(normalized)
+
+def replace_recovery_codes(db, user_id, count=10):
+    db.execute("DELETE FROM mfa_recovery_codes WHERE user_id=?", (user_id,))
+    codes = [recovery_code() for _ in range(count)]
+    ts = now_iso()
+    for code in codes:
+        db.execute(
+            "INSERT INTO mfa_recovery_codes(id,user_id,code_hash,created_at) VALUES(?,?,?,?)",
+            ("mrc_" + uuid.uuid4().hex, user_id, recovery_hash(code), ts),
+        )
+    return codes
+
+def consume_recovery_code(db, user_id, code):
+    code_hash = recovery_hash(code)
+    row = db.execute(
+        "SELECT * FROM mfa_recovery_codes WHERE user_id=? AND code_hash=? AND used_at IS NULL",
+        (user_id, code_hash),
+    ).fetchone()
+    if not row:
+        return False
+    db.execute("UPDATE mfa_recovery_codes SET used_at=? WHERE id=?", (now_iso(), row["id"]))
+    return True
+
+def issue_login_challenge(db, entity, user, membership):
+    token = secrets.token_urlsafe(48)
+    challenge_id = "mfa_" + uuid.uuid4().hex
+    created = now()
+    expires = created + timedelta(seconds=MFA_CHALLENGE_SECONDS)
+    db.execute(
+        """INSERT INTO login_challenges(
+          id,token_hash,entity_id,user_id,membership_id,created_at,expires_at
+        ) VALUES(?,?,?,?,?,?,?)""",
+        (challenge_id, sha256_hex(token), entity["id"], user["id"], membership["id"], created.isoformat(), expires.isoformat()),
+    )
+    db.commit()
+    return token, challenge_id, expires.isoformat()
+
+def find_login_challenge(db, token):
+    if not token:
+        return None
+    row = db.execute(
+        """SELECT c.*, e.slug AS entity_slug, e.display_name AS entity_name,
+                  u.email AS user_email, u.mfa_enabled_at,
+                  m.role AS membership_role, e.status AS entity_status,
+                  u.status AS user_status, m.status AS membership_status
+           FROM login_challenges c
+           JOIN entities e ON e.id=c.entity_id
+           JOIN users u ON u.id=c.user_id
+           JOIN memberships m ON m.id=c.membership_id
+           WHERE c.token_hash=?""",
+        (sha256_hex(token),),
+    ).fetchone()
+    if not row or row["consumed_at"]:
+        return None
+    if parse_iso(row["expires_at"]) <= now():
+        return None
+    if row["entity_status"] != "active" or row["user_status"] != "active" or row["membership_status"] != "active":
+        return None
+    if int(row["attempts"] or 0) >= MFA_MAX_ATTEMPTS:
+        return None
+    return row
 
 def subject_hash(value):
     return sha256_hex(str(value or "").strip().lower()) if value else None
