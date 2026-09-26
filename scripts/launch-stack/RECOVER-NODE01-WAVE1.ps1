@@ -62,6 +62,8 @@ systemctl is-enabled --quiet izakhono-wave1-watch.timer
 systemctl is-active --quiet izakhono-wave1-watch.timer
 systemctl is-enabled --quiet izakhono-runner-keepalive.timer
 systemctl is-active --quiet izakhono-runner-keepalive.timer
+systemctl is-enabled --quiet izakhono-wave1-request.timer
+systemctl is-active --quiet izakhono-wave1-request.timer
 sudo -l -U izakhono-runner | grep -F '/opt/izakhono/bin/run-wave1-local-proof' >/dev/null
 '@
 }
@@ -89,6 +91,7 @@ $statusLines += "NODE01_ACTIVE=true"
 $statusLines += "CONTROL_ACTIVE=true"
 $statusLines += "WAVE1_WATCH_TIMER_ACTIVE=true"
 $statusLines += "RUNNER_KEEPALIVE_TIMER_ACTIVE=true"
+$statusLines += "OWNED_WAVE1_REQUEST_TIMER_ACTIVE=true"
 $statusLines += "RUNNER_FIXED_BRIDGE_AUTHORIZED=true"
 $statusLines += "PUBLIC_CUTOVER_PERFORMED=false"
 $statusLines += "EXTERNAL_FALLBACKS_PRESERVED=true"
