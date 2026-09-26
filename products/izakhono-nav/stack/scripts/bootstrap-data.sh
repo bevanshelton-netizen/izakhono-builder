@@ -20,4 +20,5 @@ if [[ -z "$expected" || "$actual" != "$expected" ]]; then
   exit 2
 fi
 printf '%s  %s\n' "$actual" "$(basename "$PBF")" > "$DATA_DIR/osm/south-africa-latest.osm.pbf.md5"
-echo "Verified $PBF"
+ln -f "$PBF" "$DATA_DIR/router/south-africa-latest.osm.pbf"
+echo "Verified $PBF and linked it into Valhalla data."
