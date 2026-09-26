@@ -2,9 +2,10 @@
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")/.." && pwd)"
 [[ -f "$HERE/.env" ]] && set -a && source "$HERE/.env" && set +a
-HOST="${NAV_ENGINE_VERIFY_URL:-http://127.0.0.1:${NAV_ENGINE_PORT:-8788}}"
+HOST="${NAV_ENGINE_VERIFY_URL:-http://127.0.0.1:${NAV_ENGINE_PORT:-8788}}"\nWEB="${NAV_WEB_VERIFY_URL:-http://127.0.0.1:${NAV_WEB_PORT:-8787}}"
 REPORT="$HERE/activation-report.txt"
 : > "$REPORT"
+curl -fsS --max-time 8 "$WEB/" >/tmp/izakhono-nav-local.html && grep -q 'IZAKHONO NAV' /tmp/izakhono-nav-local.html && pass "private web gateway" || fail "private web gateway"
 pass(){ printf '%-26s PASS\n' "$1" | tee -a "$REPORT"; }
 fail(){ printf '%-26s FAIL\n' "$1" | tee -a "$REPORT"; return 1; }
 
