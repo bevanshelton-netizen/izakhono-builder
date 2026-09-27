@@ -32,9 +32,9 @@ jobs:
           bash -n products/izakhono-docflow/owner-node/deploy-node01.sh
           bash -n products/izakhono-docflow/owner-node/prepare-env.sh
           bash -n products/izakhono-docflow/owner-node/prove-backup-restore.sh
-          pwsh -NoProfile -Command "& { $e=$null; [System.Management.Automation.Language.Parser]::ParseFile('products/izakhono-docflow/public-cutover/STAGE-DOCFLOW-EDGE.ps1',[ref]$null,[ref]$e) | Out-Null; if($e.Count){$e|% Message; exit 1} }"
-          pwsh -NoProfile -Command "& { $e=$null; [System.Management.Automation.Language.Parser]::ParseFile('products/izakhono-docflow/public-cutover/ACTIVATE-DOCFLOW-EDGE.ps1',[ref]$null,[ref]$e) | Out-Null; if($e.Count){$e|% Message; exit 1} }"
-          pwsh -NoProfile -Command "& { $e=$null; [System.Management.Automation.Language.Parser]::ParseFile('products/izakhono-docflow/public-cutover/VERIFY-DOCFLOW-PUBLIC.ps1',[ref]$null,[ref]$e) | Out-Null; if($e.Count){$e|% Message; exit 1} }"
+          pwsh -NoProfile -Command '$e=$null; [System.Management.Automation.Language.Parser]::ParseFile("products/izakhono-docflow/public-cutover/STAGE-DOCFLOW-EDGE.ps1",[ref]$null,[ref]$e) | Out-Null; if($e.Count){$e | ForEach-Object Message; exit 1}'
+          pwsh -NoProfile -Command '$e=$null; [System.Management.Automation.Language.Parser]::ParseFile("products/izakhono-docflow/public-cutover/ACTIVATE-DOCFLOW-EDGE.ps1",[ref]$null,[ref]$e) | Out-Null; if($e.Count){$e | ForEach-Object Message; exit 1}'
+          pwsh -NoProfile -Command '$e=$null; [System.Management.Automation.Language.Parser]::ParseFile("products/izakhono-docflow/public-cutover/VERIFY-DOCFLOW-PUBLIC.ps1",[ref]$null,[ref]$e) | Out-Null; if($e.Count){$e | ForEach-Object Message; exit 1}'
 
       - name: Build owned DOCFLOW image
         run: docker build -f products/izakhono-docflow/Dockerfile.node -t izakhono-docflow-cutover:ci .
