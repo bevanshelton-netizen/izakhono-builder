@@ -1,0 +1,57 @@
+name: IZAKHONO NAV Android APK
+
+on:
+  pull_request:
+    paths:
+      - 'products/izakhono-nav/android/**'
+      - 'public/ai-core/nav/**'
+      - '.github/workflows/izakhono-nav-android.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'products/izakhono-nav/android/**'
+      - 'public/ai-core/nav/**'
+      - '.github/workflows/izakhono-nav-android.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.4.1'
+
+      - name: Install Android API 36
+        shell: bash
+        run: |
+          yes | sdkmanager --licenses >/dev/null 2>&1 || true
+          sdkmanager "platforms;android-36" "build-tools;36.0.0" "platform-tools"
+
+      - name: Build APK
+        working-directory: products/izakhono-nav/android
+        run: gradle --no-daemon :app:assembleDebug
+
+      - name: Verify APK
+        shell: bash
+        run: |
+          APK="products/izakhono-nav/android/app/build/outputs/apk/debug/app-debug.apk"
+          test -s "$APK"
+          mkdir -p out
+          cp "$APK" out/IZAKHONO-NAV-Android-v1.0.0-beta.apk
+          sha256sum out/IZAKHONO-NAV-Android-v1.0.0-beta.apk > out/IZAKHONO-NAV-Android-v1.0.0-beta.apk.sha256
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: IZAKHONO-NAV-ANDROID-APK
+          path: out/*
+          if-no-files-found: error
+          retention-days: 30
