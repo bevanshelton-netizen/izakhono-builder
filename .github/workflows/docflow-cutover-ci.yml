@@ -1,0 +1,95 @@
+name: IZAKHONO DOCFLOW Cutover CI
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'products/izakhono-docflow/owner-node/**'
+      - 'products/izakhono-docflow/public-cutover/**'
+      - '.github/workflows/docflow-cutover-ci.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'products/izakhono-docflow/owner-node/**'
+      - 'products/izakhono-docflow/public-cutover/**'
+      - '.github/workflows/docflow-cutover-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  cutover-proof:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Validate scripts
+        shell: bash
+        run: |
+          bash -n products/izakhono-docflow/owner-node/deploy-node01.sh
+          bash -n products/izakhono-docflow/owner-node/prepare-env.sh
+          bash -n products/izakhono-docflow/owner-node/prove-backup-restore.sh
+          pwsh -NoProfile -Command '$e=$null; [System.Management.Automation.Language.Parser]::ParseFile("products/izakhono-docflow/public-cutover/STAGE-DOCFLOW-EDGE.ps1",[ref]$null,[ref]$e) | Out-Null; if($e.Count){$e | ForEach-Object Message; exit 1}'
+          pwsh -NoProfile -Command '$e=$null; [System.Management.Automation.Language.Parser]::ParseFile("products/izakhono-docflow/public-cutover/ACTIVATE-DOCFLOW-EDGE.ps1",[ref]$null,[ref]$e) | Out-Null; if($e.Count){$e | ForEach-Object Message; exit 1}'
+          pwsh -NoProfile -Command '$e=$null; [System.Management.Automation.Language.Parser]::ParseFile("products/izakhono-docflow/public-cutover/VERIFY-DOCFLOW-PUBLIC.ps1",[ref]$null,[ref]$e) | Out-Null; if($e.Count){$e | ForEach-Object Message; exit 1}'
+
+      - name: Build owned DOCFLOW image
+        run: docker build -f products/izakhono-docflow/Dockerfile.node -t izakhono-docflow-cutover:ci .
+
+      - name: Start production-shaped canary
+        shell: bash
+        run: |
+          docker volume create izakhono-docflow-ci-data >/dev/null
+          docker run -d --name izakhono-docflow \
+            -e DOCFLOW_ADMIN_SECRET=ci-cutover-only-not-production \
+            -e APP_ENV=ci-cutover \
+            -p 127.0.0.1:8787:8787 \
+            -v izakhono-docflow-ci-data:/app/data \
+            izakhono-docflow-cutover:ci
+          for _ in $(seq 1 45); do
+            if curl -fsS http://127.0.0.1:8787/api/ready >/tmp/docflow-ready.json; then
+              cat /tmp/docflow-ready.json
+              exit 0
+            fi
+            sleep 2
+          done
+          docker logs izakhono-docflow || true
+          exit 1
+
+      - name: Prove backup and isolated restore
+        shell: bash
+        run: |
+          mkdir -p /tmp/docflow-backups /tmp/docflow-evidence
+          DOCFLOW_CONTAINER=izakhono-docflow \
+          DOCFLOW_BACKUP_DIR=/tmp/docflow-backups \
+          DOCFLOW_REPORT_DIR=/tmp/docflow-evidence \
+            bash products/izakhono-docflow/owner-node/prove-backup-restore.sh
+          python - <<'PY'
+          import json,glob
+          files=glob.glob('/tmp/docflow-evidence/izakhono-docflow-backup-restore-*.json')
+          assert files, 'backup/restore report missing'
+          data=json.load(open(files[-1]))
+          assert data['restore_probe_ready'] is True
+          assert data['production_data_modified'] is False
+          print('[PASS] DOCFLOW backup archive restored into an isolated volume and became ready.')
+          PY
+
+      - name: Stage and dry-run EDGE route
+        shell: pwsh
+        run: |
+          & products/izakhono-docflow/public-cutover/STAGE-DOCFLOW-EDGE.ps1 -Hostname 'docflow.example.test'
+          & products/izakhono-docflow/public-cutover/ACTIVATE-DOCFLOW-EDGE.ps1
+          $caddy=Get-Content products/izakhono-docflow/public-cutover/generated/30-izakhono-docflow.caddy -Raw
+          if($caddy -notmatch 'docflow\.example\.test'){ throw 'staged hostname missing' }
+          if($caddy -notmatch 'host\.docker\.internal:8787'){ throw 'DOCFLOW upstream missing' }
+          Write-Host '[PASS] DOCFLOW EDGE route stages safely and activation defaults to dry-run.'
+
+      - name: Cleanup
+        if: always()
+        shell: bash
+        run: |
+          docker rm -f izakhono-docflow >/dev/null 2>&1 || true
+          docker volume rm izakhono-docflow-ci-data >/dev/null 2>&1 || true
