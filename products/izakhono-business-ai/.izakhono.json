@@ -1,6 +1,6 @@
 {
   "schema_version": 3,
-  "product_version": "0.2.0",
+  "product_version": "0.3.0",
   "product": "IZAKHONO BUSINESS AI",
   "slug": "izakhono-business-ai",
   "engine": "independent",
@@ -12,10 +12,17 @@
     "raw_prompt_persistence": false
   },
   "decision_lab": {
-    "version": "0.2",
+    "version": "0.3",
     "source_hashing": "sha256",
     "evidence_graph": true,
     "multi_round_agents": true,
+    "agent_population_max": 100,
+    "repeated_simulations_max": 10,
+    "scenario_comparison": true,
+    "red_team_agents": true,
+    "report_interrogation": true,
+    "calibration_log": "local-first",
+    "pdf_extraction": "local-basic-text-pdf",
     "prediction_claims": false
   },
   "external_adapters": ["AI_GATEWAY_URL"]
