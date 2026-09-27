@@ -1,0 +1,12 @@
+{
+  "source": "izakhono-code",
+  "repository": "izakhono-builder",
+  "app": "izakhono-docflow",
+  "environment": "production",
+  "mode": "single",
+  "container_port": 8787,
+  "health_path": "/api/ready",
+  "data_path": "/app/data",
+  "dockerfile": "products/izakhono-docflow/Dockerfile.node",
+  "env_file": "/etc/izakhono/apps/izakhono-docflow.env"
+}
