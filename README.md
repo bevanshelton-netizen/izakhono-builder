@@ -39,6 +39,18 @@ IZAKHONO BUILDER now includes an owner-gated **one-sentence build pipeline** for
 
 External publication is not triggered automatically and public-live status remains evidence-gated. When the owner-controlled IZAKHONO SUPER AI workflow route is configured, Builder uses it to enrich the inferred product type, name, modules and build priorities; if that route is unavailable, the deterministic local planner continues without failing the build. No external AI provider is required for the core create → plan → generate → validate → internal-commit workflow.
 
+## One-click release candidate
+
+An authenticated Owner can now send any planned Builder project through one controlled action:
+
+`plan (when needed) → generate → deterministic validation → IZAKHONO internal repository commit → release candidate`.
+
+The endpoint is `POST /api/projects/:id/autopilot`. The Owner interface also injects **Build to release candidate** on project cards and **Import & Build** beside the handoff importer.
+
+A successful run sets project status to `deploy_ready` and stores an `izakhono.release-candidate/v1` receipt containing the generated revision, IZAKHONO internal repository head, and channel-specific next gates. It deliberately keeps `public_live: false`.
+
+Web/PWA still requires owned-runtime deployment plus HTTPS and end-to-end acceptance proof. Android and iOS still require signed packages and their respective store submission/release evidence. The one-click action therefore prepares a release candidate; it does not bypass deployment, signing, store, legal or product acceptance gates.
+
 ## Repository Autopilot v1
 
 Generated Worker applications leave the factory as repository-ready packages rather than loose source files. Each bundle includes least-privilege CI, a credential-gated isolated-preview workflow, private-by-default repository metadata, local-secret exclusions and a versioned Builder technical preview.

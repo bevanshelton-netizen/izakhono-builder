@@ -449,6 +449,118 @@ async function buildAnythingRoute(req: Request, env: any, url: URL): Promise<Res
   });
 }
 
+async function projectAutopilotRoute(req: Request, env: any, url: URL): Promise<Response | null> {
+  const match = url.pathname.match(/^\/api\/projects\/([^/]+)\/autopilot$/);
+  if (!match || req.method !== 'POST') return null;
+  if (!(await ownerAuthorized(req, env))) return json({ ok: false, error: 'Unauthorized' }, 401);
+
+  const projectId = match[1];
+  let project = await env.DB.prepare('SELECT * FROM builder_projects WHERE id=?').bind(projectId).first<any>();
+  if (!project) return json({ ok: false, error: 'Project not found' }, 404);
+
+  let recipe = safeJson(project.build_recipe_json, null);
+  const currentGenerated = recipe?.generated;
+  const existingCandidate = recipe?.release_candidate;
+  if (
+    project.status === 'deploy_ready' &&
+    currentGenerated?.validation?.passed &&
+    currentGenerated?.internal_repository?.head_commit_id &&
+    existingCandidate?.revision === currentGenerated?.revision
+  ) {
+    return json({
+      ok: true,
+      already_ready: true,
+      project: { id: project.id, name: project.name, slug: project.slug, status: project.status },
+      release_candidate: existingCandidate,
+      internal_repository: currentGenerated.internal_repository,
+      preview: `/preview/${encodeURIComponent(project.slug)}/${encodeURIComponent(currentGenerated.revision)}/`,
+      public_live: false,
+      next_gate: 'owned-runtime-deployment-verification',
+    });
+  }
+
+  const call = async (action: string) => {
+    const target = new URL(req.url);
+    target.pathname = `/api/projects/${encodeURIComponent(projectId)}/${action}`;
+    target.search = '';
+    return secureApp.fetch(new Request(target.toString(), { method: 'POST', headers: req.headers }), env);
+  };
+
+  if (!recipe) {
+    const planned = await call('plan');
+    const plannedData = await secureJson(planned);
+    if (!planned.ok) return json({ ok: false, stage: 'plan', ...plannedData }, planned.status);
+    project = await env.DB.prepare('SELECT * FROM builder_projects WHERE id=?').bind(projectId).first<any>();
+    recipe = safeJson(project?.build_recipe_json, null);
+  }
+
+  let validationData: any = null;
+  if (recipe?.generated?.validation?.passed && recipe?.generated?.internal_repository?.head_commit_id) {
+    validationData = {
+      ok: true,
+      validation: recipe.generated.validation,
+      internal_repository: recipe.generated.internal_repository,
+      preview: `/preview/${encodeURIComponent(project.slug)}/${encodeURIComponent(recipe.generated.revision)}/`,
+    };
+  } else {
+    const generated = await call('generate');
+    const generatedData = await secureJson(generated);
+    if (!generated.ok) return json({ ok: false, stage: 'generate', ...generatedData }, generated.status);
+
+    const validated = await call('validate-generated');
+    const committed = await commitValidatedBundle(req, env, projectId, validated);
+    validationData = await secureJson(committed);
+    if (!committed.ok) {
+      return json({ ok: false, stage: 'validate', ...validationData }, committed.status);
+    }
+  }
+
+  project = await env.DB.prepare('SELECT * FROM builder_projects WHERE id=?').bind(projectId).first<any>();
+  recipe = safeJson(project?.build_recipe_json, null);
+  const generated = recipe?.generated;
+  if (!generated?.validation?.passed || !generated?.internal_repository?.head_commit_id) {
+    return json({ ok: false, stage: 'release-candidate', error: 'Validated internal repository proof is missing.' }, 409);
+  }
+
+  const releaseCandidate = {
+    schema: 'izakhono.release-candidate/v1',
+    created_at: new Date().toISOString(),
+    status: 'deploy_ready',
+    revision: generated.revision,
+    source_of_truth: 'izakhono-internal',
+    internal_repository_head: generated.internal_repository.head_commit_id,
+    public_live: false,
+    deployment_authority: 'NODE01/CODE/RUNTIME/EDGE-TLS/DNS',
+    external_resilience: 'reversible',
+    target_gates: {
+      web_pwa: 'owned-runtime-deployment-verification',
+      android: 'signed-package-plus-play-console-evidence-required',
+      ios: 'signed-package-plus-app-store-connect-evidence-required',
+    },
+  };
+
+  await env.DB.prepare("UPDATE builder_projects SET build_recipe_json=?,status='deploy_ready',updated_at=CURRENT_TIMESTAMP WHERE id=?")
+    .bind(JSON.stringify({ ...recipe, release_candidate: releaseCandidate }), projectId).run();
+  await env.DB.prepare('INSERT INTO builder_events(id,project_id,event_type,detail) VALUES(?,?,?,?)')
+    .bind(`evt_${crypto.randomUUID().replaceAll('-', '')}`, projectId, 'release_candidate.ready', generated.revision).run();
+
+  return json({
+    ok: true,
+    project: { id: project.id, name: project.name, slug: project.slug, status: 'deploy_ready' },
+    build: {
+      generated: true,
+      validation_passed: true,
+      revision: generated.revision,
+      internal_repository: generated.internal_repository,
+      preview: validationData?.preview || `/preview/${encodeURIComponent(project.slug)}/${encodeURIComponent(generated.revision)}/`,
+    },
+    release_candidate: releaseCandidate,
+    public_live: false,
+    next_gate: 'owned-runtime-deployment-verification',
+    message: 'One-click Builder autopilot completed: package generated, validation passed, source committed to the IZAKHONO internal repository and a controlled release candidate was created. Nothing was published publicly.',
+  });
+}
+
 async function faisPaymentsRepairApi(req: Request, env: any, url: URL): Promise<Response | null> {
   if (url.pathname !== '/api/owner-actions/fais-add-payments' || req.method !== 'POST') return null;
   if (!(await ownerAuthorized(req, env))) return json({ ok: false, error: 'Unauthorized' }, 401);
@@ -492,6 +604,8 @@ async function enrichCapabilities(req: Request, env: any, response: Response): P
       internal_repository_authority: 'primary',
       external_repository_role: 'optional_mirror',
       project_module_editing: true,
+      one_click_release_candidate: true,
+      release_candidate_public_live_implied: false,
     },
   }, response.status, response);
 }
@@ -544,7 +658,37 @@ async function commitValidatedBundle(req: Request, env: any, projectId: string, 
 const MODULE_EDITOR_SCRIPT = `<script>
 (function(){
   if(typeof api!=='function'||typeof state==='undefined')return;
-  window.addPayments=async function(id){
+  window.autopilotProject=async function(id){
+    const p=state.projects.get(id);if(!p)return;
+    if(!confirm('Build '+p.name+' through package generation, validation, IZAKHONO internal repository commit and release-candidate preparation? This will not publish it publicly.'))return;
+    try{
+      const d=await api('/api/projects/'+id+'/autopilot',{method:'POST'});
+      await loadProjects();
+      const proof=d.release_candidate?.revision||d.build?.revision||'ready';
+      alert('Release candidate '+proof+' is ready. Public deployment remains gated until owned-runtime HTTPS and acceptance verification pass.');
+      if(d.build?.preview)window.open(d.build.preview,'_blank','noopener');
+      else if(d.preview)window.open(d.preview,'_blank','noopener');
+    }catch(e){alert(e.message)}
+  };
+  window.importHandoffAndBuild=async function(){
+    if(!state.secret){alert('Unlock Owner Access first.');return}
+    const input=document.querySelector('#handoffFile');
+    const file=input?.files?.[0];
+    if(!file){alert('Choose an IZAKHONO handoff JSON file first.');return}
+    if(file.size>262144){alert('Handoff file is too large.');return}
+    try{
+      const payload=JSON.parse(await file.text());
+      const imported=await api('/api/import-handoff',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload)});
+      const projectId=imported?.project?.id;
+      if(!projectId)throw new Error('The handoff import did not return a project id.');
+      const d=await api('/api/projects/'+projectId+'/autopilot',{method:'POST'});
+      input.value='';
+      await loadProjects();
+      alert('Handoff imported and built to a controlled release candidate. Nothing was published publicly.');
+      if(d.build?.preview)window.open(d.build.preview,'_blank','noopener');
+    }catch(e){alert(e.message)}
+  };
+    window.addPayments=async function(id){
     const p=state.projects.get(id);if(!p)return;
     if(!confirm('Add the Payments module and regenerate this project build plan? Existing IZAKHONO repository history will be preserved.'))return;
     try{
@@ -561,7 +705,13 @@ const MODULE_EDITOR_SCRIPT = `<script>
       const p=projects[index];
       if(!p||!Array.isArray(p.modules)||p.modules.includes('payments'))return;
       const actions=card.querySelector('.projectActions');
-      if(!actions||actions.querySelector('[data-add-payments]'))return;
+      if(!actions)return;
+      if(!actions.querySelector('[data-autopilot]')){
+        const auto=document.createElement('button');
+        auto.className='btn primary';auto.type='button';auto.textContent=p.status==='deploy_ready'?'Recheck release candidate':'Build to release candidate';auto.setAttribute('data-autopilot','1');
+        auto.addEventListener('click',function(){window.autopilotProject(p.id)});actions.appendChild(auto);
+      }
+      if(p.modules.includes('payments')||actions.querySelector('[data-add-payments]'))return;
       const button=document.createElement('button');
       button.className='btn';button.type='button';button.textContent='Add Payments';button.setAttribute('data-add-payments','1');
       button.addEventListener('click',function(){window.addPayments(p.id)});actions.appendChild(button);
@@ -569,6 +719,15 @@ const MODULE_EDITOR_SCRIPT = `<script>
   }
   const projectsRoot=document.querySelector('#projects');
   if(projectsRoot)new MutationObserver(ensurePaymentButtons).observe(projectsRoot,{childList:true,subtree:true});
+  const handoffInput=document.querySelector('#handoffFile');
+  if(handoffInput){
+    const row=handoffInput.parentElement;
+    if(row&&!row.querySelector('[data-import-autopilot]')){
+      const button=document.createElement('button');
+      button.className='btn primary';button.type='button';button.textContent='Import & Build';button.setAttribute('data-import-autopilot','1');
+      button.addEventListener('click',window.importHandoffAndBuild);row.appendChild(button);
+    }
+  }
   setTimeout(ensurePaymentButtons,0);
 })();
 </script>`;
@@ -961,6 +1120,9 @@ export default {
 
     const repairPage = faisPaymentsRepairPage(url);
     if (repairPage && req.method === 'GET') return repairPage;
+
+    const autopilot = await projectAutopilotRoute(req, env, url);
+    if (autopilot) return autopilot;
 
     const repairApi = await faisPaymentsRepairApi(req, env, url);
     if (repairApi) return repairApi;
