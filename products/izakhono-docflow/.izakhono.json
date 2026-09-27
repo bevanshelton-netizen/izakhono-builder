@@ -5,7 +5,7 @@
   "operator": "IZAKHONO AFRICA (PTY) LTD",
   "trading_name": "IZAKHONO DOCFLOW",
   "build_context": "products/izakhono-docflow",
-  "dockerfile_path": "Dockerfile",
+  "dockerfile_path": "products/izakhono-docflow/Dockerfile",
   "container_port": 8787,
   "health_path": "/api/health",
   "branch": "main",
@@ -16,15 +16,19 @@
     "current_public_route": "NOT_YET_VERIFIED",
     "external_fallback": "NOT_YET_VERIFIED",
     "status_label": "NOT YET PUBLIC",
-    "data_dependencies": ["DOCFLOW relational database"],
-    "auth_dependencies": ["DOCFLOW_ADMIN_SECRET"],
+    "data_dependencies": [
+      "DOCFLOW relational database"
+    ],
+    "auth_dependencies": [
+      "DOCFLOW_ADMIN_SECRET"
+    ],
     "payment_dependencies": [],
     "backup_evidence": "PENDING",
     "restore_evidence": "PENDING",
     "rollback_evidence": "PENDING"
   },
   "alpha": {
-    "preflight": false,
+    "preflight": true,
     "rehearsal": false,
     "windows_package": false
   }

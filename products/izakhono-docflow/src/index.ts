@@ -168,15 +168,41 @@ async function getDraft(env: Env, id: string) {
 
 async function api(req: Request, env: Env, url: URL): Promise<Response> {
   if (url.pathname === '/api/health' && req.method === 'GET') {
-    const probe = await env.DB.prepare('SELECT 1 AS ok').first<any>();
+    let database = 'unbound';
+    if (env.DB) {
+      try {
+        const probe = await env.DB.prepare('SELECT 1 AS ok').first<any>();
+        database = probe?.ok === 1 ? 'ready' : 'error';
+      } catch {
+        database = 'error';
+      }
+    }
     return json({
-      ok: probe?.ok === 1,
+      ok: true,
       service: 'IZAKHONO DOCFLOW',
-      version: '0.1.0',
+      version: '0.1.1',
       environment: env.APP_ENV || 'production',
+      database,
       adapters: { super_ai: Boolean(env.SUPER_AI), flowiq: Boolean(env.FLOWIQ) },
       public_live: false,
     });
+  }
+
+  if (url.pathname === '/api/ready' && req.method === 'GET') {
+    if (!env.DB) return json({ ok: false, service: 'IZAKHONO DOCFLOW', database: 'unbound' }, 503);
+    try {
+      const probe = await env.DB.prepare('SELECT 1 AS ok').first<any>();
+      const ready = probe?.ok === 1;
+      return json({
+        ok: ready,
+        service: 'IZAKHONO DOCFLOW',
+        database: ready ? 'ready' : 'error',
+        owner_secret_configured: Boolean(env.DOCFLOW_ADMIN_SECRET),
+        adapters: { super_ai: Boolean(env.SUPER_AI), flowiq: Boolean(env.FLOWIQ) },
+      }, ready ? 200 : 503);
+    } catch {
+      return json({ ok: false, service: 'IZAKHONO DOCFLOW', database: 'error' }, 503);
+    }
   }
 
   if (url.pathname === '/api/templates' && req.method === 'GET') {

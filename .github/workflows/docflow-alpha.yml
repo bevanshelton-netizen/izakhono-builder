@@ -1,0 +1,23 @@
+name: IZAKHONO DOCFLOW Alpha
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'products/izakhono-docflow/**'
+      - '.github/workflows/docflow-alpha.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'products/izakhono-docflow/**'
+      - '.github/workflows/docflow-alpha.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  alpha:
+    uses: bevanshelton-netizen/izakhono-builder/.github/workflows/izakhono-build-to-alpha.yml@6d791da96ee2c20a0701258d3d4674e0c50e7291
+    with:
+      manifest_path: products/izakhono-docflow/.izakhono.json
