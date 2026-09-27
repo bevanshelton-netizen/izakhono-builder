@@ -92,3 +92,18 @@ The browser can extract text from some simple text-based PDFs locally. Complex c
 ### Interpretation
 
 The displayed uncertainty range is variation across the synthetic repeated runs. It is **not** a statistical confidence interval for the real world. Scenario comparison describes differences in the simulation output; it does not choose for the user.
+
+
+## Owned runtime package
+
+`owned-runtime/` is the primary NODE01 deployment package for BUSINESS AI. It contains a stateless Node.js 22 server, a single-file privacy-first application, Dockerfile, Docker Compose service, public acceptance script and deployment runbook.
+
+The owned runtime intentionally keeps customer business records and Decision Lab calibration data local-first in the browser. Server-side persistence is not invented where it is not needed.
+
+Intended owned hostname: `businessai.izakhono.co.za`.
+
+Current status remains **NOT YET PUBLIC** until the NODE01 → EDGE/TLS → DNS path passes public HTTPS acceptance and backup/restore/rollback evidence is recorded.
+
+### External resilience attempt
+
+The current Supabase free project has reached its Edge Function count limit. Reusing the static publisher successfully produced an HTTPS 200 copy of the app, but Supabase served the HTML route as `text/plain` with a sandbox policy. That route is therefore **not** accepted as a live customer experience and is not used to inflate launch status.

@@ -28,3 +28,15 @@ jobs:
       - run: npm install --package-lock-only
       - run: npm ci
       - run: npm run validate
+      - name: Build owned NODE01 runtime
+        run: docker build -t izakhono-business-ai:ci owned-runtime
+      - name: Smoke-test owned runtime
+        run: |
+          docker run -d --rm --name izakhono-business-ai-ci -p 127.0.0.1:8787:8787 izakhono-business-ai:ci
+          for i in $(seq 1 20); do
+            if curl -fsS http://127.0.0.1:8787/health | grep -q '"ok":true'; then break; fi
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:8787/health | grep -q '"ok":true'
+          curl -fsS http://127.0.0.1:8787/ | grep -q 'IZAKHONO BUSINESS AI'
+          docker stop izakhono-business-ai-ci

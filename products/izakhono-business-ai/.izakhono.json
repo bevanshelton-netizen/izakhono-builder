@@ -1,15 +1,40 @@
 {
+  "version": 3,
   "schema_version": 3,
-  "product_version": "0.3.0",
+  "product_version": "0.3.1",
+  "name": "IZAKHONO BUSINESS AI",
   "product": "IZAKHONO BUSINESS AI",
   "slug": "izakhono-business-ai",
+  "operator": "IZAKHONO AFRICA (PTY) LTD",
+  "trading_name": "IZAKHONO BUSINESS AI",
+  "branch": "main",
   "engine": "independent",
+  "build_context": "owned-runtime",
+  "dockerfile_path": "owned-runtime/Dockerfile",
+  "container_port": 8787,
+  "health_path": "/health",
   "infrastructure_policy": "owned-first-externally-reversible",
-  "health_path": "/api/health",
+  "infrastructure": {
+    "policy": "owned-first-externally-reversible",
+    "authoritative_source": "IZAKHONO CODE / Forge; GitHub mirror: bevanshelton-netizen/izakhono-builder",
+    "owned_target": "NODE01",
+    "intended_owned_hostname": "businessai.izakhono.co.za",
+    "current_public_route": "NOT_YET_VERIFIED",
+    "external_fallback": "NOT_YET_VERIFIED",
+    "failback": "NODE01 after owned HTTPS acceptance",
+    "status_label": "NOT YET PUBLIC",
+    "data_dependencies": [],
+    "auth_dependencies": [],
+    "payment_dependencies": [],
+    "backup_evidence": "RUNBOOK defines immutable Git SHA + image digest + EDGE/TLS config capture; production evidence pending",
+    "restore_evidence": "RUNBOOK restore procedure defined; production rehearsal pending",
+    "rollback_evidence": "RUNBOOK rollback procedure defined; accepted previous image evidence pending"
+  },
   "privacy": {
     "behavioral_tracking": false,
     "advertising_ids": false,
-    "raw_prompt_persistence": false
+    "raw_prompt_persistence": false,
+    "customer_records": "local-first-browser"
   },
   "decision_lab": {
     "version": "0.3",
@@ -25,5 +50,20 @@
     "pdf_extraction": "local-basic-text-pdf",
     "prediction_claims": false
   },
-  "external_adapters": ["AI_GATEWAY_URL"]
+  "owned_runtime": {
+    "path": "owned-runtime",
+    "server": "Node.js 22 HTTP",
+    "state": "stateless",
+    "port": 8787,
+    "health": "/health",
+    "deployment": "Docker Compose on NODE01"
+  },
+  "external_adapters": [
+    "AI_GATEWAY_URL"
+  ],
+  "alpha": {
+    "preflight": true,
+    "rehearsal": false,
+    "windows_package": false
+  }
 }

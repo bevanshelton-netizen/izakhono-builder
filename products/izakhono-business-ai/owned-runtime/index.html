@@ -1,0 +1,1158 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#0b4fd6">
+  <title>IZAKHONO BUSINESS AI</title>
+  <meta name="description" content="A privacy-first AI business assistant for South African small businesses: clients, quotes, invoices, correspondence, diagnostics and decision rehearsal.">
+  <style>:root{
+  --ink:#07152d;--muted:#617087;--blue:#0b4fd6;--blue2:#2b6df5;--pale:#eef5ff;--line:#dbe5f2;
+  --white:#fff;--green:#0d8a63;--gold:#c99118;--shadow:0 22px 60px rgba(7,21,45,.12);
+  --radius:24px;--radius-sm:16px
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--ink);background:#fff}
+button,input,textarea,select{font:inherit}
+button{cursor:pointer}
+a{text-decoration:none;color:inherit}
+.hidden{display:none!important}
+.site-header{position:sticky;top:0;z-index:30;display:flex;align-items:center;justify-content:space-between;padding:16px clamp(20px,5vw,72px);border-bottom:1px solid rgba(219,229,242,.8);background:rgba(255,255,255,.9);backdrop-filter:blur(18px)}
+.brand{display:flex;align-items:center;gap:12px}
+.brand-mark{display:grid;place-items:center;width:48px;height:48px;border-radius:50%;background:linear-gradient(145deg,#20a8ff,#062d9d);color:#fff;font-weight:900;letter-spacing:-.06em;box-shadow:0 8px 20px rgba(11,79,214,.25)}
+.brand-mark.small{width:40px;height:40px}
+.brand-copy{display:grid;line-height:1}
+.brand-copy strong{font-size:1.35rem;letter-spacing:.13em}
+.brand-copy small{font-size:.62rem;letter-spacing:.22em;margin-top:5px;color:var(--blue)}
+.site-nav{display:flex;align-items:center;gap:24px;color:#43526a;font-weight:700}
+.site-nav a:hover{color:var(--blue)}
+.menu-btn{display:none;border:1px solid var(--line);background:#fff;border-radius:12px;padding:10px 12px}
+.btn{border:0;border-radius:14px;padding:12px 17px;font-weight:800;transition:.18s ease}
+.btn:hover{transform:translateY(-1px)}
+.btn.primary{background:linear-gradient(135deg,var(--blue),var(--blue2));color:#fff;box-shadow:0 10px 24px rgba(11,79,214,.2)}
+.btn.ghost{background:#fff;border:1px solid var(--line);color:var(--ink)}
+.btn.light{background:#fff;color:var(--ink)}
+.btn.large{padding:15px 22px;border-radius:16px}
+.btn.full{width:100%}
+.small-btn{padding:8px 12px;font-size:.85rem}
+.hero{min-height:780px;display:grid;grid-template-columns:minmax(0,1.05fr) minmax(420px,.95fr);gap:50px;align-items:center;padding:80px clamp(20px,6vw,88px);overflow:hidden;background:
+radial-gradient(circle at 80% 18%,rgba(44,109,245,.16),transparent 24%),
+linear-gradient(180deg,#f9fbff 0%,#fff 75%)}
+.eyebrow{font-size:.76rem;font-weight:900;letter-spacing:.2em;color:var(--blue);margin:0 0 12px}
+.hero h1{font-family:Georgia,"Times New Roman",serif;font-size:clamp(3.7rem,7vw,6.8rem);line-height:.92;letter-spacing:-.055em;max-width:900px;margin:0}
+.lead{font-size:clamp(1.08rem,1.6vw,1.35rem);line-height:1.7;color:var(--muted);max-width:780px;margin:30px 0}
+.hero-actions{display:flex;gap:12px;flex-wrap:wrap}
+.trust-row{display:flex;gap:12px;flex-wrap:wrap;margin-top:28px}
+.trust-row span{padding:8px 11px;border:1px solid var(--line);border-radius:999px;color:#52647d;background:rgba(255,255,255,.82);font-size:.82rem;font-weight:750}
+.hero-visual{position:relative;min-height:600px;display:grid;place-items:center}
+.orb{position:absolute;border-radius:50%;filter:blur(1px)}
+.orb-a{width:430px;height:430px;background:radial-gradient(circle at 30% 30%,#8fbcff,#dceaff 65%,#f4f8ff);right:-80px;top:15px}
+.orb-b{width:260px;height:260px;background:radial-gradient(circle at 30% 30%,#d8e7ff,#fff);left:20px;bottom:0}
+.dashboard-preview{position:relative;width:min(100%,620px);padding:24px;border-radius:30px;background:rgba(255,255,255,.93);border:1px solid rgba(219,229,242,.9);box-shadow:var(--shadow);backdrop-filter:blur(16px)}
+.preview-head{display:flex;align-items:center;gap:12px}
+.preview-logo{display:grid;place-items:center;width:38px;height:38px;border-radius:12px;background:var(--blue);color:#fff;font-weight:900}
+.preview-head div{display:grid}
+.preview-head small{color:var(--muted)}
+.status-chip{margin-left:auto;display:inline-flex;align-items:center;justify-content:center;padding:7px 10px;border-radius:999px;background:#e9f8f2;color:var(--green);font-size:.7rem;font-weight:900;letter-spacing:.06em}
+.status-chip.neutral{background:#eef3f9;color:#5f6f83}
+.preview-score{display:grid;grid-template-columns:1fr auto;gap:4px;margin:24px 0;padding:20px;border-radius:22px;background:linear-gradient(135deg,#07152d,#123d83);color:#fff}
+.preview-score strong{font-size:3.4rem;grid-row:1/3;grid-column:2}
+.preview-score small{opacity:.72}
+.preview-grid,.metric-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.preview-grid article,.metric-grid article{padding:18px;border-radius:18px;border:1px solid var(--line);background:#fff}
+.preview-grid small,.metric-grid small{display:block;color:var(--muted)}
+.preview-grid strong,.metric-grid strong{display:block;font-size:1.9rem;margin:7px 0}
+.preview-grid span,.metric-grid span{font-size:.76rem;color:#74839a}
+.preview-note{margin-top:14px;padding:18px;border-radius:18px;background:#f3f7ff}
+.preview-note span{font-size:.68rem;font-weight:900;color:var(--blue);letter-spacing:.13em}
+.preview-note p{margin:6px 0 0;color:#40506a}
+.section{padding:100px clamp(20px,6vw,88px)}
+.section-head{max-width:850px;margin-bottom:34px}
+.section-head h2,.privacy-section h2,.cta-band h2{font-family:Georgia,"Times New Roman",serif;font-size:clamp(2.6rem,5vw,5rem);letter-spacing:-.045em;line-height:1;margin:0 0 18px}
+.section-head>p:last-child{color:var(--muted);font-size:1.08rem;line-height:1.65}
+.feature-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.feature-card{padding:28px;border:1px solid var(--line);border-radius:var(--radius);background:linear-gradient(180deg,#fff,#fbfdff);min-height:230px}
+.feature-card.wide{grid-column:span 2;background:linear-gradient(135deg,#07152d,#0f3a7a);color:#fff}
+.feature-card h3{font-size:1.4rem;margin:16px 0 10px}
+.feature-card p{margin:0;color:var(--muted);line-height:1.65}
+.feature-card.wide p{color:#c8d5e7}
+.feature-icon{display:grid;place-items:center;width:44px;height:44px;border-radius:14px;background:#eaf2ff;color:var(--blue);font-weight:900}
+.feature-card.wide .feature-icon{background:rgba(255,255,255,.12);color:#fff}
+.privacy-section{display:grid;grid-template-columns:1fr 1fr;gap:60px;padding:90px clamp(20px,6vw,88px);background:#f5f8fd}
+.privacy-points{display:grid;gap:14px}
+.privacy-points p{margin:0;padding:20px;border-radius:18px;background:#fff;border:1px solid var(--line);color:#5b6c82;line-height:1.55}
+.privacy-points strong{color:var(--ink)}
+.cta-band{margin:80px clamp(20px,6vw,88px);padding:48px;display:flex;align-items:center;justify-content:space-between;gap:30px;border-radius:34px;background:linear-gradient(135deg,#e8f1ff,#f9fbff);border:1px solid #d8e5fb}
+.cta-band h2{font-size:clamp(2.2rem,4vw,4.2rem);margin:0}
+.footer{display:flex;justify-content:space-between;gap:20px;padding:30px clamp(20px,6vw,88px);border-top:1px solid var(--line);color:#66758a}
+.footer div{display:flex;gap:16px;flex-wrap:wrap}
+.footer strong{color:var(--ink)}
+.privacy-banner{position:fixed;left:50%;bottom:20px;z-index:60;transform:translateX(-50%);width:min(94vw,900px);display:grid;grid-template-columns:auto 1fr auto;gap:16px;align-items:center;padding:18px;border:1px solid var(--line);background:rgba(255,255,255,.96);backdrop-filter:blur(16px);border-radius:22px;box-shadow:var(--shadow)}
+.privacy-icon{display:grid;place-items:center;width:44px;height:44px;border-radius:50%;background:#e9f3ff;color:var(--blue);font-weight:900}
+.privacy-copy p{margin:4px 0 0;color:var(--muted);line-height:1.45}
+.privacy-actions{display:flex;gap:8px}
+.workspace{min-height:100vh;display:grid;grid-template-columns:260px 1fr;background:#f6f8fc}
+.workspace-sidebar{position:sticky;top:0;height:100vh;display:flex;flex-direction:column;padding:22px;background:#07152d;color:#fff}
+.workspace-brand{display:flex;align-items:center;gap:10px;margin-bottom:28px}
+.workspace-brand div{display:grid}
+.workspace-brand small{font-size:.62rem;letter-spacing:.13em;color:#94aac5;margin-top:4px}
+.workspace-nav{display:grid;gap:6px}
+.workspace-tab{border:0;text-align:left;padding:12px 13px;border-radius:12px;background:transparent;color:#b8c5d7;font-weight:760}
+.workspace-tab:hover,.workspace-tab.active{background:#14315d;color:#fff}
+.workspace-side-actions{margin-top:auto;display:grid;gap:8px}
+.workspace-sidebar .btn.ghost{background:transparent;color:#d6e1ef;border-color:#29456e}
+.workspace-main{min-width:0;padding:30px}
+.workspace-topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px}
+.workspace-topbar h2{margin:0;font-size:2rem}
+.workspace-view{display:none}
+.workspace-view.active{display:block}
+.workspace-grid{display:grid;gap:16px}
+.workspace-grid.two{grid-template-columns:minmax(320px,.9fr) minmax(0,1.1fr)}
+.panel{background:#fff;border:1px solid var(--line);border-radius:22px;padding:24px;box-shadow:0 10px 28px rgba(7,21,45,.05)}
+.panel.dark{background:linear-gradient(135deg,#07152d,#133f80);color:#fff}
+.panel.dark p{color:#c6d3e3;line-height:1.6}
+.panel h3{margin:0 0 14px;font-size:1.35rem}
+.form-card{display:grid;gap:13px;align-content:start}
+.form-card label{display:grid;gap:7px;font-size:.82rem;font-weight:800;color:#52637a}
+.form-card input,.form-card select,.form-card textarea{width:100%;border:1px solid var(--line);border-radius:12px;padding:12px 13px;background:#fbfdff;color:var(--ink);outline:none}
+.form-card input:focus,.form-card select:focus,.form-card textarea:focus{border-color:#82aaf7;box-shadow:0 0 0 3px #eaf2ff}
+.split{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.panel-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.count-chip{display:grid;place-items:center;min-width:34px;height:34px;border-radius:999px;background:#eff4fb;color:#52637a;font-weight:900}
+.record-list{display:grid;gap:10px}
+.record-list.empty-state{color:#8492a5;padding:20px 0}
+.record{padding:14px;border:1px solid var(--line);border-radius:14px;background:#fbfdff}
+.record-head{display:flex;justify-content:space-between;gap:12px}
+.record h4{margin:0 0 3px}
+.record p{margin:4px 0;color:var(--muted);font-size:.9rem}
+.record-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.record-actions button{border:1px solid var(--line);background:#fff;border-radius:10px;padding:7px 10px;font-weight:750}
+.output-box{min-height:290px;white-space:pre-wrap;line-height:1.65;color:#33455f;padding:18px;border-radius:16px;background:#f8fbff;border:1px dashed #bfd0e8}
+.action-list{display:grid;gap:8px}
+.action-list button{border:1px solid var(--line);background:#fbfdff;text-align:left;padding:13px;border-radius:12px;font-weight:780;color:#33455f}
+.score-orb{display:flex;align-items:baseline;justify-content:center;width:170px;height:170px;margin:18px auto;border-radius:50%;background:radial-gradient(circle at 32% 28%,#53a0ff,#0b4fd6 62%,#063394);color:#fff;box-shadow:0 18px 40px rgba(11,79,214,.25)}
+.score-orb strong{font-size:4rem}
+.score-orb span{font-weight:800}
+.diagnostic-result{text-align:center}
+.result-actions{display:grid;gap:8px;text-align:left;margin-top:16px}
+.result-actions div{padding:11px 13px;border-radius:12px;background:#f5f8fd;color:#4c5f77}
+.form-note{color:var(--muted);line-height:1.45}
+@media(max-width:1050px){
+  .hero{grid-template-columns:1fr;min-height:auto}.hero-visual{min-height:520px}.feature-grid{grid-template-columns:1fr 1fr}
+  .preview-grid,.metric-grid{grid-template-columns:repeat(2,1fr)}
+  .workspace{grid-template-columns:220px 1fr}.workspace-grid.two{grid-template-columns:1fr}
+}
+@media(max-width:760px){
+  .site-header{padding:12px 16px}.menu-btn{display:block}.site-nav{display:none;position:absolute;top:74px;left:12px;right:12px;padding:16px;border:1px solid var(--line);border-radius:18px;background:#fff;box-shadow:var(--shadow);flex-direction:column;align-items:stretch}.site-nav.open{display:flex}
+  .hero{padding:52px 18px}.hero h1{font-size:clamp(3rem,14vw,4.8rem)}.hero-visual{min-height:440px}.dashboard-preview{padding:16px}
+  .section,.privacy-section{padding:70px 18px}.feature-grid,.privacy-section{grid-template-columns:1fr}.feature-card.wide{grid-column:auto}
+  .cta-band{margin:60px 18px;padding:28px;display:grid}.footer{display:grid;padding:24px 18px}
+  .privacy-banner{grid-template-columns:auto 1fr}.privacy-actions{grid-column:1/-1}.privacy-actions .btn{flex:1}
+  .workspace{display:block}.workspace-sidebar{position:static;height:auto}.workspace-nav{grid-template-columns:repeat(2,1fr)}.workspace-side-actions{margin-top:18px;grid-template-columns:1fr 1fr}.workspace-main{padding:18px}
+  .workspace-topbar{align-items:flex-start;gap:12px}.preview-grid,.metric-grid{grid-template-columns:1fr 1fr}
+}
+@media(max-width:480px){
+  .brand-copy small{display:none}.site-header .brand-mark{width:42px;height:42px}.preview-grid,.metric-grid{grid-template-columns:1fr}
+  .hero-visual{min-height:500px}.split{grid-template-columns:1fr}.workspace-nav{grid-template-columns:1fr}
+}
+@media print{
+  .site-header,.footer,.privacy-banner,.workspace-sidebar,.workspace-topbar,.workspace-view:not(.active),.record-actions,.btn{display:none!important}
+  body{background:#fff}.workspace-main{padding:0}.panel{box-shadow:none;border:0}.record{border:0}
+}
+
+
+/* Decision Lab v0.2 */
+.decision-layout{display:grid;grid-template-columns:minmax(360px,.85fr) minmax(0,1.15fr);gap:18px}
+.source-packet{display:grid;gap:12px;padding:16px;border:1px solid var(--line);border-radius:16px;background:#f8fbff}
+.source-packet h4{margin:0;font-size:1rem}
+.source-packet input[type="file"]{width:100%;padding:11px;border:1px dashed #adc2df;border-radius:12px;background:#fff;color:#52637a}
+.source-list{display:grid;gap:8px}
+.source-list.empty-state{padding:10px 0;color:#8492a5;font-size:.9rem}
+.source-item{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:#fff}
+.source-item div{display:grid;gap:2px;min-width:0}
+.source-item strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.source-item small{color:var(--muted)}
+.source-item button{border:1px solid var(--line);background:#fff;border-radius:9px;padding:6px 9px;font-size:.78rem;font-weight:800;color:#5d6d81}
+.decision-report-panel{min-width:0}
+.decision-output{min-height:620px;max-height:75vh;overflow:auto;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.9rem;background:#07152d;color:#dbe8fa;border:1px solid #173a68;white-space:pre-wrap}
+.manifest-bar{margin:12px 0;padding:10px 12px;border-radius:12px;background:#edf4ff;color:#315784;font-size:.78rem;font-weight:800;line-height:1.4}
+@media(max-width:1050px){.decision-layout{grid-template-columns:1fr}}
+
+
+/* Decision Lab v0.3 */
+.toggle-row{display:flex!important;grid-template-columns:none!important;align-items:flex-start;gap:10px;padding:13px;border:1px solid var(--line);border-radius:14px;background:#fbfdff}
+.toggle-row input{width:auto!important;margin-top:3px}
+.toggle-row span{display:grid;gap:3px}
+.toggle-row small{color:var(--muted);font-weight:500;line-height:1.4}
+.decision-tools{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px}
+.tool-card{display:grid;gap:10px;padding:16px;border:1px solid var(--line);border-radius:16px;background:#f8fbff}
+.tool-card h4{margin:0}
+.tool-card textarea,.tool-card select{width:100%;border:1px solid var(--line);border-radius:11px;padding:10px 11px;background:#fff;color:var(--ink)}
+.mini-output{min-height:80px;padding:11px;border-radius:11px;background:#fff;border:1px dashed #c4d3e6;color:#53647a;white-space:pre-wrap;line-height:1.5;font-size:.86rem}
+@media(max-width:800px){.decision-tools{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+  <div id="privacyBanner" class="privacy-banner hidden" role="dialog" aria-label="Privacy preferences">
+    <div class="privacy-icon">✓</div>
+    <div class="privacy-copy">
+      <strong>Privacy comes first.</strong>
+      <p>IZAKHONO BUSINESS AI uses essential on-device storage for your workspace. No behavioural tracking, ad IDs or third-party analytics are loaded.</p>
+    </div>
+    <div class="privacy-actions">
+      <button id="privacyInfo" class="btn ghost">Details</button>
+      <button id="privacyAccept" class="btn primary">Continue</button>
+    </div>
+  </div>
+
+  <header class="site-header">
+    <a class="brand" href="#home" aria-label="IZAKHONO BUSINESS AI home">
+      <span class="brand-mark">IZ</span>
+      <span class="brand-copy"><strong>IZAKHONO</strong><small>BUSINESS AI</small></span>
+    </a>
+    <button id="menuBtn" class="menu-btn" aria-label="Open menu">☰</button>
+    <nav id="siteNav" class="site-nav">
+      <a href="#capabilities">Capabilities</a>
+      <a href="#decision-lab">Decision Lab</a>
+      <a href="#privacy">Privacy</a>
+      <button id="shareBtn" class="btn ghost">Share</button>
+      <button class="btn primary start-app">Open workspace</button>
+    </nav>
+  </header>
+
+  <main>
+    <section id="home" class="hero">
+      <div class="hero-copy">
+        <p class="eyebrow">BUILT IN AFRICA FOR THE WORLD</p>
+        <h1>Your business AI assistant, on call around the clock.</h1>
+        <p class="lead">Run everyday admin from one clean workspace. Draft client correspondence, manage clients, build quotes and invoices, export PDFs, run business diagnostics and rehearse important decisions before you act.</p>
+        <div class="hero-actions">
+          <button class="btn primary large start-app">Start free workspace</button>
+          <a class="btn ghost large" href="#capabilities">See what it does</a>
+        </div>
+        <div class="trust-row">
+          <span>South Africa ready</span>
+          <span>Local-first records</span>
+          <span>No behavioural tracking</span>
+        </div>
+      </div>
+      <div class="hero-visual" aria-label="IZAKHONO BUSINESS AI workspace preview">
+        <div class="orb orb-a"></div>
+        <div class="orb orb-b"></div>
+        <div class="dashboard-preview">
+          <div class="preview-head">
+            <span class="preview-logo">IZ</span>
+            <div><strong>Business pulse</strong><small>Today</small></div>
+            <span class="status-chip">READY</span>
+          </div>
+          <div class="preview-score">
+            <span>Growth readiness</span>
+            <strong>82</strong>
+            <small>Clear next actions</small>
+          </div>
+          <div class="preview-grid">
+            <article><small>Clients</small><strong>24</strong><span>+3 this month</span></article>
+            <article><small>Open quotes</small><strong>7</strong><span>R41,800</span></article>
+            <article><small>Admin queue</small><strong>5</strong><span>2 urgent</span></article>
+            <article><small>Decision Lab</small><strong>3</strong><span>scenarios saved</span></article>
+          </div>
+          <div class="preview-note">
+            <span>AI NEXT ACTION</span>
+            <p>Follow up on your two highest-value quotes before creating new work.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="capabilities" class="section">
+      <div class="section-head">
+        <p class="eyebrow">ONE BUSINESS WORKSPACE</p>
+        <h2>Do the work, not just the talking.</h2>
+        <p>IZAKHONO BUSINESS AI combines practical small-business administration with decision support. Expensive AI services remain optional adapters, not hard dependencies.</p>
+      </div>
+      <div class="feature-grid">
+        <article class="feature-card"><span class="feature-icon">✦</span><h3>AI Writer</h3><p>Draft professional emails, quote follow-ups, payment reminders, proposals and client updates.</p></article>
+        <article class="feature-card"><span class="feature-icon">R</span><h3>Quotes & invoices</h3><p>Create clean business documents, calculate totals, print to PDF and hand off to email.</p></article>
+        <article class="feature-card"><span class="feature-icon">C</span><h3>Client memory</h3><p>Keep client details, notes and history together on your device with exportable backups.</p></article>
+        <article class="feature-card"><span class="feature-icon">↗</span><h3>Growth Diagnostic</h3><p>Score lead flow, follow-up discipline, cash visibility and admin control, then get next actions.</p></article>
+        <article id="decision-lab" class="feature-card wide"><span class="feature-icon">◎</span><h3>Decision Lab</h3><p>Explore how customers, staff, suppliers, competitors and other stakeholders could react to a price change, launch or strategic move. It is a scenario rehearsal tool, not a promise of the future.</p></article>
+        <article class="feature-card"><span class="feature-icon">⇩</span><h3>Portable by design</h3><p>Export your workspace as JSON. Your business records are not trapped behind analytics or ad-tech.</p></article>
+      </div>
+    </section>
+
+    <section id="privacy" class="privacy-section">
+      <div>
+        <p class="eyebrow">PRIVACY STANDARD</p>
+        <h2>Your customer list is not an advertising product.</h2>
+      </div>
+      <div class="privacy-points">
+        <p><strong>No behavioural tracking.</strong> We do not build ad profiles from your activity.</p>
+        <p><strong>No silent analytics.</strong> No Google Analytics or Meta Pixel is loaded by default.</p>
+        <p><strong>Local-first workspace.</strong> v0.3 keeps business records on your device and gives you a backup export.</p>
+      </div>
+    </section>
+
+    <section class="cta-band">
+      <div><p class="eyebrow">START WORKING</p><h2>Open your business command centre.</h2></div>
+      <button class="btn primary large start-app">Open workspace</button>
+    </section>
+
+    <section id="workspace" class="workspace hidden">
+      <aside class="workspace-sidebar">
+        <div class="workspace-brand"><span class="brand-mark small">IZ</span><div><strong>BUSINESS AI</strong><small>OWNER WORKSPACE</small></div></div>
+        <nav class="workspace-nav">
+          <button class="workspace-tab active" data-view="overview">Overview</button>
+          <button class="workspace-tab" data-view="clients">Clients</button>
+          <button class="workspace-tab" data-view="documents">Quotes & invoices</button>
+          <button class="workspace-tab" data-view="writer">AI Writer</button>
+          <button class="workspace-tab" data-view="diagnostic">Growth Diagnostic</button>
+          <button class="workspace-tab" data-view="scenario">Decision Lab</button>
+        </nav>
+        <div class="workspace-side-actions">
+          <button id="backupBtn" class="btn ghost full">Export backup</button>
+          <button id="closeWorkspace" class="btn ghost full">Back to website</button>
+        </div>
+      </aside>
+
+      <div class="workspace-main">
+        <header class="workspace-topbar">
+          <div><p class="eyebrow">IZAKHONO BUSINESS AI</p><h2 id="workspaceTitle">Business overview</h2></div>
+          <span id="engineStatus" class="status-chip neutral">Checking engine…</span>
+        </header>
+
+        <section id="view-overview" class="workspace-view active">
+          <div class="metric-grid">
+            <article><small>Clients</small><strong id="metricClients">0</strong><span>saved locally</span></article>
+            <article><small>Documents</small><strong id="metricDocs">0</strong><span>quotes + invoices</span></article>
+            <article><small>Open value</small><strong id="metricValue">R0</strong><span>current document total</span></article>
+            <article><small>Diagnostic</small><strong id="metricScore">—</strong><span>latest score</span></article>
+          </div>
+          <div class="workspace-grid two">
+            <article class="panel">
+              <p class="eyebrow">QUICK START</p>
+              <h3>What needs attention?</h3>
+              <div id="nextActions" class="action-list">
+                <button data-go="clients">Add your first client</button>
+                <button data-go="documents">Create a quote</button>
+                <button data-go="writer">Draft a client email</button>
+                <button data-go="diagnostic">Run the diagnostic</button>
+              </div>
+            </article>
+            <article class="panel dark">
+              <p class="eyebrow">DECISION LAB</p>
+              <h3>Test the move before you make it.</h3>
+              <p>Try a price increase, new product launch, supplier change or expansion idea against several stakeholder perspectives.</p>
+              <button class="btn light" data-go="scenario">Run a scenario</button>
+            </article>
+          </div>
+        </section>
+
+        <section id="view-clients" class="workspace-view">
+          <div class="workspace-grid two">
+            <form id="clientForm" class="panel form-card">
+              <p class="eyebrow">NEW CLIENT</p><h3>Add client</h3>
+              <label>Name<input id="clientName" required></label>
+              <label>Business<input id="clientBusiness"></label>
+              <label>Email<input id="clientEmail" type="email"></label>
+              <label>Phone<input id="clientPhone"></label>
+              <label>Notes<textarea id="clientNotes" rows="3"></textarea></label>
+              <button class="btn primary">Save client</button>
+            </form>
+            <article class="panel">
+              <div class="panel-head"><div><p class="eyebrow">CLIENT REGISTER</p><h3>Your clients</h3></div><span id="clientCount" class="count-chip">0</span></div>
+              <div id="clientList" class="record-list empty-state">No clients yet.</div>
+            </article>
+          </div>
+        </section>
+
+        <section id="view-documents" class="workspace-view">
+          <div class="workspace-grid two">
+            <form id="docForm" class="panel form-card">
+              <p class="eyebrow">NEW DOCUMENT</p><h3>Quote or invoice</h3>
+              <label>Type<select id="docType"><option>Quote</option><option>Invoice</option></select></label>
+              <label>Client<select id="docClient"><option value="">Select a client</option></select></label>
+              <label>Description<input id="docDescription" required placeholder="e.g. Website design"></label>
+              <div class="split"><label>Quantity<input id="docQty" type="number" min="1" step="1" value="1"></label><label>Unit price (R)<input id="docRate" type="number" min="0" step="0.01" value="0"></label></div>
+              <label>Notes<textarea id="docNotes" rows="3" placeholder="Terms, due date or scope"></textarea></label>
+              <button class="btn primary">Create document</button>
+            </form>
+            <article class="panel">
+              <div class="panel-head"><div><p class="eyebrow">DOCUMENTS</p><h3>Quotes & invoices</h3></div><span id="docCount" class="count-chip">0</span></div>
+              <div id="docList" class="record-list empty-state">No documents yet.</div>
+            </article>
+          </div>
+        </section>
+
+        <section id="view-writer" class="workspace-view">
+          <div class="workspace-grid two">
+            <form id="writerForm" class="panel form-card">
+              <p class="eyebrow">CORRESPONDENCE</p><h3>Draft with Business AI</h3>
+              <label>Purpose<select id="writerPurpose"><option>Quote follow-up</option><option>Payment reminder</option><option>Proposal introduction</option><option>Client update</option><option>Apology and resolution</option><option>General business email</option></select></label>
+              <label>Tone<select id="writerTone"><option>Professional and warm</option><option>Concise and direct</option><option>Confident and persuasive</option><option>Friendly</option></select></label>
+              <label>Context<textarea id="writerContext" rows="7" required placeholder="Tell the assistant what happened, who the client is and what outcome you want."></textarea></label>
+              <button class="btn primary">Draft correspondence</button>
+            </form>
+            <article class="panel">
+              <div class="panel-head"><div><p class="eyebrow">DRAFT</p><h3>Ready to edit</h3></div><button id="copyDraft" class="btn ghost small-btn">Copy</button></div>
+              <div id="writerOutput" class="output-box">Your draft will appear here.</div>
+            </article>
+          </div>
+        </section>
+
+        <section id="view-diagnostic" class="workspace-view">
+          <div class="workspace-grid two">
+            <form id="diagnosticForm" class="panel form-card">
+              <p class="eyebrow">GROWTH DIAGNOSTIC</p><h3>Score the operating basics</h3>
+              <label>Monthly lead flow<select id="diagLeads"><option value="20">Very inconsistent</option><option value="45">Some leads</option><option value="70">Steady pipeline</option><option value="90">Strong and predictable</option></select></label>
+              <label>Quote follow-up<select id="diagFollowup"><option value="20">Rarely followed up</option><option value="45">Sometimes</option><option value="70">Usually</option><option value="90">Systematic</option></select></label>
+              <label>Cash visibility<select id="diagCash"><option value="20">Unclear</option><option value="45">Basic</option><option value="70">Updated weekly</option><option value="90">Real-time / disciplined</option></select></label>
+              <label>Admin control<select id="diagAdmin"><option value="20">Mostly reactive</option><option value="45">Some systems</option><option value="70">Well organised</option><option value="90">Automated and measured</option></select></label>
+              <button class="btn primary">Run diagnostic</button>
+            </form>
+            <article class="panel diagnostic-result">
+              <p class="eyebrow">RESULT</p>
+              <div class="score-orb"><strong id="diagnosticScore">—</strong><span>/100</span></div>
+              <h3 id="diagnosticHeadline">Complete the diagnostic.</h3>
+              <div id="diagnosticActions" class="result-actions"></div>
+            </article>
+          </div>
+        </section>
+
+        <section id="view-scenario" class="workspace-view">
+          <div class="decision-layout">
+            <form id="scenarioForm" class="panel form-card">
+              <div class="panel-head">
+                <div><p class="eyebrow">DECISION LAB V0.3</p><h3>Rehearse and compare decisions</h3></div>
+                <span class="status-chip neutral">IZAKHONO ENGINE</span>
+              </div>
+
+              <label>Scenario A<textarea id="scenarioText" rows="4" required placeholder="Example: Increase our monthly service price by 15% next quarter while adding priority support."></textarea></label>
+              <label>Scenario B — optional comparison<textarea id="scenarioTextB" rows="3" placeholder="Example: Keep the current price but introduce a separate premium support tier."></textarea></label>
+              <label>Stakeholder groups<input id="scenarioStakeholders" value="Loyal customers, New customers, Staff, Competitors, Suppliers"></label>
+
+              <div class="split">
+                <label>Time horizon<select id="scenarioHorizon"><option>30 days</option><option selected>90 days</option><option>6 months</option><option>12 months</option></select></label>
+                <label>Reaction rounds<select id="scenarioRounds"><option value="2">2 rounds</option><option value="3" selected>3 rounds</option><option value="5">5 rounds</option></select></label>
+              </div>
+
+              <div class="split">
+                <label>Agent population<select id="scenarioPopulation"><option value="12">12 agents</option><option value="25" selected>25 agents</option><option value="50">50 agents</option><option value="100">100 agents</option></select></label>
+                <label>Repeated simulations<select id="scenarioTrials"><option value="3" selected>3 runs</option><option value="5">5 runs</option><option value="10">10 runs</option></select></label>
+              </div>
+
+              <label class="toggle-row"><input id="scenarioRedTeam" type="checkbox" checked><span><strong>Red-Team agents</strong><small>Probe legal/compliance, operational, fraud/abuse and downside risks.</small></span></label>
+
+              <div class="source-packet">
+                <div class="panel-head">
+                  <div><p class="eyebrow">EVIDENCE PACKET</p><h4>Ground the rehearsal</h4></div>
+                  <span id="sourceCount" class="count-chip">0</span>
+                </div>
+                <p class="form-note">Add TXT, Markdown, CSV, JSON or text-based PDF files. Files are read locally first and sent only when you run Decision Lab.</p>
+                <input id="scenarioFiles" type="file" multiple accept=".txt,.md,.csv,.json,.pdf,text/plain,text/markdown,text/csv,application/json,application/pdf">
+                <div id="sourceList" class="source-list empty-state">No source files loaded.</div>
+                <label>Manual evidence / assumptions<textarea id="scenarioEvidence" rows="4" placeholder="Paste customer feedback, pricing facts, operating constraints or assumptions here."></textarea></label>
+              </div>
+
+              <button class="btn primary">Run Decision Lab v0.3</button>
+              <small class="form-note">Synthetic agents produce hypotheses and uncertainty ranges. They do not replace real customer research, legal advice, market evidence or human decision-making.</small>
+            </form>
+
+            <article class="panel decision-report-panel">
+              <div class="panel-head">
+                <div><p class="eyebrow">SIMULATION REPORT</p><h3>Evidence, uncertainty and red-team findings</h3></div>
+                <button id="exportScenarioReport" type="button" class="btn ghost small-btn" disabled>Export JSON</button>
+              </div>
+              <div id="scenarioManifest" class="manifest-bar hidden"></div>
+              <div id="scenarioOutput" class="output-box decision-output">Your Decision Lab report will appear here.</div>
+
+              <div class="decision-tools">
+                <form id="askWorldForm" class="tool-card">
+                  <div><p class="eyebrow">ASK THE SIMULATED WORLD</p><h4>Interrogate this run</h4></div>
+                  <textarea id="askWorldQuestion" rows="3" placeholder="Which stakeholder group shows the most resistance, and what evidence should I collect next?"></textarea>
+                  <button class="btn ghost" type="submit">Ask report</button>
+                  <div id="askWorldOutput" class="mini-output">Run a simulation first.</div>
+                </form>
+
+                <form id="calibrationForm" class="tool-card">
+                  <div><p class="eyebrow">CALIBRATION LOG</p><h4>Record what actually happened</h4></div>
+                  <select id="calibrationDirection">
+                    <option value="supportive">Outcome leaned supportive</option>
+                    <option value="mixed">Outcome was mixed</option>
+                    <option value="resistant">Outcome leaned resistant</option>
+                  </select>
+                  <textarea id="calibrationOutcome" rows="3" placeholder="Describe the observed result once you have real-world evidence."></textarea>
+                  <button class="btn ghost" type="submit">Save observation</button>
+                  <div id="calibrationOutput" class="mini-output">No observation saved for this run.</div>
+                </form>
+              </div>
+            </article>
+          </div>
+        </section>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div><strong>IZAKHONO BUSINESS AI</strong><span>Built in Africa for the world.</span></div>
+    <div><span>Privacy-first</span><span>Provider-neutral AI</span><span>Owned-first infrastructure</span></div>
+  </footer>
+
+  <script>
+(function(){
+"use strict";
+function stable(s){var h=2166136261;for(var i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619)}return(h>>>0)/4294967295}
+function stance(n){return n>=1.25?"strongly supportive":n>=.4?"cautiously supportive":n>-.4?"mixed / undecided":n>-1.25?"cautiously resistant":"strongly resistant"}
+function dir(n){return n>=.55?"leans supportive":n<=-.55?"leans resistant":"mixed / uncertain"}
+function perc(a,p){if(!a.length)return 0;var s=a.slice().sort(function(x,y){return x-y});return s[Math.max(0,Math.min(s.length-1,Math.round((s.length-1)*p)))]}
+function sd(a){if(!a.length)return 0;var m=a.reduce(function(x,y){return x+y},0)/a.length;return Math.sqrt(a.reduce(function(x,y){return x+Math.pow(y-m,2)},0)/a.length)}
+function sim(sc,h,groups,pop,trials,rounds,red){var by={};groups.forEach(function(g){by[g]=[]});var means=[],all=[];for(var t=1;t<=trials;t++){var agents=Array.from({length:pop}).map(function(_,i){var g=groups[i%groups.length];return{g:g,label:g+" #"+(Math.floor(i/groups.length)+1),score:stable(g+"|"+sc+"|"+h+"|"+t+"|"+i)*4-2}});for(var r=1;r<=rounds;r++){var av=agents.reduce(function(x,a){return x+a.score},0)/agents.length;agents.forEach(function(a){a.score=Math.max(-2,Math.min(2,a.score+(av-a.score)*Math.min(.42,.08+r*.07)+(stable(a.label+"|"+sc+"|"+t+"|"+r)-.5)*.85))})}var fs=agents.map(function(a){return a.score}),m=fs.reduce(function(x,y){return x+y},0)/fs.length;means.push(m);fs.forEach(function(x){all.push(x)});agents.forEach(function(a){by[a.g].push(a.score)})}var gs=groups.map(function(g){var a=by[g],m=a.reduce(function(x,y){return x+y},0)/Math.max(1,a.length);return{group:g,mean:+m.toFixed(2),p10:+perc(a,.1).toFixed(2),p90:+perc(a,.9).toFixed(2),supportivePct:Math.round(a.filter(function(x){return x>=.4}).length/Math.max(1,a.length)*100),resistantPct:Math.round(a.filter(function(x){return x<=-.4}).length/Math.max(1,a.length)*100),direction:dir(m),evidenceToCheck:"Collect direct evidence from "+g+" and compare it with the simulation assumptions."}});var m=means.reduce(function(x,y){return x+y},0)/means.length,d=sd(means),u={mean:+m.toFixed(2),min:+Math.min.apply(null,means).toFixed(2),max:+Math.max.apply(null,means).toFixed(2),stdDev:+d.toFixed(2),label:d<.15?"low":d<.35?"moderate":"high",direction:dir(m)};var da=sd(all),c={score:Math.round(Math.max(0,Math.min(100,100-da*42))),label:da<.6?"high alignment":da<1.05?"mixed alignment":"strong disagreement",summary:"Synthetic groups end "+dir(all.reduce(function(x,y){return x+y},0)/all.length)+" overall."};var rt=red?[{domain:"Operational failure",finding:"Demand or workload could outrun delivery capacity.",test:"Run a capacity rehearsal."},{domain:"Fraud / abuse",finding:"Offer, payment or account changes may create abuse paths.",test:"Map verification and approval controls."},{domain:"Evidence quality",finding:"Thin or one-sided evidence can amplify assumptions.",test:"Add contradictory real evidence and rerun."}]:[];return{scenario:sc,population:pop,trials:trials,rounds:rounds,uncertainty:u,consensus:c,groupStats:gs,redTeamFindings:rt,reportAgent:{summary:"Repeated simulations "+u.direction+" with "+u.label+" synthetic uncertainty. Treat this as rehearsal, not prediction.",keyTensions:["Validate the most resistant stakeholder group with real evidence."]}}}
+function makeReport(b){var g=(b.stakeholders||[]).filter(Boolean);if(!g.length)g=["Customers","Staff","Competitors","Suppliers"];var p=Math.max(8,Math.min(100,+b.population||25)),t=Math.max(3,Math.min(10,+b.trials||3)),r=Math.max(2,Math.min(5,+b.rounds||3)),A=sim(b.scenario||"",b.horizon||"90 days",g,p,t,r,b.redTeam!==false),B=b.scenarioB?sim(b.scenarioB,b.horizon||"90 days",g,p,t,r,b.redTeam!==false):null;return{ok:true,engine:"IZAKHONO Decision Lab",version:"0.3-resilience",mode:"external-static-resilience",runId:"idl_ext_"+Math.floor(stable(JSON.stringify(b))*1e12).toString(36),horizon:b.horizon||"90 days",rounds:r,population:p,trials:t,evidenceGraph:{nodes:[],edges:[],keyTerms:[]},scenarios:{A:A,B:B},comparison:B?{meanDeltaAminusB:+(A.uncertainty.mean-B.uncertainty.mean).toFixed(2),summary:"Scenario A and B are compared using the same synthetic rules. This is not a recommendation or forecast.",differences:[]}:null,nextTests:[A.groupStats.slice().sort(function(x,y){return x.mean-y.mean})[0].evidenceToCheck,"Define a measurable success threshold and stop-loss threshold.","Record what actually happens for calibration."],disclaimer:"Synthetic scenario rehearsal only. This output is not a guaranteed prediction, real stakeholder research, legal advice or real-world evidence."}}
+function ask(b){var A=b.report&&b.report.scenarios&&b.report.scenarios.A;if(!A)return{ok:false,error:"A Decision Lab report is required"};var q=String(b.question||"").toLowerCase();if(q.includes("resist")){var g=A.groupStats.slice().sort(function(x,y){return x.mean-y.mean})[0];return{ok:true,answer:g.group+" has the lowest synthetic mean stance ("+g.mean.toFixed(2)+"). Validate it with: "+g.evidenceToCheck}}if(q.includes("risk"))return{ok:true,answer:(A.redTeamFindings||[]).map(function(x){return x.domain+": "+x.finding+" Check: "+x.test}).join("\n\n")||"Red-Team agents were disabled."};return{ok:true,answer:A.reportAgent.summary+"\n\nNext evidence checks: "+(b.report.nextTests||[]).slice(0,3).join(" ")}}
+function res(o,s){return new Response(JSON.stringify(o),{status:s||200,headers:{"content-type":"application/json"}})}
+var nf=window.fetch.bind(window);window.fetch=async function(input,init){var u=typeof input==="string"?input:(input&&input.url)||"",path=new URL(u,location.href).pathname;if(path.includes("/api/")){var b={};try{b=init&&init.body?JSON.parse(init.body):{}}catch(e){}if(path.endsWith("/api/health"))return res({ok:true,service:"IZAKHONO BUSINESS AI",version:"0.3-resilience",environment:"external-static-resilience",aiAdapter:false,privacy:{behaviouralTracking:false,advertisingIds:false,rawPromptPersistence:false}});if(path.endsWith("/api/diagnostic")){var a=[+b.leads||0,+b.followup||0,+b.cash||0,+b.admin||0],sc=Math.round(a[0]*.3+a[1]*.25+a[2]*.25+a[3]*.2);return res({ok:true,score:sc,headline:sc>=80?"Strong operating foundation — focus on scale and consistency.":sc>=60?"Good base with a few clear growth constraints.":sc>=40?"Several operating gaps are limiting growth.":"Stabilise the business systems before adding complexity.",actions:["Strengthen the weakest operating routine.","Use a fixed follow-up schedule for every open quote.","Update cash visibility at least weekly."]})}if(path.endsWith("/api/ai/correspondence"))return res({ok:true,mode:"template",draft:"Good day,\n\nThank you for your time.\n\n"+(b.context||"")+"\n\nPlease let me know how you would like to proceed.\n\nKind regards"});if(path.endsWith("/api/decision-lab/run")||path.endsWith("/api/scenario"))return res(makeReport(b));if(path.endsWith("/api/decision-lab/ask"))return res(ask(b))}return nf(input,init)};
+})();
+(function(){
+  "use strict";
+
+  var STORAGE = {
+    accepted: "izakhono_business_ai_privacy_v1",
+    clients: "izakhono_business_ai_clients_v1",
+    docs: "izakhono_business_ai_docs_v1",
+    diagnostic: "izakhono_business_ai_diagnostic_v1",
+    scenarioReport: "izakhono_business_ai_scenario_report_v3",
+    calibrations: "izakhono_business_ai_calibrations_v1"
+  };
+
+  var state = {
+    clients: read(STORAGE.clients, []),
+    docs: read(STORAGE.docs, []),
+    diagnostic: read(STORAGE.diagnostic, null),
+    scenarioReport: read(STORAGE.scenarioReport, null),
+    calibrations: read(STORAGE.calibrations, []),
+    sourcePacket: []
+  };
+
+  function el(id){ return document.getElementById(id); }
+  function all(sel){ return Array.prototype.slice.call(document.querySelectorAll(sel)); }
+  function read(key, fallback){
+    try {
+      var raw = localStorage.getItem(key);
+      return raw ? JSON.parse(raw) : fallback;
+    } catch(_e){ return fallback; }
+  }
+  function save(key, value){
+    try { localStorage.setItem(key, JSON.stringify(value)); } catch(_e){}
+  }
+  function escapeHtml(value){
+    return String(value == null ? "" : value)
+      .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
+      .replace(/"/g,"&quot;").replace(/'/g,"&#039;");
+  }
+  function money(value){
+    return "R" + Number(value || 0).toLocaleString("en-ZA",{minimumFractionDigits:2,maximumFractionDigits:2});
+  }
+  function uid(prefix){
+    return prefix + "_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2,8);
+  }
+  function toast(message){
+    var old = document.querySelector(".app-toast");
+    if(old) old.remove();
+    var node = document.createElement("div");
+    node.className = "app-toast";
+    node.textContent = message;
+    node.style.cssText = "position:fixed;right:18px;bottom:18px;z-index:100;background:#07152d;color:white;padding:12px 16px;border-radius:12px;box-shadow:0 18px 40px rgba(7,21,45,.25);font-weight:750";
+    document.body.appendChild(node);
+    setTimeout(function(){ node.remove(); },2200);
+  }
+
+  function initPrivacy(){
+    var accepted = read(STORAGE.accepted, false);
+    if(!accepted) el("privacyBanner").classList.remove("hidden");
+    el("privacyAccept").addEventListener("click", function(){
+      save(STORAGE.accepted, true);
+      el("privacyBanner").classList.add("hidden");
+    });
+    el("privacyInfo").addEventListener("click", function(){
+      document.getElementById("privacy").scrollIntoView({behavior:"smooth"});
+    });
+  }
+
+  function initNavigation(){
+    el("menuBtn").addEventListener("click", function(){ el("siteNav").classList.toggle("open"); });
+    el("shareBtn").addEventListener("click", shareProduct);
+    all(".start-app").forEach(function(btn){ btn.addEventListener("click", openWorkspace); });
+    el("closeWorkspace").addEventListener("click", closeWorkspace);
+    all(".workspace-tab").forEach(function(btn){
+      btn.addEventListener("click", function(){ switchWorkspace(btn.getAttribute("data-view")); });
+    });
+    all("[data-go]").forEach(function(btn){
+      btn.addEventListener("click", function(){ switchWorkspace(btn.getAttribute("data-go")); });
+    });
+  }
+
+  function shareProduct(){
+    var payload = {title:"IZAKHONO BUSINESS AI",text:"A privacy-first business assistant for clients, quotes, invoices, diagnostics and decision rehearsal.",url:window.location.href};
+    if(navigator.share){ navigator.share(payload).catch(function(){}); return; }
+    if(navigator.clipboard){ navigator.clipboard.writeText(window.location.href).then(function(){ toast("Link copied."); }); return; }
+    toast("Copy the page address to share.");
+  }
+
+  function openWorkspace(){
+    el("workspace").classList.remove("hidden");
+    el("workspace").scrollIntoView({behavior:"auto"});
+    renderAll();
+    checkHealth();
+  }
+  function closeWorkspace(){
+    el("workspace").classList.add("hidden");
+    window.scrollTo({top:0,behavior:"smooth"});
+  }
+  function switchWorkspace(view){
+    var titles = {
+      overview:"Business overview",
+      clients:"Clients",
+      documents:"Quotes & invoices",
+      writer:"AI Writer",
+      diagnostic:"Growth Diagnostic",
+      scenario:"Decision Lab"
+    };
+    all(".workspace-view").forEach(function(v){ v.classList.toggle("active", v.id === "view-" + view); });
+    all(".workspace-tab").forEach(function(b){ b.classList.toggle("active", b.getAttribute("data-view") === view); });
+    el("workspaceTitle").textContent = titles[view] || "Business AI";
+  }
+
+  function renderAll(){
+    renderMetrics();
+    renderClients();
+    renderDocs();
+    if(state.diagnostic){
+      el("diagnosticScore").textContent = state.diagnostic.score;
+      el("metricScore").textContent = state.diagnostic.score;
+      el("diagnosticHeadline").textContent = state.diagnostic.headline || "Latest diagnostic";
+      renderDiagnosticActions(state.diagnostic.actions || []);
+    }
+    if(state.scenarioReport){
+      renderScenarioReport(state.scenarioReport);
+    }
+  }
+
+  function renderMetrics(){
+    el("metricClients").textContent = state.clients.length;
+    el("metricDocs").textContent = state.docs.length;
+    var total = state.docs.reduce(function(sum,d){ return sum + Number(d.total || 0); },0);
+    el("metricValue").textContent = money(total);
+    el("metricScore").textContent = state.diagnostic ? state.diagnostic.score : "—";
+  }
+
+  function renderClients(){
+    el("clientCount").textContent = state.clients.length;
+    var list = el("clientList");
+    if(!state.clients.length){
+      list.className = "record-list empty-state";
+      list.textContent = "No clients yet.";
+    } else {
+      list.className = "record-list";
+      list.innerHTML = state.clients.map(function(c){
+        return '<div class="record"><div class="record-head"><div><h4>' + escapeHtml(c.name) + '</h4><p>' + escapeHtml(c.business || "Individual client") + '</p></div><span class="count-chip">C</span></div>' +
+          '<p>' + escapeHtml([c.email,c.phone].filter(Boolean).join(" • ")) + '</p>' +
+          (c.notes ? '<p>' + escapeHtml(c.notes) + '</p>' : '') +
+          '<div class="record-actions"><button data-email="' + escapeHtml(c.email || "") + '" data-name="' + escapeHtml(c.name) + '">Email</button><button data-delete-client="' + escapeHtml(c.id) + '">Delete</button></div></div>';
+      }).join("");
+    }
+
+    var select = el("docClient");
+    var current = select.value;
+    select.innerHTML = '<option value="">Select a client</option>' + state.clients.map(function(c){
+      return '<option value="' + escapeHtml(c.id) + '">' + escapeHtml(c.name) + (c.business ? " — " + escapeHtml(c.business) : "") + '</option>';
+    }).join("");
+    select.value = current;
+
+    all("[data-delete-client]").forEach(function(btn){
+      btn.addEventListener("click", function(){
+        var id = btn.getAttribute("data-delete-client");
+        state.clients = state.clients.filter(function(c){ return c.id !== id; });
+        save(STORAGE.clients,state.clients); renderAll();
+      });
+    });
+    all("[data-email]").forEach(function(btn){
+      btn.addEventListener("click", function(){
+        var email = btn.getAttribute("data-email");
+        var name = btn.getAttribute("data-name");
+        if(!email){ toast("This client has no email address saved."); return; }
+        window.location.href = "mailto:" + encodeURIComponent(email) + "?subject=" + encodeURIComponent("Hello " + name);
+      });
+    });
+  }
+
+  function renderDocs(){
+    el("docCount").textContent = state.docs.length;
+    var list = el("docList");
+    if(!state.docs.length){
+      list.className = "record-list empty-state";
+      list.textContent = "No documents yet.";
+    } else {
+      list.className = "record-list";
+      list.innerHTML = state.docs.slice().reverse().map(function(d){
+        var client = state.clients.find(function(c){ return c.id === d.clientId; });
+        return '<div class="record" id="doc-' + escapeHtml(d.id) + '">' +
+          '<div class="record-head"><div><h4>' + escapeHtml(d.type) + ' ' + escapeHtml(d.number) + '</h4><p>' + escapeHtml(client ? client.name : "Unassigned client") + '</p></div><strong>' + money(d.total) + '</strong></div>' +
+          '<p><strong>' + escapeHtml(d.description) + '</strong> — ' + escapeHtml(d.qty) + ' × ' + money(d.rate) + '</p>' +
+          (d.notes ? '<p>' + escapeHtml(d.notes) + '</p>' : '') +
+          '<div class="record-actions"><button data-print-doc="' + escapeHtml(d.id) + '">Print / PDF</button><button data-email-doc="' + escapeHtml(d.id) + '">Email</button><button data-delete-doc="' + escapeHtml(d.id) + '">Delete</button></div></div>';
+      }).join("");
+    }
+
+    all("[data-delete-doc]").forEach(function(btn){
+      btn.addEventListener("click", function(){
+        var id = btn.getAttribute("data-delete-doc");
+        state.docs = state.docs.filter(function(d){ return d.id !== id; });
+        save(STORAGE.docs,state.docs); renderAll();
+      });
+    });
+    all("[data-print-doc]").forEach(function(btn){
+      btn.addEventListener("click", function(){ printDocument(btn.getAttribute("data-print-doc")); });
+    });
+    all("[data-email-doc]").forEach(function(btn){
+      btn.addEventListener("click", function(){ emailDocument(btn.getAttribute("data-email-doc")); });
+    });
+  }
+
+  function printDocument(id){
+    var d = state.docs.find(function(x){ return x.id === id; });
+    if(!d) return;
+    var c = state.clients.find(function(x){ return x.id === d.clientId; });
+    var w = window.open("","_blank","width=860,height=720");
+    if(!w){ toast("Allow pop-ups to print this document."); return; }
+    var html = '<!doctype html><html><head><title>' + escapeHtml(d.type + " " + d.number) + '</title><style>body{font-family:Arial,sans-serif;color:#0b1730;padding:46px}header{display:flex;justify-content:space-between;border-bottom:3px solid #0b4fd6;padding-bottom:18px}h1{margin:0}small{color:#66758a}.box{margin:30px 0;padding:18px;background:#f4f7fb}.row{display:flex;justify-content:space-between;padding:12px 0;border-bottom:1px solid #dce5ef}.total{font-size:28px;font-weight:800;text-align:right;margin-top:25px}</style></head><body>' +
+      '<header><div><h1>IZAKHONO BUSINESS AI</h1><small>Business document</small></div><div><strong>' + escapeHtml(d.type) + '</strong><br>' + escapeHtml(d.number) + '</div></header>' +
+      '<div class="box"><strong>Client</strong><br>' + escapeHtml(c ? c.name : "Unassigned") + (c && c.business ? '<br>' + escapeHtml(c.business) : '') + '</div>' +
+      '<div class="row"><span>' + escapeHtml(d.description) + '</span><span>' + escapeHtml(d.qty) + ' × ' + money(d.rate) + '</span></div>' +
+      '<div class="total">Total: ' + money(d.total) + '</div>' +
+      (d.notes ? '<p><strong>Notes</strong><br>' + escapeHtml(d.notes) + '</p>' : '') +
+      '<p><small>Created ' + escapeHtml(d.createdAt) + '</small></p></body></html>';
+    w.document.write(html); w.document.close(); w.focus();
+    setTimeout(function(){ w.print(); },250);
+  }
+
+  function emailDocument(id){
+    var d = state.docs.find(function(x){ return x.id === id; });
+    if(!d) return;
+    var c = state.clients.find(function(x){ return x.id === d.clientId; });
+    if(!c || !c.email){ toast("Save an email address for this client first."); return; }
+    var subject = d.type + " " + d.number + " — " + d.description;
+    var body = "Hello " + c.name + ",\n\nPlease find the details for " + d.type.toLowerCase() + " " + d.number + ".\n\n" + d.description + "\nTotal: " + money(d.total) + "\n\n" + (d.notes || "") + "\n\nRegards";
+    window.location.href = "mailto:" + encodeURIComponent(c.email) + "?subject=" + encodeURIComponent(subject) + "&body=" + encodeURIComponent(body);
+  }
+
+  function initForms(){
+    el("clientForm").addEventListener("submit", function(e){
+      e.preventDefault();
+      state.clients.push({
+        id:uid("client"), name:el("clientName").value.trim(), business:el("clientBusiness").value.trim(),
+        email:el("clientEmail").value.trim(), phone:el("clientPhone").value.trim(), notes:el("clientNotes").value.trim(),
+        createdAt:new Date().toISOString()
+      });
+      save(STORAGE.clients,state.clients); e.target.reset(); renderAll(); toast("Client saved.");
+    });
+
+    el("docForm").addEventListener("submit", function(e){
+      e.preventDefault();
+      var qty = Math.max(1,Number(el("docQty").value || 1));
+      var rate = Math.max(0,Number(el("docRate").value || 0));
+      var prefix = el("docType").value === "Invoice" ? "INV" : "Q";
+      var number = prefix + "-" + String(Date.now()).slice(-7);
+      state.docs.push({
+        id:uid("doc"), number:number, type:el("docType").value, clientId:el("docClient").value,
+        description:el("docDescription").value.trim(), qty:qty, rate:rate, total:qty*rate,
+        notes:el("docNotes").value.trim(), createdAt:new Date().toLocaleDateString("en-ZA")
+      });
+      save(STORAGE.docs,state.docs); e.target.reset(); el("docQty").value="1"; el("docRate").value="0"; renderAll(); toast("Document created.");
+    });
+
+    el("writerForm").addEventListener("submit", runWriter);
+    el("diagnosticForm").addEventListener("submit", runDiagnostic);
+    el("scenarioForm").addEventListener("submit", runScenario);
+    el("scenarioFiles").addEventListener("change", loadScenarioFiles);
+    el("exportScenarioReport").addEventListener("click", exportScenarioReport);
+    el("askWorldForm").addEventListener("submit", askSimulatedWorld);
+    el("calibrationForm").addEventListener("submit", saveCalibration);
+
+    el("copyDraft").addEventListener("click", function(){
+      var text = el("writerOutput").textContent;
+      if(navigator.clipboard){ navigator.clipboard.writeText(text).then(function(){ toast("Draft copied."); }); }
+      else { toast("Copy the draft manually."); }
+    });
+    el("backupBtn").addEventListener("click", exportBackup);
+  }
+
+  async function runWriter(e){
+    e.preventDefault();
+    var output = el("writerOutput");
+    output.textContent = "Drafting…";
+    var payload = {
+      purpose:el("writerPurpose").value,
+      tone:el("writerTone").value,
+      context:el("writerContext").value.trim()
+    };
+    try {
+      var res = await fetch("/api/ai/correspondence",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(payload)});
+      var data = await res.json();
+      if(!data.ok) throw new Error(data.error || "Draft failed");
+      output.textContent = (data.mode === "template" ? "TEMPLATE MODE — AI adapter not connected\n\n" : "") + data.draft;
+    } catch(err){
+      output.textContent = "Could not reach the Business AI engine. Your information has not been sent elsewhere.\n\n" + String(err.message || err);
+    }
+  }
+
+  async function runDiagnostic(e){
+    e.preventDefault();
+    var payload = {
+      leads:Number(el("diagLeads").value),
+      followup:Number(el("diagFollowup").value),
+      cash:Number(el("diagCash").value),
+      admin:Number(el("diagAdmin").value)
+    };
+    try {
+      var res = await fetch("/api/diagnostic",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(payload)});
+      var data = await res.json();
+      if(!data.ok) throw new Error(data.error || "Diagnostic failed");
+      state.diagnostic = data;
+      save(STORAGE.diagnostic,data);
+      el("diagnosticScore").textContent = data.score;
+      el("diagnosticHeadline").textContent = data.headline;
+      renderDiagnosticActions(data.actions || []);
+      renderMetrics();
+    } catch(err){ toast(String(err.message || err)); }
+  }
+
+  function renderDiagnosticActions(actions){
+    el("diagnosticActions").innerHTML = actions.map(function(a){ return "<div>" + escapeHtml(a) + "</div>"; }).join("");
+  }
+
+  function decodePdfLiteral(value){
+    return value
+      .replace(/\\([nrtbf()\\])/g,function(_m,ch){
+        var map={n:"\n",r:"\r",t:"\t",b:"\b",f:"\f","(":"(",")":")","\\":"\\"};
+        return map[ch] || ch;
+      })
+      .replace(/\\([0-7]{1,3})/g,function(_m,oct){ return String.fromCharCode(parseInt(oct,8)); });
+  }
+
+  async function extractPdfTextBasic(file){
+    var buffer = await file.arrayBuffer();
+    var raw = new TextDecoder("latin1").decode(new Uint8Array(buffer));
+    var blocks = raw.match(/BT[\s\S]*?ET/g) || [];
+    var parts = [];
+    blocks.forEach(function(block){
+      var literal=/\((?:\\.|[^\\)])*\)/g, match;
+      while((match=literal.exec(block))){
+        var value=decodePdfLiteral(match[0].slice(1,-1)).replace(/\s+/g," ").trim();
+        if(value) parts.push(value);
+      }
+      var hex=/<([0-9A-Fa-f]{4,})>/g, hm;
+      while((hm=hex.exec(block))){
+        try{
+          var bytes=[];
+          for(var i=0;i<hm[1].length;i+=2) bytes.push(parseInt(hm[1].slice(i,i+2),16));
+          var decoded=new TextDecoder("utf-8",{fatal:false}).decode(new Uint8Array(bytes)).replace(/\0/g,"").trim();
+          if(decoded && /[A-Za-z]{2}/.test(decoded)) parts.push(decoded);
+        }catch(_e){}
+      }
+    });
+    var textValue=parts.join(" ").replace(/\s+/g," ").trim();
+    return {
+      text:textValue,
+      compressed:/\/FlateDecode/.test(raw),
+      method:"local-pdf-basic"
+    };
+  }
+
+  async function loadScenarioFiles(event){
+    var files = Array.prototype.slice.call(event.target.files || []).slice(0,10);
+    state.sourcePacket = [];
+    for(var i=0;i<files.length;i++){
+      var file = files[i];
+      var lower = file.name.toLowerCase();
+      var isPdf = lower.endsWith(".pdf") || file.type === "application/pdf";
+      var sizeLimit = isPdf ? 1500000 : 300000;
+      if(file.size > sizeLimit){
+        toast(file.name + " is over the local file limit.");
+        continue;
+      }
+      var allowed = isPdf || lower.endsWith(".txt") || lower.endsWith(".md") || lower.endsWith(".csv") || lower.endsWith(".json");
+      if(!allowed){
+        toast(file.name + " is not a supported evidence source.");
+        continue;
+      }
+      try{
+        var textValue="", extraction="browser-text";
+        if(isPdf){
+          var pdfResult=await extractPdfTextBasic(file);
+          textValue=pdfResult.text;
+          extraction=pdfResult.method;
+          if(textValue.length < 80){
+            toast(file.name + " could not be reliably extracted locally. A complex/scanned PDF will need the owned document extractor.");
+            continue;
+          }
+        }else{
+          textValue=await file.text();
+        }
+        state.sourcePacket.push({
+          name:file.name.slice(0,120),
+          type:(file.type || (isPdf ? "application/pdf" : "text/plain")).slice(0,80),
+          text:textValue.slice(0,120000),
+          size:file.size,
+          extraction:extraction
+        });
+      }catch(_e){
+        toast("Could not read " + file.name);
+      }
+    }
+    renderSourceList();
+  }
+
+  function renderSourceList(){
+    var list = el("sourceList");
+    el("sourceCount").textContent = state.sourcePacket.length;
+    if(!state.sourcePacket.length){
+      list.className = "source-list empty-state";
+      list.textContent = "No source files loaded.";
+      return;
+    }
+    list.className = "source-list";
+    list.innerHTML = state.sourcePacket.map(function(source,index){
+      return '<div class="source-item"><div><strong>' + escapeHtml(source.name) + '</strong><small>' +
+        Math.max(1,Math.round(source.size/1024)) + ' KB • ' + escapeHtml(source.extraction || "browser-text") +
+        '</small></div><button type="button" data-remove-source="' + index + '">Remove</button></div>';
+    }).join("");
+    all("[data-remove-source]").forEach(function(btn){
+      btn.addEventListener("click",function(){
+        state.sourcePacket.splice(Number(btn.getAttribute("data-remove-source")),1);
+        renderSourceList();
+      });
+    });
+  }
+
+  function renderScenarioSummary(lines,label,scenario){
+    if(!scenario) return;
+    lines.push(label);
+    lines.push("Population: " + scenario.population + " agents × " + scenario.trials + " repeated simulations");
+    lines.push("Overall stance: " + scenario.uncertainty.direction);
+    lines.push("Uncertainty: " + scenario.uncertainty.label + " • mean " + scenario.uncertainty.mean.toFixed(2) +
+      " • range " + scenario.uncertainty.min.toFixed(2) + " to " + scenario.uncertainty.max.toFixed(2));
+    lines.push("Cross-run alignment: " + scenario.consensus.label + " (" + scenario.consensus.score + "/100)");
+    lines.push("");
+
+    lines.push("STAKEHOLDER GROUPS");
+    (scenario.groupStats || []).forEach(function(group){
+      lines.push("• " + group.group + ": " + group.direction +
+        " | mean " + group.mean.toFixed(2) +
+        " | 10–90% " + group.p10.toFixed(2) + " to " + group.p90.toFixed(2) +
+        " | supportive " + group.supportivePct + "% | resistant " + group.resistantPct + "%");
+    });
+
+    if(scenario.redTeamFindings && scenario.redTeamFindings.length){
+      lines.push("");
+      lines.push("RED-TEAM FINDINGS");
+      scenario.redTeamFindings.forEach(function(item){
+        lines.push("• " + item.domain + ": " + item.finding + " | Check: " + item.test);
+      });
+    }
+
+    if(scenario.reportAgent){
+      lines.push("");
+      lines.push("REPORT AGENT");
+      lines.push(scenario.reportAgent.summary);
+      (scenario.reportAgent.keyTensions || []).forEach(function(item){ lines.push("• " + item); });
+    }
+    lines.push("");
+  }
+
+  function renderScenarioReport(data){
+    state.scenarioReport = data;
+    save(STORAGE.scenarioReport,data);
+    el("exportScenarioReport").disabled = false;
+
+    var manifest = el("scenarioManifest");
+    manifest.classList.remove("hidden");
+    manifest.textContent = "Run " + data.runId + " • " + data.population + " agents • " + data.trials +
+      " repeated simulations • " + data.rounds + " rounds • " +
+      (data.evidenceGraph ? data.evidenceGraph.nodes.length : 0) + " evidence nodes";
+
+    var lines = [];
+    lines.push("SIMULATION, NOT CERTAINTY");
+    lines.push("Run: " + data.runId);
+    lines.push("Horizon: " + data.horizon);
+    lines.push("Engine: " + data.engine + " v" + data.version);
+    lines.push("");
+
+    if(data.evidenceGraph && data.evidenceGraph.keyTerms && data.evidenceGraph.keyTerms.length){
+      lines.push("EVIDENCE GRAPH — KEY TERMS");
+      data.evidenceGraph.keyTerms.forEach(function(term){
+        lines.push("• " + term.term + " — " + term.count + " mentions");
+      });
+      lines.push("");
+    }
+
+    renderScenarioSummary(lines,"SCENARIO A",data.scenarios && data.scenarios.A);
+    if(data.scenarios && data.scenarios.B){
+      renderScenarioSummary(lines,"SCENARIO B",data.scenarios.B);
+    }
+
+    if(data.comparison){
+      lines.push("A/B COMPARISON");
+      lines.push(data.comparison.summary);
+      (data.comparison.differences || []).forEach(function(item){ lines.push("• " + item); });
+      lines.push("");
+    }
+
+    lines.push("NEXT REAL-WORLD TESTS");
+    (data.nextTests || []).forEach(function(item){ lines.push("• " + item); });
+    lines.push("");
+    lines.push(data.disclaimer);
+
+    el("scenarioOutput").textContent = lines.join("\n");
+    renderCalibrationStatus();
+  }
+
+  async function runScenario(e){
+    e.preventDefault();
+    var output = el("scenarioOutput");
+    output.textContent = "Running repeated multi-agent simulations and red-team checks…";
+    el("scenarioManifest").classList.add("hidden");
+    el("exportScenarioReport").disabled = true;
+    el("askWorldOutput").textContent = "Simulation running…";
+
+    var sources = state.sourcePacket.map(function(source){
+      return {name:source.name,type:source.type,text:source.text,extraction:source.extraction};
+    });
+    var manualEvidence = el("scenarioEvidence").value.trim();
+    if(manualEvidence){
+      sources.push({name:"Manual evidence and assumptions",type:"text/plain",text:manualEvidence.slice(0,120000),extraction:"manual"});
+    }
+
+    var payload = {
+      scenario:el("scenarioText").value.trim(),
+      scenarioB:el("scenarioTextB").value.trim(),
+      stakeholders:el("scenarioStakeholders").value.split(",").map(function(x){ return x.trim(); }).filter(Boolean).slice(0,12),
+      horizon:el("scenarioHorizon").value,
+      rounds:Number(el("scenarioRounds").value || 3),
+      population:Number(el("scenarioPopulation").value || 25),
+      trials:Number(el("scenarioTrials").value || 3),
+      redTeam:el("scenarioRedTeam").checked,
+      sources:sources
+    };
+
+    try {
+      var res = await fetch("/api/decision-lab/run",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(payload)});
+      var data = await res.json();
+      if(!data.ok) throw new Error(data.error || "Decision Lab run failed");
+      renderScenarioReport(data);
+      el("askWorldOutput").textContent = "Ask a question about this run.";
+    } catch(err){
+      output.textContent = "Could not run Decision Lab.\n\n" + String(err.message || err);
+      el("askWorldOutput").textContent = "Run a successful simulation first.";
+    }
+  }
+
+  async function askSimulatedWorld(e){
+    e.preventDefault();
+    var question=el("askWorldQuestion").value.trim();
+    if(!state.scenarioReport){ toast("Run Decision Lab first."); return; }
+    if(!question){ toast("Enter a question."); return; }
+    el("askWorldOutput").textContent="Interrogating the report…";
+    try{
+      var res=await fetch("/api/decision-lab/ask",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({report:state.scenarioReport,question:question})});
+      var data=await res.json();
+      if(!data.ok) throw new Error(data.error || "Could not answer");
+      el("askWorldOutput").textContent=data.answer;
+    }catch(err){
+      el("askWorldOutput").textContent=String(err.message || err);
+    }
+  }
+
+  function renderCalibrationStatus(){
+    if(!state.scenarioReport) return;
+    var match=state.calibrations.slice().reverse().find(function(item){ return item.runId===state.scenarioReport.runId; });
+    if(!match){
+      el("calibrationOutput").textContent="No observation saved for this run.";
+      return;
+    }
+    el("calibrationOutput").textContent="Saved " + new Date(match.recordedAt).toLocaleDateString("en-ZA") +
+      " • " + match.direction + " • " + match.outcome;
+  }
+
+  function saveCalibration(e){
+    e.preventDefault();
+    if(!state.scenarioReport){ toast("Run Decision Lab first."); return; }
+    var outcome=el("calibrationOutcome").value.trim();
+    if(!outcome){ toast("Describe the observed real-world outcome."); return; }
+    var record={
+      runId:state.scenarioReport.runId,
+      recordedAt:new Date().toISOString(),
+      direction:el("calibrationDirection").value,
+      outcome:outcome.slice(0,4000),
+      simulatedDirection:state.scenarioReport.scenarios && state.scenarioReport.scenarios.A ?
+        state.scenarioReport.scenarios.A.uncertainty.direction : "unknown"
+    };
+    state.calibrations.push(record);
+    state.calibrations=state.calibrations.slice(-100);
+    save(STORAGE.calibrations,state.calibrations);
+    renderCalibrationStatus();
+    toast("Real-world observation saved locally.");
+  }
+
+  function exportScenarioReport(){
+    if(!state.scenarioReport){ toast("Run Decision Lab first."); return; }
+    var report=JSON.parse(JSON.stringify(state.scenarioReport));
+    report.localCalibration=state.calibrations.filter(function(item){ return item.runId===report.runId; });
+    var blob = new Blob([JSON.stringify(report,null,2)],{type:"application/json"});
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url;
+    a.download = "izakhono-decision-lab-" + state.scenarioReport.runId + ".json";
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function exportBackup(){
+    var payload = {
+      product:"IZAKHONO BUSINESS AI",
+      exportedAt:new Date().toISOString(),
+      version:1,
+      clients:state.clients,
+      documents:state.docs,
+      diagnostic:state.diagnostic,
+      decisionLabReport:state.scenarioReport,
+      decisionLabCalibrations:state.calibrations
+    };
+    var blob = new Blob([JSON.stringify(payload,null,2)],{type:"application/json"});
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href=url; a.download="izakhono-business-ai-backup-" + new Date().toISOString().slice(0,10) + ".json";
+    a.click(); URL.revokeObjectURL(url);
+  }
+
+  async function checkHealth(){
+    try {
+      var res = await fetch("/api/health",{cache:"no-store"});
+      var data = await res.json();
+      if(data.ok){
+        el("engineStatus").textContent = data.aiAdapter ? "ENGINE + AI ADAPTER" : "ENGINE READY • TEMPLATE AI";
+        el("engineStatus").className = "status-chip";
+      } else throw new Error("not ready");
+    } catch(_e){
+      el("engineStatus").textContent = "ENGINE UNREACHABLE";
+      el("engineStatus").className = "status-chip neutral";
+    }
+  }
+
+  initPrivacy();
+  initNavigation();
+  initForms();
+  renderAll();
+})();
+</script>
+</body>
+</html>
