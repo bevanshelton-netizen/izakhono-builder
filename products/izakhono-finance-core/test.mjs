@@ -1,0 +1,11 @@
+import assert from "node:assert/strict";
+import fs from "node:fs";
+const contract=JSON.parse(fs.readFileSync(new URL("./finance-core.v1.json",import.meta.url),"utf8"));
+assert.equal(contract.schema,"izakhono.finance-core.v1");
+assert.equal(contract.infrastructure.policy,"owned-first-externally-reversible");
+assert.equal(contract.privacy.behavioural_tracking,false);
+assert.equal(contract.regulated_activity_boundary.deposit_taking_enabled,false);
+assert.equal(contract.regulated_activity_boundary.credit_provider_enabled,false);
+assert.equal(contract.regulated_activity_boundary.automated_final_credit_decisions_enabled,false);
+assert.equal(contract.super_app_module.engine,"independent");
+console.log(JSON.stringify({ok:true,product:contract.product,version:contract.version},null,2));
