@@ -1,10 +1,10 @@
 {
   "schema": "izakhono.hybrid-live.v1",
-  "generated_date": "2026-09-26",
-  "policy": "owned-first-externally-reversible-dual-path-resilient",
+  "generated_date": "2026-09-27",
+  "policy": "owned-first-supabase-resilience-reversible",
   "mode": "HYBRID_LIVE",
   "evidence_status": "EXTERNAL LIVE VERIFIED",
-  "traffic_authority": "external_verified_production_until_owned_public_acceptance",
+  "traffic_authority": "supabase_resilience_until_owned_public_acceptance",
   "owned_promotion_target": "NODE01 via IZAKHONO EDGE/TLS",
   "steady_state_strategy": {
     "after_owned_promotion": "INTERNAL_PRIMARY_EXTERNAL_WARM_RESILIENCE",
@@ -37,12 +37,12 @@
   "apps": [
     {
       "slug": "allegro-vibez",
-      "immutable_ref": "0b649ee6a5e88e489d0ebabc2280e4b2870fc105",
-      "current_public_route": "https://allegro-vibez-g5c7s8xj3-bevan2.vercel.app",
-      "external_failback": "https://allegro-vibez-79622wjli-bevan2.vercel.app",
-      "external_provider": "Vercel",
+      "immutable_ref": "0bff86463f37d7144ca11d2369905edd5d8273d2",
+      "current_public_route": "https://yfawrenhudjomhnglfhq.supabase.co/functions/v1/allegro-vibez-live",
+      "external_failback": null,
+      "external_provider": "Supabase",
       "external_state": "READY",
-      "external_role_after_owned_promotion": "warm-verified-resilience",
+      "external_role_after_owned_promotion": "resilience",
       "external_keep_operational": true,
       "owned_hostname": "allegro.izakhonoafrica.co.za",
       "owned_state": "PROMOTION_PENDING_NODE01_RUNNER_EDGE_DNS_TLS_PUBLIC_ACCEPTANCE",
