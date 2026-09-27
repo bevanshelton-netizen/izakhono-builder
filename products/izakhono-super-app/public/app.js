@@ -4,6 +4,7 @@
   const fallback = {
     schema:"izakhono.super-app.module-registry.v1",
     modules:[
+      {id:"builder",name:"IZAKHONO BUILDER AI",category:"Build + Create",route:"/builder",status:"available",engine:"independent",description:"One-sentence app, website, game and software factory with owned source and internal repository commits."},
       {id:"affiliate",name:"IZAKHONO Affiliate",category:"Revenue + Partnerships",route:"/affiliate",status:"integrated",engine:"independent",description:"Publisher income, partner commissions, attribution and external-network adapters."},
       {id:"create",name:"IZAKHONO CREATE",category:"Creative",route:"/create",status:"available",engine:"independent",description:"Portfolio creative system of record."},
       {id:"ads",name:"IZAKHONO ADS",category:"Distribution",route:"/ads",status:"available",engine:"independent",description:"Campaign distribution and performance command centre."},
