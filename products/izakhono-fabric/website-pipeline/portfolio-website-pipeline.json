@@ -229,7 +229,34 @@
     }
   ],
   "fast_path": {
-    "goal": "ordinary brochure/corporate website foundations in minutes",
+    "goal": "ordinary brochure/corporate website polished first preview in under 60 seconds target, without lowering factual or visual accuracy",
+    "performance_targets": {
+      "brief_parse_seconds": 2,
+      "foundation_render_seconds": 20,
+      "first_polished_preview_seconds": 60,
+      "automated_qa_seconds": 15,
+      "correction_loop_seconds": 30,
+      "publish_candidate_seconds": 90
+    },
+    "architecture": [
+      "parallel brief parsing, layout generation, asset planning and QA",
+      "warm worker pool on IZAKHONO-owned infrastructure",
+      "prebuilt responsive component library",
+      "brand manifest inheritance",
+      "cached legal, SEO, forms and CRM adapters",
+      "incremental rebuilds instead of full regeneration",
+      "visual and functional checks run concurrently"
+    ],
+    "accuracy_rules": [
+      "never invent prices, credentials, legal claims, contact details or product capabilities",
+      "extract facts into a structured brief before generation",
+      "reuse verified facts from the approved brand manifest",
+      "flag missing critical facts instead of guessing",
+      "run deterministic content, link, form and metadata checks",
+      "require visual review before public promotion",
+      "preserve exact legal entity and registration details",
+      "apply regulated-product compliance gates before claims"
+    ],
     "reusable_work": [
       "layout",
       "responsive system",
