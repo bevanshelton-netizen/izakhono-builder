@@ -3,6 +3,7 @@ import importlib.util
 import json
 import os
 import threading
+import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
@@ -106,6 +107,8 @@ assert g.check_access("faisready-entity", "inactive@example.com", "faisready")["
 assert g.host_allowed("http://127.0.0.1:11434") is True
 assert g.host_allowed("http://8.8.8.8:11434") is False
 assert g.owner_text_urls() == ["http://127.0.0.1:19135", "http://127.0.0.1:19134"]
+assert g.ADMISSION.summary()["max_inflight"] >= 1
+assert g.ADMISSION.summary()["max_queue"] >= 0
 assert g.workflow_key_allowed("workflow-test", "venture-factory") is True
 assert g.workflow_key_allowed("workflow-test", "izakhono-builder") is True
 assert g.workflow_key_allowed("workflow-test", "other-product") is False
@@ -127,6 +130,16 @@ assert pool["owner-text-1"]["failures"] == 1
 assert pool["owner-text-1"]["available_for_attempt"] is False
 assert pool["owner-text-2"]["failures"] == 0
 assert pool["owner-text-2"]["last_ok"] is not None
+assert pool["owner-text-2"]["inflight"] == 0
+
+# Least-loaded owner runtime wins, with configured order used only as a tie-break.
+with g.OWNER_POOL_LOCK:
+    g.OWNER_POOL_STATE.clear()
+    g.OWNER_POOL_STATE["http://127.0.0.1:19135"] = {"inflight": 3, "blocked_until": 0}
+    g.OWNER_POOL_STATE["http://127.0.0.1:19134"] = {"inflight": 0, "blocked_until": 0}
+assert g.owner_pool_candidates()[0] == "http://127.0.0.1:19134"
+with g.OWNER_POOL_LOCK:
+    g.OWNER_POOL_STATE.clear()
 
 external_cap, external_model, external_output, _, external_route = g.execute_capability({
     "capability": "code",
@@ -139,6 +152,50 @@ assert external_model == "nvidia/nemotron-3-ultra-550b-a55b"
 assert external_output["text"] == "external-mock-response"
 assert external_route == "external"
 assert g.external_text_configured() is True
+
+# Admission control: one active request, one queued waiter, then fail closed.
+controller = g.AdmissionController(1, 1, 0.25)
+controller.acquire()
+waiter_acquired = threading.Event()
+
+def queued_waiter():
+    controller.acquire()
+    try:
+        waiter_acquired.set()
+    finally:
+        controller.release()
+
+waiter = threading.Thread(target=queued_waiter, daemon=True)
+waiter.start()
+for _ in range(50):
+    if controller.summary()["queued"] == 1:
+        break
+    time.sleep(0.01)
+assert controller.summary()["queued"] == 1
+try:
+    controller.acquire()
+    raise AssertionError("full admission queue accepted another request")
+except g.CapacityUnavailable as exc:
+    assert str(exc) == "queue_full"
+
+controller.release()
+waiter.join(timeout=2)
+assert waiter_acquired.is_set()
+summary = controller.summary()
+assert summary["inflight"] == 0
+assert summary["queued"] == 0
+assert summary["rejected"] == 1
+assert summary["completed"] == 2
+
+timeout_controller = g.AdmissionController(1, 1, 0.05)
+timeout_controller.acquire()
+try:
+    timeout_controller.acquire()
+    raise AssertionError("admission queue timeout did not fire")
+except g.CapacityUnavailable as exc:
+    assert str(exc) == "queue_timeout"
+finally:
+    timeout_controller.release()
 
 try:
     g.execute_capability({
@@ -173,6 +230,7 @@ except ValueError as exc:
 caps = {x["capability"]: x for x in g.capability_summary()}
 assert caps["chat"]["status"] == "ready"
 assert len(g.owner_pool_summary()) == 2
+assert g.ADMISSION.summary()["completed"] >= 3
 assert caps["image"]["status"] == "ready"
 assert caps["video"]["status"] == "needs_backend"
 
