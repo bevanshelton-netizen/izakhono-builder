@@ -3,9 +3,11 @@ import fs from 'node:fs';
 const regPath='products/izakhono-super-app/public/module-registry.json';
 const affiliatePath='products/izakhono-affiliate/affiliate-engine.v1.json';
 const flowPath='products/izakhono-flow/.izakhono.json';
+const financePath='products/izakhono-finance-core/finance-core.v1.json';
 const registry=JSON.parse(fs.readFileSync(regPath,'utf8'));
 const affiliate=JSON.parse(fs.readFileSync(affiliatePath,'utf8'));
 const flow=JSON.parse(fs.readFileSync(flowPath,'utf8'));
+const finance=JSON.parse(fs.readFileSync(financePath,'utf8'));
 const errors=[];
 
 if(registry.schema!=='izakhono.super-app.module-registry.v1') errors.push('unexpected SUPER APP registry schema');
@@ -34,6 +36,20 @@ if(flow.slug!=='izakhono-flow') errors.push('FLOW canonical contract slug drift'
 if(flow.infrastructure?.policy!=='owned-first-externally-reversible') errors.push('FLOW must remain owned-first');
 if(flow.privacy?.tracking!==false || flow.privacy?.profiling!==false || flow.privacy?.advertisingIdentifiers!==false) errors.push('FLOW privacy contract drift');
 
+const financeModule=modules.get('finance-core');
+if(!financeModule) errors.push('FINANCE CORE module missing from SUPER APP');
+else {
+  if(financeModule.route!=='/finance-core') errors.push('FINANCE CORE route must be /finance-core');
+  if(financeModule.status!=='integrated') errors.push('FINANCE CORE module must be integrated');
+  if(financeModule.engine!=='independent') errors.push('FINANCE CORE engine must remain independent');
+}
+if(finance.schema!=='izakhono.finance-core.v1') errors.push('FINANCE CORE canonical contract drift');
+if(finance.infrastructure?.policy!=='owned-first-externally-reversible') errors.push('FINANCE CORE must remain owned-first');
+if(finance.regulated_activity_boundary?.deposit_taking_enabled!==false) errors.push('FINANCE CORE deposit taking must remain gated');
+if(finance.regulated_activity_boundary?.credit_provider_enabled!==false) errors.push('FINANCE CORE credit-provider operation must remain gated');
+if(finance.regulated_activity_boundary?.automated_final_credit_decisions_enabled!==false) errors.push('FINANCE CORE final automated credit decisions must remain gated');
+if(finance.super_app_module?.module_id!=='finance-core' || finance.super_app_module?.route!=='/finance-core') errors.push('FINANCE CORE SUPER APP contract drift');
+
 if(affiliate.super_app_module?.embedded!==true) errors.push('canonical affiliate contract must declare SUPER APP embedding');
 if(affiliate.super_app_module?.route!=='/affiliate') errors.push('canonical affiliate route drift');
 if(affiliate.super_app_module?.module_id!=='affiliate') errors.push('canonical affiliate module id drift');
@@ -47,7 +63,7 @@ for(const a of regAdapters){
   if(a.enabled!==false) errors.push(a.id+': cannot be marked connected without authenticated evidence');
 }
 
-for(const required of ['create','ads','crm','flow','accountant','fortress','flowiq','tasks']){
+for(const required of ['create','ads','crm','flow','finance-core','accountant','fortress','flowiq','tasks']){
   if(!modules.has(required)) errors.push('required SUPER APP module missing: '+required);
 }
 
@@ -62,7 +78,9 @@ console.log(JSON.stringify({
   modules:registry.modules.length,
   affiliate_embedded:true,
   flow_embedded:true,
+  finance_core_embedded:true,
   flow_route:'/flow',
+  finance_core_route:'/finance-core',
   affiliate_route:'/affiliate',
   external_adapters:regAdapters.length,
   connected_external_adapters:regAdapters.filter(a=>a.enabled).length,
