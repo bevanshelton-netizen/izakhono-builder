@@ -4,6 +4,8 @@ import ipaddress
 import json
 import os
 import socket
+import threading
+import time
 import urllib.error
 import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -23,6 +25,11 @@ MAX_BODY = int(os.getenv("IZAKHONO_AI_MAX_BODY", "1000000"))
 
 DEFAULT_MODEL = os.getenv("IZAKHONO_AI_MODEL", "qwen3:4b")
 OLLAMA_URL = os.getenv("IZAKHONO_OLLAMA_URL", "http://127.0.0.1:11434").rstrip("/")
+OWNER_TEXT_URLS_RAW = os.getenv("IZAKHONO_AI_OWNER_TEXT_URLS", "").strip()
+OWNER_POOL_COOLDOWN_SECONDS = max(1, int(os.getenv("IZAKHONO_AI_OWNER_POOL_COOLDOWN_SECONDS", "30")))
+OWNER_POOL_MAX = max(1, min(16, int(os.getenv("IZAKHONO_AI_OWNER_POOL_MAX", "8"))))
+OWNER_POOL_LOCK = threading.Lock()
+OWNER_POOL_STATE = {}
 
 # Optional external text route. It is deliberately disabled unless BOTH
 # IZAKHONO_AI_ALLOW_EXTERNAL=true and IZAKHONO_AI_OWNER_ONLY=false are set.
@@ -143,7 +150,7 @@ def is_private_ip(value):
     except ValueError:
         return False
 
-def host_allowed(url):
+def owner_runtime_allowed(url):
     parsed = urlparse(url)
     if parsed.scheme not in ("http", "https") or not parsed.hostname:
         return False
@@ -158,12 +165,93 @@ def host_allowed(url):
     if is_private_ip(host):
         return True
     try:
-        for addr in socket.gethostbyname_ex(host)[2]:
-            if is_private_ip(addr):
-                return True
+        addresses = socket.gethostbyname_ex(host)[2]
+        return bool(addresses) and all(is_private_ip(addr) for addr in addresses)
     except OSError:
-        pass
-    return bool(ALLOW_EXTERNAL and not OWNER_ONLY)
+        return False
+
+def host_allowed(url):
+    # Backward-compatible alias. Owner routes never become public merely because
+    # an unrelated external development adapter has been enabled.
+    return owner_runtime_allowed(url)
+
+def owner_text_urls():
+    raw = OWNER_TEXT_URLS_RAW
+    values = [x.strip().rstrip("/") for x in raw.split(",") if x.strip()] if raw else [OLLAMA_URL]
+    unique = []
+    for value in values:
+        if value and value not in unique:
+            unique.append(value)
+        if len(unique) >= OWNER_POOL_MAX:
+            break
+    return unique
+
+def owner_runtime_id(url):
+    urls = owner_text_urls()
+    try:
+        return f"owner-text-{urls.index(url) + 1}"
+    except ValueError:
+        return "owner-text-unknown"
+
+def owner_pool_mark(url, ok, detail=""):
+    now = time.time()
+    with OWNER_POOL_LOCK:
+        current = dict(OWNER_POOL_STATE.get(url, {}))
+        if ok:
+            current.update({
+                "failures": 0,
+                "blocked_until": 0.0,
+                "last_ok": now,
+                "last_error": "",
+            })
+        else:
+            failures = int(current.get("failures", 0)) + 1
+            current.update({
+                "failures": failures,
+                "blocked_until": now + OWNER_POOL_COOLDOWN_SECONDS,
+                "last_error": str(detail or "backend_unavailable")[:160],
+            })
+        OWNER_POOL_STATE[url] = current
+
+def owner_pool_candidates():
+    urls = owner_text_urls()
+    now = time.time()
+    ready = []
+    cooling = []
+    with OWNER_POOL_LOCK:
+        snapshot = {k: dict(v) for k, v in OWNER_POOL_STATE.items()}
+    for url in urls:
+        if not owner_runtime_allowed(url):
+            continue
+        state = snapshot.get(url, {})
+        if float(state.get("blocked_until", 0) or 0) > now:
+            cooling.append(url)
+        else:
+            ready.append(url)
+    # If all known owner runtimes are cooling down, retry them in configured
+    # order rather than fail permanently.
+    return ready or cooling
+
+def owner_pool_summary():
+    now = time.time()
+    urls = owner_text_urls()
+    with OWNER_POOL_LOCK:
+        snapshot = {k: dict(v) for k, v in OWNER_POOL_STATE.items()}
+    items = []
+    for url in urls:
+        state = snapshot.get(url, {})
+        allowed = owner_runtime_allowed(url)
+        blocked_until = float(state.get("blocked_until", 0) or 0)
+        items.append({
+            "runtime_id": owner_runtime_id(url),
+            "allowed": allowed,
+            "available_for_attempt": bool(allowed and blocked_until <= now),
+            "cooldown_seconds_remaining": max(0, int(blocked_until - now)) if allowed else 0,
+            "failures": int(state.get("failures", 0) or 0),
+            "last_ok": state.get("last_ok"),
+            "last_error": state.get("last_error") or None,
+        })
+    return items
 
 def external_host_allowed(url):
     parsed = urlparse(url)
@@ -237,16 +325,25 @@ def normalize_messages(payload):
     return [{"role": "user", "content": prompt[:100000]}] if prompt else []
 
 def model_chat(messages, model, capability="chat"):
-    cfg = CAPABILITIES[capability]
-    if not cfg["url"]:
-        raise RuntimeError("capability_backend_unconfigured")
-    if OWNER_ONLY and not host_allowed(cfg["url"]):
-        raise RuntimeError("owner_route_required")
-    return http_json(
-        cfg["url"] + "/api/chat",
-        {"model": model, "stream": False, "messages": messages},
-        timeout=300,
-    )
+    candidates = owner_pool_candidates()
+    if not candidates:
+        raise RuntimeError("owner_model_pool_unconfigured")
+    errors = []
+    for runtime_url in candidates:
+        try:
+            raw = http_json(
+                runtime_url + "/api/chat",
+                {"model": model, "stream": False, "messages": messages},
+                timeout=300,
+            )
+            if isinstance(raw, dict):
+                raw["_izakhono_owner_runtime"] = owner_runtime_id(runtime_url)
+            owner_pool_mark(runtime_url, True)
+            return raw
+        except Exception as exc:
+            owner_pool_mark(runtime_url, False, exc)
+            errors.append(f"{owner_runtime_id(runtime_url)}:{type(exc).__name__}")
+    raise RuntimeError("owner_model_pool_unavailable:" + ",".join(errors[:OWNER_POOL_MAX]))
 
 def openai_chat(messages, model):
     if not external_text_configured():
@@ -276,7 +373,7 @@ def json_generate(payload, model, capability):
     cfg = CAPABILITIES[capability]
     if not cfg["url"]:
         raise RuntimeError("capability_backend_unconfigured")
-    if OWNER_ONLY and not host_allowed(cfg["url"]):
+    if not owner_runtime_allowed(cfg["url"]):
         raise RuntimeError("owner_route_required")
     request_payload = {
         "model": model,
@@ -320,7 +417,12 @@ def capability_summary():
     items = []
     for name, cfg in CAPABILITIES.items():
         configured = bool(cfg["url"])
-        owner_route = bool(cfg["url"] and host_allowed(cfg["url"]))
+        if cfg["kind"] == "ollama_chat":
+            pool = owner_pool_summary()
+            owner_route = any(x["allowed"] for x in pool)
+            configured = bool(pool)
+        else:
+            owner_route = bool(cfg["url"] and owner_runtime_allowed(cfg["url"]))
         items.append({
             "capability": name,
             "model": cfg["model"],
@@ -368,6 +470,8 @@ class Handler(BaseHTTPRequestHandler):
                 "workflow_mode_configured": bool(WORKFLOW_KEY),
                 "subscriber_access_configured": bool(ACCESS_KEY),
                 "workflow_products": sorted(WORKFLOW_PRODUCTS),
+                "owner_text_pool_size": len(owner_text_urls()),
+                "owner_text_pool_available": sum(1 for x in owner_pool_summary() if x["available_for_attempt"]),
                 "capabilities_ready": [x["capability"] for x in caps if x["status"] == "ready"],
             })
         if p == "/api/v1/capabilities":
@@ -381,6 +485,19 @@ class Handler(BaseHTTPRequestHandler):
                     "prompt_persistence": False,
                     "behavioural_tracking": False,
                     "advertising_ids": False,
+                },
+            })
+        if p == "/api/v1/runtimes":
+            if not self.authorized():
+                return send_json(self, 401, {"ok": False, "error": "unauthorized"})
+            return send_json(self, 200, {
+                "ok": True,
+                "service": "izakhono-super-ai",
+                "owner_text_pool": owner_pool_summary(),
+                "external_text": {
+                    "enabled": external_text_configured(),
+                    "provider": EXTERNAL_TEXT_PROVIDER if external_text_configured() else None,
+                    "public_data_only": True,
                 },
             })
         return send_json(self, 404, {"ok": False, "error": "not_found"})
@@ -440,6 +557,7 @@ class Handler(BaseHTTPRequestHandler):
             "model": model,
             "route": route,
             "external_provider": EXTERNAL_TEXT_PROVIDER if route == "external" else None,
+            "owner_runtime": _raw.get("_izakhono_owner_runtime") if route == "owned" and isinstance(_raw, dict) else None,
             "data_classification": str(payload.get("data_classification") or ("public" if route == "external" else "internal")).strip().lower(),
             "output": output,
             "owner_only": OWNER_ONLY,
