@@ -1,6 +1,6 @@
 @echo off
 setlocal EnableExtensions
-title IZAKHONO APP FABRIC - NODE01 ACTIVATION
+title IZAKHONO APP FABRIC + FLOW - NODE01 ACTIVATION
 cd /d "%~dp0"
 
 where wsl.exe >nul 2>&1 || (
@@ -19,8 +19,9 @@ set REPORT=%USERPROFILE%\Desktop\IZAKHONO-APP-FABRIC-NODE01-REPORT.json
 for /f "usebackq delims=" %%I in (`wsl.exe -d %DISTRO% -- wslpath -a "%REPORT%"`) do set LINUX_REPORT=%%I
 
 echo ============================================================
-echo IZAKHONO APP FABRIC - OWNED INTERNAL ACTIVATION
-echo CRM + APP FABRIC GATEWAY
+echo IZAKHONO APP FABRIC + FLOW - OWNED INTERNAL ACTIVATION
+echo CRM + FLOW + APP FABRIC GATEWAY
+echo INCLUDES FLOW BACKUP / RESTORE PROOF
 echo NO PUBLIC DNS OR EDGE CHANGE
 echo ============================================================
 
@@ -35,12 +36,13 @@ if exist "%REPORT%" (
 
 if not "%RC%"=="0" (
   echo.
-  echo [SAFE STOP] APP FABRIC internal activation did not pass.
+  echo [SAFE STOP] APP FABRIC + FLOW internal activation did not pass.
   echo Existing public platform routes were not changed.
   exit /b %RC%
 )
 
 echo.
-echo [PASS] APP FABRIC is healthy internally on the owned host.
+echo [PASS] CRM + FLOW + APP FABRIC are healthy internally on the owned host.
+echo [NEXT] Run RUN-IZAKHONO-ONE-NODE01.cmd to prove the SUPER APP to FLOW bridge.
 echo [HOLD] Public activation is a separate DNS / EDGE / allowed-origin gate.
 endlocal
