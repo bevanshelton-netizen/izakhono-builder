@@ -37,7 +37,7 @@ This keeps the public describe/preview/export experience separate from the trust
 
 IZAKHONO BUILDER now includes an owner-gated **one-sentence build pipeline** for apps, websites, games and software. A brief submitted to `POST /api/build-anything` is classified locally, mapped to reusable product modules, created as a Builder project, planned, generated, deterministically validated and committed into the IZAKHONO internal repository.
 
-External publication is not triggered automatically and public-live status remains evidence-gated. The v1 path is provider-neutral: SUPER AI can enrich planning later, but an external AI provider is not required for the core create → plan → generate → validate → internal-commit workflow.
+External publication is not triggered automatically and public-live status remains evidence-gated. When the owner-controlled IZAKHONO SUPER AI workflow route is configured, Builder uses it to enrich the inferred product type, name, modules and build priorities; if that route is unavailable, the deterministic local planner continues without failing the build. No external AI provider is required for the core create → plan → generate → validate → internal-commit workflow.
 
 ## Repository Autopilot v1
 
