@@ -64,3 +64,6 @@ jobs:
           grep -Fq 'capacity_unavailable' products/izakhono-ai-gateway/app.py
           grep -Fq 'owner_pool_begin' products/izakhono-ai-gateway/app.py
           grep -Fq 'Bounded queue and workload distribution' products/izakhono-ai-gateway/README.md
+          grep -Fq 'izakhono-flow' products/izakhono-ai-gateway/app.py
+          grep -Fq 'izakhono-flow' products/izakhono-ai-gateway/START-IZAKHONO-SUPER-AI-NODE01.ps1
+          grep -Fq 'IZAKHONO FLOW advisory use' products/izakhono-ai-gateway/README.md
