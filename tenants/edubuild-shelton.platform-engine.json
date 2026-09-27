@@ -1,0 +1,43 @@
+{
+  "schema_version": "1.0",
+  "tenant_id": "edubuild-shelton",
+  "tenant_class": "external-independent",
+  "legal_entity": "EDU-BUILD INSTITUTE – Shelton Campuses",
+  "portfolio_owner": false,
+  "launch_state": "private-until-verified",
+  "engine": {
+    "independently_deployable": true,
+    "health_endpoint": "/health"
+  },
+  "isolation": {
+    "data": "dedicated",
+    "auth": "dedicated-scope",
+    "storage": "dedicated",
+    "secrets": "tenant-scoped",
+    "payments": "tenant-scoped",
+    "crm": "tenant-scoped",
+    "growth_contacts": "tenant-scoped",
+    "analytics": "tenant-scoped"
+  },
+  "capabilities": {
+    "crm": true,
+    "growth_engine": true,
+    "super_ai": true,
+    "payments_adapter": true,
+    "shop": true,
+    "enrolment": true,
+    "online_learning": true,
+    "communications": true,
+    "reporting": true,
+    "monitoring": true,
+    "backup_restore": true
+  },
+  "forbidden": [
+    "cross_tenant_data_access",
+    "cross_tenant_auth",
+    "cross_tenant_payment_destination",
+    "cross_tenant_growth_audience",
+    "cross_tenant_consent_or_suppression",
+    "shared_production_secrets"
+  ]
+}
