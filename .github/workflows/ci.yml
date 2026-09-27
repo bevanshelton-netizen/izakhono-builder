@@ -201,6 +201,57 @@ jobs:
           PY
           node --check /tmp/izakhono-owner-ui.js
 
+      - name: Validate generated release-channel pack
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          s = Path('src/secure.ts').read_text(encoding='utf-8')
+          required = [
+              "public/manifest.webmanifest",
+              "public/sw.js",
+              "release/channels.json",
+              "release/android.json",
+              "release/ios.json",
+              "release/desktop.json",
+              "schema: 'izakhono.release-channels/v1'",
+              "public_live: false",
+              "signed_package: false",
+              "store_release: false",
+              "name: 'pwa_manifest'",
+              "name: 'service_worker_registration'",
+              "name: 'release_channel_contract'",
+          ]
+          missing = [x for x in required if x not in s]
+          if missing:
+              raise SystemExit('Generated release-channel pack missing: ' + ', '.join(missing))
+          print('[PASS] Generated apps include installable PWA assets and truthful gated mobile/desktop release manifests.')
+          PY
+
+      - name: Validate product-factory benchmark UX
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          html = Path('public/index.html').read_text(encoding='utf-8')
+          required = [
+              'AI content platform',
+              'SaaS landing page',
+              'Task management',
+              'Client dashboard',
+              'E-commerce store',
+              'Mobile-ready App',
+              'Web app / Website / PWA',
+              'useStarter(',
+              'installable Web/PWA baseline generated',
+              'Android/iOS release manifests prepared',
+          ]
+          missing = [x for x in required if x not in html]
+          if missing:
+              raise SystemExit('Product-factory UX missing: ' + ', '.join(missing))
+          print('[PASS] Builder exposes fast prompt starters and truthful multi-channel release proof.')
+          PY
+
       - name: Validate one-click release-candidate autopilot
         shell: bash
         run: |
