@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "name": "IZAKHONO FINANCE CORE",
+  "slug": "izakhono-finance-core",
+  "operator": "IZAKHONO AFRICA (PTY) LTD",
+  "trading_name": "IZAKHONO FINANCE CORE",
+  "build_context": "products/izakhono-finance-core",
+  "dockerfile_path": "products/izakhono-finance-core/Dockerfile",
+  "container_port": 8797,
+  "health_path": "/health",
+  "branch": "main",
+  "application_version": "0.1.0",
+  "infrastructure": {
+    "policy": "owned-first-externally-reversible",
+    "authoritative_source": "IZAKHONO CODE / Forge",
+    "owned_target": "NODE01",
+    "current_public_route": "NOT_YET_VERIFIED",
+    "external_fallback": "OPTIONAL_REPLACEABLE_ONLY",
+    "status_label": "OWNED PACKAGE READY - NODE01 ACTIVATION NOT YET VERIFIED"
+  },
+  "privacy": {
+    "telemetry": false,
+    "tracking": false,
+    "profiling": false,
+    "advertisingIdentifiers": false
+  },
+  "alpha": {
+    "preflight": true,
+    "rehearsal": true,
+    "windows_package": false
+  }
+}
