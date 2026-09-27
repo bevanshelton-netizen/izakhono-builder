@@ -61,6 +61,25 @@ if ($externalRequested) {
     }
   }
 }
+$ownerPoolRequested = @()
+if ([string]::IsNullOrWhiteSpace($env:IZAKHONO_AI_OWNER_TEXT_URLS)) {
+  $primaryOwnerUrl = if ([string]::IsNullOrWhiteSpace($env:IZAKHONO_OLLAMA_URL)) { "http://127.0.0.1:11434" } else { $env:IZAKHONO_OLLAMA_URL.TrimEnd("/") }
+  $ownerPoolRequested = @($primaryOwnerUrl)
+} else {
+  $ownerPoolRequested = @(
+    $env:IZAKHONO_AI_OWNER_TEXT_URLS.Split(",") |
+      ForEach-Object { $_.Trim().TrimEnd("/") } |
+      Where-Object { -not [string]::IsNullOrWhiteSpace($_) } |
+      Select-Object -Unique
+  )
+  if ($ownerPoolRequested.Count -gt 16) {
+    Fail "IZAKHONO_AI_OWNER_TEXT_URLS exceeds the 16-runtime safety limit"
+  }
+}
+if ($ownerPoolRequested.Count -lt 1) {
+  Fail "At least one owner text runtime must be configured"
+}
+
 if ([string]::IsNullOrWhiteSpace($env:IZAKHONO_AI_CHAT_MODEL)) { $env:IZAKHONO_AI_CHAT_MODEL = "qwen3:4b" }
 if ([string]::IsNullOrWhiteSpace($env:IZAKHONO_AI_REASONING_MODEL)) { $env:IZAKHONO_AI_REASONING_MODEL = $env:IZAKHONO_AI_CHAT_MODEL }
 if ([string]::IsNullOrWhiteSpace($env:IZAKHONO_AI_CODE_MODEL)) { $env:IZAKHONO_AI_CODE_MODEL = $env:IZAKHONO_AI_CHAT_MODEL }
@@ -91,6 +110,7 @@ if ($existing) {
     if (-not $probe.ok) { $needsRestart = $true }
     $h = Invoke-RestMethod -Uri "http://127.0.0.1:9595/healthz" -TimeoutSec 3
     if ($workflowConfigured -and -not $h.workflow_mode_configured) { $needsRestart = $true }
+    if ([int]$h.owner_text_pool_size -ne $ownerPoolRequested.Count) { $needsRestart = $true }
     if ($externalRequested -and -not $h.external_ai_providers_enabled) { $needsRestart = $true }
     if (-not $externalRequested -and $h.external_ai_providers_enabled) { $needsRestart = $true }
   } catch {
@@ -128,6 +148,8 @@ if (-not $health -or -not $health.ok) { Fail "Local health gate did not pass" }
   "WORKFLOW_MODE_CONFIGURED=$($health.workflow_mode_configured)"
   "SUBSCRIBER_ACCESS_CONFIGURED=$subscriberAccessConfigured"
   "CAPABILITIES_READY=$([string]::Join(',', @($health.capabilities_ready)))"
+  "OWNER_TEXT_POOL_SIZE=$($health.owner_text_pool_size)"
+  "OWNER_TEXT_POOL_AVAILABLE=$($health.owner_text_pool_available)"
   "EXTERNAL_AI_ENABLED=$($health.external_ai_providers_enabled)"
   "EXTERNAL_AI_PROVIDER=$($health.external_ai_provider)"
   "MEDIA_BACKENDS=VERIFY_WITH_/api/v1/capabilities"
