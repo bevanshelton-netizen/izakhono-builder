@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>IZAKHONO DOCFLOW</title>
+<meta name="description" content="Human-approved AI document drafting and workflow automation.">
+<style>
+:root{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#f7fbff;background:#071018}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 10% 0,#16334b 0,transparent 35%),linear-gradient(180deg,#071018,#0a1118 55%,#0b0f13)}
+.wrap{max-width:1160px;margin:auto;padding:28px 20px 70px}.nav{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:52px}
+.brand{font-weight:950;letter-spacing:.04em}.badge{font-size:12px;padding:7px 10px;border-radius:999px;border:1px solid #38566a;color:#a8dfff;background:#0f2330}
+.hero{display:grid;grid-template-columns:1.1fr .9fr;gap:28px;align-items:center}.hero h1{font-size:clamp(48px,8vw,92px);line-height:.92;margin:0;letter-spacing:-.055em}
+.hero h1 span{color:#65dcff}.hero p{color:#b6c8d5;max-width:680px;font-size:19px;line-height:1.6}.hero-card,.panel{background:rgba(14,25,35,.86);border:1px solid #29404f;border-radius:24px;box-shadow:0 24px 80px rgba(0,0,0,.34)}
+.hero-card{padding:24px}.steps{display:grid;gap:14px}.step{display:flex;gap:14px;align-items:flex-start;padding:14px;border-radius:16px;background:#0b1821;border:1px solid #213a49}.n{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:#0f3548;color:#74dcff;font-weight:900;flex:0 0 34px}
+.main{margin-top:34px;display:grid;grid-template-columns:.92fr 1.08fr;gap:22px}.panel{padding:22px}.panel h2{margin:0 0 18px;font-size:24px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.full{grid-column:1/-1}label{display:grid;gap:7px;font-size:13px;color:#a9becb}
+input,select,textarea,button{font:inherit;border-radius:12px}input,select,textarea{width:100%;padding:12px 13px;border:1px solid #34505f;background:#08151d;color:#f5fbff;outline:none}
+textarea{min-height:120px;resize:vertical}input:focus,select:focus,textarea:focus{border-color:#64d8ff;box-shadow:0 0 0 3px rgba(100,216,255,.12)}
+button{border:0;padding:13px 16px;font-weight:900;cursor:pointer}.primary{background:#63dcff;color:#051016}.secondary{background:#183040;color:#dff6ff}.danger{background:#40212a;color:#ffd9e1}
+.actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}.status{margin-top:14px;padding:12px 14px;border-radius:12px;background:#0b1821;border:1px solid #28414f;color:#bdd4df;min-height:46px}
+.doc{white-space:pre-wrap;background:#f7f9fb;color:#111b23;border-radius:16px;padding:20px;min-height:420px;max-height:680px;overflow:auto;line-height:1.55}
+.kicker{font-size:12px;font-weight:900;letter-spacing:.12em;color:#68dfff}.small{font-size:12px;color:#8ea8b7;line-height:1.5}.ok{color:#7ef0b4}.bad{color:#ff9eae}
+@media(max-width:860px){.hero,.main{grid-template-columns:1fr}.grid{grid-template-columns:1fr}.full{grid-column:auto}.nav{margin-bottom:32px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="nav"><div class="brand">IZAKHONO DOCFLOW</div><div class="badge">SUPER AI × FLOWIQ</div></div>
+  <section class="hero">
+    <div>
+      <div class="kicker">NO CODE. NO JARGON. JUST DONE.</div>
+      <h1>The AI <span>drafts.</span><br>You confirm.</h1>
+      <p>Create business documents from a plain-language brief, review every word, then approve the next action. Human confirmation is mandatory before a document moves into an approval or sending workflow.</p>
+    </div>
+    <div class="hero-card">
+      <div class="steps">
+        <div class="step"><div class="n">1</div><div><b>Tell DOCFLOW what you need</b><div class="small">NDA, proposal, quotation, SLA, employment letter or supplier agreement.</div></div></div>
+        <div class="step"><div class="n">2</div><div><b>SUPER AI drafts</b><div class="small">Known business data is reused; missing facts remain visible instead of being invented.</div></div></div>
+        <div class="step"><div class="n">3</div><div><b>You approve</b><div class="small">FLOWIQ can queue signature, sending and follow-up only after explicit human confirmation.</div></div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="main">
+    <div class="panel">
+      <h2>Create a draft</h2>
+      <div class="grid">
+        <label class="full">Owner key<input id="secret" type="password" autocomplete="off" placeholder="DOCFLOW owner key"></label>
+        <label>Document type<select id="type">
+          <option value="nda">Non-Disclosure Agreement</option>
+          <option value="proposal">Business Proposal</option>
+          <option value="quotation">Quotation</option>
+          <option value="sla">Service Level Agreement</option>
+          <option value="employment_letter">Employment Letter</option>
+          <option value="supplier_agreement">Supplier Agreement</option>
+        </select></label>
+        <label>Workspace<input id="workspace" value="izakhono-africa"></label>
+        <label class="full">Legal entity<input id="entity" value="IZAKHONO AFRICA (PTY) LTD"></label>
+        <label>Party A<input id="partyA" value="IZAKHONO AFRICA (PTY) LTD"></label>
+        <label>Party B<input id="partyB" placeholder="Counterparty"></label>
+        <label>Effective date<input id="date" type="date"></label>
+        <label>Jurisdiction<input id="jurisdiction" value="South Africa"></label>
+        <label class="full">What do you need?<textarea id="brief" placeholder="Example: Mutual NDA for discussing FORTRESS with a bank. Protect product design, source code, fraud models, pricing, customer data and commercial discussions."></textarea></label>
+      </div>
+      <div class="actions"><button class="primary" id="draftBtn">Draft document</button></div>
+      <div class="status" id="status">Ready.</div>
+      <p class="small">DOCFLOW keeps legal entities/workspaces separated. AI output is always a working draft and requires human review. It does not autonomously sign a document.</p>
+    </div>
+
+    <div class="panel">
+      <div class="kicker" id="docMeta">DOCUMENT PREVIEW</div>
+      <h2 id="docTitle">No draft yet</h2>
+      <div class="doc" id="doc">Your draft will appear here.</div>
+      <div class="actions">
+        <button class="secondary" id="approveBtn" disabled>Approve</button>
+        <button class="primary" id="sendBtn" disabled>Approve &amp; queue send</button>
+        <button class="danger" id="rejectBtn" disabled>Reject</button>
+      </div>
+      <p class="small" id="delivery">“Queue send” is not the same as “sent”. Delivery is only claimed after the downstream workflow confirms it.</p>
+    </div>
+  </section>
+</div>
+<script>
+const $=s=>document.querySelector(s);let current=null;
+function secret(){return $('#secret').value.trim()}
+function headers(){return {'content-type':'application/json','x-docflow-secret':secret()}}
+function setStatus(msg,cls=''){const el=$('#status');el.className='status '+cls;el.textContent=msg}
+function controls(on){$('#approveBtn').disabled=!on;$('#sendBtn').disabled=!on;$('#rejectBtn').disabled=!on}
+function render(d){current=d;$('#docTitle').textContent=d.title||d.document_type;$('#docMeta').textContent=(d.status||'review').toUpperCase()+' · '+(d.ai_status||'');$('#doc').textContent=d.content_markdown||'';controls(d.status==='review')}
+async function call(path,opts={}){const r=await fetch(path,{...opts,headers:{...headers(),...(opts.headers||{})}});const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||('Request failed '+r.status));return d}
+$('#draftBtn').onclick=async()=>{try{setStatus('Drafting…');controls(false);const body={
+document_type:$('#type').value,workspace_id:$('#workspace').value,legal_entity:$('#entity').value,
+party_a:$('#partyA').value,party_b:$('#partyB').value,effective_date:$('#date').value,
+jurisdiction:$('#jurisdiction').value,instructions:$('#brief').value,title:$('#type').selectedOptions[0].text+' — '+($('#partyB').value||'Draft')
+};const d=await call('/api/drafts',{method:'POST',body:JSON.stringify(body)});render(d.draft);setStatus('Draft ready for human review.','ok')}catch(e){setStatus(e.message||String(e),'bad')}};
+async function act(name,confirm=false){if(!current)return;try{setStatus('Updating workflow…');const d=await call('/api/drafts/'+encodeURIComponent(current.id)+'/'+name,{method:'POST',body:JSON.stringify({approver:'Owner',confirm,note:''})});render(d.draft);setStatus(name==='approve-and-send'?'Approved. Send request queued; delivery not yet claimed.':'Workflow updated.','ok')}catch(e){setStatus(e.message||String(e),'bad')}}
+$('#approveBtn').onclick=()=>act('approve',true);$('#sendBtn').onclick=()=>act('approve-and-send',true);$('#rejectBtn').onclick=()=>act('reject',false);
+</script>
+</body>
+</html>
