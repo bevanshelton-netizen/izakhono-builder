@@ -1,0 +1,51 @@
+{
+  "schema": "izakhono.affiliate.autopilot.v1",
+  "engine": "IZAKHONO AFFILIATE",
+  "timezone": "Africa/Johannesburg",
+  "cadence": {
+    "internal": "daily 08:00 local",
+    "external_resilience": "0 6 * * * UTC"
+  },
+  "scheduler": {
+    "primary": "IZAKHONO TASKS",
+    "fallback": "GitHub Actions",
+    "policy": "owned-first-externally-reversible"
+  },
+  "network_watch": [
+    {"id":"awin","url":"https://www.awin.com/"},
+    {"id":"cj","url":"https://www.cj.com/"},
+    {"id":"impact","url":"https://impact.com/"},
+    {"id":"rakuten","url":"https://rakutenadvertising.com/"},
+    {"id":"flexoffers","url":"https://www.flexoffers.com/"},
+    {"id":"clickbank","url":"https://www.clickbank.com/"},
+    {"id":"ebay","url":"https://partnernetwork.ebay.com/"},
+    {"id":"tradedoubler","url":"https://www.tradedoubler.com/"},
+    {"id":"partnerize","url":"https://partnerize.com/"},
+    {"id":"2checkout","url":"https://www.2checkout.com/"}
+  ],
+  "automatic_tasks": [
+    "validate_engine_contract",
+    "check_public_network_reachability",
+    "record_adapter_health_report",
+    "raise_or_update_exception_issue",
+    "close_recovered_exception_issue",
+    "run_authenticated_adapter_sync_when_credentials_exist",
+    "pause_adapter_on_failed_authenticated_health_check",
+    "reconcile_verified_conversion_and_commission_events",
+    "send_verified_financial_events_to_SUPER_ACCOUNTANT",
+    "send partner and lead records to portfolio CRM",
+    "run FORTRESS checks before payout eligibility"
+  ],
+  "owner_gates": [
+    "accept third-party legal terms",
+    "submit banking or tax identity information",
+    "authorise paid media spend",
+    "approve material commission-economics changes",
+    "release disputed or exceptional payouts"
+  ],
+  "reporting": {
+    "mode": "exception-only",
+    "persist_health_artifact": true,
+    "notify_on_recovery": true
+  }
+}
