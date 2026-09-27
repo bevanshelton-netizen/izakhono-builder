@@ -14,6 +14,9 @@ if (cfg.tracking?.consent_and_disclosure_required !== true) errors.push('affilia
 if (cfg.payouts?.verified_conversion_required !== true) errors.push('payouts require verified conversion');
 if (cfg.payouts?.fraud_clearance_required !== true) errors.push('payouts require fraud clearance');
 if (cfg.launch_policy?.no_external_adapter_may_become_system_of_record !== true) errors.push('external adapters cannot become system of record');
+if (cfg.super_app_module?.embedded !== true) errors.push('affiliate must be embedded in IZAKHONO SUPER APP');
+if (cfg.super_app_module?.route !== '/affiliate') errors.push('affiliate SUPER APP route must be /affiliate');
+if (cfg.super_app_module?.engine !== 'independent') errors.push('affiliate engine must remain independently deployable');
 
 const automatic = new Set(cfg.autonomy?.automatic || []);
 const gated = new Set(cfg.autonomy?.requires_owner_or_authorised_officer || []);
