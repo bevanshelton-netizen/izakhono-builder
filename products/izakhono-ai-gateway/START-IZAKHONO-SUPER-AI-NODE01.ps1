@@ -30,6 +30,23 @@ if (-not $subscriberAccessConfigured -and -not $workflowConfigured) {
 
 if ([string]::IsNullOrWhiteSpace($env:IZAKHONO_AI_OWNER_ONLY)) { $env:IZAKHONO_AI_OWNER_ONLY = "true" }
 if ([string]::IsNullOrWhiteSpace($env:IZAKHONO_AI_ALLOW_EXTERNAL)) { $env:IZAKHONO_AI_ALLOW_EXTERNAL = "false" }
+
+$externalRequested = (
+  $env:IZAKHONO_AI_ALLOW_EXTERNAL -eq "true" -and
+  $env:IZAKHONO_AI_OWNER_ONLY -eq "false"
+)
+if ($externalRequested) {
+  foreach ($required in @(
+    "IZAKHONO_AI_EXTERNAL_TEXT_URL",
+    "IZAKHONO_AI_EXTERNAL_TEXT_API_KEY",
+    "IZAKHONO_AI_EXTERNAL_TEXT_MODEL"
+  )) {
+    $value = [Environment]::GetEnvironmentVariable($required)
+    if ([string]::IsNullOrWhiteSpace($value)) {
+      Fail "$required must be set when external AI development routing is requested"
+    }
+  }
+}
 if ([string]::IsNullOrWhiteSpace($env:IZAKHONO_AI_CHAT_MODEL)) { $env:IZAKHONO_AI_CHAT_MODEL = "qwen3:4b" }
 if ([string]::IsNullOrWhiteSpace($env:IZAKHONO_AI_REASONING_MODEL)) { $env:IZAKHONO_AI_REASONING_MODEL = $env:IZAKHONO_AI_CHAT_MODEL }
 if ([string]::IsNullOrWhiteSpace($env:IZAKHONO_AI_CODE_MODEL)) { $env:IZAKHONO_AI_CODE_MODEL = $env:IZAKHONO_AI_CHAT_MODEL }
@@ -58,10 +75,10 @@ if ($existing) {
     $probeHeaders = @{ "x-izakhono-ai-key" = $env:IZAKHONO_AI_GATEWAY_INTERNAL_KEY }
     $probe = Invoke-RestMethod -Uri "http://127.0.0.1:9595/api/v1/capabilities" -Headers $probeHeaders -TimeoutSec 3
     if (-not $probe.ok) { $needsRestart = $true }
-    if ($workflowConfigured) {
-      $h = Invoke-RestMethod -Uri "http://127.0.0.1:9595/healthz" -TimeoutSec 3
-      if (-not $h.workflow_mode_configured) { $needsRestart = $true }
-    }
+    $h = Invoke-RestMethod -Uri "http://127.0.0.1:9595/healthz" -TimeoutSec 3
+    if ($workflowConfigured -and -not $h.workflow_mode_configured) { $needsRestart = $true }
+    if ($externalRequested -and -not $h.external_ai_providers_enabled) { $needsRestart = $true }
+    if (-not $externalRequested -and $h.external_ai_providers_enabled) { $needsRestart = $true }
   } catch {
     $needsRestart = $true
   }
@@ -97,6 +114,8 @@ if (-not $health -or -not $health.ok) { Fail "Local health gate did not pass" }
   "WORKFLOW_MODE_CONFIGURED=$($health.workflow_mode_configured)"
   "SUBSCRIBER_ACCESS_CONFIGURED=$subscriberAccessConfigured"
   "CAPABILITIES_READY=$([string]::Join(',', @($health.capabilities_ready)))"
+  "EXTERNAL_AI_ENABLED=$($health.external_ai_providers_enabled)"
+  "EXTERNAL_AI_PROVIDER=$($health.external_ai_provider)"
   "MEDIA_BACKENDS=VERIFY_WITH_/api/v1/capabilities"
   "NOTE=Local gateway proof is not public-live proof."
   "TIME=$([DateTime]::UtcNow.ToString('o'))"
