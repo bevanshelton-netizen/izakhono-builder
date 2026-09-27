@@ -60,7 +60,7 @@
   }
 
   function initNavigation(){
-    el("menuBtn").addEventListener("click", function(){ el("siteNav").classList.toggle("open"); });
+    el("menuBtn").addEventListener("click", function(){ el("siteNav").classList.toggle("open"); });\n    el("shareBtn").addEventListener("click", shareProduct);
     all(".start-app").forEach(function(btn){ btn.addEventListener("click", openWorkspace); });
     el("closeWorkspace").addEventListener("click", closeWorkspace);
     all(".workspace-tab").forEach(function(btn){
@@ -71,7 +71,7 @@
     });
   }
 
-  function openWorkspace(){
+  function shareProduct(){\n    var payload = {title:"IZAKHONO BUSINESS AI",text:"A privacy-first business assistant for clients, quotes, invoices, diagnostics and decision rehearsal.",url:window.location.href};\n    if(navigator.share){ navigator.share(payload).catch(function(){}); return; }\n    if(navigator.clipboard){ navigator.clipboard.writeText(window.location.href).then(function(){ toast("Link copied."); }); return; }\n    toast("Copy the page address to share.");\n  }\n\n  function openWorkspace(){
     el("workspace").classList.remove("hidden");
     document.body.style.overflow = "hidden";
     el("workspace").scrollIntoView({behavior:"instant"});
