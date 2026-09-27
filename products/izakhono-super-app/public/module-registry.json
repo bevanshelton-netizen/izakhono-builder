@@ -1,7 +1,7 @@
 {
   "schema": "izakhono.super-app.module-registry.v1",
   "product": "IZAKHONO SUPER APP",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "infrastructure_policy": "owned-first-externally-reversible",
   "privacy": {
     "behavioural_tracking": false,
@@ -17,6 +17,16 @@
       "status": "available",
       "engine": "independent",
       "description": "One-sentence app, website, game and software factory with owned source, deterministic validation and internal repository commits."
+    },
+    {
+      "id": "creator",
+      "name": "IZAKHONO Creator Engine",
+      "category": "Creator + Campaigns",
+      "route": "/creator",
+      "status": "integrated",
+      "engine": "orchestrated-independent-engines",
+      "canonical_contract": "../creator-engine.v1.json",
+      "description": "One-command creator workspace joining ideas, writing, research, design, image, video, audio and automation while each underlying IZAKHONO engine remains independently deployable."
     },
     {
       "id": "affiliate",
@@ -187,5 +197,77 @@
       "Change commission rates with material financial impact",
       "Release disputed or exceptional payouts"
     ]
+  },
+  "creator_engine": {
+    "schema": "izakhono.creator-engine.v1",
+    "embedded": true,
+    "route": "/creator",
+    "status": "integration-installed",
+    "public_live": false,
+    "principle": "one brief -> plan -> create -> adapt -> approve -> distribute -> measure",
+    "capabilities": [
+      {
+        "id": "ideas",
+        "name": "Ideas & planning",
+        "handoff": "IZAKHONO SUPER AI",
+        "state": "contract-ready"
+      },
+      {
+        "id": "writing",
+        "name": "Writing & copy",
+        "handoff": "IZAKHONO SUPER AI",
+        "state": "contract-ready"
+      },
+      {
+        "id": "research",
+        "name": "Research & SEO",
+        "handoff": "IZAKHONO SUPER AI",
+        "state": "contract-ready"
+      },
+      {
+        "id": "design",
+        "name": "Design & images",
+        "handoff": "IZAKHONO CREATE",
+        "state": "available"
+      },
+      {
+        "id": "video",
+        "name": "Video & shorts",
+        "handoff": "IZAKHONO SHORTS FACTORY",
+        "state": "available"
+      },
+      {
+        "id": "audio",
+        "name": "Audio & voice",
+        "handoff": "IZAKHONO SUPER AI",
+        "state": "needs_backend"
+      },
+      {
+        "id": "automation",
+        "name": "Automation & publishing",
+        "handoff": "IZAKHONO FLOW + SOCIAL + ADS",
+        "state": "integration-contract"
+      }
+    ],
+    "handoffs": [
+      "IZAKHONO SUPER AI",
+      "IZAKHONO CREATE",
+      "IZAKHONO SHORTS FACTORY",
+      "IZAKHONO FLOW",
+      "IZAKHONO SOCIAL",
+      "IZAKHONO ADS",
+      "IZAKHONO Affiliate",
+      "FORTRESS"
+    ],
+    "safety": {
+      "owned_first": true,
+      "external_adapters_replaceable": true,
+      "behavioural_tracking": false,
+      "advertising_ids": false,
+      "raw_prompt_persistence": false,
+      "paid_spend_requires_authorisation": true,
+      "publishing_requires_approved_channel_credentials": true,
+      "media_live_claim_requires_reachable_asset": true
+    }
   }
 }

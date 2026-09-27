@@ -3,6 +3,7 @@ interface Env { ASSETS: Fetcher; APP_ENV?: string; }
 
 const modules = [
   { id:"builder", name:"IZAKHONO BUILDER AI", route:"/builder", status:"available", engine:"independent" },
+  { id:"creator", name:"IZAKHONO Creator Engine", route:"/creator", status:"integrated", engine:"orchestrated-independent-engines" },
   { id:"affiliate", name:"IZAKHONO Affiliate", route:"/affiliate", status:"integrated", engine:"independent" },
   { id:"create", name:"IZAKHONO CREATE", route:"/create", status:"available", engine:"independent" },
   { id:"ads", name:"IZAKHONO ADS", route:"/ads", status:"available", engine:"independent" },
@@ -13,6 +14,25 @@ const modules = [
   { id:"flowiq", name:"FLOWIQ", route:"/flowiq", status:"architecture-ready", engine:"independent" },
   { id:"tasks", name:"IZAKHONO TASKS", route:"/tasks", status:"architecture-ready", engine:"independent" }
 ];
+
+const creator = {
+  module_id:"creator",
+  embedded:true,
+  route:"/creator",
+  engine:"orchestrated-independent-engines",
+  source_of_truth:"products/izakhono-super-app/creator-engine.v1.json",
+  public_status:"integration-installed-public-live-gated",
+  principle:"one brief -> plan -> create -> adapt -> approve -> distribute -> measure",
+  capabilities:["ideas","writing","research","design","image","video","audio","automation"],
+  handoffs:["izakhono-super-ai","izakhono-create","izakhono-shorts","izakhono-flow","izakhono-social","izakhono-ads","izakhono-affiliate","fortress"],
+  owned_first:true,
+  external_adapters_replaceable:true,
+  behavioural_profiling:false,
+  advertising_ids:false,
+  raw_prompt_persistence:false,
+  paid_spend_requires_authorisation:true,
+  publishing_requires_approved_channel_credentials:true
+};
 
 const flow = {
   module_id:"flow",
@@ -54,10 +74,13 @@ export default {
   async fetch(req: Request, env: Env): Promise<Response> {
     const url=new URL(req.url);
     if(url.pathname==="/api/health"){
-      return json({ok:true,service:"IZAKHONO SUPER APP",version:"1.1.0",env:env.APP_ENV||"production",owned_first:true});
+      return json({ok:true,service:"IZAKHONO SUPER APP",version:"1.2.0",env:env.APP_ENV||"production",owned_first:true});
     }
     if(url.pathname==="/api/modules"){
       return json({ok:true,modules});
+    }
+    if(url.pathname==="/api/creator/status"){
+      return json({ok:true,creator});
     }
     if(url.pathname==="/api/affiliate/status"){
       return json({ok:true,affiliate});

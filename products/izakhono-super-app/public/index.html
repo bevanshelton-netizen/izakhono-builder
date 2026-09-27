@@ -17,6 +17,7 @@
       </div>
       <nav>
         <button class="nav active" data-view="home">Overview</button>
+        <button class="nav" data-view="creator">Creator Engine</button>
         <button class="nav" data-view="affiliate">Affiliate</button>
         <button class="nav" data-view="automation">Automation</button>
         <button class="nav" data-view="portfolio">Portfolio</button>
@@ -37,6 +38,7 @@
         </div>
         <div class="badges">
           <span class="badge good">OWNED-FIRST</span>
+          <span class="badge gold">CREATOR ENGINE</span>
           <span class="badge">NO TRACKING</span>
           <span class="badge gold">AFFILIATE BUILT IN</span>
           <span class="badge good">FLOW BUILT IN</span>
@@ -47,10 +49,11 @@
         <div class="hero">
           <div>
             <p class="eyebrow light">PORTFOLIO COMMAND</p>
-            <h2>Run the portfolio from one place.</h2>
-            <p>Affiliate income, IZAKHONO partner commissions, campaigns, CRM, accounting, fraud protection and the FLOW lead-to-cash operating chain are surfaced through one owner-controlled interface.</p>
+            <h2>Run the portfolio — and create from one brief.</h2>
+            <p>The Creator Engine joins ideas, writing, research, design, image, video, audio and automation with Affiliate, CRM, accounting, fraud protection and the FLOW lead-to-cash operating chain.</p>
             <div class="actions">
-              <button class="primary" data-jump="affiliate">Open Affiliate Engine</button>
+              <button class="primary" data-jump="creator">Open Creator Engine</button>
+              <button class="secondary" data-jump="affiliate">Open Affiliate Engine</button>
               <button class="secondary" data-jump="portfolio">View Portfolio Modules</button>
             </div>
           </div>
@@ -58,7 +61,7 @@
         </div>
 
         <div class="metrics">
-          <article><span>Core modules</span><strong id="metricModules">9</strong><small>one operating surface</small></article>
+          <article><span>Core modules</span><strong id="metricModules">11</strong><small>one operating surface</small></article>
           <article><span>Affiliate adapters</span><strong id="metricAdapters">10</strong><small>replaceable external connectors</small></article>
           <article><span>Tracking profile</span><strong>0</strong><small>behavioural profiles</small></article>
           <article><span>Owner gates</span><strong>5</strong><small>high-impact actions protected</small></article>
@@ -85,6 +88,66 @@
             </ul>
           </article>
         </div>
+      </section>
+
+      <section id="creator" class="view">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">ONE BRIEF → COMPLETE CAMPAIGN WORKFLOW</p>
+            <h2>IZAKHONO Creator Engine</h2>
+            <p>Use one instruction to build a controlled campaign plan across SUPER AI, CREATE, SHORTS, FLOW, SOCIAL, ADS, Affiliate and FORTRESS. The engines remain independently deployable.</p>
+          </div>
+          <span class="badge good">INTEGRATION INSTALLED</span>
+        </div>
+
+        <div class="creator-command panel">
+          <div class="command-copy">
+            <span class="kicker">CREATOR COMMAND</span>
+            <h3>What do you want to create?</h3>
+            <p>Example: “Launch a 30-day campaign for my plumbing business.”</p>
+          </div>
+          <textarea id="creatorBrief" rows="4" placeholder="Describe the business, product, audience and campaign goal..."></textarea>
+          <div class="command-row">
+            <label>Primary goal
+              <select id="creatorGoal">
+                <option value="sales">Generate sales</option>
+                <option value="leads">Generate leads</option>
+                <option value="awareness">Build awareness</option>
+                <option value="launch">Launch a product</option>
+                <option value="retention">Retain customers</option>
+              </select>
+            </label>
+            <label>Campaign length
+              <select id="creatorLength">
+                <option value="7">7 days</option>
+                <option value="14">14 days</option>
+                <option value="30" selected>30 days</option>
+                <option value="90">90 days</option>
+              </select>
+            </label>
+          </div>
+          <div class="actions">
+            <button id="planCreator" class="primary">Build campaign workflow</button>
+            <button id="clearCreator" class="secondary">Clear</button>
+          </div>
+          <p id="creatorStatus" class="status-line">Planning is available now. Media generation, publishing and paid distribution remain gated by the health and approval state of their independent engines.</p>
+        </div>
+
+        <div class="grid two creator-grid">
+          <article class="panel">
+            <div class="panel-head"><h3>Creator capabilities</h3><span class="badge">7 CAPABILITIES</span></div>
+            <div id="creatorCapabilityGrid" class="capability-grid"></div>
+          </article>
+          <article class="panel">
+            <div class="panel-head"><h3>Engine handoffs</h3><span class="badge good">OWNED-FIRST</span></div>
+            <div id="creatorHandoffs" class="handoff-list"></div>
+          </article>
+        </div>
+
+        <article class="panel creator-plan-panel">
+          <div class="panel-head"><h3>Campaign workflow preview</h3><span class="badge gold">NO SPEND / NO PUBLISH</span></div>
+          <div id="creatorPlan" class="creator-plan-empty">Enter a brief and build the workflow. The preview creates an execution map only; it does not spend money, accept third-party terms or publish content.</div>
+        </article>
       </section>
 
       <section id="affiliate" class="view">

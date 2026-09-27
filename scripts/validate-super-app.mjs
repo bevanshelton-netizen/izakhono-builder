@@ -3,9 +3,11 @@ import fs from 'node:fs';
 const regPath='products/izakhono-super-app/public/module-registry.json';
 const affiliatePath='products/izakhono-affiliate/affiliate-engine.v1.json';
 const flowPath='products/izakhono-flow/.izakhono.json';
+const creatorPath='products/izakhono-super-app/creator-engine.v1.json';
 const registry=JSON.parse(fs.readFileSync(regPath,'utf8'));
 const affiliate=JSON.parse(fs.readFileSync(affiliatePath,'utf8'));
 const flow=JSON.parse(fs.readFileSync(flowPath,'utf8'));
+const creator=JSON.parse(fs.readFileSync(creatorPath,'utf8'));
 const errors=[];
 
 if(registry.schema!=='izakhono.super-app.module-registry.v1') errors.push('unexpected SUPER APP registry schema');
@@ -22,6 +24,27 @@ else {
   if(aff.status!=='integrated') errors.push('affiliate module must be integrated');
   if(aff.engine!=='independent') errors.push('affiliate engine must remain independent');
 }
+
+const creatorModule=modules.get('creator');
+if(!creatorModule) errors.push('Creator Engine module missing from SUPER APP');
+else {
+  if(creatorModule.route!=='/creator') errors.push('Creator Engine route must be /creator');
+  if(creatorModule.status!=='integrated') errors.push('Creator Engine module must be integrated');
+  if(creatorModule.engine!=='orchestrated-independent-engines') errors.push('Creator Engine must preserve independent underlying engines');
+}
+if(creator.schema!=='izakhono.creator-engine.v1') errors.push('unexpected Creator Engine contract schema');
+if(creator.policy?.owned_first!==true) errors.push('Creator Engine must remain owned-first');
+if(creator.policy?.external_adapters_replaceable!==true) errors.push('Creator Engine external adapters must remain replaceable');
+if(creator.policy?.no_behavioural_tracking!==true) errors.push('Creator Engine behavioural tracking must remain disabled');
+if(creator.policy?.no_advertising_ids!==true) errors.push('Creator Engine advertising IDs must remain disabled');
+if(creator.policy?.no_raw_prompt_persistence!==true) errors.push('Creator Engine raw prompt persistence must remain disabled');
+if(creator.launch_truth?.public_live!==false) errors.push('Creator Engine cannot be marked public-live without independent verification');
+const capabilityIds=new Set((creator.capabilities||[]).map(x=>x.id));
+for(const required of ['ideas','writing','research','design','video','audio','automation']){
+  if(!capabilityIds.has(required)) errors.push('Creator Engine capability missing: '+required);
+}
+if(registry.creator_engine?.route!=='/creator') errors.push('SUPER APP creator_engine registry route drift');
+if(registry.creator_engine?.public_live!==false) errors.push('SUPER APP registry must not claim Creator Engine public-live');
 
 const flowModule=modules.get('flow');
 if(!flowModule) errors.push('IZAKHONO FLOW module missing from SUPER APP');
@@ -61,6 +84,9 @@ console.log(JSON.stringify({
   product:registry.product,
   modules:registry.modules.length,
   affiliate_embedded:true,
+  creator_embedded:true,
+  creator_route:'/creator',
+  creator_capabilities:creator.capabilities.length,
   flow_embedded:true,
   flow_route:'/flow',
   affiliate_route:'/affiliate',
