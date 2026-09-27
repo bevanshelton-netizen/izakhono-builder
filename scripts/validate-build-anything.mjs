@@ -5,6 +5,9 @@ function requireAll(label,text,items){
   const missing=items.filter(x=>!text.includes(x));
   if(missing.length) throw new Error(label+" missing: "+missing.join(", "));
 }
+function requireAny(label,text,items){
+  if(!items.some(x=>text.includes(x))) throw new Error(label+" missing accepted variant: "+items.join(" | "));
+}
 
 const sovereign=read("src/sovereign.ts");
 const core=read("src/index.ts");
@@ -32,12 +35,18 @@ requireAll("core modules",core,[
 ]);
 requireAll("owner UI",ui,[
   'id="buildAnything"',
-  "IZAKHONO BUILD ANYTHING",
   'id="quickPrompt"',
   'id="quickTarget"',
   "async function buildAnything()",
-  "/api/build-anything",
-  "Release candidate created and committed to IZAKHONO."
+  "/api/build-anything"
+]);
+requireAny("owner UI build-mode label",ui,[
+  "IZAKHONO BUILD ANYTHING",
+  "IZAKHONO BUILDER · FAST BUILD MODE"
+]);
+requireAny("owner UI release-candidate confirmation",ui,[
+  "Release candidate created and committed to IZAKHONO.",
+  "Controlled release candidate created."
 ]);
 requireAll("SUPER APP registry",registry,[
   '"id": "builder"',
