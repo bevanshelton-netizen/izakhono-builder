@@ -44,6 +44,8 @@ const MODULES = {
   growth: { label: 'CEO Growth Engine', detail: 'Acquisition, activation, retention, referral, revenue and partnership growth contract.' },
   affiliate: { label: 'IZAKHONO AFFILIATE', detail: 'Owned-first affiliate, referral, attribution, partner commission and external-network adapter engine.' },
   docflow: { label: 'IZAKHONO DOCFLOW', detail: 'Human-approved AI document drafting, approvals, signatures, sending, reminders and audit trails.' },
+  game: { label: 'Game Engine', detail: 'Browser-first gameplay shell, scenes, scoring, progression and keyboard/touch input.' },
+  seo: { label: 'SEO & Discovery', detail: 'Search-ready metadata, sitemap/robots structure and share-card foundations.' },
 } as const;
 type ModuleKey = keyof typeof MODULES;
 
@@ -121,6 +123,8 @@ function buildRecipe(project: any, modules: ModuleKey[]) {
   if (modules.includes('growth')) architecture.push('CEO growth contract: acquisition + activation + retention + referral + revenue + partnerships; CREATE -> ADS distribution governance');
   if (modules.includes('affiliate')) architecture.push('IZAKHONO AFFILIATE: owned-first offer catalogue + SubID attribution + partner commission ledger + replaceable external network adapters + FORTRESS/accounting gates');
   if (modules.includes('docflow')) architecture.push('IZAKHONO DOCFLOW: SUPER AI drafting adapter + FLOWIQ approval workflow + signatures/send adapters + immutable audit trail');
+  if (modules.includes('game')) architecture.push('browser-first game runtime shell with keyboard/touch input, scoring and progression hooks');
+  if (modules.includes('seo')) architecture.push('search/discovery foundation: metadata, robots, sitemap and social share-card contract');
 
   return {
     engine: 'IZAKHONO BUILDER',
