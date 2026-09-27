@@ -4,14 +4,15 @@
   "private": true,
   "scripts": {
     "dev": "wrangler dev",
-    "typecheck": "tsc --noEmit --target ES2022 --lib ES2022,DOM,DOM.Iterable --module ESNext src/index.ts && tsc --noEmit --target ES2022 --lib ES2022,DOM,DOM.Iterable --module ESNext src/repository.ts src/internal-repository.ts && tsc --noEmit --noCheck --target ES2022 --lib ES2022,DOM,DOM.Iterable --module ESNext src/secure.ts src/sovereign.ts && tsc --noEmit --target ES2022 --lib ES2022,DOM --module ESNext products/izakhono-docflow/src/index.ts",
+    "typecheck": "tsc --noEmit --target ES2022 --lib ES2022,DOM,DOM.Iterable --module ESNext src/index.ts && tsc --noEmit --target ES2022 --lib ES2022,DOM,DOM.Iterable --module ESNext src/repository.ts src/internal-repository.ts && tsc --noEmit --noCheck --target ES2022 --lib ES2022,DOM,DOM.Iterable --module ESNext src/secure.ts src/sovereign.ts && tsc --noEmit --target ES2022 --lib ES2022,DOM --module ESNext products/izakhono-docflow/src/index.ts && tsc --noEmit --target ES2022 --lib ES2022,DOM --module ESNext products/izakhono-super-app/src/index.ts",
     "deploy:first": "wrangler deploy",
     "db:migrate": "wrangler d1 migrations apply DB --remote",
     "deploy": "wrangler deploy && wrangler d1 migrations apply DB --remote && wrangler deploy",
-    "validate": "npm run validate:portfolio-growth && npm run validate:affiliate && npm run validate:mail && npm run typecheck && wrangler deploy --dry-run",
+    "validate": "npm run validate:portfolio-growth && npm run validate:affiliate && npm run validate:super-app && npm run validate:mail && npm run typecheck && wrangler deploy --dry-run",
     "validate:portfolio-growth": "node --check products/izakhono-ads/app.js && node scripts/validate-portfolio-growth.mjs && node scripts/validate-wave1-conversion.mjs",
     "validate:mail": "node infra/mail-stack/verify.mjs",
-    "validate:affiliate": "node scripts/validate-affiliate-engine.mjs"
+    "validate:affiliate": "node scripts/validate-affiliate-engine.mjs",
+    "validate:super-app": "node --check products/izakhono-super-app/public/app.js && node scripts/validate-super-app.mjs"
   },
   "devDependencies": {
     "typescript": "5.9.2",
