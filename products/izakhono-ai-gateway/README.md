@@ -134,6 +134,56 @@ Trust boundary:
 - `IZAKHONO_AI_OWNER_HOSTS=127.0.0.1,localhost` plus any explicitly approved owner hostnames
 - `IZAKHONO_AI_ALLOW_EXTERNAL=false` by default
 
+## Optional external text route
+
+The gateway now supports an **explicit, protected OpenAI-compatible outbound text adapter** for development, benchmarking and resilience testing.
+
+It remains off unless all of these conditions are true:
+
+- `IZAKHONO_AI_ALLOW_EXTERNAL=true`
+- `IZAKHONO_AI_OWNER_ONLY=false`
+- the external base URL host is present in `IZAKHONO_AI_EXTERNAL_HOSTS`
+- a server-side API key and model are configured
+- the request explicitly sets `"route": "external"`
+- the request explicitly sets `"data_classification": "public"`
+
+Anything classified as internal, confidential or restricted is rejected before a prompt can be sent to the external adapter. There is no automatic external failover for private IZAKHONO workloads.
+
+Example development configuration for NVIDIA's OpenAI-compatible hosted endpoint:
+
+```text
+IZAKHONO_AI_ALLOW_EXTERNAL=true
+IZAKHONO_AI_OWNER_ONLY=false
+IZAKHONO_AI_EXTERNAL_TEXT_PROVIDER=nvidia-nim
+IZAKHONO_AI_EXTERNAL_TEXT_URL=https://integrate.api.nvidia.com/v1
+IZAKHONO_AI_EXTERNAL_TEXT_API_KEY=<server-side secret>
+IZAKHONO_AI_EXTERNAL_TEXT_MODEL=nvidia/nemotron-3-ultra-550b-a55b
+IZAKHONO_AI_EXTERNAL_TEXT_MODELS=nvidia/nemotron-3-ultra-550b-a55b
+IZAKHONO_AI_EXTERNAL_HOSTS=integrate.api.nvidia.com
+```
+
+A request that intentionally uses that public-data route can include:
+
+```json
+{
+  "entity_id": "izakhono-africa",
+  "product": "izakhono-builder",
+  "access_mode": "workflow",
+  "capability": "code",
+  "route": "external",
+  "data_classification": "public",
+  "messages": [{"role":"user","content":"Review this public example."}]
+}
+```
+
+This adapter is a replaceable development/resilience route, not a change to the owned-first default.
+
+## DeepSeek Harness evaluation
+
+DeepSeek Harness is treated as a **replaceable developer-preview coding agent**, not as trusted production infrastructure. IZAKHONO CODE includes an isolated evaluation launcher and policy in `products/izakhono-code/DEEPSEEK-HARNESS-SANDBOX.md`.
+
+The Harness sandbox must not be pointed at production repositories, secrets, FORTRESS intelligence, customer records or unpublished proprietary source. Its workspace and `DSH_HOME` are isolated under `C:\ProgramData\Izakhono\HarnessSandbox` on Windows.
+
 ## Subscriber rule
 
 An active subscription is not converted into a second hidden message-credit system. Responses continue to report:
