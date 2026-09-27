@@ -48,6 +48,12 @@
       <div class="ey">CREATE</div><h2>New application</h2>
       <div class="lock"><b>Owner access:</b> enter the private builder admin secret once. It stays in this browser session and is never written into the website source.</div>
       <div class="field"><label>Builder admin secret</label><div class="secret"><input id="secret" type="password" autocomplete="off" placeholder="Private admin secret"><button class="btn" type="button" onclick="saveSecret()">Unlock</button></div></div>
+      <div class="field">
+        <label>Import IZAKHONO Builder handoff</label>
+        <div class="secret"><input id="handoffFile" type="file" accept=".json,application/json"><button class="btn" type="button" onclick="importHandoff()">Import handoff</button></div>
+        <div class="note">Accepts <code>izakhono.builder/handoff-v1</code>. Import creates a planned Owner project, inherits the mandatory portfolio modules and does not publish anything.</div>
+        <div class="message" id="handoffMsg"></div>
+      </div>
       <form id="createForm">
         <div class="field"><label>Application name</label><input name="name" placeholder="e.g. StudyPal" required></div>
         <div class="field"><label>Slug</label><input name="slug" placeholder="e.g. studypal" pattern="[a-z0-9]+(?:-[a-z0-9]+)*" required></div>
@@ -89,6 +95,26 @@ async function publishRepository(id){if(!state.capabilities?.github_repository_p
 function viewRecipe(id){const p=state.projects.get(id);if(!p?.recipe)return;showRecipe(p.recipe,p.name)}
 function showRecipe(r,name){modalEy.textContent='BUILD RECIPE';modalTitle.textContent=name;recipeSummary.textContent=`${(r.modules||[]).length} selected modules · ${r.infrastructure_policy||'free-first'} infrastructure · generated package ${r.generated?.repository_ready?'repository-ready':'not generated yet'}`;recipe.textContent=JSON.stringify(r,null,2);overlay.classList.add('on')}
 function closeModal(){overlay.classList.remove('on')}
+async function importHandoff(){
+  handoffMsg.className='message';
+  if(!state.secret){handoffMsg.className='message bad';handoffMsg.textContent='Unlock Owner Access first.';return}
+  const file=handoffFile.files?.[0];
+  if(!file){handoffMsg.className='message bad';handoffMsg.textContent='Choose an IZAKHONO handoff JSON file.';return}
+  if(file.size>262144){handoffMsg.className='message bad';handoffMsg.textContent='Handoff file is too large.';return}
+  handoffMsg.textContent='Validating handoff…';
+  try{
+    const payload=JSON.parse(await file.text());
+    if(payload?.schema!=='izakhono.builder/handoff-v1'||!payload?.builder_request)throw new Error('This is not an IZAKHONO Builder handoff-v1 file.');
+    const d=await api('/api/import-handoff',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload)});
+    handoffMsg.className='message good';
+    handoffMsg.textContent='Imported '+d.project.name+' as a planned Owner project. Nothing was published.';
+    handoffFile.value='';
+    await loadProjects();
+  }catch(err){
+    handoffMsg.className='message bad';
+    handoffMsg.textContent=err instanceof Error?err.message:'Unable to import handoff.';
+  }
+}
 createForm.addEventListener('submit',async e=>{e.preventDefault();createMsg.className='message';if(!state.secret){createMsg.className='message bad';createMsg.textContent='Unlock the builder first.';return}const fd=new FormData(createForm);const payload={name:fd.get('name'),slug:String(fd.get('slug')||'').toLowerCase(),category:fd.get('category'),description:fd.get('description'),modules:fd.getAll('module')};createMsg.textContent='Creating project…';try{const p=await api('/api/projects',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload)});await api(`/api/projects/${p.id}/plan`,{method:'POST'});createMsg.className='message good';createMsg.textContent='Project created and build plan generated. Generate the repository package from the build queue.';createForm.reset();await loadProjects()}catch(err){createMsg.className='message bad';createMsg.textContent=err.message}});
 health();loadModules();if(state.secret)unlockOwner();
 </script>

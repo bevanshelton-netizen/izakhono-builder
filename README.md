@@ -25,6 +25,14 @@ GitHub is therefore an optional mirror/export target rather than the owner of th
 
 See `docs/INTERNAL-REPOSITORIES-V1.md`.
 
+## Public Studio handoff v1
+
+The public IZAKHONO ONE Builder Studio can export an `izakhono.project.json` handoff with schema `izakhono.builder/handoff-v1`.
+
+The Owner Builder accepts that file through `POST /api/import-handoff` or the Owner UI import control. Import is authenticated, normalises module keys against the Builder registry, adds every mandatory portfolio baseline module, creates a **planned** project and generates its build recipe. Import does not deploy or publish the application.
+
+This keeps the public describe/preview/export experience separate from the trusted Owner build/repository/release path.
+
 ## Repository Autopilot v1
 
 Generated Worker applications leave the factory as repository-ready packages rather than loose source files. Each bundle includes least-privilege CI, a credential-gated isolated-preview workflow, private-by-default repository metadata, local-secret exclusions and a versioned Builder technical preview.
