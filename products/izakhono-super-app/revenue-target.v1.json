@@ -1,0 +1,32 @@
+{
+  "schema": "izakhono.super-app.revenue-target.v1",
+  "currency": "ZAR",
+  "weekly_target_cents": 2000000,
+  "target_status": "GOAL_NOT_GUARANTEE",
+  "counting_rule": "Only signature-valid, verified payment receipts with paid/success/completed status count.",
+  "initial_conversion_mix": [
+    {
+      "offer": "RE1 + RE5 Bundle",
+      "offer_code": "fais-bundle",
+      "unit_price_cents": 54900,
+      "weekly_units": 25,
+      "weekly_revenue_cents": 1372500
+    },
+    {
+      "offer": "FAISReady RE5",
+      "offer_code": "fais-re5",
+      "unit_price_cents": 29900,
+      "weekly_units": 21,
+      "weekly_revenue_cents": 627900
+    }
+  ],
+  "planned_mix_total_cents": 2000400,
+  "planned_transactions_per_week": 46,
+  "autonomous_watch": {
+    "scheduler": "pg_cron",
+    "schedule_utc": "0 6 * * *",
+    "schedule_sast": "08:00 daily",
+    "function": "public.izakhono_r20k_revenue_watch",
+    "task_key": "r20k-weekly-revenue-sprint"
+  }
+}
