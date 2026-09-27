@@ -1,0 +1,149 @@
+{
+  "product": "IZAKHONO HOST",
+  "currency": "ZAR",
+  "vat_note": "Prices shown include VAT unless enterprise quotation states otherwise.",
+  "benchmark_date": "2026-09-27",
+  "plans": {
+    "web_hosting": [
+      {
+        "id": "host-launch",
+        "name": "HOST Launch",
+        "monthly": 99,
+        "sites": 1,
+        "storage_gb": 10,
+        "mailboxes": 5,
+        "email_storage_gb": 10,
+        "features": [
+          "SSL",
+          "Daily backup",
+          "Webmail",
+          "IMAP/SMTP",
+          "Spam filtering",
+          "DNS management",
+          "Website Factory deploy"
+        ]
+      },
+      {
+        "id": "host-business",
+        "name": "HOST Business",
+        "monthly": 199,
+        "sites": 5,
+        "storage_gb": 30,
+        "mailboxes": 20,
+        "email_storage_gb": 40,
+        "features": [
+          "Everything in Launch",
+          "Staging",
+          "Database hosting",
+          "Priority restore",
+          "Shared aliases",
+          "CRM/form routing"
+        ]
+      },
+      {
+        "id": "host-scale",
+        "name": "HOST Scale",
+        "monthly": 349,
+        "sites": 10,
+        "storage_gb": 80,
+        "mailboxes": 50,
+        "email_storage_gb": 100,
+        "features": [
+          "Everything in Business",
+          "Priority support",
+          "Advanced backups",
+          "Higher resource limits",
+          "Deployment slots",
+          "Team administration"
+        ]
+      }
+    ],
+    "email_only": [
+      {
+        "id": "mail-start",
+        "name": "MAIL Start",
+        "monthly": 59,
+        "mailboxes": 5,
+        "storage_gb": 10,
+        "features": [
+          "Webmail",
+          "IMAP/SMTP",
+          "Spam & virus filtering",
+          "SSL/TLS",
+          "Daily backup",
+          "SPF/DKIM/DMARC setup"
+        ]
+      },
+      {
+        "id": "mail-business",
+        "name": "MAIL Business",
+        "monthly": 99,
+        "mailboxes": 20,
+        "storage_gb": 40,
+        "features": [
+          "Everything in Start",
+          "Aliases",
+          "Shared addresses",
+          "Migration assistance",
+          "Priority restore"
+        ]
+      },
+      {
+        "id": "mail-pro",
+        "name": "MAIL Pro",
+        "monthly": 199,
+        "mailboxes": 50,
+        "storage_gb": 100,
+        "features": [
+          "Everything in Business",
+          "Multi-domain support",
+          "Admin controls",
+          "Priority support"
+        ]
+      }
+    ],
+    "managed_websites": [
+      {
+        "id": "webstart-start",
+        "name": "Website Launch",
+        "setup": 999,
+        "monthly": 149,
+        "includes": "Professional website + HOST Launch"
+      },
+      {
+        "id": "webstart-business",
+        "name": "Website Business",
+        "setup": 2499,
+        "monthly": 249,
+        "includes": "Professional business site + HOST Business"
+      },
+      {
+        "id": "webstart-commerce",
+        "name": "Website Commerce",
+        "setup": 4999,
+        "monthly": 449,
+        "includes": "Commerce/advanced site + managed hosting"
+      }
+    ],
+    "domains": [
+      {
+        "tld": ".co.za",
+        "annual_from": 149,
+        "note": "Registration/renewal via approved registrar; final cost may change if registry pricing changes."
+      },
+      {
+        "tld": ".com",
+        "annual_from": 299,
+        "note": "Registration/renewal via approved registrar."
+      }
+    ]
+  },
+  "commercial_rules": {
+    "month_to_month": true,
+    "no_paid_ads_without_authority": true,
+    "no_tracking": true,
+    "migration_assistance": "Included for reasonable standard migrations; complex migrations quoted separately.",
+    "outbound_email": "Owned mailbox hosting with external SMTP relay permitted during reputation ramp-up.",
+    "enterprise": "Custom quote for high-volume websites, mailboxes, dedicated servers, compliance or SLA requirements."
+  }
+}
