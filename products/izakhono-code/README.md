@@ -43,9 +43,10 @@ The launcher uses a dedicated non-production workspace and dedicated `DSH_HOME`.
 The owner dashboard now reports read-only operational readiness for:
 
 - the local IZAKHONO SUPER AI health endpoint;
-- whether an external development adapter is enabled;
+- whether an external development adapter is enabled or ready to activate;
+- whether its local encrypted credential/configuration is present without exposing the credential;
 - the DeepSeek Harness isolated sandbox package;
-- the Oracle A1 auxiliary-worker bootstrap package.
+- whether the Oracle A1 auxiliary-worker package is merely prepared or a worker has actually been registered.
 
 The browser does **not** launch Harness or execute an AI agent. Harness remains a manual local sandbox so a compromised browser session cannot silently start a command-executing coding agent.
 
