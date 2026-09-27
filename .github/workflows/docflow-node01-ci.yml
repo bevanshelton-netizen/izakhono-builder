@@ -1,0 +1,109 @@
+name: IZAKHONO DOCFLOW NODE01 CI
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'products/izakhono-docflow/**'
+      - 'internal/node01-command-gateway/deploy-profiles/izakhono-docflow.json'
+      - '.github/workflows/docflow-node01-ci.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'products/izakhono-docflow/**'
+      - 'internal/node01-command-gateway/deploy-profiles/izakhono-docflow.json'
+      - '.github/workflows/docflow-node01-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  owned-runtime:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Static checks
+        shell: bash
+        run: |
+          node --check products/izakhono-docflow/src/node-server.mjs
+          bash -n products/izakhono-docflow/owner-node/prepare-env.sh
+          bash -n products/izakhono-docflow/owner-node/deploy-node01.sh
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=json.loads(Path('internal/node01-command-gateway/deploy-profiles/izakhono-docflow.json').read_text())
+          assert p['source']=='izakhono-code'
+          assert p['repository']=='izakhono-builder'
+          assert p['environment']=='production'
+          assert p['dockerfile']=='products/izakhono-docflow/Dockerfile.node'
+          assert p['health_path']=='/api/ready'
+          print('[PASS] DOCFLOW NODE01 profile is owned-first and readiness-gated.')
+          PY
+
+      - name: Build owned DOCFLOW container
+        run: docker build -f products/izakhono-docflow/Dockerfile.node -t izakhono-docflow-node01:ci .
+
+      - name: Start owned DOCFLOW canary
+        shell: bash
+        run: |
+          docker run -d --name docflow-node01-ci \
+            -e DOCFLOW_ADMIN_SECRET=ci-only-docflow-secret-not-production \
+            -e APP_ENV=ci \
+            -p 127.0.0.1:18081:8787 \
+            izakhono-docflow-node01:ci
+          for _ in $(seq 1 45); do
+            if curl -fsS http://127.0.0.1:18081/api/ready >/tmp/docflow-ready.json; then
+              cat /tmp/docflow-ready.json
+              exit 0
+            fi
+            sleep 2
+          done
+          docker logs docflow-node01-ci || true
+          exit 1
+
+      - name: Exercise draft + human approval gate
+        shell: bash
+        run: |
+          curl -fsS -X POST http://127.0.0.1:18081/api/drafts \
+            -H 'content-type: application/json' \
+            -H 'x-docflow-secret: ci-only-docflow-secret-not-production' \
+            --data '{"document_type":"nda","workspace_id":"ci","legal_entity":"IZAKHONO AFRICA (PTY) LTD","party_a":"IZAKHONO AFRICA (PTY) LTD","party_b":"CI Counterparty","jurisdiction":"South Africa","instructions":"CI validation draft only."}' \
+            >/tmp/docflow-draft.json
+          cat /tmp/docflow-draft.json
+          DRAFT_ID="$(python - <<'PY'
+          import json
+          d=json.load(open('/tmp/docflow-draft.json'))
+          assert d['ok'] is True
+          assert d['human_approval_required'] is True
+          assert d['draft']['status']=='review'
+          assert d['draft']['ai_status']=='fallback_template'
+          print(d['draft']['id'])
+          PY
+          )"
+
+          CODE="$(curl -sS -o /tmp/no-confirm.json -w '%{http_code}' -X POST \
+            "http://127.0.0.1:18081/api/drafts/$DRAFT_ID/approve" \
+            -H 'content-type: application/json' \
+            -H 'x-docflow-secret: ci-only-docflow-secret-not-production' \
+            --data '{"approver":"CI","confirm":false}')"
+          test "$CODE" = "400"
+
+          curl -fsS -X POST "http://127.0.0.1:18081/api/drafts/$DRAFT_ID/approve" \
+            -H 'content-type: application/json' \
+            -H 'x-docflow-secret: ci-only-docflow-secret-not-production' \
+            --data '{"approver":"CI","confirm":true}' >/tmp/approved.json
+          python - <<'PY'
+          import json
+          d=json.load(open('/tmp/approved.json'))
+          assert d['ok'] is True
+          assert d['draft']['status']=='approved'
+          print('[PASS] DOCFLOW owned runtime drafts locally and refuses approval without human confirmation.')
+          PY
+
+      - name: Stop canary
+        if: always()
+        run: docker rm -f docflow-node01-ci || true
