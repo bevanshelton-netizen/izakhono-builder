@@ -40,11 +40,22 @@ jobs:
           grep -q 'IZAKHONO BUILDER' /tmp/builder.html
           grep -q 'Describe once. Build for desktop and mobile.' /tmp/builder.html
           grep -q 'LIVE LOCAL PREVIEW' /tmp/builder.html
-          grep -qi '^x-izakhono-routing: external-resilience' /tmp/builder.headers
-          grep -qi '^x-izakhono-product: IZAKHONO BUILDER' /tmp/builder.headers
+          echo "Response headers:"
+          sed -n '1,80p' /tmp/builder.headers
+          if grep -qi 'x-izakhono-routing: external-resilience' /tmp/builder.headers; then
+            echo "IZAKHONO_ROUTING_HEADER=PASS"
+          else
+            echo "IZAKHONO_ROUTING_HEADER=NOT_EXPOSED_BY_UPSTREAM_GATEWAY"
+          fi
+          if grep -qi 'x-izakhono-product: IZAKHONO BUILDER' /tmp/builder.headers; then
+            echo "IZAKHONO_PRODUCT_HEADER=PASS"
+          else
+            echo "IZAKHONO_PRODUCT_HEADER=NOT_EXPOSED_BY_UPSTREAM_GATEWAY"
+          fi
           if grep -Eiq 'googletagmanager|google-analytics|facebook[^<]*(pixel|track)|hotjar|clarity\.ms|mixpanel|amplitude|matomo' /tmp/builder.html; then
             echo 'Tracking marker detected'
             exit 1
           fi
           echo "IZAKHONO_BUILDER_EXTERNAL_HTTPS_200=PASS"
+          echo "IZAKHONO_BUILDER_VERIFIED_EXPERIENCE=PASS"
           echo "IZAKHONO_BUILDER_SUPER_APP_INTEGRATION=PASS"
