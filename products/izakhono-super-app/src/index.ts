@@ -2,6 +2,7 @@ interface Fetcher { fetch(request: Request): Promise<Response>; }
 interface Env { ASSETS: Fetcher; APP_ENV?: string; }
 
 const modules = [
+  { id:"builder", name:"IZAKHONO BUILDER AI", route:"/builder", status:"available", engine:"independent" },
   { id:"affiliate", name:"IZAKHONO Affiliate", route:"/affiliate", status:"integrated", engine:"independent" },
   { id:"create", name:"IZAKHONO CREATE", route:"/create", status:"available", engine:"independent" },
   { id:"ads", name:"IZAKHONO ADS", route:"/ads", status:"available", engine:"independent" },
