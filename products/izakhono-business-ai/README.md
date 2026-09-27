@@ -2,7 +2,7 @@
 
 A privacy-first small-business operating assistant for South African SMEs.
 
-## What is built in v0.1
+## What is built in v0.2
 
 - Premium responsive landing page and workspace
 - Client register stored locally in the user's browser
@@ -10,7 +10,7 @@ A privacy-first small-business operating assistant for South African SMEs.
 - Email handoff using the device's configured mail client
 - AI correspondence writer with an IZAKHONO-owned/provider-neutral adapter boundary
 - Business Growth Diagnostic
-- Decision Lab for multi-perspective scenario rehearsal
+- Decision Lab v0.2 with evidence packets, evidence graph, deterministic agent personas, 2–5 reaction rounds, consensus/disagreement analysis, source hashes and JSON report export
 - JSON backup/export of local business data
 - No third-party analytics, advertising IDs or behavioural profiling
 - Independent Cloudflare Worker engine with /api/health
@@ -41,3 +41,29 @@ npm run dev
 npm run validate
 
 Do not describe the public product as live until its owned or external route independently returns HTTPS 200 and renders the verified experience.
+
+
+## Decision Lab v0.2
+
+Decision Lab now accepts a scenario, stakeholders, a time horizon and an optional evidence packet of text, Markdown, CSV or JSON files. The browser reads source files locally and sends them to the BUSINESS AI engine only when the owner runs the rehearsal.
+
+The engine:
+
+- hashes each accepted source with SHA-256;
+- derives a reproducible run ID from the simulation inputs;
+- extracts high-frequency evidence terms;
+- creates a lightweight evidence graph linking the scenario, sources, stakeholders and terms;
+- creates one deterministic agent persona for each stakeholder;
+- runs 2–5 reaction rounds with group influence;
+- reports final stance, risks, evidence gaps, consensus and disagreement;
+- exports the complete run as JSON.
+
+This is intentionally a structured rehearsal engine rather than a claim of prediction certainty. Outputs remain hypotheses until checked against real people, real operating data and real market evidence.
+
+### Current source boundary
+
+v0.2 supports text-based files up to the client/server safety limits. PDF extraction is not silently delegated to a third party; a privacy-preserving owned document-extraction adapter is the next planned capability.
+
+### MiroFish boundary
+
+MiroFish remains a research reference only. No MiroFish source code is imported. IZAKHONO Decision Lab is being implemented independently so the proprietary BUSINESS AI product retains its own architecture and licensing boundary.
