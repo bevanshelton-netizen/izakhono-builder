@@ -10,6 +10,14 @@ The application is deliberately self-contained: the customer workspace and Decis
 
 ## Deploy on NODE01
 
+Preferred activation:
+
+- Linux/NODE01: `sh ACTIVATE-BUSINESS-AI-NODE01.sh`
+- Windows owner host: double-click `ACTIVATE-BUSINESS-AI-NODE01.cmd` or run the PowerShell script directly.
+
+These scripts build, start, health-check and verify the local UI identity before telling you to proceed to EDGE/TLS.
+
+
 From `products/izakhono-business-ai/owned-runtime`:
 
 1. `docker compose build --pull`
