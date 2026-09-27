@@ -1,0 +1,5 @@
+<resources>
+    <color name="nav_background">#06100E</color>
+    <color name="nav_surface">#0E1B18</color>
+    <color name="nav_accent">#37E7B1</color>
+</resources>

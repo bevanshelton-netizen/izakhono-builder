@@ -1,0 +1,68 @@
+name: IZAKHONO NAV Android APK
+
+on:
+  pull_request:
+    paths:
+      - 'products/izakhono-nav/android/**'
+      - 'public/ai-core/nav/**'
+      - '.github/workflows/izakhono-nav-android.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'products/izakhono-nav/android/**'
+      - 'public/ai-core/nav/**'
+      - '.github/workflows/izakhono-nav-android.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.4.1'
+
+      - name: Install Android command-line tools + API 36
+        shell: bash
+        run: |
+          SDK="$RUNNER_TEMP/android-sdk"
+          ARCHIVE="$RUNNER_TEMP/commandlinetools.zip"
+          mkdir -p "$SDK/cmdline-tools"
+          curl -fL --retry 3             https://dl.google.com/android/repository/commandlinetools-linux-15859902_latest.zip             -o "$ARCHIVE"
+          echo "4e4c464f145a7512b57d088ac6c278c03c9eea610886b35a5e0804e74eedf583  $ARCHIVE" | sha256sum -c -
+          unzip -q "$ARCHIVE" -d "$SDK/cmdline-tools"
+          mv "$SDK/cmdline-tools/cmdline-tools" "$SDK/cmdline-tools/latest"
+          yes | "$SDK/cmdline-tools/latest/bin/sdkmanager" --sdk_root="$SDK" --licenses >/dev/null 2>&1 || true
+          "$SDK/cmdline-tools/latest/bin/sdkmanager" --sdk_root="$SDK"             "platforms;android-36" "build-tools;36.0.0" "platform-tools"
+          echo "ANDROID_HOME=$SDK" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=$SDK" >> "$GITHUB_ENV"
+          echo "$SDK/platform-tools" >> "$GITHUB_PATH"
+
+      - name: Build APK
+        working-directory: products/izakhono-nav/android
+        run: gradle --no-daemon :app:assembleDebug
+
+      - name: Verify APK
+        shell: bash
+        run: |
+          APK="products/izakhono-nav/android/app/build/outputs/apk/debug/app-debug.apk"
+          test -s "$APK"
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs "$APK"
+          mkdir -p out
+          cp "$APK" out/IZAKHONO-NAV-Android-v1.0.0-beta.apk
+          sha256sum out/IZAKHONO-NAV-Android-v1.0.0-beta.apk > out/IZAKHONO-NAV-Android-v1.0.0-beta.apk.sha256
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: IZAKHONO-NAV-ANDROID-APK
+          path: out/*
+          if-no-files-found: error
+          retention-days: 30

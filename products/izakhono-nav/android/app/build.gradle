@@ -1,0 +1,38 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'za.co.izakhono.nav'
+    compileSdk 36
+
+    defaultConfig {
+        applicationId 'za.co.izakhono.nav'
+        minSdk 26
+        targetSdk 36
+        versionCode 1
+        versionName '1.0.0'
+    }
+
+    buildTypes {
+        debug {
+            applicationIdSuffix ''
+            versionNameSuffix '-beta'
+        }
+        release {
+            minifyEnabled false
+        }
+    }
+}
+
+def navSource = file("${rootDir}/../../../public/ai-core/nav")
+def navAssets = file("${projectDir}/src/main/assets/www")
+
+tasks.register('syncNavAssets', Copy) {
+    from navSource
+    into navAssets
+}
+
+tasks.named('preBuild').configure {
+    dependsOn tasks.named('syncNavAssets')
+}
