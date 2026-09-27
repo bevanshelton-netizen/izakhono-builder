@@ -10,11 +10,25 @@
       {id:"ads",name:"IZAKHONO ADS",category:"Distribution",route:"/ads",status:"available",engine:"independent",description:"Campaign distribution and performance command centre."},
       {id:"crm",name:"IZAKHONO CRM",category:"Relationships",route:"/crm",status:"architecture-ready",engine:"independent",description:"Portfolio-wide CRM with legal-entity isolation."},
       {id:"flow",name:"IZAKHONO FLOW",category:"Operations + Automation",route:"/flow",status:"integrated",engine:"independent",description:"Lead-to-cash orchestration across CRM, REVENUE, PAY, TASKS, SUPER AI and fulfilment."},
+      {id:"finance-core",name:"IZAKHONO FINANCE CORE",category:"Financial Infrastructure",route:"/finance-core",status:"integrated",engine:"independent",description:"White-label lending, savings/member administration, payments references, collections, reporting, approvals and audit."},
       {id:"accountant",name:"SUPER ACCOUNTANT",category:"Finance",route:"/accounting",status:"architecture-ready",engine:"independent",description:"Verified financial-event accounting and reconciliation."},
       {id:"fortress",name:"FORTRESS",category:"Trust",route:"/fortress",status:"available",engine:"independent",description:"Fraud, trust and abuse protection."},
       {id:"flowiq",name:"FLOWIQ",category:"Workflow",route:"/flowiq",status:"architecture-ready",engine:"independent",description:"Approvals, exceptions and operational workflows."},
       {id:"tasks",name:"IZAKHONO TASKS",category:"Automation",route:"/tasks",status:"architecture-ready",engine:"independent",description:"Owned recurring and condition-driven orchestration."}
     ],
+    finance_core:{
+      module_id:"finance-core",
+      embedded:true,
+      route:"/finance-core",
+      engine:"independent",
+      owned_target:"NODE01",
+      public_status:"gated-until-independently-verified",
+      regulated_activity_gated:true,
+      software_vendor_only_by_default:true,
+      money_movement:false,
+      deposit_taking:false,
+      final_automated_credit_decisions:false
+    },
     affiliate:{
       publisher_mode:true,
       network_mode:true,
