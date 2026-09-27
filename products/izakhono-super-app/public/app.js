@@ -8,6 +8,7 @@
       {id:"create",name:"IZAKHONO CREATE",category:"Creative",route:"/create",status:"available",engine:"independent",description:"Portfolio creative system of record."},
       {id:"ads",name:"IZAKHONO ADS",category:"Distribution",route:"/ads",status:"available",engine:"independent",description:"Campaign distribution and performance command centre."},
       {id:"crm",name:"IZAKHONO CRM",category:"Relationships",route:"/crm",status:"architecture-ready",engine:"independent",description:"Portfolio-wide CRM with legal-entity isolation."},
+      {id:"flow",name:"IZAKHONO FLOW",category:"Operations + Automation",route:"/flow",status:"integrated",engine:"independent",description:"Lead-to-cash orchestration across CRM, REVENUE, PAY, TASKS, SUPER AI and fulfilment."},
       {id:"accountant",name:"SUPER ACCOUNTANT",category:"Finance",route:"/accounting",status:"architecture-ready",engine:"independent",description:"Verified financial-event accounting and reconciliation."},
       {id:"fortress",name:"FORTRESS",category:"Trust",route:"/fortress",status:"available",engine:"independent",description:"Fraud, trust and abuse protection."},
       {id:"flowiq",name:"FLOWIQ",category:"Workflow",route:"/flowiq",status:"architecture-ready",engine:"independent",description:"Approvals, exceptions and operational workflows."},

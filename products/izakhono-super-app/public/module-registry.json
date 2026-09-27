@@ -1,7 +1,7 @@
 {
   "schema": "izakhono.super-app.module-registry.v1",
   "product": "IZAKHONO SUPER APP",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "infrastructure_policy": "owned-first-externally-reversible",
   "privacy": {
     "behavioural_tracking": false,
@@ -47,6 +47,16 @@
       "description": "Portfolio-wide CRM with strict legal-entity and product-data isolation."
     },
     {
+      "id": "flow",
+      "name": "IZAKHONO FLOW",
+      "category": "Operations + Automation",
+      "route": "/flow",
+      "status": "integrated",
+      "engine": "independent",
+      "canonical_contract": "../izakhono-flow/.izakhono.json",
+      "description": "Lead-to-cash orchestration across CRM, REVENUE, PAY, TASKS, SUPER AI and platform fulfilment with strict entity/platform isolation."
+    },
+    {
       "id": "accountant",
       "name": "SUPER ACCOUNTANT",
       "category": "Finance",
@@ -87,16 +97,66 @@
     "publisher_mode": true,
     "network_mode": true,
     "adapters": [
-      {"id":"awin","name":"Awin","enabled":false,"status":"Awaiting authenticated connection"},
-      {"id":"cj","name":"CJ","enabled":false,"status":"Awaiting authenticated connection"},
-      {"id":"impact","name":"impact.com","enabled":false,"status":"Awaiting authenticated connection"},
-      {"id":"rakuten","name":"Rakuten Advertising","enabled":false,"status":"Awaiting authenticated connection"},
-      {"id":"flexoffers","name":"FlexOffers","enabled":false,"status":"Awaiting authenticated connection"},
-      {"id":"clickbank","name":"ClickBank","enabled":false,"status":"Awaiting authenticated connection"},
-      {"id":"ebay","name":"eBay Partner Network","enabled":false,"status":"Awaiting authenticated connection"},
-      {"id":"tradedoubler","name":"Tradedoubler","enabled":false,"status":"Awaiting authenticated connection"},
-      {"id":"partnerize","name":"Partnerize","enabled":false,"status":"Awaiting authenticated connection"},
-      {"id":"2checkout","name":"2Checkout / Verifone","enabled":false,"status":"Awaiting authenticated connection"}
+      {
+        "id": "awin",
+        "name": "Awin",
+        "enabled": false,
+        "status": "Awaiting authenticated connection"
+      },
+      {
+        "id": "cj",
+        "name": "CJ",
+        "enabled": false,
+        "status": "Awaiting authenticated connection"
+      },
+      {
+        "id": "impact",
+        "name": "impact.com",
+        "enabled": false,
+        "status": "Awaiting authenticated connection"
+      },
+      {
+        "id": "rakuten",
+        "name": "Rakuten Advertising",
+        "enabled": false,
+        "status": "Awaiting authenticated connection"
+      },
+      {
+        "id": "flexoffers",
+        "name": "FlexOffers",
+        "enabled": false,
+        "status": "Awaiting authenticated connection"
+      },
+      {
+        "id": "clickbank",
+        "name": "ClickBank",
+        "enabled": false,
+        "status": "Awaiting authenticated connection"
+      },
+      {
+        "id": "ebay",
+        "name": "eBay Partner Network",
+        "enabled": false,
+        "status": "Awaiting authenticated connection"
+      },
+      {
+        "id": "tradedoubler",
+        "name": "Tradedoubler",
+        "enabled": false,
+        "status": "Awaiting authenticated connection"
+      },
+      {
+        "id": "partnerize",
+        "name": "Partnerize",
+        "enabled": false,
+        "status": "Awaiting authenticated connection"
+      },
+      {
+        "id": "2checkout",
+        "name": "2Checkout / Verifone",
+        "enabled": false,
+        "status": "Awaiting authenticated connection"
+      }
     ],
     "automatic": [
       "Discover public programme changes",

@@ -2,8 +2,10 @@ import fs from 'node:fs';
 
 const regPath='products/izakhono-super-app/public/module-registry.json';
 const affiliatePath='products/izakhono-affiliate/affiliate-engine.v1.json';
+const flowPath='products/izakhono-flow/.izakhono.json';
 const registry=JSON.parse(fs.readFileSync(regPath,'utf8'));
 const affiliate=JSON.parse(fs.readFileSync(affiliatePath,'utf8'));
+const flow=JSON.parse(fs.readFileSync(flowPath,'utf8'));
 const errors=[];
 
 if(registry.schema!=='izakhono.super-app.module-registry.v1') errors.push('unexpected SUPER APP registry schema');
@@ -21,6 +23,17 @@ else {
   if(aff.engine!=='independent') errors.push('affiliate engine must remain independent');
 }
 
+const flowModule=modules.get('flow');
+if(!flowModule) errors.push('IZAKHONO FLOW module missing from SUPER APP');
+else {
+  if(flowModule.route!=='/flow') errors.push('FLOW route must be /flow');
+  if(flowModule.status!=='integrated') errors.push('FLOW module must be integrated');
+  if(flowModule.engine!=='independent') errors.push('FLOW engine must remain independent');
+}
+if(flow.slug!=='izakhono-flow') errors.push('FLOW canonical contract slug drift');
+if(flow.infrastructure?.policy!=='owned-first-externally-reversible') errors.push('FLOW must remain owned-first');
+if(flow.privacy?.tracking!==false || flow.privacy?.profiling!==false || flow.privacy?.advertisingIdentifiers!==false) errors.push('FLOW privacy contract drift');
+
 if(affiliate.super_app_module?.embedded!==true) errors.push('canonical affiliate contract must declare SUPER APP embedding');
 if(affiliate.super_app_module?.route!=='/affiliate') errors.push('canonical affiliate route drift');
 if(affiliate.super_app_module?.module_id!=='affiliate') errors.push('canonical affiliate module id drift');
@@ -34,7 +47,7 @@ for(const a of regAdapters){
   if(a.enabled!==false) errors.push(a.id+': cannot be marked connected without authenticated evidence');
 }
 
-for(const required of ['create','ads','crm','accountant','fortress','flowiq','tasks']){
+for(const required of ['create','ads','crm','flow','accountant','fortress','flowiq','tasks']){
   if(!modules.has(required)) errors.push('required SUPER APP module missing: '+required);
 }
 
@@ -48,6 +61,8 @@ console.log(JSON.stringify({
   product:registry.product,
   modules:registry.modules.length,
   affiliate_embedded:true,
+  flow_embedded:true,
+  flow_route:'/flow',
   affiliate_route:'/affiliate',
   external_adapters:regAdapters.length,
   connected_external_adapters:regAdapters.filter(a=>a.enabled).length,
