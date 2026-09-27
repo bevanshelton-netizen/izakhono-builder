@@ -1,0 +1,14 @@
+{
+  "schema_version": 3,
+  "product": "IZAKHONO BUSINESS AI",
+  "slug": "izakhono-business-ai",
+  "engine": "independent",
+  "infrastructure_policy": "owned-first-externally-reversible",
+  "health_path": "/api/health",
+  "privacy": {
+    "behavioral_tracking": false,
+    "advertising_ids": false,
+    "raw_prompt_persistence": false
+  },
+  "external_adapters": ["AI_GATEWAY_URL"]
+}
