@@ -104,4 +104,10 @@ if not ok:
 PY
 
 echo "[PASS] IZAKHONO DOCFLOW is healthy on NODE01 localhost."
+
+echo "[NEXT] Proving backup + isolated restore before any public cutover..."
+DOCFLOW_CONTAINER=izakhono-docflow \
+  bash "$REPO_ROOT/products/izakhono-docflow/owner-node/prove-backup-restore.sh"
+
+echo "[PASS] NODE01 runtime plus backup/restore proof completed."
 echo "[BOUNDARY] No DNS or public EDGE cutover was performed."
