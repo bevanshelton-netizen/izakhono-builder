@@ -27,3 +27,12 @@ Release intent: owner-controlled one-sentence creation for apps, websites, games
 ## v1 scope
 
 The first release supports the product types `app`, `website`, `game` and `software`, with reusable modules for identity, payments, CRM/leads, media, learning, marketplace, AI, notifications/chat, workflow automation, publishing, growth, affiliate operations, document flow, game scaffolding, and SEO/discovery.
+
+
+## Product-factory benchmark UX
+
+The Owner Builder now presents quick-start product briefs for common build classes (AI content platform, SaaS landing page, task management, client dashboard and e-commerce) while keeping the one-sentence prompt as the primary interface.
+
+The generated release candidate is one project with an installable Web/PWA baseline and explicit Android/iOS/desktop release manifests. Mobile manifests are preparation records only: signing and store-submission evidence remain hard release gates.
+
+This benchmark work does not introduce a dependency on any competing app-builder provider. IZAKHONO source, SUPER AI, internal repositories and owned-first deployment remain authoritative.
