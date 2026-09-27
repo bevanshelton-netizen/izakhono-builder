@@ -170,3 +170,16 @@ linear-gradient(180deg,#f9fbff 0%,#fff 75%)}
 .decision-output{min-height:620px;max-height:75vh;overflow:auto;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.9rem;background:#07152d;color:#dbe8fa;border:1px solid #173a68;white-space:pre-wrap}
 .manifest-bar{margin:12px 0;padding:10px 12px;border-radius:12px;background:#edf4ff;color:#315784;font-size:.78rem;font-weight:800;line-height:1.4}
 @media(max-width:1050px){.decision-layout{grid-template-columns:1fr}}
+
+
+/* Decision Lab v0.3 */
+.toggle-row{display:flex!important;grid-template-columns:none!important;align-items:flex-start;gap:10px;padding:13px;border:1px solid var(--line);border-radius:14px;background:#fbfdff}
+.toggle-row input{width:auto!important;margin-top:3px}
+.toggle-row span{display:grid;gap:3px}
+.toggle-row small{color:var(--muted);font-weight:500;line-height:1.4}
+.decision-tools{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px}
+.tool-card{display:grid;gap:10px;padding:16px;border:1px solid var(--line);border-radius:16px;background:#f8fbff}
+.tool-card h4{margin:0}
+.tool-card textarea,.tool-card select{width:100%;border:1px solid var(--line);border-radius:11px;padding:10px 11px;background:#fff;color:var(--ink)}
+.mini-output{min-height:80px;padding:11px;border-radius:11px;background:#fff;border:1px dashed #c4d3e6;color:#53647a;white-space:pre-wrap;line-height:1.5;font-size:.86rem}
+@media(max-width:800px){.decision-tools{grid-template-columns:1fr}}

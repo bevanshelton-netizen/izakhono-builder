@@ -2,7 +2,7 @@
 
 A privacy-first small-business operating assistant for South African SMEs.
 
-## What is built in v0.2
+## What is built in v0.3
 
 - Premium responsive landing page and workspace
 - Client register stored locally in the user's browser
@@ -10,7 +10,7 @@ A privacy-first small-business operating assistant for South African SMEs.
 - Email handoff using the device's configured mail client
 - AI correspondence writer with an IZAKHONO-owned/provider-neutral adapter boundary
 - Business Growth Diagnostic
-- Decision Lab v0.2 with evidence packets, evidence graph, deterministic agent personas, 2–5 reaction rounds, consensus/disagreement analysis, source hashes and JSON report export
+- Decision Lab v0.3 with evidence packets, source hashes, evidence graph, 12–100 agents, 3–10 repeated simulations, 2–5 reaction rounds, uncertainty ranges, Scenario A/B comparison, Red-Team agents, Report Agent summaries, report interrogation, local calibration logging and JSON export
 - JSON backup/export of local business data
 - No third-party analytics, advertising IDs or behavioural profiling
 - Independent Cloudflare Worker engine with /api/health
@@ -25,7 +25,7 @@ The optional AI adapter is configured with AI_GATEWAY_URL and AI_GATEWAY_TOKEN. 
 
 ## Privacy
 
-Business records are local-first in v0.1. The browser stores clients and documents on-device, and the user can export a JSON backup. The app does not load third-party analytics or tracking scripts.
+Business records are local-first in v0.3. The browser stores clients and documents on-device, and the user can export a JSON backup. The app does not load third-party analytics or tracking scripts.
 
 ## MiroFish exploration
 
@@ -67,3 +67,28 @@ v0.2 supports text-based files up to the client/server safety limits. PDF extrac
 ### MiroFish boundary
 
 MiroFish remains a research reference only. No MiroFish source code is imported. IZAKHONO Decision Lab is being implemented independently so the proprietary BUSINESS AI product retains its own architecture and licensing boundary.
+
+
+## Decision Lab v0.3
+
+v0.3 expands the clean-room IZAKHONO simulation engine without importing MiroFish code.
+
+New capabilities:
+
+- 12, 25, 50 or 100-agent synthetic populations;
+- 3, 5 or 10 repeated simulation runs;
+- cross-run uncertainty ranges and standard deviation;
+- Scenario A vs Scenario B comparison using the same evidence and synthetic population rules;
+- Red-Team findings for operational failure, fraud/abuse, evidence quality, commercial downside and relevant compliance concerns;
+- Report Agent synthesis;
+- "Ask the simulated world" structured interrogation of the generated report;
+- local-first calibration records so the owner can record what actually happened;
+- basic local extraction for simple text-based PDFs, with no silent third-party upload.
+
+### PDF boundary
+
+The browser can extract text from some simple text-based PDFs locally. Complex compressed PDFs and scanned/image-only PDFs are deliberately not uploaded to an external service. They remain blocked until the IZAKHONO-owned document-extraction service is available. This keeps the privacy boundary explicit rather than pretending unreliable extraction succeeded.
+
+### Interpretation
+
+The displayed uncertainty range is variation across the synthetic repeated runs. It is **not** a statistical confidence interval for the real world. Scenario comparison describes differences in the simulation output; it does not choose for the user.

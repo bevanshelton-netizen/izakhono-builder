@@ -6,7 +6,8 @@
     clients: "izakhono_business_ai_clients_v1",
     docs: "izakhono_business_ai_docs_v1",
     diagnostic: "izakhono_business_ai_diagnostic_v1",
-    scenarioReport: "izakhono_business_ai_scenario_report_v2"
+    scenarioReport: "izakhono_business_ai_scenario_report_v3",
+    calibrations: "izakhono_business_ai_calibrations_v1"
   };
 
   var state = {
@@ -14,6 +15,7 @@
     docs: read(STORAGE.docs, []),
     diagnostic: read(STORAGE.diagnostic, null),
     scenarioReport: read(STORAGE.scenarioReport, null),
+    calibrations: read(STORAGE.calibrations, []),
     sourcePacket: []
   };
 
@@ -259,6 +261,8 @@
     el("scenarioForm").addEventListener("submit", runScenario);
     el("scenarioFiles").addEventListener("change", loadScenarioFiles);
     el("exportScenarioReport").addEventListener("click", exportScenarioReport);
+    el("askWorldForm").addEventListener("submit", askSimulatedWorld);
+    el("calibrationForm").addEventListener("submit", saveCalibration);
 
     el("copyDraft").addEventListener("click", function(){
       var text = el("writerOutput").textContent;
@@ -312,28 +316,80 @@
     el("diagnosticActions").innerHTML = actions.map(function(a){ return "<div>" + escapeHtml(a) + "</div>"; }).join("");
   }
 
+  function decodePdfLiteral(value){
+    return value
+      .replace(/\\([nrtbf()\\])/g,function(_m,ch){
+        var map={n:"\n",r:"\r",t:"\t",b:"\b",f:"\f","(":"(",")":")","\\":"\\"};
+        return map[ch] || ch;
+      })
+      .replace(/\\([0-7]{1,3})/g,function(_m,oct){ return String.fromCharCode(parseInt(oct,8)); });
+  }
+
+  async function extractPdfTextBasic(file){
+    var buffer = await file.arrayBuffer();
+    var raw = new TextDecoder("latin1").decode(new Uint8Array(buffer));
+    var blocks = raw.match(/BT[\s\S]*?ET/g) || [];
+    var parts = [];
+    blocks.forEach(function(block){
+      var literal=/\((?:\\.|[^\\)])*\)/g, match;
+      while((match=literal.exec(block))){
+        var value=decodePdfLiteral(match[0].slice(1,-1)).replace(/\s+/g," ").trim();
+        if(value) parts.push(value);
+      }
+      var hex=/<([0-9A-Fa-f]{4,})>/g, hm;
+      while((hm=hex.exec(block))){
+        try{
+          var bytes=[];
+          for(var i=0;i<hm[1].length;i+=2) bytes.push(parseInt(hm[1].slice(i,i+2),16));
+          var decoded=new TextDecoder("utf-8",{fatal:false}).decode(new Uint8Array(bytes)).replace(/\0/g,"").trim();
+          if(decoded && /[A-Za-z]{2}/.test(decoded)) parts.push(decoded);
+        }catch(_e){}
+      }
+    });
+    var textValue=parts.join(" ").replace(/\s+/g," ").trim();
+    return {
+      text:textValue,
+      compressed:/\/FlateDecode/.test(raw),
+      method:"local-pdf-basic"
+    };
+  }
+
   async function loadScenarioFiles(event){
     var files = Array.prototype.slice.call(event.target.files || []).slice(0,10);
     state.sourcePacket = [];
     for(var i=0;i<files.length;i++){
       var file = files[i];
-      if(file.size > 300000){
-        toast(file.name + " is over the 300 KB per-file limit.");
+      var lower = file.name.toLowerCase();
+      var isPdf = lower.endsWith(".pdf") || file.type === "application/pdf";
+      var sizeLimit = isPdf ? 1500000 : 300000;
+      if(file.size > sizeLimit){
+        toast(file.name + " is over the local file limit.");
         continue;
       }
-      var lower = file.name.toLowerCase();
-      var allowed = lower.endsWith(".txt") || lower.endsWith(".md") || lower.endsWith(".csv") || lower.endsWith(".json");
+      var allowed = isPdf || lower.endsWith(".txt") || lower.endsWith(".md") || lower.endsWith(".csv") || lower.endsWith(".json");
       if(!allowed){
-        toast(file.name + " is not a supported text source yet.");
+        toast(file.name + " is not a supported evidence source.");
         continue;
       }
       try{
-        var textValue = await file.text();
+        var textValue="", extraction="browser-text";
+        if(isPdf){
+          var pdfResult=await extractPdfTextBasic(file);
+          textValue=pdfResult.text;
+          extraction=pdfResult.method;
+          if(textValue.length < 80){
+            toast(file.name + " could not be reliably extracted locally. A complex/scanned PDF will need the owned document extractor.");
+            continue;
+          }
+        }else{
+          textValue=await file.text();
+        }
         state.sourcePacket.push({
           name:file.name.slice(0,120),
-          type:(file.type || "text/plain").slice(0,80),
+          type:(file.type || (isPdf ? "application/pdf" : "text/plain")).slice(0,80),
           text:textValue.slice(0,120000),
-          size:file.size
+          size:file.size,
+          extraction:extraction
         });
       }catch(_e){
         toast("Could not read " + file.name);
@@ -353,7 +409,8 @@
     list.className = "source-list";
     list.innerHTML = state.sourcePacket.map(function(source,index){
       return '<div class="source-item"><div><strong>' + escapeHtml(source.name) + '</strong><small>' +
-        Math.max(1,Math.round(source.size/1024)) + ' KB</small></div><button type="button" data-remove-source="' + index + '">Remove</button></div>';
+        Math.max(1,Math.round(source.size/1024)) + ' KB • ' + escapeHtml(source.extraction || "browser-text") +
+        '</small></div><button type="button" data-remove-source="' + index + '">Remove</button></div>';
     }).join("");
     all("[data-remove-source]").forEach(function(btn){
       btn.addEventListener("click",function(){
@@ -363,6 +420,41 @@
     });
   }
 
+  function renderScenarioSummary(lines,label,scenario){
+    if(!scenario) return;
+    lines.push(label);
+    lines.push("Population: " + scenario.population + " agents × " + scenario.trials + " repeated simulations");
+    lines.push("Overall stance: " + scenario.uncertainty.direction);
+    lines.push("Uncertainty: " + scenario.uncertainty.label + " • mean " + scenario.uncertainty.mean.toFixed(2) +
+      " • range " + scenario.uncertainty.min.toFixed(2) + " to " + scenario.uncertainty.max.toFixed(2));
+    lines.push("Cross-run alignment: " + scenario.consensus.label + " (" + scenario.consensus.score + "/100)");
+    lines.push("");
+
+    lines.push("STAKEHOLDER GROUPS");
+    (scenario.groupStats || []).forEach(function(group){
+      lines.push("• " + group.group + ": " + group.direction +
+        " | mean " + group.mean.toFixed(2) +
+        " | 10–90% " + group.p10.toFixed(2) + " to " + group.p90.toFixed(2) +
+        " | supportive " + group.supportivePct + "% | resistant " + group.resistantPct + "%");
+    });
+
+    if(scenario.redTeamFindings && scenario.redTeamFindings.length){
+      lines.push("");
+      lines.push("RED-TEAM FINDINGS");
+      scenario.redTeamFindings.forEach(function(item){
+        lines.push("• " + item.domain + ": " + item.finding + " | Check: " + item.test);
+      });
+    }
+
+    if(scenario.reportAgent){
+      lines.push("");
+      lines.push("REPORT AGENT");
+      lines.push(scenario.reportAgent.summary);
+      (scenario.reportAgent.keyTensions || []).forEach(function(item){ lines.push("• " + item); });
+    }
+    lines.push("");
+  }
+
   function renderScenarioReport(data){
     state.scenarioReport = data;
     save(STORAGE.scenarioReport,data);
@@ -370,15 +462,15 @@
 
     var manifest = el("scenarioManifest");
     manifest.classList.remove("hidden");
-    manifest.textContent = "Run " + data.runId + " • " + data.rounds + " rounds • " +
-      (data.evidenceGraph ? data.evidenceGraph.nodes.length : 0) + " evidence nodes • " +
-      (data.mode || "structured-rehearsal");
+    manifest.textContent = "Run " + data.runId + " • " + data.population + " agents • " + data.trials +
+      " repeated simulations • " + data.rounds + " rounds • " +
+      (data.evidenceGraph ? data.evidenceGraph.nodes.length : 0) + " evidence nodes";
 
     var lines = [];
     lines.push("SIMULATION, NOT CERTAINTY");
     lines.push("Run: " + data.runId);
     lines.push("Horizon: " + data.horizon);
-    lines.push("Consensus: " + data.consensus.label + " (" + data.consensus.score + "/100)");
+    lines.push("Engine: " + data.engine + " v" + data.version);
     lines.push("");
 
     if(data.evidenceGraph && data.evidenceGraph.keyTerms && data.evidenceGraph.keyTerms.length){
@@ -389,51 +481,52 @@
       lines.push("");
     }
 
-    lines.push("AGENT ROUNDS");
-    (data.agents || []).forEach(function(agent){
+    renderScenarioSummary(lines,"SCENARIO A",data.scenarios && data.scenarios.A);
+    if(data.scenarios && data.scenarios.B){
+      renderScenarioSummary(lines,"SCENARIO B",data.scenarios.B);
+    }
+
+    if(data.comparison){
+      lines.push("A/B COMPARISON");
+      lines.push(data.comparison.summary);
+      (data.comparison.differences || []).forEach(function(item){ lines.push("• " + item); });
       lines.push("");
-      lines.push(agent.stakeholder.toUpperCase() + " — final stance " + agent.finalStance);
-      (agent.rounds || []).forEach(function(round){
-        lines.push("Round " + round.round + ": " + round.reaction);
-      });
-      lines.push("Risk: " + agent.risk);
-      lines.push("Evidence to check: " + agent.evidenceToCheck);
-    });
+    }
 
-    lines.push("");
-    lines.push("CONSENSUS / DISAGREEMENT");
-    lines.push("• " + data.consensus.summary);
-    (data.disagreements || []).forEach(function(item){ lines.push("• " + item); });
-
-    lines.push("");
     lines.push("NEXT REAL-WORLD TESTS");
     (data.nextTests || []).forEach(function(item){ lines.push("• " + item); });
-
     lines.push("");
     lines.push(data.disclaimer);
+
     el("scenarioOutput").textContent = lines.join("\n");
+    renderCalibrationStatus();
   }
 
   async function runScenario(e){
     e.preventDefault();
     var output = el("scenarioOutput");
-    output.textContent = "Building evidence graph, agents and reaction rounds…";
+    output.textContent = "Running repeated multi-agent simulations and red-team checks…";
     el("scenarioManifest").classList.add("hidden");
     el("exportScenarioReport").disabled = true;
+    el("askWorldOutput").textContent = "Simulation running…";
 
     var sources = state.sourcePacket.map(function(source){
-      return {name:source.name,type:source.type,text:source.text};
+      return {name:source.name,type:source.type,text:source.text,extraction:source.extraction};
     });
     var manualEvidence = el("scenarioEvidence").value.trim();
     if(manualEvidence){
-      sources.push({name:"Manual evidence and assumptions",type:"text/plain",text:manualEvidence.slice(0,120000)});
+      sources.push({name:"Manual evidence and assumptions",type:"text/plain",text:manualEvidence.slice(0,120000),extraction:"manual"});
     }
 
     var payload = {
       scenario:el("scenarioText").value.trim(),
+      scenarioB:el("scenarioTextB").value.trim(),
       stakeholders:el("scenarioStakeholders").value.split(",").map(function(x){ return x.trim(); }).filter(Boolean).slice(0,12),
       horizon:el("scenarioHorizon").value,
       rounds:Number(el("scenarioRounds").value || 3),
+      population:Number(el("scenarioPopulation").value || 25),
+      trials:Number(el("scenarioTrials").value || 3),
+      redTeam:el("scenarioRedTeam").checked,
       sources:sources
     };
 
@@ -442,14 +535,65 @@
       var data = await res.json();
       if(!data.ok) throw new Error(data.error || "Decision Lab run failed");
       renderScenarioReport(data);
+      el("askWorldOutput").textContent = "Ask a question about this run.";
     } catch(err){
       output.textContent = "Could not run Decision Lab.\n\n" + String(err.message || err);
+      el("askWorldOutput").textContent = "Run a successful simulation first.";
     }
+  }
+
+  async function askSimulatedWorld(e){
+    e.preventDefault();
+    var question=el("askWorldQuestion").value.trim();
+    if(!state.scenarioReport){ toast("Run Decision Lab first."); return; }
+    if(!question){ toast("Enter a question."); return; }
+    el("askWorldOutput").textContent="Interrogating the report…";
+    try{
+      var res=await fetch("/api/decision-lab/ask",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({report:state.scenarioReport,question:question})});
+      var data=await res.json();
+      if(!data.ok) throw new Error(data.error || "Could not answer");
+      el("askWorldOutput").textContent=data.answer;
+    }catch(err){
+      el("askWorldOutput").textContent=String(err.message || err);
+    }
+  }
+
+  function renderCalibrationStatus(){
+    if(!state.scenarioReport) return;
+    var match=state.calibrations.slice().reverse().find(function(item){ return item.runId===state.scenarioReport.runId; });
+    if(!match){
+      el("calibrationOutput").textContent="No observation saved for this run.";
+      return;
+    }
+    el("calibrationOutput").textContent="Saved " + new Date(match.recordedAt).toLocaleDateString("en-ZA") +
+      " • " + match.direction + " • " + match.outcome;
+  }
+
+  function saveCalibration(e){
+    e.preventDefault();
+    if(!state.scenarioReport){ toast("Run Decision Lab first."); return; }
+    var outcome=el("calibrationOutcome").value.trim();
+    if(!outcome){ toast("Describe the observed real-world outcome."); return; }
+    var record={
+      runId:state.scenarioReport.runId,
+      recordedAt:new Date().toISOString(),
+      direction:el("calibrationDirection").value,
+      outcome:outcome.slice(0,4000),
+      simulatedDirection:state.scenarioReport.scenarios && state.scenarioReport.scenarios.A ?
+        state.scenarioReport.scenarios.A.uncertainty.direction : "unknown"
+    };
+    state.calibrations.push(record);
+    state.calibrations=state.calibrations.slice(-100);
+    save(STORAGE.calibrations,state.calibrations);
+    renderCalibrationStatus();
+    toast("Real-world observation saved locally.");
   }
 
   function exportScenarioReport(){
     if(!state.scenarioReport){ toast("Run Decision Lab first."); return; }
-    var blob = new Blob([JSON.stringify(state.scenarioReport,null,2)],{type:"application/json"});
+    var report=JSON.parse(JSON.stringify(state.scenarioReport));
+    report.localCalibration=state.calibrations.filter(function(item){ return item.runId===report.runId; });
+    var blob = new Blob([JSON.stringify(report,null,2)],{type:"application/json"});
     var url = URL.createObjectURL(blob);
     var a = document.createElement("a");
     a.href = url;
@@ -466,7 +610,8 @@
       clients:state.clients,
       documents:state.docs,
       diagnostic:state.diagnostic,
-      decisionLabReport:state.scenarioReport
+      decisionLabReport:state.scenarioReport,
+      decisionLabCalibrations:state.calibrations
     };
     var blob = new Blob([JSON.stringify(payload,null,2)],{type:"application/json"});
     var url = URL.createObjectURL(blob);
