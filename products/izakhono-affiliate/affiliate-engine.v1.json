@@ -30,16 +30,76 @@
     "super_app": "IZAKHONO SUPER APP"
   },
   "external_adapters": [
-    {"id":"awin","label":"Awin","enabled":false,"requires_account":true,"credential_mode":"server-side"},
-    {"id":"cj","label":"CJ","enabled":false,"requires_account":true,"credential_mode":"server-side"},
-    {"id":"impact","label":"impact.com","enabled":false,"requires_account":true,"credential_mode":"server-side"},
-    {"id":"rakuten","label":"Rakuten Advertising","enabled":false,"requires_account":true,"credential_mode":"server-side"},
-    {"id":"flexoffers","label":"FlexOffers","enabled":false,"requires_account":true,"credential_mode":"server-side"},
-    {"id":"clickbank","label":"ClickBank","enabled":false,"requires_account":true,"credential_mode":"server-side"},
-    {"id":"ebay","label":"eBay Partner Network","enabled":false,"requires_account":true,"credential_mode":"server-side"},
-    {"id":"tradedoubler","label":"Tradedoubler","enabled":false,"requires_account":true,"credential_mode":"server-side"},
-    {"id":"partnerize","label":"Partnerize","enabled":false,"requires_account":true,"credential_mode":"server-side"},
-    {"id":"2checkout","label":"2Checkout / Verifone","enabled":false,"requires_account":true,"credential_mode":"server-side"}
+    {
+      "id": "awin",
+      "label": "Awin",
+      "enabled": false,
+      "requires_account": true,
+      "credential_mode": "server-side"
+    },
+    {
+      "id": "cj",
+      "label": "CJ",
+      "enabled": false,
+      "requires_account": true,
+      "credential_mode": "server-side"
+    },
+    {
+      "id": "impact",
+      "label": "impact.com",
+      "enabled": false,
+      "requires_account": true,
+      "credential_mode": "server-side"
+    },
+    {
+      "id": "rakuten",
+      "label": "Rakuten Advertising",
+      "enabled": false,
+      "requires_account": true,
+      "credential_mode": "server-side"
+    },
+    {
+      "id": "flexoffers",
+      "label": "FlexOffers",
+      "enabled": false,
+      "requires_account": true,
+      "credential_mode": "server-side"
+    },
+    {
+      "id": "clickbank",
+      "label": "ClickBank",
+      "enabled": false,
+      "requires_account": true,
+      "credential_mode": "server-side"
+    },
+    {
+      "id": "ebay",
+      "label": "eBay Partner Network",
+      "enabled": false,
+      "requires_account": true,
+      "credential_mode": "server-side"
+    },
+    {
+      "id": "tradedoubler",
+      "label": "Tradedoubler",
+      "enabled": false,
+      "requires_account": true,
+      "credential_mode": "server-side"
+    },
+    {
+      "id": "partnerize",
+      "label": "Partnerize",
+      "enabled": false,
+      "requires_account": true,
+      "credential_mode": "server-side"
+    },
+    {
+      "id": "2checkout",
+      "label": "2Checkout / Verifone",
+      "enabled": false,
+      "requires_account": true,
+      "credential_mode": "server-side"
+    }
   ],
   "autonomy": {
     "automatic": [
@@ -81,5 +141,14 @@
     "public_live_claim_requires_verified_https": true,
     "adapter_live_claim_requires_successful_authenticated_test": true,
     "no_external_adapter_may_become_system_of_record": true
+  },
+  "super_app_module": {
+    "schema": "izakhono.super-app.module.v1",
+    "module_id": "affiliate",
+    "surface": "IZAKHONO SUPER APP",
+    "route": "/affiliate",
+    "embedded": true,
+    "engine": "independent",
+    "canonical_contract": "products/izakhono-affiliate/affiliate-engine.v1.json"
   }
 }
