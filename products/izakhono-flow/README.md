@@ -53,6 +53,25 @@ When a target exists in server-side `FLOW_ADAPTERS_JSON`, FLOW writes the action
 
 NODE01 configures the owned CRM, REVENUE and TASKS adapters automatically. PAY, SUPER AI and product-specific fulfilment remain optional until a real endpoint and matching server-side credential exist.
 
+### SUPER AI trusted-workflow adapter
+
+The `izakhono-super-ai` target uses the existing SUPER AI trusted-workflow API. Configure it with:
+
+```json
+{
+  "izakhono-super-ai": {
+    "kind": "super-ai-workflow",
+    "url": "http://<owner-super-ai>:9595/api/v1/generate",
+    "internal_key": "<matching gateway internal key>",
+    "workflow_key": "<matching workflow key>",
+    "product": "izakhono-flow",
+    "capability": "reasoning"
+  }
+}
+```
+
+The endpoint must be reachable from the FLOW runtime. Credentials stay server-side. FLOW forces owned/internal workflow mode and sends a guardrail system instruction that makes the response advisory only.
+
 ## API
 
 Unscoped:

@@ -23,13 +23,9 @@ External hosting may be used only as a reversible resilience route. The product 
 
 The optional AI adapter is configured with AI_GATEWAY_URL and AI_GATEWAY_TOKEN. If no AI adapter is configured, the application stays useful in local template mode and clearly labels that state. No browser API keys are used.
 
-## FLOW advisory adapter
+## FLOW intelligence routing
 
-BUSINESS AI can serve as the current provider-neutral advisory adapter behind the `izakhono-super-ai` FLOW target.
-
-`POST /api/flow` accepts only `advisory.suggestion.requested` when `BUSINESS_AI_FLOW_TOKEN` matches. The adapter requires entity and platform scope headers and returns advice only.
-
-Guardrails are explicit: the adapter cannot move money, confirm payment, make a regulated decision, or silently send a communication. If the AI gateway is unavailable it returns a deterministic next-step suggestion instead of pretending an AI call succeeded.
+IZAKHONO FLOW does not call BUSINESS AI through a separate direct endpoint. Portfolio workflow intelligence is routed through the provider-neutral **IZAKHONO SUPER AI trusted-workflow API**. BUSINESS AI may remain one replaceable capability behind that layer, but it is not a FLOW runtime dependency or bypass.
 
 ## Privacy
 

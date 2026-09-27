@@ -30,7 +30,7 @@ if (-not $subscriberAccessConfigured -and -not $workflowConfigured) {
 
 $workflowProducts = @()
 if ([string]::IsNullOrWhiteSpace($env:IZAKHONO_AI_WORKFLOW_PRODUCTS)) {
-  $workflowProducts = @("venture-factory","izakhono-builder","izakhono-docflow")
+  $workflowProducts = @("venture-factory","izakhono-builder","izakhono-docflow","izakhono-flow")
 } else {
   $workflowProducts = @(
     $env:IZAKHONO_AI_WORKFLOW_PRODUCTS.Split(",") |
@@ -40,6 +40,9 @@ if ([string]::IsNullOrWhiteSpace($env:IZAKHONO_AI_WORKFLOW_PRODUCTS)) {
   )
   if ($workflowProducts -notcontains "izakhono-docflow") {
     $workflowProducts += "izakhono-docflow"
+  }
+  if ($workflowProducts -notcontains "izakhono-flow") {
+    $workflowProducts += "izakhono-flow"
   }
 }
 $env:IZAKHONO_AI_WORKFLOW_PRODUCTS = [string]::Join(",", $workflowProducts)

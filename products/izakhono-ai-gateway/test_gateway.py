@@ -9,7 +9,7 @@ from pathlib import Path
 
 os.environ["IZAKHONO_AI_GATEWAY_INTERNAL_KEY"] = "gateway-test"
 os.environ["IZAKHONO_AI_WORKFLOW_KEY"] = "workflow-test"
-os.environ["IZAKHONO_AI_WORKFLOW_PRODUCTS"] = "venture-factory,izakhono-builder"
+os.environ["IZAKHONO_AI_WORKFLOW_PRODUCTS"] = "venture-factory,izakhono-builder,izakhono-flow"
 os.environ["IZAKHONO_ACCESS_INTERNAL_KEY"] = "access-test"
 os.environ["IZAKHONO_ACCESS_URL"] = "http://127.0.0.1:19494"
 os.environ["IZAKHONO_OLLAMA_URL"] = "http://127.0.0.1:19134"
@@ -111,6 +111,7 @@ assert g.ADMISSION.summary()["max_inflight"] >= 1
 assert g.ADMISSION.summary()["max_queue"] >= 0
 assert g.workflow_key_allowed("workflow-test", "venture-factory") is True
 assert g.workflow_key_allowed("workflow-test", "izakhono-builder") is True
+assert g.workflow_key_allowed("workflow-test", "izakhono-flow") is True
 assert g.workflow_key_allowed("workflow-test", "other-product") is False
 assert g.workflow_key_allowed("wrong-key", "venture-factory") is False
 
@@ -233,6 +234,7 @@ assert caps["image"]["status"] == "ready"
 assert caps["video"]["status"] == "needs_backend"
 
 assert "venture-factory" in g.WORKFLOW_PRODUCTS
+assert "izakhono-flow" in g.WORKFLOW_PRODUCTS
 print("IZAKHONO_SUPER_AI_TEST=PASS")
 a.shutdown()
 m.shutdown()

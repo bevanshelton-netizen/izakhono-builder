@@ -7,7 +7,6 @@ interface Env {
   APP_ENV?: string;
   AI_GATEWAY_URL?: string;
   AI_GATEWAY_TOKEN?: string;
-  BUSINESS_AI_FLOW_TOKEN?: string;
 }
 
 type JsonObject = Record<string, unknown>;
@@ -26,12 +25,6 @@ function json(data: unknown, status = 200): Response {
 
 function clean(value: unknown, max = 4000): string {
   return typeof value === "string" ? value.trim().slice(0, max) : "";
-}
-
-function flowAuthorized(req: Request, env: Env): boolean {
-  const raw=req.headers.get("authorization")||"";
-  const token=raw.startsWith("Bearer ")?raw.slice(7):"";
-  return Boolean(env.BUSINESS_AI_FLOW_TOKEN && token && token===env.BUSINESS_AI_FLOW_TOKEN);
 }
 
 function clampScore(value: unknown): number {
@@ -734,47 +727,6 @@ async function api(req: Request, env: Env, url: URL): Promise<Response> {
     });
   }
 
-
-  if (url.pathname === "/api/flow" && req.method === "POST") {
-    if (!flowAuthorized(req, env)) return json({ ok:false, error:"unauthorized" }, 401);
-    const entityId=clean(req.headers.get("x-entity-id"),120);
-    const platformId=clean(req.headers.get("x-platform-id"),120);
-    if(!entityId||!platformId) return json({ok:false,error:"X-Entity-ID and X-Platform-ID are required"},400);
-    const input=await parseBody(req);
-    const actionType=clean(input.action_type,120);
-    if(actionType!=="advisory.suggestion.requested") return json({ok:false,error:"unsupported_flow_action"},400);
-    const payload=(input.payload&&typeof input.payload==="object"&&!Array.isArray(input.payload)?input.payload:{}) as JsonObject;
-    const metadata=(payload.metadata&&typeof payload.metadata==="object"&&!Array.isArray(payload.metadata)?payload.metadata:{}) as JsonObject;
-    const subjectRef=clean(payload.subject_ref,200);
-    const stage=clean(payload.run_stage,80)||"unknown";
-    const eventType=clean(payload.event_type,120);
-    const ai=await callAiGateway(env,"flow_advisory_suggestion",{
-      entity_id:entityId,platform_id:platformId,subject_ref:subjectRef,run_stage:stage,event_type:eventType,
-      metadata,
-      constraints:{advisory_only:true,no_payment_action:true,no_regulated_decision:true,no_silent_communication:true}
-    });
-    const defaults:Record<string,string>={
-      lead:"Confirm the contact, need, authority, budget and next agreed action before progressing.",
-      qualified:"Confirm the commercial requirement and approved pricing inputs before preparing the quote.",
-      quoted:"Follow up on the quote at the agreed time and record the customer's response in CRM.",
-      awaiting_payment:"Check IZAKHONO PAY status only; do not treat a checkout start as confirmed payment.",
-      paid:"Verify fulfilment prerequisites and hand off to the product-specific fulfilment engine.",
-      fulfilment:"Confirm delivery evidence before requesting an invoice or retention follow-up.",
-      invoiced:"Confirm the invoice record and schedule the appropriate customer follow-up.",
-      support:"Resolve the support issue from source-system evidence before closing it.",
-      retained:"Review renewal, retention and expansion opportunities without automatic spend or commitments."
-    };
-    return json({
-      ok:true,
-      advisory:true,
-      action_id:clean(input.action_id,180),
-      run_id:clean(input.run_id,180),
-      scope:{entity_id:entityId,platform_id:platformId},
-      mode:ai?"ai":"deterministic",
-      suggestion:ai||defaults[stage]||"Review the source-system evidence and choose the next reversible action.",
-      guardrails:{moves_money:false,confirms_payment:false,regulated_decision:false,sends_communication:false}
-    });
-  }
 
   if (url.pathname === "/api/diagnostic" && req.method === "POST") {
     const body = await parseBody(req);

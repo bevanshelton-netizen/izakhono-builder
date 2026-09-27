@@ -54,6 +54,21 @@ function scrub(v,depth=0){
   if(typeof v==="number"||typeof v==="boolean"||v===null)return v;
   return clean(v,500);
 }
+function scrubAdvisory(v,depth=0){
+  if(depth>4)return null;
+  if(Array.isArray(v))return v.slice(0,30).map(x=>scrubAdvisory(x,depth+1));
+  if(v&&typeof v==="object"){
+    const out={};
+    for(const [k,val] of Object.entries(v).slice(0,80)){
+      if(/password|secret|token|credential|card|cvv|fraud|raw_prompt|contact|email|phone|mobile|name|address|identity|id_number|passport|bank|account/i.test(k))continue;
+      out[clean(k,80)]=scrubAdvisory(val,depth+1);
+    }
+    return out;
+  }
+  if(typeof v==="string")return clean(v,1200);
+  if(typeof v==="number"||typeof v==="boolean"||v===null)return v;
+  return clean(v,300);
+}
 function send(res,status,body){
   const data=JSON.stringify(body);
   res.writeHead(status,{"content-type":"application/json; charset=utf-8","content-length":Buffer.byteLength(data),"cache-control":"no-store","x-content-type-options":"nosniff","referrer-policy":"no-referrer"});
@@ -122,13 +137,48 @@ function enqueue(store,s,run,e,target,type){
   const row={id:uid("act"),...s,run_id:run.id,event_id:e.id,target,action_type:type,payload:scrub({event_type:e.event_type,subject_ref:e.subject_ref,source_service:e.source_service,references:e.references,metadata:e.metadata,run_stage:run.stage}),status:"pending",attempts:0,last_error:"",created_at:now(),updated_at:now()};
   store.action_outbox.push(row);return row;
 }
+function adapterRequest(row,cfg,endpoint){
+  const headers={"content-type":"application/json","x-entity-id":row.entity_id,"x-platform-id":row.platform_id};
+  if(cfg?.kind==="super-ai-workflow"){
+    const internalKey=clean(cfg.internal_key,2000),workflowKey=clean(cfg.workflow_key,2000);
+    if(!internalKey||!workflowKey)return{error:"super_ai_credentials_missing"};
+    headers["x-izakhono-ai-key"]=internalKey;
+    headers["x-izakhono-ai-workflow-key"]=workflowKey;
+    const advisoryContext={
+      platform_id:row.platform_id,
+      run_stage:clean(row.payload?.run_stage,80),
+      event_type:clean(row.payload?.event_type,120),
+      metadata:scrubAdvisory(row.payload?.metadata||{})
+    };
+    const requestBody={
+      entity_id:row.entity_id,
+      subject:`flow:${row.platform_id}:${row.run_id}`,
+      product:clean(cfg.product||"izakhono-flow",120),
+      access_mode:"workflow",
+      capability:clean(cfg.capability||"reasoning",40),
+      route:"owned",
+      data_classification:"internal",
+      messages:[
+        {role:"system",content:"You are the advisory intelligence layer for IZAKHONO FLOW. Return a concise, reversible next-step recommendation. Do not move money, confirm payment, make a regulated decision, or send a customer communication."},
+        {role:"user",content:JSON.stringify(advisoryContext)}
+      ]
+    };
+    return{headers,body:requestBody};
+  }
+  const token=typeof cfg==="object"?clean(cfg.token,2000):"";
+  if(token)headers.authorization="Bearer "+token;
+  return{headers,body:{action_id:row.id,run_id:row.run_id,action_type:row.action_type,payload:row.payload}};
+}
 async function dispatch(row){
   const cfg=ADAPTERS[row.target];if(!cfg)return{ok:false,error:"adapter_not_configured"};
   const endpoint=typeof cfg==="string"?cfg:cfg?.url;if(!endpoint)return{ok:false,error:"adapter_url_missing"};
-  const headers={"content-type":"application/json","x-entity-id":row.entity_id,"x-platform-id":row.platform_id};
-  const token=typeof cfg==="object"?clean(cfg.token,2000):"";if(token)headers.authorization="Bearer "+token;
-  try{const r=await fetch(endpoint,{method:"POST",headers,body:JSON.stringify({action_id:row.id,run_id:row.run_id,action_type:row.action_type,payload:row.payload}),signal:AbortSignal.timeout(5000)});let data=null;try{data=await r.json()}catch{};return{ok:r.ok,status:r.status,body:data}}
-  catch(e){return{ok:false,error:clean(e.message,500)}}
+  const request=adapterRequest(row,typeof cfg==="object"?cfg:{},endpoint);
+  if(request.error)return{ok:false,error:request.error};
+  try{
+    const r=await fetch(endpoint,{method:"POST",headers:request.headers,body:JSON.stringify(request.body),signal:AbortSignal.timeout(Number(cfg?.timeout_ms||15000))});
+    let data=null;try{data=await r.json()}catch{}
+    return{ok:r.ok,status:r.status,body:data};
+  }catch(e){return{ok:false,error:clean(e.message,500)}}
 }
 async function autoDispatchConfigured(store,s,actions,a){
   const deliveries=[];
@@ -150,13 +200,13 @@ function summary(store,s){
   return{scope:s,active_runs:runs.filter(r=>r.status==="active").length,closed_runs:runs.filter(r=>r.status==="closed").length,events:events.length,pending_actions:out.filter(a=>a.status==="pending").length,failed_actions:out.filter(a=>a.status==="failed").length,by_stage,privacy:{tracking:false,profiling:false,advertisingIdentifiers:false}};
 }
 function capabilities(){
-  return{service:"izakhono-flow",version:"0.1.0",workflow:"Lead -> Qualify -> Quote -> Pay -> Fulfil -> Invoice -> Support -> Retain -> Report",stages:STAGES,event_types:Object.keys(EVENT_STAGE),adapters:["izakhono-crm","izakhono-revenue","izakhono-pay","izakhono-tasks","izakhono-super-ai","platform"],guarantees:["entity_id + platform_id isolation","payment.confirmed accepted only from verified IZAKHONO PAY events","protected secrets filtered from orchestration metadata","AI actions advisory only","external adapters replaceable"]};
+  return{service:"izakhono-flow",version:"0.2.0",workflow:"Lead -> Qualify -> Quote -> Pay -> Fulfil -> Invoice -> Support -> Retain -> Report",stages:STAGES,event_types:Object.keys(EVENT_STAGE),adapters:["izakhono-crm","izakhono-revenue","izakhono-pay","izakhono-tasks","izakhono-super-ai","platform"],guarantees:["entity_id + platform_id isolation","payment.confirmed accepted only from verified IZAKHONO PAY events","protected secrets filtered from orchestration metadata","AI actions advisory only","external adapters replaceable"]};
 }
 
 const server=http.createServer(async(req,res)=>{
   try{
     const url=new URL(req.url||"/","http://"+(req.headers.host||"localhost"));
-    if(req.method==="GET"&&url.pathname==="/health")return send(res,200,{ok:true,service:"izakhono-flow",version:"0.1.0",engineIndependent:true,noTracking:true,adapterTargets:Object.keys(ADAPTERS)});
+    if(req.method==="GET"&&url.pathname==="/health")return send(res,200,{ok:true,service:"izakhono-flow",version:"0.2.0",engineIndependent:true,noTracking:true,adapterTargets:Object.keys(ADAPTERS)});
     if(req.method==="GET"&&url.pathname==="/api/capabilities")return send(res,200,capabilities());
     if(!url.pathname.startsWith("/api/")){
       if(url.pathname==="/"||url.pathname==="/index.html")return sendText(res,200,await fs.readFile(path.join(here,"public","index.html"),"utf8"),"text/html; charset=utf-8");

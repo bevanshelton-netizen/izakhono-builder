@@ -47,7 +47,7 @@ No customer event, payment, CRM deal or production workflow is created by the ow
 - `IZAKHONO_TASKS_TOKEN`
 - `IZAKHONO_TASKS_FLOW_TOKEN`
 - optional `IZAKHONO_PAY_FLOW_URL` + `PAY_FLOW_TOKEN`
-- optional `IZAKHONO_SUPER_AI_FLOW_URL` + `BUSINESS_AI_FLOW_TOKEN`
+- optional `IZAKHONO_SUPER_AI_FLOW_URL` + `FLOW_SUPER_AI_INTERNAL_KEY` + `FLOW_SUPER_AI_WORKFLOW_KEY`
 - `FLOW_ADAPTERS_JSON`
 
 Existing values are preserved. Missing credentials are generated with OpenSSL and the file is kept mode 600.
@@ -58,7 +58,13 @@ At activation time the script constructs `FLOW_ADAPTERS_JSON` in memory for the 
 - `izakhono-revenue -> http://revenue:8795/api/flow`
 - `izakhono-tasks -> http://tasks:9991/api/flow`
 
-PAY and SUPER AI are added only when both a real endpoint and matching token are present. Platform-specific fulfilment remains unconfigured until that platform provides its own approved adapter.
+PAY is added only when its real endpoint and matching token are present.
+
+SUPER AI is added only when its FLOW-reachable `/api/v1/generate` endpoint and both matching trusted-workflow credentials are present. The FLOW-side aliases are `FLOW_SUPER_AI_INTERNAL_KEY` and `FLOW_SUPER_AI_WORKFLOW_KEY`; they must match the approved SUPER AI owner configuration. FLOW does not generate these values.
+
+FLOW calls SUPER AI as product `izakhono-flow`, using trusted workflow mode, the owned route and internal data classification. Customer identity fields are removed from advisory metadata before the request.
+
+Platform-specific fulfilment remains unconfigured until that platform provides its own approved adapter.
 
 ## What step 3 proves
 

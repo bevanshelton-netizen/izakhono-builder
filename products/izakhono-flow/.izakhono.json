@@ -9,7 +9,7 @@
   "container_port": 8794,
   "health_path": "/health",
   "branch": "main",
-  "application_version": "0.1.0",
+  "application_version": "0.2.0",
   "capabilities": [
     "portfolio workflow orchestration",
     "entity and platform scoped event intake",
@@ -17,7 +17,8 @@
     "internal adapter outbox",
     "verified-payment gating",
     "advisory SUPER AI hand-off",
-    "audit trail"
+    "audit trail",
+    "trusted SUPER AI workflow advisory"
   ],
   "infrastructure": {
     "policy": "owned-first-externally-reversible",
@@ -26,9 +27,16 @@
     "current_public_route": "NOT_YET_VERIFIED",
     "external_fallback": "OPTIONAL_REPLACEABLE_ONLY",
     "status_label": "OWNED PACKAGE READY - NODE01 ACTIVATION NOT YET VERIFIED",
-    "data_dependencies": ["Owner-node durable FLOW data volume"],
-    "auth_dependencies": ["FLOW_ADMIN_TOKEN","FLOW_INGEST_TOKEN"],
-    "payment_dependencies": ["IZAKHONO PAY verified event feed only"],
+    "data_dependencies": [
+      "Owner-node durable FLOW data volume"
+    ],
+    "auth_dependencies": [
+      "FLOW_ADMIN_TOKEN",
+      "FLOW_INGEST_TOKEN"
+    ],
+    "payment_dependencies": [
+      "IZAKHONO PAY verified event feed only"
+    ],
     "backup_evidence": "PENDING_NODE01_PROOF",
     "restore_evidence": "PENDING_NODE01_PROOF",
     "rollback_evidence": "CONTAINER_ROLLBACK_PACKAGED_NOT_MACHINE_VERIFIED"
@@ -39,5 +47,9 @@
     "profiling": false,
     "advertisingIdentifiers": false
   },
-  "alpha": {"preflight": true, "rehearsal": true, "windows_package": false}
+  "alpha": {
+    "preflight": true,
+    "rehearsal": true,
+    "windows_package": false
+  }
 }
