@@ -58,7 +58,7 @@ try{
   data=await r.json();
   assert.equal(data.run.stage,"paid");
 
-  r=await fetch(base+"/api/events",{method:"POST",headers:{...headers,authorization:"Bearer ingest-test","content-type":"application/json"},body:JSON.stringify({event_type:"ai.suggestion.requested",subject_ref:"lead-1",source_service:"izakhono-flow",metadata:{next_action_question:"What reversible follow-up is appropriate?"}})});
+  r=await fetch(base+"/api/events",{method:"POST",headers:{...headers,authorization:"Bearer ingest-test","content-type":"application/json"},body:JSON.stringify({event_type:"ai.suggestion.requested",subject_ref:"lead-1",source_service:"izakhono-flow",metadata:{next_action_question:"What reversible follow-up is appropriate?",contact:{name:"Example Person",email:"example.person@example.test",phone:"+27110000000"},customer_reference:"sensitive-example"}})});
   assert.equal(r.status,201);
   data=await r.json();
   const aiAction=data.actions.find(a=>a.target==="izakhono-super-ai");
@@ -74,6 +74,9 @@ try{
   assert.equal(aiReq.body.data_classification,"internal");
   assert.match(aiReq.body.messages[0].content,/Do not move money/);
   assert.match(aiReq.body.messages[0].content,/regulated decision/);
+  assert.doesNotMatch(aiReq.body.subject,/lead-1/);
+  assert.doesNotMatch(aiReq.body.messages[1].content,/Example Person/);
+  assert.doesNotMatch(aiReq.body.messages[1].content,/example.person@example.test/);
 
   r=await fetch(base+"/api/summary",{headers:{...headers,authorization:"Bearer admin-test"}});
   data=await r.json();
