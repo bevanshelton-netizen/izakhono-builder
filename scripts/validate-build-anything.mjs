@@ -32,12 +32,18 @@ requireAll("core modules",core,[
 ]);
 requireAll("owner UI",ui,[
   'id="buildAnything"',
-  "IZAKHONO BUILD ANYTHING",
+  "IZAKHONO BUILDER · FAST BUILD MODE",
+  "Describe it.",
+  "See it built.",
   'id="quickPrompt"',
   'id="quickTarget"',
   "async function buildAnything()",
   "/api/build-anything",
-  "Release candidate created and committed to IZAKHONO."
+  "Controlled release candidate created.",
+  "Technical validation passed",
+  "IZAKHONO source committed",
+  "Public live: locked until verified",
+  "Open private preview"
 ]);
 requireAll("SUPER APP registry",registry,[
   '"id": "builder"',
