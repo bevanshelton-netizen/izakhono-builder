@@ -16,6 +16,14 @@ os.environ["IZAKHONO_IMAGE_URL"] = "http://127.0.0.1:19222/generate"
 os.environ["IZAKHONO_AI_CHAT_MODEL"] = "qwen3:4b"
 os.environ["IZAKHONO_AI_CHAT_MODELS"] = "qwen3:4b,qwen3:8b"
 os.environ["IZAKHONO_IMAGE_MODEL"] = "flux.1-schnell"
+os.environ["IZAKHONO_AI_OWNER_ONLY"] = "false"
+os.environ["IZAKHONO_AI_ALLOW_EXTERNAL"] = "true"
+os.environ["IZAKHONO_AI_EXTERNAL_TEXT_PROVIDER"] = "nvidia-nim"
+os.environ["IZAKHONO_AI_EXTERNAL_TEXT_URL"] = "http://127.0.0.1:19333/v1"
+os.environ["IZAKHONO_AI_EXTERNAL_TEXT_API_KEY"] = "external-test"
+os.environ["IZAKHONO_AI_EXTERNAL_TEXT_MODEL"] = "nvidia/nemotron-3-ultra-550b-a55b"
+os.environ["IZAKHONO_AI_EXTERNAL_TEXT_MODELS"] = "nvidia/nemotron-3-ultra-550b-a55b"
+os.environ["IZAKHONO_AI_EXTERNAL_HOSTS"] = "127.0.0.1"
 
 class AccessMock(BaseHTTPRequestHandler):
     def log_message(self, *args):
@@ -47,6 +55,22 @@ class ModelMock(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
+class ExternalMock(BaseHTTPRequestHandler):
+    def log_message(self, *args):
+        pass
+
+    def do_POST(self):
+        n = int(self.headers.get("content-length", "0"))
+        data = json.loads(self.rfile.read(n))
+        assert self.headers.get("authorization") == "Bearer external-test"
+        assert data["model"] == "nvidia/nemotron-3-ultra-550b-a55b"
+        body = json.dumps({"choices": [{"message": {"content": "external-mock-response"}}]}).encode()
+        self.send_response(200)
+        self.send_header("content-type", "application/json")
+        self.send_header("content-length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
 class ImageMock(BaseHTTPRequestHandler):
     def log_message(self, *args):
         pass
@@ -65,9 +89,11 @@ class ImageMock(BaseHTTPRequestHandler):
 a = ThreadingHTTPServer(("127.0.0.1", 19494), AccessMock)
 m = ThreadingHTTPServer(("127.0.0.1", 19134), ModelMock)
 i = ThreadingHTTPServer(("127.0.0.1", 19222), ImageMock)
+e = ThreadingHTTPServer(("127.0.0.1", 19333), ExternalMock)
 threading.Thread(target=a.serve_forever, daemon=True).start()
 threading.Thread(target=m.serve_forever, daemon=True).start()
 threading.Thread(target=i.serve_forever, daemon=True).start()
+threading.Thread(target=e.serve_forever, daemon=True).start()
 
 spec = importlib.util.spec_from_file_location("gateway", Path(__file__).with_name("app.py"))
 g = importlib.util.module_from_spec(spec)
@@ -81,7 +107,7 @@ assert g.workflow_key_allowed("workflow-test", "izakhono-builder") is True
 assert g.workflow_key_allowed("workflow-test", "other-product") is False
 assert g.workflow_key_allowed("wrong-key", "venture-factory") is False
 
-chat_cap, chat_model, chat_output, _ = g.execute_capability({
+chat_cap, chat_model, chat_output, _, chat_route = g.execute_capability({
     "capability": "chat",
     "model": "qwen3:8b",
     "messages": [{"role": "user", "content": "hello"}],
@@ -89,14 +115,39 @@ chat_cap, chat_model, chat_output, _ = g.execute_capability({
 assert chat_cap == "chat"
 assert chat_model == "qwen3:8b"
 assert chat_output["text"] == "mock-response"
+assert chat_route == "owned"
 
-image_cap, image_model, image_output, _ = g.execute_capability({
+external_cap, external_model, external_output, _, external_route = g.execute_capability({
+    "capability": "code",
+    "route": "external",
+    "data_classification": "public",
+    "messages": [{"role": "user", "content": "review this public example"}],
+})
+assert external_cap == "code"
+assert external_model == "nvidia/nemotron-3-ultra-550b-a55b"
+assert external_output["text"] == "external-mock-response"
+assert external_route == "external"
+assert g.external_text_configured() is True
+
+try:
+    g.execute_capability({
+        "capability": "code",
+        "route": "external",
+        "data_classification": "confidential",
+        "messages": [{"role": "user", "content": "private source"}],
+    })
+    raise AssertionError("external route accepted confidential data")
+except ValueError as exc:
+    assert str(exc) == "external_route_requires_public_data"
+
+image_cap, image_model, image_output, _, image_route = g.execute_capability({
     "capability": "image",
     "prompt": "African future city",
 })
 assert image_cap == "image"
 assert image_model == "flux.1-schnell"
 assert image_output["data"]["asset_url"] == "owner://image/mock-1"
+assert image_route == "owned"
 
 try:
     g.execute_capability({
@@ -118,3 +169,4 @@ print("IZAKHONO_SUPER_AI_TEST=PASS")
 a.shutdown()
 m.shutdown()
 i.shutdown()
+e.shutdown()

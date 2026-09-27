@@ -29,6 +29,15 @@ powershell -ExecutionPolicy Bypass -File .\scripts\START-IZAKHONO-CODE.ps1
 
 Open `http://127.0.0.1:4177`. The owner token is generated locally under ProgramData and is never committed.
 
+## Replaceable coding-agent evaluation
+
+IZAKHONO CODE now includes a guarded DeepSeek Harness evaluation lane:
+
+- `START-DEEPSEEK-HARNESS-SANDBOX.cmd`
+- `DEEPSEEK-HARNESS-SANDBOX.md`
+
+The launcher uses a dedicated non-production workspace and dedicated `DSH_HOME`. Harness remains developer-preview software and is not part of the trusted production boundary. It must never be given production secrets, customer records, FORTRESS intelligence or irreplaceable source.
+
 ## Readiness boundary
 
 Complete Alpha means the product surface is present for controlled owner testing. It is not commercial GA. Server migration, TLS, multi-user identity, repository protocol hardening, runner isolation, backup/restore proof, external security review and real owner-machine evidence remain release gates.

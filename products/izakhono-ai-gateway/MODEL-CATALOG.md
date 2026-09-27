@@ -10,6 +10,8 @@ This file is an intake list, not a claim that every model is already installed o
 
 ### Coding
 - **Qwen3-Coder** — preferred code/agent family where the available node has sufficient memory/compute. Keep smaller local fallbacks for owner devices that cannot run the larger checkpoints.
+- **NVIDIA Nemotron 3 Ultra** — optional OpenAI-compatible external development/benchmark route when NVIDIA's hosted endpoint is explicitly enabled. It is never the default route and is restricted to payloads classified `public` by the IZAKHONO gateway.
+- **DeepSeek Harness** — coding-agent harness rather than a model. It is MIT-licensed developer-preview software and is evaluated only inside an isolated disposable workspace with least privilege. It must not be treated as a production security boundary.
 
 ### Image
 - **FLUX.1 schnell** — preferred permissive image baseline; Apache 2.0.
@@ -47,6 +49,8 @@ We are not exposing these as a bag of vendor buttons. IZAKHONO adds:
 - FLUX: https://github.com/black-forest-labs/flux
 - Wan2.1: https://github.com/Wan-Video/Wan2.1
 - Whisper: https://github.com/openai/whisper
+- DeepSeek Harness: https://github.com/deepseek-ai/deepseek-harness
+- NVIDIA Nemotron 3 Ultra hosted model card: https://build.nvidia.com/nvidia/nemotron-3-ultra-550b-a55b
 
 ## Commercial rule
 
