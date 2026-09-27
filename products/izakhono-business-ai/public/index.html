@@ -238,38 +238,69 @@
           <div class="decision-layout">
             <form id="scenarioForm" class="panel form-card">
               <div class="panel-head">
-                <div><p class="eyebrow">DECISION LAB V0.2</p><h3>Rehearse a decision</h3></div>
-                <span class="status-chip neutral">CLEAN-ROOM ENGINE</span>
+                <div><p class="eyebrow">DECISION LAB V0.3</p><h3>Rehearse and compare decisions</h3></div>
+                <span class="status-chip neutral">IZAKHONO ENGINE</span>
               </div>
-              <label>Scenario<textarea id="scenarioText" rows="5" required placeholder="Example: Increase our monthly service price by 15% next quarter while adding priority support."></textarea></label>
-              <label>Stakeholders<input id="scenarioStakeholders" value="Loyal customers, New customers, Staff, Competitors, Suppliers"></label>
+
+              <label>Scenario A<textarea id="scenarioText" rows="4" required placeholder="Example: Increase our monthly service price by 15% next quarter while adding priority support."></textarea></label>
+              <label>Scenario B — optional comparison<textarea id="scenarioTextB" rows="3" placeholder="Example: Keep the current price but introduce a separate premium support tier."></textarea></label>
+              <label>Stakeholder groups<input id="scenarioStakeholders" value="Loyal customers, New customers, Staff, Competitors, Suppliers"></label>
+
               <div class="split">
                 <label>Time horizon<select id="scenarioHorizon"><option>30 days</option><option selected>90 days</option><option>6 months</option><option>12 months</option></select></label>
                 <label>Reaction rounds<select id="scenarioRounds"><option value="2">2 rounds</option><option value="3" selected>3 rounds</option><option value="5">5 rounds</option></select></label>
               </div>
+
+              <div class="split">
+                <label>Agent population<select id="scenarioPopulation"><option value="12">12 agents</option><option value="25" selected>25 agents</option><option value="50">50 agents</option><option value="100">100 agents</option></select></label>
+                <label>Repeated simulations<select id="scenarioTrials"><option value="3" selected>3 runs</option><option value="5">5 runs</option><option value="10">10 runs</option></select></label>
+              </div>
+
+              <label class="toggle-row"><input id="scenarioRedTeam" type="checkbox" checked><span><strong>Red-Team agents</strong><small>Probe legal/compliance, operational, fraud/abuse and downside risks.</small></span></label>
 
               <div class="source-packet">
                 <div class="panel-head">
                   <div><p class="eyebrow">EVIDENCE PACKET</p><h4>Ground the rehearsal</h4></div>
                   <span id="sourceCount" class="count-chip">0</span>
                 </div>
-                <p class="form-note">Add text, Markdown, CSV or JSON source files. Files are read in your browser and sent only to this Decision Lab run when you press Run.</p>
-                <input id="scenarioFiles" type="file" multiple accept=".txt,.md,.csv,.json,text/plain,text/markdown,text/csv,application/json">
+                <p class="form-note">Add TXT, Markdown, CSV, JSON or text-based PDF files. Files are read locally first and sent only when you run Decision Lab.</p>
+                <input id="scenarioFiles" type="file" multiple accept=".txt,.md,.csv,.json,.pdf,text/plain,text/markdown,text/csv,application/json,application/pdf">
                 <div id="sourceList" class="source-list empty-state">No source files loaded.</div>
                 <label>Manual evidence / assumptions<textarea id="scenarioEvidence" rows="4" placeholder="Paste customer feedback, pricing facts, operating constraints or assumptions here."></textarea></label>
               </div>
 
-              <button class="btn primary">Run multi-agent rehearsal</button>
-              <small class="form-note">Synthetic reactions are hypotheses, not real-world evidence, guaranteed forecasts or a substitute for customer research.</small>
+              <button class="btn primary">Run Decision Lab v0.3</button>
+              <small class="form-note">Synthetic agents produce hypotheses and uncertainty ranges. They do not replace real customer research, legal advice, market evidence or human decision-making.</small>
             </form>
 
             <article class="panel decision-report-panel">
               <div class="panel-head">
-                <div><p class="eyebrow">SIMULATION REPORT</p><h3>Agents, evidence and tensions</h3></div>
+                <div><p class="eyebrow">SIMULATION REPORT</p><h3>Evidence, uncertainty and red-team findings</h3></div>
                 <button id="exportScenarioReport" type="button" class="btn ghost small-btn" disabled>Export JSON</button>
               </div>
               <div id="scenarioManifest" class="manifest-bar hidden"></div>
               <div id="scenarioOutput" class="output-box decision-output">Your Decision Lab report will appear here.</div>
+
+              <div class="decision-tools">
+                <form id="askWorldForm" class="tool-card">
+                  <div><p class="eyebrow">ASK THE SIMULATED WORLD</p><h4>Interrogate this run</h4></div>
+                  <textarea id="askWorldQuestion" rows="3" placeholder="Which stakeholder group shows the most resistance, and what evidence should I collect next?"></textarea>
+                  <button class="btn ghost" type="submit">Ask report</button>
+                  <div id="askWorldOutput" class="mini-output">Run a simulation first.</div>
+                </form>
+
+                <form id="calibrationForm" class="tool-card">
+                  <div><p class="eyebrow">CALIBRATION LOG</p><h4>Record what actually happened</h4></div>
+                  <select id="calibrationDirection">
+                    <option value="supportive">Outcome leaned supportive</option>
+                    <option value="mixed">Outcome was mixed</option>
+                    <option value="resistant">Outcome leaned resistant</option>
+                  </select>
+                  <textarea id="calibrationOutcome" rows="3" placeholder="Describe the observed result once you have real-world evidence."></textarea>
+                  <button class="btn ghost" type="submit">Save observation</button>
+                  <div id="calibrationOutput" class="mini-output">No observation saved for this run.</div>
+                </form>
+              </div>
             </article>
           </div>
         </section>
