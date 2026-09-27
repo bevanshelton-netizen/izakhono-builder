@@ -48,6 +48,12 @@ It is not automatically a production resilience target. Promotion to a public re
 
 For AI work, prefer CPU-appropriate local/open-weight models or queue/control workloads. Do not assume the A1 free allowance can run very large models. Hosted external model APIs remain separate adapters and must follow SUPER AI's data-classification boundary.
 
+## Bootstrap template
+
+`oracle-a1-cloud-init.yaml` provides a secret-free ARM-compatible auxiliary-worker bootstrap. It installs basic tooling, creates a locked service user and exposes a **loopback-only** health file/service. It intentionally does not open public firewall ports or grant cloud-admin privileges.
+
+The bootstrap is not a provisioning engine and does not create an Oracle account, tenancy, VCN or compute instance.
+
 ## Provisioning boundary
 
 This repository does not claim an Oracle tenancy or instance has been created. Actual provisioning requires the account owner to have an Oracle Cloud tenancy, select the home region, accept Oracle's current terms and create the VM. Once a real instance exists, register its health endpoint in the Runtime Fabric configuration and verify it before assigning work.
