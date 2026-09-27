@@ -35,7 +35,9 @@ trap cleanup EXIT
 docker run --rm --user root   -v "$RESTORE_VOLUME:/restore"   -v "$BACKUP_DIR:/backup:ro"   "$IMAGE" sh -lc "cd /restore && tar -xzf /backup/$(basename "$BACKUP_FILE")"
 
 PROBE_SECRET="restore-proof-$NOW"
-docker run -d --name "$RESTORE_CONTAINER"   -e DOCFLOW_ADMIN_SECRET="$PROBE_SECRET"   -e APP_ENV=restore-proof   -p 127.0.0.1::8787   -v "$RESTORE_VOLUME:/app/data"   "$IMAGE" >/dev/null
+printf -v DOCFLOW_ADMIN_SECRET '%s' "$PROBE_SECRET"
+export DOCFLOW_ADMIN_SECRET
+docker run -d --name "$RESTORE_CONTAINER"   -e DOCFLOW_ADMIN_SECRET   -e APP_ENV=restore-proof   -p 127.0.0.1::8787   -v "$RESTORE_VOLUME:/app/data"   "$IMAGE" >/dev/null
 
 HOST_PORT="$(docker port "$RESTORE_CONTAINER" 8787/tcp | sed -E 's/.*:([0-9]+)$/\1/' | head -1)"
 [ -n "$HOST_PORT" ] || { echo "[FAIL] Restore probe port not allocated."; exit 6; }
