@@ -46,3 +46,18 @@ The product includes its own Worker entry point in `src/index.ts` and static ass
 - `GET /api/flow/status`
 
 Deployment must follow the portfolio infrastructure directive and must not be described as live until HTTPS and end-to-end acceptance checks pass.
+
+
+## Production resilience route
+
+The externally reversible production route is:
+
+`https://yfawrenhudjomhnglfhq.supabase.co/functions/v1/izakhono-one-hub/super-app`
+
+The route was independently checked from the Supabase network and returned HTTPS 200 on 27 September 2026. It is classified as **external resilience**, not the owned-primary route. NODE 01 remains the owned authority and must pass its own public acceptance gate before traffic is called owned-primary.
+
+## Weekly revenue target
+
+The SUPER APP now carries a R20,000/week verified-revenue target cockpit. This is an operating goal, not a revenue guarantee. Only signature-valid verified payment receipts count. The initial direct-checkout mix is 25 RE1 + RE5 bundles at R549 plus 21 RE5 purchases at R299, a planned R20,004/week.
+
+A daily 08:00 SAST database watch updates the R20k sprint task using verified receipts only. Paid-media spend and other high-impact financial actions remain owner-gated.
