@@ -10,9 +10,11 @@ import {
 } from './internal-repository';
 
 const ALLOWED_MODULES = new Set([
-  'leads', 'auth', 'uploads', 'payments', 'email', 'admin',
-  'analytics', 'marketplace', 'learning', 'video', 'ai',
-  'revenue', 'artist_protect', 'career', 'media_handoff', 'clearset', 'docflow',
+  'leads', 'auth', 'uploads', 'payments', 'email', 'notifications', 'chat',
+  'speech', 'transcription', 'recurring', 'roles', 'integrations', 'publish',
+  'admin', 'analytics', 'marketplace', 'learning', 'video', 'ai', 'revenue',
+  'artist_protect', 'career', 'media_handoff', 'clearset', 'growth', 'affiliate',
+  'docflow', 'game', 'seo',
 ]);
 
 function json(data: unknown, status = 200, source?: Response): Response {
@@ -212,6 +214,143 @@ async function ventureFactoryBuildRoute(req: Request, env: any, url: URL): Promi
     public_live: false,
     next_gate: 'deployment-verification',
     message: 'Venture promoted into IZAKHONO Builder, generated, validated and committed to the IZAKHONO internal repository. Public deployment remains gated.',
+  });
+}
+
+
+const BUILD_TARGETS = new Set(['website', 'app', 'game', 'software']);
+
+function inferBuildTarget(prompt: string, explicit = ''): string {
+  const requested = String(explicit || '').toLowerCase().trim();
+  if (BUILD_TARGETS.has(requested)) return requested;
+  const p = String(prompt || '').toLowerCase();
+  if (/\b(game|gaming|player|level|racing|quiz game|arcade)\b/.test(p)) return 'game';
+  if (/\b(website|web site|landing page|storefront|site)\b/.test(p)) return 'website';
+  if (/\b(software|desktop|system|tool|crm|erp|saas)\b/.test(p)) return 'software';
+  return 'app';
+}
+
+function buildNameFromPrompt(prompt: string, target: string): string {
+  const cleaned = String(prompt || '')
+    .replace(/[\r\n]+/g, ' ')
+    .replace(/\b(please|build|create|make|develop|design|generate|an?|the|for me)\b/gi, ' ')
+    .replace(/\b(website|web site|app|application|game|software|platform|system)\b/gi, ' ')
+    .replace(/[^\p{L}\p{N}\s&-]/gu, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  const words = cleaned.split(' ').filter(Boolean).slice(0, 6);
+  const base = words.length ? words.join(' ') : ('New ' + target);
+  return base.replace(/\b\w/g, ch => ch.toUpperCase()).slice(0, 90);
+}
+
+function buildModulesFromPrompt(prompt: string, target: string): string[] {
+  const p = String(prompt || '').toLowerCase();
+  const modules = new Set<string>(['ai', 'integrations', 'publish', 'growth', 'admin', 'analytics']);
+  if (target === 'website') modules.add('seo');
+  if (target === 'game') { modules.add('game'); modules.add('uploads'); }
+  if (/\b(pay|payment|checkout|sell|shop|store|order|invoice|subscription|booking|bookings)\b/.test(p)) {
+    modules.add('payments'); modules.add('revenue');
+  }
+  if (/\b(marketplace|vendors?|providers?|buyers?|sellers?)\b/.test(p)) modules.add('marketplace');
+  if (/\b(course|learn|student|school|academy|training|lesson|quiz|exam)\b/.test(p)) modules.add('learning');
+  if (/\b(chat|message|community|social|comment|notification)\b/.test(p)) { modules.add('chat'); modules.add('notifications'); }
+  if (/\b(upload|photo|image|video|media|gallery|portfolio)\b/.test(p)) modules.add('uploads');
+  if (/\b(video|movie|film|stream|creator)\b/.test(p)) modules.add('video');
+  if (/\b(email|newsletter|mail)\b/.test(p)) modules.add('email');
+  if (/\b(affiliate|referral|commission|partner network)\b/.test(p)) modules.add('affiliate');
+  if (/\b(document|proposal|contract|agreement|pdf|signature|signing)\b/.test(p)) modules.add('docflow');
+  if (/\b(schedule|scheduled|recurring|automation|workflow|reminder)\b/.test(p)) modules.add('recurring');
+  if (/\b(team|staff|role|permission|admin users?)\b/.test(p)) modules.add('roles');
+  if (/\b(audio|voice|speech|narrat)\b/.test(p)) modules.add('speech');
+  if (/\b(transcrib|caption|subtitle)\b/.test(p)) modules.add('transcription');
+  return Array.from(modules).filter(m => ALLOWED_MODULES.has(m));
+}
+
+async function uniqueBuildSlug(env: any, desired: string): Promise<string> {
+  const base = ventureSlug(desired).slice(0, 52);
+  let candidate = base;
+  for (let i = 0; i < 20; i++) {
+    const exists = await env.DB.prepare('SELECT id FROM builder_projects WHERE slug=?').bind(candidate).first<any>();
+    if (!exists) return candidate;
+    const suffix = '-' + crypto.randomUUID().replaceAll('-', '').slice(0, 5);
+    candidate = (base.slice(0, Math.max(1, 60 - suffix.length)) + suffix).replace(/-+$/, '');
+  }
+  return ('build-' + crypto.randomUUID().replaceAll('-', '').slice(0, 12)).toLowerCase();
+}
+
+async function buildAnythingRoute(req: Request, env: any, url: URL): Promise<Response | null> {
+  if (url.pathname !== '/api/build-anything' || req.method !== 'POST') return null;
+  if (!(await ownerAuthorized(req, env))) return json({ ok: false, error: 'Unauthorized' }, 401);
+
+  let payload: any = null;
+  try { payload = await req.json(); } catch { return json({ ok: false, error: 'Expected application/json' }, 400); }
+
+  const prompt = String(payload?.prompt || '').trim().slice(0, 1200);
+  if (prompt.length < 8) return json({ ok: false, error: 'Describe what you want to build in at least one short sentence.' }, 400);
+
+  const target = inferBuildTarget(prompt, payload?.target);
+  const name = String(payload?.name || '').trim().slice(0, 100) || buildNameFromPrompt(prompt, target);
+  const slug = await uniqueBuildSlug(env, String(payload?.slug || name));
+  const modules = buildModulesFromPrompt(prompt, target);
+  const category = target === 'website' ? 'website' : target === 'game' ? 'game' : target === 'software' ? 'software' : 'general';
+
+  const createUrl = new URL(req.url);
+  createUrl.pathname = '/api/projects';
+  createUrl.search = '';
+  const createHeaders = new Headers(req.headers);
+  createHeaders.set('content-type', 'application/json');
+  const created = await secureApp.fetch(new Request(createUrl.toString(), {
+    method: 'POST',
+    headers: createHeaders,
+    body: JSON.stringify({ name, slug, category, description: prompt, modules }),
+  }), env);
+  const createdData = await secureJson(created);
+  if (!created.ok) return json({ ok: false, stage: 'create', ...createdData }, created.status);
+
+  const projectId = String(createdData.id || '');
+  if (!projectId) return json({ ok: false, stage: 'create', error: 'Builder did not return a project id' }, 500);
+
+  await env.DB.prepare('INSERT INTO builder_events(id,project_id,event_type,detail) VALUES(?,?,?,?)')
+    .bind('evt_' + crypto.randomUUID().replaceAll('-', ''), projectId, 'build_anything.prompt', prompt.slice(0, 1000)).run();
+
+  const call = async (action: string) => {
+    const targetUrl = new URL(req.url);
+    targetUrl.pathname = '/api/projects/' + encodeURIComponent(projectId) + '/' + action;
+    targetUrl.search = '';
+    return secureApp.fetch(new Request(targetUrl.toString(), { method: 'POST', headers: req.headers }), env);
+  };
+
+  const planned = await call('plan');
+  const planData = await secureJson(planned);
+  if (!planned.ok) return json({ ok: false, stage: 'plan', project: createdData, ...planData }, planned.status);
+
+  const generated = await call('generate');
+  const generateData = await secureJson(generated);
+  if (!generated.ok) return json({ ok: false, stage: 'generate', project: createdData, ...generateData }, generated.status);
+
+  const validated = await call('validate-generated');
+  const committed = await commitValidatedBundle(req, env, projectId, validated);
+  const validationData = await secureJson(committed);
+  if (!committed.ok) return json({ ok: false, stage: 'validate', project: createdData, ...validationData }, committed.status);
+
+  return json({
+    ok: true,
+    product: 'IZAKHONO BUILD ANYTHING',
+    prompt,
+    inference: { target, name, slug, category, modules },
+    project: { id: projectId, name, slug, category, status: 'validated' },
+    build: {
+      planned: true,
+      generated: true,
+      file_count: Number(generateData?.generated?.file_count || 0),
+      revision: generateData?.generated?.revision || null,
+      validation_passed: Boolean(validationData?.validation?.passed),
+      internal_repository: validationData?.internal_repository || null,
+      preview: validationData?.preview || null,
+    },
+    public_live: false,
+    next_gate: 'deployment-verification',
+    message: 'One-sentence build completed through plan → generate → validate → IZAKHONO internal repository commit. Public deployment remains gated until HTTPS and end-to-end acceptance pass.',
   });
 }
 
@@ -712,6 +851,9 @@ export default {
 
     const ventureBuild = await ventureFactoryBuildRoute(req, env, url);
     if (ventureBuild) return ventureBuild;
+
+    const buildAnything = await buildAnythingRoute(req, env, url);
+    if (buildAnything) return buildAnything;
 
     const reviewLoop = await reviewLoopRoute(req, env, url);
     if (reviewLoop) return reviewLoop;
