@@ -56,8 +56,9 @@ ensure_env_value IZAKHONO_TASKS_RUNNER_URL ''
 ensure_env_value IZAKHONO_TASKS_RUNNER_SECRET ''
 ensure_env_value IZAKHONO_PAY_FLOW_URL ''
 ensure_env_value PAY_FLOW_TOKEN ''
-ensure_env_value IZAKHONO_SUPER_AI_FLOW_URL ''
-ensure_env_value BUSINESS_AI_FLOW_TOKEN ''
+ensure_env_value IZAKHONO_SUPER_AI_FLOW_URL "${IZAKHONO_SUPER_AI_FLOW_URL:-}"
+ensure_env_value FLOW_SUPER_AI_INTERNAL_KEY "${FLOW_SUPER_AI_INTERNAL_KEY:-}"
+ensure_env_value FLOW_SUPER_AI_WORKFLOW_KEY "${FLOW_SUPER_AI_WORKFLOW_KEY:-}"
 ensure_env_value FLOW_ADAPTERS_JSON '{}'
 ensure_env_value IZAKHONO_FABRIC_PUBLIC_INTAKE false
 ensure_env_value IZAKHONO_FABRIC_ALLOWED_ORIGINS ''
@@ -89,8 +90,13 @@ FLOW_ADAPTERS_JSON="$(jq -nc \
 if [ -n "${IZAKHONO_PAY_FLOW_URL:-}" ] && [ -n "${PAY_FLOW_TOKEN:-}" ]; then
   FLOW_ADAPTERS_JSON="$(jq -c --arg u "$IZAKHONO_PAY_FLOW_URL" --arg t "$PAY_FLOW_TOKEN" '. + {"izakhono-pay":{url:$u,token:$t}}' <<<"$FLOW_ADAPTERS_JSON")"
 fi
-if [ -n "${IZAKHONO_SUPER_AI_FLOW_URL:-}" ] && [ -n "${BUSINESS_AI_FLOW_TOKEN:-}" ]; then
-  FLOW_ADAPTERS_JSON="$(jq -c --arg u "$IZAKHONO_SUPER_AI_FLOW_URL" --arg t "$BUSINESS_AI_FLOW_TOKEN" '. + {"izakhono-super-ai":{url:$u,token:$t}}' <<<"$FLOW_ADAPTERS_JSON")"
+if [ -n "${IZAKHONO_SUPER_AI_FLOW_URL:-}" ] && [ -n "${FLOW_SUPER_AI_INTERNAL_KEY:-}" ] && [ -n "${FLOW_SUPER_AI_WORKFLOW_KEY:-}" ]; then
+  FLOW_ADAPTERS_JSON="$(jq -c \
+    --arg u "$IZAKHONO_SUPER_AI_FLOW_URL" \
+    --arg i "$FLOW_SUPER_AI_INTERNAL_KEY" \
+    --arg w "$FLOW_SUPER_AI_WORKFLOW_KEY" \
+    '. + {"izakhono-super-ai":{kind:"super-ai-workflow",url:$u,internal_key:$i,workflow_key:$w,product:"izakhono-flow",capability:"reasoning",timeout_ms:30000}}' \
+    <<<"$FLOW_ADAPTERS_JSON")"
 fi
 export FLOW_ADAPTERS_JSON
 
@@ -158,7 +164,7 @@ jq -n \
   --arg fabric_image "$FABRIC_IMAGE" \
   --arg flow_backup "$FLOW_BACKUP" \
   --arg pay_adapter "$([ -n "${IZAKHONO_PAY_FLOW_URL:-}" ] && [ -n "${PAY_FLOW_TOKEN:-}" ] && echo CONFIGURED_OPTIONAL || echo NOT_CONFIGURED)" \
-  --arg super_ai_adapter "$([ -n "${IZAKHONO_SUPER_AI_FLOW_URL:-}" ] && [ -n "${BUSINESS_AI_FLOW_TOKEN:-}" ] && echo CONFIGURED_OPTIONAL || echo NOT_CONFIGURED)" \
+  --arg super_ai_adapter "$([ -n "${IZAKHONO_SUPER_AI_FLOW_URL:-}" ] && [ -n "${FLOW_SUPER_AI_INTERNAL_KEY:-}" ] && [ -n "${FLOW_SUPER_AI_WORKFLOW_KEY:-}" ] && echo CONFIGURED_TRUSTED_WORKFLOW || echo NOT_CONFIGURED)" \
   --argjson public_intake "$PUBLIC_ENABLED" \
   '{
     schema:$schema,
