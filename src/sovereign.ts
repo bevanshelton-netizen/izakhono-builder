@@ -408,44 +408,33 @@ async function buildAnythingRoute(req: Request, env: any, url: URL): Promise<Res
   await env.DB.prepare('INSERT INTO builder_events(id,project_id,event_type,detail) VALUES(?,?,?,?)')
     .bind('evt_' + crypto.randomUUID().replaceAll('-', ''), projectId, 'build_anything.prompt', prompt.slice(0, 1000)).run();
 
-  const call = async (action: string) => {
-    const targetUrl = new URL(req.url);
-    targetUrl.pathname = '/api/projects/' + encodeURIComponent(projectId) + '/' + action;
-    targetUrl.search = '';
-    return secureApp.fetch(new Request(targetUrl.toString(), { method: 'POST', headers: req.headers }), env);
-  };
-
-  const planned = await call('plan');
-  const planData = await secureJson(planned);
-  if (!planned.ok) return json({ ok: false, stage: 'plan', project: createdData, ...planData }, planned.status);
-
-  const generated = await call('generate');
-  const generateData = await secureJson(generated);
-  if (!generated.ok) return json({ ok: false, stage: 'generate', project: createdData, ...generateData }, generated.status);
-
-  const validated = await call('validate-generated');
-  const committed = await commitValidatedBundle(req, env, projectId, validated);
-  const validationData = await secureJson(committed);
-  if (!committed.ok) return json({ ok: false, stage: 'validate', project: createdData, ...validationData }, committed.status);
+  const autopilotUrl = new URL(req.url);
+  autopilotUrl.pathname = '/api/projects/' + encodeURIComponent(projectId) + '/autopilot';
+  autopilotUrl.search = '';
+  const autopilotReq = new Request(autopilotUrl.toString(), { method: 'POST', headers: req.headers });
+  const autopilot = await projectAutopilotRoute(autopilotReq, env, autopilotUrl);
+  if (!autopilot) return json({ ok: false, stage: 'autopilot', error: 'Builder autopilot route unavailable' }, 500);
+  const autopilotData = await secureJson(autopilot);
+  if (!autopilot.ok) return json({ ok: false, stage: autopilotData?.stage || 'autopilot', project: createdData, ...autopilotData }, autopilot.status);
 
   return json({
     ok: true,
     product: 'IZAKHONO BUILD ANYTHING',
     prompt,
     inference: { target, name, slug, category, modules, summary: intent.summary || null, build_priorities: intent.build_priorities || [], intelligence: intent.intelligence || { mode: 'deterministic-fallback' } },
-    project: { id: projectId, name, slug, category, status: 'validated' },
+    project: { id: projectId, name, slug, category, status: autopilotData?.project?.status || 'deploy_ready' },
     build: {
       planned: true,
-      generated: true,
-      file_count: Number(generateData?.generated?.file_count || 0),
-      revision: generateData?.generated?.revision || null,
-      validation_passed: Boolean(validationData?.validation?.passed),
-      internal_repository: validationData?.internal_repository || null,
-      preview: validationData?.preview || null,
+      generated: Boolean(autopilotData?.build?.generated),
+      revision: autopilotData?.build?.revision || null,
+      validation_passed: Boolean(autopilotData?.build?.validation_passed),
+      internal_repository: autopilotData?.build?.internal_repository || null,
+      preview: autopilotData?.build?.preview || null,
     },
+    release_candidate: autopilotData?.release_candidate || null,
     public_live: false,
-    next_gate: 'deployment-verification',
-    message: 'One-sentence build completed through plan → generate → validate → IZAKHONO internal repository commit. Public deployment remains gated until HTTPS and end-to-end acceptance pass.',
+    next_gate: autopilotData?.next_gate || 'owned-runtime-deployment-verification',
+    message: 'One-sentence build completed through IZAKHONO Builder autopilot and produced a controlled release candidate. Public deployment remains evidence-gated.',
   });
 }
 
