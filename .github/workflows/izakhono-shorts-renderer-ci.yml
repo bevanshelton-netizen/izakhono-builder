@@ -1,0 +1,34 @@
+name: IZAKHONO Shorts Renderer CI
+
+on:
+  push:
+    paths:
+      - "products/izakhono-shorts-renderer/**"
+      - "apps/izakhono-shorts/**"
+      - ".github/workflows/izakhono-shorts-renderer-ci.yml"
+  pull_request:
+    paths:
+      - "products/izakhono-shorts-renderer/**"
+      - "apps/izakhono-shorts/**"
+      - ".github/workflows/izakhono-shorts-renderer-ci.yml"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Python syntax
+        run: |
+          python -m py_compile products/izakhono-shorts-renderer/app.py
+          python -m py_compile apps/izakhono-shorts/engine.py
+          python -m py_compile apps/izakhono-shorts/app.py
+          python -m py_compile apps/izakhono-shorts/worker.py
+      - name: Renderer unit tests
+        run: python products/izakhono-shorts-renderer/test_renderer.py
+      - name: Shell syntax
+        run: |
+          bash -n products/izakhono-shorts-renderer/install-node01.sh
+          bash -n products/izakhono-shorts-renderer/verify-node01.sh
