@@ -1,0 +1,30 @@
+name: IZAKHONO BUSINESS AI
+
+on:
+  pull_request:
+    paths:
+      - "products/izakhono-business-ai/**"
+      - ".github/workflows/izakhono-business-ai.yml"
+  push:
+    branches: [main]
+    paths:
+      - "products/izakhono-business-ai/**"
+      - ".github/workflows/izakhono-business-ai.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: products/izakhono-business-ai
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: npm install --package-lock-only
+      - run: npm ci
+      - run: npm run validate

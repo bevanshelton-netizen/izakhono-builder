@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#0b4fd6">
+  <title>IZAKHONO BUSINESS AI</title>
+  <meta name="description" content="A privacy-first AI business assistant for South African small businesses: clients, quotes, invoices, correspondence, diagnostics and decision rehearsal.">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div id="privacyBanner" class="privacy-banner hidden" role="dialog" aria-label="Privacy preferences">
+    <div class="privacy-icon">✓</div>
+    <div class="privacy-copy">
+      <strong>Privacy comes first.</strong>
+      <p>IZAKHONO BUSINESS AI uses essential on-device storage for your workspace. No behavioural tracking, ad IDs or third-party analytics are loaded.</p>
+    </div>
+    <div class="privacy-actions">
+      <button id="privacyInfo" class="btn ghost">Details</button>
+      <button id="privacyAccept" class="btn primary">Continue</button>
+    </div>
+  </div>
+
+  <header class="site-header">
+    <a class="brand" href="#home" aria-label="IZAKHONO BUSINESS AI home">
+      <span class="brand-mark">IZ</span>
+      <span class="brand-copy"><strong>IZAKHONO</strong><small>BUSINESS AI</small></span>
+    </a>
+    <button id="menuBtn" class="menu-btn" aria-label="Open menu">☰</button>
+    <nav id="siteNav" class="site-nav">
+      <a href="#capabilities">Capabilities</a>
+      <a href="#decision-lab">Decision Lab</a>
+      <a href="#privacy">Privacy</a>
+      <button id="shareBtn" class="btn ghost">Share</button>\n      <button class="btn primary start-app">Open workspace</button>
+    </nav>
+  </header>
+
+  <main>
+    <section id="home" class="hero">
+      <div class="hero-copy">
+        <p class="eyebrow">BUILT IN AFRICA FOR THE WORLD</p>
+        <h1>Your business AI assistant, on call around the clock.</h1>
+        <p class="lead">Run everyday admin from one clean workspace. Draft client correspondence, manage clients, build quotes and invoices, export PDFs, run business diagnostics and rehearse important decisions before you act.</p>
+        <div class="hero-actions">
+          <button class="btn primary large start-app">Start free workspace</button>
+          <a class="btn ghost large" href="#capabilities">See what it does</a>
+        </div>
+        <div class="trust-row">
+          <span>South Africa ready</span>
+          <span>Local-first records</span>
+          <span>No behavioural tracking</span>
+        </div>
+      </div>
+      <div class="hero-visual" aria-label="IZAKHONO BUSINESS AI workspace preview">
+        <div class="orb orb-a"></div>
+        <div class="orb orb-b"></div>
+        <div class="dashboard-preview">
+          <div class="preview-head">
+            <span class="preview-logo">IZ</span>
+            <div><strong>Business pulse</strong><small>Today</small></div>
+            <span class="status-chip">READY</span>
+          </div>
+          <div class="preview-score">
+            <span>Growth readiness</span>
+            <strong>82</strong>
+            <small>Clear next actions</small>
+          </div>
+          <div class="preview-grid">
+            <article><small>Clients</small><strong>24</strong><span>+3 this month</span></article>
+            <article><small>Open quotes</small><strong>7</strong><span>R41,800</span></article>
+            <article><small>Admin queue</small><strong>5</strong><span>2 urgent</span></article>
+            <article><small>Decision Lab</small><strong>3</strong><span>scenarios saved</span></article>
+          </div>
+          <div class="preview-note">
+            <span>AI NEXT ACTION</span>
+            <p>Follow up on your two highest-value quotes before creating new work.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="capabilities" class="section">
+      <div class="section-head">
+        <p class="eyebrow">ONE BUSINESS WORKSPACE</p>
+        <h2>Do the work, not just the talking.</h2>
+        <p>IZAKHONO BUSINESS AI combines practical small-business administration with decision support. Expensive AI services remain optional adapters, not hard dependencies.</p>
+      </div>
+      <div class="feature-grid">
+        <article class="feature-card"><span class="feature-icon">✦</span><h3>AI Writer</h3><p>Draft professional emails, quote follow-ups, payment reminders, proposals and client updates.</p></article>
+        <article class="feature-card"><span class="feature-icon">R</span><h3>Quotes & invoices</h3><p>Create clean business documents, calculate totals, print to PDF and hand off to email.</p></article>
+        <article class="feature-card"><span class="feature-icon">C</span><h3>Client memory</h3><p>Keep client details, notes and history together on your device with exportable backups.</p></article>
+        <article class="feature-card"><span class="feature-icon">↗</span><h3>Growth Diagnostic</h3><p>Score lead flow, follow-up discipline, cash visibility and admin control, then get next actions.</p></article>
+        <article id="decision-lab" class="feature-card wide"><span class="feature-icon">◎</span><h3>Decision Lab</h3><p>Explore how customers, staff, suppliers, competitors and other stakeholders could react to a price change, launch or strategic move. It is a scenario rehearsal tool, not a promise of the future.</p></article>
+        <article class="feature-card"><span class="feature-icon">⇩</span><h3>Portable by design</h3><p>Export your workspace as JSON. Your business records are not trapped behind analytics or ad-tech.</p></article>
+      </div>
+    </section>
+
+    <section id="privacy" class="privacy-section">
+      <div>
+        <p class="eyebrow">PRIVACY STANDARD</p>
+        <h2>Your customer list is not an advertising product.</h2>
+      </div>
+      <div class="privacy-points">
+        <p><strong>No behavioural tracking.</strong> We do not build ad profiles from your activity.</p>
+        <p><strong>No silent analytics.</strong> No Google Analytics or Meta Pixel is loaded by default.</p>
+        <p><strong>Local-first workspace.</strong> v0.1 keeps business records on your device and gives you a backup export.</p>
+      </div>
+    </section>
+
+    <section class="cta-band">
+      <div><p class="eyebrow">START WORKING</p><h2>Open your business command centre.</h2></div>
+      <button class="btn primary large start-app">Open workspace</button>
+    </section>
+
+    <section id="workspace" class="workspace hidden">
+      <aside class="workspace-sidebar">
+        <div class="workspace-brand"><span class="brand-mark small">IZ</span><div><strong>BUSINESS AI</strong><small>OWNER WORKSPACE</small></div></div>
+        <nav class="workspace-nav">
+          <button class="workspace-tab active" data-view="overview">Overview</button>
+          <button class="workspace-tab" data-view="clients">Clients</button>
+          <button class="workspace-tab" data-view="documents">Quotes & invoices</button>
+          <button class="workspace-tab" data-view="writer">AI Writer</button>
+          <button class="workspace-tab" data-view="diagnostic">Growth Diagnostic</button>
+          <button class="workspace-tab" data-view="scenario">Decision Lab</button>
+        </nav>
+        <div class="workspace-side-actions">
+          <button id="backupBtn" class="btn ghost full">Export backup</button>
+          <button id="closeWorkspace" class="btn ghost full">Back to website</button>
+        </div>
+      </aside>
+
+      <div class="workspace-main">
+        <header class="workspace-topbar">
+          <div><p class="eyebrow">IZAKHONO BUSINESS AI</p><h2 id="workspaceTitle">Business overview</h2></div>
+          <span id="engineStatus" class="status-chip neutral">Checking engine…</span>
+        </header>
+
+        <section id="view-overview" class="workspace-view active">
+          <div class="metric-grid">
+            <article><small>Clients</small><strong id="metricClients">0</strong><span>saved locally</span></article>
+            <article><small>Documents</small><strong id="metricDocs">0</strong><span>quotes + invoices</span></article>
+            <article><small>Open value</small><strong id="metricValue">R0</strong><span>current document total</span></article>
+            <article><small>Diagnostic</small><strong id="metricScore">—</strong><span>latest score</span></article>
+          </div>
+          <div class="workspace-grid two">
+            <article class="panel">
+              <p class="eyebrow">QUICK START</p>
+              <h3>What needs attention?</h3>
+              <div id="nextActions" class="action-list">
+                <button data-go="clients">Add your first client</button>
+                <button data-go="documents">Create a quote</button>
+                <button data-go="writer">Draft a client email</button>
+                <button data-go="diagnostic">Run the diagnostic</button>
+              </div>
+            </article>
+            <article class="panel dark">
+              <p class="eyebrow">DECISION LAB</p>
+              <h3>Test the move before you make it.</h3>
+              <p>Try a price increase, new product launch, supplier change or expansion idea against several stakeholder perspectives.</p>
+              <button class="btn light" data-go="scenario">Run a scenario</button>
+            </article>
+          </div>
+        </section>
+
+        <section id="view-clients" class="workspace-view">
+          <div class="workspace-grid two">
+            <form id="clientForm" class="panel form-card">
+              <p class="eyebrow">NEW CLIENT</p><h3>Add client</h3>
+              <label>Name<input id="clientName" required></label>
+              <label>Business<input id="clientBusiness"></label>
+              <label>Email<input id="clientEmail" type="email"></label>
+              <label>Phone<input id="clientPhone"></label>
+              <label>Notes<textarea id="clientNotes" rows="3"></textarea></label>
+              <button class="btn primary">Save client</button>
+            </form>
+            <article class="panel">
+              <div class="panel-head"><div><p class="eyebrow">CLIENT REGISTER</p><h3>Your clients</h3></div><span id="clientCount" class="count-chip">0</span></div>
+              <div id="clientList" class="record-list empty-state">No clients yet.</div>
+            </article>
+          </div>
+        </section>
+
+        <section id="view-documents" class="workspace-view">
+          <div class="workspace-grid two">
+            <form id="docForm" class="panel form-card">
+              <p class="eyebrow">NEW DOCUMENT</p><h3>Quote or invoice</h3>
+              <label>Type<select id="docType"><option>Quote</option><option>Invoice</option></select></label>
+              <label>Client<select id="docClient"><option value="">Select a client</option></select></label>
+              <label>Description<input id="docDescription" required placeholder="e.g. Website design"></label>
+              <div class="split"><label>Quantity<input id="docQty" type="number" min="1" step="1" value="1"></label><label>Unit price (R)<input id="docRate" type="number" min="0" step="0.01" value="0"></label></div>
+              <label>Notes<textarea id="docNotes" rows="3" placeholder="Terms, due date or scope"></textarea></label>
+              <button class="btn primary">Create document</button>
+            </form>
+            <article class="panel">
+              <div class="panel-head"><div><p class="eyebrow">DOCUMENTS</p><h3>Quotes & invoices</h3></div><span id="docCount" class="count-chip">0</span></div>
+              <div id="docList" class="record-list empty-state">No documents yet.</div>
+            </article>
+          </div>
+        </section>
+
+        <section id="view-writer" class="workspace-view">
+          <div class="workspace-grid two">
+            <form id="writerForm" class="panel form-card">
+              <p class="eyebrow">CORRESPONDENCE</p><h3>Draft with Business AI</h3>
+              <label>Purpose<select id="writerPurpose"><option>Quote follow-up</option><option>Payment reminder</option><option>Proposal introduction</option><option>Client update</option><option>Apology and resolution</option><option>General business email</option></select></label>
+              <label>Tone<select id="writerTone"><option>Professional and warm</option><option>Concise and direct</option><option>Confident and persuasive</option><option>Friendly</option></select></label>
+              <label>Context<textarea id="writerContext" rows="7" required placeholder="Tell the assistant what happened, who the client is and what outcome you want."></textarea></label>
+              <button class="btn primary">Draft correspondence</button>
+            </form>
+            <article class="panel">
+              <div class="panel-head"><div><p class="eyebrow">DRAFT</p><h3>Ready to edit</h3></div><button id="copyDraft" class="btn ghost small-btn">Copy</button></div>
+              <div id="writerOutput" class="output-box">Your draft will appear here.</div>
+            </article>
+          </div>
+        </section>
+
+        <section id="view-diagnostic" class="workspace-view">
+          <div class="workspace-grid two">
+            <form id="diagnosticForm" class="panel form-card">
+              <p class="eyebrow">GROWTH DIAGNOSTIC</p><h3>Score the operating basics</h3>
+              <label>Monthly lead flow<select id="diagLeads"><option value="20">Very inconsistent</option><option value="45">Some leads</option><option value="70">Steady pipeline</option><option value="90">Strong and predictable</option></select></label>
+              <label>Quote follow-up<select id="diagFollowup"><option value="20">Rarely followed up</option><option value="45">Sometimes</option><option value="70">Usually</option><option value="90">Systematic</option></select></label>
+              <label>Cash visibility<select id="diagCash"><option value="20">Unclear</option><option value="45">Basic</option><option value="70">Updated weekly</option><option value="90">Real-time / disciplined</option></select></label>
+              <label>Admin control<select id="diagAdmin"><option value="20">Mostly reactive</option><option value="45">Some systems</option><option value="70">Well organised</option><option value="90">Automated and measured</option></select></label>
+              <button class="btn primary">Run diagnostic</button>
+            </form>
+            <article class="panel diagnostic-result">
+              <p class="eyebrow">RESULT</p>
+              <div class="score-orb"><strong id="diagnosticScore">—</strong><span>/100</span></div>
+              <h3 id="diagnosticHeadline">Complete the diagnostic.</h3>
+              <div id="diagnosticActions" class="result-actions"></div>
+            </article>
+          </div>
+        </section>
+
+        <section id="view-scenario" class="workspace-view">
+          <div class="workspace-grid two">
+            <form id="scenarioForm" class="panel form-card">
+              <p class="eyebrow">DECISION LAB</p><h3>Rehearse a decision</h3>
+              <label>Scenario<textarea id="scenarioText" rows="6" required placeholder="Example: We increase our monthly service price by 15% next quarter while adding priority support."></textarea></label>
+              <label>Stakeholders<input id="scenarioStakeholders" value="Loyal customers, New customers, Staff, Competitors, Suppliers"></label>
+              <label>Time horizon<select id="scenarioHorizon"><option>30 days</option><option>90 days</option><option>6 months</option><option>12 months</option></select></label>
+              <button class="btn primary">Run scenario</button>
+              <small class="form-note">Synthetic perspectives are hypotheses, not real customer research or guaranteed forecasts.</small>
+            </form>
+            <article class="panel">
+              <div class="panel-head"><div><p class="eyebrow">SIMULATION REPORT</p><h3>Stakeholder reactions</h3></div><span class="status-chip neutral">R&D PREVIEW</span></div>
+              <div id="scenarioOutput" class="output-box">Your scenario report will appear here.</div>
+            </article>
+          </div>
+        </section>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div><strong>IZAKHONO BUSINESS AI</strong><span>Built in Africa for the world.</span></div>
+    <div><span>Privacy-first</span><span>Provider-neutral AI</span><span>Owned-first infrastructure</span></div>
+  </footer>
+
+  <script src="/app.js"></script>
+</body>
+</html>
