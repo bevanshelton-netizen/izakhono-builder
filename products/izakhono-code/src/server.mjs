@@ -1,5 +1,5 @@
 import http from 'node:http';
-import { createReadStream } from 'node:fs';
+import { createReadStream, existsSync } from 'node:fs';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
@@ -9,6 +9,9 @@ import { Store, safeSlug } from './store.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const productRoot = path.resolve(here, '..');
+const repositoryRoot = path.resolve(productRoot, '..', '..');
+const superAiRoot = path.join(repositoryRoot, 'products', 'izakhono-ai-gateway');
+const superAiHealthUrl = process.env.IZAKHONO_SUPER_AI_HEALTH_URL || 'http://127.0.0.1:9595/healthz';
 const dataRoot = path.resolve(process.env.IZAKHONO_CODE_DATA || path.join(productRoot, 'data'));
 const reposRoot = path.join(dataRoot, 'repositories');
 const packagesRoot = path.join(dataRoot, 'packages');
@@ -34,6 +37,41 @@ const run = (command, args, cwd) => new Promise((resolve, reject) => {
 const repoPath = slug => path.join(reposRoot, `${safeSlug(slug)}.git`);
 const now = () => new Date().toISOString();
 
+async function aiOperationsStatus() {
+  const status = {
+    ownedSuperAi: { reachable:false, ownerOnly:null, capabilitiesReady:[], workflowModeConfigured:false },
+    externalAi: { enabled:false, provider:null, publicDataOnly:true },
+    harness: {
+      sandboxPrepared: existsSync(path.join(productRoot, 'START-DEEPSEEK-HARNESS-SANDBOX.cmd')),
+      policyPrepared: existsSync(path.join(productRoot, 'DEEPSEEK-HARNESS-SANDBOX.md')),
+      executionBoundary: 'manual-local-sandbox'
+    },
+    activation: {
+      externalSecretSetupPrepared: existsSync(path.join(superAiRoot, 'SET-EXTERNAL-AI-SECRET.cmd')),
+      externalVerifierPrepared: existsSync(path.join(superAiRoot, 'VERIFY-EXTERNAL-AI.cmd')),
+      oracleAuxBootstrapPrepared: existsSync(path.join(repositoryRoot, 'infra', 'runtime-fabric', 'oracle-a1-cloud-init.yaml'))
+    }
+  };
+  try {
+    const response = await fetch(superAiHealthUrl, { signal: AbortSignal.timeout(1500) });
+    if (response.ok) {
+      const health = await response.json();
+      status.ownedSuperAi = {
+        reachable: health.ok === true,
+        ownerOnly: health.owner_only ?? null,
+        capabilitiesReady: Array.isArray(health.capabilities_ready) ? health.capabilities_ready : [],
+        workflowModeConfigured: health.workflow_mode_configured === true
+      };
+      status.externalAi = {
+        enabled: health.external_ai_providers_enabled === true,
+        provider: health.external_ai_provider || null,
+        publicDataOnly: true
+      };
+    }
+  } catch {}
+  return status;
+}
+
 async function createRepository(input) {
   const slug = safeSlug(input.name); const bare = repoPath(slug);
   await run('git', ['init', '--bare', '--initial-branch=main', bare], productRoot);
@@ -46,6 +84,7 @@ async function route(req, res) {
   if (url.pathname === '/health') return json(res, 200, { status:'ok', product:'IZAKHONO CODE', channel:'Complete Alpha', storage:dataRoot });
   if (url.pathname.startsWith('/api/') && !auth(req)) return json(res, 401, { error:'Owner authentication required.' });
   if (url.pathname === '/api/state' && req.method === 'GET') return json(res, 200, await store.load());
+  if (url.pathname === '/api/ai-operations/status' && req.method === 'GET') return json(res, 200, await aiOperationsStatus());
   if (url.pathname === '/api/repositories' && req.method === 'POST') return json(res, 201, await createRepository(await body(req)));
 
   const fileMatch = url.pathname.match(/^\/api\/repositories\/([^/]+)\/file$/);

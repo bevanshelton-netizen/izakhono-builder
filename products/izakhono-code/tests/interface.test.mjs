@@ -9,3 +9,15 @@ test('repository form avoids browser window.name and reports errors', async () =
   assert.doesNotMatch(html, /name:name\.value/);
   assert.match(html, /id="repoError"/);
 });
+
+
+test('AI operations remains read-only and visible in the owner console', async () => {
+  const html = await readFile(new URL('../public/index.html', import.meta.url), 'utf8');
+  const server = await readFile(new URL('../src/server.mjs', import.meta.url), 'utf8');
+  assert.match(html, /AI Operations/);
+  assert.match(html, /\/api\/ai-operations\/status/);
+  assert.match(html, /Harness sandbox prepared/);
+  assert.match(server, /\/api\/ai-operations\/status/);
+  assert.match(server, /manual-local-sandbox/);
+  assert.doesNotMatch(server, /launch-harness/);
+});
