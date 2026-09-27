@@ -1,0 +1,35 @@
+{
+  "business_name": "Example Engineering Africa",
+  "legal_entity": "Example Engineering Africa (Pty) Ltd",
+  "registration_number": "2026/123456/07",
+  "tagline": "Engineering that keeps industry moving.",
+  "offer": "Industrial maintenance, project support and engineering services for commercial and industrial clients.",
+  "primary_cta": "Request a quote",
+  "contact_email": "info@example.com",
+  "location": "South Africa",
+  "brand": {
+    "primary": "#07110e",
+    "secondary": "#12372a",
+    "accent": "#d9bd78"
+  },
+  "services": [
+    {
+      "name": "Industrial Maintenance",
+      "description": "Planned and responsive maintenance for commercial and industrial facilities."
+    },
+    {
+      "name": "Project Support",
+      "description": "Technical project support from scope definition through delivery."
+    },
+    {
+      "name": "Engineering Services",
+      "description": "Practical engineering support aligned to client requirements and verified scope."
+    }
+  ],
+  "verified_claims": [
+    "South African company"
+  ],
+  "compliance_notes": [
+    "No unsupported certifications or customer claims may be published."
+  ]
+}
