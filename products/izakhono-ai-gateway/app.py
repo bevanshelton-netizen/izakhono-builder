@@ -24,6 +24,20 @@ MAX_BODY = int(os.getenv("IZAKHONO_AI_MAX_BODY", "1000000"))
 DEFAULT_MODEL = os.getenv("IZAKHONO_AI_MODEL", "qwen3:4b")
 OLLAMA_URL = os.getenv("IZAKHONO_OLLAMA_URL", "http://127.0.0.1:11434").rstrip("/")
 
+# Optional external text route. It is deliberately disabled unless BOTH
+# IZAKHONO_AI_ALLOW_EXTERNAL=true and IZAKHONO_AI_OWNER_ONLY=false are set.
+# External routing is explicit per request and only accepts data classified
+# as public. Secrets stay server-side.
+EXTERNAL_TEXT_PROVIDER = os.getenv("IZAKHONO_AI_EXTERNAL_TEXT_PROVIDER", "external-openai").strip().lower()
+EXTERNAL_TEXT_URL = os.getenv("IZAKHONO_AI_EXTERNAL_TEXT_URL", "").rstrip("/")
+EXTERNAL_TEXT_API_KEY = os.getenv("IZAKHONO_AI_EXTERNAL_TEXT_API_KEY", "")
+EXTERNAL_TEXT_MODEL = os.getenv("IZAKHONO_AI_EXTERNAL_TEXT_MODEL", "").strip()
+EXTERNAL_TEXT_HOSTS = {
+    h.strip().lower()
+    for h in os.getenv("IZAKHONO_AI_EXTERNAL_HOSTS", "integrate.api.nvidia.com").split(",")
+    if h.strip()
+}
+
 CAPABILITIES = {
     "chat": {
         "kind": "ollama_chat",
@@ -151,6 +165,32 @@ def host_allowed(url):
         pass
     return bool(ALLOW_EXTERNAL and not OWNER_ONLY)
 
+def external_host_allowed(url):
+    parsed = urlparse(url)
+    if parsed.scheme not in ("http", "https") or not parsed.hostname:
+        return False
+    host = parsed.hostname.lower()
+    if host not in EXTERNAL_TEXT_HOSTS:
+        return False
+    if parsed.scheme == "http":
+        if host == "localhost" or is_private_ip(host):
+            return True
+        try:
+            return all(is_private_ip(addr) for addr in socket.gethostbyname_ex(host)[2])
+        except OSError:
+            return False
+    return True
+
+def external_text_configured():
+    return bool(
+        ALLOW_EXTERNAL
+        and not OWNER_ONLY
+        and EXTERNAL_TEXT_URL
+        and EXTERNAL_TEXT_API_KEY
+        and EXTERNAL_TEXT_MODEL
+        and external_host_allowed(EXTERNAL_TEXT_URL)
+    )
+
 def allowed_models(capability):
     cfg = CAPABILITIES[capability]
     configured = os.getenv(cfg["models_env"], "")
@@ -159,7 +199,21 @@ def allowed_models(capability):
         values.append(cfg["model"])
     return values
 
-def select_model(capability, requested):
+def external_allowed_models():
+    configured = os.getenv("IZAKHONO_AI_EXTERNAL_TEXT_MODELS", "")
+    values = [m.strip() for m in configured.split(",") if m.strip()]
+    if EXTERNAL_TEXT_MODEL and EXTERNAL_TEXT_MODEL not in values:
+        values.append(EXTERNAL_TEXT_MODEL)
+    return values
+
+def select_model(capability, requested, route="owned"):
+    if route == "external":
+        model = str(requested or EXTERNAL_TEXT_MODEL).strip()
+        if not model:
+            raise RuntimeError("external_model_unconfigured")
+        if model not in external_allowed_models():
+            raise ValueError("model_not_allowed")
+        return model
     cfg = CAPABILITIES[capability]
     model = str(requested or cfg["model"]).strip()
     if model not in allowed_models(capability):
@@ -194,6 +248,30 @@ def model_chat(messages, model, capability="chat"):
         timeout=300,
     )
 
+def openai_chat(messages, model):
+    if not external_text_configured():
+        raise RuntimeError("external_route_disabled")
+    return http_json(
+        EXTERNAL_TEXT_URL + "/chat/completions",
+        {"model": model, "stream": False, "messages": messages},
+        {"authorization": "Bearer " + EXTERNAL_TEXT_API_KEY},
+        timeout=300,
+    )
+
+def select_route(payload, capability):
+    route = str(payload.get("route") or "owned").strip().lower()
+    if route not in ("owned", "external"):
+        raise ValueError("route_not_allowed")
+    if route == "external":
+        if capability not in ("chat", "reasoning", "code"):
+            raise ValueError("external_route_capability_not_allowed")
+        classification = str(payload.get("data_classification") or "").strip().lower()
+        if classification != "public":
+            raise ValueError("external_route_requires_public_data")
+        if not external_text_configured():
+            raise RuntimeError("external_route_disabled")
+    return route
+
 def json_generate(payload, model, capability):
     cfg = CAPABILITIES[capability]
     if not cfg["url"]:
@@ -212,23 +290,30 @@ def execute_capability(payload):
     capability = str(payload.get("capability") or "chat").strip().lower()
     if capability not in CAPABILITIES:
         raise ValueError("unsupported_capability")
-    model = select_model(capability, payload.get("model"))
+    route = select_route(payload, capability)
+    model = select_model(capability, payload.get("model"), route)
     cfg = CAPABILITIES[capability]
     if cfg["kind"] == "ollama_chat":
         messages = normalize_messages(payload)
         if not messages:
             raise ValueError("messages_or_input_required")
-        raw = model_chat(messages, model, capability)
-        output = str(raw.get("message", {}).get("content", "")).strip()
+        if route == "external":
+            raw = openai_chat(messages, model)
+            choices = raw.get("choices") if isinstance(raw, dict) else None
+            message = choices[0].get("message", {}) if isinstance(choices, list) and choices and isinstance(choices[0], dict) else {}
+            output = str(message.get("content", "")).strip()
+        else:
+            raw = model_chat(messages, model, capability)
+            output = str(raw.get("message", {}).get("content", "")).strip()
         if not output:
             raise RuntimeError("empty_model_response")
-        return capability, model, {"type": "text", "text": output}, raw
+        return capability, model, {"type": "text", "text": output}, raw, route
     if cfg["kind"] == "json_generate":
         if payload.get("input") in (None, "") and payload.get("prompt") in (None, ""):
             raise ValueError("input_or_prompt_required")
         raw = json_generate(payload, model, capability)
         output = raw.get("output", raw.get("result", raw))
-        return capability, model, {"type": capability, "data": output}, raw
+        return capability, model, {"type": capability, "data": output}, raw, route
     raise RuntimeError("capability_backend_invalid")
 
 def capability_summary():
@@ -242,6 +327,7 @@ def capability_summary():
             "allowed_models": allowed_models(name),
             "configured": configured,
             "owner_route": owner_route,
+            "external_route_available": bool(name in ("chat", "reasoning", "code") and external_text_configured()),
             "status": "ready" if configured and owner_route else "needs_backend",
         })
     return items
@@ -277,7 +363,8 @@ class Handler(BaseHTTPRequestHandler):
                 "usage_credit_gate": False,
                 "subscriber_message_quota": None,
                 "owner_only": OWNER_ONLY,
-                "external_ai_providers_enabled": bool(ALLOW_EXTERNAL and not OWNER_ONLY),
+                "external_ai_providers_enabled": external_text_configured(),
+                "external_ai_provider": EXTERNAL_TEXT_PROVIDER if external_text_configured() else None,
                 "workflow_mode_configured": bool(WORKFLOW_KEY),
                 "subscriber_access_configured": bool(ACCESS_KEY),
                 "workflow_products": sorted(WORKFLOW_PRODUCTS),
@@ -339,7 +426,7 @@ class Handler(BaseHTTPRequestHandler):
                 return send_json(self, 403, {"ok": False, "error": "subscription_required"})
 
         try:
-            capability, model, output, _raw = execute_capability(payload)
+            capability, model, output, _raw, route = execute_capability(payload)
         except ValueError as exc:
             return send_json(self, 422, {"ok": False, "error": str(exc)[:100]})
         except urllib.error.HTTPError as exc:
@@ -351,6 +438,9 @@ class Handler(BaseHTTPRequestHandler):
             "ok": True,
             "capability": capability,
             "model": model,
+            "route": route,
+            "external_provider": EXTERNAL_TEXT_PROVIDER if route == "external" else None,
+            "data_classification": str(payload.get("data_classification") or ("public" if route == "external" else "internal")).strip().lower(),
             "output": output,
             "owner_only": OWNER_ONLY,
             "identity": {"entity_id": entity_id, "subject": subject},
