@@ -4,11 +4,13 @@ on:
   pull_request:
     paths:
       - 'products/izakhono-one/**'
+      - 'RUN-IZAKHONO-ONE-NODE01.cmd'
       - '.github/workflows/izakhono-one-external-cloudflare.yml'
   push:
     branches: [main]
     paths:
       - 'products/izakhono-one/**'
+      - 'RUN-IZAKHONO-ONE-NODE01.cmd'
       - '.github/workflows/izakhono-one-external-cloudflare.yml'
   workflow_dispatch:
 
@@ -33,7 +35,10 @@ jobs:
           node --check products/izakhono-one/server.mjs
           node --check products/izakhono-one/public/engine.js
           node --check products/izakhono-one/public/app.js
-          node -e "const r=require('./products/izakhono-one/public/registry.json'); if(r.engine.tracking!==false) process.exit(1); if(!['search','service-discovery','routing','health'].every(x=>r.engine.capabilities.includes(x))) process.exit(1); if(r.services.some(s=>s.status==='gated' && s.publicUrl)) process.exit(1)"
+          node -e "const r=require('./products/izakhono-one/public/registry.json'); if(r.engine.tracking!==false) process.exit(1); if(!['search','service-discovery','routing','health','builder-integration'].every(x=>r.engine.capabilities.includes(x))) process.exit(1); const b=r.services.find(s=>s.slug==='izakhono-builder'); if(!b||!b.featured||b.status!=='gated'||b.publicUrl!==null||!b.integration?.engineIndependent) process.exit(1); if(r.services.some(s=>s.status==='gated' && s.publicUrl)) process.exit(1)"
+          grep -q "IZAKHONO_BUILDER_INTERNAL_URL" products/izakhono-one/server.mjs
+          grep -q "/api/builder/health" products/izakhono-one/server.mjs
+          grep -q "IZAKHONO ONE.*SUPER APP" products/izakhono-one/public/index.html
       - name: Validate Cloudflare package
         run: npx wrangler deploy --dry-run --config products/izakhono-one/wrangler.external.jsonc
 

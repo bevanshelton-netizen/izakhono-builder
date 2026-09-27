@@ -1,1 +1,30 @@
-{"slug":"izakhono-one","name":"IZAKHONO ONE","engine":{"independent":true,"runtime":"node","health":"/health","port":8781,"capabilities":["search","service-discovery","routing","health"]},"infrastructure":{"primary":"NODE01/CODE/RUNTIME/EDGE-TLS/DNS","externalFallbacks":["GitHub Pages","Vercel"],"externalReplaceable":true,"trafficSwitchWithoutRebuild":true},"privacy":{"telemetry":false,"tracking":false,"profiling":false,"advertisingIdentifiers":false},"liveGate":"HTTPS_200_AND_VERIFIED_EXPERIENCE"}
+{
+  "slug":"izakhono-one",
+  "name":"IZAKHONO ONE",
+  "role":"super-app-access-layer",
+  "engine":{
+    "independent":true,
+    "runtime":"node",
+    "health":"/health",
+    "port":8781,
+    "capabilities":["search","service-discovery","routing","health","super-app-access","builder-integration"]
+  },
+  "integrations":{
+    "izakhono-builder":{
+      "mode":"owned-service-bridge",
+      "descriptor":"/api/builder",
+      "health":"/api/builder/health",
+      "internalUrlEnv":"IZAKHONO_BUILDER_INTERNAL_URL",
+      "engineIndependent":true,
+      "publicRouteGate":"HTTPS_200_AND_VERIFIED_EXPERIENCE"
+    }
+  },
+  "infrastructure":{
+    "primary":"NODE01/CODE/RUNTIME/EDGE-TLS/DNS",
+    "externalFallbacks":["GitHub Pages","Vercel"],
+    "externalReplaceable":true,
+    "trafficSwitchWithoutRebuild":true
+  },
+  "privacy":{"telemetry":false,"tracking":false,"profiling":false,"advertisingIdentifiers":false},
+  "liveGate":"HTTPS_200_AND_VERIFIED_EXPERIENCE"
+}
