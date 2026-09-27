@@ -1,0 +1,36 @@
+{
+  "schema": "izakhono.super-app.deployment.v1",
+  "product": "IZAKHONO SUPER APP",
+  "deployment_status": "PUBLIC_FRONTEND_PENDING_CDN_VERIFY",
+  "external_resilience": {
+    "provider": "Supabase Edge Functions",
+    "role": "public aggregate status/revenue API and redirect bridge",
+    "route": "https://yfawrenhudjomhnglfhq.supabase.co/functions/v1/izakhono-one-hub/super-app",
+    "health_route": "https://yfawrenhudjomhnglfhq.supabase.co/functions/v1/izakhono-one-hub/super-app?health=1",
+    "status_route": "https://yfawrenhudjomhnglfhq.supabase.co/functions/v1/izakhono-one-hub/super-app?api=status",
+    "verified_http_status": 200,
+    "verified_at": "2026-09-27T21:21:13Z",
+    "edge_region": "eu-west-1",
+    "html_note": "Shared Supabase Edge Functions are used as backend/redirect only; the renderable frontend is GitHub Pages."
+  },
+  "owned_primary": {
+    "authority": "NODE 01",
+    "status": "PENDING_PUBLIC_ACCEPTANCE",
+    "rule": "External resilience never replaces or controls the owned engine."
+  },
+  "affiliate_embedded": true,
+  "weekly_revenue_target_cents": 2000000,
+  "privacy": {
+    "behavioural_profiling": false,
+    "advertising_ids": false,
+    "silent_analytics": false
+  },
+  "public_frontend": {
+    "provider": "GitHub Pages",
+    "route": "https://bevanshelton-netizen.github.io/Downloads/one/super-app/",
+    "repository": "bevanshelton-netizen/Downloads",
+    "source_path": "one/super-app/index.html",
+    "merged_commit": "795607395c790a3071ff900db7096a04f6f26847",
+    "status": "MERGED_AWAITING_PUBLIC_CDN_200"
+  }
+}
