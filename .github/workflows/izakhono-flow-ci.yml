@@ -56,5 +56,8 @@ jobs:
           IZAKHONO_FABRIC_INTERNAL_TOKEN: unit-test-fabric-token
           FLOW_ADMIN_TOKEN: unit-test-flow-owner-token
           FLOW_INGEST_TOKEN: unit-test-flow-ingest-token
+          REVENUE_FLOW_TOKEN: unit-test-revenue-flow-token
+          IZAKHONO_TASKS_TOKEN: unit-test-tasks-owner-token
+          IZAKHONO_TASKS_FLOW_TOKEN: unit-test-tasks-flow-token
           FLOW_ADAPTERS_JSON: '{}'
         run: docker compose config >/tmp/izakhono-app-fabric-compose.yml
