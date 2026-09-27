@@ -76,6 +76,16 @@
       "description": "Lead-to-cash orchestration across CRM, REVENUE, PAY, TASKS, SUPER AI and platform fulfilment with strict entity/platform isolation."
     },
     {
+      "id": "finance-core",
+      "name": "IZAKHONO FINANCE CORE",
+      "category": "Financial Infrastructure",
+      "route": "/finance-core",
+      "status": "integrated",
+      "engine": "independent",
+      "canonical_contract": "../izakhono-finance-core/finance-core.v1.json",
+      "description": "White-label financial-institution operating platform for lending, savings/member administration, payments references, collections, reporting, approvals and audit."
+    },
+    {
       "id": "accountant",
       "name": "SUPER ACCOUNTANT",
       "category": "Finance",
@@ -269,5 +279,21 @@
       "publishing_requires_approved_channel_credentials": true,
       "media_live_claim_requires_reachable_asset": true
     }
+  },
+  "finance_core": {
+    "module_id": "finance-core",
+    "embedded": true,
+    "route": "/finance-core",
+    "engine": "independent",
+    "source_of_truth": "products/izakhono-finance-core",
+    "owned_target": "NODE01",
+    "public_status": "gated-until-independently-verified",
+    "regulated_activity_gated": true,
+    "software_vendor_only_by_default": true,
+    "money_movement": false,
+    "deposit_taking": false,
+    "final_automated_credit_decisions": false,
+    "behavioural_profiling": false,
+    "advertising_ids": false
   }
 }
