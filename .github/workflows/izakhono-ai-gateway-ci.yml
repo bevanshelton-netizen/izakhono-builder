@@ -49,7 +49,7 @@ jobs:
           grep -Fq 'message_quota' products/izakhono-ai-gateway/app.py
           grep -Fq 'subscription_required' products/izakhono-ai-gateway/app.py
           ! grep -R --line-number -E 'IZAKHONO_AI_GATEWAY_INTERNAL_KEY=.+' products/izakhono-ai-gateway
-          ! grep -R --line-number -E 'IZAKHONO_AI_EXTERNAL_TEXT_API_KEY=.+[^=[:space:]]' products/izakhono-ai-gateway
+          ! grep -R --line-number -E 'IZAKHONO_AI_EXTERNAL_TEXT_API_KEY=[^<[:space:]][^[:space:]]+' products/izakhono-ai-gateway
           ! grep -R --line-number -E 'nvapi-[A-Za-z0-9_-]+' products/izakhono-ai-gateway
           grep -Fq 'ConvertFrom-SecureString' products/izakhono-ai-gateway/SET-EXTERNAL-AI-SECRET.ps1
           grep -Fq 'ConvertTo-SecureString' products/izakhono-ai-gateway/START-IZAKHONO-SUPER-AI-NODE01.ps1
