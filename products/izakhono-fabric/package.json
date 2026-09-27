@@ -4,7 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "check": "node --check resolve.mjs && node --check client/hybrid-browser.mjs",
-    "test": "node --test test.mjs"
+    "check": "node --check resolve.mjs && node --check client/hybrid-browser.mjs && node --check website-pipeline/fast-build.mjs",
+    "test": "node --test test.mjs website-pipeline/fast-build.test.mjs",
+    "fast-build": "node website-pipeline/fast-build.mjs website-pipeline/example-brief.json fast-build-output"
   }
 }
