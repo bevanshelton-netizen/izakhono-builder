@@ -39,6 +39,16 @@ IZAKHONO BUILDER now includes an owner-gated **one-sentence build pipeline** for
 
 External publication is not triggered automatically and public-live status remains evidence-gated. When the owner-controlled IZAKHONO SUPER AI workflow route is configured, Builder uses it to enrich the inferred product type, name, modules and build priorities; if that route is unavailable, the deterministic local planner continues without failing the build. No external AI provider is required for the core create → plan → generate → validate → internal-commit workflow.
 
+## Multi-channel release pack
+
+Every generated application now receives a release-channel baseline alongside its Worker source:
+
+- installable PWA manifest and service worker;
+- `release/channels.json` as the channel truth record;
+- Android, iOS and desktop release-gate manifests.
+
+The web/PWA artifact is generated and installable, but public deployment still requires the normal owned-runtime HTTPS and acceptance gate. Android and iOS manifests explicitly record that signed packages and store-release evidence are still required; the Builder never treats a prepared wrapper as a public store release.
+
 ## One-click release candidate
 
 An authenticated Owner can now send any planned Builder project through one controlled action:
