@@ -136,6 +136,10 @@ services:
 volumes:
   crm_data:
     name: izakhono_crm_data
+  revenue_data:
+    name: izakhono_revenue_data
+  tasks_data:
+    name: izakhono_tasks_data
   flow_data:
     name: izakhono_flow_data
   fabric_outbox:
