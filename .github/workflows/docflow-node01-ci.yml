@@ -47,12 +47,29 @@ jobs:
       - name: Build owned DOCFLOW container
         run: docker build -f products/izakhono-docflow/Dockerfile.node -t izakhono-docflow-node01:ci .
 
+      - name: Start SUPER AI contract stub
+        shell: bash
+        run: |
+          docker network create docflow-ci >/dev/null
+          docker run -d --name super-ai-stub --network docflow-ci --network-alias super-ai-stub \
+            -v "$PWD/fixtures/docflow-super-ai-stub.mjs:/stub.mjs:ro" \
+            node:22-bookworm-slim node /stub.mjs
+          for _ in $(seq 1 20); do
+            if docker logs super-ai-stub 2>&1 | grep -q 'super-ai-stub ready'; then exit 0; fi
+            sleep 1
+          done
+          docker logs super-ai-stub || true
+          exit 1
+
       - name: Start owned DOCFLOW canary
         shell: bash
         run: |
-          docker run -d --name docflow-node01-ci \
+          docker run -d --name docflow-node01-ci --network docflow-ci \
             -e DOCFLOW_ADMIN_SECRET=ci-only-docflow-secret-not-production \
             -e APP_ENV=ci \
+            -e SUPER_AI_URL=http://super-ai-stub:9595 \
+            -e SUPER_AI_INTERNAL_KEY=ci-super-ai-internal \
+            -e SUPER_AI_WORKFLOW_KEY=ci-super-ai-workflow \
             -p 127.0.0.1:18081:8787 \
             izakhono-docflow-node01:ci
           for _ in $(seq 1 45); do
@@ -80,7 +97,8 @@ jobs:
           assert d['ok'] is True
           assert d['human_approval_required'] is True
           assert d['draft']['status']=='review'
-          assert d['draft']['ai_status']=='fallback_template'
+          assert d['draft']['ai_status']=='super_ai_draft'
+          assert d['draft']['content_markdown'].startswith('# SUPER AI CONTRACT OK')
           print(d['draft']['id'])
           PY
           )"
@@ -101,9 +119,13 @@ jobs:
           d=json.load(open('/tmp/approved.json'))
           assert d['ok'] is True
           assert d['draft']['status']=='approved'
-          print('[PASS] DOCFLOW owned runtime drafts locally and refuses approval without human confirmation.')
+          print('[PASS] DOCFLOW uses the SUPER AI workflow contract and refuses approval without human confirmation.')
           PY
 
       - name: Stop canary
         if: always()
-        run: docker rm -f docflow-node01-ci || true
+        shell: bash
+        run: |
+          docker rm -f docflow-node01-ci >/dev/null 2>&1 || true
+          docker rm -f super-ai-stub >/dev/null 2>&1 || true
+          docker network rm docflow-ci >/dev/null 2>&1 || true
