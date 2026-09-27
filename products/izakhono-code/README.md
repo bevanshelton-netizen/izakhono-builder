@@ -46,7 +46,8 @@ The owner dashboard now reports read-only operational readiness for:
 - whether an external development adapter is enabled or ready to activate;
 - whether its local encrypted credential/configuration is present without exposing the credential;
 - the DeepSeek Harness isolated sandbox package;
-- whether the Oracle A1 auxiliary-worker package is merely prepared or a worker has actually been registered.
+- whether the Oracle A1 auxiliary-worker package is merely prepared or a worker has actually been registered;
+- current SUPER AI active-request and bounded-queue pressure.
 
 The browser does **not** launch Harness or execute an AI agent. Harness remains a manual local sandbox so a compromised browser session cannot silently start a command-executing coding agent.
 
