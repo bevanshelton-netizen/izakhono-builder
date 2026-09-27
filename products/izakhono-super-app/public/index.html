@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#071b33">
+  <title>IZAKHONO SUPER APP</title>
+  <meta name="description" content="IZAKHONO SUPER APP — one owner-controlled operating surface for the IZAKHONO portfolio.">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="shell">
+    <aside class="side">
+      <div class="brand">
+        <div class="mark">IA</div>
+        <div><strong>IZAKHONO</strong><small>SUPER APP</small></div>
+      </div>
+      <nav>
+        <button class="nav active" data-view="home">Overview</button>
+        <button class="nav" data-view="affiliate">Affiliate</button>
+        <button class="nav" data-view="automation">Automation</button>
+        <button class="nav" data-view="portfolio">Portfolio</button>
+        <button class="nav" data-view="security">Security & privacy</button>
+      </nav>
+      <div class="side-note">
+        <span class="pulse"></span> OWNED-FIRST
+        <small>External providers are replaceable adapters. No behavioural tracking.</small>
+      </div>
+    </aside>
+
+    <main>
+      <header class="top">
+        <div>
+          <p class="eyebrow">BUILT IN AFRICA FOR THE WORLD</p>
+          <h1>SUPER APP</h1>
+          <p class="lead">One command surface for IZAKHONO products, growth, revenue, trust, automation and operations.</p>
+        </div>
+        <div class="badges">
+          <span class="badge good">OWNED-FIRST</span>
+          <span class="badge">NO TRACKING</span>
+          <span class="badge gold">AFFILIATE BUILT IN</span>
+        </div>
+      </header>
+
+      <section id="home" class="view active">
+        <div class="hero">
+          <div>
+            <p class="eyebrow light">PORTFOLIO COMMAND</p>
+            <h2>Run the portfolio from one place.</h2>
+            <p>Affiliate income, IZAKHONO partner commissions, campaigns, CRM, accounting, fraud protection and workflows are surfaced through one owner-controlled interface.</p>
+            <div class="actions">
+              <button class="primary" data-jump="affiliate">Open Affiliate Engine</button>
+              <button class="secondary" data-jump="portfolio">View Portfolio Modules</button>
+            </div>
+          </div>
+          <div class="orb"><span>IA</span><small>SUPER</small></div>
+        </div>
+
+        <div class="metrics">
+          <article><span>Core modules</span><strong id="metricModules">8</strong><small>one operating surface</small></article>
+          <article><span>Affiliate adapters</span><strong id="metricAdapters">10</strong><small>replaceable external connectors</small></article>
+          <article><span>Tracking profile</span><strong>0</strong><small>behavioural profiles</small></article>
+          <article><span>Owner gates</span><strong>5</strong><small>high-impact actions protected</small></article>
+        </div>
+
+        <div class="grid two">
+          <article class="panel spotlight">
+            <div class="panel-head"><h3>IZAKHONO Affiliate</h3><span class="badge good">INTEGRATED</span></div>
+            <p>Publisher income and the IZAKHONO partner network now live inside the SUPER APP rather than in a separate owner workflow.</p>
+            <div class="flow">
+              <span>OFFERS</span><b>→</b><span>AFFILIATE</span><b>→</b><span>CREATE</span><b>→</b><span>ADS</span>
+            </div>
+            <button class="primary" data-jump="affiliate">Open command centre</button>
+          </article>
+          <article class="panel">
+            <div class="panel-head"><h3>Autopilot principle</h3><span class="badge gold">EXCEPTION-ONLY</span></div>
+            <p>Routine, reversible work runs automatically. The owner is interrupted only for legal acceptance, identity/banking information, paid spend, material commission economics or exceptional payouts.</p>
+            <ul class="ticks">
+              <li>Offer discovery and feed ingestion</li>
+              <li>SubID and tracked-link generation</li>
+              <li>Conversion and commission reconciliation</li>
+              <li>FORTRESS fraud screening</li>
+              <li>CRM and accounting synchronisation</li>
+            </ul>
+          </article>
+        </div>
+      </section>
+
+      <section id="affiliate" class="view">
+        <div class="section-head">
+          <div><p class="eyebrow">REVENUE + PARTNER ENGINE</p><h2>IZAKHONO Affiliate</h2><p>Two-way affiliate operation embedded directly in the SUPER APP.</p></div>
+          <button id="runCheck" class="primary">Run safe system check</button>
+        </div>
+
+        <div class="metrics">
+          <article><span>Publisher mode</span><strong>ON</strong><small>earn from approved third-party offers</small></article>
+          <article><span>IZAKHONO network</span><strong>ON</strong><small>partners earn on qualifying IZAKHONO sales</small></article>
+          <article><span>Connected networks</span><strong id="connectedCount">0</strong><small>authenticated adapters only</small></article>
+          <article><span>System of record</span><strong>IA</strong><small>IZAKHONO-owned infrastructure</small></article>
+        </div>
+
+        <div class="grid two">
+          <article class="panel">
+            <div class="panel-head"><h3>Autonomous cycle</h3><span class="badge good">SAFE WORK</span></div>
+            <div class="cycle-list" id="cycleList"></div>
+            <p class="status-line" id="checkStatus">No manual preview run in this browser yet.</p>
+          </article>
+          <article class="panel">
+            <div class="panel-head"><h3>Protected owner gates</h3><span class="badge danger">APPROVAL</span></div>
+            <div id="gateList" class="gate-list"></div>
+          </article>
+        </div>
+
+        <article class="panel">
+          <div class="panel-head"><h3>External affiliate networks</h3><span class="badge">ADAPTERS ONLY</span></div>
+          <p class="muted">Adapters remain disabled until the relevant account exists, credentials are stored server-side and an authenticated test succeeds.</p>
+          <div id="networkGrid" class="network-grid"></div>
+        </article>
+
+        <div class="grid three">
+          <article class="panel mini"><span class="kicker">CREATIVE</span><h3>IZAKHONO CREATE</h3><p>Approved affiliate creatives and brand-safe offer packages.</p></article>
+          <article class="panel mini"><span class="kicker">DISTRIBUTION</span><h3>IZAKHONO ADS</h3><p>Approved distribution without giving affiliate networks control of our infrastructure.</p></article>
+          <article class="panel mini"><span class="kicker">TRUST</span><h3>FORTRESS</h3><p>Fraud, bot, referral abuse and suspicious conversion screening.</p></article>
+        </div>
+      </section>
+
+      <section id="automation" class="view">
+        <div class="section-head"><div><p class="eyebrow">OWNED ORCHESTRATION</p><h2>Automation</h2><p>Routine portfolio work is designed to run through IZAKHONO-owned tasks and workers first.</p></div></div>
+        <div class="grid two">
+          <article class="panel"><h3>Affiliate Autopilot</h3><p>Discover changes, ingest approved feeds, score offers, reconcile events, pause unhealthy adapters and surface exceptions.</p><span class="badge good">CONFIGURED</span></article>
+          <article class="panel"><h3>Exception routing</h3><p>FLOWIQ receives approval-required or fault conditions while healthy background work stays silent.</p><span class="badge good">BOUNDARY DEFINED</span></article>
+          <article class="panel"><h3>Financial handoff</h3><p>Only verified commission and payout events are sent to SUPER ACCOUNTANT for reconciliation.</p><span class="badge">VERIFIED EVENTS ONLY</span></article>
+          <article class="panel"><h3>CRM handoff</h3><p>Partners, leads and commercial opportunities are synchronised into the portfolio CRM with legal-entity isolation.</p><span class="badge">DATA-ISOLATED</span></article>
+        </div>
+      </section>
+
+      <section id="portfolio" class="view">
+        <div class="section-head"><div><p class="eyebrow">ONE SURFACE, INDEPENDENT ENGINES</p><h2>Portfolio modules</h2><p>The SUPER APP surfaces modules without making one product dependent on another product's engine.</p></div></div>
+        <div id="moduleGrid" class="module-grid"></div>
+      </section>
+
+      <section id="security" class="view">
+        <div class="section-head"><div><p class="eyebrow">PRIVACY BY ARCHITECTURE</p><h2>Security & privacy</h2></div></div>
+        <div class="grid two">
+          <article class="panel"><h3>No behavioural tracking</h3><p>No advertising IDs, no behavioural profiling and no silent analytics. Affiliate attribution uses first-party transaction references and network-required identifiers only.</p></article>
+          <article class="panel"><h3>Server-side credentials</h3><p>Affiliate-network credentials never belong in the browser. Every adapter is authenticated and tested server-side before it can be called connected.</p></article>
+          <article class="panel"><h3>Payout protection</h3><p>Qualifying conversion, reversal-window expiry, FORTRESS clearance and accounting reconciliation are required before payout release.</p></article>
+          <article class="panel"><h3>Truthful launch state</h3><p>Code presence is not a live claim. Public-live status requires verified HTTPS and end-to-end evidence.</p></article>
+        </div>
+      </section>
+    </main>
+  </div>
+  <div id="toast" class="toast"></div>
+  <script src="app.js"></script>
+</body>
+</html>
