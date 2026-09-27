@@ -200,13 +200,13 @@ function summary(store,s){
   return{scope:s,active_runs:runs.filter(r=>r.status==="active").length,closed_runs:runs.filter(r=>r.status==="closed").length,events:events.length,pending_actions:out.filter(a=>a.status==="pending").length,failed_actions:out.filter(a=>a.status==="failed").length,by_stage,privacy:{tracking:false,profiling:false,advertisingIdentifiers:false}};
 }
 function capabilities(){
-  return{service:"izakhono-flow",version:"0.1.0",workflow:"Lead -> Qualify -> Quote -> Pay -> Fulfil -> Invoice -> Support -> Retain -> Report",stages:STAGES,event_types:Object.keys(EVENT_STAGE),adapters:["izakhono-crm","izakhono-revenue","izakhono-pay","izakhono-tasks","izakhono-super-ai","platform"],guarantees:["entity_id + platform_id isolation","payment.confirmed accepted only from verified IZAKHONO PAY events","protected secrets filtered from orchestration metadata","AI actions advisory only","external adapters replaceable"]};
+  return{service:"izakhono-flow",version:"0.2.0",workflow:"Lead -> Qualify -> Quote -> Pay -> Fulfil -> Invoice -> Support -> Retain -> Report",stages:STAGES,event_types:Object.keys(EVENT_STAGE),adapters:["izakhono-crm","izakhono-revenue","izakhono-pay","izakhono-tasks","izakhono-super-ai","platform"],guarantees:["entity_id + platform_id isolation","payment.confirmed accepted only from verified IZAKHONO PAY events","protected secrets filtered from orchestration metadata","AI actions advisory only","external adapters replaceable"]};
 }
 
 const server=http.createServer(async(req,res)=>{
   try{
     const url=new URL(req.url||"/","http://"+(req.headers.host||"localhost"));
-    if(req.method==="GET"&&url.pathname==="/health")return send(res,200,{ok:true,service:"izakhono-flow",version:"0.1.0",engineIndependent:true,noTracking:true,adapterTargets:Object.keys(ADAPTERS)});
+    if(req.method==="GET"&&url.pathname==="/health")return send(res,200,{ok:true,service:"izakhono-flow",version:"0.2.0",engineIndependent:true,noTracking:true,adapterTargets:Object.keys(ADAPTERS)});
     if(req.method==="GET"&&url.pathname==="/api/capabilities")return send(res,200,capabilities());
     if(!url.pathname.startsWith("/api/")){
       if(url.pathname==="/"||url.pathname==="/index.html")return sendText(res,200,await fs.readFile(path.join(here,"public","index.html"),"utf8"),"text/html; charset=utf-8");
