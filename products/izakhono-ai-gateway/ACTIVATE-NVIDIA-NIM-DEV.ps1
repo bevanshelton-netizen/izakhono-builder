@@ -21,7 +21,7 @@ foreach ($pair in @(
   @($StartScript, "SUPER AI startup script"),
   @($VerifyScript, "external AI verifier")
 )) {
-  Require-File $pair[0] $pair[1]
+  Require-File -Path $pair[0] -Label $pair[1]
 }
 
 Write-Host "IZAKHONO SUPER AI - NVIDIA development activation" -ForegroundColor Cyan
