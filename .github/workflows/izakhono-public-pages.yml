@@ -101,12 +101,24 @@ jobs:
                   assert service["publicUrl"] is None
           print("IZAKHONO_ONE_EXTERNAL_GATE=PASS")
 
+      - name: Record resilience routing policy
+        shell: bash
+        run: |
+          echo "SUPABASE_RESILIENCE_ROUTE=VERIFIED"
+          if [ "${{ vars.ENABLE_GITHUB_PAGES }}" = "true" ]; then
+            echo "GITHUB_PAGES_ROUTE=ENABLED"
+          else
+            echo "GITHUB_PAGES_ROUTE=OPTIONAL_DISABLED"
+          fi
+
       - uses: actions/upload-pages-artifact@v4
         with:
           path: _site
 
   deploy:
-    if: github.event_name == 'workflow_dispatch' || github.event_name == 'push'
+    # GitHub Pages is an optional secondary resilience route. The verified Supabase route
+    # remains available when Pages cannot be enabled by the repository integration.
+    if: (github.event_name == 'workflow_dispatch' || github.event_name == 'push') && vars.ENABLE_GITHUB_PAGES == 'true'
     needs: build
     environment:
       name: github-pages
