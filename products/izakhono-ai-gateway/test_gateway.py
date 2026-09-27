@@ -234,6 +234,7 @@ assert caps["image"]["status"] == "ready"
 assert caps["video"]["status"] == "needs_backend"
 
 assert "venture-factory" in g.WORKFLOW_PRODUCTS
+assert "izakhono-flow" in g.WORKFLOW_PRODUCTS
 print("IZAKHONO_SUPER_AI_TEST=PASS")
 a.shutdown()
 m.shutdown()
