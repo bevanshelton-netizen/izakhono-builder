@@ -31,6 +31,10 @@ OWNER_POOL_MAX = max(1, min(16, int(os.getenv("IZAKHONO_AI_OWNER_POOL_MAX", "8")
 OWNER_POOL_LOCK = threading.Lock()
 OWNER_POOL_STATE = {}
 
+GATEWAY_MAX_INFLIGHT = max(1, int(os.getenv("IZAKHONO_AI_MAX_INFLIGHT", "4")))
+GATEWAY_MAX_QUEUE = max(0, int(os.getenv("IZAKHONO_AI_MAX_QUEUE", "16")))
+GATEWAY_QUEUE_TIMEOUT_SECONDS = max(0.05, float(os.getenv("IZAKHONO_AI_QUEUE_TIMEOUT_SECONDS", "20")))
+
 # Optional external text route. It is deliberately disabled unless BOTH
 # IZAKHONO_AI_ALLOW_EXTERNAL=true and IZAKHONO_AI_OWNER_ONLY=false are set.
 # External routing is explicit per request and only accepts data classified
@@ -96,6 +100,61 @@ CAPABILITIES = {
         "status": "adapter",
     },
 }
+
+class CapacityUnavailable(RuntimeError):
+    pass
+
+class AdmissionController:
+    def __init__(self, max_inflight, max_queue, timeout_seconds):
+        self.max_inflight = max(1, int(max_inflight))
+        self.max_queue = max(0, int(max_queue))
+        self.timeout_seconds = max(0.01, float(timeout_seconds))
+        self.condition = threading.Condition()
+        self.inflight = 0
+        self.queued = 0
+        self.rejected = 0
+        self.completed = 0
+
+    def acquire(self):
+        with self.condition:
+            if self.inflight < self.max_inflight:
+                self.inflight += 1
+                return
+            if self.queued >= self.max_queue:
+                self.rejected += 1
+                raise CapacityUnavailable("queue_full")
+            self.queued += 1
+            deadline = time.monotonic() + self.timeout_seconds
+            try:
+                while self.inflight >= self.max_inflight:
+                    remaining = deadline - time.monotonic()
+                    if remaining <= 0:
+                        self.rejected += 1
+                        raise CapacityUnavailable("queue_timeout")
+                    self.condition.wait(timeout=remaining)
+                self.inflight += 1
+            finally:
+                self.queued = max(0, self.queued - 1)
+
+    def release(self):
+        with self.condition:
+            self.inflight = max(0, self.inflight - 1)
+            self.completed += 1
+            self.condition.notify()
+
+    def summary(self):
+        with self.condition:
+            return {
+                "max_inflight": self.max_inflight,
+                "max_queue": self.max_queue,
+                "queue_timeout_seconds": self.timeout_seconds,
+                "inflight": self.inflight,
+                "queued": self.queued,
+                "rejected": self.rejected,
+                "completed": self.completed,
+            }
+
+ADMISSION = AdmissionController(GATEWAY_MAX_INFLIGHT, GATEWAY_MAX_QUEUE, GATEWAY_QUEUE_TIMEOUT_SECONDS)
 
 def send_json(handler, status, obj):
     body = json.dumps(obj, separators=(",", ":")).encode()
@@ -220,17 +279,30 @@ def owner_pool_candidates():
     cooling = []
     with OWNER_POOL_LOCK:
         snapshot = {k: dict(v) for k, v in OWNER_POOL_STATE.items()}
-    for url in urls:
+    for index, url in enumerate(urls):
         if not owner_runtime_allowed(url):
             continue
         state = snapshot.get(url, {})
+        item = (int(state.get("inflight", 0) or 0), index, url)
         if float(state.get("blocked_until", 0) or 0) > now:
-            cooling.append(url)
+            cooling.append(item)
         else:
-            ready.append(url)
-    # If all known owner runtimes are cooling down, retry them in configured
-    # order rather than fail permanently.
-    return ready or cooling
+            ready.append(item)
+    candidates = ready or cooling
+    candidates.sort(key=lambda item: (item[0], item[1]))
+    return [item[2] for item in candidates]
+
+def owner_pool_begin(url):
+    with OWNER_POOL_LOCK:
+        current = dict(OWNER_POOL_STATE.get(url, {}))
+        current["inflight"] = int(current.get("inflight", 0) or 0) + 1
+        OWNER_POOL_STATE[url] = current
+
+def owner_pool_end(url):
+    with OWNER_POOL_LOCK:
+        current = dict(OWNER_POOL_STATE.get(url, {}))
+        current["inflight"] = max(0, int(current.get("inflight", 0) or 0) - 1)
+        OWNER_POOL_STATE[url] = current
 
 def owner_pool_summary():
     now = time.time()
@@ -248,6 +320,7 @@ def owner_pool_summary():
             "available_for_attempt": bool(allowed and blocked_until <= now),
             "cooldown_seconds_remaining": max(0, int(blocked_until - now)) if allowed else 0,
             "failures": int(state.get("failures", 0) or 0),
+            "inflight": int(state.get("inflight", 0) or 0),
             "last_ok": state.get("last_ok"),
             "last_error": state.get("last_error") or None,
         })
@@ -330,6 +403,7 @@ def model_chat(messages, model, capability="chat"):
         raise RuntimeError("owner_model_pool_unconfigured")
     errors = []
     for runtime_url in candidates:
+        owner_pool_begin(runtime_url)
         try:
             raw = http_json(
                 runtime_url + "/api/chat",
@@ -343,6 +417,8 @@ def model_chat(messages, model, capability="chat"):
         except Exception as exc:
             owner_pool_mark(runtime_url, False, exc)
             errors.append(f"{owner_runtime_id(runtime_url)}:{type(exc).__name__}")
+        finally:
+            owner_pool_end(runtime_url)
     raise RuntimeError("owner_model_pool_unavailable:" + ",".join(errors[:OWNER_POOL_MAX]))
 
 def openai_chat(messages, model):
@@ -390,28 +466,36 @@ def execute_capability(payload):
     route = select_route(payload, capability)
     model = select_model(capability, payload.get("model"), route)
     cfg = CAPABILITIES[capability]
+    messages = None
     if cfg["kind"] == "ollama_chat":
         messages = normalize_messages(payload)
         if not messages:
             raise ValueError("messages_or_input_required")
-        if route == "external":
-            raw = openai_chat(messages, model)
-            choices = raw.get("choices") if isinstance(raw, dict) else None
-            message = choices[0].get("message", {}) if isinstance(choices, list) and choices and isinstance(choices[0], dict) else {}
-            output = str(message.get("content", "")).strip()
-        else:
-            raw = model_chat(messages, model, capability)
-            output = str(raw.get("message", {}).get("content", "")).strip()
-        if not output:
-            raise RuntimeError("empty_model_response")
-        return capability, model, {"type": "text", "text": output}, raw, route
-    if cfg["kind"] == "json_generate":
+    elif cfg["kind"] == "json_generate":
         if payload.get("input") in (None, "") and payload.get("prompt") in (None, ""):
             raise ValueError("input_or_prompt_required")
+    else:
+        raise RuntimeError("capability_backend_invalid")
+
+    ADMISSION.acquire()
+    try:
+        if cfg["kind"] == "ollama_chat":
+            if route == "external":
+                raw = openai_chat(messages, model)
+                choices = raw.get("choices") if isinstance(raw, dict) else None
+                message = choices[0].get("message", {}) if isinstance(choices, list) and choices and isinstance(choices[0], dict) else {}
+                output = str(message.get("content", "")).strip()
+            else:
+                raw = model_chat(messages, model, capability)
+                output = str(raw.get("message", {}).get("content", "")).strip()
+            if not output:
+                raise RuntimeError("empty_model_response")
+            return capability, model, {"type": "text", "text": output}, raw, route
         raw = json_generate(payload, model, capability)
         output = raw.get("output", raw.get("result", raw))
         return capability, model, {"type": capability, "data": output}, raw, route
-    raise RuntimeError("capability_backend_invalid")
+    finally:
+        ADMISSION.release()
 
 def capability_summary():
     items = []
@@ -472,6 +556,12 @@ class Handler(BaseHTTPRequestHandler):
                 "workflow_products": sorted(WORKFLOW_PRODUCTS),
                 "owner_text_pool_size": len(owner_text_urls()),
                 "owner_text_pool_available": sum(1 for x in owner_pool_summary() if x["available_for_attempt"]),
+                "admission": {
+                    "max_inflight": ADMISSION.summary()["max_inflight"],
+                    "max_queue": ADMISSION.summary()["max_queue"],
+                    "inflight": ADMISSION.summary()["inflight"],
+                    "queued": ADMISSION.summary()["queued"],
+                },
                 "capabilities_ready": [x["capability"] for x in caps if x["status"] == "ready"],
             })
         if p == "/api/v1/capabilities":
@@ -494,6 +584,7 @@ class Handler(BaseHTTPRequestHandler):
                 "ok": True,
                 "service": "izakhono-super-ai",
                 "owner_text_pool": owner_pool_summary(),
+                "admission": ADMISSION.summary(),
                 "external_text": {
                     "enabled": external_text_configured(),
                     "provider": EXTERNAL_TEXT_PROVIDER if external_text_configured() else None,
@@ -546,6 +637,8 @@ class Handler(BaseHTTPRequestHandler):
             capability, model, output, _raw, route = execute_capability(payload)
         except ValueError as exc:
             return send_json(self, 422, {"ok": False, "error": str(exc)[:100]})
+        except CapacityUnavailable as exc:
+            return send_json(self, 503, {"ok": False, "error": "capacity_unavailable", "reason": str(exc)[:100], "retryable": True})
         except urllib.error.HTTPError as exc:
             return send_json(self, 502, {"ok": False, "error": "model_backend_error", "status": exc.code})
         except Exception as exc:
