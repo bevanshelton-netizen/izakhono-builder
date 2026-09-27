@@ -173,6 +173,31 @@ def post_json(url: str, payload: dict[str, Any], headers: dict[str, str] | None 
         return json.loads(raw)
 
 
+
+def verify_render_asset(result: dict[str, Any]) -> None:
+    asset = result.get("asset") or {}
+    url = str(asset.get("url") or "").strip()
+    if not url:
+        raise RuntimeError("renderer_asset_url_missing")
+    req = urllib.request.Request(url, method="HEAD")
+    try:
+        with urllib.request.urlopen(req, timeout=20) as res:
+            ctype = str(res.headers.get("content-type") or "").lower()
+            length = int(res.headers.get("content-length") or "0")
+            if res.status != 200 or "video/mp4" not in ctype or length < 4096:
+                raise RuntimeError("renderer_asset_not_ready")
+    except urllib.error.HTTPError as exc:
+        if exc.code != 405:
+            raise
+        req = urllib.request.Request(url, headers={"range": "bytes=0-0"}, method="GET")
+        with urllib.request.urlopen(req, timeout=20) as res:
+            ctype = str(res.headers.get("content-type") or "").lower()
+            if res.status not in (200, 206) or "video/mp4" not in ctype:
+                raise RuntimeError("renderer_asset_not_ready")
+            if not res.read(1):
+                raise RuntimeError("renderer_asset_empty")
+
+
 def invoke_renderer(job: dict[str, Any]) -> tuple[str, dict[str, Any]]:
     cfg = adapter_config()
     payload = {
@@ -199,6 +224,7 @@ def invoke_renderer(job: dict[str, Any]) -> tuple[str, dict[str, Any]]:
         result = call(cfg.owned_url, cfg.owned_key)
         if not isinstance(result, dict) or not result.get("ok"):
             raise RuntimeError("invalid_owned_renderer_response")
+        verify_render_asset(result)
         return "owned", result
     except Exception as exc:  # network boundary
         owned_error = str(exc)[:220]
@@ -209,6 +235,7 @@ def invoke_renderer(job: dict[str, Any]) -> tuple[str, dict[str, Any]]:
     result = call(cfg.external_url, cfg.external_key)
     if not isinstance(result, dict) or not result.get("ok"):
         raise RuntimeError("invalid_external_renderer_response")
+    verify_render_asset(result)
     result["owned_error"] = owned_error
     return "external-fallback", result
 
