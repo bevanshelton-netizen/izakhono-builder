@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#071815">
+<meta name="description" content="IZAKHONO BUILDER public studio with APP FABRIC inheritance and owner-builder handoff.">
+<title>IZAKHONO BUILDER — APP FABRIC Studio</title>
+<link rel="stylesheet" href="./builder-studio.css">
+</head>
+<body>
+<header class="top"><div class="brand">IZAKHONO <span>BUILDER</span></div><a href="./">← IZAKHONO ONE SUPER APP</a></header>
+<section class="hero">
+<div class="ey">SUPER APP · APP FABRIC HANDOFF STUDIO</div>
+<h1>Describe it once. Inherit the platform. Own the source.</h1>
+<p>Build a responsive starter locally, inherit the standard IZAKHONO APP FABRIC capability contract, preview desktop/tablet/mobile, and export an owner-Builder-compatible handoff. Your brief stays in this browser unless you explicitly download it.</p>
+<div class="chips"><span>APP FABRIC baseline</span><span>Owner Builder handoff</span><span>Responsive web/PWA</span><span>Desktop + mobile preview</span><span>No behavioural tracking</span></div>
+</section>
+
+<main class="shell">
+<section class="panel">
+<h2>Describe the product</h2>
+<p class="muted">Choose a starting pattern, then customise the product. The Builder baseline is inherited automatically; optional capability packs add product-specific plumbing.</p>
+<div class="field"><label>Starting pattern</label><div class="templates" id="templates"></div></div>
+<div class="field"><label>Application name</label><input id="name" value="My Business App" maxlength="100"></div>
+<div class="field"><label>Category</label><select id="category"><option value="business">Business</option><option value="commerce">Commerce</option><option value="education">Education</option><option value="marketplace">Marketplace</option><option value="media">Media / Creator</option><option value="financial">Financial Services</option><option value="security">Security</option><option value="general">General</option></select></div>
+<div class="field"><label>What should it do?</label><textarea id="description">A professional customer application with a clear offer, customer intake, secure operating workflows and an admin-ready service foundation.</textarea></div>
+
+<div class="fabric">
+<div class="fabricTop"><b>IZAKHONO APP FABRIC baseline</b><span>INHERITED</span></div>
+<div class="baseline" id="baseline"></div>
+</div>
+
+<div class="field"><label>Optional capability packs</label><div class="extras" id="extras"></div></div>
+<div class="notice">Production remains fail-closed. Payments, public messaging, regulated workflows, external connectors, mobile-store submission and protected data require their own acceptance evidence before release.</div>
+<div class="actions"><button class="btn primary" id="generate">Generate blueprint</button><button class="btn soft" id="reset">Reset</button></div>
+<div class="status" id="status">Ready. Nothing has been uploaded or persisted.</div>
+</section>
+
+<section class="panel">
+<div class="previewHead"><div><div class="ey green">GENERATED HANDOFF</div><h2>Preview, inspect, export</h2></div><div class="devices"><button class="on" data-device="desktop">Desktop</button><button data-device="tablet">Tablet</button><button data-device="mobile">Mobile</button></div></div>
+<div class="summary"><div class="metric"><b id="moduleCount">0</b><span>BUILDER MODULES</span></div><div class="metric"><b id="fileCount">0</b><span>HANDOFF FILES</span></div><div class="metric"><b>0</b><span>TRACKERS</span></div></div>
+<div class="stage"><iframe id="preview" class="frame" title="Generated application preview"></iframe></div>
+<div class="tabs"><button class="on" data-tab="html">index.html</button><button data-tab="project">izakhono.project.json</button><button data-tab="fabric">app-fabric.json</button><button data-tab="manifest">manifest.webmanifest</button><button data-tab="sw">sw.js</button><button data-tab="gates">RELEASE-GATES.md</button></div>
+<pre class="code" id="code"></pre>
+<div class="actions"><button class="btn gold" id="downloadHandoff">Download Owner Builder handoff</button><button class="btn soft" id="download">Download current file</button><button class="btn soft" id="downloadAll">Download all files</button></div>
+</section>
+</main>
+
+<section class="policy">
+<div><b>APP FABRIC inheritance</b><span>Every handoff receives the portfolio baseline: CRM, auth, files, payments, messaging, AI, workflows, permissions, admin, analytics, publishing and growth contracts.</span></div>
+<div><b>Owned Builder compatibility</b><span>The exported project request uses the canonical Builder module keys so the owner-controlled engine can create the project without reinterpreting the brief.</span></div>
+<div><b>Controlled release</b><span>A generated blueprint is not a public production deployment. NODE01/CODE/RUNTIME/EDGE-TLS/DNS remains the intended owned authority, with reversible external resilience.</span></div>
+</section>
+<footer class="foot"><span>IZAKHONO BUILDER · IZAKHONO APP FABRIC · IZAKHONO ONE</span><span>No analytics · no ad IDs · no silent prompt persistence</span></footer>
+<script src="./builder-studio.js" defer></script>
+</body>
+</html>
