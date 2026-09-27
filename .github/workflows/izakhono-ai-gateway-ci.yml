@@ -53,5 +53,5 @@ jobs:
           ! grep -R --line-number -E 'nvapi-[A-Za-z0-9_-]+' products/izakhono-ai-gateway
           grep -Fq 'ConvertFrom-SecureString' products/izakhono-ai-gateway/SET-EXTERNAL-AI-SECRET.ps1
           grep -Fq 'ConvertTo-SecureString' products/izakhono-ai-gateway/START-IZAKHONO-SUPER-AI-NODE01.ps1
-          grep -Fq 'ACTIVATE-NVIDIA-NIM-DEV.ps1' products/izakhono-ai-gateway/README.md
+          grep -Fq 'ACTIVATE-NVIDIA-NIM-DEV.cmd' products/izakhono-ai-gateway/README.md
           grep -Fq 'data_classification' products/izakhono-ai-gateway/app.py
