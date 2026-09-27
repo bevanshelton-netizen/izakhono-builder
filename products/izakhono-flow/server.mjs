@@ -122,13 +122,49 @@ function enqueue(store,s,run,e,target,type){
   const row={id:uid("act"),...s,run_id:run.id,event_id:e.id,target,action_type:type,payload:scrub({event_type:e.event_type,subject_ref:e.subject_ref,source_service:e.source_service,references:e.references,metadata:e.metadata,run_stage:run.stage}),status:"pending",attempts:0,last_error:"",created_at:now(),updated_at:now()};
   store.action_outbox.push(row);return row;
 }
+function adapterRequest(row,cfg,endpoint){
+  const headers={"content-type":"application/json","x-entity-id":row.entity_id,"x-platform-id":row.platform_id};
+  if(cfg?.kind==="super-ai-workflow"){
+    const internalKey=clean(cfg.internal_key,2000),workflowKey=clean(cfg.workflow_key,2000);
+    if(!internalKey||!workflowKey)return{error:"super_ai_credentials_missing"};
+    headers["x-izakhono-ai-key"]=internalKey;
+    headers["x-izakhono-ai-workflow-key"]=workflowKey;
+    const advisoryContext={
+      platform_id:row.platform_id,
+      subject_ref:clean(row.payload?.subject_ref,200),
+      run_stage:clean(row.payload?.run_stage,80),
+      event_type:clean(row.payload?.event_type,120),
+      metadata:scrub(row.payload?.metadata||{})
+    };
+    const requestBody={
+      entity_id:row.entity_id,
+      subject:`flow:${row.platform_id}:${advisoryContext.subject_ref||row.run_id}`,
+      product:clean(cfg.product||"izakhono-flow",120),
+      access_mode:"workflow",
+      capability:clean(cfg.capability||"reasoning",40),
+      route:"owned",
+      data_classification:"internal",
+      messages:[
+        {role:"system",content:"You are the advisory intelligence layer for IZAKHONO FLOW. Return a concise, reversible next-step recommendation. Do not move money, confirm payment, make a regulated decision, or send a customer communication."},
+        {role:"user",content:JSON.stringify(advisoryContext)}
+      ]
+    };
+    return{headers,body:requestBody};
+  }
+  const token=typeof cfg==="object"?clean(cfg.token,2000):"";
+  if(token)headers.authorization="Bearer "+token;
+  return{headers,body:{action_id:row.id,run_id:row.run_id,action_type:row.action_type,payload:row.payload}};
+}
 async function dispatch(row){
   const cfg=ADAPTERS[row.target];if(!cfg)return{ok:false,error:"adapter_not_configured"};
   const endpoint=typeof cfg==="string"?cfg:cfg?.url;if(!endpoint)return{ok:false,error:"adapter_url_missing"};
-  const headers={"content-type":"application/json","x-entity-id":row.entity_id,"x-platform-id":row.platform_id};
-  const token=typeof cfg==="object"?clean(cfg.token,2000):"";if(token)headers.authorization="Bearer "+token;
-  try{const r=await fetch(endpoint,{method:"POST",headers,body:JSON.stringify({action_id:row.id,run_id:row.run_id,action_type:row.action_type,payload:row.payload}),signal:AbortSignal.timeout(5000)});let data=null;try{data=await r.json()}catch{};return{ok:r.ok,status:r.status,body:data}}
-  catch(e){return{ok:false,error:clean(e.message,500)}}
+  const request=adapterRequest(row,typeof cfg==="object"?cfg:{},endpoint);
+  if(request.error)return{ok:false,error:request.error};
+  try{
+    const r=await fetch(endpoint,{method:"POST",headers:request.headers,body:JSON.stringify(request.body),signal:AbortSignal.timeout(Number(cfg?.timeout_ms||15000))});
+    let data=null;try{data=await r.json()}catch{}
+    return{ok:r.ok,status:r.status,body:data};
+  }catch(e){return{ok:false,error:clean(e.message,500)}}
 }
 async function autoDispatchConfigured(store,s,actions,a){
   const deliveries=[];
