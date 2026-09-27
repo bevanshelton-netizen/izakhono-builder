@@ -55,6 +55,7 @@ jobs:
         run: |
           APK="products/izakhono-nav/android/app/build/outputs/apk/debug/app-debug.apk"
           test -s "$APK"
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs "$APK"
           mkdir -p out
           cp "$APK" out/IZAKHONO-NAV-Android-v1.0.0-beta.apk
           sha256sum out/IZAKHONO-NAV-Android-v1.0.0-beta.apk > out/IZAKHONO-NAV-Android-v1.0.0-beta.apk.sha256
