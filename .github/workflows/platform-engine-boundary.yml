@@ -1,0 +1,25 @@
+name: Platform Engine tenant boundary
+
+on:
+  pull_request:
+    paths:
+      - "src/platform-engine.ts"
+      - "tenants/**"
+      - "tests/platform-engine.test.ts"
+      - ".github/workflows/platform-engine-boundary.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  boundary:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: npx tsc src/platform-engine.ts --target ES2022 --module NodeNext --moduleResolution NodeNext --outDir /tmp/izakhono-pe
+      - run: sed 's#../src/platform-engine.js#/tmp/izakhono-pe/platform-engine.js#' tests/platform-engine.test.ts > /tmp/platform-engine.test.mjs
+      - run: node /tmp/platform-engine.test.mjs
