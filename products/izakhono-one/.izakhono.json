@@ -7,7 +7,7 @@
     "runtime":"node",
     "health":"/health",
     "port":8781,
-    "capabilities":["search","service-discovery","routing","health","super-app-access","builder-integration"]
+    "capabilities":["search","service-discovery","routing","health","super-app-access","builder-integration","flow-integration","workflow-orchestration"]
   },
   "integrations":{
     "izakhono-builder":{
@@ -15,6 +15,14 @@
       "descriptor":"/api/builder",
       "health":"/api/builder/health",
       "internalUrlEnv":"IZAKHONO_BUILDER_INTERNAL_URL",
+      "engineIndependent":true,
+      "publicRouteGate":"HTTPS_200_AND_VERIFIED_EXPERIENCE"
+    },
+    "izakhono-flow":{
+      "mode":"owned-service-bridge",
+      "descriptor":"/api/flow",
+      "health":"/api/flow/health",
+      "internalUrlEnv":"IZAKHONO_FLOW_INTERNAL_URL",
       "engineIndependent":true,
       "publicRouteGate":"HTTPS_200_AND_VERIFIED_EXPERIENCE"
     }
