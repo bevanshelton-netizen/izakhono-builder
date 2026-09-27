@@ -188,6 +188,14 @@ The repository now includes:
 
 The verifier deliberately uses a harmless public marker prompt. A successful receipt proves only that the configured development adapter works through the gateway; it does not establish a public-live production deployment.
 
+### Windows secret handling
+
+For the owner Windows runtime, `SET-EXTERNAL-AI-SECRET.cmd` accepts the provider credential through a secure prompt and stores only the DPAPI-encrypted form under the current Windows user's Local AppData. The credential is not committed or printed.
+
+`CONFIGURE-NVIDIA-NIM-DEV.cmd` prepares the non-secret NVIDIA development-route settings separately. The normal SUPER AI launcher can decrypt the local DPAPI secret for the same Windows user when the external route is explicitly enabled.
+
+This is a convenience boundary for an owner workstation, not a substitute for an enterprise secrets manager on a multi-user or server deployment.
+
 ## DeepSeek Harness evaluation
 
 DeepSeek Harness is treated as a **replaceable developer-preview coding agent**, not as trusted production infrastructure. IZAKHONO CODE includes an isolated evaluation launcher and policy in `products/izakhono-code/DEEPSEEK-HARNESS-SANDBOX.md`.
