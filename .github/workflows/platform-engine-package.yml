@@ -1,0 +1,56 @@
+name: Platform Engine tenant package
+on:
+  pull_request:
+    paths:
+      - "src/platform-engine.ts"
+      - "src/runtime.ts"
+      - "tenants/**"
+      - "scripts/provision-platform-tenant.mjs"
+      - "tests/platform-engine.test.ts"
+      - ".github/workflows/platform-engine-package.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Typecheck tenant core
+        run: npx --yes --package typescript@5.9.2 tsc --noEmit --target ES2022 --module NodeNext --moduleResolution NodeNext src/platform-engine.ts
+      - name: Generate EDU-BUILD tenant contract
+        run: node scripts/provision-platform-tenant.mjs tenants/edubuild-shelton.platform-engine.json /tmp/izakhono-tenants
+      - name: Verify isolation and private launch
+        run: |
+          node --input-type=module <<'NODE'
+          import { readFileSync } from 'node:fs';
+          import { strict as assert } from 'node:assert';
+          const p = JSON.parse(readFileSync('/tmp/izakhono-tenants/edubuild-shelton/deployment.contract.json'));
+          assert.equal(p.status, 'GENERATED_NOT_DEPLOYED');
+          assert.equal(p.public_publishing_allowed, false);
+          assert.equal(p.legal_entity, 'EDU-BUILD INSTITUTE – Shelton Campuses');
+          for (const v of Object.values(p.bindings)) {
+            assert.equal(v.scope, 'edubuild-shelton');
+            assert.equal(v.provisioned, false);
+          }
+          console.log('EDU-BUILD tenant contract checks passed');
+          NODE
+      - name: Reject unsafe external tenant
+        run: |
+          node --input-type=module <<'NODE'
+          import { readFileSync, writeFileSync } from 'node:fs';
+          const m = JSON.parse(readFileSync('tenants/edubuild-shelton.platform-engine.json'));
+          m.portfolio_owner = true;
+          writeFileSync('/tmp/unsafe-tenant.json', JSON.stringify(m));
+          NODE
+          if node scripts/provision-platform-tenant.mjs /tmp/unsafe-tenant.json /tmp/izakhono-unsafe; then
+            echo "Unsafe external tenant was accepted"; exit 1
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: edubuild-tenant-contract
+          path: /tmp/izakhono-tenants/edubuild-shelton/
+          retention-days: 14
