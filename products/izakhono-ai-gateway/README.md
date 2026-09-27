@@ -110,6 +110,9 @@ Workflow mode does not create a customer subscription record and does not bypass
 Text routing:
 
 - `IZAKHONO_OLLAMA_URL`
+- `IZAKHONO_AI_OWNER_TEXT_URLS` — ordered comma-separated owner runtimes for chat/reasoning/code failover
+- `IZAKHONO_AI_OWNER_POOL_COOLDOWN_SECONDS` — temporary cooldown after a failed runtime call
+- `IZAKHONO_AI_OWNER_POOL_MAX` — hard cap on configured owner text runtimes
 - `IZAKHONO_AI_CHAT_MODEL`
 - `IZAKHONO_AI_CHAT_MODELS`
 - `IZAKHONO_AI_REASONING_MODEL`
@@ -133,6 +136,18 @@ Trust boundary:
 - `IZAKHONO_AI_OWNER_ONLY=true` by default
 - `IZAKHONO_AI_OWNER_HOSTS=127.0.0.1,localhost` plus any explicitly approved owner hostnames
 - `IZAKHONO_AI_ALLOW_EXTERNAL=false` by default
+
+## Health-aware owner text pool
+
+Chat, reasoning and coding can now use more than one owner-controlled Ollama-compatible runtime without changing any IZAKHONO product.
+
+Configure the ordered pool with `IZAKHONO_AI_OWNER_TEXT_URLS`. The gateway attempts owner runtimes in preference order, temporarily cools down a runtime after a failed call, and fails over to the next allowed owner runtime. If every configured runtime is cooling down, the gateway retries them in configured order instead of becoming permanently stuck.
+
+Owner pool endpoints are subject to a stricter trust rule than external development adapters: they must resolve to loopback/private/link-local addresses or be explicitly listed in `IZAKHONO_AI_OWNER_HOSTS`. Enabling NVIDIA or another external adapter does not make arbitrary public hosts valid owner runtimes.
+
+The public `/healthz` endpoint exposes only pool counts. The authenticated `GET /api/v1/runtimes` endpoint exposes runtime labels such as `owner-text-1`, cooldown state, failure count and last-success metadata without returning the configured backend URLs.
+
+Use `OWNER-MODEL-POOL.env.example` as the configuration template. Each runtime must independently contain the models it may be asked to serve.
 
 ## Optional external text route
 
@@ -217,6 +232,8 @@ That means no artificial message-credit counter. It does not mean infinite compu
 
 ## Build direction
 
-The next runtime phase is a health-aware owner model pool: CPU/GPU workers, queueing, model warm pools, benchmark-based routing, failover, artefact storage and local media runtimes. Those workers remain behind the same SUPER AI contract so individual IZAKHONO products never need rewrites when models change.
+The first owner-model-pool phase is now implemented for text workloads: multiple owner runtimes, strict owner-host validation, failure cooldown, failover, sanitized runtime status and IZAKHONO CODE visibility.
+
+The next runtime phases are queueing/back-pressure, model warm pools, benchmark-aware routing, artefact storage and local image/video/speech/transcription worker pools. They remain behind the same SUPER AI contract so individual IZAKHONO products do not need rewrites as runtime capacity changes.
 
 See `MODEL-CATALOG.md` for the free/open-weight intake baseline.
