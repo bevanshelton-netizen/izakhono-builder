@@ -15,7 +15,10 @@ Every platform must be deployable from the same release artifact to any approved
 1. **Owned runtime** — any IZAKHONO-controlled node capable of running the approved release.
 2. **Owned cluster** — the four-node k3s cluster under `infra/node-cluster` once the real hardware is installed and verified.
 3. **External resilience runtime** — an approved external host used to preserve public availability and revenue continuity.
-4. **Edge** — health-aware public routing that sends traffic only to a currently healthy runtime.
+4. **External auxiliary worker** — opportunistic external capacity for development, CI, queues or other removable workloads; it is not automatically a public resilience target.
+5. **Edge** — health-aware public routing that sends traffic only to a currently healthy runtime.
+
+Oracle Always Free A1 capacity, when actually provisioned and verified, is treated as an external auxiliary worker under `ORACLE-A1-AUX-WORKER.md`, never as guaranteed capacity or a source of truth.
 
 ## Mandatory behaviour
 
