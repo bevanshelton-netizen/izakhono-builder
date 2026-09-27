@@ -10,6 +10,15 @@
   },
   "modules": [
     {
+      "id": "builder",
+      "name": "IZAKHONO BUILDER AI",
+      "category": "Build + Create",
+      "route": "/builder",
+      "status": "available",
+      "engine": "independent",
+      "description": "One-sentence app, website, game and software factory with owned source, deterministic validation and internal repository commits."
+    },
+    {
       "id": "affiliate",
       "name": "IZAKHONO Affiliate",
       "category": "Revenue + Partnerships",
