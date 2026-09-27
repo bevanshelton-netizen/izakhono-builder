@@ -28,7 +28,7 @@ echo "[FLOW] Proving live volume write..."
 docker exec izakhono-flow sh -c "umask 077; printf '%s\n' '$PROBE_VALUE' > '/data/$PROBE_NAME'; sync; test -s '/data/$PROBE_NAME'"
 
 echo "[FLOW] Creating owner backup snapshot..."
-docker run --rm \
+docker run --rm --user 0:0 \
   -v "$VOLUME:/source:ro" \
   -v "$BACKUP_ROOT:/backup" \
   "$IMAGE" sh -c "tar -C /source -czf '/backup/$(basename "$BACKUP_FILE")' ."
@@ -38,12 +38,12 @@ chmod 600 "$BACKUP_FILE" 2>/dev/null || true
 
 echo "[FLOW] Restoring snapshot into isolated probe volume..."
 docker volume create "$RESTORE_VOLUME" >/dev/null
-docker run --rm \
+docker run --rm --user 0:0 \
   -v "$RESTORE_VOLUME:/restore" \
   -v "$BACKUP_ROOT:/backup:ro" \
   "$IMAGE" sh -c "tar -xzf '/backup/$(basename "$BACKUP_FILE")' -C /restore"
 
-docker run --rm \
+docker run --rm --user 0:0 \
   -v "$RESTORE_VOLUME:/restore:ro" \
   "$IMAGE" sh -c "test -f '/restore/$PROBE_NAME' && grep -Fqx '$PROBE_VALUE' '/restore/$PROBE_NAME'"
 
