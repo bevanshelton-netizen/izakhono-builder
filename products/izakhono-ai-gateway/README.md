@@ -113,6 +113,9 @@ Text routing:
 - `IZAKHONO_AI_OWNER_TEXT_URLS` — ordered comma-separated owner runtimes for chat/reasoning/code failover
 - `IZAKHONO_AI_OWNER_POOL_COOLDOWN_SECONDS` — temporary cooldown after a failed runtime call
 - `IZAKHONO_AI_OWNER_POOL_MAX` — hard cap on configured owner text runtimes
+- `IZAKHONO_AI_MAX_INFLIGHT` — gateway-wide maximum simultaneous inference requests
+- `IZAKHONO_AI_MAX_QUEUE` — maximum requests allowed to wait for capacity
+- `IZAKHONO_AI_QUEUE_TIMEOUT_SECONDS` — maximum time a queued request may wait
 - `IZAKHONO_AI_CHAT_MODEL`
 - `IZAKHONO_AI_CHAT_MODELS`
 - `IZAKHONO_AI_REASONING_MODEL`
@@ -148,6 +151,18 @@ Owner pool endpoints are subject to a stricter trust rule than external developm
 The public `/healthz` endpoint exposes only pool counts. The authenticated `GET /api/v1/runtimes` endpoint exposes runtime labels such as `owner-text-1`, cooldown state, failure count and last-success metadata without returning the configured backend URLs.
 
 Use `OWNER-MODEL-POOL.env.example` as the configuration template. Each runtime must independently contain the models it may be asked to serve.
+
+## Bounded queue and workload distribution
+
+SUPER AI now applies gateway-wide admission control before inference work begins. `IZAKHONO_AI_MAX_INFLIGHT` caps simultaneous model work, while `IZAKHONO_AI_MAX_QUEUE` limits waiting requests and `IZAKHONO_AI_QUEUE_TIMEOUT_SECONDS` limits how long they may wait.
+
+When the queue is full or a queued request times out, the gateway returns a retryable `503 capacity_unavailable` response instead of allowing unbounded request growth.
+
+For owned text workloads, available runtimes are ordered by current in-flight load; configured pool order is used only as the tie-breaker. Failed runtimes still enter cooldown and healthy capacity is preferred.
+
+The public health endpoint exposes aggregate active/queued counts. The authenticated `GET /api/v1/runtimes` view adds admission statistics and per-runtime in-flight counts without returning backend addresses.
+
+This is bounded in-process back-pressure for one gateway instance. Durable cross-machine queues and resumable long-running jobs remain a separate Runtime Fabric layer.
 
 ## Optional external text route
 
@@ -232,8 +247,8 @@ That means no artificial message-credit counter. It does not mean infinite compu
 
 ## Build direction
 
-The first owner-model-pool phase is now implemented for text workloads: multiple owner runtimes, strict owner-host validation, failure cooldown, failover, sanitized runtime status and IZAKHONO CODE visibility.
+The owner text runtime layer now includes multiple owner runtimes, strict owner-host validation, failure cooldown, failover, bounded admission control, least-loaded workload distribution, sanitized runtime status and IZAKHONO CODE visibility.
 
-The next runtime phases are queueing/back-pressure, model warm pools, benchmark-aware routing, artefact storage and local image/video/speech/transcription worker pools. They remain behind the same SUPER AI contract so individual IZAKHONO products do not need rewrites as runtime capacity changes.
+The next runtime phases are model warm-pool management, benchmark-aware routing, durable cross-machine job queues, artefact storage and owner-hosted image/video/speech/transcription worker pools. They remain behind the same SUPER AI contract so individual IZAKHONO products do not need rewrites as runtime capacity changes.
 
 See `MODEL-CATALOG.md` for the free/open-weight intake baseline.
