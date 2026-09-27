@@ -59,3 +59,8 @@ jobs:
           grep -Fq 'owner_runtime_allowed' products/izakhono-ai-gateway/app.py
           grep -Fq '/api/v1/runtimes' products/izakhono-ai-gateway/app.py
           grep -Fq 'OWNER-MODEL-POOL.env.example' products/izakhono-ai-gateway/README.md
+          grep -Fq 'IZAKHONO_AI_MAX_INFLIGHT' products/izakhono-ai-gateway/app.py
+          grep -Fq 'CapacityUnavailable' products/izakhono-ai-gateway/app.py
+          grep -Fq 'capacity_unavailable' products/izakhono-ai-gateway/app.py
+          grep -Fq 'owner_pool_begin' products/izakhono-ai-gateway/app.py
+          grep -Fq 'Bounded queue and workload distribution' products/izakhono-ai-gateway/README.md
