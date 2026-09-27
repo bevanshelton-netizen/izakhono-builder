@@ -15,6 +15,9 @@ files = [
     "infra/public-cutover/wave1-registry.json",
     "scripts/launch-stack/run-wave1-local-proof.sh",
     "scripts/launch-stack/run-allegro-local-proof.sh",
+    "scripts/launch-stack/watch-node01-wave1-request.sh",
+    "infra/launch-stack/systemd/izakhono-wave1-request.service",
+    "infra/launch-stack/systemd/izakhono-wave1-request.timer",
 ]
 h = hashlib.sha256()
 h.update(b"izakhono.wave1.bundle.v1\0")
