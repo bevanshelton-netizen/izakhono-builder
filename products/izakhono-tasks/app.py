@@ -510,7 +510,7 @@ class H(BaseHTTPRequestHandler):
         return hmac.compare_digest(self.headers.get("Authorization",""),"Bearer "+TOKEN)
 
     def entity(self):
-        return self.headers.get("X-IZAKHONO-Entity-ID","").strip()
+        return (self.headers.get("X-Entity-ID","") or self.headers.get("X-IZAKHONO-Entity-ID","")).strip()
 
     def platform(self):
         return self.headers.get("X-Platform-ID","").strip()
@@ -531,7 +531,7 @@ class H(BaseHTTPRequestHandler):
         if not self.authed():
             self.sendj(401,{"error":"unauthorized"}); return False
         if not self.entity():
-            self.sendj(400,{"error":"X-IZAKHONO-Entity-ID required"}); return False
+            self.sendj(400,{"error":"X-Entity-ID or X-IZAKHONO-Entity-ID required"}); return False
         return True
 
     def do_GET(self):
