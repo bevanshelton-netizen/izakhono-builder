@@ -1,0 +1,72 @@
+{
+  "schema": "izakhono.finance-core.v1",
+  "product": "IZAKHONO FINANCE CORE",
+  "version": "0.1.0",
+  "operator": "IZAKHONO AFRICA (PTY) LTD",
+  "product_role": "financial-institution software platform",
+  "infrastructure": {
+    "policy": "owned-first-externally-reversible",
+    "owned_target": "NODE01",
+    "system_of_record": "IZAKHONO-owned infrastructure",
+    "external_services": "replaceable adapters only",
+    "public_status": "NOT_YET_VERIFIED"
+  },
+  "capabilities": [
+    "loan origination and servicing",
+    "savings/member account administration",
+    "customer/member CRM references",
+    "payment integration",
+    "collections and arrears workflows",
+    "reporting and analytics",
+    "maker-checker approvals",
+    "audit trails",
+    "multi-branch configuration",
+    "multi-currency product configuration",
+    "white-label institution surfaces",
+    "API-first integration"
+  ],
+  "integrations": {
+    "fraud_and_trust": "FORTRESS",
+    "accounting": "SUPER ACCOUNTANT",
+    "crm": "IZAKHONO CRM",
+    "workflow": "FLOWIQ",
+    "payments": "IZAKHONO PAY / approved replaceable gateway adapters",
+    "ai": "IZAKHONO SUPER AI advisory only"
+  },
+  "regulated_activity_boundary": {
+    "software_vendor_only_by_default": true,
+    "deposit_taking_enabled": false,
+    "credit_provider_enabled": false,
+    "automated_final_credit_decisions_enabled": false,
+    "money_movement_without_authorised_payment_adapter": false,
+    "country_specific_licensing_and_compliance_required_before_regulated_operation": true
+  },
+  "privacy": {
+    "behavioural_tracking": false,
+    "advertising_ids": false,
+    "silent_analytics": false,
+    "raw_prompt_persistence": false
+  },
+  "security": {
+    "credentials_server_side": true,
+    "institution_scope_required": true,
+    "legal_entity_scope_required": true,
+    "maker_checker_for_high_impact_actions": true,
+    "immutable_audit_required": true,
+    "encrypted_persistence_required": true,
+    "least_privilege_required": true
+  },
+  "launch_policy": {
+    "code_presence_is_not_live": true,
+    "public_live_requires_verified_https": true,
+    "production_financial_data_requires_security_review": true,
+    "production_regulated_workflows_require_jurisdiction_review": true
+  },
+  "super_app_module": {
+    "module_id": "finance-core",
+    "surface": "IZAKHONO SUPER APP",
+    "route": "/finance-core",
+    "embedded": true,
+    "engine": "independent"
+  }
+}
