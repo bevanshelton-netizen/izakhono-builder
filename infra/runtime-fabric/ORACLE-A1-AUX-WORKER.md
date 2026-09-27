@@ -54,6 +54,24 @@ For AI work, prefer CPU-appropriate local/open-weight models or queue/control wo
 
 The bootstrap is not a provisioning engine and does not create an Oracle account, tenancy, VCN or compute instance.
 
+## Registration after a real VM exists
+
+After the cloud-init package has completed on a real A1 VM, register it from the owner Windows machine with:
+
+```text
+REGISTER-ORACLE-A1-WORKER.cmd <hostname-or-ip> [ssh-user] [ssh-port]
+```
+
+The registration tool verifies the worker through SSH by calling its loopback-only health endpoint. It then writes a local non-secret registry record under the current Windows user's LocalAppData. It does **not** open the health port publicly and it does **not** enable application traffic.
+
+Re-run health verification with:
+
+```text
+VERIFY-ORACLE-A1-WORKER.cmd
+```
+
+A registered A1 worker is still classified `EXTERNAL-AUX-ORACLE-A1`. Registration is proof of auxiliary worker reachability only, not production or public-live proof.
+
 ## Provisioning boundary
 
 This repository does not claim an Oracle tenancy or instance has been created. Actual provisioning requires the account owner to have an Oracle Cloud tenancy, select the home region, accept Oracle's current terms and create the VM. Once a real instance exists, register its health endpoint in the Runtime Fabric configuration and verify it before assigning work.

@@ -38,9 +38,21 @@ const repoPath = slug => path.join(reposRoot, `${safeSlug(slug)}.git`);
 const now = () => new Date().toISOString();
 
 async function aiOperationsStatus() {
+  const localAppData = process.env.LOCALAPPDATA || '';
+  const externalSecretFile = localAppData ? path.join(localAppData, 'Izakhono', 'Secrets', 'external-ai.key.dpapi') : '';
+  const externalConfigFile = localAppData ? path.join(localAppData, 'Izakhono', 'SuperAI', 'external-ai.env.ps1') : '';
+  const oracleRegistryFile = localAppData ? path.join(localAppData, 'Izakhono', 'RuntimeFabric', 'oracle-a1-worker.json') : '';
+
   const status = {
     ownedSuperAi: { reachable:false, ownerOnly:null, capabilitiesReady:[], workflowModeConfigured:false },
-    externalAi: { enabled:false, provider:null, publicDataOnly:true },
+    externalAi: {
+      enabled:false,
+      provider:null,
+      publicDataOnly:true,
+      credentialStored:Boolean(externalSecretFile && existsSync(externalSecretFile)),
+      configurationPrepared:Boolean(externalConfigFile && existsSync(externalConfigFile)),
+      activationPrepared:existsSync(path.join(superAiRoot, 'ACTIVATE-NVIDIA-NIM-DEV.cmd'))
+    },
     harness: {
       sandboxPrepared: existsSync(path.join(productRoot, 'START-DEEPSEEK-HARNESS-SANDBOX.cmd')),
       policyPrepared: existsSync(path.join(productRoot, 'DEEPSEEK-HARNESS-SANDBOX.md')),
@@ -49,9 +61,23 @@ async function aiOperationsStatus() {
     activation: {
       externalSecretSetupPrepared: existsSync(path.join(superAiRoot, 'SET-EXTERNAL-AI-SECRET.cmd')),
       externalVerifierPrepared: existsSync(path.join(superAiRoot, 'VERIFY-EXTERNAL-AI.cmd')),
-      oracleAuxBootstrapPrepared: existsSync(path.join(repositoryRoot, 'infra', 'runtime-fabric', 'oracle-a1-cloud-init.yaml'))
+      oracleAuxBootstrapPrepared: existsSync(path.join(repositoryRoot, 'infra', 'runtime-fabric', 'oracle-a1-cloud-init.yaml')),
+      oracleRegistrationPrepared: existsSync(path.join(repositoryRoot, 'infra', 'runtime-fabric', 'REGISTER-ORACLE-A1-WORKER.cmd'))
+    },
+    oracleWorker: {
+      registered:Boolean(oracleRegistryFile && existsSync(oracleRegistryFile)),
+      lastVerifiedAt:null,
+      publicTraffic:false
     }
   };
+
+  if (status.oracleWorker.registered) {
+    try {
+      const record = JSON.parse(await readFile(oracleRegistryFile, 'utf8'));
+      status.oracleWorker.lastVerifiedAt = record.last_verified_at_utc || null;
+      status.oracleWorker.publicTraffic = record.public_traffic === true;
+    } catch {}
+  }
   try {
     const response = await fetch(superAiHealthUrl, { signal: AbortSignal.timeout(1500) });
     if (response.ok) {
@@ -62,11 +88,8 @@ async function aiOperationsStatus() {
         capabilitiesReady: Array.isArray(health.capabilities_ready) ? health.capabilities_ready : [],
         workflowModeConfigured: health.workflow_mode_configured === true
       };
-      status.externalAi = {
-        enabled: health.external_ai_providers_enabled === true,
-        provider: health.external_ai_provider || null,
-        publicDataOnly: true
-      };
+      status.externalAi.enabled = health.external_ai_providers_enabled === true;
+      status.externalAi.provider = health.external_ai_provider || null;
     }
   } catch {}
   return status;

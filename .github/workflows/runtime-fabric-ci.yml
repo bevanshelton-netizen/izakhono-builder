@@ -1,0 +1,69 @@
+name: IZAKHONO Runtime Fabric CI
+
+on:
+  pull_request:
+    paths:
+      - "infra/runtime-fabric/**"
+      - ".github/workflows/runtime-fabric-ci.yml"
+  push:
+    branches: [main]
+    paths:
+      - "infra/runtime-fabric/**"
+      - ".github/workflows/runtime-fabric-ci.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Bash syntax
+        run: |
+          bash -n infra/runtime-fabric/verify-fabric.sh
+
+      - name: PowerShell syntax
+        shell: pwsh
+        run: |
+          $files = @(
+            "infra/runtime-fabric/REGISTER-ORACLE-A1-WORKER.ps1",
+            "infra/runtime-fabric/VERIFY-ORACLE-A1-WORKER.ps1"
+          )
+          foreach ($file in $files) {
+            $tokens = $null
+            $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile(
+              (Resolve-Path $file),
+              [ref]$tokens,
+              [ref]$errors
+            ) | Out-Null
+            if ($errors.Count -gt 0) {
+              $errors | ForEach-Object { Write-Error $_.Message }
+              exit 1
+            }
+          }
+
+      - name: Oracle A1 auxiliary worker invariants
+        run: |
+          set -euo pipefail
+          grep -Fq 'EXTERNAL-AUX-ORACLE-A1' infra/runtime-fabric/oracle-a1-cloud-init.yaml
+          grep -Fq 'python3' infra/runtime-fabric/oracle-a1-cloud-init.yaml
+          grep -Fq -- '--bind 127.0.0.1' infra/runtime-fabric/oracle-a1-cloud-init.yaml
+          grep -Fq '"public_traffic":false' infra/runtime-fabric/oracle-a1-cloud-init.yaml
+          grep -Fq 'BatchMode=yes' infra/runtime-fabric/REGISTER-ORACLE-A1-WORKER.ps1
+          grep -Fq 'live_claim = $false' infra/runtime-fabric/REGISTER-ORACLE-A1-WORKER.ps1
+          grep -Fq 'public_traffic = $false' infra/runtime-fabric/REGISTER-ORACLE-A1-WORKER.ps1
+          grep -Fq 'ssh-loopback' infra/runtime-fabric/REGISTER-ORACLE-A1-WORKER.ps1
+
+      - name: Secret hygiene
+        run: |
+          set -euo pipefail
+          ! grep -R --line-number -E 'BEGIN (RSA|OPENSSH|EC) PRIVATE KEY' infra/runtime-fabric
+          ! grep -R --line-number -E 'oracle[_-]?(password|secret|token)[[:space:]]*=[[:space:]]*[^[:space:]]+' infra/runtime-fabric
+
+      - name: Runtime Fabric software proof
+        run: |
+          echo "IZAKHONO_RUNTIME_FABRIC_SOFTWARE=PASS"
+          echo "ORACLE_A1_RESOURCE_PROVISIONING=EXTERNAL_PENDING"

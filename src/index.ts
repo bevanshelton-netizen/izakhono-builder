@@ -168,6 +168,45 @@ async function api(req: Request, env: Env, url: URL): Promise<Response> {
     const rows = await env.DB.prepare('SELECT id,name,slug,category,description,modules_json,status,build_recipe_json,created_at,updated_at FROM builder_projects ORDER BY updated_at DESC').all<any>();
     return json(req, env, { ok: true, projects: (rows.results || []).map(r => ({ ...r, modules: JSON.parse(r.modules_json || '[]'), recipe: r.build_recipe_json ? JSON.parse(r.build_recipe_json) : null })) });
   }
+  if (url.pathname === '/api/import-handoff' && req.method === 'POST') {
+    const b = await body(req);
+    if (b?.schema !== 'izakhono.builder/handoff-v1' || !b?.builder_request || typeof b.builder_request !== 'object') {
+      return fail(req, env, 'Expected an IZAKHONO Builder handoff-v1 document');
+    }
+    const request = b.builder_request;
+    const name = cleanText(request.name, 100);
+    const slug = cleanText(request.slug, 60).toLowerCase();
+    const category = cleanText(request.category || 'general', 60);
+    const description = cleanText(request.description || '', 600);
+    const modules = normalizeModules(request.modules);
+    for (const required of PORTFOLIO_BASELINE_MODULES) if (!modules.includes(required)) modules.push(required);
+    if (!name || !validSlug(slug)) return fail(req, env, 'The handoff requires a name and valid lowercase slug');
+
+    const projectId = id('prj');
+    const project = { id: projectId, name, slug, category, description };
+    const recipe = buildRecipe(project, modules);
+    (recipe as any).handoff = {
+      schema: 'izakhono.builder/handoff-v1',
+      imported: true,
+      public_live_implied: false,
+      release_gate: cleanText(b.release_gate || 'controlled-owner-builder-import', 120)
+    };
+    try {
+      await env.DB.prepare('INSERT INTO builder_projects(id,name,slug,category,description,modules_json,status,build_recipe_json) VALUES(?,?,?,?,?,?,?,?)')
+        .bind(projectId, name, slug, category, description, JSON.stringify(modules), 'planned', JSON.stringify(recipe)).run();
+    } catch {
+      return fail(req, env, 'That app slug already exists', 409);
+    }
+    await event(env, projectId, 'project.imported', 'Imported IZAKHONO Builder handoff-v1');
+    await event(env, projectId, 'build.planned', `${modules.length} modules from handoff`);
+    return json(req, env, {
+      ok: true,
+      imported: true,
+      project: { id: projectId, name, slug, category, description, modules, status: 'planned' },
+      recipe
+    }, 201);
+  }
+
   if (url.pathname === '/api/projects' && req.method === 'POST') {
     const b = await body(req);
     const name = cleanText(b.name, 100), slug = cleanText(b.slug, 60).toLowerCase(), category = cleanText(b.category || 'general', 60), description = cleanText(b.description || '', 600);

@@ -188,6 +188,8 @@ The repository now includes:
 
 The verifier deliberately uses a harmless public marker prompt. A successful receipt proves only that the configured development adapter works through the gateway; it does not establish a public-live production deployment.
 
+For the shortest owner-machine path, run `ACTIVATE-NVIDIA-NIM-DEV.cmd`. It prepares the non-secret NVIDIA route, requests a DPAPI-protected credential only if one is not already stored, starts/restarts SUPER AI in the requested external-routing mode, and runs the public-data verification. It still requires the existing IZAKHONO gateway/workflow credentials to be present in the approved owner environment.
+
 ### Windows secret handling
 
 For the owner Windows runtime, `SET-EXTERNAL-AI-SECRET.cmd` accepts the provider credential through a secure prompt and stores only the DPAPI-encrypted form under the current Windows user's Local AppData. The credential is not committed or printed.
@@ -200,7 +202,7 @@ This is a convenience boundary for an owner workstation, not a substitute for an
 
 DeepSeek Harness is treated as a **replaceable developer-preview coding agent**, not as trusted production infrastructure. IZAKHONO CODE includes an isolated evaluation launcher and policy in `products/izakhono-code/DEEPSEEK-HARNESS-SANDBOX.md`.
 
-The Harness sandbox must not be pointed at production repositories, secrets, FORTRESS intelligence, customer records or unpublished proprietary source. Its workspace and `DSH_HOME` are isolated under `C:\ProgramData\Izakhono\HarnessSandbox` on Windows.
+The Harness sandbox must not be pointed at production repositories, secrets, FORTRESS intelligence, customer records or unpublished proprietary source. Its workspace and `DSH_HOME` are isolated under the current Windows user's `%LOCALAPPDATA%\Izakhono\HarnessSandbox` path.
 
 ## Subscriber rule
 
