@@ -14,7 +14,7 @@ The SUPER APP surfaces:
 - external affiliate-network adapter status;
 - autonomous safe-work capabilities;
 - protected owner gates;
-- CREATE, ADS, CRM, IZAKHONO FLOW, SUPER ACCOUNTANT, FORTRESS, FLOWIQ and TASKS handoffs.
+- CREATE, ADS, CRM, IZAKHONO FLOW, IZAKHONO FINANCE CORE, SUPER ACCOUNTANT, FORTRESS, FLOWIQ and TASKS handoffs.
 
 ## FLOW integration
 
@@ -26,6 +26,15 @@ IZAKHONO FLOW is a first-class module at `/flow`. It is distinct from FLOWIQ:
 FLOW remains an independently deployable engine. The SUPER APP surfaces its contract and status; it does not absorb FLOW's runtime or payment authority.
 
 The Worker exposes `GET /api/flow/status` for the module contract. This endpoint does not claim NODE01 or public-live status.
+
+
+## FINANCE CORE integration
+
+IZAKHONO FINANCE CORE is a first-class module at `/finance-core`. It is a white-label financial-institution operating platform for lending, savings/member administration, payment references, collections, reporting, approvals and audit.
+
+FINANCE CORE remains an independently deployable engine with its own canonical contract under `products/izakhono-finance-core`. The SUPER APP surfaces its state but does not become the FINANCE CORE runtime or system of record.
+
+Regulated activity is deliberately gated: software availability does not itself authorise deposit-taking, lending as principal, final automated credit decisions or money movement.
 
 ## Architecture rules
 
@@ -45,6 +54,7 @@ The product includes its own Worker entry point in `src/index.ts` and static ass
 - `GET /api/modules`
 - `GET /api/affiliate/status`
 - `GET /api/flow/status`
+- `GET /api/finance-core/status`
 
 Deployment must follow the portfolio infrastructure directive and must not be described as live until HTTPS and end-to-end acceptance checks pass.
 
