@@ -1,0 +1,137 @@
+{
+  "schema": "izakhono.creator-engine.v1",
+  "product": "IZAKHONO SUPER APP",
+  "module": "IZAKHONO Creator Engine",
+  "version": "1.0.0",
+  "objective": "Turn one approved brief into a controlled multi-format campaign workflow without making any external AI provider or another IZAKHONO product the system of record.",
+  "lifecycle": [
+    "brief",
+    "plan",
+    "research",
+    "write",
+    "design",
+    "produce",
+    "approve",
+    "distribute",
+    "measure",
+    "repurpose"
+  ],
+  "capabilities": [
+    {
+      "id": "ideas",
+      "label": "Ideas & planning",
+      "owner": "IZAKHONO SUPER AI",
+      "outputs": [
+        "campaign strategy",
+        "content pillars",
+        "calendar",
+        "briefs"
+      ]
+    },
+    {
+      "id": "writing",
+      "label": "Writing",
+      "owner": "IZAKHONO SUPER AI",
+      "outputs": [
+        "social copy",
+        "ad copy",
+        "blogs",
+        "scripts",
+        "emails",
+        "product copy"
+      ]
+    },
+    {
+      "id": "research",
+      "label": "Research & SEO",
+      "owner": "IZAKHONO SUPER AI",
+      "outputs": [
+        "keywords",
+        "content gaps",
+        "competitor notes",
+        "topic clusters"
+      ]
+    },
+    {
+      "id": "design",
+      "label": "Design & image",
+      "owner": "IZAKHONO CREATE",
+      "outputs": [
+        "social graphics",
+        "posters",
+        "ad creatives",
+        "presentations",
+        "image edits"
+      ]
+    },
+    {
+      "id": "video",
+      "label": "Video",
+      "owner": "IZAKHONO SHORTS FACTORY",
+      "outputs": [
+        "shorts",
+        "reels",
+        "storyboards",
+        "captions",
+        "render jobs"
+      ]
+    },
+    {
+      "id": "audio",
+      "label": "Audio",
+      "owner": "IZAKHONO SUPER AI",
+      "outputs": [
+        "voiceover",
+        "narration",
+        "dubbing",
+        "transcription"
+      ],
+      "live_state": "needs_backend"
+    },
+    {
+      "id": "automation",
+      "label": "Automation",
+      "owner": "IZAKHONO FLOW",
+      "outputs": [
+        "approval routing",
+        "publishing handoff",
+        "follow-ups",
+        "measurement tasks"
+      ]
+    }
+  ],
+  "integrations": {
+    "intelligence": "products/izakhono-ai-gateway",
+    "design": "apps/izakhono-create",
+    "short_video": "apps/izakhono-shorts",
+    "orchestration": "products/izakhono-flow",
+    "distribution": [
+      "products/izakhono-social",
+      "products/izakhono-ads"
+    ],
+    "monetisation": "products/izakhono-affiliate",
+    "trust": "FORTRESS"
+  },
+  "command_examples": [
+    "Launch a 30-day campaign for my plumbing business.",
+    "Turn this product photo into a complete campaign pack.",
+    "Create a week of short-form content from this article."
+  ],
+  "policy": {
+    "owned_first": true,
+    "external_adapters_replaceable": true,
+    "no_behavioural_tracking": true,
+    "no_advertising_ids": true,
+    "no_raw_prompt_persistence": true,
+    "no_browser_model_secrets": true,
+    "paid_media_spend_requires_authorisation": true,
+    "channel_credentials_server_side": true,
+    "publish_only_after_channel_and_content_approval": true,
+    "generated_media_live_only_after_asset_reachability_check": true
+  },
+  "launch_truth": {
+    "integration_status": "installed",
+    "public_live": false,
+    "note": "The SUPER APP can surface and plan Creator Engine workflows now. Generation, publishing and measurement become live only when their independent engines and approved channel adapters pass their own health and public verification gates."
+  }
+}
