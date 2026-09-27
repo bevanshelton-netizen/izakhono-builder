@@ -152,3 +152,21 @@ linear-gradient(180deg,#f9fbff 0%,#fff 75%)}
   .site-header,.footer,.privacy-banner,.workspace-sidebar,.workspace-topbar,.workspace-view:not(.active),.record-actions,.btn{display:none!important}
   body{background:#fff}.workspace-main{padding:0}.panel{box-shadow:none;border:0}.record{border:0}
 }
+
+
+/* Decision Lab v0.2 */
+.decision-layout{display:grid;grid-template-columns:minmax(360px,.85fr) minmax(0,1.15fr);gap:18px}
+.source-packet{display:grid;gap:12px;padding:16px;border:1px solid var(--line);border-radius:16px;background:#f8fbff}
+.source-packet h4{margin:0;font-size:1rem}
+.source-packet input[type="file"]{width:100%;padding:11px;border:1px dashed #adc2df;border-radius:12px;background:#fff;color:#52637a}
+.source-list{display:grid;gap:8px}
+.source-list.empty-state{padding:10px 0;color:#8492a5;font-size:.9rem}
+.source-item{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:#fff}
+.source-item div{display:grid;gap:2px;min-width:0}
+.source-item strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.source-item small{color:var(--muted)}
+.source-item button{border:1px solid var(--line);background:#fff;border-radius:9px;padding:6px 9px;font-size:.78rem;font-weight:800;color:#5d6d81}
+.decision-report-panel{min-width:0}
+.decision-output{min-height:620px;max-height:75vh;overflow:auto;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.9rem;background:#07152d;color:#dbe8fa;border:1px solid #173a68;white-space:pre-wrap}
+.manifest-bar{margin:12px 0;padding:10px 12px;border-radius:12px;background:#edf4ff;color:#315784;font-size:.78rem;font-weight:800;line-height:1.4}
+@media(max-width:1050px){.decision-layout{grid-template-columns:1fr}}

@@ -5,13 +5,16 @@
     accepted: "izakhono_business_ai_privacy_v1",
     clients: "izakhono_business_ai_clients_v1",
     docs: "izakhono_business_ai_docs_v1",
-    diagnostic: "izakhono_business_ai_diagnostic_v1"
+    diagnostic: "izakhono_business_ai_diagnostic_v1",
+    scenarioReport: "izakhono_business_ai_scenario_report_v2"
   };
 
   var state = {
     clients: read(STORAGE.clients, []),
     docs: read(STORAGE.docs, []),
-    diagnostic: read(STORAGE.diagnostic, null)
+    diagnostic: read(STORAGE.diagnostic, null),
+    scenarioReport: read(STORAGE.scenarioReport, null),
+    sourcePacket: []
   };
 
   function el(id){ return document.getElementById(id); }
@@ -112,6 +115,9 @@
       el("metricScore").textContent = state.diagnostic.score;
       el("diagnosticHeadline").textContent = state.diagnostic.headline || "Latest diagnostic";
       renderDiagnosticActions(state.diagnostic.actions || []);
+    }
+    if(state.scenarioReport){
+      renderScenarioReport(state.scenarioReport);
     }
   }
 
@@ -251,6 +257,8 @@
     el("writerForm").addEventListener("submit", runWriter);
     el("diagnosticForm").addEventListener("submit", runDiagnostic);
     el("scenarioForm").addEventListener("submit", runScenario);
+    el("scenarioFiles").addEventListener("change", loadScenarioFiles);
+    el("exportScenarioReport").addEventListener("click", exportScenarioReport);
 
     el("copyDraft").addEventListener("click", function(){
       var text = el("writerOutput").textContent;
@@ -304,29 +312,150 @@
     el("diagnosticActions").innerHTML = actions.map(function(a){ return "<div>" + escapeHtml(a) + "</div>"; }).join("");
   }
 
+  async function loadScenarioFiles(event){
+    var files = Array.prototype.slice.call(event.target.files || []).slice(0,10);
+    state.sourcePacket = [];
+    for(var i=0;i<files.length;i++){
+      var file = files[i];
+      if(file.size > 300000){
+        toast(file.name + " is over the 300 KB per-file limit.");
+        continue;
+      }
+      var lower = file.name.toLowerCase();
+      var allowed = lower.endsWith(".txt") || lower.endsWith(".md") || lower.endsWith(".csv") || lower.endsWith(".json");
+      if(!allowed){
+        toast(file.name + " is not a supported text source yet.");
+        continue;
+      }
+      try{
+        var textValue = await file.text();
+        state.sourcePacket.push({
+          name:file.name.slice(0,120),
+          type:(file.type || "text/plain").slice(0,80),
+          text:textValue.slice(0,120000),
+          size:file.size
+        });
+      }catch(_e){
+        toast("Could not read " + file.name);
+      }
+    }
+    renderSourceList();
+  }
+
+  function renderSourceList(){
+    var list = el("sourceList");
+    el("sourceCount").textContent = state.sourcePacket.length;
+    if(!state.sourcePacket.length){
+      list.className = "source-list empty-state";
+      list.textContent = "No source files loaded.";
+      return;
+    }
+    list.className = "source-list";
+    list.innerHTML = state.sourcePacket.map(function(source,index){
+      return '<div class="source-item"><div><strong>' + escapeHtml(source.name) + '</strong><small>' +
+        Math.max(1,Math.round(source.size/1024)) + ' KB</small></div><button type="button" data-remove-source="' + index + '">Remove</button></div>';
+    }).join("");
+    all("[data-remove-source]").forEach(function(btn){
+      btn.addEventListener("click",function(){
+        state.sourcePacket.splice(Number(btn.getAttribute("data-remove-source")),1);
+        renderSourceList();
+      });
+    });
+  }
+
+  function renderScenarioReport(data){
+    state.scenarioReport = data;
+    save(STORAGE.scenarioReport,data);
+    el("exportScenarioReport").disabled = false;
+
+    var manifest = el("scenarioManifest");
+    manifest.classList.remove("hidden");
+    manifest.textContent = "Run " + data.runId + " • " + data.rounds + " rounds • " +
+      (data.evidenceGraph ? data.evidenceGraph.nodes.length : 0) + " evidence nodes • " +
+      (data.mode || "structured-rehearsal");
+
+    var lines = [];
+    lines.push("SIMULATION, NOT CERTAINTY");
+    lines.push("Run: " + data.runId);
+    lines.push("Horizon: " + data.horizon);
+    lines.push("Consensus: " + data.consensus.label + " (" + data.consensus.score + "/100)");
+    lines.push("");
+
+    if(data.evidenceGraph && data.evidenceGraph.keyTerms && data.evidenceGraph.keyTerms.length){
+      lines.push("EVIDENCE GRAPH — KEY TERMS");
+      data.evidenceGraph.keyTerms.forEach(function(term){
+        lines.push("• " + term.term + " — " + term.count + " mentions");
+      });
+      lines.push("");
+    }
+
+    lines.push("AGENT ROUNDS");
+    (data.agents || []).forEach(function(agent){
+      lines.push("");
+      lines.push(agent.stakeholder.toUpperCase() + " — final stance " + agent.finalStance);
+      (agent.rounds || []).forEach(function(round){
+        lines.push("Round " + round.round + ": " + round.reaction);
+      });
+      lines.push("Risk: " + agent.risk);
+      lines.push("Evidence to check: " + agent.evidenceToCheck);
+    });
+
+    lines.push("");
+    lines.push("CONSENSUS / DISAGREEMENT");
+    lines.push("• " + data.consensus.summary);
+    (data.disagreements || []).forEach(function(item){ lines.push("• " + item); });
+
+    lines.push("");
+    lines.push("NEXT REAL-WORLD TESTS");
+    (data.nextTests || []).forEach(function(item){ lines.push("• " + item); });
+
+    lines.push("");
+    lines.push(data.disclaimer);
+    el("scenarioOutput").textContent = lines.join("\n");
+  }
+
   async function runScenario(e){
     e.preventDefault();
     var output = el("scenarioOutput");
-    output.textContent = "Building stakeholder perspectives…";
+    output.textContent = "Building evidence graph, agents and reaction rounds…";
+    el("scenarioManifest").classList.add("hidden");
+    el("exportScenarioReport").disabled = true;
+
+    var sources = state.sourcePacket.map(function(source){
+      return {name:source.name,type:source.type,text:source.text};
+    });
+    var manualEvidence = el("scenarioEvidence").value.trim();
+    if(manualEvidence){
+      sources.push({name:"Manual evidence and assumptions",type:"text/plain",text:manualEvidence.slice(0,120000)});
+    }
+
     var payload = {
       scenario:el("scenarioText").value.trim(),
       stakeholders:el("scenarioStakeholders").value.split(",").map(function(x){ return x.trim(); }).filter(Boolean).slice(0,12),
-      horizon:el("scenarioHorizon").value
+      horizon:el("scenarioHorizon").value,
+      rounds:Number(el("scenarioRounds").value || 3),
+      sources:sources
     };
+
     try {
-      var res = await fetch("/api/scenario",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(payload)});
+      var res = await fetch("/api/decision-lab/run",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(payload)});
       var data = await res.json();
-      if(!data.ok) throw new Error(data.error || "Scenario failed");
-      var text = "SIMULATION, NOT CERTAINTY\n";
-      text += "Horizon: " + data.horizon + "\n\n";
-      (data.perspectives || []).forEach(function(p){
-        text += p.stakeholder.toUpperCase() + "\n" + p.reaction + "\nRisk: " + p.risk + "\nEvidence to check: " + p.evidence + "\n\n";
-      });
-      text += "TENSIONS TO WATCH\n" + (data.tensions || []).map(function(x){ return "• " + x; }).join("\n");
-      output.textContent = text;
+      if(!data.ok) throw new Error(data.error || "Decision Lab run failed");
+      renderScenarioReport(data);
     } catch(err){
-      output.textContent = "Could not run the scenario.\n\n" + String(err.message || err);
+      output.textContent = "Could not run Decision Lab.\n\n" + String(err.message || err);
     }
+  }
+
+  function exportScenarioReport(){
+    if(!state.scenarioReport){ toast("Run Decision Lab first."); return; }
+    var blob = new Blob([JSON.stringify(state.scenarioReport,null,2)],{type:"application/json"});
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url;
+    a.download = "izakhono-decision-lab-" + state.scenarioReport.runId + ".json";
+    a.click();
+    URL.revokeObjectURL(url);
   }
 
   function exportBackup(){
@@ -336,7 +465,8 @@
       version:1,
       clients:state.clients,
       documents:state.docs,
-      diagnostic:state.diagnostic
+      diagnostic:state.diagnostic,
+      decisionLabReport:state.scenarioReport
     };
     var blob = new Blob([JSON.stringify(payload,null,2)],{type:"application/json"});
     var url = URL.createObjectURL(blob);

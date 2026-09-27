@@ -31,7 +31,8 @@
       <a href="#capabilities">Capabilities</a>
       <a href="#decision-lab">Decision Lab</a>
       <a href="#privacy">Privacy</a>
-      <button id="shareBtn" class="btn ghost">Share</button>\n      <button class="btn primary start-app">Open workspace</button>
+      <button id="shareBtn" class="btn ghost">Share</button>
+      <button class="btn primary start-app">Open workspace</button>
     </nav>
   </header>
 
@@ -234,18 +235,41 @@
         </section>
 
         <section id="view-scenario" class="workspace-view">
-          <div class="workspace-grid two">
+          <div class="decision-layout">
             <form id="scenarioForm" class="panel form-card">
-              <p class="eyebrow">DECISION LAB</p><h3>Rehearse a decision</h3>
-              <label>Scenario<textarea id="scenarioText" rows="6" required placeholder="Example: We increase our monthly service price by 15% next quarter while adding priority support."></textarea></label>
+              <div class="panel-head">
+                <div><p class="eyebrow">DECISION LAB V0.2</p><h3>Rehearse a decision</h3></div>
+                <span class="status-chip neutral">CLEAN-ROOM ENGINE</span>
+              </div>
+              <label>Scenario<textarea id="scenarioText" rows="5" required placeholder="Example: Increase our monthly service price by 15% next quarter while adding priority support."></textarea></label>
               <label>Stakeholders<input id="scenarioStakeholders" value="Loyal customers, New customers, Staff, Competitors, Suppliers"></label>
-              <label>Time horizon<select id="scenarioHorizon"><option>30 days</option><option>90 days</option><option>6 months</option><option>12 months</option></select></label>
-              <button class="btn primary">Run scenario</button>
-              <small class="form-note">Synthetic perspectives are hypotheses, not real customer research or guaranteed forecasts.</small>
+              <div class="split">
+                <label>Time horizon<select id="scenarioHorizon"><option>30 days</option><option selected>90 days</option><option>6 months</option><option>12 months</option></select></label>
+                <label>Reaction rounds<select id="scenarioRounds"><option value="2">2 rounds</option><option value="3" selected>3 rounds</option><option value="5">5 rounds</option></select></label>
+              </div>
+
+              <div class="source-packet">
+                <div class="panel-head">
+                  <div><p class="eyebrow">EVIDENCE PACKET</p><h4>Ground the rehearsal</h4></div>
+                  <span id="sourceCount" class="count-chip">0</span>
+                </div>
+                <p class="form-note">Add text, Markdown, CSV or JSON source files. Files are read in your browser and sent only to this Decision Lab run when you press Run.</p>
+                <input id="scenarioFiles" type="file" multiple accept=".txt,.md,.csv,.json,text/plain,text/markdown,text/csv,application/json">
+                <div id="sourceList" class="source-list empty-state">No source files loaded.</div>
+                <label>Manual evidence / assumptions<textarea id="scenarioEvidence" rows="4" placeholder="Paste customer feedback, pricing facts, operating constraints or assumptions here."></textarea></label>
+              </div>
+
+              <button class="btn primary">Run multi-agent rehearsal</button>
+              <small class="form-note">Synthetic reactions are hypotheses, not real-world evidence, guaranteed forecasts or a substitute for customer research.</small>
             </form>
-            <article class="panel">
-              <div class="panel-head"><div><p class="eyebrow">SIMULATION REPORT</p><h3>Stakeholder reactions</h3></div><span class="status-chip neutral">R&D PREVIEW</span></div>
-              <div id="scenarioOutput" class="output-box">Your scenario report will appear here.</div>
+
+            <article class="panel decision-report-panel">
+              <div class="panel-head">
+                <div><p class="eyebrow">SIMULATION REPORT</p><h3>Agents, evidence and tensions</h3></div>
+                <button id="exportScenarioReport" type="button" class="btn ghost small-btn" disabled>Export JSON</button>
+              </div>
+              <div id="scenarioManifest" class="manifest-bar hidden"></div>
+              <div id="scenarioOutput" class="output-box decision-output">Your Decision Lab report will appear here.</div>
             </article>
           </div>
         </section>
