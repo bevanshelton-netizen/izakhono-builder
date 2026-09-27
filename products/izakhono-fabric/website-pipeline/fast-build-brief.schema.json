@@ -1,0 +1,130 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "IZAKHONO Website Factory Fast Build Brief",
+  "type": "object",
+  "required": [
+    "business_name",
+    "offer",
+    "primary_cta"
+  ],
+  "properties": {
+    "business_name": {
+      "type": "string",
+      "minLength": 2,
+      "maxLength": 160
+    },
+    "legal_entity": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 200
+    },
+    "registration_number": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 80
+    },
+    "tagline": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 180
+    },
+    "offer": {
+      "type": "string",
+      "minLength": 10,
+      "maxLength": 800
+    },
+    "primary_cta": {
+      "type": "string",
+      "minLength": 2,
+      "maxLength": 80
+    },
+    "contact_email": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 254
+    },
+    "contact_phone": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 80
+    },
+    "location": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 160
+    },
+    "brand": {
+      "type": "object",
+      "properties": {
+        "primary": {
+          "type": "string",
+          "pattern": "^#[0-9A-Fa-f]{6}$"
+        },
+        "secondary": {
+          "type": "string",
+          "pattern": "^#[0-9A-Fa-f]{6}$"
+        },
+        "accent": {
+          "type": "string",
+          "pattern": "^#[0-9A-Fa-f]{6}$"
+        }
+      },
+      "additionalProperties": false
+    },
+    "services": {
+      "type": "array",
+      "maxItems": 12,
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "description"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 100
+          },
+          "description": {
+            "type": "string",
+            "minLength": 8,
+            "maxLength": 320
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "verified_claims": {
+      "type": "array",
+      "maxItems": 20,
+      "items": {
+        "type": "string",
+        "minLength": 2,
+        "maxLength": 240
+      }
+    },
+    "compliance_notes": {
+      "type": "array",
+      "maxItems": 20,
+      "items": {
+        "type": "string",
+        "minLength": 2,
+        "maxLength": 300
+      }
+    }
+  },
+  "additionalProperties": false
+}
