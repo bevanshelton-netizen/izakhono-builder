@@ -201,6 +201,32 @@ jobs:
           PY
           node --check /tmp/izakhono-owner-ui.js
 
+      - name: Validate one-click release-candidate autopilot
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          s = Path('src/sovereign.ts').read_text(encoding='utf-8')
+          required = [
+              '/autopilot',
+              "schema: 'izakhono.release-candidate/v1'",
+              "status: 'deploy_ready'",
+              "source_of_truth: 'izakhono-internal'",
+              "deployment_authority: 'NODE01/CODE/RUNTIME/EDGE-TLS/DNS'",
+              "public_live: false",
+              "next_gate: 'owned-runtime-deployment-verification'",
+              'one_click_release_candidate: true',
+              'Import & Build',
+              'Build to release candidate',
+          ]
+          missing = [x for x in required if x not in s]
+          if missing:
+              raise SystemExit('Release-candidate autopilot contract missing: ' + ', '.join(missing))
+          if "status: 'deployed'" in s[s.find("async function projectAutopilotRoute"):s.find("async function faisPaymentsRepairApi")]:
+              raise SystemExit('Autopilot must not label a release candidate as deployed.')
+          print('[PASS] One-click Builder autopilot stops at controlled release-candidate readiness.')
+          PY
+
       - name: Validate Fast Build templates
         shell: bash
         run: |
