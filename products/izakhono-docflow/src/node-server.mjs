@@ -48,7 +48,22 @@ const ASSETS = {
   }
 };
 
-function adapter(base, token) {
+function superAiAdapter(base, internalKey, workflowKey) {
+  if (!base || !internalKey || !workflowKey) return undefined;
+  const root = base.replace(/\/$/, '');
+  return {
+    async fetch(request) {
+      const incoming = new URL(request.url);
+      const headers = new Headers(request.headers);
+      headers.set('x-izakhono-ai-key', internalKey);
+      headers.set('x-izakhono-ai-workflow-key', workflowKey);
+      const body = request.method === 'GET' || request.method === 'HEAD' ? undefined : await request.arrayBuffer();
+      return fetch(root + incoming.pathname + incoming.search, { method: request.method, headers, body });
+    }
+  };
+}
+
+function bearerAdapter(base, token) {
   if (!base) return undefined;
   const root = base.replace(/\/$/, '');
   return {
@@ -67,8 +82,12 @@ const env = {
   ASSETS,
   APP_ENV: process.env.APP_ENV || 'production',
   DOCFLOW_ADMIN_SECRET: process.env.DOCFLOW_ADMIN_SECRET || '',
-  SUPER_AI: adapter(process.env.SUPER_AI_URL || '', process.env.SUPER_AI_TOKEN || ''),
-  FLOWIQ: adapter(process.env.FLOWIQ_URL || '', process.env.FLOWIQ_TOKEN || ''),
+  SUPER_AI: superAiAdapter(
+    process.env.SUPER_AI_URL || '',
+    process.env.SUPER_AI_INTERNAL_KEY || process.env.SUPER_AI_TOKEN || '',
+    process.env.SUPER_AI_WORKFLOW_KEY || ''
+  ),
+  FLOWIQ: bearerAdapter(process.env.FLOWIQ_URL || '', process.env.FLOWIQ_TOKEN || ''),
 };
 
 async function readIncoming(req) {

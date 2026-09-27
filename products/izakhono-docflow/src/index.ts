@@ -108,31 +108,67 @@ function fallbackDraft(input: any): string {
 
 async function callSuperAI(env: Env, input: any): Promise<{content: string; status: string}> {
   if (!env.SUPER_AI) return { content: fallbackDraft(input), status: 'fallback_template' };
-  const req = new Request('https://super-ai.izakhono.internal/v1/documents/draft', {
+
+  const facts = {
+    document_type: clean(input.document_type, 60),
+    title: clean(input.title, 160),
+    workspace_id: clean(input.workspace_id || 'izakhono-africa', 100),
+    legal_entity: clean(input.legal_entity || 'IZAKHONO AFRICA (PTY) LTD', 200),
+    party_a: clean(input.party_a, 200),
+    party_b: clean(input.party_b, 200),
+    effective_date: clean(input.effective_date, 40),
+    jurisdiction: clean(input.jurisdiction, 120),
+    brief: clean(input.instructions, 1200),
+    known_fields: input.known_fields && typeof input.known_fields === 'object' ? input.known_fields : {},
+  };
+
+  const req = new Request('https://super-ai.izakhono.internal/api/v1/chat', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({
-      capability: 'document_drafting',
-      output_format: 'markdown',
-      safety: { human_approval_required: true, no_autonomous_signature: true },
-      document: {
-        type: clean(input.document_type, 60),
-        title: clean(input.title, 160),
-        party_a: clean(input.party_a, 200),
-        party_b: clean(input.party_b, 200),
-        effective_date: clean(input.effective_date, 40),
-        jurisdiction: clean(input.jurisdiction, 120),
-        brief: clean(input.instructions, 1200),
-        known_fields: input.known_fields && typeof input.known_fields === 'object' ? input.known_fields : {},
-      },
+      entity_id: facts.workspace_id,
+      subject: 'docflow-workflow',
+      product: 'izakhono-docflow',
+      access_mode: 'workflow',
+      data_classification: 'internal',
+      messages: [
+        {
+          role: 'system',
+          content: [
+            'You are the document-drafting capability for IZAKHONO DOCFLOW.',
+            'Create a professional working draft in Markdown from supplied facts only.',
+            'Do not invent missing names, dates, prices, obligations, legal registrations, signatures or jurisdiction-specific claims.',
+            'Use clearly marked placeholders where a material fact is missing.',
+            'Preserve the named legal entity and parties exactly.',
+            'State that human review is required before signature or sending.',
+            'Do not claim that the document has been legally reviewed, signed, delivered or accepted.',
+            'Return only the document draft; do not include commentary outside the draft.'
+          ].join(' ')
+        },
+        {
+          role: 'user',
+          content: JSON.stringify({
+            task: 'Draft the requested business document.',
+            document: facts,
+            safety: {
+              human_approval_required: true,
+              no_autonomous_signature: true,
+              no_invented_material_facts: true
+            }
+          })
+        }
+      ]
     }),
   });
+
   try {
     const res = await env.SUPER_AI.fetch(req);
     if (!res.ok) return { content: fallbackDraft(input), status: 'ai_adapter_error_fallback' };
     const data: any = await res.json();
-    const content = clean(data?.content, 60000);
-    return content ? { content, status: 'super_ai_draft' } : { content: fallbackDraft(input), status: 'ai_empty_fallback' };
+    const content = clean(data?.answer || data?.output?.text, 60000);
+    return content
+      ? { content, status: 'super_ai_draft' }
+      : { content: fallbackDraft(input), status: 'ai_empty_fallback' };
   } catch {
     return { content: fallbackDraft(input), status: 'ai_unreachable_fallback' };
   }

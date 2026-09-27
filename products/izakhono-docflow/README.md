@@ -38,7 +38,17 @@ This keeps portfolio workflows from silently mixing different operating entities
 
 Optional service binding: `SUPER_AI`
 
-DOCFLOW sends a structured `document_drafting` capability request. No provider-specific API key is committed to source. If no binding exists or the adapter fails, DOCFLOW falls back to a clearly labelled deterministic working draft.
+DOCFLOW now uses the real IZAKHONO SUPER AI trusted-workflow contract at `POST /api/v1/chat`.
+
+The owner runtime supplies:
+
+- `SUPER_AI_URL`
+- `SUPER_AI_INTERNAL_KEY`
+- `SUPER_AI_WORKFLOW_KEY`
+
+DOCFLOW identifies itself as product `izakhono-docflow`, uses `access_mode: workflow`, keeps the data classification internal, and sends both the normal internal gateway key and the separate workflow key. It does not use subscriber credits for this owner-controlled workflow.
+
+The drafting prompt explicitly forbids inventing material facts and requires placeholders plus human review. No provider-specific API key is committed to DOCFLOW source. If SUPER AI is unavailable or rejects the workflow, DOCFLOW falls back to a clearly labelled deterministic working draft.
 
 ### FLOWIQ
 

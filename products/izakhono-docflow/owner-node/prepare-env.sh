@@ -38,7 +38,7 @@ EOF
 # Optional adapters are intentionally not invented. Add only when the owned
 # SUPER AI / FLOWIQ runtime endpoints and credentials are verified.
 if [ -f "$ENV_FILE" ]; then
-  for key in SUPER_AI_URL SUPER_AI_TOKEN FLOWIQ_URL FLOWIQ_TOKEN; do
+  for key in SUPER_AI_URL SUPER_AI_INTERNAL_KEY SUPER_AI_WORKFLOW_KEY SUPER_AI_TOKEN FLOWIQ_URL FLOWIQ_TOKEN; do
     value="$(awk -F= -v k="$key" '$1==k{sub(/^[^=]*=/,"");print;exit}' "$ENV_FILE" || true)"
     [ -z "$value" ] || printf '%s=%s\n' "$key" "$value" >>"$tmp"
   done
