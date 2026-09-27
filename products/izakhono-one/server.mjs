@@ -8,6 +8,7 @@ const port = Number(process.env.PORT || 8781);
 const registry = JSON.parse(await readFile(join(root, 'registry.json'), 'utf8'));
 const bySlug = new Map(registry.services.map(service => [service.slug, service]));
 const builderInternalUrl = String(process.env.IZAKHONO_BUILDER_INTERNAL_URL || '').trim().replace(/\/+$/, '');
+const flowInternalUrl = String(process.env.IZAKHONO_FLOW_INTERNAL_URL || '').trim().replace(/\/+$/, '');
 
 const json = (res, status, body) => {
   res.writeHead(status, {'content-type':'application/json; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff'});
@@ -39,32 +40,58 @@ function builderDescriptor() {
   };
 }
 
+function flowDescriptor() {
+  return {
+    integrated: true,
+    superApp: 'IZAKHONO ONE',
+    service: 'IZAKHONO FLOW',
+    bridge: 'owned-service-bridge',
+    engineIndependent: true,
+    sourceOfTruth: 'products/izakhono-flow',
+    internalHealthConfigured: Boolean(flowInternalUrl),
+    publicRoute: 'gated-until-independently-verified',
+    workflow: ['lead','qualify','quote','pay','fulfil','invoice','support','retain','report'],
+    boundaries: ['entity-and-platform-scoped','verified-payment-only','advisory-ai','replaceable-adapters'],
+    privacy: {tracking:false,profiling:false,advertisingIdentifiers:false}
+  };
+}
+
+async function proxyHealth(res, baseUrl, path, descriptor, errorPrefix) {
+  if (!baseUrl) return json(res, 503, {ok:false,error:errorPrefix + '_internal_route_not_configured',...descriptor});
+  try {
+    const upstream = await fetch(baseUrl + path, {
+      headers: {'accept':'application/json'},
+      signal: AbortSignal.timeout(3000)
+    });
+    let body = {};
+    try { body = await upstream.json(); } catch {}
+    return json(res, upstream.ok ? 200 : 502, {
+      ok: upstream.ok && body?.ok !== false,
+      configured: true,
+      engineIndependent: true,
+      upstreamStatus: upstream.status,
+      service: body
+    });
+  } catch {
+    return json(res, 502, {ok:false,error:errorPrefix + '_internal_health_unreachable',configured:true,engineIndependent:true});
+  }
+}
+
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url || '/', 'http://localhost');
-  if (url.pathname === '/health') return json(res, 200, {status:'ok',platform:'IZAKHONO ONE',engine:registry.engine,services:registry.services.length,noTracking:true,builderIntegration:{integrated:true,configured:Boolean(builderInternalUrl),engineIndependent:true}});
+  if (url.pathname === '/health') return json(res, 200, {
+    status:'ok',
+    platform:'IZAKHONO ONE',
+    engine:registry.engine,
+    services:registry.services.length,
+    noTracking:true,
+    builderIntegration:{integrated:true,configured:Boolean(builderInternalUrl),engineIndependent:true},
+    flowIntegration:{integrated:true,configured:Boolean(flowInternalUrl),engineIndependent:true}
+  });
   if (url.pathname === '/api/builder') return json(res, 200, builderDescriptor());
-  if (url.pathname === '/api/builder/health') {
-    if (!builderInternalUrl) {
-      return json(res, 503, {ok:false,error:'builder_internal_route_not_configured',...builderDescriptor()});
-    }
-    try {
-      const upstream = await fetch(builderInternalUrl + '/api/health', {
-        headers: {'accept':'application/json'},
-        signal: AbortSignal.timeout(3000)
-      });
-      let body = {};
-      try { body = await upstream.json(); } catch {}
-      return json(res, upstream.ok ? 200 : 502, {
-        ok: upstream.ok && body?.ok !== false,
-        configured: true,
-        engineIndependent: true,
-        upstreamStatus: upstream.status,
-        builder: body
-      });
-    } catch {
-      return json(res, 502, {ok:false,error:'builder_internal_health_unreachable',configured:true,engineIndependent:true});
-    }
-  }
+  if (url.pathname === '/api/builder/health') return proxyHealth(res, builderInternalUrl, '/api/health', builderDescriptor(), 'builder');
+  if (url.pathname === '/api/flow') return json(res, 200, flowDescriptor());
+  if (url.pathname === '/api/flow/health') return proxyHealth(res, flowInternalUrl, '/health', flowDescriptor(), 'flow');
   if (url.pathname === '/api/search') return json(res, 200, {results:search(url.searchParams.get('q'))});
   if (url.pathname.startsWith('/api/resolve/')) {
     const slug = decodeURIComponent(url.pathname.slice('/api/resolve/'.length));
@@ -96,5 +123,7 @@ server.listen(port, '127.0.0.1', () => {
   console.log('IZAKHONO_ONE_ENGINE=READY');
   console.log('BUILDER_INTEGRATION=READY');
   console.log('BUILDER_INTERNAL_ROUTE=' + (builderInternalUrl ? 'CONFIGURED' : 'GATED'));
+  console.log('FLOW_INTEGRATION=READY');
+  console.log('FLOW_INTERNAL_ROUTE=' + (flowInternalUrl ? 'CONFIGURED' : 'GATED'));
   console.log('PORT=' + port);
 });
