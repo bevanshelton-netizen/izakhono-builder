@@ -42,4 +42,20 @@ test("pipeline update prevents orphaning live deal stages",async()=>{
   const r=await fetch(`http://127.0.0.1:${port}/api/pipeline`,{method:"PUT",headers:hdr("manager-secret"),body:JSON.stringify({name:"Bad",stages:[{label:"A"},{label:"B"}]})}); assert.equal(r.status,409);
 });
 
+
+test("FLOW adapter is scoped and idempotent",async()=>{
+  await wait();
+  const leadBody={action_id:"flow-a1",run_id:"flow-r1",action_type:"crm.intake.requested",payload:{subject_ref:"flow-lead-1",metadata:{contact:{name:"FLOW Lead",email:"flow-lead@example.test"},opportunity:{title:"FLOW RE5",value:299,currency:"ZAR"}}}};
+  let r=await fetch(`http://127.0.0.1:${port}/api/flow`,{method:"POST",headers:hdr("ingest-secret"),body:JSON.stringify(leadBody)});
+  assert.equal(r.status,201);let j=await r.json();assert.equal(j.deal.external_ref,"faisready:flow-lead-1");
+  r=await fetch(`http://127.0.0.1:${port}/api/flow`,{method:"POST",headers:hdr("ingest-secret"),body:JSON.stringify(leadBody)});
+  assert.equal(r.status,200);j=await r.json();assert.equal(j.idempotent_replay,true);
+  r=await fetch(`http://127.0.0.1:${port}/api/flow`,{method:"POST",headers:hdr("ingest-secret"),body:JSON.stringify({action_id:"flow-a2",run_id:"flow-r1",action_type:"crm.payment.confirmed",payload:{subject_ref:"flow-lead-1"}})});
+  assert.equal(r.status,201);
+  const acts=await fetch(`http://127.0.0.1:${port}/api/activities`,{headers:hdr("manager-secret")}).then(x=>x.json());
+  assert.ok(acts.items.some(a=>a.type==="payment_confirmed"&&a.deal_id===j.deal?.id)||acts.items.some(a=>a.type==="payment_confirmed"));
+  const denied=await fetch(`http://127.0.0.1:${port}/api/flow`,{method:"POST",headers:{...hdr("ingest-secret"),"x-platform-id":"kora"},body:JSON.stringify({action_id:"flow-a3",run_id:"flow-r2",action_type:"crm.intake.requested",payload:{subject_ref:"x",metadata:{}}})});
+  assert.equal(denied.status,422);
+});
+
 test.after(async()=>{child.kill("SIGTERM");await fs.rm(dir,{recursive:true,force:true});});
