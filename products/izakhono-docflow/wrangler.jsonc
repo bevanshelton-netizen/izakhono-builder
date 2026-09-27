@@ -1,0 +1,17 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "izakhono-docflow",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-01",
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "izakhono-docflow",
+      "database_id": "REPLACE_WITH_OWNED_RUNTIME_DATABASE_ID"
+    }
+  ]
+}

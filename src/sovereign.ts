@@ -12,7 +12,7 @@ import {
 const ALLOWED_MODULES = new Set([
   'leads', 'auth', 'uploads', 'payments', 'email', 'admin',
   'analytics', 'marketplace', 'learning', 'video', 'ai',
-  'revenue', 'artist_protect', 'career', 'media_handoff', 'clearset',
+  'revenue', 'artist_protect', 'career', 'media_handoff', 'clearset', 'docflow',
 ]);
 
 function json(data: unknown, status = 200, source?: Response): Response {
