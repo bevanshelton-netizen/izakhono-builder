@@ -1,6 +1,7 @@
 # Never commit real values. Copy to .dev.vars for local use only.
 ADMIN_SECRET=replace-me
 IZAKHONO_INTERNAL_API_KEY=replace-me
+PAY_FLOW_TOKEN=replace-me-with-a-separate-flow-adapter-token
 
 # iKhokha iK Pay API: production use requires verified live keys and live-mode acceptance.\nIKHOKHA_APP_ID=\nIKHOKHA_APP_SECRET=\nIKHOKHA_MODE=live\nIKHOKHA_ENABLED=true\n\n# Paystack: use your own test or live secret key.
 PAYSTACK_SECRET_KEY=

@@ -92,6 +92,21 @@ Example body:
 
 The response returns either a hosted redirect or a PayFast `form_post` target and signed fields. An application must treat the payment as pending until the ledger reports `paid`.
 
+## FLOW payment-status adapter
+
+`POST /api/flow` supports the single read-only action `payment.status.watch.requested` when `PAY_FLOW_TOKEN` matches.
+
+The adapter:
+
+- never marks a payment paid;
+- never changes the payment intent;
+- requires `X-Entity-ID` and `X-Platform-ID`;
+- requires the payment intent `app_slug` to match the FLOW platform;
+- requires `metadata.entity_id` on the payment intent to match the FLOW entity;
+- fails closed when the entity scope is absent or mismatched.
+
+This makes IZAKHONO PAY the payment-status authority without allowing FLOW to infer or manufacture payment success.
+
 ## Next commercial phase
 
 Add country/currency-specific adapters, per-merchant API keys, OAuth-style application credentials, reconciliation jobs, refund orchestration, subscriptions, disputes, settlement reporting, observability, rate limiting, fraud rules and the required South African/international payment-industry approvals before offering the service to unrelated third-party merchants.

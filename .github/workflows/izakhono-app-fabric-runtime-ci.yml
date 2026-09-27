@@ -5,6 +5,8 @@ on:
     paths:
       - "products/izakhono-crm/**"
       - "products/izakhono-flow/**"
+      - "products/izakhono-revenue/**"
+      - "products/izakhono-tasks/**"
       - "products/izakhono-fabric/gateway/**"
       - "products/izakhono-one/**"
       - "infra/app-fabric-runtime/**"
@@ -17,6 +19,8 @@ on:
     paths:
       - "products/izakhono-crm/**"
       - "products/izakhono-flow/**"
+      - "products/izakhono-revenue/**"
+      - "products/izakhono-tasks/**"
       - "products/izakhono-fabric/gateway/**"
       - "products/izakhono-one/**"
       - "infra/app-fabric-runtime/**"
@@ -42,6 +46,8 @@ jobs:
         run: |
           (cd products/izakhono-crm && npm run check && npm test)
           (cd products/izakhono-flow && npm run check && npm test)
+          (cd products/izakhono-revenue && npm run check)
+          python3 products/izakhono-tasks/test_tasks.py
           (cd products/izakhono-fabric/gateway && npm run check && npm test)
           node --check products/izakhono-one/server.mjs
           bash -n infra/app-fabric-runtime/activate-node01.sh
@@ -58,7 +64,10 @@ jobs:
           CRM_INGEST_TOKEN=ci-ingest-token
           FLOW_ADMIN_TOKEN=ci-flow-admin-token
           FLOW_INGEST_TOKEN=ci-flow-ingest-token
-          FLOW_ADAPTERS_JSON={}
+          REVENUE_FLOW_TOKEN=ci-revenue-flow-token
+          IZAKHONO_TASKS_TOKEN=ci-tasks-owner-token
+          IZAKHONO_TASKS_FLOW_TOKEN=ci-tasks-flow-token
+          FLOW_ADAPTERS_JSON='{"izakhono-crm":{"url":"http://crm:8080/api/flow","token":"ci-ingest-token"},"izakhono-revenue":{"url":"http://revenue:8795/api/flow","token":"ci-revenue-flow-token"},"izakhono-tasks":{"url":"http://tasks:9991/api/flow","token":"ci-tasks-flow-token"}}'
           IZAKHONO_FABRIC_INTERNAL_TOKEN=ci-internal-token
           IZAKHONO_FABRIC_PUBLIC_INTAKE=false
           IZAKHONO_FABRIC_ALLOWED_ORIGINS=
@@ -71,9 +80,11 @@ jobs:
           docker compose --env-file /tmp/app-fabric-runtime.env -f infra/app-fabric-runtime/docker-compose.yml up -d
           for i in $(seq 1 45); do
             crm=$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' izakhono-crm 2>/dev/null || true)
+            revenue=$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' izakhono-revenue 2>/dev/null || true)
+            tasks=$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' izakhono-tasks 2>/dev/null || true)
             flow=$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' izakhono-flow 2>/dev/null || true)
             fabric=$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' izakhono-app-fabric-gateway 2>/dev/null || true)
-            if [ "$crm" = healthy ] && [ "$flow" = healthy ] && [ "$fabric" = healthy ]; then exit 0; fi
+            if [ "$crm" = healthy ] && [ "$revenue" = healthy ] && [ "$tasks" = healthy ] && [ "$flow" = healthy ] && [ "$fabric" = healthy ]; then exit 0; fi
             sleep 2
           done
           docker ps -a
@@ -82,11 +93,22 @@ jobs:
       - name: Prove CRM + FLOW + Gateway runtime
         run: |
           docker exec izakhono-crm node -e "fetch('http://127.0.0.1:8080/health').then(r=>r.json()).then(v=>{if(!v.ok)process.exit(1);console.log(JSON.stringify(v))})"
-          docker exec izakhono-flow node -e "fetch('http://127.0.0.1:8794/health').then(r=>r.json()).then(v=>{if(!v.ok||v.service!=='izakhono-flow'||v.noTracking!==true)process.exit(1);console.log(JSON.stringify(v))})"
+          docker exec izakhono-revenue node -e "fetch('http://127.0.0.1:8795/health').then(r=>r.json()).then(v=>{if(!v.ok||v.paymentAuthority!==false)process.exit(1);console.log(JSON.stringify(v))})"
+          docker exec izakhono-tasks python -c "import json,urllib.request; v=json.load(urllib.request.urlopen('http://127.0.0.1:9991/healthz',timeout=3)); print(json.dumps(v)); raise SystemExit(0 if v.get('ok') and v.get('flow_adapter_configured') else 1)"
+          docker exec izakhono-flow node -e "fetch('http://127.0.0.1:8794/health').then(r=>r.json()).then(v=>{if(!v.ok||v.service!=='izakhono-flow'||v.noTracking!==true||!v.adapterTargets.includes('izakhono-crm')||!v.adapterTargets.includes('izakhono-revenue')||!v.adapterTargets.includes('izakhono-tasks'))process.exit(1);console.log(JSON.stringify(v))})"
           docker exec izakhono-flow node -e "fetch('http://127.0.0.1:8794/api/summary',{headers:{authorization:'Bearer '+process.env.FLOW_ADMIN_TOKEN,'x-entity-id':'izakhono-africa','x-platform-id':'runtime-selftest'}}).then(async r=>{const v=await r.json();if(!r.ok||v.scope?.entity_id!=='izakhono-africa'||v.scope?.platform_id!=='runtime-selftest')process.exit(1);console.log(JSON.stringify(v))})"
           docker exec izakhono-app-fabric-gateway node -e "fetch('http://127.0.0.1:8090/health').then(r=>r.json()).then(v=>{if(!v.ok||v.public_intake!==false)process.exit(1);console.log(JSON.stringify(v))})"
           docker exec izakhono-app-fabric-gateway node -e "fetch('http://127.0.0.1:8090/api/fabric/selftest',{method:'POST',headers:{authorization:'Bearer '+process.env.IZAKHONO_FABRIC_INTERNAL_TOKEN}}).then(async r=>{const v=await r.json();if(!r.ok||!v.ok||v.mode!=='non-writing'||v.crm?.dry_run!==true)process.exit(1);console.log(JSON.stringify(v))})"
           docker exec izakhono-app-fabric-gateway node -e "fetch('http://127.0.0.1:8090/api/fabric/intake',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({platform_id:'faisready',event_type:'lead.created',subject_ref:'ci',contact:{email:'ci@example.test'}})}).then(r=>{if(r.status!==503)process.exit(1);console.log('public intake fail-closed')})"
+
+      - name: Prove FLOW dispatches to owned adapters
+        run: |
+          docker exec izakhono-flow node -e "const h={'content-type':'application/json',authorization:'Bearer '+process.env.FLOW_INGEST_TOKEN,'x-entity-id':'izakhono-africa','x-platform-id':'faisready'}; fetch('http://127.0.0.1:8794/api/events',{method:'POST',headers:h,body:JSON.stringify({event_type:'lead.created',subject_ref:'ci-flow-1',source_service:'faisready',metadata:{contact:{name:'CI FLOW Lead',email:'ci-flow@example.test'},opportunity:{title:'CI FLOW Offer',value:299,currency:'ZAR'}}})}).then(async r=>{const v=await r.json();if(!r.ok||!v.actions?.some(a=>a.target==='izakhono-crm'&&a.status==='completed')){console.error(v);process.exit(1)};console.log(JSON.stringify(v))})"
+          docker exec izakhono-flow node -e "const h={'content-type':'application/json',authorization:'Bearer '+process.env.FLOW_INGEST_TOKEN,'x-entity-id':'izakhono-africa','x-platform-id':'faisready'}; fetch('http://127.0.0.1:8794/api/events',{method:'POST',headers:h,body:JSON.stringify({event_type:'quote.requested',subject_ref:'ci-flow-1',source_service:'faisready',metadata:{value:299,currency:'ZAR'}})}).then(async r=>{const v=await r.json();if(!r.ok||!v.actions?.some(a=>a.target==='izakhono-revenue'&&a.status==='completed')){console.error(v);process.exit(1)};console.log(JSON.stringify(v))})"
+          docker exec izakhono-flow node -e "const h={'content-type':'application/json',authorization:'Bearer '+process.env.FLOW_INGEST_TOKEN,'x-entity-id':'izakhono-africa','x-platform-id':'faisready'}; fetch('http://127.0.0.1:8794/api/events',{method:'POST',headers:h,body:JSON.stringify({event_type:'quote.sent',subject_ref:'ci-flow-1',source_service:'izakhono-revenue'})}).then(async r=>{const v=await r.json();if(!r.ok||!v.actions?.some(a=>a.target==='izakhono-tasks'&&a.status==='completed')){console.error(v);process.exit(1)};console.log(JSON.stringify(v))})"
+          docker exec izakhono-flow node -e "const h={'content-type':'application/json',authorization:'Bearer '+process.env.FLOW_INGEST_TOKEN,'x-entity-id':'izakhono-africa','x-platform-id':'faisready'}; fetch('http://127.0.0.1:8794/api/events',{method:'POST',headers:h,body:JSON.stringify({event_type:'checkout.started',subject_ref:'ci-flow-1',source_service:'faisready',references:{payment_intent_id:'not-configured-ci'}})}).then(async r=>{const v=await r.json();if(!r.ok||!v.actions?.some(a=>a.target==='izakhono-pay'&&a.status==='pending')){console.error(v);process.exit(1)};console.log('unconfigured PAY remains pending')})"
+          docker exec izakhono-revenue node -e "fetch('http://127.0.0.1:8795/api/quotes',{headers:{authorization:'Bearer '+process.env.REVENUE_FLOW_TOKEN,'x-entity-id':'izakhono-africa','x-platform-id':'faisready'}}).then(r=>r.json()).then(v=>{if(!v.items?.some(q=>q.subject_ref==='ci-flow-1'&&q.amount_minor===29900))process.exit(1);console.log(JSON.stringify(v))})"
+          docker exec izakhono-tasks python -c "import json,os,urllib.request; req=urllib.request.Request('http://127.0.0.1:9991/api/v1/tasks',headers={'Authorization':'Bearer '+os.environ['IZAKHONO_TASKS_TOKEN'],'X-IZAKHONO-Entity-ID':'izakhono-africa'}); v=json.load(urllib.request.urlopen(req,timeout=3)); print(json.dumps(v)); raise SystemExit(0 if any(t.get('title','').startswith('[faisready]') for t in v.get('tasks',[])) else 1)"
 
       - name: Prove FLOW persistence backup and isolated restore
         env:
@@ -110,6 +132,8 @@ jobs:
         if: failure()
         run: |
           docker logs izakhono-crm || true
+          docker logs izakhono-revenue || true
+          docker logs izakhono-tasks || true
           docker logs izakhono-flow || true
           docker logs izakhono-app-fabric-gateway || true
           docker logs izakhono-one-ci || true

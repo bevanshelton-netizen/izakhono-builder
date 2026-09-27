@@ -17,6 +17,7 @@ from urllib.parse import parse_qs, urlparse
 HOST=os.getenv("IZAKHONO_TASKS_HOST","127.0.0.1")
 PORT=int(os.getenv("IZAKHONO_TASKS_PORT","9991"))
 TOKEN=os.getenv("IZAKHONO_TASKS_TOKEN","")
+FLOW_TOKEN=os.getenv("IZAKHONO_TASKS_FLOW_TOKEN","")
 DB_PATH=Path(os.getenv("IZAKHONO_TASKS_DB","./izakhono-tasks.db"))
 RUNNER_URL=os.getenv("IZAKHONO_TASKS_RUNNER_URL","").strip()
 RUNNER_SECRET=os.getenv("IZAKHONO_TASKS_RUNNER_SECRET","")
@@ -61,6 +62,17 @@ CREATE TABLE IF NOT EXISTS runs(
 );
 CREATE INDEX IF NOT EXISTS idx_runs_task ON runs(task_id,created_at);
 CREATE INDEX IF NOT EXISTS idx_runs_entity ON runs(entity_id,created_at);
+
+CREATE TABLE IF NOT EXISTS flow_receipts(
+  action_id TEXT PRIMARY KEY,
+  entity_id TEXT NOT NULL,
+  platform_id TEXT NOT NULL,
+  task_id TEXT NOT NULL,
+  action_type TEXT NOT NULL,
+  run_id TEXT NOT NULL,
+  created_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_flow_receipts_scope ON flow_receipts(entity_id,platform_id,created_at);
 """
 
 def db():
@@ -179,6 +191,66 @@ def create_task(payload):
          json.dumps(runner_spec,separators=(",",":")),1,ts,ts,next_run))
         row=c.execute("SELECT * FROM tasks WHERE id=?",(tid,)).fetchone()
     return task_to_dict(row)
+
+def create_flow_task(entity_id, platform_id, payload):
+    action_id=str(payload.get("action_id","")).strip()
+    run_id=str(payload.get("run_id","")).strip()
+    action_type=str(payload.get("action_type","")).strip()
+    data=payload.get("payload") if isinstance(payload.get("payload"),dict) else {}
+    subject=str(data.get("subject_ref","")).strip()[:200]
+    if not action_id or not run_id or not action_type or not subject:
+        raise ValueError("action_id, run_id, action_type and payload.subject_ref are required")
+
+    delays={
+        "followup.schedule.requested":1440,
+        "retention.followup.schedule.requested":43200,
+        "support.followup.schedule.requested":240,
+        "renewal.followup.schedule.requested":1440,
+    }
+    if action_type not in delays:
+        raise ValueError("unsupported FLOW task action")
+
+    meta=data.get("metadata") if isinstance(data.get("metadata"),dict) else {}
+    requested=meta.get("delay_minutes")
+    try:
+        delay=int(requested) if requested is not None else delays[action_type]
+    except Exception:
+        delay=delays[action_type]
+    delay=max(1,min(delay,525600))
+    due=datetime.now(timezone.utc)+timedelta(minutes=delay)
+    schedule={"kind":"once","at":due.isoformat().replace("+00:00","Z")}
+    labels={
+        "followup.schedule.requested":"Commercial follow-up",
+        "retention.followup.schedule.requested":"Retention follow-up",
+        "support.followup.schedule.requested":"Support follow-up",
+        "renewal.followup.schedule.requested":"Renewal follow-up",
+    }
+    digest=hashlib.sha256(f"{entity_id}:{platform_id}:{action_id}".encode()).hexdigest()[:24]
+    tid="tsk_flow_"+digest
+    ts=now_ts()
+    title=f"[{platform_id}] {labels[action_type]} — {subject}"[:240]
+    instruction=(
+        f"IZAKHONO FLOW action {action_type}. Platform: {platform_id}. "
+        f"Subject: {subject}. Review the current source-system state and take only the approved reversible follow-up action."
+    )[:4000]
+    runner={"type":"instruction"}
+
+    with db() as c:
+        prior=c.execute("SELECT * FROM flow_receipts WHERE action_id=?",(action_id,)).fetchone()
+        if prior:
+            row=c.execute("SELECT * FROM tasks WHERE id=?",(prior["task_id"],)).fetchone()
+            return {"task":task_to_dict(row),"receipt":dict(prior),"idempotent_replay":True}
+        next_run=schedule_next(schedule)
+        c.execute("""INSERT OR IGNORE INTO tasks
+        (id,entity_id,title,instruction,schedule_json,task_mode,runner_json,enabled,created_at,updated_at,next_run_at)
+        VALUES(?,?,?,?,?,?,?,?,?,?,?)""",
+        (tid,entity_id,title,instruction,json.dumps(schedule,separators=(",",":")),"scheduled",
+         json.dumps(runner,separators=(",",":")),1,ts,ts,next_run))
+        c.execute("""INSERT INTO flow_receipts(action_id,entity_id,platform_id,task_id,action_type,run_id,created_at)
+                     VALUES(?,?,?,?,?,?,?)""",(action_id,entity_id,platform_id,tid,action_type,run_id,ts))
+        row=c.execute("SELECT * FROM tasks WHERE id=?",(tid,)).fetchone()
+        receipt=c.execute("SELECT * FROM flow_receipts WHERE action_id=?",(action_id,)).fetchone()
+    return {"task":task_to_dict(row),"receipt":dict(receipt),"idempotent_replay":False}
 
 def list_tasks(entity_id):
     with db() as c:
@@ -438,13 +510,28 @@ class H(BaseHTTPRequestHandler):
         return hmac.compare_digest(self.headers.get("Authorization",""),"Bearer "+TOKEN)
 
     def entity(self):
-        return self.headers.get("X-IZAKHONO-Entity-ID","").strip()
+        return (self.headers.get("X-Entity-ID","") or self.headers.get("X-IZAKHONO-Entity-ID","")).strip()
+
+    def platform(self):
+        return self.headers.get("X-Platform-ID","").strip()
+
+    def flow_authed(self):
+        if not FLOW_TOKEN:
+            return False
+        return hmac.compare_digest(self.headers.get("Authorization",""),"Bearer "+FLOW_TOKEN)
+
+    def require_flow(self):
+        if not self.flow_authed():
+            self.sendj(401,{"error":"unauthorized"}); return False
+        if not self.entity() or not self.platform():
+            self.sendj(400,{"error":"X-IZAKHONO-Entity-ID and X-Platform-ID required"}); return False
+        return True
 
     def require(self):
         if not self.authed():
             self.sendj(401,{"error":"unauthorized"}); return False
         if not self.entity():
-            self.sendj(400,{"error":"X-IZAKHONO-Entity-ID required"}); return False
+            self.sendj(400,{"error":"X-Entity-ID or X-IZAKHONO-Entity-ID required"}); return False
         return True
 
     def do_GET(self):
@@ -452,7 +539,7 @@ class H(BaseHTTPRequestHandler):
         if p.path=="/":
             return self.sendhtml(INDEX_HTML)
         if p.path=="/healthz":
-            return self.sendj(200,{"ok":True,"service":"izakhono-tasks","version":"1.0.0"})
+            return self.sendj(200,{"ok":True,"service":"izakhono-tasks","version":"1.1.0","flow_adapter_configured":bool(FLOW_TOKEN)})
         if p.path=="/api/v1/capabilities":
             return self.sendj(200,{
                 "ok":True,
@@ -476,6 +563,15 @@ class H(BaseHTTPRequestHandler):
 
     def do_POST(self):
         p=urlparse(self.path)
+        if p.path=="/api/flow":
+            if not self.require_flow(): return
+            try:
+                result=create_flow_task(self.entity(),self.platform(),self.body())
+                return self.sendj(200 if result.get("idempotent_replay") else 201,{"ok":True,**result})
+            except ValueError as e:
+                return self.sendj(400,{"error":str(e)})
+            except Exception:
+                return self.sendj(500,{"error":"flow_task_create_failed"})
         if not self.require(): return
         if p.path=="/api/v1/tasks":
             try:

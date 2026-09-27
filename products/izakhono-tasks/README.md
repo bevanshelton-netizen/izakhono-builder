@@ -10,7 +10,7 @@ External assistant products can impose plan-specific ceilings on the number of a
 
 That does not mean infinite capacity. Real limits remain owner CPU, RAM, storage, network, downstream service capacity and sensible abuse protection.
 
-## Built in v1.0.0
+## Built in v1.1.0
 
 - one-time tasks
 - recurring interval tasks
@@ -37,6 +37,19 @@ Owner / product
 → IZAKHONO Intelligence / Work / plugins / internal services
 
 The scheduler is deliberately separate from the executor. This allows IZAKHONO to replace the worker or AI model without rewriting scheduling.
+
+## FLOW adapter
+
+`POST /api/flow` accepts authenticated scheduling requests from IZAKHONO FLOW using `IZAKHONO_TASKS_FLOW_TOKEN`, `X-IZAKHONO-Entity-ID` and `X-Platform-ID`.
+
+Supported actions:
+
+- `followup.schedule.requested`
+- `retention.followup.schedule.requested`
+- `support.followup.schedule.requested`
+- `renewal.followup.schedule.requested`
+
+Each FLOW action receives a durable receipt keyed by `action_id`, so retries do not create duplicate tasks. The platform ID is retained in the receipt and task title. The owner task service remains entity-scoped and is not exposed as a public platform API.
 
 ## Runner contract
 

@@ -36,10 +36,22 @@ Example structure:
 
 ```json
 {
-  "izakhono-crm":{"url":"http://crm.internal/api/flow","token":"..."},
-  "izakhono-tasks":{"url":"http://tasks.internal/api/flow","token":"..."}
+  "izakhono-crm":{"url":"http://crm:8080/api/flow","token":"..."},
+  "izakhono-revenue":{"url":"http://revenue:8795/api/flow","token":"..."},
+  "izakhono-tasks":{"url":"http://tasks:9991/api/flow","token":"..."}
 }
 ```
+
+## Automatic dispatch
+
+When a target exists in server-side `FLOW_ADAPTERS_JSON`, FLOW writes the action to its durable outbox first and then attempts the adapter automatically.
+
+- successful adapter calls mark the action `completed`;
+- adapter failures remain visible as `failed` and can be retried;
+- targets with no configured adapter remain `pending`;
+- FLOW never invents an external endpoint or bypasses a missing adapter.
+
+NODE01 configures the owned CRM, REVENUE and TASKS adapters automatically. PAY, SUPER AI and product-specific fulfilment remain optional until a real endpoint and matching server-side credential exist.
 
 ## API
 

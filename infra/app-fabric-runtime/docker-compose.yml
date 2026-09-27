@@ -25,6 +25,56 @@ services:
       retries: 10
       start_period: 5s
 
+  revenue:
+    build:
+      context: ../../products/izakhono-revenue
+      dockerfile: Dockerfile
+    image: izakhono/revenue:local
+    container_name: izakhono-revenue
+    restart: unless-stopped
+    environment:
+      HOST: 0.0.0.0
+      PORT: "8795"
+      REVENUE_DATA_FILE: /data/revenue.json
+      REVENUE_FLOW_TOKEN: ${REVENUE_FLOW_TOKEN}
+      REVENUE_ALLOW_INSECURE_LOCAL: "false"
+    volumes:
+      - revenue_data:/data
+    networks:
+      - private
+    healthcheck:
+      test: ["CMD","node","-e","fetch('http://127.0.0.1:8795/health').then(r=>r.json()).then(v=>{if(!v.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+
+  tasks:
+    build:
+      context: ../../products/izakhono-tasks
+      dockerfile: Dockerfile
+    image: izakhono/tasks:local
+    container_name: izakhono-tasks
+    restart: unless-stopped
+    environment:
+      IZAKHONO_TASKS_HOST: 0.0.0.0
+      IZAKHONO_TASKS_PORT: "9991"
+      IZAKHONO_TASKS_DB: /data/izakhono-tasks.db
+      IZAKHONO_TASKS_TOKEN: ${IZAKHONO_TASKS_TOKEN}
+      IZAKHONO_TASKS_FLOW_TOKEN: ${IZAKHONO_TASKS_FLOW_TOKEN}
+      IZAKHONO_TASKS_RUNNER_URL: ${IZAKHONO_TASKS_RUNNER_URL:-}
+      IZAKHONO_TASKS_RUNNER_SECRET: ${IZAKHONO_TASKS_RUNNER_SECRET:-}
+    volumes:
+      - tasks_data:/data
+    networks:
+      - private
+    healthcheck:
+      test: ["CMD","python","-c","import json,urllib.request; v=json.load(urllib.request.urlopen('http://127.0.0.1:9991/healthz',timeout=3)); raise SystemExit(0 if v.get('ok') else 1)"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+
   flow:
     build:
       context: ../../products/izakhono-flow
@@ -86,6 +136,10 @@ services:
 volumes:
   crm_data:
     name: izakhono_crm_data
+  revenue_data:
+    name: izakhono_revenue_data
+  tasks_data:
+    name: izakhono_tasks_data
   flow_data:
     name: izakhono_flow_data
   fabric_outbox:

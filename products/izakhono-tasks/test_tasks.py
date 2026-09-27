@@ -50,6 +50,21 @@ try:
 except ValueError:
     pass
 
+# FLOW scheduler adapter idempotency and platform receipt.
+flow_payload={
+    "action_id":"flow-task-1",
+    "run_id":"flow-run-1",
+    "action_type":"support.followup.schedule.requested",
+    "payload":{"subject_ref":"ticket-42","metadata":{"delay_minutes":15}}
+}
+fr=m.create_flow_task("entity-a","faisready",flow_payload)
+assert fr["idempotent_replay"] is False
+assert fr["receipt"]["platform_id"]=="faisready"
+assert fr["task"]["title"].startswith("[faisready]")
+fr2=m.create_flow_task("entity-a","faisready",flow_payload)
+assert fr2["idempotent_replay"] is True
+assert fr2["task"]["id"]==fr["task"]["id"]
+
 print("IZAKHONO_TASKS_TEST=PASS")
 # Windows may hold SQLite WAL handles briefly after test completion; let the OS temp cleaner remove them.
 

@@ -20,7 +20,7 @@ for /f "usebackq delims=" %%I in (`wsl.exe -d %DISTRO% -- wslpath -a "%REPORT%"`
 
 echo ============================================================
 echo IZAKHONO APP FABRIC + FLOW - OWNED INTERNAL ACTIVATION
-echo CRM + FLOW + APP FABRIC GATEWAY
+echo CRM + REVENUE + TASKS + FLOW + APP FABRIC GATEWAY
 echo INCLUDES FLOW BACKUP / RESTORE PROOF
 echo NO PUBLIC DNS OR EDGE CHANGE
 echo ============================================================
@@ -42,7 +42,7 @@ if not "%RC%"=="0" (
 )
 
 echo.
-echo [PASS] CRM + FLOW + APP FABRIC are healthy internally on the owned host.
+echo [PASS] CRM + REVENUE + TASKS + FLOW + APP FABRIC are healthy internally on the owned host.
 echo [NEXT] Run RUN-IZAKHONO-ONE-NODE01.cmd to prove the SUPER APP to FLOW bridge.
 echo [HOLD] Public activation is a separate DNS / EDGE / allowed-origin gate.
 endlocal

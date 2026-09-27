@@ -66,6 +66,12 @@ function adminAuthorized(req, env) {
   return Boolean(env.ADMIN_SECRET && secret && safeEqualText(secret, env.ADMIN_SECRET));
 }
 
+function flowAuthorized(req, env) {
+  const raw = req.headers.get('authorization') || '';
+  const token = raw.startsWith('Bearer ') ? raw.slice(7) : '';
+  return Boolean(env.PAY_FLOW_TOKEN && token && safeEqualText(token, env.PAY_FLOW_TOKEN));
+}
+
 async function authorizeMerchant(req, env) {
   const key = cleanText(req.headers.get('x-izakhono-key') || '', 512);
   const slug = cleanText(req.headers.get('x-izakhono-app') || '', 60).toLowerCase();
@@ -456,6 +462,45 @@ async function handleApi(req, env, url) {
   if (url.pathname === '/api/health' && req.method === 'GET') {
     const row = await env.DB.prepare('SELECT 1 AS ok').first();
     return response({ ok: row?.ok === 1, service: 'IZAKHONO PAY', version: '0.2.2', mode: env.PAYMENT_MODE || 'mock', env: env.APP_ENV || 'alpha' });
+  }
+
+
+  if (url.pathname === '/api/flow' && req.method === 'POST') {
+    if (!flowAuthorized(req, env)) return fail('Unauthorized', 401, 'unauthorized');
+    const entityId=cleanText(req.headers.get('x-entity-id') || '',120);
+    const platformId=cleanText(req.headers.get('x-platform-id') || '',120).toLowerCase();
+    if(!entityId||!platformId) return fail('X-Entity-ID and X-Platform-ID are required',400,'scope_required');
+    const input=await parseJson(req);
+    if(cleanText(input.action_type,120)!=='payment.status.watch.requested') return fail('Unsupported FLOW action',400,'unsupported_flow_action');
+    const payload=input.payload&&typeof input.payload==='object'?input.payload:{};
+    const refs=payload.references&&typeof payload.references==='object'?payload.references:{};
+    const intentId=cleanText(refs.payment_intent_id||'',100);
+    const reference=cleanText(refs.payment_reference||'',180);
+    if(!intentId&&!reference) return fail('FLOW payment watch requires payment_intent_id or payment_reference',400,'payment_reference_required');
+    const intent=intentId?await findIntentById(env,intentId):await findIntentByReference(env,reference);
+    if(!intent) return fail('Payment intent not found',404,'not_found');
+    if(String(intent.app_slug||'').toLowerCase()!==platformId) return fail('Payment intent platform scope mismatch',403,'platform_scope_mismatch');
+    let metadata={};try{metadata=JSON.parse(intent.metadata_json||'{}')}catch{}
+    if(cleanText(metadata.entity_id||'',120)!==entityId) return fail('Payment intent entity scope is missing or does not match FLOW',409,'entity_scope_unverified');
+    return response({
+      ok:true,
+      read_only:true,
+      action_id:cleanText(input.action_id||'',180),
+      run_id:cleanText(input.run_id||'',180),
+      scope:{entity_id:entityId,platform_id:platformId},
+      payment:{
+        intent_id:intent.id,
+        reference:intent.reference,
+        status:intent.status,
+        amount_minor:Number(intent.amount_minor),
+        currency:intent.currency,
+        provider:intent.routed_provider||null,
+        provider_reference:intent.provider_reference||null,
+        paid_at:intent.paid_at||null
+      },
+      authority:'izakhono-pay',
+      mutation_performed:false
+    });
   }
 
   if (url.pathname === '/api/v1/capabilities' && req.method === 'GET') {

@@ -18,18 +18,21 @@ From the repository root on the owner Windows machine:
 The activation script must fail closed unless all of these pass:
 
 - `izakhono-crm` is healthy.
+- `izakhono-revenue` is healthy.
+- `izakhono-tasks` is healthy.
 - `izakhono-flow` is healthy.
 - `izakhono-app-fabric-gateway` is healthy.
 - Gateway -> CRM non-writing integration proof passes.
 - FLOW accepts an owner-authenticated scoped read.
 - FLOW health reports independent engine + no tracking.
+- FLOW reports the owned CRM, REVENUE and TASKS adapters as configured.
 - FLOW durable volume is writable.
 - A FLOW volume snapshot is created in the owner backup directory.
 - That snapshot restores into an isolated temporary Docker volume.
 - The restore contains the exact persistence probe.
 - The temporary restore volume and live probe marker are removed after the proof.
 
-No customer event, payment, CRM deal or production workflow is created by this activation proof.
+No customer event, payment, CRM deal or production workflow is created by the owner activation proof. End-to-end adapter writes are exercised only in isolated CI. Production actions occur only when a real platform emits a FLOW event.
 
 ## Owner secrets
 
@@ -40,11 +43,22 @@ No customer event, payment, CRM deal or production workflow is created by this a
 - `IZAKHONO_FABRIC_INTERNAL_TOKEN`
 - `FLOW_ADMIN_TOKEN`
 - `FLOW_INGEST_TOKEN`
+- `REVENUE_FLOW_TOKEN`
+- `IZAKHONO_TASKS_TOKEN`
+- `IZAKHONO_TASKS_FLOW_TOKEN`
+- optional `IZAKHONO_PAY_FLOW_URL` + `PAY_FLOW_TOKEN`
+- optional `IZAKHONO_SUPER_AI_FLOW_URL` + `BUSINESS_AI_FLOW_TOKEN`
 - `FLOW_ADAPTERS_JSON`
 
 Existing values are preserved. Missing credentials are generated with OpenSSL and the file is kept mode 600.
 
-`FLOW_ADAPTERS_JSON` defaults to `{}`. Adapter activation is deliberately separate: a target is not enabled until its real owned endpoint and server-side credential are known.
+At activation time the script constructs `FLOW_ADAPTERS_JSON` in memory for the three owned private-network adapters:
+
+- `izakhono-crm -> http://crm:8080/api/flow`
+- `izakhono-revenue -> http://revenue:8795/api/flow`
+- `izakhono-tasks -> http://tasks:9991/api/flow`
+
+PAY and SUPER AI are added only when both a real endpoint and matching token are present. Platform-specific fulfilment remains unconfigured until that platform provides its own approved adapter.
 
 ## What step 3 proves
 

@@ -23,6 +23,14 @@ External hosting may be used only as a reversible resilience route. The product 
 
 The optional AI adapter is configured with AI_GATEWAY_URL and AI_GATEWAY_TOKEN. If no AI adapter is configured, the application stays useful in local template mode and clearly labels that state. No browser API keys are used.
 
+## FLOW advisory adapter
+
+BUSINESS AI can serve as the current provider-neutral advisory adapter behind the `izakhono-super-ai` FLOW target.
+
+`POST /api/flow` accepts only `advisory.suggestion.requested` when `BUSINESS_AI_FLOW_TOKEN` matches. The adapter requires entity and platform scope headers and returns advice only.
+
+Guardrails are explicit: the adapter cannot move money, confirm payment, make a regulated decision, or silently send a communication. If the AI gateway is unavailable it returns a deterministic next-step suggestion instead of pretending an AI call succeeded.
+
 ## Privacy
 
 Business records are local-first in v0.3. The browser stores clients and documents on-device, and the user can export a JSON backup. The app does not load third-party analytics or tracking scripts.
