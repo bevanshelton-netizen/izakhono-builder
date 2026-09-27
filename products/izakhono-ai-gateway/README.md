@@ -81,14 +81,14 @@ Body:
 
 ## Trusted internal workflow mode
 
-Owner-controlled IZAKHONO services such as Venture Factory can use SUPER AI without pretending to be a paid end-user subscription.
+Owner-controlled IZAKHONO services such as Venture Factory and IZAKHONO DOCFLOW can use SUPER AI without pretending to be a paid end-user subscription.
 
 Workflow mode requires **both**:
 
 - `x-izakhono-ai-key` — the normal internal gateway key; and
 - `x-izakhono-ai-workflow-key` — a separate workflow credential.
 
-The request must also use `access_mode: "workflow"` and a product slug present in `IZAKHONO_AI_WORKFLOW_PRODUCTS`. The default allowlist is `venture-factory,izakhono-builder`.
+The request must also use `access_mode: "workflow"` and a product slug present in `IZAKHONO_AI_WORKFLOW_PRODUCTS`. The default allowlist is `venture-factory,izakhono-builder,izakhono-docflow`.
 
 Workflow mode does not create a customer subscription record and does not bypass the model/runtime owner-route restrictions. It exists for trusted internal automation only.
 
