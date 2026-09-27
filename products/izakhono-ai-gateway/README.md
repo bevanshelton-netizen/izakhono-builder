@@ -178,6 +178,16 @@ A request that intentionally uses that public-data route can include:
 
 This adapter is a replaceable development/resilience route, not a change to the owned-first default.
 
+### Activation pack
+
+The repository now includes:
+
+- `EXTERNAL-AI.env.example` — a secret-free configuration template.
+- `VERIFY-EXTERNAL-AI.cmd` / `VERIFY-EXTERNAL-AI.ps1` — an end-to-end public-data verification that writes a local receipt and never stores the provider API key.
+- the normal `START-IZAKHONO-SUPER-AI-NODE01.ps1` launcher now detects whether the running gateway matches the requested external-routing state and restarts it when necessary.
+
+The verifier deliberately uses a harmless public marker prompt. A successful receipt proves only that the configured development adapter works through the gateway; it does not establish a public-live production deployment.
+
 ## DeepSeek Harness evaluation
 
 DeepSeek Harness is treated as a **replaceable developer-preview coding agent**, not as trusted production infrastructure. IZAKHONO CODE includes an isolated evaluation launcher and policy in `products/izakhono-code/DEEPSEEK-HARNESS-SANDBOX.md`.
