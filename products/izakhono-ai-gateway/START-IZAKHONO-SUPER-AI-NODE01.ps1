@@ -30,6 +30,9 @@ if (-not $subscriberAccessConfigured -and -not $workflowConfigured) {
 
 if ([string]::IsNullOrWhiteSpace($env:IZAKHONO_AI_OWNER_ONLY)) { $env:IZAKHONO_AI_OWNER_ONLY = "true" }
 if ([string]::IsNullOrWhiteSpace($env:IZAKHONO_AI_ALLOW_EXTERNAL)) { $env:IZAKHONO_AI_ALLOW_EXTERNAL = "false" }
+if ([string]::IsNullOrWhiteSpace($env:IZAKHONO_AI_MAX_INFLIGHT)) { $env:IZAKHONO_AI_MAX_INFLIGHT = "4" }
+if ([string]::IsNullOrWhiteSpace($env:IZAKHONO_AI_MAX_QUEUE)) { $env:IZAKHONO_AI_MAX_QUEUE = "16" }
+if ([string]::IsNullOrWhiteSpace($env:IZAKHONO_AI_QUEUE_TIMEOUT_SECONDS)) { $env:IZAKHONO_AI_QUEUE_TIMEOUT_SECONDS = "20" }
 
 $externalRequested = (
   $env:IZAKHONO_AI_ALLOW_EXTERNAL -eq "true" -and
@@ -111,6 +114,8 @@ if ($existing) {
     $h = Invoke-RestMethod -Uri "http://127.0.0.1:9595/healthz" -TimeoutSec 3
     if ($workflowConfigured -and -not $h.workflow_mode_configured) { $needsRestart = $true }
     if ([int]$h.owner_text_pool_size -ne $ownerPoolRequested.Count) { $needsRestart = $true }
+    if ([int]$h.admission.max_inflight -ne [int]$env:IZAKHONO_AI_MAX_INFLIGHT) { $needsRestart = $true }
+    if ([int]$h.admission.max_queue -ne [int]$env:IZAKHONO_AI_MAX_QUEUE) { $needsRestart = $true }
     if ($externalRequested -and -not $h.external_ai_providers_enabled) { $needsRestart = $true }
     if (-not $externalRequested -and $h.external_ai_providers_enabled) { $needsRestart = $true }
   } catch {
@@ -150,6 +155,10 @@ if (-not $health -or -not $health.ok) { Fail "Local health gate did not pass" }
   "CAPABILITIES_READY=$([string]::Join(',', @($health.capabilities_ready)))"
   "OWNER_TEXT_POOL_SIZE=$($health.owner_text_pool_size)"
   "OWNER_TEXT_POOL_AVAILABLE=$($health.owner_text_pool_available)"
+  "ADMISSION_MAX_INFLIGHT=$($health.admission.max_inflight)"
+  "ADMISSION_MAX_QUEUE=$($health.admission.max_queue)"
+  "ADMISSION_INFLIGHT=$($health.admission.inflight)"
+  "ADMISSION_QUEUED=$($health.admission.queued)"
   "EXTERNAL_AI_ENABLED=$($health.external_ai_providers_enabled)"
   "EXTERNAL_AI_PROVIDER=$($health.external_ai_provider)"
   "MEDIA_BACKENDS=VERIFY_WITH_/api/v1/capabilities"
