@@ -130,6 +130,20 @@ async function dispatch(row){
   try{const r=await fetch(endpoint,{method:"POST",headers,body:JSON.stringify({action_id:row.id,run_id:row.run_id,action_type:row.action_type,payload:row.payload}),signal:AbortSignal.timeout(5000)});let data=null;try{data=await r.json()}catch{};return{ok:r.ok,status:r.status,body:data}}
   catch(e){return{ok:false,error:clean(e.message,500)}}
 }
+async function autoDispatchConfigured(store,s,actions,a){
+  const deliveries=[];
+  for(const row of actions){
+    if(!ADAPTERS[row.target]) continue;
+    row.attempts+=1;row.updated_at=now();
+    const result=await dispatch(row);
+    row.status=result.ok?"completed":"failed";
+    row.last_error=result.ok?"":clean(result.error||("HTTP "+(result.status||"error")),500);
+    addAudit(store,s,a,"action.auto_dispatched","action",row.id,{target:row.target,status:row.status,http_status:result.status||null});
+    deliveries.push({action_id:row.id,target:row.target,status:row.status,http_status:result.status||null});
+  }
+  if(deliveries.length) await writeStore(store);
+  return deliveries;
+}
 function summary(store,s){
   const runs=rowsFor(store.runs,s),events=rowsFor(store.events,s),out=rowsFor(store.action_outbox,s),by_stage={};
   for(const r of runs)by_stage[r.stage]=(by_stage[r.stage]||0)+1;
@@ -156,7 +170,7 @@ const server=http.createServer(async(req,res)=>{
       if(!e.event_type||!e.subject_ref)return send(res,400,{error:"event_type and subject_ref are required"});
       if(!validPayment(e))return send(res,422,{error:"unverified_payment_event",required:"source_service=izakhono-pay, verification.status=verified, payment reference"});
       const store=await readStore();store.events.push(e);const run=advance(store,s,e);const actions=(ACTIONS[e.event_type]||[]).map(([target,type])=>enqueue(store,s,run,e,target,type));
-      addAudit(store,s,a,"event.accepted","event",e.id,{event_type:e.event_type,run_id:run.id,actions:actions.map(x=>x.id)});await writeStore(store);return send(res,201,{event:e,run,actions});
+      addAudit(store,s,a,"event.accepted","event",e.id,{event_type:e.event_type,run_id:run.id,actions:actions.map(x=>x.id)});await writeStore(store);const deliveries=await autoDispatchConfigured(store,s,actions,a);return send(res,201,{event:e,run,actions,deliveries});
     }
     const a=requireActor(req,res,"read");if(!a)return;
     const store=await readStore();
