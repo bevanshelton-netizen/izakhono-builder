@@ -6,10 +6,13 @@
     "dev": "wrangler dev",
     "typecheck": "tsc --noEmit --target ES2022 --lib ES2022,DOM --module ESNext src/index.ts",
     "validate": "npm run typecheck && wrangler deploy --dry-run",
-    "deploy": "wrangler deploy"
+    "deploy": "wrangler deploy",
+    "build:node": "tsc --target ES2022 --lib ES2022,DOM --module ESNext --moduleResolution Bundler src/index.ts --outDir dist",
+    "start:node": "node src/node-server.mjs"
   },
   "devDependencies": {
     "typescript": "5.9.2",
     "wrangler": "4.127.1"
-  }
+  },
+  "type": "module"
 }
