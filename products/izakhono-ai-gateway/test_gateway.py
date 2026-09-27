@@ -12,6 +12,8 @@ os.environ["IZAKHONO_AI_WORKFLOW_PRODUCTS"] = "venture-factory,izakhono-builder"
 os.environ["IZAKHONO_ACCESS_INTERNAL_KEY"] = "access-test"
 os.environ["IZAKHONO_ACCESS_URL"] = "http://127.0.0.1:19494"
 os.environ["IZAKHONO_OLLAMA_URL"] = "http://127.0.0.1:19134"
+os.environ["IZAKHONO_AI_OWNER_TEXT_URLS"] = "http://127.0.0.1:19135,http://127.0.0.1:19134"
+os.environ["IZAKHONO_AI_OWNER_POOL_COOLDOWN_SECONDS"] = "60"
 os.environ["IZAKHONO_IMAGE_URL"] = "http://127.0.0.1:19222/generate"
 os.environ["IZAKHONO_AI_CHAT_MODEL"] = "qwen3:4b"
 os.environ["IZAKHONO_AI_CHAT_MODELS"] = "qwen3:4b,qwen3:8b"
@@ -102,12 +104,14 @@ spec.loader.exec_module(g)
 assert g.check_access("faisready-entity", "active@example.com", "faisready")["active"] is True
 assert g.check_access("faisready-entity", "inactive@example.com", "faisready")["active"] is False
 assert g.host_allowed("http://127.0.0.1:11434") is True
+assert g.host_allowed("http://8.8.8.8:11434") is False
+assert g.owner_text_urls() == ["http://127.0.0.1:19135", "http://127.0.0.1:19134"]
 assert g.workflow_key_allowed("workflow-test", "venture-factory") is True
 assert g.workflow_key_allowed("workflow-test", "izakhono-builder") is True
 assert g.workflow_key_allowed("workflow-test", "other-product") is False
 assert g.workflow_key_allowed("wrong-key", "venture-factory") is False
 
-chat_cap, chat_model, chat_output, _, chat_route = g.execute_capability({
+chat_cap, chat_model, chat_output, chat_raw, chat_route = g.execute_capability({
     "capability": "chat",
     "model": "qwen3:8b",
     "messages": [{"role": "user", "content": "hello"}],
@@ -116,6 +120,13 @@ assert chat_cap == "chat"
 assert chat_model == "qwen3:8b"
 assert chat_output["text"] == "mock-response"
 assert chat_route == "owned"
+assert chat_raw["_izakhono_owner_runtime"] == "owner-text-2"
+
+pool = {x["runtime_id"]: x for x in g.owner_pool_summary()}
+assert pool["owner-text-1"]["failures"] == 1
+assert pool["owner-text-1"]["available_for_attempt"] is False
+assert pool["owner-text-2"]["failures"] == 0
+assert pool["owner-text-2"]["last_ok"] is not None
 
 external_cap, external_model, external_output, _, external_route = g.execute_capability({
     "capability": "code",
@@ -161,6 +172,7 @@ except ValueError as exc:
 
 caps = {x["capability"]: x for x in g.capability_summary()}
 assert caps["chat"]["status"] == "ready"
+assert len(g.owner_pool_summary()) == 2
 assert caps["image"]["status"] == "ready"
 assert caps["video"]["status"] == "needs_backend"
 
