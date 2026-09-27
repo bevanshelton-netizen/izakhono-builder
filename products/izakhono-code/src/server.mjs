@@ -44,7 +44,7 @@ async function aiOperationsStatus() {
   const oracleRegistryFile = localAppData ? path.join(localAppData, 'Izakhono', 'RuntimeFabric', 'oracle-a1-worker.json') : '';
 
   const status = {
-    ownedSuperAi: { reachable:false, ownerOnly:null, capabilitiesReady:[], workflowModeConfigured:false },
+    ownedSuperAi: { reachable:false, ownerOnly:null, capabilitiesReady:[], workflowModeConfigured:false, ownerPoolSize:0, ownerPoolAvailable:0 },
     externalAi: {
       enabled:false,
       provider:null,
@@ -86,7 +86,9 @@ async function aiOperationsStatus() {
         reachable: health.ok === true,
         ownerOnly: health.owner_only ?? null,
         capabilitiesReady: Array.isArray(health.capabilities_ready) ? health.capabilities_ready : [],
-        workflowModeConfigured: health.workflow_mode_configured === true
+        workflowModeConfigured: health.workflow_mode_configured === true,
+        ownerPoolSize: Number(health.owner_text_pool_size || 0),
+        ownerPoolAvailable: Number(health.owner_text_pool_available || 0)
       };
       status.externalAi.enabled = health.external_ai_providers_enabled === true;
       status.externalAi.provider = health.external_ai_provider || null;
