@@ -28,6 +28,22 @@ if (-not $subscriberAccessConfigured -and -not $workflowConfigured) {
   Fail "Set IZAKHONO_ACCESS_INTERNAL_KEY for subscriber mode or IZAKHONO_AI_WORKFLOW_KEY for trusted internal workflow mode before startup"
 }
 
+$workflowProducts = @()
+if ([string]::IsNullOrWhiteSpace($env:IZAKHONO_AI_WORKFLOW_PRODUCTS)) {
+  $workflowProducts = @("venture-factory","izakhono-builder","izakhono-docflow")
+} else {
+  $workflowProducts = @(
+    $env:IZAKHONO_AI_WORKFLOW_PRODUCTS.Split(",") |
+      ForEach-Object { $_.Trim().ToLowerInvariant() } |
+      Where-Object { -not [string]::IsNullOrWhiteSpace($_) } |
+      Select-Object -Unique
+  )
+  if ($workflowProducts -notcontains "izakhono-docflow") {
+    $workflowProducts += "izakhono-docflow"
+  }
+}
+$env:IZAKHONO_AI_WORKFLOW_PRODUCTS = [string]::Join(",", $workflowProducts)
+
 if ([string]::IsNullOrWhiteSpace($env:IZAKHONO_AI_OWNER_ONLY)) { $env:IZAKHONO_AI_OWNER_ONLY = "true" }
 if ([string]::IsNullOrWhiteSpace($env:IZAKHONO_AI_ALLOW_EXTERNAL)) { $env:IZAKHONO_AI_ALLOW_EXTERNAL = "false" }
 
