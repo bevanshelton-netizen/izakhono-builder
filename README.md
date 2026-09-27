@@ -33,6 +33,12 @@ The Owner Builder accepts that file through `POST /api/import-handoff` or the Ow
 
 This keeps the public describe/preview/export experience separate from the trusted Owner build/repository/release path.
 
+## Build Anything v1
+
+IZAKHONO BUILDER now includes an owner-gated **one-sentence build pipeline** for apps, websites, games and software. A brief submitted to `POST /api/build-anything` is classified locally, mapped to reusable product modules, created as a Builder project, planned, generated, deterministically validated and committed into the IZAKHONO internal repository.
+
+External publication is not triggered automatically and public-live status remains evidence-gated. The v1 path is provider-neutral: SUPER AI can enrich planning later, but an external AI provider is not required for the core create → plan → generate → validate → internal-commit workflow.
+
 ## Repository Autopilot v1
 
 Generated Worker applications leave the factory as repository-ready packages rather than loose source files. Each bundle includes least-privilege CI, a credential-gated isolated-preview workflow, private-by-default repository metadata, local-secret exclusions and a versioned Builder technical preview.
