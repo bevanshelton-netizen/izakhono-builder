@@ -1,0 +1,50 @@
+name: IZAKHONO BUILDER External SUPER APP Probe
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/izakhono-builder-external-probe.yml'
+      - 'products/izakhono-one/**'
+  pull_request:
+    paths:
+      - '.github/workflows/izakhono-builder-external-probe.yml'
+      - 'products/izakhono-one/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Probe IZAKHONO ONE hub
+        shell: bash
+        run: |
+          set -euo pipefail
+          HUB='https://yfawrenhudjomhnglfhq.supabase.co/functions/v1/izakhono-one-hub'
+          code="$(curl -sS -L --max-time 20 -o /tmp/one.html -w '%{http_code}' "$HUB")"
+          test "$code" = "200"
+          grep -q 'IZAKHONO ONE' /tmp/one.html
+          grep -q 'Open BUILDER Studio' /tmp/one.html
+          echo "IZAKHONO_ONE_EXTERNAL_HTTPS_200=PASS"
+
+      - name: Probe BUILDER inside SUPER APP
+        shell: bash
+        run: |
+          set -euo pipefail
+          BUILDER='https://yfawrenhudjomhnglfhq.supabase.co/functions/v1/izakhono-one-hub/builder'
+          code="$(curl -sS -L --max-time 20 -D /tmp/builder.headers -o /tmp/builder.html -w '%{http_code}' "$BUILDER")"
+          test "$code" = "200"
+          grep -q 'IZAKHONO BUILDER' /tmp/builder.html
+          grep -q 'Describe once. Build for desktop and mobile.' /tmp/builder.html
+          grep -q 'LIVE LOCAL PREVIEW' /tmp/builder.html
+          grep -qi '^x-izakhono-routing: external-resilience' /tmp/builder.headers
+          grep -qi '^x-izakhono-product: IZAKHONO BUILDER' /tmp/builder.headers
+          if grep -Eiq 'googletagmanager|google-analytics|facebook[^<]*(pixel|track)|hotjar|clarity\.ms|mixpanel|amplitude|matomo' /tmp/builder.html; then
+            echo 'Tracking marker detected'
+            exit 1
+          fi
+          echo "IZAKHONO_BUILDER_EXTERNAL_HTTPS_200=PASS"
+          echo "IZAKHONO_BUILDER_SUPER_APP_INTEGRATION=PASS"
