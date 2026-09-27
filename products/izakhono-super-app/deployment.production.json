@@ -1,0 +1,25 @@
+{
+  "schema": "izakhono.super-app.deployment.v1",
+  "product": "IZAKHONO SUPER APP",
+  "deployment_status": "EXTERNAL_RESILIENCE_VERIFIED",
+  "external_resilience": {
+    "provider": "Supabase Edge Functions",
+    "route": "https://yfawrenhudjomhnglfhq.supabase.co/functions/v1/izakhono-one-hub/super-app",
+    "health_route": "https://yfawrenhudjomhnglfhq.supabase.co/functions/v1/izakhono-one-hub/super-app?health=1",
+    "verified_http_status": 200,
+    "verified_at": "2026-09-27T21:21:13Z",
+    "edge_region": "eu-west-1"
+  },
+  "owned_primary": {
+    "authority": "NODE 01",
+    "status": "PENDING_PUBLIC_ACCEPTANCE",
+    "rule": "External resilience never replaces or controls the owned engine."
+  },
+  "affiliate_embedded": true,
+  "weekly_revenue_target_cents": 2000000,
+  "privacy": {
+    "behavioural_profiling": false,
+    "advertising_ids": false,
+    "silent_analytics": false
+  }
+}
