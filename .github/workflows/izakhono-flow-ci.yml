@@ -1,0 +1,60 @@
+name: IZAKHONO FLOW CI
+
+on:
+  pull_request:
+    paths:
+      - "products/izakhono-flow/**"
+      - "products/izakhono-one/**"
+      - "infra/app-fabric-runtime/docker-compose.yml"
+      - ".github/workflows/izakhono-flow-ci.yml"
+  push:
+    branches: [main]
+    paths:
+      - "products/izakhono-flow/**"
+      - "products/izakhono-one/**"
+      - "infra/app-fabric-runtime/docker-compose.yml"
+      - ".github/workflows/izakhono-flow-ci.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: FLOW syntax
+        working-directory: products/izakhono-flow
+        run: npm run check
+
+      - name: FLOW tests
+        working-directory: products/izakhono-flow
+        run: npm test
+
+      - name: FLOW container build
+        run: docker build -t izakhono/flow:ci products/izakhono-flow
+
+      - name: IZAKHONO ONE bridge syntax
+        run: node --check products/izakhono-one/server.mjs
+
+      - name: IZAKHONO ONE registry and manifest
+        run: |
+          node -e "const fs=require('fs'); const r=JSON.parse(fs.readFileSync('products/izakhono-one/public/registry.json','utf8')); if(!r.services.find(x=>x.slug==='izakhono-flow')) process.exit(1); JSON.parse(fs.readFileSync('products/izakhono-one/.izakhono.json','utf8')); console.log('ONE FLOW registry ok')"
+
+      - name: NODE01 APP FABRIC compose configuration
+        working-directory: infra/app-fabric-runtime
+        env:
+          CRM_ADMIN_TOKEN: unit-test-owner-token
+          CRM_INGEST_TOKEN: unit-test-crm-ingest-token
+          CRM_STAFF_JSON: '{"staff":[]}'
+          IZAKHONO_FABRIC_INTERNAL_TOKEN: unit-test-fabric-token
+          FLOW_ADMIN_TOKEN: unit-test-flow-owner-token
+          FLOW_INGEST_TOKEN: unit-test-flow-ingest-token
+          FLOW_ADAPTERS_JSON: '{}'
+        run: docker compose config >/tmp/izakhono-app-fabric-compose.yml

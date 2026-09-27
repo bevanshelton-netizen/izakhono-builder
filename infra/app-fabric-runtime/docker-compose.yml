@@ -25,6 +25,32 @@ services:
       retries: 10
       start_period: 5s
 
+  flow:
+    build:
+      context: ../../products/izakhono-flow
+      dockerfile: Dockerfile
+    image: izakhono/flow:local
+    container_name: izakhono-flow
+    restart: unless-stopped
+    environment:
+      HOST: 0.0.0.0
+      PORT: "8794"
+      FLOW_DATA_FILE: /data/flow.json
+      FLOW_ADMIN_TOKEN: ${FLOW_ADMIN_TOKEN:-}
+      FLOW_INGEST_TOKEN: ${FLOW_INGEST_TOKEN:-}
+      FLOW_ADAPTERS_JSON: ${FLOW_ADAPTERS_JSON:-}
+      FLOW_ALLOW_INSECURE_LOCAL: "false"
+    volumes:
+      - flow_data:/data
+    networks:
+      - private
+    healthcheck:
+      test: ["CMD","node","-e","fetch('http://127.0.0.1:8794/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+
   fabric:
     build:
       context: ../../products/izakhono-fabric/gateway
@@ -60,6 +86,8 @@ services:
 volumes:
   crm_data:
     name: izakhono_crm_data
+  flow_data:
+    name: izakhono_flow_data
   fabric_outbox:
     name: izakhono_fabric_outbox
 
