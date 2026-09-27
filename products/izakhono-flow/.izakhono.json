@@ -1,0 +1,43 @@
+{
+  "version": 5,
+  "name": "IZAKHONO FLOW",
+  "slug": "izakhono-flow",
+  "operator": "IZAKHONO AFRICA (PTY) LTD",
+  "trading_name": "IZAKHONO FLOW",
+  "build_context": "products/izakhono-flow",
+  "dockerfile_path": "products/izakhono-flow/Dockerfile",
+  "container_port": 8794,
+  "health_path": "/health",
+  "branch": "main",
+  "application_version": "0.1.0",
+  "capabilities": [
+    "portfolio workflow orchestration",
+    "entity and platform scoped event intake",
+    "lead-to-cash state coordination",
+    "internal adapter outbox",
+    "verified-payment gating",
+    "advisory SUPER AI hand-off",
+    "audit trail"
+  ],
+  "infrastructure": {
+    "policy": "owned-first-externally-reversible",
+    "authoritative_source": "IZAKHONO CODE / Forge",
+    "owned_target": "NODE01",
+    "current_public_route": "NOT_YET_VERIFIED",
+    "external_fallback": "OPTIONAL_REPLACEABLE_ONLY",
+    "status_label": "OWNED PACKAGE READY - NODE01 ACTIVATION NOT YET VERIFIED",
+    "data_dependencies": ["Owner-node durable FLOW data volume"],
+    "auth_dependencies": ["FLOW_ADMIN_TOKEN","FLOW_INGEST_TOKEN"],
+    "payment_dependencies": ["IZAKHONO PAY verified event feed only"],
+    "backup_evidence": "PENDING_NODE01_PROOF",
+    "restore_evidence": "PENDING_NODE01_PROOF",
+    "rollback_evidence": "CONTAINER_ROLLBACK_PACKAGED_NOT_MACHINE_VERIFIED"
+  },
+  "privacy": {
+    "telemetry": false,
+    "tracking": false,
+    "profiling": false,
+    "advertisingIdentifiers": false
+  },
+  "alpha": {"preflight": true, "rehearsal": true, "windows_package": false}
+}
