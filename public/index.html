@@ -132,10 +132,10 @@ async function buildAnything(){
   try{
     const d=await api('/api/build-anything',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({prompt,target})});
     const inferred=d.inference||{};const build=d.build||{};
-    msg.className='message good';msg.textContent='Technical build completed and committed to IZAKHONO.';
+    msg.className='message good';msg.textContent='Release candidate created and committed to IZAKHONO.';
     const preview=build.preview?'<a class="btn primary" target="_blank" rel="noopener" href="'+esc(build.preview)+'">Open technical preview</a>':'';
     result.className='buildResult on';
-    result.innerHTML='<strong>'+esc(d.project?.name||'Build complete')+'</strong><div class="proofline">'+esc((inferred.target||'app').toUpperCase())+' · '+esc(String(build.file_count||0))+' files · revision '+esc(build.revision||'n/a')+'</div><div class="proofline">Modules: '+esc((inferred.modules||[]).join(', ')||'core')+'</div><div class="proofline">Source of truth: IZAKHONO internal repository · Public-live status: NOT YET VERIFIED</div><div class="projectActions">'+preview+'</div>';
+    result.innerHTML='<strong>'+esc(d.project?.name||'Build complete')+'</strong><div class="proofline">'+esc((inferred.target||'app').toUpperCase())+' · release candidate · revision '+esc(build.revision||'n/a')+'</div><div class="proofline">Modules: '+esc((inferred.modules||[]).join(', ')||'core')+'</div><div class="proofline">Source of truth: IZAKHONO internal repository · Public-live status: NOT YET VERIFIED</div><div class="projectActions">'+preview+'</div>';
     await loadProjects();
   }catch(e){msg.className='message bad';msg.textContent='Build stopped: '+(e.message||String(e));}
   finally{btn.disabled=false}
