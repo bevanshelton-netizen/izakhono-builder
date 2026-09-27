@@ -19,6 +19,8 @@ test('AI operations remains read-only and visible in the owner console', async (
   assert.match(html, /Harness sandbox prepared/);
   assert.match(html, /External AI ready to activate/);
   assert.match(html, /Oracle A1 worker registered/);
+  assert.match(html, /Owner model pool/);
+  assert.match(server, /ownerPoolAvailable/);
   assert.match(server, /\/api\/ai-operations\/status/);
   assert.match(server, /external-ai\.key\.dpapi/);
   assert.match(server, /oracle-a1-worker\.json/);
