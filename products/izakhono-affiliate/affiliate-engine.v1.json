@@ -1,0 +1,85 @@
+{
+  "schema": "izakhono.affiliate.engine.v1",
+  "engine": "IZAKHONO AFFILIATE",
+  "version": "1.0.0",
+  "owner": "IZAKHONO AFRICA (PTY) LTD",
+  "infrastructure": {
+    "policy": "owned-first-externally-reversible",
+    "system_of_record": "IZAKHONO-owned infrastructure",
+    "external_networks": "replaceable adapters only"
+  },
+  "operating_modes": {
+    "publisher": {
+      "description": "Earn commission from approved third-party offers.",
+      "enabled": true
+    },
+    "izakhono_network": {
+      "description": "Allow approved partners to earn commission on qualifying IZAKHONO sales.",
+      "enabled": true,
+      "default_commission_rate": null,
+      "commission_policy": "product-specific rate must be configured from verified margin and budget authority"
+    }
+  },
+  "portfolio_integrations": {
+    "creative_system": "IZAKHONO CREATE",
+    "distribution_system": "IZAKHONO ADS",
+    "crm": "IZAKHONO portfolio CRM",
+    "accounting": "SUPER ACCOUNTANT",
+    "fraud_and_trust": "FORTRESS",
+    "workflow": "FLOWIQ",
+    "super_app": "IZAKHONO SUPER APP"
+  },
+  "external_adapters": [
+    {"id":"awin","label":"Awin","enabled":false,"requires_account":true,"credential_mode":"server-side"},
+    {"id":"cj","label":"CJ","enabled":false,"requires_account":true,"credential_mode":"server-side"},
+    {"id":"impact","label":"impact.com","enabled":false,"requires_account":true,"credential_mode":"server-side"},
+    {"id":"rakuten","label":"Rakuten Advertising","enabled":false,"requires_account":true,"credential_mode":"server-side"},
+    {"id":"flexoffers","label":"FlexOffers","enabled":false,"requires_account":true,"credential_mode":"server-side"},
+    {"id":"clickbank","label":"ClickBank","enabled":false,"requires_account":true,"credential_mode":"server-side"},
+    {"id":"ebay","label":"eBay Partner Network","enabled":false,"requires_account":true,"credential_mode":"server-side"},
+    {"id":"tradedoubler","label":"Tradedoubler","enabled":false,"requires_account":true,"credential_mode":"server-side"},
+    {"id":"partnerize","label":"Partnerize","enabled":false,"requires_account":true,"credential_mode":"server-side"},
+    {"id":"2checkout","label":"2Checkout / Verifone","enabled":false,"requires_account":true,"credential_mode":"server-side"}
+  ],
+  "autonomy": {
+    "automatic": [
+      "discover_public_program_changes",
+      "ingest_approved_offer_feeds",
+      "score_offer_relevance",
+      "generate_subids_and_tracking_links",
+      "route_approved_creative_to_distribution",
+      "reconcile_click_conversion_commission_events",
+      "detect_suspicious_referral_patterns",
+      "sync_verified_financial_events_to_accounting",
+      "sync partner and lead records to CRM",
+      "pause broken or policy-invalid adapters",
+      "produce exception-only owner reporting"
+    ],
+    "requires_owner_or_authorised_officer": [
+      "accept_network_legal_terms",
+      "submit banking_or_tax_identity_data",
+      "authorise_paid_media_spend",
+      "set_or_change commission rates with material financial impact",
+      "release disputed or exceptional payouts"
+    ]
+  },
+  "tracking": {
+    "subid_attribution": true,
+    "first_party_event_ledger": true,
+    "behavioural_profiling": false,
+    "advertising_ids": false,
+    "raw_prompt_persistence": false,
+    "consent_and_disclosure_required": true
+  },
+  "payouts": {
+    "verified_conversion_required": true,
+    "hold_for_reversal_window": true,
+    "fraud_clearance_required": true,
+    "accounting_reconciliation_required": true
+  },
+  "launch_policy": {
+    "public_live_claim_requires_verified_https": true,
+    "adapter_live_claim_requires_successful_authenticated_test": true,
+    "no_external_adapter_may_become_system_of_record": true
+  }
+}
