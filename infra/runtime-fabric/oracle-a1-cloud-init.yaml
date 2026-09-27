@@ -1,0 +1,84 @@
+#cloud-config
+# IZAKHONO Runtime Fabric — Oracle A1 auxiliary worker bootstrap
+# Use only after reviewing the exact image, tenancy, network rules and workload.
+# This file creates no Oracle resource by itself and contains no secret.
+
+package_update: true
+package_upgrade: true
+
+packages:
+  - ca-certificates
+  - curl
+  - jq
+  - podman
+
+users:
+  - default
+  - name: izakhono
+    gecos: IZAKHONO Runtime Worker
+    groups: [adm]
+    shell: /bin/bash
+    lock_passwd: true
+    sudo: []
+
+write_files:
+  - path: /etc/izakhono/worker.env.example
+    permissions: '0640'
+    owner: root:izakhono
+    content: |
+      IZAKHONO_RUNTIME_CLASS=EXTERNAL-AUX-ORACLE-A1
+      IZAKHONO_RUNTIME_ID=replace-after-provisioning
+      IZAKHONO_RELEASE_ID=replace-me
+      IZAKHONO_WORKER_MODE=auxiliary
+      IZAKHONO_PUBLIC_TRAFFIC=false
+
+  - path: /usr/local/bin/izakhono-worker-health
+    permissions: '0755'
+    owner: root:root
+    content: |
+      #!/usr/bin/env bash
+      set -euo pipefail
+      printf '{"ok":true,"runtime_class":"EXTERNAL-AUX-ORACLE-A1","public_traffic":false,"host":"%s"}\n' "$(hostname)"
+
+  - path: /etc/systemd/system/izakhono-worker-health.service
+    permissions: '0644'
+    owner: root:root
+    content: |
+      [Unit]
+      Description=IZAKHONO auxiliary worker health endpoint
+      After=network-online.target
+      Wants=network-online.target
+
+      [Service]
+      Type=simple
+      User=izakhono
+      Group=izakhono
+      ExecStart=/usr/bin/python3 -m http.server 9808 --directory /var/lib/izakhono-health --bind 127.0.0.1
+      Restart=on-failure
+      NoNewPrivileges=true
+      PrivateTmp=true
+      ProtectSystem=strict
+      ProtectHome=true
+      ReadOnlyPaths=/
+      ReadWritePaths=/var/lib/izakhono-health
+
+      [Install]
+      WantedBy=multi-user.target
+
+  - path: /usr/local/bin/izakhono-refresh-health
+    permissions: '0755'
+    owner: root:root
+    content: |
+      #!/usr/bin/env bash
+      set -euo pipefail
+      install -d -o izakhono -g izakhono -m 0755 /var/lib/izakhono-health
+      /usr/local/bin/izakhono-worker-health > /var/lib/izakhono-health/healthz
+      chown izakhono:izakhono /var/lib/izakhono-health/healthz
+      chmod 0644 /var/lib/izakhono-health/healthz
+
+runcmd:
+  - [bash, -lc, "/usr/local/bin/izakhono-refresh-health"]
+  - [systemctl, daemon-reload]
+  - [systemctl, enable, --now, izakhono-worker-health.service]
+
+final_message: "IZAKHONO Oracle A1 auxiliary worker bootstrap completed. Health is loopback-only until EDGE/network policy is explicitly approved."
