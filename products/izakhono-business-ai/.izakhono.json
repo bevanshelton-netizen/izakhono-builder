@@ -1,5 +1,6 @@
 {
   "schema_version": 3,
+  "product_version": "0.2.0",
   "product": "IZAKHONO BUSINESS AI",
   "slug": "izakhono-business-ai",
   "engine": "independent",
@@ -9,6 +10,13 @@
     "behavioral_tracking": false,
     "advertising_ids": false,
     "raw_prompt_persistence": false
+  },
+  "decision_lab": {
+    "version": "0.2",
+    "source_hashing": "sha256",
+    "evidence_graph": true,
+    "multi_round_agents": true,
+    "prediction_claims": false
   },
   "external_adapters": ["AI_GATEWAY_URL"]
 }
