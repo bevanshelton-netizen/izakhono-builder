@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>IZAKHONO BUILDER — Build Fast. Build Free First.</title>
-  <meta name="description" content="IZAKHONO BUILDER is the free-first application engine for rapidly creating, validating and deploying new platforms.">
+  <title>IZAKHONO BUILDER — Describe It. See It Built.</title>
+  <meta name="description" content="IZAKHONO BUILDER turns a plain-language brief into a controlled app or website build with automated validation and owner-controlled source.">
   <style>
     :root{--bg:#07120f;--panel:#0d1b17;--panel2:#10231e;--line:#244238;--txt:#f4fff9;--muted:#9fb9ae;--green:#64f3a5;--gold:#ffd978;--cyan:#63d7ff;--danger:#ff9898}
     *{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 80% 0,#193f34 0,transparent 28%),linear-gradient(180deg,#07120f,#081512 55%,#06100e);color:var(--txt);font-family:Inter,system-ui,sans-serif;min-height:100vh}
@@ -17,7 +17,14 @@
     .section{margin-top:26px}.grid2{display:grid;grid-template-columns:.82fr 1.18fr;gap:18px}.field{margin:10px 0}.field label{display:block;color:#cce0d7;font-size:12px;font-weight:800;margin-bottom:6px}.field input,.field textarea,.field select{width:100%;border:1px solid var(--line);background:#07120f;color:white;border-radius:11px;padding:12px;font:inherit}.field textarea{min-height:90px;resize:vertical}.modules{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:8px}.module{position:relative;border:1px solid var(--line);background:#0a1714;border-radius:13px;padding:12px;cursor:pointer;min-height:82px}.module input{position:absolute;right:10px;top:10px;accent-color:#64f3a5}.module b{display:block;padding-right:25px}.module span{display:block;color:var(--muted);font-size:11px;line-height:1.4;margin-top:5px}.module:has(input:checked){border-color:#64f3a5;background:#10281f}
     .secret{display:flex;gap:8px}.secret input{flex:1}.note{font-size:11px;color:var(--muted);line-height:1.45}.projects{display:grid;gap:10px}.project{border:1px solid var(--line);background:#0a1714;border-radius:15px;padding:15px}.projectTop{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.projectTitle{font-weight:900;font-size:17px}.badge{font-size:10px;text-transform:uppercase;letter-spacing:.08em;border:1px solid var(--line);border-radius:99px;padding:5px 8px;color:#c9ddd4}.badge.ready{border-color:#3b745b;color:var(--green)}.badge.repo{border-color:#755f29;color:var(--gold)}.badge.own{border-color:#397184;color:var(--cyan)}.projectMeta{font-size:12px;color:var(--muted);margin-top:6px}.chips{display:flex;gap:5px;flex-wrap:wrap;margin-top:10px}.chip{font-size:10px;padding:5px 7px;border-radius:99px;background:#132820;color:#bfe7d3}.projectActions{margin-top:12px}.projectActions .btn{font-size:11px;padding:8px 10px}.proof{margin-top:11px;border-top:1px solid #1d382f;padding-top:10px;display:grid;gap:5px;font-size:11px;color:var(--muted)}.proof strong{color:#d9eee5}.empty{border:1px dashed #36594c;border-radius:15px;padding:30px;text-align:center;color:var(--muted)}.message{min-height:19px;font-size:12px;margin-top:8px}.good{color:var(--green)}.bad{color:var(--danger)}
     .automation{margin-top:18px;display:grid;grid-template-columns:auto 1fr;gap:12px;align-items:center;border:1px solid var(--line);border-radius:16px;background:#091713;padding:14px 16px}.automation .light{width:12px;height:12px;border-radius:50%;background:#65716c}.automation.ready .light{background:var(--green);box-shadow:0 0 15px #64f3a566}.automation b{display:block}.automation span{font-size:11px;color:var(--muted);line-height:1.45}
-    .promptLab{margin-top:26px;border:1px solid #3b745b;background:radial-gradient(circle at 85% 20%,#173f34 0,transparent 30%),linear-gradient(135deg,#0f241d,#0a1714)}.quickControls{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.quickControls select{width:auto;min-width:150px;border:1px solid var(--line);background:#07120f;color:white;border-radius:11px;padding:11px}.buildResult{margin-top:14px;border:1px solid var(--line);background:#07120f;border-radius:14px;padding:14px;display:none}.buildResult.on{display:block}.buildResult strong{color:var(--green)}.buildResult .proofline{font-size:12px;color:var(--muted);margin-top:6px}
+    .promptLab{margin-top:0;border:1px solid #3b745b;background:radial-gradient(circle at 85% 20%,#214b52 0,transparent 28%),radial-gradient(circle at 20% 120%,#2a1547 0,transparent 36%),linear-gradient(135deg,#101936,#0a1714);box-shadow:0 30px 90px #0005}
+    .promptShell{max-width:920px;margin:0 auto;text-align:center}.promptShell h1{font-size:clamp(48px,7vw,88px);line-height:.94;margin:12px 0 18px}.promptShell h1 span{background:linear-gradient(90deg,var(--cyan),#b47cff,#ff7bd2);-webkit-background-clip:text;background-clip:text;color:transparent}
+    .promptBox{margin:28px auto 0;text-align:left;background:#070c19;border:1px solid #ffffff24;border-radius:24px;padding:18px;box-shadow:0 22px 70px #0007}.promptBox textarea{min-height:130px;border:0;background:transparent;color:white;width:100%;resize:vertical;font:600 18px/1.55 Inter,system-ui,sans-serif;outline:none;padding:4px 4px 12px}.promptBox textarea::placeholder{color:#8c90a5}.promptBar{border-top:1px solid #ffffff18;padding-top:13px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}.promptBar .hint{font-size:11px;color:#8f9aab;margin-right:auto}.quickControls{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.quickControls select{width:auto;min-width:155px;border:1px solid #ffffff20;background:#10182b;color:white;border-radius:12px;padding:11px}.quickControls .primary{min-width:140px;background:linear-gradient(135deg,#677cff,#7e3bd4);color:white}
+    .examples{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:18px}.exampleChip{border:1px solid #ffffff1f;background:#ffffff08;color:#d9dcec;border-radius:999px;padding:9px 13px;font-size:12px;cursor:pointer}.exampleChip:hover{border-color:#8f7bff;background:#ffffff10}
+    .buildProgress{display:none;margin-top:16px;border:1px solid #ffffff18;background:#080e1b;border-radius:14px;padding:13px;text-align:left}.buildProgress.on{display:block}.progressTrack{height:7px;background:#ffffff10;border-radius:999px;overflow:hidden;margin-top:9px}.progressTrack i{display:block;height:100%;width:18%;background:linear-gradient(90deg,var(--cyan),#b47cff,#ff7bd2);border-radius:999px;animation:builderPulse 1.25s ease-in-out infinite alternate}.progressMeta{display:flex;justify-content:space-between;gap:10px;color:#aab2c2;font-size:11px}
+    @keyframes builderPulse{from{width:18%}to{width:92%}}
+    .buildResult{margin-top:14px;border:1px solid var(--line);background:#07120f;border-radius:16px;padding:16px;display:none;text-align:left}.buildResult.on{display:block}.buildResult strong{color:var(--green);font-size:18px}.buildResult .proofline{font-size:12px;color:var(--muted);margin-top:7px}.qaRow{display:flex;gap:7px;flex-wrap:wrap;margin-top:12px}.qaPill{font-size:10px;border:1px solid #ffffff1d;border-radius:999px;padding:5px 8px;color:#cbd6d0}.qaPill.ok{border-color:#3b745b;color:var(--green)}.qaPill.lock{border-color:#755f29;color:var(--gold);background:transparent;margin:0}.previewGrid{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center}.speedProof{margin-top:20px;display:flex;justify-content:center;gap:22px;flex-wrap:wrap;color:#b7c0d0;font-size:11px}.speedProof b{color:white}
+    .ownerTools{margin-top:30px}
     .overlay{display:none;position:fixed;inset:0;background:#000c;z-index:50;padding:20px;align-items:center;justify-content:center}.overlay.on{display:flex}.modal{width:min(900px,100%);max-height:90vh;overflow:auto;border:1px solid var(--line);background:#0b1814;border-radius:20px;padding:22px}.modalTop{display:flex;gap:10px;align-items:center}.modalTop button{margin-left:auto}.recipe{white-space:pre-wrap;word-break:break-word;background:#06100e;border:1px solid var(--line);padding:14px;border-radius:12px;color:#c9e2d7;font-size:12px;line-height:1.5}.footer{text-align:center;color:#789488;font-size:11px;margin-top:40px}.lock{border:1px solid #5a4d26;background:#1e1a0b;color:#ffe8a1;border-radius:12px;padding:11px 13px;font-size:12px;margin-bottom:14px}
     @media(max-width:900px){.hero,.grid2{grid-template-columns:1fr}.modules{grid-template-columns:1fr}.tag{display:none}.wrap{padding-top:24px}}
   </style>
@@ -29,45 +36,44 @@
   <div class="statusdot"><span class="dot" id="healthDot"></span><span id="healthText">Checking engine</span></div>
 </header>
 <main class="wrap">
-  <section class="hero">
-    <div class="card">
-      <div class="ey">OUR APPLICATION FACTORY</div>
-      <h1>One sentence to a real build.<br><span>App. Website. Game. Software.</span></h1>
-      <p class="muted">Tell IZAKHONO what you want. The Builder infers the product type and modules, creates the project, plans it, generates the source, validates the bundle, and commits it into our owner-controlled IZAKHONO repository. External providers remain optional adapters.</p>
-      <div class="navrow"><button class="btn primary" onclick="document.querySelector('#newApp').scrollIntoView({behavior:'smooth'})">Build a new app</button><a class="btn" href="/commands">IZAKHONO Commands</a><button class="btn" onclick="loadProjects()">Refresh projects</button></div>
-      <div class="automation" id="automationStatus"><div class="light"></div><div><b>Repository Autopilot locked</b><span>Unlock Owner Access to inspect repository capability.</span></div></div>
-    </div>
-    <div class="heroStats">
-      <div class="stat"><span class="ey">SOURCE OF TRUTH</span><b>IZAKHONO</b><span class="muted">Validated source is committed into our own private repository history.</span></div>
-      <div class="stat"><span class="ey">GENERATED PACKAGE</span><b>Repo ready</b><span class="muted">Source + CI + private-repo contract + isolated preview workflow.</span></div>
-      <div class="stat"><span class="ey">EXTERNAL HOSTS</span><b>Optional</b><span class="muted">GitHub and deployment providers become mirrors/adapters, not ownership.</span></div>
-    </div>
-  </section>
-
   <section class="section card promptLab" id="buildAnything">
-    <div class="ey">IZAKHONO BUILD ANYTHING · ONE-SENTENCE MODE</div>
-    <h2>Describe it. We build the technical proof.</h2>
-    <p class="muted">Start with one sentence. The engine auto-detects whether you need an app, website, game or software product and runs the full owned-first build chain.</p>
-    <div class="field">
-      <label>What do you want to build?</label>
-      <textarea id="quickPrompt" placeholder="Example: Build a booking website for electricians with customer accounts, payments, WhatsApp-style messaging and an admin dashboard."></textarea>
+    <div class="promptShell">
+      <div class="ey">IZAKHONO BUILDER · FAST BUILD MODE</div>
+      <h1>Describe it.<br><span>See it built.</span></h1>
+      <p class="muted">One sentence becomes a controlled app, website, game or software build. IZAKHONO infers the product, generates the source, validates it and commits the proof into our owner-controlled repository.</p>
+      <div class="promptBox">
+        <textarea id="quickPrompt" aria-label="What do you want to build?" placeholder="Ask IZAKHONO to build a booking website for electricians with customer accounts, payments, messaging and an admin dashboard."></textarea>
+        <div class="promptBar">
+          <span class="hint">Enter to build · Shift+Enter for a new line</span>
+          <div class="quickControls">
+            <select id="quickTarget" aria-label="Build type">
+              <option value="">Auto-detect type</option>
+              <option value="app">App</option>
+              <option value="website">Website</option>
+              <option value="game">Game</option>
+              <option value="software">Software</option>
+            </select>
+            <button class="btn primary" id="quickBuildBtn" type="button" onclick="buildAnything()">Build →</button>
+          </div>
+        </div>
+      </div>
+      <div class="examples" aria-label="Example prompts">
+        <button class="exampleChip" type="button" onclick="useExample('Build a premium landing page for a specialty coffee roaster with wholesale enquiries and online ordering.')">Specialty coffee landing page</button>
+        <button class="exampleChip" type="button" onclick="useExample('Build a personal finance tracker with budgets, charts, recurring expenses and a private dashboard.')">Finance tracker with charts</button>
+        <button class="exampleChip" type="button" onclick="useExample('Build a booking website for a yoga studio with class schedules, member accounts and payments.')">Yoga studio booking site</button>
+        <button class="exampleChip" type="button" onclick="useExample('Build an internal support ticket triage tool with priorities, assignments and an admin dashboard.')">Support ticket tool</button>
+      </div>
+      <div class="speedProof"><span><b>&lt;60 sec</b> preview target</span><span><b>Accuracy gated</b> — missing facts are not invented</span><span><b>Private first</b> — publish requires verification</span></div>
+      <div class="buildProgress" id="quickBuildProgress">
+        <div class="progressMeta"><span id="quickBuildStage">Preparing build…</span><span id="quickBuildTimer">0.0s</span></div>
+        <div class="progressTrack"><i></i></div>
+      </div>
+      <div class="message" id="quickBuildMsg"></div>
+      <div class="buildResult" id="quickBuildResult"></div>
     </div>
-    <div class="quickControls">
-      <select id="quickTarget">
-        <option value="">Auto-detect type</option>
-        <option value="app">App</option>
-        <option value="website">Website</option>
-        <option value="game">Game</option>
-        <option value="software">Software</option>
-      </select>
-      <button class="btn primary" id="quickBuildBtn" type="button" onclick="buildAnything()">BUILD IT</button>
-      <span class="note">Owner-only pilot. No paid spend or external publication is triggered.</span>
-    </div>
-    <div class="message" id="quickBuildMsg"></div>
-    <div class="buildResult" id="quickBuildResult"></div>
   </section>
 
-  <section class="section grid2">
+  <section class="section grid2 ownerTools">
     <div class="card" id="newApp">
       <div class="ey">CREATE</div><h2>New application</h2>
       <div class="lock"><b>Owner access:</b> enter the private builder admin secret once. It stays in this browser session and is never written into the website source.</div>
@@ -119,27 +125,70 @@ async function publishRepository(id){if(!state.capabilities?.github_repository_p
 function viewRecipe(id){const p=state.projects.get(id);if(!p?.recipe)return;showRecipe(p.recipe,p.name)}
 function showRecipe(r,name){modalEy.textContent='BUILD RECIPE';modalTitle.textContent=name;recipeSummary.textContent=`${(r.modules||[]).length} selected modules · ${r.infrastructure_policy||'free-first'} infrastructure · generated package ${r.generated?.repository_ready?'repository-ready':'not generated yet'}`;recipe.textContent=JSON.stringify(r,null,2);overlay.classList.add('on')}
 function closeModal(){overlay.classList.remove('on')}
+function useExample(text){
+  const field=document.querySelector('#quickPrompt');
+  field.value=text;
+  field.focus();
+}
+document.querySelector('#quickPrompt')?.addEventListener('keydown',e=>{
+  if(e.key==='Enter'&&!e.shiftKey){
+    e.preventDefault();
+    if(!document.querySelector('#quickBuildBtn').disabled) buildAnything();
+  }
+});
 async function buildAnything(){
   const prompt=document.querySelector('#quickPrompt').value.trim();
   const target=document.querySelector('#quickTarget').value;
   const msg=document.querySelector('#quickBuildMsg');
   const result=document.querySelector('#quickBuildResult');
+  const progress=document.querySelector('#quickBuildProgress');
+  const stage=document.querySelector('#quickBuildStage');
+  const timer=document.querySelector('#quickBuildTimer');
   const btn=document.querySelector('#quickBuildBtn');
   result.className='buildResult';result.innerHTML='';
-  if(!state.secret){msg.className='message bad';msg.textContent='Unlock Owner Access first so the build can commit into the IZAKHONO repository.';document.querySelector('#secret').focus();return}
+  if(!state.secret){
+    msg.className='message bad';
+    msg.textContent='Owner Access is required for this pilot so the generated source can be committed privately.';
+    document.querySelector('#secret').scrollIntoView({behavior:'smooth',block:'center'});
+    document.querySelector('#secret').focus();
+    return;
+  }
   if(prompt.length<8){msg.className='message bad';msg.textContent='Describe what you want to build in one sentence.';return}
-  btn.disabled=true;msg.className='message';msg.textContent='Planning → generating → validating → committing to IZAKHONO repository…';
+  const started=performance.now();
+  let tick=null;
+  const setStage=s=>{stage.textContent=s};
+  btn.disabled=true;btn.textContent='Building…';msg.className='message';msg.textContent='';
+  progress.className='buildProgress on';
+  setStage('Understanding your brief…');
+  tick=setInterval(()=>{timer.textContent=((performance.now()-started)/1000).toFixed(1)+'s'},100);
+  const stageTimer1=setTimeout(()=>setStage('Generating source and UI…'),900);
+  const stageTimer2=setTimeout(()=>setStage('Running accuracy and technical checks…'),2200);
+  const stageTimer3=setTimeout(()=>setStage('Committing verified proof to IZAKHONO…'),4200);
   try{
     const d=await api('/api/build-anything',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({prompt,target})});
     const inferred=d.inference||{};const build=d.build||{};
-    msg.className='message good';msg.textContent='Release candidate created and committed to IZAKHONO.';
-    const preview=build.preview?'<a class="btn primary" target="_blank" rel="noopener" href="'+esc(build.preview)+'">Open technical preview</a>':'';
+    const elapsed=((performance.now()-started)/1000).toFixed(1);
+    setStage('Build complete');
+    msg.className='message good';msg.textContent='Controlled release candidate created.';
+    const preview=build.preview?'<a class="btn primary" target="_blank" rel="noopener" href="'+esc(build.preview)+'">Open private preview</a>':'';
+    const quality=build.validation_passed?'<span class="qaPill ok">Technical validation passed</span>':'<span class="qaPill lock">Validation pending</span>';
+    const source=build.internal_repository?'<span class="qaPill ok">IZAKHONO source committed</span>':'<span class="qaPill lock">Source commit pending</span>';
+    const live='<span class="qaPill lock">Public live: locked until verified</span>';
+    const ai=inferred.intelligence?.mode==='super-ai'?'SUPER AI + deterministic checks':'Deterministic fallback';
     result.className='buildResult on';
-    result.innerHTML='<strong>'+esc(d.project?.name||'Build complete')+'</strong><div class="proofline">'+esc((inferred.target||'app').toUpperCase())+' · release candidate · revision '+esc(build.revision||'n/a')+'</div><div class="proofline">Modules: '+esc((inferred.modules||[]).join(', ')||'core')+'</div><div class="proofline">Source of truth: IZAKHONO internal repository · Public-live status: NOT YET VERIFIED</div><div class="projectActions">'+preview+'</div>';
+    result.innerHTML='<div class="previewGrid"><div><strong>'+esc(d.project?.name||'Build complete')+'</strong><div class="proofline">'+esc((inferred.target||'app').toUpperCase())+' · revision '+esc(build.revision||'n/a')+' · '+elapsed+' build time</div><div class="proofline">Modules: '+esc((inferred.modules||[]).join(', ')||'core')+'</div><div class="proofline">Intent engine: '+esc(ai)+'</div><div class="qaRow">'+quality+source+live+'</div></div><div class="projectActions">'+preview+'</div></div>';
     await loadProjects();
-  }catch(e){msg.className='message bad';msg.textContent='Build stopped: '+(e.message||String(e));}
-  finally{btn.disabled=false}
+  }catch(e){
+    setStage('Build stopped safely');
+    msg.className='message bad';msg.textContent='Build stopped: '+(e.message||String(e));
+  }finally{
+    clearInterval(tick);clearTimeout(stageTimer1);clearTimeout(stageTimer2);clearTimeout(stageTimer3);
+    timer.textContent=((performance.now()-started)/1000).toFixed(1)+'s';
+    btn.disabled=false;btn.textContent='Build →';
+    setTimeout(()=>{progress.className='buildProgress'},900);
+  }
 }
+
 async function importHandoff(){
   handoffMsg.className='message';
   if(!state.secret){handoffMsg.className='message bad';handoffMsg.textContent='Unlock Owner Access first.';return}
