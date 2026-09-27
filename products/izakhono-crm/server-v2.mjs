@@ -12,7 +12,7 @@ const STAFF_FILE = process.env.CRM_STAFF_FILE || "";
 const ADMIN_TOKEN = process.env.CRM_ADMIN_TOKEN || "";
 const INGEST_TOKEN = process.env.CRM_INGEST_TOKEN || "";
 const ALLOW_INSECURE_LOCAL = process.env.CRM_ALLOW_INSECURE_LOCAL !== "false";
-const EMPTY = { contacts: [], deals: [], activities: [], pipelines: [], automation_rules: [], integration_outbox: [], audit: [] };
+const EMPTY = { contacts: [], deals: [], activities: [], pipelines: [], automation_rules: [], integration_outbox: [], flow_receipts: [], audit: [] };
 const ROLE_PERMISSIONS = {
   owner: ["*"],
   admin: ["crm.read","contacts.write","deals.write","activities.write","pipeline.manage","automation.manage","integrations.manage","audit.read","export.read"],
@@ -191,6 +191,54 @@ function insights(store,scope){
   if(!recommendations.length) recommendations.push("No urgent deterministic follow-up flags are currently detected.");
   return {overdue,stale,high_value:highValue,recommendations,mode:"deterministic-v2"};
 }
+async function handleFlowAction(req,res,url,scope){
+  const actor=await requireAccess(req,res,scope,"integration.ingest",{ingest:true}); if(!actor) return;
+  const input=await readBody(req),actionId=cleanString(input.action_id,180),runId=cleanString(input.run_id,180),actionType=cleanString(input.action_type,120);
+  const payload=input.payload&&typeof input.payload==="object"?input.payload:{},metadata=payload.metadata&&typeof payload.metadata==="object"?payload.metadata:{};
+  if(!actionId||!runId||!actionType) return json(res,400,{error:"action_id, run_id and action_type are required"});
+  const store=await readStore();
+  const prior=scoped(store.flow_receipts,scope).find(r=>r.action_id===actionId);
+  if(prior) return json(res,200,{ok:true,idempotent_replay:true,receipt:prior});
+
+  const subjectRef=cleanString(payload.subject_ref,200),externalRef=`${scope.platform_id}:${subjectRef}`;
+  let contact=null,deal=scoped(store.deals,scope).find(d=>d.external_ref===externalRef)||null,activity=null;
+
+  if(actionType==="crm.intake.requested"){
+    const contactInput=metadata.contact&&typeof metadata.contact==="object"?metadata.contact:metadata;
+    const cp=contactPayload(contactInput,scope),hasContact=Boolean(cp.name||cp.email||cp.phone||cp.company);
+    if(deal?.contact_id) contact=scoped(store.contacts,scope).find(c=>c.id===deal.contact_id)||null;
+    if(!contact&&hasContact) contact=scoped(store.contacts,scope).find(c=>(cp.email&&c.email===cp.email)||(cp.phone&&c.phone===cp.phone))||null;
+    if(!contact&&!hasContact) return json(res,422,{error:"flow_intake_requires_contact_data",subject_ref:subjectRef});
+    if(!contact){contact={id:id("contact"),...cp,source:cp.source||"izakhono-flow",created_at:now(),updated_at:now()};store.contacts.push(contact)}
+    else Object.assign(contact,cp,{updated_at:now()});
+
+    const op=metadata.opportunity&&typeof metadata.opportunity==="object"?metadata.opportunity:{};
+    if(!deal){
+      const pipeline=await getPipeline(store,scope),first=pipeline.stages[0]?.label||"New",value=Number(op.value??metadata.value??0);
+      deal={id:id("deal"),...scope,contact_id:contact.id,title:cleanString(op.title||metadata.title||"FLOW opportunity",240),value:Number.isFinite(value)?value:0,currency:cleanString(op.currency||metadata.currency||"ZAR",8).toUpperCase(),stage:first,owner:"",source:"izakhono-flow",external_ref:externalRef,next_action:"Qualify opportunity",next_action_due:"",created_at:now(),updated_at:now()};
+      store.deals.push(deal);
+    }
+    activity={id:id("activity"),...scope,contact_id:contact.id,deal_id:deal.id,type:"flow_lead_intake",note:"Lead accepted from IZAKHONO FLOW",created_at:now(),updated_at:now()};store.activities.push(activity);
+  } else if(actionType==="crm.payment.confirmed"||actionType==="crm.fulfilment.completed"){
+    if(!deal) return json(res,404,{error:"flow_deal_not_found",external_ref:externalRef});
+    contact=scoped(store.contacts,scope).find(c=>c.id===deal.contact_id)||null;
+    const type=actionType==="crm.payment.confirmed"?"payment_confirmed":"fulfilment_completed";
+    const note=actionType==="crm.payment.confirmed"?"Verified payment confirmed by IZAKHONO FLOW / IZAKHONO PAY":"Fulfilment completed through IZAKHONO FLOW";
+    activity={id:id("activity"),...scope,contact_id:deal.contact_id,deal_id:deal.id,type,note,created_at:now(),updated_at:now()};store.activities.push(activity);
+    deal.next_action=actionType==="crm.payment.confirmed"?"Start fulfilment":"Issue invoice / begin retention";
+    deal.updated_at=now();
+  } else {
+    return json(res,400,{error:"unsupported_flow_action",supported:["crm.intake.requested","crm.payment.confirmed","crm.fulfilment.completed"]});
+  }
+
+  const receipt={id:id("flowrcpt"),...scope,action_id:actionId,run_id:runId,action_type:actionType,subject_ref:subjectRef,deal_id:deal?.id||"",contact_id:contact?.id||"",activity_id:activity?.id||"",created_at:now()};
+  store.flow_receipts.push(receipt);
+  addAudit(store,scope,actor,"flow.action.accepted","flow_receipt",receipt.id,{action_id:actionId,run_id:runId,action_type:actionType,subject_ref:subjectRef});
+  emitOutbox(store,scope,"crm.flow.action.accepted",{action_id:actionId,run_id:runId,action_type:actionType,deal_id:deal?.id||"",contact_id:contact?.id||""});
+  await writeStore(store);
+  return json(res,201,{ok:true,receipt,contact,deal,activity});
+}
+
 async function serveStatic(url,res){
   if(url.pathname==="/"||url.pathname==="/index.html") return text(res,200,await fs.readFile(path.join(__dirname,"public","index.html"),"utf8"),"text/html; charset=utf-8");
   if(url.pathname==="/app.js") return text(res,200,await fs.readFile(path.join(__dirname,"public","app.js"),"utf8"),"text/javascript; charset=utf-8");
@@ -204,6 +252,8 @@ async function handler(req,res){
     if(req.method==="GET"&&url.pathname==="/health") return json(res,200,{ok:true,service:"izakhono-crm",version:"0.2.0",auth:STAFF_FILE?"staff-file":ADMIN_TOKEN?"admin-token":ALLOW_INSECURE_LOCAL?"local-dev":"locked"});
     if(!url.pathname.startsWith("/api/")){ const served=await serveStatic(url,res); if(served!==false) return served; return json(res,404,{error:"not found"}); }
     const scope=scopeFrom(req,url); if(!scope) return json(res,400,{error:"X-Entity-ID and X-Platform-ID are required"});
+
+    if(req.method==="POST"&&url.pathname==="/api/flow") return handleFlowAction(req,res,url,scope);
 
     if(req.method==="POST"&&url.pathname==="/api/intake"){
       const actor=await requireAccess(req,res,scope,"integration.ingest",{ingest:true}); if(!actor) return;
