@@ -1,12 +1,13 @@
 {
   "name": "izakhono-business-ai",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "private": true,
   "scripts": {
     "dev": "wrangler dev",
     "typecheck": "tsc --noEmit --target ES2022 --lib ES2022,DOM,DOM.Iterable --module ESNext src/index.ts",
-    "validate": "npm run typecheck && wrangler deploy --dry-run",
-    "deploy": "wrangler deploy"
+    "validate": "npm run owned:syntax && npm run typecheck && wrangler deploy --dry-run",
+    "deploy": "wrangler deploy",
+    "owned:syntax": "node --check owned-runtime/server.mjs && node --check owned-runtime/acceptance.mjs"
   },
   "devDependencies": {
     "typescript": "5.9.2",
