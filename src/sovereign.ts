@@ -266,6 +266,93 @@ function buildModulesFromPrompt(prompt: string, target: string): string[] {
   return Array.from(modules).filter(m => ALLOWED_MODULES.has(m));
 }
 
+
+function parseBuildAiJson(text: string): any | null {
+  const raw = String(text || '').trim().replace(/^`{3}(?:json)?\s*/i, '').replace(/\s*`{3}$/, '').trim();
+  if (!raw) return null;
+  try { return JSON.parse(raw); } catch {}
+  const start = raw.indexOf('{'), end = raw.lastIndexOf('}');
+  if (start >= 0 && end > start) {
+    try { return JSON.parse(raw.slice(start, end + 1)); } catch {}
+  }
+  return null;
+}
+
+async function enrichBuildIntentWithSuperAI(env: any, prompt: string, base: any): Promise<any> {
+  const fallback = (reason: string) => ({ ...base, intelligence: { mode: 'deterministic-fallback', reason } });
+  if (!env.IZAKHONO_SUPER_AI_URL || !env.IZAKHONO_SUPER_AI_INTERNAL_KEY || !env.IZAKHONO_SUPER_AI_WORKFLOW_KEY) {
+    return fallback('super-ai-not-configured');
+  }
+
+  const endpoint = String(env.IZAKHONO_SUPER_AI_URL).replace(/\/+$/, '') + '/api/v1/generate';
+  const instruction = [
+    'You are the product architect inside IZAKHONO BUILDER.',
+    'Convert the owner brief into a concise build intent. Return ONLY valid JSON.',
+    'Allowed target values: app, website, game, software.',
+    'Allowed modules: ' + Array.from(ALLOWED_MODULES).join(', ') + '.',
+    'Never add secrets, paid-spend instructions, external publishing, legal acceptance or destructive actions.',
+    'JSON keys: name (string), target (string), modules (array of allowed strings), summary (string), build_priorities (array of strings).',
+    'Owner brief: ' + prompt,
+    'Deterministic baseline: ' + JSON.stringify(base),
+  ].join('\n');
+
+  try {
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-izakhono-ai-key': String(env.IZAKHONO_SUPER_AI_INTERNAL_KEY),
+        'x-izakhono-ai-workflow-key': String(env.IZAKHONO_SUPER_AI_WORKFLOW_KEY),
+      },
+      body: JSON.stringify({
+        entity_id: 'izakhono-africa',
+        product: 'izakhono-builder',
+        access_mode: 'workflow',
+        capability: 'reasoning',
+        messages: [
+          { role: 'system', content: 'Return strict JSON only. Stay inside the allowed target/module lists.' },
+          { role: 'user', content: instruction },
+        ],
+      }),
+    });
+    if (!response.ok) return fallback('super-ai-http-' + response.status);
+    const data: any = await response.json();
+    const parsed = parseBuildAiJson(String(data?.output?.text || data?.answer || ''));
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return fallback('super-ai-invalid-json');
+
+    const target = BUILD_TARGETS.has(String(parsed.target || '').toLowerCase())
+      ? String(parsed.target).toLowerCase()
+      : base.target;
+    const aiModules = Array.isArray(parsed.modules)
+      ? parsed.modules.filter((m: unknown) => typeof m === 'string' && ALLOWED_MODULES.has(m))
+      : [];
+    const modules = Array.from(new Set([...(base.modules || []), ...aiModules]));
+    const name = String(parsed.name || '').trim().slice(0, 100) || base.name;
+    const summary = String(parsed.summary || '').trim().slice(0, 600);
+    const priorities = Array.isArray(parsed.build_priorities)
+      ? parsed.build_priorities.filter((x: unknown) => typeof x === 'string').map((x: string) => x.trim().slice(0, 240)).filter(Boolean).slice(0, 12)
+      : [];
+
+    return {
+      ...base,
+      target,
+      name,
+      modules,
+      summary,
+      build_priorities: priorities,
+      intelligence: {
+        mode: 'super-ai',
+        service: 'IZAKHONO SUPER AI',
+        capability: 'reasoning',
+        model: String(data?.model || '').slice(0, 120) || null,
+        owner_only: data?.owner_only === true,
+      },
+    };
+  } catch {
+    return fallback('super-ai-unavailable');
+  }
+}
+
 async function uniqueBuildSlug(env: any, desired: string): Promise<string> {
   const base = ventureSlug(desired).slice(0, 52);
   let candidate = base;
@@ -288,10 +375,18 @@ async function buildAnythingRoute(req: Request, env: any, url: URL): Promise<Res
   const prompt = String(payload?.prompt || '').trim().slice(0, 1200);
   if (prompt.length < 8) return json({ ok: false, error: 'Describe what you want to build in at least one short sentence.' }, 400);
 
-  const target = inferBuildTarget(prompt, payload?.target);
-  const name = String(payload?.name || '').trim().slice(0, 100) || buildNameFromPrompt(prompt, target);
+  const deterministicTarget = inferBuildTarget(prompt, payload?.target);
+  const deterministicName = buildNameFromPrompt(prompt, deterministicTarget);
+  const baseline = {
+    target: deterministicTarget,
+    name: deterministicName,
+    modules: buildModulesFromPrompt(prompt, deterministicTarget),
+  };
+  const intent = await enrichBuildIntentWithSuperAI(env, prompt, baseline);
+  const target = inferBuildTarget(prompt, payload?.target || intent.target);
+  const name = String(payload?.name || '').trim().slice(0, 100) || String(intent.name || deterministicName).slice(0, 100);
   const slug = await uniqueBuildSlug(env, String(payload?.slug || name));
-  const modules = buildModulesFromPrompt(prompt, target);
+  const modules = Array.from(new Set([...(baseline.modules || []), ...(intent.modules || [])])).filter(m => ALLOWED_MODULES.has(m));
   const category = target === 'website' ? 'website' : target === 'game' ? 'game' : target === 'software' ? 'software' : 'general';
 
   const createUrl = new URL(req.url);
@@ -337,7 +432,7 @@ async function buildAnythingRoute(req: Request, env: any, url: URL): Promise<Res
     ok: true,
     product: 'IZAKHONO BUILD ANYTHING',
     prompt,
-    inference: { target, name, slug, category, modules },
+    inference: { target, name, slug, category, modules, summary: intent.summary || null, build_priorities: intent.build_priorities || [], intelligence: intent.intelligence || { mode: 'deterministic-fallback' } },
     project: { id: projectId, name, slug, category, status: 'validated' },
     build: {
       planned: true,
