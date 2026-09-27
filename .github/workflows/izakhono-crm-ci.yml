@@ -40,6 +40,12 @@ jobs:
           CRM_INGEST_TOKEN: unit-test-ingest-token
           CRM_STAFF_JSON: '{"staff":[]}'
           IZAKHONO_FABRIC_INTERNAL_TOKEN: unit-test-fabric-token
+          FLOW_ADMIN_TOKEN: unit-test-flow-admin-token
+          FLOW_INGEST_TOKEN: unit-test-flow-ingest-token
+          FLOW_ADAPTERS_JSON: '{}'
+          REVENUE_FLOW_TOKEN: unit-test-revenue-flow-token
+          IZAKHONO_TASKS_TOKEN: unit-test-tasks-owner-token
+          IZAKHONO_TASKS_FLOW_TOKEN: unit-test-tasks-flow-token
         run: docker compose config >/tmp/izakhono-app-fabric-compose.yml
       - name: Container build
         run: docker build -t izakhono/crm:ci products/izakhono-crm
