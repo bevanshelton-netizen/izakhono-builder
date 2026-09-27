@@ -1,7 +1,7 @@
 {
   "schema": "izakhono.super-app.deployment.v1",
   "product": "IZAKHONO SUPER APP",
-  "deployment_status": "PUBLIC_FRONTEND_PENDING_CDN_VERIFY",
+  "deployment_status": "PUBLIC_FRONTEND_VERIFIED",
   "external_resilience": {
     "provider": "Supabase Edge Functions",
     "role": "public aggregate status/revenue API and redirect bridge",
@@ -11,7 +11,8 @@
     "verified_http_status": 200,
     "verified_at": "2026-09-27T21:21:13Z",
     "edge_region": "eu-west-1",
-    "html_note": "Shared Supabase Edge Functions are used as backend/redirect only; the renderable frontend is GitHub Pages."
+    "html_note": "Shared Supabase Edge Functions are used as backend/redirect only; the renderable frontend is GitHub Pages.",
+    "cors_status": "VERIFIED_PUBLIC_AGGREGATE_API"
   },
   "owned_primary": {
     "authority": "NODE 01",
@@ -31,6 +32,8 @@
     "repository": "bevanshelton-netizen/Downloads",
     "source_path": "one/super-app/index.html",
     "merged_commit": "795607395c790a3071ff900db7096a04f6f26847",
-    "status": "MERGED_AWAITING_PUBLIC_CDN_200"
+    "status": "VERIFIED_HTTPS_200",
+    "verified_http_status": 200,
+    "verified_at": "2026-09-27T21:29:18Z"
   }
 }
