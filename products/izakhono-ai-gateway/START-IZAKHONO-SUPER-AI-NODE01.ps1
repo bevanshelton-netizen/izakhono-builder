@@ -36,6 +36,20 @@ $externalRequested = (
   $env:IZAKHONO_AI_OWNER_ONLY -eq "false"
 )
 if ($externalRequested) {
+  if ([string]::IsNullOrWhiteSpace($env:IZAKHONO_AI_EXTERNAL_TEXT_API_KEY)) {
+    $secretFile = Join-Path $env:LOCALAPPDATA "Izakhono\Secrets\external-ai.key.dpapi"
+    if (Test-Path $secretFile) {
+      try {
+        $encrypted = Get-Content -Raw $secretFile
+        $secure = ConvertTo-SecureString $encrypted
+        $credential = New-Object System.Management.Automation.PSCredential("external-ai", $secure)
+        $env:IZAKHONO_AI_EXTERNAL_TEXT_API_KEY = $credential.GetNetworkCredential().Password
+      } catch {
+        Fail "The local DPAPI external-AI secret could not be decrypted for this Windows user"
+      }
+    }
+  }
+
   foreach ($required in @(
     "IZAKHONO_AI_EXTERNAL_TEXT_URL",
     "IZAKHONO_AI_EXTERNAL_TEXT_API_KEY",
