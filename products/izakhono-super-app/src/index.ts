@@ -8,6 +8,7 @@ const modules = [
   { id:"ads", name:"IZAKHONO ADS", route:"/ads", status:"available", engine:"independent" },
   { id:"crm", name:"IZAKHONO CRM", route:"/crm", status:"architecture-ready", engine:"independent" },
   { id:"flow", name:"IZAKHONO FLOW", route:"/flow", status:"integrated", engine:"independent" },
+  { id:"finance-core", name:"IZAKHONO FINANCE CORE", route:"/finance-core", status:"integrated", engine:"independent" },
   { id:"accountant", name:"SUPER ACCOUNTANT", route:"/accounting", status:"architecture-ready", engine:"independent" },
   { id:"fortress", name:"FORTRESS", route:"/fortress", status:"available", engine:"independent" },
   { id:"flowiq", name:"FLOWIQ", route:"/flowiq", status:"architecture-ready", engine:"independent" },
@@ -25,6 +26,23 @@ const flow = {
   workflow:["lead","qualify","quote","pay","fulfil","invoice","support","retain","report"],
   verified_payment_only:true,
   entity_platform_isolation:true,
+  behavioural_profiling:false,
+  advertising_ids:false
+};
+
+const financeCore = {
+  module_id:"finance-core",
+  embedded:true,
+  route:"/finance-core",
+  engine:"independent",
+  source_of_truth:"products/izakhono-finance-core",
+  owned_target:"NODE01",
+  public_status:"gated-until-independently-verified",
+  regulated_activity_gated:true,
+  software_vendor_only_by_default:true,
+  money_movement:false,
+  deposit_taking:false,
+  final_automated_credit_decisions:false,
   behavioural_profiling:false,
   advertising_ids:false
 };
@@ -54,7 +72,7 @@ export default {
   async fetch(req: Request, env: Env): Promise<Response> {
     const url=new URL(req.url);
     if(url.pathname==="/api/health"){
-      return json({ok:true,service:"IZAKHONO SUPER APP",version:"1.1.0",env:env.APP_ENV||"production",owned_first:true});
+      return json({ok:true,service:"IZAKHONO SUPER APP",version:"1.2.0",env:env.APP_ENV||"production",owned_first:true});
     }
     if(url.pathname==="/api/modules"){
       return json({ok:true,modules});
@@ -64,6 +82,9 @@ export default {
     }
     if(url.pathname==="/api/flow/status"){
       return json({ok:true,flow});
+    }
+    if(url.pathname==="/api/finance-core/status"){
+      return json({ok:true,finance_core:financeCore});
     }
     if(url.pathname.startsWith("/api/")) return json({ok:false,error:"Not found"},404);
     return env.ASSETS.fetch(req);
