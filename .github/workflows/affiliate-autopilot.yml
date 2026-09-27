@@ -1,0 +1,69 @@
+name: IZAKHONO Affiliate Autopilot
+
+on:
+  schedule:
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  affiliate-autopilot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Validate Affiliate Engine
+        run: npm run validate:affiliate
+
+      - name: Run Affiliate Ops
+        run: node scripts/affiliate-ops.mjs
+
+      - name: Upload ops report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: affiliate-ops-report
+          path: affiliate-ops-report.json
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Raise, update, or close exception issue
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          if [ ! -f affiliate-ops-report.json ]; then
+            echo '{"issue_count":1,"status":"ATTENTION","issues":["affiliate-ops-report.json missing"]}' > affiliate-ops-report.json
+          fi
+
+          COUNT=$(node -e "const r=require('./affiliate-ops-report.json'); console.log(r.issue_count||0)")
+          STATUS=$(node -e "const r=require('./affiliate-ops-report.json'); console.log(r.status||'ATTENTION')")
+          TITLE="Affiliate Autopilot Alert"
+          EXISTING=$(gh issue list --state open --search "$TITLE in:title" --json number --jq '.[0].number // empty')
+          BODY=$(node -e "const r=require('./affiliate-ops-report.json'); console.log(['Status: '+r.status,'Generated: '+r.generated_at,'',...(r.issues||[]).map(x=>'- '+x),'','See the latest Affiliate Autopilot workflow artifact for full health details.'].join('\n'))")
+
+          if [ "$COUNT" -gt 0 ]; then
+            if [ -n "$EXISTING" ]; then
+              gh issue comment "$EXISTING" --body "$BODY"
+            else
+              gh issue create --title "$TITLE" --body "$BODY" --label "autopilot" || gh issue create --title "$TITLE" --body "$BODY"
+            fi
+          elif [ -n "$EXISTING" ]; then
+            gh issue comment "$EXISTING" --body "Recovered automatically. Latest status: $STATUS."
+            gh issue close "$EXISTING" --reason completed
+          fi
