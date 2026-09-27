@@ -54,6 +54,21 @@ function scrub(v,depth=0){
   if(typeof v==="number"||typeof v==="boolean"||v===null)return v;
   return clean(v,500);
 }
+function scrubAdvisory(v,depth=0){
+  if(depth>4)return null;
+  if(Array.isArray(v))return v.slice(0,30).map(x=>scrubAdvisory(x,depth+1));
+  if(v&&typeof v==="object"){
+    const out={};
+    for(const [k,val] of Object.entries(v).slice(0,80)){
+      if(/password|secret|token|credential|card|cvv|fraud|raw_prompt|contact|email|phone|mobile|name|address|identity|id_number|passport|bank|account/i.test(k))continue;
+      out[clean(k,80)]=scrubAdvisory(val,depth+1);
+    }
+    return out;
+  }
+  if(typeof v==="string")return clean(v,1200);
+  if(typeof v==="number"||typeof v==="boolean"||v===null)return v;
+  return clean(v,300);
+}
 function send(res,status,body){
   const data=JSON.stringify(body);
   res.writeHead(status,{"content-type":"application/json; charset=utf-8","content-length":Buffer.byteLength(data),"cache-control":"no-store","x-content-type-options":"nosniff","referrer-policy":"no-referrer"});
@@ -131,14 +146,13 @@ function adapterRequest(row,cfg,endpoint){
     headers["x-izakhono-ai-workflow-key"]=workflowKey;
     const advisoryContext={
       platform_id:row.platform_id,
-      subject_ref:clean(row.payload?.subject_ref,200),
       run_stage:clean(row.payload?.run_stage,80),
       event_type:clean(row.payload?.event_type,120),
-      metadata:scrub(row.payload?.metadata||{})
+      metadata:scrubAdvisory(row.payload?.metadata||{})
     };
     const requestBody={
       entity_id:row.entity_id,
-      subject:`flow:${row.platform_id}:${advisoryContext.subject_ref||row.run_id}`,
+      subject:`flow:${row.platform_id}:${row.run_id}`,
       product:clean(cfg.product||"izakhono-flow",120),
       access_mode:"workflow",
       capability:clean(cfg.capability||"reasoning",40),
