@@ -55,3 +55,7 @@ jobs:
           grep -Fq 'ConvertTo-SecureString' products/izakhono-ai-gateway/START-IZAKHONO-SUPER-AI-NODE01.ps1
           grep -Fq 'ACTIVATE-NVIDIA-NIM-DEV.cmd' products/izakhono-ai-gateway/README.md
           grep -Fq 'data_classification' products/izakhono-ai-gateway/app.py
+          grep -Fq 'IZAKHONO_AI_OWNER_TEXT_URLS' products/izakhono-ai-gateway/app.py
+          grep -Fq 'owner_runtime_allowed' products/izakhono-ai-gateway/app.py
+          grep -Fq '/api/v1/runtimes' products/izakhono-ai-gateway/app.py
+          grep -Fq 'OWNER-MODEL-POOL.env.example' products/izakhono-ai-gateway/README.md
