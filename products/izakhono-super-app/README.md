@@ -8,6 +8,7 @@ IZAKHONO Affiliate is a first-class module at `/affiliate`. It is embedded into 
 
 The SUPER APP surfaces:
 
+- IZAKHONO BUILDER AI for one-sentence app, website, game and software creation;
 - publisher affiliate income;
 - the IZAKHONO partner/affiliate network;
 - external affiliate-network adapter status;
