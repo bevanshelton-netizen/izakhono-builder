@@ -42,6 +42,7 @@ const MODULES = {
   media_handoff: { label: 'Media Handoff', detail: 'Server-side rights-gated handoff between IZAKHONO media platforms.' },
   clearset: { label: 'CLEARSET', detail: 'Obligation classification, reserves, settlement and available-cash calculation.' },
   growth: { label: 'CEO Growth Engine', detail: 'Acquisition, activation, retention, referral, revenue and partnership growth contract.' },
+  affiliate: { label: 'IZAKHONO AFFILIATE', detail: 'Owned-first affiliate, referral, attribution, partner commission and external-network adapter engine.' },
   docflow: { label: 'IZAKHONO DOCFLOW', detail: 'Human-approved AI document drafting, approvals, signatures, sending, reminders and audit trails.' },
 } as const;
 type ModuleKey = keyof typeof MODULES;
@@ -118,6 +119,7 @@ function buildRecipe(project: any, modules: ModuleKey[]) {
   if (modules.includes('media_handoff')) architecture.push('server-to-server media handoff with identity linking, rights gates and moderation');
   if (modules.includes('clearset')) architecture.push('gross-to-available obligation engine with tax/reserve classification and settlement ledger');
   if (modules.includes('growth')) architecture.push('CEO growth contract: acquisition + activation + retention + referral + revenue + partnerships; CREATE -> ADS distribution governance');
+  if (modules.includes('affiliate')) architecture.push('IZAKHONO AFFILIATE: owned-first offer catalogue + SubID attribution + partner commission ledger + replaceable external network adapters + FORTRESS/accounting gates');
   if (modules.includes('docflow')) architecture.push('IZAKHONO DOCFLOW: SUPER AI drafting adapter + FLOWIQ approval workflow + signatures/send adapters + immutable audit trail');
 
   return {
