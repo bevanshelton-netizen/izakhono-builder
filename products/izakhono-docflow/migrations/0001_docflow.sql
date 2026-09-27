@@ -13,6 +13,8 @@ CREATE TABLE IF NOT EXISTS docflow_templates (
 
 CREATE TABLE IF NOT EXISTS docflow_drafts (
   id TEXT PRIMARY KEY,
+  workspace_id TEXT NOT NULL,
+  legal_entity TEXT NOT NULL,
   document_type TEXT NOT NULL,
   title TEXT NOT NULL,
   instructions TEXT NOT NULL DEFAULT '',
@@ -52,6 +54,7 @@ CREATE TABLE IF NOT EXISTS docflow_audit_events (
   FOREIGN KEY (draft_id) REFERENCES docflow_drafts(id) ON DELETE CASCADE
 );
 
+CREATE INDEX IF NOT EXISTS idx_docflow_drafts_workspace ON docflow_drafts(workspace_id, updated_at);
 CREATE INDEX IF NOT EXISTS idx_docflow_drafts_status ON docflow_drafts(status, updated_at);
 CREATE INDEX IF NOT EXISTS idx_docflow_audit_draft ON docflow_audit_events(draft_id, created_at);
 
