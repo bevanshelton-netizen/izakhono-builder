@@ -24,6 +24,24 @@ jobs:
         run: python3 -m py_compile products/izakhono-ai-gateway/app.py products/izakhono-ai-gateway/test_gateway.py
       - name: Gateway tests
         run: python3 products/izakhono-ai-gateway/test_gateway.py
+
+      - name: Windows activation script syntax
+        shell: pwsh
+        run: |
+          $files = Get-ChildItem products/izakhono-ai-gateway -Filter *.ps1
+          foreach ($file in $files) {
+            $tokens = $null
+            $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile(
+              $file.FullName,
+              [ref]$tokens,
+              [ref]$errors
+            ) | Out-Null
+            if ($errors.Count -gt 0) {
+              $errors | ForEach-Object { Write-Error $_.Message }
+              exit 1
+            }
+          }
       - name: Subscriber policy
         run: |
           set -euo pipefail
@@ -35,3 +53,5 @@ jobs:
           ! grep -R --line-number -E 'nvapi-[A-Za-z0-9_-]+' products/izakhono-ai-gateway
           grep -Fq 'ConvertFrom-SecureString' products/izakhono-ai-gateway/SET-EXTERNAL-AI-SECRET.ps1
           grep -Fq 'ConvertTo-SecureString' products/izakhono-ai-gateway/START-IZAKHONO-SUPER-AI-NODE01.ps1
+          grep -Fq 'ACTIVATE-NVIDIA-NIM-DEV.ps1' products/izakhono-ai-gateway/README.md
+          grep -Fq 'data_classification' products/izakhono-ai-gateway/app.py
