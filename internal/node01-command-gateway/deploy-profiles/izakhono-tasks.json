@@ -1,0 +1,12 @@
+{
+  "source": "izakhono-code",
+  "repository": "izakhono-builder",
+  "app": "izakhono-tasks",
+  "environment": "production",
+  "mode": "single",
+  "container_port": 9991,
+  "health_path": "/healthz",
+  "data_path": "/app/data",
+  "dockerfile": "products/izakhono-tasks/Dockerfile.node",
+  "env_file": "/etc/izakhono/apps/izakhono-tasks.env"
+}
