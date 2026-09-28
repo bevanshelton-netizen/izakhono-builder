@@ -117,3 +117,20 @@ Do not call the service public-production-ready until:
 - IZAKHONO OBSERVE monitors scheduler health and missed runs;
 - an owner runner is connected and validated;
 - backup/restore is proven.
+
+
+## NODE01 production package
+
+IZAKHONO TASKS now has an owned production package for the shared portfolio runtime:
+
+**IZAKHONO CODE → IZAKHONO CONTROL → IZAKHONO NODE01 → TASKS**
+
+Use `owner-node/START-IZAKHONO-TASKS-FLOWIQ.cmd` on the owner Windows host. The launcher keeps the owner and FLOW credentials in the machine-local environment, deploys TASKS by immutable commit, then binds the verified TASKS FLOW API into FLOWIQ.
+
+Because NODE01 single-service products share the owner-controlled `izakhono-internal` Docker network, FLOWIQ reaches TASKS privately at `http://izakhono-tasks:9991`. No public DNS is required.
+
+The launcher then redeploys FLOWIQ through CONTROL; FLOWIQ in turn binds DOCFLOW through its existing controlled deployment path. The resulting internal chain is:
+
+**DOCFLOW → FLOWIQ → TASKS**
+
+A document approval can therefore schedule a follow-up without exposing TASKS publicly and without copying the document body into the scheduler.
