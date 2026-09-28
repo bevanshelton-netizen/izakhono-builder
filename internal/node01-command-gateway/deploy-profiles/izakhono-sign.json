@@ -1,0 +1,12 @@
+{
+  "source": "izakhono-code",
+  "repository": "izakhono-builder",
+  "app": "izakhono-sign",
+  "environment": "production",
+  "mode": "single",
+  "container_port": 9898,
+  "health_path": "/readyz",
+  "data_path": "/app/data",
+  "dockerfile": "products/izakhono-sign/Dockerfile.node",
+  "env_file": "/etc/izakhono/apps/izakhono-sign.env"
+}
