@@ -5,7 +5,8 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 APP_DIR="/opt/izakhono-media-fabric"
 VENV="$APP_DIR/.venv"
 ENV_DIR="/etc/izakhono/apps"
-FABRIC_ENV="$ENV_DIR/izakhono-media-fabric.env"
+BROKER_ENV="$ENV_DIR/izakhono-media-fabric.env"
+FABRIC_ENV="$ENV_DIR/izakhono-media-worker-fabric.env"
 WORKER_ENV="$ENV_DIR/izakhono-media-worker.env"
 SPEECH_ENV="$ENV_DIR/izakhono-speech-runtime.env"
 VIDEO_ENV="$ENV_DIR/izakhono-video-runtime.env"
@@ -31,9 +32,21 @@ EOF
   chmod 600 "$WORKER_ENV"
 fi
 
+if [ ! -f "$FABRIC_ENV" ] && [ -f "$BROKER_ENV" ]; then
+  FABRIC_URL="$(sed -n 's/^IZAKHONO_MEDIA_FABRIC_URL=//p' "$BROKER_ENV" | tail -1)"
+  FABRIC_KEY="$(sed -n 's/^IZAKHONO_MEDIA_FABRIC_INTERNAL_KEY=//p' "$BROKER_ENV" | tail -1)"
+  if [ -n "$FABRIC_URL" ] && [ -n "$FABRIC_KEY" ]; then
+    cat > "$FABRIC_ENV" <<EOF
+IZAKHONO_MEDIA_FABRIC_URL=$FABRIC_URL
+IZAKHONO_MEDIA_FABRIC_INTERNAL_KEY=$FABRIC_KEY
+EOF
+    chmod 600 "$FABRIC_ENV"
+  fi
+fi
+
 if [ ! -f "$FABRIC_ENV" ]; then
   echo "[STOP] $FABRIC_ENV is missing."
-  echo "For a remote worker, create a root-only env file containing IZAKHONO_MEDIA_FABRIC_URL and IZAKHONO_MEDIA_FABRIC_INTERNAL_KEY."
+  echo "For a remote worker, create a root-only env file containing only IZAKHONO_MEDIA_FABRIC_URL and IZAKHONO_MEDIA_FABRIC_INTERNAL_KEY."
   exit 2
 fi
 
