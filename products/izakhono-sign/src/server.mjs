@@ -115,6 +115,14 @@ async function dispatchMail(row){
     metadata:{workspace_id:row.workspace_id,legal_entity:row.legal_entity,draft_id:row.draft_id,envelope_id:row.id}
   })});
   if(!r.ok)throw new Error('mail_http_'+r.status);
+  let mail={};
+  try{mail=await r.json()}catch{}
+  if(mail?.delivery_claim!=='outbound_accepted'){
+    const pending=clean(mail?.outbound_state||mail?.delivery_claim||'awaiting_smtp',80);
+    db.prepare("UPDATE sign_envelopes SET status='link_ready',mail_status=?,updated_at=CURRENT_TIMESTAMP WHERE id=?").run(pending,row.id);
+    audit(row.id,'mail.awaiting_transport','izakhono-sign',{state:pending});
+    return {claim:clean(mail?.delivery_claim||'awaiting_smtp',120),state:'awaiting_mail'};
+  }
   db.prepare("UPDATE sign_envelopes SET status='dispatched',mail_status='outbound_accepted',dispatched_at=CURRENT_TIMESTAMP,updated_at=CURRENT_TIMESTAMP WHERE id=?").run(row.id);
   audit(row.id,'mail.outbound_accepted','izakhono-sign',{recipient_email_hash:sha(row.recipient_email)});
   await updateDocflowStatus(row.draft_id,'outbound_accepted',{envelope_id:row.id});
