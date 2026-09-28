@@ -190,23 +190,6 @@ def submit_job(payload: dict[str, Any]) -> dict[str, Any]:
 
     with DB_LOCK, connect() as con:
         con.execute("BEGIN IMMEDIATE")
-        if request_key:
-            existing = con.execute(
-                """
-                SELECT id, status, token_hash FROM jobs
-                WHERE request_key=? AND status IN ('queued','running','complete')
-                ORDER BY created_at DESC LIMIT 1
-                """,
-                (request_key,),
-            ).fetchone()
-            if existing:
-                con.execute("ROLLBACK")
-                return {
-                    "id": existing["id"],
-                    "status": existing["status"],
-                    "deduplicated": True,
-                    "job_token": None,
-                }
         con.execute(
             """
             INSERT INTO jobs(
@@ -285,13 +268,17 @@ def heartbeat_worker(worker_id: str, payload: dict[str, Any]) -> dict[str, Any]:
     now = now_ts()
     with DB_LOCK, connect() as con:
         row = worker_row(con, worker_id)
+        requeue_expired(con)
         gpu = payload.get("gpu") if isinstance(payload.get("gpu"), dict) else json.loads(row["gpu_json"])
-        active = max(0, min(int(row["max_jobs"]), int(payload.get("active_jobs") or 0)))
+        active = int(con.execute(
+            "SELECT COUNT(*) AS n FROM jobs WHERE status='running' AND lease_owner=? AND lease_until>=?",
+            (worker_id, now),
+        ).fetchone()["n"])
         con.execute(
             "UPDATE workers SET gpu_json=?,active_jobs=?,last_seen=? WHERE id=?",
             (json.dumps(gpu), active, now, worker_id),
         )
-    return {"worker_id": worker_id, "last_seen": now}
+    return {"worker_id": worker_id, "last_seen": now, "active_jobs": active}
 
 
 def requeue_expired(con: sqlite3.Connection) -> int:
@@ -302,6 +289,7 @@ def requeue_expired(con: sqlite3.Connection) -> int:
     ).fetchall()
     count = 0
     for row in rows:
+        owner = con.execute("SELECT lease_owner FROM jobs WHERE id=?", (row["id"],)).fetchone()["lease_owner"]
         if int(row["attempts"]) >= int(row["max_attempts"]):
             con.execute(
                 "UPDATE jobs SET status='failed',lease_owner=NULL,lease_until=NULL,updated_at=?,last_error=? WHERE id=?",
@@ -315,6 +303,11 @@ def requeue_expired(con: sqlite3.Connection) -> int:
                 (now, now + backoff, "lease_expired", row["id"]),
             )
             add_event(con, row["id"], "requeued", "lease_expired")
+        if owner:
+            con.execute(
+                "UPDATE workers SET active_jobs=CASE WHEN active_jobs>0 THEN active_jobs-1 ELSE 0 END WHERE id=?",
+                (owner,),
+            )
         count += 1
     return count
 
@@ -607,7 +600,7 @@ def health() -> dict[str, Any]:
         "encrypted_payloads_at_rest": cipher_ok,
         "artifact_root_ready": ARTIFACT_ROOT.exists(),
         "replicated_storage": REPLICATED_STORAGE,
-        "production_ready": bool(db_ok and key_ok and cipher_ok and REPLICATED_STORAGE),
+        "production_ready": bool(db_ok and key_ok and cipher_ok and REPLICATED_STORAGE and workers > 0),
         "tracking": False,
         "raw_prompt_logging": False,
     }
