@@ -115,6 +115,14 @@ async function dispatchMail(row){
     metadata:{workspace_id:row.workspace_id,legal_entity:row.legal_entity,draft_id:row.draft_id,envelope_id:row.id}
   })});
   if(!r.ok)throw new Error('mail_http_'+r.status);
+  let mail={};
+  try{mail=await r.json()}catch{}
+  if(mail?.delivery_claim!=='outbound_accepted'){
+    const pending=clean(mail?.outbound_state||mail?.delivery_claim||'awaiting_smtp',80);
+    db.prepare("UPDATE sign_envelopes SET status='link_ready',mail_status=?,updated_at=CURRENT_TIMESTAMP WHERE id=?").run(pending,row.id);
+    audit(row.id,'mail.awaiting_transport','izakhono-sign',{state:pending});
+    return {claim:clean(mail?.delivery_claim||'awaiting_smtp',120),state:'awaiting_mail'};
+  }
   db.prepare("UPDATE sign_envelopes SET status='dispatched',mail_status='outbound_accepted',dispatched_at=CURRENT_TIMESTAMP,updated_at=CURRENT_TIMESTAMP WHERE id=?").run(row.id);
   audit(row.id,'mail.outbound_accepted','izakhono-sign',{recipient_email_hash:sha(row.recipient_email)});
   await updateDocflowStatus(row.draft_id,'outbound_accepted',{envelope_id:row.id});
@@ -167,7 +175,8 @@ function signingPage(row,doc,message=''){
 const server=http.createServer(async(req,res)=>{
   try{
     const url=new URL(req.url||'/','http://'+(req.headers.host||'localhost'));
-    if(url.pathname==='/healthz'&&req.method==='GET')return json(res,200,{ok:true,service:'IZAKHONO SIGN',version:'1.0.0'});
+    if(url.pathname==='/'&&req.method==='GET')return html(res,200,`<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>IZAKHONO SIGN</title><style>body{margin:0;font-family:Inter,system-ui,sans-serif;background:#071018;color:#edf9ff}.wrap{max-width:760px;margin:10vh auto;padding:28px}.brand{font-size:clamp(44px,9vw,86px);font-weight:950;letter-spacing:-.05em}.accent{color:#67dcff}.card{margin-top:24px;padding:22px;border:1px solid #294252;border-radius:20px;background:#0d1821}.muted{color:#a8bfcc;line-height:1.6}</style></head><body><main class="wrap"><div class="brand">IZAKHONO <span class="accent">SIGN</span></div><div class="card"><h1>Secure document review & signing</h1><p class="muted">Open the secure link in your invitation to review the exact approved document and, when requested, record your electronic acceptance.</p><p class="muted">Document links are individually protected and expire. IZAKHONO SIGN does not display private documents from this landing page.</p></div></main></body></html>`);
+    if(url.pathname==='/healthz'&&req.method==='GET')return json(res,200,{ok:true,service:'IZAKHONO SIGN',version:'1.0.1'});
     if(url.pathname==='/readyz'&&req.method==='GET'){
       let database=false;try{database=db.prepare('SELECT 1 AS ok').get()?.ok===1}catch{}
       const ready=database&&Boolean(apiToken)&&Boolean(linkSecret)&&Boolean(docflowUrl)&&Boolean(docflowServiceToken);

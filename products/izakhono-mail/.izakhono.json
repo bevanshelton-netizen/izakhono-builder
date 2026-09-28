@@ -1,0 +1,27 @@
+{
+  "version": 3,
+  "name": "IZAKHONO MAIL",
+  "slug": "izakhono-mail",
+  "operator": "IZAKHONO AFRICA (PTY) LTD",
+  "trading_name": "IZAKHONO MAIL",
+  "build_context": ".",
+  "dockerfile_path": "products/izakhono-mail/Dockerfile.node",
+  "container_port": 9899,
+  "health_path": "/readyz",
+  "branch": "main",
+  "infrastructure": {
+    "policy": "owned-first-externally-reversible",
+    "authoritative_source": "IZAKHONO CODE / Forge",
+    "owned_target": "NODE01 / IZAKHONO Runtime / MAIL engine",
+    "current_public_route": "INTERNAL_ONLY",
+    "external_fallback": "SMTP_UPSTREAM_IS_REPLACEABLE",
+    "status_label": "INTERNAL OUTBOUND RELAY",
+    "data_dependencies": ["MAIL SQLite outbox ledger"],
+    "auth_dependencies": ["MAIL_API_TOKEN", "SMTP credential when configured"],
+    "payment_dependencies": [],
+    "backup_evidence": "PENDING_NODE01",
+    "restore_evidence": "PENDING_NODE01",
+    "rollback_evidence": "NODE01_DEPLOYER"
+  },
+  "alpha": {"preflight": true, "rehearsal": false, "windows_package": false}
+}

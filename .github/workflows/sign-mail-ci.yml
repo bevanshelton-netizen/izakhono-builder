@@ -1,0 +1,140 @@
+name: IZAKHONO SIGN MAIL CI
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'products/izakhono-sign/**'
+      - 'products/izakhono-mail/**'
+      - 'products/izakhono-docflow/**'
+      - 'fixtures/izakhono-smtp-stub.mjs'
+      - '.github/workflows/sign-mail-ci.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'products/izakhono-sign/**'
+      - 'products/izakhono-mail/**'
+      - 'products/izakhono-docflow/**'
+      - '.github/workflows/sign-mail-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  sign-mail:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Validate scripts
+        shell: bash
+        run: |
+          node --check products/izakhono-sign/src/server.mjs
+          node --check products/izakhono-mail/src/server.mjs
+          bash -n products/izakhono-sign/owner-node/set-public-base.sh
+          pwsh -NoProfile -Command '$e=$null; [System.Management.Automation.Language.Parser]::ParseFile("products/izakhono-sign/public-cutover/STAGE-SIGN-EDGE.ps1",[ref]$null,[ref]$e)|Out-Null; if($e.Count){$e|ForEach-Object Message;exit 1}'
+          pwsh -NoProfile -Command '$e=$null; [System.Management.Automation.Language.Parser]::ParseFile("products/izakhono-sign/public-cutover/ACTIVATE-SIGN-EDGE.ps1",[ref]$null,[ref]$e)|Out-Null; if($e.Count){$e|ForEach-Object Message;exit 1}'
+          pwsh -NoProfile -Command '$e=$null; [System.Management.Automation.Language.Parser]::ParseFile("products/izakhono-sign/public-cutover/VERIFY-SIGN-PUBLIC.ps1",[ref]$null,[ref]$e)|Out-Null; if($e.Count){$e|ForEach-Object Message;exit 1}'
+
+      - name: Build DOCFLOW SIGN MAIL
+        shell: bash
+        run: |
+          docker build -f products/izakhono-docflow/Dockerfile.node -t docflow-sign-ci:ci .
+          docker build -f products/izakhono-sign/Dockerfile.node -t sign-mail-ci:ci .
+          docker build -f products/izakhono-mail/Dockerfile.node -t mail-sign-ci:ci .
+
+      - name: Start private stack
+        shell: bash
+        run: |
+          docker network create sign-mail-ci-net >/dev/null
+          docker run -d --name smtp-stub --network sign-mail-ci-net --network-alias smtp-stub \
+            -v "$PWD/fixtures/izakhono-smtp-stub.mjs:/stub.mjs:ro" node:22-bookworm-slim node /stub.mjs
+          docker run -d --name mail-ci --network sign-mail-ci-net --network-alias izakhono-mail \
+            -e MAIL_API_TOKEN=ci-mail-api \
+            -e MAIL_SMTP_HOST=smtp-stub -e MAIL_SMTP_PORT=2525 -e MAIL_SMTP_STARTTLS=false \
+            -e MAIL_SMTP_USER=ci-user -e MAIL_SMTP_PASSWORD=ci-pass \
+            -e MAIL_FROM_EMAIL=noreply@example.test -e MAIL_FROM_NAME='IZAKHONO SIGN' \
+            mail-sign-ci:ci
+          docker run -d --name docflow-ci --network sign-mail-ci-net --network-alias izakhono-docflow \
+            -e DOCFLOW_ADMIN_SECRET=ci-docflow-owner -e DOCFLOW_SERVICE_TOKEN=ci-docflow-service \
+            docflow-sign-ci:ci
+          docker run -d --name sign-ci --network sign-mail-ci-net --network-alias izakhono-sign \
+            -e SIGN_API_TOKEN=ci-sign-api -e SIGN_LINK_SECRET=ci-sign-link-secret-at-least-32-bytes \
+            -e SIGN_PUBLIC_BASE_URL=https://sign.example.test \
+            -e DOCFLOW_URL=http://izakhono-docflow:8787 -e DOCFLOW_SERVICE_TOKEN=ci-docflow-service \
+            -e SIGN_MAIL_URL=http://izakhono-mail:9899 -e SIGN_MAIL_TOKEN=ci-mail-api \
+            -p 127.0.0.1:19898:9898 sign-mail-ci:ci
+          for url in 'http://127.0.0.1:19898/readyz'; do
+            for _ in $(seq 1 40); do curl -fsS "$url" >/dev/null && break || sleep 1; done
+            curl -fsS "$url"
+          done
+
+      - name: Create approved DOCFLOW NDA
+        shell: bash
+        run: |
+          docker run --rm --network sign-mail-ci-net curlimages/curl:8.12.1 -fsS -X POST \
+            http://izakhono-docflow:8787/api/drafts \
+            -H 'content-type: application/json' -H 'x-docflow-secret: ci-docflow-owner' \
+            --data '{"document_type":"nda","workspace_id":"ci","legal_entity":"IZAKHONO AFRICA (PTY) LTD","party_a":"IZAKHONO AFRICA (PTY) LTD","party_b":"Example Bank","recipient_name":"Example Signer","recipient_email":"signer@example.test","signature_required":true,"jurisdiction":"South Africa","instructions":"CI e-signature validation."}' >/tmp/draft.json
+          DRAFT_ID="$(python -c "import json; print(json.load(open('/tmp/draft.json'))['draft']['id'])")"; echo "$DRAFT_ID" >/tmp/draft-id
+          docker run --rm --network sign-mail-ci-net curlimages/curl:8.12.1 -fsS -X POST \
+            "http://izakhono-docflow:8787/api/drafts/$DRAFT_ID/approve" \
+            -H 'content-type: application/json' -H 'x-docflow-secret: ci-docflow-owner' \
+            --data '{"approver":"CI","confirm":true}' >/tmp/approved.json
+
+      - name: Dispatch invitation through SIGN and MAIL
+        shell: bash
+        run: |
+          DRAFT_ID="$(cat /tmp/draft-id)"
+          curl -fsS -X POST http://127.0.0.1:19898/v1/actions \
+            -H 'content-type: application/json' -H 'authorization: Bearer ci-sign-api' \
+            --data "{\"action_id\":\"act-ci-sign\",\"event_id\":\"evt-ci-sign\",\"action_type\":\"document_delivery\",\"payload\":{\"draft_id\":\"$DRAFT_ID\"}}" >/tmp/sign-action.json
+          curl -fsS http://127.0.0.1:19898/v1/envelopes -H 'authorization: Bearer ci-sign-api' >/tmp/envelopes.json
+          docker run --rm --network sign-mail-ci-net curlimages/curl:8.12.1 -fsS \
+            http://izakhono-mail:9899/v1/outbox -H 'authorization: Bearer ci-mail-api' >/tmp/outbox.json
+          python - <<'PY'
+          import json
+          a=json.load(open('/tmp/sign-action.json'))
+          assert a['delivery_claim']=='outbound_accepted'
+          assert a['flowiq_state']=='completed'
+          env=json.load(open('/tmp/envelopes.json'))['envelopes'][0]
+          assert env['status']=='dispatched'
+          assert env['mail_status']=='outbound_accepted'
+          assert env['public_link'].startswith('https://sign.example.test/sign/')
+          out=json.load(open('/tmp/outbox.json'))['outbox']
+          assert len(out)==1 and out[0]['state']=='outbound_accepted'
+          print('[PASS] SIGN created the secure link and MAIL completed one SMTP transaction.')
+          PY
+
+      - name: Complete electronic signature and verify DOCFLOW callback
+        shell: bash
+        run: |
+          LINK="$(python -c "import json; print(json.load(open('/tmp/envelopes.json'))['envelopes'][0]['public_link'])")"
+          TOKEN="${LINK##*/}"
+          curl -fsS "http://127.0.0.1:19898/sign/$TOKEN" >/tmp/sign-page.html
+          grep -q 'CI e-signature validation' /tmp/sign-page.html
+          curl -fsS -X POST "http://127.0.0.1:19898/sign/$TOKEN/complete" \
+            -H 'content-type: application/x-www-form-urlencoded' \
+            --data 'signer_name=Example+Signer&confirm=true' >/tmp/signed.html
+          grep -q 'Signature recorded successfully' /tmp/signed.html
+
+          DRAFT_ID="$(cat /tmp/draft-id)"
+          docker run --rm --network sign-mail-ci-net curlimages/curl:8.12.1 -fsS \
+            "http://izakhono-docflow:8787/api/drafts/$DRAFT_ID" -H 'x-docflow-secret: ci-docflow-owner' >/tmp/final-draft.json
+          python - <<'PY'
+          import json
+          d=json.load(open('/tmp/final-draft.json'))['draft']
+          assert d['send_status']=='signed'
+          assert d['status']=='sent'
+          print('[PASS] SIGN recorded electronic acceptance and DOCFLOW received the signed callback.')
+          PY
+
+      - name: Cleanup
+        if: always()
+        shell: bash
+        run: |
+          docker rm -f sign-ci docflow-ci mail-ci smtp-stub >/dev/null 2>&1 || true
+          docker network rm sign-mail-ci-net >/dev/null 2>&1 || true

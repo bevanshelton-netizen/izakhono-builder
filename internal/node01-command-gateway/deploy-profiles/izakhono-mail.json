@@ -1,0 +1,12 @@
+{
+  "source":"izakhono-code",
+  "repository":"izakhono-builder",
+  "app":"izakhono-mail",
+  "environment":"production",
+  "mode":"single",
+  "container_port":9899,
+  "health_path":"/readyz",
+  "data_path":"/app/data",
+  "dockerfile":"products/izakhono-mail/Dockerfile.node",
+  "env_file":"/etc/izakhono/apps/izakhono-mail.env"
+}
