@@ -15,6 +15,12 @@ os.environ["IZAKHONO_ACCESS_URL"] = "http://127.0.0.1:19494"
 os.environ["IZAKHONO_OLLAMA_URL"] = "http://127.0.0.1:19134"
 os.environ["IZAKHONO_AI_OWNER_TEXT_URLS"] = "http://127.0.0.1:19135,http://127.0.0.1:19134"
 os.environ["IZAKHONO_AI_OWNER_POOL_COOLDOWN_SECONDS"] = "60"
+os.environ["IZAKHONO_AI_ROUTING_UNKNOWN_LATENCY_MS"] = "3000"
+os.environ["IZAKHONO_AI_ROUTING_INFLIGHT_PENALTY_MS"] = "1500"
+os.environ["IZAKHONO_AI_ROUTING_WARM_BONUS_MS"] = "600"
+os.environ["IZAKHONO_AI_WARM_MODELS"] = "qwen3:4b"
+os.environ["IZAKHONO_AI_WARM_MAX_MODELS"] = "2"
+os.environ["IZAKHONO_AI_WARM_TTL_SECONDS"] = "900"
 os.environ["IZAKHONO_IMAGE_URL"] = "http://127.0.0.1:19222/generate"
 os.environ["IZAKHONO_AI_CHAT_MODEL"] = "qwen3:4b"
 os.environ["IZAKHONO_AI_CHAT_MODELS"] = "qwen3:4b,qwen3:8b"
@@ -44,6 +50,8 @@ class AccessMock(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
 class ModelMock(BaseHTTPRequestHandler):
+    requests = []
+
     def log_message(self, *args):
         pass
 
@@ -51,7 +59,11 @@ class ModelMock(BaseHTTPRequestHandler):
         n = int(self.headers.get("content-length", "0"))
         data = json.loads(self.rfile.read(n))
         assert data["model"] in ("qwen3:4b", "qwen3:8b")
-        body = json.dumps({"message": {"content": "mock-response"}}).encode()
+        ModelMock.requests.append({"path": self.path, "model": data["model"], "keep_alive": data.get("keep_alive")})
+        if self.path == "/api/generate":
+            body = json.dumps({"response": "", "done": True}).encode()
+        else:
+            body = json.dumps({"message": {"content": "mock-response"}}).encode()
         self.send_response(200)
         self.send_header("content-type", "application/json")
         self.send_header("content-length", str(len(body)))
@@ -132,12 +144,53 @@ assert pool["owner-text-1"]["available_for_attempt"] is False
 assert pool["owner-text-2"]["failures"] == 0
 assert pool["owner-text-2"]["last_ok"] is not None
 assert pool["owner-text-2"]["inflight"] == 0
+assert pool["owner-text-2"]["latency_ewma_ms"] is not None
+assert pool["owner-text-2"]["samples"] == 1
+assert "qwen3:8b" in pool["owner-text-2"]["warm_models"]
+assert any(x["model"] == "qwen3:8b" and x["samples"] == 1 for x in pool["owner-text-2"]["model_benchmarks"])
+assert chat_raw["_izakhono_owner_runtime_elapsed_ms"] >= 0
 
 with g.OWNER_POOL_LOCK:
     g.OWNER_POOL_STATE.clear()
     g.OWNER_POOL_STATE["http://127.0.0.1:19135"] = {"inflight": 3, "blocked_until": 0}
     g.OWNER_POOL_STATE["http://127.0.0.1:19134"] = {"inflight": 0, "blocked_until": 0}
-assert g.owner_pool_candidates()[0] == "http://127.0.0.1:19134"
+assert g.owner_pool_candidates("qwen3:4b")[0] == "http://127.0.0.1:19134"
+
+# Benchmark-aware routing prefers the lower predicted latency when load is equal.
+with g.OWNER_POOL_LOCK:
+    g.OWNER_POOL_STATE.clear()
+    g.OWNER_POOL_STATE["http://127.0.0.1:19135"] = {
+        "inflight": 0,
+        "blocked_until": 0,
+        "model_stats": {"qwen3:4b": {"latency_ewma_ms": 900, "samples": 3}},
+    }
+    g.OWNER_POOL_STATE["http://127.0.0.1:19134"] = {
+        "inflight": 0,
+        "blocked_until": 0,
+        "model_stats": {"qwen3:4b": {"latency_ewma_ms": 120, "samples": 3}},
+    }
+assert g.owner_pool_candidates("qwen3:4b")[0] == "http://127.0.0.1:19134"
+
+# Explicit warm management only targets sanitized owner runtime IDs and approved models.
+with g.OWNER_POOL_LOCK:
+    g.OWNER_POOL_STATE.clear()
+warm = g.warm_owner_pool(models=["qwen3:4b"], runtime_ids=["owner-text-2"])
+assert warm["attempted"] == 1
+assert warm["succeeded"] == 1
+assert warm["failed"] == 0
+assert ModelMock.requests[-1]["path"] == "/api/generate"
+assert ModelMock.requests[-1]["model"] == "qwen3:4b"
+assert ModelMock.requests[-1]["keep_alive"] == g.OWNER_WARM_KEEP_ALIVE
+warm_state = {x["runtime_id"]: x for x in g.owner_pool_summary()}
+assert "qwen3:4b" in warm_state["owner-text-2"]["warm_models"]
+assert g.warm_pool_summary()["active_runtime_model_pairs"] >= 1
+
+try:
+    g.warm_owner_pool(models=["not-allowed"], runtime_ids=["owner-text-2"])
+    raise AssertionError("warm pool accepted a disallowed model")
+except ValueError as exc:
+    assert str(exc) == "warm_model_not_allowed"
+
 with g.OWNER_POOL_LOCK:
     g.OWNER_POOL_STATE.clear()
 
@@ -229,7 +282,8 @@ except ValueError as exc:
 caps = {x["capability"]: x for x in g.capability_summary()}
 assert caps["chat"]["status"] == "ready"
 assert len(g.owner_pool_summary()) == 2
-assert g.ADMISSION.summary()["completed"] >= 3
+assert g.ADMISSION.summary()["completed"] >= 4
+assert g.warm_pool_summary()["configured_model_count"] == 1
 assert caps["image"]["status"] == "ready"
 assert caps["video"]["status"] == "needs_backend"
 
