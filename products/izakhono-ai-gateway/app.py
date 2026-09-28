@@ -35,6 +35,16 @@ GATEWAY_MAX_INFLIGHT = max(1, int(os.getenv("IZAKHONO_AI_MAX_INFLIGHT", "4")))
 GATEWAY_MAX_QUEUE = max(0, int(os.getenv("IZAKHONO_AI_MAX_QUEUE", "16")))
 GATEWAY_QUEUE_TIMEOUT_SECONDS = max(0.05, float(os.getenv("IZAKHONO_AI_QUEUE_TIMEOUT_SECONDS", "20")))
 
+OWNER_ROUTING_EWMA_ALPHA = min(1.0, max(0.05, float(os.getenv("IZAKHONO_AI_ROUTING_EWMA_ALPHA", "0.35"))))
+OWNER_ROUTING_UNKNOWN_LATENCY_MS = max(1.0, float(os.getenv("IZAKHONO_AI_ROUTING_UNKNOWN_LATENCY_MS", "3000")))
+OWNER_ROUTING_INFLIGHT_PENALTY_MS = max(0.0, float(os.getenv("IZAKHONO_AI_ROUTING_INFLIGHT_PENALTY_MS", "1500")))
+OWNER_ROUTING_WARM_BONUS_MS = max(0.0, float(os.getenv("IZAKHONO_AI_ROUTING_WARM_BONUS_MS", "600")))
+OWNER_WARM_MODELS_RAW = os.getenv("IZAKHONO_AI_WARM_MODELS", "").strip()
+OWNER_WARM_MAX_MODELS = max(1, min(8, int(os.getenv("IZAKHONO_AI_WARM_MAX_MODELS", "3"))))
+OWNER_WARM_KEEP_ALIVE = os.getenv("IZAKHONO_AI_WARM_KEEP_ALIVE", "15m").strip() or "15m"
+OWNER_WARM_TTL_SECONDS = max(1, int(os.getenv("IZAKHONO_AI_WARM_TTL_SECONDS", "900")))
+OWNER_WARM_TIMEOUT_SECONDS = max(1, int(os.getenv("IZAKHONO_AI_WARM_TIMEOUT_SECONDS", "180")))
+
 # Optional external text route. It is deliberately disabled unless BOTH
 # IZAKHONO_AI_ALLOW_EXTERNAL=true and IZAKHONO_AI_OWNER_ONLY=false are set.
 # External routing is explicit per request and only accepts data classified
@@ -252,10 +262,12 @@ def owner_runtime_id(url):
     except ValueError:
         return "owner-text-unknown"
 
-def owner_pool_mark(url, ok, detail=""):
+def owner_pool_mark(url, ok, detail="", elapsed_ms=None, model=None):
     now = time.time()
     with OWNER_POOL_LOCK:
         current = dict(OWNER_POOL_STATE.get(url, {}))
+        model_stats = dict(current.get("model_stats") or {})
+        warm_models = dict(current.get("warm_models") or {})
         if ok:
             current.update({
                 "failures": 0,
@@ -263,6 +275,28 @@ def owner_pool_mark(url, ok, detail=""):
                 "last_ok": now,
                 "last_error": "",
             })
+            if elapsed_ms is not None:
+                elapsed = max(0.0, float(elapsed_ms))
+                previous = current.get("latency_ewma_ms")
+                current["latency_ewma_ms"] = elapsed if previous is None else (
+                    OWNER_ROUTING_EWMA_ALPHA * elapsed +
+                    (1.0 - OWNER_ROUTING_EWMA_ALPHA) * float(previous)
+                )
+                current["samples"] = int(current.get("samples", 0) or 0) + 1
+            if model:
+                item = dict(model_stats.get(model) or {})
+                if elapsed_ms is not None:
+                    elapsed = max(0.0, float(elapsed_ms))
+                    previous = item.get("latency_ewma_ms")
+                    item["latency_ewma_ms"] = elapsed if previous is None else (
+                        OWNER_ROUTING_EWMA_ALPHA * elapsed +
+                        (1.0 - OWNER_ROUTING_EWMA_ALPHA) * float(previous)
+                    )
+                    item["samples"] = int(item.get("samples", 0) or 0) + 1
+                item["last_ok"] = now
+                item["last_error"] = ""
+                model_stats[model] = item
+                warm_models[model] = now
         else:
             failures = int(current.get("failures", 0)) + 1
             current.update({
@@ -270,9 +304,55 @@ def owner_pool_mark(url, ok, detail=""):
                 "blocked_until": now + OWNER_POOL_COOLDOWN_SECONDS,
                 "last_error": str(detail or "backend_unavailable")[:160],
             })
+            if model:
+                item = dict(model_stats.get(model) or {})
+                item["failures"] = int(item.get("failures", 0) or 0) + 1
+                item["last_error"] = str(detail or "backend_unavailable")[:160]
+                model_stats[model] = item
+        current["model_stats"] = model_stats
+        current["warm_models"] = warm_models
         OWNER_POOL_STATE[url] = current
 
-def owner_pool_candidates():
+def owner_warm_mark(url, model, ok, detail=""):
+    now = time.time()
+    with OWNER_POOL_LOCK:
+        current = dict(OWNER_POOL_STATE.get(url, {}))
+        warm_models = dict(current.get("warm_models") or {})
+        warm_errors = dict(current.get("warm_errors") or {})
+        if ok:
+            warm_models[model] = now
+            warm_errors.pop(model, None)
+        else:
+            warm_errors[model] = str(detail or "warm_failed")[:160]
+        current["warm_models"] = warm_models
+        current["warm_errors"] = warm_errors
+        OWNER_POOL_STATE[url] = current
+
+def owner_model_is_warm(state, model, now=None):
+    if not model:
+        return False
+    now = time.time() if now is None else now
+    warm_models = state.get("warm_models") or {}
+    last_warm = float(warm_models.get(model, 0) or 0)
+    return bool(last_warm and (now - last_warm) <= OWNER_WARM_TTL_SECONDS)
+
+def owner_candidate_score(state, model, index, now=None):
+    now = time.time() if now is None else now
+    model_stats = state.get("model_stats") or {}
+    model_item = model_stats.get(model) if model else None
+    predicted = None
+    if isinstance(model_item, dict):
+        predicted = model_item.get("latency_ewma_ms")
+    if predicted is None:
+        predicted = state.get("latency_ewma_ms")
+    if predicted is None:
+        predicted = OWNER_ROUTING_UNKNOWN_LATENCY_MS
+    inflight = int(state.get("inflight", 0) or 0)
+    warm_bonus = OWNER_ROUTING_WARM_BONUS_MS if owner_model_is_warm(state, model, now) else 0.0
+    score = max(0.0, float(predicted) + inflight * OWNER_ROUTING_INFLIGHT_PENALTY_MS - warm_bonus)
+    return score, index
+
+def owner_pool_candidates(model=None):
     urls = owner_text_urls()
     now = time.time()
     ready = []
@@ -283,7 +363,8 @@ def owner_pool_candidates():
         if not owner_runtime_allowed(url):
             continue
         state = snapshot.get(url, {})
-        item = (int(state.get("inflight", 0) or 0), index, url)
+        score, tie_break = owner_candidate_score(state, model, index, now)
+        item = (score, tie_break, url)
         if float(state.get("blocked_until", 0) or 0) > now:
             cooling.append(item)
         else:
@@ -314,6 +395,8 @@ def owner_pool_summary():
         state = snapshot.get(url, {})
         allowed = owner_runtime_allowed(url)
         blocked_until = float(state.get("blocked_until", 0) or 0)
+        model_stats = state.get("model_stats") or {}
+        warm_models = state.get("warm_models") or {}
         items.append({
             "runtime_id": owner_runtime_id(url),
             "allowed": allowed,
@@ -321,6 +404,21 @@ def owner_pool_summary():
             "cooldown_seconds_remaining": max(0, int(blocked_until - now)) if allowed else 0,
             "failures": int(state.get("failures", 0) or 0),
             "inflight": int(state.get("inflight", 0) or 0),
+            "latency_ewma_ms": round(float(state["latency_ewma_ms"]), 2) if state.get("latency_ewma_ms") is not None else None,
+            "samples": int(state.get("samples", 0) or 0),
+            "warm_models": sorted(
+                model for model, stamp in warm_models.items()
+                if float(stamp or 0) and (now - float(stamp)) <= OWNER_WARM_TTL_SECONDS
+            ),
+            "model_benchmarks": [
+                {
+                    "model": model,
+                    "latency_ewma_ms": round(float(item["latency_ewma_ms"]), 2) if item.get("latency_ewma_ms") is not None else None,
+                    "samples": int(item.get("samples", 0) or 0),
+                    "last_ok": item.get("last_ok"),
+                }
+                for model, item in sorted(model_stats.items())
+            ],
             "last_ok": state.get("last_ok"),
             "last_error": state.get("last_error") or None,
         })
@@ -360,6 +458,115 @@ def allowed_models(capability):
         values.append(cfg["model"])
     return values
 
+def configured_warm_models():
+    allowed = []
+    for capability in ("chat", "reasoning", "code"):
+        for model in allowed_models(capability):
+            if model not in allowed:
+                allowed.append(model)
+    requested = [m.strip() for m in OWNER_WARM_MODELS_RAW.split(",") if m.strip()]
+    values = requested or [
+        CAPABILITIES["chat"]["model"],
+        CAPABILITIES["reasoning"]["model"],
+        CAPABILITIES["code"]["model"],
+    ]
+    result = []
+    for model in values:
+        if model in allowed and model not in result:
+            result.append(model)
+        if len(result) >= OWNER_WARM_MAX_MODELS:
+            break
+    return result
+
+def warm_pool_summary():
+    now = time.time()
+    configured = configured_warm_models()
+    active_pairs = 0
+    with OWNER_POOL_LOCK:
+        snapshot = {k: dict(v) for k, v in OWNER_POOL_STATE.items()}
+    for url in owner_text_urls():
+        state = snapshot.get(url, {})
+        for model in configured:
+            if owner_model_is_warm(state, model, now):
+                active_pairs += 1
+    return {
+        "configured_model_count": len(configured),
+        "active_runtime_model_pairs": active_pairs,
+        "keep_alive": OWNER_WARM_KEEP_ALIVE,
+        "ttl_seconds": OWNER_WARM_TTL_SECONDS,
+    }
+
+def warm_owner_pool(models=None, runtime_ids=None):
+    allowed = set()
+    for capability in ("chat", "reasoning", "code"):
+        allowed.update(allowed_models(capability))
+    requested_models = list(models or configured_warm_models())
+    requested_models = [str(model).strip() for model in requested_models if str(model).strip()]
+    if not requested_models:
+        raise ValueError("warm_models_required")
+    if len(requested_models) > OWNER_WARM_MAX_MODELS:
+        raise ValueError("warm_model_limit_exceeded")
+    for model in requested_models:
+        if model not in allowed:
+            raise ValueError("warm_model_not_allowed")
+
+    selected_ids = {str(x).strip() for x in (runtime_ids or []) if str(x).strip()}
+    targets = []
+    for url in owner_text_urls():
+        runtime_id = owner_runtime_id(url)
+        if selected_ids and runtime_id not in selected_ids:
+            continue
+        if owner_runtime_allowed(url):
+            targets.append((runtime_id, url))
+    if selected_ids and selected_ids != {runtime_id for runtime_id, _ in targets}:
+        raise ValueError("warm_runtime_not_allowed")
+    if not targets:
+        raise RuntimeError("owner_model_pool_unconfigured")
+
+    results = []
+    for runtime_id, runtime_url in targets:
+        for model in requested_models:
+            ADMISSION.acquire()
+            owner_pool_begin(runtime_url)
+            started = time.monotonic()
+            try:
+                http_json(
+                    runtime_url + "/api/generate",
+                    {
+                        "model": model,
+                        "prompt": "",
+                        "stream": False,
+                        "keep_alive": OWNER_WARM_KEEP_ALIVE,
+                    },
+                    timeout=OWNER_WARM_TIMEOUT_SECONDS,
+                )
+                elapsed_ms = (time.monotonic() - started) * 1000.0
+                owner_warm_mark(runtime_url, model, True)
+                results.append({
+                    "runtime_id": runtime_id,
+                    "model": model,
+                    "ok": True,
+                    "warm_elapsed_ms": round(elapsed_ms, 2),
+                })
+            except Exception as exc:
+                owner_warm_mark(runtime_url, model, False, exc)
+                results.append({
+                    "runtime_id": runtime_id,
+                    "model": model,
+                    "ok": False,
+                    "error": str(exc)[:120],
+                })
+            finally:
+                owner_pool_end(runtime_url)
+                ADMISSION.release()
+    return {
+        "configured_models": requested_models,
+        "attempted": len(results),
+        "succeeded": sum(1 for item in results if item["ok"]),
+        "failed": sum(1 for item in results if not item["ok"]),
+        "results": results,
+    }
+
 def external_allowed_models():
     configured = os.getenv("IZAKHONO_AI_EXTERNAL_TEXT_MODELS", "")
     values = [m.strip() for m in configured.split(",") if m.strip()]
@@ -398,24 +605,27 @@ def normalize_messages(payload):
     return [{"role": "user", "content": prompt[:100000]}] if prompt else []
 
 def model_chat(messages, model, capability="chat"):
-    candidates = owner_pool_candidates()
+    candidates = owner_pool_candidates(model)
     if not candidates:
         raise RuntimeError("owner_model_pool_unconfigured")
     errors = []
     for runtime_url in candidates:
         owner_pool_begin(runtime_url)
+        started = time.monotonic()
         try:
             raw = http_json(
                 runtime_url + "/api/chat",
                 {"model": model, "stream": False, "messages": messages},
                 timeout=300,
             )
+            elapsed_ms = (time.monotonic() - started) * 1000.0
             if isinstance(raw, dict):
                 raw["_izakhono_owner_runtime"] = owner_runtime_id(runtime_url)
-            owner_pool_mark(runtime_url, True)
+                raw["_izakhono_owner_runtime_elapsed_ms"] = round(elapsed_ms, 2)
+            owner_pool_mark(runtime_url, True, elapsed_ms=elapsed_ms, model=model)
             return raw
         except Exception as exc:
-            owner_pool_mark(runtime_url, False, exc)
+            owner_pool_mark(runtime_url, False, exc, model=model)
             errors.append(f"{owner_runtime_id(runtime_url)}:{type(exc).__name__}")
         finally:
             owner_pool_end(runtime_url)
@@ -562,6 +772,14 @@ class Handler(BaseHTTPRequestHandler):
                     "inflight": ADMISSION.summary()["inflight"],
                     "queued": ADMISSION.summary()["queued"],
                 },
+                "routing": {
+                    "strategy": "adaptive-ewma",
+                    "ewma_alpha": OWNER_ROUTING_EWMA_ALPHA,
+                    "unknown_latency_ms": OWNER_ROUTING_UNKNOWN_LATENCY_MS,
+                    "inflight_penalty_ms": OWNER_ROUTING_INFLIGHT_PENALTY_MS,
+                    "warm_bonus_ms": OWNER_ROUTING_WARM_BONUS_MS,
+                },
+                "warm_pool": warm_pool_summary(),
                 "capabilities_ready": [x["capability"] for x in caps if x["status"] == "ready"],
             })
         if p == "/api/v1/capabilities":
@@ -585,6 +803,14 @@ class Handler(BaseHTTPRequestHandler):
                 "service": "izakhono-super-ai",
                 "owner_text_pool": owner_pool_summary(),
                 "admission": ADMISSION.summary(),
+                "routing": {
+                    "strategy": "adaptive-ewma",
+                    "ewma_alpha": OWNER_ROUTING_EWMA_ALPHA,
+                    "unknown_latency_ms": OWNER_ROUTING_UNKNOWN_LATENCY_MS,
+                    "inflight_penalty_ms": OWNER_ROUTING_INFLIGHT_PENALTY_MS,
+                    "warm_bonus_ms": OWNER_ROUTING_WARM_BONUS_MS,
+                },
+                "warm_pool": warm_pool_summary(),
                 "external_text": {
                     "enabled": external_text_configured(),
                     "provider": EXTERNAL_TEXT_PROVIDER if external_text_configured() else None,
@@ -595,7 +821,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         p = urlparse(self.path).path
-        if p not in ("/api/v1/chat", "/api/v1/generate"):
+        if p not in ("/api/v1/chat", "/api/v1/generate", "/api/v1/warm"):
             return send_json(self, 404, {"ok": False, "error": "not_found"})
         if not self.authorized():
             return send_json(self, 401, {"ok": False, "error": "unauthorized"})
@@ -604,6 +830,24 @@ class Handler(BaseHTTPRequestHandler):
             payload = self.read_json()
         except Exception:
             return send_json(self, 400, {"ok": False, "error": "invalid_json"})
+
+        if p == "/api/v1/warm":
+            try:
+                models = payload.get("models") if isinstance(payload.get("models"), list) else None
+                runtime_ids = payload.get("runtime_ids") if isinstance(payload.get("runtime_ids"), list) else None
+                result = warm_owner_pool(models=models, runtime_ids=runtime_ids)
+                return send_json(self, 200, {
+                    "ok": result["failed"] == 0,
+                    "service": "izakhono-super-ai",
+                    "operation": "warm-owner-models",
+                    **result,
+                })
+            except ValueError as exc:
+                return send_json(self, 422, {"ok": False, "error": str(exc)[:100]})
+            except CapacityUnavailable as exc:
+                return send_json(self, 503, {"ok": False, "error": "capacity_unavailable", "reason": str(exc)[:100], "retryable": True})
+            except Exception as exc:
+                return send_json(self, 502, {"ok": False, "error": "warm_pool_unavailable", "detail": str(exc)[:200]})
 
         entity_id = str(payload.get("entity_id") or "").strip().lower()
         subject = str(payload.get("subject") or "").strip().lower()
@@ -651,6 +895,7 @@ class Handler(BaseHTTPRequestHandler):
             "route": route,
             "external_provider": EXTERNAL_TEXT_PROVIDER if route == "external" else None,
             "owner_runtime": _raw.get("_izakhono_owner_runtime") if route == "owned" and isinstance(_raw, dict) else None,
+            "owner_runtime_elapsed_ms": _raw.get("_izakhono_owner_runtime_elapsed_ms") if route == "owned" and isinstance(_raw, dict) else None,
             "data_classification": str(payload.get("data_classification") or ("public" if route == "external" else "internal")).strip().lower(),
             "output": output,
             "owner_only": OWNER_ONLY,
