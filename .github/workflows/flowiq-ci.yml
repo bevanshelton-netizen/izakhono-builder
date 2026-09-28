@@ -6,6 +6,7 @@ on:
     paths:
       - 'products/izakhono-flowiq/**'
       - 'internal/node01-command-gateway/deploy-profiles/izakhono-flowiq.json'
+      - 'products/izakhono-node/deploy.sh'
       - '.github/workflows/flowiq-ci.yml'
   push:
     branches: [main]
@@ -32,6 +33,7 @@ jobs:
           node --check products/izakhono-flowiq/src/server.mjs
           bash -n products/izakhono-flowiq/owner-node/prepare-env.sh
           bash -n products/izakhono-flowiq/owner-node/deploy-node01.sh
+          bash -n products/izakhono-node/deploy.sh
           python - <<'PY'
           import json
           from pathlib import Path
@@ -42,6 +44,11 @@ jobs:
           assert p['dockerfile']=='products/izakhono-flowiq/Dockerfile.node'
           assert p['health_path']=='/readyz'
           print('[PASS] FLOWIQ profile is owned-first and readiness-gated.')
+          node_deployer=Path('products/izakhono-node/deploy.sh').read_text()
+          assert 'IZAKHONO_NODE_INTERNAL_NETWORK' in node_deployer
+          assert '--network "$INTERNAL_NETWORK"' in node_deployer
+          assert '--network-alias "$APP"' in node_deployer
+          print('[PASS] NODE01 single-service deployments share the owner-controlled internal network.')
           PY
 
       - name: Build owned FLOWIQ container
