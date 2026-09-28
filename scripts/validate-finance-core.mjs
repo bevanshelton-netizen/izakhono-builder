@@ -8,7 +8,7 @@ const envExample=fs.readFileSync('products/izakhono-finance-core/node01/.env.exa
 const errors=[];
 
 if(contract.schema!=='izakhono.finance-core.v1') errors.push('unexpected FINANCE CORE schema');
-if(contract.version!=='0.2.0') errors.push('FINANCE CORE contract version must be 0.2.0');
+if(contract.version!=='0.3.0') errors.push('FINANCE CORE contract version must be 0.3.0');
 if(contract.infrastructure?.policy!=='owned-first-externally-reversible') errors.push('FINANCE CORE must remain owned-first');
 if(contract.infrastructure?.system_of_record!=='IZAKHONO-owned infrastructure') errors.push('FINANCE CORE system of record must remain owned');
 if(contract.infrastructure?.owned_target!=='NODE01') errors.push('FINANCE CORE owned target must remain NODE01');
@@ -26,7 +26,7 @@ if(contract.security?.backup_checksum_manifest_required!==true) errors.push('bac
 if(contract.security?.idempotent_payment_reference_ingest!==true) errors.push('payment-reference ingest must remain idempotent');
 if(contract.super_app_module?.module_id!=='finance-core' || contract.super_app_module?.route!=='/finance-core' || contract.super_app_module?.engine!=='independent') errors.push('SUPER APP module contract drift');
 if(product.slug!=='izakhono-finance-core') errors.push('product slug drift');
-if(product.application_version!=='0.2.0') errors.push('product application version drift');
+if(product.application_version!=='0.3.0') errors.push('product application version drift');
 if(product.infrastructure?.owned_target!=='NODE01') errors.push('owned target must remain NODE01');
 if(product.infrastructure?.current_public_route!=='NOT_YET_VERIFIED') errors.push('public status cannot be claimed without evidence');
 if(!server.includes('maker_checker_separation_required')) errors.push('maker-checker runtime enforcement missing');
