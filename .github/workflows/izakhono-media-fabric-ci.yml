@@ -6,12 +6,14 @@ on:
       - 'products/izakhono-media-fabric/**'
       - '.github/workflows/izakhono-media-fabric-ci.yml'
       - 'products/izakhono-ai-gateway/**'
+      - 'START-IZAKHONO-MEDIA-FABRIC-NODE01.cmd'
   push:
     branches: [main]
     paths:
       - 'products/izakhono-media-fabric/**'
       - '.github/workflows/izakhono-media-fabric-ci.yml'
       - 'products/izakhono-ai-gateway/**'
+      - 'START-IZAKHONO-MEDIA-FABRIC-NODE01.cmd'
   workflow_dispatch:
 
 permissions:
@@ -53,6 +55,9 @@ jobs:
           grep -Fq 'LeaseKeeper' products/izakhono-media-fabric/worker.py
           grep -Fq 'artifact' products/izakhono-media-fabric/worker.py
           grep -Fq 'Local disk is not considered production-HA state' products/izakhono-media-fabric/README.md
+          grep -Fq 'No false LIVE/HA claim is allowed' START-IZAKHONO-MEDIA-FABRIC-NODE01.cmd
+          grep -Fq 'IZAKHONO_MEDIA_FABRIC_PAYLOAD_KEY' products/izakhono-media-fabric/install-broker.sh
+          ! grep -Fq 'IZAKHONO_MEDIA_FABRIC_PAYLOAD_KEY' products/izakhono-media-fabric/install-worker.sh
       - name: Secret hygiene
         run: |
           set -euo pipefail
