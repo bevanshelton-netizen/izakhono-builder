@@ -897,6 +897,7 @@ def execute_capability(payload):
 
 def capability_summary():
     items = []
+    fabric = media_fabric_health()
     for name, cfg in CAPABILITIES.items():
         configured = bool(cfg["url"])
         if cfg["kind"] == "ollama_chat":
@@ -915,7 +916,7 @@ def capability_summary():
             "owner_route": owner_route,
             "external_route_available": bool(name in ("chat", "reasoning", "code") and external_text_configured()),
             "status": "ready" if configured and owner_route else "needs_backend",
-            "durable_available": bool(name in ("speech", "video") and media_fabric_configured()),
+            "durable_available": bool(name in ("speech", "video") and fabric.get("ok")),
         })
     return items
 
