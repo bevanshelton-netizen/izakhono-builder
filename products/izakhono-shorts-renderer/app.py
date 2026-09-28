@@ -453,12 +453,14 @@ def render(payload: dict[str, Any]) -> dict[str, Any]:
         if motion_route == "owned-video-adapter":
             muxed = work_dir / f"scene-{idx:02d}-voiced.mp4"
             proc = run([
-                FFMPEG, "-y", "-i", str(video_path), "-i", str(audio_path),
+                FFMPEG, "-y", "-stream_loop", "-1", "-i", str(video_path), "-i", str(audio_path),
                 "-map", "0:v:0", "-map", "1:a:0",
-                "-c:v", "copy", "-c:a", "aac", "-b:a", "128k",
+                "-vf", "scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,format=yuv420p",
+                "-c:v", "libx264", "-preset", "veryfast", "-crf", "21",
+                "-c:a", "aac", "-b:a", "128k",
                 "-af", f"apad=pad_dur={duration},atrim=0:{duration}",
-                "-t", f"{duration:.3f}", "-shortest", str(muxed)
-            ], timeout=300)
+                "-t", f"{duration:.3f}", "-r", "30", "-shortest", str(muxed)
+            ], timeout=max(300, int(duration * 30)))
             if proc.returncode == 0 and muxed.exists():
                 muxed.replace(video_path)
         scene_videos.append(video_path)
