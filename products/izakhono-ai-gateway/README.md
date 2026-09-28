@@ -15,7 +15,7 @@ IZAKHONO PRODUCT
   -> optional approved external resilience adapter
 ```
 
-The gateway does not persist prompts, add behavioural tracking, or expose model credentials to browsers.
+The gateway itself does not persist ordinary prompts, add behavioural tracking, or expose model credentials to browsers. When a caller explicitly selects durable media execution, the separate Media Runtime Fabric persists only the encrypted job payload required for resumability.
 
 ## Capabilities
 
@@ -148,6 +148,38 @@ Image-to-video request:
 
 The gateway adds the required owned/privacy/originality policy fields and runtime authentication server-side. External routing is not supported for speech or video through this contract.
 
+## Durable Media Runtime Fabric
+
+Speech and video can now choose between immediate local execution and the shared durable Media Runtime Fabric.
+
+Use `"execution":"durable"` for generation that may outlive a single HTTP request, needs retry/lease recovery, or should be scheduled across multiple approved workers:
+
+```json
+{
+  "entity_id": "izakhono-africa",
+  "product": "izakhono-create",
+  "access_mode": "workflow",
+  "capability": "video",
+  "route": "owned",
+  "execution": "durable",
+  "prompt": "Animate this original vertical scene.",
+  "source_image": "data:image/png;base64,...",
+  "job_options": {
+    "priority": 70,
+    "max_attempts": 4,
+    "min_gpu_mb": 12000
+  }
+}
+```
+
+SUPER AI converts that request into the native IZAKHONO media contract and submits it to the private fabric. The response contains a job ID, a one-time-visible `job_token`, and a `poll_path`. The token must be retained by the calling backend; it is not stored by SUPER AI.
+
+Poll the returned path with the normal `x-izakhono-ai-key` plus `x-izakhono-job-token`. Completed artifacts are surfaced with gateway paths so products do not need the Media Fabric credential or private broker topology.
+
+Durable execution is deliberately different from normal prompt handling: the fabric must persist the job to survive worker failure. It stores the media payload AES-GCM encrypted at rest, does not log prompt/body content, and encrypts completed job metadata. Generated artifacts are stored separately with SHA-256 integrity evidence.
+
+`GET /healthz` reports the Media Fabric as `configured`, `ok`, `production_ready`, its healthy-worker count and whether replicated storage is proven. A healthy broker is not the same as production-HA; production readiness remains false until replicated state storage and at least one healthy worker are verified.
+
 ## Security and cost controls
 
 - model allowlists are capability-specific
@@ -199,6 +231,8 @@ Media routing:
 - `IZAKHONO_SPEECH_MODEL`
 - `IZAKHONO_TRANSCRIPTION_URL`
 - `IZAKHONO_TRANSCRIPTION_MODEL`
+- `IZAKHONO_MEDIA_FABRIC_URL` — private owner broker route used for durable speech/video execution
+- `IZAKHONO_MEDIA_FABRIC_INTERNAL_KEY` — server-side broker credential; never exposed to products or browsers
 
 Trust boundary:
 
