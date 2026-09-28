@@ -286,6 +286,31 @@ async function api(req: Request, env: Env, url: URL): Promise<Response> {
     });
   }
 
+  const deliveryStatusMatch = url.pathname.match(/^\/api\/internal\/drafts\/([^/]+)\/delivery-status$/);
+  if (deliveryStatusMatch && req.method === 'POST') {
+    if (!env.DOCFLOW_SERVICE_TOKEN) return json({ ok: false, error: 'DOCFLOW service token is not configured' }, 503);
+    if (!isService(req, env)) return json({ ok: false, error: 'Unauthorized service' }, 401);
+    let input: any = {};
+    try { input = await readBody(req); } catch { return json({ ok: false, error: 'Invalid delivery status payload' }, 400); }
+    const status = clean(input.status, 80);
+    if (!['link_ready','outbound_accepted','signed','failed'].includes(status)) {
+      return json({ ok: false, error: 'Unsupported delivery status' }, 400);
+    }
+    const draftId = decodeURIComponent(deliveryStatusMatch[1]);
+    const draft = await getDraft(env, draftId);
+    if (!draft) return json({ ok: false, error: 'Draft not found' }, 404);
+    const documentStatus = status === 'outbound_accepted' || status === 'signed' ? 'sent' : draft.status;
+    await env.DB.prepare(
+      'UPDATE docflow_drafts SET status=?,send_status=?,updated_at=CURRENT_TIMESTAMP WHERE id=?'
+    ).bind(documentStatus, status, draftId).run();
+    await audit(env, draftId, 'delivery.' + status, clean(input.source || 'service', 120), {
+      detail: input.detail && typeof input.detail === 'object' ? input.detail : {},
+    });
+    const updated = await getDraft(env, draftId);
+    if (status === 'signed') await notifyFlowIQ(env, 'docflow.signed', updated || draft, { source: clean(input.source || 'IZAKHONO SIGN', 120) });
+    return json({ ok: true, draft: updated });
+  }
+
   if (!env.DOCFLOW_ADMIN_SECRET) return json({ ok: false, error: 'DOCFLOW owner secret is not configured' }, 503);
   if (!isOwner(req, env)) return json({ ok: false, error: 'Unauthorized' }, 401);
 
