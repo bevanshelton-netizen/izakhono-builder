@@ -26,7 +26,8 @@ from pathlib import Path
 from huggingface_hub import snapshot_download
 revision=sys.argv[1]
 repo=os.environ.get("IZAKHONO_SPEECH_MODEL_REPO","hexgrad/Kokoro-82M")
-cache=os.environ["HF_HOME"]
+cache=str(Path(os.environ["HF_HOME"]) / "hub")
+Path(cache).mkdir(parents=True, exist_ok=True)
 path=snapshot_download(repo_id=repo,revision=revision,cache_dir=cache,local_files_only=False)
 manifest={
  "schema":"izakhono.model.asset.v1",
