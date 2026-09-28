@@ -1,7 +1,7 @@
 {
   "schema": "izakhono.finance-core.v1",
   "product": "IZAKHONO FINANCE CORE",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "operator": "IZAKHONO AFRICA (PTY) LTD",
   "product_role": "financial-institution software platform",
   "infrastructure": {
@@ -9,7 +9,9 @@
     "owned_target": "NODE01",
     "system_of_record": "IZAKHONO-owned infrastructure",
     "external_services": "replaceable adapters only",
-    "public_status": "NOT_YET_VERIFIED"
+    "public_status": "NOT_YET_VERIFIED",
+    "node01_pack": "products/izakhono-finance-core/node01",
+    "backup_restore": "packaged-not-machine-verified"
   },
   "capabilities": [
     "loan origination and servicing",
@@ -23,7 +25,10 @@
     "multi-branch configuration",
     "multi-currency product configuration",
     "white-label institution surfaces",
-    "API-first integration"
+    "API-first integration",
+    "hash-chained audit integrity",
+    "encrypted backup and restore tooling",
+    "NODE01 hardened deployment pack"
   ],
   "integrations": {
     "fraud_and_trust": "FORTRESS",
@@ -54,13 +59,20 @@
     "maker_checker_for_high_impact_actions": true,
     "immutable_audit_required": true,
     "encrypted_persistence_required": true,
-    "least_privilege_required": true
+    "least_privilege_required": true,
+    "distinct_maker_checker_principals_required": true,
+    "audit_hash_chain_required": true,
+    "secret_file_key_supported": true,
+    "backup_checksum_manifest_required": true,
+    "idempotent_payment_reference_ingest": true
   },
   "launch_policy": {
     "code_presence_is_not_live": true,
     "public_live_requires_verified_https": true,
     "production_financial_data_requires_security_review": true,
-    "production_regulated_workflows_require_jurisdiction_review": true
+    "production_regulated_workflows_require_jurisdiction_review": true,
+    "backup_restore_rehearsal_required": true,
+    "audit_integrity_required": true
   },
   "super_app_module": {
     "module_id": "finance-core",
