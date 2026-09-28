@@ -9,6 +9,7 @@
     "test": "node test.mjs",
     "preflight:contract": "node ops/node01-preflight.mjs --contract-only",
     "backup": "node ops/backup.mjs",
-    "restore": "node ops/restore.mjs"
+    "restore": "node ops/restore.mjs",
+    "smoke": "node smoke-test.mjs"
   }
 }
