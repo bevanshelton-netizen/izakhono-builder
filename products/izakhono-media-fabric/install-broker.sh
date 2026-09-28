@@ -16,6 +16,10 @@ install -m 0755 "$ROOT_DIR/app.py" "$APP_DIR/app.py"
 install -m 0755 "$ROOT_DIR/worker.py" "$APP_DIR/worker.py"
 
 command -v python3 >/dev/null 2>&1 || { echo "[STOP] python3 missing" >&2; exit 1; }
+if ! python3 -m venv --help >/dev/null 2>&1; then
+  apt-get update
+  DEBIAN_FRONTEND=noninteractive apt-get install -y python3-venv
+fi
 if [ ! -d "$VENV" ]; then python3 -m venv "$VENV"; fi
 "$VENV/bin/python" -m pip install --upgrade pip wheel >/dev/null
 "$VENV/bin/pip" install "cryptography>=43,<47"
