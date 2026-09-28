@@ -1,0 +1,12 @@
+{
+  "source": "izakhono-code",
+  "repository": "izakhono-builder",
+  "app": "izakhono-crm",
+  "environment": "production",
+  "mode": "single",
+  "container_port": 8080,
+  "health_path": "/health",
+  "data_path": "/data",
+  "dockerfile": "products/izakhono-crm/Dockerfile.node",
+  "env_file": "/etc/izakhono/apps/izakhono-crm.env"
+}

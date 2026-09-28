@@ -61,6 +61,9 @@ button{border:0;padding:13px 16px;font-weight:900;cursor:pointer}.primary{backgr
         <label>Party B<input id="partyB" placeholder="Counterparty"></label>
         <label>Effective date<input id="date" type="date"></label>
         <label>Jurisdiction<input id="jurisdiction" value="South Africa"></label>
+        <label>Recipient name<input id="recipientName" placeholder="Signer / recipient"></label>
+        <label>Recipient email<input id="recipientEmail" type="email" placeholder="name@example.com"></label>
+        <label class="full"><span><input id="signatureRequired" type="checkbox" style="width:auto;margin-right:8px">Require electronic signature</span></label>
         <label class="full">What do you need?<textarea id="brief" placeholder="Example: Mutual NDA for discussing FORTRESS with a bank. Protect product design, source code, fraud models, pricing, customer data and commercial discussions."></textarea></label>
       </div>
       <div class="actions"><button class="primary" id="draftBtn">Draft document</button></div>
@@ -92,7 +95,8 @@ async function call(path,opts={}){const r=await fetch(path,{...opts,headers:{...
 $('#draftBtn').onclick=async()=>{try{setStatus('Drafting…');controls(false);const body={
 document_type:$('#type').value,workspace_id:$('#workspace').value,legal_entity:$('#entity').value,
 party_a:$('#partyA').value,party_b:$('#partyB').value,effective_date:$('#date').value,
-jurisdiction:$('#jurisdiction').value,instructions:$('#brief').value,title:$('#type').selectedOptions[0].text+' — '+($('#partyB').value||'Draft')
+jurisdiction:$('#jurisdiction').value,recipient_name:$('#recipientName').value,recipient_email:$('#recipientEmail').value,
+signature_required:$('#signatureRequired').checked,delivery_mode:'email_link',instructions:$('#brief').value,title:$('#type').selectedOptions[0].text+' — '+($('#partyB').value||'Draft')
 };const d=await call('/api/drafts',{method:'POST',body:JSON.stringify(body)});render(d.draft);setStatus('Draft ready for human review.','ok')}catch(e){setStatus(e.message||String(e),'bad')}};
 async function act(name,confirm=false){if(!current)return;try{setStatus('Updating workflow…');const d=await call('/api/drafts/'+encodeURIComponent(current.id)+'/'+name,{method:'POST',body:JSON.stringify({approver:'Owner',confirm,note:''})});render(d.draft);setStatus(name==='approve-and-send'?'Approved. Send request queued; delivery not yet claimed.':'Workflow updated.','ok')}catch(e){setStatus(e.message||String(e),'bad')}}
 $('#approveBtn').onclick=()=>act('approve',true);$('#sendBtn').onclick=()=>act('approve-and-send',true);$('#rejectBtn').onclick=()=>act('reject',false);

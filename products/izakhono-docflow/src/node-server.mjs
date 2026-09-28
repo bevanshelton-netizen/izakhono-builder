@@ -1,6 +1,6 @@
 import http from 'node:http';
 import path from 'node:path';
-import { mkdirSync, readFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, readdirSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { DatabaseSync } from 'node:sqlite';
 import worker from '../dist/index.js';
@@ -9,12 +9,19 @@ const port = Number(process.env.PORT || process.env.DOCFLOW_PORT || 8787);
 const host = process.env.DOCFLOW_HOST || '0.0.0.0';
 const dbPath = process.env.IZAKHONO_DOCFLOW_DB || '/app/data/docflow.sqlite';
 const publicRoot = path.resolve(process.env.DOCFLOW_PUBLIC_DIR || '/app/public');
-const migrationPath = process.env.DOCFLOW_MIGRATION || '/app/migrations/0001_docflow.sql';
+const migrationDir = process.env.DOCFLOW_MIGRATION_DIR || '/app/migrations';
 
 mkdirSync(path.dirname(dbPath), { recursive: true });
 const sqlite = new DatabaseSync(dbPath);
 sqlite.exec('PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON;');
-sqlite.exec(readFileSync(migrationPath, 'utf8'));
+for (const file of readdirSync(migrationDir).filter(name => /^\d+.*\.sql$/.test(name)).sort()) {
+  try {
+    sqlite.exec(readFileSync(path.join(migrationDir, file), 'utf8'));
+  } catch (error) {
+    const message = String(error?.message || error);
+    if (!/duplicate column name/i.test(message)) throw error;
+  }
+}
 
 class D1Statement {
   constructor(db, sql, values = []) { this.db = db; this.sql = sql; this.values = values; }
@@ -82,6 +89,7 @@ const env = {
   ASSETS,
   APP_ENV: process.env.APP_ENV || 'production',
   DOCFLOW_ADMIN_SECRET: process.env.DOCFLOW_ADMIN_SECRET || '',
+  DOCFLOW_SERVICE_TOKEN: process.env.DOCFLOW_SERVICE_TOKEN || '',
   SUPER_AI: superAiAdapter(
     process.env.SUPER_AI_URL || '',
     process.env.SUPER_AI_INTERNAL_KEY || process.env.SUPER_AI_TOKEN || '',

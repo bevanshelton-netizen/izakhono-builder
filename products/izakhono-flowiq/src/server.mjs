@@ -159,6 +159,42 @@ async function dispatchAdapter(row, cfg, payload) {
     });
   }
 
+  if (row.adapter_name === 'crm') {
+    const entityId = clean(payload.workspace_id || 'izakhono-africa', 120);
+    const subjectRef = clean(payload.draft_id || payload.subject_id, 200);
+    if (!subjectRef) throw new Error('crm_subject_ref_missing');
+    const sourceEvent = clean(payload.event_type, 120);
+    const actionType = sourceEvent === 'docflow.approved'
+      ? 'crm.document.approved'
+      : sourceEvent === 'docflow.approve_and_send_requested'
+        ? 'crm.document.send_queued'
+        : 'crm.document.approved';
+    const headers = {
+      'content-type': 'application/json',
+      'x-entity-id': entityId,
+      'x-platform-id': 'izakhono-docflow',
+    };
+    if (cfg.token) headers.authorization = 'Bearer ' + cfg.token;
+    return fetch(cfg.url + '/api/flow', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        action_id: row.id,
+        run_id: row.event_id,
+        action_type: actionType,
+        payload: {
+          subject_ref: subjectRef,
+          metadata: {
+            title: clean(payload.title, 240),
+            legal_entity: clean(payload.legal_entity, 200),
+            source_event_type: sourceEvent,
+            status: clean(payload.status, 80),
+          },
+        },
+      }),
+    });
+  }
+
   const headers = { 'content-type': 'application/json' };
   if (cfg.token) headers.authorization = 'Bearer ' + cfg.token;
   return fetch(cfg.url + '/v1/actions', {
@@ -186,6 +222,34 @@ async function runAction(row) {
     const payload = JSON.parse(row.payload_json || '{}');
     const response = await dispatchAdapter(row, cfg, payload);
     if (!response.ok) throw new Error('adapter_http_' + response.status);
+
+    if (row.adapter_name === 'delivery') {
+      let body = {};
+      try { body = await response.json(); } catch {}
+      const downstreamState = clean(body?.flowiq_state, 80);
+      const deliveryClaim = clean(body?.delivery_claim, 120);
+      if (downstreamState && downstreamState !== 'completed') {
+        const safeState = downstreamState === 'awaiting_mail' || downstreamState === 'awaiting_public_route'
+          ? 'awaiting_adapter'
+          : 'queued';
+        db.prepare(
+          "UPDATE flowiq_actions SET action_state=?,last_error='',updated_at=CURRENT_TIMESTAMP WHERE id=?"
+        ).run(safeState, row.id);
+        createAudit(row.event_id, row.id, 'action.awaiting_downstream', 'flowiq', {
+          adapter: row.adapter_name,
+          status: response.status,
+          downstream_state: downstreamState,
+          delivery_claim: deliveryClaim,
+        });
+        return { attempted: true, state: safeState };
+      }
+      createAudit(row.event_id, row.id, 'delivery.outbound_accepted', 'flowiq', {
+        adapter: row.adapter_name,
+        status: response.status,
+        delivery_claim: deliveryClaim,
+      });
+    }
+
     db.prepare(
       "UPDATE flowiq_actions SET action_state='completed',last_error='',updated_at=CURRENT_TIMESTAMP WHERE id=?"
     ).run(row.id);
@@ -235,7 +299,7 @@ const server = http.createServer(async (req, res) => {
       return send(res, 200, {
         ok: true,
         service: 'IZAKHONO FLOWIQ',
-        version: '1.1.0',
+        version: '1.3.0',
         adapters: Object.fromEntries(Object.entries(adapters).map(([k,v]) => [k, Boolean(v.url)])),
       });
     }
