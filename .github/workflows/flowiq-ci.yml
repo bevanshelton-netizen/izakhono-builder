@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'products/izakhono-flowiq/**'
+      - 'products/izakhono-tasks/**'
       - 'internal/node01-command-gateway/deploy-profiles/izakhono-flowiq.json'
       - 'products/izakhono-node/deploy.sh'
       - '.github/workflows/flowiq-ci.yml'
@@ -12,7 +13,9 @@ on:
     branches: [main]
     paths:
       - 'products/izakhono-flowiq/**'
+      - 'products/izakhono-tasks/**'
       - 'internal/node01-command-gateway/deploy-profiles/izakhono-flowiq.json'
+      - 'products/izakhono-node/deploy.sh'
       - '.github/workflows/flowiq-ci.yml'
   workflow_dispatch:
 
@@ -31,6 +34,7 @@ jobs:
         shell: bash
         run: |
           node --check products/izakhono-flowiq/src/server.mjs
+          python -m py_compile products/izakhono-tasks/app.py
           bash -n products/izakhono-flowiq/owner-node/prepare-env.sh
           bash -n products/izakhono-flowiq/owner-node/deploy-node01.sh
           bash -n products/izakhono-node/deploy.sh
@@ -43,32 +47,58 @@ jobs:
           assert p['environment']=='production'
           assert p['dockerfile']=='products/izakhono-flowiq/Dockerfile.node'
           assert p['health_path']=='/readyz'
-          print('[PASS] FLOWIQ profile is owned-first and readiness-gated.')
           node_deployer=Path('products/izakhono-node/deploy.sh').read_text()
           assert 'IZAKHONO_NODE_INTERNAL_NETWORK' in node_deployer
           assert '--network "$INTERNAL_NETWORK"' in node_deployer
           assert '--network-alias "$APP"' in node_deployer
-          print('[PASS] NODE01 single-service deployments share the owner-controlled internal network.')
+          print('[PASS] FLOWIQ profile and NODE01 internal network contract verified.')
           PY
 
-      - name: Build owned FLOWIQ container
-        run: docker build -f products/izakhono-flowiq/Dockerfile.node -t izakhono-flowiq:ci .
+      - name: Build owned FLOWIQ and TASKS containers
+        shell: bash
+        run: |
+          docker build -f products/izakhono-flowiq/Dockerfile.node -t izakhono-flowiq:ci .
+          docker build -f products/izakhono-tasks/Dockerfile -t izakhono-tasks:ci products/izakhono-tasks
+
+      - name: Start IZAKHONO TASKS
+        shell: bash
+        run: |
+          docker network create flowiq-ci-net >/dev/null
+          docker run -d --name tasks-ci --network flowiq-ci-net --network-alias izakhono-tasks \
+            -e IZAKHONO_TASKS_FLOW_TOKEN=ci-tasks-flow-token \
+            -e IZAKHONO_TASKS_TOKEN=ci-tasks-owner-token \
+            izakhono-tasks:ci
+          for _ in $(seq 1 30); do
+            if docker run --rm --network flowiq-ci-net curlimages/curl:8.12.1 \
+              -fsS http://izakhono-tasks:9991/healthz >/tmp/tasks-health.json; then
+              cat /tmp/tasks-health.json
+              exit 0
+            fi
+            sleep 1
+          done
+          docker logs tasks-ci || true
+          exit 1
 
       - name: Start FLOWIQ
         shell: bash
         run: |
-          docker run -d --name flowiq-ci             -e FLOWIQ_TOKEN=ci-flowiq-token-not-production             -p 127.0.0.1:19797:9797             izakhono-flowiq:ci
+          docker run -d --name flowiq-ci --network flowiq-ci-net \
+            -e FLOWIQ_TOKEN=ci-flowiq-token-not-production \
+            -e FLOWIQ_TASKS_URL=http://izakhono-tasks:9991 \
+            -e FLOWIQ_TASKS_TOKEN=ci-tasks-flow-token \
+            -p 127.0.0.1:19797:9797 \
+            izakhono-flowiq:ci
           for _ in $(seq 1 45); do
             if curl -fsS http://127.0.0.1:19797/readyz >/tmp/flowiq-ready.json; then
               cat /tmp/flowiq-ready.json
               exit 0
             fi
-            sleep 2
+            sleep 1
           done
           docker logs flowiq-ci || true
           exit 1
 
-      - name: Verify DOCFLOW event orchestration and idempotency
+      - name: Verify DOCFLOW orchestration, TASKS scheduling and idempotency
         shell: bash
         run: |
           cat >/tmp/event.json <<'JSON'
@@ -83,7 +113,10 @@ jobs:
           }
           JSON
 
-          curl -fsS -X POST http://127.0.0.1:19797/v1/events             -H 'content-type: application/json'             -H 'authorization: Bearer ci-flowiq-token-not-production'             --data-binary @/tmp/event.json >/tmp/accepted.json
+          curl -fsS -X POST http://127.0.0.1:19797/v1/events \
+            -H 'content-type: application/json' \
+            -H 'authorization: Bearer ci-flowiq-token-not-production' \
+            --data-binary @/tmp/event.json >/tmp/accepted.json
           cat /tmp/accepted.json
 
           python - <<'PY'
@@ -100,29 +133,20 @@ jobs:
           assert states['document_delivery']=='awaiting_adapter'
           assert states['crm_sync']=='awaiting_adapter'
           assert states['delivery_followup_schedule'] in {'queued','running','completed'}
-          print('[PASS] FLOWIQ persisted the event, held unconfigured adapters, and queued TASKS follow-up.')
+          print('[PASS] FLOWIQ persisted the event and queued the TASKS follow-up.')
           PY
 
+          complete=0
           for _ in $(seq 1 30); do
             curl -fsS http://127.0.0.1:19797/v1/actions \
               -H 'authorization: Bearer ci-flowiq-token-not-production' >/tmp/actions.json
-            if python - <<'PY'
-          import json
-          d=json.load(open('/tmp/actions.json'))
-          rows=[x for x in d['actions'] if x['action_type']=='delivery_followup_schedule']
-          raise SystemExit(0 if rows and rows[0]['action_state']=='completed' else 1)
-          PY
-            then break; fi
+            if python -c "import json; d=json.load(open('/tmp/actions.json')); rows=[x for x in d['actions'] if x['action_type']=='delivery_followup_schedule']; raise SystemExit(0 if rows and rows[0]['action_state']=='completed' else 1)"; then
+              complete=1
+              break
+            fi
             sleep 1
           done
-
-          python - <<'PY'
-          import json
-          d=json.load(open('/tmp/actions.json'))
-          rows=[x for x in d['actions'] if x['action_type']=='delivery_followup_schedule']
-          assert rows and rows[0]['action_state']=='completed'
-          print('[PASS] FLOWIQ completed the follow-up action through the real IZAKHONO TASKS flow API.')
-          PY
+          test "$complete" = "1"
 
           docker run --rm --network flowiq-ci-net curlimages/curl:8.12.1 \
             -fsS \
@@ -132,16 +156,22 @@ jobs:
 
           python - <<'PY'
           import json
+          actions=json.load(open('/tmp/actions.json'))['actions']
+          follow=[x for x in actions if x['action_type']=='delivery_followup_schedule']
+          assert follow and follow[0]['action_state']=='completed'
           d=json.load(open('/tmp/tasks.json'))
           assert len(d['tasks']) == 1
           task=d['tasks'][0]
           assert task['id'].startswith('tsk_flow_')
           assert 'doc_ci_001' in task['title']
           assert task['schedule']['kind']=='once'
-          print('[PASS] IZAKHONO TASKS contains the idempotent DOCFLOW delivery follow-up task.')
+          print('[PASS] FLOWIQ completed the follow-up through the real IZAKHONO TASKS /api/flow contract.')
           PY
 
-          curl -fsS -X POST http://127.0.0.1:19797/v1/events             -H 'content-type: application/json'             -H 'authorization: Bearer ci-flowiq-token-not-production'             --data-binary @/tmp/event.json >/tmp/duplicate.json
+          curl -fsS -X POST http://127.0.0.1:19797/v1/events \
+            -H 'content-type: application/json' \
+            -H 'authorization: Bearer ci-flowiq-token-not-production' \
+            --data-binary @/tmp/event.json >/tmp/duplicate.json
 
           python - <<'PY'
           import json
@@ -152,7 +182,7 @@ jobs:
           print('[PASS] FLOWIQ idempotency prevented duplicate workflow actions.')
           PY
 
-      - name: Stop FLOWIQ
+      - name: Cleanup
         if: always()
         shell: bash
         run: |
