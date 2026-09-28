@@ -1,0 +1,119 @@
+name: IZAKHONO TASKS NODE01 CI
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'products/izakhono-tasks/**'
+      - 'products/izakhono-flowiq/**'
+      - 'internal/node01-command-gateway/deploy-profiles/izakhono-tasks.json'
+      - '.github/workflows/tasks-node01-ci.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'products/izakhono-tasks/**'
+      - 'products/izakhono-flowiq/**'
+      - 'internal/node01-command-gateway/deploy-profiles/izakhono-tasks.json'
+      - '.github/workflows/tasks-node01-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  tasks-node01:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Static checks
+        shell: bash
+        run: |
+          python -m py_compile products/izakhono-tasks/app.py
+          bash -n products/izakhono-tasks/owner-node/prepare-env.sh
+          bash -n products/izakhono-tasks/owner-node/deploy-node01.sh
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=json.loads(Path('internal/node01-command-gateway/deploy-profiles/izakhono-tasks.json').read_text())
+          assert p['source']=='izakhono-code'
+          assert p['repository']=='izakhono-builder'
+          assert p['environment']=='production'
+          assert p['dockerfile']=='products/izakhono-tasks/Dockerfile.node'
+          assert p['container_port']==9991
+          assert p['health_path']=='/healthz'
+          print('[PASS] TASKS NODE01 deployment profile verified.')
+          PY
+
+      - name: Build NODE01 TASKS container
+        run: docker build -f products/izakhono-tasks/Dockerfile.node -t izakhono-tasks-node01:ci .
+
+      - name: Start TASKS
+        shell: bash
+        run: |
+          docker run -d --name tasks-node01-ci \
+            -e IZAKHONO_TASKS_TOKEN=ci-tasks-owner-token \
+            -e IZAKHONO_TASKS_FLOW_TOKEN=ci-tasks-flow-token \
+            -p 127.0.0.1:19991:9991 \
+            izakhono-tasks-node01:ci
+          for _ in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:19991/healthz >/tmp/tasks-health.json; then
+              cat /tmp/tasks-health.json
+              exit 0
+            fi
+            sleep 1
+          done
+          docker logs tasks-node01-ci || true
+          exit 1
+
+      - name: Verify FLOW adapter and idempotency
+        shell: bash
+        run: |
+          cat >/tmp/flow-action.json <<'JSON'
+          {
+            "action_id":"act_ci_docflow_followup",
+            "run_id":"evt_ci_docflow_send",
+            "action_type":"followup.schedule.requested",
+            "payload":{
+              "subject_ref":"doc_ci_001",
+              "metadata":{"delay_minutes":60}
+            }
+          }
+          JSON
+
+          curl -fsS -X POST http://127.0.0.1:19991/api/flow \
+            -H 'content-type: application/json' \
+            -H 'authorization: Bearer ci-tasks-flow-token' \
+            -H 'x-izakhono-entity-id: ci' \
+            -H 'x-platform-id: izakhono-docflow' \
+            --data-binary @/tmp/flow-action.json >/tmp/first.json
+
+          curl -fsS -X POST http://127.0.0.1:19991/api/flow \
+            -H 'content-type: application/json' \
+            -H 'authorization: Bearer ci-tasks-flow-token' \
+            -H 'x-izakhono-entity-id: ci' \
+            -H 'x-platform-id: izakhono-docflow' \
+            --data-binary @/tmp/flow-action.json >/tmp/second.json
+
+          curl -fsS http://127.0.0.1:19991/api/v1/tasks \
+            -H 'authorization: Bearer ci-tasks-owner-token' \
+            -H 'x-izakhono-entity-id: ci' >/tmp/tasks.json
+
+          python - <<'PY'
+          import json
+          first=json.load(open('/tmp/first.json'))
+          second=json.load(open('/tmp/second.json'))
+          tasks=json.load(open('/tmp/tasks.json'))['tasks']
+          assert first['ok'] is True and first['idempotent_replay'] is False
+          assert second['ok'] is True and second['idempotent_replay'] is True
+          assert len(tasks)==1
+          assert tasks[0]['id'].startswith('tsk_flow_')
+          assert tasks[0]['schedule']['kind']=='once'
+          print('[PASS] TASKS accepted the FLOWIQ contract once and replayed idempotently.')
+          PY
+
+      - name: Cleanup
+        if: always()
+        run: docker rm -f tasks-node01-ci >/dev/null 2>&1 || true
