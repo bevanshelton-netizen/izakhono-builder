@@ -21,7 +21,7 @@ WORKFLOW_PRODUCTS = {x.strip().lower() for x in os.getenv("IZAKHONO_AI_WORKFLOW_
 
 OWNER_ONLY = os.getenv("IZAKHONO_AI_OWNER_ONLY", "true").lower() != "false"
 ALLOW_EXTERNAL = os.getenv("IZAKHONO_AI_ALLOW_EXTERNAL", "false").lower() == "true"
-MAX_BODY = int(os.getenv("IZAKHONO_AI_MAX_BODY", "1000000"))
+MAX_BODY = int(os.getenv("IZAKHONO_AI_MAX_BODY", "16000000"))
 
 DEFAULT_MODEL = os.getenv("IZAKHONO_AI_MODEL", "qwen3:4b")
 OLLAMA_URL = os.getenv("IZAKHONO_OLLAMA_URL", "http://127.0.0.1:11434").rstrip("/")
@@ -89,15 +89,17 @@ CAPABILITIES = {
         "status": "adapter",
     },
     "video": {
-        "kind": "json_generate",
+        "kind": "video_generate",
         "url": os.getenv("IZAKHONO_VIDEO_URL", "").rstrip("/"),
+        "key": os.getenv("IZAKHONO_VIDEO_INTERNAL_KEY", ""),
         "model": os.getenv("IZAKHONO_VIDEO_MODEL", "wan2.1"),
         "models_env": "IZAKHONO_VIDEO_MODELS",
         "status": "adapter",
     },
     "speech": {
-        "kind": "json_generate",
+        "kind": "speech_generate",
         "url": os.getenv("IZAKHONO_SPEECH_URL", "").rstrip("/"),
+        "key": os.getenv("IZAKHONO_SPEECH_INTERNAL_KEY", ""),
         "model": os.getenv("IZAKHONO_SPEECH_MODEL", "kokoro"),
         "models_env": "IZAKHONO_SPEECH_MODELS",
         "status": "adapter",
@@ -655,6 +657,58 @@ def select_route(payload, capability):
             raise RuntimeError("external_route_disabled")
     return route
 
+def media_adapter_endpoint(base):
+    base = str(base or "").rstrip("/")
+    if not base:
+        return ""
+    if base.endswith("/api/v1/generate"):
+        return base
+    return base + "/api/v1/generate"
+
+def media_generate(payload, model, capability):
+    cfg = CAPABILITIES[capability]
+    if not cfg["url"]:
+        raise RuntimeError("capability_backend_unconfigured")
+    if not owner_runtime_allowed(cfg["url"]):
+        raise RuntimeError("owner_route_required")
+    options = payload.get("options") if isinstance(payload.get("options"), dict) else {}
+
+    if capability == "speech":
+        text = str(payload.get("input") or payload.get("prompt") or options.get("text") or "").strip()
+        if not text:
+            raise ValueError("speech_text_required")
+        request_payload = {
+            "schema": "izakhono.speech.generate.v1",
+            "text": text,
+            "language": str(options.get("language") or payload.get("language") or "English"),
+            "voice": str(options.get("voice") or payload.get("voice") or "default"),
+            "format": str(options.get("format") or "wav"),
+            "speed": options.get("speed", 1.0),
+            "policy": {"owned_first": True, "no_tracking": True},
+        }
+        headers = {"x-izakhono-speech-key": cfg.get("key", "")} if cfg.get("key") else {}
+        return http_json(media_adapter_endpoint(cfg["url"]), request_payload, headers=headers, timeout=300)
+
+    if capability == "video":
+        prompt = str(payload.get("prompt") or payload.get("input") or options.get("prompt") or "").strip()
+        source_image = payload.get("source_image") or options.get("source_image")
+        if not prompt:
+            raise ValueError("video_prompt_required")
+        if not source_image:
+            raise ValueError("video_source_image_required")
+        request_payload = {
+            "schema": "izakhono.video.scene.v1",
+            "prompt": prompt,
+            "duration_seconds": int(options.get("duration_seconds") or payload.get("duration_seconds") or 5),
+            "aspect_ratio": str(options.get("aspect_ratio") or payload.get("aspect_ratio") or "9:16"),
+            "source_image": source_image,
+            "policy": {"owned_first": True, "no_tracking": True, "originality_required": True},
+        }
+        headers = {"x-izakhono-video-key": cfg.get("key", "")} if cfg.get("key") else {}
+        return http_json(media_adapter_endpoint(cfg["url"]), request_payload, headers=headers, timeout=900)
+
+    raise RuntimeError("media_capability_invalid")
+
 def json_generate(payload, model, capability):
     cfg = CAPABILITIES[capability]
     if not cfg["url"]:
@@ -684,6 +738,15 @@ def execute_capability(payload):
     elif cfg["kind"] == "json_generate":
         if payload.get("input") in (None, "") and payload.get("prompt") in (None, ""):
             raise ValueError("input_or_prompt_required")
+    elif cfg["kind"] == "speech_generate":
+        if payload.get("input") in (None, "") and payload.get("prompt") in (None, ""):
+            raise ValueError("speech_text_required")
+    elif cfg["kind"] == "video_generate":
+        options = payload.get("options") if isinstance(payload.get("options"), dict) else {}
+        if payload.get("input") in (None, "") and payload.get("prompt") in (None, ""):
+            raise ValueError("video_prompt_required")
+        if not (payload.get("source_image") or options.get("source_image")):
+            raise ValueError("video_source_image_required")
     else:
         raise RuntimeError("capability_backend_invalid")
 
@@ -701,7 +764,10 @@ def execute_capability(payload):
             if not output:
                 raise RuntimeError("empty_model_response")
             return capability, model, {"type": "text", "text": output}, raw, route
-        raw = json_generate(payload, model, capability)
+        if cfg["kind"] in ("speech_generate", "video_generate"):
+            raw = media_generate(payload, model, capability)
+        else:
+            raw = json_generate(payload, model, capability)
         output = raw.get("output", raw.get("result", raw))
         return capability, model, {"type": capability, "data": output}, raw, route
     finally:
@@ -717,6 +783,8 @@ def capability_summary():
             configured = bool(pool)
         else:
             owner_route = bool(cfg["url"] and owner_runtime_allowed(cfg["url"]))
+            if cfg["kind"] in ("speech_generate", "video_generate"):
+                configured = bool(configured and cfg.get("key"))
         items.append({
             "capability": name,
             "model": cfg["model"],
