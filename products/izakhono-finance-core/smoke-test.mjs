@@ -67,10 +67,44 @@ async function runNode(script,args,extraEnv={}){
 try{
   const health=await waitReady();
   assert.equal(health.ok,true);
-  assert.equal(health.version,"0.2.0");
+  assert.equal(health.version,"0.3.0");
   assert.equal(health.boundaries.moneyMovement,false);
   assert.equal(health.security.makerChecker,true);
   assert.equal(health.security.auditHashChain,true);
+
+  const institution=await req("POST","/api/institution-configs",makerToken,{display_name:"Smoke Finance Co",short_name:"Smoke",country_code:"ZA",currency:"ZAR",locale:"en-ZA",brand:{primary:"#071b33"}});
+  assert.equal(institution.status,201);
+  const institutionApproval=await req("POST","/api/approvals/request",makerToken,{action_type:"institution-config.publish",target_type:"institution_config",target_id:institution.data.id});
+  assert.equal(institutionApproval.status,201);
+  const institutionApproved=await req("POST","/api/approvals/"+institutionApproval.data.id+"/approve",checkerToken,{note:"publish institution config"});
+  assert.equal(institutionApproved.status,200);
+  const institutionPublished=await req("POST","/api/institution-configs/"+institution.data.id+"/publish",checkerToken,{approval_id:institutionApproval.data.id});
+  assert.equal(institutionPublished.status,200);
+  assert.equal(institutionPublished.data.status,"published");
+
+  const product=await req("POST","/api/product-configs",makerToken,{name:"Smoke Personal Loan",product_code:"smoke-personal",currency:"ZAR",annual_rate:12,interest_method:"declining",default_term_months:6,min_amount:100,max_amount:10000});
+  assert.equal(product.status,201);
+  assert.equal(product.data.decisioning,false);
+  const productApproval=await req("POST","/api/approvals/request",makerToken,{action_type:"product-config.publish",target_type:"product_config",target_id:product.data.id});
+  assert.equal(productApproval.status,201);
+  const productApproved=await req("POST","/api/approvals/"+productApproval.data.id+"/approve",checkerToken,{note:"publish product"});
+  assert.equal(productApproved.status,200);
+  const productPublished=await req("POST","/api/product-configs/"+product.data.id+"/publish",checkerToken,{approval_id:productApproval.data.id});
+  assert.equal(productPublished.status,200);
+  assert.equal(productPublished.data.status,"published");
+
+  const application=await req("POST","/api/loan-applications",makerToken,{customer_ref:"customer-smoke-001",product_ref:product.data.id,amount:1200,currency:"ZAR",term_months:6});
+  assert.equal(application.status,201);
+  assert.equal(application.data.final_credit_decision,null);
+  const loanApproval=await req("POST","/api/approvals/request",makerToken,{action_type:"loan-record.activate",target_type:"loan_application",target_id:application.data.id});
+  assert.equal(loanApproval.status,201);
+  const loanApproved=await req("POST","/api/approvals/"+loanApproval.data.id+"/approve",checkerToken,{note:"activate servicing record"});
+  assert.equal(loanApproved.status,200);
+  const servicing=await req("POST","/api/servicing-loans",checkerToken,{application_id:application.data.id,approval_id:loanApproval.data.id,start_date:"2026-01-15"});
+  assert.equal(servicing.status,201);
+  assert.equal(servicing.data.principal_disbursed_by_finance_core,false);
+  assert.equal(servicing.data.schedule.length,6);
+  assert.ok(servicing.data.total_due>=1200);
 
   const account=await req("POST","/api/accounts",makerToken,{customer_ref:"customer-smoke-001",product_ref:"member-basic",currency:"ZAR"});
   assert.equal(account.status,201);
@@ -102,6 +136,23 @@ try{
   assert.equal(payment2.status,200);
   assert.equal(payment2.data.idempotent_replay,true);
   assert.equal(payment2.data.id,payment1.data.id);
+
+  const allocation=await req("POST","/api/servicing-loans/"+servicing.data.id+"/allocate-repayment",makerToken,{payment_reference_id:payment1.data.id});
+  assert.equal(allocation.status,201);
+  assert.equal(allocation.data.money_moved_by_finance_core,false);
+  assert.ok(allocation.data.amount_allocated>0);
+
+  const allocationReplay=await req("POST","/api/servicing-loans/"+servicing.data.id+"/allocate-repayment",makerToken,{payment_reference_id:payment1.data.id});
+  assert.equal(allocationReplay.status,200);
+  assert.equal(allocationReplay.data.idempotent_replay,true);
+
+  const arrears=await req("GET","/api/arrears?as_of=2026-12-31",checkerToken);
+  assert.equal(arrears.status,200);
+  assert.ok(arrears.data.items.some(x=>x.servicing_loan_id===servicing.data.id));
+
+  const collection=await req("POST","/api/collection-cases",makerToken,{servicing_loan_id:servicing.data.id,reason:"arrears_followup",channel:"manual"});
+  assert.equal(collection.status,201);
+  assert.equal(collection.data.automated_contact,false);
 
   const integrity=await req("GET","/api/audit/integrity",checkerToken);
   assert.equal(integrity.status,200);
@@ -138,6 +189,13 @@ try{
     payment_idempotency:true,
     encrypted_persistence:true,
     backup_restore:true,
+    institution_config:true,
+    product_config:true,
+    repayment_schedule:true,
+    servicing_record:true,
+    repayment_allocation:true,
+    arrears_view:true,
+    collections_case:true,
     public_live:false
   },null,2));
 } finally {

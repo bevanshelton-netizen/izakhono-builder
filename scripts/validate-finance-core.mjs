@@ -8,7 +8,7 @@ const envExample=fs.readFileSync('products/izakhono-finance-core/node01/.env.exa
 const errors=[];
 
 if(contract.schema!=='izakhono.finance-core.v1') errors.push('unexpected FINANCE CORE schema');
-if(contract.version!=='0.2.0') errors.push('FINANCE CORE contract version must be 0.2.0');
+if(contract.version!=='0.3.0') errors.push('FINANCE CORE contract version must be 0.3.0');
 if(contract.infrastructure?.policy!=='owned-first-externally-reversible') errors.push('FINANCE CORE must remain owned-first');
 if(contract.infrastructure?.system_of_record!=='IZAKHONO-owned infrastructure') errors.push('FINANCE CORE system of record must remain owned');
 if(contract.infrastructure?.owned_target!=='NODE01') errors.push('FINANCE CORE owned target must remain NODE01');
@@ -26,12 +26,20 @@ if(contract.security?.backup_checksum_manifest_required!==true) errors.push('bac
 if(contract.security?.idempotent_payment_reference_ingest!==true) errors.push('payment-reference ingest must remain idempotent');
 if(contract.super_app_module?.module_id!=='finance-core' || contract.super_app_module?.route!=='/finance-core' || contract.super_app_module?.engine!=='independent') errors.push('SUPER APP module contract drift');
 if(product.slug!=='izakhono-finance-core') errors.push('product slug drift');
-if(product.application_version!=='0.2.0') errors.push('product application version drift');
+if(product.application_version!=='0.3.0') errors.push('product application version drift');
 if(product.infrastructure?.owned_target!=='NODE01') errors.push('owned target must remain NODE01');
 if(product.infrastructure?.current_public_route!=='NOT_YET_VERIFIED') errors.push('public status cannot be claimed without evidence');
 if(!server.includes('maker_checker_separation_required')) errors.push('maker-checker runtime enforcement missing');
 if(!server.includes('audit chain invalid')) errors.push('audit-chain runtime enforcement missing');
 if(!server.includes('idempotent_replay:true')) errors.push('payment-reference idempotency missing');
+if(!server.includes('/api/institution-configs')) errors.push('institution configuration API missing');
+if(!server.includes('/api/product-configs')) errors.push('product configuration API missing');
+if(!server.includes('/api/servicing-loans')) errors.push('servicing-loan API missing');
+if(!server.includes('/allocate-repayment')) errors.push('repayment allocation API missing');
+if(!server.includes('/api/arrears')) errors.push('arrears reporting API missing');
+if(!server.includes('/api/collection-cases')) errors.push('collections case API missing');
+if(!server.includes('principal_disbursed_by_finance_core:false')) errors.push('servicing records must not imply FINANCE CORE disbursement authority');
+if(!server.includes('automated_contact:false')) errors.push('collections automation must remain off by default');
 if(!compose.includes('127.0.0.1:8797:8797')) errors.push('NODE01 package must bind FINANCE CORE to loopback only');
 if(!compose.includes('no-new-privileges:true')) errors.push('NODE01 no-new-privileges control missing');
 if(!compose.includes('cap_drop:')) errors.push('NODE01 capability drop missing');
@@ -62,6 +70,11 @@ console.log(JSON.stringify({
   audit_hash_chain:true,
   backup_restore_packaged:true,
   node01_packaged:true,
+  operating_mvp:true,
+  institution_config:true,
+  product_config:true,
+  servicing_records:true,
+  arrears_reporting:true,
   regulated_activity_gated:true,
   public_live:false
 },null,2));

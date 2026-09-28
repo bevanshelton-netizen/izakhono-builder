@@ -1,7 +1,7 @@
 {
   "schema": "izakhono.finance-core.v1",
   "product": "IZAKHONO FINANCE CORE",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "operator": "IZAKHONO AFRICA (PTY) LTD",
   "product_role": "financial-institution software platform",
   "infrastructure": {
@@ -28,7 +28,14 @@
     "API-first integration",
     "hash-chained audit integrity",
     "encrypted backup and restore tooling",
-    "NODE01 hardened deployment pack"
+    "NODE01 hardened deployment pack",
+    "institution white-label configuration",
+    "published loan product configuration",
+    "repayment schedule generation",
+    "servicing loan software records",
+    "repayment reference allocation",
+    "arrears reporting",
+    "collections case records"
   ],
   "integrations": {
     "fraud_and_trust": "FORTRESS",
@@ -44,7 +51,9 @@
     "credit_provider_enabled": false,
     "automated_final_credit_decisions_enabled": false,
     "money_movement_without_authorised_payment_adapter": false,
-    "country_specific_licensing_and_compliance_required_before_regulated_operation": true
+    "country_specific_licensing_and_compliance_required_before_regulated_operation": true,
+    "loan_disbursement_by_finance_core": false,
+    "automated_collections_contact_enabled": false
   },
   "privacy": {
     "behavioural_tracking": false,
@@ -64,7 +73,10 @@
     "audit_hash_chain_required": true,
     "secret_file_key_supported": true,
     "backup_checksum_manifest_required": true,
-    "idempotent_payment_reference_ingest": true
+    "idempotent_payment_reference_ingest": true,
+    "published_product_required_for_servicing": true,
+    "servicing_activation_requires_maker_checker": true,
+    "repayment_allocation_requires_verified_payment_reference": true
   },
   "launch_policy": {
     "code_presence_is_not_live": true,
@@ -80,5 +92,14 @@
     "route": "/finance-core",
     "embedded": true,
     "engine": "independent"
+  },
+  "operating_model": {
+    "institution_config": "maker/checker published",
+    "product_config": "maker/checker published",
+    "loan_application": "recorded without automated final credit decision",
+    "servicing_record": "created only after approved maker/checker activation and published product",
+    "repayment_allocation": "references verified external payment evidence only",
+    "arrears": "derived operational view",
+    "collections": "case records only; automated customer contact disabled by default"
   }
 }
