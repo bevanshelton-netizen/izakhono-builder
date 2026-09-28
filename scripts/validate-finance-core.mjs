@@ -32,6 +32,14 @@ if(product.infrastructure?.current_public_route!=='NOT_YET_VERIFIED') errors.pus
 if(!server.includes('maker_checker_separation_required')) errors.push('maker-checker runtime enforcement missing');
 if(!server.includes('audit chain invalid')) errors.push('audit-chain runtime enforcement missing');
 if(!server.includes('idempotent_replay:true')) errors.push('payment-reference idempotency missing');
+if(!server.includes('/api/institution-configs')) errors.push('institution configuration API missing');
+if(!server.includes('/api/product-configs')) errors.push('product configuration API missing');
+if(!server.includes('/api/servicing-loans')) errors.push('servicing-loan API missing');
+if(!server.includes('/allocate-repayment')) errors.push('repayment allocation API missing');
+if(!server.includes('/api/arrears')) errors.push('arrears reporting API missing');
+if(!server.includes('/api/collection-cases')) errors.push('collections case API missing');
+if(!server.includes('principal_disbursed_by_finance_core:false')) errors.push('servicing records must not imply FINANCE CORE disbursement authority');
+if(!server.includes('automated_contact:false')) errors.push('collections automation must remain off by default');
 if(!compose.includes('127.0.0.1:8797:8797')) errors.push('NODE01 package must bind FINANCE CORE to loopback only');
 if(!compose.includes('no-new-privileges:true')) errors.push('NODE01 no-new-privileges control missing');
 if(!compose.includes('cap_drop:')) errors.push('NODE01 capability drop missing');
@@ -62,6 +70,11 @@ console.log(JSON.stringify({
   audit_hash_chain:true,
   backup_restore_packaged:true,
   node01_packaged:true,
+  operating_mvp:true,
+  institution_config:true,
+  product_config:true,
+  servicing_records:true,
+  arrears_reporting:true,
   regulated_activity_gated:true,
   public_live:false
 },null,2));
