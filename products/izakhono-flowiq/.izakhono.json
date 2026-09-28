@@ -1,0 +1,31 @@
+{
+  "version": 3,
+  "name": "IZAKHONO FLOWIQ",
+  "slug": "izakhono-flowiq",
+  "operator": "IZAKHONO AFRICA (PTY) LTD",
+  "trading_name": "IZAKHONO FLOWIQ",
+  "build_context": ".",
+  "dockerfile_path": "products/izakhono-flowiq/Dockerfile.node",
+  "container_port": 9797,
+  "health_path": "/readyz",
+  "branch": "main",
+  "infrastructure": {
+    "policy": "owned-first-externally-reversible",
+    "authoritative_source": "IZAKHONO CODE / Forge",
+    "owned_target": "NODE01 / IZAKHONO Runtime / FLOWIQ engine",
+    "current_public_route": "INTERNAL_ONLY",
+    "external_fallback": "NOT_REQUIRED_FOR_INTERNAL_ONLY",
+    "status_label": "INTERNAL SERVICE",
+    "data_dependencies": ["FLOWIQ SQLite event/action ledger"],
+    "auth_dependencies": ["FLOWIQ_TOKEN"],
+    "payment_dependencies": [],
+    "backup_evidence": "PENDING_NODE01",
+    "restore_evidence": "PENDING_NODE01",
+    "rollback_evidence": "NODE01_DEPLOYER"
+  },
+  "alpha": {
+    "preflight": true,
+    "rehearsal": false,
+    "windows_package": false
+  }
+}
