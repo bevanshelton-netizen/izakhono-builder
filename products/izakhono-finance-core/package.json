@@ -1,11 +1,14 @@
 {
   "name": "@izakhono/finance-core",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "scripts": {
     "start": "node server.mjs",
     "check": "node --check server.mjs",
-    "test": "node test.mjs"
+    "test": "node test.mjs",
+    "preflight:contract": "node ops/node01-preflight.mjs --contract-only",
+    "backup": "node ops/backup.mjs",
+    "restore": "node ops/restore.mjs"
   }
 }

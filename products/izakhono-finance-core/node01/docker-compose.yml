@@ -1,0 +1,32 @@
+services:
+  finance-core:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    container_name: izakhono-finance-core
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "127.0.0.1:8797:8797"
+    volumes:
+      - finance-core-data:/data
+      - ./secrets:/run/secrets/finance-core:ro
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    pids_limit: 200
+    healthcheck:
+      test: ["CMD","node","-e","fetch('http://127.0.0.1:8797/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+volumes:
+  finance-core-data:
+    name: izakhono-finance-core-data
