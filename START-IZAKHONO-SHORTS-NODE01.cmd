@@ -79,16 +79,46 @@ docker run -d --name izakhono-shorts-worker --restart unless-stopped ^
   -v izakhono-shorts-jobs:/app/data/jobs ^
   izakhono-shorts python worker.py || exit /b 1
 
-powershell -NoProfile -Command "$r=Invoke-RestMethod -Uri 'http://127.0.0.1:9710/healthz' -TimeoutSec 10; if(-not $r.ok){exit 1}; $r | ConvertTo-Json -Depth 5"
+powershell -NoProfile -Command "$r=Invoke-RestMethod -Uri 'http://127.0.0.1:9710/healthz' -TimeoutSec 10; if(-not $r.ok){exit 1}; if($r.external_fallback_enabled){exit 2}; if(-not $r.owned_renderer_key_configured){exit 3}; $r | ConvertTo-Json -Depth 5"
 if errorlevel 1 (
-  echo [FAIL] Shorts control plane health check failed.
+  echo [FAIL] Shorts control plane health/security check failed.
   exit /b 1
+)
+
+set EVIDENCE_DIR=%USERPROFILE%\Desktop\IZAKHONO-SHORTS-EVIDENCE
+if not exist "%EVIDENCE_DIR%" mkdir "%EVIDENCE_DIR%"
+
+echo.
+echo ============================================================
+echo Running a REAL owned end-to-end Short render.
+echo This gate must produce and re-download an actual MP4 before
+echo the launcher is allowed to print LIVE/operational success.
+echo ============================================================
+echo.
+
+docker run --rm ^
+  -v "%EVIDENCE_DIR%:/evidence" ^
+  izakhono-shorts ^
+  python e2e.py --base http://host.docker.internal:9710 --evidence-dir /evidence --timeout 2400 --poll 5
+set E2E_RC=%ERRORLEVEL%
+
+if not "%E2E_RC%"=="0" (
+  echo.
+  echo ============================================================
+  echo [SAFE STOP] The stack started, but a real owned MP4 did not
+  echo pass the end-to-end gate. No LIVE claim is allowed.
+  echo Evidence: %EVIDENCE_DIR%\IZAKHONO-SHORTS-E2E-REPORT.json
+  echo ============================================================
+  exit /b %E2E_RC%
 )
 
 echo.
 echo ============================================================
-echo [PASS] IZAKHONO SHORTS control plane and owned renderer are up.
+echo [PASS] IZAKHONO SHORTS IS OPERATIONAL ON NODE01.
+echo A real owned 1080x1920 MP4 passed the end-to-end evidence gate.
 echo UI:       http://127.0.0.1:9710
 echo Renderer: http://127.0.0.1:9721/healthz
+echo Video:    %EVIDENCE_DIR%\IZAKHONO-FIRST-OWNED-SHORT.mp4
+echo Report:   %EVIDENCE_DIR%\IZAKHONO-SHORTS-E2E-REPORT.json
 echo ============================================================
 endlocal
