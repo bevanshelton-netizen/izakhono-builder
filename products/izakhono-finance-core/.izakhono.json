@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "name": "IZAKHONO FINANCE CORE",
   "slug": "izakhono-finance-core",
   "operator": "IZAKHONO AFRICA (PTY) LTD",
@@ -9,14 +9,18 @@
   "container_port": 8797,
   "health_path": "/health",
   "branch": "main",
-  "application_version": "0.1.0",
+  "application_version": "0.2.0",
   "infrastructure": {
     "policy": "owned-first-externally-reversible",
     "authoritative_source": "IZAKHONO CODE / Forge",
     "owned_target": "NODE01",
     "current_public_route": "NOT_YET_VERIFIED",
     "external_fallback": "OPTIONAL_REPLACEABLE_ONLY",
-    "status_label": "OWNED PACKAGE READY - NODE01 ACTIVATION NOT YET VERIFIED"
+    "status_label": "HARDENED OWNED PACKAGE READY - NODE01 ACTIVATION NOT YET VERIFIED",
+    "backup_evidence": "PACKAGED_NOT_MACHINE_VERIFIED",
+    "restore_evidence": "PACKAGED_NOT_MACHINE_VERIFIED",
+    "audit_integrity": "HASH_CHAIN_PACKAGED",
+    "maker_checker": "PACKAGED_REQUIRES_DISTINCT_PRODUCTION_PRINCIPALS"
   },
   "privacy": {
     "telemetry": false,
