@@ -100,6 +100,7 @@ function Attach-LocalMediaRuntime([string]$Name, [int]$Port, [string]$EnvPath, [
 
 $speechAttached = Attach-LocalMediaRuntime "IZAKHONO Speech Runtime" 9731 "/etc/izakhono/apps/izakhono-speech-runtime.env" "IZAKHONO_SPEECH_INTERNAL_KEY" "IZAKHONO_SPEECH_URL" "IZAKHONO_SPEECH_INTERNAL_KEY"
 $videoAttached = Attach-LocalMediaRuntime "IZAKHONO Video Runtime" 9741 "/etc/izakhono/apps/izakhono-video-runtime.env" "IZAKHONO_VIDEO_INTERNAL_KEY" "IZAKHONO_VIDEO_URL" "IZAKHONO_VIDEO_INTERNAL_KEY"
+$fabricAttached = Attach-LocalMediaRuntime "IZAKHONO Media Runtime Fabric" 9751 "/etc/izakhono/apps/izakhono-media-fabric.env" "IZAKHONO_MEDIA_FABRIC_INTERNAL_KEY" "IZAKHONO_MEDIA_FABRIC_URL" "IZAKHONO_MEDIA_FABRIC_INTERNAL_KEY"
 
 $externalRequested = (
   $env:IZAKHONO_AI_ALLOW_EXTERNAL -eq "true" -and
@@ -183,6 +184,7 @@ if ($existing) {
     if ($speechCapability.Count -eq 0 -or [bool]$speechCapability[0].configured -ne [bool]$speechAttached) { $needsRestart = $true }
     if ($videoCapability.Count -eq 0 -or [bool]$videoCapability[0].configured -ne [bool]$videoAttached) { $needsRestart = $true }
     $h = Invoke-RestMethod -Uri "http://127.0.0.1:9595/healthz" -TimeoutSec 3
+    if ([bool]$h.media_fabric.configured -ne [bool]$fabricAttached) { $needsRestart = $true }
     if ($workflowConfigured -and -not $h.workflow_mode_configured) { $needsRestart = $true }
     if ([int]$h.owner_text_pool_size -ne $ownerPoolRequested.Count) { $needsRestart = $true }
     if ([int]$h.admission.max_inflight -ne [int]$env:IZAKHONO_AI_MAX_INFLIGHT) { $needsRestart = $true }
@@ -262,6 +264,9 @@ if ($env:IZAKHONO_AI_WARM_ON_START -eq "true") {
   "EXTERNAL_AI_PROVIDER=$($health.external_ai_provider)"
   "SPEECH_RUNTIME_ATTACHED=$speechAttached"
   "VIDEO_RUNTIME_ATTACHED=$videoAttached"
+  "MEDIA_FABRIC_ATTACHED=$fabricAttached"
+  "MEDIA_FABRIC_BROKER_OK=$($health.media_fabric.ok)"
+  "MEDIA_FABRIC_PRODUCTION_READY=$($health.media_fabric.production_ready)"
   "MEDIA_BACKENDS=VERIFY_WITH_/api/v1/capabilities"
   "NOTE=Local gateway proof is not public-live proof."
   "TIME=$([DateTime]::UtcNow.ToString('o'))"
