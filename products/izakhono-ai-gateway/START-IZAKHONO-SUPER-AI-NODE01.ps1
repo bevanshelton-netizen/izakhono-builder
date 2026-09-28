@@ -52,6 +52,15 @@ if ([string]::IsNullOrWhiteSpace($env:IZAKHONO_AI_ALLOW_EXTERNAL)) { $env:IZAKHO
 if ([string]::IsNullOrWhiteSpace($env:IZAKHONO_AI_MAX_INFLIGHT)) { $env:IZAKHONO_AI_MAX_INFLIGHT = "4" }
 if ([string]::IsNullOrWhiteSpace($env:IZAKHONO_AI_MAX_QUEUE)) { $env:IZAKHONO_AI_MAX_QUEUE = "16" }
 if ([string]::IsNullOrWhiteSpace($env:IZAKHONO_AI_QUEUE_TIMEOUT_SECONDS)) { $env:IZAKHONO_AI_QUEUE_TIMEOUT_SECONDS = "20" }
+if ([string]::IsNullOrWhiteSpace($env:IZAKHONO_AI_ROUTING_EWMA_ALPHA)) { $env:IZAKHONO_AI_ROUTING_EWMA_ALPHA = "0.35" }
+if ([string]::IsNullOrWhiteSpace($env:IZAKHONO_AI_ROUTING_UNKNOWN_LATENCY_MS)) { $env:IZAKHONO_AI_ROUTING_UNKNOWN_LATENCY_MS = "3000" }
+if ([string]::IsNullOrWhiteSpace($env:IZAKHONO_AI_ROUTING_INFLIGHT_PENALTY_MS)) { $env:IZAKHONO_AI_ROUTING_INFLIGHT_PENALTY_MS = "1500" }
+if ([string]::IsNullOrWhiteSpace($env:IZAKHONO_AI_ROUTING_WARM_BONUS_MS)) { $env:IZAKHONO_AI_ROUTING_WARM_BONUS_MS = "600" }
+if ([string]::IsNullOrWhiteSpace($env:IZAKHONO_AI_WARM_MAX_MODELS)) { $env:IZAKHONO_AI_WARM_MAX_MODELS = "3" }
+if ([string]::IsNullOrWhiteSpace($env:IZAKHONO_AI_WARM_KEEP_ALIVE)) { $env:IZAKHONO_AI_WARM_KEEP_ALIVE = "15m" }
+if ([string]::IsNullOrWhiteSpace($env:IZAKHONO_AI_WARM_TTL_SECONDS)) { $env:IZAKHONO_AI_WARM_TTL_SECONDS = "900" }
+if ([string]::IsNullOrWhiteSpace($env:IZAKHONO_AI_WARM_TIMEOUT_SECONDS)) { $env:IZAKHONO_AI_WARM_TIMEOUT_SECONDS = "180" }
+if ([string]::IsNullOrWhiteSpace($env:IZAKHONO_AI_WARM_ON_START)) { $env:IZAKHONO_AI_WARM_ON_START = "false" }
 
 $externalRequested = (
   $env:IZAKHONO_AI_ALLOW_EXTERNAL -eq "true" -and
@@ -135,6 +144,10 @@ if ($existing) {
     if ([int]$h.owner_text_pool_size -ne $ownerPoolRequested.Count) { $needsRestart = $true }
     if ([int]$h.admission.max_inflight -ne [int]$env:IZAKHONO_AI_MAX_INFLIGHT) { $needsRestart = $true }
     if ([int]$h.admission.max_queue -ne [int]$env:IZAKHONO_AI_MAX_QUEUE) { $needsRestart = $true }
+    if ([double]$h.routing.unknown_latency_ms -ne [double]$env:IZAKHONO_AI_ROUTING_UNKNOWN_LATENCY_MS) { $needsRestart = $true }
+    if ([double]$h.routing.inflight_penalty_ms -ne [double]$env:IZAKHONO_AI_ROUTING_INFLIGHT_PENALTY_MS) { $needsRestart = $true }
+    if ([double]$h.routing.warm_bonus_ms -ne [double]$env:IZAKHONO_AI_ROUTING_WARM_BONUS_MS) { $needsRestart = $true }
+    if ([int]$h.warm_pool.ttl_seconds -ne [int]$env:IZAKHONO_AI_WARM_TTL_SECONDS) { $needsRestart = $true }
     if ($externalRequested -and -not $h.external_ai_providers_enabled) { $needsRestart = $true }
     if (-not $externalRequested -and $h.external_ai_providers_enabled) { $needsRestart = $true }
   } catch {
@@ -164,6 +177,23 @@ for ($i = 0; $i -lt 30; $i++) {
 }
 if (-not $health -or -not $health.ok) { Fail "Local health gate did not pass" }
 
+$warmAttempted = 0
+$warmSucceeded = 0
+$warmFailed = 0
+if ($env:IZAKHONO_AI_WARM_ON_START -eq "true") {
+  try {
+    $warmHeaders = @{ "x-izakhono-ai-key" = $env:IZAKHONO_AI_GATEWAY_INTERNAL_KEY }
+    $warmBody = @{} | ConvertTo-Json
+    $warm = Invoke-RestMethod -Method Post -Uri "http://127.0.0.1:9595/api/v1/warm" -Headers $warmHeaders -ContentType "application/json" -Body $warmBody -TimeoutSec ([int]$env:IZAKHONO_AI_WARM_TIMEOUT_SECONDS * 4)
+    $warmAttempted = [int]$warm.attempted
+    $warmSucceeded = [int]$warm.succeeded
+    $warmFailed = [int]$warm.failed
+    $health = Invoke-RestMethod -Uri "http://127.0.0.1:9595/healthz" -TimeoutSec 3
+  } catch {
+    Write-Warning "SUPER AI warm-on-start did not complete: $($_.Exception.Message)"
+  }
+}
+
 @(
   "IZAKHONO SUPER AI"
   "LOCAL_GATEWAY=VERIFIED"
@@ -178,6 +208,13 @@ if (-not $health -or -not $health.ok) { Fail "Local health gate did not pass" }
   "ADMISSION_MAX_QUEUE=$($health.admission.max_queue)"
   "ADMISSION_INFLIGHT=$($health.admission.inflight)"
   "ADMISSION_QUEUED=$($health.admission.queued)"
+  "ROUTING_STRATEGY=$($health.routing.strategy)"
+  "WARM_CONFIGURED_MODELS=$($health.warm_pool.configured_model_count)"
+  "WARM_ACTIVE_RUNTIME_MODEL_PAIRS=$($health.warm_pool.active_runtime_model_pairs)"
+  "WARM_ON_START=$($env:IZAKHONO_AI_WARM_ON_START)"
+  "WARM_ATTEMPTED=$warmAttempted"
+  "WARM_SUCCEEDED=$warmSucceeded"
+  "WARM_FAILED=$warmFailed"
   "EXTERNAL_AI_ENABLED=$($health.external_ai_providers_enabled)"
   "EXTERNAL_AI_PROVIDER=$($health.external_ai_provider)"
   "MEDIA_BACKENDS=VERIFY_WITH_/api/v1/capabilities"

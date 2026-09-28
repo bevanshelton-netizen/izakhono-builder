@@ -128,6 +128,14 @@ Text routing:
 - `IZAKHONO_AI_MAX_INFLIGHT` — gateway-wide maximum simultaneous inference requests
 - `IZAKHONO_AI_MAX_QUEUE` — maximum requests allowed to wait for capacity
 - `IZAKHONO_AI_QUEUE_TIMEOUT_SECONDS` — maximum time a queued request may wait
+- `IZAKHONO_AI_ROUTING_EWMA_ALPHA` — weight given to the newest successful latency sample
+- `IZAKHONO_AI_ROUTING_UNKNOWN_LATENCY_MS` — neutral estimate before a runtime has benchmark samples
+- `IZAKHONO_AI_ROUTING_INFLIGHT_PENALTY_MS` — score penalty for each active request on a runtime
+- `IZAKHONO_AI_ROUTING_WARM_BONUS_MS` — score advantage for a recently warm requested model
+- `IZAKHONO_AI_WARM_MODELS` — comma-separated approved owner models to warm
+- `IZAKHONO_AI_WARM_KEEP_ALIVE` — Ollama-compatible keep-alive value used by the warm command
+- `IZAKHONO_AI_WARM_TTL_SECONDS` — how long a successful warm/use is treated as warm for routing
+- `IZAKHONO_AI_WARM_ON_START=false` — opt-in owner-machine warm-up after the gateway health gate
 - `IZAKHONO_AI_CHAT_MODEL`
 - `IZAKHONO_AI_CHAT_MODELS`
 - `IZAKHONO_AI_REASONING_MODEL`
@@ -175,6 +183,18 @@ For owned text workloads, available runtimes are ordered by current in-flight lo
 The public health endpoint exposes aggregate active/queued counts. The authenticated `GET /api/v1/runtimes` view adds admission statistics and per-runtime in-flight counts without returning backend addresses.
 
 This is bounded in-process back-pressure for one gateway instance. Durable cross-machine queues and resumable long-running jobs remain a separate Runtime Fabric layer.
+
+## Warm model pool and benchmark-aware routing
+
+Successful owner-runtime text calls now feed an in-memory exponentially weighted moving average (EWMA) latency benchmark per runtime and per model. For each new owned chat/reasoning/code request, SUPER AI combines that measured latency with current in-flight work and whether the requested model is recently warm. The lowest score is tried first, while cooldown/failover remains in force.
+
+This is adaptive routing, not a synthetic benchmark claim: a runtime starts with a neutral configured latency estimate and earns routing preference only from successful observed calls. Benchmark state resets when the gateway restarts.
+
+Owner models can be explicitly warmed through authenticated `POST /api/v1/warm` or the Windows owner command `WARM-OWNER-MODELS.cmd`. Warming calls the owner runtime's Ollama-compatible `/api/generate` interface with an empty prompt and a bounded `keep_alive`; it never sends product/customer content and never warms an external provider.
+
+Warming is **not enabled automatically by default** because keeping several models resident can consume significant owner RAM/VRAM. Set `IZAKHONO_AI_WARM_ON_START=true` only on a machine sized for the configured warm models.
+
+The public health endpoint exposes only the routing strategy plus aggregate warm-pool counts. The authenticated `GET /api/v1/runtimes` view includes sanitized runtime labels, observed EWMA latency, sample counts, warm model names and per-model benchmark summaries without returning backend addresses.
 
 ## Optional external text route
 
@@ -259,8 +279,8 @@ That means no artificial message-credit counter. It does not mean infinite compu
 
 ## Build direction
 
-The owner text runtime layer now includes multiple owner runtimes, strict owner-host validation, failure cooldown, failover, bounded admission control, least-loaded workload distribution, sanitized runtime status and IZAKHONO CODE visibility.
+The owner text runtime layer now includes multiple owner runtimes, strict owner-host validation, failure cooldown, bounded admission control, adaptive EWMA benchmark routing, explicit warm-model management, sanitized runtime status and IZAKHONO CODE visibility.
 
-The next runtime phases are model warm-pool management, benchmark-aware routing, durable cross-machine job queues, artefact storage and owner-hosted image/video/speech/transcription worker pools. They remain behind the same SUPER AI contract so individual IZAKHONO products do not need rewrites as runtime capacity changes.
+The next runtime phases are durable cross-machine job queues, resumable long-running jobs, artefact storage and owner-hosted image/video/speech/transcription worker pools. They remain behind the same SUPER AI contract so individual IZAKHONO products do not need rewrites as runtime capacity changes.
 
 See `MODEL-CATALOG.md` for the free/open-weight intake baseline.

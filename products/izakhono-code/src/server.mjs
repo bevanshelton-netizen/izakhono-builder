@@ -44,7 +44,7 @@ async function aiOperationsStatus() {
   const oracleRegistryFile = localAppData ? path.join(localAppData, 'Izakhono', 'RuntimeFabric', 'oracle-a1-worker.json') : '';
 
   const status = {
-    ownedSuperAi: { reachable:false, ownerOnly:null, capabilitiesReady:[], workflowModeConfigured:false, ownerPoolSize:0, ownerPoolAvailable:0, admission:{maxInflight:0,maxQueue:0,inflight:0,queued:0} },
+    ownedSuperAi: { reachable:false, ownerOnly:null, capabilitiesReady:[], workflowModeConfigured:false, ownerPoolSize:0, ownerPoolAvailable:0, admission:{maxInflight:0,maxQueue:0,inflight:0,queued:0}, routing:{strategy:null}, warmPool:{configuredModels:0,activePairs:0} },
     externalAi: {
       enabled:false,
       provider:null,
@@ -94,6 +94,13 @@ async function aiOperationsStatus() {
           maxQueue: Number(health.admission?.max_queue || 0),
           inflight: Number(health.admission?.inflight || 0),
           queued: Number(health.admission?.queued || 0)
+        },
+        routing: {
+          strategy: health.routing?.strategy || null
+        },
+        warmPool: {
+          configuredModels: Number(health.warm_pool?.configured_model_count || 0),
+          activePairs: Number(health.warm_pool?.active_runtime_model_pairs || 0)
         }
       };
       status.externalAi.enabled = health.external_ai_providers_enabled === true;

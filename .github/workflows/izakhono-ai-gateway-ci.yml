@@ -64,6 +64,12 @@ jobs:
           grep -Fq 'capacity_unavailable' products/izakhono-ai-gateway/app.py
           grep -Fq 'owner_pool_begin' products/izakhono-ai-gateway/app.py
           grep -Fq 'Bounded queue and workload distribution' products/izakhono-ai-gateway/README.md
+          grep -Fq 'IZAKHONO_AI_ROUTING_EWMA_ALPHA' products/izakhono-ai-gateway/app.py
+          grep -Fq 'owner_candidate_score' products/izakhono-ai-gateway/app.py
+          grep -Fq 'warm_owner_pool' products/izakhono-ai-gateway/app.py
+          grep -Fq '/api/v1/warm' products/izakhono-ai-gateway/app.py
+          grep -Fq 'WARM-OWNER-MODELS.cmd' products/izakhono-ai-gateway/README.md
+          grep -Fq 'benchmark-aware routing' products/izakhono-ai-gateway/README.md
           grep -Fq 'izakhono-flow' products/izakhono-ai-gateway/app.py
           grep -Fq 'izakhono-flow' products/izakhono-ai-gateway/START-IZAKHONO-SUPER-AI-NODE01.ps1
           grep -Fq 'IZAKHONO FLOW advisory use' products/izakhono-ai-gateway/README.md
