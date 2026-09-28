@@ -1,8 +1,12 @@
 # IZAKHONO FINANCE CORE
 
+## v0.3 operating MVP
+
+FINANCE CORE now moves beyond the hardened platform shell into an operational institutional MVP. Authorised institutions can configure their white-label profile and loan products, record applications without automated final credit decisions, create maker/checker-approved servicing records, generate repayment schedules, allocate verified external payment references, view arrears and open manual collections cases. FINANCE CORE still does not disburse funds, accept deposits, make final credit decisions or automate customer collections by default.
+
 Independent, white-label financial-institution operating engine for IZAKHONO.
 
-## v0.2 hardening
+## v0.2 hardening retained
 
 FINANCE CORE now carries the first NODE01 hardening layer:
 
@@ -59,7 +63,16 @@ Every scoped API request also requires:
 
 - `GET /health`
 - `GET /api/capabilities`
+- `POST/GET /api/institution-configs`
+- `POST /api/institution-configs/:id/publish`
+- `POST/GET /api/product-configs`
+- `POST /api/product-configs/:id/publish`
 - `POST/GET /api/loan-applications`
+- `POST/GET /api/servicing-loans`
+- `GET /api/servicing-loans/:id`
+- `POST /api/servicing-loans/:id/allocate-repayment`
+- `GET /api/arrears`
+- `POST/GET /api/collection-cases`
 - `POST/GET /api/accounts`
 - `POST /api/accounts/:id/activate-record`
 - `POST /api/payments/reference`
