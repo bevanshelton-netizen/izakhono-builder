@@ -4,11 +4,15 @@ on:
   pull_request:
     paths:
       - "infra/runtime-fabric/**"
+      - "infra/public-cutover/VERIFY-WAVE1-PUBLIC.ps1"
+      - "CERTIFY-OWNED-WAVE1.cmd"
       - ".github/workflows/runtime-fabric-ci.yml"
   push:
     branches: [main]
     paths:
       - "infra/runtime-fabric/**"
+      - "infra/public-cutover/VERIFY-WAVE1-PUBLIC.ps1"
+      - "CERTIFY-OWNED-WAVE1.cmd"
       - ".github/workflows/runtime-fabric-ci.yml"
 
 permissions:
@@ -29,7 +33,9 @@ jobs:
         run: |
           $files = @(
             "infra/runtime-fabric/REGISTER-ORACLE-A1-WORKER.ps1",
-            "infra/runtime-fabric/VERIFY-ORACLE-A1-WORKER.ps1"
+            "infra/runtime-fabric/VERIFY-ORACLE-A1-WORKER.ps1",
+            "infra/runtime-fabric/CERTIFY-WAVE1-OWNED.ps1",
+            "infra/public-cutover/VERIFY-WAVE1-PUBLIC.ps1"
           )
           foreach ($file in $files) {
             $tokens = $null
@@ -45,6 +51,65 @@ jobs:
             }
           }
 
+      - name: Wave 1 owned certification logic
+        shell: pwsh
+        run: |
+          $tmp = Join-Path $env:RUNNER_TEMP "izakhono-owned-cert"
+          New-Item -ItemType Directory -Path $tmp -Force | Out-Null
+          $now = [DateTimeOffset]::UtcNow
+          $unix = $now.ToUnixTimeSeconds()
+          $iso = $now.ToString('o')
+          $future = $now.AddDays(30).ToString('o')
+
+          @{
+            wave = 1
+            policy = "owned-first-externally-reversible"
+            apps = @(
+              @{slug="allegro-vibez";immutable_ref="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";owned_hostname="allegro.izakhonoafrica.co.za"},
+              @{slug="the-chancellor";immutable_ref="bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";owned_hostname="chancellor.izakhonoafrica.co.za"}
+            )
+          } | ConvertTo-Json -Depth 8 | Set-Content -Encoding UTF8 (Join-Path $tmp "registry.json")
+
+          @{
+            schema = "izakhono.node01.wave1.report.v1"
+            overall = "PASS_LOCAL_OWNED"
+            public_cutover_performed = $false
+            builder_bundle_ref = "ci-builder-ref"
+            wave1_bundle_sha256 = ("c" * 64)
+            finished_at = $unix
+            apps = @(
+              @{slug="allegro-vibez";immutable_ref="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";result="local_owned_deployment_verified";postcheck_local_health=@{ok=$true}},
+              @{slug="the-chancellor";immutable_ref="bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";result="local_owned_deployment_verified";postcheck_local_health=@{ok=$true}}
+            )
+          } | ConvertTo-Json -Depth 8 | Set-Content -Encoding UTF8 (Join-Path $tmp "node.json")
+
+          @{
+            schema = "izakhono.wave1.dns-action.v1"
+            generated_at = $iso
+            dns_ready = $true
+            external_fallbacks_preserved = $true
+          } | ConvertTo-Json -Depth 8 | Set-Content -Encoding UTF8 (Join-Path $tmp "dns.json")
+
+          $cert = @{validated=$true;not_before=$now.AddDays(-1).ToString('o');not_after=$future;sha256=("d" * 64)}
+          @{
+            schema = "izakhono.public-cutover.verify.v1"
+            generated_at = $iso
+            overall = "OWNED_PUBLIC_GATES_PASS"
+            external_routes_changed = $false
+            results = @(
+              @{slug="allegro-vibez";hostname="allegro.izakhonoafrica.co.za";dns=$true;tcp443=$true;https_health=$true;fallback=$true;health_status=200;certificate=$cert},
+              @{slug="the-chancellor";hostname="chancellor.izakhonoafrica.co.za";dns=$true;tcp443=$true;https_health=$true;fallback=$true;health_status=200;certificate=$cert;readiness=@{readyForPaidTraffic=$true}}
+            )
+          } | ConvertTo-Json -Depth 10 | Set-Content -Encoding UTF8 (Join-Path $tmp "public.json")
+
+          $out = Join-Path $tmp "certification.json"
+          & ./infra/runtime-fabric/CERTIFY-WAVE1-OWNED.ps1 -SkipExecution -RegistryPath (Join-Path $tmp "registry.json") -NodeReport (Join-Path $tmp "node.json") -DnsReport (Join-Path $tmp "dns.json") -PublicReport (Join-Path $tmp "public.json") -CertificationPath $out
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $proof = Get-Content -Raw $out | ConvertFrom-Json
+          if ($proof.status -ne "OWNED_LIVE_VERIFIED" -or $proof.apps.Count -ne 2 -or -not $proof.public_live_claim) {
+            throw "Owned certification fixture did not produce the expected proof."
+          }
+
       - name: Oracle A1 auxiliary worker invariants
         run: |
           set -euo pipefail
@@ -57,6 +122,16 @@ jobs:
           grep -Fq 'public_traffic = $false' infra/runtime-fabric/REGISTER-ORACLE-A1-WORKER.ps1
           grep -Fq 'ssh-loopback' infra/runtime-fabric/REGISTER-ORACLE-A1-WORKER.ps1
 
+      - name: Owned certification invariants
+        run: |
+          set -euo pipefail
+          grep -Fq 'OWNED_LIVE_VERIFIED' infra/runtime-fabric/CERTIFY-WAVE1-OWNED.ps1
+          grep -Fq 'external_routes_preserved = $true' infra/runtime-fabric/CERTIFY-WAVE1-OWNED.ps1
+          grep -Fq 'public_live_claim_scope' infra/runtime-fabric/CERTIFY-WAVE1-OWNED.ps1
+          grep -Fq 'validated=$true' infra/public-cutover/VERIFY-WAVE1-PUBLIC.ps1
+          grep -Fq 'SslStream($tcp.GetStream(),$false)' infra/public-cutover/VERIFY-WAVE1-PUBLIC.ps1
+          ! grep -Fq 'SslStream($tcp.GetStream(),$false,({$true}))' infra/public-cutover/VERIFY-WAVE1-PUBLIC.ps1
+
       - name: Secret hygiene
         run: |
           set -euo pipefail
@@ -66,4 +141,6 @@ jobs:
       - name: Runtime Fabric software proof
         run: |
           echo "IZAKHONO_RUNTIME_FABRIC_SOFTWARE=PASS"
+          echo "OWNED_WAVE1_CERTIFICATION_SOFTWARE=PASS"
+          echo "OWNED_WAVE1_REAL_EVIDENCE=PENDING_OWNER_MACHINE"
           echo "ORACLE_A1_RESOURCE_PROVISIONING=EXTERNAL_PENDING"
