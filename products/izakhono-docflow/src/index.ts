@@ -13,6 +13,7 @@ interface Env {
   SUPER_AI?: Fetcher;
   FLOWIQ?: Fetcher;
   DOCFLOW_ADMIN_SECRET?: string;
+  DOCFLOW_SERVICE_TOKEN?: string;
   APP_ENV?: string;
 }
 
@@ -39,6 +40,11 @@ function json(data: unknown, status = 200) {
 function isOwner(req: Request, env: Env) {
   const supplied = req.headers.get('x-docflow-secret') || '';
   return Boolean(env.DOCFLOW_ADMIN_SECRET && supplied === env.DOCFLOW_ADMIN_SECRET);
+}
+function isService(req: Request, env: Env) {
+  const auth = req.headers.get('authorization') || '';
+  const supplied = auth.startsWith('Bearer ') ? auth.slice(7) : '';
+  return Boolean(env.DOCFLOW_SERVICE_TOKEN && supplied === env.DOCFLOW_SERVICE_TOKEN);
 }
 async function readBody(req: Request): Promise<any> {
   if (!(req.headers.get('content-type') || '').includes('application/json')) {
@@ -187,6 +193,7 @@ async function notifyFlowIQ(env: Env, eventType: string, draft: any, extra: Json
         workspace_id: draft.workspace_id,
         legal_entity: draft.legal_entity,
         status: draft.status,
+        title: draft.title,
         ...extra,
       }),
     }));
@@ -198,7 +205,7 @@ async function notifyFlowIQ(env: Env, eventType: string, draft: any, extra: Json
 
 async function getDraft(env: Env, id: string) {
   return env.DB.prepare(
-    'SELECT id,workspace_id,legal_entity,document_type,title,party_a,party_b,effective_date,jurisdiction,content_markdown,ai_status,status,approved_by,approved_at,send_status,created_at,updated_at FROM docflow_drafts WHERE id=?'
+    'SELECT id,workspace_id,legal_entity,document_type,title,party_a,party_b,effective_date,jurisdiction,content_markdown,ai_status,status,approved_by,approved_at,send_status,recipient_name,recipient_email,signature_required,delivery_mode,created_at,updated_at FROM docflow_drafts WHERE id=?'
   ).bind(id).first<any>();
 }
 
@@ -216,10 +223,11 @@ async function api(req: Request, env: Env, url: URL): Promise<Response> {
     return json({
       ok: true,
       service: 'IZAKHONO DOCFLOW',
-      version: '0.1.1',
+      version: '0.2.0',
       environment: env.APP_ENV || 'production',
       database,
       adapters: { super_ai: Boolean(env.SUPER_AI), flowiq: Boolean(env.FLOWIQ) },
+      service_token_configured: Boolean(env.DOCFLOW_SERVICE_TOKEN),
       public_live: false,
     });
   }
@@ -234,6 +242,7 @@ async function api(req: Request, env: Env, url: URL): Promise<Response> {
         service: 'IZAKHONO DOCFLOW',
         database: ready ? 'ready' : 'error',
         owner_secret_configured: Boolean(env.DOCFLOW_ADMIN_SECRET),
+        service_token_configured: Boolean(env.DOCFLOW_SERVICE_TOKEN),
         adapters: { super_ai: Boolean(env.SUPER_AI), flowiq: Boolean(env.FLOWIQ) },
       }, ready ? 200 : 503);
     } catch {
@@ -248,13 +257,42 @@ async function api(req: Request, env: Env, url: URL): Promise<Response> {
     return json({ ok: true, templates: (rows.results || []).map(r => ({ ...r, schema: JSON.parse(r.schema_json || '{}') })) });
   }
 
+  const deliveryMatch = url.pathname.match(/^\/api\/internal\/drafts\/([^/]+)\/delivery-payload$/);
+  if (deliveryMatch && req.method === 'GET') {
+    if (!env.DOCFLOW_SERVICE_TOKEN) return json({ ok: false, error: 'DOCFLOW service token is not configured' }, 503);
+    if (!isService(req, env)) return json({ ok: false, error: 'Unauthorized service' }, 401);
+    const draft = await getDraft(env, decodeURIComponent(deliveryMatch[1]));
+    if (!draft) return json({ ok: false, error: 'Draft not found' }, 404);
+    if (!['approved','send_queued','sent'].includes(draft.status)) {
+      return json({ ok: false, error: 'Draft is not approved for delivery' }, 409);
+    }
+    return json({
+      ok: true,
+      document: {
+        id: draft.id,
+        workspace_id: draft.workspace_id,
+        legal_entity: draft.legal_entity,
+        document_type: draft.document_type,
+        title: draft.title,
+        content_markdown: draft.content_markdown,
+        content_sha256: await crypto.subtle.digest('SHA-256', new TextEncoder().encode(draft.content_markdown)).then(buf => Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('')),
+        recipient_name: draft.recipient_name,
+        recipient_email: draft.recipient_email,
+        signature_required: Boolean(draft.signature_required),
+        delivery_mode: draft.delivery_mode,
+        approved_by: draft.approved_by,
+        approved_at: draft.approved_at,
+      },
+    });
+  }
+
   if (!env.DOCFLOW_ADMIN_SECRET) return json({ ok: false, error: 'DOCFLOW owner secret is not configured' }, 503);
   if (!isOwner(req, env)) return json({ ok: false, error: 'Unauthorized' }, 401);
 
   if (url.pathname === '/api/drafts' && req.method === 'GET') {
     const workspace = clean(url.searchParams.get('workspace') || 'izakhono-africa', 100);
     const rows = await env.DB.prepare(
-      'SELECT id,workspace_id,legal_entity,document_type,title,party_a,party_b,status,ai_status,send_status,created_at,updated_at FROM docflow_drafts WHERE workspace_id=? ORDER BY updated_at DESC LIMIT 100'
+      'SELECT id,workspace_id,legal_entity,document_type,title,party_a,party_b,status,ai_status,send_status,recipient_name,recipient_email,signature_required,delivery_mode,created_at,updated_at FROM docflow_drafts WHERE workspace_id=? ORDER BY updated_at DESC LIMIT 100'
     ).bind(workspace).all<any>();
     return json({ ok: true, drafts: rows.results || [] });
   }
@@ -275,14 +313,17 @@ async function api(req: Request, env: Env, url: URL): Promise<Response> {
     await env.DB.prepare(
       `INSERT INTO docflow_drafts(
         id,workspace_id,legal_entity,document_type,title,instructions,party_a,party_b,effective_date,jurisdiction,
-        known_fields_json,content_markdown,ai_status,status,created_by
-      ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,'review',?)`
+        known_fields_json,content_markdown,ai_status,status,created_by,recipient_name,recipient_email,signature_required,delivery_mode
+      ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,'review',?,?,?,?,?)`
     ).bind(
       draftId, workspaceId, legalEntity, documentType, title,
       clean(input.instructions, 1200), clean(input.party_a, 200), clean(input.party_b, 200),
       clean(input.effective_date, 40), clean(input.jurisdiction, 120),
       JSON.stringify(input.known_fields && typeof input.known_fields === 'object' ? input.known_fields : {}).slice(0, 12000),
-      ai.content, ai.status, clean(input.created_by || 'owner', 120)
+      ai.content, ai.status, clean(input.created_by || 'owner', 120),
+      clean(input.recipient_name, 200), clean(input.recipient_email, 320).toLowerCase(),
+      input.signature_required === true ? 1 : 0,
+      clean(input.delivery_mode || 'email_link', 60)
     ).run();
 
     await audit(env, draftId, 'draft.created', clean(input.created_by || 'owner', 120), {
