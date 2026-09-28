@@ -37,7 +37,7 @@ Optional adapters:
 - `FLOWIQ_CRM_URL` / `FLOWIQ_CRM_TOKEN`
 - `FLOWIQ_TASKS_URL` / `FLOWIQ_TASKS_TOKEN`
 
-Configured adapters receive:
+Delivery and CRM adapters use the generic `POST /v1/actions` contract:
 
 ```json
 {
@@ -52,7 +52,9 @@ Configured adapters receive:
 }
 ```
 
-No provider-specific implementation is hard-coded.
+The TASKS adapter uses the **existing IZAKHONO TASKS FLOW contract** at `POST /api/flow`. FLOWIQ sends the machine-to-machine flow token plus the entity/platform headers and maps `delivery_followup_schedule` to `followup.schedule.requested`. The DOCFLOW draft ID becomes `payload.subject_ref`, so TASKS can schedule a follow-up without copying the document body.
+
+No outside provider-specific implementation is hard-coded.
 
 ## Truthful state model
 
@@ -90,3 +92,12 @@ Production route:
 **IZAKHONO CODE → IZAKHONO CONTROL → IZAKHONO NODE01 → FLOWIQ**
 
 The service is internal by default. Public DNS is not required for DOCFLOW-to-FLOWIQ orchestration.
+
+
+## IZAKHONO TASKS integration
+
+When `FLOWIQ_TASKS_URL` and `FLOWIQ_TASKS_TOKEN` are configured, the follow-up action is no longer a placeholder:
+
+**DOCFLOW approval → FLOWIQ event → FLOWIQ follow-up action → IZAKHONO TASKS /api/flow → scheduled owner task**
+
+The default follow-up delay is 1,440 minutes (24 hours). IZAKHONO TASKS remains the scheduling engine; FLOWIQ remains the workflow orchestration engine.
