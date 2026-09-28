@@ -8,6 +8,8 @@ APP_DIR="/opt/izakhono-shorts-renderer"
 ENV_DIR="/etc/izakhono/apps"
 ENV_FILE="$ENV_DIR/izakhono-shorts-renderer.env"
 MEDIA_ENV="$ENV_DIR/izakhono-create-media.env"
+SPEECH_ENV="$ENV_DIR/izakhono-speech-runtime.env"
+VIDEO_ENV="$ENV_DIR/izakhono-video-runtime.env"
 SERVICE="/etc/systemd/system/izakhono-shorts-renderer.service"
 OUTPUT_DIR="/var/lib/izakhono/shorts"
 
@@ -86,6 +88,49 @@ else
     sed -i "s|^IZAKHONO_MEDIA_CHECKPOINT=.*|IZAKHONO_MEDIA_CHECKPOINT=$CHECKPOINT|" "$ENV_FILE" || true
   fi
 fi
+
+set_env_value() {
+  local key="$1"
+  local value="$2"
+  if grep -q "^$key=" "$ENV_FILE"; then
+    sed -i "s|^$key=.*|$key=$value|" "$ENV_FILE"
+  else
+    printf '%s=%s\n' "$key" "$value" >> "$ENV_FILE"
+  fi
+}
+
+# Attach quality runtimes only when their own local health gates pass.
+# A failed/not-yet-staged quality model clears the adapter and preserves
+# the deterministic espeak/FFmpeg fallback rather than breaking production.
+SPEECH_READY=false
+VIDEO_READY=false
+if [ -f "$SPEECH_ENV" ] && curl -fsS http://127.0.0.1:9731/healthz >/dev/null 2>&1; then
+  SPEECH_KEY="$(sed -n 's/^IZAKHONO_SPEECH_INTERNAL_KEY=//p' "$SPEECH_ENV" | tail -1)"
+  if [ -n "$SPEECH_KEY" ]; then
+    set_env_value IZAKHONO_SHORTS_SPEECH_URL http://127.0.0.1:9731
+    set_env_value IZAKHONO_SHORTS_SPEECH_KEY "$SPEECH_KEY"
+    SPEECH_READY=true
+  fi
+fi
+if [ "$SPEECH_READY" != "true" ]; then
+  set_env_value IZAKHONO_SHORTS_SPEECH_URL ""
+  set_env_value IZAKHONO_SHORTS_SPEECH_KEY ""
+fi
+
+if [ -f "$VIDEO_ENV" ] && curl -fsS http://127.0.0.1:9741/healthz >/dev/null 2>&1; then
+  VIDEO_KEY="$(sed -n 's/^IZAKHONO_VIDEO_INTERNAL_KEY=//p' "$VIDEO_ENV" | tail -1)"
+  if [ -n "$VIDEO_KEY" ]; then
+    set_env_value IZAKHONO_SHORTS_VIDEO_URL http://127.0.0.1:9741
+    set_env_value IZAKHONO_SHORTS_VIDEO_KEY "$VIDEO_KEY"
+    VIDEO_READY=true
+  fi
+fi
+if [ "$VIDEO_READY" != "true" ]; then
+  set_env_value IZAKHONO_SHORTS_VIDEO_URL ""
+  set_env_value IZAKHONO_SHORTS_VIDEO_KEY ""
+fi
+
+echo "[quality] natural_speech=$SPEECH_READY generative_video=$VIDEO_READY"
 
 echo "[3/6] Installing loopback/owner-host renderer service..."
 cat > "$SERVICE" <<EOF
