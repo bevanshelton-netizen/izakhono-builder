@@ -1,0 +1,18 @@
+FROM node:22-bookworm-slim
+WORKDIR /app
+ENV NODE_ENV=production \
+    HOST=0.0.0.0 \
+    PORT=8080 \
+    CRM_DATA_FILE=/data/crm.json \
+    CRM_ALLOW_INSECURE_LOCAL=false
+COPY products/izakhono-crm/package.json ./
+COPY products/izakhono-crm/server.js ./
+COPY products/izakhono-crm/server-v2.mjs ./
+COPY products/izakhono-crm/start-v2.mjs ./
+COPY products/izakhono-crm/staff.example.json ./
+COPY products/izakhono-crm/portfolio-crm-registry.json ./
+COPY products/izakhono-crm/public ./public
+RUN mkdir -p /data && chown -R node:node /app /data
+USER node
+EXPOSE 8080
+CMD ["node","start-v2.mjs"]
