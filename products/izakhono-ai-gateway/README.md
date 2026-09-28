@@ -25,11 +25,11 @@ The gateway does not persist prompts, add behavioural tracking, or expose model 
 | Reasoning | Ollama-compatible owner runtime | configurable |
 | Code | Ollama-compatible owner runtime | configurable |
 | Image | owner JSON generation adapter | `flux.1-schnell` |
-| Video | owner JSON generation adapter | `wan2.1` |
-| Speech | owner JSON generation adapter | `kokoro` |
+| Video | owner IZAKHONO Video Runtime | `wan2.1` |
+| Speech | owner IZAKHONO Speech Runtime | `kokoro` |
 | Transcription | owner JSON generation adapter | `whisper` |
 
-Image/video/speech/transcription are adapter contracts until their local runtimes are configured. The health and capabilities endpoints report that truthfully as `needs_backend`; they are not called live merely because the route exists.
+Image and transcription remain adapter contracts until their local runtimes are configured. Video and speech now have native IZAKHONO owner-runtime contracts. The health and capabilities endpoints still report `needs_backend` until the corresponding private runtime URL and internal credential are attached; configuration alone never creates an external route.
 
 ## APIs
 
@@ -88,7 +88,7 @@ Workflow mode requires **both**:
 - `x-izakhono-ai-key` — the normal internal gateway key; and
 - `x-izakhono-ai-workflow-key` — a separate workflow credential.
 
-The request must also use `access_mode: "workflow"` and a product slug present in `IZAKHONO_AI_WORKFLOW_PRODUCTS`. The default allowlist is `venture-factory,izakhono-builder,izakhono-docflow,izakhono-flow`.
+The request must also use `access_mode: "workflow"` and a product slug present in `IZAKHONO_AI_WORKFLOW_PRODUCTS`. The default portfolio allowlist covers the core internal engines plus IZAKHONO Shorts, IZAKHONO Create, KORA, Allegro, EDU-BUILD, IZAKHONO Ads, the recording-studio platform, WorkNow, FAISReady, DOXA-SURE and AUTO AI. Deployments can narrow that list through the environment.
 
 Workflow mode does not create a customer subscription record and does not bypass the model/runtime owner-route restrictions. It exists for trusted internal automation only.
 
@@ -103,6 +103,50 @@ FLOW uses the existing trusted workflow contract rather than a bespoke AI endpoi
 - both internal gateway and workflow credentials.
 
 FLOW sends only scoped operational context required for the advisory request. The model response is advisory: FLOW does not grant it authority to move money, confirm payment, make regulated decisions or send customer communications.
+
+## Portfolio-wide owned speech and video
+
+SUPER AI v0.3 routes the shared `speech` and `video` capabilities into the owner-hosted runtimes built for IZAKHONO Shorts. This makes the same engines reusable by KORA, EDU-BUILD, CREATE, advertising, training, recording-studio and other authorized portfolio products without those products depending on Shorts itself.
+
+The owner Windows launcher automatically attaches the local speech runtime on port `9731` and video runtime on port `9741` only when each runtime independently returns a healthy local status and its machine-local credential is available. It does not copy those credentials into the repository or expose them to browsers.
+
+Natural speech request:
+
+```json
+{
+  "entity_id": "izakhono-africa",
+  "product": "kora",
+  "access_mode": "workflow",
+  "capability": "speech",
+  "route": "owned",
+  "input": "Welcome to KORA.",
+  "options": {
+    "language": "English",
+    "voice": "af_heart",
+    "speed": 1.0
+  }
+}
+```
+
+Image-to-video request:
+
+```json
+{
+  "entity_id": "izakhono-africa",
+  "product": "izakhono-create",
+  "access_mode": "workflow",
+  "capability": "video",
+  "route": "owned",
+  "prompt": "Animate this original character walking through a bright African future city.",
+  "source_image": "data:image/png;base64,...",
+  "options": {
+    "duration_seconds": 7,
+    "aspect_ratio": "9:16"
+  }
+}
+```
+
+The gateway adds the required owned/privacy/originality policy fields and runtime authentication server-side. External routing is not supported for speech or video through this contract.
 
 ## Security and cost controls
 
@@ -147,9 +191,11 @@ Media routing:
 
 - `IZAKHONO_IMAGE_URL`
 - `IZAKHONO_IMAGE_MODEL`
-- `IZAKHONO_VIDEO_URL`
+- `IZAKHONO_VIDEO_URL` — private owner runtime base URL; launcher auto-discovers healthy local port 9741
+- `IZAKHONO_VIDEO_INTERNAL_KEY` — server-side video runtime credential
 - `IZAKHONO_VIDEO_MODEL`
-- `IZAKHONO_SPEECH_URL`
+- `IZAKHONO_SPEECH_URL` — private owner runtime base URL; launcher auto-discovers healthy local port 9731
+- `IZAKHONO_SPEECH_INTERNAL_KEY` — server-side speech runtime credential
 - `IZAKHONO_SPEECH_MODEL`
 - `IZAKHONO_TRANSCRIPTION_URL`
 - `IZAKHONO_TRANSCRIPTION_MODEL`
@@ -279,8 +325,8 @@ That means no artificial message-credit counter. It does not mean infinite compu
 
 ## Build direction
 
-The owner text runtime layer now includes multiple owner runtimes, strict owner-host validation, failure cooldown, bounded admission control, adaptive EWMA benchmark routing, explicit warm-model management, sanitized runtime status and IZAKHONO CODE visibility.
+The owner runtime layer now includes multiple text runtimes plus native private speech and generative-video contracts, strict owner-host validation, bounded admission control, adaptive text routing, explicit warm-model management and sanitized runtime status.
 
-The next runtime phases are durable cross-machine job queues, resumable long-running jobs, artefact storage and owner-hosted image/video/speech/transcription worker pools. They remain behind the same SUPER AI contract so individual IZAKHONO products do not need rewrites as runtime capacity changes.
+The next runtime phases are durable cross-machine media job queues, resumable long-running generation, artefact storage, transcription workers and hardware-aware scheduling. They remain behind the same SUPER AI contract so individual IZAKHONO products do not need rewrites as runtime capacity changes.
 
 See `MODEL-CATALOG.md` for the free/open-weight intake baseline.

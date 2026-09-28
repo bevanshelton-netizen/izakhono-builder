@@ -25,6 +25,12 @@ os.environ["IZAKHONO_IMAGE_URL"] = "http://127.0.0.1:19222/generate"
 os.environ["IZAKHONO_AI_CHAT_MODEL"] = "qwen3:4b"
 os.environ["IZAKHONO_AI_CHAT_MODELS"] = "qwen3:4b,qwen3:8b"
 os.environ["IZAKHONO_IMAGE_MODEL"] = "flux.1-schnell"
+os.environ["IZAKHONO_SPEECH_URL"] = "http://127.0.0.1:19231"
+os.environ["IZAKHONO_SPEECH_INTERNAL_KEY"] = "speech-test"
+os.environ["IZAKHONO_SPEECH_MODEL"] = "kokoro"
+os.environ["IZAKHONO_VIDEO_URL"] = "http://127.0.0.1:19241"
+os.environ["IZAKHONO_VIDEO_INTERNAL_KEY"] = "video-test"
+os.environ["IZAKHONO_VIDEO_MODEL"] = "wan2.1"
 os.environ["IZAKHONO_AI_OWNER_ONLY"] = "false"
 os.environ["IZAKHONO_AI_ALLOW_EXTERNAL"] = "true"
 os.environ["IZAKHONO_AI_EXTERNAL_TEXT_PROVIDER"] = "nvidia-nim"
@@ -86,6 +92,59 @@ class ExternalMock(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
+class SpeechMock(BaseHTTPRequestHandler):
+    requests = []
+
+    def log_message(self, *args):
+        pass
+
+    def do_POST(self):
+        n = int(self.headers.get("content-length", "0"))
+        data = json.loads(self.rfile.read(n))
+        assert self.path == "/api/v1/generate"
+        assert self.headers.get("x-izakhono-speech-key") == "speech-test"
+        assert data["schema"] == "izakhono.speech.generate.v1"
+        assert data["policy"]["owned_first"] is True
+        assert data["policy"]["no_tracking"] is True
+        SpeechMock.requests.append(data)
+        body = json.dumps({
+            "ok": True,
+            "backend": "kokoro-local",
+            "audio": {"mime": "audio/wav", "data_url": "data:audio/wav;base64,SGVsbG8="},
+        }).encode()
+        self.send_response(200)
+        self.send_header("content-type", "application/json")
+        self.send_header("content-length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+class VideoMock(BaseHTTPRequestHandler):
+    requests = []
+
+    def log_message(self, *args):
+        pass
+
+    def do_POST(self):
+        n = int(self.headers.get("content-length", "0"))
+        data = json.loads(self.rfile.read(n))
+        assert self.path == "/api/v1/generate"
+        assert self.headers.get("x-izakhono-video-key") == "video-test"
+        assert data["schema"] == "izakhono.video.scene.v1"
+        assert data["policy"]["owned_first"] is True
+        assert data["policy"]["no_tracking"] is True
+        assert data["policy"]["originality_required"] is True
+        VideoMock.requests.append(data)
+        body = json.dumps({
+            "ok": True,
+            "backend": "wan-i2v-local",
+            "video": {"mime": "video/mp4", "url": "http://127.0.0.1:19241/assets/mock.mp4"},
+        }).encode()
+        self.send_response(200)
+        self.send_header("content-type", "application/json")
+        self.send_header("content-length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
 class ImageMock(BaseHTTPRequestHandler):
     def log_message(self, *args):
         pass
@@ -104,10 +163,14 @@ class ImageMock(BaseHTTPRequestHandler):
 a = ThreadingHTTPServer(("127.0.0.1", 19494), AccessMock)
 m = ThreadingHTTPServer(("127.0.0.1", 19134), ModelMock)
 i = ThreadingHTTPServer(("127.0.0.1", 19222), ImageMock)
+sp = ThreadingHTTPServer(("127.0.0.1", 19231), SpeechMock)
+v = ThreadingHTTPServer(("127.0.0.1", 19241), VideoMock)
 e = ThreadingHTTPServer(("127.0.0.1", 19333), ExternalMock)
 threading.Thread(target=a.serve_forever, daemon=True).start()
 threading.Thread(target=m.serve_forever, daemon=True).start()
 threading.Thread(target=i.serve_forever, daemon=True).start()
+threading.Thread(target=sp.serve_forever, daemon=True).start()
+threading.Thread(target=v.serve_forever, daemon=True).start()
 threading.Thread(target=e.serve_forever, daemon=True).start()
 
 spec = importlib.util.spec_from_file_location("gateway", Path(__file__).with_name("app.py"))
@@ -269,6 +332,43 @@ assert image_model == "flux.1-schnell"
 assert image_output["data"]["asset_url"] == "owner://image/mock-1"
 assert image_route == "owned"
 
+speech_cap, speech_model, speech_output, speech_raw, speech_route = g.execute_capability({
+    "capability": "speech",
+    "input": "Welcome to IZAKHONO.",
+    "options": {"language": "English", "voice": "af_heart", "speed": 1.05},
+})
+assert speech_cap == "speech"
+assert speech_model == "kokoro"
+assert speech_route == "owned"
+assert speech_output["data"]["audio"]["mime"] == "audio/wav"
+assert speech_raw["backend"] == "kokoro-local"
+assert SpeechMock.requests[-1]["text"] == "Welcome to IZAKHONO."
+assert SpeechMock.requests[-1]["voice"] == "af_heart"
+assert SpeechMock.requests[-1]["speed"] == 1.05
+
+video_cap, video_model, video_output, video_raw, video_route = g.execute_capability({
+    "capability": "video",
+    "prompt": "Animate this original explorer looking up at the moon.",
+    "source_image": "data:image/png;base64,AA==",
+    "options": {"duration_seconds": 7, "aspect_ratio": "9:16"},
+})
+assert video_cap == "video"
+assert video_model == "wan2.1"
+assert video_route == "owned"
+assert video_output["data"]["video"]["mime"] == "video/mp4"
+assert video_raw["backend"] == "wan-i2v-local"
+assert VideoMock.requests[-1]["duration_seconds"] == 7
+assert VideoMock.requests[-1]["source_image"] == "data:image/png;base64,AA=="
+
+try:
+    g.execute_capability({
+        "capability": "video",
+        "prompt": "missing source",
+    })
+    raise AssertionError("video capability accepted a request without source_image")
+except ValueError as exc:
+    assert str(exc) == "video_source_image_required"
+
 try:
     g.execute_capability({
         "capability": "chat",
@@ -285,7 +385,8 @@ assert len(g.owner_pool_summary()) == 2
 assert g.ADMISSION.summary()["completed"] >= 4
 assert g.warm_pool_summary()["configured_model_count"] == 1
 assert caps["image"]["status"] == "ready"
-assert caps["video"]["status"] == "needs_backend"
+assert caps["speech"]["status"] == "ready"
+assert caps["video"]["status"] == "ready"
 
 assert "venture-factory" in g.WORKFLOW_PRODUCTS
 assert "izakhono-flow" in g.WORKFLOW_PRODUCTS
@@ -293,4 +394,6 @@ print("IZAKHONO_SUPER_AI_TEST=PASS")
 a.shutdown()
 m.shutdown()
 i.shutdown()
+sp.shutdown()
+v.shutdown()
 e.shutdown()
