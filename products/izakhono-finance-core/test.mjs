@@ -7,7 +7,7 @@ const compose=fs.readFileSync(new URL("./node01/docker-compose.yml",import.meta.
 const envExample=fs.readFileSync(new URL("./node01/.env.example",import.meta.url),"utf8");
 
 assert.equal(contract.schema,"izakhono.finance-core.v1");
-assert.equal(contract.version,"0.2.0");
+assert.equal(contract.version,"0.3.0");
 assert.equal(contract.infrastructure.policy,"owned-first-externally-reversible");
 assert.equal(contract.infrastructure.owned_target,"NODE01");
 assert.equal(contract.privacy.behavioural_tracking,false);
@@ -18,8 +18,13 @@ assert.equal(contract.security.distinct_maker_checker_principals_required,true);
 assert.equal(contract.security.audit_hash_chain_required,true);
 assert.equal(contract.security.encrypted_persistence_required,true);
 assert.equal(contract.security.backup_checksum_manifest_required,true);
+assert.equal(contract.security.published_product_required_for_servicing,true);
+assert.equal(contract.security.servicing_activation_requires_maker_checker,true);
+assert.equal(contract.security.repayment_allocation_requires_verified_payment_reference,true);
+assert.equal(contract.regulated_activity_boundary.loan_disbursement_by_finance_core,false);
+assert.equal(contract.regulated_activity_boundary.automated_collections_contact_enabled,false);
 assert.equal(contract.super_app_module.engine,"independent");
-assert.equal(product.application_version,"0.2.0");
+assert.equal(product.application_version,"0.3.0");
 assert.match(compose,/127\.0\.0\.1:8797:8797/);
 assert.match(compose,/no-new-privileges:true/);
 assert.match(compose,/cap_drop:/);
@@ -33,5 +38,6 @@ console.log(JSON.stringify({
   maker_checker:true,
   audit_hash_chain:true,
   node01_pack:true,
+  operating_mvp:true,
   public_live:false
 },null,2));
