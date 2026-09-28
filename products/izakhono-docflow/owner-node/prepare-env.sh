@@ -12,27 +12,31 @@ mkdir -p "$ENV_DIR"
 chmod 700 "$ENV_DIR"
 
 existing_secret=""
+existing_service_token=""
 if [ -f "$ENV_FILE" ]; then
   existing_secret="$(awk -F= '$1=="DOCFLOW_ADMIN_SECRET"{sub(/^[^=]*=/,"");print;exit}' "$ENV_FILE" || true)"
+  existing_service_token="$(awk -F= '$1=="DOCFLOW_SERVICE_TOKEN"{sub(/^[^=]*=/,"");print;exit}' "$ENV_FILE" || true)"
 fi
 
-if [ -z "$existing_secret" ]; then
+make_secret(){
   if command -v openssl >/dev/null 2>&1; then
-    existing_secret="$(openssl rand -hex 32)"
+    openssl rand -hex 32
   else
-    existing_secret="$(python3 - <<'PY'
+    python3 - <<'PY'
 import secrets
 print(secrets.token_hex(32))
 PY
-)"
   fi
-fi
+}
+[ -n "$existing_secret" ] || existing_secret="$(make_secret)"
+[ -n "$existing_service_token" ] || existing_service_token="$(make_secret)"
 
 tmp="$(mktemp)"
 cat >"$tmp" <<EOF
 APP_ENV=production
 IZAKHONO_DOCFLOW_DB=/app/data/docflow.sqlite
 DOCFLOW_ADMIN_SECRET=$existing_secret
+DOCFLOW_SERVICE_TOKEN=$existing_service_token
 EOF
 
 # Optional adapters are intentionally not invented. Add only when the owned
