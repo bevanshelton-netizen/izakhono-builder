@@ -89,6 +89,7 @@ const env = {
   ASSETS,
   APP_ENV: process.env.APP_ENV || 'production',
   DOCFLOW_ADMIN_SECRET: process.env.DOCFLOW_ADMIN_SECRET || '',
+  DOCFLOW_SERVICE_TOKEN: process.env.DOCFLOW_SERVICE_TOKEN || '',
   SUPER_AI: superAiAdapter(
     process.env.SUPER_AI_URL || '',
     process.env.SUPER_AI_INTERNAL_KEY || process.env.SUPER_AI_TOKEN || '',
