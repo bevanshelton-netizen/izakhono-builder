@@ -31,6 +31,8 @@ os.environ["IZAKHONO_SPEECH_MODEL"] = "kokoro"
 os.environ["IZAKHONO_VIDEO_URL"] = "http://127.0.0.1:19241"
 os.environ["IZAKHONO_VIDEO_INTERNAL_KEY"] = "video-test"
 os.environ["IZAKHONO_VIDEO_MODEL"] = "wan2.1"
+os.environ["IZAKHONO_MEDIA_FABRIC_URL"] = "http://127.0.0.1:19251"
+os.environ["IZAKHONO_MEDIA_FABRIC_INTERNAL_KEY"] = "fabric-test"
 os.environ["IZAKHONO_AI_OWNER_ONLY"] = "false"
 os.environ["IZAKHONO_AI_ALLOW_EXTERNAL"] = "true"
 os.environ["IZAKHONO_AI_EXTERNAL_TEXT_PROVIDER"] = "nvidia-nim"
@@ -145,6 +147,84 @@ class VideoMock(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
+class FabricMock(BaseHTTPRequestHandler):
+    requests = []
+    job_id = "mf_0123456789abcdef01234567"
+    token = "job-token-test"
+
+    def log_message(self, *args):
+        pass
+
+    def send_json(self, status, payload):
+        body = json.dumps(payload).encode()
+        self.send_response(status)
+        self.send_header("content-type", "application/json")
+        self.send_header("content-length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def do_POST(self):
+        assert self.headers.get("x-izakhono-media-fabric-key") == "fabric-test"
+        n = int(self.headers.get("content-length", "0"))
+        data = json.loads(self.rfile.read(n))
+        assert self.path == "/api/v1/jobs"
+        assert data["schema"] == "izakhono.media.job.submit.v1"
+        assert data["policy"]["owned_first"] is True
+        assert data["policy"]["no_tracking"] is True
+        FabricMock.requests.append(data)
+        self.send_json(202, {
+            "ok": True,
+            "job": {
+                "id": self.job_id,
+                "status": "queued",
+                "job_token": self.token,
+                "capability": data["capability"],
+            },
+        })
+
+    def do_GET(self):
+        if self.path == "/healthz":
+            return self.send_json(200, {
+                "ok": True,
+                "service": "izakhono-media-runtime-fabric",
+                "production_ready": True,
+                "healthy_workers": 2,
+                "replicated_storage": True,
+            })
+        assert self.headers.get("x-izakhono-media-fabric-key") == "fabric-test"
+        if self.path == "/api/v1/jobs/" + self.job_id:
+            assert self.headers.get("x-izakhono-job-token") == self.token
+            return self.send_json(200, {
+                "ok": True,
+                "job": {
+                    "id": self.job_id,
+                    "capability": "video",
+                    "status": "complete",
+                    "result": {
+                        "backend": "wan-i2v-local",
+                        "artifact": {
+                            "name": "video.mp4",
+                            "url": "http://127.0.0.1:19251/assets/" + self.job_id + "/video.mp4",
+                        },
+                    },
+                    "artifacts": [{
+                        "name": "video.mp4",
+                        "mime": "video/mp4",
+                        "bytes": 5000,
+                        "url": "http://127.0.0.1:19251/assets/" + self.job_id + "/video.mp4",
+                    }],
+                },
+            })
+        if self.path == "/assets/" + self.job_id + "/video.mp4":
+            raw = b"mock-mp4-bytes"
+            self.send_response(200)
+            self.send_header("content-type", "video/mp4")
+            self.send_header("content-length", str(len(raw)))
+            self.end_headers()
+            self.wfile.write(raw)
+            return
+        self.send_json(404, {"ok": False, "error": "not_found"})
+
 class ImageMock(BaseHTTPRequestHandler):
     def log_message(self, *args):
         pass
@@ -166,12 +246,14 @@ i = ThreadingHTTPServer(("127.0.0.1", 19222), ImageMock)
 sp = ThreadingHTTPServer(("127.0.0.1", 19231), SpeechMock)
 v = ThreadingHTTPServer(("127.0.0.1", 19241), VideoMock)
 e = ThreadingHTTPServer(("127.0.0.1", 19333), ExternalMock)
+f = ThreadingHTTPServer(("127.0.0.1", 19251), FabricMock)
 threading.Thread(target=a.serve_forever, daemon=True).start()
 threading.Thread(target=m.serve_forever, daemon=True).start()
 threading.Thread(target=i.serve_forever, daemon=True).start()
 threading.Thread(target=sp.serve_forever, daemon=True).start()
 threading.Thread(target=v.serve_forever, daemon=True).start()
 threading.Thread(target=e.serve_forever, daemon=True).start()
+threading.Thread(target=f.serve_forever, daemon=True).start()
 
 spec = importlib.util.spec_from_file_location("gateway", Path(__file__).with_name("app.py"))
 g = importlib.util.module_from_spec(spec)
@@ -360,6 +442,44 @@ assert video_raw["backend"] == "wan-i2v-local"
 assert VideoMock.requests[-1]["duration_seconds"] == 7
 assert VideoMock.requests[-1]["source_image"] == "data:image/png;base64,AA=="
 
+durable_cap, durable_model, durable_output, durable_raw, durable_route = g.execute_capability({
+    "capability": "video",
+    "execution": "durable",
+    "prompt": "Animate this original explorer through the shared GPU queue.",
+    "source_image": "data:image/png;base64,AA==",
+    "options": {"duration_seconds": 7, "aspect_ratio": "9:16"},
+    "job_options": {"priority": 80, "max_attempts": 4, "min_gpu_mb": 12000},
+})
+assert durable_cap == "video"
+assert durable_model == "wan2.1"
+assert durable_route == "owned"
+assert durable_output["type"] == "media_job"
+assert durable_output["data"]["id"] == FabricMock.job_id
+assert durable_output["data"]["job_token"] == FabricMock.token
+assert durable_output["data"]["persistence"] == "aes-gcm-encrypted-job-payload"
+assert durable_raw["media_job"]["execution"] == "durable"
+assert FabricMock.requests[-1]["capability"] == "video"
+assert FabricMock.requests[-1]["priority"] == 80
+assert FabricMock.requests[-1]["max_attempts"] == 4
+assert FabricMock.requests[-1]["min_gpu_mb"] == 12000
+assert FabricMock.requests[-1]["payload"]["schema"] == "izakhono.video.scene.v1"
+
+fabric_health = g.media_fabric_health()
+assert fabric_health["ok"] is True
+assert fabric_health["production_ready"] is True
+assert fabric_health["healthy_workers"] == 2
+
+job = g.media_fabric_status(FabricMock.job_id, FabricMock.token)
+assert job["status"] == "complete"
+assert "url" not in job["artifacts"][0]
+assert job["artifacts"][0]["gateway_path"].endswith("/video.mp4")
+assert "url" not in job["result"]["artifact"]
+assert job["result"]["artifact"]["gateway_path"].endswith("/video.mp4")
+
+artifact_bytes, artifact_type = g.media_fabric_artifact(FabricMock.job_id, "video.mp4", FabricMock.token)
+assert artifact_bytes == b"mock-mp4-bytes"
+assert artifact_type == "video/mp4"
+
 try:
     g.execute_capability({
         "capability": "video",
@@ -387,6 +507,8 @@ assert g.warm_pool_summary()["configured_model_count"] == 1
 assert caps["image"]["status"] == "ready"
 assert caps["speech"]["status"] == "ready"
 assert caps["video"]["status"] == "ready"
+assert caps["video"]["durable_available"] is True
+assert caps["speech"]["durable_available"] is True
 
 assert "venture-factory" in g.WORKFLOW_PRODUCTS
 assert "izakhono-flow" in g.WORKFLOW_PRODUCTS
@@ -397,3 +519,4 @@ i.shutdown()
 sp.shutdown()
 v.shutdown()
 e.shutdown()
+f.shutdown()

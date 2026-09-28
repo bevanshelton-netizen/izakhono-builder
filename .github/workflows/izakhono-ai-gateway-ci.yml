@@ -78,3 +78,9 @@ jobs:
           grep -Fq 'IZAKHONO_SPEECH_INTERNAL_KEY' products/izakhono-ai-gateway/app.py
           grep -Fq 'IZAKHONO_VIDEO_INTERNAL_KEY' products/izakhono-ai-gateway/app.py
           grep -Fq 'Portfolio-wide owned speech and video' products/izakhono-ai-gateway/README.md
+          grep -Fq 'IZAKHONO_MEDIA_FABRIC_URL' products/izakhono-ai-gateway/app.py
+          grep -Fq 'submit_media_fabric_job' products/izakhono-ai-gateway/app.py
+          grep -Fq '/api/v1/media-jobs/' products/izakhono-ai-gateway/app.py
+          grep -Fq 'durable_media_payloads' products/izakhono-ai-gateway/app.py
+          grep -Fq 'Durable Media Runtime Fabric' products/izakhono-ai-gateway/README.md
+          grep -Fq 'MEDIA_FABRIC_PRODUCTION_READY' products/izakhono-ai-gateway/START-IZAKHONO-SUPER-AI-NODE01.ps1
