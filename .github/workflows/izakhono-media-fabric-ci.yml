@@ -1,0 +1,62 @@
+name: IZAKHONO Media Runtime Fabric CI
+
+on:
+  pull_request:
+    paths:
+      - 'products/izakhono-media-fabric/**'
+      - '.github/workflows/izakhono-media-fabric-ci.yml'
+      - 'products/izakhono-ai-gateway/**'
+  push:
+    branches: [main]
+    paths:
+      - 'products/izakhono-media-fabric/**'
+      - '.github/workflows/izakhono-media-fabric-ci.yml'
+      - 'products/izakhono-ai-gateway/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Dependencies
+        run: python -m pip install 'cryptography>=43,<47'
+      - name: Python syntax
+        run: |
+          python -m py_compile products/izakhono-media-fabric/app.py
+          python -m py_compile products/izakhono-media-fabric/worker.py
+          python -m py_compile products/izakhono-media-fabric/test_fabric.py
+      - name: Queue and scheduler tests
+        run: python products/izakhono-media-fabric/test_fabric.py
+      - name: Shell syntax
+        run: |
+          bash -n products/izakhono-media-fabric/install-broker.sh
+          bash -n products/izakhono-media-fabric/install-worker.sh
+          bash -n products/izakhono-media-fabric/verify-node.sh
+      - name: Architecture invariants
+        run: |
+          set -euo pipefail
+          grep -Fq 'AESGCM' products/izakhono-media-fabric/app.py
+          grep -Fq 'lease_until' products/izakhono-media-fabric/app.py
+          grep -Fq 'min_gpu_mb' products/izakhono-media-fabric/app.py
+          grep -Fq 'REPLICATED_STORAGE' products/izakhono-media-fabric/app.py
+          grep -Fq 'production_ready' products/izakhono-media-fabric/app.py
+          grep -Fq 'raw_prompt_logging' products/izakhono-media-fabric/app.py
+          grep -Fq 'x-izakhono-job-token' products/izakhono-media-fabric/app.py
+          grep -Fq 'private_or_https' products/izakhono-media-fabric/worker.py
+          grep -Fq 'LeaseKeeper' products/izakhono-media-fabric/worker.py
+          grep -Fq 'artifact' products/izakhono-media-fabric/worker.py
+          grep -Fq 'Local disk is not considered production-HA state' products/izakhono-media-fabric/README.md
+      - name: Secret hygiene
+        run: |
+          set -euo pipefail
+          ! grep -R --line-number -E 'IZAKHONO_MEDIA_FABRIC_INTERNAL_KEY=[A-Za-z0-9_-]{16,}' products/izakhono-media-fabric
+          ! grep -R --line-number -E 'IZAKHONO_MEDIA_FABRIC_PAYLOAD_KEY=[A-Za-z0-9_-]{16,}' products/izakhono-media-fabric
+      - name: Container build
+        run: docker build -t izakhono-media-fabric:ci products/izakhono-media-fabric
