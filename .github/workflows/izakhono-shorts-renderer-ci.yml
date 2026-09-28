@@ -7,12 +7,14 @@ on:
       - "apps/izakhono-shorts/**"
       - ".github/workflows/izakhono-shorts-renderer-ci.yml"
       - "START-IZAKHONO-SHORTS-NODE01.cmd"
+      - "VERIFY-IZAKHONO-SHORTS-NODE01.cmd"
   pull_request:
     paths:
       - "products/izakhono-shorts-renderer/**"
       - "apps/izakhono-shorts/**"
       - ".github/workflows/izakhono-shorts-renderer-ci.yml"
       - "START-IZAKHONO-SHORTS-NODE01.cmd"
+      - "VERIFY-IZAKHONO-SHORTS-NODE01.cmd"
 
 jobs:
   test:
