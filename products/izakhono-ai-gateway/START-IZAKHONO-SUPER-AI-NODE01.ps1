@@ -61,6 +61,41 @@ if ([string]::IsNullOrWhiteSpace($env:IZAKHONO_AI_WARM_KEEP_ALIVE)) { $env:IZAKH
 if ([string]::IsNullOrWhiteSpace($env:IZAKHONO_AI_WARM_TTL_SECONDS)) { $env:IZAKHONO_AI_WARM_TTL_SECONDS = "900" }
 if ([string]::IsNullOrWhiteSpace($env:IZAKHONO_AI_WARM_TIMEOUT_SECONDS)) { $env:IZAKHONO_AI_WARM_TIMEOUT_SECONDS = "180" }
 if ([string]::IsNullOrWhiteSpace($env:IZAKHONO_AI_WARM_ON_START)) { $env:IZAKHONO_AI_WARM_ON_START = "false" }
+if ([string]::IsNullOrWhiteSpace($env:IZAKHONO_AI_MAX_BODY)) { $env:IZAKHONO_AI_MAX_BODY = "16000000" }
+
+function Get-WslSecret([string]$Path, [string]$Key) {
+  if (-not (Get-Command wsl.exe -ErrorAction SilentlyContinue)) { return $null }
+  try {
+    $value = & wsl.exe -d Ubuntu -u root -- bash -lc "sed -n 's/^$Key=//p' '$Path' | tail -1" 2>$null
+    if ($LASTEXITCODE -eq 0 -and -not [string]::IsNullOrWhiteSpace($value)) {
+      return ($value | Select-Object -First 1).Trim()
+    }
+  } catch {}
+  return $null
+}
+
+function Attach-LocalMediaRuntime([string]$Name, [int]$Port, [string]$EnvPath, [string]$SecretKey, [string]$UrlVariable, [string]$KeyVariable) {
+  $explicitUrl = [Environment]::GetEnvironmentVariable($UrlVariable)
+  $explicitKey = [Environment]::GetEnvironmentVariable($KeyVariable)
+  if (-not [string]::IsNullOrWhiteSpace($explicitUrl) -and -not [string]::IsNullOrWhiteSpace($explicitKey)) {
+    return $true
+  }
+  try {
+    $runtimeHealth = Invoke-RestMethod -Uri "http://127.0.0.1:$Port/healthz" -TimeoutSec 3
+    if (-not $runtimeHealth.ok) { return $false }
+    $key = Get-WslSecret $EnvPath $SecretKey
+    if ([string]::IsNullOrWhiteSpace($key)) { return $false }
+    [Environment]::SetEnvironmentVariable($UrlVariable, "http://127.0.0.1:$Port", "Process")
+    [Environment]::SetEnvironmentVariable($KeyVariable, $key, "Process")
+    Write-Host "$Name attached to SUPER AI through owner localhost."
+    return $true
+  } catch {
+    return $false
+  }
+}
+
+$speechAttached = Attach-LocalMediaRuntime "IZAKHONO Speech Runtime" 9731 "/etc/izakhono/apps/izakhono-speech-runtime.env" "IZAKHONO_SPEECH_INTERNAL_KEY" "IZAKHONO_SPEECH_URL" "IZAKHONO_SPEECH_INTERNAL_KEY"
+$videoAttached = Attach-LocalMediaRuntime "IZAKHONO Video Runtime" 9741 "/etc/izakhono/apps/izakhono-video-runtime.env" "IZAKHONO_VIDEO_INTERNAL_KEY" "IZAKHONO_VIDEO_URL" "IZAKHONO_VIDEO_INTERNAL_KEY"
 
 $externalRequested = (
   $env:IZAKHONO_AI_ALLOW_EXTERNAL -eq "true" -and
@@ -139,6 +174,10 @@ if ($existing) {
     $probeHeaders = @{ "x-izakhono-ai-key" = $env:IZAKHONO_AI_GATEWAY_INTERNAL_KEY }
     $probe = Invoke-RestMethod -Uri "http://127.0.0.1:9595/api/v1/capabilities" -Headers $probeHeaders -TimeoutSec 3
     if (-not $probe.ok) { $needsRestart = $true }
+    $speechCapability = @($probe.capabilities | Where-Object { $_.capability -eq "speech" } | Select-Object -First 1)
+    $videoCapability = @($probe.capabilities | Where-Object { $_.capability -eq "video" } | Select-Object -First 1)
+    if ($speechCapability.Count -eq 0 -or [bool]$speechCapability[0].configured -ne [bool]$speechAttached) { $needsRestart = $true }
+    if ($videoCapability.Count -eq 0 -or [bool]$videoCapability[0].configured -ne [bool]$videoAttached) { $needsRestart = $true }
     $h = Invoke-RestMethod -Uri "http://127.0.0.1:9595/healthz" -TimeoutSec 3
     if ($workflowConfigured -and -not $h.workflow_mode_configured) { $needsRestart = $true }
     if ([int]$h.owner_text_pool_size -ne $ownerPoolRequested.Count) { $needsRestart = $true }
@@ -217,6 +256,8 @@ if ($env:IZAKHONO_AI_WARM_ON_START -eq "true") {
   "WARM_FAILED=$warmFailed"
   "EXTERNAL_AI_ENABLED=$($health.external_ai_providers_enabled)"
   "EXTERNAL_AI_PROVIDER=$($health.external_ai_provider)"
+  "SPEECH_RUNTIME_ATTACHED=$speechAttached"
+  "VIDEO_RUNTIME_ATTACHED=$videoAttached"
   "MEDIA_BACKENDS=VERIFY_WITH_/api/v1/capabilities"
   "NOTE=Local gateway proof is not public-live proof."
   "TIME=$([DateTime]::UtcNow.ToString('o'))"
