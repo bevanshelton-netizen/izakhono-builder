@@ -73,3 +73,8 @@ jobs:
           grep -Fq 'izakhono-flow' products/izakhono-ai-gateway/app.py
           grep -Fq 'izakhono-flow' products/izakhono-ai-gateway/START-IZAKHONO-SUPER-AI-NODE01.ps1
           grep -Fq 'IZAKHONO FLOW advisory use' products/izakhono-ai-gateway/README.md
+          grep -Fq 'izakhono.speech.generate.v1' products/izakhono-ai-gateway/app.py
+          grep -Fq 'izakhono.video.scene.v1' products/izakhono-ai-gateway/app.py
+          grep -Fq 'IZAKHONO_SPEECH_INTERNAL_KEY' products/izakhono-ai-gateway/app.py
+          grep -Fq 'IZAKHONO_VIDEO_INTERNAL_KEY' products/izakhono-ai-gateway/app.py
+          grep -Fq 'Portfolio-wide owned speech and video' products/izakhono-ai-gateway/README.md
