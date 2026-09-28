@@ -77,6 +77,16 @@ When a runtime fails:
 5. repair/rejoin the failed runtime;
 6. restore traffic only after fresh health and release-identity verification.
 
+## Wave 1 owned certification
+
+Run `CERTIFY-OWNED-WAVE1.cmd` on the owner Windows host for the first evidence-bound owned public certification.
+
+The launcher re-runs NODE01 local proof, checks the reviewed EDGE path, verifies DNS/TCP 443/HTTPS/TLS and preserved external fallbacks, then checks that the evidence is fresh and matches the approved immutable Wave 1 release identities.
+
+Only a complete pass writes `IZAKHONO-WAVE1-OWNED-CERTIFICATION.json` with status `OWNED_LIVE_VERIFIED`. That status is limited to Allegro-Vibez and The Chancellor. It does not certify the four-node cluster and does not imply `FABRIC LIVE VERIFIED`.
+
+If any gate fails, existing verified external production remains authoritative.
+
 ## Relationship to the four-node cluster
 
 The k3s cluster remains the long-term owner-controlled HA target. It is **not** a prerequisite for launching or keeping products public. Until all physical nodes are installed and tested, the Runtime Fabric provides the same operational principle using independent runtimes and EDGE failover.

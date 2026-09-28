@@ -43,10 +43,24 @@ function Test-Owned([string]$Slug,[string]$Host,[string]$Health,[string]$Fallbac
 
   try {
     $tcp=New-Object Net.Sockets.TcpClient($Host,443)
-    $ssl=New-Object Net.Security.SslStream($tcp.GetStream(),$false,({$true}))
+    $ssl=New-Object Net.Security.SslStream($tcp.GetStream(),$false)
     $ssl.AuthenticateAsClient($Host)
     $cert=New-Object Security.Cryptography.X509Certificates.X509Certificate2($ssl.RemoteCertificate)
-    $item.certificate=[ordered]@{subject=$cert.Subject;issuer=$cert.Issuer;not_after=$cert.NotAfter.ToUniversalTime().ToString('o')}
+    $sha256=[Security.Cryptography.SHA256]::Create()
+    try {
+      $digest=$sha256.ComputeHash($cert.RawData)
+      $fingerprint=([BitConverter]::ToString($digest)).Replace('-','').ToLowerInvariant()
+    } finally {
+      $sha256.Dispose()
+    }
+    $item.certificate=[ordered]@{
+      validated=$true
+      subject=$cert.Subject
+      issuer=$cert.Issuer
+      not_before=$cert.NotBefore.ToUniversalTime().ToString('o')
+      not_after=$cert.NotAfter.ToUniversalTime().ToString('o')
+      sha256=$fingerprint
+    }
     $ssl.Dispose();$tcp.Dispose()
   } catch {$item.certificate_error=$_.Exception.Message}
 
@@ -59,6 +73,8 @@ $results += Test-Owned 'the-chancellor' $ChancellorHostname '/api/health' 'https
 $pass=$true
 foreach($r in $results){
   if(-not ($r.dns -and $r.tcp443 -and $r.https_health -and $r.fallback)){ $pass=$false }
+  if(-not $r.certificate -or -not [bool]$r.certificate.validated){ $pass=$false }
+  if($r.certificate -and [DateTimeOffset]::Parse([string]$r.certificate.not_after) -le [DateTimeOffset]::UtcNow.AddHours(24)){ $pass=$false }
 }
 $ch=$results | Where-Object {$_.slug -eq 'the-chancellor'}
 if($ch.readiness -and $ch.readiness.PSObject.Properties.Name -contains 'readyForPaidTraffic'){
