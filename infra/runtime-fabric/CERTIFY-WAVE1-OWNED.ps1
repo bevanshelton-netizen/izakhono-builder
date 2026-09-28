@@ -5,7 +5,12 @@ param(
   [string]$ChancellorHostname = 'chancellor.izakhonoafrica.co.za',
   [string]$PublicIPv4 = '',
   [int]$MaxEvidenceAgeMinutes = 45,
-  [switch]$SkipExecution
+  [switch]$SkipExecution,
+  [string]$RegistryPath = '',
+  [string]$NodeReport = '',
+  [string]$DnsReport = '',
+  [string]$PublicReport = '',
+  [string]$CertificationPath = ''
 )
 
 Set-StrictMode -Version Latest
@@ -14,11 +19,11 @@ $ErrorActionPreference = 'Stop'
 $root = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $desktop = [Environment]::GetFolderPath('Desktop')
 $pushScript = Join-Path $root 'infra\public-cutover\PUSH-WAVE1-OWNED.ps1'
-$registryPath = Join-Path $root 'infra\public-cutover\wave1-registry.json'
-$nodeReportPath = Join-Path $desktop 'IZAKHONO-NODE01-WAVE1-REPORT.json'
-$dnsReportPath = Join-Path $desktop 'IZAKHONO-WAVE1-DNS-ACTION.json'
-$publicReportPath = Join-Path $desktop 'IZAKHONO-WAVE1-PUBLIC-VERIFY.json'
-$certPath = Join-Path $desktop 'IZAKHONO-WAVE1-OWNED-CERTIFICATION.json'
+if ([string]::IsNullOrWhiteSpace($RegistryPath)) { $RegistryPath = Join-Path $root 'infra\public-cutover\wave1-registry.json' }
+if ([string]::IsNullOrWhiteSpace($NodeReport)) { $NodeReport = Join-Path $desktop 'IZAKHONO-NODE01-WAVE1-REPORT.json' }
+if ([string]::IsNullOrWhiteSpace($DnsReport)) { $DnsReport = Join-Path $desktop 'IZAKHONO-WAVE1-DNS-ACTION.json' }
+if ([string]::IsNullOrWhiteSpace($PublicReport)) { $PublicReport = Join-Path $desktop 'IZAKHONO-WAVE1-PUBLIC-VERIFY.json' }
+if ([string]::IsNullOrWhiteSpace($CertificationPath)) { $CertificationPath = Join-Path $desktop 'IZAKHONO-WAVE1-OWNED-CERTIFICATION.json' }
 
 function Assert-File([string]$Path, [string]$Label) {
   if (-not (Test-Path $Path)) { throw "Missing $Label evidence: $Path" }
@@ -84,18 +89,18 @@ if (-not $SkipExecution) {
 }
 
 foreach ($pair in @(
-  @($registryPath,'Wave 1 registry'),
-  @($nodeReportPath,'NODE01 local'),
-  @($dnsReportPath,'DNS owner-match'),
-  @($publicReportPath,'public DNS/TLS/HTTPS')
+  @($RegistryPath,'Wave 1 registry'),
+  @($NodeReport,'NODE01 local'),
+  @($DnsReport,'DNS owner-match'),
+  @($PublicReport,'public DNS/TLS/HTTPS')
 )) {
   Assert-File $pair[0] $pair[1]
 }
 
-$registry = Read-Json $registryPath
-$node = Read-Json $nodeReportPath
-$dns = Read-Json $dnsReportPath
-$public = Read-Json $publicReportPath
+$registry = Read-Json $RegistryPath
+$node = Read-Json $NodeReport
+$dns = Read-Json $DnsReport
+$public = Read-Json $PublicReport
 
 if ($node.schema -ne 'izakhono.node01.wave1.report.v1' -or $node.overall -ne 'PASS_LOCAL_OWNED') {
   throw 'NODE01 local owned evidence did not pass.'
@@ -181,9 +186,9 @@ $cert = [ordered]@{
     source_authority = 'IZAKHONO CODE / approved immutable release'
   }
   evidence = [ordered]@{
-    node01_local = [ordered]@{ file = (Split-Path $nodeReportPath -Leaf); sha256 = Sha256 $nodeReportPath }
-    dns_owner_match = [ordered]@{ file = (Split-Path $dnsReportPath -Leaf); sha256 = Sha256 $dnsReportPath }
-    public_acceptance = [ordered]@{ file = (Split-Path $publicReportPath -Leaf); sha256 = Sha256 $publicReportPath }
+    node01_local = [ordered]@{ file = (Split-Path $NodeReport -Leaf); sha256 = Sha256 $NodeReport }
+    dns_owner_match = [ordered]@{ file = (Split-Path $DnsReport -Leaf); sha256 = Sha256 $DnsReport }
+    public_acceptance = [ordered]@{ file = (Split-Path $PublicReport -Leaf); sha256 = Sha256 $PublicReport }
     builder_bundle_ref = [string]$node.builder_bundle_ref
     wave1_bundle_sha256 = [string]$node.wave1_bundle_sha256
     evidence_max_age_minutes = $MaxEvidenceAgeMinutes
@@ -198,11 +203,11 @@ $cert = [ordered]@{
   public_live_claim_scope = 'Wave 1 owned routes only; no claim for other IZAKHONO platforms or four-node FABRIC LIVE VERIFIED.'
 }
 
-$cert | ConvertTo-Json -Depth 10 | Set-Content -Path $certPath -Encoding UTF8
+$cert | ConvertTo-Json -Depth 10 | Set-Content -Path $CertificationPath -Encoding UTF8
 $cert | ConvertTo-Json -Depth 10
 
 Write-Host ''
 Write-Host '[PASS] Wave 1 owned certification evidence is complete.' -ForegroundColor Green
-Write-Host "Certification: $certPath"
+Write-Host "Certification: $CertificationPath"
 Write-Host 'Status: OWNED LIVE VERIFIED (Wave 1 only)'
 Write-Host 'External resilience remains preserved.'
