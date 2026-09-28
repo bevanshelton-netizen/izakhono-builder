@@ -42,6 +42,25 @@ docker run --rm \
 
 Health: `GET /healthz`
 
+
+## Real end-to-end launch gate
+
+The root launcher `START-IZAKHONO-SHORTS-NODE01.cmd` does not stop at service health.
+
+After the renderer, API and worker are healthy it runs `e2e.py` in a one-shot container. That gate:
+
+1. requires external fallback to be disabled;
+2. queues an original educational Short through the normal API;
+3. waits for the normal worker to use the owned renderer;
+4. requires the completed job route to be `owned`;
+5. HEAD-checks and downloads the generated MP4;
+6. validates the MP4 container signature and minimum size;
+7. downloads the VTT captions and immutable render manifest;
+8. verifies the manifest says owned route, no tracking, no autopublish, MP4, 1080x1920 and 30 fps; and
+9. writes an evidence report plus the first generated Short to `Desktop\\IZAKHONO-SHORTS-EVIDENCE`.
+
+The launcher prints operational success only when that evidence report contains `"live_claim_allowed": true`.
+
 ## Renderer contract
 
 The owned media renderer receives:
@@ -88,4 +107,4 @@ The renderer itself can be implemented with IZAKHONO-hosted open-weight image/vi
 
 ## Launch truth
 
-The control plane can be verified independently at `/healthz`. A Short is not described as generated until the worker receives `ok:true` from a configured renderer and the resulting media asset is actually reachable.
+The control plane can be verified independently at `/healthz`. A Short is not described as generated until the worker receives `ok:true` from the configured owned renderer, the resulting media asset is reachable, and the NODE01 end-to-end evidence gate has produced and re-downloaded a valid MP4. Service health alone is not sufficient for an operational claim.
