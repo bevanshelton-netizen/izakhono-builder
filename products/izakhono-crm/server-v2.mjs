@@ -227,8 +227,32 @@ async function handleFlowAction(req,res,url,scope){
     activity={id:id("activity"),...scope,contact_id:deal.contact_id,deal_id:deal.id,type,note,created_at:now(),updated_at:now()};store.activities.push(activity);
     deal.next_action=actionType==="crm.payment.confirmed"?"Start fulfilment":"Issue invoice / begin retention";
     deal.updated_at=now();
+  } else if(actionType==="crm.document.approved"||actionType==="crm.document.send_queued"){
+    if(deal?.contact_id) contact=scoped(store.contacts,scope).find(c=>c.id===deal.contact_id)||null;
+    const type=actionType==="crm.document.approved"?"document_approved":"document_send_queued";
+    const title=cleanString(metadata.title||"DOCFLOW document",240);
+    const note=actionType==="crm.document.approved"
+      ? `DOCFLOW approved: ${title}. Reference: ${subjectRef||"not supplied"}.`
+      : `DOCFLOW send workflow queued: ${title}. Reference: ${subjectRef||"not supplied"}. Delivery is not yet claimed.`;
+    activity={
+      id:id("activity"),
+      ...scope,
+      contact_id:contact?.id||"",
+      deal_id:deal?.id||"",
+      type,
+      note,
+      source:"izakhono-docflow",
+      subject_ref:subjectRef,
+      created_at:now(),
+      updated_at:now()
+    };
+    store.activities.push(activity);
+    if(deal){
+      deal.next_action=actionType==="crm.document.approved"?"Review approved document":"Confirm document delivery / signature status";
+      deal.updated_at=now();
+    }
   } else {
-    return json(res,400,{error:"unsupported_flow_action",supported:["crm.intake.requested","crm.payment.confirmed","crm.fulfilment.completed"]});
+    return json(res,400,{error:"unsupported_flow_action",supported:["crm.intake.requested","crm.payment.confirmed","crm.fulfilment.completed","crm.document.approved","crm.document.send_queued"]});
   }
 
   const receipt={id:id("flowrcpt"),...scope,action_id:actionId,run_id:runId,action_type:actionType,subject_ref:subjectRef,deal_id:deal?.id||"",contact_id:contact?.id||"",activity_id:activity?.id||"",created_at:now()};
@@ -249,7 +273,7 @@ async function serveStatic(url,res){
 async function handler(req,res){
   try {
     const url=new URL(req.url,`http://${req.headers.host||"localhost"}`);
-    if(req.method==="GET"&&url.pathname==="/health") return json(res,200,{ok:true,service:"izakhono-crm",version:"0.2.0",auth:STAFF_FILE?"staff-file":ADMIN_TOKEN?"admin-token":ALLOW_INSECURE_LOCAL?"local-dev":"locked"});
+    if(req.method==="GET"&&url.pathname==="/health") return json(res,200,{ok:true,service:"izakhono-crm",version:"0.2.1",auth:STAFF_FILE?"staff-file":ADMIN_TOKEN?"admin-token":ALLOW_INSECURE_LOCAL?"local-dev":"locked"});
     if(!url.pathname.startsWith("/api/")){ const served=await serveStatic(url,res); if(served!==false) return served; return json(res,404,{error:"not found"}); }
     const scope=scopeFrom(req,url); if(!scope) return json(res,400,{error:"X-Entity-ID and X-Platform-ID are required"});
 
