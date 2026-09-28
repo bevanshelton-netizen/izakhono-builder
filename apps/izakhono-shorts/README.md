@@ -61,6 +61,17 @@ After the renderer, API and worker are healthy it runs `e2e.py` in a one-shot co
 
 The launcher prints operational success only when that evidence report contains `"live_claim_allowed": true`.
 
+## Quality runtime layer
+
+The launcher now attempts two additional owned quality services before starting the core renderer:
+
+- `IZAKHONO Speech Runtime` on port 9731 — local Kokoro-class natural speech when an owner-approved model snapshot is staged.
+- `IZAKHONO Video Runtime` on port 9741 — local Wan-compatible image-to-video generation when an owner-approved Diffusers snapshot and suitable NVIDIA GPU are present.
+
+Both services are optional enhancements, not production dependencies. The renderer attaches them only after their independent local health gates return HTTP 200. If either service is unavailable, Shorts continues with the existing local espeak voice and FFmpeg cinematic-motion fallback. An unavailable quality model therefore cannot force an external provider or take the baseline renderer down.
+
+Model weights are never silently downloaded by service startup. Separate staging scripts require an explicit approval flag and exact upstream revision, then record a model manifest.
+
 ## Renderer contract
 
 The owned media renderer receives:

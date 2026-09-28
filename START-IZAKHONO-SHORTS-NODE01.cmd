@@ -21,7 +21,11 @@ if "%LINUX_ROOT%"=="" (
 )
 
 set REPORT=%USERPROFILE%\Desktop\IZAKHONO-SHORTS-RENDERER-REPORT.json
+set SPEECH_REPORT=%USERPROFILE%\Desktop\IZAKHONO-SPEECH-RUNTIME-REPORT.json
+set VIDEO_REPORT=%USERPROFILE%\Desktop\IZAKHONO-VIDEO-RUNTIME-REPORT.json
 for /f "usebackq delims=" %%I in (`wsl.exe -d %DISTRO% -- wslpath -a "%REPORT%"`) do set LINUX_REPORT=%%I
+for /f "usebackq delims=" %%I in (`wsl.exe -d %DISTRO% -- wslpath -a "%SPEECH_REPORT%"`) do set LINUX_SPEECH_REPORT=%%I
+for /f "usebackq delims=" %%I in (`wsl.exe -d %DISTRO% -- wslpath -a "%VIDEO_REPORT%"`) do set LINUX_VIDEO_REPORT=%%I
 
 echo ============================================================
 echo IZAKHONO SHORTS FACTORY - OWNED END-TO-END STACK
@@ -29,6 +33,30 @@ echo NODE01 / WSL GPU RENDERER + DOCKER CONTROL PLANE
 echo ============================================================
 echo.
 
+echo [QUALITY 1/2] Preparing IZAKHONO natural speech runtime...
+wsl.exe -d %DISTRO% -u root -- bash "%LINUX_ROOT%/products/izakhono-speech-runtime/install-node01.sh" "%LINUX_SPEECH_REPORT%"
+set SPEECH_RC=%ERRORLEVEL%
+if "%SPEECH_RC%"=="0" (
+  echo [QUALITY] Natural speech runtime READY.
+) else if "%SPEECH_RC%"=="2" (
+  echo [QUALITY] Natural speech model not staged yet. Local espeak fallback remains active.
+) else (
+  echo [QUALITY WARN] Speech setup returned %SPEECH_RC%. Baseline local speech remains available.
+)
+
+echo.
+echo [QUALITY 2/2] Preparing IZAKHONO generative video runtime...
+wsl.exe -d %DISTRO% -u root -- bash "%LINUX_ROOT%/products/izakhono-video-runtime/install-node01.sh" "%LINUX_VIDEO_REPORT%"
+set VIDEO_RC=%ERRORLEVEL%
+if "%VIDEO_RC%"=="0" (
+  echo [QUALITY] Generative video runtime READY.
+) else if "%VIDEO_RC%"=="2" (
+  echo [QUALITY] Wan model/GPU gate not ready yet. Local FFmpeg motion fallback remains active.
+) else (
+  echo [QUALITY WARN] Video setup returned %VIDEO_RC%. Baseline local motion remains available.
+)
+
+echo.
 wsl.exe -d %DISTRO% -u root -- bash "%LINUX_ROOT%/products/izakhono-shorts-renderer/install-node01.sh" "%LINUX_REPORT%"
 set RENDER_RC=%ERRORLEVEL%
 
@@ -120,5 +148,10 @@ echo UI:       http://127.0.0.1:9710
 echo Renderer: http://127.0.0.1:9721/healthz
 echo Video:    %EVIDENCE_DIR%\IZAKHONO-FIRST-OWNED-SHORT.mp4
 echo Report:   %EVIDENCE_DIR%\IZAKHONO-SHORTS-E2E-REPORT.json
+echo Speech evidence: %SPEECH_REPORT%
+echo Video evidence:  %VIDEO_REPORT%
+echo.
+if "%SPEECH_RC%"=="0" (echo Natural voice: READY) else (echo Natural voice: FALLBACK MODE)
+if "%VIDEO_RC%"=="0" (echo Generative animation: READY) else (echo Generative animation: FALLBACK MODE)
 echo ============================================================
 endlocal

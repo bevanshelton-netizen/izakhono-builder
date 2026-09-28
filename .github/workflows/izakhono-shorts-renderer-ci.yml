@@ -4,6 +4,8 @@ on:
   push:
     paths:
       - "products/izakhono-shorts-renderer/**"
+      - "products/izakhono-speech-runtime/**"
+      - "products/izakhono-video-runtime/**"
       - "apps/izakhono-shorts/**"
       - ".github/workflows/izakhono-shorts-renderer-ci.yml"
       - "START-IZAKHONO-SHORTS-NODE01.cmd"
@@ -11,6 +13,8 @@ on:
   pull_request:
     paths:
       - "products/izakhono-shorts-renderer/**"
+      - "products/izakhono-speech-runtime/**"
+      - "products/izakhono-video-runtime/**"
       - "apps/izakhono-shorts/**"
       - ".github/workflows/izakhono-shorts-renderer-ci.yml"
       - "START-IZAKHONO-SHORTS-NODE01.cmd"
@@ -27,6 +31,8 @@ jobs:
       - name: Python syntax
         run: |
           python -m py_compile products/izakhono-shorts-renderer/app.py
+          python -m py_compile products/izakhono-speech-runtime/app.py
+          python -m py_compile products/izakhono-video-runtime/app.py
           python -m py_compile apps/izakhono-shorts/engine.py
           python -m py_compile apps/izakhono-shorts/app.py
           python -m py_compile apps/izakhono-shorts/worker.py
@@ -34,9 +40,17 @@ jobs:
           python -m py_compile apps/izakhono-shorts/test_e2e.py
       - name: Renderer unit tests
         run: python products/izakhono-shorts-renderer/test_renderer.py
+      - name: Natural speech runtime unit tests
+        run: python products/izakhono-speech-runtime/test_runtime.py
+      - name: Generative video runtime unit tests
+        run: python products/izakhono-video-runtime/test_runtime.py
       - name: End-to-end gate unit tests
         run: python apps/izakhono-shorts/test_e2e.py
       - name: Shell syntax
         run: |
           bash -n products/izakhono-shorts-renderer/install-node01.sh
           bash -n products/izakhono-shorts-renderer/verify-node01.sh
+          bash -n products/izakhono-speech-runtime/install-node01.sh
+          bash -n products/izakhono-speech-runtime/stage-model-node01.sh
+          bash -n products/izakhono-video-runtime/install-node01.sh
+          bash -n products/izakhono-video-runtime/stage-model-node01.sh
