@@ -129,7 +129,7 @@ Verification:
 sudo bash products/izakhono-media-fabric/verify-node.sh
 ```
 
-A remote owned worker uses a root-only `/etc/izakhono/apps/izakhono-media-fabric.env` containing the approved private/HTTPS broker URL and broker credential. Worker transport must remain on an owner/private network or approved HTTPS route.
+A remote owned worker uses a root-only `/etc/izakhono/apps/izakhono-media-worker-fabric.env` containing only the approved private/HTTPS broker URL and broker credential. The payload-encryption key stays broker-side and is never placed in a worker environment. Worker transport must remain on an owner/private network or approved HTTPS route.
 
 ## Scheduling
 
