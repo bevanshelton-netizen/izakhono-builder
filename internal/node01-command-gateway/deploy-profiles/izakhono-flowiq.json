@@ -1,0 +1,12 @@
+{
+  "source": "izakhono-code",
+  "repository": "izakhono-builder",
+  "app": "izakhono-flowiq",
+  "environment": "production",
+  "mode": "single",
+  "container_port": 9797,
+  "health_path": "/readyz",
+  "data_path": "/app/data",
+  "dockerfile": "products/izakhono-flowiq/Dockerfile.node",
+  "env_file": "/etc/izakhono/apps/izakhono-flowiq.env"
+}
