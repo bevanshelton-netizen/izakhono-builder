@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'products/izakhono-docflow/**'
+      - 'products/izakhono-flowiq/**'
       - 'internal/node01-command-gateway/deploy-profiles/izakhono-docflow.json'
       - '.github/workflows/docflow-node01-ci.yml'
   push:
@@ -44,8 +45,11 @@ jobs:
           print('[PASS] DOCFLOW NODE01 profile is owned-first and readiness-gated.')
           PY
 
-      - name: Build owned DOCFLOW container
-        run: docker build -f products/izakhono-docflow/Dockerfile.node -t izakhono-docflow-node01:ci .
+      - name: Build owned DOCFLOW and FLOWIQ containers
+        shell: bash
+        run: |
+          docker build -f products/izakhono-docflow/Dockerfile.node -t izakhono-docflow-node01:ci .
+          docker build -f products/izakhono-flowiq/Dockerfile.node -t izakhono-flowiq:ci .
 
       - name: Start SUPER AI contract stub
         shell: bash
@@ -61,6 +65,23 @@ jobs:
           docker logs super-ai-stub || true
           exit 1
 
+      - name: Start FLOWIQ contract service
+        shell: bash
+        run: |
+          docker run -d --name flowiq-ci --network docflow-ci --network-alias izakhono-flowiq \
+            -e FLOWIQ_TOKEN=ci-flowiq-token-not-production \
+            izakhono-flowiq:ci
+          for _ in $(seq 1 30); do
+            if docker run --rm --network docflow-ci curlimages/curl:8.12.1 \
+              -fsS http://izakhono-flowiq:9797/readyz >/tmp/flowiq-ready.json; then
+              cat /tmp/flowiq-ready.json
+              exit 0
+            fi
+            sleep 1
+          done
+          docker logs flowiq-ci || true
+          exit 1
+
       - name: Start owned DOCFLOW canary
         shell: bash
         run: |
@@ -70,6 +91,8 @@ jobs:
             -e SUPER_AI_URL=http://super-ai-stub:9595 \
             -e SUPER_AI_INTERNAL_KEY=ci-super-ai-internal \
             -e SUPER_AI_WORKFLOW_KEY=ci-super-ai-workflow \
+            -e FLOWIQ_URL=http://izakhono-flowiq:9797 \
+            -e FLOWIQ_TOKEN=ci-flowiq-token-not-production \
             -p 127.0.0.1:18081:8787 \
             izakhono-docflow-node01:ci
           for _ in $(seq 1 45); do
@@ -110,16 +133,35 @@ jobs:
             --data '{"approver":"CI","confirm":false}')"
           test "$CODE" = "400"
 
-          curl -fsS -X POST "http://127.0.0.1:18081/api/drafts/$DRAFT_ID/approve" \
+          curl -fsS -X POST "http://127.0.0.1:18081/api/drafts/$DRAFT_ID/approve-and-send" \
             -H 'content-type: application/json' \
             -H 'x-docflow-secret: ci-only-docflow-secret-not-production' \
             --data '{"approver":"CI","confirm":true}' >/tmp/approved.json
+          cat /tmp/approved.json
           python - <<'PY'
           import json
           d=json.load(open('/tmp/approved.json'))
           assert d['ok'] is True
-          assert d['draft']['status']=='approved'
-          print('[PASS] DOCFLOW uses the SUPER AI workflow contract and refuses approval without human confirmation.')
+          assert d['draft']['status']=='send_queued'
+          assert d['delivery_claim']=='queued_not_sent'
+          assert d['flowiq']['queued'] is True
+          print('[PASS] DOCFLOW uses SUPER AI, requires human confirmation, then hands the send request to FLOWIQ without claiming delivery.')
+          PY
+
+          curl -fsS http://127.0.0.1:18081/api/health >/tmp/docflow-health.json
+          docker run --rm --network docflow-ci curlimages/curl:8.12.1 \
+            -fsS -H 'authorization: Bearer ci-flowiq-token-not-production' \
+            http://izakhono-flowiq:9797/v1/actions >/tmp/flowiq-actions.json
+
+          python - <<'PY'
+          import json
+          d=json.load(open('/tmp/flowiq-actions.json'))
+          actions=d['actions']
+          kinds={x['action_type'] for x in actions}
+          assert {'document_delivery','crm_sync','delivery_followup_schedule'} <= kinds
+          matching=[x for x in actions if x['action_type'] in {'document_delivery','crm_sync','delivery_followup_schedule'}]
+          assert all(x['action_state']=='awaiting_adapter' for x in matching)
+          print('[PASS] FLOWIQ persisted DOCFLOW downstream actions and truthfully left them awaiting real adapters.')
           PY
 
       - name: Stop canary
@@ -127,5 +169,6 @@ jobs:
         shell: bash
         run: |
           docker rm -f docflow-node01-ci >/dev/null 2>&1 || true
+          docker rm -f flowiq-ci >/dev/null 2>&1 || true
           docker rm -f super-ai-stub >/dev/null 2>&1 || true
           docker network rm docflow-ci >/dev/null 2>&1 || true

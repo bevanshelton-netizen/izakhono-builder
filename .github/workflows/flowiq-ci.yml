@@ -1,0 +1,116 @@
+name: IZAKHONO FLOWIQ CI
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'products/izakhono-flowiq/**'
+      - 'internal/node01-command-gateway/deploy-profiles/izakhono-flowiq.json'
+      - 'products/izakhono-node/deploy.sh'
+      - '.github/workflows/flowiq-ci.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'products/izakhono-flowiq/**'
+      - 'internal/node01-command-gateway/deploy-profiles/izakhono-flowiq.json'
+      - '.github/workflows/flowiq-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Static checks
+        shell: bash
+        run: |
+          node --check products/izakhono-flowiq/src/server.mjs
+          bash -n products/izakhono-flowiq/owner-node/prepare-env.sh
+          bash -n products/izakhono-flowiq/owner-node/deploy-node01.sh
+          bash -n products/izakhono-node/deploy.sh
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=json.loads(Path('internal/node01-command-gateway/deploy-profiles/izakhono-flowiq.json').read_text())
+          assert p['source']=='izakhono-code'
+          assert p['repository']=='izakhono-builder'
+          assert p['environment']=='production'
+          assert p['dockerfile']=='products/izakhono-flowiq/Dockerfile.node'
+          assert p['health_path']=='/readyz'
+          print('[PASS] FLOWIQ profile is owned-first and readiness-gated.')
+          node_deployer=Path('products/izakhono-node/deploy.sh').read_text()
+          assert 'IZAKHONO_NODE_INTERNAL_NETWORK' in node_deployer
+          assert '--network "$INTERNAL_NETWORK"' in node_deployer
+          assert '--network-alias "$APP"' in node_deployer
+          print('[PASS] NODE01 single-service deployments share the owner-controlled internal network.')
+          PY
+
+      - name: Build owned FLOWIQ container
+        run: docker build -f products/izakhono-flowiq/Dockerfile.node -t izakhono-flowiq:ci .
+
+      - name: Start FLOWIQ
+        shell: bash
+        run: |
+          docker run -d --name flowiq-ci             -e FLOWIQ_TOKEN=ci-flowiq-token-not-production             -p 127.0.0.1:19797:9797             izakhono-flowiq:ci
+          for _ in $(seq 1 45); do
+            if curl -fsS http://127.0.0.1:19797/readyz >/tmp/flowiq-ready.json; then
+              cat /tmp/flowiq-ready.json
+              exit 0
+            fi
+            sleep 2
+          done
+          docker logs flowiq-ci || true
+          exit 1
+
+      - name: Verify DOCFLOW event orchestration and idempotency
+        shell: bash
+        run: |
+          cat >/tmp/event.json <<'JSON'
+          {
+            "event_type":"docflow.approve_and_send_requested",
+            "source":"IZAKHONO DOCFLOW",
+            "workspace_id":"ci",
+            "legal_entity":"IZAKHONO AFRICA (PTY) LTD",
+            "draft_id":"doc_ci_001",
+            "status":"send_queued",
+            "actor":"CI"
+          }
+          JSON
+
+          curl -fsS -X POST http://127.0.0.1:19797/v1/events             -H 'content-type: application/json'             -H 'authorization: Bearer ci-flowiq-token-not-production'             --data-binary @/tmp/event.json >/tmp/accepted.json
+          cat /tmp/accepted.json
+
+          python - <<'PY'
+          import json
+          d=json.load(open('/tmp/accepted.json'))
+          assert d['ok'] is True
+          assert d['duplicate'] is False
+          assert d['delivery_claim']=='workflow_persisted_not_externally_delivered'
+          actions=d['actions']
+          assert {x['action_type'] for x in actions} == {
+            'document_delivery','crm_sync','delivery_followup_schedule'
+          }
+          assert all(x['action_state']=='awaiting_adapter' for x in actions)
+          print('[PASS] FLOWIQ persisted the event and created truthful pending actions.')
+          PY
+
+          curl -fsS -X POST http://127.0.0.1:19797/v1/events             -H 'content-type: application/json'             -H 'authorization: Bearer ci-flowiq-token-not-production'             --data-binary @/tmp/event.json >/tmp/duplicate.json
+
+          python - <<'PY'
+          import json
+          d=json.load(open('/tmp/duplicate.json'))
+          assert d['ok'] is True
+          assert d['duplicate'] is True
+          assert len(d['actions']) == 3
+          print('[PASS] FLOWIQ idempotency prevented duplicate workflow actions.')
+          PY
+
+      - name: Stop FLOWIQ
+        if: always()
+        run: docker rm -f flowiq-ci >/dev/null 2>&1 || true

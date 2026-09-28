@@ -23,12 +23,14 @@ PUBLIC_BUILD_ENV_FILE="$(get public_build_env_file)"
 DOCKERFILE="$(get dockerfile)"
 COMPOSE_FILE="$(get compose_file)"
 DATA_PATH="$(get data_path)"
+INTERNAL_NETWORK="${IZAKHONO_NODE_INTERNAL_NETWORK:-izakhono-internal}"
 
 DOCKERFILE="${DOCKERFILE:-Dockerfile}"
 COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.yml}"
 DATA_PATH="${DATA_PATH:-/app/data}"
 
 [[ "$APP" =~ ^[a-zA-Z0-9][a-zA-Z0-9_-]{1,62}[a-zA-Z0-9]$ ]] || { echo invalid-app >&2; exit 21; }
+[[ "$INTERNAL_NETWORK" =~ ^[a-zA-Z0-9][a-zA-Z0-9_.-]{0,62}$ ]] || { echo invalid-internal-network >&2; exit 21; }
 [[ "$MODE" == "single" || "$MODE" == "compose" ]] || { echo invalid-mode >&2; exit 22; }
 [[ "$ENVIRONMENT" == "staging" || "$ENVIRONMENT" == "production" ]] || { echo invalid-environment >&2; exit 22; }
 
@@ -155,6 +157,9 @@ fi
 [[ "$PORT" =~ ^[0-9]+$ ]] || exit 33
 [[ "$HEALTH" == /* ]] || exit 34
 
+docker network inspect "$INTERNAL_NETWORK" >/dev/null 2>&1 || docker network create "$INTERNAL_NETWORK" >/dev/null
+echo "IZAKHONO_NODE_INTERNAL_NETWORK=$INTERNAL_NETWORK"
+
 IMAGE="izakhono/$APP:$SHORT"
 CANARY="${APP}-canary"
 PROD="$APP"
@@ -166,7 +171,7 @@ docker volume create "$VOL" >/dev/null
 docker volume create "$CANARY_VOL" >/dev/null
 docker rm -f "$CANARY" >/dev/null 2>&1 || true
 
-ARGS=(run -d --name "$CANARY" --label "izakhono.app=$APP" --label "izakhono.commit=$SHA" --label "izakhono.environment=$ENVIRONMENT" -p 127.0.0.1::"$PORT" -v "$CANARY_VOL:$DATA_PATH")
+ARGS=(run -d --name "$CANARY" --network "$INTERNAL_NETWORK" --network-alias "${APP}-canary" --label "izakhono.app=$APP" --label "izakhono.commit=$SHA" --label "izakhono.environment=$ENVIRONMENT" -p 127.0.0.1::"$PORT" -v "$CANARY_VOL:$DATA_PATH")
 [[ -n "$ENV_FILE" ]] && ARGS+=(--env-file "$ENV_FILE")
 ARGS+=("$IMAGE")
 docker "${ARGS[@]}" >/dev/null
@@ -188,7 +193,7 @@ PREV_IMAGE="$(docker inspect -f '{{.Config.Image}}' "$PROD" 2>/dev/null || true)
 docker rm -f "$PROD" >/dev/null 2>&1 || true
 docker rm -f "$CANARY" >/dev/null 2>&1 || true
 
-PROD_ARGS=(run -d --name "$PROD" --restart unless-stopped --label "izakhono.app=$APP" --label "izakhono.commit=$SHA" --label "izakhono.environment=$ENVIRONMENT" -p "127.0.0.1:$PORT:$PORT" -v "$VOL:$DATA_PATH")
+PROD_ARGS=(run -d --name "$PROD" --restart unless-stopped --network "$INTERNAL_NETWORK" --network-alias "$APP" --label "izakhono.app=$APP" --label "izakhono.commit=$SHA" --label "izakhono.environment=$ENVIRONMENT" -p "127.0.0.1:$PORT:$PORT" -v "$VOL:$DATA_PATH")
 [[ -n "$ENV_FILE" ]] && PROD_ARGS+=(--env-file "$ENV_FILE")
 PROD_ARGS+=("$IMAGE")
 
@@ -196,7 +201,7 @@ rollback(){
   echo "IZAKHONO_NODE_ROLLBACK=single" >&2
   docker rm -f "$PROD" >/dev/null 2>&1 || true
   if [[ -n "$PREV_IMAGE" ]]; then
-    RB=(run -d --name "$PROD" --restart unless-stopped -p "127.0.0.1:$PORT:$PORT" -v "$VOL:$DATA_PATH")
+    RB=(run -d --name "$PROD" --restart unless-stopped --network "$INTERNAL_NETWORK" --network-alias "$APP" -p "127.0.0.1:$PORT:$PORT" -v "$VOL:$DATA_PATH")
     [[ -n "$ENV_FILE" ]] && RB+=(--env-file "$ENV_FILE")
     RB+=("$PREV_IMAGE")
     docker "${RB[@]}" >/dev/null || true
