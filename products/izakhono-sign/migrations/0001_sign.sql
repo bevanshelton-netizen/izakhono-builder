@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS sign_envelopes (
   status TEXT NOT NULL DEFAULT 'created',
   mail_status TEXT NOT NULL DEFAULT 'not_configured',
   expires_at TEXT NOT NULL,
-  delivered_at TEXT,
+  dispatched_at TEXT,
   signed_at TEXT,
   signer_name TEXT NOT NULL DEFAULT '',
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
