@@ -129,6 +129,50 @@ function projectActions(eventId, payload) {
   return ids;
 }
 
+async function dispatchAdapter(row, cfg, payload) {
+  if (row.adapter_name === 'tasks') {
+    const entityId = clean(payload.workspace_id || 'izakhono-africa', 120);
+    const subjectRef = clean(payload.draft_id || payload.subject_id, 200);
+    if (!subjectRef) throw new Error('tasks_subject_ref_missing');
+    const headers = {
+      'content-type': 'application/json',
+      'x-izakhono-entity-id': entityId,
+      'x-platform-id': 'izakhono-docflow',
+    };
+    if (cfg.token) headers.authorization = 'Bearer ' + cfg.token;
+    return fetch(cfg.url + '/api/flow', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        action_id: row.id,
+        run_id: row.event_id,
+        action_type: 'followup.schedule.requested',
+        payload: {
+          subject_ref: subjectRef,
+          metadata: {
+            delay_minutes: 1440,
+            legal_entity: clean(payload.legal_entity, 200),
+            source_event_type: clean(payload.event_type, 120),
+          },
+        },
+      }),
+    });
+  }
+
+  const headers = { 'content-type': 'application/json' };
+  if (cfg.token) headers.authorization = 'Bearer ' + cfg.token;
+  return fetch(cfg.url + '/v1/actions', {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({
+      action_id: row.id,
+      action_type: row.action_type,
+      event_id: row.event_id,
+      payload,
+    }),
+  });
+}
+
 async function runAction(row) {
   const cfg = adapters[row.adapter_name];
   if (!cfg?.url) return { attempted: false, state: 'awaiting_adapter' };
@@ -139,18 +183,8 @@ async function runAction(row) {
   createAudit(row.event_id, row.id, 'action.running', 'flowiq', { adapter: row.adapter_name });
 
   try {
-    const headers = { 'content-type': 'application/json' };
-    if (cfg.token) headers.authorization = 'Bearer ' + cfg.token;
-    const response = await fetch(cfg.url + '/v1/actions', {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({
-        action_id: row.id,
-        action_type: row.action_type,
-        event_id: row.event_id,
-        payload: JSON.parse(row.payload_json || '{}'),
-      }),
-    });
+    const payload = JSON.parse(row.payload_json || '{}');
+    const response = await dispatchAdapter(row, cfg, payload);
     if (!response.ok) throw new Error('adapter_http_' + response.status);
     db.prepare(
       "UPDATE flowiq_actions SET action_state='completed',last_error='',updated_at=CURRENT_TIMESTAMP WHERE id=?"
@@ -201,7 +235,7 @@ const server = http.createServer(async (req, res) => {
       return send(res, 200, {
         ok: true,
         service: 'IZAKHONO FLOWIQ',
-        version: '1.0.0',
+        version: '1.1.0',
         adapters: Object.fromEntries(Object.entries(adapters).map(([k,v]) => [k, Boolean(v.url)])),
       });
     }
