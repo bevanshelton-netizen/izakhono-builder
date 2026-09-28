@@ -1,0 +1,108 @@
+name: IZAKHONO MAIL CI
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'products/izakhono-mail/**'
+      - 'products/izakhono-sign/**'
+      - 'fixtures/izakhono-smtp-stub.mjs'
+      - 'internal/node01-command-gateway/deploy-profiles/izakhono-mail.json'
+      - '.github/workflows/mail-ci.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'products/izakhono-mail/**'
+      - 'products/izakhono-sign/**'
+      - 'fixtures/izakhono-smtp-stub.mjs'
+      - '.github/workflows/mail-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  mail:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Static checks
+        shell: bash
+        run: |
+          node --check products/izakhono-mail/src/server.mjs
+          node --check fixtures/izakhono-smtp-stub.mjs
+          bash -n products/izakhono-mail/owner-node/prepare-env.sh
+          bash -n products/izakhono-mail/owner-node/deploy-mail-sign.sh
+
+      - name: Build MAIL
+        run: docker build -f products/izakhono-mail/Dockerfile.node -t izakhono-mail:ci .
+
+      - name: Start SMTP stub and MAIL
+        shell: bash
+        run: |
+          docker network create mail-ci >/dev/null
+          docker run -d --name smtp-stub --network mail-ci --network-alias smtp-stub \
+            -v "$PWD/fixtures/izakhono-smtp-stub.mjs:/stub.mjs:ro" node:22-bookworm-slim node /stub.mjs
+          docker run -d --name mail-ci-app --network mail-ci \
+            -e MAIL_API_TOKEN=ci-mail-api \
+            -e MAIL_SMTP_HOST=smtp-stub -e MAIL_SMTP_PORT=2525 \
+            -e MAIL_SMTP_STARTTLS=false -e MAIL_SMTP_SECURE=false \
+            -e MAIL_SMTP_USER=ci-user -e MAIL_SMTP_PASSWORD=ci-pass \
+            -e MAIL_FROM_EMAIL=noreply@example.test -e MAIL_FROM_NAME='IZAKHONO SIGN' \
+            -p 127.0.0.1:19899:9899 izakhono-mail:ci
+          for _ in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:19899/readyz >/tmp/mail-ready.json; then cat /tmp/mail-ready.json; exit 0; fi
+            sleep 1
+          done
+          docker logs mail-ci-app || true
+          exit 1
+
+      - name: Prove SMTP acceptance and idempotency
+        shell: bash
+        run: |
+          cat >/tmp/send.json <<'JSON'
+          {"idempotency_key":"ci-mail-1","to":{"name":"Signer","email":"signer@example.test"},"subject":"Signature requested: CI NDA","body_text":"Open the secure test link.","metadata":{"draft_id":"doc_ci_001"}}
+          JSON
+          curl -fsS -X POST http://127.0.0.1:19899/v1/send \
+            -H 'content-type: application/json' -H 'authorization: Bearer ci-mail-api' \
+            --data-binary @/tmp/send.json >/tmp/first.json
+          curl -fsS -X POST http://127.0.0.1:19899/v1/send \
+            -H 'content-type: application/json' -H 'authorization: Bearer ci-mail-api' \
+            --data-binary @/tmp/send.json >/tmp/second.json
+          python - <<'PY'
+          import json
+          a=json.load(open('/tmp/first.json')); b=json.load(open('/tmp/second.json'))
+          assert a['ok'] is True and a['delivery_claim']=='outbound_accepted'
+          assert a['outbox']['state']=='outbound_accepted'
+          assert b['ok'] is True and b['idempotent_replay'] is True
+          assert a['outbox']['id']==b['outbox']['id']
+          print('[PASS] MAIL completed one SMTP DATA transaction and suppressed duplicate send.')
+          PY
+
+      - name: Prove no-SMTP queue is truthful
+        shell: bash
+        run: |
+          docker run -d --name mail-no-smtp --network mail-ci \
+            -e MAIL_API_TOKEN=ci-mail-api-2 -p 127.0.0.1:19900:9899 izakhono-mail:ci
+          for _ in $(seq 1 20); do curl -fsS http://127.0.0.1:19900/readyz >/dev/null && break || sleep 1; done
+          code="$(curl -sS -o /tmp/no-smtp.json -w '%{http_code}' -X POST http://127.0.0.1:19900/v1/send \
+            -H 'content-type: application/json' -H 'authorization: Bearer ci-mail-api-2' \
+            --data '{"idempotency_key":"ci-mail-2","to":{"email":"x@example.test"},"subject":"Test","body_text":"Test"}')"
+          test "$code" = 202
+          python - <<'PY'
+          import json
+          d=json.load(open('/tmp/no-smtp.json'))
+          assert d['delivery_claim']=='awaiting_smtp'
+          assert d['outbox']['state']=='awaiting_smtp'
+          print('[PASS] MAIL queues safely when SMTP is unavailable and does not claim a send.')
+          PY
+
+      - name: Cleanup
+        if: always()
+        shell: bash
+        run: |
+          docker rm -f mail-ci-app mail-no-smtp smtp-stub >/dev/null 2>&1 || true
+          docker network rm mail-ci >/dev/null 2>&1 || true
