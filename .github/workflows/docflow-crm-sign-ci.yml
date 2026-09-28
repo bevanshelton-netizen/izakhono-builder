@@ -1,0 +1,177 @@
+name: IZAKHONO DOCFLOW CRM SIGN CI
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'products/izakhono-docflow/**'
+      - 'products/izakhono-flowiq/**'
+      - 'products/izakhono-crm/**'
+      - 'products/izakhono-sign/**'
+      - 'internal/node01-command-gateway/deploy-profiles/izakhono-crm.json'
+      - 'internal/node01-command-gateway/deploy-profiles/izakhono-sign.json'
+      - '.github/workflows/docflow-crm-sign-ci.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'products/izakhono-docflow/**'
+      - 'products/izakhono-flowiq/**'
+      - 'products/izakhono-crm/**'
+      - 'products/izakhono-sign/**'
+      - '.github/workflows/docflow-crm-sign-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  chain:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Static checks
+        shell: bash
+        run: |
+          node --check products/izakhono-sign/src/server.mjs
+          node --check products/izakhono-flowiq/src/server.mjs
+          node --check products/izakhono-crm/server-v2.mjs
+          node --check products/izakhono-docflow/src/node-server.mjs
+          bash -n products/izakhono-sign/owner-node/prepare-env.sh
+          bash -n products/izakhono-sign/owner-node/deploy-docflow-chain.sh
+          bash -n products/izakhono-crm/owner-node/prepare-env.sh
+
+      - name: Run CRM tests
+        working-directory: products/izakhono-crm
+        run: npm test
+
+      - name: Build owned service containers
+        shell: bash
+        run: |
+          docker build -f products/izakhono-crm/Dockerfile.node -t izakhono-crm:ci .
+          docker build -f products/izakhono-sign/Dockerfile.node -t izakhono-sign:ci .
+          docker build -f products/izakhono-flowiq/Dockerfile.node -t izakhono-flowiq:ci .
+          docker build -f products/izakhono-docflow/Dockerfile.node -t izakhono-docflow:ci .
+
+      - name: Start DOCFLOW
+        shell: bash
+        run: |
+          docker network create docflow-chain-ci >/dev/null
+          docker run -d --name docflow-ci --network docflow-chain-ci --network-alias izakhono-docflow \
+            -e DOCFLOW_ADMIN_SECRET=ci-docflow-owner \
+            -e DOCFLOW_SERVICE_TOKEN=ci-docflow-service \
+            izakhono-docflow:ci
+          for _ in $(seq 1 40); do
+            if docker run --rm --network docflow-chain-ci curlimages/curl:8.12.1 -fsS http://izakhono-docflow:8787/api/ready >/tmp/docready.json; then
+              cat /tmp/docready.json
+              exit 0
+            fi
+            sleep 1
+          done
+          docker logs docflow-ci || true
+          exit 1
+
+      - name: Create and approve a delivery-ready DOCFLOW document
+        shell: bash
+        run: |
+          docker run --rm --network docflow-chain-ci curlimages/curl:8.12.1 -fsS -X POST \
+            http://izakhono-docflow:8787/api/drafts \
+            -H 'content-type: application/json' -H 'x-docflow-secret: ci-docflow-owner' \
+            --data '{"document_type":"nda","workspace_id":"ci","legal_entity":"IZAKHONO AFRICA (PTY) LTD","party_a":"IZAKHONO AFRICA (PTY) LTD","party_b":"Example Bank","recipient_name":"Example Signer","recipient_email":"signer@example.test","signature_required":true,"jurisdiction":"South Africa","instructions":"CI signature workflow validation only."}' >/tmp/draft.json
+          DRAFT_ID="$(python -c "import json; print(json.load(open('/tmp/draft.json'))['draft']['id'])")"
+          echo "$DRAFT_ID" >/tmp/draft-id
+          docker run --rm --network docflow-chain-ci curlimages/curl:8.12.1 -fsS -X POST \
+            "http://izakhono-docflow:8787/api/drafts/$DRAFT_ID/approve" \
+            -H 'content-type: application/json' -H 'x-docflow-secret: ci-docflow-owner' \
+            --data '{"approver":"CI","confirm":true}' >/tmp/approved.json
+          python - <<'PY'
+          import json
+          d=json.load(open('/tmp/approved.json'))
+          assert d['draft']['status']=='approved'
+          assert d['draft']['recipient_email']=='signer@example.test'
+          assert d['draft']['signature_required']==1
+          print('[PASS] DOCFLOW approved a delivery-ready document.')
+          PY
+
+      - name: Start CRM and SIGN
+        shell: bash
+        run: |
+          docker run -d --name crm-ci --network docflow-chain-ci --network-alias izakhono-crm \
+            -e CRM_ADMIN_TOKEN=ci-crm-admin -e CRM_INGEST_TOKEN=ci-crm-ingest -e CRM_ALLOW_INSECURE_LOCAL=false \
+            izakhono-crm:ci
+          docker run -d --name sign-ci --network docflow-chain-ci --network-alias izakhono-sign \
+            -e SIGN_API_TOKEN=ci-sign-api -e SIGN_LINK_SECRET=ci-sign-link-secret-32-bytes-minimum \
+            -e DOCFLOW_URL=http://izakhono-docflow:8787 -e DOCFLOW_SERVICE_TOKEN=ci-docflow-service \
+            izakhono-sign:ci
+          for svc in 'izakhono-crm:8080/health' 'izakhono-sign:9898/readyz'; do
+            ok=0
+            for _ in $(seq 1 40); do
+              if docker run --rm --network docflow-chain-ci curlimages/curl:8.12.1 -fsS "http://$svc" >/dev/null; then ok=1; break; fi
+              sleep 1
+            done
+            test "$ok" = 1
+          done
+
+      - name: Start FLOWIQ with real CRM and SIGN adapters
+        shell: bash
+        run: |
+          docker run -d --name flowiq-ci --network docflow-chain-ci --network-alias izakhono-flowiq \
+            -e FLOWIQ_TOKEN=ci-flowiq-token \
+            -e FLOWIQ_CRM_URL=http://izakhono-crm:8080 -e FLOWIQ_CRM_TOKEN=ci-crm-ingest \
+            -e FLOWIQ_DELIVERY_URL=http://izakhono-sign:9898 -e FLOWIQ_DELIVERY_TOKEN=ci-sign-api \
+            -p 127.0.0.1:19797:9797 \
+            izakhono-flowiq:ci
+          for _ in $(seq 1 40); do
+            if curl -fsS http://127.0.0.1:19797/readyz >/tmp/flowready.json; then cat /tmp/flowready.json; exit 0; fi
+            sleep 1
+          done
+          docker logs flowiq-ci || true
+          exit 1
+
+      - name: Verify CRM sync and truthful SIGN waiting state
+        shell: bash
+        run: |
+          DRAFT_ID="$(cat /tmp/draft-id)"
+          curl -fsS -X POST http://127.0.0.1:19797/v1/events \
+            -H 'content-type: application/json' -H 'authorization: Bearer ci-flowiq-token' \
+            --data "{\"event_type\":\"docflow.approve_and_send_requested\",\"source\":\"IZAKHONO DOCFLOW\",\"workspace_id\":\"ci\",\"legal_entity\":\"IZAKHONO AFRICA (PTY) LTD\",\"draft_id\":\"$DRAFT_ID\",\"title\":\"CI NDA\",\"status\":\"send_queued\"}" >/tmp/event.json
+
+          for _ in $(seq 1 30); do
+            curl -fsS http://127.0.0.1:19797/v1/actions -H 'authorization: Bearer ci-flowiq-token' >/tmp/actions.json
+            if python -c "import json; r=json.load(open('/tmp/actions.json'))['actions']; c=[x for x in r if x['action_type']=='crm_sync']; d=[x for x in r if x['action_type']=='document_delivery']; raise SystemExit(0 if c and c[0]['action_state']=='completed' and d and d[0]['action_state']=='awaiting_adapter' else 1)"; then break; fi
+            sleep 1
+          done
+
+          docker run --rm --network docflow-chain-ci curlimages/curl:8.12.1 -fsS \
+            -H 'authorization: Bearer ci-crm-admin' -H 'x-entity-id: ci' -H 'x-platform-id: izakhono-docflow' \
+            http://izakhono-crm:8080/api/activities >/tmp/crm-activities.json
+
+          docker run --rm --network docflow-chain-ci curlimages/curl:8.12.1 -fsS \
+            -H 'authorization: Bearer ci-sign-api' http://izakhono-sign:9898/v1/envelopes >/tmp/envelopes.json
+
+          python - <<'PY'
+          import json
+          actions=json.load(open('/tmp/actions.json'))['actions']
+          states={x['action_type']:x['action_state'] for x in actions}
+          assert states['crm_sync']=='completed'
+          assert states['document_delivery']=='awaiting_adapter'
+          acts=json.load(open('/tmp/crm-activities.json'))['items']
+          assert any(a['type']=='document_send_queued' for a in acts)
+          envs=json.load(open('/tmp/envelopes.json'))['envelopes']
+          assert len(envs)==1
+          e=envs[0]
+          assert e['recipient_email']=='signer@example.test'
+          assert e['signature_required'] is True
+          assert e['status']=='awaiting_public_route'
+          assert e['public_link'] is None
+          print('[PASS] CRM recorded the workflow; SIGN created a hashed envelope and truthfully waited for a public route.')
+          PY
+
+      - name: Cleanup
+        if: always()
+        shell: bash
+        run: |
+          docker rm -f flowiq-ci sign-ci crm-ci docflow-ci >/dev/null 2>&1 || true
+          docker network rm docflow-chain-ci >/dev/null 2>&1 || true
