@@ -3,6 +3,7 @@ import hmac
 import ipaddress
 import json
 import os
+import re
 import socket
 import threading
 import time
@@ -22,6 +23,8 @@ WORKFLOW_PRODUCTS = {x.strip().lower() for x in os.getenv("IZAKHONO_AI_WORKFLOW_
 OWNER_ONLY = os.getenv("IZAKHONO_AI_OWNER_ONLY", "true").lower() != "false"
 ALLOW_EXTERNAL = os.getenv("IZAKHONO_AI_ALLOW_EXTERNAL", "false").lower() == "true"
 MAX_BODY = int(os.getenv("IZAKHONO_AI_MAX_BODY", "16000000"))
+MEDIA_FABRIC_URL = os.getenv("IZAKHONO_MEDIA_FABRIC_URL", "http://127.0.0.1:9751").rstrip("/")
+MEDIA_FABRIC_KEY = os.getenv("IZAKHONO_MEDIA_FABRIC_INTERNAL_KEY", "")
 
 DEFAULT_MODEL = os.getenv("IZAKHONO_AI_MODEL", "qwen3:4b")
 OLLAMA_URL = os.getenv("IZAKHONO_OLLAMA_URL", "http://127.0.0.1:11434").rstrip("/")
@@ -203,6 +206,11 @@ def http_json(url, payload=None, headers=None, timeout=120):
         if not raw:
             return {}
         return json.loads(raw.decode())
+
+def http_bytes(url, headers=None, timeout=900):
+    req = urllib.request.Request(url, headers=(headers or {}), method="GET")
+    with urllib.request.urlopen(req, timeout=timeout) as res:
+        return res.read(), str(res.headers.get("content-type") or "application/octet-stream")
 
 def check_access(entity_id, subject, product):
     if not ACCESS_KEY:
@@ -665,19 +673,13 @@ def media_adapter_endpoint(base):
         return base
     return base + "/api/v1/generate"
 
-def media_generate(payload, model, capability):
-    cfg = CAPABILITIES[capability]
-    if not cfg["url"] or not cfg.get("key"):
-        raise RuntimeError("capability_backend_unconfigured")
-    if not owner_runtime_allowed(cfg["url"]):
-        raise RuntimeError("owner_route_required")
+def media_runtime_payload(payload, capability):
     options = payload.get("options") if isinstance(payload.get("options"), dict) else {}
-
     if capability == "speech":
         text = str(payload.get("input") or payload.get("prompt") or options.get("text") or "").strip()
         if not text:
             raise ValueError("speech_text_required")
-        request_payload = {
+        return {
             "schema": "izakhono.speech.generate.v1",
             "text": text,
             "language": str(options.get("language") or payload.get("language") or "English"),
@@ -686,9 +688,6 @@ def media_generate(payload, model, capability):
             "speed": options.get("speed", 1.0),
             "policy": {"owned_first": True, "no_tracking": True},
         }
-        headers = {"x-izakhono-speech-key": cfg.get("key", "")} if cfg.get("key") else {}
-        return http_json(media_adapter_endpoint(cfg["url"]), request_payload, headers=headers, timeout=300)
-
     if capability == "video":
         prompt = str(payload.get("prompt") or payload.get("input") or options.get("prompt") or "").strip()
         source_image = payload.get("source_image") or options.get("source_image")
@@ -696,7 +695,7 @@ def media_generate(payload, model, capability):
             raise ValueError("video_prompt_required")
         if not source_image:
             raise ValueError("video_source_image_required")
-        request_payload = {
+        return {
             "schema": "izakhono.video.scene.v1",
             "prompt": prompt,
             "duration_seconds": int(options.get("duration_seconds") or payload.get("duration_seconds") or 5),
@@ -704,10 +703,124 @@ def media_generate(payload, model, capability):
             "source_image": source_image,
             "policy": {"owned_first": True, "no_tracking": True, "originality_required": True},
         }
-        headers = {"x-izakhono-video-key": cfg.get("key", "")} if cfg.get("key") else {}
-        return http_json(media_adapter_endpoint(cfg["url"]), request_payload, headers=headers, timeout=900)
-
     raise RuntimeError("media_capability_invalid")
+
+def media_generate(payload, model, capability):
+    cfg = CAPABILITIES[capability]
+    if not cfg["url"] or not cfg.get("key"):
+        raise RuntimeError("capability_backend_unconfigured")
+    if not owner_runtime_allowed(cfg["url"]):
+        raise RuntimeError("owner_route_required")
+    request_payload = media_runtime_payload(payload, capability)
+    if capability == "speech":
+        headers = {"x-izakhono-speech-key": cfg.get("key", "")}
+        timeout = 300
+    elif capability == "video":
+        headers = {"x-izakhono-video-key": cfg.get("key", "")}
+        timeout = 900
+    else:
+        raise RuntimeError("media_capability_invalid")
+    return http_json(media_adapter_endpoint(cfg["url"]), request_payload, headers=headers, timeout=timeout)
+
+def media_fabric_configured():
+    return bool(MEDIA_FABRIC_URL and MEDIA_FABRIC_KEY and owner_runtime_allowed(MEDIA_FABRIC_URL))
+
+def media_fabric_health():
+    if not media_fabric_configured():
+        return {"configured": False, "ok": False, "production_ready": False}
+    try:
+        raw = http_json(MEDIA_FABRIC_URL + "/healthz", timeout=3)
+        return {
+            "configured": True,
+            "ok": bool(raw.get("ok")),
+            "production_ready": bool(raw.get("production_ready")),
+            "healthy_workers": int(raw.get("healthy_workers") or 0),
+            "replicated_storage": bool(raw.get("replicated_storage")),
+        }
+    except Exception:
+        return {"configured": True, "ok": False, "production_ready": False}
+
+def submit_media_fabric_job(payload, capability):
+    if capability not in ("speech", "video"):
+        raise ValueError("durable_execution_capability_not_allowed")
+    if not media_fabric_configured():
+        raise RuntimeError("media_fabric_unconfigured")
+    job_options = payload.get("job_options") if isinstance(payload.get("job_options"), dict) else {}
+    request_payload = {
+        "schema": "izakhono.media.job.submit.v1",
+        "capability": capability,
+        "payload": media_runtime_payload(payload, capability),
+        "priority": max(0, min(100, int(job_options.get("priority") or 50))),
+        "max_attempts": max(1, min(10, int(job_options.get("max_attempts") or 3))),
+        "min_gpu_mb": max(0, int(job_options.get("min_gpu_mb") or 0)),
+        "request_key": str(job_options.get("request_key") or "")[:128],
+        "policy": {"owned_first": True, "no_tracking": True},
+    }
+    raw = http_json(
+        MEDIA_FABRIC_URL + "/api/v1/jobs",
+        request_payload,
+        {"x-izakhono-media-fabric-key": MEDIA_FABRIC_KEY},
+        timeout=30,
+    )
+    job = raw.get("job") if isinstance(raw, dict) else None
+    if not isinstance(job, dict) or not job.get("id") or not job.get("job_token"):
+        raise RuntimeError("media_fabric_submission_failed")
+    return {
+        "id": job["id"],
+        "status": job.get("status") or "queued",
+        "job_token": job["job_token"],
+        "poll_path": "/api/v1/media-jobs/" + job["id"],
+        "execution": "durable",
+        "persistence": "aes-gcm-encrypted-job-payload",
+    }
+
+def media_fabric_status(job_id, token):
+    if not re.fullmatch(r"mf_[a-f0-9]{24}", str(job_id or "")):
+        raise ValueError("invalid_media_job_id")
+    if not token:
+        raise ValueError("media_job_token_required")
+    if not media_fabric_configured():
+        raise RuntimeError("media_fabric_unconfigured")
+    raw = http_json(
+        MEDIA_FABRIC_URL + "/api/v1/jobs/" + job_id,
+        headers={
+            "x-izakhono-media-fabric-key": MEDIA_FABRIC_KEY,
+            "x-izakhono-job-token": token,
+        },
+        timeout=15,
+    )
+    job = raw.get("job") if isinstance(raw, dict) else None
+    if not isinstance(job, dict):
+        raise RuntimeError("media_job_status_invalid")
+    return sanitize_media_job(job)
+
+def sanitize_media_job(job):
+    job_id = str(job.get("id") or "")
+    def walk(value):
+        if isinstance(value, list):
+            return [walk(x) for x in value]
+        if not isinstance(value, dict):
+            return value
+        out = {}
+        artifact_name = str(value.get("name") or "")
+        for key, item in value.items():
+            if key == "url" and artifact_name:
+                continue
+            out[key] = walk(item)
+        if artifact_name and re.fullmatch(r"[A-Za-z0-9._-]{1,120}", artifact_name):
+            out["gateway_path"] = f"/api/v1/media-jobs/{job_id}/artifacts/{artifact_name}"
+        return out
+    return walk(job)
+
+def media_fabric_artifact(job_id, name, token):
+    media_fabric_status(job_id, token)
+    if not re.fullmatch(r"[A-Za-z0-9._-]{1,120}", str(name or "")):
+        raise ValueError("invalid_media_artifact_name")
+    return http_bytes(
+        MEDIA_FABRIC_URL + f"/assets/{job_id}/{name}",
+        {"x-izakhono-media-fabric-key": MEDIA_FABRIC_KEY},
+        timeout=900,
+    )
 
 def json_generate(payload, model, capability):
     cfg = CAPABILITIES[capability]
@@ -749,6 +862,15 @@ def execute_capability(payload):
             raise ValueError("video_source_image_required")
     else:
         raise RuntimeError("capability_backend_invalid")
+
+    execution = str(payload.get("execution") or "immediate").strip().lower()
+    if execution not in ("immediate", "durable"):
+        raise ValueError("execution_mode_not_allowed")
+    if execution == "durable":
+        if capability not in ("speech", "video"):
+            raise ValueError("durable_execution_capability_not_allowed")
+        job = submit_media_fabric_job(payload, capability)
+        return capability, model, {"type": "media_job", "data": job}, {"media_job": job}, route
 
     ADMISSION.acquire()
     try:
@@ -793,11 +915,12 @@ def capability_summary():
             "owner_route": owner_route,
             "external_route_available": bool(name in ("chat", "reasoning", "code") and external_text_configured()),
             "status": "ready" if configured and owner_route else "needs_backend",
+            "durable_available": bool(name in ("speech", "video") and media_fabric_configured()),
         })
     return items
 
 class Handler(BaseHTTPRequestHandler):
-    server_version = "IzakhonoSuperAI/0.3"
+    server_version = "IzakhonoSuperAI/0.4"
 
     def log_message(self, fmt, *args):
         print(f"{self.client_address[0]} - {fmt % args}")
@@ -823,7 +946,7 @@ class Handler(BaseHTTPRequestHandler):
             return send_json(self, 200, {
                 "ok": True,
                 "service": "izakhono-super-ai",
-                "version": "0.3",
+                "version": "0.4",
                 "usage_credit_gate": False,
                 "subscriber_message_quota": None,
                 "owner_only": OWNER_ONLY,
@@ -848,8 +971,36 @@ class Handler(BaseHTTPRequestHandler):
                     "warm_bonus_ms": OWNER_ROUTING_WARM_BONUS_MS,
                 },
                 "warm_pool": warm_pool_summary(),
+                "media_fabric": media_fabric_health(),
                 "capabilities_ready": [x["capability"] for x in caps if x["status"] == "ready"],
             })
+        m = re.fullmatch(r"/api/v1/media-jobs/(mf_[a-f0-9]{24})(?:/artifacts/([A-Za-z0-9._-]{1,120}))?", p)
+        if m:
+            if not self.authorized():
+                return send_json(self, 401, {"ok": False, "error": "unauthorized"})
+            token = self.headers.get("x-izakhono-job-token", "")
+            try:
+                if m.group(2):
+                    body, content_type = media_fabric_artifact(m.group(1), m.group(2), token)
+                    self.send_response(200)
+                    self.send_header("content-type", content_type)
+                    self.send_header("content-length", str(len(body)))
+                    self.send_header("cache-control", "private, max-age=300")
+                    self.send_header("x-content-type-options", "nosniff")
+                    self.end_headers()
+                    self.wfile.write(body)
+                    return
+                job = media_fabric_status(m.group(1), token)
+                return send_json(self, 200, {"ok": True, "job": job})
+            except ValueError as exc:
+                return send_json(self, 422, {"ok": False, "error": str(exc)[:120]})
+            except urllib.error.HTTPError as exc:
+                if exc.code in (401, 403, 404):
+                    return send_json(self, exc.code, {"ok": False, "error": "media_job_access_denied"})
+                return send_json(self, 502, {"ok": False, "error": "media_fabric_error", "status": exc.code})
+            except Exception as exc:
+                return send_json(self, 502, {"ok": False, "error": "media_fabric_unavailable", "detail": str(exc)[:160]})
+
         if p == "/api/v1/capabilities":
             if not self.authorized():
                 return send_json(self, 401, {"ok": False, "error": "unauthorized"})
@@ -861,6 +1012,7 @@ class Handler(BaseHTTPRequestHandler):
                     "prompt_persistence": False,
                     "behavioural_tracking": False,
                     "advertising_ids": False,
+                    "durable_media_payloads": "aes-gcm-encrypted-at-rest-when-requested",
                 },
             })
         if p == "/api/v1/runtimes":
