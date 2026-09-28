@@ -43,6 +43,41 @@ test("pipeline update prevents orphaning live deal stages",async()=>{
 });
 
 
+test("DOCFLOW CRM events do not require lead/contact duplication",async()=>{
+  await wait();
+  let r=await fetch(`http://127.0.0.1:${port}/api/flow`,{
+    method:"POST",
+    headers:{...base,authorization:"Bearer ingest-secret","x-platform-id":"izakhono-docflow"},
+    body:JSON.stringify({
+      action_id:"docflow-crm-1",
+      run_id:"evt-docflow-1",
+      action_type:"crm.document.approved",
+      payload:{subject_ref:"doc_123",metadata:{title:"Mutual NDA — Example Bank"}}
+    })
+  });
+  assert.equal(r.status,201);
+  let j=await r.json();
+  assert.equal(j.activity.type,"document_approved");
+  assert.equal(j.activity.subject_ref,"doc_123");
+  assert.equal(j.contact,null);
+  assert.equal(j.deal,null);
+
+  r=await fetch(`http://127.0.0.1:${port}/api/flow`,{
+    method:"POST",
+    headers:{...base,authorization:"Bearer ingest-secret","x-platform-id":"izakhono-docflow"},
+    body:JSON.stringify({
+      action_id:"docflow-crm-2",
+      run_id:"evt-docflow-2",
+      action_type:"crm.document.send_queued",
+      payload:{subject_ref:"doc_123",metadata:{title:"Mutual NDA — Example Bank"}}
+    })
+  });
+  assert.equal(r.status,201);
+  j=await r.json();
+  assert.equal(j.activity.type,"document_send_queued");
+  assert.match(j.activity.note,/Delivery is not yet claimed/);
+});
+
 test("FLOW adapter is scoped and idempotent",async()=>{
   await wait();
   const leadBody={action_id:"flow-a1",run_id:"flow-r1",action_type:"crm.intake.requested",payload:{subject_ref:"flow-lead-1",metadata:{contact:{name:"FLOW Lead",email:"flow-lead@example.test"},opportunity:{title:"FLOW RE5",value:299,currency:"ZAR"}}}};
