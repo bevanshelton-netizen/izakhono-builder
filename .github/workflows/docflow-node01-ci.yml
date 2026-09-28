@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'products/izakhono-docflow/**'
+      - 'products/izakhono-flowiq/**'
       - 'internal/node01-command-gateway/deploy-profiles/izakhono-docflow.json'
       - '.github/workflows/docflow-node01-ci.yml'
   push:
