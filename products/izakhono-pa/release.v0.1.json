@@ -1,0 +1,15 @@
+{
+  "product": "IZAKHONO Executive PA",
+  "version": "0.1.0",
+  "status": "release-candidate",
+  "approved_source_commit": "a3372efd5d97926708a53f25b17964bb4a3e4282",
+  "route": "https://pa.izakhonoafrica.co.za",
+  "schedule": "08:00 Africa/Johannesburg",
+  "whatsapp": "activation-requires-runtime-secrets-and-approved-template",
+  "controls": [
+    "approval-gated-binding-commitments",
+    "audit-trail",
+    "authorised-whatsapp-principals",
+    "no-secrets-in-source"
+  ]
+}
