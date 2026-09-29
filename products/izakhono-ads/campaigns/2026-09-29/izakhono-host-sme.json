@@ -1,0 +1,43 @@
+{
+  "schema": "izakhono.ads.campaign.v1",
+  "source": "IZAKHONO CREATE",
+  "campaign_id": "create-izakhono-host-sme-20260929",
+  "product": "IZAKHONO HOST",
+  "campaign_name": "IZAKHONO HOST — SME Website + Hosting + Business Email",
+  "state": "DIRECT_OUTREACH_READY_PUBLIC_SCALE_PENDING_DESTINATION_VERIFY",
+  "destination": {
+    "route": "IZAKHONO_HOST_PUBLIC_ROUTE_PENDING_FINAL_VERIFY",
+    "public_https_verified": false,
+    "lead_capture_verified": false,
+    "rule": "Warm direct outreach may proceed; broad distribution requires destination and lead-capture verification."
+  },
+  "placements": [
+    {
+      "channel": "Gmail warm outreach",
+      "format": "business visibility audit",
+      "status": "READY"
+    },
+    {
+      "channel": "WhatsApp",
+      "format": "service card",
+      "status": "READY_AFTER_DESTINATION_VERIFY"
+    },
+    {
+      "channel": "LinkedIn",
+      "format": "SME value proposition",
+      "status": "READY_ORGANIC"
+    },
+    {
+      "channel": "Facebook/Instagram",
+      "format": "website + hosting + email creative",
+      "status": "PAUSED_NO_SPEND_AUTHORITY"
+    }
+  ],
+  "controls": {
+    "paid_spend_authorised": false,
+    "behavioural_profiling": false,
+    "hidden_tracking": false,
+    "owned_infrastructure_first": true,
+    "external_services_replaceable": true
+  }
+}
