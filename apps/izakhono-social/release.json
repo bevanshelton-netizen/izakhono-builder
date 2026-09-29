@@ -1,0 +1,13 @@
+{
+  "product": "IZAKHONO SOCIAL",
+  "version": "0.1.0",
+  "release_id": "izakhono-social-2026-09-29-mvp1",
+  "data_schema": "connecta-social-v2",
+  "source": "bevanshelton-netizen/izakhono-builder",
+  "source_branch": "feature/izakhono-social-mvp",
+  "owned_runtime_target": "IZAKHONO Runtime Fabric",
+  "planned_owned_hostname": "social.izakhonoafrica.co.za",
+  "external_resilience_backend": "IZAKHONO WebStart / connecta-external",
+  "status": "NOT YET PUBLIC",
+  "public_claim": false
+}
