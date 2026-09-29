@@ -1,0 +1,27 @@
+name: IZAKHONO Executive PA CI
+on:
+  pull_request:
+    paths:
+      - 'products/izakhono-pa/**'
+      - 'migrations/0006_pa_commercial_core.sql'
+      - '.github/workflows/izakhono-pa-ci.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'products/izakhono-pa/**'
+      - 'migrations/0006_pa_commercial_core.sql'
+      - '.github/workflows/izakhono-pa-ci.yml'
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npx tsc --noEmit --target ES2022 --lib ES2022,DOM,DOM.Iterable --module ESNext products/izakhono-pa/src/index.ts
+      - run: node --check products/izakhono-pa/public/app.js
+      - run: node products/izakhono-pa/scripts/validate-pa.mjs
+      - run: npx wrangler deploy --dry-run --config products/izakhono-pa/wrangler.jsonc
