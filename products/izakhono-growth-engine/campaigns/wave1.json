@@ -5,13 +5,35 @@
   "objective": "Generate qualified revenue opportunities immediately while preserving product conversion and compliance gates.",
   "campaigns": [
     {
+      "slug": "growth-diagnostic",
+      "product": "izakhono-growth-engine",
+      "display_name": "Find your next growth move",
+      "audience": "business owners and decision-makers who want a practical diagnosis before buying services",
+      "offer": "A short business growth diagnostic that returns three priority actions and the IZAKHONO tools matched to the business stage.",
+      "cta": "Take the Growth Check",
+      "channels": [
+        "LinkedIn",
+        "WhatsApp",
+        "organic-social",
+        "portfolio-cross-promotion"
+      ],
+      "mode": "DIRECT_OUTREACH_READY",
+      "regulated": false,
+      "priority": 1
+    },
+    {
       "slug": "izakhono-clothing-b2b",
       "product": "izakhono-clothing",
       "display_name": "Uniforms, sportswear, PPE and corporate clothing",
       "audience": "schools, sports clubs, corporates, retailers and organisations",
       "offer": "Custom manufacturing and branded apparel. Request a quote.",
       "cta": "Request a quote",
-      "channels": ["warm-email", "WhatsApp", "LinkedIn", "portfolio-cross-promotion"],
+      "channels": [
+        "warm-email",
+        "WhatsApp",
+        "LinkedIn",
+        "portfolio-cross-promotion"
+      ],
       "mode": "DIRECT_OUTREACH_READY",
       "regulated": false,
       "priority": 1
@@ -23,7 +45,12 @@
       "audience": "SMEs and organisations needing a professional online presence",
       "offer": "Website, hosting and business-email solutions on IZAKHONO-owned infrastructure.",
       "cta": "Request a business setup",
-      "channels": ["warm-email", "LinkedIn", "SME-partners", "portfolio-cross-promotion"],
+      "channels": [
+        "warm-email",
+        "LinkedIn",
+        "SME-partners",
+        "portfolio-cross-promotion"
+      ],
       "mode": "DIRECT_OUTREACH_READY",
       "regulated": false,
       "priority": 1
@@ -35,7 +62,12 @@
       "audience": "banks, insurers, payment providers and enterprise security teams",
       "offer": "Structured fraud-prevention and pre-transaction trust pilot with measurable outcomes.",
       "cta": "Book an enterprise pilot discussion",
-      "channels": ["warm-email", "executive-outreach", "LinkedIn", "partner-introductions"],
+      "channels": [
+        "warm-email",
+        "executive-outreach",
+        "LinkedIn",
+        "partner-introductions"
+      ],
       "mode": "DIRECT_OUTREACH_READY",
       "regulated": true,
       "priority": 1
@@ -47,7 +79,12 @@
       "audience": "financial-services professionals and employer cohorts",
       "offer": "RE preparation pathways and employer cohort options.",
       "cta": "Start preparing",
-      "channels": ["WhatsApp", "LinkedIn", "Facebook/Instagram", "employer-partners"],
+      "channels": [
+        "WhatsApp",
+        "LinkedIn",
+        "Facebook/Instagram",
+        "employer-partners"
+      ],
       "mode": "PREPARED_AWAITING_PUBLIC_CONVERSION_VERIFICATION",
       "regulated": true,
       "priority": 2
@@ -59,7 +96,12 @@
       "audience": "ECD practitioners, centres, employers and funders",
       "offer": "Accredited ECD learning pathways and institutional cohort enquiries.",
       "cta": "Request enrolment information",
-      "channels": ["WhatsApp", "Facebook", "ECD-centres", "employer-partners"],
+      "channels": [
+        "WhatsApp",
+        "Facebook",
+        "ECD-centres",
+        "employer-partners"
+      ],
       "mode": "PREPARED_AWAITING_CONTENT_AND_HANDOFF_FIXES",
       "regulated": true,
       "priority": 2
