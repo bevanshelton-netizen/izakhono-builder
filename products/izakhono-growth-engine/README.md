@@ -1,0 +1,57 @@
+# IZAKHONO Growth Engine
+
+Owned-first client-acquisition and growth orchestration for the IZAKHONO portfolio.
+
+This is the portfolio's original Zeely-class equivalent. It does **not** copy Zeely branding, code or proprietary workflows. It composes IZAKHONO's existing owned systems into one operating layer:
+
+`Product -> Growth Engine -> IZAKHONO CREATE -> IZAKHONO ADS -> audience -> lead/sale -> IZAKHONO CRM -> IZAKHONO REVENUE`
+
+## What v0.1 does
+
+- Portfolio campaign command centre.
+- Product-specific campaign pack generation.
+- Multi-channel copy variants for WhatsApp, email, social, short video and B2B outreach.
+- Landing/enquiry pages for approved offers.
+- Consent-aware lead capture without advertising IDs, cookies or behavioural tracking.
+- Server-side lead queue with CRM handoff adapter.
+- Aggregate campaign and lead dashboard.
+- Explicit conversion gates: campaigns cannot be marked ready for public distribution when their destination is unverified.
+- Owned-first Docker package for NODE01; external deployment remains a reversible resilience option.
+
+## Safety and commercial rules
+
+- IZAKHONO CREATE remains the creative source of record.
+- IZAKHONO ADS remains the distribution/spend control layer.
+- No campaign spend is authorised by this service.
+- No automated cold-spam blasting.
+- No misleading claims, fake urgency or fabricated testimonials.
+- Regulated products stay compliance-gated.
+- No behavioural surveillance, tracking cookies or advertising IDs.
+- Public-live status requires independent HTTPS and end-to-end conversion verification.
+
+## API
+
+- `GET /health`
+- `GET /api/dashboard`
+- `GET /api/campaigns`
+- `POST /api/campaigns/generate`
+- `POST /api/public/lead`
+- `GET /api/leads` (admin token)
+- `POST /api/leads/:id/push-crm` (admin token)
+- `GET /l/:slug` generated landing/enquiry page
+
+Write/admin calls use `Authorization: Bearer $GROWTH_ADMIN_TOKEN`.
+
+## NODE01
+
+```bash
+docker build -t izakhono/growth-engine:0.1.0 products/izakhono-growth-engine
+docker run -d --name izakhono-growth-engine --restart unless-stopped \
+  -p 127.0.0.1:8096:8096 \
+  -e GROWTH_ADMIN_TOKEN='replace-me' \
+  -e GROWTH_DATA_DIR=/data \
+  -v izakhono-growth-data:/data \
+  izakhono/growth-engine:0.1.0
+```
+
+Put EDGE/TLS in front of the service. Do not expose the container port directly to the public internet.

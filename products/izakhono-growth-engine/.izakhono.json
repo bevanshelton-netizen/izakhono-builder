@@ -1,0 +1,16 @@
+{
+  "product": "izakhono-growth-engine",
+  "display_name": "IZAKHONO Growth Engine",
+  "engine": "independent",
+  "owned_first": true,
+  "external_fallback_reversible": true,
+  "runtime": "node",
+  "health": "/health",
+  "public_status": "NOT_YET_VERIFIED_LIVE",
+  "dependencies": {
+    "creative_source": "IZAKHONO CREATE",
+    "distribution_control": "IZAKHONO ADS",
+    "crm": "IZAKHONO CRM",
+    "revenue": "IZAKHONO REVENUE"
+  }
+}

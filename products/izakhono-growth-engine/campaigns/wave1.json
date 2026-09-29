@@ -1,0 +1,68 @@
+{
+  "schema": "izakhono.growth.wave.v1",
+  "effective_date": "2026-09-29",
+  "wave": "MAXIMUM-MOVEMENT-01",
+  "objective": "Generate qualified revenue opportunities immediately while preserving product conversion and compliance gates.",
+  "campaigns": [
+    {
+      "slug": "izakhono-clothing-b2b",
+      "product": "izakhono-clothing",
+      "display_name": "Uniforms, sportswear, PPE and corporate clothing",
+      "audience": "schools, sports clubs, corporates, retailers and organisations",
+      "offer": "Custom manufacturing and branded apparel. Request a quote.",
+      "cta": "Request a quote",
+      "channels": ["warm-email", "WhatsApp", "LinkedIn", "portfolio-cross-promotion"],
+      "mode": "DIRECT_OUTREACH_READY",
+      "regulated": false,
+      "priority": 1
+    },
+    {
+      "slug": "izakhono-host-business",
+      "product": "izakhono-host",
+      "display_name": "Websites, hosting and business email",
+      "audience": "SMEs and organisations needing a professional online presence",
+      "offer": "Website, hosting and business-email solutions on IZAKHONO-owned infrastructure.",
+      "cta": "Request a business setup",
+      "channels": ["warm-email", "LinkedIn", "SME-partners", "portfolio-cross-promotion"],
+      "mode": "DIRECT_OUTREACH_READY",
+      "regulated": false,
+      "priority": 1
+    },
+    {
+      "slug": "fortress-enterprise-pilot",
+      "product": "izakhono-fortress",
+      "display_name": "FORTRESS bank-grade fraud-prevention pilot",
+      "audience": "banks, insurers, payment providers and enterprise security teams",
+      "offer": "Structured fraud-prevention and pre-transaction trust pilot with measurable outcomes.",
+      "cta": "Book an enterprise pilot discussion",
+      "channels": ["warm-email", "executive-outreach", "LinkedIn", "partner-introductions"],
+      "mode": "DIRECT_OUTREACH_READY",
+      "regulated": true,
+      "priority": 1
+    },
+    {
+      "slug": "faisready-retail",
+      "product": "faisready",
+      "display_name": "FAISReady exam preparation",
+      "audience": "financial-services professionals and employer cohorts",
+      "offer": "RE preparation pathways and employer cohort options.",
+      "cta": "Start preparing",
+      "channels": ["WhatsApp", "LinkedIn", "Facebook/Instagram", "employer-partners"],
+      "mode": "PREPARED_AWAITING_PUBLIC_CONVERSION_VERIFICATION",
+      "regulated": true,
+      "priority": 2
+    },
+    {
+      "slug": "edubuild-enrolments",
+      "product": "edu-build-institute",
+      "display_name": "Edu-Build ECD training",
+      "audience": "ECD practitioners, centres, employers and funders",
+      "offer": "Accredited ECD learning pathways and institutional cohort enquiries.",
+      "cta": "Request enrolment information",
+      "channels": ["WhatsApp", "Facebook", "ECD-centres", "employer-partners"],
+      "mode": "PREPARED_AWAITING_CONTENT_AND_HANDOFF_FIXES",
+      "regulated": true,
+      "priority": 2
+    }
+  ]
+}
