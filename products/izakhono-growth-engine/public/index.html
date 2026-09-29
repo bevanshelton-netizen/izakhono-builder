@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>IZAKHONO Growth Engine</title>
+  <meta name="description" content="Owned-first growth command centre for the IZAKHONO portfolio.">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header class="top">
+    <div>
+      <p class="eyebrow">IZAKHONO AFRICA</p>
+      <h1>GROWTH ENGINE</h1>
+      <p class="sub">Create demand. Capture opportunities. Move qualified leads into CRM. Measure revenue outcomes.</p>
+    </div>
+    <div class="badge">OWNED-FIRST • NO SURVEILLANCE</div>
+  </header>
+  <main>
+    <section class="metrics">
+      <article><span>Campaigns</span><strong id="campaignCount">–</strong></article>
+      <article><span>Ready for direct outreach</span><strong id="readyCount">–</strong></article>
+      <article><span>Captured leads</span><strong id="leadCount">–</strong></article>
+      <article><span>CRM pushed</span><strong id="crmCount">–</strong></article>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <div><p class="eyebrow">MAXIMUM MOVEMENT</p><h2>Revenue campaign board</h2></div>
+        <button id="refresh">Refresh</button>
+      </div>
+      <div id="campaigns" class="grid"></div>
+    </section>
+
+    <section class="panel split">
+      <div>
+        <p class="eyebrow">FAST CREATIVE</p>
+        <h2>Generate a campaign pack</h2>
+        <form id="generator">
+          <label>Product / brand<input name="product" required placeholder="e.g. Izakhono Clothing"></label>
+          <label>Audience<input name="audience" required placeholder="Who must act?"></label>
+          <label>Offer<textarea name="offer" required placeholder="What are we offering?"></textarea></label>
+          <label>Primary CTA<input name="cta" required placeholder="Request a quote"></label>
+          <button type="submit">Generate pack</button>
+        </form>
+      </div>
+      <pre id="generated">Campaign output will appear here.</pre>
+    </section>
+  </main>
+  <script src="/app.js"></script>
+</body>
+</html>
