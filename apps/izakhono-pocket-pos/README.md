@@ -1,7 +1,28 @@
 # IZAKHONO PocketPOS
 
-Mobile-first installable PWA for catalogue, cart, stock, sales history, cash/EFT recording and a safe Tap-on-Phone companion workflow.
+A mobile-first, installable point-of-sale application designed to turn a supported phone into a merchant sales workstation.
 
-This first build deliberately does **not** capture PAN, PIN or CVV. Card-present payments must stay inside an approved SoftPOS / Tap-on-Phone provider. Online card payments must be implemented through a server-side gateway adapter with secrets held on IZAKHONO infrastructure.
+## Functional prototype now included
 
-Current public iKhokha material documents Tap on Phone in its Android app and an iK Pay API for custom online checkout. Production integration still needs authenticated staff, backend sync, payment/webhook reconciliation, audit logs, device enrollment and compliance review.
+- product catalogue, search and SKU lookup
+- barcode/scanner input
+- cart, VAT calculation and quick sale
+- branch-aware stock
+- multi-branch selection
+- customers/CRM
+- staff role profiles
+- cash and verified-EFT recording
+- Tap-on-Phone handoff workflow
+- sales history
+- shareable receipts using the phone share sheet
+- offline PWA shell and install-to-home-screen support
+
+The current branch is still a **prototype**, not evidence of public production availability.
+
+## Production security boundary
+
+PocketPOS does not capture PAN, PIN or CVV. Card-present payments must remain inside an approved Tap-on-Phone / SoftPOS provider. Online card payments must be implemented via the backend using a supported payment API and verified provider webhooks.
+
+Local staff profiles in the prototype are not production authentication. The production design requires server-side password/PIN hashing, role enforcement, short-lived sessions, device enrolment, audit logs, merchant/branch isolation and payment reconciliation.
+
+See `schema.sql` and `API-CONTRACT.md` for the next-stage backend design.
