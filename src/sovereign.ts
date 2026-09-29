@@ -959,6 +959,242 @@ async function publicLegacyMartHost(req: Request, env: any, url: URL): Promise<R
   return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
 }
 
+
+const GROWTH_DIAGNOSTIC_OPTIONS = {
+  revenue_band: new Set(['starting_under_50k','50k_250k','250k_1m','1m_plus','prefer_not']),
+  goal: new Set(['customers','website_commerce','marketing','automation_ai','staffing','finance_admin','hosting_email','security_trust']),
+  urgency: new Set(['now_30_days','1_3_months','exploring']),
+  sales_process: new Set(['none','manual','repeatable','automated']),
+  digital_foundation: new Set(['no_site','basic_site','active_site','integrated_stack']),
+  buying_mode: new Set(['self_serve','guided','enterprise']),
+};
+
+const GROWTH_PRODUCT_MAP: Record<string,string[]> = {
+  customers: ['izakhono-growth-engine','izakhono-ads','izakhono-crm'],
+  website_commerce: ['izakhono-host','izakhono-builder','izakhono-growth-engine'],
+  marketing: ['izakhono-growth-engine','izakhono-ads','izakhono-crm'],
+  automation_ai: ['izakhono-flow','izakhono-flowiq','izakhono-business-ai'],
+  staffing: ['izakhono-crm','izakhono-flow','izakhono-growth-engine'],
+  finance_admin: ['izakhono-finance-core','izakhono-flow','izakhono-crm'],
+  hosting_email: ['izakhono-host','izakhono-builder','izakhono-crm'],
+  security_trust: ['izakhono-fortress','izakhono-host','izakhono-crm'],
+};
+
+const GROWTH_FOCUS: Record<string,string> = {
+  customers: 'customer acquisition and conversion',
+  website_commerce: 'website and digital conversion',
+  marketing: 'marketing execution and demand generation',
+  automation_ai: 'workflow automation and practical AI',
+  staffing: 'people pipeline and operating workflow',
+  finance_admin: 'finance, administration and workflow control',
+  hosting_email: 'professional hosting, email and digital foundation',
+  security_trust: 'security, fraud prevention and customer trust',
+};
+
+const growthRate = new Map<string, number[]>();
+
+function growthClean(value: unknown, max = 500): string {
+  return String(value ?? '').trim().replace(/[\u0000-\u001f\u007f]/g, ' ').slice(0, max);
+}
+
+function growthPick(value: unknown, key: keyof typeof GROWTH_DIAGNOSTIC_OPTIONS, fallback: string): string {
+  const clean = growthClean(value, 80);
+  return GROWTH_DIAGNOSTIC_OPTIONS[key].has(clean) ? clean : fallback;
+}
+
+function growthDiagnosticEdge(input: any = {}) {
+  const revenue_band = growthPick(input.revenue_band, 'revenue_band', 'prefer_not');
+  const goal = growthPick(input.goal, 'goal', 'customers');
+  const urgency = growthPick(input.urgency, 'urgency', 'exploring');
+  const sales_process = growthPick(input.sales_process, 'sales_process', 'manual');
+  const digital_foundation = growthPick(input.digital_foundation, 'digital_foundation', 'basic_site');
+  const buying_mode = growthPick(input.buying_mode, 'buying_mode', 'guided');
+
+  const laneByRevenue: Record<string,string> = {
+    starting_under_50k: 'FOUNDATION',
+    '50k_250k': 'GROWTH',
+    '250k_1m': 'SCALE',
+    '1m_plus': 'ENTERPRISE',
+    prefer_not: 'GROWTH',
+  };
+  const baseScore: Record<string,number> = {
+    starting_under_50k: 20,
+    '50k_250k': 40,
+    '250k_1m': 60,
+    '1m_plus': 80,
+    prefer_not: 35,
+  };
+  let score = baseScore[revenue_band]
+    + (urgency === 'now_30_days' ? 10 : urgency === '1_3_months' ? 5 : 0)
+    + ((sales_process === 'none' || sales_process === 'manual') ? 5 : 0)
+    + ((digital_foundation === 'no_site' || digital_foundation === 'basic_site') ? 5 : 0)
+    + (buying_mode === 'enterprise' ? 5 : 0);
+  score = Math.min(100, score);
+
+  let lane = laneByRevenue[revenue_band];
+  if (buying_mode === 'enterprise' && lane !== 'FOUNDATION') lane = 'ENTERPRISE';
+  const focus = GROWTH_FOCUS[goal];
+  const actions: Record<string,string[]> = {
+    FOUNDATION: [
+      'Establish the minimum professional digital foundation.',
+      'Launch one measurable lead path with a clear offer and call to action.',
+      'Capture every enquiry in CRM and follow up consistently.',
+    ],
+    GROWTH: [
+      'Tighten the offer and conversion journey around one priority audience.',
+      'Run a multi-channel campaign with owned lead capture and CRM handoff.',
+      'Automate follow-up and measure enquiry-to-revenue conversion.',
+    ],
+    SCALE: [
+      'Connect campaign, CRM and operating workflows so growth does not depend on manual handoffs.',
+      'Use automation and AI where it removes repeat work or improves response speed.',
+      'Track pipeline, conversion and revenue outcomes as one operating system.',
+    ],
+    ENTERPRISE: [
+      'Design a governed enterprise pilot around a measurable commercial or operational outcome.',
+      'Integrate CRM, automation, infrastructure and security controls through owned-first interfaces.',
+      'Scale only after the pilot produces verified results and operational evidence.',
+    ],
+  };
+
+  return {
+    schema: 'izakhono.growth.diagnostic.v1',
+    lane,
+    lead_score: score,
+    focus,
+    summary: 'Your highest-value next move is to strengthen ' + focus + ' through a ' + lane.toLowerCase() + ' execution path.',
+    answers: { revenue_band, goal, urgency, sales_process, digital_foundation, buying_mode },
+    actions: actions[lane],
+    recommended_products: GROWTH_PRODUCT_MAP[goal],
+    next_steps: ['start_now','request_whatsapp','book_strategy','get_proposal'],
+    privacy: { behavioural_tracking: false, advertising_ids: false, tracking_cookies: false },
+    generated_at: new Date().toISOString(),
+  };
+}
+
+function growthRateAllowed(req: Request): boolean {
+  const ip = growthClean(req.headers.get('cf-connecting-ip') || req.headers.get('x-forwarded-for') || 'unknown', 96);
+  const now = Date.now(), windowMs = 60 * 60 * 1000;
+  const active = (growthRate.get(ip) || []).filter(t => now - t < windowMs);
+  if (active.length >= 20) { growthRate.set(ip, active); return false; }
+  active.push(now);
+  growthRate.set(ip, active);
+  if (growthRate.size > 5000) growthRate.clear();
+  return true;
+}
+
+async function ensureGrowthLeadTable(env: any) {
+  await env.DB.prepare(`CREATE TABLE IF NOT EXISTS growth_diagnostic_leads (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL DEFAULT '',
+    company TEXT NOT NULL DEFAULT '',
+    email TEXT NOT NULL DEFAULT '',
+    phone TEXT NOT NULL DEFAULT '',
+    intent TEXT NOT NULL,
+    lane TEXT NOT NULL,
+    lead_score INTEGER NOT NULL,
+    focus TEXT NOT NULL,
+    answers_json TEXT NOT NULL,
+    recommended_products_json TEXT NOT NULL,
+    message TEXT NOT NULL DEFAULT '',
+    consent INTEGER NOT NULL CHECK (consent = 1),
+    status TEXT NOT NULL DEFAULT 'queued',
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+  )`).run();
+}
+
+async function growthCheckRoute(req: Request, env: any, url: URL): Promise<Response | null> {
+  if (url.pathname === '/growth-check') return Response.redirect(url.origin + '/growth-check/', 302);
+
+  if (url.pathname === '/api/public/growth-diagnostic' && req.method === 'POST') {
+    if (!growthRateAllowed(req)) return json({ error: 'too many requests' }, 429);
+    let body: any = {};
+    try { body = await req.json(); } catch { return json({ error: 'Expected application/json' }, 400); }
+    return json(growthDiagnosticEdge(body), 200);
+  }
+
+  if (url.pathname === '/api/public/growth-diagnostic/lead' && req.method === 'POST') {
+    if (!growthRateAllowed(req)) return json({ error: 'too many requests' }, 429);
+    let body: any = {};
+    try { body = await req.json(); } catch { return json({ error: 'Expected application/json' }, 400); }
+    if (growthClean(body.website, 120)) return json({ ok: true }, 202);
+    if (body.consent !== true) return json({ error: 'contact consent is required' }, 400);
+
+    const email = growthClean(body.email, 200);
+    const phone = growthClean(body.phone, 80);
+    if (!email && !phone) return json({ error: 'email or phone is required' }, 400);
+
+    const profile = growthDiagnosticEdge(body.answers || {});
+    const intents = new Set(['start_now','request_whatsapp','book_strategy','get_proposal']);
+    const requested = growthClean(body.intent, 80);
+    const intent = intents.has(requested) ? requested : 'get_proposal';
+    const id = 'gdl_' + crypto.randomUUID().replaceAll('-', '');
+
+    await ensureGrowthLeadTable(env);
+    await env.DB.prepare(`INSERT INTO growth_diagnostic_leads
+      (id,name,company,email,phone,intent,lane,lead_score,focus,answers_json,recommended_products_json,message,consent,status)
+      VALUES(?,?,?,?,?,?,?,?,?,?,?,?,1,'queued')`)
+      .bind(
+        id,
+        growthClean(body.name, 160),
+        growthClean(body.company, 180),
+        email,
+        phone,
+        intent,
+        profile.lane,
+        profile.lead_score,
+        profile.focus,
+        JSON.stringify(profile.answers),
+        JSON.stringify(profile.recommended_products),
+        growthClean(body.message, 900),
+      ).run();
+
+    return json({
+      ok: true,
+      id,
+      status: 'queued',
+      crm_status: 'queued',
+      profile,
+      next_gate: 'IZAKHONO CRM handoff',
+    }, 201);
+  }
+
+  if (url.pathname === '/api/owner/growth-diagnostic/leads' && req.method === 'GET') {
+    if (!(await ownerAuthorized(req, env))) return json({ ok: false, error: 'Unauthorized' }, 401);
+    await ensureGrowthLeadTable(env);
+    const rows = await env.DB.prepare(`SELECT id,name,company,email,phone,intent,lane,lead_score,focus,status,created_at
+      FROM growth_diagnostic_leads
+      ORDER BY lead_score DESC, created_at DESC
+      LIMIT 250`).all<any>();
+    return json({ ok: true, items: rows.results || [] });
+  }
+
+  if (url.pathname.startsWith('/growth-check/') && (req.method === 'GET' || req.method === 'HEAD')) {
+    const relative = url.pathname.slice('/growth-check/'.length) || 'index.html';
+    if (!new Set(['index.html','app.js','styles.css']).has(relative)) return new Response('Not found', { status: 404 });
+    const assetUrl = new URL(req.url);
+    assetUrl.pathname = '/growth-check/' + relative;
+    assetUrl.search = '';
+    const response = await env.ASSETS.fetch(new Request(assetUrl.toString(), req));
+    const headers = new Headers(response.headers);
+    headers.set('cache-control', 'public, max-age=0, must-revalidate');
+    headers.set('x-content-type-options', 'nosniff');
+    headers.set('referrer-policy', 'strict-origin-when-cross-origin');
+    headers.set('permissions-policy', 'camera=(), microphone=(), geolocation=()');
+    if (relative === 'index.html') {
+      headers.set('content-security-policy', "default-src 'self'; connect-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'");
+    }
+    headers.delete('content-length');
+    return new Response(req.method === 'HEAD' ? null : response.body, {
+      status: response.status,
+      statusText: response.statusText,
+      headers,
+    });
+  }
+  return null;
+}
+
+
 const AI_CORE_HOST = 'ai.izakhono.co.za';
 
 async function publicAiCoreHost(req: Request, env: any, url: URL): Promise<Response | null> {
@@ -1083,6 +1319,9 @@ export default {
 
     const commandsApi = await commandApiRoute(req, env, url);
     if (commandsApi) return commandsApi;
+
+    const growthCheck = await growthCheckRoute(req, env, url);
+    if (growthCheck) return growthCheck;
 
     const commandsPage = await commandCentrePage(req, env, url);
     if (commandsPage) return commandsPage;
