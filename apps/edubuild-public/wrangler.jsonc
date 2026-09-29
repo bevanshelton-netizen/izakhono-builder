@@ -1,0 +1,13 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "edubuild-institute-public",
+  "main": "external-worker.js",
+  "compatibility_date": "2026-09-29",
+  "workers_dev": true,
+  "preview_urls": true,
+  "assets": {
+    "directory": "./public-dist",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application"
+  }
+}
