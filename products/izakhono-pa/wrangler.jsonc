@@ -1,0 +1,34 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "izakhono-executive-pa",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-08-01",
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS",
+    "run_worker_first": true
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_id": "a59d44af-22cc-4967-8b00-03c817d7a7dd",
+      "database_name": "izakhono-builder",
+      "migrations_dir": "../../migrations"
+    }
+  ],
+  "vars": {
+    "APP_ENV": "production",
+    "PA_DEFAULT_TENANT": "izakhono",
+    "PA_OWNER_NAME": "Bevan",
+    "WHATSAPP_TEMPLATE_LANGUAGE": "en"
+  },
+  "triggers": {
+    "crons": ["0 6 * * *"]
+  },
+  "routes": [
+    {
+      "pattern": "pa.izakhonoafrica.co.za",
+      "custom_domain": true
+    }
+  ]
+}
