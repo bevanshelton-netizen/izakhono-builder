@@ -14,7 +14,7 @@ async function load(){
     <p>${esc(x.offer)}</p>
     <p><strong>CTA:</strong> ${esc(x.cta)}</p>
     <div class="channels">${(x.channels||[]).map(esc).join(" • ")}</div>
-    <p><a href="/l/${encodeURIComponent(x.slug)}">Open enquiry page →</a></p>
+    <p><a href="${x.slug==="growth-diagnostic"?"/growth-check/":"/l/"+encodeURIComponent(x.slug)}">${x.slug==="growth-diagnostic"?"Open Growth Check →":"Open enquiry page →"}</a></p>
   </article>`).join("");
 }
 $("refresh").addEventListener("click",()=>load().catch(e=>alert(e.message)));

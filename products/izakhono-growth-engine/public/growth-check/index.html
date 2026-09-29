@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Find Your Next Growth Move | IZAKHONO</title>
+  <meta name="description" content="A short IZAKHONO business growth diagnostic that produces a practical next-step prescription.">
+  <link rel="stylesheet" href="/growth-check/styles.css">
+</head>
+<body>
+  <main class="shell">
+    <header>
+      <a class="brand" href="/">IZAKHONO AFRICA</a>
+      <span class="privacy">NO TRACKING COOKIES • NO AD IDs</span>
+    </header>
+    <section class="hero">
+      <p class="eyebrow">3-MINUTE BUSINESS GROWTH CHECK</p>
+      <h1>Find your next growth move.</h1>
+      <p>Answer six practical questions. We will give you three priority actions and the IZAKHONO tools that match your current stage.</p>
+    </section>
+
+    <section id="quiz" class="card">
+      <div class="progress"><span id="stepText">Question 1 of 6</span><div><i id="bar"></i></div></div>
+      <div id="question"></div>
+      <p id="quizError" class="error" aria-live="polite"></p>
+    </section>
+
+    <section id="result" class="card hidden" aria-live="polite">
+      <p class="eyebrow">YOUR GROWTH PRESCRIPTION</p>
+      <div class="lane-row"><h2 id="lane"></h2><span id="score"></span></div>
+      <p id="summary" class="result-summary"></p>
+      <h3>Your first three moves</h3>
+      <ol id="actions"></ol>
+      <h3>Recommended IZAKHONO arsenal</h3>
+      <div id="products" class="products"></div>
+      <div class="next">
+        <button data-intent="start_now">Start now</button>
+        <button data-intent="request_whatsapp">Request WhatsApp contact</button>
+        <button data-intent="book_strategy">Book strategy session</button>
+        <button data-intent="get_proposal">Get proposal</button>
+      </div>
+    </section>
+
+    <section id="contact" class="card hidden">
+      <p class="eyebrow">TAKE THE NEXT STEP</p>
+      <h2 id="contactTitle">Send my growth prescription</h2>
+      <form id="leadForm">
+        <div class="two">
+          <label>Name<input name="name" required autocomplete="name"></label>
+          <label>Company<input name="company" autocomplete="organization"></label>
+        </div>
+        <div class="two">
+          <label>Email<input name="email" type="email" autocomplete="email"></label>
+          <label>Phone / WhatsApp<input name="phone" autocomplete="tel"></label>
+        </div>
+        <label>Anything we should know?<textarea name="message"></textarea></label>
+        <label class="honeypot">Website<input name="website" tabindex="-1" autocomplete="off"></label>
+        <label class="consent"><input name="consent" type="checkbox" required> I agree to be contacted about this request and understand my answers will be used to prepare the recommended next step.</label>
+        <button type="submit">Send request</button>
+        <p id="leadStatus" class="status" aria-live="polite"></p>
+      </form>
+    </section>
+
+    <footer>IZAKHONO Growth Engine • Diagnosis first. Spend only when authorised. No behavioural surveillance.</footer>
+  </main>
+  <script src="/growth-check/app.js"></script>
+</body>
+</html>

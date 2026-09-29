@@ -39,7 +39,7 @@ jobs:
         run: npm --prefix products/izakhono-growth-engine test
 
       - name: Guard campaign controls
-        shell: node
+        shell: node {0}
         run: |
           const fs = require("fs");
           const path = require("path");
