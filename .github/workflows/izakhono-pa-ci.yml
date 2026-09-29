@@ -19,8 +19,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-          cache: npm
-      - run: npm ci
+      - run: npm install --no-audit --no-fund
       - run: npx tsc --noEmit --target ES2022 --lib ES2022,DOM,DOM.Iterable --module ESNext products/izakhono-pa/src/index.ts
       - run: node --check products/izakhono-pa/public/app.js
       - run: node products/izakhono-pa/scripts/validate-pa.mjs
