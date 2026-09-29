@@ -1,0 +1,74 @@
+name: IZAKHONO Growth Engine CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "products/izakhono-growth-engine/**"
+      - "apps/izakhono-create/campaigns/**"
+      - "products/izakhono-ads/campaigns/**"
+      - ".github/workflows/izakhono-growth-engine-ci.yml"
+  pull_request:
+    paths:
+      - "products/izakhono-growth-engine/**"
+      - "apps/izakhono-create/campaigns/**"
+      - "products/izakhono-ads/campaigns/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: izakhono-growth-engine-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Syntax check
+        run: npm --prefix products/izakhono-growth-engine run check
+
+      - name: Unit tests
+        run: npm --prefix products/izakhono-growth-engine test
+
+      - name: Guard campaign controls
+        shell: node
+        run: |
+          const fs = require("fs");
+          const path = require("path");
+          const roots = [
+            "apps/izakhono-create/campaigns/2026-09-29",
+            "products/izakhono-ads/campaigns/2026-09-29"
+          ];
+          let checked = 0;
+          for (const root of roots) {
+            if (!fs.existsSync(root)) continue;
+            for (const name of fs.readdirSync(root).filter(x => x.endsWith(".json"))) {
+              const file = path.join(root, name);
+              const d = JSON.parse(fs.readFileSync(file, "utf8"));
+              const approval = d.approval || {};
+              const controls = d.controls || {};
+              if (approval.owner_spend_approved === true || controls.paid_spend_authorised === true) {
+                throw new Error("Paid spend may not be silently authorised: " + file);
+              }
+              checked++;
+            }
+          }
+          console.log("GROWTH_CAMPAIGN_CONTROL_CHECK=PASS files=" + checked);
+
+      - name: Package NODE01 deployable artifact
+        run: |
+          tar -czf izakhono-growth-engine-node01.tgz             products/izakhono-growth-engine             START-IZAKHONO-GROWTH-ENGINE-NODE01.cmd             START-IZAKHONO-GROWTH-ENGINE-NODE01.ps1             VERIFY-IZAKHONO-GROWTH-ENGINE.cmd
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: izakhono-growth-engine-node01
+          path: izakhono-growth-engine-node01.tgz
+          retention-days: 30
