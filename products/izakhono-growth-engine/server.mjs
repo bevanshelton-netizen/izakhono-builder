@@ -108,7 +108,8 @@ export async function handler(req,res){
   try{
     const url=new URL(req.url,`http://${req.headers.host||"localhost"}`);
     if(req.method==="GET"&&url.pathname==="/health")return json(res,200,{ok:true,service:"izakhono-growth-engine",version:"0.2.0",owned_first:true,crm_adapter:Boolean(CRM_URL&&CRM_TOKEN),public_live_verified:false});
-    if(req.method==="GET"&&url.pathname==="/api/campaigns")return json(res,200,campaigns);\n    if(req.method==="POST"&&url.pathname==="/api/public/growth-diagnostic"){if(!rateOk(req))return json(res,429,{error:"too many requests"});const x=await readBody(req);return json(res,200,growthDiagnostic(x))}
+    if(req.method==="GET"&&url.pathname==="/api/campaigns")return json(res,200,campaigns);
+    if(req.method==="POST"&&url.pathname==="/api/public/growth-diagnostic"){if(!rateOk(req))return json(res,429,{error:"too many requests"});const x=await readBody(req);return json(res,200,growthDiagnostic(x))}
     if(req.method==="GET"&&url.pathname==="/api/dashboard"){const leads=await readLeads();return json(res,200,{campaigns:campaigns.campaigns.length,direct_outreach_ready:campaigns.campaigns.filter(x=>x.mode==="DIRECT_OUTREACH_READY").length,leads:leads.length,diagnostic_leads:leads.filter(x=>x.campaign==="growth-diagnostic").length,crm_pushed:leads.filter(x=>x.crm_status==="pushed").length})}
     if(req.method==="POST"&&url.pathname==="/api/campaigns/generate"){const x=await readBody(req);if(!clean(x.product)||!clean(x.audience)||!clean(x.offer))return json(res,400,{error:"product, audience and offer are required"});return json(res,201,pack(x))}
     
