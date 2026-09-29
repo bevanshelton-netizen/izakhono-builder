@@ -1084,7 +1084,7 @@ function growthRateAllowed(req: Request): boolean {
 }
 
 async function ensureGrowthLeadTable(env: any) {
-  await env.DB.prepare(\`CREATE TABLE IF NOT EXISTS growth_diagnostic_leads (
+  await env.DB.prepare(`CREATE TABLE IF NOT EXISTS growth_diagnostic_leads (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL DEFAULT '',
     company TEXT NOT NULL DEFAULT '',
@@ -1100,7 +1100,7 @@ async function ensureGrowthLeadTable(env: any) {
     consent INTEGER NOT NULL CHECK (consent = 1),
     status TEXT NOT NULL DEFAULT 'queued',
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-  )\`).run();
+  )`).run();
 }
 
 async function growthCheckRoute(req: Request, env: any, url: URL): Promise<Response | null> {
@@ -1131,9 +1131,9 @@ async function growthCheckRoute(req: Request, env: any, url: URL): Promise<Respo
     const id = 'gdl_' + crypto.randomUUID().replaceAll('-', '');
 
     await ensureGrowthLeadTable(env);
-    await env.DB.prepare(\`INSERT INTO growth_diagnostic_leads
+    await env.DB.prepare(`INSERT INTO growth_diagnostic_leads
       (id,name,company,email,phone,intent,lane,lead_score,focus,answers_json,recommended_products_json,message,consent,status)
-      VALUES(?,?,?,?,?,?,?,?,?,?,?,?,1,'queued')\`)
+      VALUES(?,?,?,?,?,?,?,?,?,?,?,?,1,'queued')`)
       .bind(
         id,
         growthClean(body.name, 160),
@@ -1162,10 +1162,10 @@ async function growthCheckRoute(req: Request, env: any, url: URL): Promise<Respo
   if (url.pathname === '/api/owner/growth-diagnostic/leads' && req.method === 'GET') {
     if (!(await ownerAuthorized(req, env))) return json({ ok: false, error: 'Unauthorized' }, 401);
     await ensureGrowthLeadTable(env);
-    const rows = await env.DB.prepare(\`SELECT id,name,company,email,phone,intent,lane,lead_score,focus,status,created_at
+    const rows = await env.DB.prepare(`SELECT id,name,company,email,phone,intent,lane,lead_score,focus,status,created_at
       FROM growth_diagnostic_leads
       ORDER BY lead_score DESC, created_at DESC
-      LIMIT 250\`).all<any>();
+      LIMIT 250`).all<any>();
     return json({ ok: true, items: rows.results || [] });
   }
 
