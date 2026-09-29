@@ -1,0 +1,39 @@
+{
+  "schema": "izakhono.ads.campaign.v1",
+  "source": "IZAKHONO CREATE",
+  "campaign_id": "create-fortress-enterprise-pilot-20260929",
+  "product": "FORTRESS",
+  "campaign_name": "FORTRESS — Enterprise Fraud-Prevention Pilot",
+  "state": "WARM_ENTERPRISE_OUTREACH_READY",
+  "destination": {
+    "route": "NDA_AND_DISCOVERY_FIRST",
+    "public_https_verified": false,
+    "lead_capture_verified": false,
+    "rule": "Use relationship-led outreach and NDA/discovery flow. Do not launch broad performance advertising for an unverified enterprise-security proposition."
+  },
+  "placements": [
+    {
+      "channel": "FNB/Absa/African Bank existing threads",
+      "format": "enterprise pilot follow-up",
+      "status": "CADENCE_GATED"
+    },
+    {
+      "channel": "LinkedIn",
+      "format": "non-confidential enterprise positioning",
+      "status": "READY_ORGANIC"
+    },
+    {
+      "channel": "direct introductions",
+      "format": "NDA-first technical discovery",
+      "status": "READY"
+    }
+  ],
+  "controls": {
+    "paid_spend_authorised": false,
+    "behavioural_profiling": false,
+    "hidden_tracking": false,
+    "owned_infrastructure_first": true,
+    "external_services_replaceable": true,
+    "nda_before_proprietary_detail": true
+  }
+}
