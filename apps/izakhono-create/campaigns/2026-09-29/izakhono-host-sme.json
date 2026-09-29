@@ -1,0 +1,53 @@
+{
+  "schema": "izakhono.marketing.package.v1",
+  "source": "IZAKHONO CREATE",
+  "created_at": "2026-09-29T15:53:00+02:00",
+  "product": "IZAKHONO HOST",
+  "campaign_name": "IZAKHONO HOST — SME Website + Hosting + Business Email",
+  "creative": {
+    "brief": "Generate qualified enquiries from South African SMEs and organisations that need a professional website, reliable hosting and business email without juggling multiple suppliers.",
+    "key_message": "One practical business stack: professional website, hosting and business email, with IZAKHONO-owned infrastructure preferred and replaceable external resilience where needed.",
+    "formats": [
+      "1080x1080 value card",
+      "1080x1920 short video",
+      "WhatsApp service card",
+      "LinkedIn SME offer",
+      "direct outreach audit"
+    ],
+    "hooks": [
+      "Still running your business without a proper website and company email?",
+      "Website, hosting and business email in one place.",
+      "Already have a site? We can improve the conversion journey instead of rebuilding blindly."
+    ],
+    "compliance_notes": [
+      "Do not claim zero downtime or guaranteed rankings.",
+      "Do not claim owned public infrastructure is live where it has not been independently verified.",
+      "Confirm scope, domain, mailbox count, content and migration requirements before final quotation."
+    ]
+  },
+  "channels": [
+    "warm direct outreach",
+    "WhatsApp",
+    "LinkedIn",
+    "Facebook",
+    "local business discovery",
+    "referrals",
+    "portfolio cross-promotion"
+  ],
+  "offer": "Professional business website + hosting + business email, or a conversion-improvement pilot for companies that already have a website.",
+  "cta": "Request a business audit / quote",
+  "approval": {
+    "creative_source_verified": true,
+    "owner_spend_approved": false,
+    "publish_ready": true
+  },
+  "attribution": {
+    "campaign_id": "create-izakhono-host-sme-20260929"
+  },
+  "policy": {
+    "distribution_system": "IZAKHONO ADS",
+    "owned_infrastructure_first": true,
+    "external_routes_reversible": true,
+    "behavioural_tracking": false
+  }
+}
