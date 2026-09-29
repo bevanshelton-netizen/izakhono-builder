@@ -12,5 +12,12 @@
     "distribution_control": "IZAKHONO ADS",
     "crm": "IZAKHONO CRM",
     "revenue": "IZAKHONO REVENUE"
-  }
+  },
+  "capabilities": [
+    "campaign-orchestration",
+    "growth-diagnostic",
+    "lead-scoring",
+    "crm-handoff",
+    "privacy-preserving-lead-capture"
+  ]
 }
