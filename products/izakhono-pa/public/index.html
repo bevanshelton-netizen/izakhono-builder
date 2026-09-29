@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>IZAKHONO Executive PA</title>
+  <meta name="description" content="Executive PA control centre for priorities, money, follow-ups, decisions, deadlines and WhatsApp brief delivery." />
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <p class="eyebrow">IZAKHONO AFRICA</p>
+      <h1>Executive PA</h1>
+      <p class="sub">One control desk for priorities, money, follow-ups, decisions and WhatsApp.</p>
+    </div>
+    <div class="status" id="healthStatus">Checking system…</div>
+  </header>
+
+  <main>
+    <section class="panel unlock">
+      <div><h2>Control access</h2><p>Enter the PA admin secret for this browser session. It is not saved permanently.</p></div>
+      <form id="secretForm" class="inline-form">
+        <input id="secret" type="password" autocomplete="current-password" placeholder="PA admin secret" required />
+        <button>Unlock</button>
+      </form>
+    </section>
+
+    <section class="kpis" id="kpis">
+      <article><span>Open</span><strong id="openTasks">—</strong></article>
+      <article><span>Money tracked</span><strong id="moneyValue">—</strong></article>
+      <article><span>Decisions</span><strong id="decisionCount">—</strong></article>
+      <article><span>Risks</span><strong id="riskCount">—</strong></article>
+    </section>
+
+    <section class="grid two">
+      <article class="panel">
+        <div class="panel-head"><div><p class="eyebrow">CAPTURE</p><h2>Add an action</h2></div></div>
+        <form id="taskForm" class="stack">
+          <input name="title" placeholder="What needs to happen?" required />
+          <div class="split">
+            <select name="category">
+              <option value="today">Today</option><option value="money">Money</option><option value="waiting_for_us">People waiting for us</option><option value="waiting_on_them">We are waiting for them</option><option value="decision">CEO decision</option><option value="deadline">Deadline</option><option value="meeting">Meeting</option><option value="risk">Risk</option><option value="follow_up">Follow-up</option><option value="general">General</option>
+            </select>
+            <select name="priority"><option>normal</option><option>high</option><option>urgent</option><option>low</option></select>
+          </div>
+          <div class="split"><input name="due_at" type="datetime-local" /><input name="value_amount" type="number" step="0.01" min="0" placeholder="Value (ZAR)" /></div>
+          <textarea name="notes" rows="3" placeholder="Notes, context or next step"></textarea>
+          <button>Add to PA queue</button>
+        </form>
+      </article>
+
+      <article class="panel">
+        <div class="panel-head"><div><p class="eyebrow">WHATSAPP</p><h2>Channel status</h2></div><span class="pill" id="waStatus">Unknown</span></div>
+        <p class="muted">Use WhatsApp commands such as <b>TASK:</b>, <b>MONEY:</b>, <b>DECISION:</b>, <b>WAITING:</b> and <b>RISK:</b>. Send <b>BRIEF</b> to receive the current executive brief during an active WhatsApp service window.</p>
+        <form id="whatsappForm" class="stack">
+          <input name="to" placeholder="Recipient number, e.g. 27…" />
+          <textarea name="text" rows="4" placeholder="Message"></textarea>
+          <button>Send WhatsApp message</button>
+        </form>
+        <button class="secondary" id="sendBrief">Send current brief to configured owner</button>
+        <p class="fine">Scheduled out-of-window WhatsApp delivery uses an approved utility template.</p>
+      </article>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head"><div><p class="eyebrow">TODAY</p><h2>Executive queue</h2></div><button class="secondary" id="refresh">Refresh</button></div>
+      <div id="taskList" class="task-list"><p class="muted">Unlock the dashboard to load tasks.</p></div>
+    </section>
+
+    <section class="grid two">
+      <article class="panel">
+        <div class="panel-head"><div><p class="eyebrow">BRIEF</p><h2>Daily executive brief</h2></div><button class="secondary" id="loadBrief">Generate</button></div>
+        <pre id="briefText" class="brief">No brief loaded.</pre>
+      </article>
+      <article class="panel">
+        <div class="panel-head"><div><p class="eyebrow">INBOX</p><h2>Recent WhatsApp activity</h2></div></div>
+        <div id="messageList" class="message-list"><p class="muted">No messages loaded.</p></div>
+      </article>
+    </section>
+  </main>
+
+  <footer>IZAKHONO Executive PA · owned-first, externally reversible · approval-gated for binding commitments</footer>
+  <script src="/app.js" defer></script>
+</body>
+</html>
