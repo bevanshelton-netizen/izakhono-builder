@@ -1,0 +1,55 @@
+{
+  "schema": "izakhono.ads.campaign.v1",
+  "source": "IZAKHONO CREATE",
+  "campaign_id": "create-tshifhiwa-roodepoort-pilot-20260929",
+  "product": "IZAKHONO Growth Engine / SME Growth Pilot",
+  "client": "Tshifhiwa Plumbing and Electrical Services",
+  "campaign_name": "Tshifhiwa — Roodepoort Solar Geyser & Qualified Plumbing Lead Pilot",
+  "state": "DIRECT_OUTREACH_ACTIVE_PAID_MEDIA_PAUSED",
+  "destination": {
+    "route": "CLIENT_LANDING_PAGE_PENDING",
+    "public_https_verified": false,
+    "lead_capture_verified": false,
+    "rule": "Direct relationship outreach may proceed. Broad or paid distribution remains paused until client approval and end-to-end lead capture verification."
+  },
+  "placements": [
+    {
+      "channel": "Gmail warm outreach",
+      "format": "personalised value audit",
+      "status": "SENT_2026-09-29"
+    },
+    {
+      "channel": "WhatsApp",
+      "format": "quote card + service CTA",
+      "status": "READY_AFTER_CLIENT_APPROVAL"
+    },
+    {
+      "channel": "local search",
+      "format": "service-intent landing page",
+      "status": "READY_AFTER_DESTINATION_VERIFICATION"
+    },
+    {
+      "channel": "Facebook/Instagram",
+      "format": "trust + solar-geyser creative",
+      "status": "PAUSED_NO_CLIENT_APPROVAL_NO_SPEND_AUTHORITY"
+    },
+    {
+      "channel": "LinkedIn",
+      "format": "local business credibility post",
+      "status": "READY_FOR_ORGANIC_DRAFT"
+    }
+  ],
+  "lead_route": {
+    "primary": "WhatsApp / quote request",
+    "crm": "IZAKHONO CRM via Growth Engine",
+    "status": "BACKEND_CUTOVER_PENDING"
+  },
+  "controls": {
+    "paid_spend_authorised": false,
+    "client_approval_received": false,
+    "behavioural_profiling": false,
+    "hidden_tracking": false,
+    "external_services_replaceable": true,
+    "owned_infrastructure_first": true
+  }
+}
