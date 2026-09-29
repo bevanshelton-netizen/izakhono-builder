@@ -1,0 +1,84 @@
+name: Edu-Build Public Gateway
+
+on:
+  pull_request:
+    paths:
+      - "apps/edubuild-public/**"
+      - ".github/workflows/edubuild-public-gateway.yml"
+  push:
+    branches: [main]
+    paths:
+      - "apps/edubuild-public/**"
+      - ".github/workflows/edubuild-public-gateway.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: edubuild-public-gateway-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Verify qualification and safety boundary
+        run: node apps/edubuild-public/verify.mjs
+      - name: Stage static public package
+        working-directory: apps/edubuild-public
+        run: |
+          set -euo pipefail
+          rm -rf public-dist
+          mkdir public-dist
+          cp index.html styles.css healthz public-dist/
+          grep -q "SAQA 97542" public-dist/index.html
+          grep -q "131 credits" public-dist/index.html
+          ! grep -q "140 Credits" public-dist/index.html
+
+  deploy:
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    needs: verify
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Require configured Cloudflare deployment credentials
+        run: |
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+      - name: Stage public assets
+        working-directory: apps/edubuild-public
+        run: |
+          rm -rf public-dist
+          mkdir public-dist
+          cp index.html styles.css healthz public-dist/
+      - name: Deploy public gateway
+        id: deploy
+        working-directory: apps/edubuild-public
+        run: |
+          set -euo pipefail
+          npx --yes wrangler@4 deploy --config wrangler.jsonc 2>&1 | tee /tmp/edubuild-wrangler.log
+          URL="$(grep -Eo 'https://[A-Za-z0-9._-]+\.workers\.dev' /tmp/edubuild-wrangler.log | tail -1 || true)"
+          test -n "$URL"
+          echo "url=$URL" >> "$GITHUB_OUTPUT"
+      - name: Independently verify deployed HTTPS experience
+        env:
+          PUBLIC_URL: ${{ steps.deploy.outputs.url }}
+        run: |
+          set -euo pipefail
+          test "$(curl -fsS --max-time 15 "$PUBLIC_URL/healthz")" = "OK"
+          curl -fsS --max-time 15 "$PUBLIC_URL/" > /tmp/home.html
+          grep -q "SAQA 97542" /tmp/home.html
+          grep -q "131 credits" /tmp/home.html
+          ! grep -q "140 Credits" /tmp/home.html
+          curl -fsS --max-time 15 "$PUBLIC_URL/api/status" > /tmp/status.json
+          node -e 'const d=require("/tmp/status.json"); if(d.qualification.credits!==131||d.tracking!==false||d.learner_writes!==false) process.exit(1)'
+          echo "EDUBUILD_PUBLIC_HTTPS_VERIFY=PASS"
+          echo "PUBLIC_URL=$PUBLIC_URL" >> "$GITHUB_STEP_SUMMARY"
