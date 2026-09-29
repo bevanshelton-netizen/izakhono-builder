@@ -1044,6 +1044,7 @@ async function publicAiCoreHost(req: Request, env: any, url: URL): Promise<Respo
     '/super-accountant': '/ai-core/super-accountant/index.html',
     '/studio': '/ai-core/studio/index.html',
     '/edubuild': '/ai-core/edubuild/index.html',
+    '/edubuild-info': '/ai-core/edubuild-info/index.html',
     '/doxa-sure': '/ai-core/doxa-sure/index.html',
   };
 
