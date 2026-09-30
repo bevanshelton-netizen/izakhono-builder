@@ -1,0 +1,11 @@
+{
+  "$schema":"../../node_modules/wrangler/config-schema.json",
+  "name":"izakhono-pocket-pos",
+  "main":"src/worker.mjs",
+  "compatibility_date":"2026-08-01",
+  "workers_dev":true,
+  "preview_urls":true,
+  "assets":{"directory":"./public","binding":"ASSETS","run_worker_first":true},
+  "d1_databases":[{"binding":"DB","database_name":"izakhono-pocket-pos","database_id":"POCKETPOS_D1_ID","migrations_dir":"migrations"}],
+  "vars":{"APP_ENV":"production","IK_MODE":"live"}
+}
