@@ -1,0 +1,84 @@
+{
+  "schema": "izakhono.ads.live.product.wave.v1",
+  "effective_date": "2026-09-30",
+  "wave": "LIVE-PRODUCT-REVENUE-02",
+  "owner": "IZAKHONO ADS",
+  "spend_authorised": false,
+  "paid_media_state": "PAUSED_NO_SPEND_AUTHORITY",
+  "measurement": "aggregate-first-party-operational-only",
+  "distribution": [
+    {
+      "campaign": "worknow-live",
+      "state": "ACTIVE_DIRECT_OUTREACH",
+      "channels": [
+        "SAIMM warm partnership outreach",
+        "bank/employer threads",
+        "WhatsApp share",
+        "organic social draft",
+        "portfolio cross-promotion"
+      ],
+      "actions_completed": [
+        "SAIMM live-pilot follow-up sent 2026-09-30"
+      ],
+      "next_action": "Add qualified employer/industry partners without duplicate same-day follow-up."
+    },
+    {
+      "campaign": "auto-ai-live",
+      "state": "ACTIVE_OWNED_CROSS_PROMOTION",
+      "channels": [
+        "KORA house inventory",
+        "WhatsApp",
+        "organic social draft",
+        "workshop/fleet partner discovery"
+      ],
+      "actions_completed": [
+        "KORA already exposes AUTO AI revenue-drive links"
+      ],
+      "next_action": "Add genuine automotive/fleet partner outreach when a suitable contact is verified."
+    },
+    {
+      "campaign": "kora-live",
+      "state": "ACTIVE_ORGANIC_CREATOR_OUTREACH",
+      "channels": [
+        "creator outreach",
+        "WhatsApp",
+        "organic social draft",
+        "Allegro cross-promotion"
+      ],
+      "actions_completed": [],
+      "next_action": "Prioritise rights-cleared creator and partner onboarding."
+    },
+    {
+      "campaign": "allegro-live",
+      "state": "ACTIVE_DIRECT_OUTREACH",
+      "channels": [
+        "MIAGI/Morris Isaacson warm outreach",
+        "artist outreach",
+        "KORA cross-promotion",
+        "organic social draft"
+      ],
+      "actions_completed": [
+        "MIAGI/Morris Isaacson live-platform follow-up sent 2026-09-30"
+      ],
+      "next_action": "Onboard consenting pilot artists/learners."
+    },
+    {
+      "campaign": "digital-finance-free-live",
+      "state": "ACTIVE_FREE_ACQUISITION",
+      "channels": [
+        "LinkedIn organic draft",
+        "employer/skills partners",
+        "portfolio cross-promotion"
+      ],
+      "actions_completed": [],
+      "next_action": "Promote free foundation only; keep paid acquisition disabled."
+    }
+  ],
+  "guardrails": [
+    "No automated cold-spam blasting",
+    "No silent paid media spend",
+    "No UTM/referral identifiers",
+    "No behavioural tracking or ad IDs",
+    "Regulated claims remain compliance-gated"
+  ]
+}

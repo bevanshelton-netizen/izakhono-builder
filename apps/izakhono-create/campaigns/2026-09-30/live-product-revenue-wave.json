@@ -1,0 +1,131 @@
+{
+  "schema": "izakhono.create.live.product.wave.v1",
+  "effective_date": "2026-09-30",
+  "wave": "LIVE-PRODUCT-REVENUE-02",
+  "owner": "IZAKHONO CREATE",
+  "objective": "Generate approved organic and direct-outreach creative for independently reachable live products.",
+  "spend_authorised": false,
+  "campaigns": [
+    {
+      "slug": "worknow-live",
+      "product": "WORKNOW",
+      "destination": "https://worknow-sa.vercel.app/",
+      "status": "CREATIVE_APPROVED_FOR_ORGANIC_AND_DIRECT_OUTREACH",
+      "audience": "job seekers, employers, recruiters and organisations with genuine vacancies",
+      "hero": "Find work. Hire talent. Build futures.",
+      "proof": [
+        "R0 for job seekers",
+        "Public production page verified HTTP 200",
+        "Live job-seeker and employer forms"
+      ],
+      "assets": {
+        "whatsapp": "WORKNOW is open: job seekers can register free, build or upload a CV and become discoverable to employers. Employers can publish genuine vacancies and search opt-in talent. https://worknow-sa.vercel.app/",
+        "linkedin": "South Africa needs easier access to genuine work opportunities and better access to talent. WORKNOW is now publicly available for free job-seeker registration and employer vacancy participation. Explore the platform: https://worknow-sa.vercel.app/",
+        "short_video": "Need work? Need talent? WORKNOW puts job-seeker registration, CV support, job discovery and employer vacancy participation in one mobile-first platform. Job seekers register free. Visit worknow-sa.vercel.app.",
+        "email_subject": "WORKNOW is live — genuine vacancies and free job-seeker registration"
+      },
+      "guardrails": [
+        "No job-placement guarantee",
+        "No recruitment fee to job seekers",
+        "Respect official employer application channels"
+      ]
+    },
+    {
+      "slug": "auto-ai-live",
+      "product": "AUTO AI",
+      "destination": "https://auto-ai-eosin.vercel.app/#triage",
+      "status": "CREATIVE_APPROVED_FOR_ORGANIC_AND_OWNED_CROSS_PROMOTION",
+      "audience": "motorists, used-car buyers, workshops and fleets",
+      "hero": "Understand your car before you spend.",
+      "proof": [
+        "Public production page verified HTTP 200",
+        "R79 Vehicle Health Report",
+        "R99 Repair Quote Second Opinion",
+        "R149 Used-Car Buyer Check",
+        "WhatsApp-assisted iKhokha handoff"
+      ],
+      "assets": {
+        "whatsapp": "Before you approve that repair quote or buy that used car, get a second view. AUTO AI offers a R79 Vehicle Health Report, R99 Repair Quote Second Opinion and R149 Used-Car Buyer Check. Start here: https://auto-ai-eosin.vercel.app/#triage",
+        "linkedin": "AUTO AI gives motorists a plain-language second view before they spend: vehicle-health guidance, repair-quote review and used-car risk checks. Live now: https://auto-ai-eosin.vercel.app/#triage",
+        "short_video": "Mechanic quote confusing? Buying a used car? AUTO AI helps you understand the risk before you spend. Vehicle Health R79. Repair Quote Second Opinion R99. Used-Car Buyer Check R149. Start now.",
+        "email_subject": "AUTO AI — understand the vehicle risk before you spend"
+      },
+      "guardrails": [
+        "Informational guidance, not a substitute for qualified inspection",
+        "No guaranteed diagnosis or repair outcome",
+        "No safety guarantee"
+      ]
+    },
+    {
+      "slug": "kora-live",
+      "product": "KORA",
+      "destination": "https://kora-network.vercel.app/",
+      "status": "CREATIVE_APPROVED_FOR_ORGANIC_AND_CREATOR_OUTREACH",
+      "audience": "artists, creators, fans, promoters and African culture audiences",
+      "hero": "African creators. Live culture. One network.",
+      "proof": [
+        "Public production page verified HTTP 200",
+        "Music, tickets, watch, live and creator routes present"
+      ],
+      "assets": {
+        "whatsapp": "KORA is open for African creators and audiences — music, creators, live culture, tickets and viewing experiences in one network. Explore KORA: https://kora-network.vercel.app/",
+        "linkedin": "KORA is building a connected African creator and entertainment network across music, live culture, creator opportunities, ticketing and partnerships. Explore the live platform: https://kora-network.vercel.app/",
+        "short_video": "Africa creates. KORA connects. Discover music, creators, live culture and opportunities across one growing network. Enter KORA.",
+        "email_subject": "KORA — creator and cultural partnership opportunity"
+      },
+      "guardrails": [
+        "Rights-cleared content only",
+        "No unagreed partner endorsement",
+        "Payment/ticket claims remain route-specific"
+      ]
+    },
+    {
+      "slug": "allegro-live",
+      "product": "ALLEGRO VIBEZ",
+      "destination": "https://allegro-vibez.vercel.app/",
+      "status": "CREATIVE_APPROVED_FOR_ORGANIC_AND_ARTIST_OUTREACH",
+      "audience": "artists, listeners, music schools, radio audiences and music organisations",
+      "hero": "Listen. Discover. Join as an artist.",
+      "proof": [
+        "Public production page verified HTTP 200",
+        "Stream route present",
+        "Artist onboarding route present"
+      ],
+      "assets": {
+        "whatsapp": "ALLEGRO VIBEZ is live. Listen, discover artists and join the creator ecosystem. Artists and music organisations can start here: https://allegro-vibez.vercel.app/",
+        "linkedin": "ALLEGRO VIBEZ is now publicly available as a music, artist-discovery and creator-onboarding environment. We are opening practical pilot conversations with artists, music schools and development organisations. https://allegro-vibez.vercel.app/",
+        "short_video": "Your music needs more than a post. Join a growing discovery and creator ecosystem. Listen. Discover. Join as an artist on ALLEGRO VIBEZ.",
+        "email_subject": "ALLEGRO VIBEZ — artist onboarding and music-development pilot"
+      },
+      "guardrails": [
+        "Obtain rights/permissions before catalogue or broadcast use",
+        "Do not describe internet stream as terrestrial licensed radio"
+      ]
+    },
+    {
+      "slug": "digital-finance-free-live",
+      "product": "IZAKHONO Digital Finance",
+      "destination": "https://izakhono-digital-finance.vercel.app/",
+      "status": "CREATIVE_APPROVED_FREE_FOUNDATION_ONLY",
+      "audience": "individuals, employees and institutions seeking practical digital-finance literacy",
+      "hero": "Understand digital money before you use it.",
+      "proof": [
+        "Public production route previously verified",
+        "Free foundations available",
+        "Paid path remains gated"
+      ],
+      "assets": {
+        "whatsapp": "Want to understand digital money, blockchain, wallets, custody and scams in plain language? Start with the free IZAKHONO Digital Finance foundation: https://izakhono-digital-finance.vercel.app/",
+        "linkedin": "Digital-finance literacy should come before product adoption. IZAKHONO Digital Finance offers a free foundation covering digital money, blockchain, wallets, custody and scam awareness. Start free: https://izakhono-digital-finance.vercel.app/",
+        "short_video": "Crypto and digital finance sound complicated? Start with the foundations: digital money, blockchain, wallets, custody and scam awareness — free.",
+        "email_subject": "Free digital-finance foundations for employees and communities"
+      },
+      "guardrails": [
+        "Free foundation only until paid checkout is independently verified",
+        "Education, not financial advice",
+        "No investment-return claims",
+        "Do not imply university-degree status"
+      ]
+    }
+  ]
+}
