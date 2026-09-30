@@ -1,0 +1,32 @@
+name: PocketPOS CI
+on:
+  push:
+    branches:
+      - feat/izakhono-pocket-pos
+    paths:
+      - 'apps/izakhono-pocket-pos/**'
+      - '.github/workflows/pocketpos-ci.yml'
+  pull_request:
+    paths:
+      - 'apps/izakhono-pocket-pos/**'
+      - '.github/workflows/pocketpos-ci.yml'
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax check worker
+        run: node --check apps/izakhono-pocket-pos/src/worker.mjs
+      - name: Syntax check service worker
+        run: node --check apps/izakhono-pocket-pos/public/sw.js
+      - name: Contract checks
+        run: node apps/izakhono-pocket-pos/test.mjs
+      - name: Validate D1 migration with SQLite
+        run: |
+          sqlite3 /tmp/pocketpos.db < apps/izakhono-pocket-pos/migrations/0001_pocketpos.sql
+          sqlite3 /tmp/pocketpos.db "PRAGMA integrity_check;"
