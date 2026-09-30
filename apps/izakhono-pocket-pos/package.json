@@ -1,0 +1,1 @@
+{"name":"izakhono-pocket-pos","version":"0.3.0","private":true,"type":"module","scripts":{"check":"node test.mjs","dev":"wrangler dev -c wrangler.jsonc","migrate":"wrangler d1 migrations apply izakhono-pocket-pos --remote -c wrangler.jsonc","deploy":"wrangler deploy -c wrangler.jsonc"}}
