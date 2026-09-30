@@ -150,7 +150,9 @@ jobs:
             echo "- iKhokha production credentials/payment acceptance: not assumed"
           } >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Record blocked deployment
+      - name: Fail blocked deployment accurately
         if: steps.gate.outputs.ready != 'true'
         run: |
+          echo "POCKETPOS_DEPLOYMENT=BLOCKED"
           echo "PocketPOS deployment was not attempted because Cloudflare repository credentials are unavailable."
+          exit 1
