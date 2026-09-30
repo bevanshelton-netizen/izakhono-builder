@@ -3,491 +3,138 @@
 import Link from 'next/link';
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-type Account = {
-  id: string;
-  email: string;
-  handle: string;
-  display_name?: string;
-  displayName?: string;
-  status?: string;
-};
+type Account={id:string;email?:string;handle:string;display_name?:string;displayName?:string};
+type FeedPost={id:string;author_id:string;body:string;visibility:string;created_at:string;community_id?:string|null;handle:string;display_name:string;verified?:boolean;reply_count?:number;reaction_count?:number;repost_count?:number;viewer_reacted?:boolean;viewer_bookmarked?:boolean;viewer_reposted?:boolean;viewer_following?:boolean};
+type Comment={id:string;post_id:string;author_id:string;body:string;created_at:string;handle:string;display_name:string;verified?:boolean};
+type Notice={id:string;kind:string;title:string;body:string;created_at:string;read_at?:string|null};
+type Community={id:string;slug:string;name:string;description:string;member_count:number;joined:boolean;created_at:string};
+type Invite={id:string;code:string;label?:string;use_count:number;active:boolean};
+type Person={id:string;handle:string;display_name:string;bio?:string;verified?:boolean;follower_count?:number;viewer_following?:boolean};
+type Trend={tag:string;count:number;latest:string};
+type Profile=Person&{cover_key?:string|null;city?:string|null;country_code?:string|null;website?:string|null;location?:string|null;created_at?:string;following_count?:number};
+type Conversation={id:string;kind:string;title?:string;created_at:string;updated_at?:string;last_message?:string|null;last_message_at?:string|null;members:Person[]};
+type Message={id:string;conversation_id:string;sender_id:string;body:string;created_at:string;handle:string;display_name:string};
+type Panel='Home'|'Explore'|'Notifications'|'Messages'|'Bookmarks'|'Communities'|'Profile'|'Invite people';
+type FeedMode='balanced'|'latest'|'following'|'communities';
 
-type FeedPost = {
-  id: string;
-  body: string;
-  visibility: string;
-  created_at: string;
-  community_id?: string | null;
-  handle: string;
-  display_name: string;
-  relationship_rank?: string | number;
-};
+const nav:{panel:Panel;icon:string;label:string}[]=[
+ {panel:'Home',icon:'⌂',label:'Home'},{panel:'Explore',icon:'⌕',label:'Explore'},
+ {panel:'Notifications',icon:'♢',label:'Notifications'},{panel:'Messages',icon:'✉',label:'Messages'},
+ {panel:'Bookmarks',icon:'▱',label:'Bookmarks'},{panel:'Communities',icon:'◉',label:'Communities'},
+ {panel:'Profile',icon:'◎',label:'Profile'},{panel:'Invite people',icon:'↗',label:'Invite people'}
+];
+const feedModes:{value:FeedMode;label:string;note:string}[]=[
+ {value:'balanced',label:'For you',note:'relationships + recency'},{value:'following',label:'Following',note:'people you chose'},
+ {value:'latest',label:'Latest',note:'newest first'},{value:'communities',label:'Communities',note:'spaces you joined'}
+];
 
-type Notice = {
-  id: string;
-  kind: string;
-  title: string;
-  body: string;
-  created_at: string;
-  read_at?: string | null;
-  actor_name?: string | null;
-  actor_handle?: string | null;
-};
+async function api<T=any>(path:string,options:RequestInit={}):Promise<{response:Response;data:T}>{
+ const headers=new Headers(options.headers);headers.set('accept','application/json');
+ if(options.body&&!(options.body instanceof FormData)&&!headers.has('content-type'))headers.set('content-type','application/json');
+ const response=await fetch('/api/connecta'+path,{...options,headers,cache:'no-store'});
+ const data=await response.json().catch(()=>({ok:false,error:'Invalid CONNECTA response'})) as T;return{response,data};
+}
+const initials=(v='')=>v.split(/\s+/).filter(Boolean).map(x=>x[0]).join('').slice(0,2).toUpperCase()||'C';
+function when(v?:string|null){if(!v)return'';const d=new Date(v);if(Number.isNaN(d.getTime()))return'';const s=Math.max(0,Math.floor((Date.now()-d.getTime())/1000));if(s<60)return'now';if(s<3600)return Math.floor(s/60)+'m';if(s<86400)return Math.floor(s/3600)+'h';if(s<604800)return Math.floor(s/86400)+'d';return d.toLocaleDateString(undefined,{month:'short',day:'numeric'});}
+function compact(v?:number|string|null){const n=Number(v||0);if(!n)return'';if(n>=1e6)return(n/1e6).toFixed(n>=1e7?0:1).replace('.0','')+'M';if(n>=1e3)return(n/1e3).toFixed(n>=1e4?0:1).replace('.0','')+'K';return String(n);}
+const slugify=(v:string)=>v.toLowerCase().trim().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,60);
+function parts(text:string){return text.split(/((?:#[\p{L}\p{N}_-]+)|(?:@[a-zA-Z0-9._-]+)|(?:https?:\/\/[^\s]+))/gu);}
+function PostText({text,onTag,onHandle}:{text:string;onTag:(x:string)=>void;onHandle:(x:string)=>void}){
+ return <p className="cxPostText">{parts(text).map((p,i)=>p.startsWith('#')?<button type="button" className="cxInlineLink" key={i} onClick={()=>onTag(p)}>{p}</button>:p.startsWith('@')?<button type="button" className="cxInlineLink" key={i} onClick={()=>onHandle(p.slice(1))}>{p}</button>:/^https?:\/\//.test(p)?<a className="cxInlineLink" key={i} href={p} target="_blank" rel="noreferrer">{p}</a>:<span key={i}>{p}</span>)}</p>;
+}
+function Avatar({name,small=false}:{name:string;small?:boolean}){return <span className={small?'cxAvatar small':'cxAvatar'}>{initials(name)}</span>;}
+function Verified(){return <span className="cxVerified" title="Verified organisation">✓</span>;}
+function Empty({title,body}:{title:string;body?:string}){return <div className="cxEmpty"><strong>{title}</strong>{body?<span>{body}</span>:null}</div>;}
 
-type Community = {
-  id: string;
-  slug: string;
-  name: string;
-  description: string;
-  member_count: number;
-  joined: boolean;
-  created_at: string;
-};
-
-type Invite = {
-  id: string;
-  code: string;
-  label?: string;
-  use_count: number;
-  max_uses?: number | null;
-  expires_at?: string | null;
-  active: boolean;
-};
-
-type Panel = 'Home' | 'Notifications' | 'Communities' | 'Invite people';
-
-const panels: Panel[] = ['Home', 'Notifications', 'Communities', 'Invite people'];
-const feedModes = [
-  ['balanced', 'Balanced'],
-  ['latest', 'Latest'],
-  ['following', 'Following'],
-  ['communities', 'Communities'],
-] as const;
-
-async function api<T = any>(path: string, options: RequestInit = {}): Promise<{ response: Response; data: T }> {
-  const headers = new Headers(options.headers);
-  headers.set('accept', 'application/json');
-  if (options.body && !(options.body instanceof FormData) && !headers.has('content-type')) {
-    headers.set('content-type', 'application/json');
-  }
-  const response = await fetch('/api/connecta' + path, {
-    ...options,
-    headers,
-    cache: 'no-store',
-  });
-  const data = await response.json().catch(() => ({ ok: false, error: 'Invalid CONNECTA response' })) as T;
-  return { response, data };
+function AuthGateway({onReady}:{onReady:()=>Promise<void>}){
+ const[mode,setMode]=useState<'login'|'register'>('register'),[busy,setBusy]=useState(false),[message,setMessage]=useState('');
+ const[form,setForm]=useState({email:'',password:'',handle:'',displayName:''});
+ async function submit(e:FormEvent){e.preventDefault();setBusy(true);setMessage('');const endpoint=mode==='register'?'/v1/auth/register':'/v1/auth/login';const body=mode==='register'?form:{email:form.email,password:form.password};const{response,data}=await api<any>(endpoint,{method:'POST',body:JSON.stringify(body)});setBusy(false);if(!response.ok){setMessage(data?.notice?.title?data.notice.title+': '+data.notice.body:data?.error||'Could not sign in.');return;}await onReady();}
+ return <main className="cxAuth"><section className="cxAuthStory">
+  <div className="cxBrandLockup"><div className="cxBrandMark">C</div><div><strong>CONNECTA</strong><span>by IZAKHONO</span></div></div>
+  <div className="cxAuthCopy"><span className="cxEyebrow">PUBLIC CONVERSATION · AFRICAN-BUILT</span><h1>Your voice.<br/>Your people.<br/><em>Your network.</em></h1><p>A fast social network for conversation, creators, communities and opportunity—without turning people into advertising profiles.</p></div>
+  <div className="cxTrustGrid"><div><b>Own the feed</b><span>For You, Following, Latest or Communities.</span></div><div><b>Own your identity</b><span>Secure server-side sessions and provider-independent infrastructure.</span></div><div><b>Protect content</b><span>Attribution, copy alerts, reporting and moderation.</span></div><div><b>Build opportunity</b><span>Profiles, conversation, communities and verified organisations.</span></div></div>
+  <div className="cxAuthLinks"><Link href="/safety">Safety Centre</Link><Link href="/community-standards">Community Standards</Link></div>
+ </section><section className="cxAuthCard">
+  <div className="cxAuthTabs"><button type="button" className={mode==='register'?'active':''} onClick={()=>{setMode('register');setMessage('');}}>Create account</button><button type="button" className={mode==='login'?'active':''} onClick={()=>{setMode('login');setMessage('');}}>Sign in</button></div>
+  <span className="cxEyebrow">{mode==='register'?'FOUNDING NETWORK':'WELCOME BACK'}</span><h2>{mode==='register'?'Join CONNECTA':'Sign in'}</h2>
+  <form onSubmit={submit} className="cxAuthForm">{mode==='register'&&<><label>Display name<input required maxLength={100} value={form.displayName} onChange={e=>setForm({...form,displayName:e.target.value})}/></label><label>Handle<input required minLength={3} maxLength={40} value={form.handle} onChange={e=>setForm({...form,handle:e.target.value})} autoCapitalize="none"/></label></>}<label>Email<input required type="email" value={form.email} onChange={e=>setForm({...form,email:e.target.value})}/></label><label>Password<input required type="password" minLength={12} value={form.password} onChange={e=>setForm({...form,password:e.target.value})} placeholder="12+ character passphrase"/></label><button className="cxPrimaryButton" disabled={busy}>{busy?'Connecting…':mode==='register'?'Create account':'Sign in'}</button></form>
+  {message&&<div className="cxError">{message}</div>}<p className="cxFine">Your login token stays in a secure HTTP-only cookie. CONNECTA does not put it into local storage.</p>
+ </section></main>;
 }
 
-function initials(value: string) {
-  return value.split(/\s+/).filter(Boolean).map((part) => part[0]).join('').slice(0, 2).toUpperCase() || 'C';
+function PersonRow({person,onProfile,onFollow}:{person:Person;onProfile:(h:string)=>Promise<void>;onFollow:(p:Person)=>Promise<void>}){
+ return <div className="cxPerson"><button className="cxPersonIdentity" onClick={()=>void onProfile(person.handle)}><Avatar name={person.display_name} small/><span><strong>{person.display_name}{person.verified?<Verified/>:null}</strong><small>@{person.handle}</small></span></button><button className={person.viewer_following?'cxMiniFollow following':'cxMiniFollow'} onClick={()=>void onFollow(person)}>{person.viewer_following?'Following':'Follow'}</button></div>;
 }
 
-function when(value: string) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return '';
-  const seconds = Math.max(0, Math.floor((Date.now() - date.getTime()) / 1000));
-  if (seconds < 60) return 'now';
-  if (seconds < 3600) return Math.floor(seconds / 60) + ' min';
-  if (seconds < 86400) return Math.floor(seconds / 3600) + ' hr';
-  if (seconds < 604800) return Math.floor(seconds / 86400) + ' d';
-  return date.toLocaleDateString();
-}
+export default function SocialShell(){
+ const[loading,setLoading]=useState(true),[account,setAccount]=useState<Account|null>(null),[posts,setPosts]=useState<FeedPost[]>([]);
+ const[notifications,setNotifications]=useState<Notice[]>([]),[communities,setCommunities]=useState<Community[]>([]),[invites,setInvites]=useState<Invite[]>([]);
+ const[suggested,setSuggested]=useState<Person[]>([]),[trends,setTrends]=useState<Trend[]>([]),[active,setActive]=useState<Panel>('Home'),[feedMode,setFeedMode]=useState<FeedMode>('balanced');
+ const[draft,setDraft]=useState(''),[status,setStatus]=useState(''),[working,setWorking]=useState(false),[communityName,setCommunityName]=useState(''),[communityDescription,setCommunityDescription]=useState(''),[inviteLabel,setInviteLabel]=useState('Founder invite');
+ const[searchTerm,setSearchTerm]=useState(''),[searchPeople,setSearchPeople]=useState<Person[]>([]),[searchPosts,setSearchPosts]=useState<FeedPost[]>([]),[searching,setSearching]=useState(false);
+ const[bookmarks,setBookmarks]=useState<FeedPost[]>([]),[threadPost,setThreadPost]=useState<FeedPost|null>(null),[comments,setComments]=useState<Comment[]>([]),[replyDraft,setReplyDraft]=useState('');
+ const[profile,setProfile]=useState<Profile|null>(null),[profilePosts,setProfilePosts]=useState<FeedPost[]>([]),[profileEditing,setProfileEditing]=useState(false),[profileForm,setProfileForm]=useState({displayName:'',bio:'',location:'',website:''});
+ const[conversations,setConversations]=useState<Conversation[]>([]),[conversation,setConversation]=useState<Conversation|null>(null),[messages,setMessages]=useState<Message[]>([]),[messageDraft,setMessageDraft]=useState(''),[mobileComposer,setMobileComposer]=useState(false);
+ const inviteHandled=useRef(false);
+ const displayName=account?.display_name||account?.displayName||account?.handle||'CONNECTA member',unread=notifications.filter(n=>!n.read_at).length;
 
-function slugify(value: string) {
-  return value.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60);
-}
+ const loadFeed=useCallback(async(mode:FeedMode=feedMode)=>{const{response,data}=await api<any>('/v1/feed?mode='+encodeURIComponent(mode)+'&limit=60');if(response.ok)setPosts(data.posts||[]);},[feedMode]);
+ const hydrate=useCallback(async()=>{setLoading(true);const me=await api<any>('/v1/me');if(!me.response.ok){setAccount(null);setLoading(false);return;}setAccount(me.data.account);const[f,n,c,i,t,s]=await Promise.all([api<any>('/v1/feed?mode='+encodeURIComponent(feedMode)+'&limit=60'),api<any>('/v1/notifications'),api<any>('/v1/communities/discover?limit=50'),api<any>('/v1/invites'),api<any>('/v1/trends?limit=8'),api<any>('/v1/suggestions?limit=6')]);if(f.response.ok)setPosts(f.data.posts||[]);if(n.response.ok)setNotifications(n.data.notifications||[]);if(c.response.ok)setCommunities(c.data.communities||[]);if(i.response.ok)setInvites(i.data.invites||[]);if(t.response.ok)setTrends(t.data.trends||[]);if(s.response.ok)setSuggested(s.data.profiles||[]);setLoading(false);},[feedMode]);
+ useEffect(()=>{void hydrate();},[hydrate]);
+ useEffect(()=>{if(!account||inviteHandled.current||typeof window==='undefined')return;const p=new URLSearchParams(window.location.search),code=p.get('invite');if(!code)return;inviteHandled.current=true;void api<any>('/v1/invites/'+encodeURIComponent(code)+'/redeem',{method:'POST'}).then(({response,data})=>{setStatus(response.ok?'Founder invite accepted. Welcome to CONNECTA.':data?.error||'Invite could not be redeemed.');p.delete('invite');const q=p.toString();window.history.replaceState({},'',window.location.pathname+(q?'?'+q:''));});},[account]);
 
-function AuthGateway({ onReady }: { onReady: () => Promise<void> }) {
-  const [mode, setMode] = useState<'login' | 'register'>('register');
-  const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState('');
-  const [form, setForm] = useState({ email: '', password: '', handle: '', displayName: '' });
+ function patchPost(id:string,patch:Partial<FeedPost>){setPosts(x=>x.map(p=>p.id===id?{...p,...patch}:p));setSearchPosts(x=>x.map(p=>p.id===id?{...p,...patch}:p));setBookmarks(x=>x.map(p=>p.id===id?{...p,...patch}:p));setProfilePosts(x=>x.map(p=>p.id===id?{...p,...patch}:p));if(threadPost?.id===id)setThreadPost({...threadPost,...patch});}
+ async function publish(e?:FormEvent){e?.preventDefault();const text=draft.trim();if(!text||working)return;setWorking(true);const{response,data}=await api<any>('/v1/posts',{method:'POST',body:JSON.stringify({body:text,visibility:'public'})});setWorking(false);if(!response.ok){setStatus(data?.message||data?.error||'Post could not be published.');return;}setDraft('');setMobileComposer(false);setStatus(data?.post?.moderation_state==='review'?'Post is being reviewed before distribution.':'Published.');await loadFeed();}
+ async function changeFeed(mode:FeedMode){setFeedMode(mode);setActive('Home');await loadFeed(mode);}
+ async function toggleReaction(post:FeedPost){const{response,data}=await api<any>('/v1/posts/'+post.id+'/reaction-toggle',{method:'POST',body:JSON.stringify({kind:'appreciate'})});if(!response.ok)return setStatus(data?.error||'Could not react.');patchPost(post.id,{viewer_reacted:data.reacted,reaction_count:Math.max(0,Number(post.reaction_count||0)+(data.reacted?1:-1))});}
+ async function toggleRepost(post:FeedPost){const{response,data}=await api<any>('/v1/posts/'+post.id+'/repost-toggle',{method:'POST'});if(!response.ok)return setStatus(data?.error||'Could not repost.');patchPost(post.id,{viewer_reposted:data.reposted,repost_count:Math.max(0,Number(post.repost_count||0)+(data.reposted?1:-1))});setStatus(data.reposted?'Reposted with original attribution preserved.':'Repost removed.');}
+ async function toggleBookmark(post:FeedPost){const{response,data}=await api<any>('/v1/posts/'+post.id+'/bookmark-toggle',{method:'POST'});if(!response.ok)return setStatus(data?.error||'Could not save post.');patchPost(post.id,{viewer_bookmarked:data.bookmarked});setBookmarks(x=>data.bookmarked?[post,...x.filter(i=>i.id!==post.id)]:x.filter(i=>i.id!==post.id));}
+ async function openThread(post:FeedPost){setThreadPost(post);setComments([]);setReplyDraft('');const{response,data}=await api<any>('/v1/posts/'+post.id+'/comments?limit=200');if(response.ok)setComments(data.comments||[]);}
+ async function sendReply(e:FormEvent){e.preventDefault();if(!threadPost||!replyDraft.trim())return;setWorking(true);const{response,data}=await api<any>('/v1/posts/'+threadPost.id+'/comments',{method:'POST',body:JSON.stringify({body:replyDraft.trim()})});setWorking(false);if(!response.ok)return setStatus(data?.error||data?.message||'Could not reply.');setReplyDraft('');patchPost(threadPost.id,{reply_count:Number(threadPost.reply_count||0)+1});await openThread(threadPost);}
+ async function shareNative(post:FeedPost){const text=post.display_name+' (@'+post.handle+'): '+post.body;if(navigator.share)await navigator.share({title:'CONNECTA',text}).catch(()=>undefined);else{await navigator.clipboard?.writeText(text);setStatus('Post copied.');}}
+ async function reportPost(post:FeedPost){const reason=window.prompt('Describe the safety concern.');if(!reason?.trim())return;const{response,data}=await api<any>('/v1/reports',{method:'POST',body:JSON.stringify({targetType:'post',targetId:post.id,reason:reason.trim(),detail:reason.trim()})});setStatus(response.ok?data?.message||'Safety report submitted.':data?.error||'Could not report.');}
+ async function searchNetwork(value=searchTerm){const q=value.trim();if(!q)return;setSearchTerm(q);setActive('Explore');setSearching(true);const{response,data}=await api<any>('/v1/search?q='+encodeURIComponent(q)+'&limit=40');setSearching(false);if(!response.ok)return setStatus(data?.error||'Search unavailable.');setSearchPeople(data.profiles||[]);setSearchPosts(data.posts||[]);}
+ async function openProfile(handle:string){const clean=handle.replace(/^@/,'');setActive('Profile');setProfile(null);setProfilePosts([]);const{response,data}=await api<any>('/v1/profiles/'+encodeURIComponent(clean));if(!response.ok)return setStatus(data?.error||'Profile unavailable.');setProfile(data.profile);setProfilePosts(data.posts||[]);setProfileForm({displayName:data.profile.display_name||'',bio:data.profile.bio||'',location:data.profile.location||data.profile.city||'',website:data.profile.website||''});setProfileEditing(false);}
+ async function toggleFollow(person:Person|Profile){const{response,data}=await api<any>('/v1/follows/'+person.id+'/toggle',{method:'POST'});if(!response.ok)return setStatus(data?.error||'Could not update follow.');setSuggested(x=>x.map(p=>p.id===person.id?{...p,viewer_following:data.following}:p));setSearchPeople(x=>x.map(p=>p.id===person.id?{...p,viewer_following:data.following}:p));if(profile?.id===person.id)setProfile({...profile,viewer_following:data.following,follower_count:Math.max(0,Number(profile.follower_count||0)+(data.following?1:-1))});}
+ async function saveProfile(e:FormEvent){e.preventDefault();const{response,data}=await api<any>('/v1/profile',{method:'PATCH',body:JSON.stringify(profileForm)});if(!response.ok)return setStatus(data?.error||'Could not update profile.');setProfileEditing(false);setStatus('Profile updated.');await hydrate();await openProfile(account?.handle||'');}
+ async function loadBookmarks(){setActive('Bookmarks');const{response,data}=await api<any>('/v1/bookmarks?limit=100');if(response.ok)setBookmarks(data.posts||[]);}
+ async function loadMessages(){setActive('Messages');setConversation(null);const{response,data}=await api<any>('/v1/conversations?limit=100');if(response.ok)setConversations(data.conversations||[]);}
+ async function startConversation(){const h=window.prompt('Enter a CONNECTA handle, for example @name');if(!h?.trim())return;const{response,data}=await api<any>('/v1/conversations',{method:'POST',body:JSON.stringify({handle:h.trim().replace(/^@/,'')})});if(!response.ok)return setStatus(data?.error||'Could not start conversation.');await loadMessages();setConversation({...data.conversation,members:[data.recipient]});const m=await api<any>('/v1/conversations/'+data.conversation.id+'/messages?limit=300');if(m.response.ok)setMessages(m.data.messages||[]);}
+ async function openConversation(item:Conversation){setConversation(item);const{response,data}=await api<any>('/v1/conversations/'+item.id+'/messages?limit=300');if(!response.ok)return setStatus(data?.error||'Could not load messages.');setMessages(data.messages||[]);}
+ async function sendMessage(e:FormEvent){e.preventDefault();if(!conversation||!messageDraft.trim())return;const{response,data}=await api<any>('/v1/conversations/'+conversation.id+'/messages',{method:'POST',body:JSON.stringify({body:messageDraft.trim()})});if(!response.ok)return setStatus(data?.error||'Message could not be sent.');setMessageDraft('');await openConversation(conversation);}
+ async function joinCommunity(id:string){setWorking(true);const{response,data}=await api<any>('/v1/communities/'+id+'/join',{method:'POST'});setWorking(false);setStatus(response.ok?'Community joined.':data?.error||'Could not join community.');if(response.ok)await hydrate();}
+ async function createCommunity(e:FormEvent){e.preventDefault();const name=communityName.trim();if(!name)return;setWorking(true);const{response,data}=await api<any>('/v1/communities',{method:'POST',body:JSON.stringify({name,slug:slugify(name),description:communityDescription,visibility:'public'})});setWorking(false);if(!response.ok)return setStatus(data?.error||'Could not create community.');setCommunityName('');setCommunityDescription('');setStatus('Community created.');await hydrate();}
+ async function createInvite(e:FormEvent){e.preventDefault();setWorking(true);const{response,data}=await api<any>('/v1/invites',{method:'POST',body:JSON.stringify({label:inviteLabel||'CONNECTA invite',expiresInDays:30,maxUses:25})});setWorking(false);if(!response.ok)return setStatus(data?.error||'Could not create invite.');setStatus('Founder invite created.');await hydrate();}
+ async function copyInvite(code:string){await navigator.clipboard?.writeText(window.location.origin+'/?invite='+encodeURIComponent(code));setStatus('Invite link copied.');}
+ async function markRead(n:Notice){if(n.read_at)return;const{response}=await api('/v1/notifications/'+n.id+'/read',{method:'POST'});if(response.ok)setNotifications(x=>x.map(i=>i.id===n.id?{...i,read_at:new Date().toISOString()}:i));}
+ async function logout(){await api('/v1/auth/logout',{method:'POST'});setAccount(null);setPosts([]);setActive('Home');}
+ function selectPanel(p:Panel){setThreadPost(null);if(p==='Bookmarks')return void loadBookmarks();if(p==='Messages')return void loadMessages();if(p==='Profile')return void openProfile(account?.handle||'');setActive(p);}
+ function trendClick(tag:string){setSearchTerm(tag);void searchNetwork(tag);}
 
-  async function submit(event: FormEvent) {
-    event.preventDefault();
-    setBusy(true);
-    setMessage('');
-    const endpoint = mode === 'register' ? '/v1/auth/register' : '/v1/auth/login';
-    const body = mode === 'register'
-      ? form
-      : { email: form.email, password: form.password };
-    const { response, data } = await api<any>(endpoint, {
-      method: 'POST',
-      body: JSON.stringify(body),
-    });
-    setBusy(false);
-    if (!response.ok) {
-      const notice = data?.notice?.title ? data.notice.title + ': ' + data.notice.body : data?.error;
-      setMessage(notice || 'CONNECTA could not sign you in.');
-      return;
-    }
-    await onReady();
-  }
+ if(loading)return <main className="cxLoading"><div className="cxBrandMark">C</div><strong>CONNECTA</strong><span>Connecting to sovereign engine…</span></main>;
+ if(!account)return <AuthGateway onReady={hydrate}/>;
+ const currentFeed=feedModes.find(x=>x.value===feedMode),profileIsMe=profile?.id===account.id;
+ const otherMembers=conversation?.members?.filter(m=>m.id!==account.id)||[];
 
-  return (
-    <main className="authPage">
-      <section className="authBrand">
-        <div className="brandWrap large">
-          <div className="brandMark">C</div>
-          <div><div className="brand">CONNECTA</div><div className="tagline">People. Communities. Connected.</div></div>
-        </div>
-        <div className="eyebrow">People, not profiling.</div>
-        <h1>A social network built around <span>real relationships</span>, not surveillance.</h1>
-        <p>Connect with people and communities while keeping control of your feed, identity and content. No advertising IDs. No silent behavioural profiling.</p>
-        <div className="trustTiles">
-          <div><strong>Safety enforced</strong><span>Cyberbullying, threats, doxxing, cloning and prohibited abuse are actively handled.</span></div>
-          <div><strong>Content protected</strong><span>Shares preserve attribution. Exact and high-confidence altered picture copies can alert the earlier uploader.</span></div>
-          <div><strong>Businesses verified</strong><span>Verified-business badges require reviewed evidence and cannot simply be purchased.</span></div>
-          <div><strong>Owned engine</strong><span>CONNECTA runs on its own provider-independent engine and PostgreSQL social graph.</span></div>
-        </div>
-        <div className="authLinks"><Link href="/safety">Safety Centre</Link><Link href="/community-standards">Community Standards</Link></div>
-      </section>
+ function PostCard({post}:{post:FeedPost}){return <article className="cxPost"><button className="cxAvatarButton" onClick={()=>void openProfile(post.handle)}><Avatar name={post.display_name}/></button><div className="cxPostBody"><div className="cxPostHead"><button className="cxIdentity" onClick={()=>void openProfile(post.handle)}><strong>{post.display_name}</strong>{post.verified?<Verified/>:null}<span>@{post.handle}</span><i>·</i><span>{when(post.created_at)}</span></button><button className="cxMore" onClick={()=>void reportPost(post)}>•••</button></div><PostText text={post.body} onTag={trendClick} onHandle={h=>void openProfile(h)}/>{post.community_id?<div className="cxContextChip">Community post</div>:null}<div className="cxPostActions"><button onClick={()=>void openThread(post)}><span>◯</span><b>{compact(post.reply_count)}</b></button><button className={post.viewer_reposted?'reposted':''} onClick={()=>void toggleRepost(post)}><span>⇄</span><b>{compact(post.repost_count)}</b></button><button className={post.viewer_reacted?'liked':''} onClick={()=>void toggleReaction(post)}><span>{post.viewer_reacted?'♥':'♡'}</span><b>{compact(post.reaction_count)}</b></button><button className={post.viewer_bookmarked?'bookmarked':''} onClick={()=>void toggleBookmark(post)}><span>▱</span></button><button onClick={()=>void shareNative(post)}><span>↗</span></button></div></div></article>;}
 
-      <section className="authCard">
-        <div className="authTabs">
-          <button className={mode === 'register' ? 'active' : ''} onClick={() => { setMode('register'); setMessage(''); }}>Create account</button>
-          <button className={mode === 'login' ? 'active' : ''} onClick={() => { setMode('login'); setMessage(''); }}>Sign in</button>
-        </div>
-        <div className="eyebrow">{mode === 'register' ? 'Founder access' : 'Welcome back'}</div>
-        <h2>{mode === 'register' ? 'Join CONNECTA' : 'Sign in to CONNECTA'}</h2>
-        <form onSubmit={submit} className="authForm">
-          {mode === 'register' && <>
-            <label>Display name<input required maxLength={100} value={form.displayName} onChange={(e) => setForm({ ...form, displayName: e.target.value })} placeholder="Your name" /></label>
-            <label>Handle<input required minLength={3} maxLength={40} value={form.handle} onChange={(e) => setForm({ ...form, handle: e.target.value })} placeholder="your.handle" /></label>
-          </>}
-          <label>Email<input required type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="you@example.com" /></label>
-          <label>Password<input required type="password" minLength={12} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder="Use a strong passphrase" /></label>
-          <button className="authSubmit" disabled={busy}>{busy ? 'Connecting…' : mode === 'register' ? 'Create my CONNECTA account' : 'Sign in'}</button>
-        </form>
-        {message && <div className="authMessage">{message}</div>}
-        <p className="authFine">Your session is kept in a secure HTTP-only cookie. CONNECTA does not store the session token in browser local storage.</p>
-      </section>
-    </main>
-  );
-}
+ return <main className="cxApp">
+  <aside className="cxLeft"><button className="cxBrandLockup compact" onClick={()=>selectPanel('Home')}><span className="cxBrandMark">C</span><span><strong>CONNECTA</strong><small>by IZAKHONO</small></span></button><nav className="cxNav">{nav.map(item=><button key={item.panel} className={active===item.panel?'active':''} onClick={()=>selectPanel(item.panel)}><span>{item.icon}</span><b>{item.label}</b>{item.panel==='Notifications'&&unread>0?<em>{unread}</em>:null}</button>)}</nav><button className="cxComposeButton" onClick={()=>{setActive('Home');setMobileComposer(true);}}>Post</button><button className="cxAccountButton" onClick={()=>selectPanel('Profile')}><Avatar name={displayName} small/><span><strong>{displayName}</strong><small>@{account.handle}</small></span><i>•••</i></button></aside>
+  <section className="cxCenter"><header className="cxTopbar"><div><strong>{threadPost?'Post':active}</strong><span>{active==='Home'?(currentFeed?.label||'For you')+' · '+(currentFeed?.note||''):'CONNECTA'}</span></div><button className="cxMobilePost" onClick={()=>setMobileComposer(true)}>＋</button></header>{status&&<div className="cxStatus"><span>{status}</span><button onClick={()=>setStatus('')}>×</button></div>}
 
-export default function SocialShell() {
-  const [loading, setLoading] = useState(true);
-  const [account, setAccount] = useState<Account | null>(null);
-  const [posts, setPosts] = useState<FeedPost[]>([]);
-  const [notifications, setNotifications] = useState<Notice[]>([]);
-  const [communities, setCommunities] = useState<Community[]>([]);
-  const [invites, setInvites] = useState<Invite[]>([]);
-  const [active, setActive] = useState<Panel>('Home');
-  const [feedMode, setFeedMode] = useState('balanced');
-  const [draft, setDraft] = useState('');
-  const [status, setStatus] = useState('');
-  const [working, setWorking] = useState(false);
-  const [communityName, setCommunityName] = useState('');
-  const [communityDescription, setCommunityDescription] = useState('');
-  const [inviteLabel, setInviteLabel] = useState('Founder invite');
-  const inviteHandled = useRef(false);
-
-  const displayName = account?.display_name || account?.displayName || account?.handle || 'CONNECTA member';
-  const unread = notifications.filter((item) => !item.read_at).length;
-  const joinedCommunities = communities.filter((item) => item.joined).length;
-  const activationSteps = useMemo(() => [
-    { label: 'Profile created', done: Boolean(account) },
-    { label: 'Join or create a community', done: joinedCommunities > 0 },
-    { label: 'Publish your first meaningful post', done: posts.some((post) => post.handle === account?.handle) },
-  ], [account, joinedCommunities, posts]);
-
-  const loadFeed = useCallback(async (mode = feedMode) => {
-    const { response, data } = await api<any>('/v1/feed?mode=' + encodeURIComponent(mode) + '&limit=50');
-    if (response.ok) setPosts(Array.isArray(data.posts) ? data.posts : []);
-  }, [feedMode]);
-
-  const hydrate = useCallback(async () => {
-    setLoading(true);
-    const me = await api<any>('/v1/me');
-    if (!me.response.ok) {
-      setAccount(null);
-      setLoading(false);
-      return;
-    }
-    setAccount(me.data.account);
-    const [feed, noticeResult, communityResult, inviteResult] = await Promise.all([
-      api<any>('/v1/feed?mode=' + encodeURIComponent(feedMode) + '&limit=50'),
-      api<any>('/v1/notifications'),
-      api<any>('/v1/communities/discover?limit=50'),
-      api<any>('/v1/invites'),
-    ]);
-    if (feed.response.ok) setPosts(feed.data.posts || []);
-    if (noticeResult.response.ok) setNotifications(noticeResult.data.notifications || []);
-    if (communityResult.response.ok) setCommunities(communityResult.data.communities || []);
-    if (inviteResult.response.ok) setInvites(inviteResult.data.invites || []);
-    setLoading(false);
-  }, [feedMode]);
-
-  useEffect(() => { void hydrate(); }, [hydrate]);
-
-  useEffect(() => {
-    if (!account || inviteHandled.current || typeof window === 'undefined') return;
-    const params = new URLSearchParams(window.location.search);
-    const code = params.get('invite');
-    if (!code) return;
-    inviteHandled.current = true;
-    void api<any>('/v1/invites/' + encodeURIComponent(code) + '/redeem', { method: 'POST' }).then(({ response, data }) => {
-      setStatus(response.ok ? 'Founder invite accepted. Welcome to CONNECTA.' : data?.error || 'This invite could not be redeemed.');
-      params.delete('invite');
-      const query = params.toString();
-      window.history.replaceState({}, '', window.location.pathname + (query ? '?' + query : ''));
-    });
-  }, [account]);
-
-  async function publish(event: FormEvent) {
-    event.preventDefault();
-    const text = draft.trim();
-    if (!text || working) return;
-    setWorking(true);
-    setStatus('Publishing through CONNECTA ENGINE…');
-    const { response, data } = await api<any>('/v1/posts', {
-      method: 'POST',
-      body: JSON.stringify({ body: text, visibility: 'public' }),
-    });
-    setWorking(false);
-    if (!response.ok) {
-      setStatus(data?.message || data?.error || 'Post could not be published.');
-      if (response.status === 401 || response.status === 423) setAccount(null);
-      return;
-    }
-    setDraft('');
-    setStatus(data?.post?.moderation_state === 'review'
-      ? 'Your post is being reviewed before public distribution.'
-      : 'Published through the sovereign CONNECTA ENGINE.');
-    await loadFeed();
-  }
-
-  async function changeFeed(mode: string) {
-    setFeedMode(mode);
-    await loadFeed(mode);
-  }
-
-  async function joinCommunity(id: string) {
-    setWorking(true);
-    const { response, data } = await api<any>('/v1/communities/' + id + '/join', { method: 'POST' });
-    setWorking(false);
-    setStatus(response.ok ? 'Community joined.' : data?.error || 'Could not join community.');
-    if (response.ok) await hydrate();
-  }
-
-  async function createCommunity(event: FormEvent) {
-    event.preventDefault();
-    const name = communityName.trim();
-    if (!name) return;
-    setWorking(true);
-    const { response, data } = await api<any>('/v1/communities', {
-      method: 'POST',
-      body: JSON.stringify({
-        name,
-        slug: slugify(name),
-        description: communityDescription,
-        visibility: 'public',
-      }),
-    });
-    setWorking(false);
-    if (!response.ok) {
-      setStatus(data?.error || 'Could not create community.');
-      return;
-    }
-    setCommunityName('');
-    setCommunityDescription('');
-    setStatus('Community created. You are its founding owner.');
-    await hydrate();
-  }
-
-  async function createInvite(event: FormEvent) {
-    event.preventDefault();
-    setWorking(true);
-    const { response, data } = await api<any>('/v1/invites', {
-      method: 'POST',
-      body: JSON.stringify({ label: inviteLabel || 'CONNECTA invite', expiresInDays: 30, maxUses: 25 }),
-    });
-    setWorking(false);
-    if (!response.ok) {
-      setStatus(data?.error || 'Could not create invite.');
-      return;
-    }
-    setStatus('Founder invite created.');
-    await hydrate();
-  }
-
-  async function sharePost(post: FeedPost) {
-    const { response, data } = await api<any>('/v1/shares', {
-      method: 'POST',
-      body: JSON.stringify({ sourceType: 'post', sourceId: post.id, commentary: '' }),
-    });
-    setStatus(response.ok
-      ? 'Shared with original attribution. The original owner was alerted.'
-      : data?.error || 'Could not share this post.');
-  }
-
-  async function reportPost(post: FeedPost) {
-    const reason = window.prompt('Describe the safety concern (for example: cyberbullying, threat, doxxing, impersonation or scam).');
-    if (!reason?.trim()) return;
-    const { response, data } = await api<any>('/v1/reports', {
-      method: 'POST',
-      body: JSON.stringify({ targetType: 'post', targetId: post.id, reason: reason.trim(), detail: reason.trim() }),
-    });
-    setStatus(response.ok
-      ? data?.message || 'Safety report submitted.'
-      : data?.error || 'Could not submit report.');
-  }
-
-  async function markRead(notice: Notice) {
-    if (notice.read_at) return;
-    const { response } = await api('/v1/notifications/' + notice.id + '/read', { method: 'POST' });
-    if (response.ok) {
-      setNotifications((items) => items.map((item) => item.id === notice.id ? { ...item, read_at: new Date().toISOString() } : item));
-    }
-  }
-
-  async function logout() {
-    await api('/v1/auth/logout', { method: 'POST' });
-    setAccount(null);
-    setPosts([]);
-    setNotifications([]);
-    setCommunities([]);
-    setInvites([]);
-    setActive('Home');
-  }
-
-  async function copyInvite(code: string) {
-    const link = window.location.origin + '/?invite=' + encodeURIComponent(code);
-    await navigator.clipboard?.writeText(link);
-    setStatus('Invite link copied.');
-  }
-
-  if (loading) {
-    return <main className="loadingPage"><div className="brandMark">C</div><strong>CONNECTA</strong><span>Connecting to the sovereign engine…</span></main>;
-  }
-
-  if (!account) return <AuthGateway onReady={hydrate} />;
-
-  return (
-    <main className="appShell">
-      <header className="topbar">
-        <div className="brandWrap">
-          <div className="brandMark">C</div>
-          <div><div className="brand">CONNECTA</div><div className="tagline">People. Communities. Connected.</div></div>
-        </div>
-        <div className="engineStatus"><span className="liveDot" /> Sovereign engine connected</div>
-        <div className="topActions">
-          <button className="iconButton notificationBell" aria-label="Notifications" onClick={() => setActive('Notifications')}>✦{unread > 0 && <b>{unread}</b>}</button>
-          <button className="profileButton"><span className="avatar small">{initials(displayName)}</span><span>@{account.handle}</span></button>
-          <button className="logoutButton" onClick={logout}>Sign out</button>
-        </div>
-      </header>
-
-      <div className="privacyStrip"><strong>People, not profiling.</strong> No advertising IDs. No silent tracking. Your feed controls belong to you.</div>
-
-      <div className="threeColumn">
-        <aside className="leftRail">
-          <nav className="navList">
-            {panels.map((item) => <button key={item} className={active === item ? 'navItem active' : 'navItem'} onClick={() => setActive(item)}>
-              <span className="navDot" />{item}{item === 'Notifications' && unread > 0 ? <em>{unread}</em> : null}
-            </button>)}
-          </nav>
-          <div className="railCard">
-            <div className="eyebrow">Your feed</div>
-            <h3>You choose the signal.</h3>
-            <p>Balanced, Latest, Following or Communities. No hidden engagement trap.</p>
-            <select value={feedMode} onChange={(e) => void changeFeed(e.target.value)}>
-              {feedModes.map(([value, label]) => <option value={value} key={value}>{label}</option>)}
-            </select>
-          </div>
-          <div className="railLinks"><Link href="/safety">Safety Centre</Link><Link href="/community-standards">Community Standards</Link></div>
-        </aside>
-
-        <section className="feed">
-          {status && <div className="globalStatus"><span>{status}</span><button onClick={() => setStatus('')}>×</button></div>}
-
-          {active === 'Home' && <>
-            <div className="heroCard">
-              <div><div className="eyebrow">Founder network</div><h1>Welcome, {displayName.split(' ')[0]}.<br/><span>Build your real community.</span></h1><p>CONNECTA is now using its sovereign engine for your account, feed, posts, communities, invitations and safety controls.</p></div>
-              <div className="heroSeal"><strong>REAL</strong><span>engine-backed</span></div>
-            </div>
-
-            <div className="activationCard">
-              <div><div className="eyebrow">Activation path</div><h3>Three actions. Then CONNECTA starts working for you.</h3></div>
-              <div className="activationSteps">
-                {activationSteps.map((step) => <div className={step.done ? 'activationStep done' : 'activationStep'} key={step.label}><span>{step.done ? '✓' : '○'}</span>{step.label}</div>)}
-              </div>
-            </div>
-
-            <form className="composer" onSubmit={publish}>
-              <div className="composerTop"><span className="avatar">{initials(displayName)}</span><textarea value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="Share something meaningful…" maxLength={8000} /></div>
-              <div className="composerBottom"><div className="composerHint">Public post · server-side safety enforcement</div><button className="postButton" disabled={working} type="submit">{working ? 'Working…' : 'Post'}</button></div>
-            </form>
-
-            <div className="feedHeader"><div><strong>{feedModes.find(([value]) => value === feedMode)?.[1]} feed</strong><span>{posts.length} real post{posts.length === 1 ? '' : 's'} from CONNECTA ENGINE</span></div><button onClick={() => void loadFeed()}>Refresh</button></div>
-
-            {posts.length === 0 ? <div className="emptyState"><strong>Your real feed starts here.</strong><p>Join a community and publish the first post. CONNECTA will not fill your feed with fake engagement.</p><button onClick={() => setActive('Communities')}>Discover communities</button></div> : posts.map((post) => <article className="postCard" key={post.id}>
-              <div className="postHeader"><span className="avatar">{initials(post.display_name)}</span><div className="postIdentity"><div><strong>{post.display_name}</strong></div><span>@{post.handle} · {when(post.created_at)}</span></div><button className="more" aria-label="More options">•••</button></div>
-              <p className="postText">{post.body}</p>
-              <div className="postMeta"><span>{post.community_id ? 'Community post' : 'Public post'}</span><span>{post.visibility}</span></div>
-              <div className="postActions"><button onClick={() => void api('/v1/posts/' + post.id + '/reactions', { method: 'POST', body: JSON.stringify({ kind: 'appreciate' }) }).then(() => setStatus('Appreciated.'))}>♡ Appreciate</button><button onClick={() => void sharePost(post)}>↗ Share</button><button onClick={() => void reportPost(post)}>⚑ Report</button></div>
-            </article>)}
-          </>}
-
-          {active === 'Notifications' && <>
-            <div className="sectionIntro"><div className="eyebrow">Private first-party alerts</div><h2>Notifications</h2><p>Safety, content-owner and business verification alerts stay inside CONNECTA. They are not used for behavioural advertising.</p></div>
-            {notifications.length === 0 ? <div className="emptyState"><strong>No notifications yet.</strong><p>When someone shares your content, CONNECTA detects a possible copied picture, or a verification action occurs, it will appear here.</p></div> :
-              notifications.map((notice) => <button className={notice.read_at ? 'noticeCard read' : 'noticeCard'} onClick={() => void markRead(notice)} key={notice.id}>
-                <div><span className="noticeKind">{notice.kind.replaceAll('_', ' ')}</span><span>{when(notice.created_at)}</span></div>
-                <strong>{notice.title}</strong><p>{notice.body}</p>
-              </button>)}
-          </>}
-
-          {active === 'Communities' && <>
-            <div className="sectionIntro"><div className="eyebrow">Relationship-led growth</div><h2>Communities</h2><p>Join a real public community or create one for your school, club, neighbourhood, business, creative network or cause.</p></div>
-            <form className="createCommunityCard" onSubmit={createCommunity}>
-              <h3>Create a community</h3>
-              <input value={communityName} onChange={(e) => setCommunityName(e.target.value)} required maxLength={120} placeholder="Community name" />
-              <textarea value={communityDescription} onChange={(e) => setCommunityDescription(e.target.value)} maxLength={1000} placeholder="What is this community for?" />
-              <button disabled={working}>Create community</button>
-            </form>
-            <div className="communityGrid">
-              {communities.length === 0 ? <div className="emptyState"><strong>No public communities yet.</strong><p>You can become the first founder.</p></div> : communities.map((community) => <article className="communityCard" key={community.id}>
-                <div className="communityIcon">{initials(community.name)}</div>
-                <div><h3>{community.name}</h3><span>@{community.slug} · {Number(community.member_count || 0).toLocaleString()} member{Number(community.member_count || 0) === 1 ? '' : 's'}</span><p>{community.description || 'A CONNECTA community.'}</p></div>
-                <button disabled={community.joined || working} onClick={() => void joinCommunity(community.id)}>{community.joined ? 'Joined' : 'Join'}</button>
-              </article>)}
-            </div>
-          </>}
-
-          {active === 'Invite people' && <>
-            <div className="sectionIntro"><div className="eyebrow">Founder programme</div><h2>Invite real people</h2><p>Grow CONNECTA through people who already trust one another. Invite links are explicit and user-controlled—never scraped or spammed.</p></div>
-            <form className="inviteCreator" onSubmit={createInvite}>
-              <input value={inviteLabel} onChange={(e) => setInviteLabel(e.target.value)} maxLength={80} placeholder="Invite label" />
-              <button disabled={working}>Create 30-day invite</button>
-            </form>
-            <div className="inviteList">
-              {invites.length === 0 ? <div className="emptyState"><strong>No invite codes yet.</strong><p>Create your first founder invite above.</p></div> : invites.map((invite) => <div className="inviteCard" key={invite.id}>
-                <div><span>{invite.label || 'CONNECTA invite'}</span><strong>{invite.code}</strong><small>{invite.use_count || 0} use{invite.use_count === 1 ? '' : 's'} · {invite.active ? 'active' : 'inactive'}</small></div>
-                <button onClick={() => void copyInvite(invite.code)}>Copy link</button>
-              </div>)}
-            </div>
-          </>}
-        </section>
-
-        <aside className="rightRail">
-          <div className="safetyCard"><div className="shield">✓</div><div><div className="eyebrow">Safety Centre</div><h3>Clean social, enforced.</h3></div>
-            <div className="safetyRules"><span>No cyberbullying</span><span>No threats or doxxing</span><span>No account cloning</span><span>Owner alerts on shares/copies</span><span>Businesses verified before badge</span><span>No drugs or porn</span><span>No gang recruitment</span><span>Zero tolerance for child sexual exploitation</span></div>
-            <Link href="/safety" className="primaryLink">See how safety works →</Link>
-          </div>
-
-          <div className="sideCard founderCard"><div className="eyebrow">Your founder progress</div><h3>{activationSteps.filter((step) => step.done).length}/3 activation steps</h3>
-            {activationSteps.map((step) => <div className="miniStep" key={step.label}><span>{step.done ? '✓' : '○'}</span>{step.label}</div>)}
-          </div>
-
-          <div className="sideCard"><div className="sideTitle"><h3>Public communities</h3><button onClick={() => setActive('Communities')}>See all</button></div>
-            {communities.slice(0, 4).map((community) => <div className="community" key={community.id}><span className="communityIcon">{initials(community.name)}</span><div><strong>{community.name}</strong><span>{Number(community.member_count || 0).toLocaleString()} members</span></div></div>)}
-            {communities.length === 0 && <p className="smallMuted">No public communities yet. Found one.</p>}
-          </div>
-        </aside>
-      </div>
-    </main>
-  );
+  {threadPost?<section className="cxThread"><button className="cxBack" onClick={()=>setThreadPost(null)}>← Back</button><PostCard post={threadPost}/><form className="cxReplyComposer" onSubmit={sendReply}><Avatar name={displayName} small/><textarea value={replyDraft} onChange={e=>setReplyDraft(e.target.value)} maxLength={4000} placeholder={'Reply to @'+threadPost.handle}/><button disabled={working||!replyDraft.trim()}>Reply</button></form><div className="cxReplies">{comments.length===0?<Empty title="No replies yet" body="Start the conversation."/>:comments.map(c=><article className="cxReply" key={c.id}><Avatar name={c.display_name} small/><div><div className="cxReplyHead"><button onClick={()=>void openProfile(c.handle)}><strong>{c.display_name}</strong>{c.verified?<Verified/>:null}<span>@{c.handle}</span></button><span>{when(c.created_at)}</span></div><p>{c.body}</p></div></article>)}</div></section>
+  :active==='Home'?<><div className="cxFeedTabs">{feedModes.map(m=><button key={m.value} className={feedMode===m.value?'active':''} onClick={()=>void changeFeed(m.value)}>{m.label}</button>)}</div><form className="cxComposer" onSubmit={publish}><Avatar name={displayName}/><div><textarea value={draft} onChange={e=>setDraft(e.target.value)} maxLength={8000} placeholder="What’s happening?"/><div className="cxComposerMeta"><span>🌍 Everyone</span><span>{draft.length.toLocaleString()} / 8,000</span></div><div className="cxComposerBottom"><div className="cxComposerTools"><button type="button" title="Protected media workflow">▧</button><button type="button" title="Polls planned">◫</button><button type="button" title="Schedule planned">◷</button></div><button className="cxPrimaryButton small" disabled={working||!draft.trim()}>{working?'Posting…':'Post'}</button></div></div></form><div className="cxFeedNotice"><span>◉</span><div><strong>You control this feed.</strong><small>{currentFeed?.note}. No advertising-ID ranking.</small></div><button onClick={()=>void loadFeed()}>Refresh</button></div>{posts.length===0?<div className="cxEmpty large"><strong>Your real feed starts here.</strong><span>CONNECTA will not manufacture fake engagement.</span><button onClick={()=>selectPanel('Explore')}>Find people</button></div>:posts.map(p=><PostCard post={p} key={p.id}/>)}</>
+  :active==='Explore'?<section className="cxPanel"><div className="cxPanelIntro"><span className="cxEyebrow">DISCOVER</span><h2>Search CONNECTA</h2><p>Find people, posts and public conversations.</p></div><form className="cxBigSearch" onSubmit={e=>{e.preventDefault();void searchNetwork();}}><span>⌕</span><input value={searchTerm} onChange={e=>setSearchTerm(e.target.value)} placeholder="Search people, topics or #hashtags" autoFocus/><button>Search</button></form>{searching?<Empty title="Searching…"/>:searchTerm?<><div className="cxSectionTitle"><strong>People</strong><span>{searchPeople.length} results</span></div><div className="cxPeopleList">{searchPeople.map(p=><PersonRow key={p.id} person={p} onProfile={openProfile} onFollow={toggleFollow}/>)}</div><div className="cxSectionTitle"><strong>Posts</strong><span>{searchPosts.length} results</span></div>{searchPosts.map(p=><PostCard post={p} key={p.id}/>)}</>:<div className="cxExploreGrid">{trends.length===0?<Empty title="No manufactured trends" body="Topics appear only after real public posts use them."/>:trends.map(t=><button key={t.tag} onClick={()=>trendClick(t.tag)}><small>Trending · last 7 days</small><strong>{t.tag}</strong><span>{t.count} post{t.count===1?'':'s'}</span></button>)}</div>}</section>
+  :active==='Notifications'?<section className="cxPanel"><div className="cxPanelIntro"><span className="cxEyebrow">ACTIVITY</span><h2>Notifications</h2><p>Follows, replies, reactions, messages and safety alerts.</p></div><div className="cxNoticeList">{notifications.length===0?<Empty title="No notifications yet"/>:notifications.map(n=><button className={n.read_at?'cxNotice read':'cxNotice'} key={n.id} onClick={()=>void markRead(n)}><span className="cxNoticeIcon">{n.kind==='follow'?'＋':n.kind==='message'?'✉':n.kind==='reaction'?'♥':n.kind==='reply'?'◯':'◇'}</span><span><strong>{n.title}</strong><p>{n.body}</p><small>{when(n.created_at)}</small></span></button>)}</div></section>
+  :active==='Bookmarks'?<section className="cxPanel"><div className="cxPanelIntro"><span className="cxEyebrow">PRIVATE TO YOU</span><h2>Bookmarks</h2><p>Saved posts are not used for behavioural advertising.</p></div>{bookmarks.length===0?<Empty title="No bookmarks yet" body="Use ▱ on a post to save it here."/>:bookmarks.map(p=><PostCard post={p} key={p.id}/>)}</section>
+  :active==='Messages'?<section className="cxPanel cxMessagesPanel"><div className="cxPanelIntro inline"><div><span className="cxEyebrow">PRIVATE CONVERSATION</span><h2>Messages</h2></div><button className="cxSecondaryButton" onClick={()=>void startConversation()}>New message</button></div><div className="cxMessagesGrid"><div className="cxConversationList">{conversations.length===0?<Empty title="No messages yet" body="Start a conversation by handle."/>:conversations.map(c=>{const other=c.members?.find(m=>m.id!==account.id);return <button key={c.id} className={conversation?.id===c.id?'active':''} onClick={()=>void openConversation(c)}><Avatar name={other?.display_name||c.title||'Conversation'} small/><span><strong>{other?.display_name||c.title||'Conversation'}</strong><small>{c.last_message||'@'+(other?.handle||'conversation')}</small></span><i>{when(c.last_message_at||c.updated_at||c.created_at)}</i></button>;})}</div><div className="cxMessageThread">{!conversation?<Empty title="Select a conversation" body="Private messages use the same safety and block controls as the public network."/>:<><div className="cxMessageHead"><Avatar name={otherMembers[0]?.display_name||conversation.title||'Conversation'} small/><div><strong>{otherMembers[0]?.display_name||conversation.title||'Conversation'}</strong><small>@{otherMembers[0]?.handle||'group'}</small></div></div><div className="cxMessageBody">{messages.length===0?<Empty title="No messages yet" body="Say hello."/>:messages.map(m=><div key={m.id} className={m.sender_id===account.id?'cxBubble mine':'cxBubble'}><small>{m.sender_id===account.id?'You':m.display_name}</small><p>{m.body}</p><i>{when(m.created_at)}</i></div>)}</div><form className="cxMessageComposer" onSubmit={sendMessage}><input value={messageDraft} onChange={e=>setMessageDraft(e.target.value)} maxLength={8000} placeholder="Write a message…"/><button disabled={!messageDraft.trim()}>Send</button></form></>}</div></div></section>
+  :active==='Communities'?<section className="cxPanel"><div className="cxPanelIntro"><span className="cxEyebrow">COMMUNITIES</span><h2>Find your people</h2><p>Public spaces for interests, industries, places and causes.</p></div><form className="cxCommunityCreate" onSubmit={createCommunity}><input value={communityName} onChange={e=>setCommunityName(e.target.value)} required maxLength={120} placeholder="Community name"/><input value={communityDescription} onChange={e=>setCommunityDescription(e.target.value)} maxLength={1000} placeholder="What is it for?"/><button disabled={working}>Create</button></form><div className="cxCommunityList">{communities.length===0?<Empty title="No public communities yet" body="Become the first founder."/>:communities.map(c=><article key={c.id}><div className="cxCommunityMark">{initials(c.name)}</div><div><strong>{c.name}</strong><small>@{c.slug} · {Number(c.member_count||0).toLocaleString()} members</small><p>{c.description||'A CONNECTA community.'}</p></div><button disabled={c.joined||working} onClick={()=>void joinCommunity(c.id)}>{c.joined?'Joined':'Join'}</button></article>)}</div></section>
+  :active==='Profile'?<section className="cxPanel">{!profile?<Empty title="Loading profile…"/>:<><div className="cxProfile"><div className="cxProfileCover"/><div className="cxProfileInfo"><Avatar name={profile.display_name}/><div className="cxProfileActions">{profileIsMe?<button className="cxSecondaryButton" onClick={()=>setProfileEditing(x=>!x)}>Edit profile</button>:<button className={profile.viewer_following?'cxSecondaryButton active':'cxFollowButton'} onClick={()=>void toggleFollow(profile)}>{profile.viewer_following?'Following':'Follow'}</button>}</div><h2>{profile.display_name}{profile.verified?<Verified/>:null}</h2><span className="cxHandle">@{profile.handle}</span><p>{profile.bio||'Member of CONNECTA.'}</p><div className="cxProfileMeta">{profile.location?<span>⌖ {profile.location}</span>:null}{profile.website?<a href={profile.website.startsWith('http')?profile.website:'https://'+profile.website} target="_blank" rel="noreferrer">↗ {profile.website}</a>:null}{profile.created_at?<span>◷ Joined {new Date(profile.created_at).toLocaleDateString(undefined,{month:'long',year:'numeric'})}</span>:null}</div><div className="cxProfileStats"><span><b>{Number(profile.following_count||0).toLocaleString()}</b> Following</span><span><b>{Number(profile.follower_count||0).toLocaleString()}</b> Followers</span></div></div></div>{profileEditing&&profileIsMe?<form className="cxProfileEdit" onSubmit={saveProfile}><h3>Edit profile</h3><label>Name<input value={profileForm.displayName} onChange={e=>setProfileForm({...profileForm,displayName:e.target.value})}/></label><label>Bio<textarea value={profileForm.bio} onChange={e=>setProfileForm({...profileForm,bio:e.target.value})}/></label><label>Location<input value={profileForm.location} onChange={e=>setProfileForm({...profileForm,location:e.target.value})}/></label><label>Website<input value={profileForm.website} onChange={e=>setProfileForm({...profileForm,website:e.target.value})}/></label><div><button type="button" className="cxSecondaryButton" onClick={()=>setProfileEditing(false)}>Cancel</button><button className="cxPrimaryButton small">Save</button></div></form>:null}<div className="cxSectionTitle"><strong>Posts</strong><span>{profilePosts.length} public</span></div>{profilePosts.length===0?<Empty title="No public posts yet"/>:profilePosts.map(p=><PostCard post={p} key={p.id}/>)}</>}</section>
+  :<section className="cxPanel"><div className="cxPanelIntro"><span className="cxEyebrow">GROW CONNECTA</span><h2>Invite real people</h2><p>Explicit founder invites—never scraped contacts or spam.</p></div><form className="cxInviteCreate" onSubmit={createInvite}><input value={inviteLabel} onChange={e=>setInviteLabel(e.target.value)} maxLength={80}/><button disabled={working}>Create 30-day invite</button></form><div className="cxInviteList">{invites.length===0?<Empty title="No invite codes yet"/>:invites.map(i=><article key={i.id}><div><small>{i.label||'CONNECTA invite'}</small><strong>{i.code}</strong><span>{i.use_count||0} uses · {i.active?'active':'inactive'}</span></div><button onClick={()=>void copyInvite(i.code)}>Copy link</button></article>)}</div></section>}
+  </section>
+  <aside className="cxRight"><form className="cxSearchBox" onSubmit={e=>{e.preventDefault();void searchNetwork();}}><span>⌕</span><input value={searchTerm} onChange={e=>setSearchTerm(e.target.value)} placeholder="Search CONNECTA"/><button>↵</button></form><section className="cxSideCard cxNetworkCard"><span className="cxEyebrow">CONNECTA BY IZAKHONO</span><h2>African-built public conversation.</h2><p>Fast social interaction with user-controlled feeds, content provenance and a sovereign engine underneath.</p><div className="cxNetworkPills"><span>No ad IDs</span><span>Own engine</span><span>Safety built in</span></div></section><section className="cxSideCard"><div className="cxSideTitle"><h3>What’s happening</h3><button onClick={()=>selectPanel('Explore')}>Explore</button></div><div className="cxTrends">{trends.length===0?<p className="cxMuted">Real trends appear after real conversation.</p>:trends.slice(0,6).map(t=><button key={t.tag} onClick={()=>trendClick(t.tag)}><small>Trending · 7 days</small><strong>{t.tag}</strong><span>{t.count} posts</span></button>)}</div></section><section className="cxSideCard"><div className="cxSideTitle"><h3>Who to follow</h3><button onClick={()=>selectPanel('Explore')}>See more</button></div><div className="cxPeopleList compact">{suggested.length===0?<p className="cxMuted">Suggestions appear as real members join.</p>:suggested.map(p=><PersonRow key={p.id} person={p} onProfile={openProfile} onFollow={toggleFollow}/>)}</div></section><footer className="cxFooter"><Link href="/safety">Safety</Link><Link href="/community-standards">Standards</Link><button onClick={logout}>Sign out</button><span>© 2026 IZAKHONO AFRICA</span></footer></aside>
+  <nav className="cxMobileNav">{nav.slice(0,6).map(item=><button key={item.panel} className={active===item.panel?'active':''} onClick={()=>selectPanel(item.panel)}><span>{item.icon}</span>{item.panel==='Notifications'&&unread>0?<em>{unread}</em>:null}</button>)}</nav>
+  {mobileComposer?<div className="cxModalBackdrop" onClick={e=>{if(e.target===e.currentTarget)setMobileComposer(false);}}><form className="cxModalComposer" onSubmit={publish}><div className="cxModalHead"><button type="button" onClick={()=>setMobileComposer(false)}>×</button><strong>Create post</strong><span/></div><textarea autoFocus value={draft} onChange={e=>setDraft(e.target.value)} maxLength={8000} placeholder="What’s happening?"/><div className="cxModalBottom"><span>{draft.length.toLocaleString()} / 8,000</span><button className="cxPrimaryButton small" disabled={working||!draft.trim()}>Post</button></div></form></div>:null}
+ </main>;
 }

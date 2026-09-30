@@ -61,9 +61,27 @@ import {
   shareContent,
   submitBusinessVerification,
 } from './trust.js';
+import {
+  createDirectConversation,
+  listBookmarks,
+  listComments,
+  listConversations,
+  listMessages,
+  postById,
+  profileByHandle,
+  searchNetwork,
+  sendMessage,
+  suggestions,
+  toggleBookmark,
+  toggleFollow,
+  togglePostReaction,
+  toggleRepost,
+  trends,
+  updateProfile,
+} from './social.js';
 
 const PORT = Number(process.env.CONNECTA_ENGINE_PORT || process.env.PORT || 4100);
-const ENGINE_VERSION = process.env.CONNECTA_ENGINE_VERSION || '0.2.0';
+const ENGINE_VERSION = process.env.CONNECTA_ENGINE_VERSION || '0.3.0';
 const ENGINE_INSTANCE = process.env.CONNECTA_ENGINE_INSTANCE || 'connecta-engine';
 const MAX_JSON_BYTES = Number(process.env.MAX_JSON_BYTES || 1_000_000);
 const MAX_MEDIA_BYTES = Number(process.env.MAX_MEDIA_BYTES || 25 * 1024 * 1024);
@@ -357,8 +375,16 @@ async function feed(req, res, account) {
   }
 
   const result = await query(
-    `select p.id,p.body,p.visibility,p.created_at,p.community_id,
-            pr.handle,pr.display_name,
+    `select p.id,p.author_id,p.body,p.visibility,p.created_at,p.updated_at,p.community_id,
+            pr.handle,pr.display_name,pr.avatar_key,
+            exists(select 1 from businesses b where b.owner_id=p.author_id and b.verification_state='verified') as verified,
+            (select count(*)::int from comments c where c.post_id=p.id and c.deleted_at is null and c.moderation_state='allowed') as reply_count,
+            (select count(*)::int from reactions r where r.post_id=p.id) as reaction_count,
+            (select count(*)::int from post_reposts rr where rr.post_id=p.id) as repost_count,
+            exists(select 1 from reactions vr where vr.post_id=p.id and vr.actor_id=$1) as viewer_reacted,
+            exists(select 1 from bookmarks vb where vb.post_id=p.id and vb.account_id=$1) as viewer_bookmarked,
+            exists(select 1 from post_reposts vrr where vrr.post_id=p.id and vrr.actor_id=$1) as viewer_reposted,
+            exists(select 1 from follows vf where vf.followed_id=p.author_id and vf.follower_id=$1) as viewer_following,
             ${score} as relationship_rank
        from posts p
        join profiles pr on pr.account_id=p.author_id
@@ -910,6 +936,42 @@ async function route(req, res) {
   }
   if (req.method === 'GET' && url.pathname === '/v1/feed') return feed(req, res, account);
   if (req.method === 'POST' && url.pathname === '/v1/posts') return createPost(req, res, account);
+
+  if (req.method === 'GET' && url.pathname === '/v1/search') {
+    const result = await searchNetwork(account.id, url.searchParams.get('q') || '', url.searchParams.get('limit'));
+    return send(res, 200, { ok: true, ...result });
+  }
+  if (req.method === 'GET' && url.pathname === '/v1/trends') {
+    return send(res, 200, {
+      ok: true,
+      ranking: 'Hashtag frequency in allowed public posts from the last 7 days; no behavioural profile used.',
+      trends: await trends(url.searchParams.get('limit')),
+    });
+  }
+  if (req.method === 'GET' && url.pathname === '/v1/suggestions') {
+    return send(res, 200, {
+      ok: true,
+      ranking: 'Public accounts ordered by follower count and recency; no behavioural profile used.',
+      profiles: await suggestions(account.id, url.searchParams.get('limit')),
+    });
+  }
+  if (req.method === 'PATCH' && url.pathname === '/v1/profile') {
+    const result = await updateProfile(account.id, await readJson(req));
+    if (result.error) return send(res, 400, { ok: false, error: result.error });
+    return send(res, 200, { ok: true, ...result });
+  }
+  if (req.method === 'GET' && url.pathname === '/v1/bookmarks') {
+    return send(res, 200, { ok: true, posts: await listBookmarks(account.id, url.searchParams.get('limit')) });
+  }
+  if (req.method === 'GET' && url.pathname === '/v1/conversations') {
+    return send(res, 200, { ok: true, conversations: await listConversations(account.id, url.searchParams.get('limit')) });
+  }
+  if (req.method === 'POST' && url.pathname === '/v1/conversations') {
+    const body = await readJson(req);
+    const result = await createDirectConversation(account, body.handle);
+    if (result.error) return send(res, 400, { ok: false, error: result.error });
+    return send(res, result.existing ? 200 : 201, { ok: true, ...result });
+  }
   if (req.method === 'POST' && url.pathname === '/v1/reports') return reportTarget(req, res, account);
   if (req.method === 'POST' && url.pathname === '/v1/shares') {
     const body = await readJson(req);
@@ -963,14 +1025,73 @@ async function route(req, res) {
     );
   }
 
+  const profileMatch = url.pathname.match(/^\/v1\/profiles\/([^/]+)$/);
+  if (req.method === 'GET' && profileMatch) {
+    const result = await profileByHandle(account.id, decodeURIComponent(profileMatch[1]));
+    if (!result) return send(res, 404, { ok: false, error: 'Profile not found' });
+    return send(res, 200, { ok: true, ...result });
+  }
+
+  const postDetail = url.pathname.match(/^\/v1\/posts\/([0-9a-f-]+)$/i);
+  if (req.method === 'GET' && postDetail) {
+    const post = await postById(account.id, postDetail[1]);
+    if (!post) return send(res, 404, { ok: false, error: 'Post not found' });
+    return send(res, 200, { ok: true, post });
+  }
+
   const postComment = url.pathname.match(/^\/v1\/posts\/([0-9a-f-]+)\/comments$/i);
+  if (req.method === 'GET' && postComment) {
+    return send(res, 200, { ok: true, comments: await listComments(account.id, postComment[1], url.searchParams.get('limit')) });
+  }
   if (req.method === 'POST' && postComment) return createComment(req, res, account, postComment[1]);
 
   const postReaction = url.pathname.match(/^\/v1\/posts\/([0-9a-f-]+)\/reactions$/i);
   if (req.method === 'POST' && postReaction) return react(req, res, account, postReaction[1]);
 
+  const postReactionToggle = url.pathname.match(/^\/v1\/posts\/([0-9a-f-]+)\/reaction-toggle$/i);
+  if (req.method === 'POST' && postReactionToggle) {
+    const body = await readJson(req);
+    const result = await togglePostReaction(account, postReactionToggle[1], body.kind);
+    if (result.error) return send(res, 400, { ok: false, error: result.error });
+    return send(res, 200, { ok: true, ...result });
+  }
+
+  const postBookmarkToggle = url.pathname.match(/^\/v1\/posts\/([0-9a-f-]+)\/bookmark-toggle$/i);
+  if (req.method === 'POST' && postBookmarkToggle) {
+    const result = await toggleBookmark(account.id, postBookmarkToggle[1]);
+    if (result.error) return send(res, 400, { ok: false, error: result.error });
+    return send(res, 200, { ok: true, ...result });
+  }
+
+  const postRepostToggle = url.pathname.match(/^\/v1\/posts\/([0-9a-f-]+)\/repost-toggle$/i);
+  if (req.method === 'POST' && postRepostToggle) {
+    const result = await toggleRepost(account, postRepostToggle[1]);
+    if (result.error) return send(res, 400, { ok: false, error: result.error });
+    return send(res, 200, { ok: true, ...result });
+  }
+
+  const followToggle = url.pathname.match(/^\/v1\/follows\/([0-9a-f-]+)\/toggle$/i);
+  if (req.method === 'POST' && followToggle) {
+    const result = await toggleFollow(account, followToggle[1]);
+    if (result.error) return send(res, 400, { ok: false, error: result.error });
+    return send(res, 200, { ok: true, ...result });
+  }
+
   const followMatch = url.pathname.match(/^\/v1\/follows\/([0-9a-f-]+)$/i);
   if (req.method === 'POST' && followMatch) return follow(req, res, account, followMatch[1]);
+
+  const conversationMessages = url.pathname.match(/^\/v1\/conversations\/([0-9a-f-]+)\/messages$/i);
+  if (req.method === 'GET' && conversationMessages) {
+    const result = await listMessages(account.id, conversationMessages[1], url.searchParams.get('limit'));
+    if (result.error) return send(res, 404, { ok: false, error: result.error });
+    return send(res, 200, { ok: true, ...result });
+  }
+  if (req.method === 'POST' && conversationMessages) {
+    const body = await readJson(req);
+    const result = await sendMessage(account, conversationMessages[1], body.body);
+    if (result.error) return send(res, result.blocked ? 423 : result.review ? 422 : 400, { ok: false, ...result });
+    return send(res, 201, { ok: true, ...result });
+  }
 
   const connectionMatch = url.pathname.match(/^\/v1\/connections\/([0-9a-f-]+)$/i);
   if (req.method === 'POST' && connectionMatch) return connect(req, res, account, connectionMatch[1]);
