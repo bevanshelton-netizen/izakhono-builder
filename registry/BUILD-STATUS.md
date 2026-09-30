@@ -15,6 +15,10 @@
 - Web Crypto bearer-token verification.
 - Worker deployment configuration and D1 migration.
 - CI workflow for registry typecheck and Wrangler dry-run.
+- DNS provisioning orchestration and provider contract.
+- External authority adapter boundary with explicit confirmation state.
+- Registration transaction orchestration that refuses to advance to `ok` without authority confirmation.
+- Rate-limit abstraction and abuse-control foundation.
 
 ## Release truth
 
