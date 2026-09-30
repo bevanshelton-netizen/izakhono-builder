@@ -6,10 +6,12 @@ This is the portfolio's original Zeely-class equivalent. It does **not** copy Ze
 
 `Product -> Growth Engine -> IZAKHONO CREATE -> IZAKHONO ADS -> audience -> lead/sale -> IZAKHONO CRM -> IZAKHONO REVENUE`
 
-## What v0.2 does
+## What v0.3 does
 
 - Portfolio campaign command centre.\n- Diagnosis-first 6-question Growth Check with business-stage segmentation, lead priority scoring and three-action prescriptions.\n- Next-step funnel for Start Now, WhatsApp contact, strategy session or proposal requests.
 - Product-specific campaign pack generation.
+- Verified live-product launch packs with WhatsApp, email, LinkedIn, organic-social and short-video variants.
+- Direct routing from approved campaign pages to the verified live product destination; gated products remain enquiry-only.
 - Multi-channel copy variants for WhatsApp, email, social, short video and B2B outreach.
 - Landing/enquiry pages for approved offers.
 - Consent-aware lead capture without advertising IDs, cookies or behavioural tracking.
@@ -34,6 +36,7 @@ This is the portfolio's original Zeely-class equivalent. It does **not** copy Ze
 - `GET /health`
 - `GET /api/dashboard`
 - `GET /api/campaigns`
+- `GET /api/campaigns/:slug/launch-pack`
 - `POST /api/campaigns/generate`
 - `POST /api/public/lead`\n- `POST /api/public/growth-diagnostic`\n- `POST /api/public/growth-diagnostic/lead`\n- `GET /growth-check/`
 - `GET /api/leads` (admin token)
