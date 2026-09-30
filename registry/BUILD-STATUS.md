@@ -1,11 +1,40 @@
 # IZAKHONO REGISTRY STATUS
 
-Implemented: core lifecycle, private test namespace, EPP, RDAP, D1 persistence, Worker entrypoint, Web Crypto auth, deployment config, migration, CI dry-run.
+## Implemented control-plane foundation
 
-Release truth: public domain registration is not marked LIVE until authoritative registration, DNS provisioning, RDAP verification, and customer handover are tested end-to-end.
+- TLD-agnostic registry core with domain lifecycle state machine.
+- Private/test namespace support.
+- EPP command handling foundation.
+- RDAP-shaped lookup responses.
+- Persistent D1 domain/contact/host/audit storage.
+- Persistent idempotency records.
+- Persistent registrar records with active/suspended state.
+- Authenticated registrar provisioning endpoint.
+- Authenticated domain creation requiring an active registrar.
+- Authenticated lifecycle transition endpoint.
+- Web Crypto bearer-token verification.
+- Worker deployment configuration and D1 migration.
+- CI workflow for registry typecheck and Wrangler dry-run.
 
-Verification: source committed. Local npm execution was not possible in this environment because outbound package/GitHub network resolution is unavailable. GitHub CI is configured for registry typecheck and Wrangler dry-run.
+## Release truth
 
-Next gates: run CI, apply D1 migration, deploy Worker, verify endpoints, add DNS provisioning and registrar lifecycle controls, then add external registry adapters only when credentials and authority are available.
+Public domain registration is NOT marked LIVE until the complete authoritative path has been tested:
 
-Commercial rule: NO VERIFIED CAPABILITY -> NO CUSTOMER PROMISE -> NO SALE.
+Customer → IZAKHONO DOMAIN → Registrar/Registry Engine → Authoritative Registry → Registration confirmed → DNS provisioned → RDAP verified → Customer handover.
+
+The current code is a registry/registrar control-plane foundation and does not by itself create public .co.za authority or root-zone delegation.
+
+## Remaining production gates
+
+1. Run and verify GitHub CI.
+2. Verify the configured D1 database and apply migration remotely.
+3. Deploy the Worker and verify health, domain check/create, RDAP and EPP endpoints.
+4. Establish a real DNS provider adapter and verify publish/remove behavior.
+5. Implement authoritative external registry adapter(s), beginning with the applicable .co.za registrar path once credentials/accreditation exist.
+6. Add production registrar authentication/credential rotation, rate limiting, abuse controls, and operational alerting.
+7. Complete end-to-end transaction, DNS, RDAP and customer-handover tests.
+8. Only after those gates pass, expose customer-facing paid public registration.
+
+## Commercial rule
+
+NO VERIFIED CAPABILITY → NO CUSTOMER PROMISE → NO SALE.
