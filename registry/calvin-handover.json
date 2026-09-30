@@ -1,0 +1,17 @@
+{
+  "customer":"Calvin Delport",
+  "company":"XQWAXQWAMILÉ HOLDINGS",
+  "package":"Domain + IZAKHONO HOST + business email",
+  "paid_amount_zar":548,
+  "monthly_amount_zar":249,
+  "requested_domain":"xqwaxqwamile.com",
+  "requested_mailboxes":["info","calvin","projects","diamonds","tenders"],
+  "website_project":"xqwaxqwamile-holdings",
+  "website_status":"READY deployment verified in Vercel project history",
+  "domain_status":"ACTIVATION REQUIRED — registration not verified",
+  "dns_status":"NOT VERIFIED",
+  "mail_status":"NOT VERIFIED",
+  "handover_status":"BLOCKED_PENDING_DOMAIN_AND_MAIL_AUTHORITY",
+  "truth_gate":"Do not represent domain/email as live until registration, DNS, mailbox creation, send/receive and authentication are verified.",
+  "next_authorized_gate":"Registrar/ZARC credentials and explicit authorization for any domain/accreditation spend"
+}
