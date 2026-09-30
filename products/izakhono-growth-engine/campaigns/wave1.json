@@ -1,8 +1,8 @@
 {
   "schema": "izakhono.growth.wave.v1",
-  "effective_date": "2026-09-29",
-  "wave": "MAXIMUM-MOVEMENT-01",
-  "objective": "Generate qualified revenue opportunities immediately while preserving product conversion and compliance gates.",
+  "effective_date": "2026-09-30",
+  "wave": "LIVE-PRODUCT-REVENUE-02",
+  "objective": "Drive verified public products into immediate owned, organic and targeted outreach distribution while preserving compliance, destination and spend gates.",
   "campaigns": [
     {
       "slug": "growth-diagnostic",
@@ -73,38 +73,171 @@
       "priority": 1
     },
     {
-      "slug": "faisready-retail",
-      "product": "faisready",
-      "display_name": "FAISReady exam preparation",
-      "audience": "financial-services professionals and employer cohorts",
-      "offer": "RE preparation pathways and employer cohort options.",
-      "cta": "Start preparing",
+      "slug": "worknow-live",
+      "product": "worknow",
+      "display_name": "WORKNOW — South Africa's Digital Job Centre",
+      "audience": "job seekers, employers, recruiters, learnership providers and organisations with genuine vacancies",
+      "offer": "Free job-seeker registration plus employer vacancy publishing and opt-in talent discovery.",
+      "cta": "Register or publish a genuine vacancy",
       "channels": [
+        "portfolio-cross-promotion",
         "WhatsApp",
+        "warm-email",
         "LinkedIn",
-        "Facebook/Instagram",
+        "organic-social",
         "employer-partners"
       ],
-      "mode": "PREPARED_AWAITING_PUBLIC_CONVERSION_VERIFICATION",
-      "regulated": true,
-      "priority": 2
+      "mode": "VERIFIED_PUBLIC_CTA",
+      "destination_url": "https://worknow-sa.vercel.app/",
+      "regulated": false,
+      "priority": 1,
+      "evidence": {
+        "deployment_state": "READY_PRODUCTION",
+        "customer_page_http": "200",
+        "forms": [
+          "job-seeker",
+          "job-alert",
+          "employer-introduction",
+          "vacancy-posting",
+          "training",
+          "government"
+        ]
+      },
+      "guardrails": [
+        "No recruitment fees for job seekers.",
+        "Do not imply employer endorsement or guaranteed placement.",
+        "Use official employer application processes where required."
+      ]
     },
     {
-      "slug": "edubuild-enrolments",
-      "product": "edu-build-institute",
-      "display_name": "Edu-Build ECD training",
-      "audience": "ECD practitioners, centres, employers and funders",
-      "offer": "Accredited ECD learning pathways and institutional cohort enquiries.",
-      "cta": "Request enrolment information",
+      "slug": "auto-ai-live",
+      "product": "auto-ai",
+      "display_name": "AUTO AI — Understand your car before you spend",
+      "audience": "motorists, used-car buyers, workshops, fleets and vehicle owners outside motor plan",
+      "offer": "Vehicle Health Report R79, Repair Quote Second Opinion R99, and Used-Car Buyer Check R149 with WhatsApp-assisted iKhokha payment handoff.",
+      "cta": "Check my car now",
       "channels": [
+        "portfolio-cross-promotion",
         "WhatsApp",
-        "Facebook",
-        "ECD-centres",
-        "employer-partners"
+        "organic-social",
+        "KORA",
+        "Allegro",
+        "workshop-partners",
+        "dealer-partners"
       ],
-      "mode": "PREPARED_AWAITING_CONTENT_AND_HANDOFF_FIXES",
+      "mode": "VERIFIED_PUBLIC_CTA",
+      "destination_url": "https://auto-ai-eosin.vercel.app/#triage",
+      "regulated": false,
+      "priority": 1,
+      "evidence": {
+        "deployment_state": "READY_PRODUCTION",
+        "customer_page_http": "200",
+        "whatsapp_payment_handoff": true
+      },
+      "guardrails": [
+        "Guidance is informational and does not replace a qualified mechanical inspection.",
+        "Do not guarantee diagnosis, repair outcome or vehicle safety.",
+        "No paid media spend without owner approval."
+      ]
+    },
+    {
+      "slug": "kora-live",
+      "product": "kora",
+      "display_name": "KORA — African music, creators, live culture and tickets",
+      "audience": "artists, creators, fans, event audiences, promoters and cultural partners",
+      "offer": "Discover African creators, watch and follow content, explore live experiences and creator opportunities.",
+      "cta": "Enter KORA",
+      "channels": [
+        "Allegro",
+        "WhatsApp",
+        "organic-social",
+        "creator-outreach",
+        "portfolio-cross-promotion"
+      ],
+      "mode": "VERIFIED_PUBLIC_CTA",
+      "destination_url": "https://kora-network.vercel.app/",
+      "regulated": false,
+      "priority": 1,
+      "evidence": {
+        "deployment_state": "READY_PRODUCTION",
+        "customer_page_http": "200",
+        "routes": [
+          "music",
+          "tickets",
+          "watch",
+          "live",
+          "creators",
+          "advertise",
+          "partners"
+        ]
+      },
+      "guardrails": [
+        "Only publish rights-cleared content and claims.",
+        "Do not imply partner endorsement without agreement.",
+        "Ticket and payment claims require route-specific verification."
+      ]
+    },
+    {
+      "slug": "allegro-live",
+      "product": "allegro-vibez",
+      "display_name": "ALLEGRO VIBEZ — Listen, discover and join as an artist",
+      "audience": "artists, listeners, radio audiences, music businesses and event communities",
+      "offer": "A live artist and radio discovery destination with creator onboarding.",
+      "cta": "Listen or join as an artist",
+      "channels": [
+        "KORA",
+        "WhatsApp",
+        "organic-social",
+        "artist-outreach",
+        "music-partners",
+        "portfolio-cross-promotion"
+      ],
+      "mode": "VERIFIED_PUBLIC_CTA",
+      "destination_url": "https://allegro-vibez.vercel.app/",
+      "regulated": false,
+      "priority": 1,
+      "evidence": {
+        "deployment_state": "READY_PRODUCTION",
+        "customer_page_http": "200",
+        "routes": [
+          "stream",
+          "join-artists"
+        ]
+      },
+      "guardrails": [
+        "Artist rights and permissions remain required before catalogue or broadcast use.",
+        "Do not claim terrestrial broadcast licensing from an internet-only stream."
+      ]
+    },
+    {
+      "slug": "digital-finance-free-live",
+      "product": "izakhono-digital-finance",
+      "display_name": "IZAKHONO Digital Finance — Free Foundations",
+      "audience": "individuals, employees, institutions and professionals who want practical digital-finance literacy",
+      "offer": "Free foundation learning in digital money, blockchain, wallets, custody and scam/risk awareness.",
+      "cta": "Start free",
+      "channels": [
+        "KORA",
+        "WORKNOW",
+        "LinkedIn",
+        "organic-social",
+        "employer-partners",
+        "portfolio-cross-promotion"
+      ],
+      "mode": "VERIFIED_FREE_ACQUISITION_ONLY",
+      "destination_url": "https://izakhono-digital-finance.vercel.app/",
       "regulated": true,
-      "priority": 2
+      "priority": 2,
+      "evidence": {
+        "deployment_state": "READY_PRODUCTION",
+        "customer_page_http": "200",
+        "paid_checkout": "GATED"
+      },
+      "guardrails": [
+        "Market the free foundation only until paid checkout is independently verified.",
+        "Do not present the programme as a university degree or regulated financial advice.",
+        "Use educational, not investment-return, claims."
+      ]
     }
   ]
 }
