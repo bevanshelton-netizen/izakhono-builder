@@ -26,6 +26,57 @@ async function readLeads(){try{const x=JSON.parse(await fs.readFile(LEADS_FILE,"
 async function writeLeads(x){const tmp=LEADS_FILE+".tmp";await fs.writeFile(tmp,JSON.stringify(x,null,2));await fs.rename(tmp,LEADS_FILE)}
 function isAdmin(req){const raw=req.headers.authorization||"";return Boolean(ADMIN_TOKEN)&&raw===("Bearer "+ADMIN_TOKEN)}
 function getCampaign(slug){return campaigns.campaigns.find(x=>x.slug===slug)}
+const PUBLIC_READY_MODES=new Set(["DIRECT_OUTREACH_READY","VERIFIED_PUBLIC_CTA","VERIFIED_FREE_ACQUISITION_ONLY"]);
+function isPublicReadyCampaign(c){return Boolean(c&&PUBLIC_READY_MODES.has(c.mode))}
+function launchPack(c){
+  if(!c)return null;
+  const destination=clean(c.destination_url,500);
+  const proof=(c.evidence&&typeof c.evidence==="object")?c.evidence:{};
+  const base={
+    schema:"izakhono.live.launch.pack.v1",
+    source:"IZAKHONO CREATE",
+    distributor:"IZAKHONO ADS",
+    campaign:c.slug,
+    product:c.product,
+    display_name:c.display_name,
+    audience:c.audience,
+    offer:c.offer,
+    cta:c.cta,
+    destination_url:destination||null,
+    mode:c.mode,
+    priority:c.priority||2,
+    verified_public_destination:isPublicReadyCampaign(c)&&Boolean(destination),
+    evidence:proof,
+    spend_status:"NOT_AUTHORISED",
+    paid_media:false,
+    approval_required_for_paid_media:true,
+    guardrails:Array.isArray(c.guardrails)?c.guardrails:[],
+    privacy:{behavioural_tracking:false,advertising_ids:false,tracking_cookies:false}
+  };
+  const hook1=c.display_name+": "+c.offer;
+  const hook2="For "+c.audience+": "+c.cta+".";
+  const hook3="One clear next step: "+c.cta+".";
+  return{
+    ...base,
+    creative:{
+      hooks:[hook1,hook2,hook3],
+      whatsapp:hook1+" "+(destination?destination:""),
+      linkedin:hook2+" "+c.offer+" "+(destination?destination:""),
+      organic_social:hook1+" "+hook3+" "+(destination?destination:""),
+      email:{subject:c.display_name+" — "+c.cta,body:c.offer+"\n\n"+c.cta+(destination?"\n"+destination:"")},
+      short_video:{seconds:20,script:["Problem: speak directly to "+c.audience+".","Offer: "+c.offer,"CTA: "+c.cta+(destination?" — "+destination:"")]}
+    },
+    distribution:{
+      owned_cross_promotion:(c.channels||[]).includes("portfolio-cross-promotion")||(c.channels||[]).some(x=>["KORA","Allegro","WORKNOW"].includes(x)),
+      warm_email:(c.channels||[]).includes("warm-email"),
+      whatsapp:(c.channels||[]).includes("WhatsApp"),
+      organic_social:(c.channels||[]).includes("organic-social"),
+      partner_outreach:(c.channels||[]).some(x=>String(x).includes("partner")),
+      paid_media:false
+    },
+    generated_at:now()
+  };
+}
 function rateOk(req){const key=clean((req.headers["x-forwarded-for"]||req.socket.remoteAddress||"").split(",")[0],80)||"unknown",t=Date.now(),windowMs=3600000;const xs=(rate.get(key)||[]).filter(x=>t-x<windowMs);if(xs.length>=10){rate.set(key,xs);return false}xs.push(t);rate.set(key,xs);return true}
 function pack(input){const product=clean(input.product,120),audience=clean(input.audience,240),offer=clean(input.offer,500),cta=clean(input.cta||"Learn more",120);return{schema:"izakhono.marketing.package.v1",source:"IZAKHONO CREATE",generated_by:"IZAKHONO Growth Engine",campaign_name:product+" — Growth campaign",product,audience,offer,cta,channels:["WhatsApp","email","LinkedIn","organic social","portfolio cross-promotion"],spend_status:"NOT_AUTHORISED",compliance_status:"REQUIRES_PRODUCT_GATE",creative:{variants:[{channel:"WhatsApp",copy:product+": "+offer+" "+cta+"."},{channel:"Email",subject:product+" — "+cta,copy:"For "+audience+": "+offer+" Reply to discuss the next step."},{channel:"LinkedIn",copy:offer+" Built for "+audience+". "+cta+"."},{channel:"Short video",copy:"Problem. Offer. Proof. "+offer+" "+cta+"."}]},privacy:{behavioural_tracking:false,advertising_ids:false,tracking_cookies:false},created_at:now()}}
 
