@@ -26,10 +26,16 @@ Sales are created server-side using stored product prices and branch stock. Cash
 
 ## Payments
 
-Cash sales can be settled on the fallback path. EFT requires supervisor verification. iK Pay remains deliberately unavailable until real iKhokha production credentials are installed server-side and payment reconciliation is acceptance-tested.
+Cash sales can be settled on the fallback path. EFT requires supervisor verification.
+
+The resilience engine now contains the iK Pay session adapter and redirects only to a verified `https://securepay.ikhokha.red` checkout URL returned by iKhokha. It reads the existing project-scoped `IKHOKHA_APP_ID`, `IKHOKHA_APP_SECRET` and optional `IKHOKHA_ENTITY_ID` on the server; no payment secret is exposed to the browser.
+
+The shared iKhokha webhook now recognizes PocketPOS references prefixed with `POS-`, verifies the callback HMAC, performs a provider status lookup, verifies the returned paylink and amount against the stored server-side sale total, records an idempotent payment event, and calls the transactional PocketPOS settlement function.
+
+This is integration readiness, not proof of a successful real payment. A low-value end-to-end payment and reconciliation test is still required before payment acceptance is called verified.
 
 ## Go-live language
 
-Current label: **external resilience pilot**.
+Current label: **external resilience pilot**. The fallback Edge Function is deployed, but the public route still needs independent HTTP acceptance from outside the deployment control plane.
 
 Do not call PocketPOS fully live until the owned independent engine is deployed and passes HTTPS, login, inventory, cash/EFT, payment-provider and reconciliation acceptance tests.
