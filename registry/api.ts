@@ -3,11 +3,13 @@ import {MemoryRegistryStore} from './memory-store';
 import {rdapDomain} from './rdap';
 import {eppHandle} from './epp-server';
 import {bearerValid} from './security';
+import {hashRequest,IdempotencyStore,MemoryIdempotencyStore} from './idempotency';
 
 const memory=new MemoryRegistryStore();
+const memoryIdempotency=new MemoryIdempotencyStore();
 const json=(data:unknown,status=200)=>new Response(JSON.stringify(data),{status,headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store'}});
 export interface RegistryEnv{REGISTRY_TOKEN_SHA256?:string;APP_ENV?:string}
-export async function registryFetch(request:Request,store:RegistryStore=memory,env:RegistryEnv={}){
+export async function registryFetch(request:Request,store:RegistryStore=memory,env:RegistryEnv={},idempotency:IdempotencyStore=memoryIdempotency){
  const url=new URL(request.url);
  if(url.pathname==='/health')return json({ok:true,service:'IZAKHONO REGISTRY',mode:env.APP_ENV==='production'?'persistent-control-plane':'test-control-plane'});
  if(url.pathname==='/domain/check'){
@@ -20,10 +22,15 @@ export async function registryFetch(request:Request,store:RegistryStore=memory,e
  }
  if(url.pathname==='/domain/create'&&request.method==='POST'){
   if(env.REGISTRY_TOKEN_SHA256 && !(await bearerValid(request.headers.get('authorization')||undefined,env.REGISTRY_TOKEN_SHA256)))return json({ok:false,error:'unauthorized'},401);
+  const key=request.headers.get('idempotency-key')?.trim();if(!key||key.length>128)return json({ok:false,error:'Idempotency-Key header required'},400);
   let body:{name?:string;registrarId?:string;registrantId?:string;nameservers?:string[]};try{body=await request.json();}catch{return json({ok:false,error:'invalid json'},400);}
+  const requestHash=await hashRequest(body),prior=await idempotency.get(key);
+  if(prior){if(prior.requestHash!==requestHash)return json({ok:false,error:'idempotency key reused with different request'},409);return json(prior.response,200);}
   if(!body.name||!body.registrarId||!body.registrantId)return json({ok:false,error:'name, registrarId and registrantId required'},400);
-  try{return json({ok:true,domain:await createDomain(store,{name:body.name,registrarId:body.registrarId,registrantId:body.registrantId,nameservers:body.nameservers||[],expiresAt:new Date(Date.now()+365*86400000).toISOString()},'api')},201);}
-  catch(error){return json({ok:false,error:error instanceof Error?error.message:'create failed'},409);}
+  try{
+   const response={ok:true,domain:await createDomain(store,{name:body.name,registrarId:body.registrarId,registrantId:body.registrantId,nameservers:body.nameservers||[],expiresAt:new Date(Date.now()+365*86400000).toISOString()},'api')};
+   await idempotency.put({key,requestHash,response,createdAt:new Date().toISOString()}); return json(response,201);
+  }catch(error){return json({ok:false,error:error instanceof Error?error.message:'create failed'},409);}
  }
  if(url.pathname==='/epp'&&request.method==='POST'){
   if(env.REGISTRY_TOKEN_SHA256 && !(await bearerValid(request.headers.get('authorization')||undefined,env.REGISTRY_TOKEN_SHA256)))return new Response('<epp><response><result code="2201"><msg>authorization error</msg></result></response></epp>',{status:401,headers:{'content-type':'application/epp+xml'}});
