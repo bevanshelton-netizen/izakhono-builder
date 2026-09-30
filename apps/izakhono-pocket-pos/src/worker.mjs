@@ -79,6 +79,22 @@ async function api(req,env,url){
   return j({ok:true,merchant_id:mid,slug,branch_id:bid,owner_id:sid},201);
  }
 
+ if(url.pathname==='/api/admin/merchants'&&req.method==='POST'){
+  const cross=noCrossSite(req);if(cross)return cross;
+  if(!env.ADMIN_SECRET||!safeEq(req.headers.get('x-admin-secret')||'',env.ADMIN_SECRET))return bad('Admin denied',403);
+  const b=await parse(req),legal=clean(b.legal_name,140),trading=clean(b.trading_name,140),slug=clean(b.slug,60).toLowerCase(),owner=clean(b.owner_name,120),email=clean(b.owner_email,180).toLowerCase(),phone=clean(b.owner_phone,40),pin=clean(b.pin,20);
+  if(!legal||!trading||!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)||!owner||!/^\d{6,20}$/.test(pin))return bad('legal_name, trading_name, valid slug, owner_name and 6+ digit PIN are required');
+  const duplicate=await env.DB.prepare('SELECT id FROM pp_merchants WHERE slug=?').bind(slug).first();if(duplicate)return bad('Merchant slug already exists',409);
+  const ph=await pinHash(pin),mid=id('mer'),bid=id('br'),sid=id('usr');
+  await env.DB.batch([
+   env.DB.prepare('INSERT INTO pp_merchants(id,slug,legal_name,trading_name,currency,tax_rate) VALUES(?,?,?,?,?,?)').bind(mid,slug,legal,trading,'ZAR',Number(b.tax_rate??15)),
+   env.DB.prepare('INSERT INTO pp_branches(id,merchant_id,name,address,active) VALUES(?,?,?,?,1)').bind(bid,mid,clean(b.branch_name,100)||'Main Branch',clean(b.branch_address,240)||null),
+   env.DB.prepare("INSERT INTO pp_staff(id,merchant_id,name,email,phone,role,pin_salt,pin_hash) VALUES(?,?,?,?,?,'owner',?,?)").bind(sid,mid,owner,email||null,phone||null,ph.salt,ph.hash),
+   env.DB.prepare('INSERT INTO pp_audit_log(id,merchant_id,staff_id,action,entity_type,entity_id,metadata_json) VALUES(?,?,?,?,?,?,?)').bind(id('aud'),mid,sid,'merchant.provision','merchant',mid,JSON.stringify({provisioned_by:'platform-admin'}))
+  ]);
+  return j({ok:true,merchant_id:mid,slug,branch_id:bid,owner_id:sid},201);
+ }
+
  if(url.pathname==='/api/auth/login'&&req.method==='POST'){
   const cross=noCrossSite(req);if(cross)return cross;
   const b=await parse(req),slug=clean(b.slug,60).toLowerCase(),identity=clean(b.identity,180).toLowerCase(),pin=clean(b.pin,20);
@@ -110,6 +126,15 @@ async function api(req,env,url){
    roleAtLeast(user,'manager')?env.DB.prepare('SELECT id,name,email,phone,role,disabled FROM pp_staff WHERE merchant_id=? ORDER BY name').bind(user.merchant_id).all():Promise.resolve({results:[]})
   ]);
   return j({ok:true,merchant,branches:branches.results||[],products:products.results||[],inventory:inventory.results||[],customers:customers.results||[],staff:staff.results||[],user:{id:user.staff_id,name:user.name,role:user.role}});
+ }
+
+ if(url.pathname==='/api/devices/enrol'&&req.method==='POST'){
+  const cross=noCrossSite(req);if(cross)return cross;const b=await parse(req),branchId=clean(b.branch_id,80)||null;
+  if(branchId){const br=await env.DB.prepare('SELECT id FROM pp_branches WHERE id=? AND merchant_id=? AND active=1').bind(branchId,user.merchant_id).first();if(!br)return bad('Branch not found',404)}
+  const did=id('dev');await env.DB.prepare('INSERT INTO pp_devices(id,merchant_id,branch_id,label,platform) VALUES(?,?,?,?,?)').bind(did,user.merchant_id,branchId,clean(b.label,120)||'PocketPOS device',clean(b.platform,120)||req.headers.get('user-agent')?.slice(0,120)||null).run();await audit(env,user,'device.enrol','device',did,{branchId});return j({ok:true,id:did},201);
+ }
+ if(url.pathname==='/api/devices'&&req.method==='GET'){
+  if(!roleAtLeast(user,'manager'))return bad('Manager permission required',403);const rows=await env.DB.prepare('SELECT id,branch_id,label,platform,enrolled_at,revoked_at FROM pp_devices WHERE merchant_id=? ORDER BY enrolled_at DESC').bind(user.merchant_id).all();return j({ok:true,devices:rows.results||[]});
  }
 
  if(url.pathname==='/api/branches'&&req.method==='POST'){
