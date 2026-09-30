@@ -37,7 +37,7 @@
   },
   "engine": {
     "name": "CONNECTA ENGINE",
-    "version": "0.2.0",
+    "version": "0.3.0",
     "independently_deployable": true,
     "product_specific": true,
     "depends_on_other_product_engine": false,
