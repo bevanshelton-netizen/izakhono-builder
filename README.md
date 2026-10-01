@@ -99,3 +99,11 @@ See `docs/FAST-BUILD-V0.2.md`, `docs/INFRASTRUCTURE-DIRECTIVE-INHERITANCE.md` an
 ## Cost principle
 
 Use free-first infrastructure where practical, but do not pretend compute and platform quotas are unlimited. Upgrade only when demand, revenue, compliance or a hard technical requirement justifies it.
+
+## IZAKHONO HOST v0.1
+
+The Builder repository now contains the first owned-first **IZAKHONO HOST** control-plane product at `products/izakhono-host`.
+
+It provides the typed foundation for customer onboarding, domains, DNS plans, sites, SSL gates, mailboxes, subscriptions, invoices, provisioning jobs and audit events. Customer #001 is bootstrapped as !XQWAXQWAMILÉ HOLDINGS / `xqwaxqwamile.com` using verified-known state only; external custom-domain attachment, SSL and mailbox activation remain evidence-gated.
+
+The HOST product uses Cloudflare as a replaceable registrar/DNS adapter and keeps the current Vercel deployment as an external transition adapter. Provider credentials are server-side only. See `products/izakhono-host/README.md`.
