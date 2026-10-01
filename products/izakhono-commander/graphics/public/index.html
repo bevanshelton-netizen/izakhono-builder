@@ -1,0 +1,20 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>IZAKHONO COMMANDER — Remote Desktop</title>
+<style>
+body{margin:0;background:#050b08;color:#edf7f1;font:14px system-ui;overflow:hidden}
+#bar{height:52px;display:flex;align-items:center;gap:10px;padding:0 14px;background:#0d1c15;border-bottom:1px solid #244334}
+#screen{display:block;width:100vw;height:calc(100vh - 52px);object-fit:contain;background:#000}
+button,select{background:#12261b;color:#edf7f1;border:1px solid #315542;border-radius:7px;padding:7px 10px}
+#state{margin-left:auto;opacity:.8}
+</style></head>
+<body>
+<div id="bar">
+<strong>IZAKHONO COMMANDER</strong>
+<button id="connect">Connect</button>
+<select id="display"><option value="">Display</option></select>
+<button id="stop">Stop</button><span id="state">Disconnected</span>
+</div>
+<video id="screen" autoplay playsinline></video>
+<script src="/graphics.js"></script>
+</body></html>
