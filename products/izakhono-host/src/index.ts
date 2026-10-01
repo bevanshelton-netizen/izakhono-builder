@@ -72,7 +72,7 @@ async function api(req:Request,env:Env,url:URL):Promise<Response>{
     const legalName=clean(b.legal_name,180), tradingName=clean(b.trading_name,180);
     const domain=clean(b.domain,253).toLowerCase();
     const email=clean(b.email,320).toLowerCase();
-    if(!legalName || !domain || !/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+$/.test(domain)){
+    if(!legalName || !domain || !/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+$/.test(domain)){
       return json({ok:false,error:'Legal name and a valid domain are required'},400);
     }
     const customerId=uid('cus'), domainId=uid('dom'), siteId=uid('site'), invoiceId=uid('inv');
@@ -110,7 +110,7 @@ async function api(req:Request,env:Env,url:URL):Promise<Response>{
     return json({ok:true,jobs:rows.results||[]});
   }
 
-  const jobMatch=url.pathname.match(/^\\/api\\/jobs\\/([^/]+)\\/status$/);
+  const jobMatch=url.pathname.match(/^\/api\/jobs\/([^/]+)\/status$/);
   if(jobMatch && req.method==='PATCH'){
     const idv=decodeURIComponent(jobMatch[1]); const b=await body(req); const status=clean(b.status,30);
     if(!STATUS.has(status)) return json({ok:false,error:'Invalid job status'},400);
