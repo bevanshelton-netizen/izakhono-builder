@@ -11,7 +11,8 @@ export async function registerAuthoritatively(store:RegistryStore,adapter:Regist
  if(authority.transactionId==='') throw new Error('authority transaction missing');
  const confirmed=authority.confirmed;
  if(!confirmed) throw new Error('authority registration not confirmed');
- const live=await transitionDomain(store,domain.name,'ok','authority');
  const dnsResult=await provisionDns(dns,domain.name,domain.nameservers);
+ if(!dnsResult.published) throw new Error('DNS provisioning not confirmed');
+ const live=await transitionDomain(store,domain.name,'ok','authority');
  return {domain:live,authorityTransactionId:authority.transactionId,authorityConfirmed:confirmed,dnsPublished:dnsResult.published,dnsVerified:dnsResult.verified};
 }
