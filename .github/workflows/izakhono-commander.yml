@@ -1,0 +1,21 @@
+name: IZAKHONO COMMANDER
+on:
+  push:
+    paths:
+      - 'products/izakhono-commander/**'
+      - '.github/workflows/izakhono-commander.yml'
+  pull_request:
+    paths:
+      - 'products/izakhono-commander/**'
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --ignore-scripts
+      - run: npx tsc --noEmit --target ES2022 --lib ES2022,DOM,DOM.Iterable --module NodeNext --moduleResolution NodeNext products/izakhono-commander/server/index.ts products/izakhono-commander/agent/index.ts
+      - run: test -s products/izakhono-commander/README.md
+      - run: test -s products/izakhono-commander/schema/0001_commander.sql
