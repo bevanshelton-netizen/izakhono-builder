@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>IZAKHONO HOST — Control Plane</title>
+<meta name="description" content="Owned-first hosting control plane for IZAKHONO customers.">
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<header><div class="brand"><span>IZ</span>AKHONO HOST</div><div class="pill" id="status">ENGINE CHECKING</div></header>
+<main>
+<section class="hero">
+<div><div class="eyebrow">OWNED-FIRST HOSTING</div><h1>Domains. Sites. Email. <span>One control plane.</span></h1><p>Provision customer infrastructure without repeating dashboard work. Customer state stays in IZAKHONO HOST; provider APIs remain replaceable adapters.</p></div>
+<div class="heroCard"><strong>Customer #001</strong><b>!XQWAXQWAMILÉ HOLDINGS</b><code>xqwaxqwamile.com</code><button onclick="loadCustomer()">Load control plane</button></div>
+</section>
+<section class="metrics" id="metrics"></section>
+<section class="grid">
+<div class="panel">
+<h2>Onboard customer</h2>
+<p class="muted">Creates the customer, domain, site, five planned mailboxes, invoice and typed provisioning jobs. It does not claim external services are live.</p>
+<form id="onboard">
+<input name="legal_name" value="!XQWAXQWAMILÉ HOLDINGS (PTY) LTD" required>
+<input name="trading_name" placeholder="Trading name">
+<input name="domain" value="xqwaxqwamile.com" required>
+<input name="email" placeholder="Customer email">
+<input name="phone" placeholder="Phone">
+<button type="submit">Create onboarding record</button>
+<div id="formMsg" class="msg"></div>
+</form>
+</div>
+<div class="panel">
+<h2>Provisioning pipeline</h2>
+<div id="jobs" class="jobs"><p class="muted">Unlock the control plane to view jobs.</p></div>
+</div>
+</section>
+<section class="panel">
+<h2>Customer / service state</h2>
+<div id="customer" class="state"><p class="muted">No customer loaded.</p></div>
+</section>
+</main>
+<script src="/app.js"></script>
+</body>
+</html>
