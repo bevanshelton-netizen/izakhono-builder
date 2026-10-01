@@ -17,7 +17,7 @@
 - CI workflow for registry typecheck and Wrangler dry-run.
 - DNS provisioning orchestration and provider contract.
 - External authority adapter boundary with explicit confirmation state.
-- Registration transaction orchestration that refuses to advance to `ok` without authority confirmation.
+- Registration transaction orchestration that refuses to advance to `ok` without authority confirmation and successful DNS publication.
 - Rate-limit abstraction and abuse-control foundation.
 
 ## Release truth
