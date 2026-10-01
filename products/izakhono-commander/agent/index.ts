@@ -1,0 +1,4 @@
+import {randomUUID} from 'node:crypto';import {hostname,platform,release} from 'node:os';
+const server=process.env.COMMANDER_SERVER,code=process.env.COMMANDER_PAIRING_CODE;if(!server||!code)throw new Error('Set COMMANDER_SERVER and COMMANDER_PAIRING_CODE');
+async function post(path:string,data:unknown,auth?:string){const r=await fetch(new URL(path,server),{method:'POST',headers:{'content-type':'application/json',...(auth?{authorization:'Bearer '+auth}:{})},body:JSON.stringify(data)});const x=await r.json();if(!r.ok)throw Error(JSON.stringify(x));return x}
+const e=await post('/api/agent/enroll',{pairingCode:code,name:process.env.COMMANDER_DEVICE_NAME||hostname(),platform:platform()+' '+release(),clientId:randomUUID()});console.log('PAIRED',e.deviceId);setInterval(()=>post('/api/agent/heartbeat',{deviceId:e.deviceId},e.agentToken).catch(console.error),30000);await post('/api/agent/heartbeat',{deviceId:e.deviceId},e.agentToken);
