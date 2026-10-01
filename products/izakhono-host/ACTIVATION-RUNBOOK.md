@@ -47,3 +47,6 @@ A stage is not complete because a configuration was intended or previously enter
 
 ## Customer #001 rule
 Do not infer payment clearance, email activation, SSL issuance, or domain attachment from historical screenshots or database bootstrap records.
+
+## CI validation
+Any change under products/izakhono-host/** triggers the IZAKHONO HOST CI workflow. This update intentionally triggers a fresh HOST validation run.
