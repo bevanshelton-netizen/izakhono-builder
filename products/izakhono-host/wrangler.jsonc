@@ -1,0 +1,23 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "izakhono-host",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-08-01",
+  "workers_dev": true,
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS",
+    "run_worker_first": true
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "migrations_dir": "migrations",
+      "database_id": "REPLACE_WITH_IZAKHONO_HOST_D1_ID",
+      "database_name": "izakhono-host"
+    }
+  ],
+  "vars": {
+    "APP_ENV": "production"
+  }
+}
