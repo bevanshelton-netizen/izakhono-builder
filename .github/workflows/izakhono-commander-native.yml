@@ -1,0 +1,21 @@
+name: IZAKHONO COMMANDER native agent
+on:
+  push:
+    paths:
+      - 'products/izakhono-commander/native-agent/**'
+  pull_request:
+    paths:
+      - 'products/izakhono-commander/native-agent/**'
+jobs:
+  cargo-check:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: products/izakhono-commander/native-agent
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo check
