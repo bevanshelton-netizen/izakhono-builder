@@ -1,0 +1,52 @@
+name: IZAKHONO HOST CI
+
+on:
+  push:
+    paths:
+      - 'products/izakhono-host/**'
+      - '.github/workflows/izakhono-host.yml'
+      - 'package.json'
+  pull_request:
+    paths:
+      - 'products/izakhono-host/**'
+      - '.github/workflows/izakhono-host.yml'
+      - 'package.json'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+      - name: Install root dependencies
+        run: npm install --ignore-scripts --no-audit --no-fund
+      - name: Typecheck HOST
+        run: npm run validate:host
+      - name: Wrangler dry run
+        run: npx wrangler deploy --dry-run --config products/izakhono-host/wrangler.jsonc
+      - name: Validate host contract
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          sql = Path('products/izakhono-host/migrations/0001_host.sql').read_text()
+          seed = Path('products/izakhono-host/migrations/0002_customer_001.sql').read_text()
+          required = [
+            'host_customers','host_domains','host_sites','host_dns_records',
+            'host_mailboxes','host_plans','host_subscriptions','host_invoices',
+            'host_jobs','host_audit_events'
+          ]
+          missing = [x for x in required if x not in sql]
+          if missing:
+            raise SystemExit('HOST schema missing: ' + ', '.join(missing))
+          for x in ['xqwaxqwamile.com','cus_xqwaxqwamile_001','inv_xqwaxqwamile_001']:
+            if x not in seed:
+              raise SystemExit('Customer #001 bootstrap missing: ' + x)
+          print('[PASS] IZAKHONO HOST schema and Customer #001 bootstrap contract validated.')
+          PY
