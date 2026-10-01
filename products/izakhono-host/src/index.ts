@@ -7,7 +7,9 @@ interface D1PreparedStatement {
 interface D1Database { prepare(query: string): D1PreparedStatement; }
 interface Fetcher { fetch(request: Request): Promise<Response>; }
 
-interface Env {
+import { applyCloudflareDns, attachVercelDomain, type HostProviderEnv } from './providers';
+
+interface Env extends HostProviderEnv {
   DB: D1Database;
   ASSETS: Fetcher;
   HOST_ADMIN_SECRET?: string;
@@ -108,6 +110,48 @@ async function api(req:Request,env:Env,url:URL):Promise<Response>{
   if(url.pathname==='/api/jobs' && req.method==='GET'){
     const rows=await env.DB.prepare('SELECT * FROM host_jobs ORDER BY created_at DESC LIMIT 200').all<any>();
     return json({ok:true,jobs:rows.results||[]});
+  }
+
+  const runJob=url.pathname.match(/^\/api\/jobs\/([^/]+)\/run$/);
+  if(runJob && req.method==='POST'){
+    const jobId=decodeURIComponent(runJob[1]);
+    const job=await env.DB.prepare('SELECT * FROM host_jobs WHERE id=?').bind(jobId).first<any>();
+    if(!job) return json({ok:false,error:'Job not found'},404);
+    await env.DB.prepare("UPDATE host_jobs SET status='running',attempts=attempts+1,updated_at=CURRENT_TIMESTAMP WHERE id=?").bind(jobId).run();
+    try{
+      const input=JSON.parse(job.input_json||'{}');
+      let result:any;
+      if(job.job_type==='dns_apply'){
+        result=await applyCloudflareDns(input.domain,input.records||[],env);
+      }else if(job.job_type==='site_provision'){
+        const site=await env.DB.prepare('SELECT * FROM host_sites WHERE id=?').bind(job.target_id).first<any>();
+        if(!site) throw new Error('Site target not found');
+        result=await attachVercelDomain(site.provider_project_id,site.canonical_host,env);
+        await env.DB.prepare("UPDATE host_sites SET status=?,ssl_status=?,updated_at=CURRENT_TIMESTAMP WHERE id=?")
+          .bind(result.verified?'verified':'planned',result.verified?'pending':'pending',site.id).run();
+      }else if(job.job_type==='ssl_verify'){
+        result={status:'gated',reason:'SSL verification is only promoted after custom-domain attachment returns verified=true'};
+      }else if(job.job_type==='mailbox_provision'){
+        result={status:'gated',reason:'Mail provider adapter is not bound in HOST v0.1'};
+      }else if(job.job_type==='domain_register'){
+        result={status:'gated',reason:'Domain is customer-owned; registrar registration is not repeated automatically'};
+      }else if(job.job_type==='invoice_issue'){
+        result={status:'gated',reason:'Invoice exists in the HOST ledger; payment clearance is not inferred'};
+      }else{
+        throw new Error('Unsupported job type');
+      }
+      const finalStatus=job.job_type==='dns_apply' || (job.job_type==='site_provision' && result.verified) ? 'verified' : 'queued';
+      await env.DB.prepare('UPDATE host_jobs SET status=?,result_json=?,updated_at=CURRENT_TIMESTAMP WHERE id=?')
+        .bind(finalStatus,JSON.stringify(result).slice(0,12000),jobId).run();
+      await audit(env,job.customer_id,'job.executed',{job_id:jobId,job_type:job.job_type,status:finalStatus});
+      return json({ok:true,job_id:jobId,status:finalStatus,result});
+    }catch(e){
+      const message=e instanceof Error?e.message:'Provider execution failed';
+      await env.DB.prepare("UPDATE host_jobs SET status='failed',result_json=?,updated_at=CURRENT_TIMESTAMP WHERE id=?")
+        .bind(JSON.stringify({error:message}).slice(0,8000),jobId).run();
+      await audit(env,job.customer_id,'job.failed',{job_id:jobId,job_type:job.job_type,error:message});
+      return json({ok:false,error:message,job_id:jobId},502);
+    }
   }
 
   const jobMatch=url.pathname.match(/^\/api\/jobs\/([^/]+)\/status$/);
