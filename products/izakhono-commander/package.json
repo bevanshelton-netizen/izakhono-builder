@@ -1,9 +1,8 @@
 {
-  "name": "@izakhono/commander",
-  "private": true,
-  "version": "0.1.0",
-  "scripts": {
-    "typecheck": "tsc --noEmit --target ES2022 --lib ES2022,DOM,DOM.Iterable --module NodeNext --moduleResolution NodeNext server/index.ts agent/index.ts"
-  },
-  "devDependencies": {"@types/node":"22.15.21","typescript":"5.9.2"}
+  "name":"@izakhono/commander",
+  "private":true,
+  "version":"0.2.0",
+  "scripts":{"typecheck":"tsc --noEmit --target ES2022 --lib ES2022,DOM,DOM.Iterable --module NodeNext --moduleResolution NodeNext server/index.ts agent/index.ts"},
+  "dependencies":{"ws":"8.22.0"},
+  "devDependencies":{"@types/node":"22.15.21","@types/ws":"8.18.2","typescript":"5.9.2"}
 }
