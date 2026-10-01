@@ -1,0 +1,11 @@
+{
+  "name": "@izakhono/host",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "typecheck": "tsc --noEmit --target ES2022 --lib ES2022,DOM,DOM.Iterable --module ESNext src/index.ts"
+  },
+  "devDependencies": {
+    "typescript": "5.9.2"
+  }
+}
