@@ -1,0 +1,12 @@
+{
+  "profiles":{
+    "corporate":{"pages":["home","about","services","contact"],"cta":"Request a Quote"},
+    "professional-services":{"pages":["home","services","about","contact"],"cta":"Book a Consultation"},
+    "construction":{"pages":["home","services","projects","contact"],"cta":"Request a Site Visit"},
+    "school-training":{"pages":["home","programmes","about","admissions","contact"],"cta":"Apply Now"},
+    "manufacturing":{"pages":["home","capabilities","products","about","contact"],"cta":"Request a Capability Profile"},
+    "hospitality":{"pages":["home","menu-or-services","gallery","about","contact"],"cta":"Make an Enquiry"},
+    "ngo":{"pages":["home","about","programmes","impact","contact"],"cta":"Support the Mission"},
+    "trades":{"pages":["home","services","service-area","about","contact"],"cta":"Get a Quote"}
+  }
+}
