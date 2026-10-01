@@ -12,7 +12,7 @@ export interface AuthorityTransport {
 export class ExternalRegistryAdapter implements RegistryAdapter {
   constructor(private transport:AuthorityTransport){}
   availability(name:string){return this.transport.check(normalizeDomain(name));}
-  register(domain:Domain){const result=await this.transport.register({...domain,name:normalizeDomain(domain.name)}); return {transactionId:result.transactionId,confirmed:result.status==='confirmed'};}
+  async register(domain:Domain){const result=await this.transport.register({...domain,name:normalizeDomain(domain.name)}); return {transactionId:result.transactionId,confirmed:result.status==='confirmed'};}
   renew(name:string,years:number){return this.transport.renew(normalizeDomain(name),years);}
   transfer(name:string,authCode:string){return this.transport.transfer(normalizeDomain(name),authCode);}
 }
