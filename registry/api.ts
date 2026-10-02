@@ -41,13 +41,15 @@ export async function registryFetch(request:Request,store:RegistryStore=memory,e
   let body:{name?:string;registrarId?:string;registrantId?:string;nameservers?:string[]};try{body=await request.json();}catch{return json({ok:false,error:'invalid json'},400);}
   const requestHash=await hashRequest(body),prior=await idempotency.get(key);
   if(prior){if(prior.requestHash!==requestHash)return json({ok:false,error:'idempotency key reused with different request'},409);return json(prior.response,200);}
+  const claim= idempotency.claim ? await idempotency.claim(key,requestHash,new Date().toISOString()) : {claimed:true as const};
+  if(!claim.claimed){if(claim.record?.requestHash!==requestHash)return json({ok:false,error:'idempotency key reused with different request'},409);if(claim.record?.status==='completed')return json(claim.record.response,200);return json({ok:false,error:'request already in progress'},409);}
   if(!body.name||!body.registrarId||!body.registrantId)return json({ok:false,error:'name, registrarId and registrantId required'},400);
   const registrar=await registrars.get(body.registrarId);
   if(!registrar)return json({ok:false,error:'unknown registrar'},403);
   if(registrar.status!=='active')return json({ok:false,error:'registrar suspended'},403);
   try{
    const response={ok:true,domain:await createDomain(store,{name:body.name,registrarId:body.registrarId,registrantId:body.registrantId,nameservers:body.nameservers||[],expiresAt:new Date(Date.now()+365*86400000).toISOString()},'api')};
-   await idempotency.put({key,requestHash,response,createdAt:new Date().toISOString()}); return json(response,201);
+   if(idempotency.complete) await idempotency.complete(key,requestHash,response,new Date().toISOString()); else await idempotency.put({key,requestHash,response,createdAt:new Date().toISOString()}); return json(response,201);
   }catch(error){return json({ok:false,error:error instanceof Error?error.message:'create failed'},409);}
  }
  if(url.pathname==='/registration/order'&&request.method==='POST'){
@@ -58,8 +60,12 @@ export async function registryFetch(request:Request,store:RegistryStore=memory,e
   const domain=normalizeDomain(body.domain);const registrar=await registrars.get(body.registrarId);
   if(!registrar||registrar.status!=='active')return json({ok:false,error:'registrar not active'},403);
   const existing=await orders.get(body.id);if(existing)return json({ok:true,order:existing},200);
+  const requestHash=await hashRequest(body),prior=await idempotency.get(key);
+  if(prior){if(prior.requestHash!==requestHash)return json({ok:false,error:'idempotency key reused with different request'},409);return json(prior.response,200);}
+  const claim=idempotency.claim ? await idempotency.claim(key,requestHash,new Date().toISOString()) : {claimed:true as const};
+  if(!claim.claimed){if(claim.record?.requestHash!==requestHash)return json({ok:false,error:'idempotency key reused with different request'},409);if(claim.record?.status==='completed')return json(claim.record.response,200);return json({ok:false,error:'request already in progress'},409);}
   const now=new Date().toISOString();const order={id:body.id.trim(),domain,registrarId:body.registrarId,customerReference:body.customerReference?.trim(),state:'pending' as const,authorityConfirmed:false,dnsPublished:false,dnsVerified:false,rdapVerified:false,handedOver:false,createdAt:now,updatedAt:now};
-  await orders.put(order);return json({ok:true,order},201);
+  await orders.put(order); const response={ok:true,order}; if(idempotency.complete) await idempotency.complete(key,requestHash,response,new Date().toISOString()); else await idempotency.put({key,requestHash,response,createdAt:now}); return json(response,201);
  }
  if(url.pathname==='/registration/order'&&request.method==='GET'){
   if(!(await auth(request,env)))return json({ok:false,error:'unauthorized'},401);
