@@ -68,19 +68,11 @@ export async function registryFetch(request:Request,store:RegistryStore=memory,e
   if(id){const order=await orders.get(id);return order?json({ok:true,order}):json({ok:false,error:'order not found'},404);}
   return json({ok:true,orders:await orders.listByDomain(normalizeDomain(domain!))});
  }
- if(url.pathname==='/registration/order/transition'&&request.method==='POST'){
+ if(url.pathname==='/registration/order/handover'&&request.method==='POST'){
   if(!(await auth(request,env)))return json({ok:false,error:'unauthorized'},401);
-  let body:{id?:string;state?:string;authorityTransactionId?:string;authorityConfirmed?:boolean;dnsPublished?:boolean;dnsVerified?:boolean;rdapVerified?:boolean;handedOver?:boolean};try{body=await request.json();}catch{return json({ok:false,error:'invalid json'},400);}
-  if(!body.id)return json({ok:false,error:'id required'},400);const order=await orders.get(body.id);if(!order)return json({ok:false,error:'order not found'},404);
-  const next={...order,authorityTransactionId:body.authorityTransactionId??order.authorityTransactionId,authorityConfirmed:body.authorityConfirmed??order.authorityConfirmed,dnsPublished:body.dnsPublished??order.dnsPublished,dnsVerified:body.dnsVerified??order.dnsVerified,rdapVerified:body.rdapVerified??order.rdapVerified,handedOver:body.handedOver??order.handedOver,updatedAt:new Date().toISOString()};
-  if(next.handedOver&&!(order.state==='readyForHandover'||order.state==='handedOver'))return json({ok:false,error:'order must be readyForHandover before handover'},409);
-  const allowed=body.state==='pending'||body.state==='authorityConfirmed'||body.state==='dnsPublished'||body.state==='dnsVerified'||body.state==='rdapVerified'||body.state==='readyForHandover'||body.state==='handedOver';
-  if(body.state&&!allowed)return json({ok:false,error:'invalid order state'},400);
-  if(body.state==='handedOver'){
-   try{return json({ok:true,order:await handoverRegistrationOrder(orders,body.id)});}catch(e){return json({ok:false,error:e instanceof Error?e.message:'handover failed'},409);}
-  }
-  next.state=body.state as typeof next.state || nextOrderState(next);
-  await orders.put(next);return json({ok:true,order:next});
+  let body:{id?:string};try{body=await request.json();}catch{return json({ok:false,error:'invalid json'},400);}
+  if(!body.id)return json({ok:false,error:'id required'},400);
+  try{return json({ok:true,order:await handoverRegistrationOrder(orders,body.id)});}catch(e){return json({ok:false,error:e instanceof Error?e.message:'handover failed'},409);}
  }
  if(url.pathname==='/domain/transition'&&request.method==='POST'){
   if(!(await auth(request,env)))return json({ok:false,error:'unauthorized'},401);
