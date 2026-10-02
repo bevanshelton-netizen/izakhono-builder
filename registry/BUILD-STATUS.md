@@ -10,7 +10,8 @@
 - Persistent idempotency records.
 - Persistent registrar records with active/suspended state.
 - Persistent registration-order records with customer handover state.
-- Registration-order API with lifecycle and handover guards.
+- Registration-order API with lifecycle reads and a guarded handover endpoint.
+- Verification progression is transaction-owned; callers cannot manually set authority/DNS/RDAP verification flags.
 - Authenticated registrar provisioning endpoint.
 - Authenticated domain creation requiring an active registrar.
 - Authenticated lifecycle transition endpoint.
