@@ -1,4 +1,6 @@
 import { authenticateDeveloper, hasDeveloperScope } from './developer-api';
+import secureApp from './secure';
+import { commitInternalRepository } from './internal-repository';
 
 function json(data: unknown, status = 200): Response {
   return new Response(JSON.stringify(data), { status, headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' } });
@@ -54,16 +56,95 @@ export async function appFactoryRoute(req: Request, env: any, url: URL): Promise
 
   if (action === 'build') {
     if (!app.builder_project_id) return json({ ok: false, error: 'Builder project link missing' }, 409);
-    const project = await env.DB.prepare('SELECT id,name,slug,status,modules_json,build_recipe_json FROM builder_projects WHERE id=?').bind(app.builder_project_id).first<any>();
+    if (!env.ADMIN_SECRET) return json({ ok: false, error: 'Builder internal authorization is not configured' }, 503);
+
+    const project = await env.DB.prepare('SELECT * FROM builder_projects WHERE id=?').bind(app.builder_project_id).first<any>();
     if (!project) return json({ ok: false, error: 'Builder project not found' }, 409);
-    const revision = crypto.randomUUID().replaceAll('-', '').slice(0, 12);
-    await env.DB.prepare("UPDATE builder_projects SET status='building',updated_at=CURRENT_TIMESTAMP WHERE id=? AND status IN ('planned','building')")
-      .bind(project.id).run();
-    await env.DB.prepare("INSERT INTO builder_events(id,project_id,event_type,detail) VALUES(?,?,?,?,?)".replace('VALUES(?,?,?,?,?)','VALUES(?,?,?,?)'))
-      .bind(crypto.randomUUID(), project.id, 'developer_factory_build', JSON.stringify({ appId, revision, source_of_truth:'izakhono-internal' })).run();
+
+    const callBuilder = async (step: string) => {
+      const target = new URL(req.url);
+      target.pathname = '/api/projects/' + encodeURIComponent(project.id) + '/' + step;
+      target.search = '';
+      const headers = new Headers({ 'x-admin-secret': env.ADMIN_SECRET });
+      return secureApp.fetch(new Request(target.toString(), { method: 'POST', headers }), env);
+    };
+    const responseData = async (response: Response) => {
+      try { return await response.clone().json() as any; } catch { return {}; }
+    };
+
+    const planned = await callBuilder('plan');
+    const plannedData = await responseData(planned);
+    if (!planned.ok) return json({ ok: false, stage: 'plan', error: plannedData?.error || 'Builder planning failed' }, planned.status);
+
+    const generatedResponse = await callBuilder('generate');
+    const generatedData = await responseData(generatedResponse);
+    if (!generatedResponse.ok) return json({ ok: false, stage: 'generate', error: generatedData?.error || 'Builder generation failed' }, generatedResponse.status);
+
+    const validatedResponse = await callBuilder('validate-generated');
+    const validatedData = await responseData(validatedResponse);
+    if (!validatedResponse.ok || !validatedData?.validation?.passed) {
+      return json({ ok: false, stage: 'validate', error: validatedData?.error || 'Generated bundle failed validation', validation: validatedData?.validation || null }, validatedResponse.status || 422);
+    }
+
+    const refreshed = await env.DB.prepare('SELECT * FROM builder_projects WHERE id=?').bind(project.id).first<any>();
+    const recipe = JSON.parse(refreshed?.build_recipe_json || '{}');
+    const generated = recipe?.generated;
+    if (!generated?.validation?.passed || !generated?.files) {
+      return json({ ok: false, stage: 'commit', error: 'Validated generated bundle is missing from Builder state' }, 500);
+    }
+
+    const internalRepository = await commitInternalRepository(env, refreshed, generated);
+    const updatedGenerated = { ...generated, internal_repository: internalRepository, next_gate: 'internal_repository_committed' };
+    const releaseCandidate = {
+      schema: 'izakhono.release-candidate/v1',
+      created_at: new Date().toISOString(),
+      status: 'deploy_ready',
+      revision: generated.revision,
+      source_of_truth: 'izakhono-internal',
+      internal_repository_head: internalRepository.head_commit_id,
+      public_live: false,
+      deployment_authority: 'NODE01/CODE/RUNTIME/EDGE-TLS/DNS',
+      external_resilience: 'reversible',
+      target_gates: {
+        web_pwa: 'owned-runtime-deployment-verification',
+        android: 'signed-package-plus-play-console-evidence-required',
+        ios: 'signed-package-plus-app-store-connect-evidence-required',
+      },
+    };
+    await env.DB.prepare("UPDATE builder_projects SET build_recipe_json=?,status='deploy_ready',updated_at=CURRENT_TIMESTAMP WHERE id=?")
+      .bind(JSON.stringify({ ...recipe, generated: updatedGenerated, release_candidate: releaseCandidate }), project.id).run();
+    await env.DB.prepare('INSERT INTO builder_events(id,project_id,event_type,detail) VALUES(?,?,?,?)')
+      .bind('evt_' + crypto.randomUUID().replaceAll('-', ''), project.id, 'developer_factory.release_candidate', JSON.stringify({ appId, revision: generated.revision, internal_repository_head: internalRepository.head_commit_id })).run();
+
+    const verificationSeed = {
+      status: 'pending',
+      revision: generated.revision,
+      projectId: project.id,
+      validation_passed: true,
+      internal_repository_head: internalRepository.head_commit_id,
+      preview: '/preview/' + encodeURIComponent(project.slug) + '/' + encodeURIComponent(generated.revision) + '/',
+      public_live: false,
+    };
     await env.DB.prepare("UPDATE builder_app_registry SET stage='preview',verification_json=?,updated_at=CURRENT_TIMESTAMP WHERE app_id=? AND developer_id=?")
-      .bind(JSON.stringify({ status:'pending', revision, projectId:project.id }),appId,identity.developer_id).run();
-    return json({ ok: true, app: { ...app, stage:'preview' }, build: { status:'preview_ready', revision, source_of_truth:'izakhono-internal', builder_project_id:project.id, builder_project_status:'building' }, next_gate:'verification', public_live:false });
+      .bind(JSON.stringify(verificationSeed), appId, identity.developer_id).run();
+
+    return json({
+      ok: true,
+      app: { ...app, stage: 'preview' },
+      build: {
+        status: 'release_candidate_ready',
+        revision: generated.revision,
+        source_of_truth: 'izakhono-internal',
+        validation_passed: true,
+        internal_repository: internalRepository,
+        preview: verificationSeed.preview,
+        builder_project_id: project.id,
+        builder_project_status: 'deploy_ready',
+      },
+      release_candidate: releaseCandidate,
+      next_gate: 'verification',
+      public_live: false,
+    });
   }
 
   if (action === 'verify') {
