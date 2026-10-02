@@ -1,12 +1,12 @@
 import {Domain,RegistryStore,RegistryAdapter,RdapProvider,DnsProvider,transitionDomain} from './core';
 import {provisionDns} from './dns';
-import {RegistrationOrder,RegistrationOrderStore,nextOrderState} from './registration-order';
+import {RegistrationOrder,RegistrationOrderStore,nextOrderState,transitionOrder} from './registration-order';
 
 export type RegistrationResult={domain:Domain;authorityTransactionId:string;authorityConfirmed:boolean;dnsPublished:boolean;dnsVerified:boolean;rdapVerified:boolean;handedOver:boolean};
 
 async function syncOrder(store:RegistrationOrderStore,order:RegistrationOrder,patch:Partial<RegistrationOrder>){
- const next={...order,...patch,updatedAt:new Date().toISOString()};
- next.state=nextOrderState(next);
+ const desired={...order,...patch,updatedAt:new Date().toISOString()};
+ const next=desired.state===order.state ? desired : transitionOrder(order,desired.state,patch);
  await store.put(next);
  return next;
 }
@@ -52,7 +52,7 @@ export async function handoverRegistrationOrder(orders:RegistrationOrderStore,or
  const order=await orders.get(orderId);
  if(!order) throw new Error('registration order not found');
  if(nextOrderState(order)!=='readyForHandover') throw new Error('registration order is not ready for handover');
- const next={...order,state:'handedOver' as const,handedOver:true,updatedAt:new Date().toISOString()};
+ const next=transitionOrder(order,'handedOver',{handedOver:true});
  await orders.put(next);
  return next;
 }
