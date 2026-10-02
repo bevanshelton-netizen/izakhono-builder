@@ -111,7 +111,7 @@ CREATE INDEX IF NOT EXISTS idx_builder_commercial_events_owner
 CREATE TABLE IF NOT EXISTS builder_api_credentials (
   key_id TEXT PRIMARY KEY,
   developer_id TEXT NOT NULL,
-  app_id TEXT NOT NULL,
+  app_id TEXT,
   key_prefix TEXT NOT NULL UNIQUE,
   secret_hash TEXT NOT NULL,
   scopes_json TEXT NOT NULL DEFAULT '[]',
