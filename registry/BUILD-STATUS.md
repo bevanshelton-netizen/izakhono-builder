@@ -10,6 +10,8 @@
 - Persistent idempotency records.
 - Persistent registrar records with active/suspended state.
 - Persistent registration-order records with customer handover state.
+- Atomic idempotency claim/replay contract with a dedicated D1 migration.
+- Canonical registration-order transition guard; application code cannot skip lifecycle stages.
 - Registration-order API with lifecycle reads and a guarded handover endpoint.
 - Verification progression is transaction-owned; callers cannot manually set authority/DNS/RDAP verification flags.
 - Authenticated registrar provisioning endpoint.
@@ -40,7 +42,7 @@ The current code is a registry/registrar control-plane foundation and does not b
 5. Implement authoritative external registry adapter(s), beginning with the applicable .co.za registrar path once credentials/accreditation exist. The transport/adapter boundary is now implemented; live authority credentials and verification remain outstanding.
 6. Add production registrar authentication/credential rotation, rate limiting, abuse controls, and operational alerting.
 7. Complete end-to-end transaction, DNS, RDAP and customer-handover tests.
-8. Verify persistent registration-order migration and Worker wiring in CI/deployment.
+8. Verify persistent registration-order and idempotency migrations and Worker wiring in CI/deployment.
 9. Only after those gates pass, expose customer-facing paid public registration.
 
 ## Commercial rule
