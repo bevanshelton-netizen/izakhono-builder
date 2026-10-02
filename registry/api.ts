@@ -7,6 +7,7 @@ import {hashRequest,IdempotencyStore,MemoryIdempotencyStore} from './idempotency
 import {Registrar} from './registrar';
 import {RegistrarStore,MemoryRegistrarStore} from './registrar-store';
 import {MemoryRegistrationOrderStore,RegistrationOrderStore,nextOrderState} from './registration-order';
+import {handoverRegistrationOrder} from './transaction';
 
 const memory=new MemoryRegistryStore();
 const memoryIdempotency=new MemoryIdempotencyStore();
@@ -75,7 +76,9 @@ export async function registryFetch(request:Request,store:RegistryStore=memory,e
   if(next.handedOver&&!(order.state==='readyForHandover'||order.state==='handedOver'))return json({ok:false,error:'order must be readyForHandover before handover'},409);
   const allowed=body.state==='pending'||body.state==='authorityConfirmed'||body.state==='dnsPublished'||body.state==='dnsVerified'||body.state==='rdapVerified'||body.state==='readyForHandover'||body.state==='handedOver';
   if(body.state&&!allowed)return json({ok:false,error:'invalid order state'},400);
-  if(body.state==='handedOver'&&order.state!=='readyForHandover'&&order.state!=='handedOver')return json({ok:false,error:'invalid handover transition'},409);
+  if(body.state==='handedOver'){
+   try{return json({ok:true,order:await handoverRegistrationOrder(orders,body.id)});}catch(e){return json({ok:false,error:e instanceof Error?e.message:'handover failed'},409);}
+  }
   next.state=body.state as typeof next.state || nextOrderState(next);
   await orders.put(next);return json({ok:true,order:next});
  }
