@@ -1,5 +1,5 @@
 import {RegistryStore,Domain,Contact,Host,AuditEvent} from './core';
-export interface D1Statement{bind(...values:unknown[]):D1Statement;first<T=unknown>():Promise<T|null>;run():Promise<unknown>;}
+export interface D1Statement{bind(...values:unknown[]):D1Statement;first<T=unknown>():Promise<T|null>;all<T=unknown>():Promise<{results:T[]}>;run():Promise<unknown>;}
 export interface D1Database{prepare(sql:string):D1Statement;}
 export class D1RegistryStore implements RegistryStore{
  constructor(private db:D1Database){}
