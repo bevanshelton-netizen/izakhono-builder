@@ -27,7 +27,9 @@
     "builder-economy:test": "npx --yes tsx@4.20.3 tests/builder-economy-control-plane.test.ts",
     "developer-api:typecheck": "tsc --noEmit --target ES2022 --lib ES2022,DOM,DOM.Iterable --module ESNext src/developer-api.ts",
     "developer-console:typecheck": "tsc --noEmit --target ES2022 --lib ES2022,DOM,DOM.Iterable --module ESNext registry/developer-console-ui.ts",
-    "developer-console:test": "npx --yes tsx@4.20.3 tests/developer-console-ui.test.ts"
+    "developer-console:test": "npx --yes tsx@4.20.3 tests/developer-console-ui.test.ts",
+    "app-factory:typecheck": "tsc --noEmit --target ES2022 --lib ES2022,DOM,DOM.Iterable --module ESNext src/app-factory-flow.ts",
+    "app-factory:test": "npx --yes tsx@4.20.3 tests/app-factory-flow.test.ts"
   },
   "devDependencies": {
     "typescript": "5.9.2",
