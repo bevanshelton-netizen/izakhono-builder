@@ -14,7 +14,7 @@ function keySecret(): string {
   return 'izk_' + btoa(String.fromCharCode(...bytes)).replace(/[^A-Za-z0-9]/g, '').slice(0, 43);
 }
 function safeJson(value: string | null | undefined, fallback: any): any { try { return JSON.parse(value || ''); } catch { return fallback; } }
-async function developerFromKey(req: Request, env: DeveloperApiEnv): Promise<any | null> {
+export async function authenticateDeveloper(req: Request, env: DeveloperApiEnv): Promise<any | null> {
   const supplied = req.headers.get('authorization') || '';
   if (!supplied.startsWith('Bearer ')) return null;
   const secret = supplied.slice(7).trim();
@@ -27,7 +27,7 @@ async function developerFromKey(req: Request, env: DeveloperApiEnv): Promise<any
   await env.DB.prepare('UPDATE builder_api_credentials SET last_used_at=CURRENT_TIMESTAMP WHERE key_id=?').bind(row.key_id).run();
   return { ...row, scopes: safeJson(row.scopes_json, []) };
 }
-function hasScope(identity: any, scope: string): boolean { return Array.isArray(identity?.scopes) && (identity.scopes.includes('*') || identity.scopes.includes(scope)); }
+export function hasDeveloperScope(identity: any, scope: string): boolean { return Array.isArray(identity?.scopes) && (identity.scopes.includes('*') || identity.scopes.includes(scope)); }
 function id(prefix: string): string { return prefix + '_' + crypto.randomUUID().replaceAll('-', ''); }
 
 export async function developerApiRoute(req: Request, env: DeveloperApiEnv & { ADMIN_SECRET?: string }, url: URL, ownerAuthorized: () => Promise<boolean>): Promise<Response | null> {
@@ -50,11 +50,11 @@ export async function developerApiRoute(req: Request, env: DeveloperApiEnv & { A
     return json({ ok: true, developer: { id: developerId, email, displayName, plan }, credential: { keyId, keyPrefix: prefix, secret, warning: 'The secret is returned once. Store it securely; IZAKHONO stores only its hash.' } }, 201);
   }
 
-  const identity = await developerFromKey(req, env);
+  const identity = await authenticateDeveloper(req, env);
   if (!identity) return json({ ok: false, error: 'Developer API authentication required' }, 401);
 
   if (url.pathname === '/api/developer/me' && req.method === 'GET') {
-    if (!hasScope(identity, 'developer:read')) return json({ ok: false, error: 'Insufficient scope' }, 403);
+    if (!hasDeveloperScope(identity, 'developer:read')) return json({ ok: false, error: 'Insufficient scope' }, 403);
     return json({ ok: true, developer: { id: identity.developer_id, email: identity.email, displayName: identity.display_name, plan: identity.plan }, credential: { keyId: identity.key_id, keyPrefix: identity.key_prefix, appId: identity.app_id, scopes: identity.scopes } });
   }
 
@@ -65,7 +65,7 @@ export async function developerApiRoute(req: Request, env: DeveloperApiEnv & { A
   }
 
   if (url.pathname === '/api/developer/apps' && req.method === 'POST') {
-    if (!hasScope(identity, 'app:write')) return json({ ok: false, error: 'Insufficient scope' }, 403);
+    if (!hasDeveloperScope(identity, 'app:write')) return json({ ok: false, error: 'Insufficient scope' }, 403);
     let body: any; try { body = await req.json(); } catch { return json({ ok: false, error: 'Expected application/json' }, 400); }
     const name = clean(body?.name, 120), appSlug = slug(clean(body?.slug || name, 80));
     if (!name || appSlug.length < 2) return json({ ok: false, error: 'name and a valid slug are required' }, 400);
@@ -73,12 +73,22 @@ export async function developerApiRoute(req: Request, env: DeveloperApiEnv & { A
     const manifest = { schema: 'izakhono.app/v1', appId, name, slug: appSlug, ownerId: identity.developer_id, stage: 'idea', permissions: Array.isArray(body?.permissions) ? body.permissions.slice(0, 50) : [], products: Array.isArray(body?.products) ? body.products.slice(0, 50) : [] };
     try {
       await env.DB.prepare('INSERT INTO builder_app_registry(app_id,developer_id,name,slug,manifest_json) VALUES(?,?,?,?,?)').bind(appId, identity.developer_id, name, appSlug, JSON.stringify(manifest)).run();
+      const projectId = id('project');
+      const description = clean(body?.description, 1000);
+      const modules = ['auth','analytics','publish','integrations'];
+      if (manifest.products.includes('payments') || manifest.products.includes('commerce')) modules.push('payments');
+      if (manifest.products.includes('ai')) modules.push('ai');
+      if (manifest.products.includes('marketplace')) modules.push('marketplace');
+      if (manifest.products.includes('growth')) modules.push('growth');
+      await env.DB.prepare('INSERT INTO builder_projects(id,name,slug,category,description,modules_json,status,build_recipe_json) VALUES(?,?,?,?,?,?,?,?)')
+        .bind(projectId,name,appSlug,'developer-app',description,JSON.stringify(modules),'planned',JSON.stringify({ schema:'izakhono.build-recipe/v1', appId, modules, source_of_truth:'izakhono-internal' })).run();
+      await env.DB.prepare('UPDATE builder_app_registry SET builder_project_id=?,updated_at=CURRENT_TIMESTAMP WHERE app_id=?').bind(projectId,appId).run();
     } catch (error: any) { return json({ ok: false, error: String(error?.message || error).slice(0, 300) }, 409); }
-    return json({ ok: true, app: manifest }, 201);
+    return json({ ok: true, app: { ...manifest, builderProjectId: (await env.DB.prepare('SELECT builder_project_id FROM builder_app_registry WHERE app_id=?').bind(appId).first<any>())?.builder_project_id || null } }, 201);
   }
 
   if (url.pathname === '/api/developer/usage' && req.method === 'POST') {
-    if (!hasScope(identity, 'usage:write')) return json({ ok: false, error: 'Insufficient scope' }, 403);
+    if (!hasDeveloperScope(identity, 'usage:write')) return json({ ok: false, error: 'Insufficient scope' }, 403);
     let body: any; try { body = await req.json(); } catch { return json({ ok: false, error: 'Expected application/json' }, 400); }
     const appId = clean(body?.appId, 100), metric = clean(body?.metric, 80), quantity = Number(body?.quantity);
     const eventId = clean(body?.eventId, 120) || id('usage'), idempotencyKey = clean(body?.idempotencyKey, 180);
