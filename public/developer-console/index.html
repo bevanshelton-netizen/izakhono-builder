@@ -12,7 +12,7 @@
 .brand{font-weight:900;font-size:22px;letter-spacing:.08em;margin:4px 8px 30px}.brand span{color:#64f3a5}
 nav button{width:100%;text-align:left;border:0;background:transparent;color:#a9c3b8;padding:11px 12px;border-radius:10px;margin:2px 0;cursor:pointer}nav button:hover,nav button.active{background:#123025;color:#f4fff9}
 main{padding:34px;max-width:1250px;width:100%;margin:auto}.top{display:flex;justify-content:space-between;gap:20px;align-items:center}.eyebrow{color:#64f3a5;font-weight:800;text-transform:uppercase;letter-spacing:.12em;font-size:12px}h1{font-size:clamp(32px,5vw,58px);margin:8px 0}.muted{color:#9fb8ad;line-height:1.6}.cta{border:0;background:#64f3a5;color:#04110d;font-weight:900;padding:13px 18px;border-radius:11px;cursor:pointer}
-.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:28px 0}.card{background:#0c1d17;border:1px solid #244438;border-radius:16px;padding:18px}.card strong{display:block;font-size:26px;margin-top:8px}.panel{background:#0b1a15;border:1px solid #244438;border-radius:18px;padding:22px;margin-top:18px}.actions{display:flex;gap:10px;flex-wrap:wrap}.secondary{border:1px solid #36594c;background:#10271f;color:#eefaf5;padding:11px 15px;border-radius:10px;cursor:pointer}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:28px 0}.card{background:#0c1d17;border:1px solid #244438;border-radius:16px;padding:18px}.card strong{display:block;font-size:26px;margin-top:8px}.panel{background:#0b1a15;border:1px solid #244438;border-radius:18px;padding:22px;margin-top:18px}.actions{display:flex;gap:10px;flex-wrap:wrap}.secondary{border:1px solid #36594c;background:#10271f;color:#eefaf5;padding:11px 15px;border-radius:10px;cursor:pointer}.field{display:grid;gap:7px;margin:10px 0}.field input{width:100%;background:#07120f;border:1px solid #36594c;color:#eefaf5;border-radius:10px;padding:11px}.status{white-space:pre-wrap;background:#07120f;border:1px solid #244438;border-radius:12px;padding:14px;color:#b9d5ca;min-height:50px}
 @media(max-width:800px){.shell{grid-template-columns:1fr}.side{border-right:0;border-bottom:1px solid #244438}.grid{grid-template-columns:repeat(2,1fr)}main{padding:22px}}
 </style>
 </head>
@@ -39,10 +39,30 @@ const screens=[
 ['Trust & Security','/console/security'],['AI Control','/console/ai']
 ];
 const nav=document.querySelector('#nav');
-screens.forEach(([name,route],i)=>{const b=document.createElement('button');b.textContent=name;b.className=i===0?'active':'';b.onclick=()=>{if(route==='/console/new') createApp();else alert(name+' is part of the IZAKHONO Developer Console.');};nav.appendChild(b);});
-function createApp(){const name=prompt('What do you want to build?');if(!name)return;alert('Idea captured: '+name+'\n\nNext: choose capabilities and generate a controlled preview.');}
-document.querySelector('#new').onclick=createApp;document.querySelector('#start').onclick=createApp;
-document.querySelector('#market').onclick=()=>alert('Marketplace discovery is ready for the next integration layer.');
+screens.forEach(([name,route],i)=>{const b=document.createElement('button');b.textContent=name;b.className=i===0?'active':'';b.onclick=()=>{if(route==='/console/new') createApp();else alert(name+' is available in the console lifecycle.');};nav.appendChild(b);});
+const panel=document.querySelector('.panel');
+panel.insertAdjacentHTML('beforebegin',`
+<section class="panel">
+<div class="eyebrow">Developer Access</div>
+<h2>Connect your developer credential</h2>
+<p class="muted">Credentials are supplied by an owner-authorized provisioning flow. This console uses the token only for the current browser session.</p>
+<div class="field"><label for="token">Developer API token</label><input id="token" type="password" autocomplete="off" placeholder="izk_…"></div>
+<div class="actions"><button class="cta" id="connect">Connect</button><button class="secondary" id="clear">Clear session</button></div>
+<div class="status" id="consoleStatus">Not connected.</div>
+</section>`);
+const statusEl=document.querySelector('#consoleStatus');
+const tokenEl=document.querySelector('#token');
+tokenEl.value=sessionStorage.getItem('izakhonoDeveloperToken')||'';
+function token(){return tokenEl.value.trim();}
+function headers(){return {'content-type':'application/json','authorization':'Bearer '+token()};}
+async function api(path,options={}){if(!token())throw new Error('Connect a developer API token first.');const r=await fetch(path,{...options,headers:{...headers(),...(options.headers||{})}});const data=await r.json().catch(()=>({}));if(!r.ok)throw new Error(data.error||('HTTP '+r.status));return data;}
+async function connect(){try{sessionStorage.setItem('izakhonoDeveloperToken',token());const d=await api('/api/developer/me',{method:'GET'});document.querySelector('#services').textContent='Connected';statusEl.textContent='Connected as '+d.developer.displayName+' ('+d.developer.plan+').';await refreshApps();}catch(e){statusEl.textContent=e.message;}}
+async function refreshApps(){try{const d=await api('/api/developer/apps',{method:'GET'});document.querySelector('#apps').textContent=d.apps.length;statusEl.textContent+=(d.apps.length?'\nApps: '+d.apps.map(x=>x.name+' ['+x.stage+']').join(', '):'\nNo applications yet.');}catch(e){statusEl.textContent=e.message;}}
+async function createApp(){try{const name=prompt('What do you want to build?');if(!name)return;const description=prompt('One-sentence description (optional)')||'';const products=(prompt('Capabilities, comma-separated: payments, commerce, ai, marketplace, growth')||'').split(',').map(x=>x.trim()).filter(Boolean);const d=await api('/api/developer/apps',{method:'POST',body:JSON.stringify({name,description,products})});const id=d.app.appId;statusEl.textContent='Created '+name+' ('+id+').\nPlanning…';await api('/api/developer/apps/'+encodeURIComponent(id)+'/plan',{method:'POST'});await api('/api/developer/apps/'+encodeURIComponent(id)+'/build',{method:'POST'});const v=await api('/api/developer/apps/'+encodeURIComponent(id)+'/verify',{method:'POST'});const m=await api('/api/developer/apps/'+encodeURIComponent(id)+'/monetize',{method:'POST'});statusEl.textContent='Factory pipeline complete.\nVerified: '+v.verification.passed+'\nPublic live: '+v.public_live+'\nPayments connected: '+m.monetization.production_payment_connected+'\nNext gate: '+m.next_gate;await refreshApps();}catch(e){statusEl.textContent='Factory error: '+e.message;}}
+document.querySelector('#new').onclick=createApp;document.querySelector('#start').onclick=createApp;document.querySelector('#connect').onclick=connect;
+document.querySelector('#clear').onclick=()=>{sessionStorage.removeItem('izakhonoDeveloperToken');tokenEl.value='';statusEl.textContent='Session cleared.';};
+document.querySelector('#market').onclick=()=>alert('Marketplace discovery is the next commercial integration surface.');
+if(token()) connect();
 </script>
 </body>
 </html>
