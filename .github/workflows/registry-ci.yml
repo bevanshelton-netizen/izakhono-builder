@@ -3,7 +3,7 @@ on:
   push:
     paths:
       - "registry/**"
-      - "migrations/0008_registry_core.sql"
+      - "migrations/**"
       - "package.json"
       - "tsconfig.json"
       - "registry/wrangler.jsonc"
