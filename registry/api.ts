@@ -6,7 +6,7 @@ import {bearerValid} from './security';
 import {hashRequest,IdempotencyStore,MemoryIdempotencyStore} from './idempotency';
 import {Registrar} from './registrar';
 import {RegistrarStore,MemoryRegistrarStore} from './registrar-store';
-import {MemoryRegistrationOrderStore,RegistrationOrderStore} from './registration-order';
+import {MemoryRegistrationOrderStore,RegistrationOrderStore,nextOrderState} from './registration-order';
 
 const memory=new MemoryRegistryStore();
 const memoryIdempotency=new MemoryIdempotencyStore();
@@ -72,10 +72,11 @@ export async function registryFetch(request:Request,store:RegistryStore=memory,e
   let body:{id?:string;state?:string;authorityTransactionId?:string;authorityConfirmed?:boolean;dnsPublished?:boolean;dnsVerified?:boolean;rdapVerified?:boolean;handedOver?:boolean};try{body=await request.json();}catch{return json({ok:false,error:'invalid json'},400);}
   if(!body.id)return json({ok:false,error:'id required'},400);const order=await orders.get(body.id);if(!order)return json({ok:false,error:'order not found'},404);
   const next={...order,authorityTransactionId:body.authorityTransactionId??order.authorityTransactionId,authorityConfirmed:body.authorityConfirmed??order.authorityConfirmed,dnsPublished:body.dnsPublished??order.dnsPublished,dnsVerified:body.dnsVerified??order.dnsVerified,rdapVerified:body.rdapVerified??order.rdapVerified,handedOver:body.handedOver??order.handedOver,updatedAt:new Date().toISOString()};
-  if(next.handedOver&&!(next.authorityConfirmed&&next.dnsPublished&&next.dnsVerified&&next.rdapVerified))return json({ok:false,error:'handover requires authority, DNS and RDAP verification'},409);
+  if(next.handedOver&&!(order.state==='readyForHandover'||order.state==='handedOver'))return json({ok:false,error:'order must be readyForHandover before handover'},409);
   const allowed=body.state==='pending'||body.state==='authorityConfirmed'||body.state==='dnsPublished'||body.state==='dnsVerified'||body.state==='rdapVerified'||body.state==='readyForHandover'||body.state==='handedOver';
   if(body.state&&!allowed)return json({ok:false,error:'invalid order state'},400);
-  next.state=body.state as typeof next.state || (next.handedOver?'handedOver':next.authorityConfirmed&&next.dnsPublished&&next.dnsVerified&&next.rdapVerified?'readyForHandover':next.state);
+  if(body.state==='handedOver'&&order.state!=='readyForHandover'&&order.state!=='handedOver')return json({ok:false,error:'invalid handover transition'},409);
+  next.state=body.state as typeof next.state || nextOrderState(next);
   await orders.put(next);return json({ok:true,order:next});
  }
  if(url.pathname==='/domain/transition'&&request.method==='POST'){
