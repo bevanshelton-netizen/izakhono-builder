@@ -9,6 +9,8 @@
 - Persistent D1 domain/contact/host/audit storage.
 - Persistent idempotency records.
 - Persistent registrar records with active/suspended state.
+- Persistent registration-order records with customer handover state.
+- Registration-order API with lifecycle and handover guards.
 - Authenticated registrar provisioning endpoint.
 - Authenticated domain creation requiring an active registrar.
 - Authenticated lifecycle transition endpoint.
@@ -37,7 +39,8 @@ The current code is a registry/registrar control-plane foundation and does not b
 5. Implement authoritative external registry adapter(s), beginning with the applicable .co.za registrar path once credentials/accreditation exist. The transport/adapter boundary is now implemented; live authority credentials and verification remain outstanding.
 6. Add production registrar authentication/credential rotation, rate limiting, abuse controls, and operational alerting.
 7. Complete end-to-end transaction, DNS, RDAP and customer-handover tests.
-8. Only after those gates pass, expose customer-facing paid public registration.
+8. Verify persistent registration-order migration and Worker wiring in CI/deployment.
+9. Only after those gates pass, expose customer-facing paid public registration.
 
 ## Commercial rule
 
