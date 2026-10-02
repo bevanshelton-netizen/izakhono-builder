@@ -1,7 +1,9 @@
 import { createDomain, normalizeDomain, RegistryStore } from './core';
 import { parseEpp, eppGreeting, eppResult } from './epp';
 
-export async function eppHandle(store: RegistryStore, xml: string) {
+export type EppContext={registrarId:string;registrantId:string};
+
+export async function eppHandle(store: RegistryStore, xml: string, context:EppContext={registrarId:'local-test-registrar',registrantId:'local-test-contact'}) {
   try {
     const parsed = parseEpp(xml);
     const name = normalizeDomain(parsed.domain);
@@ -13,8 +15,8 @@ export async function eppHandle(store: RegistryStore, xml: string) {
       if (await store.getDomain(name)) return eppResult(2302, 'domain exists');
       const domain = await createDomain(store, {
         name,
-        registrarId: 'local-test-registrar',
-        registrantId: 'local-test-contact',
+        registrarId: context.registrarId,
+        registrantId: context.registrantId,
         nameservers: [],
         expiresAt: new Date(Date.now() + 365 * 86400000).toISOString()
       }, 'epp');
