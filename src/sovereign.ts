@@ -1321,6 +1321,21 @@ export default {
     const developerApi = await developerApiRoute(req, env, url, () => ownerAuthorized(req, env));
     if (developerApi) return developerApi;
 
+    if ((url.pathname === '/console' || url.pathname === '/console/') && (req.method === 'GET' || req.method === 'HEAD')) {
+      const assetUrl = new URL(req.url);
+      assetUrl.pathname = '/developer-console/index.html';
+      assetUrl.search = '';
+      const asset = await env.ASSETS.fetch(new Request(assetUrl.toString(), req));
+      const headers = new Headers(asset.headers);
+      headers.set('cache-control', 'public, max-age=0, must-revalidate');
+      headers.set('x-content-type-options', 'nosniff');
+      headers.set('referrer-policy', 'strict-origin-when-cross-origin');
+      headers.set('permissions-policy', 'camera=(), microphone=(), geolocation=()');
+      headers.set('content-security-policy', "default-src 'self'; connect-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'");
+      headers.delete('content-length');
+      return new Response(req.method === 'HEAD' ? null : asset.body, { status: asset.status, statusText: asset.statusText, headers });
+    }
+
     const commandsApi = await commandApiRoute(req, env, url);
     if (commandsApi) return commandsApi;
 
