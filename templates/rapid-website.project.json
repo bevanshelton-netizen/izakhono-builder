@@ -1,0 +1,36 @@
+{
+  "schema": "izakhono.rapid-website/v1",
+  "profile": "business-site-standard",
+  "build": {
+    "source_template": "izakhono-business-site-v1",
+    "build_command": "npm run build",
+    "health_path": "/api/health",
+    "smoke_paths": ["/", "/contact"]
+  },
+  "delivery": {
+    "temporary_https_required": true,
+    "custom_domain_is_non_blocking": true,
+    "email_is_non_blocking": true,
+    "rollback_required": true,
+    "evidence_required": true
+  },
+  "services": {
+    "hosting": {"provider": "vercel", "mode": "external-transition"},
+    "database": {"provider": "supabase", "required": false},
+    "storage": {"provider": "supabase", "required": false},
+    "auth": {"provider": "supabase", "required": false},
+    "payments": {"provider": "none", "required": false},
+    "email": {"provider": "izakhono-mail", "required": false, "activation": "evidence-gated"},
+    "domain": {"provider": "cloudflare", "activation": "evidence-gated"},
+    "monitoring": {"provider": "delivery-smoke-checks", "required": true},
+    "backup": {"provider": "source-and-database-policy", "required": true}
+  },
+  "gates": {
+    "build": "must_pass",
+    "preview_https": "must_pass",
+    "custom_domain": "may_wait",
+    "ssl": "may_wait_until_domain_verified",
+    "email": "may_wait",
+    "handover": "must_have_evidence"
+  }
+}
