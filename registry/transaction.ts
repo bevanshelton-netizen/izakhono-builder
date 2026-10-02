@@ -1,5 +1,4 @@
-import {Domain,RegistryStore,RegistryAdapter,RdapProvider,transitionDomain} from './core';
-import {DnsProvider} from './core';
+import {Domain,RegistryStore,RegistryAdapter,RdapProvider,DnsProvider,transitionDomain} from './core';
 import {provisionDns} from './dns';
 
 export type RegistrationResult={domain:Domain;authorityTransactionId:string;authorityConfirmed:boolean;dnsPublished:boolean;dnsVerified:boolean;rdapVerified:boolean;handedOver:boolean};
@@ -19,4 +18,10 @@ export async function registerAuthoritatively(store:RegistryStore,adapter:Regist
  if(!rdapVerified) throw new Error('RDAP verification not confirmed');
  const live=await transitionDomain(store,domain.name,'ok','authority');
  return {domain:live,authorityTransactionId:authority.transactionId,authorityConfirmed:confirmed,dnsPublished:dnsResult.published,dnsVerified,rdapVerified,handedOver:false};
+}
+
+export async function handoverVerifiedRegistration(result:RegistrationResult):Promise<RegistrationResult>{
+ if(!result.authorityConfirmed||!result.dnsPublished||!result.dnsVerified||!result.rdapVerified) throw new Error('registration is not fully verified');
+ if(result.domain.status!=='ok') throw new Error('domain is not active');
+ return {...result,handedOver:true};
 }
