@@ -12,7 +12,7 @@ const memoryIdempotency=new MemoryIdempotencyStore();
 const memoryRegistrars=new MemoryRegistrarStore();
 const json=(data:unknown,status=200)=>new Response(JSON.stringify(data),{status,headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store'}});
 export interface RegistryEnv{REGISTRY_TOKEN_SHA256?:string;APP_ENV?:string}
-function auth(request:Request,env:RegistryEnv){return !env.REGISTRY_TOKEN_SHA256 || bearerValid(request.headers.get('authorization')||undefined,env.REGISTRY_TOKEN_SHA256)}
+async function auth(request:Request,env:RegistryEnv){return !env.REGISTRY_TOKEN_SHA256 || await bearerValid(request.headers.get('authorization')||undefined,env.REGISTRY_TOKEN_SHA256)}
 export async function registryFetch(request:Request,store:RegistryStore=memory,env:RegistryEnv={},idempotency:IdempotencyStore=memoryIdempotency,registrars:RegistrarStore=memoryRegistrars){
  const url=new URL(request.url);
  if(url.pathname==='/health')return json({ok:true,service:'IZAKHONO REGISTRY',mode:env.APP_ENV==='production'?'persistent-control-plane':'test-control-plane'});
@@ -51,11 +51,16 @@ export async function registryFetch(request:Request,store:RegistryStore=memory,e
   if(!(await auth(request,env)))return json({ok:false,error:'unauthorized'},401);
   let body:{name?:string;status?:DomainStatus};try{body=await request.json();}catch{return json({ok:false,error:'invalid json'},400);}
   if(!body.name||!body.status)return json({ok:false,error:'name and status required'},400);
+  if(body.status==='ok')return json({ok:false,error:'direct transition to ok is disabled; use the authoritative registration transaction'},409);
   try{return json({ok:true,domain:await transitionDomain(store,body.name,body.status,'api')});}catch(e){return json({ok:false,error:e instanceof Error?e.message:'transition failed'},409);}
  }
  if(url.pathname==='/epp'&&request.method==='POST'){
   if(env.REGISTRY_TOKEN_SHA256 && !(await bearerValid(request.headers.get('authorization')||undefined,env.REGISTRY_TOKEN_SHA256)))return new Response('<epp><response><result code="2201"><msg>authorization error</msg></result></response></epp>',{status:401,headers:{'content-type':'application/epp+xml'}});
-  return new Response(await eppHandle(store,await request.text()),{headers:{'content-type':'application/epp+xml; charset=utf-8'}});
+  const registrarId=request.headers.get('x-registrar-id')?.trim();
+  if(!registrarId)return new Response('<epp><response><result code="2201"><msg>registrar identity required</msg></result></response></epp>',{status:401,headers:{'content-type':'application/epp+xml'}});
+  const registrar=await registrars.get(registrarId);
+  if(!registrar||registrar.status!=='active')return new Response('<epp><response><result code="2201"><msg>registrar not active</msg></result></response></epp>',{status:403,headers:{'content-type':'application/epp+xml'}});
+  return new Response(await eppHandle(store,await request.text(),{registrarId,registrantId:`${registrarId}:registrant`}),{headers:{'content-type':'application/epp+xml; charset=utf-8'}});
  }
  return json({ok:false,error:'not found'},404);
 }
