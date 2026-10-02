@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#07120f">
+<title>IZAKHONO Developer Console</title>
+<style>
+:root{font-family:Inter,system-ui,sans-serif;color:#eefaf5;background:#07120f}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at top right,#16382d 0,#07120f 45%);min-height:100vh}
+.shell{display:grid;grid-template-columns:250px 1fr;min-height:100vh}.side{border-right:1px solid #244438;padding:24px 16px;background:#081712}
+.brand{font-weight:900;font-size:22px;letter-spacing:.08em;margin:4px 8px 30px}.brand span{color:#64f3a5}
+nav button{width:100%;text-align:left;border:0;background:transparent;color:#a9c3b8;padding:11px 12px;border-radius:10px;margin:2px 0;cursor:pointer}nav button:hover,nav button.active{background:#123025;color:#f4fff9}
+main{padding:34px;max-width:1250px;width:100%;margin:auto}.top{display:flex;justify-content:space-between;gap:20px;align-items:center}.eyebrow{color:#64f3a5;font-weight:800;text-transform:uppercase;letter-spacing:.12em;font-size:12px}h1{font-size:clamp(32px,5vw,58px);margin:8px 0}.muted{color:#9fb8ad;line-height:1.6}.cta{border:0;background:#64f3a5;color:#04110d;font-weight:900;padding:13px 18px;border-radius:11px;cursor:pointer}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:28px 0}.card{background:#0c1d17;border:1px solid #244438;border-radius:16px;padding:18px}.card strong{display:block;font-size:26px;margin-top:8px}.panel{background:#0b1a15;border:1px solid #244438;border-radius:18px;padding:22px;margin-top:18px}.actions{display:flex;gap:10px;flex-wrap:wrap}.secondary{border:1px solid #36594c;background:#10271f;color:#eefaf5;padding:11px 15px;border-radius:10px;cursor:pointer}
+@media(max-width:800px){.shell{grid-template-columns:1fr}.side{border-right:0;border-bottom:1px solid #244438}.grid{grid-template-columns:repeat(2,1fr)}main{padding:22px}}
+</style>
+</head>
+<body>
+<div class="shell">
+<aside class="side"><div class="brand">IZAKHONO <span>DEV</span></div><nav id="nav"></nav></aside>
+<main>
+<section class="top"><div><div class="eyebrow">Developer Super-Console</div><h1>Build your business.</h1><p class="muted">One account. One control centre. Many applications.</p></div><button class="cta" id="new">+ Create App</button></section>
+<section class="grid">
+<div class="card">Applications<strong id="apps">0</strong></div>
+<div class="card">Services<strong id="services">0</strong></div>
+<div class="card">Usage<strong id="usage">—</strong></div>
+<div class="card">Revenue<strong id="revenue">—</strong></div>
+</section>
+<section class="panel"><div class="eyebrow">Next action</div><h2 id="next">Create your first application</h2><p class="muted" id="detail">Start with an idea. IZAKHONO can take you through build, verification, deployment and monetization.</p><div class="actions"><button class="cta" id="start">Start Building</button><button class="secondary" id="market">Explore Marketplace</button></div></section>
+<section class="panel"><div class="eyebrow">Ecosystem</div><h2>Build → Launch → Monetize → Grow → Scale</h2><p class="muted">Use only the services your business needs. Dependencies remain visible and application data remains portable.</p></section>
+</main>
+</div>
+<script>
+const screens=[
+['Command Center','/console'],['Create an App','/console/new'],['My Apps','/console/apps'],
+['Build Studio','/console/build'],['Deploy','/console/deploy'],['Marketplace','/console/marketplace'],
+['Commerce','/console/commerce'],['Money','/console/money'],['Growth','/console/growth'],
+['Trust & Security','/console/security'],['AI Control','/console/ai']
+];
+const nav=document.querySelector('#nav');
+screens.forEach(([name,route],i)=>{const b=document.createElement('button');b.textContent=name;b.className=i===0?'active':'';b.onclick=()=>{if(route==='/console/new') createApp();else alert(name+' is part of the IZAKHONO Developer Console.');};nav.appendChild(b);});
+function createApp(){const name=prompt('What do you want to build?');if(!name)return;alert('Idea captured: '+name+'\n\nNext: choose capabilities and generate a controlled preview.');}
+document.querySelector('#new').onclick=createApp;document.querySelector('#start').onclick=createApp;
+document.querySelector('#market').onclick=()=>alert('Marketplace discovery is ready for the next integration layer.');
+</script>
+</body>
+</html>
