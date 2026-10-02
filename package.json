@@ -24,7 +24,8 @@
     "validate:host": "cd products/izakhono-host && npm run typecheck",
     "registry:test": "npx --yes tsx@4.20.3 registry/private-tld.test.ts registry/conformance.test.ts registry/dns.test.ts registry/authority-adapter.test.ts registry/rate-limit.test.ts registry/transaction.test.ts registry/registration-order.test.ts registry/idempotency.test.ts",
     "builder-economy:typecheck": "tsc --noEmit --target ES2022 --lib ES2022,DOM,DOM.Iterable --module ESNext src/builder-economy-control-plane.ts",
-    "builder-economy:test": "npx --yes tsx@4.20.3 tests/builder-economy-control-plane.test.ts"
+    "builder-economy:test": "npx --yes tsx@4.20.3 tests/builder-economy-control-plane.test.ts",
+    "developer-api:typecheck": "tsc --noEmit --target ES2022 --lib ES2022,DOM,DOM.Iterable --module ESNext src/developer-api.ts"
   },
   "devDependencies": {
     "typescript": "5.9.2",

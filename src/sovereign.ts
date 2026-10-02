@@ -2,6 +2,7 @@ import secureApp from './secure';
 import { ventureFactoryRoute } from './venture-factory';
 import { reviewLoopRoute } from './reviewloop';
 import { bidForgeRoute } from './bidforge';
+import { developerApiRoute } from './developer-api';
 import { COMMANDS, commandStats, commandSummary, findCommand } from './commands';
 import {
   commitInternalRepository,
@@ -1316,6 +1317,9 @@ async function publicAiCoreHost(req: Request, env: any, url: URL): Promise<Respo
 export default {
   async fetch(req: Request, env: any): Promise<Response> {
     const url = new URL(req.url);
+
+    const developerApi = await developerApiRoute(req, env, url, () => ownerAuthorized(req, env));
+    if (developerApi) return developerApi;
 
     const commandsApi = await commandApiRoute(req, env, url);
     if (commandsApi) return commandsApi;
