@@ -1,4 +1,4 @@
-import {Domain,RegistryStore,RegistryAdapter,transitionDomain} from './core';
+import {Domain,RegistryStore,RegistryAdapter,RdapProvider,transitionDomain} from './core';
 import {DnsProvider} from './core';
 import {provisionDns} from './dns';
 
