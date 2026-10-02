@@ -1,0 +1,59 @@
+name: IZAKHONO Rapid Website Delivery
+
+on:
+  workflow_dispatch:
+    inputs:
+      project_manifest:
+        description: "Path to an izakhono.rapid-website/v1 manifest"
+        required: true
+        default: "templates/rapid-website.project.json"
+      smoke_url:
+        description: "Optional already-deployed HTTPS URL to smoke-test"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+concurrency:
+  group: rapid-website-delivery
+  cancel-in-progress: false
+
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate rapid-delivery contract
+        env:
+          MANIFEST: ${{ inputs.project_manifest }}
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const p = process.env.MANIFEST;
+          const m = JSON.parse(fs.readFileSync(p,'utf8'));
+          if (m.schema !== 'izakhono.rapid-website/v1') throw new Error('Wrong rapid website schema');
+          if (m.delivery?.custom_domain_is_non_blocking !== true) throw new Error('Custom domain must be non-blocking');
+          if (m.delivery?.email_is_non_blocking !== true) throw new Error('Email must be non-blocking');
+          if (m.delivery?.temporary_https_required !== true) throw new Error('Temporary HTTPS is required');
+          if (m.gates?.build !== 'must_pass' || m.gates?.preview_https !== 'must_pass') throw new Error('Build/preview gates missing');
+          console.log('Rapid website contract: PASS');
+          NODE
+
+      - name: Check optional deployed URL
+        if: ${{ inputs.smoke_url != '' }}
+        env:
+          SMOKE_URL: ${{ inputs.smoke_url }}
+        run: |
+          set -e
+          curl --fail --silent --show-error --location --max-time 15 "$SMOKE_URL/" >/dev/null
+          curl --fail --silent --show-error --location --max-time 15 "$SMOKE_URL/api/health" >/dev/null
+          echo "HTTPS + health smoke test: PASS"
+
+      - name: Delivery gate result
+        run: |
+          echo "RAPID DELIVERY PREFLIGHT: PASS"
+          echo "DNS and email are separate evidence-gated tracks."
+          echo "External provider approval cannot block application build."
