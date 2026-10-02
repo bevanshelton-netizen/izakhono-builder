@@ -1,0 +1,31 @@
+{
+  "schema": "izakhono.instant-delivery/v1",
+  "name": "REPLACE_ME",
+  "slug": "replace-me",
+  "repository": "OWNER/REPOSITORY",
+  "deployment": {
+    "provider": "vercel",
+    "project": "REPLACE_ME",
+    "production_url": "https://REPLACE_ME"
+  },
+  "database": {
+    "provider": "supabase",
+    "project_id": "REPLACE_ME"
+  },
+  "application": {
+    "health_path": "/api/health",
+    "build_command": "npm run build"
+  },
+  "delivery": {
+    "temporary_route_allowed": true,
+    "custom_domain_required_for_live": true,
+    "fallback_route": "REPLACE_ME",
+    "rollback_required": true,
+    "backup_required": true
+  },
+  "dependencies": {
+    "email": "none",
+    "payments": "none",
+    "storage": "supabase"
+  }
+}
