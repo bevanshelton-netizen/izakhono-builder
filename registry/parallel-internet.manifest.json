@@ -1,0 +1,27 @@
+{
+  "schema":"izakhono.parallel-internet/v1",
+  "name":"IZAKHONO Parallel Internet",
+  "status":"foundation-defined",
+  "principles":["owned-first","evidence-gated","least-privilege","reversible","interoperable","global-ready","ai-native"],
+  "planes":{
+    "control":["orchestration","queue","event-bus","state","policy","audit","evidence","observability"],
+    "identity":["identity","secrets","trust"],
+    "data":["data","knowledge","search","analytics","storage"],
+    "experience":["social","music","commerce","education","travel","mobility","advertising","affiliate","developer-marketplace"]
+  },
+  "products":{
+    "KORA":["social","messaging","search","trust","growth"],
+    "ALLEGRO":["music","media","rights","ledger","social"],
+    "FORTRESS":["identity","payments","ledger","billing","risk","trust"],
+    "IZAKHONO_CLOUD":["cloud","developer","observability","security"],
+    "IZAKHONO_WORK":["collaboration","workflow","crm","communications"],
+    "IZAKHONO_CODE":["developer","security","ai"],
+    "IZAKHONO_ONE":["ai","orchestration","search","knowledge","identity"],
+    "EDU_BUILD":["education","identity","content","evidence"],
+    "IZAKHONO_COMMERCE":["marketplace","commerce","payments","trust"],
+    "IZAKHONO_ADS":["advertising","growth","analytics"],
+    "IZAKHONO_AFFILIATE":["affiliate","growth","ledger"]
+  },
+  "releaseGates":["schema-valid","typecheck","unit-tests","security-check","evidence-check","integration-test","runtime-health","human-approval-when-required","production-evidence"],
+  "claimPolicy":"No verified capability -> no customer promise -> no sale."
+}
