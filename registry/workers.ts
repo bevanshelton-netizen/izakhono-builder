@@ -1,0 +1,131 @@
+export type WorkerDomain =
+  | "control" | "identity" | "security" | "data" | "search" | "social"
+  | "media" | "music" | "commerce" | "finance" | "work" | "education"
+  | "developer" | "cloud" | "growth" | "support" | "trust" | "mobility"
+  | "travel" | "ai";
+
+export type WorkerSpec = {
+  id: string;
+  domain: WorkerDomain;
+  mission: string;
+  inputs: string[];
+  outputs: string[];
+  engines: string[];
+  risk: "low" | "medium" | "high";
+  reversible: boolean;
+  humanGate?: string;
+};
+
+const W = (id:string,domain:WorkerDomain,mission:string,inputs:string[],outputs:string[],engines:string[],risk:"low"|"medium"|"high"="low",reversible=true,humanGate?:string):WorkerSpec =>
+  ({id,domain,mission,inputs,outputs,engines,risk,reversible,humanGate});
+
+export const WORKERS: WorkerSpec[] = [
+  W("portfolio-orchestrator","control","Decompose goals into dependency-aware workstreams.",["goal"],["work_plan"],["orchestration","dependency"]),
+  W("task-dispatcher","control","Dispatch ready jobs to eligible workers.",["work_plan"],["jobs"],["orchestration","queue"]),
+  W("state-reconciler","control","Reconcile desired state against observed state.",["desired_state","evidence"],["reconciliation"],["state","evidence"]),
+  W("release-coordinator","control","Move validated products through release gates.",["candidate","evidence"],["release_state"],["release","evidence"],"medium",true,"production_release"),
+  W("evidence-collector","control","Collect and normalize proof for capability claims.",["events","artifacts"],["evidence"],["evidence","storage"]),
+  W("audit-worker","control","Create immutable audit records for consequential actions.",["actions"],["audit_events"],["audit","event_bus"]),
+  W("cost-optimizer","control","Identify waste and safe cost reductions.",["usage","billing"],["optimization_proposals"],["analytics","policy"]),
+  W("incident-coordinator","control","Triage incidents and coordinate recovery.",["alerts","logs"],["incident_plan"],["observability","orchestration"],"medium",true,"incident_action"),
+
+  W("identity-provisioner","identity","Create and maintain ecosystem identities.",["signup"],["identity"],["identity","policy"],"medium",true,"identity_change"),
+  W("profile-worker","identity","Synchronize user and organization profiles.",["profile_changes"],["profile_state"],["identity","data"]),
+  W("consent-worker","identity","Record and enforce consent choices.",["consent"],["consent_state"],["policy","audit"],"medium",true),
+  W("access-worker","identity","Evaluate access and entitlements.",["subject","resource"],["decision"],["identity","policy"]),
+  W("credential-worker","identity","Rotate and validate service credentials.",["credential_policy"],["credential_state"],["secrets","audit"],"high",true,"credential_rotation"),
+
+  W("threat-detection-worker","security","Detect abuse, attacks and anomalies.",["events","traffic"],["risk_signals"],["security","analytics"]),
+  W("fraud-worker","security","Score suspicious transactions and activity.",["transactions","signals"],["risk_decisions"],["risk","rules"],"high",true,"fraud_override"),
+  W("vulnerability-worker","security","Discover and track application vulnerabilities.",["repos","dependencies"],["findings"],["security","code"]),
+  W("security-response-worker","security","Coordinate bounded security containment.",["finding","incident"],["containment_actions"],["security","orchestration"],"high",true,"security_action"),
+  W("privacy-worker","security","Detect and remediate privacy-policy violations.",["data_flows","policy"],["privacy_findings"],["policy","data"],"high",true,"privacy_exception"),
+
+  W("data-ingestion-worker","data","Ingest approved structured and unstructured data.",["sources"],["records"],["connectors","queue"]),
+  W("data-quality-worker","data","Profile, validate and repair data quality.",["records"],["quality_report"],["data","validation"]),
+  W("data-lineage-worker","data","Track origin and transformations.",["pipelines"],["lineage"],["data","audit"]),
+  W("knowledge-curator","data","Curate trusted knowledge for AI and search.",["documents","signals"],["knowledge"],["knowledge","evidence"]),
+  W("backup-worker","data","Create and verify recoverable backups.",["datasets"],["backup_receipts"],["storage","recovery"],"medium",true,"restore"),
+
+  W("crawler-worker","search","Discover permitted web and partner content.",["seed_urls","rules"],["documents"],["web","policy"]),
+  W("indexer-worker","search","Build searchable indexes from approved content.",["documents"],["index"],["search","data"]),
+  W("ranking-worker","search","Rank results using relevance, freshness and trust signals.",["query","index"],["results"],["search","ranking"]),
+  W("search-quality-worker","search","Evaluate search quality and regressions.",["queries","results"],["quality_metrics"],["analytics","search"]),
+
+  W("social-moderation-worker","social","Detect and route policy-violating social content.",["content","reports"],["moderation_cases"],["moderation","policy"],"medium",true,"moderation_override"),
+  W("community-worker","social","Manage communities, membership and rules.",["community_events"],["community_state"],["social","policy"]),
+  W("feed-worker","social","Assemble personalized and chronological feeds.",["graph","content"],["feed"],["ranking","social"]),
+  W("notification-worker","social","Deliver user notifications across channels.",["events","preferences"],["notifications"],["messaging","policy"]),
+  W("messaging-worker","social","Route messages and delivery receipts.",["messages"],["delivery"],["messaging","queue"]),
+
+  W("content-worker","media","Process media metadata and publishing workflows.",["media"],["content_records"],["media","storage"]),
+  W("transcode-worker","media","Create adaptive media derivatives.",["media"],["renditions"],["media","compute"]),
+  W("rights-worker","media","Track ownership, permissions and rights metadata.",["rights_data"],["rights_state"],["rights","audit"],"high",true,"rights_override"),
+  W("creator-worker","media","Operate creator profiles, monetization and analytics.",["creator_events"],["creator_state"],["creator","analytics"]),
+  W("recommendation-worker","media","Generate transparent recommendation candidates.",["content","behavior"],["recommendations"],["ranking","policy"]),
+
+  W("music-catalog-worker","music","Ingest and maintain music catalogs.",["releases"],["catalog"],["catalog","rights"]),
+  W("music-discovery-worker","music","Power music discovery and playlists.",["catalog","signals"],["playlist"],["ranking","music"]),
+  W("royalty-worker","music","Calculate and reconcile royalty allocations.",["usage","contracts"],["royalty_statements"],["finance","rights"],"high",true,"royalty_adjustment"),
+
+  W("catalog-worker","commerce","Create and maintain merchant catalogs.",["products"],["catalog"],["commerce","search"]),
+  W("merchant-worker","commerce","Onboard and manage merchants.",["merchant_application"],["merchant_state"],["identity","commerce"],"medium",true,"merchant_approval"),
+  W("order-worker","commerce","Coordinate order lifecycle.",["orders"],["order_state"],["commerce","queue"]),
+  W("fulfilment-worker","commerce","Coordinate inventory, fulfilment and delivery.",["order","inventory"],["fulfilment"],["commerce","logistics"]),
+  W("returns-worker","commerce","Process returns and refunds under policy.",["return_request"],["return_state"],["commerce","finance"],"high",true,"refund"),
+  W("marketplace-trust-worker","commerce","Detect counterfeit, unsafe or prohibited listings.",["listings","reports"],["trust_cases"],["trust","policy"],"high",true,"listing_override"),
+
+  W("payment-worker","finance","Create and reconcile payment transactions.",["payment_intent"],["payment_state"],["payments","ledger"],"high",true,"payment_release"),
+  W("ledger-worker","finance","Maintain double-entry financial records.",["financial_events"],["ledger_entries"],["ledger","audit"],"high",true,"ledger_adjustment"),
+  W("settlement-worker","finance","Prepare merchant and creator settlements.",["ledger","payout_rules"],["settlements"],["ledger","payments"],"high",true,"settlement_release"),
+  W("billing-worker","finance","Manage subscriptions, invoices and billing states.",["plans","usage"],["invoices"],["billing","payments"]),
+  W("reconciliation-worker","finance","Reconcile internal and external financial records.",["statements","ledger"],["reconciliation"],["ledger","evidence"],"high",true,"reconciliation_override"),
+  W("financial-risk-worker","finance","Monitor financial exposure and policy limits.",["transactions","limits"],["risk_alerts"],["risk","analytics"],"high",true,"risk_override"),
+
+  W("workspace-worker","work","Create and manage collaborative workspaces.",["workspace_request"],["workspace"],["work","identity"]),
+  W("document-worker","work","Create, version and permission documents.",["document_ops"],["document_state"],["storage","collaboration"]),
+  W("meeting-worker","work","Coordinate meetings, rooms and transcripts.",["meeting"],["meeting_state"],["communications","media"]),
+  W("workflow-worker","work","Execute durable business workflows.",["workflow_definition"],["workflow_state"],["workflow","queue"]),
+  W("crm-worker","work","Manage contacts, opportunities and customer lifecycle.",["crm_events"],["crm_state"],["crm","analytics"]),
+
+  W("learner-worker","education","Manage learner journeys and progress.",["learner_events"],["learner_state"],["education","identity"]),
+  W("course-worker","education","Publish and maintain courses and assessments.",["course_content"],["course_state"],["education","content"]),
+  W("assessment-worker","education","Score assessments and generate learning evidence.",["submissions"],["assessment_results"],["education","analytics"]),
+  W("credentialing-worker","education","Issue and verify education credentials.",["completion"],["credential"],["identity","evidence"],"medium",true,"credential_issue"),
+
+  W("repo-worker","developer","Manage source repositories and project metadata.",["repo_events"],["repo_state"],["github","code"]),
+  W("build-worker","developer","Build, test and package software.",["source","build_policy"],["artifacts"],["build","sandbox"]),
+  W("code-review-worker","developer","Review generated and changed code.",["diff"],["review"],["code","security"]),
+  W("dependency-worker","developer","Track dependencies and supply-chain risk.",["manifests"],["dependency_findings"],["security","code"]),
+  W("deployment-worker","developer","Prepare and execute gated deployments.",["release_candidate"],["deployment_state"],["deployment","evidence"],"high",true,"production_deploy"),
+
+  W("provision-worker","cloud","Provision approved infrastructure.",["infra_plan"],["resources"],["cloud","policy"],"high",true,"infra_change"),
+  W("dns-worker","cloud","Manage DNS plans and verify propagation.",["dns_plan"],["dns_state"],["dns","evidence"],"medium",true,"dns_change"),
+  W("ssl-worker","cloud","Provision and verify certificates.",["domain"],["certificate_state"],["tls","evidence"]),
+  W("observability-worker","cloud","Collect health, performance and availability signals.",["telemetry"],["health_state"],["observability","analytics"]),
+  W("recovery-worker","cloud","Execute tested recovery procedures.",["incident","backup"],["recovery_state"],["recovery","orchestration"],"high",true,"recovery_action"),
+
+  W("market-research-worker","growth","Discover validated market opportunities.",["market_signals"],["opportunities"],["research","analytics"]),
+  W("campaign-worker","growth","Create and manage approved growth campaigns.",["campaign_brief"],["campaign"],["marketing","content"],"medium",true,"paid_media"),
+  W("creative-worker","growth","Generate and test marketing creative.",["brief","brand"],["creative_variants"],["content","experiments"]),
+  W("attribution-worker","growth","Measure acquisition and conversion attribution.",["events"],["attribution"],["analytics","identity"]),
+  W("seo-worker","growth","Improve discoverability through compliant SEO workflows.",["site","queries"],["seo_changes"],["search","content"],"medium",true,"site_publish"),
+
+  W("support-triage-worker","support","Classify and route customer issues.",["tickets"],["triage"],["support","knowledge"]),
+  W("support-resolution-worker","support","Resolve routine support cases within policy.",["ticket","knowledge"],["resolution"],["support","workflow"],"medium",true,"exception"),
+  W("customer-success-worker","support","Identify onboarding and retention interventions.",["customer_state"],["success_actions"],["crm","analytics"],"medium",true,"customer_outreach"),
+
+  W("trust-worker","trust","Maintain trust scores and policy signals.",["events","reports"],["trust_state"],["trust","risk"]),
+  W("dispute-worker","trust","Manage disputes with evidence and appeals.",["case"],["case_state"],["trust","evidence"],"high",true,"case_decision"),
+  W("verification-worker","trust","Verify people, organizations, products and claims.",["claim","evidence"],["verification"],["identity","evidence"],"high",true,"verification_override"),
+
+  W("mobility-worker","mobility","Coordinate mobility supply and demand.",["trip"],["trip_state"],["mobility","payments"]),
+  W("travel-worker","travel","Coordinate travel discovery and bookings.",["travel_request"],["itinerary"],["search","commerce"],"high",true,"booking_commit"),
+
+  W("model-router-worker","ai","Route AI jobs to approved models under policy.",["ai_request"],["model_result"],["ai","policy"]),
+  W("agent-worker","ai","Run bounded multi-step agent tasks.",["agent_task"],["task_result"],["orchestration","ai","tools"],"medium",true,"high_impact_action"),
+  W("evaluation-worker","ai","Evaluate models and agent outputs against test suites.",["outputs","eval_suite"],["eval_results"],["ai","analytics"]),
+  W("prompt-policy-worker","ai","Apply safety, privacy and task policies to AI requests.",["request"],["policy_decision"],["policy","ai"],"high",true,"policy_override"),
+];
+
+export const WORKER_INDEX = Object.fromEntries(WORKERS.map(w => [w.id,w]));
