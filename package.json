@@ -21,7 +21,8 @@
     "validate:finance-core": "node scripts/validate-finance-core.mjs && node --check products/izakhono-finance-core/server.mjs && node --check products/izakhono-finance-core/ops/backup.mjs && node --check products/izakhono-finance-core/ops/restore.mjs && node products/izakhono-finance-core/ops/node01-preflight.mjs --contract-only && node products/izakhono-finance-core/test.mjs && node products/izakhono-finance-core/smoke-test.mjs",
     "validate:growth-engine": "cd products/izakhono-growth-engine && npm run check && npm test",
     "validate:growth-edge": "node scripts/validate-growth-check-edge.mjs",
-    "validate:host": "cd products/izakhono-host && npm run typecheck"
+    "validate:host": "cd products/izakhono-host && npm run typecheck",
+    "registry:test": "npx --yes tsx@4.20.3 registry/private-tld.test.ts registry/conformance.test.ts registry/dns.test.ts registry/authority-adapter.test.ts registry/rate-limit.test.ts registry/transaction.test.ts registry/registration-order.test.ts registry/idempotency.test.ts"
   },
   "devDependencies": {
     "typescript": "5.9.2",
