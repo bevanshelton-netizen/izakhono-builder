@@ -45,7 +45,7 @@ export async function developerApiRoute(req: Request, env: DeveloperApiEnv & { A
     try {
       await env.DB.prepare('INSERT INTO builder_developers(id,email,display_name,plan) VALUES(?,?,?,?)').bind(developerId, email, displayName, plan).run();
       await env.DB.prepare('INSERT INTO builder_api_credentials(key_id,developer_id,app_id,secret_hash,key_prefix,scopes_json) VALUES(?,?,?,?,?,?)')
-        .bind(keyId, developerId, developerId, hash, prefix, JSON.stringify(['developer:read','developer:write','app:write','usage:write','commerce:read'])).run();
+        .bind(keyId, developerId, null, hash, prefix, JSON.stringify(['developer:read','developer:write','app:write','usage:write','commerce:read'])).run();
     } catch (error: any) { return json({ ok: false, error: String(error?.message || error).slice(0, 300) }, 409); }
     return json({ ok: true, developer: { id: developerId, email, displayName, plan }, credential: { keyId, keyPrefix: prefix, secret, warning: 'The secret is returned once. Store it securely; IZAKHONO stores only its hash.' } }, 201);
   }
