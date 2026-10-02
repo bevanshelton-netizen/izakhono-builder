@@ -11,10 +11,8 @@ export class D1RegistrationOrderStore implements RegistrationOrderStore{
    .bind(o.id,o.domain,o.registrarId,o.customerReference||null,o.state,o.authorityTransactionId||null,o.authorityConfirmed?1:0,o.dnsPublished?1:0,o.dnsVerified?1:0,o.rdapVerified?1:0,o.handedOver?1:0,o.createdAt,o.updatedAt).run();
  }
  async listByDomain(domain:string){
-  const r=await this.db.prepare('SELECT * FROM registration_orders WHERE domain=? ORDER BY created_at DESC').bind(domain).all?.();
-  if(!r)return [];
-  const rows=(r as {results?:Record<string,unknown>[]}).results||[];
-  return rows.map(x=>this.order(x));
+  const r=await this.db.prepare('SELECT * FROM registration_orders WHERE domain=? ORDER BY created_at DESC').bind(domain).all<Record<string,unknown>>();
+  return r.results.map(x=>this.order(x));
  }
  private order(r:Record<string,unknown>):RegistrationOrder{return{id:String(r.id),domain:String(r.domain),registrarId:String(r.registrar_id),customerReference:r.customer_reference?String(r.customer_reference):undefined,state:r.state as RegistrationOrder['state'],authorityTransactionId:r.authority_transaction_id?String(r.authority_transaction_id):undefined,authorityConfirmed:Number(r.authority_confirmed)===1,dnsPublished:Number(r.dns_published)===1,dnsVerified:Number(r.dns_verified)===1,rdapVerified:Number(r.rdap_verified)===1,handedOver:Number(r.handed_over)===1,createdAt:String(r.created_at),updatedAt:String(r.updated_at)}}
 }
