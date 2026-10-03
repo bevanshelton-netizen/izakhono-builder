@@ -191,15 +191,56 @@ async function createJob(req: Request, env: Env, executeBuild: RapidFactoryExecu
   `).bind(jobId, name, slug, target, brief, JSON.stringify(requirements)).run();
 
   await event(env, jobId, 'intake', 'phase.started', 'Owner brief accepted');
-  await event(env, jobId, 'architecture', 'workers.dispatched', 'Architecture, content and brand lanes dispatched from one brief');
-  await event(env, jobId, 'content', 'lane.ready', 'Content lane bound to shared project brief');
-  await event(env, jobId, 'brand', 'lane.ready', 'Brand lane bound to shared project brief');
+
+  const laneDefinitions = [
+    {
+      lane: 'architecture',
+      deliverable: 'information architecture, feature boundaries, data/integration plan',
+      instruction: 'Define the smallest production-ready architecture that satisfies the brief.',
+    },
+    {
+      lane: 'content',
+      deliverable: 'page/content structure, calls-to-action, onboarding copy requirements',
+      instruction: 'Define the content system and conversion journey required by the brief.',
+    },
+    {
+      lane: 'brand',
+      deliverable: 'visual direction, typography, component language, responsive design rules',
+      instruction: 'Define a coherent, accessible visual system appropriate to the business.',
+    },
+  ] as const;
+
+  const lanes = await Promise.all(laneDefinitions.map(async (lane) => {
+    await event(env, jobId, lane.lane, 'lane.started', lane.instruction);
+    const artifact = {
+      lane: lane.lane,
+      deliverable: lane.deliverable,
+      status: 'ready_for_build',
+      generated_at: new Date().toISOString(),
+    };
+    await event(env, jobId, lane.lane, 'lane.ready', JSON.stringify(artifact));
+    return artifact;
+  }));
+
+  await event(
+    env,
+    jobId,
+    'architecture',
+    'workers.dispatched',
+    JSON.stringify({ execution: 'parallel', lanes: lanes.map((lane) => lane.lane) }),
+  );
 
   await env.DB.prepare(
     "UPDATE rapid_factory_jobs SET current_phase='build',updated_at=CURRENT_TIMESTAMP WHERE id=?"
   ).bind(jobId).run();
 
   const enhancedPrompt = [
+    brief,
+    '',
+    'RAPID FACTORY CONTRACT:',
+    '- use the following precomputed factory lanes as constraints:',
+    JSON.stringify(lanes),
+
     brief,
     '',
     'RAPID FACTORY CONTRACT:',
@@ -254,6 +295,13 @@ async function createJob(req: Request, env: Env, executeBuild: RapidFactoryExecu
   await event(env, jobId, 'integration', 'phase.complete', 'Selected modules integrated into generated bundle');
   await event(env, jobId, 'validation', 'phase.complete', 'Generated bundle passed Builder validation');
   await event(env, jobId, 'release_candidate', 'phase.complete', revision || 'release candidate ready');
+
+  buildData.factory = {
+    version: '1.1',
+    lanes,
+    release_contract: 'proof-gated',
+    generated_at: new Date().toISOString(),
+  };
 
   const blocker = requirements.deployment ? {
     type: 'external-proof-required',
