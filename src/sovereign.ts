@@ -2,6 +2,7 @@ import secureApp from './secure';
 import { ventureFactoryRoute } from './venture-factory';
 import { reviewLoopRoute } from './reviewloop';
 import { bidForgeRoute } from './bidforge';
+import { rapidFactoryRoute } from './rapid-factory';
 import { COMMANDS, commandStats, commandSummary, findCommand } from './commands';
 import {
   commitInternalRepository,
@@ -595,6 +596,9 @@ async function enrichCapabilities(req: Request, env: any, response: Response): P
       project_module_editing: true,
       one_click_release_candidate: true,
       release_candidate_public_live_implied: false,
+      rapid_factory_orchestration: true,
+      rapid_factory_parallel_lanes: ['architecture','content','brand','build','integration','validation'],
+      rapid_factory_handover_requires_external_proof: true,
     },
   }, response.status, response);
 }
@@ -1334,6 +1338,28 @@ export default {
 
     const ventureBuild = await ventureFactoryBuildRoute(req, env, url);
     if (ventureBuild) return ventureBuild;
+
+    const rapidFactory = await rapidFactoryRoute(
+      req,
+      env,
+      url,
+      () => ownerAuthorized(req, env),
+      async ({ prompt, target, name, slug }) => {
+        const targetUrl = new URL(req.url);
+        targetUrl.pathname = '/api/build-anything';
+        targetUrl.search = '';
+        const headers = new Headers(req.headers);
+        headers.set('content-type', 'application/json');
+        const internalReq = new Request(targetUrl.toString(), {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({ prompt, target, name, slug }),
+        });
+        const response = await buildAnythingRoute(internalReq, env, targetUrl);
+        return response || json({ ok: false, error: 'Build Anything route unavailable' }, 500);
+      },
+    );
+    if (rapidFactory) return rapidFactory;
 
     const buildAnything = await buildAnythingRoute(req, env, url);
     if (buildAnything) return buildAnything;
