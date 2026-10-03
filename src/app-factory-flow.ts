@@ -28,7 +28,7 @@ export function appFactoryPlan(name: string, description: string, products: stri
 
 export async function appFactoryRoute(req: Request, env: any, url: URL): Promise<Response | null> {
   if (!url.pathname.startsWith('/api/developer/apps/')) return null;
-  const match = url.pathname.match(/^\/api\/developer\/apps\/([^/]+)\/(plan|build|verify|monetize)$/);
+  const match = url.pathname.match(/^\/api\/developer\/apps\/([^/]+)\/(plan|build|verify|deploy|monetize)$/);
   if (!match) return null;
 
   const identity = await authenticateDeveloper(req, env);
@@ -41,7 +41,7 @@ export async function appFactoryRoute(req: Request, env: any, url: URL): Promise
 
   const appId = decodeURIComponent(match[1]);
   const app = await env.DB.prepare(
-    'SELECT app_id,developer_id,name,slug,stage,manifest_json,builder_project_id,verification_json,monetization_json FROM builder_app_registry WHERE app_id=? AND developer_id=?'
+    'SELECT app_id,developer_id,name,slug,stage,manifest_json,builder_project_id,verification_json,monetization_json,deployment_json FROM builder_app_registry WHERE app_id=? AND developer_id=?'
   ).bind(appId, identity.developer_id).first<any>();
   if (!app) return json({ ok: false, error: 'App not found' }, 404);
 
@@ -166,6 +166,50 @@ export async function appFactoryRoute(req: Request, env: any, url: URL): Promise
       .bind(JSON.stringify(evidence),appId,identity.developer_id).run();
     return json({ ok:true,app:{...app,stage:'verified'},verification:evidence,next_gate:'owned-runtime-deployment',public_live:false });
   }
+
+
+  if (action === 'deploy') {
+    if (!['verified','deployed'].includes(app.stage)) return json({ ok:false,error:'App must pass application verification before deployment' },409);
+    if (!app.builder_project_id) return json({ ok:false,error:'Builder project link missing' },409);
+    if (!env.ADMIN_SECRET) return json({ ok:false,error:'Builder internal authorization is not configured' },503);
+
+    const project = await env.DB.prepare('SELECT * FROM builder_projects WHERE id=?').bind(app.builder_project_id).first<any>();
+    const recipe = JSON.parse(project?.build_recipe_json || '{}');
+    const candidate = recipe?.release_candidate;
+    if (!project || project.status !== 'deploy_ready' || !candidate?.internal_repository_head) {
+      return json({ ok:false,error:'A validated release candidate is required before deployment' },409);
+    }
+
+    const deployment = {
+      schema:'izakhono.deployment-evidence/v1',
+      attempted_at:new Date().toISOString(),
+      status:'deployment_requested',
+      authority:'NODE01/CODE/RUNTIME/EDGE-TLS/DNS',
+      source_of_truth:'izakhono-internal',
+      revision:candidate.revision,
+      internal_repository_head:candidate.internal_repository_head,
+      public_live:false,
+      checks:[
+        { id:'release_candidate', pass:true },
+        { id:'internal_repository', pass:true },
+        { id:'owned_runtime_execution', pass:false, reason:'NODE01 runtime acceptance evidence has not been supplied by the deployment authority' },
+        { id:'https_200', pass:false, reason:'HTTPS 200 evidence required' },
+        { id:'tls_dns', pass:false, reason:'TLS/DNS acceptance evidence required' },
+        { id:'rollback_proof', pass:false, reason:'Rollback proof required' }
+      ],
+      deployment_verified:false,
+      rollback_ready:false,
+      next_gate:'NODE01-runtime-and-HTTPS-acceptance-evidence'
+    };
+
+    await env.DB.prepare("UPDATE builder_app_registry SET deployment_json=?,updated_at=CURRENT_TIMESTAMP WHERE app_id=? AND developer_id=?")
+      .bind(JSON.stringify(deployment),appId,identity.developer_id).run();
+    await env.DB.prepare('INSERT INTO builder_events(id,project_id,event_type,detail) VALUES(?,?,?,?)')
+      .bind('evt_' + crypto.randomUUID().replaceAll('-', ''),project.id, 'developer_factory.deployment_requested', JSON.stringify(deployment)).run();
+
+    return json({ ok:true,app:{...app,stage:app.stage},deployment,public_live:false,next_gate:deployment.next_gate });
+  }
+
 
   if (action === 'monetize') {
     if (!['preview','verified','deployed','monetizing','scaled'].includes(app.stage)) return json({ ok:false,error:'App must reach preview or verification before monetization setup' },409);

@@ -8,3 +8,7 @@ CREATE INDEX IF NOT EXISTS idx_builder_app_registry_project
 
 CREATE INDEX IF NOT EXISTS idx_builder_app_registry_developer_stage
   ON builder_app_registry(developer_id, stage, updated_at DESC);
+
+
+-- Deployment evidence is distinct from build verification and public-live state.
+ALTER TABLE builder_app_registry ADD COLUMN deployment_json TEXT NOT NULL DEFAULT '{}';
