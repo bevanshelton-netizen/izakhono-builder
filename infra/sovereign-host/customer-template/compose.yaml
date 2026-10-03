@@ -1,0 +1,18 @@
+services:
+  app:
+    image: ${APP_IMAGE}
+    restart: unless-stopped
+    env_file:
+      - .env
+    networks:
+      - edge
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:${APP_PORT}/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 8
+
+networks:
+  edge:
+    external: true
+    name: izakhono-edge
