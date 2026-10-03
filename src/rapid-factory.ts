@@ -111,10 +111,19 @@ function requirementsFromPayload(payload: any) {
   };
 }
 
+function isHttpsUrl(value: unknown) {
+  try {
+    const url = new URL(String(value || ''));
+    return url.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
 function missingProof(requirements: any, proof: any): string[] {
   const missing: string[] = [];
   if (requirements.deployment) {
-    if (!proof?.deployment?.https_200) missing.push('deployment.https_200');
+    if (!proof?.deployment?.https_200 || proof?.deployment?.http_status !== 200) missing.push('deployment.https_200');
     if (!clean(proof?.deployment?.public_url, 500)) missing.push('deployment.public_url');
   }
   if (requirements.domain && !proof?.domain?.verified) missing.push('domain.verified');
@@ -281,6 +290,90 @@ async function createJob(req: Request, env: Env, executeBuild: RapidFactoryExecu
   }, 201);
 }
 
+async function verifyDeployment(req: Request, env: Env, jobId: string) {
+  const job = await getJob(env, jobId);
+  if (!job) return json({ ok: false, error: 'Rapid Factory job not found' }, 404);
+
+  let payload: any = null;
+  try { payload = await req.json(); }
+  catch { return json({ ok: false, error: 'Expected application/json' }, 400); }
+
+  const publicUrl = clean(payload?.public_url, 1000);
+  if (!isHttpsUrl(publicUrl)) {
+    return json({ ok: false, error: 'public_url must be HTTPS' }, 400);
+  }
+
+  const started = Date.now();
+  let status = 0;
+  let ok = false;
+  let error = '';
+  try {
+    const response = await fetch(publicUrl, {
+      method: 'GET',
+      redirect: 'follow',
+      headers: { 'user-agent': 'IZAKHONO-Rapid-Factory/1.0' },
+    });
+    status = response.status;
+    ok = response.status === 200;
+  } catch (err: any) {
+    error = clean(err?.message || err, 500);
+  }
+
+  const proof = {
+    ...(job.proof || {}),
+    deployment: {
+      ...(job.proof?.deployment || {}),
+      public_url: publicUrl,
+      https_200: ok,
+      checked_at: new Date().toISOString(),
+      http_status: status,
+      latency_ms: Date.now() - started,
+      error: error || undefined,
+    },
+  };
+  const missing = missingProof(job.requirements, proof);
+  const handoverReady = missing.length === 0;
+  const blocker = handoverReady ? {} : {
+    type: 'external-proof-required',
+    requires_owner_input: false,
+    detail: 'Handover remains gated only by missing verification evidence.',
+    missing,
+  };
+
+  await env.DB.prepare(`
+    UPDATE rapid_factory_jobs
+      SET proof_json=?,blocker_json=?,status=?,current_phase=?,public_url=?,updated_at=CURRENT_TIMESTAMP
+      WHERE id=?
+  `).bind(
+    JSON.stringify(proof),
+    JSON.stringify(blocker),
+    handoverReady ? 'handover_ready' : 'awaiting_proof',
+    handoverReady ? 'handover' : 'deployment_verification',
+    publicUrl,
+    jobId
+  ).run();
+
+  await event(
+    env,
+    jobId,
+    'deployment_verification',
+    ok ? 'deployment.proof.accepted' : 'deployment.proof.failed',
+    JSON.stringify({ public_url: publicUrl, http_status: status, latency_ms: Date.now() - started, error: error || null }),
+  );
+
+  if (handoverReady) {
+    await event(env, jobId, 'handover', 'handover.ready', publicUrl);
+  }
+
+  return json({
+    ok,
+    handover_ready: handoverReady,
+    missing,
+    deployment: proof.deployment,
+    job: await getJob(env, jobId),
+  }, ok ? 200 : 502);
+}
+
 async function attachProof(req: Request, env: Env, jobId: string) {
   let payload: any = null;
   try { payload = await req.json(); }
@@ -358,6 +451,11 @@ export async function rapidFactoryRoute(
 
   if (match && match[2] === 'proof' && req.method === 'POST') {
     return attachProof(req, env, match[1]);
+  }
+
+  const verifyMatch = url.pathname.match(/^\/api\/rapid-factory\/jobs\/([^/]+)\/verify-deployment$/);
+  if (verifyMatch && req.method === 'POST') {
+    return verifyDeployment(req, env, verifyMatch[1]);
   }
 
   return json({ ok: false, error: 'Rapid Factory route not found' }, 404);
