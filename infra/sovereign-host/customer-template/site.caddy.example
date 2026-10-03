@@ -1,0 +1,4 @@
+customer.example.com {
+  encode zstd gzip
+  reverse_proxy customer-app:3000
+}
