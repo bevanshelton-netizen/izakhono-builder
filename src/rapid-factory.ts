@@ -269,7 +269,7 @@ async function createJob(req: Request, env: Env, executeBuild: RapidFactoryExecu
   if (nextStatus === 'handover_ready') {
     await event(env, jobId, 'handover', 'handover.ready', 'No external deployment proof was required');
   } else {
-    await event(env, jobId, 'deployment_verification', 'proof.requested', JSON.stringify(blocker.missing));
+    await event(env, jobId, 'deployment_verification', 'proof.requested', JSON.stringify((blocker as any).missing || []));
   }
 
   const job = await getJob(env, jobId);
