@@ -29,7 +29,9 @@
     "developer-console:typecheck": "tsc --noEmit --target ES2022 --lib ES2022,DOM,DOM.Iterable --module ESNext registry/developer-console-ui.ts",
     "developer-console:test": "npx --yes tsx@4.20.3 tests/developer-console-ui.test.ts",
     "app-factory:typecheck": "tsc --noEmit --target ES2022 --lib ES2022,DOM,DOM.Iterable --module ESNext src/app-factory-flow.ts",
-    "app-factory:test": "npx --yes tsx@4.20.3 tests/app-factory-flow.test.ts"
+    "app-factory:test": "npx --yes tsx@4.20.3 tests/app-factory-flow.test.ts",
+    "node01:typecheck": "tsc --noEmit --target ES2022 --lib ES2022,DOM,DOM.Iterable --module ESNext src/node01-deployment-agent.ts",
+    "node01:test": "npx --yes tsx@4.20.3 tests/node01-deployment-agent.test.ts"
   },
   "devDependencies": {
     "typescript": "5.9.2",

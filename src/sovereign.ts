@@ -4,6 +4,7 @@ import { reviewLoopRoute } from './reviewloop';
 import { bidForgeRoute } from './bidforge';
 import { developerApiRoute } from './developer-api';
 import { appFactoryRoute } from './app-factory-flow';
+import { node01DeploymentEvidenceRoute } from './node01-deployment-agent';
 import { COMMANDS, commandStats, commandSummary, findCommand } from './commands';
 import {
   commitInternalRepository,
@@ -1318,6 +1319,9 @@ async function publicAiCoreHost(req: Request, env: any, url: URL): Promise<Respo
 export default {
   async fetch(req: Request, env: any): Promise<Response> {
     const url = new URL(req.url);
+
+    const node01Evidence = await node01DeploymentEvidenceRoute(req, env, url);
+    if (node01Evidence) return node01Evidence;
 
     const appFactory = await appFactoryRoute(req, env, url);
     if (appFactory) return appFactory;
