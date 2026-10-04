@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>IZAKHONO Website Factory</title>
+<meta name="description" content="IZAKHONO Website Factory — one order to a tested, deployable business website.">
+<style>
+:root{--bg:#07111f;--panel:#0d1b2d;--line:#20334d;--text:#eef5ff;--muted:#9eb0c8;--a:#19c6b4;--b:#6ea8ff;--gold:#e8bf62}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 15% 0,#12304b 0,#07111f 42%,#050b14 100%);color:var(--text);font-family:Inter,system-ui,Arial,sans-serif}
+.wrap{max-width:1180px;margin:auto;padding:28px}.top{display:flex;justify-content:space-between;align-items:center;gap:20px}.brand{font-weight:900;letter-spacing:.12em}.pill{border:1px solid #2c4969;border-radius:999px;padding:8px 13px;color:var(--muted);font-size:12px}
+.hero{padding:64px 0 38px}.eyebrow{color:var(--a);font-weight:800;letter-spacing:.14em;text-transform:uppercase;font-size:12px}.hero h1{font-size:clamp(42px,7vw,78px);line-height:.95;margin:14px 0}.hero p{max-width:720px;color:var(--muted);font-size:18px;line-height:1.6}.grid{display:grid;grid-template-columns:1.1fr .9fr;gap:22px}.card{background:rgba(13,27,45,.82);border:1px solid var(--line);border-radius:22px;padding:24px;box-shadow:0 18px 50px #0005}.card h2{margin-top:0}.steps{display:grid;gap:10px}.step{display:flex;gap:14px;align-items:center;padding:14px;border:1px solid #1d3048;border-radius:14px;background:#0a1626}.num{width:32px;height:32px;border-radius:10px;display:grid;place-items:center;background:#102944;color:var(--a);font-weight:900}.step small{display:block;color:var(--muted);margin-top:3px}.form{display:grid;gap:13px}.form label{font-size:12px;color:var(--muted)}input,select,textarea{width:100%;padding:13px 14px;border-radius:12px;border:1px solid #29425f;background:#071321;color:var(--text);outline:none}textarea{min-height:90px;resize:vertical}.btn{border:0;border-radius:13px;padding:14px 18px;font-weight:900;background:linear-gradient(90deg,var(--a),var(--b));color:#04111a;cursor:pointer}.checks{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}.check{padding:11px;border:1px solid #1e334c;border-radius:12px;color:#cfe0f5;font-size:13px}.ok{color:var(--a);font-weight:800}.foot{padding:30px 0;color:var(--muted);font-size:12px}
+@media(max-width:850px){.grid{grid-template-columns:1fr}.checks{grid-template-columns:1fr}.wrap{padding:18px}}
+</style></head>
+<body><div class="wrap">
+<header class="top"><div class="brand">IZAKHONO</div><div class="pill">WEBSITE FACTORY · V1</div></header>
+<section class="hero"><div class="eyebrow">Owned-first construction engine</div><h1>One order.<br>One complete website.</h1><p>IZAKHONO Website Factory turns a customer brief into a structured business website package, then runs the production gates for content, security, accessibility, performance, domain and deployment.</p></section>
+<div class="grid">
+<section class="card"><h2>Production pipeline</h2><div class="steps">
+<div class="step"><div class="num">1</div><div><b>Order intake</b><small>Business, contact, industry, goals and required pages</small></div></div>
+<div class="step"><div class="num">2</div><div><b>AI site plan</b><small>Generate sitemap, copy plan, design system and SEO structure</small></div></div>
+<div class="step"><div class="num">3</div><div><b>Build engine</b><small>Generate independently deployable site assets</small></div></div>
+<div class="step"><div class="num">4</div><div><b>Safety & compliance</b><small>HTTPS, privacy, accessibility, security and legal-page gates</small></div></div>
+<div class="step"><div class="num">5</div><div><b>Performance</b><small>Images, caching, metadata, mobile and Core Web Vitals checks</small></div></div>
+<div class="step"><div class="num">6</div><div><b>Deployment</b><small>Node-first execution with external fallback routes</small></div></div>
+</div>
+<div class="checks"><div class="check"><span class="ok">✓</span> SSL / HTTPS gate</div><div class="check"><span class="ok">✓</span> Privacy page</div><div class="check"><span class="ok">✓</span> Accessibility gate</div><div class="check"><span class="ok">✓</span> Performance gate</div><div class="check"><span class="ok">✓</span> Mobile QA</div><div class="check"><span class="ok">✓</span> Deployment proof</div></div>
+</section>
+<section class="card"><h2>Create a site job</h2><form class="form" id="job">
+<div><label>Business name</label><input required name="business" placeholder="e.g. Izakhono Africa"></div>
+<div><label>Industry</label><input required name="industry" placeholder="e.g. Manufacturing"></div>
+<div><label>Website type</label><select name="type"><option>Business website</option><option>Corporate profile</option><option>E-commerce</option><option>Training / education</option><option>Service business</option></select></div>
+<div><label>Primary goal</label><textarea name="goal" placeholder="What must this website achieve?"></textarea></div>
+<div><label>Customer email</label><input type="email" name="email" placeholder="customer@example.com"></div>
+<button class="btn">Generate Website Job</button>
+</form><div id="result" style="margin-top:16px;color:var(--muted)"></div></section>
+</div>
+<footer class="foot">IZAKHONO Website Factory v1 · Execution is designed to be node-independent: NODE01 is a worker, not the product.</footer>
+</div>
+<script>
+document.querySelector('#job').addEventListener('submit',e=>{e.preventDefault();const f=new FormData(e.target);const id='WF-'+Date.now().toString(36).toUpperCase();document.querySelector('#result').innerHTML='<span class="ok">JOB CREATED: '+id+'</span><br>Site plan queued for '+(f.get('business')||'business')+'. The production gates are ready for the next engine layer.';});
+</script></body></html>
