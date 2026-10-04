@@ -1,5 +1,5 @@
 const app=document.querySelector("#root");
-let mode="drive", safety=true, emergency=false, panel="", monitoring=false, incident=null, routeStatus="DEMO ROUTE", destination="Johannesburg CBD";
+let mode="drive", safety=true, emergency=false, panel="", monitoring=false, incident=null, routeStatus="DEMO ROUTE", destination="Johannesburg CBD", gpsActive=false, motionActive=false;
 let lastSpeed=0,lastSpeedAt=0,safetyEvents=[],trustedContacts=[],journey={startedAt:new Date().toISOString(),distance:18.4,eta:23};
 try{safetyEvents=JSON.parse(localStorage.getItem("izakhono_nav_events")||"[]")}catch(e){}
 try{trustedContacts=JSON.parse(localStorage.getItem("izakhono_nav_contacts")||"[]")}catch(e){}
@@ -23,21 +23,36 @@ async function createIncident(kind){
 }
 function startSensors(){
  if(monitoring)return;
- monitoring=true;
+ monitoring=true; gpsActive=false; motionActive=false; render();
  if("geolocation" in navigator){
   navigator.geolocation.watchPosition(pos=>{
+   gpsActive=true;
    const speed=Math.max(0,(pos.coords.speed||0)*3.6),now=Date.now();
    if(lastSpeedAt&&now-lastSpeedAt>500){
     const dt=(now-lastSpeedAt)/1000,delta=(speed-lastSpeed)/dt;
     if(delta<-18&&safety)recordEvent("Hard braking candidate","HIGH","Estimated deceleration "+Math.round(Math.abs(delta)*10)/10+" m/s²");
     if(speed>120&&safety)recordEvent("Speed risk","HIGH","Estimated speed "+Math.round(speed)+" km/h");
    }
-   lastSpeed=speed;lastSpeedAt=now;
-  },()=>recordEvent("Location unavailable","INFO","GPS permission or signal unavailable; safety remains available locally."),{enableHighAccuracy:true,maximumAge:2000,timeout:10000});
+   lastSpeed=speed;lastSpeedAt=now;render();
+  },()=>{
+   gpsActive=false;
+   recordEvent("Location unavailable","INFO","GPS permission or signal unavailable; motion safety may still operate locally.");
+   render();
+  },{enableHighAccuracy:true,maximumAge:2000,timeout:10000});
  }
- function motion(){window.addEventListener("devicemotion",e=>{const a=e.acceleration;if(!a||!safety)return;const m=Math.sqrt((a.x||0)**2+(a.y||0)**2+(a.z||0)**2);if(m>25)recordEvent("Impact candidate","CRITICAL","Motion spike detected; verify before escalation.")})}
- if(typeof DeviceMotionEvent!=="undefined"&&typeof DeviceMotionEvent.requestPermission==="function")DeviceMotionEvent.requestPermission().then(p=>{if(p==="granted")motion()}).catch(()=>{});else motion();
- render();
+ function motion(){
+  motionActive=true; render();
+  window.addEventListener("devicemotion",e=>{
+   const a=e.acceleration;if(!a||!safety)return;
+   const m=Math.sqrt((a.x||0)**2+(a.y||0)**2+(a.z||0)**2);
+   if(m>25)recordEvent("Impact candidate","CRITICAL","Motion spike detected; verify before escalation.");
+  });
+ }
+ if(typeof DeviceMotionEvent!=="undefined"&&typeof DeviceMotionEvent.requestPermission==="function")DeviceMotionEvent.requestPermission().then(p=>{
+  if(p==="granted")motion(); else {recordEvent("Motion permission denied","INFO","Motion sensor access was not granted; safety remains available locally.");render();}
+ }).catch(()=>{recordEvent("Motion permission unavailable","INFO","Motion sensor access could not be started.");render();});
+ else if(typeof DeviceMotionEvent!=="undefined")motion();
+ else {recordEvent("Motion sensor unavailable","INFO","This device/browser does not expose motion sensors.");render();}
 }
 function eventRows(){
  return safetyEvents.slice(0,6).map(e=>'<div class="eventRow"><span>'+({CRITICAL:"🔴",HIGH:"🟠",INFO:"🔵"}[e.severity]||"⚪")+'</span><div><b>'+e.type+'</b><small>'+e.detail+'</small></div></div>').join("")||'<div class="sheetNote">No safety events recorded.</div>';
@@ -45,7 +60,7 @@ function eventRows(){
 function safetySheet(){
  return '<div class="sheet"><div class="sheetHead"><b>Safety Centre</b><button id="closePanel">✕</button></div>'+
  '<div class="sheetCard"><span>🛡️</span><div><b>Driver Safety Guardian</b><small>'+(safety?"Monitoring journey conditions":"Monitoring paused")+'</small></div><button id="sheetGuardian">'+(safety?"ON":"OFF")+'</button></div>'+
- '<div class="sheetCard"><span>📡</span><div><b>Live Sensor Engine</b><small>'+(monitoring?"GPS/motion monitoring active":"Standby — sensors not active")+'</small></div><button id="startSensors">'+(monitoring?"ACTIVE":"START")+'</button></div>'+
+ '<div class="sheetCard"><span>📡</span><div><b>Live Sensor Engine</b><small>'+(monitoring?(gpsActive&&motionActive?"GPS + motion monitoring active":(gpsActive?"GPS monitoring active":(motionActive?"Motion monitoring active":"Starting sensors…"))):"Standby — sensors not active")+'</small></div><button id="startSensors">'+(monitoring?"ACTIVE":"START")+'</button></div>'+
  '<div class="sheetCard"><span>🧪</span><div><b>Safety Test</b><small>Local test only. No emergency service is contacted.</small></div><button id="testBrake">TEST</button></div>'+
  '<div class="events"><b>Recent safety events</b>'+eventRows()+'</div>'+
  '<div class="sheetCard"><span>📴</span><div><b>Offline Event Queue</b><small>Events remain local until a verified sync adapter is connected.</small></div></div></div>';
