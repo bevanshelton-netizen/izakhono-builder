@@ -1,0 +1,29 @@
+{
+  "schema": "izakhono.infrastructure-routing/v1",
+  "policy": {
+    "sourceOfTruth": "izakhono-internal-repository",
+    "primaryRuntime": "izakhono-owned-runtime",
+    "freeHostingRole": "fallback-capacity-only",
+    "publicLiveRequiresEvidence": true,
+    "providerLockInAllowed": false,
+    "customerRebuildRequiredForProviderMigration": false
+  },
+  "routes": [
+    {"id":"owned","class":"primary","enabled":true,"priority":10,"requires":["https","health","dns","acceptance"]},
+    {"id":"owned-container","class":"secondary","enabled":true,"priority":20,"requires":["container-health","https","acceptance"]},
+    {"id":"external-adapter","class":"fallback","enabled":true,"priority":30,"requires":["provider-health","https","dns","acceptance"]},
+    {"id":"free-tier","class":"opportunistic","enabled":true,"priority":40,"requires":["quota-ok","provider-health","https","acceptance"]},
+    {"id":"artifact-export","class":"recovery","enabled":true,"priority":50,"requires":["artifact-integrity"]}
+  ],
+  "failover": {
+    "triggerOn": ["quota-exhausted","deployment-failure","provider-outage","dns-failure","tls-failure","health-failure"],
+    "preserve": ["project-id","source-revision","content-hash","customer-config","deployment-receipt"],
+    "rebuildCustomer": false
+  },
+  "guardrails": {
+    "noSecretsInSource": true,
+    "noProviderAsSoleSourceOfTruth": true,
+    "noLiveClaimWithoutEvidence": true,
+    "providerCredentialsServerSideOnly": true
+  }
+}
