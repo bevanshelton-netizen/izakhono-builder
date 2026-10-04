@@ -1,0 +1,15 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "$id":"https://izakhono.co.za/schemas/node-manifest.v1.json",
+  "title":"IZAKHONO NODE manifest",
+  "type":"object",
+  "required":["schema","nodeId","role","control","capabilities"],
+  "properties":{
+    "schema":{"const":"izakhono.node-manifest/v1"},
+    "nodeId":{"type":"string","pattern":"^[A-Z0-9-]{3,64}$"},
+    "role":{"enum":["primary","replica","dr"]},
+    "control":{"type":"object","required":["baseUrl"],"properties":{"baseUrl":{"type":"string","format":"uri"}}},
+    "capabilities":{"type":"array","items":{"type":"string"}}
+  },
+  "additionalProperties":false
+}
