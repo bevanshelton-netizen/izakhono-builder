@@ -1,5 +1,4 @@
-import "./style.css";
-const app=document.querySelector<HTMLDivElement>("#root")!;
+const app=document.querySelector("#root");
 let mode="drive"; let safety=true; let emergency=false;
 function render(){
 const guardianState=safety?"Monitoring journey conditions":"Monitoring paused";
