@@ -8,6 +8,6 @@ document.querySelector("#guardian")?.addEventListener("click",()=>{safety=!safet
 document.querySelector("#help")?.addEventListener("click",()=>{emergency=true;render()});
 document.querySelector("#cancel")?.addEventListener("click",()=>{emergency=false;render()});
 document.querySelector("#confirm")?.addEventListener("click",()=>{alert("Emergency workflow staged. Production integration will connect verified emergency contacts and FORTRESS.");emergency=false;render()});
-document.querySelectorAll("[data-mode]").forEach(x=>x.addEventListener("click",()=>{mode=(x as HTMLElement).dataset.mode;render()}));
+document.querySelectorAll("[data-mode]").forEach(x=>x.addEventListener("click",()=>{mode=x.dataset.mode;render()}));
 }
 render();
