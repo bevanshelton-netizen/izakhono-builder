@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0b1020" />
+  <title>I-CONNECT Corporate Command</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <div class="shell">
+    <aside class="sidebar">
+      <div class="brand"><span class="brand-mark">I</span><div><strong>I-CONNECT</strong><small>Corporate Command</small></div></div>
+      <div class="workspace"><span class="dot"></span> IZAKHONO GROUP <span class="chev">⌄</span></div>
+      <nav id="nav">
+        <button class="nav active" data-view="overview">◈ <span>Command Centre</span></button>
+        <button class="nav" data-view="contact">◉ <span>Contact Centre</span></button>
+        <button class="nav" data-view="fleet">⌖ <span>Fleet</span></button>
+        <button class="nav" data-view="connectivity">⌁ <span>Connectivity</span></button>
+        <button class="nav" data-view="customers">◎ <span>Customers</span></button>
+        <button class="nav" data-view="billing">▣ <span>Billing</span></button>
+        <button class="nav" data-view="provisioner">⚙ <span>Provisioner</span></button>
+        <button class="nav" data-view="security">▣ <span>FORTRESS</span></button>
+      </nav>
+      <div class="side-bottom"><div class="health"><span class="pulse"></span><div><b>Platform healthy</b><small>Carrier abstraction online</small></div></div><div class="user"><div class="avatar">BS</div><div><b>CEO Control</b><small>Administrator</small></div></div></div>
+    </aside>
+    <main class="main">
+      <header class="topbar"><div><div class="eyebrow">IZAKHONO / I-CONNECT</div><h1 id="page-title">Corporate Command Centre</h1></div><div class="top-actions"><span class="live"><i></i> LIVE OPERATIONS</span><button class="icon-btn" title="Notifications">◌</button><button class="primary" id="quickAction">+ New deployment</button></div></header>
+      <div id="app" class="content"></div>
+    </main>
+  </div>
+  <div id="toast" class="toast"></div>
+  <script src="./app.js"></script>
+</body>
+</html>
