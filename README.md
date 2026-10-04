@@ -96,6 +96,14 @@ See `docs/FAST-BUILD-V0.2.md`, `docs/INFRASTRUCTURE-DIRECTIVE-INHERITANCE.md` an
 - artifact retention is convenience, not proof of software correctness
 - CI validation is not a substitute for real public hosting, DNS/TLS, disaster recovery, physical-device testing, code signing, external security review, privacy/legal approval or customer acceptance
 
+## Hosting Resilience v1
+
+Free hosting is now treated as **fallback capacity**, not as the foundation of the Website Factory.
+
+The factory keeps validated source in the IZAKHONO internal repository, uses an IZAKHONO-owned runtime as the preferred production route, and keeps provider integrations replaceable. External and free-tier providers may supply capacity without becoming the source of truth or a single point of failure.
+
+See `docs/IZAKHONO-HOSTING-RESILIENCE-MATRIX-V1.md` and `infra/hosting-routing-policy.v1.json`.
+
 ## Cost principle
 
 Use free-first infrastructure where practical, but do not pretend compute and platform quotas are unlimited. Upgrade only when demand, revenue, compliance or a hard technical requirement justifies it.
