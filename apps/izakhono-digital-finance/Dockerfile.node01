@@ -17,6 +17,7 @@ COPY apps/izakhono-digital-finance/external-status.json ./
 COPY apps/izakhono-digital-finance/EXTERNAL-LIVE-EVIDENCE.json ./
 COPY apps/izakhono-digital-finance/healthz ./
 COPY apps/izakhono-digital-finance/engine.py ./
+COPY apps/izakhono-digital-finance/package.json ./
 COPY apps/izakhono-digital-finance/automation_engine.py ./
 COPY apps/izakhono-digital-finance/automation_store.py ./
 COPY apps/izakhono-digital-finance/learner_access.py ./

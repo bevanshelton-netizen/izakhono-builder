@@ -27,8 +27,8 @@ from pathlib import Path
 from urllib.parse import parse_qs, unquote, urlparse
 
 ROOT = Path(__file__).resolve().parent
-HOST = os.getenv("IZAKHONO_DF_HOST", "0.0.0.0")
-PORT = int(os.getenv("IZAKHONO_DF_PORT", "8080"))
+HOST = os.getenv("IZAKHONO_DF_HOST", os.getenv("HOST", "0.0.0.0"))
+PORT = int(os.getenv("IZAKHONO_DF_PORT", os.getenv("PORT", "8080")))
 STATE_DB = os.getenv("IZAKHONO_DF_STATE_DB", str(ROOT / ".data" / "izakhono-df.sqlite3"))
 ADMIN_TOKEN = os.getenv("IZAKHONO_DF_ADMIN_TOKEN", "")
 LEARNER_SIGNING_KEY = os.getenv("IZAKHONO_DF_LEARNER_SIGNING_KEY", "")

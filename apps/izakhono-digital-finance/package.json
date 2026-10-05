@@ -1,0 +1,10 @@
+{
+  "name": "izakhono-digital-finance",
+  "version": "1.0.0",
+  "private": true,
+  "description": "IZAKHONO Digital Finance Academy independent owned-runtime entrypoint",
+  "scripts": {
+    "start": "python3 engine.py",
+    "verify": "python3 verify.py && python3 test_automation.py && python3 test_automation_store.py && python3 test_zero_touch.py"
+  }
+}
