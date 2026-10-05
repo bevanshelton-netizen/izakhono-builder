@@ -1,0 +1,34 @@
+{
+	# Caddy obtains/renews public certificates through ACME when the DNS
+	# record and firewall are correctly configured. No certificate is bundled.
+	auto_https prefer_wildcard
+	servers {
+		trusted_proxies static private_ranges
+	}
+}
+
+{$IZAKHONO_RECOVERY_DOMAIN} {
+	encode zstd gzip
+
+	# Security headers. Caddy's automatic HTTP->HTTPS redirect remains enabled.
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "no-referrer"
+		Permissions-Policy "camera=(), microphone=(), geolocation=()"
+		-Server
+	}
+
+	# Recovery and verification application paths only.
+	reverse_proxy /healthz 127.0.0.1:9697
+	reverse_proxy /forgot-password 127.0.0.1:9697
+	reverse_proxy /account-recovery 127.0.0.1:9697
+	reverse_proxy /verify-email 127.0.0.1:9697
+	reverse_proxy /api/v1/recovery/* 127.0.0.1:9697
+	reverse_proxy /api/v1/email/verification/* 127.0.0.1:9697
+
+	# Everything else is deliberately rejected rather than accidentally
+	# exposing the node/control plane through this public recovery origin.
+	respond /* 404
+}
