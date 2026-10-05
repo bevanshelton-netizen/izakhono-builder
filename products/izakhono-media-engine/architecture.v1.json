@@ -1,0 +1,55 @@
+{
+  "schema": "izakhono.media-engine/architecture-v1",
+  "version": 1,
+  "system": "IZAKHONO MEDIA ENGINE",
+  "principles": [
+    "owned-first",
+    "provider-agnostic",
+    "evidence-gated",
+    "reversible",
+    "revenue-measured"
+  ],
+  "pipeline": [
+    "objective",
+    "research",
+    "strategy",
+    "content_plan",
+    "script",
+    "creative",
+    "seo",
+    "production",
+    "publication",
+    "analytics",
+    "optimisation",
+    "conversion"
+  ],
+  "agents": [
+    {"id":"campaign-strategist","input":["objective","offer","audience"],"output":["campaign_brief","kpis"]},
+    {"id":"trend-researcher","input":["campaign_brief"],"output":["topic_signals","content_gaps"]},
+    {"id":"content-strategist","input":["topic_signals","content_gaps"],"output":["content_calendar"]},
+    {"id":"script-writer","input":["content_item"],"output":["script_variants","cta_variants"]},
+    {"id":"creative-director","input":["content_item","brand_rules"],"output":["creative_briefs","thumbnail_variants"]},
+    {"id":"seo-optimizer","input":["content_item","script"],"output":["metadata_variants"]},
+    {"id":"production-manager","input":["script","creative_brief","voice_provider"],"output":["media_manifest"]},
+    {"id":"publishing-agent","input":["media_manifest","metadata","channel_policy"],"output":["publication_manifest"]},
+    {"id":"analytics-agent","input":["publication_manifest","analytics_events"],"output":["performance_report"]},
+    {"id":"optimisation-agent","input":["performance_report","kpis"],"output":["next_actions","winning_patterns"]},
+    {"id":"revenue-agent","input":["campaign","conversion_events"],"output":["attribution_report","revenue_signals"]}
+  ],
+  "feedback_loop": {
+    "from": ["analytics-agent","optimisation-agent","revenue-agent"],
+    "to": ["campaign-strategist","content-strategist","script-writer","creative-director","seo-optimizer"]
+  },
+  "provider_adapters": [
+    "ai",
+    "search",
+    "image",
+    "tts",
+    "video",
+    "youtube",
+    "social",
+    "analytics",
+    "crm",
+    "payments"
+  ]
+}
