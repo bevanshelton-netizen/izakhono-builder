@@ -13,16 +13,15 @@ command -v systemctl >/dev/null || { echo "systemctl is required." >&2; exit 2; 
 SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 install -d -m 0750 /etc/caddy /etc/izakhono
 
-# Generate a concrete Caddyfile so the caddy systemd service never depends on
-# an interactive shell environment or an untrusted runtime variable.
 python3 - "$SRC/izakhono-recovery.Caddyfile" "/etc/caddy/izakhono-recovery.Caddyfile" "$IZAKHONO_RECOVERY_DOMAIN" <<'PY'
 from pathlib import Path
+import re
 import sys
 src, dst, domain = sys.argv[1:]
-if not domain or any(ch in domain for ch in '\n\r{}$ '):
-    raise SystemExit('invalid recovery domain')
+if not re.fullmatch(r"(?=.{1,253}\Z)(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z]{2,63}", domain):
+    raise SystemExit("invalid recovery domain")
 text = Path(src).read_text()
-text = text.replace('{$IZAKHONO_RECOVERY_DOMAIN}', domain)
+text = text.replace("{$IZAKHONO_RECOVERY_DOMAIN}", domain)
 Path(dst).write_text(text)
 PY
 
@@ -32,9 +31,6 @@ EOF
 chmod 600 /etc/izakhono/recovery-proxy.env
 
 caddy validate --config /etc/caddy/izakhono-recovery.Caddyfile --adapter caddyfile
-
-# Keep the public Caddy service as the single TLS owner. This script does not
-# open firewall ports or publish NODE/control ports.
 systemctl reload caddy
 
 echo "[PASS] Recovery HTTPS proxy configuration installed and validated."
