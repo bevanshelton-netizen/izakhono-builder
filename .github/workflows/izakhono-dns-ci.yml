@@ -1,0 +1,27 @@
+name: IZAKHONO DNS CI
+
+on:
+  push:
+    paths:
+      - 'infra/izakhono-dns/**'
+      - '.github/workflows/izakhono-dns-ci.yml'
+  pull_request:
+    paths:
+      - 'infra/izakhono-dns/**'
+      - '.github/workflows/izakhono-dns-ci.yml'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate Python controller
+        run: python -m py_compile infra/izakhono-dns/controller/app.py
+      - name: Validate BIND zone
+        run: |
+          docker run --rm \
+            -v "$PWD/infra/izakhono-dns/bind/primary/zones:/zones:ro" \
+            internetsystemsconsortium/bind9:9.20 \
+            named-checkzone izakhonoafrica.co.za /zones/izakhonoafrica.co.za.zone
+      - name: Validate Docker Compose
+        run: docker compose -f infra/izakhono-dns/docker-compose.yml config
