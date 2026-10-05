@@ -21,10 +21,29 @@ export function assertOrderTransition(from:RegistrationOrderState,to:Registratio
  const i=sequence.indexOf(from),j=sequence.indexOf(to);
  if(j!==i+1)throw new Error('invalid registration order transition: '+from+' -> '+to);
 }
+function stateSatisfied(order:RegistrationOrder,to:RegistrationOrderState){
+ if(to==='pending')return true;
+ if(to==='authorityConfirmed')return order.authorityConfirmed;
+ if(to==='dnsPublished')return order.authorityConfirmed&&order.dnsPublished;
+ if(to==='dnsVerified')return order.authorityConfirmed&&order.dnsPublished&&order.dnsVerified;
+ if(to==='rdapVerified')return order.authorityConfirmed&&order.dnsPublished&&order.dnsVerified&&order.rdapVerified;
+ if(to==='readyForHandover')return order.authorityConfirmed&&order.dnsPublished&&order.dnsVerified&&order.rdapVerified;
+ return order.handedOver&&order.authorityConfirmed&&order.dnsPublished&&order.dnsVerified&&order.rdapVerified;
+}
 export function transitionOrder(order:RegistrationOrder,to:RegistrationOrderState,patch:Partial<RegistrationOrder>={}):RegistrationOrder{
  if(order.state===to)return order;
  assertOrderTransition(order.state,to);
  const next={...order,...patch,state:to,updatedAt:new Date().toISOString()};
- if(nextOrderState(next)!==to)throw new Error('registration order flags do not justify state '+to);
+ if(!stateSatisfied(next,to))throw new Error('registration order flags do not justify state '+to);
  return next;
+}
+export function advanceOrder(order:RegistrationOrder,patch:Partial<RegistrationOrder>={}):RegistrationOrder{
+ const desired={...order,...patch,updatedAt:new Date().toISOString()};
+ const target=nextOrderState(desired);
+ let current=order;
+ while(current.state!==target){
+  const nextIndex=sequence.indexOf(current.state)+1;
+  current=transitionOrder(current,sequence[nextIndex],patch);
+ }
+ return current;
 }
