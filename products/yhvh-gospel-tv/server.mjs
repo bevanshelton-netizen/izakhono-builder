@@ -35,7 +35,7 @@ function loadState() {
   try { return { ...seed, ...JSON.parse(fs.readFileSync(stateFile, 'utf8')) }; }
   catch { fs.writeFileSync(stateFile, JSON.stringify(seed, null, 2)); return structuredClone(seed); }
 }
-function saveState(state) { fs.writeFileSync(stateFile, JSON.stringify(state, null, 2)); }
+function saveState(nextState) { fs.writeFileSync(stateFile, JSON.stringify(nextState, null, 2)); }
 let state = loadState();
 
 const playout = createPlayoutEngine({
@@ -99,12 +99,26 @@ function addSubmission(b, source='public') {
   if (!item.name || !item.title) throw new Error('name_and_title_required');
   state.submissions.unshift(item); state.submissions=state.submissions.slice(0,1000); saveState(state); audit('submission_created',{id:item.id,source}); return item;
 }
+function addEvent(b) {
+  const item={id:`EVT-${Date.now()}-${crypto.randomBytes(2).toString('hex')}`,createdAt:new Date().toISOString(),title:clean(b.title,160),date:clean(b.date,32),time:clean(b.time,16),territory:clean(b.territory,64),language:clean(b.language || 'mul',16),status:'PLANNING'};
+  if (!item.title || !item.date) throw new Error('event_title_and_date_required');
+  state.events.unshift(item); state.events=state.events.slice(0,500); saveState(state); audit('event_created',{id:item.id,title:item.title}); return item;
+}
+function addSponsorSlot(b) {
+  const item={id:`SP-${Date.now()}-${crypto.randomBytes(2).toString('hex')}`,createdAt:new Date().toISOString(),name:clean(b.name,160),slot:clean(b.slot,80),status:'PROPOSAL',editorialIndependent:true};
+  if (!item.name || !item.slot) throw new Error('sponsor_name_and_slot_required');
+  state.sponsorSlots.unshift(item); state.sponsorSlots=state.sponsorSlots.slice(0,500); saveState(state); audit('sponsor_slot_created',{id:item.id,name:item.name}); return item;
+}
+function dashboard() {
+  const {current,next,index}=currentSchedule();
+  return {ok:true,station:stationName,tagline:'FAITH. WORSHIP. WORD. — AFRICA TO THE WORLD.',runtime:'izakhono-owned',automation:state.automation,emergency:state.emergency,live:Boolean(liveUrl),liveUrl:liveUrl||null,current,next,index,schedule,playout:playout.snapshot(),counts:{submissions:state.submissions.length,events:state.events.length,sponsorSlots:state.sponsorSlots.length,audit:state.audit.length},recent:{submissions:state.submissions.slice(0,12),events:state.events.slice(0,12),sponsorSlots:state.sponsorSlots.slice(0,12),audit:state.audit.slice(0,30)},serverTime:new Date().toISOString()};
+}
 
 const server = http.createServer(async (req, res) => {
   try {
     const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`); const p=url.pathname;
     if (req.method==='GET' && p==='/health') return json(res,200,{ok:true,service:'yhvh-gospel-tv',runtime:'izakhono-owned',station:stationName,playout:playout.snapshot(),time:new Date().toISOString()});
-    if (req.method==='GET' && p==='/api/status') { const {current,next,index}=currentSchedule(); return json(res,200,{ok:true,station:stationName,tagline:'FAITH. WORSHIP. WORD. — AFRICA TO THE WORLD.',automation:state.automation,emergency:state.emergency,live:Boolean(liveUrl),liveUrl:liveUrl||null,current,next,index,scheduleCount:schedule.length,submissions:state.submissions.length,events:state.events.length,playout:playout.snapshot(),serverTime:new Date().toISOString()}); }
+    if (req.method==='GET' && p==='/api/status') return json(res,200,dashboard());
     if (req.method==='GET' && p==='/api/schedule') return json(res,200,{ok:true,schedule});
     if (req.method==='GET' && p==='/api/now') return json(res,200,{ok:true,...currentSchedule()});
     if (req.method==='GET' && p==='/api/live') return json(res,200,{ok:true,configured:Boolean(liveUrl),url:liveUrl||null});
@@ -118,15 +132,19 @@ const server = http.createServer(async (req, res) => {
 
     if (p.startsWith('/api/control/')) {
       if (!authorized(req)) return json(res,401,{ok:false,error:'owner_authorization_required'});
-      if (req.method==='GET' && p==='/api/control/state') return json(res,200,{ok:true,state:{automation:state.automation,emergency:state.emergency},audit:state.audit.slice(0,30),playout:playout.snapshot()});
+      if (req.method==='GET' && p==='/api/control/state') return json(res,200,{ok:true,state:{automation:state.automation,emergency:state.emergency},audit:state.audit.slice(0,30),playout:playout.snapshot(),events:state.events.slice(0,50),sponsorSlots:state.sponsorSlots.slice(0,50),submissions:state.submissions.slice(0,100)});
+      if (req.method==='GET' && p==='/api/control/dashboard') return json(res,200,dashboard());
       if (req.method==='POST' && p==='/api/control/automation') { const b=await body(req); state.automation=Boolean(b.enabled); audit('automation_changed',{enabled:state.automation}); return json(res,200,{ok:true,automation:state.automation}); }
       if (req.method==='POST' && p==='/api/control/emergency') { const b=await body(req); state.emergency=Boolean(b.enabled); audit('emergency_slate_changed',{enabled:state.emergency}); return json(res,200,{ok:true,emergency:state.emergency}); }
       if (req.method==='POST' && p==='/api/control/playout/next') { const item=playout.next(); audit('playout_advanced',{itemId:item.id,title:item.title}); return json(res,200,{ok:true,item,playout:playout.snapshot()}); }
       if (req.method==='POST' && p==='/api/control/submission') { const item=addSubmission(await body(req),'owner'); return json(res,201,{ok:true,item}); }
+      if (req.method==='POST' && p==='/api/control/event') { const item=addEvent(await body(req)); return json(res,201,{ok:true,item}); }
+      if (req.method==='POST' && p==='/api/control/sponsor-slot') { const item=addSponsorSlot(await body(req)); return json(res,201,{ok:true,item}); }
       return json(res,404,{ok:false,error:'control_route_not_found'});
     }
     if (req.method==='GET' && (p==='/' || p==='/index.html')) return html(res,'index.html');
     if (req.method==='GET' && p==='/control') return html(res,'control.html');
+    if (req.method==='GET' && p==='/control-center') return html(res,'control-center.html');
     if (req.method==='GET' && p==='/creator') return html(res,'creator.html');
     return json(res,404,{ok:false,error:'not_found'});
   } catch (err) { return json(res,400,{ok:false,error:err?.message||'bad_request'}); }
