@@ -1,0 +1,27 @@
+name: NODE Fabric CI
+
+on:
+  pull_request:
+    paths:
+      - 'products/izakhono-control/**'
+      - 'products/izakhono-node/**'
+      - '.github/workflows/node-fabric-ci.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'products/izakhono-control/**'
+      - 'products/izakhono-node/**'
+      - '.github/workflows/node-fabric-ci.yml'
+
+jobs:
+  node-fabric:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile Python services
+        run: python3 -m py_compile products/izakhono-control/control.py products/izakhono-control/node_fabric.py products/izakhono-control/test_node_fabric.py products/izakhono-node/node_agent.py
+      - name: Run NODE Fabric tests
+        working-directory: products/izakhono-control
+        run: python3 -m unittest -v test_node_fabric.py
+      - name: Verify production-ref guard remains present
+        run: grep -q 'Production deployments require an immutable 40-character commit SHA' products/izakhono-control/control.py
