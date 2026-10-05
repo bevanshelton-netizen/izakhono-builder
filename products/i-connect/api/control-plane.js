@@ -2,7 +2,7 @@ const MODULES = {
   identity: { status: 'contract-ready', persistence: 'supabase-required' },
   contactCentre: {
     status: 'data-model-ready',
-    capabilities: ['queues','agents','mobile-bridge-mode','softphone-mode','call-state','masked-customer-number']
+    capabilities: ['queues','agents','authenticated-agent-sessions','atomic-queue-claim','mobile-bridge-mode','softphone-mode','call-state','call-events','masked-customer-number']
   },
   provisioning: {
     status: 'data-model-ready',
@@ -33,7 +33,7 @@ module.exports = (req, res) => {
 
   return res.status(200).json({
     service: 'I-CONNECT Control Plane',
-    version: '1.1',
+    version: '1.2',
     architecture: 'owned-first, carrier-neutral, externally reversible',
     modules: MODULES,
     productionDependencies: {
