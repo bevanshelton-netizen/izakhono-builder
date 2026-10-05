@@ -6,6 +6,11 @@
   <meta name="theme-color" content="#0b1020" />
   <title>I-CONNECT Corporate Command</title>
   <link rel="stylesheet" href="./styles.css" />
+  <style>
+    #system-health{margin:0 22px 18px;padding:14px 16px;border:1px solid rgba(255,255,255,.09);border-radius:14px;background:rgba(255,255,255,.035);box-shadow:0 10px 30px rgba(0,0,0,.12)}
+    .health-head{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:11px}.health-head strong{display:block;font-size:12px;letter-spacing:.08em}.health-head span{display:block;margin-top:3px;font-size:12px;opacity:.65}.health-head button{border:1px solid rgba(255,255,255,.12);background:transparent;color:inherit;border-radius:9px;padding:7px 10px;cursor:pointer}.health-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}.health-chip{display:grid;grid-template-columns:auto 1fr;column-gap:7px;align-items:center;padding:9px 10px;border-radius:10px;background:rgba(255,255,255,.035)}.health-chip small{grid-column:2;font-size:10px;opacity:.65}.health-dot{width:7px;height:7px;border-radius:50%;background:#f59e0b;box-shadow:0 0 8px rgba(245,158,11,.5)}.health-chip.ok .health-dot{background:#22c55e;box-shadow:0 0 8px rgba(34,197,94,.5)}.health-chip b{font-size:11px}.loading{opacity:.7}
+    @media(max-width:900px){.health-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+  </style>
 </head>
 <body>
   <div class="shell">
@@ -26,10 +31,12 @@
     </aside>
     <main class="main">
       <header class="topbar"><div><div class="eyebrow">IZAKHONO / I-CONNECT</div><h1 id="page-title">Corporate Command Centre</h1></div><div class="top-actions"><span class="live"><i></i> LIVE OPERATIONS</span><button class="icon-btn" title="Notifications">◌</button><button class="primary" id="quickAction">+ New deployment</button></div></header>
+      <section id="system-health" aria-live="polite"></section>
       <div id="app" class="content"></div>
     </main>
   </div>
   <div id="toast" class="toast"></div>
   <script src="./app.js"></script>
+  <script src="./health.js"></script>
 </body>
 </html>
