@@ -8,7 +8,6 @@ primitives without coupling customer access to a third-party identity vendor.
 from __future__ import annotations
 
 import hashlib
-import hmac
 import os
 import secrets
 import smtplib
@@ -49,16 +48,7 @@ def issue_token(db: sqlite3.Connection, user_id: str, kind: str,
     db.execute(
         "INSERT INTO account_tokens(id,user_id,entity_id,kind,token_hash,attempts,created_at,expires_at) "
         "VALUES(?,?,?,?,?,?,?,?)",
-        (
-            "act_" + uuid.uuid4().hex,
-            user_id,
-            entity_id,
-            kind,
-            token_hash(token),
-            0,
-            now,
-            now + max(60, int(seconds)),
-        ),
+        ("act_" + uuid.uuid4().hex, user_id, entity_id, kind, token_hash(token), 0, now, now + max(60, int(seconds))),
     )
     return token
 
@@ -74,15 +64,13 @@ def consume_token(db: sqlite3.Connection, token: str, kind: str):
     ).fetchone()
     if not row or row["consumed_at"] is not None:
         return None
-    if int(row["expires_at"]) <= int(time.time()):
+    if int(row["expires_at"]) <= int(time.time()) or int(row["attempts"] or 0) >= MAX_ATTEMPTS:
         return None
-    if int(row["attempts"] or 0) >= MAX_ATTEMPTS:
-        return None
-    db.execute(
+    cursor = db.execute(
         "UPDATE account_tokens SET consumed_at=? WHERE id=? AND consumed_at IS NULL",
         (int(time.time()), row["id"]),
     )
-    if db.total_changes < 1:
+    if cursor.rowcount != 1:
         return None
     return row
 
