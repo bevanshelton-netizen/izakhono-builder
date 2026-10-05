@@ -13,6 +13,6 @@ export class ExternalRegistryAdapter implements RegistryAdapter {
   constructor(private transport:AuthorityTransport){}
   availability(name:string){return this.transport.check(normalizeDomain(name));}
   async register(domain:Domain){const result=await this.transport.register({...domain,name:normalizeDomain(domain.name)}); return {transactionId:result.transactionId,confirmed:result.status==='confirmed'};}
-  renew(name:string,years:number){return this.transport.renew(normalizeDomain(name),years);}
+  async renew(name:string,years:number){const result=await this.transport.renew(normalizeDomain(name),years); if(!result.expiresAt)throw new Error('registry renewal did not return an expiry date'); return {transactionId:result.transactionId,expiresAt:result.expiresAt};}
   transfer(name:string,authCode:string){return this.transport.transfer(normalizeDomain(name),authCode);}
 }
