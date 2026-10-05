@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "wrangler dev",
-    "typecheck": "tsc --noEmit --target ES2022 --lib ES2022,DOM,DOM.Iterable --module ESNext src/index.ts src/rapid-factory.ts && tsc --noEmit --target ES2022 --lib ES2022,DOM,DOM.Iterable --module ESNext src/repository.ts src/internal-repository.ts && tsc --noEmit --noCheck --target ES2022 --lib ES2022,DOM,DOM.Iterable --module ESNext src/secure.ts src/sovereign.ts && tsc --noEmit --target ES2022 --lib ES2022,DOM --module ESNext products/izakhono-docflow/src/index.ts && tsc --noEmit --target ES2022 --lib ES2022,DOM --module ESNext products/izakhono-super-app/src/index.ts",
+    "typecheck": "tsc --noEmit --target ES2022 --lib ES2022,DOM,DOM.Iterable --module ESNext src/index.ts src/rapid-factory.ts src/rapid-factory-persistence.ts && tsc --noEmit --target ES2022 --lib ES2022,DOM,DOM.Iterable --module ESNext src/repository.ts src/internal-repository.ts && tsc --noEmit --noCheck --target ES2022 --lib ES2022,DOM,DOM.Iterable --module ESNext src/secure.ts src/sovereign.ts && tsc --noEmit --target ES2022 --lib ES2022,DOM --module ESNext products/izakhono-docflow/src/index.ts && tsc --noEmit --target ES2022 --lib ES2022,DOM --module ESNext products/izakhono-super-app/src/index.ts",
     "registry:typecheck": "tsc --noEmit --target ES2022 --lib ES2022,DOM,DOM.Iterable --module ESNext registry/*.ts",
     "registry:dry": "wrangler deploy --config registry/wrangler.jsonc --dry-run",
     "registry:migrate": "wrangler d1 migrations apply DB --config registry/wrangler.jsonc --remote",
@@ -12,18 +12,19 @@
     "deploy:first": "wrangler deploy",
     "db:migrate": "wrangler d1 migrations apply DB --remote",
     "deploy": "wrangler deploy && wrangler d1 migrations apply DB --remote && wrangler deploy",
-    "validate": "npm run validate:rapid-factory && npm run validate:build-anything && npm run validate:portfolio-growth && npm run validate:growth-engine && npm run validate:growth-edge && npm run validate:affiliate && npm run validate:finance-core && npm run validate:super-app && npm run validate:mail && npm run validate:host && npm run typecheck && wrangler deploy --dry-run",
+    "validate": "npm run validate:rapid-factory && npm run validate:rapid-factory-persistence && npm run validate:build-anything && npm run validate:portfolio-growth && npm run validate:growth-engine && npm run validate:growth-edge && npm run validate:affiliate && npm run validate:finance-core && npm run validate:super-app && npm run validate:mail && npm run validate:host && npm run typecheck && wrangler deploy --dry-run",
     "validate:portfolio-growth": "node --check products/izakhono-ads/app.js && node scripts/validate-portfolio-growth.mjs && node scripts/validate-wave1-conversion.mjs",
     "validate:mail": "node infra/mail-stack/verify.mjs",
     "validate:affiliate": "node scripts/validate-affiliate-engine.mjs",
     "validate:super-app": "node --check products/izakhono-super-app/public/app.js && node scripts/validate-super-app.mjs",
     "validate:build-anything": "node scripts/validate-build-anything.mjs",
-    "validate:finance-core": "node scripts/validate-finance-core.mjs && node --check products/izakhono-finance-core/server.mjs && node --check products/izakhono-finance-core/ops/backup.mjs && node --check products/izakhono-finance-core/ops/restore.mjs && node products/izakhono-finance-core/ops/node01-preflight.mjs --contract-only && node products/izakhono-finance-core/test.mjs && node products/izakhono-finance-core/smoke-test.mjs",
+    "validate:finance-core": "node scripts/validate-finance-core.mjs && node --check products/izakhono-finance-core/server.mjs && node --check products/izakhono-finance-core/ops/backup.mjs && node products/izakhono-finance-core/ops/restore.mjs && node products/izakhono-finance-core/ops/node01-preflight.mjs --contract-only && node products/izakhono-finance-core/test.mjs && node products/izakhono-finance-core/smoke-test.mjs",
     "validate:growth-engine": "cd products/izakhono-growth-engine && npm run check && npm test",
     "validate:growth-edge": "node scripts/validate-growth-check-edge.mjs",
     "validate:host": "cd products/izakhono-host && npm run typecheck",
     "registry:test": "npx --yes tsx@4.20.3 scripts/run-registry-tests.mjs",
-    "validate:rapid-factory": "node scripts/validate-rapid-factory.mjs"
+    "validate:rapid-factory": "node scripts/validate-rapid-factory.mjs",
+    "validate:rapid-factory-persistence": "node scripts/validate-rapid-factory-persistence.mjs"
   },
   "devDependencies": {
     "typescript": "5.9.2",
