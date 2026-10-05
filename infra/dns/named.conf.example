@@ -1,0 +1,27 @@
+// IZAKHONO authoritative-only BIND reference configuration.
+// Replace placeholders during deployment; never commit production secrets.
+options {
+    directory "/var/cache/bind";
+    listen-on { any; };
+    listen-on-v6 { any; };
+    recursion no;
+    allow-recursion { none; };
+    allow-query { any; };
+    allow-query-cache { none; };
+    minimal-responses yes;
+    version "not disclosed";
+};
+
+// Define explicit zone files per provisioned customer zone.
+// Example:
+// zone "example.com" {
+//     type primary;
+//     file "/etc/bind/zones/db.example.com";
+//     allow-transfer { key izakhono-secondary; };
+//     also-notify { <SECONDARY_IP>; };
+//     notify yes;
+// };
+
+// TSIG key and secondary ACLs belong in a root-readable secret include,
+// generated at deployment time and excluded from source control.
+// include "/etc/bind/izakhono/secondary.keys";
