@@ -1,0 +1,22 @@
+$TTL 300
+@ IN SOA ns1.izakhonoafrica.co.za. dns-admin.izakhonoafrica.co.za. (
+  2026100501 ; serial
+  3600       ; refresh
+  900        ; retry
+  1209600    ; expire
+  300        ; negative cache
+)
+
+@ IN NS ns1.izakhonoafrica.co.za.
+@ IN NS ns2.izakhonoafrica.co.za.
+
+; Replace these bootstrap addresses with the public IPs of the production DNS nodes.
+ns1 IN A 127.0.0.1
+ns2 IN A 127.0.0.1
+
+; NAV bootstrap records - replace with real production endpoints.
+nav IN A 127.0.0.1
+api.nav IN A 127.0.0.1
+routing.nav IN A 127.0.0.1
+
+; Email and verification records can be provisioned by the controller.
