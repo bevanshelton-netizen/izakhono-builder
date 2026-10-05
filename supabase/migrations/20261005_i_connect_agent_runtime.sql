@@ -94,7 +94,7 @@ begin
     raise exception 'authentication required';
   end if;
 
-  if not public.coalesce(ic_private.has_role(
+  if not coalesce(ic_private.has_role(
     p_organization_id,
     array['owner','admin','manager','agent']
   ), false) then
