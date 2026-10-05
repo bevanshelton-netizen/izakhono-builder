@@ -1,0 +1,16 @@
+[Unit]
+Description=IZAKHONO Recovery HTTPS Reverse Proxy
+Documentation=https://caddyserver.com/docs/
+After=network-online.target caddy.service izakhono-id-recovery.service
+Wants=network-online.target
+Requires=caddy.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+EnvironmentFile=-/etc/izakhono/recovery-proxy.env
+ExecStart=/usr/bin/caddy validate --config /etc/caddy/izakhono-recovery.Caddyfile --adapter caddyfile
+ExecStart=/bin/systemctl reload caddy
+
+[Install]
+WantedBy=multi-user.target
