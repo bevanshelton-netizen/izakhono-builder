@@ -1,7 +1,7 @@
 type Stmt = {
   bind(...values: unknown[]): Stmt;
   first<T = any>(): Promise<T | null>;
-  run(): Promise<unknown>;
+  run(): Promise<{ meta?: { changes?: number } } | unknown>;
 };
 type Env = { DB: { prepare(sql: string): Stmt } };
 
@@ -56,10 +56,14 @@ export async function claimFactoryIdempotency(
   if (!normalized) return { kind: 'new', key: '', requestHash };
 
   await ensureFactoryIdempotencySchema(env);
-  await env.DB.prepare(`
+  const result = await env.DB.prepare(`
     INSERT OR IGNORE INTO rapid_factory_idempotency(idempotency_key,request_hash,status)
     VALUES(?,?,'processing')
-  `).bind(normalized, requestHash).run();
+  `).bind(normalized, requestHash).run() as { meta?: { changes?: number } };
+
+  if (Number(result?.meta?.changes || 0) > 0) {
+    return { kind: 'new', key: normalized, requestHash };
+  }
 
   const row = await env.DB.prepare(
     'SELECT idempotency_key,request_hash,status,job_id,response_status,response_body FROM rapid_factory_idempotency WHERE idempotency_key=?'
@@ -84,12 +88,7 @@ export async function bindFactoryIdempotencyJob(env: Env, key: string, jobId: st
   `).bind(jobId, key).run();
 }
 
-export async function completeFactoryIdempotency(
-  env: Env,
-  key: string,
-  status: number,
-  body: string,
-) {
+export async function completeFactoryIdempotency(env: Env, key: string, status: number, body: string) {
   if (!key) return;
   await env.DB.prepare(`
     UPDATE rapid_factory_idempotency
