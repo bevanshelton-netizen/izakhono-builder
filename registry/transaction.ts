@@ -6,7 +6,8 @@ export type RegistrationResult={domain:Domain;authorityTransactionId:string;auth
 
 async function syncOrder(store:RegistrationOrderStore,order:RegistrationOrder,patch:Partial<RegistrationOrder>){
  const desired={...order,...patch,updatedAt:new Date().toISOString()};
- const next=desired.state===order.state ? desired : transitionOrder(order,desired.state,patch);
+ const desiredState=nextOrderState(desired);
+ const next=desiredState===order.state ? desired : transitionOrder(order,desiredState,patch);
  await store.put(next);
  return next;
 }
