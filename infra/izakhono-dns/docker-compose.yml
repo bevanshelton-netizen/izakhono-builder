@@ -9,8 +9,10 @@ services:
     volumes:
       - ./bind/primary/named.conf:/etc/bind/named.conf:ro
       - ./bind/primary/zones:/var/lib/bind
+      - ./bind/primary/keys:/etc/bind/keys:ro
     networks:
-      - dns
+      dns:
+        ipv4_address: 172.30.0.10
 
   dns-secondary:
     image: internetsystemsconsortium/bind9:9.20
@@ -20,7 +22,8 @@ services:
       - ./bind/secondary/named.conf:/etc/bind/named.conf:ro
       - ./bind/secondary/zones:/var/lib/bind
     networks:
-      - dns
+      dns:
+        ipv4_address: 172.30.0.11
     depends_on:
       - dns-primary
 
@@ -29,19 +32,22 @@ services:
     container_name: izakhono-dns-controller
     restart: unless-stopped
     environment:
-      DNS_PRIMARY_HOST: dns-primary
+      DNS_PRIMARY_HOST: 172.30.0.10
       DNS_PRIMARY_PORT: "53"
-      DNS_ZONE_DIR: /zones
       DNS_API_KEY: change-me-before-production
     ports:
       - "8088:8080"
     volumes:
-      - ./bind/primary/zones:/zones
+      - ./bind/primary/keys:/secrets:ro
     networks:
-      - dns
+      dns:
+        ipv4_address: 172.30.0.20
     depends_on:
       - dns-primary
 
 networks:
   dns:
     driver: bridge
+    ipam:
+      config:
+        - subnet: 172.30.0.0/24
