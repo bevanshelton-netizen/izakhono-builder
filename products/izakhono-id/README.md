@@ -37,6 +37,9 @@ A session created for Entity A cannot silently become a session for Entity B.
 - one-time hashed recovery codes
 - MFA enrollment, confirmation, recovery-code regeneration and protected disable flow
 - existing pre-verification admin-provisioned users preserved safely during the one-time schema migration
+- secure account-recovery primitives with single-use hashed tokens and expiry
+- bounded password-reset and email-verification request throttling
+- owner-controlled SMTP email delivery with explicit disabled/log/test modes
 
 ## Endpoints
 
@@ -55,6 +58,28 @@ A session created for Entity A cannot silently become a session for Entity B.
 - `POST /api/v1/mfa/disable`
 - `GET /api/v1/me`
 - `POST /api/v1/internal/introspect`
+
+The recovery library is now implemented in `account_recovery.py`; HTTP route wiring is kept as the next integration step so no public recovery endpoint is exposed before its customer-facing policy is connected to the existing MFA/session model.
+
+## Recovery and email controls
+
+Recovery and verification tokens are high-entropy, single-use values. Only SHA-256 token hashes are persisted. Default lifetime is 15 minutes. Request creation is bounded by a per-fingerprint rolling window, and callers can return one uniform response for known and unknown email addresses to prevent account enumeration.
+
+Owner-controlled email delivery is configured with:
+
+- `IZAKHONO_ID_EMAIL_MODE` (`smtp`, `log`, or `disabled`; default `smtp`)
+- `IZAKHONO_ID_PUBLIC_BASE_URL`
+- `IZAKHONO_ID_SMTP_HOST`
+- `IZAKHONO_ID_SMTP_PORT` (default `587`)
+- `IZAKHONO_ID_SMTP_USERNAME`
+- `IZAKHONO_ID_SMTP_PASSWORD`
+- `IZAKHONO_ID_SMTP_FROM`
+- `IZAKHONO_ID_SMTP_STARTTLS` (default `true`)
+- `IZAKHONO_ID_RECOVERY_TOKEN_SECONDS` (default `900`)
+- `IZAKHONO_ID_RECOVERY_MAX_REQUESTS` (default `5`)
+- `IZAKHONO_ID_RECOVERY_WINDOW_SECONDS` (default `900`)
+
+Production must use real owner-controlled SMTP and HTTPS `IZAKHONO_ID_PUBLIC_BASE_URL`. `log` is a development/test mode and `disabled` deliberately sends nothing.
 
 ## Security controls
 
@@ -80,18 +105,17 @@ Admin-created users are considered verified because their identity is provisione
 
 ## Remaining production gates
 
-This hardening closes several of the original alpha gaps, but it is **not yet a claim of full production IAM readiness**.
-
 Before broad public customer login, complete:
 
+- wire the recovery primitives into the ID HTTP API and Venture Factory customer UI
+- make MFA recovery policy explicit; recovery must not silently bypass an enrolled second factor
 - passkey/WebAuthn support as an additional phishing-resistant factor
-- secure account-recovery flow
-- externally delivered email verification for self-service registration
 - device/session management UI and device trust
 - secret rotation procedures
 - breach-response and lockout support procedures
 - privacy/retention policy for audit data
 - hardened backup/restore for the identity database
 - independent security review and abuse testing
+- real HTTPS certificate/DNS cutover on an activated IZAKHONO node
 
-The service is now a materially stronger identity boundary for controlled IZAKHONO use while those remaining gates are completed.
+The identity service is a materially stronger boundary for controlled IZAKHONO use while these production gates are completed.
