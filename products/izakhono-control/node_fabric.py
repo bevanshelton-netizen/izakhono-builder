@@ -1,14 +1,12 @@
 #!/usr/bin/env python3
-"""Portable NODE pool and failover primitives for IZAKHONO CONTROL.
-
-NODE IDs are logical roles. A physical host can assume any node ID by setting
-IZAKHONO_NODE_ID at bootstrap time. This module deliberately keeps secrets in
-environment variables and never serializes them into status responses.
-"""
+"""Portable NODE pool and failover primitives for IZAKHONO CONTROL."""
 from __future__ import annotations
 
+import hashlib
+import hmac
 import json
 import os
+import secrets
 import time
 import urllib.request
 from dataclasses import dataclass
@@ -35,38 +33,40 @@ class NodeFabric:
         raw = os.getenv("IZAKHONO_NODE_FABRIC", "")
         if raw:
             data = json.loads(raw)
-            result = []
-            for item in data:
-                result.append(FabricNode(
-                    node_id=str(item["id"]),
-                    url=str(item["url"]).rstrip("/"),
-                    secret_env=str(item.get("secret_env") or f"IZAKHONO_NODE_{str(item['id']).upper()}_SECRET"),
-                    role=str(item.get("role", "worker")),
-                    weight=int(item.get("weight", 100)),
-                ))
-            return result
-
-        # Backward-compatible single-node configuration.
-        url = os.getenv("IZAKHONO_NODE_URL", "http://127.0.0.1:9191").rstrip("/")
+            return [FabricNode(
+                node_id=str(item["id"]),
+                url=str(item["url"]).rstrip("/"),
+                secret_env=str(item.get("secret_env") or f"IZAKHONO_NODE_{str(item['id']).upper()}_SECRET"),
+                role=str(item.get("role", "worker")),
+                weight=int(item.get("weight", 100)),
+            ) for item in data]
         return [FabricNode(
             node_id=os.getenv("IZAKHONO_NODE_ID", "node01"),
-            url=url,
+            url=os.getenv("IZAKHONO_NODE_URL", "http://127.0.0.1:9191").rstrip("/"),
             secret_env="IZAKHONO_NODE_SECRET",
             role="primary",
         )]
 
     @staticmethod
-    def _headers(secret: str) -> dict[str, str]:
-        # Health is intentionally unauthenticated by default on the node agent.
-        # A configured secret is still passed so hardened nodes may authenticate.
-        return {"X-IZAKHONO-Node-Key": secret} if secret else {}
+    def _signed_headers(secret: str) -> dict[str, str]:
+        ts = str(int(time.time()))
+        nonce = secrets.token_hex(16)
+        sig = hmac.new(secret.encode(), f"{ts}.{nonce}.".encode(), hashlib.sha256).hexdigest()
+        return {
+            "X-IZAKHONO-Timestamp": ts,
+            "X-IZAKHONO-Nonce": nonce,
+            "X-IZAKHONO-Signature": sig,
+        }
 
     def _probe(self, node: FabricNode) -> dict[str, Any]:
         started = time.monotonic()
         try:
+            secret = os.getenv(node.secret_env, "")
+            if not secret:
+                raise RuntimeError("node_secret_missing")
             req = urllib.request.Request(
                 node.url + "/v1/node", method="GET",
-                headers=self._headers(os.getenv(node.secret_env, "")),
+                headers=self._signed_headers(secret),
             )
             with urllib.request.urlopen(req, timeout=3) as response:
                 payload = json.loads(response.read())
@@ -74,7 +74,7 @@ class NodeFabric:
                     raise RuntimeError(f"http_{response.status}")
             return {
                 "node_id": node.node_id,
-                "ok": True,
+                "ok": bool(payload.get("ready", True)),
                 "role": node.role,
                 "weight": node.weight,
                 "latency_ms": round((time.monotonic() - started) * 1000, 2),
@@ -95,7 +95,7 @@ class NodeFabric:
     def _safe_node(payload: Any) -> dict[str, Any]:
         if not isinstance(payload, dict):
             return {}
-        allowed = ("node_id", "version", "capabilities", "environment", "status")
+        allowed = ("node_id", "version", "capabilities", "ready", "reason", "queued")
         return {key: payload[key] for key in allowed if key in payload}
 
     def refresh(self) -> list[dict[str, Any]]:
@@ -122,6 +122,5 @@ class NodeFabric:
                     return node
         if not healthy:
             raise RuntimeError("no_healthy_node")
-        # Primary first, then higher weight, then stable node id.
         healthy.sort(key=lambda n: (0 if n.role == "primary" else 1, -n.weight, n.node_id))
         return healthy[0]
