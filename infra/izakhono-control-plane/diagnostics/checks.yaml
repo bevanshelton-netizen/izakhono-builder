@@ -1,0 +1,42 @@
+version: 1
+checks:
+  - id: dns-authority
+    category: dns
+    severity: critical
+    description: Verify authoritative NS records, SOA serial and reachable UDP/TCP 53.
+  - id: dns-delegation
+    category: dns
+    severity: critical
+    description: Verify parent-zone delegation points at the intended authoritative servers.
+  - id: public-ip
+    category: network
+    severity: critical
+    description: Verify service has stable public reachability and detect CGNAT/private addressing.
+  - id: tcp-ports
+    category: network
+    severity: critical
+    description: Verify required public ports are reachable from an external vantage point.
+  - id: tls
+    category: edge
+    severity: high
+    description: Verify certificate chain, hostname, expiry and TLS protocol.
+  - id: http
+    category: edge
+    severity: high
+    description: Verify expected HTTP status, redirects, health endpoint and response time.
+  - id: deployment
+    category: hosting
+    severity: high
+    description: Verify deployment exists, is healthy and matches the intended release.
+  - id: email-dns
+    category: email
+    severity: high
+    description: Verify MX, SPF, DKIM and DMARC records.
+  - id: backup
+    category: data
+    severity: high
+    description: Verify recent backup and perform restore validation for critical data.
+  - id: dependency
+    category: platform
+    severity: medium
+    description: Detect failed external providers and select configured fallback adapters.
