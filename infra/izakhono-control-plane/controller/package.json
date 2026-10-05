@@ -1,0 +1,13 @@
+{
+  "name": "@izakhono/control-plane",
+  "version": "0.1.0",
+  "private": true,
+  "description": "IZAKHONO owned-first infrastructure control plane",
+  "type": "module",
+  "scripts": {
+    "start": "node src/server.js"
+  },
+  "dependencies": {
+    "express": "^5.1.0"
+  }
+}
