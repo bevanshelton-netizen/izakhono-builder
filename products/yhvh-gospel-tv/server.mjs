@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
+import { createPlayoutEngine } from './playout/playout-engine.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const publicDir = path.join(__dirname, 'public');
@@ -36,6 +37,11 @@ function loadState() {
 }
 function saveState(state) { fs.writeFileSync(stateFile, JSON.stringify(state, null, 2)); }
 let state = loadState();
+
+const playout = createPlayoutEngine({
+  manifestPath: path.join(__dirname, 'playout', 'playlist.json'),
+  vaultDir: process.env.YHVH_CONTENT_VAULT || path.join(__dirname, 'content-vault')
+});
 
 const schedule = [
   ['00:00','Midnight Worship','Worship','en'], ['02:00','Scripture Through the Night','Word','en'],
@@ -97,11 +103,12 @@ function addSubmission(b, source='public') {
 const server = http.createServer(async (req, res) => {
   try {
     const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`); const p=url.pathname;
-    if (req.method==='GET' && p==='/health') return json(res,200,{ok:true,service:'yhvh-gospel-tv',runtime:'izakhono-owned',station:stationName,time:new Date().toISOString()});
-    if (req.method==='GET' && p==='/api/status') { const {current,next,index}=currentSchedule(); return json(res,200,{ok:true,station:stationName,tagline:'FAITH. WORSHIP. WORD. — AFRICA TO THE WORLD.',automation:state.automation,emergency:state.emergency,live:Boolean(liveUrl),liveUrl:liveUrl||null,current,next,index,scheduleCount:schedule.length,submissions:state.submissions.length,events:state.events.length,serverTime:new Date().toISOString()}); }
+    if (req.method==='GET' && p==='/health') return json(res,200,{ok:true,service:'yhvh-gospel-tv',runtime:'izakhono-owned',station:stationName,playout:playout.snapshot(),time:new Date().toISOString()});
+    if (req.method==='GET' && p==='/api/status') { const {current,next,index}=currentSchedule(); return json(res,200,{ok:true,station:stationName,tagline:'FAITH. WORSHIP. WORD. — AFRICA TO THE WORLD.',automation:state.automation,emergency:state.emergency,live:Boolean(liveUrl),liveUrl:liveUrl||null,current,next,index,scheduleCount:schedule.length,submissions:state.submissions.length,events:state.events.length,playout:playout.snapshot(),serverTime:new Date().toISOString()}); }
     if (req.method==='GET' && p==='/api/schedule') return json(res,200,{ok:true,schedule});
     if (req.method==='GET' && p==='/api/now') return json(res,200,{ok:true,...currentSchedule()});
     if (req.method==='GET' && p==='/api/live') return json(res,200,{ok:true,configured:Boolean(liveUrl),url:liveUrl||null});
+    if (req.method==='GET' && p==='/api/playout') return json(res,200,{ok:true,playout:playout.snapshot(),manifest:playout.manifest});
 
     if (req.method==='POST' && p==='/api/creator/submit') {
       if (!intakeAllowed(req)) return json(res,429,{ok:false,error:'rate_limit'});
@@ -111,9 +118,10 @@ const server = http.createServer(async (req, res) => {
 
     if (p.startsWith('/api/control/')) {
       if (!authorized(req)) return json(res,401,{ok:false,error:'owner_authorization_required'});
-      if (req.method==='GET' && p==='/api/control/state') return json(res,200,{ok:true,state:{automation:state.automation,emergency:state.emergency},audit:state.audit.slice(0,30)});
+      if (req.method==='GET' && p==='/api/control/state') return json(res,200,{ok:true,state:{automation:state.automation,emergency:state.emergency},audit:state.audit.slice(0,30),playout:playout.snapshot()});
       if (req.method==='POST' && p==='/api/control/automation') { const b=await body(req); state.automation=Boolean(b.enabled); audit('automation_changed',{enabled:state.automation}); return json(res,200,{ok:true,automation:state.automation}); }
       if (req.method==='POST' && p==='/api/control/emergency') { const b=await body(req); state.emergency=Boolean(b.enabled); audit('emergency_slate_changed',{enabled:state.emergency}); return json(res,200,{ok:true,emergency:state.emergency}); }
+      if (req.method==='POST' && p==='/api/control/playout/next') { const item=playout.next(); audit('playout_advanced',{itemId:item.id,title:item.title}); return json(res,200,{ok:true,item,playout:playout.snapshot()}); }
       if (req.method==='POST' && p==='/api/control/submission') { const item=addSubmission(await body(req),'owner'); return json(res,201,{ok:true,item}); }
       return json(res,404,{ok:false,error:'control_route_not_found'});
     }

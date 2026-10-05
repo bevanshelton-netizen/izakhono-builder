@@ -1,0 +1,19 @@
+{
+  "schema": "yhvh.gospel-tv.playout/v1",
+  "station": "YHVH GOSPEL TV",
+  "timezone": "Africa/Johannesburg",
+  "mode": "CONTINUOUS",
+  "failover": {
+    "enabled": true,
+    "policy": "hold-last-good-or-slates"
+  },
+  "items": [
+    {"id":"YGV-OPEN","title":"YHVH Station Opener","type":"SLATE","durationSec":15,"uri":"assets/yhvh-opener.mp4","status":"READY"},
+    {"id":"YGV-WORSHIP","title":"Worship Rotation","type":"ROTATION","durationSec":3600,"uri":"CONTENT_VAULT:worship","status":"REQUIRES_CONTENT"},
+    {"id":"YGV-WORD","title":"Word Rotation","type":"ROTATION","durationSec":3600,"uri":"CONTENT_VAULT:word","status":"REQUIRES_CONTENT"},
+    {"id":"YGV-AFRICA","title":"Gospel Africa Rotation","type":"ROTATION","durationSec":3600,"uri":"CONTENT_VAULT:africa","status":"REQUIRES_CONTENT"},
+    {"id":"YGV-MUSIC","title":"Gospel Music Rotation","type":"ROTATION","durationSec":3600,"uri":"CONTENT_VAULT:music","status":"REQUIRES_CONTENT"},
+    {"id":"YGV-EVENT","title":"Revival & Event Rotation","type":"ROTATION","durationSec":3600,"uri":"CONTENT_VAULT:event","status":"REQUIRES_CONTENT"},
+    {"id":"YGV-CLOSE","title":"YHVH Station Close / Overnight Slate","type":"SLATE","durationSec":15,"uri":"assets/yhvh-close.mp4","status":"READY"}
+  ]
+}
