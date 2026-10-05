@@ -1,0 +1,54 @@
+version: 1
+name: izakhono-control-plane
+policy:
+  owned_first: true
+  fail_closed: true
+  reversible_external_fallbacks: true
+  require_health_check_before_live: true
+
+services:
+  dns:
+    status: foundation
+    internal: infra/izakhono-dns
+    blockers:
+      - public_authoritative_nameserver_reachability
+      - parent_zone_delegation
+  edge:
+    status: planned
+    capabilities: [reverse_proxy, tls, routing, health_failover]
+  hosting:
+    status: planned
+    capabilities: [container_deploy, static_sites, app_deploy]
+  email:
+    status: planned
+    capabilities: [mx, smtp, imap, spf, dkim, dmarc]
+  data:
+    status: planned
+    capabilities: [postgres, object_storage, backups]
+  identity:
+    status: planned
+    capabilities: [users, roles, api_keys, audit]
+  observability:
+    status: planned
+    capabilities: [dns, http, tls, tcp, uptime, alerts]
+  billing:
+    status: planned
+    capabilities: [payment_webhook, entitlement, provisioning_trigger]
+  provisioner:
+    status: planned
+    capabilities: [idempotent_workflows, rollback, customer_handover]
+
+external_dependencies:
+  - domain_registries
+  - internet_transit
+  - public_ip_allocation
+  - physical_connectivity
+  - certificate_trust_chain
+
+products_to_unblock:
+  - IZAKHONO NAV
+  - I-CONNECT
+  - IZAKHONO Work
+  - IZAKHONO Builder
+  - customer_websites
+  - customer_email
