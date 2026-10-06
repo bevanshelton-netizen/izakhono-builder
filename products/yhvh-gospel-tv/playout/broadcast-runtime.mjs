@@ -21,16 +21,37 @@ export class YhvhBroadcastRuntime {
     return JSON.parse(fs.readFileSync(this.rightsManifestPath, 'utf8'));
   }
 
-  approvedInputs() {
+  inspectInputs() {
     const manifest = this.loadManifest();
     const rows = Array.isArray(manifest.items) ? manifest.items : [];
     const root = path.resolve(this.vaultDir) + path.sep;
-    return rows.filter((x) => {
-      if (!x || x.status !== 'READY' || x.rightsStatus !== 'CLEAR' || x.qcStatus !== 'PASS') return false;
-      if (!Array.isArray(x.territories) || !x.territories.includes(this.territory)) return false;
-      const mediaPath = path.resolve(this.vaultDir, x.path || '');
-      return mediaPath.startsWith(root) && fs.existsSync(mediaPath) && VIDEO_EXT.test(mediaPath);
-    }).map((x) => ({ ...x, mediaPath: path.resolve(this.vaultDir, x.path) }));
+    return rows.map((x) => {
+      const mediaPath = path.resolve(this.vaultDir, x?.path || '');
+      const insideVault = mediaPath.startsWith(root);
+      const fileExists = insideVault && fs.existsSync(mediaPath);
+      const videoType = VIDEO_EXT.test(mediaPath);
+      const territoryClear = Array.isArray(x?.territories) && x.territories.includes(this.territory);
+      const reasons = [];
+      if (x?.status !== 'READY') reasons.push('status_not_ready');
+      if (x?.rightsStatus !== 'CLEAR') reasons.push('rights_not_clear');
+      if (x?.qcStatus !== 'PASS') reasons.push('qc_not_pass');
+      if (!territoryClear) reasons.push('territory_not_clear');
+      if (!insideVault) reasons.push('path_outside_vault');
+      if (!fileExists) reasons.push('media_missing');
+      if (!videoType) reasons.push('unsupported_media_type');
+      return {
+        ...x,
+        mediaPath: insideVault ? mediaPath : null,
+        fileExists,
+        territoryClear,
+        eligible: reasons.length === 0,
+        blockedReasons: reasons
+      };
+    });
+  }
+
+  approvedInputs() {
+    return this.inspectInputs().filter((x) => x.eligible);
   }
 
   buildConcatFile(inputs) {
@@ -81,16 +102,18 @@ export class YhvhBroadcastRuntime {
   }
 
   snapshot() {
-    let inputCount = 0;
+    let inspected = [];
     let manifestError = null;
-    try { inputCount = this.approvedInputs().length; } catch (e) { manifestError = e?.message || 'manifest_error'; }
+    try { inspected = this.inspectInputs(); } catch (e) { manifestError = e?.message || 'manifest_error'; }
     return {
       running: Boolean(this.child),
       pid: this.child?.pid || null,
       startedAt: this.startedAt,
       lastExit: this.lastExit,
       territory: this.territory,
-      approvedInputCount: inputCount,
+      approvedInputCount: inspected.filter((x) => x.eligible).length,
+      blockedInputCount: inspected.filter((x) => !x.eligible).length,
+      totalInputCount: inspected.length,
       outputConfigured: Boolean(this.outputUrl),
       hlsReady: fs.existsSync(path.join(this.hlsDir, 'playlist.m3u8')),
       manifestError,
