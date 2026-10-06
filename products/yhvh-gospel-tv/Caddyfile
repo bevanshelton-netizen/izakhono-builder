@@ -1,0 +1,10 @@
+{$YHVH_PUBLIC_DOMAIN} {
+  encode gzip
+  reverse_proxy yhvh-gospel-tv:8787
+  header {
+    X-YHVH-Authority "IZAKHONO"
+    X-YHVH-Station "YHVH GOSPEL TV"
+    Referrer-Policy "no-referrer"
+    X-Content-Type-Options "nosniff"
+  }
+}
