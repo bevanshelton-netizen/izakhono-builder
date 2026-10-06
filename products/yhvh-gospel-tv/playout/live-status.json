@@ -1,0 +1,8 @@
+{
+  "schema": "yhvh.gospel-tv.live-status/v1",
+  "authority": "IZAKHONO",
+  "status": "NOT_ACTIVE",
+  "verified": false,
+  "reason": "A real encoder process and independently verified playable stream are required before LIVE status can be asserted.",
+  "lastVerifiedAt": null
+}
