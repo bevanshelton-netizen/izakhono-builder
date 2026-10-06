@@ -1,0 +1,6 @@
+{
+  "schema": "yhvh.gospel-tv.encoder-readiness/v1",
+  "status": "CONFIGURED_NOT_ACTIVE",
+  "reason": "Encoder software is present, but no broadcast-cleared media is committed or claimed. Runtime activation requires an authorized content vault, rights/QC/territory clearance, and operator-controlled output configuration.",
+  "liveClaim": false
+}

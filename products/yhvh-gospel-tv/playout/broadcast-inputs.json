@@ -1,0 +1,7 @@
+{
+  "schema": "yhvh.gospel-tv.broadcast-inputs/v1",
+  "authority": "IZAKHONO",
+  "purpose": "Only media with explicit rights clearance, territory clearance and technical QC PASS may enter the broadcast encoder.",
+  "defaultDecision": "BLOCK",
+  "items": []
+}
