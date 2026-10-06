@@ -2,6 +2,7 @@ import http from "node:http";
 import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
+import { buildPlayoutWindow, toEpgXml, normalizeEvent, summarizeEvents, createProvisioningJob } from "./engines/index.mjs";
 
 const PORT = Number(process.env.MEDIA_CORE_PORT || 8787);
 const HOST = process.env.MEDIA_PUBLIC_HOST || "localhost";
@@ -10,9 +11,15 @@ const DATA_DIR = process.env.MEDIA_DATA_DIR || path.resolve("./data");
 const DB = path.join(DATA_DIR, "media-core.json");
 
 fs.mkdirSync(DATA_DIR, { recursive: true });
-if (!fs.existsSync(DB)) fs.writeFileSync(DB, JSON.stringify({ channels: [] }, null, 2));
+if (!fs.existsSync(DB)) fs.writeFileSync(DB, JSON.stringify({ channels: [], analytics: [], provisioning: [] }, null, 2));
 
-const readDb = () => JSON.parse(fs.readFileSync(DB, "utf8"));
+const readDb = () => {
+  const db = JSON.parse(fs.readFileSync(DB, "utf8"));
+  db.channels ||= [];
+  db.analytics ||= [];
+  db.provisioning ||= [];
+  return db;
+};
 const writeDb = (db) => fs.writeFileSync(DB, JSON.stringify(db, null, 2));
 const id = (prefix) => `${prefix}_${crypto.randomBytes(8).toString("hex")}`;
 const streamKey = () => crypto.randomBytes(24).toString("base64url");
@@ -52,20 +59,16 @@ function channelView(channel) {
   };
 }
 
-function epg(channel) {
-  const programmes = channel.schedule || [];
-  const items = programmes.map((p) => `<programme start="${escapeXml(p.start)}" stop="${escapeXml(p.end)}" channel="${escapeXml(channel.id)}"><title>${escapeXml(p.title)}</title><desc>${escapeXml(p.description || "")}</desc></programme>`).join("");
-  return `<?xml version="1.0" encoding="UTF-8"?><tv generator-info-name="IZAKHONO MEDIA CORE"><channel id="${escapeXml(channel.id)}"><display-name>${escapeXml(channel.name)}</display-name></channel>${items}</tv>`;
-}
-
-function escapeXml(v) { return String(v ?? "").replace(/[<>&'\"]/g, c => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", "'": "&apos;", "\"": "&quot;" }[c])); }
+const ENGINE_STATUS = ["content", "playout", "epg", "advertising", "monetization", "analytics", "provisioning"];
 
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://${req.headers.host || "localhost"}`);
   const parts = url.pathname.split("/").filter(Boolean);
 
-  if (req.method === "GET" && url.pathname === "/health") return send(res, 200, { ok: true, service: "izakhono-media-core", time: new Date().toISOString() });
+  if (req.method === "GET" && url.pathname === "/health") return send(res, 200, { ok: true, service: "izakhono-media-core", version: "0.2.0", time: new Date().toISOString() });
+  if (req.method === "GET" && url.pathname === "/api/engines/status") return send(res, 200, { status: "ready", engines: ENGINE_STATUS.map(name => ({ name, mode: "control-plane" })) });
   if (req.method === "GET" && url.pathname === "/api/channels") return send(res, 200, { items: readDb().channels.map(channelView) });
+  if (req.method === "GET" && url.pathname === "/api/analytics/summary") return send(res, 200, summarizeEvents(readDb().analytics));
 
   if (req.method === "POST" && url.pathname === "/api/channels") {
     if (!requireAdmin(req, res)) return;
@@ -85,13 +88,47 @@ const server = http.createServer(async (req, res) => {
     } catch (e) { return send(res, 400, { error: e.message }); }
   }
 
+  if (req.method === "POST" && url.pathname === "/api/analytics/events") {
+    if (!requireAdmin(req, res)) return;
+    try {
+      const input = await body(req);
+      const events = Array.isArray(input.events) ? input.events : [input];
+      const normalized = events.map(normalizeEvent);
+      const db = readDb();
+      db.analytics.push(...normalized);
+      db.analytics = db.analytics.slice(-10000);
+      writeDb(db);
+      return send(res, 202, { accepted: normalized.length });
+    } catch (e) { return send(res, 400, { error: e.message }); }
+  }
+
+  if (req.method === "POST" && url.pathname === "/api/provisioning/jobs") {
+    if (!requireAdmin(req, res)) return;
+    try {
+      const input = await body(req);
+      const job = createProvisioningJob(input.order);
+      const db = readDb();
+      db.provisioning.push(job);
+      writeDb(db);
+      return send(res, 201, job);
+    } catch (e) { return send(res, 400, { error: e.message }); }
+  }
+
   const channelId = parts[1];
   const channel = channelId ? readDb().channels.find(x => x.id === channelId) : null;
   if (parts[0] === "api" && parts[1] === "channels" && !channel) return send(res, 404, { error: "channel not found" });
 
-  if (channel && req.method === "GET" && parts.length === 3 && parts[2] === "epg.xml") return send(res, 200, epg(channel), "application/xml");
+  if (channel && req.method === "GET" && parts.length === 3 && parts[2] === "epg.xml") {
+    try { return send(res, 200, toEpgXml({ channelId: channel.id, channelName: channel.name, schedule: channel.schedule }), "application/xml"); }
+    catch (e) { return send(res, 422, { error: e.message }); }
+  }
   if (channel && req.method === "GET" && parts.length === 3 && parts[2] === "stream-config") return send(res, 200, channelView(channel));
   if (channel && req.method === "GET" && parts.length === 2) return send(res, 200, channelView(channel));
+
+  if (channel && req.method === "GET" && parts.length === 4 && parts[2] === "playout" && parts[3] === "next") {
+    const cursor = Number(url.searchParams.get("cursor") || 0);
+    return send(res, 200, buildPlayoutWindow({ playlist: channel.playlist, fallback: channel.fallback, startAt: url.searchParams.get("startAt") || undefined, maxItems: Math.min(Number(url.searchParams.get("limit") || 1), 20) }).map((item, index) => ({ ...item, cursor: cursor + index + 1 })));
+  }
 
   if (channel && req.method === "POST" && parts.length === 3) {
     if (!requireAdmin(req, res)) return;
@@ -101,7 +138,7 @@ const server = http.createServer(async (req, res) => {
       const current = db.channels.find(x => x.id === channel.id);
       if (parts[2] === "playlist") {
         if (!Array.isArray(input.items)) return send(res, 400, { error: "items must be an array" });
-        current.playlist = input.items.map(item => ({ id: item.id || id("asset"), title: String(item.title || "Untitled"), uri: String(item.uri || ""), duration_seconds: Number(item.duration_seconds || 0) }));
+        current.playlist = input.items.map(item => ({ id: item.id || id("asset"), title: String(item.title || "Untitled"), uri: String(item.uri || ""), duration_seconds: Number(item.duration_seconds || 0), type: String(item.type || "vod") }));
       } else if (parts[2] === "schedule") {
         if (!Array.isArray(input.items)) return send(res, 400, { error: "items must be an array" });
         current.schedule = input.items.map(item => ({ title: String(item.title || "Untitled"), start: String(item.start), end: String(item.end), description: String(item.description || "") }));
