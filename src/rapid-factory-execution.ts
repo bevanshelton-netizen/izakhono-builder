@@ -2,7 +2,7 @@ type Stmt = {
   bind(...values: unknown[]): Stmt;
   first<T = any>(): Promise<T | null>;
   all<T = any>(): Promise<{ results?: T[] }>;
-  run(): Promise<unknown>;
+  run(): Promise<any>;
 };
 type Env = { DB: { prepare(sql: string): Stmt } };
 
@@ -35,16 +35,23 @@ export async function ensureFactoryExecutionSchema(env: Env) {
 
 export async function startFactoryAttempt(env: Env, jobId: string, phase: RapidFactoryPhase, metadata: Record<string, unknown> = {}) {
   await ensureFactoryExecutionSchema(env);
-  const previous = await env.DB.prepare(
-    'SELECT COALESCE(MAX(attempt),0) AS attempt FROM rapid_factory_attempts WHERE job_id=? AND phase=?'
-  ).bind(jobId, phase).first<any>();
-  const attempt = Number(previous?.attempt || 0) + 1;
-  const attemptId = id('rfa');
-  await env.DB.prepare(`
-    INSERT INTO rapid_factory_attempts(id,job_id,phase,attempt,status,metadata_json)
-    VALUES(?,?,?,?,?,?)
-  `).bind(attemptId, jobId, phase, attempt, 'running', JSON.stringify(metadata)).run();
-  return { id: attemptId, jobId, phase, attempt, status: 'running' as const };
+  for (let retry = 0; retry < 3; retry++) {
+    const previous = await env.DB.prepare(
+      'SELECT COALESCE(MAX(attempt),0) AS attempt FROM rapid_factory_attempts WHERE job_id=? AND phase=?'
+    ).bind(jobId, phase).first<any>();
+    const attempt = Number(previous?.attempt || 0) + 1;
+    const attemptId = id('rfa');
+    try {
+      await env.DB.prepare(`
+        INSERT INTO rapid_factory_attempts(id,job_id,phase,attempt,status,metadata_json)
+        VALUES(?,?,?,?,?,?)
+      `).bind(attemptId, jobId, phase, attempt, 'running', JSON.stringify(metadata)).run();
+      return { id: attemptId, jobId, phase, attempt, status: 'running' as const };
+    } catch (error) {
+      if (retry === 2) throw error;
+    }
+  }
+  throw new Error('Unable to allocate a unique Rapid Factory attempt.');
 }
 
 export async function checkpointFactoryAttempt(env: Env, attemptId: string, metadata: Record<string, unknown> = {}) {
@@ -88,21 +95,28 @@ export async function getLatestFactoryAttempt(env: Env, jobId: string, phase?: R
 export async function planFactoryResume(env: Env, jobId: string, currentPhase: string, status: string) {
   await ensureFactoryExecutionSchema(env);
   const rows = await env.DB.prepare(`
-    SELECT phase,MAX(attempt) AS attempt,
-      MAX(CASE WHEN status='completed' THEN 1 ELSE 0 END) AS completed,
-      MAX(CASE WHEN status='running' THEN 1 ELSE 0 END) AS running
+    SELECT phase,
+      MAX(attempt) AS attempt,
+      MAX(CASE WHEN status='completed' THEN attempt ELSE 0 END) AS completed_attempt,
+      MAX(CASE WHEN status='running' THEN attempt ELSE 0 END) AS running_attempt,
+      MAX(CASE WHEN status='failed' THEN attempt ELSE 0 END) AS failed_attempt
     FROM rapid_factory_attempts WHERE job_id=? GROUP BY phase
   `).bind(jobId).all<any>();
   const attempts = new Map((rows.results || []).map((row) => [row.phase, row]));
   const current = phaseIndex(currentPhase);
   const plan = RAPID_FACTORY_PHASES.map((phase, index) => {
     const row = attempts.get(phase);
-    const completed = Number(row?.completed || 0) === 1;
-    const running = Number(row?.running || 0) === 1;
-    let action: 'skip' | 'resume' | 'run' = completed ? 'skip' : running ? 'resume' : 'run';
-    if (status === 'handover_ready' && phase !== 'handover') action = 'skip';
-    return { phase, index, action, attempt: Number(row?.attempt || 0), behind_current: index < current };
+    const latestAttempt = Number(row?.attempt || 0);
+    const completedAttempt = Number(row?.completed_attempt || 0);
+    const runningAttempt = Number(row?.running_attempt || 0);
+    let action: 'skip' | 'resume' | 'run' = 'run';
+    if (runningAttempt === latestAttempt && latestAttempt > 0) action = 'resume';
+    else if (completedAttempt === latestAttempt && latestAttempt > 0) action = 'skip';
+    return { phase, index, action, attempt: latestAttempt, behind_current: index < current };
   });
+  if (status === 'handover_ready') {
+    for (const item of plan) if (item.phase !== 'handover') item.action = 'skip';
+  }
   const next = plan.find((item) => item.action !== 'skip') || null;
   return { job_id: jobId, current_phase: currentPhase, resume_from: next?.phase || null, plan };
 }
