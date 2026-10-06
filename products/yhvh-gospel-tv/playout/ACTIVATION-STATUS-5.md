@@ -1,1 +1,0 @@
-Configured-not-active until cleared media is present.
