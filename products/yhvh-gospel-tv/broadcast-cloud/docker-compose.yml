@@ -1,0 +1,64 @@
+services:
+  yhvh-tv:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      PORT: 8787
+      HOST: 0.0.0.0
+      YHVH_CONTENT_VAULT: /app/content-vault
+      YHVH_HLS_DIR: /app/data/hls
+      YHVH_BROADCAST_MANIFEST: /app/data/broadcast-inputs.json
+      YHVH_DATA_DIR: /app/data
+    volumes:
+      - ./vault:/app/content-vault
+      - ./data:/app/data
+    expose:
+      - "8787"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8787/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  origin:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    depends_on:
+      yhvh-tv:
+        condition: service_healthy
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./data/hls:/srv/hls:ro
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+
+  supervisor:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      YHVH_CONTROL_URL: http://yhvh-tv:8787
+      YHVH_SUPERVISOR_INTERVAL_MS: 30000
+      YHVH_SUPERVISOR_ENABLED: ${YHVH_SUPERVISOR_ENABLED:-true}
+    command: ["node", "playout/broadcast-supervisor.mjs"]
+    depends_on:
+      yhvh-tv:
+        condition: service_healthy
+    volumes:
+      - ./vault:/app/content-vault
+      - ./data:/app/data
