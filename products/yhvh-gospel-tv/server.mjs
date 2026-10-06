@@ -11,6 +11,8 @@ const publicDir = path.join(__dirname, 'public');
 const dataDir = process.env.YHVH_DATA_DIR || path.join(__dirname, 'data');
 const hlsDir = process.env.YHVH_HLS_DIR || path.join(dataDir, 'hls');
 const stateFile = path.join(dataDir, 'state.json');
+const broadcastManifestFile = process.env.YHVH_BROADCAST_MANIFEST || path.join(dataDir, 'broadcast-inputs.json');
+const broadcastManifestTemplate = path.join(__dirname, 'playout', 'broadcast-inputs.json');
 const port = Number(process.env.PORT || 8787);
 const host = process.env.HOST || '0.0.0.0';
 const controlToken = process.env.YHVH_CONTROL_TOKEN || '';
@@ -22,6 +24,7 @@ const intakeHits = new Map();
 
 fs.mkdirSync(dataDir, { recursive: true });
 fs.mkdirSync(hlsDir, { recursive: true });
+if (!fs.existsSync(broadcastManifestFile)) fs.copyFileSync(broadcastManifestTemplate, broadcastManifestFile);
 
 const seed = {
   automation: true,
@@ -49,7 +52,7 @@ const playout = createPlayoutEngine({
 const broadcast = createBroadcastRuntime({
   vaultDir,
   hlsDir,
-  rightsManifestPath: path.join(__dirname, 'playout', 'broadcast-inputs.json'),
+  rightsManifestPath: broadcastManifestFile,
   territory: process.env.YHVH_BROADCAST_TERRITORY || 'ZA',
   outputUrl: process.env.YHVH_RTMP_URL || ''
 });
@@ -131,6 +134,77 @@ function addSponsorSlot(b) {
   if (!item.name || !item.slot) throw new Error('sponsor_name_and_slot_required');
   state.sponsorSlots.unshift(item); state.sponsorSlots=state.sponsorSlots.slice(0,500); saveState(state); audit('sponsor_slot_created',{id:item.id,name:item.name}); return item;
 }
+function loadBroadcastManifest() {
+  const m=JSON.parse(fs.readFileSync(broadcastManifestFile,'utf8'));
+  if (!Array.isArray(m.items)) m.items=[];
+  return m;
+}
+function saveBroadcastManifest(m) {
+  const tmp=broadcastManifestFile+'.tmp';
+  fs.writeFileSync(tmp,JSON.stringify(m,null,2));
+  fs.renameSync(tmp,broadcastManifestFile);
+}
+function safeVaultPath(v) {
+  const rel=clean(v,500).replaceAll('\\','/');
+  if (!rel || rel.startsWith('/') || rel.split('/').includes('..')) throw new Error('invalid_vault_path');
+  return rel;
+}
+function registerContent(b) {
+  const m=loadBroadcastManifest();
+  const item={
+    id:clean(b.id,80)||`YGV-MEDIA-${Date.now()}-${crypto.randomBytes(2).toString('hex')}`,
+    title:clean(b.title,180),
+    path:safeVaultPath(b.path),
+    language:clean(b.language||'und',16),
+    category:clean(b.category||'general',64),
+    source:clean(b.source||'owner',120),
+    rightsEvidence:clean(b.rightsEvidence||'',1000),
+    rightsStatus:'REVIEW_REQUIRED',
+    qcStatus:'PENDING',
+    territories:[],
+    status:'REVIEW_REQUIRED',
+    createdAt:new Date().toISOString(),
+    updatedAt:new Date().toISOString()
+  };
+  if (!item.title) throw new Error('content_title_required');
+  if (m.items.some((x)=>x.id===item.id || x.path===item.path)) throw new Error('content_already_registered');
+  m.items.unshift(item); saveBroadcastManifest(m); audit('content_registered',{id:item.id,title:item.title,path:item.path}); return item;
+}
+function decideContent(b) {
+  const m=loadBroadcastManifest(); const id=clean(b.id,80); const item=m.items.find((x)=>x.id===id);
+  if (!item) throw new Error('content_not_found');
+  if (b.rightsStatus!==undefined) {
+    const v=clean(b.rightsStatus,32);
+    if (!['REVIEW_REQUIRED','CLEAR','RESTRICTED','BLOCKED'].includes(v)) throw new Error('invalid_rights_status');
+    if (v==='CLEAR' && !clean(b.rightsEvidence??item.rightsEvidence,1000)) throw new Error('rights_evidence_required');
+    item.rightsStatus=v;
+  }
+  if (b.rightsEvidence!==undefined) item.rightsEvidence=clean(b.rightsEvidence,1000);
+  if (b.qcStatus!==undefined) {
+    const v=clean(b.qcStatus,32);
+    if (!['PENDING','PASS','FAIL'].includes(v)) throw new Error('invalid_qc_status');
+    item.qcStatus=v;
+  }
+  if (b.territories!==undefined) {
+    if (!Array.isArray(b.territories)) throw new Error('territories_must_be_array');
+    item.territories=[...new Set(b.territories.map((x)=>clean(x,8).toUpperCase()).filter(Boolean))].slice(0,64);
+  }
+  const mediaPath=path.resolve(vaultDir,item.path);
+  const vaultRoot=path.resolve(vaultDir)+path.sep;
+  const physicallyPresent=mediaPath.startsWith(vaultRoot) && fs.existsSync(mediaPath) && fs.statSync(mediaPath).isFile();
+  const eligible=item.rightsStatus==='CLEAR' && item.qcStatus==='PASS' && item.territories.includes(broadcast.territory) && physicallyPresent;
+  item.status=eligible?'READY':'REVIEW_REQUIRED';
+  item.updatedAt=new Date().toISOString();
+  saveBroadcastManifest(m);
+  audit('content_decision',{id:item.id,rightsStatus:item.rightsStatus,qcStatus:item.qcStatus,territories:item.territories,status:item.status,physicallyPresent});
+  return {...item,physicallyPresent,eligible};
+}
+function contentQueue() {
+  const m=loadBroadcastManifest();
+  let inspected=[]; try { inspected=broadcast.inspectInputs(); } catch {}
+  const byId=new Map(inspected.map((x)=>[x.id,x]));
+  return m.items.map((x)=>byId.get(x.id)||{...x,eligible:false,blockedReasons:['inspection_unavailable']});
+}
 function dashboard() {
   const {current,next,index}=currentSchedule();
   return {ok:true,station:stationName,tagline:'FAITH. WORSHIP. WORD. — AFRICA TO THE WORLD.',runtime:'izakhono-owned',automation:state.automation,emergency:state.emergency,live:Boolean(liveUrl),liveUrl:liveUrl||null,current,next,index,schedule,playout:playout.snapshot(),broadcast:broadcast.snapshot(),counts:{submissions:state.submissions.length,events:state.events.length,sponsorSlots:state.sponsorSlots.length,audit:state.audit.length},recent:{submissions:state.submissions.slice(0,12),events:state.events.slice(0,12),sponsorSlots:state.sponsorSlots.slice(0,12),audit:state.audit.slice(0,30)},serverTime:new Date().toISOString()};
@@ -159,11 +233,14 @@ const server = http.createServer(async (req, res) => {
       if (req.method==='GET' && p==='/api/control/state') return json(res,200,{ok:true,state:{automation:state.automation,emergency:state.emergency},audit:state.audit.slice(0,30),playout:playout.snapshot(),broadcast:broadcast.snapshot(),events:state.events.slice(0,50),sponsorSlots:state.sponsorSlots.slice(0,50),submissions:state.submissions.slice(0,100)});
       if (req.method==='GET' && p==='/api/control/dashboard') return json(res,200,dashboard());
       if (req.method==='GET' && p==='/api/control/broadcast') return json(res,200,{ok:true,broadcast:broadcast.snapshot()});
+      if (req.method==='GET' && p==='/api/control/content') return json(res,200,{ok:true,territory:broadcast.territory,items:contentQueue()});
       if (req.method==='POST' && p==='/api/control/automation') { const b=await body(req); state.automation=Boolean(b.enabled); audit('automation_changed',{enabled:state.automation}); return json(res,200,{ok:true,automation:state.automation}); }
       if (req.method==='POST' && p==='/api/control/emergency') { const b=await body(req); state.emergency=Boolean(b.enabled); audit('emergency_slate_changed',{enabled:state.emergency}); return json(res,200,{ok:true,emergency:state.emergency}); }
       if (req.method==='POST' && p==='/api/control/playout/next') { const item=playout.next(); audit('playout_advanced',{itemId:item.id,title:item.title}); return json(res,200,{ok:true,item,playout:playout.snapshot()}); }
       if (req.method==='POST' && p==='/api/control/broadcast/start') { const result=broadcast.start(); audit(result.started ? 'broadcast_started' : 'broadcast_start_requested',{pid:result.pid||null,inputCount:result.inputCount||0}); return json(res,result.ok ? 200 : 409,result); }
       if (req.method==='POST' && p==='/api/control/broadcast/stop') { const result=broadcast.stop(); audit('broadcast_stop_requested',{stopped:result.stopped}); return json(res,200,result); }
+      if (req.method==='POST' && p==='/api/control/content/register') { const item=registerContent(await body(req)); return json(res,201,{ok:true,item}); }
+      if (req.method==='POST' && p==='/api/control/content/decision') { const item=decideContent(await body(req)); return json(res,200,{ok:true,item,broadcast:broadcast.snapshot()}); }
       if (req.method==='POST' && p==='/api/control/submission') { const item=addSubmission(await body(req),'owner'); return json(res,201,{ok:true,item}); }
       if (req.method==='POST' && p==='/api/control/event') { const item=addEvent(await body(req)); return json(res,201,{ok:true,item}); }
       if (req.method==='POST' && p==='/api/control/sponsor-slot') { const item=addSponsorSlot(await body(req)); return json(res,201,{ok:true,item}); }
