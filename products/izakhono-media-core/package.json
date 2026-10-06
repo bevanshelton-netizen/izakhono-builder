@@ -1,11 +1,11 @@
 {
   "name": "@izakhono/media-core",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "scripts": {
     "start": "node server.mjs",
-    "check": "node --check server.mjs && node --check test.mjs",
-    "test": "node --test test.mjs"
+    "check": "node --check server.mjs && node --check test.mjs && for f in engines/*.mjs; do node --check \"$f\"; done",
+    "test": "node --test test.mjs engines/engine.test.mjs"
   }
 }
