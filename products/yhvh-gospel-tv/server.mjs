@@ -4,10 +4,12 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { createPlayoutEngine } from './playout/playout-engine.mjs';
+import { createBroadcastRuntime } from './playout/broadcast-runtime.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const publicDir = path.join(__dirname, 'public');
 const dataDir = process.env.YHVH_DATA_DIR || path.join(__dirname, 'data');
+const hlsDir = process.env.YHVH_HLS_DIR || path.join(dataDir, 'hls');
 const stateFile = path.join(dataDir, 'state.json');
 const port = Number(process.env.PORT || 8787);
 const host = process.env.HOST || '0.0.0.0';
@@ -19,6 +21,7 @@ const intakeLimit = 12;
 const intakeHits = new Map();
 
 fs.mkdirSync(dataDir, { recursive: true });
+fs.mkdirSync(hlsDir, { recursive: true });
 
 const seed = {
   automation: true,
@@ -38,9 +41,17 @@ function loadState() {
 function saveState(nextState) { fs.writeFileSync(stateFile, JSON.stringify(nextState, null, 2)); }
 let state = loadState();
 
+const vaultDir = process.env.YHVH_CONTENT_VAULT || path.join(__dirname, 'content-vault');
 const playout = createPlayoutEngine({
   manifestPath: path.join(__dirname, 'playout', 'playlist.json'),
-  vaultDir: process.env.YHVH_CONTENT_VAULT || path.join(__dirname, 'content-vault')
+  vaultDir
+});
+const broadcast = createBroadcastRuntime({
+  vaultDir,
+  hlsDir,
+  rightsManifestPath: path.join(__dirname, 'playout', 'broadcast-inputs.json'),
+  territory: process.env.YHVH_BROADCAST_TERRITORY || 'ZA',
+  outputUrl: process.env.YHVH_RTMP_URL || ''
 });
 
 const schedule = [
@@ -80,6 +91,17 @@ function html(res, file) {
   try { const body = fs.readFileSync(filePath); res.writeHead(200, {'content-type':'text/html; charset=utf-8','cache-control':'no-cache'}); res.end(body); }
   catch { json(res, 404, { error: 'not_found' }); }
 }
+function hlsFile(res, pathname) {
+  const rel = decodeURIComponent(pathname.slice('/hls/'.length));
+  const filePath = path.resolve(hlsDir, rel);
+  const root = path.resolve(hlsDir) + path.sep;
+  if (!filePath.startsWith(root)) return json(res, 400, { error: 'bad_path' });
+  if (!fs.existsSync(filePath) || !fs.statSync(filePath).isFile()) return json(res, 404, { error: 'hls_not_found' });
+  const ext = path.extname(filePath).toLowerCase();
+  const type = ext === '.m3u8' ? 'application/vnd.apple.mpegurl' : ext === '.ts' ? 'video/mp2t' : 'application/octet-stream';
+  res.writeHead(200, {'content-type':type,'cache-control':'no-cache','access-control-allow-origin':'*','x-content-type-options':'nosniff'});
+  fs.createReadStream(filePath).pipe(res);
+}
 function authorized(req) {
   if (!controlToken) return false;
   const supplied = req.headers.authorization?.replace(/^Bearer\s+/i, '') || '';
@@ -111,18 +133,20 @@ function addSponsorSlot(b) {
 }
 function dashboard() {
   const {current,next,index}=currentSchedule();
-  return {ok:true,station:stationName,tagline:'FAITH. WORSHIP. WORD. — AFRICA TO THE WORLD.',runtime:'izakhono-owned',automation:state.automation,emergency:state.emergency,live:Boolean(liveUrl),liveUrl:liveUrl||null,current,next,index,schedule,playout:playout.snapshot(),counts:{submissions:state.submissions.length,events:state.events.length,sponsorSlots:state.sponsorSlots.length,audit:state.audit.length},recent:{submissions:state.submissions.slice(0,12),events:state.events.slice(0,12),sponsorSlots:state.sponsorSlots.slice(0,12),audit:state.audit.slice(0,30)},serverTime:new Date().toISOString()};
+  return {ok:true,station:stationName,tagline:'FAITH. WORSHIP. WORD. — AFRICA TO THE WORLD.',runtime:'izakhono-owned',automation:state.automation,emergency:state.emergency,live:Boolean(liveUrl),liveUrl:liveUrl||null,current,next,index,schedule,playout:playout.snapshot(),broadcast:broadcast.snapshot(),counts:{submissions:state.submissions.length,events:state.events.length,sponsorSlots:state.sponsorSlots.length,audit:state.audit.length},recent:{submissions:state.submissions.slice(0,12),events:state.events.slice(0,12),sponsorSlots:state.sponsorSlots.slice(0,12),audit:state.audit.slice(0,30)},serverTime:new Date().toISOString()};
 }
 
 const server = http.createServer(async (req, res) => {
   try {
     const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`); const p=url.pathname;
-    if (req.method==='GET' && p==='/health') return json(res,200,{ok:true,service:'yhvh-gospel-tv',runtime:'izakhono-owned',station:stationName,playout:playout.snapshot(),time:new Date().toISOString()});
+    if (req.method==='GET' && p==='/health') return json(res,200,{ok:true,service:'yhvh-gospel-tv',runtime:'izakhono-owned',station:stationName,playout:playout.snapshot(),broadcast:broadcast.snapshot(),time:new Date().toISOString()});
     if (req.method==='GET' && p==='/api/status') return json(res,200,dashboard());
     if (req.method==='GET' && p==='/api/schedule') return json(res,200,{ok:true,schedule});
     if (req.method==='GET' && p==='/api/now') return json(res,200,{ok:true,...currentSchedule()});
     if (req.method==='GET' && p==='/api/live') return json(res,200,{ok:true,configured:Boolean(liveUrl),url:liveUrl||null});
     if (req.method==='GET' && p==='/api/playout') return json(res,200,{ok:true,playout:playout.snapshot(),manifest:playout.manifest});
+    if (req.method==='GET' && p==='/api/broadcast') return json(res,200,{ok:true,broadcast:broadcast.snapshot()});
+    if (req.method==='GET' && p.startsWith('/hls/')) return hlsFile(res,p);
 
     if (req.method==='POST' && p==='/api/creator/submit') {
       if (!intakeAllowed(req)) return json(res,429,{ok:false,error:'rate_limit'});
@@ -132,11 +156,14 @@ const server = http.createServer(async (req, res) => {
 
     if (p.startsWith('/api/control/')) {
       if (!authorized(req)) return json(res,401,{ok:false,error:'owner_authorization_required'});
-      if (req.method==='GET' && p==='/api/control/state') return json(res,200,{ok:true,state:{automation:state.automation,emergency:state.emergency},audit:state.audit.slice(0,30),playout:playout.snapshot(),events:state.events.slice(0,50),sponsorSlots:state.sponsorSlots.slice(0,50),submissions:state.submissions.slice(0,100)});
+      if (req.method==='GET' && p==='/api/control/state') return json(res,200,{ok:true,state:{automation:state.automation,emergency:state.emergency},audit:state.audit.slice(0,30),playout:playout.snapshot(),broadcast:broadcast.snapshot(),events:state.events.slice(0,50),sponsorSlots:state.sponsorSlots.slice(0,50),submissions:state.submissions.slice(0,100)});
       if (req.method==='GET' && p==='/api/control/dashboard') return json(res,200,dashboard());
+      if (req.method==='GET' && p==='/api/control/broadcast') return json(res,200,{ok:true,broadcast:broadcast.snapshot()});
       if (req.method==='POST' && p==='/api/control/automation') { const b=await body(req); state.automation=Boolean(b.enabled); audit('automation_changed',{enabled:state.automation}); return json(res,200,{ok:true,automation:state.automation}); }
-      if (req.method==='POST' && p==='/api/control/emergency') { const b=await body(req); state.emergency=Boolean(b.enabled); audit('emergency_slate_changed',{enabled:state.emergency}); return json(res,200,{ok:true,emergency:state.emergency}); }
+      if (req.method==='POST' && p==='/api/control/emergency') { const b=await body(req); state.emergency=Boolean(b.enabled); return json(res,200,{ok:true,emergency:state.emergency}); }
       if (req.method==='POST' && p==='/api/control/playout/next') { const item=playout.next(); audit('playout_advanced',{itemId:item.id,title:item.title}); return json(res,200,{ok:true,item,playout:playout.snapshot()}); }
+      if (req.method==='POST' && p==='/api/control/broadcast/start') { const result=broadcast.start(); audit(result.started ? 'broadcast_started' : 'broadcast_start_requested',{pid:result.pid||null,inputCount:result.inputCount||0}); return json(res,result.ok ? 200 : 409,result); }
+      if (req.method==='POST' && p==='/api/control/broadcast/stop') { const result=broadcast.stop(); audit('broadcast_stop_requested',{stopped:result.stopped}); return json(res,200,result); }
       if (req.method==='POST' && p==='/api/control/submission') { const item=addSubmission(await body(req),'owner'); return json(res,201,{ok:true,item}); }
       if (req.method==='POST' && p==='/api/control/event') { const item=addEvent(await body(req)); return json(res,201,{ok:true,item}); }
       if (req.method==='POST' && p==='/api/control/sponsor-slot') { const item=addSponsorSlot(await body(req)); return json(res,201,{ok:true,item}); }
