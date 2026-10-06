@@ -160,7 +160,7 @@ const server = http.createServer(async (req, res) => {
       if (req.method==='GET' && p==='/api/control/dashboard') return json(res,200,dashboard());
       if (req.method==='GET' && p==='/api/control/broadcast') return json(res,200,{ok:true,broadcast:broadcast.snapshot()});
       if (req.method==='POST' && p==='/api/control/automation') { const b=await body(req); state.automation=Boolean(b.enabled); audit('automation_changed',{enabled:state.automation}); return json(res,200,{ok:true,automation:state.automation}); }
-      if (req.method==='POST' && p==='/api/control/emergency') { const b=await body(req); state.emergency=Boolean(b.enabled); return json(res,200,{ok:true,emergency:state.emergency}); }
+      if (req.method==='POST' && p==='/api/control/emergency') { const b=await body(req); state.emergency=Boolean(b.enabled); audit('emergency_slate_changed',{enabled:state.emergency}); return json(res,200,{ok:true,emergency:state.emergency}); }
       if (req.method==='POST' && p==='/api/control/playout/next') { const item=playout.next(); audit('playout_advanced',{itemId:item.id,title:item.title}); return json(res,200,{ok:true,item,playout:playout.snapshot()}); }
       if (req.method==='POST' && p==='/api/control/broadcast/start') { const result=broadcast.start(); audit(result.started ? 'broadcast_started' : 'broadcast_start_requested',{pid:result.pid||null,inputCount:result.inputCount||0}); return json(res,result.ok ? 200 : 409,result); }
       if (req.method==='POST' && p==='/api/control/broadcast/stop') { const result=broadcast.stop(); audit('broadcast_stop_requested',{stopped:result.stopped}); return json(res,200,result); }
@@ -172,6 +172,7 @@ const server = http.createServer(async (req, res) => {
     if (req.method==='GET' && (p==='/' || p==='/index.html')) return html(res,'index.html');
     if (req.method==='GET' && p==='/control') return html(res,'control.html');
     if (req.method==='GET' && p==='/control-center') return html(res,'control-center.html');
+    if (req.method==='GET' && p==='/broadcast') return html(res,'broadcast.html');
     if (req.method==='GET' && p==='/creator') return html(res,'creator.html');
     return json(res,404,{ok:false,error:'not_found'});
   } catch (err) { return json(res,400,{ok:false,error:err?.message||'bad_request'}); }
