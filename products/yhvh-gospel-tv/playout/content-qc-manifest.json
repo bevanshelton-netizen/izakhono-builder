@@ -1,0 +1,14 @@
+{
+  "schema": "yhvh.gospel-tv.content-qc-manifest/v1",
+  "authority": "IZAKHONO",
+  "purpose": "Technical inspection record for media before broadcast eligibility.",
+  "policy": {
+    "defaultDecision": "BLOCK",
+    "rightsClearanceRequired": true,
+    "territoryClearanceRequired": true,
+    "physicalMediaRequired": true,
+    "technicalQcPassRequired": true,
+    "supportedVideoExtensions": [".mp4", ".mov", ".mkv", ".mxf", ".webm"]
+  },
+  "items": []
+}
