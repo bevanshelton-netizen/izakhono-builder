@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>IZAKHONO COMPUTER</title>
+<style>
+:root{font-family:Inter,system-ui,-apple-system,Segoe UI,sans-serif;color:#eaf7ff;background:#071018}
+*{box-sizing:border-box}body{margin:0;min-height:100vh;background:radial-gradient(circle at 20% 0%,#123044 0,#071018 42%,#03070b 100%)}
+.top{height:58px;display:flex;align-items:center;justify-content:space-between;padding:0 18px;border-bottom:1px solid #1b3442;background:#08131ccc;backdrop-filter:blur(12px)}
+.brand{font-weight:800;letter-spacing:.08em}.status{font-size:12px;color:#7fe5a3}.desktop{display:grid;grid-template-columns:240px 1fr;min-height:calc(100vh - 58px)}
+.sidebar{padding:18px;border-right:1px solid #17303d}.section{margin:0 0 10px;color:#6e94a6;font-size:11px;text-transform:uppercase;letter-spacing:.12em}
+button,.card{border:1px solid #214554;background:#0b1b25;color:#eaf7ff;border-radius:12px}.nav button{display:block;width:100%;text-align:left;padding:11px 12px;margin:7px 0;cursor:pointer}.nav button:hover{background:#102936}
+.main{padding:22px;max-width:1300px;width:100%;margin:auto}.hero{display:flex;justify-content:space-between;gap:20px;align-items:flex-end;margin-bottom:18px}.hero h1{margin:0 0 5px;font-size:30px}.muted{color:#83a3b2;font-size:13px}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.card{padding:16px;box-shadow:0 10px 30px #0003}.wide{grid-column:span 2}.metric{font-size:25px;font-weight:750;margin-top:8px}.row{display:flex;justify-content:space-between;gap:10px;align-items:center}.list{margin-top:12px}.item{padding:10px 0;border-top:1px solid #19323f;font-size:13px}.pill{font-size:11px;border-radius:999px;padding:4px 8px;background:#102d37;color:#8ce7aa}.launch{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:12px}.launch button{padding:12px;cursor:pointer}.log{height:150px;overflow:auto;background:#03080c;border-radius:9px;padding:10px;font:12px ui-monospace,SFMono-Regular,monospace;color:#9bc0cd}.footer{margin-top:18px;color:#547180;font-size:11px}@media(max-width:850px){.desktop{grid-template-columns:1fr}.sidebar{display:none}.grid{grid-template-columns:1fr}.wide{grid-column:span 1}.hero{display:block}}
+</style>
+</head>
+<body>
+<header class="top"><div class="brand">IZAKHONO COMPUTER</div><div id="status" class="status">CONNECTING…</div></header>
+<div class="desktop">
+<aside class="sidebar"><div class="section">Workspace</div><div class="nav"><button onclick="refresh()">⌂ Overview</button><button onclick="newWorkspace()">＋ New workspace</button><button onclick="submitJob('BUILD')">⚙ Build</button><button onclick="submitJob('TEST')">✓ Test</button><button onclick="submitJob('DEPLOY')">⇧ Deploy</button></div><div class="section" style="margin-top:25px">Computer model</div><div class="muted">Device-independent access layer. Compute can move without losing the workspace.</div></aside>
+<main class="main">
+<section class="hero"><div><h1>Your software-defined computer</h1><div class="muted">Workspace, applications, jobs and compute status in one portable control surface.</div></div><button onclick="refresh()">Refresh</button></section>
+<section class="grid">
+<div class="card"><div class="section">Node</div><div id="node" class="metric">—</div><div id="nodeMeta" class="muted">Loading…</div></div>
+<div class="card"><div class="section">Workspaces</div><div id="workspaceCount" class="metric">0</div><div class="muted">Portable project environments</div></div>
+<div class="card"><div class="section">Jobs</div><div id="jobCount" class="metric">0</div><div class="muted">Build / test / release queue</div></div>
+<div class="card wide"><div class="row"><div><div class="section">Workspaces</div><strong>Portable environments</strong></div><button onclick="newWorkspace()">＋ Create</button></div><div id="workspaces" class="list"></div></div>
+<div class="card"><div class="section">Applications</div><div class="launch"><button onclick="alert('IZAKHONO CODE launcher boundary ready')">Code</button><button onclick="alert('IZAKHONO AI gateway boundary ready')">AI</button><button onclick="alert('IZAKHONO FILES boundary ready')">Files</button><button onclick="alert('IZAKHONO RUN boundary requires an approved isolated adapter')">Run</button></div></div>
+<div class="card wide"><div class="section">Recent activity</div><div id="jobs" class="list"></div></div>
+<div class="card"><div class="section">Capabilities</div><div id="caps" class="list"></div></div>
+<div class="card wide"><div class="section">System log</div><div id="log" class="log"></div></div>
+</section><div class="footer">NODE01-SW / IZAKHONO COMPUTER • privileged execution remains deny-by-default.</div>
+</main></div>
+<script>
+const logEl=document.getElementById('log');const log=m=>{logEl.textContent+=`[${new Date().toLocaleTimeString()}] ${m}\n`;logEl.scrollTop=logEl.scrollHeight};
+async function api(path,opt={}){const r=await fetch(path,{headers:{'content-type':'application/json',...(opt.headers||{})},...opt});if(!r.ok)throw new Error(await r.text());return r.json()}
+async function refresh(){try{const [h,n,w,j,c]=await Promise.all([api('/health'),api('/v1/node'),api('/v1/workspaces'),api('/v1/jobs'),api('/v1/capabilities')]);document.getElementById('status').textContent=h.ok?'● ONLINE':'● OFFLINE';document.getElementById('node').textContent=n.node_id;document.getElementById('nodeMeta').textContent=`${n.platform}/${n.arch} • uptime ${n.uptime_s}s`;document.getElementById('workspaceCount').textContent=w.workspaces.length;document.getElementById('jobCount').textContent=j.jobs.length;document.getElementById('workspaces').innerHTML=w.workspaces.map(x=>`<div class="item"><div class="row"><strong>${x.name}</strong><span class="pill">${x.status}</span></div><div class="muted">${x.id}</div></div>`).join('')||'<div class="muted">No workspaces yet.</div>';document.getElementById('jobs').innerHTML=j.jobs.slice().reverse().slice(0,8).map(x=>`<div class="item"><div class="row"><strong>${x.type}</strong><span class="pill">${x.status}</span></div><div class="muted">${x.id}</div></div>`).join('')||'<div class="muted">No jobs yet.</div>';document.getElementById('caps').innerHTML=Object.entries(c).map(([k,v])=>`<div class="item"><div class="row"><span>${k}</span><span class="pill">${String(v)}</span></div></div>`).join('');log('Computer control surface refreshed.')}catch(e){document.getElementById('status').textContent='● ERROR';log('Refresh failed: '+e.message)}}
+async function newWorkspace(){const name=prompt('Workspace name','my-workspace');if(!name)return;try{await api('/v1/workspaces',{method:'POST',body:JSON.stringify({name})});log('Workspace created: '+name);refresh()}catch(e){alert(e.message);log('Workspace creation failed: '+e.message)}}
+async function submitJob(type){try{const w=await api('/v1/workspaces');if(!w.workspaces.length){alert('Create a workspace first.');return}const job=await api('/v1/jobs',{method:'POST',body:JSON.stringify({type,workspace_id:w.workspaces[0].id})});log(type+' job queued: '+job.id);refresh()}catch(e){alert(e.message);log(type+' failed: '+e.message)}}
+refresh();
+</script>
+</body></html>
