@@ -3,9 +3,11 @@ import { randomUUID } from 'node:crypto';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+import { createComputerApi } from './computer-api.mjs';
 
 const PORT = Number(process.env.PORT || 8940);
 const DATA_DIR = process.env.NODE01_DATA_DIR || path.join(process.cwd(), 'data');
+const WORKSPACE_ROOT = process.env.NODE01_WORKSPACE_ROOT || path.join(DATA_DIR, 'workspaces');
 const STATE_FILE = path.join(DATA_DIR, 'state.json');
 const UI_FILE = path.join(process.cwd(), 'public', 'computer.html');
 const TOKEN = process.env.NODE01_TOKEN || '';
@@ -15,6 +17,7 @@ const state = { workspaces: [], jobs: [] };
 
 async function loadState() {
   await mkdir(DATA_DIR, { recursive: true });
+  await mkdir(WORKSPACE_ROOT, { recursive: true });
   try {
     const raw = await readFile(STATE_FILE, 'utf8');
     Object.assign(state, JSON.parse(raw));
@@ -52,6 +55,8 @@ function capabilities() {
   return {
     code: true,
     workspaces: true,
+    files: true,
+    apps: true,
     jobs: true,
     build: true,
     test: true,
@@ -62,6 +67,13 @@ function capabilities() {
     executor: 'isolated-adapter-required'
   };
 }
+
+function safeWorkspace(id) {
+  const ws = computer.getWorkspace(id);
+  return ws || null;
+}
+
+const computer = createComputerApi({ workspaceRoot: WORKSPACE_ROOT, state, persist });
 
 async function route(req, res) {
   const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
@@ -79,7 +91,7 @@ async function route(req, res) {
   }
 
   if (req.method === 'GET' && pathname === '/health') {
-    return json(res, 200, { ok: true, node_id: NODE_ID, service: 'NODE01-SW', version: '0.2.0' });
+    return json(res, 200, { ok: true, node_id: NODE_ID, service: 'NODE01-SW', version: '0.3.0' });
   }
 
   if (pathname.startsWith('/v1/') && !authorized(req)) {
@@ -94,6 +106,10 @@ async function route(req, res) {
     return json(res, 200, capabilities());
   }
 
+  if (req.method === 'GET' && pathname === '/v1/apps') {
+    return json(res, 200, { apps: computer.apps.list() });
+  }
+
   if (req.method === 'GET' && pathname === '/v1/workspaces') {
     return json(res, 200, { workspaces: state.workspaces });
   }
@@ -104,9 +120,31 @@ async function route(req, res) {
     if (!/^[a-zA-Z0-9._-]{1,80}$/.test(name)) return json(res, 400, { error: 'invalid workspace name' });
     if (state.workspaces.some((item) => item.name === name)) return json(res, 409, { error: 'workspace already exists' });
     const workspace = { id: randomUUID(), name, status: 'READY', created_at: new Date().toISOString() };
-    state.workspaces.push(workspace);
-    await persist();
+    await computer.createWorkspace(workspace);
     return json(res, 201, workspace);
+  }
+
+  const fileMatch = pathname.match(/^\/v1\/workspaces\/([^/]+)\/files\/(.*)$/);
+  if (fileMatch) {
+    const ws = safeWorkspace(fileMatch[1]);
+    if (!ws) return json(res, 404, { error: 'workspace not found' });
+    const filePath = '/' + decodeURIComponent(fileMatch[2]);
+    if (req.method === 'GET') {
+      if (filePath === '/') return json(res, 200, { files: await computer.listFiles(ws, '/') });
+      return json(res, 200, { path: filePath, content: await computer.readFile(ws, filePath) });
+    }
+    if (req.method === 'PUT') {
+      const input = await body(req);
+      await computer.writeFile(ws, filePath, String(input.content ?? ''));
+      return json(res, 200, { ok: true, path: filePath });
+    }
+  }
+
+  const appMatch = pathname.match(/^\/v1\/apps\/([^/]+)$/);
+  if (req.method === 'POST' && appMatch) {
+    const app = computer.apps.get(appMatch[1]);
+    if (!app) return json(res, 404, { error: 'application not found' });
+    return json(res, 200, { ok: true, app, execution: 'adapter-required' });
   }
 
   if (req.method === 'GET' && pathname === '/v1/jobs') {
