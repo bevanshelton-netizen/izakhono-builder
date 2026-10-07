@@ -7,6 +7,7 @@ import path from 'node:path';
 const PORT = Number(process.env.PORT || 8940);
 const DATA_DIR = process.env.NODE01_DATA_DIR || path.join(process.cwd(), 'data');
 const STATE_FILE = path.join(DATA_DIR, 'state.json');
+const UI_FILE = path.join(process.cwd(), 'public', 'computer.html');
 const TOKEN = process.env.NODE01_TOKEN || '';
 const NODE_ID = process.env.NODE_ID || `NODE01-SW-${os.hostname()}`;
 
@@ -30,7 +31,7 @@ async function persist() {
 }
 
 function json(res, status, body) {
-  res.writeHead(status, { 'content-type': 'application/json; charset=utf-8' });
+  res.writeHead(status, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
   res.end(JSON.stringify(body));
 }
 
@@ -53,6 +54,7 @@ function capabilities() {
     workspaces: true,
     jobs: true,
     build: true,
+    test: true,
     run: false,
     deploy: false,
     provisioner: false,
@@ -64,6 +66,17 @@ function capabilities() {
 async function route(req, res) {
   const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
   const pathname = url.pathname;
+
+  if (req.method === 'GET' && pathname === '/') {
+    res.writeHead(302, { location: '/computer' });
+    return res.end();
+  }
+
+  if (req.method === 'GET' && pathname === '/computer') {
+    const html = await readFile(UI_FILE, 'utf8');
+    res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' });
+    return res.end(html);
+  }
 
   if (req.method === 'GET' && pathname === '/health') {
     return json(res, 200, { ok: true, node_id: NODE_ID, service: 'NODE01-SW', version: '0.2.0' });
@@ -89,10 +102,15 @@ async function route(req, res) {
     const input = await body(req);
     const name = String(input.name || '').trim();
     if (!/^[a-zA-Z0-9._-]{1,80}$/.test(name)) return json(res, 400, { error: 'invalid workspace name' });
+    if (state.workspaces.some((item) => item.name === name)) return json(res, 409, { error: 'workspace already exists' });
     const workspace = { id: randomUUID(), name, status: 'READY', created_at: new Date().toISOString() };
     state.workspaces.push(workspace);
     await persist();
     return json(res, 201, workspace);
+  }
+
+  if (req.method === 'GET' && pathname === '/v1/jobs') {
+    return json(res, 200, { jobs: state.jobs });
   }
 
   if (req.method === 'POST' && pathname === '/v1/jobs') {
@@ -104,7 +122,7 @@ async function route(req, res) {
       id: randomUUID(),
       type,
       workspace_id: input.workspace_id || null,
-      status: type === 'RUN' || type === 'DEPLOY' || type === 'PROVISION' ? 'QUEUED' : 'QUEUED',
+      status: 'QUEUED',
       payload: input.payload || {},
       created_at: new Date().toISOString()
     };
