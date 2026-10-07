@@ -1,0 +1,20 @@
+services:
+  node01:
+    build: .
+    container_name: izakhono-node01-sw
+    restart: unless-stopped
+    ports:
+      - "8940:8940"
+    environment:
+      NODE01_TOKEN: ${NODE01_TOKEN:?Set NODE01_TOKEN before starting}
+      NODE_ID: ${NODE_ID:-NODE01-SW}
+      NODE01_DATA_DIR: /data
+      PORT: 8940
+    volumes:
+      - node01-data:/data
+    read_only: true
+    tmpfs:
+      - /tmp
+
+volumes:
+  node01-data:
