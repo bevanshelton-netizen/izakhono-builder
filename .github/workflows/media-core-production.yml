@@ -59,6 +59,7 @@ jobs:
       - name: Verify control-plane health
         env:
           MEDIA_CORE_HOST: ${{ secrets.MEDIA_CORE_HOST }}
+          MEDIA_CORE_SSH_USER: ${{ secrets.MEDIA_CORE_SSH_USER }}
         run: |
           set -eu
           ssh "$MEDIA_CORE_SSH_USER@$MEDIA_CORE_HOST" "curl --fail --silent --show-error http://127.0.0.1:8787/health"
