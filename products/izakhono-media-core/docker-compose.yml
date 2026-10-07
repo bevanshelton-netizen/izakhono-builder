@@ -12,16 +12,31 @@ services:
     volumes:
       - ./mediamtx.yml:/mediamtx.yml:ro
       - ./data/recordings:/recordings
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:9998/metrics"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
   media-core:
     build: .
     restart: unless-stopped
     environment:
       MEDIA_CORE_PORT: "8787"
-      MEDIA_PUBLIC_HOST: "localhost"
-      MEDIA_ADMIN_TOKEN: "CHANGE-ME"
+      MEDIA_PUBLIC_HOST: "${MEDIA_PUBLIC_HOST:-localhost}"
+      MEDIA_ADMIN_TOKEN: "${MEDIA_ADMIN_TOKEN:?MEDIA_ADMIN_TOKEN must be set}"
       MEDIA_DATA_DIR: /app/data
     ports:
-      - "8787:8787"
+      - "${MEDIA_CORE_PORT:-8787}:8787"
     volumes:
       - ./data:/app/data
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8787/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    depends_on:
+      mediamtx:
+        condition: service_healthy
