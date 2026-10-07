@@ -11,6 +11,7 @@ export type ControlPlaneDiagnostic={
 
 const DNS_ENDPOINT='https://cloudflare-dns.com/dns-query';
 const DNS_TYPES=['A','AAAA','CNAME'] as const;
+const literalIpv4=/^(?:\d{1,3}\.){3}\d{1,3}$/;
 
 async function dnsQuery(domain:string,type:string){
  const url=`${DNS_ENDPOINT}?name=${encodeURIComponent(domain)}&type=${type}`;
@@ -23,6 +24,7 @@ async function dnsQuery(domain:string,type:string){
 
 export async function diagnoseControlPlane(domainInput:string):Promise<ControlPlaneDiagnostic>{
  const domain=normalizeDomain(domainInput);
+ if(literalIpv4.test(domain))throw new Error('literal IP targets are not allowed');
  const checkedAt=new Date().toISOString();
  const records:Record<string,string[]>={};
  let dnsOk=true;let dnsError:string|undefined;
