@@ -1,4 +1,4 @@
-import {D1Database,D1Statement} from './d1-store';
+import {D1Database} from './d1-store';
 
 export type SupervisorStatus='queued'|'running'|'verified'|'completed'|'blocked'|'failed';
 export type SupervisorRisk='low'|'medium'|'high';
