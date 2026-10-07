@@ -1,0 +1,16 @@
+services:
+  node01:
+    build: .
+    container_name: izakhono-node01
+    restart: unless-stopped
+    ports:
+      - "8940:8940"
+    environment:
+      NODE01_HOST: 0.0.0.0
+      NODE01_PORT: 8940
+      NODE01_ROOT: /data/node01
+    volumes:
+      - node01-data:/data/node01
+
+volumes:
+  node01-data:
