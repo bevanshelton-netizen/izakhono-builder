@@ -1,0 +1,33 @@
+# IZAKHONO MEDIA CORE - baseline MediaMTX configuration
+# Replace host/TLS/auth material on the owned production node.
+logLevel: info
+rtmp: true
+rtmpAddress: :1935
+hls: true
+hlsAddress: :8888
+hlsVariant: lowLatency
+hlsAlwaysRemux: true
+webrtc: true
+webrtcAddress: :8889
+srt: true
+srtAddress: :8890
+api: true
+apiAddress: :9997
+metrics: true
+metricsAddress: :9998
+
+# Production should use JWT or HTTP authentication rather than the development defaults.
+# MediaMTX supports internal, HTTP and JWT authentication.
+authMethod: internal
+authInternalUsers:
+  - user: any
+    pass:
+    ips: []
+    permissions:
+      - action: read
+        path: ''
+      - action: playback
+        path: ''
+
+# Channel paths can be provisioned dynamically through the MediaMTX Control API.
+paths: {}
