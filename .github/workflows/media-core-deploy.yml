@@ -1,0 +1,102 @@
+name: IZAKHONO Media Core Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Git ref to deploy
+        required: true
+        default: main
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: izakhono-media-core-production
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    name: Validate Media Core
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref }}
+
+      - name: Set up Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+
+      - name: Validate Media Core
+        run: |
+          npm install --ignore-scripts --no-audit --no-fund
+          npm run validate:media-core
+
+      - name: Validate production compose contract
+        run: |
+          test "$(grep -c 'MEDIA_ADMIN_TOKEN:?MEDIA_ADMIN_TOKEN must be set' products/izakhono-media-core/docker-compose.yml)" -eq 1
+          test "$(grep -c 'condition: service_healthy' products/izakhono-media-core/docker-compose.yml)" -eq 1
+          docker compose -f products/izakhono-media-core/docker-compose.yml config --quiet
+
+  deploy:
+    name: Deploy to owned Media Core node
+    needs: validate
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Checkout deployment ref
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref }}
+
+      - name: Package Media Core
+        run: tar -czf /tmp/izakhono-media-core.tgz products/izakhono-media-core
+
+      - name: Install SSH key
+        env:
+          MEDIA_CORE_SSH_KEY: ${{ secrets.MEDIA_CORE_SSH_KEY }}
+        run: |
+          test -n "$MEDIA_CORE_SSH_KEY"
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$MEDIA_CORE_SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H "${{ secrets.MEDIA_CORE_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Copy release bundle
+        run: |
+          scp /tmp/izakhono-media-core.tgz "${{ secrets.MEDIA_CORE_SSH_USER }}@${{ secrets.MEDIA_CORE_HOST }}:/tmp/izakhono-media-core.tgz"
+
+      - name: Deploy and smoke test
+        env:
+          MEDIA_ADMIN_TOKEN: ${{ secrets.MEDIA_ADMIN_TOKEN }}
+          MEDIA_PUBLIC_HOST: ${{ secrets.MEDIA_PUBLIC_HOST }}
+          MEDIA_CORE_PATH: ${{ secrets.MEDIA_CORE_PATH }}
+        run: |
+          test -n "$MEDIA_ADMIN_TOKEN"
+          test -n "$MEDIA_PUBLIC_HOST"
+          test -n "$MEDIA_CORE_PATH"
+          ssh "${{ secrets.MEDIA_CORE_SSH_USER }}@${{ secrets.MEDIA_CORE_HOST }}" \
+            "MEDIA_ADMIN_TOKEN='$MEDIA_ADMIN_TOKEN' MEDIA_PUBLIC_HOST='$MEDIA_PUBLIC_HOST' MEDIA_CORE_PATH='$MEDIA_CORE_PATH' bash -s" <<'REMOTE'
+          set -euo pipefail
+          test -n "$MEDIA_CORE_PATH"
+          mkdir -p "$MEDIA_CORE_PATH"
+          tar -xzf /tmp/izakhono-media-core.tgz -C "$MEDIA_CORE_PATH" --strip-components=1
+          cd "$MEDIA_CORE_PATH"
+          umask 077
+          printf 'MEDIA_ADMIN_TOKEN=%s\nMEDIA_PUBLIC_HOST=%s\nMEDIA_CORE_PORT=8787\n' "$MEDIA_ADMIN_TOKEN" "$MEDIA_PUBLIC_HOST" > .env
+          docker compose up -d --build
+          docker compose ps
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8787/health >/tmp/media-core-health.json; then
+              cat /tmp/media-core-health.json
+              exit 0
+            fi
+            sleep 5
+          done
+          docker compose logs --tail=100
+          exit 1
+          REMOTE
