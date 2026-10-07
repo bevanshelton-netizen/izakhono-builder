@@ -33,10 +33,11 @@ export async function workerControl(request:Request,authorized:boolean,db:D1Data
   try{body=await request.json();}catch{return json({ok:false,error:'invalid json'},400);}
   if(body.jobId){
    const jobs=await listSupervisorJobs(db);const job=jobs.find(j=>j.id===body.jobId);if(!job)return json({ok:false,error:'unknown job'},404);
+   if(job.status!=='queued')return json({ok:false,error:`job is ${job.status}, expected queued`},409);
    if(job.risk==='high'||job.humanGate)return json({ok:true,accepted:false,status:'blocked',job,reason:'human-gate-required',gate:job.humanGate||'high-risk'},202);
-   if(job.dependencyIds.length){const blockers=jobs.filter(j=>job.dependencyIds.includes(j.sourceId)&&j.status!=='completed');if(blockers.length)return json({ok:true,accepted:false,status:'blocked',job,reason:'dependencies-incomplete',blockers},202);}
-   const transitioned=await transitionSupervisorJob(db,job.id,'running','worker-supervisor',{mode:body.dryRun?'dry-run':'dispatch'});
-   return json({ok:true,accepted:true,status:'running',job:transitioned,note:'Queued for an installed worker handler; no completion is claimed until machine-readable evidence is recorded.'},202);
+   if(job.dependencyIds.length){const blockers=jobs.filter(j=>job.dependencyIds.some(dep=>dep===j.sourceId||dep===j.id)&&j.status!=='completed');if(blockers.length)return json({ok:true,accepted:false,status:'blocked',job,reason:'dependencies-incomplete',blockers},202);}
+   const transitioned=await transitionSupervisorJob(db,job.id,'running','worker-supervisor',{mode:body.dryRun?'dry-run':'dispatch',workerId:job.workerId});
+   return json({ok:true,accepted:true,status:'running',job:transitioned,note:'Accepted by the supervisor; execution evidence is still required before verification or completion.'},202);
   }
   if(!body.workerId||!WORKER_INDEX[body.workerId])return json({ok:false,error:'unknown worker'},404);
   const w=WORKER_INDEX[body.workerId];
@@ -45,7 +46,7 @@ export async function workerControl(request:Request,authorized:boolean,db:D1Data
  }
  if(url.pathname==='/workers/verify'&&request.method==='POST'){
   let body:{jobId?:string;evidence?:unknown};try{body=await request.json();}catch{return json({ok:false,error:'invalid json'},400);}
-  if(!body.jobId)return json({ok:false,error:'jobId required'},400);const jobs=await listSupervisorJobs(db);const job=jobs.find(j=>j.id===body.jobId);if(!job)return json({ok:false,error:'unknown job'},404);if(!body.evidence)return json({ok:false,error:'machine-readable evidence required'},400);await recordEvidence(db,job.id,body.evidence);const transitioned=await transitionSupervisorJob(db,job.id,'verified','evidence-gate',{evidence:body.evidence});return json({ok:true,status:'verified',job:transitioned});
+  if(!body.jobId)return json({ok:false,error:'jobId required'},400);const jobs=await listSupervisorJobs(db);const job=jobs.find(j=>j.id===body.jobId);if(!job)return json({ok:false,error:'unknown job'},404);if(job.status!=='running')return json({ok:false,error:'verification requires running state'},409);if(!body.evidence)return json({ok:false,error:'machine-readable evidence required'},400);await recordEvidence(db,job.id,body.evidence);const transitioned=await transitionSupervisorJob(db,job.id,'verified','evidence-gate',{evidence:body.evidence});return json({ok:true,status:'verified',job:transitioned});
  }
  if(url.pathname==='/workers/complete'&&request.method==='POST'){
   let body:{jobId?:string;evidence?:unknown};try{body=await request.json();}catch{return json({ok:false,error:'invalid json'},400);}
