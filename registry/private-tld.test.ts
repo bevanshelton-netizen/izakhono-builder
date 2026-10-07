@@ -9,4 +9,4 @@ async function main(){
   if (domain.status !== 'pendingCreate') throw new Error('private TLD provisioning failed');
 }
 
-main().catch((error)=>{ console.error(error); process.exitCode=1; });
+main().catch((error)=>{ console.error(error); throw error; });
