@@ -1,0 +1,12 @@
+{
+  "name": "izakhono-node01-sw",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "start": "node src/server.mjs",
+    "check": "node --check src/server.mjs",
+    "smoke": "node scripts/smoke.mjs"
+  }
+}
