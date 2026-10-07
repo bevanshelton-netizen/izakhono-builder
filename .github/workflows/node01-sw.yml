@@ -1,0 +1,25 @@
+name: NODE01-SW
+
+on:
+  push:
+    paths:
+      - 'node01-sw/**'
+      - '.github/workflows/node01-sw.yml'
+  pull_request:
+    paths:
+      - 'node01-sw/**'
+      - '.github/workflows/node01-sw.yml'
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: node01-sw
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm run check
+      - run: docker build -t izakhono-node01-sw:ci .
