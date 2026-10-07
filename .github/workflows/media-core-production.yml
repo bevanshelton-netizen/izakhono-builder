@@ -1,0 +1,69 @@
+name: IZAKHONO Media Core Production
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: media-core-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate Media Core
+        working-directory: products/izakhono-media-core
+        run: |
+          npm run check
+          npm test
+
+      - name: Configure SSH
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.MEDIA_CORE_SSH_PRIVATE_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.MEDIA_CORE_SSH_KNOWN_HOSTS }}
+        run: |
+          set -eu
+          test -n "$SSH_PRIVATE_KEY"
+          test -n "$SSH_KNOWN_HOSTS"
+          mkdir -p "$HOME/.ssh"
+          chmod 700 "$HOME/.ssh"
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$HOME/.ssh/id_ed25519"
+          chmod 600 "$HOME/.ssh/id_ed25519"
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
+          chmod 644 "$HOME/.ssh/known_hosts"
+
+      - name: Deploy to owned node
+        env:
+          MEDIA_CORE_HOST: ${{ secrets.MEDIA_CORE_HOST }}
+          MEDIA_CORE_SSH_USER: ${{ secrets.MEDIA_CORE_SSH_USER }}
+          MEDIA_ADMIN_TOKEN: ${{ secrets.MEDIA_ADMIN_TOKEN }}
+          MEDIA_PUBLIC_HOST: ${{ secrets.MEDIA_PUBLIC_HOST }}
+        run: |
+          set -eu
+          test -n "$MEDIA_CORE_HOST"
+          test -n "$MEDIA_CORE_SSH_USER"
+          test -n "$MEDIA_ADMIN_TOKEN"
+          test -n "$MEDIA_PUBLIC_HOST"
+          tar -czf /tmp/media-core.tgz -C products/izakhono-media-core .
+          scp /tmp/media-core.tgz "$MEDIA_CORE_SSH_USER@$MEDIA_CORE_HOST:/tmp/izakhono-media-core.tgz"
+          ssh "$MEDIA_CORE_SSH_USER@$MEDIA_CORE_HOST" "mkdir -p /opt/izakhono/media-core && tar -xzf /tmp/izakhono-media-core.tgz -C /opt/izakhono/media-core"
+          ssh "$MEDIA_CORE_SSH_USER@$MEDIA_CORE_HOST" "cd /opt/izakhono/media-core && printf '%s\n' 'MEDIA_ADMIN_TOKEN=$MEDIA_ADMIN_TOKEN' 'MEDIA_PUBLIC_HOST=$MEDIA_PUBLIC_HOST' > .env && chmod 600 .env && docker compose up -d --build && docker compose ps"
+
+      - name: Verify control-plane health
+        env:
+          MEDIA_CORE_HOST: ${{ secrets.MEDIA_CORE_HOST }}
+        run: |
+          set -eu
+          ssh "$MEDIA_CORE_SSH_USER@$MEDIA_CORE_HOST" "curl --fail --silent --show-error http://127.0.0.1:8787/health"
+
+      - name: Deployment evidence
+        run: |
+          echo "Media Core deployment workflow completed for commit $GITHUB_SHA"
+          echo "Full production go-live still requires the gates in products/izakhono-media-core/PRODUCTION-HANDOFF.md"
