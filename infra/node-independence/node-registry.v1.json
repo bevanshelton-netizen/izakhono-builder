@@ -1,0 +1,47 @@
+{
+  "schema": "izakhono.node-independence/v1",
+  "policy": "no-single-node-authority",
+  "mode": "active-passive-ready",
+  "nodes": [
+    {
+      "id": "NODE01",
+      "role": "primary",
+      "priority": 10,
+      "health_url": "http://127.0.0.1:8080/healthz",
+      "enabled": true,
+      "drain_on_failure": true
+    },
+    {
+      "id": "NODE02",
+      "role": "recovery",
+      "priority": 20,
+      "health_url": "http://127.0.0.1:8080/healthz",
+      "enabled": true,
+      "drain_on_failure": true
+    },
+    {
+      "id": "NODE03",
+      "role": "recovery",
+      "priority": 30,
+      "health_url": "http://127.0.0.1:8080/healthz",
+      "enabled": true,
+      "drain_on_failure": true
+    },
+    {
+      "id": "NODE04",
+      "role": "recovery",
+      "priority": 40,
+      "health_url": "http://127.0.0.1:8080/healthz",
+      "enabled": true,
+      "drain_on_failure": true
+    }
+  ],
+  "rules": {
+    "minimum_healthy_nodes": 1,
+    "never_wait_for_primary": true,
+    "preserve_external_fallback": true,
+    "promotion_requires_health": true,
+    "customer_data_cutover_requires_restore_proof": true,
+    "dns_cutover_requires_public_https_proof": true
+  }
+}
