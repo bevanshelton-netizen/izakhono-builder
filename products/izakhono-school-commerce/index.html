@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>IZAKHONO School Commerce</title>
+<style>
+:root{--ink:#102a43;--gold:#d7a52b;--bg:#f5f7fa;--card:#fff;--muted:#627d98;--line:#d9e2ec}
+*{box-sizing:border-box}body{margin:0;font-family:Inter,system-ui,sans-serif;background:var(--bg);color:var(--ink)}
+header{background:linear-gradient(135deg,#102a43,#243b53);color:white;padding:28px 5%}header strong{font-size:24px}nav{float:right;display:flex;gap:18px}nav a{color:#fff;text-decoration:none}
+.hero{padding:48px 5%;background:white}.hero h1{font-size:clamp(34px,5vw,64px);margin:0 0 12px}.hero p{font-size:20px;color:var(--muted);max-width:780px}
+.actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:24px}.btn{border:0;border-radius:10px;padding:13px 18px;font-weight:700;cursor:pointer}.primary{background:var(--gold);color:#102a43}.secondary{background:#e9eff5;color:#102a43}
+.container{padding:28px 5%;max-width:1400px;margin:auto}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:18px}.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px;box-shadow:0 4px 16px #102a430d}.price{font-size:24px;font-weight:800}.muted{color:var(--muted)}.tag{display:inline-block;background:#e8f1f8;border-radius:999px;padding:5px 9px;font-size:12px;font-weight:700;margin-bottom:10px}
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0}.toolbar input,.toolbar select{padding:12px;border:1px solid var(--line);border-radius:10px;background:white;min-width:190px}
+table{width:100%;border-collapse:collapse;background:white;border-radius:12px;overflow:hidden}th,td{padding:12px;border-bottom:1px solid var(--line);text-align:left}.quote{background:#102a43;color:#fff;border-radius:16px;padding:24px;margin-top:28px}
+</style>
+</head>
+<body>
+<header><strong>IZAKHONO SCHOOL COMMERCE</strong><nav><a href="#catalogue">Catalogue</a><a href="#bulk">Bulk Orders</a><a href="#schools">Schools</a></nav></header>
+<section class="hero"><h1>Schoolwear at volume.</h1><p>Blazers, jerseys, socks and everyday school essentials — engineered for schools, parents, resellers and institutional procurement.</p><div class="actions"><button class="btn primary" onclick="document.querySelector('#bulk').scrollIntoView()">Build Bulk Order</button><button class="btn secondary" onclick="requestQuote()">Request School Quote</button></div></section>
+<main class="container">
+<section id="catalogue"><h2>Core Catalogue</h2><div class="toolbar"><input id="search" placeholder="Search blazers, jerseys, socks..." oninput="render()"><select id="segment" onchange="render()"><option value="all">All products</option><option value="uniform">Uniform</option><option value="essentials">Essentials</option><option value="sports">Sportswear</option></select></div><div id="products" class="grid"></div></section>
+<section id="bulk" class="quote"><h2>Bulk Procurement Desk</h2><p>Build one order across sizes, grades and product lines. Volume pricing is applied automatically in the production version.</p><div class="toolbar"><input id="school" placeholder="School / organisation"><input id="contact" placeholder="Buyer contact"><input id="qty" type="number" min="1" placeholder="Estimated units"><button class="btn primary" onclick="buildQuote()">Generate Bulk Quote</button></div><div id="quoteResult"></div></section>
+<section id="schools"><h2>Built for the full channel</h2><div class="grid"><div class="card"><span class="tag">INSTITUTIONAL</span><h3>Schools</h3><p class="muted">Annual uniform programmes, tender-ready quotations and repeat ordering.</p></div><div class="card"><span class="tag">RETAIL</span><h3>Parents</h3><p class="muted">Over-the-counter essentials with size guidance and school-specific catalogues.</p></div><div class="card"><span class="tag">WHOLESALE</span><h3>Resellers</h3><p class="muted">Volume tiers, reseller pricing and repeat replenishment.</p></div><div class="card"><span class="tag">MANUFACTURING</span><h3>Custom Supply</h3><p class="muted">Branded blazers, jerseys and sportswear routed into production workflows.</p></div></div></section>
+</main>
+<script>
+const products=[
+{name:'School Blazer',cat:'uniform',price:499,unit:'each',moq:20},
+{name:'School Jersey',cat:'uniform',price:349,unit:'each',moq:20},
+{name:'School Socks',cat:'essentials',price:59,unit:'pair',moq:50},
+{name:'School Shirt',cat:'uniform',price:149,unit:'each',moq:30},
+{name:'School Trousers',cat:'uniform',price:229,unit:'each',moq:20},
+{name:'School Skirt',cat:'uniform',price:229,unit:'each',moq:20},
+{name:'School Tie',cat:'essentials',price:69,unit:'each',moq:50},
+{name:'School Tracksuit',cat:'sports',price:399,unit:'set',moq:20},
+{name:'School Sports Jersey',cat:'sports',price:199,unit:'each',moq:30},
+{name:'School Bag',cat:'essentials',price:249,unit:'each',moq:20}
+];
+function render(){const q=(document.querySelector('#search').value||'').toLowerCase(),c=document.querySelector('#segment').value;document.querySelector('#products').innerHTML=products.filter(p=>(c==='all'||p.cat===c)&&p.name.toLowerCase().includes(q)).map(p=>`<article class="card"><span class="tag">${p.cat.toUpperCase()}</span><h3>${p.name}</h3><p class="muted">MOQ: ${p.moq} ${p.unit}s</p><div class="price">From R${p.price.toFixed(2)}</div><button class="btn primary" onclick="add(${p.price},'${p.name}')">Add to bulk order</button></article>`).join('')}
+function add(price,name){window.order=window.order||[];window.order.push({name,price});document.querySelector('#bulk').scrollIntoView();document.querySelector('#qty').value=window.order.length}
+function buildQuote(){const school=document.querySelector('#school').value||'School';const qty=Number(document.querySelector('#qty').value||0);const subtotal=(window.order||[]).reduce((s,x)=>s+x.price,0)||qty*200;const tier=qty>=1000?.78:qty>=500?.84:qty>=200?.9:1;document.querySelector('#quoteResult').innerHTML=`<table><tr><th>Customer</th><td>${school}</td></tr><tr><th>Estimated units</th><td>${qty}</td></tr><tr><th>Indicative volume factor</th><td>${tier}</td></tr><tr><th>Indicative value</th><td>R${(subtotal*tier).toLocaleString('en-ZA',{minimumFractionDigits:2})}</td></tr></table><p>Final production, size mix, branding, freight and VAT are confirmed during quotation.</p>`}
+function requestQuote(){document.querySelector('#bulk').scrollIntoView();document.querySelector('#school').focus()}
+render();
+</script>
+</body></html>
