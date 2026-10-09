@@ -30,6 +30,34 @@ Updated 2026-10-09
 | Mpumalanga | Middelburg Primary School | official uniform PDF | MPS Blues, blue school socks/badge, navy/white sports footwear; current full palette requires verification | VERIFIED-PARTIAL |
 | Mpumalanga | Edgeview Academy | 2026 admission/dress-code document | white shirts, grey trousers/skirts, grey socks; blazer/pullover/jersey and tie; sportswear | SECONDARY-VERIFIED |
 
+## Product-line intelligence — Drimacs
+
+Drimacs / Drymac rain jackets are now a core IZAKHONO schoolwear product line for the advertising catalogue and bulk procurement engine.
+
+### Current South African benchmark
+| Market example | Observed price | Position |
+|---|---:|---|
+| PEP black school rain jacket | R179.99 | Mass retail benchmark |
+| Price Paradise lined Drymac | R185–R210 | Value benchmark |
+| Jumbo Clothing DRIMACS | from R219.90 | Mass schoolwear benchmark |
+| Gem Schoolwear Dry Mac | R265 | Schoolwear benchmark |
+| Fashion Zone School Drymac | R280 sale (R350 regular) | Schoolwear benchmark |
+| Takealot hooded/polar-fleece Drymac | from R299 | Online benchmark |
+| Grip Sport School DryMac | R349.95 | Mid-market benchmark |
+| Simply Schools school Drimacs | R399–R499 | School-specific branded benchmark |
+| Asamaths school Drimac | R450 | School-specific benchmark |
+| Royal Schools Drimac | R469–R509 | Older official-school benchmark |
+| ParKtown School Shop hostel Drimac | R600–R630 | Premium/hostel benchmark |
+
+### IZAKHONO pricing recommendation
+- **R700 is NOT a strong mass-market Drimac price.** It is above the majority of current observed benchmarks and would not be credible as the headline “cheaper than everyone” offer.
+- Recommended standard OTC target: **R349–R399** depending on fabric, lining, branding and size range.
+- Recommended bulk-school target: **R249–R329** at meaningful quantities, subject to production cost, branding and freight.
+- **R700 can be justified only for a premium specification** — e.g. heavier technical fabric, premium fleece lining, substantial school branding/embroidery, special construction, or a bundled/premium outerwear product.
+- For advertising, position the offer as **“School Drimacs from R349”** rather than R700 until the exact specification and cost structure are locked.
+
+Prices are market observations and can change; school-specific branded items may carry materially higher prices than generic rain jackets.
+
 ## Commercial rule
 Do NOT present a school-specific crest/logo as an official supplier relationship unless the school has authorized the use. Until then, advertisements should be labelled:
 “SAMPLE CONCEPT — NOT OFFICIAL SCHOOL MERCHANDISE”
