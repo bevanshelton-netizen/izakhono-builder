@@ -1,0 +1,65 @@
+{
+  "schema": "izakhono.business-os/v1",
+  "engine": "IZAKHONO BUILDER",
+  "mode": "business-first",
+  "principle": "build-the-machine-before-building-the-apps",
+  "layers": [
+    "intent",
+    "planning",
+    "application_fabric",
+    "data",
+    "identity",
+    "commerce",
+    "customer_operations",
+    "ai_fabric",
+    "domain_dns",
+    "web_delivery",
+    "email",
+    "security",
+    "reliability",
+    "observability",
+    "scaling",
+    "growth",
+    "distribution",
+    "governance"
+  ],
+  "owned_first": {
+    "enabled": true,
+    "external_adapters": "replaceable",
+    "source_of_truth": "IZAKHONO-controlled",
+    "public_live_requires_evidence": true
+  },
+  "build_contract": {
+    "input": "one-sentence-business-brief",
+    "output": "business-os-plan",
+    "pipeline": [
+      "classify",
+      "plan",
+      "assemble",
+      "generate",
+      "validate",
+      "commit-internal-snapshot",
+      "create-release-candidate",
+      "publish-only-after-evidence"
+    ]
+  },
+  "release_gates": {
+    "source_validation": true,
+    "security_validation": true,
+    "health_check": true,
+    "rollback_path": true,
+    "domain_verification": true,
+    "tls_verification": true,
+    "payment_verification": true,
+    "public_live_evidence": true
+  },
+  "business_blueprints": [
+    "service-business",
+    "school-commerce",
+    "professional-services",
+    "membership-community",
+    "learning-platform",
+    "commerce-catalogue",
+    "creator-media"
+  ]
+}
