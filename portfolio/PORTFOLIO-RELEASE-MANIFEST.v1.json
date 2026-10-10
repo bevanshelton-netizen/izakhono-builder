@@ -1,0 +1,30 @@
+{
+  "schema": "izakhono.portfolio-release/v1",
+  "generated_at": "2026-10-10",
+  "policy": "owned-first-externally-reversible",
+  "purpose": "Single release manifest for completing the active IZAKHONO application portfolio through the Builder/Factory rather than bespoke app-by-app delivery.",
+  "apps": [
+    {"id":"izakhono-builder","name":"IZAKHONO BUILDER / APP FACTORY","source":"products + src","priority":"P0","release_gate":"factory health + generation + validation + internal repository commit"},
+    {"id":"izakhono-one","name":"IZAKHONO ONE Universal Dashboard","source":"src/public dashboard","priority":"P0","release_gate":"dashboard health + service registry + product routing"},
+    {"id":"facebook-google-parallel","name":"IZAKHONO Facebook + Google Parallel","source":"main commit / parallel product","priority":"P0","release_gate":"product shell + service registry + search/discovery boundaries"},
+    {"id":"super-seo-v5","name":"IZAKHONO SUPER SEO V5","source":"products/izakhono-super-seo","priority":"P0","release_gate":"search provider boundary + growth queue + approval gate + first-party attribution"},
+    {"id":"izakhono-nav","name":"IZAKHONO NAV","source":"products/izakhono-nav","priority":"P0","release_gate":"engine + routing/search/tile adapters + owned runtime health/failover"},
+    {"id":"i-connect","name":"I-CONNECT","source":"products/i-connect","priority":"P0","release_gate":"corporate control plane + provisioner + tenancy/RBAC + billing adapter boundaries"},
+    {"id":"digital-finance-academy","name":"IZAKHONO Digital Finance Academy","source":"products/digital-finance","priority":"P0","release_gate":"course/product delivery + commercial entitlement + owner runtime"},
+    {"id":"faisready","name":"FAISReady","source":"products/faisready-v1","priority":"P1","release_gate":"course catalogue + checkout boundary + learner access"},
+    {"id":"examready","name":"ExamReady / School Assistant","source":"products/examready","priority":"P1","release_gate":"Grade 4-7 maths learning shell + lesson/video/content model + learner progress"},
+    {"id":"edubuild","name":"Edu-Build Institute","source":"edubuild-ecd360 + Builder portfolio","priority":"P1","release_gate":"programme catalogue + learner intake + admissions/payment boundary"},
+    {"id":"allegro-vibez","name":"ALLEGRO VIBEZ","source":"allegro-vibez + products/allegro-core","priority":"P0","release_gate":"artist discovery + booking + rights/settlement gates + verified payment flow"},
+    {"id":"kora","name":"KORA Network","source":"Builder portfolio","priority":"P1","release_gate":"learner/driver products + account/payment boundaries"},
+    {"id":"business-of-music","name":"THE BUSINESS OF MUSIC","source":"Builder portfolio","priority":"P1","release_gate":"book/catalogue delivery + localisation metadata + checkout boundary"},
+    {"id":"pocketpos","name":"IZAKHONO PocketPOS","source":"apps/izakhono-pocket-pos","priority":"P1","release_gate":"catalogue + stock + sales + offline shell + payment adapter boundary"},
+    {"id":"izakhono-host","name":"IZAKHONO HOST","source":"products/izakhono-host","priority":"P0","release_gate":"customer onboarding + domains/DNS/SSL/mail/provisioning state machine"},
+    {"id":"fortress","name":"SHELTON FORTRESS","source":"SHELTON-FORTRESS + Builder integrations","priority":"P0","release_gate":"identity + audit + ledger/commerce primitives + non-custodial boundaries"},
+    {"id":"the-chancellor","name":"THE CHANCELLOR","source":"the-chancellor","priority":"P1","release_gate":"content/AI mentoring experience + auth + subscription/payment boundary"},
+    {"id":"yhvhtv","name":"YHVH GOSPEL TV","source":"products/yhvh-gospel-tv","priority":"P1","release_gate":"rights/QC/territory gates + playout + control room + owned runtime"},
+    {"id":"izakhono-media","name":"IZAKHONO Media Core","source":"products/izakhono-media-core","priority":"P1","release_gate":"playout + EPG + advertising + analytics + entitlement/provisioner engines"},
+    {"id":"izakhono-motion","name":"IZAKHONO MOTION","source":"products/izakhono-motion","priority":"P2","release_gate":"video creation product shell + provider-neutral generation adapters"}
+  ],
+  "completion_rule": "An app is factory-complete when its source bundle is generated/validated, its internal repository revision is recorded, its runtime health contract passes, and any external integration remains an explicit adapter gate. Do not convert provider rate-limit or deployment failures into application failures.",
+  "deployment_rule": "Public-live is separate from code completion and requires real owned-runtime evidence. Vercel rate-limit failures are not release blockers for owned-first completion."
+}
