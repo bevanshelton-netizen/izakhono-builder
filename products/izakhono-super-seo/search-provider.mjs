@@ -1,5 +1,9 @@
 import { URL } from 'node:url';
 
+// Compatibility shim for server.mjs: Node ESM has no native __filename,
+// while the V5 server uses it only to distinguish direct execution from imports.
+globalThis.__filename = process.argv[1] || '';
+
 export function providerStatus(env = process.env) {
   const url = env.SEARCH_PROVIDER_URL || '';
   return {
@@ -25,7 +29,6 @@ export function normalizeSearchResult(payload, query, source = 'provider') {
       ...(typeof row.snippet === 'string' ? { snippet: row.snippet } : {}),
     };
   }).filter((row) => row.url);
-
   const metrics = {};
   for (const key of ['search_volume', 'cpc', 'competition', 'difficulty']) {
     const value = finiteNumber(payload?.metrics?.[key]);
@@ -33,7 +36,6 @@ export function normalizeSearchResult(payload, query, source = 'provider') {
   }
   return { query, source, fetched_at: new Date().toISOString(), results, ...(Object.keys(metrics).length ? { metrics } : {}) };
 }
-
 export async function searchKeyword(query, options = {}, env = process.env) {
   const status = providerStatus(env);
   if (!status.configured) return { query, source: 'unconfigured', status: 'not_configured', results: [] };
@@ -42,20 +44,11 @@ export async function searchKeyword(query, options = {}, env = process.env) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), options.timeoutMs || 8000);
   try {
-    const response = await fetch(endpoint, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', authorization: `Bearer ${env.SEARCH_PROVIDER_TOKEN}` },
-      body: JSON.stringify({ query, locale: options.locale || 'en-ZA', country: options.country || 'ZA', language: options.language || 'en', max_results: options.maxResults || 10 }),
-      signal: controller.signal,
-    });
+    const response = await fetch(endpoint, {method: 'POST',headers: { 'content-type': 'application/json', authorization: `Bearer ${env.SEARCH_PROVIDER_TOKEN}` },body: JSON.stringify({ query, locale: options.locale || 'en-ZA', country: options.country || 'ZA', language: options.language || 'en', max_results: options.maxResults || 10 }),signal: controller.signal});
     if (!response.ok) throw new Error(`search provider returned HTTP ${response.status}`);
-    const payload = await response.json();
-    return { status: 'ok', ...normalizeSearchResult(payload, query, status.name) };
-  } finally {
-    clearTimeout(timer);
-  }
+    const payload = await response.json(); return { status: 'ok', ...normalizeSearchResult(payload, query, status.name) };
+  } finally { clearTimeout(timer); }
 }
-
 export async function searchBatch(queries, options = {}, env = process.env) {
   const unique = [...new Set((queries || []).filter((q) => typeof q === 'string').map((q) => q.trim()).filter(Boolean))].slice(0, options.maxQueries || 25);
   const status = providerStatus(env);
