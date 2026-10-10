@@ -44,19 +44,19 @@ jobs:
       - name: Prove Allegro health
         run: |
           for i in $(seq 1 30); do
-            if curl -fsS http://127.0.0.1:8788/health >/tmp/health.json; then cat /tmp/health.json; exit 0; fi
+            if docker exec izakhono-allegro-core node -e "fetch('http://127.0.0.1:8788/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"; then
+              docker exec izakhono-allegro-core wget -qO- http://127.0.0.1:8788/health
+              exit 0
+            fi
             sleep 1
           done
           docker logs izakhono-allegro-core
           exit 1
       - name: Prove booking persistence
         run: |
-          response=$(curl -fsS -X POST http://127.0.0.1:8788/api/bookings -H 'content-type: application/json' -d '{"name":"CI Musician","mobile":"+27000000000","service":"recording"}')
-          echo "$response"
-          code=$(printf '%s' "$response" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>console.log(JSON.parse(s).booking.code))")
-          curl -fsS "http://127.0.0.1:8788/api/bookings/$code"
+          docker exec izakhono-allegro-core node -e "fetch('http://127.0.0.1:8788/api/bookings',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({name:'CI Musician',mobile:'+27000000000',service:'recording'})}).then(async r=>{const v=await r.json();if(r.status!==201||!v.ok||!v.booking.code){console.error(v);process.exit(1)};console.log(JSON.stringify(v));fetch('http://127.0.0.1:8788/api/bookings/'+v.booking.code).then(async x=>{if(x.status!==200){console.error(await x.text());process.exit(1)};console.log('booking lookup OK')})})"
       - name: Prove payment webhook intake
-        run: curl -fsS -X POST http://127.0.0.1:8788/api/payment/webhook -H 'content-type: application/json' -d '{"provider":"ikokha","reference":"CI-ALLEGRO-1","status":"paid"}'
+        run: docker exec izakhono-allegro-core node -e "fetch('http://127.0.0.1:8788/api/payment/webhook',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({provider:'ikokha',reference:'CI-ALLEGRO-1',status:'paid'})}).then(async r=>{const v=await r.json();if(r.status!==202||!v.ok)process.exit(1);console.log(JSON.stringify(v))})"
       - name: Cleanup
         if: always()
         run: docker compose --env-file /tmp/allegro.env -f infra/app-fabric-runtime/docker-compose.yml down -v || true
