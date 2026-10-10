@@ -25,8 +25,8 @@ jobs:
       - name: Install dependencies
         run: npm install --ignore-scripts --no-audit --no-fund
 
-      - name: Typecheck + Wrangler dry run
-        run: npm run validate
+      - name: SUPER SEO V5 + typecheck + Wrangler dry run
+        run: npm run validate:super-seo && npm run typecheck && wrangler deploy --dry-run
 
       - name: Validate NODE01 command gateway package
         shell: bash
@@ -78,37 +78,20 @@ jobs:
           cf_account_ref = '$' + '{{ secrets.CLOUDFLARE_ACCOUNT_ID }}'
 
           secure_required = [
-              'generatedRepositoryFiles',
-              'validateRepositoryFiles',
-              '/api/automation-capabilities',
-              '/publish-repository',
-              "next_gate: validation.passed ? 'repository_publish_ready'",
-              'repository_ready: true',
-              'versioned_preview_revision',
+              'generatedRepositoryFiles','validateRepositoryFiles','/api/automation-capabilities','/publish-repository',
+              "next_gate: validation.passed ? 'repository_publish_ready'",'repository_ready: true','versioned_preview_revision',
           ]
           repo_required = [
-              "visibility: 'private'",
-              'overwrite_existing: false',
-              'GITHUB_AUTOMATION_TOKEN',
-              'GITHUB_OWNER',
-              "createPath = kind === 'org'",
-              '/git/blobs',
-              '/git/trees',
-              '/git/commits',
-              '/git/refs/heads/',
-              cf_token_ref,
-              cf_account_ref,
+              "visibility: 'private'",'overwrite_existing: false','GITHUB_AUTOMATION_TOKEN','GITHUB_OWNER',"createPath = kind === 'org'",
+              '/git/blobs','/git/trees','/git/commits','/git/refs/heads/',cf_token_ref,cf_account_ref,
               'Repository already exists; IZAKHONO will not overwrite it.',
           ]
 
           missing = [f'secure:{x}' for x in secure_required if x not in secure]
           missing += [f'repository:{x}' for x in repo_required if x not in repo]
-          if missing:
-              raise SystemExit('Repository autopilot contract missing: ' + ', '.join(missing))
-          if "'  pull_request_target:'" in repo or '"  pull_request_target:"' in repo:
-              raise SystemExit('Generated preview workflow must not emit pull_request_target.')
-          if "private: false" in repo:
-              raise SystemExit('External repository publisher must not create public repositories by default.')
+          if missing: raise SystemExit('Repository autopilot contract missing: ' + ', '.join(missing))
+          if "'  pull_request_target:'" in repo or '"  pull_request_target:"' in repo: raise SystemExit('Generated preview workflow must not emit pull_request_target.')
+          if "private: false" in repo: raise SystemExit('External repository publisher must not create public repositories by default.')
           print('[PASS] Optional external repository mirror remains private-by-default and credential-gated.')
           PY
 
@@ -118,47 +101,14 @@ jobs:
           python - <<'PY'
           import json
           from pathlib import Path
-
-          sovereign = Path('src/sovereign.ts').read_text(encoding='utf-8')
-          internal = Path('src/internal-repository.ts').read_text(encoding='utf-8')
-          migration = Path('migrations/0002_internal_repositories.sql').read_text(encoding='utf-8')
-          wrangler = json.loads(Path('wrangler.jsonc').read_text(encoding='utf-8'))
-
-          sovereign_required = [
-              "import secureApp from './secure'",
-              'commitInternalRepository',
-              '/internal-repository',
-              "source_of_truth: 'izakhono-internal'",
-              "next_gate: 'internal_repository_committed'",
-              "internal_repository_authority: 'primary'",
-              "external_repository_role: 'optional_mirror'",
-          ]
-          internal_required = [
-              'builder_internal_repositories',
-              'builder_internal_repo_commits',
-              "visibility TEXT NOT NULL DEFAULT 'private'",
-              'content_hash TEXT NOT NULL',
-              'UNIQUE(project_id, content_hash)',
-              'canonicalFiles',
-              "crypto.subtle.digest('SHA-256'",
-              'reused_existing_snapshot',
-          ]
-          migration_required = [
-              'CREATE TABLE IF NOT EXISTS builder_internal_repositories',
-              'CREATE TABLE IF NOT EXISTS builder_internal_repo_commits',
-              "CHECK (visibility = 'private')",
-              'UNIQUE(project_id, content_hash)',
-          ]
-
-          missing = [f'sovereign:{x}' for x in sovereign_required if x not in sovereign]
-          missing += [f'internal:{x}' for x in internal_required if x not in internal]
-          missing += [f'migration:{x}' for x in migration_required if x not in migration]
-          if missing:
-              raise SystemExit('Sovereign repository contract missing: ' + ', '.join(missing))
-          if wrangler.get('main') != 'src/sovereign.ts':
-              raise SystemExit('Live Worker entry point must be the sovereign repository layer.')
-          if 'GITHUB_AUTOMATION_TOKEN' in internal or 'CLOUDFLARE_API_TOKEN' in internal:
-              raise SystemExit('Internal repository must not depend on external provider credentials.')
+          sovereign=Path('src/sovereign.ts').read_text(encoding='utf-8'); internal=Path('src/internal-repository.ts').read_text(encoding='utf-8'); migration=Path('migrations/0002_internal_repositories.sql').read_text(encoding='utf-8'); wrangler=json.loads(Path('wrangler.jsonc').read_text(encoding='utf-8'))
+          sovereign_required=["import secureApp from './secure'",'commitInternalRepository','/internal-repository',"source_of_truth: 'izakhono-internal'","next_gate: 'internal_repository_committed'","internal_repository_authority: 'primary'","external_repository_role: 'optional_mirror'"]
+          internal_required=['builder_internal_repositories','builder_internal_repo_commits',"visibility TEXT NOT NULL DEFAULT 'private'",'content_hash TEXT NOT NULL','UNIQUE(project_id, content_hash)','canonicalFiles',"crypto.subtle.digest('SHA-256'",'reused_existing_snapshot']
+          migration_required=['CREATE TABLE IF NOT EXISTS builder_internal_repositories','CREATE TABLE IF NOT EXISTS builder_internal_repo_commits',"CHECK (visibility = 'private')",'UNIQUE(project_id, content_hash)']
+          missing=[f'sovereign:{x}' for x in sovereign_required if x not in sovereign]; missing += [f'internal:{x}' for x in internal_required if x not in internal]; missing += [f'migration:{x}' for x in migration_required if x not in migration]
+          if missing: raise SystemExit('Sovereign repository contract missing: ' + ', '.join(missing))
+          if wrangler.get('main') != 'src/sovereign.ts': raise SystemExit('Live Worker entry point must be the sovereign repository layer.')
+          if 'GITHUB_AUTOMATION_TOKEN' in internal or 'CLOUDFLARE_API_TOKEN' in internal: raise SystemExit('Internal repository must not depend on external provider credentials.')
           print('[PASS] IZAKHONO internal repository is private, immutable-by-content and provider-independent.')
           PY
 
@@ -174,29 +124,13 @@ jobs:
         run: |
           python - <<'PY'
           from pathlib import Path
-          html = Path('public/index.html').read_text(encoding='utf-8')
-          if '<script>' not in html or '</script>' not in html:
-              raise SystemExit('Owner UI script block is missing.')
-          script = html.rsplit('<script>', 1)[1].split('</script>', 1)[0]
-          Path('/tmp/izakhono-owner-ui.js').write_text(script, encoding='utf-8')
-          required = [
-              '/api/automation-capabilities',
-              'internal_repository',
-              'IZAKHONO repository is the source of truth',
-              '/internal-repository',
-              'IZAKHONO repo committed',
-              'github_repository_publish',
-              'Mirror to private GitHub repo',
-              '/publish-repository',
-              'Open revision preview',
-              'if(!state.capabilities?.github_repository_publish)',
-              'No browser credential is required or accepted.',
-          ]
-          missing = [item for item in required if item not in html]
-          if missing:
-              raise SystemExit('Owner UI repository controls missing: ' + ', '.join(missing))
-          if 'GITHUB_AUTOMATION_TOKEN' in html or 'CLOUDFLARE_API_TOKEN' in html:
-              raise SystemExit('Owner UI must not request or expose provider automation secrets.')
+          html=Path('public/index.html').read_text(encoding='utf-8')
+          if '<script>' not in html or '</script>' not in html: raise SystemExit('Owner UI script block is missing.')
+          script=html.rsplit('<script>',1)[1].split('</script>',1)[0]; Path('/tmp/izakhono-owner-ui.js').write_text(script,encoding='utf-8')
+          required=['/api/automation-capabilities','internal_repository','IZAKHONO repository is the source of truth','/internal-repository','IZAKHONO repo committed','github_repository_publish','Mirror to private GitHub repo','/publish-repository','Open revision preview','if(!state.capabilities?.github_repository_publish)','No browser credential is required or accepted.']
+          missing=[item for item in required if item not in html]
+          if missing: raise SystemExit('Owner UI repository controls missing: ' + ', '.join(missing))
+          if 'GITHUB_AUTOMATION_TOKEN' in html or 'CLOUDFLARE_API_TOKEN' in html: raise SystemExit('Owner UI must not request or expose provider automation secrets.')
           print('[PASS] Owner UI makes IZAKHONO the source of truth and external GitHub an optional mirror.')
           PY
           node --check /tmp/izakhono-owner-ui.js
@@ -206,25 +140,9 @@ jobs:
         run: |
           python - <<'PY'
           from pathlib import Path
-          s = Path('src/secure.ts').read_text(encoding='utf-8')
-          required = [
-              "public/manifest.webmanifest",
-              "public/sw.js",
-              "release/channels.json",
-              "release/android.json",
-              "release/ios.json",
-              "release/desktop.json",
-              "schema: 'izakhono.release-channels/v1'",
-              "public_live: false",
-              "signed_package: false",
-              "store_release: false",
-              "name: 'pwa_manifest'",
-              "name: 'service_worker_registration'",
-              "name: 'release_channel_contract'",
-          ]
-          missing = [x for x in required if x not in s]
-          if missing:
-              raise SystemExit('Generated release-channel pack missing: ' + ', '.join(missing))
+          s=Path('src/secure.ts').read_text(encoding='utf-8'); required=["public/manifest.webmanifest","public/sw.js","release/channels.json","release/android.json","release/ios.json","release/desktop.json","schema: 'izakhono.release-channels/v1'","public_live: false","signed_package: false","store_release: false","name: 'pwa_manifest'","name: 'service_worker_registration'","name: 'release_channel_contract'"]
+          missing=[x for x in required if x not in s]
+          if missing: raise SystemExit('Generated release-channel pack missing: ' + ', '.join(missing))
           print('[PASS] Generated apps include installable PWA assets and truthful gated mobile/desktop release manifests.')
           PY
 
@@ -233,24 +151,10 @@ jobs:
         run: |
           python - <<'PY'
           from pathlib import Path
-          s = Path('src/sovereign.ts').read_text(encoding='utf-8')
-          required = [
-              '/autopilot',
-              "schema: 'izakhono.release-candidate/v1'",
-              "status: 'deploy_ready'",
-              "source_of_truth: 'izakhono-internal'",
-              "deployment_authority: 'NODE01/CODE/RUNTIME/EDGE-TLS/DNS'",
-              "public_live: false",
-              "next_gate: 'owned-runtime-deployment-verification'",
-              'one_click_release_candidate: true',
-              'Import & Build',
-              'Build to release candidate',
-          ]
-          missing = [x for x in required if x not in s]
-          if missing:
-              raise SystemExit('Release-candidate autopilot contract missing: ' + ', '.join(missing))
-          if "status: 'deployed'" in s[s.find("async function projectAutopilotRoute"):s.find("async function faisPaymentsRepairApi")]:
-              raise SystemExit('Autopilot must not label a release candidate as deployed.')
+          s=Path('src/sovereign.ts').read_text(encoding='utf-8'); required=['/autopilot',"schema: 'izakhono.release-candidate/v1'","status: 'deploy_ready'","source_of_truth: 'izakhono-internal'","deployment_authority: 'NODE01/CODE/RUNTIME/EDGE-TLS/DNS'","public_live: false","next_gate: 'owned-runtime-deployment-verification'",'one_click_release_candidate: true','Import & Build','Build to release candidate']
+          missing=[x for x in required if x not in s]
+          if missing: raise SystemExit('Release-candidate autopilot contract missing: ' + ', '.join(missing))
+          if "status: 'deployed'" in s[s.find("async function projectAutopilotRoute"):s.find("async function faisPaymentsRepairApi")]: raise SystemExit('Autopilot must not label a release candidate as deployed.')
           print('[PASS] One-click Builder autopilot stops at controlled release-candidate readiness.')
           PY
 
@@ -258,34 +162,22 @@ jobs:
         shell: bash
         run: |
           python - <<'PY'
-          import json, re
-          from pathlib import Path, PurePosixPath
-
-          p = Path('templates/izakhono.manifest.example.json')
-          data = json.loads(p.read_text(encoding='utf-8'))
+          import json,re
+          from pathlib import Path,PurePosixPath
+          p=Path('templates/izakhono.manifest.example.json'); data=json.loads(p.read_text(encoding='utf-8'))
           for key in ('name','slug','build_context','dockerfile_path','container_port','health_path'):
-              if key not in data:
-                  raise SystemExit(f'missing template field: {key}')
+              if key not in data: raise SystemExit(f'missing template field: {key}')
           for key in ('build_context','dockerfile_path'):
-              q = PurePosixPath(str(data[key]))
-              if q.is_absolute() or '..' in q.parts:
-                  raise SystemExit(f'unsafe template path: {key}')
-          if not 1 <= int(data['container_port']) <= 65535:
-              raise SystemExit('template port out of range')
-          if not str(data['health_path']).startswith('/'):
-              raise SystemExit('template health_path must start with /')
-          alpha = data.get('alpha') or {}
+              q=PurePosixPath(str(data[key]));
+              if q.is_absolute() or '..' in q.parts: raise SystemExit(f'unsafe template path: {key}')
+          if not 1 <= int(data['container_port']) <= 65535: raise SystemExit('template port out of range')
+          if not str(data['health_path']).startswith('/'): raise SystemExit('template health_path must start with /')
+          alpha=data.get('alpha') or {}
           for key in ('preflight','rehearsal','windows_package'):
-              if not isinstance(alpha.get(key, False), bool):
-                  raise SystemExit(f'alpha.{key} must be boolean')
-
-          caller = Path('templates/call-izakhono-alpha.yml').read_text(encoding='utf-8')
-          policy = r'bevanshelton-netizen/izakhono-builder/\.github/workflows/izakhono-build-to-alpha\.yml@([0-9a-f]{40})'
-          match = re.search(policy, caller)
-          if not match:
-              raise SystemExit('Alpha caller template must pin the Builder policy to an immutable 40-character commit SHA.')
-          if '@main' in caller or '@master' in caller:
-              raise SystemExit('Alpha caller template must not follow a mutable branch.')
+              if not isinstance(alpha.get(key,False),bool): raise SystemExit(f'alpha.{key} must be boolean')
+          caller=Path('templates/call-izakhono-alpha.yml').read_text(encoding='utf-8'); policy=r'bevanshelton-netizen/izakhono-builder/\.github/workflows/izakhono-build-to-alpha\.yml@([0-9a-f]{40})'; match=re.search(policy,caller)
+          if not match: raise SystemExit('Alpha caller template must pin the Builder policy to an immutable 40-character commit SHA.')
+          if '@main' in caller or '@master' in caller: raise SystemExit('Alpha caller template must not follow a mutable branch.')
           print(f'[PASS] IZAKHONO Fast Build templates are valid; caller policy pin={match.group(1)}.')
           PY
 
@@ -294,23 +186,8 @@ jobs:
         run: |
           python - <<'PY'
           from pathlib import Path
-          text = Path('.github/workflows/izakhono-build-to-alpha.yml').read_text(encoding='utf-8')
-          required = [
-              'workflow_call:',
-              'Validate IZAKHONO manifest',
-              'Project preflight',
-              'Central fixed preflight policy',
-              'caller repository supplied no executable preflight policy',
-              'Build application',
-              'Health gate',
-              'Database / application rehearsal',
-              'Package Windows Alpha kit',
-              'One clear Alpha result',
-          ]
-          missing = [item for item in required if item not in text]
-          if missing:
-              raise SystemExit('Reusable Alpha workflow missing: ' + ', '.join(missing))
-          if 'run: bash scripts/izakhono/alpha-preflight.sh' in text:
-              raise SystemExit('Central Alpha workflow must not execute caller-provided preflight shell.')
+          text=Path('.github/workflows/izakhono-build-to-alpha.yml').read_text(encoding='utf-8'); required=['workflow_call:','Validate IZAKHONO manifest','Project preflight','Central fixed preflight policy','caller repository supplied no executable preflight policy','Build application','Health gate','Database / application rehearsal','Package Windows Alpha kit','One clear Alpha result']; missing=[item for item in required if item not in text]
+          if missing: raise SystemExit('Reusable Alpha workflow missing: ' + ', '.join(missing))
+          if 'run: bash scripts/izakhono/alpha-preflight.sh' in text: raise SystemExit('Central Alpha workflow must not execute caller-provided preflight shell.')
           print('[PASS] Central IZAKHONO Build to Alpha trust boundary is present.')
           PY
