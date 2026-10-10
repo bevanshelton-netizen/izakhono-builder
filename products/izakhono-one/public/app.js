@@ -1,31 +1,18 @@
-import { IzakhonoOneEngine } from './engine.js';
-const searchInput=document.querySelector('#search');
-const grid=document.querySelector('#services');
-const status=document.querySelector('#engine-status');
+const grid=document.querySelector('#service-grid');
+const search=document.querySelector('#search');
 const count=document.querySelector('#service-count');
-function esc(value){return String(value).replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]))}
-function sortServices(services){
-  return [...services].sort((a,b)=>Number(Boolean(b.featured))-Number(Boolean(a.featured))||a.name.localeCompare(b.name));
-}
-function render(engine,services){
-  const sorted=sortServices(services);
-  count.textContent=sorted.length+' services';
-  grid.innerHTML=sorted.map(service=>{
-    const open=engine.route(service.slug);
-    const action=open.ok
-      ? '<a class="button" href="'+esc(open.url)+'">Open verified route</a>'
-      : '<span class="gate">'+(service.featured?'Launch gate pending':'Public route gated')+'</span>';
-    const feature=service.featured?'<span class="featured">FLAGSHIP</span>':'';
-    return '<article class="card '+(service.featured?'card-featured':'')+'" id="service-'+esc(service.slug)+'"><div class="card-top"><div class="category">'+esc(service.category)+'</div>'+feature+'</div><h3>'+esc(service.name)+'</h3><p>'+esc(service.description)+'</p><div class="card-footer"><span class="state state-'+esc(service.status)+'">'+esc(service.status)+'</span>'+action+'</div></article>';
-  }).join('');
-}
-try{
-  const engine=await IzakhonoOneEngine.boot();
-  const health=engine.health();
-  status.textContent='ENGINE '+health.status.toUpperCase()+' • NO TRACKING';
-  render(engine,engine.search());
-  searchInput.addEventListener('input',event=>render(engine,engine.search(event.target.value)));
-}catch{
-  status.textContent='ENGINE DEGRADED';
-  grid.innerHTML='<div class="error">The service registry could not be loaded. No unverified route was opened.</div>';
-}
+const status=document.querySelector('#engine-status');
+const esc=v=>String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let services=[];
+const parallel=[
+{slug:'search',name:'IZAKHONO SEARCH',category:'Discovery',icon:'⌕',description:'African-first web, local, business, product and content discovery with AI answers and private search.',status:'foundation',path:'/search'},
+{slug:'connecta',name:'CONNECTA',category:'Community',icon:'◉',description:'Social network, communities, messaging, creators, business pages, jobs and marketplace connections.',status:'foundation',path:'/connecta'},
+{slug:'ai',name:'ONE AI',category:'Intelligence',icon:'✦',description:'Personal, business, school and developer intelligence with creation, analysis and automation.',status:'foundation',path:'/ai'},
+{slug:'cloud',name:'ONE CLOUD',category:'Workspace',icon:'☁',description:'Files, documents, sheets, presentations, mail, calendar and team collaboration.',status:'foundation',path:'/cloud'},
+{slug:'commerce',name:'ONE COMMERCE',category:'Commerce',icon:'◇',description:'Marketplace, storefronts, payments, invoicing, digital products and controlled advertising.',status:'foundation',path:'/commerce'},
+{slug:'nav',name:'IZAKHONO NAV',category:'Mobility & Safety',icon:'⌖',description:'Navigation, driver safety, emergency response, fleet intelligence and African road intelligence.',status:'foundation',path:'/nav'},
+{slug:'fortress',name:'FORTRESS',category:'Security',icon:'◆',description:'Identity protection, fraud signals, device intelligence, permissions and security audit.',status:'foundation',path:'/fortress'}
+];
+function render(list){count.textContent=`${list.length} services · 7 parallel pillars`;grid.innerHTML=list.map(s=>`<article class="service"><div class="service-icon">${s.icon}</div><div class="service-body"><div class="service-meta"><span>${esc(s.category)}</span><em>${esc(s.status)}</em></div><h3>${esc(s.name)}</h3><p>${esc(s.description)}</p><a class="open" href="${esc(s.path)}">Enter service →</a></div></article>`).join('')}
+async function boot(){try{const r=await fetch('./registry.json',{cache:'no-store'});const data=await r.json();services=[...parallel,...data.services.filter(s=>!parallel.some(p=>p.name===s.name))];status.textContent='● ONE ENGINE READY';status.classList.add('ready');render(services)}catch{status.textContent='● DEGRADED';render(parallel)}}
+search.addEventListener('input',()=>{const q=search.value.trim().toLowerCase();render(!q?services:services.filter(s=>[s.name,s.category,s.description].join(' ').toLowerCase().includes(q)))});boot();
