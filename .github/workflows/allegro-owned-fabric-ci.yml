@@ -1,6 +1,7 @@
 name: Allegro Owned Fabric CI
 
 on:
+  workflow_dispatch:
   push:
     branches: [main]
     paths:
@@ -54,9 +55,39 @@ jobs:
           exit 1
       - name: Prove booking persistence
         run: |
-          docker exec izakhono-allegro-core node -e "fetch('http://127.0.0.1:8788/api/bookings',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({name:'CI Musician',mobile:'+27000000000',service:'recording'})}).then(async r=>{const v=await r.json();if(r.status!==201||!v.ok||!v.booking.code){console.error(v);process.exit(1)};console.log(JSON.stringify(v));fetch('http://127.0.0.1:8788/api/bookings/'+v.booking.code).then(async x=>{if(x.status!==200){console.error(await x.text());process.exit(1)};console.log('booking lookup OK')})})"
+          docker exec izakhono-allegro-core node - <<'NODE'
+          const create = await fetch('http://127.0.0.1:8788/api/bookings', {
+            method: 'POST',
+            headers: {'content-type': 'application/json'},
+            body: JSON.stringify({name:'CI Musician',mobile:'+27000000000',service:'recording'})
+          });
+          const value = await create.json();
+          if (create.status !== 201 || !value.ok || !value.booking?.code) {
+            console.error(value);
+            process.exit(1);
+          }
+          const lookup = await fetch('http://127.0.0.1:8788/api/bookings/' + encodeURIComponent(value.booking.code));
+          if (lookup.status !== 200) {
+            console.error(await lookup.text());
+            process.exit(1);
+          }
+          console.log(JSON.stringify({booking:value.booking, lookup:'ok'}));
+          NODE
       - name: Prove payment webhook intake
-        run: docker exec izakhono-allegro-core node -e "fetch('http://127.0.0.1:8788/api/payment/webhook',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({provider:'ikokha',reference:'CI-ALLEGRO-1',status:'paid'})}).then(async r=>{const v=await r.json();if(r.status!==202||!v.ok)process.exit(1);console.log(JSON.stringify(v))})"
+        run: |
+          docker exec izakhono-allegro-core node - <<'NODE'
+          const response = await fetch('http://127.0.0.1:8788/api/payment/webhook', {
+            method: 'POST',
+            headers: {'content-type': 'application/json'},
+            body: JSON.stringify({provider:'ikokha',reference:'CI-ALLEGRO-1',status:'paid'})
+          });
+          const value = await response.json();
+          if (response.status !== 202 || !value.ok) {
+            console.error(value);
+            process.exit(1);
+          }
+          console.log(JSON.stringify(value));
+          NODE
       - name: Cleanup
         if: always()
         run: docker compose --env-file /tmp/allegro.env -f infra/app-fabric-runtime/docker-compose.yml down -v || true
