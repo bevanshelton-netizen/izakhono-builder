@@ -9,14 +9,29 @@ const child = spawn(process.execPath, ["server.mjs"], {
   stdio: "ignore"
 });
 
-const wait = ms => new Promise(r => setTimeout(r, ms));
+const waitForHealth = async (timeoutMs = 5000) => {
+  const deadline = Date.now() + timeoutMs;
+  let lastError;
+  while (Date.now() < deadline) {
+    try {
+      const response = await fetch(`http://127.0.0.1:${port}/health`);
+      if (response.ok) return;
+      lastError = new Error(`health returned ${response.status}`);
+    } catch (error) {
+      lastError = error;
+    }
+    await new Promise(r => setTimeout(r, 100));
+  }
+  throw lastError || new Error("media-core health check timed out");
+};
+
 const api = async (path, options = {}) => {
   const response = await fetch(`http://127.0.0.1:${port}${path}`, options);
   const text = await response.text();
   return { status: response.status, body: text ? JSON.parse(text) : null };
 };
 
-test.before(async () => { await wait(250); });
+test.before(async () => { await waitForHealth(); });
 test.after(() => { child.kill("SIGTERM"); });
 
 test("health endpoint works", async () => {
