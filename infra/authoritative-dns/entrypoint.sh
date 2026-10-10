@@ -49,6 +49,9 @@ allow-axfr-ips=$PRIMARY_PUBLIC_IPV4
 xfr-cycle-interval=60
 EOF
   sqlite3 "$DB" "INSERT OR IGNORE INTO supermasters(ip,nameserver,account) VALUES('$PRIMARY_PUBLIC_IPV4','$SECONDARY_NS_FQDN','izakhono');"
+else
+  echo "DNS_MODE must be primary or secondary" >&2
+  exit 64
 fi
 
 if [ "${PDNS_API_ENABLED:-yes}" = "yes" ] && [ "$DNS_MODE" = "primary" ]; then
@@ -66,4 +69,4 @@ webserver=no
 EOF
 fi
 
-exec /usr/sbin/pdns_server --config-name=authoritative --daemon=no --guardian=no
+exec /usr/sbin/pdns_server --daemon=no --guardian=no
