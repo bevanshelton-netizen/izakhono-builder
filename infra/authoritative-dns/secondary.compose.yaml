@@ -1,0 +1,25 @@
+services:
+  izakhono-dns-secondary:
+    build: .
+    image: izakhono/authoritative-dns:4.9.17
+    restart: unless-stopped
+    environment:
+      DNS_MODE: secondary
+      PDNS_API_ENABLED: "no"
+      PDNS_API_KEY: ${PDNS_API_KEY:?set PDNS_API_KEY}
+      PRIMARY_NS_FQDN: ${PRIMARY_NS_FQDN:?set PRIMARY_NS_FQDN}
+      SECONDARY_NS_FQDN: ${SECONDARY_NS_FQDN:?set SECONDARY_NS_FQDN}
+      PRIMARY_PUBLIC_IPV4: ${PRIMARY_PUBLIC_IPV4:?set PRIMARY_PUBLIC_IPV4}
+    volumes:
+      - pdns-secondary-data:/var/lib/powerdns
+    ports:
+      - "53:53/tcp"
+      - "53:53/udp"
+    healthcheck:
+      test: ["CMD-SHELL", "dig @127.0.0.1 SOA ${SECONDARY_NS_FQDN} +short | grep -q ."]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  pdns-secondary-data:
