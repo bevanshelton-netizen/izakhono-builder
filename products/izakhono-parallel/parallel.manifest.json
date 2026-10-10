@@ -1,0 +1,39 @@
+{
+  "schema": "izakhono.parallel/v1",
+  "name": "IZAKHONO PARALLEL",
+  "principle": "one identity, one control plane, many independent experiences",
+  "infrastructure": {
+    "policy": "owned-first-externally-reversible",
+    "source_of_truth": "IZAKHONO BUILDER",
+    "public_live_requires_evidence": true
+  },
+  "identity": {
+    "service": "IZAKHONO ONE",
+    "modes": ["personal", "business", "creator", "organisation"]
+  },
+  "services": [
+    {"id":"search","name":"IZAKHONO SEARCH","category":"discovery","route":"/functions/v1/izakhono-search-discovery","status":"existing"},
+    {"id":"connecta","name":"CONNECTA","category":"social","route":"/functions/v1/connecta-external","status":"existing"},
+    {"id":"ai","name":"ONE AI","category":"intelligence","route":"/functions/v1/izakhono-one-device-ai","status":"existing"},
+    {"id":"one","name":"IZAKHONO ONE","category":"control-plane","route":"/functions/v1/izakhono-one-hub","status":"existing"},
+    {"id":"fortress","name":"FORTRESS","category":"security","status":"core"},
+    {"id":"cloud","name":"ONE CLOUD","category":"workspace","status":"foundation"},
+    {"id":"commerce","name":"ONE COMMERCE","category":"commerce","status":"foundation"},
+    {"id":"nav","name":"IZAKHONO NAV","category":"mobility","status":"foundation"}
+  ],
+  "shared_capabilities": [
+    "identity",
+    "permissions",
+    "ai_context",
+    "notifications",
+    "commerce_events",
+    "security_context",
+    "audit_events",
+    "service_discovery"
+  ],
+  "privacy": {
+    "behavioural_profiling": false,
+    "advertising_identifiers": false,
+    "silent_tracking": false
+  }
+}
