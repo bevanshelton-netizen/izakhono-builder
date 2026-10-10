@@ -101,6 +101,30 @@ services:
       retries: 10
       start_period: 5s
 
+  allegro:
+    build:
+      context: ../../products/allegro-core
+      dockerfile: Dockerfile
+    image: izakhono/allegro-core:local
+    container_name: izakhono-allegro-core
+    restart: unless-stopped
+    environment:
+      PORT: "8788"
+      ALLEGRO_DATA_DIR: /data
+      ALLEGRO_SUPABASE_API: ${ALLEGRO_SUPABASE_API:-}
+      ALLEGRO_SUPABASE_GROWTH: ${ALLEGRO_SUPABASE_GROWTH:-}
+    volumes:
+      - allegro_data:/data
+    networks:
+      - public
+      - private
+    healthcheck:
+      test: ["CMD","node","-e","fetch('http://127.0.0.1:8788/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+
   fabric:
     build:
       context: ../../products/izakhono-fabric/gateway
@@ -123,6 +147,8 @@ services:
     depends_on:
       crm:
         condition: service_healthy
+      allegro:
+        condition: service_healthy
     networks:
       - public
       - private
@@ -142,6 +168,8 @@ volumes:
     name: izakhono_tasks_data
   flow_data:
     name: izakhono_flow_data
+  allegro_data:
+    name: izakhono_allegro_data
   fabric_outbox:
     name: izakhono_fabric_outbox
 
