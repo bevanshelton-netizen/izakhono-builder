@@ -1,0 +1,45 @@
+name: Allegro Core CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'products/allegro-core/**'
+      - '.github/workflows/allegro-core-ci.yml'
+  pull_request:
+    paths:
+      - 'products/allegro-core/**'
+      - '.github/workflows/allegro-core-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax check
+        working-directory: products/allegro-core
+        run: npm run check
+      - name: Runtime test
+        working-directory: products/allegro-core
+        run: npm test
+      - name: Container build
+        run: docker build -t izakhono-allegro-core:ci products/allegro-core
+      - name: Container health test
+        run: |
+          docker run -d --name allegro-core-ci -p 18788:8788 izakhono-allegro-core:ci
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:18788/health >/tmp/allegro-health.json; then cat /tmp/allegro-health.json; exit 0; fi
+            sleep 1
+          done
+          docker logs allegro-core-ci
+          exit 1
+      - name: Cleanup
+        if: always()
+        run: docker rm -f allegro-core-ci >/dev/null 2>&1 || true
