@@ -10,7 +10,7 @@ set -eu
 curl -fsS -X POST "$PDNS_API_URL/zones" \
   -H "X-API-Key: $PDNS_API_KEY" \
   -H 'Content-Type: application/json' \
-  --data "{\"name\":\"$ZONE\",\"kind\":\"Native\",\"nameservers\":[\"$PRIMARY_NS_FQDN.\",\"$SECONDARY_NS_FQDN.\"]}" \
+  --data "{\"name\":\"$ZONE\",\"kind\":\"Master\",\"nameservers\":[\"$PRIMARY_NS_FQDN.\",\"$SECONDARY_NS_FQDN.\"]}" \
   || true
 
 printf '%s\n' "Zone created or already exists: $ZONE"
