@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "wrangler dev",
-    "typecheck": "tsc --noEmit --target ES2022 --lib ES2022,DOM,DOM.Iterable --module ESNext src/index.ts && tsc --noEmit --target ES2022 --lib ES2022,DOM,DOM.Iterable --module ESNext src/repository.ts src/internal-repository.ts && tsc --noEmit --noCheck --target ES2022 --lib ES2022,DOM,DOM.Iterable --module ESNext src/secure.ts src/sovereign.ts && tsc --noEmit --target ES2022 --lib ES2022,DOM --module ESNext products/izakhono-docflow/src/index.ts && tsc --noEmit --target ES2022 --lib ES2022,DOM --module ESNext products/izakhono-super-app/src/index.ts",
+    "typecheck": "tsc --noEmit --target ES2022 --lib ES2022,DOM,DOM.Iterable --module ESNext src/index.ts && tsc --noEmit --target ES2022 --lib ES2022,DOM,DOM.Iterable --module ESNext src/repository.ts src/internal-repository.ts && tsc --noEmit --noCheck --target ES2022 --lib ES2022,DOM --module ESNext src/secure.ts src/sovereign.ts && tsc --noEmit --target ES2022 --lib ES2022,DOM --module ESNext products/izakhono-docflow/src/index.ts && tsc --noEmit --target ES2022 --lib ES2022,DOM --module ESNext products/izakhono-super-app/src/index.ts",
     "registry:typecheck": "tsc --noEmit --target ES2022 --lib ES2022,DOM,DOM.Iterable --module ESNext registry/*.ts",
     "registry:dry": "wrangler deploy --config registry/wrangler.jsonc --dry-run",
     "registry:migrate": "wrangler d1 migrations apply DB --config registry/wrangler.jsonc --remote",
@@ -12,7 +12,7 @@
     "deploy:first": "wrangler deploy",
     "db:migrate": "wrangler d1 migrations apply DB --remote",
     "deploy": "wrangler deploy && wrangler d1 migrations apply DB --remote && wrangler deploy",
-    "validate": "npm run super-engine:portfolio && npm run validate:build-anything && npm run validate:portfolio-growth && npm run validate:growth-engine && npm run validate:growth-edge && npm run validate:affiliate && npm run validate:finance-core && npm run validate:super-app && npm run validate:mail && npm run validate:host && npm run validate:super-seo && npm run validate:media-core && npm run registry:supervisor-test && npm run registry:control-plane-test && npm run typecheck && wrangler deploy --dry-run",
+    "validate": "npm install --prefix products/izakhono-core --ignore-scripts --no-audit --no-fund && npm run super-engine:portfolio && npm run validate:build-anything && npm run validate:portfolio-growth && npm run validate:growth-engine && npm run validate:growth-edge && npm run validate:affiliate && npm run validate:finance-core && npm run validate:super-app && npm run validate:mail && npm run validate:host && npm run validate:super-seo && npm run validate:media-core && npm run registry:supervisor-test && npm run registry:control-plane-test && npm run typecheck && wrangler deploy --dry-run",
     "super-engine:portfolio": "node scripts/super-engine-portfolio.mjs",
     "registry:supervisor-test": "npx --yes tsx@4.20.3 registry/worker-supervisor.contract.test.ts && npx --yes tsx@4.20.3 registry/builder-queue.test.ts",
     "registry:control-plane-test": "npx --yes tsx@4.20.3 registry/control-plane-diagnostics.test.ts",
