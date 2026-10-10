@@ -1,0 +1,62 @@
+name: Allegro Owned Fabric CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'products/allegro-core/**'
+      - 'infra/app-fabric-runtime/docker-compose.yml'
+      - '.github/workflows/allegro-owned-fabric-ci.yml'
+  pull_request:
+    paths:
+      - 'products/allegro-core/**'
+      - 'infra/app-fabric-runtime/docker-compose.yml'
+      - '.github/workflows/allegro-owned-fabric-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  runtime:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create isolated networks
+        run: |
+          docker network create izakhono_public
+          docker network create --internal izakhono_private
+      - name: Configure runtime
+        run: |
+          cat > /tmp/allegro.env <<'EOF'
+          CRM_ADMIN_TOKEN=ci-admin-token
+          CRM_INGEST_TOKEN=ci-ingest-token
+          FLOW_ADMIN_TOKEN=ci-flow-admin-token
+          FLOW_INGEST_TOKEN=ci-flow-ingest-token
+          REVENUE_FLOW_TOKEN=ci-revenue-flow-token
+          IZAKHONO_TASKS_TOKEN=ci-tasks-owner-token
+          IZAKHONO_TASKS_FLOW_TOKEN=ci-tasks-flow-token
+          IZAKHONO_FABRIC_INTERNAL_TOKEN=ci-internal-token
+          IZAKHONO_FABRIC_PUBLIC_INTAKE=false
+          EOF
+      - name: Build and start owned Allegro runtime
+        run: docker compose --env-file /tmp/allegro.env -f infra/app-fabric-runtime/docker-compose.yml build allegro && docker compose --env-file /tmp/allegro.env -f infra/app-fabric-runtime/docker-compose.yml up -d allegro
+      - name: Prove Allegro health
+        run: |
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8788/health >/tmp/health.json; then cat /tmp/health.json; exit 0; fi
+            sleep 1
+          done
+          docker logs izakhono-allegro-core
+          exit 1
+      - name: Prove booking persistence
+        run: |
+          response=$(curl -fsS -X POST http://127.0.0.1:8788/api/bookings -H 'content-type: application/json' -d '{"name":"CI Musician","mobile":"+27000000000","service":"recording"}')
+          echo "$response"
+          code=$(printf '%s' "$response" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>console.log(JSON.parse(s).booking.code))")
+          curl -fsS "http://127.0.0.1:8788/api/bookings/$code"
+      - name: Prove payment webhook intake
+        run: curl -fsS -X POST http://127.0.0.1:8788/api/payment/webhook -H 'content-type: application/json' -d '{"provider":"ikokha","reference":"CI-ALLEGRO-1","status":"paid"}'
+      - name: Cleanup
+        if: always()
+        run: docker compose --env-file /tmp/allegro.env -f infra/app-fabric-runtime/docker-compose.yml down -v || true
