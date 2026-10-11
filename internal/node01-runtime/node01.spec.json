@@ -1,0 +1,33 @@
+{
+  "node_id": "NODE01",
+  "role": "owned-compute-primary",
+  "control_port": 8090,
+  "workload_network": "izakhono",
+  "registry": "ghcr.io/bevanshelton-netizen",
+  "principles": [
+    "owned-first",
+    "external-reversible",
+    "health-gated",
+    "least-privilege-control-plane",
+    "no-unverified-production-claims"
+  ],
+  "initial_workloads": [
+    {
+      "name": "izakhono-super-seo",
+      "image": "ghcr.io/bevanshelton-netizen/izakhono-super-seo:node01",
+      "port": 8097,
+      "health": "/health"
+    }
+  ],
+  "future_nodes": ["NODE02", "NODE03", "NODE04"],
+  "layers": [
+    "hardware-or-vm",
+    "linux",
+    "docker",
+    "node01-control-runtime",
+    "workload-runtime",
+    "edge-and-tls",
+    "observability",
+    "backup-and-recovery"
+  ]
+}
