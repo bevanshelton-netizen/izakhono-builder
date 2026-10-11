@@ -1,0 +1,33 @@
+{
+  "node": "NODE01",
+  "service": "izakhono-mail",
+  "hostname": "mail.izakhono.local",
+  "listen": {
+    "host": "0.0.0.0",
+    "smtp": 25,
+    "submission": 587
+  },
+  "storage": {
+    "root": "/var/lib/izakhono-mail"
+  },
+  "limits": {
+    "maxMessageBytes": 26214400,
+    "queueMaxAttempts": 8
+  },
+  "transport": {
+    "owned": "node01-outbound-smtp",
+    "fallback": "external-relay-bridge",
+    "fallbackEnabled": false
+  },
+  "security": {
+    "requireTlsForSubmission": true,
+    "authAdapter": "NODE01_AUTH",
+    "dkimSigner": "NODE01_DKIM",
+    "spfPolicy": "NODE01_DNS",
+    "dmarcPolicy": "NODE01_DNS"
+  },
+  "dns": {
+    "mx": "mail.izakhono.co.za",
+    "ptr": "mail.izakhono.co.za"
+  }
+}
