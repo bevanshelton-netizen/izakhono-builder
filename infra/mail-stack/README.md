@@ -1,6 +1,6 @@
 # IZAKHONO Mail Stack
 
-Portfolio-wide business-email identity and routing control plane.
+Portfolio-wide business-email identity, routing and processing control plane.
 
 ## Purpose
 
@@ -11,7 +11,8 @@ The stack separates:
 - inbound routing;
 - outbound transport;
 - DNS authentication;
-- mailbox storage.
+- mailbox storage;
+- message processing and security policy.
 
 This permits one controlled inbox/mailbox layer to serve many public aliases while every platform presents its own business address.
 
@@ -21,6 +22,7 @@ This permits one controlled inbox/mailbox layer to serve many public aliases whi
 Platform app / website
   -> IZAKHONO Mail Identity Registry
   -> IZAKHONO Mail Gateway on NODE01
+  -> message processor
   -> standards-based mail transport adapter
   -> public mail network
 
@@ -28,10 +30,31 @@ Inbound:
 public MX
   -> approved inbound adapter / owned MTA
   -> IZAKHONO Mail Gateway
-  -> central authorised mailbox or platform queue
+  -> message processor
+  -> security / routing / audit
+  -> authorised mailbox or platform queue
 ```
 
 The transport adapter is replaceable. No platform may hard-code a commercial email provider as a permanent dependency.
+
+## Thorough message processing
+
+Every message entering the platform is intended to pass through the same deterministic processing contract before delivery:
+
+1. Normalize sender and recipient addresses.
+2. Validate sender, recipient count and message-size policy.
+3. Generate a stable message identifier for deduplication/audit.
+4. Classify risk indicators (normal, bulk, phishing, malware).
+5. Resolve every recipient against the platform identity registry.
+6. Route known recipients to the authorised mailbox/queue.
+7. Quarantine critical-risk messages.
+8. Send high-risk messages to security review rather than silently delivering them.
+9. Keep unknown recipients unrouted rather than guessing a mailbox.
+10. Record processing checks and disposition for auditability.
+
+The implementation is in `mail-processor.mjs` and its contract tests are in `mail-processor.test.mjs`.
+
+This processor is transport-agnostic: SMTP/IMAP, an owned MTA, or a replaceable relay can feed it without changing platform-facing email identities.
 
 ## Address policy
 
@@ -87,6 +110,7 @@ An owned MTA may be used when IZAKHONO has a suitable public IP, PTR/rDNS, open 
 ```
 node infra/mail-stack/verify.mjs
 node infra/mail-stack/render-addresses.mjs
+node infra/mail-stack/mail-processor.test.mjs
 ```
 
 Windows:
@@ -96,7 +120,6 @@ VERIFY-IZAKHONO-MAIL-STACK.cmd
 ```
 
 The generated CSV is an operational register only. DNS/mailbox provisioning still requires access to the authoritative DNS and active mail transport.
-
 
 ## Domain readiness
 
