@@ -1,4 +1,4 @@
-import { createAdapters, chooseProvider, generationManifest, type GenerationRequest, type ProviderEnv } from './provider-router';
+import { createAdapters, chooseProvider, generationManifest, type GenerationRequest, type ProviderEnv, type ProviderId } from './provider-router';
 import { creatorSkills, selectSkills } from './skill-registry';
 import { activateSkill } from './skill-instructions';
 
@@ -27,9 +27,11 @@ function buildPlan(brief: string) {
   return { title, logline: brief, stages, gates: ['creative approval', 'generation approval', 'final QA', 'publishing approval'] };
 }
 
+function authorized(request: Request, env: Env) { return !env.CREATOR_GENERATION_SECRET || request.headers.get('x-creator-generation-secret') === env.CREATOR_GENERATION_SECRET; }
+
 async function handleGenerate(request: Request, env: Env): Promise<Response> {
   if (env.CREATOR_GENERATION_ENABLED !== 'true') return json({ error: 'Generation is disabled. Configure CREATOR_GENERATION_ENABLED=true after provider and billing review.' }, 403);
-  if (env.CREATOR_GENERATION_SECRET && request.headers.get('x-creator-generation-secret') !== env.CREATOR_GENERATION_SECRET) return json({ error: 'generation authorization required' }, 401);
+  if (!authorized(request, env)) return json({ error: 'generation authorization required' }, 401);
   const body = await request.json().catch(() => null) as { approved?: boolean; requests?: GenerationRequest[]; provider?: string } | null;
   if (!body?.approved) return json({ error: 'explicit generation approval is required' }, 400);
   if (!Array.isArray(body.requests) || body.requests.length === 0) return json({ error: 'requests are required' }, 400);
@@ -44,25 +46,26 @@ async function handleGenerate(request: Request, env: Env): Promise<Response> {
   return json({ status: 'submitted', manifest: generationManifest(body.requests, jobs) });
 }
 
+async function handlePoll(request: Request, env: Env, provider: string, externalId: string): Promise<Response> {
+  if (env.CREATOR_GENERATION_ENABLED !== 'true') return json({ error: 'Generation is disabled.' }, 403);
+  if (!authorized(request, env)) return json({ error: 'generation authorization required' }, 401);
+  if (!['runway', 'kling', 'luma'].includes(provider)) return json({ error: 'unsupported provider' }, 400);
+  if (!externalId || externalId.length > 256 || !/^[A-Za-z0-9._:-]+$/.test(externalId)) return json({ error: 'invalid external job id' }, 400);
+  const adapter = createAdapters(env).find(item => item.id === provider as ProviderId);
+  if (!adapter?.enabled) return json({ error: `${provider} is not configured` }, 503);
+  return json({ status: 'polled', job: await adapter.poll(externalId, 'video') });
+}
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
     if (request.method === 'GET' && url.pathname === '/') return new Response(html, { headers: { 'content-type': 'text/html; charset=utf-8' } });
-    if (request.method === 'GET' && url.pathname === '/health') return json({ ok: true, product: 'izakhono-creator', version: '0.3.0' });
+    if (request.method === 'GET' && url.pathname === '/health') return json({ ok: true, product: 'izakhono-creator', version: '0.4.0' });
     if (request.method === 'GET' && url.pathname === '/api/skills') return json({ skills });
-    if (request.method === 'GET' && url.pathname.startsWith('/api/skills/')) {
-      const id = url.pathname.slice('/api/skills/'.length).replace(/\/activate$/, '');
-      const activated = activateSkill(id);
-      if (!activated) return json({ error: 'skill not found' }, 404);
-      return json({ status: 'activated', ...activated });
-    }
+    if (request.method === 'GET' && url.pathname.startsWith('/api/skills/')) { const id = url.pathname.slice('/api/skills/'.length).replace(/\/activate$/, ''); const activated = activateSkill(id); if (!activated) return json({ error: 'skill not found' }, 404); return json({ status: 'activated', ...activated }); }
     if (request.method === 'GET' && url.pathname === '/api/providers') return json({ providers: createAdapters(env).map(a => ({ id: a.id, enabled: a.enabled })) });
-    if (request.method === 'POST' && url.pathname === '/api/plan') {
-      const body = await request.json().catch(() => null) as { brief?: string } | null;
-      if (!body?.brief?.trim()) return json({ error: 'brief is required' }, 400);
-      const routed = selectSkills(body.brief);
-      return json({ status: 'planned', skills: routed, plan: buildPlan(body.brief), provider_generation: false });
-    }
+    if (request.method === 'GET' && url.pathname.startsWith('/api/jobs/')) { const parts = url.pathname.split('/').filter(Boolean); if (parts.length !== 3) return json({ error: 'expected /api/jobs/:provider/:externalId' }, 400); return handlePoll(request, env, parts[1], parts[2]); }
+    if (request.method === 'POST' && url.pathname === '/api/plan') { const body = await request.json().catch(() => null) as { brief?: string } | null; if (!body?.brief?.trim()) return json({ error: 'brief is required' }, 400); const routed = selectSkills(body.brief); return json({ status: 'planned', skills: routed, plan: buildPlan(body.brief), provider_generation: false }); }
     if (request.method === 'POST' && url.pathname === '/api/generate') return handleGenerate(request, env);
     return new Response('Not found', { status: 404 });
   }
