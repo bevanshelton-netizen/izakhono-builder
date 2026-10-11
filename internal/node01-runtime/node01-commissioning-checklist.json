@@ -1,0 +1,18 @@
+{
+  "schema_version": "1.0",
+  "node": "NODE01",
+  "status": "not_yet_commissioned",
+  "sections": [
+    {"id":"physical","checks":["rack_secure","bmc_reachable","memory_diagnostics_green","storage_devices_healthy","dual_psu_verified","ups_verified","network_links_verified","serials_recorded"]},
+    {"id":"firmware","checks":["uefi_baseline_recorded","secure_boot_enabled","tpm2_enabled","bmc_firmware_recorded","storage_firmware_recorded","nic_firmware_recorded"]},
+    {"id":"os","checks":["supported_lts_installed","security_updates_applied","ssh_keys_only","host_firewall_default_deny","apparmor_enabled","ntp_synchronized","log_rotation_enabled"]},
+    {"id":"runtime","checks":["docker_healthy","compose_config_valid","private_network_present","control_8090_healthy","registry_5000_local_only"]},
+    {"id":"resilience","checks":["backup_timer_enabled","backup_storage_separate","sha256_verified","restore_rehearsal_passed"]},
+    {"id":"workload","checks":["approved_image_present","super_seo_8097_healthy","health_gate_passed","rollback_path_verified"]},
+    {"id":"edge","checks":["reverse_proxy_config_valid","tls_termination_configured","private_workloads_not_public","dns_verified","external_route_verified"]}
+  ],
+  "production_gate": {
+    "required": ["physical_green","firmware_green","os_green","control_green","registry_green","backup_fresh","restore_tested","workload_green","route_verified"],
+    "claim_rule": "NODE01 may be declared production-ready only when every required gate is explicitly green and externally verified."
+  }
+}
