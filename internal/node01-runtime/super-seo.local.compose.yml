@@ -1,0 +1,20 @@
+services:
+  super-seo:
+    image: 127.0.0.1:5000/izakhono-super-seo:node01
+    container_name: izakhono-super-seo
+    restart: unless-stopped
+    ports:
+      - "8097:8097"
+    networks:
+      - izakhono
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8097/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+networks:
+  izakhono:
+    external: true
+    name: izakhono
