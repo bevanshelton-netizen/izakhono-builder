@@ -1,0 +1,26 @@
+services:
+  super-seo-v5:
+    build:
+      context: ../../..
+      dockerfile: products/izakhono-super-seo/Dockerfile
+    image: izakhono/super-seo:v5
+    container_name: izakhono-super-seo-v5
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: "8097"
+    ports:
+      - "127.0.0.1:8097:8097"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8097/health >/dev/null || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 8
+      start_period: 10s
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp
