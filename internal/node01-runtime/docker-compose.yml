@@ -11,9 +11,36 @@ services:
       ALLOWED_IMAGE_PREFIX: ghcr.io/bevanshelton-netizen/
       NODE01_ALLOW_UNAUTH: "false"
       NODE01_ADMIN_TOKEN: ${NODE01_ADMIN_TOKEN:?NODE01_ADMIN_TOKEN is required}
+    networks:
+      - izakhono
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8090/health').then(r=>{if(!r.ok)process.exit(1)})"]
       interval: 15s
       timeout: 5s
       retries: 5
       start_period: 10s
+
+  registry:
+    image: registry:2
+    container_name: izakhono-node01-registry
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:5000:5000"
+    volumes:
+      - node01_registry:/var/lib/registry
+    networks:
+      - izakhono
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:5000/v2/"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+networks:
+  izakhono:
+    name: izakhono
+
+volumes:
+  node01_registry:
+    name: izakhono_node01_registry
