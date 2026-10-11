@@ -1,0 +1,42 @@
+name: Allegro Owned Web Verify
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/allegro-owned-web-verify.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Pull owned Allegro web image
+        run: docker pull ghcr.io/bevanshelton-netizen/allegro-vibez-web:production-master
+      - name: Verify owned web health contract
+        run: |
+          set -euo pipefail
+          docker run -d --name allegro-owned-web-ci -p 127.0.0.1:18081:8080 ghcr.io/bevanshelton-netizen/allegro-vibez-web:production-master
+          trap 'docker rm -f allegro-owned-web-ci >/dev/null 2>&1 || true' EXIT
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:18081/healthz >/tmp/allegro-health.json; then break; fi
+            sleep 2
+          done
+          test -s /tmp/allegro-health.json
+          grep -q '"ok":true' /tmp/allegro-health.json
+          grep -q '"product":"allegro-vibez"' /tmp/allegro-health.json
+          curl -fsS http://127.0.0.1:18081/ | grep -qi 'ALLEGRO'
+          curl -fsS http://127.0.0.1:18081/radio | grep -q 'id="root"'
+          echo "Owned Allegro web image passed health and route verification."
