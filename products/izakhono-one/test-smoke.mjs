@@ -42,6 +42,12 @@ try {
   const route = await get('/api/route/nav');
   if (route.status !== 200 || route.body.status !== 'foundation') throw new Error('route contract failed');
 
+  const policy = await get('/api/policy/commerce?action=payments');
+  if (policy.status !== 200 || policy.body.decision !== 'review') throw new Error('policy gate contract failed');
+
+  const denied = await get('/api/policy/commerce?action=unknown_action');
+  if (denied.status !== 200 || denied.body.decision !== 'deny') throw new Error('policy deny contract failed');
+
   console.log('IZAKHONO ONE smoke test: PASS');
 } finally {
   child.kill('SIGTERM');
