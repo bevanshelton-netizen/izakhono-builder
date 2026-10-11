@@ -4,5 +4,4 @@ COPY package.json server.mjs test.mjs ./
 RUN node test.mjs
 ENV NODE_ID=NODE01 PORT=8090
 EXPOSE 8090
-USER node
 CMD ["node", "server.mjs"]
