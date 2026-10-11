@@ -1,0 +1,72 @@
+name: IZAKHONO SUPER SEO NODE01 CI
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'products/izakhono-super-seo/**'
+      - 'internal/node01-command-gateway/deploy-profiles/izakhono-super-seo.json'
+      - '.github/workflows/super-seo-node01-ci.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'products/izakhono-super-seo/**'
+      - 'internal/node01-command-gateway/deploy-profiles/izakhono-super-seo.json'
+      - '.github/workflows/super-seo-node01-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  owned-runtime:
+    name: Build and verify owned SUPER SEO runtime
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Validate NODE01 deployment contract
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          profile = json.loads(Path('internal/node01-command-gateway/deploy-profiles/izakhono-super-seo.json').read_text())
+          assert profile['source'] == 'izakhono-code'
+          assert profile['repository'] == 'izakhono-builder'
+          assert profile['app'] == 'izakhono-super-seo'
+          assert profile['environment'] == 'production'
+          assert profile['mode'] == 'single'
+          assert profile['container_port'] == 8097
+          assert profile['health_path'] == '/health'
+          assert profile['dockerfile'] == 'products/izakhono-super-seo/Dockerfile'
+          assert Path(profile['dockerfile']).is_file()
+          print('[PASS] SUPER SEO NODE01 production profile is valid.')
+          PY
+
+      - name: Build owned SUPER SEO container
+        shell: bash
+        run: |
+          docker build -f products/izakhono-super-seo/Dockerfile -t izakhono-super-seo:node01-ci .
+
+      - name: Start owned SUPER SEO canary
+        shell: bash
+        run: |
+          docker run -d --name izakhono-super-seo-node01-ci \
+            -e PORT=8097 \
+            -p 127.0.0.1:18097:8097 \
+            izakhono-super-seo:node01-ci
+          trap 'docker logs izakhono-super-seo-node01-ci || true; docker rm -f izakhono-super-seo-node01-ci || true' EXIT
+          for _ in $(seq 1 45); do
+            if curl -fsS http://127.0.0.1:18097/health >/tmp/super-seo-health.json; then
+              cat /tmp/super-seo-health.json
+              echo '[PASS] SUPER SEO owned runtime health gate passed.'
+              exit 0
+            fi
+            sleep 2
+          done
+          echo '[FAIL] SUPER SEO owned runtime did not become healthy.' >&2
+          exit 1
