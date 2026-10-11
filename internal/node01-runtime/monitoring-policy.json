@@ -1,0 +1,15 @@
+{
+  "node_id": "NODE01",
+  "schema": "izakhono.node.monitoring.v1",
+  "checks": [
+    {"name":"control-health","target":"http://127.0.0.1:8090/health","interval_seconds":15},
+    {"name":"super-seo-health","target":"http://127.0.0.1:8097/health","interval_seconds":15},
+    {"name":"registry-health","target":"http://127.0.0.1:5000/v2/","interval_seconds":30}
+  ],
+  "failure_policy": {
+    "consecutive_failures": 3,
+    "action": "mark-unhealthy-and-hold-promotion",
+    "never": ["silently-restart-production-data-services", "declare-healthy-without-check"]
+  },
+  "required_signals": ["health", "container-state", "disk-capacity", "backup-age"]
+}
