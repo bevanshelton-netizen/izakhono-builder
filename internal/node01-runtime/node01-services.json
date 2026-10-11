@@ -1,0 +1,38 @@
+{
+  "node_id": "NODE01",
+  "schema": "izakhono.node.services.v1",
+  "network": "izakhono",
+  "services": [
+    {
+      "name": "node01-control",
+      "role": "control-plane",
+      "internal_url": "http://node01:8090",
+      "health": "/health",
+      "port": 8090,
+      "exposure": "private"
+    },
+    {
+      "name": "izakhono-super-seo",
+      "role": "workload",
+      "internal_url": "http://izakhono-super-seo:8097",
+      "health": "/health",
+      "port": 8097,
+      "exposure": "private"
+    },
+    {
+      "name": "registry",
+      "role": "artifact-registry",
+      "internal_url": "http://registry:5000",
+      "health": "/v2/",
+      "port": 5000,
+      "exposure": "localhost-only"
+    }
+  ],
+  "rules": [
+    "service names are stable discovery identifiers",
+    "workloads communicate over the private izakhono network",
+    "public exposure requires an explicit edge policy",
+    "health checks are mandatory before traffic promotion",
+    "registry is never publicly exposed"
+  ]
+}
