@@ -1,0 +1,48 @@
+services:
+  control-plane:
+    build: ./control-plane
+    environment:
+      NODE_ID: control-plane
+      STATE_DIR: /var/lib/izakhono
+    volumes:
+      - host-state:/var/lib/izakhono
+      - /var/run/docker.sock:/var/run/docker.sock
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+
+  edge:
+    build: ./edge
+    depends_on:
+      - control-plane
+    ports:
+      - "80:8080"
+      - "443:8443"
+    restart: unless-stopped
+
+  node01:
+    build: ./node-agent
+    environment:
+      NODE_ID: NODE01
+      CONTROL_PLANE: http://control-plane:8080
+      WORK_ROOT: /var/lib/izakhono/work
+    volumes:
+      - node01-work:/var/lib/izakhono/work
+      - /var/run/docker.sock:/var/run/docker.sock
+    restart: unless-stopped
+
+  node02:
+    build: ./node-agent
+    environment:
+      NODE_ID: NODE02
+      CONTROL_PLANE: http://control-plane:8080
+      WORK_ROOT: /var/lib/izakhono/work
+    volumes:
+      - node02-work:/var/lib/izakhono/work
+      - /var/run/docker.sock:/var/run/docker.sock
+    restart: unless-stopped
+
+volumes:
+  host-state:
+  node01-work:
+  node02-work:
