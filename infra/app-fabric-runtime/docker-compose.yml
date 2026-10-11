@@ -85,7 +85,7 @@ services:
       FLOW_INGEST_TOKEN: ${FLOW_INGEST_TOKEN:-}
       FLOW_ADAPTERS_JSON: ${FLOW_ADAPTERS_JSON:-}
       FLOW_ALLOW_INSECURE_LOCAL: "false"
-    volumes: [flow_data:/data]
+    volumes: [flow_data]
     networks: [private]
     healthcheck:
       test: ["CMD","node","-e","fetch('http://127.0.0.1:8794/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
@@ -117,6 +117,20 @@ services:
       timeout: 5s
       retries: 10
       start_period: 5s
+
+  allegro_web:
+    image: ${ALLEGRO_WEB_IMAGE:-ghcr.io/bevanshelton-netizen/allegro-vibez-web:production-master}
+    container_name: izakhono-allegro-web
+    restart: unless-stopped
+    ports:
+      - "${ALLEGRO_WEB_PORT:-8081}:8080"
+    networks: [public]
+    healthcheck:
+      test: ["CMD","wget","-q","-O","/dev/null","http://127.0.0.1:8080/healthz"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
 
   fabric:
     build:
