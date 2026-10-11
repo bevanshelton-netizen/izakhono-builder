@@ -1,4 +1,4 @@
-import { resolveService } from './contracts.mjs';
+import { resolveService, supports } from './contracts.mjs';
 
 const decisions = new Set(['allow','deny','review']);
 
@@ -8,7 +8,7 @@ export function evaluatePolicy({service, action, authenticated=false, verified=f
   if (!action) return {decision:'deny', reason:'missing_action'};
   if (destructive && !authenticated) return {decision:'deny', reason:'authentication_required'};
   if (payment && !verified) return {decision:'review', reason:'payment_verification_required'};
-  if (service === 'search' && !contract.capabilities.some(Boolean)) return {decision:'deny', reason:'capability_unavailable'};
+  if (action !== 'read' && !supports(service, action)) return {decision:'deny', reason:'unsupported_capability'};
   return {decision:'allow', reason:'foundation_policy_pass'};
 }
 
