@@ -3,13 +3,18 @@ import subprocess
 from fastapi import FastAPI, Header, HTTPException
 from pydantic import BaseModel, Field
 
-app = FastAPI(title="IZAKHONO DNS Controller", version="0.1.0")
+app = FastAPI(title="IZAKHONO DNS Controller", version="0.2.0")
 
 PRIMARY = os.getenv("DNS_PRIMARY_HOST", "127.0.0.1")
 PORT = os.getenv("DNS_PRIMARY_PORT", "53")
-API_KEY = os.getenv("DNS_API_KEY", "change-me-before-production")
-ZONE = "izakhonoafrica.co.za."
-KEY_FILE = "/secrets/izakhono-controller.key"
+API_KEY = os.getenv("DNS_API_KEY")
+ZONE = os.getenv("DNS_ZONE", "")
+KEY_FILE = os.getenv("DNS_TSIG_KEY_FILE", "/secrets/izakhono-controller.key")
+
+if not API_KEY:
+    raise RuntimeError("DNS_API_KEY must be supplied at deployment time")
+if not ZONE:
+    raise RuntimeError("DNS_ZONE must be supplied at deployment time")
 
 class Record(BaseModel):
     name: str = Field(min_length=1, max_length=253)
@@ -25,18 +30,20 @@ def auth(x_api_key: str | None):
 
 def fqdn(name: str) -> str:
     clean = name.strip()
+    zone = ZONE.rstrip(".") + "."
     if clean in ("@", ""):
-        return ZONE
+        return zone
     if clean.endswith("."):
         return clean
-    return clean + "." + ZONE
+    return clean + "." + zone
 
 
 def run_update(record: Record, delete: bool = False):
     name = fqdn(record.name)
     rr = record.record_type
     cmd = ["nsupdate", "-k", KEY_FILE]
-    lines = [f"server {PRIMARY} {PORT}", f"zone {ZONE}"]
+    zone = ZONE.rstrip(".") + "."
+    lines = [f"server {PRIMARY} {PORT}", f"zone {zone}"]
     if delete:
         lines.append(f"update delete {name} {rr}")
     else:
@@ -51,7 +58,7 @@ def run_update(record: Record, delete: bool = False):
 
 @app.get("/health")
 def health():
-    return {"service": "izakhono-dns-controller", "status": "ok"}
+    return {"service": "izakhono-dns-controller", "status": "ok", "zone": ZONE.rstrip(".")}
 
 
 @app.post("/v1/records")
