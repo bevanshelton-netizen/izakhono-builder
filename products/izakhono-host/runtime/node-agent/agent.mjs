@@ -1,14 +1,64 @@
 import http from 'node:http';
+import net from 'node:net';
+
 const nodeId=process.env.NODE_ID||'NODE01';
 const control=process.env.CONTROL_PLANE||'http://control-plane:8080';
 const workRoot=process.env.WORK_ROOT||'/var/lib/izakhono/work';
+const runtimeNetwork=process.env.RUNTIME_NETWORK||'izakhono-runtime';
+const socketPath='/var/run/docker.sock';
+const deployments=new Map();
+
+const json=(res,status,body)=>{res.writeHead(status,{'content-type':'application/json; charset=utf-8','cache-control':'no-store'});res.end(JSON.stringify(body));};
+async function body(req){const chunks=[];for await(const chunk of req)chunks.push(chunk);return JSON.parse(Buffer.concat(chunks).toString()||'{}');}
+
+function dockerRequest(method,path,payload=null){
+  return new Promise((resolve,reject)=>{
+    const socket=net.createConnection(socketPath);
+    let raw='';
+    const reqBody=payload==null?'':JSON.stringify(payload);
+    socket.on('connect',()=>{
+      socket.write(`${method} ${path} HTTP/1.1\r\nHost: docker\r\nConnection: close\r\nContent-Type: application/json\r\nContent-Length: ${Buffer.byteLength(reqBody)}\r\n\r\n${reqBody}`);
+    });
+    socket.on('data',chunk=>raw+=chunk.toString());
+    socket.on('error',reject);
+    socket.on('end',()=>{
+      const split=raw.indexOf('\r\n\r\n');
+      const head=split>=0?raw.slice(0,split):raw;
+      const text=split>=0?raw.slice(split+4):'';
+      const match=head.match(/^HTTP\/\d\.\d (\d+)/);
+      const status=Number(match?.[1]||0);
+      let data=text;
+      try{data=JSON.parse(text);}catch{}
+      if(status>=200&&status<300)return resolve({status,data});
+      reject(new Error(`docker ${status}: ${typeof data==='string'?data:JSON.stringify(data)}`));
+    });
+  });
+}
+
+async function deploy(b){
+  if(!b.deployment||!b.app||!b.image)throw new Error('deployment, app and immutable image are required');
+  const name=`izakhono-${String(b.deployment).replace(/[^a-zA-Z0-9_.-]/g,'-').toLowerCase()}`;
+  const image=String(b.image);
+  try{await dockerRequest('DELETE',`/containers/${encodeURIComponent(name)}?force=true`);}catch{}
+  await dockerRequest('POST',`/images/create?fromImage=${encodeURIComponent(image)}`);
+  const created=await dockerRequest('POST','/containers/create?name='+encodeURIComponent(name),{Image:image,Labels:{'izakhono.app':String(b.app),'izakhono.deployment':String(b.deployment)},HostConfig:{RestartPolicy:{Name:'unless-stopped'},NetworkMode:runtimeNetwork}});
+  const id=created.data.Id;
+  await dockerRequest('POST',`/containers/${id}/start`);
+  const result={ok:true,node_id:nodeId,deployment:b.deployment,app:b.app,container:name,container_id:id,image,state:'running'};
+  deployments.set(String(b.deployment),result);
+  return result;
+}
 
 async function heartbeat(){
-  const payload=JSON.stringify({node_id:nodeId,capacity:{cpu:'software-scheduler',memory:'container-managed',storage:workRoot},running:0});
-  const r=await fetch(`${control}/api/nodes/heartbeat`,{method:'POST',headers:{'content-type':'application/json'},body:payload});
-  if(!r.ok) throw new Error(`heartbeat ${r.status}`);
+ const r=await fetch(`${control}/api/nodes/heartbeat`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({node_id:nodeId,capacity:{cpu:'docker-runtime',memory:'container-managed',storage:workRoot},running:deployments.size})});
+ if(!r.ok)throw new Error(`heartbeat ${r.status}`);
 }
 async function tick(){try{await heartbeat();console.log(`${nodeId} ready`)}catch(e){console.error(`${nodeId} heartbeat failed`,e.message)}}
-tick(); setInterval(tick,15000);
+tick();setInterval(tick,15000);
 
-http.createServer((req,res)=>{if(req.url==='/healthz'){res.writeHead(200,{'content-type':'application/json'});res.end(JSON.stringify({ok:true,node:nodeId}))}else{res.writeHead(404);res.end()}}).listen(8081,'0.0.0.0');
+http.createServer(async(req,res)=>{
+ if(req.url==='/healthz')return json(res,200,{ok:true,node:nodeId,runtime:'docker'});
+ if(req.method==='POST'&&req.url==='/api/deploy')try{return json(res,202,await deploy(await body(req)));}catch(e){return json(res,500,{ok:false,node_id:nodeId,error:e.message});}
+ if(req.method==='GET'&&req.url==='/api/deployments')return json(res,200,{ok:true,node_id:nodeId,deployments:[...deployments.values()]});
+ return json(res,404,{ok:false,error:'not found'});
+}).listen(8081,'0.0.0.0');
