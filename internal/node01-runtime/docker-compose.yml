@@ -1,0 +1,19 @@
+services:
+  node01:
+    build: .
+    container_name: izakhono-node01
+    restart: unless-stopped
+    ports:
+      - "8090:8090"
+    environment:
+      NODE_ID: NODE01
+      PORT: 8090
+      ALLOWED_IMAGE_PREFIX: ghcr.io/bevanshelton-netizen/
+      NODE01_ALLOW_UNAUTH: "false"
+      NODE01_ADMIN_TOKEN: ${NODE01_ADMIN_TOKEN:?NODE01_ADMIN_TOKEN is required}
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8090/health').then(r=>{if(!r.ok)process.exit(1)})"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
