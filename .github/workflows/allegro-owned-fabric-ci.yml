@@ -45,18 +45,21 @@ jobs:
           EOF
       - name: Build and start owned Allegro runtime
         run: docker compose --env-file /tmp/allegro.env -f infra/app-fabric-runtime/docker-compose.yml build allegro && docker compose --env-file /tmp/allegro.env -f infra/app-fabric-runtime/docker-compose.yml up -d allegro
-      - name: Prove Allegro health
+      - name: Prove Allegro health and optional adapters
         run: |
           for i in $(seq 1 30); do
             if docker exec izakhono-allegro-core node -e "fetch('http://127.0.0.1:8788/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"; then
               docker exec izakhono-allegro-core wget -qO- http://127.0.0.1:8788/health
+              docker exec izakhono-allegro-core wget -qO- http://127.0.0.1:8788/health/dependencies
               exit 0
             fi
             sleep 1
           done
           docker logs izakhono-allegro-core
           exit 1
-      - name: Prove booking and growth persistence
+      - name: Run Allegro core contract test
+        run: docker exec izakhono-allegro-core node test.mjs
+      - name: Prove booking, growth and durable persistence
         run: |
           docker exec izakhono-allegro-core node - <<'NODE'
           const create = await fetch('http://127.0.0.1:8788/api/bookings', {
@@ -73,7 +76,11 @@ jobs:
           });
           const leadValue = await lead.json();
           if (lead.status !== 201 || !leadValue.ok || !leadValue.lead?.id) { console.error(leadValue); process.exit(1); }
-          console.log(JSON.stringify({bookingCode:value.booking.code, bookingLookup:'ok', leadId:leadValue.lead.id}));
+          const missingReference = await fetch('http://127.0.0.1:8788/api/payment/webhook', {
+            method:'POST', headers:{'content-type':'application/json','x-allegro-webhook-token':'ci-webhook-token'}, body:JSON.stringify({provider:'ikokha',status:'paid'})
+          });
+          if (missingReference.status !== 400) { console.error(await missingReference.text()); process.exit(1); }
+          console.log(JSON.stringify({bookingCode:value.booking.code,bookingLookup:'ok',leadId:leadValue.lead.id,missingReference:'rejected'}));
           NODE
       - name: Prove protected payment webhook and idempotency
         run: |
@@ -86,8 +93,32 @@ jobs:
           if (first.status !== 202 || !firstValue.ok || firstValue.duplicate) { console.error(firstValue); process.exit(1); }
           const duplicate = await fetch('http://127.0.0.1:8788/api/payment/webhook', {...base,body:JSON.stringify({provider:'ikokha',reference:'CI-ALLEGRO-1',status:'paid'})});
           const duplicateValue = await duplicate.json();
-          if (duplicate.status !== 200 || !duplicateValue.ok || !duplicateValue.duplicate) { console.error(duplicateValue); process.exit(1); }
+          if (duplicate.status !== 200 || !duplicateValue.ok || !duplicateValue.duplicate || duplicateValue.eventId !== firstValue.eventId) { console.error(duplicateValue); process.exit(1); }
           console.log(JSON.stringify({webhook:'protected',first:'accepted',second:'idempotent'}));
+          NODE
+      - name: Prove persistence survives runtime restart
+        run: |
+          docker compose --env-file /tmp/allegro.env -f infra/app-fabric-runtime/docker-compose.yml restart allegro
+          for i in $(seq 1 30); do
+            if docker exec izakhono-allegro-core node -e "fetch('http://127.0.0.1:8788/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"; then break; fi
+            sleep 1
+          done
+          docker exec izakhono-allegro-core node - <<'NODE'
+          const health = await (await fetch('http://127.0.0.1:8788/health')).json();
+          if (health.bookings < 2 || health.growthLeads < 1 || health.paymentEvents < 1) { console.error(health); process.exit(1); }
+          const duplicate = await fetch('http://127.0.0.1:8788/api/payment/webhook', {method:'POST',headers:{'content-type':'application/json','x-allegro-webhook-token':'ci-webhook-token'},body:JSON.stringify({provider:'ikokha',reference:'CI-ALLEGRO-1',status:'paid'})});
+          const value = await duplicate.json();
+          if (duplicate.status !== 200 || !value.duplicate) { console.error(value); process.exit(1); }
+          console.log(JSON.stringify({restart:'passed',durablePersistence:'passed',webhookIdempotency:'survived-restart'}));
+          NODE
+      - name: Prove malformed input and body limits
+        run: |
+          docker exec izakhono-allegro-core node - <<'NODE'
+          const malformed = await fetch('http://127.0.0.1:8788/api/bookings', {method:'POST',headers:{'content-type':'application/json'},body:'not-json'});
+          if (malformed.status !== 400) { console.error(await malformed.text()); process.exit(1); }
+          const oversized = await fetch('http://127.0.0.1:8788/api/growth', {method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({email:'ci@example.invalid',message:'x'.repeat(1100000)})});
+          if (oversized.status !== 413) { console.error(await oversized.text()); process.exit(1); }
+          console.log(JSON.stringify({malformedJson:'rejected',oversizedBody:'rejected'}));
           NODE
       - name: Cleanup
         if: always()
