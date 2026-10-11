@@ -19,12 +19,13 @@ AGENTS = [
     AgentSpec("security.audit", "Security Auditor", "security", frozenset({"security.audit"}), risks=frozenset({Risk.READ})),
     AgentSpec("security.threat", "Threat Analyst", "security", frozenset({"security.threat"}), risks=frozenset({Risk.READ})),
     AgentSpec("security.identity", "Identity Engineer", "security", frozenset({"security.identity"}), risks=frozenset({Risk.READ, Risk.WRITE})),
-    AgentSpec("ops.provisioner", "Provisioning Agent", "operations", frozenset({"provision.domain", "provision.site", "provision.email", "provision.ssl"}), risks=frozenset({Risk.READ, Risk.WRITE, Risk.EXTERNAL})),
-    AgentSpec("ops.mail", "Mail Operations Agent", "operations", frozenset({"mail.monitor", "mail.prepare"}), risks=frozenset({Risk.READ, Risk.WRITE})),
+    AgentSpec("ops.provisioner", "Provisioning Agent", "operations", frozenset({"provision.domain", "provision.site", "provision.email", "provision.ssl", "provision.plan"}), risks=frozenset({Risk.READ, Risk.WRITE, Risk.EXTERNAL})),
+    AgentSpec("ops.mail", "Mail Operations Agent", "operations", frozenset({"mail.monitor", "mail.prepare", "mail.draft"}), risks=frozenset({Risk.READ, Risk.WRITE})),
     AgentSpec("ops.crm", "CRM Operations Agent", "operations", frozenset({"crm.sync", "crm.prepare"}), risks=frozenset({Risk.READ, Risk.WRITE})),
     AgentSpec("ops.monitor", "Observability Agent", "operations", frozenset({"observe.health", "observe.alert"}), risks=frozenset({Risk.READ, Risk.WRITE})),
     AgentSpec("ops.incident", "Incident Manager", "operations", frozenset({"incident.triage", "incident.plan"}), risks=frozenset({Risk.READ, Risk.WRITE})),
     AgentSpec("release", "Release Manager", "operations", frozenset({"release.prepare", "release.verify"}), risks=frozenset({Risk.READ, Risk.WRITE})),
+    AgentSpec("ai.gateway", "AI Gateway Agent", "operations", frozenset({"ai.gateway"}), risks=frozenset({Risk.READ, Risk.WRITE})),
     AgentSpec("review", "Critical Reviewer", "governance", frozenset({"review.quality", "review.evidence"}), risks=frozenset({Risk.READ})),
 ]
 
