@@ -3,5 +3,11 @@
   "name": "izakhono-creator",
   "main": "src/index.ts",
   "compatibility_date": "2026-10-11",
-  "workers_dev": true
+  "workers_dev": true,
+  "d1_databases": [
+    { "binding": "DB", "database_name": "izakhono-creator" }
+  ],
+  "r2_buckets": [
+    { "binding": "ASSETS", "bucket_name": "izakhono-creator-assets" }
+  ]
 }
