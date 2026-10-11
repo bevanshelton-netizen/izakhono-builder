@@ -13,6 +13,7 @@ services:
       - ./identity.sql:/docker-entrypoint-initdb.d/003-identity.sql:ro
       - ./rules.sql:/docker-entrypoint-initdb.d/004-rules.sql:ro
       - ./marketplace.sql:/docker-entrypoint-initdb.d/005-marketplace.sql:ro
+      - ./athlete-economy.sql:/docker-entrypoint-initdb.d/006-athlete-economy.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U izakhono -d izakhono_sports"]
       interval: 5s
