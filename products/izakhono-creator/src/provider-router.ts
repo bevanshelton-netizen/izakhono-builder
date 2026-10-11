@@ -9,6 +9,7 @@ export type GenerationRequest = {
   durationSeconds?: number;
   firstFrameUrl?: string;
   lastFrameUrl?: string;
+  shotIndex?: number;
 };
 
 export type GenerationJob = {
