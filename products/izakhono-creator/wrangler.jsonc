@@ -1,0 +1,7 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "izakhono-creator",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-11",
+  "workers_dev": true
+}
