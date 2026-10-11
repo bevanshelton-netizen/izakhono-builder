@@ -1,0 +1,34 @@
+{
+  "node_id": "NODE01",
+  "principle": "no-single-disk-failure-must-destroy-production",
+  "tiers": [
+    {
+      "name": "boot",
+      "layout": "2x enterprise NVMe mirror",
+      "purpose": "OS, Docker engine, control services"
+    },
+    {
+      "name": "workload",
+      "layout": "redundant enterprise NVMe/SAS pool",
+      "purpose": "application data, container state and platform services"
+    },
+    {
+      "name": "registry",
+      "layout": "persistent volume on workload pool",
+      "purpose": "private OCI registry metadata and blobs"
+    },
+    {
+      "name": "backup",
+      "layout": "separate physical storage/node",
+      "purpose": "daily NODE01 recovery copies"
+    }
+  ],
+  "rules": [
+    "Never use NODE01 primary storage as the only backup.",
+    "Keep OS and workload storage logically separated.",
+    "Backups receive SHA-256 manifests.",
+    "Registry data is included in backup scope.",
+    "Restore configuration before workloads.",
+    "Verify storage health before workload promotion."
+  ]
+}
