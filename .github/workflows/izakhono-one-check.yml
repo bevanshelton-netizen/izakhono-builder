@@ -1,0 +1,26 @@
+name: IZAKHONO ONE Checks
+
+on:
+  push:
+    paths:
+      - 'products/izakhono-one/**'
+      - '.github/workflows/izakhono-one-check.yml'
+  pull_request:
+    paths:
+      - 'products/izakhono-one/**'
+      - '.github/workflows/izakhono-one-check.yml'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: products/izakhono-one
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node --check server.mjs
+      - run: node contract-check.mjs
+      - run: node test-smoke.mjs
