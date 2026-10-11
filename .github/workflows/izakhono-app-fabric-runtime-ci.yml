@@ -31,6 +31,7 @@ on:
 
 permissions:
   contents: read
+  packages: read
 
 jobs:
   verify:
@@ -41,6 +42,13 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
+
+      - name: Log in to GHCR for owned runtime images
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Unit verification
         run: |
