@@ -1,0 +1,20 @@
+{
+  "node_id": "NODE01",
+  "heartbeat": {
+    "interval_seconds": 15,
+    "failure_threshold": 3,
+    "endpoint": "http://127.0.0.1:8090/health"
+  },
+  "workloads": {
+    "izakhono-super-seo": {
+      "endpoint": "http://127.0.0.1:8097/health",
+      "interval_seconds": 15,
+      "failure_threshold": 3
+    }
+  },
+  "promotion": {
+    "required_signals": ["node_healthy", "workload_healthy", "container_running", "disk_capacity_ok", "backup_fresh"],
+    "hold_on_missing_signal": true
+  },
+  "alert_states": ["unhealthy", "backup_stale", "disk_low", "promotion_blocked"]
+}
