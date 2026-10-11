@@ -1,0 +1,29 @@
+{
+  "cluster": "IZAKHONO-OWNED",
+  "primary": {
+    "node_id": "NODE01",
+    "role": "owned-compute-primary",
+    "status": "active-contract"
+  },
+  "nodes": [
+    {
+      "node_id": "NODE01",
+      "role": "primary",
+      "registry": "ghcr.io/bevanshelton-netizen",
+      "workloads": ["izakhono-super-seo"]
+    },
+    {
+      "node_id": "NODE02",
+      "role": "future-replica",
+      "status": "planned",
+      "promotion_eligibility": "disabled-until-provisioned"
+    }
+  ],
+  "replication": {
+    "artifacts": "replicate-before-primary-decommission",
+    "configuration": "replicate-versioned-state",
+    "secrets": "never-replicate-in-repository",
+    "health_gate": "required-before-promotion"
+  },
+  "principle": "owned-first; external-reversible"
+}
