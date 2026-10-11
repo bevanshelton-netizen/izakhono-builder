@@ -1,0 +1,27 @@
+name: IZAKHONO Creator Typecheck
+
+on:
+  pull_request:
+    paths:
+      - 'products/izakhono-creator/**'
+      - 'package.json'
+      - '.github/workflows/creator-typecheck.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'products/izakhono-creator/**'
+      - 'package.json'
+      - '.github/workflows/creator-typecheck.yml'
+
+jobs:
+  typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm install --ignore-scripts --no-audit --no-fund
+      - run: npm run creator:typecheck
+      - run: npx wrangler deploy --config products/izakhono-creator/wrangler.jsonc --dry-run
