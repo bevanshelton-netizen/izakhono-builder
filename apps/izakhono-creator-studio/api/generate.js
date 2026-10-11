@@ -1,10 +1,26 @@
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'POST required' });
   try {
-    const { brief = '', brand = 'IZAKHONO', channels = ['Instagram', 'Facebook', 'WhatsApp', 'Web'] } = req.body || {};
+    const body = req.body || {};
+    const { brief = '', brand = 'IZAKHONO', channels = ['Instagram', 'Facebook', 'WhatsApp', 'Web'], mode = 'campaign' } = body;
     const b = String(brief).trim();
-    if (!b) return res.status(400).json({ error: 'A campaign brief is required.' });
+    if (!b) return res.status(400).json({ error: 'An instruction or question is required.' });
     const lower = b.toLowerCase();
+
+    if (mode === 'view') {
+      const view = /build|create|launch|should|recommend|best|priority|focus|first|strategy|model/.test(lower)
+        ? 'Make IZAKHONO the operating system around the opportunity, not another isolated app. Prioritize the smallest revenue-producing workflow, connect payment + customer capture + delivery, then instrument it before adding more features.'
+        : 'The strongest default is to turn the request into one measurable commercial workflow: objective → offer → audience → acquisition → conversion → delivery → measurement.';
+      const priorities = [
+        '1. Define the business outcome and one primary customer action.',
+        '2. Build the shortest end-to-end workflow that can produce that outcome.',
+        '3. Connect owned IZAKHONO infrastructure first; keep external services replaceable.',
+        '4. Add payment, CRM/lead capture and WhatsApp where relevant.',
+        '5. Measure conversion and repurpose successful outputs automatically.'
+      ];
+      return res.status(200).json({ ok: true, mode, engine: 'IZAKHONO CEO Command Centre', title: 'IZAKHONO\'s View', answer: view, priorities, recommendedAction: `EXECUTE: ${b}`, workflow: ['decide', 'plan', 'build', 'connect', 'measure', 'improve'] });
+    }
+
     const school = /school|uniform|matric|learner/.test(lower);
     const product = /product|launch|sell|offer|store|catalogue/.test(lower);
     const lead = /lead|quote|enquir|book|contact/.test(lower);
@@ -19,6 +35,6 @@ export default async function handler(req, res) {
     const whatsapp = `Greeting: Hi! Thanks for contacting ${brand}. 👋\nQualification: What product/service are you interested in?\nNeed: When do you need it?\nNext step: I can send the catalogue/quote and help you place the order.`;
     const social = channels.map(c => `${c}: Hook → benefit → proof → ${cta} → 3–5 relevant hashtags`).join('\n');
     const seo = `${title} | ${brand}`;
-    return res.status(200).json({ ok: true, engine: 'IZAKHONO Creator Engine v1', generatedAt: new Date().toISOString(), brief: b, title, audience, headline, cta, copy, assets: { video, image, landing, whatsapp, social, seo }, workflow: ['brief', 'plan', 'write', 'design', 'produce', 'approve', 'distribute', 'measure', 'repurpose'], channels });
+    return res.status(200).json({ ok: true, mode: 'campaign', engine: 'IZAKHONO Creator Engine v1', generatedAt: new Date().toISOString(), brief: b, title, audience, headline, cta, copy, assets: { video, image, landing, whatsapp, social, seo }, workflow: ['brief', 'plan', 'write', 'design', 'produce', 'approve', 'distribute', 'measure', 'repurpose'], channels });
   } catch (e) { return res.status(500).json({ error: 'Generation failed.' }); }
 }
