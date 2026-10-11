@@ -1,0 +1,6 @@
+.env
+.env.*
+!.env.example
+bind/primary/keys/*.key
+bind/primary/zones/*.jnl
+__pycache__/
