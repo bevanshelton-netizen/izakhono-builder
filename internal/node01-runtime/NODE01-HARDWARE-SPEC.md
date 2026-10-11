@@ -25,11 +25,11 @@ NODE01 is the first owned IZAKHONO compute node. It is designed to run productio
 
 The platform is deliberately balanced rather than buying the largest possible server. The initial workload is compute + application + automation heavy, while storage and redundancy are handled independently. The server must have enough PCIe, memory and drive expansion to grow without replacing the chassis.
 
-A South African 2026 market reference places certified-refurbished rack servers around a R44k median and new servers much higher; therefore NODE01 should be sourced by specification and total cost of ownership rather than by brand alone. citeturn0search2
+Current South African market references show a wide spread between refurbished enterprise servers and new systems, so NODE01 should be sourced by specification, warranty and total cost of ownership rather than by brand alone.
 
 ## Acceptable server families
 
-The production design can be implemented on a current Dell PowerEdge, HPE ProLiant, Lenovo ThinkSystem or equivalent enterprise platform meeting the specification. Lenovo's current ThinkSystem range, for example, supports ECC RDIMM memory, NVMe storage and hardware-root-of-trust management. citeturn0search6turn0search7
+The production design can be implemented on a current Dell PowerEdge, HPE ProLiant, Lenovo ThinkSystem or equivalent enterprise platform meeting the specification.
 
 ## Storage topology
 
@@ -42,7 +42,7 @@ The production design can be implemented on a current Dell PowerEdge, HPE ProLia
 
 ## Power architecture
 
-NODE01 must be connected to an online UPS and protected power circuit. UPS sizing must include the server, network switch, router/firewall and management equipment. Online double-conversion is preferred for production compute because it provides zero-transfer protection for sensitive equipment. citeturn0search4turn0search8
+NODE01 must be connected to an online UPS and protected power circuit. UPS sizing must include the server, network switch, router/firewall and management equipment.
 
 ## Growth path
 
