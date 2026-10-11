@@ -20,9 +20,17 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Validate processor syntax
-        run: node --check infra/mail-stack/mail-processor.mjs && node --check infra/mail-stack/mail-priority.mjs
+      - name: Validate engine and processor syntax
+        run: |
+          node --check infra/mail-stack/mail-processor.mjs
+          node --check infra/mail-stack/mail-priority.mjs
+          node --check infra/mail-stack/engine/mail-queue.mjs
+          node --check infra/mail-stack/engine/mailbox-engine.mjs
+          node --check infra/mail-stack/engine/transport-engine.mjs
+          node --check infra/mail-stack/engine/mail-runtime.mjs
       - name: Run mail processor contract tests
         run: node infra/mail-stack/mail-processor.test.mjs
+      - name: Run mail engine tests
+        run: node infra/mail-stack/engine/engine.test.mjs
       - name: Validate mail identity configuration
         run: node infra/mail-stack/verify.mjs
