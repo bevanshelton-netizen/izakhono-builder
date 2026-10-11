@@ -1,0 +1,44 @@
+name: IZAKHONO NODE01 Runtime CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'internal/node01-runtime/**'
+      - '.github/workflows/node01-runtime-ci.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'internal/node01-runtime/**'
+      - '.github/workflows/node01-runtime-ci.yml'
+  workflow_dispatch:
+
+jobs:
+  validate:
+    name: Validate sovereign NODE01
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Contract tests
+        working-directory: internal/node01-runtime
+        run: npm test
+
+      - name: Build runtime image
+        working-directory: internal/node01-runtime
+        run: docker build -t izakhono-node01:test .
+
+      - name: Start runtime canary
+        working-directory: internal/node01-runtime
+        env:
+          NODE01_ADMIN_TOKEN: ci-canary-token
+        run: |
+          docker compose up -d
+          trap 'docker compose down -v' EXIT
+          for i in $(seq 1 20); do
+            if curl -fsS http://127.0.0.1:8090/health; then exit 0; fi
+            sleep 2
+          done
+          docker compose logs
+          exit 1
