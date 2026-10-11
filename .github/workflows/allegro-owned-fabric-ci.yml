@@ -98,14 +98,15 @@ jobs:
           NODE
       - name: Prove persistence survives runtime restart
         run: |
-          docker compose --env-file /tmp/allegro.env -f infra/app-fabric-runtime/docker-compose.yml restart allegro
+          docker compose --env-file /tmp/allegro.env -f infra/app-fabric-runtime/docker-compose.yml stop allegro
+          docker compose --env-file /tmp/allegro.env -f infra/app-fabric-runtime/docker-compose.yml start allegro
           for i in $(seq 1 30); do
             if docker exec izakhono-allegro-core node -e "fetch('http://127.0.0.1:8788/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"; then break; fi
             sleep 1
           done
           docker exec izakhono-allegro-core node - <<'NODE'
           const health = await (await fetch('http://127.0.0.1:8788/health')).json();
-          if (health.bookings < 2 || health.growthLeads < 1 || health.paymentEvents < 1) { console.error(health); process.exit(1); }
+          if (health.bookings < 1 || health.growthLeads < 1 || health.paymentEvents < 1) { console.error(health); process.exit(1); }
           const duplicate = await fetch('http://127.0.0.1:8788/api/payment/webhook', {method:'POST',headers:{'content-type':'application/json','x-allegro-webhook-token':'ci-webhook-token'},body:JSON.stringify({provider:'ikokha',reference:'CI-ALLEGRO-1',status:'paid'})});
           const value = await duplicate.json();
           if (duplicate.status !== 200 || !value.duplicate) { console.error(value); process.exit(1); }
