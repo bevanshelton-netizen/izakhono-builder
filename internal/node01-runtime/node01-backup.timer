@@ -1,0 +1,10 @@
+[Unit]
+Description=Daily IZAKHONO NODE01 Backup
+
+[Timer]
+OnCalendar=*-*-* 02:30:00 UTC
+Persistent=true
+RandomizedDelaySec=10m
+
+[Install]
+WantedBy=timers.target
