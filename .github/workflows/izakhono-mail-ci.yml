@@ -1,0 +1,28 @@
+name: IZAKHONO MAIL CI
+
+on:
+  push:
+    paths:
+      - 'infra/mail-stack/**'
+      - '.github/workflows/izakhono-mail-ci.yml'
+      - 'package.json'
+  pull_request:
+    paths:
+      - 'infra/mail-stack/**'
+      - '.github/workflows/izakhono-mail-ci.yml'
+      - 'package.json'
+
+jobs:
+  mail-validation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Validate processor syntax
+        run: node --check infra/mail-stack/mail-processor.mjs && node --check infra/mail-stack/mail-priority.mjs
+      - name: Run mail processor contract tests
+        run: node infra/mail-stack/mail-processor.test.mjs
+      - name: Validate mail identity configuration
+        run: node infra/mail-stack/verify.mjs
