@@ -1,0 +1,9 @@
+{
+  "name": "@izakhono-sports/api",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {"dev": "tsx src/server.ts", "start": "node dist/server.js"},
+  "dependencies": {"@fastify/cors":"latest","fastify":"latest","pg":"latest","zod":"latest"},
+  "devDependencies": {"tsx":"latest","typescript":"latest","@types/node":"latest"}
+}
