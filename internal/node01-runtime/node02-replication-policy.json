@@ -1,0 +1,34 @@
+{
+  "cluster": "IZAKHONO-OWNED",
+  "primary": "NODE01",
+  "secondary": "NODE02",
+  "mode": "warm-standby",
+  "promotion": {
+    "automatic": false,
+    "requires": [
+      "NODE01 unhealthy",
+      "backup_fresh",
+      "NODE02 healthy",
+      "registry_available",
+      "workload_health_green"
+    ]
+  },
+  "replicate": [
+    "versioned configuration",
+    "deployment policies",
+    "workload manifests",
+    "registry metadata",
+    "approved workload image digests",
+    "backup manifests"
+  ],
+  "never_replicate": [
+    "admin tokens",
+    "private keys",
+    "provider credentials",
+    "raw secrets"
+  ],
+  "rpo_target": "24h",
+  "rto_target": "4h",
+  "integrity": "sha256-manifest-required",
+  "promotion_rule": "no production promotion without health verification"
+}
