@@ -1,0 +1,28 @@
+{
+  "node_id": "NODE01",
+  "purpose": "protect sovereign compute capacity",
+  "reserved_capacity": {
+    "cpu_percent": 20,
+    "memory_percent": 20,
+    "storage_percent": 20
+  },
+  "workload_policy": {
+    "production": "highest priority",
+    "platform": "reserved capacity",
+    "canary": "bounded capacity",
+    "experimental": "never allowed to starve production"
+  },
+  "promotion_rules": [
+    "reject workloads that exceed declared resource limits",
+    "hold promotion when disk capacity is low",
+    "hold promotion when backup is stale",
+    "hold promotion when node health is degraded",
+    "preserve reserved capacity for control and recovery"
+  ],
+  "capacity_alerts": {
+    "disk_warning_percent": 75,
+    "disk_critical_percent": 85,
+    "memory_warning_percent": 80,
+    "cpu_sustained_warning_percent": 80
+  }
+}
