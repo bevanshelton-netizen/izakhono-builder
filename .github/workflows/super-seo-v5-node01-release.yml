@@ -1,0 +1,41 @@
+name: SUPER SEO V5 NODE01 Release Validation
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'products/izakhono-super-seo/**'
+      - 'infra/runtime-fabric/releases/super-seo-v5-node01.compose.yaml'
+      - 'infra/runtime-fabric/releases/verify-super-seo-v5-node01.sh'
+      - '.github/workflows/super-seo-v5-node01-release.yml'
+  pull_request:
+    paths:
+      - 'products/izakhono-super-seo/**'
+      - 'infra/runtime-fabric/releases/super-seo-v5-node01.compose.yaml'
+      - 'infra/runtime-fabric/releases/verify-super-seo-v5-node01.sh'
+      - '.github/workflows/super-seo-v5-node01-release.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate Docker Compose contract
+        run: docker compose -f infra/runtime-fabric/releases/super-seo-v5-node01.compose.yaml config
+
+      - name: Validate health verifier
+        run: bash -n infra/runtime-fabric/releases/verify-super-seo-v5-node01.sh
+
+      - name: Build SUPER SEO V5 image
+        run: docker build -f products/izakhono-super-seo/Dockerfile -t izakhono/super-seo:v5-ci .
+
+      - name: Verify release files
+        run: |
+          test -f infra/runtime-fabric/releases/super-seo-v5-node01.compose.yaml
+          test -f infra/runtime-fabric/releases/verify-super-seo-v5-node01.sh
+          echo 'SUPER SEO V5 NODE01 release contract: PASS'
