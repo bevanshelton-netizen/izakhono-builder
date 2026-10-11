@@ -1,0 +1,9 @@
+[Unit]
+Description=IZAKHONO NODE01 Backup
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/izakhono/node01-runtime
+ExecStart=/opt/izakhono/node01-runtime/backup-node01.sh
