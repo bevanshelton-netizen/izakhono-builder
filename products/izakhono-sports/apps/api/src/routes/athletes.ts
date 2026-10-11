@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import type { Pool } from 'pg';
 import { z } from 'zod';
-import { audit, requireOrganisation, requireRoles } from '../security/auth.js';
+import { audit, requireRoles } from '../security/auth.js';
 
 const id = z.string().uuid();
 const profile = z.object({ headline: z.string().max(160).optional(), bio: z.string().max(4000).optional(), sports: z.array(z.string()).max(20).optional(), positions: z.array(z.string()).max(20).optional(), homeCountry: z.string().length(2).optional(), visibility: z.enum(['public','network','private']).optional(), sponsorshipReady: z.boolean().optional(), scoutingReady: z.boolean().optional() });
@@ -9,9 +9,10 @@ const profile = z.object({ headline: z.string().max(160).optional(), bio: z.stri
 export async function registerAthleteRoutes(app: FastifyInstance, pool: Pool) {
   app.get('/api/v1/athletes/:athleteId/sports-id', async (req, reply) => {
     const athleteId = id.parse(String((req.params as any).athleteId));
-    const athlete = (await pool.query(`select a.id,a.sports_uid,a.public_name,a.nationality,a.safeguarding_status,p.headline,p.bio,p.sports,p.positions,p.home_country,p.visibility,p.sponsorship_ready,p.scouting_ready from athletes a left join athlete_profiles p on p.athlete_id=a.id where a.id=$1`,[athleteId])).rows[0];
+    const athlete = (await pool.query(`select a.id,a.user_id,a.sports_uid,a.public_name,a.nationality,a.safeguarding_status,p.headline,p.bio,p.sports,p.positions,p.home_country,p.visibility,p.sponsorship_ready,p.scouting_ready from athletes a left join athlete_profiles p on p.athlete_id=a.id where a.id=$1`,[athleteId])).rows[0];
     if (!athlete) return reply.code(404).send({ error: 'athlete_not_found' });
-    if (athlete.visibility === 'private' && req.auth.userId !== athlete.user_id) return reply.code(403).send({ error: 'profile_private' });
+    if (athlete.visibility === 'private' && req.auth.userId !== athlete.user_id && req.auth.role !== 'PLATFORM_ADMIN') return reply.code(403).send({ error: 'profile_private' });
+    if (athlete.visibility === 'network' && !req.auth.authenticated) return reply.code(403).send({ error: 'network_profile_requires_authentication' });
     return { data: { sportsId: athlete.sports_uid, publicName: athlete.public_name, nationality: athlete.nationality, profile: { headline: athlete.headline, bio: athlete.bio, sports: athlete.sports ?? [], positions: athlete.positions ?? [], homeCountry: athlete.home_country, sponsorshipReady: athlete.sponsorship_ready, scoutingReady: athlete.scouting_ready }, verification: { safeguarding: athlete.safeguarding_status === 'verified' } } };
   });
 
@@ -21,7 +22,7 @@ export async function registerAthleteRoutes(app: FastifyInstance, pool: Pool) {
       const x = profile.parse(req.body);
       const athlete = (await pool.query('select id,user_id from athletes where id=$1',[athleteId])).rows[0];
       if (!athlete) return reply.code(404).send({ error: 'athlete_not_found' });
-      if (athlete.user_id !== req.auth.userId) return reply.code(403).send({ error: 'athlete_owner_required' });
+      if (athlete.user_id !== req.auth.userId && req.auth.role !== 'PLATFORM_ADMIN') return reply.code(403).send({ error: 'athlete_owner_required' });
       await pool.query(`insert into athlete_profiles(athlete_id,headline,bio,sports,positions,home_country,visibility,sponsorship_ready,scouting_ready) values($1,$2,$3,$4,$5,$6,coalesce($7,'public'),coalesce($8,false),coalesce($9,true)) on conflict (athlete_id) do update set headline=coalesce($2,athlete_profiles.headline),bio=coalesce($3,athlete_profiles.bio),sports=coalesce($4,athlete_profiles.sports),positions=coalesce($5,athlete_profiles.positions),home_country=coalesce($6,athlete_profiles.home_country),visibility=coalesce($7,athlete_profiles.visibility),sponsorship_ready=coalesce($8,athlete_profiles.sponsorship_ready),scouting_ready=coalesce($9,athlete_profiles.scouting_ready),updated_at=now()`,[athleteId,x.headline,x.bio,x.sports ?? null,x.positions ?? null,x.homeCountry ?? null,x.visibility,x.sponsorshipReady,x.scoutingReady]);
       await audit(pool, req, 'athlete.profile.updated', 'athlete', athleteId);
       return { data: { athleteId, updated: true } };
