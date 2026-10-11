@@ -1,0 +1,65 @@
+name: IZAKHONO SUPER SEO NODE01 Release
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'products/izakhono-super-seo/**'
+      - 'internal/node01-command-gateway/deploy-profiles/izakhono-super-seo.json'
+      - '.github/workflows/super-seo-node01-release.yml'
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  publish:
+    name: Publish owned SUPER SEO runtime
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Validate production profile
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=json.loads(Path('internal/node01-command-gateway/deploy-profiles/izakhono-super-seo.json').read_text())
+          assert p['environment']=='production'
+          assert p['container_port']==8097
+          assert p['health_path']=='/health'
+          assert Path(p['dockerfile']).is_file()
+          print('[PASS] NODE01 production profile validated.')
+          PY
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and publish
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: products/izakhono-super-seo/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/izakhono-super-seo:node01
+            ghcr.io/${{ github.repository_owner }}/izakhono-super-seo:${{ github.sha }}
+
+      - name: Emit NODE01 handoff
+        shell: bash
+        run: |
+          cat <<EOF
+          NODE01_RUNTIME=ghcr.io/${{ github.repository_owner }}/izakhono-super-seo:${{ github.sha }}
+          NODE01_PORT=8097
+          NODE01_HEALTH=/health
+          NODE01_PROFILE=internal/node01-command-gateway/deploy-profiles/izakhono-super-seo.json
+          NODE01_SOURCE_SHA=${{ github.sha }}
+          EOF
