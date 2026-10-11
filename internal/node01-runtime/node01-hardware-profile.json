@@ -1,0 +1,44 @@
+{
+  "node_id": "NODE01",
+  "role": "owned-compute-primary",
+  "form_factor": "2U-rack",
+  "cpu": {
+    "target_physical_cores": "24-32",
+    "platform": "enterprise-server",
+    "expansion": "dual-socket-capable"
+  },
+  "memory": {
+    "minimum_gb": 128,
+    "target_gb": 256,
+    "type": "ECC-RDIMM",
+    "expansion_target_gb": 512
+  },
+  "storage": {
+    "boot": "2x enterprise NVMe mirrored",
+    "workload": "4x enterprise NVMe/SAS redundant pool",
+    "backup": "separate physical failure domain",
+    "registry": "persistent dedicated volume"
+  },
+  "network": {
+    "production": "2x 10GbE",
+    "management": "1x dedicated management interface",
+    "segmentation": ["management", "edge", "workload", "backup"]
+  },
+  "management": "BMC/IPMI-class out-of-band management",
+  "security": ["TPM-2.0", "Secure-Boot", "ECC", "least-privilege-services"],
+  "power": {
+    "psu": "dual-hot-swap",
+    "ups": "online-double-conversion"
+  },
+  "acceptance": [
+    "ECC diagnostics pass",
+    "storage health and redundancy pass",
+    "BMC access verified",
+    "network links verified",
+    "UPS communications verified",
+    "clean reboot and automatic recovery verified",
+    "thermal load test passes",
+    "container workload test passes",
+    "backup and restore test passes"
+  ]
+}
