@@ -1,0 +1,8 @@
+[Unit]
+Description=IZAKHONO NODE01 Self-Healing Watchdog
+After=docker.service network-online.target
+Requires=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/opt/izakhono-node01/node01-watchdog.sh
