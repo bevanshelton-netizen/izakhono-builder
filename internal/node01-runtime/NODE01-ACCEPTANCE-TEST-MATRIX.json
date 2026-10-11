@@ -1,0 +1,19 @@
+{
+  "schema_version": "1.0",
+  "node": "NODE01",
+  "tests": [
+    {"id":"HW-01","area":"hardware","test":"Run vendor diagnostics","pass":"No critical hardware faults"},
+    {"id":"HW-02","area":"storage","test":"Validate mirrored boot and redundant workload pool","pass":"All expected devices healthy and redundancy active"},
+    {"id":"NET-01","area":"network","test":"Validate management/production separation","pass":"Management is isolated and production links are healthy"},
+    {"id":"OS-01","area":"host","test":"Validate hardening baseline","pass":"Secure Boot/TPM, firewall, SSH keys, AppArmor and time sync pass"},
+    {"id":"RT-01","area":"runtime","test":"Validate Docker and compose","pass":"Compose config validates and services start cleanly"},
+    {"id":"RT-02","area":"control","test":"GET /health on 8090","pass":"HTTP success and node identity NODE01"},
+    {"id":"REG-01","area":"registry","test":"GET /v2/ on localhost:5000","pass":"Registry responds and is not publicly bound"},
+    {"id":"BK-01","area":"backup","test":"Create backup and verify SHA256SUMS","pass":"Backup completes and checksums validate"},
+    {"id":"DR-01","area":"recovery","test":"Restore rehearsal","pass":"Control plane and registry recover from backup"},
+    {"id":"WL-01","area":"workload","test":"Start approved SUPER SEO image","pass":"8097 /health stays green through health gate"},
+    {"id":"RB-01","area":"rollback","test":"Rollback rehearsal","pass":"Previous approved image can be restored and health verified"},
+    {"id":"EDGE-01","area":"edge","test":"Verify TLS/reverse proxy route","pass":"External route terminates TLS and reaches only approved private workload"}
+  ],
+  "release_rule":"All tests required for the applicable deployment stage must pass before promotion. Physical tests cannot be marked passed from repository CI alone."
+}
