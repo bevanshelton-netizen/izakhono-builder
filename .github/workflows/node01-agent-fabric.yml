@@ -29,3 +29,5 @@ jobs:
         run: python -m unittest discover -s tests -v
       - name: CLI health
         run: PYTHONPATH=src python -m node01 --health
+      - name: Integrated objective smoke test
+        run: PYTHONPATH=src python -m node01 --objective "validate control plane" --integrated
