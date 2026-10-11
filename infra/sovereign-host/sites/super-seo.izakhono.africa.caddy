@@ -1,0 +1,4 @@
+super-seo.izakhono.africa {
+  encode zstd gzip
+  reverse_proxy super-seo:8097
+}
