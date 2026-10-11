@@ -1,0 +1,21 @@
+{
+  "schema": "izakhono.node01-agent-fabric/v1",
+  "version": "0.1.0",
+  "orchestrator": "node01",
+  "agent_count": 24,
+  "domains": ["research", "business", "build", "security", "operations", "governance"],
+  "scaling_target": 150,
+  "execution": {
+    "parallel": true,
+    "fail_closed": true,
+    "provider_neutral": true,
+    "model_required_for_core": false
+  },
+  "production_gates": [
+    "owned-runtime-evidence",
+    "health-check",
+    "rollback-proof",
+    "https-tls-dns-verification",
+    "public-live-evidence"
+  ]
+}
