@@ -1,8 +1,8 @@
 {
   "name": "izakhono-one",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "private": true,
   "type": "module",
-  "scripts": {"start":"node server.mjs","check":"node --check server.mjs","contracts":"node contract-check.mjs","policy":"node test-policy.mjs","test":"node test-smoke.mjs && npm run contracts && npm run policy"},
+  "scripts": {"start":"node server.mjs","check":"node --check server.mjs","contracts":"node contract-check.mjs","policy":"node test-policy.mjs","foundation":"node test-foundation.mjs","test":"node test-smoke.mjs && npm run contracts && npm run policy && npm run foundation"},
   "engines": {"node":">=20"}
 }
