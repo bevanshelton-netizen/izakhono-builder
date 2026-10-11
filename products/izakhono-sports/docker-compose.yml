@@ -10,6 +10,7 @@ services:
       - pgdata:/var/lib/postgresql/data
       - ./domain.sql:/docker-entrypoint-initdb.d/001-domain.sql:ro
       - ./security.sql:/docker-entrypoint-initdb.d/002-security.sql:ro
+      - ./identity.sql:/docker-entrypoint-initdb.d/003-identity.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U izakhono -d izakhono_sports"]
       interval: 5s
