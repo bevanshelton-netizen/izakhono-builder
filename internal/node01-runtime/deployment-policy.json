@@ -1,0 +1,26 @@
+{
+  "name": "NODE01 health-gated deployment",
+  "node_id": "NODE01",
+  "promotion": {
+    "required_health": true,
+    "health_path": "/health",
+    "consecutive_successes": 2,
+    "startup_timeout_seconds": 60,
+    "never_promote_unhealthy": true
+  },
+  "rollback": {
+    "enabled": true,
+    "trigger_consecutive_failures": 3,
+    "retain_previous_image": true,
+    "rollback_requires_health": true
+  },
+  "security": {
+    "allowed_image_prefix": "ghcr.io/bevanshelton-netizen/",
+    "public_registry": false,
+    "docker_socket_exposed_to_control_runtime": false
+  },
+  "production_claim": {
+    "required": ["container_running", "health_green", "route_verified"],
+    "claim_ready_only_when_all_required": true
+  }
+}
