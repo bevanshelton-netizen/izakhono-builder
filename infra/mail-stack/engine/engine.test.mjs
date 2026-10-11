@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { MailQueue } from "./mail-queue.mjs";
 import { MailboxEngine } from "./mailbox-engine.mjs";
-import { TransportEngine } from "./transport-engine.mjs",;
+import { TransportEngine } from "./transport-engine.mjs";
 
 const queue = new MailQueue();
 const job = queue.enqueue({ id: "m1", routes: [{ mailbox: "kora@izakhonoafrica.co.za" }] }, "2026-10-11T20:00:00.000Z");
