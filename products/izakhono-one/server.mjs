@@ -15,6 +15,15 @@ const parallel = [
   {slug:'nav',name:'IZAKHONO NAV',category:'Mobility & Safety',icon:'⌖',description:'Navigation, driver safety, emergency response, fleet intelligence and African road intelligence.',status:'foundation',publicUrl:'/nav'},
   {slug:'fortress',name:'FORTRESS',category:'Security',icon:'◆',description:'Identity protection, fraud signals, device intelligence, permissions and security audit.',status:'foundation',publicUrl:'/fortress'}
 ];
+const contracts = {
+  search:{capabilities:['web_search','local_discovery','content_discovery'],dependencies:['one','fortress']},
+  connecta:{capabilities:['profiles','feed','communities','messaging'],dependencies:['one','fortress']},
+  ai:{capabilities:['reasoning','generation','automation'],dependencies:['one','search','fortress']},
+  cloud:{capabilities:['storage','documents','workspace'],dependencies:['one','fortress']},
+  commerce:{capabilities:['catalog','orders','payments'],dependencies:['one','fortress']},
+  nav:{capabilities:['navigation','safety','fleet','offline'],dependencies:['one','fortress']},
+  fortress:{capabilities:['identity','policy','audit','threat_detection'],dependencies:['one']}
+};
 const services = [...parallel, ...registry.services.filter(service => !parallel.some(p => p.name === service.name))];
 const bySlug = new Map(services.map(service => [service.slug, service]));
 const builderInternalUrl = String(process.env.IZAKHONO_BUILDER_INTERNAL_URL || '').trim().replace(/\/+$/, '');
@@ -47,7 +56,8 @@ async function proxyHealth(res, baseUrl, path, descriptor, errorPrefix) {
 
 const server = http.createServer(async (req,res) => {
   const url = new URL(req.url || '/', 'http://localhost');
-  if (url.pathname === '/health') return json(res,200,{status:'ok',platform:'IZAKHONO ONE',engine:registry.engine,services:services.length,parallelPillars:parallel.length,noTracking:true,builderIntegration:{integrated:true,configured:Boolean(builderInternalUrl),engineIndependent:true},flowIntegration:{integrated:true,configured:Boolean(flowInternalUrl),engineIndependent:true}});
+  if (url.pathname === '/health') return json(res,200,{status:'ok',platform:'IZAKHONO ONE',engine:registry.engine,services:services.length,parallelPillars:parallel.length,serviceContracts:Object.keys(contracts).length,noTracking:true,builderIntegration:{integrated:true,configured:Boolean(builderInternalUrl),engineIndependent:true},flowIntegration:{integrated:true,configured:Boolean(flowInternalUrl),engineIndependent:true}});
+  if (url.pathname === '/api/contracts') return json(res,200,{ok:true,version:'v1',contracts:parallel.map(service=>({service_slug:service.slug,api_version:'v1',policy_class:'foundation',enabled:true,...contracts[service.slug]}))});
   if (url.pathname === '/api/builder') return json(res,200,builderDescriptor());
   if (url.pathname === '/api/builder/health') return proxyHealth(res,builderInternalUrl,'/api/health',builderDescriptor(),'builder');
   if (url.pathname === '/api/flow') return json(res,200,flowDescriptor());
@@ -56,7 +66,7 @@ const server = http.createServer(async (req,res) => {
   if (url.pathname.startsWith('/api/resolve/')) {
     const slug=decodeURIComponent(url.pathname.slice('/api/resolve/'.length));
     const service=bySlug.get(slug);
-    return service ? json(res,200,service) : json(res,404,{error:'service_not_found'});
+    return service ? json(res,200,{...service,contract:contracts[slug] || null}) : json(res,404,{error:'service_not_found'});
   }
   if (url.pathname.startsWith('/api/route/')) {
     const slug=decodeURIComponent(url.pathname.slice('/api/route/'.length));
@@ -72,4 +82,4 @@ const server = http.createServer(async (req,res) => {
   try { const body=await readFile(filePath); res.writeHead(200,{'content-type':mime(filePath),'cache-control':pathname.endsWith('.html')?'no-cache':'public, max-age=300','x-content-type-options':'nosniff','referrer-policy':'no-referrer'}); res.end(body); }
   catch { json(res,404,{error:'not_found'}); }
 });
-server.listen(port,'127.0.0.1',()=>{console.log('IZAKHONO_ONE_ENGINE=READY');console.log('PARALLEL_PILLARS='+parallel.length);console.log('BUILDER_INTEGRATION=READY');console.log('BUILDER_INTERNAL_ROUTE='+(builderInternalUrl?'CONFIGURED':'GATED'));console.log('FLOW_INTEGRATION=READY');console.log('FLOW_INTERNAL_ROUTE='+(flowInternalUrl?'CONFIGURED':'GATED'));console.log('PORT='+port);});
+server.listen(port,'127.0.0.1',()=>{console.log('IZAKHONO_ONE_ENGINE=READY');console.log('PARALLEL_PILLARS='+parallel.length);console.log('SERVICE_CONTRACTS='+Object.keys(contracts).length);console.log('BUILDER_INTEGRATION=READY');console.log('BUILDER_INTERNAL_ROUTE='+(builderInternalUrl?'CONFIGURED':'GATED'));console.log('FLOW_INTEGRATION=READY');console.log('FLOW_INTERNAL_ROUTE='+(flowInternalUrl?'CONFIGURED':'GATED'));console.log('PORT='+port);});
