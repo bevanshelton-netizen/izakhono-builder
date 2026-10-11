@@ -1,0 +1,45 @@
+import { spawn } from 'node:child_process';
+
+const port = 8899;
+const child = spawn(process.execPath, ['server.mjs'], {
+  cwd: new URL('.', import.meta.url),
+  env: {...process.env, PORT: String(port)},
+  stdio: ['ignore','pipe','pipe']
+});
+
+const waitForServer = new Promise((resolve, reject) => {
+  const timer = setTimeout(() => reject(new Error('server start timeout')), 5000);
+  const onData = chunk => {
+    if (String(chunk).includes('IZAKHONO_ONE_ENGINE=READY')) {
+      clearTimeout(timer);
+      child.stdout.off('data', onData);
+      resolve();
+    }
+  };
+  child.stdout.on('data', onData);
+  child.once('error', reject);
+});
+
+try {
+  await waitForServer;
+  const get = async path => {
+    const response = await fetch(`http://127.0.0.1:${port}${path}`);
+    return {status: response.status, body: await response.json()};
+  };
+
+  const health = await get('/health');
+  if (health.status !== 200 || health.body.status !== 'ok' || health.body.parallelPillars !== 7) throw new Error('health contract failed');
+
+  const services = await get('/api/search?q=nav');
+  if (services.status !== 200 || !services.body.results.some(x => x.slug === 'nav')) throw new Error('search contract failed');
+
+  const resolved = await get('/api/resolve/fortress');
+  if (resolved.status !== 200 || resolved.body.slug !== 'fortress') throw new Error('resolve contract failed');
+
+  const route = await get('/api/route/nav');
+  if (route.status !== 200 || route.body.status !== 'foundation') throw new Error('route contract failed');
+
+  console.log('IZAKHONO ONE smoke test: PASS');
+} finally {
+  child.kill('SIGTERM');
+}
