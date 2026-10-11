@@ -34,9 +34,11 @@ services:
     environment:
       DNS_PRIMARY_HOST: 172.30.0.10
       DNS_PRIMARY_PORT: "53"
-      DNS_API_KEY: change-me-before-production
+      DNS_ZONE: ${DNS_ZONE:?set DNS_ZONE}
+      DNS_API_KEY: ${DNS_API_KEY:?set DNS_API_KEY}
+      DNS_TSIG_KEY_FILE: /secrets/izakhono-controller.key
     ports:
-      - "8088:8080"
+      - "127.0.0.1:8088:8080"
     volumes:
       - ./bind/primary/keys:/secrets:ro
     networks:
