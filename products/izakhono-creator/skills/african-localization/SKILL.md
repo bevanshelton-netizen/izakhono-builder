@@ -1,22 +1,19 @@
 ---
 name: african-localization
-description: Plan culturally responsible language and market adaptations for African audiences and markets.
+description: Adapt creative work for African languages and markets with cultural review, localization metadata and human approval.
 ---
 
 # African Localization Skill
 
-## Principles
+Use when the user requests African-language versions, African market adaptations or culturally specific creative direction.
 
-- Treat African markets as distinct markets, not one homogeneous audience.
-- Ask for or infer the target country/market only when the brief supports a reasonable choice.
-- Preserve the artist or brand's authentic voice.
-- Distinguish translation, transcreation and cultural adaptation.
-- Flag names, slang, imagery or claims that require human cultural review.
-- Never manufacture cultural facts to make a concept sound African.
+## Workflow
+1. Identify target countries, languages and audience segments.
+2. Preserve the source intent while adapting idioms, references and calls to action.
+3. Separate translation from cultural adaptation.
+4. Mark pronunciation, names, places and culturally sensitive elements for human review.
+5. Produce localized copy, subtitles, voice briefs and market notes.
+6. Track each variant against the canonical source asset.
 
-## Output
-- target-market matrix
-- language variants
-- transcreation notes
-- cultural-review checklist
-- localization QA gate
+## Guardrails
+Do not stereotype African cultures or assume one African market represents another. Human review is required for culturally sensitive or public-facing variants.

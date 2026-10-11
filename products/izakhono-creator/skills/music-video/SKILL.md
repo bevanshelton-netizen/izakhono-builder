@@ -1,23 +1,20 @@
 ---
 name: music-video
-description: Turn a song or single into a cinematic music-video treatment, structure and shot plan.
+description: Convert a song into a music-video treatment, scene map, shot plan and continuity bible.
 ---
 
 # Music Video Skill
 
-## Procedure
-1. Capture song title, artist, genre, mood, duration and release objective.
-2. Map musical sections to narrative and visual beats.
-3. Identify the hook moments that should also work as short-form clips.
-4. Build a scene list with location, characters, action, camera direction and continuity notes.
-5. Keep the artist's supplied audio as the timing authority unless an approved edit changes the master.
-6. Create derivative opportunities for vertical video, lyric moments, behind-the-scenes concepts and thumbnails.
-7. Require artist/owner approval before paid generation or publishing.
+Use when the creative brief includes a song, single, album track or music-video campaign.
 
-## Output
-- music-video treatment
-- beat-to-scene map
-- shot list
-- continuity requirements
-- short-form extraction map
-- delivery checklist
+## Workflow
+1. Identify song structure: intro, verse, pre-hook, hook, bridge, outro.
+2. Map narrative or performance beats to the song timeline.
+3. Define visual motifs that recur at musical transitions.
+4. Build a scene and shot list with approximate timing.
+5. Define artist performance requirements and continuity references.
+6. Create generation briefs that can be sent to image/video providers.
+7. Define master and social deliverables.
+
+## Guardrails
+Do not infer ownership, licensing or rights. Ask for confirmation when copyrighted third-party material is required. Do not claim synchronization or publishing is complete without evidence.
