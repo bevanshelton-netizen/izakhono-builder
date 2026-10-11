@@ -1,22 +1,19 @@
 ---
 name: social-pack
-description: Turn a master creative into platform-specific TikTok, Instagram Reels and YouTube Shorts concepts and delivery specifications.
+description: Turn an approved master creative into platform-specific short-form concepts, hooks, captions, thumbnails and delivery specifications.
 ---
 
 # Social Pack Skill
 
-## Procedure
-1. Identify the master asset and campaign objective.
-2. Extract 3-10 high-value hooks or moments.
-3. Adapt each hook to vertical-first framing and platform-safe duration.
-4. Generate caption, CTA and thumbnail/cover requirements.
-5. Keep brand, artist and campaign identity consistent.
-6. Never claim a post is published until the publishing adapter returns evidence.
+Use when the user wants TikTok, Reels, Shorts, teasers, promos or a social campaign derived from a master asset.
 
-## Output
-- hook list
-- vertical cut plan
-- captions
-- CTA variants
-- cover/thumbnail brief
-- publishing checklist
+## Workflow
+1. Identify the source master and campaign objective.
+2. Extract multiple hooks and moments without changing the core message.
+3. Define platform-specific aspect ratio, duration, opening beat and CTA.
+4. Produce captions, thumbnail concepts and metadata.
+5. Create a derivative manifest linking each short to the source asset.
+6. Keep publishing as a separate approval-gated action.
+
+## Guardrails
+Do not claim a post was published without platform evidence. Avoid spammy or deceptive engagement tactics. Preserve required rights and credits.

@@ -1,26 +1,23 @@
 ---
 name: director
-description: Turn a creative brief into an executable film or video treatment. Use when a user asks to direct, storyboard, structure, or plan a visual production.
+description: Turn a creative brief into a production-ready treatment with story beats, visual language, pacing, continuity and approval gates.
 ---
 
 # Director Skill
 
-## Objective
-Convert an ambiguous creative idea into a production-ready treatment without inventing assets that do not exist.
+Use when a user wants to turn an idea into a film, advert, music video, short, campaign or cinematic production.
 
-## Procedure
-1. Extract subject, audience, platform, duration, genre, tone, setting and intended outcome.
-2. Identify missing information that materially changes production. If it does not block planning, choose a reasonable default and record it.
-3. Create a logline and beginning/middle/end narrative arc.
-4. Break the production into scenes and shots.
-5. Define recurring-character, wardrobe, location, prop, lighting and camera continuity requirements.
-6. Separate planning from generation. Never state that an asset exists until a provider adapter returns evidence.
-7. Produce approval gates before paid generation or external publishing.
+## Workflow
+1. Extract objective, audience, format, duration, tone and success criteria.
+2. Write a concise logline and treatment.
+3. Break the treatment into scenes and shots.
+4. Define visual language, camera language, lighting, locations and recurring motifs.
+5. Define continuity requirements for characters, wardrobe, props and locations.
+6. Separate creative decisions from provider-specific generation settings.
+7. Produce approval gates before generation, final edit and publishing.
 
-## Output
-- treatment
-- scene list
-- shot list
-- continuity bible
-- generation manifest
-- approval gates
+## Output contract
+Return structured sections for `treatment`, `scenes`, `continuity`, `generation_briefs`, and `approval_gates`.
+
+## Guardrails
+Never claim media was generated, edited or published without provider or publishing evidence. Flag missing references instead of inventing them.
