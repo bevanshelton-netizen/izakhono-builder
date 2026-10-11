@@ -1,0 +1,11 @@
+{
+  "source": "izakhono-code",
+  "repository": "izakhono-builder",
+  "app": "izakhono-super-seo",
+  "environment": "production",
+  "mode": "single",
+  "container_port": 8097,
+  "health_path": "/health",
+  "dockerfile": "products/izakhono-super-seo/Dockerfile",
+  "env_file": "/etc/izakhono/apps/izakhono-super-seo.env"
+}
