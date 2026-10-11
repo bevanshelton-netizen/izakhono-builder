@@ -1,0 +1,27 @@
+{
+  "node_id": "NODE01",
+  "default_policy": "deny",
+  "zones": {
+    "management": {"purpose": "BMC and administrative access", "public": false},
+    "edge": {"purpose": "reverse proxy and TLS termination", "public": true},
+    "workload": {"purpose": "private application traffic", "public": false},
+    "backup": {"purpose": "backup and replication traffic", "public": false}
+  },
+  "interfaces": {
+    "production": "2x 10GbE",
+    "management": "1x dedicated management interface"
+  },
+  "services": {
+    "control": {"port": 8090, "exposure": "private-or-explicit-edge"},
+    "super_seo": {"port": 8097, "exposure": "private-until-route-promoted"},
+    "registry": {"port": 5000, "exposure": "localhost-only"}
+  },
+  "rules": [
+    "No public access to the registry.",
+    "Containers communicate on the private izakhono network.",
+    "Only explicitly published ports may leave the workload zone.",
+    "TLS terminates at the owned edge gateway.",
+    "Health checks must pass before a route is promoted.",
+    "Management access is separated from production traffic."
+  ]
+}
