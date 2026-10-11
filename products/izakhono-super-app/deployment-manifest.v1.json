@@ -1,0 +1,29 @@
+{
+  "schema": "izakhono.deployment-manifest.v1",
+  "service": "izakhono-creator-studio",
+  "controlPlane": "IZAKHONO PROVISIONER",
+  "preferredAdapter": "owned",
+  "fallbackAdapters": ["vps", "vercel"],
+  "runtime": {
+    "packaging": "docker",
+    "port": 3000,
+    "healthcheck": "/api/health",
+    "restartPolicy": "unless-stopped"
+  },
+  "deploymentRules": {
+    "providerLockIn": false,
+    "externalProviderIsSystemOfRecord": false,
+    "rollbackRequired": true,
+    "healthcheckRequired": true,
+    "secretsFromEnvironment": true
+  },
+  "domainBinding": {
+    "mode": "provider-neutral",
+    "tls": "automatic",
+    "dns": "adapter-managed"
+  },
+  "promotion": {
+    "flow": ["build", "test", "package", "deploy", "healthcheck", "promote"],
+    "failureAction": "rollback"
+  }
+}
