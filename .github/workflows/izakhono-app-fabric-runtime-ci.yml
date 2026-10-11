@@ -21,7 +21,7 @@ permissions:
 jobs:
   verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 16
+    timeout-minutes: 18
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -63,17 +63,35 @@ jobs:
           IZAKHONO_FABRIC_ALLOWED_ORIGINS=
           IZAKHONO_FABRIC_ALLOW_ORIGINLESS=false
           EOF
-      - name: Build and start owned core topology
+      - name: Validate owned Allegro web image
+        run: |
+          set -euo pipefail
+          docker pull ghcr.io/bevanshelton-netizen/allegro-vibez-web:production-master
+          docker run -d --name allegro-web-ci -p 127.0.0.1:18081:8080 ghcr.io/bevanshelton-netizen/allegro-vibez-web:production-master
+          trap 'docker rm -f allegro-web-ci >/dev/null 2>&1 || true' EXIT
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:18081/healthz >/tmp/allegro-health.json; then break; fi
+            sleep 2
+          done
+          test -s /tmp/allegro-health.json
+          grep -q '"ok":true' /tmp/allegro-health.json
+          grep -q '"product":"allegro-vibez"' /tmp/allegro-health.json
+          curl -fsS http://127.0.0.1:18081/ | grep -qi 'ALLEGRO'
+          curl -fsS http://127.0.0.1:18081/radio | grep -q 'id="root"'
+          docker rm -f allegro-web-ci >/dev/null
+          trap - EXIT
+      - name: Build and start owned runtime topology
         run: |
           docker compose --env-file /tmp/app-fabric-runtime.env -f infra/app-fabric-runtime/docker-compose.yml build crm revenue tasks flow fabric allegro
-          docker compose --env-file /tmp/app-fabric-runtime.env -f infra/app-fabric-runtime/docker-compose.yml up -d crm revenue tasks flow fabric allegro
+          docker compose --env-file /tmp/app-fabric-runtime.env -f infra/app-fabric-runtime/docker-compose.yml up -d crm revenue tasks flow fabric allegro allegro_web
           for i in $(seq 1 45); do
             crm=$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' izakhono-crm 2>/dev/null || true)
             revenue=$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' izakhono-revenue 2>/dev/null || true)
             tasks=$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' izakhono-tasks 2>/dev/null || true)
             flow=$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' izakhono-flow 2>/dev/null || true)
             fabric=$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' izakhono-app-fabric-gateway 2>/dev/null || true)
-            if [ "$crm" = healthy ] && [ "$revenue" = healthy ] && [ "$tasks" = healthy ] && [ "$flow" = healthy ] && [ "$fabric" = healthy ]; then exit 0; fi
+            web=$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' izakhono-allegro-web 2>/dev/null || true)
+            if [ "$crm" = healthy ] && [ "$revenue" = healthy ] && [ "$tasks" = healthy ] && [ "$flow" = healthy ] && [ "$fabric" = healthy ] && [ "$web" = healthy ]; then exit 0; fi
             sleep 2
           done
           docker compose --env-file /tmp/app-fabric-runtime.env -f infra/app-fabric-runtime/docker-compose.yml ps
@@ -85,6 +103,8 @@ jobs:
           docker exec izakhono-tasks python -c "import json,urllib.request; v=json.load(urllib.request.urlopen('http://127.0.0.1:9991/healthz',timeout=3)); raise SystemExit(0 if v.get('ok') and v.get('flow_adapter_configured') else 1)"
           docker exec izakhono-flow node -e "fetch('http://127.0.0.1:8794/health').then(r=>r.json()).then(v=>{if(!v.ok||v.service!=='izakhono-flow')process.exit(1)})"
           docker exec izakhono-app-fabric-gateway node -e "fetch('http://127.0.0.1:8090/health').then(r=>r.json()).then(v=>{if(!v.ok||v.public_intake!==false)process.exit(1)})"
+          docker exec izakhono-allegro-web wget -q -O - http://127.0.0.1:8080/healthz | grep -q '"ok":true'
+          docker exec izakhono-allegro-web wget -q -O - http://127.0.0.1:8080/radio | grep -q 'id="root"'
       - name: Prove IZAKHONO ONE can bridge to FLOW
         run: |
           docker build -t izakhono-one:ci products/izakhono-one
@@ -103,9 +123,11 @@ jobs:
           docker logs izakhono-tasks || true
           docker logs izakhono-flow || true
           docker logs izakhono-app-fabric-gateway || true
+          docker logs izakhono-allegro-web || true
           docker logs izakhono-one-ci || true
       - name: Tear down
         if: always()
         run: |
           docker rm -f izakhono-one-ci >/dev/null 2>&1 || true
+          docker rm -f allegro-web-ci >/dev/null 2>&1 || true
           docker compose --env-file /tmp/app-fabric-runtime.env -f infra/app-fabric-runtime/docker-compose.yml down -v || true
