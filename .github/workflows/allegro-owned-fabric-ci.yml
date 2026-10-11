@@ -39,6 +39,9 @@ jobs:
           IZAKHONO_TASKS_FLOW_TOKEN=ci-tasks-flow-token
           IZAKHONO_FABRIC_INTERNAL_TOKEN=ci-internal-token
           IZAKHONO_FABRIC_PUBLIC_INTAKE=false
+          ALLEGRO_WEBHOOK_TOKEN=ci-webhook-token
+          ALLEGRO_INTERNAL_TOKEN=ci-internal-allegro-token
+          ALLEGRO_MAX_BODY_BYTES=1048576
           EOF
       - name: Build and start owned Allegro runtime
         run: docker compose --env-file /tmp/allegro.env -f infra/app-fabric-runtime/docker-compose.yml build allegro && docker compose --env-file /tmp/allegro.env -f infra/app-fabric-runtime/docker-compose.yml up -d allegro
@@ -53,40 +56,38 @@ jobs:
           done
           docker logs izakhono-allegro-core
           exit 1
-      - name: Prove booking persistence
+      - name: Prove booking and growth persistence
         run: |
           docker exec izakhono-allegro-core node - <<'NODE'
           const create = await fetch('http://127.0.0.1:8788/api/bookings', {
-            method: 'POST',
-            headers: {'content-type': 'application/json'},
+            method: 'POST', headers: {'content-type': 'application/json'},
             body: JSON.stringify({name:'CI Musician',mobile:'+27000000000',service:'recording'})
           });
           const value = await create.json();
-          if (create.status !== 201 || !value.ok || !value.booking?.code) {
-            console.error(value);
-            process.exit(1);
-          }
+          if (create.status !== 201 || !value.ok || !value.booking?.code) { console.error(value); process.exit(1); }
           const lookup = await fetch('http://127.0.0.1:8788/api/bookings/' + encodeURIComponent(value.booking.code));
-          if (lookup.status !== 200) {
-            console.error(await lookup.text());
-            process.exit(1);
-          }
-          console.log(JSON.stringify({booking:value.booking, lookup:'ok'}));
+          if (lookup.status !== 200) { console.error(await lookup.text()); process.exit(1); }
+          const lead = await fetch('http://127.0.0.1:8788/api/growth', {
+            method: 'POST', headers: {'content-type': 'application/json'},
+            body: JSON.stringify({name:'CI Lead',email:'ci@example.invalid',source:'ci'})
+          });
+          const leadValue = await lead.json();
+          if (lead.status !== 201 || !leadValue.ok || !leadValue.lead?.id) { console.error(leadValue); process.exit(1); }
+          console.log(JSON.stringify({bookingCode:value.booking.code, bookingLookup:'ok', leadId:leadValue.lead.id}));
           NODE
-      - name: Prove payment webhook intake
+      - name: Prove protected payment webhook and idempotency
         run: |
           docker exec izakhono-allegro-core node - <<'NODE'
-          const response = await fetch('http://127.0.0.1:8788/api/payment/webhook', {
-            method: 'POST',
-            headers: {'content-type': 'application/json'},
-            body: JSON.stringify({provider:'ikokha',reference:'CI-ALLEGRO-1',status:'paid'})
-          });
-          const value = await response.json();
-          if (response.status !== 202 || !value.ok) {
-            console.error(value);
-            process.exit(1);
-          }
-          console.log(JSON.stringify(value));
+          const base = {method:'POST',headers:{'content-type':'application/json','x-allegro-webhook-token':'ci-webhook-token'}};
+          const unauthorized = await fetch('http://127.0.0.1:8788/api/payment/webhook', {method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({reference:'CI-BAD'})});
+          if (unauthorized.status !== 401) { console.error(await unauthorized.text()); process.exit(1); }
+          const first = await fetch('http://127.0.0.1:8788/api/payment/webhook', {...base,body:JSON.stringify({provider:'ikokha',reference:'CI-ALLEGRO-1',status:'paid'})});
+          const firstValue = await first.json();
+          if (first.status !== 202 || !firstValue.ok || firstValue.duplicate) { console.error(firstValue); process.exit(1); }
+          const duplicate = await fetch('http://127.0.0.1:8788/api/payment/webhook', {...base,body:JSON.stringify({provider:'ikokha',reference:'CI-ALLEGRO-1',status:'paid'})});
+          const duplicateValue = await duplicate.json();
+          if (duplicate.status !== 200 || !duplicateValue.ok || !duplicateValue.duplicate) { console.error(duplicateValue); process.exit(1); }
+          console.log(JSON.stringify({webhook:'protected',first:'accepted',second:'idempotent'}));
           NODE
       - name: Cleanup
         if: always()
