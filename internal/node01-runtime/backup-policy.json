@@ -1,0 +1,31 @@
+{
+  "node_id": "NODE01",
+  "schema": "izakhono.node.backup.v1",
+  "policy": {
+    "configuration": {
+      "frequency": "daily",
+      "retention_days": 30,
+      "include": [
+        "node01.spec.json",
+        "node01-services.json",
+        "docker-compose.yml",
+        "deployment manifests"
+      ]
+    },
+    "workload_data": {
+      "frequency": "daily",
+      "retention_days": 30,
+      "restore_priority": "critical"
+    },
+    "registry": {
+      "backup": "metadata-and-manifests",
+      "image_blobs": "replicate-to-secondary-node-before-decommission"
+    }
+  },
+  "restore_rules": [
+    "restore configuration before workloads",
+    "restore registry metadata before workload promotion",
+    "health-check every restored service",
+    "never promote an unverified restore"
+  ]
+}
