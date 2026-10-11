@@ -1,0 +1,9 @@
+{
+  "schema": "izakhono.creator/skill-registry-v1",
+  "skills": [
+    {"id":"director","path":"skills/director/SKILL.md","kind":"core"},
+    {"id":"music-video","path":"skills/music-video/SKILL.md","kind":"vertical"},
+    {"id":"social-pack","path":"skills/social-pack/SKILL.md","kind":"vertical"},
+    {"id":"african-localization","path":"skills/african-localization/SKILL.md","kind":"market"}
+  ]
+}
