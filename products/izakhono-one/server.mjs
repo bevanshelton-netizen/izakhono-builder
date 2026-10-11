@@ -6,7 +6,17 @@ import { fileURLToPath } from 'node:url';
 const root = fileURLToPath(new URL('./public/', import.meta.url));
 const port = Number(process.env.PORT || 8781);
 const registry = JSON.parse(await readFile(join(root, 'registry.json'), 'utf8'));
-const bySlug = new Map(registry.services.map(service => [service.slug, service]));
+const parallel = [
+  {slug:'search',name:'IZAKHONO SEARCH',category:'Discovery',icon:'⌕',description:'African-first web, local, business, product and content discovery with AI answers and private search.',status:'foundation',publicUrl:'/search'},
+  {slug:'connecta',name:'CONNECTA',category:'Community',icon:'◉',description:'Social network, communities, messaging, creators, business pages, jobs and marketplace connections.',status:'foundation',publicUrl:'/connecta'},
+  {slug:'ai',name:'ONE AI',category:'Intelligence',icon:'✦',description:'Personal, business, school and developer intelligence with creation, analysis and automation.',status:'foundation',publicUrl:'/ai'},
+  {slug:'cloud',name:'ONE CLOUD',category:'Workspace',icon:'☁',description:'Files, documents, sheets, presentations, mail, calendar and team collaboration.',status:'foundation',publicUrl:'/cloud'},
+  {slug:'commerce',name:'ONE COMMERCE',category:'Commerce',icon:'◇',description:'Marketplace, storefronts, payments, invoicing, digital products and controlled advertising.',status:'foundation',publicUrl:'/commerce'},
+  {slug:'nav',name:'IZAKHONO NAV',category:'Mobility & Safety',icon:'⌖',description:'Navigation, driver safety, emergency response, fleet intelligence and African road intelligence.',status:'foundation',publicUrl:'/nav'},
+  {slug:'fortress',name:'FORTRESS',category:'Security',icon:'◆',description:'Identity protection, fraud signals, device intelligence, permissions and security audit.',status:'foundation',publicUrl:'/fortress'}
+];
+const services = [...parallel, ...registry.services.filter(service => !parallel.some(p => p.name === service.name))];
+const bySlug = new Map(services.map(service => [service.slug, service]));
 const builderInternalUrl = String(process.env.IZAKHONO_BUILDER_INTERNAL_URL || '').trim().replace(/\/+$/, '');
 const flowInternalUrl = String(process.env.IZAKHONO_FLOW_INTERNAL_URL || '').trim().replace(/\/+$/, '');
 
@@ -14,116 +24,52 @@ const json = (res, status, body) => {
   res.writeHead(status, {'content-type':'application/json; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff'});
   res.end(JSON.stringify(body));
 };
-
 const mime = path => ({'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'text/javascript; charset=utf-8','.json':'application/json; charset=utf-8'}[extname(path)] || 'application/octet-stream');
-
 function search(query) {
   const q = String(query || '').trim().toLowerCase();
-  if (!q) return registry.services;
-  return registry.services.filter(service =>
-    [service.name, service.slug, service.category, service.description].join(' ').toLowerCase().includes(q)
-  );
+  if (!q) return services;
+  return services.filter(service => [service.name, service.slug, service.category, service.description].join(' ').toLowerCase().includes(q));
 }
-
 function builderDescriptor() {
-  return {
-    integrated: true,
-    superApp: 'IZAKHONO ONE',
-    service: 'IZAKHONO BUILDER',
-    bridge: 'owned-service-bridge',
-    engineIndependent: true,
-    sourceOfTruth: 'izakhono-builder',
-    internalHealthConfigured: Boolean(builderInternalUrl),
-    publicRoute: 'gated-until-independently-verified',
-    promises: ['describe-once','responsive-web-pwa','desktop-mobile-ready','owned-source','validation','controlled-publish'],
-    privacy: {tracking:false,profiling:false,advertisingIdentifiers:false}
-  };
+  return {integrated:true,superApp:'IZAKHONO ONE',service:'IZAKHONO BUILDER',bridge:'owned-service-bridge',engineIndependent:true,sourceOfTruth:'izakhono-builder',internalHealthConfigured:Boolean(builderInternalUrl),publicRoute:'gated-until-independently-verified',promises:['describe-once','responsive-web-pwa','desktop-mobile-ready','owned-source','validation','controlled-publish'],privacy:{tracking:false,profiling:false,advertisingIdentifiers:false}};
 }
-
 function flowDescriptor() {
-  return {
-    integrated: true,
-    superApp: 'IZAKHONO ONE',
-    service: 'IZAKHONO FLOW',
-    bridge: 'owned-service-bridge',
-    engineIndependent: true,
-    sourceOfTruth: 'products/izakhono-flow',
-    internalHealthConfigured: Boolean(flowInternalUrl),
-    publicRoute: 'gated-until-independently-verified',
-    workflow: ['lead','qualify','quote','pay','fulfil','invoice','support','retain','report'],
-    boundaries: ['entity-and-platform-scoped','verified-payment-only','advisory-ai','replaceable-adapters'],
-    privacy: {tracking:false,profiling:false,advertisingIdentifiers:false}
-  };
+  return {integrated:true,superApp:'IZAKHONO ONE',service:'IZAKHONO FLOW',bridge:'owned-service-bridge',engineIndependent:true,sourceOfTruth:'products/izakhono-flow',internalHealthConfigured:Boolean(flowInternalUrl),publicRoute:'gated-until-independently-verified',workflow:['lead','qualify','quote','pay','fulfil','invoice','support','retain','report'],boundaries:['entity-and-platform-scoped','verified-payment-only','advisory-ai','replaceable-adapters'],privacy:{tracking:false,profiling:false,advertisingIdentifiers:false}};
 }
-
 async function proxyHealth(res, baseUrl, path, descriptor, errorPrefix) {
-  if (!baseUrl) return json(res, 503, {ok:false,error:errorPrefix + '_internal_route_not_configured',...descriptor});
+  if (!baseUrl) return json(res, 503, {ok:false,error:errorPrefix+'_internal_route_not_configured',...descriptor});
   try {
-    const upstream = await fetch(baseUrl + path, {
-      headers: {'accept':'application/json'},
-      signal: AbortSignal.timeout(3000)
-    });
-    let body = {};
-    try { body = await upstream.json(); } catch {}
-    return json(res, upstream.ok ? 200 : 502, {
-      ok: upstream.ok && body?.ok !== false,
-      configured: true,
-      engineIndependent: true,
-      upstreamStatus: upstream.status,
-      service: body
-    });
-  } catch {
-    return json(res, 502, {ok:false,error:errorPrefix + '_internal_health_unreachable',configured:true,engineIndependent:true});
-  }
+    const upstream = await fetch(baseUrl + path, {headers:{accept:'application/json'},signal:AbortSignal.timeout(3000)});
+    let body={}; try { body=await upstream.json(); } catch {}
+    return json(res, upstream.ok ? 200 : 502, {ok:upstream.ok && body?.ok !== false,configured:true,engineIndependent:true,upstreamStatus:upstream.status,service:body});
+  } catch { return json(res,502,{ok:false,error:errorPrefix+'_internal_health_unreachable',configured:true,engineIndependent:true}); }
 }
 
-const server = http.createServer(async (req, res) => {
+const server = http.createServer(async (req,res) => {
   const url = new URL(req.url || '/', 'http://localhost');
-  if (url.pathname === '/health') return json(res, 200, {
-    status:'ok',
-    platform:'IZAKHONO ONE',
-    engine:registry.engine,
-    services:registry.services.length,
-    noTracking:true,
-    builderIntegration:{integrated:true,configured:Boolean(builderInternalUrl),engineIndependent:true},
-    flowIntegration:{integrated:true,configured:Boolean(flowInternalUrl),engineIndependent:true}
-  });
-  if (url.pathname === '/api/builder') return json(res, 200, builderDescriptor());
-  if (url.pathname === '/api/builder/health') return proxyHealth(res, builderInternalUrl, '/api/health', builderDescriptor(), 'builder');
-  if (url.pathname === '/api/flow') return json(res, 200, flowDescriptor());
-  if (url.pathname === '/api/flow/health') return proxyHealth(res, flowInternalUrl, '/health', flowDescriptor(), 'flow');
-  if (url.pathname === '/api/search') return json(res, 200, {results:search(url.searchParams.get('q'))});
+  if (url.pathname === '/health') return json(res,200,{status:'ok',platform:'IZAKHONO ONE',engine:registry.engine,services:services.length,parallelPillars:parallel.length,noTracking:true,builderIntegration:{integrated:true,configured:Boolean(builderInternalUrl),engineIndependent:true},flowIntegration:{integrated:true,configured:Boolean(flowInternalUrl),engineIndependent:true}});
+  if (url.pathname === '/api/builder') return json(res,200,builderDescriptor());
+  if (url.pathname === '/api/builder/health') return proxyHealth(res,builderInternalUrl,'/api/health',builderDescriptor(),'builder');
+  if (url.pathname === '/api/flow') return json(res,200,flowDescriptor());
+  if (url.pathname === '/api/flow/health') return proxyHealth(res,flowInternalUrl,'/health',flowDescriptor(),'flow');
+  if (url.pathname === '/api/search') return json(res,200,{query:url.searchParams.get('q') || '',results:search(url.searchParams.get('q')),count:search(url.searchParams.get('q')).length});
   if (url.pathname.startsWith('/api/resolve/')) {
-    const slug = decodeURIComponent(url.pathname.slice('/api/resolve/'.length));
-    const service = bySlug.get(slug);
-    return service ? json(res, 200, service) : json(res, 404, {error:'service_not_found'});
+    const slug=decodeURIComponent(url.pathname.slice('/api/resolve/'.length));
+    const service=bySlug.get(slug);
+    return service ? json(res,200,service) : json(res,404,{error:'service_not_found'});
   }
   if (url.pathname.startsWith('/api/route/')) {
-    const slug = decodeURIComponent(url.pathname.slice('/api/route/'.length));
-    const service = bySlug.get(slug);
-    if (!service) return json(res, 404, {error:'service_not_found'});
-    if (!service.publicUrl || !['verified','external-resilience'].includes(service.status)) return json(res, 409, {error:'route_not_publicly_verified',service});
-    return json(res, 200, {slug,route:service.publicUrl,status:service.status});
+    const slug=decodeURIComponent(url.pathname.slice('/api/route/'.length));
+    const service=bySlug.get(slug);
+    if(!service) return json(res,404,{error:'service_not_found'});
+    if(!service.publicUrl || !['verified','external-resilience','foundation'].includes(service.status)) return json(res,409,{error:'route_not_publicly_verified',service});
+    return json(res,200,{slug,route:service.publicUrl,status:service.status});
   }
-
-  let pathname = url.pathname === '/' ? '/index.html' : url.pathname;
-  pathname = normalize(pathname).replace(/^(\.\.(\/|\\|$))+/, '');
-  const filePath = join(root, pathname);
-  if (!filePath.startsWith(root)) return json(res, 403, {error:'forbidden'});
-  try {
-    const body = await readFile(filePath);
-    res.writeHead(200, {'content-type':mime(filePath),'cache-control':pathname.endsWith('.html')?'no-cache':'public, max-age=300','x-content-type-options':'nosniff','referrer-policy':'no-referrer'});
-    res.end(body);
-  } catch {
-    json(res, 404, {error:'not_found'});
-  }
+  let pathname=url.pathname==='/'?'/index.html':url.pathname;
+  pathname=normalize(pathname).replace(/^(\.\.(\/|\\|$))+/, '');
+  const filePath=join(root,pathname);
+  if(!filePath.startsWith(root)) return json(res,403,{error:'forbidden'});
+  try { const body=await readFile(filePath); res.writeHead(200,{'content-type':mime(filePath),'cache-control':pathname.endsWith('.html')?'no-cache':'public, max-age=300','x-content-type-options':'nosniff','referrer-policy':'no-referrer'}); res.end(body); }
+  catch { json(res,404,{error:'not_found'}); }
 });
-
-server.listen(port, '127.0.0.1', () => {
-  console.log('IZAKHONO_ONE_ENGINE=READY');
-  console.log('BUILDER_INTEGRATION=READY');
-  console.log('BUILDER_INTERNAL_ROUTE=' + (builderInternalUrl ? 'CONFIGURED' : 'GATED'));
-  console.log('FLOW_INTEGRATION=READY');
-  console.log('FLOW_INTERNAL_ROUTE=' + (flowInternalUrl ? 'CONFIGURED' : 'GATED'));
-  console.log('PORT=' + port);
-});
+server.listen(port,'127.0.0.1',()=>{console.log('IZAKHONO_ONE_ENGINE=READY');console.log('PARALLEL_PILLARS='+parallel.length);console.log('BUILDER_INTEGRATION=READY');console.log('BUILDER_INTERNAL_ROUTE='+(builderInternalUrl?'CONFIGURED':'GATED'));console.log('FLOW_INTEGRATION=READY');console.log('FLOW_INTERNAL_ROUTE='+(flowInternalUrl?'CONFIGURED':'GATED'));console.log('PORT='+port);});
