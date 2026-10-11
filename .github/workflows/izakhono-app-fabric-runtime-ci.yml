@@ -1,0 +1,111 @@
+name: IZAKHONO APP FABRIC NODE01 Runtime CI
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "products/izakhono-crm/**"
+      - "products/izakhono-flow/**"
+      - "products/izakhono-revenue/**"
+      - "products/izakhono-tasks/**"
+      - "products/izakhono-fabric/gateway/**"
+      - "products/izakhono-one/**"
+      - "infra/app-fabric-runtime/**"
+      - ".github/workflows/izakhono-app-fabric-runtime-ci.yml"
+
+permissions:
+  contents: read
+  packages: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 16
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Log in to GHCR for owned runtime images
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Unit verification
+        run: |
+          (cd products/izakhono-crm && npm run check && npm test)
+          (cd products/izakhono-flow && npm run check && npm test)
+          (cd products/izakhono-revenue && npm run check)
+          python3 products/izakhono-tasks/test_tasks.py
+          (cd products/izakhono-fabric/gateway && npm run check && npm test)
+          node --check products/izakhono-one/server.mjs
+          bash -n infra/app-fabric-runtime/activate-node01.sh
+          bash -n infra/app-fabric-runtime/verify-node01.sh
+          bash -n infra/app-fabric-runtime/prove-flow-persistence.sh
+          bash -n infra/app-fabric-runtime/prepare-edge.sh
+      - name: Prepare isolated runtime environment
+        run: |
+          docker network create izakhono_public
+          docker network create --internal izakhono_private
+          cat > /tmp/app-fabric-runtime.env <<'EOF'
+          CRM_ADMIN_TOKEN=ci-admin-token
+          CRM_INGEST_TOKEN=ci-ingest-token
+          FLOW_ADMIN_TOKEN=ci-flow-admin-token
+          FLOW_INGEST_TOKEN=ci-flow-ingest-token
+          REVENUE_FLOW_TOKEN=ci-revenue-flow-token
+          IZAKHONO_TASKS_TOKEN=ci-tasks-owner-token
+          IZAKHONO_TASKS_FLOW_TOKEN=ci-tasks-flow-token
+          FLOW_ADAPTERS_JSON='{"izakhono-crm":{"url":"http://crm:8080/api/flow","token":"ci-ingest-token"},"izakhono-revenue":{"url":"http://revenue:8795/api/flow","token":"ci-revenue-flow-token"},"izakhono-tasks":{"url":"http://tasks:9991/api/flow","token":"ci-tasks-flow-token"}}'
+          IZAKHONO_FABRIC_INTERNAL_TOKEN=ci-internal-token
+          IZAKHONO_FABRIC_PUBLIC_INTAKE=false
+          IZAKHONO_FABRIC_ALLOWED_ORIGINS=
+          IZAKHONO_FABRIC_ALLOW_ORIGINLESS=false
+          EOF
+      - name: Build and start owned core topology
+        run: |
+          docker compose --env-file /tmp/app-fabric-runtime.env -f infra/app-fabric-runtime/docker-compose.yml build crm revenue tasks flow fabric allegro
+          docker compose --env-file /tmp/app-fabric-runtime.env -f infra/app-fabric-runtime/docker-compose.yml up -d crm revenue tasks flow fabric allegro
+          for i in $(seq 1 45); do
+            crm=$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' izakhono-crm 2>/dev/null || true)
+            revenue=$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' izakhono-revenue 2>/dev/null || true)
+            tasks=$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' izakhono-tasks 2>/dev/null || true)
+            flow=$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' izakhono-flow 2>/dev/null || true)
+            fabric=$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' izakhono-app-fabric-gateway 2>/dev/null || true)
+            if [ "$crm" = healthy ] && [ "$revenue" = healthy ] && [ "$tasks" = healthy ] && [ "$flow" = healthy ] && [ "$fabric" = healthy ]; then exit 0; fi
+            sleep 2
+          done
+          docker compose --env-file /tmp/app-fabric-runtime.env -f infra/app-fabric-runtime/docker-compose.yml ps
+          exit 1
+      - name: Prove core runtime contracts
+        run: |
+          docker exec izakhono-crm node -e "fetch('http://127.0.0.1:8080/health').then(r=>r.json()).then(v=>{if(!v.ok)process.exit(1)})"
+          docker exec izakhono-revenue node -e "fetch('http://127.0.0.1:8795/health').then(r=>r.json()).then(v=>{if(!v.ok||v.paymentAuthority!==false)process.exit(1)})"
+          docker exec izakhono-tasks python -c "import json,urllib.request; v=json.load(urllib.request.urlopen('http://127.0.0.1:9991/healthz',timeout=3)); raise SystemExit(0 if v.get('ok') and v.get('flow_adapter_configured') else 1)"
+          docker exec izakhono-flow node -e "fetch('http://127.0.0.1:8794/health').then(r=>r.json()).then(v=>{if(!v.ok||v.service!=='izakhono-flow')process.exit(1)})"
+          docker exec izakhono-app-fabric-gateway node -e "fetch('http://127.0.0.1:8090/health').then(r=>r.json()).then(v=>{if(!v.ok||v.public_intake!==false)process.exit(1)})"
+      - name: Prove IZAKHONO ONE can bridge to FLOW
+        run: |
+          docker build -t izakhono-one:ci products/izakhono-one
+          docker run -d --name izakhono-one-ci --network izakhono_private -e IZAKHONO_FLOW_INTERNAL_URL=http://izakhono-flow:8794 izakhono-one:ci
+          for i in $(seq 1 20); do
+            if docker exec izakhono-one-ci node -e "fetch('http://127.0.0.1:8781/api/flow/health').then(async r=>{const v=await r.json();if(!r.ok||!v.ok||v.upstreamStatus!==200)process.exit(1)}).catch(()=>process.exit(1))"; then exit 0; fi
+            sleep 1
+          done
+          docker logs izakhono-one-ci
+          exit 1
+      - name: Runtime logs on failure
+        if: failure()
+        run: |
+          docker logs izakhono-crm || true
+          docker logs izakhono-revenue || true
+          docker logs izakhono-tasks || true
+          docker logs izakhono-flow || true
+          docker logs izakhono-app-fabric-gateway || true
+          docker logs izakhono-one-ci || true
+      - name: Tear down
+        if: always()
+        run: |
+          docker rm -f izakhono-one-ci >/dev/null 2>&1 || true
+          docker compose --env-file /tmp/app-fabric-runtime.env -f infra/app-fabric-runtime/docker-compose.yml down -v || true
