@@ -7,7 +7,6 @@ export const vaultUiScript = `<script>
     const panel=document.createElement('div');panel.id='vault-control-room';panel.className='card';
     panel.innerHTML='<div class="muted">CONTROL ROOM</div><h2 style="margin:5px 0">Take management</h2><p class="muted">Choose the winning take for each shot or create a new take without losing the previous version.</p><div id="vault-actions" class="toolbar"></div><div id="vault-selection" class="status">Select a completed take to manage it.</div>';
     library.parentElement.insertBefore(panel,library);
-    window.renderVaultControls=render;
     render();
   }
   async function render(){
@@ -21,10 +20,10 @@ export const vaultUiScript = `<script>
     try{const r=await fetch('/api/assets/'+encodeURIComponent(id)+'/select',{method:'POST'});const d=await r.json();if(!r.ok)throw new Error(d.error||'Selection failed');document.getElementById('vault-selection').textContent='Winner selected. The previous takes remain in the Vault.';await refreshAssets();render();}catch(e){document.getElementById('vault-selection').textContent=e.message;}
   };
   window.vaultRegenerate=async function(id){
-    const prompt=prompt('Optional creative change for the new take:','');
-    if(prompt===null)return;
+    const creativeChange=window.prompt('Optional creative change for the new take:','');
+    if(creativeChange===null)return;
     const ok=confirm('Generate a new take for this shot? Provider charges may apply.');if(!ok)return;
-    try{const r=await fetch('/api/assets/'+encodeURIComponent(id)+'/regenerate',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({prompt:prompt||undefined})});const d=await r.json();if(!r.ok)throw new Error(d.error||'Regeneration failed');document.getElementById('vault-selection').textContent='New take submitted. The Vault will retain the previous version.';await refreshAssets();render();}catch(e){document.getElementById('vault-selection').textContent=e.message;}
+    try{const r=await fetch('/api/assets/'+encodeURIComponent(id)+'/regenerate',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({prompt:creativeChange||undefined})});const d=await r.json();if(!r.ok)throw new Error(d.error||'Regeneration failed');document.getElementById('vault-selection').textContent='New take submitted. The Vault will retain the previous version.';await refreshAssets();render();}catch(e){document.getElementById('vault-selection').textContent=e.message;}
   };
   const oldRefresh=window.refreshAssets;window.refreshAssets=async function(){await oldRefresh();render();};
   const observer=new MutationObserver(()=>render());observer.observe(document.getElementById('library'),{childList:true});
