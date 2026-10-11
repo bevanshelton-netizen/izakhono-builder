@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "IZAKHONO NODE01 Workload State",
+  "type": "object",
+  "required": ["node_id", "workload", "desired", "current", "health", "rollback"],
+  "properties": {
+    "node_id": {"const": "NODE01"},
+    "workload": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$"},
+    "desired": {
+      "type": "object",
+      "required": ["image", "port", "health_path"],
+      "properties": {
+        "image": {"type": "string", "pattern": "^ghcr\\.io/bevanshelton-netizen/"},
+        "port": {"type": "integer", "minimum": 1024, "maximum": 65535},
+        "health_path": {"type": "string", "pattern": "^/"}
+      },
+      "additionalProperties": false
+    },
+    "current": {
+      "type": "object",
+      "required": ["state", "image"],
+      "properties": {
+        "state": {"enum": ["absent", "pulling", "starting", "healthy", "unhealthy", "stopped", "rollback"]},
+        "image": {"type": ["string", "null"]},
+        "started_at": {"type": ["string", "null"]},
+        "revision": {"type": ["string", "null"]}
+      },
+      "additionalProperties": false
+    },
+    "health": {
+      "type": "object",
+      "required": ["healthy", "consecutive_failures"],
+      "properties": {
+        "healthy": {"type": "boolean"},
+        "consecutive_failures": {"type": "integer", "minimum": 0},
+        "last_check": {"type": ["string", "null"]}
+      },
+      "additionalProperties": false
+    },
+    "rollback": {
+      "type": "object",
+      "required": ["available", "image"],
+      "properties": {
+        "available": {"type": "boolean"},
+        "image": {"type": ["string", "null"]},
+        "reason": {"type": ["string", "null"]}
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}
