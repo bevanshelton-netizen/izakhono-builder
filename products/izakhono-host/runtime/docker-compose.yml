@@ -7,6 +7,7 @@ services:
     volumes:
       - host-state:/var/lib/izakhono
       - /var/run/docker.sock:/var/run/docker.sock
+    networks: [izakhono-runtime]
     ports:
       - "8080:8080"
     restart: unless-stopped
@@ -15,6 +16,9 @@ services:
     build: ./edge
     depends_on:
       - control-plane
+    environment:
+      CONTROL_PLANE: http://control-plane:8080
+    networks: [izakhono-runtime]
     ports:
       - "80:8080"
       - "443:8443"
@@ -26,9 +30,11 @@ services:
       NODE_ID: NODE01
       CONTROL_PLANE: http://control-plane:8080
       WORK_ROOT: /var/lib/izakhono/work
+      RUNTIME_NETWORK: izakhono-runtime
     volumes:
       - node01-work:/var/lib/izakhono/work
       - /var/run/docker.sock:/var/run/docker.sock
+    networks: [izakhono-runtime]
     restart: unless-stopped
 
   node02:
@@ -37,10 +43,16 @@ services:
       NODE_ID: NODE02
       CONTROL_PLANE: http://control-plane:8080
       WORK_ROOT: /var/lib/izakhono/work
+      RUNTIME_NETWORK: izakhono-runtime
     volumes:
       - node02-work:/var/lib/izakhono/work
       - /var/run/docker.sock:/var/run/docker.sock
+    networks: [izakhono-runtime]
     restart: unless-stopped
+
+networks:
+  izakhono-runtime:
+    name: izakhono-runtime
 
 volumes:
   host-state:
