@@ -1,0 +1,23 @@
+services:
+  super-seo:
+    build:
+      context: ../..
+      dockerfile: products/izakhono-super-seo/Dockerfile
+    image: izakhono-super-seo:v5
+    restart: unless-stopped
+    environment:
+      PORT: "8097"
+      NODE_ENV: production
+    networks:
+      - edge
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8097/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 8
+      start_period: 10s
+
+networks:
+  edge:
+    external: true
+    name: izakhono-edge
