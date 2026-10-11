@@ -8,13 +8,14 @@ import { registerIdentityRoutes } from './routes/identity.js';
 import { registerOperationsRoutes } from './routes/operations.js';
 import { registerIntelligenceRoutes } from './routes/intelligence.js';
 import { registerLiveRoutes } from './routes/live.js';
+import { registerFeedRoutes } from './routes/feed.js';
 import { installSecurity } from './security/auth.js';
 
 const app = Fastify({ logger: true });
 await app.register(cors, { origin: true });
 const pool = process.env.DATABASE_URL ? new Pool({ connectionString: process.env.DATABASE_URL, max: 20 }) : null;
 
-app.get('/health', async () => ({ service: 'izakhono-sports-api', status: 'ok', foundation: 'owned-first', database: pool ? 'configured' : 'not-configured', moneyLayer: 'provider-neutral', security: 'organisation-scoped', identity: 'tenant-provisioning', operations: 'sports-operations', intelligence: 'sport-agnostic', liveEngine: 'competition-events' }));
+app.get('/health', async () => ({ service: 'izakhono-sports-api', status: 'ok', foundation: 'owned-first', database: pool ? 'configured' : 'not-configured', moneyLayer: 'provider-neutral', security: 'organisation-scoped', identity: 'tenant-provisioning', operations: 'sports-operations', intelligence: 'sport-agnostic', liveEngine: 'competition-events', feeds: 'sports-network' }));
 app.get('/api/v1/sports', async () => {
   if (!pool) return { data: [
     { slug: 'football', name: 'Football' }, { slug: 'rugby', name: 'Rugby' }, { slug: 'cricket', name: 'Cricket' },
@@ -33,6 +34,7 @@ if (pool) {
   await registerOperationsRoutes(app, pool);
   await registerIntelligenceRoutes(app, pool);
   await registerLiveRoutes(app, pool);
+  await registerFeedRoutes(app, pool);
   await registerSponsorRoutes(app, pool);
   await registerBillingRoutes(app, pool);
 }
