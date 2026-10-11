@@ -1,0 +1,43 @@
+{
+  "schema": "izakhono.authoritative-dns/cutover-v2",
+  "mode": "owned-first",
+  "authority": {
+    "provider": "IZAKHONO Authoritative DNS",
+    "implementation": "PowerDNS Authoritative",
+    "primary": "${PRIMARY_NS_FQDN}",
+    "secondary": "${SECONDARY_NS_FQDN}"
+  },
+  "required_evidence": [
+    "primary_public_ipv4",
+    "secondary_public_ipv4",
+    "distinct_failure_domains",
+    "udp53_reachable_primary",
+    "tcp53_reachable_primary",
+    "udp53_reachable_secondary",
+    "tcp53_reachable_secondary",
+    "parent_ns_matches",
+    "zone_ns_matches",
+    "soa_consistent",
+    "mail_records_preserved",
+    "dnssec_validated_if_enabled"
+  ],
+  "state_machine": [
+    "REQUESTED",
+    "ZONE_IMPORTED",
+    "SERVING_PRIVATE",
+    "PUBLIC_REACHABILITY_VERIFIED",
+    "PARENT_DELEGATION_VERIFIED",
+    "AUTHORITY_VERIFIED",
+    "DNSSEC_VERIFIED",
+    "CUTOVER_APPROVED",
+    "LIVE"
+  ],
+  "safety": {
+    "preserve_existing_zone_before_change": true,
+    "preserve_mx_txt_records": true,
+    "rollback_required": true,
+    "public_live_requires_independent_evidence": true,
+    "cloudflare_is_adapter_only": true,
+    "registrar_change_requires_owner_authorization": true
+  }
+}
