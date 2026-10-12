@@ -1,0 +1,36 @@
+{
+  "version": 1,
+  "name": "IZAKHONO BRAIN FABRIC",
+  "principles": {
+    "owned_first": true,
+    "fail_closed": true,
+    "evidence_before_live": true,
+    "human_authorization_for_irreversible_actions": true,
+    "external_models_are_adapters_not_dependencies": true
+  },
+  "brains": [
+    {"id":"core","mission":"global orchestration, policy and arbitration","priority":0},
+    {"id":"ci","mission":"build, test, verify and release decisions","priority":10},
+    {"id":"mail","mission":"email routing, security, priority and delivery intelligence","priority":10},
+    {"id":"dns","mission":"domain, zone, delegation and DNS health decisions","priority":10},
+    {"id":"network","mission":"reachability, ports, routing and network diagnostics","priority":10},
+    {"id":"security","mission":"threat detection, policy enforcement and incident response","priority":10},
+    {"id":"hosting","mission":"application/runtime placement, health and failover","priority":20},
+    {"id":"deploy","mission":"build, release, rollback and deployment orchestration","priority":20},
+    {"id":"provisioner","mission":"payment-to-domain-to-site-to-mail customer provisioning","priority":20},
+    {"id":"identity","mission":"users, roles, tenants, keys and access policy","priority":20},
+    {"id":"data","mission":"database, storage, backup and recovery decisions","priority":20},
+    {"id":"observability","mission":"health, telemetry, anomaly detection and alerting","priority":20},
+    {"id":"billing","mission":"payment, entitlement, metering and revenue state","priority":30},
+    {"id":"customer","mission":"customer requests, service state and handover intelligence","priority":30},
+    {"id":"marketing","mission":"campaign, audience, content and conversion orchestration","priority":30},
+    {"id":"content","mission":"content generation, review, localization and publishing workflow","priority":30},
+    {"id":"analytics","mission":"metrics, attribution, forecasting and decision support","priority":30},
+    {"id":"fleet","mission":"vehicle, mobility and fleet intelligence","priority":40},
+    {"id":"nav","mission":"navigation, road safety and mobility intelligence","priority":40},
+    {"id":"commerce","mission":"catalogue, orders, inventory and fulfilment intelligence","priority":40},
+    {"id":"finance","mission":"financial controls, reconciliation and financial intelligence","priority":40},
+    {"id":"education","mission":"learner, course, assessment and education workflow intelligence","priority":40},
+    {"id":"media","mission":"radio, TV, music, scheduling and media operations intelligence","priority":40}
+  ]
+}
