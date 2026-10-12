@@ -21,7 +21,8 @@ jobs:
         run: |
           docker run --rm \
             -v "$PWD/infra/izakhono-dns/bind/primary/zones:/zones:ro" \
+            --entrypoint named-checkzone \
             internetsystemsconsortium/bind9:9.20 \
-            named-checkzone izakhonoafrica.co.za /zones/izakhonoafrica.co.za.zone
+            izakhonoafrica.co.za /zones/izakhonoafrica.co.za.zone
       - name: Validate Docker Compose
         run: docker compose -f infra/izakhono-dns/docker-compose.yml config
