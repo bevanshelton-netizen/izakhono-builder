@@ -1,0 +1,51 @@
+services:
+  mailserver:
+    image: ghcr.io/docker-mailserver/docker-mailserver:${DMS_VERSION:-latest}
+    hostname: ${MAIL_HOSTNAME:?MAIL_HOSTNAME is required}
+    container_name: node01-mailserver
+    restart: unless-stopped
+    stop_grace_period: 1m
+    cap_add:
+      - NET_ADMIN
+      - SYS_PTRACE
+    environment:
+      OVERRIDE_HOSTNAME: ${MAIL_HOSTNAME:?MAIL_HOSTNAME is required}
+      POSTMASTER_ADDRESS: ${ADMIN_MAILBOX:?ADMIN_MAILBOX is required}
+      ENABLE_RSPAMD: '1'
+      ENABLE_CLAMAV: '0'
+      ENABLE_FAIL2BAN: '1'
+      ENABLE_OPENDKIM: '0'
+      ENABLE_OPENDMARC: '0'
+      ENABLE_AMAVIS: '0'
+      ENABLE_SPAMASSASSIN: '0'
+      ENABLE_MANAGESIEVE: '1'
+      ENABLE_IMAP: '1'
+      ENABLE_POP3: '0'
+      ENABLE_SRS: '1'
+      SSL_TYPE: letsencrypt
+      LETSENCRYPT_DOMAIN: ${MAIL_HOSTNAME:?MAIL_HOSTNAME is required}
+      SPOOF_PROTECTION: '1'
+      ENABLE_UPDATE_CHECK: '0'
+    ports:
+      - "25:25"
+      - "465:465"
+      - "587:587"
+      - "993:993"
+    volumes:
+      - ./data/mail:/var/mail
+      - ./data/state:/var/mail-state
+      - ./data/config:/tmp/docker-mailserver
+      - ./data/ssl:/etc/letsencrypt
+      - ./data/log:/var/log/mail
+    healthcheck:
+      test: ["CMD-SHELL", "ss -lnt | grep -Eq ':25 |:465 |:587 |:993 ' && doveadm service status imap >/dev/null 2>&1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+    networks:
+      - node01-mail
+
+networks:
+  node01-mail:
+    driver: bridge
