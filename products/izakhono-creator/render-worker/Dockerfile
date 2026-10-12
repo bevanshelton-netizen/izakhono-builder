@@ -6,6 +6,7 @@ RUN apt-get update \
 
 WORKDIR /app
 COPY package.json ./
+RUN npm install --omit=dev --no-audit --no-fund
 COPY worker.mjs ./
 
 ENV NODE_ENV=production
