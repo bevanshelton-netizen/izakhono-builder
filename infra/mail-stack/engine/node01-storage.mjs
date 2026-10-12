@@ -10,6 +10,16 @@ export class Node01MailboxStore {
   constructor({ root = "/var/lib/izakhono-mail/mailboxes" } = {}) { this.root = root; ensureDir(root); }
   load(address) { const file = path.join(this.root, `${safeName(address)}.json`); try { return JSON.parse(fs.readFileSync(file, "utf8")); } catch (e) { if (e.code === "ENOENT") return null; throw e; } }
   save(address, mailbox) { atomicWrite(path.join(this.root, `${safeName(address)}.json`), mailbox); return mailbox; }
+  list() {
+    return fs.readdirSync(this.root, { withFileTypes: true })
+      .filter(entry => entry.isFile() && entry.name.endsWith(".json"))
+      .map(entry => this.loadFile(entry.name))
+      .filter(Boolean);
+  }
+  loadFile(name) {
+    try { return JSON.parse(fs.readFileSync(path.join(this.root, name), "utf8")); }
+    catch (e) { if (e.code === "ENOENT") return null; throw e; }
+  }
 }
 
 export class Node01QueueStore {
