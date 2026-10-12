@@ -1,4 +1,4 @@
-export type CreatorAssetStatus = 'planned' | 'submitted' | 'processing' | 'completed' | 'failed';
+export type CreatorAssetStatus = 'planned' | 'queued' | 'submitted' | 'processing' | 'completed' | 'failed';
 export type CreatorRenderStatus = 'queued' | 'processing' | 'completed' | 'failed';
 export type CreatorProject = { id:string; brief:string; packageData:unknown; createdAt:string; updatedAt:string };
 export type CreatorAsset = { id:string; projectId:string; shotIndex?:number; kind:'image'|'video'|'audio'; status:CreatorAssetStatus; provider?:string; externalId?:string; objectKey?:string; url?:string; metadata?:unknown; createdAt:string; updatedAt:string };
