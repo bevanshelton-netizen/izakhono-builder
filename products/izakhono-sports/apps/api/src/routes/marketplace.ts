@@ -27,8 +27,10 @@ export async function registerMarketplaceRoutes(app: FastifyInstance, pool: Pool
       const id = uuid.parse(String((req.params as any).id));
       const row = (await pool.query(`select o.*,i.owner_organisation_id,c.sponsor_organisation_id from marketplace_offers o join sponsorship_inventory i on i.id=o.inventory_id join sponsor_campaigns c on c.id=o.campaign_id where o.id=$1`,[id])).rows[0];
       if (!row) return reply.code(404).send({ error: 'offer_not_found' });
-      if (row.owner_organisation_id && requireOrganisation(req, reply, row.owner_organisation_id)) return;
-      if (row.sponsor_organisation_id && requireOrganisation(req, reply, row.sponsor_organisation_id)) return;
+      const isPlatformAdmin = req.auth.role === 'PLATFORM_ADMIN';
+      const isOwner = req.auth.organisationId === row.owner_organisation_id;
+      const isSponsor = req.auth.organisationId === row.sponsor_organisation_id;
+      if (!isPlatformAdmin && !isOwner && !isSponsor) return reply.code(403).send({ error: 'marketplace_scope_violation' });
       if (requireRoles(req, reply, ['ORG_OWNER','ORG_ADMIN','SPONSOR','OFFICIAL'])) return;
       return { data: row };
     } catch (e) { return reply.code(400).send({ error: e instanceof Error ? e.message : 'query failed' }); }
@@ -40,8 +42,8 @@ export async function registerMarketplaceRoutes(app: FastifyInstance, pool: Pool
       const decision = z.object({ status: z.enum(['accepted','rejected','countered']), message: z.string().max(4000).optional() }).parse(req.body);
       const row = (await pool.query(`select o.*,i.owner_organisation_id,c.sponsor_organisation_id from marketplace_offers o join sponsorship_inventory i on i.id=o.inventory_id join sponsor_campaigns c on c.id=o.campaign_id where o.id=$1`,[id])).rows[0];
       if (!row) return reply.code(404).send({ error: 'offer_not_found' });
-      if (row.owner_organisation_id && requireOrganisation(req, reply, row.owner_organisation_id)) return;
-      if (requireRoles(req, reply, ['ORG_OWNER','ORG_ADMIN','OFFICIAL'])) return;
+      if (requireOrganisation(req, reply, row.owner_organisation_id) || requireRoles(req, reply, ['ORG_OWNER','ORG_ADMIN','OFFICIAL'])) return;
+      if (row.status !== 'submitted' && row.status !== 'countered') return reply.code(409).send({ error: 'offer_not_actionable', status: row.status });
       const updated = await pool.query(`update marketplace_offers set status=$1,decision_message=$2,decided_at=now(),decided_by=$3 where id=$4 returning *`,[decision.status,decision.message ?? null,req.auth.userId ?? null,id]);
       await audit(pool, req, 'marketplace.offer.decision', 'marketplace_offer', id, row.owner_organisation_id);
       return { data: updated.rows[0] };
