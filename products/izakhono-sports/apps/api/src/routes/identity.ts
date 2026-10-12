@@ -9,9 +9,20 @@ const role = z.enum(['ORG_OWNER','ORG_ADMIN','COACH','ATHLETE','OFFICIAL','SPONS
 const provision = z.object({ email: z.string().email(), displayName: z.string().min(2), organisationName: z.string().min(2), organisationType: z.enum(['club','academy','school','league','federation','venue','agency','sponsor','media','other']).default('club'), countryCode: z.string().length(2).optional(), currencyCode: z.string().length(3).default('ZAR') });
 const invite = z.object({ email: z.string().email(), role });
 const hashToken = (token: string) => createHash('sha256').update(token).digest('hex');
+const provisionAttempts = new Map<string, { count: number; resetAt: number }>();
+
+function allowProvision(ip: string) {
+  const now = Date.now();
+  const current = provisionAttempts.get(ip);
+  if (!current || current.resetAt <= now) { provisionAttempts.set(ip, { count: 1, resetAt: now + 60 * 60 * 1000 }); return true; }
+  if (current.count >= 5) return false;
+  current.count += 1;
+  return true;
+}
 
 export async function registerIdentityRoutes(app: FastifyInstance, pool: Pool) {
   app.post('/api/v1/identity/provision', async (req, reply) => {
+    if (!allowProvision(req.ip)) return reply.code(429).send({ error: 'too_many_requests', retryAfterSeconds: 3600 });
     try {
       const x = provision.parse(req.body);
       const existing = await pool.query('select id from users where lower(email)=lower($1) limit 1', [x.email]);
