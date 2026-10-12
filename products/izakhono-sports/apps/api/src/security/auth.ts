@@ -16,7 +16,7 @@ type AuthContext = {
 
 declare module 'fastify' { interface FastifyRequest { auth: AuthContext; } }
 
-const publicRoutes = new Set(['/health', '/api/v1/sports', '/api/v1/sponsor/match-preview']);
+const publicRoutes = new Set(['/health', '/api/v1/sports', '/api/v1/sponsor/match-preview', '/api/v1/identity/provision']);
 const publicRoutePrefixes = ['/api/v1/athletes/'];
 const hashToken = (token: string) => createHash('sha256').update(token).digest('hex');
 
