@@ -1,3 +1,4 @@
+import test from 'node:test';
 import { scoreSponsorMatch } from './sponsor-match.js';
 
 const base = { sports: ['football'], geographies: ['ZA'], objectives: ['brand-awareness'], audience: ['youth'], budget: 100000 };
