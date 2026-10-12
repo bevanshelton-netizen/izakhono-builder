@@ -10,15 +10,22 @@ class WorkerPool:
         self.coordinator = coordinator
 
     def dispatch_once(self) -> list[tuple[str, WorkItem]]:
+        """Assign as much currently available work as workers can accept."""
         assignments: list[tuple[str, WorkItem]] = []
-        snapshot = self.coordinator.snapshot()
-        for worker_id, info in snapshot["workers"].items():
-            if not info["healthy"]:
-                continue
-            while info["active_tasks"] < 1:
+        progress = True
+
+        while progress:
+            progress = False
+            snapshot = self.coordinator.snapshot()
+            for worker_id, info in snapshot["workers"].items():
+                if not info["healthy"]:
+                    continue
+                if info["state"] in {"draining", "offline"}:
+                    continue
                 item = self.coordinator.claim(worker_id)
                 if item is None:
-                    break
+                    continue
                 assignments.append((worker_id, item))
-                info["active_tasks"] += 1
+                progress = True
+
         return assignments
