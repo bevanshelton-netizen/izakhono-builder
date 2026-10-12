@@ -5,11 +5,12 @@ import path from "node:path";
 import { Node01DurableMailRuntime } from "./node01-durable-mail-runtime.mjs";
 import { Node01MailboxStore, Node01QueueStore } from "./node01-storage.mjs";
 
+// Restart proof: mailbox and queue state must survive a fresh runtime instance.
 const root = fs.mkdtempSync(path.join(os.tmpdir(), "izakhono-mail-"));
 const mailboxStore = new Node01MailboxStore({ root: path.join(root, "mailboxes") });
 const queueStore = new Node01QueueStore({ root: path.join(root, "queue") });
 
-const first = new Node01DurableMailRuntime({ registry: {} , mailboxStore, queueStore });
+const first = new Node01DurableMailRuntime({ registry: {}, mailboxStore, queueStore });
 first.queue.enqueue({ id: "persist-1", routes: [{ mailbox: "hello@izakhonoafrica.co.za" }] });
 first.mailboxes.deliver("hello@izakhonoafrica.co.za", { id: "persist-1" });
 first.persist();
