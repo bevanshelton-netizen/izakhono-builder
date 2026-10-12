@@ -28,8 +28,10 @@ jobs:
           node --check infra/mail-stack/engine/mailbox-engine.mjs
           node --check infra/mail-stack/engine/transport-engine.mjs
           node --check infra/mail-stack/engine/mail-runtime.mjs
+          node --check infra/mail-stack/engine/node01-mail-server.mjs
           node --check infra/mail-stack/engine/node01-storage.mjs
           node --check infra/mail-stack/engine/node01-durable-mail-runtime.mjs
+          node --check infra/mail-stack/node01-mail-readiness.mjs
       - name: Run mail processor contract tests
         run: node infra/mail-stack/mail-processor.test.mjs
       - name: Run mail engine tests
