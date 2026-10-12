@@ -27,10 +27,7 @@ export async function registerMarketplaceRoutes(app: FastifyInstance, pool: Pool
       const id = uuid.parse(String((req.params as any).id));
       const row = (await pool.query(`select o.*,i.owner_organisation_id,c.sponsor_organisation_id from marketplace_offers o join sponsorship_inventory i on i.id=o.inventory_id join sponsor_campaigns c on c.id=o.campaign_id where o.id=$1`,[id])).rows[0];
       if (!row) return reply.code(404).send({ error: 'offer_not_found' });
-      const isPlatformAdmin = req.auth.role === 'PLATFORM_ADMIN';
-      const isOwner = req.auth.organisationId === row.owner_organisation_id;
-      const isSponsor = req.auth.organisationId === row.sponsor_organisation_id;
-      if (!isPlatformAdmin && !isOwner && !isSponsor) return reply.code(403).send({ error: 'marketplace_scope_violation' });
+      if (req.auth.role !== 'PLATFORM_ADMIN' && req.auth.organisationId !== row.owner_organisation_id && req.auth.organisationId !== row.sponsor_organisation_id) return reply.code(403).send({ error: 'marketplace_scope_violation' });
       if (requireRoles(req, reply, ['ORG_OWNER','ORG_ADMIN','SPONSOR','OFFICIAL'])) return;
       return { data: row };
     } catch (e) { return reply.code(400).send({ error: e instanceof Error ? e.message : 'query failed' }); }
@@ -40,12 +37,48 @@ export async function registerMarketplaceRoutes(app: FastifyInstance, pool: Pool
     try {
       const id = uuid.parse(String((req.params as any).id));
       const decision = z.object({ status: z.enum(['accepted','rejected','countered']), message: z.string().max(4000).optional() }).parse(req.body);
-      const row = (await pool.query(`select o.*,i.owner_organisation_id,c.sponsor_organisation_id from marketplace_offers o join sponsorship_inventory i on i.id=o.inventory_id join sponsor_campaigns c on c.id=o.campaign_id where o.id=$1`,[id])).rows[0];
+      const row = (await pool.query(`select o.*,i.owner_organisation_id,c.sponsor_organisation_id,i.currency_code as inventory_currency from marketplace_offers o join sponsorship_inventory i on i.id=o.inventory_id join sponsor_campaigns c on c.id=o.campaign_id where o.id=$1`,[id])).rows[0];
       if (!row) return reply.code(404).send({ error: 'offer_not_found' });
       if (requireOrganisation(req, reply, row.owner_organisation_id) || requireRoles(req, reply, ['ORG_OWNER','ORG_ADMIN','OFFICIAL'])) return;
       if (row.status !== 'submitted' && row.status !== 'countered') return reply.code(409).send({ error: 'offer_not_actionable', status: row.status });
-      const updated = await pool.query(`update marketplace_offers set status=$1,decision_message=$2,decided_at=now(),decided_by=$3 where id=$4 returning *`,[decision.status,decision.message ?? null,req.auth.userId ?? null,id]);
-      await audit(pool, req, 'marketplace.offer.decision', 'marketplace_offer', id, row.owner_organisation_id);
+      const client = await pool.connect();
+      try {
+        await client.query('begin');
+        const updated = await client.query(`update marketplace_offers set status=$1,decision_message=$2,decided_at=now(),decided_by=$3 where id=$4 returning *`,[decision.status,decision.message ?? null,req.auth.userId ?? null,id]);
+        let contract = null;
+        if (decision.status === 'accepted') {
+          const created = await client.query(`insert into sponsorship_contracts(offer_id,inventory_id,campaign_id,owner_organisation_id,sponsor_organisation_id,contracted_value,currency_code,status,signed_by_owner,signed_at) values($1,$2,$3,$4,$5,$6,$7,'draft',$8,now()) on conflict (offer_id) do update set updated_at=now() returning *`,[id,row.inventory_id,row.campaign_id,row.owner_organisation_id,row.sponsor_organisation_id,row.proposed_value,row.currency_code ?? row.inventory_currency,req.auth.userId]);
+          contract = created.rows[0];
+          await client.query(`update sponsorship_inventory set status='contracted' where id=$1 and status='available'`, [row.inventory_id]);
+        }
+        await client.query('commit');
+        await audit(pool, req, 'marketplace.offer.decision', 'marketplace_offer', id, row.owner_organisation_id);
+        return { data: updated.rows[0], contract };
+      } catch (error) { await client.query('rollback'); throw error; } finally { client.release(); }
+    } catch (e) { return reply.code(400).send({ error: e instanceof Error ? e.message : 'invalid request' }); }
+  });
+
+  app.get('/api/v1/marketplace/contracts/:id', async (req, reply) => {
+    try {
+      const id = uuid.parse(String((req.params as any).id));
+      const row = (await pool.query('select * from sponsorship_contracts where id=$1',[id])).rows[0];
+      if (!row) return reply.code(404).send({ error: 'contract_not_found' });
+      if (req.auth.role !== 'PLATFORM_ADMIN' && req.auth.organisationId !== row.owner_organisation_id && req.auth.organisationId !== row.sponsor_organisation_id) return reply.code(403).send({ error: 'contract_scope_violation' });
+      return { data: row };
+    } catch (e) { return reply.code(400).send({ error: e instanceof Error ? e.message : 'query failed' }); }
+  });
+
+  app.post('/api/v1/marketplace/contracts/:id/sign', async (req, reply) => {
+    try {
+      const id = uuid.parse(String((req.params as any).id));
+      const row = (await pool.query('select * from sponsorship_contracts where id=$1',[id])).rows[0];
+      if (!row) return reply.code(404).send({ error: 'contract_not_found' });
+      const isOwner = req.auth.organisationId === row.owner_organisation_id;
+      const isSponsor = req.auth.organisationId === row.sponsor_organisation_id;
+      if (req.auth.role !== 'PLATFORM_ADMIN' && !isOwner && !isSponsor) return reply.code(403).send({ error: 'contract_scope_violation' });
+      if (requireRoles(req, reply, ['ORG_OWNER','ORG_ADMIN','SPONSOR'])) return;
+      const updated = await pool.query(`update sponsorship_contracts set signed_by_owner=case when $2 then coalesce(signed_by_owner,$3) else signed_by_owner end,signed_by_sponsor=case when $2=false then coalesce(signed_by_sponsor,$3) else signed_by_sponsor end,signed_at=case when (case when $2 then coalesce(signed_by_owner,$3) else signed_by_owner end) is not null and (case when $2=false then coalesce(signed_by_sponsor,$3) else signed_by_sponsor end) is not null then now() else signed_at end,status=case when (case when $2 then coalesce(signed_by_owner,$3) else signed_by_owner end) is not null and (case when $2=false then coalesce(signed_by_sponsor,$3) else signed_by_sponsor end) is not null then 'active' else status end,updated_at=now() where id=$1 returning *`,[id,isOwner,req.auth.userId]);
+      await audit(pool, req, 'marketplace.contract.signed', 'sponsorship_contract', id, row.owner_organisation_id);
       return { data: updated.rows[0] };
     } catch (e) { return reply.code(400).send({ error: e instanceof Error ? e.message : 'invalid request' }); }
   });
