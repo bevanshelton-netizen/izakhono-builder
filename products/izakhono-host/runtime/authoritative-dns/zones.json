@@ -1,0 +1,10 @@
+[
+  {
+    "name": "example.invalid",
+    "records": [
+      {"name":"example.invalid","type":"SOA","ttl":300,"value":"ns1.example.invalid. hostmaster.example.invalid. 2026101201 3600 600 1209600 300","enabled":true},
+      {"name":"example.invalid","type":"NS","ttl":300,"value":"ns1.example.invalid.","enabled":true},
+      {"name":"example.invalid","type":"NS","ttl":300,"value":"ns2.example.invalid.","enabled":true}
+    ]
+  }
+]
