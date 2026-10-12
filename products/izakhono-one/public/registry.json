@@ -13,6 +13,12 @@
     {"slug":"doxa-sure","name":"DOXA-SURE","category":"Resilience","description":"Insurance and resilience services through appropriate licensed structures.","status":"gated","publicUrl":null},
     {"slug":"auto-ai","name":"AUTO AI","category":"Automotive","description":"Vehicle repair quote second opinions and diagnostic support.","status":"gated","publicUrl":null},
     {"slug":"worknow","name":"WorkNow","category":"Employment","description":"Job-seeker and employer opportunity platform.","status":"gated","publicUrl":null},
-    {"slug":"izakhono-create","name":"IZAKHONO CREATE","category":"Creative","description":"Creative production, product media and campaign tooling.","status":"gated","publicUrl":null}
+    {"slug":"izakhono-create","name":"IZAKHONO CREATE","category":"Creative","description":"Creative production, product media and campaign tooling.","status":"gated","publicUrl":null},
+    {"slug":"search","name":"IZAKHONO SEARCH","category":"Search","description":"Web, local and content discovery services.","status":"gated","publicUrl":null},
+    {"slug":"ai","name":"IZAKHONO AI","category":"Artificial Intelligence","description":"Reasoning, generation and automation services.","status":"gated","publicUrl":null},
+    {"slug":"cloud","name":"IZAKHONO CLOUD","category":"Cloud","description":"Owned storage, documents and workspace services.","status":"gated","publicUrl":null},
+    {"slug":"commerce","name":"IZAKHONO COMMERCE","category":"Commerce","description":"Catalog, orders and payments services.","status":"gated","publicUrl":null},
+    {"slug":"nav","name":"IZAKHONO NAV","category":"Mobility & Safety","description":"Navigation, driver safety, fleet and offline road intelligence.","status":"gated","publicUrl":null},
+    {"slug":"fortress","name":"FORTRESS","category":"Security","description":"Identity, policy, audit and threat-detection services.","status":"gated","publicUrl":null}
   ]
 }
