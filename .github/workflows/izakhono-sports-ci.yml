@@ -27,6 +27,8 @@ jobs:
 
   compose-config:
     runs-on: ubuntu-latest
+    env:
+      POSTGRES_PASSWORD: ci-validation-password
     steps:
       - uses: actions/checkout@v4
       - run: docker compose -f products/izakhono-sports/docker-compose.yml config
