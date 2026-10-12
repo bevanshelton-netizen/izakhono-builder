@@ -27,6 +27,9 @@ services:
     environment:
       DATABASE_URL: postgres://izakhono:${POSTGRES_PASSWORD}@db:5432/izakhono_sports
       PORT: 8080
+      MIGRATIONS_DIR: /app/migrations
+    volumes:
+      - ./migrations:/app/migrations:ro
     depends_on:
       db:
         condition: service_healthy
