@@ -11,45 +11,24 @@ import { MailboxEngine } from "./mailbox-engine.mjs";
 import { Node01MailboxStore, Node01QueueStore } from "./node01-storage.mjs";
 
 function restoreQueue(store) {
-  const snapshot = store.load();
-  return new Map(Object.entries(snapshot || {}));
+  return new Map(Object.entries(store.load() || {}));
 }
 
 function restoreMailboxes(store) {
-  const mailboxes = new Map();
-  return {
-    mailboxes,
-    load(address) {
-      const existing = mailboxes.get(String(address).trim().toLowerCase());
-      if (existing) return existing;
-      const stored = store.load(address);
-      if (stored) mailboxes.set(stored.address, stored);
-      return stored;
-    },
-  };
+  return new Map((store.list() || []).map(mailbox => [mailbox.address, mailbox]));
 }
 
 export class Node01DurableMailRuntime extends MailRuntime {
   constructor({ registry, mailboxStore = new Node01MailboxStore(), queueStore = new Node01QueueStore(), transport, maxAttempts = 8 } = {}) {
-    const queueMap = restoreQueue(queueStore);
-    const mailboxState = restoreMailboxes(mailboxStore);
-    const mailboxes = new MailboxEngine({ mailboxes: mailboxState.mailboxes });
-    super({ registry, queue: new MailQueue({ store: queueMap, maxAttempts }), mailboxes, transport });
+    const queue = new MailQueue({ store: restoreQueue(queueStore), maxAttempts });
+    const mailboxes = new MailboxEngine({ mailboxes: restoreMailboxes(mailboxStore) });
+    super({ registry, queue, mailboxes, transport });
     this.mailboxStore = mailboxStore;
     this.queueStore = queueStore;
-    this.#restoreMailboxesFromDisk(mailboxStore);
-  }
-
-  #restoreMailboxesFromDisk(store) {
-    for (const address of this.registry?.addresses?.() || []) {
-      const stored = store.load(address);
-      if (stored) this.mailboxes.mailboxes.set(stored.address, stored);
-    }
   }
 
   persist() {
-    const queueSnapshot = Object.fromEntries(this.queue.store.entries());
-    this.queueStore.save(queueSnapshot);
+    this.queueStore.save(Object.fromEntries(this.queue.store.entries()));
     for (const [address, mailbox] of this.mailboxes.mailboxes.entries()) this.mailboxStore.save(address, mailbox);
     return { queue: this.queue.snapshot(), mailboxes: this.mailboxes.mailboxes.size };
   }
