@@ -6,11 +6,6 @@ export type ResultRecord = {
   points: number;
 };
 
-/**
- * Sport-agnostic fallback scoring. Real sports must eventually provide a
- * competition/sport scoring profile because placing and score semantics vary.
- * Explicit points in result_payload win; otherwise 1st/2nd/3rd receive 3/2/1.
- */
 export function genericPoints(placing: number | null, explicitPoints?: unknown): number {
   if (typeof explicitPoints === 'number' && Number.isFinite(explicitPoints)) return explicitPoints;
   if (placing === 1) return 3;
@@ -20,7 +15,6 @@ export function genericPoints(placing: number | null, explicitPoints?: unknown):
 }
 
 export function summariseResults(results: ResultRecord[]) {
-  const ordered = [...results].sort((a, b) => (a.placing ?? Number.MAX_SAFE_INTEGER) - (b.placing ?? Number.MAX_SAFE_INTEGER));
   const placings = results.map(r => r.placing).filter((x): x is number => Number.isInteger(x));
   const wins = placings.filter(x => x === 1).length;
   const podiums = placings.filter(x => x <= 3).length;
@@ -31,6 +25,6 @@ export function summariseResults(results: ResultRecord[]) {
     podiums,
     bestPlacing: placings.length ? Math.min(...placings) : null,
     averagePlacing: placings.length ? Number((placings.reduce((a, b) => a + b, 0) / placings.length).toFixed(2)) : null,
-    lastResult: ordered.at(-1) ?? null
+    lastResult: results.at(-1) ?? null
   };
 }
