@@ -26,6 +26,7 @@ export type RenderWorkerJob = {
   output: RenderWorkerOutput;
   sources: RenderWorkerSource[];
   fps: number;
+  ffmpeg: { command: string[]; concatFile: string; outputPath: string };
 };
 
 export type RenderWorkerResult = {
