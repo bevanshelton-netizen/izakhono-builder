@@ -27,6 +27,11 @@ export async function dispatchRenderJob(
   derivative: Derivative,
   fps: number,
 ): Promise<{ dispatched: boolean; responseStatus?: number; job: RenderWorkerJob }> {
+  const usableSources = sources.filter(source => Boolean(source.url)).map(source => ({
+    assetId: source.assetId,
+    url: source.url as string,
+    durationSeconds: source.durationSeconds,
+  }));
   const job = createRenderWorkerJob({
     renderId: plan.id,
     projectId: plan.projectId,
@@ -42,11 +47,7 @@ export async function dispatchRenderJob(
       height: derivative.height,
       fps,
     },
-    sources: sources.filter((source): source is TimelineSource & { url: string } => Boolean(source.url)).map(source => ({
-      assetId: source.assetId,
-      url: source.url,
-      durationSeconds: source.durationSeconds,
-    })),
+    sources: usableSources,
     fps,
     ffmpeg: {
       command: plan.command,
