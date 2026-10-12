@@ -17,6 +17,7 @@ type AuthContext = {
 declare module 'fastify' { interface FastifyRequest { auth: AuthContext; } }
 
 const publicRoutes = new Set(['/health', '/api/v1/sports', '/api/v1/sponsor/match-preview']);
+const publicRoutePrefixes = ['/api/v1/athletes/'];
 const hashToken = (token: string) => createHash('sha256').update(token).digest('hex');
 
 export async function authenticate(req: FastifyRequest, pool: Pool): Promise<AuthContext> {
@@ -48,8 +49,10 @@ export function installSecurity(app: FastifyInstance, pool: Pool) {
   app.decorateRequest('auth', null);
   app.addHook('preHandler', async (req, reply) => {
     const path = req.url.split('?')[0];
-    if (publicRoutes.has(path) || path.startsWith('/api/v1/billing/webhooks/')) {
+    if (publicRoutes.has(path) || publicRoutePrefixes.some(prefix => path.startsWith(prefix)) || path.startsWith('/api/v1/billing/webhooks/')) {
       req.auth = { authenticated: false, scopes: [] };
+      const bearer = req.headers.authorization;
+      if (bearer?.startsWith('Bearer ')) req.auth = await authenticate(req, pool);
       return;
     }
     req.auth = await authenticate(req, pool);
