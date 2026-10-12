@@ -31,6 +31,7 @@ jobs:
           node --check infra/mail-stack/engine/node01-mail-server.mjs
           node --check infra/mail-stack/engine/node01-storage.mjs
           node --check infra/mail-stack/engine/node01-durable-mail-runtime.mjs
+          node --check infra/mail-stack/engine/node01-mail-orchestrator.mjs
           node --check infra/mail-stack/node01-mail-readiness.mjs
       - name: Run mail processor contract tests
         run: node infra/mail-stack/mail-processor.test.mjs
@@ -38,5 +39,7 @@ jobs:
         run: node infra/mail-stack/engine/engine.test.mjs
       - name: Run NODE01 persistence test
         run: node infra/mail-stack/engine/node01-durable-mail-runtime.test.mjs
+      - name: Run NODE01 production gate test
+        run: node infra/mail-stack/engine/node01-mail-orchestrator.test.mjs
       - name: Validate mail identity configuration
         run: node infra/mail-stack/verify.mjs
