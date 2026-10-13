@@ -12,9 +12,6 @@ import android.view.View
 import android.widget.Button
 import android.widget.ImageView
 import android.widget.TextView
-import androidx.core.content.FileProvider
-import java.io.File
-import java.io.FileOutputStream
 
 class MainActivity : Activity() {
     private lateinit var pageImage: ImageView
