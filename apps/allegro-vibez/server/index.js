@@ -1,144 +1,24 @@
-const http = require('http');
-const crypto = require('crypto');
-const fs = require('fs');
-const path = require('path');
-const { Pool } = require('pg');
-
-const PORT = Number(process.env.PORT || 8080);
-const VERSION = process.env.RELEASE_VERSION || 'allegro-vibez-v1.3';
-const startedAt = new Date().toISOString();
-const pool = process.env.DATABASE_URL
-  ? new Pool({ connectionString: process.env.DATABASE_URL, max: Number(process.env.DB_POOL_SIZE || 10), ssl: process.env.DATABASE_SSL === 'false' ? false : { rejectUnauthorized: false } })
-  : null;
-
-const json = (res, status, body) => { res.writeHead(status, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' }); res.end(JSON.stringify(body)); };
-const readBody = (req) => new Promise((resolve, reject) => {
-  let body = '';
-  req.on('data', chunk => { body += chunk; if (body.length > 1024 * 1024) req.destroy(new Error('request_too_large')); });
-  req.on('end', () => { if (!body) return resolve({}); try { resolve(JSON.parse(body)); } catch (_) { reject(Object.assign(new Error('invalid_json'), { status: 400 })); } });
-  req.on('error', reject);
-});
-const required = (body, fields) => { for (const field of fields) if (!String(body[field] ?? '').trim()) throw Object.assign(new Error(`${field}_required`), { status: 400 }); };
-
-async function migrate() {
-  if (!pool) return { configured: false, migrated: false, reason: 'DATABASE_URL_missing' };
-  const schema = fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf8');
-  await pool.query(schema);
-  return { configured: true, migrated: true };
-}
-async function dbHealth() {
-  if (!pool) return { configured: false, ok: false, reason: 'DATABASE_URL_missing' };
-  try { const r = await pool.query('SELECT 1 AS ok'); return { configured: true, ok: r.rows[0].ok === 1 }; }
-  catch (error) { return { configured: true, ok: false, reason: error.code || error.message }; }
-}
-async function registerUser(body) {
-  if (!pool) throw Object.assign(new Error('DATABASE_URL_missing'), { status: 503 });
-  required(body, ['email', 'displayName']);
-  const email = String(body.email).trim().toLowerCase(); const displayName = String(body.displayName).trim();
-  if (!email.includes('@')) throw Object.assign(new Error('valid_email_required'), { status: 400 });
-  const client = await pool.connect();
-  try {
-    await client.query('BEGIN');
-    const existing = await client.query('SELECT id,status FROM users WHERE email=$1 LIMIT 1', [email]);
-    if (existing.rowCount) { await client.query('ROLLBACK'); return { id: existing.rows[0].id, status: existing.rows[0].status, existing: true }; }
-    const id = crypto.randomUUID();
-    await client.query(`INSERT INTO users (id,email,display_name,role,status) VALUES ($1,$2,$3,'creator','pending')`, [id,email,displayName]);
-    await client.query(`INSERT INTO creator_profiles (user_id,stage_name,bio,country,genre) VALUES ($1,$2,'','South Africa','')`, [id,displayName]);
-    await client.query(`INSERT INTO wallets (creator_id,available_minor,pending_minor,currency) VALUES ($1,0,0,'ZAR')`, [id]);
-    await client.query('COMMIT'); return { id, status: 'pending', existing: false };
-  } catch (error) { await client.query('ROLLBACK').catch(() => {}); throw error; } finally { client.release(); }
-}
-async function createRelease(body) {
-  if (!pool) throw Object.assign(new Error('DATABASE_URL_missing'), { status: 503 });
-  required(body, ['creatorId','title','audioUrl']);
-  const id = crypto.randomUUID();
-  await pool.query(`INSERT INTO releases (id,creator_id,title,release_type,artwork_url,audio_url,status,rights_confirmed) VALUES ($1,$2,$3,$4,$5,$6,'draft',FALSE)`, [id,body.creatorId,String(body.title).trim(),body.releaseType || 'single',body.artworkUrl || null,String(body.audioUrl).trim()]);
-  return { id, status: 'draft', rightsConfirmed: false };
-}
-async function confirmRights(body) {
-  if (!pool) throw Object.assign(new Error('DATABASE_URL_missing'), { status: 503 });
-  required(body, ['releaseId','creatorId']);
-  const client = await pool.connect();
-  try {
-    await client.query('BEGIN');
-    const r = await client.query('SELECT id FROM releases WHERE id=$1 AND creator_id=$2 FOR UPDATE', [body.releaseId,body.creatorId]);
-    if (!r.rowCount) throw Object.assign(new Error('release_not_found'), { status: 404 });
-    await client.query(`INSERT INTO rights_records (id,release_id,creator_id,ownership_pct,publishing_status,evidence_ref) VALUES ($1,$2,$3,$4,$5,$6)`, [crypto.randomUUID(),body.releaseId,body.creatorId,Number(body.ownershipPct ?? 100),'self_declared',body.evidenceRef || null]);
-    await client.query(`UPDATE releases SET rights_confirmed=TRUE WHERE id=$1`, [body.releaseId]);
-    await client.query('COMMIT'); return { releaseId: body.releaseId, rightsConfirmed: true };
-  } catch (error) { await client.query('ROLLBACK').catch(() => {}); throw error; } finally { client.release(); }
-}
-async function submitRelease(body) {
-  if (!pool) throw Object.assign(new Error('DATABASE_URL_missing'), { status: 503 });
-  required(body, ['releaseId','creatorId']);
-  const r = await pool.query(`UPDATE releases SET status='submitted' WHERE id=$1 AND creator_id=$2 AND rights_confirmed=TRUE RETURNING id,status`, [body.releaseId,body.creatorId]);
-  if (!r.rowCount) throw Object.assign(new Error('rights_confirmation_required_or_release_not_found'), { status: 409 });
-  return r.rows[0];
-}
-async function moderateRelease(body) {
-  if (!pool) throw Object.assign(new Error('DATABASE_URL_missing'), { status: 503 });
-  required(body, ['releaseId','moderatorId','decision']);
-  if (!['approved','rejected'].includes(body.decision)) throw Object.assign(new Error('invalid_moderation_decision'), { status: 400 });
-  const r = await pool.query(`UPDATE releases SET status=$1, released_at=CASE WHEN $1='approved' THEN NOW() ELSE NULL END WHERE id=$2 AND status='submitted' RETURNING id,status`, [body.decision,body.releaseId]);
-  if (!r.rowCount) throw Object.assign(new Error('release_not_submitted'), { status: 409 });
-  return { ...r.rows[0], moderatorId: body.moderatorId };
-}
-async function discover() {
-  if (!pool) return { releases: [], mode: 'database-not-configured' };
-  const r = await pool.query(`SELECT r.id,r.title,r.release_type,r.artwork_url,r.audio_url,cp.stage_name AS creator,r.created_at FROM releases r JOIN creator_profiles cp ON cp.user_id=r.creator_id WHERE r.status='approved' AND r.rights_confirmed=TRUE ORDER BY r.created_at DESC LIMIT 100`);
-  return { releases: r.rows, mode: 'database' };
-}
-async function createTransaction(body) {
-  if (!pool) throw Object.assign(new Error('DATABASE_URL_missing'), { status: 503 });
-  required(body, ['provider','providerReference','type','amountMinor']);
-  const amountMinor = Number(body.amountMinor); if (!Number.isSafeInteger(amountMinor) || amountMinor <= 0) throw Object.assign(new Error('positive_integer_amountMinor_required'), { status: 400 });
-  const id = crypto.randomUUID();
-  try { await pool.query(`INSERT INTO transactions (id,user_id,creator_id,provider,provider_reference,type,amount_minor,currency,status,metadata) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'pending',$9)`, [id,body.userId || null,body.creatorId || null,body.provider,body.providerReference,body.type,amountMinor,body.currency || 'ZAR',body.metadata || {}]); }
-  catch (error) { if (error.code === '23505') throw Object.assign(new Error('transaction_already_recorded'), { status: 409 }); throw error; }
-  return { id, status: 'pending', amountMinor, currency: body.currency || 'ZAR' };
-}
-async function confirmTransaction(body) {
-  if (!pool) throw Object.assign(new Error('DATABASE_URL_missing'), { status: 503 });
-  required(body, ['provider','providerReference']);
-  const client = await pool.connect();
-  try {
-    await client.query('BEGIN');
-    const t = await client.query(`SELECT * FROM transactions WHERE provider=$1 AND provider_reference=$2 FOR UPDATE`, [body.provider,body.providerReference]);
-    if (!t.rowCount) throw Object.assign(new Error('transaction_not_found'), { status: 404 });
-    const tx = t.rows[0];
-    if (tx.status === 'paid') { await client.query('COMMIT'); return { id: tx.id, status: 'paid', idempotent: true }; }
-    await client.query(`UPDATE transactions SET status='paid' WHERE id=$1`, [tx.id]);
-    if (tx.creator_id) {
-      const royalty = Number(body.royaltyMinor ?? Math.floor(Number(tx.amount_minor) * Number(body.royaltyPct ?? 70) / 100));
-      await client.query(`INSERT INTO royalty_ledger (id,creator_id,transaction_id,amount_minor,currency,entry_type) VALUES ($1,$2,$3,$4,$5,'sale')`, [crypto.randomUUID(),tx.creator_id,tx.id,royalty,tx.currency]);
-      await client.query(`INSERT INTO wallets (creator_id,available_minor,pending_minor,currency) VALUES ($1,0,0,$2) ON CONFLICT (creator_id) DO NOTHING`, [tx.creator_id,tx.currency]);
-      await client.query(`UPDATE wallets SET available_minor=available_minor+$1,updated_at=NOW() WHERE creator_id=$2`, [royalty,tx.creator_id]);
-    }
-    await client.query('COMMIT'); return { id: tx.id, status: 'paid', idempotent: false };
-  } catch (error) { await client.query('ROLLBACK').catch(() => {}); throw error; } finally { client.release(); }
-}
-
-let boot = null; if (pool) boot = migrate().catch(error => ({ configured:true,migrated:false,reason:error.code || error.message }));
-const server = http.createServer(async (req,res) => {
-  const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
-  try {
-    if (req.method === 'GET' && (url.pathname === '/health' || url.pathname === '/api/v1/health')) {
-      const migration = boot ? await boot : { configured:false,migrated:false }; const database = await dbHealth(); const ok = database.ok && migration.migrated;
-      return json(res, ok || !pool ? 200 : 503, { ok: ok || !pool, service:'allegro-vibez-api',version:VERSION,startedAt,runtime:'izakhono-owned',database,migration });
-    }
-    if (req.method === 'GET' && url.pathname === '/api/v1/discover') return json(res,200,{ok:true,...await discover()});
-    if (req.method === 'POST') {
-      const body = await readBody(req);
-      if (url.pathname === '/api/v1/auth/register') return json(res,201,{ok:true,user:await registerUser(body),next:'verify'});
-      if (url.pathname === '/api/v1/releases') return json(res,201,{ok:true,release:await createRelease(body)});
-      if (url.pathname === '/api/v1/releases/rights') return json(res,200,{ok:true,rights:await confirmRights(body)});
-      if (url.pathname === '/api/v1/releases/submit') return json(res,200,{ok:true,release:await submitRelease(body)});
-      if (url.pathname === '/api/v1/releases/moderate') return json(res,200,{ok:true,moderation:await moderateRelease(body)});
-      if (url.pathname === '/api/v1/transactions') return json(res,201,{ok:true,transaction:await createTransaction(body)});
-      if (url.pathname === '/api/v1/payments/confirm') return json(res,200,{ok:true,transaction:await confirmTransaction(body)});
-    }
-    return json(res,404,{ok:false,error:'not_found'});
-  } catch (error) { const status=Number(error.status || 500); return json(res,status,{ok:false,error:status===500?'internal_error':error.message}); }
-});
-server.listen(PORT,'0.0.0.0',()=>console.log(`ALLEGRO VIBEZ runtime listening on ${PORT}`));
-const shutdown=async()=>{await pool?.end().catch(()=>{});server.close(()=>process.exit(0));}; process.on('SIGTERM',shutdown); process.on('SIGINT',shutdown);
+const http=require('http');const crypto=require('crypto');const fs=require('fs');const path=require('path');const {Pool}=require('pg');
+const PORT=Number(process.env.PORT||8080),VERSION=process.env.RELEASE_VERSION||'allegro-vibez-v1.4',startedAt=new Date().toISOString();
+const pool=process.env.DATABASE_URL?new Pool({connectionString:process.env.DATABASE_URL,max:Number(process.env.DB_POOL_SIZE||10),ssl:process.env.DATABASE_SSL==='false'?false:{rejectUnauthorized:false}}):null;
+const json=(res,status,body)=>{res.writeHead(status,{'content-type':'application/json; charset=utf-8','cache-control':'no-store'});res.end(JSON.stringify(body));};
+const rawBody=req=>new Promise((resolve,reject)=>{let b='';req.on('data',c=>{b+=c;if(b.length>2*1024*1024)req.destroy(new Error('request_too_large'));});req.on('end',()=>resolve(b));req.on('error',reject);});
+const required=(b,fs)=>{for(const f of fs)if(!String(b[f]??'').trim())throw Object.assign(new Error(`${f}_required`),{status:400});};
+const hash=s=>crypto.createHash('sha256').update(s).digest('hex');
+const secretHash=(password,salt)=>crypto.scryptSync(password,salt,64).toString('hex');
+const authToken=req=>{const h=String(req.headers.authorization||'');return h.startsWith('Bearer ')?h.slice(7):null;};
+async function migrate(){if(!pool)return{configured:false,migrated:false,reason:'DATABASE_URL_missing'};await pool.query(fs.readFileSync(path.join(__dirname,'schema.sql'),'utf8'));return{configured:true,migrated:true};}
+async function dbHealth(){if(!pool)return{configured:false,ok:false,reason:'DATABASE_URL_missing'};try{await pool.query('SELECT 1');return{configured:true,ok:true};}catch(e){return{configured:true,ok:false,reason:e.code||e.message};}}
+async function register(b){if(!pool)throw Object.assign(new Error('DATABASE_URL_missing'),{status:503});required(b,['email','displayName','password']);if(String(b.password).length<10)throw Object.assign(new Error('password_minimum_10_characters'),{status:400});const email=String(b.email).trim().toLowerCase(),displayName=String(b.displayName).trim();const c=await pool.connect();try{await c.query('BEGIN');const e=await c.query('SELECT id,status FROM users WHERE email=$1',[email]);if(e.rowCount){await c.query('ROLLBACK');throw Object.assign(new Error('email_already_registered'),{status:409});}const id=crypto.randomUUID(),salt=crypto.randomBytes(16).toString('hex'),ph=`${salt}:${secretHash(String(b.password),salt)}`;await c.query(`INSERT INTO users(id,email,display_name,role,status,password_hash) VALUES($1,$2,$3,'creator','pending',$4)`,[id,email,displayName,ph]);await c.query(`INSERT INTO creator_profiles(user_id,stage_name) VALUES($1,$2)`,[id,displayName]);await c.query(`INSERT INTO wallets(creator_id) VALUES($1)`,[id]);await c.query('COMMIT');return{id,status:'pending',emailVerified:false};}catch(e){await c.query('ROLLBACK').catch(()=>{});throw e;}finally{c.release();}}
+async function login(b){if(!pool)throw Object.assign(new Error('DATABASE_URL_missing'),{status:503});required(b,['email','password']);const r=await pool.query('SELECT id,password_hash,status FROM users WHERE email=$1',[String(b.email).trim().toLowerCase()]);if(!r.rowCount||!r.rows[0].password_hash)throw Object.assign(new Error('invalid_credentials'),{status:401});const [salt,digest]=r.rows[0].password_hash.split(':');const check=secretHash(String(b.password),salt);if(!crypto.timingSafeEqual(Buffer.from(digest,'hex'),Buffer.from(check,'hex')))throw Object.assign(new Error('invalid_credentials'),{status:401});const token=crypto.randomBytes(32).toString('hex');await pool.query(`INSERT INTO sessions(id,user_id,token_hash,expires_at) VALUES($1,$2,$3,NOW()+INTERVAL '30 days')`,[crypto.randomUUID(),r.rows[0].id,hash(token)]);return{token,userId:r.rows[0].id,status:r.rows[0].status};}
+async function requireUser(req){if(!pool)throw Object.assign(new Error('DATABASE_URL_missing'),{status:503});const t=authToken(req);if(!t)throw Object.assign(new Error('authentication_required'),{status:401});const r=await pool.query(`SELECT u.id,u.email,u.role,u.status FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.token_hash=$1 AND s.expires_at>NOW()`,[hash(t)]);if(!r.rowCount)throw Object.assign(new Error('invalid_or_expired_session'),{status:401});return r.rows[0];}
+async function release(b,user){required(b,['title','audioUrl']);const id=crypto.randomUUID();await pool.query(`INSERT INTO releases(id,creator_id,title,release_type,artwork_url,audio_url) VALUES($1,$2,$3,$4,$5,$6)`,[id,user.id,String(b.title).trim(),b.releaseType||'single',b.artworkUrl||null,String(b.audioUrl).trim()]);return{id,status:'draft',rightsConfirmed:false};}
+async function rights(b,user){required(b,['releaseId']);const c=await pool.connect();try{await c.query('BEGIN');const r=await c.query('SELECT id FROM releases WHERE id=$1 AND creator_id=$2 FOR UPDATE',[b.releaseId,user.id]);if(!r.rowCount)throw Object.assign(new Error('release_not_found'),{status:404});await c.query(`INSERT INTO rights_records(id,release_id,creator_id,ownership_pct,publishing_status,evidence_ref) VALUES($1,$2,$3,$4,$5,$6)`,[crypto.randomUUID(),b.releaseId,user.id,Number(b.ownershipPct??100),'self_declared',b.evidenceRef||null]);await c.query('UPDATE releases SET rights_confirmed=TRUE WHERE id=$1',[b.releaseId]);await c.query('COMMIT');return{releaseId:b.releaseId,rightsConfirmed:true};}catch(e){await c.query('ROLLBACK').catch(()=>{});throw e;}finally{c.release();}}
+async function submit(b,user){required(b,['releaseId']);const r=await pool.query(`UPDATE releases SET status='submitted' WHERE id=$1 AND creator_id=$2 AND rights_confirmed=TRUE RETURNING id,status`,[b.releaseId,user.id]);if(!r.rowCount)throw Object.assign(new Error('rights_confirmation_required_or_release_not_found'),{status:409});return r.rows[0];}
+async function moderate(b,user){if(user.role!=='moderator'&&user.role!=='admin')throw Object.assign(new Error('moderator_role_required'),{status:403});required(b,['releaseId','decision']);if(!['approved','rejected'].includes(b.decision))throw Object.assign(new Error('invalid_moderation_decision'),{status:400});const r=await pool.query(`UPDATE releases SET status=$1,released_at=CASE WHEN $1='approved' THEN NOW() ELSE NULL END WHERE id=$2 AND status='submitted' RETURNING id,status`,[b.decision,b.releaseId]);if(!r.rowCount)throw Object.assign(new Error('release_not_submitted'),{status:409});return r.rows[0];}
+async function discover(){if(!pool)return{releases:[],mode:'database-not-configured'};const r=await pool.query(`SELECT r.id,r.title,r.release_type,r.artwork_url,r.audio_url,cp.stage_name AS creator,r.created_at FROM releases r JOIN creator_profiles cp ON cp.user_id=r.creator_id WHERE r.status='approved' AND r.rights_confirmed=TRUE ORDER BY r.created_at DESC LIMIT 100`);return{releases:r.rows,mode:'database'};}
+async function createTx(b,user){required(b,['provider','providerReference','type','amountMinor']);const a=Number(b.amountMinor);if(!Number.isSafeInteger(a)||a<=0)throw Object.assign(new Error('positive_integer_amountMinor_required'),{status:400});try{const id=crypto.randomUUID();await pool.query(`INSERT INTO transactions(id,user_id,creator_id,provider,provider_reference,type,amount_minor,currency,status,metadata) VALUES($1,$2,$3,$4,$5,$6,$7,$8,'pending',$9)`,[id,user.id,b.creatorId||null,b.provider,b.providerReference,b.type,a,b.currency||'ZAR',b.metadata||{}]);return{id,status:'pending',amountMinor:a,currency:b.currency||'ZAR'};}catch(e){if(e.code==='23505')throw Object.assign(new Error('transaction_already_recorded'),{status:409});throw e;}}
+async function settleTx(b){required(b,['provider','providerReference']);const c=await pool.connect();try{await c.query('BEGIN');const r=await c.query(`SELECT * FROM transactions WHERE provider=$1 AND provider_reference=$2 FOR UPDATE`,[b.provider,b.providerReference]);if(!r.rowCount)throw Object.assign(new Error('transaction_not_found'),{status:404});const tx=r.rows[0];if(tx.status==='paid'){await c.query('COMMIT');return{id:tx.id,status:'paid',idempotent:true};}await c.query(`UPDATE transactions SET status='paid' WHERE id=$1`,[tx.id]);if(tx.creator_id){const royalty=Number(b.royaltyMinor??Math.floor(Number(tx.amount_minor)*Number(b.royaltyPct??70)/100));await c.query(`INSERT INTO royalty_ledger(id,creator_id,transaction_id,amount_minor,currency,entry_type) VALUES($1,$2,$3,$4,$5,'sale') ON CONFLICT(transaction_id,entry_type) DO NOTHING`,[crypto.randomUUID(),tx.creator_id,tx.id,royalty,tx.currency]);await c.query(`INSERT INTO wallets(creator_id,currency) VALUES($1,$2) ON CONFLICT DO NOTHING`,[tx.creator_id,tx.currency]);await c.query(`UPDATE wallets SET available_minor=available_minor+$1,updated_at=NOW() WHERE creator_id=$2`,[royalty,tx.creator_id]);}await c.query('COMMIT');return{id:tx.id,status:'paid',idempotent:false};}catch(e){await c.query('ROLLBACK').catch(()=>{});throw e;}finally{c.release();}}
+async function webhook(req){if(!process.env.PAYMENT_WEBHOOK_SECRET)throw Object.assign(new Error('PAYMENT_WEBHOOK_SECRET_not_configured'),{status:503});const raw=await rawBody(req),sig=String(req.headers['x-allegro-signature']||''),expected=crypto.createHmac('sha256',process.env.PAYMENT_WEBHOOK_SECRET).update(raw).digest('hex');if(!sig||sig.length!==expected.length||!crypto.timingSafeEqual(Buffer.from(sig),Buffer.from(expected)))throw Object.assign(new Error('invalid_webhook_signature'),{status:401});let b;try{b=JSON.parse(raw);}catch(_){throw Object.assign(new Error('invalid_json'),{status:400});}required(b,['eventId','provider','providerReference']);const inserted=await pool.query(`INSERT INTO webhook_events(id,provider,event_id,payload) VALUES($1,$2,$3,$4) ON CONFLICT(provider,event_id) DO NOTHING RETURNING id`,[crypto.randomUUID(),b.provider,b.eventId,b]);if(!inserted.rowCount)return{accepted:true,idempotent:true};const result=await settleTx(b);return{accepted:true,idempotent:false,transaction:result};}
+let boot=null;if(pool)boot=migrate().catch(e=>({configured:true,migrated:false,reason:e.code||e.message}));
+const server=http.createServer(async(req,res)=>{const u=new URL(req.url,`http://${req.headers.host||'localhost'}`);try{if(req.method==='GET'&&(u.pathname==='/health'||u.pathname==='/api/v1/health')){const migration=boot?await boot:{configured:false,migrated:false},database=await dbHealth(),ok=database.ok&&migration.migrated;return json(res,ok||!pool?200:503,{ok:ok||!pool,service:'allegro-vibez-api',version:VERSION,startedAt,runtime:'izakhono-owned',database,migration});}if(req.method==='GET'&&u.pathname==='/api/v1/discover')return json(res,200,{ok:true,...await discover()});if(req.method==='POST'&&u.pathname==='/api/v1/payments/webhook')return json(res,200,{ok:true,...await webhook(req)});if(req.method==='POST'){const raw=await rawBody(req);let b;try{b=raw?JSON.parse(raw):{};}catch(_){throw Object.assign(new Error('invalid_json'),{status:400});}if(u.pathname==='/api/v1/auth/register')return json(res,201,{ok:true,user:await register(b)});if(u.pathname==='/api/v1/auth/login')return json(res,200,{ok:true,session:await login(b)});const user=await requireUser(req);if(u.pathname==='/api/v1/releases')return json(res,201,{ok:true,release:await release(b,user)});if(u.pathname==='/api/v1/releases/rights')return json(res,200,{ok:true,rights:await rights(b,user)});if(u.pathname==='/api/v1/releases/submit')return json(res,200,{ok:true,release:await submit(b,user)});if(u.pathname==='/api/v1/releases/moderate')return json(res,200,{ok:true,moderation:await moderate(b,user)});if(u.pathname==='/api/v1/transactions')return json(res,201,{ok:true,transaction:await createTx(b,user)});if(u.pathname==='/api/v1/payments/confirm')throw Object.assign(new Error('direct_payment_confirmation_disabled_use_signed_webhook'),{status:410});}return json(res,404,{ok:false,error:'not_found'});}catch(e){const s=Number(e.status||500);return json(res,s,{ok:false,error:s===500?'internal_error':e.message});}});server.listen(PORT,'0.0.0.0',()=>console.log(`ALLEGRO VIBEZ runtime listening on ${PORT}`));const shutdown=async()=>{await pool?.end().catch(()=>{});server.close(()=>process.exit(0));};process.on('SIGTERM',shutdown);process.on('SIGINT',shutdown);
