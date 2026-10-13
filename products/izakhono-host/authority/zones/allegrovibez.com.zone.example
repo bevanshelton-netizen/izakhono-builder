@@ -1,0 +1,7 @@
+$ORIGIN allegrovibez.com.
+$TTL 300
+@ IN SOA ns1.AUTHORITY-DOMAIN. hostmaster.allegrovibez.com. 2026101301 3600 600 1209600 300
+@ IN NS ns1.AUTHORITY-DOMAIN.
+@ IN NS ns2.AUTHORITY-DOMAIN.
+@ IN A 216.198.79.1
+www IN CNAME 07c410584da92c16.vercel-dns-017.com.
