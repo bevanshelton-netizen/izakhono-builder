@@ -46,9 +46,19 @@ export function nextSerial(previous: number, now = new Date()): number {
   return previous >= base ? previous + 1 : base;
 }
 
-export function defaultAuthoritativeNameservers(zone: string): [string, string] {
-  const z = normalizeZoneName(zone);
-  return [`ns1.${z}`, `ns2.${z}`];
+/**
+ * The public authoritative nameservers must live below a separately delegated
+ * authority domain. Never derive NS names from the customer zone itself:
+ * ns1.customer.example inside customer.example requires registrar glue and
+ * creates an avoidable circular dependency for a multi-tenant DNS platform.
+ */
+export function defaultAuthoritativeNameservers(zone: string, authorityDomain = process.env.IZAKHONO_DNS_AUTHORITY_DOMAIN ?? 'dns.izakhono.invalid'): [string, string] {
+  normalizeZoneName(zone);
+  const authority = authorityDomain.trim().toLowerCase().replace(/\.+$/, '');
+  if (!authority || authority.endsWith('.invalid')) {
+    throw new Error('IZAKHONO_DNS_AUTHORITY_DOMAIN must be configured to a registered authority domain before production use');
+  }
+  return [`ns1.${authority}`, `ns2.${authority}`];
 }
 
 export function buildSoa(zone: DnsZone, minimum = 300): DnsRecord {
