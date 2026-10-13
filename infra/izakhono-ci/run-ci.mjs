@@ -11,6 +11,7 @@ const commands = [
   ["node", ["infra/izakhono-control-plane/controller/src/brain-kernel.test.js"]],
   ["node", ["infra/izakhono-control-plane/controller/src/brain-registry.test.js"]],
   ["node", ["infra/izakhono-control-plane/controller/src/brain-persistence.test.js"]],
+  ["node", ["infra/izakhono-control-plane/controller/src/mail-brain.test.js"]],
   ["node", ["infra/mail-stack/verify.mjs"]],
 ];
 
