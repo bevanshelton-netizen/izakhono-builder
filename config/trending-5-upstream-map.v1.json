@@ -1,0 +1,19 @@
+{
+  "schema": "izakhono.trending-upstream-map/v1",
+  "verified_at": "2026-10-13",
+  "repos": [
+    {"id":"coucou","repository":"Louis-CFM/coucou","capability":"agent-session-visibility","status":"verified-reference"},
+    {"id":"universal-modder","repository":"rehan-remade/universal-modder","capability":"agent-modder-workflows","status":"verified-reference","security_gate":"required","isolation":"required"},
+    {"id":"money-printer-turbo","repository":"harry0703/MoneyPrinterTurbo","capability":"short-video-factory","status":"verified-reference","security_gate":"required"},
+    {"id":"yoinks","repository":"pablostanley/yoinks","capability":"media-ingestion","status":"verified-reference","rights_gate":"required"},
+    {"id":"motion-video-kit","repository":"echris6/motion-video-kit","capability":"premium-business-video-skill","status":"verified-reference","security_gate":"required"}
+  ],
+  "policy": {
+    "do_not_copy_third_party_source": true,
+    "pin_revision_before_execution": true,
+    "verify_license_before_distribution": true,
+    "keep_provider_secrets_out_of_generated_apps": true,
+    "owned_first": true,
+    "external_fallbacks_replaceable": true
+  }
+}
