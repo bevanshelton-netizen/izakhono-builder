@@ -8,6 +8,8 @@ const commands = [
   ["node", ["infra/mail-stack/engine/node01-durable-mail-runtime.test.mjs"]],
   ["node", ["infra/mail-stack/mail-processor.test.mjs"]],
   ["node", ["infra/mail-stack/engine/engine.test.mjs"]],
+  ["node", ["infra/izakhono-control-plane/controller/src/brain-kernel.test.js"]],
+  ["node", ["infra/izakhono-control-plane/controller/src/brain-registry.test.js"]],
   ["node", ["infra/mail-stack/verify.mjs"]],
 ];
 
