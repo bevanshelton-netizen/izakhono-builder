@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
-if [ "${EUID:-$(id -u)}" -ne 0 ]; then echo '[STOP] Run as root.'; exit 1; fi
+if [ "${EUID:-$(id -u)}" -ne 0 ]; then echo '[STOP] Run as root on an owner-controlled EDGE node.'; exit 1; fi
 
 HOSTNAME="${1:-}"
 ORIGINS="${2:-}"
@@ -14,22 +14,35 @@ case ",$ORIGINS," in
 esac
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 ENV_FILE=/opt/izakhono/secrets/app-fabric-runtime.env
 SITE_DIR=/opt/izakhono/launch-stack/sites
 SITE_FILE="$SITE_DIR/35-app-fabric.caddy"
 STAGED=/opt/izakhono/evidence/35-app-fabric.caddy.staged
-[ -f "$ENV_FILE" ] || { echo '[STOP] Run activate-node01.sh first.'; exit 1; }
+DECISION=/opt/izakhono/evidence/node-independence-decision.json
+[ -f "$ENV_FILE" ] || { echo '[STOP] Owner-controlled APP FABRIC runtime environment is missing.'; exit 1; }
 [ -d "$SITE_DIR" ] || { echo '[STOP] IZAKHONO Launch Stack sites directory is missing.'; exit 1; }
+
+# The edge is node-independent: probe the configured N+3 pool and continue
+# with any healthy node. NODE01 is never required to proceed.
+export PYTHONPATH="${PYTHONPATH:-}:$REPO_ROOT"
+python3 "$REPO_ROOT/infra/node-independence/guardian.py" \
+  --registry "$REPO_ROOT/infra/node-independence/node-registry.v1.json" \
+  --output "$DECISION"
+SELECTED_NODE="$(jq -r '.selected_node // empty' "$DECISION")"
+[ -n "$SELECTED_NODE" ] || { echo '[FAIL] No healthy owned node is available; preserve the external fallback.'; exit 1; }
+echo "[PASS] Node Independence selected healthy node: $SELECTED_NODE"
 
 sed "s/__FABRIC_HOSTNAME__/$HOSTNAME/g" "$SCRIPT_DIR/Caddyfile.snippet.template" > "$STAGED"
 chmod 600 "$STAGED"
 
 echo "[STAGED] Hostname: $HOSTNAME"
 echo "[STAGED] Allowed origins: $ORIGINS"
+echo "[STAGED] Selected healthy node: $SELECTED_NODE"
 echo "[STAGED] Caddy fragment: $STAGED"
 
 if [ "$MODE" != '--apply' ]; then
-  echo '[HOLD] No public EDGE change made. Re-run with --apply after DNS points the approved hostname at this owner-controlled EDGE.'
+  echo '[HOLD] No public EDGE change made. Re-run with --apply after DNS points the approved hostname at an owner-controlled EDGE.'
   exit 0
 fi
 
@@ -64,6 +77,7 @@ docker exec izakhono-caddy caddy reload --config /etc/caddy/Caddyfile
 for i in $(seq 1 12); do
   if curl -fsS --max-time 10 "https://$HOSTNAME/health" | jq -e '.ok == true' >/dev/null 2>&1; then
     echo "[PASS] Public HTTPS APP FABRIC health verified at https://$HOSTNAME/health"
+    echo "[PASS] Edge activation used healthy node selection: $SELECTED_NODE"
     echo '[NOTE] This proves the gateway edge only. Each platform still needs its own real event acceptance before being marked connected.'
     exit 0
   fi
