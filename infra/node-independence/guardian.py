@@ -5,16 +5,28 @@ Standard-library only. The guardian never assumes NODE01 is available.
 It probes every enabled node, selects the healthiest highest-priority node,
 and emits a routing decision. Public DNS/EDGE changes are deliberately left
 to an authenticated provider adapter after the decision is accepted.
+
+Node health URLs may be overridden at runtime with
+IZAKHONO_NODE_<NODE_ID>_HEALTH_URL, allowing the same registry to run across
+real nodes without embedding infrastructure addresses in source control.
 """
 from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 import time
 import urllib.error
 import urllib.request
 from pathlib import Path
+
+
+def effective_node(node: dict) -> dict:
+    item = dict(node)
+    key = f"IZAKHONO_NODE_{node['id']}_HEALTH_URL"
+    item["health_url"] = os.environ.get(key, node["health_url"])
+    return item
 
 
 def probe(node: dict, timeout: float) -> dict:
@@ -28,6 +40,7 @@ def probe(node: dict, timeout: float) -> dict:
             ok = 200 <= response.status < 300
             return {
                 "id": node["id"],
+                "health_url": node["health_url"],
                 "healthy": ok,
                 "status": response.status,
                 "latency_ms": round((time.time() - started) * 1000, 2),
@@ -36,6 +49,7 @@ def probe(node: dict, timeout: float) -> dict:
     except (urllib.error.URLError, TimeoutError, OSError, ValueError) as exc:
         return {
             "id": node["id"],
+            "health_url": node["health_url"],
             "healthy": False,
             "status": None,
             "latency_ms": round((time.time() - started) * 1000, 2),
@@ -51,7 +65,7 @@ def main() -> int:
     args = parser.parse_args()
 
     registry = json.loads(Path(args.registry).read_text(encoding="utf-8"))
-    nodes = [n for n in registry["nodes"] if n.get("enabled")]
+    nodes = [effective_node(n) for n in registry["nodes"] if n.get("enabled")]
     results = [probe(n, args.timeout) for n in nodes]
     by_id = {r["id"]: r for r in results}
 
