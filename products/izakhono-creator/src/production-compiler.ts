@@ -1,13 +1,14 @@
 import type { GenerationRequest } from './provider-router';
 
 type CompilerInput = {
-  brief: string;
+  brief?: string;
   aspectRatio?: string;
   durationSeconds?: number;
 };
 
 export function compileProduction(input: CompilerInput): GenerationRequest[] {
-  const brief = input.brief.trim();
+  const brief = (input.brief ?? '').trim();
+  if (!brief) return [];
   const aspectRatio = input.aspectRatio ?? '16:9';
   const duration = input.durationSeconds ?? 5;
   const beats = [
