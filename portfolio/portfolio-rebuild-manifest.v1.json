@@ -1,0 +1,33 @@
+{
+  "schema": "izakhono.portfolio-rebuild/v1",
+  "owner_first": true,
+  "external_provider_reversible": true,
+  "evidence_gated_live": true,
+  "infrastructure": [
+    {"key":"dns","name":"IZAKHONO DNS","priority":1,"status":"foundation","blocks":["custom-domain","mail-routing","service-discovery"]},
+    {"key":"host","name":"IZAKHONO HOST","priority":1,"status":"foundation","blocks":["hosting","ssl","provisioning"]},
+    {"key":"provisioner","name":"IZAKHONO Provisioner","priority":1,"status":"foundation","blocks":["one-click-onboarding","domain-provisioning","service-provisioning"]},
+    {"key":"source","name":"IZAKHONO Internal Repositories","priority":1,"status":"available","blocks":["source-of-truth"]}
+  ],
+  "applications": [
+    {"key":"allegro-vibez","name":"Allegro VIBEZ","tier":1,"rebuild":"clean","revenue_path":["creator","booking","media","rights"]},
+    {"key":"faisready","name":"FAISReady","tier":1,"rebuild":"clean","revenue_path":["exam-prep","course-sales"]},
+    {"key":"cashflow-guardian","name":"CashFlow Guardian","tier":1,"rebuild":"clean","revenue_path":["subscription"]},
+    {"key":"izakhono-growth","name":"IZAKHONO Growth","tier":1,"rebuild":"clean","revenue_path":["audit","subscription","lead-generation"]},
+    {"key":"business-command","name":"IZAKHONO Business Command","tier":1,"rebuild":"clean","revenue_path":["portfolio-operations"]},
+    {"key":"kora-network","name":"KORA Network","tier":2,"rebuild":"clean","revenue_path":["media","education","marketplace"]},
+    {"key":"kora-tv","name":"KORA TV","tier":2,"rebuild":"clean","revenue_path":["streaming","advertising","subscriptions"]},
+    {"key":"voice-radio","name":"THE VOICE / Allegro Radio","tier":2,"rebuild":"clean","revenue_path":["advertising","sponsorship","programming"]},
+    {"key":"i-connect","name":"I-CONNECT","tier":2,"rebuild":"clean","revenue_path":["connectivity","business-services"]},
+    {"key":"manufacturing","name":"IZAKHONO Manufacturing","tier":3,"rebuild":"clean","revenue_path":["quotes","orders","production","procurement"]},
+    {"key":"edu-build","name":"Edu-Build Institute","tier":3,"rebuild":"clean","revenue_path":["enrolment","training","funding"]},
+    {"key":"kg-industrial","name":"KG Industrial","tier":3,"rebuild":"clean","revenue_path":["ship-repair","engineering-projects"]},
+    {"key":"free-bird","name":"Free Bird Agri-Quip","tier":3,"rebuild":"clean","revenue_path":["agri-sales","production"]},
+    {"key":"classique","name":"Classique Furniture","tier":3,"rebuild":"clean","revenue_path":["catalogue","quotes","orders","manufacturing"]},
+    {"key":"izakhono-nav","name":"IZAKHONO NAV","tier":4,"rebuild":"clean","revenue_path":["consumer","fleet","enterprise"]},
+    {"key":"fortress","name":"FORTRESS","tier":4,"rebuild":"clean","revenue_path":["security","fleet","enterprise"]},
+    {"key":"shelton-mobility","name":"SHELTON Mobility","tier":4,"rebuild":"clean","revenue_path":["vehicle","mobility","ip"]},
+    {"key":"global-value-network","name":"Global Value Network","tier":4,"rebuild":"clean","revenue_path":["market-access","localisation","value-capture"]},
+    {"key":"izakhono-ai","name":"IZAKHONO AI / Opportunity Economy","tier":4,"rebuild":"clean","revenue_path":["ai-services","skills","opportunity"]}
+  ]
+}
