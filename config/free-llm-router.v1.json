@@ -1,0 +1,103 @@
+{
+  "version": "1.0.0",
+  "name": "IZAKHONO Free-First LLM Router",
+  "purpose": "Select an AI provider/model by capability, availability and cost policy without hard-coding provider dependencies.",
+  "source_registry": {
+    "name": "awesome-free-llm-apis / freellm.net",
+    "url": "https://freellm.net/models/",
+    "refresh_policy": "verify provider limits before production use"
+  },
+  "policy": {
+    "cost_mode": "free_first",
+    "fallback_mode": "provider_rotation",
+    "never_expose_keys_to_client": true,
+    "never_hardcode_secrets": true,
+    "provider_limits_are_dynamic": true,
+    "commercial_use_requires_provider_terms_check": true,
+    "local_first_when_available": true
+  },
+  "providers": [
+    {
+      "id": "openrouter",
+      "base_url": "https://openrouter.ai/api/v1",
+      "env_key": "OPENROUTER_API_KEY",
+      "capabilities": ["text", "reasoning", "image", "video", "audio", "code", "embedding", "rerank", "speech"],
+      "role": "multi-model-router",
+      "free_tier": true,
+      "notes": "Use as a broad fallback and model-selection layer; exact free models and limits change."
+    },
+    {
+      "id": "nvidia-nim",
+      "base_url": "https://integrate.api.nvidia.com/v1",
+      "env_key": "NVIDIA_API_KEY",
+      "capabilities": ["text", "reasoning", "image", "video", "vision", "audio", "embedding", "rerank", "pdf"],
+      "role": "high-capability-inference",
+      "free_tier": true,
+      "notes": "Free access and verification requirements vary by current NVIDIA offering."
+    },
+    {
+      "id": "cloudflare-workers-ai",
+      "base_url": "https://api.cloudflare.com/client/v4",
+      "env_key": "CLOUDFLARE_API_TOKEN",
+      "capabilities": ["text", "reasoning", "image", "video", "code"],
+      "role": "edge-inference",
+      "free_tier": true,
+      "notes": "Use through an owned Cloudflare account/workspace; account limits apply."
+    },
+    {
+      "id": "google-gemini",
+      "base_url": "https://generativelanguage.googleapis.com/v1beta/openai/",
+      "env_key": "GEMINI_API_KEY",
+      "capabilities": ["text", "reasoning", "image", "video", "audio", "vision", "pdf"],
+      "role": "general-purpose",
+      "free_tier": true,
+      "notes": "Region, model and rate limits must be checked at execution time."
+    },
+    {
+      "id": "groq",
+      "base_url": "https://api.groq.com/openai/v1",
+      "env_key": "GROQ_API_KEY",
+      "capabilities": ["text", "reasoning", "code", "vision"],
+      "role": "fast-inference",
+      "free_tier": true,
+      "notes": "Good candidate for latency-sensitive agent steps; current limits are provider-controlled."
+    },
+    {
+      "id": "mistral",
+      "base_url": "https://api.mistral.ai/v1",
+      "env_key": "MISTRAL_API_KEY",
+      "capabilities": ["text", "reasoning", "code", "image"],
+      "role": "batch-and-code",
+      "free_tier": true,
+      "notes": "Verify current commercial/free-tier terms before customer workloads."
+    },
+    {
+      "id": "github-models",
+      "base_url": "https://models.inference.ai.azure.com",
+      "env_key": "GITHUB_TOKEN",
+      "capabilities": ["text", "reasoning", "image", "pdf", "code"],
+      "role": "developer-workflow",
+      "free_tier": true,
+      "notes": "Useful for development workflows where the GitHub identity is already available."
+    },
+    {
+      "id": "llm7",
+      "base_url": "https://api.llm7.io/v1",
+      "env_key": "LLM7_API_KEY",
+      "capabilities": ["text", "reasoning", "image", "video", "audio", "code", "pdf", "vision"],
+      "role": "fallback",
+      "free_tier": true,
+      "notes": "Treat as an optional fallback and validate current service terms/availability."
+    }
+  ],
+  "routing_defaults": {
+    "text": ["groq", "google-gemini", "openrouter", "mistral", "github-models", "llm7"],
+    "reasoning": ["openrouter", "nvidia-nim", "google-gemini", "groq", "mistral"],
+    "code": ["groq", "mistral", "openrouter", "github-models", "nvidia-nim"],
+    "vision": ["google-gemini", "nvidia-nim", "openrouter"],
+    "image": ["google-gemini", "nvidia-nim", "openrouter"],
+    "audio": ["google-gemini", "openrouter", "nvidia-nim"],
+    "video": ["openrouter", "google-gemini", "nvidia-nim"],
+    "pdf": ["google-gemini", "nvidia-nim", "github-models", "openrouter"]
+  }
+}
