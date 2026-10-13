@@ -1,0 +1,13 @@
+{
+  "schema": "izakhono.business/v1",
+  "name": "IZAKHONO BOOKING",
+  "category": "service-booking",
+  "market": "Africa-first, global-ready",
+  "promise": "Make any service business bookable, payable and manageable online.",
+  "target_customers": ["salons", "barbers", "clinics", "consultants", "trainers", "repair-services", "creative-services", "professional-services"],
+  "core_flows": ["business-onboarding", "service-setup", "availability", "customer-booking", "payment", "reminders", "owner-dashboard"],
+  "modules": ["auth", "business-profile", "catalogue", "calendar", "bookings", "customers", "notifications", "payments", "analytics", "pwa"],
+  "revenue": ["monthly-subscription", "payment-fee", "premium-automation", "enterprise"],
+  "principles": {"owner_first": true, "external_provider_reversible": true, "evidence_gated_live": true, "no_secrets_in_source": true},
+  "launch": {"phase": "mvp-release-candidate", "public_live": false}
+}
