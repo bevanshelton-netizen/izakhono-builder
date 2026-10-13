@@ -1,0 +1,49 @@
+{
+  "schema": "izakhono.superagent/workflow-v1",
+  "name": "IZAKHONO SUPERAGENT",
+  "version": "1.0.0",
+  "loop": [
+    "intake",
+    "plan",
+    "research",
+    "execute",
+    "verify",
+    "recover",
+    "artifact",
+    "release_gate",
+    "complete"
+  ],
+  "stop_states": [
+    "complete",
+    "blocked"
+  ],
+  "authorization_gates": [
+    "payment",
+    "legal",
+    "account_permission",
+    "irreversible_external_action",
+    "public_release"
+  ],
+  "rules": {
+    "autonomous_routine_execution": true,
+    "retry_transient_failures": true,
+    "arbitrary_shell": false,
+    "provider_neutral": true,
+    "owned_first": true,
+    "external_reversible": true,
+    "internal_source_of_truth": true,
+    "public_live_requires_evidence": true
+  },
+  "approved_tool_kinds": [
+    "web_research",
+    "file_search",
+    "file_read",
+    "code",
+    "build",
+    "repository",
+    "deployment",
+    "database",
+    "messaging",
+    "artifact"
+  ]
+}
