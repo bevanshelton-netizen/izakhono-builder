@@ -8,7 +8,7 @@ This is an **orchestration layer**, not a chatbot and not a copy of DeerFlow.
 
 ## Operating loop
 
-`GOAL -> PLAN -> RESEARCH -> EXECUTE -> VERIFY -> RECOVER -> ARTIFACT -> RELEASE GATE`
+`GOAL -> PLAN -> RESEARCH -> EXECUTE -> VERIFY -> SECURITY GATE -> RECOVER -> ARTIFACT -> RELEASE GATE`
 
 The loop is persistent and evidence-driven. A task does not become complete merely because text was generated.
 
@@ -24,6 +24,7 @@ The loop is persistent and evidence-driven. A task does not become complete mere
 - Multi-step business workflows
 - Retry and recovery of transient failures
 - Structured audit events and evidence
+- Adversarial pre-deployment security checks
 
 ## Autonomy rule
 
@@ -45,6 +46,27 @@ The SuperAgent continues without asking the owner for routine next-step instruct
 - IZAKHONO internal repositories remain authoritative for generated source.
 - Public-live status remains evidence-gated.
 - Owned-first, externally reversible infrastructure remains mandatory.
+- **A model assertion is never accepted as proof of security.**
+- Ownership, payment, webhook, rate-limit and secret controls must be tested where applicable.
+- Blocking findings from the IZAKHONO Security Gate stop release unless a documented human waiver exists.
+
+## Security Gate
+
+Before production release, SuperAgent invokes:
+
+```text
+node security-gate/audit.mjs <application-path>
+```
+
+It then executes the adversarial prompts in `security-gate/SECURITY-PROMPTS.md`, using the application's own test framework where possible.
+
+The release decision is:
+
+- `SECURITY GATE: PASS`
+- `SECURITY GATE: BLOCKED`
+- `SECURITY GATE: WAIVED`
+
+A zero-result static scan is not treated as a security guarantee. The required adversarial tests are the proof layer.
 
 ## Relation to existing IZAKHONO Builder
 
@@ -66,6 +88,7 @@ The runtime should expose adapters for:
 - `database`
 - `messaging`
 - `artifact`
+- `security_gate`
 
 Each adapter returns success/failure, evidence and retryability. This allows the orchestration engine to recover from transient provider/runtime failures without changing the core agent logic.
 
@@ -85,14 +108,15 @@ SUPERAGENT should autonomously:
 6. generate the product/build plan;
 7. invoke Builder for the prototype;
 8. test the prototype;
-9. produce the presentation and supporting files;
-10. verify each artifact;
-11. return the finished package and evidence;
-12. stop only if an external authorization or genuine blocker is encountered.
+9. run the security gate and adversarial checks;
+10. produce the presentation and supporting files;
+11. verify each artifact;
+12. return the finished package and evidence;
+13. stop only if an external authorization or genuine blocker is encountered.
 
 ## Status vocabulary
 
-`PLANNED` -> `RUNNING` -> `VERIFYING` -> `RECOVERING` -> `COMPLETE`
+`PLANNED` -> `RUNNING` -> `VERIFYING` -> `SECURITY_CHECK` -> `RECOVERING` -> `COMPLETE`
 
 or
 
@@ -100,4 +124,4 @@ or
 
 ## Principle
 
-> **Don't just answer the task. Operate the task.**
+> **Don't just answer the task. Operate the task — and prove it is safe before release.**
