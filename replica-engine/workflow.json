@@ -1,0 +1,34 @@
+{
+  "schema": "izakhono.replica-engine/workflow-v1",
+  "name": "IZAKHONO REPLICA ENGINE",
+  "version": "1.0.0",
+  "purpose": "Turn an approved product brief or clean-room product study into a structured IZAKHONO BUILDER handoff.",
+  "stages": [
+    {"id":"recon","label":"IZAKHONO RECON","output":"replica/recon.md + features.csv"},
+    {"id":"architect","label":"IZAKHONO ARCHITECT","output":"replica/architecture.md"},
+    {"id":"design","label":"IZAKHONO DESIGN","output":"replica/design/tokens.json"},
+    {"id":"build","label":"IZAKHONO BUILD","output":"IZAKHONO BUILDER generated source"},
+    {"id":"backend","label":"IZAKHONO BACKEND","output":"backend/data/integration contract"},
+    {"id":"test","label":"IZAKHONO TEST","output":"replica/tests/test-plan.md + e2e requirements"},
+    {"id":"diff","label":"IZAKHONO PARITY","output":"parity score + missing requirements"},
+    {"id":"entrepreneur","label":"IZAKHONO BUSINESS INTELLIGENCE","output":"verified complaint themes + product improvements"},
+    {"id":"brand","label":"IZAKHONO BRAND","output":"independent name, identity and copy brief"},
+    {"id":"launch","label":"IZAKHONO LAUNCH","output":"pricing, landing page and release checklist"},
+    {"id":"deploy","label":"IZAKHONO DEPLOY","output":"evidence-gated release candidate and deployment plan"}
+  ],
+  "rules": {
+    "clean_room": true,
+    "public_or_authorized_evidence_only": true,
+    "never_copy_source": true,
+    "never_copy_trademarks_or_protected_assets": true,
+    "rebrand_before_launch": true,
+    "source_of_truth": "izakhono-internal",
+    "infrastructure_policy": "owned-first-externally-reversible",
+    "public_live_default": false
+  },
+  "builder_handoff": {
+    "endpoint": "/api/build-anything",
+    "schema": "izakhono.builder/handoff-v1",
+    "release_gate": "owned-runtime-deployment-verification"
+  }
+}
