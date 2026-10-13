@@ -1,0 +1,48 @@
+{
+  "version": "1.0",
+  "name": "IZAKHONO One-Day App Factory",
+  "policy": {
+    "free_first": true,
+    "owned_first": true,
+    "paid_fallback_requires_approval": true,
+    "secrets_never_committed": true,
+    "verify_before_release": true
+  },
+  "stages": [
+    "intake",
+    "plan",
+    "route_ai",
+    "build",
+    "security",
+    "qa",
+    "package",
+    "deploy",
+    "revenue"
+  ],
+  "capabilities": {
+    "text": ["groq", "openrouter", "gemini"],
+    "reasoning": ["openrouter", "gemini", "nvidia_nim"],
+    "code": ["groq", "openrouter", "github_models"],
+    "vision": ["gemini", "openrouter", "nvidia_nim"],
+    "audio": ["gemini", "openrouter"],
+    "video": ["openrouter", "gemini"],
+    "pdf": ["gemini", "openrouter"]
+  },
+  "release_gates": [
+    "tests_pass",
+    "cross_user_access_denied",
+    "ownership_checks_present",
+    "auth_rate_limits_present",
+    "paid_amounts_server_authoritative",
+    "webhook_signatures_verified",
+    "secrets_scan_clean",
+    "production_artifact_verified"
+  ],
+  "commercial_outputs": [
+    "live_url",
+    "payment_path",
+    "customer_handoff",
+    "marketing_assets",
+    "release_receipt"
+  ]
+}
