@@ -1,0 +1,22 @@
+name: agent-core-test
+
+on:
+  push:
+    paths:
+      - 'products/izakhono-agent-core/**'
+  pull_request:
+    paths:
+      - 'products/izakhono-agent-core/**'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: products/izakhono-agent-core
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node --test --experimental-strip-types test/*.test.ts
