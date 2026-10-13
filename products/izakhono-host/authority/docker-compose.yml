@@ -1,0 +1,13 @@
+services:
+  knot:
+    image: cznic/knot:3.4
+    restart: unless-stopped
+    network_mode: host
+    read_only: true
+    cap_drop:
+      - ALL
+    volumes:
+      - ./knot.conf:/etc/knot/knot.conf:ro
+      - ./zones:/var/lib/knot/zones:ro
+      - ./run:/run/knot:rw
+      - ./log:/var/log/knot:rw
