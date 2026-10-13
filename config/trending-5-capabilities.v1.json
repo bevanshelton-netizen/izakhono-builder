@@ -1,0 +1,56 @@
+{
+  "schema": "izakhono.trending-capabilities/v1",
+  "policy": "reference-and-adapt",
+  "third_party_source_of_truth": false,
+  "capabilities": [
+    {
+      "id": "agent-session-visibility",
+      "upstream": "louis-cfm/coucou",
+      "status": "reference",
+      "risk": "low",
+      "purpose": "ambient visibility and control for long-running coding-agent sessions"
+    },
+    {
+      "id": "universal-agent-modder",
+      "upstream": "rehan-remade/universal-modder",
+      "status": "reference",
+      "risk": "high",
+      "purpose": "agent skills for software/game reconnaissance, reverse engineering and testing",
+      "requires_isolation": true,
+      "requires_security_gate": true
+    },
+    {
+      "id": "short-video-factory",
+      "upstream": "harry0703/MoneyPrinterTurbo",
+      "status": "reference",
+      "risk": "medium",
+      "purpose": "topic-to-short-video production for marketing and content workflows",
+      "requires_security_gate": true
+    },
+    {
+      "id": "yoinks-candidate",
+      "upstream": null,
+      "status": "candidate",
+      "risk": "unknown",
+      "purpose": "developer/agent productivity capability from the referenced reel",
+      "activation_blocker": "exact upstream repository must be verified"
+    },
+    {
+      "id": "motion-video-kit-candidate",
+      "upstream": null,
+      "status": "candidate",
+      "risk": "unknown",
+      "purpose": "programmatic motion/video production capability from the referenced reel",
+      "activation_blocker": "exact upstream repository must be verified"
+    }
+  ],
+  "release_gates": [
+    "license_verified",
+    "revision_pinned",
+    "security_gate_passed",
+    "secrets_isolated",
+    "adversarial_tests_passed",
+    "artifact_provenance_recorded",
+    "owned_first_fallback_defined"
+  ]
+}
