@@ -2,6 +2,7 @@ import express from "express";
 import { BrainKernel, healthPolicy } from "./brain-kernel.js";
 import { loadBrainRegistry } from "./brain-registry.js";
 import { BrainPersistence } from "./brain-persistence.js";
+import { mailBrainPolicy, mailReadinessEvidence } from "./mail-brain.js";
 
 const app = express();
 app.use(express.json({ limit: "256kb" }));
@@ -10,6 +11,7 @@ const startedAt = new Date().toISOString();
 const audit = [];
 const registryDocument = loadBrainRegistry();
 const policies = Object.fromEntries(registryDocument.brains.map(brain => [brain.id, healthPolicy]));
+policies.mail = mailBrainPolicy;
 const brainPersistence = new BrainPersistence();
 const kernel = new BrainKernel({ registry: registryDocument.brains, policies, persistence: brainPersistence });
 
@@ -39,6 +41,20 @@ app.post("/brains/decide", (req, res) => {
   record("brain.decision", { brain: request.brain, intent: request.intent, state: result.state, reason: result.reason });
   const status = result.state === "rejected" ? 400 : result.state === "blocked" ? 403 : 200;
   return res.status(status).json(result);
+});
+
+app.post("/brains/mail/readiness", (req, res) => {
+  const readiness = req.body || {};
+  const evidence = mailReadinessEvidence(readiness);
+  const result = kernel.decide({
+    brain: "mail",
+    intent: "go-live",
+    facts: { requireProductionReady: true, requireLive: readiness.requireLive === true },
+    evidence: [evidence],
+  });
+  record("mail.readiness", { state: result.state, reason: result.reason, gates: evidence.gates });
+  const status = result.state === "completed" ? 200 : 403;
+  res.status(status).json({ ...result, evidence });
 });
 
 app.get("/audit", (_req, res) => res.json({ entries: audit }));
