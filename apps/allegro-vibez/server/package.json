@@ -1,0 +1,8 @@
+{
+  "name": "allegro-vibez-api",
+  "version": "1.0.0",
+  "private": true,
+  "description": "ALLEGRO VIBEZ sovereign API runtime",
+  "scripts": {"start": "node index.js"},
+  "engines": {"node": ">=22"}
+}
