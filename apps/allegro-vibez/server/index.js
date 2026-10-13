@@ -1,9 +1,11 @@
 const http = require('http');
 const crypto = require('crypto');
+const fs = require('fs');
+const path = require('path');
 const { Pool } = require('pg');
 
 const PORT = Number(process.env.PORT || 8080);
-const VERSION = process.env.RELEASE_VERSION || 'allegro-vibez-v1.1';
+const VERSION = process.env.RELEASE_VERSION || 'allegro-vibez-v1.2';
 const startedAt = new Date().toISOString();
 const pool = process.env.DATABASE_URL
   ? new Pool({ connectionString: process.env.DATABASE_URL, max: Number(process.env.DB_POOL_SIZE || 10), ssl: process.env.DATABASE_SSL === 'false' ? false : { rejectUnauthorized: false } })
@@ -23,10 +25,17 @@ const readBody = (req) => new Promise((resolve, reject) => {
   });
   req.on('end', () => {
     if (!body) return resolve({});
-    try { resolve(JSON.parse(body)); } catch (_) { reject(new Error('invalid_json')); }
+    try { resolve(JSON.parse(body)); } catch (_) { reject(Object.assign(new Error('invalid_json'), { status: 400 })); }
   });
   req.on('error', reject);
 });
+
+async function migrate() {
+  if (!pool) return { configured: false, migrated: false, reason: 'DATABASE_URL_missing' };
+  const schema = fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf8');
+  await pool.query(schema);
+  return { configured: true, migrated: true };
+}
 
 async function dbHealth() {
   if (!pool) return { configured: false, ok: false, reason: 'DATABASE_URL_missing' };
@@ -39,15 +48,11 @@ async function dbHealth() {
 }
 
 async function registerUser(body) {
-  if (!pool) {
-    const error = new Error('DATABASE_URL_missing');
-    error.status = 503;
-    throw error;
-  }
+  if (!pool) throw Object.assign(new Error('DATABASE_URL_missing'), { status: 503 });
   const email = String(body.email || '').trim().toLowerCase();
   const displayName = String(body.displayName || '').trim();
-  if (!email || !email.includes('@')) { const e = new Error('valid_email_required'); e.status = 400; throw e; }
-  if (!displayName) { const e = new Error('display_name_required'); e.status = 400; throw e; }
+  if (!email || !email.includes('@')) throw Object.assign(new Error('valid_email_required'), { status: 400 });
+  if (!displayName) throw Object.assign(new Error('display_name_required'), { status: 400 });
 
   const client = await pool.connect();
   try {
@@ -58,52 +63,42 @@ async function registerUser(body) {
       return { id: existing.rows[0].id, status: existing.rows[0].status, existing: true };
     }
     const id = crypto.randomUUID();
-    await client.query(
-      `INSERT INTO users (id, email, display_name, role, status) VALUES ($1, $2, $3, 'creator', 'pending')`,
-      [id, email, displayName]
-    );
-    await client.query(
-      `INSERT INTO creator_profiles (user_id, stage_name, bio, country, genre) VALUES ($1, $2, '', '', '')`,
-      [id, displayName]
-    );
+    await client.query(`INSERT INTO users (id, email, display_name, role, status) VALUES ($1, $2, $3, 'creator', 'pending')`, [id, email, displayName]);
+    await client.query(`INSERT INTO creator_profiles (user_id, stage_name, bio, country, genre) VALUES ($1, $2, '', 'South Africa', '')`, [id, displayName]);
+    await client.query(`INSERT INTO wallets (creator_id, available_minor, pending_minor, currency) VALUES ($1, 0, 0, 'ZAR')`, [id]);
     await client.query('COMMIT');
     return { id, status: 'pending', existing: false };
   } catch (error) {
     await client.query('ROLLBACK').catch(() => {});
     throw error;
-  } finally {
-    client.release();
-  }
+  } finally { client.release(); }
 }
 
 async function discover() {
   if (!pool) return { releases: [], mode: 'database-not-configured' };
-  const result = await pool.query(`
-    SELECT r.id, r.title, r.release_type, r.artwork_url, r.audio_url,
-           cp.stage_name AS creator, r.created_at
-    FROM releases r
-    JOIN creator_profiles cp ON cp.user_id = r.creator_id
-    WHERE r.status = 'approved'
-    ORDER BY r.created_at DESC
-    LIMIT 100
-  `);
+  const result = await pool.query(`SELECT r.id, r.title, r.release_type, r.artwork_url, r.audio_url, cp.stage_name AS creator, r.created_at FROM releases r JOIN creator_profiles cp ON cp.user_id = r.creator_id WHERE r.status = 'approved' AND r.rights_confirmed = TRUE ORDER BY r.created_at DESC LIMIT 100`);
   return { releases: result.rows, mode: 'database' };
 }
+
+let boot = null;
+if (pool) boot = migrate().catch(error => { console.error('database migration failed', error); return { configured: true, migrated: false, reason: error.code || error.message }; });
 
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
   try {
     if (req.method === 'GET' && url.pathname === '/health') {
+      const migration = boot ? await boot : { configured: false, migrated: false };
       const database = await dbHealth();
-      return json(res, database.ok || !pool ? 200 : 503, { ok: database.ok || !pool, service: 'allegro-vibez', version: VERSION, startedAt, runtime: 'izakhono-owned', database });
+      const ok = database.ok && migration.migrated;
+      return json(res, ok || !pool ? 200 : 503, { ok: ok || !pool, service: 'allegro-vibez', version: VERSION, startedAt, runtime: 'izakhono-owned', database, migration });
     }
     if (req.method === 'GET' && url.pathname === '/api/v1/health') {
+      const migration = boot ? await boot : { configured: false, migrated: false };
       const database = await dbHealth();
-      return json(res, database.ok || !pool ? 200 : 503, { ok: database.ok || !pool, service: 'allegro-vibez-api', version: VERSION, runtime: 'izakhono-owned', database });
+      const ok = database.ok && migration.migrated;
+      return json(res, ok || !pool ? 200 : 503, { ok: ok || !pool, service: 'allegro-vibez-api', version: VERSION, runtime: 'izakhono-owned', database, migration });
     }
-    if (req.method === 'GET' && url.pathname === '/api/v1/discover') {
-      return json(res, 200, { ok: true, ...(await discover()) });
-    }
+    if (req.method === 'GET' && url.pathname === '/api/v1/discover') return json(res, 200, { ok: true, ...(await discover()) });
     if (req.method === 'POST' && url.pathname === '/api/v1/auth/register') {
       const body = await readBody(req);
       const user = await registerUser(body);
@@ -117,5 +112,6 @@ const server = http.createServer(async (req, res) => {
 });
 
 server.listen(PORT, '0.0.0.0', () => console.log(`ALLEGRO VIBEZ runtime listening on ${PORT}`));
-process.on('SIGTERM', async () => { await pool?.end().catch(() => {}); server.close(() => process.exit(0)); });
-process.on('SIGINT', async () => { await pool?.end().catch(() => {}); server.close(() => process.exit(0)); });
+const shutdown = async () => { await pool?.end().catch(() => {}); server.close(() => process.exit(0)); };
+process.on('SIGTERM', shutdown);
+process.on('SIGINT', shutdown);
