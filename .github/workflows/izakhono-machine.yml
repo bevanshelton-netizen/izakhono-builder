@@ -1,0 +1,100 @@
+name: IZAKHONO Machine
+
+on:
+  workflow_dispatch:
+    inputs:
+      manifest_path:
+        description: Repository-relative IZAKHONO manifest
+        required: false
+        default: .izakhono.json
+      promote:
+        description: Promote only after every production gate passes
+        required: false
+        type: boolean
+        default: false
+  workflow_call:
+    inputs:
+      manifest_path:
+        required: false
+        type: string
+        default: .izakhono.json
+      promote:
+        required: false
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: izakhono-machine-${{ github.repository }}
+  cancel-in-progress: false
+
+jobs:
+  source:
+    name: SOURCE → PLAN
+    runs-on: ubuntu-latest
+    outputs:
+      manifest: ${{ steps.plan.outputs.manifest }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build machine plan
+        id: plan
+        env:
+          MANIFEST: ${{ inputs.manifest_path || '.izakhono.json' }}
+        run: |
+          set -euo pipefail
+          python scripts/izakhono/machine.py plan --manifest "$MANIFEST" | tee machine-plan.json
+          echo "manifest=$MANIFEST" >> "$GITHUB_OUTPUT"
+      - name: Pass handoff to BUILDER
+        env:
+          MANIFEST: ${{ inputs.manifest_path || '.izakhono.json' }}
+        run: |
+          python scripts/izakhono/machine.py handoff \
+            --manifest "$MANIFEST" --stage PLAN --next BUILDER --artifact machine-plan.json \
+            > worker-handoff-plan.json
+
+  build:
+    name: BUILD → VALIDATE
+    needs: source
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate build contract
+        env:
+          MANIFEST: ${{ needs.source.outputs.manifest }}
+        run: |
+          python scripts/izakhono/machine.py gate --manifest "$MANIFEST"
+      - name: Pass handoff to INTEGRATOR
+        env:
+          MANIFEST: ${{ needs.source.outputs.manifest }}
+        run: |
+          python scripts/izakhono/machine.py handoff \
+            --manifest "$MANIFEST" --stage BUILD --next INTEGRATOR --artifact source-tree \
+            > worker-handoff-build.json
+
+  release:
+    name: INTEGRATE → TEST → DEPLOY → VERIFY → LIVE
+    needs: build
+    uses: ./.github/workflows/izakhono-production-release.yml
+    with:
+      manifest_path: ${{ needs.source.outputs.manifest }}
+      promote: ${{ inputs.promote || false }}
+    secrets: inherit
+
+  handoff:
+    name: Record production handoff
+    needs: release
+    if: ${{ success() }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Record final machine handoff
+        env:
+          MANIFEST: ${{ inputs.manifest_path || '.izakhono.json' }}
+        run: |
+          mkdir -p .izakhono/machine
+          python scripts/izakhono/machine.py handoff \
+            --manifest "$MANIFEST" --stage MONITOR --next OBSERVER --state PASSED --artifact release-receipt \
+            > .izakhono/machine/final-handoff.json
+          cat .izakhono/machine/final-handoff.json
