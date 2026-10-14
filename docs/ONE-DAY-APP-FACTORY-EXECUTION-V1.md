@@ -43,3 +43,5 @@ The bridge does not:
 Before this bridge, the One-Day App Factory could produce a plan. With this bridge, a single authenticated factory request can enter the actual Builder lifecycle and return a real release-candidate result.
 
 The architecture remains **owned-first, evidence-gated and externally reversible**.
+
+Production promotion is intentionally controlled by the repository's `[deploy-builder]` workflow gate; this commit requests that gate rather than bypassing it.
