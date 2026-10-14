@@ -1,0 +1,32 @@
+services:
+  edge:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80/tcp"
+      - "443:443/tcp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./sites:/srv/izakhono/sites:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks: [izakhono]
+
+  dns:
+    image: cznic/knot:3
+    restart: unless-stopped
+    ports:
+      - "53:53/udp"
+      - "53:53/tcp"
+    volumes:
+      - ./knot/knot.conf:/etc/knot/knot.conf:ro
+      - ./knot/zones:/var/lib/knot/zones:ro
+    networks: [izakhono]
+
+volumes:
+  caddy_data:
+  caddy_config:
+
+networks:
+  izakhono:
+    driver: bridge
