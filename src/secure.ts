@@ -239,7 +239,7 @@ async function maybeGenerate(req: Request, env: any, url: URL, recovered: boolea
   if (!match || req.method !== 'POST') return null;
   if (!(await requireOwner(req, env, recovered))) return reply({ ok: false, error: 'Unauthorized' }, 401);
 
-  const project = await env.DB.prepare('SELECT * FROM builder_projects WHERE id=?').bind(match[1]).first<any>();
+  const project = await env.DB.prepare('SELECT * FROM builder_projects WHERE id=?').bind(match[1]).first();
   if (!project) return reply({ ok: false, error: 'Project not found' }, 404);
   const recipe = safeJson(project.build_recipe_json, null);
   if (!recipe) return reply({ ok: false, error: 'Generate the build plan first' }, 409);
@@ -272,7 +272,7 @@ async function maybeValidate(req: Request, env: any, url: URL, recovered: boolea
   if (!match || req.method !== 'POST') return null;
   if (!(await requireOwner(req, env, recovered))) return reply({ ok: false, error: 'Unauthorized' }, 401);
 
-  const project = await env.DB.prepare('SELECT * FROM builder_projects WHERE id=?').bind(match[1]).first<any>();
+  const project = await env.DB.prepare('SELECT * FROM builder_projects WHERE id=?').bind(match[1]).first();
   if (!project) return reply({ ok: false, error: 'Project not found' }, 404);
   const recipe = safeJson(project.build_recipe_json, null);
   const generated = recipe?.generated;
@@ -312,7 +312,7 @@ async function maybePublishRepository(req: Request, env: any, url: URL, recovere
   if (!match || req.method !== 'POST') return null;
   if (!(await requireOwner(req, env, recovered))) return reply({ ok: false, error: 'Unauthorized' }, 401);
 
-  const project = await env.DB.prepare('SELECT * FROM builder_projects WHERE id=?').bind(match[1]).first<any>();
+  const project = await env.DB.prepare('SELECT * FROM builder_projects WHERE id=?').bind(match[1]).first();
   if (!project) return reply({ ok: false, error: 'Project not found' }, 404);
   const recipe = safeJson(project.build_recipe_json, null);
   const generated = recipe?.generated;
@@ -346,7 +346,7 @@ async function maybePreview(req: Request, env: any, url: URL): Promise<Response 
   const slug = match[1];
   const requestedRevision = match[2] || '';
   const requestedApi = match[3] || '';
-  const project = await env.DB.prepare('SELECT * FROM builder_projects WHERE slug=?').bind(slug).first<any>();
+  const project = await env.DB.prepare('SELECT * FROM builder_projects WHERE slug=?').bind(slug).first();
   if (!project) return new Response('Preview not found', { status: 404 });
   if (!['validated', 'deploy_ready', 'deployed'].includes(project.status)) return new Response('Preview is not validated yet', { status: 409 });
   const recipe = safeJson(project.build_recipe_json, null);
