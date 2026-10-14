@@ -14,10 +14,10 @@ const root = process.cwd();
 const productsDir = path.join(root, 'products');
 const results = [];
 
-function run(name, command, args, cwd = root) {
+function run(name, command, args, cwd = root, timeout = 120_000) {
   const started = Date.now();
   try {
-    execFileSync(command, args, { cwd, stdio: 'pipe', timeout: 120_000, encoding: 'utf8' });
+    execFileSync(command, args, { cwd, stdio: 'pipe', timeout, encoding: 'utf8' });
     return { name, status: 'PASS', ms: Date.now() - started };
   } catch (error) {
     return {
@@ -57,6 +57,19 @@ for (const name of fs.readdirSync(productsDir).sort()) {
   } catch (error) {
     add(name, { stage: 'PACKAGE', status: 'FAIL', detail: String(error.message) });
     continue;
+  }
+
+  const dependencies = {
+    ...(pkg.dependencies || {}),
+    ...(pkg.optionalDependencies || {}),
+    ...(pkg.devDependencies || {}),
+  };
+  if (Object.keys(dependencies).length && !fs.existsSync(path.join(dir, 'node_modules'))) {
+    add(name, {
+      stage: 'INSTALL',
+      ...run('install', 'npm', ['install', '--ignore-scripts', '--no-audit', '--no-fund'], dir, 180_000),
+    });
+    if (results.at(-1).status === 'FAIL') continue;
   }
 
   if (pkg.scripts?.check) {
