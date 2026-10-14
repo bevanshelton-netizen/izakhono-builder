@@ -1,0 +1,56 @@
+name: IZAKHONO Owned Runtime
+
+on:
+  workflow_dispatch:
+    inputs:
+      host:
+        description: 'SSH host for the owned runtime'
+        required: true
+        type: string
+      ref:
+        description: 'Git ref to deploy'
+        required: false
+        default: 'main'
+        type: string
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate runtime files
+        run: |
+          test -f infra/owned-runtime/docker-compose.yml
+          test -f infra/owned-runtime/Caddyfile
+          test -f infra/owned-runtime/knot/knot.conf
+          test -f infra/owned-runtime/knot/zones/izakhono.africa.zone
+          docker compose -f infra/owned-runtime/docker-compose.yml config >/dev/null
+
+  deploy:
+    needs: package
+    runs-on: ubuntu-latest
+    environment: owned-production
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+      - name: Install SSH key
+        env:
+          SSH_KEY: ${{ secrets.IZAKHONO_RUNTIME_SSH_KEY }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+      - name: Publish immutable runtime bundle
+        env:
+          HOST: ${{ inputs.host }}
+          USER: ${{ secrets.IZAKHONO_RUNTIME_SSH_USER }}
+        run: |
+          tar -C infra/owned-runtime -czf /tmp/izakhono-owned-runtime.tgz .
+          scp -o StrictHostKeyChecking=no /tmp/izakhono-owned-runtime.tgz "$USER@$HOST:/tmp/izakhono-owned-runtime.tgz"
+          ssh -o StrictHostKeyChecking=no "$USER@$HOST" 'set -eu; sudo mkdir -p /opt/izakhono-owned-runtime; sudo tar -xzf /tmp/izakhono-owned-runtime.tgz -C /opt/izakhono-owned-runtime; cd /opt/izakhono-owned-runtime; sudo docker compose up -d; sudo docker compose config >/dev/null'
+      - name: External HTTP gate
+        env:
+          HOST: ${{ inputs.host }}
+        run: |
+          curl --fail --retry 5 --retry-delay 3 "http://$HOST/healthz"
