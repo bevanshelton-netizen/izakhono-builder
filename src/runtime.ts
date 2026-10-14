@@ -1,4 +1,5 @@
 import secured from './secure';
+import { runFactory } from './factory-superagent';
 
 interface D1PreparedStatement {
   bind(...values: unknown[]): D1PreparedStatement;
@@ -63,6 +64,14 @@ async function hardenGeneratedBundle(env: Env, projectId: string): Promise<void>
 export default {
   async fetch(req: Request, env: Env): Promise<Response> {
     const url = new URL(req.url);
+
+    // One-call factory execution. Authentication, build, validation and
+    // repository/release-candidate gates are delegated to existing secured
+    // Builder endpoints; this route never publishes directly.
+    if (url.pathname === '/api/factory/run' && req.method === 'POST') {
+      return runFactory(req, env);
+    }
+
     const generate = url.pathname.match(/^\/api\/projects\/([^/]+)\/generate$/);
     const response = await secured.fetch(req, env as any);
     if (generate && req.method === 'POST' && response.ok) {
