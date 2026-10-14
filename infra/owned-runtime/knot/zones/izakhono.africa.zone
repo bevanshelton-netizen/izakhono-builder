@@ -1,0 +1,20 @@
+$ORIGIN izakhono.africa.
+$TTL 300
+@ IN SOA ns1.izakhono.africa. hostmaster.izakhono.africa. (
+  2026101401 ; serial
+  3600       ; refresh
+  600        ; retry
+  1209600    ; expire
+  300        ; minimum
+)
+
+; Placeholder authority set. Do not publish/delegate until ns1/ns2 have
+; independent public IPs and pass UDP/TCP 53 external authority tests.
+@ IN NS ns1.izakhono.africa.
+@ IN NS ns2.izakhono.africa.
+
+; Replace these documentation-only addresses before delegation.
+; ns1 IN A 192.0.2.10
+; ns2 IN A 192.0.2.20
+
+health IN A 192.0.2.30
