@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "IZAKHONO Platform Contract v1",
+  "type": "object",
+  "required": ["api_version", "application", "infrastructure", "services", "release"],
+  "properties": {
+    "api_version": { "const": "izakhono.platform/v1" },
+    "application": {
+      "type": "object",
+      "required": ["slug", "repository", "manifest"],
+      "properties": {
+        "slug": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
+        "repository": { "type": "string", "minLength": 1 },
+        "manifest": { "type": "string", "minLength": 1 }
+      }
+    },
+    "infrastructure": {
+      "type": "object",
+      "required": ["policy", "compute", "edge", "data", "identity", "secrets", "observability", "backup"],
+      "properties": {
+        "policy": { "const": "owned-first-externally-reversible" },
+        "compute": { "enum": ["izakhono-owned", "external-fallback"] },
+        "edge": { "enum": ["izakhono-owned", "external-fallback"] },
+        "data": { "enum": ["izakhono-owned", "external-fallback"] },
+        "identity": { "enum": ["fortress", "external-fallback"] },
+        "secrets": { "enum": ["fortress", "external-fallback"] },
+        "observability": { "enum": ["izakhono-owned", "external-fallback"] },
+        "backup": { "enum": ["izakhono-owned", "external-fallback"] }
+      }
+    },
+    "services": {
+      "type": "object",
+      "required": ["domain", "dns", "tls", "runtime", "database", "storage", "auth", "payments", "monitoring"],
+      "properties": {
+        "domain": { "type": "string" },
+        "dns": { "type": "string" },
+        "tls": { "type": "string" },
+        "runtime": { "type": "string" },
+        "database": { "type": "string" },
+        "storage": { "type": "string" },
+        "auth": { "type": "string" },
+        "payments": { "type": "string" },
+        "monitoring": { "type": "string" }
+      }
+    },
+    "release": {
+      "type": "object",
+      "required": ["pipeline", "rollback", "evidence"],
+      "properties": {
+        "pipeline": { "const": "izakhono-machine/v1" },
+        "rollback": { "type": "string", "minLength": 1 },
+        "evidence": { "type": "array", "items": { "type": "string" } }
+      }
+    }
+  }
+}
