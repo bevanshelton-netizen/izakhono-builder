@@ -11,6 +11,9 @@ on:
       - '.github/workflows/build-izakhono-pdf-reader.yml'
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   android:
     runs-on: ubuntu-latest
