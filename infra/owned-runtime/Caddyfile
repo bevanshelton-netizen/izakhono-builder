@@ -1,0 +1,16 @@
+{
+  email ops@izakhono.africa
+  auto_https on
+}
+
+:80 {
+  respond /healthz "ok" 200
+}
+
+# Add production site blocks here only after the domain's DNS has been externally
+# verified. Example:
+# faisready.co.za {
+#   root * /srv/izakhono/sites/faisready
+#   encode zstd gzip
+#   file_server
+# }
