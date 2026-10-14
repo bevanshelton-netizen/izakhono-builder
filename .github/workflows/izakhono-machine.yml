@@ -50,9 +50,7 @@ jobs:
         env:
           MANIFEST: ${{ inputs.manifest_path || '.izakhono.json' }}
         run: |
-          python scripts/izakhono/machine.py handoff \
-            --manifest "$MANIFEST" --stage PLAN --next BUILDER --artifact machine-plan.json \
-            > worker-handoff-plan.json
+          python scripts/izakhono/machine.py handoff --manifest "$MANIFEST" --stage PLAN --next BUILDER --artifact machine-plan.json > worker-handoff-plan.json
 
   build:
     name: BUILD → VALIDATE
@@ -69,13 +67,11 @@ jobs:
         env:
           MANIFEST: ${{ needs.source.outputs.manifest }}
         run: |
-          python scripts/izakhono/machine.py handoff \
-            --manifest "$MANIFEST" --stage BUILD --next INTEGRATOR --artifact source-tree \
-            > worker-handoff-build.json
+          python scripts/izakhono/machine.py handoff --manifest "$MANIFEST" --stage BUILD --next INTEGRATOR --artifact source-tree > worker-handoff-build.json
 
   release:
     name: INTEGRATE → TEST → DEPLOY → VERIFY → LIVE
-    needs: build
+    needs: [source, build]
     uses: ./.github/workflows/izakhono-production-release.yml
     with:
       manifest_path: ${{ needs.source.outputs.manifest }}
@@ -94,7 +90,5 @@ jobs:
           MANIFEST: ${{ inputs.manifest_path || '.izakhono.json' }}
         run: |
           mkdir -p .izakhono/machine
-          python scripts/izakhono/machine.py handoff \
-            --manifest "$MANIFEST" --stage MONITOR --next OBSERVER --state PASSED --artifact release-receipt \
-            > .izakhono/machine/final-handoff.json
+          python scripts/izakhono/machine.py handoff --manifest "$MANIFEST" --stage MONITOR --next OBSERVER --state PASSED --artifact release-receipt > .izakhono/machine/final-handoff.json
           cat .izakhono/machine/final-handoff.json
