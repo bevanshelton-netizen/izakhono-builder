@@ -1,0 +1,9 @@
+{
+  "$schema":"node_modules/wrangler/config-schema.json",
+  "name":"izakhono-booking-v2",
+  "main":"src/index.ts",
+  "compatibility_date":"2026-10-13",
+  "assets":{"directory":"./public","binding":"ASSETS"},
+  "d1_databases":[{"binding":"DB","database_name":"izakhono-booking-v2","database_id":"REPLACE_WITH_OWNED_D1_DATABASE_ID"}],
+  "vars":{"PRODUCT_RELEASE":"candidate-v2","PUBLIC_LIVE":"false"}
+}
