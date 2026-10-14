@@ -44,58 +44,37 @@ jobs:
       route: ${{ steps.contract.outputs.route }}
     steps:
       - uses: actions/checkout@v4
-
-      - name: Validate production contract
+      - name: Validate through IZAKHONO Machine
+        env:
+          MANIFEST_PATH: ${{ inputs.manifest_path || '.izakhono.json' }}
+        run: |
+          set -euo pipefail
+          python scripts/izakhono/machine.py gate --manifest "$MANIFEST_PATH"
+      - name: Extract release contract
         id: contract
         env:
           MANIFEST_PATH: ${{ inputs.manifest_path || '.izakhono.json' }}
         run: |
           python - <<'PY'
-          import json, os, re
+          import json, os
           from pathlib import Path, PurePosixPath
-
-          p = PurePosixPath(os.environ['MANIFEST_PATH'].replace('\\','/'))
-          if p.is_absolute() or '..' in p.parts:
-              raise SystemExit('Unsafe manifest path')
-          f = Path(p)
-          if not f.is_file():
-              raise SystemExit(f'Manifest not found: {p}')
+          f = Path(os.environ['MANIFEST_PATH'])
           data = json.loads(f.read_text(encoding='utf-8'))
-          if data.get('version') != 3:
-              raise SystemExit('IZAKHONO manifest version 3 is required')
-          infra = data.get('infrastructure') or {}
-          if infra.get('policy') != 'owned-first-externally-reversible':
-              raise SystemExit('Owned-first infrastructure policy is mandatory')
-          slug = str(data.get('slug',''))
-          if not re.fullmatch(r'[a-z0-9]+(?:-[a-z0-9]+)*', slug):
-              raise SystemExit('Unsafe application slug')
-          status = infra.get('status_label')
-          if status not in {'OWNED LIVE VERIFIED','EXTERNAL LIVE VERIFIED','BUILT / VERIFIED LOCALLY','NOT YET PUBLIC'}:
-              raise SystemExit('Invalid evidence status label')
-          context = str(data.get('build_context','')).replace('\\','/')
-          dockerfile = str(data.get('dockerfile_path','')).replace('\\','/')
-          cp = PurePosixPath(context)
-          dp = PurePosixPath(dockerfile)
-          if cp.is_absolute() or '..' in cp.parts or dp.is_absolute() or '..' in dp.parts:
-              raise SystemExit('Build paths must stay inside the repository')
-          if not Path(context).is_dir() or not Path(dockerfile).is_file():
-              raise SystemExit('Build context or Dockerfile is missing')
-          port = int(data.get('container_port',0))
-          health = str(data.get('health_path',''))
+          infra = data['infrastructure']
+          context = str(data['build_context']).replace('\\','/')
+          dockerfile = str(data['dockerfile_path']).replace('\\','/')
+          for value, label in ((context,'build context'),(dockerfile,'Dockerfile')):
+              p = PurePosixPath(value)
+              if p.is_absolute() or '..' in p.parts:
+                  raise SystemExit(f'Unsafe {label} path')
           route = str(infra.get('current_public_route',''))
-          if not 1 <= port <= 65535 or not health.startswith('/'):
-              raise SystemExit('Runtime contract is invalid')
+          status = str(infra.get('status_label',''))
           if status == 'OWNED LIVE VERIFIED' and not route.startswith('https://'):
-              raise SystemExit('Owned live status requires verified HTTPS route')
+              raise SystemExit('Owned live status requires HTTPS')
           out = Path(os.environ['GITHUB_OUTPUT'])
           with out.open('a') as o:
-              o.write(f"name={data['name']}\nslug={slug}\ncontext={context}\ndockerfile={dockerfile}\nport={port}\nhealth={health}\nroute={route}\n")
+              o.write(f"name={data['name']}\nslug={data['slug']}\ncontext={context}\ndockerfile={dockerfile}\nport={int(data['container_port'])}\nhealth={data['health_path']}\nroute={route}\n")
           PY
-
-      - name: Run central Alpha gate
-        uses: ./.github/workflows/izakhono-build-to-alpha.yml
-        with:
-          manifest_path: ${{ inputs.manifest_path || '.izakhono.json' }}
 
   owned-release:
     name: Build + deploy on IZAKHONO-owned runtime
@@ -106,7 +85,6 @@ jobs:
       digest: ${{ steps.build.outputs.digest }}
     steps:
       - uses: actions/checkout@v4
-
       - name: Build immutable application image
         id: build
         env:
@@ -117,15 +95,10 @@ jobs:
         run: |
           set -euo pipefail
           image="${APP_SLUG}:izakhono-${GITHUB_SHA}"
-          docker build \
-            --label "za.co.izakhono.product=${APP_NAME}" \
-            --label "za.co.izakhono.commit=${GITHUB_SHA}" \
-            --label "za.co.izakhono.channel=candidate" \
-            -f "$DOCKERFILE" -t "$image" "$BUILD_CONTEXT"
+          docker build --label "za.co.izakhono.product=${APP_NAME}" --label "za.co.izakhono.commit=${GITHUB_SHA}" --label "za.co.izakhono.channel=candidate" -f "$DOCKERFILE" -t "$image" "$BUILD_CONTEXT"
           digest="$(docker image inspect "$image" --format='{{.Id}}')"
           echo "digest=$digest" >> "$GITHUB_OUTPUT"
           echo "image=$image" >> "$GITHUB_ENV"
-
       - name: Prepare release receipt
         env:
           DIGEST: ${{ steps.build.outputs.digest }}
@@ -134,32 +107,15 @@ jobs:
           cat > .izakhono/release/release.json <<JSON
           {
             "api_version": "izakhono.production/v1",
-            "application": {
-              "name": "${{ needs.validate.outputs.name }}",
-              "slug": "${{ needs.validate.outputs.slug }}",
-              "repository": "${{ github.repository }}"
-            },
-            "release": {
-              "source_sha": "${{ github.sha }}",
-              "artifact_digest": "${DIGEST}",
-              "channel": "candidate"
-            },
-            "runtime": {
-              "provider": "izakhono-owned",
-              "target": "${RUNNER_NAME}",
-              "port": ${{ needs.validate.outputs.port }},
-              "health_path": "${{ needs.validate.outputs.health }}"
-            },
-            "routes": { "public_https": "${{ needs.validate.outputs.route }}" }
+            "application": {"name": "${{ needs.validate.outputs.name }}", "slug": "${{ needs.validate.outputs.slug }}", "repository": "${{ github.repository }}"},
+            "release": {"source_sha": "${{ github.sha }}", "artifact_digest": "${DIGEST}", "channel": "candidate"},
+            "runtime": {"provider": "izakhono-owned", "target": "${RUNNER_NAME}", "port": ${{ needs.validate.outputs.port }}, "health_path": "${{ needs.validate.outputs.health }}"},
+            "routes": {"public_https": "${{ needs.validate.outputs.route }}"}
           }
           JSON
-
-      - name: Apply through the stable IZAKHONO runtime adapter
+      - name: Deploy through owned runtime adapter
         run: |
-          test -x /opt/izakhono/bin/izakhono-release || {
-            echo 'IZAKHONO owned runtime adapter is not installed on this node.' >&2
-            exit 20
-          }
+          test -x /opt/izakhono/bin/izakhono-release || { echo 'IZAKHONO owned runtime adapter is not installed on this node.' >&2; exit 20; }
           /opt/izakhono/bin/izakhono-release apply .izakhono/release/release.json "$image"
 
   production-health:
@@ -173,13 +129,9 @@ jobs:
           HEALTH: ${{ needs.validate.outputs.health }}
         run: |
           set -euo pipefail
-          test -n "$ROUTE" && [[ "$ROUTE" == https://* ]] || {
-            echo 'Production requires an HTTPS public route.' >&2
-            exit 21
-          }
+          test -n "$ROUTE" && [[ "$ROUTE" == https://* ]] || exit 21
           curl --fail --silent --show-error --location --max-time 30 "${ROUTE%/}${HEALTH}" >/tmp/health
           cat /tmp/health
-          echo '[PASS] Owned HTTPS health gate passed.'
 
   acceptance:
     name: Production acceptance gate
@@ -199,7 +151,6 @@ jobs:
             cat /tmp/acceptance-body || true
             test "$code" -ge 200 && test "$code" -lt 400
           fi
-          echo '[PASS] Production acceptance gate passed.'
 
   promote:
     name: Promote release to LIVE
@@ -213,8 +164,5 @@ jobs:
         run: |
           set -euo pipefail
           test -x /opt/izakhono/bin/izakhono-release
-          /opt/izakhono/bin/izakhono-release promote \
-            --application '${{ needs.validate.outputs.slug }}' \
-            --source '${{ github.sha }}' \
-            --artifact '${{ needs.owned-release.outputs.digest }}'
+          /opt/izakhono/bin/izakhono-release promote --application '${{ needs.validate.outputs.slug }}' --source '${{ github.sha }}' --artifact '${{ needs.owned-release.outputs.digest }}'
           echo '[PASS] Release promoted. LIVE status is evidence-backed.'
