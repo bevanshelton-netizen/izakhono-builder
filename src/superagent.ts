@@ -48,7 +48,7 @@ export function planGoal(goal: SuperAgentGoal): AgentRun {
     { id: id('execute'), title: 'Execute', purpose: 'Perform the required build, analysis, coding or operational work.', stage: 'execute', tool: 'code', dependsOn: [id('research')], gate: 'none', status: 'queued', attempts: 0, maxAttempts: 3 },
     { id: id('verify'), title: 'Verify', purpose: 'Test outputs against acceptance criteria and evidence requirements.', stage: 'verify', tool: 'build', dependsOn: [id('execute')], gate: 'none', status: 'queued', attempts: 0, maxAttempts: 3 },
     { id: id('artifact'), title: 'Package deliverables', purpose: 'Create and validate requested documents, code, reports or release receipts.', stage: 'artifact', tool: 'artifact', dependsOn: [id('verify')], gate: 'none', status: 'queued', attempts: 0, maxAttempts: 2 },
-    { id: id('release'), title: 'Release gate', purpose: 'Determine whether the result can be published or must remain internal.', stage: 'release_gate', tool: 'deployment', dependsOn: [id('artifact')], gate: publicRelease ? 'public_release' : 'none', status: 'queued', attempts: 0, maxAttempts: 1 },
+    { id: id('release'), title: 'Release gate', purpose: publicRelease ? 'Request the authorization needed for public publication.' : 'Record an internal release candidate without publishing it.', stage: 'release_gate', tool: publicRelease ? 'deployment' : 'artifact', dependsOn: [id('artifact')], gate: publicRelease ? 'public_release' : 'none', status: 'queued', attempts: 0, maxAttempts: 1 },
   ];
   const run: AgentRun = { goal, stage: 'plan', tasks, artifacts: [], events: [] };
   event(run, 'plan', `Planned ${tasks.length} tasks for owner objective ${goal.id}.`);
@@ -82,9 +82,9 @@ export async function advance(run: AgentRun, executor: SuperAgentToolExecutor): 
   if (result.ok) {
     task.status = 'passed'; event(run, 'verification', `${task.title} passed.`, task.id);
     if (result.evidence?.length) event(run, 'tool', `Evidence: ${result.evidence.join('; ')}`, task.id);
-    if (task.stage === 'artifact') {
-      run.artifacts.push({ id: `artifact:${task.id}`, name: 'IZAKHONO deliverable package', kind: 'agent-output', status: 'validated', sourceTask: task.id, evidence: result.evidence ?? [] });
-      event(run, 'artifact', 'Validated deliverable package recorded.', task.id);
+    if (task.stage === 'artifact' || task.stage === 'release_gate') {
+      run.artifacts.push({ id: `artifact:${task.id}`, name: task.stage === 'release_gate' ? 'IZAKHONO internal release candidate' : 'IZAKHONO deliverable package', kind: 'agent-output', status: 'validated', sourceTask: task.id, evidence: result.evidence ?? [] });
+      event(run, 'artifact', 'Validated deliverable evidence recorded.', task.id);
     }
     return run;
   }
