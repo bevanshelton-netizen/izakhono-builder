@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "IZAKHONO Production Contract v1",
+  "type": "object",
+  "required": [
+    "api_version",
+    "application",
+    "release",
+    "runtime",
+    "routes",
+    "dependencies",
+    "evidence"
+  ],
+  "properties": {
+    "api_version": { "const": "izakhono.production/v1" },
+    "application": {
+      "type": "object",
+      "required": ["name", "slug", "repository"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "slug": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
+        "repository": { "type": "string", "minLength": 1 }
+      }
+    },
+    "release": {
+      "type": "object",
+      "required": ["source_sha", "artifact_digest", "channel"],
+      "properties": {
+        "source_sha": { "type": "string", "minLength": 7 },
+        "artifact_digest": { "type": "string", "minLength": 1 },
+        "channel": { "enum": ["candidate", "production"] }
+      }
+    },
+    "runtime": {
+      "type": "object",
+      "required": ["provider", "target", "port", "health_path"],
+      "properties": {
+        "provider": { "const": "izakhono-owned" },
+        "target": { "type": "string", "minLength": 1 },
+        "port": { "type": "integer", "minimum": 1, "maximum": 65535 },
+        "health_path": { "type": "string", "pattern": "^/" }
+      }
+    },
+    "routes": {
+      "type": "object",
+      "required": ["public_https"],
+      "properties": {
+        "public_https": { "type": "string", "pattern": "^https://" },
+        "fallback": { "type": "string" }
+      }
+    },
+    "dependencies": {
+      "type": "object",
+      "required": ["data", "auth", "payments"],
+      "properties": {
+        "data": { "type": "array", "items": { "type": "string" } },
+        "auth": { "type": "array", "items": { "type": "string" } },
+        "payments": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "required": ["health", "https", "acceptance", "rollback"],
+      "properties": {
+        "health": { "type": "string", "minLength": 1 },
+        "https": { "type": "string", "minLength": 1 },
+        "acceptance": { "type": "string", "minLength": 1 },
+        "rollback": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}
