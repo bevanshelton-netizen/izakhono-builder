@@ -1,0 +1,23 @@
+{
+  "schema": "izakhono.factory-run/v1",
+  "name": "IZAKHONO One-Day App Factory Runtime",
+  "stages": [
+    {"id": "intake", "mode": "local", "side_effect": false},
+    {"id": "plan", "mode": "local_or_ai", "side_effect": false},
+    {"id": "route_ai", "mode": "free_first", "side_effect": false},
+    {"id": "build", "mode": "worker", "side_effect": false},
+    {"id": "security", "mode": "gate", "side_effect": false},
+    {"id": "qa", "mode": "gate", "side_effect": false},
+    {"id": "package", "mode": "worker", "side_effect": false},
+    {"id": "deploy", "mode": "authorized_worker", "side_effect": true},
+    {"id": "revenue", "mode": "authorized_worker", "side_effect": true}
+  ],
+  "promotion_rules": {
+    "deploy_requires": ["owner_authorized", "security_passed", "qa_passed", "artifact_verified"],
+    "revenue_requires": ["owner_authorized", "artifact_verified", "deployment_evidence", "revenue_path_verified"],
+    "public_live_requires": ["deployment_evidence", "qa_passed"]
+  },
+  "fail_closed": true,
+  "provider_secrets": "server_only",
+  "principle": "Build automatically; publish and charge only with evidence."
+}
