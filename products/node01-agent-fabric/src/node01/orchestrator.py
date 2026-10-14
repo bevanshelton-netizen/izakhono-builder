@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import json
 import uuid
@@ -7,9 +8,11 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from .engine import Orchestrator
+from .executors import resolve_agent
 from .intelligence import AgentDecision, AgentIntelligence
-from .models import Task, TaskStatus
+from .models import Task
 from .observe import EventLedger
+from .planner import plan
 from .tool_fabric import ToolFabric, ToolRequest, ToolResult
 
 
@@ -55,16 +58,20 @@ class AgentOrchestrator:
     def run(self, objective: str, tasks: list[Task] | None = None, correlation_id: str | None = None) -> OrchestrationResult:
         execution_id = str(uuid.uuid4())
         correlation = correlation_id or execution_id
-        graph = tasks or __import__("node01.planner", fromlist=["plan"]).plan(objective)
+        graph = tasks or plan(objective)
         turns: list[TurnReceipt] = []
         self.events.append("orchestration.started", "node01.orchestrator", {"execution_id": execution_id, "objective": objective}, correlation)
 
         for task in graph[: self.max_turns]:
-            agent = __import__("node01.executors", fromlist=["resolve_agent"]).resolve_agent(task)
+            agent = resolve_agent(task)
             if agent is None:
                 self.events.append("orchestration.failed", "node01.orchestrator", {"task_id": task.id, "reason": "agent unavailable"}, correlation)
                 return self._finish(execution_id, objective, "failed", turns, (), correlation)
-            decision = self.intelligence.decide(task, agent.id, correlation)
+            try:
+                decision = self.intelligence.decide(task, agent.id, correlation)
+            except Exception as exc:
+                self.events.append("orchestration.failed", "node01.orchestrator", {"task_id": task.id, "reason": str(exc)}, correlation)
+                return self._finish(execution_id, objective, "failed", turns, (), correlation)
             self.events.append("agent.decision", agent.id, {"task_id": task.id, "evidence_hash": decision.evidence_hash}, correlation)
             tool_results: list[ToolResult] = []
             for proposal in decision.tool_proposals[: self.max_tool_calls_per_turn]:
@@ -80,9 +87,11 @@ class AgentOrchestrator:
             self.events.append("orchestration.failed", "node01.orchestrator", {"reason": "turn budget exhausted"}, correlation)
             return self._finish(execution_id, objective, "blocked_or_failed", turns, (), correlation)
 
-        # Existing task engine remains the deterministic execution/review fallback;
-        # the intelligence/tool loop above adds governed reasoning without bypassing it.
-        execution = __import__("asyncio").run(Orchestrator().run(objective, graph))
+        try:
+            execution = asyncio.run(Orchestrator().run(objective, graph))
+        except Exception as exc:
+            self.events.append("orchestration.failed", "node01.orchestrator", {"reason": str(exc)}, correlation)
+            return self._finish(execution_id, objective, "failed", turns, (), correlation)
         status = "completed" if execution.status == "completed" else "blocked_or_failed"
         self.events.append("orchestration.completed" if status == "completed" else "orchestration.failed", "node01.orchestrator", {"execution_id": execution_id, "status": status}, correlation)
         return self._finish(execution_id, objective, status, turns, tuple(execution.tasks), correlation)
