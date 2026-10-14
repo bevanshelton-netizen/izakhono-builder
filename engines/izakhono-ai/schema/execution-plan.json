@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://izakhono.africa/schemas/ai/execution-plan.json",
+  "title": "IZAKHONO AI Execution Plan",
+  "type": "object",
+  "required": ["version", "task_id", "goal", "nodes", "delivery"],
+  "properties": {
+    "version": {"type": "string"},
+    "task_id": {"type": "string"},
+    "goal": {"type": "string"},
+    "priority": {"enum": ["realtime", "fast", "normal", "background"]},
+    "nodes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "worker", "depends_on"],
+        "properties": {
+          "id": {"type": "string"},
+          "worker": {"type": "string"},
+          "depends_on": {"type": "array", "items": {"type": "string"}},
+          "model_class": {"enum": ["fast", "reasoning", "specialist", "deterministic"]},
+          "timeout_ms": {"type": "integer", "minimum": 1},
+          "retry_limit": {"type": "integer", "minimum": 0}
+        }
+      }
+    },
+    "verification": {
+      "type": "object",
+      "properties": {
+        "required": {"type": "boolean"},
+        "gates": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "delivery": {
+      "type": "object",
+      "required": ["mode"],
+      "properties": {
+        "mode": {"enum": ["inline", "artifact", "url", "job"]},
+        "target": {"type": "string"}
+      }
+    }
+  }
+}
