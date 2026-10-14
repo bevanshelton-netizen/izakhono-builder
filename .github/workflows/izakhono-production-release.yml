@@ -37,6 +37,8 @@ jobs:
     outputs:
       name: ${{ steps.contract.outputs.name }}
       slug: ${{ steps.contract.outputs.slug }}
+      context: ${{ steps.contract.outputs.context }}
+      dockerfile: ${{ steps.contract.outputs.dockerfile }}
       port: ${{ steps.contract.outputs.port }}
       health: ${{ steps.contract.outputs.health }}
       route: ${{ steps.contract.outputs.route }}
@@ -70,6 +72,14 @@ jobs:
           status = infra.get('status_label')
           if status not in {'OWNED LIVE VERIFIED','EXTERNAL LIVE VERIFIED','BUILT / VERIFIED LOCALLY','NOT YET PUBLIC'}:
               raise SystemExit('Invalid evidence status label')
+          context = str(data.get('build_context','')).replace('\\','/')
+          dockerfile = str(data.get('dockerfile_path','')).replace('\\','/')
+          cp = PurePosixPath(context)
+          dp = PurePosixPath(dockerfile)
+          if cp.is_absolute() or '..' in cp.parts or dp.is_absolute() or '..' in dp.parts:
+              raise SystemExit('Build paths must stay inside the repository')
+          if not Path(context).is_dir() or not Path(dockerfile).is_file():
+              raise SystemExit('Build context or Dockerfile is missing')
           port = int(data.get('container_port',0))
           health = str(data.get('health_path',''))
           route = str(infra.get('current_public_route',''))
@@ -79,7 +89,7 @@ jobs:
               raise SystemExit('Owned live status requires verified HTTPS route')
           out = Path(os.environ['GITHUB_OUTPUT'])
           with out.open('a') as o:
-              o.write(f"name={data['name']}\nslug={slug}\nport={port}\nhealth={health}\nroute={route}\n")
+              o.write(f"name={data['name']}\nslug={slug}\ncontext={context}\ndockerfile={dockerfile}\nport={port}\nhealth={health}\nroute={route}\n")
           PY
 
       - name: Run central Alpha gate
@@ -87,35 +97,38 @@ jobs:
         with:
           manifest_path: ${{ inputs.manifest_path || '.izakhono.json' }}
 
-  build-release:
-    name: Build immutable release
+  owned-release:
+    name: Build + deploy on IZAKHONO-owned runtime
     needs: validate
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, izakhono-owned, linux]
+    environment: production
     outputs:
-      image: ${{ steps.build.outputs.image }}
       digest: ${{ steps.build.outputs.digest }}
     steps:
       - uses: actions/checkout@v4
-      - name: Build image and record digest
+
+      - name: Build immutable application image
         id: build
         env:
+          APP_NAME: ${{ needs.validate.outputs.name }}
           APP_SLUG: ${{ needs.validate.outputs.slug }}
+          BUILD_CONTEXT: ${{ needs.validate.outputs.context }}
+          DOCKERFILE: ${{ needs.validate.outputs.dockerfile }}
         run: |
-          docker build -f Dockerfile -t "${APP_SLUG}:${GITHUB_SHA}" .
-          digest="$(docker inspect --format='{{index .RepoDigests 0}}' "${APP_SLUG}:${GITHUB_SHA}" 2>/dev/null || true)"
-          image="${APP_SLUG}:${GITHUB_SHA}"
-          echo "image=$image" >> "$GITHUB_OUTPUT"
-          echo "digest=${digest:-local-${GITHUB_SHA}}" >> "$GITHUB_OUTPUT"
-
-  owned-deploy:
-    name: Deploy to IZAKHONO-owned runtime
-    needs: [validate, build-release]
-    runs-on: [self-hosted, izakhono-owned, linux]
-    environment: production
-    steps:
-      - uses: actions/checkout@v4
+          set -euo pipefail
+          image="${APP_SLUG}:izakhono-${GITHUB_SHA}"
+          docker build \
+            --label "za.co.izakhono.product=${APP_NAME}" \
+            --label "za.co.izakhono.commit=${GITHUB_SHA}" \
+            --label "za.co.izakhono.channel=candidate" \
+            -f "$DOCKERFILE" -t "$image" "$BUILD_CONTEXT"
+          digest="$(docker image inspect "$image" --format='{{.Id}}')"
+          echo "digest=$digest" >> "$GITHUB_OUTPUT"
+          echo "image=$image" >> "$GITHUB_ENV"
 
       - name: Prepare release receipt
+        env:
+          DIGEST: ${{ steps.build.outputs.digest }}
         run: |
           mkdir -p .izakhono/release
           cat > .izakhono/release/release.json <<JSON
@@ -128,7 +141,7 @@ jobs:
             },
             "release": {
               "source_sha": "${{ github.sha }}",
-              "artifact_digest": "${{ needs.build-release.outputs.digest }}",
+              "artifact_digest": "${DIGEST}",
               "channel": "candidate"
             },
             "runtime": {
@@ -147,11 +160,11 @@ jobs:
             echo 'IZAKHONO owned runtime adapter is not installed on this node.' >&2
             exit 20
           }
-          /opt/izakhono/bin/izakhono-release apply .izakhono/release/release.json
+          /opt/izakhono/bin/izakhono-release apply .izakhono/release/release.json "$image"
 
   production-health:
     name: Health + HTTPS gate
-    needs: [validate, owned-deploy]
+    needs: [validate, owned-release]
     runs-on: ubuntu-latest
     steps:
       - name: Verify owned public route
@@ -159,7 +172,8 @@ jobs:
           ROUTE: ${{ needs.validate.outputs.route }}
           HEALTH: ${{ needs.validate.outputs.health }}
         run: |
-          test -n "$ROUTE" && test "$ROUTE" = https://* || {
+          set -euo pipefail
+          test -n "$ROUTE" && [[ "$ROUTE" == https://* ]] || {
             echo 'Production requires an HTTPS public route.' >&2
             exit 21
           }
@@ -177,6 +191,7 @@ jobs:
         env:
           ROUTE: ${{ needs.validate.outputs.route }}
         run: |
+          set -euo pipefail
           if [ -x scripts/izakhono/production-acceptance.sh ]; then
             scripts/izakhono/production-acceptance.sh "$ROUTE"
           else
@@ -188,7 +203,7 @@ jobs:
 
   promote:
     name: Promote release to LIVE
-    needs: [validate, build-release, owned-deploy, production-health, acceptance]
+    needs: [validate, owned-release, production-health, acceptance]
     if: ${{ inputs.promote == true }}
     runs-on: [self-hosted, izakhono-owned, linux]
     environment: production
@@ -196,9 +211,10 @@ jobs:
       - uses: actions/checkout@v4
       - name: Promote through owned runtime adapter
         run: |
+          set -euo pipefail
           test -x /opt/izakhono/bin/izakhono-release
           /opt/izakhono/bin/izakhono-release promote \
             --application '${{ needs.validate.outputs.slug }}' \
             --source '${{ github.sha }}' \
-            --artifact '${{ needs.build-release.outputs.digest }}'
+            --artifact '${{ needs.owned-release.outputs.digest }}'
           echo '[PASS] Release promoted. LIVE status is evidence-backed.'
