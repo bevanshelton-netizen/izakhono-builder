@@ -6,7 +6,7 @@ if (adapters.length !== 7) throw new Error(`expected 7 adapters, got ${adapters.
 if (adapters.some(x => x.status !== 'foundation' || x.execution !== 'prepare_only' || !x.requiresFortressGate)) throw new Error('adapter boundary failed');
 
 const nav = prepareAdapter({service:'nav', action:'navigation'});
-if (!nav.ok || nav.dispatchable !== false) throw new Error('nav adapter preparation failed');
+if (nav.ok || nav.dispatchable !== false || nav.reason !== 'runtime_not_verified') throw new Error('nav adapter must remain blocked until runtime is verified');
 
 const foundation = prepareServiceDispatch({service:'nav', action:'navigation', runtime:{service_slug:'nav',state:'foundation',health:'unknown'}});
 if (foundation.dispatchable !== false || foundation.reason !== 'runtime_not_verified') throw new Error('foundation runtime gate failed');
