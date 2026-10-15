@@ -1,0 +1,55 @@
+{
+  "schema": "izakhono.platform-profile/v1",
+  "product": {
+    "name": "Example Platform",
+    "slug": "example-platform",
+    "operator": "IZAKHONO AFRICA (PTY) LTD"
+  },
+  "modules": {
+    "auth": true,
+    "payments": false,
+    "webhooks": false,
+    "crm": false,
+    "whatsapp": false,
+    "email": false,
+    "forms": false,
+    "commerce": false,
+    "subscriptions": false,
+    "lms": false,
+    "media": false,
+    "music": false,
+    "creator": false,
+    "listener": false,
+    "fleet": false,
+    "navigation": false,
+    "security": true,
+    "analytics": true,
+    "admin": true
+  },
+  "payment": {
+    "provider": "ikokha",
+    "server_verified": true,
+    "entitlement_requires_verified_payment": true
+  },
+  "infrastructure": {
+    "policy": "owned-first-externally-reversible",
+    "authoritative_source": "IZAKHONO CODE / Forge",
+    "owned_runtime": "NODE01",
+    "external_provider": "adapter",
+    "public_live_requires_evidence": true
+  },
+  "release": {
+    "health_path": "/health",
+    "required_gates": [
+      "build",
+      "validation",
+      "internal_snapshot",
+      "release_candidate",
+      "deployment",
+      "health",
+      "public_route",
+      "critical_workflow",
+      "rollback"
+    ]
+  }
+}
