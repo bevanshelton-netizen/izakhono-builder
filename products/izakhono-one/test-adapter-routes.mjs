@@ -44,6 +44,10 @@ try {
   if (prepared.status !== 200 || preparedBody.dispatchable !== false || preparedBody.sideEffects !== false || preparedBody.adapter?.execution !== 'prepare_only') {
     throw new Error('adapter preparation must remain fail-closed');
   }
+  const malformed = await fetch(`http://127.0.0.1:${port}/api/adapter-request`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{' });
+  if (malformed.status !== 400 || (await malformed.json()).error !== 'invalid_json') throw new Error('malformed JSON must be rejected');
+  const oversized = await fetch(`http://127.0.0.1:${port}/api/adapter-request`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: 'x'.repeat(65537) });
+  if (oversized.status !== 413 || (await oversized.json()).error !== 'payload_too_large') throw new Error('oversized JSON must be rejected');
   const unknown = await get('/api/adapters/not-a-service');
   if (unknown.status !== 404 || unknown.body.error !== 'adapter_not_found') {
     throw new Error('unknown adapter must return 404');
