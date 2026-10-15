@@ -37,6 +37,8 @@ async function proxyHealth(res,baseUrl,path,descriptor,errorPrefix){ if(!baseUrl
 const server=http.createServer(async(req,res)=>{
   const url=new URL(req.url||'/','http://localhost');
   if(url.pathname==='/health')return json(res,200,{status:'ok',platform:'IZAKHONO ONE',engine:registry.engine,services:services.length,parallelPillars:parallel.length,serviceContracts:Object.keys(contracts).length,pillarAdapters:7,adapterRegistry:adapterRegistry().length,noTracking:true,policyGate:true,actionGate:true,notificationChannels:supportedNotificationChannels(),runtimeState:true,dispatcher:true,builderIntegration:{integrated:true,configured:Boolean(builderInternalUrl),engineIndependent:true},flowIntegration:{integrated:true,configured:Boolean(flowInternalUrl),engineIndependent:true}});
+  if(url.pathname==='/api/adapters')return json(res,200,{ok:true,version:'v1',mode:'prepare_only',adapters:adapterRegistry()});
+  if(url.pathname.startsWith('/api/adapters/')){const slug=decodeURIComponent(url.pathname.slice('/api/adapters/'.length));const adapter=adapterRegistry().find(item=>item.service===slug);return adapter?json(res,200,{ok:true,adapter}):json(res,404,{ok:false,error:'adapter_not_found'});}
   if(url.pathname==='/api/pillars')return json(res,200,{ok:true,version:'v1',pillars:listPillars()});
   if(url.pathname.startsWith('/api/pillars/')){const slug=decodeURIComponent(url.pathname.slice('/api/pillars/'.length));const pillar=pillarDescriptor(slug);return pillar?json(res,200,{ok:true,pillar}):json(res,404,{ok:false,error:'pillar_not_found'});}
   if(url.pathname==='/api/adapters')return json(res,200,{ok:true,version:'v1',adapters:adapterRegistry()});
