@@ -41,8 +41,6 @@ const server=http.createServer(async(req,res)=>{
   if(url.pathname.startsWith('/api/adapters/')){const slug=decodeURIComponent(url.pathname.slice('/api/adapters/'.length));const adapter=adapterRegistry().find(item=>item.service===slug);return adapter?json(res,200,{ok:true,adapter}):json(res,404,{ok:false,error:'adapter_not_found'});}
   if(url.pathname==='/api/pillars')return json(res,200,{ok:true,version:'v1',pillars:listPillars()});
   if(url.pathname.startsWith('/api/pillars/')){const slug=decodeURIComponent(url.pathname.slice('/api/pillars/'.length));const pillar=pillarDescriptor(slug);return pillar?json(res,200,{ok:true,pillar}):json(res,404,{ok:false,error:'pillar_not_found'});}
-  if(url.pathname==='/api/adapters')return json(res,200,{ok:true,version:'v1',adapters:adapterRegistry()});
-  if(url.pathname.startsWith('/api/adapters/')){const slug=decodeURIComponent(url.pathname.slice('/api/adapters/'.length));const adapter=adapterRegistry().find(item=>item.service===slug);return adapter?json(res,200,{ok:true,adapter}):json(res,404,{ok:false,error:'adapter_not_found'});}
   if(url.pathname==='/api/contracts')return json(res,200,{ok:true,version:'v1',contracts:parallel.map(service=>({service_slug:service.slug,...contracts[service.slug]}))});
   if(url.pathname==='/api/runtime')return json(res,200,{ok:true,version:'v1',runtime:parallel.map(service=>publicRuntimeView(runtime.get(service.slug)))});
   if(url.pathname.startsWith('/api/runtime/')){const slug=decodeURIComponent(url.pathname.slice('/api/runtime/'.length));if(!runtime.has(slug))return json(res,404,{ok:false,error:'runtime_service_not_found'});return json(res,200,{ok:true,runtime:publicRuntimeView(runtime.get(slug))});}
