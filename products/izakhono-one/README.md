@@ -30,6 +30,8 @@ Current service adapters are **foundation / prepare-only**. They are provider-ne
 
 - `GET /health` — engine health and control-plane readiness.
 - `GET /api/contracts` — seven service contracts.
+- `GET /api/adapters` — provider-neutral adapter registry (prepare-only).
+- `GET /api/adapters/:slug` — one adapter's capabilities and execution boundaries.
 - `GET /api/runtime` — public runtime state for all seven pillars.
 - `GET /api/runtime/:slug` — one pillar runtime state.
 - `GET /api/notifications/capabilities` — supported notification channels.
