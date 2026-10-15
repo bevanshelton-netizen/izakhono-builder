@@ -1,47 +1,70 @@
 # IZAKHONO ONE — SUPER APP
 
-Canonical source for the IZAKHONO ONE access layer.
+Canonical source for the IZAKHONO ONE access layer and owned control plane.
+
+## Parallel core
+
+IZAKHONO ONE exposes seven controlled pillars:
+
+1. IZAKHONO SEARCH — discovery
+2. CONNECTA — community/social
+3. ONE AI — intelligence
+4. ONE CLOUD — workspace
+5. ONE COMMERCE — commerce
+6. IZAKHONO NAV — mobility & safety
+7. FORTRESS — security/trust
+
+Each pillar has a versioned service contract, replaceable adapter boundary, runtime state and FORTRESS policy gate.
+
+## Security and execution boundary
+
+The platform deliberately distinguishes:
+
+`REGISTERED -> FOUNDATION -> STAGING -> VERIFIED -> EXECUTABLE`
+
+A service is never treated as executable merely because it exists in the registry. Runtime execution requires `verified + healthy`. Sensitive actions are evaluated through the policy/action gate, payment actions can require human review, and every prepared action receives an audit correlation ID.
+
+Current service adapters are **foundation / prepare-only**. They are provider-neutral and replaceable. No adapter is allowed to create side effects until its runtime and policy gates are satisfied.
+
+## Core endpoints
+
+- `GET /health` — engine health and control-plane readiness.
+- `GET /api/contracts` — seven service contracts.
+- `GET /api/runtime` — public runtime state for all seven pillars.
+- `GET /api/runtime/:slug` — one pillar runtime state.
+- `GET /api/notifications/capabilities` — supported notification channels.
+- `POST /api/action` — policy/action preparation only.
+- `POST /api/dispatch` — capability + policy + runtime dispatch preparation only.
+- `GET /api/policy/:slug?action=...` — policy decision preview.
+- `GET /api/resolve/:slug` — service, contract and runtime resolution.
+- `GET /api/route/:slug` — controlled route resolution.
 
 ## Flagship capabilities
 
-IZAKHONO BUILDER is built into IZAKHONO ONE as the SUPER APP build capability. It remains its own independently deployable engine and source-of-truth service. IZAKHONO ONE exposes the capability through the service registry and an owned service bridge rather than absorbing the Builder engine.
+IZAKHONO BUILDER is built into IZAKHONO ONE as the SUPER APP build capability. It remains its own independently deployable engine and source-of-truth service. IZAKHONO ONE exposes the capability through an owned service bridge rather than absorbing the Builder engine.
 
-The Builder promise is:
+Builder promise:
 
-DESCRIBE -> GENERATE -> VALIDATE -> PUBLISH
+`DESCRIBE -> GENERATE -> VALIDATE -> PUBLISH`
 
-One product definition can target responsive web/PWA immediately and desktop/mobile-ready packaging through the Builder release gates.
+IZAKHONO FLOW is the SUPER APP workflow-orchestration capability. It remains independently deployable and coordinates approved commercial events across owned services:
 
-IZAKHONO FLOW is the SUPER APP workflow-orchestration capability. It remains an independently deployable engine and coordinates approved commercial events across the existing owned services rather than replacing their sources of truth:
+`LEAD -> QUALIFY -> QUOTE -> PAY -> FULFIL -> INVOICE -> SUPPORT -> RETAIN -> REPORT`
 
-LEAD -> QUALIFY -> QUOTE -> PAY -> FULFIL -> INVOICE -> SUPPORT -> RETAIN -> REPORT
-
-FLOW connects to IZAKHONO CRM, REVENUE, PAY, TASKS, SUPER AI and platform-specific fulfilment through replaceable internal adapters. It preserves entity/platform isolation, accepts payment confirmation only from verified IZAKHONO PAY events, and treats AI output as advisory.
-
-IZAKHONO Venture Factory also remains a flagship capability inside IZAKHONO ONE:
-
-IDEA -> BUILD -> SELL -> MEASURE -> IMPROVE
-
-Venture Factory remains independently deployable and keeps its own execution gates. IZAKHONO SUPER AI is surfaced as the provider-neutral intelligence layer.
+Venture Factory remains independently deployable and keeps its own execution gates. IZAKHONO SUPER AI is provider-neutral.
 
 ## Owned service bridges
 
-The owned Node engine exposes:
-
 - `GET /api/builder` — Builder integration descriptor.
-- `GET /api/builder/health` — health proxy to the independently running Builder when `IZAKHONO_BUILDER_INTERNAL_URL` is configured.
+- `GET /api/builder/health` — health proxy when an owned internal Builder URL is configured.
 - `GET /api/flow` — FLOW integration descriptor.
-- `GET /api/flow/health` — health proxy to the independently running FLOW engine when `IZAKHONO_FLOW_INTERNAL_URL` is configured.
+- `GET /api/flow/health` — health proxy when an owned internal FLOW URL is configured.
 
-The bridges never copy service administrator secrets into IZAKHONO ONE and never convert an unverified internal route into a public-live claim.
+The bridges never copy administrator secrets into IZAKHONO ONE and never convert an unverified internal route into a public-live claim.
 
-## Engine
+## Static resilience
 
-The provider-neutral Node engine exposes `GET /health`, `GET /api/search?q=...`, `GET /api/resolve/:slug` and `GET /api/route/:slug`. A route is returned only when the registry marks it `verified` or `external-resilience`; gated services fail closed.
-
-## Static resilience build
-
-`public/` is independently publishable on GitHub Pages or another static provider. The browser-side engine provides search, discovery, routing and health without telemetry or third-party runtime dependencies.
+`public/` is independently publishable on GitHub Pages or another static provider. The browser shell provides search, discovery, routing and health without telemetry or third-party runtime dependencies.
 
 ## NODE 01
 
@@ -49,10 +72,10 @@ Run repository-root `RUN-IZAKHONO-ONE-NODE01.cmd`. It builds the same source, bi
 
 Set `IZAKHONO_BUILDER_INTERNAL_URL` when the independently running Builder has an owned internal URL.
 
-Set `IZAKHONO_FLOW_INTERNAL_URL` to the independently running FLOW engine's owned internal URL (for the APP FABRIC compose stack, the private service route is `http://flow:8794` from another service on the same private network).
+Set `IZAKHONO_FLOW_INTERNAL_URL` to the independently running FLOW engine's owned internal URL.
 
 ## Promotion ladder
 
-SOURCE VERIFIED -> NODE01 INTERNAL PASS -> EDGE/TLS PASS -> PUBLIC HTTPS 200 + VERIFIED EXPERIENCE -> OWNED LIVE VERIFIED.
+`SOURCE VERIFIED -> NODE01 INTERNAL PASS -> EDGE/TLS PASS -> PUBLIC HTTPS 200 + VERIFIED EXPERIENCE -> OWNED LIVE VERIFIED`
 
-The external route remains reversible fallback throughout.
+External routes remain reversible fallbacks throughout. Vercel is not an architectural dependency.
