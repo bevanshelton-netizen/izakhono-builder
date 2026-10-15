@@ -35,6 +35,15 @@ try {
   if (nav.status !== 200 || nav.body.adapter.service !== 'nav' || !nav.body.adapter.capabilities.includes('navigation')) {
     throw new Error('single adapter endpoint failed');
   }
+  const prepared = await fetch(`http://127.0.0.1:${port}/api/adapter-request`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ service: 'nav', action: 'navigation' })
+  });
+  const preparedBody = await prepared.json();
+  if (prepared.status !== 200 || preparedBody.dispatchable !== false || preparedBody.sideEffects !== false || preparedBody.adapter?.execution !== 'prepare_only') {
+    throw new Error('adapter preparation must remain fail-closed');
+  }
   const unknown = await get('/api/adapters/not-a-service');
   if (unknown.status !== 404 || unknown.body.error !== 'adapter_not_found') {
     throw new Error('unknown adapter must return 404');
