@@ -1,8 +1,8 @@
 {
   "name": "izakhono-one",
-  "version": "1.5.1",
+  "version": "1.5.2",
   "private": true,
   "type": "module",
-  "scripts":{"start":"node server.mjs","check":"node --check server.mjs","contracts":"node contract-check.mjs","policy":"node test-policy.mjs","foundation":"node test-foundation.mjs","dispatch":"node test-dispatch.mjs","runtime":"node test-runtime.mjs","adapter-routes":"node test-adapter-routes.mjs","fortress":"node test-fortress.mjs","fortress-routes":"node test-fortress-routes.mjs","test":"node test-smoke.mjs && npm run adapter-routes && npm run contracts && npm run policy && npm run foundation && npm run dispatch && npm run runtime && npm run fortress && npm run fortress-routes"},
+  "scripts":{"start":"node server.mjs","check":"node --check server.mjs","contracts":"node contract-check.mjs","policy":"node test-policy.mjs","foundation":"node test-foundation.mjs","dispatch":"node test-dispatch.mjs","runtime":"node test-runtime.mjs","adapter-routes":"node test-adapter-routes.mjs","fortress":"node test-fortress.mjs","fortress-routes":"node test-fortress-routes.mjs","search":"node test-search.mjs","test":"node test-smoke.mjs && npm run adapter-routes && npm run contracts && npm run policy && npm run foundation && npm run dispatch && npm run runtime && npm run fortress && npm run fortress-routes && npm run search"},
   "engines":{"node":">=20"}
 }
