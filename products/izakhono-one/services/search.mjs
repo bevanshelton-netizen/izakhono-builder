@@ -1,5 +1,6 @@
 import { canServeRuntime } from './runtime.mjs';
 import { authorizeRequest } from './fortress.mjs';
+import { executeProvider } from './search-providers.mjs';
 
 const modes = Object.freeze(['web','local','business','product','content']);
 const providers = Object.freeze(['owned','replaceable_external']);
@@ -33,9 +34,7 @@ export function executeSearchProvider({ prepared, provider, executor } = {}) {
   if (!prepared.fortress || prepared.fortress.decision !== 'allow') return { ok:false, executed:false, reason:'fortress_gate_required', sideEffects:false };
   const selected = provider || prepared.provider;
   if (!providers.includes(selected)) return { ok:false, executed:false, reason:'unsupported_provider', sideEffects:false };
-  if (typeof executor !== 'function') return { ok:false, executed:false, reason:'provider_executor_required', provider:selected, sideEffects:false };
-  const result = executor({ request:prepared.request, provider:selected, signals:prepared.signals });
-  return { ok:true, executed:true, provider:selected, result, sideEffects:false };
+  return executeProvider({ provider:selected, request:prepared.request, signals:prepared.signals, executor });
 }
 
 export function searchModes() { return [...modes]; }
