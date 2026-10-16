@@ -9,7 +9,7 @@ import { adapterRegistry, prepareAdapter } from './services/adapters.mjs';
 import { supportedNotificationChannels } from './services/notifications.mjs';
 import { publicRuntimeView } from './services/runtime.mjs';
 import { listPillars, pillarDescriptor, preparePillarRequest } from './services/pillars.mjs';
-import { authorizeRequest, evaluateAuthorization, fortressPermissions, fortressRoles } from './services/fortress.mjs';
+import { authorizeRequest, evaluateAuthorization, fortressPermissions, fortressRoles, fortressResourceScopes } from './services/fortress.mjs';
 
 const root = fileURLToPath(new URL('./public/', import.meta.url));
 const port = Number(process.env.PORT || 8781);
@@ -39,7 +39,7 @@ async function proxyHealth(res,baseUrl,path,descriptor,errorPrefix){ if(!baseUrl
 const server=http.createServer(async(req,res)=>{
   const url=new URL(req.url||'/','http://localhost');
   if(url.pathname==='/health')return json(res,200,{status:'ok',platform:'IZAKHONO ONE',engine:registry.engine,services:services.length,parallelPillars:parallel.length,serviceContracts:Object.keys(contracts).length,pillarAdapters:7,adapterRegistry:adapterRegistry().length,noTracking:true,policyGate:true,actionGate:true,fortressGate:true,notificationChannels:supportedNotificationChannels(),runtimeState:true,dispatcher:true,builderIntegration:{integrated:true,configured:Boolean(builderInternalUrl),engineIndependent:true},flowIntegration:{integrated:true,configured:Boolean(flowInternalUrl),engineIndependent:true}});
-  if(url.pathname==='/api/fortress'&&req.method==='GET')return json(res,200,{ok:true,version:'v1',mode:'prepare_only',gate:'FORTRESS',decisions:['allow','deny','review'],roles:fortressRoles(),permissions:fortressPermissions(),sideEffects:false});
+  if(url.pathname==='/api/fortress'&&req.method==='GET')return json(res,200,{ok:true,version:'v1',mode:'prepare_only',gate:'FORTRESS',decisions:['allow','deny','review'],roles:fortressRoles(),permissions:fortressPermissions(),resourceScopes:fortressResourceScopes(),audit:{enabled:true,persistent:false,mode:'foundation'},sideEffects:false});
   if(url.pathname==='/api/fortress/authorize'&&req.method==='POST'){const parsed=await readJsonRequest(req);if(!parsed.ok)return json(res,parsed.status,{ok:false,error:parsed.error});const input=parsed.value;const decision=authorizeRequest(input);return json(res,decision.decision==='deny'?403:decision.decision==='review'?202:200,{ok:decision.decision==='allow',mode:'prepare_only',...decision});}
   if(url.pathname==='/api/adapters')return json(res,200,{ok:true,version:'v1',mode:'prepare_only',adapters:adapterRegistry()});
   if(url.pathname.startsWith('/api/adapters/')){const slug=decodeURIComponent(url.pathname.slice('/api/adapters/'.length));const adapter=adapterRegistry().find(item=>item.service===slug);return adapter?json(res,200,{ok:true,adapter}):json(res,404,{ok:false,error:'adapter_not_found'});}
