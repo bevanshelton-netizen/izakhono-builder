@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#07111f">
+  <meta name="description" content="IZAKHONO CONNECT — messaging, voice and video communication for Android, iPhone and web.">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="stylesheet" href="styles.css">
+  <title>IZAKHONO CONNECT</title>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand"><div class="logo">IC</div><div><b>IZAKHONO</b><span>CONNECT</span></div></div>
+      <button class="new-chat" id="newChat">＋ New conversation</button>
+      <div class="section-label">CONVERSATIONS</div>
+      <div id="chatList" class="chat-list"></div>
+      <div class="sidebar-foot"><span class="dot"></span> Secure foundation<br><small>Owned-first architecture</small></div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <button class="mobile-menu" id="mobileMenu">☰</button>
+        <div class="peer"><div class="avatar" id="peerAvatar">CS</div><div><strong id="peerName">Calvin Shelton</strong><small id="peerStatus">Online</small></div></div>
+        <div class="top-actions"><button title="Voice call" id="voiceBtn">☎</button><button title="Video call" id="videoBtn">▣</button><button title="More">•••</button></div>
+      </header>
+
+      <section class="messages" id="messages"></section>
+
+      <div class="composer-wrap">
+        <div class="attachment-row" id="attachmentRow"></div>
+        <form class="composer" id="composer">
+          <button type="button" id="attachBtn" title="Attach">＋</button>
+          <input id="messageInput" autocomplete="off" placeholder="Write a message…">
+          <button type="button" id="micBtn" title="Voice note">🎙</button>
+          <button class="send" type="submit">➤</button>
+        </form>
+        <input id="fileInput" type="file" hidden multiple>
+        <div class="composer-note">IZAKHONO CONNECT • Android • iPhone • Web</div>
+      </div>
+    </main>
+
+    <aside class="right-panel">
+      <div class="right-head"><h3>CONNECT</h3><span class="badge">MVP</span></div>
+      <div class="call-card"><div class="call-icon">☎</div><b>Voice & video</b><p>Calling controls are wired for the production media layer.</p><div class="call-buttons"><button id="voiceBtn2">Voice</button><button id="videoBtn2">Video</button></div></div>
+      <div class="feature"><span>🔐</span><div><b>Private by design</b><small>Encryption-ready identity and session architecture.</small></div></div>
+      <div class="feature"><span>📶</span><div><b>Low-data mode</b><small>Designed for African connectivity conditions.</small></div></div>
+      <div class="feature"><span>🌍</span><div><b>Cross-platform</b><small>One product for Android, iPhone and browsers.</small></div></div>
+      <div class="feature"><span>🛡</span><div><b>FORTRESS-ready</b><small>Security controls can integrate with IZAKHONO FORTRESS.</small></div></div>
+      <div class="build-state"><b>Build status</b><span><i></i> Communication shell ready</span><small>Messaging UI + PWA foundation • media backend next</small></div>
+    </aside>
+  </div>
+  <div class="toast" id="toast"></div>
+  <script src="app.js"></script>
+</body>
+</html>
