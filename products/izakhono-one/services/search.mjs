@@ -28,5 +28,15 @@ export function prepareSearchRequest({ query, q, mode, country, language, region
   return { ok:ready, mode:'prepare_only', dispatchable:ready, request, signals, provider:providers[0], fallback:providers[1], fortress, runtime:{state:runtimeValue.state,health:runtimeValue.health,ready}, reason:ready?'ready_for_search_provider':'runtime_not_verified', sideEffects:false };
 }
 
+export function executeSearchProvider({ prepared, provider, executor } = {}) {
+  if (!prepared?.dispatchable || prepared.mode !== 'prepare_only') return { ok:false, executed:false, reason:'search_not_ready', sideEffects:false };
+  if (!prepared.fortress || prepared.fortress.decision !== 'allow') return { ok:false, executed:false, reason:'fortress_gate_required', sideEffects:false };
+  const selected = provider || prepared.provider;
+  if (!providers.includes(selected)) return { ok:false, executed:false, reason:'unsupported_provider', sideEffects:false };
+  if (typeof executor !== 'function') return { ok:false, executed:false, reason:'provider_executor_required', provider:selected, sideEffects:false };
+  const result = executor({ request:prepared.request, provider:selected, signals:prepared.signals });
+  return { ok:true, executed:true, provider:selected, result, sideEffects:false };
+}
+
 export function searchModes() { return [...modes]; }
 export function searchProviders() { return [...providers]; }
