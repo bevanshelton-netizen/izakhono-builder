@@ -1,6 +1,6 @@
 import './style.css';
 const URL='https://yfawrenhudjomhnglfhq.supabase.co/rest/v1/izakhono_callback_requests';
-const KEY='sb_publishable_3KY--8Y_uuKEdfdumC2txg__OWTRo2p';
+const KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlmYXdyZW5odWRqb21obmdsZmhxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkyMjcyMDIsImV4cCI6MjEwNDgwMzIwMn0.JCtX9e9qJFx85WSY8Z020_beHfuPmMxMA1INxRLYBp4';
 const qs=new URLSearchParams(location.search),source=qs.get('utm_source')||'website',campaign=qs.get('utm_campaign')||'';
 const industries=['Home Services','Construction','Plumbing','Electrical','Solar & Energy','Security','Automotive','Healthcare','Dental','Real Estate','Legal','Financial Services','Education','Manufacturing','Furniture','Apparel','Logistics','Hospitality','Beauty','Fitness','Agriculture','Engineering','IT & Technology','Professional Services'];
 const campuses=['Durban','Roodepoort','Carltonville','Humansdorp','Gqeberha (Bethelsdorp)','Graaff-Reinet','Cradock','Mthatha','Dimbaza','Butterworth','East London','Queenstown'];let industry=qs.get('industry')||'Education';
