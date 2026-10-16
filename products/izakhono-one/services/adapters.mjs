@@ -10,11 +10,11 @@ export function resolveAdapter(service) {
   return {service,kind:adapterKinds[service],status:adapterStatus[service],capabilities:[...contract.capabilities],execution:'prepare_only',sideEffects:false,provider:'replaceable',requiresVerifiedRuntime:true,requiresFortressGate:true};
 }
 
-export function prepareAdapter({service, action, runtime, authenticated=false, verified=false, destructive=false, payment=false, correlationId}={}) {
+export function prepareAdapter({service, action, runtime, principal, resource, authenticated=false, verified=false, destructive=false, payment=false, correlationId}={}) {
   const adapter = resolveAdapter(service);
   if (!adapter) return {ok:false, reason:'unknown_service', mode:'prepare_only', sideEffects:false};
   if (!supports(service, action)) return {ok:false, reason:'unsupported_capability', service, action, mode:'prepare_only', sideEffects:false};
-  const dispatch = prepareServiceDispatch({service,action,runtime,authenticated,verified,destructive,payment,correlationId});
+  const dispatch = prepareServiceDispatch({service,action,runtime,principal,resource,authenticated,verified,destructive,payment,correlationId});
   return {...dispatch,adapter};
 }
 
