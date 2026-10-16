@@ -1,18 +1,16 @@
 # IZAKHONO PROVISIONER
 
-Server-side runtime specification for CONNECT CONTROL.
+Portable server-side runtime for CONNECT CONTROL provisioning orchestration.
 
-## Responsibilities
+## Deployment principle
 
-The Provisioner consumes authenticated orders and advances the provisioning state machine without coupling the business logic to a hosting vendor.
+Deploy on IZAKHONO-controlled Linux infrastructure, private VM, bare metal, or another Docker-compatible host. Vercel is not required.
 
-### Pipeline
+## Pipeline
 
 `PAYMENT_VERIFIED → COVERAGE_CHECK → PROVIDER_SELECTION → SERVICE_ORDER → ACTIVATION → CUSTOMER_PORTAL → FORTRESS_SECURITY → HANDOVER`
 
-## Adapter contract
-
-Every provider adapter should implement:
+## Provider adapter contract
 
 ```text
 checkCoverage(address, serviceType)
@@ -22,20 +20,29 @@ getOrderStatus(reference)
 cancelOrder(reference)
 ```
 
-Adapters must return normalized results. Provider-specific response formats never leak into the core provisioning state machine.
+Provider-specific responses must be normalized before entering the core state machine.
+
+## Runtime contract
+
+Environment variables:
+
+- `SUPABASE_URL`
+- `SUPABASE_SERVICE_ROLE_KEY` — server-side secret only.
+- `PORT` — defaults to `8080`.
+
+HTTP contract:
+
+- `GET /health`
+- `POST /v1/provisioning/start` — `{ "order_id": "..." }`
+- `POST /v1/provisioning/advance` — `{ "provisioning_id": "...", "step_key": "...", "status": "completed", "output": {} }`
 
 ## Safety rules
 
-- Never claim activation without an authoritative provider result.
+- Never claim coverage, ordering, activation, or handover without an authoritative upstream result.
 - Retries must be idempotent.
 - Every attempt is recorded.
-- Errors become exceptions with actionable context.
+- Errors become actionable exceptions.
 - Credentials remain server-side.
 - Manual fallback is explicit and visible.
-- A provider can be disabled without changing customer-facing product definitions.
-
-## Runtime target
-
-The first production runtime should be deployable as a Docker container on IZAKHONO-controlled Linux infrastructure. Supabase/Postgres remains the current persistence layer.
-
-No Vercel-specific runtime dependency is permitted.
+- A provider can be disabled without changing customer-facing products.
+- No Vercel-specific runtime dependency.
