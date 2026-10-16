@@ -1,0 +1,17 @@
+const chats=[{id:'calvin',name:'Calvin Shelton',initials:'CS',preview:'I am ready for the next step.',time:'Now',online:true,messages:[['them','We can build this for Android, iPhone and web.','10:58'],['me','Yes. Build it all the way.','11:00'],['them','I am ready for the next step.','11:01']]},{id:'izakhono',name:'IZAKHONO Team',initials:'IA',preview:'Connect architecture is ready.',time:'10:41',online:true,messages:[['them','CONNECT communication shell is ready for testing.','10:41']]},{id:'family',name:'Family',initials:'FM',preview:'Voice note',time:'Yesterday',online:false,messages:[['them','Voice note','Yesterday']] }];
+let active='calvin';
+const $=s=>document.querySelector(s);
+function renderChats(){const el=$('#chatList');el.innerHTML=chats.map(c=>`<div class="chat ${c.id===active?'active':''}" data-id="${c.id}"><div class="avatar">${c.initials}</div><div class="chat-body"><strong>${c.name}</strong><small>${c.preview}</small></div><span class="time">${c.time}</span></div>`).join('');el.querySelectorAll('.chat').forEach(x=>x.onclick=()=>selectChat(x.dataset.id));}
+function renderMessages(){const c=chats.find(x=>x.id===active);$('#peerName').textContent=c.name;$('#peerAvatar').textContent=c.initials;$('#peerStatus').textContent=c.online?'Online':'Last seen recently';$('#peerStatus').style.color=c.online?'#20d9a6':'#71879e';$('#messages').innerHTML='<div class="day">TODAY</div>'+c.messages.map(m=>`<div class="bubble ${m[0]}">${escapeHtml(m[1])}<div class="meta">${m[2]} ${m[0]==='me'?'✓✓':''}</div></div>`).join('');const box=$('#messages');box.scrollTop=box.scrollHeight;}
+function selectChat(id){active=id;renderChats();renderMessages();closeMenu();}
+function escapeHtml(s){return s.replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));}
+function toast(t){const x=$('#toast');x.textContent=t;x.classList.add('show');setTimeout(()=>x.classList.remove('show'),2400);}
+$('#composer').addEventListener('submit',e=>{e.preventDefault();const input=$('#messageInput');const text=input.value.trim();if(!text)return;const c=chats.find(x=>x.id===active);const time=new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});c.messages.push(['me',text,time]);c.preview=text;c.time='Now';input.value='';renderChats();renderMessages();setTimeout(()=>{if(active===c.id){c.messages.push(['them','Message received. The production real-time service will deliver this across devices.','now']);renderMessages();}},700);});
+$('#attachBtn').onclick=()=>$('#fileInput').click();$('#fileInput').onchange=e=>{if(e.target.files.length){const names=[...e.target.files].map(f=>f.name).join(', ');toast('Attachment staged: '+names);e.target.value='';}};
+$('#micBtn').onclick=()=>toast('Voice-note recorder is ready for the production media layer.');
+['voiceBtn','voiceBtn2'].forEach(id=>$( '#'+id).onclick=()=>toast('Starting secure voice session…'));
+['videoBtn','videoBtn2'].forEach(id=>$( '#'+id).onclick=()=>toast('Starting secure video session…'));
+$('#newChat').onclick=()=>{const name=prompt('Conversation name');if(!name)return;const id='chat-'+Date.now();chats.unshift({id,name,initials:name.split(/\\s+/).map(x=>x[0]).slice(0,2).join('').toUpperCase(),preview:'New conversation',time:'Now',online:true,messages:[]});selectChat(id);};
+function closeMenu(){$('.sidebar').classList.remove('open');}$('#mobileMenu').onclick=()=>$('.sidebar').classList.toggle('open');
+renderChats();renderMessages();
+if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
