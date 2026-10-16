@@ -1,1 +1,1 @@
-{"name":"IZAKHONO CONNECT","short_name":"CONNECT","start_url":"./","display":"standalone","background_color":"#050b14","theme_color":"#07111f","description":"IZAKHONO secure cross-platform communication","icons":[]}
+{"name":"IZAKHONO CONNECT","short_name":"CONNECT","start_url":"./","scope":"./","display":"standalone","background_color":"#050b14","theme_color":"#07111f","description":"IZAKHONO secure cross-platform communication","icons":[]}
