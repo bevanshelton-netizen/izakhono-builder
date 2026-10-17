@@ -1,0 +1,41 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "$id":"https://izakhono.co.za/schemas/registry.v1.json",
+  "title":"IZAKHONO Registry",
+  "type":"object",
+  "required":["schema","updatedAt","platforms","nodes"],
+  "properties":{
+    "schema":{"const":"izakhono.registry/v1"},
+    "updatedAt":{"type":"string","format":"date-time"},
+    "platforms":{"type":"array","items":{"$ref":"#/$defs/platform"}},
+    "nodes":{"type":"array","items":{"$ref":"#/$defs/node"}}
+  },
+  "$defs":{
+    "platform":{
+      "type":"object",
+      "required":["id","name","repository","environment"],
+      "properties":{
+        "id":{"type":"string","pattern":"^[a-z0-9][a-z0-9-]{1,63}$"},
+        "name":{"type":"string"},
+        "repository":{"type":"string"},
+        "environment":{"enum":["development","staging","production"]},
+        "commitSha":{"type":"string","pattern":"^[0-9a-f]{40}$"},
+        "publicUrl":{"type":"string","format":"uri"},
+        "ownedLiveVerified":{"type":"boolean"}
+      },
+      "additionalProperties":false
+    },
+    "node":{
+      "type":"object",
+      "required":["id","role","controlUrl"],
+      "properties":{
+        "id":{"type":"string"},
+        "role":{"enum":["primary","replica","dr"]},
+        "controlUrl":{"type":"string","format":"uri"},
+        "status":{"enum":["unknown","ready","degraded","offline"]}
+      },
+      "additionalProperties":false
+    }
+  },
+  "additionalProperties":false
+}

@@ -1,0 +1,13 @@
+{
+  "schema":"izakhono.supporting-app/v1",
+  "appId":"izakhono-ops",
+  "name":"IZAKHONO OPS",
+  "role":"owner-operations",
+  "port":9393,
+  "bind":"127.0.0.1",
+  "dependsOn":["izakhono-node","izakhono-control"],
+  "networkPolicy":"read-only-local",
+  "publicExposure":false,
+  "secrets":[],
+  "deploymentAuthority":"izakhono-control"
+}
