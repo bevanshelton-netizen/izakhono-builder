@@ -22,5 +22,4 @@ jobs:
         with:
           node-version: 22
       - run: node --check server.mjs
-      - run: node contract-check.mjs
-      - run: node test-smoke.mjs
+      - run: npm test
