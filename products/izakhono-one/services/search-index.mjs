@@ -37,7 +37,7 @@ export function ingestOwnedRecords(records = []) {
     if (result.valid) accepted.push(result.record);
     else errors.push({ id:result.record.id || null, errors:result.errors });
   }
-  return { ok:errors.length === 0, inserted:accepted.length, rejected:errors.length, records:accepted, errors, maxRecords };
+  return { ok:accepted.length > 0 || (records.length === 0), inserted:accepted.length, rejected:errors.length, records:accepted, errors, maxRecords };
 }
 
 export function indexManifest(records = []) {
