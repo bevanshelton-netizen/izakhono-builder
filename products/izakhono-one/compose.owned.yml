@@ -7,8 +7,12 @@ services:
     init: true
     env_file:
       - .env.owned
+    environment:
+      IZAKHONO_FLOW_INTERNAL_URL: ${IZAKHONO_FLOW_INTERNAL_URL:-http://izakhono-flow:8794}
     ports:
       - "8781:8781"
+    networks:
+      - izakhono_private
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8781/health"]
       interval: 30s
@@ -19,3 +23,8 @@ services:
       - no-new-privileges:true
     cap_drop:
       - ALL
+
+networks:
+  izakhono_private:
+    external: true
+    name: izakhono_private
