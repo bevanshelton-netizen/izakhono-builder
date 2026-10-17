@@ -1,7 +1,7 @@
 #requires -Version 5.1
 [CmdletBinding()]
 param(
-  [string]$AllegroHostname = 'allegro.izakhonoafrica.co.za'
+  [string]$AllegroHostname = 'allegrovibez.com'
 )
 
 Set-StrictMode -Version Latest
@@ -16,7 +16,7 @@ New-Item -ItemType Directory -Force -Path $generated | Out-Null
 $local='http://127.0.0.1:8080/healthz'
 
 try { Invoke-WebRequest -Uri $local -UseBasicParsing -TimeoutSec 8 | Out-Null }
-catch { throw "ALLEGRO NODE01 local health failed: $local" }
+catch { throw "ALLEGRO owned local health failed: $local" }
 
 $body=@"
 $AllegroHostname {
@@ -28,4 +28,5 @@ $path=Join-Path $generated '20-allegro-vibez.caddy'
 Set-Content -Path $path -Value $body -Encoding UTF8
 
 Write-Host "[STAGED] $path" -ForegroundColor Green
+Write-Host "Canonical ALLEGRO hostname: $AllegroHostname"
 Write-Host 'No live Caddy route or DNS record was changed.'
