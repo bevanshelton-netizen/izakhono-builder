@@ -22,4 +22,5 @@ jobs:
         with:
           node-version: 22
       - run: node --check server.mjs
+      - run: npm run preflight
       - run: npm test
