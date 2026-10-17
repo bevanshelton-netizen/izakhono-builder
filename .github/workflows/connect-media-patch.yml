@@ -1,0 +1,47 @@
+name: CONNECT media integration
+on:
+  push:
+    branches: [main]
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch CONNECT media
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('products/izakhono-connect/app.js')
+          s=p.read_text()
+          s=s.replace("let user=null,activeConversation=null,subscription=null,presenceChannel=null,callChannel=null,callSessionChannel=null,pc=null,localStream=null,activeCall=null;", "let user=null,activeConversation=null,subscription=null,presenceChannel=null,callChannel=null,callSessionChannel=null,pc=null,localStream=null,activeCall=null;const MEDIA_BUCKET='connect-media';")
+          old='<form id="composer" class="composer"><button type="button" title="Attachments" disabled>＋</button><input id="message" placeholder="Write a message…" autocomplete="off" disabled><button type="submit" disabled>➤</button></form>'
+          new='<form id="composer" class="composer"><input id="file" type="file" hidden><button id="attach" type="button" title="Attachments" disabled>＋</button><input id="message" placeholder="Write a message…" autocomplete="off" disabled><button type="submit" disabled>➤</button></form>'
+          s=s.replace(old,new)
+          old="document.getElementById('hangup').onclick=hangup;window.addEventListener('beforeunload',()=>setPresence(false))"
+          new="document.getElementById('hangup').onclick=hangup;document.getElementById('attach').onclick=()=>document.getElementById('file').click();document.getElementById('file').onchange=sendAttachment;window.addEventListener('beforeunload',()=>setPresence(false))"
+          s=s.replace(old,new)
+          old="document.getElementById('message').disabled=false;document.querySelectorAll('.composer button').forEach((b,i)=>b.disabled=i===0);document.getElementById('voicecall').disabled=false;"
+          new="document.getElementById('message').disabled=false;document.getElementById('attach').disabled=false;document.querySelector('#composer button[type=\"submit\"]').disabled=false;document.getElementById('voicecall').disabled=false;"
+          s=s.replace(old,new)
+          old="function messageHtml(m){const body=m.attachment_url?`<a href=\"${esc(m.attachment_url)}\" target=\"_blank\" rel=\"noopener\">${esc(m.body||'Attachment')}</a>`:esc(m.body||'');return"
+          new="function messageHtml(m){const body=m.attachment_url?`<button class=\"attachment\" type=\"button\" data-path=\"${esc(m.attachment_url)}\">📎 ${esc(m.body||'Attachment')}</button>`:esc(m.body||'');return"
+          s=s.replace(old,new)
+          old="function addMessage(m){if(document.querySelector(`[data-message=\"${m.id}\"]`))return;const box=document.getElementById('messages');if(box.querySelector('.empty'))box.innerHTML='';const wrap=document.createElement('div');wrap.innerHTML=messageHtml(m);box.appendChild(wrap.firstElementChild);box.scrollTop=box.scrollHeight}"
+          new="function bindAttachmentButtons(root=document){root.querySelectorAll('.attachment').forEach(b=>b.onclick=()=>downloadAttachment(b.dataset.path))}async function downloadAttachment(path){const {data,error}=await db.storage.from(MEDIA_BUCKET).createSignedUrl(path,300);if(error){alert('Attachment unavailable: '+error.message);return}window.open(data.signedUrl,'_blank','noopener')}function addMessage(m){if(document.querySelector(`[data-message=\"${m.id}\"]`))return;const box=document.getElementById('messages');if(box.querySelector('.empty'))box.innerHTML='';const wrap=document.createElement('div');wrap.innerHTML=messageHtml(m);box.appendChild(wrap.firstElementChild);bindAttachmentButtons(wrap);box.scrollTop=box.scrollHeight}"
+          s=s.replace(old,new)
+          marker="async function flushQueue()"
+          attachment="async function sendAttachment(){const input=document.getElementById('file');const file=input.files?.[0];input.value='';if(!file||!activeConversation)return;if(file.size>50*1024*1024){alert('Maximum attachment size is 50 MB.');return}try{const safe=file.name.replace(/[^a-zA-Z0-9._-]/g,'_');const path=`${activeConversation.id}/${user.id}/${crypto.randomUUID()}-${safe}`;const {error:uploadError}=await db.storage.from(MEDIA_BUCKET).upload(path,file,{contentType:file.type||'application/octet-stream',upsert:false});if(uploadError)throw uploadError;const {error:messageError}=await db.from('connect_messages').insert({conversation_id:activeConversation.id,sender_id:user.id,body:file.name,message_type:'attachment',attachment_url:path});if(messageError){await db.storage.from(MEDIA_BUCKET).remove([path]);throw messageError}}catch(e){alert('Attachment upload failed: '+e.message)}}\n"
+          if 'async function sendAttachment' not in s:
+              s=s.replace(marker,attachment+marker)
+          p.write_text(s)
+          PY
+      - name: Commit and remove patch workflow
+        run: |
+          git config user.name "IZAKHONO Build Worker"
+          git config user.email "actions@izakhono.africa"
+          git add products/izakhono-connect/app.js
+          git rm .github/workflows/connect-media-patch.yml
+          git commit -m "Complete CONNECT private media attachments" || exit 0
+          git push
