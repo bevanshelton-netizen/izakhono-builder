@@ -10,7 +10,8 @@ export function prepareServiceDispatch({ service, action, runtime, principal, re
   if (!supports(slug, capability)) return { ok:false, mode:'prepare_only', dispatchable:false, service:slug, action:capability, reason:'unsupported_capability', sideEffects:false };
 
   const subject = principal || { authenticated, verified };
-  const fortress = authorizeRequest({ principal:subject, service:slug, action:capability, resource, destructive, payment, correlationId });
+  const fortressAction = capability === 'read' ? 'read' : 'execute';
+  const fortress = authorizeRequest({ principal:subject, service:slug, action:fortressAction, resource, destructive, payment, correlationId });
   if (fortress.decision === 'deny') return { ok:false, mode:'prepare_only', dispatchable:false, service:slug, action:capability, reason:'fortress_authorization_denied', fortress, requiresHumanReview:false, sideEffects:false };
   if (fortress.decision === 'review') return { ok:false, mode:'prepare_only', dispatchable:false, service:slug, action:capability, reason:'fortress_review_required', fortress, requiresHumanReview:true, sideEffects:false };
 
