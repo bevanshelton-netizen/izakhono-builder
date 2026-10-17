@@ -1,11 +1,11 @@
 import { authorizeRequest } from './fortress.mjs';
 import { normalizeDiscoveredRecord, sourceTrust } from './search-ingest.mjs';
 
-const discoveryKinds = Object.freeze(['catalog','feed','api','reader']);
+const discoveryKindValues = Object.freeze(['catalog','feed','api','reader']);
 
 export function normalizeDiscoverySource(input = {}) {
   const trust = sourceTrust(input);
-  return { ...trust.source, discovery_kind: discoveryKinds.includes(input.discovery_kind) ? input.discovery_kind : 'reader', enabled: Boolean(input.enabled), fetch_policy: input.fetch_policy === 'manual' ? 'manual' : 'controlled' };
+  return { ...trust.source, discovery_kind: discoveryKindValues.includes(input.discovery_kind) ? input.discovery_kind : 'reader', enabled: Boolean(input.enabled), fetch_policy: input.fetch_policy === 'manual' ? 'manual' : 'controlled' };
 }
 
 export function prepareDiscovery({ principal, source = {}, correlationId } = {}) {
@@ -28,4 +28,4 @@ export function executeDiscovery({ prepared, reader } = {}) {
   return { ok:true, executed:true, source:prepared.source, records, provenance:true, sideEffects:false };
 }
 
-export function discoveryKinds() { return [...discoveryKinds]; }
+export function discoveryKinds() { return [...discoveryKindValues]; }
