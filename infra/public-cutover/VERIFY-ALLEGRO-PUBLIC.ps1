@@ -1,7 +1,7 @@
 #requires -Version 5.1
 [CmdletBinding()]
 param(
-  [string]$AllegroHostname = 'allegro.izakhonoafrica.co.za',
+  [string]$AllegroHostname = 'allegrovibez.com',
   [string]$Fallback = 'https://allegro-vibez-79622wjli-bevan2.vercel.app'
 )
 
