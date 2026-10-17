@@ -1,0 +1,107 @@
+name: IZAKHONO OS ISO Fallback
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - "feat/izakhono-os-alpha"
+    paths:
+      - "products/izakhono-os/**"
+      - ".github/workflows/izakhono-os-iso-fallback.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-boot-iso:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install VM dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y qemu-system-x86 qemu-utils libarchive-tools
+
+      - name: Build with Debian Trixie live-build
+        run: |
+          docker run --privileged --rm -v "${GITHUB_WORKSPACE}:/workspace" -w /workspace/products/izakhono-os debian:trixie-slim bash -lc '
+            set -euo pipefail
+            apt-get update
+            apt-get install -y live-build debootstrap squashfs-tools xorriso isolinux syslinux-common ca-certificates python3
+            bash ./test-source.sh
+
+            echo "== Package preflight =="
+            failed=0
+            while IFS= read -r package; do
+              package="${package%%#*}"
+              package="$(printf "%s" "${package}" | xargs)"
+              [ -z "${package}" ] && continue
+              if apt-cache show "${package}" >/dev/null 2>&1; then
+                echo "PASS package: ${package}"
+              else
+                echo "FAIL package: ${package}"
+                failed=1
+              fi
+            done < config/package-lists/izakhono-os.list.chroot
+            [ "${failed}" -eq 0 ]
+
+            bash ./build.sh
+          '
+
+      - name: Normalize artifact names
+        working-directory: products/izakhono-os
+        run: |
+          sudo chown -R "${USER}:${USER}" .
+          cp live-image-amd64.hybrid.iso IZAKHONO-OS-alpha-amd64.iso
+          sha256sum IZAKHONO-OS-alpha-amd64.iso > IZAKHONO-OS-alpha-amd64.iso.sha256
+
+      - name: Boot live system in QEMU from ISO kernel
+        working-directory: products/izakhono-os
+        run: |
+          set -euo pipefail
+          ISO=IZAKHONO-OS-alpha-amd64.iso
+          VMLINUX_PATH="$(bsdtar -tf "$ISO" | grep -E '^live/vmlinuz($|[-.])' | head -n 1)"
+          INITRD_PATH="$(bsdtar -tf "$ISO" | grep -E '^live/initrd(\.img)?($|[-.])' | head -n 1)"
+          test -n "$VMLINUX_PATH"
+          test -n "$INITRD_PATH"
+          echo "Kernel from ISO: $VMLINUX_PATH"
+          echo "Initrd from ISO: $INITRD_PATH"
+          bsdtar -xOf "$ISO" "$VMLINUX_PATH" > vm-vmlinuz
+          bsdtar -xOf "$ISO" "$INITRD_PATH" > vm-initrd
+          test -s vm-vmlinuz
+          test -s vm-initrd
+          rm -f vm-serial.log
+          timeout 180s qemu-system-x86_64 -m 2048 -smp 2 -kernel vm-vmlinuz -initrd vm-initrd -append "boot=live components username=izakhono hostname=izakhono-os console=ttyS0,115200n8" -cdrom "$ISO" -display none -serial file:vm-serial.log -no-reboot || true
+          echo "=== VM serial tail ==="
+          tail -n 160 vm-serial.log || true
+          if ! grep -q "IZAKHONO_VM_BOOT_OK" vm-serial.log; then
+            echo "VM LIVE-SYSTEM GATE: FAILED"
+            exit 1
+          fi
+          echo "VM LIVE-SYSTEM GATE: PASSED"
+
+      - name: Stamp verified candidate status
+        working-directory: products/izakhono-os
+        run: |
+          cat > BUILD-STATUS.txt <<'EOF'
+          status=VM_BOOT_VERIFIED
+          privacy_gate=passed
+          vm_boot=passed
+          hardware=not_yet_verified
+          installer=not_yet_verified
+          production_ready=no
+          EOF
+
+      - name: Upload VM-verified boot-image candidate
+        uses: actions/upload-artifact@v4
+        with:
+          name: IZAKHONO-OS-alpha-amd64
+          path: |
+            products/izakhono-os/IZAKHONO-OS-alpha-amd64.iso
+            products/izakhono-os/IZAKHONO-OS-alpha-amd64.iso.sha256
+            products/izakhono-os/BUILD-STATUS.txt
+            products/izakhono-os/vm-serial.log
+          if-no-files-found: error
+          retention-days: 7
