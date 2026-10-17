@@ -1,7 +1,7 @@
 #requires -Version 5.1
 [CmdletBinding()]
 param(
-  [string]$AllegroHostname = 'allegro.izakhonoafrica.co.za',
+  [string]$AllegroHostname = 'allegrovibez.com',
   [string]$PublicIPv4 = ''
 )
 
@@ -41,19 +41,24 @@ function Get-ARecords([string]$Host) {
       Where-Object {$_.IPAddress} | ForEach-Object {$_.IPAddress} | Sort-Object -Unique)
   } catch { return @() }
 }
-function Get-Nameservers {
+function Get-Nameservers([string]$Zone) {
   try {
-    return @(Resolve-DnsName -Name 'izakhonoafrica.co.za' -Type NS -ErrorAction Stop |
+    return @(Resolve-DnsName -Name $Zone -Type NS -ErrorAction Stop |
       Where-Object {$_.NameHost} | ForEach-Object {$_.NameHost.TrimEnd('.')} | Sort-Object -Unique)
   } catch { return @() }
 }
 
+if($AllegroHostname -ne 'allegrovibez.com'){
+  throw 'Only the canonical ALLEGRO hostname allegrovibez.com is permitted by the owned cutover.'
+}
+
 Write-Host '============================================================'
 Write-Host 'IZAKHONO - ALLEGRO VIBEZ PUSH TO OWNED'
+Write-Host 'Canonical domain: allegrovibez.com'
 Write-Host 'Independent of all other platforms'
 Write-Host '============================================================'
 
-Write-Host '[1/5] Proving ALLEGRO locally on NODE01...'
+Write-Host '[1/5] Proving ALLEGRO locally on owned IZAKHONO infrastructure...'
 & $localLauncher
 if($LASTEXITCODE -ne 0){ throw 'ALLEGRO local owned proof failed.' }
 
@@ -71,16 +76,18 @@ if($LASTEXITCODE -ne 0){ throw 'ALLEGRO EDGE dry-run failed.' }
 
 Write-Host '[3/5] Building ALLEGRO DNS action evidence...'
 $publicIp=Get-PublicIPv4
+$zone='allegrovibez.com'
 $answers=Get-ARecords $AllegroHostname
-$nameservers=Get-Nameservers
+$nameservers=Get-Nameservers $zone
 $dnsReady=$answers -contains $publicIp
 
 $report=[ordered]@{
-  schema='izakhono.allegro.dns-action.v1'
+  schema='izakhono.allegro.dns-action.v2'
   generated_at=(Get-Date).ToUniversalTime().ToString('o')
   policy='owned-first-externally-reversible'
+  canonical_hostname=$AllegroHostname
   public_ipv4=$publicIp
-  zone='izakhonoafrica.co.za'
+  zone=$zone
   nameservers=$nameservers
   record_needed=[ordered]@{type='A';name=$AllegroHostname;value=$publicIp;ttl=300}
   current_answers=$answers
@@ -92,12 +99,12 @@ $report | ConvertTo-Json -Depth 8
 Write-Host "DNS action report: $dnsReport"
 
 if(-not $dnsReady){
-  Write-Host '[SAFE HOLD] ALLEGRO is locally proven and EDGE-staged, but public DNS does not point here yet.' -ForegroundColor Yellow
+  Write-Host '[SAFE HOLD] ALLEGRO is locally proven and EDGE-staged, but public DNS does not point to the owned EDGE yet.' -ForegroundColor Yellow
   Write-Host "Create/update the A record shown in $dnsReport, then rerun this launcher."
   exit 10
 }
 
-Write-Host '[4/5] DNS matches owner host. Activating ALLEGRO EDGE...'
+Write-Host '[4/5] DNS matches owned public endpoint. Activating ALLEGRO EDGE...'
 & $activate -Apply
 if($LASTEXITCODE -ne 0){ throw 'ALLEGRO EDGE activation failed.' }
 
