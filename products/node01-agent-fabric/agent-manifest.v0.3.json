@@ -1,0 +1,14 @@
+{
+  "schema": "izakhono.node01-agent-fabric/v1",
+  "version": "0.3.0",
+  "runtime": "local-execution-boundary",
+  "capabilities": [
+    "task-claiming",
+    "execution-receipts",
+    "evidence-hashing",
+    "provider-adapter-health",
+    "fail-closed-errors"
+  ],
+  "external_execution": "adapter-gated",
+  "production_evidence_required": true
+}
