@@ -46,7 +46,7 @@ const event = await store.appendEvent({
   content_hash: 'hash-1'
 });
 assert.equal(event.ok, true);
-assert.equal(calls.length, 3);
-assert.deepEqual(calls.map(call => call.method), ['GET', 'POST', 'POST']);
+assert.equal(calls.length, 4);
+assert.deepEqual(calls.map(call => call.method), ['GET', 'GET', 'POST', 'POST']);
 
 console.log('supabase search store adapter tests passed');
