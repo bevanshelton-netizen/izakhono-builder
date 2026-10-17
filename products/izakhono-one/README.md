@@ -68,16 +68,22 @@ The bridges never copy administrator secrets into IZAKHONO ONE and never convert
 
 `public/` is independently publishable on GitHub Pages or another static provider. The browser shell provides search, discovery, routing and health without telemetry or third-party runtime dependencies.
 
-## NODE 01
+## Owned runtime architecture
 
-Run repository-root `RUN-IZAKHONO-ONE-NODE01.cmd`. It builds the same source, binds only to `127.0.0.1:8781`, verifies `/health` and the owned integration descriptors, and leaves public EDGE/TLS/DNS cutover as a separate gate.
+Production execution is **node-oriented**:
 
-Set `IZAKHONO_BUILDER_INTERNAL_URL` when the independently running Builder has an owned internal URL.
+`IZAKHONO CONTROL -> IZAKHONO NODE -> IZAKHONO ONE`
 
-Set `IZAKHONO_FLOW_INTERNAL_URL` to the independently running FLOW engine's owned internal URL.
+CONTROL supplies node authorization, deployment intent and audit correlation. An authorized IZAKHONO NODE executes the portable workload and reports health/evidence. Multiple owned nodes are supported; a single workstation is not the production dependency.
+
+See `OWNED-NODE-CONTROL.md` for the node/control contract.
+
+## Bootstrap compatibility
+
+The repository-root `RUN-IZAKHONO-ONE-NODE01.cmd` and `START-APP-FABRIC-NODE01.cmd` remain available for operator/bootstrap compatibility and diagnostics. Their local Windows/Docker execution is not equivalent to production node-fabric validation.
 
 ## Promotion ladder
 
-`SOURCE VERIFIED -> NODE01 INTERNAL PASS -> EDGE/TLS PASS -> PUBLIC HTTPS 200 + VERIFIED EXPERIENCE -> OWNED LIVE VERIFIED`
+`SOURCE VERIFIED -> CONTROL READY -> NODE READY -> DEPLOYMENT VERIFIED -> PUBLIC EDGE/TLS VERIFIED -> OWNED LIVE`
 
 External routes remain reversible fallbacks throughout. Vercel is not an architectural dependency.
