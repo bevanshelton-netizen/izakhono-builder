@@ -1,66 +1,85 @@
-# IZAKHONO ONE — NODE 01 Activation Runbook
+# IZAKHONO ONE — OWNED NODE / CONTROL RUNBOOK
 
 ## Purpose
 
-Prove the owned internal runtime before any public DNS, EDGE, or TLS change.
+Prove the IZAKHONO ONE runtime on the **owner-controlled node fabric** before any public DNS, EDGE, or TLS change.
 
-## Preconditions
+The authoritative architecture is:
 
-- Docker Desktop is installed and running.
-- WSL is available with the `Ubuntu` distribution.
-- The repository is available on NODE 01.
-- The private Docker network `izakhono_private` can be created by the APP FABRIC activation.
-- `products/izakhono-one/.env.owned` exists locally on NODE 01 and contains only the required backend environment. It is intentionally ignored by Git.
+`IZAKHONO CONTROL -> IZAKHONO NODE -> IZAKHONO ONE`
 
-## Activation order
+The older `NODE01.cmd` launchers are retained as bootstrap/operator compatibility tools. They are not the production authority and are not, by themselves, evidence of an owned production node.
 
-### 1. APP FABRIC + FLOW
+## Authoritative activation order
 
-From the repository root, run:
+### 1. IZAKHONO CONTROL
 
-`START-APP-FABRIC-NODE01.cmd`
+CONTROL must identify the target node, confirm that it is registered and authorized, and establish the desired IZAKHONO ONE revision.
 
-Expected result:
+Required evidence:
 
-`[PASS] CRM + REVENUE + TASKS + FLOW + APP FABRIC are healthy internally on the owned host.`
+- node ID is known;
+- node is `REGISTERED` and `READY`;
+- node capabilities satisfy the workload;
+- security posture is acceptable;
+- deployment intent has an audit correlation ID.
 
-If it stops, do not continue. Public routes remain unchanged.
+### 2. IZAKHONO NODE
 
-### 2. IZAKHONO ONE
+The authorized node receives the approved workload revision and starts IZAKHONO ONE using the portable container/runtime contract.
 
-Run:
+Required evidence:
 
-`RUN-IZAKHONO-ONE-NODE01.cmd`
+- node health is healthy;
+- IZAKHONO ONE `/health` is healthy;
+- deployment revision matches the CONTROL intent;
+- Builder/FLOW owned integrations report their expected internal state;
+- no required third-party production host is in the execution path.
 
-Expected evidence:
+### 3. PUBLIC EDGE / TLS
 
-- `IZAKHONO_ONE_NODE01=INTERNAL_PASS`
-- `BUILDER_INTEGRATION=SOURCE_BRIDGE_PASS`
-- `FLOW_INTEGRATION=INTERNAL_HEALTH_PASS`
-- `PUBLIC_HTTPS=NOT_YET_VERIFIED`
+Only after the owner-node deployment is independently verified may public EDGE/TLS routing be promoted.
 
-The final line is expected at this stage. It is not a failure.
+Required evidence:
+
+- public HTTPS 200;
+- verified user experience;
+- route terminates on the authorized owned production path;
+- rollback path remains available.
+
+## Compatibility bootstrap
+
+If an operator needs to bootstrap or diagnose a node manually, the existing repository-root scripts may still be used:
+
+- `START-APP-FABRIC-NODE01.cmd`
+- `RUN-IZAKHONO-ONE-NODE01.cmd`
+
+These scripts are **not** the production architecture. Do not interpret their local Windows/Docker output as proof of an owner-controlled node fleet.
 
 ## Verification endpoints
 
-On NODE 01:
+On an authorized node, verify:
 
-- `http://127.0.0.1:8781/health`
-- `http://127.0.0.1:8781/api/builder`
-- `http://127.0.0.1:8781/api/flow`
-- `http://127.0.0.1:8781/api/flow/health`
+- `/health`
+- `/api/builder`
+- `/api/flow`
+- `/api/flow/health`
+
+The exact node address is supplied by CONTROL; do not hard-code a workstation loopback address into the production contract.
 
 ## Failure handling
 
-If either launcher stops:
+If CONTROL, node health, deployment verification, or security posture fails:
 
-1. Preserve the console output.
-2. Do not change public DNS or EDGE configuration.
-3. Do not expose `.env.owned` or any secret values in screenshots, tickets, or logs.
-4. Report the first `REASON=` line and the failing command/step.
+1. stop promotion;
+2. preserve the evidence;
+3. keep public routing unchanged;
+4. do not expose secrets;
+5. do not claim `OWNED LIVE`;
+6. allow CONTROL to drain/fail over to another authorized healthy node where capacity exists.
 
 ## Promotion gate
 
-`SOURCE VERIFIED → NODE01 INTERNAL PASS → EDGE/TLS PASS → PUBLIC HTTPS 200 + VERIFIED EXPERIENCE → OWNED LIVE`
+`SOURCE VERIFIED -> CONTROL READY -> NODE READY -> DEPLOYMENT VERIFIED -> PUBLIC EDGE/TLS VERIFIED -> OWNED LIVE`
 
-NODE 01 internal success does **not** constitute public launch. Public launch requires a separate verified HTTPS gate.
+A GitHub commit, CI pass, Supabase dashboard, or local workstation run cannot substitute for real owner-node validation.
