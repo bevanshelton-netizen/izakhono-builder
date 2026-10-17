@@ -1,0 +1,40 @@
+{
+  "schema": "izakhono.media-engine/campaign-v1",
+  "version": 1,
+  "status": "draft",
+  "objective": "",
+  "portfolio_products": [],
+  "offer": {
+    "name": "",
+    "landing_path": "",
+    "conversion_event": ""
+  },
+  "audience": {
+    "primary": "",
+    "market": "",
+    "language": "en-ZA"
+  },
+  "channels": ["youtube","instagram","facebook"],
+  "kpis": {
+    "reach": null,
+    "engagement": null,
+    "leads": null,
+    "sales": null,
+    "revenue": null
+  },
+  "content": {
+    "days": 7,
+    "items": []
+  },
+  "approval": {
+    "public_publish": false,
+    "paid_spend": false,
+    "human_review_required": true
+  },
+  "attribution": {
+    "campaign_id": "",
+    "utm_source": "",
+    "utm_medium": "",
+    "utm_campaign": ""
+  }
+}
