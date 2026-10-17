@@ -28,6 +28,5 @@ export function publicRuntimeView(input = {}) {
 
 export function canServeRuntime(state, health, databaseSecurity = null) {
   if (state !== 'verified' || health !== 'healthy') return false;
-  if (databaseSecurity === null || databaseSecurity === undefined) return true;
-  return databaseSecurity.ready_for_verified_runtime === true;
+  return databaseSecurity?.ready_for_verified_runtime === true;
 }
