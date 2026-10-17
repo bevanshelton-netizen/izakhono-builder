@@ -1,0 +1,30 @@
+name: Allegro Owned Cutover
+
+on:
+  workflow_dispatch:
+    inputs:
+      hostname:
+        description: 'Canonical Allegro hostname'
+        required: true
+        default: 'allegrovibez.com'
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  cutover:
+    runs-on: self-hosted
+    timeout-minutes: 30
+    environment: owned-production
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run existing fail-closed Allegro owned cutover
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $hostname = '${{ inputs.hostname }}'
+          if ($hostname -ne 'allegrovibez.com') { throw 'Only the canonical Allegro hostname is permitted.' }
+          $script = Join-Path $env:GITHUB_WORKSPACE 'infra/public-cutover/PUSH-ALLEGRO-OWNED.ps1'
+          if (-not (Test-Path $script)) { throw "Cutover script missing: $script" }
+          & $script -AllegroHostname $hostname
