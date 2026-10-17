@@ -26,6 +26,8 @@ export function publicRuntimeView(input = {}) {
   };
 }
 
-export function canServeRuntime(state, health) {
-  return state === 'verified' && health === 'healthy';
+export function canServeRuntime(state, health, databaseSecurity = null) {
+  if (state !== 'verified' || health !== 'healthy') return false;
+  if (databaseSecurity === null || databaseSecurity === undefined) return true;
+  return databaseSecurity.ready_for_verified_runtime === true || databaseSecurity.all_required_rls_enabled === true;
 }
