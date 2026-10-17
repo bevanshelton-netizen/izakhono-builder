@@ -7,7 +7,9 @@ const requiredTables = Object.freeze([
   'service_runtime_state',
   'runtime_events',
   'search_index_snapshots',
-  'search_index_events'
+  'search_index_events',
+  'node_registry',
+  'node_events'
 ]);
 
 const requiredAccessModes = Object.freeze(['backend_only']);
