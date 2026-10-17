@@ -1,0 +1,9 @@
+{
+  "name": "Bevan Shelton Digital Meishi",
+  "short_name": "Bevan Meishi",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#090b10",
+  "theme_color": "#090b10",
+  "description": "Bevan Shelton executive digital business card and company portfolio."
+}
