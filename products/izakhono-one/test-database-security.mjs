@@ -3,7 +3,9 @@ import { databaseSecurityContract, canVerifyDatabaseRuntime, normalizeDatabaseSe
 import { canServeRuntime } from './services/runtime.mjs';
 
 const required = requiredDatabaseSecurityTables();
-assert.equal(required.length, 9);
+assert.equal(required.length, 11);
+assert.ok(required.includes('node_registry'));
+assert.ok(required.includes('node_events'));
 
 const insecure = normalizeDatabaseSecurityPosture({
   source: 'supabase',
@@ -12,7 +14,7 @@ const insecure = normalizeDatabaseSecurityPosture({
 });
 assert.equal(insecure.all_required_rls_enabled, false);
 assert.equal(insecure.access_mode_valid, true);
-assert.equal(insecure.missing_rls.length, 7);
+assert.equal(insecure.missing_rls.length, 9);
 assert.equal(canVerifyDatabaseRuntime(insecure), false);
 assert.equal(canServeRuntime('verified', 'healthy', databaseSecurityContract(insecure)), false);
 
