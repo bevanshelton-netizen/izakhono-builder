@@ -51,7 +51,7 @@ Required behaviour:
 - Provide fallback share actions for WhatsApp, Facebook, LinkedIn, X and copy-link.
 - Share the canonical public URL, not a preview or admin URL.
 - Use platform-specific Open Graph title, description and preview image so shared links look professional.
-- Include UTM parameters or equivalent campaign tags on campaign/share links where practical so traffic can be measured.
+- Do not add UTM parameters, referral IDs, advertising identifiers or behavioural tracking to shared links.
 - Ensure share buttons work before release.
 
 ## Social-advertising standard
@@ -60,7 +60,7 @@ Each revenue-facing platform should have a reusable social creative pack:
 - vertical Story/Reel/TikTok creative;
 - landscape/link-preview creative;
 - short headline, primary copy and CTA;
-- destination URL with campaign tracking.
+- destination URL without behavioural or referral tracking identifiers.
 
 Creative must visually show the product/service and use the platform's own striking typography. The advert should lead directly to the relevant landing/action page, not a generic portfolio homepage.
 
@@ -93,3 +93,10 @@ Then test sharing:
 6. Does the shared preview show the correct name, message and image?
 
 If any answer is no, the landing experience is not finished.
+
+
+## International professionalism deployment gate
+
+The landing standard is necessary but not sufficient for release.
+
+Every public platform must also comply with `docs/PORTFOLIO-INTERNATIONAL-EXPERIENCE-STANDARD.md`. A platform cannot be promoted to production merely because the application compiles or returns HTTP 200. It must reach `international-ready` after desktop/mobile visual review, then pass independent public HTTPS verification before `verified-live`.

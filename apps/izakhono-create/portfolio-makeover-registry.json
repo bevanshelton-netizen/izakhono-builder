@@ -1,0 +1,273 @@
+{
+  "schema": "izakhono.portfolio.makeover.v1",
+  "effective_date": "2026-09-25",
+  "policy": "No production redeploy until the platform reaches international-ready and then independently verified-live.",
+  "shared_foundation": "products/izakhono-fabric/experience/izakhono-global.css",
+  "validator": "scripts/validate-portfolio-experience.mjs",
+  "waves": [
+    {
+      "id": "wave-1-revenue-public",
+      "priority": "P0",
+      "platforms": [
+        "webstart",
+        "faisready",
+        "doxa-sure",
+        "auto-ai",
+        "learner-driver-sa",
+        "the-chancellor",
+        "worknow"
+      ],
+      "state": "makeover-in-progress"
+    },
+    {
+      "id": "wave-2-media",
+      "priority": "P0",
+      "platforms": [
+        "kora",
+        "kora-cinema",
+        "kora-kids",
+        "yhvh-gospel-tv",
+        "allegro-vibez",
+        "allegro-radio",
+        "music-school",
+        "recording-studio"
+      ],
+      "state": "queued"
+    },
+    {
+      "id": "wave-3-education-commerce",
+      "priority": "P1",
+      "platforms": [
+        "edu-build-institute",
+        "edubuild-ecd360",
+        "matric-rewrite-academy",
+        "studypal",
+        "izakhono-clothing",
+        "bevan-shelton",
+        "edu-build-shop"
+      ],
+      "state": "queued"
+    },
+    {
+      "id": "wave-4-sovereign-trust",
+      "priority": "P1",
+      "platforms": [
+        "izakhono-one",
+        "izakhono-os",
+        "izakhono-code",
+        "izakhono-work",
+        "izakhono-cloud",
+        "izakhono-send",
+        "izakhono-fortress",
+        "izakhono-pay"
+      ],
+      "state": "queued"
+    },
+    {
+      "id": "wave-5-growth-mobility",
+      "priority": "P2",
+      "platforms": [
+        "izakhono-create",
+        "izakhono-creative-suite",
+        "zeely-style-platform",
+        "business-websites",
+        "supercool",
+        "memory-mania",
+        "pimp-my-old-car",
+        "shelton-motor-company",
+        "jkmr-mining",
+        "yenzanow"
+      ],
+      "state": "queued"
+    }
+  ],
+  "required_states": [
+    "legacy",
+    "makeover-in-progress",
+    "visual-review",
+    "international-ready",
+    "verified-live"
+  ],
+  "platform_status": {
+    "faisready": {
+      "state": "visual-review",
+      "source": "bevanshelton-netizen/Downloads/FAISReady",
+      "deployment_blocked": true
+    },
+    "doxa-sure": {
+      "state": "visual-review",
+      "source": "bevanshelton-netizen/Downloads/doxa-sure",
+      "deployment_blocked": true
+    },
+    "auto-ai": {
+      "state": "visual-review",
+      "source": "bevanshelton-netizen/Downloads/auto-ai",
+      "deployment_blocked": true
+    },
+    "learner-driver-sa": {
+      "state": "visual-review",
+      "source": "bevanshelton-netizen/Downloads/learner-driver-sa-v6-live",
+      "deployment_blocked": true
+    },
+    "the-chancellor": {
+      "state": "visual-review",
+      "source": "bevanshelton-netizen/the-chancellor",
+      "deployment_blocked": true
+    },
+    "worknow": {
+      "state": "legacy",
+      "source": "SOURCE_NOT_CONNECTED",
+      "deployment_blocked": true,
+      "blocker": "No connected owner source repository identified; do not fabricate or deploy."
+    },
+    "kora": {
+      "state": "visual-review",
+      "source": "bevanshelton-netizen/Downloads/kora-network",
+      "deployment_blocked": true,
+      "notes": "Global app layout upgraded; tracking scripts removed on makeover branch."
+    },
+    "kora-kids": {
+      "state": "visual-review",
+      "source": "bevanshelton-netizen/Downloads/ports/kora-kids",
+      "deployment_blocked": true
+    },
+    "yhvh-gospel-tv": {
+      "state": "visual-review",
+      "source": "bevanshelton-netizen/Downloads/ports/kora-gospel-tv",
+      "deployment_blocked": true
+    },
+    "memory-mania": {
+      "state": "visual-review",
+      "source": "bevanshelton-netizen/Downloads/memory-mania/public",
+      "deployment_blocked": true
+    },
+    "izakhono-one": {
+      "state": "visual-review",
+      "source": "bevanshelton-netizen/Downloads/izakhono-one",
+      "deployment_blocked": true
+    },
+    "digital-finance-academy": {
+      "state": "visual-review",
+      "source": "bevanshelton-netizen/Downloads/izakhono-digital-finance",
+      "deployment_blocked": true
+    },
+    "allegro-vibez": {
+      "state": "visual-review",
+      "source": "bevanshelton-netizen/allegro-vibez",
+      "deployment_blocked": true,
+      "notes": "International polish added; analytics startup and UTM attribution removed on makeover branch."
+    },
+    "edubuild-ecd360": {
+      "state": "visual-review",
+      "source": "bevanshelton-netizen/edubuild-ecd360",
+      "deployment_blocked": true,
+      "notes": "International campus/admin polish added; analytics startup removed; official EDU-BUILD colour identity preserved."
+    },
+    "izakhono-fortress": {
+      "state": "visual-review",
+      "source": "bevanshelton-netizen/SHELTON-FORTRESS",
+      "deployment_blocked": true,
+      "notes": "Bank/enterprise trust presentation upgraded; API/security engine unchanged."
+    },
+    "bevan-shelton": {
+      "state": "visual-review",
+      "source": "bevanshelton-netizen/bevanshelton-netizen-legacymart/public-site",
+      "deployment_blocked": true,
+      "notes": "Premium editorial reference-shop layer applied through existing premium CSS; staged checkout left untouched."
+    },
+    "crowne-hair": {
+      "state": "visual-review",
+      "source": "bevanshelton-netizen/Downloads/crowne-hair/public",
+      "deployment_blocked": true
+    },
+    "izakhono-signal": {
+      "state": "visual-review",
+      "source": "bevanshelton-netizen/Downloads/izakhono-signal",
+      "deployment_blocked": true,
+      "notes": "UTM generation, device attribution UI and portfolio-growth tracking bridge removed on makeover branch."
+    },
+    "growth-os-v2": {
+      "state": "makeover-in-progress",
+      "source": "bevanshelton-netizen/Downloads/growth-os-v2",
+      "deployment_blocked": true,
+      "blocker": "International stylesheet prepared; connector safety filter blocked safe stylesheet hookup."
+    },
+    "revenue-desk": {
+      "state": "makeover-in-progress",
+      "source": "bevanshelton-netizen/Downloads/revenue",
+      "deployment_blocked": true,
+      "blocker": "International stylesheet prepared; connector safety filter blocked HTML hookup."
+    },
+    "izakhono-one-public-bridge": {
+      "state": "visual-review",
+      "source": "bevanshelton-netizen/Downloads/izakhono-one-public-bridge",
+      "deployment_blocked": true
+    },
+    "bevan-shelton-racing": {
+      "state": "visual-review",
+      "source": "bevanshelton-netizen/Downloads/bevan-shelton-racing",
+      "deployment_blocked": true
+    },
+    "izakhono-studio": {
+      "state": "visual-review",
+      "source": "bevanshelton-netizen/Downloads/IZAKHONO-STUDIO",
+      "deployment_blocked": true,
+      "notes": "International creative-suite layer enabled; legacy portfolio-growth tracking bridge removed."
+    },
+    "matric-rewrite-academy": {
+      "state": "visual-review",
+      "source": "bevanshelton-netizen/Downloads/ports/matric-rewrite",
+      "deployment_blocked": true
+    },
+    "izakhono-one-ai": {
+      "state": "visual-review",
+      "source": "bevanshelton-netizen/Downloads/izakhono-one-ai/public",
+      "deployment_blocked": true
+    },
+    "mandatory-regulatory-exams": {
+      "state": "visual-review",
+      "source": "bevanshelton-netizen/Downloads/mandatory-regulatory-exams",
+      "deployment_blocked": true
+    },
+    "pdeready": {
+      "state": "visual-review",
+      "source": "bevanshelton-netizen/Downloads/mandatory-regulatory-exams/pdeready",
+      "deployment_blocked": true
+    },
+    "izakhono-group": {
+      "state": "visual-review",
+      "source": "bevanshelton-netizen/Downloads/izakhono-group",
+      "deployment_blocked": true
+    },
+    "yenzanow": {
+      "state": "visual-review",
+      "source": "bevanshelton-netizen/Downloads/ports/yenzanow",
+      "deployment_blocked": true
+    },
+    "search-discovery": {
+      "state": "visual-review",
+      "source": "bevanshelton-netizen/Downloads/search-discovery",
+      "deployment_blocked": true
+    },
+    "izakhono-commands": {
+      "state": "visual-review",
+      "source": "bevanshelton-netizen/Downloads/izakhono-commands",
+      "deployment_blocked": true
+    },
+    "izakhono-automations": {
+      "state": "visual-review",
+      "source": "bevanshelton-netizen/Downloads/izakhono-automations/static",
+      "deployment_blocked": true
+    },
+    "izakhono-command-center": {
+      "state": "visual-review",
+      "source": "bevanshelton-netizen/Downloads/ports/izakhono-command-center",
+      "deployment_blocked": true
+    },
+    "izakhono-containers": {
+      "state": "visual-review",
+      "source": "bevanshelton-netizen/Downloads/ports/izakhono-containers",
+      "deployment_blocked": true
+    }
+  }
+}
