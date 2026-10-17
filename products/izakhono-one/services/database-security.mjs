@@ -10,17 +10,23 @@ const requiredTables = Object.freeze([
   'search_index_events'
 ]);
 
+const requiredAccessModes = Object.freeze(['backend_only']);
+
 export function requiredDatabaseSecurityTables() {
   return [...requiredTables];
 }
 
 export function normalizeDatabaseSecurityPosture(input = {}) {
   const tables = input.tables && typeof input.tables === 'object' ? input.tables : {};
-  const rls = Object.fromEntries(requiredTables.map((table) => [table, Boolean(tables[table]?.rls_enabled ?? tables[table])])) ;
+  const rls = Object.fromEntries(requiredTables.map((table) => [table, Boolean(tables[table]?.rls_enabled ?? tables[table])]));
   const missing = requiredTables.filter((table) => !rls[table]);
+  const accessMode = String(input.access_mode || '').trim();
+  const accessModeValid = requiredAccessModes.includes(accessMode);
   return {
     source: String(input.source || 'unknown'),
     checked_at: input.checked_at || null,
+    access_mode: accessMode || null,
+    access_mode_valid: accessModeValid,
     tables: rls,
     all_required_rls_enabled: missing.length === 0,
     missing_rls: missing
@@ -29,17 +35,20 @@ export function normalizeDatabaseSecurityPosture(input = {}) {
 
 export function canVerifyDatabaseRuntime(input = {}) {
   const posture = normalizeDatabaseSecurityPosture(input);
-  return posture.all_required_rls_enabled;
+  return posture.all_required_rls_enabled && posture.access_mode_valid;
 }
 
 export function databaseSecurityContract(input = {}) {
   const posture = normalizeDatabaseSecurityPosture(input);
   return {
     required_tables: [...requiredTables],
+    required_access_modes: [...requiredAccessModes],
     source: posture.source,
     checked_at: posture.checked_at,
+    access_mode: posture.access_mode,
+    access_mode_valid: posture.access_mode_valid,
     all_required_rls_enabled: posture.all_required_rls_enabled,
     missing_rls: [...posture.missing_rls],
-    ready_for_verified_runtime: posture.all_required_rls_enabled
+    ready_for_verified_runtime: canVerifyDatabaseRuntime(posture)
   };
 }
