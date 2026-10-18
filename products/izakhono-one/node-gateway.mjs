@@ -28,9 +28,10 @@ const readJson = async req => {
   for await (const chunk of req) { size += chunk.length; if (size > 65536) return {ok:false,status:413,error:'payload_too_large'}; chunks.push(chunk); }
   try { return {ok:true,value:JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}')}; } catch { return {ok:false,status:400,error:'invalid_json'}; }
 };
+const controlAuth = headers => String(headers.authorization || '').trim() === `Bearer ${controlToken}`;
 const forward = async (req,res) => {
   try {
-    const body = req.method === 'GET' || req.method === 'HEAD' ? undefined : await new Promise((resolve,reject)=>{ const chunks=[]; for(const c of []) chunks.push(c); req.on('data',c=>chunks.push(c)); req.on('end',()=>resolve(Buffer.concat(chunks))); req.on('error',reject); });
+    const body = req.method === 'GET' || req.method === 'HEAD' ? undefined : await new Promise((resolve,reject)=>{ const chunks=[]; req.on('data',c=>chunks.push(c)); req.on('end',()=>resolve(Buffer.concat(chunks))); req.on('error',reject); });
     const upstream = await fetch(internalBase + req.url, { method:req.method, headers:{accept:req.headers.accept || '*/*','content-type':req.headers['content-type'] || 'application/json'}, body:body?.length ? body : undefined, signal:AbortSignal.timeout(5000) });
     const data = Buffer.from(await upstream.arrayBuffer());
     res.writeHead(upstream.status, Object.fromEntries([...upstream.headers.entries()].filter(([k])=>!['connection','transfer-encoding'].includes(k.toLowerCase()))));
@@ -41,21 +42,26 @@ const forward = async (req,res) => {
 const server = http.createServer(async (req,res) => {
   const url = new URL(req.url || '/', 'http://localhost');
   const headers = req.headers;
-  const input = req.method === 'GET' ? {} : await readJson(req);
-  if (input && input.ok === false) return json(res,input.status,{ok:false,error:input.error});
-  let result = null;
+  const isNodeRoute = url.pathname === '/api/nodes' || url.pathname.startsWith('/api/nodes/');
+  if (!isNodeRoute) return forward(req,res);
+  if (!controlAuth(headers) && !url.pathname.endsWith('/heartbeat')) return json(res,401,{ok:false,error:'control_authentication_required'});
   if (url.pathname === '/api/nodes' && req.method === 'GET') {
-    result = await control.listReady();
+    const result = await control.listReady();
     return json(res,result.ok ? 200 : 503,result);
   }
-  const match = url.pathname.match(/^\/api\/nodes\/([^/]+)$/);
-  if (match && req.method === 'GET') return json(res,401,{ok:false,error:'node_detail_requires_control_route'});
-  if (url.pathname === '/api/nodes/register' && req.method === 'POST') result = await control.register(headers,input.value);
-  else if (url.pathname.endsWith('/heartbeat') && req.method === 'POST') { const node_id=decodeURIComponent(url.pathname.split('/')[3] || ''); result = await control.heartbeat(headers,{...input.value,node_id}); }
-  else if (url.pathname.endsWith('/workload') && req.method === 'POST') { const node_id=decodeURIComponent(url.pathname.split('/')[3] || ''); result = await control.authorizeWorkload(headers,{...input.value,node_id}); }
-  else if (url.pathname.endsWith('/deploy') && req.method === 'POST') { const node_id=decodeURIComponent(url.pathname.split('/')[3] || ''); result = await control.recordDeployment(headers,{...input.value,node_id}); }
-  else if (url.pathname.endsWith('/drain') && req.method === 'POST') { const node_id=decodeURIComponent(url.pathname.split('/')[3] || ''); result = await control.drain(headers,{...input.value,node_id}); }
-  else return forward(req,res);
+  const parts = url.pathname.split('/').filter(Boolean);
+  const nodeId = parts[2] ? decodeURIComponent(parts[2]) : '';
+  const action = parts[3] || '';
+  if (!nodeId || !action) return json(res,404,{ok:false,error:'node_route_not_found'});
+  const parsed = await readJson(req);
+  if (!parsed.ok) return json(res,parsed.status,{ok:false,error:parsed.error});
+  const value = {...parsed.value,node_id:nodeId};
+  let result;
+  if (action === 'heartbeat' && req.method === 'POST') result = await control.heartbeat(headers,value);
+  else if (action === 'workload' && req.method === 'POST') result = await control.authorizeWorkload(headers,value);
+  else if (action === 'deploy' && req.method === 'POST') result = await control.recordDeployment(headers,value);
+  else if (action === 'drain' && req.method === 'POST') result = await control.drain(headers,value);
+  else return json(res,404,{ok:false,error:'node_route_not_found'});
   return json(res,result.ok ? 200 : (result.status || 500),result);
 });
 
