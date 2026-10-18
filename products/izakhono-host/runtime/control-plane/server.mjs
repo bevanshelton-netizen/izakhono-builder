@@ -8,6 +8,9 @@ const DATA_DIR = process.env.DATA_DIR || '/data';
 const STATE_FILE = path.join(DATA_DIR, 'sites.json');
 const SITES_DIR = path.join(DATA_DIR, 'sites');
 const ADMIN_TOKEN = process.env.HOST_RUNTIME_TOKEN || '';
+const MAX_FILES = 200;
+const MAX_FILE_BYTES = 512 * 1024;
+const MAX_TOTAL_BYTES = 8 * 1024 * 1024;
 
 async function loadState() {
   await fs.mkdir(SITES_DIR, { recursive: true });
@@ -40,6 +43,11 @@ function validDomain(domain) {
 }
 function safeDomain(domain) { return domain.toLowerCase().replace(/[^a-z0-9.-]/g, ''); }
 function siteDir(domain) { return path.join(SITES_DIR, safeDomain(domain), 'public'); }
+function safeRelative(filePath) {
+  const value=String(filePath || '').replaceAll('\\','/').replace(/^\/+/, '');
+  if (!value || value.includes('\0') || value.split('/').some(part => part === '..' || part === '.')) return null;
+  return value;
+}
 function escapeHtml(value) { return String(value).replace(/[&<>\"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[c])); }
 
 async function ensureSiteFiles(site) {
@@ -116,6 +124,44 @@ const server = http.createServer(async (req, res) => {
       await saveState(state);
       return json(res,201,{ok:true,created:true,site});
     } catch (e) { return json(res,400,{ok:false,error:e?.message || 'Invalid request'}); }
+  }
+
+  if (req.method === 'POST' && url.pathname.match(/^\/api\/sites\/[^/]+\/content$/)) {
+    try {
+      const siteId=url.pathname.split('/')[3];
+      const input=await body(req);
+      const files=Array.isArray(input.files) ? input.files : [];
+      if (!files.length || files.length > MAX_FILES) return json(res,400,{ok:false,error:`files must contain 1-${MAX_FILES} entries`});
+      const state=await loadState();
+      const site=state.sites.find(s=>s.id===siteId);
+      if(!site) return json(res,404,{ok:false,error:'Site not found'});
+      const normalized=[];
+      let total=0;
+      for (const item of files) {
+        const relative=safeRelative(item?.path);
+        if (!relative) return json(res,400,{ok:false,error:'Invalid file path'});
+        const content=String(item?.content ?? '');
+        const bytes=Buffer.byteLength(content,'utf8');
+        if (bytes > MAX_FILE_BYTES) return json(res,413,{ok:false,error:`File exceeds ${MAX_FILE_BYTES} bytes: ${relative}`});
+        total += bytes;
+        if (total > MAX_TOTAL_BYTES) return json(res,413,{ok:false,error:`Deployment exceeds ${MAX_TOTAL_BYTES} bytes`});
+        normalized.push({path:relative,content});
+      }
+      const base=path.resolve(siteDir(site.domain));
+      for (const item of normalized) {
+        const target=path.resolve(base,item.path);
+        if (!target.startsWith(base + path.sep)) return json(res,400,{ok:false,error:'Invalid deployment target'});
+        await fs.mkdir(path.dirname(target),{recursive:true});
+        await fs.writeFile(target,item.content,'utf8');
+      }
+      site.status='content_ready';
+      site.public_live=false;
+      site.acceptance={https:Boolean(site.acceptance?.https),dns:Boolean(site.acceptance?.dns),content:true};
+      const deployment={id:id('dep'),site_id:site.id,action:'content',status:'verified',file_count:normalized.length,total_bytes:total,created_at:new Date().toISOString()};
+      state.deployments.push(deployment);
+      await saveState(state);
+      return json(res,200,{ok:true,site,deployment});
+    } catch (e) { return json(res,400,{ok:false,error:e?.message || 'Invalid deployment'}); }
   }
 
   if (req.method === 'POST' && url.pathname.match(/^\/api\/sites\/[^/]+\/accept$/)) {
