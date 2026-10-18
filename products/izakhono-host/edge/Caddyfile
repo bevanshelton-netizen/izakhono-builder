@@ -1,6 +1,9 @@
 {
   email {$TLS_EMAIL}
-  admin off
+  admin :2019
+  on_demand_tls {
+    ask http://host-runtime:8080/api/tls/ask
+  }
 }
 
 :80 {
@@ -8,6 +11,8 @@
 }
 
 :443 {
-  tls internal
+  tls {
+    on_demand
+  }
   reverse_proxy host-runtime:8080
 }
