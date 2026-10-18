@@ -3,50 +3,42 @@
 ## Customer
 - Domain: xqwaxqwamile.com
 - Customer: !XQWAXQWAMILÉ HOLDINGS (PTY) LTD
-- Vercel project: xqwaxqwamile-holdings
-- Project ID: prj_2G8Tyz2bIbvSW6sKhcJJx1LPWfoA
 
-## Current gate
-The production Vercel deployment is READY, but public DNS for xqwaxqwamile.com has not been verified as resolving. Do not mark the customer live until public DNS and HTTPS are independently verified.
+## Production rule
+IZAKHONO HOST is provisioned on the owned runtime first. No customer is marked live from a historical screenshot, a repository state, or a provider dashboard. A live state requires current external evidence.
 
-## Required provider secrets
-Configure these only as server-side runtime secrets:
-- CLOUDFLARE_API_TOKEN
-- CLOUDFLARE_ACCOUNT_ID
-- VERCEL_TOKEN
-- VERCEL_TEAM_ID
+## Server-side secrets
+Configure these only on the owned runtime host:
+- HOST_RUNTIME_TOKEN
+- TLS_EMAIL
+- POSTGRES_PASSWORD
+- MINIO_ROOT_USER
+- MINIO_ROOT_PASSWORD
 
-Never put provider tokens in browser code, Git commits, issue comments, or customer handover documents.
+Optional reversible adapters may use their own server-side credentials, but they are not the site runtime of record.
 
 ## Activation sequence
-1. Verify the Cloudflare zone for xqwaxqwamile.com exists and is active.
-2. Apply/verify:
-   - A @ -> 76.76.21.21, DNS only
-   - CNAME www -> cname.vercel-dns.com, DNS only
-3. Verify public DNS from an external resolver.
-4. Attach xqwaxqwamile.com to the Vercel project.
-5. If Vercel returns a verification challenge, apply exactly the returned challenge record and verify again.
-6. Verify HTTPS for both apex and www.
-7. Configure the selected mail provider and publish its MX, SPF, DKIM and DMARC records.
-8. Create the five planned mailboxes:
-   - info@
-   - calvin@
-   - projects@
-   - diamonds@
-   - tenders@
-9. Test inbound and outbound mail.
-10. Only then mark the HOST site, DNS, SSL and mail stages verified and prepare the final handover.
+1. Confirm NODE01 has Docker Engine/Compose and persistent storage.
+2. Set the runtime secrets from the secure host environment; never commit them.
+3. Run the owned compose stack and wait for host-runtime, edge, PostgreSQL and Valkey health checks.
+4. Verify `GET /health` from the host and from the LAN management path.
+5. Provision the customer site through `/api/sites/provision` using the customer domain and a stable site ID.
+6. Confirm the generated site responds through the native runtime with the correct Host header.
+7. Point the customer's public A/AAAA records to the owned edge address and verify from independent public resolvers.
+8. Allow Caddy on-demand TLS to obtain a public certificate only after the domain is admitted by `/api/tls/ask`.
+9. Verify HTTPS for apex and any explicitly provisioned `www` hostname.
+10. Mark the site accepted only when HTTPS, DNS and content evidence are all true.
+11. Configure the selected mail plane and publish MX, SPF, DKIM and DMARC records; mail activation remains separately evidence-gated.
+12. Run backup, restore and rollback tests before final handover.
 
 ## Evidence requirements
-A stage is not complete because a configuration was intended or previously entered. Each stage requires current evidence:
-- DNS: external resolution
-- Domain: Vercel project-domain attachment/verification
-- SSL: successful HTTPS response
-- Mail: MX plus authenticated send/receive test
-- Billing: payment evidence before changing invoice/subscription state
+- Runtime: health endpoint returns success.
+- DNS: independent public resolution reaches the owned edge.
+- Site: correct content is served for the customer's hostname.
+- SSL: independent HTTPS request succeeds with a trusted certificate.
+- Mail: MX plus authenticated send/receive test.
+- Billing: payment evidence before changing invoice/subscription state.
+- Recovery: backup and restore test succeeds.
 
 ## Customer #001 rule
-Do not infer payment clearance, email activation, SSL issuance, or domain attachment from historical screenshots or database bootstrap records.
-
-## CI validation
-Any change under products/izakhono-host/** triggers the IZAKHONO HOST CI workflow. This update intentionally triggers a fresh HOST validation run.
+Do not infer payment clearance, mail activation, SSL issuance, DNS delegation, or public live status from historical records. Current evidence is mandatory.
