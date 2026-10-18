@@ -36,20 +36,31 @@ export function createComputeRegistry({ computer } = {}) {
       id: 'izakhono-host',
       kind: 'owned-runtime',
       status: 'configured',
-      capabilities: ['provision'],
+      capabilities: ['provision', 'deploy'],
       execution: 'typed-http-adapter',
       async execute(job) {
-        if (job.type !== 'PROVISION') throw new Error(`izakhono-host does not execute ${job.type}`);
+        if (!['PROVISION', 'DEPLOY'].includes(job.type)) throw new Error(`izakhono-host does not execute ${job.type}`);
         const domain = String(job.payload?.domain || '').trim().toLowerCase();
-        if (!domain) throw new Error('PROVISION requires payload.domain');
-        const response = await fetch(`${hostUrl}/api/sites/provision`, {
-          method: 'POST',
-          headers: { authorization: `Bearer ${hostToken}`, 'content-type': 'application/json' },
-          body: JSON.stringify({ domain, source_ref: String(job.payload?.source_ref || 'node01-sw') })
+        if (!domain) throw new Error(`${job.type} requires payload.domain`);
+        const auth = { authorization: `Bearer ${hostToken}`, 'content-type': 'application/json' };
+
+        const provision = await fetch(`${hostUrl}/api/sites/provision`, {
+          method: 'POST', headers: auth,
+          body: JSON.stringify({ domain, site_id: job.payload?.site_id, source_ref: String(job.payload?.source_ref || 'node01-sw') })
         });
-        const data = await response.json().catch(() => ({}));
-        if (!response.ok || !data.ok) throw new Error(data.error || `IZAKHONO HOST returned ${response.status}`);
-        return { provider_id: 'izakhono-host', operation: 'PROVISION', domain, site: data.site, result: 'provisioned' };
+        const provisionData = await provision.json().catch(() => ({}));
+        if (!provision.ok || !provisionData.ok) throw new Error(provisionData.error || `IZAKHONO HOST provision returned ${provision.status}`);
+        const site = provisionData.site;
+        if (job.type === 'PROVISION') return { provider_id: 'izakhono-host', operation: 'PROVISION', domain, site, result: 'provisioned' };
+
+        const files = Array.isArray(job.payload?.files) ? job.payload.files : [];
+        if (!files.length) throw new Error('DEPLOY requires payload.files');
+        const content = await fetch(`${hostUrl}/api/sites/${encodeURIComponent(site.id)}/content`, {
+          method: 'POST', headers: auth, body: JSON.stringify({ files })
+        });
+        const contentData = await content.json().catch(() => ({}));
+        if (!content.ok || !contentData.ok) throw new Error(contentData.error || `IZAKHONO HOST content deployment returned ${content.status}`);
+        return { provider_id: 'izakhono-host', operation: 'DEPLOY', domain, site: contentData.site, deployment: contentData.deployment, result: 'deployed' };
       }
     });
   }
