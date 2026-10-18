@@ -1,117 +1,56 @@
 # IZAKHONO BUILDER
 
-Visual, free-first application factory for IZAKHONO projects.
+Visual, free-first application factory and owned-first infrastructure control plane for IZAKHONO projects.
 
-## What it does
+## Architecture
 
-- register new apps
-- choose reusable product modules
-- generate build recipes
-- track build/deploy status
-- protect owner operations with a server-side secret
-- generate repository-ready Worker applications with CI and isolated-preview workflows
-- commit validated generated source into owner-controlled **IZAKHONO internal repositories**
-- optionally mirror validated generated apps into new private GitHub repositories through server-side automation
-- deploy on Cloudflare's free-first stack
-- reuse one central **IZAKHONO Build to Alpha** gate across Docker-capable projects
+**CODE → BUILDER → PROVISIONER → IZAKHONO CLOUD/NODES → DNS/EDGE/TLS → FORTRESS → runtime**
 
-## IZAKHONO Internal Repositories v1
+IZAKHONO owns the source-of-truth state, validated source snapshots, provisioning workflow and preferred production runtime. External providers are replaceable capacity adapters, not foundations.
 
-The primary source of truth for a validated generated application is now inside IZAKHONO BUILDER, not GitHub.
+## Core capabilities
 
-After generated-source validation passes, IZAKHONO canonicalizes the file set, computes a SHA-256 content hash and commits an immutable private snapshot with its parent commit recorded. An identical file set reuses the existing content commit rather than creating fake history. Repository metadata and source snapshots are stored in D1 using the checked-in `0002_internal_repositories.sql` schema, with safe lazy schema creation so first use does not depend on a manual migration click.
+- register applications and reusable product modules
+- generate build recipes and release candidates
+- deterministic validation and internal source snapshots
+- one-sentence Build Anything workflow
+- PWA and multi-channel release manifests
+- typed provisioning: customer → domain → DNS → site → SSL → mail → billing → acceptance
+- owned-first hosting through **IZAKHONO HOST**
+- customer/domain/site/invoice/job/audit control plane
+- native containerized runtime with Caddy, CoreDNS, PostgreSQL, MinIO and Valkey baseline
+- FORTRESS security and owner-gated operations
 
-GitHub is therefore an optional mirror/export target rather than the owner of the Builder's source history.
+## IZAKHONO HOST
 
-See `docs/INTERNAL-REPOSITORIES-V1.md`.
+The current HOST implementation lives at `products/izakhono-host`.
 
-## Public Studio handoff v1
+The production target is the **native IZAKHONO runtime**. No external web-hosting platform is required for the core system.
 
-The public IZAKHONO ONE Builder Studio can export an `izakhono.project.json` handoff with schema `izakhono.builder/handoff-v1`.
+Owned runtime baseline:
 
-The Owner Builder accepts that file through `POST /api/import-handoff` or the Owner UI import control. Import is authenticated, normalises module keys against the Builder registry, adds every mandatory portfolio baseline module, creates a **planned** project and generates its build recipe. Import does not deploy or publish the application.
+- `runtime/control-plane` — native site provisioning control plane
+- `runtime/authoritative-dns` — CoreDNS authoritative-DNS baseline
+- `edge/Caddyfile` — owned edge/TLS routing baseline
+- `docker-compose.owned.yml` — native runtime, edge, DNS, PostgreSQL, MinIO and Valkey
 
-This keeps the public describe/preview/export experience separate from the trusted Owner build/repository/release path.
+See `products/izakhono-host/OWNED-RUNTIME-V1.md`.
 
-## Build Anything v1
+## Internal repositories
 
-IZAKHONO BUILDER now includes an owner-gated **one-sentence build pipeline** for apps, websites, games and software. A brief submitted to `POST /api/build-anything` is classified locally, mapped to reusable product modules, created as a Builder project, planned, generated, deterministically validated and committed into the IZAKHONO internal repository.
-
-External publication is not triggered automatically and public-live status remains evidence-gated. When the owner-controlled IZAKHONO SUPER AI workflow route is configured, Builder uses it to enrich the inferred product type, name, modules and build priorities; if that route is unavailable, the deterministic local planner continues without failing the build. No external AI provider is required for the core create → plan → generate → validate → internal-commit workflow.
-
-## Multi-channel release pack
-
-Every generated application now receives a release-channel baseline alongside its Worker source:
-
-- installable PWA manifest and service worker;
-- `release/channels.json` as the channel truth record;
-- Android, iOS and desktop release-gate manifests.
-
-The web/PWA artifact is generated and installable, but public deployment still requires the normal owned-runtime HTTPS and acceptance gate. Android and iOS remain gated until signed packages and store-release evidence exist.
-
-## One-click release candidate
-
-An authenticated Owner can now send any planned Builder project through one controlled action:
-
-`plan (when needed) → generate → deterministic validation → IZAKHONO internal repository commit → release candidate`.
-
-The endpoint is `POST /api/projects/:id/autopilot`. The Owner interface also injects **Build to release candidate** on project cards and **Import & Build** beside the handoff importer.
-
-A successful run sets project status to `deploy_ready` and stores an `izakhono.release-candidate/v1` receipt containing the generated revision, IZAKHONO internal repository head, and channel-specific next gates. It deliberately keeps `public_live: false`.
-
-Web/PWA still requires owned-runtime deployment plus HTTPS and end-to-end acceptance proof. Android and iOS still require signed packages and their respective store submission/release evidence. The one-click action therefore prepares a release candidate; it does not bypass deployment, signing, store, legal or product acceptance gates.
-
-## Repository Autopilot v1
-
-Generated Worker applications leave the factory as repository-ready packages rather than loose source files. Each bundle includes least-privilege CI, a credential-gated isolated-preview workflow, private-by-default repository metadata, local-secret exclusions and a versioned Builder technical preview.
-
-When the Builder runtime has the optional server-side GitHub automation credential, it can mirror a validated generated bundle into a new private GitHub repository. It refuses to overwrite an existing repository, and provider preview credentials are never generated into source.
-
-See `docs/REPOSITORY-AUTOPILOT-V1.md`.
-
-## Fast Build v0.2
-
-The reusable Alpha gate lives at `.github/workflows/izakhono-build-to-alpha.yml`.
-
-A target repository supplies a small `.izakhono.json` contract and the caller workflow from `templates/call-izakhono-alpha.yml`. IZAKHONO then validates safe repository paths, builds the declared Docker application, labels the image with product and Git provenance, starts it, and requires its HTTP health gate to pass.
-
-The caller template pins the central policy to an **immutable reviewed commit SHA** rather than a moving branch such as `main`. Policy upgrades therefore require an explicit reviewed pin change instead of silently changing existing project trust boundaries.
-
-Projects may also opt into reviewed project-specific Alpha rehearsal and Windows packaging using fixed script paths. The Owner interface does **not** accept arbitrary shell commands.
-
-Current policy adoption uses manifest v3, which also enforces the portfolio-wide owned-first, externally reversible infrastructure directive and approved evidence-based deployment status labels. Older immutable policy pins remain unchanged until explicitly migrated.
-
-See `docs/FAST-BUILD-V0.2.md`, `docs/INFRASTRUCTURE-DIRECTIVE-INHERITANCE.md` and `templates/izakhono.manifest.example.json`.
+Validated generated applications are canonicalized, content-hashed and stored in IZAKHONO's internal repository layer. GitHub is an optional mirror/export target rather than the source of truth.
 
 ## Safety and readiness
 
 - no production secrets committed to source control
-- no arbitrary Owner-mode shell execution
-- internal repository visibility is private-only
-- validated source snapshots are content-addressed and retain parent history
-- external repository publication defaults to private and refuses overwrite
-- generated provider previews use `pull_request`, never `pull_request_target`
-- immutable policy pins for generated/copyable Alpha caller workflows
-- failed health or internal-repository gates are not promoted
-- artifact retention is convenience, not proof of software correctness
-- CI validation is not a substitute for real public hosting, DNS/TLS, disaster recovery, physical-device testing, code signing, external security review, privacy/legal approval or customer acceptance
+- no arbitrary owner-mode shell execution
+- private-by-default internal source history
+- provider credentials remain server-side
+- public-live status is evidence-gated
+- CI is not treated as proof of public hosting, DNS/TLS, disaster recovery, physical-device testing, security review or customer acceptance
 
-## Hosting Resilience v1
+## Deployment principle
 
-Free hosting is now treated as **fallback capacity**, not as the foundation of the Website Factory.
+**OWNED-FIRST. EXTERNALLY REVERSIBLE. NO HOSTAGE PLATFORM.**
 
-The factory keeps validated source in the IZAKHONO internal repository, uses an IZAKHONO-owned runtime as the preferred production route, and keeps provider integrations replaceable. External and free-tier providers may supply capacity without becoming the source of truth or a single point of failure.
-
-See `docs/IZAKHONO-HOSTING-RESILIENCE-MATRIX-V1.md` and `infra/hosting-routing-policy.v1.json`.
-
-## Cost principle
-
-Use free-first infrastructure where practical, but do not pretend compute and platform quotas are unlimited. Upgrade only when demand, revenue, compliance or a hard technical requirement justifies it.
-
-## IZAKHONO HOST v0.1
-
-The Builder repository now contains the first owned-first **IZAKHONO HOST** control-plane product at `products/izakhono-host`.
-
-It provides the typed foundation for customer onboarding, domains, DNS plans, sites, SSL gates, mailboxes, subscriptions, invoices, provisioning jobs and audit events. Customer #001 is bootstrapped as !XQWAXQWAMILÉ HOLDINGS / `xqwaxqwamile.com` using verified-known state only; external custom-domain attachment, SSL and mailbox activation remain evidence-gated.
-
-The HOST product uses Cloudflare as a replaceable registrar/DNS adapter and keeps the current Vercel deployment as an external transition adapter. Provider credentials are server-side only. See `products/izakhono-host/README.md`.
+Production activation still requires a Docker-capable IZAKHONO node, public network reachability, DNS delegation, TLS validation, backups/restore testing and end-to-end acceptance evidence.
