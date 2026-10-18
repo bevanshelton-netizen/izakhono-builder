@@ -20,6 +20,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: Validate Node runtime syntax
         run: node --check runtime/control-plane/server.mjs
+      - name: Run native runtime smoke test
+        run: node runtime/control-plane/smoke.mjs
       - name: Validate compose structure
         run: |
           cp .env.example .env
