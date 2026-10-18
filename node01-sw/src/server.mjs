@@ -13,7 +13,6 @@ const STATE_FILE = path.join(DATA_DIR, 'state.json');
 const UI_FILE = path.join(process.cwd(), 'public', 'computer.html');
 const TOKEN = process.env.NODE01_TOKEN || '';
 const NODE_ID = process.env.NODE_ID || `NODE01-SW-${os.hostname()}`;
-const providers = createComputeRegistry();
 const state = { workspaces: [], jobs: [] };
 
 async function loadState() {
@@ -49,12 +48,31 @@ function capabilities() {
     code: true, workspaces: true, files: true, apps: true, jobs: true,
     build: true, test: true, run: false, deploy: false, provisioner: false,
     arbitrary_shell: false, portable_compute: true,
-    executor: 'approved-provider-adapter-required'
+    executor: 'typed-provider-adapter'
   };
 }
 
 const computer = createComputerApi({ workspaceRoot: WORKSPACE_ROOT, state, persist });
+const providers = createComputeRegistry({ computer });
 const safeWorkspace = (id) => computer.getWorkspace(id) || null;
+
+async function executeJob(job, provider) {
+  job.status = 'RUNNING';
+  job.started_at = new Date().toISOString();
+  await persist();
+  try {
+    const result = await provider.execute(job);
+    job.status = 'COMPLETED';
+    job.result = result;
+    job.completed_at = new Date().toISOString();
+  } catch (error) {
+    job.status = 'FAILED';
+    job.error = error.message || 'job execution failed';
+    job.completed_at = new Date().toISOString();
+  }
+  await persist();
+  return job;
+}
 
 async function route(req, res) {
   const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
@@ -68,7 +86,7 @@ async function route(req, res) {
     return res.end(await readFile(UI_FILE, 'utf8'));
   }
   if (req.method === 'GET' && pathname === '/health') {
-    return json(res, 200, { ok: true, node_id: NODE_ID, service: 'NODE01-SW', version: '0.4.0', portable_compute: true });
+    return json(res, 200, { ok: true, node_id: NODE_ID, service: 'NODE01-SW', version: '0.4.1', portable_compute: true });
   }
   if (pathname.startsWith('/v1/') && !authorized(req)) return json(res, 401, { error: 'unauthorized' });
 
@@ -110,7 +128,7 @@ async function route(req, res) {
   if (req.method === 'POST' && appMatch) {
     const app = computer.apps.get(appMatch[1]);
     if (!app) return json(res, 404, { error: 'application not found' });
-    return json(res, 200, { ok: true, app, execution: 'approved-provider-adapter-required' });
+    return json(res, 200, { ok: true, app, execution: 'typed-provider-adapter' });
   }
 
   if (req.method === 'GET' && pathname === '/v1/jobs') return json(res, 200, { jobs: state.jobs });
@@ -122,10 +140,11 @@ async function route(req, res) {
     if (!allowed.has(type)) return json(res, 400, { error: 'unsupported job type', allowed: [...allowed] });
     const required = type === 'BUILD' || type === 'TEST' ? ['build'] : type === 'RUN' ? ['run'] : type === 'DEPLOY' ? ['deploy'] : ['provision'];
     const provider = providers.get(input.provider_id) || providers.select(required);
-    if (!provider) return json(res, 503, { error: 'no compute provider satisfies job requirements', required_capabilities: required });
+    if (!provider || typeof provider.execute !== 'function') return json(res, 503, { error: 'no executable compute provider satisfies job requirements', required_capabilities: required });
     const job = { id: randomUUID(), type, workspace_id: input.workspace_id || null, provider_id: provider.id, status: 'QUEUED', payload: input.payload || {}, created_at: new Date().toISOString() };
     state.jobs.push(job); await persist();
-    return json(res, 202, job);
+    const completed = await executeJob(job, provider);
+    return json(res, completed.status === 'COMPLETED' ? 200 : 422, completed);
   }
 
   const match = pathname.match(/^\/v1\/jobs\/([^/]+)$/);
