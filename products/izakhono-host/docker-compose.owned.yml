@@ -1,0 +1,77 @@
+services:
+  host-runtime:
+    build: ./runtime/control-plane
+    restart: unless-stopped
+    environment:
+      PORT: 8080
+      DATA_DIR: /data
+      HOST_RUNTIME_TOKEN: ${HOST_RUNTIME_TOKEN:?set HOST_RUNTIME_TOKEN}
+    volumes:
+      - host-runtime-data:/data
+    networks: [izakhono]
+
+  edge:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./edge/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    networks: [izakhono]
+    depends_on: [host-runtime]
+
+  authoritative-dns:
+    image: coredns/coredns:1.12.1
+    restart: unless-stopped
+    command: -conf /etc/coredns/Corefile
+    ports:
+      - "53:53/udp"
+      - "53:53/tcp"
+    volumes:
+      - ./runtime/authoritative-dns/Corefile:/etc/coredns/Corefile:ro
+      - ./runtime/authoritative-dns/db.izakhono.local:/zones/db.izakhono.local:ro
+    networks: [izakhono]
+
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-izakhono}
+      POSTGRES_USER: ${POSTGRES_USER:-izakhono}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks: [izakhono]
+
+  minio:
+    image: minio/minio:latest
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?set MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?set MINIO_ROOT_PASSWORD}
+    volumes:
+      - minio-data:/data
+    networks: [izakhono]
+
+  valkey:
+    image: valkey/valkey:8-alpine
+    restart: unless-stopped
+    volumes:
+      - valkey-data:/data
+    networks: [izakhono]
+
+networks:
+  izakhono:
+    driver: bridge
+
+volumes:
+  host-runtime-data:
+  caddy-data:
+  caddy-config:
+  postgres-data:
+  minio-data:
+  valkey-data:
