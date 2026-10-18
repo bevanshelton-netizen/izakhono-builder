@@ -1,0 +1,33 @@
+name: IZAKHONO ONE Gateway Check
+on:
+  push:
+    paths:
+      - 'products/izakhono-one/node-gateway.mjs'
+      - 'products/izakhono-one/test-node-gateway.mjs'
+      - 'products/izakhono-one/package.json'
+      - 'products/izakhono-one/Dockerfile'
+      - 'products/izakhono-one/services/**'
+      - '.github/workflows/izakhono-one-gateway-check.yml'
+  pull_request:
+    paths:
+      - 'products/izakhono-one/node-gateway.mjs'
+      - 'products/izakhono-one/test-node-gateway.mjs'
+      - 'products/izakhono-one/package.json'
+      - 'products/izakhono-one/Dockerfile'
+      - 'products/izakhono-one/services/**'
+      - '.github/workflows/izakhono-one-gateway-check.yml'
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: products/izakhono-one
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node --check server.mjs
+      - run: node --check node-gateway.mjs
+      - run: node test-node-gateway.mjs
+      - run: npm run node-control
