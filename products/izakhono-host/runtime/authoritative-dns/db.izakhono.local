@@ -1,0 +1,7 @@
+$ORIGIN izakhono.local.
+$TTL 60
+@ IN SOA ns1.izakhono.local. hostmaster.izakhono.local. (
+  2026101801 900 300 604800 60
+)
+@  IN NS ns1.izakhono.local.
+ns1 IN A 127.0.0.1
