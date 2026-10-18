@@ -10,10 +10,7 @@ ARCHIVE="$BACKUP_DIR/izakhono-host-$STAMP.tar.gz"
 [[ -f .env ]] || { echo ".env is required" >&2; exit 1; }
 
 echo "Creating runtime data backup..."
-docker run --rm \
-  -v izakhonohost_host-runtime-data:/source:ro \
-  -v "$BACKUP_DIR":/backup \
-  alpine:3.20 sh -c "tar czf /backup/$(basename "$ARCHIVE") -C /source ."
+docker compose --env-file .env -f docker-compose.owned.yml exec -T host-runtime sh -c 'tar czf - -C /data .' > "$ARCHIVE"
 
 test -s "$ARCHIVE"
 sha256sum "$ARCHIVE" > "$ARCHIVE.sha256"
