@@ -5,11 +5,12 @@ export type CreatorAsset = { id:string; projectId:string; shotIndex?:number; kin
 export type CreatorRender = { id:string; projectId:string; derivativeId:string; status:CreatorRenderStatus; objectKey?:string; outputUrl?:string; error?:string; metadata?:unknown; createdAt:string; updatedAt:string };
 
 /** Minimal structural Cloudflare binding contracts. Keeping these local makes the creator domain portable and prevents runtime-provider types leaking into business logic. */
+export type CreatorD1PreparedStatement = {
+  bind(...values:unknown[]): { run(): Promise<unknown>; first<T=unknown>(): Promise<T|null>; all<T=unknown>(): Promise<{results:T[]}> };
+};
 export type CreatorD1Database = {
-  batch(statements: Array<{ prepare(query:string): unknown }>): Promise<unknown>;
-  prepare(query:string): {
-    bind(...values:unknown[]): { run(): Promise<unknown>; first<T=unknown>(): Promise<T|null>; all<T=unknown>(): Promise<{results:T[]}> };
-  };
+  batch(statements: CreatorD1PreparedStatement[]): Promise<unknown>;
+  prepare(query:string): CreatorD1PreparedStatement;
 };
 export type CreatorR2Object = { body: ReadableStream; httpEtag: string; writeHttpMetadata(headers: Headers): void };
 export type CreatorR2Bucket = {
