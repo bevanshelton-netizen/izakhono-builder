@@ -1,47 +1,54 @@
-# IZAKHONO HOST — Multi-Node Owned Topology
+# IZAKHONO HOST — Owned Node Cluster
 
-The presence of multiple IZAKHONO nodes means the runtime is designed as a cluster, not a single-server dependency.
+**LOCKED ARCHITECTURE:** IZAKHONO-owned nodes are the infrastructure of record.
+
+There is no single-machine production dependency. The IZAKHONO runtime is a multi-node platform operated across the owned node cluster.
 
 ## Roles
 
 | Role | Primary responsibility |
 |---|---|
 | CONTROL | Provisioner, customer state, jobs, audit and operator control |
-| EDGE | Public HTTP/HTTPS ingress, Caddy and tenant routing |
-| DNS | Authoritative DNS and secondary DNS service |
+| EDGE | Public HTTP/HTTPS ingress and tenant routing |
+| DNS | Authoritative and secondary DNS |
 | RUNTIME | Customer site execution and static assets |
 | DATA | PostgreSQL, MinIO and Valkey |
-| MAIL | Postfix/Dovecot/Rspamd-class mail services |
-| BACKUP | Independent encrypted backup target and restore source |
+| MAIL | Owned mail services and acceptance |
+| BACKUP | Independent encrypted backup and restore |
 | FORTRESS | Secrets, identity, access policy and security telemetry |
 
-A physical node may carry more than one role, but DATA, BACKUP and FORTRESS should be separated from the public edge whenever capacity permits.
+A node may carry multiple roles. The architecture is not tied to a particular machine.
 
-## Baseline cluster
+## Baseline node fabric
 
 - NODE01: CONTROL + EDGE + RUNTIME
 - NODE02: EDGE + RUNTIME + DNS secondary
 - NODE03: EDGE + RUNTIME + DNS secondary + BACKUP
-- Dedicated DATA/Mail/FORTRESS nodes may be added without changing the customer provisioning contract.
+- Dedicated DATA, MAIL and FORTRESS nodes can be added without changing the customer provisioning contract.
 
-These names are logical roles, not claims that particular machines are currently reachable.
+These are IZAKHONO node roles, not external hosting dependencies.
 
 ## Traffic
 
-Internet → authoritative DNS → healthy EDGE node → native HOST runtime → customer site.
+Internet → IZAKHONO authoritative DNS → healthy owned EDGE node → native IZAKHONO HOST runtime → customer site.
 
-Control-plane traffic stays private. Data services are never exposed directly to the public Internet.
+Control-plane traffic remains private. Data services are never exposed directly to the public Internet.
 
-## Resilience rules
+## Non-negotiable rules
 
-1. A single edge node failure must not destroy customer state.
-2. Site content must be recoverable independently of the edge node.
-3. DNS must have independent secondary capacity before production delegation is considered complete.
-4. PostgreSQL, MinIO and Valkey must have health and recovery evidence.
-5. Backups must be restorable on a different node.
-6. Secrets must not be stored in Git or browser code.
-7. External hosting providers remain optional adapters, never the source of truth.
+1. IZAKHONO-owned nodes are the source of truth.
+2. No Vercel, Netlify or other hosted platform is required for production runtime.
+3. External providers may exist only as bounded, reversible adapters, registrars, integrations or fallback paths.
+4. Customer state must survive loss of an individual node.
+5. Site content must be independently recoverable.
+6. DNS must have independent secondary capacity.
+7. PostgreSQL, object storage and cache services require health and recovery evidence.
+8. Backups must be restorable onto another owned node.
+9. Secrets must never be committed to Git or browser code.
+10. The provisioning engine must never declare LIVE without acceptance evidence.
 
-## Promotion
+## Production authority
 
-The cluster is considered production only after public probes confirm the selected edge nodes, DNS delegation, HTTPS, native site serving and recovery paths. Repository commits alone never establish production status.
+The node cluster is the deployment target. Repository code defines the software; the owned nodes provide the runtime capacity.
+
+Physical activation, public DNS delegation and external reachability are execution steps on the owned node fabric—not reasons to redesign the architecture around another machine or hosted platform.
