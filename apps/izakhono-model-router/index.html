@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>IZAKHONO AI Router</title>
+<meta name="description" content="IZAKHONO sovereign model routing, prompt compression and budget control."/>
+<link rel="stylesheet" href="/style.css"/>
+</head>
+<body>
+<div class="shell">
+  <aside class="sidebar">
+    <div class="brand"><div class="mark">I</div><div><b>IZAKHONO</b><span>AI ROUTER</span></div></div>
+    <nav>
+      <button class="nav active" data-tab="router">⚡ Router</button>
+      <button class="nav" data-tab="compress">✂ Compression</button>
+      <button class="nav" data-tab="budget">◫ Free-tier Budget</button>
+      <button class="nav" data-tab="providers">◈ Providers</button>
+      <button class="nav" data-tab="security">🛡 FORTRESS</button>
+    </nav>
+    <div class="side-status"><span class="dot"></span> Control plane ready<div class="muted">Owned-first • provider-neutral</div></div>
+  </aside>
+
+  <main>
+    <header class="topbar">
+      <div><span class="eyebrow">IZAKHONO SUPER AI</span><h1>Model Router</h1></div>
+      <div class="header-actions"><span class="pill">SESSION CONTINUES</span><span class="pill dark">SOVEREIGN MODE</span></div>
+    </header>
+
+    <section id="router" class="tab active">
+      <div class="hero">
+        <div>
+          <span class="eyebrow">ONE REQUEST · BEST AVAILABLE ROUTE</span>
+          <h2>Stop hitting limits.<br/><em>Keep the session alive.</em></h2>
+          <p>IZAKHONO routes each task by capability, latency, cost, quota and availability — with local/owned models preferred before external providers.</p>
+        </div>
+        <div class="route-orb"><div>ROUTE</div><strong>∞</strong><span>FAILOVER READY</span></div>
+      </div>
+
+      <div class="grid two">
+        <article class="card request">
+          <div class="card-head"><h3>Request</h3><span id="tokenCount">0 tokens</span></div>
+          <textarea id="prompt" placeholder="Describe what you want to build…">Build a secure customer onboarding flow with a dashboard, payment status, automated email and deployment checks.</textarea>
+          <div class="row">
+            <select id="mode">
+              <option value="standard">Standard compression</option>
+              <option value="lite">Lite compression</option>
+              <option value="aggressive">Aggressive compression</option>
+              <option value="ultra">Ultra compression</option>
+              <option value="rtk">RTK tool-log compression</option>
+              <option value="stacked">Stacked compression</option>
+            </select>
+            <button class="primary" id="routeBtn">Route task →</button>
+          </div>
+        </article>
+
+        <article class="card">
+          <div class="card-head"><h3>Live routing decision</h3><span id="decision">Waiting</span></div>
+          <div id="routeResult" class="empty">Enter a task and route it. The router will select a capability class and a provider path.</div>
+          <div class="mini-grid">
+            <div><span>Task class</span><b id="taskClass">—</b></div>
+            <div><span>Compression</span><b id="saved">—</b></div>
+            <div><span>Primary</span><b id="primary">—</b></div>
+            <div><span>Fallback</span><b id="fallback">—</b></div>
+          </div>
+        </article>
+      </div>
+
+      <h3 class="section-title">Preferred model pool</h3>
+      <div class="models" id="models"></div>
+    </section>
+
+    <section id="compress" class="tab">
+      <div class="page-title"><span class="eyebrow">CONTEXT ECONOMICS</span><h2>Prompt compression</h2><p>Compress before routing. Preserve intent, constraints and tool state while reducing avoidable context.</p></div>
+      <div class="compression-grid" id="compressionGrid"></div>
+      <article class="card compressor">
+        <div class="card-head"><h3>Compression lab</h3><span id="labSavings">—</span></div>
+        <textarea id="labInput" placeholder="Paste a long prompt or tool log…"></textarea>
+        <button class="primary" id="compressBtn">Compress locally</button>
+        <pre id="labOutput">Your compressed context will appear here.</pre>
+      </article>
+    </section>
+
+    <section id="budget" class="tab">
+      <div class="page-title"><span class="eyebrow">QUOTA ORCHESTRATION</span><h2>Free-tier Budget</h2><p>One shared control plane for quotas you configure. No provider quota is treated as guaranteed.</p></div>
+      <div class="budget-card"><div class="budget-total"><b>Shared monthly capacity</b><strong id="budgetPct">68%</strong></div><div class="bar"><i id="budgetBar"></i></div><div id="budgetRows"></div><small>Editable local policy • connect provider accounts to make this live.</small></div>
+    </section>
+
+    <section id="providers" class="tab">
+      <div class="page-title"><span class="eyebrow">ADAPTER FABRIC</span><h2>25+ provider-ready architecture</h2><p>Providers are replaceable adapters. Keys stay server-side when connected.</p></div>
+      <div class="provider-grid" id="providerGrid"></div>
+    </section>
+
+    <section id="security" class="tab">
+      <div class="page-title"><span class="eyebrow">FORTRESS CONTROL</span><h2>Sovereign by design</h2><p>The router is a control plane, not a hostage to any single model vendor.</p></div>
+      <div class="security-grid">
+        <div class="card"><b>Owned-first routing</b><p>Local / IZAKHONO models are evaluated before external APIs when capability and quality requirements are met.</p></div>
+        <div class="card"><b>Provider isolation</b><p>Each provider is an adapter. Replacing a provider does not rewrite application logic.</p></div>
+        <div class="card"><b>Secret boundary</b><p>Production credentials belong behind the server-side gateway, never in the browser.</p></div>
+        <div class="card"><b>Failover continuity</b><p>Conversation state survives model switches. A limit should change the route, not stop the job.</p></div>
+      </div>
+    </section>
+  </main>
+</div>
+<script src="/app.js"></script>
+</body>
+</html>
