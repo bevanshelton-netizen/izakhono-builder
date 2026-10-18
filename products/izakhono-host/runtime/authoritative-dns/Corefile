@@ -1,0 +1,8 @@
+. {
+  errors
+  log
+  health :8081
+  ready
+  file /zones/db.izakhono.local
+  reload 15s
+}
