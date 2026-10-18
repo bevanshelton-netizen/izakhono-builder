@@ -4,7 +4,7 @@ IZAKHONO HOST is the owned-first customer hosting control plane for domains, web
 
 ## Production architecture
 
-`IZAKHONO CODE → BUILDER → PROVISIONER → NODE01/IZAKHONO CLOUD → CoreDNS/Caddy/TLS → native site runtime → FORTRESS`
+`IZAKHONO CODE → BUILDER → PROVISIONER → IZAKHONO NODE CLUSTER → CoreDNS/Caddy/TLS → native site runtime → FORTRESS`
 
 The customer web runtime is owned by IZAKHONO. External services are bounded adapters and are not the runtime of record.
 
@@ -21,9 +21,21 @@ The customer web runtime is owned by IZAKHONO. External services are bounded ada
 
 `docker-compose.owned.yml` supplies the owned-runtime baseline: native runtime, Caddy edge, CoreDNS, PostgreSQL, MinIO and Valkey.
 
-## One-command NODE01 activation
+## Multi-node operation
 
-From `products/izakhono-host` on NODE01:
+`CLUSTER-NODE-ROLES.md` defines the production roles and resilience model. `NODE-PREFLIGHT.sh` validates a physical node before activation.
+
+The platform can distribute CONTROL, EDGE, DNS, RUNTIME, DATA, MAIL, BACKUP and FORTRESS roles across the available owned nodes.
+
+## Activation
+
+On each designated node, run the preflight first:
+
+```bash
+./NODE-PREFLIGHT.sh
+```
+
+On the primary control/edge/runtime node:
 
 ```bash
 ./NODE01-ACTIVATE.sh
@@ -39,9 +51,9 @@ For a first-time host this creates `.env` with generated secrets. Set `TLS_EMAIL
 
 ## DNS and HTTPS
 
-Caddy uses on-demand public TLS and asks the native runtime whether a hostname is provisioned before a certificate can be issued. Public DNS still requires the customer's A/AAAA records to reach the owned edge, and authoritative DNS delegation remains an explicit production gate.
+Caddy uses on-demand public TLS and asks the native runtime whether a hostname is provisioned before a certificate can be issued. Public DNS still requires the customer's A/AAAA records to reach the owned edge, and authoritative DNS delegation requires independent external resolver evidence.
 
-CoreDNS is included as the owned authoritative-DNS baseline. Public delegation is not declared complete until independent external resolver evidence is captured.
+CoreDNS is included as the owned authoritative-DNS baseline. Secondary DNS capacity should run on independent owned nodes before production delegation is considered complete.
 
 ## Security
 
