@@ -22,4 +22,7 @@ jobs:
         with:
           node-version: 20
       - run: npm run check
+      - run: node src/server.mjs > /tmp/node01-sw.log 2>&1 &
+      - run: for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8940/health && exit 0; sleep 1; done; cat /tmp/node01-sw.log; exit 1
+      - run: npm run smoke
       - run: docker build -t izakhono-node01-sw:ci .
