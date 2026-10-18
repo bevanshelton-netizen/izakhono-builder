@@ -1,0 +1,30 @@
+name: IZAKHONO HOST Compliance
+
+on:
+  push:
+    paths:
+      - 'products/izakhono-host/**'
+      - '.github/workflows/izakhono-host-compliance.yml'
+  pull_request:
+    paths:
+      - 'products/izakhono-host/**'
+      - '.github/workflows/izakhono-host-compliance.yml'
+
+jobs:
+  compliance-script:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Validate node scripts
+        run: |
+          bash -n products/izakhono-host/NODE-PREFLIGHT.sh
+          bash -n products/izakhono-host/NODE01-ACTIVATE.sh
+          bash -n products/izakhono-host/NODE-COMPLIANCE.sh
+          bash -n products/izakhono-host/bootstrap-owned.sh
+      - name: Validate runtime source
+        run: node --check products/izakhono-host/runtime/control-plane/server.mjs
+      - name: Validate compose syntax
+        run: docker compose -f products/izakhono-host/docker-compose.owned.yml config >/dev/null
