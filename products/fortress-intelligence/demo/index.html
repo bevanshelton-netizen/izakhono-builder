@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>IZAKHONO FORTRESS INTELLIGENCE™</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">IZAKHONO <span>FORTRESS</span></div>
+    <div class="status">SYNTHETIC DEMO • NOT LIVE SCREENING</div>
+  </header>
+  <main>
+    <section class="hero">
+      <p class="eyebrow">BUSINESS INTELLIGENCE / DUE DILIGENCE</p>
+      <h1>FOLLOW THE<br><span>RELATIONSHIP.</span></h1>
+      <p>Search a person or organisation and see the connected signals, entities and review priorities in one workspace.</p>
+      <form id="searchForm" class="search">
+        <input id="query" placeholder="Search a name or company…" autocomplete="off">
+        <button>Search</button>
+      </form>
+      <div class="chips"><button data-q="Acme Holdings">Acme Holdings</button><button data-q="Thandi Mokoena">Thandi Mokoena</button><button data-q="Kalahari Logistics">Kalahari Logistics</button></div>
+    </section>
+
+    <section id="results" class="workspace hidden">
+      <div class="summary">
+        <div><small>ENTITY</small><strong id="entityName"></strong><span id="entityType"></span></div>
+        <div><small>RISK REVIEW</small><strong id="riskScore"></strong><span id="riskLabel"></span></div>
+        <div><small>CONNECTED SIGNALS</small><strong id="signalCount"></strong><span>synthetic demo records</span></div>
+      </div>
+      <div class="grid">
+        <article class="panel"><div class="panelhead"><h2>Signals</h2><span id="signalBadge"></span></div><div id="signals"></div></article>
+        <article class="panel"><div class="panelhead"><h2>Relationships</h2><span>NETWORK</span></div><div id="relationships" class="relationships"></div></article>
+      </div>
+      <article class="panel evidence"><div class="panelhead"><h2>Review guidance</h2><span>HUMAN DECISION REQUIRED</span></div><p id="guidance"></p><div class="notice">Synthetic demonstration only. Production results require approved data sources, provenance, matching controls and human review.</div></article>
+    </section>
+  </main>
+  <script src="app.js"></script>
+</body>
+</html>
