@@ -1,0 +1,33 @@
+name: IZAKHONO Owned Runtime CI
+
+on:
+  push:
+    paths:
+      - 'products/izakhono-host/**'
+      - '.github/workflows/owned-runtime-ci.yml'
+  pull_request:
+    paths:
+      - 'products/izakhono-host/**'
+      - '.github/workflows/owned-runtime-ci.yml'
+
+jobs:
+  validate-runtime:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: products/izakhono-host
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate Node runtime syntax
+        run: node --check runtime/control-plane/server.mjs
+      - name: Validate compose structure
+        run: |
+          cp .env.example .env
+          sed -i 's#ops@example.com#ci@example.com#' .env
+          docker compose --env-file .env -f docker-compose.owned.yml config --quiet
+      - name: Build owned control plane
+        run: docker build -t izakhono-owned-runtime:ci runtime/control-plane
+      - name: Validate DNS zone
+        run: |
+          grep -q 'SOA' runtime/authoritative-dns/db.izakhono.local
+          grep -q 'NS ns1.izakhono.local.' runtime/authoritative-dns/db.izakhono.local
