@@ -1,0 +1,13 @@
+{
+  email {$TLS_EMAIL}
+  admin off
+}
+
+:80 {
+  redir https://{host}{uri} permanent
+}
+
+:443 {
+  tls internal
+  reverse_proxy host-runtime:8080
+}
