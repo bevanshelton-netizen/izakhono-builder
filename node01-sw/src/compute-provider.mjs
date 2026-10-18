@@ -82,7 +82,7 @@ export function createComputeRegistry({ computer } = {}) {
     get(id) { return providers.get(id) || null; },
     select(required = []) {
       const needs = new Set(required);
-      return this.list().find((provider) => [...needs].every((capability) => provider.capabilities.includes(capability))) || null;
+      return [...providers.values()].find((provider) => [...needs].every((capability) => provider.capabilities.includes(capability))) || null;
     }
   };
 }
