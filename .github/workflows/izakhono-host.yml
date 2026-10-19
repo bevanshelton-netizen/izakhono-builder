@@ -30,6 +30,16 @@ jobs:
         run: npm run validate:host
       - name: Wrangler dry run
         run: npx wrangler deploy --dry-run --config products/izakhono-host/wrangler.jsonc
+      - name: Validate shell gates
+        shell: bash
+        run: |
+          bash -n products/izakhono-host/NODE-PREFLIGHT.sh
+          bash -n products/izakhono-host/NODE01-ACTIVATE.sh
+          bash -n products/izakhono-host/NODE-COMPLIANCE.sh
+          bash -n products/izakhono-host/MAIL-ACCEPTANCE.sh
+      - name: Mail gate dry run
+        shell: bash
+        run: MAIL_DOMAIN=example.com bash products/izakhono-host/MAIL-ACCEPTANCE.sh
       - name: Validate host contract
         shell: bash
         run: |
