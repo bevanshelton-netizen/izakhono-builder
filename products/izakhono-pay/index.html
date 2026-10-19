@@ -10,33 +10,12 @@
 <body>
   <header class="nav">
     <div class="brand"><span class="mark">IZ</span><span>IZAKHONO <b>PAY</b></span></div>
-    <nav><a href="#products">Products</a><a href="#developers">Developers</a><a href="#compliance">Compliance</a><button id="merchantBtn" class="btn primary">Merchant Demo</button></nav>
+    <nav><a href="#products">Products</a><a href="#developers">Developers</a><a href="#console">Merchant Console</a><a href="#compliance">Compliance</a><button id="merchantBtn" class="btn primary">Become a Merchant</button></nav>
   </header>
-
   <main>
-    <section class="hero">
-      <div class="eyebrow">AFRICAN PAYMENT INFRASTRUCTURE</div>
-      <h1>One payment layer.<br><span>Many businesses.</span></h1>
-      <p>IZAKHONO PAY gives businesses one integration for checkout, payment links, invoices, reconciliation and provider routing — while regulated payment partners handle the movement of funds.</p>
-      <div class="actions"><button id="demoBtn" class="btn primary big">Create a test payment</button><a href="#developers" class="btn ghost big">View API</a></div>
-      <div class="status"><span class="dot"></span> TEST ENVIRONMENT · LIVE MONEY MOVEMENT IS FAIL-CLOSED</div>
-    </section>
-
-    <section id="products" class="section">
-      <div class="eyebrow">MERCHANT STACK</div><h2>Everything a modern merchant needs.</h2>
-      <div class="cards">
-        <article><h3>Checkout</h3><p>Hosted payment experiences without storing card numbers in IZAKHONO infrastructure.</p></article>
-        <article><h3>Payment Links</h3><p>Send a customer a secure link from WhatsApp, SMS, email or social media.</p></article>
-        <article><h3>Invoices</h3><p>Request payment, track status and reconcile every transaction against a merchant reference.</p></article>
-        <article><h3>Smart Routing</h3><p>Connect iKhokha, PayFast, Paystack and future regulated rails behind one merchant API.</p></article>
-        <article><h3>Marketplace Splits</h3><p>Prepare multi-party settlement rules without making IZAKHONO the holder of client funds.</p></article>
-        <article><h3>Reconciliation</h3><p>Immutable transaction events and a merchant-facing ledger designed for auditability.</p></article>
-      </div>
-    </section>
-
-    <section id="developers" class="section dark">
-      <div><div class="eyebrow">DEVELOPER FIRST</div><h2>Integrate once.</h2><p>Merchants should not rebuild their payment stack every time a provider changes. IZAKHONO PAY owns the merchant-facing contract and adapters sit behind it.</p></div>
-      <pre><code>POST /v1/payment-intents
+    <section class="hero"><div class="eyebrow">AFRICAN PAYMENT INFRASTRUCTURE</div><h1>One payment layer.<br><span>Many businesses.</span></h1><p>IZAKHONO PAY gives businesses one integration for checkout, payment links, invoices, reconciliation and provider routing — while regulated payment partners handle the movement of funds.</p><div class="actions"><button id="demoBtn" class="btn primary big">Run a test payment</button><a href="#developers" class="btn ghost big">View API</a></div><div class="status"><span class="dot"></span> CHECKING PAYMENT RAIL · LIVE MONEY MOVEMENT IS FAIL-CLOSED</div></section>
+    <section id="products" class="section"><div class="eyebrow">MERCHANT STACK</div><h2>Everything a modern merchant needs.</h2><div class="cards"><article><h3>Checkout</h3><p>Hosted payment experiences without storing card numbers in IZAKHONO infrastructure.</p></article><article><h3>Payment Links</h3><p>Create a secure payment request and share it through WhatsApp, SMS, email or social media.</p></article><article><h3>Invoices</h3><p>Request payment, track status and reconcile every transaction against a merchant reference.</p></article><article><h3>Smart Routing</h3><p>Connect iKhokha, PayFast, Paystack and future regulated rails behind one merchant API.</p></article><article><h3>Marketplace Splits</h3><p>Prepare multi-party settlement rules without making IZAKHONO the holder of client funds.</p></article><article><h3>Reconciliation</h3><p>Immutable transaction events and a merchant-facing ledger designed for auditability.</p></article></div></section>
+    <section id="developers" class="section dark"><div><div class="eyebrow">DEVELOPER FIRST</div><h2>Integrate once.</h2><p>Merchants should not rebuild their payment stack every time a provider changes. IZAKHONO PAY owns the merchant-facing contract and adapters sit behind it.</p></div><pre><code>POST /v1/payment-intents
 Authorization: Bearer izp_test_...
 Idempotency-Key: order-8472
 
@@ -45,19 +24,14 @@ Idempotency-Key: order-8472
   "currency": "ZAR",
   "description": "Uniform order",
   "customer_email": "buyer@example.com"
-}</code></pre>
-    </section>
-
-    <section id="compliance" class="section">
-      <div class="eyebrow">CONTROLLED LAUNCH</div><h2>Own the technology. Respect the rails.</h2>
-      <div class="compliance"><div><strong>Phase 1</strong><span>IZAKHONO owns API, merchant experience, routing, ledger, webhooks and reconciliation.</span></div><div><strong>Settlement</strong><span>Funds move through authorised banks/acquirers/payment partners until IZAKHONO is separately authorised for activities requiring it.</span></div><div><strong>Security</strong><span>No raw card data. Idempotency, signed events, least privilege and fail-closed live-payment gates.</span></div></div>
-    </section>
-
-    <section class="cta"><div><div class="eyebrow">READY FOR THE NETWORK</div><h2>Bring your business into IZAKHONO PAY.</h2><p>Start in test mode. KYB and regulated live activation remain separate gates.</p></div><button id="merchantCta" class="btn primary big">Open Merchant Demo</button></section>
+}</code></pre></section>
+    <section id="console" class="section console-section"><div class="eyebrow">MERCHANT CONSOLE · TEST MODE</div><h2>Operate your payments from one place.</h2><p class="lead">The console is the control centre for transactions, payment links, reconciliation and webhooks. This test console is connected to the IZAKHONO PAY API.</p><div class="console-grid"><div class="console-card"><span class="metric-label">Successful payments</span><strong id="metricSucceeded">—</strong><small id="metricGross">Gross: —</small></div><div class="console-card"><span class="metric-label">Transactions</span><strong id="metricTransactions">—</strong><small>Recent activity</small></div><div class="console-card"><span class="metric-label">Payment links</span><strong id="metricLinks">—</strong><small>Active test links</small></div></div><div class="console-actions"><button id="refreshConsole" class="btn primary">Refresh console</button><button id="createLinkBtn" class="btn">Create test payment link</button></div><div class="table-wrap"><table><thead><tr><th>Reference</th><th>Provider</th><th>Status</th><th>Amount</th><th>Date</th></tr></thead><tbody id="txRows"><tr><td colspan="5">Click “Refresh console” to load test activity.</td></tr></tbody></table></div><div id="consoleResult" class="result"></div></section>
+    <section id="compliance" class="section"><div class="eyebrow">CONTROLLED LAUNCH</div><h2>Own the technology. Respect the rails.</h2><div class="compliance"><div><strong>Phase 1</strong><span>IZAKHONO owns API, merchant experience, routing, ledger, webhooks and reconciliation.</span></div><div><strong>Settlement</strong><span>Funds move through authorised banks, acquirers and payment partners until IZAKHONO is separately authorised for activities requiring it.</span></div><div><strong>Security</strong><span>No raw card data. Idempotency, signed events, least privilege and fail-closed live-payment gates.</span></div></div></section>
+    <section class="cta"><div><div class="eyebrow">JOIN THE NETWORK</div><h2>Bring your business into IZAKHONO PAY.</h2><p>Apply for merchant onboarding. Test mode can be used immediately; KYB and regulated live activation remain separate gates.</p></div><button id="merchantCta" class="btn primary big">Apply as a Merchant</button></section>
   </main>
-
-  <footer><span>IZAKHONO AFRICA (PTY) LTD</span><span>IZAKHONO PAY · v1 foundation</span></footer>
-  <div id="modal" class="modal hidden"><div class="modal-card"><button id="close" class="close">×</button><div class="eyebrow">TEST CHECKOUT</div><h2>Create a payment</h2><label>Amount (ZAR)<input id="amount" value="499" inputmode="decimal" /></label><label>Description<input id="description" value="IZAKHONO PAY test order" /></label><label>Customer email<input id="email" value="demo@example.com" type="email" /></label><button id="createPayment" class="btn primary wide">Create payment link</button><div id="result" class="result"></div></div></div>
+  <footer><span>IZAKHONO AFRICA (PTY) LTD</span><span>IZAKHONO PAY · Merchant Network v1</span></footer>
+  <div id="modal" class="modal hidden"><div class="modal-card"><button id="close" class="close">×</button><div class="eyebrow">TEST CHECKOUT</div><h2>Create a payment</h2><label>Amount (ZAR)<input id="amount" value="499" inputmode="decimal" /></label><label>Description<input id="description" value="IZAKHONO PAY test order" /></label><label>Customer email<input id="email" value="demo@example.com" type="email" /></label><button id="createPayment" class="btn primary wide">Create test payment</button><div id="result" class="result"></div></div></div>
+  <div id="merchantModal" class="modal hidden"><div class="modal-card"><button id="merchantClose" class="close">×</button><div class="eyebrow">MERCHANT ONBOARDING</div><h2>Apply to IZAKHONO PAY</h2><label>Legal business name<input id="legalName" placeholder="Your registered business" /></label><label>Trading name<input id="tradingName" placeholder="Brand / trading name" /></label><label>Contact name<input id="contactName" placeholder="Full name" /></label><label>Email<input id="merchantEmail" type="email" placeholder="you@business.co.za" /></label><label>Phone<input id="phone" placeholder="+27 ..." /></label><label>Website<input id="website" placeholder="https://..." /></label><button id="submitApplication" class="btn primary wide">Submit merchant application</button><div id="merchantResult" class="result"></div></div></div>
   <script src="./app.js"></script>
 </body>
 </html>
