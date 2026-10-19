@@ -23,7 +23,15 @@ document.querySelector('#createPayment').onclick=async()=>{
     if(!r.ok)throw new Error(d.message||d.error||'Payment intent failed');
     const p=d.data;
     result.className='result ok';
-    result.innerHTML=`Payment intent <strong>${p.reference}</strong> created in TEST mode.<br><a href="${p.checkout_url}" target="_blank" rel="noopener">Open hosted checkout →</a>`;
+    result.innerHTML=`Payment intent <strong>${p.reference}</strong> created in TEST mode.<br><button id="confirmTest" class="btn primary wide" style="margin-top:10px">Confirm test payment</button>`;
+    document.querySelector('#confirmTest').onclick=async()=>{
+      const btn=document.querySelector('#confirmTest');btn.disabled=true;btn.textContent='Confirming…';
+      try{
+        const cr=await fetch(API+'/v1/payment-intents/'+encodeURIComponent(p.reference)+'/sandbox-confirm',{method:'POST'});
+        const cd=await cr.json();if(!cr.ok)throw new Error(cd.error||'Confirmation failed');
+        result.innerHTML=`<strong>TEST PAYMENT SUCCEEDED.</strong><br>Reference: ${cd.data.reference}<br>Transaction: ${cd.data.transaction_id}`;
+      }catch(e){btn.disabled=false;btn.textContent='Retry test payment';result.className='result error';result.textContent=e.message}
+    };
   }catch(e){result.className='result error';result.textContent=e.message}
 };
 
