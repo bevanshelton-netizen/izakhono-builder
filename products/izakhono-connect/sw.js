@@ -1,5 +1,7 @@
-const CACHE='izakhono-connect-v2';
+const CACHE='izakhono-connect-v3';
 const CORE=['/','/products/izakhono-connect/','/products/izakhono-connect/index.html','/products/izakhono-connect/styles.css','/products/izakhono-connect/app.js','/products/izakhono-connect/manifest.json'];
 self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(CORE)).then(()=>self.skipWaiting())));
 self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));
 self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.match(e.request).then(cached=>cached||fetch(e.request).then(r=>{if(r.ok&&new URL(e.request.url).origin===location.origin){const copy=r.clone();caches.open(CACHE).then(c=>c.put(e.request,copy));}return r;}).catch(()=>cached||caches.match('/products/izakhono-connect/index.html'))));});
+self.addEventListener('push',e=>{let data={};try{data=e.data?.json()||{}}catch{data={body:e.data?.text()||''}}const title=data.title||'IZAKHONO CONNECT';const options={body:data.body||'You have a new message.',icon:data.icon||'/products/izakhono-connect/icon.svg',badge:data.badge||'/products/izakhono-connect/icon.svg',tag:data.tag||'izakhono-connect',data:data.data||{}};e.waitUntil(self.registration.showNotification(title,options));});
+self.addEventListener('notificationclick',e=>{e.notification.close();const target=e.notification.data?.url||'/products/izakhono-connect/';e.waitUntil(clients.matchAll({type:'window',includeUncontrolled:true}).then(list=>{for(const client of list){if('focus' in client){client.navigate(target);return client.focus()}}return clients.openWindow(target)}));});
