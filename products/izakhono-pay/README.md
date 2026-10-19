@@ -1,125 +1,113 @@
 # IZAKHONO PAY
 
-**One checkout. Many rails.**
+**One payment layer. Many businesses.**
 
-IZAKHONO PAY is the payment-orchestration layer for IZAKHONO products. Applications integrate once with IZAKHONO PAY; the router selects a configured provider and the unified ledger records the transaction lifecycle.
+IZAKHONO PAY is being built as an African merchant payment-orchestration platform in the scope of products such as Paystack: merchants integrate once with IZAKHONO PAY while regulated banks, acquirers and payment partners provide the underlying movement of funds until IZAKHONO is separately authorised for any regulated activity it intends to conduct itself.
 
-## Alpha scope
+## Current v1 foundation
 
-- One payment-intent API for all internal applications
-- Smart routing for ZAR with iKhokha preferred when its verified live API credentials are enabled, then Paystack and PayFast fallbacks
-- iKhokha iK Pay API hosted payment-link initialization and signed callback verification
-- Paystack hosted checkout initialization
-- PayFast signed Custom Integration form-post checkout
-- Paystack HMAC-SHA512 webhook verification
-- PayFast ITN signature, source-IP, amount and server-confirmation checks
-- Idempotent provider event ledger
-- Mock checkout for safe end-to-end testing
-- Admin summary dashboard
-- No card-number storage
-- Fail-closed provider configuration
+- Supabase PostgreSQL merchant, payment-intent, transaction and double-entry ledger tables
+- Per-merchant API-key authentication with hashed secrets
+- Idempotent `payment-intents` API
+- Sandbox payment confirmation for safe end-to-end testing
+- Merchant summary API with transaction metrics
+- Test payment-link creation and public payment-link lookup
+- Merchant onboarding application intake
+- Webhook endpoint registration with one-time signing-secret issuance
+- Fail-closed live-processing gate
+- No raw card-number storage
+- Provider-neutral merchant-facing contract
+- Existing provider strategy: iKhokha primary candidate rail, PayFast/Paystack and future regulated rails behind adapters
 
-The alpha intentionally supports **ZAR checkout only**. Customers using international cards may still be accepted by a connected provider where that merchant account is enabled for those cards. True multi-currency and country-local payment rails belong in later adapters.
+## API base
 
-## Safety boundary
+`https://yfawrenhudjomhnglfhq.supabase.co/functions/v1/izakhono-payment-health`
 
-IZAKHONO PAY alpha is orchestration software, not a bank, acquiring institution, card network or settlement provider. It does not hold customer funds and does not accept raw card data. Production use is blocked until merchant onboarding, applicable legal/regulatory review, privacy terms, production database, TLS/domain, live provider credentials and webhook registration are complete.
+### Health
 
-## Modes
+`GET /health`
 
-- `mock` — no real money; public simulator enabled
-- `sandbox` — real provider test environments/keys only
-- `live` — live provider credentials; use only after production readiness review
+Returns runtime, provider configuration state and the live-payment gate. The current service explicitly reports `livePayments: false` until the regulated settlement path is configured and authorised.
 
-## Required secrets
+### Payment intents
 
-Store with Cloudflare secrets or your deployment platform's secret manager; never commit them:
+`POST /v1/payment-intents`
 
-- `ADMIN_SECRET`
-- `IZAKHONO_INTERNAL_API_KEY`
-- `IKHOKHA_APP_ID`
-- `IKHOKHA_APP_SECRET`
-- `PAYSTACK_SECRET_KEY`
-- `PAYFAST_MERCHANT_ID`
-- `PAYFAST_MERCHANT_KEY`
-- `PAYFAST_PASSPHRASE`
+Headers:
 
-## Provider verification
-
-Paystack webhooks are accepted only when `x-paystack-signature` matches HMAC-SHA512 of the raw body using the Paystack secret key. A successful charge must also match the stored amount and currency.
-
-PayFast ITNs must pass all of the following before a payment can be marked paid:
-
-1. custom-integration signature verification;
-2. source IP allow-list verification;
-3. expected amount comparison;
-4. server-to-server validation with PayFast;
-5. `payment_status=COMPLETE`.
-
-## Database
-
-Create a dedicated D1 database named `izakhono-pay`, replace the all-zero placeholder `database_id` in `wrangler.jsonc`, then apply `migrations/0001_core.sql` through Wrangler migrations. Do not reuse the builder database for production payment data.
-
-## API
-
-### Public
-
-- `GET /api/health`
-- `GET /api/v1/capabilities`
-- `POST /api/webhooks/paystack`
-- `POST /api/webhooks/payfast`
-- mock-only demo endpoints under `/api/demo/*`
-
-### Internal applications
-
-`POST /api/v1/intents` with headers:
-
+- `x-api-key: <merchant API key>`
+- `idempotency-key: <unique order key>`
 - `content-type: application/json`
-- `x-izakhono-key: <IZAKHONO_INTERNAL_API_KEY>`
-- optional `x-izakhono-app: <app-slug>`
 
-Example body:
+Example:
 
 ```json
 {
-  "amount_minor": 39900,
+  "amount_minor": 49900,
   "currency": "ZAR",
-  "email": "customer@example.com",
-  "description": "3-subject monthly plan",
-  "provider": "smart"
+  "description": "Uniform order",
+  "customer_email": "buyer@example.com"
 }
 ```
 
-The response returns either a hosted redirect or a PayFast `form_post` target and signed fields. An application must treat the payment as pending until the ledger reports `paid`.
+`GET /v1/payment-intents/:reference` returns the payment state.
 
-## FLOW payment-status adapter
+Test-only confirmation:
 
-`POST /api/flow` supports the single read-only action `payment.status.watch.requested` when `PAY_FLOW_TOKEN` matches.
+`POST /v1/payment-intents/:reference/sandbox-confirm`
 
-The adapter:
+This creates a sandbox transaction and ledger entries. It does not move real money.
 
-- never marks a payment paid;
-- never changes the payment intent;
-- requires `X-Entity-ID` and `X-Platform-ID`;
-- requires the payment intent `app_slug` to match the FLOW platform;
-- requires `metadata.entity_id` on the payment intent to match the FLOW entity;
-- fails closed when the entity scope is absent or mismatched.
+### Merchant console
 
-This makes IZAKHONO PAY the payment-status authority without allowing FLOW to infer or manufacture payment success.
+`GET /v1/merchant/summary`
 
-## Next commercial phase
+Returns merchant profile, transaction metrics, recent transactions and payment links for the authenticated merchant.
 
-Add country/currency-specific adapters, per-merchant API keys, OAuth-style application credentials, reconciliation jobs, refund orchestration, subscriptions, disputes, settlement reporting, observability, rate limiting, fraud rules and the required South African/international payment-industry approvals before offering the service to unrelated third-party merchants.
+### Payment links
 
+`POST /v1/payment-links` creates a test-mode link for an authenticated merchant.
 
-## iKhokha adapter
+`GET /v1/payment-links/:slug` returns a public, non-secret payment-link representation.
 
-IZAKHONO PAY now contains an iK Pay API adapter for custom-built applications.
+### Merchant onboarding
 
-- Payment-link requests are sent to iKhokha's public payment API with the required `IK-APPID` and HMAC-SHA256 `IK-SIGN` headers.
-- Amounts are sent in minor units (cents) and ZAR remains the only enabled IZAKHONO PAY alpha currency.
-- iKhokha callbacks arrive at `POST /api/webhooks/ikhokha` and are signature-verified before a payment intent can be marked paid.
-- A successful, verified callback then follows the existing signed merchant-webhook path so IZAKHONO ACCESS can grant the subscribed entitlement.
-- The smart router prefers iKhokha only when `PAYMENT_MODE=live`, `IKHOKHA_MODE=live`, and the required iKhokha credentials are configured. This is intentionally fail-closed because the current public iK Pay documentation exposes the live request contract; the repository does not assume an undocumented sandbox mode.
+`POST /v1/merchant-applications` accepts an initial business application. It deliberately does not collect identity documents, bank credentials or other KYB evidence in this public endpoint. KYB review remains a controlled back-office process.
 
-Do not mark iKhokha checkout live until the real merchant API keys are configured, the callback URL is registered and reachable over production HTTPS, and an end-to-end payment → webhook → entitlement acceptance test passes.
+### Webhooks
+
+`POST /v1/webhook-endpoints` registers a merchant webhook URL and generates a signing secret. The raw secret is returned once; only its hash is retained by the API.
+
+The production webhook delivery layer must sign event bodies and verify delivery/retry state before live launch.
+
+## Data and safety boundary
+
+IZAKHONO PAY owns the merchant-facing technology, API contract, routing layer, ledger, reconciliation, webhook orchestration and merchant experience. Phase 1 does **not** make IZAKHONO the custodian of merchant/customer funds. Live processing remains disabled until merchant KYB, applicable South African regulatory requirements, acquiring/settlement arrangements, provider credentials, webhook registration, production domain/TLS, security controls and end-to-end verification are complete.
+
+The platform must never claim a payment is live or settled merely because an API route exists. A live transaction must be confirmed by the configured regulated payment rail and reconciled into the IZAKHONO ledger.
+
+## Commercial direction
+
+The intended merchant model is:
+
+`Merchant → IZAKHONO PAY → regulated payment rail → merchant settlement`
+
+IZAKHONO can earn a transparent platform/orchestration fee and/or negotiated processing margin where contractually and legally permitted. Marketplace splits, subscriptions, invoices, refunds, disputes, settlement reporting, fraud rules and cross-border capabilities belong behind the same merchant-facing API.
+
+## Production roadmap
+
+1. Merchant authentication and roles
+2. KYB review workflow and merchant activation states
+3. Provider adapter interface with iKhokha, PayFast, Paystack and future bank/acquirer rails
+4. Signed webhooks, retries and event verification
+5. Refunds, disputes and reconciliation jobs
+6. Pricing/fee engine
+7. Marketplace split rules and settlement reporting
+8. Merchant dashboard and API-key management
+9. Rate limiting, fraud/risk controls and observability
+10. Regulatory/acquiring/settlement readiness for third-party live merchants
+11. Production deployment and custom merchant-facing domain
+
+## Test credentials
+
+The repository demo uses a test-only API key embedded in the demonstration frontend. It must be removed from any public production build and replaced by authenticated merchant credentials before external merchants are enabled.
