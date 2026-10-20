@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "IZAKHONO Execution Run",
+  "type": "object",
+  "required": ["id", "objective", "status", "stages"],
+  "properties": {
+    "id": {"type": "string"},
+    "objective": {"type": "string"},
+    "owner": {"type": "string"},
+    "priority": {"enum": ["LOW", "NORMAL", "HIGH", "CRITICAL"]},
+    "deadline": {"type": ["string", "null"], "format": "date-time"},
+    "status": {"enum": ["INTAKE", "PLANNING", "BUILDING", "TESTING", "APPROVAL", "RELEASED", "MARKETING", "MEASURING", "COMPLETE", "BLOCKED"]},
+    "stages": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "status"],
+        "properties": {
+          "name": {"enum": ["INTAKE", "PLAN", "BUILD", "TEST", "APPROVE", "RELEASE", "MARKET", "MEASURE", "COMPLETE"]},
+          "status": {"enum": ["PENDING", "READY", "RUNNING", "BLOCKED", "REVIEW", "DONE"]},
+          "evidence": {"type": "array", "items": {"type": "string"}},
+          "next_action": {"type": ["string", "null"]}
+        }
+      }
+    },
+    "marketing": {
+      "type": "object",
+      "properties": {
+        "paid_ads_enabled": {"type": "boolean", "const": false},
+        "offer": {"type": ["string", "null"]},
+        "audience": {"type": ["string", "null"]},
+        "landing_page": {"type": ["string", "null"]},
+        "leads": {"type": "integer", "minimum": 0},
+        "confirmed_sales": {"type": "integer", "minimum": 0},
+        "confirmed_revenue": {"type": "number", "minimum": 0}
+      }
+    }
+  }
+}
