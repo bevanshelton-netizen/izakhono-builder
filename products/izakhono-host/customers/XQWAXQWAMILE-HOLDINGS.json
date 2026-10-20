@@ -1,0 +1,44 @@
+{
+  "customer_id": "cus_xqwaxqwamile_001",
+  "legal_name": "!XQWAXQWAMILÉ HOLDINGS (PTY) LTD",
+  "source": {
+    "provider": "github",
+    "repository": "bevanshelton-netizen/Downloads",
+    "ref": "main",
+    "path": "sites/xqwaxqwamile-holdings"
+  },
+  "sites": [
+    {
+      "site_id": "site_xqwaxqwamile_com_001",
+      "domain": "xqwaxqwamile.com",
+      "canonical": true
+    },
+    {
+      "site_id": "site_xqwaxqwamile_coza_001",
+      "domain": "xqwaxqwamile.co.za",
+      "canonical": false
+    }
+  ],
+  "content": [
+    {
+      "path": "index.html",
+      "source_path": "sites/xqwaxqwamile-holdings/index.html"
+    }
+  ],
+  "mail": {
+    "provider": "izakhono-mail",
+    "status": "planned",
+    "mailboxes": [
+      "info@xqwaxqwamile.com",
+      "calvin@xqwaxqwamile.com",
+      "projects@xqwaxqwamile.com",
+      "diamonds@xqwaxqwamile.com",
+      "tenders@xqwaxqwamile.com"
+    ]
+  },
+  "promotion": {
+    "site_status": "provisioned_until_acceptance",
+    "public_live_requires": ["dns", "https", "content"],
+    "mail_live_requires": ["mx", "smtp", "inbound_acceptance", "outbound_acceptance"]
+  }
+}
