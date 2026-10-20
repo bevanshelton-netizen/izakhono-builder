@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://izakhono.local/schemas/call-case.schema.json",
+  "title": "IZAKHONO VOICE Call Case",
+  "type": "object",
+  "required": ["call_id", "customer", "channel", "status", "events"],
+  "properties": {
+    "call_id": { "type": "string" },
+    "customer": {
+      "type": "object",
+      "required": ["phone"],
+      "properties": {
+        "customer_id": { "type": "string" },
+        "name": { "type": "string" },
+        "phone": { "type": "string" },
+        "caller_id_name": { "type": "string" },
+        "preferred_language": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "channel": { "enum": ["inbound", "outbound"] },
+    "status": { "enum": ["ringing", "active", "handoff", "completed", "failed"] },
+    "business_context": { "type": "object", "additionalProperties": true },
+    "claim": { "type": "object", "additionalProperties": true },
+    "events": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["timestamp", "type"],
+        "properties": {
+          "timestamp": { "type": "string", "format": "date-time" },
+          "type": { "enum": ["call_started", "caller_identified", "message", "tool_call", "sms", "handoff", "reminder", "call_ended"] },
+          "speaker": { "enum": ["customer", "assistant", "agent", "system"] },
+          "content": { "type": "string" },
+          "metadata": { "type": "object", "additionalProperties": true }
+        },
+        "additionalProperties": false
+      }
+    },
+    "next_action": { "type": "string" },
+    "reminders": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["description", "due_at"],
+        "properties": {
+          "description": { "type": "string" },
+          "due_at": { "type": "string", "format": "date-time" },
+          "owner": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "synthesis": {
+      "type": "object",
+      "properties": {
+        "short": { "type": "string" },
+        "long": { "type": "string" },
+        "satisfaction": { "type": "string" },
+        "improvement_suggestions": { "type": "string" }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}
