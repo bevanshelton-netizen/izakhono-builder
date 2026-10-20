@@ -1,0 +1,30 @@
+services:
+  stalwart:
+    image: stalwartlabs/stalwart:v0.16
+    restart: unless-stopped
+    environment:
+      STALWART_RECOVERY_ADMIN: ${STALWART_RECOVERY_ADMIN:?set STALWART_RECOVERY_ADMIN}
+    ports:
+      - "25:25"
+      - "465:465"
+      - "587:587"
+      - "143:143"
+      - "993:993"
+      - "443:443"
+    volumes:
+      - stalwart-etc:/etc/stalwart
+      - stalwart-data:/var/lib/stalwart
+    networks: [izakhono-mail]
+    healthcheck:
+      test: ["CMD", "sh", "-c", "wget -qO- http://127.0.0.1:8080/api/auth >/dev/null 2>&1 || true"]
+      interval: 15s
+      timeout: 5s
+      retries: 8
+
+networks:
+  izakhono-mail:
+    driver: bridge
+
+volumes:
+  stalwart-etc:
+  stalwart-data:
