@@ -1,0 +1,38 @@
+{
+  "product": "IZAKHONO VOICE",
+  "version": "0.1.0",
+  "providerPolicy": {
+    "telephony": "adapter",
+    "speech": "adapter",
+    "llm": "adapter",
+    "rag": "adapter",
+    "storage": "owned-first"
+  },
+  "features": {
+    "callerId": true,
+    "inboundCalls": true,
+    "outboundCalls": true,
+    "sms": true,
+    "humanHandoff": true,
+    "postCallSynthesis": true,
+    "reminders": true,
+    "rag": true,
+    "recording": false
+  },
+  "security": {
+    "fortressAudit": true,
+    "secretSource": "runtime-only",
+    "customerDataDefault": "private"
+  },
+  "productionGate": {
+    "required": [
+      "telephony-number",
+      "public-reachability",
+      "tls-validation",
+      "data-protection-review",
+      "end-to-end-call-test",
+      "human-handoff-test",
+      "backup-restore-test"
+    ]
+  }
+}
