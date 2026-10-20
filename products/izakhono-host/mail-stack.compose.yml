@@ -1,0 +1,44 @@
+services:
+  stalwart:
+    image: stalwartlabs/stalwart:v0.16
+    restart: unless-stopped
+    environment:
+      STALWART_PUBLIC_URL: ${STALWART_PUBLIC_URL:-https://mail.example.com}
+      STALWART_RECOVERY_ADMIN: ${STALWART_RECOVERY_ADMIN:-}
+    ports:
+      - "25:25"
+      - "465:465"
+      - "587:587"
+      - "143:143"
+      - "993:993"
+      - "110:110"
+      - "995:995"
+      - "4190:4190"
+    volumes:
+      - stalwart-etc:/etc/stalwart
+      - stalwart-data:/var/lib/stalwart
+    networks: [izakhono]
+
+  mail-bridge:
+    build: ./runtime/mail-bridge
+    restart: unless-stopped
+    environment:
+      PORT: 8091
+      IZAKHONO_MAIL_API_TOKEN: ${IZAKHONO_MAIL_API_TOKEN:-}
+      SMTP_HOST: stalwart
+      SMTP_PORT: 587
+      SMTP_TLS_MODE: starttls
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+    networks: [izakhono]
+    depends_on:
+      stalwart:
+        condition: service_started
+
+networks:
+  izakhono:
+    external: true
+
+volumes:
+  stalwart-etc:
+  stalwart-data:
