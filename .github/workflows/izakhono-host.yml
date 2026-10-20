@@ -40,6 +40,17 @@ jobs:
       - name: Mail gate dry run
         shell: bash
         run: MAIL_DOMAIN=example.com bash products/izakhono-host/MAIL-ACCEPTANCE.sh
+      - name: Validate contact gateway
+        shell: bash
+        run: |
+          node --check products/izakhono-host/runtime/contact-gateway/server.mjs
+          node -e "JSON.parse(require('fs').readFileSync('products/izakhono-host/runtime/contact-gateway/package.json','utf8')); JSON.parse(require('fs').readFileSync('products/izakhono-host/runtime/contact-gateway/routes.json','utf8')); console.log('[PASS] Contact gateway config valid')"
+      - name: Validate owned Compose definition
+        run: docker compose -f products/izakhono-host/docker-compose.owned.yml config
+      - name: Build owned runtime image
+        run: docker build -t izakhono-host-runtime-ci products/izakhono-host/runtime/control-plane
+      - name: Build contact gateway image
+        run: docker build -t izakhono-contact-gateway-ci products/izakhono-host/runtime/contact-gateway
       - name: Validate host contract
         shell: bash
         run: |
@@ -47,16 +58,10 @@ jobs:
           from pathlib import Path
           sql = Path('products/izakhono-host/migrations/0001_host.sql').read_text()
           seed = Path('products/izakhono-host/migrations/0002_customer_001.sql').read_text()
-          required = [
-            'host_customers','host_domains','host_sites','host_dns_records',
-            'host_mailboxes','host_plans','host_subscriptions','host_invoices',
-            'host_jobs','host_audit_events'
-          ]
+          required = ['host_customers','host_domains','host_sites','host_dns_records','host_mailboxes','host_plans','host_subscriptions','host_invoices','host_jobs','host_audit_events']
           missing = [x for x in required if x not in sql]
-          if missing:
-            raise SystemExit('HOST schema missing: ' + ', '.join(missing))
+          if missing: raise SystemExit('HOST schema missing: ' + ', '.join(missing))
           for x in ['xqwaxqwamile.com','cus_xqwaxqwamile_001','inv_xqwaxqwamile_001']:
-            if x not in seed:
-              raise SystemExit('Customer #001 bootstrap missing: ' + x)
+            if x not in seed: raise SystemExit('Customer #001 bootstrap missing: ' + x)
           print('[PASS] IZAKHONO HOST schema and Customer #001 bootstrap contract validated.')
           PY
