@@ -16,10 +16,11 @@ services:
       - stalwart-data:/var/lib/stalwart
     networks: [izakhono-mail]
     healthcheck:
-      test: ["CMD", "sh", "-c", "wget -qO- http://127.0.0.1:8080/api/auth >/dev/null 2>&1 || true"]
+      test: ["CMD", "sh", "-c", "wget -qO- http://127.0.0.1:8080/healthz/live >/dev/null 2>&1"]
       interval: 15s
       timeout: 5s
       retries: 8
+      start_period: 40s
 
 networks:
   izakhono-mail:
