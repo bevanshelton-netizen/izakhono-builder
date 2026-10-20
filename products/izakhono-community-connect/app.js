@@ -3,7 +3,7 @@ const plans=[['Daily 5 GB','R15','5 GB','24 hours'],['Weekly 30 GB','R50','30 GB
 const voucherState=[['VCH-82A4','Daily 5 GB','Active'],['VCH-91D7','Weekly 30 GB','Active'],['VCH-44BC','Daily 5 GB','Used'],['VCH-3A19','Monthly Unlimited','Active'],['VCH-77EF','Business 100 GB','Active'],['VCH-08CD','Weekly 30 GB','Used']];
 const $=s=>document.querySelector(s);const $$=s=>[...document.querySelectorAll(s)];
 function toast(msg){const t=$('#toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200)}
-function showView(view){$$('.view').forEach(v=>v.classList.toggle('active',v.id===`view-${view}`));$$('.nav-item').forEach(b=>b.classList.toggle('active',b.dataset.view===view));$('#page-title').textContent=titles[view]||'Network Overview');window.scrollTo({top:0,behavior:'smooth'})}
+function showView(view){$$('.view').forEach(v=>v.classList.toggle('active',v.id===`view-${view}`));$$('.nav-item').forEach(b=>b.classList.toggle('active',b.dataset.view===view));$('#page-title').textContent=titles[view]||'Network Overview';window.scrollTo({top:0,behavior:'smooth'})}
 $$('.nav-item').forEach(b=>b.addEventListener('click',()=>showView(b.dataset.view)));$$('[data-view]').forEach(b=>{if(!b.classList.contains('nav-item'))b.addEventListener('click',()=>showView(b.dataset.view))});
 $('#refresh').addEventListener('click',()=>{toast('Network telemetry refreshed');});
 $('#quick-voucher').addEventListener('click',()=>{showView('vouchers');toast('Voucher centre ready');});
