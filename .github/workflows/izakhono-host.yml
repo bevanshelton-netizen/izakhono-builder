@@ -45,6 +45,11 @@ jobs:
         run: |
           node --check products/izakhono-host/runtime/contact-gateway/server.mjs
           node -e "JSON.parse(require('fs').readFileSync('products/izakhono-host/runtime/contact-gateway/package.json','utf8')); JSON.parse(require('fs').readFileSync('products/izakhono-host/runtime/contact-gateway/routes.json','utf8')); console.log('[PASS] Contact gateway config valid')"
+      - name: Validate customer provisioning contract
+        shell: bash
+        run: |
+          node --check products/izakhono-host/scripts/provision-customer.mjs
+          node -e "const fs=require('fs'); const m=JSON.parse(fs.readFileSync('products/izakhono-host/customers/XQWAXQWAMILE-HOLDINGS.json','utf8')); if(m.customer_id!=='cus_xqwaxqwamile_001'||m.sites.length!==2||m.content.length!==1) process.exit(1); console.log('[PASS] XQ customer provisioning manifest valid')"
       - name: Validate owned Compose definition
         run: docker compose -f products/izakhono-host/docker-compose.owned.yml config
       - name: Build owned runtime image
