@@ -45,17 +45,33 @@ jobs:
         run: |
           node --check products/izakhono-host/runtime/contact-gateway/server.mjs
           node -e "JSON.parse(require('fs').readFileSync('products/izakhono-host/runtime/contact-gateway/package.json','utf8')); JSON.parse(require('fs').readFileSync('products/izakhono-host/runtime/contact-gateway/routes.json','utf8')); console.log('[PASS] Contact gateway config valid')"
+      - name: Validate mail bridge
+        shell: bash
+        run: |
+          node --check products/izakhono-host/runtime/mail-bridge/server.mjs
+          node -e "JSON.parse(require('fs').readFileSync('products/izakhono-host/runtime/mail-bridge/package.json','utf8')); console.log('[PASS] Mail bridge config valid')"
       - name: Validate customer provisioning contract
         shell: bash
         run: |
           node --check products/izakhono-host/scripts/provision-customer.mjs
           node -e "const fs=require('fs'); const m=JSON.parse(fs.readFileSync('products/izakhono-host/customers/XQWAXQWAMILE-HOLDINGS.json','utf8')); if(m.customer_id!=='cus_xqwaxqwamile_001'||m.sites.length!==2||m.content.length!==1) process.exit(1); console.log('[PASS] XQ customer provisioning manifest valid')"
       - name: Validate owned Compose definition
+        shell: bash
+        env:
+          HOST_RUNTIME_TOKEN: ci-host-runtime-token
+          TLS_EMAIL: ci@example.com
+          POSTGRES_PASSWORD: ci-postgres-password
+          MINIO_ROOT_USER: ci-minio-admin
+          MINIO_ROOT_PASSWORD: ci-minio-password
+          STALWART_RECOVERY_ADMIN: admin:ci-mail-admin-password
+          IZAKHONO_MAIL_API_TOKEN: ci-mail-api-token
         run: docker compose -f products/izakhono-host/docker-compose.owned.yml config
       - name: Build owned runtime image
         run: docker build -t izakhono-host-runtime-ci products/izakhono-host/runtime/control-plane
       - name: Build contact gateway image
         run: docker build -t izakhono-contact-gateway-ci products/izakhono-host/runtime/contact-gateway
+      - name: Build mail bridge image
+        run: docker build -t izakhono-mail-bridge-ci products/izakhono-host/runtime/mail-bridge
       - name: Validate host contract
         shell: bash
         run: |
