@@ -1,0 +1,32 @@
+{
+  "name": "izakhono-visual-engine",
+  "version": "1.0.0-architecture",
+  "status": "architecture-ready",
+  "purpose": "Shared liquid-glass and 3D presentation capability for IZAKHONO applications",
+  "pipeline": "CODE -> BUILDER -> VISUAL ENGINE -> PROVISIONER -> IZAKHONO CLOUD/NODES -> DNS/EDGE/TLS -> FORTRESS -> runtime",
+  "adapters": {
+    "reactThreeFiber": { "role": "3d", "replaceable": true },
+    "shaderGradient": { "role": "shader-gradient", "replaceable": true },
+    "liquidGlass": { "role": "glass-ui", "replaceable": true },
+    "liquidLogo": { "role": "brand-motion", "replaceable": true }
+  },
+  "profiles": {
+    "cinematic-glass": {
+      "theme": "premium-dark",
+      "webgl": "progressive",
+      "motion": "adaptive",
+      "logo": "liquid",
+      "fallback": "semantic-static"
+    }
+  },
+  "principles": [
+    "owned-first",
+    "externally-reversible",
+    "progressive-enhancement",
+    "performance-budgeted",
+    "accessible",
+    "secure",
+    "brand-token-driven",
+    "evidence-gated"
+  ]
+}

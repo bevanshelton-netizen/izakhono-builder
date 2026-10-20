@@ -4,7 +4,7 @@ Visual, free-first application factory and owned-first infrastructure control pl
 
 ## Architecture
 
-**CODE → BUILDER → PROVISIONER → IZAKHONO CLOUD/NODES → DNS/EDGE/TLS → FORTRESS → runtime**
+**CODE → BUILDER → VISUAL ENGINE → PROVISIONER → IZAKHONO CLOUD/NODES → DNS/EDGE/TLS → FORTRESS → runtime**
 
 IZAKHONO owns the source-of-truth state, validated source snapshots, provisioning workflow and preferred production runtime. External providers are replaceable capacity adapters, not foundations.
 
@@ -17,9 +17,16 @@ IZAKHONO owns the source-of-truth state, validated source snapshots, provisionin
 - PWA and multi-channel release manifests
 - typed provisioning: customer → domain → DNS → site → SSL → mail → billing → acceptance
 - owned-first hosting through **IZAKHONO HOST**
+- reusable **IZAKHONO Visual Engine** for liquid-glass, 3D, shader-gradient and liquid-brand experiences
 - customer/domain/site/invoice/job/audit control plane
 - native containerized runtime with Caddy, CoreDNS, PostgreSQL, MinIO and Valkey baseline
 - FORTRESS security and owner-gated operations
+
+## IZAKHONO Visual Engine
+
+The Visual Engine is a first-class reusable presentation capability rather than a one-off website effect. It provides replaceable adapters for React Three Fiber, shader-gradient rendering, liquid-glass surfaces and liquid-logo motion, with progressive fallbacks for constrained devices and reduced-motion users.
+
+The first standard profile is `cinematic-glass`. See `design-system/IZAKHONO-VISUAL-ENGINE.md` and `design-system/izakhono-visual-engine.json`.
 
 ## IZAKHONO HOST
 
