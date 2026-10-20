@@ -1,0 +1,16 @@
+{
+  "customer_id": "cus_xqwaxqwamile_001",
+  "status": "PENDING",
+  "domains": [
+    "xqwaxqwamile.com",
+    "xqwaxqwamile.co.za"
+  ],
+  "mailboxes": [
+    {"local": "info", "quota_mb": 2048},
+    {"local": "calvin", "quota_mb": 2048},
+    {"local": "projects", "quota_mb": 2048},
+    {"local": "diamonds", "quota_mb": 2048},
+    {"local": "tenders", "quota_mb": 2048}
+  ],
+  "secret_policy": "Passwords generated at runtime; never commit credentials."
+}
