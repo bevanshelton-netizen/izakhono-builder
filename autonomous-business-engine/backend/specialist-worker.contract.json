@@ -1,0 +1,12 @@
+{
+  "name": "izakhono-specialist-worker",
+  "version": "1.0.0",
+  "execution_mode_default": "dry_run",
+  "agents": ["Research", "Product", "Revenue", "Operations"],
+  "task_states": ["queued", "running", "completed", "blocked", "failed"],
+  "required_evidence": true,
+  "idempotency_required": true,
+  "external_actions": "runtime-approved-only",
+  "stage_advance": "evidence-gated",
+  "irreversible_actions": "disabled-by-default"
+}
