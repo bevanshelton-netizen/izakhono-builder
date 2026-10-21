@@ -1,0 +1,9 @@
+{
+  "name": "@izakhono/pay-sdk",
+  "version": "0.1.0",
+  "description": "Provider-independent SDK contract for IZAKHONO PAY merchant integrations.",
+  "type": "module",
+  "exports": "./index.mjs",
+  "engines": { "node": ">=18" },
+  "license": "UNLICENSED"
+}
