@@ -1,15 +1,16 @@
 {
   "name": "izakhono-visual-engine",
-  "version": "1.0.0",
+  "version": "1.1.0-implementation",
   "status": "implementation-ready",
   "purpose": "Shared liquid-glass and 3D presentation capability for IZAKHONO applications",
   "pipeline": "CODE -> BUILDER -> VISUAL ENGINE -> PROVISIONER -> IZAKHONO CLOUD/NODES -> DNS/EDGE/TLS -> FORTRESS -> runtime",
   "package": "packages/izakhono-visual-engine",
+  "recipe": "recipes/visual/cinematic-glass.yaml",
   "adapters": {
-    "reactThreeFiber": { "role": "3d", "replaceable": true, "optional": true },
-    "shaderGradient": { "role": "shader-gradient", "replaceable": true, "optional": true },
-    "liquidGlass": { "role": "glass-ui", "replaceable": true, "optional": false },
-    "liquidLogo": { "role": "brand-motion", "replaceable": true, "optional": false }
+    "reactThreeFiber": { "role": "3d", "replaceable": true, "optional": true, "loading": "progressive" },
+    "shaderGradient": { "role": "shader-gradient", "replaceable": true, "optional": true, "loading": "progressive" },
+    "liquidGlass": { "role": "glass-ui", "replaceable": true, "optional": false, "loading": "css-first" },
+    "liquidLogo": { "role": "brand-motion", "replaceable": true, "optional": false, "loading": "adaptive" }
   },
   "profiles": {
     "cinematic-glass": {
@@ -17,6 +18,13 @@
       "webgl": "progressive",
       "motion": "adaptive",
       "logo": "liquid",
+      "fallback": "semantic-static"
+    },
+    "semantic-static": {
+      "theme": "semantic",
+      "webgl": "off",
+      "motion": "reduced",
+      "logo": "static",
       "fallback": "semantic-static"
     }
   },
