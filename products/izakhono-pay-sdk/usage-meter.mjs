@@ -1,3 +1,5 @@
+import crypto from "node:crypto";
+
 const ALLOWED_EVENTS = new Set([
   "payment_intent.created",
   "payment_intent.succeeded",
