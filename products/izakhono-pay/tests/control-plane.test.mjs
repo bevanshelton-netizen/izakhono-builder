@@ -43,7 +43,7 @@ test('ledger records payment and refunds deterministically', () => {
   const ledger = new Ledger();
   ledger.append({ payment_id: 'pi_1', merchant: 'demo', type: 'credit', amount_minor: 10000, currency: 'ZAR' });
   ledger.append({ payment_id: 'pi_1', merchant: 'demo', type: 'refund_debit', amount_minor: 2500, currency: 'ZAR' });
-  assert.equal(ledger.balance('pi_1'), 12500);
+  assert.equal(ledger.balance('pi_1'), 7500);
 });
 
 test('reconciliation holds mismatched provider records', () => {
