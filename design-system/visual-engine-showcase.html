@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>IZAKHONO Visual Engine</title>
+<style>
+:root{--bg:#050609;--panel:rgba(255,255,255,.075);--line:rgba(255,255,255,.16);--text:#f6f4ee;--muted:#a8a6ae;--gold:#d7ad54;--cyan:#79d9e8}*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 20% 10%,#17242d 0,#090b10 32%,var(--bg) 70%);color:var(--text);font:15px/1.5 Inter,system-ui,sans-serif;min-height:100vh}body:before,body:after{content:"";position:fixed;width:45vw;height:45vw;border-radius:50%;filter:blur(80px);opacity:.2;pointer-events:none}body:before{background:#397b8a;left:-20vw;top:15vh}body:after{background:#a77b25;right:-20vw;bottom:-10vh}.shell{max-width:1180px;margin:auto;padding:32px 22px 60px;position:relative}.nav{display:flex;justify-content:space-between;align-items:center;border:1px solid var(--line);background:rgba(0,0,0,.25);backdrop-filter:blur(22px);border-radius:22px;padding:13px 18px}.brand{font-weight:800;letter-spacing:.18em}.badge{font-size:11px;color:var(--gold);border:1px solid #7e642d;border-radius:999px;padding:5px 9px}.hero{padding:72px 8px 45px;max-width:850px}.eyebrow{color:var(--cyan);letter-spacing:.16em;text-transform:uppercase;font-size:11px}.hero h1{font-size:clamp(48px,8vw,96px);line-height:.94;margin:14px 0;background:linear-gradient(110deg,#fff,#b8dce1 45%,#d7ad54);-webkit-background-clip:text;color:transparent}.hero p{color:var(--muted);font-size:18px;max-width:680px}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}.card{min-height:190px;border:1px solid var(--line);border-radius:26px;background:linear-gradient(145deg,rgba(255,255,255,.11),rgba(255,255,255,.035));backdrop-filter:blur(26px) saturate(145%);padding:22px;box-shadow:inset 0 1px rgba(255,255,255,.12),0 20px 70px rgba(0,0,0,.28);transition:.35s transform,.35s border-color}.card:hover{transform:translateY(-5px);border-color:rgba(215,173,84,.55)}.orb{height:75px;width:75px;border-radius:50%;background:radial-gradient(circle at 30% 25%,#fff,#7bd9e8 20%,#314d63 48%,#0b0c11 72%);box-shadow:0 0 45px rgba(121,217,232,.28);margin-bottom:18px}.card h2{font-size:18px;margin:0 0 7px}.card p{margin:0;color:var(--muted)}.wide{grid-column:span 2}.stage{margin-top:16px;min-height:300px;border:1px solid var(--line);border-radius:30px;overflow:hidden;position:relative;background:linear-gradient(135deg,#08090d,#111c24 48%,#08090c)}.stage .ring{position:absolute;width:300px;height:300px;border:2px solid rgba(255,255,255,.55);border-radius:50%;left:50%;top:50%;transform:translate(-50%,-50%);box-shadow:0 0 60px rgba(121,217,232,.14)}.stage .center{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);text-align:center}.center strong{display:block;font-size:42px;letter-spacing:.08em}.center span{color:var(--gold);font-size:11px;letter-spacing:.22em;text-transform:uppercase}.footer{color:#74727a;text-align:center;margin-top:35px;font-size:12px}@media(max-width:760px){.grid{grid-template-columns:1fr}.wide{grid-column:span 1}.hero{padding-top:50px}.stage .ring{width:230px;height:230px}.center strong{font-size:30px}}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}.card:hover{transform:none}}
+</style>
+</head>
+<body>
+<main class="shell">
+<header class="nav"><div class="brand">IZAKHONO</div><div class="badge">VISUAL ENGINE v1.1</div></header>
+<section class="hero"><div class="eyebrow">Owned-first presentation infrastructure</div><h1>Interfaces that feel alive.</h1><p>The IZAKHONO Visual Engine turns liquid glass, gradients, motion and progressive 3D into reusable infrastructure for every product built through IZAKHONO Builder.</p></section>
+<section class="grid">
+<article class="card"><div class="orb"></div><h2>Liquid Glass</h2><p>Reusable surfaces, panels and controls with adaptive blur, depth and translucency.</p></article>
+<article class="card"><div class="orb"></div><h2>Shader Gradient</h2><p>Atmospheric backgrounds with a semantic static fallback when motion or GPU power is constrained.</p></article>
+<article class="card"><div class="orb"></div><h2>3D Ready</h2><p>Progressive Three.js / React Three Fiber integration without making WebGL a runtime requirement.</p></article>
+<article class="card wide"><div class="stage"><div class="ring"></div><div class="center"><strong>IZAKHONO</strong><span>Cinematic Glass</span></div></div></article>
+<article class="card"><h2>Liquid Logo</h2><p>Brand motion remains token-driven and replaceable, so the identity stays owned by IZAKHONO.</p></article>
+<article class="card"><h2>Accessibility</h2><p>Reduced-motion and low-capability fallbacks are first-class parts of the runtime contract.</p></article>
+</section>
+<div class="footer">BUILDER → VISUAL ENGINE → PROVISIONER → IZAKHONO RUNTIME</div>
+</main>
+</body>
+</html>
