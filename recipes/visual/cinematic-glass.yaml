@@ -1,0 +1,26 @@
+id: izakhono.visual.cinematic-glass
+version: 1
+capability: visual-engine
+package: '@izakhono/visual-engine'
+profile: cinematic-glass
+runtime:
+  webgl: progressive
+  motion: adaptive
+  fallback: semantic-static
+components:
+  - GlassSurface
+  - GlassPanel
+  - GlassButton
+  - LiquidBackground
+  - ShaderGradientScene
+  - ThreeScene
+  - LiquidLogo
+  - DepthCard
+  - MotionReveal
+  - ReducedMotionBoundary
+rules:
+  - effects-must-not-block-primary-content
+  - reduced-motion-must-disable-animation
+  - webgl-must-be-lazy-or-route-scoped
+  - semantic-static-fallback-is-required
+  - visual-layer-must-not-own-business-logic
