@@ -1,0 +1,19 @@
+{
+  "name": "@izakhono/visual-engine",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Reusable IZAKHONO liquid-glass, motion, gradient and 3D presentation primitives.",
+  "type": "module",
+  "peerDependencies": {
+    "react": ">=18"
+  },
+  "peerDependenciesMeta": {
+    "@react-three/fiber": { "optional": true },
+    "three": { "optional": true }
+  },
+  "exports": {
+    ".": "./src/index.ts",
+    "./styles.css": "./src/styles.css",
+    "./tokens": "./src/tokens.ts"
+  }
+}
