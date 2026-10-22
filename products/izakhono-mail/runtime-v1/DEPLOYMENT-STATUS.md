@@ -2,13 +2,15 @@
 
 BUILD: READY
 REPOSITORY: PUSHED
-RUNTIME: NOT STARTED IN CHAT BUILD ENVIRONMENT
+RUNTIME: NOT PROVISIONED
 PUBLIC DNS: NOT VERIFIED
 SEND/RECEIVE: NOT VERIFIED
 
-The owner-hosted runtime package is committed under `products/izakhono-mail/runtime-v1/` on branch `feat/izakhono-mail-v1`.
+The provider-neutral runtime is committed under `products/izakhono-mail/runtime-v1/` on `main`.
 
-Production certification requires the real NODE01/IZAKHONO host to start the containers and prove:
+NODE01 is no longer a prerequisite. The first public runtime can be provisioned on a suitable Linux/Docker provider and must satisfy the provider acceptance gate before production use.
+
+Production certification requires the real public host to prove:
 - SMTP submission and outbound delivery
 - inbound SMTP delivery
 - IMAP login
@@ -18,5 +20,6 @@ Production certification requires the real NODE01/IZAKHONO host to start the con
 - DMARC alignment/PASS
 - PTR/reverse DNS
 - webmail reachability
+- backup creation and restore
 
 No production mailbox status is claimed until those gates pass.
