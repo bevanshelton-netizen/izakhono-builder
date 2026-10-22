@@ -19,9 +19,11 @@ Do not provision the production mailbox until the provider's current policy and 
 
 ## Current research position — 22 October 2026
 
-- DigitalOcean: **REJECT** for this architecture. Its official documentation states SMTP ports 25, 465 and 587 are blocked on Droplets. citeturn0search1
-- Hetzner Cloud: **CONDITIONAL**. Ports 25 and 465 are blocked by default; Hetzner says they may be unblocked after one month and a paid first invoice through a limit request. citeturn0search0
-- OVHcloud: **PREFERRED CANDIDATE — VPS/dedicated only, non-Local-Zone**. Official documentation states port 25 is not blocked by default on dedicated servers or VPS, while Public Cloud and Local Zone products have restrictions. Verify the exact ordered product/location before provisioning. citeturn0search5turn0search7
+- **Contabo: PREFERRED FIRST CANDIDATE.** Current Contabo documentation says servers have unrestricted port access by default, each VPS receives a static public IPv4, and PTR/rDNS is managed through the Control Panel. The exact allocated server must still pass the external SMTP gate. citeturn0search0turn0search2turn0search3
+- **DigitalOcean: REJECT for direct self-hosted SMTP.** Current DigitalOcean documentation states SMTP ports 25, 465 and 587 are blocked on Droplets.
+- **Hetzner Cloud: CONDITIONAL.** Ports 25 and 465 are blocked by default and require an eligibility/unblock process; it is therefore not the first-runtime choice.
+
+Provider selection remains reversible. The runtime must work independently of any provider-specific application stack.
 
 ## Final acceptance test
 
