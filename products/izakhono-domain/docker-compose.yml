@@ -1,0 +1,21 @@
+services:
+  resolver:
+    image: coredns/coredns:1.12.4
+    container_name: izakhono-resolver
+    restart: unless-stopped
+    command: ["-conf", "/etc/coredns/Corefile"]
+    volumes:
+      - ./coredns/Corefile:/etc/coredns/Corefile:ro
+      - ./coredns/izakhono.db:/etc/coredns/izakhono.db:ro
+    ports:
+      - "127.0.0.1:5353:53/udp"
+      - "127.0.0.1:5353:53/tcp"
+    healthcheck:
+      test: ["CMD", "/coredns", "-conf", "/etc/coredns/Corefile", "-dns.port", "1053"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+networks:
+  default:
+    name: izakhono-domain
