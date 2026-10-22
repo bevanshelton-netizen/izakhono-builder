@@ -23,7 +23,7 @@ services:
     environment:
       MAIL_HOST: 0.0.0.0
       MAIL_PORT: 9899
-      IZAKHONO_MAIL_DB: /app/data/mail.sqlite
+      MAIL_DATABASE_PATH: /app/data/mail.sqlite
       MAIL_MIGRATION: /app/migrations/0001_mail.sql
     volumes:
       - mail-data:/app/data
@@ -67,6 +67,22 @@ services:
         ipv4_address: 172.30.0.22
     ports:
       - "127.0.0.1:8787:8787"
+
+  auth:
+    build: .
+    restart: unless-stopped
+    command: ["node", "src/auth-api.mjs"]
+    environment:
+      MAIL_DATABASE_PATH: /app/data/mail.sqlite
+      MAIL_AUTH_LISTEN_HOST: 0.0.0.0
+      MAIL_AUTH_LISTEN_PORT: 8789
+    volumes:
+      - mail-data:/app/data
+    networks:
+      izakhono:
+        ipv4_address: 172.30.0.24
+    ports:
+      - "127.0.0.1:8789:8789"
 
   webmail:
     build: .
