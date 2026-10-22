@@ -1,0 +1,12 @@
+izakhono:53 {
+  file /etc/coredns/izakhono.db
+  errors
+  log
+  health :8080
+}
+
+.:53 {
+  forward . 1.1.1.1 8.8.8.8
+  cache 30
+  errors
+}
