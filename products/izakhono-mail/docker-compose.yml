@@ -1,0 +1,94 @@
+services:
+  dns:
+    image: coredns/coredns:1.12.0
+    restart: unless-stopped
+    command: ["-conf", "/etc/coredns/Corefile"]
+    volumes:
+      - ./coredns/Corefile:/etc/coredns/Corefile:ro
+      - ./coredns/izakhono.db:/etc/coredns/izakhono.db:ro
+    networks:
+      izakhono:
+        ipv4_address: 172.30.0.10
+    ports:
+      - "127.0.0.1:5353:53/udp"
+      - "127.0.0.1:5353:53/tcp"
+
+  mail:
+    build: .
+    restart: unless-stopped
+    command: ["node", "src/server.mjs"]
+    env_file:
+      - ./owner.env
+    environment:
+      MAIL_HOST: 0.0.0.0
+      MAIL_PORT: 9899
+      IZAKHONO_MAIL_DB: /app/data/mail.sqlite
+      MAIL_MIGRATION: /app/migrations/0001_mail.sql
+    volumes:
+      - mail-data:/app/data
+    networks:
+      izakhono:
+        ipv4_address: 172.30.0.20
+    ports:
+      - "127.0.0.1:9899:9899"
+
+  inbound:
+    build: .
+    restart: unless-stopped
+    command: ["node", "src/inbound-smtp.mjs"]
+    environment:
+      IZAKHONO_PRIVATE_DOMAIN: izakhono
+      IZAKHONO_MAIL_DB: /app/data/mail.sqlite
+      IZAKHONO_MAIL_IDENTITY: bevan@izakhono
+      IZAKHONO_SMTP_LISTEN_HOST: 0.0.0.0
+      IZAKHONO_SMTP_LISTEN_PORT: 2525
+    volumes:
+      - mail-data:/app/data
+    networks:
+      izakhono:
+        ipv4_address: 172.30.0.21
+    ports:
+      - "127.0.0.1:2525:2525"
+
+  mailbox-api:
+    build: .
+    restart: unless-stopped
+    command: ["node", "src/mailbox-api.mjs"]
+    environment:
+      IZAKHONO_MAIL_DB: /app/data/mail.sqlite
+      MAIL_API_LISTEN_HOST: 0.0.0.0
+      MAIL_API_LISTEN_PORT: 8787
+    volumes:
+      - mail-data:/app/data
+    networks:
+      izakhono:
+        ipv4_address: 172.30.0.22
+    ports:
+      - "127.0.0.1:8787:8787"
+
+  webmail:
+    build: .
+    restart: unless-stopped
+    command: ["node", "src/webmail.mjs"]
+    environment:
+      IZAKHONO_MAIL_DB: /app/data/mail.sqlite
+      IZAKHONO_WEBMAIL_HOST: 0.0.0.0
+      IZAKHONO_WEBMAIL_PORT: 8088
+      IZAKHONO_MAIL_IDENTITY: bevan@izakhono
+    volumes:
+      - mail-data:/app/data
+    networks:
+      izakhono:
+        ipv4_address: 172.30.0.23
+    ports:
+      - "127.0.0.1:8088:8088"
+
+networks:
+  izakhono:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.30.0.0/24
+
+volumes:
+  mail-data:
