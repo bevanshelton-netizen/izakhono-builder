@@ -1,27 +1,11 @@
 {
   "$schema": "../../node_modules/wrangler/config-schema.json",
-  "name": "izakhono-pay",
-  "main": "src/index.js",
+  "name": "izakhono-pay-v1",
+  "main": "src/index.ts",
   "compatibility_date": "2026-08-01",
-  "compatibility_flags": ["nodejs_compat"],
-  "assets": {
-    "directory": "./public",
-    "binding": "ASSETS"
-  },
+  "workers_dev": true,
   "d1_databases": [
-    {
-      "binding": "DB",
-      "database_name": "izakhono-pay",
-      "database_id": "00000000-0000-0000-0000-000000000000",
-      "migrations_dir": "migrations"
-    }
+    {"binding":"DB","database_name":"izakhono-builder","database_id":"a59d44af-22cc-4967-8b00-03c817d7a7dd","migrations_dir":"migrations"}
   ],
-  "vars": {
-    "APP_ENV": "alpha",
-    "PAYMENT_MODE": "mock",
-    "PAYSTACK_ENABLED": "true",
-    "PAYFAST_ENABLED": "true",
-    "PAYFAST_SANDBOX": "true",
-    "PAYFAST_REQUIRE_IP": "true"
-  }
+  "vars": {"APP_ENV":"sandbox"}
 }

@@ -1,0 +1,14 @@
+{
+  "name": "izakhono-pay-v1",
+  "version": "1.0.0",
+  "type": "business-money-operating-system",
+  "runtime": "cloudflare-worker",
+  "routes": ["GET /health","POST /v1/merchants","GET /v1/merchants/:id","POST /v1/payment-intents","GET /v1/payment-intents/:id","POST /v1/payment-links","POST /v1/webhooks/:provider","POST /v1/refunds","POST /v1/reconciliation/settlements"],
+  "modules": ["merchant","payments","links","webhooks","ledger","refunds","reconciliation"],
+  "states": ["initiated","pending","authorised","failed","reversed","refunded","settled","disputed"],
+  "principles": ["owned-first","interoperable","idempotent","auditable","provider-replaceable"],
+  "regulatory_boundary": {
+    "izakhono_owns": ["software","merchant_experience","orchestration","control_plane","ledger_metadata","analytics"],
+    "regulated_partner_handles_until_authorised": ["funds_custody","clearing","settlement","regulated_acquiring","regulated_issuing","e_money"]
+  }
+}
