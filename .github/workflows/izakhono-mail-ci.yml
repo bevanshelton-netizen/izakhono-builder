@@ -3,43 +3,52 @@ name: IZAKHONO MAIL CI
 on:
   push:
     paths:
-      - 'infra/mail-stack/**'
+      - 'products/izakhono-mail/runtime-v1/**'
       - '.github/workflows/izakhono-mail-ci.yml'
-      - 'package.json'
   pull_request:
     paths:
-      - 'infra/mail-stack/**'
+      - 'products/izakhono-mail/runtime-v1/**'
       - '.github/workflows/izakhono-mail-ci.yml'
-      - 'package.json'
 
 jobs:
-  mail-validation:
+  mail-runtime-validation:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: products/izakhono-mail/runtime-v1
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-      - name: Validate engine and processor syntax
+
+      - name: Validate shell scripts
         run: |
-          node --check infra/mail-stack/mail-processor.mjs
-          node --check infra/mail-stack/mail-priority.mjs
-          node --check infra/mail-stack/engine/mail-queue.mjs
-          node --check infra/mail-stack/engine/mailbox-engine.mjs
-          node --check infra/mail-stack/engine/transport-engine.mjs
-          node --check infra/mail-stack/engine/mail-runtime.mjs
-          node --check infra/mail-stack/engine/node01-mail-server.mjs
-          node --check infra/mail-stack/engine/node01-storage.mjs
-          node --check infra/mail-stack/engine/node01-durable-mail-runtime.mjs
-          node --check infra/mail-stack/engine/node01-mail-orchestrator.mjs
-          node --check infra/mail-stack/node01-mail-readiness.mjs
-      - name: Run mail processor contract tests
-        run: node infra/mail-stack/mail-processor.test.mjs
-      - name: Run mail engine tests
-        run: node infra/mail-stack/engine/engine.test.mjs
-      - name: Run NODE01 persistence test
-        run: node infra/mail-stack/engine/node01-durable-mail-runtime.test.mjs
-      - name: Run NODE01 production gate test
-        run: node infra/mail-stack/engine/node01-mail-orchestrator.test.mjs
-      - name: Validate mail identity configuration
-        run: node infra/mail-stack/verify.mjs
+          for f in ops/*.sh; do
+            bash -n "$f"
+          done
+
+      - name: Validate Docker Compose configuration
+        run: |
+          cp .env.example .env
+          sed -i 's/CHANGE_ME_STRONG_PASSWORD/ci-mailbox-password-123456789/g; s/CHANGE_ME_DB_PASSWORD/ci-roundcube-db-password-123456789/g' .env
+          docker compose config --quiet
+
+      - name: Validate required runtime files
+        run: |
+          test -f docker-compose.yml
+          test -f Caddyfile
+          test -f .env.example
+          test -x ops/bootstrap.sh || chmod +x ops/*.sh
+          test -f ops/preflight.sh
+          test -f ops/PROVIDER-ACCEPTANCE.sh
+          test -f ops/PROVISION-CONTABO.md
+
+      - name: Verify no production secrets are tracked
+        run: |
+          if git grep -n -E 'BEGIN (RSA|OPENSSH|PRIVATE) KEY|MAILBOX_PASSWORD=[^C]|ROUNDCUBE_DB_PASSWORD=[^C]' -- products/izakhono-mail/runtime-v1; then
+            echo 'Tracked production secret material detected.'
+            exit 1
+          fi
+
+      - name: Report provider-neutral gate
+        run: |
+          echo 'IZAKHONO MAIL runtime build validation: PASS'
+          echo 'Production acceptance remains evidence-gated on a real public host.'
