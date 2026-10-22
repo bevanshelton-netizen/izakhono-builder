@@ -1,0 +1,57 @@
+name: IZAKHONO MAIL Runtime CI
+
+on:
+  push:
+    paths:
+      - 'products/izakhono-mail/runtime-v1/**'
+      - '.github/workflows/izakhono-mail-runtime-ci.yml'
+  pull_request:
+    paths:
+      - 'products/izakhono-mail/runtime-v1/**'
+      - '.github/workflows/izakhono-mail-runtime-ci.yml'
+
+jobs:
+  runtime-validation:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install validation tools
+        run: sudo apt-get update && sudo apt-get install -y shellcheck dnsutils netcat-openbsd
+
+      - name: Prepare CI environment
+        working-directory: products/izakhono-mail/runtime-v1
+        run: |
+          cp .env.example .env
+          sed -i 's/CHANGE_ME_STRONG_PASSWORD/ci-only-mailbox-password-123456/' .env
+          sed -i 's/CHANGE_ME_DB_PASSWORD/ci-only-db-password-123456/' .env
+          chmod +x ops/*.sh
+
+      - name: Validate Compose configuration
+        working-directory: products/izakhono-mail/runtime-v1
+        run: docker compose config
+
+      - name: Shellcheck runtime scripts
+        working-directory: products/izakhono-mail/runtime-v1
+        run: shellcheck ops/*.sh
+
+      - name: Validate required runtime files
+        working-directory: products/izakhono-mail/runtime-v1
+        run: |
+          test -f docker-compose.yml
+          test -f Caddyfile
+          test -f .env.example
+          test -f ops/bootstrap.sh
+          test -f ops/preflight.sh
+          test -f ops/PROVIDER-ACCEPTANCE.sh
+          test -f ops/backup.sh
+          test -f ops/renew-certificate.sh
+          test -f ops/health.sh
+
+      - name: Verify production secrets are not committed
+        run: |
+          if git ls-files | grep -E '(^|/)\.env$|(^|/).*\.pem$|(^|/).*\.key$'; then
+            echo 'BLOCKED: production secret/key material is tracked in Git.'
+            exit 1
+          fi
