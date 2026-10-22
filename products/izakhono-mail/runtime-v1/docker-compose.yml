@@ -1,0 +1,90 @@
+services:
+  mailserver:
+    image: ghcr.io/docker-mailserver/docker-mailserver:16.0.1
+    container_name: izakhono-mailserver
+    hostname: ${MAIL_HOSTNAME}
+    env_file:
+      - .env
+    environment:
+      - TZ=${TZ}
+      - OVERRIDE_HOSTNAME=${MAIL_HOSTNAME}
+      - ENABLE_RSPAMD=1
+      - ENABLE_CLAMAV=0
+      - ENABLE_FAIL2BAN=1
+      - ENABLE_POSTGREY=1
+      - ENABLE_OPENDKIM=0
+      - ENABLE_OPENDMARC=0
+      - ENABLE_POLICYD_SPF=0
+      - SSL_TYPE=letsencrypt
+      - ONE_DIR=1
+      - ACCOUNT_PROVISIONER=FILE
+      - PERMIT_DOCKER=none
+      - POSTMASTER_ADDRESS=postmaster@${MAIL_DOMAIN}
+    ports:
+      - "25:25"
+      - "465:465"
+      - "587:587"
+      - "993:993"
+    volumes:
+      - ./dms-config/:/tmp/docker-mailserver/
+      - ./mail-data/:/var/mail/
+      - ./mail-state/:/var/mail-state/
+      - ./mail-logs/:/var/log/mail/
+      - ./mail-config/:/tmp/docker-mailserver-config/
+      - /etc/localtime:/etc/localtime:ro
+    restart: unless-stopped
+    stop_grace_period: 1m
+    healthcheck:
+      test: ["CMD-SHELL", "ss -lnt | grep -q ':25' && ss -lnt | grep -q ':993'"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  roundcube-db:
+    image: mariadb:11.8
+    container_name: izakhono-roundcube-db
+    environment:
+      MARIADB_ROOT_PASSWORD: ${ROUNDCUBE_DB_PASSWORD}
+      MARIADB_DATABASE: roundcube
+      MARIADB_USER: roundcube
+      MARIADB_PASSWORD: ${ROUNDCUBE_DB_PASSWORD}
+    volumes:
+      - ./roundcube-db:/var/lib/mysql
+    restart: unless-stopped
+
+  roundcube:
+    image: roundcube/roundcubemail:1.6-apache
+    container_name: izakhono-roundcube
+    depends_on:
+      roundcube-db:
+        condition: service_started
+      mailserver:
+        condition: service_healthy
+    environment:
+      ROUNDCUBEMAIL_DEFAULT_HOST: ssl://${MAIL_HOSTNAME}
+      ROUNDCUBEMAIL_DEFAULT_PORT: 993
+      ROUNDCUBEMAIL_SMTP_SERVER: tls://${MAIL_HOSTNAME}
+      ROUNDCUBEMAIL_SMTP_PORT: 587
+      ROUNDCUBEMAIL_DB_TYPE: mysql
+      ROUNDCUBEMAIL_DB_HOST: roundcube-db
+      ROUNDCUBEMAIL_DB_NAME: roundcube
+      ROUNDCUBEMAIL_DB_USER: roundcube
+      ROUNDCUBEMAIL_DB_PASSWORD: ${ROUNDCUBE_DB_PASSWORD}
+      ROUNDCUBEMAIL_SKIN: elastic
+    ports:
+      - "127.0.0.1:8088:80"
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2.10-alpine
+    container_name: izakhono-mail-web
+    depends_on:
+      - roundcube
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./caddy-data:/data
+      - ./caddy-config:/config
+    restart: unless-stopped
