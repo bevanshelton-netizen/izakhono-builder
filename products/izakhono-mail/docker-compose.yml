@@ -37,11 +37,11 @@ services:
     restart: unless-stopped
     command: ["node", "src/inbound-smtp.mjs"]
     environment:
-      IZAKHONO_PRIVATE_DOMAIN: izakhono
-      IZAKHONO_MAIL_DB: /app/data/mail.sqlite
-      IZAKHONO_MAIL_IDENTITY: bevan@izakhono
-      IZAKHONO_SMTP_LISTEN_HOST: 0.0.0.0
-      IZAKHONO_SMTP_LISTEN_PORT: 2525
+      MAIL_PRIVATE_DOMAIN: izakhono
+      MAIL_DATABASE_PATH: /app/data/mail.sqlite
+      MAIL_LOCAL_RECIPIENTS: bevan@izakhono
+      MAIL_SMTP_LISTEN_HOST: 0.0.0.0
+      MAIL_SMTP_LISTEN_PORT: 2525
     volumes:
       - mail-data:/app/data
     networks:
@@ -55,7 +55,8 @@ services:
     restart: unless-stopped
     command: ["node", "src/mailbox-api.mjs"]
     environment:
-      IZAKHONO_MAIL_DB: /app/data/mail.sqlite
+      MAIL_DATABASE_PATH: /app/data/mail.sqlite
+      MAIL_PRIVATE_DOMAIN: izakhono
       MAIL_API_LISTEN_HOST: 0.0.0.0
       MAIL_API_LISTEN_PORT: 8787
     volumes:
@@ -71,10 +72,11 @@ services:
     restart: unless-stopped
     command: ["node", "src/webmail.mjs"]
     environment:
-      IZAKHONO_MAIL_DB: /app/data/mail.sqlite
-      IZAKHONO_WEBMAIL_HOST: 0.0.0.0
-      IZAKHONO_WEBMAIL_PORT: 8088
-      IZAKHONO_MAIL_IDENTITY: bevan@izakhono
+      MAIL_DATABASE_PATH: /app/data/mail.sqlite
+      MAIL_PRIVATE_DOMAIN: izakhono
+      MAIL_WEBMAIL_LISTEN_HOST: 0.0.0.0
+      MAIL_WEBMAIL_LISTEN_PORT: 8088
+      MAIL_WEBMAIL_IDENTITY: bevan@izakhono
     volumes:
       - mail-data:/app/data
     networks:
