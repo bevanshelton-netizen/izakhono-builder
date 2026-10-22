@@ -10,7 +10,11 @@ export type PaymentRouteInput = {
 export type ProviderRoute = {
   provider: string;
   priority: number;
+  country?: string;
+  currency?: string;
+  paymentMethod?: string;
   requiresKybStatus: MerchantOnboardingStatus;
+  enabled?: boolean;
 };
 
 const statusRank: Record<MerchantOnboardingStatus, number> = {
@@ -29,11 +33,17 @@ export function isMerchantEligible(merchantStatus: MerchantOnboardingStatus, req
 export function selectProvider(routes: ProviderRoute[], input: PaymentRouteInput): ProviderRoute | null {
   if (input.merchantStatus === 'rejected' || input.merchantStatus === 'suspended') return null;
 
+  const country = input.country.toUpperCase();
+  const currency = input.currency.toUpperCase();
   const method = input.paymentMethod || 'any';
+
   return [...routes]
+    .filter((route) => route.enabled !== false)
+    .filter((route) => !route.country || route.country.toUpperCase() === country)
+    .filter((route) => !route.currency || route.currency.toUpperCase() === currency)
+    .filter((route) => !route.paymentMethod || route.paymentMethod === 'any' || route.paymentMethod === method)
     .filter((route) => isMerchantEligible(input.merchantStatus, route.requiresKybStatus))
-    .sort((a, b) => a.priority - b.priority)
-    .find((route) => route.provider && (method === 'any' || method === route.provider || route.provider)) || null;
+    .sort((a, b) => a.priority - b.priority)[0] || null;
 }
 
 export function assertPaymentAllowed(status: MerchantOnboardingStatus) {
