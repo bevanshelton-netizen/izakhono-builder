@@ -1,0 +1,17 @@
+$ORIGIN izakhono.
+$TTL 60
+@ IN SOA ns1.izakhono. admin.izakhono. (
+  2026102201
+  60
+  60
+  604800
+  60
+)
+@ IN NS ns1.izakhono.
+ns1 IN A 172.30.0.10
+mail IN A 172.30.0.20
+webmail IN A 172.30.0.20
+smtp IN A 172.30.0.20
+imap IN A 172.30.0.20
+identity IN A 172.30.0.20
+cloud IN A 172.30.0.20
