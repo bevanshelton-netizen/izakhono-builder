@@ -20,6 +20,9 @@ services:
       - ACCOUNT_PROVISIONER=FILE
       - PERMIT_DOCKER=none
       - POSTMASTER_ADDRESS=postmaster@${MAIL_DOMAIN}
+    cap_add:
+      - NET_ADMIN
+      - SYS_PTRACE
     ports:
       - "25:25"
       - "465:465"
@@ -31,6 +34,7 @@ services:
       - ./mail-state/:/var/mail-state/
       - ./mail-logs/:/var/log/mail/
       - ./mail-config/:/tmp/docker-mailserver-config/
+      - ./letsencrypt/:/etc/letsencrypt/
       - /etc/localtime:/etc/localtime:ro
     restart: unless-stopped
     stop_grace_period: 1m
