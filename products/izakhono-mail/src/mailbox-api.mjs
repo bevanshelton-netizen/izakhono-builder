@@ -1,8 +1,13 @@
 import http from 'node:http';
 import { ensureIdentity, listInbox } from './mail-core-sqlite.mjs';
+import { authenticate, bearer } from './auth.mjs';
 
 function json(res, status, body) {
-  res.writeHead(status, { 'content-type': 'application/json; charset=utf-8' });
+  res.writeHead(status, {
+    'content-type': 'application/json; charset=utf-8',
+    'cache-control': 'no-store',
+    'x-content-type-options': 'nosniff'
+  });
   res.end(JSON.stringify(body));
 }
 
@@ -12,7 +17,10 @@ export function startMailboxApi({ host = process.env.MAIL_API_LISTEN_HOST || '12
     if (req.method === 'GET' && url.pathname === '/healthz') return json(res, 200, { ok: true, service: 'izakhono-mailbox-api' });
 
     if (req.method === 'GET' && url.pathname === '/v1/mailbox/inbox') {
-      const address = (url.searchParams.get('address') || 'bevan@izakhono').toLowerCase();
+      const session = authenticate(bearer(req));
+      if (!session) return json(res, 401, { error: 'unauthorized' });
+      const address = (url.searchParams.get('address') || session.address).toLowerCase();
+      if (address !== session.address) return json(res, 403, { error: 'forbidden' });
       try {
         ensureIdentity(address);
         const messages = listInbox(address).map(row => ({
