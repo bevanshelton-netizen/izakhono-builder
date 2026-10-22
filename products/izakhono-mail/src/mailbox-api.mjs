@@ -1,3 +1,4 @@
+import http from 'node:http';
 import { ensureIdentity, listInbox } from './mail-core-sqlite.mjs';
 
 function json(res, status, body) {
@@ -6,7 +7,7 @@ function json(res, status, body) {
 }
 
 export function startMailboxApi({ host = process.env.MAIL_API_LISTEN_HOST || '127.0.0.1', port = Number(process.env.MAIL_API_LISTEN_PORT || 8787) } = {}) {
-  const server = (await import('node:http')).createServer((req, res) => {
+  const server = http.createServer((req, res) => {
     const url = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`);
     if (req.method === 'GET' && url.pathname === '/healthz') return json(res, 200, { ok: true, service: 'izakhono-mailbox-api' });
 
