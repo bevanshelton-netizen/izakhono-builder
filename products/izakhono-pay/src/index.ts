@@ -2,6 +2,7 @@ import { IzakhonoSandboxProvider } from './providers/sandbox';
 import type { PaymentProvider } from './providers/types';
 import { assertPaymentAllowed, selectProvider, type MerchantOnboardingStatus, type ProviderRoute } from './routing';
 import { getMerchantControlCentre } from './merchant-control-centre';
+import { renderMerchantDashboard } from './merchant-dashboard';
 
 export type PaymentStatus = 'initiated'|'pending'|'authorised'|'failed'|'reversed'|'refunded'|'settled'|'disputed';
 export interface Env { DB:D1Database; PAY_API_KEY?:string; PAY_WEBHOOK_SECRET?:string; }
@@ -21,6 +22,8 @@ export default {async fetch(req:Request,env:Env):Promise<Response>{
  if(!env.DB)return json({error:'database_not_configured'},503);
  const publicLink=path.match(/^\/pay\/([^/]+)$/);
  if(req.method==='GET'&&publicLink){const r=await env.DB.prepare('SELECT title,amount,currency,status FROM pay_links WHERE token=?').bind(publicLink[1]).first<any>();if(!r||r.status!=='active')return new Response('Payment link unavailable',{status:404});return new Response(checkout(r.title,r.amount,r.currency,publicLink[1]),{headers:{'content-type':'text/html; charset=utf-8','cache-control':'no-store'}})}
+ const dashboard=path.match(/^\/dashboard\/([^/]+)$/);
+ if(req.method==='GET'&&dashboard){if(!(await auth(req,env)))return json({error:'unauthorized'},401);return new Response(renderMerchantDashboard(dashboard[1]),{headers:{'content-type':'text/html; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff'}})}
  if(path.startsWith('/v1/webhooks/'))return webhook(req,env,path.split('/').pop()||'unknown');
  const publicIntent=path.match(/^\/v1\/public\/payment-links\/([^/]+)\/intent$/);
  if(req.method==='POST'&&publicIntent){const link=await env.DB.prepare('SELECT merchant_id,amount,currency,title,status FROM pay_links WHERE token=?').bind(publicIntent[1]).first<any>();if(!link||link.status!=='active')return json({error:'payment_link_unavailable'},404);return createIntent(env,link.merchant_id,link.amount,link.currency,link.title,req.headers.get('idempotency-key')||`public-${crypto.randomUUID()}`,{link_token:publicIntent[1]})}
