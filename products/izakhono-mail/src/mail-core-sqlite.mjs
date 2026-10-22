@@ -1,7 +1,7 @@
 import crypto from 'node:crypto';
 import { DatabaseSync } from 'node:sqlite';
 
-const databasePath = process.env.MAIL_DATABASE_PATH || './izakhono-mail.sqlite';
+const databasePath = process.env.MAIL_DATABASE_PATH || process.env.IZAKHONO_MAIL_DB || './izakhono-mail.sqlite';
 const domain = (process.env.MAIL_PRIVATE_DOMAIN || 'izakhono').toLowerCase();
 
 const db = new DatabaseSync(databasePath);
@@ -47,7 +47,7 @@ export function ensureIdentity(address, displayName = 'Bevan Shelton') {
 
 function audit(eventType, actor, detail) {
   db.prepare('INSERT INTO mail_core_audit (id,event_type,actor,detail,created_at) VALUES (?,?,?,?,?)')
-    .run(id('audit'), eventType, actor, detail, now());
+    .run(id('audit'), eventType, detail ? actor : actor, detail || '', now());
 }
 
 function parseRaw(raw) {
@@ -86,9 +86,45 @@ export function deliverInbound({ messageId, from, recipients, raw }) {
   return delivered;
 }
 
+export function storeSent({ address, recipients, subject, body, messageId, deliveryState = 'queued' }) {
+  const identity = ensureIdentity(address);
+  const ts = now();
+  const idempotentMessageId = messageId || `<${crypto.randomUUID()}@${domain}>`;
+  const existing = db.prepare('SELECT * FROM mail_messages WHERE message_id = ?').get(idempotentMessageId);
+  if (existing) return existing;
+  const safeRecipients = Array.isArray(recipients) ? recipients : [];
+  const message = {
+    id: id('msg'), message_id: idempotentMessageId, mailbox_id: identity.mailbox_id,
+    folder: 'SENT', sender: identity.address, recipients_json: JSON.stringify(safeRecipients), cc_json: '[]',
+    subject: String(subject || ''), headers_json: JSON.stringify({ From: identity.address, To: safeRecipients.join(', '), Subject: String(subject || '') }),
+    body: String(body || ''), raw_message: '', flags_json: '[]', delivery_state: deliveryState, created_at: ts, updated_at: ts
+  };
+  db.prepare(`INSERT INTO mail_messages
+    (id,message_id,mailbox_id,folder,sender,recipients_json,cc_json,subject,headers_json,body,raw_message,flags_json,delivery_state,created_at,updated_at)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(
+      message.id, message.message_id, message.mailbox_id, message.folder, message.sender,
+      message.recipients_json, message.cc_json, message.subject, message.headers_json, message.body,
+      message.raw_message, message.flags_json, message.delivery_state, message.created_at, message.updated_at);
+  audit('submission', address, `sent:${message.id}`);
+  return message;
+}
+
+export function updateSentDelivery(messageId, deliveryState) {
+  const ts = now();
+  db.prepare('UPDATE mail_messages SET delivery_state = ?, updated_at = ? WHERE message_id = ?')
+    .run(deliveryState, ts, messageId);
+  return db.prepare('SELECT * FROM mail_messages WHERE message_id = ?').get(messageId) || null;
+}
+
 export function listInbox(address) {
   const identity = ensureIdentity(address);
   return db.prepare(`SELECT * FROM mail_messages WHERE mailbox_id = ? AND folder = 'INBOX' ORDER BY created_at DESC`)
+    .all(identity.mailbox_id);
+}
+
+export function listSent(address) {
+  const identity = ensureIdentity(address);
+  return db.prepare(`SELECT * FROM mail_messages WHERE mailbox_id = ? AND folder = 'SENT' ORDER BY created_at DESC`)
     .all(identity.mailbox_id);
 }
 
