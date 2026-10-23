@@ -1,0 +1,27 @@
+name: owned-infrastructure-validation
+
+on:
+  pull_request:
+    paths:
+      - 'infrastructure/owned-first/**'
+      - '.github/workflows/owned-infrastructure-validation.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'infrastructure/owned-first/**'
+      - '.github/workflows/owned-infrastructure-validation.yml'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate shell syntax
+        run: |
+          bash -n infrastructure/owned-first/NODE-PREFLIGHT.sh
+      - name: Validate Compose
+        run: |
+          docker compose -f infrastructure/owned-first/docker-compose.owned.yml config
+      - name: Secret pattern scan
+        run: |
+          ! grep -RInE '(password|secret|token|api[_-]?key)[[:space:]]*[:=][[:space:]]*[A-Za-z0-9_./+=-]{12,}' infrastructure/owned-first --exclude='*.md'
