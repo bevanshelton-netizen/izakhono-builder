@@ -40,9 +40,11 @@ class AcceptanceProbe(Protocol):
     def check(self, check: AcceptanceCheck, job: ProvisioningJob) -> CheckResult: ...
 
 
+# Acceptance verifies every completed provisioning stage. ACCEPTANCE_PASSED
+# itself is the certification output, not a prerequisite for certification.
 REQUIRED_CHECKS = tuple(
     AcceptanceCheck(f"acceptance.{state.value.lower()}", state)
-    for state in PIPELINE[:-1]
+    for state in PIPELINE[:-2]
 )
 
 
@@ -104,11 +106,11 @@ def demo() -> None:
         def check(self, check: AcceptanceCheck, job: ProvisioningJob) -> CheckResult:
             return CheckResult(check.check_id, True, {"probe": "verified"})
 
-    from state_machine import Provisioner, StepResult
+    from state_machine import PIPELINE, Provisioner, StepResult
 
     provisioner = Provisioner()
     job = provisioner.create("tenant-acceptance", "acceptance-001")
-    for state in PIPELINE[:-2]:
+    for _ in PIPELINE[:-2]:
         provisioner.apply(job, StepResult(True, {"verified": True}))
     assert job.state == State.ACCEPTANCE_PASSED
     engine = AcceptanceEngine(Probe())
