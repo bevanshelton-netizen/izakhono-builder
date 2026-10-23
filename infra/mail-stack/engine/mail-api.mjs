@@ -25,8 +25,9 @@ export class MailApi {
     const event={id:eventId,message_id:messageId,tenant_id:tenantId,type:"mail.queued",data:{app_id:appId},occurred_at:acceptedAt};
     const job={message_id:messageId,event_id:eventId,tenant_id:tenantId,app_id:appId,kind:body.kind||"transactional",envelope,accepted_at:acceptedAt};
     const idempotencyRecord={fingerprint,statusCode:202,response,tenant_id:tenantId,created_at:acceptedAt};
+    const atomicAcceptance=typeof this.store?.acceptAndEnqueue==="function";
     try{
-      if(this.store?.acceptAndEnqueue){
+      if(atomicAcceptance){
         const accepted=await this.store.acceptAndEnqueue({scope,key,message,event,job,idempotency:idempotencyRecord});
         if(!accepted.inserted){if(accepted.fingerprint!==fingerprint)return json(409,{error:"idempotency_mismatch"}); return json(202,{...accepted.response,idempotent_replay:true});}
       } else {
@@ -35,8 +36,11 @@ export class MailApi {
         if(this.outbox) await this.outbox.enqueue(job); else this.runtime.queue.enqueue({id:messageId,eventId,tenantId,appId,kind:job.kind,envelope,acceptedAt});
       }
     }catch(error){
-      await this.idempotency.delete(scope,key).catch(()=>{});
-      if(this.store&&!this.store.acceptAndEnqueue){try{await this.store.putMessage({...message,status:"failed",metadata:{error:String(error?.message||error)},updated_at:this.clock()}); await this.store.appendEvent({id:this.idFactory(),message_id:messageId,tenant_id:tenantId,type:"mail.failed",data:{stage:"accept",error:String(error?.message||error)},occurred_at:this.clock()});}catch{}}
+      // Atomic acceptance commits the durable idempotency claim in the same
+      // transaction as the message/event/PGMQ enqueue. If the response is
+      // lost after commit, deleting the claim would make a retry duplicate.
+      if(!atomicAcceptance) await this.idempotency.delete(scope,key).catch(()=>{});
+      if(this.store&&!atomicAcceptance){try{await this.store.putMessage({...message,status:"failed",metadata:{error:String(error?.message||error)},updated_at:this.clock()}); await this.store.appendEvent({id:this.idFactory(),message_id:messageId,tenant_id:tenantId,type:"mail.failed",data:{stage:"accept",error:String(error?.message||error)},occurred_at:this.clock()});}catch{}}
       return json(503,{error:"queue_unavailable",message:String(error?.message||error)});
     }
     return json(202,response);
