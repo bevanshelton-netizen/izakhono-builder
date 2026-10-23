@@ -1,0 +1,18 @@
+{
+  "name": "izakhono-scheduler",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-23",
+  "triggers": {
+    "crons": ["* * * * *"]
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "izakhono-scheduler",
+      "database_id": "REPLACE_WITH_OWNED_D1_DATABASE_ID"
+    }
+  ],
+  "vars": {
+    "SCHEDULER_SECRET": "SET_IN_RUNTIME_SECRET"
+  }
+}
