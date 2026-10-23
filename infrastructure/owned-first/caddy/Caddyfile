@@ -1,0 +1,19 @@
+{
+  email {$ACME_EMAIL}
+  auto_https prefer_wildcard
+}
+
+:80 {
+  respond /healthz 200
+}
+
+{$PUBLIC_DOMAIN} {
+  encode gzip
+  header {
+    X-Content-Type-Options nosniff
+    X-Frame-Options DENY
+    Referrer-Policy no-referrer
+  }
+  root * /srv
+  file_server
+}
