@@ -34,6 +34,9 @@ jobs:
       - name: Run unified worker smoke
         working-directory: infra/provisioner
         run: python worker_runtime.py
+      - name: Run deterministic runtime tests
+        working-directory: infra/provisioner
+        run: python test_worker_runtime.py
       - name: Run service boundary smoke
         working-directory: infra/provisioner
         run: python service.py
