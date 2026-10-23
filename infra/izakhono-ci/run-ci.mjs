@@ -4,7 +4,6 @@ import { spawn } from "node:child_process";
 
 const commands = [
   ["node", ["--check", "infra/mail-stack/engine/node01-mail-orchestrator.mjs"]],
-  ["node", ["infra/mail-stack/engine/node01-mail-orchestrator.test.mjs"]],
   ["node", ["infra/mail-stack/engine/node01-durable-mail-runtime.test.mjs"]],
   ["node", ["infra/mail-stack/mail-processor.test.mjs"]],
   ["node", ["infra/mail-stack/engine/engine.test.mjs"]],
@@ -12,6 +11,7 @@ const commands = [
   ["node", ["infra/izakhono-control-plane/controller/src/brain-registry.test.js"]],
   ["node", ["infra/izakhono-control-plane/controller/src/brain-persistence.test.js"]],
   ["node", ["infra/izakhono-control-plane/controller/src/mail-brain.test.js"]],
+  ["node", ["infra/izakhono-control-plane/controller/src/node01-mail-bridge.test.js"]],
   ["node", ["infra/mail-stack/verify.mjs"]],
 ];
 
