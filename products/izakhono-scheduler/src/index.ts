@@ -30,8 +30,6 @@ async function tick(env: Env): Promise<Response> {
       (id,job_id,status,scheduled_at,started_at,finished_at,error)
       VALUES (?, ?, 'queued', ?, NULL, NULL, NULL)`)
       .bind(runId, job.id, now).run();
-    // A scheduler adapter (NODE01 is the preferred owned runtime) advances next_run_at.
-    // This prevents the control plane from becoming coupled to one execution host.
     queued.push(runId);
   }
   return Response.json({ ok: true, queued: queued.length, run_ids: queued, now });
@@ -40,7 +38,6 @@ async function tick(env: Env): Promise<Response> {
 const app = {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
-
     if (request.method === "GET" && url.pathname === "/health") {
       return Response.json({ service: "izakhono-scheduler", runtime: "izakhono-owned", ok: true });
     }
@@ -54,9 +51,7 @@ const app = {
 
     if (request.method === "POST" && url.pathname === "/api/jobs") {
       const body = await request.json<Job>();
-      if (!body.id || !body.name || !body.prompt || !body.cron) {
-        return Response.json({ error: "id, name, prompt and cron are required" }, { status: 400 });
-      }
+      if (!body.id || !body.name || !body.prompt || !body.cron) return Response.json({ error: "id, name, prompt and cron are required" }, { status: 400 });
       await env.DB.prepare(`INSERT INTO scheduler_jobs
         (id,name,prompt,cron,timezone,enabled,next_run_at,created_at,updated_at)
         VALUES (?, ?, ?, ?, ?, 1, ?, datetime('now'), datetime('now'))
@@ -72,11 +67,28 @@ const app = {
     }
 
     if (request.method === "POST" && url.pathname === "/api/tick") return tick(env);
+
+    if (request.method === "POST" && url.pathname === "/api/runs/claim") {
+      const run = await env.DB.prepare(`SELECT r.id,r.job_id,j.name,j.prompt,j.cron,j.timezone
+        FROM scheduler_runs r JOIN scheduler_jobs j ON j.id=r.job_id
+        WHERE r.status='queued' ORDER BY r.scheduled_at LIMIT 1`).first();
+      if (!run) return Response.json({ run: null });
+      const result = await env.DB.prepare("UPDATE scheduler_runs SET status='running',started_at=datetime('now') WHERE id=? AND status='queued'").bind(run.id).run();
+      if (!result.meta.changes) return Response.json({ run: null });
+      return Response.json({ run });
+    }
+
+    if (request.method === "POST" && url.pathname.startsWith("/api/runs/") && url.pathname.endsWith("/complete")) {
+      const id = url.pathname.split("/")[3];
+      const body = await request.json<{ status?: string; error?: string }>();
+      const status = body.status === "failed" ? "failed" : "completed";
+      await env.DB.prepare("UPDATE scheduler_runs SET status=?,finished_at=datetime('now'),error=? WHERE id=?").bind(status, body.error || null, id).run();
+      return Response.json({ ok: true, id, status });
+    }
+
     return Response.json({ error: "not_found" }, { status: 404 });
   },
-  async scheduled(_event: ScheduledEvent, env: Env): Promise<void> {
-    await tick(env);
-  },
+  async scheduled(_event: ScheduledEvent, env: Env): Promise<void> { await tick(env); },
 };
 
 export default app;
