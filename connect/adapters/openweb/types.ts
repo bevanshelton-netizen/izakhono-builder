@@ -22,6 +22,8 @@ export type ProviderOperationResult<T = unknown> =
 export interface CoverageRequest {
   address: string;
   productCode?: string;
+  latitude?: number;
+  longitude?: number;
 }
 
 export interface QuoteRequest {
@@ -38,6 +40,10 @@ export interface CreateOrderRequest {
   };
   serviceAddress?: string;
   externalReference?: string;
+  providerProductId?: number;
+  quantity?: number;
+  simCardId?: number;
+  fibreCoverageToken?: string;
 }
 
 export interface OrderStatusRequest {
@@ -55,17 +61,9 @@ export interface ProviderAdapter {
   readonly status: AdapterStatus;
   readonly capabilities: readonly ConnectCapability[];
 
-  coverage(
-    request: CoverageRequest,
-  ): Promise<ProviderOperationResult>;
+  coverage(request: CoverageRequest): Promise<ProviderOperationResult>;
   quote(request: QuoteRequest): Promise<ProviderOperationResult>;
-  createOrder(
-    request: CreateOrderRequest,
-  ): Promise<ProviderOperationResult>;
-  orderStatus(
-    request: OrderStatusRequest,
-  ): Promise<ProviderOperationResult>;
-  cancelOrder(
-    request: CancelOrderRequest,
-  ): Promise<ProviderOperationResult>;
+  createOrder(request: CreateOrderRequest): Promise<ProviderOperationResult>;
+  orderStatus(request: OrderStatusRequest): Promise<ProviderOperationResult>;
+  cancelOrder(request: CancelOrderRequest): Promise<ProviderOperationResult>;
 }
