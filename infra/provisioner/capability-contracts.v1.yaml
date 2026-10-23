@@ -1,0 +1,59 @@
+version: 1
+name: izakhono-provisioner-capability-contracts
+policy:
+  owned_first: true
+  fail_closed: true
+  evidence_required: true
+  no_false_live: true
+
+capabilities:
+  tenant:
+    adapter: izakhono-control
+    desired_fields: [tenant_id]
+    acceptance_checks: [tenant.exists, tenant.isolation]
+  payment:
+    adapter: izakhono-pay
+    desired_fields: [payment_id, amount, currency]
+    acceptance_checks: [payment.verified, payment.amount_match]
+  domain:
+    adapter: izakhono-domain
+    desired_fields: [domain]
+    acceptance_checks: [domain.registered, domain.ownership_verified]
+  dns:
+    adapter: izakhono-dns
+    desired_fields: [domain, records]
+    acceptance_checks: [dns.records_match, dns.resolution_verified]
+  site:
+    adapter: izakhono-host
+    desired_fields: [site_id, template]
+    acceptance_checks: [site.reachable, site.content_verified]
+  tls:
+    adapter: izakhono-edge
+    desired_fields: [domain]
+    acceptance_checks: [tls.valid, tls.hostname_match]
+  mail:
+    adapter: izakhono-mail
+    desired_fields: [mailbox, domain]
+    acceptance_checks: [mail.smtp_ready, mail.imap_ready, mail.webmail_ready]
+  crm_whatsapp:
+    adapter: izakhono-integrations
+    desired_fields: [tenant_id]
+    acceptance_checks: [integration.crm_ready, integration.whatsapp_ready]
+  forms:
+    adapter: izakhono-forms
+    desired_fields: [form_ids]
+    acceptance_checks: [forms.submission_verified]
+  payment_links:
+    adapter: izakhono-pay
+    desired_fields: [payment_link_ids]
+    acceptance_checks: [payment_links.resolution_verified]
+  acceptance:
+    adapter: izakhono-acceptance
+    desired_fields: [job_id]
+    acceptance_checks: [acceptance.all_required_checks_pass]
+
+result_contract:
+  required: [operation_id, capability, status, evidence]
+  statuses: [selected, executing, verified, blocked, failed]
+  evidence_required_fields: [evidence_id, observed_at, checks]
+  secret_fields_prohibited: [password, token, secret, private_key, api_key]
