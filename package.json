@@ -8,6 +8,7 @@
     "superagent:typecheck": "tsc --noEmit --target ES2022 --lib ES2022,DOM,DOM.Iterable --module ESNext products/izakhono-superagent/src/index.ts src/superagent.ts",
     "creator:typecheck": "tsc --noEmit --target ES2022 --lib ES2022,DOM,DOM.Iterable --module ESNext products/izakhono-creator/src/index.ts products/izakhono-creator/src/provider-router.ts",
     "connect:openweb:test": "npx --yes tsx@4.20.3 connect/adapters/openweb/client.test.ts",
+    "connect:openweb:runtime:test": "npx --yes tsx@4.20.3 connect/adapters/openweb/runtime.test.ts",
     "registry:typecheck": "tsc --noEmit --target ES2022 --lib ES2022,DOM,DOM.Iterable --module NodeNext --moduleResolution NodeNext registry/*.ts",
     "registry:dry": "wrangler deploy --config registry/wrangler.jsonc --dry-run",
     "registry:migrate": "wrangler d1 migrations apply DB --config registry/wrangler.jsonc --remote",
