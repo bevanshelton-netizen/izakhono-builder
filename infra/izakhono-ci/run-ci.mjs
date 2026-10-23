@@ -4,6 +4,8 @@ import { spawn } from "node:child_process";
 
 const commands = [
   ["node", ["--check", "infra/mail-stack/engine/node01-mail-orchestrator.mjs"]],
+  ["node", ["--check", "infra/mail-stack/engine/node01-mail-server.mjs"]],
+  ["node", ["infra/mail-stack/engine/node01-mail-security.test.mjs"]],
   ["node", ["infra/mail-stack/engine/node01-durable-mail-runtime.test.mjs"]],
   ["node", ["infra/mail-stack/mail-processor.test.mjs"]],
   ["node", ["infra/mail-stack/engine/engine.test.mjs"]],
