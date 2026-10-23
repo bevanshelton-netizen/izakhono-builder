@@ -1,4 +1,5 @@
 import { authenticateMerchant } from './auth';
+import { issueMerchantApiKey, listMerchantApiKeys, revokeMerchantApiKey } from './api-key-issuance';
 import { createCustomer, createInvoice, recordInvoiceEvent, recordInvoicePayment, renderInvoice, setInvoiceStatus } from './invoicing';
 
 const id=(p:string)=>`${p}_${crypto.randomUUID()}`;
@@ -17,6 +18,25 @@ export async function invoicePublicPage(req:Request,env:any,token:string){
 }
 
 export async function invoiceApi(req:Request,env:any,path:string){
+  const km=path.match(/^\/v1\/merchants\/([^/]+)\/api-keys$/);
+  if(km){
+    if(!await allowed(req,env,km[1]))return json({error:'merchant_unauthorized'},403);
+    if(req.method==='POST'){
+      const b=await body(req);
+      if(b===null)return json({error:'invalid_json'},400);
+      const label=clean(b.label,120)||'Primary API key';
+      const issued=await issueMerchantApiKey(env.DB,km[1],label);
+      if(!issued)return json({error:'merchant_not_found'},404);
+      return json({id:issued.id,prefix:issued.prefix,label:issued.label,status:issued.status,api_key:issued.key,warning:'Store this API key securely. It will not be shown again.'},201);
+    }
+    if(req.method==='GET')return json({merchant_id:km[1],data:await listMerchantApiKeys(env.DB,km[1])});
+  }
+  const kr=path.match(/^\/v1\/merchants\/([^/]+)\/api-keys\/([^/]+)\/revoke$/);
+  if(kr&&req.method==='POST'){
+    if(!await allowed(req,env,kr[1]))return json({error:'merchant_unauthorized'},403);
+    const revoked=await revokeMerchantApiKey(env.DB,kr[1],kr[2]);
+    return revoked?json({id:kr[2],status:'revoked'}):json({error:'api_key_not_found_or_already_revoked'},404);
+  }
   const cm=path.match(/^\/v1\/merchants\/([^/]+)\/customers$/);
   if(cm){if(!await allowed(req,env,cm[1]))return json({error:'merchant_unauthorized'},403);if(req.method==='POST'){const b=await body(req);if(!b)return json({error:'invalid_json'},400);try{return json(await createCustomer(env.DB,cm[1],b),201)}catch(e){return json({error:String((e as Error).message||e)},400)}}if(req.method==='GET'){const rows=await env.DB.prepare('SELECT id,name,email,phone,external_ref,status,created_at,updated_at FROM pay_customers WHERE merchant_id=? AND status=\'active\' ORDER BY created_at DESC').bind(cm[1]).all();return json({merchant_id:cm[1],data:rows.results||[]})}}
   const im=path.match(/^\/v1\/merchants\/([^/]+)\/invoices$/);
