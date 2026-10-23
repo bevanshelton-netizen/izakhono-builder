@@ -52,4 +52,21 @@ assert.equal(mismatch.status, 409);
 assert.equal(mismatch.body.error, "idempotency_mismatch");
 assert.equal(calls.length, 3, "mismatch should be rejected by the persisted idempotency record");
 
+let deleteCalls = 0;
+const failingAtomicStore = {
+  async acceptAndEnqueue() { throw new Error("rpc_response_lost"); },
+  async get() { return null; },
+  async delete() { deleteCalls += 1; },
+};
+const failureApi = new MailApi({
+  runtime: { queue: { enqueue() { throw new Error("runtime_queue_must_not_be_used"); } }, health() { return { queue: {}, transports: [] }; } },
+  authorize: auth,
+  store: failingAtomicStore,
+  idFactory: (() => { let n = 0; return () => `failure-${++n}`; })(),
+  clock: () => "2026-10-23T00:00:00.000Z",
+});
+const failed = await failureApi.handle(request("lost-response-key"));
+assert.equal(failed.status, 503);
+assert.equal(deleteCalls, 0, "atomic acceptance failures must preserve the idempotency claim");
+
 console.log("mail atomic acceptance tests passed");
