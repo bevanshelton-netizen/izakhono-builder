@@ -1,0 +1,75 @@
+version: 1
+name: izakhono-provisioner-api
+policy:
+  owned_first: true
+  fail_closed: true
+  idempotency_required: true
+  evidence_required: true
+  no_false_live: true
+
+endpoints:
+  create_job:
+    method: POST
+    path: /v1/provisioning/jobs
+    required:
+      - tenant_id
+      - idempotency_key
+      - payment_evidence
+    payment_evidence:
+      required:
+        - payment_id
+        - verified
+        - amount
+        - currency
+      verified_must_be: true
+    response:
+      required:
+        - job_id
+        - tenant_id
+        - state
+        - created
+    allowed_initial_state: PAYMENT_VERIFIED
+
+  get_job:
+    method: GET
+    path: /v1/provisioning/jobs/{job_id}
+    response:
+      required:
+        - job_id
+        - tenant_id
+        - state
+        - attempts
+        - evidence
+
+  handover:
+    method: POST
+    path: /v1/provisioning/jobs/{job_id}/handover
+    preconditions:
+      - state_is_HANDOVER_READY
+      - acceptance_passed
+      - all_required_evidence_present
+    response:
+      required:
+        - job_id
+        - state
+        - handover
+    secrets_allowed: false
+
+security:
+  secret_fields_prohibited:
+    - password
+    - token
+    - api_key
+    - access_token
+    - refresh_token
+    - private_key
+  audit_required_for:
+    - JOB_CREATED
+    - ADAPTER_SELECTED
+    - ADAPTER_EXECUTED
+    - RETRY_SCHEDULED
+    - STATE_CHANGED
+    - BLOCKED
+    - ACCEPTANCE_PASSED
+    - HANDOVER_READY
+    - HANDOVER_COMPLETED
