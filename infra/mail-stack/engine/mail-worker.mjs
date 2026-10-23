@@ -51,6 +51,7 @@ export class MailWorker {
     try {
       const result = await this.runtime.send(job.envelope, {
         messageId: job.message_id,
+        idempotencyKey: job.message_id,
         eventId: job.event_id,
         tenantId: job.tenant_id,
         appId: job.app_id,
