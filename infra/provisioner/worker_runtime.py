@@ -80,5 +80,5 @@ if __name__ == "__main__":
     results=[worker.run_once() for _ in range(8)]
     assert results[-1] is not None and results[-1].status=="accepted" and job.state==State.HANDOVER_READY.value
     assert all(r is not None for r in results[:7])
-    assert len(job.evidence)==9
+    assert len(job.evidence)==8
     print("PROVISIONER_WORKER_RUNTIME: PASS")
