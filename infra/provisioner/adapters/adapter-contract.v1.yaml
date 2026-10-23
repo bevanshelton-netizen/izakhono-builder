@@ -1,0 +1,77 @@
+version: 1
+name: izakhono-provisioner-adapter-contract
+policy:
+  owned_first: true
+  fail_closed: true
+  require_evidence: true
+  secret_safe: true
+  reversible_external_fallbacks: true
+
+operation:
+  required:
+    - operation_id
+    - tenant_id
+    - capability
+    - desired_state
+  optional:
+    - correlation_id
+    - idempotency_key
+    - deadline
+
+result:
+  status: [planned, executed, verified, blocked, failed]
+  required:
+    - operation_id
+    - capability
+    - status
+    - evidence
+  evidence:
+    required_fields:
+      - evidence_id
+      - observed_at
+      - checks
+    checks:
+      - name
+      - status
+      - detail
+  prohibited_fields:
+    - password
+    - secret
+    - token
+    - private_key
+    - credential
+
+error_classes:
+  - INVALID_REQUEST
+  - UNSUPPORTED_CAPABILITY
+  - AUTHENTICATION_REQUIRED
+  - AUTHORIZATION_DENIED
+  - PROVIDER_UNAVAILABLE
+  - RATE_LIMITED
+  - CONFLICT
+  - VERIFICATION_FAILED
+  - TIMEOUT
+  - POLICY_BLOCKED
+  - SECRET_POLICY_VIOLATION
+
+capabilities:
+  payment:
+    owned_first_route: izakhono-pay
+  domain:
+    owned_first_route: izakhono-domain
+  dns:
+    owned_first_route: izakhono-dns
+  site:
+    owned_first_route: izakhono-host
+  tls:
+    owned_first_route: izakhono-edge
+  mail:
+    owned_first_route: izakhono-mail
+  crm_whatsapp:
+    owned_first_route: izakhono-integrations
+  forms:
+    owned_first_route: izakhono-forms
+  payment_links:
+    owned_first_route: izakhono-pay
+  acceptance:
+    owned_first_route: izakhono-acceptance
