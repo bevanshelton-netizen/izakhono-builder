@@ -6,8 +6,9 @@
  *   GET  /api/mail/health
  *
  * The gateway owns authorization, validation, idempotency and request
- * correlation. Durable persistence is injected through MailStore; delivery
- * remains behind MailRuntime/TransportEngine.
+ * correlation. Durable persistence is injected through MailStore. When a
+ * durable outbox is supplied, the outbox becomes the delivery handoff so a
+ * process restart cannot strand an accepted message in process memory.
  */
 
 import { createHash, randomUUID } from "node:crypto";
@@ -21,6 +22,7 @@ export class MailApi {
     authorize = defaultAuthorize,
     idempotency = new MemoryIdempotencyStore(),
     store = null,
+    outbox = null,
     renderer = null,
     clock = () => new Date().toISOString(),
     idFactory = () => randomUUID(),
@@ -30,6 +32,7 @@ export class MailApi {
     this.authorize = authorize;
     this.store = store;
     this.idempotency = store || idempotency;
+    this.outbox = outbox;
     this.renderer = renderer;
     this.clock = clock;
     this.idFactory = idFactory;
@@ -89,31 +92,28 @@ export class MailApi {
     const messageId = this.idFactory();
     const eventId = this.idFactory();
     const acceptedAt = this.clock();
+    const tenantId = auth.tenantId || "default";
+    const appId = auth.appId || "unknown";
     const response = { message_id: messageId, event_id: eventId, status: "queued", accepted_at: acceptedAt };
 
     try {
       if (this.store) {
         await this.store.putMessage({
           message_id: messageId,
-          tenant_id: auth.tenantId || "default",
-          app_id: auth.appId || "unknown",
+          tenant_id: tenantId,
+          app_id: appId,
           status: "queued",
           envelope,
-          metadata: {
-            kind: body.kind || "transactional",
-            idempotency_scope: scope,
-            idempotency_key: key,
-          },
+          metadata: { kind: body.kind || "transactional", idempotency_scope: scope, idempotency_key: key },
           created_at: acceptedAt,
           updated_at: acceptedAt,
         });
-
         await this.store.appendEvent({
           id: eventId,
           message_id: messageId,
-          tenant_id: auth.tenantId || "default",
+          tenant_id: tenantId,
           type: "mail.queued",
-          data: { app_id: auth.appId || "unknown" },
+          data: { app_id: appId },
           occurred_at: acceptedAt,
         });
       }
@@ -122,27 +122,30 @@ export class MailApi {
         fingerprint,
         statusCode: 202,
         response,
-        tenant_id: auth.tenantId || "default",
+        tenant_id: tenantId,
         created_at: acceptedAt,
       });
 
-      this.runtime.queue.enqueue({
-        id: messageId,
-        eventId,
-        tenantId: auth.tenantId,
-        appId: auth.appId,
+      const job = {
+        message_id: messageId,
+        event_id: eventId,
+        tenant_id: tenantId,
+        app_id: appId,
         kind: body.kind || "transactional",
         envelope,
-        acceptedAt,
-      });
+        accepted_at: acceptedAt,
+      };
+
+      if (this.outbox) await this.outbox.enqueue(job);
+      else this.runtime.queue.enqueue({ id: messageId, eventId, tenantId, appId, kind: job.kind, envelope, acceptedAt });
     } catch (error) {
       await this.idempotency.delete(scope, key).catch(() => {});
       if (this.store) {
         try {
           await this.store.putMessage({
             message_id: messageId,
-            tenant_id: auth.tenantId || "default",
-            app_id: auth.appId || "unknown",
+            tenant_id: tenantId,
+            app_id: appId,
             status: "failed",
             envelope,
             metadata: { error: String(error?.message || error) },
@@ -152,7 +155,7 @@ export class MailApi {
           await this.store.appendEvent({
             id: this.idFactory(),
             message_id: messageId,
-            tenant_id: auth.tenantId || "default",
+            tenant_id: tenantId,
             type: "mail.failed",
             data: { stage: "accept", error: String(error?.message || error) },
             occurred_at: this.clock(),
