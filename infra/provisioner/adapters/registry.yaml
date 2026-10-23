@@ -1,0 +1,51 @@
+version: 1
+name: izakhono-provisioner-adapter-registry
+selection_policy:
+  order:
+    - owned
+    - approved_external
+    - unavailable
+  external_requires:
+    - explicit_capability_match
+    - configured_credentials
+    - tenant_policy_allows
+  unavailable_action: block
+
+adapters:
+  payment:
+    owned: izakhono-pay
+    external: []
+  domain:
+    owned: izakhono-domain
+    external: []
+  dns:
+    owned: izakhono-dns
+    external: []
+  site:
+    owned: izakhono-host
+    external: []
+  tls:
+    owned: izakhono-edge
+    external: []
+  mail:
+    owned: izakhono-mail
+    external: []
+  crm_whatsapp:
+    owned: izakhono-integrations
+    external: []
+  forms:
+    owned: izakhono-forms
+    external: []
+  payment_links:
+    owned: izakhono-pay
+    external: []
+  acceptance:
+    owned: izakhono-acceptance
+    external: []
+
+status_semantics:
+  selected: adapter selected but execution not started
+  executing: adapter mutation in progress
+  verified: desired state observed and evidence recorded
+  blocked: execution cannot safely continue
+  failed: execution attempted and did not achieve desired state
