@@ -22,6 +22,12 @@ jobs:
         run: python -m pip install --disable-pip-version-check pyyaml
       - name: Compile Provisioner runtime
         run: python -m compileall -q infra/provisioner
+      - name: Run adapter catalog smoke
+        working-directory: infra/provisioner
+        run: python adapter_catalog.py
+      - name: Run provider-neutral adapter smoke
+        working-directory: infra/provisioner
+        run: python provider_adapters.py
       - name: Run contract smoke
         working-directory: infra/provisioner
         run: python execution_contract.py
