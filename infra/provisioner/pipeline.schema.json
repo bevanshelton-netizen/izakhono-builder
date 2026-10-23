@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://izakhonoafrica.co.za/schemas/provisioner-pipeline-v1.json",
+  "title": "IZAKHONO Provisioner Pipeline v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "owned_first", "steps"],
+  "properties": {
+    "version": { "const": 1 },
+    "owned_first": { "const": true },
+    "steps": {
+      "type": "array",
+      "minItems": 10,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["state", "adapter", "retryable", "evidence_required"],
+        "properties": {
+          "state": {
+            "enum": [
+              "PAYMENT_VERIFIED",
+              "TENANT_CREATED",
+              "DOMAIN_READY",
+              "DNS_READY",
+              "SITE_READY",
+              "TLS_READY",
+              "MAIL_READY",
+              "INTEGRATIONS_READY",
+              "ACCEPTANCE_PASSED",
+              "HANDOVER_READY"
+            ]
+          },
+          "adapter": { "type": "string", "minLength": 1 },
+          "retryable": { "type": "boolean" },
+          "evidence_required": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    }
+  }
+}
