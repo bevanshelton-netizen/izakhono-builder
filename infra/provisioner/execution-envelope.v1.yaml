@@ -1,0 +1,57 @@
+version: 1
+name: izakhono-provisioner-execution-envelope
+purpose: Normalize adapter execution and evidence across every IZAKHONO capability.
+policy:
+  owned_first: true
+  fail_closed: true
+  evidence_required: true
+  no_false_live: true
+request:
+  required:
+    - operation_id
+    - tenant_id
+    - capability
+    - idempotency_key
+  prohibited_fields:
+    - password
+    - token
+    - api_key
+    - access_token
+    - refresh_token
+    - private_key
+    - client_secret
+    - secret
+result:
+  required:
+    - operation_id
+    - capability
+    - adapter
+    - ownership
+    - status
+    - evidence
+  statuses:
+    - verified
+    - blocked
+    - failed
+  evidence:
+    required:
+      - evidence_id
+      - observed_at
+      - verified
+      - checks
+    rules:
+      verified: true
+      secret_values: prohibited
+      live_claim: prohibited_without_acceptance
+adapters:
+  payment: izakhono-pay
+  tenant: izakhono-control
+  domain: izakhono-domain
+  dns: izakhono-dns
+  site: izakhono-host
+  tls: izakhono-edge
+  mail: izakhono-mail
+  crm_whatsapp: izakhono-integrations
+  forms: izakhono-forms
+  payment_links: izakhono-pay
+  acceptance: izakhono-acceptance
