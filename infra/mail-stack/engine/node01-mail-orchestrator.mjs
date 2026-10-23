@@ -3,7 +3,7 @@
  *
  * Owned control-plane facade for boot, readiness, health and graceful shutdown.
  * It deliberately refuses to report production-ready unless every configured
- * gate has been positively verified by an injected probe.
+ * gate has been positively verified by an evidence-bearing probe.
  */
 
 const REQUIRED_GATES = [
@@ -21,6 +21,31 @@ const REQUIRED_GATES = [
   "persistence",
   "identities",
 ];
+
+function invalidProbeResult(gate) {
+  return {
+    ok: false,
+    reason: "INVALID_PROBE_EVIDENCE",
+    gate,
+  };
+}
+
+function normalizeProbeResult(gate, result) {
+  if (!result || result.ok !== true) {
+    return result || { ok: false, reason: "PROBE_RETURNED_NO_RESULT", gate };
+  }
+
+  // A positive gate is only accepted when the probe identifies where the
+  // evidence came from and when it was verified. This prevents callers from
+  // manufacturing readiness with `{ ok: true }` alone.
+  if (typeof result.source !== "string" || !result.source.trim()) {
+    return invalidProbeResult(gate);
+  }
+  if (typeof result.verifiedAt !== "string" || Number.isNaN(Date.parse(result.verifiedAt))) {
+    return invalidProbeResult(gate);
+  }
+  return { ...result, gate };
+}
 
 export class Node01MailOrchestrator {
   constructor({ runtime, server, probes = {} } = {}) {
@@ -46,9 +71,12 @@ export class Node01MailOrchestrator {
     for (const gate of REQUIRED_GATES) {
       const probe = this.probes[gate];
       try {
-        checks[gate] = probe ? await probe() : { ok: false, reason: "PROBE_NOT_CONFIGURED" };
+        checks[gate] = normalizeProbeResult(
+          gate,
+          probe ? await probe() : { ok: false, reason: "PROBE_NOT_CONFIGURED", gate }
+        );
       } catch (error) {
-        checks[gate] = { ok: false, reason: String(error?.message || error) };
+        checks[gate] = { ok: false, reason: String(error?.message || error), gate };
       }
     }
     const failed = REQUIRED_GATES.filter(gate => !checks[gate]?.ok);
