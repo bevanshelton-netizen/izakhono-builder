@@ -1,0 +1,17 @@
+version: 1
+name: izakhono-owned-capability-map
+capabilities:
+  payment: izakhono-pay
+  domain: izakhono-domain
+  dns: izakhono-dns
+  site: izakhono-host
+  tls: izakhono-edge
+  mail: izakhono-mail
+  crm_whatsapp: izakhono-integrations
+  forms: izakhono-forms
+  payment_links: izakhono-pay
+  acceptance: izakhono-acceptance
+policy:
+  missing_owned_adapter: block
+  external_fallback_requires_explicit_registry_entry: true
+  provider_names_must_not_enter_customer_workflow: true
