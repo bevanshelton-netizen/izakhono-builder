@@ -45,7 +45,7 @@ jobs:
       - name: Verify fail-closed provider credentials
         shell: bash
         run: |
-          if grep -R "OPENWEB_API_TOKEN=" connect .github --exclude-dir=.git; then
+          if grep -R -E "OPENWEB_API_TOKEN[[:space:]]*=" connect --exclude-dir=.git; then
             echo 'OpenWeb credentials must never be committed.'
             exit 1
           fi
