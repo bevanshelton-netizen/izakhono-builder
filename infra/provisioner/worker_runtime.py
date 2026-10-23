@@ -5,7 +5,7 @@ from typing import Any, Callable, Mapping
 from adapter_executor import AdapterExecutor
 from adapter_registry_runtime import load_registry
 from acceptance_engine import AcceptanceEngine, AcceptanceResult, EvidenceAcceptanceProbe
-from adapter_catalog import CAPABILITY_TO_ADAPTER
+from adapter_catalog import CAPABILITY_TO_ADAPTER, build_catalog
 from execution_contract import validate_request, validate_result
 from job_store import AuditEvent, JobStore, StoredJob, utc_now
 from job_queue import JobQueue
@@ -49,8 +49,12 @@ class ProvisionerWorker:
             return self._failure(job, getattr(exc,"code","WORKER_EXECUTION_FAILED"), str(exc))
         current = job.state
         job.attempts += 1
-        job.evidence[current] = dict(result.evidence)
-        job.state = PIPELINE[PIPELINE.index(State(current))+1].value
+        next_state = PIPELINE[PIPELINE.index(State(current))+1].value
+        # Evidence belongs to the state just established, not the state being left.
+        # Preserve PAYMENT_VERIFIED evidence as the immutable funding gate.
+        if next_state != State.PAYMENT_VERIFIED.value:
+            job.evidence[next_state] = dict(result.evidence)
+        job.state = next_state
         self.store.save(job)
         self.store.append_audit(AuditEvent(f"evt_{job.job_id}_{job.attempts}",job.job_id,"STATE_CHANGED",job.state,utc_now(),{"capability":capability,"operation":operation,"adapter":result.adapter,"ownership":result.ownership}))
         self.queue.enqueue(job)
@@ -72,14 +76,13 @@ class ProvisionerWorker:
 
 if __name__ == "__main__":
     from job_store import MemoryJobStore
-    from adapter_catalog import build_catalog
     store=MemoryJobStore(); queue=JobQueue(store)
     registry={"adapters":{k:{"owned":v} for k,v in CAPABILITY_TO_ADAPTER.items()},"bindings":{name:{"operation":"smoke"} for name in STATE_CAPABILITY.values()}}
-    implementations={adapter: fn for adapter, fn in zip(CAPABILITY_TO_ADAPTER.values(), build_catalog().values())}
+    implementations=build_catalog()
     job,_=store.create_or_get("tenant-demo","idem-demo","prov-demo"); job.evidence["PAYMENT_VERIFIED"]={"evidence_id":"pay-demo","observed_at":utc_now(),"verified":True,"checks":["payment.verified"]}; store.save(job); queue.enqueue(job)
     worker=ProvisionerWorker(store,queue,implementations,registry)
     results=[worker.run_once() for _ in range(8)]
     assert results[-1] is not None and results[-1].status=="accepted" and job.state==State.HANDOVER_READY.value
     assert all(r is not None for r in results[:7])
-    assert len(job.evidence)==9
+    assert set(job.evidence) == {"PAYMENT_VERIFIED","TENANT_CREATED","DOMAIN_READY","DNS_READY","SITE_READY","TLS_READY","MAIL_READY","INTEGRATIONS_READY","ACCEPTANCE_PASSED"}
     print("PROVISIONER_WORKER_RUNTIME: PASS")
