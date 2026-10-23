@@ -1,0 +1,21 @@
+name: IZAKHONO Provisioner Smoke
+on:
+  push:
+    paths:
+      - 'infra/provisioner/**'
+      - '.github/workflows/provisioner-smoke.yml'
+  pull_request:
+    paths:
+      - 'infra/provisioner/**'
+      - '.github/workflows/provisioner-smoke.yml'
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run Provisioner E2E contract smoke
+        working-directory: infra/provisioner
+        run: python smoke.py
