@@ -1,0 +1,38 @@
+version: 1
+name: izakhono-provisioner-router-contract
+policy:
+  owned_first: true
+  fail_closed: true
+  external_requires:
+    - explicit_capability_match
+    - enabled
+    - credentials_configured
+
+request:
+  required:
+    - operation_id
+    - tenant_id
+    - capability
+    - desired_state
+  optional:
+    - idempotency_key
+
+selection:
+  order:
+    - owned
+    - approved_external
+    - blocked
+
+execution_key:
+  deterministic: true
+  inputs:
+    - tenant_id
+    - operation_id
+    - idempotency_key
+    - capability
+    - adapter
+
+security:
+  provider_credentials_stay_inside_adapter: true
+  secrets_in_route_decision: false
+  secrets_in_execution_key: false
