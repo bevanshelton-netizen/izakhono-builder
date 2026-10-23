@@ -5,6 +5,9 @@ on:
     branches: [main]
     paths:
       - 'infra/mail-stack/**'
+      - 'infra/izakhono-control-plane/controller/src/node01-mail-bridge.js'
+      - 'infra/izakhono-control-plane/controller/src/node01-mail-bridge.test.js'
+      - 'infra/izakhono-ci/**'
       - 'products/izakhono-mail/runtime-v1/**'
       - 'package.json'
       - 'package-lock.json'
@@ -13,6 +16,9 @@ on:
     branches: [main]
     paths:
       - 'infra/mail-stack/**'
+      - 'infra/izakhono-control-plane/controller/src/node01-mail-bridge.js'
+      - 'infra/izakhono-control-plane/controller/src/node01-mail-bridge.test.js'
+      - 'infra/izakhono-ci/**'
       - 'products/izakhono-mail/runtime-v1/**'
       - 'package.json'
       - 'package-lock.json'
@@ -50,6 +56,18 @@ jobs:
       - name: Validate NODE01 SMTP boundary
         run: node --check infra/mail-stack/engine/node01-mail-server.mjs
 
+      - name: Validate NODE01 mail security
+        run: node infra/mail-stack/engine/node01-mail-security.test.mjs
+
+      - name: Validate NODE01 durable runtime
+        run: node infra/mail-stack/engine/node01-durable-mail-runtime.test.mjs
+
+      - name: Validate NODE01 orchestrator
+        run: node infra/mail-stack/engine/node01-mail-orchestrator.test.mjs
+
+      - name: Validate NODE01 mail bridge
+        run: node infra/izakhono-control-plane/controller/src/node01-mail-bridge.test.js
+
       - name: Validate transport and worker boundaries
         run: |
           node --check infra/mail-stack/engine/transport-engine.mjs
@@ -59,9 +77,7 @@ jobs:
       - name: Validate runtime-v1 shell scripts
         working-directory: products/izakhono-mail/runtime-v1
         run: |
-          for f in ops/*.sh; do
-            bash -n "$f"
-          done
+          for f in ops/*.sh; do bash -n "$f"; done
 
       - name: Validate runtime-v1 Docker Compose configuration
         working-directory: products/izakhono-mail/runtime-v1
@@ -88,8 +104,11 @@ jobs:
             exit 1
           fi
 
+      - name: Run owned IZAKHONO CI
+        run: node infra/izakhono-ci/run-ci.mjs
+
       - name: Report independent mail gate
         run: |
           echo '[PASS] IZAKHONO MAIL has an independent CI validation gate.'
-          echo '[PASS] Validation is scoped to MAIL changes and is independent of unrelated Vercel deployments.'
+          echo '[PASS] Validation covers NODE01 security, persistence, orchestration and bridge evidence.'
           echo '[GATE] Real public-host SMTP/STARTTLS/provider acceptance remains evidence-gated.'
