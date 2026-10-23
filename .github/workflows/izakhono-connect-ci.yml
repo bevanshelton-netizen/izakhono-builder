@@ -1,0 +1,53 @@
+name: IZAKHONO CONNECT CI
+
+on:
+  push:
+    paths:
+      - 'products/izakhono-connect/**'
+      - '.github/workflows/izakhono-connect-ci.yml'
+  pull_request:
+    paths:
+      - 'products/izakhono-connect/**'
+      - '.github/workflows/izakhono-connect-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate browser JavaScript syntax
+        run: node --check products/izakhono-connect/app.js
+
+      - name: Validate mobile package JSON
+        run: node -e "JSON.parse(require('fs').readFileSync('products/izakhono-connect/mobile/package.json','utf8')); console.log('mobile package.json OK')"
+
+      - name: Validate mobile Capacitor config
+        run: test -s products/izakhono-connect/mobile/capacitor.config.ts
+
+      - name: Validate web manifest
+        run: node -e "const p=require('./products/izakhono-connect/manifest.json'); if(p.name!=='IZAKHONO CONNECT') process.exit(1); console.log('manifest OK')"
+
+      - name: Security guardrails
+        shell: bash
+        run: |
+          set -euo pipefail
+          if grep -RniE '(SUPABASE_SERVICE_ROLE|service_role|FCM_SERVER_KEY|APNS_PRIVATE_KEY|VAPID_PRIVATE_KEY|TURN_PASSWORD|TURN_SECRET)' products/izakhono-connect --exclude-dir=.git; then
+            echo 'Potential server-side secret material found in CONNECT client/runtime artifacts.'
+            exit 1
+          fi
+          if grep -Rni 'E2EE.*active\|end-to-end encryption.*active' products/izakhono-connect; then
+            echo 'CONNECT must not claim audited E2EE before the approved protocol is integrated and tested.'
+            exit 1
+          fi
+
+      - name: Verify owned infrastructure contracts exist
+        run: |
+          test -s products/izakhono-connect/INFRASTRUCTURE.md
+          test -s products/izakhono-connect/infra/README.md
+          test -s products/izakhono-connect/infra/coturn/README.md
+          test -s products/izakhono-connect/infra/push/README.md
