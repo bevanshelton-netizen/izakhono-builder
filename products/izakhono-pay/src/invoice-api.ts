@@ -1,4 +1,5 @@
 import { authenticateMerchant } from './auth';
+import { authenticateSession, readSessionCookie } from './session';
 import { issueMerchantApiKey, listMerchantApiKeys, revokeMerchantApiKey } from './api-key-issuance';
 import { createCustomer, createInvoice, recordInvoiceEvent, recordInvoicePayment, renderInvoice, setInvoiceStatus } from './invoicing';
 
@@ -7,7 +8,7 @@ const now=()=>new Date().toISOString();
 const clean=(v:unknown,max=500)=>String(v??'').trim().slice(0,max);
 const json=(data:unknown,status=200)=>new Response(JSON.stringify(data),{status,headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store'}});
 async function body(req:Request){try{return await req.json() as Record<string,unknown>}catch{return null}}
-async function allowed(req:Request,env:any,merchantId:string){if(env.PAY_API_KEY&&req.headers.get('authorization')===`Bearer ${env.PAY_API_KEY}`)return true;const a=await authenticateMerchant(req,env.DB);return !!a&&a.merchantId===merchantId}
+async function allowed(req:Request,env:any,merchantId:string){if(env.PAY_API_KEY&&req.headers.get('authorization')===`Bearer ${env.PAY_API_KEY}`)return true;const a=await authenticateMerchant(req,env.DB);if(a&&a.merchantId===merchantId)return true;const s=await authenticateSession(env.DB,readSessionCookie(req));return !!s&&s.merchantId===merchantId}
 
 export async function invoicePublicPage(req:Request,env:any,token:string){
   const inv=await env.DB.prepare('SELECT * FROM pay_invoices WHERE payment_token=?').bind(token).first<any>();
