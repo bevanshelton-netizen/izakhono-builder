@@ -24,24 +24,25 @@ jobs:
         with:
           persist-credentials: false
       - name: Validate node registry
-        run: python - <<'PY'
+        run: |
+          python - <<'PY'
           import json
           from pathlib import Path
           p = Path('infra/node-independence/node-registry.v1.json')
           d = json.loads(p.read_text())
           nodes = d['nodes']
-          assert len(nodes) >= 4, 'N+3 node capacity is required'
           ids = {n['id'] for n in nodes}
+          assert len(nodes) >= 4, 'N+3 node capacity is required'
           assert {'NODE01','NODE02','NODE03','NODE04'} <= ids
           assert d['rules']['never_wait_for_primary'] is True
           assert d['rules']['preserve_external_fallback'] is True
           assert d['rules']['promotion_requires_health'] is True
           for n in nodes:
-              assert n['health_url'].startswith('http')
+              assert n['health_url'].startswith(('http://', 'https://'))
               assert n['enabled'] is True
           print('NODE Independence registry: PASS')
           print('Nodes:', ', '.join(sorted(ids)))
-        PY
+          PY
       - name: Compile guardian
         run: python -m py_compile infra/node-independence/guardian.py
       - name: Static safety check
