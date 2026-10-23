@@ -6,7 +6,8 @@
  *   GET  /api/mail/health
  *
  * The gateway owns authorization, validation, idempotency and request
- * correlation. Delivery remains behind MailRuntime/TransportEngine.
+ * correlation. Durable persistence is injected through MailStore; delivery
+ * remains behind MailRuntime/TransportEngine.
  */
 
 import { createHash, randomUUID } from "node:crypto";
@@ -19,6 +20,7 @@ export class MailApi {
     runtime,
     authorize = defaultAuthorize,
     idempotency = new MemoryIdempotencyStore(),
+    store = null,
     renderer = null,
     clock = () => new Date().toISOString(),
     idFactory = () => randomUUID(),
@@ -26,7 +28,8 @@ export class MailApi {
     if (!runtime) throw new Error("runtime is required");
     this.runtime = runtime;
     this.authorize = authorize;
-    this.idempotency = idempotency;
+    this.store = store;
+    this.idempotency = store || idempotency;
     this.renderer = renderer;
     this.clock = clock;
     this.idFactory = idFactory;
@@ -88,8 +91,41 @@ export class MailApi {
     const acceptedAt = this.clock();
     const response = { message_id: messageId, event_id: eventId, status: "queued", accepted_at: acceptedAt };
 
-    await this.idempotency.put(scope, key, { fingerprint, statusCode: 202, response });
     try {
+      if (this.store) {
+        await this.store.putMessage({
+          message_id: messageId,
+          tenant_id: auth.tenantId || "default",
+          app_id: auth.appId || "unknown",
+          status: "queued",
+          envelope,
+          metadata: {
+            kind: body.kind || "transactional",
+            idempotency_scope: scope,
+            idempotency_key: key,
+          },
+          created_at: acceptedAt,
+          updated_at: acceptedAt,
+        });
+
+        await this.store.appendEvent({
+          id: eventId,
+          message_id: messageId,
+          tenant_id: auth.tenantId || "default",
+          type: "mail.queued",
+          data: { app_id: auth.appId || "unknown" },
+          occurred_at: acceptedAt,
+        });
+      }
+
+      await this.idempotency.put(scope, key, {
+        fingerprint,
+        statusCode: 202,
+        response,
+        tenant_id: auth.tenantId || "default",
+        created_at: acceptedAt,
+      });
+
       this.runtime.queue.enqueue({
         id: messageId,
         eventId,
@@ -100,7 +136,31 @@ export class MailApi {
         acceptedAt,
       });
     } catch (error) {
-      await this.idempotency.delete(scope, key);
+      await this.idempotency.delete(scope, key).catch(() => {});
+      if (this.store) {
+        try {
+          await this.store.putMessage({
+            message_id: messageId,
+            tenant_id: auth.tenantId || "default",
+            app_id: auth.appId || "unknown",
+            status: "failed",
+            envelope,
+            metadata: { error: String(error?.message || error) },
+            created_at: acceptedAt,
+            updated_at: this.clock(),
+          });
+          await this.store.appendEvent({
+            id: this.idFactory(),
+            message_id: messageId,
+            tenant_id: auth.tenantId || "default",
+            type: "mail.failed",
+            data: { stage: "accept", error: String(error?.message || error) },
+            occurred_at: this.clock(),
+          });
+        } catch {
+          // Persistence failure must not mask the original acceptance error.
+        }
+      }
       return json(503, { error: "queue_unavailable", message: String(error?.message || error) });
     }
 
