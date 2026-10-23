@@ -21,7 +21,7 @@
     "validate:portfolio-release": "node scripts/validate-portfolio-release.mjs",
     "validate:build-anything": "node scripts/validate-build-anything.mjs",
     "validate:factory-runtime": "node scripts/validate-factory-runtime.mjs",
-    "validate:mail": "node infra/mail-stack/verify.mjs && node infra/mail-stack/mail-processor.test.mjs && node infra/mail-stack/mail-contract.test.mjs && node infra/mail-stack/engine/mail-api.test.mjs && node infra/mail-stack/engine/mailbox-builder.test.mjs && node infra/mail-stack/engine/mail-events.test.mjs && node infra/mail-stack/engine/mail-webhook.test.mjs && node infra/mail-stack/engine/mail-store.test.mjs && node infra/mail-stack/engine/mail-timeline-api.test.mjs",
+    "validate:mail": "node infra/mail-stack/verify.mjs && node infra/mail-stack/mail-processor.test.mjs && node infra/mail-stack/mail-contract.test.mjs && node infra/mail-stack/engine/mail-api.test.mjs && node infra/mail-stack/engine/mailbox-builder.test.mjs && node infra/mail-stack/engine/mail-events.test.mjs && node infra/mail-stack/engine/mail-webhook.test.mjs && node infra/mail-stack/engine/mail-store.test.mjs && node infra/mail-stack/engine/mail-timeline-api.test.mjs && node infra/mail-stack/engine/mail-outbox.test.mjs",
     "validate:affiliate": "node scripts/validate-affiliate-engine.mjs",
     "validate:super-app": "node --check products/izakhono-super-app/public/app.js && node scripts/validate-super-app.mjs",
     "validate:finance-core": "node scripts/validate-finance-core.mjs && node --check products/izakhono-finance-core/server.mjs && node products/izakhono-finance-core/ops/node01-preflight.mjs --contract-only && node products/izakhono-finance-core/test.mjs && node products/izakhono-finance-core/smoke-test.mjs",
