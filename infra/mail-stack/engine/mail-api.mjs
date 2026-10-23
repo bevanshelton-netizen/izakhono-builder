@@ -63,9 +63,7 @@ export class MailApi {
     const fingerprint = fingerprintRequest(body);
     const existing = await this.idempotency.get(scope, key);
     if (existing) {
-      if (existing.fingerprint !== fingerprint) {
-        return json(409, { error: "idempotency_mismatch" });
-      }
+      if (existing.fingerprint !== fingerprint) return json(409, { error: "idempotency_mismatch" });
       return json(existing.statusCode || 202, { ...existing.response, idempotent_replay: true });
     }
 
@@ -88,15 +86,9 @@ export class MailApi {
     const messageId = this.idFactory();
     const eventId = this.idFactory();
     const acceptedAt = this.clock();
-    const response = {
-      message_id: messageId,
-      event_id: eventId,
-      status: "queued",
-      accepted_at: acceptedAt,
-    };
+    const response = { message_id: messageId, event_id: eventId, status: "queued", accepted_at: acceptedAt };
 
     await this.idempotency.put(scope, key, { fingerprint, statusCode: 202, response });
-
     try {
       this.runtime.queue.enqueue({
         id: messageId,
@@ -148,7 +140,8 @@ function fingerprintRequest(body) {
 function stableStringify(value) {
   if (Array.isArray(value)) return `[${value.map(stableStringify).join(",")}]`;
   if (value && typeof value === "object") {
-    return `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${stableStringify(value[key])}`).join(",`)}}`;
+    const pairs = Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${stableStringify(value[key])}`);
+    return `{${pairs.join(",")}}`;
   }
   return JSON.stringify(value);
 }
