@@ -36,6 +36,9 @@ jobs:
       - name: Run CONNECT provisioning and idempotency tests
         run: npm run connect:provisioning:test
 
+      - name: Run CONNECT payment HTTP boundary tests
+        run: npm run connect:payment-http:test
+
       - name: Run OpenWeb adapter contract tests
         run: npm run connect:openweb:test && npm run connect:openweb:runtime:test
 
