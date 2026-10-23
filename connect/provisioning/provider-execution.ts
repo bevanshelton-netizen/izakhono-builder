@@ -31,9 +31,7 @@ function serviceIsActive(result: ProviderOperationResult): boolean {
   const record = value && typeof value === "object" ? value as Record<string, unknown> : {};
   const candidates = [record.status, record.service_status, record.serviceStatus, record.state];
   for (const candidate of candidates) {
-    if (typeof candidate === "string" && ["active", "activated", "live", "running"].includes(candidate.toLowerCase())) {
-      return true;
-    }
+    if (typeof candidate === "string" && ["active", "activated", "live", "running"].includes(candidate.toLowerCase())) return true;
   }
   for (const key of ["data", "service", "result"]) {
     const nested = record[key];
@@ -55,8 +53,9 @@ function providerReference(result: ProviderOperationResult): string | undefined 
 
 export async function executeProviderProvisioning(input: ProviderExecutionInput): Promise<ProviderExecutionResult> {
   let state = input.state;
-  const coverage = await input.adapter.coverage(input.coverage);
+  state = transition(state, "COVERAGE_REQUESTED");
 
+  const coverage = await input.adapter.coverage(input.coverage);
   if (!coverage.ok) {
     state = transition(state, "COVERAGE_UNAVAILABLE", { blocker: errorMessage(coverage) });
     return { state, coverage };
