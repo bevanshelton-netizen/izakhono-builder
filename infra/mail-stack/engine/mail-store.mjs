@@ -45,6 +45,11 @@ export class MailStore {
   async snapshot() {
     return this.adapter.snapshot();
   }
+
+  // MailApi-compatible idempotency surface.
+  async get(scope, key) { return this.getIdempotency(scope, key); }
+  async put(scope, key, value) { return this.saveIdempotency(scope, key, value); }
+  async delete(scope, key) { return this.deleteIdempotency(scope, key); }
 }
 
 export class MemoryMailStoreAdapter {
@@ -99,5 +104,165 @@ export class MemoryMailStoreAdapter {
       event_count: this.events.size,
       idempotency_count: this.idempotency.size,
     };
+  }
+}
+
+/**
+ * Server-side Supabase REST adapter.
+ *
+ * Uses the project service key only from a trusted server/runtime. It never
+ * belongs in browser code. The underlying tables are RLS-protected and have
+ * public/authenticated access revoked; service_role is the intended backend
+ * path for this control-plane adapter.
+ */
+export class SupabaseMailStoreAdapter {
+  constructor({ projectUrl, serviceKey, fetchImpl = globalThis.fetch } = {}) {
+    if (!projectUrl) throw new Error("projectUrl is required");
+    if (!serviceKey) throw new Error("serviceKey is required");
+    if (typeof fetchImpl !== "function") throw new Error("fetchImpl is required");
+    this.baseUrl = `${String(projectUrl).replace(/\/$/, "")}/rest/v1`;
+    this.serviceKey = serviceKey;
+    this.fetchImpl = fetchImpl;
+  }
+
+  async putMessage(message) {
+    const row = {
+      message_id: message.message_id,
+      tenant_id: message.tenant_id,
+      app_id: message.app_id,
+      status: message.status || "queued",
+      envelope: message.envelope || {},
+      metadata: message.metadata || {},
+      created_at: message.created_at,
+      updated_at: message.updated_at,
+    };
+    await this.request("iz_mail_messages", { method: "POST", body: [row], prefer: "resolution=merge-duplicates,return=minimal" });
+    return structuredClone(message);
+  }
+
+  async getMessage(messageId, tenantId) {
+    const filters = [`message_id=eq.${encodeURIComponent(messageId)}`];
+    if (tenantId) filters.push(`tenant_id=eq.${encodeURIComponent(tenantId)}`);
+    const rows = await this.request(`iz_mail_messages?select=*&${filters.join("&")}`, { method: "GET" });
+    return rows[0] || null;
+  }
+
+  async appendEvent(event) {
+    const row = {
+      id: event.id,
+      message_id: event.message_id,
+      tenant_id: event.tenant_id,
+      recipient_id: event.recipient_id || null,
+      type: event.type,
+      data: event.data || {},
+      occurred_at: event.occurred_at,
+    };
+    try {
+      await this.request("iz_mail_events", { method: "POST", body: [row], prefer: "return=minimal" });
+      return structuredClone(event);
+    } catch (error) {
+      if (error?.status === 409) return { ...structuredClone(event), duplicate: true };
+      throw error;
+    }
+  }
+
+  async listEvents(messageId, tenantId) {
+    const message = await this.getMessage(messageId, tenantId);
+    if (!message) return null;
+    const rows = await this.request(
+      `iz_mail_events?select=*&message_id=eq.${encodeURIComponent(messageId)}&order=occurred_at.asc`,
+      { method: "GET" },
+    );
+    return rows;
+  }
+
+  async saveIdempotency(scope, key, value) {
+    const row = {
+      scope,
+      key,
+      tenant_id: value.tenant_id || String(scope).split(":")[0],
+      fingerprint: value.fingerprint,
+      response: value.response,
+      created_at: value.created_at,
+    };
+    try {
+      await this.request("iz_mail_idempotency", { method: "POST", body: [row], prefer: "return=minimal" });
+    } catch (error) {
+      if (error?.status === 409) {
+        const existing = await this.getIdempotency(scope, key);
+        if (existing?.fingerprint === value.fingerprint) return existing;
+      }
+      throw error;
+    }
+    return value;
+  }
+
+  async getIdempotency(scope, key) {
+    const rows = await this.request(
+      `iz_mail_idempotency?select=*&scope=eq.${encodeURIComponent(scope)}&key=eq.${encodeURIComponent(key)}`,
+      { method: "GET" },
+    );
+    if (!rows[0]) return null;
+    return {
+      fingerprint: rows[0].fingerprint,
+      response: rows[0].response,
+      statusCode: rows[0].response?.status_code || 202,
+      created_at: rows[0].created_at,
+    };
+  }
+
+  async deleteIdempotency(scope, key) {
+    await this.request(
+      `iz_mail_idempotency?scope=eq.${encodeURIComponent(scope)}&key=eq.${encodeURIComponent(key)}`,
+      { method: "DELETE", prefer: "return=minimal" },
+    );
+  }
+
+  async snapshot() {
+    const [messages, events, idempotency] = await Promise.all([
+      this.count("iz_mail_messages"),
+      this.count("iz_mail_events"),
+      this.count("iz_mail_idempotency"),
+    ]);
+    return { message_count: messages, event_count: events, idempotency_count: idempotency };
+  }
+
+  async count(table) {
+    const response = await this.raw(`${table}?select=message_id&limit=1`, {
+      method: "GET",
+      headers: { Prefer: "count=exact" },
+    });
+    const range = response.headers.get("content-range") || "*/0";
+    const total = Number(range.split("/")[1]);
+    return Number.isFinite(total) ? total : 0;
+  }
+
+  async request(path, options = {}) {
+    const response = await this.raw(path, options);
+    if (response.status === 204) return null;
+    const text = await response.text();
+    if (!text) return null;
+    try { return JSON.parse(text); } catch { return text; }
+  }
+
+  async raw(path, { method = "GET", body, prefer } = {}) {
+    const headers = {
+      apikey: this.serviceKey,
+      Authorization: `Bearer ${this.serviceKey}`,
+      "Content-Type": "application/json",
+      ...(prefer ? { Prefer: prefer } : {}),
+    };
+    const response = await this.fetchImpl(`${this.baseUrl}/${path}`, {
+      method,
+      headers,
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+    if (!response.ok) {
+      const text = await response.text().catch(() => "");
+      const error = new Error(`Supabase Mail Store request failed (${response.status})${text ? `: ${text}` : ""}`);
+      error.status = response.status;
+      throw error;
+    }
+    return response;
   }
 }
