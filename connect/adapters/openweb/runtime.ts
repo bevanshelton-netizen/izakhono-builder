@@ -2,6 +2,7 @@ import { OPENWEB_TOKEN_ENV, createOpenWebClient } from "./client";
 import { OPENWEB_API } from "./adapter";
 import type {
   CancelOrderRequest,
+  ConnectCapability,
   CoverageRequest,
   CreateOrderRequest,
   OrderStatusRequest,
@@ -11,16 +12,14 @@ import type {
 } from "./types";
 
 const PROVIDER = "OPENWEB";
+const CAPABILITIES: readonly ConnectCapability[] = ["coverage", "quote", "create_order", "order_status", "cancel_order"];
+type RuntimeEnv = Record<string, string | undefined>;
 
-const notConfigured = <T>(capability: Parameters<ProviderAdapter["coverage"]>[0] extends never ? never : any): ProviderOperationResult<T> => ({
-  ok: false,
-  provider: PROVIDER,
-  capability,
-  code: "NOT_CONFIGURED",
-  message: `OpenWeb is not activated: ${OPENWEB_TOKEN_ENV} is missing from the server runtime.`,
-});
+function notConfigured<T>(capability: ConnectCapability): ProviderOperationResult<T> {
+  return { ok: false, provider: PROVIDER, capability, code: "NOT_CONFIGURED", message: `OpenWeb is not activated: ${OPENWEB_TOKEN_ENV} is missing from the server runtime.` };
+}
 
-function providerError<T>(capability: any, message: string): ProviderOperationResult<T> {
+function providerError<T>(capability: ConnectCapability, message: string): ProviderOperationResult<T> {
   return { ok: false, provider: PROVIDER, capability, code: "PROVIDER_ERROR", message };
 }
 
@@ -49,18 +48,12 @@ function serviceId(reference: string): number | undefined {
   return Number.isInteger(value) && value > 0 ? value : undefined;
 }
 
-/**
- * Credential-gated runtime implementation. The token is read only by the
- * server runtime; callers never receive the token or an authenticated client.
- */
-export function createOpenWebRuntimeAdapter(env: Record<string, string | undefined> = process.env): ProviderAdapter {
+/** Credential-gated runtime implementation. The token is never returned to callers. */
+export function createOpenWebRuntimeAdapter(env: RuntimeEnv = {}): ProviderAdapter {
   const token = env[OPENWEB_TOKEN_ENV];
   if (!token?.trim()) {
     return {
-      provider: PROVIDER,
-      mode: "api",
-      status: "planned",
-      capabilities: ["coverage", "quote", "create_order", "order_status", "cancel_order"],
+      provider: PROVIDER, mode: "api", status: "planned", capabilities: CAPABILITIES,
       coverage: async () => notConfigured("coverage"),
       quote: async () => notConfigured("quote"),
       createOrder: async () => notConfigured("create_order"),
@@ -70,34 +63,21 @@ export function createOpenWebRuntimeAdapter(env: Record<string, string | undefin
   }
 
   const client = createOpenWebClient({ token });
-
   return {
-    provider: PROVIDER,
-    mode: "api",
-    status: "active",
-    capabilities: ["coverage", "quote", "create_order", "order_status", "cancel_order"],
-
+    provider: PROVIDER, mode: "api", status: "active", capabilities: CAPABILITIES,
     async coverage(request: CoverageRequest) {
-      const result = await client.coverage({
-        address: request.address,
-        ...(request.productCode ? { product_code: request.productCode } : {}),
-        ...(request.latitude !== undefined ? { latitude: request.latitude } : {}),
-        ...(request.longitude !== undefined ? { longitude: request.longitude } : {}),
-      });
+      const result = await client.coverage({ address: request.address, ...(request.productCode ? { product_code: request.productCode } : {}), ...(request.latitude !== undefined ? { latitude: request.latitude } : {}), ...(request.longitude !== undefined ? { longitude: request.longitude } : {}) });
       if (!result.ok) return providerError("coverage", result.error.message);
       return { ok: true, provider: PROVIDER, capability: "coverage", data: result.data };
     },
-
-    async quote(request: QuoteRequest) {
+    async quote(_request: QuoteRequest) {
       const result = await client.products();
       if (!result.ok) return providerError("quote", result.error.message);
       return { ok: true, provider: PROVIDER, capability: "quote", data: result.data };
     },
-
     async createOrder(request: CreateOrderRequest) {
       const body: Record<string, unknown> = {
-        product_code: request.productCode,
-        customer: request.customer,
+        product_code: request.productCode, customer: request.customer,
         ...(request.serviceAddress ? { service_address: request.serviceAddress } : {}),
         ...(request.externalReference ? { external_reference: request.externalReference } : {}),
         ...(request.providerProductId !== undefined ? { product_id: request.providerProductId } : {}),
@@ -107,15 +87,8 @@ export function createOpenWebRuntimeAdapter(env: Record<string, string | undefin
       };
       const result = await client.createOrder(body);
       if (!result.ok) return providerError("create_order", result.error.message);
-      const reference = findReference(result.data);
-      return {
-        ok: true,
-        provider: PROVIDER,
-        capability: "create_order",
-        data: { response: result.data, providerReference: reference },
-      };
+      return { ok: true, provider: PROVIDER, capability: "create_order", data: { response: result.data, providerReference: findReference(result.data) } };
     },
-
     async orderStatus(request: OrderStatusRequest) {
       const id = serviceId(request.providerReference);
       if (id === undefined) return providerError("order_status", "OpenWeb service reference must be a numeric service ID.");
@@ -123,7 +96,6 @@ export function createOpenWebRuntimeAdapter(env: Record<string, string | undefin
       if (!result.ok) return providerError("order_status", result.error.message);
       return { ok: true, provider: PROVIDER, capability: "order_status", data: result.data };
     },
-
     async cancelOrder(request: CancelOrderRequest) {
       const id = serviceId(request.providerReference);
       if (id === undefined) return providerError("cancel_order", "OpenWeb service reference must be a numeric service ID.");
