@@ -15,30 +15,41 @@ type Job = {
 
 function authorized(request: Request, env: Env): boolean {
   const secret = env.SCHEDULER_SECRET;
-  if (!secret) return false;
-  return request.headers.get("authorization") === `Bearer ${secret}`;
+  return Boolean(secret && request.headers.get("authorization") === `Bearer ${secret}`);
 }
 
-async function listJobs(env: Env) {
-  return env.DB.prepare(
-    "SELECT id,name,prompt,cron,timezone,enabled,next_run_at FROM scheduler_jobs ORDER BY name"
-  ).all<Job>();
+async function tick(env: Env): Promise<Response> {
+  const now = new Date().toISOString();
+  const jobs = await env.DB.prepare(`SELECT id,name,prompt,cron,timezone,enabled,next_run_at
+    FROM scheduler_jobs WHERE enabled=1 AND (next_run_at IS NULL OR next_run_at <= ?)`)
+    .bind(now).all<Job>();
+  const queued: string[] = [];
+  for (const job of jobs.results) {
+    const runId = crypto.randomUUID();
+    await env.DB.prepare(`INSERT INTO scheduler_runs
+      (id,job_id,status,scheduled_at,started_at,finished_at,error)
+      VALUES (?, ?, 'queued', ?, NULL, NULL, NULL)`)
+      .bind(runId, job.id, now).run();
+    // A scheduler adapter (NODE01 is the preferred owned runtime) advances next_run_at.
+    // This prevents the control plane from becoming coupled to one execution host.
+    queued.push(runId);
+  }
+  return Response.json({ ok: true, queued: queued.length, run_ids: queued, now });
 }
 
-export default {
+const app = {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
 
     if (request.method === "GET" && url.pathname === "/health") {
       return Response.json({ service: "izakhono-scheduler", runtime: "izakhono-owned", ok: true });
     }
-
-    if (!authorized(request, env)) {
-      return Response.json({ error: "unauthorized" }, { status: 401 });
-    }
+    if (!authorized(request, env)) return Response.json({ error: "unauthorized" }, { status: 401 });
 
     if (request.method === "GET" && url.pathname === "/api/jobs") {
-      return Response.json(await listJobs(env));
+      return Response.json(await env.DB.prepare(
+        "SELECT id,name,prompt,cron,timezone,enabled,next_run_at FROM scheduler_jobs ORDER BY name"
+      ).all<Job>());
     }
 
     if (request.method === "POST" && url.pathname === "/api/jobs") {
@@ -48,10 +59,9 @@ export default {
       }
       await env.DB.prepare(`INSERT INTO scheduler_jobs
         (id,name,prompt,cron,timezone,enabled,next_run_at,created_at,updated_at)
-        VALUES (?, ?, ?, ?, ?, 1, NULL, datetime('now'), datetime('now'))
-        ON CONFLICT(id) DO UPDATE SET name=excluded.name,prompt=excluded.prompt,cron=excluded.cron,timezone=excluded.timezone,updated_at=datetime('now')`)
-        .bind(body.id, body.name, body.prompt, body.cron, body.timezone || "Africa/Johannesburg")
-        .run();
+        VALUES (?, ?, ?, ?, ?, 1, ?, datetime('now'), datetime('now'))
+        ON CONFLICT(id) DO UPDATE SET name=excluded.name,prompt=excluded.prompt,cron=excluded.cron,timezone=excluded.timezone,next_run_at=excluded.next_run_at,updated_at=datetime('now')`)
+        .bind(body.id, body.name, body.prompt, body.cron, body.timezone || "Africa/Johannesburg", body.next_run_at || null).run();
       return Response.json({ ok: true, id: body.id });
     }
 
@@ -61,32 +71,12 @@ export default {
       return Response.json({ ok: true, id, enabled: false });
     }
 
-    if (request.method === "POST" && url.pathname === "/api/tick") {
-      const now = new Date().toISOString();
-      const jobs = await env.DB.prepare(`SELECT id,name,prompt,cron,timezone,enabled,next_run_at
-        FROM scheduler_jobs WHERE enabled=1 AND (next_run_at IS NULL OR next_run_at <= ?)`)
-        .bind(now).all<Job>();
-      const queued: string[] = [];
-      for (const job of jobs.results) {
-        const runId = crypto.randomUUID();
-        await env.DB.prepare(`INSERT INTO scheduler_runs
-          (id,job_id,status,scheduled_at,started_at,finished_at,error)
-          VALUES (?, ?, 'queued', ?, NULL, NULL, NULL)`)
-          .bind(runId, job.id, now).run();
-        // The execution contract is intentionally separate from the scheduler.
-        // NODE01/worker agents claim queued runs and report completion.
-        await env.DB.prepare("UPDATE scheduler_jobs SET next_run_at=NULL, updated_at=datetime('now') WHERE id=?").bind(job.id).run();
-        queued.push(runId);
-      }
-      return Response.json({ ok: true, queued: queued.length, run_ids: queued });
-    }
-
+    if (request.method === "POST" && url.pathname === "/api/tick") return tick(env);
     return Response.json({ error: "not_found" }, { status: 404 });
+  },
+  async scheduled(_event: ScheduledEvent, env: Env): Promise<void> {
+    await tick(env);
   },
 };
 
-export async function scheduled(_event: ScheduledEvent, env: Env): Promise<void> {
-  // The platform trigger is only a wake-up mechanism. Durable scheduling state lives in D1.
-  const request = new Request("https://scheduler.internal/api/tick", { method: "POST", headers: { authorization: `Bearer ${env.SCHEDULER_SECRET || ""}` } });
-  await (this as unknown as { fetch: (request: Request, env: Env) => Promise<Response> }).fetch(request, env);
-}
+export default app;
