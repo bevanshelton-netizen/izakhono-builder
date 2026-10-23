@@ -5,6 +5,7 @@ from typing import Any, Callable, Mapping
 from adapter_executor import AdapterExecutor
 from adapter_registry_runtime import load_registry
 from acceptance_engine import AcceptanceEngine, AcceptanceResult, EvidenceAcceptanceProbe
+from adapter_catalog import CAPABILITY_TO_ADAPTER
 from execution_contract import validate_request, validate_result
 from job_store import AuditEvent, JobStore, StoredJob, utc_now
 from job_queue import JobQueue
@@ -71,14 +72,14 @@ class ProvisionerWorker:
 
 if __name__ == "__main__":
     from job_store import MemoryJobStore
+    from adapter_catalog import build_catalog
     store=MemoryJobStore(); queue=JobQueue(store)
-    adapter_map={"tenant":"izakhono-control","domain":"izakhono-domain","dns":"izakhono-dns","site":"izakhono-host","tls":"izakhono-edge","mail":"izakhono-mail","crm_whatsapp":"izakhono-integrations"}
-    registry={"adapters":{name:{"owned":adapter} for name,adapter in adapter_map.items()},"bindings":{name:{"operation":"smoke"} for name in STATE_CAPABILITY.values()}}
-    implementations={adapter:(lambda payload:{"evidence_id":"ev-demo","observed_at":utc_now(),"verified":True,"checks":[payload["capability"]]}) for adapter in adapter_map.values()}
+    registry={"adapters":{k:{"owned":v} for k,v in CAPABILITY_TO_ADAPTER.items()},"bindings":{name:{"operation":"smoke"} for name in STATE_CAPABILITY.values()}}
+    implementations={adapter: fn for adapter, fn in zip(CAPABILITY_TO_ADAPTER.values(), build_catalog().values())}
     job,_=store.create_or_get("tenant-demo","idem-demo","prov-demo"); job.evidence["PAYMENT_VERIFIED"]={"evidence_id":"pay-demo","observed_at":utc_now(),"verified":True,"checks":["payment.verified"]}; store.save(job); queue.enqueue(job)
     worker=ProvisionerWorker(store,queue,implementations,registry)
     results=[worker.run_once() for _ in range(8)]
     assert results[-1] is not None and results[-1].status=="accepted" and job.state==State.HANDOVER_READY.value
     assert all(r is not None for r in results[:7])
-    assert len(job.evidence)==8
+    assert len(job.evidence)==9
     print("PROVISIONER_WORKER_RUNTIME: PASS")
