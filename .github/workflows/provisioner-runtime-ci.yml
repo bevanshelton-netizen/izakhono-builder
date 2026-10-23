@@ -1,0 +1,39 @@
+name: Provisioner Runtime CI
+
+on:
+  push:
+    paths:
+      - 'infra/provisioner/**'
+      - '.github/workflows/provisioner-runtime-ci.yml'
+  pull_request:
+    paths:
+      - 'infra/provisioner/**'
+      - '.github/workflows/provisioner-runtime-ci.yml'
+
+jobs:
+  provisioner:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install runtime dependency
+        run: python -m pip install --disable-pip-version-check pyyaml
+      - name: Compile Provisioner runtime
+        run: python -m compileall -q infra/provisioner
+      - name: Run contract smoke
+        working-directory: infra/provisioner
+        run: python execution_contract.py
+      - name: Run adapter executor smoke
+        working-directory: infra/provisioner
+        run: python adapter_executor.py
+      - name: Run acceptance engine smoke
+        working-directory: infra/provisioner
+        run: python acceptance_engine.py
+      - name: Run unified worker smoke
+        working-directory: infra/provisioner
+        run: python worker_runtime.py
+      - name: Run service boundary smoke
+        working-directory: infra/provisioner
+        run: python service.py
