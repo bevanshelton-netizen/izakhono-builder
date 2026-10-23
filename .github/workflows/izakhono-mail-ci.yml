@@ -2,41 +2,81 @@ name: IZAKHONO MAIL CI
 
 on:
   push:
+    branches: [main]
     paths:
+      - 'infra/mail-stack/**'
       - 'products/izakhono-mail/runtime-v1/**'
+      - 'package.json'
+      - 'package-lock.json'
       - '.github/workflows/izakhono-mail-ci.yml'
   pull_request:
+    branches: [main]
     paths:
+      - 'infra/mail-stack/**'
       - 'products/izakhono-mail/runtime-v1/**'
+      - 'package.json'
+      - 'package-lock.json'
       - '.github/workflows/izakhono-mail-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: izakhono-mail-ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  mail-runtime-validation:
+  mail-validation:
+    name: Mail validation
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: products/izakhono-mail/runtime-v1
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v7
 
-      - name: Validate shell scripts
+      - name: Set up Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install root dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: Validate IZAKHONO MAIL engine
+        run: npm run validate:mail
+
+      - name: Validate NODE01 SMTP boundary
+        run: node --check infra/mail-stack/engine/node01-mail-server.mjs
+
+      - name: Validate transport and worker boundaries
+        run: |
+          node --check infra/mail-stack/engine/transport-engine.mjs
+          node --check infra/mail-stack/engine/mail-worker.mjs
+          node --check infra/mail-stack/engine/mail-api.mjs
+
+      - name: Validate runtime-v1 shell scripts
+        working-directory: products/izakhono-mail/runtime-v1
         run: |
           for f in ops/*.sh; do
             bash -n "$f"
           done
 
-      - name: Validate Docker Compose configuration
+      - name: Validate runtime-v1 Docker Compose configuration
+        working-directory: products/izakhono-mail/runtime-v1
         run: |
           cp .env.example .env
           sed -i 's/CHANGE_ME_STRONG_PASSWORD/ci-mailbox-password-123456789/g; s/CHANGE_ME_DB_PASSWORD/ci-roundcube-db-password-123456789/g' .env
           docker compose config --quiet
 
-      - name: Validate required runtime files
+      - name: Validate runtime-v1 required files
+        working-directory: products/izakhono-mail/runtime-v1
         run: |
           test -f docker-compose.yml
           test -f Caddyfile
           test -f .env.example
-          test -x ops/bootstrap.sh || chmod +x ops/*.sh
+          test -f ops/bootstrap.sh
           test -f ops/preflight.sh
           test -f ops/PROVIDER-ACCEPTANCE.sh
           test -f ops/PROVISION-CONTABO.md
@@ -48,7 +88,8 @@ jobs:
             exit 1
           fi
 
-      - name: Report provider-neutral gate
+      - name: Report independent mail gate
         run: |
-          echo 'IZAKHONO MAIL runtime build validation: PASS'
-          echo 'Production acceptance remains evidence-gated on a real public host.'
+          echo '[PASS] IZAKHONO MAIL has an independent CI validation gate.'
+          echo '[PASS] Validation is scoped to MAIL changes and is independent of unrelated Vercel deployments.'
+          echo '[GATE] Real public-host SMTP/STARTTLS/provider acceptance remains evidence-gated.'
