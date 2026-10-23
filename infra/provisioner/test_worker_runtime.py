@@ -50,9 +50,10 @@ def test_fail_closed_after_retries():
     job,_=store.create_or_get("tenant-fail","idem-fail","prov-fail")
     job.evidence["PAYMENT_VERIFIED"]={"evidence_id":"pay-fail","observed_at":utc_now(),"verified":True,"checks":["payment.verified"]}
     store.save(job); queue.enqueue(job)
+    worker=ProvisionerWorker(store,queue,{"izakhono-control":evidence},REGISTRY)
     queue.claim_next()
     for _ in range(5):
-        result=worker_failure = ProvisionerWorker(store,queue,{"izakhono-control":evidence},REGISTRY)._failure(job,"TEST_FAILURE","forced")
+        result=worker._failure(job,"TEST_FAILURE","forced")
         if result.status=="blocked": break
     assert job.state=="BLOCKED"
 
