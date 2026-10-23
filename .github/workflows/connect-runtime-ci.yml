@@ -1,0 +1,60 @@
+name: IZAKHONO CONNECT Runtime CI
+
+on:
+  push:
+    branches: [main, 'feat/connect-*']
+    paths:
+      - 'connect/**'
+      - '.github/workflows/connect-runtime-ci.yml'
+      - 'package.json'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'connect/**'
+      - '.github/workflows/connect-runtime-ci.yml'
+      - 'package.json'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  connect-runtime:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install dependencies
+        run: npm install --ignore-scripts --no-audit --no-fund
+
+      - name: Run CONNECT provisioning and idempotency tests
+        run: npm run connect:provisioning:test
+
+      - name: Run CONNECT payment HTTP boundary tests
+        run: npm run connect:payment-http:test
+
+      - name: Run OpenWeb adapter contract tests
+        run: npm run connect:openweb:test && npm run connect:openweb:runtime:test
+
+      - name: Verify fail-closed provider credentials
+        shell: bash
+        run: |
+          if grep -R -E "OPENWEB_API_TOKEN[[:space:]]*=" connect --exclude-dir=.git; then
+            echo 'OpenWeb credentials must never be committed.'
+            exit 1
+          fi
+          echo '[PASS] OpenWeb credentials remain server-side and uncommitted.'
+
+      - name: Verify payment boundary is server-side
+        shell: bash
+        run: |
+          test -f connect/provisioning/http.ts
+          test -f connect/provisioning/runtime.ts
+          test -f connect/provisioning/idempotent-payment.ts
+          echo '[PASS] CONNECT payment confirmation has an authenticated server-side execution boundary.'
