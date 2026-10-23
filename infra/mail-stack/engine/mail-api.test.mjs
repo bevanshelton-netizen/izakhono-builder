@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { MailApi } from "./mail-api.mjs";
 import { MailStore, MemoryMailStoreAdapter } from "./mail-store.mjs";
+import { MailOutbox, MemoryMailOutboxAdapter } from "./mail-outbox.mjs";
 
 const queue = { jobs: [], enqueue(message) { this.jobs.push(message); } };
 const runtime = { queue, health() { return { queue: { queued: this.jobs.length }, transports: [] }; } };
@@ -63,5 +64,20 @@ assert.equal(durableResponse.status, 202);
 assert.equal((await durableStore.get("tenant-1:app-1", "durable-1")).response.message_id, "id-101");
 assert.equal((await durableStore.getMessage("id-101", { tenantId: "tenant-1" })).status, "queued");
 assert.equal((await durableStore.listEvents("id-101", { tenantId: "tenant-1" })).length, 1);
+
+const outbox = new MailOutbox({ adapter: new MemoryMailOutboxAdapter() });
+const outboxApi = new MailApi({
+  runtime: durableRuntime,
+  authorize: auth,
+  store: new MailStore({ adapter: new MemoryMailStoreAdapter(), clock: () => "2026-10-23T00:00:00.000Z" }),
+  outbox,
+  idFactory: (() => { let n = 200; return () => `id-${++n}`; })(),
+  clock: () => "2026-10-23T00:00:00.000Z",
+});
+const outboxResponse = await outboxApi.handle(request(body, "outbox-1"));
+assert.equal(outboxResponse.status, 202);
+assert.equal(durableQueue.jobs.length, 1, "runtime memory queue must not receive durable-outbox jobs");
+const outboxJob = await outbox.claim({ quantity: 1 });
+assert.equal(outboxJob[0].message.message_id, "id-201");
 
 console.log("mail-api tests passed");
