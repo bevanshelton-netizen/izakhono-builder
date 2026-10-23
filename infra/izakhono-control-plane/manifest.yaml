@@ -35,8 +35,9 @@ services:
     status: planned
     capabilities: [payment_webhook, entitlement, provisioning_trigger]
   provisioner:
-    status: planned
-    capabilities: [idempotent_workflows, rollback, customer_handover]
+    status: foundation
+    internal: infra/provisioner
+    capabilities: [idempotent_workflows, durable_state, retry_backoff, audit_events, evidence_gates, rollback_hooks, customer_handover]
 
 external_dependencies:
   - domain_registries
