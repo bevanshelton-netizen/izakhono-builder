@@ -9,16 +9,22 @@ const request = (key, payload = body) => ({ method: "POST", url: "https://mail.l
 const calls = [];
 const rpcResponses = [
   { inserted: true, message_id: "atomic-1", event_id: "event-1", fingerprint: "fingerprint-1", response: { message_id: "atomic-1", event_id: "event-1", status: "queued", accepted_at: "2026-10-23T00:00:00.000Z" }, queue_msg_id: 101 },
-  { inserted: false, fingerprint: "fingerprint-1", response: { message_id: "atomic-1", event_id: "event-1", status: "queued", accepted_at: "2026-10-23T00:00:00.000Z" }, queue_msg_id: null },
 ];
+let persistedIdempotency = null;
 
 const fetchImpl = async (url, options) => {
   calls.push({ url, options });
-  assert.equal(options.method, "POST");
   assert.equal(options.headers.apikey, "service-role-test-key");
   assert.equal(options.headers.Authorization, "Bearer service-role-test-key");
+  if (options.method === "GET") {
+    assert.match(url, /iz_mail_idempotency\?select=\*&scope=eq\.tenant-atomic%3Aapp-mail&key=eq\.atomic-key$/);
+    return new Response(persistedIdempotency ? JSON.stringify([persistedIdempotency]) : "[]", { status: 200, headers: { "content-type": "application/json" } });
+  }
+  assert.equal(options.method, "POST");
   assert.match(url, /\/rest\/v1\/rpc\/accept_and_enqueue$/);
-  return new Response(JSON.stringify([rpcResponses.shift()]), { status: 200, headers: { "content-type": "application/json" } });
+  const response = rpcResponses.shift();
+  persistedIdempotency = { fingerprint: response.fingerprint, response: response.response, created_at: response.response.accepted_at };
+  return new Response(JSON.stringify([response]), { status: 200, headers: { "content-type": "application/json" } });
 };
 
 const adapter = new SupabaseMailStoreAdapter({ projectUrl: "https://example.supabase.co", serviceKey: "service-role-test-key", fetchImpl });
@@ -39,11 +45,11 @@ const replay = await atomicApi.handle(request("atomic-key"));
 assert.equal(replay.status, 202);
 assert.equal(replay.body.message_id, "atomic-1");
 assert.equal(replay.body.idempotent_replay, true);
-assert.equal(calls.length, 2);
+assert.equal(calls.length, 2, "replay should use the persisted idempotency record");
 
 const mismatch = await atomicApi.handle(request("atomic-key", { ...body, subject: "Different" }));
 assert.equal(mismatch.status, 409);
 assert.equal(mismatch.body.error, "idempotency_mismatch");
-assert.equal(calls.length, 2, "mismatched request should be rejected by the preflight idempotency record");
+assert.equal(calls.length, 3, "mismatch should be rejected by the persisted idempotency record");
 
 console.log("mail atomic acceptance tests passed");
