@@ -10,7 +10,19 @@ Pipeline:
 
 `PAYMENT_VERIFIED → TENANT_CREATED → DOMAIN_READY → DNS_READY → SITE_READY → TLS_READY → MAIL_READY → INTEGRATIONS_READY → ACCEPTANCE_PASSED → HANDOVER_READY`
 
-The provisioner owns workflow state, idempotency, retries, audit events and promotion rules. Providers are adapters only.
+The Provisioner owns workflow state, idempotency, retries, audit events, adapter selection and promotion rules. Providers are adapters only.
+
+## Executable registry
+
+`adapters/registry.yaml` is the routing source of truth. `registry-loader.py` validates the registry before it can drive execution. `capability-contracts.v1.yaml` defines the desired-state fields and independent acceptance checks for each capability.
+
+Selection order is strictly:
+
+1. owned adapter
+2. explicitly approved external adapter
+3. unavailable → block
+
+External adapters cannot silently replace an owned capability, and provider names do not become part of the customer workflow contract.
 
 ## Design rules
 
@@ -23,6 +35,10 @@ The provisioner owns workflow state, idempotency, retries, audit events and prom
 - **Auditable:** state transitions and adapter outcomes are append-only events.
 - **Compensatable:** failed later stages expose explicit rollback/reconciliation hooks rather than destructive automatic guesses.
 - **Secret-safe:** credentials and tokens never enter job state, manifests, logs or handover records.
+
+## Acceptance
+
+`acceptance-engine.py` independently checks every required completed stage. Adapter success alone never establishes customer handover; missing or failed evidence blocks certification.
 
 ## Reference implementation
 
