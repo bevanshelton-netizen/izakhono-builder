@@ -21,7 +21,7 @@
     "validate:portfolio-release": "node scripts/validate-portfolio-release.mjs",
     "validate:build-anything": "node scripts/validate-build-anything.mjs",
     "validate:factory-runtime": "node scripts/validate-factory-runtime.mjs",
-    "validate:mail": "node infra/mail-stack/verify.mjs && node infra/mail-stack/mail-processor.test.mjs && node infra/mail-stack/mail-contract.test.mjs && node infra/mail-stack/engine/mailbox-builder.test.mjs && node infra/mail-stack/engine/mail-events.test.mjs && node infra/mail-stack/engine/mail-store.test.mjs",
+    "validate:mail": "node infra/mail-stack/verify.mjs && node infra/mail-stack/mail-processor.test.mjs && node infra/mail-stack/mail-contract.test.mjs && node infra/mail-stack/engine/mail-api.test.mjs && node infra/mail-stack/engine/mailbox-builder.test.mjs && node infra/mail-stack/engine/mail-events.test.mjs && node infra/mail-stack/engine/mail-webhook.test.mjs && node infra/mail-stack/engine/mail-store.test.mjs && node infra/mail-stack/engine/mail-timeline-api.test.mjs",
     "validate:affiliate": "node scripts/validate-affiliate-engine.mjs",
     "validate:super-app": "node --check products/izakhono-super-app/public/app.js && node scripts/validate-super-app.mjs",
     "validate:finance-core": "node scripts/validate-finance-core.mjs && node --check products/izakhono-finance-core/server.mjs && node products/izakhono-finance-core/ops/node01-preflight.mjs --contract-only && node products/izakhono-finance-core/test.mjs && node products/izakhono-finance-core/smoke-test.mjs",
@@ -30,6 +30,7 @@
     "validate:host": "cd products/izakhono-host && npm run typecheck",
     "validate:super-seo": "cd products/izakhono-super-seo && npm run check && npm test",
     "validate:media-core": "cd products/izakhono-media-core && npm run check && npm test",
+    "creator:typecheck": "tsc --noEmit --target ES2022 --lib ES2022,DOM,DOM.Iterable --module ESNext products/izakhono-creator/src/index.ts products/izakhono-creator/src/provider-router.ts",
     "registry:supervisor-test": "npx --yes tsx@4.20.3 registry/worker-supervisor.contract.test.ts && npx --yes tsx@4.20.3 registry/builder-queue.test.ts",
     "registry:control-plane-test": "npx --yes tsx@4.20.3 registry/control-plane-diagnostics.test.ts",
     "registry:test": "npx --yes tsx@4.20.3 registry/private-tld.test.ts registry/conformance.test.ts registry/dns.test.ts registry/authority-adapter.test.ts registry/rate-limit.test.ts registry/transaction.test.ts registry/registration-order.test.ts registry/idempotency.test.ts"
