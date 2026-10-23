@@ -1,0 +1,42 @@
+version: 1
+name: izakhono-provisioner-capability-bindings
+selection:
+  order:
+    - owned
+    - approved_external
+    - unavailable
+  unavailable_action: block
+bindings:
+  tenant:
+    adapter: izakhono-control
+    operation: create_tenant
+  payment:
+    adapter: izakhono-pay
+    operation: verify_payment
+  domain:
+    adapter: izakhono-domain
+    operation: provision_domain
+  dns:
+    adapter: izakhono-dns
+    operation: apply_records
+  site:
+    adapter: izakhono-host
+    operation: provision_site
+  tls:
+    adapter: izakhono-edge
+    operation: provision_tls
+  mail:
+    adapter: izakhono-mail
+    operation: provision_mail
+  crm_whatsapp:
+    adapter: izakhono-integrations
+    operation: provision_integrations
+  forms:
+    adapter: izakhono-forms
+    operation: provision_forms
+  payment_links:
+    adapter: izakhono-pay
+    operation: provision_payment_links
+  acceptance:
+    adapter: izakhono-acceptance
+    operation: run_acceptance
