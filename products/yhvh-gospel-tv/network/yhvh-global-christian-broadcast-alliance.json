@@ -1,0 +1,78 @@
+{
+  "schema": "yhvh.gospel-tv.global-christian-broadcast-alliance/v1",
+  "authority": "IZAKHONO",
+  "brand": "YHVH GOSPEL TV",
+  "mission": "Connect Christian television networks, Gospel radio stations, ministries, creators, events and lawful distribution partners into a rights-aware global Gospel media ecosystem.",
+  "tagline": "FAITH. WORSHIP. WORD. AFRICA TO THE WORLD.",
+  "network_model": "NETWORK_OF_NETWORKS",
+  "pillars": [
+    "Christian Television",
+    "Gospel Radio",
+    "Churches and Ministries",
+    "Artists and Choirs",
+    "Gospel Events",
+    "Content Producers",
+    "Digital and Streaming Platforms",
+    "Satellite and OTT Distribution",
+    "Sponsors and Commercial Partners"
+  ],
+  "radio_integration": {
+    "status": "ACTIVE_PROGRAMME",
+    "purpose": "Bring Gospel radio into the same partnership, content, language, rights, distribution and creator ecosystem as YHVH GOSPEL TV.",
+    "routes": [
+      "simulcast TV audio",
+      "radio-to-TV programme exchange",
+      "Gospel music programming",
+      "sermons and teaching",
+      "interviews and testimony",
+      "event audio",
+      "creator discovery",
+      "cross-promotion",
+      "podcast and on-demand syndication"
+    ]
+  },
+  "initial_scale_target": {
+    "christian_tv_networks": 100,
+    "gospel_radio_stations": 500,
+    "churches_ministries": 500,
+    "artists_choirs": 500,
+    "events": 250,
+    "languages": 30,
+    "countries_territories": 100
+  },
+  "discovery_note": "Public radio directories demonstrate a large Christian-radio ecosystem, including thousands of listed stations and strong representation across Africa, North America, Latin America, Europe, Asia and Oceania. Directory listings are discovery leads, not evidence of partnership or rights.",
+  "governance": {
+    "editorial_independence": true,
+    "payment_does_not_guarantee_airtime": true,
+    "rights_verification_required": true,
+    "territory_rights_required": true,
+    "safeguarding_review_required": true,
+    "local_regulatory_review_where_applicable": true,
+    "commercial_and_editorial_separation": true
+  },
+  "pipeline": [
+    "DISCOVERED",
+    "QUALIFIED",
+    "INVITED",
+    "APPLICATION",
+    "CHARTER_ACCEPTED",
+    "IDENTITY_ENTITY_REVIEW",
+    "RIGHTS_REVIEW",
+    "TECHNICAL_QC",
+    "AGREEMENT",
+    "ACTIVE"
+  ],
+  "commercial_model": [
+    "content licensing",
+    "lawful distribution agreements",
+    "programme sponsorship",
+    "advertising",
+    "production services",
+    "events",
+    "creator marketplace",
+    "grants and philanthropic support",
+    "founding network partnerships"
+  ],
+  "golden_rule": "CREATE. PROTECT. DISTRIBUTE. EARN.",
+  "status": "BUILDING_GLOBAL_PARTNERSHIP_PIPELINE"
+}
