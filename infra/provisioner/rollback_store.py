@@ -1,6 +1,5 @@
 """Durable rollback/reconciliation records for Provisioner recovery."""
 from __future__ import annotations
-
 import json
 from typing import Any
 
@@ -24,7 +23,6 @@ CREATE INDEX IF NOT EXISTS provisioner_recovery_job_idx
 
 _SECRET_FIELDS = {"password", "token", "api_key", "access_token", "refresh_token", "private_key", "client_secret", "secret"}
 
-
 def _reject_secrets(value: Any) -> None:
     if isinstance(value, dict):
         for key, child in value.items():
@@ -34,7 +32,6 @@ def _reject_secrets(value: Any) -> None:
     elif isinstance(value, list):
         for child in value:
             _reject_secrets(child)
-
 
 class RollbackStore:
     def __init__(self, connection: Any) -> None:
@@ -55,7 +52,10 @@ class RollbackStore:
                 """INSERT INTO provisioner_recovery_actions
                    (recovery_id,job_id,operation_id,state,action,status,reason,evidence)
                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s::jsonb)
-                   ON CONFLICT (recovery_id) DO NOTHING""",
+                   ON CONFLICT (recovery_id) DO UPDATE SET
+                     status=EXCLUDED.status, reason=EXCLUDED.reason,
+                     completed_at=CASE WHEN EXCLUDED.status IN ('VERIFIED','FAILED','BLOCKED') THEN NOW() ELSE provisioner_recovery_actions.completed_at END,
+                     evidence=EXCLUDED.evidence""",
                 (recovery_id, job_id, operation_id, state, action, status, reason, json.dumps(payload)),
             )
         self.connection.commit()
@@ -73,7 +73,6 @@ class RollbackStore:
              "completed_at": r[8].isoformat() if r[8] else None, "evidence": r[9] or {}}
             for r in rows
         ]
-
 
 if __name__ == "__main__":
     print("ROLLBACK_STORE: PASS")
