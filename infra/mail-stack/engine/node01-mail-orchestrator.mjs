@@ -3,8 +3,14 @@
  *
  * Owned control-plane facade for boot, readiness, health and graceful shutdown.
  * It deliberately refuses to report production-ready unless every configured
- * gate has been positively verified by an evidence-bearing probe.
+ * technical gate AND every independent production-acceptance gate has been
+ * positively verified by evidence-bearing probes.
  */
+
+import {
+  PRODUCTION_ACCEPTANCE_GATES,
+  evaluateProductionAcceptance,
+} from "./mail-production-acceptance.mjs";
 
 const REQUIRED_GATES = [
   "runtime",
@@ -48,11 +54,12 @@ function normalizeProbeResult(gate, result) {
 }
 
 export class Node01MailOrchestrator {
-  constructor({ runtime, server, probes = {} } = {}) {
+  constructor({ runtime, server, probes = {}, productionProbes = {} } = {}) {
     if (!runtime) throw new Error("MAIL_RUNTIME_REQUIRED");
     this.runtime = runtime;
     this.server = server;
     this.probes = probes;
+    this.productionProbes = productionProbes;
     this.startedAt = null;
     this.state = "stopped";
     this.lastReadiness = null;
@@ -79,13 +86,45 @@ export class Node01MailOrchestrator {
         checks[gate] = { ok: false, reason: String(error?.message || error), gate };
       }
     }
-    const failed = REQUIRED_GATES.filter(gate => !checks[gate]?.ok);
+
+    // Production acceptance is deliberately separate from technical
+    // readiness. These gates require independent evidence of public MX,
+    // network reachability, authenticated submission, persistence, outbound
+    // acceptance, reply receipt, identity routing and security authentication.
+    // Configuration-only assertions cannot satisfy this decision point.
+    const productionEvidence = {};
+    for (const gate of PRODUCTION_ACCEPTANCE_GATES) {
+      const probe = this.productionProbes[gate];
+      try {
+        productionEvidence[gate] = normalizeProbeResult(
+          gate,
+          probe ? await probe() : { ok: false, reason: "PRODUCTION_PROBE_NOT_CONFIGURED", gate }
+        );
+      } catch (error) {
+        productionEvidence[gate] = {
+          ok: false,
+          reason: String(error?.message || error),
+          gate,
+        };
+      }
+    }
+
+    const productionAcceptance = evaluateProductionAcceptance(productionEvidence);
+    const failedTechnical = REQUIRED_GATES.filter(gate => !checks[gate]?.ok);
+    const failed = [
+      ...failedTechnical,
+      ...productionAcceptance.failed.map(gate => `production:${gate}`),
+    ];
+
+    const technicalReady = failedTechnical.length === 0;
     const result = {
       state: this.state,
-      productionReady: failed.length === 0,
-      live: false,
+      technicalReady,
+      productionReady: technicalReady && productionAcceptance.productionReady,
+      live: technicalReady && productionAcceptance.live,
       failed,
       checks,
+      productionAcceptance,
       runtime: this.runtime.health(),
       startedAt: this.startedAt,
       verifiedAt: new Date().toISOString(),
@@ -109,4 +148,4 @@ export class Node01MailOrchestrator {
   }
 }
 
-export { REQUIRED_GATES };
+export { REQUIRED_GATES, PRODUCTION_ACCEPTANCE_GATES };
