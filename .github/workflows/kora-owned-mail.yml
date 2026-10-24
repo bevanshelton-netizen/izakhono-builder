@@ -53,5 +53,5 @@ jobs:
           MAIL_DOMAIN: streamkoraafrica.com
           MAIL_HOST: mail.streamkoraafrica.com
         run: |
-          node infra/mail-stack/engine/node01-mail-production-probes.mjs 2>/dev/null || true
-          echo "Owned mail deployment completed; final acceptance remains fail-closed until real external send/reply evidence is recorded."
+          node infra/mail-stack/engine/node01-mail-production-probes.mjs
+          echo "Owned mail protocol probes passed; final acceptance remains fail-closed until real external send/reply evidence is recorded."
