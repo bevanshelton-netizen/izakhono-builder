@@ -1,4 +1,4 @@
-"""Unified Provisioner worker: registry -> binding -> execution -> evidence -> acceptance."""
+"""Unified Provisioner worker: registry -> binding -> execution -> evidence -> acceptance -> recovery."""
 from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Callable, Mapping
@@ -9,6 +9,8 @@ from adapter_catalog import CAPABILITY_TO_ADAPTER, build_catalog
 from execution_contract import validate_request, validate_result
 from job_store import AuditEvent, JobStore, StoredJob, utc_now
 from job_queue import JobQueue
+from recovery_orchestrator import RecoveryOrchestrator
+from rollback_store import RollbackStore
 from state_machine import PIPELINE, State
 
 STATE_CAPABILITY = {
@@ -29,11 +31,17 @@ class WorkerResult:
 
 class ProvisionerWorker:
     """Canonical execution engine with queue ownership outside process_job()."""
-    def __init__(self, store: JobStore, queue: JobQueue, implementations: Mapping[str, Callable[[Mapping[str, Any]], Mapping[str, Any]]], registry: Mapping[str, Any] | None = None):
+    def __init__(self, store: JobStore, queue: JobQueue,
+                 implementations: Mapping[str, Callable[[Mapping[str, Any]], Mapping[str, Any]]],
+                 registry: Mapping[str, Any] | None = None,
+                 recovery_store: RollbackStore | None = None,
+                 recovery_executors: Mapping[str, Callable[[StoredJob], Mapping[str, Any]]] | None = None):
         self.store, self.queue = store, queue
         self.registry = registry or load_registry()
         self.executor = AdapterExecutor(self.registry, implementations)
         self.acceptance = AcceptanceEngine(EvidenceAcceptanceProbe())
+        self.recovery = (RecoveryOrchestrator(store, recovery_store, recovery_executors or {})
+                         if recovery_store is not None else None)
 
     def _binding(self, capability: str) -> Mapping[str, Any]:
         return self.registry.get("bindings", {}).get(capability, {})
@@ -64,11 +72,14 @@ class ProvisionerWorker:
         request = {"operation_id": operation_id, "tenant_id": job.tenant_id, "capability": capability, "idempotency_key": job.idempotency_key}
         try:
             validate_request(request)
-            result = self.executor.execute(operation_id=operation_id, tenant_id=job.tenant_id, capability=capability, desired_state={"state": job.state, "operation": operation}, idempotency_key=job.idempotency_key)
-            envelope = {"operation_id": result.operation_id, "capability": result.capability, "adapter": result.adapter, "ownership": result.ownership, "status": "verified", "evidence": result.evidence}
+            result = self.executor.execute(operation_id=operation_id, tenant_id=job.tenant_id, capability=capability,
+                                           desired_state={"state": job.state, "operation": operation},
+                                           idempotency_key=job.idempotency_key)
+            envelope = {"operation_id": result.operation_id, "capability": result.capability, "adapter": result.adapter,
+                        "ownership": result.ownership, "status": "verified", "evidence": result.evidence}
             validate_result(envelope, request)
         except Exception as exc:
-            return self._failure(job, getattr(exc, "code", "WORKER_EXECUTION_FAILED"), str(exc))
+            return self._failure(job, getattr(exc, "code", "WORKER_EXECUTION_FAILED"), str(exc), operation_id)
         current = job.state
         job.attempts += 1
         next_state = PIPELINE[PIPELINE.index(State(current)) + 1].value
@@ -76,35 +87,52 @@ class ProvisionerWorker:
             job.evidence[next_state] = dict(result.evidence)
         job.state = next_state
         self.store.save(job)
-        self.store.append_audit(AuditEvent(f"evt_{job.job_id}_{job.attempts}", job.job_id, "STATE_CHANGED", job.state, utc_now(), {"capability": capability, "operation": operation, "adapter": result.adapter, "ownership": result.ownership}))
+        self.store.append_audit(AuditEvent(f"evt_{job.job_id}_{job.attempts}", job.job_id, "STATE_CHANGED", job.state,
+                                           utc_now(), {"capability": capability, "operation": operation,
+                                                       "operation_id": operation_id, "adapter": result.adapter,
+                                                       "ownership": result.ownership}))
         return WorkerResult(job.job_id, job.state, "verified")
 
     def _accept(self, job: StoredJob) -> WorkerResult:
         result: AcceptanceResult = self.acceptance.promote(job)
         if result.status == "PASSED":
             self.store.save(job)
-            self.store.append_audit(AuditEvent(f"evt_{job.job_id}_accepted", job.job_id, "ACCEPTANCE_PASSED", job.state, utc_now(), {"checks": result.checks}))
+            self.store.append_audit(AuditEvent(f"evt_{job.job_id}_accepted", job.job_id, "ACCEPTANCE_PASSED", job.state,
+                                               utc_now(), {"checks": result.checks}))
             return WorkerResult(job.job_id, job.state, "accepted")
-        return self._block(job, "ACCEPTANCE_EVIDENCE_MISSING" if result.status == "BLOCKED" else "ACCEPTANCE_FAILED", ",".join(result.failures))
+        return self._block(job, "ACCEPTANCE_EVIDENCE_MISSING" if result.status == "BLOCKED" else "ACCEPTANCE_FAILED",
+                           ",".join(result.failures))
 
-    def _failure(self, job: StoredJob, code: str, message: str) -> WorkerResult:
+    def _failure(self, job: StoredJob, code: str, message: str, operation_id: str) -> WorkerResult:
         job.attempts += 1
+        if self.recovery is not None:
+            recovered = self.recovery.recover(job, job.state, operation_id, message)
+            if recovered.ok:
+                self.store.append_audit(AuditEvent(f"evt_{job.job_id}_recovery_resume_{job.attempts}", job.job_id,
+                                                   "RECOVERY_RESUME", job.state, utc_now(),
+                                                   {"operation_id": operation_id, "recovery_id": recovered.recovery_id,
+                                                    "action": recovered.action}))
+            else:
+                return self._block(job, "RECOVERY_FAILED", recovered.reason)
         if job.attempts >= 5:
             return self._block(job, code, message)
         self.store.save(job)
-        self.store.append_audit(AuditEvent(f"evt_{job.job_id}_retry_{job.attempts}", job.job_id, "RETRY_SCHEDULED", job.state, utc_now(), {"error_code": code}))
+        self.store.append_audit(AuditEvent(f"evt_{job.job_id}_retry_{job.attempts}", job.job_id, "RETRY_SCHEDULED", job.state,
+                                           utc_now(), {"error_code": code, "recovery": self.recovery is not None}))
         return WorkerResult(job.job_id, job.state, "retry")
 
     def _block(self, job: StoredJob, code: str, message: str = "") -> WorkerResult:
         job.state = State.BLOCKED.value
         self.store.save(job)
-        self.store.append_audit(AuditEvent(f"evt_{job.job_id}_blocked", job.job_id, "BLOCKED", job.state, utc_now(), {"error_code": code, "message": message}))
+        self.store.append_audit(AuditEvent(f"evt_{job.job_id}_blocked", job.job_id, "BLOCKED", job.state, utc_now(),
+                                           {"error_code": code, "message": message}))
         return WorkerResult(job.job_id, job.state, "blocked")
 
 if __name__ == "__main__":
     from job_store import MemoryJobStore
     store = MemoryJobStore(); queue = JobQueue(store)
-    registry = {"adapters": {k: {"owned": v} for k, v in CAPABILITY_TO_ADAPTER.items()}, "bindings": {name: {"operation": "smoke"} for name in STATE_CAPABILITY.values()}}
+    registry = {"adapters": {k: {"owned": v} for k, v in CAPABILITY_TO_ADAPTER.items()},
+                "bindings": {name: {"operation": "smoke"} for name in STATE_CAPABILITY.values()}}
     implementations = build_catalog()
     job, _ = store.create_or_get("tenant-demo", "idem-demo", "prov-demo")
     job.evidence["PAYMENT_VERIFIED"] = {"evidence_id": "pay-demo", "observed_at": utc_now(), "verified": True, "checks": ["payment.verified"]}
