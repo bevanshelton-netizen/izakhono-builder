@@ -1,0 +1,64 @@
+name: Provisioner Runtime
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'infra/provisioner/**'
+      - '.github/workflows/provisioner-runtime.yml'
+  pull_request:
+    paths:
+      - 'infra/provisioner/**'
+      - '.github/workflows/provisioner-runtime.yml'
+  workflow_dispatch:
+
+jobs:
+  provisioner:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: infra/provisioner
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install runtime dependency
+        run: python -m pip install --disable-pip-version-check pyyaml
+      - name: Compile Provisioner runtime
+        run: python -m compileall -q .
+      - name: Run contract smoke
+        run: python execution_contract.py
+      - name: Run adapter executor smoke
+        run: python adapter_executor.py
+      - name: Run acceptance engine smoke
+        run: python acceptance_engine.py
+      - name: Run unified worker smoke
+        run: python worker_runtime.py
+      - name: Run deterministic runtime tests
+        run: |
+          python - <<'PY'
+          from job_store import MemoryJobStore, utc_now
+          from job_queue import JobQueue
+          from state_machine import State
+          from worker_runtime import ProvisionerWorker
+          from adapter_catalog import build_catalog
+          from adapter_registry_runtime import load_registry
+
+          store = MemoryJobStore()
+          queue = JobQueue(store)
+          job, created = store.create_or_get('tenant-ci', 'idem-ci', 'prov-ci')
+          assert created
+          job.evidence[State.PAYMENT_VERIFIED.value] = {
+              'evidence_id': 'payment-ci', 'observed_at': utc_now(),
+              'verified': True, 'checks': ['payment.verified']
+          }
+          store.save(job); queue.enqueue(job)
+          worker = ProvisionerWorker(store, queue, build_catalog(), load_registry())
+          for _ in range(8): worker.run_once()
+          assert job.state == State.HANDOVER_READY.value
+          assert job.evidence[State.PAYMENT_VERIFIED.value]['verified'] is True
+          print('DETERMINISTIC_RUNTIME: PASS')
+          PY
+      - name: Run service boundary smoke
+        run: python service.py
