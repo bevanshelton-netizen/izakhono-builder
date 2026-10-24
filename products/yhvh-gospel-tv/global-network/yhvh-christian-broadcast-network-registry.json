@@ -1,0 +1,60 @@
+{
+  "schema": "yhvh.gospel-tv.global-broadcast-network-registry/v1",
+  "authority": "IZAKHONO",
+  "brand": "YHVH GOSPEL TV",
+  "mission": "Connect Christian television and Gospel radio broadcasters worldwide into a lawful partnership and distribution ecosystem.",
+  "principle": "OWN THE ENGINE ON IZAKHONO -> CONNECT THE WORLD THROUGH AUTHORISED PARTNERS",
+  "status": "NETWORK_BUILD_ACTIVE",
+  "media": ["television", "radio", "digital_audio", "podcast", "streaming", "satellite", "ott", "fast"],
+  "partner_model": {
+    "editorial_independence": true,
+    "payment_does_not_guarantee_airtime": true,
+    "rights_required": true,
+    "territory_rights_required": true,
+    "regulatory_review_where_applicable": true,
+    "creator_ownership_default": true,
+    "no_bypass_of_local_law": true
+  },
+  "pipeline": [
+    "DISCOVER",
+    "VERIFY_CONTACT",
+    "INTRODUCTION",
+    "INTERESTED",
+    "DUE_DILIGENCE",
+    "RIGHTS_REVIEW",
+    "AGREEMENT",
+    "TECHNICAL_QC",
+    "TEST_DISTRIBUTION",
+    "ACTIVE_PARTNER"
+  ],
+  "partner_classes": [
+    "CHRISTIAN_TV_NETWORK",
+    "GOSPEL_RADIO_STATION",
+    "CHRISTIAN_RADIO_NETWORK",
+    "SATELLITE_BROADCASTER",
+    "OTT_PLATFORM",
+    "FAST_CHANNEL_OPERATOR",
+    "DIGITAL_AUDIO_NETWORK",
+    "PODCAST_NETWORK",
+    "CHURCH_BROADCAST_NETWORK",
+    "CONTENT_SYNDICATOR",
+    "LOCAL_DISTRIBUTOR"
+  ],
+  "initial_market_targets": {
+    "Africa": ["South Africa", "Nigeria", "Ghana", "Kenya", "Uganda", "Tanzania", "Zambia", "Zimbabwe", "Malawi", "Rwanda", "Eswatini", "Namibia", "Botswana", "Lesotho", "Ethiopia"],
+    "Europe": ["United Kingdom", "Ireland", "France", "Germany", "Italy", "Spain", "Portugal", "Netherlands", "Sweden"],
+    "North_America": ["United States", "Canada"],
+    "Latin_America_Caribbean": ["Brazil", "Mexico", "Colombia", "Jamaica", "Trinidad and Tobago", "Bahamas", "Barbados"],
+    "Middle_East": ["Israel", "Jordan", "Lebanon", "United Arab Emirates", "Egypt"],
+    "Asia_Pacific": ["India", "Indonesia", "Philippines", "Singapore", "Australia", "New Zealand", "Pacific Islands"]
+  },
+  "discovery_note": "Public directories demonstrate a substantial worldwide Christian radio ecosystem, including hundreds of African stations and thousands of English-language Christian stations. Every prospect must be individually verified before outreach, rights exchange or activation.",
+  "source_research": [
+    "Public Christian radio directories and broadcaster websites",
+    "Direct broadcaster submissions",
+    "Christian TV network directories",
+    "Partner referrals",
+    "Church and ministry media departments"
+  ],
+  "records": []
+}
