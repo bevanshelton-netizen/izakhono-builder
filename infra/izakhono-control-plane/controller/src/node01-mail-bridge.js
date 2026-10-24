@@ -21,10 +21,18 @@ export async function readNode01MailEvidence(orchestrator) {
     type: NODE01_MAIL_READINESS_EVIDENCE,
     source: "node01-mail-orchestrator",
     verifiedAt: readiness.verifiedAt || null,
+    technicalReady: readiness.technicalReady === true,
     productionReady: readiness.productionReady === true,
     live: readiness.live === true,
     failed: [...(readiness.failed || [])],
     checks: { ...(readiness.checks || {}) },
+    productionAcceptance: {
+      productionReady: readiness.productionAcceptance?.productionReady === true,
+      live: readiness.productionAcceptance?.live === true,
+      failed: [...(readiness.productionAcceptance?.failed || [])],
+      checks: { ...(readiness.productionAcceptance?.checks || {}) },
+      evaluatedAt: readiness.productionAcceptance?.evaluatedAt || null,
+    },
   };
 }
 
@@ -32,7 +40,7 @@ export function assertNode01MailProductionReady(evidence) {
   if (evidence?.type !== NODE01_MAIL_READINESS_EVIDENCE) {
     throw new Error("NODE01_MAIL_READINESS_EVIDENCE_REQUIRED");
   }
-  if (evidence.productionReady !== true) {
+  if (evidence.productionReady !== true || evidence.live !== true) {
     const failed = evidence.failed?.length ? evidence.failed.join(",") : "unknown";
     throw new Error(`NODE01_MAIL_NOT_PRODUCTION_READY:${failed}`);
   }
