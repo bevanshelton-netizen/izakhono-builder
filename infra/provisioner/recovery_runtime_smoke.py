@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any
 from adapter_catalog import CAPABILITY_TO_ADAPTER
 from job_queue import JobQueue
-from job_store import MemoryJobStore, StoredJob, utc_now
+from job_store import MemoryJobStore, utc_now
 from worker_runtime import ProvisionerWorker, STATE_CAPABILITY
 
 class MemoryRecoveryStore:
@@ -42,8 +42,8 @@ def smoke() -> None:
     assert first is not None and first.status == "retry"
     assert recovery.rows["recovery_prov-recovery_op_prov-recovery_payment_verified"]["status"] == "VERIFIED"
 
-    second = worker.run_once()
-    assert second is not None and second.status == "verified"
+    second = worker.process_job(job)
+    assert second.status == "verified"
     assert job.state == "TENANT_CREATED"
     assert any(e.event_type == "RECOVERY_VERIFIED" for e in store.events)
     assert any(e.event_type == "RECOVERY_RESUME" for e in store.events)
