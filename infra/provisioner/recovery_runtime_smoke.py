@@ -34,17 +34,17 @@ def smoke() -> None:
     job, _ = store.create_or_get("tenant-recovery", "idem-recovery", "prov-recovery")
     job.evidence["PAYMENT_VERIFIED"] = {"verified": True, "evidence_id": "pay-recovery"}
     store.save(job)
-    queue.enqueue(job)
     worker = ProvisionerWorker(store, queue, implementations, registry,
                                recovery_store=recovery, recovery_executors=recovery_executors)
 
-    first = worker.run_once()
-    assert first is not None and first.status == "retry"
-    assert recovery.rows["recovery_prov-recovery_op_prov-recovery_payment_verified"]["status"] == "VERIFIED"
+    first = worker.process_job(job)
+    assert first.status == "retry", first
+    rows = recovery.list_for_job(job.job_id)
+    assert len(rows) == 1 and rows[0]["status"] == "VERIFIED", rows
 
     second = worker.process_job(job)
-    assert second.status == "verified"
-    assert job.state == "TENANT_CREATED"
+    assert second.status == "verified", second
+    assert job.state == "TENANT_CREATED", job.state
     assert any(e.event_type == "RECOVERY_VERIFIED" for e in store.events)
     assert any(e.event_type == "RECOVERY_RESUME" for e in store.events)
     print("RECOVERY_RUNTIME_SMOKE: PASS")
