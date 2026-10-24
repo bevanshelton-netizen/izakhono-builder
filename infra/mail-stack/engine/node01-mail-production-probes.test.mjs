@@ -14,11 +14,17 @@ const probes = createRealNode01MailProductionProbes({
   },
 });
 
-for (const gate of ["publicMx", "publicSmtp", "publicSubmission", "publicTls"]) {
-  const result = await probes[gate]();
-  assert.equal(typeof result.ok, "boolean");
-  assert.equal(typeof result.source, "string");
-  assert.equal(Number.isNaN(Date.parse(result.verifiedAt)), false);
+// Exercise a real public DNS lookup. The network probes themselves are
+// deployment-facing and must target the configured NODE01 host, not a test
+// fixture pretending to be production.
+const mx = await probes.publicMx();
+assert.equal(mx.ok, true);
+assert.match(mx.source, /^node01-production-probe:publicMx$/);
+assert.equal(Number.isNaN(Date.parse(mx.verifiedAt)), false);
+assert.ok(Array.isArray(mx.records) && mx.records.length > 0);
+
+for (const gate of ["publicSmtp", "publicSubmission", "publicTls"]) {
+  assert.equal(typeof probes[gate], "function");
 }
 
 for (const gate of [
