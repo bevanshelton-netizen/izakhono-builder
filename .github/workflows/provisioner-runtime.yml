@@ -49,6 +49,8 @@ jobs:
         run: python recovery_orchestrator.py
       - name: Run recovery runtime smoke
         run: python recovery_runtime_smoke.py
+      - name: Run handover store smoke
+        run: python handover_store.py
       - name: Run registry loader smoke
         run: python adapter_registry_runtime.py
       - name: Run contract smoke
@@ -94,3 +96,33 @@ jobs:
         run: python durable_postgres_integration_test.py
       - name: Run service boundary smoke
         run: python service.py
+      - name: Run PostgreSQL handover integration test
+        env:
+          PROVISIONER_TEST_DSN: postgresql://provisioner:provisioner@127.0.0.1:5432/provisioner_test
+        run: |
+          python - <<'PY'
+          import os
+          import psycopg
+          from postgres_job_store import PostgresJobStore
+          from postgres_job_queue import PostgresJobQueue
+          from handover_store import HandoverStore
+          from job_store import utc_now
+
+          dsn = os.environ['PROVISIONER_TEST_DSN']
+          conn = psycopg.connect(dsn)
+          store = PostgresJobStore(conn)
+          store.initialize()
+          handovers = HandoverStore(conn)
+          handovers.initialize()
+          job, created = store.create_or_get('tenant-handover', 'idem-handover', 'prov-handover')
+          assert created
+          states = ['PAYMENT_VERIFIED','TENANT_CREATED','DOMAIN_READY','DNS_READY','SITE_READY','TLS_READY','MAIL_READY','INTEGRATIONS_READY','ACCEPTANCE_PASSED']
+          evidence = {'verified': True, 'evidence_id': 'accept-ci', 'observed_at': utc_now(), 'checks': ['site.ok','mail.ok']}
+          record = handovers.create_or_get('handover_prov-handover', job.job_id, job.tenant_id, states, evidence)
+          again = handovers.create_or_get('handover_prov-handover', job.job_id, job.tenant_id, states, evidence)
+          assert record['handover_id'] == again['handover_id']
+          assert again['status'] == 'HANDOVER_READY'
+          assert handovers.get(job.job_id)['job_id'] == job.job_id
+          print('POSTGRES_HANDOVER: PASS')
+          conn.close()
+          PY
