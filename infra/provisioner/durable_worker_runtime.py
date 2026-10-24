@@ -5,7 +5,7 @@ from typing import Any, Mapping
 from postgres_job_queue import PostgresJobQueue
 from postgres_job_store import PostgresJobStore
 from rollback_store import RollbackStore
-from worker_runtime import ProvisionerWorker
+from worker_runtime import ProvisionerWorker, WorkerResult
 
 class DurableProvisionerWorker:
     """Claims a PostgreSQL lease exactly once, processes directly, and persists recovery."""
@@ -14,6 +14,7 @@ class DurableProvisionerWorker:
                  recovery_store: RollbackStore | None = None,
                  recovery_executors: Mapping[str, Any] | None = None):
         self.store, self.queue, self.worker_id = store, queue, worker_id
+        self.last_result: WorkerResult | None = None
         self.worker = ProvisionerWorker(store, queue, implementations, registry,
                                         recovery_store=recovery_store,
                                         recovery_executors=recovery_executors)
@@ -22,10 +23,12 @@ class DurableProvisionerWorker:
         claimed = self.queue.claim(self.worker_id)
         if claimed is None:
             self.queue.recover_expired()
+            self.last_result = None
             return False
         job, lease_id = claimed
         try:
             result = self.worker.process_job(job)
+            self.last_result = result
             if result.status == "verified":
                 self.queue.enqueue(job)
                 self.queue.complete(job.job_id, lease_id)
