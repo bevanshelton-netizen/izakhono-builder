@@ -56,6 +56,9 @@ jobs:
       - name: Validate NODE01 SMTP boundary
         run: node --check infra/mail-stack/engine/node01-mail-server.mjs
 
+      - name: Validate NODE01 SMTP transaction
+        run: node infra/mail-stack/engine/node01-mail-transaction.test.mjs
+
       - name: Validate NODE01 real readiness probes
         run: |
           node --check infra/mail-stack/engine/node01-mail-probes.mjs
@@ -117,5 +120,5 @@ jobs:
       - name: Report independent mail gate
         run: |
           echo '[PASS] IZAKHONO MAIL has an independent CI validation gate.'
-          echo '[PASS] Validation covers NODE01 security, persistence, orchestration and real probe execution.'
+          echo '[PASS] Validation covers NODE01 SMTP transactions, security, persistence, orchestration and real probe execution.'
           echo '[GATE] Real public-host SMTP/STARTTLS/provider acceptance remains evidence-gated.'
