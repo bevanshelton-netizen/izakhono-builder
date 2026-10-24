@@ -62,16 +62,13 @@ class ProvisionerService:
                                             recovery_store=self.recovery_store,
                                             recovery_executors=self.recovery_executors)
             processed=worker.run_once()
-            return None if not processed else self.status_from_queue()
+            if not processed or worker.last_result is None:
+                return None
+            return self.status(worker.last_result.job_id)
         worker=ProvisionerWorker(self.store,self.queue,self.adapter_implementations,self.registry,
                                  recovery_store=self.recovery_store,recovery_executors=self.recovery_executors)
         result=worker.run_once()
         return None if result is None else self.status(result.job_id)
-
-    def status_from_queue(self)->Optional[Dict[str,Any]]:
-        # Durable workers claim by lease and return no job object; recover the most recently updated
-        # job for service-level polling. Callers should use status(job_id) for exact correlation.
-        return {"processed":True}
 
     def handover(self,job_id:str)->Dict[str,Any]:
         job=self.store.get(job_id)
