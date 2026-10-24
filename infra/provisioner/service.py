@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, Mapping, Optional
 from job_queue import JobQueue
-from job_store import AuditEvent, JobStore, StoredJob, utc_now
+from job_store import AuditEvent, JobStore, utc_now
 from state_machine import Provisioner
 from errors import ServiceError
 from worker_runtime import ProvisionerWorker
@@ -58,7 +58,25 @@ class ProvisionerService:
         if job.state!="HANDOVER_READY": raise ServiceError("HANDOVER_NOT_READY","independent acceptance is required")
         acceptance=job.evidence.get("ACCEPTANCE_PASSED",{})
         if acceptance.get("verified") is not True: raise ServiceError("ACCEPTANCE_NOT_PASSED","acceptance evidence required")
-        record={"job_id":job.job_id,"tenant_id":job.tenant_id,"status":"HANDOVER_READY","evidence_states":list(job.evidence.keys()),"generated_at":utc_now()}
-        self._handover[job_id]=record; self.store.append_audit(AuditEvent(f"evt_{job.job_id}_handover",job.job_id,"HANDOVER_COMPLETED",job.state,utc_now())); return record
+        required={"PAYMENT_VERIFIED","TENANT_CREATED","DOMAIN_READY","DNS_READY","SITE_READY","TLS_READY","MAIL_READY","INTEGRATIONS_READY","ACCEPTANCE_PASSED"}
+        missing=required-set(job.evidence)
+        if missing: raise ServiceError("HANDOVER_EVIDENCE_INCOMPLETE",f"missing evidence: {sorted(missing)}")
+        record={"job_id":job.job_id,"tenant_id":job.tenant_id,"status":"HANDOVER_READY","evidence_states":sorted(job.evidence.keys()),"generated_at":utc_now()}
+        self._handover[job_id]=record
+        self.store.append_audit(AuditEvent(f"evt_{job.job_id}_handover",job.job_id,"HANDOVER_COMPLETED",job.state,utc_now(),{"evidence_states":record["evidence_states"]}))
+        return record
 
-if __name__=="__main__": print("PROVISIONER_SERVICE_MODULE: PASS")
+if __name__=="__main__":
+    from adapter_catalog import build_catalog, CAPABILITY_TO_ADAPTER
+    from job_store import MemoryJobStore
+    store=MemoryJobStore(); queue=JobQueue(store)
+    registry={"adapters":{k:{"owned":v} for k,v in CAPABILITY_TO_ADAPTER.items()},"bindings":{name:{"operation":"smoke"} for name in {"tenant","domain","dns","site","tls","mail","crm_whatsapp"}}}
+    service=ProvisionerService(store,queue,build_catalog(),registry)
+    first=service.create_job(CreateJobRequest("tenant-service","idem-service",{"payment_id":"pay-service","amount":"100.00","currency":"ZAR","verified":True}))
+    duplicate=service.create_job(CreateJobRequest("tenant-service","idem-service",{"payment_id":"pay-service","amount":"100.00","currency":"ZAR","verified":True}))
+    assert first["created"] is True and duplicate["created"] is False and first["job_id"]==duplicate["job_id"]
+    for _ in range(8): service.worker_once()
+    handover=service.handover(first["job_id"])
+    assert handover["status"]=="HANDOVER_READY"
+    assert any(e.event_type=="HANDOVER_COMPLETED" for e in store.events)
+    print("PROVISIONER_SERVICE: PASS")
