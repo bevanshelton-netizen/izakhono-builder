@@ -1,9 +1,27 @@
 {
   "schema_version": 1,
-  "evidence_timestamp": "2026-09-25T12:46:08Z",
-  "evidence_source": "bevanshelton-netizen/Downloads GitHub Actions run 36136752143",
+  "evidence_timestamp": "2026-10-24T00:00:00Z",
+  "evidence_source": "IZAKHONO owned-mail readiness registry",
   "activation_rule": "sender identities are disabled until status is LIVE_VERIFIED",
   "domains": {
+    "streamkoraafrica.com": {
+      "status": "ROUTING_PENDING",
+      "sender_enabled": false,
+      "mail_host": "mail.streamkoraafrica.com",
+      "public_identity": "info@streamkoraafrica.com",
+      "evidence": {
+        "ns": true,
+        "a": false,
+        "mx": false,
+        "spf": false,
+        "dmarc": false,
+        "dkim": false,
+        "inbound_test_sent": false,
+        "outbound_test": false,
+        "reply_test": false
+      },
+      "next_action": "Provision the NODE01 owned mail server, publish A/MX/SPF/DKIM/DMARC, verify trusted TLS, then complete real external inbound/outbound/reply acceptance before enabling the sender identity."
+    },
     "izakhonoafrica.co.za": {
       "status": "DOMAIN_AVAILABLE_UNREGISTERED",
       "sender_enabled": false,
