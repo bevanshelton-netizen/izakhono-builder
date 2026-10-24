@@ -51,8 +51,10 @@ jobs:
         run: python recovery_runtime_smoke.py
       - name: Run handover store smoke
         run: python handover_store.py
-      - name: Run production adapter contract smoke
-        run: python production_adapter_contract.py
+      - name: Run production adapter boundary smoke
+        run: python production_adapter.py
+      - name: Run production adapter rejection tests
+        run: python production_adapter_test.py
       - name: Run registry loader smoke
         run: python adapter_registry_runtime.py
       - name: Run contract smoke
