@@ -1,0 +1,89 @@
+{
+  "schema": "yhvh.gospel-tv.global-radio-network/v1",
+  "authority": "IZAKHONO",
+  "brand": "YHVH GOSPEL TV",
+  "initiative": "YHVH GLOBAL CHRISTIAN BROADCAST NETWORK",
+  "status": "ACTIVE_BUILD",
+  "mission": "Connect Christian television, Gospel radio, digital radio, podcasts, ministries, artists, churches and distribution partners into a lawful global Gospel media ecosystem.",
+  "principle": "AFRICAN ORIGIN → IZAKHONO CONTROL → WORLDWIDE DISTRIBUTION",
+  "radio_role": "Radio is a first-class distribution and acquisition channel alongside television.",
+  "partnership_model": [
+    "Content exchange",
+    "Programme syndication",
+    "Radio-to-TV simulcast",
+    "TV-to-radio audio adaptation",
+    "Live event carriage",
+    "Artist and choir promotion",
+    "Multilingual programming",
+    "Podcast and digital audio distribution",
+    "Emergency and prayer programming",
+    "Audience and creator referrals"
+  ],
+  "partner_classes": [
+    "Christian radio network",
+    "Gospel radio station",
+    "Church radio",
+    "Community Christian broadcaster",
+    "Digital Gospel radio",
+    "Online Christian station",
+    "Podcast network",
+    "Syndication network",
+    "Christian audio platform",
+    "University/youth Christian radio"
+  ],
+  "territory_strategy": "Country-by-country and territory-by-territory acquisition, with rights and regulatory review before distribution.",
+  "rights_rule": "A radio partnership or stream listing does not itself grant YHVH rights to rebroadcast third-party programming.",
+  "editorial_rule": "Commercial participation, carriage, sponsorship or partnership does not buy editorial approval or guaranteed airtime.",
+  "technical_routes": [
+    "HLS",
+    "Icecast",
+    "Shoutcast",
+    "RTMP/RTMPS",
+    "SRT",
+    "Authorised station relay",
+    "Podcast RSS",
+    "Authorised terrestrial simulcast"
+  ],
+  "initial_research_signal": {
+    "source": "RadioTune Christian/Gospel station directories",
+    "observed_scale": "Thousands of Christian radio listings and hundreds of Gospel FM listings across multiple continents.",
+    "note": "Directory listings are discovery leads only; each station must be independently verified before outreach, rights decisions or commercial claims."
+  },
+  "priority_regions": [
+    "Southern Africa",
+    "West Africa",
+    "East Africa",
+    "Central Africa",
+    "North Africa",
+    "Europe",
+    "North America",
+    "Latin America and Caribbean",
+    "Middle East",
+    "South Asia",
+    "Southeast Asia",
+    "Oceania"
+  ],
+  "pipeline": [
+    "DISCOVERED",
+    "VERIFIED",
+    "CONTACTED",
+    "INTERESTED",
+    "DUE_DILIGENCE",
+    "AGREEMENT_SENT",
+    "NEGOTIATION",
+    "SIGNED",
+    "TECHNICAL_QC",
+    "ACTIVE"
+  ],
+  "safeguards": {
+    "rights_verification_required": true,
+    "territory_verification_required": true,
+    "regulatory_review_where_applicable": true,
+    "child_safeguarding_required_when_applicable": true,
+    "political_separation": true,
+    "medical_claim_review": true,
+    "fundraising_claim_review": true,
+    "no_bypass": true
+  },
+  "next_action": "Populate the verified global radio partner registry, prioritise high-fit Gospel networks and stations, prepare partnership outreach, and connect approved radio feeds to YHVH distribution without bypassing rights or local law."
+}
