@@ -1,36 +1,43 @@
 {
-  "schema": "yhvh.gospel-tv.global-christian-media-network/v1",
+  "schema": "yhvh.gospel-tv.global-christian-media-network/v2",
   "authority": "IZAKHONO",
   "brand": "YHVH GOSPEL TV",
+  "radio_brand": "YHVH GLOBAL GOSPEL RADIO",
   "mission": "Connect Christian television networks, Gospel radio stations, ministries, creators, events and distribution partners into a lawful global media ecosystem.",
   "tagline": "FAITH. WORSHIP. WORD. AFRICA TO THE WORLD.",
   "architecture": "AFRICAN ORIGIN → IZAKHONO CONTROL → WORLDWIDE DISTRIBUTION",
   "media_types": ["television", "radio", "streaming_radio", "podcast", "digital_video", "live_events", "music", "ministry_content"],
   "partner_classes": [
-    "Christian_TV_Network",
-    "Gospel_Radio_Station",
-    "Christian_Radio_Network",
-    "Streaming_Radio_Platform",
-    "Church_Ministry",
-    "Gospel_Artist_Choir",
-    "Event_Organizer",
-    "Producer_Studio",
-    "Satellite_OTT_FAST_Distributor",
-    "Commercial_Faith_Aligned_Partner"
+    "Christian_TV_Network", "Gospel_Radio_Station", "Christian_Radio_Network", "Streaming_Radio_Platform",
+    "Church_Ministry", "Gospel_Artist_Choir", "Event_Organizer", "Producer_Studio",
+    "Satellite_OTT_FAST_Distributor", "Commercial_Faith_Aligned_Partner"
   ],
   "integration_models": [
-    "program_exchange",
-    "radio_simulcast",
-    "tv_simulcast",
-    "audio_video_cross_promotion",
-    "event_exchange",
-    "creator_referral",
-    "regional_distribution",
-    "language_content_exchange",
-    "co_production",
-    "licensed_content",
-    "advertising_inventory_exchange"
+    "program_exchange", "radio_simulcast", "tv_simulcast", "audio_video_cross_promotion",
+    "event_exchange", "creator_referral", "regional_distribution", "language_content_exchange",
+    "co_production", "licensed_content", "advertising_inventory_exchange"
   ],
+  "priority_global_targets": [
+    {"name": "Trans World Radio", "media": ["radio", "digital"], "priority": "TIER_1"},
+    {"name": "K-LOVE", "media": ["radio"], "priority": "TIER_1"},
+    {"name": "Air1", "media": ["radio"], "priority": "TIER_1"},
+    {"name": "FEBC", "media": ["radio", "digital"], "priority": "TIER_1"},
+    {"name": "European Gospel Radio", "media": ["radio"], "priority": "TIER_1"},
+    {"name": "Radio Pulpit", "media": ["radio"], "priority": "TIER_1"},
+    {"name": "Faith Broadcasting Network", "media": ["tv", "radio", "digital"], "priority": "TIER_1"}
+  ],
+  "africa_radio_acquisition": {
+    "status": "ACTIVE",
+    "countries": ["South Africa", "Nigeria", "Ghana", "Kenya", "Uganda", "Tanzania", "Zambia", "Zimbabwe", "Malawi", "Rwanda", "Namibia", "Mozambique", "Angola", "Botswana", "Eswatini", "Lesotho", "Ethiopia", "Liberia", "Sierra Leone", "Cote d'Ivoire", "Democratic Republic of the Congo", "Republic of the Congo", "Madagascar", "Cameroon", "South Sudan"],
+    "strategy": "Discover stations and networks, verify identity and rights, establish contact, propose programme exchange or distribution, complete agreement and technical QC before activation."
+  },
+  "global_expansion": ["North America", "Latin America", "Caribbean", "Europe", "Middle East", "Asia", "Oceania"],
+  "radio_layer": {
+    "purpose": "Make Gospel radio a first-class acquisition, distribution and audience channel alongside television.",
+    "capabilities": ["station_directory", "live_stream_registry", "program_exchange", "audio_content_ingestion", "radio_to_tv_cross_promotion", "tv_to_radio_cross_promotion", "regional_audio_channels", "language_channels", "event_audio_simulcast", "creator_radio_distribution"],
+    "stream_protocols": ["HTTPS", "HLS", "Icecast", "Shoutcast", "RTMP", "SRT"],
+    "no_stream_keys_in_git": true
+  },
   "rights_policy": {
     "default": "REVIEW_REQUIRED",
     "payment_is_not_editorial_approval": true,
@@ -40,23 +47,6 @@
     "music_and_performer_rights_required": true,
     "safeguarding_required_when_applicable": true,
     "fail_closed": true
-  },
-  "radio_layer": {
-    "purpose": "Add Gospel radio as a first-class distribution and acquisition channel alongside television.",
-    "capabilities": [
-      "station_directory",
-      "live_stream_registry",
-      "program_exchange",
-      "audio_content_ingestion",
-      "radio_to_tv_cross_promotion",
-      "tv_to_radio_cross_promotion",
-      "regional_audio_channels",
-      "language_channels",
-      "event_audio_simulcast",
-      "creator_radio_distribution"
-    ],
-    "stream_protocols": ["HTTPS", "HLS", "Icecast", "Shoutcast", "RTMP", "SRT"],
-    "no_stream_keys_in_git": true
   },
   "territory_strategy": {
     "default": "REVIEW_REQUIRED",
@@ -68,17 +58,12 @@
     "models": ["founding_partner", "programme_sponsor", "radio_sponsor", "regional_distribution", "advertising", "production_services", "content_licensing", "events", "creator_fund"],
     "editorial_independence": true
   },
-  "pipeline": [
-    "PROSPECT",
-    "CONTACTED",
-    "INTERESTED",
-    "DUE_DILIGENCE",
-    "AGREEMENT_SENT",
-    "NEGOTIATION",
-    "SIGNED",
-    "TECHNICAL_QC",
-    "RIGHTS_CLEARED",
-    "ACTIVE",
-    "SUSPENDED"
-  ]
+  "targets": {
+    "tv_networks": 100,
+    "radio_stations": 500,
+    "countries_and_territories": 100,
+    "languages": 50,
+    "active_signed_partners": 100
+  },
+  "pipeline": ["PROSPECT", "CONTACTED", "INTERESTED", "DUE_DILIGENCE", "AGREEMENT_SENT", "NEGOTIATION", "SIGNED", "TECHNICAL_QC", "RIGHTS_CLEARED", "ACTIVE", "SUSPENDED"]
 }
