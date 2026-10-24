@@ -1,0 +1,32 @@
+{
+  "schema": "yhvh.gospel-tv.brand-master-assets/v1",
+  "authority": "IZAKHONO",
+  "brand": "YHVH GOSPEL TV",
+  "status": "OWNER_SUPPLIED_MASTER_REFERENCE",
+  "tagline": "FAITH. WORSHIP. WORD. AFRICA TO THE WORLD.",
+  "master_reference": "Owner-supplied YHVH GOSPEL TV artwork uploaded in ChatGPT on 2026-10-24.",
+  "approved_uses": [
+    "station bug",
+    "opening ident",
+    "closing ident",
+    "programme slate",
+    "Now Playing slate",
+    "Coming Up slate",
+    "emergency slate",
+    "prayer slate",
+    "creator slate",
+    "sponsor separation slate",
+    "social graphics",
+    "website and player branding",
+    "broadcast crew branding"
+  ],
+  "visual_system": {
+    "primary_dark": "black + rich gold",
+    "primary_light": "white + gold",
+    "secondary": "burgundy/wine + gold",
+    "motifs": ["crown", "broadcast signal", "Africa globe", "gold typography"],
+    "tone": ["premium", "African", "faith-centred", "broadcast", "global"]
+  },
+  "asset_policy": "The supplied artwork is the master visual reference. Binary source files must be stored in the authorised content/brand vault; Git stores manifests and metadata, not secret or unverified production binaries.",
+  "production_note": "Before print, trademark filing, embroidery or large-format production, preserve clean vector masters and verify trademark/rights status."
+}
