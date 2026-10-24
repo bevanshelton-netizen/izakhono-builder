@@ -1,0 +1,16 @@
+{
+  "schema": "yhvh.gospel-radio.playout/v1",
+  "station": "YHVH GOSPEL RADIO",
+  "timezone": "Africa/Johannesburg",
+  "mode": "CONTINUOUS",
+  "failover": "last-good-or-station-slate",
+  "items": [
+    {"id":"YGR-OPEN","title":"YHVH Gospel Radio Opener","type":"SLATE","status":"READY"},
+    {"id":"YGR-WORSHIP","title":"24/7 Worship Rotation","type":"ROTATION","uri":"CONTENT_VAULT:radio-worship","status":"REQUIRES_CONTENT"},
+    {"id":"YGR-GOSPEL","title":"African Gospel Rotation","type":"ROTATION","uri":"CONTENT_VAULT:radio-gospel","status":"REQUIRES_CONTENT"},
+    {"id":"YGR-WORD","title":"Word & Teaching Rotation","type":"ROTATION","uri":"CONTENT_VAULT:radio-word","status":"REQUIRES_CONTENT"},
+    {"id":"YGR-PRAYER","title":"Prayer & Devotion Rotation","type":"ROTATION","uri":"CONTENT_VAULT:radio-prayer","status":"REQUIRES_CONTENT"},
+    {"id":"YGR-KIDS","title":"Gospel Kids Rotation","type":"ROTATION","uri":"CONTENT_VAULT:radio-kids","status":"REQUIRES_CONTENT"},
+    {"id":"YGR-CLOSE","title":"YHVH Gospel Radio Close","type":"SLATE","status":"READY"}
+  ]
+}
