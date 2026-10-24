@@ -1,0 +1,26 @@
+services:
+  yhvh-gospel-tv:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "8787:8787"
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      YHVH_CONTENT_VAULT: /app/content-vault
+      YHVH_HLS_DIR: /app/hls
+      YHVH_TERRITORY: ${YHVH_TERRITORY:-ZA}
+      YHVH_RTMP_URL: ${YHVH_RTMP_URL:-}
+    volumes:
+      - ./content-vault:/app/content-vault
+      - ./hls:/app/hls
+      - ./data:/app/data
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8787/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
