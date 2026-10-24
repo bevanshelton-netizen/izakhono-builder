@@ -50,6 +50,85 @@ function tcpProbe(host, port, timeoutMs = 10000) {
   });
 }
 
+function readSmtpLine(socket, timeoutMs = 10000) {
+  return new Promise((resolve, reject) => {
+    let buffer = "";
+    const onData = (chunk) => {
+      buffer += chunk.toString("utf8");
+      const lines = buffer.split(/\r?\n/);
+      if (lines.length < 2) return;
+      const line = lines[lines.length - 2];
+      if (/^\d{3} /.test(line)) {
+        cleanup();
+        resolve({ code: Number(line.slice(0, 3)), line });
+      }
+    };
+    const onError = (error) => { cleanup(); reject(error); };
+    const onTimeout = () => { cleanup(); reject(new Error("SMTP_RESPONSE_TIMEOUT")); };
+    const timer = setTimeout(onTimeout, timeoutMs);
+    const cleanup = () => {
+      clearTimeout(timer);
+      socket.off("data", onData);
+      socket.off("error", onError);
+    };
+    socket.on("data", onData);
+    socket.once("error", onError);
+  });
+}
+
+async function smtpBannerProbe(host, port, timeoutMs = 10000) {
+  const socket = net.createConnection({ host, port });
+  socket.setTimeout(timeoutMs);
+  try {
+    const banner = await readSmtpLine(socket, timeoutMs);
+    if (banner.code !== 220) throw new Error(`SMTP_BAD_BANNER:${banner.code}`);
+    return { ok: true, code: banner.code, banner: banner.line };
+  } finally {
+    socket.destroy();
+  }
+}
+
+async function startTlsProbe(host, port, timeoutMs = 10000) {
+  const socket = net.createConnection({ host, port });
+  socket.setTimeout(timeoutMs);
+  try {
+    const banner = await readSmtpLine(socket, timeoutMs);
+    if (banner.code !== 220) throw new Error(`SMTP_BAD_BANNER:${banner.code}`);
+    socket.write(`EHLO node01.izakhono\r\n`);
+    const ehlo = await readSmtpLine(socket, timeoutMs);
+    if (ehlo.code !== 250) throw new Error(`SMTP_EHLO_FAILED:${ehlo.code}`);
+    socket.write("STARTTLS\r\n");
+    const ready = await readSmtpLine(socket, timeoutMs);
+    if (ready.code !== 220) throw new Error(`STARTTLS_REJECTED:${ready.code}`);
+
+    const secure = await new Promise((resolve, reject) => {
+      const secureSocket = tls.connect({
+        socket,
+        servername: host,
+        rejectUnauthorized: true,
+      });
+      secureSocket.setTimeout(timeoutMs, () => secureSocket.destroy(new Error("STARTTLS_TLS_TIMEOUT")));
+      secureSocket.once("secureConnect", () => resolve(secureSocket));
+      secureSocket.once("error", reject);
+    });
+
+    if (!secure.authorized) throw new Error(secure.authorizationError || "STARTTLS_CERT_NOT_AUTHORIZED");
+    secure.write(`EHLO node01.izakhono\r\n`);
+    const secureEhlo = await readSmtpLine(secure, timeoutMs);
+    if (secureEhlo.code !== 250) throw new Error(`STARTTLS_POST_EHLO_FAILED:${secureEhlo.code}`);
+    secure.destroy();
+    return {
+      ok: true,
+      protocol: secure.getProtocol(),
+      authorized: secure.authorized,
+      ehloCode: secureEhlo.code,
+    };
+  } catch (error) {
+    socket.destroy();
+    throw error;
+  }
+}
+
 function tlsProbe(host, port = 465, timeoutMs = 10000) {
   return new Promise((resolve) => {
     const socket = tls.connect({ host, port, servername: host, rejectUnauthorized: true });
@@ -102,16 +181,23 @@ export function createRealNode01MailProductionProbes({
     },
     publicSmtp: async () => {
       try {
-        if (!(await tcpProbe(mailHost, smtpPort))) throw new Error(`SMTP_UNREACHABLE:${mailHost}:${smtpPort}`);
-        return evidence("publicSmtp", { host: mailHost, port: smtpPort });
+        const result = await smtpBannerProbe(mailHost, smtpPort);
+        return evidence("publicSmtp", { host: mailHost, port: smtpPort, banner: result.banner });
       } catch (error) {
         return fail("publicSmtp", error);
       }
     },
     publicSubmission: async () => {
       try {
-        if (!(await tcpProbe(mailHost, submissionPort))) throw new Error(`SUBMISSION_UNREACHABLE:${mailHost}:${submissionPort}`);
-        return evidence("publicSubmission", { host: mailHost, port: submissionPort });
+        const result = await startTlsProbe(mailHost, submissionPort);
+        return evidence("publicSubmission", {
+          host: mailHost,
+          port: submissionPort,
+          startTls: true,
+          authorized: result.authorized,
+          protocol: result.protocol,
+          postTlsEhloCode: result.ehloCode,
+        });
       } catch (error) {
         return fail("publicSubmission", error);
       }
