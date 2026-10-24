@@ -1,0 +1,27 @@
+services:
+  kora-mail:
+    image: ghcr.io/docker-mailserver/docker-mailserver:15.1.0
+    container_name: kora-mail
+    hostname: mail.streamkoraafrica.com
+    restart: unless-stopped
+    env_file:
+      - ./mail.env
+    cap_add:
+      - NET_ADMIN
+    ports:
+      - "25:25"
+      - "465:465"
+      - "587:587"
+      - "993:993"
+    volumes:
+      - ./data/mail-data:/var/mail
+      - ./data/mail-state:/var/mail-state
+      - ./data/config:/tmp/docker-mailserver
+      - ./data/letsencrypt:/etc/letsencrypt
+      - /etc/localtime:/etc/localtime:ro
+    healthcheck:
+      test: ["CMD-SHELL", "supervisorctl status postfix | grep -q RUNNING && supervisorctl status dovecot | grep -q RUNNING"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
