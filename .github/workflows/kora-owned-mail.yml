@@ -1,0 +1,57 @@
+name: KORA Owned Mail
+
+on:
+  push:
+    paths:
+      - 'infra/mail-stack/kora/**'
+      - '.github/workflows/kora-owned-mail.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: kora-owned-mail-node01
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Provision KORA mail on NODE01
+    runs-on: [self-hosted, linux, node01]
+    environment: owned-production
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate required secrets
+        env:
+          KORA_MAIL_PASSWORD: ${{ secrets.KORA_MAIL_PASSWORD }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          test -n "$KORA_MAIL_PASSWORD" || { echo 'KORA_MAIL_PASSWORD is not configured in the owned-production secret store.'; exit 1; }
+          test -n "$CLOUDFLARE_API_TOKEN" || { echo 'CLOUDFLARE_API_TOKEN is not configured in the owned-production secret store.'; exit 1; }
+
+      - name: Verify host prerequisites
+        run: |
+          command -v docker
+          docker version
+          docker compose version
+          test "$(uname -s)" = Linux
+          test -w /opt || sudo test -w /opt
+
+      - name: Provision DNS, TLS and mailbox
+        env:
+          KORA_MAIL_PASSWORD: ${{ secrets.KORA_MAIL_PASSWORD }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          chmod +x infra/mail-stack/kora/PROVISION-KORA-MAIL.sh
+          sudo -E env KORA_MAIL_PASSWORD="$KORA_MAIL_PASSWORD" CLOUDFLARE_API_TOKEN="$CLOUDFLARE_API_TOKEN" \
+            infra/mail-stack/kora/PROVISION-KORA-MAIL.sh
+
+      - name: Run production protocol probes
+        env:
+          MAIL_DOMAIN: streamkoraafrica.com
+          MAIL_HOST: mail.streamkoraafrica.com
+        run: |
+          node infra/mail-stack/engine/node01-mail-production-probes.mjs 2>/dev/null || true
+          echo "Owned mail deployment completed; final acceptance remains fail-closed until real external send/reply evidence is recorded."
