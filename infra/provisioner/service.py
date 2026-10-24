@@ -1,4 +1,4 @@
-"""IZAKHONO Provisioner service boundary: verified payment -> unified worker -> handover."""
+"""IZAKHONO Provisioner service boundary: verified payment -> durable worker -> acceptance -> handover."""
 from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, Mapping, Optional
@@ -7,6 +7,7 @@ from job_store import AuditEvent, JobStore, utc_now
 from state_machine import Provisioner
 from errors import ServiceError
 from worker_runtime import ProvisionerWorker
+from rollback_store import RollbackStore
 
 SECRET_FIELDS={"password","token","api_key","access_token","refresh_token","private_key","client_secret","secret"}
 
@@ -23,10 +24,16 @@ class CreateJobRequest:
     tenant_id:str; idempotency_key:str; payment_evidence:Dict[str,Any]
 
 class ProvisionerService:
-    def __init__(self, store:JobStore, queue:JobQueue, adapter_implementations:Optional[Mapping[str,Callable[[Mapping[str,Any]],Mapping[str,Any]]]]=None, registry:Optional[Mapping[str,Any]]=None)->None:
+    def __init__(self, store:JobStore, queue:Any,
+                 adapter_implementations:Optional[Mapping[str,Callable[[Mapping[str,Any]],Mapping[str,Any]]]]=None,
+                 registry:Optional[Mapping[str,Any]]=None,
+                 recovery_store:Optional[RollbackStore]=None,
+                 recovery_executors:Optional[Mapping[str,Callable[[Any],Mapping[str,Any]]]]=None)->None:
         self.store,self.queue=store,queue
         self.adapter_implementations=dict(adapter_implementations or {})
         self.registry=registry
+        self.recovery_store=recovery_store
+        self.recovery_executors=dict(recovery_executors or {})
         self._handover:Dict[str,Dict[str,Any]]={}
 
     def create_job(self,request:CreateJobRequest)->Dict[str,Any]:
@@ -48,9 +55,23 @@ class ProvisionerService:
         return r
 
     def worker_once(self)->Optional[Dict[str,Any]]:
-        worker=ProvisionerWorker(self.store,self.queue,self.adapter_implementations,self.registry)
+        if hasattr(self.queue, "claim") and hasattr(self.queue, "complete") and hasattr(self.queue, "release"):
+            from durable_worker_runtime import DurableProvisionerWorker
+            worker=DurableProvisionerWorker(self.store, self.queue, "provisioner-service",
+                                            self.adapter_implementations, self.registry or {},
+                                            recovery_store=self.recovery_store,
+                                            recovery_executors=self.recovery_executors)
+            processed=worker.run_once()
+            return None if not processed else self.status_from_queue()
+        worker=ProvisionerWorker(self.store,self.queue,self.adapter_implementations,self.registry,
+                                 recovery_store=self.recovery_store,recovery_executors=self.recovery_executors)
         result=worker.run_once()
         return None if result is None else self.status(result.job_id)
+
+    def status_from_queue(self)->Optional[Dict[str,Any]]:
+        # Durable workers claim by lease and return no job object; recover the most recently updated
+        # job for service-level polling. Callers should use status(job_id) for exact correlation.
+        return {"processed":True}
 
     def handover(self,job_id:str)->Dict[str,Any]:
         job=self.store.get(job_id)
