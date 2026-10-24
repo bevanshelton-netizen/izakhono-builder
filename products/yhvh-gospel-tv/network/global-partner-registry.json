@@ -1,0 +1,12 @@
+{
+  "schema": "yhvh.global-broadcast.partner-registry/v1",
+  "authority": "IZAKHONO",
+  "mission": "Connect lawful Christian television and Gospel radio networks worldwide.",
+  "partnerTypes": ["TV_NETWORK", "TV_STATION", "RADIO_NETWORK", "RADIO_STATION", "DISTRIBUTOR", "MINISTRY"],
+  "pipeline": ["PROSPECT", "CONTACTED", "INTERESTED", "DUE_DILIGENCE", "AGREEMENT_SENT", "NEGOTIATION", "SIGNED", "TECHNICAL_QC", "ACTIVE", "SUSPENDED"],
+  "editorialIndependence": true,
+  "paymentDoesNotGuaranteeAirtime": true,
+  "rightsRequiredBeforeDistribution": true,
+  "territoryGate": "FAIL_CLOSED",
+  "partners": []
+}
