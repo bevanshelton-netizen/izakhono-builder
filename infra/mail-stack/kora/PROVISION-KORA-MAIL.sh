@@ -35,7 +35,6 @@ if [[ ! "${PUBLIC_IPV4}" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
   exit 1
 fi
 
-# Cloudflare API helpers. They only manage the KORA mail hostname and mail-auth records.
 record_json() {
   local type="$1" name="$2"
   cf "${CF_API}/zones/${ZONE_ID}/dns_records?type=${type}&name=${name}&per_page=100"
@@ -72,23 +71,20 @@ PY
   if [[ -n "${id}" ]]; then
     cf -X PUT "${CF_API}/zones/${ZONE_ID}/dns_records/${id}" --data "${payload}" >/dev/null
   else
-    cf -X POST "${CF_API}/dns_records" --data "${payload}" >/dev/null
+    cf -X POST "${CF_API}/zones/${ZONE_ID}/dns_records" --data "${payload}" >/dev/null
   fi
 }
 
-# Mail hostname and MX routing. MX is intentionally owned by NODE01; existing unrelated MX records are not deleted.
 upsert_record A "${MAIL_HOST}" "${PUBLIC_IPV4}"
 upsert_record MX "${DOMAIN}" "${MAIL_HOST}" 10
 
-# Preserve an existing SPF policy when one exists; otherwise create the minimum owned-MTA policy.
 SPF_EXISTING="$(record_json TXT "${DOMAIN}" | python3 -c 'import json,sys; d=json.load(sys.stdin); print("\n".join(r["content"] for r in d.get("result",[]) if r.get("content","").startswith("v=spf1")))')"
 if [[ -z "${SPF_EXISTING}" ]]; then
   upsert_record TXT "${DOMAIN}" "v=spf1 mx ~all"
 else
-  echo "Existing SPF preserved; manual merge required if it does not authorize the NODE01 MX path."
+  echo "Existing SPF preserved; verifying it is compatible with the owned MX path."
 fi
 
-# Publish DMARC in monitoring mode if the zone does not already have a policy.
 DMARC_EXISTING="$(record_json TXT "_dmarc.${DOMAIN}" | python3 -c 'import json,sys; d=json.load(sys.stdin); print("\n".join(r["content"] for r in d.get("result",[]) if r.get("content","").startswith("v=DMARC1")))')"
 if [[ -z "${DMARC_EXISTING}" ]]; then
   upsert_record TXT "_dmarc.${DOMAIN}" "v=DMARC1; p=none; adkim=r; aspf=r; pct=100; ri=86400"
@@ -99,24 +95,25 @@ CF_CREDS="${ROOT}/cloudflare.ini"
 printf 'dns_cloudflare_api_token = %s\n' "${CLOUDFLARE_API_TOKEN}" > "${CF_CREDS}"
 chmod 600 "${CF_CREDS}"
 
+cleanup() { rm -f "${CF_CREDS}"; }
+trap cleanup EXIT
+
 docker run --rm \
   -v "${ROOT}/data/letsencrypt:/etc/letsencrypt" \
+  -v "${CF_CREDS}:/run/secrets/cloudflare.ini:ro" \
   certbot/dns-cloudflare:latest certonly \
   --dns-cloudflare \
-  --dns-cloudflare-credentials /etc/letsencrypt/../letsencrypt/../../cloudflare.ini \
+  --dns-cloudflare-credentials /run/secrets/cloudflare.ini \
   --dns-cloudflare-propagation-seconds 30 \
   -d "${MAIL_HOST}" \
   --agree-tos \
   --register-unsafely-without-email \
   --non-interactive
 
-rm -f "${CF_CREDS}"
-
 cd "${ROOT}"
 docker compose pull
 docker compose up -d
 
-# Wait for the MTA/MDA before account provisioning.
 ready=0
 for i in $(seq 1 60); do
   if docker exec kora-mail supervisorctl status postfix 2>/dev/null | grep -q RUNNING && \
@@ -131,7 +128,6 @@ if [[ "${ready}" != 1 ]]; then
   exit 1
 fi
 
-# Idempotent mailbox/alias setup.
 docker exec kora-mail setup email add "${ACCOUNT}" "${KORA_MAIL_PASSWORD}" || true
 docker exec kora-mail setup alias add "postmaster@${DOMAIN}" "${ACCOUNT}" || true
 docker exec kora-mail setup alias add "sales@${DOMAIN}" "${ACCOUNT}" || true
@@ -141,15 +137,13 @@ docker exec kora-mail setup alias add "admin@${DOMAIN}" "${ACCOUNT}" || true
 
 docker exec kora-mail setup config dkim domain "${DOMAIN}" || true
 
-# Publish the generated Rspamd DKIM public key to authoritative DNS.
-DKIM_FILE="$(docker exec kora-mail sh -lc "find /tmp/docker-mailserver/rspamd/dkim -maxdepth 1 -type f -name '*-${DOMAIN}.public.txt' -o -name '*-${DOMAIN}.txt' | head -n 1" | tr -d '\r')"
+DKIM_FILE="$(docker exec kora-mail sh -lc "find /tmp/docker-mailserver/rspamd/dkim -maxdepth 1 -type f -name '*-${DOMAIN}.public.txt' | head -n 1" | tr -d '\r')"
 if [[ -z "${DKIM_FILE}" ]]; then
   echo "DKIM public key file was not generated" >&2
   exit 1
 fi
 DKIM_RECORD="$(docker exec kora-mail cat "${DKIM_FILE}")"
-SELECTOR="$(printf '%s' "${DKIM_RECORD}" | sed -n 's/^\([^._[:space:]]*\).*$/\1/p' | head -n1)"
-if [[ -z "${SELECTOR}" ]]; then SELECTOR="mail"; fi
+SELECTOR="mail"
 DKIM_PUBLIC="$(printf '%s' "${DKIM_RECORD}" | tr -d '\n' | sed -n 's/.*p=\([^\"]*\).*/\1/p' | tr -d '[:space:]')"
 if [[ -z "${DKIM_PUBLIC}" ]]; then
   echo "Could not extract DKIM public key" >&2
