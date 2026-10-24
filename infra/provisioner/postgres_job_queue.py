@@ -1,7 +1,7 @@
 """Durable PostgreSQL queue with leases, retries and crash recovery."""
 from __future__ import annotations
-from datetime import datetime, timezone
 from typing import Any, Optional
+from uuid import uuid4
 from job_store import StoredJob
 
 SCHEMA = """
@@ -19,7 +19,7 @@ CREATE INDEX IF NOT EXISTS provisioner_queue_ready_idx
 """
 
 class PostgresJobQueue:
-    """Queue substrate; workers own leases and must complete/release them explicitly."""
+    """Queue substrate; workers own unique leases and must complete/release them explicitly."""
     def __init__(self, connection: Any, lease_seconds: int = 60) -> None:
         self.connection, self.lease_seconds = connection, lease_seconds
 
@@ -41,8 +41,8 @@ class PostgresJobQueue:
         self.connection.commit()
 
     def claim(self, worker_id: str) -> Optional[tuple[StoredJob, str]]:
-        now = datetime.now(timezone.utc)
         lease_until = f"{self.lease_seconds} seconds"
+        lease_id = f"{worker_id}:{uuid4().hex}"
         with self.connection.cursor() as cur:
             cur.execute(
                 """WITH candidate AS (
@@ -57,7 +57,7 @@ class PostgresJobQueue:
                        attempts=q.attempts+1, updated_at=NOW()
                    FROM candidate c WHERE q.job_id=c.job_id
                    RETURNING q.job_id, q.lease_id""",
-                (worker_id, lease_until),
+                (lease_id, lease_until),
             )
             row = cur.fetchone()
             if row is None:
@@ -76,10 +76,10 @@ class PostgresJobQueue:
         return PostgresJobStore._row_to_job(job_row), lease_id
 
     def complete(self, job_id: str, lease_id: str) -> None:
-        self._lease_update(job_id, lease_id, clear=True)
+        self._lease_update(job_id, lease_id, available_at=None, error_code=None)
 
     def release(self, job_id: str, lease_id: str, available_at: Optional[str] = None, error_code: Optional[str] = None) -> None:
-        self._lease_update(job_id, lease_id, clear=True, available_at=available_at, error_code=error_code)
+        self._lease_update(job_id, lease_id, available_at=available_at, error_code=error_code)
 
     def recover_expired(self) -> int:
         with self.connection.cursor() as cur:
@@ -91,7 +91,7 @@ class PostgresJobQueue:
         self.connection.commit()
         return count
 
-    def _lease_update(self, job_id: str, lease_id: str, clear: bool, available_at: Optional[str] = None, error_code: Optional[str] = None) -> None:
+    def _lease_update(self, job_id: str, lease_id: str, available_at: Optional[str] = None, error_code: Optional[str] = None) -> None:
         with self.connection.cursor() as cur:
             cur.execute(
                 """UPDATE provisioner_queue
