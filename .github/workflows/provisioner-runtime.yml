@@ -55,6 +55,10 @@ jobs:
         run: python production_adapter_contract.py
       - name: Run production adapter catalog smoke
         run: python production_adapter_catalog.py
+      - name: Run IZAKHONO PAY production adapter smoke
+        run: python production_payment_adapter.py
+      - name: Run IZAKHONO PAY production adapter tests
+        run: python production_payment_adapter_test.py
       - name: Run registry loader smoke
         run: python adapter_registry_runtime.py
       - name: Run contract smoke
