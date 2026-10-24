@@ -24,6 +24,8 @@
 - External authority adapter boundary with explicit confirmation state.
 - Registration transaction orchestration that refuses to advance to `ok` without authority confirmation and successful DNS publication.
 - Rate-limit abstraction and abuse-control foundation.
+- Continuous worker supervisor: ready jobs are automatically advanced, and completed/verified work immediately releases the next dependency-ready jobs.
+- Scheduled worker pump configured to run every minute.
 
 ## Release truth
 
@@ -48,3 +50,7 @@ The current code is a registry/registrar control-plane foundation and does not b
 ## Commercial rule
 
 NO VERIFIED CAPABILITY → NO CUSTOMER PROMISE → NO SALE.
+
+## Continuous execution directive
+
+The supervisor must not stop merely because one worker completes. Completion triggers dependency reconciliation and automatic advancement of the next eligible queued jobs. Human-gated/high-risk work remains blocked by design.
