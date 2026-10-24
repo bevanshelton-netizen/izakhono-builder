@@ -1,0 +1,142 @@
+{
+  "schema": "yhvh.gospel-tv.global-christian-media-alliance/v1",
+  "authority": "IZAKHONO",
+  "brand": "YHVH GOSPEL TV",
+  "mission": "Connect Christian television networks, Gospel radio stations, ministries, churches, artists, choirs, producers, events and lawful distribution partners into a rights-aware global media ecosystem.",
+  "positioning": "AFRICAN ORIGIN → IZAKHONO CONTROL → WORLDWIDE DISTRIBUTION",
+  "pillars": [
+    "TELEVISION",
+    "RADIO",
+    "STREAMING",
+    "CONTENT",
+    "CREATORS",
+    "EVENTS",
+    "DISTRIBUTION",
+    "LANGUAGE",
+    "PARTNERSHIPS"
+  ],
+  "operating_principles": {
+    "editorial_independence": true,
+    "creator_ownership_by_default": true,
+    "rights_before_distribution": true,
+    "territory_gate_before_distribution": true,
+    "payment_does_not_guarantee_airtime": true,
+    "partner_does_not_equal_endorsement": true,
+    "lawful_distribution_only": true,
+    "no_censorship_evasion": true
+  },
+  "media_classes": {
+    "television": [
+      "Christian TV networks",
+      "Gospel TV channels",
+      "Faith broadcasters",
+      "Church television ministries",
+      "Satellite broadcasters",
+      "OTT/FAST Christian platforms",
+      "Regional and national Christian broadcasters"
+    ],
+    "radio": [
+      "Gospel radio stations",
+      "Christian FM/AM stations",
+      "Christian online radio",
+      "Church radio networks",
+      "Christian talk and teaching stations",
+      "Worship/music stations",
+      "Community Christian radio",
+      "International radio networks"
+    ]
+  },
+  "partner_classes": [
+    "TV_NETWORK",
+    "RADIO_NETWORK",
+    "RADIO_STATION",
+    "STREAMING_PLATFORM",
+    "SATELLITE_DISTRIBUTOR",
+    "OTT_FAST_PLATFORM",
+    "CHURCH_MINISTRY",
+    "ARTIST_CHOIR",
+    "PRODUCER_STUDIO",
+    "EVENT_ORGANISER",
+    "LANGUAGE_PARTNER",
+    "COMMERCIAL_PARTNER",
+    "TECHNICAL_DISTRIBUTION_PARTNER"
+  ],
+  "pipeline": [
+    "DISCOVERED",
+    "RESEARCHED",
+    "CONTACTED",
+    "INTERESTED",
+    "DUE_DILIGENCE",
+    "RIGHTS_REVIEW",
+    "AGREEMENT_SENT",
+    "NEGOTIATION",
+    "SIGNED",
+    "TECHNICAL_QC",
+    "ACTIVE",
+    "SUSPENDED"
+  ],
+  "exchange_model": {
+    "content": "lawful programme and audio/video exchange",
+    "distribution": "territory-cleared carriage and syndication",
+    "language": "translation, dubbing and subtitle partnerships",
+    "events": "live and recorded Gospel event distribution",
+    "production": "co-production and YHVH Originals",
+    "commercial": "separate sponsor and advertising agreements",
+    "technology": "secure feeds, metadata, analytics and distribution tooling"
+  },
+  "territory_strategy": {
+    "default": "REVIEW_REQUIRED",
+    "regions": [
+      "Africa",
+      "Europe",
+      "North America",
+      "Latin America and Caribbean",
+      "Middle East",
+      "South Asia",
+      "East and Southeast Asia",
+      "Oceania"
+    ],
+    "rule": "No programme, live feed or station carriage becomes ACTIVE until rights, territory, regulatory and technical requirements are verified."
+  },
+  "language_strategy": {
+    "initial": ["en","fr","pt","es","sw","zu","xh","af"],
+    "expansion": ["yo","ha","ig","ar","hi","id","nso","st","tn","ny","rw","ln","am","sn","ak","mul"]
+  },
+  "radio_integration": {
+    "mode": "FIRST_CLASS_NETWORK_MEMBER",
+    "capabilities": [
+      "station directory",
+      "programme exchange",
+      "Gospel music syndication",
+      "sermon and teaching exchange",
+      "live event simulcast",
+      "radio-to-TV conversion",
+      "TV-to-radio audio simulcast",
+      "podcast and on-demand republishing",
+      "cross-promotion",
+      "regional language routing",
+      "rights-aware audio distribution"
+    ]
+  },
+  "commercial_separation": {
+    "principle": "Commercial participation is separate from editorial approval.",
+    "offers": [
+      "Founding Partner",
+      "Network Partner",
+      "Radio Partner",
+      "Programme Sponsor",
+      "Event Partner",
+      "Distribution Partner",
+      "Production Partner"
+    ]
+  },
+  "success_targets": {
+    "christian_tv_networks": 100,
+    "gospel_radio_stations": 500,
+    "countries_or_territories": 100,
+    "languages": 30,
+    "verified_distribution_partners": 250
+  },
+  "status": "BUILD_ACTIVE",
+  "note": "Targets are strategic objectives, not claims of current partnerships. Each partner must be independently verified and recorded through the partnership pipeline."
+}
