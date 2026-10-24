@@ -1,0 +1,43 @@
+{
+  "schema": "yhvh.gospel-tv.gospel-radio-partner-registry/v1",
+  "authority": "IZAKHONO",
+  "status": "ACTIVE_FRAMEWORK",
+  "default_status": "PROSPECT",
+  "rule": "Directory evidence identifies prospects; it does not constitute partnership, endorsement or broadcast clearance.",
+  "source_examples": [
+    {
+      "source": "World's Radio",
+      "reference": "https://www.worldsradio.com/genre/christian",
+      "note": "International Christian-radio discovery source; verify each station directly before outreach."
+    },
+    {
+      "source": "HisAir.Net International Stations",
+      "reference": "https://www.hisair.net/website-directory/international-stations/",
+      "note": "International Christian radio directory used for prospect discovery."
+    },
+    {
+      "source": "RadioTune Africa Christian FM directory",
+      "reference": "https://www.radiotune.fm/en-ss/?band=fm&genre=christian&region=africa",
+      "note": "Africa discovery source; includes stations across multiple countries and languages."
+    }
+  ],
+  "priority_regions": ["Southern_Africa", "West_Africa", "East_Africa", "Central_Africa", "North_Africa", "Europe", "Middle_East", "North_America", "Latin_America", "Caribbean", "Asia", "Oceania"],
+  "initial_prospect_examples": [
+    {"name":"TWR Africa","region":"Africa","type":"Christian_Radio_Network","status":"PROSPECT"},
+    {"name":"Radio Pulpit","region":"South_Africa","type":"Christian_Radio_Station","status":"PROSPECT"},
+    {"name":"Link FM","region":"South_Africa","type":"Christian_Radio_Station","status":"PROSPECT"},
+    {"name":"Kingfisher FM","region":"South_Africa","type":"Christian_Radio_Station","status":"PROSPECT"},
+    {"name":"CCFM","region":"South_Africa","type":"Christian_Radio_Station","status":"PROSPECT"},
+    {"name":"Rainbow FM","region":"South_Africa","type":"Christian_Radio_Station","status":"PROSPECT"},
+    {"name":"Hope FM","region":"Kenya","type":"Christian_Radio_Station","status":"PROSPECT"},
+    {"name":"Biblia Husema","region":"Kenya","type":"Christian_Radio_Station","status":"PROSPECT"},
+    {"name":"Radio Christian Voice","region":"Zambia","type":"Christian_Radio_Station","status":"PROSPECT"},
+    {"name":"Voice of the Church","region":"Eswatini","type":"Christian_Radio_Station","status":"PROSPECT"},
+    {"name":"Theovision Radio Network","region":"Ghana","type":"Christian_Radio_Network","status":"PROSPECT"},
+    {"name":"Radio Maria Africa network","region":"Africa","type":"Christian_Radio_Network","status":"PROSPECT"}
+  ],
+  "required_record_fields": ["name","country","city_or_region","website","contact","type","language","stream_url","rights_status","outreach_status","agreement_status","territories","notes"],
+  "verification": ["official_website", "official_contact", "broadcast_identity", "stream_test", "rights_scope", "territorial_scope", "editorial_fit", "technical_qc"],
+  "outreach_sequence": ["research", "personalised_invitation", "follow_up", "discovery_call", "rights_and_technical_review", "agreement", "integration", "joint_launch"],
+  "commercial_separation": true
+}
