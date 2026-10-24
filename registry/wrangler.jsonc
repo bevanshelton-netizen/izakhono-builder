@@ -7,5 +7,5 @@
   "preview_urls":true,
   "triggers":{"crons":["* * * * *"]},
   "d1_databases":[{"binding":"DB","migrations_dir":"../migrations","database_id":"a59d44af-22cc-4967-8b00-03c817d7a7dd","database_name":"izakhono-builder"}],
-  "vars":{"APP_ENV":"test"}
+  "vars":{"APP_ENV":"production"}
 }
