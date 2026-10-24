@@ -1,0 +1,91 @@
+{
+  "schema": "yhvh.gospel-tv.free-content-seed/v1",
+  "authority": "IZAKHONO",
+  "purpose": "Seed the YHVH GOSPEL TV acquisition queue with publicly documented free/royalty-free Christian visual and music sources.",
+  "critical_rule": "FREE_DOWNLOAD_OR_ROYALTY_FREE_DOES_NOT_EQUAL_BROADCAST_CLEARED. Every asset remains REVIEW_REQUIRED until its specific license, creator, commercial-use terms, territory, music/performer rights and any Content ID restrictions are recorded.",
+  "preferred_order": ["CC0", "Public Domain", "Explicit commercial royalty-free", "Commercial Creative Commons", "Free stock with explicit commercial terms", "Creator-granted written licence"],
+  "excluded": ["CC-BY-NC", "CC-BY-NC-SA", "unknown-license assets", "unverified reposts", "assets with unresolved music/performer rights", "assets whose terms prohibit broadcast/monetisation"],
+  "seed_sources": [
+    {
+      "id": "pexels-church-service-28145145",
+      "source": "Pexels",
+      "title": "Church Service",
+      "sourceUrl": "https://www.pexels.com/video/church-service-28145145/",
+      "publishedLicense": "Pexels Free License",
+      "durationSeconds": 8,
+      "resolution": "2160x3840",
+      "status": "REVIEW_REQUIRED",
+      "note": "Vertical visual; verify suitability for broadcast and any identifiable-person considerations."
+    },
+    {
+      "id": "pexels-christian-concert-37639456",
+      "source": "Pexels",
+      "title": "Inspiring Christian Concert with Worship",
+      "sourceUrl": "https://www.pexels.com/video/inspiring-christian-concert-with-worship-37639456/",
+      "publishedLicense": "Pexels Free License",
+      "durationSeconds": 13,
+      "resolution": "3840x2160",
+      "status": "REVIEW_REQUIRED",
+      "note": "Explicitly described as Christian worship footage; verify all embedded music/performer rights before broadcast."
+    },
+    {
+      "id": "pexels-priest-sermon-10634859",
+      "source": "Pexels",
+      "title": "A Priest Giving a Sermon at a Church",
+      "sourceUrl": "https://www.pexels.com/video/a-priest-giving-a-sermon-at-a-church-10634859/",
+      "publishedLicense": "Pexels Free License",
+      "durationSeconds": 18,
+      "status": "REVIEW_REQUIRED",
+      "note": "Use only after editorial/religious-context review and confirmation that no separate rights are implicated."
+    },
+    {
+      "id": "pexels-woman-pastor-8775556",
+      "source": "Pexels",
+      "title": "A Woman Pastor Talking in Church",
+      "sourceUrl": "https://www.pexels.com/video/a-woman-pastor-talking-in-church-8775556/",
+      "publishedLicense": "Pexels Free License",
+      "durationSeconds": 6,
+      "resolution": "3840x2160",
+      "status": "REVIEW_REQUIRED"
+    },
+    {
+      "id": "pixabay-worship-cross-church-54983",
+      "source": "Pixabay",
+      "title": "Worship, Cross, Church",
+      "sourceUrl": "https://pixabay.com/videos/worship-cross-church-prayer-bible-54983/",
+      "publishedLicense": "Pixabay Content License",
+      "resolution": "1920x1080",
+      "status": "REVIEW_REQUIRED",
+      "note": "Published as free for use/download; verify current license and any third-party rights before broadcast."
+    },
+    {
+      "id": "pixabay-church-heavenly-light-30701",
+      "source": "Pixabay",
+      "title": "Church, Heavenly, Light",
+      "sourceUrl": "https://pixabay.com/videos/church-heavenly-light-jesus-christ-30701/",
+      "publishedLicense": "Pixabay Content License",
+      "resolution": "1920x1080",
+      "status": "REVIEW_REQUIRED"
+    },
+    {
+      "id": "pixabay-church-religion-god-42472",
+      "source": "Pixabay",
+      "title": "Church, Religion, God",
+      "sourceUrl": "https://pixabay.com/videos/church-religion-god-light-holy-42472/",
+      "publishedLicense": "Pixabay Content License",
+      "resolution": "1920x1080",
+      "status": "REVIEW_REQUIRED"
+    },
+    {
+      "id": "fma-electronic-church-instrumentals",
+      "source": "Free Music Archive",
+      "title": "Electronic Church Instrumentals",
+      "sourceUrl": "https://freemusicarchive.org/music/timoversemann/electronic-church-instrumentals",
+      "publishedLicense": "CC0 1.0 Universal",
+      "status": "REVIEW_REQUIRED",
+      "note": "Album page states tracks are CC0 and melodies are public domain; retain the license evidence and verify each individual track before ingestion."
+    }
+  ],
+  "acquisition_workflow": ["capture source URL", "capture license evidence", "download original asset", "hash asset", "record creator", "record license", "check commercial/broadcast rights", "check music/performer rights", "check territory", "technical QC", "owner rights decision", "ingest into vault"],
+  "broadcast_rule": "Only assets reaching READY through the YHVH Content Vault approval gate may enter the 24/7 playout engine."
+}
