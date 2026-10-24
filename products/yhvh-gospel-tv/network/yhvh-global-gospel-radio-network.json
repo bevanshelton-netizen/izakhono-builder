@@ -1,0 +1,183 @@
+{
+  "schema": "yhvh.gospel-tv.global-gospel-radio-network/v1",
+  "authority": "IZAKHONO",
+  "brand": "YHVH GOSPEL TV",
+  "network": "YHVH GLOBAL GOSPEL RADIO NETWORK",
+  "status": "BUILDING",
+  "mission": "Connect Gospel, Christian and faith-based radio broadcasters into the YHVH global media ecosystem while preserving editorial independence, rights, licensing, local regulation and station ownership.",
+  "principle": "CONNECT. CREATE. PROTECT. DISTRIBUTE. EARN.",
+  "relationship_model": [
+    "content_exchange",
+    "simulcast",
+    "programme_syndication",
+    "news_and_event_exchange",
+    "artist_and_choir_discovery",
+    "podcast_and_audio_distribution",
+    "live_event_audio",
+    "language_exchange",
+    "advertising_and_sponsorship",
+    "technical_distribution",
+    "creator_fund_participation"
+  ],
+  "discovery": {
+    "source_strategy": [
+      "national and regional Christian broadcasters",
+      "church radio stations",
+      "Gospel music stations",
+      "online Christian radio",
+      "community faith broadcasters",
+      "Christian podcast/audio networks",
+      "satellite and digital radio distributors",
+      "international Christian media networks"
+    ],
+    "reference_directory_observation": "Public radio directories demonstrate a large and geographically diverse Christian-radio ecosystem, including thousands of stations across North America, South America, Central America, Europe, Africa, Asia and Oceania.",
+    "verification_required": true
+  },
+  "regions": [
+    "Southern Africa",
+    "West Africa",
+    "East Africa",
+    "Central Africa",
+    "North Africa",
+    "Middle East",
+    "Europe",
+    "North America",
+    "Latin America",
+    "Caribbean",
+    "Asia",
+    "Oceania"
+  ],
+  "languages": [
+    "English",
+    "French",
+    "Portuguese",
+    "Spanish",
+    "Arabic",
+    "Swahili",
+    "isiZulu",
+    "isiXhosa",
+    "Afrikaans",
+    "Yoruba",
+    "Hausa",
+    "Igbo",
+    "Amharic",
+    "Kinyarwanda",
+    "Lingala",
+    "Shona",
+    "Sesotho",
+    "Setswana",
+    "Sepedi",
+    "Chichewa",
+    "Hindi",
+    "Indonesian",
+    "Filipino",
+    "Italian",
+    "German",
+    "and additional verified local languages"
+  ],
+  "pipeline": [
+    "DISCOVERED",
+    "IDENTIFIED",
+    "CONTACTED",
+    "INTERESTED",
+    "DUE_DILIGENCE",
+    "AGREEMENT_SENT",
+    "NEGOTIATION",
+    "SIGNED",
+    "TECHNICAL_QC",
+    "ACTIVE",
+    "SUSPENDED"
+  ],
+  "station_record": {
+    "required_fields": [
+      "stationId",
+      "stationName",
+      "country",
+      "region",
+      "city",
+      "stationType",
+      "website",
+      "streamUrl",
+      "contactUrlOrEmail",
+      "languages",
+      "format",
+      "ownershipOrOperator",
+      "rightsStatus",
+      "regulatoryStatus",
+      "agreementStatus",
+      "technicalStatus",
+      "lastVerifiedAt"
+    ]
+  },
+  "content_exchange": {
+    "television_to_radio": [
+      "audio simulcast from authorised YHVH programming",
+      "sermons",
+      "interviews",
+      "testimonies",
+      "Gospel music programmes",
+      "event audio",
+      "daily devotionals"
+    ],
+    "radio_to_television": [
+      "radio studio programmes with visual rights",
+      "live worship sessions",
+      "artist interviews",
+      "Gospel charts",
+      "community stories",
+      "local-language programmes"
+    ],
+    "creator_to_both": [
+      "original Gospel music",
+      "podcasts",
+      "documentaries",
+      "teaching",
+      "youth programming",
+      "children's programming with safeguarding clearance"
+    ]
+  },
+  "commercial": {
+    "principle": "Commercial participation does not purchase editorial approval or guaranteed airtime.",
+    "opportunities": [
+      "network sponsorship",
+      "programme sponsorship",
+      "event sponsorship",
+      "faith-aligned advertising",
+      "production services",
+      "distribution services",
+      "creator marketplace",
+      "licensed content"
+    ]
+  },
+  "rights_and_safety": {
+    "default": "REVIEW_REQUIRED",
+    "broadcast_requires": [
+      "content rights verified",
+      "music rights verified",
+      "performer rights verified where applicable",
+      "territory rights verified",
+      "station/distribution authorization verified",
+      "technical QC passed",
+      "safeguarding review where applicable",
+      "regulatory requirements reviewed where applicable"
+    ],
+    "fail_closed": true,
+    "no_evasion": true
+  },
+  "shared_infrastructure": {
+    "identity": "IZAKHONO-controlled identity and partner records",
+    "creator_space": "YHVH Creator Space",
+    "content_vault": "YHVH Content Vault",
+    "rights_engine": "YHVH Rights and Territory Gate",
+    "distribution": "YHVH Global Distribution Gateway",
+    "payments": "IZAKHONO-controlled commercial and creator payment workflows",
+    "analytics": "network-level reporting subject to agreements",
+    "security": "FORTRESS security controls where integrated"
+  },
+  "success_target": {
+    "radio_partner_target": 1000,
+    "countries_and_territories_target": 100,
+    "language_target": 30,
+    "initial_priority": "high-fit verified Christian/Gospel broadcasters and online stations"
+  }
+}
