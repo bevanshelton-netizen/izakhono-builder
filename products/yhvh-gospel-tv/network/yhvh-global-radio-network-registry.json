@@ -1,0 +1,31 @@
+{
+  "schema": "yhvh.gospel-tv.global-radio-network-registry/v1",
+  "authority": "IZAKHONO",
+  "brand": "YHVH GOSPEL TV",
+  "mission": "Connect YHVH GOSPEL TV with Gospel and Christian radio stations, networks, web radio and audio distributors worldwide.",
+  "principle": "CREATE. PROTECT. DISTRIBUTE. EARN.",
+  "scope": {
+    "formats": ["FM", "AM", "DAB", "DAB+", "web_radio", "podcast_network", "satellite_radio", "mobile_audio", "smart_speaker", "digital_audio"],
+    "programming_exchange": ["Gospel music", "worship", "Bible teaching", "sermons", "testimonies", "Christian interviews", "African Gospel", "youth programming", "prayer", "news/features where editorially appropriate"],
+    "partnership_models": ["content_exchange", "simulcast", "syndication", "guest_programming", "event_audio", "co-production", "distribution_partner", "advertising_partner"]
+  },
+  "rights_rule": "A station may be listed as a prospect without implying partnership, endorsement, carriage or rights. Broadcast use requires documented rights and applicable territory/regulatory clearance.",
+  "editorial_rule": "Payment, sponsorship or distribution participation does not purchase editorial approval or guaranteed airtime.",
+  "status_values": ["PROSPECT", "CONTACTED", "INTERESTED", "DUE_DILIGENCE", "AGREEMENT_SENT", "NEGOTIATION", "SIGNED", "TECHNICAL_QC", "ACTIVE", "DECLINED", "ON_HOLD"],
+  "territory_gate": "All audio distribution follows the YHVH territory rights registry and route policy. Default is REVIEW_REQUIRED until rights are verified.",
+  "registry": [],
+  "initial_research": {
+    "source": "RadioTune Christian radio directory",
+    "observed_scale": "5,794 Christian radio stations across listed continents in the current directory snapshot",
+    "observed_continents": ["Africa", "North America", "South America", "Central America", "Europe", "Asia", "Oceania"],
+    "note": "Directory counts are discovery leads, not verified partnerships. Each station must be independently verified before outreach or agreement."
+  },
+  "priority_waves": [
+    {"wave": 1, "focus": "Major Christian radio networks and African Gospel broadcasters", "target": 50},
+    {"wave": 2, "focus": "National/regional Christian stations across Africa", "target": 150},
+    {"wave": 3, "focus": "North America and Caribbean", "target": 150},
+    {"wave": 4, "focus": "Europe", "target": 100},
+    {"wave": 5, "focus": "Latin America", "target": 150},
+    {"wave": 6, "focus": "Asia, Middle East and Oceania", "target": 150}
+  ]
+}
