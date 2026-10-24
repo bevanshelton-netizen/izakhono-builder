@@ -83,6 +83,11 @@ jobs:
           node infra/mail-stack/engine/node01-mail-probes.test.mjs
           node infra/mail-stack/engine/node01-mail-readiness-factory.test.mjs
 
+      - name: Validate NODE01 external production probes
+        run: |
+          node --check infra/mail-stack/engine/node01-mail-production-probes.mjs
+          node infra/mail-stack/engine/node01-mail-production-probes.test.mjs
+
       - name: Validate NODE01 mail security
         run: node infra/mail-stack/engine/node01-mail-security.test.mjs
 
