@@ -41,6 +41,10 @@ jobs:
         run: python -m pip install --disable-pip-version-check pyyaml 'psycopg[binary]'
       - name: Compile Provisioner runtime
         run: python -m compileall -q .
+      - name: Run FORTRESS audit smoke
+        run: python fortress_audit.py
+      - name: Run reconciliation smoke
+        run: python reconciliation.py
       - name: Run registry loader smoke
         run: python adapter_registry_runtime.py
       - name: Run contract smoke
