@@ -65,6 +65,12 @@ jobs:
       - name: Validate NODE01 outbound SMTP transport and reply loop
         run: node infra/mail-stack/engine/smtp-transport.test.mjs
 
+      - name: Validate inbound SPF DKIM DMARC policy
+        run: |
+          node --check infra/mail-stack/engine/mail-auth-policy.mjs
+          node infra/mail-stack/engine/mail-auth-policy.test.mjs
+          node infra/mail-stack/engine/inbound-auth.test.mjs
+
       - name: Validate NODE01 real readiness probes
         run: |
           node --check infra/mail-stack/engine/node01-mail-probes.mjs
@@ -127,5 +133,5 @@ jobs:
       - name: Report independent mail gate
         run: |
           echo '[PASS] IZAKHONO MAIL has an independent CI validation gate.'
-          echo '[PASS] Validation covers NODE01 SMTP transactions, authenticated STARTTLS submission, outbound SMTP reply-loop transport, security, persistence, orchestration and real probe execution.'
+          echo '[PASS] Validation covers SMTP, authenticated STARTTLS, outbound reply-loop transport, inbound SPF/DKIM/DMARC policy, security, persistence, orchestration and real probe execution.'
           echo '[GATE] Real public-host SMTP/STARTTLS/provider acceptance remains evidence-gated.'
