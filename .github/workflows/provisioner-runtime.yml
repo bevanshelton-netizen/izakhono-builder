@@ -45,6 +45,10 @@ jobs:
         run: python fortress_audit.py
       - name: Run reconciliation smoke
         run: python reconciliation.py
+      - name: Run recovery orchestration smoke
+        run: python recovery_orchestrator.py
+      - name: Run recovery runtime smoke
+        run: python recovery_runtime_smoke.py
       - name: Run registry loader smoke
         run: python adapter_registry_runtime.py
       - name: Run contract smoke
