@@ -21,6 +21,12 @@ def load_registry(path: str | None = None, bindings_path: str | None = None) -> 
     data = _yaml(target)
     if not isinstance(data.get("adapters"), dict):
         raise ValueError("Invalid Provisioner adapter registry")
+    selection_policy = data.get("selection_policy")
+    if not isinstance(selection_policy, dict):
+        raise ValueError("Invalid Provisioner selection policy")
+    if selection_policy.get("order") != ["owned", "approved_external", "unavailable"]:
+        raise ValueError("Provisioner selection policy must be owned-first")
+    data["policy"] = {"selection_order": list(selection_policy["order"])}
     binding_target = Path(bindings_path) if bindings_path else Path(__file__).parent / "capability_bindings.v1.yaml"
     if binding_target.exists():
         bindings = _yaml(binding_target)
@@ -28,8 +34,9 @@ def load_registry(path: str | None = None, bindings_path: str | None = None) -> 
         data["binding_policy"] = bindings.get("selection", {})
     return data
 
+
 if __name__ == "__main__":
     registry = load_registry()
-    assert registry["policy"]["selection_order"][0] == "owned"
+    assert registry["policy"]["selection_order"] == ["owned", "approved_external", "unavailable"]
     assert "tenant" in registry["bindings"]
     print(f"ADAPTER_REGISTRY_RUNTIME: PASS ({len(registry['adapters'])} capabilities, {len(registry['bindings'])} bindings)")
