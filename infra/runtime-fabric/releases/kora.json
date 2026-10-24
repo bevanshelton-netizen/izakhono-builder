@@ -1,0 +1,60 @@
+{
+  "schema": "izakhono.runtime-fabric.release.v1",
+  "product": "kora-tv",
+  "repository": "bevanshelton-netizen/Downloads/kora-network",
+  "approved_release_id": "b60a79f0833cc7efa6f7ec87a777ed5ddc68dea2",
+  "version": "main-b60a79f",
+  "health_path": "/api/health",
+  "readiness_path": "/api/readiness",
+  "container_port": 3000,
+  "data_schema": "kora-production",
+  "state_mode": "external-authoritative-state",
+  "approved_runtime_classes": [
+    "owned",
+    "owned-cluster",
+    "external-resilience"
+  ],
+  "preferred_targets": [
+    "node01",
+    "node02",
+    "node03",
+    "node04"
+  ],
+  "failover_order": [
+    "node02",
+    "node03",
+    "node04",
+    "external-resilience"
+  ],
+  "public_route": "https://streamkoraafrica.com",
+  "mail_route": {
+    "hostname": "mail.streamkoraafrica.com",
+    "identity": "info@streamkoraafrica.com",
+    "mode": "owned-only",
+    "external_mail_fallback": false
+  },
+  "rules": {
+    "node01_required": false,
+    "require_matching_release_identity": true,
+    "require_health": true,
+    "require_readiness_before_public_promotion": true,
+    "require_backup_restore_path": true,
+    "external_fallback_must_remain_reversible": true,
+    "mail_must_not_be_marked_live_without_external_send_receive_reply": true
+  },
+  "promotion": {
+    "owned_live_verified_requires": [
+      "runtime-health",
+      "readiness",
+      "edge-https",
+      "dns",
+      "backup-restore",
+      "kora-e2e",
+      "mail-dns-tls",
+      "mail-send",
+      "mail-receive",
+      "mail-reply"
+    ]
+  },
+  "notes": "KORA is Customer Zero for IZAKHONO HOST. The release is node-agnostic; NODE01 is preferred but never the sole runtime authority."
+}
