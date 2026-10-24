@@ -51,6 +51,8 @@ jobs:
         run: python recovery_runtime_smoke.py
       - name: Run handover store smoke
         run: python handover_store.py
+      - name: Run production adapter contract smoke
+        run: python production_adapter_contract.py
       - name: Run registry loader smoke
         run: python adapter_registry_runtime.py
       - name: Run contract smoke
@@ -104,7 +106,6 @@ jobs:
           import os
           import psycopg
           from postgres_job_store import PostgresJobStore
-          from postgres_job_queue import PostgresJobQueue
           from handover_store import HandoverStore
           from job_store import utc_now
 
