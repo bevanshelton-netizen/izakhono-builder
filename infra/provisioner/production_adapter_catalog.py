@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from typing import Mapping
 
 from production_adapter_contract import ProductionAdapter, ProductionRequest, ProductionEvidence
+from production_payment_adapter import IzakhonoPayProductionAdapter
 
 CAPABILITIES = (
     "tenant", "payment", "domain", "dns", "site", "tls", "mail",
@@ -52,6 +53,23 @@ class ProductionAdapterCatalog:
         return tuple(sorted(self.registrations))
 
 
+def build_production_catalog() -> ProductionAdapterCatalog:
+    """Build the production catalog with owned adapters only.
+
+    Configuration is resolved at execution time by the adapter, so importing
+    this catalog never requires credentials or makes network calls.
+    """
+    payment = IzakhonoPayProductionAdapter()
+    return ProductionAdapterCatalog({
+        "payment": AdapterRegistration(
+            "payment",
+            payment,
+            "izakhono-pay.health",
+            "vault://izakhono-pay/credentials",
+        )
+    })
+
+
 def smoke() -> None:
     class ReferenceAdapter:
         name = "reference"
@@ -67,6 +85,9 @@ def smoke() -> None:
         "site": AdapterRegistration("site", ReferenceAdapter(), "site.readiness", "secret://site")
     })
     assert catalog.get("site").credentials_ref == "secret://site"
+    production = build_production_catalog()
+    assert production.get("payment").adapter.name == "izakhono-pay"
+    assert production.get("payment").adapter.ownership == "owned"
     try:
         catalog.get("mail")
     except KeyError:
