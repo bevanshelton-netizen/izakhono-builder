@@ -7,6 +7,38 @@ const json=(d:unknown,s=200)=>new Response(JSON.stringify(d),{status:s,headers:{
 const now=()=>new Date().toISOString();
 const idFor=(source:string,sourceId:string)=>`job:${source}:${sourceId}`;
 
+async function ingestDiscovered(db:D1Database){
+ const discovered=await discoverBuilderQueue();
+ const ingested=[];
+ for(const issue of discovered){if(!shouldIngest(issue))continue;const c=classifyBuilderIssue(issue);const job:SupervisorJob={id:idFor('github-issue',String(issue.number)),source:'github-issue',sourceId:String(issue.number),title:issue.title,workerId:c.workerId,priority:c.priority,risk:c.risk,status:c.risk==='high'?'blocked':'queued',dependencyIds:c.dependencyIds,humanGate:c.humanGate,attempts:0,input:{issueNumber:issue.number,url:issue.html_url,body:issue.body??''},evidence:{source:'github',discoveredAt:now()},createdAt:now(),updatedAt:now()};await upsertSupervisorJob(db,job);ingested.push(job.id);}
+ return {discovered:discovered.length,ingested:ingested.length};
+}
+
+function ready(job:SupervisorJob,jobs:SupervisorJob[]){
+ if(job.status!=='queued'||job.risk==='high'||job.humanGate)return false;
+ if(!job.dependencyIds.length)return true;
+ return !jobs.some(j=>job.dependencyIds.some(dep=>dep===j.sourceId||dep===j.id)&&j.status!=='completed');
+}
+
+export async function advanceReadyWorkers(db:D1Database,limit=25){
+ const jobs=await listSupervisorJobs(db);
+ const advanced=[];
+ for(const job of jobs.sort((a,b)=>b.priority-a.priority)){
+  if(advanced.length>=limit)break;
+  if(!ready(job,jobs))continue;
+  const transitioned=await transitionSupervisorJob(db,job.id,'running','continuous-supervisor',{mode:'auto-advance',workerId:job.workerId});
+  advanced.push(transitioned);
+ }
+ return advanced;
+}
+
+export async function pumpWorkers(db:D1Database){
+ await ensureSupervisorSchema(db);
+ const ingestion=await ingestDiscovered(db);
+ const advanced=await advanceReadyWorkers(db);
+ return {ok:true,generatedAt:now(),...ingestion,advanced:advanced.length,jobs:advanced};
+}
+
 export async function workerControl(request:Request,authorized:boolean,db:D1Database){
  if(!authorized)return json({ok:false,error:'unauthorized'},401);
  await ensureSupervisorSchema(db);
@@ -17,12 +49,10 @@ export async function workerControl(request:Request,authorized:boolean,db:D1Data
   return json({ok:true,catalogReady:true,generatedAt:now(),workerCounts:counts,queue:await supervisorCounts(db)});
  }
  if(url.pathname==='/workers/queue'&&request.method==='GET'){
-  try{
-   const discovered=await discoverBuilderQueue();
-   const ingested=[];
-   for(const issue of discovered){if(!shouldIngest(issue))continue;const c=classifyBuilderIssue(issue);const job:SupervisorJob={id:idFor('github-issue',String(issue.number)),source:'github-issue',sourceId:String(issue.number),title:issue.title,workerId:c.workerId,priority:c.priority,risk:c.risk,status:c.risk==='high'?'blocked':'queued',dependencyIds:c.dependencyIds,humanGate:c.humanGate,attempts:0,input:{issueNumber:issue.number,url:issue.html_url,body:issue.body??''},evidence:{source:'github',discoveredAt:now()},createdAt:now(),updatedAt:now()};await upsertSupervisorJob(db,job);ingested.push(job.id);}
-   return json({ok:true,discovered:discovered.length,ingested:ingested.length,queue:await listSupervisorJobs(db)});
-  }catch(error){return json({ok:false,error:String(error)},502);}
+  try{return json({ok:true,...await ingestDiscovered(db),queue:await listSupervisorJobs(db)});}catch(error){return json({ok:false,error:String(error)},502);}
+ }
+ if(url.pathname==='/workers/pump'&&(request.method==='POST'||request.method==='GET')){
+  try{return json(await pumpWorkers(db));}catch(error){return json({ok:false,error:String(error)},502);}
  }
  if(url.pathname==='/workers/jobs'&&request.method==='GET'){
   const status=url.searchParams.get('status') as SupervisorJob['status']|null;
@@ -46,11 +76,11 @@ export async function workerControl(request:Request,authorized:boolean,db:D1Data
  }
  if(url.pathname==='/workers/verify'&&request.method==='POST'){
   let body:{jobId?:string;evidence?:unknown};try{body=await request.json();}catch{return json({ok:false,error:'invalid json'},400);}
-  if(!body.jobId)return json({ok:false,error:'jobId required'},400);const jobs=await listSupervisorJobs(db);const job=jobs.find(j=>j.id===body.jobId);if(!job)return json({ok:false,error:'unknown job'},404);if(job.status!=='running')return json({ok:false,error:'verification requires running state'},409);if(!body.evidence)return json({ok:false,error:'machine-readable evidence required'},400);await recordEvidence(db,job.id,body.evidence);const transitioned=await transitionSupervisorJob(db,job.id,'verified','evidence-gate',{evidence:body.evidence});return json({ok:true,status:'verified',job:transitioned});
+  if(!body.jobId)return json({ok:false,error:'jobId required'},400);const jobs=await listSupervisorJobs(db);const job=jobs.find(j=>j.id===body.jobId);if(!job)return json({ok:false,error:'unknown job'},404);if(job.status!=='running')return json({ok:false,error:'verification requires running state'},409);if(!body.evidence)return json({ok:false,error:'machine-readable evidence required'},400);await recordEvidence(db,job.id,body.evidence);const transitioned=await transitionSupervisorJob(db,job.id,'verified','evidence-gate',{evidence:body.evidence});const advanced=await advanceReadyWorkers(db);return json({ok:true,status:'verified',job:transitioned,advanced:advanced.length});
  }
  if(url.pathname==='/workers/complete'&&request.method==='POST'){
   let body:{jobId?:string;evidence?:unknown};try{body=await request.json();}catch{return json({ok:false,error:'invalid json'},400);}
-  if(!body.jobId)return json({ok:false,error:'jobId required'},400);const jobs=await listSupervisorJobs(db);const job=jobs.find(j=>j.id===body.jobId);if(!job)return json({ok:false,error:'unknown job'},404);if(job.status!=='verified')return json({ok:false,error:'completion requires verified state'},409);if(!body.evidence)return json({ok:false,error:'completion evidence required'},400);await recordEvidence(db,job.id,{verification:job.evidence,completion:body.evidence});const transitioned=await transitionSupervisorJob(db,job.id,'completed','completion-gate',{evidence:body.evidence});return json({ok:true,status:'completed',job:transitioned});
+  if(!body.jobId)return json({ok:false,error:'jobId required'},400);const jobs=await listSupervisorJobs(db);const job=jobs.find(j=>j.id===body.jobId);if(!job)return json({ok:false,error:'unknown job'},404);if(job.status!=='verified')return json({ok:false,error:'completion requires verified state'},409);if(!body.evidence)return json({ok:false,error:'completion evidence required'},400);await recordEvidence(db,job.id,{verification:job.evidence,completion:body.evidence});const transitioned=await transitionSupervisorJob(db,job.id,'completed','completion-gate',{evidence:body.evidence});const advanced=await advanceReadyWorkers(db);return json({ok:true,status:'completed',job:transitioned,advanced:advanced.length});
  }
  return json({ok:false,error:'not found'},404);
 }
