@@ -7,9 +7,10 @@ from postgres_job_store import PostgresJobStore
 from worker_runtime import ProvisionerWorker
 
 class DurableProvisionerWorker:
+    """Claims a PostgreSQL lease exactly once, then processes that job directly."""
     def __init__(self, store: PostgresJobStore, queue: PostgresJobQueue, worker_id: str, implementations: Mapping[str, Any], registry: Mapping[str, Any]):
         self.store, self.queue, self.worker_id = store, queue, worker_id
-        self.worker = ProvisionerWorker(store, _QueueBridge(store, queue, worker_id), implementations, registry)
+        self.worker = ProvisionerWorker(store, queue, implementations, registry)
 
     def run_once(self) -> bool:
         claimed = self.queue.claim(self.worker_id)
@@ -18,30 +19,21 @@ class DurableProvisionerWorker:
             return False
         job, lease_id = claimed
         try:
-            result = self.worker.run_once()
-            if result is None:
+            result = self.worker.process_job(job)
+            if result.status == "verified":
+                self.queue.enqueue(job)
                 self.queue.complete(job.job_id, lease_id)
-                return True
-            if result.status in {"retry", "blocked"}:
-                self.queue.release(job.job_id, lease_id, error_code=result.status)
+            elif result.status == "retry":
+                retry_at = (datetime.now(timezone.utc) + timedelta(seconds=5)).isoformat()
+                self.queue.release(job.job_id, lease_id, retry_at, result.state)
             else:
+                # accepted/terminal/blocked work has no successor queue item.
                 self.queue.complete(job.job_id, lease_id)
             return True
         except Exception as exc:
             retry_at = (datetime.now(timezone.utc) + timedelta(seconds=5)).isoformat()
             self.queue.release(job.job_id, lease_id, retry_at, type(exc).__name__)
             raise
-
-class _QueueBridge:
-    """Adapter allowing the canonical worker to consume a pre-claimed durable job."""
-    def __init__(self, store: PostgresJobStore, queue: PostgresJobQueue, worker_id: str):
-        self.store, self.queue, self.worker_id = store, queue, worker_id
-    def claim_next(self):
-        # The durable wrapper has already claimed the job. The canonical worker
-        # is intentionally not allowed to claim a second row.
-        return None
-    def enqueue(self, job):
-        self.queue.enqueue(job)
 
 if __name__ == "__main__":
     print("DURABLE_WORKER_RUNTIME_MODULE: PASS")
