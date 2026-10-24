@@ -1,0 +1,83 @@
+{
+  "schema": "yhvh.gospel-tv.global-radio-gateway/v1",
+  "authority": "IZAKHONO",
+  "station": "YHVH GOSPEL TV",
+  "purpose": "Make Gospel radio a first-class distribution and content-exchange layer alongside television.",
+  "architecture": "RADIO PARTNERS → IZAKHONO CONTROL → YHVH AUDIO NETWORK → TV/RADIO/STREAMING DISTRIBUTION",
+  "radio_modes": [
+    "LIVE_RADIO",
+    "PROGRAMME_SYNDICATION",
+    "AUDIO_SIMULCAST",
+    "TV_AUDIO_SIMULCAST",
+    "PODCAST_REPURPOSING",
+    "EVENT_AUDIO",
+    "GOSPEL_MUSIC",
+    "SERMON_TEACHING",
+    "PRAYER_PROGRAMMING",
+    "LANGUAGE_CHANNEL"
+  ],
+  "ingestion_gate": {
+    "rights": "CLEAR_REQUIRED",
+    "territory": "CLEAR_REQUIRED",
+    "technical_qc": "PASS_REQUIRED",
+    "metadata": "REQUIRED",
+    "safeguarding": "REQUIRED_WHERE_APPLICABLE",
+    "music_performer_rights": "VERIFY_REQUIRED",
+    "commercial_rights": "VERIFY_REQUIRED"
+  },
+  "distribution_routes": [
+    "IZAKHONO_OWNED_AUDIO",
+    "AUTHORIZED_RADIO_PARTNER",
+    "LICENSED_RADIO_NETWORK",
+    "WEB_PLAYER",
+    "MOBILE",
+    "PODCAST",
+    "TV_AUDIO_LAYER",
+    "LIVE_EVENT_FEED",
+    "AUTHORIZED_EXTERNAL_FALLBACK"
+  ],
+  "failover": {
+    "enabled": true,
+    "rule": "Fail over only between technically healthy and rights-cleared routes.",
+    "never_changes_legal_rights": true
+  },
+  "station_onboarding": [
+    "DISCOVER",
+    "VERIFY_STATION",
+    "CONTACT",
+    "PARTNER_APPLICATION",
+    "CHARTER_ACCEPTANCE",
+    "RIGHTS_REVIEW",
+    "TECHNICAL_QC",
+    "AGREEMENT",
+    "TEST_FEED",
+    "ACTIVE"
+  ],
+  "content_exchange": {
+    "tv_to_radio": [
+      "programme audio",
+      "sermons",
+      "interviews",
+      "testimonies",
+      "event audio",
+      "worship sessions"
+    ],
+    "radio_to_tv": [
+      "studio interviews",
+      "radio worship sessions",
+      "Gospel music sessions",
+      "community stories",
+      "teaching programmes",
+      "live radio events"
+    ]
+  },
+  "editorial_rule": "Partnership, sponsorship or carriage does not purchase editorial approval or guaranteed airtime.",
+  "security": {
+    "credentials_outside_git": true,
+    "signed_or_authenticated_feeds_preferred": true,
+    "least_privilege": true,
+    "audit_logging": true,
+    "revocable_partner_access": true
+  },
+  "status": "BUILD_ACTIVE"
+}
