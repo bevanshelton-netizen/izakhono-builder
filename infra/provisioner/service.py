@@ -8,6 +8,7 @@ from state_machine import Provisioner
 from errors import ServiceError
 from worker_runtime import ProvisionerWorker
 from rollback_store import RollbackStore
+from handover_store import HandoverStore
 
 SECRET_FIELDS={"password","token","api_key","access_token","refresh_token","private_key","client_secret","secret"}
 
@@ -28,12 +29,14 @@ class ProvisionerService:
                  adapter_implementations:Optional[Mapping[str,Callable[[Mapping[str,Any]],Mapping[str,Any]]]]=None,
                  registry:Optional[Mapping[str,Any]]=None,
                  recovery_store:Optional[RollbackStore]=None,
-                 recovery_executors:Optional[Mapping[str,Callable[[Any],Mapping[str,Any]]]]=None)->None:
+                 recovery_executors:Optional[Mapping[str,Callable[[Any],Mapping[str,Any]]]]=None,
+                 handover_store:Optional[HandoverStore]=None)->None:
         self.store,self.queue=store,queue
         self.adapter_implementations=dict(adapter_implementations or {})
         self.registry=registry
         self.recovery_store=recovery_store
         self.recovery_executors=dict(recovery_executors or {})
+        self.handover_store=handover_store
         self._handover:Dict[str,Dict[str,Any]]={}
 
     def create_job(self,request:CreateJobRequest)->Dict[str,Any]:
@@ -62,8 +65,7 @@ class ProvisionerService:
                                             recovery_store=self.recovery_store,
                                             recovery_executors=self.recovery_executors)
             processed=worker.run_once()
-            if not processed or worker.last_result is None:
-                return None
+            if not processed or worker.last_result is None: return None
             return self.status(worker.last_result.job_id)
         worker=ProvisionerWorker(self.store,self.queue,self.adapter_implementations,self.registry,
                                  recovery_store=self.recovery_store,recovery_executors=self.recovery_executors)
@@ -79,9 +81,13 @@ class ProvisionerService:
         required={"PAYMENT_VERIFIED","TENANT_CREATED","DOMAIN_READY","DNS_READY","SITE_READY","TLS_READY","MAIL_READY","INTEGRATIONS_READY","ACCEPTANCE_PASSED"}
         missing=required-set(job.evidence)
         if missing: raise ServiceError("HANDOVER_EVIDENCE_INCOMPLETE",f"missing evidence: {sorted(missing)}")
-        record={"job_id":job.job_id,"tenant_id":job.tenant_id,"status":"HANDOVER_READY","evidence_states":sorted(job.evidence.keys()),"generated_at":utc_now()}
+        states=sorted(job.evidence.keys())
+        if self.handover_store is not None:
+            record=self.handover_store.create_or_get(f"handover_{job.job_id}",job.job_id,job.tenant_id,states,acceptance)
+        else:
+            record={"job_id":job.job_id,"tenant_id":job.tenant_id,"status":"HANDOVER_READY","evidence_states":states,"generated_at":utc_now()}
         self._handover[job_id]=record
-        self.store.append_audit(AuditEvent(f"evt_{job.job_id}_handover",job.job_id,"HANDOVER_COMPLETED",job.state,utc_now(),{"evidence_states":record["evidence_states"]}))
+        self.store.append_audit(AuditEvent(f"evt_{job.job_id}_handover",job.job_id,"HANDOVER_COMPLETED",job.state,utc_now(),{"evidence_states":states,"handover_id":record.get("handover_id")}))
         return record
 
 if __name__=="__main__":
