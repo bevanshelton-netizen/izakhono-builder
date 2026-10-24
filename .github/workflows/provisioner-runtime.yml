@@ -15,6 +15,20 @@ on:
 jobs:
   provisioner:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: provisioner
+          POSTGRES_PASSWORD: provisioner
+          POSTGRES_DB: provisioner_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U provisioner -d provisioner_test"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
     defaults:
       run:
         working-directory: infra/provisioner
@@ -23,10 +37,12 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Install runtime dependency
-        run: python -m pip install --disable-pip-version-check pyyaml
+      - name: Install runtime dependencies
+        run: python -m pip install --disable-pip-version-check pyyaml 'psycopg[binary]'
       - name: Compile Provisioner runtime
         run: python -m compileall -q .
+      - name: Run registry loader smoke
+        run: python adapter_registry_runtime.py
       - name: Run contract smoke
         run: python execution_contract.py
       - name: Run adapter executor smoke
@@ -35,6 +51,10 @@ jobs:
         run: python acceptance_engine.py
       - name: Run unified worker smoke
         run: python worker_runtime.py
+      - name: Run PostgreSQL queue smoke
+        run: python postgres_job_queue.py
+      - name: Run durable worker smoke
+        run: python durable_worker_runtime.py
       - name: Run deterministic runtime tests
         run: |
           python - <<'PY'
@@ -60,5 +80,9 @@ jobs:
           assert job.evidence[State.PAYMENT_VERIFIED.value]['verified'] is True
           print('DETERMINISTIC_RUNTIME: PASS')
           PY
+      - name: Run PostgreSQL durability integration tests
+        env:
+          PROVISIONER_TEST_DSN: postgresql://provisioner:provisioner@127.0.0.1:5432/provisioner_test
+        run: python durable_postgres_integration_test.py
       - name: Run service boundary smoke
         run: python service.py
