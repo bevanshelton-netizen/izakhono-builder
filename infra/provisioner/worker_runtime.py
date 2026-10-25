@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Callable, Mapping
 
-from acceptance_engine import AcceptanceEngine, AcceptanceResult
+from acceptance_engine import AcceptanceEngine, AcceptanceResult, EvidenceAcceptanceProbe
 from adapter_catalog import CAPABILITY_TO_ADAPTER, build_catalog
 from adapter_executor import AdapterExecutor
 from execution_contract import ExecutionResult, validate_result
@@ -39,7 +39,9 @@ class ProvisionerWorker:
         self.queue = queue
         self.implementations = implementations
         self.registry = registry
-        self.acceptance = acceptance or AcceptanceEngine()
+        # Always provide a real acceptance probe for the default path. Custom engines
+        # remain supported for production/provider-specific acceptance implementations.
+        self.acceptance = acceptance or AcceptanceEngine(EvidenceAcceptanceProbe())
         self.recovery = None
         if recovery_store is not None:
             from recovery_orchestrator import RecoveryOrchestrator
