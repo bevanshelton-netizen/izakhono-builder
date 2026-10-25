@@ -1,0 +1,64 @@
+name: CONNECTA CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'products/izakhono-social/**'
+      - '.github/workflows/connecta-ci.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'products/izakhono-social/**'
+      - '.github/workflows/connecta-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  connecta:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+
+      - name: Install web dependencies
+        run: npm install --prefix products/izakhono-social --ignore-scripts --no-audit --no-fund
+
+      - name: Install engine dependencies
+        run: npm install --prefix products/izakhono-social/engine --ignore-scripts --no-audit --no-fund
+
+      - name: Typecheck CONNECTA web
+        run: npm run typecheck --prefix products/izakhono-social
+
+      - name: Build CONNECTA web
+        run: npm run build --prefix products/izakhono-social
+
+      - name: Check CONNECTA engine
+        run: npm run check --prefix products/izakhono-social/engine
+
+      - name: Test CONNECTA engine
+        run: npm test --prefix products/izakhono-social/engine
+
+      - name: Validate owned Compose topology
+        run: docker compose -f products/izakhono-social/docker-compose.owned.yml config
+
+      - name: Validate release identity
+        shell: bash
+        run: |
+          node - <<'NODE'
+          const fs = require('fs');
+          const release = JSON.parse(fs.readFileSync('products/izakhono-social/.izakhono.json', 'utf8'));
+          if (release.name !== 'CONNECTA') throw new Error('CONNECTA release identity missing');
+          if (release.infrastructure.owned_target !== 'NODE01') throw new Error('Owned target must remain NODE01');
+          if (release.infrastructure.current_public_route !== 'NOT_YET_VERIFIED') throw new Error('Public route must remain unverified until independently proven');
+          if (release.infrastructure.status_label !== 'NOT YET PUBLIC') throw new Error('CONNECTA must not claim public launch without verification');
+          if (release.engine.version !== '0.3.0') throw new Error('CONNECTA ENGINE version mismatch');
+          console.log('[PASS] CONNECTA release identity and truthful launch gate are intact.');
+          NODE
