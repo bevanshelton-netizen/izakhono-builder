@@ -53,12 +53,13 @@ jobs:
       - name: Run Provisioner → Runtime Fabric bridge tests
         working-directory: infra/provisioner
         run: python test_runtime_fabric_bridge.py
-      - name: Run Runtime Fabric activation transaction tests
+      - name: Run Runtime Fabric activation and recovery tests
         working-directory: infra/runtime-fabric/controller
         run: |
           python test_activation_transaction.py
           python test_workload_activation.py
           python test_deployment_state.py
+          python test_recovery_worker.py
           python - <<'PY'
           from activation_transaction import run_transaction
           workload = {
