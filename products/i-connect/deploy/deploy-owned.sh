@@ -11,15 +11,14 @@ if [[ "$(id -u)" -ne 0 ]]; then
 fi
 
 "$APP_DIR/products/i-connect/deploy/preflight-owned.sh"
+"$APP_DIR/products/i-connect/deploy/admit-owned-node.sh"
 
 echo "Building I-CONNECT owned stack..."
 docker compose -f "$COMPOSE_FILE" build --pull
-
 echo "Starting I-CONNECT owned stack..."
 docker compose -f "$COMPOSE_FILE" up -d
 
 echo "Waiting for application health endpoint..."
-
 for attempt in {1..30}; do
   if curl -fsS "$HEALTH_URL" >/tmp/i-connect-health.json 2>/dev/null; then
     echo "I-CONNECT process health endpoint responded."
