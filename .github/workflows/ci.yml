@@ -16,15 +16,12 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
-
       - name: Set up Node
         uses: actions/setup-node@v6
         with:
           node-version: '22'
-
       - name: Install dependencies
         run: npm install --ignore-scripts --no-audit --no-fund
-
       - name: Install isolated product dependencies
         shell: bash
         run: |
@@ -34,10 +31,8 @@ jobs:
             echo "[CI] Installing isolated dependencies in $dir"
             npm install --prefix "$dir" --ignore-scripts --no-audit --no-fund
           done < <(find products -mindepth 2 -maxdepth 3 -name package.json -print | sort)
-
       - name: Typecheck + Wrangler dry run
         run: npm run typecheck && npx --yes wrangler@4.127.1 deploy --dry-run
-
       - name: Validate NODE01 command gateway package
         shell: bash
         run: |
@@ -50,61 +45,40 @@ jobs:
           docker compose -f internal/node01-command-gateway/docker-compose.yml config >/tmp/izakhono-node01-compose.yml
           docker compose -f internal/node01-command-gateway/docker-compose.yml build
           echo '[PASS] Command Gateway, CONTROL/NODE source contract, compose topology and container build are valid.'
-
       - name: Validate generated Worker asset contract
         shell: bash
         run: |
           python - <<'PY'
           from pathlib import Path
           text = Path('src/secure.ts').read_text(encoding='utf-8')
-          required = [
-              "assets: { directory: './public', binding: 'ASSETS' }",
-              "if (env.ASSETS) return env.ASSETS.fetch(req);",
-              "name: 'static_asset_fallback'",
-              "worker.includes('env.ASSETS.fetch(req)')",
-          ]
+          required = ["assets: { directory: './public', binding: 'ASSETS' }","if (env.ASSETS) return env.ASSETS.fetch(req);","name: 'static_asset_fallback'","worker.includes('env.ASSETS.fetch(req)')"]
           missing = [item for item in required if item not in text]
-          if missing:
-              raise SystemExit('Generated Worker static asset contract missing: ' + ', '.join(missing))
+          if missing: raise SystemExit('Generated Worker static asset contract missing: ' + ', '.join(missing))
           print('[PASS] Generated Workers must route non-API requests through the ASSETS binding.')
           PY
-
       - name: Build generated Worker canary
         shell: bash
         run: |
           npx tsc --noEmit --target ES2022 --lib ES2022,DOM --module ESNext fixtures/generated-worker-canary/src/index.ts
           npx wrangler deploy --dry-run --config fixtures/generated-worker-canary/wrangler.jsonc
           echo '[PASS] Generated Worker + static asset canary typechecks and passes Wrangler dry run.'
-
       - name: Validate repository autopilot contract
         shell: bash
         run: |
           python - <<'PY'
           from pathlib import Path
-
           secure = Path('src/secure.ts').read_text(encoding='utf-8')
           repo = Path('src/repository.ts').read_text(encoding='utf-8')
           cf_token_ref = '$' + '{{ secrets.CLOUDFLARE_API_TOKEN }}'
           cf_account_ref = '$' + '{{ secrets.CLOUDFLARE_ACCOUNT_ID }}'
-
-          secure_required = [
-              'generatedRepositoryFiles','validateRepositoryFiles','/api/automation-capabilities','/publish-repository',
-              "next_gate: validation.passed ? 'repository_publish_ready'",'repository_ready: true','versioned_preview_revision',
-          ]
-          repo_required = [
-              "visibility: 'private'",'overwrite_existing: false','GITHUB_AUTOMATION_TOKEN','GITHUB_OWNER',"createPath = kind === 'org'",
-              '/git/blobs','/git/trees','/git/commits','/git/refs/heads/',cf_token_ref,cf_account_ref,
-              'Repository already exists; IZAKHONO will not overwrite it.',
-          ]
-
-          missing = [f'secure:{x}' for x in secure_required if x not in secure]
-          missing += [f'repository:{x}' for x in repo_required if x not in repo]
+          secure_required = ['generatedRepositoryFiles','validateRepositoryFiles','/api/automation-capabilities','/publish-repository',"next_gate: validation.passed ? 'repository_publish_ready'",'repository_ready: true','versioned_preview_revision']
+          repo_required = ["visibility: 'private'",'overwrite_existing: false','GITHUB_AUTOMATION_TOKEN','GITHUB_OWNER',"createPath = kind === 'org'",'/git/blobs','/git/trees','/git/commits','/git/refs/heads/',cf_token_ref,cf_account_ref,'Repository already exists; IZAKHONO will not overwrite it.']
+          missing = [f'secure:{x}' for x in secure_required if x not in secure] + [f'repository:{x}' for x in repo_required if x not in repo]
           if missing: raise SystemExit('Repository autopilot contract missing: ' + ', '.join(missing))
           if "'  pull_request_target:'" in repo or '"  pull_request_target:"' in repo: raise SystemExit('Generated preview workflow must not emit pull_request_target.')
           if "private: false" in repo: raise SystemExit('External repository publisher must not create public repositories by default.')
           print('[PASS] Optional external repository mirror remains private-by-default and credential-gated.')
           PY
-
       - name: Validate sovereign internal repository
         shell: bash
         run: |
@@ -115,20 +89,18 @@ jobs:
           sovereign_required=["import secureApp from './secure'",'commitInternalRepository','/internal-repository',"source_of_truth: 'izakhono-internal'","next_gate: 'internal_repository_committed'","internal_repository_authority: 'primary'","external_repository_role: 'optional_mirror'"]
           internal_required=['builder_internal_repositories','builder_internal_repo_commits',"visibility TEXT NOT NULL DEFAULT 'private'",'content_hash TEXT NOT NULL','UNIQUE(project_id, content_hash)','canonicalFiles',"crypto.subtle.digest('SHA-256'",'reused_existing_snapshot']
           migration_required=['CREATE TABLE IF NOT EXISTS builder_internal_repositories','CREATE TABLE IF NOT EXISTS builder_internal_repo_commits',"CHECK (visibility = 'private')",'UNIQUE(project_id, content_hash)']
-          missing=[f'sovereign:{x}' for x in sovereign_required if x not in sovereign]; missing += [f'internal:{x}' for x in internal_required if x not in internal]; missing += [f'migration:{x}' for x in migration_required if x not in migration]
+          missing=[f'sovereign:{x}' for x in sovereign_required if x not in sovereign] + [f'internal:{x}' for x in internal_required if x not in internal] + [f'migration:{x}' for x in migration_required if x not in migration]
           if missing: raise SystemExit('Sovereign repository contract missing: ' + ', '.join(missing))
           if wrangler.get('main') != 'src/sovereign.ts': raise SystemExit('Live Worker entry point must be the sovereign repository layer.')
           if 'GITHUB_AUTOMATION_TOKEN' in internal or 'CLOUDFLARE_API_TOKEN' in internal: raise SystemExit('Internal repository must not depend on external provider credentials.')
           print('[PASS] IZAKHONO internal repository is private, immutable-by-content and provider-independent.')
           PY
-
       - name: Exercise internal repository behavior
         shell: bash
         run: |
           rm -rf /tmp/izakhono-internal-canary
           npx tsc --target ES2022 --lib ES2022,DOM --module commonjs --moduleResolution node --skipLibCheck --outDir /tmp/izakhono-internal-canary src/internal-repository.ts fixtures/internal-repository-canary.ts
           node /tmp/izakhono-internal-canary/fixtures/internal-repository-canary.js
-
       - name: Validate Owner UI repository controls
         shell: bash
         run: |
@@ -144,7 +116,6 @@ jobs:
           print('[PASS] Owner UI makes IZAKHONO the source of truth and external GitHub an optional mirror.')
           PY
           node --check /tmp/izakhono-owner-ui.js
-
       - name: Validate generated release-channel pack
         shell: bash
         run: |
@@ -155,7 +126,6 @@ jobs:
           if missing: raise SystemExit('Generated release-channel pack missing: ' + ', '.join(missing))
           print('[PASS] Generated apps include installable PWA assets and truthful gated mobile/desktop release manifests.')
           PY
-
       - name: Validate one-click release-candidate autopilot
         shell: bash
         run: |
@@ -167,7 +137,6 @@ jobs:
           if "status: 'deployed'" in s[s.find("async function projectAutopilotRoute"):s.find("async function faisPaymentsRepairApi")]: raise SystemExit('Autopilot must not label a release candidate as deployed.')
           print('[PASS] One-click Builder autopilot stops at controlled release-candidate readiness.')
           PY
-
       - name: Validate Fast Build templates
         shell: bash
         run: |
@@ -185,12 +154,13 @@ jobs:
           alpha=data.get('alpha') or {}
           for key in ('preflight','rehearsal','windows_package'):
               if not isinstance(alpha.get(key,False),bool): raise SystemExit(f'alpha.{key} must be boolean')
-          caller=Path('templates/call-izakhono-alpha.yml').read_text(encoding='utf-8'); policy=r'bevanshelton-netizen/izakhono-builder/\\.github/workflows/izakhono-build-to-alpha\\.yml@([0-9a-f]{40})'; match=re.search(policy,caller)
+          caller=Path('templates/call-izakhono-alpha.yml').read_text(encoding='utf-8')
+          policy=r'bevanshelton-netizen/izakhono-builder/\.github/workflows/izakhono-build-to-alpha\.yml@([0-9a-f]{40})'
+          match=re.search(policy,caller)
           if not match: raise SystemExit('Alpha caller template must pin the Builder policy to an immutable 40-character commit SHA.')
           if '@main' in caller or '@master' in caller: raise SystemExit('Alpha caller template must not follow a mutable branch.')
           print(f'[PASS] IZAKHONO Fast Build templates are valid; caller policy pin={match.group(1)}.')
           PY
-
       - name: Parse reusable workflow
         shell: bash
         run: |
