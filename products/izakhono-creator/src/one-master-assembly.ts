@@ -21,35 +21,24 @@ export type OneMasterPackage = {
   title: string;
   createdAt: string;
   items: OneMasterItem[];
-  qa: {
-    passed: boolean;
-    checks: Array<{ id: string; passed: boolean; detail: string }>;
-  };
-  delivery: {
-    manifestReady: boolean;
-    publicLive: false;
-  };
+  qa: { passed: boolean; checks: Array<{ id: string; passed: boolean; detail: string }> };
+  delivery: { manifestReady: boolean; publicLive: false };
   approvalRequired: 'master';
 };
 
 function json(data: unknown, status = 200) {
   return new Response(JSON.stringify(data), { status, headers: { 'content-type': 'application/json; charset=utf-8', 'access-control-allow-origin': '*' } });
 }
-
 function packageData(project: Awaited<ReturnType<typeof getProject>>): StoredPackage {
   return project?.packageData && typeof project.packageData === 'object' ? project.packageData as StoredPackage : {};
 }
-
 function outputUrl(artifact: OneWorkflowArtifact): string | undefined {
   const value = artifact.metadata?.outputUrl;
   return typeof value === 'string' && value.length > 0 ? value : undefined;
 }
 
-function buildMaster(plan: OneWorkflowPlan): OneMasterPackage {
-  const items = plan.artifacts
-    .filter(a => a.kind !== 'brief')
-    .map(a => ({ artifactId: a.id, kind: a.kind, status: a.status, provider: a.provider, evidence: a.evidence, outputUrl: outputUrl(a) }));
-
+export function buildMaster(plan: OneWorkflowPlan): OneMasterPackage {
+  const items = plan.artifacts.filter(a => a.kind !== 'brief').map(a => ({ artifactId: a.id, kind: a.kind, status: a.status, provider: a.provider, evidence: a.evidence, outputUrl: outputUrl(a) }));
   const required = plan.artifacts.filter(a => a.kind !== 'brief');
   const completed = required.filter(a => a.status === 'completed');
   const checks = [
@@ -59,17 +48,7 @@ function buildMaster(plan: OneWorkflowPlan): OneMasterPackage {
     { id: 'delivery-manifest', passed: true, detail: 'Master package manifest can be generated without publishing.' },
   ];
   const passed = checks.every(c => c.passed);
-  return {
-    schema: 'izakhono.one/master-v1',
-    workflowId: plan.workflowId,
-    status: passed ? 'ready' : 'blocked',
-    title: `${plan.title} — Master Package`,
-    createdAt: new Date().toISOString(),
-    items,
-    qa: { passed, checks },
-    delivery: { manifestReady: passed, publicLive: false },
-    approvalRequired: 'master',
-  };
+  return { schema: 'izakhono.one/master-v1', workflowId: plan.workflowId, status: passed ? 'ready' : 'blocked', title: `${plan.title} — Master Package`, createdAt: new Date().toISOString(), items, qa: { passed, checks }, delivery: { manifestReady: passed, publicLive: false }, approvalRequired: 'master' };
 }
 
 async function persist(project: NonNullable<Awaited<ReturnType<typeof getProject>>>, env: AssemblyEnv, master: OneMasterPackage) {
@@ -90,7 +69,6 @@ export async function handleOneMasterAssembly(request: Request, env: AssemblyEnv
   const data = packageData(project);
   const plan = data.oneWorkflow;
   if (!plan || plan.workflowId !== parts[3]) return json({ error: 'workflow not found' }, 404);
-
   const master = buildMaster(plan);
   if (body.approve === true) {
     if (!master.qa.passed) return json({ status: 'blocked', reason: 'Master QA has not passed.', master }, 409);
