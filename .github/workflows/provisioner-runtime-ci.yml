@@ -50,10 +50,14 @@ jobs:
       - name: Run service boundary smoke
         working-directory: infra/provisioner
         run: python service.py
+      - name: Run Provisioner → Runtime Fabric bridge tests
+        working-directory: infra/provisioner
+        run: python test_runtime_fabric_bridge.py
       - name: Run Runtime Fabric activation transaction tests
         working-directory: infra/runtime-fabric/controller
         run: |
           python test_activation_transaction.py
+          python test_workload_activation.py
           python - <<'PY'
           from activation_transaction import run_transaction
           workload = {
