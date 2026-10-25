@@ -58,6 +58,7 @@ jobs:
         run: |
           python test_activation_transaction.py
           python test_workload_activation.py
+          python test_deployment_state.py
           python - <<'PY'
           from activation_transaction import run_transaction
           workload = {
