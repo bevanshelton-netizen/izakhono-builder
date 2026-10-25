@@ -1,0 +1,55 @@
+name: IZAKHONO Business Studio Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'products/izakhono-business-studio/**'
+      - '.github/workflows/business-studio-pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: business-studio-pages
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Validate static artifact
+        run: |
+          test -f products/izakhono-business-studio/index.html
+          test -f products/izakhono-business-studio/README.md
+          grep -q '<!doctype html>' products/izakhono-business-studio/index.html
+          grep -q 'IZAKHONO Business Studio' products/izakhono-business-studio/index.html
+
+  deploy:
+    needs: validate
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+      - name: Prepare site
+        run: |
+          mkdir -p _site
+          cp products/izakhono-business-studio/index.html _site/index.html
+          cp products/izakhono-business-studio/README.md _site/README.md
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
