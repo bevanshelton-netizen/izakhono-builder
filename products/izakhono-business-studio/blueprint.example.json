@@ -1,0 +1,11 @@
+{
+  "schemaVersion": "1.0",
+  "business": {
+    "name": "MicroBiz LaunchPad",
+    "description": "Business-in-a-box for entrepreneurs who need a storefront, catalogue, payments, CRM and marketing engine."
+  },
+  "score": 98,
+  "workflow": ["IDEA", "BRAND", "WEBSITE", "DOMAIN", "DNS", "SSL", "MAIL", "PAYMENTS", "CRM", "MARKETING", "PROVISIONING"],
+  "outputs": ["Brand direction", "Responsive website map", "Product/catalogue model", "Payments + CRM plan", "Launch campaign"],
+  "status": "BLUEPRINT_GENERATED"
+}
