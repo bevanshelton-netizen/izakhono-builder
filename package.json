@@ -4,9 +4,9 @@
   "private": true,
   "scripts": {
     "dev": "wrangler dev",
-    "typecheck": "tsc --noEmit --target ES2022 --lib ES2022,DOM,DOM.Iterable --module ESNext src/index.ts src/superagent.ts src/factory-superagent.ts && tsc --noEmit --target ES2022 --lib ES2022,DOM,DOM.Iterable --module ESNext src/repository.ts src/internal-repository.ts && tsc --noEmit --noCheck --target ES2022 --lib ES2022,DOM --module ESNext src/secure.ts src/sovereign.ts && tsc --noEmit --noCheck --target ES2022 --lib ES2022,DOM --module ESNext products/izakhono-docflow/src/index.ts && tsc --noEmit --noCheck --target ES2022 --lib ES2022,DOM --module ESNext products/izakhono-super-app/src/index.ts && tsc --noEmit --noCheck --target ES2022 --lib ES2022,DOM --module ESNext products/izakhono-creator/src/index.ts products/izakhono-creator/src/provider-router.ts products/izakhono-creator/src/one-workflow.ts",
+    "typecheck": "tsc --noEmit --target ES2022 --lib ES2022,DOM,DOM.Iterable --module ESNext src/index.ts src/superagent.ts src/factory-superagent.ts && tsc --noEmit --target ES2022 --lib ES2022,DOM,DOM.Iterable --module ESNext src/repository.ts src/internal-repository.ts && tsc --noEmit --noCheck --target ES2022 --lib ES2022,DOM --module ESNext src/secure.ts src/sovereign.ts && tsc --noEmit --noCheck --target ES2022 --lib ES2022,DOM --module ESNext products/izakhono-docflow/src/index.ts && tsc --noEmit --noCheck --target ES2022 --lib ES2022,DOM --module ESNext products/izakhono-super-app/src/index.ts && tsc --noEmit --noCheck --target ES2022 --lib ES2022,DOM --module ESNext products/izakhono-creator/src/index.ts products/izakhono-creator/src/provider-router.ts products/izakhono-creator/src/one-workflow.ts products/izakhono-creator/src/one-workflow-execution.ts",
     "superagent:typecheck": "tsc --noEmit --target ES2022 --lib ES2022,DOM,DOM.Iterable --module ESNext products/izakhono-superagent/src/index.ts src/superagent.ts",
-    "creator:typecheck": "tsc --noEmit --target ES2022 --lib ES2022,DOM,DOM.Iterable --module ESNext products/izakhono-creator/src/index.ts products/izakhono-creator/src/provider-router.ts products/izakhono-creator/src/one-workflow.ts",
+    "creator:typecheck": "tsc --noEmit --target ES2022 --lib ES2022,DOM,DOM.Iterable --module ESNext products/izakhono-creator/src/index.ts products/izakhono-creator/src/provider-router.ts products/izakhono-creator/src/one-workflow.ts products/izakhono-creator/src/one-workflow-execution.ts",
     "creator:one-workflow:test": "npx --yes tsx@4.20.3 products/izakhono-creator/src/one-workflow.test.ts",
     "creator:one-workflow:api:test": "npx --yes tsx@4.20.3 products/izakhono-creator/src/one-workflow-api.test.ts",
     "registry:typecheck": "tsc --noEmit --target ES2022 --lib ES2022,DOM,DOM.Iterable --module NodeNext --moduleResolution NodeNext registry/*.ts",
@@ -36,10 +36,6 @@
     "registry:control-plane-test": "npx --yes tsx@4.20.3 registry/control-plane-diagnostics.test.ts",
     "registry:test": "npx --yes tsx@4.20.3 registry/private-tld.test.ts registry/conformance.test.ts registry/dns.test.ts registry/authority-adapter.test.ts registry/rate-limit.test.ts registry/transaction.test.ts registry/registration-order.test.ts registry/idempotency.test.ts"
   },
-  "dependencies": {
-    "wrangler": "4.127.1"
-  },
-  "devDependencies": {
-    "typescript": "5.9.2"
-  }
+  "dependencies": { "wrangler": "4.127.1" },
+  "devDependencies": { "typescript": "5.9.2" }
 }
