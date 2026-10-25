@@ -53,7 +53,7 @@ select_node() {
   [[ -n "${NODE_HEALTH_CMD}" ]] || return 1
   local node
   for node in "${NODE_ORDER[@]}"; do
-    if IZAKHONO_NODE_ID="${node}"" ${NODE_HEALTH_CMD}" >/dev/null 2>&1; then
+    if IZAKHONO_NODE_ID="${node}" ${NODE_HEALTH_CMD} >/dev/null 2>&1; then
       echo "${node}"
       return 0
     fi
