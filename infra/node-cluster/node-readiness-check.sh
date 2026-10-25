@@ -30,10 +30,24 @@ check "docker-active" systemctl is-active --quiet docker
 check "node-readyz" curl -fsS http://127.0.0.1:9191/readyz
 check "owner-repository" test -d /var/lib/izakhono-code/repos
 check "deployment-root" test -d /var/lib/izakhono
-check "time-sync" timedatectl show -p NTPSynchronized --value
-check "storage" bash -c 'test "$(df -Pk /var/lib/izakhono | awk "NR==2 {print \$4}")" -gt 1048576'
 
-if [[ -f /etc/izakhono/node.env ]]; then
+if [[ "$(timedatectl show -p NTPSynchronized --value 2>/dev/null || true)" == "yes" ]]; then
+  printf 'PASS time-sync\n'
+else
+  printf 'FAIL time-sync\n'
+  failures+=("time-sync")
+  status=FAIL
+fi
+
+if [[ -d /var/lib/izakhono ]] && [[ "$(df -Pk /var/lib/izakhono | awk 'NR==2 {print $4}')" =~ ^[0-9]+$ ]] && (( $(df -Pk /var/lib/izakhono | awk 'NR==2 {print $4}') > 1048576 )); then
+  printf 'PASS storage\n'
+else
+  printf 'FAIL storage\n'
+  failures+=("storage")
+  status=FAIL
+fi
+
+if [[ -f /etc/izakhono/node.env ]] && [[ "$(stat -c '%a' /etc/izakhono/node.env 2>/dev/null || echo 999)" == "600" ]]; then
   printf 'PASS node-credentials-file-present\n'
 else
   printf 'FAIL node-credentials-file-present\n'
