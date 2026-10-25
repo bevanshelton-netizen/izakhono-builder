@@ -53,12 +53,7 @@ def decide(workload: dict, health: dict[str, bool]) -> Decision:
     return Decision(workload["workload"], selected, "READY", "healthy node selected")
 
 
-def activate(
-    workload_path: Path,
-    health: dict[str, bool],
-    adapter: Callable[[str], bool],
-    execute: bool = False,
-) -> Decision:
+def activate(workload_path: Path, health: dict[str, bool], adapter: Callable[[str], bool], execute: bool = False) -> Decision:
     workload = load_workload(workload_path)
     decision = decide(workload, health)
     if decision.selected_node is None:
@@ -71,9 +66,8 @@ def activate(
 
 
 def main() -> int:
-    root = Path(os.environ.get("IZAKHONO_RUNTIME_FABRIC_ROOT", Path(__file__).resolve().parents[2]))
+    root = Path(os.environ.get("IZAKHONO_RUNTIME_FABRIC_ROOT", Path(__file__).resolve().parents[1]))
     workload_path = root / "workloads" / "kora-mail.json"
-    # Health evidence is intentionally supplied by the runtime fabric, not guessed.
     health_path = Path(os.environ.get("IZAKHONO_NODE_HEALTH", "/opt/izakhono/runtime-fabric/node-health.json"))
     health = json.loads(health_path.read_text(encoding="utf-8")) if health_path.exists() else {}
     execute = os.environ.get("IZAKHONO_EXECUTE", "0") == "1"
