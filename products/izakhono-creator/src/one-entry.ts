@@ -2,6 +2,7 @@ import creator from './index';
 import { handleOneWorkflow } from './one-workflow-api';
 import { handleOneWorkflowExecution } from './one-workflow-execution';
 import { handleOneMasterAssembly } from './one-master-assembly';
+import { handleOneDistribution } from './one-distribution';
 import { oneWorkflowUiScript } from './one-workflow-ui';
 
 type WorkerEnv = Parameters<typeof creator.fetch>[1];
@@ -10,6 +11,7 @@ export default {
   async fetch(request: Request, env: WorkerEnv, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
     if ((request.method === 'POST' || request.method === 'GET' || request.method === 'OPTIONS') && url.pathname.startsWith('/api/one/workflow')) {
+      if (/^\/api\/one\/workflow\/[^/]+\/distribution$/.test(url.pathname)) return handleOneDistribution(request, env, url.pathname);
       if (/^\/api\/one\/workflow\/[^/]+\/master$/.test(url.pathname)) return handleOneMasterAssembly(request, env, url.pathname);
       if (/^\/api\/one\/workflow\/[^/]+\/(approve|execute|poll)$/.test(url.pathname)) return handleOneWorkflowExecution(request, env, url.pathname);
       return handleOneWorkflow(request, env, url.pathname);
