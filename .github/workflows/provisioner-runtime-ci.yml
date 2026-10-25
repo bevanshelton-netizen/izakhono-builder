@@ -60,6 +60,8 @@ jobs:
           python test_workload_activation.py
           python test_deployment_state.py
           python test_recovery_worker.py
+          python test_observability.py
+          python test_state_observability_integration.py
           python - <<'PY'
           from activation_transaction import run_transaction
           workload = {
