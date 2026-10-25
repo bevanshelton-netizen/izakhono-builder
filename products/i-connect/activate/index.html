@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>I-CONNECT Activation</title>
+<style>
+body{font-family:Inter,system-ui,sans-serif;background:#07111f;color:#f4f7fb;margin:0;display:grid;place-items:center;min-height:100vh}.card{width:min(560px,92vw);background:#0e1b2d;border:1px solid #243a55;border-radius:22px;padding:28px;box-shadow:0 20px 70px #0008}h1{margin:0 0 8px}.muted{color:#9fb0c3}label{display:block;margin:16px 0 7px}input{width:100%;box-sizing:border-box;padding:13px;border-radius:10px;border:1px solid #35506e;background:#081423;color:white}button{margin-top:18px;width:100%;padding:14px;border:0;border-radius:10px;background:#16c79a;color:#04130f;font-weight:800;cursor:pointer}.row{display:grid;grid-template-columns:1fr 1fr;gap:12px}.status{margin-top:16px;padding:12px;border-radius:10px;background:#091522;white-space:pre-wrap}.hidden{display:none}@media(max-width:520px){.row{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<main class="card">
+<h1>I-CONNECT</h1><p class="muted">CEO / Owner activation — create the first secure organization account.</p>
+<section id="auth">
+<div class="row"><div><label>Email</label><input id="email" type="email" autocomplete="email"></div><div><label>Password</label><input id="password" type="password" autocomplete="new-password"></div></div>
+<button id="signup">Create secure account</button><button id="signin" type="button">Sign in to existing account</button>
+</section>
+<section id="org" class="hidden">
+<label>Organization name</label><input id="name" placeholder="Your company">
+<label>Organization slug</label><input id="slug" placeholder="your-company">
+<label>Your display name</label><input id="displayName" placeholder="Owner name">
+<label>Phone</label><input id="phone" placeholder="+27..." autocomplete="tel">
+<button id="createOrg">Create I-CONNECT organization</button>
+</section>
+<div id="status" class="status">Ready.</div>
+</main>
+<script>
+const SUPABASE_URL='https://qczsgkuqfehrrqebnrbi.supabase.co';
+const SUPABASE_KEY='sb_publishable_UwAb6qTGdnHNi80SksprDA_nOuCTDfk';
+let accessToken=localStorage.getItem('ic_access_token')||'';
+const $=id=>document.getElementById(id); const status=t=>$('status').textContent=t;
+async function auth(path,body){const r=await fetch(SUPABASE_URL+'/auth/v1/'+path,{method:'POST',headers:{'content-type':'application/json','apikey':SUPABASE_KEY},body:JSON.stringify(body)});const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.msg||d.error_description||d.message||'Authentication failed');return d}
+function ready(d){accessToken=d.access_token;localStorage.setItem('ic_access_token',accessToken);$('auth').classList.add('hidden');$('org').classList.remove('hidden');status('Authenticated. Complete organization setup.');}
+$('signup').onclick=async()=>{try{status('Creating secure account…');const d=await auth('signup',{email:$('email').value.trim(),password:$('password').value});if(d.access_token)ready(d);else status('Account created. Check your email if confirmation is required, then sign in.');}catch(e){status(e.message)}};
+$('signin').onclick=async()=>{try{status('Signing in…');const d=await auth('token?grant_type=password',{email:$('email').value.trim(),password:$('password').value});ready(d);}catch(e){status(e.message)}};
+$('createOrg').onclick=async()=>{try{status('Creating owner organization…');const r=await fetch('/api/onboarding',{method:'POST',headers:{'content-type':'application/json','authorization':'Bearer '+accessToken},body:JSON.stringify({name:$('name').value,slug:$('slug').value,displayName:$('displayName').value,phone:$('phone').value})});const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.details?.message||d.error||'Organization setup failed');status('I-CONNECT organization created successfully. Owner access is active. Organization ID: '+d.data);localStorage.setItem('ic_organization_id',d.data);}catch(e){status(e.message)}};
+</script>
+</body>
+</html>
