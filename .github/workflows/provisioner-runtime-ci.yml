@@ -4,10 +4,12 @@ on:
   push:
     paths:
       - 'infra/provisioner/**'
+      - 'infra/runtime-fabric/**'
       - '.github/workflows/provisioner-runtime-ci.yml'
   pull_request:
     paths:
       - 'infra/provisioner/**'
+      - 'infra/runtime-fabric/**'
       - '.github/workflows/provisioner-runtime-ci.yml'
 
 jobs:
@@ -46,3 +48,22 @@ jobs:
       - name: Run service boundary smoke
         working-directory: infra/provisioner
         run: python service.py
+      - name: Validate KORA runtime-fabric contract
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          p = Path('infra/runtime-fabric/workloads/kora-mail.json')
+          data = json.loads(p.read_text())
+          assert data['workload'] == 'kora-mail'
+          assert data['runtime']['mode'] == 'node-agnostic'
+          assert data['runtime']['preferred_nodes'] == ['node01', 'node02', 'node03', 'node04']
+          assert data['runtime']['failover_order'] == ['node02', 'node03', 'node04', 'external-resilience']
+          assert data['acceptance']['promotion'] == 'LIVE_VERIFIED only after all acceptance gates pass'
+          print('KORA runtime-fabric contract: PASS')
+          PY
+      - name: Validate KORA activation and live-gate syntax
+        run: |
+          bash -n infra/runtime-fabric/activation/KORA-MAIL-ACTIVATE.sh
+          bash -n infra/runtime-fabric/acceptance/KORA-MAIL-LIVE-GATE.sh
+          echo 'KORA activation/live-gate syntax: PASS'
