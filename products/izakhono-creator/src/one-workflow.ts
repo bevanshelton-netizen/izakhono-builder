@@ -92,7 +92,7 @@ export function planOneWorkflow(input: OneWorkflowBrief): OneWorkflowPlan {
   const musicId = wantsMusic || wantsVideo ? add('music', 'music', [briefId, scriptId]) : undefined;
   const imageId = wantsVideo ? add('image', 'visuals', [storyboardId!]) : undefined;
   const videoId = wantsVideo
-    ? add('video', 'video', [storyboardId!, ...(voiceId ? [voiceId] : []), ...(musicId ? [musicId] : []), ...(imageId ? [imageId] : [])])
+    ? add('video', 'video', [scriptId, storyboardId!, ...(voiceId ? [voiceId] : []), ...(musicId ? [musicId] : []), ...(imageId ? [imageId] : [])])
     : undefined;
   const codeId = wantsCode ? add('code', 'code', [briefId, scriptId], { productBuild: true }) : undefined;
   const captionId = wantsSocial ? add('caption', 'distribution', [scriptId, ...(videoId ? [videoId] : [])]) : undefined;
