@@ -24,7 +24,12 @@ def smoke() -> None:
         if failed["value"]:
             failed["value"] = False
             raise RuntimeError("simulated adapter failure")
-        return {"verified": True, "evidence_id": "ev-recovered", "observed_at": utc_now()}
+        return {
+            "verified": True,
+            "evidence_id": "ev-recovered",
+            "observed_at": utc_now(),
+            "checks": ["tenant.reconciled", "tenant.reachable"],
+        }
 
     registry = {"adapters": {k: {"owned": v} for k, v in CAPABILITY_TO_ADAPTER.items()},
                 "bindings": {name: {"operation": "smoke"} for name in STATE_CAPABILITY.values()}}
