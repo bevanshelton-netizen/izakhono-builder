@@ -1,0 +1,38 @@
+{
+  "schema": "izakhono.runtime-fabric.workload.v1",
+  "workload": "kora-mail",
+  "product": "kora-tv",
+  "hostname": "mail.streamkoraafrica.com",
+  "identity": "info@streamkoraafrica.com",
+  "runtime": {
+    "mode": "node-agnostic",
+    "preferred_nodes": ["node01", "node02", "node03", "node04"],
+    "failover_order": ["node02", "node03", "node04", "external-resilience"],
+    "container": "ghcr.io/docker-mailserver/docker-mailserver:15.1.0",
+    "persistent_state": true,
+    "external_mail_fallback": false
+  },
+  "network": {
+    "smtp": [25, 465, 587],
+    "imap": [993],
+    "tls_required": true,
+    "dns_required": ["A", "MX", "SPF", "DKIM", "DMARC"]
+  },
+  "secrets": {
+    "required": ["KORA_MAIL_PASSWORD", "CLOUDFLARE_API_TOKEN"],
+    "source": "fortress-protected-runtime-secrets",
+    "never_commit": true
+  },
+  "acceptance": {
+    "static": ["dns", "tls", "smtp-starttls", "imap-tls", "dkim", "spf", "dmarc"],
+    "external": ["send", "receive", "reply"],
+    "promotion": "LIVE_VERIFIED only after all acceptance gates pass"
+  },
+  "deployment": {
+    "strategy": "idempotent",
+    "backup_before_promotion": true,
+    "rollback_required": true,
+    "health_required": true,
+    "public_dns_cutover_requires_verified_runtime": true
+  }
+}
