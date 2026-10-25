@@ -1,0 +1,19 @@
+{
+  "schemaVersion": "1.0",
+  "jobId": "bs-microbiz-001",
+  "blueprint": "blueprint.example.json",
+  "requestedCapabilities": ["BRAND", "WEBSITE", "DOMAIN", "DNS", "SSL", "MAIL", "PAYMENTS", "CRM", "MARKETING", "PROVISIONING"],
+  "status": "QUEUED",
+  "evidence": [
+    {"capability": "BRAND", "status": "PENDING"},
+    {"capability": "WEBSITE", "status": "PENDING"},
+    {"capability": "DOMAIN", "status": "PENDING"},
+    {"capability": "DNS", "status": "PENDING"},
+    {"capability": "SSL", "status": "PENDING"},
+    {"capability": "MAIL", "status": "PENDING"},
+    {"capability": "PAYMENTS", "status": "PENDING"},
+    {"capability": "CRM", "status": "PENDING"},
+    {"capability": "MARKETING", "status": "PENDING"},
+    {"capability": "PROVISIONING", "status": "PENDING"}
+  ]
+}
