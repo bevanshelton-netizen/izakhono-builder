@@ -13,59 +13,42 @@ chmod 700 "$EVIDENCE_DIR"
 status=PASS
 failures=()
 
-check(){
-  local name="$1"; shift
-  if "$@" >/dev/null 2>&1; then
-    printf 'PASS %s\n' "$name"
-  else
-    printf 'FAIL %s\n' "$name"
-    failures+=("$name")
-    status=FAIL
-  fi
-}
+pass(){ printf 'PASS %s\n' "$1"; }
+fail(){ printf 'FAIL %s\n' "$1"; failures+=("$1"); status=FAIL; }
 
-check "node-service-enabled" systemctl is-enabled --quiet izakhono-node.service
-check "node-service-active" systemctl is-active --quiet izakhono-node.service
-check "docker-active" systemctl is-active --quiet docker
-check "node-readyz" curl -fsS http://127.0.0.1:9191/readyz
-check "owner-repository" test -d /var/lib/izakhono-code/repos
-check "deployment-root" test -d /var/lib/izakhono
+if systemctl is-enabled --quiet izakhono-node.service; then pass node-service-enabled; else fail node-service-enabled; fi
+if systemctl is-active --quiet izakhono-node.service; then pass node-service-active; else fail node-service-active; fi
+if systemctl is-active --quiet docker; then pass docker-active; else fail docker-active; fi
+if curl -fsS http://127.0.0.1:9191/readyz >/dev/null; then pass node-readyz; else fail node-readyz; fi
+if [[ -d /var/lib/izakhono-code/repos ]]; then pass owner-repository; else fail owner-repository; fi
+if [[ -d /var/lib/izakhono ]]; then pass deployment-root; else fail deployment-root; fi
 
-if [[ "$(timedatectl show -p NTPSynchronized --value 2>/dev/null || true)" == "yes" ]]; then
-  printf 'PASS time-sync\n'
+ntp="$(timedatectl show -p NTPSynchronized --value 2>/dev/null || true)"
+if [[ "$ntp" == "yes" || "$ntp" == "true" ]]; then pass time-sync; else fail time-sync; fi
+
+free_kb="$(df -Pk /var/lib/izakhono 2>/dev/null | awk 'NR==2 {print $4}')"
+if [[ "$free_kb" =~ ^[0-9]+$ ]] && (( free_kb > 1048576 )); then pass storage; else fail storage; fi
+
+if [[ -f /etc/izakhono/node.env ]]; then
+  mode="$(stat -c '%a' /etc/izakhono/node.env 2>/dev/null || true)"
+  if [[ "$mode" == "600" ]]; then pass node-credentials-file-protected; else fail node-credentials-file-protected; fi
 else
-  printf 'FAIL time-sync\n'
-  failures+=("time-sync")
-  status=FAIL
+  fail node-credentials-file-present
 fi
 
-if [[ -d /var/lib/izakhono ]] && [[ "$(df -Pk /var/lib/izakhono | awk 'NR==2 {print $4}')" =~ ^[0-9]+$ ]] && (( $(df -Pk /var/lib/izakhono | awk 'NR==2 {print $4}') > 1048576 )); then
-  printf 'PASS storage\n'
-else
-  printf 'FAIL storage\n'
-  failures+=("storage")
-  status=FAIL
-fi
-
-if [[ -f /etc/izakhono/node.env ]] && [[ "$(stat -c '%a' /etc/izakhono/node.env 2>/dev/null || echo 999)" == "600" ]]; then
-  printf 'PASS node-credentials-file-present\n'
-else
-  printf 'FAIL node-credentials-file-present\n'
-  failures+=("node-credentials-file-present")
-  status=FAIL
-fi
-
-python3 - "$REPORT" "$NODE_ID" "$status" "${failures[*]-}" <<'PY'
+python3 - "$REPORT" "$NODE_ID" "$status" "${failures[*]-}" "$free_kb" "$ntp" <<'PY'
 import json, os, socket, sys, time
-report, node_id, status, failures = sys.argv[1:]
+report, node_id, status, failures, free_kb, ntp = sys.argv[1:]
 record = {
-    "schema": "izakhono.node-readiness.v1",
+    "schema": "izakhono.node-readiness.v2",
     "node_id": node_id,
     "hostname": socket.gethostname(),
     "checked_at_epoch": int(time.time()),
     "status": status,
     "failures": failures.split() if failures else [],
     "evidence_source": "physical-node-execution",
+    "ntp_synchronized": ntp,
+    "free_storage_kb": int(free_kb) if free_kb.isdigit() else None,
 }
 tmp = report + ".tmp"
 with open(tmp, "w", encoding="utf-8") as f:
