@@ -30,11 +30,22 @@ jobs:
           set -euo pipefail
           bash -n products/i-connect/deploy/bootstrap-owned.sh
           bash -n products/i-connect/deploy/preflight-owned.sh
+          bash -n products/i-connect/deploy/admit-owned-node.sh
           bash -n products/i-connect/deploy/deploy-owned.sh
           bash -n products/i-connect/deploy/backup-owned.sh
           bash -n products/i-connect/deploy/restore-owned.sh
           bash -n products/i-connect/deploy/rehearse-owned-recovery.sh
-          echo '[PASS] I-CONNECT owned deployment and recovery scripts parse successfully.'
+          echo '[PASS] I-CONNECT owned deployment, admission and recovery scripts parse successfully.'
+
+      - name: Validate admission gate contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q 'admit-owned-node.sh' products/i-connect/deploy/deploy-owned.sh
+          grep -q 'docker compose version' products/i-connect/deploy/admit-owned-node.sh
+          grep -q 'systemctl is-active' products/i-connect/deploy/admit-owned-node.sh
+          grep -q '0600' products/i-connect/deploy/admit-owned-node.sh
+          echo '[PASS] Deployment requires the owned-node admission gate.'
 
       - name: Validate compose topology without secrets
         shell: bash
@@ -62,11 +73,7 @@ jobs:
           required_recovery = ['mktemp', 'docker compose', 'docker-compose.owned.yml', 'PASS']
           required_backup = ['tar', 'backup', '.env', 'Caddy']
           required_restore = ['restore', 'mktemp', 'docker-compose.owned.yml']
-          for label, text, required in [
-              ('recovery', recovery, required_recovery),
-              ('backup', backup, required_backup),
-              ('restore', restore, required_restore),
-          ]:
+          for label, text, required in [('recovery', recovery, required_recovery), ('backup', backup, required_backup), ('restore', restore, required_restore)]:
               missing = [item for item in required if item not in text]
               if missing:
                   raise SystemExit(f'{label} contract missing: {missing}')
