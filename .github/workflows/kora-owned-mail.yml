@@ -4,6 +4,7 @@ on:
   push:
     paths:
       - 'infra/mail-stack/kora/**'
+      - 'infra/mail-stack/engine/node01-mail-production-probes.mjs'
       - '.github/workflows/kora-owned-mail.yml'
   workflow_dispatch:
 
@@ -36,6 +37,9 @@ jobs:
           command -v docker
           docker version
           docker compose version
+          command -v dig
+          command -v openssl
+          command -v timeout
           test "$(uname -s)" = Linux
           test -w /opt || sudo test -w /opt
 
@@ -47,6 +51,11 @@ jobs:
           chmod +x infra/mail-stack/kora/PROVISION-KORA-MAIL.sh
           sudo -E env KORA_MAIL_PASSWORD="$KORA_MAIL_PASSWORD" CLOUDFLARE_API_TOKEN="$CLOUDFLARE_API_TOKEN" \
             infra/mail-stack/kora/PROVISION-KORA-MAIL.sh
+
+      - name: Verify public DNS and TLS
+        run: |
+          chmod +x infra/mail-stack/kora/VERIFY-KORA-MAIL.sh
+          sudo infra/mail-stack/kora/VERIFY-KORA-MAIL.sh
 
       - name: Run production protocol probes
         env:
