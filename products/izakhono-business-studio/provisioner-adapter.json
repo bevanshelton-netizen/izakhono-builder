@@ -1,0 +1,26 @@
+{
+  "adapterVersion": "1.0",
+  "source": "IZAKHONO Business Studio",
+  "target": "IZAKHONO Provisioner",
+  "mode": "owned-first",
+  "input": "blueprint.example.json",
+  "translation": {
+    "IDEA": "opportunity",
+    "BRAND": "brand_package",
+    "WEBSITE": "site_build",
+    "DOMAIN": "domain_job",
+    "DNS": "dns_job",
+    "SSL": "tls_job",
+    "MAIL": "mail_job",
+    "PAYMENTS": "commerce_job",
+    "CRM": "crm_job",
+    "MARKETING": "growth_job",
+    "PROVISIONING": "provision_job"
+  },
+  "providerPolicy": {
+    "externalProviders": "replaceable-adapters",
+    "credentials": "server-side-only",
+    "productionStatus": "evidence-gated"
+  },
+  "terminalStates": ["PROVISIONED", "LIVE_VERIFIED"]
+}
