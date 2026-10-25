@@ -23,15 +23,17 @@ class ReconcileResult:
 
 
 class DeploymentReconciler:
-    """Reconcile one durable record without inventing acceptance evidence."""
+    """Reconcile durable records without inventing acceptance evidence."""
 
     def __init__(self, store, node_health: Mapping[str, bool] | Callable[[str], bool],
                  resume_action: Callable[[DeploymentRecord], bool],
-                 rollback_action: Callable[[DeploymentRecord], bool] | None = None):
+                 rollback_action: Callable[[DeploymentRecord], bool] | None = None,
+                 failover_selector: Callable[[DeploymentRecord], str | None] | None = None):
         self.store = store
         self.node_health = node_health
         self.resume_action = resume_action
         self.rollback_action = rollback_action or (lambda _record: False)
+        self.failover_selector = failover_selector or (lambda _record: None)
 
     def _healthy(self, node: str | None) -> bool:
         if not node:
@@ -48,14 +50,30 @@ class DeploymentReconciler:
             return ReconcileResult(record.deployment_id, "BLOCKED", record.state, "none", "unknown deployment state")
 
         if record.state == "ROLLBACK_REQUIRED":
-            if not self.rollback_action(record):
-                return ReconcileResult(record.deployment_id, "BLOCKED", record.state, "rollback", "rollback action failed")
             transition(record, "ROLLING_BACK")
             self.store.put(record)
-            return ReconcileResult(record.deployment_id, "ROLLED_BACK_PENDING", record.state, "rollback")
+            if not self.rollback_action(record):
+                transition(record, "FAILED")
+                self.store.put(record)
+                return ReconcileResult(record.deployment_id, "FAILED", record.state, "rollback", "rollback action failed")
+            transition(record, "ROLLED_BACK")
+            self.store.put(record)
+            return ReconcileResult(record.deployment_id, "ROLLED_BACK", record.state, "rollback")
+
+        if record.state == "ROLLING_BACK":
+            if not self.rollback_action(record):
+                return ReconcileResult(record.deployment_id, "BLOCKED", record.state, "rollback", "rollback action failed")
+            transition(record, "ROLLED_BACK")
+            self.store.put(record)
+            return ReconcileResult(record.deployment_id, "ROLLED_BACK", record.state, "rollback")
 
         if record.node and not self._healthy(record.node):
-            return ReconcileResult(record.deployment_id, "BLOCKED", record.state, "failover", "assigned node is unhealthy")
+            replacement = self.failover_selector(record)
+            if not replacement or not self._healthy(replacement):
+                return ReconcileResult(record.deployment_id, "BLOCKED", record.state, "failover", "no healthy replacement node")
+            record.node = replacement
+            record.checkpoint = "failover-selected"
+            self.store.put(record)
 
         if self.resume_action(record):
             record.attempts += 1
