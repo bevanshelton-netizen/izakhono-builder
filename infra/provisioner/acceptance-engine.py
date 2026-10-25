@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 """IZAKHONO PROVISIONER acceptance engine v1.
 
-Independent, provider-neutral acceptance gates. An adapter may report that an
-operation succeeded, but only acceptance checks can certify the resulting
-state for handover.
+Independent, provider-neutral acceptance gates. Adapter evidence is necessary
+but simulation evidence can never satisfy production acceptance.
 """
 from __future__ import annotations
 
@@ -40,16 +39,19 @@ class AcceptanceProbe(Protocol):
     def check(self, check: AcceptanceCheck, job: ProvisioningJob) -> CheckResult: ...
 
 
-# Acceptance verifies every completed provisioning stage. ACCEPTANCE_PASSED
-# itself is the certification output, not a prerequisite for certification.
 REQUIRED_CHECKS = tuple(
     AcceptanceCheck(f"acceptance.{state.value.lower()}", state)
     for state in PIPELINE[:-2]
 )
 
 
+def _is_production_evidence(evidence: Mapping[str, Any]) -> bool:
+    """Simulation or explicit non-production evidence is never acceptable."""
+    return bool(evidence.get("verified")) and not bool(evidence.get("simulation")) and not bool(evidence.get("live") is True and evidence.get("simulation"))
+
+
 class AcceptanceEngine:
-    """Certify a job only when every required state has independent evidence."""
+    """Certify a job only when every required state has independent production evidence."""
 
     def __init__(self, probe: AcceptanceProbe):
         self.probe = probe
@@ -60,16 +62,17 @@ class AcceptanceEngine:
         missing: list[str] = []
 
         for check in REQUIRED_CHECKS:
-            if check.state.value not in job.evidence:
+            evidence = job.evidence.get(check.state.value)
+            if evidence is None:
                 missing.append(check.check_id)
                 continue
+            if not _is_production_evidence(evidence):
+                job.record("ACCEPTANCE_CHECK", check_id=check.check_id, ok=False, error_code="SIMULATION_OR_UNVERIFIED_EVIDENCE")
+                if check.required:
+                    failures.append(check.check_id)
+                continue
             result = self.probe.check(check, job)
-            job.record(
-                "ACCEPTANCE_CHECK",
-                check_id=check.check_id,
-                ok=result.ok,
-                error_code=result.error_code,
-            )
+            job.record("ACCEPTANCE_CHECK", check_id=check.check_id, ok=result.ok, error_code=result.error_code)
             if result.ok:
                 job.evidence[check.state.value]["acceptance"] = dict(result.evidence)
             elif check.required:
@@ -86,6 +89,7 @@ class AcceptanceEngine:
             "accepted_at": time(),
             "checks": [c.check_id for c in REQUIRED_CHECKS],
             "verified": True,
+            "simulation": False,
         }
         job.record("ACCEPTANCE_PASSED", checks=len(REQUIRED_CHECKS))
         return AcceptanceStatus.PASSED
@@ -111,7 +115,7 @@ def demo() -> None:
     provisioner = Provisioner()
     job = provisioner.create("tenant-acceptance", "acceptance-001")
     for _ in PIPELINE[:-2]:
-        provisioner.apply(job, StepResult(True, {"verified": True}))
+        provisioner.apply(job, StepResult(True, {"verified": True, "simulation": False}))
     assert job.state == State.ACCEPTANCE_PASSED
     engine = AcceptanceEngine(Probe())
     status = engine.evaluate(job)
