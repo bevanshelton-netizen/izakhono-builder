@@ -20,11 +20,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
       - name: Compile controller
-        run: python -m py_compile deployment_state.py postgres_deployment_store.py recovery_reconciler.py
+        run: python -m py_compile deployment_state.py postgres_deployment_store.py recovery_reconciler.py recovery_worker.py
       - name: Run deployment state tests
         run: python test_deployment_state.py
       - name: Run recovery reconciler tests
         run: python test_recovery_reconciler.py
+      - name: Run recovery worker tests
+        run: python test_recovery_worker.py
       - name: Run activation transaction tests
         run: python test_activation_transaction.py
       - name: Run workload activation tests
