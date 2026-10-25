@@ -4,6 +4,7 @@ import { handleOneWorkflowExecution } from './one-workflow-execution';
 import { handleOneMasterAssembly } from './one-master-assembly';
 import { handleOneDistribution } from './one-distribution';
 import { oneWorkflowUiScript } from './one-workflow-ui';
+import { handleOneCommandCenter, oneCommandCenterUiScript } from './one-command-center';
 import { publishApprovedDistribution } from './one-publish-runtime';
 import { getProject } from './project-store';
 
@@ -30,6 +31,7 @@ async function handleOnePublish(request: Request, env: WorkerEnv, path: string) 
 export default {
   async fetch(request: Request, env: WorkerEnv, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
+    if (url.pathname === '/api/one/command-center') return handleOneCommandCenter(request, env);
     if ((request.method === 'POST' || request.method === 'GET' || request.method === 'OPTIONS') && url.pathname.startsWith('/api/one/workflow')) {
       if (/^\/api\/one\/workflow\/[^/]+\/publish$/.test(url.pathname)) return handleOnePublish(request, env, url.pathname);
       if (/^\/api\/one\/workflow\/[^/]+\/distribution$/.test(url.pathname)) return handleOneDistribution(request, env, url.pathname);
@@ -40,7 +42,7 @@ export default {
     const response = await creator.fetch(request, env, ctx);
     if (request.method === 'GET' && url.pathname === '/' && response.headers.get('content-type')?.includes('text/html')) {
       const html = await response.text();
-      return new Response(html.replace('</body>', oneWorkflowUiScript + '</body>'), { status: response.status, headers: response.headers });
+      return new Response(html.replace('</body>', oneWorkflowUiScript + oneCommandCenterUiScript + '</body>'), { status: response.status, headers: response.headers });
     }
     return response;
   },
