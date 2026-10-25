@@ -66,8 +66,8 @@ function includesAny(value: string, terms: string[]) {
 }
 
 /**
- * Converts one natural-language creative instruction into a single dependency graph.
- * This is deliberately deterministic: providers may change, but the workflow contract does not.
+ * Converts one natural-language instruction into a single dependency graph.
+ * Providers may change, but the IZAKHONO ONE workflow contract remains stable.
  */
 export function planOneWorkflow(input: OneWorkflowBrief): OneWorkflowPlan {
   const instruction = input.instruction.trim();
@@ -75,9 +75,8 @@ export function planOneWorkflow(input: OneWorkflowBrief): OneWorkflowPlan {
   const wantsVideo = includesAny(lower, ['video', 'film', 'reel', 'short', 'music video', 'advert']);
   const wantsMusic = includesAny(lower, ['music', 'song', 'single', 'beat', 'amapiano', 'afrobeats']);
   const wantsVoice = includesAny(lower, ['voice', 'voiceover', 'narration', 'podcast']);
-  const wantsCode = includesAny(lower, ['website', 'web app', 'app', 'software', 'code', 'dashboard']);
+  const wantsCode = includesAny(lower, ['website', 'landing page', 'web app', 'app', 'software', 'code', 'dashboard']);
   const wantsSocial = includesAny(lower, ['social', 'tiktok', 'instagram', 'reels', 'shorts']);
-  const wantsWriting = true;
 
   const artifacts: OneWorkflowArtifact[] = [];
   const add = (kind: WorkflowArtifactKind, stage: WorkflowStageId, dependsOn: string[] = [], metadata?: Record<string, unknown>) => {
