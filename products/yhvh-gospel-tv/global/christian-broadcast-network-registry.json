@@ -1,0 +1,66 @@
+{
+  "schema": "yhvh.gospel-tv.global-christian-broadcast-network-registry/v1",
+  "authority": "IZAKHONO",
+  "brand": "YHVH GOSPEL TV",
+  "mission": "Build a lawful worldwide partnership network connecting Christian television, Gospel radio, ministries, creators and distributors.",
+  "status": "ACTIVE_ACQUISITION_PROGRAM",
+  "editorial_independence": true,
+  "commercial_independence": true,
+  "rights_required_before_distribution": true,
+  "territory_default": "REVIEW_REQUIRED",
+  "broadcast_partners": {
+    "target": 100,
+    "classes": ["Christian TV network", "Christian satellite broadcaster", "OTT/FAST Gospel distributor", "regional Christian broadcaster", "church media network", "Gospel production/distribution partner"]
+  },
+  "radio_partners": {
+    "target": 250,
+    "classes": ["Gospel radio station", "Christian talk radio", "Christian online radio", "church radio network", "community Christian radio", "satellite/audio distributor", "podcast/audio ministry network"]
+  },
+  "regional_targets": [
+    "Southern Africa", "West Africa", "East Africa", "Central Africa", "North Africa", "Middle East", "Europe", "North America", "Latin America", "Caribbean", "South Asia", "Southeast Asia", "East Asia", "Oceania"
+  ],
+  "priority_languages": ["English", "French", "Portuguese", "Spanish", "Arabic", "Swahili", "isiZulu", "isiXhosa", "Yoruba", "Hausa", "Afrikaans", "Hindi", "Indonesian", "Amharic", "Lingala", "Kinyarwanda", "Chichewa", "Shona", "Twi/Akan", "Igbo"],
+  "pipeline": [
+    "PROSPECT",
+    "RESEARCHED",
+    "CONTACTED",
+    "INTERESTED",
+    "DUE_DILIGENCE",
+    "RIGHTS_REVIEW",
+    "AGREEMENT_SENT",
+    "NEGOTIATION",
+    "SIGNED",
+    "TECHNICAL_QC",
+    "ACTIVE",
+    "SUSPENDED"
+  ],
+  "partnership_models": [
+    "content_exchange",
+    "programme_syndication",
+    "radio_simulcast",
+    "TV_simulcast",
+    "event_exchange",
+    "language_exchange",
+    "creator_referrals",
+    "co_production",
+    "regional_distribution",
+    "advertising_and_sponsorship",
+    "technical_distribution",
+    "emergency_and_failover_distribution"
+  ],
+  "radio_to_tv_bridge": {
+    "enabled": true,
+    "purpose": "Allow authorised Gospel radio partners to contribute audio programming, interviews, worship sessions, music programmes and live events into YHVH's broader media ecosystem.",
+    "requirements": ["rights clearance", "music/performer clearance where applicable", "territory review", "technical QC", "written distribution terms"]
+  },
+  "rules": [
+    "Payment does not guarantee airtime or editorial approval.",
+    "Partnership does not constitute endorsement of every programme or ministry statement.",
+    "No content is distributed until applicable rights and territory requirements are cleared.",
+    "Local licensing and broadcasting requirements remain the responsibility of the relevant parties.",
+    "Creator ownership is preserved by default unless a written agreement states otherwise.",
+    "No VPN, proxy or technical route may be used to bypass law, licensing, geo-rights or platform controls.",
+    "All active partnerships require an auditable agreement and technical/rights status."
+  ],
+  "discovery_note": "Public radio directories can identify prospects, but directory listing is not evidence of ownership, rights, licensing or partnership authorization. Each prospect must be independently verified before contact and activation."
+}
