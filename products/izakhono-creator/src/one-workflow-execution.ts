@@ -41,6 +41,12 @@ export async function handleOneWorkflowExecution(request: Request, env: Executio
   if (!body.externalId) return json({ error: 'externalId is required' }, 400); const provider = (body.provider ?? env.CREATOR_PROVIDER) as ProviderId | undefined; if (!provider) return json({ error: 'provider is required for polling' }, 400);
   const asset = await findAssetByExternalId(env, provider, body.externalId); if (!asset) return json({ error: 'tracked provider job not found' }, 404); const adapter = createAdapters(env).find(a => a.id === provider); if (!adapter?.enabled) return json({ error: `${provider} is not configured` }, 503);
   const job = await adapter.poll(body.externalId, asset.kind); await updateAsset(env, asset.id, { status: job.status, url: job.outputUrl ?? asset.url, metadata: { ...(asset.metadata as Record<string, unknown> ?? {}), lastPoll: job } });
-  const artifactId = String((asset.metadata as Record<string, unknown> | undefined)?.artifactId ?? ''); const currentPlan = load(project); let updatedPlan = currentPlan; if (currentPlan && artifactId && job.status === 'completed') updatedPlan = updateArtifact(currentPlan, artifactId, { status: 'completed', provider, evidence: job.outputUrl ? `Completed by ${provider}; output evidence recorded.` : `Completed by ${provider}.` }); if (updatedPlan && updatedPlan !== currentPlan) await persist(project, env, updatedPlan);
+  const artifactId = String((asset.metadata as Record<string, unknown> | undefined)?.artifactId ?? ''); const currentPlan = load(project); let updatedPlan = currentPlan;
+  if (currentPlan && artifactId && job.status === 'completed') {
+    const artifact = currentPlan.artifacts.find(a => a.id === artifactId);
+    const metadata = { ...(artifact?.metadata ?? {}), ...(job.outputUrl ? { outputUrl: job.outputUrl } : {}) };
+    updatedPlan = updateArtifact(currentPlan, artifactId, { status: 'completed', provider, metadata, evidence: job.outputUrl ? `Completed by ${provider}; output evidence recorded.` : `Completed by ${provider}.` });
+  }
+  if (updatedPlan && updatedPlan !== currentPlan) await persist(project, env, updatedPlan);
   return json({ status: 'polled', job, assetId: asset.id, plan: updatedPlan });
 }
