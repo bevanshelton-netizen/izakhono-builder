@@ -1,0 +1,22 @@
+[Unit]
+Description=IZAKHONO Runtime Fabric Recovery Worker
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=izakhono-runtime
+Group=izakhono-runtime
+WorkingDirectory=/opt/izakhono/runtime-fabric/controller
+EnvironmentFile=-/etc/izakhono/runtime-fabric/recovery.env
+ExecStart=/usr/bin/python3 /opt/izakhono/runtime-fabric/controller/recovery_entrypoint.py
+Restart=always
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/izakhono/runtime-fabric/state
+
+[Install]
+WantedBy=multi-user.target
