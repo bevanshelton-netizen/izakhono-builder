@@ -6,7 +6,7 @@ from recovery_worker import RecoveryWorker
 
 class ActiveOnlyStore(MemoryDeploymentStore):
     def list_active(self):
-        return [record for record in self._records.values() if record.state not in {"LIVE_VERIFIED", "ROLLED_BACK", "FAILED"}]
+        return [record for record in self.records.values() if record.state not in {"LIVE_VERIFIED", "ROLLED_BACK", "FAILED"}]
 
 
 def test_worker_discovers_and_reconciles_active_jobs():
