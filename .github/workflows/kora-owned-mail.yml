@@ -7,6 +7,7 @@ on:
       - 'infra/mail-stack/engine/node01-mail-production-probes.mjs'
       - 'infra/runtime-fabric/workloads/kora-mail.json'
       - 'infra/runtime-fabric/activation/KORA-MAIL-ACTIVATE.sh'
+      - 'infra/runtime-fabric/acceptance/KORA-MAIL-LIVE-GATE.sh'
       - '.github/workflows/kora-owned-mail.yml'
   workflow_dispatch:
 
@@ -46,6 +47,7 @@ jobs:
           bash -n infra/mail-stack/kora/PROVISION-KORA-MAIL.sh
           bash -n infra/mail-stack/kora/VERIFY-KORA-MAIL.sh
           bash -n infra/runtime-fabric/activation/KORA-MAIL-ACTIVATE.sh
+          bash -n infra/runtime-fabric/acceptance/KORA-MAIL-LIVE-GATE.sh
           echo 'KORA mail shell syntax: PASS'
 
       - name: Validate production probe syntax
@@ -53,11 +55,12 @@ jobs:
 
       - name: Build deployment bundle
         run: |
-          mkdir -p dist/kora-mail/runtime-fabric/activation
+          mkdir -p dist/kora-mail/runtime-fabric/activation dist/kora-mail/runtime-fabric/acceptance
           cp -r infra/mail-stack/kora dist/kora-mail/
           cp infra/mail-stack/engine/node01-mail-production-probes.mjs dist/kora-mail/
           cp infra/runtime-fabric/workloads/kora-mail.json dist/kora-mail/
           cp infra/runtime-fabric/activation/KORA-MAIL-ACTIVATE.sh dist/kora-mail/runtime-fabric/activation/
+          cp infra/runtime-fabric/acceptance/KORA-MAIL-LIVE-GATE.sh dist/kora-mail/runtime-fabric/acceptance/
           tar -C dist -czf kora-mail-release.tar.gz kora-mail
           sha256sum kora-mail-release.tar.gz | tee kora-mail-release.sha256
 
@@ -73,6 +76,6 @@ jobs:
         run: |
           echo 'Release package validated.'
           echo 'Runtime activation is node-fabric controlled, not GitHub-hosted.'
-          echo 'The bundle now contains the node-agnostic activation adapter.'
+          echo 'The bundle contains node-agnostic activation and LIVE promotion gates.'
           echo 'No DNS, MX, TLS, mailbox or public-route changes are performed by this CI job.'
-          echo 'LIVE_VERIFIED remains blocked until real external send, receive and reply evidence exists.'
+          echo 'LIVE_VERIFIED remains blocked until real external send, receive, reply and authentication evidence exists.'
