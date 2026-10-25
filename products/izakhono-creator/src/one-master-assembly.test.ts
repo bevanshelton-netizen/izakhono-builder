@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { planOneWorkflow } from './one-workflow';
-import { buildMasterForTest } from './one-master-assembly-testable';
+import { buildMaster } from './one-master-assembly';
 
 const plan = planOneWorkflow({
   id: 'brief_master_test',
@@ -10,7 +10,7 @@ const plan = planOneWorkflow({
   channels: ['TikTok', 'Instagram'],
 });
 
-const blocked = buildMasterForTest(plan);
+const blocked = buildMaster(plan);
 assert.equal(blocked.status, 'blocked');
 assert.equal(blocked.qa.passed, false);
 assert.equal(blocked.delivery.publicLive, false);
@@ -21,7 +21,7 @@ const completed = {
     ? artifact
     : { ...artifact, status: 'completed' as const, evidence: `test-evidence-${index}` }),
 };
-const ready = buildMasterForTest(completed);
+const ready = buildMaster(completed);
 assert.equal(ready.status, 'ready');
 assert.equal(ready.qa.passed, true);
 assert.equal(ready.delivery.manifestReady, true);
