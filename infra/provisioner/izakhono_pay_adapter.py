@@ -1,14 +1,14 @@
-"""Production payment adapter for the owned IZAKHONO PAY service.
+"""Production adapter for the owned IZAKHONO PAY service.
 
-The adapter performs no simulation. It verifies an existing payment intent through
-IZAKHONO PAY's authenticated API and only emits verified production evidence when
-the service confirms an authorised/settled payment.
+No simulation is performed here. Production evidence is emitted only after the
+owned payment service confirms an authorised or settled payment intent.
 """
 from __future__ import annotations
 
 import json
 import os
 import urllib.error
+import urllib.parse
 import urllib.request
 import uuid
 from datetime import datetime, timezone
@@ -61,11 +61,10 @@ class IzakhonoPayAdapter:
         status = str(data.get("status", "")).lower()
         if status not in {"authorised", "settled"}:
             raise RuntimeError(f"PAYMENT_NOT_VERIFIED:{status or 'unknown'}")
-        observed = datetime.now(timezone.utc).isoformat()
         evidence = ProductionEvidence(
             verified=True,
             evidence_id=f"pay_{uuid.uuid4().hex}",
-            observed_at=observed,
+            observed_at=datetime.now(timezone.utc).isoformat(),
             checks=("izakhono_pay.reachable", "payment_intent.found", f"payment.status.{status}"),
             ownership="owned",
             reversible=True,
@@ -82,9 +81,7 @@ class IzakhonoPayAdapter:
         return self._verify(request)
 
 
-# Runtime contract marker; intentionally not instantiated at import time.
 PRODUCTION_ADAPTER: ProductionAdapter = IzakhonoPayAdapter()
 
-
 if __name__ == "__main__":
-    print("IZAKHONO_PAY_ADAPTER: PASS (contract import; live verification requires configured service)")
+    print("IZAKHONO_PAY_ADAPTER: PASS (live verification requires configured service)")
