@@ -26,10 +26,16 @@ class AcceptanceEngine:
         missing = tuple(state for state in OPERATIONAL_STATES if state not in job.evidence)
         if missing:
             return AcceptanceResult("BLOCKED", checks, missing)
+        simulated = tuple(
+            state for state in OPERATIONAL_STATES
+            if isinstance(job.evidence.get(state), Mapping) and job.evidence[state].get("simulation") is True
+        )
+        if simulated:
+            return AcceptanceResult("FAILED", checks, simulated)
         failures = tuple(state for state in OPERATIONAL_STATES if not self.probe.check(job, state))
         if failures:
             return AcceptanceResult("FAILED", checks, failures)
-        evidence = {"evidence_id": f"accept_{job.job_id}", "observed_at": utc_now(), "verified": True, "checks": checks}
+        evidence = {"evidence_id": f"accept_{job.job_id}", "observed_at": utc_now(), "verified": True, "checks": checks, "simulation": False}
         return AcceptanceResult("PASSED", checks, evidence=evidence)
 
     def promote(self, job: StoredJob) -> AcceptanceResult:
@@ -50,7 +56,7 @@ if __name__ == "__main__":
     from job_store import MemoryJobStore
     job = MemoryJobStore().create_or_get("t", "i", "j")[0]
     for state in OPERATIONAL_STATES:
-        job.evidence[state] = {"verified": True}
+        job.evidence[state] = {"verified": True, "simulation": False}
     engine = AcceptanceEngine(EvidenceAcceptanceProbe())
     result = engine.promote(job)
     assert result.status == "PASSED" and job.state == "HANDOVER_READY"
