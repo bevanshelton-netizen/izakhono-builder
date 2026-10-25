@@ -1,4 +1,4 @@
-import { createProvisionerJob, recordEvidence, validateBlueprint, validateJob, verifyLive } from './provisioner-runtime';
+import { createProvisionerJob, markValidated, recordEvidence, startJob, validateBlueprint, validateJob, verifyLive } from './provisioner-runtime';
 
 const blueprint = {
   schemaVersion: '1.0' as const,
@@ -13,14 +13,18 @@ validateBlueprint(blueprint);
 const job = createProvisionerJob(blueprint, ['BRAND','WEBSITE','DOMAIN'], 'bs-test-001', '2026-10-25T20:00:00.000Z');
 if (job.status !== 'QUEUED' || job.evidence.length !== 3) throw new Error('job creation failed');
 validateJob(job);
+const validated = markValidated(job, '2026-10-25T20:00:30.000Z');
+if (validated.status !== 'VALIDATED') throw new Error('job validation transition failed');
+let running = startJob(validated, '2026-10-25T20:01:00.000Z');
+if (running.status !== 'RUNNING') throw new Error('job start transition failed');
 
-let running = recordEvidence(job, 'BRAND', 'PASSED', 'brand-accepted', '2026-10-25T20:01:00.000Z');
+running = recordEvidence(running, 'BRAND', 'PASSED', 'brand-accepted', '2026-10-25T20:02:00.000Z');
 if (running.status !== 'RUNNING') throw new Error('partial evidence must keep job running');
-running = recordEvidence(running, 'WEBSITE', 'PASSED', 'site-build-accepted', '2026-10-25T20:02:00.000Z');
-running = recordEvidence(running, 'DOMAIN', 'PASSED', 'domain-accepted', '2026-10-25T20:03:00.000Z');
+running = recordEvidence(running, 'WEBSITE', 'PASSED', 'site-build-accepted', '2026-10-25T20:03:00.000Z');
+running = recordEvidence(running, 'DOMAIN', 'PASSED', 'domain-accepted', '2026-10-25T20:04:00.000Z');
 if (running.status !== 'PROVISIONED') throw new Error('all passed evidence must provision job');
 
-const live = verifyLive(running, 'https-200-and-intended-content-verified', '2026-10-25T20:04:00.000Z');
+const live = verifyLive(running, 'https-200-and-intended-content-verified', '2026-10-25T20:05:00.000Z');
 if (live.status !== 'LIVE_VERIFIED') throw new Error('live verification failed');
 
 let rejected = false;
