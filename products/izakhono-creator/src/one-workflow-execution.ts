@@ -16,10 +16,10 @@ function generationRequest(artifact: OneWorkflowArtifact): GenerationRequest | n
 export async function handleOneWorkflowExecution(request: Request, env: ExecutionEnv, path: string) {
   if (request.method === 'OPTIONS') return json({ ok: true });
   const parts = path.split('/').filter(Boolean); if (parts[0] !== 'api' || parts[1] !== 'one' || parts[2] !== 'workflow') return json({ error: 'not found' }, 404);
-  const workflowId = parts[3], action = parts[4]; if (!workflowId || !['approve', 'execute', 'poll'].includes(action)) return json({ error: 'expected /api/one/workflow/:workflowId/approve|execute|poll' }, 400);
+  const workflowId = parts[3], action = parts[4]; if (!workflowId || !['approve', 'execute', 'retry', 'poll'].includes(action)) return json({ error: 'expected /api/one/workflow/:workflowId/approve|execute|retry|poll' }, 400);
   if (!authorized(request, env)) return json({ error: 'generation authorization required' }, 401);
   if (action !== 'approve' && env.CREATOR_GENERATION_ENABLED !== 'true') return json({ error: 'Generation is disabled. Configure CREATOR_GENERATION_ENABLED=true after provider and billing review.' }, 403);
-  const body = await request.json().catch(() => ({})) as { projectId?: string; artifactId?: string; evidence?: string; provider?: string; externalId?: string };
+  const body = await request.json().catch(() => ({})) as { projectId?: string; artifactId?: string; evidence?: string; provider?: string; externalId?: string; confirm?: boolean };
   if (!body.projectId) return json({ error: 'projectId is required' }, 400); const project = await getProject(env, body.projectId); if (!project) return json({ error: 'project not found' }, 404);
   const plan = load(project); if (!plan || plan.workflowId !== workflowId) return json({ error: 'workflow not found' }, 404);
 
@@ -27,6 +27,22 @@ export async function handleOneWorkflowExecution(request: Request, env: Executio
     if (!body.artifactId) return json({ error: 'artifactId is required' }, 400); const artifact = plan.artifacts.find(a => a.id === body.artifactId); if (!artifact) return json({ error: 'artifact not found' }, 404);
     if (artifact.status !== 'planned') return json({ error: `artifact cannot be approved from ${artifact.status}` }, 409); if (artifact.dependsOn.some(id => !plan.artifacts.some(a => a.id === id && a.status === 'completed'))) return json({ error: 'artifact dependencies are not complete' }, 409);
     const updated = updateArtifact(plan, artifact.id, { status: 'approved', evidence: body.evidence?.trim() || 'Approved by authorized workflow operator.' }); await persist(project, env, updated); return json({ status: 'approved', artifact: updated.artifacts.find(a => a.id === artifact.id), plan: updated });
+  }
+
+  if (action === 'retry') {
+    if (!body.artifactId) return json({ error: 'artifactId is required' }, 400);
+    if (body.confirm !== true) return json({ error: 'retry requires confirm=true' }, 400);
+    const artifact = plan.artifacts.find(a => a.id === body.artifactId); if (!artifact) return json({ error: 'artifact not found' }, 404);
+    if (artifact.status !== 'failed') return json({ error: `artifact cannot be retried from ${artifact.status}` }, 409);
+    if (artifact.dependsOn.some(id => !plan.artifacts.some(a => a.id === id && a.status === 'completed'))) return json({ error: 'artifact dependencies are not complete' }, 409);
+    const retried = updateArtifact(plan, artifact.id, { status: 'approved', evidence: `${artifact.evidence ?? 'Previous execution failed.'} Retry authorized by operator.` });
+    await persist(project, env, retried);
+    const retryArtifact = retried.artifacts.find(a => a.id === artifact.id)!;
+    const generation = generationRequest(retryArtifact); if (!generation) return json({ status: 'blocked', reason: 'This artifact requires a specialized provider; retry does not invoke an unconfigured generic adapter.' }, 422);
+    const adapter = chooseProvider(generation, createAdapters(env), body.provider ?? env.CREATOR_PROVIDER); if (!adapter) return json({ status: 'blocked', reason: 'No enabled provider supports this approved retry.' }, 503);
+    const job = await adapter.submit(generation); const updated = updateArtifact(retried, retryArtifact.id, { status: job.status === 'failed' ? 'failed' : 'submitted', provider: job.provider, evidence: job.error ? `Retry submission failed: ${job.error}` : `Retry submitted to ${job.provider}; external job ${job.externalId ?? 'unknown'}.` });
+    await persist(project, env, updated); await saveAsset(env, { id: job.id, projectId: project.id, kind: generation.kind, status: job.status === 'failed' ? 'failed' : 'submitted', provider: job.provider, externalId: job.externalId, url: job.outputUrl, metadata: { workflowId, artifactId: retryArtifact.id, request: generation, retry: true, selected: false } });
+    return json({ status: job.status === 'failed' ? 'failed' : 'submitted', retried: true, artifact: updated.artifacts.find(a => a.id === retryArtifact.id), job });
   }
 
   if (action === 'execute') {
@@ -42,10 +58,14 @@ export async function handleOneWorkflowExecution(request: Request, env: Executio
   const asset = await findAssetByExternalId(env, provider, body.externalId); if (!asset) return json({ error: 'tracked provider job not found' }, 404); const adapter = createAdapters(env).find(a => a.id === provider); if (!adapter?.enabled) return json({ error: `${provider} is not configured` }, 503);
   const job = await adapter.poll(body.externalId, asset.kind); await updateAsset(env, asset.id, { status: job.status, url: job.outputUrl ?? asset.url, metadata: { ...(asset.metadata as Record<string, unknown> ?? {}), lastPoll: job } });
   const artifactId = String((asset.metadata as Record<string, unknown> | undefined)?.artifactId ?? ''); const currentPlan = load(project); let updatedPlan = currentPlan;
-  if (currentPlan && artifactId && job.status === 'completed') {
+  if (currentPlan && artifactId) {
     const artifact = currentPlan.artifacts.find(a => a.id === artifactId);
-    const metadata = { ...(artifact?.metadata ?? {}), ...(job.outputUrl ? { outputUrl: job.outputUrl } : {}) };
-    updatedPlan = updateArtifact(currentPlan, artifactId, { status: 'completed', provider, metadata, evidence: job.outputUrl ? `Completed by ${provider}; output evidence recorded.` : `Completed by ${provider}.` });
+    if (artifact && job.status === 'completed') {
+      const metadata = { ...(artifact.metadata ?? {}), ...(job.outputUrl ? { outputUrl: job.outputUrl } : {}) };
+      updatedPlan = updateArtifact(currentPlan, artifactId, { status: 'completed', provider, metadata, evidence: job.outputUrl ? `Completed by ${provider}; output evidence recorded.` : `Completed by ${provider}.` });
+    } else if (artifact && job.status === 'failed') {
+      updatedPlan = updateArtifact(currentPlan, artifactId, { status: 'failed', provider, evidence: job.error ? `Provider polling failed: ${job.error}` : `Provider ${provider} reported failure.` });
+    }
   }
   if (updatedPlan && updatedPlan !== currentPlan) await persist(project, env, updatedPlan);
   return json({ status: 'polled', job, assetId: asset.id, plan: updatedPlan });
