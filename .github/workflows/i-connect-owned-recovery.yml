@@ -1,0 +1,85 @@
+name: I-CONNECT Owned Recovery Validation
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'products/i-connect/deploy/**'
+      - '.github/workflows/i-connect-owned-recovery.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'products/i-connect/deploy/**'
+      - '.github/workflows/i-connect-owned-recovery.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  owned-recovery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Validate deployment scripts
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash -n products/i-connect/deploy/bootstrap-owned.sh
+          bash -n products/i-connect/deploy/preflight-owned.sh
+          bash -n products/i-connect/deploy/deploy-owned.sh
+          bash -n products/i-connect/deploy/backup-owned.sh
+          bash -n products/i-connect/deploy/restore-owned.sh
+          bash -n products/i-connect/deploy/rehearse-owned-recovery.sh
+          echo '[PASS] I-CONNECT owned deployment and recovery scripts parse successfully.'
+
+      - name: Validate compose topology without secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          test ! -f products/i-connect/deploy/.env
+          cp products/i-connect/deploy/.env.example products/i-connect/deploy/.env
+          chmod 600 products/i-connect/deploy/.env
+          docker compose -f products/i-connect/deploy/docker-compose.owned.yml config >/tmp/i-connect-compose.yml
+          grep -q 'caddy:2-alpine' /tmp/i-connect-compose.yml
+          grep -q 'i-connect:3000' /tmp/i-connect-compose.yml
+          ! grep -Eq '(SUPABASE_ANON_KEY|CARRIER_BRIDGE_SECRET|PAYMENT_PROVIDER_SECRET):[[:space:]]*[^$[:space:]]+' /tmp/i-connect-compose.yml
+          rm -f products/i-connect/deploy/.env
+          echo '[PASS] Owned compose topology resolves without embedding production secrets.'
+
+      - name: Validate recovery safety contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          recovery = Path('products/i-connect/deploy/rehearse-owned-recovery.sh').read_text(encoding='utf-8')
+          backup = Path('products/i-connect/deploy/backup-owned.sh').read_text(encoding='utf-8')
+          restore = Path('products/i-connect/deploy/restore-owned.sh').read_text(encoding='utf-8')
+          required_recovery = ['mktemp', 'docker compose', 'docker-compose.owned.yml', 'PASS']
+          required_backup = ['tar', 'backup', '.env', 'Caddy']
+          required_restore = ['restore', 'mktemp', 'docker-compose.owned.yml']
+          for label, text, required in [
+              ('recovery', recovery, required_recovery),
+              ('backup', backup, required_backup),
+              ('restore', restore, required_restore),
+          ]:
+              missing = [item for item in required if item not in text]
+              if missing:
+                  raise SystemExit(f'{label} contract missing: {missing}')
+          if 'docker compose up' in recovery or 'docker compose down' in recovery:
+              raise SystemExit('Recovery rehearsal must remain non-destructive.')
+          if 'deploy/.env' in backup and 'exclude' not in backup and '--exclude=.env' not in backup:
+              raise SystemExit('Backup contract must exclude deployment secrets.')
+          print('[PASS] Recovery rehearsal is non-destructive and backup/restore contracts are present.')
+          PY
+
+      - name: Docker Compose build smoke test
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker compose -f products/i-connect/deploy/docker-compose.owned.yml build --pull
+          echo '[PASS] I-CONNECT owned application image builds in a clean CI runner.'
