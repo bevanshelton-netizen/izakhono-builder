@@ -1,15 +1,15 @@
 """Capability-specific production adapter boundary for IZAKHONO Provisioner.
 
-This module intentionally contains no provider credentials and performs no
-network calls. It defines the registration/selection boundary that real owned
-services must implement before they can participate in production execution.
+The catalog is the fail-closed registration boundary for real production
+adapters. Credentials are represented only by secret references; adapters
+resolve runtime configuration at execution time.
 """
 from __future__ import annotations
 from dataclasses import dataclass
 from typing import Mapping
 
-from production_adapter_contract import ProductionAdapter, ProductionRequest, ProductionEvidence
-from production_payment_adapter import IzakhonoPayProductionAdapter
+from production_adapter_contract import ProductionAdapter
+from izakhono_pay_adapter import IzakhonoPayAdapter
 
 CAPABILITIES = (
     "tenant", "payment", "domain", "dns", "site", "tls", "mail",
@@ -54,12 +54,8 @@ class ProductionAdapterCatalog:
 
 
 def build_production_catalog() -> ProductionAdapterCatalog:
-    """Build the production catalog with owned adapters only.
-
-    Configuration is resolved at execution time by the adapter, so importing
-    this catalog never requires credentials or makes network calls.
-    """
-    payment = IzakhonoPayProductionAdapter()
+    """Build the production catalog with the owned PAY adapter registered."""
+    payment = IzakhonoPayAdapter()
     return ProductionAdapterCatalog({
         "payment": AdapterRegistration(
             "payment",
@@ -76,9 +72,9 @@ def smoke() -> None:
         capability = "site"
         ownership = "owned"
         reversible = True
-        def execute(self, request: ProductionRequest) -> ProductionEvidence:
+        def execute(self, request):
             raise NotImplementedError
-        def reconcile(self, request: ProductionRequest) -> ProductionEvidence:
+        def reconcile(self, request):
             raise NotImplementedError
 
     catalog = ProductionAdapterCatalog({
@@ -86,8 +82,10 @@ def smoke() -> None:
     })
     assert catalog.get("site").credentials_ref == "secret://site"
     production = build_production_catalog()
-    assert production.get("payment").adapter.name == "izakhono-pay"
-    assert production.get("payment").adapter.ownership == "owned"
+    payment = production.get("payment")
+    assert payment.adapter.name == "izakhono-pay"
+    assert payment.adapter.ownership == "owned"
+    assert payment.adapter.reversible is True
     try:
         catalog.get("mail")
     except KeyError:
