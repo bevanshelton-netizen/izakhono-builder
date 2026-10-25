@@ -29,7 +29,9 @@ def smoke() -> None:
     registry = {"adapters": {k: {"owned": v} for k, v in CAPABILITY_TO_ADAPTER.items()},
                 "bindings": {name: {"operation": "smoke"} for name in STATE_CAPABILITY.values()}}
     implementations = {CAPABILITY_TO_ADAPTER["tenant"]: flaky}
-    recovery_executors = {"reconcile_payment": lambda _job: {"verified": True, "reconciled": True}}
+    # PAYMENT_VERIFIED advances through the tenant capability, so the failed
+    # execution is TENANT_CREATED and must use reconcile_tenant—not reconcile_payment.
+    recovery_executors = {"reconcile_tenant": lambda _job: {"verified": True, "reconciled": True}}
 
     job, _ = store.create_or_get("tenant-recovery", "idem-recovery", "prov-recovery")
     job.evidence["PAYMENT_VERIFIED"] = {"verified": True, "evidence_id": "pay-recovery"}
