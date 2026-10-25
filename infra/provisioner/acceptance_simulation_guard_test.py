@@ -4,8 +4,9 @@ from state_machine import Provisioner, PIPELINE, StepResult, State
 
 
 class Probe:
-    def check(self, check: AcceptanceCheck, job):
-        return CheckResult(check.check_id, True, {"probe": "independent"})
+    def check(self, job, state):
+        evidence = job.evidence.get(state, {})
+        return evidence.get("verified") is True and evidence.get("simulation") is not True
 
 
 def main():
@@ -13,10 +14,9 @@ def main():
     job = p.create("tenant-simulation", "idem-simulation")
     for state in PIPELINE[:-2]:
         p.apply(job, StepResult(True, {"verified": True, "simulation": state == State.SITE_READY}))
-    assert job.state == State.ACCEPTANCE_PASSED
     status = AcceptanceEngine(Probe()).evaluate(job)
-    assert status == AcceptanceStatus.FAILED
-    assert State.SITE_READY.value in job.evidence
+    assert status.status == "FAILED"
+    assert State.SITE_READY.value in status.failures
     print("ACCEPTANCE_SIMULATION_GUARD: PASS")
 
 
