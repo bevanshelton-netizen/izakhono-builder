@@ -1,22 +1,22 @@
-name: KORA Owned Mail
+name: KORA Owned Mail Release
 
 on:
   push:
     paths:
       - 'infra/mail-stack/kora/**'
       - 'infra/mail-stack/engine/node01-mail-production-probes.mjs'
+      - 'infra/runtime-fabric/workloads/kora-mail.json'
       - '.github/workflows/kora-owned-mail.yml'
   workflow_dispatch:
 
 concurrency:
-  group: kora-owned-mail-node01
+  group: kora-owned-mail-release
   cancel-in-progress: false
 
 jobs:
-  deploy:
-    name: Provision KORA mail on NODE01
-    runs-on: [self-hosted, linux, node01]
-    environment: owned-production
+  release:
+    name: Build and validate KORA mail release
+    runs-on: ubuntu-latest
     permissions:
       contents: read
 
@@ -24,43 +24,50 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Validate required secrets
-        env:
-          KORA_MAIL_PASSWORD: ${{ secrets.KORA_MAIL_PASSWORD }}
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      - name: Validate workload contract
         run: |
-          test -n "$KORA_MAIL_PASSWORD" || { echo 'KORA_MAIL_PASSWORD is not configured in the owned-production secret store.'; exit 1; }
-          test -n "$CLOUDFLARE_API_TOKEN" || { echo 'CLOUDFLARE_API_TOKEN is not configured in the owned-production secret store.'; exit 1; }
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          p = Path('infra/runtime-fabric/workloads/kora-mail.json')
+          data = json.loads(p.read_text())
+          assert data['workload'] == 'kora-mail'
+          assert data['hostname'] == 'mail.streamkoraafrica.com'
+          assert data['identity'] == 'info@streamkoraafrica.com'
+          assert data['runtime']['mode'] == 'node-agnostic'
+          assert data['acceptance']['promotion'] == 'LIVE_VERIFIED only after all acceptance gates pass'
+          print('KORA mail workload contract: PASS')
+          PY
 
-      - name: Verify host prerequisites
+      - name: Validate shell scripts
         run: |
-          command -v docker
-          docker version
-          docker compose version
-          command -v dig
-          command -v openssl
-          command -v timeout
-          test "$(uname -s)" = Linux
-          test -w /opt || sudo test -w /opt
+          bash -n infra/mail-stack/kora/PROVISION-KORA-MAIL.sh
+          bash -n infra/mail-stack/kora/VERIFY-KORA-MAIL.sh
+          echo 'KORA mail shell syntax: PASS'
 
-      - name: Provision DNS, TLS and mailbox
-        env:
-          KORA_MAIL_PASSWORD: ${{ secrets.KORA_MAIL_PASSWORD }}
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-        run: |
-          chmod +x infra/mail-stack/kora/PROVISION-KORA-MAIL.sh
-          sudo -E env KORA_MAIL_PASSWORD="$KORA_MAIL_PASSWORD" CLOUDFLARE_API_TOKEN="$CLOUDFLARE_API_TOKEN" \
-            infra/mail-stack/kora/PROVISION-KORA-MAIL.sh
+      - name: Validate production probe syntax
+        run: node --check infra/mail-stack/engine/node01-mail-production-probes.mjs
 
-      - name: Verify public DNS and TLS
+      - name: Build deployment bundle
         run: |
-          chmod +x infra/mail-stack/kora/VERIFY-KORA-MAIL.sh
-          sudo infra/mail-stack/kora/VERIFY-KORA-MAIL.sh
+          mkdir -p dist/kora-mail
+          cp -r infra/mail-stack/kora dist/kora-mail/
+          cp infra/mail-stack/engine/node01-mail-production-probes.mjs dist/kora-mail/
+          cp infra/runtime-fabric/workloads/kora-mail.json dist/kora-mail/
+          tar -C dist -czf kora-mail-release.tar.gz kora-mail
+          sha256sum kora-mail-release.tar.gz | tee kora-mail-release.sha256
 
-      - name: Run production protocol probes
-        env:
-          MAIL_DOMAIN: streamkoraafrica.com
-          MAIL_HOST: mail.streamkoraafrica.com
+      - name: Publish release artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: kora-mail-release
+          path: |
+            kora-mail-release.tar.gz
+            kora-mail-release.sha256
+
+      - name: State activation boundary
         run: |
-          node infra/mail-stack/engine/node01-mail-production-probes.mjs
-          echo "Owned mail protocol probes passed; final acceptance remains fail-closed until real external send/reply evidence is recorded."
+          echo 'Release package validated.'
+          echo 'Runtime activation is node-fabric controlled, not GitHub-hosted.'
+          echo 'No DNS, MX, TLS, mailbox or public-route changes are performed by this CI job.'
+          echo 'LIVE_VERIFIED remains blocked until real external send, receive and reply evidence exists.'
