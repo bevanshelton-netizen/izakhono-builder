@@ -13,13 +13,17 @@ chmod 700 "$EVIDENCE_ROOT"
 
 status="NOT_READY"
 failures=()
-nodes=()
+nodes_json=()
 
 for node in "${EXPECTED[@]}"; do
   file="$EVIDENCE_ROOT/node-readiness-${node}.json"
   if [[ ! -f "$file" ]]; then
     failures+=("missing-evidence:$node")
-    nodes+=("{\"node_id\":\"$node\",\"status\":\"MISSING_EVIDENCE\"}")
+    nodes_json+=("$(python3 - "$node" <<'PY'
+import json,sys
+print(json.dumps({'node_id':sys.argv[1],'status':'MISSING_EVIDENCE'},separators=(',',':')))
+PY
+)")
     continue
   fi
 
@@ -34,7 +38,8 @@ PY
   if [[ "$node_status" != "PASS" ]]; then
     failures+=("node-not-ready:$node")
   fi
-  nodes+=("$(python3 - "$file" <<'PY'
+
+  nodes_json+=("$(python3 - "$file" <<'PY'
 import json,sys
 with open(sys.argv[1],encoding='utf-8') as f:
     d=json.load(f)
@@ -53,17 +58,19 @@ if [[ "${#failures[@]}" -eq 0 ]]; then
   status="PHYSICALLY_VERIFIED"
 fi
 
-python3 - "$REPORT" "$status" "${failures[*]-}" "${nodes[*]}" <<'PY'
-import json,sys,time
-report,status,failures,nodes=sys.argv[1:]
-parsed=[json.loads(x) for x in nodes.split('} ') if x]
+python3 - "$REPORT" "$status" "${failures[*]-}" "${nodes_json[@]}" <<'PY'
+import json,os,sys,time
+report=sys.argv[1]
+status=sys.argv[2]
+failures=sys.argv[3]
+nodes=[json.loads(x) for x in sys.argv[4:]]
 record={
   'schema':'izakhono.cluster-readiness.v1',
   'checked_at_epoch':int(time.time()),
   'status':status,
   'required_nodes':['node01','node02','node03','node04'],
   'failures':failures.split() if failures else [],
-  'nodes':parsed,
+  'nodes':nodes,
   'production_ready':False,
   'production_ready_reason':'Physical node evidence alone is insufficient; quorum, failover, backup/restore, encrypted networking/secrets, EDGE/TLS and independent HTTPS acceptance remain required.',
   'evidence_source':'physical-node-evidence-aggregation'
@@ -72,7 +79,6 @@ tmp=report+'.tmp'
 with open(tmp,'w',encoding='utf-8') as f:
     json.dump(record,f,indent=2,sort_keys=True)
     f.write('\n')
-import os
 os.chmod(tmp,0o600)
 os.replace(tmp,report)
 print(json.dumps(record,indent=2,sort_keys=True))
