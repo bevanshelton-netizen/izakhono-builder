@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://izakhono.africa/schemas/provisioner-job.json",
+  "title": "IZAKHONO Provisioner Job",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "jobId", "blueprint", "requestedCapabilities", "status", "evidence"],
+  "properties": {
+    "schemaVersion": {"type": "string", "const": "1.0"},
+    "jobId": {"type": "string", "pattern": "^[A-Za-z0-9._:-]+$"},
+    "blueprint": {"type": "string", "minLength": 1},
+    "requestedCapabilities": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "enum": ["IDEA", "BRAND", "WEBSITE", "DOMAIN", "DNS", "SSL", "MAIL", "PAYMENTS", "CRM", "MARKETING", "PROVISIONING"]
+      }
+    },
+    "status": {
+      "type": "string",
+      "enum": ["QUEUED", "VALIDATED", "RUNNING", "BLOCKED", "FAILED", "PROVISIONED", "LIVE_VERIFIED"]
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["capability", "status"],
+        "properties": {
+          "capability": {"type": "string"},
+          "status": {"type": "string", "enum": ["PENDING", "PASSED", "FAILED"]},
+          "reference": {"type": "string"},
+          "checkedAt": {"type": "string", "format": "date-time"}
+        }
+      }
+    },
+    "createdAt": {"type": "string", "format": "date-time"},
+    "updatedAt": {"type": "string", "format": "date-time"}
+  }
+}
