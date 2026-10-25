@@ -1,0 +1,31 @@
+name: IZAKHONO Runtime Fabric Recovery CI
+
+on:
+  push:
+    paths:
+      - 'infra/runtime-fabric/controller/**'
+      - '.github/workflows/runtime-fabric-recovery-ci.yml'
+  pull_request:
+    paths:
+      - 'infra/runtime-fabric/controller/**'
+      - '.github/workflows/runtime-fabric-recovery-ci.yml'
+
+jobs:
+  recovery-tests:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: infra/runtime-fabric/controller
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Compile controller
+        run: python -m py_compile deployment_state.py postgres_deployment_store.py recovery_reconciler.py
+      - name: Run deployment state tests
+        run: python test_deployment_state.py
+      - name: Run recovery reconciler tests
+        run: python test_recovery_reconciler.py
+      - name: Run activation transaction tests
+        run: python test_activation_transaction.py
+      - name: Run workload activation tests
+        run: python test_workload_activation.py
