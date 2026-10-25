@@ -1,15 +1,11 @@
 #!/usr/bin/env python3
-"""PostgreSQL durable store for IZAKHONO Runtime Fabric deployments.
-
-The store uses a caller-supplied DB-API connection factory so the runtime fabric
-stays provider-neutral. It never stores secrets and uses parameterized SQL only.
-"""
+"""PostgreSQL durable store for IZAKHONO Runtime Fabric deployments."""
 from __future__ import annotations
 
 import json
 from typing import Any, Callable, Optional
 
-from deployment_state import DeploymentRecord
+from deployment_state import DeploymentRecord, TERMINAL
 
 
 CREATE_TABLE_SQL = """
@@ -41,6 +37,11 @@ class PostgresDeploymentStore:
         finally:
             conn.close()
 
+    @staticmethod
+    def _record(row) -> DeploymentRecord:
+        metadata = row[6] if isinstance(row[6], dict) else json.loads(row[6] or "{}")
+        return DeploymentRecord(row[0], row[1], row[2], row[3], row[4], int(row[5]), dict(metadata))
+
     def get(self, deployment_id: str) -> Optional[DeploymentRecord]:
         conn = self.connection_factory()
         try:
@@ -51,10 +52,21 @@ class PostgresDeploymentStore:
                     (deployment_id,),
                 )
                 row = cur.fetchone()
-            if row is None:
-                return None
-            metadata = row[6] if isinstance(row[6], dict) else json.loads(row[6] or "{}")
-            return DeploymentRecord(row[0], row[1], row[2], row[3], row[4], int(row[5]), dict(metadata))
+            return None if row is None else self._record(row)
+        finally:
+            conn.close()
+
+    def list_active(self) -> list[DeploymentRecord]:
+        """Return all non-terminal deployments for reconciliation."""
+        conn = self.connection_factory()
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT deployment_id, workload, state, node, checkpoint, attempts, metadata "
+                    "FROM izakhono_runtime_deployments WHERE state <> ALL(%s) ORDER BY updated_at ASC",
+                    (list(TERMINAL),),
+                )
+                return [self._record(row) for row in cur.fetchall()]
         finally:
             conn.close()
 
