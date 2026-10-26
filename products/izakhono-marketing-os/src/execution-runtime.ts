@@ -7,6 +7,7 @@ import {
   type RetryPolicy,
 } from "./execution-reliability";
 import { PersistentExecutionLedger, type ReplayInstruction } from "./execution-recovery";
+import type { ExecutionPersistenceStore } from "./execution-persistence";
 
 export interface AdapterExecutor {
   execute(instruction: AdapterInstruction | ReplayInstruction): ExecutionAttemptResult;
@@ -18,7 +19,7 @@ export interface ExecutionRuntimeClock {
 
 export interface RuntimeResult {
   receipt: ExecutionReceipt;
-  persisted: boolean;
+  durable: boolean;
 }
 
 const systemClock: ExecutionRuntimeClock = {
@@ -30,10 +31,21 @@ export class ExecutionRuntime {
     private readonly ledger: PersistentExecutionLedger,
     private readonly executor: AdapterExecutor,
     private readonly retryPolicy: RetryPolicy,
+    private readonly persistence: ExecutionPersistenceStore,
     private readonly clock: ExecutionRuntimeClock = systemClock,
   ) {}
 
-  run(instruction: AdapterInstruction): RuntimeResult {
+  private async persistReceipt(receipt: ExecutionReceipt): Promise<void> {
+    const sequence = this.ledger.snapshot().length + 1;
+    await this.persistence.append({
+      schema: "izakhono.marketing.recovery-record.v1",
+      sequence,
+      receipt: { ...receipt },
+    });
+    this.ledger.append(receipt);
+  }
+
+  async run(instruction: AdapterInstruction): Promise<RuntimeResult> {
     if (instruction.jobs.length === 0) throw new Error("Execution requires at least one job");
     const [firstJob] = instruction.jobs;
     const key = createIdempotencyKey(
@@ -56,11 +68,11 @@ export class ExecutionRuntime {
       instruction.adapter,
       this.retryPolicy,
     );
-    this.ledger.append(receipt);
-    return { receipt, persisted: true };
+    await this.persistReceipt(receipt);
+    return { receipt, durable: true };
   }
 
-  replay(idempotencyKey: string): RuntimeResult {
+  async replay(idempotencyKey: string): Promise<RuntimeResult> {
     const replay = this.ledger.buildReplay(idempotencyKey);
     const result = this.executor.execute(replay);
     const receipt = createExecutionReceipt(
@@ -74,7 +86,7 @@ export class ExecutionRuntime {
       replay.adapter,
       this.retryPolicy,
     );
-    this.ledger.append(receipt);
-    return { receipt, persisted: true };
+    await this.persistReceipt(receipt);
+    return { receipt, durable: true };
   }
 }
