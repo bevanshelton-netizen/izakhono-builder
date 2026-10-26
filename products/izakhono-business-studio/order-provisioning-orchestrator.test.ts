@@ -1,7 +1,8 @@
 import { strict as assert } from 'node:assert';
 import { provisionPaidOrder, type RuntimeAdapter } from './order-provisioning-orchestrator';
+import type { Blueprint } from './provisioner-runtime';
 
-const blueprint={schemaVersion:'1.0',business:{name:'Test Business',description:'Provisioning test'},score:100,workflow:['WEBSITE','DOMAIN','DNS','SSL','PROVISIONING'],outputs:['site'],status:'PROVISIONING_PENDING'} as const;
+const blueprint:Blueprint={schemaVersion:'1.0',business:{name:'Test Business',description:'Provisioning test'},score:100,workflow:['WEBSITE','DOMAIN','DNS','SSL','PROVISIONING'],outputs:['site'],status:'PROVISIONING_PENDING'};
 const adapter:RuntimeAdapter={
   async selectNode(){return {nodeId:'node-test-01',routeClass:'external-resilience'};},
   async provisionNode(){return 'provisioned';},
