@@ -15,6 +15,19 @@ The I-CONNECT API is the control plane for identity, tenants, contact-centre ope
 ## Service entitlements
 `voice`, `contact_centre`, `mobile`, `connectivity`, `wifi`, `fleet`, `secure_fleet`, `provisioner`
 
+## Customer control
+The authenticated customer-control layer exposes the existing Supabase control-centre read model and routes service lifecycle mutations through the canonical connectivity state machine. Customer actions require a caller-supplied idempotency key and are recorded in mutation metadata.
+
+Lifecycle actions:
+- `provision` → `PROVISIONING`
+- `activate` → `ACTIVE`
+- `suspend` → `SUSPENDED`
+- `resume` → `ACTIVE`
+- `terminate` → `TERMINATED`
+- `retry` → `PROVISIONING`
+
+The database remains authoritative for permitted transitions and tenant authorization. Invalid transitions are rejected by the state machine.
+
 ## Contact-centre model
 - Queues
 - Agents
@@ -30,19 +43,22 @@ Provisioning jobs are idempotent and move through:
 
 Provider credentials remain server-side and are never stored in source control.
 
+## Handover model
+Provisioning handover operations are job-based and call the canonical RPCs with `p_job_id`:
+- build
+- release
+- revoke
+
 ## Billing model
 - ZAR-ready invoices stored in integer cents.
 - Usage records support service, quantity, unit pricing and rated amount.
 - Voice CDRs can feed usage rating once an authorised carrier adapter is connected.
+- Checkout and payment flows remain behind the existing payment-provider boundary.
 
 ## Security
 The second migration moves privileged membership checks out of the exposed `public` schema into `ic_private`, revokes PUBLIC execution, scopes execution to authenticated users and keeps RLS on every exposed application table.
 
 ## Production boundary
-The API contracts and schema are deployable, but real customer identity and persistent telecom state require a **dedicated I-CONNECT Supabase project** to be connected through environment variables.
+The API contracts and schema are deployable, but real customer identity and persistent telecom state require the dedicated I-CONNECT Supabase project to be connected through environment variables.
 
-Real PSTN calls also require an authorised carrier/SIP adapter, compliant numbering and credentials. The application must not represent those services as live until independently verified.
-
-Migrations:
-- `supabase/migrations/20261004_i_connect_identity_rbac.sql`
-- `supabase/migrations/20261005_i_connect_control_plane.sql`
+Real PSTN calls and live mobile service require an authorised carrier/SIP adapter, compliant numbering and credentials. The application must not represent those services as live until independently verified.
