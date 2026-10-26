@@ -158,6 +158,44 @@ if (!Array.isArray(suggestions.data?.profiles) || !String(suggestions.data?.rank
   throw new Error('Suggestion route failed non-behavioural contract');
 }
 
+const discovery = await request('/api/connecta/v1/discovery?kind=benefit&limit=50', { cookie: alpha.cookie });
+if (!Array.isArray(discovery.data?.records) || discovery.data.records.length === 0) {
+  throw new Error('Verified discovery listing was not available through the web proxy');
+}
+const verifiedRecord = discovery.data.records.find((item) => item.trust_status === 'VERIFIED' || item.trust_status === 'ACTIVE');
+if (!verifiedRecord?.id) throw new Error('Discovery listing did not contain a verified/active record');
+
+const enquiryMessage = `Authenticated discovery enquiry ${suffix}`;
+const enquiry = await request(`/api/connecta/v1/discovery/${verifiedRecord.id}/enquiries`, {
+  method: 'POST',
+  cookie: alpha.cookie,
+  body: {
+    message: enquiryMessage,
+    consentToContact: true,
+    campaignId: verifiedRecord.campaign_id || null,
+  },
+});
+if (enquiry.response.status !== 201) throw new Error('Discovery enquiry did not return HTTP 201');
+if (!enquiry.data?.ok || enquiry.data?.commercialState !== 'ENQUIRY_NOT_SALE') {
+  throw new Error('Discovery enquiry did not preserve ENQUIRY_NOT_SALE commercial state');
+}
+if (!enquiry.data?.enquiry?.id || !enquiry.data?.enquiry?.attribution_id) {
+  throw new Error('Discovery enquiry did not return attribution evidence');
+}
+if ('sale' in (enquiry.data || {}) || 'conversion' in (enquiry.data || {}) || enquiry.data?.commercialState === 'SALE') {
+  throw new Error('Discovery enquiry incorrectly reported a sale/conversion');
+}
+
+const unauthenticatedEnquiry = await request(`/api/connecta/v1/discovery/${verifiedRecord.id}/enquiries`, {
+  method: 'POST',
+  expect: 401,
+  body: {
+    message: 'Unauthenticated enquiry must be rejected',
+    consentToContact: true,
+  },
+});
+if (unauthenticatedEnquiry.response.status !== 401) throw new Error('Unauthenticated discovery enquiry was not rejected');
+
 const createdConversation = await request('/api/connecta/v1/conversations', {
   method: 'POST',
   cookie: alpha.cookie,
@@ -209,6 +247,11 @@ console.log(JSON.stringify({
   realHashtagTrends: true,
   behaviouralTrendRanking: false,
   behaviouralSuggestionRanking: false,
+  discoveryListing: true,
+  authenticatedEnquiry: true,
+  enquiryAttribution: true,
+  enquiryNotSale: true,
+  unauthenticatedEnquiryRejected: true,
   directMessages: true,
   socialNotifications: true,
   communities: true,
