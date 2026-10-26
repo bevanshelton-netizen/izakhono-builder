@@ -1,0 +1,34 @@
+{
+  "schema": "izakhono.connecta.ecosystem.v1",
+  "name": "CONNECTA Ecosystem",
+  "positioning": "One ecosystem. Many worlds. One identity.",
+  "hub": "/ecosystem",
+  "operator": "IZAKHONO AFRICA (PTY) LTD",
+  "identity": "IZAKHONO ID",
+  "worlds": [
+    {"id":"connecta-social","name":"CONNECTA Social","purpose":"people, communities, conversation","route":"/"},
+    {"id":"dotsee","name":"DOTSEE","purpose":"digital discovery and ecosystem footprint","route":"/ecosystem"},
+    {"id":"allegro-vibez","name":"Allegro Vibez","purpose":"music, radio and entertainment","route":"/ecosystem"},
+    {"id":"kora","name":"KORA","purpose":"African content and culture","route":"/ecosystem"},
+    {"id":"yhvhh","name":"YHVH","purpose":"Gospel, faith and worship","route":"/ecosystem"},
+    {"id":"giving","name":"CONNECTA Giving","purpose":"Good Samaritan fundraising","route":"/ecosystem"},
+    {"id":"adopt-a-spot","name":"Adopt-a-Spot","purpose":"NPO, NGO and community adoption","route":"/ecosystem"},
+    {"id":"benefits","name":"CONNECTA Benefits","purpose":"deals, coupons, giveaways and opportunities","route":"/ecosystem"},
+    {"id":"commerce","name":"CONNECTA Commerce","purpose":"business, products and services","route":"/ecosystem"},
+    {"id":"vehicles","name":"Vehicles","purpose":"vehicle discovery and partner commerce","route":"/ecosystem"},
+    {"id":"nav","name":"IZAKHONO NAV","purpose":"mobility and safety","route":"/ecosystem"},
+    {"id":"one","name":"IZAKHONO ONE","purpose":"AI, intelligence and business tooling","route":"/ecosystem"}
+  ],
+  "rules": {
+    "ordinary_expression_paywall": false,
+    "partner_claim_requires_agreement": true,
+    "verification_requires_evidence": true,
+    "donation_claim_requires_settlement": true,
+    "impact_claim_requires_evidence": true,
+    "promotion_requires_verified_terms": true,
+    "owned_infrastructure_preferred": true,
+    "third_party_rights_assumed": false
+  },
+  "status": "SOFTWARE_PACKAGED",
+  "public_route": "NOT_YET_VERIFIED"
+}
