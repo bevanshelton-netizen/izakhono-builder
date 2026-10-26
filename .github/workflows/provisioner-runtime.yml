@@ -53,11 +53,15 @@ jobs:
         run: python handover_store.py
       - name: Run production adapter contract smoke
         run: python production_adapter_contract.py
+      - name: Run owned IZAKHONO PAY adapter smoke
+        run: python izakhono_pay_adapter.py
+      - name: Run owned IZAKHONO PAY adapter tests
+        run: python izakhono_pay_adapter_test.py
       - name: Run production adapter catalog smoke
         run: python production_adapter_catalog.py
-      - name: Run canonical IZAKHONO PAY production adapter smoke
+      - name: Run canonical PAY compatibility smoke
         run: python production_payment_adapter.py
-      - name: Run canonical IZAKHONO PAY production adapter tests
+      - name: Run canonical PAY compatibility tests
         run: python production_payment_adapter_test.py
       - name: Run acceptance simulation guard
         run: python acceptance_simulation_guard_test.py
