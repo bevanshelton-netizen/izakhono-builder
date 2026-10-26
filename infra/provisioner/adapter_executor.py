@@ -2,17 +2,28 @@
 from __future__ import annotations
 from dataclasses import dataclass
 from hashlib import sha256
-from typing import Any, Callable, Dict, Mapping
+from typing import Any, Callable, Dict, Mapping, Iterator
 from errors import ProvisionerError
 
 @dataclass(frozen=True)
-class AdapterExecution:
+class AdapterExecution(Mapping[str, Any]):
     operation_id: str
     capability: str
     adapter: str
     ownership: str
     execution_key: str
     evidence: Dict[str, Any]
+
+    def __getitem__(self, key: str) -> Any:
+        if key == "status":
+            return "verified" if self.evidence.get("verified") is True else "failed"
+        return getattr(self, key)
+
+    def __iter__(self) -> Iterator[str]:
+        return iter(("operation_id", "capability", "adapter", "ownership", "status", "evidence"))
+
+    def __len__(self) -> int:
+        return 6
 
 class AdapterExecutionError(ProvisionerError):
     pass
@@ -63,6 +74,6 @@ class AdapterExecutor:
 
 if __name__ == "__main__":
     registry = {"adapters": {"site": {"owned": "izakhono-host"}}}
-    result = AdapterExecutor(registry, {"izakhono-host": lambda _: {"verified": True, "evidence_id": "ev-1"}}).execute(operation_id="op-1", tenant_id="tenant-1", capability="site", desired_state={}, idempotency_key="idem-1")
-    assert result.ownership == "owned"
+    result = AdapterExecutor(registry, {"izakhono-host": lambda _: {"verified": True, "evidence_id": "ev-1", "observed_at": "now", "checks": ["site.ok"]}}).execute(operation_id="op-1", tenant_id="tenant-1", capability="site", desired_state={}, idempotency_key="idem-1")
+    assert result.ownership == "owned" and result["status"] == "verified"
     print("ADAPTER_EXECUTOR_SMOKE: PASS")
