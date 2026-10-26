@@ -16,7 +16,7 @@ export async function enqueueGrowthExecution(workspaceId: string, campaignId?: s
   const jobs = await dbFetch('business_engine_jobs', { method: 'POST', headers: { Prefer: 'return=representation' }, body: JSON.stringify({ workspace_id: workspaceId, job_type: 'growth_engine', status: 'queued', priority: 50, attempts: 0, payload: { campaignId: campaignId ?? null, steps: DEFAULT_ENGINE_STEPS }, result: {} }) });
   const job = Array.isArray(jobs) ? jobs[0] : jobs;
   if (!job?.id) throw new Error('Execution job could not be created.');
-  await dbFetch('business_engine_job_steps', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: JSON.stringify(DEFAULT_ENGINE_STEPS.map((step, index) => ({ job_id: job.id, step_key: step.key, title: step.title, provider: step.provider, status: 'queued', output: { action: step.action, position: index + 1 } }))) });
+  await dbFetch('business_engine_job_steps', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: JSON.stringify(DEFAULT_ENGINE_STEPS.map((step, index) => ({ job_id: job.id, step_key: step.key, title: step.title, provider: step.provider, status: 'queued', output: { action: step.action, position: index + 1 }))) });
   return job;
 }
 
@@ -58,4 +58,31 @@ export async function finalizeExecution(jobId: string) {
   if (Array.isArray(remaining) && remaining.length) return false;
   await dbFetch(`business_engine_jobs?id=eq.${encodeURIComponent(jobId)}`, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ status: 'completed', completed_at: new Date().toISOString(), updated_at: new Date().toISOString() }) });
   return true;
+}
+
+export async function syncProvisionerStatuses(limit = 25) {
+  const requests = await dbFetch(`business_engine_provisioner_requests?execution_status=in.(queued,running,awaiting_provisioning_context)&order=updated_at.asc&limit=${limit}`);
+  if (!Array.isArray(requests) || requests.length === 0) return { checked: 0, synchronized: 0, completed: 0, failed: 0 };
+
+  let synchronized = 0;
+  let completed = 0;
+  let failed = 0;
+  for (const request of requests) {
+    if (!request?.job_id) continue;
+    try {
+      const synced = await dbFetch('rpc/sync_business_engine_provisioner_request', {
+        method: 'POST',
+        headers: { Prefer: 'return=representation' },
+        body: JSON.stringify({ p_job_id: request.job_id }),
+      });
+      synchronized += 1;
+      const row = Array.isArray(synced) ? synced[0] : synced;
+      const status = String(row?.execution_status ?? '').toLowerCase();
+      if (status === 'completed') completed += 1;
+      if (status === 'failed') failed += 1;
+    } catch {
+      // One provider request must not block synchronization of the remaining queue.
+    }
+  }
+  return { checked: requests.length, synchronized, completed, failed };
 }
