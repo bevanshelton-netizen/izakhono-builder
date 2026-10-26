@@ -1,6 +1,23 @@
 const { json, rpc } = require('./_lib/supabase');
 
-const ACTIONS = new Set(['provision','activate','suspend','resume','terminate','retry']);
+const TARGET_STATES = new Set([
+  'PENDING_KYC',
+  'READY',
+  'PROVISIONING',
+  'ACTIVE',
+  'SUSPENDED',
+  'TERMINATED',
+  'FAILED'
+]);
+
+const ACTION_TO_STATE = {
+  provision: 'PROVISIONING',
+  activate: 'ACTIVE',
+  suspend: 'SUSPENDED',
+  resume: 'ACTIVE',
+  terminate: 'TERMINATED',
+  retry: 'PROVISIONING'
+};
 
 module.exports = async (req, res) => {
   res.setHeader('Cache-Control', 'no-store');
@@ -14,19 +31,27 @@ module.exports = async (req, res) => {
     const action = String(body.action || '').trim().toLowerCase();
     const serviceId = String(body.serviceId || '').trim();
     const idempotencyKey = String(req.headers['x-idempotency-key'] || body.idempotencyKey || '').trim();
+    const targetState = String(body.toState || ACTION_TO_STATE[action] || '').trim().toUpperCase();
 
-    if (!ACTIONS.has(action)) return json(res, 400, { error: 'unsupported_action' });
+    if (!ACTION_TO_STATE[action] && !TARGET_STATES.has(targetState)) {
+      return json(res, 400, { error: 'unsupported_action' });
+    }
     if (!serviceId) return json(res, 400, { error: 'service_id_required' });
     if (!idempotencyKey) return json(res, 400, { error: 'idempotency_key_required' });
+    if (!TARGET_STATES.has(targetState)) return json(res, 400, { error: 'invalid_target_state' });
 
-    const result = await rpc(req, res, 'ic_transition_connectivity_service', {
+    return await rpc(req, res, 'ic_transition_connectivity_service', {
       p_service_id: serviceId,
-      p_action: action,
-      p_idempotency_key: idempotencyKey,
-      p_metadata: body.metadata || {}
+      p_to_state: targetState,
+      p_reason: body.reason || `customer_action:${action}`,
+      p_provider: body.provider || null,
+      p_external_reference: body.externalReference || null,
+      p_metadata: {
+        ...(body.metadata || {}),
+        idempotencyKey,
+        source: 'i-connect-customer-control'
+      }
     });
-
-    return result;
   } catch (e) {
     return json(res, 400, { error: 'invalid_request' });
   }
