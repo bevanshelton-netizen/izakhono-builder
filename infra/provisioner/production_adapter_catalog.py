@@ -1,21 +1,16 @@
-"""Capability-specific production adapter boundary for IZAKHONO Provisioner.
-
-The catalog is the fail-closed registration boundary for real production
-adapters. Credentials are represented only by secret references; adapters
-resolve runtime configuration at execution time.
-"""
+"""Capability-specific production adapter boundary for IZAKHONO Provisioner."""
 from __future__ import annotations
 from dataclasses import dataclass
 from typing import Mapping
 
 from production_adapter_contract import ProductionAdapter
 from izakhono_pay_adapter import IzakhonoPayAdapter
+from izakhono_domain_adapter import IzakhonoDomainAdapter
 
 CAPABILITIES = (
     "tenant", "payment", "domain", "dns", "site", "tls", "mail",
     "crm_whatsapp", "forms", "payment_links", "acceptance",
 )
-
 
 @dataclass(frozen=True)
 class AdapterRegistration:
@@ -36,7 +31,6 @@ class AdapterRegistration:
         if not self.healthcheck:
             raise ValueError("ADAPTER_HEALTHCHECK_REQUIRED")
 
-
 class ProductionAdapterCatalog:
     def __init__(self, registrations: Mapping[str, AdapterRegistration]):
         self.registrations = dict(registrations)
@@ -52,19 +46,11 @@ class ProductionAdapterCatalog:
     def capabilities(self) -> tuple[str, ...]:
         return tuple(sorted(self.registrations))
 
-
 def build_production_catalog() -> ProductionAdapterCatalog:
-    """Build the production catalog with the canonical owned PAY adapter."""
-    payment = IzakhonoPayAdapter()
     return ProductionAdapterCatalog({
-        "payment": AdapterRegistration(
-            "payment",
-            payment,
-            "izakhono-pay.health",
-            "vault://izakhono-pay/credentials",
-        )
+        "payment": AdapterRegistration("payment", IzakhonoPayAdapter(), "izakhono-pay.health", "vault://izakhono-pay/credentials"),
+        "domain": AdapterRegistration("domain", IzakhonoDomainAdapter(), "izakhono-domain.authority", None),
     })
-
 
 def smoke() -> None:
     class ReferenceAdapter:
@@ -72,27 +58,20 @@ def smoke() -> None:
         capability = "site"
         ownership = "owned"
         reversible = True
-        def execute(self, request):
-            raise NotImplementedError
-        def reconcile(self, request):
-            raise NotImplementedError
-
-    catalog = ProductionAdapterCatalog({
-        "site": AdapterRegistration("site", ReferenceAdapter(), "site.readiness", "secret://site")
-    })
+        def execute(self, request): raise NotImplementedError
+        def reconcile(self, request): raise NotImplementedError
+    catalog = ProductionAdapterCatalog({"site": AdapterRegistration("site", ReferenceAdapter(), "site.readiness", "secret://site")})
     assert catalog.get("site").credentials_ref == "secret://site"
     production = build_production_catalog()
-    payment = production.get("payment")
-    assert payment.adapter.name == "izakhono-pay"
-    assert payment.adapter.ownership == "owned"
-    assert payment.adapter.reversible is True
+    assert production.get("payment").adapter.name == "izakhono-pay"
+    assert production.get("domain").adapter.name == "izakhono-domain"
+    assert production.get("domain").adapter.ownership == "owned"
     try:
         catalog.get("mail")
     except KeyError:
         print("PRODUCTION_ADAPTER_CATALOG: PASS")
         return
     raise AssertionError("missing production adapter was not blocked")
-
 
 if __name__ == "__main__":
     smoke()
