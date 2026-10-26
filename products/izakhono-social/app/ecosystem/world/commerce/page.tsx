@@ -1,4 +1,4 @@
-import { DiscoverySurfaceClient } from '@/components/discovery-surface-client';
+import { DiscoverySurfaceClient } from '../../../../components/discovery-surface-client';
 
 export default function CommercePage() {
   return <DiscoverySurfaceClient
@@ -9,6 +9,6 @@ export default function CommercePage() {
     categories={['Businesses', 'Products', 'Services', 'Deals', 'Official Partners']}
     fields={['Verified business', 'Price / availability', 'Trust status', 'Enquiry ID', 'Campaign attribution']}
     emptyTitle="No verified commerce listings yet."
-    emptyDescription="Verified businesses and catalogues will populate this category once their source, identity and terms pass the CONNECTA verification pipeline."
+    emptyDescription="Verified businesses and catalogues will populate this category once their source, seller identity and relationship are verified."
   />;
 }
