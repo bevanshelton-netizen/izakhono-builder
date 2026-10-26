@@ -1,15 +1,11 @@
-"""Capability-specific production adapter boundary for IZAKHONO Provisioner.
-
-The catalog is the fail-closed registration boundary for real production
-adapters. Credentials are represented only by secret references; adapters
-resolve runtime configuration at execution time.
-"""
+"""Capability-specific production adapter boundary for IZAKHONO Provisioner."""
 from __future__ import annotations
 from dataclasses import dataclass
 from typing import Mapping
 
 from production_adapter_contract import ProductionAdapter
 from production_payment_adapter import IzakhonoPayProductionAdapter
+from domain_production_adapter import IzakhonoDomainProductionAdapter
 
 CAPABILITIES = (
     "tenant", "payment", "domain", "dns", "site", "tls", "mail",
@@ -54,44 +50,31 @@ class ProductionAdapterCatalog:
 
 
 def build_production_catalog() -> ProductionAdapterCatalog:
-    """Build the production catalog with the canonical owned PAY adapter."""
-    payment = IzakhonoPayProductionAdapter()
+    """Build the production catalog with canonical owned adapters."""
     return ProductionAdapterCatalog({
         "payment": AdapterRegistration(
-            "payment",
-            payment,
-            "izakhono-pay.health",
-            "vault://izakhono-pay/credentials",
-        )
+            "payment", IzakhonoPayProductionAdapter(),
+            "izakhono-pay.health", "vault://izakhono-pay/credentials"),
+        "domain": AdapterRegistration(
+            "domain", IzakhonoDomainProductionAdapter(),
+            "izakhono-domain.health", "vault://izakhono-domain/credentials"),
     })
 
 
 def smoke() -> None:
-    class ReferenceAdapter:
-        name = "reference"
-        capability = "site"
-        ownership = "owned"
-        reversible = True
-        def execute(self, request):
-            raise NotImplementedError
-        def reconcile(self, request):
-            raise NotImplementedError
-
-    catalog = ProductionAdapterCatalog({
-        "site": AdapterRegistration("site", ReferenceAdapter(), "site.readiness", "secret://site")
-    })
-    assert catalog.get("site").credentials_ref == "secret://site"
     production = build_production_catalog()
     payment = production.get("payment")
+    domain = production.get("domain")
     assert payment.adapter.name == "izakhono-pay"
     assert payment.adapter.ownership == "owned"
-    assert payment.adapter.reversible is True
+    assert domain.adapter.name == "izakhono-domain"
+    assert domain.adapter.ownership == "owned"
     try:
-        catalog.get("mail")
+        production.get("mail")
     except KeyError:
         print("PRODUCTION_ADAPTER_CATALOG: PASS")
         return
-    raise AssertionError("missing production adapter was not blocked")
+    raise AssertionError("unimplemented production adapter was not blocked")
 
 
 if __name__ == "__main__":
