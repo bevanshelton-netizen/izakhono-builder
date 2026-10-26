@@ -18,7 +18,7 @@ export interface ExecutionRuntimeClock {
 }
 
 export interface RuntimeResult {
-  receipt: ExecutionReceipt;
+  receipts: ExecutionReceipt[];
   durable: boolean;
 }
 
@@ -47,29 +47,34 @@ export class ExecutionRuntime {
 
   async run(instruction: AdapterInstruction): Promise<RuntimeResult> {
     if (instruction.jobs.length === 0) throw new Error("Execution requires at least one job");
-    const [firstJob] = instruction.jobs;
-    const key = createIdempotencyKey(
-      instruction.campaignId,
-      instruction.approvalId,
-      firstJob.network,
-      firstJob.scheduledAt,
-    );
-    if (this.ledger.latest(key)) throw new Error("Execution already recorded");
 
-    const result = this.executor.execute(instruction);
-    const receipt = createExecutionReceipt(
-      `${instruction.campaignId}:${instruction.approvalId}`,
-      instruction.campaignId,
-      instruction.approvalId,
-      key,
-      1,
-      result,
-      instruction.issuedAt,
-      instruction.adapter,
-      this.retryPolicy,
-    );
-    await this.persistReceipt(receipt);
-    return { receipt, durable: true };
+    const receipts: ExecutionReceipt[] = [];
+    for (const job of instruction.jobs) {
+      const key = createIdempotencyKey(
+        instruction.campaignId,
+        instruction.approvalId,
+        job.network,
+        job.scheduledAt,
+      );
+      if (this.ledger.latest(key)) throw new Error(`Execution already recorded: ${key}`);
+
+      const result = this.executor.execute({ ...instruction, jobs: [job] });
+      const receipt = createExecutionReceipt(
+        `${instruction.campaignId}:${instruction.approvalId}:${job.network}:${job.scheduledAt}`,
+        instruction.campaignId,
+        instruction.approvalId,
+        key,
+        1,
+        result,
+        instruction.issuedAt,
+        instruction.adapter,
+        this.retryPolicy,
+      );
+      await this.persistReceipt(receipt);
+      receipts.push(receipt);
+    }
+
+    return { receipts, durable: true };
   }
 
   async replay(idempotencyKey: string): Promise<RuntimeResult> {
@@ -87,6 +92,17 @@ export class ExecutionRuntime {
       this.retryPolicy,
     );
     await this.persistReceipt(receipt);
-    return { receipt, durable: true };
+    return { receipts: [receipt], durable: true };
+  }
+
+  static async restore(
+    persistence: ExecutionPersistenceStore,
+    executor: AdapterExecutor,
+    retryPolicy: RetryPolicy,
+    clock: ExecutionRuntimeClock = systemClock,
+  ): Promise<ExecutionRuntime> {
+    const records = await persistence.load();
+    const ledger = new PersistentExecutionLedger(records);
+    return new ExecutionRuntime(ledger, executor, retryPolicy, persistence, clock);
   }
 }
