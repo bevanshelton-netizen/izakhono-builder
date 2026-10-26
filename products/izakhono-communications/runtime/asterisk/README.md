@@ -6,7 +6,7 @@ Asterisk is the first concrete SIP engine target for the owned IZAKHONO communic
 
 Asterisk provides the SIP/PJSIP runtime required for extension registration, call routing and media handling while leaving the IZAKHONO Communications OS control plane in charge of tenants, identity, provisioning, policy, billing and audit.
 
-The current Asterisk documentation identifies PJSIP as the standard SIP driver and recommends it for new installations. The runtime therefore targets `res_pjsip`/`chan_pjsip`, not the removed legacy `chan_sip` driver.
+The runtime targets `res_pjsip`/`chan_pjsip`, not the legacy `chan_sip` driver.
 
 ## Boundary
 
@@ -49,6 +49,31 @@ Asterisk is an infrastructure component, not the customer-facing source of truth
 - carrier abstraction
 - AI/automation policy
 
+## Runtime artifact
+
+The repository now contains a source-built, pinned Asterisk runtime image:
+
+- Asterisk `22.11.0`
+- Source SHA-256: `3bd5ee040509a3d3cd9b1ba9520c18e6ec0a7e7981ca68c457dcd36ba3c54d94`
+- Bundled PJSIP/pjproject build path
+- Non-root `asterisk` runtime user
+- Controlled SIP/RTP ports
+- Docker healthcheck
+- No floating `latest` dependency
+
+The version and checksum are recorded in `Dockerfile` and `docker-compose.yml`. The Asterisk project release index currently lists 22.11.0 as the 22-series release artifact. This repository has not yet produced evidence of a successful image build on an owned runtime node.
+
+## Generated configuration boundary
+
+`src/asterisk-config.ts` renders tenant PJSIP credentials and managed route fragments. The renderer accepts a resolved secret only at the final config boundary; secrets are not part of the desired-state model and are not returned by diagnostics.
+
+The runtime templates load generated fragments from:
+
+- `/etc/asterisk/pjsip.d/*.conf`
+- `/etc/asterisk/extensions.d/*.conf`
+
+The static baseline deliberately contains no unrestricted PSTN dial pattern.
+
 ## Security baseline
 
 - Never commit SIP passwords, carrier credentials or database credentials.
@@ -57,12 +82,7 @@ Asterisk is an infrastructure component, not the customer-facing source of truth
 - Restrict management interfaces to private administration networks.
 - Apply rate limits and fraud controls before enabling external PSTN traffic.
 - Do not enable emergency calling until the jurisdiction-specific emergency-call policy, routing and customer disclosure requirements have been implemented and verified.
-
-## Version policy
-
-Pin the Asterisk image/source version rather than using a floating `latest` tag. The selected version must be recorded in the deployment manifest and upgraded deliberately.
-
-At the time this adapter was designed, Asterisk 22 is an LTS release with support through 2029, while Asterisk 24 is the newly released LTS series. A deployment may select the appropriate supported release after runtime compatibility testing; this repository does not claim that any particular version is deployed yet.
+- Runtime containers use `no-new-privileges` and drop Linux capabilities in the supplied deployment manifest.
 
 ## Readiness gate
 
