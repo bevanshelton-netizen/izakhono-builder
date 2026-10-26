@@ -3,7 +3,6 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { AdapterInstruction } from "./adapter-execution";
 import { ExecutionRuntime, type AdapterExecutor } from "./execution-runtime";
-import { PersistentExecutionLedger } from "./execution-recovery";
 import { FileExecutionPersistenceStore } from "./file-execution-persistence";
 
 const instruction: AdapterInstruction = {
@@ -23,6 +22,16 @@ const instruction: AdapterInstruction = {
   ],
 };
 
+const multiNetworkInstruction: AdapterInstruction = {
+  ...instruction,
+  campaignId: "campaign-runtime-multi-001",
+  approvalId: "approval-runtime-multi-001",
+  jobs: [
+    { ...instruction.jobs[0], campaignId: "campaign-runtime-multi-001", network: "facebook" },
+    { ...instruction.jobs[0], campaignId: "campaign-runtime-multi-001", network: "instagram" },
+  ],
+};
+
 class SequenceExecutor implements AdapterExecutor {
   private readonly results = ["retryable_failure", "success"] as const;
   private index = 0;
@@ -39,18 +48,17 @@ const path = join(directory, "ledger.jsonl");
 
 try {
   const store = new FileExecutionPersistenceStore(path);
-  const ledger = new PersistentExecutionLedger(await store.load());
-  const runtime = new ExecutionRuntime(
-    ledger,
+  const runtime = await ExecutionRuntime.restore(
+    store,
     new SequenceExecutor(),
     { maxAttempts: 3 },
-    store,
     { now: () => "2026-10-27T08:30:00+02:00" },
   );
 
   const first = await runtime.run(instruction);
-  if (first.receipt.result !== "retryable_failure") throw new Error("Initial runtime failure must be retryable");
-  if (first.receipt.nextAction !== "retry") throw new Error("Retryable runtime failure must request replay");
+  if (first.receipts.length !== 1) throw new Error("Single-job execution must produce one receipt");
+  if (first.receipts[0].result !== "retryable_failure") throw new Error("Initial runtime failure must be retryable");
+  if (first.receipts[0].nextAction !== "retry") throw new Error("Retryable runtime failure must request replay");
   if (!first.durable) throw new Error("Runtime receipt must be durably persisted");
 
   let duplicateBlocked = false;
@@ -61,32 +69,42 @@ try {
   }
   if (!duplicateBlocked) throw new Error("Runtime must block duplicate initial execution");
 
-  const replay = await runtime.replay(first.receipt.idempotencyKey);
-  if (replay.receipt.attempt !== 2) throw new Error("Replay must advance execution attempt");
-  if (replay.receipt.result !== "success") throw new Error("Replay must record executor success");
-  if (replay.receipt.nextAction !== "complete") throw new Error("Successful replay must complete");
-  if (replay.receipt.recordedAt !== "2026-10-27T08:30:00+02:00") throw new Error("Runtime clock must be injectable");
-  if (ledger.snapshot().length !== 2) throw new Error("Runtime must preserve both execution attempts");
+  const replay = await runtime.replay(first.receipts[0].idempotencyKey);
+  if (replay.receipts[0].attempt !== 2) throw new Error("Replay must advance execution attempt");
+  if (replay.receipts[0].result !== "success") throw new Error("Replay must record executor success");
+  if (replay.receipts[0].nextAction !== "complete") throw new Error("Successful replay must complete");
+  if (replay.receipts[0].recordedAt !== "2026-10-27T08:30:00+02:00") throw new Error("Runtime clock must be injectable");
 
-  const restartedLedger = new PersistentExecutionLedger(await store.load());
-  const restartedRuntime = new ExecutionRuntime(
-    restartedLedger,
+  const restartedRuntime = await ExecutionRuntime.restore(
+    store,
     new SequenceExecutor(),
     { maxAttempts: 3 },
-    store,
     { now: () => "2026-10-27T08:45:00+02:00" },
   );
-  if (restartedLedger.snapshot().length !== 2) throw new Error("Restart must restore the durable ledger");
-
   let completedReplayBlocked = false;
   try {
-    await restartedRuntime.replay(first.receipt.idempotencyKey);
+    await restartedRuntime.replay(first.receipts[0].idempotencyKey);
   } catch {
     completedReplayBlocked = true;
   }
   if (!completedReplayBlocked) throw new Error("Restarted runtime must preserve completed execution state");
 
-  console.log("IZAKHONO MARKETING OS durable execution runtime contract validated");
+  const multiStore = new FileExecutionPersistenceStore(join(directory, "multi-ledger.jsonl"));
+  const multiRuntime = await ExecutionRuntime.restore(
+    multiStore,
+    new SequenceExecutor(),
+    { maxAttempts: 3 },
+  );
+  const multi = await multiRuntime.run(multiNetworkInstruction);
+  if (multi.receipts.length !== 2) throw new Error("Multi-network execution must produce one receipt per job");
+  if (multi.receipts[0].idempotencyKey === multi.receipts[1].idempotencyKey) {
+    throw new Error("Multi-network jobs must have independent idempotency keys");
+  }
+  if (multi.receipts[0].idempotencyKey === multi.receipts[1].idempotencyKey) {
+    throw new Error("Multi-network execution identities must be independent");
+  }
+
+  console.log("IZAKHONO MARKETING OS durable multi-network execution runtime contract validated");
 } finally {
   await rm(directory, { recursive: true, force: true });
 }
