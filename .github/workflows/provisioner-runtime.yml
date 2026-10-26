@@ -57,6 +57,10 @@ jobs:
         run: python izakhono_pay_adapter.py
       - name: Run owned IZAKHONO PAY adapter tests
         run: python izakhono_pay_adapter_test.py
+      - name: Run owned IZAKHONO DOMAIN adapter smoke
+        run: python izakhono_domain_adapter.py
+      - name: Run owned IZAKHONO DOMAIN adapter tests
+        run: python izakhono_domain_adapter_test.py
       - name: Run production adapter catalog smoke
         run: python production_adapter_catalog.py
       - name: Run canonical PAY compatibility smoke
