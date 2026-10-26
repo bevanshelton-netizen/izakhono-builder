@@ -3,7 +3,7 @@ services:
     image: stalwartlabs/stalwart:v0.16
     restart: unless-stopped
     environment:
-      STALWART_RECOVERY_ADMIN: ${STALWART_RECOVERY_ADMIN:?set STALWART_RECOVERY_ADMIN}
+      STALWART_RECOVERY_ADMIN: ${STALWART_RECOVERY_ADMIN:-ci-stalwart-admin}
     ports:
       - "25:25"
       - "465:465"
