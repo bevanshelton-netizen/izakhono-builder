@@ -9,11 +9,15 @@
 - Stable response envelope with request IDs and machine-readable errors.
 - Repository abstraction with a development/test memory implementation.
 - Tenant-scoped authorization boundary with OWNER, ADMIN, AGENT and READ_ONLY roles.
+- PostgreSQL provisioning repository adapter with parameterized SQL.
+- PostgreSQL adapter contract tests using a deterministic fake SQL executor.
 - API tests covering authentication, idempotency and cross-tenant isolation.
 
 ## Persistence boundary
 
-`ProvisioningRepository` is now the persistence seam. The memory implementation is intentionally development/test-only. The production implementation must be backed by IZAKHONO-owned PostgreSQL and preserve tenant scoping, idempotency and resumable provisioning semantics.
+`ProvisioningRepository` is the persistence seam. `PostgresProvisioningRepository` now provides the native PostgreSQL implementation, while the memory implementation remains development/test-only. The production implementation preserves tenant scoping, idempotency and resumable provisioning semantics without owning database credentials or connection lifecycle.
+
+The M1 SQL schema remains the source migration baseline in `M1-DATA-MODEL.sql`. It has not been claimed as applied to a production database by this commit.
 
 ## Boundary
 
@@ -21,6 +25,6 @@ The implementation remains a control-plane service foundation. `SimulatorCarrier
 
 ## Next gate
 
-Implement the PostgreSQL repository adapter and apply the M1 schema on the intended IZAKHONO PostgreSQL runtime. Then add repository integration tests, followed by a real SIP/carrier adapter and verified inbound/outbound call paths on an owned runtime node.
+Apply and verify the M1 schema on the intended IZAKHONO PostgreSQL runtime, run repository integration tests against that database, wire the PostgreSQL adapter into the service runtime, and then build the first real SIP/carrier adapter with verified inbound/outbound call paths on an owned runtime node.
 
 Production/live status is not claimed by this milestone.
