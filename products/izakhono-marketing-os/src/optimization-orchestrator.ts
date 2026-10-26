@@ -13,6 +13,7 @@ export interface OptimizationPlan {
   campaignId: string;
   channel: string;
   sourceApprovalId: string;
+  optimizationApprovalId?: string;
   action: OptimizationAction;
   reason: string;
   createdAt: string;
@@ -59,7 +60,7 @@ export function approveOptimizationPlan(
   if (approval.approvalId === plan.sourceApprovalId) {
     throw new Error("Optimization requires a distinct approval record");
   }
-  return { ...plan, status: "approved" };
+  return { ...plan, optimizationApprovalId: approval.approvalId, status: "approved" };
 }
 
 export function validateOptimizationPlan(plan: OptimizationPlan): void {
@@ -70,4 +71,6 @@ export function validateOptimizationPlan(plan: OptimizationPlan): void {
   if (plan.approvalRequired !== true) throw new Error("Optimization approval gate is required");
   if (!["scale", "maintain", "improve", "pause"].includes(plan.action)) throw new Error("Invalid optimization action");
   if (!["proposed", "approved"].includes(plan.status)) throw new Error("Invalid optimization plan status");
+  if (plan.status === "approved" && !plan.optimizationApprovalId) throw new Error("Approved optimization plan requires an approval id");
+  if (plan.optimizationApprovalId === plan.sourceApprovalId) throw new Error("Optimization approval must differ from source approval");
 }
