@@ -31,7 +31,11 @@ class AdapterExecutor:
             adapter_name, ownership = str(owned), "owned"
         else:
             adapter_name, ownership = self._external(entry)
+        # Production catalogs are keyed by adapter name; the legacy/provider-
+        # neutral catalog is keyed by capability. Accept both representations.
         implementation = self.implementations.get(adapter_name)
+        if implementation is None:
+            implementation = self.implementations.get(capability)
         if implementation is None:
             raise AdapterExecutionError("ADAPTER_NOT_IMPLEMENTED", adapter_name)
         execution_key = "exec_" + sha256(":".join((tenant_id, operation_id, idempotency_key, capability, adapter_name)).encode()).hexdigest()[:32]
