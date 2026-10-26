@@ -1,0 +1,29 @@
+{
+  "schema": "izakhono.connecta.ecosystem.routing.v1",
+  "purpose": "Make ecosystem worlds actionable without claiming unverified external activation.",
+  "status": "SOFTWARE_PACKAGED",
+  "public_route": "NOT_YET_VERIFIED",
+  "identity": "IZAKHONO ID",
+  "hub": "/ecosystem",
+  "routes": [
+    {"id":"connecta-social","name":"CONNECTA Social","route":"/","activation":"internal"},
+    {"id":"dotsee","name":"DOTSEE","route":"/ecosystem","activation":"hub-entry"},
+    {"id":"allegro-vibez","name":"Allegro Vibez","route":"/ecosystem","activation":"adapter-pending"},
+    {"id":"kora","name":"KORA","route":"/ecosystem","activation":"adapter-pending"},
+    {"id":"yhvhh","name":"YHVH","route":"/ecosystem","activation":"adapter-pending"},
+    {"id":"giving","name":"CONNECTA Giving","route":"/ecosystem","activation":"internal-module-pending"},
+    {"id":"adopt-a-spot","name":"Adopt-a-Spot","route":"/ecosystem","activation":"internal-module-pending"},
+    {"id":"benefits","name":"CONNECTA Benefits","route":"/ecosystem","activation":"internal-module-pending"},
+    {"id":"commerce","name":"CONNECTA Commerce","route":"/ecosystem","activation":"internal-module-pending"},
+    {"id":"vehicles","name":"Vehicles","route":"/ecosystem","activation":"category-surface-pending"},
+    {"id":"nav","name":"IZAKHONO NAV","route":"/ecosystem","activation":"adapter-pending"},
+    {"id":"one","name":"IZAKHONO ONE","route":"/ecosystem","activation":"adapter-pending"}
+  ],
+  "rules": {
+    "third_party_activation_requires_verified_endpoint_or_signed_agreement": true,
+    "partner_claim_requires_agreement": true,
+    "verification_requires_evidence": true,
+    "ordinary_expression_paywall": false,
+    "owned_infrastructure_preferred": true
+  }
+}
