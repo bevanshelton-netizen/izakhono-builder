@@ -24,5 +24,6 @@ if (decideProviderEvent(intent, baseEvent, false).nextPaymentStatus !== 'paid') 
 if (decideProviderEvent(intent, baseEvent, true).status !== 'duplicate') throw new Error('duplicate event not idempotent');
 if (decideProviderEvent(intent, { ...baseEvent, amount: 1 }, false).status !== 'rejected') throw new Error('amount mismatch accepted');
 if (decideProviderEvent(intent, { ...baseEvent, currency: 'USD' }, false).status !== 'rejected') throw new Error('currency mismatch accepted');
+if (decideProviderEvent({ ...intent, providerReference: undefined }, baseEvent, false).reason !== 'provider reference missing') throw new Error('missing provider reference did not fail closed');
 
 console.log('IZAKHONO RENT payment lifecycle tests passed');
