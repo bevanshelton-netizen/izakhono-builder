@@ -40,6 +40,19 @@ describe("FileExecutionPersistenceStore", () => {
     }
   });
 
+  it("serializes concurrent appends without losing sequence integrity", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "izakhono-execution-"));
+    const path = join(directory, "ledger.jsonl");
+
+    try {
+      const store = new FileExecutionPersistenceStore(path);
+      await Promise.all([store.append(record(1)), store.append(record(2)), store.append(record(3))]);
+      await expect(store.load()).resolves.toEqual([record(1), record(2), record(3)]);
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+
   it("rejects non-contiguous sequence numbers", async () => {
     const directory = await mkdtemp(join(tmpdir(), "izakhono-execution-"));
     const path = join(directory, "ledger.jsonl");
