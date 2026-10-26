@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { claimNextExecution, executeNextStep, finalizeExecution } from '@/lib/orchestrator';
+import { claimNextExecution, executeNextStep, finalizeExecution } from '../../../lib/orchestrator';
 
 export async function POST() {
   try {
