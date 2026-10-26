@@ -68,7 +68,7 @@ payload="$(jq -n \
   --arg userData "$user_data" \
   --argjson sshKeys "$ssh_keys_json" \
   --argjson period "$CONTABO_PERIOD" \
-  '{imageId:$imageId,productId:$productId,region:$region,sshKeys:$sshKeys,userData:$userData,period:$period,displayName:$displayName,defaultUser:"ubuntu"}')"
+  '{imageId:$imageId,productId:$productId,region:$region,sshKeys:$sshKeys,userData:$userData,period:$period,displayName:$displayName,defaultUser:"admin"}')"
 
 echo "Creating Contabo instance..."
 response="$(curl -fsS -X POST "${API}/v1/compute/instances" "${headers[@]}" --data "$payload")"
@@ -76,5 +76,5 @@ response="$(curl -fsS -X POST "${API}/v1/compute/instances" "${headers[@]}" --da
 jq '.data[] | {instanceId,name,displayName,productId,region,status}' <<<"$response"
 
 echo
-printf '%s\n' "Provisioning request accepted. Public service status is NOT implied." 
+printf '%s\n' "Provisioning request accepted. Public service status is NOT implied."
 echo "Next gate: inspect the instance, verify SSH + /health, then configure approved EDGE/TLS/DNS."
