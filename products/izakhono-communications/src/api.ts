@@ -14,6 +14,7 @@ export type ApiResponse = { status: number; data?: unknown; error?: { code: stri
 
 const carrier = new SimulatorCarrier();
 const provisioning = new ProvisioningService(carrier);
+const defaultRepository = new MemoryProvisioningRepository();
 
 const response = (requestId: string, status: number, data?: unknown, error?: { code: string; message: string }): ApiResponse => ({ status, data, error, request_id: requestId });
 
@@ -29,7 +30,7 @@ const errorResponse = (requestId: string, error: unknown): ApiResponse => {
 export async function handleApi(
   request: ApiRequest,
   requestId = crypto.randomUUID(),
-  repository: ProvisioningRepository = new MemoryProvisioningRepository(),
+  repository: ProvisioningRepository = defaultRepository,
 ): Promise<ApiResponse> {
   const parts = request.path.replace(/^\/+|\/+$/g, "").split("/");
   if (parts[0] !== "v1") return response(requestId, 404, undefined, { code: "not_found", message: "route_not_found" });
