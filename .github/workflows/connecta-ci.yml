@@ -19,6 +19,22 @@ permissions:
 jobs:
   connecta:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: connecta_ci
+          POSTGRES_USER: connecta
+          POSTGRES_PASSWORD: connecta_ci_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U connecta -d connecta_ci"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgres://connecta:connecta_ci_password@127.0.0.1:5432/connecta_ci
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -45,6 +61,36 @@ jobs:
 
       - name: Test CONNECTA engine
         run: npm test --prefix products/izakhono-social/engine
+
+      - name: Validate fresh PostgreSQL migration set
+        run: node products/izakhono-social/engine/scripts/migrate.js
+
+      - name: Verify canonical schema objects
+        run: |
+          node --input-type=module <<'NODE'
+          import pg from 'pg';
+          const { Client } = pg;
+          const client = new Client({ connectionString: process.env.DATABASE_URL });
+          await client.connect();
+          const required = [
+            'accounts','profiles','sessions','onboarding_state','follows','communities',
+            'community_members','posts','comments','reactions','conversations','messages',
+            'media_assets','notifications','reports','moderation_cases','businesses',
+            'business_verifications','business_evidence','invite_codes','community_invites',
+            'content_shares','content_duplicate_alerts','media_fingerprints'
+          ];
+          const result = await client.query(`
+            select table_name from information_schema.tables
+             where table_schema='public' and table_name = any($1::text[])
+          `, [required]);
+          const found = new Set(result.rows.map((row) => row.table_name));
+          const missing = required.filter((name) => !found.has(name));
+          if (missing.length) throw new Error(`CONNECTA schema missing: ${missing.join(', ')}`);
+          const view = await client.query(`select 1 from information_schema.views where table_schema='public' and table_name='connecta_growth_summary'`);
+          if (!view.rowCount) throw new Error('CONNECTA growth summary view missing');
+          console.log(`[PASS] Fresh CONNECTA PostgreSQL schema validated: ${required.length} required tables + growth view.`);
+          await client.end();
+          NODE
 
       - name: Validate owned Compose topology
         run: docker compose -f products/izakhono-social/docker-compose.owned.yml config
