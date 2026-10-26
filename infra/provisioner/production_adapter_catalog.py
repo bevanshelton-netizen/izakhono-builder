@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from typing import Mapping
 
 from production_adapter_contract import ProductionAdapter
-from production_payment_adapter import IzakhonoPayProductionAdapter
+from izakhono_pay_adapter import IzakhonoPayAdapter
 
 CAPABILITIES = (
     "tenant", "payment", "domain", "dns", "site", "tls", "mail",
@@ -55,7 +55,7 @@ class ProductionAdapterCatalog:
 
 def build_production_catalog() -> ProductionAdapterCatalog:
     """Build the production catalog with the canonical owned PAY adapter."""
-    payment = IzakhonoPayProductionAdapter()
+    payment = IzakhonoPayAdapter()
     return ProductionAdapterCatalog({
         "payment": AdapterRegistration(
             "payment",
