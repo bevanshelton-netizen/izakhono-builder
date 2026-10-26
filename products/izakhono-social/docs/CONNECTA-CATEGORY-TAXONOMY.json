@@ -1,0 +1,35 @@
+{
+  "schema": "izakhono.connecta.category-taxonomy.v1",
+  "version": 1,
+  "categories": [
+    {"slug":"vehicles","name":"Vehicles","icon":"🚗","commercial_enabled":true},
+    {"slug":"property","name":"Property","icon":"🏠","commercial_enabled":true},
+    {"slug":"jobs-careers","name":"Jobs & Careers","icon":"💼","commercial_enabled":true},
+    {"slug":"business-services","name":"Business & Services","icon":"🏢","commercial_enabled":true},
+    {"slug":"shopping-products","name":"Shopping & Products","icon":"🛍️","commercial_enabled":true},
+    {"slug":"technology","name":"Technology","icon":"💻","commercial_enabled":true},
+    {"slug":"sports","name":"Sports","icon":"🏆","commercial_enabled":true},
+    {"slug":"music-entertainment","name":"Music & Entertainment","icon":"🎵","commercial_enabled":true},
+    {"slug":"education-training","name":"Education & Training","icon":"🎓","commercial_enabled":true},
+    {"slug":"news-community","name":"News & Community","icon":"📰","commercial_enabled":false},
+    {"slug":"travel-hospitality","name":"Travel & Hospitality","icon":"✈️","commercial_enabled":true},
+    {"slug":"food-lifestyle","name":"Food & Lifestyle","icon":"🍽️","commercial_enabled":true},
+    {"slug":"agriculture","name":"Agriculture","icon":"🌾","commercial_enabled":true},
+    {"slug":"finance-opportunities","name":"Finance & Opportunities","icon":"📈","commercial_enabled":true},
+    {"slug":"government-public-services","name":"Government & Public Services","icon":"🏛️","commercial_enabled":false},
+    {"slug":"faith-culture","name":"Faith & Culture","icon":"🌍","commercial_enabled":false},
+    {"slug":"arts-creativity","name":"Arts & Creativity","icon":"🎨","commercial_enabled":true},
+    {"slug":"health-wellness","name":"Health & Wellness","icon":"❤️","commercial_enabled":true},
+    {"slug":"events","name":"Events","icon":"📅","commercial_enabled":true},
+    {"slug":"general","name":"General Conversation","icon":"💬","commercial_enabled":false}
+  ],
+  "vehicles_subcategories": [
+    "new-vehicles",
+    "used-vehicles",
+    "imports",
+    "commercial-vehicles",
+    "motorcycles",
+    "parts-accessories",
+    "vehicle-services"
+  ]
+}
