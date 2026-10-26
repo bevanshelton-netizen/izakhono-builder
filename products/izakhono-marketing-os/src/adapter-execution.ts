@@ -15,17 +15,11 @@ export function createAdapterInstruction(
   distribution: DistributionPlan,
   issuedAt: string,
 ): AdapterInstruction {
-  if (execution.state !== "ready_for_adapter") {
-    throw new Error("Campaign must be adapter-ready before execution");
-  }
-  if (!execution.approval) {
-    throw new Error("Adapter execution requires an approval record");
-  }
-  if (distribution.campaignId !== undefined && distribution.jobs.some((job) => job.campaignId !== execution.campaignId)) {
+  if (execution.state !== "ready_for_adapter") throw new Error("Campaign must be adapter-ready before execution");
+  if (!execution.approval) throw new Error("Adapter execution requires an approval record");
+  if (distribution.approvalRequired !== true) throw new Error("Distribution approval gate is required");
+  if (distribution.jobs.some((job) => job.campaignId !== execution.campaignId)) {
     throw new Error("Distribution plan campaign mismatch");
-  }
-  if (distribution.approvalRequired !== true) {
-    throw new Error("Distribution approval gate is required");
   }
 
   return {
@@ -39,21 +33,11 @@ export function createAdapterInstruction(
 }
 
 export function validateAdapterInstruction(instruction: AdapterInstruction): void {
-  if (instruction.schema !== "izakhono.marketing.adapter-instruction.v1") {
-    throw new Error("Invalid adapter instruction schema");
-  }
-  if (!instruction.campaignId || !instruction.approvalId || !instruction.issuedAt) {
-    throw new Error("Incomplete adapter instruction");
-  }
-  if (!instruction.jobs.length) {
-    throw new Error("Adapter instruction requires at least one distribution job");
-  }
+  if (instruction.schema !== "izakhono.marketing.adapter-instruction.v1") throw new Error("Invalid adapter instruction schema");
+  if (!instruction.campaignId || !instruction.approvalId || !instruction.issuedAt) throw new Error("Incomplete adapter instruction");
+  if (!instruction.jobs.length) throw new Error("Adapter instruction requires at least one distribution job");
   for (const job of instruction.jobs) {
-    if (job.campaignId !== instruction.campaignId) {
-      throw new Error("Adapter job campaign mismatch");
-    }
-    if (job.status !== "ready_for_adapter") {
-      throw new Error("Only adapter-ready jobs may be executed");
-    }
+    if (job.campaignId !== instruction.campaignId) throw new Error("Adapter job campaign mismatch");
+    if (job.status !== "ready_for_adapter") throw new Error("Only adapter-ready jobs may be executed");
   }
 }
