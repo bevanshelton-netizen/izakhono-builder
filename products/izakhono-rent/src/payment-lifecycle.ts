@@ -36,8 +36,9 @@ export interface EventDecision {
 }
 
 /**
- * Provider events are accepted only when their amount/currency match the
- * server-created intent. Duplicate provider event IDs are harmless.
+ * Provider events are accepted only when their provider reference,
+ * amount and currency match the server-created intent. Duplicate provider
+ * event IDs are harmless. Missing provider references fail closed.
  */
 export function decideProviderEvent(
   intent: PaymentIntent,
@@ -46,7 +47,8 @@ export function decideProviderEvent(
 ): EventDecision {
   if (alreadyProcessed) return { status: 'duplicate', reason: 'provider event already processed' };
   if (event.provider !== intent.provider) return { status: 'rejected', reason: 'provider mismatch' };
-  if (event.providerReference !== (intent.providerReference ?? event.providerReference)) {
+  if (!intent.providerReference) return { status: 'rejected', reason: 'provider reference missing' };
+  if (event.providerReference !== intent.providerReference) {
     return { status: 'rejected', reason: 'provider reference mismatch' };
   }
   if (Math.round(event.amount * 100) !== Math.round(intent.amount * 100)) {
