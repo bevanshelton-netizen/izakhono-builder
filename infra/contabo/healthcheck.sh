@@ -23,7 +23,7 @@ check "filesystem /opt/izakhono" test -d /opt/izakhono
 check "filesystem /opt/izakhono/releases" test -d /opt/izakhono/releases
 check "firewall" ufw status
 check "fail2ban" systemctl is-active fail2ban
-check "security updates" systemctl is-active unattended-upgrades
+check "unattended-upgrades package" dpkg-query -W unattended-upgrades
 
 cat <<JSON
 {
