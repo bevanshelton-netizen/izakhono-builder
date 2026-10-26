@@ -1,0 +1,52 @@
+name: Contabo Runtime Fabric CI
+
+on:
+  push:
+    paths:
+      - 'infra/contabo/**'
+      - 'infra/runtime-fabric/nodes/contabo-vps-01.json'
+      - 'package.json'
+      - '.github/workflows/contabo-runtime-fabric-ci.yml'
+  pull_request:
+    paths:
+      - 'infra/contabo/**'
+      - 'infra/runtime-fabric/nodes/contabo-vps-01.json'
+      - 'package.json'
+      - '.github/workflows/contabo-runtime-fabric-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Validate JSON contracts
+        run: |
+          node --check infra/contabo/validate.mjs
+          node infra/contabo/validate.mjs
+          node -e "JSON.parse(require('fs').readFileSync('package.json','utf8')); JSON.parse(require('fs').readFileSync('infra/runtime-fabric/nodes/contabo-vps-01.json','utf8')); console.log('JSON: PASS')"
+
+      - name: Validate shell scripts
+        run: |
+          bash -n infra/contabo/provision.sh
+          bash -n infra/contabo/healthcheck.sh
+          bash -n infra/contabo/deploy-stack.sh
+
+      - name: Validate Compose graph
+        run: |
+          cp infra/contabo/stack.env.example /tmp/izakhono-stack.env
+          sed -i 's/^POSTGRES_PASSWORD=.*/POSTGRES_PASSWORD=ci-placeholder/' /tmp/izakhono-stack.env
+          sed -i 's/^WEBUI_SECRET_KEY=.*/WEBUI_SECRET_KEY=ci-placeholder/' /tmp/izakhono-stack.env
+          docker compose --env-file /tmp/izakhono-stack.env -f infra/contabo/compose.yml config >/tmp/izakhono-compose.yml
+          grep -q 'pgvector/pgvector' /tmp/izakhono-compose.yml
+          grep -q 'qdrant/qdrant' /tmp/izakhono-compose.yml
+          echo 'Compose: PASS'
