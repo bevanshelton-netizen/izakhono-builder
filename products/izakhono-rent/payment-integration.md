@@ -2,7 +2,7 @@
 
 ## Provider
 
-IZAKHONO RENT uses **iKhokha iK Pay API** as the intended South African online-payment adapter. iKhokha officially documents iK Pay API as the custom-platform integration path and requires a website key generated from the merchant dashboard. citeturn0search2
+IZAKHONO RENT uses **iKhokha iK Pay API** as the intended South African online-payment adapter. iKhokha officially documents iK Pay API as the custom-platform integration path and requires a website key generated from the merchant dashboard.
 
 ## Production safety gate
 
@@ -28,4 +28,4 @@ The database must retain provider reference, event ID, amount, currency, status,
 
 Listings and bookings must remain tied to IZAKHONO ID identities. FORTRESS enforcement belongs at the API boundary and must cover authentication, authorization, rate limiting, audit logging and sensitive payment actions.
 
-No production launch claim is made until the merchant account is approved and the integration passes a real provider test. iKhokha states that its profile must be FICA approved before payouts can begin. citeturn0search2
+No production launch claim is made until the merchant account is approved and the integration passes a real provider test. iKhokha states that its profile must be FICA approved before payouts can begin.
