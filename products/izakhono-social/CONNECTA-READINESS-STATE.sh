@@ -7,6 +7,8 @@ set -euo pipefail
 
 EVIDENCE_ROOT="${CONNECTA_EVIDENCE_ROOT:-/var/lib/izakhono/evidence/connecta}"
 REPORT="${CONNECTA_READINESS_REPORT:-$EVIDENCE_ROOT/connecta-production-readiness.json}"
+MAX_AGE_SECONDS="${CONNECTA_READINESS_MAX_AGE_SECONDS:-86400}"
+[[ "$MAX_AGE_SECONDS" =~ ^[0-9]+$ ]] || { echo "CONNECTA_READINESS_MAX_AGE_SECONDS must be a non-negative integer" >&2; exit 2; }
 mkdir -p "$EVIDENCE_ROOT"
 chmod 700 "$EVIDENCE_ROOT"
 
@@ -35,9 +37,10 @@ PY
     return
   fi
 
-  if ! python3 - "$file" "$name" "$expected_schema" <<'PY'
-import json,sys
-path,name,schema=sys.argv[1:]
+  if ! python3 - "$file" "$name" "$expected_schema" "$MAX_AGE_SECONDS" <<'PY'
+import json,sys,time
+path,name,schema,max_age=sys.argv[1:]
+max_age=int(max_age)
 try:
     with open(path,encoding='utf-8') as f: d=json.load(f)
 except Exception as exc:
@@ -52,6 +55,18 @@ if d.get('status') != 'PASS':
 if d.get('evidence_source') in (None,'','inferred','topology','ci-only','repository-only'):
     print(f'INVALID {name}: evidence source is not independently identified')
     raise SystemExit(1)
+try:
+    checked=int(d['checked_at_epoch'])
+except Exception:
+    print(f'INVALID {name}: checked_at_epoch is missing or invalid')
+    raise SystemExit(1)
+now=int(time.time())
+if checked > now + 300:
+    print(f'INVALID {name}: checked_at_epoch is in the future')
+    raise SystemExit(1)
+if now - checked > max_age:
+    print(f'STALE {name}: evidence age={now-checked}s max={max_age}s')
+    raise SystemExit(1)
 print('PASS')
 PY
   then
@@ -59,7 +74,7 @@ PY
     RESULTS+=("$(python3 - "$name" "$file" <<'PY'
 import json,sys
 with open(sys.argv[2],encoding='utf-8') as f: d=json.load(f)
-print(json.dumps({'gate':sys.argv[1],'status':d.get('status','INVALID'),'evidence_source':d.get('evidence_source')},separators=(',',':')))
+print(json.dumps({'gate':sys.argv[1],'status':d.get('status','INVALID'),'evidence_source':d.get('evidence_source'),'checked_at_epoch':d.get('checked_at_epoch')},separators=(',',':')))
 PY
 )")
     return
@@ -99,7 +114,8 @@ record={
   'gates':results,
   'evidence_source':'fail-closed-gate-state-machine',
   'public_cutover_action':'NONE',
-  'note':'This report never changes DNS, EDGE/TLS, routing, or product metadata. A PRODUCTION_READY result only means every required evidence artifact passed validation.'
+  'evidence_max_age_seconds':int(os.environ.get('CONNECTA_READINESS_MAX_AGE_SECONDS','86400')),
+  'note':'This report never changes DNS, EDGE/TLS, routing, or product metadata. A PRODUCTION_READY result only means every required evidence artifact passed validation and is fresh enough for the configured evidence window.'
 }
 tmp=report+'.tmp'
 with open(tmp,'w',encoding='utf-8') as f:
