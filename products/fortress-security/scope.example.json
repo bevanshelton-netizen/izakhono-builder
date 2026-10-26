@@ -1,0 +1,11 @@
+{
+  "owner": "IZAKHONO",
+  "assets": [
+    {
+      "id": "fortress-self",
+      "host": "127.0.0.1",
+      "ports": [22, 80, 443, 5432, 3306],
+      "httpUrls": ["http://127.0.0.1/", "https://127.0.0.1/"]
+    }
+  ]
+}
