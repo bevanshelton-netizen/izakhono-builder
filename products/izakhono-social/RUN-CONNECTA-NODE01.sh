@@ -26,13 +26,18 @@ command -v python3 >/dev/null || stop "Python 3 is not available."
 REF="$(git -C "$ROOT" rev-parse HEAD)"
 [[ "$REF" =~ ^[0-9a-f]{40}$ ]] || stop "Could not determine immutable repository commit."
 
-log "[1/7] Checking NODE01 guardian..."
+log "[1/8] Checking NODE01 guardian..."
 curl -fsS http://127.0.0.1:9191/readyz | tee -a "$REPORT" >/dev/null || stop "NODE01 guardian is not ready. No public route was changed."
 
-log "[2/7] Checking CONNECTA secret environment..."
+log "[2/8] Checking CONNECTA secret environment..."
 [[ -f /etc/izakhono/apps/connecta.env ]] || stop "Missing /etc/izakhono/apps/connecta.env"
 
-log "[3/7] Deploying immutable CONNECTA stack at $REF..."
+log "[3/8] Verifying physical NODE cluster + security prerequisites..."
+CONNECTA_EVIDENCE_ROOT="$EVIDENCE_ROOT" CONNECTA_EVIDENCE_COMMIT="$REF" \
+  bash "$ROOT/infra/node-cluster/write-connecta-cluster-security-evidence.sh" 2>&1 | tee -a "$REPORT" \
+  || stop "Physical cluster/security proof failed. Public cutover remains blocked."
+
+log "[4/8] Deploying immutable CONNECTA stack at $REF..."
 JOB="$(python3 - "$PROFILE" "$REF" <<'PY'
 import json, sys
 profile, ref = sys.argv[1:]
@@ -45,17 +50,17 @@ PY
 
 bash "$ROOT/products/izakhono-node/deploy.sh" "$JOB" 2>&1 | tee -a "$REPORT" || stop "CONNECTA did not pass local owned deployment proof. Public DNS and external fallback remain untouched."
 
-log "[4/7] Verifying full web + engine + database health and persistence smoke..."
+log "[5/8] Verifying full web + engine + database health and persistence smoke..."
 curl -fsS http://127.0.0.1:3080/health | tee "$TMP_DIR/health.json" | tee -a "$REPORT" >/dev/null || stop "CONNECTA full-stack health failed after deployment."
 CONNECTA_WEB_URL=http://127.0.0.1:3080 node "$ROOT/products/izakhono-social/scripts/smoke-web-runtime.mjs" 2>&1 | tee -a "$REPORT" || stop "CONNECTA registration/login/persistence smoke failed."
 
-log "[5/7] Creating target-machine recovery backup..."
+log "[6/8] Creating target-machine recovery backup..."
 export CONNECTA_COMPOSE_PROJECT=izakhono-connecta
 export CONNECTA_COMPOSE_FILE="$ROOT/products/izakhono-social/docker-compose.owned.yml"
 mkdir -p /var/backups/connecta
 bash "$ROOT/products/izakhono-social/ops/backup.sh" /var/backups/connecta 2>&1 | tee -a "$REPORT" || stop "CONNECTA backup proof failed. Public cutover remains blocked."
 
-log "[6/7] Proving non-destructive restore on NODE01..."
+log "[7/8] Proving non-destructive restore on NODE01..."
 BACKUP="$(find /var/backups/connecta -maxdepth 1 -type d -name 'connecta-*' -print | sort | tail -n 1)"
 [[ -n "$BACKUP" ]] || stop "No CONNECTA backup directory was produced."
 bash "$ROOT/products/izakhono-social/ops/restore-test.sh" "$BACKUP" 2>&1 | tee "$TMP_DIR/restore.log" | tee -a "$REPORT"
@@ -68,7 +73,7 @@ with open(sys.argv[1], encoding='utf-8') as f:
 assert data.get('ok') is True and data.get('destructive') is False
 PY
 
-log "[7/7] Writing fail-closed CONNECTA readiness evidence..."
+log "[8/8] Writing fail-closed CONNECTA local + backup/restore evidence..."
 CONNECTA_EVIDENCE_ROOT="$EVIDENCE_ROOT" CONNECTA_EVIDENCE_COMMIT="$REF" \
   bash "$ROOT/products/izakhono-social/ops/write-readiness-evidence.sh" \
   "$TMP_DIR/health.json" "$RESTORE_JSON" "$BACKUP" 2>&1 | tee -a "$REPORT" \
@@ -76,9 +81,9 @@ CONNECTA_EVIDENCE_ROOT="$EVIDENCE_ROOT" CONNECTA_EVIDENCE_COMMIT="$REF" \
 
 log "============================================================"
 log "[PASS] CONNECTA BUILT / VERIFIED LOCALLY on NODE01."
-log "Registration/login/persistence smoke + backup + non-destructive restore proof passed."
-log "Local and backup/restore evidence was written to: $EVIDENCE_ROOT"
+log "Physical cluster/security + persistence smoke + backup + non-destructive restore proof passed."
+log "Evidence was written to: $EVIDENCE_ROOT"
 log "Public status is NOT claimed by this result."
-log "Next gates: cluster/failover + security + EDGE/TLS + DNS + independent HTTPS verification."
+log "Remaining gates: controlled failover/failback + EDGE/TLS + DNS + independent HTTPS verification."
 log "Report: $REPORT"
 log "============================================================"
