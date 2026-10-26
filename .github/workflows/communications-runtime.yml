@@ -1,0 +1,33 @@
+name: IZAKHONO Communications Runtime
+
+on:
+  push:
+    branches:
+      - feature/communications-os-foundation
+    paths:
+      - 'products/izakhono-communications/**'
+      - '.github/workflows/communications-runtime.yml'
+  pull_request:
+    paths:
+      - 'products/izakhono-communications/**'
+      - '.github/workflows/communications-runtime.yml'
+
+jobs:
+  config-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Run Asterisk config renderer test
+        run: npx --yes tsx@4.20.3 products/izakhono-communications/src/asterisk-config.test.ts
+
+  image-build:
+    runs-on: ubuntu-latest
+    needs: config-test
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build pinned Asterisk runtime image
+        run: docker build -f products/izakhono-communications/runtime/asterisk/Dockerfile products/izakhono-communications/runtime/asterisk
