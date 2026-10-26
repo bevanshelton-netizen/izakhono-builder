@@ -11,15 +11,13 @@ const instruction: AdapterInstruction = {
   adapter: "owned",
   approvalId: "approval-runtime-001",
   issuedAt: "2026-10-27T08:00:00+02:00",
-  jobs: [
-    {
-      campaignId: "campaign-runtime-001",
-      network: "facebook",
-      text: "Runtime test",
-      scheduledAt: "2026-10-27T09:00:00+02:00",
-      status: "ready_for_adapter",
-    },
-  ],
+  jobs: [{
+    campaignId: "campaign-runtime-001",
+    network: "facebook",
+    text: "Runtime test",
+    scheduledAt: "2026-10-27T09:00:00+02:00",
+    status: "ready_for_adapter",
+  }],
 };
 
 const multiNetworkInstruction: AdapterInstruction = {
@@ -44,10 +42,9 @@ class SequenceExecutor implements AdapterExecutor {
 }
 
 const directory = await mkdtemp(join(tmpdir(), "izakhono-runtime-"));
-const path = join(directory, "ledger.jsonl");
 
 try {
-  const store = new FileExecutionPersistenceStore(path);
+  const store = new FileExecutionPersistenceStore(join(directory, "ledger.jsonl"));
   const runtime = await ExecutionRuntime.restore(
     store,
     new SequenceExecutor(),
@@ -62,11 +59,7 @@ try {
   if (!first.durable) throw new Error("Runtime receipt must be durably persisted");
 
   let duplicateBlocked = false;
-  try {
-    await runtime.run(instruction);
-  } catch {
-    duplicateBlocked = true;
-  }
+  try { await runtime.run(instruction); } catch { duplicateBlocked = true; }
   if (!duplicateBlocked) throw new Error("Runtime must block duplicate initial execution");
 
   const replay = await runtime.replay(first.receipts[0].idempotencyKey);
@@ -82,26 +75,18 @@ try {
     { now: () => "2026-10-27T08:45:00+02:00" },
   );
   let completedReplayBlocked = false;
-  try {
-    await restartedRuntime.replay(first.receipts[0].idempotencyKey);
-  } catch {
-    completedReplayBlocked = true;
-  }
+  try { await restartedRuntime.replay(first.receipts[0].idempotencyKey); } catch { completedReplayBlocked = true; }
   if (!completedReplayBlocked) throw new Error("Restarted runtime must preserve completed execution state");
 
   const multiStore = new FileExecutionPersistenceStore(join(directory, "multi-ledger.jsonl"));
-  const multiRuntime = await ExecutionRuntime.restore(
-    multiStore,
-    new SequenceExecutor(),
-    { maxAttempts: 3 },
-  );
+  const multiRuntime = await ExecutionRuntime.restore(multiStore, new SequenceExecutor(), { maxAttempts: 3 });
   const multi = await multiRuntime.run(multiNetworkInstruction);
   if (multi.receipts.length !== 2) throw new Error("Multi-network execution must produce one receipt per job");
   if (multi.receipts[0].idempotencyKey === multi.receipts[1].idempotencyKey) {
     throw new Error("Multi-network jobs must have independent idempotency keys");
   }
-  if (multi.receipts[0].idempotencyKey === multi.receipts[1].idempotencyKey) {
-    throw new Error("Multi-network execution identities must be independent");
+  if (multi.receipts[0].executionId === multi.receipts[1].executionId) {
+    throw new Error("Multi-network jobs must have independent execution identities");
   }
 
   console.log("IZAKHONO MARKETING OS durable multi-network execution runtime contract validated");
