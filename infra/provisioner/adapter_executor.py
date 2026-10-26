@@ -22,7 +22,16 @@ class AdapterExecutor:
         self.registry = registry
         self.implementations = implementations
 
-    def execute(self, *, operation_id: str, tenant_id: str, capability: str, desired_state: Mapping[str, Any], idempotency_key: str) -> AdapterExecution:
+    def execute(self, request: Mapping[str, Any] | None = None, *, operation_id: str | None = None, tenant_id: str | None = None, capability: str | None = None, desired_state: Mapping[str, Any] | None = None, idempotency_key: str | None = None) -> AdapterExecution:
+        if request is not None:
+            operation_id = request.get("operation_id")
+            tenant_id = request.get("tenant_id")
+            capability = request.get("capability")
+            desired_state = request.get("desired_state", {})
+            idempotency_key = request.get("idempotency_key")
+        if not all(isinstance(v, str) and v for v in (operation_id, tenant_id, capability, idempotency_key)):
+            raise AdapterExecutionError("INVALID_EXECUTION_REQUEST", "missing execution identity")
+        desired_state = desired_state or {}
         entry = self.registry.get("adapters", {}).get(capability)
         if not entry:
             raise AdapterExecutionError("UNSUPPORTED_CAPABILITY", f"No adapter registered for {capability}")
@@ -31,11 +40,7 @@ class AdapterExecutor:
             adapter_name, ownership = str(owned), "owned"
         else:
             adapter_name, ownership = self._external(entry)
-        # Production catalogs are keyed by adapter name; the legacy/provider-
-        # neutral catalog is keyed by capability. Accept both representations.
-        implementation = self.implementations.get(adapter_name)
-        if implementation is None:
-            implementation = self.implementations.get(capability)
+        implementation = self.implementations.get(adapter_name) or self.implementations.get(capability)
         if implementation is None:
             raise AdapterExecutionError("ADAPTER_NOT_IMPLEMENTED", adapter_name)
         execution_key = "exec_" + sha256(":".join((tenant_id, operation_id, idempotency_key, capability, adapter_name)).encode()).hexdigest()[:32]
