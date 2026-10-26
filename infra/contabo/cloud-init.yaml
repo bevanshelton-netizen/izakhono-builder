@@ -12,9 +12,6 @@ packages:
   - apt-transport-https
   - software-properties-common
 
-users:
-  - default
-
 write_files:
   - path: /etc/sysctl.d/99-izakhono-hardening.conf
     permissions: '0644'
@@ -49,7 +46,7 @@ runcmd:
   - apt-get update
   - apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
   - systemctl enable --now docker
-  - usermod -aG docker ubuntu
+  - bash -lc 'RUNTIME_USER=admin; id "$RUNTIME_USER" >/dev/null 2>&1 || RUNTIME_USER=ubuntu; usermod -aG docker "$RUNTIME_USER"'
   - install -d -m 0750 /opt/izakhono/{releases,current,backups,run,config,logs}
   - install -d -m 0750 /var/lib/izakhono
   - ufw default deny incoming
@@ -60,4 +57,4 @@ runcmd:
   - ufw --force enable
   - bash -lc 'printf "IZAKHONO node bootstrap complete: %s\n" "$(date -Is)" > /opt/izakhono/bootstrap-complete.txt'
 
-final_message: 'IZAKHONO Contabo node bootstrap completed.'
+final_message: 'IZAKHONO node bootstrap completed.'
