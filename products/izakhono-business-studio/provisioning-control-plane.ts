@@ -13,7 +13,7 @@ export function emptyEvidence():ControlPlaneEvidence {
 
 export function createControlPlaneRecord(input:{release:string;orderId:string;nodeId:string;routeClass:ControlPlaneRecord['target']['routeClass'];now?:string}):ControlPlaneRecord {
   if(!input.release.trim() || !input.orderId.trim() || !input.nodeId.trim()) throw new Error('release, orderId and nodeId are required');
-  return {schemaVersion:'1.0',release:input.release,orderId:input.orderId,target:{nodeId:input.nodeId,routeClass:input.routeClass},state:'RELEASE_APPROVED',evidence:emptyEvidence(),updatedAt:input.now ?? new Date().toISOString()};
+  return {schemaVersion:'1.0',release:input.release,orderId:input.orderId,target:{nodeId:input.nodeId,routeClass:input.routeClass},state:'RELEASE_APPROVED',evidence:{...emptyEvidence(),releaseApproved:true},updatedAt:input.now ?? new Date().toISOString()};
 }
 
 export function advance(record:ControlPlaneRecord, patch:Partial<ControlPlaneEvidence>, now=new Date().toISOString()):ControlPlaneRecord {
