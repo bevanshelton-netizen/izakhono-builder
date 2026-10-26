@@ -1,0 +1,32 @@
+# Example deployment contract only.
+# Replace the placeholder image with a verified, reproducibly built
+# IZAKHONO-owned SIP runtime image before any production use.
+services:
+  sip-runtime:
+    image: ${IZAKHONO_SIP_RUNTIME_IMAGE:?set a verified runtime image}
+    restart: unless-stopped
+    environment:
+      IZAKHONO_COMMUNICATIONS_RUNTIME: ${IZAKHONO_COMMUNICATIONS_RUNTIME:?required}
+      IZAKHONO_SIP_DOMAIN: ${IZAKHONO_SIP_DOMAIN:?required}
+      IZAKHONO_SIP_BIND_ADDRESS: ${IZAKHONO_SIP_BIND_ADDRESS:?required}
+      IZAKHONO_SIP_PUBLIC_ADDRESS: ${IZAKHONO_SIP_PUBLIC_ADDRESS:?required}
+      IZAKHONO_SIP_TLS_ENABLED: ${IZAKHONO_SIP_TLS_ENABLED:-true}
+      IZAKHONO_SIP_SECRET_REF: ${IZAKHONO_SIP_SECRET_REF:?required}
+      IZAKHONO_CARRIER_SECRET_REF: ${IZAKHONO_CARRIER_SECRET_REF:-}
+      IZAKHONO_DATABASE_URL: ${IZAKHONO_DATABASE_URL:?required}
+    ports:
+      - "5060:5060/udp"
+      - "5061:5061/tcp"
+    volumes:
+      - sip-runtime-state:/var/lib/izakhono/sip
+    healthcheck:
+      test: ["CMD-SHELL", "test -f /run/izakhono/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 30s
+    security_opt:
+      - no-new-privileges:true
+
+volumes:
+  sip-runtime-state:
