@@ -3,7 +3,7 @@ set -eu
 
 : "${IZAKHONO_SIP_BIND_ADDRESS:=0.0.0.0:5060}"
 
-mkdir -p /etc/asterisk
+mkdir -p /etc/asterisk /etc/asterisk/pjsip.d /etc/asterisk/extensions.d
 
 sed "s|\${IZAKHONO_SIP_BIND_ADDRESS}|${IZAKHONO_SIP_BIND_ADDRESS}|g" \
   /opt/izakhono/pjsip.conf.template > /etc/asterisk/pjsip.conf
