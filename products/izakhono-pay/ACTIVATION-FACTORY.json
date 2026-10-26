@@ -1,0 +1,60 @@
+{
+  "product": "IZAKHONO PAY",
+  "version": "1.0",
+  "purpose": "Machine-readable activation contract for turning an IZAKHONO portfolio application or external merchant into a controlled IZAKHONO PAY participant.",
+  "principle": "build once, activate repeatedly, never bypass regulated or evidence gates",
+  "activation_states": ["registered", "sandbox", "acceptance_passed", "evidence_pending", "approved_for_live", "live", "suspended"],
+  "required_identity": {
+    "app_slug": true,
+    "merchant_id": true,
+    "environment": ["sandbox", "live"]
+  },
+  "required_controls": {
+    "server_side_pay_url": true,
+    "server_side_api_key": true,
+    "server_side_app_slug": true,
+    "browser_secret_exposure": false,
+    "idempotency": true,
+    "signed_webhooks": true,
+    "audit_trail": true,
+    "reconciliation": true,
+    "refund_workflow": true,
+    "dispute_workflow": true
+  },
+  "activation_pipeline": [
+    "register_application",
+    "create_or_link_merchant",
+    "issue_server_credential",
+    "configure_sandbox",
+    "run_acceptance_suite",
+    "validate_security_contract",
+    "collect_required_evidence",
+    "verify_required_evidence",
+    "evaluate_launch_gate",
+    "approve_live_activation_only_if_gate_is_GO",
+    "run_external_production_e2e",
+    "monitor_reconciliation_and_operational_alerts"
+  ],
+  "live_gate_requirements": [
+    "REGULATORY_ACQUIRING_APPROVAL",
+    "STRIPE_WEBHOOK_SECRET",
+    "STRIPE_LIVE_PROVIDER_GATE",
+    "EXTERNAL_PRODUCTION_E2E"
+  ],
+  "portfolio_defaults": [
+    "KORA",
+    "ALLEGRO-VIBEZ",
+    "EDU-BUILD-ECD360",
+    "FAISREADY",
+    "DOXA-SURE",
+    "IZAKHONO-CLOUD",
+    "IZAKHONO-GROUP"
+  ],
+  "safety": {
+    "money_movement_default": false,
+    "fail_closed": true,
+    "no_client_service_role": true,
+    "no_claim_of_live_status_without_verified_evidence": true,
+    "regulated_functions_remain_with_authorised_partners_until_authorised": true
+  }
+}
