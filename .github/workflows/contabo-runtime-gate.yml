@@ -1,0 +1,37 @@
+name: IZAKHONO Contabo Runtime Gate
+
+on:
+  pull_request:
+    paths:
+      - 'infra/contabo/**'
+      - 'infra/runtime-fabric/nodes/contabo-vps-01.json'
+      - 'package.json'
+      - '.github/workflows/contabo-runtime-gate.yml'
+  push:
+    branches:
+      - feat/izakhono-runtime-fabric-contabo
+    paths:
+      - 'infra/contabo/**'
+      - 'infra/runtime-fabric/nodes/contabo-vps-01.json'
+      - 'package.json'
+      - '.github/workflows/contabo-runtime-gate.yml'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Validate Contabo runtime contract
+        run: node infra/contabo/validate.mjs
+      - name: Shell syntax gate
+        run: |
+          bash -n infra/contabo/provision.sh
+          bash -n infra/contabo/healthcheck.sh
+          bash -n infra/contabo/deploy-stack.sh
+      - name: Compose schema gate
+        run: |
+          docker compose --env-file infra/contabo/stack.env.example -f infra/contabo/compose.yml config >/tmp/izakhono-compose.yml
+          test -s /tmp/izakhono-compose.yml
