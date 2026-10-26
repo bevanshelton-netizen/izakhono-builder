@@ -21,5 +21,7 @@ jobs:
           node-version: 20
       - name: Validate campaign engine
         run: npx --yes tsx@4.20.3 products/izakhono-marketing-os/src/campaign-engine.test.ts
-      - name: Typecheck campaign engine
-        run: npx --yes typescript@5.9.2 --noEmit --target ES2022 --module ESNext products/izakhono-marketing-os/src/campaign-engine.ts products/izakhono-marketing-os/src/metricool-adapter.ts
+      - name: Validate Social Command distribution layer
+        run: npx --yes tsx@4.20.3 products/izakhono-marketing-os/src/social-command.test.ts
+      - name: Typecheck Marketing OS core
+        run: npx --yes typescript@5.9.2 --noEmit --target ES2022 --module ESNext products/izakhono-marketing-os/src/campaign-engine.ts products/izakhono-marketing-os/src/metricool-adapter.ts products/izakhono-marketing-os/src/social-command.ts
