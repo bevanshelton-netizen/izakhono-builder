@@ -17,7 +17,7 @@ const record = (sequence: number): RecoveryRecord => ({
     attempt: sequence,
     result: sequence === 1 ? "retryable_failure" : "success",
     nextAction: sequence === 1 ? "retry" : "complete",
-    issuedAt: "2026-10-26T10:00:00.000Z",
+    recordedAt: "2026-10-26T10:00:00.000Z",
     adapter: "owned",
   },
 });
@@ -34,7 +34,7 @@ describe("FileExecutionPersistenceStore", () => {
 
       const second = new FileExecutionPersistenceStore(path);
       await expect(second.load()).resolves.toEqual([record(1), record(2)]);
-      await expect(readFile(path, "utf8")).resolves.toContain("\\n");
+      await expect(readFile(path, "utf8")).resolves.toContain("\n");
     } finally {
       await rm(directory, { recursive: true, force: true });
     }
