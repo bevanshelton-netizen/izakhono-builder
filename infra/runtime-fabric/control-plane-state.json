@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "authority": "signed-release",
+  "policy": "owned-first-externally-reversible",
+  "states": [
+    "RELEASE_APPROVED",
+    "NODE_SELECTED",
+    "NODE_PROVISIONED",
+    "NODE_HEALTHY",
+    "RELEASE_DEPLOYED",
+    "EDGE_READY",
+    "TLS_READY",
+    "DNS_READY",
+    "SMOKE_TEST_PASSED",
+    "LIVE_VERIFIED",
+    "DEGRADED",
+    "FAILED_OVER",
+    "ROLLBACK_READY"
+  ],
+  "terminalPublicState": "LIVE_VERIFIED",
+  "failClosedState": "FAILED",
+  "sourceOfTruth": "control-plane-release-record",
+  "secrets": "external-secret-store",
+  "providerNeutral": true
+}
