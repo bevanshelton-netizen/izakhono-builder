@@ -12,12 +12,10 @@ module.exports = async (req, res) => {
   try {
     const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
     const action = String(body.action || '').trim().toLowerCase();
-    const serviceId = String(body.serviceId || '').trim();
-    const idempotencyKey = String(req.headers['x-idempotency-key'] || body.idempotencyKey || '').trim();
+    const jobId = String(body.jobId || '').trim();
 
     if (!ACTIONS.has(action)) return json(res, 400, { error: 'unsupported_action' });
-    if (!serviceId) return json(res, 400, { error: 'service_id_required' });
-    if (!idempotencyKey) return json(res, 400, { error: 'idempotency_key_required' });
+    if (!jobId) return json(res, 400, { error: 'job_id_required' });
 
     const fn = action === 'build'
       ? 'ic_build_provisioning_handover'
@@ -25,10 +23,7 @@ module.exports = async (req, res) => {
         ? 'ic_release_provisioning_handover'
         : 'ic_revoke_provisioning_handover';
 
-    return await rpc(req, res, fn, {
-      p_service_id: serviceId,
-      p_idempotency_key: idempotencyKey
-    });
+    return await rpc(req, res, fn, { p_job_id: jobId });
   } catch (e) {
     return json(res, 400, { error: 'invalid_request' });
   }
