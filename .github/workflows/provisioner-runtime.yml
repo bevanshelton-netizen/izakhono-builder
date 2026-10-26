@@ -65,6 +65,10 @@ jobs:
         run: python production_payment_adapter_test.py
       - name: Run acceptance simulation guard
         run: python acceptance_simulation_guard_test.py
+      - name: Run production execution bridge smoke
+        run: python production_executor.py
+      - name: Run production execution bridge tests
+        run: python production_executor_test.py
       - name: Run registry loader smoke
         run: python adapter_registry_runtime.py
       - name: Run contract smoke
