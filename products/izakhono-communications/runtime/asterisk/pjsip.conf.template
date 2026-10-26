@@ -1,0 +1,31 @@
+; IZAKHONO Communications OS - PJSIP template
+; Values containing credentials MUST be injected at deployment time.
+; This file intentionally contains no production secrets.
+
+[transport-udp]
+type=transport
+protocol=udp
+bind=${IZAKHONO_SIP_BIND_ADDRESS}
+
+; TLS transport is enabled only when the deployment provides verified
+; certificate/key material and explicitly enables TLS.
+; [transport-tls]
+; type=transport
+; protocol=tls
+; bind=${IZAKHONO_SIP_BIND_ADDRESS}:5061
+; cert_file=${IZAKHONO_SIP_CERT_FILE}
+; priv_key_file=${IZAKHONO_SIP_KEY_FILE}
+; method=tlsv1_2
+
+[endpoint-template](!)
+type=endpoint
+context=izakhono-internal
+disallow=all
+allow=ulaw,alaw,g722
+direct_media=no
+force_rport=yes
+rewrite_contact=yes
+rtp_symmetric=yes
+
+; Each generated extension should define endpoint/auth/aor objects based on
+; this template. Credentials are supplied by the secret resolver.
