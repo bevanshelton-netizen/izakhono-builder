@@ -27,7 +27,9 @@ jobs:
         run: npx --yes tsx@4.20.3 products/izakhono-marketing-os/src/execution-orchestrator.test.ts
       - name: Validate controlled adapter execution
         run: npx --yes tsx@4.20.3 products/izakhono-marketing-os/src/adapter-execution.test.ts
+      - name: Validate execution reliability
+        run: npx --yes tsx@4.20.3 products/izakhono-marketing-os/src/execution-reliability.test.ts
       - name: Validate measurement feedback loop
         run: npx --yes tsx@4.20.3 products/izakhono-marketing-os/src/measurement-feedback.test.ts
       - name: Typecheck Marketing OS core
-        run: npx --yes typescript@5.9.2 --noEmit --target ES2022 --module ESNext products/izakhono-marketing-os/src/campaign-engine.ts products/izakhono-marketing-os/src/metricool-adapter.ts products/izakhono-marketing-os/src/social-command.ts products/izakhono-marketing-os/src/execution-orchestrator.ts products/izakhono-marketing-os/src/adapter-execution.ts products/izakhono-marketing-os/src/measurement-feedback.ts
+        run: npx --yes typescript@5.9.2 --noEmit --target ES2022 --module ESNext products/izakhono-marketing-os/src/campaign-engine.ts products/izakhono-marketing-os/src/metricool-adapter.ts products/izakhono-marketing-os/src/social-command.ts products/izakhono-marketing-os/src/execution-orchestrator.ts products/izakhono-marketing-os/src/adapter-execution.ts products/izakhono-marketing-os/src/execution-reliability.ts products/izakhono-marketing-os/src/measurement-feedback.ts
