@@ -59,6 +59,10 @@ jobs:
         run: python production_payment_adapter.py
       - name: Run canonical IZAKHONO PAY production adapter tests
         run: python production_payment_adapter_test.py
+      - name: Run IZAKHONO DOMAIN production adapter smoke
+        run: python domain_production_adapter.py
+      - name: Run IZAKHONO DOMAIN production adapter tests
+        run: python domain_production_adapter_test.py
       - name: Run acceptance simulation guard
         run: python acceptance_simulation_guard_test.py
       - name: Run registry loader smoke
