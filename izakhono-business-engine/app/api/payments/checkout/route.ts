@@ -12,7 +12,7 @@ export async function POST(request: Request) {
     const orderId = String(body?.commercialOrderId || '').trim();
     if (!orderId) return NextResponse.json({ ok: false, error: 'commercialOrderId is required.' }, { status: 400 });
 
-    const orders = await dbFetch(`business_engine_commercial_orders?select=id,plan,business_name,business_email,setup_amount_zar,monthly_amount_zar,status,payment_provider& id=eq.${encodeURIComponent(orderId)}`.replace('?select=id,plan,business_name,business_email,setup_amount_zar,monthly_amount_zar,status,payment_provider& ', '?select=id,plan,business_name,business_email,setup_amount_zar,monthly_amount_zar,status,payment_provider&'));
+    const orders = await dbFetch(`business_engine_commercial_orders?select=id,plan,business_name,business_email,setup_amount_zar,monthly_amount_zar,status,payment_provider&id=eq.${encodeURIComponent(orderId)}`);
     const order = orders?.[0];
     if (!order) return NextResponse.json({ ok: false, error: 'Commercial order not found.' }, { status: 404 });
 
