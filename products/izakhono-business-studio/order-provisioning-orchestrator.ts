@@ -13,7 +13,7 @@ export interface RuntimeAdapter {
   smoke(order:PaidOrder,nodeId:string):Promise<string>;
   rollbackReady(order:PaidOrder,nodeId:string):Promise<string>;
 }
-export interface ProvisioningResult { orderId:string; job:ProvisionerJob; controlPlane:ControlPlaneRecord; handover?:{customerId:string;release:string;verifiedAt:string}; }
+export interface ProvisioningResult { orderId:string; job:ProvisionerJob; controlPlane:ControlPlaneRecord; handover:{customerId:string;release:string;verifiedAt:string}; }
 
 export async function provisionPaidOrder(order:PaidOrder,adapter:RuntimeAdapter,now=new Date().toISOString()):Promise<ProvisioningResult> {
   if(!order.payment.verified) throw new Error('payment must be verified before provisioning');
@@ -24,18 +24,19 @@ export async function provisionPaidOrder(order:PaidOrder,adapter:RuntimeAdapter,
   let control=await selectAndRecord(order,adapter,now);
   try {
     const node=control.target.nodeId;
-    const nodeRef=await adapter.provisionNode(order,node); control=advance(control,{health:false},new Date().toISOString());
-    job=recordEvidence(job,'PROVISIONING','PASSED',nodeRef);
-    const healthRef=await adapter.health(node); control=advance(control,{health:true},new Date().toISOString()); job=recordEvidence(job,'PROVISIONING','PASSED',healthRef);
-    const deploymentRef=await adapter.deploy(order,node); control=advance(control,{deployment:true},new Date().toISOString()); job=recordEvidence(job,'WEBSITE','PASSED',deploymentRef);
-    const edgeRef=await adapter.edge(order,node); control=advance(control,{edge:true},new Date().toISOString()); job=recordEvidence(job,'DOMAIN','PASSED',edgeRef);
-    const tlsRef=await adapter.tls(order,node); control=advance(control,{tls:true},new Date().toISOString()); job=recordEvidence(job,'SSL','PASSED',tlsRef);
-    const dnsRef=await adapter.dns(order,node); control=advance(control,{dns:true},new Date().toISOString()); job=recordEvidence(job,'DNS','PASSED',dnsRef);
-    const smokeRef=await adapter.smoke(order,node); control=advance(control,{smokeTest:true},new Date().toISOString()); job=recordEvidence(job,'PROVISIONING','PASSED',smokeRef);
-    const rollbackRef=await adapter.rollbackReady(order,node); control=advance(control,{rollbackReady:true},new Date().toISOString()); job=recordEvidence(job,'PROVISIONING','PASSED',rollbackRef);
-    const verifiedAt=new Date().toISOString();
+    const refs:Partial<Record<Capability,string>>={};
+    refs.PROVISIONING=await adapter.provisionNode(order,node);
+    await adapter.health(node); control=advance(control,{health:true},new Date().toISOString());
+    refs.WEBSITE=await adapter.deploy(order,node); control=advance(control,{deployment:true},new Date().toISOString());
+    refs.DOMAIN=await adapter.edge(order,node); control=advance(control,{edge:true},new Date().toISOString());
+    refs.SSL=await adapter.tls(order,node); control=advance(control,{tls:true},new Date().toISOString());
+    refs.DNS=await adapter.dns(order,node); control=advance(control,{dns:true},new Date().toISOString());
+    refs.PROVISIONING=`${refs.PROVISIONING}|smoke:${await adapter.smoke(order,node)}`; control=advance(control,{smokeTest:true},new Date().toISOString());
+    refs.PROVISIONING=`${refs.PROVISIONING}|rollback:${await adapter.rollbackReady(order,node)}`; control=advance(control,{rollbackReady:true},new Date().toISOString());
+    for(const capability of order.requestedCapabilities) job=recordEvidence(job,capability,'PASSED',refs[capability]);
     assertPublicActivation(control);
-    job=verifyLive(job,`${control.release}:${smokeRef}`,verifiedAt);
+    const verifiedAt=new Date().toISOString();
+    job=verifyLive(job,`${control.release}:verified`,verifiedAt);
     return {orderId:order.orderId,job,controlPlane:control,handover:{customerId:order.customerId,release:control.release,verifiedAt}};
   } catch(error) {
     control=fail(control,error instanceof Error?error.message:String(error));
