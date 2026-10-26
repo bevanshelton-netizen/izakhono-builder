@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { DiscoveryEnquiryCta } from './discovery-enquiry-cta';
 
 type DiscoveryRecord = {
   id: string;
@@ -26,6 +27,7 @@ type DiscoveryRecord = {
   stock_reference?: string | null;
   location?: string | null;
   trust_status: string;
+  campaign_id?: string | null;
 };
 
 type Props = {
@@ -130,6 +132,7 @@ export function DiscoverySurfaceClient({ eyebrow, title, description, categories
             {kind === 'commerce' && <p style={{ color: '#dcefe8', fontSize: 13 }}>{record.price_display || record.availability || 'Enquire for verified availability'}</p>}
             {kind === 'benefit' && <p style={{ color: '#f2c879', fontSize: 13, fontWeight: 800 }}>{record.benefit || 'Verified benefit'}</p>}
             <p style={{ color: '#7fe0b5', fontSize: 11, marginBottom: 0 }}>Trust status: {record.trust_status}</p>
+            <DiscoveryEnquiryCta recordId={record.id} campaignId={record.campaign_id} />
           </article>)}
         </section>}
 
