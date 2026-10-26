@@ -36,13 +36,14 @@ export default function Home(){
   const [email,setEmail] = useState('')
   const [password,setPassword] = useState('')
   const [busy,setBusy] = useState(false)
+  const [booting,setBooting] = useState(true)
   const [message,setMessage] = useState('')
 
   async function loadWorkspace(currentUser:User){
     if(!client) return null
     const existing = await client.from('social_workspaces').select('id,name,timezone').eq('owner_id',currentUser.id).order('created_at',{ascending:true}).limit(1).maybeSingle()
-    if(existing.data) return existing.data as Workspace
     if(existing.error) throw existing.error
+    if(existing.data) return existing.data as Workspace
     const created = await client.from('social_workspaces').insert({owner_id:currentUser.id,name:'IZAKHONO Social Command',timezone:'Africa/Johannesburg'}).select('id,name,timezone').single()
     if(created.error) throw created.error
     return created.data as Workspace
@@ -51,7 +52,7 @@ export default function Home(){
   async function refreshWorkspace(currentUser:User){
     if(!client) return
     try {
-      const ws = workspace ?? await loadWorkspace(currentUser)
+      const ws = await loadWorkspace(currentUser)
       if(!ws) return
       setWorkspace(ws)
       const [p,c] = await Promise.all([
@@ -68,9 +69,15 @@ export default function Home(){
   }
 
   useEffect(()=>{
-    if(!client) return
-    client.auth.getUser().then(async ({data})=>{
-      if(data.user){ setUser(data.user); await refreshWorkspace(data.user) }
+    if(!client){ setBooting(false); return }
+    let mounted = true
+    client.auth.getUser().then(async ({data,error})=>{
+      if(error){ if(mounted) setMessage(error.message); return }
+      if(data.user){
+        setUser(data.user)
+        await refreshWorkspace(data.user)
+      }
+      if(mounted) setBooting(false)
     })
     const {data:{subscription}} = client.auth.onAuthStateChange((_event,session)=>{
       const next = session?.user ?? null
@@ -78,7 +85,7 @@ export default function Home(){
       if(next) void refreshWorkspace(next)
       else { setWorkspace(null); setPosts([]); setCampaigns([]) }
     })
-    return ()=>subscription.unsubscribe()
+    return ()=>{ mounted=false; subscription.unsubscribe() }
   },[client])
 
   const stats = useMemo(()=>[
@@ -95,6 +102,15 @@ export default function Home(){
     setBusy(false)
     if(error) setMessage(error.message)
     else setMessage('Command Centre connected. Bootstrapping workspace…')
+  }
+
+  async function signOut(){
+    if(!client) return
+    setBusy(true)
+    const {error}=await client.auth.signOut()
+    setBusy(false)
+    if(error) setMessage(error.message)
+    else setMessage('Signed out securely.')
   }
 
   async function saveDraft(){
@@ -126,11 +142,12 @@ export default function Home(){
   return <main className="shell">
     <header className="topbar"><div className="brand"><span className="mark">I</span><div><strong>IZAKHONO</strong><small>SOCIAL COMMAND™</small></div></div><div className="status">● {user?'CONTROL PLANE CONNECTED':'SYSTEM READY'}</div></header>
     <div className="layout">
-      <aside className="sidebar"><div className="navlabel">COMMAND</div>{['Overview','Content Studio','Campaigns','Publishing Queue','Analytics','Revenue'].map((x,i)=><button key={x} className={'navitem '+(i===0?'active':'')}><span>{['⌂','✦','◈','↗','◒','R'][i]}</span><span>{x}</span></button>)}<div className="navlabel" style={{marginTop:24}}>SYSTEM</div><button className="navitem"><span>⚙</span><span>Channels & Integrations</span></button><button className="navitem"><span>✓</span><span>Approvals</span></button></aside>
+      <aside className="sidebar"><div className="navlabel">COMMAND</div>{['Overview','Content Studio','Campaigns','Publishing Queue','Analytics','Revenue'].map((x,i)=><button key={x} className={'navitem '+(i===0?'active':'')}><span>{['⌂','✦','◈','↗','◒','R'][i]}</span><span>{x}</span></button>)}<div className="navlabel" style={{marginTop:24}}>SYSTEM</div><button className="navitem"><span>⚙</span><span>Channels & Integrations</span></button><button className="navitem"><span>✓</span><span>Approvals</span></button>{user && <button className="navitem" onClick={signOut} disabled={busy}><span>↪</span><span>Sign out</span></button>}</aside>
       <section className="main">
         <div className="eyebrow">OWNED-FIRST MARKETING OPERATING SYSTEM</div><h1 className="headline">Turn attention into<br/><span style={{color:'#54df87'}}>business growth.</span></h1><p className="sub">One command centre for content, campaigns, publishing, channels, analytics and revenue — built for the IZAKHONO ecosystem.</p>
         <div className="grid">{stats.map(([a,b])=><div className="card" key={b}><div className="metric">{a}</div><div className="muted">{b}</div><div className="delta">LIVE CONTROL LAYER</div></div>)}</div>
-        {!user && <div className="panel" style={{marginTop:16}}><div className="panelhead"><h2>Connect your command centre</h2><span className="pill">AUTHENTICATION</span></div><div className="composer"><div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}><input className="input" placeholder="Email" value={email} onChange={e=>setEmail(e.target.value)}/><input className="input" placeholder="Password" type="password" value={password} onChange={e=>setPassword(e.target.value)}/></div><div className="actions"><span className="muted">Your account controls workspace data through Supabase RLS.</span><button className="btn primary" onClick={signIn} disabled={busy}>Connect →</button></div></div></div>}
+        {booting && <div className="panel" style={{marginTop:16}}><div className="muted">Connecting to the IZAKHONO control plane…</div></div>}
+        {!booting && !user && <div className="panel" style={{marginTop:16}}><div className="panelhead"><h2>Connect your command centre</h2><span className="pill">AUTHENTICATION</span></div><div className="composer"><div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}><input className="input" placeholder="Email" value={email} onChange={e=>setEmail(e.target.value)}/><input className="input" placeholder="Password" type="password" value={password} onChange={e=>setPassword(e.target.value)}/></div><div className="actions"><span className="muted">Your account controls workspace data through Supabase RLS.</span><button className="btn primary" onClick={signIn} disabled={busy}>Connect →</button></div></div></div>}
         {user && workspace && <div className="workspacebar"><span className="pill">WORKSPACE</span><strong>{workspace.name}</strong><span className="muted">{workspace.timezone}</span></div>}
         <div className="workspace">
           <div className="panel"><div className="panelhead"><h2>Content Studio → Publishing Queue</h2><span className="pill">{posts.length} RECORDS</span></div><div className="composer"><input className="input" placeholder="Content title" value={title} onChange={e=>setTitle(e.target.value)}/><textarea placeholder="Write the master copy once. Social Command will become the distribution layer for approved channels." value={copy} onChange={e=>setCopy(e.target.value)}/><div className="actions"><span className="muted">Drafts stay in the owned control plane.</span><button className="btn primary" onClick={saveDraft} disabled={busy || !user || !workspace}>Save Draft →</button></div>{message && <div className="muted" style={{marginTop:10}}>{message}</div>}</div><div className="rows">{posts.map(p=><div className="row" key={p.id}><div><strong>{p.title}</strong><small>{p.content_type} · {new Date(p.created_at).toLocaleDateString()}</small></div><span className="badge">{p.approval_status}</span><span className="channel">{p.status}</span></div>)}{!posts.length && <div className="muted" style={{padding:18}}>No content records visible yet. Sign in and create the first draft.</div>}</div></div>
