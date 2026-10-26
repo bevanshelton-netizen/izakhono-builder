@@ -13,7 +13,7 @@ export interface ProviderWebhookAuthenticator {
  * Default adapter is deliberately fail-closed. Provider-specific signature
  * verification must be implemented only from the current merchant contract.
  */
-export const unconfiguredI KhokhaWebhookAuthenticator: ProviderWebhookAuthenticator = {
+export const unconfiguredIKhokhaWebhookAuthenticator: ProviderWebhookAuthenticator = {
   authenticate: () => null,
 };
 
