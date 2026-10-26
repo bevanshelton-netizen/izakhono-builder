@@ -12,7 +12,8 @@ trap cleanup INT TERM EXIT
 cd /app/engine
 node scripts/migrate.js
 
-PORT="$ENGINE_PORT" node src/server.js &
+# Discovery routes are mounted by the bootstrap before server.js creates its HTTP listener.
+PORT="$ENGINE_PORT" node src/discovery-bootstrap.js &
 ENGINE_PID=$!
 
 i=0
