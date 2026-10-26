@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import crypto from 'node:crypto'
 import { createClient } from '@supabase/supabase-js'
-import { buildAuthorizationUrl, SOCIAL_PLATFORMS } from '@/lib/social/oauth'
+import { buildAuthorizationUrl, buildPkceVerifier, SOCIAL_PLATFORMS } from '@/lib/social/oauth'
 
 export const runtime='nodejs'
 function admin(){const url=process.env.NEXT_PUBLIC_SUPABASE_URL;const key=process.env.SUPABASE_SERVICE_ROLE_KEY;if(!url||!key)throw new Error('Server-side Supabase credentials are not configured');return createClient(url,key,{auth:{autoRefreshToken:false,persistSession:false}})}
@@ -19,13 +19,13 @@ export async function POST(request:NextRequest){
   if(userError||!user)return NextResponse.json({error:'Invalid authentication token'},{status:401})
   const db=admin();const {data:workspace}=await db.from('social_workspaces').select('id').eq('id',body.workspaceId).eq('owner_id',user.id).maybeSingle()
   if(!workspace)return NextResponse.json({error:'Workspace not found'},{status:404})
-  const state=crypto.randomBytes(32).toString('base64url');const base=process.env.SOCIAL_OAUTH_BASE_URL||new URL(request.url).origin;const redirectUri=`${base}/api/social/oauth/callback`
-  const {error:sessionError}=await db.from('social_oauth_sessions').insert({owner_id:user.id,workspace_id:workspace.id,platform:body.platform,state,status:'pending',redirect_uri:redirectUri})
+  const state=crypto.randomBytes(32).toString('base64url');const pkceVerifier=body.platform==='x'?buildPkceVerifier():null;const base=process.env.SOCIAL_OAUTH_BASE_URL||new URL(request.url).origin;const redirectUri=`${base}/api/social/oauth/callback`
+  const {error:sessionError}=await db.from('social_oauth_sessions').insert({owner_id:user.id,workspace_id:workspace.id,platform:body.platform,state,status:'pending',redirect_uri:redirectUri,pkce_verifier:pkceVerifier})
   if(sessionError)throw new Error(sessionError.message)
   const {data:existing}=await db.from('social_channel_connectors').select('id').eq('owner_id',user.id).eq('workspace_id',workspace.id).eq('platform',body.platform).limit(1).maybeSingle()
   const connectorPayload={status:'pending',error_message:null,updated_at:new Date().toISOString()}
   const connectorError=existing? (await db.from('social_channel_connectors').update(connectorPayload).eq('id',existing.id)).error : (await db.from('social_channel_connectors').insert({owner_id:user.id,workspace_id:workspace.id,platform:body.platform,display_name:body.platform[0].toUpperCase()+body.platform.slice(1),...connectorPayload})).error
   if(connectorError)throw new Error(connectorError.message)
-  return NextResponse.json({authorizationUrl:buildAuthorizationUrl(body.platform,state,redirectUri)})
+  return NextResponse.json({authorizationUrl:buildAuthorizationUrl(body.platform,state,redirectUri,pkceVerifier??undefined)})
  }catch(error){return NextResponse.json({error:error instanceof Error?error.message:'Unable to start OAuth'},{status:500})}
 }
