@@ -1,0 +1,25 @@
+name: IZAKHONO MARKETING OS CI
+
+on:
+  pull_request:
+    paths:
+      - "products/izakhono-marketing-os/**"
+      - ".github/workflows/izakhono-marketing-os.yml"
+  push:
+    branches: [main]
+    paths:
+      - "products/izakhono-marketing-os/**"
+      - ".github/workflows/izakhono-marketing-os.yml"
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Validate campaign engine
+        run: npx --yes tsx@4.20.3 products/izakhono-marketing-os/src/campaign-engine.test.ts
+      - name: Typecheck campaign engine
+        run: npx --yes typescript@5.9.2 --noEmit --target ES2022 --module ESNext products/izakhono-marketing-os/src/campaign-engine.ts products/izakhono-marketing-os/src/metricool-adapter.ts
