@@ -9,6 +9,7 @@
     "check": "node --check src/core.js && node --check src/control-plane.js && node --check src/reconciliation.js && node --check src/merchant-webhooks.js && node --check src/index.js && node --test tests/*.test.mjs",
     "portfolio:validate": "node scripts/validate-portfolio-rollout.mjs",
     "activation:validate": "node scripts/validate-activation.mjs",
+    "improvement:test": "node --test tests/self-improvement-engine.test.mjs",
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
     "db:migrate": "wrangler d1 migrations apply DB --remote"
