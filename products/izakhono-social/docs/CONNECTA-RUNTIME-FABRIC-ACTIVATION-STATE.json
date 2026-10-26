@@ -1,0 +1,12 @@
+{
+  "schema": "izakhono.connecta.runtime-fabric.activation-state.v1",
+  "status": "RUNTIME_TARGET_REQUIRED",
+  "runtime_target": null,
+  "release_sha": null,
+  "provider": null,
+  "provider_provisioned": false,
+  "public_route": "NOT_YET_VERIFIED",
+  "public_cutover_performed": false,
+  "promotion_allowed": false,
+  "truth_rule": "No machine evidence, no production claim."
+}

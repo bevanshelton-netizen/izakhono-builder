@@ -9,7 +9,7 @@ function text(value, max = 500) {
 
 function discoveryFilters(params = {}) {
   const values = [];
-  const where = ["trust_status = 'ACTIVE'"];
+  const where = [];
 
   if (params.kind) {
     values.push(params.kind);
@@ -24,7 +24,7 @@ function discoveryFilters(params = {}) {
     where.push(`(title ilike $${values.length} or description ilike $${values.length} or provider_name ilike $${values.length})`);
   }
 
-  return { where: where.join(' and '), values };
+  return { where: where.length ? `where ${where.join(' and ')}` : '', values };
 }
 
 export async function discover(params = {}) {
@@ -36,7 +36,7 @@ export async function discover(params = {}) {
             starts_at,ends_at,price_display,currency,location_text,metadata,
             verified_at,updated_at
        from connecta_public_discovery
-      where ${where}
+       ${where}
       order by updated_at desc
       limit $${values.length}`,
     values,

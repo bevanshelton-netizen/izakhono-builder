@@ -47,6 +47,9 @@ jobs:
         run: npm test --prefix products/izakhono-social/engine
 
       - name: Validate owned Compose topology
+        env:
+          CONNECTA_DB_PASSWORD: ci-only-db-password
+          CONNECTA_OWNER_KEY: ci-only-owner-key
         run: docker compose -f products/izakhono-social/docker-compose.owned.yml config
 
       - name: Validate release identity
