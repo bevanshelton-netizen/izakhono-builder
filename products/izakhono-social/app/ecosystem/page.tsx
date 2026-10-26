@@ -2,17 +2,17 @@ import Link from 'next/link';
 
 const worlds = [
   { icon: '◎', name: 'CONNECTA Social', tag: 'People · Communities · Conversation', href: '/', tone: 'social', description: 'Post, reply, follow, message, build communities and control how you discover conversation.' },
-  { icon: '◉', name: 'DOTSEE', tag: 'Discovery · Digital Footprint', href: '/ecosystem', tone: 'discover', description: 'A visual front door to the IZAKHONO digital universe and the people, products and opportunities inside it.' },
-  { icon: '♫', name: 'Allegro Vibez', tag: 'Music · Radio · Entertainment', href: '/ecosystem', tone: 'music', description: 'Discover artists, music, radio, entertainment and communities without leaving the CONNECTA ecosystem.' },
-  { icon: '◇', name: 'KORA', tag: 'African Content · Culture', href: '/ecosystem', tone: 'kora', description: 'A home for African stories, creators, culture, media and opportunity.' },
-  { icon: '✝', name: 'YHVH', tag: 'Gospel · Faith · Worship', href: '/ecosystem', tone: 'faith', description: 'Discover Gospel programmes, ministries, worship, Christian creators and faith communities.' },
-  { icon: '♥', name: 'Giving', tag: 'Good Samaritans · Fundraising', href: '/ecosystem', tone: 'giving', description: 'Help change lives through verified campaigns, transparent giving and measurable impact.' },
-  { icon: '✦', name: 'Adopt-a-Spot', tag: 'NPOs · NGOs · Communities', href: '/ecosystem', tone: 'impact', description: 'Adopt an organisation, project or community and follow the journey from commitment to evidence.' },
-  { icon: '🎁', name: 'Benefits', tag: 'Deals · Freebies · Opportunities', href: '/ecosystem', tone: 'benefits', description: 'Coupons, competitions, giveaways, travel deals, partner benefits and genuinely useful free opportunities.' },
-  { icon: '▣', name: 'Commerce', tag: 'Buy · Sell · Business', href: '/ecosystem', tone: 'commerce', description: 'Discover verified businesses, products, services, vehicles, property, jobs and opportunities.' },
-  { icon: '🚗', name: 'Vehicles', tag: 'Cars · Imports · Services', href: '/ecosystem', tone: 'vehicles', description: 'A dedicated vehicle discovery surface with verified sellers, inventory, enquiries and partner offers.' },
-  { icon: '◈', name: 'IZAKHONO NAV', tag: 'Mobility · Safety', href: '/ecosystem', tone: 'nav', description: 'Safety-first navigation, emergency response, driver intelligence and African road intelligence.' },
-  { icon: '⚡', name: 'IZAKHONO ONE', tag: 'AI · Intelligence · Work', href: '/ecosystem', tone: 'one', description: 'The intelligence layer connecting search, AI, business tools, cloud, commerce and the wider IZAKHONO stack.' },
+  { icon: '◉', name: 'DOTSEE', tag: 'Discovery · Digital Footprint', href: '/ecosystem/world/dotsee', tone: 'discover', description: 'A visual front door to the IZAKHONO digital universe and the people, products and opportunities inside it.' },
+  { icon: '♫', name: 'Allegro Vibez', tag: 'Music · Radio · Entertainment', href: '/ecosystem/world/allegro-vibez', tone: 'music', description: 'Discover artists, music, radio, entertainment and communities without leaving the CONNECTA ecosystem.' },
+  { icon: '◇', name: 'KORA', tag: 'African Content · Culture', href: '/ecosystem/world/kora', tone: 'kora', description: 'A home for African stories, creators, culture, media and opportunity.' },
+  { icon: '✝', name: 'YHVH', tag: 'Gospel · Faith · Worship', href: '/ecosystem/world/yhvhh', tone: 'faith', description: 'Discover Gospel programmes, ministries, worship, Christian creators and faith communities.' },
+  { icon: '♥', name: 'Giving', tag: 'Good Samaritans · Fundraising', href: '/ecosystem/world/giving', tone: 'giving', description: 'Help change lives through verified campaigns, transparent giving and measurable impact.' },
+  { icon: '✦', name: 'Adopt-a-Spot', tag: 'NPOs · NGOs · Communities', href: '/ecosystem/world/adopt-a-spot', tone: 'impact', description: 'Adopt an organisation, project or community and follow the journey from commitment to evidence.' },
+  { icon: '🎁', name: 'Benefits', tag: 'Deals · Freebies · Opportunities', href: '/ecosystem/world/benefits', tone: 'benefits', description: 'Coupons, competitions, giveaways, travel deals, partner benefits and genuinely useful free opportunities.' },
+  { icon: '▣', name: 'Commerce', tag: 'Buy · Sell · Business', href: '/ecosystem/world/commerce', tone: 'commerce', description: 'Discover verified businesses, products, services, vehicles, property, jobs and opportunities.' },
+  { icon: '🚗', name: 'Vehicles', tag: 'Cars · Imports · Services', href: '/ecosystem/world/vehicles', tone: 'vehicles', description: 'A dedicated vehicle discovery surface with verified sellers, inventory, enquiries and partner offers.' },
+  { icon: '◈', name: 'IZAKHONO NAV', tag: 'Mobility · Safety', href: '/ecosystem/world/nav', tone: 'nav', description: 'Safety-first navigation, emergency response, driver intelligence and African road intelligence.' },
+  { icon: '⚡', name: 'IZAKHONO ONE', tag: 'AI · Intelligence · Work', href: '/ecosystem/world/one', tone: 'one', description: 'The intelligence layer connecting search, AI, business tools, cloud, commerce and the wider IZAKHONO stack.' },
 ];
 
 const categories = ['Vehicles', 'Property', 'Jobs & Careers', 'Business & Services', 'Shopping & Products', 'Technology', 'Sports', 'Music & Entertainment', 'Education & Training', 'News & Community', 'Travel & Hospitality', 'Food & Lifestyle', 'Agriculture', 'Finance & Opportunities', 'Government & Public Services', 'Faith & Culture', 'Arts & Creativity', 'Health & Wellness', 'Events'];
