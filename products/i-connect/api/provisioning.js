@@ -1,15 +1,5 @@
 const { json, rpc } = require('./_lib/supabase');
 
-const TARGET_STATES = new Set([
-  'PENDING_KYC',
-  'READY',
-  'PROVISIONING',
-  'ACTIVE',
-  'SUSPENDED',
-  'TERMINATED',
-  'FAILED'
-]);
-
 const ACTION_TO_STATE = {
   provision: 'PROVISIONING',
   activate: 'ACTIVE',
@@ -18,6 +8,7 @@ const ACTION_TO_STATE = {
   terminate: 'TERMINATED',
   retry: 'PROVISIONING'
 };
+const VALID_STATES = new Set(['PENDING_KYC','READY','PROVISIONING','ACTIVE','SUSPENDED','TERMINATED','FAILED']);
 
 module.exports = async (req, res) => {
   res.setHeader('Cache-Control', 'no-store');
@@ -33,12 +24,10 @@ module.exports = async (req, res) => {
     const idempotencyKey = String(req.headers['x-idempotency-key'] || body.idempotencyKey || '').trim();
     const targetState = String(body.toState || ACTION_TO_STATE[action] || '').trim().toUpperCase();
 
-    if (!ACTION_TO_STATE[action] && !TARGET_STATES.has(targetState)) {
-      return json(res, 400, { error: 'unsupported_action' });
-    }
+    if (!ACTION_TO_STATE[action]) return json(res, 400, { error: 'unsupported_action' });
     if (!serviceId) return json(res, 400, { error: 'service_id_required' });
     if (!idempotencyKey) return json(res, 400, { error: 'idempotency_key_required' });
-    if (!TARGET_STATES.has(targetState)) return json(res, 400, { error: 'invalid_target_state' });
+    if (!VALID_STATES.has(targetState)) return json(res, 400, { error: 'invalid_target_state' });
 
     return await rpc(req, res, 'ic_transition_connectivity_service', {
       p_service_id: serviceId,
@@ -46,11 +35,7 @@ module.exports = async (req, res) => {
       p_reason: body.reason || `customer_action:${action}`,
       p_provider: body.provider || null,
       p_external_reference: body.externalReference || null,
-      p_metadata: {
-        ...(body.metadata || {}),
-        idempotencyKey,
-        source: 'i-connect-customer-control'
-      }
+      p_metadata: { ...(body.metadata || {}), idempotencyKey, source: 'i-connect-customer-control' }
     });
   } catch (e) {
     return json(res, 400, { error: 'invalid_request' });
