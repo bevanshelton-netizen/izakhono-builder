@@ -26,8 +26,9 @@ export class PersistentExecutionLedger {
   }
 
   append(receipt: ExecutionReceipt): RecoveryRecord {
-    if (this.records.some((record) => record.receipt.idempotencyKey === receipt.idempotencyKey)) {
-      throw new Error("Execution already exists in persistent ledger");
+    const latest = this.latest(receipt.idempotencyKey);
+    if (latest && receipt.attempt <= latest.receipt.attempt) {
+      throw new Error("Execution attempt already recorded or out of order");
     }
     const record: RecoveryRecord = {
       schema: "izakhono.marketing.recovery-record.v1",
@@ -74,6 +75,7 @@ export class PersistentExecutionLedger {
     this.records.forEach((record, index) => {
       if (record.schema !== "izakhono.marketing.recovery-record.v1") throw new Error("Invalid recovery record schema");
       if (record.sequence !== index + 1) throw new Error("Recovery ledger sequence is not contiguous");
+      if (record.receipt.attempt < 1) throw new Error("Recovery record attempt must be positive");
     });
   }
 }
