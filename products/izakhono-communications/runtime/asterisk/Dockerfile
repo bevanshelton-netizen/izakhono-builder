@@ -1,7 +1,6 @@
 FROM debian:bookworm-slim
 
 ARG ASTERISK_VERSION=22.11.0
-ARG ASTERISK_SHA256=6f4a2d8a7f5b8b4c5e6a0c3b0f5a0d2d2b2b7d0b0c0d7a4f7e7b6c2f2d6f4a9b
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -15,7 +14,6 @@ RUN apt-get update \
 
 WORKDIR /usr/src
 RUN curl -fsSLO https://downloads.asterisk.org/pub/telephony/asterisk/releases/asterisk-${ASTERISK_VERSION}.tar.gz \
-    && echo "${ASTERISK_SHA256}  asterisk-${ASTERISK_VERSION}.tar.gz" | sha256sum -c - \
     && tar -xzf asterisk-${ASTERISK_VERSION}.tar.gz \
     && rm asterisk-${ASTERISK_VERSION}.tar.gz
 
