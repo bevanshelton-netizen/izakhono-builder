@@ -37,4 +37,16 @@ try {
 }
 if (!blocked) throw new Error("Optimization must require a distinct approval record");
 
+let duplicateBlocked = false;
+try {
+  approveOptimizationPlan(approved, {
+    approvalId: "approval-opt-002",
+    approvedAt: "2026-10-27T12:07:00+02:00",
+    approvedBy: "Bevan Shelton",
+  });
+} catch {
+  duplicateBlocked = true;
+}
+if (!duplicateBlocked) throw new Error("Approved optimization must not be approved twice");
+
 console.log("IZAKHONO MARKETING OS optimization orchestration contract validated");
