@@ -31,6 +31,8 @@ export async function claimNextExecution() {
 export async function executeNextStep(jobId: string) {
   const jobs = await dbFetch(`execution_jobs?id=eq.${encodeURIComponent(jobId)}&limit=1`);
   const job = Array.isArray(jobs) ? jobs[0] : null;
+  if (!job?.id) throw new Error(`Execution job ${jobId} was not found.`);
+
   const rows = await dbFetch(`execution_job_steps?job_id=eq.${encodeURIComponent(jobId)}&status=eq.queued&order=position.asc&limit=1`);
   const step = Array.isArray(rows) ? rows[0] : null;
   if (!step?.id) return { done: true };
@@ -38,7 +40,13 @@ export async function executeNextStep(jobId: string) {
   await dbFetch(`execution_job_steps?id=eq.${encodeURIComponent(step.id)}`, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ status: 'running', started_at: new Date().toISOString() }) });
 
   try {
-    const result = await executeProvider(step.provider, step.action, { workspaceId: job.workspace_id, campaignId: job.campaign_id, payload: job.payload });
+    const result = await executeProvider(step.provider, step.action, {
+      workspaceId: job.workspace_id,
+      campaignId: job.campaign_id,
+      payload: job.payload,
+      jobId: job.id,
+      stepId: step.id,
+    });
     await dbFetch(`execution_job_steps?id=eq.${encodeURIComponent(step.id)}`, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ status: 'completed', completed_at: new Date().toISOString(), result }) });
     return { done: false, step, result };
   } catch (error) {
