@@ -1,0 +1,57 @@
+{
+  "schema": "izakhono.connecta.discovery-surfaces.v1",
+  "status": "SOFTWARE_PACKAGED",
+  "public_route": "NOT_YET_VERIFIED",
+  "principle": "Discover first, transact responsibly, verify every claim.",
+  "surfaces": [
+    {
+      "id": "benefits",
+      "route": "/ecosystem/world/benefits",
+      "purpose": "A daily go-to destination for verified coupons, deals, travel opportunities, competitions, giveaways, free goods/services and useful member benefits.",
+      "required_evidence": ["verified_terms", "validity_window", "partner_or_source_identity"],
+      "commercial_events": ["view", "claim", "redeem", "enquiry"]
+    },
+    {
+      "id": "commerce",
+      "route": "/ecosystem/world/commerce",
+      "purpose": "Discover verified businesses, offers, services and commercial opportunities without confusing sponsored promotion with ordinary user content.",
+      "required_evidence": ["business_identity", "offer_terms"],
+      "commercial_events": ["view", "enquiry", "lead", "conversion_reported"]
+    },
+    {
+      "id": "vehicles",
+      "route": "/ecosystem/world/vehicles",
+      "purpose": "A structured vehicle discovery surface for new, used, imported and commercial vehicles, motorcycles, parts and services.",
+      "required_evidence": ["seller_identity", "listing_attributes", "price_or_price_status", "listing_status"],
+      "commercial_events": ["view", "enquiry", "lead", "sale_reported"]
+    }
+  ],
+  "vehicle_attributes": [
+    "make",
+    "model",
+    "year",
+    "price",
+    "mileage",
+    "transmission",
+    "fuel",
+    "body",
+    "condition",
+    "stock_reference"
+  ],
+  "trust_labels": [
+    "Community submitted",
+    "Verification pending",
+    "Verified business",
+    "Official partner",
+    "Sponsored campaign",
+    "Exclusive CONNECTA offer"
+  ],
+  "rules": {
+    "submitted_is_not_verified": true,
+    "partner_requires_agreement": true,
+    "promotion_requires_verified_terms": true,
+    "sale_requires_evidence": true,
+    "ordinary_expression_paywall": false,
+    "third_party_endorsement_assumed": false
+  }
+}
