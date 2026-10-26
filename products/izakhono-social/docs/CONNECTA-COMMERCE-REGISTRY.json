@@ -1,0 +1,82 @@
+{
+  "schema": "izakhono.connecta.commerce.registry.v1",
+  "name": "CONNECTA Commerce Registry",
+  "status": "SOFTWARE_PACKAGED",
+  "public_route": "NOT_YET_VERIFIED",
+  "principles": {
+    "verification_required": true,
+    "partner_claim_requires_agreement": true,
+    "promotion_requires_verified_terms": true,
+    "sale_requires_evidence": true,
+    "ordinary_expression_paywall": false,
+    "owned_infrastructure_preferred": true
+  },
+  "lifecycle": ["DRAFT","SUBMITTED","VERIFICATION","VERIFIED","ACTIVE","PAUSED","EXPIRED","CLOSED"],
+  "surfaces": [
+    {
+      "id": "benefits",
+      "route": "/ecosystem/world/benefits",
+      "purpose": "Verified member benefits, coupons, competitions, giveaways, travel and other useful offers",
+      "record_types": ["offer","campaign","benefit"],
+      "activation": "internal-module-pending"
+    },
+    {
+      "id": "commerce",
+      "route": "/ecosystem/world/commerce",
+      "purpose": "Verified businesses, products, services, enquiries and partner commerce",
+      "record_types": ["partner","listing","offer","enquiry","conversion"],
+      "activation": "internal-module-pending"
+    },
+    {
+      "id": "vehicles",
+      "route": "/ecosystem/world/vehicles",
+      "purpose": "Structured vehicle discovery and verified dealer/importer inventory",
+      "record_types": ["vehicle","partner","listing","enquiry","conversion"],
+      "activation": "category-surface-pending"
+    }
+  ],
+  "partner": {
+    "required_fields": ["legal_name","trading_name","category","authorized_contact","verification_status","agreement_status"],
+    "agreement_states": ["NONE","PENDING","SIGNED","EXPIRED","SUSPENDED"],
+    "verified_partner_required_for_official_claim": true
+  },
+  "offer": {
+    "required_fields": ["partner_id","category_id","title","benefit","eligibility","valid_from","valid_until","terms","approval_status"],
+    "exclusive_flag_requires_written_scope": true,
+    "price_or_availability_claim_requires_evidence": true
+  },
+  "vehicle": {
+    "required_fields": ["listing_id","make","model","year","condition","price","currency","seller_id","availability_status"],
+    "recommended_fields": ["mileage","transmission","fuel","body","stock_reference","location"],
+    "sale_claim_requires_partner_confirmation_or_settlement_evidence": true
+  },
+  "enquiry": {
+    "required_fields": ["enquiry_id","surface","listing_or_offer_id","user_id","created_at","consent_state"],
+    "states": ["CREATED","ROUTED","ACKNOWLEDGED","QUALIFIED","CLOSED"],
+    "does_not_equal_sale": true
+  },
+  "conversion": {
+    "states": ["UNCONFIRMED","PENDING_EVIDENCE","CONFIRMED","REVERSED"],
+    "required_for_sale_claim": true,
+    "evidence_examples": ["partner_confirmation","settlement_record","order_record","signed_outcome"]
+  },
+  "monetisation": [
+    "qualified_lead_fees",
+    "referral_commissions",
+    "campaign_fees",
+    "sponsored_placement",
+    "storefront_subscriptions",
+    "catalogue_services",
+    "integration_api",
+    "analytics"
+  ],
+  "trust_labels": [
+    "SUBMITTED",
+    "PENDING VERIFICATION",
+    "VERIFIED BUSINESS",
+    "OFFICIAL PARTNER",
+    "SPONSORED",
+    "EXCLUSIVE CONNECTA OFFER",
+    "SALE CONFIRMED"
+  ]
+}
