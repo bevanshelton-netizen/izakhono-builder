@@ -1,4 +1,4 @@
-import { DiscoverySurfaceClient } from '@/components/discovery-surface-client';
+import { DiscoverySurfaceClient } from '../../../../components/discovery-surface-client';
 
 export default function BenefitsPage() {
   return <DiscoverySurfaceClient
