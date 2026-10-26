@@ -6,6 +6,7 @@ import { createClient, type SupabaseClient, type User } from '@supabase/supabase
 type Workspace = { id:string; name:string; timezone:string }
 type Post = { id:string; title:string; master_copy:string; status:string; approval_status:string; content_type:string; created_at:string }
 type Campaign = { id:string; name:string; objective:string; status:string; offer:string|null; landing_url:string|null; created_at:string }
+type Approval = { id:string; post_id:string; status:string; notes:string|null; requested_at:string; reviewed_at:string|null }
 
 function supabase(): SupabaseClient | null {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -28,6 +29,7 @@ export default function Home(){
   const [workspace,setWorkspace] = useState<Workspace|null>(null)
   const [posts,setPosts] = useState<Post[]>([])
   const [campaigns,setCampaigns] = useState<Campaign[]>([])
+  const [approvals,setApprovals] = useState<Approval[]>([])
   const [copy,setCopy] = useState('')
   const [title,setTitle] = useState('')
   const [campaignName,setCampaignName] = useState('')
@@ -55,14 +57,17 @@ export default function Home(){
       const ws = await loadWorkspace(currentUser)
       if(!ws) return
       setWorkspace(ws)
-      const [p,c] = await Promise.all([
+      const [p,c,a] = await Promise.all([
         client.from('social_posts').select('id,title,master_copy,status,approval_status,content_type,created_at').eq('owner_id',currentUser.id).eq('workspace_id',ws.id).order('created_at',{ascending:false}).limit(8),
-        client.from('social_campaigns').select('id,name,objective,status,offer,landing_url,created_at').eq('owner_id',currentUser.id).eq('workspace_id',ws.id).order('created_at',{ascending:false}).limit(6)
+        client.from('social_campaigns').select('id,name,objective,status,offer,landing_url,created_at').eq('owner_id',currentUser.id).eq('workspace_id',ws.id).order('created_at',{ascending:false}).limit(6),
+        client.from('social_approvals').select('id,post_id,status,notes,requested_at,reviewed_at').eq('owner_id',currentUser.id).eq('workspace_id',ws.id).order('requested_at',{ascending:false}).limit(12)
       ])
       if(p.error) throw p.error
       if(c.error) throw c.error
+      if(a.error) throw a.error
       setPosts((p.data ?? []) as Post[])
       setCampaigns((c.data ?? []) as Campaign[])
+      setApprovals((a.data ?? []) as Approval[])
     } catch(error) {
       setMessage(error instanceof Error ? error.message : 'Workspace connection failed.')
     }
@@ -83,7 +88,7 @@ export default function Home(){
       const next = session?.user ?? null
       setUser(next)
       if(next) void refreshWorkspace(next)
-      else { setWorkspace(null); setPosts([]); setCampaigns([]) }
+      else { setWorkspace(null); setPosts([]); setCampaigns([]); setApprovals([]) }
     })
     return ()=>{ mounted=false; subscription.unsubscribe() }
   },[client])
@@ -91,9 +96,9 @@ export default function Home(){
   const stats = useMemo(()=>[
     [String(posts.length),'Recent content'],
     [String(campaigns.length),'Active campaigns'],
+    [String(approvals.filter(a=>a.status==='pending').length),'Pending approvals'],
     [user ? 'CONNECTED':'LOCKED','Supabase control plane'],
-    ['6','Core modules'],
-  ],[posts.length,campaigns.length,user])
+  ],[posts.length,campaigns.length,approvals,user])
 
   async function signIn(){
     if(!client || !email || !password) return setMessage('Enter your email and password.')
@@ -123,7 +128,37 @@ export default function Home(){
     }).select('id,title,master_copy,status,approval_status,content_type,created_at').single()
     setBusy(false)
     if(error) setMessage(error.message)
-    else { setPosts(current=>[data as Post,...current].slice(0,8)); setMessage('Draft saved to the Social Command control plane.'); setTitle(''); setCopy('') }
+    else { setPosts(current=>[data as Post,...current].slice(0,8)); setTitle(''); setCopy(''); setMessage('Draft saved to the Social Command control plane.') }
+  }
+
+  async function requestApproval(post:Post){
+    if(!client || !user || !workspace) return setMessage('Connect your workspace first.')
+    setBusy(true)
+    const {data,error}=await client.from('social_approvals').insert({owner_id:user.id,workspace_id:workspace.id,post_id:post.id,status:'pending',notes:null}).select('id,post_id,status,notes,requested_at,reviewed_at').single()
+    if(!error){
+      const updated=await client.from('social_posts').update({approval_status:'pending'}).eq('id',post.id).eq('owner_id',user.id).eq('workspace_id',workspace.id).select('id,title,master_copy,status,approval_status,content_type,created_at').single()
+      if(updated.error) setMessage(updated.error.message)
+      else { setPosts(current=>current.map(p=>p.id===post.id?updated.data as Post:p)); setApprovals(current=>[data as Approval,...current].slice(0,12)); setMessage('Approval requested. Publishing remains locked until approval.') }
+    } else setMessage(error.message)
+    setBusy(false)
+  }
+
+  async function reviewPost(post:Post, status:'approved'|'rejected'){
+    if(!client || !user || !workspace) return setMessage('Connect your workspace first.')
+    setBusy(true)
+    const existing=approvals.find(a=>a.post_id===post.id && a.status==='pending')
+    let approvalId=existing?.id
+    if(!approvalId){
+      const created=await client.from('social_approvals').insert({owner_id:user.id,workspace_id:workspace.id,post_id:post.id,status:'pending',notes:null}).select('id').single()
+      if(created.error){ setBusy(false); return setMessage(created.error.message) }
+      approvalId=created.data.id
+    }
+    const reviewed=await client.from('social_approvals').update({status,reviewed_at:new Date().toISOString()}).eq('id',approvalId).eq('owner_id',user.id).eq('workspace_id',workspace.id).select('id,post_id,status,notes,requested_at,reviewed_at').single()
+    if(reviewed.error){ setBusy(false); return setMessage(reviewed.error.message) }
+    const updated=await client.from('social_posts').update({approval_status:status,status:status==='approved'?'queued':'draft'}).eq('id',post.id).eq('owner_id',user.id).eq('workspace_id',workspace.id).select('id,title,master_copy,status,approval_status,content_type,created_at').single()
+    if(updated.error) setMessage(updated.error.message)
+    else { setApprovals(current=>[reviewed.data as Approval,...current.filter(a=>a.id!==approvalId)].slice(0,12)); setPosts(current=>current.map(p=>p.id===post.id?updated.data as Post:p)); setMessage(status==='approved'?'Approved and moved to publishing queue.':'Approval rejected; post returned to draft.') }
+    setBusy(false)
   }
 
   async function createCampaign(){
@@ -139,10 +174,13 @@ export default function Home(){
     else { setCampaigns(current=>[data as Campaign,...current].slice(0,6)); setMessage('Campaign created in the owned control plane.'); setCampaignName(''); setCampaignOffer('') }
   }
 
+  const pendingPosts=posts.filter(p=>p.approval_status==='pending')
+  const queuedPosts=posts.filter(p=>p.status==='queued' || p.approval_status==='approved')
+
   return <main className="shell">
     <header className="topbar"><div className="brand"><span className="mark">I</span><div><strong>IZAKHONO</strong><small>SOCIAL COMMAND™</small></div></div><div className="status">● {user?'CONTROL PLANE CONNECTED':'SYSTEM READY'}</div></header>
     <div className="layout">
-      <aside className="sidebar"><div className="navlabel">COMMAND</div>{['Overview','Content Studio','Campaigns','Publishing Queue','Analytics','Revenue'].map((x,i)=><button key={x} className={'navitem '+(i===0?'active':'')}><span>{['⌂','✦','◈','↗','◒','R'][i]}</span><span>{x}</span></button>)}<div className="navlabel" style={{marginTop:24}}>SYSTEM</div><button className="navitem"><span>⚙</span><span>Channels & Integrations</span></button><button className="navitem"><span>✓</span><span>Approvals</span></button>{user && <button className="navitem" onClick={signOut} disabled={busy}><span>↪</span><span>Sign out</span></button>}</aside>
+      <aside className="sidebar"><div className="navlabel">COMMAND</div>{['Overview','Content Studio','Campaigns','Publishing Queue','Analytics','Revenue'].map((x,i)=><button key={x} className={'navitem '+(i===0?'active':'')}><span>{['⌂','✦','◈','↗','◒','R'][i]}</span><span>{x}</span></button>)}<div className="navlabel" style={{marginTop:24}}>SYSTEM</div><button className="navitem"><span>⚙</span><span>Channels & Integrations</span></button><button className="navitem"><span>✓</span><span>Approvals {pendingPosts.length>0?`(${pendingPosts.length})`:''}</span></button>{user && <button className="navitem" onClick={signOut} disabled={busy}><span>↪</span><span>Sign out</span></button>}</aside>
       <section className="main">
         <div className="eyebrow">OWNED-FIRST MARKETING OPERATING SYSTEM</div><h1 className="headline">Turn attention into<br/><span style={{color:'#54df87'}}>business growth.</span></h1><p className="sub">One command centre for content, campaigns, publishing, channels, analytics and revenue — built for the IZAKHONO ecosystem.</p>
         <div className="grid">{stats.map(([a,b])=><div className="card" key={b}><div className="metric">{a}</div><div className="muted">{b}</div><div className="delta">LIVE CONTROL LAYER</div></div>)}</div>
@@ -150,7 +188,8 @@ export default function Home(){
         {!booting && !user && <div className="panel" style={{marginTop:16}}><div className="panelhead"><h2>Connect your command centre</h2><span className="pill">AUTHENTICATION</span></div><div className="composer"><div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}><input className="input" placeholder="Email" value={email} onChange={e=>setEmail(e.target.value)}/><input className="input" placeholder="Password" type="password" value={password} onChange={e=>setPassword(e.target.value)}/></div><div className="actions"><span className="muted">Your account controls workspace data through Supabase RLS.</span><button className="btn primary" onClick={signIn} disabled={busy}>Connect →</button></div></div></div>}
         {user && workspace && <div className="workspacebar"><span className="pill">WORKSPACE</span><strong>{workspace.name}</strong><span className="muted">{workspace.timezone}</span></div>}
         <div className="workspace">
-          <div className="panel"><div className="panelhead"><h2>Content Studio → Publishing Queue</h2><span className="pill">{posts.length} RECORDS</span></div><div className="composer"><input className="input" placeholder="Content title" value={title} onChange={e=>setTitle(e.target.value)}/><textarea placeholder="Write the master copy once. Social Command will become the distribution layer for approved channels." value={copy} onChange={e=>setCopy(e.target.value)}/><div className="actions"><span className="muted">Drafts stay in the owned control plane.</span><button className="btn primary" onClick={saveDraft} disabled={busy || !user || !workspace}>Save Draft →</button></div>{message && <div className="muted" style={{marginTop:10}}>{message}</div>}</div><div className="rows">{posts.map(p=><div className="row" key={p.id}><div><strong>{p.title}</strong><small>{p.content_type} · {new Date(p.created_at).toLocaleDateString()}</small></div><span className="badge">{p.approval_status}</span><span className="channel">{p.status}</span></div>)}{!posts.length && <div className="muted" style={{padding:18}}>No content records visible yet. Sign in and create the first draft.</div>}</div></div>
+          <div className="panel"><div className="panelhead"><h2>Content Studio → Publishing Queue</h2><span className="pill">{posts.length} RECORDS</span></div><div className="composer"><input className="input" placeholder="Content title" value={title} onChange={e=>setTitle(e.target.value)}/><textarea placeholder="Write the master copy once. Social Command will become the distribution layer for approved channels." value={copy} onChange={e=>setCopy(e.target.value)}/><div className="actions"><span className="muted">Drafts stay in the owned control plane.</span><button className="btn primary" onClick={saveDraft} disabled={busy || !user || !workspace}>Save Draft →</button></div>{message && <div className="muted" style={{marginTop:10}}>{message}</div>}</div><div className="rows">{posts.map(p=><div className="row" key={p.id}><div><strong>{p.title}</strong><small>{p.content_type} · {new Date(p.created_at).toLocaleDateString()}</small></div><span className="badge">{p.approval_status}</span><span className="channel">{p.status}</span>{p.approval_status==='draft' && <button className="btn" onClick={()=>requestApproval(p)} disabled={busy}>Request approval</button>}{p.approval_status==='pending' && <div style={{display:'flex',gap:6}}><button className="btn primary" onClick={()=>reviewPost(p,'approved')} disabled={busy}>Approve</button><button className="btn" onClick={()=>reviewPost(p,'rejected')} disabled={busy}>Reject</button></div>}</div>)}{!posts.length && <div className="muted" style={{padding:18}}>No content records visible yet. Sign in and create the first draft.</div>}</div></div>
+          <div className="panel"><div className="panelhead"><h2>Approval & Publishing Queue</h2><span className="pill">{queuedPosts.length} QUEUED</span></div><div className="rows">{pendingPosts.map(p=><div className="row" key={p.id}><div><strong>{p.title}</strong><small>Awaiting approval · controlled workspace</small></div><span className="badge">PENDING</span></div>)}{queuedPosts.map(p=><div className="row" key={`q-${p.id}`}><div><strong>{p.title}</strong><small>Approved · ready for channel routing</small></div><span className="badge gray">QUEUED</span></div>)}{!pendingPosts.length&&!queuedPosts.length&&<div className="muted" style={{padding:18}}>Approved content will appear here before channel publishing is enabled.</div>}</div></div>
           <div className="panel"><div className="panelhead"><h2>Campaign Command</h2><span className="pill">{campaigns.length} RECORDS</span></div><div className="composer"><input className="input" placeholder="Campaign name" value={campaignName} onChange={e=>setCampaignName(e.target.value)}/><div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}><select className="input" value={campaignObjective} onChange={e=>setCampaignObjective(e.target.value)}><option value="awareness">Awareness</option><option value="engagement">Engagement</option><option value="leads">Leads</option><option value="sales">Sales</option><option value="traffic">Traffic</option></select><input className="input" placeholder="Offer (optional)" value={campaignOffer} onChange={e=>setCampaignOffer(e.target.value)}/></div><div className="actions"><span className="muted">Campaigns are created as drafts for controlled execution.</span><button className="btn primary" onClick={createCampaign} disabled={busy || !user || !workspace}>Create Campaign →</button></div></div><div className="rows">{campaigns.map(c=><div className="row" style={{gridTemplateColumns:'1fr 90px'}} key={c.id}><div><strong>{c.name}</strong><small>{c.objective}{c.offer?' · '+c.offer:''}</small></div><span className="badge gray">{c.status}</span></div>)}{!campaigns.length && <div className="muted" style={{padding:18}}>Campaigns will appear here when workspace data is connected.</div>}</div></div>
         </div>
         <div className="modulegrid">{modules.map(([n,t,d])=><div className="module" key={t}><div><span className="eyebrow">{n}</span> <b>{t}</b></div><p>{d}</p></div>)}</div>
