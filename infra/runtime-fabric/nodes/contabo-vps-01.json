@@ -1,0 +1,17 @@
+{
+  "nodeId": "CONTABO-VPS-01",
+  "provider": "contabo",
+  "classification": "external-resilience",
+  "region": "EU",
+  "profile": "plus8",
+  "productId": "V161",
+  "os": "Ubuntu 24.04 LTS",
+  "architecture": "amd64",
+  "releasePolicy": "immutable-release",
+  "healthEndpoint": "/health",
+  "publicTraffic": false,
+  "status": "PROVISIONABLE",
+  "failoverOrder": 30,
+  "dataSourceOfTruth": false,
+  "notes": "Provider can be replaced without changing IZAKHONO source, customer identity, pricing, payments or data authority. Public traffic remains disabled until the standard public cutover gates pass."
+}
