@@ -3,198 +3,33 @@
 import { useEffect, useMemo, useState } from 'react'
 import { createClient, type SupabaseClient, type User } from '@supabase/supabase-js'
 
-type Workspace = { id:string; name:string; timezone:string }
-type Post = { id:string; title:string; master_copy:string; status:string; approval_status:string; content_type:string; created_at:string }
-type Campaign = { id:string; name:string; objective:string; status:string; offer:string|null; landing_url:string|null; created_at:string }
-type Approval = { id:string; post_id:string; status:string; notes:string|null; requested_at:string; reviewed_at:string|null }
+type Workspace={id:string;name:string;timezone:string}
+type Post={id:string;title:string;master_copy:string;status:string;approval_status:string;content_type:string;created_at:string}
+type Approval={id:string;post_id:string;status:string;notes:string|null;requested_at:string;reviewed_at:string|null}
+type Account={id:string;platform:string;account_name:string;account_handle:string|null;connector_status:string}
+type Target={id:string;post_id:string;account_id:string|null;platform:string;status:string}
+type Campaign={id:string;name:string;objective:string;status:string;offer:string|null;landing_url:string|null;created_at:string}
 
-function supabase(): SupabaseClient | null {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
-  return url && key ? createClient(url, key) : null
-}
+function supabase():SupabaseClient|null{const url=process.env.NEXT_PUBLIC_SUPABASE_URL;const key=process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;return url&&key?createClient(url,key):null}
 
-const modules = [
-  ['01','Content Studio','Create, rewrite and repurpose high-converting content.'],
-  ['02','Campaign Planner','Turn offers and launches into execution plans.'],
-  ['03','Publishing Queue','Prepare approved content for connected channels.'],
-  ['04','Channel Router','Route content through the best available channel.'],
-  ['05','Analytics','Measure reach, engagement, leads and revenue.'],
-  ['06','Revenue Command','Connect campaigns to commercial outcomes.'],
-]
+const modules=[['01','Content Studio','Create and repurpose content.'],['02','Campaign Planner','Turn offers into execution plans.'],['03','Publishing Queue','Control approved publishing.'],['04','Channel Router','Route content to connected channels.'],['05','Analytics','Measure reach, leads and revenue.'],['06','Revenue Command','Connect campaigns to outcomes.']]
 
 export default function Home(){
-  const [client] = useState(supabase)
-  const [user,setUser] = useState<User|null>(null)
-  const [workspace,setWorkspace] = useState<Workspace|null>(null)
-  const [posts,setPosts] = useState<Post[]>([])
-  const [campaigns,setCampaigns] = useState<Campaign[]>([])
-  const [approvals,setApprovals] = useState<Approval[]>([])
-  const [copy,setCopy] = useState('')
-  const [title,setTitle] = useState('')
-  const [campaignName,setCampaignName] = useState('')
-  const [campaignObjective,setCampaignObjective] = useState('awareness')
-  const [campaignOffer,setCampaignOffer] = useState('')
-  const [email,setEmail] = useState('')
-  const [password,setPassword] = useState('')
-  const [busy,setBusy] = useState(false)
-  const [booting,setBooting] = useState(true)
-  const [message,setMessage] = useState('')
+ const [client]=useState(supabase),[user,setUser]=useState<User|null>(null),[workspace,setWorkspace]=useState<Workspace|null>(null)
+ const [posts,setPosts]=useState<Post[]>([]),[approvals,setApprovals]=useState<Approval[]>([]),[accounts,setAccounts]=useState<Account[]>([]),[targets,setTargets]=useState<Target[]>([]),[campaigns,setCampaigns]=useState<Campaign[]>([])
+ const [title,setTitle]=useState(''),[copy,setCopy]=useState(''),[email,setEmail]=useState(''),[password,setPassword]=useState(''),[campaignName,setCampaignName]=useState(''),[campaignObjective,setCampaignObjective]=useState('awareness'),[campaignOffer,setCampaignOffer]=useState('')
+ const [selectedPost,setSelectedPost]=useState(''),[selectedAccounts,setSelectedAccounts]=useState<string[]>([]),[busy,setBusy]=useState(false),[booting,setBooting]=useState(true),[message,setMessage]=useState('')
 
-  async function loadWorkspace(currentUser:User){
-    if(!client) return null
-    const existing = await client.from('social_workspaces').select('id,name,timezone').eq('owner_id',currentUser.id).order('created_at',{ascending:true}).limit(1).maybeSingle()
-    if(existing.error) throw existing.error
-    if(existing.data) return existing.data as Workspace
-    const created = await client.from('social_workspaces').insert({owner_id:currentUser.id,name:'IZAKHONO Social Command',timezone:'Africa/Johannesburg'}).select('id,name,timezone').single()
-    if(created.error) throw created.error
-    return created.data as Workspace
-  }
-
-  async function refreshWorkspace(currentUser:User){
-    if(!client) return
-    try {
-      const ws = await loadWorkspace(currentUser)
-      if(!ws) return
-      setWorkspace(ws)
-      const [p,c,a] = await Promise.all([
-        client.from('social_posts').select('id,title,master_copy,status,approval_status,content_type,created_at').eq('owner_id',currentUser.id).eq('workspace_id',ws.id).order('created_at',{ascending:false}).limit(8),
-        client.from('social_campaigns').select('id,name,objective,status,offer,landing_url,created_at').eq('owner_id',currentUser.id).eq('workspace_id',ws.id).order('created_at',{ascending:false}).limit(6),
-        client.from('social_approvals').select('id,post_id,status,notes,requested_at,reviewed_at').eq('owner_id',currentUser.id).eq('workspace_id',ws.id).order('requested_at',{ascending:false}).limit(12)
-      ])
-      if(p.error) throw p.error
-      if(c.error) throw c.error
-      if(a.error) throw a.error
-      setPosts((p.data ?? []) as Post[])
-      setCampaigns((c.data ?? []) as Campaign[])
-      setApprovals((a.data ?? []) as Approval[])
-    } catch(error) {
-      setMessage(error instanceof Error ? error.message : 'Workspace connection failed.')
-    }
-  }
-
-  useEffect(()=>{
-    if(!client){ setBooting(false); return }
-    let mounted = true
-    client.auth.getUser().then(async ({data,error})=>{
-      if(error){ if(mounted) setMessage(error.message); return }
-      if(data.user){
-        setUser(data.user)
-        await refreshWorkspace(data.user)
-      }
-      if(mounted) setBooting(false)
-    })
-    const {data:{subscription}} = client.auth.onAuthStateChange((_event,session)=>{
-      const next = session?.user ?? null
-      setUser(next)
-      if(next) void refreshWorkspace(next)
-      else { setWorkspace(null); setPosts([]); setCampaigns([]); setApprovals([]) }
-    })
-    return ()=>{ mounted=false; subscription.unsubscribe() }
-  },[client])
-
-  const stats = useMemo(()=>[
-    [String(posts.length),'Recent content'],
-    [String(campaigns.length),'Active campaigns'],
-    [String(approvals.filter(a=>a.status==='pending').length),'Pending approvals'],
-    [user ? 'CONNECTED':'LOCKED','Supabase control plane'],
-  ],[posts.length,campaigns.length,approvals,user])
-
-  async function signIn(){
-    if(!client || !email || !password) return setMessage('Enter your email and password.')
-    setBusy(true); setMessage('Signing in…')
-    const {error}=await client.auth.signInWithPassword({email,password})
-    setBusy(false)
-    if(error) setMessage(error.message)
-    else setMessage('Command Centre connected. Bootstrapping workspace…')
-  }
-
-  async function signOut(){
-    if(!client) return
-    setBusy(true)
-    const {error}=await client.auth.signOut()
-    setBusy(false)
-    if(error) setMessage(error.message)
-    else setMessage('Signed out securely.')
-  }
-
-  async function saveDraft(){
-    if(!client || !user || !workspace) return setMessage('Connect your workspace first.')
-    if(!title.trim() || !copy.trim()) return setMessage('Add a title and master copy first.')
-    setBusy(true)
-    const {data,error}=await client.from('social_posts').insert({
-      owner_id:user.id, workspace_id:workspace.id, title:title.trim(), master_copy:copy.trim(),
-      content_type:'social', approval_status:'draft', status:'draft', score:{}
-    }).select('id,title,master_copy,status,approval_status,content_type,created_at').single()
-    setBusy(false)
-    if(error) setMessage(error.message)
-    else { setPosts(current=>[data as Post,...current].slice(0,8)); setTitle(''); setCopy(''); setMessage('Draft saved to the Social Command control plane.') }
-  }
-
-  async function requestApproval(post:Post){
-    if(!client || !user || !workspace) return setMessage('Connect your workspace first.')
-    setBusy(true)
-    const {data,error}=await client.from('social_approvals').insert({owner_id:user.id,workspace_id:workspace.id,post_id:post.id,status:'pending',notes:null}).select('id,post_id,status,notes,requested_at,reviewed_at').single()
-    if(!error){
-      const updated=await client.from('social_posts').update({approval_status:'pending'}).eq('id',post.id).eq('owner_id',user.id).eq('workspace_id',workspace.id).select('id,title,master_copy,status,approval_status,content_type,created_at').single()
-      if(updated.error) setMessage(updated.error.message)
-      else { setPosts(current=>current.map(p=>p.id===post.id?updated.data as Post:p)); setApprovals(current=>[data as Approval,...current].slice(0,12)); setMessage('Approval requested. Publishing remains locked until approval.') }
-    } else setMessage(error.message)
-    setBusy(false)
-  }
-
-  async function reviewPost(post:Post, status:'approved'|'rejected'){
-    if(!client || !user || !workspace) return setMessage('Connect your workspace first.')
-    setBusy(true)
-    const existing=approvals.find(a=>a.post_id===post.id && a.status==='pending')
-    let approvalId=existing?.id
-    if(!approvalId){
-      const created=await client.from('social_approvals').insert({owner_id:user.id,workspace_id:workspace.id,post_id:post.id,status:'pending',notes:null}).select('id').single()
-      if(created.error){ setBusy(false); return setMessage(created.error.message) }
-      approvalId=created.data.id
-    }
-    const reviewed=await client.from('social_approvals').update({status,reviewed_at:new Date().toISOString()}).eq('id',approvalId).eq('owner_id',user.id).eq('workspace_id',workspace.id).select('id,post_id,status,notes,requested_at,reviewed_at').single()
-    if(reviewed.error){ setBusy(false); return setMessage(reviewed.error.message) }
-    const updated=await client.from('social_posts').update({approval_status:status,status:status==='approved'?'queued':'draft'}).eq('id',post.id).eq('owner_id',user.id).eq('workspace_id',workspace.id).select('id,title,master_copy,status,approval_status,content_type,created_at').single()
-    if(updated.error) setMessage(updated.error.message)
-    else { setApprovals(current=>[reviewed.data as Approval,...current.filter(a=>a.id!==approvalId)].slice(0,12)); setPosts(current=>current.map(p=>p.id===post.id?updated.data as Post:p)); setMessage(status==='approved'?'Approved and moved to publishing queue.':'Approval rejected; post returned to draft.') }
-    setBusy(false)
-  }
-
-  async function createCampaign(){
-    if(!client || !user || !workspace) return setMessage('Connect your workspace first.')
-    if(!campaignName.trim()) return setMessage('Add a campaign name first.')
-    setBusy(true)
-    const {data,error}=await client.from('social_campaigns').insert({
-      owner_id:user.id, workspace_id:workspace.id, name:campaignName.trim(), objective:campaignObjective,
-      offer:campaignOffer.trim() || null, status:'draft', budget_cents:0
-    }).select('id,name,objective,status,offer,landing_url,created_at').single()
-    setBusy(false)
-    if(error) setMessage(error.message)
-    else { setCampaigns(current=>[data as Campaign,...current].slice(0,6)); setMessage('Campaign created in the owned control plane.'); setCampaignName(''); setCampaignOffer('') }
-  }
-
-  const pendingPosts=posts.filter(p=>p.approval_status==='pending')
-  const queuedPosts=posts.filter(p=>p.status==='queued' || p.approval_status==='approved')
-
-  return <main className="shell">
-    <header className="topbar"><div className="brand"><span className="mark">I</span><div><strong>IZAKHONO</strong><small>SOCIAL COMMAND™</small></div></div><div className="status">● {user?'CONTROL PLANE CONNECTED':'SYSTEM READY'}</div></header>
-    <div className="layout">
-      <aside className="sidebar"><div className="navlabel">COMMAND</div>{['Overview','Content Studio','Campaigns','Publishing Queue','Analytics','Revenue'].map((x,i)=><button key={x} className={'navitem '+(i===0?'active':'')}><span>{['⌂','✦','◈','↗','◒','R'][i]}</span><span>{x}</span></button>)}<div className="navlabel" style={{marginTop:24}}>SYSTEM</div><button className="navitem"><span>⚙</span><span>Channels & Integrations</span></button><button className="navitem"><span>✓</span><span>Approvals {pendingPosts.length>0?`(${pendingPosts.length})`:''}</span></button>{user && <button className="navitem" onClick={signOut} disabled={busy}><span>↪</span><span>Sign out</span></button>}</aside>
-      <section className="main">
-        <div className="eyebrow">OWNED-FIRST MARKETING OPERATING SYSTEM</div><h1 className="headline">Turn attention into<br/><span style={{color:'#54df87'}}>business growth.</span></h1><p className="sub">One command centre for content, campaigns, publishing, channels, analytics and revenue — built for the IZAKHONO ecosystem.</p>
-        <div className="grid">{stats.map(([a,b])=><div className="card" key={b}><div className="metric">{a}</div><div className="muted">{b}</div><div className="delta">LIVE CONTROL LAYER</div></div>)}</div>
-        {booting && <div className="panel" style={{marginTop:16}}><div className="muted">Connecting to the IZAKHONO control plane…</div></div>}
-        {!booting && !user && <div className="panel" style={{marginTop:16}}><div className="panelhead"><h2>Connect your command centre</h2><span className="pill">AUTHENTICATION</span></div><div className="composer"><div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}><input className="input" placeholder="Email" value={email} onChange={e=>setEmail(e.target.value)}/><input className="input" placeholder="Password" type="password" value={password} onChange={e=>setPassword(e.target.value)}/></div><div className="actions"><span className="muted">Your account controls workspace data through Supabase RLS.</span><button className="btn primary" onClick={signIn} disabled={busy}>Connect →</button></div></div></div>}
-        {user && workspace && <div className="workspacebar"><span className="pill">WORKSPACE</span><strong>{workspace.name}</strong><span className="muted">{workspace.timezone}</span></div>}
-        <div className="workspace">
-          <div className="panel"><div className="panelhead"><h2>Content Studio → Publishing Queue</h2><span className="pill">{posts.length} RECORDS</span></div><div className="composer"><input className="input" placeholder="Content title" value={title} onChange={e=>setTitle(e.target.value)}/><textarea placeholder="Write the master copy once. Social Command will become the distribution layer for approved channels." value={copy} onChange={e=>setCopy(e.target.value)}/><div className="actions"><span className="muted">Drafts stay in the owned control plane.</span><button className="btn primary" onClick={saveDraft} disabled={busy || !user || !workspace}>Save Draft →</button></div>{message && <div className="muted" style={{marginTop:10}}>{message}</div>}</div><div className="rows">{posts.map(p=><div className="row" key={p.id}><div><strong>{p.title}</strong><small>{p.content_type} · {new Date(p.created_at).toLocaleDateString()}</small></div><span className="badge">{p.approval_status}</span><span className="channel">{p.status}</span>{p.approval_status==='draft' && <button className="btn" onClick={()=>requestApproval(p)} disabled={busy}>Request approval</button>}{p.approval_status==='pending' && <div style={{display:'flex',gap:6}}><button className="btn primary" onClick={()=>reviewPost(p,'approved')} disabled={busy}>Approve</button><button className="btn" onClick={()=>reviewPost(p,'rejected')} disabled={busy}>Reject</button></div>}</div>)}{!posts.length && <div className="muted" style={{padding:18}}>No content records visible yet. Sign in and create the first draft.</div>}</div></div>
-          <div className="panel"><div className="panelhead"><h2>Approval & Publishing Queue</h2><span className="pill">{queuedPosts.length} QUEUED</span></div><div className="rows">{pendingPosts.map(p=><div className="row" key={p.id}><div><strong>{p.title}</strong><small>Awaiting approval · controlled workspace</small></div><span className="badge">PENDING</span></div>)}{queuedPosts.map(p=><div className="row" key={`q-${p.id}`}><div><strong>{p.title}</strong><small>Approved · ready for channel routing</small></div><span className="badge gray">QUEUED</span></div>)}{!pendingPosts.length&&!queuedPosts.length&&<div className="muted" style={{padding:18}}>Approved content will appear here before channel publishing is enabled.</div>}</div></div>
-          <div className="panel"><div className="panelhead"><h2>Campaign Command</h2><span className="pill">{campaigns.length} RECORDS</span></div><div className="composer"><input className="input" placeholder="Campaign name" value={campaignName} onChange={e=>setCampaignName(e.target.value)}/><div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}><select className="input" value={campaignObjective} onChange={e=>setCampaignObjective(e.target.value)}><option value="awareness">Awareness</option><option value="engagement">Engagement</option><option value="leads">Leads</option><option value="sales">Sales</option><option value="traffic">Traffic</option></select><input className="input" placeholder="Offer (optional)" value={campaignOffer} onChange={e=>setCampaignOffer(e.target.value)}/></div><div className="actions"><span className="muted">Campaigns are created as drafts for controlled execution.</span><button className="btn primary" onClick={createCampaign} disabled={busy || !user || !workspace}>Create Campaign →</button></div></div><div className="rows">{campaigns.map(c=><div className="row" style={{gridTemplateColumns:'1fr 90px'}} key={c.id}><div><strong>{c.name}</strong><small>{c.objective}{c.offer?' · '+c.offer:''}</small></div><span className="badge gray">{c.status}</span></div>)}{!campaigns.length && <div className="muted" style={{padding:18}}>Campaigns will appear here when workspace data is connected.</div>}</div></div>
-        </div>
-        <div className="modulegrid">{modules.map(([n,t,d])=><div className="module" key={t}><div><span className="eyebrow">{n}</span> <b>{t}</b></div><p>{d}</p></div>)}</div>
-        <div className="footer">IZAKHONO SOCIAL COMMAND™ · OWNED-FIRST · AFRICAN-FIRST · GLOBAL-READY · OFFER → CAMPAIGN → CONTENT → LEAD → REVENUE</div>
-      </section>
-    </div>
-  </main>
+ async function load(currentUser:User){if(!client)return;try{let w=await client.from('social_workspaces').select('id,name,timezone').eq('owner_id',currentUser.id).order('created_at',{ascending:true}).limit(1).maybeSingle();if(w.error)throw w.error;if(!w.data){w=await client.from('social_workspaces').insert({owner_id:currentUser.id,name:'IZAKHONO Social Command',timezone:'Africa/Johannesburg'}).select('id,name,timezone').single();if(w.error)throw w.error}const ws=w.data as Workspace;setWorkspace(ws);const [p,a,c,ac,t]=await Promise.all([client.from('social_posts').select('id,title,master_copy,status,approval_status,content_type,created_at').eq('owner_id',currentUser.id).eq('workspace_id',ws.id).order('created_at',{ascending:false}).limit(12),client.from('social_approvals').select('id,post_id,status,notes,requested_at,reviewed_at').eq('owner_id',currentUser.id).eq('workspace_id',ws.id).order('requested_at',{ascending:false}).limit(12),client.from('social_campaigns').select('id,name,objective,status,offer,landing_url,created_at').eq('owner_id',currentUser.id).eq('workspace_id',ws.id).order('created_at',{ascending:false}).limit(8),client.from('social_accounts').select('id,platform,account_name,account_handle,connector_status').eq('owner_id',currentUser.id).eq('workspace_id',ws.id).order('created_at',{ascending:false}),client.from('social_post_targets').select('id,post_id,account_id,platform,status').eq('owner_id',currentUser.id).eq('workspace_id',ws.id).order('created_at',{ascending:false}).limit(20)]);for(const r of [p,a,c,ac,t])if(r.error)throw r.error;setPosts((p.data??[]) as Post[]);setApprovals((a.data??[]) as Approval[]);setCampaigns((c.data??[]) as Campaign[]);setAccounts((ac.data??[]) as Account[]);setTargets((t.data??[]) as Target[])}catch(e){setMessage(e instanceof Error?e.message:'Control-plane load failed.')}}
+ useEffect(()=>{if(!client){setBooting(false);return}client.auth.getUser().then(async({data,error})=>{if(error)setMessage(error.message);if(data.user){setUser(data.user);await load(data.user)}setBooting(false)});const {data:{subscription}}=client.auth.onAuthStateChange((_e,s)=>{const u=s?.user??null;setUser(u);if(u)void load(u);else{setWorkspace(null);setPosts([]);setApprovals([]);setAccounts([]);setTargets([]);setCampaigns([])}});return()=>subscription.unsubscribe()},[client])
+ const pending=posts.filter(p=>p.approval_status==='pending'),queued=posts.filter(p=>p.status==='queued'||p.approval_status==='approved'),connected=accounts.filter(a=>a.connector_status==='connected'||a.connector_status==='healthy')
+ const stats=useMemo(()=>[[String(posts.length),'Recent content'],[String(campaigns.length),'Campaigns'],[String(pending.length),'Pending approvals'],[String(connected.length),'Connected channels']],[posts.length,campaigns.length,pending.length,connected.length])
+ async function signIn(){if(!client||!email||!password)return setMessage('Enter email and password.');setBusy(true);const {error}=await client.auth.signInWithPassword({email,password});setBusy(false);setMessage(error?error.message:'Command Centre connected.')}
+ async function signOut(){if(!client)return;await client.auth.signOut()}
+ async function saveDraft(){if(!client||!user||!workspace)return setMessage('Connect your workspace first.');if(!title.trim()||!copy.trim())return setMessage('Add a title and master copy.');setBusy(true);const {data,error}=await client.from('social_posts').insert({owner_id:user.id,workspace_id:workspace.id,title:title.trim(),master_copy:copy.trim(),content_type:'social',approval_status:'draft',status:'draft',score:{}}).select('id,title,master_copy,status,approval_status,content_type,created_at').single();setBusy(false);if(error)setMessage(error.message);else{setPosts(v=>[data as Post,...v].slice(0,12));setTitle('');setCopy('');setMessage('Draft saved.')}}
+ async function requestApproval(p:Post){if(!client||!user||!workspace)return;setBusy(true);const {data,error}=await client.from('social_approvals').insert({owner_id:user.id,workspace_id:workspace.id,post_id:p.id,status:'pending',notes:null}).select('id,post_id,status,notes,requested_at,reviewed_at').single();if(!error){await client.from('social_posts').update({approval_status:'pending'}).eq('id',p.id).eq('owner_id',user.id).eq('workspace_id',workspace.id);setPosts(v=>v.map(x=>x.id===p.id?{...x,approval_status:'pending'}:x));setApprovals(v=>[data as Approval,...v]);setMessage('Approval requested.')}else setMessage(error.message);setBusy(false)}
+ async function review(p:Post,status:'approved'|'rejected'){if(!client||!user||!workspace)return;const a=approvals.find(x=>x.post_id===p.id&&x.status==='pending');if(!a)return setMessage('No pending approval found.');setBusy(true);const {error}=await client.from('social_approvals').update({status,reviewed_at:new Date().toISOString()}).eq('id',a.id).eq('owner_id',user.id).eq('workspace_id',workspace.id);if(!error){const next=status==='approved'?'queued':'draft';await client.from('social_posts').update({approval_status:status,status:next}).eq('id',p.id).eq('owner_id',user.id).eq('workspace_id',workspace.id);setPosts(v=>v.map(x=>x.id===p.id?{...x,approval_status:status,status:next}:x));setApprovals(v=>v.map(x=>x.id===a.id?{...x,status}:x));setMessage(status==='approved'?'Approved — ready for routing.':'Rejected — returned to draft.')}else setMessage(error.message);setBusy(false)}
+ async function route(){if(!client||!user||!workspace)return;if(!selectedPost||!selectedAccounts.length)return setMessage('Select an approved post and at least one connected channel.');const p=posts.find(x=>x.id===selectedPost);if(!p||!(p.status==='queued'||p.approval_status==='approved'))return setMessage('Only approved posts can be routed.');setBusy(true);const rows=selectedAccounts.map(id=>{const a=accounts.find(x=>x.id===id)!;return{owner_id:user.id,workspace_id:workspace.id,post_id:p.id,account_id:a.id,platform:a.platform,platform_copy:p.master_copy,hashtags:[],media:{},scheduled_for:null,status:'queued',attempts:0,metrics:{}}});const {data,error}=await client.from('social_post_targets').insert(rows).select('id,post_id,account_id,platform,status');setBusy(false);if(error)setMessage(error.message);else{setTargets(v=>[...(data??[]) as Target[],...v]);setSelectedAccounts([]);setMessage(`Routed to ${rows.length} channel${rows.length===1?'':'s'}. External publishing stays gated until the connector is truly connected.`)}}
+ async function campaign(){if(!client||!user||!workspace)return;if(!campaignName.trim())return setMessage('Add a campaign name.');setBusy(true);const {data,error}=await client.from('social_campaigns').insert({owner_id:user.id,workspace_id:workspace.id,name:campaignName.trim(),objective:campaignObjective,status:'draft',budget_cents:0,offer:campaignOffer.trim()||null}).select('id,name,objective,status,offer,landing_url,created_at').single();setBusy(false);if(error)setMessage(error.message);else{setCampaigns(v=>[data as Campaign,...v]);setCampaignName('');setCampaignOffer('');setMessage('Campaign created.')}}
+ return <main className="shell"><header className="topbar"><div className="brand"><span className="mark">I</span><div><strong>IZAKHONO</strong><small>SOCIAL COMMAND™</small></div></div><div className="status">● {user?'CONTROL PLANE CONNECTED':'SYSTEM READY'}</div></header><div className="layout"><aside className="sidebar"><div className="navlabel">COMMAND</div>{['Overview','Content Studio','Campaigns','Publishing Queue','Analytics','Revenue'].map((x,i)=><button key={x} className={'navitem '+(i===0?'active':'')}><span>{['⌂','✦','◈','↗','◒','R'][i]}</span><span>{x}</span></button>)}<div className="navlabel" style={{marginTop:24}}>SYSTEM</div><button className="navitem"><span>⚙</span><span>Channels & Integrations</span></button><button className="navitem"><span>✓</span><span>Approvals {pending.length?`(${pending.length})`:''}</span></button>{user&&<button className="navitem" onClick={signOut}><span>↪</span><span>Sign out</span></button>}</aside><section className="main"><div className="eyebrow">OWNED-FIRST MARKETING OPERATING SYSTEM</div><h1 className="headline">Turn attention into<br/><span style={{color:'#54df87'}}>business growth.</span></h1><p className="sub">One command centre for content, campaigns, approvals, channel routing, analytics and revenue.</p><div className="grid">{stats.map(([a,b])=><div className="card" key={b}><div className="metric">{a}</div><div className="muted">{b}</div><div className="delta">LIVE CONTROL LAYER</div></div>)}</div>{booting&&<div className="panel"><div className="muted">Connecting to the control plane…</div></div>}{!booting&&!user&&<div className="panel"><div className="panelhead"><h2>Connect command centre</h2><span className="pill">AUTHENTICATION</span></div><div className="composer"><input className="input" placeholder="Email" value={email} onChange={e=>setEmail(e.target.value)}/><input className="input" placeholder="Password" type="password" value={password} onChange={e=>setPassword(e.target.value)}/><button className="btn primary" onClick={signIn} disabled={busy}>Connect →</button></div></div>}{user&&<><div className="panel"><div className="panelhead"><h2>Content Studio</h2><span className="pill">{posts.length} RECORDS</span></div><div className="composer"><input className="input" placeholder="Content title" value={title} onChange={e=>setTitle(e.target.value)}/><textarea placeholder="Write the master copy once…" value={copy} onChange={e=>setCopy(e.target.value)}/><button className="btn primary" onClick={saveDraft} disabled={busy}>Save Draft →</button></div><div className="rows">{posts.map(p=><div className="row" key={p.id}><div><strong>{p.title}</strong><small>{p.status} · {p.approval_status}</small></div>{p.approval_status==='draft'&&<button className="btn" onClick={()=>requestApproval(p)}>Request approval</button>}{p.approval_status==='pending'&&<div style={{display:'flex',gap:6}}><button className="btn primary" onClick={()=>review(p,'approved')}>Approve</button><button className="btn" onClick={()=>review(p,'rejected')}>Reject</button></div>}<span className="badge">{p.approval_status}</span></div>)}</div></div><div className="panel"><div className="panelhead"><h2>Channel Router</h2><span className="pill">{connected.length} CONNECTED</span></div><p className="muted">Route only approved content. Accounts appear here only when their connector reports connected/healthy.</p><div className="composer"><select className="input" value={selectedPost} onChange={e=>setSelectedPost(e.target.value)}><option value="">Select approved post…</option>{queued.map(p=><option key={p.id} value={p.id}>{p.title}</option>)}</select><div className="rows">{connected.map(a=><label className="row" key={a.id}><input type="checkbox" checked={selectedAccounts.includes(a.id)} onChange={()=>setSelectedAccounts(v=>v.includes(a.id)?v.filter(x=>x!==a.id):[...v,a.id])}/><div><strong>{a.platform}</strong><small>{a.account_name}{a.account_handle?` · ${a.account_handle}`:''}</small></div><span className="badge">CONNECTED</span></label>)}</div>{!connected.length&&<div className="muted" style={{padding:14}}>No external account is connected yet. The routing control plane is ready; OAuth/API connector work remains the gate before live publishing.</div>}<button className="btn primary" onClick={route} disabled={busy||!connected.length}>Route to channels →</button></div><div className="rows">{targets.slice(0,8).map(t=><div className="row" key={t.id}><strong>{t.platform}</strong><span className="muted">target for post {t.post_id.slice(0,8)}</span><span className="badge">{t.status}</span></div>)}</div></div><div className="panel"><div className="panelhead"><h2>Campaign Command</h2><span className="pill">{campaigns.length} RECORDS</span></div><div className="composer"><input className="input" placeholder="Campaign name" value={campaignName} onChange={e=>setCampaignName(e.target.value)}/><select className="input" value={campaignObjective} onChange={e=>setCampaignObjective(e.target.value)}><option value="awareness">Awareness</option><option value="leads">Lead generation</option><option value="sales">Sales</option><option value="launch">Launch</option></select><input className="input" placeholder="Offer" value={campaignOffer} onChange={e=>setCampaignOffer(e.target.value)}/><button className="btn primary" onClick={campaign} disabled={busy}>Create Campaign →</button></div></div></>}{message&&<div className="notice">{message}</div>}<div className="modules">{modules.map(([n,t,d])=><div className="module" key={n}><span>{n}</span><strong>{t}</strong><p>{d}</p></div>)}</div><div className="flow"><span>OFFER</span><b>→</b><span>CAMPAIGN</span><b>→</b><span>CONTENT</span><b>→</b><span>LEAD</span><b>→</b><span>REVENUE</span></div><footer>© 2026 IZAKHONO SOCIAL COMMAND™ · OWNED-FIRST • AFRICAN-FIRST • GLOBAL-READY</footer></section></div></main>
 }
