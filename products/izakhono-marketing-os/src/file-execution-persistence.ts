@@ -11,6 +11,8 @@ import type { ExecutionPersistenceStore } from "./execution-persistence";
  * serverless/ephemeral filesystem is durable.
  */
 export class FileExecutionPersistenceStore implements ExecutionPersistenceStore {
+  private writeQueue: Promise<void> = Promise.resolve();
+
   constructor(private readonly filePath: string) {}
 
   private async ensureParent(): Promise<void> {
@@ -18,20 +20,26 @@ export class FileExecutionPersistenceStore implements ExecutionPersistenceStore 
   }
 
   async append(record: RecoveryRecord): Promise<void> {
-    await this.ensureParent();
-    const existing = await this.load();
-    const latest = existing[existing.length - 1];
-    if (latest && record.sequence !== latest.sequence + 1) {
-      throw new Error("Persistence sequence must be contiguous");
-    }
+    const operation = this.writeQueue.then(async () => {
+      await this.ensureParent();
+      const existing = await this.load();
+      const latest = existing[existing.length - 1];
+      const expectedSequence = latest ? latest.sequence + 1 : 1;
+      if (record.sequence !== expectedSequence) {
+        throw new Error("Persistence sequence must be contiguous");
+      }
 
-    const handle = await open(this.filePath, "a");
-    try {
-      await handle.writeFile(`${JSON.stringify(record)}\n`, "utf8");
-      await handle.sync();
-    } finally {
-      await handle.close();
-    }
+      const handle = await open(this.filePath, "a");
+      try {
+        await handle.writeFile(`${JSON.stringify(record)}\n`, "utf8");
+        await handle.sync();
+      } finally {
+        await handle.close();
+      }
+    });
+
+    this.writeQueue = operation.catch(() => undefined);
+    await operation;
   }
 
   async load(): Promise<RecoveryRecord[]> {
@@ -39,10 +47,21 @@ export class FileExecutionPersistenceStore implements ExecutionPersistenceStore 
       const content = await readFile(this.filePath, "utf8");
       if (!content.trim()) return [];
 
-      return content
+      const records = content
         .split("\n")
         .filter(Boolean)
         .map((line) => JSON.parse(line) as RecoveryRecord);
+
+      records.forEach((record, index) => {
+        if (record.schema !== "izakhono.marketing.recovery-record.v1") {
+          throw new Error("Invalid recovery record schema in persistence store");
+        }
+        if (record.sequence !== index + 1) {
+          throw new Error("Persistence sequence is not contiguous");
+        }
+      });
+
+      return records;
     } catch (error) {
       const code = error && typeof error === "object" && "code" in error
         ? (error as { code?: string }).code
