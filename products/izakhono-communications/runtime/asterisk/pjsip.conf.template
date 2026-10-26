@@ -29,3 +29,5 @@ rtp_symmetric=yes
 
 ; Each generated extension should define endpoint/auth/aor objects based on
 ; this template. Credentials are supplied by the secret resolver.
+
+#include pjsip.d/*.conf
