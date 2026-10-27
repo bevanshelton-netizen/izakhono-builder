@@ -72,11 +72,18 @@ export async function createBusinessEngineCheckout(request: Request, order: any)
   params.set('client_reference_id', String(order.id));
   params.set('success_url', `${base}/?payment=success&commercialOrderId=${encodeURIComponent(order.id)}`);
   params.set('cancel_url', `${base}/?payment=cancelled&commercialOrderId=${encodeURIComponent(order.id)}`);
+
+  // Keep the commercial order identity attached to every Stripe object that can
+  // later produce a webhook, not only the Checkout Session.
   params.set('metadata[commercial_order_id]', String(order.id));
   params.set('metadata[plan]', plan);
   params.set('metadata[business_name]', String(order.business_name));
   params.set('subscription_data[metadata][commercial_order_id]', String(order.id));
   params.set('subscription_data[metadata][plan]', plan);
+  params.set('subscription_data[metadata][business_name]', String(order.business_name));
+  params.set('payment_intent_data[metadata][commercial_order_id]', String(order.id));
+  params.set('payment_intent_data[metadata][plan]', plan);
+  params.set('payment_intent_data[metadata][business_name]', String(order.business_name));
 
   const session = await stripePost('checkout/sessions', secret, params, `business-engine-checkout-${order.id}`);
   if (!session?.id || !session?.url) throw new Error('Stripe returned an incomplete Checkout Session.');
