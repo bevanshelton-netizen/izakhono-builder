@@ -47,16 +47,21 @@ function download(url, destination) {
     const req = client(parsed, { method: 'GET', timeout: 30000, headers: { 'user-agent': 'IZAKHONO-Hosting-Node/1.0' } }, response => {
       if (response.statusCode >= 300 && response.statusCode < 400 && response.headers.location) {
         response.resume();
-        try { return resolve(download(new URL(response.headers.location, parsed).toString(), destination)); } catch (error) { return reject(error); }
+        try {
+          const redirected = new URL(response.headers.location, parsed);
+          if (redirected.protocol !== 'https:' && process.env.IZAKHONO_ALLOW_HTTP_ARTIFACTS !== 'true') throw new Error('REDIRECTED_ARTIFACT_URL_MUST_USE_HTTPS');
+          return resolve(download(redirected.toString(), destination));
+        } catch (error) { return reject(error); }
       }
       if (response.statusCode !== 200) { response.resume(); return reject(new Error(`ARTIFACT_DOWNLOAD_HTTP_${response.statusCode}`)); }
       const length = Number(response.headers['content-length'] || 0);
       if (length > maxArtifactBytes) { response.resume(); return reject(new Error('ARTIFACT_TOO_LARGE')); }
       const file = fsSync.createWriteStream(destination, { mode: 0o600 });
       let bytes = 0;
+      let exceeded = false;
       response.on('data', chunk => {
         bytes += chunk.length;
-        if (bytes > maxArtifactBytes) req.destroy(new Error('ARTIFACT_TOO_LARGE'));
+        if (bytes > maxArtifactBytes && !exceeded) { exceeded = true; req.destroy(new Error('ARTIFACT_TOO_LARGE')); file.destroy(new Error('ARTIFACT_TOO_LARGE')); }
       });
       response.on('error', reject);
       file.on('error', reject);
@@ -109,6 +114,15 @@ function allocatePort(id) {
   return basePort + (hash % 1000);
 }
 
+async function stopRelease(id) {
+  const child = processes.get(id);
+  if (!child) return;
+  try { child.kill('SIGTERM'); } catch {}
+  await sleep(1000);
+  if (!child.killed) { try { child.kill('SIGKILL'); } catch {} }
+  processes.delete(id);
+}
+
 export async function executeRelease(request) {
   if (!safeId(request.provider_request_id) || !safeVersion(request.version)) throw new Error('INVALID_RELEASE_ID_OR_VERSION');
   if (!request.artifact_url || !request.checksum) throw new Error('ARTIFACT_URL_CHECKSUM_REQUIRED');
@@ -154,10 +168,11 @@ export async function executeRelease(request) {
       if (manifest.install_dependencies !== false && await fileExists(path.join(releaseDir, 'package-lock.json'))) {
         await runFixed('npm', ['ci', '--omit=dev', '--ignore-scripts'], releaseDir, 180000, { NODE_ENV: 'production' });
       }
+      await stopRelease(id);
       const healthUrl = `http://127.0.0.1:${port}${healthPath}`;
       const child = spawn(process.execPath, [path.join(releaseDir, manifest.entrypoint)], { cwd: releaseDir, shell: false, detached: false, stdio: ['ignore', 'ignore', 'ignore'], env: { ...process.env, PORT: String(port), NODE_ENV: 'production' } });
       processes.set(id, child);
-      child.on('exit', () => processes.delete(id));
+      child.on('exit', () => { if (processes.get(id) === child) processes.delete(id); });
       child.unref();
       await writeState(id, { ...state, phase: 'health_check', release_dir: releaseDir, health_url: healthUrl });
       await healthCheck(healthUrl);
@@ -168,6 +183,7 @@ export async function executeRelease(request) {
       await writeState(id, finalState);
       return finalState;
     } catch (error) {
+      await stopRelease(id);
       const failed = { ...state, execution_status: 'failed', phase: 'failed', error: error instanceof Error ? error.message : 'RELEASE_FAILED', completed_at: new Date().toISOString() };
       await writeState(id, failed);
       throw error;
