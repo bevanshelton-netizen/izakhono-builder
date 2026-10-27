@@ -2,7 +2,7 @@ import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { FileExecutionPersistenceStore } from "./file-execution-persistence";
+import { createProductionExecutionPersistenceStore, FileExecutionPersistenceStore } from "./file-execution-persistence";
 import type { RecoveryRecord } from "./execution-recovery";
 
 const record = (sequence: number): RecoveryRecord => ({
@@ -92,4 +92,21 @@ describe("FileExecutionPersistenceStore", () => {
       await rm(directory, { recursive: true, force: true });
     }
   });
+
+  it("requires explicit production storage configuration", () => {
+    expect(() => createProductionExecutionPersistenceStore({})).toThrow("IZAKHONO_EXECUTION_LEDGER_PATH is required");
+    expect(() => createProductionExecutionPersistenceStore({ IZAKHONO_EXECUTION_LEDGER_PATH: "ledger.jsonl" })).toThrow("absolute");
+  });
+
+  it("rejects known ephemeral production storage locations", () => {
+    expect(() => createProductionExecutionPersistenceStore({ IZAKHONO_EXECUTION_LEDGER_PATH: "/tmp/izakhono-ledger.jsonl" })).toThrow("ephemeral");
+    expect(() => createProductionExecutionPersistenceStore({ IZAKHONO_EXECUTION_LEDGER_PATH: "/var/task/izakhono-ledger.jsonl" })).toThrow("ephemeral");
+    expect(() => createProductionExecutionStoreForTest()).not.toThrow();
+  });
 });
+
+function createProductionExecutionStoreForTest(): ReturnType<typeof createProductionExecutionPersistenceStore> {
+  return createProductionExecutionPersistenceStore({
+    IZAKHONO_EXECUTION_LEDGER_PATH: "/mnt/izakhono/marketing-os/execution-ledger.jsonl",
+  });
+}
