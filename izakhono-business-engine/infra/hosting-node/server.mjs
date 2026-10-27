@@ -62,7 +62,7 @@ const server = http.createServer(async (req, res) => {
       const body = await readJson(req);
       if (!body.artifact_url || !body.checksum || !body.version) return send(res, 400, { ok: false, error: 'ARTIFACT_URL_CHECKSUM_VERSION_REQUIRED' });
       const providerRequestId = `owned-${crypto.randomUUID()}`;
-      void executeRelease({ ...body, provider_request_id: providerRequestId }).catch(() => {});
+      void executeRelease({ ...body, provider_request_id: providerRequestId, release_queue_id: body.release_queue_id || null }).catch(() => {});
       return send(res, 202, { ok: true, provider_request_id: providerRequestId, node_id: nodeId, contract: 'izakhono.release.v1', execution_status: 'accepted', published_url: null, status_url: `${publicBaseUrl.replace(/\/$/, '')}/v1/releases/${encodeURIComponent(providerRequestId)}` });
     } catch (error) {
       return send(res, 400, { ok: false, error: error instanceof Error ? error.message : 'REQUEST_FAILED' });
