@@ -6,7 +6,6 @@ import { spawn } from 'node:child_process';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { request as httpsRequest } from 'node:https';
 import { request as httpRequest } from 'node:http';
-import { fileURLToPath } from 'node:url';
 
 const root = process.env.IZAKHONO_RELEASE_ROOT || '/var/lib/izakhono-node/releases';
 const maxArtifactBytes = Number(process.env.IZAKHONO_MAX_ARTIFACT_BYTES || 100 * 1024 * 1024);
@@ -16,14 +15,11 @@ const healthIntervalMs = Number(process.env.IZAKHONO_HEALTH_INTERVAL_MS || 1000)
 const basePort = Number(process.env.IZAKHONO_RELEASE_BASE_PORT || 19000);
 const maxConcurrent = Number(process.env.IZAKHONO_MAX_CONCURRENT_RELEASES || 1);
 let active = 0;
-const running = new Map();
+const inFlight = new Map();
+const processes = new Map();
 
-function safeId(value) {
-  return /^[a-zA-Z0-9._-]{1,120}$/.test(String(value || ''));
-}
-function safeVersion(value) {
-  return /^[a-zA-Z0-9._-]{1,80}$/.test(String(value || ''));
-}
+function safeId(value) { return /^[a-zA-Z0-9._-]{1,120}$/.test(String(value || '')); }
+function safeVersion(value) { return /^[a-zA-Z0-9._-]{1,80}$/.test(String(value || '')); }
 function safeRelative(value) {
   const normalized = path.posix.normalize(String(value || '').replaceAll('\\', '/'));
   return normalized !== '.' && !normalized.startsWith('../') && normalized !== '..' && !normalized.startsWith('/');
@@ -33,9 +29,7 @@ function assertHttpsUrl(value, allowHttp = false) {
   if (url.protocol !== 'https:' && !(allowHttp && url.protocol === 'http:')) throw new Error('ARTIFACT_URL_MUST_USE_HTTPS');
   return url;
 }
-async function ensureDirs() {
-  await fs.mkdir(root, { recursive: true, mode: 0o750 });
-}
+async function ensureDirs() { await fs.mkdir(root, { recursive: true, mode: 0o750 }); }
 function statePath(id) { return path.join(root, `${id}.json`); }
 async function writeState(id, state) {
   await ensureDirs();
@@ -44,28 +38,26 @@ async function writeState(id, state) {
   await fs.writeFile(temp, JSON.stringify(state, null, 2), { mode: 0o640 });
   await fs.rename(temp, target);
 }
-async function readState(id) {
-  try { return JSON.parse(await fs.readFile(statePath(id), 'utf8')); } catch { return null; }
-}
+async function readState(id) { try { return JSON.parse(await fs.readFile(statePath(id), 'utf8')); } catch { return null; } }
 
 function download(url, destination) {
   return new Promise((resolve, reject) => {
     const parsed = new URL(url);
     const client = parsed.protocol === 'https:' ? httpsRequest : httpRequest;
-    const req = client(parsed, { method: 'GET', timeout: 30000, headers: { 'user-agent': 'IZAKHONO-Hosting-Node/1.0' } }, async response => {
+    const req = client(parsed, { method: 'GET', timeout: 30000, headers: { 'user-agent': 'IZAKHONO-Hosting-Node/1.0' } }, response => {
       if (response.statusCode >= 300 && response.statusCode < 400 && response.headers.location) {
         response.resume();
-        try {
-          const next = new URL(response.headers.location, parsed).toString();
-          return resolve(download(next, destination));
-        } catch (error) { return reject(error); }
+        try { return resolve(download(new URL(response.headers.location, parsed).toString(), destination)); } catch (error) { return reject(error); }
       }
       if (response.statusCode !== 200) { response.resume(); return reject(new Error(`ARTIFACT_DOWNLOAD_HTTP_${response.statusCode}`)); }
       const length = Number(response.headers['content-length'] || 0);
       if (length > maxArtifactBytes) { response.resume(); return reject(new Error('ARTIFACT_TOO_LARGE')); }
       const file = fsSync.createWriteStream(destination, { mode: 0o600 });
       let bytes = 0;
-      response.on('data', chunk => { bytes += chunk.length; if (bytes > maxArtifactBytes) req.destroy(new Error('ARTIFACT_TOO_LARGE')); });
+      response.on('data', chunk => {
+        bytes += chunk.length;
+        if (bytes > maxArtifactBytes) req.destroy(new Error('ARTIFACT_TOO_LARGE'));
+      });
       response.on('error', reject);
       file.on('error', reject);
       file.on('finish', () => file.close(() => resolve(bytes)));
@@ -91,12 +83,10 @@ function runFixed(command, args, cwd, timeoutMs, env = {}) {
 }
 
 async function validateTar(archive) {
-  const { stdout } = await runFixed('/usr/bin/tar', ['-tzf', archive], root, 30000);
+  const { stdout } = await runFixed('tar', ['-tzf', archive], root, 30000);
   const entries = stdout.split('\n').map(v => v.trim()).filter(Boolean);
   if (entries.length > maxExtractedFiles) throw new Error('ARTIFACT_FILE_COUNT_EXCEEDED');
-  for (const entry of entries) {
-    if (!safeRelative(entry) || entry.includes('\0')) throw new Error('ARTIFACT_PATH_TRAVERSAL');
-  }
+  for (const entry of entries) if (!safeRelative(entry) || entry.includes('\0')) throw new Error('ARTIFACT_PATH_TRAVERSAL');
   return entries;
 }
 
@@ -114,22 +104,22 @@ async function healthCheck(url) {
   throw new Error(last);
 }
 
-async function allocatePort(id) {
+function allocatePort(id) {
   const hash = crypto.createHash('sha256').update(id).digest().readUInt32BE(0);
   return basePort + (hash % 1000);
 }
 
 export async function executeRelease(request) {
-  if (active >= maxConcurrent) throw new Error('RELEASE_CONCURRENCY_LIMIT');
   if (!safeId(request.provider_request_id) || !safeVersion(request.version)) throw new Error('INVALID_RELEASE_ID_OR_VERSION');
   if (!request.artifact_url || !request.checksum) throw new Error('ARTIFACT_URL_CHECKSUM_REQUIRED');
   const checksum = String(request.checksum).toLowerCase();
   if (!/^[a-f0-9]{64}$/.test(checksum)) throw new Error('SHA256_CHECKSUM_REQUIRED');
   const artifactUrl = assertHttpsUrl(request.artifact_url, process.env.IZAKHONO_ALLOW_HTTP_ARTIFACTS === 'true');
   const id = request.provider_request_id;
-  if (running.has(id)) return running.get(id);
   const existing = await readState(id);
-  if (existing?.execution_status === 'published' || existing?.execution_status === 'running') return existing;
+  if (existing?.execution_status === 'published') return existing;
+  if (inFlight.has(id)) return inFlight.get(id);
+  if (active >= maxConcurrent) throw new Error('RELEASE_CONCURRENCY_LIMIT');
 
   active += 1;
   const promise = (async () => {
@@ -137,7 +127,7 @@ export async function executeRelease(request) {
     const releaseDir = path.join(root, id, request.version);
     const stagingDir = path.join(root, `${id}.staging`);
     const archive = path.join(root, `${id}.artifact`);
-    const port = await allocatePort(id);
+    const port = allocatePort(id);
     const state = { provider_request_id: id, version: request.version, execution_status: 'running', started_at: started, published_url: null, port };
     await writeState(id, state);
     try {
@@ -150,9 +140,8 @@ export async function executeRelease(request) {
       if (actual !== checksum) throw new Error('ARTIFACT_CHECKSUM_MISMATCH');
       await writeState(id, { ...state, phase: 'verified', checksum: actual });
       await validateTar(archive);
-      await runFixed('/usr/bin/tar', ['-xzf', archive, '-C', stagingDir], root, 60000);
-      const manifestPath = path.join(stagingDir, 'release.json');
-      const manifest = JSON.parse(await fs.readFile(manifestPath, 'utf8'));
+      await runFixed('tar', ['-xzf', archive, '-C', stagingDir], root, 60000);
+      const manifest = JSON.parse(await fs.readFile(path.join(stagingDir, 'release.json'), 'utf8'));
       if (manifest.contract !== 'izakhono.app.release.v1') throw new Error('RELEASE_CONTRACT_UNSUPPORTED');
       if (!safeRelative(manifest.entrypoint || '')) throw new Error('INVALID_ENTRYPOINT');
       const entrypoint = path.resolve(stagingDir, manifest.entrypoint);
@@ -162,12 +151,13 @@ export async function executeRelease(request) {
       await fs.rm(releaseDir, { recursive: true, force: true });
       await fs.mkdir(path.dirname(releaseDir), { recursive: true, mode: 0o750 });
       await fs.rename(stagingDir, releaseDir);
-      if (manifest.install_dependencies !== false) {
-        if (await fileExists(path.join(releaseDir, 'package-lock.json'))) await runFixed('/usr/bin/npm', ['ci', '--omit=dev', '--ignore-scripts'], releaseDir, 180000, { NODE_ENV: 'production' });
+      if (manifest.install_dependencies !== false && await fileExists(path.join(releaseDir, 'package-lock.json'))) {
+        await runFixed('npm', ['ci', '--omit=dev', '--ignore-scripts'], releaseDir, 180000, { NODE_ENV: 'production' });
       }
       const healthUrl = `http://127.0.0.1:${port}${healthPath}`;
-      const child = spawn('/usr/local/bin/node', [path.join(releaseDir, manifest.entrypoint)], { cwd: releaseDir, shell: false, detached: false, stdio: ['ignore', 'ignore', 'ignore'], env: { ...process.env, PORT: String(port), NODE_ENV: 'production' } });
-      running.set(id, child);
+      const child = spawn(process.execPath, [path.join(releaseDir, manifest.entrypoint)], { cwd: releaseDir, shell: false, detached: false, stdio: ['ignore', 'ignore', 'ignore'], env: { ...process.env, PORT: String(port), NODE_ENV: 'production' } });
+      processes.set(id, child);
+      child.on('exit', () => processes.delete(id));
       child.unref();
       await writeState(id, { ...state, phase: 'health_check', release_dir: releaseDir, health_url: healthUrl });
       await healthCheck(healthUrl);
@@ -187,13 +177,19 @@ export async function executeRelease(request) {
       active -= 1;
     }
   })();
-  running.set(id, promise);
-  try { return await promise; } finally { running.delete(id); }
+  inFlight.set(id, promise);
+  try { return await promise; } finally { inFlight.delete(id); }
 }
 
 export async function getReleaseStatus(id) {
   if (!safeId(id)) throw new Error('INVALID_PROVIDER_REQUEST_ID');
   return (await readState(id)) || { provider_request_id: id, execution_status: 'unknown' };
+}
+
+export async function getReleaseProxyTarget(id) {
+  const state = await getReleaseStatus(id);
+  if (state.execution_status !== 'published' || !Number.isInteger(state.port)) return null;
+  return { host: '127.0.0.1', port: state.port };
 }
 
 async function fileExists(file) { try { await fs.access(file); return true; } catch { return false; } }
