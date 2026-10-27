@@ -4,8 +4,8 @@ WORKDIR /app
 
 RUN addgroup -S izakhono && adduser -S izakhono -G izakhono
 
-COPY package.json package-lock.json* ./
-RUN if [ -f package-lock.json ]; then npm ci --omit=dev; else npm install --omit=dev; fi
+COPY package.json ./
+RUN npm install --omit=dev --ignore-scripts
 
 COPY server.mjs ./server.mjs
 COPY executor.mjs ./executor.mjs
