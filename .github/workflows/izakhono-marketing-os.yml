@@ -25,6 +25,8 @@ jobs:
         run: npx --yes tsx@4.20.3 products/izakhono-marketing-os/src/reconciliation-runtime.test.ts
       - name: Validate production reconciliation runtime
         run: npx --yes tsx@4.20.3 products/izakhono-marketing-os/src/production-reconciliation-runtime.test.ts
+      - name: Validate startup recovery controller
+        run: npx --yes tsx@4.20.3 products/izakhono-marketing-os/src/startup-recovery-controller.test.ts
       - name: Validate execution reconciliation
         run: npx --yes tsx@4.20.3 products/izakhono-marketing-os/src/execution-reconciliation.test.ts
       - name: Validate execution persistence
@@ -42,6 +44,6 @@ jobs:
       - name: Validate execution runtime
         run: npx --yes tsx@4.20.3 products/izakhono-marketing-os/src/execution-runtime.test.ts
       - name: Typecheck execution runtime
-        run: npx --yes typescript@5.9.2 --noEmit --target ES2022 --module NodeNext --moduleResolution NodeNext products/izakhono-marketing-os/src/execution-runtime.ts products/izakhono-marketing-os/src/production-execution-runtime.ts products/izakhono-marketing-os/src/production-execution-storage.ts products/izakhono-marketing-os/src/execution-recovery.ts products/izakhono-marketing-os/src/execution-persistence.ts products/izakhono-marketing-os/src/file-execution-persistence.ts products/izakhono-marketing-os/src/execution-lease.ts products/izakhono-marketing-os/src/execution-reliability.ts products/izakhono-marketing-os/src/adapter-execution.ts
+        run: npx --yes typescript@5.9.2 --noEmit --target ES2022 --module NodeNext --moduleResolution NodeNext products/izakhono-marketing-os/src/execution-runtime.ts products/izakhono-marketing-os/src/production-execution-runtime.ts products/izakhono-marketing-os/src/production-execution-storage.ts products/izakhono-marketing-os/src/execution-recovery.ts products/izakhono-marketing-os/src/execution-persistence.ts products/izakhono-marketing-os/src/file-execution-persistence.ts products/izakhono-marketing-os/src/execution-lease.ts products/izakhono-marketing-os/src/execution-reliability.ts products/izakhono-marketing-os/src/adapter-execution.ts products/izakhono-marketing-os/src/startup-recovery-controller.ts
       - name: Typecheck reconciliation runtime
-        run: npx --yes typescript@5.9.2 --noEmit --target ES2022 --module NodeNext --moduleResolution NodeNext products/izakhono-marketing-os/src/execution-reconciliation.ts products/izakhono-marketing-os/src/execution-reconciliation-journal.ts products/izakhono-marketing-os/src/file-reconciliation-journal.ts products/izakhono-marketing-os/src/reconciliation-runtime.ts products/izakhono-marketing-os/src/production-reconciliation-runtime.ts
+        run: npx --yes typescript@5.9.2 --noEmit --target ES2022 --module NodeNext --moduleResolution NodeNext products/izakhono-marketing-os/src/execution-reconciliation.ts products/izakhono-marketing-os/src/execution-reconciliation-journal.ts products/izakhono-marketing-os/src/file-reconciliation-journal.ts products/izakhono-marketing-os/src/reconciliation-runtime.ts products/izakhono-marketing-os/src/production-reconciliation-runtime.ts products/izakhono-marketing-os/src/startup-recovery-controller.ts
