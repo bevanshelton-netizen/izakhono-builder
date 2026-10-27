@@ -14,7 +14,6 @@ const receipt: ExecutionReceipt = {
   result: "retryable_failure",
   nextAction: "retry",
   adapter: "owned",
-  issuedAt: "2026-10-27T10:00:00.000Z",
   recordedAt: "2026-10-27T10:00:01.000Z",
 };
 
