@@ -40,6 +40,20 @@ try {
   await nodeB.release(recovered);
   void stale;
 
+  const expiredKey = "campaign:approval:expired-race:scheduled";
+  await nodeA.acquire(expiredKey, "node-a", "2026-10-27T08:00:00.000Z", 1_000);
+  const takeoverResults = await Promise.allSettled([
+    nodeA.acquire(expiredKey, "node-a-2", "2026-10-27T08:00:02.000Z", 1_000),
+    nodeB.acquire(expiredKey, "node-b-2", "2026-10-27T08:00:02.000Z", 1_000),
+  ]);
+  const takeoverFulfilled = takeoverResults.filter((result) => result.status === "fulfilled");
+  const takeoverRejected = takeoverResults.filter((result) => result.status === "rejected");
+  if (takeoverFulfilled.length !== 1 || takeoverRejected.length !== 1) {
+    throw new Error("Concurrent expired-lease takeover must have exactly one winner");
+  }
+  const winner = (takeoverFulfilled[0] as PromiseFulfilledResult<Awaited<ReturnType<FileExecutionLeaseStore["acquire"]>>>).value;
+  await nodeA.release(winner).catch(async () => nodeB.release(winner));
+
   console.log("IZAKHONO MARKETING OS multi-process execution lease contract validated");
 } finally {
   await rm(directory, { recursive: true, force: true });
