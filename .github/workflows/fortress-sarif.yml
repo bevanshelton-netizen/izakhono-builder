@@ -1,0 +1,38 @@
+name: fortress-sarif
+
+on:
+  push:
+    paths:
+      - 'products/fortress-security/**'
+      - '.github/workflows/fortress-sarif.yml'
+      - 'package.json'
+  pull_request:
+    paths:
+      - 'products/fortress-security/**'
+      - '.github/workflows/fortress-sarif.yml'
+      - 'package.json'
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  fortress-sarif:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --ignore-scripts --no-audit --no-fund
+      - run: npm run fortress:typecheck
+      - run: npm run fortress:test
+      - name: Generate authorized-scope SARIF
+        env:
+          FORTRESS_AUTHORIZED_SCAN: '1'
+        run: node --import tsx products/fortress-security/src/cli.ts products/fortress-security/scope.example.json --sarif fortress.sarif --no-fail
+      - name: Upload FORTRESS SARIF
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: fortress.sarif
+          category: izakhono-fortress
