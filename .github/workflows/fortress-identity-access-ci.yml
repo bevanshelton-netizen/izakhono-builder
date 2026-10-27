@@ -1,0 +1,25 @@
+name: fortress-identity-access-ci
+
+on:
+  push:
+    paths:
+      - 'products/fortress-security/src/access-control.ts'
+      - 'products/fortress-security/src/access-control.test.ts'
+      - 'products/fortress-security/src/audit-log.ts'
+      - '.github/workflows/fortress-identity-access-ci.yml'
+  pull_request:
+    paths:
+      - 'products/fortress-security/src/access-control.ts'
+      - 'products/fortress-security/src/access-control.test.ts'
+      - 'products/fortress-security/src/audit-log.ts'
+      - '.github/workflows/fortress-identity-access-ci.yml'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npx --yes tsx@4.20.3 products/fortress-security/src/access-control.test.ts
