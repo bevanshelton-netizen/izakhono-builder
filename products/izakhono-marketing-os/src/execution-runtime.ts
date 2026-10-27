@@ -16,7 +16,7 @@ import {
 } from "./execution-lease";
 
 export interface AdapterExecutor {
-  execute(instruction: AdapterInstruction | ReplayInstruction): ExecutionAttemptResult;
+  execute(instruction: AdapterInstruction | ReplayInstruction): ExecutionAttemptResult | Promise<ExecutionAttemptResult>;
 }
 
 export interface ExecutionRuntimeClock {
@@ -61,20 +61,31 @@ export class ExecutionRuntime {
   }
 
   private async withLease<T>(key: string, work: (lease: ExecutionLease) => Promise<T>): Promise<T> {
-    let lease: ExecutionLease = await this.leaseStore.acquire(
-      key,
-      this.leaseOwnerId,
-      this.clock.now(),
-      this.leaseTtlMs,
-    );
+    let lease: ExecutionLease = await this.leaseStore.acquire(key, this.leaseOwnerId, this.clock.now(), this.leaseTtlMs);
+    const heartbeatMs = Math.max(1, Math.floor(this.leaseTtlMs / 3));
+    let heartbeat: ReturnType<typeof setInterval> | undefined;
+    let currentLease = lease;
+    let heartbeatError: Error | undefined;
+
+    const renew = async (): Promise<void> => {
+      try {
+        currentLease = await this.leaseStore.renew(currentLease, this.clock.now(), this.leaseTtlMs);
+      } catch (error) {
+        heartbeatError = error instanceof Error ? error : new Error(String(error));
+      }
+    };
+
     try {
-      lease = await this.leaseStore.renew(lease, this.clock.now(), this.leaseTtlMs);
-      await this.leaseStore.assertCurrent(lease, this.clock.now());
-      const result = await work(lease);
-      await this.leaseStore.assertCurrent(lease, this.clock.now());
+      currentLease = await this.leaseStore.renew(currentLease, this.clock.now(), this.leaseTtlMs);
+      await this.leaseStore.assertCurrent(currentLease, this.clock.now());
+      heartbeat = setInterval(() => { void renew(); }, heartbeatMs);
+      const result = await work(currentLease);
+      if (heartbeatError) throw heartbeatError;
+      await this.leaseStore.assertCurrent(currentLease, this.clock.now());
       return result;
     } finally {
-      await this.leaseStore.release(lease);
+      if (heartbeat) clearInterval(heartbeat);
+      await this.leaseStore.release(currentLease);
     }
   }
 
@@ -83,17 +94,12 @@ export class ExecutionRuntime {
 
     const receipts: ExecutionReceipt[] = [];
     for (const job of instruction.jobs) {
-      const key = createIdempotencyKey(
-        instruction.campaignId,
-        instruction.approvalId,
-        job.network,
-        job.scheduledAt,
-      );
+      const key = createIdempotencyKey(instruction.campaignId, instruction.approvalId, job.network, job.scheduledAt);
 
       const receipt = await this.withLease(key, async () => {
         if (this.ledger.latest(key)) throw new Error(`Execution already recorded: ${key}`);
 
-        const result = this.executor.execute({ ...instruction, jobs: [job] });
+        const result = await this.executor.execute({ ...instruction, jobs: [job] });
         const nextReceipt = createExecutionReceipt(
           `${instruction.campaignId}:${instruction.approvalId}:${job.network}:${job.scheduledAt}`,
           instruction.campaignId,
@@ -117,7 +123,7 @@ export class ExecutionRuntime {
   async replay(idempotencyKey: string): Promise<RuntimeResult> {
     return this.withLease(idempotencyKey, async () => {
       const replay = this.ledger.buildReplay(idempotencyKey);
-      const result = this.executor.execute(replay);
+      const result = await this.executor.execute(replay);
       const receipt = createExecutionReceipt(
         replay.executionId,
         replay.campaignId,
