@@ -6,14 +6,15 @@
 - Web package: `products/izakhono-social`
 - Engine: CONNECTA discovery engine 0.3.0
 - Source of truth: `main` at an immutable 40-character Git SHA
-- Runtime target: operator-controlled IZAKHONO Runtime Fabric
-- Preferred owner target: NODE01 when physically activated and verified
+- Runtime target: IZAKHONO-owned node cluster
+- Primary owned production node: `NODE01`
+- Node selection beyond NODE01: operational placement, failover and resilience decision within the owned cluster
 
 ## Release states
 
 1. `SOFTWARE_PACKAGED` — source, web package, engine, compose assets and verification gates exist.
-2. `RUNTIME_TARGET_REQUIRED` — a physical/operator-controlled runtime target has not yet been proven.
-3. `HOST_PREFLIGHT_PASS` — the target host passes the documented preflight.
+2. `RUNTIME_TARGET_REQUIRED` — the selected owned-node runtime target has not yet been physically/runtime verified for this release.
+3. `HOST_PREFLIGHT_PASS` — the selected owned-node target passes the documented preflight.
 4. `DEPLOYMENT_REHEARSAL_PASS` — the exact immutable release can boot and pass local health checks.
 5. `PRODUCTION_GATES_PASS` — physical cluster, failover, backup/restore, security, EDGE/TLS and external HTTPS evidence all pass.
 6. `PUBLIC_VERIFIED` — external HTTPS is independently verified against the promoted immutable release.
@@ -29,7 +30,7 @@
 
 ## Current gate
 
-The software release is packaged and CI-verifiable. The remaining promotion dependency is an operator-controlled runtime target and its physical/runtime evidence. Until those gates pass, the truthful public status remains **NOT YET VERIFIED**.
+The software release is packaged and CI-verifiable. The remaining promotion dependency is physical/runtime verification of the selected IZAKHONO-owned node target, beginning with NODE01 where it is the primary production target. Until the required runtime and production gates pass, the truthful public status remains **NOT YET VERIFIED**.
 
 ## Activation sequence
 
