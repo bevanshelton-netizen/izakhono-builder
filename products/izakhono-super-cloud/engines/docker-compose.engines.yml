@@ -1,0 +1,48 @@
+services:
+  scheduler-engine:
+    image: node:22-alpine
+    working_dir: /app
+    command: node server.mjs
+    volumes: ["./scheduler-engine:/app:ro"]
+    environment: ["PORT=8192"]
+    ports: ["8192:8192"]
+    restart: unless-stopped
+
+  deployment-engine:
+    image: node:22-alpine
+    working_dir: /app
+    command: node server.mjs
+    volumes: ["./deployment-engine:/app:ro"]
+    environment: ["PORT=8191"]
+    ports: ["8191:8191"]
+    restart: unless-stopped
+
+  node-agent:
+    image: node:22-alpine
+    working_dir: /app
+    command: node server.mjs
+    volumes: ["./node-agent:/app:ro"]
+    environment:
+      - PORT=8193
+      - NODE_REGION=za-jhb-01
+      - CAPACITY_CLASS=owned
+    ports: ["8193:8193"]
+    restart: unless-stopped
+
+  domain-engine:
+    image: node:22-alpine
+    working_dir: /app
+    command: node server.mjs
+    volumes: ["./domain-engine:/app:ro"]
+    environment: ["PORT=8194"]
+    ports: ["8194:8194"]
+    restart: unless-stopped
+
+  policy-engine:
+    image: node:22-alpine
+    working_dir: /app
+    command: node server.mjs
+    volumes: ["./policy-engine:/app:ro"]
+    environment: ["PORT=8195"]
+    ports: ["8195:8195"]
+    restart: unless-stopped
