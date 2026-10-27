@@ -7,6 +7,7 @@ import { createProductionExecutionStorageFromEnv, createProductionExecutionLease
 import type { ExecutionLease, ExecutionLeaseStore } from "./execution-lease";
 import { createExecutionLeaseOwnerId } from "./execution-lease";
 import { ReconciliationRuntime } from "./reconciliation-runtime";
+import type { ProviderObservationRegistry } from "./provider-observation";
 
 const STARTUP_RECOVERY_LEASE = "marketing-os-startup-recovery";
 const DEFAULT_LEASE_TTL_MS = 30_000;
@@ -151,6 +152,22 @@ export function createProductionStartupRecoveryController(
     observer: options.observer,
     ownerId: options.ownerId ?? createExecutionLeaseOwnerId(env),
     leaseTtlMs: options.leaseTtlMs,
+  });
+}
+
+/**
+ * Production convenience wiring for the credential-gated provider observation
+ * registry. The registry is the boundary where real provider status lookups
+ * are attached; recovery never fabricates an external outcome.
+ */
+export function createProductionStartupRecoveryControllerFromProviderRegistry(
+  options: Omit<ProductionStartupRecoveryOptions, "observer"> & {
+    providerRegistry: ProviderObservationRegistry;
+  },
+): StartupRecoveryController {
+  return createProductionStartupRecoveryController({
+    ...options,
+    observer: options.providerRegistry,
   });
 }
 
