@@ -56,15 +56,19 @@ export class ExecutionRuntime {
     this.ledger.append(receipt);
   }
 
-  private async withLease<T>(key: string, work: () => Promise<T>): Promise<T> {
-    const lease: ExecutionLease = await this.leaseStore.acquire(
+  private async withLease<T>(key: string, work: (lease: ExecutionLease) => Promise<T>): Promise<T> {
+    let lease: ExecutionLease = await this.leaseStore.acquire(
       key,
       this.leaseOwnerId,
       this.clock.now(),
       this.leaseTtlMs,
     );
     try {
-      return await work();
+      lease = await this.leaseStore.renew(lease, this.clock.now(), this.leaseTtlMs);
+      await this.leaseStore.assertCurrent(lease, this.clock.now());
+      const result = await work(lease);
+      await this.leaseStore.assertCurrent(lease, this.clock.now());
+      return result;
     } finally {
       await this.leaseStore.release(lease);
     }
