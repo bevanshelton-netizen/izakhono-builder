@@ -1,8 +1,11 @@
 import { mkdir, open, readFile } from "node:fs/promises";
-import { dirname } from "node:path";
+import { dirname, isAbsolute, normalize } from "node:path";
 import type { RecoveryRecord } from "./execution-recovery";
 import { validateExecutionReceipt } from "./execution-reliability";
 import type { ExecutionPersistenceStore } from "./execution-persistence";
+
+const PRODUCTION_LEDGER_ENV = "IZAKHONO_EXECUTION_LEDGER_PATH";
+const KNOWN_EPHEMERAL_PREFIXES = ["/tmp", "/var/task", "/workspace"];
 
 /**
  * Durable JSONL persistence for an IZAKHONO-owned persistent runtime.
@@ -82,4 +85,28 @@ export class FileExecutionPersistenceStore implements ExecutionPersistenceStore 
       throw error;
     }
   }
+}
+
+/**
+ * Production storage is fail-closed: no implicit /tmp or serverless fallback.
+ * IZAKHONO infrastructure must explicitly provide the durable ledger path.
+ */
+export function createProductionExecutionPersistenceStore(
+  env: Record<string, string | undefined> = process.env,
+): ExecutionPersistenceStore {
+  const configured = env[PRODUCTION_LEDGER_ENV]?.trim();
+  if (!configured) {
+    throw new Error(`${PRODUCTION_LEDGER_ENV} is required for production execution storage`);
+  }
+
+  const path = normalize(configured);
+  if (!isAbsolute(path)) {
+    throw new Error(`${PRODUCTION_LEDGER_ENV} must be an absolute persistent filesystem path`);
+  }
+
+  if (KNOWN_EPHEMERAL_PREFIXES.some((prefix) => path === prefix || path.startsWith(`${prefix}/`))) {
+    throw new Error(`${PRODUCTION_LEDGER_ENV} points to a known ephemeral filesystem location`);
+  }
+
+  return new FileExecutionPersistenceStore(path);
 }
