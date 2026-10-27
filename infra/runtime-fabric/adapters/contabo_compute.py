@@ -30,15 +30,20 @@ class ContaboConfig:
     @classmethod
     def from_env(cls) -> "ContaboConfig":
         values = {
-            "client_id": os.getenv("CONTABO_CLIENT_ID", ""),
-            "client_secret": os.getenv("CONTABO_CLIENT_SECRET", ""),
-            "username": os.getenv("CONTABO_API_USER", ""),
-            "password": os.getenv("CONTABO_API_PASSWORD", ""),
+            "CONTABO_CLIENT_ID": os.getenv("CONTABO_CLIENT_ID", ""),
+            "CONTABO_CLIENT_SECRET": os.getenv("CONTABO_CLIENT_SECRET", ""),
+            "CONTABO_API_USER": os.getenv("CONTABO_API_USER", ""),
+            "CONTABO_API_PASSWORD": os.getenv("CONTABO_API_PASSWORD", ""),
         }
         missing = [key for key, value in values.items() if not value]
         if missing:
             raise ValueError("Missing Contabo credentials: " + ", ".join(missing))
-        return cls(**values)
+        return cls(
+            client_id=values["CONTABO_CLIENT_ID"],
+            client_secret=values["CONTABO_CLIENT_SECRET"],
+            username=values["CONTABO_API_USER"],
+            password=values["CONTABO_API_PASSWORD"],
+        )
 
 
 class ContaboComputeClient:
