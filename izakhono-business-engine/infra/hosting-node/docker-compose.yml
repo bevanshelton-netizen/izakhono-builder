@@ -5,10 +5,14 @@ services:
     env_file:
       - .env
     ports:
-      - "127.0.0.1:${HOSTING_NODE_PORT:-8787}:8787"
+      - "${HOSTING_NODE_BIND:-127.0.0.1}:${HOSTING_NODE_PORT:-8787}:8787"
     volumes:
       - ./data:/var/lib/izakhono-node
-      - /var/run/docker.sock:/var/run/docker.sock
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,noexec,nosuid
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:8787/health"]
       interval: 30s
