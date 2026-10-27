@@ -18,6 +18,7 @@ export interface ReconciliationJournalEntry {
 export interface ReconciliationJournalStore {
   append(entry: ReconciliationJournalEntry): Promise<void>;
   load(): Promise<ReconciliationJournalEntry[]>;
+  appendNext?(entry: Omit<ReconciliationJournalEntry, "sequence">): Promise<ReconciliationJournalEntry>;
 }
 
 export class MemoryReconciliationJournalStore implements ReconciliationJournalStore {
@@ -33,6 +34,12 @@ export class MemoryReconciliationJournalStore implements ReconciliationJournalSt
     this.entries.push({ ...entry });
   }
 
+  async appendNext(entry: Omit<ReconciliationJournalEntry, "sequence">): Promise<ReconciliationJournalEntry> {
+    const complete = { ...entry, sequence: this.entries.length + 1 };
+    await this.append(complete);
+    return { ...complete };
+  }
+
   async load(): Promise<ReconciliationJournalEntry[]> {
     return this.entries.map((entry) => ({ ...entry }));
   }
@@ -42,11 +49,17 @@ export class ReconciliationJournal {
   constructor(private readonly store: ReconciliationJournalStore) {}
 
   async record(entry: Omit<ReconciliationJournalEntry, "sequence" | "schema">): Promise<ReconciliationJournalEntry> {
+    const completeWithoutSequence = {
+      schema: "izakhono.marketing.reconciliation-journal.v1" as const,
+      ...entry,
+    };
+    if (this.store.appendNext) {
+      return this.store.appendNext(completeWithoutSequence);
+    }
     const existing = await this.store.load();
     const complete: ReconciliationJournalEntry = {
-      schema: "izakhono.marketing.reconciliation-journal.v1",
+      ...completeWithoutSequence,
       sequence: existing.length + 1,
-      ...entry,
     };
     await this.store.append(complete);
     return { ...complete };
