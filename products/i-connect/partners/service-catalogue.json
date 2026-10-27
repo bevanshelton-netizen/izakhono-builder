@@ -1,0 +1,13 @@
+{
+  "schemaVersion":"1.0.0",
+  "products":[
+    {"id":"mobile","name":"I-CONNECT Mobile","delivery":["MVNO_MVNE"],"pricingModel":"monthly-plus-usage","networkSelection":true},
+    {"id":"esim","name":"I-CONNECT eSIM","delivery":["MVNO_MVNE"],"pricingModel":"activation-plus-monthly-plus-usage","networkSelection":true},
+    {"id":"fibre","name":"I-CONNECT Fibre","delivery":["WHOLESALE_ISP","FIBRE_WHOLESALE","WIRELESS_FIBRE","NETWORK_AGGREGATOR","ISP_RESELLER"],"pricingModel":"monthly","networkSelection":true},
+    {"id":"fixed-wireless","name":"I-CONNECT Fixed 5G/LTE","delivery":["WHOLESALE_ISP","WIRELESS_FIBRE","NETWORK_AGGREGATOR","ISP_RESELLER"],"pricingModel":"monthly","networkSelection":true},
+    {"id":"business-internet","name":"I-CONNECT Business Internet","delivery":["FIBRE_WHOLESALE","NETWORK_AGGREGATOR","CARRIER_BACKBONE","ISP_RESELLER"],"pricingModel":"tiered-monthly","networkSelection":true},
+    {"id":"iot","name":"I-CONNECT IoT","delivery":["MVNO_MVNE","CARRIER_BACKBONE"],"pricingModel":"device-plus-usage","networkSelection":true},
+    {"id":"cloud-connect","name":"I-CONNECT Cloud Connectivity","delivery":["CARRIER_BACKBONE","NETWORK_AGGREGATOR"],"pricingModel":"capacity-plus-port","networkSelection":true},
+    {"id":"secure-connect","name":"I-CONNECT Secure Connectivity","delivery":["CARRIER_BACKBONE","NETWORK_AGGREGATOR","FIBRE_WHOLESALE"],"pricingModel":"managed-monthly","networkSelection":true}
+  ]
+}
