@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server';
 import { dbFetch } from '@/lib/server-db';
+import { createBusinessEngineCheckout } from '@/lib/payment';
 
 /**
- * Creates the application-side checkout handoff only. It deliberately does not
- * create or charge a live financial object. The verified gateway webhook remains
- * the sole authority for paid-order activation.
+ * Creates a provider checkout only when the required Stripe configuration exists.
+ * Browser redirects never activate an order; verified gateway webhooks remain the
+ * sole authority for paid-order activation.
  */
 export async function POST(request: Request) {
   try {
@@ -15,10 +16,23 @@ export async function POST(request: Request) {
     const orders = await dbFetch(`business_engine_commercial_orders?select=id,plan,business_name,business_email,setup_amount_zar,monthly_amount_zar,status,payment_provider&id=eq.${encodeURIComponent(orderId)}`);
     const order = orders?.[0];
     if (!order) return NextResponse.json({ ok: false, error: 'Commercial order not found.' }, { status: 404 });
+    if (!['payment_pending', 'paid', 'provisioning', 'active'].includes(String(order.status))) {
+      return NextResponse.json({ ok: false, error: `Order cannot enter checkout from status ${order.status}.` }, { status: 409 });
+    }
+    if (['paid', 'provisioning', 'active'].includes(String(order.status))) {
+      return NextResponse.json({
+        ok: true,
+        order: { id: order.id, status: order.status },
+        payment: { activationAuthority: 'verified_webhook', checkoutAlreadyCompleted: true },
+      });
+    }
 
     const provider = process.env.BUSINESS_ENGINE_PAYMENT_PROVIDER || 'stripe';
-    const configured = provider === 'stripe' && Boolean(process.env.STRIPE_SECRET_KEY);
+    if (provider !== 'stripe') {
+      return NextResponse.json({ ok: false, error: `Payment provider '${provider}' is not implemented.` }, { status: 503 });
+    }
 
+    const checkout = await createBusinessEngineCheckout(request, order);
     return NextResponse.json({
       ok: true,
       order: {
@@ -31,15 +45,18 @@ export async function POST(request: Request) {
         status: order.status,
       },
       payment: {
-        provider,
-        configured,
+        provider: 'stripe',
+        configured: true,
+        checkoutUrl: checkout.checkoutUrl,
+        checkoutReference: checkout.checkoutReference,
         liveChargeCreated: false,
         activationAuthority: 'verified_webhook',
-        nextAction: configured ? 'provider_checkout_adapter' : 'configure_payment_provider',
       },
     });
   } catch (error) {
-    console.error('Business Engine checkout handoff failed', error);
-    return NextResponse.json({ ok: false, error: error instanceof Error ? error.message : 'Unable to prepare checkout.' }, { status: 500 });
+    console.error('Business Engine checkout failed', error);
+    const message = error instanceof Error ? error.message : 'Unable to create secure checkout.';
+    const status = /not configured|missing/i.test(message) ? 503 : 500;
+    return NextResponse.json({ ok: false, error: message, activationAuthority: 'verified_webhook' }, { status });
   }
 }
