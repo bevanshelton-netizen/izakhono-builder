@@ -4,6 +4,7 @@ import { join } from "node:path";
 import type { AdapterInstruction } from "./adapter-execution";
 import { ExecutionRuntime, type AdapterExecutor } from "./execution-runtime";
 import { FileExecutionPersistenceStore } from "./file-execution-persistence";
+import { FileExecutionLeaseStore } from "./execution-lease";
 
 const instruction: AdapterInstruction = {
   schema: "izakhono.marketing.adapter-instruction.v1",
@@ -87,6 +88,42 @@ try {
   }
   if (multi.receipts[0].executionId === multi.receipts[1].executionId) {
     throw new Error("Multi-network jobs must have independent execution identities");
+  }
+
+  const concurrentStore = new FileExecutionPersistenceStore(join(directory, "concurrent-ledger.jsonl"));
+  const concurrentLeaseStore = new FileExecutionLeaseStore(join(directory, "concurrent-leases"));
+  const runtimeA = await ExecutionRuntime.restore(
+    concurrentStore,
+    new SequenceExecutor(),
+    { maxAttempts: 3 },
+    undefined,
+    concurrentLeaseStore,
+    "runtime-a",
+  );
+  const runtimeB = await ExecutionRuntime.restore(
+    concurrentStore,
+    new SequenceExecutor(),
+    { maxAttempts: 3 },
+    undefined,
+    concurrentLeaseStore,
+    "runtime-b",
+  );
+  const concurrentInstructionA: AdapterInstruction = {
+    ...instruction,
+    campaignId: "campaign-runtime-concurrent-a",
+    approvalId: "approval-runtime-concurrent-a",
+  };
+  const concurrentInstructionB: AdapterInstruction = {
+    ...instruction,
+    campaignId: "campaign-runtime-concurrent-b",
+    approvalId: "approval-runtime-concurrent-b",
+    jobs: [{ ...instruction.jobs[0], campaignId: "campaign-runtime-concurrent-b", network: "instagram" }],
+  };
+  await Promise.all([runtimeA.run(concurrentInstructionA), runtimeB.run(concurrentInstructionB)]);
+  const concurrentRecords = await concurrentStore.load();
+  if (concurrentRecords.length !== 2) throw new Error("Concurrent runtimes must persist both receipts");
+  if (concurrentRecords[0].sequence !== 1 || concurrentRecords[1].sequence !== 2) {
+    throw new Error("Concurrent runtimes must preserve contiguous ledger sequence");
   }
 
   console.log("IZAKHONO MARKETING OS durable multi-network execution runtime contract validated");
