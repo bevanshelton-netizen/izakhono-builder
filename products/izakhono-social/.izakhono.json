@@ -12,7 +12,8 @@
   "infrastructure": {
     "policy": "owned-first-externally-reversible",
     "authoritative_source": "IZAKHONO CODE / Forge",
-    "owned_target": "NODE01",
+    "runtime_architecture": "IZAKHONO-owned-node-cluster",
+    "owned_target": "IZAKHONO-owned-node-cluster",
     "current_public_route": "NOT_YET_VERIFIED",
     "external_fallback": "TRANSITION_BRIDGE_PRESENT_PORTABLE_ENGINE_HOST_PENDING",
     "status_label": "NOT YET PUBLIC",
@@ -24,9 +25,9 @@
       "CONNECTA ENGINE local authentication"
     ],
     "payment_dependencies": [],
-    "backup_evidence": "PENDING_NODE01_PROOF",
-    "restore_evidence": "PENDING_NODE01_PROOF",
-    "rollback_evidence": "COMPOSE_ROLLBACK_PACKAGED_NOT_MACHINE_VERIFIED",
+    "backup_evidence": "PENDING_OWNED_NODE_CLUSTER_PROOF",
+    "restore_evidence": "PENDING_OWNED_NODE_CLUSTER_PROOF",
+    "rollback_evidence": "COMPOSE_ROLLBACK_PACKAGED_NOT_RUNTIME_VERIFIED",
     "portability": "provider-neutral Docker/OCI + PostgreSQL + durable storage",
     "supabase_edge_status": "temporary transition bridge only; not canonical CONNECTA engine"
   },
