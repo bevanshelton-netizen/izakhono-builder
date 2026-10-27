@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import './public-presence.css';
+import './appearance-overrides.css';
 
 export const metadata: Metadata = {
   title: 'CONNECTA by IZAKHONO — Public conversation, communities and opportunity',
