@@ -7,8 +7,7 @@
 - Engine: CONNECTA discovery engine 0.3.0
 - Source of truth: `main` at an immutable 40-character Git SHA
 - Runtime target: IZAKHONO-owned node cluster
-- Primary owned production node: `NODE01`
-- Node selection beyond NODE01: operational placement, failover and resilience decision within the owned cluster
+- Production target: IZAKHONO-owned node cluster; individual node selection is an operational placement, failover and resilience decision, not the product architecture.
 
 ## Release states
 
@@ -30,7 +29,7 @@
 
 ## Current gate
 
-The software release is packaged and CI-verifiable. The remaining promotion dependency is physical/runtime verification of the selected IZAKHONO-owned node target, beginning with NODE01 where it is the primary production target. Until the required runtime and production gates pass, the truthful public status remains **NOT YET VERIFIED**.
+The software release is packaged and CI-verifiable. The remaining promotion dependency is physical/runtime verification of the selected IZAKHONO-owned node target and the required cluster evidence. Until the required runtime and production gates pass, the truthful public status remains **NOT YET VERIFIED**.
 
 ## Activation sequence
 
