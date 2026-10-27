@@ -2,7 +2,7 @@
 
 **Owner-controlled compute and deployment runtime for the IZAKHONO ecosystem.**
 
-IZAKHONO NODE is not a GitHub runner and it is not a wrapper around Vercel, Railway or another hosting vendor. It is the software that turns hardware controlled by IZAKHONO into an authenticated deployment and service-execution node.
+IZAKHONO NODE is not a GitHub runner and it is not a wrapper around Vercel, Railway or another hosting vendor. It is the software runtime that turns hardware controlled by IZAKHONO into authenticated deployment and service-execution capacity across the IZAKHONO-owned node cluster.
 
 ## Core architecture
 
@@ -15,7 +15,7 @@ IZAKHONO CONTROL
      │
      │ HMAC-signed deployment job
      ▼
-IZAKHONO NODE
+IZAKHONO-OWNED NODE CLUSTER
      │
      ├── immutable source checkout
      ├── Docker build
@@ -23,48 +23,37 @@ IZAKHONO NODE
      ├── promote / rollback
      ├── Compose service stacks
      ├── deployment evidence
-     └── future cluster scheduling
+     ├── failover / resilience
+     └── cluster scheduling
+     │
+     ▼
+IZAKHONO EDGE / TLS
+
+Individual nodes are placement targets, not the production architecture.
 ```
 
-### NODE 01
+## Node placement
 
-NODE 01 is the preferred primary owner node.
+The owned cluster may contain multiple owner-controlled nodes. Individual node selection is an operational placement, failover and resilience decision. No single node or workstation is the canonical production dependency.
 
-It can initially run on the dedicated Windows laptop through the IZAKHONO owner-host Ubuntu/WSL environment. It does **not** require a GitHub self-hosted Actions registration token.
-
-Default local services:
+Default node-local services are loopback-bound unless explicitly exposed through the reviewed IZAKHONO EDGE/TLS path:
 
 - IZAKHONO NODE: `http://127.0.0.1:9191`
 - IZAKHONO CONTROL: `http://127.0.0.1:9292`
 - IZAKHONO CODE repositories: `/var/lib/izakhono-code/repos/*.git`
 
-The services bind to loopback by default. Public application traffic must go through the reviewed IZAKHONO EDGE/TLS path; NODE management ports are not public application endpoints.
+Public application traffic must go through the reviewed IZAKHONO EDGE/TLS path. NODE management ports are not public application endpoints.
 
 ## Sovereignty rules
 
-1. **IZAKHONO CODE is the preferred source.**
-   Jobs using `source=izakhono-code` resolve to owner-controlled bare Git repositories under `/var/lib/izakhono-code/repos`.
-
-2. **GitHub is a temporary mirror only.**
-   `source=github-mirror` remains available during migration and is restricted to the owner-controlled `bevanshelton-netizen` namespace. It can later be disabled with `IZAKHONO_ALLOW_GITHUB_MIRROR=false`.
-
-3. **Production means immutable.**
-   Production deployment jobs must request a full 40-character commit SHA. Branch names such as `main` are rejected for production promotion.
-
-4. **The node accepts signed commands only.**
-   IZAKHONO CONTROL signs each request with HMAC-SHA256, timestamp and one-time nonce. The node rejects stale, replayed or incorrectly signed jobs.
-
-5. **Jobs are idempotent.**
-   CONTROL derives an idempotency key from app/environment/ref/source unless one is explicitly supplied. Replayed deployment requests return the original job instead of creating duplicate production work.
-
-6. **Health before promotion.**
-   Single-service deployments build and start a local canary first. Compose services must pass a localhost health endpoint before they are accepted.
-
-7. **Rollback is automatic.**
-   Failed production health/public acceptance restores the previous image/revision where one exists.
-
-8. **Evidence is local and signed.**
-   Completed jobs write owner-node evidence under `/var/lib/izakhono-node/evidence` with job/output digests and an HMAC proof. The secret itself is never written into proof files.
+1. **IZAKHONO CODE is the preferred source.** Jobs using `source=izakhono-code` resolve to owner-controlled repositories.
+2. **GitHub is a temporary mirror only.** It remains available as an external fallback during migration and can later be disabled.
+3. **Production means immutable.** Production deployment jobs require a full 40-character commit SHA.
+4. **The node accepts signed commands only.** CONTROL signs requests with HMAC-SHA256, timestamp and one-time nonce.
+5. **Jobs are idempotent.** Replayed deployment requests do not create duplicate production work.
+6. **Health before promotion.** Services must pass their local health gates before promotion.
+7. **Rollback is automatic where possible.** Failed production health/public acceptance restores the previous revision where one exists.
+8. **Evidence is local and signed.** Completed jobs write owner-node evidence with job/output digests and an HMAC proof. Secrets are never written into proof files.
 
 ## Supported workload modes
 
@@ -72,102 +61,39 @@ The services bind to loopback by default. Public application traffic must go thr
 
 For applications with one Dockerfile and one application port.
 
-Example CONTROL request:
-
-```json
-{
-  "source": "izakhono-code",
-  "repository": "allegro-vibez",
-  "app": "allegro-vibez",
-  "ref": "0123456789012345678901234567890123456789",
-  "environment": "production",
-  "mode": "single",
-  "container_port": 8080,
-  "health_path": "/healthz",
-  "public_url": "https://allegro.example.com"
-}
-```
-
 ### Compose service
 
-For multi-process services such as ALLEGRO Radio.
-
-```json
-{
-  "source": "izakhono-code",
-  "repository": "allegro-vibez",
-  "app": "allegro-radio",
-  "ref": "0123456789012345678901234567890123456789",
-  "environment": "production",
-  "mode": "compose",
-  "compose_file": "radio/owner-node/docker-compose.yml",
-  "health_url": "http://127.0.0.1:8000/status-json.xsl",
-  "env_file": "/etc/izakhono/apps/allegro-radio.env"
-}
-```
-
-Environment files are restricted to `/etc/izakhono/apps/`.
-
-## One-click NODE 01 activation
-
-Prerequisite: the IZAKHONO Windows owner host must already be installed and Docker must be healthy.
-
-From this product folder, double-click:
-
-`START-IZAKHONO-NODE.cmd`
-
-The launcher invokes the Ubuntu owner host, installs NODE + CONTROL, creates machine-local secrets, enables the system services, verifies NODE readiness and CONTROL health, and writes activation evidence.
-
-It does **not** request a GitHub runner token.
-
-## Local owner credentials
-
-Installer-generated credentials remain on the owner host:
-
-- `/etc/izakhono/node.env`
-- `/etc/izakhono/control.env`
-- `/etc/izakhono/control.owner-token`
-
-Permissions are restricted to the local owner/root environment. Do not commit these files.
+For multi-process services. Environment files remain outside Git under `/etc/izakhono/apps/`.
 
 ## Cluster path
 
-The existing `infra/node-cluster/` software extends this runtime to four owner-controlled machines:
+The `infra/node-cluster/` software supports the IZAKHONO-owned cluster with multiple owner-controlled machines, encrypted secrets, WireGuard-native networking, replicated IZAKHONO DATA and tested backup/restore procedures.
 
-- NODE 01 — preferred primary
-- NODE 02 — backup/control-plane
-- NODE 03 — backup/control-plane
-- NODE 04 — DR/workload node
-
-The cluster layer uses k3s, encrypted secrets, WireGuard-native networking, replicated IZAKHONO DATA and tested backup/restore procedures. A cluster is only called production-ready after real hardware, failover, restore and external-edge tests pass.
+A cluster is only called production-ready after actual hardware/runtime evidence, failover, restore, security and external-edge tests pass. CI, repository declarations and topology files do not substitute for physical/runtime evidence.
 
 ## What this replaces
 
 IZAKHONO NODE is the long-term replacement for using a third-party CI runner as the production execution mechanism.
 
-Third-party source mirrors may still be used while repositories are being migrated, but the target flow is:
+Third-party source mirrors may remain available as reversible fallbacks, but the target flow is:
 
-**IZAKHONO CODE → IZAKHONO CONTROL → IZAKHONO NODE → IZAKHONO EDGE**
+**IZAKHONO CODE → IZAKHONO CONTROL → IZAKHONO-OWNED NODE CLUSTER → IZAKHONO EDGE**
 
 ## Readiness boundary
 
-CI can prove the software rules, syntax and security invariants. It cannot prove the actual Windows laptop, WSL environment, Docker daemon, disks, network, public TLS route or power resilience until NODE 01 is activated on the physical machine and the evidence checks pass.
+CI can prove software rules, syntax and security invariants. It cannot by itself prove the physical nodes, Docker runtime, disks, network, public TLS route, failover or power resilience. Those require actual owned-node runtime evidence and the production promotion gates.
 
+No application becomes **OWNED LIVE VERIFIED** merely because software CI passes.
 
-## Public cutover wave 1 — Allegro + The Chancellor
+## Public cutover
 
-The first owned-route migration wave is packaged under `infra/public-cutover/`.
+Owned-route migration waves must deploy the exact reviewed immutable production commits through IZAKHONO CONTROL, prove local health, then pass the reviewed EDGE/TLS, DNS and external HTTPS acceptance gates.
 
-Run `RUN-NODE01-WAVE1-LOCAL.cmd` on the owner host to deploy the exact reviewed production commits through IZAKHONO CONTROL and prove localhost health before touching DNS.
-
-Wave 1 rules:
+Wave rules:
 
 - IZAKHONO CODE is attempted first.
-- GitHub mirror source is permitted only when the internal repository itself is unavailable.
-- Build, runtime or health failures do not trigger a mirror retry.
-- Existing external production routes remain active.
-- The local wave does not supply `public_url`, alter DNS or activate EDGE routes.
-- Real owned hostnames are staged later with `STAGE-WAVE1-EDGE.ps1`.
-- `ACTIVATE-WAVE1-EDGE.ps1` defaults to dry-run and requires `-Apply` for Caddy changes.
-- `VERIFY-WAVE1-PUBLIC.ps1` is the final DNS/TLS/HTTPS/fallback acceptance gate.
-- No platform becomes **OWNED LIVE VERIFIED** merely because the local wave passes.
+- External source mirrors are permitted only as documented fallbacks.
+- Build, runtime or health failures do not trigger an unrelated mirror retry.
+- Existing external production routes remain active until owned-route acceptance passes.
+- DNS/TLS/public traffic changes require the applicable production evidence gates.
+- No platform becomes **OWNED LIVE VERIFIED** merely because a local rehearsal passes.
