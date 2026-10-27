@@ -1,0 +1,57 @@
+version: 1
+product: I-CONNECT
+policy:
+  customer_brand_owned: true
+  provider_swappable: true
+  provider_failure_must_not_change_customer_identity: true
+  owned_first: true
+  external_fallback_allowed: true
+
+providers:
+  - id: cellc-mvno
+    category: mobile-mvno
+    priority: 1
+    status: target
+    capabilities: [voice, sms, 4g, 5g, esim, physical-sim]
+  - id: vodacom-circles
+    category: mobile-mvno
+    priority: 2
+    status: target
+    capabilities: [voice, sms, 4g, 5g, esim, physical-sim, iot]
+  - id: afrinet
+    category: wholesale-isp
+    priority: 1
+    status: target
+    capabilities: [fibre, lte, fixed-5g, api-provisioning]
+  - id: openserve
+    category: fibre-wholesale
+    priority: 2
+    status: target
+    capabilities: [fibre, isp-reseller]
+  - id: wirulink
+    category: wireless-wholesale
+    priority: 2
+    status: target
+    capabilities: [wireless, fibre, white-label]
+  - id: konekt
+    category: network-aggregation
+    priority: 1
+    status: target
+    capabilities: [wireless, fibre, microwave, carrier-core]
+  - id: wecom
+    category: carrier-backbone
+    priority: 1
+    status: target
+    capabilities: [ip-transit, layer2, ethernet, international-connectivity]
+
+customer_identity:
+  canonical_id: IZAKHONO_ID
+  service_identity: ICONNECT_SERVICE_ID
+  provider_identifier_is_internal_only: true
+
+failover:
+  selection_order: [health, coverage, commercial_policy, capacity, cost]
+  preserve_number: true
+  preserve_customer_id: true
+  preserve_brand: true
+  audit_every_provider_switch: true
