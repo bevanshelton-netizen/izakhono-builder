@@ -1,0 +1,25 @@
+name: fortress-control-plane-ci
+
+on:
+  push:
+    paths:
+      - 'products/fortress-security/**'
+      - '.github/workflows/fortress-control-plane-ci.yml'
+      - 'package.json'
+  pull_request:
+    paths:
+      - 'products/fortress-security/**'
+      - '.github/workflows/fortress-control-plane-ci.yml'
+      - 'package.json'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --ignore-scripts --no-audit --no-fund
+      - run: npm run fortress:typecheck
+      - run: npm run fortress:control-plane:test
