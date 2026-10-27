@@ -8,6 +8,7 @@ const directory = await mkdtemp(join(tmpdir(), "izakhono-lease-"));
 try {
   const memory = new MemoryExecutionLeaseStore();
   const first = await memory.acquire("campaign:approval:facebook:scheduled", "node-a", "2026-10-27T08:00:00.000Z", 30_000);
+  await memory.assertCurrent(first, "2026-10-27T08:00:01.000Z");
   let memoryBlocked = false;
   try {
     await memory.acquire(first.key, "node-b", "2026-10-27T08:00:01.000Z", 30_000);
@@ -33,12 +34,21 @@ try {
   }
 
   const lease = (fulfilled[0] as PromiseFulfilledResult<Awaited<ReturnType<FileExecutionLeaseStore["acquire"]>>>).value;
-  await nodeA.release(lease);
+  const winningStore = results[0].status === "fulfilled" ? nodeA : nodeB;
+  await winningStore.assertCurrent(lease, "2026-10-27T08:00:01.000Z");
+  await winningStore.release(lease);
+
   const stale = await nodeA.acquire("campaign:approval:stale:scheduled", "node-a", "2026-10-27T08:00:00.000Z", 1_000);
   const recovered = await nodeB.acquire("campaign:approval:stale:scheduled", "node-b", "2026-10-27T08:00:02.000Z", 1_000);
-  if (recovered.ownerId !== "node-b") throw new Error("Expired lease must be recoverable");
+  let staleBlocked = false;
+  try {
+    await nodeA.assertCurrent(stale, "2026-10-27T08:00:02.100Z");
+  } catch {
+    staleBlocked = true;
+  }
+  if (!staleBlocked) throw new Error("Expired/replaced lease must fail its fencing checkpoint");
+  await nodeB.assertCurrent(recovered, "2026-10-27T08:00:02.100Z");
   await nodeB.release(recovered);
-  void stale;
 
   const expiredKey = "campaign:approval:expired-race:scheduled";
   await nodeA.acquire(expiredKey, "node-a", "2026-10-27T08:00:00.000Z", 1_000);
@@ -52,9 +62,10 @@ try {
     throw new Error("Concurrent expired-lease takeover must have exactly one winner");
   }
   const winner = (takeoverFulfilled[0] as PromiseFulfilledResult<Awaited<ReturnType<FileExecutionLeaseStore["acquire"]>>>).value;
-  await nodeA.release(winner).catch(async () => nodeB.release(winner));
+  const winnerStore = takeoverResults[0].status === "fulfilled" ? nodeA : nodeB;
+  await winnerStore.release(winner);
 
-  console.log("IZAKHONO MARKETING OS multi-process execution lease contract validated");
+  console.log("IZAKHONO MARKETING OS lease fencing contract validated");
 } finally {
   await rm(directory, { recursive: true, force: true });
 }
