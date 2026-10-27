@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import assert from 'node:assert/strict';
 import { appendAuditEvent, createAuditEvent, verifyAuditChain } from './audit-chain.js';
 
 const input = (action: string) => ({
@@ -6,23 +6,15 @@ const input = (action: string) => ({
   outcome: 'ALLOW' as const, timestamp: '2026-10-27T20:00:00.000Z'
 });
 
-describe('audit chain', () => {
-  it('creates and verifies a linked chain', () => {
-    let events = [createAuditEvent(input('READ'), 0)];
-    events = appendAuditEvent(events, input('REMEDIATE'));
-    expect(verifyAuditChain(events)).toBe(true);
-    expect(events[1].previousHash).toBe(events[0].eventHash);
-  });
+const first = createAuditEvent(input('READ'), 0);
+const events = appendAuditEvent([first], input('REMEDIATE'));
+assert.equal(verifyAuditChain(events), true);
+assert.equal(events[1].previousHash, events[0].eventHash);
 
-  it('detects tampering', () => {
-    const events = [createAuditEvent(input('READ'), 0)];
-    const tampered = [{ ...events[0], action: 'DELETE' }];
-    expect(verifyAuditChain(tampered)).toBe(false);
-  });
+const tampered = [{ ...first, action: 'DELETE' }];
+assert.equal(verifyAuditChain(tampered), false);
 
-  it('refuses appending to a corrupted chain', () => {
-    const events = [createAuditEvent(input('READ'), 0)];
-    const tampered = [{ ...events[0], metadata: { changed: 'yes' } }];
-    expect(() => appendAuditEvent(tampered, input('WRITE'))).toThrow(/invalid audit chain/);
-  });
-});
+const corrupted = [{ ...first, metadata: { changed: 'yes' } }];
+assert.throws(() => appendAuditEvent(corrupted, input('WRITE')), /invalid audit chain/);
+
+console.log('FORTRESS audit-chain tests passed');
