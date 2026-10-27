@@ -33,6 +33,7 @@ const systemClock: ExecutionRuntimeClock = {
 };
 
 const DEFAULT_LEASE_TTL_MS = 30_000;
+const PERSISTENCE_LEASE_KEY = "__izakhono_execution_persistence__";
 
 export class ExecutionRuntime {
   constructor(
@@ -47,13 +48,16 @@ export class ExecutionRuntime {
   ) {}
 
   private async persistReceipt(receipt: ExecutionReceipt): Promise<void> {
-    const sequence = this.ledger.snapshot().length + 1;
-    await this.persistence.append({
-      schema: "izakhono.marketing.recovery-record.v1",
-      sequence,
-      receipt: { ...receipt },
+    await this.withLease(PERSISTENCE_LEASE_KEY, async () => {
+      const sequence = this.ledger.snapshot().length + 1;
+      await this.persistence.append({
+        schema: "izakhono.marketing.recovery-record.v1",
+        sequence,
+        receipt: { ...receipt },
+      });
+      this.ledger.append(receipt);
+      return undefined;
     });
-    this.ledger.append(receipt);
   }
 
   private async withLease<T>(key: string, work: (lease: ExecutionLease) => Promise<T>): Promise<T> {
