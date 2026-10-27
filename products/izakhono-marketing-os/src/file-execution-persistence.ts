@@ -1,6 +1,7 @@
 import { mkdir, open, readFile } from "node:fs/promises";
 import { dirname } from "node:path";
 import type { RecoveryRecord } from "./execution-recovery";
+import { validateExecutionReceipt } from "./execution-reliability";
 import type { ExecutionPersistenceStore } from "./execution-persistence";
 
 /**
@@ -28,6 +29,10 @@ export class FileExecutionPersistenceStore implements ExecutionPersistenceStore 
       if (record.sequence !== expectedSequence) {
         throw new Error("Persistence sequence must be contiguous");
       }
+      if (record.schema !== "izakhono.marketing.recovery-record.v1") {
+        throw new Error("Invalid recovery record schema");
+      }
+      validateExecutionReceipt(record.receipt);
 
       const handle = await open(this.filePath, "a");
       try {
@@ -45,17 +50,24 @@ export class FileExecutionPersistenceStore implements ExecutionPersistenceStore 
   async load(): Promise<RecoveryRecord[]> {
     try {
       const content = await readFile(this.filePath, "utf8");
-      if (!content.trim()) return [];
+      if (!content) return [];
 
-      const records = content
-        .split("\n")
-        .filter(Boolean)
-        .map((line) => JSON.parse(line) as RecoveryRecord);
+      const lines = content.split("\n");
+      if (lines[lines.length - 1] === "") lines.pop();
+      if (lines.some((line) => line.trim() === "")) {
+        throw new Error("Persistence ledger contains an unexpected blank record line");
+      }
 
-      records.forEach((record, index) => {
+      const records = lines.map((line) => {
+        const record = JSON.parse(line) as RecoveryRecord;
         if (record.schema !== "izakhono.marketing.recovery-record.v1") {
           throw new Error("Invalid recovery record schema in persistence store");
         }
+        validateExecutionReceipt(record.receipt);
+        return record;
+      });
+
+      records.forEach((record, index) => {
         if (record.sequence !== index + 1) {
           throw new Error("Persistence sequence is not contiguous");
         }
