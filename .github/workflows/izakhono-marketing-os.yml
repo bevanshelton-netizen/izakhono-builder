@@ -23,5 +23,19 @@ jobs:
         run: npx --yes tsx@4.20.3 products/izakhono-marketing-os/src/execution-reconciliation-journal.test.ts
       - name: Validate execution reconciliation
         run: npx --yes tsx@4.20.3 products/izakhono-marketing-os/src/execution-reconciliation.test.ts
+      - name: Validate execution persistence
+        run: npx --yes tsx@4.20.3 products/izakhono-marketing-os/src/execution-persistence.test.ts
+      - name: Validate file execution persistence
+        run: npx --yes tsx@4.20.3 products/izakhono-marketing-os/src/file-execution-persistence.test.ts
+      - name: Validate execution recovery
+        run: npx --yes tsx@4.20.3 products/izakhono-marketing-os/src/execution-recovery.test.ts
+      - name: Validate execution reliability
+        run: npx --yes tsx@4.20.3 products/izakhono-marketing-os/src/execution-reliability.test.ts
+      - name: Validate execution lease
+        run: npx --yes tsx@4.20.3 products/izakhono-marketing-os/src/execution-lease.test.ts
+      - name: Validate execution runtime
+        run: npx --yes tsx@4.20.3 products/izakhono-marketing-os/src/execution-runtime.test.ts
+      - name: Typecheck execution runtime
+        run: npx --yes typescript@5.9.2 --noEmit --target ES2022 --module NodeNext --moduleResolution NodeNext products/izakhono-marketing-os/src/execution-runtime.ts products/izakhono-marketing-os/src/execution-recovery.ts products/izakhono-marketing-os/src/execution-persistence.ts products/izakhono-marketing-os/src/file-execution-persistence.ts products/izakhono-marketing-os/src/execution-lease.ts products/izakhono-marketing-os/src/execution-reliability.ts products/izakhono-marketing-os/src/adapter-execution.ts
       - name: Typecheck reconciliation journal
         run: npx --yes typescript@5.9.2 --noEmit --target ES2022 --module ESNext products/izakhono-marketing-os/src/execution-reconciliation-journal.ts
