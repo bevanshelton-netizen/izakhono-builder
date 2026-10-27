@@ -1,0 +1,32 @@
+name: IZAKHONO Super Cloud validation
+
+on:
+  push:
+    paths:
+      - 'products/izakhono-super-cloud/**'
+      - '.github/workflows/super-cloud-validation.yml'
+  pull_request:
+    paths:
+      - 'products/izakhono-super-cloud/**'
+      - '.github/workflows/super-cloud-validation.yml'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate Compose
+        run: docker compose -f products/izakhono-super-cloud/docker-compose.yml config >/dev/null
+      - name: Syntax check control plane
+        run: node --check products/izakhono-super-cloud/control-plane/server.mjs
+      - name: Validate infrastructure manifest
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          text = Path('products/izakhono-super-cloud/cloud.yaml').read_text()
+          required = ['owned-first', 'externally-reversible', 'controlPlane:', 'compute:', 'storage:', 'network:', 'security:', 'disasterRecovery:']
+          missing = [x for x in required if x not in text]
+          if missing:
+              raise SystemExit(f'Missing required cloud controls: {missing}')
+          print('Super Cloud manifest: PASS')
+          PY
