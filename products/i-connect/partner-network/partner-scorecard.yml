@@ -1,0 +1,44 @@
+version: 1
+product: I-CONNECT
+status: outreach-ready
+scoring:
+  weights:
+    commercial_economics: 20
+    white_label_customer_ownership: 15
+    api_provisioning: 15
+    coverage: 15
+    sla_support: 10
+    regulatory_fit: 10
+    portability_exit: 5
+    integration_effort: 5
+    scalability: 5
+partners:
+  - name: Cell C
+    category: MVNO
+    priority: P0
+    evidence: official-mvno-programme
+  - name: Afrinet
+    category: white-label-ISP
+    priority: P0
+    evidence: official-partner-programme
+  - name: Openserve
+    category: wholesale-fibre
+    priority: P0
+    evidence: official-isp-reseller-programme
+  - name: WIRUlink
+    category: white-label-wireless-fibre
+    priority: P0
+    evidence: official-channel-programme
+  - name: Konekt
+    category: network-aggregation
+    priority: P1
+    evidence: public-wholesale-positioning
+  - name: WECOM
+    category: carrier-backbone
+    priority: P0
+    evidence: official-wholesale-services
+rules:
+  - do_not_mark_signed_without_agreement
+  - do_not_mark_live_without_technical_evidence
+  - prefer_customer_ownership_and_white_label_rights
+  - require_exit_portability
