@@ -92,39 +92,36 @@ try {
 
   const concurrentStore = new FileExecutionPersistenceStore(join(directory, "concurrent-ledger.jsonl"));
   const concurrentLeaseStore = new FileExecutionLeaseStore(join(directory, "concurrent-leases"));
-  const runtimeA = await ExecutionRuntime.restore(
-    concurrentStore,
-    new SequenceExecutor(),
-    { maxAttempts: 3 },
-    undefined,
-    concurrentLeaseStore,
-    "runtime-a",
-  );
-  const runtimeB = await ExecutionRuntime.restore(
-    concurrentStore,
-    new SequenceExecutor(),
-    { maxAttempts: 3 },
-    undefined,
-    concurrentLeaseStore,
-    "runtime-b",
-  );
-  const concurrentInstructionA: AdapterInstruction = {
-    ...instruction,
-    campaignId: "campaign-runtime-concurrent-a",
-    approvalId: "approval-runtime-concurrent-a",
-  };
-  const concurrentInstructionB: AdapterInstruction = {
-    ...instruction,
-    campaignId: "campaign-runtime-concurrent-b",
-    approvalId: "approval-runtime-concurrent-b",
-    jobs: [{ ...instruction.jobs[0], campaignId: "campaign-runtime-concurrent-b", network: "instagram" }],
-  };
+  const runtimeA = await ExecutionRuntime.restore(concurrentStore, new SequenceExecutor(), { maxAttempts: 3 }, undefined, concurrentLeaseStore, "runtime-a");
+  const runtimeB = await ExecutionRuntime.restore(concurrentStore, new SequenceExecutor(), { maxAttempts: 3 }, undefined, concurrentLeaseStore, "runtime-b");
+  const concurrentInstructionA: AdapterInstruction = { ...instruction, campaignId: "campaign-runtime-concurrent-a", approvalId: "approval-runtime-concurrent-a" };
+  const concurrentInstructionB: AdapterInstruction = { ...instruction, campaignId: "campaign-runtime-concurrent-b", approvalId: "approval-runtime-concurrent-b", jobs: [{ ...instruction.jobs[0], campaignId: "campaign-runtime-concurrent-b", network: "instagram" }] };
   await Promise.all([runtimeA.run(concurrentInstructionA), runtimeB.run(concurrentInstructionB)]);
   const concurrentRecords = await concurrentStore.load();
   if (concurrentRecords.length !== 2) throw new Error("Concurrent runtimes must persist both receipts");
-  if (concurrentRecords[0].sequence !== 1 || concurrentRecords[1].sequence !== 2) {
-    throw new Error("Concurrent runtimes must preserve contiguous ledger sequence");
+  if (concurrentRecords[0].sequence !== 1 || concurrentRecords[1].sequence !== 2) throw new Error("Concurrent runtimes must preserve contiguous ledger sequence");
+
+  let now = Date.now();
+  const heartbeatClock = { now: () => new Date(now).toISOString() };
+  const heartbeatStore = new FileExecutionPersistenceStore(join(directory, "heartbeat-ledger.jsonl"));
+  class SlowExecutor implements AdapterExecutor {
+    async execute(): Promise<"success"> {
+      await new Promise((resolve) => setTimeout(resolve, 70));
+      now += 70;
+      return "success";
+    }
   }
+  const heartbeatRuntime = await ExecutionRuntime.restore(
+    heartbeatStore,
+    new SlowExecutor(),
+    { maxAttempts: 3 },
+    heartbeatClock,
+    new FileExecutionLeaseStore(join(directory, "heartbeat-leases")),
+    "heartbeat-runtime",
+    60,
+  );
+  const heartbeat = await heartbeatRuntime.run({ ...instruction, campaignId: "campaign-runtime-heartbeat", approvalId: "approval-runtime-heartbeat" });
+  if (heartbeat.receipts[0].result !== "success") throw new Error("Heartbeat execution must complete successfully");
 
   console.log("IZAKHONO MARKETING OS durable multi-network execution runtime contract validated");
 } finally {
