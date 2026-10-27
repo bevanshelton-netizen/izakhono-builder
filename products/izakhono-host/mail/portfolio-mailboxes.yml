@@ -19,7 +19,9 @@ platforms:
   - id: kora-network
     name: KORA NETWORK
     priority: critical
-    domain: TBD
+    domain: kora-network.co.za
+    domain_status: available_for_registration
+    fallback_domain: koraonline.co.za
     mailboxes:
       - info
       - news
