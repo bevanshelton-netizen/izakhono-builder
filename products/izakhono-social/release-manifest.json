@@ -5,7 +5,7 @@
   "engine_version": "0.3.0",
   "source_branch": "main",
   "runtime_target": "IZAKHONO-owned-node-cluster",
-  "preferred_owner_target": "NODE01",
+  "preferred_owner_target": "IZAKHONO-owned-node-cluster",
   "runtime_architecture": "owned-node-cluster",
   "release_state": "SOFTWARE_PACKAGED",
   "public_status": "NOT_YET_VERIFIED",
