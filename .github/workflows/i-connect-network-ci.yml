@@ -1,0 +1,57 @@
+name: I-CONNECT Network Routing CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'products/i-connect/network/**'
+      - 'products/i-connect/api/network-route.js'
+      - 'products/i-connect/server.js'
+      - '.github/workflows/i-connect-network-ci.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'products/i-connect/network/**'
+      - 'products/i-connect/api/network-route.js'
+      - 'products/i-connect/server.js'
+      - '.github/workflows/i-connect-network-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  network-routing:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+
+      - name: Validate provider router
+        run: |
+          node --check products/i-connect/api/network-route.js
+          node --check products/i-connect/server.js
+          node --experimental-default-type=module products/i-connect/network/provider-router.test.mjs
+
+      - name: Validate carrier-neutral contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q 'provider_swappable: true' products/i-connect/network/network-provider-manifest.yml
+          grep -q 'provider_failure_must_not_change_customer_identity: true' products/i-connect/network/network-provider-manifest.yml
+          grep -q 'audit_every_provider_switch: true' products/i-connect/network/network-provider-manifest.yml
+          grep -q "providerIdentifierIsInternalOnly: true" products/i-connect/api/network-route.js
+          echo '[PASS] Carrier-neutral identity and audit safeguards are present.'
+
+      - name: Validate no provider credentials in router
+        shell: bash
+        run: |
+          set -euo pipefail
+          ! grep -REqi '(password|secret|api[_-]?key|authorization)[[:space:]]*[:=]' products/i-connect/network products/i-connect/api/network-route.js
+          echo '[PASS] Provider routing code contains no credentials.'
