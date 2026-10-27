@@ -8,7 +8,9 @@ COPY package.json package-lock.json* ./
 RUN if [ -f package-lock.json ]; then npm ci --omit=dev; else npm install --omit=dev; fi
 
 COPY server.mjs ./server.mjs
-RUN mkdir -p /var/lib/izakhono-node && chown -R izakhono:izakhono /app /var/lib/izakhono-node
+COPY executor.mjs ./executor.mjs
+COPY registration.mjs ./registration.mjs
+RUN mkdir -p /var/lib/izakhono-node/releases && chown -R izakhono:izakhono /app /var/lib/izakhono-node
 
 USER izakhono
 EXPOSE 8787
