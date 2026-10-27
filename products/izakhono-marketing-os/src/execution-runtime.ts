@@ -8,6 +8,12 @@ import {
 } from "./execution-reliability";
 import { PersistentExecutionLedger, type ReplayInstruction } from "./execution-recovery";
 import type { ExecutionPersistenceStore } from "./execution-persistence";
+import {
+  createExecutionLeaseOwnerId,
+  MemoryExecutionLeaseStore,
+  type ExecutionLease,
+  type ExecutionLeaseStore,
+} from "./execution-lease";
 
 export interface AdapterExecutor {
   execute(instruction: AdapterInstruction | ReplayInstruction): ExecutionAttemptResult;
@@ -26,6 +32,8 @@ const systemClock: ExecutionRuntimeClock = {
   now: () => new Date().toISOString(),
 };
 
+const DEFAULT_LEASE_TTL_MS = 30_000;
+
 export class ExecutionRuntime {
   constructor(
     private readonly ledger: PersistentExecutionLedger,
@@ -33,6 +41,9 @@ export class ExecutionRuntime {
     private readonly retryPolicy: RetryPolicy,
     private readonly persistence: ExecutionPersistenceStore,
     private readonly clock: ExecutionRuntimeClock = systemClock,
+    private readonly leaseStore: ExecutionLeaseStore = new MemoryExecutionLeaseStore(),
+    private readonly leaseOwnerId: string = createExecutionLeaseOwnerId(),
+    private readonly leaseTtlMs: number = DEFAULT_LEASE_TTL_MS,
   ) {}
 
   private async persistReceipt(receipt: ExecutionReceipt): Promise<void> {
@@ -43,6 +54,20 @@ export class ExecutionRuntime {
       receipt: { ...receipt },
     });
     this.ledger.append(receipt);
+  }
+
+  private async withLease<T>(key: string, work: () => Promise<T>): Promise<T> {
+    const lease: ExecutionLease = await this.leaseStore.acquire(
+      key,
+      this.leaseOwnerId,
+      this.clock.now(),
+      this.leaseTtlMs,
+    );
+    try {
+      return await work();
+    } finally {
+      await this.leaseStore.release(lease);
+    }
   }
 
   async run(instruction: AdapterInstruction): Promise<RuntimeResult> {
@@ -56,21 +81,25 @@ export class ExecutionRuntime {
         job.network,
         job.scheduledAt,
       );
-      if (this.ledger.latest(key)) throw new Error(`Execution already recorded: ${key}`);
 
-      const result = this.executor.execute({ ...instruction, jobs: [job] });
-      const receipt = createExecutionReceipt(
-        `${instruction.campaignId}:${instruction.approvalId}:${job.network}:${job.scheduledAt}`,
-        instruction.campaignId,
-        instruction.approvalId,
-        key,
-        1,
-        result,
-        instruction.issuedAt,
-        instruction.adapter,
-        this.retryPolicy,
-      );
-      await this.persistReceipt(receipt);
+      const receipt = await this.withLease(key, async () => {
+        if (this.ledger.latest(key)) throw new Error(`Execution already recorded: ${key}`);
+
+        const result = this.executor.execute({ ...instruction, jobs: [job] });
+        const nextReceipt = createExecutionReceipt(
+          `${instruction.campaignId}:${instruction.approvalId}:${job.network}:${job.scheduledAt}`,
+          instruction.campaignId,
+          instruction.approvalId,
+          key,
+          1,
+          result,
+          instruction.issuedAt,
+          instruction.adapter,
+          this.retryPolicy,
+        );
+        await this.persistReceipt(nextReceipt);
+        return nextReceipt;
+      });
       receipts.push(receipt);
     }
 
@@ -78,21 +107,23 @@ export class ExecutionRuntime {
   }
 
   async replay(idempotencyKey: string): Promise<RuntimeResult> {
-    const replay = this.ledger.buildReplay(idempotencyKey);
-    const result = this.executor.execute(replay);
-    const receipt = createExecutionReceipt(
-      replay.executionId,
-      replay.campaignId,
-      replay.approvalId,
-      replay.idempotencyKey,
-      replay.attempt,
-      result,
-      this.clock.now(),
-      replay.adapter,
-      this.retryPolicy,
-    );
-    await this.persistReceipt(receipt);
-    return { receipts: [receipt], durable: true };
+    return this.withLease(idempotencyKey, async () => {
+      const replay = this.ledger.buildReplay(idempotencyKey);
+      const result = this.executor.execute(replay);
+      const receipt = createExecutionReceipt(
+        replay.executionId,
+        replay.campaignId,
+        replay.approvalId,
+        replay.idempotencyKey,
+        replay.attempt,
+        result,
+        this.clock.now(),
+        replay.adapter,
+        this.retryPolicy,
+      );
+      await this.persistReceipt(receipt);
+      return { receipts: [receipt], durable: true };
+    });
   }
 
   static async restore(
@@ -100,9 +131,12 @@ export class ExecutionRuntime {
     executor: AdapterExecutor,
     retryPolicy: RetryPolicy,
     clock: ExecutionRuntimeClock = systemClock,
+    leaseStore: ExecutionLeaseStore = new MemoryExecutionLeaseStore(),
+    leaseOwnerId: string = createExecutionLeaseOwnerId(),
+    leaseTtlMs: number = DEFAULT_LEASE_TTL_MS,
   ): Promise<ExecutionRuntime> {
     const records = await persistence.load();
     const ledger = new PersistentExecutionLedger(records);
-    return new ExecutionRuntime(ledger, executor, retryPolicy, persistence, clock);
+    return new ExecutionRuntime(ledger, executor, retryPolicy, persistence, clock, leaseStore, leaseOwnerId, leaseTtlMs);
   }
 }
