@@ -1,5 +1,6 @@
 const express = require('express');
 const path = require('path');
+const networkRoute = require('./api/network-route');
 
 const app = express();
 app.use(express.json({ limit: '1mb' }));
@@ -23,6 +24,7 @@ app.get('/api/health', (req, res) => {
     status: missing.length ? 'activation_required' : 'production_ready',
     pstnLive: configured.I_CONNECT_CARRIER_BRIDGE_URL && configured.I_CONNECT_CARRIER_BRIDGE_SECRET,
     realBilling: configured.I_CONNECT_PAYMENT_PROVIDER_SECRET,
+    networkRouter: 'ready',
     missing
   });
 });
@@ -33,6 +35,8 @@ app.get('/api/runtime', (req, res) => res.json({
   platformDependency: 'none',
   node: process.version
 }));
+
+app.all('/api/network/route', networkRoute);
 
 const port = Number(process.env.PORT || 3000);
 app.listen(port, () => console.log(`I-CONNECT listening on ${port}`));
