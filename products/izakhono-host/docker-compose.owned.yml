@@ -20,11 +20,29 @@ services:
     restart: unless-stopped
     environment:
       PORT: 8090
-      IZAKHONO_MAIL_API_URL: ${IZAKHONO_MAIL_API_URL:-}
+      IZAKHONO_MAIL_API_URL: ${IZAKHONO_MAIL_API_URL:-http://mail-bridge:8091}
       IZAKHONO_MAIL_API_TOKEN: ${IZAKHONO_MAIL_API_TOKEN:-}
     networks: [izakhono]
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8090/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  mail-bridge:
+    build: ./runtime/mail-bridge
+    restart: unless-stopped
+    environment:
+      PORT: 8091
+      IZAKHONO_MAIL_API_TOKEN: ${IZAKHONO_MAIL_API_TOKEN:?set IZAKHONO_MAIL_API_TOKEN}
+      SMTP_HOST: ${SMTP_HOST:-stalwart}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_TLS_MODE: ${SMTP_TLS_MODE:-starttls}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+    networks: [izakhono, izakhono-mail]
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8091/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
       interval: 15s
       timeout: 5s
       retries: 5
@@ -106,6 +124,9 @@ services:
 
 networks:
   izakhono:
+    driver: bridge
+  izakhono-mail:
+    name: izakhono-mail
     driver: bridge
 
 volumes:
