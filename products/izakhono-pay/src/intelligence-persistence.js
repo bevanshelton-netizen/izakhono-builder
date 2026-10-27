@@ -23,6 +23,10 @@ export function buildSnapshotRecord(snapshot, snapshotKey = snapshot?.snapshot_i
 
 export function buildExperimentRecord(experiment, candidate) {
   if (!experiment?.id || !candidate?.id) throw new Error('experiment_and_candidate_required');
+  const measurementSource = String(experiment.measurement_source || '').trim();
+  if (!['synthetic_sandbox', 'verified_production'].includes(measurementSource)) {
+    throw new Error('verified_measurement_source_required');
+  }
   return {
     candidate_key: candidate.id,
     change_class: candidate.change_class,
@@ -33,6 +37,7 @@ export function buildExperimentRecord(experiment, candidate) {
     observation_window: experiment.observation_window,
     rollback_criteria: experiment.rollback_criteria || ['guardrail_breach'],
     stage: 'sandbox',
+    measurement_source: measurementSource,
     live_money_movement: false,
     authorization_mode: 'sandbox_only'
   };
