@@ -1,4 +1,4 @@
-import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { hostname } from "node:os";
 import { join } from "node:path";
 import { randomUUID } from "node:crypto";
@@ -77,7 +77,16 @@ export class FileExecutionLeaseStore implements ExecutionLeaseStore {
       throw new Error(`Execution lease is held: ${key}`);
     }
 
-    await rm(path, { recursive: true, force: true });
+    const quarantine = `${path}.expired-${randomUUID()}`;
+    try {
+      await rename(path, quarantine);
+    } catch (error) {
+      if (codeOf(error) === "ENOENT") {
+        throw new Error(`Execution lease contention: ${key}`);
+      }
+      throw error;
+    }
+
     try {
       await mkdir(path);
       await writeFile(join(path, "lease.json"), JSON.stringify(lease), "utf8");
@@ -85,6 +94,8 @@ export class FileExecutionLeaseStore implements ExecutionLeaseStore {
     } catch (error) {
       if (codeOf(error) === "EEXIST") throw new Error(`Execution lease contention: ${key}`);
       throw error;
+    } finally {
+      await rm(quarantine, { recursive: true, force: true });
     }
   }
 
