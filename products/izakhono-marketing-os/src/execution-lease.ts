@@ -13,6 +13,7 @@ export interface ExecutionLease {
 export interface ExecutionLeaseStore {
   acquire(key: string, ownerId: string, now: string, ttlMs: number): Promise<ExecutionLease>;
   renew(lease: ExecutionLease, now: string, ttlMs: number): Promise<ExecutionLease>;
+  assertCurrent(lease: ExecutionLease, now: string): Promise<void>;
   release(lease: ExecutionLease): Promise<void>;
 }
 
@@ -32,13 +33,17 @@ export class MemoryExecutionLeaseStore implements ExecutionLeaseStore {
 
   async renew(lease: ExecutionLease, now: string, ttlMs: number): Promise<ExecutionLease> {
     validateLeaseInput(lease.key, lease.ownerId, now, ttlMs);
-    const current = this.leases.get(lease.key);
-    if (!current || current.ownerId !== lease.ownerId || current.acquiredAt !== lease.acquiredAt) {
-      throw new Error(`Execution lease ownership lost: ${lease.key}`);
-    }
+    const current = this.current(lease);
     const renewed = createLease(lease.key, lease.ownerId, now, ttlMs, lease.acquiredAt);
     this.leases.set(lease.key, renewed);
     return { ...renewed };
+  }
+
+  async assertCurrent(lease: ExecutionLease, now: string): Promise<void> {
+    const current = this.current(lease);
+    if (new Date(current.expiresAt).getTime() <= new Date(now).getTime()) {
+      throw new Error(`Execution lease expired: ${lease.key}`);
+    }
   }
 
   async release(lease: ExecutionLease): Promise<void> {
@@ -48,6 +53,14 @@ export class MemoryExecutionLeaseStore implements ExecutionLeaseStore {
       throw new Error(`Execution lease ownership lost: ${lease.key}`);
     }
     this.leases.delete(lease.key);
+  }
+
+  private current(lease: ExecutionLease): ExecutionLease {
+    const current = this.leases.get(lease.key);
+    if (!current || current.ownerId !== lease.ownerId || current.acquiredAt !== lease.acquiredAt) {
+      throw new Error(`Execution lease ownership lost: ${lease.key}`);
+    }
+    return current;
   }
 }
 
@@ -81,9 +94,7 @@ export class FileExecutionLeaseStore implements ExecutionLeaseStore {
     try {
       await rename(path, quarantine);
     } catch (error) {
-      if (codeOf(error) === "ENOENT") {
-        throw new Error(`Execution lease contention: ${key}`);
-      }
+      if (codeOf(error) === "ENOENT") throw new Error(`Execution lease contention: ${key}`);
       throw error;
     }
 
@@ -106,9 +117,22 @@ export class FileExecutionLeaseStore implements ExecutionLeaseStore {
     if (current.ownerId !== lease.ownerId || current.acquiredAt !== lease.acquiredAt) {
       throw new Error(`Execution lease ownership lost: ${lease.key}`);
     }
+    if (new Date(current.expiresAt).getTime() <= new Date(now).getTime()) {
+      throw new Error(`Execution lease expired: ${lease.key}`);
+    }
     const renewed = createLease(lease.key, lease.ownerId, now, ttlMs, lease.acquiredAt);
     await writeFile(join(path, "lease.json"), JSON.stringify(renewed), "utf8");
     return { ...renewed };
+  }
+
+  async assertCurrent(lease: ExecutionLease, now: string): Promise<void> {
+    const current = await this.readLease(this.pathFor(lease.key));
+    if (current.ownerId !== lease.ownerId || current.acquiredAt !== lease.acquiredAt) {
+      throw new Error(`Execution lease ownership lost: ${lease.key}`);
+    }
+    if (new Date(current.expiresAt).getTime() <= new Date(now).getTime()) {
+      throw new Error(`Execution lease expired: ${lease.key}`);
+    }
   }
 
   async release(lease: ExecutionLease): Promise<void> {
