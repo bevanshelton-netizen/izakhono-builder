@@ -6,6 +6,7 @@ import { spawn } from 'node:child_process';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { request as httpsRequest } from 'node:https';
 import { request as httpRequest } from 'node:http';
+import { reportReleaseCompletion } from './registration.mjs';
 
 const root = process.env.IZAKHONO_RELEASE_ROOT || '/var/lib/izakhono-node/releases';
 const maxArtifactBytes = Number(process.env.IZAKHONO_MAX_ARTIFACT_BYTES || 100 * 1024 * 1024);
@@ -123,6 +124,30 @@ async function stopRelease(id) {
   processes.delete(id);
 }
 
+async function callbackWithRetry(request, finalState) {
+  if (!request.release_queue_id) return { status: 'not_configured' };
+  let lastError = null;
+  for (let attempt = 1; attempt <= 5; attempt += 1) {
+    try {
+      await reportReleaseCompletion({
+        release_queue_id: request.release_queue_id,
+        provider_request_id: finalState.provider_request_id,
+        published_url: finalState.published_url,
+        handover_url: finalState.published_url,
+        version: finalState.version,
+        checksum: request.checksum,
+        health_url: finalState.health_url,
+        execution_status: finalState.execution_status,
+      });
+      return { status: 'confirmed', attempts: attempt };
+    } catch (error) {
+      lastError = error instanceof Error ? error.message : 'CONTROL_PLANE_CALLBACK_FAILED';
+      if (attempt < 5) await sleep(1000 * (2 ** (attempt - 1)));
+    }
+  }
+  return { status: 'pending', attempts: 5, error: lastError };
+}
+
 export async function executeRelease(request) {
   if (!safeId(request.provider_request_id) || !safeVersion(request.version)) throw new Error('INVALID_RELEASE_ID_OR_VERSION');
   if (!request.artifact_url || !request.checksum) throw new Error('ARTIFACT_URL_CHECKSUM_REQUIRED');
@@ -142,7 +167,7 @@ export async function executeRelease(request) {
     const stagingDir = path.join(root, `${id}.staging`);
     const archive = path.join(root, `${id}.artifact`);
     const port = allocatePort(id);
-    const state = { provider_request_id: id, version: request.version, execution_status: 'running', started_at: started, published_url: null, port };
+    const state = { provider_request_id: id, release_queue_id: request.release_queue_id || null, version: request.version, execution_status: 'running', started_at: started, published_url: null, port };
     await writeState(id, state);
     try {
       await fs.rm(stagingDir, { recursive: true, force: true });
@@ -179,7 +204,9 @@ export async function executeRelease(request) {
       const base = String(process.env.IZAKHONO_PUBLIC_BASE_URL || '').replace(/\/$/, '');
       if (!base) throw new Error('PUBLIC_BASE_URL_REQUIRED');
       const publishedUrl = `${base}/releases/${encodeURIComponent(id)}/`;
-      const finalState = { ...state, execution_status: 'published', phase: 'verified', release_dir: releaseDir, health_url: healthUrl, published_url: publishedUrl, completed_at: new Date().toISOString() };
+      let finalState = { ...state, execution_status: 'published', phase: 'verified', release_dir: releaseDir, health_url: healthUrl, published_url: publishedUrl, completed_at: new Date().toISOString() };
+      const callback = await callbackWithRetry(request, finalState);
+      finalState = { ...finalState, control_plane_callback: callback };
       await writeState(id, finalState);
       return finalState;
     } catch (error) {
