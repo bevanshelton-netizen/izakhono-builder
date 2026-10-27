@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -61,6 +61,33 @@ describe("FileExecutionPersistenceStore", () => {
       const store = new FileExecutionPersistenceStore(path);
       await store.append(record(1));
       await expect(store.append(record(3))).rejects.toThrow("Persistence sequence must be contiguous");
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+
+  it("fails closed on a malformed or blank ledger record", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "izakhono-execution-"));
+    const path = join(directory, "ledger.jsonl");
+
+    try {
+      await writeFile(path, `${JSON.stringify(record(1))}\n\n`, "utf8");
+      const store = new FileExecutionPersistenceStore(path);
+      await expect(store.load()).rejects.toThrow("unexpected blank record line");
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+
+  it("fails closed when a persisted receipt is structurally invalid", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "izakhono-execution-"));
+    const path = join(directory, "ledger.jsonl");
+
+    try {
+      const invalid = { ...record(1), receipt: { ...record(1).receipt, nextAction: "complete" } };
+      await writeFile(path, `${JSON.stringify(invalid)}\n`, "utf8");
+      const store = new FileExecutionPersistenceStore(path);
+      await expect(store.load()).rejects.toThrow("Successful execution must complete");
     } finally {
       await rm(directory, { recursive: true, force: true });
     }
