@@ -1,0 +1,121 @@
+version: 1
+product: IZAKHONO MAIL
+policy: owned-first
+purpose: >-
+  Central mailbox provisioning manifest for authorized IZAKHONO platforms.
+  Domains remain provider/registry-bound until ownership and DNS are verified.
+
+standard_mailboxes:
+  - info
+  - admin
+  - support
+  - accounts
+  - sales
+  - partnerships
+  - security
+  - noreply
+
+platforms:
+  - id: kora-network
+    name: KORA NETWORK
+    priority: critical
+    domain: TBD
+    mailboxes:
+      - info
+      - news
+      - sports
+      - sales
+      - partnerships
+      - support
+      - accounts
+      - security
+      - noreply
+  - id: i-connect
+    name: I-CONNECT
+    priority: high
+    domain: TBD
+  - id: faisready
+    name: FAISReady
+    priority: high
+    domain: TBD
+  - id: doxa-sure
+    name: DOXA-SURE
+    priority: high
+    domain: TBD
+  - id: edu-build
+    name: Edu-Build Institute
+    priority: high
+    domain: TBD
+  - id: allegro-vibez
+    name: Allegro Vibez
+    priority: high
+    domain: TBD
+  - id: izakhono-nav
+    name: IZAKHONO NAV
+    priority: high
+    domain: TBD
+  - id: izakhono-artwork
+    name: IZAKHONO ARTWORK
+    priority: high
+    domain: TBD
+  - id: izakhono-invest
+    name: IZAKHONO INVEST
+    priority: high
+    domain: TBD
+  - id: izakhono-builder
+    name: IZAKHONO BUILDER
+    priority: high
+    domain: TBD
+  - id: izakhono-host
+    name: IZAKHONO HOST
+    priority: critical
+    domain: TBD
+  - id: fortress
+    name: FORTRESS
+    priority: critical
+    domain: TBD
+  - id: izakhono-cloud
+    name: IZAKHONO CLOUD
+    priority: critical
+    domain: TBD
+  - id: izakhono-code
+    name: IZAKHONO CODE
+    priority: high
+    domain: TBD
+  - id: izakhono-work
+    name: IZAKHONO WORK
+    priority: high
+    domain: TBD
+  - id: kora-gaming
+    name: KORA GAMING
+    priority: high
+    domain: TBD
+  - id: kora-market
+    name: KORA MARKET
+    priority: high
+    domain: TBD
+
+provisioning_order:
+  - resolve_domain_owner
+  - provision_dns
+  - provision_mx
+  - provision_spf
+  - provision_dkim
+  - provision_dmarc
+  - create_mailboxes
+  - create_aliases
+  - enable_webmail
+  - enable_imap_smtp
+  - run_acceptance_tests
+  - record_delivery_evidence
+  - publish_credentials_via_secure_handover
+
+status_rules:
+  - RESERVED
+  - DNS_READY
+  - MAIL_READY
+  - DELIVERY_VERIFIED
+  - LIVE_VERIFIED
+
+never_claim_live_without_delivery_evidence: true
+never_store_mail_credentials_in_source: true
