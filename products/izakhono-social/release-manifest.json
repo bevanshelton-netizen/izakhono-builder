@@ -1,0 +1,24 @@
+{
+  "product": "CONNECTA by IZAKHONO",
+  "package": "products/izakhono-social",
+  "web_version": "0.1.0",
+  "engine_version": "0.3.0",
+  "source_branch": "main",
+  "runtime_target": "IZAKHONO Runtime Fabric",
+  "preferred_owner_target": "NODE01",
+  "release_state": "SOFTWARE_PACKAGED",
+  "public_status": "NOT_YET_VERIFIED",
+  "deployment_policy": "immutable-sha",
+  "external_hosting": "fallback-only",
+  "production_gate": "products/izakhono-node/production-deployment-gate.sh",
+  "public_cutover_requires": [
+    "cluster-physical",
+    "connecta-local",
+    "failover",
+    "backup-restore",
+    "security",
+    "edge-tls",
+    "external-https"
+  ],
+  "rollback_required": true
+}
