@@ -1,0 +1,70 @@
+apiVersion: cloud.izakhono/v1
+kind: SuperCloud
+metadata:
+  name: izakhono-super-cloud
+  owner: izakhono
+spec:
+  policy:
+    ownership: owned-first
+    portability: externally-reversible
+    productionEvidenceRequired: true
+  controlPlane:
+    database: postgresql
+    cache: valkey
+    api: izakhono-host-control-plane
+  regions:
+    - name: za-jhb-01
+      country: ZA
+      mode: owned-target
+    - name: za-cpt-01
+      country: ZA
+      mode: owned-target
+    - name: eu-fra-01
+      country: DE
+      mode: external-fallback
+    - name: us-east-01
+      country: US
+      mode: external-fallback
+  services:
+    compute:
+      adapters: [docker, vm, bare-metal]
+    storage:
+      object: [minio, s3-compatible]
+      database: [postgresql]
+      cache: [valkey]
+    network:
+      dns: authoritative
+      ingress: caddy
+      tls: acme
+      loadBalancing: true
+      privateNetworks: true
+    mail:
+      engine: stalwart
+      enabled: true
+    security:
+      identity: fortress
+      audit: true
+      secrets: external-secret-store
+    ai:
+      gateway: true
+      inferenceAdapters: [cpu, gpu, external-api]
+    media:
+      origin: true
+      transcoding: true
+      streaming: true
+  workloads:
+    - websites
+    - APIs
+    - SaaS
+    - databases
+    - object-storage
+    - email
+    - AI
+    - media
+    - CI-CD
+    - customer-hosting
+  disasterRecovery:
+    backups: required
+    restoreTests: required
+    rollback: required
+    crossRegionReplication: planned
