@@ -4,16 +4,16 @@
   "web_version": "0.1.0",
   "engine_version": "0.3.0",
   "source_branch": "main",
-  "runtime_target": "IZAKHONO-owned-node-cluster",
-  "preferred_owner_target": "IZAKHONO-owned-node-cluster",
-  "runtime_architecture": "owned-node-cluster",
+  "runtime_target": "IZAKHONO-owned-runtime",
+  "preferred_owner_target": "operator-selected-owned-runtime",
+  "runtime_architecture": "provider-neutral-owned-runtime",
   "release_state": "SOFTWARE_PACKAGED",
   "public_status": "NOT_YET_VERIFIED",
   "deployment_policy": "immutable-sha",
   "external_hosting": "fallback-only",
   "production_gate": "products/izakhono-node/production-deployment-gate.sh",
   "public_cutover_requires": [
-    "cluster-physical",
+    "runtime-host",
     "connecta-local",
     "failover",
     "backup-restore",
@@ -21,5 +21,8 @@
     "edge-tls",
     "external-https"
   ],
-  "rollback_required": true
+  "rollback_required": true,
+  "physical_node_required": false,
+  "runtime_selection": "operator-controlled-or-approved-cloud-runtime",
+  "node_identity": "logical-runtime-instance"
 }
