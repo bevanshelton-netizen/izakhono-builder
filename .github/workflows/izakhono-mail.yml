@@ -1,0 +1,38 @@
+name: IZAKHONO MAIL validation
+
+on:
+  push:
+    paths:
+      - 'products/izakhono-host/mail/**'
+      - 'products/izakhono-host/docker-compose.owned.yml'
+      - '.github/workflows/izakhono-mail.yml'
+  pull_request:
+    paths:
+      - 'products/izakhono-host/mail/**'
+      - 'products/izakhono-host/docker-compose.owned.yml'
+      - '.github/workflows/izakhono-mail.yml'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate compose files
+        run: |
+          docker compose -f products/izakhono-host/docker-compose.owned.yml config >/dev/null
+          docker compose -f products/izakhono-host/mail/docker-compose.mail.yml config >/dev/null
+      - name: Validate mail bridge JavaScript
+        run: node --check products/izakhono-host/runtime/mail-bridge/server.mjs
+      - name: Validate portfolio manifest
+        run: |
+          python3 - <<'PY'
+          import pathlib
+          p = pathlib.Path('products/izakhono-host/mail/portfolio-mailboxes.yml').read_text()
+          required = ['KORA NETWORK', 'I-CONNECT', 'FAISReady', 'DOXA-SURE', 'Edu-Build Institute', 'Allegro Vibez', 'IZAKHONO NAV', 'IZAKHONO HOST', 'FORTRESS']
+          missing = [x for x in required if x not in p]
+          if missing:
+              raise SystemExit(f'Missing platforms: {missing}')
+          if 'password:' in p.lower() or 'smtp_pass:' in p.lower():
+              raise SystemExit('Secret-like mailbox credentials found in manifest')
+          print('portfolio manifest: PASS')
+          PY
