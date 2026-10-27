@@ -26,7 +26,7 @@ jobs:
       - name: Validate execution persistence
         run: npx --yes tsx@4.20.3 products/izakhono-marketing-os/src/execution-persistence.test.ts
       - name: Validate file execution persistence
-        run: npx --yes tsx@4.20.3 products/izakhono-marketing-os/src/file-execution-persistence.test.ts
+        run: npx --yes vitest@3.2.4 run products/izakhono-marketing-os/src/file-execution-persistence.test.ts
       - name: Validate execution recovery
         run: npx --yes tsx@4.20.3 products/izakhono-marketing-os/src/execution-recovery.test.ts
       - name: Validate execution reliability
