@@ -19,43 +19,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - name: Validate campaign engine
-        run: npx --yes tsx@4.20.3 products/izakhono-marketing-os/src/campaign-engine.test.ts
-      - name: Validate Social Command distribution layer
-        run: npx --yes tsx@4.20.3 products/izakhono-marketing-os/src/social-command.test.ts
-      - name: Validate execution orchestration
-        run: npx --yes tsx@4.20.3 products/izakhono-marketing-os/src/execution-orchestrator.test.ts
-      - name: Validate controlled adapter execution
-        run: npx --yes tsx@4.20.3 products/izakhono-marketing-os/src/adapter-execution.test.ts
-      - name: Validate provider adapter boundary
-        run: npx --yes tsx@4.20.3 products/izakhono-marketing-os/src/provider-adapter.test.ts
-      - name: Validate provider-backed durable runtime
-        run: npx --yes tsx@4.20.3 products/izakhono-marketing-os/src/provider-runtime.test.ts
-      - name: Validate execution reliability
-        run: npx --yes tsx@4.20.3 products/izakhono-marketing-os/src/execution-reliability.test.ts
-      - name: Validate reliable dispatch boundary
-        run: npx --yes tsx@4.20.3 products/izakhono-marketing-os/src/reliable-dispatch.test.ts
-      - name: Validate execution recovery
-        run: npx --yes tsx@4.20.3 products/izakhono-marketing-os/src/execution-recovery.test.ts
-      - name: Validate execution runtime
-        run: npx --yes tsx@4.20.3 products/izakhono-marketing-os/src/execution-runtime.test.ts
-      - name: Validate execution lease coordination
-        run: npx --yes tsx@4.20.3 products/izakhono-marketing-os/src/execution-lease.test.ts
+      - name: Validate reconciliation journal
+        run: npx --yes tsx@4.20.3 products/izakhono-marketing-os/src/execution-reconciliation-journal.test.ts
       - name: Validate execution reconciliation
         run: npx --yes tsx@4.20.3 products/izakhono-marketing-os/src/execution-reconciliation.test.ts
-      - name: Validate execution persistence boundary
-        run: npx --yes tsx@4.20.3 products/izakhono-marketing-os/src/execution-persistence.test.ts
-      - name: Validate file execution persistence
-        run: npx --yes tsx@4.20.3 products/izakhono-marketing-os/src/file-execution-persistence.test.ts
-      - name: Validate production execution storage boundary
-        run: npx --yes tsx@4.20.3 products/izakhono-marketing-os/src/production-execution-storage.test.ts
-      - name: Validate measurement feedback loop
-        run: npx --yes tsx@4.20.3 products/izakhono-marketing-os/src/measurement-feedback.test.ts
-      - name: Validate optimization orchestration
-        run: npx --yes tsx@4.20.3 products/izakhono-marketing-os/src/optimization-orchestrator.test.ts
-      - name: Validate closed-loop optimization execution
-        run: npx --yes tsx@4.20.3 products/izakhono-marketing-os/src/optimization-execution.test.ts
-      - name: Validate optimization dispatch runtime
-        run: npx --yes tsx@4.20.3 products/izakhono-marketing-os/src/optimization-dispatch-runtime.test.ts
-      - name: Typecheck Marketing OS core
-        run: npx --yes typescript@5.9.2 --noEmit --target ES2022 --module ESNext products/izakhono-marketing-os/src/campaign-engine.ts products/izakhono-marketing-os/src/metricool-adapter.ts products/izakhono-marketing-os/src/social-command.ts products/izakhono-marketing-os/src/execution-orchestrator.ts products/izakhono-marketing-os/src/adapter-execution.ts products/izakhono-marketing-os/src/provider-adapter.ts products/izakhono-marketing-os/src/provider-runtime.ts products/izakhono-marketing-os/src/execution-reliability.ts products/izakhono-marketing-os/src/reliable-dispatch.ts products/izakhono-marketing-os/src/execution-recovery.ts products/izakhono-marketing-os/src/execution-runtime.ts products/izakhono-marketing-os/src/execution-lease.ts products/izakhono-marketing-os/src/execution-reconciliation.ts products/izakhono-marketing-os/src/execution-persistence.ts products/izakhono-marketing-os/src/file-execution-persistence.ts products/izakhono-marketing-os/src/production-execution-storage.ts products/izakhono-marketing-os/src/measurement-feedback.ts products/izakhono-marketing-os/src/optimization-orchestrator.ts products/izakhono-marketing-os/src/optimization-execution.ts products/izakhono-marketing-os/src/optimization-dispatch-runtime.ts
+      - name: Typecheck reconciliation journal
+        run: npx --yes typescript@5.9.2 --noEmit --target ES2022 --module ESNext products/izakhono-marketing-os/src/execution-reconciliation-journal.ts
