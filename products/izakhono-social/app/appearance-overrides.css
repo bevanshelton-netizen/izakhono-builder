@@ -1,0 +1,22 @@
+/* CONNECTA visual refinement: layout, hierarchy, responsive polish */
+:root{--cx-bg:#f7faf8;--cx-surface:#fff;--cx-border:#e2ebe7;--cx-text:#102b24;--cx-muted:#6b7d77;--cx-primary:#0b6b57;--cx-primary-dark:#073f34;--cx-accent:#d8ad42}
+html,body{background:var(--cx-bg);-webkit-font-smoothing:antialiased}
+body{overflow-x:hidden}
+button,a,input,textarea,select{transition:background-color .16s ease,border-color .16s ease,box-shadow .16s ease,transform .16s ease,color .16s ease}
+button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{outline:3px solid rgba(15,106,86,.22);outline-offset:2px}
+.topbar{height:76px;padding:0 clamp(14px,2.5vw,34px);background:rgba(255,255,255,.94);backdrop-filter:blur(16px);border-bottom-color:rgba(217,229,224,.9);grid-template-columns:minmax(220px,290px) minmax(260px,1fr) minmax(190px,290px)}
+.brandWrap{gap:12px}.brandMark{width:44px;height:44px;border-radius:13px}.brand{font-size:14px;letter-spacing:.11em}.search{height:46px;border-radius:14px;background:#f3f7f5;border-color:#e4ece8;box-shadow:inset 0 1px rgba(255,255,255,.8)}.search:focus-within{background:#fff;border-color:#9cc9bb;box-shadow:0 0 0 4px rgba(15,106,86,.07)}
+.iconButton,.profileButton{border-color:#e0e9e5;box-shadow:0 2px 8px rgba(22,57,48,.035)}.iconButton:hover,.profileButton:hover{background:#f4f8f6;transform:translateY(-1px)}
+.privacyStrip{padding:8px 16px;background:linear-gradient(90deg,#07382f,#0c5546,#07382f);font-size:11px}
+.threeColumn{max-width:1540px;grid-template-columns:230px minmax(0,760px) 300px;gap:28px;padding:28px clamp(14px,3vw,34px)}
+.leftRail,.rightRail{top:104px}.navList{gap:3px}.navItem{padding:11px 13px;border-radius:12px}.navItem:hover,.navItem.active{background:#e4f1ec;box-shadow:inset 3px 0 var(--cx-primary)}
+.feed{gap:18px}.heroCard{min-height:230px;padding:32px 34px;border-radius:26px;box-shadow:0 16px 45px rgba(18,67,55,.12)}.heroCard h1{font-size:clamp(34px,4vw,46px);max-width:600px}.heroSeal{width:124px;height:124px;border-radius:36px;transform:rotate(3deg)}
+.composer,.postCard,.sideCard,.safetyCard{border-radius:20px;border-color:var(--cx-border);box-shadow:0 8px 28px rgba(24,63,52,.055)}.composer{padding:18px}.composer textarea{background:#f6f9f7;border:1px solid transparent}.composer textarea:focus{background:#fff;border-color:#a4cdbf;box-shadow:0 0 0 4px rgba(15,106,86,.06)}.postButton{box-shadow:0 8px 18px rgba(15,106,86,.18)}.postButton:hover{transform:translateY(-1px);background:#0a604f}
+.postCard{padding:20px}.postText{font-size:15px;line-height:1.65}.postActions button{min-height:36px}.postActions button:hover{background:#eef5f2;color:var(--cx-primary-dark)}
+.badge{letter-spacing:.02em}.sideTitle h3{letter-spacing:-.01em}.person button{transition:all .16s ease}.person button:hover{background:#e9f4f0;border-color:#b8d8cd}
+.globalStatus{box-shadow:0 4px 16px rgba(20,75,61,.05)}
+.policyPage{padding:64px 24px 90px}.policyGrid section,.standards li{box-shadow:0 8px 24px rgba(25,64,53,.045)}
+@media(max-width:1150px){.threeColumn{grid-template-columns:205px minmax(0,1fr);gap:20px}.topbar{grid-template-columns:230px minmax(180px,1fr) 160px}.heroCard{padding:28px}}
+@media(max-width:780px){.topbar{height:62px;grid-template-columns:1fr auto;padding:0 12px}.brandMark{width:38px;height:38px;border-radius:12px}.brand{font-size:12px}.privacyStrip{font-size:10px;padding:7px 10px}.threeColumn{padding:10px 10px 80px}.feed{gap:12px}.heroCard{min-height:200px;padding:22px 20px;border-radius:20px}.heroCard h1{font-size:30px}.composer,.postCard{border-radius:18px}.composer{padding:13px}.postCard{padding:16px}.postText{font-size:14px}.postActions{gap:2px}.postActions button{font-size:11px;padding:7px 4px}.railLinks{padding-left:4px}.sideCard,.safetyCard{padding:16px}}
+@media(max-width:430px){.topActions{gap:5px}.iconButton{width:38px;height:38px}.profileButton{height:38px;padding:0 6px}.avatar{width:38px;height:38px}.heroCard p{font-size:12px}.composerTools button{padding:7px 5px}.postMeta{font-size:10px}}
+@media(prefers-reduced-motion:reduce){*,*:before,*:after{scroll-behavior:auto!important;transition:none!important}}
