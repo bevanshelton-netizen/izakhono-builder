@@ -10,9 +10,13 @@ FORTRESS SECURITY is the defensive scanning layer of the IZAKHONO security fabri
 
 ## Persistent security history
 
-The v1.4 persistence layer stores every completed scan under a timestamped record, the current remediation ledger, and evidence digests for traceability. This enables later comparisons and regression detection.
+The v1.4 persistence layer stores completed scans, the current remediation ledger and evidence digests for traceability. Storage is behind a replaceable interface so an IZAKHONO-owned database, object store or encrypted security vault can replace the reference store without changing scanner logic.
 
-`FileFortressStore` is the local/owned-node reference implementation. Storage is deliberately behind a small interface so an IZAKHONO-owned database, object store, or encrypted security vault can replace it without changing scanner logic.
+## Tamper-evident audit chain
+
+The v1.6 audit layer links each security event to the preceding event using SHA-256 hashes. Each event carries a deterministic ID, sequence number, previous hash and event hash. Verification rejects modified events, reordered events and appends to a corrupted chain.
+
+The chain provides integrity evidence; it does **not** by itself provide encryption at rest, external immutability or legal non-repudiation. Those require separately verified infrastructure and key-management controls.
 
 ## Safety boundary
 
@@ -35,6 +39,4 @@ The v1.4 persistence layer stores every completed scan under a timestamped recor
 
 ## Lifecycle
 
-`AUTHORIZE → SCOPE → SCAN → STORE → REMEDIATE → RESCAN → VERIFY → STORE → AUDIT`
-
-Production deployment, encryption-at-rest guarantees and multi-tenant isolation are not claimed by this reference store. Those controls must be implemented and verified before production security data is used.
+`AUTHORIZE → SCOPE → SCAN → STORE → REMEDIATE → RESCAN → VERIFY → AUDIT → EXPORT`
