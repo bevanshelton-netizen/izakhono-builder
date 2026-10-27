@@ -2,12 +2,28 @@
  * IZAKHONO PAY™ Optimization Runner
  *
  * Provider-neutral adapter for recurring execution. The scheduler decides
- * what may be experimented with; this runner decides whether a cycle may be
- * persisted. It is deliberately idempotent and sandbox-only.
+ * what may be experimented with; this runner selects the verified telemetry
+ * path and persists only fail-closed sandbox experiments.
  */
 
 import { buildSchedulerCycle } from './autonomous-optimization-scheduler.js';
 import { buildSnapshotRecord, buildExperimentRecord, enforcePersistenceSafety } from './intelligence-persistence.js';
+
+function resolveMeasurementSource(input = {}, candidate = {}) {
+  const requested = String(candidate.measurement_source || input.measurement_source || '').trim();
+  if (requested === 'synthetic_sandbox') return 'synthetic_sandbox';
+  if (requested === 'verified_production') return 'verified_production';
+  throw new Error('verified_measurement_source_required');
+}
+
+function attachMeasurementSource(experiment, source) {
+  return {
+    ...experiment,
+    measurement_source: source,
+    live_money_movement: false,
+    authorization: 'sandbox_only'
+  };
+}
 
 export async function runOptimizationCycle({ input = {}, persistence, lookupCycle } = {}) {
   if (!persistence || typeof persistence.insertRun !== 'function') throw new Error('persistence_adapter_required');
@@ -22,19 +38,28 @@ export async function runOptimizationCycle({ input = {}, persistence, lookupCycl
   const snapshot = await persistence.insertSnapshot(snapshotRecord);
 
   const experiments = [];
+  const rejected = [...cycle.rejected];
   for (const experiment of cycle.experiments) {
-    const record = enforcePersistenceSafety(buildExperimentRecord(experiment, { id: experiment.candidate_id }));
-    experiments.push(await persistence.insertExperiment(record));
+    try {
+      const source = resolveMeasurementSource(input, experiment);
+      const sourcedExperiment = attachMeasurementSource(experiment, source);
+      const record = enforcePersistenceSafety(buildExperimentRecord(sourcedExperiment, { id: experiment.candidate_id }));
+      experiments.push(await persistence.insertExperiment(record));
+    } catch (error) {
+      rejected.push({ candidate_id: experiment.candidate_id, reason: error.message });
+    }
   }
 
   const result = {
     cycle_id: cycle.cycle_id,
     snapshot_id: snapshot?.id || null,
     experiments_created: experiments.length,
-    rejected_candidates: cycle.rejected.length,
+    rejected_candidates: rejected.length,
+    measurement_sources: [...new Set(experiments.map((item) => item?.measurement_source).filter(Boolean))],
     status: 'completed',
     live_money_movement: false,
-    authorization_mode: 'sandbox_only'
+    authorization_mode: 'sandbox_only',
+    external_gate_required: true
   };
 
   const run = await persistence.insertRun({
