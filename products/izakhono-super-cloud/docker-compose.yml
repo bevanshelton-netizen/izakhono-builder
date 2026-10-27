@@ -1,0 +1,67 @@
+services:
+  super-cloud-control-plane:
+    build: ./control-plane
+    restart: unless-stopped
+    environment:
+      PORT: 8180
+      DATA_DIR: /data
+      SUPER_CLOUD_ADMIN_TOKEN: ${SUPER_CLOUD_ADMIN_TOKEN:?set SUPER_CLOUD_ADMIN_TOKEN}
+    volumes:
+      - super-cloud-control-data:/data
+    ports:
+      - "8180:8180"
+    networks: [super-cloud]
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8180/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-izakhono_super_cloud}
+      POSTGRES_USER: ${POSTGRES_USER:-izakhono}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+    volumes:
+      - super-cloud-postgres:/var/lib/postgresql/data
+    networks: [super-cloud]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-izakhono} -d ${POSTGRES_DB:-izakhono_super_cloud}"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  object-store:
+    image: minio/minio:latest
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?set MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?set MINIO_ROOT_PASSWORD}
+    volumes:
+      - super-cloud-object:/data
+    networks: [super-cloud]
+
+  cache:
+    image: valkey/valkey:8-alpine
+    restart: unless-stopped
+    volumes:
+      - super-cloud-cache:/data
+    networks: [super-cloud]
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+networks:
+  super-cloud:
+    driver: bridge
+
+volumes:
+  super-cloud-control-data:
+  super-cloud-postgres:
+  super-cloud-object:
+  super-cloud-cache:
