@@ -31,6 +31,10 @@ export async function heartbeat(ready) {
   });
 }
 
+export async function reportReleaseCompletion(payload) {
+  return post('/api/hosting/release-callback', payload);
+}
+
 export function startHeartbeat(isReady) {
   const run = async () => {
     try { await heartbeat(Boolean(isReady())); } catch (error) { console.error(`[hosting-node] heartbeat failed: ${error.message}`); }
