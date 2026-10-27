@@ -12,6 +12,11 @@ const MODULES = {
     status: 'data-model-ready',
     capabilities: ['invoices','usage-records','ZAR-rating-foundation']
   },
+  network: {
+    status: 'routing-ready',
+    capabilities: ['provider-selection','health-aware-ranking','failover','provider-swapping','identity-preservation','switch-audit'],
+    liveCarrierCredentials: false
+  },
   voice: {
     status: 'adapter-required',
     carrierNeutral: true,
@@ -33,7 +38,7 @@ module.exports = (req, res) => {
 
   return res.status(200).json({
     service: 'I-CONNECT Control Plane',
-    version: '1.2',
+    version: '1.3',
     architecture: 'owned-first, carrier-neutral, externally reversible',
     modules: MODULES,
     productionDependencies: {
