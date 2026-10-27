@@ -1,5 +1,9 @@
 import { promises as fs } from "node:fs";
 import { dirname } from "node:path";
+import {
+  FileExecutionLeaseStore,
+  createExecutionLeaseOwnerId,
+} from "./execution-lease";
 import type {
   ReconciliationJournalEntry,
   ReconciliationJournalStore,
@@ -23,23 +27,59 @@ function validateEntry(entry: ReconciliationJournalEntry): void {
 
 export class FileReconciliationJournalStore implements ReconciliationJournalStore {
   private writeQueue: Promise<void> = Promise.resolve();
+  private readonly leaseStore: FileExecutionLeaseStore;
+  private readonly ownerId: string;
 
   constructor(private readonly path: string) {
     validatePersistentPath(path);
+    this.leaseStore = new FileExecutionLeaseStore(`${path}.locks`);
+    this.ownerId = createExecutionLeaseOwnerId();
   }
 
   async append(entry: ReconciliationJournalEntry): Promise<void> {
     validateEntry(entry);
     this.writeQueue = this.writeQueue.then(async () => {
-      await fs.mkdir(dirname(this.path), { recursive: true });
-      let records = await this.load();
-      const latest = records[records.length - 1];
-      if (entry.sequence !== records.length + 1) throw new Error("Reconciliation journal sequence must be contiguous");
-      if (latest && entry.sequence <= latest.sequence) throw new Error("Reconciliation journal sequence must increase");
-      await fs.appendFile(this.path, `${JSON.stringify(entry)}\n`, "utf8");
-      records = records.concat(entry);
+      const lease = await this.leaseStore.acquire(
+        `reconciliation-journal:${this.path}`,
+        this.ownerId,
+        new Date().toISOString(),
+        10_000,
+      );
+      try {
+        await fs.mkdir(dirname(this.path), { recursive: true });
+        const records = await this.load();
+        const latest = records[records.length - 1];
+        if (entry.sequence !== records.length + 1) throw new Error("Reconciliation journal sequence must be contiguous");
+        if (latest && entry.sequence <= latest.sequence) throw new Error("Reconciliation journal sequence must increase");
+        await fs.appendFile(this.path, `${JSON.stringify(entry)}\n`, "utf8");
+      } finally {
+        await this.leaseStore.release(lease);
+      }
     });
     return this.writeQueue;
+  }
+
+  async appendNext(entry: Omit<ReconciliationJournalEntry, "sequence">): Promise<ReconciliationJournalEntry> {
+    const promise = this.writeQueue.then(async () => {
+      const lease = await this.leaseStore.acquire(
+        `reconciliation-journal:${this.path}`,
+        this.ownerId,
+        new Date().toISOString(),
+        10_000,
+      );
+      try {
+        await fs.mkdir(dirname(this.path), { recursive: true });
+        const records = await this.load();
+        const complete: ReconciliationJournalEntry = { ...entry, sequence: records.length + 1 };
+        validateEntry(complete);
+        await fs.appendFile(this.path, `${JSON.stringify(complete)}\n`, "utf8");
+        return { ...complete };
+      } finally {
+        await this.leaseStore.release(lease);
+      }
+    });
+    this.writeQueue = promise.then(() => undefined);
+    return promise;
   }
 
   async load(): Promise<ReconciliationJournalEntry[]> {
