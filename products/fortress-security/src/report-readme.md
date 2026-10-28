@@ -1,0 +1,1 @@
+FORTRESS v1.7 reporting is a defensive evidence-management layer. It does not perform exploitation, credential attacks, destructive tests, or unauthorized discovery. Reports are generated only from caller-supplied, authorized scan data.
