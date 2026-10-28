@@ -74,6 +74,49 @@ assert.equal(second.skippedPreviouslyCompleted, 0);
 assert.equal(second.journalEntries.length, 0);
 assert.equal(observations, 1);
 
+const repairedPersistence = new MemoryExecutionPersistenceStore();
+const repairedReceipt: ExecutionReceipt = {
+  ...receipt,
+  executionId: "exec-startup-repair",
+  result: "success",
+  nextAction: "complete",
+  recordedAt: "2026-10-27T10:00:04.000Z",
+};
+await repairedPersistence.append({ ...record, receipt: repairedReceipt });
+const repairedJournal = new MemoryReconciliationJournalStore();
+const repairedLeases = new MemoryExecutionLeaseStore();
+let repairedObservations = 0;
+const repairController = new StartupRecoveryController({
+  persistence: repairedPersistence,
+  journal: repairedJournal,
+  leases: repairedLeases,
+  ownerId: "startup-node-repair",
+  now: () => "2026-10-27T10:00:05.000Z",
+  observer: {
+    async observe() {
+      repairedObservations += 1;
+      throw new Error("terminal ledger must not trigger provider observation");
+    },
+  },
+});
+const repaired = await repairController.run();
+assert.equal(repaired.acquired, true);
+assert.equal(repaired.scanned, 1);
+assert.equal(repaired.candidates, 0);
+assert.equal(repaired.skippedTerminal, 1);
+assert.equal(repaired.failed, 0);
+assert.equal(repaired.journalEntries.length, 1);
+assert.equal(repaired.journalEntries[0].executionId, repairedReceipt.executionId);
+assert.equal(repaired.journalEntries[0].decision, "completed");
+assert.equal(repaired.journalEntries[0].observed, "provider_success");
+assert.equal(repairedObservations, 0);
+
+const repairedAgain = await repairController.run();
+assert.equal(repairedAgain.skippedTerminal, 1);
+assert.equal(repairedAgain.journalEntries.length, 0);
+const repairedHistory = await repairedJournal.load();
+assert.equal(repairedHistory.length, 1);
+
 const concurrentPersistence = new MemoryExecutionPersistenceStore();
 await concurrentPersistence.append({ ...record, receipt: { ...receipt, executionId: "exec-startup-concurrent" } });
 const concurrentJournal = new MemoryReconciliationJournalStore();
@@ -99,14 +142,13 @@ const observer = {
 const firstConcurrent = new StartupRecoveryController({
   persistence: concurrentPersistence,
   journal: concurrentJournal,
-  leases: concurrentLeases,
   ownerId: "startup-node-a",
+  leases: concurrentLeases,
   observer,
 });
 const secondConcurrent = new StartupRecoveryController({
   persistence: concurrentPersistence,
   journal: concurrentJournal,
-  leases: concurrentLeases,
   ownerId: "startup-node-b",
   observer,
 });
