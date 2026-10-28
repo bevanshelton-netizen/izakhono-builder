@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { OutboxEntry, OutboxState, verifyOutboxEntry } from "./transactional-outbox";
+import { OutboxEntry, verifyOutboxEntry } from "./transactional-outbox";
 
 export type DeliveryStatus = "READY" | "DELIVERED" | "RETRYABLE" | "QUARANTINED";
 
@@ -31,22 +31,11 @@ export interface DeliveryReceipt {
   readonly receiptIntegrityHash: string;
 }
 
-export interface DispatchPolicy {
-  readonly maxAttempts: number;
-}
+export interface DispatchPolicy { readonly maxAttempts: number; }
+export interface DispatchState { readonly attempts: readonly DeliveryAttempt[]; readonly receipts: readonly DeliveryReceipt[]; }
 
-export interface DispatchState {
-  readonly attempts: readonly DeliveryAttempt[];
-  readonly receipts: readonly DeliveryReceipt[];
-}
-
-function sha256(value: string): string {
-  return createHash("sha256").update(value, "utf8").digest("hex");
-}
-
-function canonical(value: unknown): string {
-  return JSON.stringify(value);
-}
+function sha256(value: string): string { return createHash("sha256").update(value, "utf8").digest("hex"); }
+function canonical(value: unknown): string { return JSON.stringify(value); }
 
 export function createIdempotencyKey(tenantId: string, outboxEntryId: string, adapterId: string): string {
   return sha256(canonical({ tenantId, outboxEntryId, adapterId }));
@@ -59,39 +48,27 @@ export function createReceiptIntegrityHash(receipt: Omit<DeliveryReceipt, "recei
 export function verifyDeliveryReceipt(receipt: DeliveryReceipt): boolean {
   if (!receipt.tenantId || !receipt.outboxEntryId || !receipt.adapterId || !receipt.idempotencyKey) return false;
   if (!Number.isFinite(Date.parse(receipt.deliveredAt))) return false;
-  const expectedKey = createIdempotencyKey(receipt.tenantId, receipt.outboxEntryId, receipt.adapterId);
-  if (receipt.idempotencyKey !== expectedKey) return false;
+  if (receipt.idempotencyKey !== createIdempotencyKey(receipt.tenantId, receipt.outboxEntryId, receipt.adapterId)) return false;
   const { receiptIntegrityHash, ...unsigned } = receipt;
   return receiptIntegrityHash === createReceiptIntegrityHash(unsigned);
 }
 
-export function dispatchOutboxEntry(
-  entry: OutboxEntry,
-  adapter: DeliveryAdapter,
-  state: DispatchState,
-  policy: DispatchPolicy,
-  now = new Date().toISOString(),
-): { attempt: DeliveryAttempt; receipt?: DeliveryReceipt; state: DispatchState } {
+export function dispatchOutboxEntry(entry: OutboxEntry, adapter: DeliveryAdapter, state: DispatchState, policy: DispatchPolicy, now = new Date().toISOString()): { attempt: DeliveryAttempt; receipt?: DeliveryReceipt; state: DispatchState } {
   if (!verifyOutboxEntry(entry)) throw new Error("OUTBOX_ENTRY_INTEGRITY_INVALID");
-  if (entry.state !== ("PENDING" as OutboxState)) throw new Error("OUTBOX_ENTRY_NOT_DISPATCHABLE");
+  if (entry.state !== "PENDING") throw new Error("OUTBOX_ENTRY_NOT_DISPATCHABLE");
   if (!Number.isInteger(policy.maxAttempts) || policy.maxAttempts < 1) throw new Error("INVALID_DISPATCH_POLICY");
-  if (!adapter.id || !adapter.supportedEventTypes.includes(entry.eventType)) throw new Error("ADAPTER_UNSUPPORTED_EVENT");
+  if (!adapter.id || !(adapter.supportedEventTypes.includes(entry.eventType) || adapter.supportedEventTypes.includes("*"))) throw new Error("ADAPTER_UNSUPPORTED_EVENT");
   const key = createIdempotencyKey(entry.tenantId, entry.id, adapter.id);
   if (state.receipts.some((r) => r.idempotencyKey === key && r.status === "DELIVERED")) throw new Error("DUPLICATE_DELIVERY_SUPPRESSED");
-  const priorAttempts = state.attempts.filter((a) => a.idempotencyKey === key);
-  const attemptNo = priorAttempts.length + 1;
+  const attemptNo = state.attempts.filter((a) => a.idempotencyKey === key).length + 1;
   if (attemptNo > policy.maxAttempts) {
     const attempt: DeliveryAttempt = { tenantId: entry.tenantId, outboxEntryId: entry.id, adapterId: adapter.id, attempt: attemptNo, status: "QUARANTINED", attemptedAt: now, idempotencyKey: key };
     return { attempt, state: { attempts: [...state.attempts, attempt], receipts: state.receipts } };
   }
   const receipt = adapter.deliver(entry);
-  if (receipt.tenantId !== entry.tenantId || receipt.outboxEntryId !== entry.id || receipt.adapterId !== adapter.id || !verifyDeliveryReceipt(receipt)) {
-    throw new Error("DELIVERY_RECEIPT_INTEGRITY_INVALID");
-  }
-  const status: DeliveryStatus = receipt.status;
-  const attempt: DeliveryAttempt = { tenantId: entry.tenantId, outboxEntryId: entry.id, adapterId: adapter.id, attempt: attemptNo, status, attemptedAt: now, responseDigest: receipt.responseDigest, idempotencyKey: key };
-  const nextReceipts = receipt.status === "DELIVERED" ? [...state.receipts, receipt] : state.receipts;
-  return { attempt, receipt, state: { attempts: [...state.attempts, attempt], receipts: nextReceipts } };
+  if (receipt.tenantId !== entry.tenantId || receipt.outboxEntryId !== entry.id || receipt.adapterId !== adapter.id || !verifyDeliveryReceipt(receipt)) throw new Error("DELIVERY_RECEIPT_INTEGRITY_INVALID");
+  const attempt: DeliveryAttempt = { tenantId: entry.tenantId, outboxEntryId: entry.id, adapterId: adapter.id, attempt: attemptNo, status: receipt.status, attemptedAt: now, responseDigest: receipt.responseDigest, idempotencyKey: key };
+  return { attempt, receipt, state: { attempts: [...state.attempts, attempt], receipts: receipt.status === "DELIVERED" ? [...state.receipts, receipt] : state.receipts } };
 }
 
 export function createNoOpAdapter(id = "reference-no-op"): DeliveryAdapter {
@@ -99,16 +76,7 @@ export function createNoOpAdapter(id = "reference-no-op"): DeliveryAdapter {
     id,
     supportedEventTypes: ["*"],
     deliver(entry) {
-      const responseDigest = sha256(canonical({ entryId: entry.id, tenantId: entry.tenantId }));
-      const unsigned: Omit<DeliveryReceipt, "receiptIntegrityHash"> = {
-        tenantId: entry.tenantId,
-        outboxEntryId: entry.id,
-        adapterId: id,
-        idempotencyKey: createIdempotencyKey(entry.tenantId, entry.id, id),
-        status: "DELIVERED",
-        deliveredAt: new Date().toISOString(),
-        responseDigest,
-      };
+      const unsigned: Omit<DeliveryReceipt, "receiptIntegrityHash"> = { tenantId: entry.tenantId, outboxEntryId: entry.id, adapterId: id, idempotencyKey: createIdempotencyKey(entry.tenantId, entry.id, id), status: "DELIVERED", deliveredAt: new Date().toISOString(), responseDigest: sha256(canonical({ entryId: entry.id, tenantId: entry.tenantId })) };
       return { ...unsigned, receiptIntegrityHash: createReceiptIntegrityHash(unsigned) };
     },
   };
