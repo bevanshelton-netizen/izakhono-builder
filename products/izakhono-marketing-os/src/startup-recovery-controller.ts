@@ -14,7 +14,19 @@ const STARTUP_RECOVERY_LEASE = "marketing-os-startup-recovery";
 const DEFAULT_LEASE_TTL_MS = 30_000;
 
 export interface StartupRecoveryObservationResolver { observe(record: RecoveryRecord): Promise<ExecutionObservation>; }
-export interface StartupRecoverySummary { acquired: boolean; scanned: number; candidates: number; reconciled: number; skippedTerminal: number; skippedPreviouslyCompleted: number; unknown: number; failed: number; journalEntries: ReconciliationJournalEntry[]; failures: Array<{ idempotencyKey: string; error: string }>; }
+export interface StartupRecoverySummary {
+  acquired: boolean;
+  scanned: number;
+  candidates: number;
+  reconciled: number;
+  skippedTerminal: number;
+  skippedPreviouslyCompleted: number;
+  journalMismatches: number;
+  unknown: number;
+  failed: number;
+  journalEntries: ReconciliationJournalEntry[];
+  failures: Array<{ idempotencyKey: string; error: string }>;
+}
 export interface StartupRecoveryControllerOptions { persistence: ExecutionPersistenceStore; journal: ReconciliationJournalStore; leases: ExecutionLeaseStore; observer: StartupRecoveryObservationResolver; ownerId?: string; leaseTtlMs?: number; now?: () => string; }
 
 function journalDecisionFromRecord(record: RecoveryRecord): ReconciliationJournalEntry["decision"] {
@@ -66,7 +78,7 @@ export class StartupRecoveryController {
   }
 
   async run(): Promise<StartupRecoverySummary> {
-    const summary: StartupRecoverySummary = { acquired: false, scanned: 0, candidates: 0, reconciled: 0, skippedTerminal: 0, skippedPreviouslyCompleted: 0, unknown: 0, failed: 0, journalEntries: [], failures: [] };
+    const summary: StartupRecoverySummary = { acquired: false, scanned: 0, candidates: 0, reconciled: 0, skippedTerminal: 0, skippedPreviouslyCompleted: 0, journalMismatches: 0, unknown: 0, failed: 0, journalEntries: [], failures: [] };
     let lease: ExecutionLease;
     try { lease = await this.options.leases.acquire(STARTUP_RECOVERY_LEASE, this.ownerId, this.now(), this.leaseTtlMs); }
     catch (error) { if (isLeaseContention(error)) return summary; throw error; }
@@ -105,6 +117,14 @@ export class StartupRecoveryController {
 
         summary.candidates += 1;
         try {
+          const latestJournal = await this.journal.latest(record.receipt.idempotencyKey);
+          if (latestJournal?.executionId === record.receipt.executionId && (latestJournal.decision === "completed" || latestJournal.decision === "dead_letter")) {
+            summary.journalMismatches += 1;
+          }
+
+          // The durable execution ledger is authoritative. A terminal journal entry
+          // must never suppress a retryable ledger state; re-observe the provider and
+          // append a fresh deterministic reconciliation outcome instead.
           const observation = await this.options.observer.observe(record);
           await this.options.leases.assertCurrent(lease, this.now());
           const result = await this.reconciliation.reconcile(record, observation);
