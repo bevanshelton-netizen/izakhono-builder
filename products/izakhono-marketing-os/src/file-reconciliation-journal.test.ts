@@ -16,34 +16,37 @@ const entry = {
   ownerId: "node-1",
 };
 
-const root = await mkdtemp(join(tmpdir(), "izakhono-reconciliation-"));
-try {
-  const ephemeralPath = join(root, "journal.ndjson");
-  assert.throws(() => new FileReconciliationJournalStore(ephemeralPath), /ephemeral/i);
-
-  const persistentPath = join(process.cwd(), `.izakhono-reconciliation-${Date.now()}.ndjson`);
+async function main(): Promise<void> {
+  const root = await mkdtemp(join(tmpdir(), "izakhono-reconciliation-"));
   try {
-    const persistent = new FileReconciliationJournalStore(persistentPath);
-    const journal = new ReconciliationJournal(persistent);
-    const recorded = await journal.record(entry);
-    assert.equal(recorded.sequence, 1);
-    assert.match(await readFile(persistentPath, "utf8"), /exec-1/);
-    await assert.rejects(() => persistent.append({ ...recorded, sequence: 3 }), /contiguous/);
+    const ephemeralPath = join(root, "journal.ndjson");
+    assert.throws(() => new FileReconciliationJournalStore(ephemeralPath), /ephemeral/i);
 
-    const first = new ReconciliationJournal(new FileReconciliationJournalStore(persistentPath));
-    const second = new ReconciliationJournal(new FileReconciliationJournalStore(persistentPath));
-    const [one, two] = await Promise.all([
-      first.record({ ...entry, executionId: "exec-2", idempotencyKey: "key-2", ownerId: "node-2" }),
-      second.record({ ...entry, executionId: "exec-3", idempotencyKey: "key-3", ownerId: "node-3" }),
-    ]);
-    assert.deepEqual([one.sequence, two.sequence].sort((a, b) => a - b), [2, 3]);
-    assert.deepEqual((await persistent.load()).map((record) => record.sequence), [1, 2, 3]);
+    const persistentPath = join(process.cwd(), `.izakhono-reconciliation-${Date.now()}.ndjson`);
+    try {
+      const persistent = new FileReconciliationJournalStore(persistentPath);
+      const journal = new ReconciliationJournal(persistent);
+      const recorded = await journal.record(entry);
+      assert.equal(recorded.sequence, 1);
+      assert.match(await readFile(persistentPath, "utf8"), /exec-1/);
+      await assert.rejects(() => persistent.append({ ...recorded, sequence: 3 }), /contiguous/);
+
+      const first = new ReconciliationJournal(new FileReconciliationJournalStore(persistentPath));
+      const second = new ReconciliationJournal(new FileReconciliationJournalStore(persistentPath));
+      const [one, two] = await Promise.all([
+        first.record({ ...entry, executionId: "exec-2", idempotencyKey: "key-2", ownerId: "node-2" }),
+        second.record({ ...entry, executionId: "exec-3", idempotencyKey: "key-3", ownerId: "node-3" }),
+      ]);
+      assert.deepEqual([one.sequence, two.sequence].sort((a, b) => a - b), [2, 3]);
+      assert.deepEqual((await persistent.load()).map((record) => record.sequence), [1, 2, 3]);
+    } finally {
+      await rm(persistentPath, { force: true });
+      await rm(`${persistentPath}.locks`, { recursive: true, force: true });
+    }
   } finally {
-    await rm(persistentPath, { force: true });
-    await rm(`${persistentPath}.locks`, { recursive: true, force: true });
+    await rm(root, { recursive: true, force: true });
   }
-} finally {
-  await rm(root, { recursive: true, force: true });
 }
 
+await main();
 console.log("file reconciliation journal tests passed");
