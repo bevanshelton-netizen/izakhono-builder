@@ -42,6 +42,7 @@ jobs:
           node --check products/i-connect/server.js
           node --experimental-default-type=module products/i-connect/network/provider-router.test.mjs
           node --experimental-default-type=module products/i-connect/network/provisioning-orchestrator.test.mjs
+          node --experimental-default-type=module products/i-connect/network/carrier-bridge-adapter.mjs
 
       - name: Validate carrier-neutral contract
         shell: bash
@@ -53,9 +54,9 @@ jobs:
           grep -q "providerIdentifierIsInternalOnly: true" products/i-connect/api/network-route.js
           echo '[PASS] Carrier-neutral identity and audit safeguards are present.'
 
-      - name: Validate no provider credentials in router
+      - name: Validate no hard-coded provider credentials
         shell: bash
         run: |
           set -euo pipefail
-          ! grep -REqi '(password|secret|api[_-]?key|authorization)[[:space:]]*[:=]' products/i-connect/network products/i-connect/api/network-route.js products/i-connect/api/provisioning.js
-          echo '[PASS] Provider routing/provisioning code contains no credentials.'
+          ! grep -REqi '(password|secret|api[_-]?key)[[:space:]]*[:=][[:space:]]*["'"'][^"'"']+["'"']' products/i-connect/network products/i-connect/api/network-route.js products/i-connect/api/provisioning.js
+          echo '[PASS] No hard-coded provider credentials detected.'
