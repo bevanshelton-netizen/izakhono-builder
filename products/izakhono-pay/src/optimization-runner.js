@@ -12,7 +12,7 @@ import { buildSnapshotRecord, buildExperimentRecord, enforcePersistenceSafety } 
 function resolveMeasurementSource(input = {}, candidate = {}) {
   const requested = String(candidate.measurement_source || input.measurement_source || '').trim();
   if (requested === 'synthetic_sandbox') return 'synthetic_sandbox';
-  if (requested === 'verified_production') return 'verified_production';
+  if (requested === 'verified_production' || requested === 'production') return 'verified_production';
   throw new Error('verified_measurement_source_required');
 }
 
