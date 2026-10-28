@@ -6,6 +6,7 @@ on:
     paths:
       - 'products/i-connect/network/**'
       - 'products/i-connect/api/network-route.js'
+      - 'products/i-connect/api/provisioning.js'
       - 'products/i-connect/server.js'
       - '.github/workflows/i-connect-network-ci.yml'
   pull_request:
@@ -13,6 +14,7 @@ on:
     paths:
       - 'products/i-connect/network/**'
       - 'products/i-connect/api/network-route.js'
+      - 'products/i-connect/api/provisioning.js'
       - 'products/i-connect/server.js'
       - '.github/workflows/i-connect-network-ci.yml'
   workflow_dispatch:
@@ -33,11 +35,13 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Validate provider router
+      - name: Validate provider router and provisioning
         run: |
           node --check products/i-connect/api/network-route.js
+          node --check products/i-connect/api/provisioning.js
           node --check products/i-connect/server.js
           node --experimental-default-type=module products/i-connect/network/provider-router.test.mjs
+          node --experimental-default-type=module products/i-connect/network/provisioning-orchestrator.test.mjs
 
       - name: Validate carrier-neutral contract
         shell: bash
@@ -53,5 +57,5 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          ! grep -REqi '(password|secret|api[_-]?key|authorization)[[:space:]]*[:=]' products/i-connect/network products/i-connect/api/network-route.js
-          echo '[PASS] Provider routing code contains no credentials.'
+          ! grep -REqi '(password|secret|api[_-]?key|authorization)[[:space:]]*[:=]' products/i-connect/network products/i-connect/api/network-route.js products/i-connect/api/provisioning.js
+          echo '[PASS] Provider routing/provisioning code contains no credentials.'
