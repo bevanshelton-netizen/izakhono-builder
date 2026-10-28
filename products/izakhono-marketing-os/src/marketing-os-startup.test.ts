@@ -1,6 +1,5 @@
 import { strict as assert } from "node:assert";
 import { mkdtemp, rm } from "node:fs/promises";
-import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import type { ExecutionReceipt } from "./execution-reliability";
 import type { RecoveryRecord } from "./execution-recovery";
@@ -27,6 +26,7 @@ const directory = await mkdtemp(join(resolve(process.cwd()), ".izakhono-marketin
 const ledgerPath = join(directory, "execution-ledger.jsonl");
 const journalPath = join(directory, "reconciliation-journal.jsonl");
 const leaseDirectory = join(directory, "leases");
+const finalizationPath = join(directory, "finalizations.json");
 
 try {
   const store = new FileExecutionPersistenceStore(ledgerPath);
@@ -46,6 +46,7 @@ try {
     IZAKHONO_EXECUTION_LEDGER_PATH: ledgerPath,
     IZAKHONO_RECONCILIATION_JOURNAL_PATH: journalPath,
     IZAKHONO_EXECUTION_LEASE_DIRECTORY: leaseDirectory,
+    IZAKHONO_FINALIZATION_PATH: finalizationPath,
     IZAKHONO_OWNED_NODE_OBSERVATION_ENDPOINT: "http://owned-node.test/observe",
     IZAKHONO_OWNED_NODE_OBSERVATION_TOKEN: "configured-token",
     METRICOOL_OBSERVATION_ENDPOINT: "http://metricool.test/observe",
