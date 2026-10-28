@@ -58,7 +58,7 @@ jobs:
         shell: bash
         run: |
           set +e
-          infra/node-cluster/VERIFY-NODE-CLUSTER-EVIDENCE.sh /tmp/nonexistent-node-cluster-evidence.json
+          bash infra/node-cluster/VERIFY-NODE-CLUSTER-EVIDENCE.sh /tmp/nonexistent-node-cluster-evidence.json
           code=$?
           set -e
           if [[ "$code" -ne 10 ]]; then
