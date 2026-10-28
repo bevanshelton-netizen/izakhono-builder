@@ -1,0 +1,1 @@
+The exporter facade is the controlled entry point for generating a tenant-scoped report and its Markdown representation. Authorization is enforced by the underlying report creation function.
