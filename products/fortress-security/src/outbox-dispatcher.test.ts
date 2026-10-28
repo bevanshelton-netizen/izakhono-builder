@@ -1,8 +1,8 @@
-import { createNoOpAdapter, createIdempotencyKey, dispatchOutboxEntry, verifyDeliveryReceipt } from "./outbox-dispatcher";
+import { createNoOpAdapter, createIdempotencyKey, createReceiptIntegrityHash, dispatchOutboxEntry, DeliveryAdapter, DeliveryReceipt, verifyDeliveryReceipt } from "./outbox-dispatcher";
 import { createOutboxEntry } from "./transactional-outbox";
 
 describe("outbox dispatcher", () => {
-  const entry = createOutboxEntry({ tenantId: "t1", sequence: 1, eventType: "SECURITY_EVENT", payload: { ok: true }, createdAt: "2026-10-28T00:00:00.000Z" });
+  const entry = createOutboxEntry({ tenantId: "t1", sequence: 1, eventType: "SECURITY_EVENT", payload: { ok: true }, state: "PENDING", createdAt: "2026-10-28T00:00:00.000Z" });
 
   test("uses deterministic idempotency and delivers once", () => {
     const adapter = createNoOpAdapter();
@@ -15,16 +15,25 @@ describe("outbox dispatcher", () => {
   });
 
   test("rejects a cross-tenant receipt", () => {
-    const adapter = createNoOpAdapter("bad-adapter");
-    adapter.deliver = () => ({ tenantId: "other", outboxEntryId: entry.id, adapterId: adapter.id, idempotencyKey: createIdempotencyKey("other", entry.id, adapter.id), status: "DELIVERED", deliveredAt: new Date().toISOString(), responseDigest: "x", receiptIntegrityHash: "bad" });
+    const adapter: DeliveryAdapter = {
+      id: "bad-adapter",
+      supportedEventTypes: ["SECURITY_EVENT"],
+      deliver: () => {
+        const unsigned: Omit<DeliveryReceipt, "receiptIntegrityHash"> = { tenantId: "other", outboxEntryId: entry.id, adapterId: "bad-adapter", idempotencyKey: createIdempotencyKey("other", entry.id, "bad-adapter"), status: "DELIVERED", deliveredAt: new Date().toISOString(), responseDigest: "x" };
+        return { ...unsigned, receiptIntegrityHash: createReceiptIntegrityHash(unsigned) };
+      },
+    };
     expect(() => dispatchOutboxEntry(entry, adapter, { attempts: [], receipts: [] }, { maxAttempts: 1 })).toThrow("DELIVERY_RECEIPT_INTEGRITY_INVALID");
   });
 
   test("bounds retries and quarantines after the limit", () => {
-    const adapter = createNoOpAdapter("retry-adapter");
-    adapter.deliver = () => {
-      const unsigned = { tenantId: entry.tenantId, outboxEntryId: entry.id, adapterId: adapter.id, idempotencyKey: createIdempotencyKey(entry.tenantId, entry.id, adapter.id), status: "RETRYABLE" as const, deliveredAt: new Date().toISOString(), responseDigest: "retry" };
-      return { ...unsigned, receiptIntegrityHash: require("node:crypto").createHash("sha256").update(JSON.stringify(unsigned), "utf8").digest("hex") };
+    const adapter: DeliveryAdapter = {
+      id: "retry-adapter",
+      supportedEventTypes: ["SECURITY_EVENT"],
+      deliver: () => {
+        const unsigned: Omit<DeliveryReceipt, "receiptIntegrityHash"> = { tenantId: entry.tenantId, outboxEntryId: entry.id, adapterId: "retry-adapter", idempotencyKey: createIdempotencyKey(entry.tenantId, entry.id, "retry-adapter"), status: "RETRYABLE", deliveredAt: new Date().toISOString(), responseDigest: "retry" };
+        return { ...unsigned, receiptIntegrityHash: createReceiptIntegrityHash(unsigned) };
+      },
     };
     const first = dispatchOutboxEntry(entry, adapter, { attempts: [], receipts: [] }, { maxAttempts: 1 });
     expect(first.attempt.status).toBe("RETRYABLE");
@@ -34,7 +43,7 @@ describe("outbox dispatcher", () => {
 
   test("rejects unsupported event adapters", () => {
     const adapter = createNoOpAdapter("limited");
-    adapter.supportedEventTypes = ["OTHER"];
-    expect(() => dispatchOutboxEntry(entry, adapter, { attempts: [], receipts: [] }, { maxAttempts: 1 })).toThrow("ADAPTER_UNSUPPORTED_EVENT");
+    const limited: DeliveryAdapter = { ...adapter, supportedEventTypes: ["OTHER"] };
+    expect(() => dispatchOutboxEntry(entry, limited, { attempts: [], receipts: [] }, { maxAttempts: 1 })).toThrow("ADAPTER_UNSUPPORTED_EVENT");
   });
 });
