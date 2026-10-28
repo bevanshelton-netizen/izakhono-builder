@@ -1,0 +1,1 @@
+FORTRESS v1.7 exporter produces controlled tenant-scoped security reports from authorized input and emits Markdown for human review.
