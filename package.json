@@ -4,6 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "wrangler dev",
+    "marketing-os:startup:test": "npx --yes tsx@4.20.3 products/izakhono-marketing-os/src/marketing-os-startup.test.ts",
+    "marketing-os:startup:typecheck": "npx --yes typescript@5.9.2 --noEmit --target ES2022 --module NodeNext --moduleResolution NodeNext products/izakhono-marketing-os/src/marketing-os-startup.ts products/izakhono-marketing-os/src/startup-recovery-controller.ts products/izakhono-marketing-os/src/production-provider-observation.ts",
     "business-studio:provisioner:test": "npx --yes tsx@4.20.3 products/izakhono-business-studio/provisioner-runtime.test.ts",
     "business-studio:order-provisioning:test": "npx --yes tsx@4.20.3 products/izakhono-business-studio/order-provisioning-orchestrator.test.ts",
     "infra:contabo:validate": "node infra/contabo/validate.mjs",
