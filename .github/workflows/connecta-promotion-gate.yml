@@ -30,8 +30,7 @@ jobs:
           python3 - <<'PY'
           import json
           from pathlib import Path
-          p = Path('products/izakhono-social/.izakhono.json')
-          d = json.loads(p.read_text(encoding='utf-8'))
+          d = json.loads(Path('products/izakhono-social/.izakhono.json').read_text(encoding='utf-8'))
           assert d['name'] == 'CONNECTA'
           assert d['infrastructure']['runtime_architecture'] == 'IZAKHONO-owned-node-cluster'
           assert d['infrastructure']['owned_target'] == 'IZAKHONO-owned-node-cluster'
@@ -52,7 +51,6 @@ jobs:
 
       - name: Collect four-node runtime evidence
         id: health
-        if: ${{ secrets.CONNECTA_NODE01_URL != '' && secrets.CONNECTA_NODE02_URL != '' && secrets.CONNECTA_NODE03_URL != '' && secrets.CONNECTA_NODE04_URL != '' }}
         shell: bash
         env:
           NODE01_URL: ${{ secrets.CONNECTA_NODE01_URL }}
@@ -61,7 +59,12 @@ jobs:
           NODE04_URL: ${{ secrets.CONNECTA_NODE04_URL }}
           OUTPUT: /tmp/connecta-node-cluster-health.json
           TIMEOUT: '10'
-        run: bash infra/node-cluster/NODE-CLUSTER-HEALTH-GATE.sh
+        run: |
+          if [[ -z "$NODE01_URL" || -z "$NODE02_URL" || -z "$NODE03_URL" || -z "$NODE04_URL" ]]; then
+            echo '[BLOCKED] CONNECTA_NODE01_URL..CONNECTA_NODE04_URL production secrets are not configured.'
+            exit 10
+          fi
+          bash infra/node-cluster/NODE-CLUSTER-HEALTH-GATE.sh
 
       - name: Verify four-node promotion prerequisite
         if: steps.health.outcome == 'success'
@@ -80,8 +83,7 @@ jobs:
         shell: bash
         run: |
           if [[ "${{ steps.health.outcome }}" != 'success' ]]; then
-            echo '[BLOCKED] No four-node runtime evidence was supplied; public promotion remains blocked.'
-            echo '[BLOCKED] Configure production secrets CONNECTA_NODE01_URL through CONNECTA_NODE04_URL when the actual runtime endpoints are available.'
+            echo '[BLOCKED] Four-node runtime evidence is unavailable; public promotion remains blocked.'
             exit 10
           fi
           echo '[PASS] CONNECTA four-node runtime prerequisite verified.'
