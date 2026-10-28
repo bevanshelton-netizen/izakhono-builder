@@ -1,7 +1,7 @@
 # IZAKHONO Four-Node Cluster Certification
 
-**Status:** Certification contract
-**Cluster:** `izakhono-production`
+**Status:** Certification contract  
+**Cluster:** `izakhono-production`  
 **Nodes:** `node01`, `node02`, `node03`, `node04`
 
 ## Canonical roles
@@ -29,6 +29,20 @@ A cluster may not be marked `LIVE_VERIFIED` until current evidence proves:
 8. DNS and TLS resolve to the verified public edge;
 9. an external HTTPS application smoke test succeeds;
 10. rollback/recovery evidence is available.
+
+## Health evidence handoff
+
+`infra/node-cluster/NODE-CLUSTER-HEALTH-GATE.sh` is the authoritative producer for the four-node runtime-health gate. It runs against operator-supplied runtime endpoints and produces schema `izakhono.node-cluster-health.v1`.
+
+The owned runtime certification gate consumes that record through `-ClusterHealthEvidencePath`. It requires:
+
+- `cluster = izakhono-production`;
+- `runtimeEvidence = true`;
+- `status = PASS`;
+- `requiredHealthyNodes = 4`;
+- exactly `NODE01`, `NODE02`, `NODE03`, and `NODE04` in the node and healthy-node sets.
+
+If cluster-health evidence is absent, malformed, incomplete, or blocked, activation remains `BLOCKED`. It is never inferred from topology, CI, repository state, or an expected node name.
 
 ## Evidence rules
 
