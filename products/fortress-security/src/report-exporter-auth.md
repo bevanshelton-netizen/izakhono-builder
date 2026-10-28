@@ -1,0 +1,1 @@
+Export is denied for VIEWER. Export is permitted for OWNER, SECURITY_ADMIN, and ANALYST, subject to the tenant-scoped input contract.
