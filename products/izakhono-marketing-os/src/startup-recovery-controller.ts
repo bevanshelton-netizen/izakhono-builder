@@ -14,7 +14,7 @@ const STARTUP_RECOVERY_LEASE = "marketing-os-startup-recovery";
 const DEFAULT_LEASE_TTL_MS = 30_000;
 
 export interface StartupRecoveryObservationResolver { observe(record: RecoveryRecord): Promise<ExecutionObservation>; }
-export interface StartupRecoverySummary { acquired: boolean; scanned: number; candidates: number; reconciled: number; skippedTerminal: number; skippedPreviouslyCompleted: number; unknown: number; failed: number; journalEntries: ReconciliationJournalEntry[]; }
+export interface StartupRecoverySummary { acquired: boolean; scanned: number; candidates: number; reconciled: number; skippedTerminal: number; skippedPreviouslyCompleted: number; unknown: number; failed: number; journalEntries: ReconciliationJournalEntry[]; failures: Array<{ idempotencyKey: string; error: string }>; }
 export interface StartupRecoveryControllerOptions { persistence: ExecutionPersistenceStore; journal: ReconciliationJournalStore; leases: ExecutionLeaseStore; observer: StartupRecoveryObservationResolver; ownerId?: string; leaseTtlMs?: number; now?: () => string; }
 
 export class StartupRecoveryController {
@@ -34,33 +34,53 @@ export class StartupRecoveryController {
   }
 
   async run(): Promise<StartupRecoverySummary> {
-    const summary: StartupRecoverySummary = { acquired: false, scanned: 0, candidates: 0, reconciled: 0, skippedTerminal: 0, skippedPreviouslyCompleted: 0, unknown: 0, failed: 0, journalEntries: [] };
+    const summary: StartupRecoverySummary = { acquired: false, scanned: 0, candidates: 0, reconciled: 0, skippedTerminal: 0, skippedPreviouslyCompleted: 0, unknown: 0, failed: 0, journalEntries: [], failures: [] };
     let lease: ExecutionLease;
     try { lease = await this.options.leases.acquire(STARTUP_RECOVERY_LEASE, this.ownerId, this.now(), this.leaseTtlMs); }
     catch (error) { if (isLeaseContention(error)) return summary; throw error; }
     summary.acquired = true;
+
+    let heartbeat: ReturnType<typeof setInterval> | undefined;
+    let heartbeatError: Error | undefined;
+    const renew = async (): Promise<void> => {
+      try { lease = await this.options.leases.renew(lease, this.now(), this.leaseTtlMs); }
+      catch (error) { heartbeatError = error instanceof Error ? error : new Error(String(error)); }
+    };
+
     try {
+      await this.options.leases.assertCurrent(lease, this.now());
+      heartbeat = setInterval(() => { void renew(); }, Math.max(1, Math.floor(this.leaseTtlMs / 3)));
       const records = await this.options.persistence.load();
       summary.scanned = records.length;
       const latestByKey = new Map<string, RecoveryRecord>();
       for (const record of records) latestByKey.set(record.receipt.idempotencyKey, record);
       for (const record of latestByKey.values()) {
         await this.options.leases.assertCurrent(lease, this.now());
+        if (heartbeatError) throw heartbeatError;
         if (record.receipt.nextAction !== "retry") { summary.skippedTerminal += 1; continue; }
         summary.candidates += 1;
         const latestJournal = await this.journal.latest(record.receipt.idempotencyKey);
         if (latestJournal?.decision === "completed" || latestJournal?.decision === "dead_letter") { summary.skippedPreviouslyCompleted += 1; continue; }
         try {
           const observation = await this.options.observer.observe(record);
+          await this.options.leases.assertCurrent(lease, this.now());
           const result = await this.reconciliation.reconcile(record, observation);
           summary.journalEntries.push(result.journal);
           if (result.journal.decision === "completed" || result.journal.decision === "dead_letter") summary.reconciled += 1;
           else if (result.journal.decision === "unknown_external_state") summary.unknown += 1;
-        } catch (error) { summary.failed += 1; throw error; }
+        } catch (error) {
+          summary.failed += 1;
+          summary.failures.push({ idempotencyKey: record.receipt.idempotencyKey, error: error instanceof Error ? error.message : String(error) });
+          continue;
+        }
       }
+      if (heartbeatError) throw heartbeatError;
       await this.options.leases.assertCurrent(lease, this.now());
       return summary;
-    } finally { await this.options.leases.release(lease); }
+    } finally {
+      if (heartbeat) clearInterval(heartbeat);
+      await this.options.leases.release(lease);
+    }
   }
 }
 
