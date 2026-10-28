@@ -1,0 +1,88 @@
+name: CONNECTA Production Promotion Gate
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'products/izakhono-social/**'
+      - 'infra/node-cluster/**'
+      - '.github/workflows/connecta-promotion-gate.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: connecta-production-promotion-gate
+  cancel-in-progress: false
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate CONNECTA release identity
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          p = Path('products/izakhono-social/.izakhono.json')
+          d = json.loads(p.read_text(encoding='utf-8'))
+          assert d['name'] == 'CONNECTA'
+          assert d['infrastructure']['runtime_architecture'] == 'IZAKHONO-owned-node-cluster'
+          assert d['infrastructure']['owned_target'] == 'IZAKHONO-owned-node-cluster'
+          assert d['infrastructure']['current_public_route'] == 'NOT_YET_VERIFIED'
+          assert d['infrastructure']['status_label'] == 'NOT YET PUBLIC'
+          print('[PASS] CONNECTA remains owned-cluster canonical and truthfully not-public.')
+          PY
+
+      - name: Fail closed without runtime evidence
+        shell: bash
+        run: |
+          set +e
+          bash infra/node-cluster/CONNECTA-PROMOTION-GATE.sh /tmp/missing-connecta-node-cluster-evidence.json
+          code=$?
+          set -e
+          test "$code" -eq 10 || { echo "Expected fail-closed exit 10, got $code" >&2; exit 1; }
+          echo '[PASS] Promotion gate fails closed without runtime evidence.'
+
+      - name: Collect four-node runtime evidence
+        id: health
+        if: ${{ secrets.CONNECTA_NODE01_URL != '' && secrets.CONNECTA_NODE02_URL != '' && secrets.CONNECTA_NODE03_URL != '' && secrets.CONNECTA_NODE04_URL != '' }}
+        shell: bash
+        env:
+          NODE01_URL: ${{ secrets.CONNECTA_NODE01_URL }}
+          NODE02_URL: ${{ secrets.CONNECTA_NODE02_URL }}
+          NODE03_URL: ${{ secrets.CONNECTA_NODE03_URL }}
+          NODE04_URL: ${{ secrets.CONNECTA_NODE04_URL }}
+          OUTPUT: /tmp/connecta-node-cluster-health.json
+          TIMEOUT: '10'
+        run: bash infra/node-cluster/NODE-CLUSTER-HEALTH-GATE.sh
+
+      - name: Verify four-node promotion prerequisite
+        if: steps.health.outcome == 'success'
+        shell: bash
+        run: bash infra/node-cluster/CONNECTA-PROMOTION-GATE.sh /tmp/connecta-node-cluster-health.json
+
+      - name: Publish runtime evidence
+        if: steps.health.outcome == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: connecta-promotion-runtime-evidence
+          path: /tmp/connecta-node-cluster-health.json
+          if-no-files-found: error
+
+      - name: Promotion decision
+        shell: bash
+        run: |
+          if [[ "${{ steps.health.outcome }}" != 'success' ]]; then
+            echo '[BLOCKED] No four-node runtime evidence was supplied; public promotion remains blocked.'
+            echo '[BLOCKED] Configure production secrets CONNECTA_NODE01_URL through CONNECTA_NODE04_URL when the actual runtime endpoints are available.'
+            exit 10
+          fi
+          echo '[PASS] CONNECTA four-node runtime prerequisite verified.'
+          echo '[BLOCKED] Public LIVE verification still requires deployment, EDGE, TLS, DNS, smoke and rollback evidence.'
