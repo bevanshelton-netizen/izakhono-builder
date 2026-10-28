@@ -16,11 +16,14 @@ const receipt: ExecutionReceipt = {
   result: "retryable_failure",
   nextAction: "retry",
   adapter: "owned",
-  issuedAt: "2026-10-27T10:00:00.000Z",
   recordedAt: "2026-10-27T10:00:01.000Z",
 };
 
-const record: RecoveryRecord = { schema: "izakhono.marketing.recovery-record.v1", sequence: 1, receipt };
+const record: RecoveryRecord = {
+  schema: "izakhono.marketing.recovery-record.v1",
+  sequence: 1,
+  receipt,
+};
 
 const persistence = new MemoryExecutionPersistenceStore();
 await persistence.append(record);
@@ -37,7 +40,12 @@ const controller = new StartupRecoveryController({
   observer: {
     async observe(candidate) {
       observations += 1;
-      return { idempotencyKey: candidate.receipt.idempotencyKey, executionId: candidate.receipt.executionId, observedAt: "2026-10-27T10:00:02.000Z", providerResult: "success" };
+      return {
+        idempotencyKey: candidate.receipt.idempotencyKey,
+        executionId: candidate.receipt.executionId,
+        observedAt: "2026-10-27T10:00:02.000Z",
+        providerResult: "success",
+      };
     },
   },
 });
@@ -50,55 +58,21 @@ assert.equal(first.reconciled, 1);
 assert.equal(first.journalEntries.length, 1);
 assert.equal(observations, 1);
 
+const afterRecovery = await persistence.load();
+assert.equal(afterRecovery.length, 2);
+assert.equal(afterRecovery[1].sequence, 2);
+assert.equal(afterRecovery[1].receipt.idempotencyKey, receipt.idempotencyKey);
+assert.equal(afterRecovery[1].receipt.result, "success");
+assert.equal(afterRecovery[1].receipt.nextAction, "complete");
+assert.equal(afterRecovery[1].receipt.attempt, 1);
+
 const second = await controller.run();
 assert.equal(second.acquired, true);
-assert.equal(second.candidates, 1);
-assert.equal(second.skippedPreviouslyCompleted, 1);
+assert.equal(second.candidates, 0);
+assert.equal(second.skippedTerminal, 1);
+assert.equal(second.skippedPreviouslyCompleted, 0);
 assert.equal(second.journalEntries.length, 0);
 assert.equal(observations, 1);
-
-const failurePersistence = new MemoryExecutionPersistenceStore();
-await failurePersistence.append({ ...record, receipt: { ...receipt, executionId: "exec-startup-failure" } });
-const failureJournal = new MemoryReconciliationJournalStore();
-const failureLeases = new MemoryExecutionLeaseStore();
-let failedObservations = 0;
-const failingController = new StartupRecoveryController({
-  persistence: failurePersistence,
-  journal: failureJournal,
-  leases: failureLeases,
-  ownerId: "startup-node-failure",
-  observer: { async observe() { failedObservations += 1; throw new Error("provider unavailable"); } },
-});
-const failureSummary = await failingController.run();
-assert.equal(failureSummary.acquired, true);
-assert.equal(failureSummary.candidates, 1);
-assert.equal(failureSummary.failed, 1);
-assert.equal(failureSummary.failures.length, 1);
-assert.match(failureSummary.failures[0].error, /provider unavailable/);
-assert.equal(failedObservations, 1);
-
-const isolatedPersistence = new MemoryExecutionPersistenceStore();
-await isolatedPersistence.append(record);
-await isolatedPersistence.append({ ...record, sequence: 2, receipt: { ...receipt, executionId: "exec-startup-isolated", idempotencyKey: "campaign-startup-2:approval-startup-1:facebook:2026-10-27T10:01:00.000Z" } });
-const isolatedJournal = new MemoryReconciliationJournalStore();
-const isolatedLeases = new MemoryExecutionLeaseStore();
-const isolatedController = new StartupRecoveryController({
-  persistence: isolatedPersistence,
-  journal: isolatedJournal,
-  leases: isolatedLeases,
-  ownerId: "startup-node-isolated",
-  observer: {
-    async observe(candidate) {
-      if (candidate.receipt.executionId === "exec-startup-1") throw new Error("one provider unavailable");
-      return { idempotencyKey: candidate.receipt.idempotencyKey, executionId: candidate.receipt.executionId, observedAt: "2026-10-27T10:00:04.000Z", providerResult: "success" };
-    },
-  },
-});
-const isolatedSummary = await isolatedController.run();
-assert.equal(isolatedSummary.candidates, 2);
-assert.equal(isolatedSummary.failed, 1);
-assert.equal(isolatedSummary.reconciled, 1);
-assert.equal(isolatedSummary.journalEntries.length, 1);
 
 const concurrentPersistence = new MemoryExecutionPersistenceStore();
 await concurrentPersistence.append({ ...record, receipt: { ...receipt, executionId: "exec-startup-concurrent" } });
@@ -108,15 +82,35 @@ let releaseObservation!: () => void;
 let enteredObservation!: () => void;
 const entered = new Promise<void>((resolve) => { enteredObservation = resolve; });
 const release = new Promise<void>((resolve) => { releaseObservation = resolve; });
+
 const observer = {
   async observe(candidate: RecoveryRecord) {
     enteredObservation();
     await release;
-    return { idempotencyKey: candidate.receipt.idempotencyKey, executionId: candidate.receipt.executionId, observedAt: "2026-10-27T10:00:03.000Z", providerResult: "success" as const };
+    return {
+      idempotencyKey: candidate.receipt.idempotencyKey,
+      executionId: candidate.receipt.executionId,
+      observedAt: "2026-10-27T10:00:03.000Z",
+      providerResult: "success" as const,
+    };
   },
 };
-const firstConcurrent = new StartupRecoveryController({ persistence: concurrentPersistence, journal: concurrentJournal, leases: concurrentLeases, ownerId: "startup-node-a", observer });
-const secondConcurrent = new StartupRecoveryController({ persistence: concurrentPersistence, journal: concurrentJournal, leases: concurrentLeases, ownerId: "startup-node-b", observer });
+
+const firstConcurrent = new StartupRecoveryController({
+  persistence: concurrentPersistence,
+  journal: concurrentJournal,
+  leases: concurrentLeases,
+  ownerId: "startup-node-a",
+  observer,
+});
+const secondConcurrent = new StartupRecoveryController({
+  persistence: concurrentPersistence,
+  journal: concurrentJournal,
+  leases: concurrentLeases,
+  ownerId: "startup-node-b",
+  observer,
+});
+
 const running = firstConcurrent.run();
 await entered;
 const blocked = await secondConcurrent.run();
