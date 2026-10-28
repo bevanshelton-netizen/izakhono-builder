@@ -23,7 +23,7 @@ module.exports = async (req, res) => {
     const serviceId = String(body.serviceId || '').trim();
     const customerId = String(body.customerId || '').trim();
     const idempotencyKey = String(req.headers['x-idempotency-key'] || body.idempotencyKey || '').trim();
-    const targetState = String(body.toState || ACTION_TO_STATE[action] || '').trim().toUpperCase();
+    let targetState = String(body.toState || ACTION_TO_STATE[action] || '').trim().toUpperCase();
 
     if (!ACTION_TO_STATE[action]) return json(res, 400, { error: 'unsupported_action' });
     if (!serviceId) return json(res, 400, { error: 'service_id_required' });
@@ -35,7 +35,9 @@ module.exports = async (req, res) => {
 
     if (action === 'provision' || action === 'retry') {
       if (!customerId) return json(res, 400, { error: 'customer_id_required' });
-      const { createProvisioningPlan } = await import('../network/provisioning-orchestrator.mjs');
+      const { createProvisioningPlan, executeProvisioning } = await import('../network/provisioning-orchestrator.mjs');
+      const { carrierBridgeConfigured, provisionThroughCarrierBridge } = await import('../network/carrier-bridge-adapter.mjs');
+
       provisioningJob = createProvisioningPlan({
         customerId,
         serviceId,
@@ -45,6 +47,17 @@ module.exports = async (req, res) => {
         maxAttempts: body.maxAttempts || 2
       });
       provider = provisioningJob.primaryProviderId;
+
+      if (carrierBridgeConfigured()) {
+        provisioningJob = await executeProvisioning({
+          plan: provisioningJob,
+          telemetry: body.telemetry || {},
+          adapter: (context) => provisionThroughCarrierBridge({ ...context, idempotencyKey })
+        });
+        provider = provisioningJob.activeProviderId || provider;
+        if (provisioningJob.state === 'ACTIVE') targetState = 'ACTIVE';
+        if (provisioningJob.state === 'FAILED') targetState = 'FAILED';
+      }
     }
 
     return await rpc(req, res, 'ic_transition_connectivity_service', {
@@ -52,7 +65,7 @@ module.exports = async (req, res) => {
       p_to_state: targetState,
       p_reason: body.reason || `customer_action:${action}`,
       p_provider: provider,
-      p_external_reference: body.externalReference || null,
+      p_external_reference: provisioningJob?.providerAttempts?.find((a) => a.ok)?.externalReference || body.externalReference || null,
       p_metadata: {
         ...(body.metadata || {}),
         idempotencyKey,
