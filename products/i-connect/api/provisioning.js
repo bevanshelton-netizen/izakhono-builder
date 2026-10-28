@@ -21,6 +21,7 @@ module.exports = async (req, res) => {
     const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
     const action = String(body.action || '').trim().toLowerCase();
     const serviceId = String(body.serviceId || '').trim();
+    const customerId = String(body.customerId || '').trim();
     const idempotencyKey = String(req.headers['x-idempotency-key'] || body.idempotencyKey || '').trim();
     const targetState = String(body.toState || ACTION_TO_STATE[action] || '').trim().toUpperCase();
 
@@ -29,15 +30,37 @@ module.exports = async (req, res) => {
     if (!idempotencyKey) return json(res, 400, { error: 'idempotency_key_required' });
     if (!VALID_STATES.has(targetState)) return json(res, 400, { error: 'invalid_target_state' });
 
+    let provider = body.provider || null;
+    let provisioningJob = null;
+
+    if (action === 'provision' || action === 'retry') {
+      if (!customerId) return json(res, 400, { error: 'customer_id_required' });
+      const { createProvisioningPlan } = await import('../network/provisioning-orchestrator.mjs');
+      provisioningJob = createProvisioningPlan({
+        customerId,
+        serviceId,
+        product: body.product || 'I-CONNECT',
+        requirements: body.requirements || {},
+        telemetry: body.telemetry || {},
+        maxAttempts: body.maxAttempts || 2
+      });
+      provider = provisioningJob.primaryProviderId;
+    }
+
     return await rpc(req, res, 'ic_transition_connectivity_service', {
       p_service_id: serviceId,
       p_to_state: targetState,
       p_reason: body.reason || `customer_action:${action}`,
-      p_provider: body.provider || null,
+      p_provider: provider,
       p_external_reference: body.externalReference || null,
-      p_metadata: { ...(body.metadata || {}), idempotencyKey, source: 'i-connect-customer-control' }
+      p_metadata: {
+        ...(body.metadata || {}),
+        idempotencyKey,
+        source: 'i-connect-customer-control',
+        provisioningJob
+      }
     });
   } catch (e) {
-    return json(res, 400, { error: 'invalid_request' });
+    return json(res, 400, { error: e?.message || 'invalid_request' });
   }
 };
