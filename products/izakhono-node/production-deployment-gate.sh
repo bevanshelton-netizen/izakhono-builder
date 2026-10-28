@@ -21,12 +21,28 @@ for item in "${required[@]}"; do
   pass "evidence: $item"
 done
 
-for item in runtime health persistence backup_restore failover security edge_tls external_https; do
-  file="$EVIDENCE_DIR/$item.ok"
-  grep -q "release_sha=$IZAKHONO_RELEASE_SHA" "$file" || fail "evidence SHA mismatch: $item"
-  grep -q "runtime_id=$IZAKHONO_RUNTIME_ID" "$file" || fail "runtime identity mismatch: $item"
-  grep -q "runtime_provider=$IZAKHONO_RUNTIME_PROVIDER" "$file" || fail "runtime provider mismatch: $item"
-done
+python3 - "$EVIDENCE_DIR" "$IZAKHONO_RELEASE_SHA" "$IZAKHONO_RUNTIME_ID" "$IZAKHONO_RUNTIME_PROVIDER" <<'PY'
+import json, pathlib, sys
+root, expected_sha, expected_runtime, expected_provider = sys.argv[1:]
+required = ('runtime', 'health', 'persistence', 'backup_restore', 'failover', 'security', 'edge_tls', 'external_https')
+for name in required:
+    path = pathlib.Path(root) / f'{name}.ok'
+    try:
+        data = json.loads(path.read_text(encoding='utf-8'))
+    except Exception as exc:
+        raise SystemExit(f'invalid-json:{name}:{exc}')
+    if data.get('status') != 'PASS':
+        raise SystemExit(f'evidence-status-not-pass:{name}')
+    if data.get('release_sha') != expected_sha:
+        raise SystemExit(f'evidence-sha-mismatch:{name}')
+    if data.get('runtime_id') != expected_runtime:
+        raise SystemExit(f'evidence-runtime-mismatch:{name}')
+    if data.get('runtime_provider') != expected_provider:
+        raise SystemExit(f'evidence-provider-mismatch:{name}')
+    if data.get('physical_hardware_required') is True:
+        raise SystemExit(f'physical-hardware-required:{name}')
+print('evidence-schema-validation=PASS')
+PY
 
 pass "CONNECTA PRODUCTION GATES PASS"
 echo "runtime_id=$IZAKHONO_RUNTIME_ID"
