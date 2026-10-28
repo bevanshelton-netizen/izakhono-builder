@@ -4,11 +4,17 @@ set -Eeuo pipefail
 # KORA mail promotion gate. This gate is intentionally evidence-driven.
 # It does not manufacture delivery evidence and never promotes from static
 # DNS/TLS checks alone.
+#
+# Exit codes are part of the orchestrator contract:
+#   0 = LIVE_VERIFIED
+#   2 = external acceptance evidence is not yet present
+#   1 = evidence/configuration is invalid or an internal gate failed
 
 EVIDENCE_DIR="${KORA_MAIL_EVIDENCE_DIR:-/opt/izakhono/kora-mail/evidence}"
 MAILBOX="info@streamkoraafrica.com"
 
 fail(){ echo "KORA MAIL LIVE GATE: BLOCKED — $*" >&2; exit 1; }
+pending(){ echo "KORA MAIL LIVE GATE: PENDING — $*" >&2; exit 2; }
 
 [[ -d "${EVIDENCE_DIR}" ]] || fail "evidence directory missing"
 [[ -f "${EVIDENCE_DIR}/activation.json" ]] || fail "activation evidence missing"
@@ -26,7 +32,7 @@ PY
 
 # These files must be created only by a real external acceptance runner.
 for f in inbound.json outbound.json reply.json authentication.json; do
-  [[ -f "${EVIDENCE_DIR}/${f}" ]] || fail "missing real external evidence: ${f}"
+  [[ -f "${EVIDENCE_DIR}/${f}" ]] || pending "missing real external evidence: ${f}"
 done
 
 python3 - "${EVIDENCE_DIR}" <<'PY'
