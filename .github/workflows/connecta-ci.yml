@@ -5,11 +5,13 @@ on:
     branches: [main]
     paths:
       - 'products/izakhono-social/**'
+      - 'infra/node-cluster/**'
       - '.github/workflows/connecta-ci.yml'
   pull_request:
     branches: [main]
     paths:
       - 'products/izakhono-social/**'
+      - 'infra/node-cluster/**'
       - '.github/workflows/connecta-ci.yml'
   workflow_dispatch:
 
@@ -52,6 +54,19 @@ jobs:
           CONNECTA_OWNER_KEY: ci-only-owner-key
         run: docker compose -f products/izakhono-social/docker-compose.owned.yml config
 
+      - name: Verify node-cluster gate fails closed without runtime evidence
+        shell: bash
+        run: |
+          set +e
+          infra/node-cluster/VERIFY-NODE-CLUSTER-EVIDENCE.sh /tmp/nonexistent-node-cluster-evidence.json
+          code=$?
+          set -e
+          if [[ "$code" -ne 10 ]]; then
+            echo "Expected fail-closed exit 10, got $code" >&2
+            exit 1
+          fi
+          echo "[PASS] node-cluster gate fails closed without runtime evidence."
+
       - name: Validate release identity
         shell: bash
         run: |
@@ -59,7 +74,7 @@ jobs:
           const fs = require('fs');
           const release = JSON.parse(fs.readFileSync('products/izakhono-social/.izakhono.json', 'utf8'));
           if (release.name !== 'CONNECTA') throw new Error('CONNECTA release identity missing');
-          if (release.infrastructure.owned_target !== 'NODE01') throw new Error('Owned target must remain NODE01');
+          if (release.infrastructure.owned_target !== 'IZAKHONO-owned-node-cluster') throw new Error('Owned target must remain the IZAKHONO-owned node cluster');
           if (release.infrastructure.current_public_route !== 'NOT_YET_VERIFIED') throw new Error('Public route must remain unverified until independently proven');
           if (release.infrastructure.status_label !== 'NOT YET PUBLIC') throw new Error('CONNECTA must not claim public launch without verification');
           if (release.engine.version !== '0.3.0') throw new Error('CONNECTA ENGINE version mismatch');
