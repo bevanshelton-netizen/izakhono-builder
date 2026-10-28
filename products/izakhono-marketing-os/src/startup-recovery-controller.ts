@@ -17,6 +17,20 @@ export interface StartupRecoveryObservationResolver { observe(record: RecoveryRe
 export interface StartupRecoverySummary { acquired: boolean; scanned: number; candidates: number; reconciled: number; skippedTerminal: number; skippedPreviouslyCompleted: number; unknown: number; failed: number; journalEntries: ReconciliationJournalEntry[]; failures: Array<{ idempotencyKey: string; error: string }>; }
 export interface StartupRecoveryControllerOptions { persistence: ExecutionPersistenceStore; journal: ReconciliationJournalStore; leases: ExecutionLeaseStore; observer: StartupRecoveryObservationResolver; ownerId?: string; leaseTtlMs?: number; now?: () => string; }
 
+function journalDecisionFromRecord(record: RecoveryRecord): ReconciliationJournalEntry["decision"] {
+  if (record.receipt.nextAction === "complete") return "completed";
+  if (record.receipt.nextAction === "dead_letter") return "dead_letter";
+  if (record.receipt.nextAction === "retry") return "retryable";
+  return "unknown_external_state";
+}
+
+function journalObservationFromRecord(record: RecoveryRecord): ReconciliationJournalEntry["observed"] {
+  if (record.receipt.result === "success") return "provider_success";
+  if (record.receipt.result === "permanent_failure") return "provider_permanent_failure";
+  if (record.receipt.result === "retryable_failure") return "provider_retryable_failure";
+  return "provider_unknown";
+}
+
 export class StartupRecoveryController {
   private readonly ownerId: string;
   private readonly leaseTtlMs: number;
@@ -31,6 +45,24 @@ export class StartupRecoveryController {
     if (!Number.isInteger(this.leaseTtlMs) || this.leaseTtlMs <= 0) throw new Error("Startup recovery lease TTL must be a positive integer");
     this.reconciliation = new ReconciliationRuntime(options.journal, options.persistence);
     this.journal = new ReconciliationJournal(options.journal);
+  }
+
+  private async repairTerminalJournal(record: RecoveryRecord): Promise<ReconciliationJournalEntry | undefined> {
+    if (record.receipt.nextAction === "retry") return undefined;
+    const latest = await this.journal.latest(record.receipt.idempotencyKey);
+    const expectedDecision = journalDecisionFromRecord(record);
+    if (latest?.executionId === record.receipt.executionId && latest.decision === expectedDecision) return latest;
+    return this.journal.record({
+      executionId: record.receipt.executionId,
+      idempotencyKey: record.receipt.idempotencyKey,
+      adapter: record.receipt.adapter,
+      observed: journalObservationFromRecord(record),
+      decision: expectedDecision,
+      observedAt: record.receipt.recordedAt,
+      reconciledAt: this.now(),
+      ownerId: this.ownerId,
+      note: "repaired from authoritative durable execution ledger after incomplete finalization",
+    });
   }
 
   async run(): Promise<StartupRecoverySummary> {
@@ -57,10 +89,21 @@ export class StartupRecoveryController {
       for (const record of latestByKey.values()) {
         await this.options.leases.assertCurrent(lease, this.now());
         if (heartbeatError) throw heartbeatError;
-        if (record.receipt.nextAction !== "retry") { summary.skippedTerminal += 1; continue; }
+
+        if (record.receipt.nextAction !== "retry") {
+          try {
+            const repaired = await this.repairTerminalJournal(record);
+            if (repaired) summary.journalEntries.push(repaired);
+          } catch (error) {
+            summary.failed += 1;
+            summary.failures.push({ idempotencyKey: record.receipt.idempotencyKey, error: error instanceof Error ? error.message : String(error) });
+            continue;
+          }
+          summary.skippedTerminal += 1;
+          continue;
+        }
+
         summary.candidates += 1;
-        const latestJournal = await this.journal.latest(record.receipt.idempotencyKey);
-        if (latestJournal?.decision === "completed" || latestJournal?.decision === "dead_letter") { summary.skippedPreviouslyCompleted += 1; continue; }
         try {
           const observation = await this.options.observer.observe(record);
           await this.options.leases.assertCurrent(lease, this.now());
