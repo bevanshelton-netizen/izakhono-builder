@@ -24,9 +24,12 @@ export class MemoryFinalizationStore implements FinalizationStore {
   private readonly records = new Map<string, RecoveryFinalizationRecord>();
 
   async prepare(record: RecoveryFinalizationRecord): Promise<void> {
-    if (record.schema !== "izakhono.marketing.recovery-finalization.v1") throw new Error("Invalid finalization schema");
-    if (!record.finalizationId || !record.source.receipt.executionId || !record.target.receipt.executionId) throw new Error("Finalization identity is required");
-    if (this.records.has(record.finalizationId)) throw new Error("Finalization already exists");
+    validateFinalization(record);
+    const existing = this.records.get(record.finalizationId);
+    if (existing) {
+      validateFinalization(existing);
+      return;
+    }
     this.records.set(record.finalizationId, structuredClone(record));
   }
 
@@ -34,7 +37,9 @@ export class MemoryFinalizationStore implements FinalizationStore {
     const record = this.records.get(finalizationId);
     if (!record) throw new Error("Finalization does not exist");
     if (record.status === "committed") return;
-    this.records.set(finalizationId, { ...record, status: "committed", committedAt });
+    const committed = { ...record, status: "committed" as const, committedAt };
+    validateFinalization(committed);
+    this.records.set(finalizationId, committed);
   }
 
   async load(): Promise<RecoveryFinalizationRecord[]> {
@@ -43,14 +48,15 @@ export class MemoryFinalizationStore implements FinalizationStore {
 }
 
 export function createFinalizationId(source: RecoveryRecord, target: RecoveryRecord): string {
-  return `${source.receipt.executionId}:${source.receipt.idempotencyKey}:${target.receipt.recordedAt}:${target.receipt.nextAction}`;
+  return `${source.receipt.executionId}:${source.receipt.idempotencyKey}:${source.sequence}->${target.sequence}:${target.receipt.recordedAt}:${target.receipt.nextAction}`;
 }
 
 export function validateFinalization(record: RecoveryFinalizationRecord): void {
   if (record.schema !== "izakhono.marketing.recovery-finalization.v1") throw new Error("Invalid finalization schema");
   if (!record.finalizationId || !record.preparedAt) throw new Error("Finalization metadata is required");
   if (record.source.receipt.idempotencyKey !== record.target.receipt.idempotencyKey) throw new Error("Finalization idempotency key mismatch");
-  if (record.source.receipt.executionId === record.target.receipt.executionId) throw new Error("Finalization must create a distinct target execution receipt");
+  if (record.source.receipt.executionId !== record.target.receipt.executionId) throw new Error("Finalization execution identity mismatch");
+  if (record.target.sequence !== record.source.sequence + 1) throw new Error("Finalization target sequence must follow source");
   if (record.journal.idempotencyKey !== record.target.receipt.idempotencyKey) throw new Error("Finalization journal identity mismatch");
   if (record.status === "committed" && !record.committedAt) throw new Error("Committed finalization requires committedAt");
 }
