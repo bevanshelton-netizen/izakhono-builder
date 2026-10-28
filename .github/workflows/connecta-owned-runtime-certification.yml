@@ -1,0 +1,60 @@
+name: CONNECTA Owned Runtime Certification
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: connecta-owned-runtime-certification
+  cancel-in-progress: false
+
+jobs:
+  certify:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install runtime verification dependencies
+        run: |
+          python3 --version
+          bash --version
+
+      - name: Collect four-node runtime evidence
+        id: health
+        shell: bash
+        env:
+          NODE01_URL: ${{ secrets.CONNECTA_NODE01_URL }}
+          NODE02_URL: ${{ secrets.CONNECTA_NODE02_URL }}
+          NODE03_URL: ${{ secrets.CONNECTA_NODE03_URL }}
+          NODE04_URL: ${{ secrets.CONNECTA_NODE04_URL }}
+          OUTPUT: /tmp/connecta-node-cluster-health.json
+          TIMEOUT: "10"
+        run: |
+          if [[ -z "$NODE01_URL" || -z "$NODE02_URL" || -z "$NODE03_URL" || -z "$NODE04_URL" ]]; then
+            echo "[BLOCKED] CONNECTA_NODE01_URL..CONNECTA_NODE04_URL production secrets are required."
+            exit 10
+          fi
+          infra/node-cluster/NODE-CLUSTER-HEALTH-GATE.sh
+
+      - name: Verify four-node evidence is runtime-produced and complete
+        shell: bash
+        run: |
+          bash infra/node-cluster/VERIFY-NODE-CLUSTER-EVIDENCE.sh /tmp/connecta-node-cluster-health.json
+
+      - name: Publish certification evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: connecta-node-cluster-health
+          path: /tmp/connecta-node-cluster-health.json
+          if-no-files-found: error
+
+      - name: Certification result
+        shell: bash
+        run: |
+          echo "CONNECTA four-node runtime evidence verified."
+          echo "Required nodes: NODE01 NODE02 NODE03 NODE04"
+          echo "This workflow certifies runtime evidence only; it does not claim public LIVE verification."
