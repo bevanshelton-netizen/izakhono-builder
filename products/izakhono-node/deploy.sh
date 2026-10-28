@@ -23,7 +23,10 @@ PUBLIC_BUILD_ENV_FILE="$(get public_build_env_file)"
 DOCKERFILE="$(get dockerfile)"
 COMPOSE_FILE="$(get compose_file)"
 DATA_PATH="$(get data_path)"
-INTERNAL_NETWORK="${IZAKHONO_NODE_INTERNAL_NETWORK:-izakhono-internal}"
+INTERNAL_NETWORK="${IZAKHONO_RUNTIME_INTERNAL_NETWORK:-${IZAKHONO_NODE_INTERNAL_NETWORK:-izakhono-internal}}"
+RUNTIME_ROOT="${IZAKHONO_RUNTIME_ROOT:-/var/lib/izakhono/runtime/apps}"
+RUNTIME_ID="${IZAKHONO_RUNTIME_ID:-logical-runtime-instance}"
+RUNTIME_PROVIDER="${IZAKHONO_RUNTIME_PROVIDER:-approved-compute-runtime}"
 
 DOCKERFILE="${DOCKERFILE:-Dockerfile}"
 COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.yml}"
@@ -33,6 +36,7 @@ DATA_PATH="${DATA_PATH:-/app/data}"
 [[ "$INTERNAL_NETWORK" =~ ^[a-zA-Z0-9][a-zA-Z0-9_.-]{0,62}$ ]] || { echo invalid-internal-network >&2; exit 21; }
 [[ "$MODE" == "single" || "$MODE" == "compose" ]] || { echo invalid-mode >&2; exit 22; }
 [[ "$ENVIRONMENT" == "staging" || "$ENVIRONMENT" == "production" ]] || { echo invalid-environment >&2; exit 22; }
+[[ "$RUNTIME_ROOT" == /* ]] || { echo invalid-runtime-root >&2; exit 22; }
 
 case "$REPO" in
   file:///var/lib/izakhono-code/repos/*.git) ;;
@@ -59,8 +63,8 @@ fi
 BUILD_ARGS=()
 if [[ -n "$PUBLIC_BUILD_ENV_FILE" ]]; then
   BUILD_REAL="$(readlink -f "$PUBLIC_BUILD_ENV_FILE")"
-  [[ "$BUILD_REAL" == /etc/izakhono/apps/* ]] || { echo bad-public-build-env-path; exit 26; }
-  [[ -f "$BUILD_REAL" ]] || { echo missing-public-build-env; exit 26; }
+  [[ "$BUILD_REAL" == /etc/izakhono/apps/* ]] || { echo bad-public-build-env-path >&2; exit 26; }
+  [[ -f "$BUILD_REAL" ]] || { echo missing-public-build-env >&2; exit 26; }
 
   while IFS= read -r LINE || [[ -n "$LINE" ]]; do
     [[ -z "$LINE" || "$LINE" == \#* ]] && continue
@@ -81,7 +85,8 @@ if [[ -n "$PUBLIC_BUILD_ENV_FILE" ]]; then
     export "$KEY=$VALUE"
   done <"$BUILD_REAL"
 fi
-ROOT="/var/lib/izakhono-node/apps/$APP"
+
+ROOT="$RUNTIME_ROOT/$APP"
 SRC="$ROOT/source"
 mkdir -p "$ROOT"
 
@@ -103,9 +108,11 @@ if [[ "$ENVIRONMENT" == "production" && "$SHA" != "$REF" ]]; then
   exit 27
 fi
 
-echo "IZAKHONO_NODE_SOURCE=$REPO"
-echo "IZAKHONO_NODE_RESOLVED_COMMIT=$SHA"
-echo "IZAKHONO_NODE_ENVIRONMENT=$ENVIRONMENT"
+echo "IZAKHONO_RUNTIME_ID=$RUNTIME_ID"
+echo "IZAKHONO_RUNTIME_PROVIDER=$RUNTIME_PROVIDER"
+echo "IZAKHONO_RUNTIME_SOURCE=$REPO"
+echo "IZAKHONO_RUNTIME_RESOLVED_COMMIT=$SHA"
+echo "IZAKHONO_RUNTIME_ENVIRONMENT=$ENVIRONMENT"
 
 if [[ "$MODE" == "compose" ]]; then
   docker compose version >/dev/null 2>&1 || { echo "missing docker compose" >&2; exit 28; }
@@ -129,7 +136,7 @@ if [[ "$MODE" == "compose" ]]; then
   done
 
   rollback_compose(){
-    echo "IZAKHONO_NODE_ROLLBACK=compose" >&2
+    echo "IZAKHONO_RUNTIME_ROLLBACK=compose" >&2
     if [[ -n "$PREV_SHA" ]]; then
       git -C "$SRC" checkout --detach "$PREV_SHA" || true
       "${DC[@]}" build || true
@@ -150,7 +157,7 @@ if [[ "$MODE" == "compose" ]]; then
     curl -fsS --max-time 15 "$PUBLIC_URL" >/dev/null || { rollback_compose; exit 32; }
   fi
 
-  printf '{"ok":true,"app":"%s","commit":"%s","environment":"%s","mode":"compose","compose_file":"%s"}\n' "$APP" "$SHA" "$ENVIRONMENT" "$COMPOSE_FILE"
+  printf '{"ok":true,"app":"%s","commit":"%s","environment":"%s","mode":"compose","compose_file":"%s","runtime_id":"%s","runtime_provider":"%s"}\n' "$APP" "$SHA" "$ENVIRONMENT" "$COMPOSE_FILE" "$RUNTIME_ID" "$RUNTIME_PROVIDER"
   exit 0
 fi
 
@@ -158,7 +165,7 @@ fi
 [[ "$HEALTH" == /* ]] || exit 34
 
 docker network inspect "$INTERNAL_NETWORK" >/dev/null 2>&1 || docker network create "$INTERNAL_NETWORK" >/dev/null
-echo "IZAKHONO_NODE_INTERNAL_NETWORK=$INTERNAL_NETWORK"
+echo "IZAKHONO_RUNTIME_INTERNAL_NETWORK=$INTERNAL_NETWORK"
 
 IMAGE="izakhono/$APP:$SHORT"
 CANARY="${APP}-canary"
@@ -171,7 +178,7 @@ docker volume create "$VOL" >/dev/null
 docker volume create "$CANARY_VOL" >/dev/null
 docker rm -f "$CANARY" >/dev/null 2>&1 || true
 
-ARGS=(run -d --name "$CANARY" --network "$INTERNAL_NETWORK" --network-alias "${APP}-canary" --label "izakhono.app=$APP" --label "izakhono.commit=$SHA" --label "izakhono.environment=$ENVIRONMENT" -p 127.0.0.1::"$PORT" -v "$CANARY_VOL:$DATA_PATH")
+ARGS=(run -d --name "$CANARY" --network "$INTERNAL_NETWORK" --network-alias "${APP}-canary" --label "izakhono.app=$APP" --label "izakhono.commit=$SHA" --label "izakhono.environment=$ENVIRONMENT" --label "izakhono.runtime.id=$RUNTIME_ID" --label "izakhono.runtime.provider=$RUNTIME_PROVIDER" -p 127.0.0.1::"$PORT" -v "$CANARY_VOL:$DATA_PATH")
 [[ -n "$ENV_FILE" ]] && ARGS+=(--env-file "$ENV_FILE")
 ARGS+=("$IMAGE")
 docker "${ARGS[@]}" >/dev/null
@@ -185,7 +192,7 @@ done
 [[ "$pass" == 1 ]] || {
   docker logs "$CANARY" || true
   docker rm -f "$CANARY" || true
-  echo canary-failed
+  echo runtime-canary-failed
   exit 35
 }
 
@@ -193,12 +200,12 @@ PREV_IMAGE="$(docker inspect -f '{{.Config.Image}}' "$PROD" 2>/dev/null || true)
 docker rm -f "$PROD" >/dev/null 2>&1 || true
 docker rm -f "$CANARY" >/dev/null 2>&1 || true
 
-PROD_ARGS=(run -d --name "$PROD" --restart unless-stopped --network "$INTERNAL_NETWORK" --network-alias "$APP" --label "izakhono.app=$APP" --label "izakhono.commit=$SHA" --label "izakhono.environment=$ENVIRONMENT" -p "127.0.0.1:$PORT:$PORT" -v "$VOL:$DATA_PATH")
+PROD_ARGS=(run -d --name "$PROD" --restart unless-stopped --network "$INTERNAL_NETWORK" --network-alias "$APP" --label "izakhono.app=$APP" --label "izakhono.commit=$SHA" --label "izakhono.environment=$ENVIRONMENT" --label "izakhono.runtime.id=$RUNTIME_ID" --label "izakhono.runtime.provider=$RUNTIME_PROVIDER" -p "127.0.0.1:$PORT:$PORT" -v "$VOL:$DATA_PATH")
 [[ -n "$ENV_FILE" ]] && PROD_ARGS+=(--env-file "$ENV_FILE")
 PROD_ARGS+=("$IMAGE")
 
 rollback(){
-  echo "IZAKHONO_NODE_ROLLBACK=single" >&2
+  echo "IZAKHONO_RUNTIME_ROLLBACK=single" >&2
   docker rm -f "$PROD" >/dev/null 2>&1 || true
   if [[ -n "$PREV_IMAGE" ]]; then
     RB=(run -d --name "$PROD" --restart unless-stopped --network "$INTERNAL_NETWORK" --network-alias "$APP" -p "127.0.0.1:$PORT:$PORT" -v "$VOL:$DATA_PATH")
@@ -220,4 +227,4 @@ if [[ -n "$PUBLIC_URL" ]]; then
   curl -fsS --max-time 15 "${PUBLIC_URL%/}$HEALTH" >/dev/null || { rollback; exit 37; }
 fi
 
-printf '{"ok":true,"app":"%s","commit":"%s","environment":"%s","image":"%s","mode":"single"}\n' "$APP" "$SHA" "$ENVIRONMENT" "$IMAGE"
+printf '{"ok":true,"app":"%s","commit":"%s","environment":"%s","image":"%s","mode":"single","runtime_id":"%s","runtime_provider":"%s"}\n' "$APP" "$SHA" "$ENVIRONMENT" "$IMAGE" "$RUNTIME_ID" "$RUNTIME_PROVIDER"
