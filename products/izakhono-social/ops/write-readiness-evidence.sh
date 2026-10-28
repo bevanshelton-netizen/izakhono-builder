@@ -42,29 +42,30 @@ common = {
     'physical_hardware_required': False,
     'logical_runtime_identity': True,
     'checked_at_epoch': now,
-    'immutable_commit': commit,
+    'release_sha': commit,
 }
 
-for name, payload in {
-    'connecta-local.json': {
-        'schema': 'izakhono.connecta.gate.local.v2',
-        'status': 'PASS',
-        'evidence_source': 'software-runtime-execution',
-        **common,
-        'health': health,
-        'proofs': ['immutable-deployment', 'web-engine-database-health', 'registration-login-persistence-smoke'],
+artifacts = {
+    'runtime.ok': {
+        'status': 'PASS', 'evidence_source': 'software-runtime-execution',
+        **common, 'runtime_ready': True,
     },
-    'backup-restore.json': {
-        'schema': 'izakhono.connecta.gate.backup-restore.v2',
-        'status': 'PASS',
-        'evidence_source': 'software-runtime-execution',
-        **common,
-        'backup_manifest': manifest,
-        'restore': restore,
-        'integrity_verified': True,
-        'destructive_restore': False,
+    'health.ok': {
+        'status': 'PASS', 'evidence_source': 'software-runtime-execution',
+        **common, 'health': health,
     },
-}.items():
+    'persistence.ok': {
+        'status': 'PASS', 'evidence_source': 'software-runtime-execution',
+        **common, 'proof': 'registration-login-persistence-smoke',
+    },
+    'backup_restore.ok': {
+        'status': 'PASS', 'evidence_source': 'software-runtime-execution',
+        **common, 'backup_manifest': manifest, 'restore': restore,
+        'integrity_verified': True, 'destructive_restore': False,
+    },
+}
+
+for name, payload in artifacts.items():
     target = pathlib.Path(root) / name
     tmp = target.with_suffix(target.suffix + '.tmp')
     with open(tmp, 'w', encoding='utf-8') as f:
