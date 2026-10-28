@@ -4,7 +4,7 @@ import type { RecoveryRecord } from "./execution-recovery";
 import { ReconciliationJournal, type ReconciliationJournalEntry, type ReconciliationJournalStore } from "./execution-reconciliation-journal";
 import type { ExecutionPersistenceStore } from "./execution-persistence";
 import type { ExecutionReceipt } from "./execution-reliability";
-import { createFinalizationId, MemoryFinalizationStore, type FinalizationStore } from "./execution-finalization";
+import { createFinalizationId, MemoryFinalizationStore, type FinalizationStore, validateFinalization } from "./execution-finalization";
 
 export interface ReconciliationRuntimeResult {
   reconciliation: ExecutionReconciliationEntry;
@@ -16,6 +16,22 @@ function receiptFromObservation(record: RecoveryRecord, observation: ExecutionOb
   const nextAction = observation.providerResult === "success" ? "complete" : observation.providerResult === "permanent_failure" ? "dead_letter" : "retry";
   const result = observation.providerResult === "success" ? "success" : observation.providerResult === "permanent_failure" ? "permanent_failure" : "retryable_failure";
   return { ...record.receipt, result, nextAction, recordedAt: observation.observedAt };
+}
+
+function sameReceipt(left: ExecutionReceipt, right: ExecutionReceipt): boolean {
+  return JSON.stringify(left) === JSON.stringify(right);
+}
+
+function sameJournal(left: ReconciliationJournalEntry, right: Omit<ReconciliationJournalEntry, "sequence">): boolean {
+  return left.executionId === right.executionId
+    && left.idempotencyKey === right.idempotencyKey
+    && left.adapter === right.adapter
+    && left.observed === right.observed
+    && left.decision === right.decision
+    && left.observedAt === right.observedAt
+    && left.reconciledAt === right.reconciledAt
+    && left.ownerId === right.ownerId
+    && left.note === right.note;
 }
 
 export class ReconciliationRuntime {
@@ -36,13 +52,35 @@ export class ReconciliationRuntime {
     let repaired = 0;
     for (const finalization of await this.finalizations.load()) {
       if (finalization.status === "committed") continue;
+      validateFinalization(finalization);
+
       const records = await this.persistence.load();
-      const targetExists = records.some((record) => record.sequence === finalization.target.sequence && record.receipt.idempotencyKey === finalization.target.receipt.idempotencyKey);
-      if (!targetExists) await this.persistence.append(finalization.target);
+      const target = records.find((record) => record.sequence === finalization.target.sequence);
+      if (target) {
+        if (
+          target.receipt.executionId !== finalization.target.receipt.executionId
+          || target.receipt.idempotencyKey !== finalization.target.receipt.idempotencyKey
+          || !sameReceipt(target.receipt, finalization.target.receipt)
+        ) {
+          throw new Error(`Finalization target conflicts with durable execution ledger at sequence ${finalization.target.sequence}`);
+        }
+      } else {
+        const latestSequence = records.length > 0 ? records[records.length - 1].sequence : 0;
+        if (finalization.target.sequence !== latestSequence + 1) {
+          throw new Error(`Finalization target sequence ${finalization.target.sequence} cannot be safely replayed after durable ledger sequence ${latestSequence}`);
+        }
+        await this.persistence.append(finalization.target);
+      }
+
       const latest = await this.journal.latest(finalization.target.receipt.idempotencyKey);
-      if (!latest || latest.executionId !== finalization.journal.executionId || latest.decision !== finalization.journal.decision) {
+      if (latest) {
+        if (!sameJournal(latest, finalization.journal)) {
+          await this.journal.record(finalization.journal);
+        }
+      } else {
         await this.journal.record(finalization.journal);
       }
+
       await this.finalizations.commit(finalization.finalizationId, new Date().toISOString());
       repaired += 1;
     }
