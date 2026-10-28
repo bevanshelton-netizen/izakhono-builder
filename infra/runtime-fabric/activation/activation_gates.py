@@ -1,7 +1,8 @@
-"""Final activation gate model for Runtime Fabric.
+"""Final activation gate model for the IZAKHONO Runtime Fabric.
 
-Provisioning a machine is not the same as activating public traffic. This
-module makes the distinction executable and auditable.
+A runtime target is a logical/virtual deployment target. It is not assumed to
+be a physical server. Public traffic is permitted only when the immutable
+release and the selected runtime target have passed every production gate.
 """
 from __future__ import annotations
 
@@ -18,7 +19,7 @@ class ActivationStatus(str, Enum):
 @dataclass(frozen=True)
 class ActivationEvidence:
     release_verified: bool
-    node_healthy: bool
+    runtime_healthy: bool
     deployment_verified: bool
     edge_verified: bool
     tls_verified: bool
@@ -40,7 +41,7 @@ class ActivationDecision:
 def evaluate(evidence: ActivationEvidence) -> ActivationDecision:
     required = {
         "release": evidence.release_verified,
-        "node": evidence.node_healthy,
+        "runtime": evidence.runtime_healthy,
         "deployment": evidence.deployment_verified,
         "edge": evidence.edge_verified,
         "tls": evidence.tls_verified,
