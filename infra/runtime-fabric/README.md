@@ -1,105 +1,101 @@
 # IZAKHONO Runtime Fabric Standard
 
 **Status:** Portfolio-wide runtime standard  
-**Policy:** No single machine or provider may be a launch gate.
+**Policy:** No single machine, provider, or node is a launch gate by itself.
 
 ## Core rule
 
-The authoritative unit is the **signed application release**, not NODE01 or any other physical machine.
+The authoritative unit is the **signed application release**. NODE01 is a logical runtime node, not a physical-workstation dependency.
 
-Every platform must be deployable from the same immutable release artifact to any approved **logical runtime target** without rebuilding the application.
+Every platform must be deployable from the same immutable release artifact to any approved runtime node without rebuilding the application.
+
+## IZAKHONO Node Cluster
+
+The canonical cluster is:
+
+`NODE01 → NODE02 → NODE03 → NODE04`
+
+These identifiers represent IZAKHONO runtime nodes. They may be implemented on VMs, containers, cloud runtimes, or other approved execution capacity. The node identity is logical; the certification contract must prove that the named node actually exists and is running the release.
+
+NODE01 is the preferred primary. NODE02, NODE03 and NODE04 provide failover/resilience according to the cluster topology. A node may be promoted or removed from traffic only on fresh runtime evidence.
 
 ## Runtime classes
 
-1. **Owned runtime** — an IZAKHONO-controlled logical/virtual runtime capable of running the approved release.
-2. **Owned cluster** — the future multi-node HA fabric when additional underlying capacity is actually provisioned and verified.
+1. **Owned node** — an IZAKHONO-controlled runtime node capable of running the approved release.
+2. **Owned node cluster** — NODE01–NODE04 when the required nodes are actually provisioned, healthy and verified.
 3. **External resilience runtime** — an approved external runtime used to preserve public availability and revenue continuity.
 4. **External auxiliary worker** — removable external capacity for development, CI, queues or other workloads; not automatically a public resilience target.
-5. **Edge** — health-aware public routing that sends traffic only to a currently healthy runtime.
-
-A runtime target may be a VM, container host, managed runtime, cloud instance, or other verified execution environment. The architecture does **not** require physical IZAKHONO-owned hardware.
+5. **Edge** — health-aware public routing that sends traffic only to a currently healthy approved node.
 
 ## Mandatory behaviour
 
 - Build once; deploy the same immutable release everywhere.
-- No product may hard-code NODE01 as its only runtime.
-- No launcher may require a physical machine merely to determine whether another healthy runtime can serve the application.
-- Public traffic must automatically avoid an unhealthy target.
-- External resilience may carry production traffic while an owned runtime is unavailable.
-- When an owned runtime recovers, it must pass health and version checks before receiving traffic.
-- Stateful services require their own replication/backup rules; local runtime disks are not the source of truth.
+- NODE01 is the preferred primary, never an unverifiable single point of truth.
+- No launcher may require a physical workstation to operate or certify the node cluster.
+- Public traffic must automatically avoid an unhealthy node.
+- External resilience may carry production traffic while owned nodes are unavailable.
+- A recovered node must pass health and release-identity checks before receiving traffic.
+- Stateful services require replication/backup rules; local node disks are not the sole source of truth.
 - Secrets remain outside release artifacts.
-- A failed runtime must not change pricing, payments, customer data, or legal identity.
+- A failed node must not change pricing, payments, customer data, or legal identity.
 
 ## Target preference
 
-For workloads with multiple verified targets, the default preference is:
+`NODE01 HEALTHY → NODE02 HEALTHY → NODE03 HEALTHY → NODE04 HEALTHY → EXTERNAL RESILIENCE → FAIL CLOSED`
 
-`OWNED HEALTHY → OWNED HEALTHY SECONDARY → EXTERNAL RESILIENCE → FAIL CLOSED`
-
-Preference is not dependency. A preferred target may be skipped whenever it is unhealthy.
+Preference is not dependency. The next healthy node may be used whenever the preferred node fails verification.
 
 ## Release identity
 
-Every deployment must expose:
+Every node deployment must expose:
 
 - product name;
 - release version;
 - immutable release/build identifier;
 - health status;
-- logical runtime identifier;
+- logical node identifier;
 - data-schema compatibility version;
-- whether the route is owned or external.
+- owned/external route classification.
 
-EDGE may only route to a target whose release identity is approved for the product.
+EDGE may only route to a node whose release identity is approved for the product.
 
-## Deployment gate
+## Cluster certification gate
 
-A release is eligible for public traffic when:
+A node cluster is eligible for `LIVE_VERIFIED` only when actual evidence proves:
 
-1. the artifact checksum/build identity is approved;
-2. the selected runtime target health endpoint passes;
-3. required data/auth/payment dependencies pass;
-4. TLS and public routing pass for that target;
-5. rollback or failover is available.
+1. NODE01–NODE04 runtime identities are reachable or the documented quorum/failover policy is satisfied;
+2. the approved immutable release is running;
+3. node health checks pass;
+4. deployment identity and schema compatibility pass;
+5. required data/auth/payment dependencies pass;
+6. controlled node failure/failover succeeds;
+7. backup and restore evidence passes;
+8. EDGE routing passes;
+9. DNS and TLS pass;
+10. public application smoke tests pass;
+11. rollback/recovery is available.
 
-Physical NODE01 availability is **not a gate**. A physical machine is not part of the canonical IZAKHONO runtime architecture unless a future product explicitly documents a genuine hardware dependency.
+Repository topology, CI success, configuration files or expected node names are **not runtime evidence**.
+
+## Fail-closed rule
+
+If any required production gate is missing, stale, simulated, inferred, topology-only, CI-only or repository-only, the certification result remains `BLOCKED` and public traffic must not be declared live on the basis of that evidence.
 
 ## Failure handling
 
-When a runtime fails:
+When a node fails:
 
 1. remove it from traffic;
-2. continue on the next healthy target;
-3. preserve the release and state boundaries;
+2. continue on the next verified healthy node;
+3. preserve release and state boundaries;
 4. alert operations;
-5. repair/reprovision/rejoin the failed runtime;
+5. repair/reprovision/rejoin the failed node;
 6. restore traffic only after fresh health and release-identity verification.
 
-## Certification
+## Certification evidence
 
-Certification evidence must describe the **actual logical runtime target** that served the release. It must never fabricate physical-node evidence.
-
-A certification record should identify:
-
-- runtime target ID/class;
-- immutable release ID and checksum;
-- deployment result;
-- health result;
-- EDGE routing result;
-- DNS/TLS result;
-- public smoke-test result;
-- rollback/failover result;
-- evidence timestamps and hashes.
-
-Only a complete evidence set may produce `LIVE_VERIFIED`.
-
-## Four-node hardware cluster
-
-A future physical or virtual multi-node HA cluster may be added later, but it is **not required** for the Runtime Fabric to operate. Its existence must be established by runtime evidence, not by repository topology or configuration files.
+Every certification record must identify the actual node(s) involved and include evidence timestamps and hashes. Never fabricate node evidence and never convert a topology declaration into a runtime PASS.
 
 ## Standing language
 
-Do not say “blocked by NODE01.” Report the actual runtime target that failed and test the next approved target.
-
-Do not call a target live without current health evidence.
+Do not say “there is no NODE.” The IZAKHONO architecture has runtime nodes. Do not say a node is live without current runtime evidence.
