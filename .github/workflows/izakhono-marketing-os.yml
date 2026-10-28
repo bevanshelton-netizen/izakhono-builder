@@ -20,41 +20,41 @@ jobs:
         with:
           node-version: 20
       - name: Validate reconciliation journal
-        run: npx --yes tsx@4.20.3 products/izakhono-marketing-os/src/file-reconciliation-journal.test.ts
+        run: npx --yes tsx@4.20.3 --tsconfig products/izakhono-marketing-os/tsconfig.ci.json products/izakhono-marketing-os/src/file-reconciliation-journal.test.ts
       - name: Validate reconciliation runtime
-        run: npx --yes tsx@4.20.3 products/izakhono-marketing-os/src/reconciliation-runtime.test.ts
+        run: npx --yes tsx@4.20.3 --tsconfig products/izakhono-marketing-os/tsconfig.ci.json products/izakhono-marketing-os/src/reconciliation-runtime.test.ts
       - name: Validate production reconciliation runtime
-        run: npx --yes tsx@4.20.3 products/izakhono-marketing-os/src/production-reconciliation-runtime.test.ts
+        run: npx --yes tsx@4.20.3 --tsconfig products/izakhono-marketing-os/tsconfig.ci.json products/izakhono-marketing-os/src/production-reconciliation-runtime.test.ts
       - name: Validate startup recovery controller
-        run: npx --yes tsx@4.20.3 products/izakhono-marketing-os/src/startup-recovery-controller.test.ts
+        run: npx --yes tsx@4.20.3 --tsconfig products/izakhono-marketing-os/tsconfig.ci.json products/izakhono-marketing-os/src/startup-recovery-controller.test.ts
       - name: Validate startup finalization replay boundary
-        run: npx --yes tsx@4.20.3 products/izakhono-marketing-os/src/startup-finalization-replay.test.ts
+        run: npx --yes tsx@4.20.3 --tsconfig products/izakhono-marketing-os/tsconfig.ci.json products/izakhono-marketing-os/src/startup-finalization-replay.test.ts
       - name: Validate startup recovery runtime boundary
-        run: npx --yes tsx@4.20.3 products/izakhono-marketing-os/src/marketing-os-startup.test.ts
+        run: npx --yes tsx@4.20.3 --tsconfig products/izakhono-marketing-os/tsconfig.ci.json products/izakhono-marketing-os/src/marketing-os-startup.test.ts
       - name: Validate finalization protocol
-        run: npx --yes tsx@4.20.3 products/izakhono-marketing-os/src/execution-finalization.test.ts
+        run: npx --yes tsx@4.20.3 --tsconfig products/izakhono-marketing-os/tsconfig.ci.json products/izakhono-marketing-os/src/execution-finalization.test.ts
       - name: Validate provider observation boundary
-        run: npx --yes tsx@4.20.3 products/izakhono-marketing-os/src/provider-observation.test.ts
+        run: npx --yes tsx@4.20.3 --tsconfig products/izakhono-marketing-os/tsconfig.ci.json products/izakhono-marketing-os/src/provider-observation.test.ts
       - name: Validate owned-node observation
-        run: npx --yes tsx@4.20.3 products/izakhono-marketing-os/src/owned-node-observation.test.ts
+        run: npx --yes tsx@4.20.3 --tsconfig products/izakhono-marketing-os/tsconfig.ci.json products/izakhono-marketing-os/src/owned-node-observation.test.ts
       - name: Validate Metricool observation
-        run: npx --yes tsx@4.20.3 products/izakhono-marketing-os/src/metricool-observation.test.ts
+        run: npx --yes tsx@4.20.3 --tsconfig products/izakhono-marketing-os/tsconfig.ci.json products/izakhono-marketing-os/src/metricool-observation.test.ts
       - name: Validate execution reconciliation
-        run: npx --yes tsx@4.20.3 products/izakhono-marketing-os/src/execution-reconciliation.test.ts
+        run: npx --yes tsx@4.20.3 --tsconfig products/izakhono-marketing-os/tsconfig.ci.json products/izakhono-marketing-os/src/execution-reconciliation.test.ts
       - name: Validate execution persistence
-        run: npx --yes tsx@4.20.3 products/izakhono-marketing-os/src/execution-persistence.test.ts
+        run: npx --yes tsx@4.20.3 --tsconfig products/izakhono-marketing-os/tsconfig.ci.json products/izakhono-marketing-os/src/execution-persistence.test.ts
       - name: Validate file execution persistence
         run: npx --yes vitest@3.2.4 run products/izakhono-marketing-os/src/file-execution-persistence.test.ts
       - name: Validate production execution runtime wiring
         run: npx --yes vitest@3.2.4 run products/izakhono-marketing-os/src/production-execution-runtime.test.ts
       - name: Validate execution recovery
-        run: npx --yes tsx@4.20.3 products/izakhono-marketing-os/src/execution-recovery.test.ts
+        run: npx --yes tsx@4.20.3 --tsconfig products/izakhono-marketing-os/tsconfig.ci.json products/izakhono-marketing-os/src/execution-recovery.test.ts
       - name: Validate execution reliability
-        run: npx --yes tsx@4.20.3 products/izakhono-marketing-os/src/execution-reliability.test.ts
+        run: npx --yes tsx@4.20.3 --tsconfig products/izakhono-marketing-os/tsconfig.ci.json products/izakhono-marketing-os/src/execution-reliability.test.ts
       - name: Validate execution lease
-        run: npx --yes tsx@4.20.3 products/izakhono-marketing-os/src/execution-lease.test.ts
+        run: npx --yes tsx@4.20.3 --tsconfig products/izakhono-marketing-os/tsconfig.ci.json products/izakhono-marketing-os/src/execution-lease.test.ts
       - name: Validate execution runtime
-        run: npx --yes tsx@4.20.3 products/izakhono-marketing-os/src/execution-runtime.test.ts
+        run: npx --yes tsx@4.20.3 --tsconfig products/izakhono-marketing-os/tsconfig.ci.json products/izakhono-marketing-os/src/execution-runtime.test.ts
       - name: Typecheck execution runtime
         run: npx --yes typescript@5.9.2 --noEmit --target ES2022 --module NodeNext --moduleResolution NodeNext products/izakhono-marketing-os/src/execution-runtime.ts products/izakhono-marketing-os/src/production-execution-runtime.ts products/izakhono-marketing-os/src/production-execution-storage.ts products/izakhono-marketing-os/src/execution-recovery.ts products/izakhono-marketing-os/src/execution-persistence.ts products/izakhono-marketing-os/src/file-execution-persistence.ts products/izakhono-marketing-os/src/execution-lease.ts products/izakhono-marketing-os/src/execution-reliability.ts products/izakhono-marketing-os/src/adapter-execution.ts products/izakhono-marketing-os/src/startup-recovery-controller.ts products/izakhono-marketing-os/src/marketing-os-startup.ts products/izakhono-marketing-os/src/provider-observation.ts products/izakhono-marketing-os/src/owned-node-observation.ts products/izakhono-marketing-os/src/metricool-observation.ts
       - name: Typecheck reconciliation and finalization runtime
