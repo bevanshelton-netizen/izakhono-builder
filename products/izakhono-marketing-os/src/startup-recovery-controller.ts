@@ -29,7 +29,7 @@ export class StartupRecoveryController {
     this.leaseTtlMs = options.leaseTtlMs ?? DEFAULT_LEASE_TTL_MS;
     this.now = options.now ?? (() => new Date().toISOString());
     if (!Number.isInteger(this.leaseTtlMs) || this.leaseTtlMs <= 0) throw new Error("Startup recovery lease TTL must be a positive integer");
-    this.reconciliation = new ReconciliationRuntime(options.journal);
+    this.reconciliation = new ReconciliationRuntime(options.journal, options.persistence);
     this.journal = new ReconciliationJournal(options.journal);
   }
 
