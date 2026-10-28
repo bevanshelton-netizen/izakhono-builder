@@ -2,21 +2,54 @@ import type { ExecutionObservation, ExecutionReconciliationEntry } from "./execu
 import { reconcileExecution } from "./execution-reconciliation";
 import type { RecoveryRecord } from "./execution-recovery";
 import { ReconciliationJournal, type ReconciliationJournalEntry, type ReconciliationJournalStore } from "./execution-reconciliation-journal";
+import type { ExecutionPersistenceStore } from "./execution-persistence";
+import type { ExecutionReceipt } from "./execution-reliability";
 
 export interface ReconciliationRuntimeResult {
   reconciliation: ExecutionReconciliationEntry;
   journal: ReconciliationJournalEntry;
+  persisted: RecoveryRecord;
+}
+
+function receiptFromObservation(record: RecoveryRecord, observation: ExecutionObservation): ExecutionReceipt {
+  const nextAction = observation.providerResult === "success"
+    ? "complete"
+    : observation.providerResult === "permanent_failure"
+      ? "dead_letter"
+      : "retry";
+  const result = observation.providerResult === "success"
+    ? "success"
+    : observation.providerResult === "permanent_failure"
+      ? "permanent_failure"
+      : "retryable_failure";
+
+  return {
+    ...record.receipt,
+    result,
+    nextAction,
+    recordedAt: observation.observedAt,
+  };
 }
 
 export class ReconciliationRuntime {
   private readonly journal: ReconciliationJournal;
 
-  constructor(store: ReconciliationJournalStore) {
+  constructor(
+    store: ReconciliationJournalStore,
+    private readonly persistence?: ExecutionPersistenceStore,
+  ) {
     this.journal = new ReconciliationJournal(store);
   }
 
   async reconcile(record: RecoveryRecord, observation: ExecutionObservation): Promise<ReconciliationRuntimeResult> {
     const reconciliation = reconcileExecution(record, observation);
+    const persisted: RecoveryRecord = {
+      schema: "izakhono.marketing.recovery-record.v1",
+      sequence: record.sequence + 1,
+      receipt: receiptFromObservation(record, observation),
+    };
+    if (this.persistence) await this.persistence.append(persisted);
+
     const journal = await this.journal.record({
       executionId: reconciliation.executionId,
       idempotencyKey: reconciliation.idempotencyKey,
@@ -39,6 +72,6 @@ export class ReconciliationRuntime {
       reconciledAt: new Date().toISOString(),
       ownerId: process.env.IZAKHONO_EXECUTION_OWNER_ID?.trim() || "reconciliation-runtime",
     });
-    return { reconciliation, journal };
+    return { reconciliation, journal, persisted };
   }
 }
