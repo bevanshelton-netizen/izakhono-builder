@@ -2,7 +2,7 @@
 
 A runtime target is a logical/virtual deployment target. It is not assumed to
 be a physical server. Public traffic is permitted only when the immutable
-release and the selected runtime target have passed every production gate.
+release and the selected runtime cluster have passed every production gate.
 """
 from __future__ import annotations
 
@@ -26,6 +26,7 @@ class ActivationEvidence:
     dns_verified: bool
     smoke_test_verified: bool
     rollback_ready: bool
+    cluster_health_verified: bool = False
 
 
 @dataclass(frozen=True)
@@ -42,6 +43,7 @@ def evaluate(evidence: ActivationEvidence) -> ActivationDecision:
     required = {
         "release": evidence.release_verified,
         "runtime": evidence.runtime_healthy,
+        "cluster-health": evidence.cluster_health_verified,
         "deployment": evidence.deployment_verified,
         "edge": evidence.edge_verified,
         "tls": evidence.tls_verified,
@@ -51,5 +53,11 @@ def evaluate(evidence: ActivationEvidence) -> ActivationDecision:
     }
     missing = tuple(name for name, passed in required.items() if not passed)
     if missing:
-        return ActivationDecision(ActivationStatus.BLOCKED, tuple(f"missing:{name}" for name in missing))
-    return ActivationDecision(ActivationStatus.LIVE_VERIFIED, ("all-production-gates-passed",))
+        return ActivationDecision(
+            ActivationStatus.BLOCKED,
+            tuple(f"missing:{name}" for name in missing),
+        )
+    return ActivationDecision(
+        ActivationStatus.LIVE_VERIFIED,
+        ("all-production-gates-passed",),
+    )
