@@ -48,5 +48,6 @@ async function main(): Promise<void> {
   }
 }
 
-await main();
-console.log("file reconciliation journal tests passed");
+void main().then(() => {
+  console.log("file reconciliation journal tests passed");
+});
