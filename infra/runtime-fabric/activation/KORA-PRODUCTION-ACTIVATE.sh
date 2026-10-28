@@ -6,6 +6,11 @@ set -Eeuo pipefail
 # eligible runtime from NODE01 -> NODE02 -> NODE03 -> NODE04, then delegates
 # workload activation to the KORA mail/runtime adapters. It never prints secrets
 # and never promotes a workload to LIVE_VERIFIED by itself.
+#
+# The live-gate exit contract is strict:
+#   0 = LIVE_VERIFIED
+#   2 = external acceptance is pending
+#   1 = internal/configuration/evidence failure (BLOCKED)
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 NODE_ID="${IZAKHONO_NODE_ID:-}"
@@ -80,19 +85,26 @@ chmod 600 "${EVIDENCE_DIR}/selection.json"
 export IZAKHONO_NODE_ID="${SELECTED_NODE}"
 "${MAIL_ACTIVATOR}"
 
-# The live gate is intentionally expected to block until real external
-# send/receive/reply/authentication evidence exists. A blocked gate is not a
-# failed activation; it is the correct safety boundary.
+# The live gate is expected to return 2 until real external
+# send/receive/reply/authentication evidence exists. Any other nonzero result
+# is an actual failure and must remain BLOCKED rather than being relabeled as
+# a normal pending state.
 set +e
 "${LIVE_GATE}"
 GATE_STATUS=$?
 set -e
 
-if [[ "${GATE_STATUS}" -eq 0 ]]; then
-  STATUS="LIVE_VERIFIED"
-else
-  STATUS="ACTIVATED_AWAITING_EXTERNAL_ACCEPTANCE"
-fi
+case "${GATE_STATUS}" in
+  0)
+    STATUS="LIVE_VERIFIED"
+    ;;
+  2)
+    STATUS="ACTIVATED_AWAITING_EXTERNAL_ACCEPTANCE"
+    ;;
+  *)
+    STATUS="BLOCKED"
+    ;;
+esac
 
 cat > "${EVIDENCE_DIR}/production-activation.json" <<EOF
 {
@@ -101,13 +113,23 @@ cat > "${EVIDENCE_DIR}/production-activation.json" <<EOF
   "status": "${STATUS}",
   "node_model": "software-defined",
   "failover_order": ["node02", "node03", "node04", "external-resilience"],
-  "external_acceptance_required": true
+  "external_acceptance_required": true,
+  "live_gate_exit_code": ${GATE_STATUS}
 }
 EOF
 chmod 600 "${EVIDENCE_DIR}/production-activation.json"
 
-if [[ "${GATE_STATUS}" -eq 0 ]]; then
-  echo "KORA PRODUCTION ACTIVATION: LIVE_VERIFIED"
-else
-  echo "KORA PRODUCTION ACTIVATION: RUNTIME ACTIVATED; LIVE_VERIFIED PENDING EXTERNAL ACCEPTANCE"
-fi
+case "${GATE_STATUS}" in
+  0)
+    echo "KORA PRODUCTION ACTIVATION: LIVE_VERIFIED"
+    exit 0
+    ;;
+  2)
+    echo "KORA PRODUCTION ACTIVATION: RUNTIME ACTIVATED; LIVE_VERIFIED PENDING EXTERNAL ACCEPTANCE"
+    exit 0
+    ;;
+  *)
+    echo "KORA PRODUCTION ACTIVATION: BLOCKED — live gate failed with exit code ${GATE_STATUS}" >&2
+    exit 1
+    ;;
+esac
