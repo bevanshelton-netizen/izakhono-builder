@@ -1,0 +1,76 @@
+{
+  "schema": "izakhono.autonomy/v1",
+  "mode": "continuous",
+  "policy": {
+    "autoAdvance": true,
+    "maxRetries": 3,
+    "productionClaimsRequireEvidence": true,
+    "ownerGates": ["credentials", "financial_authorization", "physical_infrastructure", "security_exception"]
+  },
+  "stages": [
+    "planning",
+    "architecture",
+    "design",
+    "development",
+    "integration",
+    "testing",
+    "security",
+    "deployment",
+    "verification",
+    "documentation",
+    "monetisation",
+    "launch",
+    "handover"
+  ],
+  "adapters": {
+    "builder": ["hercules", "local-agent", "manual"] ,
+    "code": ["github", "izakhono-code"],
+    "deploy": ["izakhono-node", "vercel"],
+    "data": ["izakhono-data", "supabase"],
+    "dns": ["izakhono-edge", "cloudflare"],
+    "mail": ["izakhono-mail", "mailcow"],
+    "payments": ["izakhono-pay", "ikhokha", "payfast"],
+    "security": ["fortress"],
+    "observe": ["izakhono-observe", "vercel"]
+  },
+  "queue": [
+    {
+      "id": "platform-foundation",
+      "title": "Keep the IZAKHONO execution control plane continuously buildable",
+      "stage": "architecture",
+      "adapter": "code",
+      "dependsOn": [],
+      "action": "validate-manifest",
+      "evidence": ["manifest-valid"]
+    },
+    {
+      "id": "continuous-worker",
+      "title": "Run the next dependency-ready task automatically",
+      "stage": "development",
+      "adapter": "code",
+      "dependsOn": ["platform-foundation"],
+      "action": "run-worker",
+      "evidence": ["worker-exit-zero"]
+    },
+    {
+      "id": "builder-bridge",
+      "title": "Connect an application-builder adapter so approved builds can continue without manual NEXT prompts",
+      "stage": "integration",
+      "adapter": "builder",
+      "dependsOn": ["continuous-worker"],
+      "action": "adapter-contract",
+      "evidence": ["adapter-contract-valid"],
+      "ownerGate": "builder-connection"
+    },
+    {
+      "id": "owned-node-promotion",
+      "title": "Move continuous execution from hosted heartbeat to IZAKHONO NODE/QUEUE",
+      "stage": "deployment",
+      "adapter": "deploy",
+      "dependsOn": ["continuous-worker"],
+      "action": "node-readiness",
+      "evidence": ["node-reachable", "backup-tested", "security-gate-passed"],
+      "ownerGate": "physical-infrastructure"
+    }
+  ]
+}
