@@ -6,12 +6,14 @@ on:
     paths:
       - 'products/izakhono-social/**'
       - 'infra/node-cluster/**'
+      - 'infra/runtime-fabric/**'
       - '.github/workflows/connecta-ci.yml'
   pull_request:
     branches: [main]
     paths:
       - 'products/izakhono-social/**'
       - 'infra/node-cluster/**'
+      - 'infra/runtime-fabric/**'
       - '.github/workflows/connecta-ci.yml'
   workflow_dispatch:
 
@@ -66,6 +68,30 @@ jobs:
             exit 1
           fi
           echo "[PASS] node-cluster gate fails closed without runtime evidence."
+
+      - name: Enforce canonical CONNECTA runtime path
+        shell: bash
+        run: |
+          set -euo pipefail
+          if grep -RInE --exclude='LEGACY-NODE01-WAVE1-DEPRECATION.md' --exclude-dir='.git' \
+            -e 'CERTIFY-WAVE1-OWNED\.ps1' \
+            -e 'PUSH-WAVE1-OWNED\.ps1' \
+            -e 'RUN-NODE01-WAVE1-LOCAL\.cmd' \
+            -e 'Desktop/IZAKHONO-NODE01-WAVE1-REPORT' \
+            products/izakhono-social infra/node-cluster infra/runtime-fabric .github/workflows; then
+            echo "[BLOCKED] CONNECTA production paths reference deprecated physical-NODE01 flow." >&2
+            exit 1
+          fi
+          echo "[PASS] CONNECTA production paths contain no legacy physical-NODE01 dependency."
+
+      - name: Validate canonical runtime documentation
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q 'NODE01 → NODE02 → NODE03 → NODE04' infra/node-cluster/CONNECTA-RUNTIME-CERTIFICATION-README.md
+          grep -q 'DEPRECATED / NOT A CONNECTA PRODUCTION GATE' infra/runtime-fabric/LEGACY-NODE01-WAVE1-DEPRECATION.md
+          grep -q 'IZAKHONO-owned-node-cluster' products/izakhono-social/.izakhono.json
+          echo "[PASS] canonical four-node runtime documentation is present."
 
       - name: Validate release identity
         shell: bash
