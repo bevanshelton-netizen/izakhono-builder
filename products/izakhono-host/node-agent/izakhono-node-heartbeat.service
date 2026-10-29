@@ -1,0 +1,19 @@
+[Unit]
+Description=IZAKHONO NODE Heartbeat
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+EnvironmentFile=-/etc/izakhono/node.env
+ExecStart=/usr/bin/node /opt/izakhono/products/izakhono-host/node-agent/heartbeat-runner.mjs
+Restart=always
+RestartSec=10
+NoNewPrivileges=true
+ProtectSystem=full
+ProtectHome=true
+ReadWritePaths=/var/lib/izakhono-node
+
+[Install]
+WantedBy=multi-user.target
