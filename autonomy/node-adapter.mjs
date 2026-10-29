@@ -3,10 +3,12 @@ import path from 'node:path';
 
 const root = process.cwd();
 const agent = path.join(root, 'autonomy', 'node-agent.mjs');
+const heartbeat = path.join(root, 'autonomy', 'node-heartbeat.mjs');
 
-function runAgent(request) {
+function runProcess(script, request = null) {
   return new Promise((resolve) => {
-    const child = spawn(process.execPath, [agent, JSON.stringify(request)], {
+    const args = request ? [script, JSON.stringify(request)] : [script];
+    const child = spawn(process.execPath, args, {
       cwd: root,
       stdio: ['ignore', 'pipe', 'pipe'],
       env: process.env,
@@ -43,10 +45,13 @@ function runAgent(request) {
 
 export async function runNodeAdapter(action, input = {}) {
   if (action === 'node-discovery' || action === 'inspect') {
-    return runAgent({ operation: 'inspect', ...input });
+    return runProcess(agent, { operation: 'inspect', ...input });
+  }
+  if (action === 'node-heartbeat') {
+    return runProcess(heartbeat);
   }
   if (action === 'node-readiness' || action === 'promote') {
-    return runAgent({ operation: 'promote', ...input });
+    return runProcess(agent, { operation: 'promote', ...input });
   }
   return { status: 'failed', reason: `unsupported-node-action:${action}` };
 }
