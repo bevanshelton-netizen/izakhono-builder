@@ -42,11 +42,23 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: npx wrangler deploy
 
-      - name: Verify MCP endpoint
+      - name: Set MCP bridge secret
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          MCP_BRIDGE_TOKEN: ${{ secrets.MCP_BRIDGE_TOKEN }}
+        run: |
+          test -n "$MCP_BRIDGE_TOKEN"
+          printf '%s' "$MCP_BRIDGE_TOKEN" | npx wrangler secret put MCP_BRIDGE_TOKEN
+
+      - name: Verify authenticated MCP endpoint
         env:
           MCP_URL: https://izakhono-builder.workers.dev/mcp
+          MCP_BRIDGE_TOKEN: ${{ secrets.MCP_BRIDGE_TOKEN }}
         run: |
+          test -n "$MCP_BRIDGE_TOKEN"
           curl --fail --silent --show-error \
+            -H 'authorization: Bearer '"$MCP_BRIDGE_TOKEN" \
             -H 'content-type: application/json' \
             -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"izakhono-ci","version":"1.0.0"}}}' \
             "$MCP_URL"
