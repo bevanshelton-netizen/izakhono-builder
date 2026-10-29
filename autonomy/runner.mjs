@@ -80,7 +80,7 @@ while (progressed < manifest.queue.length) {
     result = await runBuilderAdapter(next);
   }
 
-  if (!result && next.adapter === 'deploy' && ['node-discovery', 'node-readiness'].includes(next.action)) {
+  if (!result && next.adapter === 'deploy' && ['node-discovery', 'node-heartbeat', 'node-readiness'].includes(next.action)) {
     result = await runNodeAdapter(next.action);
   }
 
