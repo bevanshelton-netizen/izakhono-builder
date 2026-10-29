@@ -1,5 +1,6 @@
 import { spawn } from 'node:child_process';
 import path from 'node:path';
+import { deploymentTarget } from './node-control-plane.mjs';
 
 const root = process.cwd();
 const agent = path.join(root, 'autonomy', 'node-agent.mjs');
@@ -48,10 +49,42 @@ export async function runNodeAdapter(action, input = {}) {
     return runProcess(agent, { operation: 'inspect', ...input });
   }
   if (action === 'node-heartbeat') {
-    return runProcess(heartbeat);
+    const result = await runProcess(heartbeat, 'heartbeat');
+    if (result.status === 'waiting' || result.status === 'failed') return result;
+    return {
+      status: result.health === 'healthy' ? 'completed' : 'waiting',
+      reason: result.health === 'healthy' ? undefined : 'node-health-degraded',
+      evidence: [
+        { name: 'heartbeat-emitted', status: 'passed' },
+        { name: 'node-health-readable', status: result.health === 'healthy' ? 'passed' : 'failed' },
+        { name: 'capacity-reported', status: result.capacity ? 'passed' : 'failed' },
+      ],
+      heartbeat: result,
+    };
   }
   if (action === 'node-readiness' || action === 'promote') {
-    return runProcess(agent, { operation: 'promote', ...input });
+    const target = deploymentTarget(input.requirements || {});
+    if (target.status !== 'ready') {
+      return {
+        status: 'waiting',
+        reason: target.reason,
+        ownerGate: 'physical-infrastructure',
+        target,
+      };
+    }
+
+    const result = await runProcess(agent, {
+      operation: 'promote',
+      targetNodeId: target.nodeId,
+      requestId: input.requestId || `promotion-${Date.now()}`,
+      ...input,
+    });
+
+    return {
+      ...result,
+      selectedNode: target.nodeId,
+      target,
+    };
   }
   return { status: 'failed', reason: `unsupported-node-action:${action}` };
 }
