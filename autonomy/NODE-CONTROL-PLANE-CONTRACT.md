@@ -12,11 +12,17 @@ The control plane is the decision layer above the NODE registry. It accepts veri
 
 ## Deployment safety
 
-A NODE is eligible only when its registry state is healthy/ready and its heartbeat is within the configured freshness window. Selection must not override security or readiness gates.
+A NODE is eligible only when its registry state is healthy, its heartbeat is fresh, and its required readiness checks are true. Selection must not override security or readiness gates.
+
+The autonomous deployment adapter performs target selection before promotion. The selected NODE ID is persisted as execution evidence so later deployment steps have a deterministic target.
+
+## Autonomous execution
+
+An unavailable builder or physical NODE is a persistent gate for that branch, not a reason to stop unrelated dependency-ready branches. The execution runner skips persistent waits and continues other safe work. When the missing capability becomes available, the scheduled heartbeat wakes the gated branch.
 
 ## Failure behavior
 
-If no eligible NODE exists, return `null`/empty capacity rather than silently selecting external infrastructure. External infrastructure remains a separate reversible fallback adapter.
+If no eligible NODE exists, return a structured waiting result rather than silently selecting external infrastructure. External infrastructure remains a separate reversible fallback adapter.
 
 ## Security
 
