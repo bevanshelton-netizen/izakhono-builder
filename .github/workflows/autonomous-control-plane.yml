@@ -1,0 +1,21 @@
+name: Autonomous Control Plane Contract
+
+on:
+  push:
+    paths:
+      - 'infra/autonomous-control-plane/**'
+      - '.github/workflows/autonomous-control-plane.yml'
+  pull_request:
+    paths:
+      - 'infra/autonomous-control-plane/**'
+      - '.github/workflows/autonomous-control-plane.yml'
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npx --yes tsx@4.20.3 infra/autonomous-control-plane/orchestrator.test.ts
