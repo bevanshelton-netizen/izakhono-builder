@@ -47,7 +47,6 @@ export function recordHeartbeat(heartbeat) {
   return registry.nodes[nodeId];
 }
 
-// Compatibility name used by the control plane.
 export const registerHeartbeat = recordHeartbeat;
 
 export function listNodes() {
@@ -64,7 +63,12 @@ export function getNode(nodeId) {
 }
 
 export function selectReadyNode(requirements = {}) {
-  const candidates = listNodes().filter((node) => node.health === 'online' && node.status === 'healthy');
+  const excluded = new Set(requirements.excludeNodeIds || []);
+  const candidates = listNodes().filter((node) =>
+    node.health === 'online' &&
+    node.status === 'healthy' &&
+    !excluded.has(node.nodeId)
+  );
   const requiredChecks = requirements.requiredChecks || [
     'nodeReachable',
     'persistentStorageReady',
@@ -78,6 +82,7 @@ export function selectReadyNode(requirements = {}) {
       status: 'waiting',
       reason: candidates.length ? 'no-node-meets-readiness-requirements' : 'no-fresh-healthy-node',
       requiredChecks,
+      excludedNodeIds: [...excluded],
       candidates: candidates.map((node) => node.nodeId),
     };
   }
