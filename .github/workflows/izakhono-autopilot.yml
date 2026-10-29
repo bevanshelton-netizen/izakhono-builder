@@ -1,0 +1,41 @@
+name: IZAKHONO Continuous Autopilot
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '*/15 * * * *'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: izakhono-autopilot
+  cancel-in-progress: false
+
+jobs:
+  advance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate manifest
+        run: node -e "JSON.parse(require('fs').readFileSync('autonomy/engine-manifest.json','utf8')); console.log('manifest valid')"
+
+      - name: Run continuous selector
+        run: node autonomy/runner.mjs
+
+      - name: Persist execution state
+        run: |
+          if git diff --quiet -- autonomy/state.json; then
+            echo 'No state change.'
+            exit 0
+          fi
+          git config user.name 'IZAKHONO Autopilot'
+          git config user.email 'autopilot@izakhono.africa'
+          git add autonomy/state.json
+          git commit -m 'chore: advance IZAKHONO autonomous execution state'
+          git push
