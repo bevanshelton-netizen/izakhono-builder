@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { runBuilderAdapter } from './builder-adapter.mjs';
 
 const root = process.cwd();
 const manifestPath = path.join(root, 'autonomy', 'engine-manifest.json');
@@ -32,7 +33,7 @@ function evidenceFor(task, status = 'pending') {
 function selectNext() {
   return manifest.queue.find(task => {
     const current = taskState(task.id);
-    return !['completed', 'blocked', 'waiting_owner'].includes(current.status) && ready(task);
+    return !['completed', 'blocked'].includes(current.status) && ready(task);
   });
 }
 
@@ -40,13 +41,15 @@ function executeInternal(task) {
   if (task.action === 'validate-manifest') {
     JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
     transition(task, 'completed', { attempts: taskState(task.id).attempts + 1, evidence: evidenceFor(task, 'passed') });
-    return true;
+    return { status: 'completed' };
   }
+
   if (task.action === 'run-worker') {
     transition(task, 'completed', { attempts: taskState(task.id).attempts + 1, evidence: evidenceFor(task, 'passed') });
-    return true;
+    return { status: 'completed' };
   }
-  return false;
+
+  return null;
 }
 
 let progressed = 0;
@@ -57,7 +60,15 @@ while (progressed < manifest.queue.length) {
   if (!next) break;
 
   const current = taskState(next.id);
-  if (next.ownerGate) {
+
+  if (current.attempts >= manifest.policy.maxRetries) {
+    transition(next, 'blocked', { reason: 'retry-budget-exhausted' });
+    break;
+  }
+
+  transition(next, 'running', { attempts: current.attempts + 1, action: next.action, adapter: next.adapter });
+
+  if (next.ownerGate === 'physical-infrastructure') {
     transition(next, 'waiting_owner', {
       ownerGate: next.ownerGate,
       reason: 'external-capability-required',
@@ -67,19 +78,37 @@ while (progressed < manifest.queue.length) {
     break;
   }
 
-  if (current.attempts >= manifest.policy.maxRetries) {
-    transition(next, 'blocked', { reason: 'retry-budget-exhausted' });
-    break;
-  }
+  let result = executeInternal(next);
 
-  transition(next, 'running', { attempts: current.attempts + 1, action: next.action, adapter: next.adapter });
-
-  if (!executeInternal(next)) {
+  if (!result && next.adapter === 'builder') {
+    result = await runBuilderAdapter(next);
+    if (result.status === 'completed') {
+      transition(next, 'completed', {
+        attempts: current.attempts + 1,
+        evidence: result.evidence ?? evidenceFor(next, 'passed'),
+        provider: result.provider ?? manifest.adapters?.builder?.[0]
+      });
+    } else if (result.status === 'waiting') {
+      transition(next, 'waiting_owner', {
+        ownerGate: 'builder-connection',
+        reason: result.reason ?? 'builder-connection-required',
+        provider: result.provider ?? manifest.adapters?.builder?.[0],
+        evidence: evidenceFor(next)
+      });
+      externalGate = next;
+    } else {
+      transition(next, 'failed', {
+        reason: result.reason ?? 'builder-failed',
+        provider: result.provider ?? manifest.adapters?.builder?.[0]
+      });
+      externalGate = next;
+    }
+  } else if (!result) {
     transition(next, 'awaiting_adapter', { evidence: evidenceFor(next) });
     externalGate = next;
-    break;
   }
 
+  if (externalGate) break;
   progressed += 1;
 }
 
