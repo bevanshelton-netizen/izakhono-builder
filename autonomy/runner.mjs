@@ -20,6 +20,11 @@ function ready(task) {
   return task.dependsOn.every(id => taskState(id).status === 'completed');
 }
 
+function persistentWaitFor(task) {
+  const current = taskState(task.id);
+  return current.status === 'waiting_owner' && ['builder-connection', 'physical-infrastructure'].includes(current.ownerGate);
+}
+
 function transition(task, status, extra = {}) {
   const previous = taskState(task.id);
   const at = new Date().toISOString();
@@ -34,7 +39,9 @@ function evidenceFor(task, status = 'pending') {
 function selectNext() {
   return manifest.queue.find(task => {
     const current = taskState(task.id);
-    return !['completed', 'blocked'].includes(current.status) && ready(task);
+    return !['completed', 'blocked'].includes(current.status)
+      && !persistentWaitFor(task)
+      && ready(task);
   });
 }
 
@@ -54,25 +61,19 @@ function executeInternal(task) {
 }
 
 let progressed = 0;
-let externalGate = null;
+const externalGates = [];
 
 while (progressed < manifest.queue.length) {
   const next = selectNext();
   if (!next) break;
 
   const current = taskState(next.id);
-  const persistentWait = current.status === 'waiting_owner' && ['builder-connection', 'physical-infrastructure'].includes(current.ownerGate);
-
-  if (!persistentWait && current.attempts >= manifest.policy.maxRetries) {
-    transition(next, 'blocked', { reason: 'retry-budget-exhausted' });
-    break;
-  }
-
-  if (!persistentWait) {
-    transition(next, 'running', { attempts: current.attempts + 1, action: next.action, adapter: next.adapter });
-  } else {
-    transition(next, 'running', { action: next.action, adapter: next.adapter, wakeReason: 'scheduled-retry' });
-  }
+  transition(next, 'running', {
+    attempts: current.attempts + 1,
+    action: next.action,
+    adapter: next.adapter,
+    wakeReason: current.status === 'waiting_owner' ? 'scheduled-retry' : undefined,
+  });
 
   let result = executeInternal(next);
 
@@ -91,7 +92,7 @@ while (progressed < manifest.queue.length) {
 
   if (!result) {
     transition(next, 'awaiting_adapter', { evidence: evidenceFor(next) });
-    externalGate = next;
+    externalGates.push(next);
   } else if (result.status === 'completed' || result.status === 'ready') {
     transition(next, 'completed', {
       evidence: result.evidence ?? evidenceFor(next, 'passed'),
@@ -105,32 +106,34 @@ while (progressed < manifest.queue.length) {
       reason: result.reason ?? 'external-capability-required',
       provider: result.provider ?? manifest.adapters?.[next.adapter]?.[0],
       selectedNode: result.selectedNode ?? result.target?.nodeId ?? null,
+      targetReason: result.target?.reason ?? null,
       evidence: result.evidence ?? evidenceFor(next)
     });
-    externalGate = next;
+    externalGates.push(next);
   } else {
     const attempts = taskState(next.id).attempts;
     transition(next, attempts >= manifest.policy.maxRetries ? 'blocked' : 'failed', {
       reason: result.reason ?? 'adapter-failed',
       provider: result.provider ?? manifest.adapters?.[next.adapter]?.[0]
     });
-    externalGate = next;
+    if (attempts >= manifest.policy.maxRetries) break;
   }
 
-  if (externalGate) break;
   progressed += 1;
 }
 
 const remaining = manifest.queue.filter(task => taskState(task.id).status !== 'completed');
-const status = externalGate ? 'waiting_external_capability' : remaining.length ? 'blocked_or_waiting' : 'complete';
+const status = externalGates.length ? 'waiting_external_capability' : remaining.length ? 'blocked_or_waiting' : 'complete';
+const nextGate = externalGates[0] || null;
 
 fs.writeFileSync(statePath, JSON.stringify(state, null, 2) + '\n');
 console.log(JSON.stringify({
   mode: manifest.mode,
   status,
   progressed,
-  next: externalGate?.id ?? null,
-  gate: externalGate?.ownerGate ?? null,
-  selectedNode: externalGate ? taskState(externalGate.id).selectedNode ?? null : null,
+  next: nextGate?.id ?? null,
+  gate: nextGate?.ownerGate ?? null,
+  gates: externalGates.map(task => ({ id: task.id, gate: taskState(task.id).ownerGate, reason: taskState(task.id).reason })),
+  selectedNode: nextGate ? taskState(nextGate.id).selectedNode ?? null : null,
   remaining: remaining.map(task => ({ id: task.id, status: taskState(task.id).status }))
 }, null, 2));
