@@ -71,18 +71,7 @@ jobs:
 
       - name: Enforce canonical CONNECTA runtime path
         shell: bash
-        run: |
-          set -euo pipefail
-          if grep -RInE --exclude='LEGACY-NODE01-WAVE1-DEPRECATION.md' --exclude-dir='.git' \
-            -e 'CERTIFY-WAVE1-OWNED\.ps1' \
-            -e 'PUSH-WAVE1-OWNED\.ps1' \
-            -e 'RUN-NODE01-WAVE1-LOCAL\.cmd' \
-            -e 'Desktop/IZAKHONO-NODE01-WAVE1-REPORT' \
-            products/izakhono-social infra/node-cluster infra/runtime-fabric .github/workflows; then
-            echo "[BLOCKED] CONNECTA production paths reference deprecated physical-NODE01 flow." >&2
-            exit 1
-          fi
-          echo "[PASS] CONNECTA production paths contain no legacy physical-NODE01 dependency."
+        run: bash infra/node-cluster/CONNECTA-LEGACY-PATH-GUARD.sh
 
       - name: Validate canonical runtime documentation
         shell: bash
