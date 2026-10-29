@@ -1,6 +1,6 @@
 import { spawn } from 'node:child_process';
 import path from 'node:path';
-import { deploymentTarget } from './node-control-plane.mjs';
+import { ingestHeartbeat, deploymentTarget } from './node-control-plane.mjs';
 
 const root = process.cwd();
 const agent = path.join(root, 'autonomy', 'node-agent.mjs');
@@ -8,7 +8,7 @@ const heartbeat = path.join(root, 'autonomy', 'node-heartbeat.mjs');
 
 function runProcess(script, request = null) {
   return new Promise((resolve) => {
-    const args = request ? [script, JSON.stringify(request)] : [script];
+    const args = request === null ? [script] : [script, typeof request === 'string' ? request : JSON.stringify(request)];
     const child = spawn(process.execPath, args, {
       cwd: root,
       stdio: ['ignore', 'pipe', 'pipe'],
@@ -48,20 +48,32 @@ export async function runNodeAdapter(action, input = {}) {
   if (action === 'node-discovery' || action === 'inspect') {
     return runProcess(agent, { operation: 'inspect', ...input });
   }
+
   if (action === 'node-heartbeat') {
-    const result = await runProcess(heartbeat, 'heartbeat');
+    const result = await runProcess(heartbeat);
     if (result.status === 'waiting' || result.status === 'failed') return result;
+
+    let registered = null;
+    try {
+      registered = ingestHeartbeat(result);
+    } catch (error) {
+      return { status: 'failed', reason: 'heartbeat-registration-failed', error: error.message };
+    }
+
+    const healthy = result.health === 'healthy';
     return {
-      status: result.health === 'healthy' ? 'completed' : 'waiting',
-      reason: result.health === 'healthy' ? undefined : 'node-health-degraded',
+      status: healthy ? 'completed' : 'waiting',
+      reason: healthy ? undefined : 'node-health-degraded',
       evidence: [
         { name: 'heartbeat-emitted', status: 'passed' },
-        { name: 'node-health-readable', status: result.health === 'healthy' ? 'passed' : 'failed' },
+        { name: 'node-health-readable', status: healthy ? 'passed' : 'failed' },
         { name: 'capacity-reported', status: result.capacity ? 'passed' : 'failed' },
       ],
       heartbeat: result,
+      registeredNode: registered?.nodeId ?? result.node?.id ?? null,
     };
   }
+
   if (action === 'node-readiness' || action === 'promote') {
     const target = deploymentTarget(input.requirements || {});
     if (target.status !== 'ready') {
@@ -86,5 +98,6 @@ export async function runNodeAdapter(action, input = {}) {
       target,
     };
   }
+
   return { status: 'failed', reason: `unsupported-node-action:${action}` };
 }
