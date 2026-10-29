@@ -81,7 +81,12 @@ while (progressed < manifest.queue.length) {
   }
 
   if (!result && next.adapter === 'deploy' && ['node-discovery', 'node-heartbeat', 'node-readiness'].includes(next.action)) {
-    result = await runNodeAdapter(next.action);
+    result = await runNodeAdapter(next.action, {
+      taskId: next.id,
+      taskTitle: next.title,
+      evidenceRequired: next.evidence ?? [],
+      requirements: next.requirements ?? {},
+    });
   }
 
   if (!result) {
@@ -90,14 +95,16 @@ while (progressed < manifest.queue.length) {
   } else if (result.status === 'completed' || result.status === 'ready') {
     transition(next, 'completed', {
       evidence: result.evidence ?? evidenceFor(next, 'passed'),
-      provider: result.provider ?? manifest.adapters?.[next.adapter]?.[0]
+      provider: result.provider ?? manifest.adapters?.[next.adapter]?.[0],
+      selectedNode: result.selectedNode ?? result.target?.nodeId ?? null
     });
   } else if (result.status === 'waiting') {
-    const ownerGate = next.ownerGate ?? (next.adapter === 'deploy' ? 'physical-infrastructure' : 'builder-connection');
+    const ownerGate = next.ownerGate ?? result.ownerGate ?? (next.adapter === 'deploy' ? 'physical-infrastructure' : 'builder-connection');
     transition(next, 'waiting_owner', {
       ownerGate,
       reason: result.reason ?? 'external-capability-required',
       provider: result.provider ?? manifest.adapters?.[next.adapter]?.[0],
+      selectedNode: result.selectedNode ?? result.target?.nodeId ?? null,
       evidence: result.evidence ?? evidenceFor(next)
     });
     externalGate = next;
@@ -124,5 +131,6 @@ console.log(JSON.stringify({
   progressed,
   next: externalGate?.id ?? null,
   gate: externalGate?.ownerGate ?? null,
+  selectedNode: externalGate ? taskState(externalGate.id).selectedNode ?? null : null,
   remaining: remaining.map(task => ({ id: task.id, status: taskState(task.id).status }))
 }, null, 2));
