@@ -71,7 +71,7 @@ jobs:
 
       - name: Enforce canonical CONNECTA runtime path
         shell: bash
-        run: bash infra/node-cluster/CONNECTA-LEGACY-PATH-GUARD.sh
+        run: bash infra/node-cluster/VERIFY-CONNECTA-PRODUCTION-PATH.sh
 
       - name: Validate canonical runtime documentation
         shell: bash
