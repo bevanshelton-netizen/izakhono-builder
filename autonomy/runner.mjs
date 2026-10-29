@@ -81,12 +81,14 @@ while (progressed < manifest.queue.length) {
     result = await runBuilderAdapter(next);
   }
 
-  if (!result && next.adapter === 'deploy' && ['node-discovery', 'node-heartbeat', 'node-readiness'].includes(next.action)) {
+  if (!result && next.adapter === 'deploy' && ['node-discovery', 'node-heartbeat', 'node-target', 'node-readiness'].includes(next.action)) {
+    const priorTarget = next.action === 'node-readiness' ? taskState('node-target-selection').selectedNode : null;
     result = await runNodeAdapter(next.action, {
       taskId: next.id,
       taskTitle: next.title,
       evidenceRequired: next.evidence ?? [],
       requirements: next.requirements ?? {},
+      selectedNode: priorTarget || undefined,
     });
   }
 
@@ -97,7 +99,8 @@ while (progressed < manifest.queue.length) {
     transition(next, 'completed', {
       evidence: result.evidence ?? evidenceFor(next, 'passed'),
       provider: result.provider ?? manifest.adapters?.[next.adapter]?.[0],
-      selectedNode: result.selectedNode ?? result.target?.nodeId ?? null
+      selectedNode: result.selectedNode ?? result.target?.nodeId ?? null,
+      targetReason: result.target?.reason ?? null
     });
   } else if (result.status === 'waiting') {
     const ownerGate = next.ownerGate ?? result.ownerGate ?? (next.adapter === 'deploy' ? 'physical-infrastructure' : 'builder-connection');
