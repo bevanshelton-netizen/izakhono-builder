@@ -1,0 +1,45 @@
+name: IZAKHONO Continuous Execution
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '*/15 * * * *'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: izakhono-continuous-execution
+  cancel-in-progress: false
+
+jobs:
+  execute:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Run continuous execution engine
+        env:
+          IZAKHONO_BUILDER_ADAPTER_URL: ${{ secrets.IZAKHONO_BUILDER_ADAPTER_URL }}
+        run: node autonomy/runner.mjs
+
+      - name: Persist execution state
+        run: |
+          if git diff --quiet -- autonomy/state.json; then
+            echo 'No execution-state change.'
+            exit 0
+          fi
+          git config user.name 'IZAKHONO Continuous Execution'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add autonomy/state.json
+          git commit -m 'chore(autonomy): persist continuous execution state'
+          git push
