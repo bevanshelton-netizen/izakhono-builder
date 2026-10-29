@@ -23,7 +23,7 @@
     "handover"
   ],
   "adapters": {
-    "builder": ["hercules", "local-agent", "manual"] ,
+    "builder": ["hercules", "local-agent", "manual"],
     "code": ["github", "izakhono-code"],
     "deploy": ["izakhono-node", "vercel"],
     "data": ["izakhono-data", "supabase"],
@@ -63,13 +63,23 @@
       "ownerGate": "builder-connection"
     },
     {
-      "id": "owned-node-promotion",
-      "title": "Move continuous execution from hosted heartbeat to IZAKHONO NODE/QUEUE",
-      "stage": "deployment",
+      "id": "node-discovery",
+      "title": "Discover and authenticate the IZAKHONO NODE runtime",
+      "stage": "integration",
       "adapter": "deploy",
       "dependsOn": ["continuous-worker"],
+      "action": "node-discovery",
+      "evidence": ["node-reachable", "node-authenticated"],
+      "ownerGate": "physical-infrastructure"
+    },
+    {
+      "id": "owned-node-promotion",
+      "title": "Promote continuous execution from hosted heartbeat to IZAKHONO NODE/QUEUE",
+      "stage": "deployment",
+      "adapter": "deploy",
+      "dependsOn": ["continuous-worker", "node-discovery"],
       "action": "node-readiness",
-      "evidence": ["node-reachable", "backup-tested", "security-gate-passed"],
+      "evidence": ["container-runtime-ready", "persistent-storage-ready", "backup-tested", "security-gate-passed", "monitoring-online"],
       "ownerGate": "physical-infrastructure"
     }
   ]
