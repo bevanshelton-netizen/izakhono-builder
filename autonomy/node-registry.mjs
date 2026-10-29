@@ -21,25 +21,34 @@ function safeHash(value) {
 }
 
 export function recordHeartbeat(heartbeat) {
-  if (!heartbeat?.nodeId) throw new Error('nodeId is required');
+  const nodeId = heartbeat?.nodeId || heartbeat?.node?.id;
+  if (!nodeId) throw new Error('nodeId is required');
+
   const registry = readRegistry();
   const now = new Date().toISOString();
-  const existing = registry.nodes[heartbeat.nodeId] || {};
-  registry.nodes[heartbeat.nodeId] = {
+  const existing = registry.nodes[nodeId] || {};
+  const checks = heartbeat.checks || heartbeat.readiness || {};
+  const health = heartbeat.health || heartbeat.status || 'unknown';
+
+  registry.nodes[nodeId] = {
     ...existing,
-    nodeId: heartbeat.nodeId,
-    identity: heartbeat.identity || {},
-    status: heartbeat.status || 'unknown',
+    nodeId,
+    identity: heartbeat.identity || heartbeat.node || {},
+    status: health,
     capacity: heartbeat.capacity || {},
-    readiness: heartbeat.readiness || {},
+    readiness: checks,
+    runtime: heartbeat.runtime || existing.runtime || {},
     lastSeenAt: heartbeat.timestamp || now,
     receivedAt: now,
-    heartbeatId: heartbeat.heartbeatId || safeHash(`${heartbeat.nodeId}:${heartbeat.timestamp || now}`),
+    heartbeatId: heartbeat.heartbeatId || safeHash(`${nodeId}:${heartbeat.timestamp || now}`),
     staleAfterMs,
   };
   writeRegistry(registry);
-  return registry.nodes[heartbeat.nodeId];
+  return registry.nodes[nodeId];
 }
+
+// Compatibility name used by the control plane.
+export const registerHeartbeat = recordHeartbeat;
 
 export function listNodes() {
   const registry = readRegistry();
@@ -54,9 +63,44 @@ export function getNode(nodeId) {
   return listNodes().find((node) => node.nodeId === nodeId) || null;
 }
 
+export function selectReadyNode(requirements = {}) {
+  const candidates = listNodes().filter((node) => node.health === 'online' && node.status === 'healthy');
+  const requiredChecks = requirements.requiredChecks || [
+    'nodeReachable',
+    'persistentStorageReady',
+    'containerRuntimeReady',
+    'monitoringOnline'
+  ];
+
+  const eligible = candidates.filter((node) => requiredChecks.every((check) => node.readiness?.[check] === true));
+  if (!eligible.length) {
+    return {
+      status: 'waiting',
+      reason: candidates.length ? 'no-node-meets-readiness-requirements' : 'no-fresh-healthy-node',
+      requiredChecks,
+      candidates: candidates.map((node) => node.nodeId),
+    };
+  }
+
+  eligible.sort((a, b) => {
+    const aLoad = Number(a.capacity?.loadAverage?.[0] ?? Number.MAX_SAFE_INTEGER);
+    const bLoad = Number(b.capacity?.loadAverage?.[0] ?? Number.MAX_SAFE_INTEGER);
+    return aLoad - bLoad;
+  });
+
+  const selected = eligible[0];
+  return {
+    status: 'ready',
+    nodeId: selected.nodeId,
+    node: selected,
+    reason: 'healthy-node-selected',
+  };
+}
+
 if (import.meta.url === `file://${process.argv[1]}`) {
   const command = process.argv[2] || 'list';
   if (command === 'list') console.log(JSON.stringify(listNodes(), null, 2));
   else if (command === 'get') console.log(JSON.stringify(getNode(process.argv[3]), null, 2));
+  else if (command === 'target') console.log(JSON.stringify(selectReadyNode(JSON.parse(process.argv[3] || '{}')), null, 2));
   else throw new Error(`Unsupported command: ${command}`);
 }
