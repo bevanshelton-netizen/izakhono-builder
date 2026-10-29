@@ -73,6 +73,10 @@ jobs:
         shell: bash
         run: bash infra/node-cluster/VERIFY-CONNECTA-PRODUCTION-PATH.sh
 
+      - name: Enforce no legacy NODE01 production dependency
+        shell: bash
+        run: bash infra/node-cluster/VERIFY-CONNECTA-NO-LEGACY-GATE.sh
+
       - name: Validate canonical runtime documentation
         shell: bash
         run: |
