@@ -5,13 +5,6 @@ set -euo pipefail
 # become production dependencies again.
 # This is a source-policy check, not runtime evidence.
 
-forbidden_paths=(
-  'infra/runtime-fabric/CERTIFY-WAVE1-OWNED.ps1'
-  'infra/public-cutover/PUSH-WAVE1-OWNED.ps1'
-  'RUN-NODE01-WAVE1-LOCAL.cmd'
-  'RUN-NODE01-WAVE1-CONTINUE.cmd'
-)
-
 forbidden_patterns=(
   'CERTIFY-WAVE1-OWNED.ps1'
   'PUSH-WAVE1-OWNED.ps1'
@@ -20,20 +13,21 @@ forbidden_patterns=(
   'IZAKHONO-NODE01-WAVE1-REPORT.json'
 )
 
-# Documentation explaining the deprecation is explicitly allowed.
 allowed_docs=(
   'infra/runtime-fabric/LEGACY-NODE01-WAVE1-DEPRECATION.md'
   'infra/node-cluster/CONNECTA-RUNTIME-CERTIFICATION-README.md'
 )
 
-for path in "${forbidden_paths[@]}"; do
-  if [[ -f "$path" ]]; then
-    echo "[INFO] legacy artifact retained for historical compatibility: $path"
-  fi
+# Historical files may remain in the repository, but they are never an
+# acceptable CONNECTA production dependency.
+for path in \
+  'infra/runtime-fabric/CERTIFY-WAVE1-OWNED.ps1' \
+  'infra/public-cutover/PUSH-WAVE1-OWNED.ps1'; do
+  [[ -f "$path" ]] && echo "[INFO] legacy artifact retained for historical compatibility: $path"
 done
 
-# Search only production automation/configuration areas. Ignore the explicit
-# deprecation/README documents because they must name the retired flow.
+# Scan the actual production automation/configuration surface. Explicit
+# deprecation documentation is allowed to name the retired flow.
 search_roots=(
   '.github/workflows'
   'infra/node-cluster'
