@@ -1,0 +1,44 @@
+{
+  "schema": "izakhono.node/v1",
+  "role": "owned-first-runtime",
+  "status": "declared",
+  "principles": {
+    "ownedFirst": true,
+    "externalFallback": true,
+    "externalReversible": true,
+    "noUnverifiedProductionClaims": true
+  },
+  "controlPlane": {
+    "execution": "izakhono-autonomy",
+    "queue": "izakhono-node-queue",
+    "secrets": "fortress",
+    "observability": "izakhono-observe"
+  },
+  "nodeServices": [
+    "compute",
+    "container-runtime",
+    "storage",
+    "database",
+    "networking",
+    "dns-edge",
+    "mail",
+    "backup",
+    "monitoring"
+  ],
+  "requiredReadinessEvidence": [
+    "node-reachable",
+    "node-authenticated",
+    "container-runtime-ready",
+    "persistent-storage-ready",
+    "backup-tested",
+    "security-gate-passed",
+    "monitoring-online"
+  ],
+  "externalFallbacks": {
+    "compute": ["vercel"],
+    "dns-edge": ["cloudflare"],
+    "data": ["supabase"],
+    "mail": ["mailcow"],
+    "observe": ["vercel"]
+  }
+}
