@@ -3,33 +3,18 @@ import path from 'node:path';
 import { registerHeartbeat, listNodes, selectReadyNode } from './node-registry.mjs';
 
 const root = process.cwd();
-const registryPath = path.join(root, 'autonomy', 'node-registry.json');
-
-function saveRegistry(registry) {
-  fs.writeFileSync(registryPath, JSON.stringify(registry, null, 2) + '\n');
-}
+const registryPath = process.env.IZAKHONO_NODE_REGISTRY_PATH || path.join(root, 'autonomy', 'node-registry.json');
 
 export function ingestHeartbeat(heartbeat) {
-  const registry = fs.existsSync(registryPath)
-    ? JSON.parse(fs.readFileSync(registryPath, 'utf8'))
-    : { schema: 'izakhono.node-registry/v1', nodes: {} };
-  const updated = registerHeartbeat(registry, heartbeat);
-  saveRegistry(updated);
-  return updated.nodes[heartbeat.nodeId];
+  return registerHeartbeat(heartbeat);
 }
 
 export function fleetStatus() {
-  const registry = fs.existsSync(registryPath)
-    ? JSON.parse(fs.readFileSync(registryPath, 'utf8'))
-    : { schema: 'izakhono.node-registry/v1', nodes: {} };
-  return listNodes(registry);
+  return listNodes();
 }
 
 export function deploymentTarget(requirements = {}) {
-  const registry = fs.existsSync(registryPath)
-    ? JSON.parse(fs.readFileSync(registryPath, 'utf8'))
-    : { schema: 'izakhono.node-registry/v1', nodes: {} };
-  return selectReadyNode(registry, requirements);
+  return selectReadyNode(requirements);
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === path.resolve(new URL(import.meta.url).pathname)) {
