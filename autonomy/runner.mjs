@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { runBuilderAdapter } from './builder-adapter.mjs';
+import { runNodeAdapter } from './node-adapter.mjs';
 
 const root = process.cwd();
 const manifestPath = path.join(root, 'autonomy', 'engine-manifest.json');
@@ -60,24 +61,14 @@ while (progressed < manifest.queue.length) {
   if (!next) break;
 
   const current = taskState(next.id);
-  const isBuilderWait = current.status === 'waiting_owner' && next.ownerGate === 'builder-connection';
+  const persistentWait = current.status === 'waiting_owner' && ['builder-connection', 'physical-infrastructure'].includes(current.ownerGate);
 
-  if (next.ownerGate === 'physical-infrastructure') {
-    transition(next, 'waiting_owner', {
-      ownerGate: next.ownerGate,
-      reason: 'external-capability-required',
-      evidence: evidenceFor(next)
-    });
-    externalGate = next;
-    break;
-  }
-
-  if (!isBuilderWait && current.attempts >= manifest.policy.maxRetries) {
+  if (!persistentWait && current.attempts >= manifest.policy.maxRetries) {
     transition(next, 'blocked', { reason: 'retry-budget-exhausted' });
     break;
   }
 
-  if (!isBuilderWait) {
+  if (!persistentWait) {
     transition(next, 'running', { attempts: current.attempts + 1, action: next.action, adapter: next.adapter });
   } else {
     transition(next, 'running', { action: next.action, adapter: next.adapter, wakeReason: 'scheduled-retry' });
@@ -87,29 +78,35 @@ while (progressed < manifest.queue.length) {
 
   if (!result && next.adapter === 'builder') {
     result = await runBuilderAdapter(next);
-    if (result.status === 'completed') {
-      transition(next, 'completed', {
-        evidence: result.evidence ?? evidenceFor(next, 'passed'),
-        provider: result.provider ?? manifest.adapters?.builder?.[0]
-      });
-    } else if (result.status === 'waiting') {
-      transition(next, 'waiting_owner', {
-        ownerGate: 'builder-connection',
-        reason: result.reason ?? 'builder-connection-required',
-        provider: result.provider ?? manifest.adapters?.builder?.[0],
-        evidence: evidenceFor(next)
-      });
-      externalGate = next;
-    } else {
-      const attempts = taskState(next.id).attempts;
-      transition(next, attempts >= manifest.policy.maxRetries ? 'blocked' : 'failed', {
-        reason: result.reason ?? 'builder-failed',
-        provider: result.provider ?? manifest.adapters?.builder?.[0]
-      });
-      externalGate = next;
-    }
-  } else if (!result) {
+  }
+
+  if (!result && next.adapter === 'deploy' && ['node-discovery', 'node-readiness'].includes(next.action)) {
+    result = await runNodeAdapter(next.action);
+  }
+
+  if (!result) {
     transition(next, 'awaiting_adapter', { evidence: evidenceFor(next) });
+    externalGate = next;
+  } else if (result.status === 'completed' || result.status === 'ready') {
+    transition(next, 'completed', {
+      evidence: result.evidence ?? evidenceFor(next, 'passed'),
+      provider: result.provider ?? manifest.adapters?.[next.adapter]?.[0]
+    });
+  } else if (result.status === 'waiting') {
+    const ownerGate = next.ownerGate ?? (next.adapter === 'deploy' ? 'physical-infrastructure' : 'builder-connection');
+    transition(next, 'waiting_owner', {
+      ownerGate,
+      reason: result.reason ?? 'external-capability-required',
+      provider: result.provider ?? manifest.adapters?.[next.adapter]?.[0],
+      evidence: result.evidence ?? evidenceFor(next)
+    });
+    externalGate = next;
+  } else {
+    const attempts = taskState(next.id).attempts;
+    transition(next, attempts >= manifest.policy.maxRetries ? 'blocked' : 'failed', {
+      reason: result.reason ?? 'adapter-failed',
+      provider: result.provider ?? manifest.adapters?.[next.adapter]?.[0]
+    });
     externalGate = next;
   }
 
