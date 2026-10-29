@@ -74,6 +74,24 @@ export async function runNodeAdapter(action, input = {}) {
     };
   }
 
+  if (action === 'node-target') {
+    const target = deploymentTarget(input.requirements || {});
+    if (target.status !== 'ready') {
+      return {
+        status: 'waiting',
+        reason: target.reason,
+        ownerGate: 'physical-infrastructure',
+        target,
+      };
+    }
+    return {
+      status: 'completed',
+      selectedNode: target.nodeId,
+      target,
+      evidence: [{ name: 'eligible-node-selected', status: 'passed' }],
+    };
+  }
+
   if (action === 'node-readiness' || action === 'promote') {
     const target = deploymentTarget(input.requirements || {});
     if (target.status !== 'ready') {
@@ -87,14 +105,14 @@ export async function runNodeAdapter(action, input = {}) {
 
     const result = await runProcess(agent, {
       operation: 'promote',
-      targetNodeId: target.nodeId,
+      targetNodeId: input.selectedNode || target.nodeId,
       requestId: input.requestId || `promotion-${Date.now()}`,
       ...input,
     });
 
     return {
       ...result,
-      selectedNode: target.nodeId,
+      selectedNode: input.selectedNode || target.nodeId,
       target,
     };
   }
