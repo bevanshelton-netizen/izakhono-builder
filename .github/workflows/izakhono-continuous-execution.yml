@@ -2,6 +2,9 @@ name: IZAKHONO Continuous Execution
 
 on:
   workflow_dispatch:
+  push:
+    paths-ignore:
+      - 'autonomy/state.json'
   schedule:
     - cron: '*/5 * * * *'
 
