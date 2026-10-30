@@ -34,6 +34,7 @@ export class PaymentRefundLedger {
       merchantId: input.merchantId,
       amountMinor,
       currency: input.payment.currency,
+      paymentAmountMinor: input.payment.amountMinor,
     });
 
     return { transaction, refundId: input.refundId };
