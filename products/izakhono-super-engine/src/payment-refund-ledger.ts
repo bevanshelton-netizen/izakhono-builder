@@ -13,8 +13,10 @@ export class PaymentRefundLedger {
   async recordRefund(input: {
     refundId: string;
     payment: PaymentIntent;
+    merchantId: string;
     amountMinor?: number;
   }): Promise<RefundLedgerResult> {
+    if (!input.merchantId.trim()) throw new Error('Merchant ID is required');
     if (input.payment.status !== 'paid' && input.payment.status !== 'refunded') {
       throw new Error(`Refund ledger entry requires a paid or refunded payment; current status is ${input.payment.status}`);
     }
@@ -29,7 +31,7 @@ export class PaymentRefundLedger {
     const transaction = await this.ledger.recordRefund({
       refundId: input.refundId,
       paymentIntentId: input.payment.id,
-      merchantId: input.payment.externalTransactionId,
+      merchantId: input.merchantId,
       amountMinor,
       currency: input.payment.currency,
     });
