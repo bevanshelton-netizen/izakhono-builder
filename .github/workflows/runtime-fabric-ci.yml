@@ -24,9 +24,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Python runtime acceptance tests
+        run: |
+          set -euo pipefail
+          python3 -m pytest -q infra/runtime-fabric/controller/test_runtime_fabric_controller.py infra/runtime-fabric/acceptance/test_kora_mail_live_gate.py infra/runtime-fabric/activation/test_kora_production_activate.py
+
       - name: Bash syntax
         run: |
           bash -n infra/runtime-fabric/verify-fabric.sh
+          bash -n infra/runtime-fabric/activation/KORA-MAIL-ACTIVATE.sh
+          bash -n infra/runtime-fabric/activation/KORA-PRODUCTION-ACTIVATE.sh
+          bash -n infra/runtime-fabric/acceptance/KORA-MAIL-LIVE-GATE.sh
 
       - name: PowerShell syntax
         shell: pwsh
@@ -50,6 +58,17 @@ jobs:
               exit 1
             }
           }
+
+      - name: KORA acceptance invariants
+        run: |
+          set -euo pipefail
+          grep -Fq 'LIVE_VERIFIED' infra/runtime-fabric/acceptance/KORA-MAIL-LIVE-GATE.sh
+          grep -Fq 'external acceptance evidence' infra/runtime-fabric/acceptance/KORA-MAIL-LIVE-GATE.sh
+          grep -Fq 'ACTIVATED_AWAITING_EXTERNAL_ACCEPTANCE' infra/runtime-fabric/activation/KORA-PRODUCTION-ACTIVATE.sh
+          grep -Fq 'external_acceptance_required' infra/runtime-fabric/activation/KORA-PRODUCTION-ACTIVATE.sh
+          test -x infra/runtime-fabric/activation/KORA-MAIL-ACTIVATE.sh
+          test -x infra/runtime-fabric/activation/KORA-PRODUCTION-ACTIVATE.sh
+          test -x infra/runtime-fabric/acceptance/KORA-MAIL-LIVE-GATE.sh
 
       - name: Wave 1 owned certification logic
         shell: pwsh
@@ -141,6 +160,6 @@ jobs:
       - name: Runtime Fabric software proof
         run: |
           echo "IZAKHONO_RUNTIME_FABRIC_SOFTWARE=PASS"
-          echo "OWNED_WAVE1_CERTIFICATION_SOFTWARE=PASS"
+          echo "KORA_RUNTIME_ACCEPTANCE_TESTS=PASS_IF_PYTEST_STEP_PASSES"
           echo "OWNED_WAVE1_REAL_EVIDENCE=PENDING_OWNER_MACHINE"
           echo "ORACLE_A1_RESOURCE_PROVISIONING=EXTERNAL_PENDING"
