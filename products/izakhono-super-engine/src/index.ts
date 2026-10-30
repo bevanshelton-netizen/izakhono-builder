@@ -10,6 +10,7 @@ export * from './payment-settlement.js';
 export * from './payment-reconciliation.js';
 export * from './payment-events.js';
 export * from './payment-refunds.js';
+export * from './payment-supabase.js';
 
 export const IZAKHONO_SUPER_ENGINE = {
   id: 'izakhono-super-engine',
@@ -27,6 +28,7 @@ export const IZAKHONO_SUPER_ENGINE = {
   reconciliationFabric: 'provider-reconciliation',
   eventFabric: 'durable-idempotent-payment-events',
   lifecycleFabric: 'explicit-cancel-refund-state-machine',
+  persistenceFabric: 'portable-postgres-supabase-adapter',
   ownedFirst: true,
   externalAdaptersReplaceable: true,
   privacyByDefault: true,
