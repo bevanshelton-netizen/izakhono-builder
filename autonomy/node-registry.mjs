@@ -4,7 +4,11 @@ import crypto from 'node:crypto';
 
 const root = process.cwd();
 const registryPath = process.env.IZAKHONO_NODE_REGISTRY_PATH || path.join(root, 'autonomy', 'node-registry.json');
-const staleAfterMs = Number(process.env.IZAKHONO_NODE_STALE_MS || 180000);
+const configuredStaleAfterMs = Number(process.env.IZAKHONO_NODE_STALE_MS || 180000);
+const staleAfterMs = Number.isFinite(configuredStaleAfterMs) && configuredStaleAfterMs > 0
+  ? configuredStaleAfterMs
+  : 180000;
+const maxFutureSkewMs = Number(process.env.IZAKHONO_NODE_MAX_FUTURE_SKEW_MS || 30000);
 
 function readRegistry() {
   if (!fs.existsSync(registryPath)) return { schema: 'izakhono.node-registry/v1', nodes: {} };
@@ -20,6 +24,21 @@ function safeHash(value) {
   return crypto.createHash('sha256').update(String(value)).digest('hex').slice(0, 16);
 }
 
+function parseTimestamp(value) {
+  const parsed = Date.parse(value || '');
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function freshness(node, now = Date.now()) {
+  const receivedAtMs = parseTimestamp(node.receivedAt);
+  if (receivedAtMs === null) return { online: false, ageMs: null, reason: 'missing-or-invalid-receivedAt' };
+
+  const ageMs = now - receivedAtMs;
+  const limit = Number.isFinite(node.staleAfterMs) && node.staleAfterMs > 0 ? node.staleAfterMs : staleAfterMs;
+  if (ageMs < -maxFutureSkewMs) return { online: false, ageMs, reason: 'receivedAt-in-future' };
+  return { online: ageMs <= limit, ageMs, reason: ageMs <= limit ? 'fresh-heartbeat' : 'heartbeat-expired' };
+}
+
 export function recordHeartbeat(heartbeat) {
   const nodeId = heartbeat?.nodeId || heartbeat?.node?.id;
   if (!nodeId) throw new Error('nodeId is required');
@@ -29,6 +48,7 @@ export function recordHeartbeat(heartbeat) {
   const existing = registry.nodes[nodeId] || {};
   const checks = heartbeat.checks || heartbeat.readiness || {};
   const health = heartbeat.health || heartbeat.status || 'unknown';
+  const receivedAt = now;
 
   registry.nodes[nodeId] = {
     ...existing,
@@ -39,7 +59,7 @@ export function recordHeartbeat(heartbeat) {
     readiness: checks,
     runtime: heartbeat.runtime || existing.runtime || {},
     lastSeenAt: heartbeat.timestamp || now,
-    receivedAt: now,
+    receivedAt,
     heartbeatId: heartbeat.heartbeatId || safeHash(`${nodeId}:${heartbeat.timestamp || now}`),
     staleAfterMs,
   };
@@ -52,10 +72,15 @@ export const registerHeartbeat = recordHeartbeat;
 export function listNodes() {
   const registry = readRegistry();
   const now = Date.now();
-  return Object.values(registry.nodes).map((node) => ({
-    ...node,
-    health: now - Date.parse(node.lastSeenAt) <= (node.staleAfterMs || staleAfterMs) ? 'online' : 'stale',
-  }));
+  return Object.values(registry.nodes).map((node) => {
+    const state = freshness(node, now);
+    return {
+      ...node,
+      health: state.online ? 'online' : 'stale',
+      heartbeatAgeMs: state.ageMs,
+      freshnessReason: state.reason,
+    };
+  });
 }
 
 export function getNode(nodeId) {
