@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { runBuilderAdapter } from './builder-adapter.mjs';
 import { runNodeAdapter } from './node-adapter.mjs';
+import { resolveFailover } from './node-failover.mjs';
 
 const root = process.cwd();
 const manifestPath = path.join(root, 'autonomy', 'engine-manifest.json');
@@ -38,6 +39,33 @@ function executeInternal(task) {
   if (task.action === 'run-worker') {
     transition(task, 'completed', { attempts: taskState(task.id).attempts + 1, evidence: evidenceFor(task, 'passed') });
     return { status: 'completed' };
+  }
+  if (task.action === 'node-failover') {
+    const result = resolveFailover(task.requirements ?? {});
+    if (result.status === 'not_required') {
+      return {
+        status: 'completed',
+        evidence: evidenceFor(task, 'not_required'),
+        reason: result.reason,
+      };
+    }
+    if (result.status === 'ready') {
+      return {
+        status: 'completed',
+        selectedNode: result.replacementNodeId,
+        target: result.target,
+        evidence: evidenceFor(task, 'passed'),
+        source: 'owned-node-control-plane',
+      };
+    }
+    return {
+      status: 'waiting',
+      reason: result.reason,
+      selectedNode: null,
+      target: result.target,
+      evidence: evidenceFor(task),
+      source: 'owned-node-control-plane',
+    };
   }
   return null;
 }
@@ -79,6 +107,7 @@ while (progressed < manifest.queue.length) {
       provider: result.provider ?? manifest.adapters?.[next.adapter]?.[0],
       selectedNode: result.selectedNode ?? result.target?.nodeId ?? result.registeredNode ?? null,
       targetReason: result.target?.reason ?? null,
+      reason: result.reason ?? null,
       evidenceSource: result.source ?? null,
     });
   } else if (result.status === 'waiting') {
