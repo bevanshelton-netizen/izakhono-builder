@@ -36,6 +36,9 @@ jobs:
       - name: Validate NODE registry freshness
         run: npm run node-registry:test
 
+      - name: Validate owned NODE failover
+        run: npm run node-failover:test
+
       - name: Run continuous execution engine
         env:
           IZAKHONO_BUILDER_ADAPTER_URL: ${{ secrets.IZAKHONO_BUILDER_ADAPTER_URL }}
