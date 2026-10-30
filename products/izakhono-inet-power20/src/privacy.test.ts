@@ -1,12 +1,13 @@
 import assert from 'node:assert/strict';
 import { decideAccess, privacyDefaults } from './privacy.js';
+import type { ConsentGrant } from './types.js';
 
 const now = new Date('2026-10-30T00:00:00.000Z');
-const grant = {
+const grant: ConsentGrant = {
   subjectId: 'user-1',
   serviceId: 'mail',
-  permissions: ['read:mail', 'send:mail'] as const,
-  dataDomains: ['communications'] as const,
+  permissions: ['read:mail', 'send:mail'],
+  dataDomains: ['communications'],
   grantedAt: now.toISOString(),
 };
 
