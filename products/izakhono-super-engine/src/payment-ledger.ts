@@ -20,6 +20,7 @@ export interface LedgerTransaction {
   reference: string;
   type: 'payment' | 'fee' | 'settlement' | 'refund';
   currency: string;
+  paymentIntentId?: string;
   lines: readonly LedgerLine[];
   createdAt: string;
 }
@@ -64,6 +65,8 @@ export class MemoryPaymentLedgerStore implements PaymentLedgerStore {
 
 /** Append-only double-entry ledger. No balance is mutable outside a journal transaction. */
 export class IzakhonoPaymentLedger {
+  private refundQueue: Promise<void> = Promise.resolve();
+
   constructor(private readonly store: PaymentLedgerStore) {}
 
   async ensureMerchantAccount(merchantId: string, currency: string): Promise<MerchantAccount> {
@@ -96,6 +99,7 @@ export class IzakhonoPaymentLedger {
       reference,
       type: 'payment',
       currency: input.currency,
+      paymentIntentId: input.paymentIntentId,
       lines: [
         { accountId: `platform:clearing:${input.currency}`, direction: 'debit', amountMinor: input.amountMinor, currency: input.currency },
         { accountId: account.id, direction: 'credit', amountMinor: input.amountMinor, currency: input.currency },
@@ -146,34 +150,67 @@ export class IzakhonoPaymentLedger {
     merchantId: string;
     amountMinor: number;
     currency: string;
+    paymentAmountMinor?: number;
   }): Promise<LedgerTransaction> {
-    if (!input.refundId.trim()) throw new Error('Refund ID is required');
-    if (!input.paymentIntentId.trim()) throw new Error('Payment intent ID is required');
-    if (!input.merchantId.trim()) throw new Error('Merchant ID is required');
-    if (!Number.isSafeInteger(input.amountMinor) || input.amountMinor <= 0) throw new Error('Refund amount must be a positive integer');
-    if (!/^[A-Z]{3}$/.test(input.currency)) throw new Error('Refund currency must be an ISO 4217 code');
-    const account = await this.ensureMerchantAccount(input.merchantId, input.currency);
-    if (account.status !== 'active') throw new Error('Merchant account is suspended');
-    const reference = `refund:${input.refundId}`;
-    if (await this.store.hasTransaction(reference)) {
-      const existing = (await this.store.listTransactions()).find((item) => item.reference === reference);
-      if (!existing) throw new Error('Ledger refund idempotency state is inconsistent');
-      return existing;
+    return this.withRefundLock(async () => {
+      if (!input.refundId.trim()) throw new Error('Refund ID is required');
+      if (!input.paymentIntentId.trim()) throw new Error('Payment intent ID is required');
+      if (!input.merchantId.trim()) throw new Error('Merchant ID is required');
+      if (!Number.isSafeInteger(input.amountMinor) || input.amountMinor <= 0) throw new Error('Refund amount must be a positive integer');
+      if (!/^[A-Z]{3}$/.test(input.currency)) throw new Error('Refund currency must be an ISO 4217 code');
+      if (input.paymentAmountMinor !== undefined && (!Number.isSafeInteger(input.paymentAmountMinor) || input.paymentAmountMinor <= 0)) {
+        throw new Error('Payment amount must be a positive integer');
+      }
+      const account = await this.ensureMerchantAccount(input.merchantId, input.currency);
+      if (account.status !== 'active') throw new Error('Merchant account is suspended');
+      const reference = `refund:${input.refundId}`;
+      if (await this.store.hasTransaction(reference)) {
+        const existing = (await this.store.listTransactions()).find((item) => item.reference === reference);
+        if (!existing) throw new Error('Ledger refund idempotency state is inconsistent');
+        return existing;
+      }
+      if (input.paymentAmountMinor !== undefined) {
+        const refunded = await this.getRefundedAmount(input.paymentIntentId);
+        if (refunded + input.amountMinor > input.paymentAmountMinor) {
+          throw new Error('Aggregate refund amount cannot exceed the payment amount');
+        }
+      }
+      const transaction: LedgerTransaction = {
+        id: `ledger_${crypto.randomUUID()}`,
+        reference,
+        type: 'refund',
+        currency: input.currency,
+        paymentIntentId: input.paymentIntentId,
+        lines: [
+          { accountId: account.id, direction: 'debit', amountMinor: input.amountMinor, currency: input.currency },
+          { accountId: `platform:clearing:${input.currency}`, direction: 'credit', amountMinor: input.amountMinor, currency: input.currency },
+        ],
+        createdAt: new Date().toISOString(),
+      };
+      validateBalanced(transaction);
+      await this.store.appendTransaction(transaction);
+      return transaction;
+    });
+  }
+
+  async getRefundedAmount(paymentIntentId: string): Promise<number> {
+    if (!paymentIntentId.trim()) throw new Error('Payment intent ID is required');
+    const transactions = await this.store.listTransactions();
+    return transactions
+      .filter((item) => item.type === 'refund' && item.paymentIntentId === paymentIntentId)
+      .reduce((sum, item) => sum + item.lines.filter((line) => line.direction === 'debit').reduce((value, line) => value + line.amountMinor, 0), 0);
+  }
+
+  private async withRefundLock<T>(operation: () => Promise<T>): Promise<T> {
+    const previous = this.refundQueue;
+    let release!: () => void;
+    this.refundQueue = new Promise<void>((resolve) => { release = resolve; });
+    await previous;
+    try {
+      return await operation();
+    } finally {
+      release();
     }
-    const transaction: LedgerTransaction = {
-      id: `ledger_${crypto.randomUUID()}`,
-      reference,
-      type: 'refund',
-      currency: input.currency,
-      lines: [
-        { accountId: account.id, direction: 'debit', amountMinor: input.amountMinor, currency: input.currency },
-        { accountId: `platform:clearing:${input.currency}`, direction: 'credit', amountMinor: input.amountMinor, currency: input.currency },
-      ],
-      createdAt: new Date().toISOString(),
-    };
-    validateBalanced(transaction);
-    await this.store.appendTransaction(transaction);
-    return transaction;
   }
 }
 
