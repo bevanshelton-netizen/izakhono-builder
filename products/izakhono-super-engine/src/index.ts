@@ -13,6 +13,7 @@ export * from './payment-events.js';
 export * from './payment-refunds.js';
 export * from './payment-refund-ledger.js';
 export * from './payment-orchestrator.js';
+export * from './payment-webhook-guard.js';
 export * from './payment-supabase.js';
 export * from './payment-events-supabase.js';
 export * from './payment-durable.js';
@@ -32,6 +33,7 @@ export const IZAKHONO_SUPER_ENGINE = {
   settlementFabric: 'merchant-settlement',
   reconciliationFabric: 'provider-reconciliation',
   eventFabric: 'durable-idempotent-payment-events',
+  webhookFabric: 'signature-first-contradiction-safe',
   lifecycleFabric: 'explicit-cancel-refund-state-machine',
   persistenceFabric: 'portable-postgres-supabase-adapter',
   orchestrationFabric: 'payment-to-settlement-refund-orchestrator',
