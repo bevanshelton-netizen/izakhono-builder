@@ -4,6 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "wrangler dev",
+    "inet:power20:test": "npx --yes tsx@4.20.3 products/izakhono-inet-power20/src/privacy.test.ts",
+    "inet:power20:typecheck": "npx --yes typescript@5.9.2 --noEmit --target ES2022 --module NodeNext --moduleResolution NodeNext products/izakhono-inet-power20/src/types.ts products/izakhono-inet-power20/src/privacy.ts products/izakhono-inet-power20/src/catalog.ts products/izakhono-inet-power20/src/index.ts",
     "marketing-os:startup:test": "npx --yes tsx@4.20.3 products/izakhono-marketing-os/src/marketing-os-startup.test.ts",
     "marketing-os:startup:typecheck": "npx --yes typescript@5.9.2 --noEmit --target ES2022 --module NodeNext --moduleResolution NodeNext products/izakhono-marketing-os/src/marketing-os-startup.ts products/izakhono-marketing-os/src/startup-recovery-controller.ts products/izakhono-marketing-os/src/production-provider-observation.ts",
     "business-studio:provisioner:test": "npx --yes tsx@4.20.3 products/izakhono-business-studio/provisioner-runtime.test.ts",
