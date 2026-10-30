@@ -17,7 +17,8 @@
     "When physical hardware remains necessary, prefer IZAKHONO NODES.",
     "Treat external infrastructure as reversible fallback or temporary extension, not the assumed foundation.",
     "Never claim production readiness without verifiable evidence.",
-    "Prefer independent ready work over a single blocking dependency."
+    "Prefer independent ready work over a single blocking dependency.",
+    "Never fail over to an external provider when an owned NODE is unavailable; wait for an eligible owned NODE instead."
   ],
   "stages": ["planning", "architecture", "design", "development", "integration", "testing", "security", "deployment", "verification", "documentation", "monetisation", "launch", "handover"],
   "adapters": {
@@ -38,6 +39,7 @@
     {"id": "node-discovery", "title": "Discover and authenticate the IZAKHONO NODE runtime", "stage": "integration", "adapter": "deploy", "dependsOn": ["continuous-worker"], "action": "node-discovery", "evidence": ["node-reachable", "node-authenticated"], "ownerGate": "physical-infrastructure"},
     {"id": "node-heartbeat", "title": "Emit a continuous machine-readable IZAKHONO NODE health and capacity heartbeat", "stage": "verification", "adapter": "deploy", "dependsOn": ["continuous-worker"], "action": "node-heartbeat", "evidence": ["heartbeat-emitted", "node-health-readable", "capacity-reported"], "ownerGate": "physical-infrastructure"},
     {"id": "node-target-selection", "title": "Select the healthiest eligible IZAKHONO NODE before deployment promotion", "stage": "verification", "adapter": "deploy", "dependsOn": ["node-heartbeat"], "action": "node-target", "requirements": {"requiredChecks": ["nodeReachable", "persistentStorageReady", "containerRuntimeReady", "monitoringOnline"]}, "evidence": ["eligible-node-selected"], "ownerGate": "physical-infrastructure"},
-    {"id": "owned-node-promotion", "title": "Promote continuous execution from hosted heartbeat to IZAKHONO NODE/QUEUE", "stage": "deployment", "adapter": "deploy", "dependsOn": ["continuous-worker", "node-discovery", "node-heartbeat", "node-target-selection"], "action": "node-readiness", "requirements": {"requiredChecks": ["nodeReachable", "persistentStorageReady", "containerRuntimeReady", "monitoringOnline"]}, "evidence": ["container-runtime-ready", "persistent-storage-ready", "backup-tested", "security-gate-passed", "monitoring-online"], "ownerGate": "physical-infrastructure"}
+    {"id": "owned-node-failover", "title": "Automatically resolve a failed owned NODE to another fresh eligible owned NODE", "stage": "verification", "adapter": "deploy", "dependsOn": ["node-target-selection"], "action": "node-failover", "requirements": {"requiredChecks": ["nodeReachable", "persistentStorageReady", "containerRuntimeReady", "monitoringOnline"]}, "evidence": ["failover-resolution-verified"], "ownerGate": "physical-infrastructure"},
+    {"id": "owned-node-promotion", "title": "Promote continuous execution from hosted heartbeat to IZAKHONO NODE/QUEUE", "stage": "deployment", "adapter": "deploy", "dependsOn": ["continuous-worker", "node-discovery", "node-heartbeat", "node-target-selection", "owned-node-failover"], "action": "node-readiness", "requirements": {"requiredChecks": ["nodeReachable", "persistentStorageReady", "containerRuntimeReady", "monitoringOnline"]}, "evidence": ["container-runtime-ready", "persistent-storage-ready", "backup-tested", "security-gate-passed", "monitoring-online"], "ownerGate": "physical-infrastructure"}
   ]
 }
