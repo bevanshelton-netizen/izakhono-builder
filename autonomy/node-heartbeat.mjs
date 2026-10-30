@@ -1,10 +1,12 @@
 import os from 'node:os';
 import fs from 'node:fs';
+import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 
-const VERSION = '1.0.0';
+const VERSION = '1.1.0';
 const nodeId = process.env.IZAKHONO_NODE_ID || os.hostname();
 const storagePath = process.env.IZAKHONO_NODE_STORAGE_PATH || process.cwd();
+const heartbeatFile = process.env.IZAKHONO_HEARTBEAT_FILE || path.join(storagePath, 'node-heartbeat.json');
 
 function commandAvailable(command) {
   try {
@@ -78,6 +80,15 @@ export function collectHeartbeat() {
   };
 }
 
+function persistHeartbeat(payload) {
+  const directory = path.dirname(heartbeatFile);
+  fs.mkdirSync(directory, { recursive: true, mode: 0o750 });
+  const temporary = `${heartbeatFile}.tmp`;
+  fs.writeFileSync(temporary, JSON.stringify(payload, null, 2) + '\n', { mode: 0o640 });
+  fs.renameSync(temporary, heartbeatFile);
+  return heartbeatFile;
+}
+
 function main() {
   const mode = process.argv[2] || 'heartbeat';
   if (!['heartbeat', 'check'].includes(mode)) {
@@ -86,6 +97,8 @@ function main() {
     return;
   }
   const payload = collectHeartbeat();
+  const evidencePath = persistHeartbeat(payload);
+  payload.evidence = { heartbeatFile: evidencePath, persisted: true };
   if (mode === 'check') payload.status = payload.health === 'healthy' ? 'ready' : 'degraded';
   process.stdout.write(JSON.stringify(payload) + '\n');
 }
