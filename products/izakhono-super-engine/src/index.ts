@@ -8,6 +8,8 @@ export * from './payment-workflow.js';
 export * from './payment-fulfillment.js';
 export * from './payment-settlement.js';
 export * from './payment-reconciliation.js';
+export * from './payment-events.js';
+export * from './payment-refunds.js';
 
 export const IZAKHONO_SUPER_ENGINE = {
   id: 'izakhono-super-engine',
@@ -23,6 +25,8 @@ export const IZAKHONO_SUPER_ENGINE = {
   fulfillmentFabric: 'payment-to-provisioner',
   settlementFabric: 'merchant-settlement',
   reconciliationFabric: 'provider-reconciliation',
+  eventFabric: 'durable-idempotent-payment-events',
+  lifecycleFabric: 'explicit-cancel-refund-state-machine',
   ownedFirst: true,
   externalAdaptersReplaceable: true,
   privacyByDefault: true,
