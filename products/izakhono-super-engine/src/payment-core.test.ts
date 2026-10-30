@@ -7,11 +7,12 @@ const input: CreatePaymentInput = {
   successPageUrl: 'https://example.com/success', failurePageUrl: 'https://example.com/failure',
 };
 
+let webhookTransaction = 'ORDER-1001';
 const provider: PaymentProvider = {
   id: 'test-provider',
   async createPaymentLink() { return { paymentIntentId: '', provider: 'test-provider', providerPaymentId: 'provider-1', url: 'https://pay.example/1' }; },
   async verifyWebhook() { return true; },
-  parseWebhook() { return { provider: 'test-provider', providerPaymentId: 'provider-1', externalTransactionId: 'ORDER-1001', status: 'SUCCESS', responseCode: '00' }; },
+  parseWebhook() { return { provider: 'test-provider', providerPaymentId: 'provider-1', externalTransactionId: webhookTransaction, status: 'SUCCESS', responseCode: '00' }; },
 };
 
 const store = new MemoryPaymentStore();
@@ -25,6 +26,7 @@ const paid = await pay.processWebhook('{}', '/api/payment/callback', 'valid');
 assert.equal(paid.status, 'paid');
 
 await assert.rejects(() => pay.createPayment(input), /Duplicate external transaction ID/);
-await assert.rejects(() => pay.processWebhook('{}', '/api/payment/callback', 'valid-unknown'), /Unknown payment transaction/);
+webhookTransaction = 'ORDER-DOES-NOT-EXIST';
+await assert.rejects(() => pay.processWebhook('{}', '/api/payment/callback', 'valid'), /Unknown payment transaction/);
 
 console.log('IZAKHONO PAY core tests passed');
