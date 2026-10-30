@@ -106,6 +106,39 @@ export class IzakhonoPaymentLedger {
     await this.store.appendTransaction(transaction);
     return transaction;
   }
+
+  async recordSettlement(input: {
+    reference: string;
+    merchantId: string;
+    amountMinor: number;
+    currency: string;
+    merchantPayableAccountId: string;
+    settlementAccountId: string;
+  }): Promise<LedgerTransaction> {
+    if (!input.reference.trim()) throw new Error('Ledger reference is required');
+    if (!Number.isSafeInteger(input.amountMinor) || input.amountMinor <= 0) throw new Error('Settlement amount must be a positive integer');
+    if (!/^[A-Z]{3}$/.test(input.currency)) throw new Error('Settlement currency must be an ISO 4217 code');
+    if (!input.merchantPayableAccountId.trim() || !input.settlementAccountId.trim()) throw new Error('Settlement accounts are required');
+    if (await this.store.hasTransaction(input.reference)) {
+      const existing = (await this.store.listTransactions()).find((item) => item.reference === input.reference);
+      if (!existing) throw new Error('Ledger settlement idempotency state is inconsistent');
+      return existing;
+    }
+    const transaction: LedgerTransaction = {
+      id: `ledger_${crypto.randomUUID()}`,
+      reference: input.reference,
+      type: 'settlement',
+      currency: input.currency,
+      lines: [
+        { accountId: input.merchantPayableAccountId, direction: 'debit', amountMinor: input.amountMinor, currency: input.currency },
+        { accountId: input.settlementAccountId, direction: 'credit', amountMinor: input.amountMinor, currency: input.currency },
+      ],
+      createdAt: new Date().toISOString(),
+    };
+    validateBalanced(transaction);
+    await this.store.appendTransaction(transaction);
+    return transaction;
+  }
 }
 
 function validateBalanced(transaction: LedgerTransaction): void {
