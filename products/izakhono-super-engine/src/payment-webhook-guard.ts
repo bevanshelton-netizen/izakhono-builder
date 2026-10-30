@@ -40,7 +40,7 @@ export class PaymentWebhookGuard {
     }
 
     await this.events.record(createPaymentEvent({
-      kind: 'webhook.received',
+      kind: 'webhook.outcome',
       paymentIntentId: intent.id,
       externalTransactionId: webhook.externalTransactionId,
       provider: webhook.provider,
