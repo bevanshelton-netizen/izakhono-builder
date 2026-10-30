@@ -3,6 +3,8 @@ export * from './modules.js';
 export * from './engine.js';
 export * from './service-bus.js';
 export * from './payment-core.js';
+export * from './payment-ledger.js';
+export * from './payment-workflow.js';
 
 export const IZAKHONO_SUPER_ENGINE = {
   id: 'izakhono-super-engine',
@@ -13,6 +15,8 @@ export const IZAKHONO_SUPER_ENGINE = {
   network: 'I-NET',
   serviceFabric: 'zero-trust-service-bus',
   paymentFabric: 'IZAKHONO-PAY',
+  paymentLedger: 'double-entry-append-only',
+  paymentWorkflow: 'payment-to-provisioning',
   ownedFirst: true,
   externalAdaptersReplaceable: true,
   privacyByDefault: true,
