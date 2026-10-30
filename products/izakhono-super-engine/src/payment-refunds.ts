@@ -46,7 +46,14 @@ export class PaymentLifecycle {
   }
 
   private async transition(payment: PaymentIntent, to: PaymentStatus, reason: string): Promise<PaymentIntent> {
-    const updated = await this.store.update(payment.id, { status: to });
+    const updated = this.store.updateIfStatus
+      ? await this.store.updateIfStatus(payment.id, payment.status, { status: to })
+      : await this.store.update(payment.id, { status: to });
+    if (!updated) {
+      const current = await this.store.getByExternalTransactionId(payment.externalTransactionId);
+      if (current?.status === to) return current;
+      throw new Error(`Payment state changed concurrently; expected ${payment.status}`);
+    }
     await this.events.append({
       paymentIntentId: payment.id,
       from: payment.status,
@@ -64,9 +71,24 @@ export interface RefundProvider {
 
 /** Provider-independent refund orchestration. Ledger reversal should be a separate journal transaction. */
 export class IzakhonoRefunds {
+  private readonly inFlight = new Map<string, Promise<{ payment: PaymentIntent; providerRefundId: string }>>();
+
   constructor(private readonly lifecycle: PaymentLifecycle, private readonly provider: RefundProvider) {}
 
   async refund(payment: PaymentIntent, reason = 'Customer refund'): Promise<{ payment: PaymentIntent; providerRefundId: string }> {
+    const existing = this.inFlight.get(payment.id);
+    if (existing) return existing;
+
+    const operation = this.executeRefund(payment, reason);
+    this.inFlight.set(payment.id, operation);
+    try {
+      return await operation;
+    } finally {
+      if (this.inFlight.get(payment.id) === operation) this.inFlight.delete(payment.id);
+    }
+  }
+
+  private async executeRefund(payment: PaymentIntent, reason: string): Promise<{ payment: PaymentIntent; providerRefundId: string }> {
     if (payment.status !== 'paid') throw new Error('Refund requires a paid payment');
     if (!payment.providerPaymentId) throw new Error('Paid payment has no provider payment ID');
     const result = await this.provider.requestRefund({
