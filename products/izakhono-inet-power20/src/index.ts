@@ -1,6 +1,7 @@
 export * from './types.js';
 export * from './privacy.js';
 export * from './catalog.js';
+export * from './gateway.js';
 
 export const I_NET_CORE = {
   id: 'inet-core',
