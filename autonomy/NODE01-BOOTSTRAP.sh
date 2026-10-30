@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# IZAKHONO NODE01 bootstrap v1
+# IZAKHONO NODE01 bootstrap v1.1
 # Installs the provider-neutral NODE agent and persistent heartbeat service.
 # This script deliberately refuses to manufacture backup, security or monitoring evidence.
 
@@ -9,6 +9,7 @@ ROOT_DIR="${IZAKHONO_ROOT_DIR:-/opt/izakhono-builder}"
 DATA_DIR="${IZAKHONO_NODE_DATA_DIR:-/var/lib/izakhono}"
 NODE_ID="${IZAKHONO_NODE_ID:-NODE01}"
 SERVICE_NAME="izakhono-node-heartbeat"
+HEARTBEAT_FILE="${IZAKHONO_HEARTBEAT_FILE:-${DATA_DIR}/node-heartbeat.json}"
 
 require_root() {
   if [[ "${EUID}" -ne 0 ]]; then
@@ -41,6 +42,7 @@ fi
 export IZAKHONO_NODE_ID="$NODE_ID"
 export IZAKHONO_NODE_DATA_DIR="$DATA_DIR"
 export IZAKHONO_NODE_STORAGE_PATH="$DATA_DIR"
+export IZAKHONO_HEARTBEAT_FILE="$HEARTBEAT_FILE"
 
 # Inspect real capabilities before installing the service.
 node "$ROOT_DIR/autonomy/node-agent.mjs" '{"operation":"inspect"}'
@@ -64,6 +66,7 @@ WorkingDirectory=${ROOT_DIR}
 Environment=IZAKHONO_NODE_ID=${NODE_ID}
 Environment=IZAKHONO_NODE_DATA_DIR=${DATA_DIR}
 Environment=IZAKHONO_NODE_STORAGE_PATH=${DATA_DIR}
+Environment=IZAKHONO_HEARTBEAT_FILE=${HEARTBEAT_FILE}
 ExecStart=/usr/bin/env node ${ROOT_DIR}/autonomy/node-heartbeat.mjs heartbeat
 Restart=always
 RestartSec=15
@@ -79,6 +82,13 @@ systemctl daemon-reload
 systemctl enable --now "$SERVICE_NAME"
 systemctl --no-pager --full status "$SERVICE_NAME" || true
 
-echo "NODE01 bootstrap installed."
-echo "Next required gates remain genuine backup, FORTRESS/security and monitoring evidence."
+if [[ ! -s "$HEARTBEAT_FILE" ]]; then
+  echo "ERROR: NODE heartbeat evidence file was not produced." >&2
+  exit 1
+fi
+
+node -e 'const fs=require("fs"); const p=process.argv[1]; const h=JSON.parse(fs.readFileSync(p,"utf8")); if(h?.contract!=="izakhono.node-heartbeat/v1" || !h?.node?.id || !h?.timestamp || !h?.checks) process.exit(1); console.log("Heartbeat evidence verified:", p);' "$HEARTBEAT_FILE"
+
+echo "NODE01 bootstrap installed and heartbeat evidence verified."
+echo "Remaining promotion gates are genuine backup, FORTRESS/security and monitoring evidence."
 echo "Run: node $ROOT_DIR/autonomy/node-agent.mjs '{\"operation\":\"inspect\"}'"
