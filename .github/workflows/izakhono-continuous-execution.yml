@@ -30,6 +30,12 @@ jobs:
         with:
           node-version: 22
 
+      - name: Install dependencies
+        run: npm install
+
+      - name: Validate NODE registry freshness
+        run: npm run node-registry:test
+
       - name: Run continuous execution engine
         env:
           IZAKHONO_BUILDER_ADAPTER_URL: ${{ secrets.IZAKHONO_BUILDER_ADAPTER_URL }}
