@@ -18,7 +18,7 @@ create index if not exists iz_payment_intents_status_idx on iz_payment_intents(s
 
 create table if not exists iz_payment_events (
   id text primary key,
-  kind text not null check (kind in ('webhook.received','payment.paid','payment.failed','payment.cancelled','payment.refunded','refund.requested','receipt.issued')),
+  kind text not null check (kind in ('webhook.received','webhook.outcome','payment.paid','payment.failed','payment.cancelled','payment.refunded','refund.requested','receipt.issued')),
   payment_intent_id text not null references iz_payment_intents(id),
   external_transaction_id text not null,
   provider text not null,
