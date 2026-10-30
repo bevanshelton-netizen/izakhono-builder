@@ -11,6 +11,8 @@ export * from './payment-reconciliation.js';
 export * from './payment-events.js';
 export * from './payment-refunds.js';
 export * from './payment-supabase.js';
+export * from './payment-events-supabase.js';
+export * from './payment-durable.js';
 
 export const IZAKHONO_SUPER_ENGINE = {
   id: 'izakhono-super-engine',
