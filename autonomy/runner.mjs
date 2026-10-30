@@ -8,55 +8,37 @@ const manifestPath = path.join(root, 'autonomy', 'engine-manifest.json');
 const statePath = path.join(root, 'autonomy', 'state.json');
 
 const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
-const state = fs.existsSync(statePath)
-  ? JSON.parse(fs.readFileSync(statePath, 'utf8'))
-  : { version: 1, tasks: {}, history: [] };
+const state = fs.existsSync(statePath) ? JSON.parse(fs.readFileSync(statePath, 'utf8')) : { version: 1, tasks: {}, history: [] };
 
-function taskState(id) {
-  return state.tasks[id] ?? { status: 'queued', attempts: 0 };
-}
-
-function ready(task) {
-  return task.dependsOn.every(id => taskState(id).status === 'completed');
-}
-
+function taskState(id) { return state.tasks[id] ?? { status: 'queued', attempts: 0 }; }
+function ready(task) { return task.dependsOn.every(id => taskState(id).status === 'completed'); }
 function persistentWaitFor(task) {
   const current = taskState(task.id);
   return current.status === 'waiting_owner' && ['builder-connection', 'physical-infrastructure'].includes(current.ownerGate);
 }
-
 function transition(task, status, extra = {}) {
   const previous = taskState(task.id);
   const at = new Date().toISOString();
   state.tasks[task.id] = { ...previous, ...extra, status, updatedAt: at };
   state.history.push({ at, task: task.id, from: previous.status, to: status, ...extra });
 }
-
-function evidenceFor(task, status = 'pending') {
-  return (task.evidence ?? []).map(name => ({ name, status }));
-}
-
+function evidenceFor(task, status = 'pending') { return (task.evidence ?? []).map(name => ({ name, status })); }
 function selectNext() {
   return manifest.queue.find(task => {
     const current = taskState(task.id);
-    return !['completed', 'blocked'].includes(current.status)
-      && !persistentWaitFor(task)
-      && ready(task);
+    return !['completed', 'blocked'].includes(current.status) && !persistentWaitFor(task) && ready(task);
   });
 }
-
 function executeInternal(task) {
   if (task.action === 'validate-manifest') {
     JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
     transition(task, 'completed', { attempts: taskState(task.id).attempts + 1, evidence: evidenceFor(task, 'passed') });
     return { status: 'completed' };
   }
-
   if (task.action === 'run-worker') {
     transition(task, 'completed', { attempts: taskState(task.id).attempts + 1, evidence: evidenceFor(task, 'passed') });
     return { status: 'completed' };
   }
-
   return null;
 }
 
@@ -66,7 +48,6 @@ const externalGates = [];
 while (progressed < manifest.queue.length) {
   const next = selectNext();
   if (!next) break;
-
   const current = taskState(next.id);
   transition(next, 'running', {
     attempts: current.attempts + 1,
@@ -76,13 +57,10 @@ while (progressed < manifest.queue.length) {
   });
 
   let result = executeInternal(next);
+  if (!result && next.adapter === 'builder') result = await runBuilderAdapter(next);
 
-  if (!result && next.adapter === 'builder') {
-    result = await runBuilderAdapter(next);
-  }
-
-  if (!result && next.adapter === 'deploy' && ['node-discovery', 'node-heartbeat', 'node-target', 'node-readiness'].includes(next.action)) {
-    const priorTarget = next.action === 'node-readiness' ? taskState('node-target-selection').selectedNode : null;
+  if (!result && next.adapter === 'deploy' && ['node-discovery', 'node-heartbeat', 'node-evidence', 'node-target', 'node-readiness'].includes(next.action)) {
+    const priorTarget = ['node-readiness'].includes(next.action) ? taskState('node-target-selection').selectedNode : null;
     result = await runNodeAdapter(next.action, {
       taskId: next.id,
       taskTitle: next.title,
@@ -99,8 +77,9 @@ while (progressed < manifest.queue.length) {
     transition(next, 'completed', {
       evidence: result.evidence ?? evidenceFor(next, 'passed'),
       provider: result.provider ?? manifest.adapters?.[next.adapter]?.[0],
-      selectedNode: result.selectedNode ?? result.target?.nodeId ?? null,
-      targetReason: result.target?.reason ?? null
+      selectedNode: result.selectedNode ?? result.target?.nodeId ?? result.registeredNode ?? null,
+      targetReason: result.target?.reason ?? null,
+      evidenceSource: result.source ?? null,
     });
   } else if (result.status === 'waiting') {
     const ownerGate = next.ownerGate ?? result.ownerGate ?? (next.adapter === 'deploy' ? 'physical-infrastructure' : 'builder-connection');
@@ -108,9 +87,10 @@ while (progressed < manifest.queue.length) {
       ownerGate,
       reason: result.reason ?? 'external-capability-required',
       provider: result.provider ?? manifest.adapters?.[next.adapter]?.[0],
-      selectedNode: result.selectedNode ?? result.target?.nodeId ?? null,
+      selectedNode: result.selectedNode ?? result.target?.nodeId ?? result.registeredNode ?? null,
       targetReason: result.target?.reason ?? null,
-      evidence: result.evidence ?? evidenceFor(next)
+      evidence: result.evidence ?? evidenceFor(next),
+      evidenceSource: result.source ?? null,
     });
     externalGates.push(next);
   } else {
@@ -121,7 +101,6 @@ while (progressed < manifest.queue.length) {
     });
     if (attempts >= manifest.policy.maxRetries) break;
   }
-
   progressed += 1;
 }
 
