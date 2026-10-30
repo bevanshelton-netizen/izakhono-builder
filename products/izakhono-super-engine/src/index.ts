@@ -6,6 +6,8 @@ export * from './payment-core.js';
 export * from './payment-ledger.js';
 export * from './payment-workflow.js';
 export * from './payment-fulfillment.js';
+export * from './payment-settlement.js';
+export * from './payment-reconciliation.js';
 
 export const IZAKHONO_SUPER_ENGINE = {
   id: 'izakhono-super-engine',
@@ -19,6 +21,8 @@ export const IZAKHONO_SUPER_ENGINE = {
   paymentLedger: 'double-entry-append-only',
   paymentWorkflow: 'payment-to-provisioning',
   fulfillmentFabric: 'payment-to-provisioner',
+  settlementFabric: 'merchant-settlement',
+  reconciliationFabric: 'provider-reconciliation',
   ownedFirst: true,
   externalAdaptersReplaceable: true,
   privacyByDefault: true,
