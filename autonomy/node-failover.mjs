@@ -29,3 +29,20 @@ export function selectFailoverTarget(failedNodeId, requirements = {}) {
     target,
   };
 }
+
+/**
+ * Resolve a failover request from the control plane.
+ * No failed NODE means no failover is required; a failed NODE requires a
+ * fresh, healthy, readiness-qualified replacement and never external fallback.
+ */
+export function resolveFailover(requirements = {}, failedNodeId = process.env.IZAKHONO_FAILED_NODE_ID || null) {
+  if (!failedNodeId) {
+    return {
+      status: 'not_required',
+      reason: 'no-failed-node-declared',
+      failedNodeId: null,
+    };
+  }
+
+  return selectFailoverTarget(failedNodeId, requirements);
+}
