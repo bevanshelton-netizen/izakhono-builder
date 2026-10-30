@@ -52,6 +52,7 @@ export interface PaymentStore {
   save(intent: PaymentIntent): Promise<void>;
   getByExternalTransactionId(externalTransactionId: string): Promise<PaymentIntent | undefined>;
   update(id: string, patch: Partial<PaymentIntent>): Promise<PaymentIntent>;
+  updateIfStatus?(id: string, expectedStatus: PaymentStatus, patch: Partial<PaymentIntent>): Promise<PaymentIntent | undefined>;
 }
 
 export class MemoryPaymentStore implements PaymentStore {
@@ -69,6 +70,14 @@ export class MemoryPaymentStore implements PaymentStore {
   async update(id: string, patch: Partial<PaymentIntent>): Promise<PaymentIntent> {
     const current = this.intents.get(id);
     if (!current) throw new Error(`Unknown payment intent: ${id}`);
+    const updated = { ...current, ...patch, updatedAt: new Date().toISOString() };
+    this.intents.set(id, updated);
+    return { ...updated };
+  }
+
+  async updateIfStatus(id: string, expectedStatus: PaymentStatus, patch: Partial<PaymentIntent>): Promise<PaymentIntent | undefined> {
+    const current = this.intents.get(id);
+    if (!current || current.status !== expectedStatus) return undefined;
     const updated = { ...current, ...patch, updatedAt: new Date().toISOString() };
     this.intents.set(id, updated);
     return { ...updated };
