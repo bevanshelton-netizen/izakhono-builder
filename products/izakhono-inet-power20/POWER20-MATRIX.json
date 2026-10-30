@@ -1,0 +1,28 @@
+{
+  "version":"1.0.0",
+  "benchmark":"POWER 20",
+  "rule":"Each category must materially outperform the incumbent baseline before it is certified POWER 20.",
+  "incumbentFamilies":["Google","Microsoft"],
+  "categories":[
+    {"rank":1,"id":"search","incumbents":["Google Search","Bing"],"izakhono":"I-NET Search","outperformance":["privacy","cross-index search","AI synthesis","I-NET discovery"]},
+    {"rank":2,"id":"ai","incumbents":["Gemini","Copilot"],"izakhono":"IZAKHONO AI","outperformance":["agent autonomy","private memory controls","multi-service orchestration","user-owned context"]},
+    {"rank":3,"id":"mail","incumbents":["Gmail","Outlook"],"izakhono":"IZAKHONO Mail","outperformance":["threat protection","automation","privacy","unified workflows"]},
+    {"rank":4,"id":"cloud","incumbents":["Google Drive","OneDrive"],"izakhono":"IZAKHONO Cloud","outperformance":["ownership","portability","recovery","cross-provider resilience"]},
+    {"rank":5,"id":"docs","incumbents":["Google Docs","Word"],"izakhono":"IZAKHONO Documents","outperformance":["AI collaboration","research","automation","offline resilience"]},
+    {"rank":6,"id":"sheets","incumbents":["Google Sheets","Excel"],"izakhono":"IZAKHONO Sheets","outperformance":["AI modelling","automation","forecasting","business intelligence"]},
+    {"rank":7,"id":"slides","incumbents":["Google Slides","PowerPoint"],"izakhono":"IZAKHONO Presentations","outperformance":["AI storytelling","live data","automatic design","distribution"]},
+    {"rank":8,"id":"calendar","incumbents":["Google Calendar","Outlook Calendar"],"izakhono":"IZAKHONO Calendar","outperformance":["predictive scheduling","workflow automation","travel intelligence"]},
+    {"rank":9,"id":"contacts","incumbents":["Google Contacts","Outlook People"],"izakhono":"IZAKHONO Contacts","outperformance":["relationship intelligence","deduplication","privacy"]},
+    {"rank":10,"id":"maps","incumbents":["Google Maps","Microsoft Maps/Bing Maps"],"izakhono":"IZAKHONO NAV","outperformance":["driver safety","hijacking response","offline resilience","African road intelligence"]},
+    {"rank":11,"id":"browser","incumbents":["Chrome","Edge"],"izakhono":"I-NET Browser","outperformance":["privacy","I-NET integration","security","offline resilience"]},
+    {"rank":12,"id":"video","incumbents":["YouTube","Microsoft video ecosystem"],"izakhono":"KORA NETWORK","outperformance":["African media ownership","creator economics","I-NET distribution"]},
+    {"rank":13,"id":"music","incumbents":["YouTube Music","Microsoft media services"],"izakhono":"Allegro","outperformance":["creator economics","African discovery","integrated commerce"]},
+    {"rank":14,"id":"meet","incumbents":["Google Meet","Microsoft Teams meetings"],"izakhono":"IZAKHONO Meet","outperformance":["privacy","AI notes","workflow execution"]},
+    {"rank":15,"id":"chat","incumbents":["Google Chat","Microsoft Teams chat"],"izakhono":"IZAKHONO Chat","outperformance":["unified collaboration","privacy","I-NET integration"]},
+    {"rank":16,"id":"work","incumbents":["Google Workspace","Microsoft 365"],"izakhono":"IZAKHONO WORK","outperformance":["AI operations","automation","business provisioning","owned infrastructure"]},
+    {"rank":17,"id":"enterprise","incumbents":["Microsoft 365 Enterprise","Google Workspace Enterprise"],"izakhono":"IZAKHONO Enterprise","outperformance":["zero-trust","data isolation","automation","African-first deployment"]},
+    {"rank":18,"id":"id","incumbents":["Google Account","Microsoft Entra/Microsoft Account"],"izakhono":"IZAKHONO ID","outperformance":["user control","scoped consent","portability","separation of data domains"]},
+    {"rank":19,"id":"fortress","incumbents":["Google security stack","Microsoft security stack"],"izakhono":"FORTRESS","outperformance":["zero-trust","auditability","automated defence","owned security boundary"]},
+    {"rank":20,"id":"developer","incumbents":["Google Cloud","Microsoft Azure"],"izakhono":"I-NET Developer Cloud","outperformance":["owned-first infrastructure","sandboxing","service registry","replaceable adapters","I-NET native applications"]}
+  ]
+}
