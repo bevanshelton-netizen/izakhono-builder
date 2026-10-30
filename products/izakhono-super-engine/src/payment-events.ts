@@ -1,4 +1,4 @@
-export type PaymentEventKind = 'webhook.received' | 'payment.paid' | 'payment.failed' | 'payment.cancelled' | 'payment.refunded' | 'refund.requested' | 'receipt.issued';
+export type PaymentEventKind = 'webhook.received' | 'webhook.outcome' | 'payment.paid' | 'payment.failed' | 'payment.cancelled' | 'payment.refunded' | 'refund.requested' | 'receipt.issued';
 
 export interface PaymentEvent {
   id: string;
