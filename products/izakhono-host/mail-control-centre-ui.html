@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>IZAKHONO Mail Control Centre</title>
+  <style>
+    :root{font-family:Inter,system-ui,sans-serif;color:#132033;background:#f5f7fb}*{box-sizing:border-box}body{margin:0}.shell{max-width:1400px;margin:auto;padding:28px}.top{display:flex;justify-content:space-between;align-items:center;gap:20px;margin-bottom:24px}.brand{font-size:24px;font-weight:800}.sub{color:#667085;font-size:13px}.badge{padding:7px 11px;border-radius:999px;background:#eaf7ef;color:#176b3a;font-size:12px;font-weight:700}.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}.card{background:#fff;border:1px solid #e5e9f0;border-radius:14px;padding:18px;box-shadow:0 2px 8px #1320330a}.metric{font-size:30px;font-weight:800;margin-top:8px}.label{color:#667085;font-size:13px}.section{margin-top:22px}.section h2{font-size:17px}.table{overflow:auto}.row{display:grid;grid-template-columns:1.5fr 1fr 1fr 1fr 1fr;min-width:800px;padding:13px 15px;border-top:1px solid #edf0f4;font-size:13px}.head{font-weight:700;color:#667085;background:#fafbfc;border-radius:10px}.status{font-weight:700}.verified{color:#176b3a}.degraded{color:#9a6700}.failed{color:#b42318}.configured{color:#475467}.incident{padding:12px;border-left:4px solid #b42318;background:#fff5f4;border-radius:8px;margin:8px 0}.empty{color:#667085;font-size:13px;padding:14px 0}@media(max-width:900px){.grid{grid-template-columns:repeat(2,1fr)}}@media(max-width:560px){.shell{padding:16px}.grid{grid-template-columns:1fr}.top{align-items:flex-start;flex-direction:column}}
+  </style>
+</head>
+<body>
+<main class="shell">
+  <header class="top"><div><div class="brand">IZAKHONO MAIL CONTROL CENTRE</div><div class="sub">Central operational oversight for managed business email</div></div><div class="badge">CONTROL PLANE • V1</div></header>
+  <section class="grid" aria-label="Executive metrics">
+    <article class="card"><div class="label">Managed domains</div><div class="metric" id="domains">0</div></article>
+    <article class="card"><div class="label">Verified domains</div><div class="metric" id="verified">0</div></article>
+    <article class="card"><div class="label">Active mailboxes</div><div class="metric" id="mailboxes">0</div></article>
+    <article class="card"><div class="label">Open security alerts</div><div class="metric" id="alerts">0</div></article>
+  </section>
+  <section class="section card"><h2>Domain health</h2><div class="table"><div class="row head"><div>Domain</div><div>Platform</div><div>Status</div><div>Transport</div><div>Incidents</div></div><div id="domainRows"></div></div></section>
+  <section class="section card"><h2>Mailbox operations</h2><div class="table"><div class="row head"><div>Address</div><div>Platform</div><div>Status</div><div>Security</div><div>Backup</div></div><div id="mailboxRows"></div></div></section>
+  <section class="section card"><h2>Security & incidents</h2><div id="incidents"><div class="empty">No incidents reported by the control-plane snapshot.</div></div></section>
+</main>
+<script>
+const snapshot={generatedAt:new Date().toISOString(),domains:[],mailboxes:[],incidents:[],summary:{managedDomains:0,verifiedDomains:0,attentionDomains:0,totalMailboxes:0,activeMailboxes:0,suspendedMailboxes:0,openSecurityAlerts:0}};
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+document.querySelector('#domains').textContent=snapshot.summary.managedDomains;document.querySelector('#verified').textContent=snapshot.summary.verifiedDomains;document.querySelector('#mailboxes').textContent=snapshot.summary.activeMailboxes;document.querySelector('#alerts').textContent=snapshot.summary.openSecurityAlerts;
+document.querySelector('#domainRows').innerHTML=snapshot.domains.length?snapshot.domains.map(d=>`<div class="row"><div>${esc(d.domain)}</div><div>${esc(d.platform)}</div><div class="status ${esc(d.status)}">${esc(d.status)}</div><div>${esc(d.transport)}</div><div>${esc(d.openIncidents)}</div></div>`).join(''):'<div class="empty">No managed domains have been verified yet.</div>';
+document.querySelector('#mailboxRows').innerHTML=snapshot.mailboxes.length?snapshot.mailboxes.map(m=>`<div class="row"><div>${esc(m.address)}</div><div>${esc(m.platform)}</div><div>${esc(m.status)}</div><div>${esc(m.securityStatus)}</div><div>${esc(m.backupStatus)}</div></div>`).join(''):'<div class="empty">No mailbox operational records have been attached yet.</div>';
+if(snapshot.incidents.length) document.querySelector('#incidents').innerHTML=snapshot.incidents.map(i=>`<div class="incident"><strong>${esc(i.severity).toUpperCase()}</strong> — ${esc(i.type)}${i.domain?` · ${esc(i.domain)}`:''}</div>`).join('');
+</script>
+</body>
+</html>
