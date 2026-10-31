@@ -12,6 +12,8 @@ export type RefundOperation = {
   reconciliationRequired?: boolean;
   lastError?: string;
   resolvedAt?: string;
+  recoveryAttemptCount?: number;
+  nextReconciliationAt?: string;
 };
 
 export type RefundOperationReservation =
@@ -27,6 +29,8 @@ export interface RefundOperationStore {
   markReconciliationRequired(refundId: string, error?: string): Promise<RefundOperation>;
   resolveSucceeded(refundId: string, providerRefundId: string): Promise<RefundOperation>;
   resolveFailed(refundId: string): Promise<RefundOperation>;
+  listReconciliationRequired?(limit?: number, now?: string): Promise<RefundOperation[]>;
+  recordRecoveryFailure?(refundId: string, error: string, nextReconciliationAt: string): Promise<RefundOperation>;
 }
 
 export type SupabaseRefundOperationStoreConfig = {
@@ -84,6 +88,22 @@ export class SupabaseRefundOperationStore implements RefundOperationStore {
     return this.update(refundId, { status: 'failed', reconciliation_required: false, resolved_at: new Date().toISOString() }, 'processing', true);
   }
 
+  async listReconciliationRequired(limit = 25, now = new Date().toISOString()): Promise<RefundOperation[]> {
+    const safeLimit = Math.max(1, Math.min(100, Math.floor(limit)));
+    const url = `${this.baseUrl}?reconciliation_required=eq.true&status=eq.processing&or=(next_reconciliation_at.is.null,next_reconciliation_at.lte.${encodeURIComponent(now)})&order=updated_at.asc&limit=${safeLimit}`;
+    const response = await this.fetcher(url, { method: 'GET', headers: this.headers() });
+    if (!response.ok) throw new Error(`Supabase refund recovery queue lookup failed: HTTP ${response.status}`);
+    const rows = await response.json() as Array<Record<string, unknown>>;
+    return rows.map((row) => this.fromRow(row));
+  }
+
+  async recordRecoveryFailure(refundId: string, error: string, nextReconciliationAt: string): Promise<RefundOperation> {
+    const current = await this.getByRefundId(refundId);
+    if (!current) throw new Error('Refund operation not found');
+    if (current.status !== 'processing' || !current.reconciliationRequired) throw new Error('Refund operation is no longer awaiting reconciliation');
+    return this.update(refundId, { reconciliation_required: true, last_error: error.slice(0, 2000), next_reconciliation_at: nextReconciliationAt, recovery_attempt_count: (current.recoveryAttemptCount ?? 0) + 1 }, 'processing', true);
+  }
+
   private async getByRefundId(refundId: string): Promise<RefundOperation | undefined> {
     const url = `${this.baseUrl}?refund_id=eq.${encodeURIComponent(refundId)}&select=*&limit=1`;
     const response = await this.fetcher(url, { method: 'GET', headers: this.headers() });
@@ -105,7 +125,7 @@ export class SupabaseRefundOperationStore implements RefundOperationStore {
   }
 
   private fromRow(row: Record<string, unknown>): RefundOperation {
-    return { id: String(row.id), paymentIntentId: String(row.payment_intent_id), refundId: String(row.refund_id), amountMinor: Number(row.amount_minor), currency: String(row.currency), status: String(row.status) as RefundOperationStatus, providerRefundId: row.provider_refund_id == null ? undefined : String(row.provider_refund_id), reason: String(row.reason), reconciliationRequired: row.reconciliation_required === true, lastError: row.last_error == null ? undefined : String(row.last_error), resolvedAt: row.resolved_at == null ? undefined : String(row.resolved_at) };
+    return { id: String(row.id), paymentIntentId: String(row.payment_intent_id), refundId: String(row.refund_id), amountMinor: Number(row.amount_minor), currency: String(row.currency), status: String(row.status) as RefundOperationStatus, providerRefundId: row.provider_refund_id == null ? undefined : String(row.provider_refund_id), reason: String(row.reason), reconciliationRequired: row.reconciliation_required === true, lastError: row.last_error == null ? undefined : String(row.last_error), resolvedAt: row.resolved_at == null ? undefined : String(row.resolved_at), recoveryAttemptCount: row.recovery_attempt_count == null ? undefined : Number(row.recovery_attempt_count), nextReconciliationAt: row.next_reconciliation_at == null ? undefined : String(row.next_reconciliation_at) };
   }
 
   private headers(extra?: HeadersInit): Headers {
