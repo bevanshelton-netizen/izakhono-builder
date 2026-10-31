@@ -1,0 +1,36 @@
+{
+  "schema": "izakhono.workload/v1",
+  "workloadId": "kora-network",
+  "class": "web-application",
+  "runtime": "node20",
+  "artifact": {
+    "sourceRepository": "bevanshelton-netizen/Downloads",
+    "sourcePath": "kora-network",
+    "containerPort": 3000,
+    "healthPath": "/api/health"
+  },
+  "routing": {
+    "hostname": "streamkoraafrica.com",
+    "currentAdapter": "vercel",
+    "targetAdapter": "izakhono-software-node"
+  },
+  "acceptance": {
+    "required": [
+      "image-built",
+      "container-started",
+      "health-200",
+      "runtime-healthy",
+      "public-route",
+      "trusted-https",
+      "service-connectivity",
+      "critical-error-free",
+      "rollback-ready"
+    ],
+    "productionClaimsRequireEvidence": true
+  },
+  "failover": {
+    "requiresPromotedNode": true,
+    "requiresFreshHeartbeat": true,
+    "externalFallbackAllowed": true
+  }
+}
