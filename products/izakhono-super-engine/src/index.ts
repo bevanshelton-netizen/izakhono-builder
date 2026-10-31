@@ -43,6 +43,7 @@ export const IZAKHONO_SUPER_ENGINE = {
   refundOperations: 'durable-postgres-concurrency-guard',
   refundRecovery: 'ambiguous-outcome-quarantine-and-resolution',
   refundRecoveryWorker: 'automated-lookup-only-recovery',
+  refundRecoveryLeasing: 'atomic-postgres-worker-claims',
   persistenceFabric: 'portable-postgres-supabase-adapter',
   orchestrationFabric: 'payment-to-settlement-refund-orchestrator',
   ownedFirst: true,
