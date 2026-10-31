@@ -1,0 +1,84 @@
+name: IZAKHONO Super Engine Owned Deploy
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'products/izakhono-super-engine/**'
+      - 'infra/app-fabric-runtime/super-engine.compose.yml'
+      - '.github/workflows/super-engine-owned-deploy.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: izakhono-super-engine-owned-production
+  cancel-in-progress: false
+
+env:
+  IMAGE: izakhono/super-engine
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install dependencies
+        run: npm ci
+      - name: Typecheck Super Engine
+        run: npm run super-engine:payment:typecheck
+      - name: Run Super Engine tests
+        run: npm run super-engine:payment:test
+      - name: Build container
+        run: docker build -f products/izakhono-super-engine/Dockerfile -t "$IMAGE:${GITHUB_SHA}" .
+      - name: Smoke-test container
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run -d --rm --name izakhono-super-engine-smoke -p 8787:8787 "$IMAGE:${GITHUB_SHA}"
+          trap 'docker stop izakhono-super-engine-smoke >/dev/null 2>&1 || true' EXIT
+          for i in {1..30}; do
+            if curl -fsS http://127.0.0.1:8787/health; then exit 0; fi
+            sleep 2
+          done
+          docker logs izakhono-super-engine-smoke
+          exit 1
+
+  owned-runtime:
+    needs: build
+    runs-on: self-hosted
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - name: Require owned runtime marker
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${IZAKHONO_OWNED_RUNTIME:-}" = "true" || {
+            echo "IZAKHONO_OWNED_RUNTIME=true is required on the owned production runner."
+            exit 10
+          }
+      - name: Deploy Super Engine
+        shell: bash
+        env:
+          TAG: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          export IZAKHONO_SUPER_ENGINE_TAG="$TAG"
+          docker compose -f infra/app-fabric-runtime/super-engine.compose.yml up -d --build super_engine
+      - name: Verify Super Engine health
+        shell: bash
+        run: |
+          set -euo pipefail
+          for i in {1..30}; do
+            if docker inspect --format '{{.State.Health.Status}}' super_engine 2>/dev/null | grep -q healthy; then
+              docker inspect --format '{{json .State.Health}}' super_engine
+              exit 0
+            fi
+            sleep 2
+          done
+          docker logs super_engine || true
+          exit 1
+      - name: Verify service endpoint
+        run: curl -fsS http://127.0.0.1:8787/health
