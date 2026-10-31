@@ -7,6 +7,7 @@ on:
     paths:
       - 'products/izakhono-super-engine/**'
       - 'infra/app-fabric-runtime/super-engine.compose.yml'
+      - 'infra/runtime/**'
       - '.github/workflows/super-engine-owned-deploy.yml'
 
 permissions:
@@ -18,6 +19,7 @@ concurrency:
 
 env:
   IMAGE: izakhono/super-engine
+  RELEASE_ROUTE: https://super-engine.izakhono.co.za
 
 jobs:
   build:
@@ -47,7 +49,7 @@ jobs:
 
   owned-runtime:
     needs: build
-    runs-on: self-hosted
+    runs-on: [self-hosted, izakhono-owned, linux]
     environment: production
     steps:
       - uses: actions/checkout@v4
@@ -59,7 +61,7 @@ jobs:
             echo "IZAKHONO_OWNED_RUNTIME=true is required on the owned production runner."
             exit 10
           }
-      - name: Deploy Super Engine
+      - name: Deploy Super Engine candidate
         shell: bash
         env:
           TAG: ${{ github.sha }}
@@ -67,6 +69,34 @@ jobs:
           set -euo pipefail
           export IZAKHONO_SUPER_ENGINE_TAG="$TAG"
           docker compose -f infra/app-fabric-runtime/super-engine.compose.yml up -d --build super_engine
+      - name: Generate and validate owned-runtime release receipt
+        shell: bash
+        env:
+          SOURCE_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          command -v jq >/dev/null || { echo 'jq is required'; exit 1; }
+          image_id=$(docker image inspect "$IMAGE:${GITHUB_SHA}" --format '{{.Id}}')
+          digest="sha256:${image_id#sha256:}"
+          test "$digest" != 'sha256:'
+          mkdir -p /opt/izakhono/state/releases/izakhono-super-engine
+          jq -n \
+            --arg source "$SOURCE_SHA" \
+            --arg digest "$digest" \
+            --arg route "$RELEASE_ROUTE" \
+            '{schema:"izakhono.release/v1",application:{slug:"izakhono-super-engine"},runtime:{port:8787,healthPath:"/health",network:"izakhono-edge"},routes:{public_https:$route},release:{source:$source,artifact_digest:$digest}}' \
+            > /opt/izakhono/state/releases/izakhono-super-engine/candidate.json
+          jq -e '
+            .schema == "izakhono.release/v1" and
+            .application.slug == "izakhono-super-engine" and
+            .runtime.port == 8787 and
+            .runtime.healthPath == "/health" and
+            .runtime.network == "izakhono-edge" and
+            (.routes.public_https | startswith("https://")) and
+            (.release.source | length > 0) and
+            (.release.artifact_digest | test("^sha256:[a-f0-9]{64}$"))
+          ' /opt/izakhono/state/releases/izakhono-super-engine/candidate.json >/dev/null
+          echo '[PASS] Owned-runtime release receipt validated'
       - name: Verify Super Engine health
         shell: bash
         run: |
