@@ -25,6 +25,8 @@ export interface RefundOperationStore {
   markSucceeded(refundId: string, providerRefundId: string): Promise<RefundOperation>;
   markFailed(refundId: string): Promise<RefundOperation>;
   markReconciliationRequired(refundId: string, error?: string): Promise<RefundOperation>;
+  resolveSucceeded(refundId: string, providerRefundId: string): Promise<RefundOperation>;
+  resolveFailed(refundId: string): Promise<RefundOperation>;
 }
 
 export type SupabaseRefundOperationStoreConfig = {
@@ -48,108 +50,65 @@ export class SupabaseRefundOperationStore implements RefundOperationStore {
   async reserve(input: Omit<RefundOperation, 'id' | 'status' | 'providerRefundId'>): Promise<RefundOperationReservation> {
     const operation: RefundOperation = { ...input, id: `refundop_${crypto.randomUUID()}`, status: 'processing' };
     const response = await this.fetcher(this.baseUrl, {
-      method: 'POST',
-      headers: this.headers({ Prefer: 'return=representation' }),
-      body: JSON.stringify({
-        id: operation.id,
-        payment_intent_id: operation.paymentIntentId,
-        refund_id: operation.refundId,
-        amount_minor: operation.amountMinor,
-        currency: operation.currency,
-        status: 'processing',
-        reason: operation.reason,
-        reconciliation_required: false,
-      }),
+      method: 'POST', headers: this.headers({ Prefer: 'return=representation' }),
+      body: JSON.stringify({ id: operation.id, payment_intent_id: operation.paymentIntentId, refund_id: operation.refundId, amount_minor: operation.amountMinor, currency: operation.currency, status: 'processing', reason: operation.reason, reconciliation_required: false }),
     });
-    if (response.ok) {
-      const rows = await response.json() as Array<Record<string, unknown>>;
-      return { kind: 'reserved', operation: this.fromRow(rows[0] ?? {}) };
-    }
+    if (response.ok) { const rows = await response.json() as Array<Record<string, unknown>>; return { kind: 'reserved', operation: this.fromRow(rows[0] ?? {}) }; }
     if (response.status !== 409) throw new Error(`Supabase refund reservation failed: HTTP ${response.status}`);
-
     const existing = await this.getByRefundId(input.refundId);
     if (!existing) throw new Error('Refund reservation conflict could not be resolved');
-    if (existing.paymentIntentId !== input.paymentIntentId || existing.amountMinor !== input.amountMinor || existing.currency !== input.currency) {
-      throw new Error('Refund ID is already bound to different refund parameters');
-    }
+    if (existing.paymentIntentId !== input.paymentIntentId || existing.amountMinor !== input.amountMinor || existing.currency !== input.currency) throw new Error('Refund ID is already bound to different refund parameters');
     if (existing.status === 'succeeded') return { kind: 'succeeded', operation: existing };
     if (existing.reconciliationRequired) return { kind: 'reconciliation-required', operation: existing };
     return { kind: 'active', operation: existing };
   }
 
   async markSucceeded(refundId: string, providerRefundId: string): Promise<RefundOperation> {
-    if (!providerRefundId.trim()) throw new Error('Provider refund ID is required');
-    return this.update(refundId, {
-      status: 'succeeded',
-      provider_refund_id: providerRefundId,
-      reconciliation_required: false,
-      last_error: null,
-      resolved_at: new Date().toISOString(),
-    }, 'processing');
+    return this.update(refundId, { status: 'succeeded', provider_refund_id: providerRefundId, reconciliation_required: false, last_error: null, resolved_at: new Date().toISOString() }, 'processing');
   }
 
   async markFailed(refundId: string): Promise<RefundOperation> {
-    return this.update(refundId, {
-      status: 'failed',
-      reconciliation_required: false,
-      resolved_at: new Date().toISOString(),
-    }, 'processing');
+    return this.update(refundId, { status: 'failed', reconciliation_required: false, resolved_at: new Date().toISOString() }, 'processing');
   }
 
   async markReconciliationRequired(refundId: string, error?: string): Promise<RefundOperation> {
-    return this.update(refundId, {
-      reconciliation_required: true,
-      last_error: error ? error.slice(0, 2000) : null,
-    }, 'processing');
+    return this.update(refundId, { reconciliation_required: true, last_error: error ? error.slice(0, 2000) : null }, 'processing');
+  }
+
+  async resolveSucceeded(refundId: string, providerRefundId: string): Promise<RefundOperation> {
+    if (!providerRefundId.trim()) throw new Error('Provider refund ID is required');
+    return this.update(refundId, { status: 'succeeded', provider_refund_id: providerRefundId, reconciliation_required: false, last_error: null, resolved_at: new Date().toISOString() }, 'processing', true);
+  }
+
+  async resolveFailed(refundId: string): Promise<RefundOperation> {
+    return this.update(refundId, { status: 'failed', reconciliation_required: false, resolved_at: new Date().toISOString() }, 'processing', true);
   }
 
   private async getByRefundId(refundId: string): Promise<RefundOperation | undefined> {
     const url = `${this.baseUrl}?refund_id=eq.${encodeURIComponent(refundId)}&select=*&limit=1`;
     const response = await this.fetcher(url, { method: 'GET', headers: this.headers() });
     if (!response.ok) throw new Error(`Supabase refund lookup failed: HTTP ${response.status}`);
-    const rows = await response.json() as Array<Record<string, unknown>>;
-    return rows[0] ? this.fromRow(rows[0]) : undefined;
+    const rows = await response.json() as Array<Record<string, unknown>>; return rows[0] ? this.fromRow(rows[0]) : undefined;
   }
 
-  private async update(refundId: string, patch: Record<string, unknown>, expectedStatus: RefundOperationStatus): Promise<RefundOperation> {
-    const url = `${this.baseUrl}?refund_id=eq.${encodeURIComponent(refundId)}&status=eq.${expectedStatus}`;
-    const response = await this.fetcher(url, {
-      method: 'PATCH',
-      headers: this.headers({ Prefer: 'return=representation' }),
-      body: JSON.stringify({ ...patch, updated_at: new Date().toISOString() }),
-    });
+  private async update(refundId: string, patch: Record<string, unknown>, expectedStatus: RefundOperationStatus, requireRecovery = false): Promise<RefundOperation> {
+    const recoveryFilter = requireRecovery ? '&reconciliation_required=eq.true' : '';
+    const url = `${this.baseUrl}?refund_id=eq.${encodeURIComponent(refundId)}&status=eq.${expectedStatus}${recoveryFilter}`;
+    const response = await this.fetcher(url, { method: 'PATCH', headers: this.headers({ Prefer: 'return=representation' }), body: JSON.stringify({ ...patch, updated_at: new Date().toISOString() }) });
     if (!response.ok) throw new Error(`Supabase refund operation update failed: HTTP ${response.status}`);
     const rows = await response.json() as Array<Record<string, unknown>>;
     if (rows[0]) return this.fromRow(rows[0]);
-
     const current = await this.getByRefundId(refundId);
     if (!current) throw new Error('Refund operation not found');
-    if (current.status === patch.status && (patch.reconciliation_required === undefined || current.reconciliationRequired === patch.reconciliation_required)) return current;
+    if (current.status === patch.status && (!requireRecovery || current.reconciliationRequired === false)) return current;
     throw new Error(`Refund operation state changed concurrently; expected ${expectedStatus}`);
   }
 
   private fromRow(row: Record<string, unknown>): RefundOperation {
-    return {
-      id: String(row.id),
-      paymentIntentId: String(row.payment_intent_id),
-      refundId: String(row.refund_id),
-      amountMinor: Number(row.amount_minor),
-      currency: String(row.currency),
-      status: String(row.status) as RefundOperationStatus,
-      providerRefundId: row.provider_refund_id == null ? undefined : String(row.provider_refund_id),
-      reason: String(row.reason),
-      reconciliationRequired: row.reconciliation_required === true,
-      lastError: row.last_error == null ? undefined : String(row.last_error),
-      resolvedAt: row.resolved_at == null ? undefined : String(row.resolved_at),
-    };
+    return { id: String(row.id), paymentIntentId: String(row.payment_intent_id), refundId: String(row.refund_id), amountMinor: Number(row.amount_minor), currency: String(row.currency), status: String(row.status) as RefundOperationStatus, providerRefundId: row.provider_refund_id == null ? undefined : String(row.provider_refund_id), reason: String(row.reason), reconciliationRequired: row.reconciliation_required === true, lastError: row.last_error == null ? undefined : String(row.last_error), resolvedAt: row.resolved_at == null ? undefined : String(row.resolved_at) };
   }
 
   private headers(extra?: HeadersInit): Headers {
-    const headers = new Headers(extra);
-    headers.set('apikey', this.config.serviceRoleKey);
-    headers.set('Authorization', `Bearer ${this.config.serviceRoleKey}`);
-    headers.set('Content-Type', 'application/json');
-    headers.set('Accept', 'application/json');
-    return headers;
+    const headers = new Headers(extra); headers.set('apikey', this.config.serviceRoleKey); headers.set('Authorization', `Bearer ${this.config.serviceRoleKey}`); headers.set('Content-Type', 'application/json'); headers.set('Accept', 'application/json'); return headers;
   }
 }
