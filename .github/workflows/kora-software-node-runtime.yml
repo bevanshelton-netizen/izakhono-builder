@@ -47,6 +47,8 @@ jobs:
           KORA_IMAGE: kora-network:portable
           KORA_CONTAINER_NAME: kora-software-node-gate
           KORA_PORT: '3000'
+          KORA_HEALTH_ATTEMPTS: '30'
+          KORA_HEALTH_DELAY_SECONDS: '2'
         run: |
           set -euo pipefail
           node autonomy/kora-workload-executor.mjs | tee /tmp/kora-runtime.json
