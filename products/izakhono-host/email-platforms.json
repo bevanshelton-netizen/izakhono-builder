@@ -1,0 +1,79 @@
+{
+  "schema": "izakhono.email-platform/v1",
+  "controlPlane": "izakhono-host",
+  "ownership": "owned-first",
+  "externalTransportIsFallback": true,
+  "productionClaimsRequireEvidence": true,
+  "platforms": [
+    {
+      "platform": "izakhono-africa",
+      "domain": "izakhonoafrica.co.za",
+      "mailboxes": [
+        "bevans",
+        "info",
+        "sales",
+        "support",
+        "admin",
+        "finance",
+        "projects",
+        "tenders"
+      ]
+    },
+    {
+      "platform": "edu-build",
+      "domain": "edubuildshelton.org.za",
+      "mailboxes": [
+        "info",
+        "admissions",
+        "students",
+        "finance",
+        "admin",
+        "support"
+      ]
+    },
+    {
+      "platform": "allegro-vibez",
+      "domain": "allegrovibez.com",
+      "mailboxes": [
+        "info",
+        "artists",
+        "media",
+        "bookings",
+        "support",
+        "admin"
+      ]
+    },
+    {
+      "platform": "kora-network",
+      "domain": "streamkoraafrica.com",
+      "mailboxes": [
+        "info",
+        "advertising",
+        "partnerships",
+        "content",
+        "support",
+        "finance",
+        "admin"
+      ]
+    }
+  ],
+  "futureDomains": [
+    "i-connect",
+    "fortress",
+    "faisready",
+    "doxa-sure"
+  ],
+  "activationEvidence": [
+    "domain-verified",
+    "mx-verified",
+    "spf-verified",
+    "dkim-verified",
+    "dmarc-verified",
+    "tls-verified",
+    "smtp-verified",
+    "imap-verified",
+    "backup-policy-attached",
+    "fortress-gate-passed",
+    "monitoring-online"
+  ]
+}
