@@ -28,10 +28,12 @@ export default function Home() {
     if (!intent.trim()) return;
     setBusy(true); setResult(null);
     try {
-      const r = await fetch('/api/plan', { method:'POST', headers:{'content-type':'application/json'}, body:JSON.stringify({intent}) });
+      const r = await fetch('/api/forge', { method:'POST', headers:{'content-type':'application/json'}, body:JSON.stringify({prompt:intent}) });
       const data = await r.json();
       setResult(data);
-      setHistory(h => [{ intent, type: data.plan?.type || 'BUILD', time: new Date().toLocaleTimeString() }, ...h].slice(0,8));
+      setHistory(h => [{ intent, type: data.job?.intent || 'BUILD', status: data.job?.status || 'QUEUED', persisted: data.persisted, time: new Date().toLocaleTimeString() }, ...h].slice(0,8));
+    } catch (error) {
+      setResult({ error: 'forge_unavailable', detail: error instanceof Error ? error.message : 'unknown_error' });
     } finally { setBusy(false); }
   }
 
@@ -43,7 +45,7 @@ export default function Home() {
       <p className="lede">A Vincen-class builder, redesigned as infrastructure: one command surface for websites, apps, CRMs, documents, research, marketing, agents and deployment — with IZAKHONO owning the orchestration layer.</p>
       <div className="composer">
         <div className="prompticon">✦</div><textarea value={intent} onChange={e=>setIntent(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();run()}}} placeholder="Describe the outcome you want built…" />
-        <button onClick={run} disabled={busy}>{busy ? 'BUILDING…' : 'BUILD →'}</button>
+        <button onClick={run} disabled={busy}>{busy ? 'QUEUING…' : 'BUILD →'}</button>
       </div>
       <div className="chips">{starterPrompts.map((p,i)=><button key={i} onClick={()=>setIntent(p)}>{['Website','CRM','Provisioner'][i]}</button>)}</div>
     </section>
@@ -54,12 +56,12 @@ export default function Home() {
         <div className="modulegrid">{modules.map(([n,t,d])=><div className="module" key={n}><span>{n}</span><strong>{t}</strong><p>{d}</p></div>)}</div>
       </div>
       <div className="panel resultpanel">
-        <div className="panelhead"><div><span className="kicker">LIVE PLAN</span><h2>{result ? result.plan?.type || 'Execution' : 'Waiting for a command'}</h2></div></div>
-        {!result ? <div className="empty"><div className="orb">✦</div><p>Forge will classify the request, choose the right factory, create an execution plan and return a machine-readable handoff.</p></div> : <div className="plan"><div className="source">SOURCE: {result.source}</div>{(result.plan?.stages || []).map(([name,desc],i)=><div className="step" key={name}><span>{String(i+1).padStart(2,'0')}</span><div><b>{name}</b><p>{desc}</p></div></div>)}<div className="guard"><b>GUARDRAILS</b>{(result.plan?.safety||[]).map(x=><div key={x}>✓ {x}</div>)}</div></div>}
+        <div className="panelhead"><div><span className="kicker">JOB CONTROL</span><h2>{result?.job?.intent || 'Waiting for a command'}</h2></div></div>
+        {!result ? <div className="empty"><div className="orb">✦</div><p>Forge will classify the request, queue a job, create specialist execution steps and hand the work to the control plane.</p></div> : result.error ? <div className="empty"><div className="orb">!</div><p>{result.detail || result.error}</p></div> : <div className="plan"><div className="source">SOURCE: {result.source} · {result.persisted ? 'PERSISTED' : 'LOCAL FALLBACK'}</div>{(result.job?.steps || []).map((step)=><div className="step" key={step.stepKey}><span>{String(step.order).padStart(2,'0')}</span><div><b>{step.label}</b><p>Worker: {step.workerType} · Status: {result.job.status}</p></div></div>)}<div className="guard"><b>CONTROL PLANE</b><div>✓ Queue state is explicit</div><div>✓ Specialist worker is assigned per step</div><div>✓ Execution remains auditable and reversible</div><div>✓ High-impact actions remain authorization-gated</div></div></div>}
       </div>
     </section>
 
-    <section className="lower"><div><span className="kicker">RECENT BUILDS</span>{history.length ? history.map((x,i)=><div className="history" key={i}><b>{x.type}</b><span>{x.intent}</span><time>{x.time}</time></div>) : <p className="muted">Your execution history will appear here.</p>}</div><div className="x20"><span className="kicker">WHY ×20</span><h2>Not another chatbot.</h2><p>Forge is designed as a business-building operating system: planner → agents → factories → connectors → verification → deployment → memory.</p><div className="tags"><span>MODEL-AGNOSTIC</span><span>OWNED-FIRST</span><span>REVERSIBLE</span><span>AUDITABLE</span></div></div></section>
-    <footer>IZAKHONO FORGE ×20 · Outcome infrastructure for the IZAKHONO ecosystem · v0.1 foundation</footer>
+    <section className="lower"><div><span className="kicker">RECENT BUILDS</span>{history.length ? history.map((x,i)=><div className="history" key={i}><b>{x.type}</b><span>{x.intent}</span><time>{x.status} · {x.persisted ? 'DB' : 'LOCAL'} · {x.time}</time></div>) : <p className="muted">Your execution history will appear here.</p>}</div><div className="x20"><span className="kicker">WHY ×20</span><h2>Not another chatbot.</h2><p>Forge is designed as a business-building operating system: planner → agents → factories → connectors → verification → deployment → memory.</p><div className="tags"><span>MODEL-AGNOSTIC</span><span>OWNED-FIRST</span><span>REVERSIBLE</span><span>AUDITABLE</span></div></div></section>
+    <footer>IZAKHONO FORGE ×20 · Outcome infrastructure for the IZAKHONO ecosystem · v0.2 control plane</footer>
   </main>
 }
