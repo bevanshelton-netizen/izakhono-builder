@@ -1,0 +1,30 @@
+name: FORTRESS Pilot Evidence
+
+on:
+  push:
+    paths:
+      - 'products/fortress/**'
+      - '.github/workflows/fortress-pilot-evidence.yml'
+  workflow_dispatch:
+
+jobs:
+  evidence:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Run FORTRESS pilot evidence harness
+        run: node products/fortress/pilot-evidence-harness.mjs --markdown > fortress-pilot-evidence.md
+      - name: Run FORTRESS adversarial acceptance suite
+        run: node products/fortress/acceptance-suite.mjs
+      - name: Upload evidence report
+        uses: actions/upload-artifact@v4
+        with:
+          name: fortress-pilot-evidence
+          path: fortress-pilot-evidence.md
