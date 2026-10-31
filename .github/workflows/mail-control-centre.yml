@@ -1,0 +1,40 @@
+name: IZAKHONO Mail Control Centre Gate
+
+on:
+  push:
+    paths:
+      - 'products/izakhono-host/mail-control-centre*'
+      - 'products/izakhono-host/MAIL-CONTROL-CENTRE-V1.md'
+      - 'products/izakhono-host/mail-control-centre-end-to-end-check.mjs'
+      - '.github/workflows/mail-control-centre.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  mail-control-centre:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+
+      - name: Verify control-centre artifacts
+        run: node products/izakhono-host/mail-control-centre-end-to-end-check.mjs
+
+      - name: TypeScript syntax gate
+        run: |
+          set -euo pipefail
+          npx --yes -p typescript tsc --noEmit --target ES2022 --module NodeNext --moduleResolution NodeNext products/izakhono-host/mail-control-centre.ts products/izakhono-host/mail-control-centre-api.ts products/izakhono-host/mail-control-centre-ui.ts
+
+      - name: Run contract tests
+        run: |
+          set -euo pipefail
+          npx --yes -p tsx tsx products/izakhono-host/mail-control-centre.test.ts
+          npx --yes -p tsx tsx products/izakhono-host/mail-control-centre-api.test.ts
+          npx --yes -p tsx tsx products/izakhono-host/mail-control-centre-ui.test.ts
