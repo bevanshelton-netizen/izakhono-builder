@@ -61,9 +61,11 @@ while (progressed < manifest.queue.length) {
   let result = executeInternal(next);
   if (!result && next.adapter === 'builder') result = await runBuilderAdapter(next);
 
-  const nodeActions = ['node-discovery', 'software-node-instantiation', 'node-heartbeat', 'node-evidence', 'node-target', 'node-readiness', 'workload-schedule'];
+  const nodeActions = ['node-discovery', 'software-node-instantiation', 'node-heartbeat', 'node-evidence', 'node-target', 'node-readiness', 'workload-schedule', 'kora-workload-execute', 'kora-routing-acceptance'];
   if (!result && next.adapter === 'deploy' && nodeActions.includes(next.action)) {
-    const priorTarget = next.action === 'node-readiness' ? taskState('node-target-selection').selectedNode : null;
+    const priorTarget = ['node-readiness', 'kora-workload-execute', 'kora-routing-acceptance'].includes(next.action)
+      ? taskState('node-target-selection').selectedNode
+      : null;
     result = await runNodeAdapter(next.action, {
       taskId: next.id,
       taskTitle: next.title,
@@ -86,6 +88,7 @@ while (progressed < manifest.queue.length) {
       reason: result.reason ?? null,
       assignmentId: result.assignmentId ?? null,
       evidenceSource: result.source ?? null,
+      acceptance: result.acceptance ?? null,
     });
   } else if (result.status === 'waiting') {
     const ownerGate = next.ownerGate ?? result.ownerGate ?? null;
@@ -93,9 +96,10 @@ while (progressed < manifest.queue.length) {
       ownerGate,
       reason: result.reason ?? 'capability-required',
       provider: result.provider ?? manifest.adapters?.[next.adapter]?.[0],
-      selectedNode: result.selectedNode ?? result.target?.nodeId ?? result.registeredNode ?? null,
+      selectedNode: result.selectedNode ?? result.target?.nodeId ?? result.registeredNode ?? result.nodeId ?? null,
       evidence: result.evidence ?? evidenceFor(next),
       evidenceSource: result.source ?? null,
+      acceptance: result.acceptance ?? null,
     });
     externalGates.push(next);
   } else {
