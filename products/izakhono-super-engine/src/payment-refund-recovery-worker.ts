@@ -1,4 +1,4 @@
-import type { PaymentIntent, PaymentStore } from './payment-core.js';
+import type { PaymentIntent } from './payment-core.js';
 import type { RefundOperation, RefundOperationStore } from './payment-refund-operations-supabase.js';
 import type { RefundProvider } from './payment-refunds.js';
 import { IzakhonoRefundRecovery } from './payment-refund-recovery.js';
@@ -20,26 +20,22 @@ export type RefundRecoveryWorkerResult = {
   skipped: number;
 };
 
-/**
- * Processes only already-quarantined refunds. It can never submit a new refund request.
- * Provider reconciliation is lookup-only; successful outcomes are handed to a finalizer.
- */
+/** Processes only quarantined refunds; it can never submit a new refund request. */
 export class RefundRecoveryWorker {
   constructor(
     private readonly queue: RefundRecoveryQueue,
-    private readonly payments: PaymentStore,
+    private readonly loadPayment: (paymentIntentId: string) => Promise<PaymentIntent | undefined>,
     private readonly providers: ReadonlyMap<string, RefundProvider>,
     private readonly finalizer: RefundRecoveryFinalizer,
     private readonly clock: () => Date = () => new Date(),
   ) {}
 
   async run(limit = 25): Promise<RefundRecoveryWorkerResult> {
-    const now = this.clock().toISOString();
-    const operations = await this.queue.listReconciliationRequired(limit, now);
+    const operations = await this.queue.listReconciliationRequired(limit, this.clock().toISOString());
     const result: RefundRecoveryWorkerResult = { scanned: operations.length, succeeded: 0, failed: 0, deferred: 0, skipped: 0 };
 
     for (const operation of operations) {
-      const payment = await this.findPayment(operation);
+      const payment = await this.loadPayment(operation.paymentIntentId);
       if (!payment) {
         await this.defer(operation, `Payment intent ${operation.paymentIntentId} was not found`);
         result.deferred += 1;
@@ -52,8 +48,7 @@ export class RefundRecoveryWorker {
       }
 
       try {
-        const recovery = new IzakhonoRefundRecovery(this.queue, provider);
-        const resolved = await recovery.reconcile(payment, operation.amountMinor);
+        const resolved = await new IzakhonoRefundRecovery(this.queue, provider).reconcile(payment, operation.amountMinor);
         if (resolved.status === 'succeeded') {
           await this.finalizer.finalize(payment, resolved);
           result.succeeded += 1;
@@ -65,15 +60,7 @@ export class RefundRecoveryWorker {
         result.deferred += 1;
       }
     }
-
     return result;
-  }
-
-  private async findPayment(operation: RefundOperation): Promise<PaymentIntent | undefined> {
-    // PaymentStore currently exposes lookup by external transaction ID, not by internal ID.
-    // The queue may optionally attach the external transaction ID in a future durable projection.
-    const candidate = await this.payments.getByExternalTransactionId(operation.paymentIntentId);
-    return candidate?.id === operation.paymentIntentId ? candidate : undefined;
   }
 
   private async defer(operation: RefundOperation, error: string): Promise<void> {
