@@ -31,7 +31,7 @@ export class PaymentLifecycle {
 export interface RefundProvider {
   requestRefund(input: { providerPaymentId: string; amountMinor: number; currency: string; reason: string; refundId?: string }): Promise<{ providerRefundId: string }>;
 }
-/** Durable operations serialize workers. External exactly-once still depends on provider idempotency/reconciliation. */
+/** Durable operations serialize workers. Ambiguous provider outcomes are quarantined for reconciliation. */
 export class IzakhonoRefunds {
   private readonly inFlight = new Map<string, Promise<{ payment: PaymentIntent; providerRefundId: string }>>();
   constructor(private readonly lifecycle: PaymentLifecycle, private readonly provider: RefundProvider, private readonly operations?: RefundOperationStore) {}
@@ -49,10 +49,16 @@ export class IzakhonoRefunds {
       const reservation = await this.operations.reserve({ paymentIntentId: payment.id, refundId, amountMinor, currency: payment.currency, reason });
       if (reservation.kind === 'succeeded') { const providerRefundId = reservation.operation.providerRefundId; if (!providerRefundId) throw new Error('Succeeded refund operation has no provider refund ID'); return { payment: amountMinor === payment.amountMinor ? await this.lifecycle.refund(payment, reason) : payment, providerRefundId }; }
       if (reservation.kind === 'active') throw new Error('Refund is already being processed');
+      if (reservation.kind === 'reconciliation-required') throw new Error('Refund requires provider reconciliation before another external attempt');
     }
     let result: { providerRefundId: string };
     try { result = await this.provider.requestRefund({ providerPaymentId: payment.providerPaymentId, amountMinor, currency: payment.currency, reason, refundId }); }
-    catch (error) { if (this.operations) { try { await this.operations.markFailed(refundId); } catch { /* reconciliation can inspect the operation */ } } throw error; }
+    catch (error) {
+      if (this.operations) {
+        try { await this.operations.markReconciliationRequired(refundId, error instanceof Error ? error.message : String(error)); } catch { /* preserve the original provider error; durable reconciliation can retry lookup */ }
+      }
+      throw error;
+    }
     if (this.operations) await this.operations.markSucceeded(refundId, result.providerRefundId);
     return { payment: amountMinor === payment.amountMinor ? await this.lifecycle.refund(payment, reason) : payment, providerRefundId: result.providerRefundId };
   }
