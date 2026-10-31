@@ -28,10 +28,7 @@ export type SupabaseRefundOperationStoreConfig = {
   fetcher?: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
 };
 
-/**
- * Durable refund serialization. The database unique indexes, not process-local memory,
- * decide which worker owns a refund operation.
- */
+/** Durable refund serialization. Database uniqueness decides which worker owns a refund. */
 export class SupabaseRefundOperationStore implements RefundOperationStore {
   private readonly baseUrl: string;
   private readonly fetcher: NonNullable<SupabaseRefundOperationStoreConfig['fetcher']>;
@@ -75,11 +72,11 @@ export class SupabaseRefundOperationStore implements RefundOperationStore {
 
   async markSucceeded(refundId: string, providerRefundId: string): Promise<RefundOperation> {
     if (!providerRefundId.trim()) throw new Error('Provider refund ID is required');
-    return this.update(refundId, { status: 'succeeded', provider_refund_id: providerRefundId });
+    return this.update(refundId, { status: 'succeeded', provider_refund_id: providerRefundId }, 'processing');
   }
 
   async markFailed(refundId: string): Promise<RefundOperation> {
-    return this.update(refundId, { status: 'failed' });
+    return this.update(refundId, { status: 'failed' }, 'processing');
   }
 
   private async getByRefundId(refundId: string): Promise<RefundOperation | undefined> {
@@ -90,8 +87,8 @@ export class SupabaseRefundOperationStore implements RefundOperationStore {
     return rows[0] ? this.fromRow(rows[0]) : undefined;
   }
 
-  private async update(refundId: string, patch: Record<string, unknown>): Promise<RefundOperation> {
-    const url = `${this.baseUrl}?refund_id=eq.${encodeURIComponent(refundId)}`;
+  private async update(refundId: string, patch: Record<string, unknown>, expectedStatus: RefundOperationStatus): Promise<RefundOperation> {
+    const url = `${this.baseUrl}?refund_id=eq.${encodeURIComponent(refundId)}&status=eq.${expectedStatus}`;
     const response = await this.fetcher(url, {
       method: 'PATCH',
       headers: this.headers({ Prefer: 'return=representation' }),
@@ -99,8 +96,12 @@ export class SupabaseRefundOperationStore implements RefundOperationStore {
     });
     if (!response.ok) throw new Error(`Supabase refund operation update failed: HTTP ${response.status}`);
     const rows = await response.json() as Array<Record<string, unknown>>;
-    if (!rows[0]) throw new Error('Refund operation not found');
-    return this.fromRow(rows[0]);
+    if (rows[0]) return this.fromRow(rows[0]);
+
+    const current = await this.getByRefundId(refundId);
+    if (!current) throw new Error('Refund operation not found');
+    if (current.status === patch.status) return current;
+    throw new Error(`Refund operation state changed concurrently; expected ${expectedStatus}`);
   }
 
   private fromRow(row: Record<string, unknown>): RefundOperation {
