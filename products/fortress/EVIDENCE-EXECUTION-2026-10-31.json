@@ -1,0 +1,23 @@
+{
+  "report": "FORTRESS-ACCEPTANCE-INDEPENDENT-RUNTIME",
+  "version": "1.0.0",
+  "executionDate": "2026-10-31",
+  "executionType": "independent-local-node-runtime",
+  "sourceHarness": "products/fortress/pilot-evidence-harness.mjs",
+  "sourceHarnessSha": "57e9ed53dedefcffa63f5d5c9ec1e298518c7fd3",
+  "scenarioRunner": "products/fortress/scenario-runner.mjs",
+  "result": {
+    "scenarios": 10,
+    "passed": 10,
+    "failed": 0,
+    "acceptanceRate": 1,
+    "sandboxOnly": true,
+    "liveMoneyMovement": false
+  },
+  "status": "INDEPENDENT_RUNTIME_VALIDATION_PASS",
+  "limitations": [
+    "This is not GitHub Actions CI evidence.",
+    "Synthetic scenarios only.",
+    "No production fraud-loss, false-positive, customer-impact, regulatory-effectiveness, or production-latency claim is made."
+  ]
+}
