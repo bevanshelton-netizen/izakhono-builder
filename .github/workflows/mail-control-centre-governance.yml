@@ -1,0 +1,27 @@
+name: Mail Control Centre Governance Gate
+
+on:
+  push:
+    paths:
+      - 'products/izakhono-host/mail-control-centre*'
+      - 'products/izakhono-host/MAIL-CONTROL-CENTRE-V1.md'
+      - '.github/workflows/mail-control-centre-governance.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  governance:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+
+      - name: Run governance gate
+        run: node products/izakhono-host/mail-control-centre-e2e-gate.mjs
