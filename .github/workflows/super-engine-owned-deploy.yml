@@ -7,6 +7,7 @@ on:
     paths:
       - 'products/izakhono-super-engine/**'
       - 'infra/app-fabric-runtime/super-engine.compose.yml'
+      - 'infra/runtime/**'
       - '.github/workflows/super-engine-owned-deploy.yml'
 
 permissions:
@@ -18,6 +19,7 @@ concurrency:
 
 env:
   IMAGE: izakhono/super-engine
+  RELEASE_ROUTE: https://super-engine.izakhono.co.za
 
 jobs:
   build:
@@ -44,10 +46,57 @@ jobs:
           done
           docker logs izakhono-super-engine-smoke
           exit 1
+      - name: Generate immutable release receipt
+        shell: bash
+        env:
+          SOURCE_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          image_id=$(docker image inspect "$IMAGE:${GITHUB_SHA}" --format '{{.Id}}')
+          digest="sha256:${image_id#sha256:}"
+          node - <<'NODE'
+          const fs = require('fs');
+          const receipt = {
+            schema: 'izakhono.release/v1',
+            application: { slug: 'izakhono-super-engine' },
+            runtime: { port: 8787, healthPath: '/health', network: 'izakhono-edge' },
+            routes: { public_https: process.env.RELEASE_ROUTE },
+            release: { source: process.env.SOURCE_SHA, artifact_digest: process.env.ARTIFACT_DIGEST },
+          };
+          if (!receipt.routes.public_https.startsWith('https://')) throw new Error('HTTPS route required');
+          if (!/^sha256:[a-f0-9]{64}$/.test(receipt.release.artifact_digest)) throw new Error('Immutable artifact digest required');
+          fs.mkdirSync('release-artifacts', { recursive: true });
+          fs.writeFileSync('release-artifacts/super-engine.release.json', JSON.stringify(receipt, null, 2) + '\n');
+          NODE
+        env:
+          ARTIFACT_DIGEST: ${{ env.IMAGE }}
+      - name: Validate release receipt
+        shell: bash
+        env:
+          SOURCE_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          test -f release-artifacts/super-engine.release.json
+          node - <<'NODE'
+          const fs = require('fs');
+          const c = JSON.parse(fs.readFileSync('release-artifacts/super-engine.release.json', 'utf8'));
+          if (c.schema !== 'izakhono.release/v1') throw new Error('invalid release schema');
+          if (c.application.slug !== 'izakhono-super-engine') throw new Error('invalid application');
+          if (c.runtime.port !== 8787 || c.runtime.healthPath !== '/health') throw new Error('invalid runtime contract');
+          if (c.runtime.network !== 'izakhono-edge') throw new Error('invalid owned network');
+          if (!c.routes.public_https.startsWith('https://')) throw new Error('HTTPS route required');
+          if (c.release.source !== process.env.SOURCE_SHA) throw new Error('source provenance mismatch');
+          if (!/^sha256:[a-f0-9]{64}$/.test(c.release.artifact_digest)) throw new Error('invalid immutable digest');
+          NODE
+      - name: Upload release receipt
+        uses: actions/upload-artifact@v4
+        with:
+          name: super-engine-release-receipt-${{ github.sha }}
+          path: release-artifacts/super-engine.release.json
 
   owned-runtime:
     needs: build
-    runs-on: self-hosted
+    runs-on: [self-hosted, izakhono-owned, linux]
     environment: production
     steps:
       - uses: actions/checkout@v4
@@ -59,7 +108,7 @@ jobs:
             echo "IZAKHONO_OWNED_RUNTIME=true is required on the owned production runner."
             exit 10
           }
-      - name: Deploy Super Engine
+      - name: Deploy Super Engine candidate
         shell: bash
         env:
           TAG: ${{ github.sha }}
