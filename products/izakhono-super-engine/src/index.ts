@@ -14,6 +14,7 @@ export * from './payment-refunds.js';
 export * from './payment-refund-ledger.js';
 export * from './payment-refund-operations-supabase.js';
 export * from './payment-refund-recovery.js';
+export * from './payment-refund-recovery-worker.js';
 export * from './payment-orchestrator.js';
 export * from './payment-webhook-guard.js';
 export * from './payment-webhook-claims-supabase.js';
@@ -41,6 +42,7 @@ export const IZAKHONO_SUPER_ENGINE = {
   lifecycleFabric: 'explicit-cancel-refund-state-machine',
   refundOperations: 'durable-postgres-concurrency-guard',
   refundRecovery: 'ambiguous-outcome-quarantine-and-resolution',
+  refundRecoveryWorker: 'automated-lookup-only-recovery',
   persistenceFabric: 'portable-postgres-supabase-adapter',
   orchestrationFabric: 'payment-to-settlement-refund-orchestrator',
   ownedFirst: true,
