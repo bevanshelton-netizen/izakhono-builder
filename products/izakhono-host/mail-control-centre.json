@@ -1,0 +1,29 @@
+{
+  "schema": "izakhono.mail-control/v1",
+  "controlPlane": "izakhono-host",
+  "roles": ["owner", "mail-admin", "security-admin", "support-admin", "auditor"],
+  "domains": [
+    {"platform":"izakhono-africa","domain":"izakhonoafrica.co.za","status":"registered"},
+    {"platform":"edu-build","domain":"edubuildshelton.org.za","status":"registered"},
+    {"platform":"allegro-vibez","domain":"allegrovibez.com","status":"registered"},
+    {"platform":"kora-network","domain":"streamkoraafrica.com","status":"registered"}
+  ],
+  "healthChecks": [
+    "mx",
+    "spf",
+    "dkim",
+    "dmarc",
+    "tls",
+    "smtp",
+    "imap",
+    "backup",
+    "fortress",
+    "monitoring"
+  ],
+  "contentAccess": {
+    "executiveDashboard": false,
+    "requiresExplicitPermission": true,
+    "auditRequired": true
+  },
+  "productionClaimsRequireEvidence": true
+}
