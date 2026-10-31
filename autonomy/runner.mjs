@@ -15,7 +15,7 @@ function taskState(id) { return state.tasks[id] ?? { status: 'queued', attempts:
 function ready(task) { return task.dependsOn.every(id => taskState(id).status === 'completed'); }
 function persistentWaitFor(task) {
   const current = taskState(task.id);
-  return current.status === 'waiting_owner' && ['builder-connection', 'physical-infrastructure'].includes(current.ownerGate);
+  return current.status === 'waiting_owner' && current.ownerGate === 'builder-connection';
 }
 function transition(task, status, extra = {}) {
   const previous = taskState(task.id);
@@ -42,30 +42,9 @@ function executeInternal(task) {
   }
   if (task.action === 'node-failover') {
     const result = resolveFailover(task.requirements ?? {});
-    if (result.status === 'not_required') {
-      return {
-        status: 'completed',
-        evidence: evidenceFor(task, 'not_required'),
-        reason: result.reason,
-      };
-    }
-    if (result.status === 'ready') {
-      return {
-        status: 'completed',
-        selectedNode: result.replacementNodeId,
-        target: result.target,
-        evidence: evidenceFor(task, 'passed'),
-        source: 'owned-node-control-plane',
-      };
-    }
-    return {
-      status: 'waiting',
-      reason: result.reason,
-      selectedNode: null,
-      target: result.target,
-      evidence: evidenceFor(task),
-      source: 'owned-node-control-plane',
-    };
+    if (result.status === 'not_required') return { status: 'completed', evidence: evidenceFor(task, 'not_required'), reason: result.reason };
+    if (result.status === 'ready') return { status: 'completed', selectedNode: result.replacementNodeId, target: result.target, evidence: evidenceFor(task, 'passed'), source: 'owned-node-control-plane' };
+    return { status: 'waiting', reason: result.reason, selectedNode: null, target: result.target, evidence: evidenceFor(task), source: 'owned-node-control-plane' };
   }
   return null;
 }
@@ -77,57 +56,51 @@ while (progressed < manifest.queue.length) {
   const next = selectNext();
   if (!next) break;
   const current = taskState(next.id);
-  transition(next, 'running', {
-    attempts: current.attempts + 1,
-    action: next.action,
-    adapter: next.adapter,
-    wakeReason: current.status === 'waiting_owner' ? 'scheduled-retry' : undefined,
-  });
+  transition(next, 'running', { attempts: current.attempts + 1, action: next.action, adapter: next.adapter });
 
   let result = executeInternal(next);
   if (!result && next.adapter === 'builder') result = await runBuilderAdapter(next);
 
-  if (!result && next.adapter === 'deploy' && ['node-discovery', 'node-heartbeat', 'node-evidence', 'node-target', 'node-readiness'].includes(next.action)) {
-    const priorTarget = ['node-readiness'].includes(next.action) ? taskState('node-target-selection').selectedNode : null;
+  const nodeActions = ['node-discovery', 'software-node-instantiation', 'node-heartbeat', 'node-evidence', 'node-target', 'node-readiness', 'workload-schedule'];
+  if (!result && next.adapter === 'deploy' && nodeActions.includes(next.action)) {
+    const priorTarget = next.action === 'node-readiness' ? taskState('node-target-selection').selectedNode : null;
     result = await runNodeAdapter(next.action, {
       taskId: next.id,
       taskTitle: next.title,
       evidenceRequired: next.evidence ?? [],
       requirements: next.requirements ?? {},
       selectedNode: priorTarget || undefined,
+      workload: next.workload || undefined,
     });
   }
 
   if (!result) {
     transition(next, 'awaiting_adapter', { evidence: evidenceFor(next) });
     externalGates.push(next);
-  } else if (result.status === 'completed' || result.status === 'ready') {
+  } else if (result.status === 'completed' || result.status === 'ready' || result.status === 'assigned' || result.status === 'eligible') {
     transition(next, 'completed', {
       evidence: result.evidence ?? evidenceFor(next, 'passed'),
       provider: result.provider ?? manifest.adapters?.[next.adapter]?.[0],
-      selectedNode: result.selectedNode ?? result.target?.nodeId ?? result.registeredNode ?? null,
+      selectedNode: result.selectedNode ?? result.target?.nodeId ?? result.registeredNode ?? result.nodeId ?? null,
       targetReason: result.target?.reason ?? null,
       reason: result.reason ?? null,
+      assignmentId: result.assignmentId ?? null,
       evidenceSource: result.source ?? null,
     });
   } else if (result.status === 'waiting') {
-    const ownerGate = next.ownerGate ?? result.ownerGate ?? (next.adapter === 'deploy' ? 'physical-infrastructure' : 'builder-connection');
-    transition(next, 'waiting_owner', {
+    const ownerGate = next.ownerGate ?? result.ownerGate ?? null;
+    transition(next, ownerGate ? 'waiting_owner' : 'waiting', {
       ownerGate,
-      reason: result.reason ?? 'external-capability-required',
+      reason: result.reason ?? 'capability-required',
       provider: result.provider ?? manifest.adapters?.[next.adapter]?.[0],
       selectedNode: result.selectedNode ?? result.target?.nodeId ?? result.registeredNode ?? null,
-      targetReason: result.target?.reason ?? null,
       evidence: result.evidence ?? evidenceFor(next),
       evidenceSource: result.source ?? null,
     });
     externalGates.push(next);
   } else {
     const attempts = taskState(next.id).attempts;
-    transition(next, attempts >= manifest.policy.maxRetries ? 'blocked' : 'failed', {
-      reason: result.reason ?? 'adapter-failed',
-      provider: result.provider ?? manifest.adapters?.[next.adapter]?.[0]
-    });
+    transition(next, attempts >= manifest.policy.maxRetries ? 'blocked' : 'failed', { reason: result.reason ?? 'adapter-failed' });
     if (attempts >= manifest.policy.maxRetries) break;
   }
   progressed += 1;
