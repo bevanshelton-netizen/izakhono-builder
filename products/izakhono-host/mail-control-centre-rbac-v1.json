@@ -1,0 +1,12 @@
+{
+  "schema": "izakhono.mail-control.rbac/v1",
+  "roles": {
+    "owner": ["domain:read", "mailbox:read", "mailbox:provision", "mailbox:suspend", "mailbox:restore", "credential:rotate", "dns:verify", "backup:manage", "incident:manage", "routing:manage", "audit:read"],
+    "mail-administrator": ["domain:read", "mailbox:read", "mailbox:provision", "mailbox:suspend", "mailbox:restore", "credential:rotate", "dns:verify", "backup:manage", "incident:read", "audit:read"],
+    "security-administrator": ["domain:read", "mailbox:read", "security:read", "incident:manage", "fortress:escalate", "audit:read"],
+    "support-administrator": ["domain:read", "mailbox:read", "mailbox:suspend", "mailbox:restore", "incident:read"],
+    "auditor": ["domain:read", "mailbox:read", "security:read", "incident:read", "audit:read"]
+  },
+  "contentAccess": "separate-explicit-permission-and-audit-required",
+  "destructiveActions": "explicit-confirmation-required"
+}
