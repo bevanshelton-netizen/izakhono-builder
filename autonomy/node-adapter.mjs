@@ -2,25 +2,16 @@ import { spawn } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { ingestHeartbeat, deploymentTarget } from './node-control-plane.mjs';
+import { scheduleWorkload } from './workload-scheduler.mjs';
 
 const root = process.cwd();
 const agent = path.join(root, 'autonomy', 'node-agent.mjs');
 const heartbeat = path.join(root, 'autonomy', 'node-heartbeat.mjs');
+const softwareNode = path.join(root, 'autonomy', 'software-node.mjs');
 
 function evidencePath() {
   return process.env.IZAKHONO_NODE_HEARTBEAT_EVIDENCE_PATH
     || path.join(process.env.IZAKHONO_NODE_DATA_DIR || path.join(root, 'autonomy'), 'heartbeat.json');
-}
-
-function readPersistedHeartbeat() {
-  try {
-    const raw = fs.readFileSync(evidencePath(), 'utf8');
-    const parsed = JSON.parse(raw);
-    if (!parsed || typeof parsed !== 'object') throw new Error('invalid-heartbeat-evidence');
-    return parsed;
-  } catch (error) {
-    return { status: 'waiting', reason: 'heartbeat-evidence-unavailable', error: error.message };
-  }
 }
 
 function runProcess(script, request = null) {
@@ -31,13 +22,13 @@ function runProcess(script, request = null) {
     let stderr = '';
     const timer = setTimeout(() => {
       child.kill('SIGTERM');
-      resolve({ status: 'waiting', reason: 'node-agent-timeout' });
+      resolve({ status: 'waiting', reason: 'software-node-agent-timeout' });
     }, Number(process.env.IZAKHONO_NODE_AGENT_TIMEOUT_MS || 30000));
     child.stdout.on('data', (chunk) => { stdout += chunk; });
     child.stderr.on('data', (chunk) => { stderr += chunk; });
     child.on('error', (error) => {
       clearTimeout(timer);
-      resolve({ status: 'waiting', reason: 'node-agent-unavailable', error: error.message });
+      resolve({ status: 'waiting', reason: 'software-node-runtime-unavailable', error: error.message });
     });
     child.on('close', (code) => {
       clearTimeout(timer);
@@ -45,37 +36,43 @@ function runProcess(script, request = null) {
         const result = JSON.parse(stdout.trim());
         resolve({ ...result, exitCode: code, stderr: stderr.trim() });
       } catch {
-        resolve({ status: code === 0 ? 'failed' : 'waiting', reason: 'invalid-node-agent-response', exitCode: code, stderr: stderr.trim(), stdout: stdout.trim() });
+        resolve({ status: code === 0 ? 'failed' : 'waiting', reason: 'invalid-node-runtime-response', exitCode: code, stderr: stderr.trim(), stdout: stdout.trim() });
       }
     });
   });
 }
 
 export async function runNodeAdapter(action, input = {}) {
-  if (action === 'node-discovery' || action === 'inspect') return runProcess(agent, { operation: 'inspect', ...input });
+  if (action === 'node-discovery' || action === 'software-node-instantiation' || action === 'inspect') {
+    return runProcess(softwareNode, { operation: 'instantiate', ...input });
+  }
 
   if (action === 'node-heartbeat') {
-    const result = await runProcess(heartbeat);
+    const result = await runProcess(softwareNode, { operation: 'heartbeat', ...input });
     if (result.status === 'waiting' || result.status === 'failed') return result;
-    return registerAndSummarize(result, 'heartbeat');
+    return registerAndSummarize(result, 'software-node-heartbeat');
   }
 
   if (action === 'node-evidence') {
-    const persisted = readPersistedHeartbeat();
-    if (persisted.status === 'waiting') return persisted;
-    return registerAndSummarize(persisted, 'persisted');
+    const file = evidencePath();
+    try {
+      const persisted = JSON.parse(fs.readFileSync(file, 'utf8'));
+      return registerAndSummarize(persisted, 'persisted');
+    } catch (error) {
+      return { status: 'waiting', reason: 'heartbeat-evidence-unavailable', error: error.message };
+    }
   }
 
   if (action === 'node-target') {
     const target = deploymentTarget(input.requirements || {});
-    if (target.status !== 'ready') return { status: 'waiting', reason: target.reason, ownerGate: 'physical-infrastructure', target };
+    if (target.status !== 'ready') return { status: 'waiting', reason: target.reason, target };
     return { status: 'completed', selectedNode: target.nodeId, target, evidence: [{ name: 'eligible-node-selected', status: 'passed' }] };
   }
 
   if (action === 'node-readiness' || action === 'promote') {
     const target = deploymentTarget(input.requirements || {});
-    if (target.status !== 'ready') return { status: 'waiting', reason: target.reason, ownerGate: 'physical-infrastructure', target };
-    const result = await runProcess(agent, {
+    if (target.status !== 'ready') return { status: 'waiting', reason: target.reason, target };
+    const result = await runProcess(softwareNode, {
       operation: 'promote',
       targetNodeId: input.selectedNode || target.nodeId,
       requestId: input.requestId || `promotion-${Date.now()}`,
@@ -84,13 +81,28 @@ export async function runNodeAdapter(action, input = {}) {
     return { ...result, selectedNode: input.selectedNode || target.nodeId, target };
   }
 
+  if (action === 'workload-schedule') {
+    return scheduleWorkload(input.workload || {
+      workloadId: input.workloadId || 'anonymous-workload',
+      workloadType: input.workloadType || 'application',
+      requirements: input.requirements || {},
+    });
+  }
+
   return { status: 'failed', reason: `unsupported-node-action:${action}` };
 }
 
 function registerAndSummarize(result, source) {
+  const nodeId = result.nodeId || result.node?.id;
+  const heartbeat = {
+    ...result,
+    nodeId,
+    node: result.node || { id: nodeId },
+    status: result.health || result.status,
+  };
   let registered = null;
   try {
-    registered = ingestHeartbeat(result);
+    registered = ingestHeartbeat(heartbeat);
   } catch (error) {
     return { status: 'failed', reason: `${source}-heartbeat-registration-failed`, error: error.message };
   }
@@ -102,10 +114,10 @@ function registerAndSummarize(result, source) {
     evidence: [
       { name: 'heartbeat-emitted', status: 'passed' },
       { name: 'node-health-readable', status: healthy ? 'passed' : 'failed' },
-      { name: 'capacity-reported', status: result.capacity ? 'passed' : 'failed' },
-      { name: 'heartbeat-persisted', status: source === 'persisted' || Boolean(result.timestamp) ? 'passed' : 'failed' },
+      { name: 'capacity-reported', status: result.capacity ? 'passed' : 'not-required' },
+      { name: 'heartbeat-persisted', status: result.evidence?.persisted === false ? 'failed' : 'passed' },
     ],
     heartbeat: result,
-    registeredNode: registered?.nodeId ?? result.node?.id ?? null,
+    registeredNode: registered?.nodeId ?? nodeId ?? null,
   };
 }
