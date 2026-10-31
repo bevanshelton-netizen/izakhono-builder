@@ -1,0 +1,10 @@
+{
+  "schema": "izakhono.mail-control-state/v1",
+  "statusModel": ["configured", "degraded", "verified", "failed"],
+  "productionClaimsRequireEvidence": true,
+  "contentAccess": "separately-permissioned-and-audited",
+  "domains": [],
+  "mailboxes": [],
+  "incidents": [],
+  "lastVerificationAt": null
+}
