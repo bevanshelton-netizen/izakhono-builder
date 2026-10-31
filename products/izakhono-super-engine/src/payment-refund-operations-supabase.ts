@@ -9,17 +9,22 @@ export type RefundOperation = {
   status: RefundOperationStatus;
   providerRefundId?: string;
   reason: string;
+  reconciliationRequired?: boolean;
+  lastError?: string;
+  resolvedAt?: string;
 };
 
 export type RefundOperationReservation =
   | { kind: 'reserved'; operation: RefundOperation }
   | { kind: 'succeeded'; operation: RefundOperation }
-  | { kind: 'active'; operation: RefundOperation };
+  | { kind: 'active'; operation: RefundOperation }
+  | { kind: 'reconciliation-required'; operation: RefundOperation };
 
 export interface RefundOperationStore {
   reserve(input: Omit<RefundOperation, 'id' | 'status' | 'providerRefundId'>): Promise<RefundOperationReservation>;
   markSucceeded(refundId: string, providerRefundId: string): Promise<RefundOperation>;
   markFailed(refundId: string): Promise<RefundOperation>;
+  markReconciliationRequired(refundId: string, error?: string): Promise<RefundOperation>;
 }
 
 export type SupabaseRefundOperationStoreConfig = {
@@ -28,7 +33,7 @@ export type SupabaseRefundOperationStoreConfig = {
   fetcher?: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
 };
 
-/** Durable refund serialization. Database uniqueness decides which worker owns a refund. */
+/** Durable refund serialization. Ambiguous provider outcomes are quarantined for reconciliation. */
 export class SupabaseRefundOperationStore implements RefundOperationStore {
   private readonly baseUrl: string;
   private readonly fetcher: NonNullable<SupabaseRefundOperationStoreConfig['fetcher']>;
@@ -53,6 +58,7 @@ export class SupabaseRefundOperationStore implements RefundOperationStore {
         currency: operation.currency,
         status: 'processing',
         reason: operation.reason,
+        reconciliation_required: false,
       }),
     });
     if (response.ok) {
@@ -67,16 +73,34 @@ export class SupabaseRefundOperationStore implements RefundOperationStore {
       throw new Error('Refund ID is already bound to different refund parameters');
     }
     if (existing.status === 'succeeded') return { kind: 'succeeded', operation: existing };
+    if (existing.reconciliationRequired) return { kind: 'reconciliation-required', operation: existing };
     return { kind: 'active', operation: existing };
   }
 
   async markSucceeded(refundId: string, providerRefundId: string): Promise<RefundOperation> {
     if (!providerRefundId.trim()) throw new Error('Provider refund ID is required');
-    return this.update(refundId, { status: 'succeeded', provider_refund_id: providerRefundId }, 'processing');
+    return this.update(refundId, {
+      status: 'succeeded',
+      provider_refund_id: providerRefundId,
+      reconciliation_required: false,
+      last_error: null,
+      resolved_at: new Date().toISOString(),
+    }, 'processing');
   }
 
   async markFailed(refundId: string): Promise<RefundOperation> {
-    return this.update(refundId, { status: 'failed' }, 'processing');
+    return this.update(refundId, {
+      status: 'failed',
+      reconciliation_required: false,
+      resolved_at: new Date().toISOString(),
+    }, 'processing');
+  }
+
+  async markReconciliationRequired(refundId: string, error?: string): Promise<RefundOperation> {
+    return this.update(refundId, {
+      reconciliation_required: true,
+      last_error: error ? error.slice(0, 2000) : null,
+    }, 'processing');
   }
 
   private async getByRefundId(refundId: string): Promise<RefundOperation | undefined> {
@@ -100,7 +124,7 @@ export class SupabaseRefundOperationStore implements RefundOperationStore {
 
     const current = await this.getByRefundId(refundId);
     if (!current) throw new Error('Refund operation not found');
-    if (current.status === patch.status) return current;
+    if (current.status === patch.status && (patch.reconciliation_required === undefined || current.reconciliationRequired === patch.reconciliation_required)) return current;
     throw new Error(`Refund operation state changed concurrently; expected ${expectedStatus}`);
   }
 
@@ -114,6 +138,9 @@ export class SupabaseRefundOperationStore implements RefundOperationStore {
       status: String(row.status) as RefundOperationStatus,
       providerRefundId: row.provider_refund_id == null ? undefined : String(row.provider_refund_id),
       reason: String(row.reason),
+      reconciliationRequired: row.reconciliation_required === true,
+      lastError: row.last_error == null ? undefined : String(row.last_error),
+      resolvedAt: row.resolved_at == null ? undefined : String(row.resolved_at),
     };
   }
 
