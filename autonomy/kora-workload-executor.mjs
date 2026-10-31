@@ -45,22 +45,14 @@ const evidence = [
 
 if (dryRun) {
   record('execution-plan-ready', evidence, { acceptance: 'not-verified' });
-  console.log(JSON.stringify({
-    status: 'execution-plan-ready',
-    workload: workload.workloadId,
-    nodeId,
-    containerName,
-    image,
-    dryRun: true,
-    evidence,
-    next: 'run-with-IZAKHONO_DRY_RUN=false-on-an-eligible-software-node',
-  }, null, 2));
+  console.log(JSON.stringify({ status: 'execution-plan-ready', workload: workload.workloadId, nodeId, containerName, image, dryRun: true, evidence, next: 'run-with-IZAKHONO_DRY_RUN=false-on-an-eligible-software-node' }, null, 2));
   process.exit(0);
 }
 
 try {
-  run(['docker', 'pull', image]);
-  evidence[1] = { name: 'image-built', status: 'passed', image };
+  const imageInspect = run(['docker', 'image', 'inspect', image]);
+  if (!imageInspect.stdout) throw new Error(`KORA image is not present on the node: ${image}`);
+  evidence[1] = { name: 'image-built', status: 'passed', image, source: 'local-node-image' };
 
   try { run(['docker', 'rm', '-f', containerName]); } catch {}
   run(['docker', 'run', '-d', '--restart', 'unless-stopped', '--name', containerName, '-p', `${port}:${port}`, image]);
@@ -83,13 +75,11 @@ try {
     }
   }
 
-  const accepted = workload.acceptance.required.every(required =>
-    evidence.some(item => item.name === required && item.status === 'passed')
-  );
-
-  const status = accepted ? 'accepted' : 'running-awaiting-acceptance-evidence';
-  record(status, evidence, { acceptance: accepted ? 'passed' : 'pending', healthPayload: payload });
-  console.log(JSON.stringify({ status, workload: workload.workloadId, nodeId, containerName, image, dryRun: false, evidence, next: accepted ? 'routing-candidate' : 'collect-remaining-acceptance-evidence' }, null, 2));
+  const runtimeRequired = ['image-built', 'container-started', 'health-200', 'runtime-healthy', 'service-connectivity'];
+  const runtimeAccepted = runtimeRequired.every(required => evidence.some(item => item.name === required && item.status === 'passed'));
+  const status = runtimeAccepted ? 'running-awaiting-acceptance-evidence' : 'failed';
+  record(status, evidence, { acceptance: 'pending', runtimeAcceptance: runtimeAccepted ? 'passed' : 'failed', healthPayload: payload });
+  console.log(JSON.stringify({ status, workload: workload.workloadId, nodeId, containerName, image, dryRun: false, evidence, next: runtimeAccepted ? 'collect-routing-and-production-evidence' : 'repair-runtime' }, null, 2));
 } catch (error) {
   evidence.push({ name: 'execution-error', status: 'failed', message: error instanceof Error ? error.message : String(error) });
   record('failed', evidence, { acceptance: 'failed' });
