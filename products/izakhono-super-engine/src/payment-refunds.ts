@@ -32,9 +32,7 @@ export class PaymentLifecycle {
   async cancel(payment: PaymentIntent, reason = 'Cancelled before completion'): Promise<PaymentIntent> {
     if (payment.status === 'cancelled') return payment;
     if (payment.status === 'paid' || payment.status === 'refunded') throw new Error('Paid payments require refund flow');
-    if (payment.status !== 'created' && payment.status !== 'pending' && payment.status !== 'failed') {
-      throw new Error(`Payment cannot be cancelled from status ${payment.status}`);
-    }
+    if (payment.status !== 'created' && payment.status !== 'pending' && payment.status !== 'failed') throw new Error(`Payment cannot be cancelled from status ${payment.status}`);
     return this.transition(payment, 'cancelled', reason);
   }
 
@@ -45,9 +43,7 @@ export class PaymentLifecycle {
   }
 
   private async transition(payment: PaymentIntent, to: PaymentStatus, reason: string): Promise<PaymentIntent> {
-    const updated = this.store.updateIfStatus
-      ? await this.store.updateIfStatus(payment.id, payment.status, { status: to })
-      : await this.store.update(payment.id, { status: to });
+    const updated = this.store.updateIfStatus ? await this.store.updateIfStatus(payment.id, payment.status, { status: to }) : await this.store.update(payment.id, { status: to });
     if (!updated) {
       const current = await this.store.getByExternalTransactionId(payment.externalTransactionId);
       if (current?.status === to) return current;
@@ -62,15 +58,11 @@ export interface RefundProvider {
   requestRefund(input: { providerPaymentId: string; amountMinor: number; currency: string; reason: string }): Promise<{ providerRefundId: string }>;
 }
 
-/** Provider-independent refund orchestration. Durable operations serialize workers; provider idempotency remains a provider capability. */
+/** Durable operations serialize workers. External exactly-once still depends on provider idempotency/reconciliation. */
 export class IzakhonoRefunds {
   private readonly inFlight = new Map<string, Promise<{ payment: PaymentIntent; providerRefundId: string }>>();
 
-  constructor(
-    private readonly lifecycle: PaymentLifecycle,
-    private readonly provider: RefundProvider,
-    private readonly operations?: RefundOperationStore,
-  ) {}
+  constructor(private readonly lifecycle: PaymentLifecycle, private readonly provider: RefundProvider, private readonly operations?: RefundOperationStore) {}
 
   async refund(payment: PaymentIntent, reason = 'Customer refund'): Promise<{ payment: PaymentIntent; providerRefundId: string }> {
     const existing = this.inFlight.get(payment.id);
@@ -87,31 +79,26 @@ export class IzakhonoRefunds {
 
     const refundId = `refund:${payment.id}`;
     if (this.operations) {
-      const reservation = await this.operations.reserve({
-        paymentIntentId: payment.id,
-        refundId,
-        amountMinor: payment.amountMinor,
-        currency: payment.currency,
-        reason,
-      });
+      const reservation = await this.operations.reserve({ paymentIntentId: payment.id, refundId, amountMinor: payment.amountMinor, currency: payment.currency, reason });
       if (reservation.kind === 'succeeded') {
-        const updated = await this.lifecycle.refund(payment, reason);
-        if (!reservation.operation.providerRefundId) throw new Error('Succeeded refund operation has no provider refund ID');
-        return { payment: updated, providerRefundId: reservation.operation.providerRefundId };
+        const providerRefundId = reservation.operation.providerRefundId;
+        if (!providerRefundId) throw new Error('Succeeded refund operation has no provider refund ID');
+        return { payment: await this.lifecycle.refund(payment, reason), providerRefundId };
       }
       if (reservation.kind === 'active') throw new Error('Refund is already being processed');
     }
 
+    let result: { providerRefundId: string };
     try {
-      const result = await this.provider.requestRefund({ providerPaymentId: payment.providerPaymentId, amountMinor: payment.amountMinor, currency: payment.currency, reason });
-      if (this.operations) await this.operations.markSucceeded(refundId, result.providerRefundId);
-      const updated = await this.lifecycle.refund(payment, reason);
-      return { payment: updated, providerRefundId: result.providerRefundId };
+      result = await this.provider.requestRefund({ providerPaymentId: payment.providerPaymentId, amountMinor: payment.amountMinor, currency: payment.currency, reason });
     } catch (error) {
       if (this.operations) {
-        try { await this.operations.markFailed(refundId); } catch { /* preserve original failure; reconciliation can inspect the operation */ }
+        try { await this.operations.markFailed(refundId); } catch { /* retain provider failure; reconciliation can inspect the operation */ }
       }
       throw error;
     }
+
+    if (this.operations) await this.operations.markSucceeded(refundId, result.providerRefundId);
+    return { payment: await this.lifecycle.refund(payment, reason), providerRefundId: result.providerRefundId };
   }
 }
