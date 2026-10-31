@@ -1,35 +1,41 @@
-# FORTRESS Security Acceptance Report
+# FORTRESS Adversarial Acceptance Report
 
-## Suite
-FORTRESS Adversarial Acceptance Suite — 10 synthetic scenarios.
+## Purpose
 
-## Scope
-This benchmark validates the bounded FORTRESS decision layer before production decisioning. It is sandbox-only and does not move, custody, freeze, recover or otherwise manipulate funds.
+Validate the FORTRESS decision layer against ten synthetic financial-crime and account-protection scenarios before any production decisioning.
 
-## Acceptance Criteria
-- Every scenario produces a defined decision.
-- Every consequential decision contains a reason code.
+## Acceptance set
+
+F01 Credential stuffing / account takeover — BLOCK or CHALLENGE with ACCOUNT_TAKEOVER_SIGNAL.
+
+F02 Remote-access trojan / remote control — HOLD_FOR_REVIEW or BLOCK with REMOTE_CONTROL_SIGNAL.
+
+F03 Authorised-payment scam — CHALLENGE or HOLD_FOR_REVIEW with SOCIAL_ENGINEERING.
+
+F04 Mule-network activity — HOLD_FOR_REVIEW or ESCALATE with MULE_NETWORK.
+
+F05 Impossible travel — CHALLENGE or BLOCK with IMPOSSIBLE_TRAVEL.
+
+F06 Synthetic identity — HOLD_FOR_REVIEW or BLOCK with SYNTHETIC_IDENTITY.
+
+F07 Merchant compromise — HOLD_FOR_REVIEW or ESCALATE with MERCHANT_COMPROMISE.
+
+F08 Insider / privilege abuse — ESCALATE with INSIDER_ABUSE.
+
+F09 Coordinated fraud ring — ESCALATE with COORDINATED_FRAUD_RING.
+
+F10 Benign high-value customer context — ALLOW_WITH_MONITORING with HIGH_VALUE_CUSTOMER_CONTEXT.
+
+## Safety acceptance
+
+- 100% deterministic replay for identical inputs.
+- Consequential decisions contain reason codes.
+- No undefined decisions.
 - Every scenario remains sandbox-only.
-- Live money movement remains disabled.
-- Results are deterministic for identical inputs.
-- F08 and F09 must escalate rather than silently downgrade to a lower-risk decision.
+- `liveMoneyMovement` is always `false`.
+- Fixtures contain synthetic signals only.
+- Scenario execution does not create customer records or move funds.
 
-## Scenarios
-| ID | Threat | Expected outcome |
-|---|---|---|
-| F01 | Credential stuffing / account takeover | Challenge or Block |
-| F02 | Remote access trojan | Hold or Block |
-| F03 | Authorised-payment scam | Challenge or Hold |
-| F04 | Mule account | Hold or Escalate |
-| F05 | Impossible travel | Challenge or Block |
-| F06 | Synthetic identity | Hold or Block |
-| F07 | Merchant compromise | Hold or Escalate |
-| F08 | Insider / privilege abuse | Escalate |
-| F09 | Coordinated fraud ring | Escalate |
-| F10 | Benign high-value customer | Allow with monitoring |
+## Calibration note
 
-## Execution Contract
-The executable suite is `acceptance-suite.mjs`. It consumes only synthetic fixtures and emits a machine-readable benchmark with total, passed, failed, score percentage, sandbox status and live-money status.
-
-## Production Gate
-A passing simulation benchmark is evidence of engineering readiness only. It is **not** regulatory approval, production authorisation, or evidence that FORTRESS can independently control customer funds.
+The scoring weights are calibrated to ensure the acceptance scenarios exercise all bounded decision bands. Calibration does not constitute production model approval. Production deployment requires controlled evaluation, representative evidence, governance review, monitoring, rollback criteria and applicable regulatory/provider approval.
