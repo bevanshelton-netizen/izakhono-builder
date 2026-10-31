@@ -7,7 +7,8 @@ import type { IzakhonoPaymentLedger } from './payment-ledger.js';
 import type { SettlementBatch, SettlementStore } from './payment-settlement.js';
 import { IzakhonoReconciliation, type ReconciliationRecord, type ReconciliationStore } from './payment-reconciliation.js';
 import { IzakhonoSettlement } from './payment-settlement.js';
-import { PaymentLifecycle, type PaymentStateEventStore, type RefundProvider } from './payment-refunds.js';
+import { IzakhonoRefunds, PaymentLifecycle, type PaymentStateEventStore, type RefundProvider } from './payment-refunds.js';
+import type { RefundOperationStore } from './payment-refund-operations-supabase.js';
 
 export interface PaymentOrchestratorConfig { merchantId: string; serviceId: string; }
 
@@ -19,6 +20,7 @@ export class PaymentOrchestrator {
   private readonly settlementLedger: PaymentSettlementLedger;
   private readonly refundLedger: PaymentRefundLedger;
   private readonly lifecycle: PaymentLifecycle;
+  private readonly refunds: IzakhonoRefunds;
 
   constructor(
     private readonly payments: PaymentStore,
@@ -30,6 +32,7 @@ export class PaymentOrchestrator {
     reconciliationStore: ReconciliationStore,
     stateEvents: PaymentStateEventStore,
     private readonly refundProvider: RefundProvider,
+    refundOperations?: RefundOperationStore,
   ) {
     this.fulfillment = new PaymentFulfillment(fulfillmentStore, provisioner);
     this.reconciliation = new IzakhonoReconciliation(reconciliationStore);
@@ -37,6 +40,7 @@ export class PaymentOrchestrator {
     this.settlementLedger = new PaymentSettlementLedger(ledger);
     this.refundLedger = new PaymentRefundLedger(ledger);
     this.lifecycle = new PaymentLifecycle(payments, stateEvents);
+    this.refunds = new IzakhonoRefunds(this.lifecycle, refundProvider, refundOperations);
   }
 
   async recordPaid(payment: PaymentIntent, config: PaymentOrchestratorConfig): Promise<boolean> {
@@ -55,16 +59,10 @@ export class PaymentOrchestrator {
   }
 
   async executeFulfillment(job: FulfillmentJob, payment: PaymentIntent): Promise<FulfillmentJob> { return this.fulfillment.execute(job, payment); }
-
   async reconcilePayment(input: { payment: PaymentIntent; observedAmountMinor: number; observedCurrency: string }): Promise<ReconciliationRecord> {
     return this.reconciliation.reconcile({ provider: input.payment.provider, externalTransactionId: input.payment.externalTransactionId, expectedAmountMinor: input.payment.amountMinor, observedAmountMinor: input.observedAmountMinor, currency: input.observedCurrency });
   }
-
-  async createSettlement(input: { merchantId: string; currency: string; amountMinor: number; transactionReferences: readonly string[] }): Promise<SettlementBatch> {
-    this.assertMerchant(input.merchantId);
-    return this.settlement.create(input);
-  }
-
+  async createSettlement(input: { merchantId: string; currency: string; amountMinor: number; transactionReferences: readonly string[] }): Promise<SettlementBatch> { this.assertMerchant(input.merchantId); return this.settlement.create(input); }
   async recordSettlement(input: { settlement: SettlementBatch; merchantPayableAccountId: string; settlementAccountId?: string }): Promise<void> { await this.settlementLedger.recordSettlement(input); }
   async markSettlementSettled(id: string): Promise<SettlementBatch> { return this.settlement.markSettled(id); }
 
@@ -75,11 +73,10 @@ export class PaymentOrchestrator {
     const amount = amountMinor ?? payment.amountMinor;
     if (!Number.isSafeInteger(amount) || amount <= 0 || amount > payment.amountMinor) throw new Error('Refund amount must be a positive integer not exceeding the payment amount');
     await this.events.record(createPaymentEvent({ kind: 'refund.requested', paymentIntentId: payment.id, externalTransactionId: payment.externalTransactionId, provider: payment.provider, fingerprint: `refund.requested:${payment.id}:${amount}:${reason}` }));
-    const providerRefund = await this.refundProvider.requestRefund({ providerPaymentId: payment.providerPaymentId, amountMinor: amount, currency: payment.currency, reason });
-    const updated = await this.lifecycle.refund(payment, reason);
-    const ledger = await this.refundLedger.recordRefund({ refundId: providerRefund.providerRefundId, payment: updated, merchantId: config.merchantId, amountMinor: amount });
+    const providerRefund = await this.refunds.refund(payment, reason, amount);
+    const ledger = await this.refundLedger.recordRefund({ refundId: providerRefund.providerRefundId, payment: providerRefund.payment, merchantId: config.merchantId, amountMinor: amount });
     await this.events.record(createPaymentEvent({ kind: 'payment.refunded', paymentIntentId: payment.id, externalTransactionId: payment.externalTransactionId, provider: payment.provider, fingerprint: `payment.refunded:${payment.id}:${providerRefund.providerRefundId}` }));
-    return { ...ledger, payment: updated, providerRefundId: providerRefund.providerRefundId };
+    return { ...ledger, payment: providerRefund.payment, providerRefundId: providerRefund.providerRefundId };
   }
 
   async issueReceipt(payment: PaymentIntent): Promise<boolean> {
