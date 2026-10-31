@@ -17,6 +17,8 @@ const containerName = process.env.KORA_CONTAINER_NAME || `kora-${nodeId}`;
 const port = Number(process.env.KORA_PORT || workload.artifact.containerPort || 3000);
 const dryRun = process.env.IZAKHONO_DRY_RUN !== 'false';
 const healthPath = workload.artifact.healthPath || '/api/health';
+const healthAttempts = Number(process.env.KORA_HEALTH_ATTEMPTS || 30);
+const healthDelaySeconds = Number(process.env.KORA_HEALTH_DELAY_SECONDS || 2);
 
 function run(args) {
   if (dryRun) return { dryRun: true, stdout: '' };
@@ -63,7 +65,26 @@ try {
   evidence.push({ name: 'runtime-healthy', status: 'passed' });
 
   const healthUrl = `http://127.0.0.1:${port}${healthPath}`;
-  const health = run(['curl', '-fsS', healthUrl]).stdout;
+  let health = '';
+  let lastHealthError = '';
+  for (let attempt = 1; attempt <= healthAttempts; attempt += 1) {
+    try {
+      health = run(['curl', '-fsS', '--max-time', '5', healthUrl]).stdout;
+      if (health) break;
+    } catch (error) {
+      lastHealthError = error instanceof Error ? error.message : String(error);
+    }
+    if (attempt < healthAttempts) {
+      try { execFileSync('sleep', [String(healthDelaySeconds)], { stdio: 'ignore' }); } catch {}
+    }
+  }
+
+  if (!health) {
+    let logs = '';
+    try { logs = run(['docker', 'logs', '--tail', '120', containerName]).stdout; } catch (error) { logs = `Unable to read container logs: ${error instanceof Error ? error.message : String(error)}`; }
+    throw new Error(`KORA health endpoint did not become reachable after ${healthAttempts} attempts: ${lastHealthError}\nContainer logs:\n${logs}`);
+  }
+
   const payload = JSON.parse(health);
   if (!payload || payload.ok !== true) throw new Error('KORA health payload did not report ok=true');
   evidence.push({ name: 'health-200', status: 'passed', endpoint: healthUrl });
