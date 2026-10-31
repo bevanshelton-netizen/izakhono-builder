@@ -1,0 +1,79 @@
+name: KORA Software NODE Runtime Gate
+
+on:
+  push:
+    paths:
+      - 'autonomy/**'
+      - 'products/izakhono-host/**'
+      - '.github/workflows/kora-software-node-runtime.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  kora-runtime:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout IZAKHONO Builder
+        uses: actions/checkout@v7
+
+      - name: Set up Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+
+      - name: Instantiate Software NODE
+        env:
+          IZAKHONO_NODE_ID: github-software-node-kora
+          IZAKHONO_NODE_SUBSTRATE: github-actions-software-node
+        run: |
+          set -euo pipefail
+          node autonomy/software-node.mjs '{"operation":"instantiate"}' | tee /tmp/software-node.json
+          node autonomy/software-node.mjs '{"operation":"heartbeat"}' | tee /tmp/node-heartbeat.json
+          node autonomy/software-node.mjs '{"operation":"promote","requestId":"kora-runtime-gate"}' | tee /tmp/node-promotion.json
+
+      - name: Build KORA portable image
+        run: |
+          set -euo pipefail
+          git clone --depth 1 https://github.com/bevanshelton-netizen/Downloads.git /tmp/izakhono-downloads
+          docker build -t kora-network:portable /tmp/izakhono-downloads/kora-network
+          docker image inspect kora-network:portable >/tmp/kora-image.json
+
+      - name: Execute KORA workload on Software NODE
+        env:
+          IZAKHONO_NODE_ID: github-software-node-kora
+          IZAKHONO_DRY_RUN: 'false'
+          KORA_IMAGE: kora-network:portable
+          KORA_CONTAINER_NAME: kora-software-node-gate
+          KORA_PORT: '3000'
+        run: |
+          set -euo pipefail
+          node autonomy/kora-workload-executor.mjs | tee /tmp/kora-runtime.json
+
+      - name: Verify current public KORA route without claiming cutover
+        run: |
+          set -euo pipefail
+          curl -fsS --retry 5 --retry-delay 2 https://streamkoraafrica.com/api/health >/tmp/kora-public-health.json
+          python - <<'PY'
+          import json
+          payload=json.load(open('/tmp/kora-public-health.json'))
+          if payload.get('ok') is not True:
+              raise SystemExit('Public KORA health endpoint did not return ok=true')
+          print('[PASS] Current public KORA route is healthy. This does not prove routing to the Software NODE.')
+          PY
+
+      - name: Publish runtime evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: kora-software-node-runtime-evidence
+          path: |
+            /tmp/software-node.json
+            /tmp/node-heartbeat.json
+            /tmp/node-promotion.json
+            /tmp/kora-image.json
+            /tmp/kora-runtime.json
+            /tmp/kora-public-health.json
+            autonomy/workload-execution.json
+          if-no-files-found: warn
