@@ -30,6 +30,8 @@ export class PaymentLifecycle {
 }
 export interface RefundProvider {
   requestRefund(input: { providerPaymentId: string; amountMinor: number; currency: string; reason: string; refundId?: string }): Promise<{ providerRefundId: string }>;
+  /** Lookup-only reconciliation. Must never create or retry a refund. */
+  reconcileRefund?(input: { providerPaymentId: string; amountMinor: number; currency: string; refundId: string }): Promise<{ outcome: 'succeeded'; providerRefundId: string } | { outcome: 'failed' }>;
 }
 /** Durable operations serialize workers. Ambiguous provider outcomes are quarantined for reconciliation. */
 export class IzakhonoRefunds {
