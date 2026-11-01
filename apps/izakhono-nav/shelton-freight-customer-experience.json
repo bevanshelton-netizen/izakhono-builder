@@ -1,0 +1,12 @@
+{
+  "product":"SHELTON FREIGHT",
+  "layer":"Customer Experience Intelligence v0.1",
+  "purpose":"Convert verified delivery, communication and proof-of-delivery signals into explainable customer experience intelligence.",
+  "principles":["verified_signals_only","delivery_truth_over_promises","safety_over_speed","explainable_metrics","human_review_for_complaints","offline_resilient","no_fabricated_live_claims"],
+  "inputs":["delivery_intelligence","journey_intelligence","cargo_intelligence","security_intelligence","proof_of_delivery","connectivity_state"],
+  "metrics":["on_time_delivery_rate","delivery_window_adherence","proof_of_delivery_completion","delivery_exception_rate","customer_communication_status","service_reliability","customer_experience_band"],
+  "bands":["EXCELLENT","RELIABLE","WATCH","REVIEW","UNAVAILABLE"],
+  "rules":{"verified_only":true,"unverified_signal":"does_not_change_band","safety_event":"never_hidden_by_customer_score","insufficient_data":"UNAVAILABLE","conflicting_verified_signals":"REVIEW"},
+  "privacy":{"minimize_personal_data":true,"retain_operational_fields_only":true,"no_sensitive_attribute_inference":true},
+  "production_status":{"architecture_ready":true,"live_customer_experience":false}
+}
