@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://izakhono.africa/schemas/stream/media-job-v1.json",
+  "title": "IZAKHONO STREAM Media Job",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "tenantId", "assetId", "operation", "state", "createdAt"],
+  "properties": {
+    "id": {"type": "string", "minLength": 1},
+    "tenantId": {"type": "string", "minLength": 1},
+    "assetId": {"type": "string", "minLength": 1},
+    "operation": {"type": "string", "enum": ["INGEST", "TRANSCODE", "PACKAGE", "PROTECT", "PUBLISH", "VALIDATE"]},
+    "state": {"type": "string", "enum": ["RECEIVED", "UPLOAD_VERIFIED", "QUEUED", "PROCESSING", "TRANSCODED", "PACKAGED", "PROTECTED", "PUBLISHED", "PLAYABLE", "BLOCKED"]},
+    "input": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "uri": {"type": "string"},
+        "mimeType": {"type": "string"},
+        "sizeBytes": {"type": "integer", "minimum": 0},
+        "sha256": {"type": "string"}
+      }
+    },
+    "output": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "masterPlaylistUri": {"type": "string"},
+        "dashManifestUri": {"type": "string"},
+        "durationSeconds": {"type": "number", "minimum": 0},
+        "renditions": {"type": "array", "items": {"$ref": "#/$defs/rendition"}}
+      }
+    },
+    "error": {"type": "string"},
+    "evidence": {"type": "array", "items": {"type": "string"}},
+    "createdAt": {"type": "string", "format": "date-time"},
+    "updatedAt": {"type": "string", "format": "date-time"}
+  },
+  "$defs": {
+    "rendition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "width", "height", "bitrateKbps", "codec"],
+      "properties": {
+        "id": {"type": "string"},
+        "width": {"type": "integer", "minimum": 1},
+        "height": {"type": "integer", "minimum": 1},
+        "bitrateKbps": {"type": "integer", "minimum": 1},
+        "codec": {"type": "string"},
+        "uri": {"type": "string"}
+      }
+    }
+  }
+}

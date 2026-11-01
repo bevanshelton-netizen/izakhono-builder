@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://izakhono.africa/contracts/stream/playback-manifest-v1.json",
+  "title": "IZAKHONO STREAM Playback Manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["tenantId", "assetId", "protocol", "manifestUri", "expiresAt"],
+  "properties": {
+    "tenantId": {"type": "string"},
+    "assetId": {"type": "string"},
+    "protocol": {"type": "string", "enum": ["HLS", "DASH"]},
+    "manifestUri": {"type": "string", "format": "uri"},
+    "licenseUri": {"type": "string", "format": "uri"},
+    "tokenized": {"type": "boolean"},
+    "expiresAt": {"type": "string", "format": "date-time"},
+    "sessionId": {"type": "string"},
+    "drm": {
+      "type": "array",
+      "items": {"type": "string", "enum": ["WIDEVINE", "FAIRPLAY", "PLAYREADY"]}
+    }
+  }
+}
