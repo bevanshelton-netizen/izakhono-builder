@@ -1,0 +1,14 @@
+{
+  "product":"SHELTON FREIGHT",
+  "layer":"Order-to-Cash Intelligence",
+  "version":"0.1",
+  "purpose":"Connect verified commercial orders to jobs, loads, journeys, delivery evidence and invoice readiness without inventing financial or operational facts.",
+  "principles":["verified_signals_only","delivery_truth_over_promises","safety_over_revenue","explainable_financial_state","human_review_for_exceptions","offline_resilient","no_fabricated_live_claims"],
+  "inputs":["customer_orders","load_intelligence","journey_intelligence","delivery_intelligence","proof_of_delivery","customer_experience","cost_intelligence","profitability_intelligence","connectivity_state"],
+  "states":["ORDER_RECEIVED","VALIDATED","SCHEDULED","DISPATCHED","IN_TRANSIT","DELIVERED","POD_PENDING","POD_VERIFIED","INVOICE_READY","INVOICED","PAYMENT_PENDING","PAID","EXCEPTION","CANCELLED","UNAVAILABLE"],
+  "verified_fields":["order_id","customer_id","job_id","vehicle_id","journey_id","cargo_id","quoted_amount","approved_amount","currency","delivery_status","pod_status","invoice_status","payment_status","timestamps","exception_code"],
+  "metrics":["orders_received","orders_in_execution","orders_delivered","pod_completion_rate","invoice_ready_rate","invoice_cycle_time","payment_pending_value","exception_rate","order_to_cash_cycle","revenue_at_risk"],
+  "rules":["A missing POD cannot be represented as verified delivery evidence.","An invoice may become READY only when configured commercial and delivery prerequisites are verified.","A payment cannot be marked PAID without a verified payment signal.","A single unverified signal cannot create a financial exception.","Safety or security holds cannot be overridden merely to accelerate revenue recognition.","Conflicting verified signals require human review.","Insufficient live data produces UNAVAILABLE rather than an invented state."],
+  "privacy":{"data_minimization":true,"sensitive_attribute_inference":false,"retain_only_operationally_required_fields":true},
+  "production_status":{"architecture_ready":true,"live_order_to_cash":false}
+}
