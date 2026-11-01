@@ -1,0 +1,17 @@
+{
+  "schema": "izakhono.runtime-binding/v1",
+  "logical_node_id": "NODE01",
+  "identity_type": "software-runtime",
+  "runtime_host": "APPROVED_RUNTIME_HOST",
+  "runtime_host_is_separate": true,
+  "runtime_class": "oci-docker",
+  "ownership": "izakhono-owned",
+  "edge_network": "izakhono-edge",
+  "state_root": "/opt/izakhono",
+  "release_authority": "/opt/izakhono/bin/izakhono-release",
+  "artifact_identity": "immutable-image-digest",
+  "health_verified": false,
+  "https_verified": false,
+  "acceptance_verified": false,
+  "live": false
+}
