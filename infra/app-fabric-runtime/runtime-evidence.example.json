@@ -1,0 +1,15 @@
+{
+  "schema": "izakhono.runtime-evidence/v1",
+  "slug": "faisready",
+  "target": "NODE01",
+  "node_identity_type": "software-runtime",
+  "physical_host_is_separate": true,
+  "owned_runtime": true,
+  "docker_verified": true,
+  "edge_network_verified": true,
+  "artifact_digest_verified": true,
+  "health_verified": true,
+  "https_verified": true,
+  "acceptance_verified": true,
+  "live": false
+}
