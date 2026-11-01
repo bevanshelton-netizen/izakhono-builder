@@ -1,0 +1,11 @@
+{
+  "product": "SHELTON FREIGHT",
+  "module": "Driver + Vehicle Assignment",
+  "version": "0.1",
+  "identity": {"driver_required": true, "vehicle_required": true, "role_based_access": true},
+  "assignment": {"journey_linked": true, "route_linked": true, "timestamped": true, "audit_ready": true},
+  "safety": {"license_class_checked": true, "vehicle_profile_checked": true, "pre_trip_gate": "planned"},
+  "states": ["available", "assigned", "en_route", "paused", "completed", "exception"],
+  "fallback": "explicit_demo_only",
+  "live_claims": false
+}
