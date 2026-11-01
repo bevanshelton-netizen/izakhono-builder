@@ -1,0 +1,18 @@
+{
+  "dashboard": "SHELTON FREIGHT COMMAND",
+  "parent": "IZAKHONO NAV",
+  "purpose": "Fleet operations, driver safety and journey visibility.",
+  "modules": [
+    {"id":"fleet_overview","name":"Fleet Overview","status":"ready"},
+    {"id":"active_journeys","name":"Active Journeys","status":"ready"},
+    {"id":"exceptions","name":"Exceptions & Delays","status":"ready"},
+    {"id":"safety","name":"Safety Guardian","status":"ready"},
+    {"id":"security","name":"Security / FORTRESS","status":"architecture"},
+    {"id":"hazards","name":"Verified Road Hazards","status":"connected_to_nav_gateway"},
+    {"id":"vehicle_health","name":"Vehicle Health","status":"planned"},
+    {"id":"delivery","name":"Delivery Control","status":"planned"}
+  ],
+  "priority_metrics": ["vehicles_active", "journeys_active", "on_time_eta", "safety_events", "verified_hazards", "connectivity", "exceptions"],
+  "roles": ["fleet_manager", "dispatcher", "safety_manager", "driver", "executive"],
+  "principles": ["safety_first", "driver_first", "verified_data_only", "offline_resilient", "owned_first_infrastructure"]
+}
