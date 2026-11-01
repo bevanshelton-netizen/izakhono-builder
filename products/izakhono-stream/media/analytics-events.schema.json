@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://izakhono.africa/schemas/stream/analytics-events-v1.json",
+  "title": "IZAKHONO STREAM Analytics Event",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["eventId", "eventType", "tenantId", "occurredAt"],
+  "properties": {
+    "eventId": {"type": "string"},
+    "eventType": {
+      "type": "string",
+      "enum": ["PLAY_REQUESTED", "PLAY_STARTED", "PLAY_PAUSED", "PLAY_RESUMED", "PLAY_BUFFERING", "PLAY_FAILED", "PLAY_COMPLETED", "BITRATE_CHANGED", "HEARTBEAT"]
+    },
+    "tenantId": {"type": "string"},
+    "assetId": {"type": "string"},
+    "channelId": {"type": "string"},
+    "sessionId": {"type": "string"},
+    "deviceClass": {"type": "string"},
+    "countryCode": {"type": "string", "minLength": 2, "maxLength": 2},
+    "positionSeconds": {"type": "number", "minimum": 0},
+    "bitrateKbps": {"type": "integer", "minimum": 0},
+    "errorCode": {"type": "string"},
+    "metadata": {"type": "object", "additionalProperties": true},
+    "occurredAt": {"type": "string", "format": "date-time"}
+  }
+}
