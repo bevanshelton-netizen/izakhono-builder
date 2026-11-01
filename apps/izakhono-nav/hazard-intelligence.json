@@ -1,0 +1,32 @@
+{
+  "version": "0.1",
+  "purpose": "Verified hazard data contract for IZAKHONO NAV safer-route scoring.",
+  "status": "seed-schema-only",
+  "rules": {
+    "never_invent_hazards": true,
+    "require_source": true,
+    "require_timestamp": true,
+    "stale_after_hours": 24,
+    "unverified_data_must_not_drive_high_risk_claims": true
+  },
+  "hazard_types": [
+    "flooding",
+    "pothole",
+    "road_closure",
+    "collision",
+    "crime_hotspot",
+    "civil_disruption",
+    "poor_lighting",
+    "weather_visibility",
+    "animal_crossing",
+    "road_surface"
+  ],
+  "records": [],
+  "future_sources": [
+    "municipal_and_road_authority_feeds",
+    "verified_emergency_services",
+    "approved_fleet_partners",
+    "FORTRESS_security_events",
+    "verified_community_reports"
+  ]
+}
