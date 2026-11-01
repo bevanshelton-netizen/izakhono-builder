@@ -1,0 +1,42 @@
+{
+  "version": "0.1",
+  "purpose": "Normalized ingestion contract for verified IZAKHONO NAV hazard feeds.",
+  "status": "integration-ready",
+  "rules": {
+    "never_invent_hazards": true,
+    "require_source": true,
+    "require_timestamp": true,
+    "require_stable_id": true,
+    "reject_unknown_types": true,
+    "stale_after_hours": 24,
+    "unverified_data_must_not_drive_high_risk_claims": true
+  },
+  "endpoint": {
+    "method": "GET",
+    "expected_content_type": "application/json",
+    "cache": "no-store",
+    "authentication": "provider-specific",
+    "replaceable": true
+  },
+  "record": {
+    "id": "string",
+    "type": "flooding | pothole | road_closure | collision | crime_hotspot | civil_disruption | poor_lighting | weather_visibility | animal_crossing | road_surface",
+    "lat": "number",
+    "lon": "number",
+    "severity": "number 0-100",
+    "source": "string",
+    "timestamp": "ISO-8601",
+    "expires_at": "ISO-8601 optional",
+    "description": "string optional",
+    "confidence": "number 0-1 optional",
+    "geometry": "GeoJSON optional"
+  },
+  "provider_classes": [
+    "municipal_and_road_authority_feeds",
+    "verified_emergency_services",
+    "approved_fleet_partners",
+    "FORTRESS_security_events",
+    "verified_community_reports"
+  ],
+  "production_note": "This contract does not itself constitute a live hazard feed. A provider must be explicitly configured and verified before records affect route safety scoring."
+}
