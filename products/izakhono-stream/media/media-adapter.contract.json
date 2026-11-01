@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://izakhono.africa/contracts/stream/media-adapter-v1.json",
+  "title": "IZAKHONO STREAM Media Adapter Contract",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["provider", "capabilities", "operations"],
+  "properties": {
+    "provider": {"type": "string", "description": "Stable adapter identifier; never exposed as a tenant secret."},
+    "capabilities": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "ingest": {"type": "boolean"},
+        "transcode": {"type": "boolean"},
+        "hls": {"type": "boolean"},
+        "dash": {"type": "boolean"},
+        "live": {"type": "boolean"},
+        "vod": {"type": "boolean"},
+        "drm": {"type": "boolean"}
+      }
+    },
+    "operations": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": ["createIngest", "startTranscode", "getJob", "package", "protect", "publish", "resolvePlayback"]
+      }
+    }
+  }
+}
