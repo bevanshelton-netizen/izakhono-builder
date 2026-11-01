@@ -1,0 +1,31 @@
+{
+  "schema": "izakhono.app/v1",
+  "slug": "allegro",
+  "name": "Allegro Core",
+  "source": {
+    "path": "products/allegro-core",
+    "branch": "main"
+  },
+  "runtime": {
+    "container_port": 8080,
+    "health_path": "/health",
+    "dependency_health_path": "/health/dependencies",
+    "network": "izakhono_private",
+    "user": "node"
+  },
+  "production": {
+    "owner": "IZAKHONO AFRICA (PTY) LTD",
+    "policy": "owned-first-externally-reversible",
+    "target": "NODE01",
+    "public_route": "NOT_YET_VERIFIED",
+    "live": false
+  },
+  "dependencies": {
+    "data": "owned-runtime-persistence",
+    "external_adapters": ["Supabase", "payment provider"]
+  },
+  "rollback": {
+    "required": true,
+    "artifact_identity": "immutable-image-digest"
+  }
+}
