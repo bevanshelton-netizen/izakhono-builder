@@ -1,0 +1,24 @@
+{
+  "api": "SHELTON FREIGHT FLEET API",
+  "version": "0.1",
+  "resources": {
+    "vehicles": ["GET /api/freight/vehicles"],
+    "journeys": ["GET /api/freight/journeys", "POST /api/freight/journeys"],
+    "events": ["GET /api/freight/events", "POST /api/freight/events"],
+    "locations": ["POST /api/freight/locations"],
+    "drivers": ["GET /api/freight/drivers"]
+  },
+  "event_types": ["safety", "security", "delay", "breakdown", "geofence", "delivery", "connectivity"],
+  "security": {
+    "authentication_required": true,
+    "role_based_access": true,
+    "audit_events": true
+  },
+  "data_rules": {
+    "location_precision": "operationally_required",
+    "retention": "policy_defined",
+    "hazards": "verified_only"
+  },
+  "status": "contract_only",
+  "live_backend": false
+}
