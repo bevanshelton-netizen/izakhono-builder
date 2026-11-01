@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SHELTON FREIGHT — Customer Experience</title>
+<style>
+body{margin:0;background:#07120f;color:#eef8f3;font-family:Inter,system-ui,sans-serif}main{max-width:1180px;margin:auto;padding:28px}.top{display:flex;justify-content:space-between;gap:16px;align-items:center}.eyebrow{font-size:12px;letter-spacing:.18em;color:#8bb8a5}.status{padding:8px 12px;border:1px solid #315447;border-radius:999px;font-size:12px}.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:24px 0}.card{background:#0d211b;border:1px solid #234238;border-radius:18px;padding:18px}.value{font-size:30px;font-weight:700;margin-top:8px}.label{font-size:12px;color:#91ad9f}.wide{grid-column:1/-1}button{background:#d9f5e7;color:#082017;border:0;border-radius:12px;padding:11px 15px;font-weight:700;margin-right:8px}table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:13px 8px;border-bottom:1px solid #203b31;font-size:13px}small{color:#8fa99d}.notice{padding:14px;border-radius:14px;background:#102a22;color:#b7d3c6;font-size:12px;line-height:1.5}
+@media(max-width:760px){.grid{grid-template-columns:1fr 1fr}.top{align-items:flex-start;flex-direction:column}}
+</style></head>
+<body><main>
+<div class="top"><div><div class="eyebrow">SHELTON FREIGHT / CUSTOMER EXPERIENCE INTELLIGENCE</div><h1>Delivery experience, measured by truth.</h1><small>Verified operational signals only.</small></div><div id="mode" class="status">UNAVAILABLE</div></div>
+<div class="grid">
+<div class="card"><div class="label">Customer Experience</div><div id="band" class="value">—</div></div>
+<div class="card"><div class="label">On-Time Delivery</div><div id="ontime" class="value">—</div></div>
+<div class="card"><div class="label">Proof of Delivery</div><div id="pod" class="value">—</div></div>
+<div class="card"><div class="label">Exceptions</div><div id="exceptions" class="value">—</div></div>
+<div class="card wide"><button id="sync">Sync Live Feed</button><button id="demo">Load Demo</button><button id="flush">Flush Offline Queue</button></div>
+<div class="card wide"><h2>Customer Service View</h2><table><thead><tr><th>Journey</th><th>Experience</th><th>Score</th><th>Signals</th><th>Reason</th></tr></thead><tbody id="rows"><tr><td colspan="5"><small>No verified records available.</small></td></tr></tbody></table></div>
+<div class="card wide notice">This intelligence layer does not invent delivery status, ETA, customer sentiment or proof of delivery. Unverified events cannot lower a customer score. Safety and security events remain visible and are never hidden to improve customer metrics.</div>
+</div></main>
+<script src="shelton-freight-customer-experience.js"></script>
+<script>
+const cx=window.SHELTON_FREIGHT_CUSTOMER_EXPERIENCE;
+const $=id=>document.getElementById(id);
+function render(){
+ $('mode').textContent=cx.state.mode;
+ const rs=cx.state.records||[]; const evals=rs.map(r=>r.evaluation||cx.evaluate(r)).filter(Boolean);
+ if(!evals.length)return;
+ const scores=evals.filter(x=>x.score!=null).map(x=>x.score); const avg=scores.length?Math.round(scores.reduce((a,b)=>a+b,0)/scores.length):null;
+ $('band').textContent=avg==null?'—':(avg>=90?'EXCELLENT':avg>=75?'RELIABLE':avg>=55?'WATCH':'REVIEW');
+ $('ontime').textContent=rs.length?Math.round(rs.filter(r=>(r.signals||[]).some(s=>s.verified&&s.type==='window_adherence'&&s.value===true)).length/rs.length*100)+'%':'—';
+ $('pod').textContent=rs.length?Math.round(rs.filter(r=>(r.signals||[]).some(s=>s.verified&&s.type==='pod_complete'&&s.value===true)).length/rs.length*100)+'%':'—';
+ $('exceptions').textContent=rs.filter(r=>(r.signals||[]).some(s=>s.verified&&s.type==='delivery_exception')).length;
+ $('rows').innerHTML=rs.map((r,i)=>{const e=evals[i];return `<tr><td>${r.journeyId||r.id||'—'}</td><td>${e.band}</td><td>${e.score??'—'}</td><td>${e.verifiedSignals}</td><td>${(e.reasons||[])[0]||'No adverse verified signal.'}</td></tr>`}).join('');
+}
+$('sync').onclick=async()=>{await cx.sync();render()};
+$('demo').onclick=()=>{cx.loadDemo([{journeyId:'DEMO-001',signals:[{verified:true,type:'window_adherence',value:true},{verified:true,type:'communication_confirmed'}]},{journeyId:'DEMO-002',signals:[{verified:true,type:'late_delivery'},{verified:true,type:'pod_missing'}]}]);render()};
+$('flush').onclick=async()=>{await cx.flush();render()};
+render();
+</script></body></html>
