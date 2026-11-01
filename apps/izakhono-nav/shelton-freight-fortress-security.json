@@ -1,0 +1,62 @@
+{
+  "product": "SHELTON FREIGHT SECURITY",
+  "parent": "SHELTON FREIGHT NAV",
+  "security_layer": "FORTRESS",
+  "version": "0.1",
+  "purpose": "Define the security-control contract for commercial freight journeys without inventing live security capabilities.",
+  "principles": [
+    "security_first",
+    "verified_events_only",
+    "driver_safety_first",
+    "least_privilege",
+    "audit_every_control_action",
+    "offline_resilient",
+    "no_fabricated_live_incidents"
+  ],
+  "event_classes": [
+    "panic",
+    "hijack_suspected",
+    "unauthorized_stop",
+    "route_deviation",
+    "geofence_breach",
+    "vehicle_tamper",
+    "driver_distress",
+    "security_check",
+    "security_clearance"
+  ],
+  "severity": ["INFO", "WATCH", "HIGH", "CRITICAL"],
+  "response_states": [
+    "NORMAL",
+    "MONITOR",
+    "ESCALATED",
+    "LOCKDOWN_PENDING",
+    "LOCKDOWN_ACTIVE",
+    "RESOLVED"
+  ],
+  "control_actions": [
+    "acknowledge",
+    "escalate",
+    "request_driver_check_in",
+    "notify_fleet_security",
+    "request_authorized_assistance",
+    "close_incident"
+  ],
+  "rules": {
+    "live_incident_claim_requires_verified_event": true,
+    "emergency_dispatch_requires_authenticated_integration": true,
+    "vehicle_control_requires_authorized_hardware_and_backend": true,
+    "security_actions_require_audit": true,
+    "offline_events_must_queue_for_replay": true,
+    "demo_events_must_be_explicit": true
+  },
+  "integration_points": {
+    "shelton_freight_events": "/api/freight/events",
+    "shelton_freight_locations": "/api/freight/locations",
+    "fortress_security_events": "FORTRESS authenticated security feed",
+    "emergency_services": "approved authenticated provider",
+    "fleet_security": "authorized fleet security endpoint"
+  },
+  "production_status": "architecture_ready",
+  "live_security_dispatch": false,
+  "live_vehicle_control": false
+}
