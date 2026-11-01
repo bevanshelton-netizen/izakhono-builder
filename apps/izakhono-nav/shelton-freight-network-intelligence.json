@@ -1,0 +1,14 @@
+{
+  "product":"SHELTON FREIGHT",
+  "layer":"Network & Route Corridor Intelligence v0.1",
+  "purpose":"Turn verified journey, safety, delivery, cost and operating signals into explainable freight corridor intelligence.",
+  "principles":["verified_signals_only","safety_over_speed","corridor_truth_over_assumption","explainable_metrics","human_review_for_high_risk_changes","offline_resilient","no_fabricated_live_claims"],
+  "inputs":["journey_intelligence","hazard_intelligence","delivery_intelligence","fuel_efficiency","cost_intelligence","security_intelligence","vehicle_health","connectivity_state"],
+  "corridor_metrics":["journey_count","distance_km","verified_route_deviation_rate","verified_security_event_rate","verified_hazard_rate","delivery_reliability","average_operating_cost_per_km","fuel_efficiency","connectivity_resilience","corridor_risk_trend"],
+  "bands":["PREFERRED","STABLE","WATCH","RESTRICTED","UNAVAILABLE"],
+  "rules":["A corridor cannot be PREFERRED solely because it is faster or cheaper.","Verified critical security signals require human review and can move a corridor to RESTRICTED.","Unverified or demo signals never create a live restriction.","Insufficient verified history returns UNAVAILABLE.","Conflicting verified signals return WATCH pending review.","No autonomous route closure or fleet dispatch is permitted."],
+  "api":{"read":"/api/freight/network-intelligence","events":"/api/freight/network-intelligence/events"},
+  "modes":["LIVE","DEMO","UNAVAILABLE"],
+  "production_status":{"architecture_ready":true,"live_network_intelligence":false},
+  "privacy":{"minimize_personal_data":true,"no_sensitive_attribute_inference":true}
+}
