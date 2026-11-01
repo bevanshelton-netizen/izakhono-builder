@@ -1,0 +1,12 @@
+{
+  "product":"SHELTON FREIGHT",
+  "layer":"Cost & Operating Intelligence v0.1",
+  "purpose":"Convert verified freight operating signals into explainable cost intelligence without inventing financial or telemetry data.",
+  "principles":["verified_signals_only","safety_over_cost","explainable_metrics","context_over_single_event","human_review_for_adverse_actions","offline_resilient","no_fabricated_live_claims"],
+  "inputs":["fuel_efficiency","vehicle_health","journey_intelligence","delivery_intelligence","driver_performance","connectivity_state"],
+  "metrics":["fuel_cost_per_km","operating_cost_per_journey","cost_per_delivery","idle_cost","maintenance_cost_exposure","route_efficiency","cost_trend","budget_variance"],
+  "bands":["EFFICIENT","STABLE","WATCH","REVIEW","UNAVAILABLE"],
+  "rules":{"verified_data_required":true,"safety_never_tradeable_for_cost":true,"single_unverified_signal_does_not_trigger_review":true,"insufficient_data":"UNAVAILABLE","conflicting_verified_signals":"REVIEW"},
+  "privacy":{"minimize_personal_data":true,"no_sensitive_attribute_inference":true},
+  "production_status":{"architecture_ready":true,"live_cost_intelligence":false}
+}
