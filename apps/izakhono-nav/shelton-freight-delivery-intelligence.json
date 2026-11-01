@@ -1,0 +1,26 @@
+{
+  "product":"SHELTON FREIGHT",
+  "layer":"Freight Delivery Intelligence v0.1",
+  "purpose":"Turn verified journey, route and milestone signals into explainable delivery progress and exception intelligence.",
+  "principles":["verified_signals_only","no_fabricated_eta","safety_over_speed","explainable_exceptions","human_review_for_operational_changes","offline_resilient","no_fabricated_live_claims"],
+  "inputs":["journey_intelligence","vehicle_health","fleet_command","route_intelligence","connectivity_state","delivery_events","verified_hazards"],
+  "outputs":["delivery_status","verified_eta","milestone_status","exception_class","exception_severity","recommended_action"],
+  "delivery_states":["PLANNED","DISPATCHED","IN_TRANSIT","AT_RISK","ARRIVING","DELIVERED","EXCEPTION","UNAVAILABLE"],
+  "exception_classes":["NONE","ROUTE_DELAY","SAFETY_HOLD","VEHICLE_HEALTH","CONNECTIVITY_LOSS","DELIVERY_WINDOW","ROUTE_DEVIATION","SECURITY_EVENT","UNKNOWN"],
+  "severity_bands":["INFO","WATCH","HIGH","CRITICAL","UNAVAILABLE"],
+  "rules":[
+    "Only verified journey/location/milestone inputs may produce operational delivery intelligence.",
+    "ETA is VERIFIED only when sufficient live or recorded location and route data exists; otherwise it is UNAVAILABLE.",
+    "A safety or security hold takes precedence over delivery speed or ETA optimization.",
+    "A critical verified security event may mark delivery AT_RISK or EXCEPTION but must not trigger unsupported external dispatch.",
+    "Vehicle health conditions may create a SAFETY_HOLD recommendation when verified and policy thresholds are met.",
+    "Connectivity loss may preserve the last verified state but must never fabricate current location or ETA.",
+    "Route deviation and delivery-window exceptions require explainable evidence.",
+    "No automated customer penalty, driver discipline, vehicle control or emergency claim is permitted."
+  ],
+  "api":{
+    "GET":"/api/freight/delivery-intelligence",
+    "POST":"/api/freight/delivery-intelligence/events"
+  },
+  "production_status":{"architecture_ready":true,"live_delivery_intelligence":false}
+}
