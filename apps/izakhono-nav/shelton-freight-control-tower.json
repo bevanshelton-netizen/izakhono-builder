@@ -1,0 +1,26 @@
+{
+  "product":"SHELTON FREIGHT",
+  "layer":"Executive Control Tower v2.0",
+  "version":"0.1",
+  "purpose":"Unify verified operational, safety, security, fleet, delivery, customer and financial intelligence into one explainable command surface.",
+  "principles":["verified_signals_only","safety_first","security_first","delivery_truth_over_promises","commercial_visibility_without_commercial_pressure_on_safety","human_authorized_control","audit_every_action","offline_resilient","no_fabricated_live_claims"],
+  "inputs":["fleet_intelligence","journey_intelligence","driver_performance","vehicle_health","fleet_security_intelligence","security_operations_centre","delivery_intelligence","proof_of_delivery","customer_experience","customer_service","order_to_cash","revenue_intelligence","cost_intelligence","profitability_intelligence","load_intelligence","fuel_efficiency","corridor_intelligence","connectivity_state"],
+  "command_domains":["SAFETY","SECURITY","FLEET","JOURNEYS","DELIVERIES","CUSTOMERS","REVENUE","PROFITABILITY","MAINTENANCE","NETWORK"],
+  "fleet_status_bands":["NORMAL","WATCH","ELEVATED","HIGH","CRITICAL","UNAVAILABLE"],
+  "rules":[
+    "Verified critical safety or security signals remain the highest operational priority.",
+    "Unverified or demo signals may be displayed but cannot change live operational posture.",
+    "Missing live feeds produce UNAVAILABLE rather than invented numbers.",
+    "Conflicting verified signals require human review.",
+    "Commercial performance never overrides safety or security controls.",
+    "The control tower may recommend actions but cannot claim emergency dispatch, police notification, remote vehicle control or vehicle lockdown without authenticated integrations.",
+    "Every operator action must be attributable and auditable."
+  ],
+  "api":{
+    "read":"/api/freight/control-tower",
+    "events":"/api/freight/control-tower/events"
+  },
+  "modes":["LIVE","DEMO","UNAVAILABLE"],
+  "offline":{"queue_events":true,"replay_when_online":true},
+  "production_status":{"architecture_ready":true,"live_control_tower":false}
+}
