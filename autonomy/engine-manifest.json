@@ -1,6 +1,12 @@
 {
   "schema": "izakhono.autonomy/v1",
   "mode": "continuous",
+  "executionPolicy": {
+    "creditsEnabled": false,
+    "artificialUsageMeter": false,
+    "payPerAction": false,
+    "basis": "capability-and-evidence"
+  },
   "policy": {"autoAdvance": true, "maxRetries": 3, "productionClaimsRequireEvidence": true, "infrastructureStrategy": "software-first", "softwareFirstReplacement": true, "nodeFirst": true, "externalInfrastructureIsFallback": true, "ownerGates": ["credentials", "financial_authorization", "security_exception"]},
   "principles": [
     "Software NODE is the primary infrastructure unit; physical hardware is an optional execution substrate.",
@@ -11,7 +17,8 @@
     "Never claim production readiness without verifiable evidence.",
     "Prefer independent ready work over a single blocking dependency.",
     "Never fail over to an external provider when an owned NODE is unavailable; wait for an eligible owned NODE instead.",
-    "IZAKHONO-native builder capability is the default; external builders are optional adapters."
+    "IZAKHONO-native builder capability is the default; external builders are optional adapters.",
+    "Native execution has no artificial credits system; legitimate provider, capacity, security, and authorization limits remain operational constraints."
   ],
   "stages": ["planning", "architecture", "design", "development", "integration", "testing", "security", "deployment", "verification", "documentation", "monetisation", "launch", "handover"],
   "adapters": {
