@@ -1,0 +1,57 @@
+{
+  "product": "SHELTON FREIGHT NAV",
+  "parent_platform": "IZAKHONO NAV",
+  "positioning": "Commercial freight-navigation and fleet-safety layer built on the IZAKHONO NAV safety core.",
+  "principle": "Every freight journey should be safer, more efficient and more visible because SHELTON FREIGHT NAV is present.",
+  "vehicle_profiles": [
+    "truck",
+    "rigid_freight",
+    "articulated_freight",
+    "fleet_vehicle",
+    "specialized_freight"
+  ],
+  "routing": {
+    "truck_aware": true,
+    "dimensions": ["height_m", "width_m", "length_m"],
+    "mass": ["gross_vehicle_mass_kg", "axle_mass_kg"],
+    "restrictions": ["height_restriction", "weight_restriction", "road_closure", "truck_restriction"],
+    "route_objective": "safety_and_operating_efficiency",
+    "fallback": "standard_vehicle_route_with_clear_warning"
+  },
+  "fleet": {
+    "live_vehicle_state": true,
+    "dispatch_view": true,
+    "journey_state": ["planned", "en_route", "delayed", "stopped", "delivered", "exception"],
+    "eta": true,
+    "geofence_events": true,
+    "exception_alerts": true
+  },
+  "driver_safety": {
+    "guardian": true,
+    "fatigue_support": true,
+    "emergency_workflow": true,
+    "hijacking_response": true,
+    "offline_resilience": true
+  },
+  "operations": {
+    "fuel_efficiency": "planned",
+    "journey_costing": "planned",
+    "delivery_stops": "planned",
+    "proof_of_delivery": "planned",
+    "vehicle_maintenance": "planned"
+  },
+  "security": {
+    "fortress_integration": true,
+    "trusted_contacts": true,
+    "secure_identity": true,
+    "security_event_handoff": true
+  },
+  "data_rules": {
+    "never_invent_hazards": true,
+    "verified_hazard_data_required_for_high_risk_claims": true,
+    "stale_after_hours": 24,
+    "external_sources_must_be_replaceable": true
+  },
+  "deployment_status": "architecture_ready",
+  "live_claims": false
+}
