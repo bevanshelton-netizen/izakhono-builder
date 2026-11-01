@@ -1,0 +1,43 @@
+{
+  "product": "SHELTON FREIGHT SECURITY COMMAND",
+  "parent": "SHELTON FREIGHT",
+  "purpose": "Unified fleet operations and FORTRESS security command model.",
+  "principle": "Protect the driver, vehicle, cargo and journey without inventing live security state.",
+  "views": [
+    "fleet_overview",
+    "active_security_incidents",
+    "journey_security",
+    "driver_distress",
+    "route_deviation",
+    "geofence_breach",
+    "vehicle_tamper",
+    "incident_timeline",
+    "escalation_queue",
+    "executive_security_metrics"
+  ],
+  "incident_lifecycle": [
+    "detected",
+    "triaged",
+    "acknowledged",
+    "escalated",
+    "responding",
+    "resolved",
+    "closed"
+  ],
+  "severity": ["INFO", "WATCH", "HIGH", "CRITICAL"],
+  "integration": {
+    "freight_journey_runtime": true,
+    "freight_fortress_runtime": true,
+    "freight_intelligence_runtime": true,
+    "hazard_gateway": true
+  },
+  "data_policy": {
+    "live_api_first": true,
+    "demo_fallback_explicit": true,
+    "fabricated_security_events": false,
+    "fabricated_location": false,
+    "fabricated_emergency_dispatch": false,
+    "unknown_state_must_remain_unknown": true
+  },
+  "status": "architecture_ready"
+}
