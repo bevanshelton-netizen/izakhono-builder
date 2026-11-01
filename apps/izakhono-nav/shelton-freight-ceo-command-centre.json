@@ -1,0 +1,15 @@
+{
+  "product":"SHELTON FREIGHT",
+  "layer":"CEO Command Centre v0.1",
+  "purpose":"Unify verified operational, safety, security, commercial and network intelligence into one executive decision surface.",
+  "principles":["verified_signals_only","safety_over_growth","security_over_speed","revenue_truth_over_forecast","explainable_metrics","human_authorized_control","offline_resilient","no_fabricated_live_claims"],
+  "inputs":["control_tower","fleet_security_intelligence","journey_intelligence","vehicle_health","driver_performance","delivery_intelligence","customer_experience","customer_service","order_to_cash","revenue_intelligence","profitability_intelligence","maintenance_operations","corridor_intelligence","connectivity_state"],
+  "executive_kpis":["fleet_posture","active_journeys","safety_risk","security_risk","delivery_reliability","customer_health","revenue","gross_margin","maintenance_exposure","corridor_posture"],
+  "decision_queue":["critical_security","safety_hold","vehicle_readiness","delivery_exception","customer_exception","cash_collection","margin_risk","corridor_watch","maintenance_priority"],
+  "postures":["GREEN","WATCH","ELEVATED","HIGH","CRITICAL","UNAVAILABLE"],
+  "rules":["verified_critical_security_requires_immediate_human_review","safety_or_security_never_deprioritized_for_revenue","unverified_or_demo_data_cannot_create_live_executive_alerts","insufficient_data_is_UNAVAILABLE","conflicting_verified_signals_require_human_review","no_automatic_route_closure","no_automatic_driver_discipline","no_remote_vehicle_control_without_authenticated_integration"],
+  "api":{"summary":"API-first executive aggregation","endpoint":"/api/freight/ceo-command-centre","events_endpoint":"/api/freight/ceo-command-centre/events"},
+  "modes":["LIVE","DEMO","UNAVAILABLE"],
+  "offline":{"enabled":true,"queue_actions":true,"replay_on_reconnect":true},
+  "production_status":{"architecture_ready":true,"live_executive_aggregation":false}
+}
