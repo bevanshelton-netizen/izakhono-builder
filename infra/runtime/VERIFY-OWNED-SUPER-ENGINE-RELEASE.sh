@@ -5,8 +5,6 @@ STATE_ROOT="${IZAKHONO_STATE_ROOT:-/opt/izakhono/state}"
 APP="izakhono-super-engine"
 RELEASE_DIR="$STATE_ROOT/releases/$APP"
 CANDIDATE="$RELEASE_DIR/candidate.json"
-LIVE="$RELEASE_DIR/live.json"
-ROLLBACK="$RELEASE_DIR/rollback.json"
 ROUTE="${IZAKHONO_SUPER_ENGINE_ROUTE:-https://super-engine.izakhono.co.za}"
 HEALTH_URL="${IZAKHONO_SUPER_ENGINE_HEALTH_URL:-http://127.0.0.1:8787/health}"
 
@@ -37,21 +35,8 @@ curl --fail --silent --show-error --max-time 10 "$HEALTH_URL" >/tmp/izakhono-sup
 jq -e '.ok == true' /tmp/izakhono-super-engine-health.json >/dev/null || fail "local health endpoint did not report ok=true"
 pass "local HTTP health accepted"
 
-if ! curl --fail --silent --show-error --location --max-time 15 "$ROUTE/health" >/tmp/izakhono-super-engine-public-health.json; then
-  fail "public HTTPS health endpoint is not reachable: $ROUTE/health"
-fi
+curl --fail --silent --show-error --location --max-time 15 "$ROUTE/health" >/tmp/izakhono-super-engine-public-health.json || fail "public HTTPS health endpoint is not reachable: $ROUTE/health"
 jq -e '.ok == true' /tmp/izakhono-super-engine-public-health.json >/dev/null || fail "public HTTPS health did not report ok=true"
 pass "public HTTPS health accepted"
 
-if [ -f "$LIVE" ]; then
-  cp "$LIVE" "$ROLLBACK"
-  pass "previous live receipt preserved as rollback target"
-else
-  printf '%s\n' '{"status":"none","reason":"first_owned_release"}' > "$ROLLBACK"
-  pass "first-release rollback marker created"
-fi
-
-cp "$CANDIDATE" "$LIVE"
-pass "candidate promoted to live"
-
-printf '%s\n' "[ACCEPTED] $APP source=$(jq -r '.release.source' "$LIVE") route=$(jq -r '.routes.public_https' "$LIVE")"
+printf '%s\n' "[ACCEPTED] $APP candidate source=$(jq -r '.release.source' "$CANDIDATE") route=$(jq -r '.routes.public_https' "$CANDIDATE")"
