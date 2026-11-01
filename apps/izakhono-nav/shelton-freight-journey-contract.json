@@ -1,0 +1,74 @@
+{
+  "product": "SHELTON FREIGHT JOURNEY EXECUTION",
+  "version": "0.1",
+  "parent": "SHELTON FREIGHT NAV",
+  "purpose": "Define the live journey execution contract from authorized departure through arrival, delivery confirmation and closure.",
+  "status": "contract_only",
+  "live_claims": false,
+  "journey_statuses": [
+    "assigned",
+    "pretrip_ready",
+    "departed",
+    "en_route",
+    "paused",
+    "exception",
+    "arrived",
+    "delivered",
+    "closed"
+  ],
+  "location_event": {
+    "required": ["journey_id", "vehicle_id", "timestamp", "latitude", "longitude", "source"],
+    "optional": ["accuracy_m", "speed_kph", "heading_deg", "altitude_m"],
+    "sources": ["browser_geolocation", "vehicle_telematics", "approved_fleet_device", "demo_replay"],
+    "rules": [
+      "Never fabricate GPS coordinates.",
+      "Every location must carry a timestamp and source.",
+      "Accuracy should be retained when supplied by the source.",
+      "demo_replay must remain explicitly marked as DEMO."
+    ]
+  },
+  "journey_events": [
+    "departure",
+    "pause",
+    "resume",
+    "route_progress",
+    "eta_update",
+    "safety",
+    "security",
+    "delay",
+    "breakdown",
+    "connectivity",
+    "arrival",
+    "delivery_confirmed",
+    "closure"
+  ],
+  "eta": {
+    "fields": ["eta_timestamp", "distance_remaining_km", "confidence", "source"],
+    "confidence_values": ["live", "provisional", "unavailable"],
+    "rules": [
+      "Do not present an ETA as live unless based on connected route or telemetry data.",
+      "Unavailable ETA must be displayed as unavailable rather than guessed."
+    ]
+  },
+  "offline_resilience": {
+    "enabled": true,
+    "outbox_required": true,
+    "store_fields": ["event_id", "journey_id", "event_type", "payload", "created_at", "attempts", "sync_status"],
+    "sync_rule": "Replay queued events when connectivity returns, preserving original event timestamp and ordering where possible.",
+    "never_discard_unsynced_safety_events": true
+  },
+  "closure_criteria": [
+    "arrival recorded",
+    "delivery confirmation recorded when applicable",
+    "closure audit event recorded"
+  ],
+  "integrity_rules": {
+    "api_first": true,
+    "demo_fallback_allowed": true,
+    "demo_must_be_explicit": true,
+    "fabricated_live_tracking": false,
+    "fabricated_live_eta": false,
+    "fabricated_emergency_dispatch": false,
+    "audit_required_for_state_changes": true
+  }
+}
