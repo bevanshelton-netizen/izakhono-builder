@@ -1,0 +1,37 @@
+{
+  "schemaVersion": "1.0",
+  "tenant": {
+    "id": "kora-network",
+    "name": "KORA NETWORK"
+  },
+  "brand": {
+    "displayName": "KORA NETWORK",
+    "logo": "",
+    "primaryColor": "#111111",
+    "secondaryColor": "#F5B400",
+    "domain": ""
+  },
+  "catalogue": {
+    "assets": [],
+    "channels": [
+      {
+        "id": "kora-main",
+        "name": "KORA NETWORK",
+        "mode": "LINEAR",
+        "enabled": false
+      }
+    ]
+  },
+  "monetisation": {
+    "models": ["FREE", "AVOD", "SVOD", "PPV"],
+    "currency": "ZAR"
+  },
+  "security": {
+    "signedPlayback": true,
+    "fortressPolicy": "stream-standard-v1",
+    "drm": ["WIDEVINE", "FAIRPLAY", "PLAYREADY"]
+  },
+  "apps": {
+    "targets": ["WEB", "PWA", "ANDROID", "IOS", "ANDROID_TV", "SAMSUNG_TV", "LG_WEBOS", "VIDAA", "ROKU", "FIRE_TV", "APPLE_TV"]
+  }
+}

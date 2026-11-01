@@ -1,0 +1,268 @@
+openapi: 3.1.0
+info:
+  title: IZAKHONO STREAM Control Plane API
+  version: 1.0.0
+  description: >-
+    Tenant-aware control API for OTT catalogues, channels, entitlements,
+    playback sessions and release/provisioning state. Business logic is
+    independent of any media, CDN or payment vendor.
+servers:
+  - url: https://stream-api.izakhono.africa
+security:
+  - bearerAuth: []
+tags:
+  - name: Tenants
+  - name: Catalogue
+  - name: Channels
+  - name: Playback
+  - name: Provisioning
+paths:
+  /v1/tenants:
+    get:
+      tags: [Tenants]
+      summary: List tenants
+      responses:
+        '200':
+          description: Tenant list
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/Tenant' }
+    post:
+      tags: [Tenants]
+      summary: Create tenant
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateTenantRequest' }
+      responses:
+        '201':
+          description: Tenant created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Tenant' }
+  /v1/tenants/{tenantId}:
+    get:
+      tags: [Tenants]
+      summary: Get tenant
+      parameters:
+        - $ref: '#/components/parameters/TenantId'
+      responses:
+        '200':
+          description: Tenant
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Tenant' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /v1/tenants/{tenantId}/assets:
+    post:
+      tags: [Catalogue]
+      summary: Register a catalogue asset
+      parameters:
+        - $ref: '#/components/parameters/TenantId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/Asset' }
+      responses:
+        '201':
+          description: Asset registered
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Asset' }
+  /v1/tenants/{tenantId}/channels:
+    post:
+      tags: [Channels]
+      summary: Create or configure a channel
+      parameters:
+        - $ref: '#/components/parameters/TenantId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/Channel' }
+      responses:
+        '201':
+          description: Channel configured
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Channel' }
+  /v1/tenants/{tenantId}/playback-sessions:
+    post:
+      tags: [Playback]
+      summary: Authorize protected playback
+      description: >-
+        Validates tenant, identity, entitlement, rights window and device
+        policy, then asks the media adapter for a short-lived playback grant.
+        Raw origin credentials and DRM secrets are never returned.
+      parameters:
+        - $ref: '#/components/parameters/TenantId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PlaybackSessionRequest' }
+      responses:
+        '201':
+          description: Playback grant
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PlaybackSession' }
+        '403':
+          description: Access denied
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  /v1/tenants/{tenantId}/provisioning:
+    post:
+      tags: [Provisioning]
+      summary: Advance the tenant provisioning workflow
+      parameters:
+        - $ref: '#/components/parameters/TenantId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [action]
+              properties:
+                action:
+                  type: string
+                  enum: [APPROVE, CONFIGURE_BRAND, MARK_CATALOGUE_READY, CONFIGURE_CHANNELS, CONFIGURE_MONETISATION, CONFIGURE_SECURITY, VALIDATE_MEDIA, BUILD_APP_MANIFESTS, CREATE_RELEASE_CANDIDATE, ACCEPT, PUBLISH]
+                evidenceIds:
+                  type: array
+                  items: { type: string }
+      responses:
+        '200':
+          description: Updated provisioning state
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProvisioningState' }
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    TenantId:
+      name: tenantId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^[a-z0-9-]+$' }
+  responses:
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+  schemas:
+    Tenant:
+      type: object
+      required: [id, name, status, provisioning]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        status: { type: string, enum: [ACTIVE, SUSPENDED, ARCHIVED] }
+        provisioning: { $ref: '#/components/schemas/ProvisioningState' }
+    CreateTenantRequest:
+      type: object
+      required: [id, name]
+      properties:
+        id: { type: string, pattern: '^[a-z0-9-]+$' }
+        name: { type: string, minLength: 2 }
+        brand:
+          type: object
+          properties:
+            displayName: { type: string }
+            logo: { type: string }
+            primaryColor: { type: string }
+            secondaryColor: { type: string }
+            domain: { type: string }
+    Asset:
+      type: object
+      required: [id, title, type]
+      properties:
+        id: { type: string }
+        title: { type: string }
+        type: { type: string, enum: [MOVIE, EPISODE, CLIP, LIVE_EVENT, AUDIO] }
+        playback:
+          type: object
+          properties:
+            hls: { type: string, format: uri }
+            dash: { type: string, format: uri }
+        rightsStart: { type: string, format: date-time }
+        rightsEnd: { type: string, format: date-time }
+    Channel:
+      type: object
+      required: [id, name, mode]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        mode: { type: string, enum: [LIVE, LINEAR, FAST] }
+        enabled: { type: boolean, default: false }
+        epgSource: { type: string, format: uri }
+    PlaybackSessionRequest:
+      type: object
+      required: [assetId, userId, device]
+      properties:
+        assetId: { type: string }
+        userId: { type: string }
+        planId: { type: string }
+        device:
+          type: object
+          required: [id, platform]
+          properties:
+            id: { type: string }
+            platform: { type: string }
+            drm: { type: string, enum: [WIDEVINE, FAIRPLAY, PLAYREADY, NONE] }
+        geo:
+          type: object
+          properties:
+            country: { type: string }
+            region: { type: string }
+    PlaybackSession:
+      type: object
+      required: [sessionId, expiresAt, playback]
+      properties:
+        sessionId: { type: string }
+        expiresAt: { type: string, format: date-time }
+        playback:
+          type: object
+          required: [manifestUrl]
+          properties:
+            manifestUrl: { type: string, format: uri }
+            token: { type: string }
+            drmLicenseUrl: { type: string, format: uri }
+    ProvisioningState:
+      type: object
+      required: [state, history]
+      properties:
+        state:
+          type: string
+          enum: [REQUESTED, APPROVED, TENANT_CREATED, BRAND_CONFIGURED, CATALOGUE_READY, CHANNELS_CONFIGURED, MONETISATION_CONFIGURED, SECURITY_CONFIGURED, MEDIA_VALIDATED, APP_MANIFESTS_BUILT, RELEASE_CANDIDATE, ACCEPTANCE_TESTED, PUBLISHED, BLOCKED]
+        history:
+          type: array
+          items:
+            type: object
+            required: [state, at]
+            properties:
+              state: { type: string }
+              at: { type: string, format: date-time }
+              evidenceIds: { type: array, items: { type: string } }
+        blocker: { type: string }
+    Error:
+      type: object
+      required: [code, message]
+      properties:
+        code: { type: string }
+        message: { type: string }
+        requestId: { type: string }

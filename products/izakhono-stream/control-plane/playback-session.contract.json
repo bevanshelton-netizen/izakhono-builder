@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://izakhono.africa/schemas/stream/playback-session-v1.json",
+  "title": "IZAKHONO STREAM Playback Session",
+  "type": "object",
+  "required": ["sessionId", "tenantId", "assetId", "userId", "issuedAt", "expiresAt", "playback"],
+  "properties": {
+    "sessionId": { "type": "string" },
+    "tenantId": { "type": "string" },
+    "assetId": { "type": "string" },
+    "userId": { "type": "string" },
+    "issuedAt": { "type": "string", "format": "date-time" },
+    "expiresAt": { "type": "string", "format": "date-time" },
+    "playback": {
+      "type": "object",
+      "required": ["manifestUrl", "authorization"],
+      "properties": {
+        "manifestUrl": { "type": "string", "format": "uri" },
+        "authorization": {
+          "type": "object",
+          "required": ["scheme", "token"],
+          "properties": {
+            "scheme": { "enum": ["BEARER", "SIGNED_URL"] },
+            "token": { "type": "string", "minLength": 1 }
+          },
+          "additionalProperties": false
+        },
+        "drm": {
+          "type": "object",
+          "properties": {
+            "system": { "enum": ["WIDEVINE", "FAIRPLAY", "PLAYREADY"] },
+            "licenseUrl": { "type": "string", "format": "uri" }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}
