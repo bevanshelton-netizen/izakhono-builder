@@ -1,0 +1,31 @@
+{
+  "product":"SHELTON FREIGHT",
+  "layer":"Fleet Maintenance Scheduling & Workshop Operations",
+  "version":"0.1",
+  "purpose":"Convert verified vehicle-health and operating signals into explainable maintenance scheduling and workshop workflow intelligence.",
+  "principles":["verified_signals_only","safety_over_availability","human_authorized_workshop_actions","preventive_over_reactive_maintenance","audit_every_action","offline_resilient","no_fabricated_live_claims"],
+  "inputs":["vehicle_health","journey_intelligence","driver_performance","fuel_efficiency","cost_intelligence","connectivity_state"],
+  "maintenance_states":["HEALTHY","WATCH","SERVICE_DUE","URGENT","GROUNDED","UNAVAILABLE"],
+  "work_order_states":["DRAFT","SCHEDULED","CHECKED_IN","IN_PROGRESS","AWAITING_PARTS","QUALITY_CHECK","COMPLETED","CANCELLED"],
+  "urgency":["ROUTINE","SOON","URGENT","CRITICAL"],
+  "signals":["verified_fault_code","service_due","mileage_threshold","engine_hours_threshold","temperature_warning","battery_warning","tyre_pressure_warning","brake_wear","tamper","maintenance_history","parts_availability","workshop_capacity"],
+  "rules":[
+    "verified_critical_vehicle_health_can_recommend_GROUNDED_but_cannot_ground_without_authorized_policy",
+    "verified_service_due_creates_or_updates_maintenance_recommendation",
+    "repeated_verified_warnings_increase_urgency",
+    "missing_or_unverified_sensor_data_cannot_create_a_false_maintenance_event",
+    "workshop_capacity_and_parts_constraints_affect_schedule_confidence",
+    "safety_critical_work_takes_priority_over_cost_or_delivery_pressure",
+    "completed_work_requires_human_confirmation_and_audit"
+  ],
+  "api":[
+    {"method":"GET","path":"/api/freight/maintenance/vehicles"},
+    {"method":"GET","path":"/api/freight/maintenance/work-orders"},
+    {"method":"POST","path":"/api/freight/maintenance/work-orders"},
+    {"method":"POST","path":"/api/freight/maintenance/events"}
+  ],
+  "modes":["LIVE","DEMO","UNAVAILABLE"],
+  "offline":{"enabled":true,"queue_events":true,"replay_on_reconnect":true},
+  "prohibited_without_authenticated_integration":["remote_vehicle_control","remote_engine_control","automatic_vehicle_grounding","fabricated_sensor_readings"],
+  "production_status":{"architecture_ready":true,"live_maintenance_operations":false}
+}
