@@ -1,16 +1,7 @@
 {
   "schema": "izakhono.autonomy/v1",
   "mode": "continuous",
-  "policy": {
-    "autoAdvance": true,
-    "maxRetries": 3,
-    "productionClaimsRequireEvidence": true,
-    "infrastructureStrategy": "software-first",
-    "softwareFirstReplacement": true,
-    "nodeFirst": true,
-    "externalInfrastructureIsFallback": true,
-    "ownerGates": ["credentials", "financial_authorization", "security_exception"]
-  },
+  "policy": {"autoAdvance": true, "maxRetries": 3, "productionClaimsRequireEvidence": true, "infrastructureStrategy": "software-first", "softwareFirstReplacement": true, "nodeFirst": true, "externalInfrastructureIsFallback": true, "ownerGates": ["credentials", "financial_authorization", "security_exception"]},
   "principles": [
     "Software NODE is the primary infrastructure unit; physical hardware is an optional execution substrate.",
     "Eliminate hardware dependency when software can legitimately replace, abstract, virtualize, consolidate, or automate it.",
@@ -19,11 +10,12 @@
     "Treat external infrastructure as reversible fallback or temporary extension, not the assumed foundation.",
     "Never claim production readiness without verifiable evidence.",
     "Prefer independent ready work over a single blocking dependency.",
-    "Never fail over to an external provider when an owned NODE is unavailable; wait for an eligible owned NODE instead."
+    "Never fail over to an external provider when an owned NODE is unavailable; wait for an eligible owned NODE instead.",
+    "IZAKHONO-native builder capability is the default; external builders are optional adapters."
   ],
   "stages": ["planning", "architecture", "design", "development", "integration", "testing", "security", "deployment", "verification", "documentation", "monetisation", "launch", "handover"],
   "adapters": {
-    "builder": ["hercules", "local-agent", "manual"],
+    "builder": ["izakhono-native", "hercules", "local-agent", "manual"],
     "code": ["github", "izakhono-code"],
     "deploy": ["izakhono-node", "vercel"],
     "data": ["izakhono-data", "supabase"],
@@ -36,7 +28,7 @@
   "queue": [
     {"id": "platform-foundation", "title": "Keep the IZAKHONO execution control plane continuously buildable", "stage": "architecture", "adapter": "code", "dependsOn": [], "action": "validate-manifest", "evidence": ["manifest-valid"]},
     {"id": "continuous-worker", "title": "Run the next dependency-ready task automatically", "stage": "development", "adapter": "code", "dependsOn": ["platform-foundation"], "action": "run-worker", "evidence": ["worker-exit-zero"]},
-    {"id": "builder-bridge", "title": "Connect an application-builder adapter so approved builds can continue without manual NEXT prompts", "stage": "integration", "adapter": "builder", "dependsOn": ["continuous-worker"], "action": "adapter-contract", "evidence": ["adapter-contract-valid"], "ownerGate": "builder-connection"},
+    {"id": "builder-bridge", "title": "Activate the IZAKHONO-native application-builder adapter without a manual NEXT prompt", "stage": "integration", "adapter": "builder", "dependsOn": ["continuous-worker"], "action": "adapter-contract", "evidence": ["adapter-contract-valid"]},
     {"id": "software-node-instantiation", "title": "Instantiate a Software NODE without a physical-server prerequisite", "stage": "development", "adapter": "deploy", "dependsOn": ["continuous-worker"], "action": "node-discovery", "evidence": ["software-node-instantiated", "node-identity-created"]},
     {"id": "node-heartbeat", "title": "Emit a continuous machine-readable IZAKHONO Software NODE health and capacity heartbeat", "stage": "verification", "adapter": "deploy", "dependsOn": ["software-node-instantiation"], "action": "node-heartbeat", "evidence": ["heartbeat-emitted", "node-health-readable", "capacity-reported"]},
     {"id": "node-target-selection", "title": "Select the healthiest eligible Software NODE before workload promotion", "stage": "verification", "adapter": "deploy", "dependsOn": ["node-heartbeat"], "action": "node-target", "requirements": {"requiredChecks": ["nodeReachable", "persistentStorageReady", "monitoringOnline"]}, "evidence": ["eligible-node-selected"]},
