@@ -1,0 +1,48 @@
+{
+  "product": "SHELTON FREIGHT DRIVER SECURITY",
+  "parent": "SHELTON FREIGHT NAV",
+  "security_layer": "FORTRESS",
+  "version": "0.1",
+  "purpose": "Define the driver-facing security and distress workflow connecting a SHELTON FREIGHT driver to the FORTRESS command layer without inventing live emergency capabilities.",
+  "principles": [
+    "driver_first",
+    "security_first",
+    "one_action_distress",
+    "verified_events_only",
+    "offline_resilient",
+    "audit_every_action",
+    "no_fabricated_dispatch",
+    "no_automatic_vehicle_control_without_authorized_hardware"
+  ],
+  "driver_actions": [
+    {"id":"safety_check_in","label":"Safety Check-In","event_class":"security_check","severity":"INFO"},
+    {"id":"driver_distress","label":"Driver Distress","event_class":"driver_distress","severity":"HIGH"},
+    {"id":"hijack_suspected","label":"Hijack Suspected","event_class":"hijack_suspected","severity":"CRITICAL"},
+    {"id":"unauthorized_stop","label":"Unauthorized Stop","event_class":"unauthorized_stop","severity":"HIGH"},
+    {"id":"route_deviation","label":"Route Deviation","event_class":"route_deviation","severity":"WATCH"}
+  ],
+  "workflow": [
+    "driver_authentication",
+    "vehicle_and_journey_context",
+    "capture_location_when_available",
+    "create_security_event",
+    "queue_if_offline",
+    "transmit_to_fortress_when_connected",
+    "fleet_security_triage",
+    "authorized_response",
+    "audit_and_resolution"
+  ],
+  "offline_policy": {
+    "queue_events": true,
+    "never_fabricate_location": true,
+    "retain_timestamp": true,
+    "replay_when_connected": true
+  },
+  "production_controls": {
+    "live_emergency_dispatch": false,
+    "live_vehicle_control": false,
+    "live_security_feed": false,
+    "authenticated_provider_required": true
+  },
+  "status": "architecture_ready"
+}
