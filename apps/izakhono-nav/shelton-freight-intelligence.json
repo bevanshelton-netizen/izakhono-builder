@@ -1,0 +1,24 @@
+{
+  "product": "SHELTON FREIGHT FLEET INTELLIGENCE",
+  "parent": "SHELTON FREIGHT NAV",
+  "version": "0.1",
+  "purpose": "Turn journey execution data into operational intelligence without inventing live facts.",
+  "capabilities": {
+    "route_progress": ["distance_progress", "journey_phase", "eta_confidence"],
+    "geofencing": ["origin", "delivery", "approved_operational_zones"],
+    "driver_behaviour": ["harsh_event_records", "safety_event_frequency", "idle_or_pause_records"],
+    "delivery_milestones": ["departed", "checkpoint", "arrived", "delivery_confirmed", "closed"],
+    "exception_escalation": ["delay", "breakdown", "security", "safety", "connectivity"],
+    "executive_analytics": ["fleet_utilisation", "journey_completion", "on_time_performance", "safety_events", "exceptions", "connectivity"]
+  },
+  "rules": {
+    "live_data_required_for_live_claims": true,
+    "demo_data_must_be_explicit": true,
+    "missing_eta_is_not_zero": true,
+    "missing_location_is_not_inferred": true,
+    "verified_hazards_only_for_hazard_claims": true,
+    "offline_events_must_preserve_original_timestamp": true
+  },
+  "status": "architecture_ready",
+  "live_claims": false
+}
