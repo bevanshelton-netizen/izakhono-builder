@@ -20,6 +20,7 @@ concurrency:
 env:
   IMAGE: izakhono/super-engine
   RELEASE_ROUTE: https://super-engine.izakhono.co.za
+  ARTIFACT_NAME: izakhono-super-engine-image
 
 jobs:
   build:
@@ -46,6 +47,22 @@ jobs:
           done
           docker logs izakhono-super-engine-smoke
           exit 1
+      - name: Export exact tested image
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker image inspect "$IMAGE:${GITHUB_SHA}" >/dev/null
+          docker save "$IMAGE:${GITHUB_SHA}" -o izakhono-super-engine-image.tar
+          sha256sum izakhono-super-engine-image.tar > izakhono-super-engine-image.tar.sha256
+      - name: Publish exact tested image artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.ARTIFACT_NAME }}
+          path: |
+            izakhono-super-engine-image.tar
+            izakhono-super-engine-image.tar.sha256
+          if-no-files-found: error
+          retention-days: 7
 
   owned-runtime:
     needs: build
@@ -61,14 +78,36 @@ jobs:
             echo "IZAKHONO_OWNED_RUNTIME=true is required on the owned production runner."
             exit 10
           }
-      - name: Deploy Super Engine candidate
+      - name: Retrieve exact tested image artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ env.ARTIFACT_NAME }}
+          path: /tmp/izakhono-super-engine-artifact
+      - name: Verify and load exact tested image
+        shell: bash
+        env:
+          TAG: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          cd /tmp/izakhono-super-engine-artifact
+          sha256sum -c izakhono-super-engine-image.tar.sha256
+          docker load -i izakhono-super-engine-image.tar
+          docker image inspect "$IMAGE:$TAG" >/dev/null
+          image_id=$(docker image inspect "$IMAGE:$TAG" --format '{{.Id}}')
+          case "$image_id" in
+            sha256:[a-f0-9]{64}) ;;
+            *) echo "[FAIL] Loaded image ID is not immutable: $image_id" >&2; exit 1 ;;
+          esac
+          printf '%s\n' "$image_id" > /tmp/izakhono-super-engine-image-id
+          echo "[PASS] Exact tested image loaded: $image_id"
+      - name: Deploy exact tested candidate without rebuild
         shell: bash
         env:
           TAG: ${{ github.sha }}
         run: |
           set -euo pipefail
           export IZAKHONO_SUPER_ENGINE_TAG="$TAG"
-          docker compose -f infra/app-fabric-runtime/super-engine.compose.yml up -d --build super_engine
+          docker compose -f infra/app-fabric-runtime/super-engine.compose.yml up -d super_engine
       - name: Generate owned-runtime release receipt
         shell: bash
         env:
@@ -76,9 +115,8 @@ jobs:
         run: |
           set -euo pipefail
           command -v jq >/dev/null || { echo 'jq is required'; exit 1; }
-          image_id=$(docker image inspect "$IMAGE:${GITHUB_SHA}" --format '{{.Id}}')
-          digest="sha256:${image_id#sha256:}"
-          test "$digest" != 'sha256:'
+          image_id=$(cat /tmp/izakhono-super-engine-image-id)
+          digest="$image_id"
           mkdir -p /opt/izakhono/state/releases/izakhono-super-engine
           jq -n \
             --arg source "$SOURCE_SHA" \
@@ -110,7 +148,6 @@ jobs:
         shell: bash
         env:
           SOURCE_SHA: ${{ github.sha }}
-          ARTIFACT_DIGEST: ${{ github.sha }}
         run: |
           set -euo pipefail
           test -x /opt/izakhono/bin/izakhono-release || {
@@ -118,8 +155,12 @@ jobs:
             exit 20
           }
           artifact=$(jq -r '.release.artifact_digest' /opt/izakhono/state/releases/izakhono-super-engine/candidate.json)
+          test "$artifact" = "$(cat /tmp/izakhono-super-engine-image-id)" || {
+            echo '[FAIL] Candidate artifact does not match the exact tested image.'
+            exit 21
+          }
           /opt/izakhono/bin/izakhono-release promote \
             --application izakhono-super-engine \
             --source "$SOURCE_SHA" \
             --artifact "$artifact"
-          echo '[PASS] Owned release promoted after acceptance'
+          echo '[PASS] Owned release promoted after acceptance with exact artifact provenance'
