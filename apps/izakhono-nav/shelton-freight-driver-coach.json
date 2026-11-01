@@ -1,0 +1,27 @@
+{
+  "product": "SHELTON FREIGHT",
+  "layer": "Driver Safety Coach",
+  "version": "0.1",
+  "purpose": "Turn verified journey and driver signals into explainable, preventive coaching without replacing human operational judgment.",
+  "principles": ["verified_signals_only","preventive_first","explainable_recommendations","least_privilege","human_authorized_control","audit_every_action","offline_resilient","no_fabricated_live_claims"],
+  "inputs": ["journey_state","driver_checkins","vehicle_state","risk_engine","fleet_intelligence","fortress","connectivity_state","verified_hazards"],
+  "coaching_levels": ["CLEAR","ADVISORY","CAUTION","SAFETY_HOLD_RECOMMENDED"],
+  "signals": ["speed_risk","harsh_event","fatigue_checkin_missed","route_deviation","unauthorized_stop","connectivity_loss","verified_hazard","vehicle_health_warning","driver_distress","hijack_suspected"],
+  "rules": {
+    "verified_hazard": "CAUTION",
+    "driver_distress": "SAFETY_HOLD_RECOMMENDED",
+    "hijack_suspected": "SAFETY_HOLD_RECOMMENDED",
+    "fatigue_checkin_missed": "CAUTION",
+    "route_deviation": "ADVISORY",
+    "unauthorized_stop": "CAUTION",
+    "connectivity_loss": "ADVISORY",
+    "vehicle_health_warning": "CAUTION",
+    "multiple_advisories": "CAUTION"
+  },
+  "actions": ["show_coaching","request_driver_checkin","recommend_safe_stop","notify_operator_via_authenticated_channel"],
+  "prohibited_without_authenticated_integration": ["remote_vehicle_control","remote_engine_control","automatic_police_notification_claim","emergency_dispatch_claim"],
+  "production_status": {
+    "architecture_ready": true,
+    "live_coaching": false
+  }
+}
