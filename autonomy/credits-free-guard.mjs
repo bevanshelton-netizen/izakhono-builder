@@ -5,14 +5,30 @@ const root = process.cwd();
 const policyPath = path.join(root, 'autonomy', 'CREDITS-FREE-POLICY.md');
 if (!fs.existsSync(policyPath)) throw new Error('credits-free-policy-missing');
 
+const policy = fs.readFileSync(policyPath, 'utf8');
+for (const required of [
+  'do not use an artificial credits system',
+  'must never check, decrement, reserve, purchase, or require credits',
+  'External builders are optional adapters',
+]) {
+  if (!policy.toLowerCase().includes(required.toLowerCase())) {
+    throw new Error(`credits-free-policy-incomplete:${required}`);
+  }
+}
+
+// Scan executable native control-plane components only. The manifest and policy
+// are allowed to describe the prohibition itself; executable code is not allowed
+// to implement a native credit/quota/balance gate.
 const files = [
-  path.join(root, 'autonomy', 'engine-manifest.json'),
   path.join(root, 'autonomy', 'native-builder.mjs'),
   path.join(root, 'autonomy', 'builder-adapter.mjs'),
   path.join(root, 'autonomy', 'ai-agent-worker.mjs'),
+  path.join(root, 'autonomy', 'runner.mjs'),
+  path.join(root, 'autonomy', 'software-node.mjs'),
+  path.join(root, 'autonomy', 'workload-scheduler.mjs'),
 ];
 
-const prohibited = /(?:IZAKHONO|native|internal)[^\n]{0,80}(?:credit|credits|quota|balance|pay[-_ ]?per[-_ ]?action|usage[-_ ]?meter)|(?:credit|credits|quota|balance|pay[-_ ]?per[-_ ]?action|usage[-_ ]?meter)[^\n]{0,80}(?:IZAKHONO|native|internal)/i;
+const prohibited = /(?:IZAKHONO|native|internal|execution)[^\n]{0,120}(?:credit|credits|quota|balance|pay[-_ ]?per[-_ ]?action|usage[-_ ]?meter)|(?:credit|credits|quota|balance|pay[-_ ]?per[-_ ]?action|usage[-_ ]?meter)[^\n]{0,120}(?:IZAKHONO|native|internal|execution)/i;
 
 for (const file of files) {
   if (!fs.existsSync(file)) continue;
@@ -20,4 +36,8 @@ for (const file of files) {
   if (prohibited.test(text)) throw new Error(`native-credits-gate-detected:${path.relative(root, file)}`);
 }
 
-console.log(JSON.stringify({ status: 'passed', policy: 'credits-free', checked: files.map((file) => path.relative(root, file)) }));
+console.log(JSON.stringify({
+  status: 'passed',
+  policy: 'credits-free',
+  checked: files.filter(fs.existsSync).map((file) => path.relative(root, file)),
+}));
