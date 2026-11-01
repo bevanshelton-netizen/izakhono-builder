@@ -1,0 +1,23 @@
+{
+  "product": "SHELTON FREIGHT",
+  "layer": "Freight Profitability Intelligence v0.1",
+  "purpose": "Convert verified commercial, journey, delivery, cargo, fuel, maintenance and operating signals into explainable freight profitability intelligence without fabricating revenue or margins.",
+  "principles": ["verified_signals_only","safety_over_profitability","explainable_metrics","context_over_single_event","human_review_for_adverse_actions","offline_resilient","no_fabricated_live_claims"],
+  "inputs": ["cost_intelligence","cargo_intelligence","delivery_intelligence","fuel_efficiency","vehicle_health","journey_intelligence","driver_performance","connectivity_state","verified_revenue"],
+  "metrics": ["revenue_per_journey","operating_cost_per_journey","contribution_margin","margin_percentage","cost_per_km","cost_per_delivery","cargo_utilisation","empty_km_exposure","customer_profitability","route_profitability","profitability_trend","budget_variance"],
+  "bands": ["PROFITABLE","STABLE","WATCH","REVIEW","UNAVAILABLE"],
+  "rules": {
+    "verified_revenue_and_verified_cost_required": true,
+    "negative_verified_margin": "REVIEW",
+    "low_margin_with_verified_cost_pressure": "WATCH",
+    "healthy_verified_margin": "PROFITABLE",
+    "insufficient_data": "UNAVAILABLE",
+    "conflicting_verified_signals": "REVIEW",
+    "single_unverified_signal_does_not_trigger_review": true,
+    "safety_never_tradeable_for_margin": true
+  },
+  "commercial_dimensions": ["job","journey","route","customer","vehicle","cargo_class","service_type"],
+  "privacy": {"minimize_personal_data": true,"no_sensitive_attribute_inference": true},
+  "safety": {"no_automatic_route_degradation_for_profit","no_automatic_driver_discipline","no_remote_vehicle_control": true},
+  "production_status": {"architecture_ready": true,"live_profitability_intelligence": false}
+}
