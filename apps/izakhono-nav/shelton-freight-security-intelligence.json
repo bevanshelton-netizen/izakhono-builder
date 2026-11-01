@@ -1,0 +1,32 @@
+{
+  "product": "SHELTON FREIGHT",
+  "layer": "Fleet Security Intelligence",
+  "version": "0.1",
+  "purpose": "Combine verified journey behaviour, driver safety, route deviation, geofencing, connectivity and security signals into explainable per-vehicle, driver and journey risk profiles.",
+  "principles": ["verified_data_only", "explainable_risk", "driver_safety_first", "security_first", "offline_resilient", "least_privilege", "audit_every_decision", "no_fabricated_live_claims"],
+  "profile_levels": ["fleet", "vehicle", "driver", "journey"],
+  "signal_sources": ["SHELTON_FREIGHT_RISK", "SHELTON_FREIGHT_FORTRESS", "SHELTON_FREIGHT_INTELLIGENCE", "SHELTON_FREIGHT_COMMAND", "driver_security", "journey_execution"],
+  "risk_bands": ["NORMAL", "WATCH", "ELEVATED", "HIGH", "CRITICAL", "UNKNOWN_NOT_CLEAR"],
+  "dimensions": ["security", "driver_safety", "journey", "route_deviation", "geofence", "connectivity", "verified_hazards", "exceptions", "trend"],
+  "operational_postures": ["NORMAL_OPERATIONS", "ENHANCED_MONITORING", "DRIVER_CHECK_IN", "FLEET_SECURITY_REVIEW", "HOLD_OPERATIONS_PENDING_REVIEW", "CRITICAL_SECURITY_RESPONSE", "UNKNOWN_NOT_CLEAR"],
+  "explainability": {
+    "required": true,
+    "show_contributing_signals": true,
+    "show_verified_status": true,
+    "show_timestamp": true,
+    "show_data_mode": true
+  },
+  "history": {
+    "track_risk_trend": true,
+    "retain_local_history_when_offline": true,
+    "never_upgrade_unverified_data_to_verified": true
+  },
+  "security_limits": {
+    "emergency_dispatch_requires_authenticated_integration": true,
+    "police_notification_claim_prohibited_without_integration": true,
+    "remote_vehicle_control_prohibited_without_authorized_backend": true,
+    "live_incident_claim_requires_verified_event": true
+  },
+  "production_status": "architecture_ready",
+  "live_security_intelligence": false
+}
