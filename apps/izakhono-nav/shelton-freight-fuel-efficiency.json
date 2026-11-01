@@ -1,0 +1,13 @@
+{
+  "product":"SHELTON FREIGHT",
+  "layer":"Fuel & Operating Efficiency Intelligence",
+  "version":"0.1",
+  "purpose":"Turn verified journey, vehicle-health and operating signals into explainable fuel and operating-efficiency intelligence without fabricating telemetry.",
+  "principles":["verified_signals_only","no_fabricated_telemetry","safety_over_efficiency","explainable_metrics","human_review_for_operational_changes","offline_resilient","privacy_minimization"],
+  "inputs":["journey_intelligence","vehicle_health","vehicle_intelligence","route_distance","verified_fuel_events","connectivity_state"],
+  "metrics":["fuel_used","fuel_efficiency","fuel_cost","cost_per_km","idle_time","distance","operating_hours","empty_distance","loaded_distance","efficiency_trend"],
+  "efficiency_bands":["EXCELLENT","EFFICIENT","WATCH","REVIEW","UNAVAILABLE"],
+  "rules":{"insufficient_verified_data":"UNAVAILABLE","verified_efficiency_improvement":"EXCELLENT_OR_EFFICIENT","verified_efficiency_decline":"WATCH","repeated_verified_cost_or_idle_anomaly":"REVIEW","safety_or_security_issue":"SAFETY_TAKES_PRECEDENCE"},
+  "outputs":["vehicle_efficiency_profile","journey_efficiency_summary","fleet_efficiency_summary","cost_trend","operator_recommendations"],
+  "production_status":{"architecture_ready":true,"live_efficiency_scoring":false}
+}
