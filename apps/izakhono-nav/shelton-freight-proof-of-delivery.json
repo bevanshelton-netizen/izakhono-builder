@@ -1,0 +1,16 @@
+{
+  "product": "SHELTON FREIGHT",
+  "layer": "Proof of Delivery & Digital Delivery Documentation v0.1",
+  "purpose": "Capture, verify and audit delivery handover evidence without inventing signatures, locations, photos, recipients or timestamps.",
+  "principles": ["verified_signals_only","delivery_truth_over_promises","chain_of_custody","privacy_minimization","offline_resilient","human_review_for_discrepancies","no_fabricated_live_claims"],
+  "states": ["PLANNED","ARRIVED","DELIVERING","POD_PENDING","POD_CAPTURED","POD_VERIFIED","EXCEPTION","CLOSED","UNAVAILABLE"],
+  "required_context": ["journey_id","delivery_id","vehicle_id"],
+  "evidence_fields": ["recipient","captured_at","geolocation","signature_status","photo_references","document_references","quantity_delivered","quantity_expected","discrepancy","seal_status","notes"],
+  "verification": {"signature_status":["NOT_REQUIRED","PENDING","CAPTURED","VERIFIED","REFUSED"],"evidence_status":["UNAVAILABLE","PENDING","CAPTURED","VERIFIED","EXCEPTION"]},
+  "chain_of_custody": {"audit_required":true,"append_only_events":true,"actor_required":true,"timestamp_required":true,"source_required":true},
+  "discrepancy_policy": {"human_review_required":true,"automatic_dispute_resolution":false,"automatic_acceptance":false},
+  "offline": {"capture_allowed":true,"queue_and_replay":true,"reconcile_on_sync":true},
+  "api": {"base":"/api/freight/proof-of-delivery","events":"/api/freight/proof-of-delivery/events"},
+  "integrations": ["journey_intelligence","delivery_intelligence","cargo_intelligence","customer_experience","customer_service","security_intelligence"],
+  "production_status": {"architecture_ready":true,"live_pod_capture":false,"live_pod_verification":false}
+}
