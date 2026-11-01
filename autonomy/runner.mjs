@@ -15,9 +15,6 @@ function taskState(id) { return state.tasks[id] ?? { status: 'queued', attempts:
 function ready(task) { return task.dependsOn.every(id => taskState(id).status === 'completed'); }
 function persistentWaitFor(task) {
   const current = taskState(task.id);
-  // Legacy external-builder waits must never permanently block the native builder.
-  // Re-queue them so the current builder adapter can decide whether native execution
-  // is sufficient or an explicitly configured external capability is required.
   if (current.status === 'waiting_owner' && current.ownerGate === 'builder-connection') {
     state.tasks[task.id] = {
       ...current,
@@ -92,7 +89,7 @@ while (progressed < manifest.queue.length) {
   if (!result) {
     transition(next, 'awaiting_adapter', { evidence: evidenceFor(next) });
     externalGates.push(next);
-  } else if (result.status === 'completed' || result.status === 'ready' || result.status === 'assigned' || result.status === 'eligible') {
+  } else if (['completed', 'ready', 'assigned', 'eligible', 'instantiated'].includes(result.status)) {
     transition(next, 'completed', {
       evidence: result.evidence ?? evidenceFor(next, 'passed'),
       provider: result.provider ?? manifest.adapters?.[next.adapter]?.[0],
