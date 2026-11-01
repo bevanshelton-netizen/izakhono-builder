@@ -1,0 +1,30 @@
+{
+  "product": "SHELTON FREIGHT INCIDENT MANAGEMENT",
+  "parent": "SHELTON FREIGHT NAV",
+  "layer": "FORTRESS Security Response",
+  "version": "0.1",
+  "purpose": "Structured response workflow for verified driver and fleet security events.",
+  "states": ["NEW","TRIAGED","ACKNOWLEDGED","ESCALATED","RESPONDING","RESOLVED","CLOSED"],
+  "severity": ["INFO","WATCH","HIGH","CRITICAL"],
+  "event_classes": ["panic","hijack_suspected","unauthorized_stop","route_deviation","geofence_breach","vehicle_tamper","driver_distress"],
+  "response_actions": ["acknowledge","escalate","request_driver_check_in","notify_fleet_security","request_authorized_assistance","resolve","close"],
+  "rules": {
+    "verified_event_required_for_live_claim": true,
+    "emergency_dispatch_requires_authenticated_provider": true,
+    "vehicle_control_requires_authorized_hardware": true,
+    "all_actions_audited": true,
+    "offline_events_queue_for_replay": true,
+    "demo_events_must_be_explicit": true,
+    "never_fabricate_live_incident": true
+  },
+  "integrations": [
+    "/api/freight/events",
+    "/api/freight/locations",
+    "SHELTON_FREIGHT_FORTRESS",
+    "SHELTON_FREIGHT_COMMAND",
+    "SHELTON_FREIGHT_INTELLIGENCE"
+  ],
+  "production_status": "architecture_ready",
+  "live_dispatch": false,
+  "live_vehicle_control": false
+}
