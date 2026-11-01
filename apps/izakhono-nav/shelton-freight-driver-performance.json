@@ -1,0 +1,56 @@
+{
+  "product": "SHELTON FREIGHT",
+  "layer": "Driver Performance Intelligence",
+  "version": "0.1",
+  "purpose": "Turn verified journey and safety signals into explainable driver performance intelligence without creating unsafe or punitive automated decisions.",
+  "principles": [
+    "verified_signals_only",
+    "explainable_metrics",
+    "context_over_single_event",
+    "safety_over_productivity",
+    "human_review_for_adverse_actions",
+    "privacy_minimization",
+    "offline_resilient",
+    "no_fabricated_live_claims"
+  ],
+  "inputs": [
+    "journey_intelligence",
+    "driver_safety_coach",
+    "safety_autopilot",
+    "risk_engine",
+    "fleet_security_intelligence",
+    "vehicle_intelligence",
+    "connectivity_state"
+  ],
+  "metrics": [
+    "safety_checkin_compliance",
+    "verified_route_deviation_rate",
+    "verified_unauthorized_stop_rate",
+    "security_event_rate",
+    "journey_exception_rate",
+    "connectivity_resilience",
+    "completed_journeys",
+    "delivery_milestone_compliance",
+    "coaching_acknowledgement_rate",
+    "risk_trend"
+  ],
+  "performance_bands": ["EXCELLENT", "STABLE", "WATCH", "REVIEW", "UNAVAILABLE"],
+  "rules": {
+    "single_unverified_signal": "do_not_downgrade",
+    "verified_critical_security_event": "REVIEW",
+    "repeated_verified_safety_exceptions": "REVIEW",
+    "verified_improvement_over_time": "EXCELLENT_OR_STABLE",
+    "insufficient_data": "UNAVAILABLE",
+    "safety_signal_conflict": "REVIEW"
+  },
+  "privacy": {
+    "minimize_personal_data": true,
+    "retain_only_operationally_required_fields": true,
+    "no_inferred_sensitive_attributes": true,
+    "no_automated_disciplinary_action": true
+  },
+  "status": {
+    "production_status": "architecture_ready",
+    "live_performance_scoring": false
+  }
+}
