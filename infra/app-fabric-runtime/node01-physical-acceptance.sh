@@ -2,8 +2,9 @@
 set -euo pipefail
 
 # Owner-run only. This script never declares LIVE and never fabricates evidence.
-# It emits izakhono.runtime-evidence/v1 only when every required physical/runtime
-# check passes on the actual IZAKHONO-controlled host.
+# NODE01-NODE04 are logical software/runtime identities. The runtime host is
+# separate and may be physical, virtual, owned, or an approved external adapter.
+# Evidence is emitted only when every required check passes on the actual host.
 
 STATE_ROOT="${IZAKHONO_STATE_ROOT:-/opt/izakhono}"
 NODE_ID="${IZAKHONO_NODE_ID:-NODE01}"
@@ -64,8 +65,9 @@ cat > "$TMP" <<EOF
   "slug": "${IZAKHONO_ACCEPTANCE_SLUG:-faisready}",
   "target": "${NODE_ID}",
   "node_identity_type": "software-runtime",
+  "runtime_binding_schema": "izakhono.runtime-binding/v1",
   "physical_host_is_separate": true,
-  "physical_hostname": "${HOSTNAME_VALUE}",
+  "runtime_host": "${HOSTNAME_VALUE}",
   "owned_runtime": true,
   "docker_verified": true,
   "edge_network_verified": true,
@@ -80,5 +82,5 @@ cat > "$TMP" <<EOF
 EOF
 mv -f "$TMP" "$OUTPUT"
 chmod 0644 "$OUTPUT"
-pass "NODE01 physical acceptance evidence written: $OUTPUT"
+pass "logical runtime acceptance evidence written: $OUTPUT"
 echo "[GATE] Promotion remains separate; LIVE is intentionally false."
