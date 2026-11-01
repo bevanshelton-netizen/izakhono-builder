@@ -34,16 +34,18 @@ jobs:
         shell: bash
         run: bash infra/app-fabric-runtime/validate-manifests.sh
 
-      - name: Test universal provisioner
+      - name: Verify universal provision pipeline
         shell: bash
-        run: bash infra/app-fabric-runtime/test-provisioner.sh
+        run: |
+          chmod +x infra/app-fabric-runtime/provisioner.sh infra/app-fabric-runtime/deploy-gate.sh infra/app-fabric-runtime/verify-provision-pipeline.sh
+          bash infra/app-fabric-runtime/verify-provision-pipeline.sh
 
-      - name: Verify no live promotion is performed
+      - name: Verify no LIVE promotion is performed
         shell: bash
         run: |
           set -euo pipefail
-          if grep -R -nE 'status:[[:space:]]*"LIVE"|live:[[:space:]]*true|PROMOTE|docker[[:space:]]+push|docker[[:space:]]+run' infra/app-fabric-runtime/provisioner.sh; then
-            echo '[FAIL] Repository-side provisioner must not perform deployment or LIVE promotion.'
+          if grep -R -nE 'status:[[:space:]]*"LIVE"|live:[[:space:]]*true|PROMOTE|docker[[:space:]]+push|docker[[:space:]]+run' infra/app-fabric-runtime/provisioner.sh infra/app-fabric-runtime/deploy-gate.sh; then
+            echo '[FAIL] Repository-side provisioner must not perform LIVE promotion or container deployment.'
             exit 1
           fi
-          echo '[PASS] Provisioner remains a repository-side plan/register/provision gate.'
+          echo '[PASS] Provisioner remains fail-closed before physical owned-runtime deployment and LIVE promotion.'
