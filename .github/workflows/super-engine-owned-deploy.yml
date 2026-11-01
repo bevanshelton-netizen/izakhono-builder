@@ -69,7 +69,7 @@ jobs:
           set -euo pipefail
           export IZAKHONO_SUPER_ENGINE_TAG="$TAG"
           docker compose -f infra/app-fabric-runtime/super-engine.compose.yml up -d --build super_engine
-      - name: Generate and validate owned-runtime release receipt
+      - name: Generate owned-runtime release receipt
         shell: bash
         env:
           SOURCE_SHA: ${{ github.sha }}
@@ -86,18 +86,7 @@ jobs:
             --arg route "$RELEASE_ROUTE" \
             '{schema:"izakhono.release/v1",application:{slug:"izakhono-super-engine"},runtime:{port:8787,healthPath:"/health",network:"izakhono-edge"},routes:{public_https:$route},release:{source:$source,artifact_digest:$digest}}' \
             > /opt/izakhono/state/releases/izakhono-super-engine/candidate.json
-          jq -e '
-            .schema == "izakhono.release/v1" and
-            .application.slug == "izakhono-super-engine" and
-            .runtime.port == 8787 and
-            .runtime.healthPath == "/health" and
-            .runtime.network == "izakhono-edge" and
-            (.routes.public_https | startswith("https://")) and
-            (.release.source | length > 0) and
-            (.release.artifact_digest | test("^sha256:[a-f0-9]{64}$"))
-          ' /opt/izakhono/state/releases/izakhono-super-engine/candidate.json >/dev/null
-          echo '[PASS] Owned-runtime release receipt validated'
-      - name: Verify Super Engine health
+      - name: Verify Super Engine container health
         shell: bash
         run: |
           set -euo pipefail
@@ -110,5 +99,27 @@ jobs:
           done
           docker logs super_engine || true
           exit 1
-      - name: Verify service endpoint
+      - name: Verify local service endpoint
         run: curl -fsS http://127.0.0.1:8787/health
+      - name: ACCEPTANCE — verify owned release and public HTTPS
+        shell: bash
+        env:
+          IZAKHONO_SUPER_ENGINE_ROUTE: ${{ env.RELEASE_ROUTE }}
+        run: sudo infra/runtime/VERIFY-OWNED-SUPER-ENGINE-RELEASE.sh
+      - name: PROMOTE — record accepted release through owned release adapter
+        shell: bash
+        env:
+          SOURCE_SHA: ${{ github.sha }}
+          ARTIFACT_DIGEST: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          test -x /opt/izakhono/bin/izakhono-release || {
+            echo '[FAIL] /opt/izakhono/bin/izakhono-release is not installed on the owned node.'
+            exit 20
+          }
+          artifact=$(jq -r '.release.artifact_digest' /opt/izakhono/state/releases/izakhono-super-engine/candidate.json)
+          /opt/izakhono/bin/izakhono-release promote \
+            --application izakhono-super-engine \
+            --source "$SOURCE_SHA" \
+            --artifact "$artifact"
+          echo '[PASS] Owned release promoted after acceptance'
