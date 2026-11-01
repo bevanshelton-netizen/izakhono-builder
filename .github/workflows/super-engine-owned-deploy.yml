@@ -21,6 +21,8 @@ env:
   IMAGE: izakhono/super-engine
   RELEASE_ROUTE: https://super-engine.izakhono.co.za
   ARTIFACT_NAME: izakhono-super-engine-image
+  CONTAINER: izakhono-izakhono-super-engine
+  NETWORK: izakhono-edge
 
 jobs:
   build:
@@ -100,6 +102,11 @@ jobs:
           esac
           printf '%s\n' "$image_id" > /tmp/izakhono-super-engine-image-id
           echo "[PASS] Exact tested image loaded: $image_id"
+      - name: Ensure owned edge network exists
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker network inspect "$NETWORK" >/dev/null 2>&1 || docker network create "$NETWORK" >/dev/null
       - name: Deploy exact tested candidate without rebuild
         shell: bash
         env:
@@ -107,38 +114,50 @@ jobs:
         run: |
           set -euo pipefail
           export IZAKHONO_SUPER_ENGINE_TAG="$TAG"
-          docker compose -f infra/app-fabric-runtime/super-engine.compose.yml up -d super_engine
-      - name: Generate owned-runtime release receipt
+          docker compose -f infra/app-fabric-runtime/super-engine.compose.yml up -d --no-build super_engine
+      - name: Generate and verify owned-runtime candidate state
         shell: bash
         env:
           SOURCE_SHA: ${{ github.sha }}
+          TAG: ${{ github.sha }}
         run: |
           set -euo pipefail
           command -v jq >/dev/null || { echo 'jq is required'; exit 1; }
           image_id=$(cat /tmp/izakhono-super-engine-image-id)
-          digest="$image_id"
-          mkdir -p /opt/izakhono/state/releases/izakhono-super-engine
+          image_ref="$IMAGE:$TAG"
+          actual_image_id=$(docker image inspect "$image_ref" --format '{{.Id}}')
+          running_image_id=$(docker inspect "$CONTAINER" --format '{{.Image}}')
+          test "$actual_image_id" = "$image_id" || { echo '[FAIL] Local image ID changed'; exit 22; }
+          test "$running_image_id" = "$image_id" || { echo '[FAIL] Running candidate is not the exact tested artifact'; exit 23; }
+          release_dir=/opt/izakhono/state/releases/izakhono-super-engine
+          mkdir -p "$release_dir"
           jq -n \
             --arg source "$SOURCE_SHA" \
-            --arg digest "$digest" \
+            --arg digest "$image_id" \
             --arg route "$RELEASE_ROUTE" \
             '{schema:"izakhono.release/v1",application:{slug:"izakhono-super-engine"},runtime:{port:8787,healthPath:"/health",network:"izakhono-edge"},routes:{public_https:$route},release:{source:$source,artifact_digest:$digest}}' \
-            > /opt/izakhono/state/releases/izakhono-super-engine/candidate.json
+            > "$release_dir/candidate.json"
+          printf '%s\n' "$image_ref" > "$release_dir/candidate.image"
+          printf '%s\n' "$image_id" > "$release_dir/candidate.digest"
+          printf '%s\n' "$running_image_id" > "$release_dir/running.digest"
       - name: Verify Super Engine container health
         shell: bash
         run: |
           set -euo pipefail
           for i in {1..30}; do
-            if docker inspect --format '{{.State.Health.Status}}' super_engine 2>/dev/null | grep -q healthy; then
-              docker inspect --format '{{json .State.Health}}' super_engine
+            if docker inspect --format '{{.State.Health.Status}}' "$CONTAINER" 2>/dev/null | grep -q healthy; then
+              docker inspect --format '{{json .State.Health}}' "$CONTAINER"
               exit 0
             fi
             sleep 2
           done
-          docker logs super_engine || true
+          docker logs "$CONTAINER" || true
           exit 1
       - name: Verify local service endpoint
-        run: curl -fsS http://127.0.0.1:8787/health
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker exec "$CONTAINER" node -e "fetch('http://127.0.0.1:8787/health').then(async r=>{const t=await r.text(); console.log(t); process.exit(r.ok?0:1)}).catch(e=>{console.error(e); process.exit(1)})"
       - name: ACCEPTANCE — verify owned release and public HTTPS
         shell: bash
         env:

@@ -2,6 +2,7 @@
 set -euo pipefail
 
 # IZAKHONO NODE CLUSTER HEALTH GATE
+# NODE01-NODE04 are software/runtime identities, never physical-machine names.
 # Produces evidence only from runtime endpoints supplied by the operator.
 # It never converts topology/configuration into runtime proof.
 
@@ -25,7 +26,7 @@ results = []
 for name, url in zip(names, urls):
     checked = datetime.now(timezone.utc).isoformat()
     if not url:
-        results.append({"node": name, "status": "MISSING_ENDPOINT", "runtime_evidence": False, "checkedAt": checked})
+        results.append({"node": name, "identityType": "software-runtime", "physicalHostIsSeparate": True, "status": "MISSING_ENDPOINT", "runtime_evidence": False, "checkedAt": checked})
         continue
     try:
         p = subprocess.run(
@@ -37,6 +38,8 @@ for name, url in zip(names, urls):
         healthy = p.returncode == 0 and payload.get("ok") is True
         results.append({
             "node": name,
+            "identityType": "software-runtime",
+            "physicalHostIsSeparate": True,
             "status": "PASS" if healthy else "FAIL",
             "runtime_evidence": healthy,
             "checkedAt": checked,
@@ -44,13 +47,15 @@ for name, url in zip(names, urls):
             "exitCode": p.returncode,
         })
     except Exception as exc:
-        results.append({"node": name, "status": "ERROR", "runtime_evidence": False, "checkedAt": checked, "error": str(exc)})
+        results.append({"node": name, "identityType": "software-runtime", "physicalHostIsSeparate": True, "status": "ERROR", "runtime_evidence": False, "checkedAt": checked, "error": str(exc)})
 
 healthy = [r["node"] for r in results if r["runtime_evidence"]]
 passed = len(healthy) == 4
 record = {
     "schema": "izakhono.node-cluster-health.v1",
     "cluster": "izakhono-production",
+    "nodeIdentityType": "software-runtime",
+    "physicalHostIsSeparate": True,
     "checkedAt": datetime.now(timezone.utc).isoformat(),
     "nodes": results,
     "healthyNodes": healthy,
@@ -69,7 +74,7 @@ PY
 if python3 - "$OUTPUT" <<'PY'
 import json, sys
 with open(sys.argv[1], encoding="utf-8") as f: d=json.load(f)
-sys.exit(0 if d.get("status") == "PASS" else 1)
+sys.exit(0 if d.get("status") == "PASS" and d.get("nodeIdentityType") == "software-runtime" and d.get("physicalHostIsSeparate") is True else 1)
 PY
 then
   exit 0

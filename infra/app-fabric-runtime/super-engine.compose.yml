@@ -1,5 +1,6 @@
 services:
   super_engine:
+    container_name: izakhono-izakhono-super-engine
     build:
       context: ../..
       dockerfile: products/izakhono-super-engine/Dockerfile
@@ -12,7 +13,7 @@ services:
     expose:
       - "8787"
     networks:
-      - private
+      - edge
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8787/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
       interval: 10s
@@ -25,6 +26,6 @@ services:
       - ALL
 
 networks:
-  private:
+  edge:
     external: true
-    name: izakhono_private
+    name: izakhono-edge

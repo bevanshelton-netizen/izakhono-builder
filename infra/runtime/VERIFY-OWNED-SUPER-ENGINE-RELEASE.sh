@@ -3,10 +3,10 @@ set -euo pipefail
 
 STATE_ROOT="${IZAKHONO_STATE_ROOT:-/opt/izakhono/state}"
 APP="izakhono-super-engine"
+CONTAINER="izakhono-izakhono-super-engine"
 RELEASE_DIR="$STATE_ROOT/releases/$APP"
 CANDIDATE="$RELEASE_DIR/candidate.json"
 ROUTE="${IZAKHONO_SUPER_ENGINE_ROUTE:-https://super-engine.izakhono.co.za}"
-HEALTH_URL="${IZAKHONO_SUPER_ENGINE_HEALTH_URL:-http://127.0.0.1:8787/health}"
 
 fail() { echo "[FAIL] $*" >&2; exit 1; }
 pass() { echo "[PASS] $*"; }
@@ -28,10 +28,10 @@ jq -e '
 ' "$CANDIDATE" >/dev/null || fail "candidate receipt failed validation"
 pass "candidate receipt validated"
 
-test "$(docker inspect --format '{{.State.Health.Status}}' super_engine 2>/dev/null || true)" = "healthy" || fail "super_engine container is not healthy"
+test "$(docker inspect --format '{{.State.Health.Status}}' "$CONTAINER" 2>/dev/null || true)" = "healthy" || fail "$CONTAINER is not healthy"
 pass "container health is healthy"
 
-curl --fail --silent --show-error --max-time 10 "$HEALTH_URL" >/tmp/izakhono-super-engine-health.json || fail "local health endpoint failed"
+docker exec "$CONTAINER" node -e "fetch('http://127.0.0.1:8787/health').then(async r=>{const t=await r.text(); process.stdout.write(t); process.exit(r.ok?0:1)}).catch(e=>{console.error(e); process.exit(1)})" >/tmp/izakhono-super-engine-health.json || fail "local container health endpoint failed"
 jq -e '.ok == true' /tmp/izakhono-super-engine-health.json >/dev/null || fail "local health endpoint did not report ok=true"
 pass "local HTTP health accepted"
 
