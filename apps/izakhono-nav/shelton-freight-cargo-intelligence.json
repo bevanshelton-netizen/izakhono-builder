@@ -1,0 +1,23 @@
+{
+  "product":"SHELTON FREIGHT",
+  "layer":"Cargo Intelligence v0.1",
+  "purpose":"Provide verified cargo, load, capacity and delivery-risk intelligence without fabricating cargo telemetry or operational facts.",
+  "principles":["verified_data_only","safety_over_utilization","explainable_decisions","human_review_for_exceptions","offline_resilient","no_fabricated_live_claims"],
+  "inputs":["vehicle_profile","journey_intelligence","delivery_intelligence","vehicle_health","security_intelligence","connectivity_state"],
+  "cargo_fields":["cargo_id","commodity_class","declared_weight_kg","volume_m3","vehicle_capacity_kg","vehicle_capacity_m3","load_status","seal_status","delivery_window","handling_requirements","verified_at"],
+  "load_states":["PLANNED","PARTIAL","LOADED","IN_TRANSIT","DELIVERED","EXCEPTION","UNAVAILABLE"],
+  "risk_bands":["NORMAL","WATCH","ELEVATED","HIGH","CRITICAL","UNAVAILABLE"],
+  "rules":[
+    "verified_weight_over_capacity => HIGH",
+    "verified_volume_over_capacity => HIGH",
+    "critical_vehicle_health => CRITICAL",
+    "verified_security_exception => HIGH",
+    "missing_required_cargo_data => UNAVAILABLE",
+    "unverified_or_demo_signal => WATCH_OR_DEMO_ONLY",
+    "safety_constraints_override_utilization_optimization"
+  ],
+  "outputs":["load_utilization","capacity_status","cargo_risk","seal_exception_status","delivery_readiness","operator_actions"],
+  "api_endpoints":["GET /api/freight/cargo","POST /api/freight/cargo","POST /api/freight/cargo/events"],
+  "offline":{"enabled":true,"queue_events":true,"replay_on_reconnect":true},
+  "production_status":{"architecture_ready":true,"live_cargo_intelligence":false}
+}
