@@ -1,0 +1,24 @@
+{
+  "product":"SHELTON FREIGHT",
+  "layer":"Customer Service Intelligence",
+  "version":"0.1",
+  "purpose":"Turn verified delivery, journey and exception signals into explainable customer-service workload and service-recovery intelligence.",
+  "principles":["verified_signals_only","service_recovery_over_blame","explainable_status","human_review_for_customer_commitments","privacy_minimization","offline_resilient","no_fabricated_live_claims"],
+  "inputs":["customer_experience","delivery_intelligence","journey_intelligence","cargo_intelligence","security_intelligence","connectivity_state"],
+  "case_states":["NEW","OPEN","WAITING_FOR_INFORMATION","ACTION_REQUIRED","ESCALATED","RESOLVED","CLOSED","UNAVAILABLE"],
+  "case_types":["delivery_status","late_delivery","delivery_exception","proof_of_delivery","cargo_exception","security_exception","customer_update","service_recovery"],
+  "service_bands":["STABLE","WATCH","ESCALATED","UNAVAILABLE"],
+  "verified_fields":["customer_id","shipment_id","journey_id","delivery_window","verified_delivery_event","verified_exception","proof_of_delivery_status","last_verified_location","connectivity_state","acknowledgement"],
+  "rules":[
+    "A case may be created only from a verified operational signal or an authenticated customer request.",
+    "A single unverified signal must not create an escalation.",
+    "Verified delivery-window breach may create ACTION_REQUIRED.",
+    "Verified security or cargo exception may create ESCALATED and must preserve operational safety priority.",
+    "Missing live feed must be represented as UNAVAILABLE rather than estimated.",
+    "Customer commitments require authorized human confirmation.",
+    "No invented ETA, location, delivery status, customer sentiment or resolution claim."
+  ],
+  "api":{"cases":"/api/freight/customer-service","events":"/api/freight/customer-service/events"},
+  "offline":{"supported":true,"queue_events":true,"replay_on_reconnect":true},
+  "production_status":{"architecture_ready":true,"live_customer_service_intelligence":false}
+}
