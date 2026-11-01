@@ -2,6 +2,7 @@
   const VALID_TYPES=new Set(['flooding','pothole','road_closure','collision','crime_hotspot','civil_disruption','poor_lighting','weather_visibility','animal_crossing','road_surface']);
   const WEIGHTS={travel_time:0.30,distance:0.15,road_class:0.20,verified_hazards:0.25,connectivity_resilience:0.10};
   const STALE_HOURS=24, DEFAULT_FEED='/api/nav/hazards';
+  if(!window.IZAKHONO_HAZARD_FEED) window.IZAKHONO_HAZARD_FEED=DEFAULT_FEED;
   const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
   function fresh(ts,now){const t=Date.parse(ts);return Number.isFinite(t)&&now-t<=STALE_HOURS*3600000&&now>=t;}
   function parseHazards(payload,now=Date.now()){
