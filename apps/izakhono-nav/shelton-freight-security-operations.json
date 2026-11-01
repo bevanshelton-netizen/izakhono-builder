@@ -1,0 +1,15 @@
+{
+  "product":"SHELTON FREIGHT SECURITY OPERATIONS CENTRE",
+  "parent":"SHELTON FREIGHT",
+  "layer":"Fleet Security Operations",
+  "version":"0.1",
+  "purpose":"Unify fleet security intelligence, FORTRESS events, incident workflow and operational posture into one dispatcher/executive command surface.",
+  "views":["security_posture","priority_queue","vehicle_risk","driver_risk","journey_risk","incident_lifecycle","audit_timeline","operational_actions"],
+  "lifecycle":["NEW","TRIAGED","ACKNOWLEDGED","ESCALATED","RESPONDING","RESOLVED","CLOSED"],
+  "risk_bands":["NORMAL","WATCH","ELEVATED","HIGH","CRITICAL","UNKNOWN_NOT_CLEAR"],
+  "operational_postures":["NORMAL_OPERATIONS","ENHANCED_MONITORING","DRIVER_CHECK_IN","FLEET_SECURITY_REVIEW","HOLD_OPERATIONS_PENDING_REVIEW","CRITICAL_SECURITY_RESPONSE","UNKNOWN_NOT_CLEAR"],
+  "integrations":["SHELTON_FREIGHT_SECURITY_INTELLIGENCE","SHELTON_FREIGHT_RISK","SHELTON_FREIGHT_FORTRESS","SHELTON_FREIGHT_INCIDENTS","SHELTON_FREIGHT_COMMAND"],
+  "rules":{"verified_events_only":true,"unknown_is_not_clear":true,"all_operator_actions_audited":true,"offline_state_explicit":true,"emergency_dispatch_requires_authenticated_provider":true,"remote_vehicle_control_requires_authorized_backend":true,"no_fabricated_live_claims":true},
+  "production_status":"architecture_ready",
+  "live_security_operations":false
+}
