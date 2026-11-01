@@ -1,0 +1,18 @@
+{
+  "mode": "DEMO",
+  "generated_for": "SHELTON FREIGHT COMMAND",
+  "vehicles": [
+    {"id":"SF-001","type":"Freight Truck","driver":"Demo Driver 01","status":"ON_ROUTE","route":"Johannesburg → Durban","eta":"03:42","connectivity":"ONLINE"},
+    {"id":"SF-002","type":"Freight Truck","driver":"Demo Driver 02","status":"LOADING","route":"Johannesburg DC","eta":"00:58","connectivity":"ONLINE"},
+    {"id":"SF-003","type":"Heavy Vehicle","driver":"Demo Driver 03","status":"GUARDED","route":"East London → Gqeberha","eta":"05:16","connectivity":"LOW"},
+    {"id":"SF-004","type":"Freight Truck","driver":"Demo Driver 04","status":"AVAILABLE","route":"Durban Hub","eta":"—","connectivity":"ONLINE"}
+  ],
+  "journeys": [
+    {"id":"J-DEMO-001","vehicle_id":"SF-001","origin":"Johannesburg","destination":"Durban","status":"ON_ROUTE","eta":"03:42","safety":"PROVISIONAL"},
+    {"id":"J-DEMO-002","vehicle_id":"SF-003","origin":"East London","destination":"Gqeberha","status":"GUARDED","eta":"05:16","safety":"PROVISIONAL"}
+  ],
+  "events": [
+    {"id":"E-DEMO-001","type":"connectivity","severity":"MEDIUM","message":"SF-003 connectivity degraded","source":"DEMO"},
+    {"id":"E-DEMO-002","type":"safety","severity":"LOW","message":"Driver safety check required","source":"DEMO"}
+  ]
+}
