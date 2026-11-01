@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SHELTON FREIGHT — Delivery Intelligence</title>
+<style>
+body{margin:0;background:#07130f;color:#eef7f1;font:14px system-ui,-apple-system,sans-serif}main{max-width:1180px;margin:auto;padding:28px}.top{display:flex;justify-content:space-between;gap:20px;align-items:end}.eyebrow{letter-spacing:.14em;text-transform:uppercase;color:#87b79e;font-size:11px}.title{font-size:30px;font-weight:700;margin:5px 0}.muted{color:#9db3a7}.badge{padding:8px 12px;border:1px solid #315343;border-radius:999px}.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:22px 0}.card{background:#0d2018;border:1px solid #203d30;border-radius:16px;padding:18px}.metric{font-size:26px;font-weight:700;margin-top:6px}.actions{display:flex;flex-wrap:wrap;gap:10px;margin:18px 0}button{background:#143528;color:#eef7f1;border:1px solid #315343;border-radius:10px;padding:10px 14px;cursor:pointer}button:hover{filter:brightness(1.15)}table{width:100%;border-collapse:collapse}.table{overflow:auto;border:1px solid #203d30;border-radius:16px}th,td{text-align:left;padding:13px;border-bottom:1px solid #183127;white-space:nowrap}th{color:#8fa99c;font-size:11px;text-transform:uppercase;letter-spacing:.08em}.notice{margin-top:18px;color:#9db3a7;font-size:12px;line-height:1.6}.pill{border-radius:999px;padding:5px 8px;background:#17372a}.empty{padding:28px;text-align:center;color:#7f988c}@media(max-width:800px){.grid{grid-template-columns:repeat(2,1fr)}.top{display:block}.badge{display:inline-block;margin-top:12px}}
+</style></head>
+<body><main>
+<div class="top"><div><div class="eyebrow">SHELTON FREIGHT</div><div class="title">Delivery Intelligence</div><div class="muted">Verified delivery progress, ETA confidence and exception management.</div></div><div id="mode" class="badge">UNAVAILABLE</div></div>
+<div class="grid"><div class="card"><div class="muted">Deliveries</div><div id="deliveries" class="metric">0</div></div><div class="card"><div class="muted">In Transit</div><div id="transit" class="metric">0</div></div><div class="card"><div class="muted">At Risk</div><div id="risk" class="metric">0</div></div><div class="card"><div class="muted">Verified ETA</div><div id="eta" class="metric">0</div></div></div>
+<div class="actions"><button id="live">Sync Live Feed</button><button id="demo">Load Demo View</button><button id="flush">Flush Offline Queue</button></div>
+<div class="table"><table><thead><tr><th>Reference</th><th>Destination</th><th>Status</th><th>Severity</th><th>Exception</th><th>ETA</th><th>Verified Signals</th></tr></thead><tbody id="rows"><tr><td colspan="7" class="empty">No verified delivery intelligence available.</td></tr></tbody></table></div>
+<div class="notice">Safety takes precedence over delivery speed. This dashboard never invents live locations or ETAs. Demo records are explicitly marked by runtime mode. No automatic customer penalties, driver discipline, emergency dispatch or vehicle control are claimed.</div>
+</main>
+<script src="shelton-freight-delivery-intelligence.js"></script>
+<script>
+const $=id=>document.getElementById(id);
+function render(){const s=window.SHELTON_FREIGHT_DELIVERY.state,d=s.deliveries||[];$('mode').textContent=s.mode;$('deliveries').textContent=d.length;$('transit').textContent=d.filter(x=>x.status==='IN_TRANSIT'||x.status==='ARRIVING').length;$('risk').textContent=d.filter(x=>x.status==='AT_RISK'||x.status==='EXCEPTION').length;$('eta').textContent=d.filter(x=>x.eta?.status==='VERIFIED').length;$('rows').innerHTML=d.length?d.map(x=>`<tr><td>${x.reference||x.id||'—'}</td><td>${x.destination||'—'}</td><td><span class="pill">${x.status}</span></td><td>${x.severity}</td><td>${x.exception}</td><td>${x.eta?.status==='VERIFIED'?x.eta.value:'Unavailable'}</td><td>${x.verifiedSignals}</td></tr>`).join(''):`<tr><td colspan="7" class="empty">No verified delivery intelligence available.</td></tr>`}
+$('live').onclick=async()=>{await window.SHELTON_FREIGHT_DELIVERY.sync();render()};$('demo').onclick=()=>{window.SHELTON_FREIGHT_DELIVERY.loadDemo();render()};$('flush').onclick=async()=>{await window.SHELTON_FREIGHT_DELIVERY.flush();render()};render();
+</script></body></html>
