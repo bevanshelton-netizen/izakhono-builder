@@ -1,0 +1,34 @@
+{
+  "product": "IZAKHONO NAV",
+  "principle": "EVERY JOURNEY SHOULD BE SAFER BECAUSE IZAKHONO NAV IS PRESENT.",
+  "pillars": [
+    {"id":"driver-safety-guardian","name":"Driver Safety Guardian","status":"active-shell"},
+    {"id":"emergency-hijacking","name":"Emergency & Hijacking Response","status":"workflow-shell"},
+    {"id":"ai-driver-companion","name":"AI Driver Companion","status":"voice-shell"},
+    {"id":"navigation","name":"World-Class Navigation","status":"routing-shell"},
+    {"id":"safe-sports-audio","name":"Safe Sports Audio","status":"feature-shell"},
+    {"id":"vehicle-intelligence","name":"Vehicle Intelligence","status":"feature-shell"},
+    {"id":"african-road-intelligence","name":"African Road Intelligence","status":"architecture"},
+    {"id":"fleet-cit-security","name":"Fleet & CIT Security","status":"architecture"},
+    {"id":"offline-resilience","name":"Offline / Low-Connectivity Resilience","status":"architecture"},
+    {"id":"fortress","name":"FORTRESS Security Integration","status":"architecture"}
+  ],
+  "commercial_ladder": ["Consumer NAV","Fleet NAV","Secure Fleet","CIT","Enterprise Security","Government / Emergency Mobility"],
+  "safety_rules": [
+    "Safety takes priority over fastest-only routing.",
+    "Emergency workflows must never falsely imply live emergency dispatch until integrated and verified.",
+    "Hands-free interaction should minimize driver distraction.",
+    "Offline-ready behavior must preserve core journey state when connectivity drops.",
+    "External infrastructure must remain replaceable by IZAKHONO-owned infrastructure."
+  ],
+  "next_engineering_layers": [
+    "Persistent journey state",
+    "Real map rendering and route geometry",
+    "Safer-route scoring",
+    "African hazard intelligence ingestion",
+    "Offline map/cache layer",
+    "Trusted-contact emergency escalation",
+    "Fleet command dashboard",
+    "FORTRESS event bus"
+  ]
+}
