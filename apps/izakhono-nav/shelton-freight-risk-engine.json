@@ -1,0 +1,23 @@
+{
+  "product":"SHELTON FREIGHT",
+  "layer":"Automated Risk & Escalation Engine",
+  "version":"0.1",
+  "purpose":"Evaluate verified operational and security signals and recommend escalation without inventing incidents or taking unauthorized control actions.",
+  "principles":["verified_data_only","risk_accumulation","driver_safety_first","security_first","least_privilege","audit_every_decision","offline_resilient","no_fabricated_live_claims"],
+  "signal_classes":["panic","hijack_suspected","unauthorized_stop","route_deviation","geofence_breach","vehicle_tamper","driver_distress","security_check","security_clearance","connectivity_loss","verified_hazard","journey_exception"],
+  "severity_levels":["INFO","WATCH","HIGH","CRITICAL"],
+  "risk_bands":["NORMAL","WATCH","ELEVATED","HIGH","CRITICAL"],
+  "escalation_policy":{
+    "single_verified_critical":"CRITICAL",
+    "single_verified_high":"HIGH",
+    "multiple_watch_signals":"ELEVATED",
+    "security_signal_plus_route_deviation":"HIGH",
+    "driver_distress_plus_security_signal":"CRITICAL",
+    "unverified_signal":"MONITOR_ONLY",
+    "missing_live_feed":"UNKNOWN_NOT_CLEAR"
+  },
+  "actions":["monitor","request_driver_check_in","acknowledge","escalate_to_fleet_security","request_authorized_assistance","hold_journey_operations","close_after_verified_resolution"],
+  "prohibited_without_authenticated_integration":["emergency_dispatch","vehicle_lock_or_control","remote_engine_control","police_notification_claim","live_incident_claim"],
+  "status":"architecture_ready",
+  "live_risk_decisioning":false
+}
