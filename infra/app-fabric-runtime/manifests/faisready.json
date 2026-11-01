@@ -23,7 +23,7 @@
   "dependencies": {
     "crm": "izakhono-crm:faisready-scoped",
     "auth": "izakhono-core:faisready",
-    "payment": "ikokha-verified-checkout-links"
+    "payment": "iKhokha-verified-checkout-links"
   },
   "rollback": {
     "required": true,
