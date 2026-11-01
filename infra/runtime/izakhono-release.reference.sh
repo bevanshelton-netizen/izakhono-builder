@@ -163,6 +163,7 @@ case "$command" in
       atomic_copy "$release_dir/live.digest" "$release_dir/rollback.digest"
       [[ -f "$release_dir/live.source" ]] && atomic_copy "$release_dir/live.source" "$release_dir/rollback.source" || atomic_write "$release_dir/rollback.source" ""
       [[ -f "$release_dir/live.artifact" ]] && atomic_copy "$release_dir/live.artifact" "$release_dir/rollback.artifact" || atomic_write "$release_dir/rollback.artifact" "$live_digest"
+      atomic_write "$release_dir/rollback.mode" "verified"
     else
       atomic_write "$release_dir/rollback.mode" "none"
     fi
@@ -170,8 +171,8 @@ case "$command" in
     # Canonical LIVE state is committed atomically. The compatibility files
     # are written only after the canonical live.json is safely in place.
     live_tmp=$(mktemp "$release_dir/live.json.tmp.XXXXXX")
-    jq --arg source "$source" --arg artifact "$artifact" --arg image "$(cat "$release_dir/candidate.image")" \
-      '. + {release: (.release + {source: $source, artifact_digest: $artifact}), deployed_image: $image, rollback_mode: "'"$rollback_mode"'"}' \
+    jq --arg source "$source" --arg artifact "$artifact" --arg image "$(cat "$release_dir/candidate.image")" --arg rollback_mode "$rollback_mode" \
+      '. + {release: (.release + {source: $source, artifact_digest: $artifact}), deployed_image: $image, rollback_mode: $rollback_mode}' \
       "$release_dir/candidate.json" > "$live_tmp" || { rm -f "$live_tmp"; fail "failed to build LIVE state"; }
     mv -f "$live_tmp" "$release_dir/live.json"
     atomic_copy "$release_dir/candidate.image" "$release_dir/live.image"
