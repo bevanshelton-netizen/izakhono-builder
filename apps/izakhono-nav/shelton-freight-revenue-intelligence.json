@@ -1,0 +1,19 @@
+{
+  "product":"SHELTON FREIGHT",
+  "layer":"Fleet Revenue & Customer Account Intelligence v0.1",
+  "purpose":"Convert verified order, delivery, POD, invoicing and profitability signals into explainable customer-account and fleet-revenue intelligence.",
+  "principles":["verified_signals_only","revenue_truth_over_forecast","safety_over_revenue","explainable_metrics","human_review_for_commercial_actions","offline_resilient","no_fabricated_live_claims"],
+  "inputs":["order_to_cash","proof_of_delivery","delivery_intelligence","customer_experience","cost_intelligence","profitability_intelligence","connectivity_state"],
+  "metrics":["revenue_per_customer","revenue_per_journey","invoice_ready_rate","payment_status","outstanding_value","customer_margin","customer_lifetime_value","repeat_job_rate","account_growth","account_risk","revenue_trend"],
+  "bands":["GROWING","STABLE","WATCH","REVIEW","UNAVAILABLE"],
+  "rules":[
+    "only verified financial and operational signals may affect scored metrics",
+    "unverified or demo data cannot be presented as live revenue",
+    "safety or security events remain visible and cannot be hidden by commercial performance",
+    "insufficient verified history returns UNAVAILABLE",
+    "conflicting verified commercial signals return REVIEW",
+    "account risk never automatically blocks a customer or driver"
+  ],
+  "privacy":["minimize_personal_data","retain_operationally_required_fields","no_sensitive_attribute_inference"],
+  "production_status":{"architecture_ready":true,"live_revenue_intelligence":false}
+}
