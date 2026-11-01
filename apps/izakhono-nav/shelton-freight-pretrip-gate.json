@@ -1,0 +1,35 @@
+{
+  "product": "SHELTON FREIGHT NAV",
+  "component": "Pre-Trip Safety Gate",
+  "version": "0.1",
+  "purpose": "Prevent a freight journey from being marked ready until identity, vehicle, route, verified hazard, connectivity and security checks have been evaluated.",
+  "principles": [
+    "safety_first",
+    "driver_first",
+    "verified_data_only",
+    "fail_closed_for_critical_identity_failures",
+    "offline_resilient",
+    "no_live_claims_without_live_data"
+  ],
+  "checks": {
+    "driver_authorized": "required",
+    "vehicle_authorized": "required",
+    "driver_vehicle_compatible": "required",
+    "journey_assigned": "required",
+    "route_available": "required",
+    "verified_hazards_reviewed": "required",
+    "connectivity_status": "advisory",
+    "security_readiness": "required",
+    "vehicle_health": "advisory_until_live_telemetry"
+  },
+  "decision_states": ["READY", "HOLD", "BLOCKED", "PROVISIONAL"],
+  "rules": [
+    "Do not invent hazard, vehicle-health, emergency or security data.",
+    "Identity and authorization failures block departure.",
+    "Missing live hazard feed cannot be represented as a clean safety clearance.",
+    "Connectivity degradation is surfaced and does not by itself imply danger.",
+    "A provisional demo assessment must remain visibly marked DEMO/PROVISIONAL."
+  ],
+  "live_backend": false,
+  "deployment_status": "architecture_ready"
+}
