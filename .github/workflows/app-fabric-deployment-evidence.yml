@@ -1,0 +1,41 @@
+name: IZAKHONO Application Fabric Deployment Evidence
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'infra/app-fabric-runtime/**'
+      - '.github/workflows/app-fabric-deployment-evidence.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'infra/app-fabric-runtime/**'
+      - '.github/workflows/app-fabric-deployment-evidence.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  evidence-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Install jq
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y jq
+      - name: Verify evidence contract
+        run: |
+          chmod +x infra/app-fabric-runtime/deployment-evidence.sh infra/app-fabric-runtime/test-deployment-evidence.sh
+          bash infra/app-fabric-runtime/test-deployment-evidence.sh
+      - name: Reject LIVE state in repository evidence contract
+        run: |
+          set -euo pipefail
+          if grep -R -nE '"live"[[:space:]]*:[[:space:]]*true|status:[[:space:]]*"LIVE"' infra/app-fabric-runtime/runtime-evidence.example.json infra/app-fabric-runtime/deployment-evidence.sh; then
+            echo '[FAIL] Evidence contract must remain pre-promotion.'
+            exit 1
+          fi
+          echo '[PASS] Deployment evidence remains pre-promotion.'

@@ -1,0 +1,51 @@
+name: IZAKHONO Application Fabric Provisioner
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'infra/app-fabric-runtime/**'
+      - '.github/workflows/app-fabric-provisioner.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'infra/app-fabric-runtime/**'
+      - '.github/workflows/app-fabric-provisioner.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  provisioner-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Install jq
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y jq
+
+      - name: Validate application manifests
+        shell: bash
+        run: bash infra/app-fabric-runtime/validate-manifests.sh
+
+      - name: Verify universal provision pipeline
+        shell: bash
+        run: |
+          chmod +x infra/app-fabric-runtime/provisioner.sh infra/app-fabric-runtime/deploy-gate.sh infra/app-fabric-runtime/verify-provision-pipeline.sh
+          bash infra/app-fabric-runtime/verify-provision-pipeline.sh
+
+      - name: Verify no LIVE promotion is performed
+        shell: bash
+        run: |
+          set -euo pipefail
+          if grep -R -nE 'status:[[:space:]]*"LIVE"|live:[[:space:]]*true|PROMOTE|docker[[:space:]]+push|docker[[:space:]]+run' infra/app-fabric-runtime/provisioner.sh infra/app-fabric-runtime/deploy-gate.sh; then
+            echo '[FAIL] Repository-side provisioner must not perform LIVE promotion or container deployment.'
+            exit 1
+          fi
+          echo '[PASS] Provisioner remains fail-closed before physical owned-runtime deployment and LIVE promotion.'
