@@ -6,6 +6,7 @@
     "dev": "wrangler dev",
     "ai-agent:run": "node autonomy/ai-agent-worker.mjs",
     "ai-agent:test": "node autonomy/ai-agent-worker.test.mjs",
+    "credits-free:guard": "node autonomy/credits-free-guard.mjs",
     "software-node:instantiate": "node autonomy/software-node.mjs '{\"operation\":\"instantiate\"}'",
     "software-node:heartbeat": "node autonomy/software-node.mjs '{\"operation\":\"heartbeat\"}'",
     "software-node:inspect": "node autonomy/software-node.mjs '{\"operation\":\"inspect\"}'",
