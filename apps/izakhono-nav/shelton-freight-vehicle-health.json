@@ -1,0 +1,21 @@
+{
+  "product": "SHELTON FREIGHT",
+  "layer": "Vehicle Health & Predictive Maintenance Intelligence",
+  "version": "0.1",
+  "purpose": "Turn verified vehicle health and maintenance signals into explainable operational intelligence without inventing telemetry or taking autonomous vehicle control.",
+  "principles": ["verified_signals_only", "no_fabricated_telemetry", "safety_over_uptime", "human_review_for_grounding", "explainable_maintenance", "offline_resilient", "no_remote_vehicle_control"],
+  "inputs": ["vehicle_intelligence", "journey_intelligence", "safety_autopilot", "fleet_security_intelligence", "connectivity_state"],
+  "signals": ["mileage", "engine_hours", "engine_temperature", "battery_health", "tyre_pressure", "brake_wear", "fault_codes", "service_due", "inspection_status", "tamper"],
+  "health_states": ["HEALTHY", "WATCH", "SERVICE_DUE", "GROUNDED", "UNAVAILABLE"],
+  "maintenance_urgency": ["ROUTINE", "SOON", "URGENT", "CRITICAL"],
+  "rules": {
+    "critical_verified_fault": "CRITICAL",
+    "verified_service_due": "SERVICE_DUE",
+    "repeated_verified_warning": "WATCH",
+    "insufficient_verified_data": "UNAVAILABLE",
+    "single_unverified_signal": "NO_STATE_CHANGE",
+    "grounding": "RECOMMENDATION_ONLY_UNLESS_AUTHORIZED_POLICY_APPLIES"
+  },
+  "outputs": ["vehicle_health_state", "maintenance_urgency", "verified_fault_summary", "service_due_status", "journey_safety_recommendation", "maintenance_history", "audit_record"],
+  "production_status": {"architecture_ready": true, "live_vehicle_telemetry": false, "predictive_maintenance_live": false}
+}
