@@ -1,0 +1,99 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://izakhono.africa/schemas/stream/tenant-release-v1.json",
+  "title": "IZAKHONO STREAM Tenant Release",
+  "type": "object",
+  "required": ["schemaVersion", "tenant", "brand", "catalogue", "monetisation", "security", "apps"],
+  "properties": {
+    "schemaVersion": { "const": "1.0" },
+    "tenant": {
+      "type": "object",
+      "required": ["id", "name"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z0-9-]+$" },
+        "name": { "type": "string", "minLength": 2 }
+      },
+      "additionalProperties": false
+    },
+    "brand": {
+      "type": "object",
+      "required": ["displayName"],
+      "properties": {
+        "displayName": { "type": "string" },
+        "logo": { "type": "string" },
+        "primaryColor": { "type": "string" },
+        "secondaryColor": { "type": "string" },
+        "domain": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "catalogue": {
+      "type": "object",
+      "required": ["assets", "channels"],
+      "properties": {
+        "assets": { "type": "array", "items": { "$ref": "#/$defs/asset" } },
+        "channels": { "type": "array", "items": { "$ref": "#/$defs/channel" } }
+      },
+      "additionalProperties": false
+    },
+    "monetisation": {
+      "type": "object",
+      "required": ["models"],
+      "properties": {
+        "models": {
+          "type": "array",
+          "items": { "enum": ["FREE", "SVOD", "TVOD", "PPV", "AVOD", "FAST"] }
+        },
+        "currency": { "type": "string", "minLength": 3, "maxLength": 3 }
+      },
+      "additionalProperties": false
+    },
+    "security": {
+      "type": "object",
+      "required": ["signedPlayback", "fortressPolicy"],
+      "properties": {
+        "signedPlayback": { "type": "boolean" },
+        "fortressPolicy": { "type": "string" },
+        "drm": { "type": "array", "items": { "enum": ["WIDEVINE", "FAIRPLAY", "PLAYREADY"] } }
+      },
+      "additionalProperties": false
+    },
+    "apps": {
+      "type": "object",
+      "required": ["targets"],
+      "properties": {
+        "targets": {
+          "type": "array",
+          "items": { "enum": ["WEB", "PWA", "ANDROID", "IOS", "ANDROID_TV", "SAMSUNG_TV", "LG_WEBOS", "VIDAA", "ROKU", "FIRE_TV", "APPLE_TV"] }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "$defs": {
+    "asset": {
+      "type": "object",
+      "required": ["id", "title", "type"],
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "type": { "enum": ["MOVIE", "EPISODE", "CLIP", "LIVE_EVENT", "AUDIO"] },
+        "rightsStart": { "type": "string", "format": "date-time" },
+        "rightsEnd": { "type": "string", "format": "date-time" }
+      },
+      "additionalProperties": false
+    },
+    "channel": {
+      "type": "object",
+      "required": ["id", "name", "mode"],
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "mode": { "enum": ["LIVE", "LINEAR", "FAST"] },
+        "enabled": { "type": "boolean", "default": false }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}
