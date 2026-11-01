@@ -8,7 +8,7 @@
     {"id":"navigation","name":"World-Class Navigation","status":"routing-shell"},
     {"id":"safe-sports-audio","name":"Safe Sports Audio","status":"feature-shell"},
     {"id":"vehicle-intelligence","name":"Vehicle Intelligence","status":"feature-shell"},
-    {"id":"african-road-intelligence","name":"African Road Intelligence","status":"architecture"},
+    {"id":"african-road-intelligence","name":"African Road Intelligence","status":"scoring-foundation"},
     {"id":"fleet-cit-security","name":"Fleet & CIT Security","status":"architecture"},
     {"id":"offline-resilience","name":"Offline / Low-Connectivity Resilience","status":"architecture"},
     {"id":"fortress","name":"FORTRESS Security Integration","status":"architecture"}
@@ -19,12 +19,57 @@
     "Emergency workflows must never falsely imply live emergency dispatch until integrated and verified.",
     "Hands-free interaction should minimize driver distraction.",
     "Offline-ready behavior must preserve core journey state when connectivity drops.",
-    "External infrastructure must remain replaceable by IZAKHONO-owned infrastructure."
+    "External infrastructure must remain replaceable by IZAKHONO-owned infrastructure.",
+    "Never fabricate a road-risk score when verified hazard data is unavailable."
   ],
+  "route_scoring": {
+    "mode": "safety-first-baseline",
+    "status": "foundation",
+    "description": "A transparent scoring contract for comparing route alternatives before live African road-risk feeds are connected.",
+    "weights": {
+      "travel_time": 0.30,
+      "distance": 0.15,
+      "road_class": 0.20,
+      "verified_hazards": 0.25,
+      "connectivity_resilience": 0.10
+    },
+    "rules": [
+      "Verified hazards may increase route risk and trigger a safer alternative.",
+      "Road-class data may distinguish major roads from minor or unclassified roads when available.",
+      "Connectivity resilience should favor routes that retain navigation capability offline.",
+      "If hazard or road-class data is missing, mark the score as provisional rather than inventing certainty.",
+      "Fastest route is not automatically the recommended route."
+    ],
+    "risk_bands": [
+      {"id":"low","range":[0,24],"label":"LOW RISK"},
+      {"id":"guarded","range":[25,49],"label":"GUARDED"},
+      {"id":"elevated","range":[50,74],"label":"ELEVATED"},
+      {"id":"high","range":[75,100],"label":"HIGH RISK"}
+    ]
+  },
+  "african_road_intelligence": {
+    "status": "foundation",
+    "hazard_taxonomy": [
+      "flooding",
+      "potholes",
+      "road_closure",
+      "accident",
+      "fire",
+      "crime_hotspot",
+      "protest_or_civil_disruption",
+      "unsafe_road_segment",
+      "poor_lighting",
+      "weather_visibility",
+      "livestock_or_animal_crossing"
+    ],
+    "data_provenance_required": true,
+    "stale_data_must_be_flagged": true,
+    "future_sources": ["government feeds","municipal feeds","fleet telemetry","verified community reports","FORTRESS security events"]
+  },
   "next_engineering_layers": [
-    "Persistent journey state",
-    "Real map rendering and route geometry",
-    "Safer-route scoring",
+    "Persistent journey state — implemented",
+    "Real map rendering and route geometry — implemented",
+    "Safer-route scoring foundation — implemented",
     "African hazard intelligence ingestion",
     "Offline map/cache layer",
     "Trusted-contact emergency escalation",
