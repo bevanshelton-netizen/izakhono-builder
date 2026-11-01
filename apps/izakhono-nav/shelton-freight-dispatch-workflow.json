@@ -1,0 +1,29 @@
+{
+  "product": "SHELTON FREIGHT COMMAND",
+  "module": "Driver Dispatch Workflow",
+  "version": "0.2",
+  "workflow": [
+    "select_driver",
+    "select_vehicle",
+    "select_journey",
+    "validate_identity",
+    "validate_assignment",
+    "run_pre_trip_safety_gate",
+    "evaluate_security_and_connectivity",
+    "dispatch_or_hold",
+    "record_audit_event"
+  ],
+  "decision_policy": {
+    "BLOCKED": "do_not_depart",
+    "HOLD": "do_not_depart_yet",
+    "PROVISIONAL": "do_not_depart_yet_without_authorized_operational_override",
+    "READY": "eligible_for_dispatch"
+  },
+  "data_integrity": {
+    "live_api_first": true,
+    "demo_fallback": true,
+    "demo_must_be_explicit": true,
+    "fabricated_live_safety_claims": false
+  },
+  "status": "workflow_connected"
+}
