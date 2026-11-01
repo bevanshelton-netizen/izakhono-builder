@@ -15,7 +15,7 @@ grep -q 'RELEASE_ADAPTER' "$SCRIPT" || { echo '[FAIL] release adapter verificati
 
 # The collector requires root, live runtime checks, HTTPS, exact digest and
 # explicit independent acceptance, so it cannot pass in a repository runner.
-if grep -Eq 'status[[:space:]]*[:=][[:space:]]*["'"']LIVE|live["'"']?[[:space:]]*:[[:space:]]*true' "$SCRIPT"; then
+if grep -Eq "status[[:space:]]*[:=][[:space:]]*['\"]LIVE|live['\"]?[[:space:]]*:[[:space:]]*true" "$SCRIPT"; then
   echo '[FAIL] collector contains a LIVE=true path'
   exit 1
 fi
