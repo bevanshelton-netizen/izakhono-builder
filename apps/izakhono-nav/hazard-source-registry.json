@@ -1,0 +1,50 @@
+{
+  "version": "0.1",
+  "purpose": "Controlled registry for verified IZAKHONO NAV hazard-source adapters.",
+  "policy": {
+    "default_state": "disabled",
+    "never_invent_events": true,
+    "require_provider_identity": true,
+    "require_timestamp": true,
+    "require_provenance": true,
+    "stale_after_hours": 24,
+    "high_risk_requires_verified_source": true
+  },
+  "sources": [
+    {
+      "id": "municipal_road_authority",
+      "class": "municipal_and_road_authority_feeds",
+      "status": "adapter-ready",
+      "enabled": false,
+      "description": "Approved road closures, flooding, road-surface and infrastructure incidents from participating authorities."
+    },
+    {
+      "id": "verified_emergency_services",
+      "class": "verified_emergency_services",
+      "status": "adapter-ready",
+      "enabled": false,
+      "description": "Verified emergency-service incidents and road-impact events where an approved integration exists."
+    },
+    {
+      "id": "approved_fleet_partner",
+      "class": "approved_fleet_partners",
+      "status": "adapter-ready",
+      "enabled": false,
+      "description": "Operational observations from approved fleet partners, subject to validation and provenance rules."
+    },
+    {
+      "id": "fortress_security",
+      "class": "FORTRESS_security_events",
+      "status": "adapter-ready",
+      "enabled": false,
+      "description": "Security events supplied by an authenticated FORTRESS integration."
+    },
+    {
+      "id": "verified_community",
+      "class": "verified_community_reports",
+      "status": "adapter-ready",
+      "enabled": false,
+      "description": "Community reports only after verification, deduplication and freshness checks."
+    }
+  ]
+}
