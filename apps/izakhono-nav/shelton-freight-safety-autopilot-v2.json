@@ -1,0 +1,25 @@
+{
+  "product": "SHELTON FREIGHT",
+  "layer": "Driver & Fleet Safety Autopilot v0.2",
+  "purpose": "Continuously evaluate verified journey, driver, vehicle, security, connectivity and hazard signals and initiate controlled safety workflows without inventing live conditions.",
+  "principles": ["verified_signals_only","least_privilege","human_authorized_control","audit_every_action","offline_resilient","cooldown_against_alert_storms","unknown_is_not_safe","no_fabricated_live_claims"],
+  "inputs": ["journey_state","driver_checkin","vehicle_state","route_deviation","geofence_state","connectivity_state","verified_hazard","risk_engine","fleet_security_intelligence","FORTRESS"],
+  "workflow": ["OBSERVE","CHECK_IN","TRIAGE","ESCALATE","HOLD_OPERATIONS","AUTHORIZED_ASSISTANCE","RESOLVE","CLOSED"],
+  "rules": {
+    "verified_critical": "ESCALATE",
+    "driver_distress_plus_security": "ESCALATE",
+    "verified_high": "TRIAGE",
+    "multiple_verified_watch": "CHECK_IN",
+    "driver_checkin_timeout": "CHECK_IN",
+    "route_deviation_plus_security": "TRIAGE",
+    "connectivity_loss": "OBSERVE_AND_QUEUE",
+    "unverified_or_demo": "OBSERVE",
+    "missing_live_feed": "OBSERVE"
+  },
+  "cooldown": {"same_signal_seconds": 300, "same_vehicle_seconds": 180, "critical_override": true},
+  "offline": {"queue_actions": true, "replay_on_reconnect": true, "preserve_timestamps": true},
+  "prohibited_without_authenticated_integration": ["emergency_dispatch","police_notification_claim","remote_vehicle_control","remote_engine_control","vehicle_lockdown_claim"],
+  "audit": {"required": true, "fields": ["timestamp","vehicle_id","journey_id","signal","severity","workflow","action","operator","mode","reason"]},
+  "modes": ["LIVE","DEMO","UNAVAILABLE"],
+  "production_status": {"architecture_ready": true, "live_autopilot": false}
+}
