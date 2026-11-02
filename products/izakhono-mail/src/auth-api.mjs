@@ -1,8 +1,10 @@
 import http from 'node:http';
 import { createUser, login, revoke } from './auth.mjs';
+import { provisionMailbox } from './mailbox-provisioner.mjs';
 
 const host = process.env.MAIL_AUTH_LISTEN_HOST || '127.0.0.1';
 const port = Number(process.env.MAIL_AUTH_LISTEN_PORT || 8789);
+const ownerToken = process.env.MAIL_API_TOKEN || '';
 
 function json(res, status, body, extra = {}) {
   res.writeHead(status, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store', ...extra });
@@ -14,6 +16,9 @@ async function body(req) {
   return chunks.length ? JSON.parse(Buffer.concat(chunks).toString('utf8')) : {};
 }
 function token(req) { const h=String(req.headers.authorization||''); return h.startsWith('Bearer ')?h.slice(7):''; }
+function requireOwner(req) {
+  if (!ownerToken || token(req) !== ownerToken) throw Object.assign(new Error('owner_authorization_required'), { statusCode: 401 });
+}
 
 export function startAuthApi() {
   const server = http.createServer(async (req,res) => {
@@ -21,8 +26,15 @@ export function startAuthApi() {
     try {
       if (req.method==='GET' && path==='/healthz') return json(res,200,{ok:true,service:'izakhono-mail-auth'});
       if (req.method==='POST' && path==='/v1/auth/bootstrap') {
+        requireOwner(req);
         const input=await body(req);
-        return json(res,201,{ok:true,user:createUser({address:input.address,password:input.password,displayName:input.display_name||'Bevan Shelton'})});
+        return json(res,201,{ok:true,user:createUser({address:input.address,password:input.password,displayName:input.display_name||''})});
+      }
+      if (req.method==='POST' && path==='/v1/mailboxes/provision') {
+        requireOwner(req);
+        const input=await body(req);
+        const result=await provisionMailbox({platform:input.platform,mailbox:input.mailbox,displayName:input.display_name||''});
+        return json(res,result.ok?201:409,result);
       }
       if (req.method==='POST' && path==='/v1/auth/login') {
         const input=await body(req); const result=login({address:input.address,password:input.password});
@@ -34,7 +46,8 @@ export function startAuthApi() {
       return json(res,404,{ok:false,error:'not_found'});
     } catch(error) {
       const message=String(error?.message||error);
-      return json(res,message==='body_too_large'?413:message==='Invalid credentials'?401:400,{ok:false,error:message});
+      const status=error?.statusCode || (message==='body_too_large'?413:message==='Invalid credentials'?401:400);
+      return json(res,status,{ok:false,error:message});
     }
   });
   server.listen(port,host,()=>console.log(`[IZAKHONO MAIL] auth API listening on ${host}:${port}`));
