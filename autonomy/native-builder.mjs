@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { execFileSync } from 'node:child_process';
 
 const root = process.cwd();
 const manifestPath = path.join(root, 'autonomy', 'engine-manifest.json');
@@ -17,6 +18,25 @@ function hasProjectScaffold() {
     && fs.existsSync(path.join(root, 'autonomy'));
 }
 
+function workspace(task) {
+  const safeId = String(task.planId || task.id || 'anonymous-plan').replace(/[^a-zA-Z0-9_-]/g, '_');
+  return path.join(root, 'autonomy', 'build-artifacts', safeId);
+}
+
+function writeJson(file, value) {
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(file, JSON.stringify(value, null, 2) + '\n');
+}
+
+function writeText(file, value) {
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(file, value);
+}
+
+function artifactDetails(dir) {
+  return { artifactPath: path.relative(root, dir), portable: true, providerNeutral: true };
+}
+
 /**
  * IZAKHONO-native builder capability.
  *
@@ -26,6 +46,7 @@ function hasProjectScaffold() {
  */
 export async function runNativeBuilder(task) {
   const action = task.action;
+  const dir = workspace(task);
 
   if (action === 'adapter-contract') {
     const manifest = readManifest();
@@ -58,29 +79,55 @@ export async function runNativeBuilder(task) {
   }
 
   if (action === 'plan-only') {
+    fs.mkdirSync(dir, { recursive: true });
+    writeJson(path.join(dir, 'architecture.json'), {
+      schema: 'izakhono.build-architecture/v1',
+      planId: task.planId,
+      goal: task.goal || task.title,
+      stage: 'architecture',
+      provider: 'izakhono-native',
+      acceptance: task.evidence || [],
+      createdAt: new Date().toISOString(),
+    });
     return {
       status: 'completed',
       provider: 'izakhono-native',
-      evidence: evidence('architecture-recorded'),
+      evidence: evidence('architecture-recorded', artifactDetails(dir)),
+      ...artifactDetails(dir),
     };
   }
 
   if (action === 'builder-scaffold') {
     if (!hasProjectScaffold()) return { status: 'failed', reason: 'project-scaffold-missing' };
+    fs.mkdirSync(dir, { recursive: true });
+    writeJson(path.join(dir, 'package.json'), {
+      name: `izakhono-build-${String(task.planId || 'artifact').slice(0, 12)}`,
+      private: true,
+      version: '0.1.0',
+      type: 'module',
+      scripts: { 'syntax-check': 'node --check index.mjs' },
+    });
+    writeText(path.join(dir, 'index.mjs'), `export const build = ${JSON.stringify({ planId: task.planId, goal: task.goal || task.title })};\n`);
+    writeText(path.join(dir, 'README.md'), `# IZAKHONO Native Build\n\nGoal: ${task.goal || task.title}\n\nThis artifact was scaffolded by the IZAKHONO-native Builder without an external AI-credit dependency.\n`);
     return {
       status: 'completed',
       provider: 'izakhono-native',
-      evidence: evidence('scaffold-recorded', { packageManifest: true, autonomyControlPlane: true }),
+      evidence: evidence('scaffold-created', { packageManifest: true, entrypoint: true, readme: true }),
+      ...artifactDetails(dir),
     };
   }
 
   if (action === 'builder-validate') {
-    if (!hasProjectScaffold()) return { status: 'failed', reason: 'project-scaffold-missing' };
-    readManifest();
+    if (!fs.existsSync(path.join(dir, 'package.json')) || !fs.existsSync(path.join(dir, 'index.mjs'))) {
+      return { status: 'failed', reason: 'native-scaffold-missing' };
+    }
+    JSON.parse(fs.readFileSync(path.join(dir, 'package.json'), 'utf8'));
+    JSON.parse(fs.readFileSync(path.join(dir, 'architecture.json'), 'utf8'));
     return {
       status: 'completed',
       provider: 'izakhono-native',
-      evidence: evidence('structure-validated'),
+      evidence: evidence('structure-validated', { architecture: true, packageManifest: true, entrypoint: true }),
+      ...artifactDetails(dir),
     };
   }
 
@@ -92,28 +139,44 @@ export async function runNativeBuilder(task) {
     if (manifest.policy?.productionClaimsRequireEvidence !== true) {
       return { status: 'failed', reason: 'production-evidence-policy-missing' };
     }
+    if (!fs.existsSync(path.join(dir, 'index.mjs'))) return { status: 'failed', reason: 'native-scaffold-missing' };
     return {
       status: 'completed',
       provider: 'izakhono-native',
-      evidence: evidence('security-gate-passed'),
+      evidence: evidence('security-gate-passed', { creditsFree: true, productionEvidenceRequired: true }),
+      ...artifactDetails(dir),
     };
   }
 
   if (action === 'builder-test') {
-    if (!hasProjectScaffold()) return { status: 'failed', reason: 'project-scaffold-missing' };
+    if (!fs.existsSync(path.join(dir, 'index.mjs'))) return { status: 'failed', reason: 'native-scaffold-missing' };
+    execFileSync(process.execPath, ['--check', path.join(dir, 'index.mjs')], { cwd: root, stdio: 'pipe' });
     return {
       status: 'completed',
       provider: 'izakhono-native',
-      evidence: evidence('tests-passed', { deterministicControlPlane: true }),
+      evidence: evidence('tests-passed', { syntaxCheck: true, deterministicControlPlane: true }),
+      ...artifactDetails(dir),
     };
   }
 
   if (action === 'builder-package') {
-    if (!hasProjectScaffold()) return { status: 'failed', reason: 'project-scaffold-missing' };
+    if (!fs.existsSync(path.join(dir, 'package.json')) || !fs.existsSync(path.join(dir, 'index.mjs'))) {
+      return { status: 'failed', reason: 'native-artifact-missing' };
+    }
+    writeJson(path.join(dir, 'build-result.json'), {
+      schema: 'izakhono.build-result/v1',
+      planId: task.planId,
+      goal: task.goal || task.title,
+      status: 'verified-package',
+      provider: 'izakhono-native',
+      credits: false,
+      generatedAt: new Date().toISOString(),
+    });
     return {
       status: 'completed',
       provider: 'izakhono-native',
-      evidence: evidence('artifact-recorded', { portable: true, providerNeutral: true }),
+      evidence: evidence('artifact-packaged', { buildResult: true, portable: true, providerNeutral: true }),
+      ...artifactDetails(dir),
     };
   }
 
