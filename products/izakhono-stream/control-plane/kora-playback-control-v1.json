@@ -1,0 +1,14 @@
+{
+  "tenantId": "kora-network",
+  "assetId": "asset-demo-001",
+  "userId": "viewer-001",
+  "planId": "free",
+  "device": { "id": "device-001", "platform": "WEB", "drm": "NONE" },
+  "context": {
+    "entitlement": true,
+    "deviceAllowed": true,
+    "hlsManifestUrl": "ref://hls/kora-network/asset-demo-001/master.m3u8",
+    "playbackToken": "reference-short-lived-token"
+  },
+  "expected": { "decision": "AUTHORIZED", "manifestUrl": "ref://hls/kora-network/asset-demo-001/master.m3u8" }
+}
