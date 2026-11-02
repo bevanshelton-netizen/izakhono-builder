@@ -1,0 +1,86 @@
+{
+  "product": "IZAKHONO NAV",
+  "layer": "Vehicle Integration Layer v0.1",
+  "status": "architecture_ready",
+  "purpose": "Provide a vendor-neutral, hardware-optional integration boundary between IZAKHONO NAV, authorized vehicle data systems, FORTRESS security workflows and the wider mobility intelligence platform.",
+  "principles": [
+    "hardware_optional",
+    "infotainment_is_not_the_security_single_point_of_failure",
+    "authorized_integrations_only",
+    "verified_vehicle_state_only",
+    "safety_over_security_automation",
+    "no_sudden_immobilization_while_moving",
+    "human_authorized_security_actions",
+    "audit_every_action",
+    "offline_resilient",
+    "no_fabricated_live_claims"
+  ],
+  "integration_sources": [
+    "manufacturer_authorized_telematics_api",
+    "authorized_vehicle_gateway",
+    "approved_vehicle_data_interface",
+    "third_party_telematics",
+    "approved_security_tracker",
+    "smartphone_and_supported_navigation_interfaces"
+  ],
+  "communication_states": [
+    "CONNECTED",
+    "DEGRADED",
+    "COMMUNICATION_LOST",
+    "RECOVERED",
+    "UNAVAILABLE"
+  ],
+  "vehicle_context": [
+    "vehicle_id",
+    "integration_id",
+    "connection_state",
+    "movement_state",
+    "last_verified_position",
+    "last_verified_timestamp",
+    "vehicle_health_state",
+    "security_state",
+    "journey_id"
+  ],
+  "security_rules": {
+    "communication_lost": "record_last_verified_state_and_apply_configured_monitoring_policy",
+    "verified_security_event": "route_through_fortress_and_authorized_command_workflow",
+    "vehicle_moving": "never_request_sudden_engine_shutdown_or_immobilization",
+    "vehicle_stationary": "authorized_integration_may_request_supported_secure_state",
+    "infotainment_removed": "treat_as_interface_or_communication_state_change_not_vehicle_safe_state",
+    "recovery": "revalidate_identity_and_vehicle_state_before_restoring_trust"
+  },
+  "prohibited_without_authenticated_integration": [
+    "remote_engine_shutdown",
+    "remote_engine_control",
+    "automatic_immobilization",
+    "vehicle_lockdown_claim",
+    "police_notification_claim",
+    "emergency_dispatch_claim"
+  ],
+  "data_integrity": [
+    "verified_only_for_operational_claims",
+    "no_fabricated_gps",
+    "no_fabricated_vehicle_state",
+    "no_fabricated_security_incident",
+    "source_timestamp_required",
+    "source_identity_required",
+    "audit_required"
+  ],
+  "api": {
+    "GET": [
+      "/api/nav/vehicle-integration",
+      "/api/nav/vehicle-integration/state"
+    ],
+    "POST": [
+      "/api/nav/vehicle-integration/events",
+      "/api/nav/vehicle-integration/authorize",
+      "/api/nav/vehicle-integration/revalidate"
+    ]
+  },
+  "multimodal_scope": ["LAND", "SEA", "AIR"],
+  "production_status": {
+    "architecture_ready": true,
+    "live_vehicle_control": false,
+    "manufacturer_integrations_required_for_deeper_control": true
+  }
+}
