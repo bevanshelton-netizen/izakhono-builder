@@ -1,0 +1,6 @@
+{
+  "input": "provider_webhook",
+  "steps": ["tenant_validation", "signature_verification", "replay_detection", "entitlement_translation", "durable_upsert"],
+  "output": "entitlement_transition",
+  "playback": "must_revalidate"
+}

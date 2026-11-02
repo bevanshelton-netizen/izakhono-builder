@@ -1,0 +1,8 @@
+{
+  "flow": "SIGNED_WEBHOOK_VERIFY_DEDUPE_TRANSLATE_UPSERT_PLAYBACK_RECHECK",
+  "tenantIsolation": true,
+  "replayKey": ["tenantId", "provider", "eventId"],
+  "entitlementKey": ["tenantId", "provider", "transactionId"],
+  "activeStatus": "PAID",
+  "revokedStatuses": ["REFUNDED", "CANCELLED", "FAILED"]
+}
