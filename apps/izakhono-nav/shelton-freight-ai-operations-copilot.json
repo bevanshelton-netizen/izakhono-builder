@@ -1,0 +1,73 @@
+{
+  "product": "SHELTON FREIGHT",
+  "layer": "AI Operations Copilot v0.1",
+  "purpose": "Provide explainable AI-style operational intelligence above the command, control and executive layers without inventing live facts.",
+  "principles": [
+    "verified_inputs_only_for_operational_claims",
+    "safety_and_security_first",
+    "explainable_recommendations",
+    "human_authorization_for_actions",
+    "demo_and_unverified_data_never_presented_as_live",
+    "offline_resilient",
+    "audit_every_recommendation",
+    "no_fabricated_live_claims"
+  ],
+  "inputs": [
+    "digital_twin",
+    "operations_event_bus",
+    "rules_decision_engine",
+    "command_automation",
+    "fleet_security_intelligence",
+    "risk_engine",
+    "driver_safety_coach",
+    "vehicle_health",
+    "maintenance_workshop",
+    "delivery_intelligence",
+    "customer_service",
+    "revenue_intelligence",
+    "corridor_intelligence",
+    "executive_control_tower",
+    "connectivity_state"
+  ],
+  "outputs": [
+    "situation_summary",
+    "priority_explanation",
+    "why_it_matters",
+    "recommended_next_action",
+    "authorization_requirement",
+    "impacted_entities",
+    "confidence_and_data_quality",
+    "evidence_references",
+    "ceo_daily_brief",
+    "dispatcher_brief"
+  ],
+  "modes": ["LIVE", "DEMO", "UNAVAILABLE"],
+  "rules": {
+    "verified_required": true,
+    "unverified_demo_excluded_from_real_recommendations": true,
+    "safety_security_outrank_cost_revenue": true,
+    "recommendations_advisory_until_authorized": true,
+    "human_authorization_required_for_adverse_or_commercial_actions": true,
+    "audit_explanations": true,
+    "no_emergency_dispatch_claim": true,
+    "no_police_notification_claim": true,
+    "no_remote_vehicle_control": true,
+    "no_vehicle_lockdown_claim": true,
+    "no_automatic_driver_discipline": true
+  },
+  "api": {
+    "read": [
+      "GET /api/freight/ai-operations-copilot",
+      "GET /api/freight/ai-operations-copilot/brief"
+    ],
+    "write": [
+      "POST /api/freight/ai-operations-copilot/ask",
+      "POST /api/freight/ai-operations-copilot/recommendations"
+    ]
+  },
+  "production_status": {
+    "architecture_ready": true,
+    "live_ai_provider_connected": false,
+    "live_copilot": false
+  }
+}
