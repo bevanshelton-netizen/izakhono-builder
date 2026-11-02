@@ -1,16 +1,18 @@
-name: IZAKHONO NODE01 Physical Acceptance Collector
+name: IZAKHONO Logical Runtime Acceptance Collector
 
 on:
   pull_request:
     paths:
       - 'infra/app-fabric-runtime/node01-physical-acceptance.sh'
       - 'infra/app-fabric-runtime/test-node01-physical-acceptance.sh'
+      - 'infra/app-fabric-runtime/runtime-binding.example.json'
       - '.github/workflows/node01-physical-acceptance.yml'
   push:
     branches: [main]
     paths:
       - 'infra/app-fabric-runtime/node01-physical-acceptance.sh'
       - 'infra/app-fabric-runtime/test-node01-physical-acceptance.sh'
+      - 'infra/app-fabric-runtime/runtime-binding.example.json'
       - '.github/workflows/node01-physical-acceptance.yml'
   workflow_dispatch:
 
@@ -22,5 +24,5 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - name: Verify collector contract
+      - name: Verify logical runtime acceptance contract
         run: bash infra/app-fabric-runtime/test-node01-physical-acceptance.sh
