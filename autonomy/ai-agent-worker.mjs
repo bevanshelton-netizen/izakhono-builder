@@ -20,7 +20,7 @@ function writeJson(file, value) {
   fs.renameSync(tmp, file);
 }
 
-async function execute(step) {
+async function execute(step, plan) {
   const nodeActions = new Set([
     'node-discovery',
     'software-node-instantiation',
@@ -55,7 +55,12 @@ async function execute(step) {
   ]);
 
   if (nativeBuilderActions.has(step.action)) {
-    return runBuilderAdapter({ ...step, action: step.action });
+    return runBuilderAdapter({
+      ...step,
+      action: step.action,
+      planId: plan.planId,
+      goal: plan.goal,
+    });
   }
 
   return { status: 'waiting', reason: `unsupported-agent-action:${step.action}` };
@@ -69,6 +74,7 @@ function applyResult(step, result) {
     step.result = result;
     step.evidenceResult = evidence;
     if (result.selectedNode) step.selectedNode = result.selectedNode;
+    if (result.artifactPath) step.artifactPath = result.artifactPath;
     return 'completed';
   }
 
@@ -104,9 +110,6 @@ export async function runAgentWorker() {
     item.status = 'running';
     plan.status = 'running';
 
-    // Drain all dependency-ready native work in this invocation. External
-    // capability waits still stop the plan safely; the next scheduled worker
-    // invocation can resume it after the capability becomes available.
     const maxStepsPerPlan = Math.max(1, Number(process.env.IZAKHONO_AGENT_MAX_STEPS_PER_RUN || 25));
     let stepsThisPlan = 0;
 
@@ -116,7 +119,7 @@ export async function runAgentWorker() {
 
       step.status = 'running';
       step.startedAt = new Date().toISOString();
-      const result = await execute(step);
+      const result = await execute(step, plan);
       applyResult(step, result);
       progressed += 1;
       stepsThisPlan += 1;
