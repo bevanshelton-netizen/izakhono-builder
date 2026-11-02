@@ -1,0 +1,48 @@
+{
+  "product": "IZAKHONO NAV",
+  "layer": "Driver Companion AI Voice Provider v0.1",
+  "status": "architecture_ready",
+  "purpose": "Provide a secure server-side conversational AI boundary for driver-initiated NAV voice sessions without exposing provider credentials to the client.",
+  "principles": [
+    "driver_initiated_only",
+    "provider_credentials_server_side_only",
+    "verified_operational_context_only",
+    "safety_first",
+    "privacy_minimization",
+    "no_fabricated_fatigue_detection",
+    "no_autonomous_vehicle_control",
+    "provider_agnostic",
+    "offline_resilient"
+  ],
+  "client_contract": {
+    "request": ["session_id", "messages", "context"],
+    "response": ["text", "safety_state", "recommended_action", "provider", "request_id"]
+  },
+  "environment": {
+    "IZAKHONO_AI_CHAT_ENDPOINT": "required server-side provider endpoint",
+    "IZAKHONO_AI_API_KEY": "required server-side secret",
+    "IZAKHONO_AI_MODEL": "optional provider model identifier"
+  },
+  "default_behavior": {
+    "no_provider_configured": "UNAVAILABLE",
+    "provider_failure": "return safe local response and mark provider unavailable",
+    "driver_reports_falling_asleep": "recommend_safe_stop_and_offer_configured_safety_workflow",
+    "driver_reports_immediate_danger": "offer_configured_safety_escalation",
+    "ordinary_conversation": "respond naturally without unsolicited fatigue questioning"
+  },
+  "prohibited": [
+    "client_side_api_keys",
+    "automatic_microphone_activation",
+    "automatic_fatigue_diagnosis",
+    "emergency_dispatch_claim",
+    "police_notification_claim",
+    "remote_vehicle_control",
+    "remote_engine_control",
+    "automatic_immobilization"
+  ],
+  "production_status": {
+    "provider_adapter_ready": true,
+    "provider_credentials_configured": false,
+    "live_conversation_verified": false
+  }
+}
