@@ -5,9 +5,9 @@ set -euo pipefail
 # The physical/virtual runtime host is separate and must never be inferred as NODE01.
 NODE_ID="${IZAKHONO_NODE_ID:-NODE01}"
 RUNTIME_HOST="${IZAKHONO_RUNTIME_HOST_NAME:-$(hostname -s)}"
-RELEASE_VERSION="${IZAKONO_RELEASE_VERSION:-unknown}"
-RELEASE_ID="${IZAKONO_RELEASE_ID:-unknown}"
-SCHEMA_VERSION="${IZAKONO_SCHEMA_VERSION:-unknown}"
+RELEASE_VERSION="${IZAKHONO_RELEASE_VERSION:-unknown}"
+RELEASE_ID="${IZAKHONO_RELEASE_ID:-unknown}"
+SCHEMA_VERSION="${IZAKHONO_SCHEMA_VERSION:-unknown}"
 
 case "$NODE_ID" in
   NODE01|NODE02|NODE03|NODE04) ;;
