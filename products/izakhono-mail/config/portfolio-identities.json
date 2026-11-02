@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "managed_by": "NODE01",
+  "policy": "owned-first",
+  "status": "pending_domain_verification",
+  "identities": [
+    {"platform":"IZAKHONO","domain":null,"mailboxes":["info","admin","accounts","sales","support","ceo"]},
+    {"platform":"KORA NETWORK","domain":null,"mailboxes":["info","admin","support","content","partnerships","funding"]},
+    {"platform":"Edu-Build Institute","domain":"edubuildshelton.org.za","mailboxes":["info","admissions","accounts","support"]},
+    {"platform":"I-CONNECT","domain":null,"mailboxes":["info","sales","support"]},
+    {"platform":"IZAKHONO NAV","domain":null,"mailboxes":["info","support","fleet","enterprise"]},
+    {"platform":"FAISReady","domain":null,"mailboxes":["info","support","sales"]},
+    {"platform":"Allegro","domain":null,"mailboxes":["info","support","artists","partnerships"]},
+    {"platform":"Classique Furniture","domain":null,"mailboxes":["info","sales"]},
+    {"platform":"KG Industrial","domain":null,"mailboxes":["info","operations"]},
+    {"platform":"Free Bird Agri-Quip","domain":null,"mailboxes":["info","sales"]}
+  ],
+  "rules": {
+    "never_create_without_verified_domain": true,
+    "never_store_mail_passwords_in_git": true,
+    "external_relay_is_fallback_only": true,
+    "idempotent_provisioning": true
+  }
+}
