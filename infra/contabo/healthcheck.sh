@@ -1,10 +1,18 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-NODE_ID="${IZAKHONO_NODE_ID:-CONTABO-VPS-01}"
+# NODE01-NODE04 are portable logical software/runtime identities.
+# The physical/virtual runtime host is separate and must never be inferred as NODE01.
+NODE_ID="${IZAKHONO_NODE_ID:-NODE01}"
+RUNTIME_HOST="${IZAKHONO_RUNTIME_HOST_NAME:-$(hostname -s)}"
 RELEASE_VERSION="${IZAKHONO_RELEASE_VERSION:-unknown}"
 RELEASE_ID="${IZAKHONO_RELEASE_ID:-unknown}"
 SCHEMA_VERSION="${IZAKHONO_SCHEMA_VERSION:-unknown}"
+
+case "$NODE_ID" in
+  NODE01|NODE02|NODE03|NODE04) ;;
+  *) echo "Invalid logical runtime identity: $NODE_ID" >&2; exit 2 ;;
+esac
 
 fail=0
 check() {
@@ -29,6 +37,9 @@ cat <<JSON
 {
   "product": "IZAKHONO Runtime Fabric",
   "nodeId": "${NODE_ID}",
+  "identityType": "software-runtime",
+  "runtimeHost": "${RUNTIME_HOST}",
+  "runtimeHostIsSeparate": true,
   "releaseVersion": "${RELEASE_VERSION}",
   "releaseId": "${RELEASE_ID}",
   "schemaVersion": "${SCHEMA_VERSION}",
