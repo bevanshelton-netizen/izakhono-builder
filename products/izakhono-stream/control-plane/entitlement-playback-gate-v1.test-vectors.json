@@ -1,0 +1,33 @@
+{
+  "version": "1.0",
+  "tenantId": "kora-network",
+  "cases": [
+    {
+      "name": "active entitlement authorizes playback",
+      "entitlement": {"status":"ACTIVE","startsAt":"2026-11-01T00:00:00Z","endsAt":"2026-12-01T00:00:00Z"},
+      "deviceAllowed": true,
+      "expected": "AUTHORIZED"
+    },
+    {
+      "name": "revoked entitlement denies playback",
+      "entitlement": {"status":"REVOKED","startsAt":"2026-11-01T00:00:00Z"},
+      "deviceAllowed": true,
+      "expected": "DENIED",
+      "reason": "ENTITLEMENT_REVOKED"
+    },
+    {
+      "name": "expired entitlement denies playback",
+      "entitlement": {"status":"ACTIVE","startsAt":"2026-11-01T00:00:00Z","endsAt":"2026-11-02T00:00:00Z"},
+      "deviceAllowed": true,
+      "expected": "DENIED",
+      "reason": "ENTITLEMENT_EXPIRED"
+    },
+    {
+      "name": "blocked device never receives media grant",
+      "entitlement": {"status":"ACTIVE","startsAt":"2026-11-01T00:00:00Z"},
+      "deviceAllowed": false,
+      "expected": "DENIED",
+      "reason": "DEVICE_POLICY_DENIED"
+    }
+  ]
+}
