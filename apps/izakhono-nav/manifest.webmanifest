@@ -1,0 +1,12 @@
+{
+  "name": "IZAKHONO NAV",
+  "short_name": "NAV",
+  "description": "Safety-first mobility for African roads and global journeys.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f7faf9",
+  "theme_color": "#f7faf9",
+  "icons": []
+}
