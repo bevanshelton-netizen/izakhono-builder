@@ -1,0 +1,15 @@
+{
+  "product":"SHELTON FREIGHT",
+  "layer":"Operations Event Bus v0.1",
+  "purpose":"Provide a verified, auditable event backbone that connects freight intelligence engines and the digital twin without inventing live operational state.",
+  "principles":["verified_signals_only","event_contract_first","idempotent_processing","safety_over_commercial_optimization","least_privilege","audit_every_action","offline_resilient","no_fabricated_live_claims"],
+  "event_envelope":{"event_id":"string","event_type":"string","occurred_at":"ISO-8601","source":"string","entity_type":"vehicle|driver|journey|delivery|cargo|customer|corridor|incident|financial|maintenance","entity_id":"string","verified":true,"mode":"LIVE|DEMO|UNAVAILABLE","payload":"object","correlation_id":"string|null","causation_id":"string|null","schema_version":"string"},
+  "event_classes":["vehicle.health_changed","driver.safety_signal","journey.state_changed","journey.location_received","delivery.milestone","delivery.exception","cargo.state_changed","security.signal","security.workflow_changed","maintenance.alert","customer.case_changed","revenue.state_changed","profitability.state_changed","corridor.assessment_changed","connectivity.changed","proof_of_delivery.captured","order_to_cash.state_changed"],
+  "consumers":["digital_twin","risk_engine","fleet_security_intelligence","safety_autopilot","driver_safety_coach","driver_performance","vehicle_health","delivery_intelligence","customer_experience","customer_service","revenue_intelligence","profitability_intelligence","corridor_intelligence","executive_control_tower","ceo_command_centre"],
+  "routing_rules":[{"when":"verified critical safety/security event","priority":"CRITICAL","consumers":["risk_engine","fleet_security_intelligence","security_orchestrator","digital_twin","executive_control_tower","ceo_command_centre"]},{"when":"verified operational event","priority":"NORMAL","consumers":["digital_twin","relevant intelligence engines"]},{"when":"unverified or DEMO event","priority":"OBSERVE","consumers":["demo_views","audit"],"may_change_live_kpis":false}],
+  "processing":{"deduplicate_by":"event_id","ordering":"best_effort_with_occurred_at","retry":"bounded_retry_then_outbox","dead_letter":"required","offline_queue":"required","replay":"operator_or_authorized_service","audit":"required"},
+  "safety_controls":["safety_and_security_events_out_rank_commercial_events","no_automatic_vehicle_control","no_automatic_emergency_dispatch","no_police_notification_claim","no_automatic_discipline","human_authorization_for_adverse_actions"],
+  "api":["POST /api/freight/events","GET /api/freight/events","GET /api/freight/events/stream","POST /api/freight/events/replay","GET /api/freight/events/health"],
+  "production_status":"architecture_ready",
+  "live_event_bus":false
+}
