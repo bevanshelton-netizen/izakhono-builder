@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "KORA NETWORK Playback Resolution V1",
+  "type": "object",
+  "required": ["tenantId", "assetId", "profile", "playlistUri", "authorizationRequired", "evidence"],
+  "properties": {
+    "tenantId": { "const": "kora-network" },
+    "assetId": { "type": "string", "minLength": 1 },
+    "profile": { "enum": ["VOD", "LINEAR"] },
+    "playlistUri": { "type": "string", "pattern": "^ref://hls/kora-network/.+/master\\.m3u8$" },
+    "authorizationRequired": { "const": true },
+    "drmPolicyRef": { "type": "string", "minLength": 1 },
+    "evidence": { "type": "array", "minItems": 5, "items": { "type": "string" } }
+  },
+  "additionalProperties": false
+}
