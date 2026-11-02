@@ -1,0 +1,20 @@
+{
+  "version": "1.0",
+  "scope": "durable-entitlement-persistence",
+  "status": "REFERENCE_ONLY",
+  "tests": [
+    {"id":"DB-001","name":"migration_clean_apply","expected":"PASS"},
+    {"id":"DB-002","name":"migration_repeatability","expected":"PASS"},
+    {"id":"DB-003","name":"tenant_isolation","expected":"PASS"},
+    {"id":"DB-004","name":"browser_role_denied_control_plane_write","expected":"PASS"},
+    {"id":"DB-005","name":"paid_event_creates_single_entitlement","expected":"PASS"},
+    {"id":"DB-006","name":"duplicate_event_is_idempotent","expected":"PASS"},
+    {"id":"DB-007","name":"refund_cancel_failed_revoke","expected":"PASS"},
+    {"id":"DB-008","name":"concurrent_duplicate_protection","expected":"PASS"},
+    {"id":"DB-009","name":"append_only_audit","expected":"PASS"},
+    {"id":"DB-010","name":"transaction_rollback","expected":"PASS"},
+    {"id":"DB-011","name":"playback_rights_revalidation","expected":"PASS"},
+    {"id":"DB-012","name":"backup_restore_integrity","expected":"PASS"}
+  ],
+  "production_claim": false
+}
