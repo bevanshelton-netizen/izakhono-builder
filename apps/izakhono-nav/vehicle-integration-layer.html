@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>IZAKHONO NAV — Vehicle Integration</title>
+<style>
+body{margin:0;background:#07110d;color:#eef7f0;font-family:Inter,system-ui,sans-serif}main{max-width:1100px;margin:auto;padding:28px}.top{display:flex;justify-content:space-between;gap:20px;align-items:center}.eyebrow{color:#73d59b;font-size:12px;letter-spacing:.14em;text-transform:uppercase}.mode{padding:8px 12px;border:1px solid #315540;border-radius:999px;font-size:12px}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:24px}.card{background:#0d1d16;border:1px solid #203d2d;border-radius:18px;padding:18px}.value{font-size:25px;font-weight:700;margin-top:7px}.muted{color:#9bb2a3;font-size:13px}.actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px}button{background:#173a27;color:#eef7f0;border:1px solid #315a40;border-radius:10px;padding:10px 14px;cursor:pointer}button:hover{background:#1c4a31}.wide{margin-top:14px}.log{max-height:280px;overflow:auto;font-family:ui-monospace,monospace;font-size:12px;line-height:1.6}.warning{border-color:#6a4c25;background:#17140d}.safe{color:#8fe0ac}.danger{color:#ffbd73}@media(max-width:760px){.grid{grid-template-columns:1fr}.top{align-items:flex-start;flex-direction:column}}
+</style>
+</head>
+<body>
+<main>
+  <div class="top">
+    <div><div class="eyebrow">IZAKHONO NAV / VEHICLE INTEGRATION</div><h1>Vehicle Trust Layer</h1><div class="muted">Hardware-optional vehicle intelligence with safety-first security controls.</div></div>
+    <div class="mode" id="mode">UNAVAILABLE</div>
+  </div>
+  <section class="grid">
+    <div class="card"><div class="muted">Connection</div><div class="value" id="connection">UNAVAILABLE</div></div>
+    <div class="card"><div class="muted">Vehicle</div><div class="value" id="vehicle">—</div></div>
+    <div class="card"><div class="muted">Movement</div><div class="value" id="movement">—</div></div>
+  </section>
+  <div class="actions">
+    <button onclick="sync()">Sync Authorized Feed</button>
+    <button onclick="demo()">Load Demo</button>
+    <button onclick="secureReview()">Request Security Review</button>
+    <button onclick="flush()">Flush Offline Queue</button>
+    <button onclick="clearState()">Clear</button>
+  </div>
+  <section class="card wide warning">
+    <strong>Safety lock</strong><p class="muted">Communication loss is never treated as proof that a vehicle is safe. Infotainment removal is not an automatic engine-shutdown trigger. A moving vehicle must never be suddenly immobilized by NAV. Deeper control requires an authenticated, authorized vehicle integration.</p>
+  </section>
+  <section class="card wide"><div class="muted">Event / audit stream</div><pre class="log" id="log">No events.</pre></section>
+</main>
+<script src="vehicle-integration-layer.js"></script>
+<script>
+const V=window.SHELTON_FREIGHT_VEHICLE_INTEGRATION;
+function render(){document.getElementById('mode').textContent=V.state.mode;document.getElementById('connection').textContent=V.state.connection;document.getElementById('vehicle').textContent=V.state.vehicle?.vehicle_id||'—';document.getElementById('movement').textContent=V.state.vehicle?.movement_state||'—';document.getElementById('log').textContent=(V.state.audit.length?V.state.audit:V.state.events).map(x=>JSON.stringify(x)).join('\n')||'No events.'}
+async function sync(){await V.sync();render()}
+function demo(){V.loadDemo();render()}
+function secureReview(){try{V.requestSecureState(V.state.vehicle)}catch(e){V.state.error=e.message}render()}
+async function flush(){await V.flush();render()}
+function clearState(){V.clear();render()}
+render();
+</script>
+</body>
+</html>
