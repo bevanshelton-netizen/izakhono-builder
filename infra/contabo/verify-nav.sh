@@ -14,6 +14,18 @@ ready="$(curl -fsS "$NAV_URL/ready")"
 printf '%s\n' "$ready"
 printf '%s' "$ready" | grep -q '"ready":true'
 
+printf '[NAV] checking version...\n'
+version="$(curl -fsS "$NAV_URL/version")"
+printf '%s\n' "$version"
+printf '%s' "$version" | grep -q '"product":"IZAKHONO NAV"'
+printf '%s' "$version" | grep -q '"runtime":"owned"'
+
+printf '[NAV] checking security headers...\n'
+headers="$(curl -fsSI "$NAV_URL/")"
+printf '%s\n' "$headers" | grep -qi '^x-content-type-options: nosniff'
+printf '%s\n' "$headers" | grep -qi '^referrer-policy: strict-origin-when-cross-origin'
+printf '%s\n' "$headers" | grep -qi '^permissions-policy:'
+
 printf '[NAV] checking manifest...\n'
 curl -fsSI "$NAV_URL/manifest.webmanifest" >/dev/null
 printf '[NAV] checking service worker...\n'
