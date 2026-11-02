@@ -18,4 +18,6 @@ printf '[NAV] checking local health...\n'
 curl -fsS http://127.0.0.1:8080/health
 printf '\n[NAV] checking local readiness...\n'
 curl -fsS http://127.0.0.1:8080/ready
+printf '\n[NAV] running local smoke test...\n'
+NAV_URL=http://127.0.0.1:8080 ./infra/contabo/nav-smoke-test.sh
 printf '\n[NAV] owned runtime is running. Public TLS is handled by Caddy for %s.\n' "$NAV_DOMAIN"
