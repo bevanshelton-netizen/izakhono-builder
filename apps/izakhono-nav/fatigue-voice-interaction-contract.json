@@ -1,0 +1,69 @@
+{
+  "product": "IZAKHONO NAV",
+  "layer": "Fatigue Mode — Driver-Initiated Voice Interaction v0.1",
+  "status": "architecture_locked",
+  "principle": "NAV remains quiet unless the driver activates the interface signal.",
+  "interaction": {
+    "entry": "driver_activated_interface_signal",
+    "first_voice_response": "I'm listening.",
+    "conversation": "natural_voice_dialogue",
+    "exit": "driver_ends_conversation_or_timeout",
+    "safety_escalation": "only_when_warranted_by_verified_signals_or_driver_statement"
+  },
+  "states": [
+    "READY",
+    "DRIVER_ACTIVATED",
+    "LISTENING",
+    "CONVERSING",
+    "SAFETY_ESCALATION",
+    "ENDED",
+    "UNAVAILABLE"
+  ],
+  "design_rules": [
+    "no_unsolicited_fatigue_voice_prompts",
+    "no_repeated_nagging",
+    "no_forced_conversation",
+    "no_single_signal_fatigue_diagnosis",
+    "voice_first_when_activated",
+    "short_natural_responses",
+    "minimize_driver_distraction",
+    "driver_can_end_conversation",
+    "verified_signals_only_for_operational_claims",
+    "human_contact_may_be_offered_when_configured",
+    "safety_over_convenience"
+  ],
+  "fatigue_posture": [
+    "NORMAL",
+    "WATCH",
+    "FATIGUE_SUSPECTED",
+    "FATIGUE_HIGH",
+    "DRIVER_UNRESPONSIVE",
+    "SAFETY_ESCALATION"
+  ],
+  "voice_behavior": {
+    "before_activation": "silent_except_interface_signal",
+    "after_activation": "driver_initiated_conversation",
+    "during_driving": "keep_dialogue concise and non-distracting",
+    "serious_driver_statement": "transition_to_configured_safety_workflow",
+    "no_response": "do_not_assume_fatigue; apply configured timeout policy"
+  },
+  "integration": {
+    "driver_safety_coach": true,
+    "safety_autopilot": true,
+    "risk_engine": true,
+    "FORTRESS": true,
+    "vehicle_integration": true,
+    "ai_operations_copilot": true,
+    "human_safety_contact": "optional_authenticated_integration"
+  },
+  "privacy": {
+    "minimize_voice_data": true,
+    "retain_only_operationally_required_records": true,
+    "no_inferred_sensitive_attributes": true
+  },
+  "production_status": {
+    "architecture_ready": true,
+    "live_voice_ai_provider_connected": false,
+    "live_human_contact_connected": false
+  }
+}
