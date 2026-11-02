@@ -1,0 +1,80 @@
+/* IZAKHONO NAV — voice UI bridge.
+ * Connects the existing NAV voice control to the Hey NAV runtime.
+ * Tap remains the permanent fallback; wake listening begins after a user gesture.
+ */
+(function (root) {
+  'use strict';
+
+  function boot() {
+    const button = document.getElementById('voice');
+    if (!button) return;
+
+    button.setAttribute('aria-label', 'Hey NAV voice companion — tap to speak');
+    button.title = 'Hey NAV — tap to speak';
+
+    function setState(label, active) {
+      button.textContent = active ? '●' : '◉';
+      button.setAttribute('aria-label', active
+        ? 'NAV is listening'
+        : 'Hey NAV voice companion — tap to speak');
+      button.title = active ? 'NAV is listening' : 'Hey NAV — tap to speak';
+      button.dataset.voiceState = label;
+    }
+
+    button.addEventListener('click', function () {
+      if (!root.IZAKHONO_NAV_VOICE) return;
+      root.IZAKHONO_NAV_VOICE.activateByTap();
+      try { root.IZAKHONO_NAV_VOICE.startWakeListener(); } catch (_) {}
+    });
+
+    root.addEventListener('izakhono-nav-voice', function (event) {
+      const detail = event.detail || {};
+      switch (detail.name) {
+        case 'ready':
+          setState('ready', false);
+          break;
+        case 'wake_listener_ready':
+          setState('wake-listening', false);
+          break;
+        case 'activated':
+          setState('activated', true);
+          break;
+        case 'listening':
+          setState('listening', true);
+          break;
+        case 'processing':
+          setState('processing', true);
+          break;
+        case 'speaking':
+          setState('speaking', true);
+          break;
+        case 'speech_end':
+        case 'recognition_end':
+        case 'ended':
+          setState('ready', false);
+          break;
+        case 'wake_listener_unavailable':
+        case 'recognition_error':
+          setState('tap-fallback', false);
+          break;
+        default:
+          break;
+      }
+    });
+
+    // A browser normally needs a user gesture before microphone access is allowed.
+    // The first meaningful NAV interaction unlocks the wake listener without
+    // forcing the driver into a conversation.
+    const arm = function () {
+      if (!root.IZAKHONO_NAV_VOICE) return;
+      try { root.IZAKHONO_NAV_VOICE.startWakeListener(); } catch (_) {}
+      root.removeEventListener('click', arm, true);
+      root.removeEventListener('touchstart', arm, true);
+    };
+    root.addEventListener('click', arm, true);
+    root.addEventListener('touchstart', arm, true);
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+  else boot();
+})(typeof window !== 'undefined' ? window : globalThis);
