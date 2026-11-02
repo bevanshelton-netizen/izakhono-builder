@@ -1,0 +1,18 @@
+{
+  "tenant": "kora-network",
+  "validRequest": {
+    "tenantId": "kora-network",
+    "assetId": "kora-demo-asset",
+    "profile": "VOD",
+    "identityId": "reference-user",
+    "entitlementId": "kora-free"
+  },
+  "requiredResolutionEvidence": [
+    "identity-validated",
+    "entitlement-validated",
+    "rights-window-validated",
+    "device-policy-validated",
+    "hls-output-resolved"
+  ],
+  "productionGate": "reference-only; no live CDN, DRM license, origin credential, or production playback claim"
+}
