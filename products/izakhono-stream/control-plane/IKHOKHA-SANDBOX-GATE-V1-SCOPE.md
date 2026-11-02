@@ -1,0 +1,1 @@
+Scope: provider verification, canonical webhook normalization, durable replay protection, entitlement lifecycle, rollback, playback revalidation, audit and reconciliation. Out of scope: production credentials and production payment processing.
