@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "start": "node src/server.mjs",
-    "check": "node --check src/server.mjs"
+    "check": "node --check src/server.mjs",
+    "plan:portfolio": "node scripts/node01-mail-plan.mjs"
   }
 }
