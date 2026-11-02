@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Canonical physical activation gate for an IZAKHONO software/runtime identity.
-# NODE01-NODE04 are logical runtime identities; the physical host is separate.
-# This script prepares/verifies a host. It does not claim LIVE status.
+# Canonical owned-runtime activation gate for an IZAKHONO software/runtime identity.
+# NODE01-NODE04 are logical runtime identities; the runtime host is separate and portable.
+# This script verifies the approved host prerequisites. It does not claim LIVE status.
 
 ENV_FILE="${IZAKHONO_CLUSTER_ENV:-/etc/izakhono/node-cluster.env}"
 STATE_ROOT="${IZAKHONO_STATE_ROOT:-/opt/izakhono}"
@@ -34,16 +34,16 @@ docker network inspect "$EDGE_NETWORK" >/dev/null 2>&1 || docker network create 
 # reviewed repository artifact on the controlled host.
 [[ -x "$RELEASE_ADAPTER" ]] || fail "missing executable release adapter: $RELEASE_ADAPTER"
 
-# Identity receipt deliberately distinguishes logical node identity from hardware.
+# Identity receipt deliberately distinguishes logical node identity from the runtime host.
 RECEIPT="$STATE_ROOT/state/activation/${NODE_ID}.json"
-HOSTNAME_VALUE="$(hostname -s)"
+RUNTIME_HOST_VALUE="${IZAKHONO_RUNTIME_HOST:-$(hostname -s)}"
 cat >"$RECEIPT.tmp" <<JSON
 {
   "schema": "izakhono.activation/v1",
   "nodeId": "$NODE_ID",
   "identityType": "software-runtime",
-  "physicalHostIsSeparate": true,
-  "physicalHost": "$HOSTNAME_VALUE",
+  "runtimeHost": "$RUNTIME_HOST_VALUE",
+  "runtimeHostIsSeparate": true,
   "docker": "verified",
   "compose": "verified",
   "edgeNetwork": "$EDGE_NETWORK",
@@ -56,6 +56,6 @@ mv -f "$RECEIPT.tmp" "$RECEIPT"
 chmod 640 "$RECEIPT"
 
 cat "$RECEIPT"
-echo "Owned runtime activation gate PASSED for $NODE_ID."
+echo "Owned runtime activation gate PASSED for logical identity $NODE_ID on runtime host $RUNTIME_HOST_VALUE."
 echo "Next gates: exact artifact deployment -> health -> HTTPS -> acceptance -> promotion -> backup/restore."
 echo "This script does not declare LIVE."
