@@ -11,14 +11,14 @@
 
 | Workstream | Status | Current focus | Next highest-value task | Blocker | Done gate |
 |---|---|---|---|---|---|
-| IZAKHONO Platform / Builder | BUILDING | Existing builder repository | Establish shared platform runtime + provisioning boundaries | Needs full repo/runtime audit | Core builder, auth, provisioning, admin, tests and deployment verified |
-| IZAKHONO Provisioner | BUILDING | Provisioning architecture | Implement idempotent payment→customer→domain→DNS→SSL→email→CRM pipeline | Provider credentials / DNS authority where external | End-to-end onboarding test passes |
-| IZAKHONO Cloud / Hosting | PLANNING | Owned-first infrastructure architecture | Define node/control-plane/storage/network contracts | Physical/virtual infrastructure availability | Deployable internal hosting stack verified |
-| IZAKHONO Code | PLANNING | Shared engineering layer | Establish reusable service/API conventions | Full repository inventory required | Reusable runtime/services documented and tested |
-| FORTRESS | PLANNING | Security integration | Define identity, audit, secrets and policy interfaces | Security architecture audit required | Core security controls tested |
-| KORA NETWORK | BUILDING | Existing digital/media ecosystem | Consolidate content, monetisation and customer/admin flows | Some external deployment/provider limits may apply | Public product flows + monetisation + operations verified |
-| KORA Learner Driver | BUILDING | Existing campaign/product | Convert campaign into complete customer acquisition/conversion flow | External payment/deployment credentials if needed | Lead→payment→service flow verified |
-| IZAKHONO NAV | PLANNING | Product architecture | Build platform/service specification into implementation backlog | Maps, routing, emergency and vehicle-data providers | Navigation + safety core tested |
+| IZAKHONO Platform / Builder | BUILDING | Existing builder repository | Complete runtime/provisioner integration audit and close highest-value acceptance gaps | Full repo/runtime audit | Core builder, auth, provisioning, admin, tests and deployment verified |
+| IZAKHONO Provisioner | BUILDING | Typed customer/domain/site/SSL/mail/billing/acceptance architecture | Finish idempotent end-to-end onboarding acceptance path | Provider credentials / DNS authority where external | End-to-end onboarding test passes |
+| IZAKHONO Cloud / Hosting | BUILDING | Native HOST runtime baseline exists | Validate native Docker runtime, DNS, edge, persistence and restore path | Physical/virtual node + public reachability | Deployable internal hosting stack verified |
+| IZAKHONO Code | BUILDING | Shared builder/control-plane repository | Consolidate reusable service/API conventions from existing runtime | Repository inventory | Reusable runtime/services documented and tested |
+| FORTRESS | BUILDING | Security/owner-gated runtime already represented in deployments | Verify policy, audit, secrets and owner-gated operations end-to-end | Security acceptance evidence | Core security controls tested |
+| KORA NETWORK | DEPLOYED | Vercel deployment is READY; product still needs operational acceptance | Verify public flows and connect monetisation/admin/content lifecycle | End-to-end production acceptance | Public product flows + monetisation + operations verified |
+| KORA Learner Driver | BUILDING | Existing product/campaign | Complete acquisition→payment→service handoff | Payment/deployment credentials if needed | Lead→payment→service flow verified |
+| IZAKHONO NAV | DEPLOYED | Vercel deployment is READY; safety architecture already committed | Verify core UX and next executable service boundary | Maps/routing/emergency/vehicle-data dependencies | Navigation + safety core tested |
 | I-CONNECT | PLANNING | Connectivity business architecture | Build packages, provisioning, billing and partner interfaces | Network partner/wholesale dependencies | Customer order→activation flow verified |
 | Izakhono Africa | BUILDING | Manufacturing/commercial systems | Product catalogue + quotation/order workflow | Production data/inventory integration | Customer order lifecycle tested |
 | BEVAN SHELTON | BUILDING | Brand commerce | Product catalogue + checkout/customer flow | Product/stock data | Purchase flow verified |
@@ -26,10 +26,16 @@
 | Edu-Build Institute | BUILDING | Training business systems | Registration→payment→student administration | Accreditation/external funding dependencies | Student lifecycle operationally tested |
 | Free Bird Agri-Quip | PLANNING | Poultry/egg-layer business | Operating model + procurement/sales system | Farm operational data | Commercial operating workflow documented and usable |
 | KG Industrial | PLANNING | Ship-repair opportunity pipeline | Procurement/capability and lead pipeline | Customer/contract opportunities | Lead→quotation→contract workflow ready |
-| THE BUSINESS OF MUSIC | BUILDING | Digital publishing + sales | Sales/distribution/marketing system | Payment/distribution dependencies | Purchase and delivery verified |
+| THE BUSINESS OF MUSIC | DEPLOYED | Vercel buy/market deployments are READY | Verify purchase→delivery and sales evidence | Payment/distribution dependencies | Purchase and delivery verified |
 | FAITH PERSONIFIED — MY JOURNEY | BUILDING | Manuscript production | Complete manuscript + production pipeline | Editorial completion | Final manuscript + production assets ready |
 | LET US GO BACK TO CHURCH | BUILDING | Manuscript production | Complete manuscript to locked prose standard | Editorial completion | Final manuscript + production assets ready |
 | Business Development | BUILDING | Funding, DFI, procurement, partnerships | Central opportunity pipeline + follow-up system | External responses/approvals | Repeatable opportunity→follow-up workflow |
+
+## Verified Infrastructure / Deployment Evidence — 2026-11-02
+
+The connected Vercel deployment inventory currently shows READY deployments for `kora-network`, `izakhono-nav`, `izakhono-execution-os`, `izakhono-fortress-intelligence`, `izakhono-social-command`, `izakhono-community-connect`, `izakhono-callback-live`, `izakhono-content-command`, `izakhono-business-command`, `izakhono-advertising-command`, `allegro-studios`, and the Business of Music buy/market applications. These are deployment-state observations, not proof that every production workflow is fully operational.
+
+The `izakhono-builder` README establishes an existing owned-first architecture: CODE → BUILDER → VISUAL ENGINE → PROVISIONER → IZAKHONO CLOUD/NODES → DNS/EDGE/TLS → FORTRESS → runtime; it also identifies a native HOST baseline using Caddy, CoreDNS, PostgreSQL, MinIO and Valkey. Public-live status remains evidence-gated by node reachability, DNS/TLS, backups/restore and end-to-end acceptance.
 
 ## Execution Rules
 
@@ -54,6 +60,17 @@
 **Cycle E — Product expansion:** NAV, I-CONNECT, FORTRESS, industrial/agriculture systems.
 
 After each cycle, reassess every workstream and select the highest-value unfinished task. Continue until each applicable DONE gate is satisfied.
+
+## Current Execution Record
+
+**Completed this cycle:**
+- Created the master portfolio control board in the canonical `izakhono-builder` repository.
+- Inspected the repository architecture before proposing replacement infrastructure.
+- Inspected current Vercel deployment state and recorded verified READY deployments.
+- Promoted only deployment states supported by direct deployment evidence; no operational claims were inferred from READY alone.
+- Established the next priority as closing the existing Provisioner/owned-runtime acceptance boundary rather than creating a duplicate provisioning stack.
+
+**Next cycle priority:** inspect the existing Provisioner/runtime acceptance implementation, identify the first unverified end-to-end gate, implement it in the existing architecture, and run the corresponding test before moving to the next workstream.
 
 ## Current Evidence Boundary
 
