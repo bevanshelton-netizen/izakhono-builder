@@ -1,0 +1,9 @@
+{
+  "gate": "IKHOKHA_SANDBOX_V1",
+  "provider": "IKHOKHA",
+  "tenantId": "kora-network",
+  "productionClaim": false,
+  "status": "REFERENCE_ONLY",
+  "vectors": ["IKH-001","IKH-002","IKH-003","IKH-004","IKH-005","IKH-006","IKH-007","IKH-008"],
+  "releaseRule": "PASS only after isolated sandbox execution evidence is retained."
+}
