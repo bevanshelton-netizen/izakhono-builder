@@ -1,23 +1,21 @@
+// This contract mirrors ic_initialize_provisioning_steps in Supabase.
 export const PROVISIONING_STEPS = Object.freeze([
   'payment_verified',
-  'customer_created',
-  'domain_registered_or_connected',
+  'account_ready',
+  'domain_requested',
   'dns_configured',
-  'website_provisioned',
-  'ssl_activated',
-  'email_created',
-  'crm_created',
-  'forms_connected',
-  'payment_connected',
-  'customer_account_created',
-  'access_delivered',
-  'service_ready',
+  'hosting_ready',
+  'ssl_verified',
+  'email_configured',
+  'application_deployed',
+  'integrations_connected',
+  'verification_complete',
+  'handover_ready',
 ]);
 
 export const TERMINAL_STATUSES = Object.freeze(['completed', 'failed', 'blocked']);
 
 export const isValidStep = (step) => PROVISIONING_STEPS.includes(step);
-
 export const isValidStatus = (status) => TERMINAL_STATUSES.includes(status);
 
 export const nextStep = (step) => {
@@ -27,7 +25,9 @@ export const nextStep = (step) => {
 };
 
 export const isTerminalReady = (step, status) =>
-  step === 'service_ready' && status === 'completed';
+  step === 'handover_ready' && status === 'completed';
 
-export const idempotencyKey = ({ orderId, step, attempt = 1 }) =>
-  `provision:${orderId}:${step}:${attempt}`;
+// DB uniqueness is enforced by (job_id, step_key). Attempt numbers are
+// provider retry telemetry and must not create duplicate provisioning jobs.
+export const stepIdempotencyKey = ({ jobId, step }) =>
+  `provision:${jobId}:${step}`;
