@@ -1,0 +1,37 @@
+name: Business of Music Revenue Validation
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'products/business-of-music-campaign/**'
+      - '.github/workflows/business-of-music-validation.yml'
+  pull_request:
+    paths:
+      - 'products/business-of-music-campaign/**'
+      - '.github/workflows/business-of-music-validation.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: business-of-music-validation-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate-revenue-delivery:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Run revenue and delivery acceptance suite
+        run: |
+          node products/business-of-music-campaign/acceptance.mjs
+          node products/business-of-music-campaign/sales-confirmation.test.mjs
+          node products/business-of-music-campaign/delivery-contract.test.mjs
+          node products/business-of-music-campaign/delivery-adapter.test.mjs
