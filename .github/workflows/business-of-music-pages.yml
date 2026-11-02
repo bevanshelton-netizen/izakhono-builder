@@ -31,6 +31,7 @@ jobs:
           node products/business-of-music-campaign/acceptance.mjs
           node products/business-of-music-campaign/sales-confirmation.test.mjs
           node products/business-of-music-campaign/delivery-contract.test.mjs
+          node products/business-of-music-campaign/delivery-adapter.test.mjs
       - name: Configure Pages
         uses: actions/configure-pages@v5
       - name: Prepare site
