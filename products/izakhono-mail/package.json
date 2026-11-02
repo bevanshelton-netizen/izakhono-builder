@@ -6,6 +6,7 @@
   "scripts": {
     "start": "node src/server.mjs",
     "check": "node --check src/server.mjs",
-    "plan:portfolio": "node scripts/node01-mail-plan.mjs"
+    "plan:portfolio": "node src/portfolio-provisioner.mjs",
+    "plan:portfolio:legacy": "node scripts/node01-mail-plan.mjs"
   }
 }
