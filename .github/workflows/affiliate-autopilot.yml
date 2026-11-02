@@ -74,3 +74,8 @@ jobs:
             gh issue comment "$EXISTING" --body "Recovered automatically. Latest status: $STATUS."
             gh issue close "$EXISTING" --reason completed
           fi
+
+      - name: Emit execution receipt
+        if: always()
+        run: |
+          node -e "const fs=require('fs'); const r=fs.existsSync('affiliate-ops-report.json')?require('./affiliate-ops-report.json'):{status:'ATTENTION',issue_count:1}; console.log(JSON.stringify({workflow:'IZAKHONO Affiliate Autopilot',status:r.status,issues:r.issue_count||0,generated_at:r.generated_at||new Date().toISOString(),credits:false,native_control_plane:true},null,2))"
