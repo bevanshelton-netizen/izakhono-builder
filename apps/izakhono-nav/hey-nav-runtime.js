@@ -31,7 +31,12 @@
     utterance.pitch = 1;
     utterance.volume = 1;
     utterance.onstart = () => emit('speaking', { text });
-    utterance.onend = () => emit('speech_end');
+    utterance.onend = () => {
+      emit('speech_end');
+      if (state.active && !state.listening && SpeechRecognition) {
+        window.setTimeout(() => startConversationRecognition(), 180);
+      }
+    };
     root.speechSynthesis.speak(utterance);
   }
 
@@ -48,7 +53,10 @@
 
   async function ask(text) {
     const user = String(text || '').trim();
-    if (!user) return;
+    if (!user) {
+      if (state.active && SpeechRecognition) startConversationRecognition();
+      return;
+    }
     state.messages.push({ role: 'user', content: user });
     state.messages = state.messages.slice(-12);
     emit('processing', { text: user });
@@ -87,6 +95,10 @@
   }
 
   function beginConversation(source) {
+    if (state.wakeRecognition) {
+      try { state.wakeRecognition.stop(); } catch (_) {}
+      state.wakeRecognition = null;
+    }
     state.active = true;
     state.sessionId = state.sessionId || id();
     emit('activated', { source: source || 'wake_phrase', session_id: state.sessionId });
@@ -95,7 +107,7 @@
   }
 
   function startConversationRecognition() {
-    if (!SpeechRecognition || state.listening) return false;
+    if (!SpeechRecognition || state.listening || !state.active) return false;
     const r = new SpeechRecognition();
     r.lang = root.navigator.language || 'en-ZA';
     r.continuous = false;
@@ -118,7 +130,7 @@
   }
 
   function startWakeListener() {
-    if (!SpeechRecognition || state.wakeRecognition) return false;
+    if (!SpeechRecognition || state.active || state.wakeRecognition) return false;
     const r = new SpeechRecognition();
     r.lang = root.navigator.language || 'en-ZA';
     r.continuous = true;
