@@ -20,7 +20,8 @@ function hasProjectScaffold() {
 
 function workspace(task) {
   const safeId = String(task.planId || task.id || 'anonymous-plan').replace(/[^a-zA-Z0-9_-]/g, '_');
-  return path.join(root, 'autonomy', 'build-artifacts', safeId);
+  const base = process.env.IZAKHONO_BUILD_ARTIFACT_ROOT || path.join(root, 'autonomy', 'build-artifacts');
+  return path.join(base, safeId);
 }
 
 function writeJson(file, value) {
