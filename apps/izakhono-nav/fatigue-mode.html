@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en-ZA">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>IZAKHONO NAV — Fatigue Mode</title>
+<style>
+:root{font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#07120f;color:#f4f8f6}*{box-sizing:border-box}body{margin:0;min-height:100vh;background:radial-gradient(circle at top,#12352a,#07120f 55%)}main{max-width:720px;margin:auto;padding:28px 20px 40px}.brand{letter-spacing:.18em;font-size:12px;color:#9bcbb8;font-weight:800}.card{margin-top:22px;background:rgba(15,36,29,.92);border:1px solid rgba(151,203,184,.18);border-radius:28px;padding:28px;box-shadow:0 24px 80px rgba(0,0,0,.28)}h1{font-size:34px;line-height:1.05;margin:8px 0 10px}p{color:#b9cbc4;line-height:1.55}.signal{width:118px;height:118px;border-radius:50%;margin:28px auto;display:grid;place-items:center;border:2px solid #7ed0b1;background:#102d24;box-shadow:0 0 0 10px rgba(126,208,177,.05);font-size:42px}.signal button{width:100%;height:100%;border:0;border-radius:50%;background:transparent;color:#dff7ed;font-size:40px;cursor:pointer}.controls{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}button.action{border:0;border-radius:14px;padding:14px 20px;font-weight:800;cursor:pointer}button.activate{background:#bfeedd;color:#092018}button.stop{background:#203c33;color:#d8e9e2}.status{display:flex;justify-content:space-between;gap:12px;padding:12px 0;color:#91aea3;font-size:13px}.status strong{color:#fff}.transcript{margin-top:18px;background:#091a15;border-radius:18px;padding:16px;min-height:90px;color:#c8d9d3;font-size:14px}.notice{margin-top:18px;padding:14px;border-left:3px solid #7ed0b1;background:rgba(126,208,177,.06);font-size:13px;color:#abc2b8}.small{font-size:12px;color:#78948a}
+</style>
+</head>
+<body>
+<main data-fatigue-mode>
+<div class="brand">IZAKHONO NAV · DRIVER SAFETY</div>
+<section class="card">
+<h1>Fatigue Mode</h1>
+<p>NAV stays quiet. When you want to talk, activate the signal and start a natural voice conversation.</p>
+<div class="signal"><button data-fatigue-activate aria-label="Activate Fatigue Mode">◉</button></div>
+<div class="controls"><button class="action activate" data-fatigue-activate>Talk to NAV</button><button class="action stop" data-fatigue-stop>Stop</button></div>
+<div class="status"><span>Status: <strong data-fatigue-status>Ready</strong></span><span>Mode: <strong data-fatigue-mode-state>UNAVAILABLE</strong></span></div>
+<div class="transcript" data-fatigue-transcript>Conversation history will appear here after you activate Fatigue Mode.</div>
+<div class="notice"><strong>Driver control:</strong> Fatigue Mode never starts a conversation by itself. A single fatigue signal is not treated as a diagnosis. If you report that you are falling asleep or need help, NAV can move into the configured safety workflow.</div>
+<div class="small">Voice provider: browser baseline. Live AI voice provider and human-contact integration require authenticated production integrations.</div>
+</section>
+</main>
+<script src="fatigue-mode-runtime.js"></script>
+</body>
+</html>
