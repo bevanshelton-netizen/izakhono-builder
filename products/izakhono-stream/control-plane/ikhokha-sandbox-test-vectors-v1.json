@@ -1,0 +1,69 @@
+{
+  "version": "1.0",
+  "provider": "IKHOKHA",
+  "tenantId": "kora-network",
+  "productionClaim": false,
+  "vectors": [
+    {
+      "id": "IKH-001",
+      "name": "paid-svod",
+      "eventStatus": "PAID",
+      "productId": "kora-svod-monthly",
+      "expectedEntitlement": "ACTIVE",
+      "expectedPlayback": "AUTHORIZED"
+    },
+    {
+      "id": "IKH-002",
+      "name": "duplicate-paid-replay",
+      "eventStatus": "PAID",
+      "sameEventId": true,
+      "expectedEntitlementCount": 1,
+      "expectedPlayback": "AUTHORIZED"
+    },
+    {
+      "id": "IKH-003",
+      "name": "refund-revokes-access",
+      "eventStatus": "REFUNDED",
+      "expectedEntitlement": "REVOKED",
+      "expectedPlayback": "DENIED"
+    },
+    {
+      "id": "IKH-004",
+      "name": "cancelled-payment",
+      "eventStatus": "CANCELLED",
+      "expectedEntitlement": "REVOKED",
+      "expectedPlayback": "DENIED"
+    },
+    {
+      "id": "IKH-005",
+      "name": "failed-payment",
+      "eventStatus": "FAILED",
+      "expectedEntitlement": "REVOKED",
+      "expectedPlayback": "DENIED"
+    },
+    {
+      "id": "IKH-006",
+      "name": "tampered-webhook",
+      "eventStatus": "PAID",
+      "signatureValid": false,
+      "expectedWebhookResult": "REJECTED",
+      "expectedEntitlement": "UNCHANGED"
+    },
+    {
+      "id": "IKH-007",
+      "name": "concurrent-replay",
+      "eventStatus": "PAID",
+      "concurrentDeliveries": 2,
+      "sameEventId": true,
+      "expectedEntitlementCount": 1
+    },
+    {
+      "id": "IKH-008",
+      "name": "transaction-rollback",
+      "eventStatus": "PAID",
+      "forcePersistenceFailure": true,
+      "expectedEntitlement": "UNCHANGED",
+      "expectedReplayMarker": "UNCHANGED"
+    }
+  ]
+}
