@@ -11,6 +11,10 @@ const PWA_BODY = '<script>(function(){if("serviceWorker" in navigator){window.ad
 
 function send(res, status, body, type='text/plain; charset=utf-8') { res.statusCode=status; res.setHeader('Content-Type',type); res.setHeader('Cache-Control','no-store'); res.end(body); }
 function readBody(req){ return new Promise((resolve,reject)=>{ let data=''; req.on('data',chunk=>{data+=chunk;if(data.length>1024*1024){reject(new Error('body too large'));req.destroy();}}); req.on('end',()=>{try{resolve(data?JSON.parse(data):{});}catch(e){reject(e);}}); req.on('error',reject); }); }
+function runtimeStatus(){
+  const aiConfigured=Boolean(process.env.IZAKHONO_AI_CHAT_ENDPOINT && process.env.IZAKHONO_AI_API_KEY);
+  return { ok:true, product:'IZAKHONO NAV', runtime:'owned', release:process.env.IZAKHONO_RELEASE || 'local', ai_provider:aiConfigured?'configured':'unavailable', pwa:true, voice_api:true };
+}
 function serveHtml(res, file, headOnly=false){
   fs.readFile(file,'utf8',(err,html)=>{
     if(err) return send(res,404,'Not Found');
@@ -24,7 +28,8 @@ function serveHtml(res, file, headOnly=false){
 const server = http.createServer(async (req,res)=>{
   try {
     const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
-    if (url.pathname === '/health') return send(res,200,JSON.stringify({ok:true,product:'IZAKHONO NAV',runtime:'owned',release:process.env.IZAKHONO_RELEASE || 'local'}),'application/json; charset=utf-8');
+    if (url.pathname === '/health') return send(res,200,JSON.stringify(runtimeStatus()),'application/json; charset=utf-8');
+    if (url.pathname === '/ready') return send(res,200,JSON.stringify({ ...runtimeStatus(), ready:true }),'application/json; charset=utf-8');
     if (url.pathname === '/api/nav/driver-companion') {
       if (req.method !== 'POST') return send(res,405,JSON.stringify({ok:false,error:'method_not_allowed'}),'application/json; charset=utf-8');
       const body = await readBody(req);
