@@ -6,9 +6,20 @@ const { handleDriverCompanionChat } = require('./driver-companion-ai-route');
 const ROOT = __dirname;
 const PORT = Number(process.env.PORT || 8080);
 const MIME = { '.html':'text/html; charset=utf-8', '.js':'text/javascript; charset=utf-8', '.json':'application/json; charset=utf-8', '.webmanifest':'application/manifest+json; charset=utf-8', '.svg':'image/svg+xml', '.css':'text/css; charset=utf-8', '.png':'image/png', '.ico':'image/x-icon' };
+const PWA_HEAD = '<link rel="manifest" href="./manifest.webmanifest"><meta name="theme-color" content="#138b80">';
+const PWA_BODY = '<script>(function(){if("serviceWorker" in navigator){window.addEventListener("load",function(){navigator.serviceWorker.register("./sw.js",{scope:"./"}).catch(function(){})})}})();</script>';
 
 function send(res, status, body, type='text/plain; charset=utf-8') { res.statusCode=status; res.setHeader('Content-Type',type); res.setHeader('Cache-Control','no-store'); res.end(body); }
 function readBody(req){ return new Promise((resolve,reject)=>{ let data=''; req.on('data',chunk=>{data+=chunk;if(data.length>1024*1024){reject(new Error('body too large'));req.destroy();}}); req.on('end',()=>{try{resolve(data?JSON.parse(data):{});}catch(e){reject(e);}}); req.on('error',reject); }); }
+function serveHtml(res, file, headOnly=false){
+  fs.readFile(file,'utf8',(err,html)=>{
+    if(err) return send(res,404,'Not Found');
+    const body = html.replace('</head>',`${PWA_HEAD}</head>`).replace('</body>',`${PWA_BODY}</body>`);
+    res.statusCode=200; res.setHeader('Content-Type',MIME['.html']); res.setHeader('X-Content-Type-Options','nosniff');
+    if(headOnly) return res.end();
+    res.end(body);
+  });
+}
 
 const server = http.createServer(async (req,res)=>{
   try {
@@ -26,8 +37,11 @@ const server = http.createServer(async (req,res)=>{
     const file = path.resolve(ROOT, '.' + relative);
     if (!file.startsWith(ROOT + path.sep) && file !== path.join(ROOT,'index.html')) return send(res,403,'Forbidden');
     fs.stat(file,(err,stat)=>{
-      if (!err && stat.isFile()) { res.statusCode=200; res.setHeader('Content-Type',MIME[path.extname(file)]||'application/octet-stream'); res.setHeader('X-Content-Type-Options','nosniff'); if(req.method==='HEAD')return res.end(); return fs.createReadStream(file).pipe(res); }
-      const fallback=path.join(ROOT,'index.html'); res.statusCode=200; res.setHeader('Content-Type',MIME['.html']); if(req.method==='HEAD')return res.end(); fs.createReadStream(fallback).pipe(res);
+      if (!err && stat.isFile()) {
+        if (path.extname(file) === '.html') return serveHtml(res,file,req.method==='HEAD');
+        res.statusCode=200; res.setHeader('Content-Type',MIME[path.extname(file)]||'application/octet-stream'); res.setHeader('X-Content-Type-Options','nosniff'); if(req.method==='HEAD')return res.end(); return fs.createReadStream(file).pipe(res);
+      }
+      return serveHtml(res,path.join(ROOT,'index.html'),req.method==='HEAD');
     });
   } catch (err) { send(res,500,JSON.stringify({ok:false,error:'internal_error',message:err.message}),'application/json; charset=utf-8'); }
 });
