@@ -2,20 +2,20 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   PROVISIONING_STEPS,
-  idempotencyKey,
   isTerminalReady,
   isValidStatus,
   isValidStep,
   nextStep,
+  stepIdempotencyKey,
 } from './provisioning-contract.js';
 
-test('defines the complete customer provisioning chain', () => {
+test('mirrors the executable Supabase provisioning chain', () => {
   assert.equal(PROVISIONING_STEPS[0], 'payment_verified');
-  assert.equal(PROVISIONING_STEPS.at(-1), 'service_ready');
-  assert.equal(PROVISIONING_STEPS.length, 13);
+  assert.equal(PROVISIONING_STEPS.at(-1), 'handover_ready');
+  assert.equal(PROVISIONING_STEPS.length, 11);
 });
 
-test('accepts only known steps and terminal statuses', () => {
+test('accepts only executable steps and terminal statuses', () => {
   assert.equal(isValidStep('dns_configured'), true);
   assert.equal(isValidStep('invented_step'), false);
   assert.equal(isValidStatus('completed'), true);
@@ -23,20 +23,20 @@ test('accepts only known steps and terminal statuses', () => {
 });
 
 test('advances deterministically', () => {
-  assert.equal(nextStep('payment_verified'), 'customer_created');
-  assert.equal(nextStep('access_delivered'), 'service_ready');
-  assert.equal(nextStep('service_ready'), null);
+  assert.equal(nextStep('payment_verified'), 'account_ready');
+  assert.equal(nextStep('verification_complete'), 'handover_ready');
+  assert.equal(nextStep('handover_ready'), null);
 });
 
-test('marks readiness only at the terminal completed step', () => {
-  assert.equal(isTerminalReady('service_ready', 'completed'), true);
-  assert.equal(isTerminalReady('service_ready', 'failed'), false);
-  assert.equal(isTerminalReady('access_delivered', 'completed'), false);
+test('marks readiness only at terminal handover', () => {
+  assert.equal(isTerminalReady('handover_ready', 'completed'), true);
+  assert.equal(isTerminalReady('handover_ready', 'failed'), false);
+  assert.equal(isTerminalReady('verification_complete', 'completed'), false);
 });
 
-test('generates stable idempotency keys', () => {
+test('generates a job-step idempotency key', () => {
   assert.equal(
-    idempotencyKey({ orderId: 'ORD-1', step: 'dns_configured', attempt: 2 }),
-    'provision:ORD-1:dns_configured:2',
+    stepIdempotencyKey({ jobId: 'JOB-1', step: 'dns_configured' }),
+    'provision:JOB-1:dns_configured',
   );
 });
