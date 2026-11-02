@@ -29,18 +29,23 @@ function smtpSend({ recipient }) {
     const timer = setTimeout(() => { socket.destroy(); reject(new Error('inbound_smtp_timeout')); }, 10000);
     const fail = error => { clearTimeout(timer); socket.destroy(); reject(error); };
     const send = value => socket.write(`${value}\r\n`);
-    const handle = line => {
-      if (/^[45]\d\d\b/.test(line)) return fail(new Error(`inbound_smtp_rejected_${line.slice(0, 3)}`));
-      if (stage === 'greeting' && /^220\b/.test(line)) { stage = 'ehlo'; return send('EHLO node01-acceptance'); }
-      if (stage === 'ehlo' && /^250\b/.test(line)) { stage = 'mail'; return send('MAIL FROM:<acceptance@node01.internal>'); }
-      if (stage === 'mail' && /^250\b/.test(line)) { stage = 'rcpt'; return send(`RCPT TO:<${recipient}>`); }
-      if (stage === 'rcpt' && /^250\b/.test(line)) { stage = 'data'; return send('DATA'); }
-      if (stage === 'data' && /^354\b/.test(line)) {
+    const handleResponse = line => {
+      const match = line.match(/^(\d{3})([ -])(.*)$/);
+      if (!match) return;
+      const [, code, separator, text] = match;
+      if (code.startsWith('4') || code.startsWith('5')) return fail(new Error(`inbound_smtp_rejected_${code}`));
+      if (separator === '-') return;
+      if (stage === 'greeting' && code === '220') { stage = 'ehlo'; return send('EHLO node01-acceptance'); }
+      if (stage === 'ehlo' && code === '250') { stage = 'mail'; return send('MAIL FROM:<acceptance@node01.internal>'); }
+      if (stage === 'mail' && code === '250') { stage = 'rcpt'; return send(`RCPT TO:<${recipient}>`); }
+      if (stage === 'rcpt' && code === '250') { stage = 'data'; return send('DATA'); }
+      if (stage === 'data' && code === '354') {
         stage = 'accepted';
-        return send(`From: acceptance@node01.internal\r\nTo: ${recipient}\r\nSubject: ${subject}\r\n\r\n${body}\r\n.`);
+        socket.write(`From: acceptance@node01.internal\r\nTo: ${recipient}\r\nSubject: ${subject}\r\n\r\n${body}\r\n.\r\n`);
+        return;
       }
-      if (stage === 'accepted' && /^250\b/.test(line)) { stage = 'quit'; return send('QUIT'); }
-      if (stage === 'quit' && /^221\b/.test(line)) {
+      if (stage === 'accepted' && code === '250') { stage = 'quit'; return send('QUIT'); }
+      if (stage === 'quit' && code === '221') {
         clearTimeout(timer); socket.end(); return resolve({ subject, body });
       }
     };
@@ -50,7 +55,7 @@ function smtpSend({ recipient }) {
         const idx = buffer.indexOf('\r\n');
         if (idx < 0) return;
         const line = buffer.slice(0, idx); buffer = buffer.slice(idx + 2);
-        handle(line);
+        handleResponse(line);
       }
     });
     socket.on('error', fail);
@@ -91,7 +96,7 @@ export async function runAcceptance() {
     if (!checks.outbound) throw new Error('mail_outbound_not_accepted');
   }
 
-  return { ok: true, address: target, checks, inbound_subject: inbound.subject, outbound, note: 'Private inbound delivery is proven through the SMTP listener. Public DNS, external delivery and public webmail remain separate production gates.' };
+  return { ok: true, address: target, checks, inbound_subject: inbound.subject, outbound, note: 'Private and managed-domain inbound delivery are proven through the SMTP listener. Public DNS, external delivery and public webmail remain separate production gates.' };
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
