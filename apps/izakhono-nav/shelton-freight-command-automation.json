@@ -1,0 +1,30 @@
+{
+  "product":"SHELTON FREIGHT",
+  "layer":"Command Automation",
+  "version":"0.1",
+  "purpose":"Convert verified decisions into controlled, auditable operational workflows across the freight platform.",
+  "principles":["verified_signals_only","safety_first","human_authorized_control","least_privilege","audit_every_action","offline_resilient","no_fabricated_live_claims"],
+  "inputs":["operations_event_bus","rules_decision_engine","digital_twin","fleet_security","maintenance","delivery_intelligence","customer_service","executive_control_tower","connectivity_state"],
+  "workflow_states":["RECEIVED","VALIDATED","QUEUED","IN_PROGRESS","AWAITING_AUTHORIZATION","COMPLETED","FAILED","DEFERRED","CANCELLED"],
+  "action_classes":["DRIVER_CHECK_IN","SECURITY_ESCALATION","MAINTENANCE_HOLD_REVIEW","DELIVERY_EXCEPTION","CUSTOMER_UPDATE_REVIEW","EXECUTIVE_ALERT","OPERATIONS_HOLD_REVIEW","COMMERCIAL_FOLLOW_UP"],
+  "priority_order":["CRITICAL_SAFETY","CRITICAL_SECURITY","OPERATIONAL_BLOCKER","MAINTENANCE_RISK","CUSTOMER_ESCALATION","FINANCIAL_RISK","NETWORK_RISK","COMMERCIAL_OPPORTUNITY"],
+  "rules":[
+    {"when":"verified critical safety/security decision","action":"SECURITY_ESCALATION","authorization":"human_required"},
+    {"when":"verified operational blocker","action":"OPERATIONS_HOLD_REVIEW","authorization":"human_required"},
+    {"when":"verified maintenance risk","action":"MAINTENANCE_HOLD_REVIEW","authorization":"human_required"},
+    {"when":"verified delivery exception","action":"DELIVERY_EXCEPTION","authorization":"human_required"},
+    {"when":"verified customer-impacting exception","action":"CUSTOMER_UPDATE_REVIEW","authorization":"human_required"},
+    {"when":"verified executive priority","action":"EXECUTIVE_ALERT","authorization":"human_required"},
+    {"when":"commercial opportunity","action":"COMMERCIAL_FOLLOW_UP","authorization":"human_required"},
+    {"when":"unverified or demo signal","action":"none","authorization":"none"}
+  ],
+  "prohibited_without_authenticated_integration":["emergency_dispatch","police_notification_claim","remote_vehicle_control","remote_engine_control","vehicle_lockdown","automatic_driver_discipline","automatic_customer_penalty"],
+  "api":{
+    "GET":"/api/freight/command-automation",
+    "GET_PRIORITIES":"/api/freight/command-automation/priorities",
+    "POST_ACTION":"/api/freight/command-automation/actions",
+    "POST_AUTHORIZATION":"/api/freight/command-automation/authorizations"
+  },
+  "offline":{"outbox":true,"replay":true,"audit":true},
+  "production_status":{"architecture_ready":true,"live_automation":false}
+}
