@@ -12,7 +12,7 @@
 | Workstream | Status | Current focus | Next highest-value task | Blocker | Done gate |
 |---|---|---|---|---|---|
 | IZAKHONO Platform / Builder | BUILDING | Existing builder repository | Complete runtime/provisioner integration audit and close highest-value acceptance gaps | Full repo/runtime audit | Core builder, auth, provisioning, admin, tests and deployment verified |
-| IZAKHONO Provisioner | BUILDING | Typed customer/domain/site/SSL/mail/billing/acceptance architecture | Finish idempotent end-to-end onboarding acceptance path | Provider credentials / DNS authority where external | End-to-end onboarding test passes |
+| IZAKHONO Provisioner | TESTING | Existing Supabase-backed durable provisioning engine + HTTP runtime | Run CI/runtime tests and verify payment→job→steps→handover acceptance | External provider/DNS authority for real activation | End-to-end onboarding test passes |
 | IZAKHONO Cloud / Hosting | BUILDING | Native HOST runtime baseline exists | Validate native Docker runtime, DNS, edge, persistence and restore path | Physical/virtual node + public reachability | Deployable internal hosting stack verified |
 | IZAKHONO Code | BUILDING | Shared builder/control-plane repository | Consolidate reusable service/API conventions from existing runtime | Repository inventory | Reusable runtime/services documented and tested |
 | FORTRESS | BUILDING | Security/owner-gated runtime already represented in deployments | Verify policy, audit, secrets and owner-gated operations end-to-end | Security acceptance evidence | Core security controls tested |
@@ -35,6 +35,8 @@
 
 The connected Vercel deployment inventory currently shows READY deployments for `kora-network`, `izakhono-nav`, `izakhono-execution-os`, `izakhono-fortress-intelligence`, `izakhono-social-command`, `izakhono-community-connect`, `izakhono-callback-live`, `izakhono-content-command`, `izakhono-business-command`, `izakhono-advertising-command`, `allegro-studios`, and the Business of Music buy/market applications. These are deployment-state observations, not proof that every production workflow is fully operational.
 
+The connected I-CONNECT Supabase project is ACTIVE_HEALTHY. Its existing database contains durable provisioning jobs, ordered job steps, provider attempts, verification records, audit events and handover packages. The payment bridge creates a provisioning job from a confirmed payment using an idempotency key based on the payment transaction, and the handover function only builds a package when the job reaches `handover_ready`.
+
 The `izakhono-builder` README establishes an existing owned-first architecture: CODE → BUILDER → VISUAL ENGINE → PROVISIONER → IZAKHONO CLOUD/NODES → DNS/EDGE/TLS → FORTRESS → runtime; it also identifies a native HOST baseline using Caddy, CoreDNS, PostgreSQL, MinIO and Valkey. Public-live status remains evidence-gated by node reachability, DNS/TLS, backups/restore and end-to-end acceptance.
 
 ## Execution Rules
@@ -43,7 +45,7 @@ The `izakhono-builder` README establishes an existing owned-first architecture: 
 2. Never claim LIVE, DEPLOYED, OPERATIONAL or DONE without verification.
 3. A blocked workstream does not block the portfolio.
 4. Revenue-enabling work takes priority over cosmetic work.
-5. Shared services must be reusable across KORA, commerce, education, connectivity and provisioning.
+5. Shared services must be reusable across KORA, commerce, education and provisioning.
 6. External providers are adapters, not the business foundation.
 7. Every completed component must leave a testable artifact, integration point or documented dependency.
 
@@ -67,10 +69,16 @@ After each cycle, reassess every workstream and select the highest-value unfinis
 - Created the master portfolio control board in the canonical `izakhono-builder` repository.
 - Inspected the repository architecture before proposing replacement infrastructure.
 - Inspected current Vercel deployment state and recorded verified READY deployments.
-- Promoted only deployment states supported by direct deployment evidence; no operational claims were inferred from READY alone.
-- Established the next priority as closing the existing Provisioner/owned-runtime acceptance boundary rather than creating a duplicate provisioning stack.
+- Inspected the live I-CONNECT Supabase schema and existing provisioning RPC boundary.
+- Confirmed durable uniqueness for provisioning jobs, job steps, provider attempts, verifications and handover packages.
+- Replaced the Provisioner HTTP layer's non-existent legacy RPC calls with the actual Supabase provisioning functions.
+- Aligned the JavaScript acceptance contract with the real 11-step database state machine.
+- Added deterministic job-step idempotency semantics and terminal handover acceptance tests.
+- Updated the Provisioner documentation to match the executable runtime.
 
-**Next cycle priority:** inspect the existing Provisioner/runtime acceptance implementation, identify the first unverified end-to-end gate, implement it in the existing architecture, and run the corresponding test before moving to the next workstream.
+**Current acceptance boundary:** repository changes are committed, but CI/runtime execution has not yet been directly verified in this turn. Therefore the Provisioner remains TESTING rather than DONE.
+
+**Next cycle priority:** execute the Provisioner test/CI path, fix any failures, then exercise the confirmed-payment→job→step→handover path in a safe staging/sandbox environment before moving the portfolio to the next highest-value workstream.
 
 ## Current Evidence Boundary
 
