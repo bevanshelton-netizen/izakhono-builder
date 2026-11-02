@@ -1,29 +1,31 @@
 # IZAKHONO NODE CLUSTER v1
 
-> **Runtime Fabric boundary (26 Sep 2026):** This four-node cluster is the long-term owner-controlled HA target. It is not a prerequisite for public product availability and it must not make NODE01 a portfolio-wide launch gate. Products should first inherit the node-agnostic standard in `../runtime-fabric/README.md`.
+> **Runtime Fabric boundary (2 Nov 2026):** This directory describes an owner-controlled HA cluster implementation. **NODE01-NODE04 are logical software/runtime identities, not physical machines, servers, hostnames, or permanent hardware assignments.** Each logical identity is bound at runtime to an approved physical or virtual runtime host through `izakhono.runtime-binding/v1`. The cluster is not a prerequisite for public product availability and it must not make NODE01 a portfolio-wide launch gate.
 
-This directory turns IZAKHONO NODE from a single-machine runtime into a four-node owner-controlled cluster.
+This directory documents one implementation of the IZAKHONO runtime cluster beneath the logical node-identity layer. Products should first inherit the node-agnostic standard in `../runtime-fabric/README.md`.
 
-## Topology
+## Logical identity and runtime-host boundary
 
-| Node | Preferred role | Cluster role | Backup role |
+| Logical identity | Preferred runtime role | Implementation role | Recovery principle |
 | --- | --- | --- | --- |
-| NODE 01 | bootstrap preference | k3s server/control-plane + worker | owned workload host |
-| NODE 02 | peer controller | k3s server/control-plane + worker | owned workload host |
-| NODE 03 | peer controller | k3s server/control-plane + worker | owned workload host |
-| NODE 04 | DR/workload | k3s worker + backup repository | recovery store |
+| NODE01 | bootstrap/control-plane preference | k3s server/control-plane + worker | identity may rebind to an approved host |
+| NODE02 | peer controller preference | k3s server/control-plane + worker | identity may rebind to an approved host |
+| NODE03 | peer controller preference | k3s server/control-plane + worker | identity may rebind to an approved host |
+| NODE04 | DR/workload preference | k3s worker + backup repository | identity may rebind to an approved host |
 
-NODE01 may bootstrap this specific k3s cluster, but production applications must not depend on NODE01 being alive. Public launch/failover is governed by the Runtime Fabric, not by this cluster's bootstrap order.
+These are **software identities**. The underlying runtime host is separate infrastructure and may be physical, virtual, owned, or an approved external adapter. A host may change without changing the logical identity. No release, deployment, DNS, TLS, health, acceptance, or LIVE contract may require a permanent physical machine named NODE01.
 
-The cluster uses three control-plane members (NODE01-03) so control-plane quorum survives one controller failure. NODE04 remains outside the etcd voting set so it can act as a simpler disaster-recovery and workload node.
+NODE01 may be the preferred logical bootstrap role for this specific k3s implementation, but production applications must not depend on a particular NODE01 host being alive. Public launch/failover is governed by the Runtime Fabric, not by this cluster's bootstrap order.
+
+The cluster uses three control-plane members (the logical NODE01-NODE03 roles) so control-plane quorum survives one controller failure. NODE04 remains outside the etcd voting set so it can act as a simpler disaster-recovery and workload role.
 
 ## Design goals
 
 - owner-controlled Linux runtime
-- no single-node dependency
+- no single-host dependency for the logical node identities
 - encrypted Kubernetes secrets at rest
 - encrypted pod network using WireGuard-native flannel
-- automatic workload rescheduling after node failure
+- automatic workload rescheduling after host failure
 - scheduled etcd snapshots
 - encrypted service/data backups
 - explicit health proof before this cluster is called production-ready
@@ -32,14 +34,14 @@ The cluster uses three control-plane members (NODE01-03) so control-plane quorum
 
 ## Cluster bootstrap order
 
-This order is only for forming this k3s cluster:
+This order is only for forming this k3s implementation. It must not be interpreted as assigning physical machines the names NODE01-NODE04:
 
-1. Prepare all four Linux machines with static IPs, patched OS and SSH key access.
-2. Copy and edit `cluster.env.example` outside source control.
-3. On NODE01 run `sudo ./bootstrap-primary.sh`.
-4. Read the join token on NODE01.
-5. Join NODE02 and NODE03 as servers.
-6. Join NODE04 as a worker.
+1. Prepare the approved runtime hosts with static/reliable addressing, patched OS and SSH key access.
+2. Copy and edit `cluster.env.example` outside source control, including the logical identity-to-host bindings.
+3. Bind the preferred bootstrap logical identity to an approved runtime host using the runtime-binding contract.
+4. Run the bootstrap role on that approved host.
+5. Read the join token from the active control-plane host.
+6. Bind the peer logical identities to approved runtime hosts and join them according to their assigned cluster roles.
 7. Run `verify-cluster.sh` from an authorized admin host with cluster credentials.
 8. Configure encrypted backups and run `backup.sh`.
 
@@ -47,16 +49,17 @@ Product releases do not wait for this procedure if another Runtime Fabric target
 
 ## Production proof for this cluster
 
-- all four physical nodes visible and Ready
-- NODE01-03 etcd/control-plane quorum healthy
-- NODE04 schedulable
+- all required logical node identities are bound to approved runtime hosts
+- the corresponding runtime hosts are independently verified and reachable
+- logical NODE01-NODE03 control-plane quorum is healthy
+- logical NODE04 workload/DR role is healthy
 - encrypted backup and restore rehearsal succeed
-- each controller is failed individually during controlled tests
+- each controller role is failed individually during controlled tests
 - replicated/stateless service remains available
 - public edge routing is externally tested
-- UPS/power-loss recovery is tested
+- power-loss/recovery behaviour is tested on the actual runtime hosts
 - secrets are not stored in GitHub or application images
 
 ## Important boundary
 
-This repository builds cluster software and operating procedures. It cannot prove physical machines, LAN, UPS, public routing or disk durability until real hardware is installed and tested.
+This repository builds cluster software and operating procedures. It cannot prove runtime hosts, LAN, UPS, public routing or disk durability until the actual infrastructure is installed, bound, and independently tested. Repository CI must never manufacture runtime-host or LIVE evidence.
