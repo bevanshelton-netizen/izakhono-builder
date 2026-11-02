@@ -6,6 +6,7 @@ import path from 'node:path';
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'izakhono-agent-test-'));
 process.env.IZAKHONO_AGENT_STATE_PATH = path.join(dir, 'state.json');
 process.env.IZAKHONO_AGENT_QUEUE_PATH = path.join(dir, 'queue.json');
+process.env.IZAKHONO_BUILD_ARTIFACT_ROOT = path.join(dir, 'artifacts');
 process.env.IZAKHONO_AGENT_MAX_STEPS_PER_RUN = '25';
 
 const { createPlan, enqueue } = await import('./ai-agent.mjs');
@@ -20,7 +21,7 @@ const plan = createPlan({
 });
 assert.equal(plan.status, 'queued');
 
-const queued = enqueue({ goal: 'Build a native web application artifact', });
+const queued = enqueue({ goal: 'Build a native web application artifact' });
 assert.equal(queued.status, 'queued');
 
 const result = await runAgentWorker();
@@ -31,9 +32,12 @@ const state = JSON.parse(fs.readFileSync(process.env.IZAKHONO_AGENT_STATE_PATH, 
 const queuedState = state.plans[queued.planId];
 assert.equal(queuedState.status, 'completed');
 assert.ok(queuedState.steps.every((step) => step.status === 'completed'));
-assert.ok(queuedState.steps.some((step) => step.artifactPath));
+assert.ok(queuedState.steps.every((step) => step.artifactPath));
 
-const artifactPath = path.join(dir, '..', 'missing');
-assert.notEqual(artifactPath, queuedState.steps[0].artifactPath);
+const artifactDir = path.join(process.env.IZAKHONO_BUILD_ARTIFACT_ROOT, queued.planId);
+assert.ok(fs.existsSync(path.join(artifactDir, 'architecture.json')));
+assert.ok(fs.existsSync(path.join(artifactDir, 'package.json')));
+assert.ok(fs.existsSync(path.join(artifactDir, 'index.mjs')));
+assert.ok(fs.existsSync(path.join(artifactDir, 'build-result.json')));
 
 console.log('[PASS] AI agent worker drains native Builder stages and records portable build artifacts.');
