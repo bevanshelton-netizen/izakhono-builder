@@ -1,0 +1,1 @@
+{"gate":"IKHOKHA_SANDBOX_V1","status":"REFERENCE_ONLY","provider":"IKHOKHA","tenantId":"kora-network","productionClaim":false,"evidenceRequired":["verification","dedupe","persistence","lifecycle","concurrency","rollback","playback","reconciliation"]}
