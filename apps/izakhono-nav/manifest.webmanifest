@@ -1,7 +1,7 @@
 {
   "name": "IZAKHONO NAV",
   "short_name": "NAV",
-  "description": "Safety-first mobility for African roads and global journeys.",
+  "description": "Safety-first African mobility and navigation platform.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
