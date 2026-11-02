@@ -1,0 +1,50 @@
+{
+  "product": "IZAKHONO NAV",
+  "layer": "Fatigue Mode AI Provider Abstraction v0.1",
+  "status": "architecture_ready",
+  "purpose": "Provide an authenticated provider-neutral interface for conversational Driver Companion voice without changing the locked driver-initiated interaction model.",
+  "principles": [
+    "driver_initiated_only",
+    "no_automatic_microphone_activation",
+    "no_unsolicited_voice",
+    "provider_neutral",
+    "privacy_minimized",
+    "verified_context_only",
+    "safety_over_conversation",
+    "human_authorization_for_escalation",
+    "offline_resilient",
+    "no_fabricated_live_ai_claims"
+  ],
+  "provider_contract": {
+    "request": ["session_id", "locale", "transcript", "context", "safety_state"],
+    "response": ["reply_text", "safety_posture", "next_step", "confidence", "provider_status"],
+    "authentication": "server_side_authenticated_provider_required",
+    "client_secret_storage": "prohibited",
+    "raw_audio_default_storage": false
+  },
+  "session_rules": {
+    "activation": "driver_activated",
+    "microphone": "permission_required_and_explicit",
+    "conversation_end": "driver_controlled_or_safety_workflow",
+    "single_signal_diagnosis": false
+  },
+  "safety": {
+    "falling_asleep_report": "recommend_safe_stop_and_offer_configured_safety_workflow",
+    "imminent_danger": "prioritize_controlled_safety_escalation",
+    "vehicle_control": "never_from_conversation_provider",
+    "emergency_dispatch": "not_claimed_without_authenticated_integration"
+  },
+  "integration_points": [
+    "fatigue_mode",
+    "driver_safety_coach",
+    "safety_autopilot",
+    "FORTRESS",
+    "vehicle_integration",
+    "AI_operations_copilot"
+  ],
+  "production_status": {
+    "provider_connected": false,
+    "live_voice_ai": false,
+    "adapter_ready": true
+  }
+}
