@@ -21,7 +21,7 @@ The database is the source of truth for entitlement state. Payment processors ar
 
 ## Supabase posture
 
-The reference migration uses PostgreSQL tables with RLS enabled and explicitly revokes `anon` and `authenticated` access because this is server-side control-plane state. Supabase recommends enabling RLS for exposed tables and matching grants to the application's actual access model. citehttps://supabase.com/docs/guides/database/postgres/row-level-security
+The reference migration uses PostgreSQL tables with RLS enabled and explicitly revokes `anon` and `authenticated` access because this is server-side control-plane state. Supabase's current RLS guidance requires RLS and grants to match the actual access model.
 
 The migration is intentionally **not applied to a remote Supabase project** in this milestone. No existing Supabase project was identified as an approved IZAKHONO STREAM production database. The repository therefore remains the source of truth until a dedicated STREAM database is selected.
 
@@ -40,4 +40,4 @@ The persistence layer is not production-approved until all of the following are 
 - reconciliation test passes;
 - real provider sandbox webhook verification passes.
 
-Database migrations should remain version-controlled and deployed through the migration workflow rather than by undocumented remote edits. citehttps://supabase.com/docs/guides/deployment/database-migrations
+Database migrations should remain version-controlled and deployed through the migration workflow rather than by undocumented remote edits.
