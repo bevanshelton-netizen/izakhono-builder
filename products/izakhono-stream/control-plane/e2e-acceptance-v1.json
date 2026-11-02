@@ -1,0 +1,18 @@
+{
+  "version": "1.0",
+  "productionClaim": false,
+  "scenarios": [
+    {"id":"E2E-001","event":"PAID","expectedEntitlement":"ACTIVE","expectedPlayback":"AUTHORIZED"},
+    {"id":"E2E-002","event":"PAID_REPLAY","expectedEntitlement":"ONE_ACTIVE_RECORD","expectedPlayback":"AUTHORIZED"},
+    {"id":"E2E-003","event":"REFUNDED","expectedEntitlement":"REVOKED","expectedPlayback":"DENIED"},
+    {"id":"E2E-004","event":"CANCELLED","expectedEntitlement":"REVOKED","expectedPlayback":"DENIED"},
+    {"id":"E2E-005","event":"FAILED","expectedEntitlement":"NOT_ACTIVE","expectedPlayback":"DENIED"},
+    {"id":"E2E-006","event":"AUTHORIZED_PLAYBACK","expectedManifest":"master.m3u8","expectedToken":"SHORT_LIVED"},
+    {"id":"E2E-007","event":"MISSING_ENTITLEMENT","expectedPlayback":"DENIED"},
+    {"id":"E2E-008","event":"WRONG_TENANT","expectedPlayback":"DENIED"},
+    {"id":"E2E-009","event":"WRONG_IDENTITY","expectedPlayback":"DENIED"},
+    {"id":"E2E-010","event":"EXPIRED_ENTITLEMENT","expectedPlayback":"DENIED"},
+    {"id":"E2E-011","event":"DISALLOWED_DEVICE","expectedPlayback":"DENIED"},
+    {"id":"E2E-012","event":"MEDIA_RESOLUTION_MISSING","expectedPlayback":"DENIED"}
+  ]
+}
