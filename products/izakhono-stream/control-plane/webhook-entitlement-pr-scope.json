@@ -1,0 +1,5 @@
+{
+  "base": "main",
+  "head": "feat/izakhono-stream-entitlement-webhook-v1",
+  "scope": "reference-payment-webhook-entitlement"
+}
