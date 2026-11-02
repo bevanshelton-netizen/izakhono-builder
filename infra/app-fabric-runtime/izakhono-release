@@ -1,0 +1,115 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# IZAKHONO sovereign release authority for logical NODE runtimes.
+# This command is the handoff target used by NODE01 release pollers.
+# It does not manufacture LIVE evidence; acceptance/promotion remain separate gates.
+
+usage(){
+  cat >&2 <<'EOF'
+Usage: izakhono-release --application APP --revision SHA --source-repository OWNER/REPO \
+  --public-url URL --logical-node NODE --release-contract PATH --state-root DIR
+EOF
+  exit 2
+}
+
+APP=''; REVISION=''; REPO=''; PUBLIC_URL=''; NODE=''; CONTRACT=''; STATE_ROOT=''
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --application) APP="$2"; shift 2;;
+    --revision) REVISION="$2"; shift 2;;
+    --source-repository) REPO="$2"; shift 2;;
+    --public-url) PUBLIC_URL="$2"; shift 2;;
+    --logical-node) NODE="$2"; shift 2;;
+    --release-contract) CONTRACT="$2"; shift 2;;
+    --state-root) STATE_ROOT="$2"; shift 2;;
+    *) usage;;
+  esac
+done
+
+[ "$NODE" = NODE01 ] || { echo '[FAIL] release authority accepts NODE01 only.' >&2; exit 3; }
+[ "$APP" = allegro-vibez ] || { echo "[FAIL] unsupported application: $APP" >&2; exit 3; }
+printf '%s' "$REVISION" | grep -Eq '^[0-9a-f]{40}$' || { echo '[FAIL] revision must be a 40-character commit SHA.' >&2; exit 3; }
+printf '%s' "$REPO" | grep -Eq '^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$' || { echo '[FAIL] invalid source repository.' >&2; exit 3; }
+printf '%s' "$PUBLIC_URL" | grep -Eq '^https://[^/]+/?$' || { echo '[FAIL] public URL must be HTTPS.' >&2; exit 3; }
+[ -f "$CONTRACT" ] || { echo "[FAIL] release contract not found: $CONTRACT" >&2; exit 4; }
+[ -n "$STATE_ROOT" ] || { echo '[FAIL] state root is required.' >&2; exit 4; }
+
+command -v curl >/dev/null 2>&1 || { echo '[FAIL] curl is required.' >&2; exit 4; }
+command -v tar >/dev/null 2>&1 || { echo '[FAIL] tar is required.' >&2; exit 4; }
+command -v docker >/dev/null 2>&1 || { echo '[FAIL] docker is required.' >&2; exit 4; }
+
+grep -q '"identity_type"[[:space:]]*:[[:space:]]*"software-runtime"' "$CONTRACT" || { echo '[FAIL] contract identity_type is not software-runtime.' >&2; exit 5; }
+grep -q '"ownership"[[:space:]]*:[[:space:]]*"izakhono-owned"' "$CONTRACT" || { echo '[FAIL] contract is not IZAKHONO-owned.' >&2; exit 5; }
+grep -q '"production_claim"[[:space:]]*:[[:space:]]*"NOT_YET_PUBLIC"' "$CONTRACT" || { echo '[FAIL] release contract must start NOT_YET_PUBLIC.' >&2; exit 5; }
+
+STATE_ROOT="$(readlink -f "$STATE_ROOT")"
+WORK_ROOT="$STATE_ROOT/releases/$APP/$REVISION"
+RECEIPT_DIR="$STATE_ROOT/evidence/$APP"
+mkdir -p "$WORK_ROOT" "$RECEIPT_DIR"
+umask 077
+
+SOURCE_TARBALL="$WORK_ROOT/source.tar.gz"
+SOURCE_DIR="$WORK_ROOT/source"
+if [ ! -d "$SOURCE_DIR/.git" ]; then
+  rm -rf "$SOURCE_DIR"
+  mkdir -p "$SOURCE_DIR"
+  curl -fsSL "https://github.com/$REPO/archive/$REVISION.tar.gz" -o "$SOURCE_TARBALL"
+  tar -xzf "$SOURCE_TARBALL" -C "$WORK_ROOT"
+  EXTRACTED="$(find "$WORK_ROOT" -mindepth 1 -maxdepth 1 -type d -name "$(basename "${REPO#*/}")-*" | head -1)"
+  [ -n "$EXTRACTED" ] || { echo '[FAIL] source archive extraction failed.' >&2; exit 6; }
+  mv "$EXTRACTED"/* "$SOURCE_DIR"/
+  mv "$EXTRACTED"/.[!.]* "$SOURCE_DIR"/ 2>/dev/null || true
+  rmdir "$EXTRACTED"
+fi
+
+[ -f "$SOURCE_DIR/scripts/izakhono/production-cutover.sh" ] || {
+  echo '[FAIL] ALLEGRO production cutover script is missing at the requested revision.' >&2
+  exit 7
+}
+
+# Execute only the repository-owned cutover contract. The cutover script itself
+# performs health/public-HTTPS checks and writes a receipt with live_claim=false.
+export IZAKHONO_NODE01_EXECUTE=true
+export IZAKHONO_LOGICAL_NODE=NODE01
+export IZAKHONO_RUNTIME_IDENTITY=software-runtime
+export IZAKHONO_RUNTIME_BINDING_SCHEMA=izakhono.runtime-binding/v1
+export IZAKHONO_OWNERSHIP=izakhono-owned
+export IZAKHONO_PUBLIC_URL="$PUBLIC_URL"
+export IZAKHONO_RELEASE_REVISION="$REVISION"
+export IZAKHONO_RELEASE_CONTRACT="$CONTRACT"
+export IZAKHONO_STATE_ROOT="$STATE_ROOT"
+
+if [ -n "${ACME_EMAIL:-}" ]; then
+  export ACME_EMAIL
+fi
+
+bash "$SOURCE_DIR/scripts/izakhono/production-cutover.sh" \
+  --revision "$REVISION" \
+  --public-url "$PUBLIC_URL" \
+  --state-root "$STATE_ROOT" \
+  --release-contract "$CONTRACT"
+
+RECEIPT="$RECEIPT_DIR/$REVISION.json"
+cat > "$RECEIPT" <<EOF
+{
+  "schema":"izakhono.release-authority/v1",
+  "application":"$APP",
+  "revision":"$REVISION",
+  "logical_node_id":"NODE01",
+  "identity_type":"software-runtime",
+  "ownership":"izakhono-owned",
+  "runtime_host_is_separate":true,
+  "source_repository":"$REPO",
+  "public_url":"$PUBLIC_URL",
+  "production_claim":"NOT_YET_PUBLIC",
+  "handoff":"PASS",
+  "acceptance":"PENDING",
+  "promotion":"PENDING",
+  "live":false
+}
+EOF
+chmod 600 "$RECEIPT"
+printf '%s\n' "[PASS] IZAKHONO release authority completed NODE01 handoff for $APP@$REVISION."
+printf '%s\n' "[HOLD] Acceptance and promotion remain separate; LIVE=false."
+printf '%s\n' "Receipt: $RECEIPT"
