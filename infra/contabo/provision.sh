@@ -12,7 +12,13 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 : "${CONTABO_SSH_KEY_IDS:?Set CONTABO_SSH_KEY_IDS to comma-separated Contabo SSH secret IDs}"
 : "${CONTABO_REGION:=EU}"
 : "${CONTABO_PERIOD:=1}"
-: "${IZAKHONO_NODE_ID:=CONTABO-VPS-01}"
+: "${IZAKHONO_NODE_ID:=NODE01}"
+: "${IZAKHONO_RUNTIME_HOST_NAME:=izakhono-runtime-01}"
+
+case "$IZAKHONO_NODE_ID" in
+  NODE01|NODE02|NODE03|NODE04) ;;
+  *) echo "Invalid logical runtime identity: $IZAKHONO_NODE_ID (use NODE01-NODE04)" >&2; exit 2 ;;
+esac
 
 case "$PROFILE" in
   plus4) PRODUCT_ID="V159"; EXPECTED="4 vCPU / 8 GB / 150 GB NVMe / 500 Mbit/s" ;;
@@ -25,10 +31,12 @@ API="https://api.contabo.com"
 REQUEST_ID="$(cat /proc/sys/kernel/random/uuid 2>/dev/null || uuidgen)"
 
 echo "== IZAKHONO Contabo Provisioner =="
-echo "Profile : $PROFILE"
-echo "Product : $PRODUCT_ID"
-echo "Target  : $EXPECTED"
-echo "Node ID : $IZAKHONO_NODE_ID"
+echo "Profile       : $PROFILE"
+echo "Product       : $PRODUCT_ID"
+echo "Target        : $EXPECTED"
+echo "Logical Node  : $IZAKHONO_NODE_ID"
+echo "Runtime Host  : $IZAKHONO_RUNTIME_HOST_NAME"
+echo "Identity      : software-runtime"
 
 echo "Authenticating with Contabo API..."
 TOKEN_RESPONSE="$(curl -fsS -X POST \
@@ -48,13 +56,14 @@ headers=(
   -H 'Content-Type: application/json'
 )
 
-# Reuse an existing IZAKHONO node with the same display name instead of creating duplicates.
-existing="$(curl -fsS "${API}/v1/compute/instances?displayName=${IZAKHONO_NODE_ID}" "${headers[@]}")"
+# Reuse an existing runtime host with the same display name instead of creating duplicates.
+existing="$(curl -fsS "${API}/v1/compute/instances?displayName=${IZAKHONO_RUNTIME_HOST_NAME}" "${headers[@]}")"
 existing_count="$(jq -r '._pagination.totalElements // 0' <<<"$existing")"
 
 if [[ "$existing_count" != "0" ]]; then
-  echo "Existing node found; no duplicate instance will be created."
+  echo "Existing runtime host found; no duplicate instance will be created."
   jq '.data[] | {instanceId,name,displayName,productId,region,status}' <<<"$existing"
+  echo "Logical identity $IZAKHONO_NODE_ID remains separate from this runtime host."
   exit 0
 fi
 
@@ -64,17 +73,19 @@ payload="$(jq -n \
   --arg imageId "$CONTABO_IMAGE_ID" \
   --arg productId "$PRODUCT_ID" \
   --arg region "$CONTABO_REGION" \
-  --arg displayName "$IZAKHONO_NODE_ID" \
+  --arg displayName "$IZAKHONO_RUNTIME_HOST_NAME" \
   --arg userData "$user_data" \
   --argjson sshKeys "$ssh_keys_json" \
   --argjson period "$CONTABO_PERIOD" \
   '{imageId:$imageId,productId:$productId,region:$region,sshKeys:$sshKeys,userData:$userData,period:$period,displayName:$displayName,defaultUser:"admin"}')"
 
-echo "Creating Contabo instance..."
+echo "Creating Contabo runtime host..."
 response="$(curl -fsS -X POST "${API}/v1/compute/instances" "${headers[@]}" --data "$payload")"
 
 jq '.data[] | {instanceId,name,displayName,productId,region,status}' <<<"$response"
 
 echo
-printf '%s\n' "Provisioning request accepted. Public service status is NOT implied."
-echo "Next gate: inspect the instance, verify SSH + /health, then configure approved EDGE/TLS/DNS."
+echo "Provisioning request accepted. Public service status is NOT implied."
+echo "Logical identity: $IZAKHONO_NODE_ID"
+echo "Runtime host: $IZAKHONO_RUNTIME_HOST_NAME"
+echo "Next gate: inspect the host, verify SSH + /health + Docker, then bind the logical runtime and configure approved EDGE/TLS/DNS."
