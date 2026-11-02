@@ -33,6 +33,12 @@ jobs:
       - name: Run Affiliate Ops
         run: node scripts/affiliate-ops.mjs
 
+      - name: Verify ops report
+        if: always()
+        run: |
+          test -f affiliate-ops-report.json
+          node -e "const r=require('./affiliate-ops-report.json'); if (!r || typeof r !== 'object') process.exit(1); console.log('Affiliate report:', r.status, 'issues:', r.issue_count || 0)"
+
       - name: Upload ops report
         if: always()
         uses: actions/upload-artifact@v4
