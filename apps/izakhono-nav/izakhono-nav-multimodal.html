@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>IZAKHONO NAV — Multimodal</title>
+<style>
+:root{font-family:Inter,system-ui,sans-serif;background:#07100d;color:#eef7f2}body{margin:0;background:radial-gradient(circle at 80% 0%,#173a2c,#07100d 55%);min-height:100vh}.wrap{max-width:1100px;margin:auto;padding:28px}.top{display:flex;justify-content:space-between;gap:20px;align-items:center}.brand{font-size:25px;font-weight:800;letter-spacing:.04em}.sub{color:#9fb8ad;margin-top:5px}.badge{padding:8px 12px;border:1px solid #36594a;border-radius:999px;font-size:12px}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:24px}.card{background:rgba(15,31,25,.82);border:1px solid #254438;border-radius:18px;padding:20px;box-shadow:0 12px 35px #0005}.mode{font-size:22px;font-weight:750}.desc{color:#a8bdb4;line-height:1.5;margin:8px 0 18px}.button{border:1px solid #466c5b;background:#10271e;color:#eef7f2;border-radius:10px;padding:10px 13px;margin:4px;cursor:pointer}.button:hover{background:#18382b}.status{margin-top:20px}.mono{font-family:ui-monospace,monospace;color:#a8d8c2;white-space:pre-wrap;font-size:12px}.notice{margin-top:18px;border-left:3px solid #91c9ae;padding:12px 15px;background:#0d211a;color:#bdd3c9}.small{font-size:12px;color:#8ea89d}@media(max-width:760px){.grid{grid-template-columns:1fr}.top{align-items:flex-start;flex-direction:column}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top"><div><div class="brand">IZAKHONO NAV</div><div class="sub">One intelligence layer. Land • Sea • Air.</div></div><div id="badge" class="badge">UNAVAILABLE</div></div>
+  <div class="grid">
+    <div class="card"><div class="mode">🚗 LAND</div><div class="desc">Road navigation, freight, fleet safety, corridor intelligence and driver operations.</div><button class="button" onclick="selectMode('LAND')">Use Land</button></div>
+    <div class="card"><div class="mode">🚢 SEA</div><div class="desc">Marine routes, vessel intelligence, ports, maritime safety and operational context.</div><button class="button" onclick="selectMode('SEA')">Use Sea</button></div>
+    <div class="card"><div class="mode">✈️ AIR</div><div class="desc">Flight, airport, aviation route and operational intelligence through verified data sources.</div><button class="button" onclick="selectMode('AIR')">Use Air</button></div>
+  </div>
+  <div class="card status"><h2 id="title">LAND Intelligence</h2><div id="quality" class="sub">No verified live feed connected.</div><p><button class="button" onclick="sync()">Sync Verified Sources</button><button class="button" onclick="demo()">Load Demo View</button><button class="button" onclick="clearState()">Clear</button></p><div id="state" class="mono"></div></div>
+  <div class="notice"><strong>Hardware policy:</strong> IZAKHONO NAV does not require IZAKHONO-owned hardware for its core platform. Smartphones, browsers and authenticated third-party data APIs can provide software-accessible inputs. Telematics, AIS, avionics, satellite and emergency hardware are optional integrations that add capability.</div>
+  <p class="small">Operational status is shown only when verified data is available. Demo data is never presented as live. This interface does not claim emergency dispatch, aircraft control, vessel control or remote vehicle control.</p>
+</div>
+<script src="izakhono-nav-multimodal-runtime.js"></script>
+<script>
+function render(s){document.getElementById('badge').textContent=s.mode;document.getElementById('title').textContent=s.activeMode+' Intelligence';document.getElementById('quality').textContent=s.dataQuality.replaceAll('_',' ');document.getElementById('state').textContent=JSON.stringify(s,null,2)}
+function selectMode(m){render(window.IZAKHONO_NAV_MULTIMODAL.setMode(m))}
+async function sync(){render(await window.IZAKHONO_NAV_MULTIMODAL.sync())}
+function demo(){render(window.IZAKHONO_NAV_MULTIMODAL.loadDemo())}
+function clearState(){render(window.IZAKHONO_NAV_MULTIMODAL.clear())}
+render(window.IZAKHONO_NAV_MULTIMODAL.state())
+</script>
+</body>
+</html>
