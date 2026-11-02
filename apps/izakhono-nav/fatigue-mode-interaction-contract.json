@@ -1,0 +1,52 @@
+{
+  "product": "IZAKHONO NAV",
+  "layer": "Fatigue Mode Driver-Initiated Voice Interaction v0.1",
+  "status": "architecture_locked",
+  "principle": "NAV remains quiet unless the driver activates the interface signal to begin verbal interaction.",
+  "interaction_model": {
+    "first_contact": "visual_interface_signal",
+    "activation": "driver_initiated",
+    "voice_start": "after_driver_activation",
+    "default_behavior": "silent_and_non_intrusive",
+    "conversation_style": "calm_natural_brief_voice_first"
+  },
+  "states": ["READY", "DRIVER_ACTIVATED", "LISTENING", "CONVERSING", "SAFETY_ESCALATION"],
+  "rules": [
+    "no_unsolicited_fatigue_conversation",
+    "no_repeated_nagging",
+    "no_forced_questionnaires",
+    "no_fatigue_diagnosis_from_single_signal",
+    "driver_may_start_and_stop_conversation",
+    "voice_interaction_must_minimize_driver_distraction",
+    "safety_escalation_requires_verified_or_driver_reported_safety_context",
+    "safety_takes_priority_over_conversation",
+    "all_interaction_events_are_auditable",
+    "offline_resilient"
+  ],
+  "activation_signal": {
+    "visible": true,
+    "persistent_during_journey": true,
+    "low_distraction": true,
+    "driver_controlled": true,
+    "voice_confirmation": "I'm listening."
+  },
+  "fatigue_handling": {
+    "signals_may_inform_context": true,
+    "single_signal_is_not_diagnostic": true,
+    "conversation_is_supportive_not_diagnostic": true,
+    "recommended_action_may_include_safe_stop": true,
+    "driver_remains_in_control_of_normal_conversation": true
+  },
+  "escalation": {
+    "trigger_examples": ["driver_reports_falling_asleep", "driver_requests_help", "verified_high_safety_context"],
+    "response": "transition_to_controlled_safety_workflow",
+    "human_contact": "available_when_configured_and_authorized",
+    "no_emergency_dispatch_claim": true,
+    "no_police_notification_claim": true
+  },
+  "production_status": {
+    "architecture_ready": true,
+    "live_voice_ai_provider_connected": false,
+    "live_human_contact_integration": false
+  }
+}
