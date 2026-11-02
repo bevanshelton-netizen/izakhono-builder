@@ -1,0 +1,65 @@
+{
+  "product": "IZAKHONO NAV",
+  "layer": "Multimodal Mobility Intelligence Architecture v0.1",
+  "principle": "software_first_hardware_optional",
+  "purpose": "Provide navigation, safety, operational intelligence and decision support across land, sea and air without requiring IZAKHONO-owned hardware.",
+  "modes": {
+    "land": {"status":"architecture_ready","commercial_layers":["IZAKHONO NAV","SHELTON FREIGHT NAV","Fleet NAV"]},
+    "sea": {"status":"architecture_ready","commercial_layers":["IZAKHONO MARINE NAV","Port & Vessel Intelligence"]},
+    "air": {"status":"architecture_ready","commercial_layers":["IZAKHONO AIR NAV","Airport & Flight Intelligence"]}
+  },
+  "hardware_policy": {
+    "required_for_core_platform": false,
+    "supported_inputs": [
+      "smartphone_gps",
+      "browser_geolocation",
+      "vehicle_telematics_apis",
+      "vessel_ais_apis",
+      "aviation_data_apis",
+      "weather_apis",
+      "traffic_apis",
+      "port_data_apis",
+      "airport_data_apis",
+      "enterprise_iot_apis"
+    ],
+    "optional_hardware": ["vehicle_telematics","fleet_trackers","marine_ais_devices","aviation_avionics_integrations","satellite_connectivity","emergency_devices"],
+    "rule": "Core NAV intelligence must remain useful when only software-accessible data is available. Hardware integrations enhance capability but must not become a prerequisite for the platform architecture."
+  },
+  "common_intelligence": [
+    "route_and_corridor_intelligence",
+    "safety_intelligence",
+    "security_intelligence",
+    "weather_and_environmental_context",
+    "connectivity_resilience",
+    "ai_operations_copilot",
+    "FORTRESS_security",
+    "event_bus",
+    "rules_and_decision_engine",
+    "command_automation",
+    "audit_and_evidence"
+  ],
+  "data_integrity": {
+    "verified_only_for_operational_claims": true,
+    "unverified_data_label": "UNVERIFIED",
+    "demo_data_label": "DEMO",
+    "missing_live_feed_state": "UNAVAILABLE",
+    "fabricated_position_or_incident_data": false
+  },
+  "safety": {
+    "priority_order": ["human_safety","security","operational_continuity","efficiency","commercial_optimization"],
+    "prohibited_without_authenticated_integration": [
+      "emergency_dispatch_claim",
+      "police_notification_claim",
+      "remote_vehicle_control",
+      "remote_engine_control",
+      "aircraft_control",
+      "vessel_control"
+    ]
+  },
+  "production_status": {
+    "architecture_ready": true,
+    "live_multimodal_data": false,
+    "hardware_required": false,
+    "deployment_claim": false
+  }
+}
