@@ -47,10 +47,18 @@
     }catch(e){return response;}
   };
   window.IZAKHONONavHazards={VALID_TYPES,WEIGHTS,STALE_HOURS,DEFAULT_FEED,parseHazards,routeHazards,scoreRoute,rankRoutes,riskBand,verifiedFeed};
-  // Voice-first NAV: loaded after the core hazard engine so the existing UI can
-  // keep its tap fallback while adding the "Hey NAV" interaction layer.
+
+  // Voice-first NAV: the core page already loads this engine. Load the voice
+  // runtime and UI bridge from here so the existing interface gains Hey NAV
+  // without requiring a second HTML bootstrap path. The tap fallback remains.
   const voice=document.createElement('script');
-  voice.src='./nav-voice-runtime.js';
+  voice.src='./hey-nav-runtime.js';
   voice.defer=false;
+  voice.onload=function(){
+    const bridge=document.createElement('script');
+    bridge.src='./hey-nav-ui-bridge.js';
+    bridge.defer=false;
+    document.head.appendChild(bridge);
+  };
   document.head.appendChild(voice);
 })();
