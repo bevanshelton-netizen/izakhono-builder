@@ -27,7 +27,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
       - name: Validate revenue funnel
-        run: node products/business-of-music-campaign/acceptance.mjs
+        run: |
+          node products/business-of-music-campaign/acceptance.mjs
+          node products/business-of-music-campaign/sales-confirmation.test.mjs
       - name: Configure Pages
         uses: actions/configure-pages@v5
       - name: Prepare site
