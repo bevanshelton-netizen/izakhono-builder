@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "tenantId": "kora-network",
+  "scenario": "PAID_SVOD_PLAYBACK",
+  "payment": {
+    "provider": "IKHOKHA",
+    "status": "PAID",
+    "transactionId": "txn-reference-001",
+    "userId": "user-reference-001",
+    "productId": "kora-svod-monthly",
+    "currency": "ZAR"
+  },
+  "expectedEntitlement": {
+    "status": "ACTIVE",
+    "productId": "kora-svod-monthly"
+  },
+  "expectedPlayback": "AUTHORIZED"
+}
