@@ -1,0 +1,38 @@
+services:
+  nav:
+    build:
+      context: ../../apps/izakhono-nav
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      PORT: 8080
+      IZAKHONO_RELEASE: ${IZAKHONO_RELEASE:-owned-nav-main}
+      IZAKHONO_AI_CHAT_ENDPOINT: ${IZAKHONO_AI_CHAT_ENDPOINT:-}
+      IZAKHONO_AI_API_KEY: ${IZAKHONO_AI_API_KEY:-}
+      IZAKHONO_AI_MODEL: ${IZAKHONO_AI_MODEL:-}
+    expose:
+      - "8080"
+    networks: [nav]
+
+  edge:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on: [nav]
+    environment:
+      NAV_DOMAIN: ${NAV_DOMAIN:-nav.izakhono.africa}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nav-Caddyfile:/etc/caddy/Caddyfile:ro
+      - nav-caddy-data:/data
+      - nav-caddy-config:/config
+    networks: [nav]
+
+networks:
+  nav:
+    driver: bridge
+
+volumes:
+  nav-caddy-data:
+  nav-caddy-config:
