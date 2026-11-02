@@ -1,0 +1,41 @@
+{
+  "product": "IZAKHONO NAV",
+  "feature": "Hey NAV Voice Interaction",
+  "version": "0.1",
+  "status": "architecture_ready",
+  "primary_interaction": "wake_phrase",
+  "wake_phrase": "Hey NAV",
+  "acknowledgement": "I'm listening.",
+  "fallback_interaction": "tap_voice_signal",
+  "principles": [
+    "quiet_by_default",
+    "driver_initiated_conversation",
+    "tap_remains_available",
+    "short_voice_responses",
+    "no_unsolicited_fatigue_questions",
+    "no_automatic_mic_upload_to_cloud",
+    "provider_credentials_server_side_only",
+    "offline_graceful_degradation",
+    "safety_first"
+  ],
+  "session": {
+    "idle": "wake_phrase_listener",
+    "activated": "listening",
+    "acknowledged": "conversation",
+    "processing": "thinking",
+    "speaking": "nav_speaking",
+    "ended": "idle"
+  },
+  "fallbacks": {
+    "wake_phrase_unavailable": "tap_voice_signal",
+    "speech_recognition_unavailable": "tap_voice_signal_or_text",
+    "ai_provider_unavailable": "safe_local_voice_response",
+    "network_unavailable": "offline_local_response"
+  },
+  "safety": {
+    "fatigue_high": "recommend_safe_stop",
+    "immediate_danger": "offer_configured_safety_escalation",
+    "vehicle_control": false,
+    "emergency_claim_without_authenticated_integration": false
+  }
+}
