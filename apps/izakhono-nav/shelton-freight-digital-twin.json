@@ -1,0 +1,17 @@
+{
+  "product":"SHELTON FREIGHT",
+  "layer":"Digital Twin & Network Operations Model",
+  "version":"0.1",
+  "purpose":"Provide a unified, verified operational model linking fleet assets, drivers, journeys, cargo, customers, corridors, security, maintenance and commercial state.",
+  "principles":["verified_signals_only","safety_over_commercial_optimization","single_source_operational_state","explainable_state_transitions","human_authorized_control","offline_resilient","no_fabricated_live_claims"],
+  "entities":["vehicle","driver","journey","delivery","cargo","customer","corridor","security_incident","maintenance_job","financial_account"],
+  "relationships":["driver_assigned_to_vehicle","vehicle_executes_journey","journey_serves_delivery","delivery_belongs_to_customer","journey_uses_corridor","vehicle_has_health_state","journey_has_security_state","customer_has_financial_state","vehicle_has_maintenance_state"],
+  "state_model":{"fleet":["READY","WATCH","RESTRICTED","UNAVAILABLE"],"vehicle":["AVAILABLE","ASSIGNED","IN_TRANSIT","WATCH","SERVICE_DUE","GROUNDED","UNAVAILABLE"],"journey":["PLANNED","PRETRIP","DISPATCHED","EN_ROUTE","PAUSED","EXCEPTION","ARRIVED","DELIVERED","CLOSED","UNAVAILABLE"],"security":["NORMAL","WATCH","ELEVATED","HIGH","CRITICAL","UNAVAILABLE"],"commercial":["HEALTHY","WATCH","REVIEW","UNAVAILABLE"]},
+  "decision_rules":["verified_critical_security_outweighs_commercial_priority","verified_vehicle_safety_outweighs_efficiency","unverified_or_demo_signals_never_become_live_state","conflicting_verified_signals_require_review","missing_required_inputs_produce_UNAVAILABLE","no_automatic_disciplinary_action","no_emergency_dispatch_claim_without_authenticated_integration","no_remote_vehicle_control"],
+  "inputs":["executive_control_tower","ceo_command_centre","fleet_intelligence","fleet_security_intelligence","journey_intelligence","driver_performance","vehicle_health","maintenance_workshop","delivery_intelligence","cargo_intelligence","customer_experience","revenue_intelligence","profitability_intelligence","corridor_intelligence","connectivity_state"],
+  "outputs":["entity_state","relationship_state","operational_readiness","priority_queue","risk_posture","commercial_posture","state_change_audit","data_quality_status"],
+  "api":{"snapshot":"GET /api/freight/digital-twin","entity":"GET /api/freight/digital-twin/:entity/:id","events":"POST /api/freight/digital-twin/events"},
+  "offline":{"supported":true,"queue":"digital-twin-event-outbox","replay_on_reconnect":true},
+  "audit":{"required":true,"fields":["event_id","entity_type","entity_id","previous_state","new_state","source","verified","timestamp","actor","reason"]},
+  "production_status":{"architecture_ready":true,"live_digital_twin":false,"live_integrations":false}
+}
