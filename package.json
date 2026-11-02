@@ -3,6 +3,8 @@
   "version": "0.2.0",
   "private": true,
   "scripts": {
+    "mail:validate": "node mail/node01-mail-engine.mjs validate",
+    "mail:plan": "node mail/node01-mail-engine.mjs plan",
     "dev": "wrangler dev",
     "ai-agent:run": "node autonomy/ai-agent-worker.mjs",
     "ai-agent:test": "node autonomy/ai-agent-worker.test.mjs && node autonomy/ai-agent-planner.test.mjs",
