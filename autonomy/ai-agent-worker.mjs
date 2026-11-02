@@ -43,12 +43,19 @@ async function execute(step) {
     });
   }
 
-  if (step.action === 'run-worker' || step.action === 'adapter-contract') {
-    return runBuilderAdapter({ ...step, action: step.action });
-  }
+  const nativeBuilderActions = new Set([
+    'run-worker',
+    'adapter-contract',
+    'plan-only',
+    'builder-scaffold',
+    'builder-validate',
+    'builder-security',
+    'builder-test',
+    'builder-package',
+  ]);
 
-  if (step.action === 'plan-only') {
-    return { status: 'completed', evidence: [{ name: 'plan-recorded', status: 'passed' }] };
+  if (nativeBuilderActions.has(step.action)) {
+    return runBuilderAdapter({ ...step, action: step.action });
   }
 
   return { status: 'waiting', reason: `unsupported-agent-action:${step.action}` };
@@ -56,11 +63,12 @@ async function execute(step) {
 
 function applyResult(plan, step, result) {
   const evidence = result.evidence || [];
-  if (result.status === 'completed' || result.status === 'assigned' || result.status === 'ready' || result.status === 'eligible') {
+  if (['completed', 'assigned', 'ready', 'eligible', 'instantiated'].includes(result.status)) {
     step.status = 'completed';
     step.completedAt = new Date().toISOString();
     step.result = result;
     step.evidenceResult = evidence;
+    if (result.selectedNode) step.selectedNode = result.selectedNode;
     return 'completed';
   }
 
