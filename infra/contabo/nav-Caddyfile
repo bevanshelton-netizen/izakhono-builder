@@ -1,0 +1,9 @@
+{$NAV_DOMAIN:nav.izakhono.africa} {
+  encode zstd gzip
+  reverse_proxy nav:8080
+  header {
+    X-Content-Type-Options "nosniff"
+    Referrer-Policy "strict-origin-when-cross-origin"
+    Permissions-Policy "geolocation=(self), microphone=(self), camera=()"
+  }
+}
