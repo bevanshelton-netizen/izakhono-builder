@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "IZAKHONO STREAM Payment Webhook Contract v1",
+  "type": "object",
+  "required": ["eventId", "tenantId", "provider", "signature", "payload", "receivedAt"],
+  "properties": {
+    "eventId": { "type": "string", "minLength": 1 },
+    "tenantId": { "type": "string", "minLength": 1 },
+    "provider": { "enum": ["IKHOKHA", "STRIPE", "PAYFAST", "PAYSTACK", "YOCO", "OTHER"] },
+    "signature": { "type": "string", "minLength": 1 },
+    "payload": { "type": "object" },
+    "receivedAt": { "type": "string", "format": "date-time" }
+  },
+  "additionalProperties": false
+}
