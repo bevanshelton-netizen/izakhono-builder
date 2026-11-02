@@ -6,10 +6,6 @@ const port = Number(process.env.PORT || 8080);
 const supabaseUrl = process.env.SUPABASE_URL;
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-if (!supabaseUrl || !serviceRoleKey) {
-  console.warn('SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY is not configured; API routes will return 503.');
-}
-
 const admin = supabaseUrl && serviceRoleKey
   ? createClient(supabaseUrl, serviceRoleKey, { auth: { autoRefreshToken: false, persistSession: false } })
   : null;
@@ -60,7 +56,7 @@ const server = http.createServer(async (req, res) => {
         service: 'izakhono-provisioner',
         status: 'ready',
         api: '/v1/provisioning',
-        version: '1.1.0',
+        version: '1.2.0',
       });
     }
 
@@ -73,24 +69,45 @@ const server = http.createServer(async (req, res) => {
 
     const body = await readBody(req);
 
+    // Start is intentionally keyed by the confirmed payment transaction.
+    // ic_provision_from_payment is idempotent on payment:<transaction_id>.
     if (req.url === '/v1/provisioning/start') {
-      if (!body.order_id) return json(res, 400, { error: 'order_id_required' });
-      const provisioningId = await rpc('iz_connect_start_paid_provisioning', { p_order_id: body.order_id });
-      return json(res, 202, { ok: true, provisioning_id: provisioningId });
+      if (!body.transaction_id) return json(res, 400, { error: 'transaction_id_required' });
+      const jobId = await rpc('ic_provision_from_payment', {
+        p_transaction_id: body.transaction_id,
+      });
+      return json(res, 202, { ok: true, job_id: jobId });
     }
 
+    // A worker advances the durable DB step, not an invented HTTP state machine.
     if (req.url === '/v1/provisioning/advance') {
-      if (!body.provisioning_id || !body.step_key || !body.status) {
-        return json(res, 400, { error: 'provisioning_id_step_key_status_required' });
+      if (!body.step_id || !body.status) {
+        return json(res, 400, { error: 'step_id_status_required' });
       }
-      const advanced = await rpc('iz_connect_advance_provisioning', {
-        p_provisioning_id: body.provisioning_id,
-        p_step_key: body.step_key,
-        p_status: body.status,
-        p_output: body.output ?? {},
-        p_error: body.error ?? null,
+      if (body.status === 'completed') {
+        const jobId = await rpc('ic_provisioner_complete_step', {
+          p_step_id: body.step_id,
+          p_result: body.output ?? {},
+        });
+        return json(res, 200, { ok: true, job_id: jobId, status: 'completed' });
+      }
+      if (body.status === 'failed') {
+        const jobId = await rpc('ic_provisioner_fail_step', {
+          p_step_id: body.step_id,
+          p_error: body.error ?? 'provider_step_failed',
+          p_retry_minutes: Number.isInteger(body.retry_minutes) ? body.retry_minutes : 5,
+        });
+        return json(res, 200, { ok: true, job_id: jobId, status: 'failed_or_retry_scheduled' });
+      }
+      return json(res, 400, { error: 'status_must_be_completed_or_failed' });
+    }
+
+    if (req.url === '/v1/provisioning/handover') {
+      if (!body.job_id) return json(res, 400, { error: 'job_id_required' });
+      const handover = await rpc('ic_build_provisioning_handover', {
+        p_job_id: body.job_id,
       });
-      return json(res, 200, { ok: true, advanced });
+      return json(res, 200, { ok: true, handover });
     }
 
     return json(res, 404, { error: 'not_found' });
