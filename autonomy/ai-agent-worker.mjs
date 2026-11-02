@@ -61,7 +61,7 @@ async function execute(step) {
   return { status: 'waiting', reason: `unsupported-agent-action:${step.action}` };
 }
 
-function applyResult(plan, step, result) {
+function applyResult(step, result) {
   const evidence = result.evidence || [];
   if (['completed', 'assigned', 'ready', 'eligible', 'instantiated'].includes(result.status)) {
     step.status = 'completed';
@@ -101,41 +101,48 @@ export async function runAgentWorker() {
       continue;
     }
 
-    const step = nextReadyStep(plan);
-    if (!step) {
-      const remaining = plan.steps.some((candidate) => !['completed'].includes(candidate.status));
+    item.status = 'running';
+    plan.status = 'running';
+
+    // Drain all dependency-ready native work in this invocation. External
+    // capability waits still stop the plan safely; the next scheduled worker
+    // invocation can resume it after the capability becomes available.
+    const maxStepsPerPlan = Math.max(1, Number(process.env.IZAKHONO_AGENT_MAX_STEPS_PER_RUN || 25));
+    let stepsThisPlan = 0;
+
+    while (stepsThisPlan < maxStepsPerPlan) {
+      const step = nextReadyStep(plan);
+      if (!step) break;
+
+      step.status = 'running';
+      step.startedAt = new Date().toISOString();
+      const result = await execute(step);
+      applyResult(step, result);
+      progressed += 1;
+      stepsThisPlan += 1;
+
+      if (step.status === 'failed') {
+        plan.status = 'blocked';
+        item.status = 'blocked';
+        break;
+      }
+      if (step.status === 'waiting') {
+        plan.status = 'waiting';
+        item.status = 'waiting';
+        break;
+      }
+    }
+
+    if (plan.status !== 'blocked' && plan.status !== 'waiting') {
+      const remaining = plan.steps.some((candidate) => candidate.status !== 'completed');
       if (!remaining) {
         plan.status = 'completed';
         item.status = 'completed';
         plan.completedAt = new Date().toISOString();
       } else {
-        plan.status = 'waiting';
-        item.status = 'waiting';
+        plan.status = 'queued';
+        item.status = 'queued';
       }
-      continue;
-    }
-
-    item.status = 'running';
-    plan.status = 'running';
-    step.status = 'running';
-    step.startedAt = new Date().toISOString();
-
-    const result = await execute(step);
-    applyResult(plan, step, result);
-    progressed += 1;
-
-    if (step.status === 'failed') {
-      plan.status = 'blocked';
-      item.status = 'blocked';
-    } else if (step.status === 'waiting') {
-      plan.status = 'waiting';
-      item.status = 'waiting';
-    } else if (plan.steps.every((candidate) => candidate.status === 'completed')) {
-      plan.status = 'completed';
-      item.status = 'completed';
-      plan.completedAt = new Date().toISOString();
-    } else {
-      item.status = 'queued';
     }
   }
 
