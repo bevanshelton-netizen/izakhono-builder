@@ -12,12 +12,20 @@ services:
       IZAKHONO_AI_MODEL: ${IZAKHONO_AI_MODEL:-}
     expose:
       - "8080"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8080/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
     networks: [nav]
 
   edge:
     image: caddy:2-alpine
     restart: unless-stopped
-    depends_on: [nav]
+    depends_on:
+      nav:
+        condition: service_healthy
     environment:
       NAV_DOMAIN: ${NAV_DOMAIN:-nav.izakhono.africa}
     ports:
