@@ -12,6 +12,7 @@ const PWA_HEAD = '<link rel="manifest" href="./manifest.webmanifest"><meta name=
 const PWA_BODY = '<script>(function(){if("serviceWorker" in navigator){window.addEventListener("load",function(){navigator.serviceWorker.register("./sw.js",{scope:"./"}).catch(function(){})})}})();</script>';
 const AI_WINDOW_MS = 60 * 1000;
 const AI_MAX_REQUESTS_PER_WINDOW = 30;
+const MAX_BODY_BYTES = 1024 * 1024;
 const aiRate = new Map();
 
 function setHeaders(res, type, requestId) {
@@ -23,8 +24,34 @@ function setHeaders(res, type, requestId) {
   res.setHeader('X-Frame-Options', 'SAMEORIGIN');
   res.setHeader('X-Request-Id', requestId);
 }
-function send(res, status, body, type='text/plain; charset=utf-8', requestId='unknown') { res.statusCode=status; setHeaders(res,type,requestId); res.end(body); }
-function readBody(req){ return new Promise((resolve,reject)=>{ let data=''; req.on('data',chunk=>{data+=chunk;if(data.length>1024*1024){reject(new Error('body too large'));req.destroy();}}); req.on('end',()=>{try{resolve(data?JSON.parse(data):{});}catch(e){reject(e);}}); req.on('error',reject); }); }
+function send(res, status, body, type='text/plain; charset=utf-8', requestId='unknown') {
+  res.statusCode = status;
+  setHeaders(res, type, requestId);
+  res.end(body);
+}
+function readBody(req){
+  return new Promise((resolve,reject)=>{
+    let data = '';
+    let bytes = 0;
+    let settled = false;
+    const fail = (error) => { if (!settled) { settled = true; reject(error); } };
+    req.on('data', chunk => {
+      bytes += chunk.length;
+      if (bytes > MAX_BODY_BYTES) {
+        fail(Object.assign(new Error('body too large'), { code:'BODY_TOO_LARGE' }));
+        req.resume();
+        return;
+      }
+      data += chunk;
+    });
+    req.on('end', () => {
+      if (settled) return;
+      try { settled = true; resolve(data ? JSON.parse(data) : {}); }
+      catch (error) { error.code = 'INVALID_JSON'; fail(error); }
+    });
+    req.on('error', fail);
+  });
+}
 function runtimeStatus(){
   const aiConfigured=Boolean(process.env.IZAKHONO_AI_CHAT_ENDPOINT && process.env.IZAKHONO_AI_API_KEY);
   return { ok:true, product:'IZAKHONO NAV', runtime:'owned', release:RELEASE, ai_provider:aiConfigured?'configured':'unavailable', pwa:true, voice_api:true };
@@ -59,7 +86,13 @@ const server = http.createServer(async (req,res)=>{
     if (url.pathname === '/api/nav/driver-companion') {
       if (req.method !== 'POST') return send(res,405,JSON.stringify({ok:false,error:'method_not_allowed'}),'application/json; charset=utf-8',requestId);
       if (!allowAiRequest(req)) return send(res,429,JSON.stringify({ok:false,error:'rate_limited',retry_after_seconds:60}),'application/json; charset=utf-8',requestId);
-      const body = await readBody(req);
+      let body;
+      try { body = await readBody(req); }
+      catch (error) {
+        if (error.code === 'BODY_TOO_LARGE') return send(res,413,JSON.stringify({ok:false,error:'payload_too_large'}),'application/json; charset=utf-8',requestId);
+        if (error.code === 'INVALID_JSON') return send(res,400,JSON.stringify({ok:false,error:'invalid_json'}),'application/json; charset=utf-8',requestId);
+        throw error;
+      }
       const result = await handleDriverCompanionChat({ method:req.method, body });
       return send(res,result.status,JSON.stringify(result.body),'application/json; charset=utf-8',requestId);
     }
