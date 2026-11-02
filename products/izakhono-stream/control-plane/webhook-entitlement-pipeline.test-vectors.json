@@ -1,0 +1,12 @@
+{
+  "tenantId": "kora-network",
+  "pipeline": "SIGNED WEBHOOK -> VERIFY -> DEDUPE -> TRANSLATE -> UPSERT -> PLAYBACK RECHECK",
+  "vectors": [
+    { "id": "paid-first-delivery", "signature": "valid", "status": "PAID", "expected": "ACTIVE" },
+    { "id": "paid-replay", "signature": "valid", "status": "PAID", "expected": "DUPLICATE" },
+    { "id": "invalid-signature", "signature": "invalid", "status": "PAID", "expected": "INVALID_SIGNATURE" },
+    { "id": "refund", "signature": "valid", "status": "REFUNDED", "expected": "REVOKED" },
+    { "id": "cancel", "signature": "valid", "status": "CANCELLED", "expected": "REVOKED" },
+    { "id": "failed", "signature": "valid", "status": "FAILED", "expected": "REVOKED" }
+  ]
+}
