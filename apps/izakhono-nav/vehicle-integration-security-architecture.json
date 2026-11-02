@@ -1,0 +1,47 @@
+{
+  "product": "IZAKHONO NAV",
+  "layer": "Vehicle Integration & Security Architecture v0.1",
+  "status": "architecture_locked",
+  "principle": "NAV is hardware-optional and must never depend on infotainment as a single security point of failure.",
+  "architecture": {
+    "consumer": "smartphone_or_supported_nav_interface",
+    "vehicle_interface": "authorized_vehicle_gateway_or_manufacturer_supported_telematics_api",
+    "vehicle_systems": "only_supported_authenticated_interfaces",
+    "security": "FORTRESS",
+    "cloud": "IZAKHONO_NAV_intelligence_platform"
+  },
+  "operating_modes": [
+    "NAV_ONLY",
+    "NAV_WITH_VEHICLE_DATA",
+    "SECURE_FLEET_WITH_AUTHENTICATED_INTEGRATION"
+  ],
+  "disconnect_policy": {
+    "infotainment_removed": "detect_unexpected_disconnect_where_signal_is_available",
+    "vehicle_status": "COMMUNICATION_LOST_OR_UNKNOWN",
+    "do_not_claim": ["vehicle_safe", "vehicle_stolen", "live_location"]
+  },
+  "safety_rules": [
+    "No sudden engine shutdown while vehicle is moving.",
+    "No immobilization based solely on infotainment removal.",
+    "Any immobilization capability requires authenticated manufacturer_or_authorized_vehicle_integration.",
+    "Safety takes priority over security automation.",
+    "No remote vehicle control without authenticated integration and explicit policy authorization."
+  ],
+  "hardware_policy": {
+    "mandatory_for_consumer_nav": false,
+    "mandatory_for_land_sea_air_nav": false,
+    "optional_security_hardware": true,
+    "third_party_hardware_supported": true,
+    "hardware_vendor_neutral": true
+  },
+  "data_policy": {
+    "verified_only": true,
+    "no_fabricated_gps": true,
+    "no_fabricated_vehicle_state": true,
+    "no_fabricated_security_events": true,
+    "communication_loss_is_not_safety_confirmation": true
+  },
+  "commercial_position": "Sell mobility intelligence and security software; hardware is an optional integration layer, not a prerequisite.",
+  "scope": ["LAND", "SEA", "AIR"],
+  "production_status": "architecture_locked"
+}
