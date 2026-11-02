@@ -1,0 +1,64 @@
+{
+  "product": "IZAKHONO NAV",
+  "layer": "Vehicle Integration Safety Contract v0.1",
+  "status": "architecture_locked",
+  "principle": "NAV is hardware-optional and vehicle-aware without making infotainment the single point of security failure.",
+  "vehicle_integration": {
+    "preferred": [
+      "manufacturer_authorized_telematics_api",
+      "authorized_vehicle_gateway",
+      "approved_vehicle_data_interface"
+    ],
+    "optional": [
+      "third_party_telematics",
+      "approved_security_tracker",
+      "external_sensor_platforms"
+    ],
+    "consumer_baseline": "smartphone_and_supported_navigation_interfaces"
+  },
+  "security_rules": [
+    "infotainment_is_not_the_security_single_point_of_failure",
+    "loss_of_infotainment_is_a_communication_state_change_not_an_automatic_engine_shutdown",
+    "communication_loss_must_never_be_presented_as_vehicle_safe",
+    "moving_vehicle_must_not_be_suddenly_immobilized_by_nav",
+    "immobilization_requires_authenticated_authorized_vehicle_integration_and_policy",
+    "safety_has_priority_over_security_automation",
+    "all_security_actions_require_auditable_identity_and_authorization",
+    "hardware_is_optional_for_nav_and_vendor_neutral_when_integrated"
+  ],
+  "communication_states": [
+    "CONNECTED",
+    "DEGRADED",
+    "COMMUNICATION_LOST",
+    "RECOVERED",
+    "UNAVAILABLE"
+  ],
+  "security_response": {
+    "communication_lost": "record_last_verified_state_and_apply_configured_monitoring_policy",
+    "verified_security_event": "evaluate_through_FORTRESS_and_authorized_command_workflow",
+    "vehicle_moving": "no_sudden_engine_shutdown_or_immobilization",
+    "vehicle_stationary": "authorized_integration_may_request_secure_or_immobilized_state_if_supported"
+  },
+  "prohibited_without_authenticated_integration": [
+    "remote_engine_shutdown",
+    "remote_engine_control",
+    "vehicle_lockdown_claim",
+    "automatic_immobilization",
+    "police_notification_claim",
+    "emergency_dispatch_claim"
+  ],
+  "data_integrity": {
+    "verified_only_for_operational_claims": true,
+    "no_fabricated_gps": true,
+    "no_fabricated_vehicle_state": true,
+    "no_fabricated_security_incident": true,
+    "offline_resilient": true,
+    "audit_required": true
+  },
+  "multimodal_scope": ["LAND", "SEA", "AIR"],
+  "production_status": {
+    "architecture_ready": true,
+    "live_vehicle_control": false,
+    "manufacturer_integrations_required_for_deeper_control": true
+  }
+}
