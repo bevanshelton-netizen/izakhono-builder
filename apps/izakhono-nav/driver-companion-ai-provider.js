@@ -8,6 +8,9 @@
   const endpoint = env.IZAKHONO_AI_CHAT_ENDPOINT || '';
   const apiKey = env.IZAKHONO_AI_API_KEY || '';
   const model = env.IZAKHONO_AI_MODEL || '';
+  const timeoutMs = Math.min(Math.max(Number(env.IZAKHONO_AI_TIMEOUT_MS || 12000), 3000), 30000);
+  const MAX_MESSAGES = 12;
+  const MAX_TEXT = 2000;
 
   const SYSTEM_PROMPT = [
     'You are the conversational driver companion for IZAKHONO NAV.',
@@ -41,48 +44,62 @@
     return 'NORMAL';
   }
 
+  function normalizeMessages(input) {
+    const messages = Array.isArray(input && input.messages) ? input.messages.slice(-MAX_MESSAGES) : [];
+    return messages.map(function (m) {
+      const role = m && (m.role === 'user' || m.role === 'assistant') ? m.role : null;
+      if (!role) return null;
+      return { role, content: String(m.content || '').slice(0, MAX_TEXT) };
+    }).filter(Boolean);
+  }
+
   async function chat(input) {
     if (!endpoint || !apiKey) {
       return unavailable('I’m here. The live voice service is not connected yet.');
     }
 
-    const messages = Array.isArray(input && input.messages) ? input.messages.slice(-12) : [];
-    const lastUserText = [...messages].reverse().find(function (m) { return m && m.role === 'user'; });
+    const messages = normalizeMessages(input);
+    const lastUserText = [...messages].reverse().find(function (m) { return m.role === 'user'; });
     const state = safetyState(lastUserText && lastUserText.content);
+    const controller = new AbortController();
+    const timer = setTimeout(function () { controller.abort(); }, timeoutMs);
 
-    const response = await fetch(endpoint, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + apiKey
-      },
-      body: JSON.stringify({
-        model: model || undefined,
-        messages: [{ role: 'system', content: SYSTEM_PROMPT }].concat(messages),
-        temperature: 0.3,
-        max_tokens: 180
-      })
-    });
+    try {
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + apiKey
+        },
+        body: JSON.stringify({
+          model: model || undefined,
+          messages: [{ role: 'system', content: SYSTEM_PROMPT }].concat(messages),
+          temperature: 0.3,
+          max_tokens: 180
+        }),
+        signal: controller.signal
+      });
 
-    if (!response.ok) {
-      throw new Error('AI provider returned HTTP ' + response.status);
+      if (!response.ok) throw new Error('AI provider returned HTTP ' + response.status);
+
+      const data = await response.json();
+      const text = data && data.choices && data.choices[0] && data.choices[0].message
+        ? data.choices[0].message.content
+        : '';
+
+      if (!text) throw new Error('AI provider returned no assistant text');
+
+      return {
+        ok: true,
+        provider: 'LIVE',
+        text: String(text).trim().slice(0, MAX_TEXT),
+        safety_state: state,
+        recommended_action: state === 'FATIGUE_HIGH' ? 'SAFE_STOP' : 'NONE',
+        request_id: response.headers.get('x-request-id') || null
+      };
+    } finally {
+      clearTimeout(timer);
     }
-
-    const data = await response.json();
-    const text = data && data.choices && data.choices[0] && data.choices[0].message
-      ? data.choices[0].message.content
-      : '';
-
-    if (!text) throw new Error('AI provider returned no assistant text');
-
-    return {
-      ok: true,
-      provider: 'LIVE',
-      text: String(text).trim(),
-      safety_state: state,
-      recommended_action: state === 'FATIGUE_HIGH' ? 'SAFE_STOP' : 'NONE',
-      request_id: response.headers.get('x-request-id') || null
-    };
   }
 
   if (typeof module !== 'undefined' && module.exports) {
