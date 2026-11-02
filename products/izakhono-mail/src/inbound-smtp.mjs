@@ -1,22 +1,28 @@
 import net from 'node:net';
 import crypto from 'node:crypto';
 import { deliverInbound, ensureIdentity } from './mail-core-sqlite.mjs';
+import { identityForAddress } from './mail-domain-policy.mjs';
 
 const host = process.env.MAIL_SMTP_LISTEN_HOST || '0.0.0.0';
 const port = Number(process.env.MAIL_SMTP_LISTEN_PORT || 2525);
-const domain = (process.env.MAIL_PRIVATE_DOMAIN || 'izakhono').toLowerCase();
+const privateDomain = (process.env.MAIL_PRIVATE_DOMAIN || 'izakhono').toLowerCase();
 const maxMessageBytes = Number(process.env.MAIL_SMTP_MAX_MESSAGE_BYTES || 5 * 1024 * 1024);
-const identities = new Set((process.env.MAIL_LOCAL_RECIPIENTS || 'bevan@izakhono')
+const configuredIdentities = new Set((process.env.MAIL_LOCAL_RECIPIENTS || `bevan@${privateDomain}`)
   .split(',').map(x => x.trim().toLowerCase()).filter(Boolean));
 
-for (const address of identities) ensureIdentity(address);
+for (const address of configuredIdentities) ensureIdentity(address);
 
 function reply(socket, code, text) { socket.write(`${code} ${text}\r\n`); }
 function validAddress(value) {
   const address = value.trim().replace(/^<|>$/g, '').toLowerCase();
   return /^[^@\s]+@[^@\s]+$/.test(address) ? address : '';
 }
-function messageId() { return `<${crypto.randomUUID()}@${domain}>`; }
+function recipientAllowed(address) {
+  if (configuredIdentities.has(address)) return true;
+  if (address.endsWith(`@${privateDomain}`)) return false;
+  return Boolean(identityForAddress(address));
+}
+function messageId() { return `<${crypto.randomUUID()}@${privateDomain}>`; }
 
 function acceptMessage(from, recipients, raw) {
   const id = messageId();
@@ -31,7 +37,7 @@ function session(socket) {
   const recipients = [];
   let data = '';
   let dataBytes = 0;
-  reply(socket, 220, `${domain} IZAKHONO MAIL ESMTP ready`);
+  reply(socket, 220, `${privateDomain} IZAKHONO MAIL ESMTP ready`);
 
   socket.on('data', chunk => {
     buffer += chunk.toString('utf8');
@@ -62,13 +68,13 @@ function session(socket) {
       const [verb, ...rest] = command.split(/\s+/);
       const arg = rest.join(' '); const upper = verb.toUpperCase();
       if (upper === 'EHLO' || upper === 'HELO') {
-        reply(socket, 250, `${domain}`); socket.write('250-SIZE 5242880\r\n250-8BITMIME\r\n250 HELP\r\n');
+        socket.write(`250-${privateDomain}\r\n250-SIZE ${maxMessageBytes}\r\n250-8BITMIME\r\n250 HELP\r\n`);
       } else if (upper === 'MAIL' && /^FROM:/i.test(arg)) {
         const address = validAddress(arg.replace(/^FROM:/i, '').trim());
         if (!address) reply(socket, 501, '5.1.7 Invalid sender'); else { from = address; reply(socket, 250, '2.1.0 Sender OK'); }
       } else if (upper === 'RCPT' && /^TO:/i.test(arg)) {
         const address = validAddress(arg.replace(/^TO:/i, '').trim());
-        if (!address || !address.endsWith(`@${domain}`) || !identities.has(address)) reply(socket, 550, '5.1.1 User unknown');
+        if (!address || !recipientAllowed(address)) reply(socket, 550, '5.1.1 User unknown');
         else { recipients.push(address); reply(socket, 250, '2.1.5 Recipient OK'); }
       } else if (upper === 'DATA') {
         if (!from || recipients.length === 0) reply(socket, 503, '5.5.1 Need MAIL FROM and RCPT TO');
