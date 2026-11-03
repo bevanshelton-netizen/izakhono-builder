@@ -6,11 +6,13 @@ on:
     paths:
       - 'apps/izakhono-nav/**'
       - 'infra/contabo/**'
+      - 'infra/node01/**'
       - '.github/workflows/izakhono-nav-ci.yml'
   pull_request:
     paths:
       - 'apps/izakhono-nav/**'
       - 'infra/contabo/**'
+      - 'infra/node01/**'
       - '.github/workflows/izakhono-nav-ci.yml'
   workflow_dispatch:
 
@@ -95,10 +97,18 @@ jobs:
           test -f infra/contabo/nav-smoke-test.sh
           test -f infra/contabo/verify-nav.sh
           test -f infra/contabo/production-verify-nav.js
+          test -f infra/node01/deploy-nav-node01.sh
+          test -f infra/node01/verify-node01-nav.sh
+          test -f infra/node01/node01-release-manifest.json
+          test -f infra/node01/node01-release-receipt.sh
           echo 'Owned deployment assets present'
 
       - name: Validate production verifier syntax
         run: node --check infra/contabo/production-verify-nav.js
+
+      - name: Validate NODE01 release manifest
+        run: |
+          node -e "const fs=require('fs'); const m=JSON.parse(fs.readFileSync('infra/node01/node01-release-manifest.json','utf8')); if(m.platform!=='IZAKHONO NAV'||m.runtime_target!=='NODE01'||m.ownership!=='IZAKHONO-owned'||m.prohibited_runtime_dependencies.includes('Vercel')===false||m.prohibited_runtime_dependencies.includes('Netlify')===false) process.exit(1); console.log('NODE01 release manifest OK')"
 
       - name: Validate compose configuration
         run: docker compose -f infra/contabo/nav-compose.yml config --quiet
@@ -109,4 +119,7 @@ jobs:
           bash -n infra/contabo/deploy-nav.sh
           bash -n infra/contabo/nav-smoke-test.sh
           bash -n infra/contabo/verify-nav.sh
+          bash -n infra/node01/deploy-nav-node01.sh
+          bash -n infra/node01/verify-node01-nav.sh
+          bash -n infra/node01/node01-release-receipt.sh
           echo 'Infrastructure scripts valid'
