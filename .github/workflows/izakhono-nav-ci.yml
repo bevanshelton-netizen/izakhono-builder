@@ -34,12 +34,10 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '22'
-
       - name: Validate JavaScript syntax
         run: |
           node --check server.js
@@ -47,7 +45,6 @@ jobs:
           node --check driver-companion-ai-provider.js
           node --check driver-companion-ai-route.js
           node --check hey-nav-runtime.js
-
       - name: Start owned NAV runtime
         run: |
           node server.js > /tmp/izakhono-nav.log 2>&1 &
@@ -57,24 +54,19 @@ jobs:
             sleep 1
           done
           curl -fsS http://127.0.0.1:8080/health
-
       - name: Run production smoke test
         run: node production-smoke-test.js http://127.0.0.1:8080
-
       - name: Validate PWA assets
         run: |
           test -f manifest.webmanifest
           test -f sw.js
           test -f icon.svg
           node -e "const fs=require('fs'); const m=JSON.parse(fs.readFileSync('manifest.webmanifest','utf8')); if(m.name!=='IZAKHONO NAV'||m.start_url!=='./'||m.display!=='standalone') process.exit(1); console.log('PWA manifest OK')"
-
       - name: Validate Docker build
         run: docker build --pull -t izakhono-nav-ci .
-
       - name: Show runtime log on failure
         if: failure()
         run: cat /tmp/izakhono-nav.log || true
-
       - name: Stop runtime
         if: always()
         run: kill $(cat /tmp/izakhono-nav.pid) 2>/dev/null || true
@@ -86,7 +78,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Validate deployment assets
         run: |
           test -f apps/izakhono-nav/Dockerfile
@@ -101,12 +92,11 @@ jobs:
           test -f infra/node01/verify-node01-nav.sh
           test -f infra/node01/node01-release-manifest.json
           test -f infra/node01/node01-release-receipt.sh
+          test -f infra/node01/node01-deploy-guard.sh
           test -f infra/node01/GITHUB-RUNNER-SETUP.md
           echo 'Owned deployment assets present'
-
       - name: Validate production verifier syntax
         run: node --check infra/contabo/production-verify-nav.js
-
       - name: Validate NODE01 release manifest
         run: |
           node - <<'NODE'
@@ -120,10 +110,8 @@ jobs:
           if (!m.prohibited_runtime_dependencies.includes('Netlify')) throw new Error('Netlify prohibition missing');
           console.log('NODE01 release manifest OK');
           NODE
-
       - name: Validate compose configuration
         run: docker compose -f infra/contabo/nav-compose.yml config --quiet
-
       - name: Validate shell scripts
         run: |
           bash -n infra/contabo/preflight-nav.sh
@@ -133,4 +121,5 @@ jobs:
           bash -n infra/node01/deploy-nav-node01.sh
           bash -n infra/node01/verify-node01-nav.sh
           bash -n infra/node01/node01-release-receipt.sh
+          bash -n infra/node01/node01-deploy-guard.sh
           echo 'Infrastructure scripts valid'
