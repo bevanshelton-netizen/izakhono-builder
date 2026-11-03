@@ -1,0 +1,30 @@
+{
+  "product": "IZAKHONO NAV",
+  "runtime_target": "NODE01",
+  "ownership": "IZAKHONO-owned",
+  "purpose": "Machine-readable production evidence contract for NAV promotion and operational verification.",
+  "required_checks": ["health", "readiness", "runtime_identity", "production_verifier"],
+  "required_identity": {
+    "health.product": "IZAKHONO NAV",
+    "ready.ready": true,
+    "version.runtime": "owned"
+  },
+  "release_evidence": {
+    "release_commit": "required",
+    "verified_at": "required",
+    "runtime_target": "NODE01",
+    "runtime_ownership": "IZAKHONO-owned"
+  },
+  "claim_policy": {
+    "live": "allowed_only_after_verified_NODE01_release_receipt",
+    "deployed": "allowed_only_after_successful_NODE01_promotion",
+    "healthy": "allowed_only_when_all_required_checks_pass"
+  },
+  "security": {
+    "secrets_in_evidence": false,
+    "credentials_in_evidence": false,
+    "vehicle_control_claims": false,
+    "emergency_dispatch_claims": false
+  },
+  "status": "locked_contract"
+}
