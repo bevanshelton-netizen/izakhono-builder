@@ -25,19 +25,19 @@ jobs:
     runs-on: [self-hosted, node01]
     environment: production
     steps:
-      - name: Checkout exact release
+      - name: Checkout main
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.inputs.release_sha }}
+          ref: main
           fetch-depth: 0
 
       - name: Verify exact release
         shell: bash
         run: |
           set -euo pipefail
+          test "$(git branch --show-current)" = "main"
           test "$(git rev-parse HEAD)" = "${{ github.event.inputs.release_sha }}"
-          test "$(git branch --show-current)" = ""
-          echo "Exact release verified: $(git rev-parse HEAD)"
+          echo "Exact main release verified: $(git rev-parse HEAD)"
 
       - name: Promote on NODE01
         shell: bash
@@ -46,5 +46,4 @@ jobs:
           EXPECTED_RELEASE: ${{ github.event.inputs.release_sha }}
         run: |
           set -euo pipefail
-          git checkout --detach "$EXPECTED_RELEASE"
           ./infra/node01/node01-promote-release.sh "$EXPECTED_RELEASE"
