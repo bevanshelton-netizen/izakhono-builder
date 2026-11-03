@@ -15,7 +15,7 @@ mkdir -p "$STATE_DIR"
 tmp="$(mktemp)"
 trap 'rm -f "$tmp"' EXIT
 
-if NAV_URL="$NAV_URL" NODE01_ID="$NODE01_ID" node infra/node01/node01-health-check.js >"$tmp" 2>&1; then
+if NAV_URL="$NAV_URL" NODE01_ID="$NODE01_ID" bash infra/node01/node01-health-check.sh >"$tmp" 2>&1; then
   status="healthy"
   detail="$(cat "$tmp")"
 else
