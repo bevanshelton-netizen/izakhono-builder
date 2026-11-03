@@ -94,7 +94,11 @@ jobs:
           test -f infra/contabo/deploy-nav.sh
           test -f infra/contabo/nav-smoke-test.sh
           test -f infra/contabo/verify-nav.sh
+          test -f infra/contabo/production-verify-nav.js
           echo 'Owned deployment assets present'
+
+      - name: Validate production verifier syntax
+        run: node --check infra/contabo/production-verify-nav.js
 
       - name: Validate compose configuration
         run: docker compose -f infra/contabo/nav-compose.yml config --quiet
