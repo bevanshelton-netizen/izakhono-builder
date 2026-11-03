@@ -1,0 +1,21 @@
+{
+  "product": "IZAKHONO NAV",
+  "runtime_target": "NODE01",
+  "ownership": "IZAKHONO-owned",
+  "checks": [
+    {"name":"health","endpoint":"/health","required":true},
+    {"name":"readiness","endpoint":"/ready","required":true},
+    {"name":"runtime_identity","endpoint":"/version","required":true,"expect":{"runtime":"owned"}}
+  ],
+  "failure_policy": {
+    "healthy": "all_required_checks_pass",
+    "degraded": "any_required_check_fails",
+    "deployment_claim": "never_mark_live_without_verified_NODE01_receipt"
+  },
+  "evidence": {
+    "receipt_script": "infra/node01/node01-release-receipt.sh",
+    "health_check": "infra/node01/node01-health-check.sh",
+    "production_verifier": "infra/node01/verify-node01-nav.sh"
+  },
+  "status": "monitoring_contract"
+}
