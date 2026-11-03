@@ -37,11 +37,14 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22'
-          cache: npm
-          cache-dependency-path: apps/izakhono-nav/package-lock.json
 
-      - name: Validate package metadata
-        run: node -e "const p=require('./package.json'); if(!p.scripts || !p.scripts.start) process.exit(1); console.log('package metadata OK')"
+      - name: Validate JavaScript syntax
+        run: |
+          node --check server.js
+          node --check production-smoke-test.js
+          node --check driver-companion-ai-provider.js
+          node --check driver-companion-ai-route.js
+          node --check hey-nav-runtime.js
 
       - name: Start owned NAV runtime
         run: |
@@ -61,7 +64,7 @@ jobs:
           test -f manifest.webmanifest
           test -f sw.js
           test -f icon.svg
-          node -e "const m=require('./manifest.webmanifest'); if(m.name!=='IZAKHONO NAV'||m.start_url!=='./'||m.display!=='standalone') process.exit(1); console.log('PWA manifest OK')"
+          node -e "const fs=require('fs'); const m=JSON.parse(fs.readFileSync('manifest.webmanifest','utf8')); if(m.name!=='IZAKHONO NAV'||m.start_url!=='./'||m.display!=='standalone') process.exit(1); console.log('PWA manifest OK')"
 
       - name: Validate Docker build
         run: docker build --pull -t izakhono-nav-ci .
