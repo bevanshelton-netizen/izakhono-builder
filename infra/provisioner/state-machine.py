@@ -78,7 +78,9 @@ class Provisioner:
 
     def __init__(self) -> None:
         self.jobs: dict[str, ProvisioningJob] = {}
-        self.idempotency: dict[str, str] = {}
+        # Idempotency is explicitly tenant-scoped. The same key may safely be
+        # reused by different tenants without cross-tenant job collisions.
+        self.idempotency: dict[tuple[str, str], str] = {}
 
     @staticmethod
     def make_job_id(tenant_id: str, idempotency_key: str) -> str:
@@ -88,14 +90,15 @@ class Provisioner:
     def create(self, tenant_id: str, idempotency_key: str) -> ProvisioningJob:
         if not tenant_id or not idempotency_key:
             raise ValueError("tenant_id and idempotency_key are required")
-        existing = self.idempotency.get(idempotency_key)
+        scope = (tenant_id, idempotency_key)
+        existing = self.idempotency.get(scope)
         if existing:
             return self.jobs[existing]
         job_id = self.make_job_id(tenant_id, idempotency_key)
         job = ProvisioningJob(job_id, tenant_id, idempotency_key)
         job.record("JOB_CREATED", tenant_id=tenant_id)
         self.jobs[job_id] = job
-        self.idempotency[idempotency_key] = job_id
+        self.idempotency[scope] = job_id
         return job
 
     def apply(self, job: ProvisioningJob, result: StepResult) -> ProvisioningJob:
