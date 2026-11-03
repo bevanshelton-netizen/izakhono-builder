@@ -1,0 +1,32 @@
+name: IZAKHONO NAV Production Verification
+
+on:
+  workflow_dispatch:
+    inputs:
+      nav_url:
+        description: 'Owned IZAKHONO NAV HTTPS URL to verify'
+        required: true
+        default: 'https://nav.izakhono.africa'
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  verify-production:
+    name: Verify owned NAV runtime
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Verify production endpoint
+        env:
+          NAV_URL: ${{ inputs.nav_url }}
+        run: node infra/contabo/production-verify-nav.js "$NAV_URL"
