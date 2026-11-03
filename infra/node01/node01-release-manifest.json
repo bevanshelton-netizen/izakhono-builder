@@ -1,0 +1,22 @@
+{
+  "platform": "IZAKHONO NAV",
+  "runtime_target": "NODE01",
+  "ownership": "IZAKHONO-owned",
+  "deployment_source": "GitHub main",
+  "edge": "Caddy",
+  "tls": "Caddy-managed",
+  "container_runtime": "Docker",
+  "production_execution": "NODE01",
+  "verification": {
+    "local_health": "/health",
+    "local_readiness": "/ready",
+    "runtime_identity": "/version",
+    "smoke_test": "infra/contabo/nav-smoke-test.sh",
+    "production_test": "infra/contabo/production-verify-nav.js"
+  },
+  "prohibited_runtime_dependencies": [
+    "Vercel",
+    "Netlify"
+  ],
+  "status": "deployment_ready_not_executed_from_chat"
+}
