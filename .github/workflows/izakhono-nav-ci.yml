@@ -126,5 +126,6 @@ jobs:
           bash -n infra/node01/verify-node01-nav.sh
           bash -n infra/node01/node01-release-receipt.sh
           bash -n infra/node01/node01-deploy-guard.sh
+          bash -n infra/node01/node01-watchdog.sh
           bash -n infra/node01/node01-promote-release.sh
           echo 'Infrastructure scripts valid'
