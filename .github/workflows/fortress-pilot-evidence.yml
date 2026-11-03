@@ -7,11 +7,12 @@ on:
       - '.github/workflows/fortress-pilot-evidence.yml'
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   evidence:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -19,12 +20,37 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-      - name: Run FORTRESS pilot evidence harness
+      - name: Run FORTRESS pilot evidence harness (JSON)
+        run: node products/fortress/pilot-evidence-harness.mjs > fortress-pilot-evidence.json
+      - name: Run FORTRESS adversarial acceptance suite (JSON)
+        run: node products/fortress/acceptance-suite.mjs > fortress-acceptance-suite.json
+      - name: Validate safety and acceptance invariants
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const pilot = JSON.parse(fs.readFileSync('fortress-pilot-evidence.json', 'utf8'));
+          const acceptance = JSON.parse(fs.readFileSync('fortress-acceptance-suite.json', 'utf8'));
+          if (pilot.sandboxOnly !== true || pilot.liveMoneyMovement !== false) {
+            throw new Error('Pilot evidence safety invariant failed');
+          }
+          if (acceptance.acceptance !== true || acceptance.failed !== 0) {
+            throw new Error('Adversarial acceptance suite did not pass');
+          }
+          console.log(JSON.stringify({
+            sandboxOnly: pilot.sandboxOnly,
+            liveMoneyMovement: pilot.liveMoneyMovement,
+            acceptance: acceptance.acceptance,
+            failed: acceptance.failed
+          }, null, 2));
+          NODE
+      - name: Render human-readable pilot report
         run: node products/fortress/pilot-evidence-harness.mjs --markdown > fortress-pilot-evidence.md
-      - name: Run FORTRESS adversarial acceptance suite
-        run: node products/fortress/acceptance-suite.mjs
-      - name: Upload evidence report
+      - name: Upload machine-readable and human-readable evidence
         uses: actions/upload-artifact@v4
         with:
           name: fortress-pilot-evidence
-          path: fortress-pilot-evidence.md
+          path: |
+            fortress-pilot-evidence.json
+            fortress-acceptance-suite.json
+            fortress-pilot-evidence.md
+          if-no-files-found: error
