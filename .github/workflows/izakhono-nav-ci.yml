@@ -101,6 +101,7 @@ jobs:
           test -f infra/node01/verify-node01-nav.sh
           test -f infra/node01/node01-release-manifest.json
           test -f infra/node01/node01-release-receipt.sh
+          test -f infra/node01/GITHUB-RUNNER-SETUP.md
           echo 'Owned deployment assets present'
 
       - name: Validate production verifier syntax
@@ -108,7 +109,17 @@ jobs:
 
       - name: Validate NODE01 release manifest
         run: |
-          node -e "const fs=require('fs'); const m=JSON.parse(fs.readFileSync('infra/node01/node01-release-manifest.json','utf8')); if(m.platform!=='IZAKHONO NAV'||m.runtime_target!=='NODE01'||m.ownership!=='IZAKHONO-owned'||m.prohibited_runtime_dependencies.includes('Vercel')===false||m.prohibited_runtime_dependencies.includes('Netlify')===false) process.exit(1); console.log('NODE01 release manifest OK')"
+          node - <<'NODE'
+          const fs = require('fs');
+          const m = JSON.parse(fs.readFileSync('infra/node01/node01-release-manifest.json','utf8'));
+          if (m.platform !== 'IZAKHONO NAV') throw new Error('Unexpected platform');
+          if (m.runtime_target !== 'NODE01') throw new Error('Unexpected runtime target');
+          if (m.ownership !== 'IZAKHONO-owned') throw new Error('Unexpected ownership');
+          if (!Array.isArray(m.prohibited_runtime_dependencies)) throw new Error('Missing prohibited dependency list');
+          if (!m.prohibited_runtime_dependencies.includes('Vercel')) throw new Error('Vercel prohibition missing');
+          if (!m.prohibited_runtime_dependencies.includes('Netlify')) throw new Error('Netlify prohibition missing');
+          console.log('NODE01 release manifest OK');
+          NODE
 
       - name: Validate compose configuration
         run: docker compose -f infra/contabo/nav-compose.yml config --quiet
