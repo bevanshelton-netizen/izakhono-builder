@@ -8,12 +8,14 @@ on:
       - 'infra/contabo/**'
       - 'infra/node01/**'
       - '.github/workflows/izakhono-nav-ci.yml'
+      - '.github/workflows/izakhono-nav-node01-production.yml'
   pull_request:
     paths:
       - 'apps/izakhono-nav/**'
       - 'infra/contabo/**'
       - 'infra/node01/**'
       - '.github/workflows/izakhono-nav-ci.yml'
+      - '.github/workflows/izakhono-nav-node01-production.yml'
   workflow_dispatch:
 
 permissions:
@@ -93,7 +95,9 @@ jobs:
           test -f infra/node01/node01-release-manifest.json
           test -f infra/node01/node01-release-receipt.sh
           test -f infra/node01/node01-deploy-guard.sh
+          test -f infra/node01/node01-promote-release.sh
           test -f infra/node01/GITHUB-RUNNER-SETUP.md
+          test -f .github/workflows/izakhono-nav-node01-production.yml
           echo 'Owned deployment assets present'
       - name: Validate production verifier syntax
         run: node --check infra/contabo/production-verify-nav.js
@@ -122,4 +126,5 @@ jobs:
           bash -n infra/node01/verify-node01-nav.sh
           bash -n infra/node01/node01-release-receipt.sh
           bash -n infra/node01/node01-deploy-guard.sh
+          bash -n infra/node01/node01-promote-release.sh
           echo 'Infrastructure scripts valid'
