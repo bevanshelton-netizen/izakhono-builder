@@ -1,0 +1,50 @@
+name: IZAKHONO NAV NODE01 Production Promotion
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_sha:
+        description: Exact GitHub main commit SHA to promote
+        required: true
+        type: string
+      confirm:
+        description: Type DEPLOY to authorize production promotion
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: izakhono-nav-node01-production
+  cancel-in-progress: false
+
+jobs:
+  promote:
+    if: ${{ github.event.inputs.confirm == 'DEPLOY' }}
+    runs-on: [self-hosted, node01]
+    environment: production
+    steps:
+      - name: Checkout exact release
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.release_sha }}
+          fetch-depth: 0
+
+      - name: Verify exact release
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "${{ github.event.inputs.release_sha }}"
+          test "$(git branch --show-current)" = ""
+          echo "Exact release verified: $(git rev-parse HEAD)"
+
+      - name: Promote on NODE01
+        shell: bash
+        env:
+          NODE01_ALLOW_DEPLOY: "1"
+          EXPECTED_RELEASE: ${{ github.event.inputs.release_sha }}
+        run: |
+          set -euo pipefail
+          git checkout --detach "$EXPECTED_RELEASE"
+          ./infra/node01/node01-promote-release.sh "$EXPECTED_RELEASE"
