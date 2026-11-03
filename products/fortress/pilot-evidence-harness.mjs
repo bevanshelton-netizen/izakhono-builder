@@ -41,7 +41,7 @@ function runPilotEvidence() {
     const fortress = runScenario(scenario);
     if (!assertSafe(fortress)) throw new Error(`Safety invariant failed for ${scenario.id}`);
     const detected = fortress.decision !== 'ALLOW';
-    const falsePositive = scenario.id === 'F10' && detected;
+    const falsePositive = scenario.id === 'F10' && ['CHALLENGE', 'HOLD_FOR_REVIEW', 'BLOCK', 'ESCALATE'].includes(fortress.decision);
     return {
       scenarioId: scenario.id,
       baselineDecision: baseline,
