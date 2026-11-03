@@ -1,0 +1,18 @@
+{
+  "platform": "IZAKHONO NAV",
+  "runtime_target": "NODE01",
+  "ownership": "IZAKHONO-owned",
+  "deployment_source": "GitHub main",
+  "required_evidence": [
+    "exact_release_sha",
+    "node01_runner_execution",
+    "health",
+    "readiness",
+    "owned_runtime_identity",
+    "production_verifier",
+    "release_receipt",
+    "post_deploy_monitoring"
+  ],
+  "live_claim_policy": "LIVE only after NODE01 execution and all required evidence succeeds",
+  "status": "awaiting_verified_node01_execution"
+}
