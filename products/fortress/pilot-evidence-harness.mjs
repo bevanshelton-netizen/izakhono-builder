@@ -81,7 +81,7 @@ function runPilotEvidence() {
       detectionRate,
       falsePositiveRate,
       syntheticAverageDecisionLatencyMs: avgLatencyMs,
-      reasonCodeCoverage,
+      reasonCodeCoverage: reasonCoverage,
       auditCompleteness,
       networkCorrelationCount: networkCorrelations,
       acceptancePassRate,
