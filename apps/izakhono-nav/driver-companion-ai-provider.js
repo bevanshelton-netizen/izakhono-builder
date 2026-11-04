@@ -8,7 +8,10 @@
   const endpoint = env.IZAKHONO_AI_CHAT_ENDPOINT || '';
   const apiKey = env.IZAKHONO_AI_API_KEY || '';
   const model = env.IZAKHONO_AI_MODEL || '';
-  const timeoutMs = Math.min(Math.max(Number(env.IZAKHONO_AI_TIMEOUT_MS || 12000), 3000), 30000);
+  const configuredTimeoutMs = Number(env.IZAKHONO_AI_TIMEOUT_MS || 12000);
+  const timeoutMs = Number.isFinite(configuredTimeoutMs)
+    ? Math.min(Math.max(configuredTimeoutMs, 3000), 30000)
+    : 12000;
   const MAX_MESSAGES = 12;
   const MAX_TEXT = 2000;
   const MAX_PROVIDER_RESPONSE_BYTES = 64 * 1024;
