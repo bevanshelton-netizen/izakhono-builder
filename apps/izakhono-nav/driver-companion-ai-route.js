@@ -9,6 +9,14 @@ async function handleDriverCompanionChat(request) {
     return { status: 405, body: { ok: false, error: 'METHOD_NOT_ALLOWED' } };
   }
 
+  const messages = request.body && Array.isArray(request.body.messages) ? request.body.messages : [];
+  const hasUserMessage = messages.some(function (message) {
+    return message && message.role === 'user' && typeof message.content === 'string' && message.content.trim().length > 0;
+  });
+  if (!hasUserMessage) {
+    return { status: 400, body: { ok: false, error: 'USER_MESSAGE_REQUIRED' } };
+  }
+
   try {
     const result = await provider.chat(request.body || {});
     return {
