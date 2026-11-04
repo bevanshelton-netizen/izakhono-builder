@@ -104,6 +104,9 @@ jobs:
           test -f infra/node01/verify-nav-backup.sh
           test -f infra/node01/node01-restore-drill.sh
           test -f infra/node01/NODE01-RECOVERY-DRILL.md
+          test -f infra/node01/verify-nav-backup.sh
+          test -f infra/node01/node01-restore-drill.sh
+          test -f infra/node01/NODE01-RECOVERY-DRILL.md
           test -f infra/node01/GITHUB-RUNNER-SETUP.md
           test -f .github/workflows/izakhono-nav-node01-production.yml
           echo 'Owned deployment assets present'
@@ -136,6 +139,8 @@ jobs:
           bash -n infra/node01/node01-deploy-guard.sh
           bash -n infra/node01/node01-watchdog.sh
           bash -n infra/node01/node01-backup-nav.sh
+          bash -n infra/node01/verify-nav-backup.sh
+          bash -n infra/node01/node01-restore-drill.sh
           bash -n infra/node01/verify-nav-backup.sh
           bash -n infra/node01/node01-restore-drill.sh
           bash -n infra/node01/node01-promote-release.sh
