@@ -6,6 +6,7 @@ cd "$ROOT"
 
 export NAV_URL="${NAV_URL:-http://127.0.0.1:8080}"
 export NODE01_ID="${NODE01_ID:-NODE01}"
+export NAV_PUBLIC_URL="${NAV_PUBLIC_URL:-https://${NAV_DOMAIN:-nav.izakhono.africa}}"
 export RECEIPT_DIR="${RECEIPT_DIR:-infra/node01/evidence}"
 
 mkdir -p "$RECEIPT_DIR"
@@ -15,8 +16,9 @@ timestamp="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 health="$(curl -fsS "$NAV_URL/health")"
 ready="$(curl -fsS "$NAV_URL/ready")"
 version="$(curl -fsS "$NAV_URL/version")"
+node infra/contabo/production-verify-nav.js "$NAV_PUBLIC_URL"
 
-RELEASE="$release" TIMESTAMP="$timestamp" NODE01_ID="$NODE01_ID" NAV_URL="$NAV_URL" HEALTH="$health" READY="$ready" VERSION="$version" RECEIPT_DIR="$RECEIPT_DIR" node <<'NODE'
+RELEASE="$release" TIMESTAMP="$timestamp" NODE01_ID="$NODE01_ID" NAV_URL="$NAV_URL" NAV_PUBLIC_URL="$NAV_PUBLIC_URL" HEALTH="$health" READY="$ready" VERSION="$version" RECEIPT_DIR="$RECEIPT_DIR" node <<'NODE'
 const fs = require('fs');
 const path = require('path');
 
@@ -35,10 +37,13 @@ const receipt = {
   release_commit: process.env.RELEASE,
   verified_at: process.env.TIMESTAMP,
   nav_url: process.env.NAV_URL,
+  public_https_url: process.env.NAV_PUBLIC_URL,
   checks: {
     health: true,
     readiness: true,
-    owned_runtime_identity: true
+    owned_runtime_identity: true,
+    public_https_tls_hsts: true,
+    public_production_smoke: true
   }
 };
 
