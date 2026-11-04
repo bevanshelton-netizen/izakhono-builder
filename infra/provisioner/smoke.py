@@ -68,7 +68,10 @@ def main():
     assert duplicate["created"] is False
     assert first["job_id"] == duplicate["job_id"]
 
-    other_tenant = service.create_job(
+    # Isolate the second tenant in its own queue so this assertion does not
+    # interleave two independent jobs in the first customer's execution test.
+    _, other_service = build_service()
+    other_tenant = other_service.create_job(
         CreateJobRequest(
             "tenant-other",
             "order-001",
