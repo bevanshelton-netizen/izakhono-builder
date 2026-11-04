@@ -41,12 +41,13 @@ Run the watchdog every 1–5 minutes using NODE01's existing scheduler. Use a si
 2. Check Docker container health and Caddy edge health independently.
 3. Restore service using the approved NODE01 deployment/recovery procedure.
 4. Re-run the one-shot health check and full production verifier.
-5. Generate a new release receipt only after all required checks pass.
+5. Verify the public HTTPS endpoint and HSTS from NODE01 with `node infra/contabo/production-verify-nav.js "${NAV_PUBLIC_URL:-https://nav.izakhono.africa}"`.
+6. Generate a new release receipt only after local health, readiness, owned-runtime identity, public HTTPS, and HSTS checks all pass.
 
 ## Security and claim boundaries
 
 - The watchdog does not restart containers, change routes, or perform vehicle actions.
 - It does not treat a missing endpoint as healthy.
-- It does not establish public TLS or external reachability; those require separate checks.
+- The watchdog does not establish public TLS or external reachability; the production verifier must independently check the public HTTPS endpoint and HSTS.
 - A watchdog `healthy` state is a local health observation, not proof of complete production readiness.
 - Never claim NAV is live, deployed, or operational solely from a watchdog record.
