@@ -1,12 +1,24 @@
 # IZAKHONO BUILDER
 
-Visual, free-first application factory and owned-first infrastructure control plane for IZAKHONO projects.
+Visual, credits-free application factory and owned-first infrastructure control plane for IZAKHONO projects.
 
 ## Architecture
 
-**CODE → BUILDER → VISUAL ENGINE → PROVISIONER → IZAKHONO CLOUD/NODES → DNS/EDGE/TLS → FORTRESS → runtime**
+**GOAL → IZAKHONO AI AGENT → IZAKHONO BUILDER → SOFTWARE NODE → BUILD → TEST → EVIDENCE → DEPLOY**
 
-IZAKHONO owns the source-of-truth state, validated source snapshots, provisioning workflow and preferred production runtime. External providers are replaceable capacity adapters, not foundations.
+IZAKHONO owns the source-of-truth state, validated source snapshots, provisioning workflow and preferred production runtime. Software NODE is the primary infrastructure unit; physical hardware is an optional execution substrate. External infrastructure is replaceable and reversible, not the assumed foundation.
+
+## Hercules replacement
+
+**IZAKHONO-native Builder is the replacement for Hercules.** It is the sole built-in Builder execution provider. Application planning, scaffolding, validation, security checks, testing and packaging run through IZAKHONO-owned code and control-plane workflows.
+
+- No Hercules account or Hercules credits are required.
+- No artificial IZAKHONO AI credits, per-prompt charges, per-build charges, or pay-per-action meter.
+- Legacy external-builder endpoint settings are ignored by the native adapter.
+- Execution is governed by authorization, dependencies, evidence, security and actual infrastructure capacity.
+- Customer commercial access follows IZAKHONO flat-rate plans; no proprietary AI-credit wallet.
+
+The native Builder is a deterministic software execution engine. Model-backed code generation is a separate capability and must not be represented as available unless its runtime and model provider are actually configured and verified.
 
 ## Core capabilities
 
@@ -60,4 +72,4 @@ Validated generated applications are canonicalized, content-hashed and stored in
 
 **OWNED-FIRST. EXTERNALLY REVERSIBLE. NO HOSTAGE PLATFORM.**
 
-Production activation still requires a Docker-capable IZAKHONO node, public network reachability, DNS delegation, TLS validation, backups/restore testing and end-to-end acceptance evidence.
+Production activation requires an eligible Software NODE, public network reachability, DNS delegation, TLS validation, backups/restore testing and end-to-end acceptance evidence. A physical server is not a prerequisite for Software NODE instantiation or software-level build execution.

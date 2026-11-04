@@ -7,7 +7,20 @@
     "payPerAction": false,
     "basis": "capability-and-evidence"
   },
-  "policy": {"autoAdvance": true, "maxRetries": 3, "productionClaimsRequireEvidence": true, "infrastructureStrategy": "software-first", "softwareFirstReplacement": true, "nodeFirst": true, "externalInfrastructureIsFallback": true, "ownerGates": ["credentials", "financial_authorization", "security_exception"]},
+  "policy": {
+    "autoAdvance": true,
+    "maxRetries": 3,
+    "productionClaimsRequireEvidence": true,
+    "infrastructureStrategy": "software-first",
+    "softwareFirstReplacement": true,
+    "nodeFirst": true,
+    "externalInfrastructureIsFallback": true,
+    "ownerGates": [
+      "credentials",
+      "financial_authorization",
+      "security_exception"
+    ]
+  },
   "principles": [
     "Software NODE is the primary infrastructure unit; physical hardware is an optional execution substrate.",
     "Eliminate hardware dependency when software can legitimately replace, abstract, virtualize, consolidate, or automate it.",
@@ -17,32 +30,245 @@
     "Never claim production readiness without verifiable evidence.",
     "Prefer independent ready work over a single blocking dependency.",
     "Never fail over to an external provider when an owned NODE is unavailable; wait for an eligible owned NODE instead.",
-    "IZAKHONO-native builder capability is the default; external builders are optional adapters.",
+    "IZAKHONO-native Builder is the sole built-in Builder provider; Hercules is not in the execution path.",
     "Native execution has no artificial credits system; legitimate provider, capacity, security, and authorization limits remain operational constraints."
   ],
-  "stages": ["planning", "architecture", "design", "development", "integration", "testing", "security", "deployment", "verification", "documentation", "monetisation", "launch", "handover"],
+  "stages": [
+    "planning",
+    "architecture",
+    "design",
+    "development",
+    "integration",
+    "testing",
+    "security",
+    "deployment",
+    "verification",
+    "documentation",
+    "monetisation",
+    "launch",
+    "handover"
+  ],
   "adapters": {
-    "builder": ["izakhono-native", "hercules", "local-agent", "manual"],
-    "code": ["github", "izakhono-code"],
-    "deploy": ["izakhono-node", "vercel"],
-    "data": ["izakhono-data", "supabase"],
-    "dns": ["izakhono-edge", "cloudflare"],
-    "mail": ["izakhono-mail", "mailcow"],
-    "payments": ["izakhono-pay", "ikhokha", "payfast"],
-    "security": ["fortress"],
-    "observe": ["izakhono-observe", "vercel"]
+    "builder": [
+      "izakhono-native"
+    ],
+    "code": [
+      "github",
+      "izakhono-code"
+    ],
+    "deploy": [
+      "izakhono-node",
+      "vercel"
+    ],
+    "data": [
+      "izakhono-data",
+      "supabase"
+    ],
+    "dns": [
+      "izakhono-edge",
+      "cloudflare"
+    ],
+    "mail": [
+      "izakhono-mail",
+      "mailcow"
+    ],
+    "payments": [
+      "izakhono-pay",
+      "ikhokha",
+      "payfast"
+    ],
+    "security": [
+      "fortress"
+    ],
+    "observe": [
+      "izakhono-observe",
+      "vercel"
+    ]
   },
   "queue": [
-    {"id": "platform-foundation", "title": "Keep the IZAKHONO execution control plane continuously buildable", "stage": "architecture", "adapter": "code", "dependsOn": [], "action": "validate-manifest", "evidence": ["manifest-valid"]},
-    {"id": "continuous-worker", "title": "Run the next dependency-ready task automatically", "stage": "development", "adapter": "code", "dependsOn": ["platform-foundation"], "action": "run-worker", "evidence": ["worker-exit-zero"]},
-    {"id": "builder-bridge", "title": "Activate the IZAKHONO-native application-builder adapter without a manual NEXT prompt", "stage": "integration", "adapter": "builder", "dependsOn": ["continuous-worker"], "action": "adapter-contract", "evidence": ["adapter-contract-valid"]},
-    {"id": "software-node-instantiation", "title": "Instantiate a Software NODE without a physical-server prerequisite", "stage": "development", "adapter": "deploy", "dependsOn": ["continuous-worker"], "action": "node-discovery", "evidence": ["software-node-instantiated", "node-identity-created"]},
-    {"id": "node-heartbeat", "title": "Emit a continuous machine-readable IZAKHONO Software NODE health and capacity heartbeat", "stage": "verification", "adapter": "deploy", "dependsOn": ["software-node-instantiation"], "action": "node-heartbeat", "evidence": ["heartbeat-emitted", "node-health-readable", "capacity-reported"]},
-    {"id": "node-target-selection", "title": "Select the healthiest eligible Software NODE before workload promotion", "stage": "verification", "adapter": "deploy", "dependsOn": ["node-heartbeat"], "action": "node-target", "requirements": {"requiredChecks": ["nodeReachable", "persistentStorageReady", "monitoringOnline"]}, "evidence": ["eligible-node-selected"]},
-    {"id": "owned-node-failover", "title": "Automatically resolve a failed Software NODE to another fresh eligible NODE", "stage": "verification", "adapter": "deploy", "dependsOn": ["node-target-selection"], "action": "node-failover", "requirements": {"requiredChecks": ["nodeReachable", "persistentStorageReady", "monitoringOnline"]}, "evidence": ["failover-resolution-verified"]},
-    {"id": "owned-node-promotion", "title": "Promote continuous execution through the Software NODE and workload scheduler", "stage": "deployment", "adapter": "deploy", "dependsOn": ["software-node-instantiation", "node-heartbeat", "node-target-selection", "owned-node-failover"], "action": "node-readiness", "requirements": {"requiredChecks": ["nodeReachable", "persistentStorageReady", "monitoringOnline"]}, "evidence": ["persistent-storage-ready", "monitoring-online"]},
-    {"id": "workload-scheduler", "title": "Assign provider-neutral workloads to eligible Software NODEs", "stage": "deployment", "adapter": "deploy", "dependsOn": ["owned-node-promotion"], "action": "workload-schedule", "evidence": ["workload-assignment-recorded"]},
-    {"id": "kora-workload-execution", "title": "Execute KORA on the selected Software NODE and produce runtime evidence", "stage": "deployment", "adapter": "deploy", "dependsOn": ["workload-scheduler"], "action": "kora-workload-execute", "workload": {"workloadId": "kora-network", "workloadType": "web-application", "healthPath": "/api/health", "hostname": "streamkoraafrica.com"}, "evidence": ["container-started", "health-200", "runtime-healthy", "acceptance-recorded"]},
-    {"id": "kora-routing-candidate", "title": "Verify KORA public routing and TLS before any production cutover", "stage": "verification", "adapter": "deploy", "dependsOn": ["kora-workload-execution"], "action": "kora-routing-acceptance", "workload": {"workloadId": "kora-network", "hostname": "streamkoraafrica.com"}, "evidence": ["public-route-verified", "trusted-https-verified", "rollback-ready"]}
+    {
+      "id": "platform-foundation",
+      "title": "Keep the IZAKHONO execution control plane continuously buildable",
+      "stage": "architecture",
+      "adapter": "code",
+      "dependsOn": [],
+      "action": "validate-manifest",
+      "evidence": [
+        "manifest-valid"
+      ]
+    },
+    {
+      "id": "continuous-worker",
+      "title": "Run the next dependency-ready task automatically",
+      "stage": "development",
+      "adapter": "code",
+      "dependsOn": [
+        "platform-foundation"
+      ],
+      "action": "run-worker",
+      "evidence": [
+        "worker-exit-zero"
+      ]
+    },
+    {
+      "id": "builder-bridge",
+      "title": "Activate the IZAKHONO-native application-builder adapter without a manual NEXT prompt",
+      "stage": "integration",
+      "adapter": "builder",
+      "dependsOn": [
+        "continuous-worker"
+      ],
+      "action": "adapter-contract",
+      "evidence": [
+        "adapter-contract-valid"
+      ]
+    },
+    {
+      "id": "software-node-instantiation",
+      "title": "Instantiate a Software NODE without a physical-server prerequisite",
+      "stage": "development",
+      "adapter": "deploy",
+      "dependsOn": [
+        "continuous-worker"
+      ],
+      "action": "node-discovery",
+      "evidence": [
+        "software-node-instantiated",
+        "node-identity-created"
+      ]
+    },
+    {
+      "id": "node-heartbeat",
+      "title": "Emit a continuous machine-readable IZAKHONO Software NODE health and capacity heartbeat",
+      "stage": "verification",
+      "adapter": "deploy",
+      "dependsOn": [
+        "software-node-instantiation"
+      ],
+      "action": "node-heartbeat",
+      "evidence": [
+        "heartbeat-emitted",
+        "node-health-readable",
+        "capacity-reported"
+      ]
+    },
+    {
+      "id": "node-target-selection",
+      "title": "Select the healthiest eligible Software NODE before workload promotion",
+      "stage": "verification",
+      "adapter": "deploy",
+      "dependsOn": [
+        "node-heartbeat"
+      ],
+      "action": "node-target",
+      "requirements": {
+        "requiredChecks": [
+          "nodeReachable",
+          "persistentStorageReady",
+          "monitoringOnline"
+        ]
+      },
+      "evidence": [
+        "eligible-node-selected"
+      ]
+    },
+    {
+      "id": "owned-node-failover",
+      "title": "Automatically resolve a failed Software NODE to another fresh eligible NODE",
+      "stage": "verification",
+      "adapter": "deploy",
+      "dependsOn": [
+        "node-target-selection"
+      ],
+      "action": "node-failover",
+      "requirements": {
+        "requiredChecks": [
+          "nodeReachable",
+          "persistentStorageReady",
+          "monitoringOnline"
+        ]
+      },
+      "evidence": [
+        "failover-resolution-verified"
+      ]
+    },
+    {
+      "id": "owned-node-promotion",
+      "title": "Promote continuous execution through the Software NODE and workload scheduler",
+      "stage": "deployment",
+      "adapter": "deploy",
+      "dependsOn": [
+        "software-node-instantiation",
+        "node-heartbeat",
+        "node-target-selection",
+        "owned-node-failover"
+      ],
+      "action": "node-readiness",
+      "requirements": {
+        "requiredChecks": [
+          "nodeReachable",
+          "persistentStorageReady",
+          "monitoringOnline"
+        ]
+      },
+      "evidence": [
+        "persistent-storage-ready",
+        "monitoring-online"
+      ]
+    },
+    {
+      "id": "workload-scheduler",
+      "title": "Assign provider-neutral workloads to eligible Software NODEs",
+      "stage": "deployment",
+      "adapter": "deploy",
+      "dependsOn": [
+        "owned-node-promotion"
+      ],
+      "action": "workload-schedule",
+      "evidence": [
+        "workload-assignment-recorded"
+      ]
+    },
+    {
+      "id": "kora-workload-execution",
+      "title": "Execute KORA on the selected Software NODE and produce runtime evidence",
+      "stage": "deployment",
+      "adapter": "deploy",
+      "dependsOn": [
+        "workload-scheduler"
+      ],
+      "action": "kora-workload-execute",
+      "workload": {
+        "workloadId": "kora-network",
+        "workloadType": "web-application",
+        "healthPath": "/api/health",
+        "hostname": "streamkoraafrica.com"
+      },
+      "evidence": [
+        "container-started",
+        "health-200",
+        "runtime-healthy",
+        "acceptance-recorded"
+      ]
+    },
+    {
+      "id": "kora-routing-candidate",
+      "title": "Verify KORA public routing and TLS before any production cutover",
+      "stage": "verification",
+      "adapter": "deploy",
+      "dependsOn": [
+        "kora-workload-execution"
+      ],
+      "action": "kora-routing-acceptance",
+      "workload": {
+        "workloadId": "kora-network",
+        "hostname": "streamkoraafrica.com"
+      },
+      "evidence": [
+        "public-route-verified",
+        "trusted-https-verified",
+        "rollback-ready"
+      ]
+    }
   ]
 }
