@@ -51,7 +51,7 @@ NODE
 # Optional transition-only notification. Webhook URL must be supplied by NODE01 secret store.
 if [[ "$status" != "$previous" && -n "${NODE01_ALERT_WEBHOOK:-}" ]]; then
   payload="$(STATUS="$status" PREVIOUS="$previous" NODE01_ID="$NODE01_ID" NAV_URL="$NAV_URL" node -e 'console.log(JSON.stringify({text:"IZAKHONO NAV NODE01 status changed: "+process.env.PREVIOUS+" -> "+process.env.STATUS+" ("+process.env.NODE01_ID+", "+process.env.NAV_URL+")"}))')"
-  curl --fail --silent --show-error --max-time 8 -H 'Content-Type: application/json' --data "$payload" "$NODE01_ALERT_WEBHOOK" >/dev/null
+  curl --fail --silent --show-error --max-time 8 -H 'Content-Type: application/json' --data "$payload" "$NODE01_ALERT_WEBHOOK" >/dev/null || echo "[NODE01] alert delivery failed; health state remains $status" >&2
 fi
 
 cat "$tmp"
