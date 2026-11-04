@@ -113,7 +113,7 @@ const server = http.createServer(async (req,res)=>{
     if (url.pathname === '/version') return send(res,200,JSON.stringify({product:'IZAKHONO NAV',release:RELEASE,runtime:'owned'}),'application/json; charset=utf-8',requestId);
     if (url.pathname === '/api/nav/driver-companion') {
       if (req.method !== 'POST') return send(res,405,JSON.stringify({ok:false,error:'method_not_allowed'}),'application/json; charset=utf-8',requestId);
-      if (!allowAiRequest(req)) return send(res,429,JSON.stringify({ok:false,error:'rate_limited',retry_after_seconds:60}),'application/json; charset=utf-8',requestId);
+      if (!allowAiRequest(req)) { res.setHeader('Retry-After', '60'); return send(res,429,JSON.stringify({ok:false,error:'rate_limited',retry_after_seconds:60}),'application/json; charset=utf-8',requestId); }
       let body;
       try { body = await readBody(req); }
       catch (error) {
