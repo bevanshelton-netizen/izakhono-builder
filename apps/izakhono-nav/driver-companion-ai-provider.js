@@ -146,7 +146,7 @@
         ? data.choices[0].message.content
         : '';
 
-      if (!text) throw new Error('AI provider returned no assistant text');
+      if (typeof text !== 'string' || !text.trim()) throw new Error('AI provider returned no assistant text');
 
       return {
         ok: true,
