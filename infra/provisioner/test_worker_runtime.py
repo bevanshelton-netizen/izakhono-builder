@@ -8,7 +8,7 @@ from execution_contract import validate_request
 from adapter_executor import AdapterExecutor
 from errors import ProvisionerError
 
-ADAPTERS={"tenant":"izakhono-control","domain":"izakhono-domain","dns":"izakhono-dns","site":"izakhono-host","tls":"izakhono-edge","mail":"izakhono-mail","crm_whatsapp":"izakhono-integrations"}
+ADAPTERS={"tenant":"izakhono-control","domain":"izakhono-domain","dns":"izakhono-dns","site":"izakhono-host","tls":"izakhono-edge","mail":"izakhono-mail","crm_whatsapp":"izakhono-integrations","acceptance":"izakhono-acceptance"}
 REGISTRY={"adapters":{k:{"owned":v,"external":[{"name":"fallback","enabled":True,"credentials_configured":True}]} for k,v in ADAPTERS.items()},"bindings":{k:{"operation":f"op_{k}"} for k in STATE_CAPABILITY.values()}}
 
 def evidence(payload):
