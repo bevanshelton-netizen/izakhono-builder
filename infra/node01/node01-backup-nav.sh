@@ -19,6 +19,7 @@ command -v sha256sum >/dev/null || { echo "ERROR: sha256sum is required" >&2; ex
 command -v flock >/dev/null || { echo "ERROR: flock is required" >&2; exit 1; }
 [[ -f "$COMPOSE_FILE" ]] || { echo "ERROR: compose file not found: $COMPOSE_FILE" >&2; exit 1; }
 mkdir -p "$BACKUP_ROOT"
+BACKUP_ROOT="$(cd "$BACKUP_ROOT" && pwd)"
 chmod 0700 "$BACKUP_ROOT"
 exec 9>"$LOCK_FILE"
 flock -n 9 || { echo "ERROR: another NAV backup is running" >&2; exit 1; }
