@@ -26,7 +26,7 @@
   }
 
   function isJsonContentType(value) {
-    return /^application\\/(?:[a-z0-9.+-]*\\+)?json(?:\\s*;|$)/i.test(String(value || '').trim());
+    return /^application\/(?:[a-z0-9.+-]*\+)?json(?:\s*;|$)/i.test(String(value || '').trim());
   }
 
   async function readProviderJson(response) {
