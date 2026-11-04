@@ -32,6 +32,18 @@ rsync -a --partial --chmod=F600,D700 /var/backups/izakhono-nav/nav-node01-<UTC_T
 
 Do not put credentials, private keys, tokens, or remote host secrets in Git. Verify checksums again at the destination. Retention and remote destination must be selected according to the actual storage capacity and recovery objectives; no retention deletion is automated here.
 
+## Verified off-node replication
+
+Configure an SSH host alias (or `user@host`) in NODE01's protected SSH configuration and provide the absolute destination path through the protected environment variable. The SSH identity must be provisioned outside Git and must have write/read access to the destination.
+
+```bash
+NODE01_BACKUP_REMOTE_DEST='backup-user@backup-host:/srv/izakhono-backups/nav' \
+  bash infra/node01/replicate-nav-backup-offsite.sh \
+  /var/backups/izakhono-nav/nav-node01-<UTC_TIMESTAMP>
+```
+
+The script verifies the local archive first, copies the backup without deleting remote files, then verifies the remote SHA-256 checksums. It uses batch-mode SSH and fails rather than prompting for a password. No remote retention deletion is automated. Keep the remote destination on a separate failure domain from NODE01 and restrict access to the backup account.
+
 ## Evidence
 
 Record backup ID, checksum result, restore-drill result, NODE01 hostname, UTC time, image versions, and operator. Never mark recovery readiness complete until a drill has passed and a second copy has been verified off-node.
