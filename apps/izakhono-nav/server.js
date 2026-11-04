@@ -46,8 +46,17 @@ function readBody(req){
     });
     req.on('end', () => {
       if (settled) return;
-      try { settled = true; resolve(data ? JSON.parse(data) : {}); }
-      catch (error) { error.code = 'INVALID_JSON'; fail(error); }
+      try {
+        const parsed = data ? JSON.parse(data) : {};
+        settled = true;
+        resolve(parsed);
+      } catch (error) {
+        if (!settled) {
+          settled = true;
+          error.code = 'INVALID_JSON';
+          reject(error);
+        }
+      }
     });
     req.on('error', fail);
   });
