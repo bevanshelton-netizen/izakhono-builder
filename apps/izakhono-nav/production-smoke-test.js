@@ -42,6 +42,22 @@ async function main() {
   });
   add('request body size guard', oversized.status === 413 && JSON.parse(oversized.body).error === 'payload_too_large');
 
+  // Simulate a client attempting to rotate spoofed leading XFF values. The
+  // trusted final proxy hop remains constant and must hit the 30/minute limit.
+  let rateLimitStatus = 0;
+  for (let i = 0; i < 31; i++) {
+    const limited = await request('/api/nav/driver-companion', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Forwarded-For': `198.51.100.${(i % 200) + 1}, 127.0.0.1`
+      },
+      body: '{}'
+    });
+    rateLimitStatus = limited.status;
+  }
+  add('AI rate limit resists forwarded-IP spoofing', rateLimitStatus === 429);
+
   const html = await request('/');
   add('NAV shell', html.status === 200 && html.body.includes('IZAKHONO NAV'));
   add('PWA manifest link', html.status === 200 && html.body.includes('manifest.webmanifest'));
