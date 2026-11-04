@@ -102,6 +102,13 @@
     }).filter(Boolean);
   }
 
+  function extractAssistantText(data) {
+    const content = data && data.choices && data.choices[0] && data.choices[0].message
+      ? data.choices[0].message.content
+      : '';
+    return typeof content === 'string' ? content.trim().slice(0, MAX_TEXT) : '';
+  }
+
   async function chat(input) {
     if (!endpoint || !apiKey) {
       return unavailable('I’m here. The live voice service is not connected yet.');
@@ -162,7 +169,7 @@
   }
 
   if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { chat, validEndpoint, readProviderJson, isJsonContentType };
+    module.exports = { chat, validEndpoint, readProviderJson, isJsonContentType, extractAssistantText };
   }
   if (root) root.IZAKHONO_NAV_AI_PROVIDER = { chat };
 })(typeof window !== 'undefined' ? window : globalThis);
