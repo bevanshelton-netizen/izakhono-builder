@@ -39,15 +39,15 @@ Treat any checksum failure, missing archive, or unexpected volume list as a fail
 
 This is a best-effort online archive. Caddy may write certificate or state data while a volume is being archived, so the result is not guaranteed to be application-consistent. Before treating this as a production recovery point, conduct an isolated restore drill using copies of the volumes and validate Caddy startup and TLS state without touching live volumes.
 
-No automated restore script is provided at this stage. Do not extract an archive over a live Docker volume or replace production volumes without a separately reviewed maintenance procedure, a verified pre-restore backup, and explicit operator approval.
+An isolated restore-drill script is provided at `infra/node01/node01-restore-drill.sh`. It restores the two Caddy archives into newly created temporary Docker volumes, validates the backed-up Caddyfile offline, and removes the temporary volumes on exit. It never mounts production volumes. It is a validation drill, not a production restore procedure. Do not extract an archive over a live Docker volume or replace production volumes without a separately reviewed maintenance procedure, a verified pre-restore backup, and explicit operator approval.
 
 ## Recovery sequence (controlled)
 
 1. Identify a backup directory and verify every checksum.
 2. Confirm the exact Compose project and resolved volume names on the target.
 3. Restore into newly named isolated test volumes, never the live volumes.
-4. Start a temporary isolated Caddy test instance with the backed-up configuration.
-5. Verify Caddy loads, expected certificate state is present, and no secrets are exposed.
+4. Run `bash infra/node01/node01-restore-drill.sh /path/to/backup` to restore archives into isolated temporary volumes and validate the Caddyfile.
+5. Review the script output and confirm the temporary drill volumes were removed; the drill does not prove public TLS renewal, DNS reachability, or a full production startup.
 6. Record the drill outcome, tested backup ID, timestamps, and any gaps.
 7. Only after a successful drill, prepare a separately approved production recovery change.
 
