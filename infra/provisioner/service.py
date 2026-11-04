@@ -99,7 +99,7 @@ if __name__=="__main__":
     first=service.create_job(CreateJobRequest("tenant-service","idem-service",{"payment_id":"pay-service","amount":"100.00","currency":"ZAR","verified":True}))
     duplicate=service.create_job(CreateJobRequest("tenant-service","idem-service",{"payment_id":"pay-service","amount":"100.00","currency":"ZAR","verified":True}))
     assert first["created"] is True and duplicate["created"] is False and first["job_id"]==duplicate["job_id"]
-    for _ in range(8): service.worker_once()
+    for _ in range(9): service.worker_once()
     handover=service.handover(first["job_id"])
     assert handover["status"]=="HANDOVER_READY"
     assert any(e.event_type=="HANDOVER_COMPLETED" for e in store.events)
