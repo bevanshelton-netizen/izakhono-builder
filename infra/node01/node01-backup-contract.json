@@ -1,0 +1,42 @@
+{
+  "product": "IZAKHONO NAV",
+  "runtime_target": "NODE01",
+  "status": "backup_procedure_committed_not_executed",
+  "backup_scope": [
+    "resolved Docker named volumes declared by nav-compose.yml",
+    "nav-compose.yml",
+    "nav-Caddyfile",
+    "SHA256SUMS",
+    "backup-manifest.txt"
+  ],
+  "expected_persistent_volumes": [
+    "nav-caddy-data",
+    "nav-caddy-config"
+  ],
+  "excluded": [
+    "runtime secrets",
+    "environment files",
+    "application source",
+    "host operating system",
+    "external DNS/provider configuration"
+  ],
+  "safety": [
+    "never stop or mutate production services during backup",
+    "backup helper image must already exist locally",
+    "backup directory permissions 0700; files 0600",
+    "single-flight lock",
+    "staging directory renamed only after checksums created",
+    "no automatic restore or destructive overwrite"
+  ],
+  "limitations": [
+    "live named-volume archive is best-effort and not guaranteed application-consistent while Caddy is writing",
+    "backup does not prove restoreability until a separate isolated restore drill is completed",
+    "backup execution and off-node replication require NODE01 access"
+  ],
+  "verification": [
+    "sha256sum -c SHA256SUMS",
+    "inspect manifest and archive files",
+    "perform isolated restore drill before relying on recovery"
+  ],
+  "secrets_handling": "secrets intentionally excluded; protect and back up separately through an approved secrets manager"
+}\n
