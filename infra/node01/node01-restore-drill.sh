@@ -45,8 +45,11 @@ restore_volume() {
 }
 
 # Match the two persistent volumes declared by the current NAV Compose stack.
-DATA_SOURCE="$(grep '^volume=.*nav-caddy-data' "$BACKUP_DIR/backup-manifest.txt" | head -n 1 | sed -n 's/^volume=\([^ ]*\).*/\1/p')"
-CONFIG_SOURCE="$(grep '^volume=.*nav-caddy-config' "$BACKUP_DIR/backup-manifest.txt" | head -n 1 | sed -n 's/^volume=\([^ ]*\).*/\1/p')"
+# Match the exact volume-name suffix; avoid accidental substring matches.
+DATA_SOURCE="$(grep -E '^volume=[A-Za-z0-9_.-]*nav-caddy-data archive=' "$BACKUP_DIR/backup-manifest.txt" | sed -n 's/^volume=\([^ ]*\) archive=.*/\1/p')"
+CONFIG_SOURCE="$(grep -E '^volume=[A-Za-z0-9_.-]*nav-caddy-config archive=' "$BACKUP_DIR/backup-manifest.txt" | sed -n 's/^volume=\([^ ]*\) archive=.*/\1/p')"
+[[ "$(printf '%s\n' "$DATA_SOURCE" | sed '/^$/d' | wc -l | tr -d ' ')" == "1" ]] || { echo "ERROR: expected exactly one Caddy data volume in backup" >&2; exit 1; }
+[[ "$(printf '%s\n' "$CONFIG_SOURCE" | sed '/^$/d' | wc -l | tr -d ' ')" == "1" ]] || { echo "ERROR: expected exactly one Caddy config volume in backup" >&2; exit 1; }
 [[ -n "$DATA_SOURCE" && -n "$CONFIG_SOURCE" ]] || { echo "ERROR: expected Caddy volumes are not present in this backup" >&2; exit 1; }
 
 echo "[RESTORE DRILL] restoring into isolated temporary volumes only"
