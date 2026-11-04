@@ -129,17 +129,19 @@ class ProvisionerWorker:
         return WorkerResult(job.job_id, job.state, "verified")
 
     def run_once(self) -> WorkerResult | None:
-        item = self.queue.claim_next()
-        if item is None:
-            return None
-        job = self.store.get(item.job_id)
+        # The in-memory JobQueue is a simple FIFO, not the PostgreSQL lease queue.
+        # claim_next() returns the StoredJob directly; verified non-terminal jobs
+        # are re-enqueued for their next state. Durable lease handling belongs to
+        # DurableProvisionerWorker and must not be mixed into this adapter.
+        job = self.queue.claim_next()
         if job is None:
             return None
         result = self.process_job(job)
-        if result.status in {"verified", "accepted", "blocked", "terminal"}:
-            self.queue.complete(item.lease_id)
-        else:
-            self.queue.release(item.lease_id, retry_at=utc_now())
+        if result.status == "verified":
+            self.queue.enqueue(job)
+        elif result.status == "retry":
+            self.queue.retry(job, retryable=True, error_code=result.message or "ADAPTER_EXECUTION_FAILED")
+        # accepted, blocked and terminal are final for this in-memory queue.
         return result
 
 if __name__ == "__main__":
