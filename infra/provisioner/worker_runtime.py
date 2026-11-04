@@ -147,16 +147,44 @@ class ProvisionerWorker:
 
 if __name__ == "__main__":
     from job_store import MemoryJobStore
-    store = MemoryJobStore(); queue = JobQueue(store)
-    registry = {"adapters": {k: {"owned": v} for k, v in CAPABILITY_TO_ADAPTER.items()},
-                "bindings": {name: {"operation": "smoke"} for name in STATE_CAPABILITY.values()}}
-    implementations = build_catalog()
+
+    store = MemoryJobStore()
+    queue = JobQueue(store)
+    registry = {
+        "adapters": {capability: {"owned": adapter} for capability, adapter in CAPABILITY_TO_ADAPTER.items()},
+        "bindings": {name: {"operation": "smoke"} for name in STATE_CAPABILITY.values()},
+    }
+
+    # Contract fixtures exercise the worker only; provider_adapters.py remains
+    # simulation-only and must never satisfy the independent acceptance engine.
+    def fixture(adapter_name):
+        def execute(request):
+            capability = request["capability"]
+            return {
+                "evidence_id": f"fixture-{adapter_name}-{request['operation_id']}",
+                "observed_at": utc_now(),
+                "verified": True,
+                "checks": [f"contract.{capability}"],
+            }
+        return execute
+
+    implementations = {name: fixture(name) for name in set(CAPABILITY_TO_ADAPTER.values())}
     job, _ = store.create_or_get("tenant-demo", "idem-demo", "prov-demo")
-    job.evidence["PAYMENT_VERIFIED"] = {"evidence_id": "pay-demo", "observed_at": utc_now(), "verified": True, "checks": ["payment.verified"]}
-    store.save(job); queue.enqueue(job)
+    job.evidence["PAYMENT_VERIFIED"] = {
+        "evidence_id": "pay-demo",
+        "observed_at": utc_now(),
+        "verified": True,
+        "checks": ["payment.verified"],
+    }
+    store.save(job)
+    queue.enqueue(job)
     worker = ProvisionerWorker(store, queue, implementations, registry)
     results = [worker.run_once() for _ in range(10)]
-    assert any(r is not None and r.status == "accepted" for r in results) and job.state == State.HANDOVER_READY.value
-    assert all(r is not None for r in results[:8])
-    assert set(job.evidence) == {"PAYMENT_VERIFIED", "TENANT_CREATED", "DOMAIN_READY", "DNS_READY", "SITE_READY", "TLS_READY", "MAIL_READY", "INTEGRATIONS_READY", "ACCEPTANCE_PASSED"}
+    assert any(r is not None and r.status == "accepted" for r in results), [r.status if r else None for r in results]
+    assert job.state == State.HANDOVER_READY.value, job.state
+    assert all(r is not None for r in results[:9])
+    assert set(job.evidence) == {
+        "PAYMENT_VERIFIED", "TENANT_CREATED", "DOMAIN_READY", "DNS_READY", "SITE_READY",
+        "TLS_READY", "MAIL_READY", "INTEGRATIONS_READY", "ACCEPTANCE_PASSED",
+    }
     print("PROVISIONER_WORKER_RUNTIME: PASS")
