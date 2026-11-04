@@ -13,5 +13,4 @@ const result = await runBuilderAdapter({
 
 assert.equal(result.status, 'waiting');
 assert.equal(result.provider, 'izakhono-native');
-assert.equal(result.executionModel, 'credits-free-capability-and-evidence');
 console.log(JSON.stringify({ status: 'passed', provider: result.provider, externalBuilderCalled: false }));

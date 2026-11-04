@@ -2,7 +2,7 @@
 
 ## Decision
 
-IZAKHONO BUILDER, the IZAKHONO AI Agent runtime, Software NODE scheduler, and native execution control plane do **not** use an artificial credits system. IZAKHONO-native Builder is the sole built-in Builder execution provider.
+IZAKHONO BUILDER, the IZAKHONO AI Agent runtime, Software NODE scheduler, and native execution control plane do not use an artificial credits system. IZAKHONO-native Builder is the sole built-in Builder execution provider.
 
 There is no IZAKHONO AI-credit balance, action-credit meter, pay-per-action counter, token-credit wallet, or internal quota that stops native work because a user has exhausted credits.
 

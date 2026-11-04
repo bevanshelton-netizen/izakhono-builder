@@ -36,6 +36,9 @@ jobs:
       - name: Enforce credits-free native execution
         run: npm run credits-free:guard
 
+      - name: Verify native-only Builder routing
+        run: npm run builder:adapter:test
+
       - name: Validate NODE registry freshness
         run: npm run node-registry:test
 

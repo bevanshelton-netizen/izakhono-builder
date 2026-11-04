@@ -9,6 +9,5 @@ export async function runBuilderAdapter(task) {
   return {
     ...result,
     provider: 'izakhono-native',
-    executionModel: 'credits-free-capability-and-evidence',
   };
 }
