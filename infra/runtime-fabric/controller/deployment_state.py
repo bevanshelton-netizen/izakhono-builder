@@ -39,6 +39,9 @@ class MemoryDeploymentStore:
     def put(self, record: DeploymentRecord) -> DeploymentRecord:
         self.records[record.deployment_id] = record
         return record
+    def list_active(self) -> list[DeploymentRecord]:
+        """Return deployments eligible for recovery reconciliation."""
+        return [record for record in self.records.values() if record.state not in TERMINAL]
 
 def transition(record: DeploymentRecord, target: str, event_sink=None) -> DeploymentRecord:
     if record.state == target:
