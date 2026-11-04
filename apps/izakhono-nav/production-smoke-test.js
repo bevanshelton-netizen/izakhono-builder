@@ -45,6 +45,7 @@ async function main() {
   // Simulate a client attempting to rotate spoofed leading XFF values. The
   // trusted final proxy hop remains constant and must hit the 30/minute limit.
   let rateLimitStatus = 0;
+  let rateLimitRetryAfter = '';
   for (let i = 0; i < 31; i++) {
     const limited = await request('/api/nav/driver-companion', {
       method: 'POST',
@@ -55,8 +56,10 @@ async function main() {
       body: '{}'
     });
     rateLimitStatus = limited.status;
+    rateLimitRetryAfter = limited.headers['retry-after'] || '';
   }
   add('AI rate limit resists forwarded-IP spoofing', rateLimitStatus === 429);
+  add('AI rate limit Retry-After header', rateLimitRetryAfter === '60');
 
   const html = await request('/');
   add('NAV shell', html.status === 200 && html.body.includes('IZAKHONO NAV'));
