@@ -131,7 +131,7 @@ jobs:
           docker run --rm --network none \
             -e NAV_DOMAIN=nav.izakhono.africa \
             -v "$PWD/infra/contabo/nav-Caddyfile:/etc/caddy/Caddyfile:ro" \
-            caddy:2-alpine caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
+            --entrypoint caddy caddy:2-alpine validate --config /etc/caddy/Caddyfile --adapter caddyfile
       - name: Validate shell scripts
         run: |
           bash -n infra/contabo/preflight-nav.sh
