@@ -105,11 +105,22 @@ def main():
     )
     expect_error("HANDOVER_NOT_READY", lambda: service.handover(first["job_id"]))
 
+    cycle_states = []
     for _ in range(9):
-        service.worker_once()
+        result = service.worker_once()
+        cycle_states.append(result["state"] if result else "NO_JOB")
 
     status = service.status(first["job_id"])
-    assert status["state"] == "HANDOVER_READY", status["state"]
+    audit_failures = [
+        event.data for event in store.events
+        if event.job_id == first["job_id"] and event.event_type in {"RETRY_SCHEDULED", "BLOCKED"}
+    ]
+    assert status["state"] == "HANDOVER_READY", {
+        "state": status["state"],
+        "cycle_states": cycle_states,
+        "attempts": status["attempts"],
+        "audit_failures": audit_failures,
+    }
     handover = service.handover(first["job_id"])
     assert handover["status"] == "HANDOVER_READY"
     assert any(event.event_type == "HANDOVER_COMPLETED" for event in store.events)
