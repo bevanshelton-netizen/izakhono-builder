@@ -1,4 +1,4 @@
-import type { BuilderProject, BuilderJob, BuilderStore } from "./index.js";
+import type { BuilderProject, BuildJob, BuilderStore } from "./index.js";
 
 /** Minimal Cloudflare D1-compatible interfaces; no provider SDK is required. */
 export interface D1PreparedStatement {
@@ -41,14 +41,14 @@ export class D1BuilderStore implements BuilderStore {
     ).run();
   }
 
-  async getJob(id: string): Promise<BuilderJob | null> {
+  async getJob(id: string): Promise<BuildJob | null> {
     const row = await this.db.prepare(
       "SELECT payload_json FROM native_builder_jobs WHERE id = ?1",
     ).bind(id).first<{ payload_json: string }>();
-    return row ? parsePayload<BuilderJob>(row.payload_json, "job") : null;
+    return row ? parsePayload<BuildJob>(row.payload_json, "job") : null;
   }
 
-  async saveJob(job: BuilderJob): Promise<void> {
+  async saveJob(job: BuildJob): Promise<void> {
     await this.db.prepare(`
       INSERT INTO native_builder_jobs
         (id, project_id, status, requires_approval, requested_by, approved_by,
