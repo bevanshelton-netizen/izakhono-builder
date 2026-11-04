@@ -54,7 +54,8 @@
     "registry:control-plane-test": "npx --yes tsx@4.20.3 registry/control-plane-diagnostics.test.ts",
     "registry:test": "npx --yes tsx@4.20.3 registry/private-tld.test.ts registry/conformance.test.ts registry/dns.test.ts registry/authority-adapter.test.ts registry/rate-limit.test.ts registry/transaction.test.ts registry/registration-order.test.ts registry/idempotency.test.ts",
     "native-builder:test": "npx --yes tsx@4.20.3 products/izakhono-native-builder/src/index.test.ts",
-    "native-builder:typecheck": "npx --yes typescript@5.9.2 --noEmit --target ES2022 --module NodeNext --moduleResolution NodeNext products/izakhono-native-builder/src/index.ts products/izakhono-native-builder/src/d1-store.ts products/izakhono-native-builder/src/queue.ts products/izakhono-native-builder/src/index.test.ts"
+    "native-builder:typecheck": "npx --yes typescript@5.9.2 --noEmit --target ES2022 --module NodeNext --moduleResolution NodeNext products/izakhono-native-builder/src/index.ts products/izakhono-native-builder/src/d1-store.ts products/izakhono-native-builder/src/queue.ts products/izakhono-native-builder/src/index.test.ts",
+    "builder:adapter:test": "node autonomy/builder-adapter.test.mjs"
   },
   "dependencies": {
     "wrangler": "4.127.1"

@@ -9,7 +9,7 @@ const policy = fs.readFileSync(policyPath, 'utf8');
 for (const required of [
   'do not use an artificial credits system',
   'must never check, decrement, reserve, purchase, or require credits',
-  'External builders are optional adapters',
+  'Hercules is not part of the IZAKHONO Builder execution path',
 ]) {
   if (!policy.toLowerCase().includes(required.toLowerCase())) {
     throw new Error(`credits-free-policy-incomplete:${required}`);

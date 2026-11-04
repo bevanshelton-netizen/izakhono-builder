@@ -43,8 +43,6 @@ jobs:
         run: npm run node-failover:test
 
       - name: Run continuous execution engine
-        env:
-          IZAKHONO_BUILDER_ADAPTER_URL: ${{ secrets.IZAKHONO_BUILDER_ADAPTER_URL }}
         run: node autonomy/runner.mjs
 
       - name: Persist execution state
