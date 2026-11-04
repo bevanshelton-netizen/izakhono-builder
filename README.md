@@ -18,7 +18,7 @@ IZAKHONO owns the source-of-truth state, validated source snapshots, provisionin
 - Execution is governed by authorization, dependencies, evidence, security and actual infrastructure capacity.
 - Customer commercial access follows IZAKHONO flat-rate plans; no proprietary AI-credit wallet.
 
-The native Builder is a deterministic software execution engine. Model-backed code generation is a separate capability and must not be represented as available unless its runtime and model provider are actually configured and verified.
+The native Builder now includes a provider-neutral local-model adapter (Ollama-compatible chat endpoint) for website content generation, with a deterministic native fallback when a model runtime is not configured or reachable. The default model endpoint is loopback; non-private hosts are rejected unless explicitly trusted by the owner. Generated pages are rendered by IZAKHONO-owned code and HTML-escaped. This creates real website artifacts without a hosted AI-credit dependency. Full arbitrary application/code generation remains a separate capability and is not claimed as complete until model-backed code generation, broader project templates, deployment execution and end-to-end customer acceptance pass their tests.
 
 ## Core capabilities
 

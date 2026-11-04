@@ -1,6 +1,7 @@
 const WEB_APP_ACTIONS = [
   ['architecture', 'Define application architecture and acceptance criteria', 'plan-only', ['architecture-recorded']],
   ['scaffold', 'Prepare the application scaffold and runtime contract', 'builder-scaffold', ['scaffold-recorded']],
+  ['generate', 'Generate the website experience using the local model runtime or native fallback', 'builder-generate', ['site-generated']],
   ['validate', 'Validate the generated application structure', 'builder-validate', ['structure-validated']],
   ['security', 'Run the native security and policy gate', 'builder-security', ['security-gate-passed']],
   ['test', 'Run application tests and record evidence', 'builder-test', ['tests-passed']],

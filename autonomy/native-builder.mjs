@@ -1,6 +1,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
+import { generateSiteBrief, fallbackSiteBrief } from './model-runtime.mjs';
+import { renderSite, SITE_CSS } from './site-renderer.mjs';
 
 const root = process.cwd();
 const manifestPath = path.join(root, 'autonomy', 'engine-manifest.json');
@@ -118,12 +120,26 @@ export async function runNativeBuilder(task) {
     };
   }
 
+  if (action === 'builder-generate') {
+    if (!fs.existsSync(path.join(dir, 'package.json'))) return { status: 'failed', reason: 'native-scaffold-missing' };
+    let generated;
+    try { generated = await generateSiteBrief(task.goal || task.title); }
+    catch (error) { generated = { ...fallbackSiteBrief(task.goal || task.title), runtimeError: String(error.message || error) }; }
+    const publicDir = path.join(dir, 'public');
+    fs.mkdirSync(publicDir, { recursive: true });
+    writeJson(path.join(publicDir, 'site-content.json'), { schema: 'izakhono.site-content/v1', ...generated.brief });
+    writeText(path.join(publicDir, 'index.html'), renderSite(generated.brief));
+    writeText(path.join(publicDir, 'styles.css'), SITE_CSS + '\\n');
+    return { status: 'completed', provider: 'izakhono-native', generationMode: generated.mode, model: generated.model || null, evidence: evidence('site-generated', { html: true, css: true, structuredContent: true, modelBacked: generated.mode === 'local-model' }), ...artifactDetails(dir) };
+  }
+
   if (action === 'builder-validate') {
     if (!fs.existsSync(path.join(dir, 'package.json')) || !fs.existsSync(path.join(dir, 'index.mjs'))) {
       return { status: 'failed', reason: 'native-scaffold-missing' };
     }
     JSON.parse(fs.readFileSync(path.join(dir, 'package.json'), 'utf8'));
     JSON.parse(fs.readFileSync(path.join(dir, 'architecture.json'), 'utf8'));
+    if (!fs.existsSync(path.join(dir, 'public', 'index.html')) || !fs.existsSync(path.join(dir, 'public', 'styles.css'))) return { status: 'failed', reason: 'generated-site-missing' };
     return {
       status: 'completed',
       provider: 'izakhono-native',
@@ -152,6 +168,8 @@ export async function runNativeBuilder(task) {
   if (action === 'builder-test') {
     if (!fs.existsSync(path.join(dir, 'index.mjs'))) return { status: 'failed', reason: 'native-scaffold-missing' };
     execFileSync(process.execPath, ['--check', path.join(dir, 'index.mjs')], { cwd: root, stdio: 'pipe' });
+    const html = fs.readFileSync(path.join(dir, 'public', 'index.html'), 'utf8');
+    if (!html.includes('<!doctype html>') || !html.includes('styles.css')) throw new Error('generated-site-html-invalid');
     return {
       status: 'completed',
       provider: 'izakhono-native',

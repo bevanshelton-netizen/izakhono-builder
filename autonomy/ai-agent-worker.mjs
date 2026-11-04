@@ -48,6 +48,7 @@ async function execute(step, plan) {
     'adapter-contract',
     'plan-only',
     'builder-scaffold',
+    'builder-generate',
     'builder-validate',
     'builder-security',
     'builder-test',
