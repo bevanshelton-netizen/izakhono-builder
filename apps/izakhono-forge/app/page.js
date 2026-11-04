@@ -38,7 +38,7 @@ export default function Home() {
   }
 
   return <main>
-    <nav className="nav"><div className="brand"><span className="mark">I</span> IZAKHONO <b>FORGE</b><small>×20</small></div><div className="navlinks"><span>Command</span><span>Factories</span><span>Agents</span><span>Deployments</span></div><div className="status"><i/> OWNED CORE</div></nav>
+    <nav className="nav"><div className="brand"><span className="mark">I</span> IZAKHONO <b>FORGE</b><small>×20</small></div><div className="navlinks"><span>Command</span><a href="/workbench" style={{color:"#8de6c2",textDecoration:"none"}}>Visual Studio ↗</a><span>Factories</span><span>Agents</span><span>Deployments</span></div><div className="status"><i/> OWNED CORE</div></nav>
     <section className="hero">
       <div className="eyebrow">THE IZAKHONO OUTCOME ENGINE</div>
       <h1>Tell it what you want.<br/><em>We build the system.</em></h1>
