@@ -11,6 +11,48 @@
   const timeoutMs = Math.min(Math.max(Number(env.IZAKHONO_AI_TIMEOUT_MS || 12000), 3000), 30000);
   const MAX_MESSAGES = 12;
   const MAX_TEXT = 2000;
+  const MAX_PROVIDER_RESPONSE_BYTES = 64 * 1024;
+
+  function validEndpoint(value) {
+    try {
+      const url = new URL(value);
+      if (url.username || url.password || url.hash) return false;
+      if (url.protocol === 'https:') return Boolean(url.hostname);
+      return url.protocol === 'http:' && ['localhost', '127.0.0.1', '[::1]', '::1'].includes(url.hostname);
+    } catch (_) { return false; }
+  }
+
+  async function readProviderJson(response) {
+    const declaredLength = Number(response.headers && response.headers.get('content-length'));
+    if (Number.isFinite(declaredLength) && declaredLength > MAX_PROVIDER_RESPONSE_BYTES) {
+      if (response.body && typeof response.body.cancel === 'function') await response.body.cancel().catch(function () {});
+      throw new Error('AI provider response exceeded size limit');
+    }
+    if (!response.body || typeof response.body.getReader !== 'function') {
+      throw new Error('AI provider response stream unavailable');
+    }
+    const reader = response.body.getReader();
+    const chunks = [];
+    let total = 0;
+    try {
+      while (true) {
+        const part = await reader.read();
+        if (part.done) break;
+        total += part.value.byteLength;
+        if (total > MAX_PROVIDER_RESPONSE_BYTES) {
+          await reader.cancel().catch(function () {});
+          throw new Error('AI provider response exceeded size limit');
+        }
+        chunks.push(part.value);
+      }
+    } finally {
+      reader.releaseLock();
+    }
+    const bytes = new Uint8Array(total);
+    let offset = 0;
+    chunks.forEach(function (chunk) { bytes.set(chunk, offset); offset += chunk.byteLength; });
+    return JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes));
+  }
 
   const SYSTEM_PROMPT = [
     'You are the conversational driver companion for IZAKHONO NAV.',
@@ -58,6 +100,8 @@
       return unavailable('I’m here. The live voice service is not connected yet.');
     }
 
+    if (!validEndpoint(endpoint)) return unavailable('I’m here. The voice service endpoint is not configured safely.');
+
     const messages = normalizeMessages(input);
     const lastUserText = [...messages].reverse().find(function (m) { return m.role === 'user'; });
     const state = safetyState(lastUserText && lastUserText.content);
@@ -82,7 +126,7 @@
 
       if (!response.ok) throw new Error('AI provider returned HTTP ' + response.status);
 
-      const data = await response.json();
+      const data = await readProviderJson(response);
       const text = data && data.choices && data.choices[0] && data.choices[0].message
         ? data.choices[0].message.content
         : '';
@@ -103,7 +147,7 @@
   }
 
   if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { chat };
+    module.exports = { chat, validEndpoint, readProviderJson };
   }
   if (root) root.IZAKHONO_NAV_AI_PROVIDER = { chat };
 })(typeof window !== 'undefined' ? window : globalThis);
