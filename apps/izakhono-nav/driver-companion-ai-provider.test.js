@@ -1,6 +1,6 @@
 'use strict';
 const assert = require('node:assert/strict');
-const { validEndpoint, readProviderJson, isJsonContentType } = require('./driver-companion-ai-provider');
+const { validEndpoint, readProviderJson, isJsonContentType, extractAssistantText } = require('./driver-companion-ai-provider');
 const { handleDriverCompanionChat } = require('./driver-companion-ai-route');
 
 async function main() {
@@ -15,6 +15,10 @@ async function main() {
   assert.equal(isJsonContentType('application/vnd.api+json'), true);
   assert.equal(isJsonContentType('text/html'), false);
   assert.equal(isJsonContentType('application/javascript'), false);
+  assert.equal(extractAssistantText({ choices: [{ message: { content: '  NAV is ready  ' } }] }), 'NAV is ready');
+  assert.equal(extractAssistantText({ choices: [{ message: { content: { text: 'not plain text' } } }] }), '');
+  assert.equal(extractAssistantText({ choices: [{ message: { content: ['not', 'plain'] } }] }), '');
+  assert.equal(extractAssistantText({ choices: [{ message: { content: 'x'.repeat(2500) } }] }).length, 2000);
 
   const okPayload = JSON.stringify({ choices: [{ message: { content: 'NAV provider test' } }] });
   const okResponse = new Response(okPayload, { headers: { 'content-type': 'application/json' } });
