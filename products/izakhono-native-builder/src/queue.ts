@@ -37,25 +37,21 @@ export class NativeBuilderQueue {
   async processOne(): Promise<{ claimed: false } | { claimed: true; jobId: string; status: "succeeded" | "failed"; summary: string }> {
     const stamp = this.now();
     const row = await this.db.prepare(
-      "SELECT id, payload_json FROM native_builder_jobs WHERE status = 'queued' ORDER BY created_at LIMIT 1",
+      "SELECT id, payload_json FROM native_builder_jobs WHERE status = 'queued' AND (requires_approval = 0 OR approved_by IS NOT NULL) ORDER BY created_at LIMIT 1",
     ).first<{ id: string; payload_json: string }>();
     if (!row) return { claimed: false };
 
     const claim = await this.db.prepare(
-      "UPDATE native_builder_jobs SET status='running', updated_at=?1 WHERE id=?2 AND status='queued'",
+      "UPDATE native_builder_jobs SET status='running', updated_at=?1 WHERE id=?2 AND status='queued' AND (requires_approval = 0 OR approved_by IS NOT NULL)",
     ).bind(stamp, row.id).run();
     if (claim.meta?.changes !== 1) return { claimed: false };
 
     const job = JSON.parse(row.payload_json) as QueueJob;
     let outcome: { ok: boolean; summary: string; checks: Array<{ name: string; passed: boolean; detail: string }> };
-    if (job.requiresApproval && !job.approvedBy) {
-      outcome = { ok: false, summary: "Independent approval is required.", checks: [{ name: "approval", passed: false, detail: "Execution was not started." }] };
-    } else {
-      try {
-        outcome = await this.processor(job);
-      } catch (error) {
-        outcome = { ok: false, summary: error instanceof Error ? error.message : String(error), checks: [{ name: "processor", passed: false, detail: "Processor reported an error." }] };
-      }
+    try {
+      outcome = await this.processor(job);
+    } catch (error) {
+      outcome = { ok: false, summary: error instanceof Error ? error.message : String(error), checks: [{ name: "processor", passed: false, detail: "Processor reported an error." }] };
     }
 
     const passed = outcome.ok && outcome.checks.length > 0 && outcome.checks.every(check => check.passed);
