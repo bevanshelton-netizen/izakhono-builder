@@ -83,7 +83,8 @@ class ProvisionerWorker:
     def _failure(self, job: StoredJob, code: str, message: str, operation_id: str) -> WorkerResult:
         job.attempts += 1
         if self.recovery is not None:
-            recovery_state = RECOVERY_TARGET_STATE.get(job.state, job.state)\n            recovered = self.recovery.recover(job, recovery_state, operation_id, message)
+            recovery_state = RECOVERY_TARGET_STATE.get(job.state, job.state)
+            recovered = self.recovery.recover(job, recovery_state, operation_id, message)
             if not recovered.ok:
                 return self._block(job, "RECOVERY_FAILED", recovered.reason)
             self.store.append_audit(AuditEvent(f"evt_{job.job_id}_recovery_resume_{job.attempts}", job.job_id,
