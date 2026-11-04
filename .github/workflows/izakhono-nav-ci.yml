@@ -45,8 +45,11 @@ jobs:
           node --check server.js
           node --check production-smoke-test.js
           node --check driver-companion-ai-provider.js
+          node --check driver-companion-ai-provider.test.js
           node --check driver-companion-ai-route.js
           node --check hey-nav-runtime.js
+      - name: Test AI provider security boundaries
+        run: node driver-companion-ai-provider.test.js
       - name: Start owned NAV runtime
         run: |
           node server.js > /tmp/izakhono-nav.log 2>&1 &
