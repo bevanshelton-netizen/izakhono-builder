@@ -33,10 +33,13 @@ jobs:
 
       - name: Verify exact release
         shell: bash
+        env:
+          RELEASE_SHA: ${{ inputs.release_sha }}
         run: |
           set -euo pipefail
+          [[ "$RELEASE_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "release_sha must be exactly 40 lowercase hexadecimal characters" >&2; exit 1; }
           test "$(git branch --show-current)" = "main"
-          test "$(git rev-parse HEAD)" = "${{ github.event.inputs.release_sha }}"
+          test "$(git rev-parse HEAD)" = "$RELEASE_SHA"
           echo "Exact main release verified: $(git rev-parse HEAD)"
 
       - name: Promote on NODE01
