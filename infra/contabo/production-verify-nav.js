@@ -3,11 +3,15 @@ const https = require('node:https');
 
 const base = process.argv[2] || process.env.NAV_URL;
 if (!base) {
-  console.error('Usage: node infra/contabo/production-verify-nav.js <NAV_URL>');
+  console.error('Usage: node infra/contabo/production-verify-nav.js <HTTPS_NAV_URL>');
   process.exit(2);
 }
 
 const target = new URL(base);
+if (target.protocol !== 'https:') {
+  console.error('Production verification requires HTTPS; refusing plaintext URL.');
+  process.exit(2);
+}
 const transport = target.protocol === 'https:' ? https : http;
 
 function request(path, options = {}) {
@@ -48,6 +52,7 @@ async function main() {
   const version = await request('/version');
   const versionJson = json(version.body);
   add('owned runtime', version.status === 200 && versionJson?.runtime === 'owned');
+  add('TLS HSTS', Boolean(health.headers['strict-transport-security']) && /max-age=31536000/.test(health.headers['strict-transport-security']));
 
   const root = await request('/');
   add('NAV shell', root.status === 200 && root.body.includes('IZAKHONO NAV'));
