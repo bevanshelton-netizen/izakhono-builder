@@ -59,7 +59,7 @@ docker run --rm --network none \
   --mount "type=bind,src=$BACKUP_DIR/nav-Caddyfile,dst=/etc/caddy/Caddyfile,readonly" \
   --mount "type=volume,src=$DATA_VOL,dst=/data,readonly" \
   --mount "type=volume,src=$CONFIG_VOL,dst=/config,readonly" \
-  "$CADDY_IMAGE" caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
+  "$CADDY_IMAGE" validate --config /etc/caddy/Caddyfile --adapter caddyfile
 
 echo "[RESTORE DRILL] PASS: archive extracted into isolated volumes and Caddyfile validated"
 echo "[RESTORE DRILL] temporary volumes will now be removed; production volumes were never mounted or changed"
