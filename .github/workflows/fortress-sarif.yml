@@ -30,7 +30,7 @@ jobs:
       - name: Generate authorized-scope SARIF
         env:
           FORTRESS_AUTHORIZED_SCAN: '1'
-        run: node --import tsx products/fortress-security/src/cli.ts products/fortress-security/scope.example.json --sarif fortress.sarif --no-fail
+        run: npx --yes tsx@4.20.3 products/fortress-security/src/cli.ts products/fortress-security/scope.example.json --sarif fortress.sarif --no-fail
       - name: Upload FORTRESS SARIF
         uses: github/codeql-action/upload-sarif@v3
         with:
