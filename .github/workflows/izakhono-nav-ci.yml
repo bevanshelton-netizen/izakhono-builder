@@ -22,8 +22,8 @@ permissions:
   contents: read
 
 concurrency:
-  group: izakhono-nav-ci-${{ github.ref }}
-  cancel-in-progress: true
+  group: izakhono-nav-ci-${{ github.ref }}-${{ github.sha }}
+  cancel-in-progress: false
 
 jobs:
   runtime-validation:
