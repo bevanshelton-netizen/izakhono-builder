@@ -1,6 +1,7 @@
 'use strict';
 const assert = require('node:assert/strict');
 const { validEndpoint, readProviderJson, isJsonContentType } = require('./driver-companion-ai-provider');
+const { handleDriverCompanionChat } = require('./driver-companion-ai-route');
 
 async function main() {
   assert.equal(validEndpoint('https://api.example.com/v1/chat/completions'), true);
@@ -26,7 +27,16 @@ async function main() {
 
   const declaredLarge = new Response('{}', { headers: { 'content-length': String(65 * 1024) } });
   await assert.rejects(() => readProviderJson(declaredLarge), /exceeded size limit/);
-  console.log('NAV AI provider security tests passed');
+  const methodRejected = await handleDriverCompanionChat({ method: 'GET', body: {} });
+  assert.equal(methodRejected.status, 405);
+  const emptyRejected = await handleDriverCompanionChat({ method: 'POST', body: { messages: [] } });
+  assert.equal(emptyRejected.status, 400);
+  const blankRejected = await handleDriverCompanionChat({ method: 'POST', body: { messages: [{ role: 'user', content: '   ' }] } });
+  assert.equal(blankRejected.status, 400);
+  const noProvider = await handleDriverCompanionChat({ method: 'POST', body: { messages: [{ role: 'user', content: 'Hello NAV' }] } });
+  assert.equal(noProvider.status, 503);
+  assert.equal(noProvider.body.provider, 'UNAVAILABLE');
+  console.log('NAV AI provider and route security tests passed');
 }
 
 main().catch(error => { console.error(error); process.exitCode = 1; });
