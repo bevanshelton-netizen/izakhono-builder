@@ -62,7 +62,6 @@ export function toSarif(report: ScanReport): SarifLog {
               region: { startLine: 1 }
             }
           }],
-          logicalLocations: [{ name: finding.assetId, kind: 'resource' }],
           properties: {
             severity: finding.severity,
             assetId: finding.assetId,
