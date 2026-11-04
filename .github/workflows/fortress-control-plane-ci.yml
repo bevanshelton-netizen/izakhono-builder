@@ -22,4 +22,4 @@ jobs:
           node-version: 22
       - run: npm install --ignore-scripts --no-audit --no-fund
       - run: npm run fortress:typecheck
-      - run: npm run fortress:control-plane:test
+      - run: npm run fortress:control-plane-test
