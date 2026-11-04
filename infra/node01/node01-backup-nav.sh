@@ -49,6 +49,10 @@ printf '%s\n' "backup_id=$BACKUP_ID" "created_utc=$STAMP" "node=NODE01" "product
 
 while IFS= read -r volume; do
   [[ -n "$volume" ]] || continue
+  [[ "$volume" =~ ^[A-Za-z0-9][A-Za-z0-9_.-]*$ ]] || {
+    echo "ERROR: unsafe Docker volume name from rendered Compose config: $volume" >&2
+    exit 1
+  }
   docker volume inspect "$volume" >/dev/null
   archive="$STAGING/volume-$volume.tar.gz"
   echo "[NAV BACKUP] archiving named volume: $volume"
