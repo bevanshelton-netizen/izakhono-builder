@@ -26,4 +26,4 @@ curl -fsS http://127.0.0.1:8080/ready
 printf '\n[NAV][%s] local smoke test...\n' "$NODE_NAME"
 NAV_URL=http://127.0.0.1:8080 ./infra/contabo/nav-smoke-test.sh
 
-printf '\n[NAV][%s] deployment complete. Public TLS domain: %s\n' "$NODE_NAME" "$NAV_DOMAIN"
+printf '\n[NAV][%s] local deployment checks passed; public HTTPS/TLS verification is still required before promotion is certified.\n' "$NODE_NAME"
