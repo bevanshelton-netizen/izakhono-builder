@@ -54,6 +54,15 @@ export function toSarif(report: ScanReport): SarifLog {
           level: level[finding.severity],
           message: { text: `${finding.description} Evidence: ${finding.evidence}` },
           fingerprints: { fortressFindingId: finding.id },
+          // GitHub code scanning requires at least one physical location.
+          // The scan scope manifest is the auditable source of each authorized asset.
+          locations: [{
+            physicalLocation: {
+              artifactLocation: { uri: 'products/fortress-security/scope.example.json' },
+              region: { startLine: 1 }
+            }
+          }],
+          logicalLocations: [{ name: finding.assetId, kind: 'resource' }],
           properties: {
             severity: finding.severity,
             assetId: finding.assetId,
