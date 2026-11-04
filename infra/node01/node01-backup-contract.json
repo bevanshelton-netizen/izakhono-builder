@@ -39,4 +39,4 @@
     "perform isolated restore drill before relying on recovery"
   ],
   "secrets_handling": "secrets intentionally excluded; protect and back up separately through an approved secrets manager"
-}\n
+}
