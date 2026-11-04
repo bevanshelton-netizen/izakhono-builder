@@ -22,6 +22,19 @@ STATE_CAPABILITY = {
     State.INTEGRATIONS_READY.value: "acceptance",
 }
 
+# Recovery targets the capability being attempted, not the already-completed
+# state from which that capability was entered.
+RECOVERY_TARGET_STATE = {
+    State.PAYMENT_VERIFIED.value: State.TENANT_CREATED.value,
+    State.TENANT_CREATED.value: State.DOMAIN_READY.value,
+    State.DOMAIN_READY.value: State.DNS_READY.value,
+    State.DNS_READY.value: State.SITE_READY.value,
+    State.SITE_READY.value: State.TLS_READY.value,
+    State.TLS_READY.value: State.MAIL_READY.value,
+    State.MAIL_READY.value: State.INTEGRATIONS_READY.value,
+    State.INTEGRATIONS_READY.value: State.ACCEPTANCE_PASSED.value,
+}
+
 
 @dataclass(frozen=True)
 class WorkerResult:
@@ -70,7 +83,7 @@ class ProvisionerWorker:
     def _failure(self, job: StoredJob, code: str, message: str, operation_id: str) -> WorkerResult:
         job.attempts += 1
         if self.recovery is not None:
-            recovered = self.recovery.recover(job, job.state, operation_id, message)
+            recovery_state = RECOVERY_TARGET_STATE.get(job.state, job.state)\n            recovered = self.recovery.recover(job, recovery_state, operation_id, message)
             if not recovered.ok:
                 return self._block(job, "RECOVERY_FAILED", recovered.reason)
             self.store.append_audit(AuditEvent(f"evt_{job.job_id}_recovery_resume_{job.attempts}", job.job_id,
