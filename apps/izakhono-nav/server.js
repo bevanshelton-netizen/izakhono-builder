@@ -65,11 +65,30 @@ function runtimeStatus(){
   const aiConfigured=Boolean(process.env.IZAKHONO_AI_CHAT_ENDPOINT && process.env.IZAKHONO_AI_API_KEY);
   return { ok:true, product:'IZAKHONO NAV', runtime:'owned', release:RELEASE, ai_provider:aiConfigured?'configured':'unavailable', pwa:true, voice_api:true };
 }
-function clientKey(req){ return String(req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown').split(',')[0].trim(); }
+// Caddy appends the actual peer address to X-Forwarded-For. Use the final
+// hop, never the attacker-controlled first value. Direct requests fall back
+// to the socket peer address.
+function clientKey(req){
+  const forwarded = req.headers['x-forwarded-for'];
+  if (typeof forwarded === 'string' && forwarded.length <= 1024) {
+    const hops = forwarded.split(',');
+    const last = hops[hops.length - 1].trim();
+    if (last && /^[0-9a-fA-F:.]+$/.test(last)) return last;
+  }
+  return req.socket.remoteAddress || 'unknown';
+}
 function allowAiRequest(req){
   const key=clientKey(req), now=Date.now();
   const current=aiRate.get(key);
-  if(!current || now-current.startedAt >= AI_WINDOW_MS){ aiRate.set(key,{startedAt:now,count:1}); return true; }
+  if(!current || now-current.startedAt >= AI_WINDOW_MS){
+    // Bound memory even if many distinct network peers arrive within one window.
+    if (!current && aiRate.size >= 10000) {
+      const oldestKey = aiRate.keys().next().value;
+      if (oldestKey !== undefined) aiRate.delete(oldestKey);
+    }
+    aiRate.set(key,{startedAt:now,count:1});
+    return true;
+  }
   if(current.count >= AI_MAX_REQUESTS_PER_WINDOW) return false;
   current.count += 1;
   return true;
