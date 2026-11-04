@@ -139,6 +139,12 @@ const server = http.createServer(async (req,res)=>{
   } catch (err) { send(res,500,JSON.stringify({ok:false,error:'internal_error'}),'application/json; charset=utf-8',requestId); }
 });
 
+// Bound slow-header/body connections and keep-alive reuse at the HTTP edge.
+server.headersTimeout = 10_000;
+server.requestTimeout = 15_000;
+server.keepAliveTimeout = 5_000;
+server.maxRequestsPerSocket = 100;
+
 server.listen(PORT,'0.0.0.0',()=>console.log(`IZAKHONO NAV owned runtime listening on ${PORT}`));
 function shutdown(signal){ console.log(`IZAKHONO NAV received ${signal}; shutting down`); server.close(()=>process.exit(0)); setTimeout(()=>process.exit(1),10000).unref(); }
 process.on('SIGTERM',()=>shutdown('SIGTERM'));
