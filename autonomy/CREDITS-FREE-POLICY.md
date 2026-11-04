@@ -6,6 +6,10 @@ IZAKHONO BUILDER, the IZAKHONO AI Agent runtime, Software NODE scheduler, and na
 
 There is no IZAKHONO AI-credit balance, action-credit meter, pay-per-action counter, token-credit wallet, or internal quota that stops native work because a user has exhausted credits.
 
+
+
+**Explicit implementation rule:** do not use an artificial credits system. Customer access remains on IZAKHONO flat-rate plans; legitimate infrastructure capacity, security, provider rate limits, and authorization controls remain separate operational safeguards.
+
 ## What this means
 
 - Native Builder execution is capability-and-evidence based.
