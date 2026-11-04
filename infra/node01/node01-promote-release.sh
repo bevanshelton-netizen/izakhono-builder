@@ -3,7 +3,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$ROOT"
 EXPECTED_RELEASE="${1:-${EXPECTED_RELEASE:-}}"
-if [[ -z "$EXPECTED_RELEASE" ]]; then echo "expected release SHA is required" >&2; exit 30; fi
+if [[ ! "$EXPECTED_RELEASE" =~ ^[0-9a-f]{40}$ ]]; then echo "expected release must be exactly 40 lowercase hexadecimal characters" >&2; exit 30; fi
 current_branch="$(git branch --show-current)"
 current_release="$(git rev-parse HEAD)"
 if [[ "$current_branch" != "main" ]]; then echo "promotion refused: branch must be main" >&2; exit 31; fi
