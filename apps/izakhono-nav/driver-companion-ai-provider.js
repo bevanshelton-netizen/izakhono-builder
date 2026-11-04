@@ -124,7 +124,15 @@
         signal: controller.signal
       });
 
-      if (!response.ok) throw new Error('AI provider returned HTTP ' + response.status);
+      if (!response.ok) {
+        if (response.body && typeof response.body.cancel === 'function') await response.body.cancel().catch(function () {});
+        throw new Error('AI provider returned HTTP ' + response.status);
+      }
+      const contentType = String(response.headers && response.headers.get('content-type') || '').toLowerCase();
+      if (!/^application\/(?:[a-z0-9.+-]*\+)?json(?:\s*;|$)/.test(contentType)) {
+        if (response.body && typeof response.body.cancel === 'function') await response.body.cancel().catch(function () {});
+        throw new Error('AI provider returned an unsupported content type');
+      }
 
       const data = await readProviderJson(response);
       const text = data && data.choices && data.choices[0] && data.choices[0].message
