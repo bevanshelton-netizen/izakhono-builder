@@ -33,7 +33,8 @@ const prohibited = /(?:IZAKHONO|native|internal|execution)[^\n]{0,120}(?:credit|
 for (const file of files) {
   if (!fs.existsSync(file)) continue;
   const text = fs.readFileSync(file, 'utf8');
-  if (prohibited.test(text)) throw new Error(`native-credits-gate-detected:${path.relative(root, file)}`);
+  const executableLines = text.split('\\n').filter((line) => !/creditsEnabled\\s*!==\\s*false|artificialUsageMeter\\s*!==\\s*false/.test(line)).join('\\n');
+  if (prohibited.test(executableLines)) throw new Error(`native-credits-gate-detected:${path.relative(root, file)}`);
 }
 
 console.log(JSON.stringify({

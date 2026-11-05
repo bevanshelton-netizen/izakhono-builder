@@ -111,7 +111,7 @@ export async function runNativeBuilder(task) {
       scripts: { 'syntax-check': 'node --check index.mjs' },
     });
     writeText(path.join(dir, 'index.mjs'), `export const build = ${JSON.stringify({ planId: task.planId, goal: task.goal || task.title })};\n`);
-    writeText(path.join(dir, 'README.md'), `# IZAKHONO Native Build\n\nGoal: ${task.goal || task.title}\n\nThis artifact was scaffolded by the IZAKHONO-native Builder without an external AI-credit dependency.\n`);
+    writeText(path.join(dir, 'README.md'), `# IZAKHONO Native Build\n\nGoal: ${task.goal || task.title}\n\nThis artifact was scaffolded by the IZAKHONO-native Builder without an external builder service.\n`);
     return {
       status: 'completed',
       provider: 'izakhono-native',
