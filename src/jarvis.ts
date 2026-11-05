@@ -633,7 +633,7 @@ export async function jarvisRoute(
       }
       const nextStatus = decision === 'approve' ? 'approved' : 'rejected';
       const changed = await env.DB.prepare(`UPDATE jarvis_action_proposals SET status=?,updated_at=CURRENT_TIMESTAMP
-        WHERE id=? AND tenant_id=? AND owner_user_id=? AND status='proposed' AND payload_hash=? AND expires_at>?`)
+        WHERE id=? AND tenant_id=? AND owner_user_id=? AND status='proposed' AND payload_hash=? AND expires_at>? RETURNING id`)
         .bind(nextStatus, proposalId, TENANT, owner, currentHash, now).first<any>();
       // D1 UPDATE RETURNING is used to make the decision single-winner under concurrent requests.
       if (!changed?.id) return response({ ok: false, error: 'Proposal state changed; refresh before deciding.' }, 409);
