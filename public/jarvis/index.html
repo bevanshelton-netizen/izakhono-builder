@@ -76,6 +76,22 @@
   <div id="task-list" class="task-list"><div class="empty"><span>◈</span><b>No queued tasks</b><small>Create a task to begin.</small></div></div>
 </div>
 </section>
+<section class="action-workspace requires-auth">
+<div class="panel">
+  <div class="section-head"><h2>ACTION PROPOSALS & OWNER APPROVAL</h2><span>IMMUTABLE · NO EXECUTION ENABLED</span></div>
+  <p class="agent-intro">Record a proposed operation, inspect its exact payload and approve or reject it. Approval is an auditable decision only; no external action is executed.</p>
+  <form id="action-form" class="task-form">
+    <label>Action type<input id="action-type" maxlength="80" required placeholder="e.g. customer.email.send"></label>
+    <label>Target<input id="action-target" maxlength="240" required placeholder="e.g. customer record or service"></label>
+    <label class="wide">Payload (JSON object)<textarea id="action-payload" rows="4" required>{}</textarea></label>
+    <div class="task-submit"><button class="send-btn" type="submit" id="propose-action">Create proposal ↗</button><small id="action-message" aria-live="polite"></small></div>
+  </form>
+</div>
+<div class="panel">
+  <div class="section-head"><h2>DECISION REGISTER</h2><button class="refresh-btn" id="refresh-actions" type="button">↻ Refresh</button></div>
+  <div id="action-list" class="task-list"><div class="empty"><span>◇</span><b>No action proposals</b><small>Proposed operations will appear here.</small></div></div>
+</div>
+</section>
 <footer><span>© IZAKHONO AFRICA (PTY) LTD</span><span>OWNED-FIRST · SECURE-BY-DESIGN · AFRICAN-FIRST</span></footer>
 </main>
 </div>
