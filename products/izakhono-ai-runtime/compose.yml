@@ -1,0 +1,34 @@
+services:
+  izakhono-model:
+    image: ollama/ollama:latest
+    container_name: izakhono-model
+    restart: unless-stopped
+    environment:
+      OLLAMA_HOST: 0.0.0.0:11434
+      OLLAMA_KEEP_ALIVE: 30m
+    volumes:
+      - izakhono_model_data:/root/.ollama
+    ports:
+      - "127.0.0.1:11434:11434"
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 20s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+    security_opt:
+      - no-new-privileges:true
+  izakhono-model-bootstrap:
+    image: ollama/ollama:latest
+    container_name: izakhono-model-bootstrap
+    depends_on:
+      izakhono-model:
+        condition: service_healthy
+    entrypoint: ["/bin/sh", "-c"]
+    command: ["OLLAMA_HOST=http://izakhono-model:11434 ollama pull qwen2.5-coder:3b"]
+    restart: "no"
+    security_opt:
+      - no-new-privileges:true
+volumes:
+  izakhono_model_data:
+    name: izakhono_model_data

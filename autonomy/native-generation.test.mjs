@@ -11,5 +11,5 @@ assert.ok(!html.includes('<script>alert(1)</script>'));
 assert.ok(!html.includes('<img src=x'));
 assert.match(html, /&lt;script&gt;/);
 assert.throws(() => resolveLocalModelConfig({ IZAKHONO_LOCAL_MODEL_URL: 'https://example.com/api/chat' }), /not-private/);
-assert.equal(resolveLocalModelConfig({}).model, 'qwen2.5-coder:7b');
+assert.equal(resolveLocalModelConfig({}).model, 'qwen2.5-coder:3b');
 console.log('[PASS] Native generation fallback, HTML escaping and local-only model routing verified.');

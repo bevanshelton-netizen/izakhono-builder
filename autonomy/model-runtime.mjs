@@ -17,7 +17,7 @@ export function resolveLocalModelConfig(env = process.env) {
   const trusted = (env.IZAKHONO_MODEL_TRUSTED_HOSTS || '').split(',').map((v) => v.trim().toLowerCase()).filter(Boolean);
   if (!['http:', 'https:'].includes(url.protocol)) throw new Error('model-runtime-protocol-not-supported');
   if (!isPrivateHost(url.hostname) && !trusted.includes(url.hostname.toLowerCase())) throw new Error('model-runtime-host-not-private-or-explicitly-trusted');
-  return { url: url.toString(), model: env.IZAKHONO_LOCAL_MODEL || 'qwen2.5-coder:7b' };
+  return { url: url.toString(), model: env.IZAKHONO_LOCAL_MODEL || 'qwen2.5-coder:3b' };
 }
 
 export function normalizeBrief(input, goal = 'Your project') {

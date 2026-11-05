@@ -39,6 +39,9 @@ jobs:
       - name: Verify native-only Builder routing
         run: npm run builder:adapter:test
 
+      - name: Validate owned local model runtime contract
+        run: npm run model-runtime:validate
+
       - name: Validate NODE registry freshness
         run: npm run node-registry:test
 
