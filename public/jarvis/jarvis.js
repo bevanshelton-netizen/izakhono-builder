@@ -72,6 +72,7 @@ function actionElement(item){
  head.append(title,state);card.append(head);
  const meta=document.createElement('small');meta.textContent='Payload fingerprint · '+String(item.payload_hash||'').slice(0,23)+'… · Expires '+new Date(Number(item.expires_at)*1000).toLocaleString();card.append(meta);
  const payload=document.createElement('pre');payload.className='action-payload';payload.textContent=typeof item.payload_json==='string'?item.payload_json:JSON.stringify(item.payload||{},null,2);card.append(payload);
+ if(item.status==='approved'){const execute=document.createElement('button');execute.type='button';execute.textContent='Execute approved internal audit record';execute.dataset.actionDecision='execute';execute.dataset.actionId=item.id;execute.dataset.payloadHash=item.payload_hash;const controls=document.createElement('div');controls.className='task-actions';controls.append(execute);card.append(controls)}
  if(item.status==='proposed'){
   const controls=document.createElement('div');controls.className='task-actions';
   for(const decision of ['approve','reject','cancel']){const b=document.createElement('button');b.type='button';b.textContent=decision[0].toUpperCase()+decision.slice(1);b.dataset.actionDecision=decision;b.dataset.actionId=item.id;b.dataset.payloadHash=item.payload_hash;controls.append(b)}
@@ -102,7 +103,7 @@ $('#action-list').addEventListener('click',async e=>{
  const decision=button.dataset.actionDecision;button.disabled=true;
  try{
   const body=decision==='cancel'?{}:{expected_payload_hash:button.dataset.payloadHash};
-  const result=await api('/api/jarvis/v1/actions/'+encodeURIComponent(button.dataset.actionId)+'/'+decision,{method:'POST',body:JSON.stringify(body)});
-  notify('Proposal '+result.status+'. No external action was executed.');await loadActions();
+  const result=await api('/api/jarvis/v1/actions/'+encodeURIComponent(button.dataset.actionId)+'/'+(decision==='execute'?'execute':decision),{method:'POST',body:JSON.stringify(body)});
+  notify(decision==='execute'?'Internal audit adapter completed. No external system was contacted.':'Proposal '+result.status+'. No external action was executed.');await loadActions();
  }catch(error){notify(error.message);button.disabled=false}
 });
