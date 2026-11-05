@@ -1,0 +1,144 @@
+{
+  "schema": "yhvh.gospel-tv.global-gospel-radio-alliance/v1",
+  "authority": "IZAKHONO",
+  "brand": "YHVH GOSPEL TV",
+  "alliance_name": "YHVH GLOBAL GOSPEL BROADCASTING ALLIANCE",
+  "pillar": "RADIO",
+  "status": "FOUNDATION_ESTABLISHED",
+  "mission": "Connect Gospel and Christian radio broadcasters, online stations, audio networks and programme producers worldwide through voluntary, rights-cleared distribution and collaboration.",
+  "principles": {
+    "editorial_independence": true,
+    "member_identity_and_ownership_retained": true,
+    "no_payment_guarantees_airtime": true,
+    "no_unlicensed_rebroadcast": true,
+    "territory_and_music_rights_required": true,
+    "safeguarding_required_for_minor_contributors": true,
+    "transparent_written_commercial_terms": true,
+    "no_exclusivity_without_separate_written_agreement": true
+  },
+  "member_classes": [
+    "TERRESTRIAL_GOSPEL_RADIO",
+    "ONLINE_GOSPEL_RADIO",
+    "CHRISTIAN_RADIO_NETWORK",
+    "SATELLITE_AND_SHORTWAVE_RADIO",
+    "CHURCH_AND_MINISTRY_RADIO",
+    "GOSPEL_MUSIC_AND_WORSHIP_STATION",
+    "CHRISTIAN_PODCAST_AND_AUDIO_NETWORK",
+    "RADIO_PROGRAMME_PRODUCER",
+    "AUDIO_DISTRIBUTION_PARTNER"
+  ],
+  "collaboration_models": [
+    "PROGRAMME_SYNDICATION",
+    "RECIPROCAL_CONTENT_EXCHANGE",
+    "LIVE_EVENT_AUDIO_POOL",
+    "INTERVIEWS_AND_ARTIST_SESSIONS",
+    "NEWS_AND_MINISTRY_FEATURES",
+    "LANGUAGE_LOCALISATION",
+    "SHARED_PRODUCTION",
+    "DIGITAL_STREAM_CARRIAGE",
+    "ADVERTISING_OR_SPONSORSHIP_BY_SEPARATE_AGREEMENT"
+  ],
+  "onboarding_pipeline": [
+    "PROSPECT_IDENTIFIED",
+    "CONTACT_VERIFIED",
+    "INVITATION_SENT",
+    "APPLICATION_RECEIVED",
+    "IDENTITY_AND_STATION_REVIEW",
+    "RIGHTS_AND_MUSIC_LICENSING_REVIEW",
+    "TERRITORY_AND_REGULATORY_REVIEW",
+    "TECHNICAL_STREAM_QC",
+    "AGREEMENT_SENT",
+    "AGREEMENT_SIGNED",
+    "TEST_TRANSMISSION",
+    "ACTIVE_PARTNER"
+  ],
+  "required_checks": [
+    "station_identity_and_ownership",
+    "broadcast_or_stream_authority",
+    "music_public_performance_and_retransmission_rights",
+    "programme_and_contributor_permissions",
+    "territorial_distribution_rights",
+    "privacy_and_data_protection",
+    "safeguarding_and_complaints_process",
+    "technical_stream_and_metadata_quality"
+  ],
+  "initial_research_targets": [
+    {
+      "name": "United Christian Broadcasters International",
+      "website": "https://ucbmedia.org/",
+      "rationale": "International family of autonomous Christian media ministries, including radio members across several regions.",
+      "status": "RESEARCHED_NOT_CONTACTED"
+    },
+    {
+      "name": "Radio Pulpit",
+      "website": "https://www.radiopulpit.co.za/",
+      "territory": "South Africa",
+      "rationale": "Listed by UCB International as its South African ministry.",
+      "status": "RESEARCHED_NOT_CONTACTED"
+    },
+    {
+      "name": "Trans World Radio",
+      "website": "https://www.twr.org/",
+      "rationale": "International Christian radio broadcaster with regional services and multilingual distribution.",
+      "status": "RESEARCHED_NOT_CONTACTED"
+    },
+    {
+      "name": "Far East Broadcasting Company",
+      "website": "https://www.febc.org/",
+      "rationale": "International Christian radio ministry with multilingual services.",
+      "status": "RESEARCHED_NOT_CONTACTED"
+    },
+    {
+      "name": "Adventist World Radio",
+      "website": "https://awr.org/",
+      "rationale": "International radio ministry and multilingual broadcast operation.",
+      "status": "RESEARCHED_NOT_CONTACTED"
+    },
+    {
+      "name": "Reach Beyond",
+      "website": "https://reachbeyond.org/",
+      "rationale": "Christian media and radio ministry with international operations.",
+      "status": "RESEARCHED_NOT_CONTACTED"
+    },
+    {
+      "name": "Voice of Hope",
+      "website": "https://voiceofhope.com/",
+      "rationale": "Christian radio broadcasting and regional audio ministry.",
+      "status": "RESEARCHED_NOT_CONTACTED"
+    },
+    {
+      "name": "Mars Hill Network",
+      "website": "https://www.marshillnetwork.org/",
+      "rationale": "Christian radio network that also maintains international ministry connections.",
+      "status": "RESEARCHED_NOT_CONTACTED"
+    },
+    {
+      "name": "Vision Christian Media",
+      "website": "https://vision.org.au/",
+      "territory": "Australia",
+      "rationale": "Christian radio and media network in the UCB international family.",
+      "status": "RESEARCHED_NOT_CONTACTED"
+    },
+    {
+      "name": "Rhema Media",
+      "website": "https://www.rhema.co.nz/",
+      "territory": "New Zealand",
+      "rationale": "Christian radio and media ministry in the UCB international family.",
+      "status": "RESEARCHED_NOT_CONTACTED"
+    }
+  ],
+  "discovery_sources": [
+    "https://ucbmedia.org/",
+    "https://www.marshillnetwork.org/internationalchristianministries/",
+    "https://christianradiostream.com/",
+    "https://www.rcetc.com/educational-index/christian-radio-networks-worldwide/"
+  ],
+  "operating_rule": "A directory listing is a research lead, not proof of current operation, contact authorization, partnership interest, licensing or agreement. No target is marked contacted or active until independently verified.",
+  "next_execution": [
+    "Expand the target register country by country and region by region.",
+    "Verify official station websites and partnership contacts.",
+    "Prepare tailored invitations for radio networks and independent stations.",
+    "Record every contact, response, rights review and signed agreement.",
+    "Run test audio feeds only after written permission and technical approval."
+  ]
+}
