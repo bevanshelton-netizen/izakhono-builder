@@ -91,6 +91,32 @@ async function ensureSchema(db: Database) {
       window_started_at INTEGER NOT NULL,
       attempts INTEGER NOT NULL DEFAULT 0
     )`,
+    `CREATE TABLE IF NOT EXISTS jarvis_tasks (
+      id TEXT PRIMARY KEY,
+      tenant_id TEXT NOT NULL,
+      owner_user_id TEXT NOT NULL,
+      agent_id TEXT NOT NULL,
+      task_type TEXT NOT NULL CHECK(task_type IN ('analysis','research_brief','business_report','project_plan','coordination')),
+      title TEXT NOT NULL,
+      instruction TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'queued' CHECK(status IN ('queued','running','retry_wait','completed','failed','cancelled')),
+      priority TEXT NOT NULL DEFAULT 'normal' CHECK(priority IN ('low','normal','high')),
+      attempts INTEGER NOT NULL DEFAULT 0,
+      max_attempts INTEGER NOT NULL DEFAULT 3,
+      idempotency_key TEXT,
+      result_text TEXT,
+      error_code TEXT,
+      retry_after INTEGER,
+      started_at TEXT,
+      completed_at TEXT,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )`,
+    `CREATE UNIQUE INDEX IF NOT EXISTS idx_jarvis_tasks_idempotency
+      ON jarvis_tasks(tenant_id, owner_user_id, idempotency_key)
+      WHERE idempotency_key IS NOT NULL`,
+    `CREATE INDEX IF NOT EXISTS idx_jarvis_tasks_queue
+      ON jarvis_tasks(tenant_id, status, priority, created_at)`,
     `CREATE TABLE IF NOT EXISTS jarvis_audit_events (
       id TEXT PRIMARY KEY,
       tenant_id TEXT NOT NULL,
@@ -271,8 +297,9 @@ export async function jarvisRoute(
     const counts = await env.DB.prepare(`SELECT
       (SELECT COUNT(*) FROM jarvis_conversations WHERE tenant_id=? AND owner_user_id=?) AS conversations,
       (SELECT COUNT(*) FROM jarvis_messages WHERE tenant_id=? ) AS messages,
-      (SELECT COUNT(*) FROM jarvis_memory WHERE tenant_id=? AND owner_user_id=?) AS memory_items`)
-      .bind(TENANT, owner, TENANT, TENANT, owner).first<any>();
+      (SELECT COUNT(*) FROM jarvis_memory WHERE tenant_id=? AND owner_user_id=?) AS memory_items,
+      (SELECT COUNT(*) FROM jarvis_tasks WHERE tenant_id=? AND owner_user_id=? AND status IN ('queued','running','retry_wait')) AS open_tasks`)
+      .bind(TENANT, owner, TENANT, TENANT, owner, TENANT, owner).first<any>();
     return response({
       ok: true,
       product: 'IZAKHONO J.A.R.V.I.S.',
@@ -284,6 +311,7 @@ export async function jarvisRoute(
         conversations: Number(counts?.conversations || 0),
         messages: Number(counts?.messages || 0),
         memory_items: Number(counts?.memory_items || 0),
+        open_tasks: Number(counts?.open_tasks || 0),
       },
       tenant: TENANT,
     });
@@ -385,6 +413,120 @@ export async function jarvisRoute(
         }),
       }, 201);
     }
+  }
+
+  const agents = [
+    { id: 'coordinator', name: 'J.A.R.V.I.S. Coordinator', role: 'Break down owner goals, identify dependencies and coordinate work.', task_types: ['coordination','project_plan'], tools: [], execution: 'reasoning-only' },
+    { id: 'business-analyst', name: 'Business Analyst', role: 'Analyse business information, options, risks and decisions.', task_types: ['analysis','business_report'], tools: [], execution: 'reasoning-only' },
+    { id: 'research-briefing', name: 'Research Briefing Agent', role: 'Prepare structured research briefs and identify facts requiring verification.', task_types: ['research_brief'], tools: [], execution: 'reasoning-only' },
+    { id: 'project-planner', name: 'Project Planner', role: 'Create project plans, milestones, dependencies and risk registers.', task_types: ['project_plan','coordination'], tools: [], execution: 'reasoning-only' },
+    { id: 'reporting', name: 'Reporting Agent', role: 'Turn supplied information into concise operational and management reports.', task_types: ['business_report','analysis'], tools: [], execution: 'reasoning-only' },
+  ];
+
+  if (path === '/api/jarvis/v1/agents' && req.method === 'GET') {
+    return response({ ok: true, items: agents.map(agent => ({ ...agent, status: 'registered', live_tools: false })) });
+  }
+
+  if (path === '/api/jarvis/v1/tasks' && req.method === 'GET') {
+    const statusFilter = text(url.searchParams.get('status'), 20);
+    const allowedStatuses = ['queued','running','retry_wait','completed','failed','cancelled'];
+    const where = ['tenant_id=?','owner_user_id=?'];
+    const values: unknown[] = [TENANT, owner];
+    if (allowedStatuses.includes(statusFilter)) { where.push('status=?'); values.push(statusFilter); }
+    const rows = await env.DB.prepare(`SELECT id,agent_id,task_type,title,status,priority,attempts,max_attempts,error_code,retry_after,started_at,completed_at,created_at,updated_at
+      FROM jarvis_tasks WHERE ${where.join(' AND ')} ORDER BY
+      CASE priority WHEN 'high' THEN 0 WHEN 'normal' THEN 1 ELSE 2 END,
+      created_at DESC LIMIT 100`).bind(...values).all<any>();
+    return response({ ok: true, items: rows.results || [] });
+  }
+
+  if (path === '/api/jarvis/v1/tasks' && req.method === 'POST') {
+    const body = await parseBody(req);
+    if (!body) return response({ ok: false, error: 'Expected valid application/json.' }, 400);
+    const taskType = text(body.task_type, 40);
+    const title = text(body.title, 160);
+    const instruction = text(body.instruction, 8000);
+    const agentId = text(body.agent_id, 60);
+    const agent = agents.find(item => item.id === agentId && item.task_types.includes(taskType));
+    if (!agent || !['analysis','research_brief','business_report','project_plan','coordination'].includes(taskType)) {
+      return response({ ok: false, error: 'Select a registered agent and a supported task type.' }, 400);
+    }
+    if (!title || !instruction) return response({ ok: false, error: 'title and instruction are required.' }, 400);
+    const priority = ['low','normal','high'].includes(text(body.priority, 12)) ? text(body.priority, 12) : 'normal';
+    const idempotencyKey = text(body.idempotency_key, 120) || null;
+    if (idempotencyKey) {
+      const prior = await env.DB.prepare('SELECT id,status,title FROM jarvis_tasks WHERE tenant_id=? AND owner_user_id=? AND idempotency_key=?')
+        .bind(TENANT, owner, idempotencyKey).first<any>();
+      if (prior) return response({ ok: true, duplicate: true, task: prior });
+    }
+    const taskId = id('jtask');
+    await env.DB.prepare(`INSERT INTO jarvis_tasks
+      (id,tenant_id,owner_user_id,agent_id,task_type,title,instruction,priority,idempotency_key)
+      VALUES(?,?,?,?,?,?,?,?,?)`)
+      .bind(taskId, TENANT, owner, agentId, taskType, title, instruction, priority, idempotencyKey).run();
+    await audit(env.DB, owner, 'task.queued', taskId, { agent_id: agentId, task_type: taskType, priority });
+    return response({ ok: true, task: { id: taskId, agent_id: agentId, task_type: taskType, title, status: 'queued', priority } }, 201);
+  }
+
+  const taskMatch = path.match(/^\/api\/jarvis\/v1\/tasks\/([a-zA-Z0-9_-]+)(?:\/(run|cancel))?$/);
+  if (taskMatch) {
+    const taskId = taskMatch[1];
+    const action = taskMatch[2] || '';
+    const task = await env.DB.prepare('SELECT * FROM jarvis_tasks WHERE id=? AND tenant_id=? AND owner_user_id=?')
+      .bind(taskId, TENANT, owner).first<any>();
+    if (!task) return response({ ok: false, error: 'Task not found.' }, 404);
+    if (!action && req.method === 'GET') {
+      return response({ ok: true, task: { ...task, instruction: task.instruction, result: task.result_text } });
+    }
+    if (action === 'cancel' && req.method === 'POST') {
+      if (['completed','failed','cancelled'].includes(task.status)) return response({ ok: false, error: 'This task is already terminal.' }, 409);
+      await env.DB.prepare(`UPDATE jarvis_tasks SET status='cancelled',updated_at=CURRENT_TIMESTAMP
+        WHERE id=? AND tenant_id=? AND owner_user_id=? AND status IN ('queued','retry_wait','running')`)
+        .bind(taskId, TENANT, owner).run();
+      await audit(env.DB, owner, 'task.cancelled', taskId);
+      return response({ ok: true, task_id: taskId, status: 'cancelled' });
+    }
+    if (action === 'run' && req.method === 'POST') {
+      if (!['queued','retry_wait'].includes(task.status)) return response({ ok: false, error: 'Only queued or retry-wait tasks can be claimed.' }, 409);
+      if (Number(task.attempts) >= Number(task.max_attempts)) return response({ ok: false, error: 'Task has exhausted its retry limit.' }, 409);
+      const now = Math.floor(Date.now() / 1000);
+      if (task.status === 'retry_wait' && Number(task.retry_after || 0) > now) return response({ ok: false, error: 'Task retry window has not opened.' }, 409);
+      const claim = await env.DB.prepare(`UPDATE jarvis_tasks SET status='running',attempts=attempts+1,
+        started_at=CURRENT_TIMESTAMP,updated_at=CURRENT_TIMESTAMP,error_code=NULL
+        WHERE id=? AND tenant_id=? AND owner_user_id=? AND status=? AND attempts=?`)
+        .bind(taskId, TENANT, owner, task.status, task.attempts).run();
+      const claimed = await env.DB.prepare("SELECT changes() AS changed").first<any>();
+      if (!Number(claimed?.changed || 0)) return response({ ok: false, error: 'Task was claimed by another worker.' }, 409);
+      await audit(env.DB, owner, 'task.started', taskId, { attempt: Number(task.attempts) + 1, agent_id: task.agent_id });
+      const agentDef = agents.find(item => item.id === task.agent_id);
+      const prompt = [
+        'Agent role: ' + (agentDef?.role || 'Business assistant'),
+        'Task type: ' + task.task_type,
+        'Task title: ' + task.title,
+        'Owner instruction: ' + task.instruction,
+        'Safety boundary: You are a reasoning-only agent. You have no tools and must not claim to have performed external actions, accessed live systems, verified current facts, sent communications, changed records or deployed anything. Produce a useful deliverable from the supplied context, state assumptions and identify verification needs.',
+      ].join('\n\n');
+      const result = await runIntelligence(env, [{ role: 'user', content: prompt }]);
+      const current = await env.DB.prepare('SELECT status,attempts FROM jarvis_tasks WHERE id=? AND tenant_id=? AND owner_user_id=?')
+        .bind(taskId, TENANT, owner).first<any>();
+      if (current?.status === 'cancelled') return response({ ok: true, task_id: taskId, status: 'cancelled' });
+      if (result.ok && result.text) {
+        await env.DB.prepare(`UPDATE jarvis_tasks SET status='completed',result_text=?,completed_at=CURRENT_TIMESTAMP,
+          updated_at=CURRENT_TIMESTAMP,retry_after=NULL,error_code=NULL WHERE id=? AND status='running'`)
+          .bind(result.text, taskId).run();
+        await audit(env.DB, owner, 'task.completed', taskId, { attempt: Number(current?.attempts || 1), agent_id: task.agent_id });
+        return response({ ok: true, task_id: taskId, status: 'completed', result: result.text, attempts: Number(current?.attempts || 1) });
+      }
+      const attempts = Number(current?.attempts || 1);
+      const exhausted = attempts >= Number(task.max_attempts);
+      const retryAfter = Math.floor(Date.now() / 1000) + Math.min(900, 30 * (2 ** Math.max(0, attempts - 1)));
+      const nextStatus = exhausted ? 'failed' : 'retry_wait';
+      await env.DB.prepare('UPDATE jarvis_tasks SET status=?,error_code=?,retry_after=?,updated_at=CURRENT_TIMESTAMP,completed_at=? WHERE id=? AND status=\'running\'')
+        .bind(nextStatus, result.reason || 'agent-execution-failed', exhausted ? null : retryAfter, exhausted ? new Date().toISOString() : null, taskId).run();
+      await audit(env.DB, owner, exhausted ? 'task.failed' : 'task.retry_scheduled', taskId, { attempt: attempts, reason: result.reason || 'unknown', retry_after: exhausted ? null : retryAfter });
+      return response({ ok: true, task_id: taskId, status: nextStatus, attempts, retry_after: exhausted ? null : retryAfter, reason: result.reason || 'agent-execution-failed' }, exhausted ? 502 : 202);
+    }
+    return response({ ok: false, error: 'Method not allowed for this task route.' }, 405);
   }
 
   if (path === '/api/jarvis/v1/memory' && req.method === 'GET') {
