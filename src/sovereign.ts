@@ -1379,7 +1379,7 @@ export default {
 
     if (!url.pathname.startsWith('/api/')) return withModuleEditor(response, url);
     return response;
-  },,
+  },
   async scheduled(_controller: ScheduledController, env: any, ctx: ExecutionContext): Promise<void> {
     ctx.waitUntil(jarvisScheduled(env).then(result => {
       console.log('JARVIS scheduled dispatch', JSON.stringify(result));
