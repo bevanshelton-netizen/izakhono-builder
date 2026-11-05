@@ -636,9 +636,7 @@ export async function jarvisRoute(
         WHERE id=? AND tenant_id=? AND owner_user_id=? AND status='proposed' AND payload_hash=? AND expires_at>?`)
         .bind(nextStatus, proposalId, TENANT, owner, currentHash, now).first<any>();
       // D1 UPDATE RETURNING is used to make the decision single-winner under concurrent requests.
-      const confirmed = changed || await env.DB.prepare(`SELECT id FROM jarvis_action_proposals
-        WHERE id=? AND status=? AND payload_hash=?`).bind(proposalId, nextStatus, currentHash).first<any>();
-      if (!confirmed?.id) return response({ ok: false, error: 'Proposal state changed; refresh before deciding.' }, 409);
+      if (!changed?.id) return response({ ok: false, error: 'Proposal state changed; refresh before deciding.' }, 409);
       await env.DB.prepare(`INSERT INTO jarvis_action_approvals
         (id,proposal_id,tenant_id,owner_user_id,decision,payload_hash,note)
         VALUES(?,?,?,?,?,?,?)`)
