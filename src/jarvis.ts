@@ -117,6 +117,17 @@ async function ensureSchema(db: Database) {
       WHERE idempotency_key IS NOT NULL`,
     `CREATE INDEX IF NOT EXISTS idx_jarvis_tasks_queue
       ON jarvis_tasks(tenant_id, status, priority, created_at)`,
+    `CREATE TABLE IF NOT EXISTS jarvis_task_dependencies (
+      tenant_id TEXT NOT NULL,
+      owner_user_id TEXT NOT NULL,
+      task_id TEXT NOT NULL,
+      depends_on_task_id TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY(task_id,depends_on_task_id),
+      CHECK(task_id <> depends_on_task_id)
+    )`,
+    `CREATE INDEX IF NOT EXISTS idx_jarvis_task_dependencies_parent
+      ON jarvis_task_dependencies(tenant_id,owner_user_id,depends_on_task_id)`,
     `CREATE TABLE IF NOT EXISTS jarvis_action_proposals (
       id TEXT PRIMARY KEY,
       tenant_id TEXT NOT NULL,
@@ -501,13 +512,26 @@ export async function jarvisRoute(
         .bind(TENANT, owner, idempotencyKey).first<any>();
       if (prior) return response({ ok: true, duplicate: true, task: prior });
     }
+    const dependencyIds = Array.isArray(body.depends_on) ? Array.from(new Set(body.depends_on.filter((v: unknown) => typeof v === 'string' && /^[a-zA-Z0-9_-]{1,100}$/.test(v))).slice(0, 20) as string[] : [];
+    if (Array.isArray(body.depends_on) && dependencyIds.length !== body.depends_on.length) return response({ ok: false, error: 'depends_on must contain up to 20 unique task IDs.' }, 400);
+    if (dependencyIds.length) {
+      const placeholders = dependencyIds.map(() => '?').join(',');
+      const parents = await env.DB.prepare(`SELECT id,status FROM jarvis_tasks WHERE tenant_id=? AND owner_user_id=? AND id IN (${placeholders})`)
+        .bind(TENANT, owner, ...dependencyIds).all<any>();
+      if ((parents.results || []).length !== dependencyIds.length) return response({ ok: false, error: 'Every dependency must be an existing task owned by this account.' }, 400);
+      if ((parents.results || []).some((p: any) => ['failed','cancelled'].includes(p.status))) return response({ ok: false, error: 'A dependency has already failed or been cancelled.' }, 409);
+    }
     const taskId = id('jtask');
     await env.DB.prepare(`INSERT INTO jarvis_tasks
       (id,tenant_id,owner_user_id,agent_id,task_type,title,instruction,priority,idempotency_key)
       VALUES(?,?,?,?,?,?,?,?,?)`)
       .bind(taskId, TENANT, owner, agentId, taskType, title, instruction, priority, idempotencyKey).run();
+    for (const parentId of dependencyIds) {
+      await env.DB.prepare('INSERT INTO jarvis_task_dependencies(tenant_id,owner_user_id,task_id,depends_on_task_id) VALUES(?,?,?,?)')
+        .bind(TENANT, owner, taskId, parentId).run();
+    }
     await audit(env.DB, owner, 'task.queued', taskId, { agent_id: agentId, task_type: taskType, priority });
-    return response({ ok: true, task: { id: taskId, agent_id: agentId, task_type: taskType, title, status: 'queued', priority } }, 201);
+    return response({ ok: true, task: { id: taskId, agent_id: agentId, task_type: taskType, title, status: 'queued', priority, depends_on: dependencyIds } }, 201);
   }
 
   const taskMatch = path.match(/^\/api\/jarvis\/v1\/tasks\/([a-zA-Z0-9_-]+)(?:\/(run|cancel))?$/);
@@ -529,6 +553,14 @@ export async function jarvisRoute(
       return response({ ok: true, task_id: taskId, status: 'cancelled' });
     }
     if (action === 'run' && req.method === 'POST') {
+      const dependencyState = await env.DB.prepare(`SELECT COUNT(*) AS total,
+        SUM(CASE WHEN p.status='completed' THEN 1 ELSE 0 END) AS completed,
+        SUM(CASE WHEN p.status IN ('failed','cancelled') THEN 1 ELSE 0 END) AS terminal_failure
+        FROM jarvis_task_dependencies d JOIN jarvis_tasks p ON p.id=d.depends_on_task_id
+        WHERE d.tenant_id=? AND d.owner_user_id=? AND d.task_id=?`)
+        .bind(TENANT, owner, taskId).first<any>();
+      if (Number(dependencyState?.terminal_failure || 0) > 0) return response({ ok: false, error: 'A prerequisite task failed or was cancelled.' }, 409);
+      if (Number(dependencyState?.completed || 0) < Number(dependencyState?.total || 0)) return response({ ok: false, error: 'This task is waiting for prerequisite tasks to complete.' }, 409);
       if (!['queued','retry_wait'].includes(task.status)) return response({ ok: false, error: 'Only queued or retry-wait tasks can be claimed.' }, 409);
       if (Number(task.attempts) >= Number(task.max_attempts)) return response({ ok: false, error: 'Task has exhausted its retry limit.' }, 409);
       const now = Math.floor(Date.now() / 1000);
@@ -777,7 +809,11 @@ export async function jarvisScheduled(env: JarvisEnv): Promise<{ claimed: number
   const candidates = await env.DB.prepare(`SELECT id,owner_user_id,agent_id,task_type,title,instruction,status,attempts,max_attempts,retry_after
     FROM jarvis_tasks WHERE tenant_id=? AND status IN ('queued','retry_wait')
     AND (status='queued' OR retry_after IS NULL OR retry_after<=?)
-    AND attempts<max_attempts ORDER BY CASE priority WHEN 'high' THEN 0 WHEN 'normal' THEN 1 ELSE 2 END,created_at ASC LIMIT 3`)
+    AND attempts<max_attempts
+    AND NOT EXISTS (SELECT 1 FROM jarvis_task_dependencies d JOIN jarvis_tasks p ON p.id=d.depends_on_task_id
+      WHERE d.tenant_id=jarvis_tasks.tenant_id AND d.owner_user_id=jarvis_tasks.owner_user_id
+      AND d.task_id=jarvis_tasks.id AND p.status<>'completed')
+    ORDER BY CASE priority WHEN 'high' THEN 0 WHEN 'normal' THEN 1 ELSE 2 END,created_at ASC LIMIT 3`)
     .bind(TENANT, Math.floor(Date.now()/1000)).all<any>();
   const items = candidates.results || [];
   const outcomes = await Promise.all(items.map(async task => {
