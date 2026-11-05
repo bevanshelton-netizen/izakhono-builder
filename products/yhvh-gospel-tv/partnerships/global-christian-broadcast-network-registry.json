@@ -1,0 +1,514 @@
+{
+  "schema": "yhvh.global.christian.broadcast-network-registry/v1",
+  "authority": "IZAKHONO",
+  "brand": "YHVH GOSPEL TV",
+  "programme": "YHVH GLOBAL CHRISTIAN BROADCAST ALLIANCE",
+  "objective": "Build a verified worldwide partnership network connecting Christian television broadcasters, Gospel radio stations, digital radio, production ministries and lawful distribution partners.",
+  "operating_principles": {
+    "editorial_independence": true,
+    "payment_guarantees_airtime": false,
+    "rights_and_territory_clearance_required": true,
+    "partner_identity_and_authority_verification_required": true,
+    "no_unlicensed_rebroadcast_or_stream_embedding": true,
+    "outreach_status_must_be_evidence_based": true
+  },
+  "partnership_tracks": [
+    "TELEVISION_NETWORK",
+    "GOSPEL_RADIO_STATION",
+    "CHRISTIAN_RADIO_NETWORK",
+    "HYBRID_TV_RADIO_BROADCASTER",
+    "DIGITAL_AUDIO_PLATFORM",
+    "PRODUCTION_AND_CONTENT_PARTNER",
+    "SATELLITE_OTT_FAST_DISTRIBUTOR"
+  ],
+  "workflow": [
+    "DISCOVERED",
+    "CONTACT_DETAILS_VERIFIED",
+    "PRIORITY_APPROVED",
+    "INVITATION_PREPARED",
+    "INVITATION_SENT",
+    "RESPONSE_RECEIVED",
+    "DUE_DILIGENCE",
+    "TERMS_NEGOTIATION",
+    "AGREEMENT_SENT",
+    "SIGNED",
+    "RIGHTS_AND_TERRITORY_CLEARED",
+    "TECHNICAL_QC",
+    "ACTIVE"
+  ],
+  "prospect_status_definition": "All entries below are DISCOVERED prospects only. Inclusion does not mean contact, endorsement, agreement, carriage, or confirmed partnership.",
+  "initial_targets": [
+    {
+      "id": "TV-001",
+      "name": "TBN / Trinity Broadcasting Network",
+      "track": "TELEVISION_NETWORK",
+      "region": "Global",
+      "website": "https://www.tbn.org/",
+      "priority": "A",
+      "status": "DISCOVERED",
+      "opportunity": "International channel distribution, programme exchange and regional affiliate relationships"
+    },
+    {
+      "id": "TV-002",
+      "name": "Daystar Television Network",
+      "track": "TELEVISION_NETWORK",
+      "region": "Global",
+      "website": "https://daystar.com/",
+      "priority": "A",
+      "status": "DISCOVERED",
+      "opportunity": "International carriage, Gospel programming and production collaboration"
+    },
+    {
+      "id": "TV-003",
+      "name": "GOD TV",
+      "track": "TELEVISION_NETWORK",
+      "region": "Global",
+      "website": "https://www.god.tv/",
+      "priority": "A",
+      "status": "DISCOVERED",
+      "opportunity": "Global Christian media distribution and regional programming"
+    },
+    {
+      "id": "TV-004",
+      "name": "Faith Broadcasting Network",
+      "track": "HYBRID_TV_RADIO_BROADCASTER",
+      "region": "Southern Africa / Global",
+      "website": "https://myfaith.tv/",
+      "priority": "A",
+      "status": "DISCOVERED",
+      "opportunity": "South African collaboration, content exchange and distribution"
+    },
+    {
+      "id": "TV-005",
+      "name": "LoveWorld Networks",
+      "track": "HYBRID_TV_RADIO_BROADCASTER",
+      "region": "Africa / Global",
+      "website": "https://loveworldsat.org/",
+      "priority": "A",
+      "status": "DISCOVERED",
+      "opportunity": "African and international Gospel media collaboration"
+    },
+    {
+      "id": "TV-006",
+      "name": "Hope Channel",
+      "track": "TELEVISION_NETWORK",
+      "region": "Global",
+      "website": "https://www.hopetv.org/",
+      "priority": "A",
+      "status": "DISCOVERED",
+      "opportunity": "Multilingual programming and regional channel partnerships"
+    },
+    {
+      "id": "TV-007",
+      "name": "CBN / The 700 Club",
+      "track": "HYBRID_TV_RADIO_BROADCASTER",
+      "region": "Global",
+      "website": "https://www.cbn.com/",
+      "priority": "A",
+      "status": "DISCOVERED",
+      "opportunity": "Christian content, production and distribution collaboration"
+    },
+    {
+      "id": "TV-008",
+      "name": "Three Angels Broadcasting Network (3ABN)",
+      "track": "HYBRID_TV_RADIO_BROADCASTER",
+      "region": "Global",
+      "website": "https://www.3abn.org/",
+      "priority": "B",
+      "status": "DISCOVERED",
+      "opportunity": "Faith programming and radio/television exchange"
+    },
+    {
+      "id": "TV-009",
+      "name": "The Word Network",
+      "track": "TELEVISION_NETWORK",
+      "region": "North America / Global",
+      "website": "https://www.thewordnetwork.org/",
+      "priority": "A",
+      "status": "DISCOVERED",
+      "opportunity": "Gospel television programming and distribution"
+    },
+    {
+      "id": "TV-010",
+      "name": "SAT-7",
+      "track": "TELEVISION_NETWORK",
+      "region": "Middle East / North Africa",
+      "website": "https://www.sat7.org/",
+      "priority": "A",
+      "status": "DISCOVERED",
+      "opportunity": "Arabic and regional Christian media collaboration subject to local rights and regulations"
+    },
+    {
+      "id": "TV-011",
+      "name": "EWTN",
+      "track": "HYBRID_TV_RADIO_BROADCASTER",
+      "region": "Global",
+      "website": "https://www.ewtn.com/",
+      "priority": "B",
+      "status": "DISCOVERED",
+      "opportunity": "Radio and television distribution dialogue; assess editorial and format fit"
+    },
+    {
+      "id": "TV-012",
+      "name": "Enlace",
+      "track": "TELEVISION_NETWORK",
+      "region": "Latin America / US Hispanic",
+      "website": "https://www.enlace.org/",
+      "priority": "A",
+      "status": "DISCOVERED",
+      "opportunity": "Spanish-language Gospel programming and Latin American distribution"
+    },
+    {
+      "id": "TV-013",
+      "name": "GOOD TV",
+      "track": "TELEVISION_NETWORK",
+      "region": "Taiwan / Chinese-speaking markets",
+      "website": "https://www.goodtv.tv/",
+      "priority": "B",
+      "status": "DISCOVERED",
+      "opportunity": "Chinese-language content and translation/distribution partnership"
+    },
+    {
+      "id": "RAD-001",
+      "name": "Trans World Radio (TWR)",
+      "track": "CHRISTIAN_RADIO_NETWORK",
+      "region": "Global",
+      "website": "https://www.twr.org/",
+      "priority": "A",
+      "status": "DISCOVERED",
+      "opportunity": "Multilingual radio programme distribution and local affiliate relationships"
+    },
+    {
+      "id": "RAD-002",
+      "name": "Far East Broadcasting Company (FEBC)",
+      "track": "CHRISTIAN_RADIO_NETWORK",
+      "region": "Asia / Global",
+      "website": "https://www.febc.org/",
+      "priority": "A",
+      "status": "DISCOVERED",
+      "opportunity": "Language-led radio syndication and Asian distribution"
+    },
+    {
+      "id": "RAD-003",
+      "name": "Adventist World Radio",
+      "track": "CHRISTIAN_RADIO_NETWORK",
+      "region": "Global",
+      "website": "https://awr.org/",
+      "priority": "B",
+      "status": "DISCOVERED",
+      "opportunity": "Multilingual audio distribution and production collaboration"
+    },
+    {
+      "id": "RAD-004",
+      "name": "Moody Radio",
+      "track": "CHRISTIAN_RADIO_NETWORK",
+      "region": "North America",
+      "website": "https://www.moodyradio.org/",
+      "priority": "B",
+      "status": "DISCOVERED",
+      "opportunity": "Teaching, interview and audio programme exchange"
+    },
+    {
+      "id": "RAD-005",
+      "name": "K-LOVE",
+      "track": "CHRISTIAN_RADIO_NETWORK",
+      "region": "North America",
+      "website": "https://www.klove.com/",
+      "priority": "B",
+      "status": "DISCOVERED",
+      "opportunity": "Christian music and artist partnership dialogue"
+    },
+    {
+      "id": "RAD-006",
+      "name": "Air1",
+      "track": "CHRISTIAN_RADIO_NETWORK",
+      "region": "North America",
+      "website": "https://www.air1.com/",
+      "priority": "B",
+      "status": "DISCOVERED",
+      "opportunity": "Worship music and artist-content collaboration"
+    },
+    {
+      "id": "RAD-007",
+      "name": "Premier Christian Radio",
+      "track": "GOSPEL_RADIO_STATION",
+      "region": "United Kingdom",
+      "website": "https://www.premier.org.uk/",
+      "priority": "A",
+      "status": "DISCOVERED",
+      "opportunity": "UK radio syndication, interviews and programme exchange"
+    },
+    {
+      "id": "RAD-008",
+      "name": "Cross Rhythms",
+      "track": "CHRISTIAN_RADIO_NETWORK",
+      "region": "United Kingdom",
+      "website": "https://www.crossrhythms.co.uk/",
+      "priority": "A",
+      "status": "DISCOVERED",
+      "opportunity": "Christian music, radio syndication and artist discovery"
+    },
+    {
+      "id": "RAD-009",
+      "name": "96five Family Radio",
+      "track": "GOSPEL_RADIO_STATION",
+      "region": "Australia",
+      "website": "https://www.96five.com/",
+      "priority": "B",
+      "status": "DISCOVERED",
+      "opportunity": "Australian radio collaboration and family-friendly Gospel content"
+    },
+    {
+      "id": "RAD-010",
+      "name": "Rhema New Zealand",
+      "track": "CHRISTIAN_RADIO_NETWORK",
+      "region": "New Zealand",
+      "website": "https://www.rhema.co.nz/",
+      "priority": "B",
+      "status": "DISCOVERED",
+      "opportunity": "New Zealand radio syndication and programme exchange"
+    },
+    {
+      "id": "RAD-011",
+      "name": "Hope FM Nairobi",
+      "track": "GOSPEL_RADIO_STATION",
+      "region": "Kenya",
+      "website": "https://www.hopefm.co.ke/",
+      "priority": "A",
+      "status": "DISCOVERED",
+      "opportunity": "East African Gospel radio and local creator pipeline"
+    },
+    {
+      "id": "RAD-012",
+      "name": "Radio Pulpit",
+      "track": "GOSPEL_RADIO_STATION",
+      "region": "South Africa",
+      "website": "https://www.radiopulpit.co.za/",
+      "priority": "A",
+      "status": "DISCOVERED",
+      "opportunity": "South African radio and television cross-promotion"
+    },
+    {
+      "id": "RAD-013",
+      "name": "Kingfisher FM",
+      "track": "GOSPEL_RADIO_STATION",
+      "region": "South Africa",
+      "website": "https://www.kingfisherfm.co.za/",
+      "priority": "A",
+      "status": "DISCOVERED",
+      "opportunity": "Regional Gospel radio, artist interviews and event coverage"
+    },
+    {
+      "id": "RAD-014",
+      "name": "CCFM",
+      "track": "GOSPEL_RADIO_STATION",
+      "region": "South Africa",
+      "website": "https://www.ccfm.org.za/",
+      "priority": "A",
+      "status": "DISCOVERED",
+      "opportunity": "South African Christian radio and community programming"
+    },
+    {
+      "id": "RAD-015",
+      "name": "Theovision Radio Network",
+      "track": "CHRISTIAN_RADIO_NETWORK",
+      "region": "Ghana",
+      "website": "https://www.theovision.org/",
+      "priority": "A",
+      "status": "DISCOVERED",
+      "opportunity": "West African radio affiliates and local-language content"
+    },
+    {
+      "id": "RAD-016",
+      "name": "Pearl Radio",
+      "track": "GOSPEL_RADIO_STATION",
+      "region": "Kenya",
+      "website": "https://pearlradio.co.ke/",
+      "priority": "B",
+      "status": "DISCOVERED",
+      "opportunity": "Kenyan Gospel music and ministry programming"
+    },
+    {
+      "id": "RAD-017",
+      "name": "Truth For Life Radio Ghana",
+      "track": "GOSPEL_RADIO_STATION",
+      "region": "Ghana",
+      "website": "https://www.t4lradio.com/",
+      "priority": "B",
+      "status": "DISCOVERED",
+      "opportunity": "Ghanaian Gospel radio and teaching content"
+    },
+    {
+      "id": "RAD-018",
+      "name": "London Christian Radio",
+      "track": "GOSPEL_RADIO_STATION",
+      "region": "United Kingdom",
+      "website": "https://www.londonchristianradio.com/",
+      "priority": "B",
+      "status": "DISCOVERED",
+      "opportunity": "UK Gospel music and ministry content"
+    },
+    {
+      "id": "RAD-019",
+      "name": "Phare FM",
+      "track": "GOSPEL_RADIO_STATION",
+      "region": "France",
+      "website": "https://pharefm.com/",
+      "priority": "B",
+      "status": "DISCOVERED",
+      "opportunity": "French-language Gospel radio and subtitled/translated content"
+    },
+    {
+      "id": "RAD-020",
+      "name": "ISAAC 98.1 FM",
+      "track": "GOSPEL_RADIO_STATION",
+      "region": "Trinidad and Tobago",
+      "website": "https://www.isaac981.com/",
+      "priority": "B",
+      "status": "DISCOVERED",
+      "opportunity": "Caribbean Gospel radio, events and artist exchange"
+    },
+    {
+      "id": "RAD-021",
+      "name": "The Voice 97.7 FM",
+      "track": "GOSPEL_RADIO_STATION",
+      "region": "Cayman Islands",
+      "website": "https://www.thevoicefm.ky/",
+      "priority": "B",
+      "status": "DISCOVERED",
+      "opportunity": "Caribbean Gospel music and regional programming"
+    },
+    {
+      "id": "RAD-022",
+      "name": "Radio Gospel Louvores",
+      "track": "GOSPEL_RADIO_STATION",
+      "region": "Brazil",
+      "website": "https://streema.com/",
+      "priority": "C",
+      "status": "DISCOVERED",
+      "opportunity": "Portuguese-language Gospel music; station contact and official URL require verification"
+    },
+    {
+      "id": "RAD-023",
+      "name": "Chennai Christian Radio",
+      "track": "GOSPEL_RADIO_STATION",
+      "region": "India",
+      "website": "https://www.chennaichristianradio.com/",
+      "priority": "B",
+      "status": "DISCOVERED",
+      "opportunity": "Indian-language Gospel audio and South Asian creator network"
+    },
+    {
+      "id": "RAD-024",
+      "name": "Bangalore Christian Radio",
+      "track": "GOSPEL_RADIO_STATION",
+      "region": "India",
+      "website": "https://www.bangalorechristianradio.com/",
+      "priority": "C",
+      "status": "DISCOVERED",
+      "opportunity": "Indian-language Gospel radio; current operations and contact require verification"
+    },
+    {
+      "id": "RAD-025",
+      "name": "Tonga Christian Radio",
+      "track": "GOSPEL_RADIO_STATION",
+      "region": "Tonga / Pacific",
+      "website": "https://www.tcrfm.org/",
+      "priority": "B",
+      "status": "DISCOVERED",
+      "opportunity": "Pacific Island Gospel radio and regional-language programming"
+    },
+    {
+      "id": "RAD-026",
+      "name": "Vision Radio Network",
+      "track": "CHRISTIAN_RADIO_NETWORK",
+      "region": "Australia",
+      "website": "https://vision.org.au/",
+      "priority": "B",
+      "status": "DISCOVERED",
+      "opportunity": "Australian radio network and programme syndication"
+    },
+    {
+      "id": "RAD-027",
+      "name": "United Christian Broadcasters (UCB)",
+      "track": "CHRISTIAN_RADIO_NETWORK",
+      "region": "Global",
+      "website": "https://www.ucb.co.uk/",
+      "priority": "A",
+      "status": "DISCOVERED",
+      "opportunity": "International radio partnership and content distribution"
+    },
+    {
+      "id": "RAD-028",
+      "name": "World Wide Christian Radio (WWCR)",
+      "track": "CHRISTIAN_RADIO_NETWORK",
+      "region": "North America / International shortwave",
+      "website": "https://www.wwcr.com/",
+      "priority": "B",
+      "status": "DISCOVERED",
+      "opportunity": "Shortwave and international audio distribution subject to schedule and licensing"
+    },
+    {
+      "id": "RAD-029",
+      "name": "KNLS / World Christian Broadcasting",
+      "track": "CHRISTIAN_RADIO_NETWORK",
+      "region": "International shortwave",
+      "website": "https://www.worldchristian.org/",
+      "priority": "B",
+      "status": "DISCOVERED",
+      "opportunity": "International shortwave and multilingual audio distribution"
+    },
+    {
+      "id": "RAD-030",
+      "name": "EWTN Radio",
+      "track": "CHRISTIAN_RADIO_NETWORK",
+      "region": "Global",
+      "website": "https://www.ewtn.com/radio/",
+      "priority": "B",
+      "status": "DISCOVERED",
+      "opportunity": "Radio programming and audio distribution dialogue"
+    }
+  ],
+  "research_sources": [
+    {
+      "title": "HisAir international Christian radio station directory",
+      "url": "https://www.hisair.net/website-directory/international-stations/",
+      "note": "International station discovery across Australia, New Zealand, UK, Caribbean, Africa and Asia."
+    },
+    {
+      "title": "Christian Radio Networks Worldwide",
+      "url": "https://www.rcetc.com/educational-index/christian-radio-networks-worldwide/",
+      "note": "Network-level discovery including TWR, FEBC, Moody Radio and other broadcasters."
+    },
+    {
+      "title": "Christian Live Radios directory",
+      "url": "https://www.christianradiostream.com/",
+      "note": "Worldwide discovery by country, language and Christian radio genre."
+    },
+    {
+      "title": "Streema Christian radio directory",
+      "url": "https://streema.com/radios/genre/Christian",
+      "note": "Large station discovery index; individual station identity and contact must be verified."
+    },
+    {
+      "title": "National Association of Shortwave Broadcasters members",
+      "url": "https://www.shortwave.org/index.php/members1/",
+      "note": "Shortwave broadcaster references including Adventist World Radio, EWTN/WEWN, WWCR and KNLS."
+    }
+  ],
+  "next_actions": [
+    "Verify each prospect's current operation, official website, territory and partnership contact.",
+    "Deduplicate parent networks, local stations and affiliate stations.",
+    "Prioritize Africa, then diaspora markets and regional language corridors.",
+    "Prepare separate TV-network, radio-station and hybrid-broadcaster invitation packs.",
+    "Send invitations only through verified official contact channels and record message evidence.",
+    "Negotiate programme exchange, simulcast, syndication, co-production and distribution separately.",
+    "Execute written rights, territory and revenue terms before carriage or rebroadcast."
+  ],
+  "counts_at_creation": {
+    "television_networks": 13,
+    "radio_and_audio_broadcasters": 30,
+    "total_prospects": 43,
+    "status": "DISCOVERED_ONLY_NOT_CONTACTED_OR_PARTNERED"
+  }
+}
