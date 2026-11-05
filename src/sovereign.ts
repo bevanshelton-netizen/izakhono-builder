@@ -1,4 +1,5 @@
 import secureApp from './secure';
+import { jarvisRoute } from './jarvis';
 import { ventureFactoryRoute } from './venture-factory';
 import { reviewLoopRoute } from './reviewloop';
 import { bidForgeRoute } from './bidforge';
@@ -1316,6 +1317,9 @@ async function publicAiCoreHost(req: Request, env: any, url: URL): Promise<Respo
 export default {
   async fetch(req: Request, env: any): Promise<Response> {
     const url = new URL(req.url);
+
+    const jarvisApi = await jarvisRoute(req, env, url, () => ownerAuthorized(req, env));
+    if (jarvisApi) return jarvisApi;
 
     const commandsApi = await commandApiRoute(req, env, url);
     if (commandsApi) return commandsApi;
