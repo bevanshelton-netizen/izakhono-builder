@@ -88,6 +88,10 @@ Statuses: `proposed`, `approved`, `rejected`, `expired`, `cancelled`. Approval i
 
 The execution ledger is deliberately conservative: a crash after claiming but before completing can leave a `claimed` record. This prevents accidental duplicate side effects; a later recovery workflow must reconcile the record before retrying.
 
+## Background dispatch
+
+The Worker Cron Trigger runs every minute and invokes the J.A.R.V.I.S. scheduled dispatcher. It reads eligible `queued` and due `retry_wait` tasks from D1, claims at most three per invocation with conditional `UPDATE ... RETURNING`, and executes the claimed reasoning tasks concurrently. D1 remains the durable source of truth; duplicate invocations cannot claim the same task. Existing bounded retry and cancellation semantics apply. This is bounded concurrency, not an unlimited worker pool. It becomes operational only after the Worker with the Cron Trigger is deployed and the server-side AI gateway bindings are configured. Explicit owner Run remains available.
+
 ## Memory
 
 `GET /api/jarvis/v1/memory/search?q=...`
