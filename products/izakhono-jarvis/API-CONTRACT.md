@@ -1,6 +1,6 @@
 # J.A.R.V.I.S. API Contract — v1
 
-All routes are proposed contracts until implemented and covered by integration tests.
+This contract separates the currently implemented persistence/session routes from future orchestration contracts. The current Worker implementation is not yet covered by a completed integration-test run.
 
 ## Common response envelope
 
@@ -10,13 +10,25 @@ All routes are proposed contracts until implemented and covered by integration t
 
 Errors use `{ "ok": false, "error": { "code": "...", "message": "..." }, "request_id": "..." }`.
 
+## Owner session (implemented)
+
+- `GET /api/jarvis/v1/session` — reports whether the browser has a valid owner session and whether login is configured.
+- `POST /api/jarvis/v1/session/login` — validates the dedicated server-side `JARVIS_LOGIN_SECRET` and issues an eight-hour opaque session cookie.
+- `POST /api/jarvis/v1/session/logout` — revokes the current session and clears its cookie.
+
+The cookie is host-only (`__Host-`), `HttpOnly`, `Secure`, and `SameSite=Strict`. Only its SHA-256 hash is stored in D1. Login and authenticated mutations require HTTPS and a same-origin `Origin`; failed logins are throttled by a hash of Cloudflare's connecting IP. Configure the credential as a Worker secret; never place it in browser code.
+
 ## Status
 
 `GET /api/jarvis/v1/status`
 
 Returns readiness, build version and non-sensitive capability flags. Distinguish `available`, `configured`, `degraded` and `disabled`. Never return secrets or raw environment values.
 
-## Conversation
+## Conversation (implemented baseline)
+
+`GET /api/jarvis/v1/conversations` lists the owner's recent conversations. `GET /api/jarvis/v1/conversations/:id/messages` retrieves the authorized conversation history. `GET/POST /api/jarvis/v1/memory` reads or creates owner-entered scoped memory; `GET /api/jarvis/v1/memory/search?q=...` searches it.
+
+## Conversation (future streaming contract)
 
 `POST /api/jarvis/v1/conversations`
 
