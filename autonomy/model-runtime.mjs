@@ -1,7 +1,7 @@
 import { isIP } from 'node:net';
 
 function isPrivateHost(hostname) {
-  const host = hostname.toLowerCase().replace(/^\\[|\\]$/g, '');
+  const host = hostname.toLowerCase().replace(/^\[|\]$/g, '');
   if (host === 'localhost' || host.endsWith('.localhost')) return true;
   const family = isIP(host);
   if (family === 4) {
@@ -21,7 +21,7 @@ export function resolveLocalModelConfig(env = process.env) {
 }
 
 export function normalizeBrief(input, goal = 'Your project') {
-  const clean = (value, max = 500) => String(value ?? '').replace(/[\\u0000-\\u001f]/g, ' ').trim().slice(0, max);
+  const clean = (value, max = 500) => String(value ?? '').replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, max);
   const sections = Array.isArray(input.sections) ? input.sections.slice(0, 8).map((section) => ({
     heading: clean(section?.heading, 100) || 'What We Do',
     body: clean(section?.body, 900) || 'A clear, practical service designed around your needs.',
