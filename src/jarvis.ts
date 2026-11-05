@@ -304,9 +304,9 @@ export async function jarvisRoute(
       ok: true,
       product: 'IZAKHONO J.A.R.V.I.S.',
       persistence: 'available',
-      intelligence: 'not-connected',
+      intelligence: env.IZAKHONO_SUPER_AI_URL && env.IZAKHONO_SUPER_AI_INTERNAL_KEY && env.IZAKHONO_SUPER_AI_WORKFLOW_KEY ? 'configured' : 'not-connected',
       voice: 'browser-preview-only',
-      tools: 'not-connected',
+      tools: 'approval-gated-not-enabled',
       counts: {
         conversations: Number(counts?.conversations || 0),
         messages: Number(counts?.messages || 0),
@@ -491,12 +491,11 @@ export async function jarvisRoute(
       if (Number(task.attempts) >= Number(task.max_attempts)) return response({ ok: false, error: 'Task has exhausted its retry limit.' }, 409);
       const now = Math.floor(Date.now() / 1000);
       if (task.status === 'retry_wait' && Number(task.retry_after || 0) > now) return response({ ok: false, error: 'Task retry window has not opened.' }, 409);
-      const claim = await env.DB.prepare(`UPDATE jarvis_tasks SET status='running',attempts=attempts+1,
+      const claimed = await env.DB.prepare(`UPDATE jarvis_tasks SET status='running',attempts=attempts+1,
         started_at=CURRENT_TIMESTAMP,updated_at=CURRENT_TIMESTAMP,error_code=NULL
-        WHERE id=? AND tenant_id=? AND owner_user_id=? AND status=? AND attempts=?`)
-        .bind(taskId, TENANT, owner, task.status, task.attempts).run();
-      const claimed = await env.DB.prepare("SELECT changes() AS changed").first<any>();
-      if (!Number(claimed?.changed || 0)) return response({ ok: false, error: 'Task was claimed by another worker.' }, 409);
+        WHERE id=? AND tenant_id=? AND owner_user_id=? AND status=? AND attempts=? RETURNING id`)
+        .bind(taskId, TENANT, owner, task.status, task.attempts).first<any>();
+      if (!claimed?.id) return response({ ok: false, error: 'Task was claimed by another worker.' }, 409);
       await audit(env.DB, owner, 'task.started', taskId, { attempt: Number(task.attempts) + 1, agent_id: task.agent_id });
       const agentDef = agents.find(item => item.id === task.agent_id);
       const prompt = [
