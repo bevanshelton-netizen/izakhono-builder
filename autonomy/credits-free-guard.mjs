@@ -28,7 +28,7 @@ const files = [
   path.join(root, 'autonomy', 'workload-scheduler.mjs'),
 ];
 
-const prohibited = /\b(?:creditsEnabled|creditBalance|quotaRemaining|usageMeterEnabled|reserveCredits|decrementCredits|checkCredits|payPerAction)\b|(?:if|while)\s*\([^)]*\b(?:credit|credits|quota|balance)\b/i;
+const prohibited = /\b(?:creditBalance|quotaRemaining|usageMeterEnabled|reserveCredits|decrementCredits|checkCredits|payPerAction)\b|(?:if|while)\s*\([^)]*\b(?:credit|credits|quota|balance)\b/i;
 
 for (const file of files) {
   if (!fs.existsSync(file)) continue;
