@@ -23,21 +23,22 @@
   <div class="side-bottom"><div class="node"><span class="pulse"></span><span><b>LOCAL PREVIEW</b><small>Engine not connected</small></span></div><div class="profile"><div class="avatar">IS</div><span><b>IZAKHONO OWNER</b><small>Administrator preview</small></span><span class="dots">•••</span></div></div>
 </aside>
 <main class="main">
-<header class="topbar"><div><span class="crumb">IZAKHONO /</span> COMMAND CENTRE</div><div class="top-right"><span class="preview-pill">FOUNDATION PREVIEW</span><span class="clock" id="clock">--:--</span></div></header>
+<header class="topbar"><div><span class="crumb">IZAKHONO /</span> COMMAND CENTRE</div><div class="top-right"><span class="preview-pill" id="connection-state">FOUNDATION PREVIEW</span><span class="clock" id="clock">--:--</span></div></header>
 <section class="welcome"><div><div class="eyebrow"><span class="pulse"></span> INTELLIGENCE AT YOUR COMMAND</div><h1>Good evening.<br><em>What are we building?</em></h1><p>One command centre for your companies, platforms, projects and operations.</p></div><div class="orb-wrap"><div class="orb"><div class="orb-core">J<span>.</span>A<span>.</span>R<span>.</span>V<span>.</span>I<span>.</span>S</div><div class="orbit o1"></div><div class="orbit o2"></div><div class="orbit o3"></div></div><div class="orb-caption">IZAKHONO INTELLIGENCE</div></div></section>
-<section class="composer">
+<section class="auth-panel" id="auth-panel" hidden><div class="section-head"><h2>OWNER AUTHENTICATION</h2><span>SECURE SESSION</span></div><p>Sign in with the JARVIS owner access credential. It is sent only to this same-origin server endpoint and is never saved in the browser.</p><form id="login-form"><input id="login-secret" type="password" autocomplete="current-password" placeholder="JARVIS owner access credential" required><button class="send-btn" type="submit">Secure sign in ↗</button></form><small id="auth-message" aria-live="polite"></small></section>
+<section class="composer requires-auth">
   <div class="composer-head"><span class="live-dot"></span><span>NEW COMMAND</span><span class="secure">⌑ PRIVATE PREVIEW</span></div>
   <textarea id="prompt" rows="2" placeholder="Tell J.A.R.V.I.S. what you need... e.g. Prepare a group-wide operations report."></textarea>
   <div class="composer-foot"><div class="tools"><button id="mic" class="icon-btn" title="Voice input" aria-label="Voice input">♩</button><span id="voice-status">Voice input depends on browser support</span></div><button id="send" class="send-btn">Submit command <span>↗</span></button></div>
   <div class="demo-note">Preview only: commands are not sent to an AI engine or executed.</div>
 </section>
-<section class="quick"><div class="section-head"><h2>QUICK COMMANDS</h2><span>DEMO PROMPTS</span></div><div class="quick-grid">
+<section class="quick requires-auth"><div class="section-head"><h2>QUICK COMMANDS</h2><span>DEMO PROMPTS</span></div><div class="quick-grid">
 <button class="quick-card" data-prompt="Prepare an overview of all IZAKHONO companies and current priorities."><span>◫</span><b>Company overview</b><small>Group-wide operations</small><i>↗</i></button>
 <button class="quick-card" data-prompt="Review the status of our active software projects and identify blockers."><span>◈</span><b>Project intelligence</b><small>Progress and blockers</small><i>↗</i></button>
 <button class="quick-card" data-prompt="Prepare a list of outstanding decisions and approvals."><span>✓</span><b>Pending decisions</b><small>Approvals and actions</small><i>↗</i></button>
 <button class="quick-card" data-prompt="Research opportunities to grow revenue across IZAKHONO."><span>⌁</span><b>Growth opportunities</b><small>Revenue and partnerships</small><i>↗</i></button>
 </div></section>
-<section class="lower">
+<section class="lower requires-auth">
 <div class="panel"><div class="section-head"><h2>INTELLIGENCE MODULES</h2><span>PLANNED CAPABILITIES</span></div><div class="module-list">
 <div class="module"><span class="module-icon">◉</span><span><b>Voice interface</b><small>Speech input and spoken responses</small></span><span class="state">PROTOTYPE</span></div>
 <div class="module"><span class="module-icon">⌕</span><span><b>Knowledge memory</b><small>Scoped business and project context</small></span><span class="state muted">PLANNED</span></div>
