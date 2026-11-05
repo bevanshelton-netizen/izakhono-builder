@@ -62,3 +62,47 @@ $('#task-list').addEventListener('click',async e=>{
 });
 
 loadSession();
+
+
+function actionElement(item){
+ const card=document.createElement('article');card.className='task-card';
+ const head=document.createElement('div');head.className='task-card-head';
+ const title=document.createElement('b');title.textContent=item.action_type+' → '+item.target;
+ const state=document.createElement('span');state.className='task-state '+String(item.status||'');state.textContent=String(item.status||'').toUpperCase();
+ head.append(title,state);card.append(head);
+ const meta=document.createElement('small');meta.textContent='Payload fingerprint · '+String(item.payload_hash||'').slice(0,23)+'… · Expires '+new Date(Number(item.expires_at)*1000).toLocaleString();card.append(meta);
+ const payload=document.createElement('pre');payload.className='action-payload';payload.textContent=typeof item.payload_json==='string'?item.payload_json:JSON.stringify(item.payload||{},null,2);card.append(payload);
+ if(item.status==='proposed'){
+  const controls=document.createElement('div');controls.className='task-actions';
+  for(const decision of ['approve','reject','cancel']){const b=document.createElement('button');b.type='button';b.textContent=decision[0].toUpperCase()+decision.slice(1);b.dataset.actionDecision=decision;b.dataset.actionId=item.id;b.dataset.payloadHash=item.payload_hash;controls.append(b)}
+  card.append(controls);
+ }
+ const note=document.createElement('small');note.textContent='Decision only — execution is not enabled.';card.append(note);
+ return card;
+}
+async function loadActions(){
+ if(!authenticated)return;
+ try{const data=await api('/api/jarvis/v1/actions');const list=$('#action-list');list.innerHTML='';
+ if(!data.items||!data.items.length){const empty=document.createElement('div');empty.className='empty';empty.innerHTML='<span>◇</span><b>No action proposals</b><small>Proposed operations will appear here.</small>';list.append(empty);return}
+ data.items.forEach(item=>list.append(actionElement(item)));
+ }catch(error){$('#action-message').textContent='Action register unavailable: '+error.message}
+}
+$('#action-form').addEventListener('submit',async e=>{
+ e.preventDefault();if(!authenticated){notify('Sign in to create action proposals.');return}
+ const button=$('#propose-action');button.disabled=true;$('#action-message').textContent='Creating immutable proposal…';
+ try{let payload;try{payload=JSON.parse($('#action-payload').value)}catch{throw new Error('Payload must be valid JSON.')}
+ if(!payload||typeof payload!=='object'||Array.isArray(payload))throw new Error('Payload must be a JSON object.');
+ const result=await api('/api/jarvis/v1/actions',{method:'POST',body:JSON.stringify({action_type:$('#action-type').value,target:$('#action-target').value,payload})});
+ $('#action-message').textContent='Proposal created · '+result.proposal.payload_hash;$('#action-type').value='';$('#action-target').value='';$('#action-payload').value='{}';await loadActions();notify('Action proposal recorded. Nothing was executed.');
+ }catch(error){$('#action-message').textContent=error.message}finally{button.disabled=false}
+});
+$('#refresh-actions').addEventListener('click',loadActions);
+$('#action-list').addEventListener('click',async e=>{
+ const button=e.target.closest('button[data-action-decision]');if(!button)return;
+ const decision=button.dataset.actionDecision;button.disabled=true;
+ try{
+  const body=decision==='cancel'?{}:{expected_payload_hash:button.dataset.payloadHash};
+  const result=await api('/api/jarvis/v1/actions/'+encodeURIComponent(button.dataset.actionId)+'/'+decision,{method:'POST',body:JSON.stringify(body)});
+  notify('Proposal '+result.status+'. No external action was executed.');await loadActions();
+ }catch(error){notify(error.message);button.disabled=false}
+});
