@@ -5,6 +5,7 @@ on:
     paths:
       - "src/jarvis.ts"
       - "src/sovereign.ts"
+      - "wrangler.jsonc"
       - "public/jarvis/**"
       - "products/izakhono-jarvis/**"
       - "package.json"
