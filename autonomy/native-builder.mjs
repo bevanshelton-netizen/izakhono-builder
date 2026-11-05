@@ -159,7 +159,7 @@ export async function runNativeBuilder(task) {
     return {
       status: 'completed',
       provider: 'izakhono-native',
-      evidence: evidence('security-gate-passed', { creditsFree: true, productionEvidenceRequired: true, controlPlaneOnly: !fs.existsSync(path.join(dir, 'index.mjs')) }),
+      evidence: evidence('security-gate-passed', { noArtificialMeter: true, productionEvidenceRequired: true, controlPlaneOnly: !fs.existsSync(path.join(dir, 'index.mjs')) }),
       ...artifactDetails(dir),
     };
   }
