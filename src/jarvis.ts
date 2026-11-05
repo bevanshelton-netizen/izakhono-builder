@@ -180,7 +180,7 @@ async function runIntelligence(env: JarvisEnv, history: Array<{ role: string; co
   if (!env.IZAKHONO_SUPER_AI_URL || !env.IZAKHONO_SUPER_AI_INTERNAL_KEY || !env.IZAKHONO_SUPER_AI_WORKFLOW_KEY) {
     return { ok: false, reason: 'intelligence-gateway-not-configured' };
   }
-  const endpoint = String(env.IZAKHONO_SUPER_AI_URL).replace(/\\/+$/, '') + '/api/v1/generate';
+  const endpoint = String(env.IZAKHONO_SUPER_AI_URL).replace(/\/+$/, '') + '/api/v1/generate';
   try {
     const result = await fetch(endpoint, {
       method: 'POST',
@@ -614,7 +614,7 @@ export async function jarvisRoute(
     return response({ ok: true, proposal: { id: proposalId, task_id: taskId, action_type: actionType, target, payload: JSON.parse(payloadJson), payload_hash: payloadHash, status: 'proposed', expires_at: expiresAt, execution: 'not-enabled' } }, 201);
   }
 
-  const executeMatch = path.match(/^\\/api\\/jarvis\\/v1\\/actions\\/([a-zA-Z0-9_-]+)\\/execute$/);
+  const executeMatch = path.match(/^\/api\/jarvis\/v1\/actions\/([a-zA-Z0-9_-]+)\/execute$/);
   if (executeMatch && req.method === 'POST') {
     const proposalId = executeMatch[1];
     const body = await parseBody(req);
@@ -669,7 +669,7 @@ export async function jarvisRoute(
     return response({ ok: true, duplicate: false, execution: { id: executionId, status: 'completed', result: resultData } }, 200);
   }
 
-  const actionMatch = path.match(/^\\/api\\/jarvis\\/v1\\/actions\\/([a-zA-Z0-9_-]+)(?:\\/(approve|reject|cancel))?$/);
+  const actionMatch = path.match(/^\/api\/jarvis\/v1\/actions\/([a-zA-Z0-9_-]+)(?:\/(approve|reject|cancel))?$/);
   if (actionMatch) {
     const proposalId = actionMatch[1];
     const decision = actionMatch[2] || '';
