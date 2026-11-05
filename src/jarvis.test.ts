@@ -63,7 +63,15 @@ async function main() {
     const result = await call(db, '/api/jarvis/v1/agents', 'GET', undefined, false);
     assert.equal(result?.status, 401);
   }
-  console.log('JARVIS agent orchestration contract tests passed.');
+  {
+    const db = new FakeDatabase();
+    const result = await call(db, '/api/jarvis/v1/actions/jact_test/execute', 'POST', {
+      expected_payload_hash: 'sha256:invalid',
+    }, false);
+    assert.equal(result?.status, 401);
+    assert.ok(!db.statements.some(sql => sql.includes('INSERT INTO jarvis_action_executions')));
+  }
+  console.log('JARVIS orchestration and action-boundary contract tests passed.');
 }
 
 main().catch(error => {
