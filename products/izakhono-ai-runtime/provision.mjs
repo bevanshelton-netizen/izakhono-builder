@@ -4,7 +4,8 @@ import { execFileSync } from 'node:child_process';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const MODEL = process.env.IZAKHONO_LOCAL_MODEL || 'qwen2.5-coder:3b';
-const ENDPOINT = process.env.IZAKHONO_LOCAL_MODEL_URL || 'http://127.0.0.1:11434/api/tags';
+const CHAT_ENDPOINT = process.env.IZAKHONO_LOCAL_MODEL_URL || 'http://127.0.0.1:11434/api/chat';
+const ENDPOINT = process.env.IZAKHONO_LOCAL_MODEL_HEALTH_URL || CHAT_ENDPOINT.replace(/\\/api\\/chat\\/?$/, '/api/tags');
 
 export async function verifyLocalModelRuntime(options = {}) {
   const fetchImpl = options.fetchImpl || fetch;
