@@ -79,6 +79,15 @@ These endpoints record owner decisions only. They do not execute, dispatch or tr
 
 Statuses: `proposed`, `approved`, `rejected`, `expired`, `cancelled`. Approval is an auditable authorisation record, not execution permission for a generic tool runner. A future adapter must independently validate the exact action type, target, payload hash, expiry, one-time consumption and idempotency before carrying out any side effect. No adapter is enabled in this milestone.
 
+## Scoped action execution (implemented initial adapter)
+
+- `POST /api/jarvis/v1/actions/:id/execute` — consumes an approved, unexpired proposal only when the caller supplies its exact `expected_payload_hash`. The server re-hashes the stored canonical payload and validates tenant, owner, status and expiry.
+- The only enabled adapter is `jarvis.audit.record` targeting `izakhono-jarvis.audit`. Its payload must contain exactly one `note` string (maximum 500 characters). It writes an internal audit annotation; it does not contact an external system.
+- A unique execution ledger row keyed by proposal ID prevents a second execution claim. A completed repeat returns the stored result. A claimed-but-incomplete record is blocked for recovery review rather than automatically re-run.
+- Every other action type or target returns an unsupported-adapter response. There are no email, payment, CRM, publishing, deployment, arbitrary HTTP or shell adapters.
+
+The execution ledger is deliberately conservative: a crash after claiming but before completing can leave a `claimed` record. This prevents accidental duplicate side effects; a later recovery workflow must reconcile the record before retrying.
+
 ## Memory
 
 `GET /api/jarvis/v1/memory/search?q=...`
