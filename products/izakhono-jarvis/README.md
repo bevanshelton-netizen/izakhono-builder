@@ -44,7 +44,7 @@ The Worker now exposes an owner-authorized D1 persistence API in `src/jarvis.ts`
 
 When the existing server-side IZAKHONO SUPER AI workflow bindings are configured, message submission calls the reasoning workflow and persists the assistant response. Credentials remain server-side. Without those bindings, user messages are persisted and the API truthfully reports that intelligence is not connected. No external tools are exposed to the model in this milestone.
 
-Run `npm run jarvis:typecheck` to type-check the new API module. The API uses the existing Builder owner authorization check. The static preview deliberately contains no administrator key and is not yet wired to this protected API.
+Run `npm run jarvis:typecheck` to type-check the new API module. The API accepts either the existing Builder owner authorization check or a J.A.R.V.I.S.-specific short-lived browser session. Browser sessions use a dedicated `JARVIS_LOGIN_SECRET` Worker secret, random opaque tokens, SHA-256 token hashes in D1, an eight-hour expiry, HttpOnly/Secure/SameSite=Strict host-only cookies, same-origin checks on mutations, and a per-IP-hash login throttle. The login secret is never placed in browser code. Configure `JARVIS_LOGIN_SECRET` in the Worker secret store before enabling browser sign-in; do not commit it to source or put it in a frontend environment variable. The static preview remains available when the dedicated secret is not configured and does not claim a live connection.
 
 ## API contract (initial)
 
