@@ -77,6 +77,15 @@ The action register now has a conservative execution endpoint and a unique D1 ex
 
 The execution ledger is unique per proposal. A completed repeat returns the stored result; a previously claimed but incomplete execution is blocked for recovery review rather than automatically replayed. Unsupported action types and targets are rejected. There are still no email, payment, CRM, publishing, deployment, arbitrary HTTP or shell adapters. This is the first controlled adapter, not general-purpose automation.
 
+
+## Scheduled agent dispatch and task dependencies
+
+The Worker now exposes a scheduled dispatcher through its Cloudflare Worker `scheduled` lifecycle handler. The root Worker configuration schedules a one-minute cron. Each invocation reads a bounded batch of up to three eligible tasks from D1 and claims each with a conditional update before running specialist reasoning concurrently. D1 remains the source of truth; duplicate scheduler invocations cannot claim the same queued attempt.
+
+Tasks may declare up to 20 `depends_on` task IDs at creation. Dependencies must already exist and belong to the same owner and tenant. Manual and scheduled execution both wait until all prerequisites complete. If a prerequisite fails or is cancelled, the dispatcher marks dependent queued work failed with `dependency-failed` rather than leaving it stuck. Retries remain bounded by the existing attempt limit and backoff policy.
+
+This is bounded scheduled concurrency, not an unlimited agent swarm. It is only active after the Worker is deployed with the updated configuration and required SUPER AI bindings. It does not grant agents external tools or write access.
+
 ## API contract (initial)
 
 - `GET /api/jarvis/v1/status` — service readiness and enabled capability flags; never expose secrets.
