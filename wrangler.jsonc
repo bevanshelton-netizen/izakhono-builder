@@ -20,5 +20,10 @@
   ],
   "vars": {
     "APP_ENV": "production"
+  },
+  "triggers": {
+    "crons": [
+      "* * * * *"
+    ]
   }
 }
