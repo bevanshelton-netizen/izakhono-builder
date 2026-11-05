@@ -2,6 +2,13 @@
 
 IZAKHONO-owned intelligent command centre for the IZAKHONO ecosystem.
 
+
+## Immutable action proposals and owner decisions
+
+The current foundation now includes an owner-only proposal register. A proposal stores a canonical JSON payload, SHA-256 fingerprint, action type, target, optional linked task and 24-hour expiry. The owner can inspect, approve, reject or cancel a proposal in the command centre. Decisions are tenant/owner scoped, hash-checked, expiry-checked and recorded in an append-only decision table plus audit events. A conditional state transition ensures only one concurrent decision can win.
+
+**Approval is not execution.** No external tool adapter is enabled. Approved proposals cannot send email, change customer records, initiate payments, publish content, deploy software or perform any other side effect. A future adapter must consume the exact approved fingerprint once, enforce idempotency and revalidate the target and expiry before execution.
+
 ## Product objective
 
 A voice-first, multimodal AI operating system that can understand owner instructions, retrieve authorized business context, coordinate specialist agents, and execute approved workflows with auditable evidence.
