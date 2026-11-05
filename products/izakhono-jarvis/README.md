@@ -46,6 +46,14 @@ When the existing server-side IZAKHONO SUPER AI workflow bindings are configured
 
 Run `npm run jarvis:typecheck` to type-check the new API module. The API accepts either the existing Builder owner authorization check or a J.A.R.V.I.S.-specific short-lived browser session. Browser sessions use a dedicated `JARVIS_LOGIN_SECRET` Worker secret, random opaque tokens, SHA-256 token hashes in D1, an eight-hour expiry, HttpOnly/Secure/SameSite=Strict host-only cookies, same-origin checks on mutations, and a per-IP-hash login throttle. The login secret is never placed in browser code. Configure `JARVIS_LOGIN_SECRET` in the Worker secret store before enabling browser sign-in; do not commit it to source or put it in a frontend environment variable. The static preview remains available when the dedicated secret is not configured and does not claim a live connection.
 
+## Agent orchestration milestone
+
+The current agent engine adds a durable D1 task queue and a small specialist-agent registry: J.A.R.V.I.S. Coordinator, Business Analyst, Research Briefing Agent, Project Planner and Reporting Agent. Tasks are tenant/owner scoped, type-checked against the selected agent, idempotent when a client key is supplied, prioritized, auditable and tracked through queued, running, retry-wait, completed, failed and cancelled states. A conditional database update claims queued work to reduce duplicate execution. Recoverable reasoning-gateway failures receive bounded exponential retry windows (up to three attempts).
+
+The owner API exposes agent discovery, task creation/listing/detail, explicit run and cancellation endpoints under `/api/jarvis/v1/agents` and `/api/jarvis/v1/tasks`. The command-centre now includes an Agent Workspace for queuing and running tasks and viewing results.
+
+**Execution boundary:** these agents are currently reasoning-only. They have no web, email, filesystem, shell, repository-write, payment, CRM, publishing or deployment tools. A task runs only when the owner explicitly selects Run agent. Cancellation marks the durable task cancelled; it cannot forcibly terminate a model request already in flight, and any late result is discarded. Automatic background dispatch and parallel worker execution are not enabled yet. Consequential tools require a separate immutable action proposal and owner approval workflow before any adapter is connected.
+
 ## API contract (initial)
 
 - `GET /api/jarvis/v1/status` — service readiness and enabled capability flags; never expose secrets.
