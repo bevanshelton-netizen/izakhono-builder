@@ -1,5 +1,5 @@
 import secureApp from './secure';
-import { jarvisRoute } from './jarvis';
+import { jarvisRoute, jarvisScheduled } from './jarvis';
 import { ventureFactoryRoute } from './venture-factory';
 import { reviewLoopRoute } from './reviewloop';
 import { bidForgeRoute } from './bidforge';
@@ -1379,5 +1379,12 @@ export default {
 
     if (!url.pathname.startsWith('/api/')) return withModuleEditor(response, url);
     return response;
+  },,
+  async scheduled(_controller: ScheduledController, env: any, ctx: ExecutionContext): Promise<void> {
+    ctx.waitUntil(jarvisScheduled(env).then(result => {
+      console.log('JARVIS scheduled dispatch', JSON.stringify(result));
+    }).catch(error => {
+      console.error('JARVIS scheduled dispatch failed', error instanceof Error ? error.message : 'unknown');
+    }));
   },
 };
