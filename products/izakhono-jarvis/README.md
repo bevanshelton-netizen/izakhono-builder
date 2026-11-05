@@ -61,6 +61,13 @@ The owner API exposes agent discovery, task creation/listing/detail, explicit ru
 
 **Execution boundary:** these agents are currently reasoning-only. They have no web, email, filesystem, shell, repository-write, payment, CRM, publishing or deployment tools. A task runs only when the owner explicitly selects Run agent. Cancellation marks the durable task cancelled; it cannot forcibly terminate a model request already in flight, and any late result is discarded. Automatic background dispatch and parallel worker execution are not enabled yet. Consequential tools require a separate immutable action proposal and owner approval workflow before any adapter is connected.
 
+
+## Controlled action execution — first internal adapter
+
+The action register now has a conservative execution endpoint and a unique D1 execution ledger. The server accepts execution only for an approved, unexpired proposal whose stored canonical JSON still matches its SHA-256 fingerprint and the caller-supplied expected hash. The only enabled adapter is `jarvis.audit.record` for target `izakhono-jarvis.audit`; it accepts a single note string and writes an internal audit annotation. It does not contact external systems.
+
+The execution ledger is unique per proposal. A completed repeat returns the stored result; a previously claimed but incomplete execution is blocked for recovery review rather than automatically replayed. Unsupported action types and targets are rejected. There are still no email, payment, CRM, publishing, deployment, arbitrary HTTP or shell adapters. This is the first controlled adapter, not general-purpose automation.
+
 ## API contract (initial)
 
 - `GET /api/jarvis/v1/status` — service readiness and enabled capability flags; never expose secrets.
