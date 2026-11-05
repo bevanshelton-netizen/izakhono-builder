@@ -806,6 +806,12 @@ export async function jarvisRoute(
  */
 export async function jarvisScheduled(env: JarvisEnv): Promise<{ claimed: number; completed: number; retried: number; failed: number }> {
   await ensureSchema(env.DB);
+  await env.DB.prepare(`UPDATE jarvis_tasks SET status='failed',error_code='dependency-failed',completed_at=CURRENT_TIMESTAMP,updated_at=CURRENT_TIMESTAMP
+    WHERE tenant_id=? AND status IN ('queued','retry_wait') AND EXISTS (
+      SELECT 1 FROM jarvis_task_dependencies d JOIN jarvis_tasks p ON p.id=d.depends_on_task_id
+      WHERE d.tenant_id=jarvis_tasks.tenant_id AND d.owner_user_id=jarvis_tasks.owner_user_id
+      AND d.task_id=jarvis_tasks.id AND p.status IN ('failed','cancelled')
+    )`).bind(TENANT).run();
   const candidates = await env.DB.prepare(`SELECT id,owner_user_id,agent_id,task_type,title,instruction,status,attempts,max_attempts,retry_after
     FROM jarvis_tasks WHERE tenant_id=? AND status IN ('queued','retry_wait')
     AND (status='queued' OR retry_after IS NULL OR retry_after<=?)
