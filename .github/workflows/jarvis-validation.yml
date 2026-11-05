@@ -38,7 +38,5 @@ jobs:
           node-version: 22
       - name: Install dependencies
         run: npm install --ignore-scripts --no-audit --no-fund
-      - name: Type-check JARVIS API
-        run: npm run jarvis:typecheck
-      - name: Validate browser JavaScript syntax
-        run: node --check public/jarvis/jarvis.js
+      - name: Validate JARVIS API, orchestration and browser
+        run: npm run jarvis:validate
