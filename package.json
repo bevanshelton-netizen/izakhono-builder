@@ -57,7 +57,8 @@
     "native-builder:typecheck": "npx --yes typescript@5.9.2 --noEmit --target ES2022 --module NodeNext --moduleResolution NodeNext products/izakhono-native-builder/src/index.ts products/izakhono-native-builder/src/d1-store.ts products/izakhono-native-builder/src/queue.ts products/izakhono-native-builder/src/index.test.ts",
     "builder:adapter:test": "node autonomy/builder-adapter.test.mjs && node autonomy/native-generation.test.mjs",
     "native-generation:test": "node autonomy/native-generation.test.mjs",
-    "model-runtime:validate": "node products/izakhono-ai-runtime/validate.mjs"
+    "model-runtime:validate": "node products/izakhono-ai-runtime/validate.mjs",
+    "model-runtime:test": "node products/izakhono-ai-runtime/validate.mjs && node products/izakhono-ai-runtime/provision.test.mjs"
   },
   "dependencies": {
     "wrangler": "4.127.1"

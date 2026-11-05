@@ -1,0 +1,24 @@
+{
+  "schema": "izakhono.software-node-workload/v1",
+  "workloadId": "izakhono-local-model-runtime",
+  "workloadType": "ai-inference-service",
+  "service": "ollama",
+  "model": "qwen2.5-coder:3b",
+  "endpoint": "http://127.0.0.1:11434/api/chat",
+  "healthEndpoint": "http://127.0.0.1:11434/api/tags",
+  "exposure": "loopback-only",
+  "persistence": "izakhono_model_data",
+  "provisioningCommand": "node products/izakhono-ai-runtime/provision.mjs provision",
+  "verificationCommand": "node products/izakhono-ai-runtime/provision.mjs verify",
+  "requirements": {
+    "containerRuntime": true,
+    "persistentStorage": true,
+    "minimumRamGb": 8,
+    "minimumDiskGb": 12,
+    "cpuInferenceSupported": true,
+    "gpuOptional": true
+  },
+  "readiness": "model-must-be-present-and-responding",
+  "artificialCredits": false,
+  "productionClaimsRequireEvidence": true
+}

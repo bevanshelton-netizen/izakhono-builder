@@ -42,6 +42,9 @@ jobs:
       - name: Validate owned local model runtime contract
         run: npm run model-runtime:validate
 
+      - name: Test owned model runtime provisioner
+        run: npm run model-runtime:test
+
       - name: Run native Builder end-to-end tests
         run: npm run ai-agent:test
 
