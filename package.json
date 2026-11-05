@@ -64,6 +64,7 @@
   },
   "devDependencies": {
     "@types/node": "22.15.30",
-    "typescript": "5.9.2"
+    "typescript": "5.9.2",
+    "undici-types": "6.21.0"
   }
 }
