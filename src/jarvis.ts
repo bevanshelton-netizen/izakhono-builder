@@ -10,11 +10,14 @@ type JarvisEnv = {
   IZAKHONO_SUPER_AI_URL?: string;
   IZAKHONO_SUPER_AI_INTERNAL_KEY?: string;
   IZAKHONO_SUPER_AI_WORKFLOW_KEY?: string;
+  JARVIS_LOGIN_SECRET?: string;
 };
 
 const TENANT = 'izakhono-africa';
 const MAX_MESSAGE = 12000;
 const MAX_MEMORY = 8000;
+const SESSION_COOKIE = '__Host-jarvis_session';
+const SESSION_SECONDS = 8 * 60 * 60;
 
 function response(data: unknown, status = 200): Response {
   return new Response(JSON.stringify(data), {
@@ -73,6 +76,21 @@ async function ensureSchema(db: Database) {
     )`,
     `CREATE INDEX IF NOT EXISTS idx_jarvis_memory_scope
       ON jarvis_memory(tenant_id, owner_user_id, scope, project_id, updated_at DESC)`,
+    `CREATE TABLE IF NOT EXISTS jarvis_sessions (
+      token_hash TEXT PRIMARY KEY,
+      tenant_id TEXT NOT NULL,
+      owner_user_id TEXT NOT NULL,
+      expires_at INTEGER NOT NULL,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      last_seen_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      revoked_at TEXT
+    )`,
+    `CREATE INDEX IF NOT EXISTS idx_jarvis_sessions_expiry ON jarvis_sessions(expires_at)`,
+    `CREATE TABLE IF NOT EXISTS jarvis_login_attempts (
+      ip_hash TEXT PRIMARY KEY,
+      window_started_at INTEGER NOT NULL,
+      attempts INTEGER NOT NULL DEFAULT 0
+    )`,
     `CREATE TABLE IF NOT EXISTS jarvis_audit_events (
       id TEXT PRIMARY KEY,
       tenant_id TEXT NOT NULL,
@@ -129,6 +147,61 @@ async function runIntelligence(env: JarvisEnv, history: Array<{ role: string; co
   }
 }
 
+function cookieValue(req: Request, name: string): string {
+  const raw = req.headers.get('cookie') || '';
+  for (const part of raw.split(';')) {
+    const index = part.indexOf('=');
+    if (index < 0) continue;
+    if (part.slice(0, index).trim() === name) return part.slice(index + 1).trim();
+  }
+  return '';
+}
+async function sha256(value: string): Promise<string> {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value));
+  return Array.from(new Uint8Array(digest), b => b.toString(16).padStart(2, '0')).join('');
+}
+function constantTimeEqual(a: string, b: string): boolean {
+  if (!a || !b || a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
+}
+function originAllowed(req: Request): boolean {
+  const origin = req.headers.get('origin');
+  if (!origin) return false;
+  try { return new URL(origin).origin === new URL(req.url).origin; } catch { return false; }
+}
+function sessionCookie(token: string, maxAge: number): string {
+  return SESSION_COOKIE + '=' + token + '; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=' + maxAge;
+}
+async function sessionOwner(req: Request, db: Database): Promise<boolean> {
+  const token = cookieValue(req, SESSION_COOKIE);
+  if (!/^[a-f0-9]{64}$/.test(token)) return false;
+  const tokenHash = await sha256(token);
+  const now = Math.floor(Date.now() / 1000);
+  const row = await db.prepare(`SELECT token_hash FROM jarvis_sessions
+    WHERE token_hash=? AND tenant_id=? AND owner_user_id='izakhono-owner'
+    AND expires_at>? AND revoked_at IS NULL`).bind(tokenHash, TENANT, now).first<any>();
+  if (!row) return false;
+  await db.prepare('UPDATE jarvis_sessions SET last_seen_at=CURRENT_TIMESTAMP WHERE token_hash=?').bind(tokenHash).run();
+  return true;
+}
+async function loginRateLimited(req: Request, db: Database): Promise<boolean> {
+  const ip = req.headers.get('cf-connecting-ip') || 'unknown';
+  const ipHash = await sha256(ip);
+  const now = Math.floor(Date.now() / 1000);
+  const row = await db.prepare('SELECT window_started_at,attempts FROM jarvis_login_attempts WHERE ip_hash=?')
+    .bind(ipHash).first<any>();
+  if (!row || now - Number(row.window_started_at) >= 900) {
+    await db.prepare(`INSERT INTO jarvis_login_attempts(ip_hash,window_started_at,attempts) VALUES(?,?,1)
+      ON CONFLICT(ip_hash) DO UPDATE SET window_started_at=excluded.window_started_at,attempts=1`)
+      .bind(ipHash, now).run();
+    return false;
+  }
+  if (Number(row.attempts) >= 5) return true;
+  await db.prepare('UPDATE jarvis_login_attempts SET attempts=attempts+1 WHERE ip_hash=?').bind(ipHash).run();
+  return false;
+}
 async function parseBody(req: Request): Promise<any | null> {
   if (!(req.headers.get('content-type') || '').toLowerCase().includes('application/json')) return null;
   try { return await req.json(); } catch { return null; }
@@ -149,11 +222,50 @@ export async function jarvisRoute(
   if (!['GET', 'POST', 'PATCH'].includes(req.method)) {
     return response({ ok: false, error: 'Method not allowed.' }, 405);
   }
-  if (!(await authorizeOwner())) return response({ ok: false, error: 'Unauthorized' }, 401);
   await ensureSchema(env.DB);
-
   const owner = 'izakhono-owner';
   const path = url.pathname;
+
+  if (path === '/api/jarvis/v1/session/login' && req.method === 'POST') {
+    if (url.protocol !== 'https:' || !originAllowed(req)) return response({ ok: false, error: 'Secure same-origin HTTPS is required.' }, 403);
+    if (!env.JARVIS_LOGIN_SECRET) return response({ ok: false, error: 'Owner session login is not configured. Set the JARVIS_LOGIN_SECRET Worker secret.' }, 503);
+    if (await loginRateLimited(req, env.DB)) return response({ ok: false, error: 'Too many login attempts. Try again in 15 minutes.' }, 429);
+    const body = await parseBody(req);
+    const supplied = text(body?.secret, 256);
+    if (!constantTimeEqual(supplied, env.JARVIS_LOGIN_SECRET)) {
+      await audit(env.DB, owner, 'session.login_failed', null);
+      return response({ ok: false, error: 'Invalid owner credential.' }, 401);
+    }
+    const tokenBytes = crypto.getRandomValues(new Uint8Array(32));
+    const token = Array.from(tokenBytes, b => b.toString(16).padStart(2, '0')).join('');
+    const tokenHash = await sha256(token);
+    const expires = Math.floor(Date.now() / 1000) + SESSION_SECONDS;
+    await env.DB.prepare('INSERT INTO jarvis_sessions(token_hash,tenant_id,owner_user_id,expires_at) VALUES(?,?,?,?)')
+      .bind(tokenHash, TENANT, owner, expires).run();
+    await audit(env.DB, owner, 'session.created', null, { expires_at: expires });
+    return new Response(JSON.stringify({ ok: true, authenticated: true, expires_at: expires }), {
+      status: 200,
+      headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store', 'set-cookie': sessionCookie(token, SESSION_SECONDS), 'x-content-type-options': 'nosniff' },
+    });
+  }
+  if (path === '/api/jarvis/v1/session/logout' && req.method === 'POST') {
+    if (!originAllowed(req)) return response({ ok: false, error: 'Same-origin request required.' }, 403);
+    const token = cookieValue(req, SESSION_COOKIE);
+    if (token) await env.DB.prepare('UPDATE jarvis_sessions SET revoked_at=CURRENT_TIMESTAMP WHERE token_hash=?')
+      .bind(await sha256(token)).run();
+    const result = response({ ok: true, authenticated: false });
+    const headers = new Headers(result.headers);
+    headers.set('set-cookie', sessionCookie('', 0));
+    return new Response(result.body, { status: result.status, headers });
+  }
+  if (path === '/api/jarvis/v1/session' && req.method === 'GET') {
+    const authenticated = await sessionOwner(req, env.DB);
+    return response({ ok: true, authenticated, login_configured: Boolean(env.JARVIS_LOGIN_SECRET) });
+  }
+
+  const cookieAuth = await sessionOwner(req, env.DB);
+  if (!cookieAuth && !(await authorizeOwner())) return response({ ok: false, error: 'Unauthorized' }, 401);
+  if (cookieAuth && req.method !== 'GET' && !originAllowed(req)) return response({ ok: false, error: 'Same-origin request required.' }, 403);
 
   if (path === '/api/jarvis/v1/status' && req.method === 'GET') {
     const counts = await env.DB.prepare(`SELECT
