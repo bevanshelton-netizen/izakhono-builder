@@ -92,6 +92,15 @@ The execution ledger is deliberately conservative: a crash after claiming but be
 
 The Worker Cron Trigger runs every minute and invokes the J.A.R.V.I.S. scheduled dispatcher. It reads eligible `queued` and due `retry_wait` tasks from D1, claims at most three per invocation with conditional `UPDATE ... RETURNING`, and executes the claimed reasoning tasks concurrently. D1 remains the durable source of truth; duplicate invocations cannot claim the same task. Existing bounded retry and cancellation semantics apply. This is bounded concurrency, not an unlimited worker pool. It becomes operational only after the Worker with the Cron Trigger is deployed and the server-side AI gateway bindings are configured. Explicit owner Run remains available.
 
+
+### Task dependencies
+
+- `POST /api/jarvis/v1/tasks` accepts an optional `depends_on` array of up to 20 unique task IDs.
+- Every prerequisite must already exist under the same tenant and owner; clients cannot reference another account's task.
+- The owner-triggered Run endpoint and scheduled dispatcher both require all prerequisites to be `completed`.
+- If a prerequisite reaches `failed` or `cancelled`, the scheduled dispatcher marks dependent queued work `failed` with `dependency-failed`.
+- Dependency edges are persisted in `jarvis_task_dependencies`; task creation is naturally acyclic because new tasks can only depend on already-existing tasks.
+
 ## Memory
 
 `GET /api/jarvis/v1/memory/search?q=...`
