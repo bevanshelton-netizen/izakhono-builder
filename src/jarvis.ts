@@ -143,6 +143,21 @@ async function ensureSchema(db: Database) {
       note TEXT NOT NULL DEFAULT '',
       decided_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     )`,
+    `CREATE TABLE IF NOT EXISTS jarvis_action_executions (
+      id TEXT PRIMARY KEY,
+      proposal_id TEXT NOT NULL UNIQUE REFERENCES jarvis_action_proposals(id),
+      tenant_id TEXT NOT NULL,
+      owner_user_id TEXT NOT NULL,
+      action_type TEXT NOT NULL,
+      payload_hash TEXT NOT NULL,
+      status TEXT NOT NULL CHECK(status IN ('claimed','completed','failed')),
+      result_json TEXT,
+      error_code TEXT,
+      claimed_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      completed_at TEXT
+    )`,
+    `CREATE INDEX IF NOT EXISTS idx_jarvis_action_execution_owner
+      ON jarvis_action_executions(tenant_id,owner_user_id,claimed_at DESC)`,
     `CREATE TABLE IF NOT EXISTS jarvis_audit_events (
       id TEXT PRIMARY KEY,
       tenant_id TEXT NOT NULL,
@@ -597,6 +612,61 @@ export async function jarvisRoute(
       .bind(proposalId, TENANT, owner, taskId, actionType, target, payloadJson, payloadHash, expiresAt).run();
     await audit(env.DB, owner, 'action.proposed', proposalId, { action_type: actionType, target, payload_hash: payloadHash, task_id: taskId });
     return response({ ok: true, proposal: { id: proposalId, task_id: taskId, action_type: actionType, target, payload: JSON.parse(payloadJson), payload_hash: payloadHash, status: 'proposed', expires_at: expiresAt, execution: 'not-enabled' } }, 201);
+  }
+
+  const executeMatch = path.match(/^\\/api\\/jarvis\\/v1\\/actions\\/([a-zA-Z0-9_-]+)\\/execute$/);
+  if (executeMatch && req.method === 'POST') {
+    const proposalId = executeMatch[1];
+    const body = await parseBody(req);
+    if (!body || typeof body.expected_payload_hash !== 'string') {
+      return response({ ok: false, error: 'expected_payload_hash is required.' }, 400);
+    }
+    const proposal = await env.DB.prepare(`SELECT * FROM jarvis_action_proposals
+      WHERE id=? AND tenant_id=? AND owner_user_id=?`).bind(proposalId, TENANT, owner).first<any>();
+    if (!proposal) return response({ ok: false, error: 'Action proposal not found.' }, 404);
+    if (proposal.status !== 'approved') return response({ ok: false, error: 'Only approved proposals can be executed.' }, 409);
+    const now = Math.floor(Date.now() / 1000);
+    if (Number(proposal.expires_at) <= now) return response({ ok: false, error: 'Approved proposal has expired.' }, 410);
+    const payloadHash = 'sha256:' + await sha256(String(proposal.payload_json));
+    if (payloadHash !== proposal.payload_hash || body.expected_payload_hash !== payloadHash) {
+      return response({ ok: false, error: 'Approved payload fingerprint mismatch.' }, 409);
+    }
+    // Strict allowlist: this first adapter performs an internal audit annotation only.
+    // No email, payment, CRM, publishing, deployment or arbitrary HTTP adapter exists.
+    if (proposal.action_type !== 'jarvis.audit.record' || proposal.target !== 'izakhono-jarvis.audit') {
+      return response({ ok: false, error: 'No enabled adapter exists for this action type and target.' }, 422);
+    }
+    let payload: any;
+    try { payload = JSON.parse(String(proposal.payload_json)); } catch {
+      return response({ ok: false, error: 'Stored action payload is invalid.' }, 409);
+    }
+    if (!payload || typeof payload.note !== 'string' || !text(payload.note, 500) ||
+        Object.keys(payload).some(key => key !== 'note')) {
+      return response({ ok: false, error: 'Audit adapter accepts only a note string of up to 500 characters.' }, 422);
+    }
+    const prior = await env.DB.prepare('SELECT id,status,result_json FROM jarvis_action_executions WHERE proposal_id=? AND tenant_id=? AND owner_user_id=?')
+      .bind(proposalId, TENANT, owner).first<any>();
+    if (prior) {
+      if (prior.status === 'completed') return response({ ok: true, duplicate: true, execution: { id: prior.id, status: prior.status, result: (() => { try { return JSON.parse(prior.result_json || '{}'); } catch { return {}; } })() } });
+      return response({ ok: false, error: 'This proposal already has an execution claim and requires recovery review.', execution_id: prior.id }, 409);
+    }
+    const executionId = id('jexec');
+    const claimed = await env.DB.prepare(`INSERT INTO jarvis_action_executions
+      (id,proposal_id,tenant_id,owner_user_id,action_type,payload_hash,status)
+      VALUES(?,?,?,?,?,?,'claimed') ON CONFLICT(proposal_id) DO NOTHING RETURNING id`)
+      .bind(executionId, proposalId, TENANT, owner, proposal.action_type, payloadHash).first<any>();
+    if (!claimed?.id) return response({ ok: false, error: 'Execution was claimed concurrently; refresh the execution record.' }, 409);
+    const auditEventId = id('jaud');
+    const resultData = { recorded: true, audit_event_id: auditEventId, note: text(payload.note, 500) };
+    await env.DB.prepare(`INSERT INTO jarvis_audit_events
+      (id,tenant_id,owner_user_id,event_type,resource_id,detail_json)
+      VALUES(?,?,?,'action.adapter.audit_recorded',?,?)`)
+      .bind(auditEventId, TENANT, owner, proposalId, JSON.stringify({ execution_id: executionId, payload_hash: payloadHash, note: resultData.note })).run();
+    await env.DB.prepare(`UPDATE jarvis_action_executions SET status='completed',result_json=?,completed_at=CURRENT_TIMESTAMP
+      WHERE id=? AND proposal_id=? AND status='claimed'`)
+      .bind(JSON.stringify(resultData), executionId, proposalId).run();
+    await audit(env.DB, owner, 'action.executed', proposalId, { execution_id: executionId, action_type: proposal.action_type, payload_hash: payloadHash });
+    return response({ ok: true, duplicate: false, execution: { id: executionId, status: 'completed', result: resultData } }, 200);
   }
 
   const actionMatch = path.match(/^\\/api\\/jarvis\\/v1\\/actions\\/([a-zA-Z0-9_-]+)(?:\\/(approve|reject|cancel))?$/);
