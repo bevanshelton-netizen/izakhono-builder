@@ -518,7 +518,8 @@ export async function jarvisRoute(
         return response({ ok: true, task_id: taskId, status: 'completed', result: result.text, attempts: Number(current?.attempts || 1) });
       }
       const attempts = Number(current?.attempts || 1);
-      const exhausted = attempts >= Number(task.max_attempts);
+      const permanentFailure = result.reason === 'intelligence-gateway-not-configured' || result.reason === 'intelligence-gateway-empty-response' || /^intelligence-gateway-http-4(?!29)/.test(result.reason || '');
+      const exhausted = attempts >= Number(task.max_attempts) || permanentFailure;
       const retryAfter = Math.floor(Date.now() / 1000) + Math.min(900, 30 * (2 ** Math.max(0, attempts - 1)));
       const nextStatus = exhausted ? 'failed' : 'retry_wait';
       await env.DB.prepare('UPDATE jarvis_tasks SET status=?,error_code=?,retry_after=?,updated_at=CURRENT_TIMESTAMP,completed_at=? WHERE id=? AND status=\'running\'')
