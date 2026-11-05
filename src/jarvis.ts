@@ -117,6 +117,32 @@ async function ensureSchema(db: Database) {
       WHERE idempotency_key IS NOT NULL`,
     `CREATE INDEX IF NOT EXISTS idx_jarvis_tasks_queue
       ON jarvis_tasks(tenant_id, status, priority, created_at)`,
+    `CREATE TABLE IF NOT EXISTS jarvis_action_proposals (
+      id TEXT PRIMARY KEY,
+      tenant_id TEXT NOT NULL,
+      owner_user_id TEXT NOT NULL,
+      task_id TEXT,
+      action_type TEXT NOT NULL,
+      target TEXT NOT NULL,
+      payload_json TEXT NOT NULL,
+      payload_hash TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'proposed' CHECK(status IN ('proposed','approved','rejected','expired','cancelled')),
+      expires_at INTEGER NOT NULL,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )`,
+    `CREATE INDEX IF NOT EXISTS idx_jarvis_action_owner
+      ON jarvis_action_proposals(tenant_id,owner_user_id,status,created_at DESC)`,
+    `CREATE TABLE IF NOT EXISTS jarvis_action_approvals (
+      id TEXT PRIMARY KEY,
+      proposal_id TEXT NOT NULL REFERENCES jarvis_action_proposals(id),
+      tenant_id TEXT NOT NULL,
+      owner_user_id TEXT NOT NULL,
+      decision TEXT NOT NULL CHECK(decision IN ('approved','rejected')),
+      payload_hash TEXT NOT NULL,
+      note TEXT NOT NULL DEFAULT '',
+      decided_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )`,
     `CREATE TABLE IF NOT EXISTS jarvis_audit_events (
       id TEXT PRIMARY KEY,
       tenant_id TEXT NOT NULL,
@@ -528,6 +554,99 @@ export async function jarvisRoute(
       return response({ ok: true, task_id: taskId, status: nextStatus, attempts, retry_after: exhausted ? null : retryAfter, reason: result.reason || 'agent-execution-failed' }, exhausted ? 502 : 202);
     }
     return response({ ok: false, error: 'Method not allowed for this task route.' }, 405);
+  }
+
+  // Immutable action proposals. Approval records authorise a future adapter only;
+  // this phase deliberately does not execute or dispatch any external side effect.
+  if (path === '/api/jarvis/v1/actions' && req.method === 'GET') {
+    const rows = await env.DB.prepare(`SELECT id,task_id,action_type,target,payload_json,payload_hash,status,expires_at,created_at,updated_at
+      FROM jarvis_action_proposals WHERE tenant_id=? AND owner_user_id=?
+      ORDER BY created_at DESC LIMIT 100`).bind(TENANT, owner).all<any>();
+    return response({ ok: true, items: rows.results || [] });
+  }
+
+  if (path === '/api/jarvis/v1/actions' && req.method === 'POST') {
+    const body = await parseBody(req);
+    if (!body) return response({ ok: false, error: 'Expected valid application/json.' }, 400);
+    const actionType = text(body.action_type, 80);
+    const target = text(body.target, 240);
+    const taskId = text(body.task_id, 100) || null;
+    if (!/^[a-z][a-z0-9_.-]{1,79}$/.test(actionType) || !target) {
+      return response({ ok: false, error: 'A valid action_type and target are required.' }, 400);
+    }
+    if (body.payload === undefined || body.payload === null || typeof body.payload !== 'object' || Array.isArray(body.payload)) {
+      return response({ ok: false, error: 'payload must be a JSON object.' }, 400);
+    }
+    if (taskId) {
+      const linked = await env.DB.prepare('SELECT id FROM jarvis_tasks WHERE id=? AND tenant_id=? AND owner_user_id=?')
+        .bind(taskId, TENANT, owner).first<any>();
+      if (!linked) return response({ ok: false, error: 'Linked task not found.' }, 404);
+    }
+    const canonical = (value: any): any => Array.isArray(value) ? value.map(canonical) :
+      value && typeof value === 'object' ? Object.keys(value).sort().reduce((out: any, key) => {
+        out[key] = canonical(value[key]); return out;
+      }, {}) : value;
+    const payloadJson = JSON.stringify(canonical(body.payload));
+    if (payloadJson.length > 16000) return response({ ok: false, error: 'Action payload exceeds 16 KB.' }, 413);
+    const payloadHash = 'sha256:' + await sha256(payloadJson);
+    const proposalId = id('jact');
+    const expiresAt = Math.floor(Date.now() / 1000) + 24 * 60 * 60;
+    await env.DB.prepare(`INSERT INTO jarvis_action_proposals
+      (id,tenant_id,owner_user_id,task_id,action_type,target,payload_json,payload_hash,expires_at)
+      VALUES(?,?,?,?,?,?,?,?,?)`)
+      .bind(proposalId, TENANT, owner, taskId, actionType, target, payloadJson, payloadHash, expiresAt).run();
+    await audit(env.DB, owner, 'action.proposed', proposalId, { action_type: actionType, target, payload_hash: payloadHash, task_id: taskId });
+    return response({ ok: true, proposal: { id: proposalId, task_id: taskId, action_type: actionType, target, payload: JSON.parse(payloadJson), payload_hash: payloadHash, status: 'proposed', expires_at: expiresAt, execution: 'not-enabled' } }, 201);
+  }
+
+  const actionMatch = path.match(/^\\/api\\/jarvis\\/v1\\/actions\\/([a-zA-Z0-9_-]+)(?:\\/(approve|reject|cancel))?$/);
+  if (actionMatch) {
+    const proposalId = actionMatch[1];
+    const decision = actionMatch[2] || '';
+    const proposal = await env.DB.prepare('SELECT * FROM jarvis_action_proposals WHERE id=? AND tenant_id=? AND owner_user_id=?')
+      .bind(proposalId, TENANT, owner).first<any>();
+    if (!proposal) return response({ ok: false, error: 'Action proposal not found.' }, 404);
+    const now = Math.floor(Date.now() / 1000);
+    if (!decision && req.method === 'GET') {
+      return response({ ok: true, proposal: { ...proposal, payload: (() => { try { return JSON.parse(proposal.payload_json); } catch { return null; } })(), payload_json: undefined, execution: 'not-enabled' } });
+    }
+    if (decision === 'cancel' && req.method === 'POST') {
+      if (proposal.status !== 'proposed') return response({ ok: false, error: 'Only proposed actions can be cancelled.' }, 409);
+      await env.DB.prepare(`UPDATE jarvis_action_proposals SET status='cancelled',updated_at=CURRENT_TIMESTAMP
+        WHERE id=? AND tenant_id=? AND owner_user_id=? AND status='proposed'`)
+        .bind(proposalId, TENANT, owner).run();
+      await audit(env.DB, owner, 'action.cancelled', proposalId);
+      return response({ ok: true, proposal_id: proposalId, status: 'cancelled', execution: 'not-enabled' });
+    }
+    if ((decision === 'approve' || decision === 'reject') && req.method === 'POST') {
+      if (proposal.status !== 'proposed') return response({ ok: false, error: 'Proposal is no longer awaiting a decision.' }, 409);
+      if (Number(proposal.expires_at) <= now) {
+        await env.DB.prepare(`UPDATE jarvis_action_proposals SET status='expired',updated_at=CURRENT_TIMESTAMP
+          WHERE id=? AND status='proposed'`).bind(proposalId).run();
+        return response({ ok: false, error: 'Proposal has expired.' }, 410);
+      }
+      const currentHash = 'sha256:' + await sha256(String(proposal.payload_json));
+      if (currentHash !== proposal.payload_hash) return response({ ok: false, error: 'Immutable payload integrity check failed.' }, 409);
+      const body = await parseBody(req);
+      if (!body || body.expected_payload_hash !== proposal.payload_hash) {
+        return response({ ok: false, error: 'expected_payload_hash must match the displayed proposal.' }, 409);
+      }
+      const nextStatus = decision === 'approve' ? 'approved' : 'rejected';
+      const changed = await env.DB.prepare(`UPDATE jarvis_action_proposals SET status=?,updated_at=CURRENT_TIMESTAMP
+        WHERE id=? AND tenant_id=? AND owner_user_id=? AND status='proposed' AND payload_hash=? AND expires_at>?`)
+        .bind(nextStatus, proposalId, TENANT, owner, currentHash, now).first<any>();
+      // D1 UPDATE RETURNING is used to make the decision single-winner under concurrent requests.
+      const confirmed = changed || await env.DB.prepare(`SELECT id FROM jarvis_action_proposals
+        WHERE id=? AND status=? AND payload_hash=?`).bind(proposalId, nextStatus, currentHash).first<any>();
+      if (!confirmed?.id) return response({ ok: false, error: 'Proposal state changed; refresh before deciding.' }, 409);
+      await env.DB.prepare(`INSERT INTO jarvis_action_approvals
+        (id,proposal_id,tenant_id,owner_user_id,decision,payload_hash,note)
+        VALUES(?,?,?,?,?,?,?)`)
+        .bind(id('jappr'), proposalId, TENANT, owner, nextStatus, currentHash, text(body.note, 500)).run();
+      await audit(env.DB, owner, 'action.' + nextStatus, proposalId, { payload_hash: currentHash });
+      return response({ ok: true, proposal_id: proposalId, status: nextStatus, payload_hash: currentHash, execution: 'not-enabled' });
+    }
+    return response({ ok: false, error: 'Method not allowed for this action route.' }, 405);
   }
 
   if (path === '/api/jarvis/v1/memory' && req.method === 'GET') {
