@@ -43,6 +43,19 @@ Request:
 
 Response should stream typed events: `message.delta`, `tool.proposed`, `approval.required`, `tool.started`, `tool.completed`, `message.completed`, `error`.
 
+## Agent registry and task queue (implemented baseline)
+
+- `GET /api/jarvis/v1/agents` — returns the registered specialist agents, supported task types and declared tool boundary. Current agents are reasoning-only and have no live tools.
+- `GET /api/jarvis/v1/tasks?status=queued` — lists the authenticated owner's tasks.
+- `POST /api/jarvis/v1/tasks` — creates a task with `agent_id`, `task_type`, `title`, `instruction`, optional `priority` and optional `idempotency_key`.
+- `GET /api/jarvis/v1/tasks/:id` — retrieves the task and result.
+- `POST /api/jarvis/v1/tasks/:id/run` — explicitly claims and runs a queued task using the server-side reasoning gateway.
+- `POST /api/jarvis/v1/tasks/:id/cancel` — marks a non-terminal task cancelled. An in-flight model request cannot be forcibly stopped; its late result is discarded.
+
+Task states: `queued`, `running`, `retry_wait`, `completed`, `failed`, `cancelled`. Recoverable gateway failures use bounded exponential retry windows, up to three attempts. Task claims use a conditional database update to prevent two callers from claiming the same queued attempt.
+
+No task endpoint can invoke email, web, shell, filesystem, repository mutation, payment, CRM, publishing or deployment tools. Automatic background dispatch, task dependencies and parallel workers are not implemented yet.
+
 ## Action approval
 
 `POST /api/jarvis/v1/actions/:id/approve`
