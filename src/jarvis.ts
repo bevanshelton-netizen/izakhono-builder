@@ -767,3 +767,60 @@ export async function jarvisRoute(
 
   return response({ ok: false, error: 'J.A.R.V.I.S. route not found.' }, 404);
 }
+
+/**
+ * Cron-driven durable dispatcher. D1 is the source of truth; each task is
+ * conditionally claimed before model work. A bounded batch runs concurrently.
+ */
+export async function jarvisScheduled(env: JarvisEnv): Promise<{ claimed: number; completed: number; retried: number; failed: number }> {
+  await ensureSchema(env.DB);
+  const candidates = await env.DB.prepare(`SELECT id,owner_user_id,agent_id,task_type,title,instruction,status,attempts,max_attempts,retry_after
+    FROM jarvis_tasks WHERE tenant_id=? AND status IN ('queued','retry_wait')
+    AND (status='queued' OR retry_after IS NULL OR retry_after<=?)
+    AND attempts<max_attempts ORDER BY CASE priority WHEN 'high' THEN 0 WHEN 'normal' THEN 1 ELSE 2 END,created_at ASC LIMIT 3`)
+    .bind(TENANT, Math.floor(Date.now()/1000)).all<any>();
+  const items = candidates.results || [];
+  const outcomes = await Promise.all(items.map(async task => {
+    const claimed = await env.DB.prepare(`UPDATE jarvis_tasks SET status='running',attempts=attempts+1,
+      started_at=CURRENT_TIMESTAMP,updated_at=CURRENT_TIMESTAMP,error_code=NULL
+      WHERE id=? AND tenant_id=? AND owner_user_id=? AND status=? AND attempts=? RETURNING id`)
+      .bind(task.id,TENANT,task.owner_user_id,task.status,task.attempts).first<any>();
+    if(!claimed?.id) return 'skipped';
+    const attempt=Number(task.attempts)+1;
+    await audit(env.DB,task.owner_user_id,'task.started',task.id,{attempt,agent_id:task.agent_id,dispatcher:'scheduled'});
+    const roles:Record<string,string>={
+      coordinator:'Break down owner goals, identify dependencies and coordinate work.',
+      'business-analyst':'Analyse business information, options, risks and decisions.',
+      'research-briefing':'Prepare structured research briefs and identify facts requiring verification.',
+      'project-planner':'Create project plans, milestones, dependencies and risk registers.',
+      reporting:'Turn supplied information into concise operational and management reports.',
+    };
+    const prompt=[
+      'You are an IZAKHONO J.A.R.V.I.S. specialist agent.',
+      'Agent role: '+(roles[task.agent_id]||'Business assistant'),
+      'Task type: '+task.task_type,'Task title: '+task.title,'Owner instruction: '+task.instruction,
+      'You are reasoning-only. Do not claim external actions, live access or verification. State assumptions and verification needs.',
+    ].join('\n\n');
+    const result=await runIntelligence(env,[{role:'user',content:prompt}]);
+    const current=await env.DB.prepare('SELECT status,attempts FROM jarvis_tasks WHERE id=? AND tenant_id=? AND owner_user_id=?')
+      .bind(task.id,TENANT,task.owner_user_id).first<any>();
+    if(current?.status==='cancelled') return 'skipped';
+    if(result.ok&&result.text){
+      await env.DB.prepare(`UPDATE jarvis_tasks SET status='completed',result_text=?,completed_at=CURRENT_TIMESTAMP,updated_at=CURRENT_TIMESTAMP,retry_after=NULL,error_code=NULL WHERE id=? AND status='running'`)
+        .bind(result.text,task.id).run();
+      await audit(env.DB,task.owner_user_id,'task.completed',task.id,{attempt,agent_id:task.agent_id,dispatcher:'scheduled'});
+      return 'completed';
+    }
+    const reason=result.reason||'agent-execution-failed';
+    const permanent=reason==='intelligence-gateway-not-configured'||reason==='intelligence-gateway-empty-response'||/^intelligence-gateway-http-4(?!29)/.test(reason);
+    const exhausted=attempt>=Number(task.max_attempts)||permanent;
+    const retryAfter=Math.floor(Date.now()/1000)+Math.min(900,30*(2**Math.max(0,attempt-1)));
+    const next=exhausted?'failed':'retry_wait';
+    await env.DB.prepare(`UPDATE jarvis_tasks SET status=?,error_code=?,retry_after=?,updated_at=CURRENT_TIMESTAMP,completed_at=? WHERE id=? AND status='running'`)
+      .bind(next,reason,exhausted?null:retryAfter,exhausted?new Date().toISOString():null,task.id).run();
+    await audit(env.DB,task.owner_user_id,exhausted?'task.failed':'task.retry_scheduled',task.id,{attempt,reason,retry_after:exhausted?null:retryAfter,dispatcher:'scheduled'});
+    return exhausted?'failed':'retried';
+  }));
+  return {claimed:outcomes.filter(x=>x!=='skipped').length,completed:outcomes.filter(x=>x==='completed').length,retried:outcomes.filter(x=>x==='retried').length,failed:outcomes.filter(x=>x==='failed').length};
+}
+
