@@ -67,6 +67,18 @@ Request:
 
 The server rechecks actor, tenant, permission, expiry, payload hash, target and action status. Approval is single-use.
 
+## Immutable action proposals (implemented baseline)
+
+These endpoints record owner decisions only. They do not execute, dispatch or trigger an external action.
+
+- `GET /api/jarvis/v1/actions` — lists the authenticated owner's proposals.
+- `POST /api/jarvis/v1/actions` — creates a proposal with `action_type`, `target`, object `payload`, and optional owner-owned `task_id`. The server canonicalises JSON object keys and stores a SHA-256 payload hash. Proposals expire after 24 hours.
+- `GET /api/jarvis/v1/actions/:id` — returns the proposal and immutable payload.
+- `POST /api/jarvis/v1/actions/:id/approve` or `/reject` — requires `expected_payload_hash` matching the displayed hash and an optional note. The transition is conditional on the still-proposed state, owner, tenant, hash and unexpired deadline; only one concurrent decision wins. A durable approval/rejection record is written.
+- `POST /api/jarvis/v1/actions/:id/cancel` — cancels a proposal that is still awaiting a decision.
+
+Statuses: `proposed`, `approved`, `rejected`, `expired`, `cancelled`. Approval is an auditable authorisation record, not execution permission for a generic tool runner. A future adapter must independently validate the exact action type, target, payload hash, expiry, one-time consumption and idempotency before carrying out any side effect. No adapter is enabled in this milestone.
+
 ## Memory
 
 `GET /api/jarvis/v1/memory/search?q=...`
