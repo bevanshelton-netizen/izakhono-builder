@@ -5,6 +5,7 @@ import { renderSite } from './site-renderer.mjs';
 const fallback = fallbackSiteBrief('Build a school uniform ordering portal');
 assert.equal(fallback.mode, 'deterministic-fallback');
 assert.match(fallback.brief.description, /school uniform/);
+assert.equal(fallback.brief.description, 'Build a school uniform ordering portal');
 const normalized = normalizeBrief({ title: '<script>alert(1)</script>', sections: [{ heading: 'About', body: '<img src=x onerror=alert(1)>' }] }, 'Test');
 const html = renderSite(normalized);
 assert.ok(!html.includes('<script>alert(1)</script>'));
