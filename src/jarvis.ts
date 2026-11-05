@@ -348,7 +348,7 @@ export async function jarvisRoute(
       persistence: 'available',
       intelligence: env.IZAKHONO_SUPER_AI_URL && env.IZAKHONO_SUPER_AI_INTERNAL_KEY && env.IZAKHONO_SUPER_AI_WORKFLOW_KEY ? 'configured' : 'not-connected',
       voice: 'browser-preview-only',
-      tools: 'approval-gated-not-enabled',
+      tools: 'internal-audit-adapter-only',
       counts: {
         conversations: Number(counts?.conversations || 0),
         messages: Number(counts?.messages || 0),
