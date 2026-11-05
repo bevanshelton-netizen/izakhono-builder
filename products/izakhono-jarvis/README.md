@@ -62,6 +62,15 @@ The owner API exposes agent discovery, task creation/listing/detail, explicit ru
 **Execution boundary:** these agents are currently reasoning-only. They have no web, email, filesystem, shell, repository-write, payment, CRM, publishing or deployment tools. A task runs only when the owner explicitly selects Run agent. Cancellation marks the durable task cancelled; it cannot forcibly terminate a model request already in flight, and any late result is discarded. Automatic background dispatch and parallel worker execution are not enabled yet. Consequential tools require a separate immutable action proposal and owner approval workflow before any adapter is connected.
 
 
+
+## Background task dispatcher — scheduled D1 workers
+
+The Builder Worker now has a one-minute Cron Trigger and a scheduled handler that dispatches eligible J.A.R.V.I.S. tasks directly from the durable D1 queue. D1 remains the source of truth; no separate queue service or paid per-message broker is required for this first owned-runtime worker.
+
+Each scheduled invocation selects up to three eligible tasks, prioritising high then normal then low priority. It claims each task with a conditional D1 update before execution and runs the claimed batch concurrently. Duplicate scheduled invocations cannot claim the same task. Existing bounded retry windows and terminal failure rules are retained. Cancellation is checked after model work returns, and cancelled work is not committed as completed.
+
+**Operational limits:** this is bounded parallelism of up to three reasoning tasks per cron invocation, not an unlimited worker pool. The one-minute schedule, Cron Trigger activation and configured AI gateway bindings must be present in the deployed Worker before it can operate. The feature branch itself is not deployed. A task may remain queued until the scheduled handler is active; the owner can still use the explicit Run agent endpoint.
+
 ## Controlled action execution — first internal adapter
 
 The action register now has a conservative execution endpoint and a unique D1 execution ledger. The server accepts execution only for an approved, unexpired proposal whose stored canonical JSON still matches its SHA-256 fingerprint and the caller-supplied expected hash. The only enabled adapter is `jarvis.audit.record` for target `izakhono-jarvis.audit`; it accepts a single note string and writes an internal audit annotation. It does not contact external systems.
