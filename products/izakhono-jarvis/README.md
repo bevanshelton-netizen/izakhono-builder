@@ -38,6 +38,14 @@ Core subsystems:
 7. Store business memory by tenant and access scope; support retention and owner-controlled export/deletion.
 8. The assistant may prepare consequential actions, but must pause at the approval gate before executing them.
 
+## Persistence and intelligence gateway foundation
+
+The Worker now exposes an owner-authorized D1 persistence API in `src/jarvis.ts`. It creates its own tables idempotently and scopes rows to the IZAKHONO tenant and owner identity. It supports conversation creation and listing, message history, idempotent user-message submission, owner-entered company/project/private memory, memory search and audit events.
+
+When the existing server-side IZAKHONO SUPER AI workflow bindings are configured, message submission calls the reasoning workflow and persists the assistant response. Credentials remain server-side. Without those bindings, user messages are persisted and the API truthfully reports that intelligence is not connected. No external tools are exposed to the model in this milestone.
+
+Run `npm run jarvis:typecheck` to type-check the new API module. The API uses the existing Builder owner authorization check. The static preview deliberately contains no administrator key and is not yet wired to this protected API.
+
 ## API contract (initial)
 
 - `GET /api/jarvis/v1/status` — service readiness and enabled capability flags; never expose secrets.
