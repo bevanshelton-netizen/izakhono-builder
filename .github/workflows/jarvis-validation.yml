@@ -3,6 +3,10 @@ name: JARVIS validation
 on:
   pull_request:
     paths:
+      - "autonomy/model-runtime.mjs"
+      - "autonomy/native-generation.test.mjs"
+      - "autonomy/model-runtime.mjs"
+      - "autonomy/native-generation.test.mjs"
       - "src/jarvis.ts"
       - "src/sovereign.ts"
       - "wrangler.jsonc"
@@ -40,4 +44,4 @@ jobs:
       - name: Install dependencies
         run: npm install --ignore-scripts --no-audit --no-fund
       - name: Validate JARVIS API, orchestration and browser
-        run: npm run jarvis:validate
+        run: npm run native-generation:test && npm run jarvis:validate
