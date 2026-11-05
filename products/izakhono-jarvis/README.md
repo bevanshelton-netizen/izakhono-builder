@@ -6,11 +6,11 @@ IZAKHONO-owned intelligent command centre for the IZAKHONO ecosystem.
 
 A voice-first, multimodal AI operating system that can understand owner instructions, retrieve authorized business context, coordinate specialist agents, and execute approved workflows with auditable evidence.
 
-## Current milestone: Foundation
+## Current milestone: Secure foundation and reasoning-only agent orchestration
 
-This branch introduces the product specification, security boundaries, API contract, and a responsive command-centre interface prototype.
+This branch contains the product specification, security boundaries, authenticated owner sessions, D1 conversation and memory persistence, a server-side reasoning gateway adapter, specialist agent registry, durable task queue and connected command-centre interface.
 
-**Important:** The interface prototype is not connected to a live model, persistent memory, email, device control, or production tools. It must not claim those capabilities are active until their adapters are implemented, tested, and connected.
+**Important:** These are source-code capabilities in a feature branch. They are not production-deployed or verified live. Model reasoning requires its Worker bindings; agent tasks require an authenticated session and an explicit Run action. External tools and business actions are not enabled.
 
 ## Architecture
 
@@ -44,7 +44,7 @@ The Worker now exposes an owner-authorized D1 persistence API in `src/jarvis.ts`
 
 When the existing server-side IZAKHONO SUPER AI workflow bindings are configured, message submission calls the reasoning workflow and persists the assistant response. Credentials remain server-side. Without those bindings, user messages are persisted and the API truthfully reports that intelligence is not connected. No external tools are exposed to the model in this milestone.
 
-Run `npm run jarvis:typecheck` to type-check the new API module. The API accepts either the existing Builder owner authorization check or a J.A.R.V.I.S.-specific short-lived browser session. Browser sessions use a dedicated `JARVIS_LOGIN_SECRET` Worker secret, random opaque tokens, SHA-256 token hashes in D1, an eight-hour expiry, HttpOnly/Secure/SameSite=Strict host-only cookies, same-origin checks on mutations, and a per-IP-hash login throttle. The login secret is never placed in browser code. Configure `JARVIS_LOGIN_SECRET` in the Worker secret store before enabling browser sign-in; do not commit it to source or put it in a frontend environment variable. The static preview remains available when the dedicated secret is not configured and does not claim a live connection.
+Run `npm run jarvis:validate` to type-check the API, run the agent orchestration contract tests and validate browser JavaScript syntax. The API accepts either the existing Builder owner authorization check or a J.A.R.V.I.S.-specific short-lived browser session. Browser sessions use a dedicated `JARVIS_LOGIN_SECRET` Worker secret, random opaque tokens, SHA-256 token hashes in D1, an eight-hour expiry, HttpOnly/Secure/SameSite=Strict host-only cookies, same-origin checks on mutations, and a per-IP-hash login throttle. The login secret is never placed in browser code. Configure `JARVIS_LOGIN_SECRET` in the Worker secret store before enabling browser sign-in; do not commit it to source or put it in a frontend environment variable. The static preview remains available when the dedicated secret is not configured and does not claim a live connection.
 
 ## Agent orchestration milestone
 
@@ -57,9 +57,13 @@ The owner API exposes agent discovery, task creation/listing/detail, explicit ru
 ## API contract (initial)
 
 - `GET /api/jarvis/v1/status` — service readiness and enabled capability flags; never expose secrets.
-- `POST /api/jarvis/v1/conversations` — create or resume an authorized conversation.
-- `POST /api/jarvis/v1/conversations/:id/messages` — submit text and return a streamed assistant response.
-- `GET /api/jarvis/v1/conversations/:id/events` — retrieve authorized conversation events.
+- `GET/POST /api/jarvis/v1/conversations` — list and create authorized conversations.
+- `GET/POST /api/jarvis/v1/conversations/:id/messages` — retrieve history and submit a message; responses are currently non-streaming.
+- `GET /api/jarvis/v1/agents` — list registered reasoning-only specialists.
+- `GET/POST /api/jarvis/v1/tasks` — list and queue durable tasks.
+- `GET /api/jarvis/v1/tasks/:id` — retrieve task status and result.
+- `POST /api/jarvis/v1/tasks/:id/run` — explicitly claim and execute a reasoning-only task.
+- `POST /api/jarvis/v1/tasks/:id/cancel` — mark a task cancelled.
 - `GET /api/jarvis/v1/memory/search?q=...` — search only memory the caller may access.
 - `POST /api/jarvis/v1/actions/:id/approve` — approve a specific immutable action proposal.
 - `POST /api/jarvis/v1/actions/:id/reject` — reject a proposed action.
@@ -73,12 +77,14 @@ Every mutation must validate the session, tenant, permission, CSRF/origin policy
 2. Authenticated owner session and capability registry.
 3. Provider-neutral model gateway with server-side secrets.
 4. Conversation persistence and scoped memory.
-5. Planner and durable orchestration.
-6. Read-only tools first: status, search, files and reporting.
-7. Approval-gated write tools: email drafts, CRM updates, publishing and deployment.
-8. Voice input/output and multimodal image/document understanding.
-9. Security, load, recovery, accessibility and end-to-end acceptance.
-10. Owned-runtime deployment after infrastructure readiness and owner acceptance.
+5. Durable reasoning-only agent task queue and specialist registry (initial implementation).
+6. Background workers, task graphs and bounded parallel execution.
+7. Immutable action proposals, approval lifecycle and scoped tool adapters.
+8. Read-only tools first: status, search, files and reporting.
+9. Approval-gated write tools: email drafts, CRM updates, publishing and deployment.
+10. Voice input/output and multimodal image/document understanding.
+11. Security, load, recovery, accessibility and end-to-end acceptance.
+12. Owned-runtime deployment after infrastructure readiness and owner acceptance.
 
 ## Local preview
 
@@ -86,4 +92,4 @@ Serve `public/jarvis/index.html` through the existing IZAKHONO Builder static as
 
 ## Release status
 
-Foundation source is in a feature branch. This is not a production deployment and does not establish that JARVIS is publicly reachable.
+Source is in the feature branch and draft PR #585. This is not a production deployment and does not establish that J.A.R.V.I.S. is publicly reachable.
