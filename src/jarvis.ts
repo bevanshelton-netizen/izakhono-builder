@@ -213,20 +213,20 @@ async function sessionOwner(req: Request, db: Database): Promise<boolean> {
   return true;
 }
 async function loginRateLimited(req: Request, db: Database): Promise<boolean> {
-  const ip = req.headers.get('cf-connecting-ip') || 'unknown';
-  const ipHash = await sha256(ip);
+  const ipHash = await sha256(req.headers.get('cf-connecting-ip') || 'unknown');
   const now = Math.floor(Date.now() / 1000);
-  const row = await db.prepare('SELECT window_started_at,attempts FROM jarvis_login_attempts WHERE ip_hash=?')
-    .bind(ipHash).first<any>();
+  const row = await db.prepare('SELECT window_started_at,attempts FROM jarvis_login_attempts WHERE ip_hash=?').bind(ipHash).first<any>();
+  return Boolean(row && now - Number(row.window_started_at) < 900 && Number(row.attempts) >= 5);
+}
+async function recordFailedLogin(req: Request, db: Database): Promise<void> {
+  const ipHash = await sha256(req.headers.get('cf-connecting-ip') || 'unknown');
+  const now = Math.floor(Date.now() / 1000);
+  const row = await db.prepare('SELECT window_started_at,attempts FROM jarvis_login_attempts WHERE ip_hash=?').bind(ipHash).first<any>();
   if (!row || now - Number(row.window_started_at) >= 900) {
-    await db.prepare(`INSERT INTO jarvis_login_attempts(ip_hash,window_started_at,attempts) VALUES(?,?,1)
-      ON CONFLICT(ip_hash) DO UPDATE SET window_started_at=excluded.window_started_at,attempts=1`)
-      .bind(ipHash, now).run();
-    return false;
+    await db.prepare('INSERT OR REPLACE INTO jarvis_login_attempts(ip_hash,window_started_at,attempts) VALUES(?,?,1)').bind(ipHash, now).run();
+    return;
   }
-  if (Number(row.attempts) >= 5) return true;
   await db.prepare('UPDATE jarvis_login_attempts SET attempts=attempts+1 WHERE ip_hash=?').bind(ipHash).run();
-  return false;
 }
 async function parseBody(req: Request): Promise<any | null> {
   if (!(req.headers.get('content-type') || '').toLowerCase().includes('application/json')) return null;
@@ -259,6 +259,7 @@ export async function jarvisRoute(
     const body = await parseBody(req);
     const supplied = text(body?.secret, 256);
     if (!constantTimeEqual(supplied, env.JARVIS_LOGIN_SECRET)) {
+      await recordFailedLogin(req, env.DB);
       await audit(env.DB, owner, 'session.login_failed', null);
       return response({ ok: false, error: 'Invalid owner credential.' }, 401);
     }
