@@ -17,7 +17,7 @@
   <button class="nav" data-toast="Conversation history will be connected to the memory service."><i>◷</i> Conversations</button>
   <button class="nav" data-toast="Memory service is not connected in this preview."><i>◎</i> Memory</button>
   <div class="side-label">CAPABILITIES</div>
-  <button class="nav" data-toast="Agent registry is planned for milestone 2."><i>◈</i> AI agents <span class="soon">SOON</span></button>
+  <button class="nav" data-toast="Use the Agent Workspace below to queue and run reasoning-only tasks."><i>◈</i> AI agents</button>
   <button class="nav" data-toast="Tool integrations are not connected in this preview."><i>⌁</i> Integrations</button>
   <button class="nav" data-toast="Audit service is planned for milestone 2."><i>▤</i> Activity & audit</button>
   <div class="side-bottom"><div class="node"><span class="pulse"></span><span><b>LOCAL PREVIEW</b><small>Engine not connected</small></span></div><div class="profile"><div class="avatar">IS</div><span><b>IZAKHONO OWNER</b><small>Administrator preview</small></span><span class="dots">•••</span></div></div>
@@ -47,6 +47,34 @@
 <div class="module"><span class="module-icon">⛨</span><span><b>FORTRESS security</b><small>Permissions, approvals and audit</small></span><span class="state muted">PLANNED</span></div>
 </div></div>
 <div class="panel activity"><div class="section-head"><h2>ACTIVITY</h2><span>THIS SESSION</span></div><div id="activity-list"><div class="empty"><span>◷</span><b>No commands yet</b><small>Your preview interactions will appear here.</small></div></div><div class="activity-foot">No external actions have been performed.</div></div>
+</section>
+<section class="agent-workspace requires-auth">
+<div class="panel agent-panel">
+  <div class="section-head"><h2>AGENT WORKSPACE</h2><span>CONTROLLED ORCHESTRATION · REASONING ONLY</span></div>
+  <p class="agent-intro">Assign a bounded task to a registered specialist. Agents currently reason over the instruction you provide; no external tools or business actions are enabled.</p>
+  <form id="task-form" class="task-form">
+    <label>Specialist agent<select id="agent-select" required>
+      <option value="coordinator">J.A.R.V.I.S. Coordinator</option>
+      <option value="business-analyst">Business Analyst</option>
+      <option value="research-briefing">Research Briefing Agent</option>
+      <option value="project-planner">Project Planner</option>
+      <option value="reporting">Reporting Agent</option>
+    </select></label>
+    <label>Task type<select id="task-type" required>
+      <option value="coordination">Coordination</option><option value="analysis">Analysis</option>
+      <option value="research_brief">Research brief</option><option value="business_report">Business report</option>
+      <option value="project_plan">Project plan</option>
+    </select></label>
+    <label class="wide">Task title<input id="task-title" maxlength="160" required placeholder="e.g. Prepare Izakhono group operating plan"></label>
+    <label class="wide">Instructions<textarea id="task-instruction" rows="3" maxlength="8000" required placeholder="Describe the deliverable, context and constraints…"></textarea></label>
+    <label>Priority<select id="task-priority"><option value="normal">Normal</option><option value="high">High</option><option value="low">Low</option></select></label>
+    <div class="task-submit"><button class="send-btn" id="queue-task" type="submit">Queue task ↗</button><small id="task-message" aria-live="polite"></small></div>
+  </form>
+</div>
+<div class="panel task-panel">
+  <div class="section-head"><h2>TASK QUEUE</h2><button class="refresh-btn" id="refresh-tasks" type="button">↻ Refresh</button></div>
+  <div id="task-list" class="task-list"><div class="empty"><span>◈</span><b>No queued tasks</b><small>Create a task to begin.</small></div></div>
+</div>
 </section>
 <footer><span>© IZAKHONO AFRICA (PTY) LTD</span><span>OWNED-FIRST · SECURE-BY-DESIGN · AFRICAN-FIRST</span></footer>
 </main>
