@@ -48,6 +48,7 @@ import { buildCreatePaymentLink, verifyIkhokhaWebhook, isValidPaymentNotificatio
 
 const signedRequest = buildCreatePaymentLink({
   appId: 'APP-TEST',
+  entityId: 'MERCHANT-ENTITY-1',
   appSecret: 'test-secret',
   callbackUrl: 'https://example.test/api/ikhokha/callback',
   successUrl: 'https://example.test/paid',
@@ -62,7 +63,7 @@ assert.equal(JSON.parse(signedRequest.bodyText).amount, 14900);
 assert.equal(JSON.parse(signedRequest.bodyText).externalTransactionID, 'BOM-ORDER-001');
 assert.ok(/^[a-f0-9]{64}$/.test(signedRequest.headers['IK-SIGN']));
 assert.throws(() => buildCreatePaymentLink({
-  appId: 'APP-TEST', appSecret: 'test-secret',
+  appId: 'APP-TEST', entityId: 'MERCHANT-ENTITY-1', appSecret: 'test-secret',
   callbackUrl: 'https://example.test/callback', successUrl: 'https://example.test/paid',
   failureUrl: 'https://example.test/failed', requesterUrl: 'https://example.test',
   externalTransactionId: 'BOM-ORDER-002', customerReference: 'BOM-CUSTOMER-001', amount: 100,
