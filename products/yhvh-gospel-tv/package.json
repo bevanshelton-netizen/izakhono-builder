@@ -6,6 +6,6 @@
   "scripts": {
     "start": "node server.mjs",
     "check": "node --check server.mjs",
-    "test": "node --test playout/broadcast-runtime.test.mjs"
+    "test": "node --test"
   }
 }
