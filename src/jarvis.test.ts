@@ -22,7 +22,8 @@ async function call(db: FakeDatabase, path: string, method = 'GET', body?: unkno
   return jarvisRoute(req, env(db) as any, new URL(req.url), async () => authorized);
 }
 
-async function main() {\n  {
+async function main() {
+  {
     const db = new FakeDatabase();
     const result = await call(db, '/api/jarvis/v1/executive');
     assert.equal(result?.status, 200);
