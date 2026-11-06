@@ -61,7 +61,8 @@
     "model-runtime:test": "node products/izakhono-ai-runtime/validate.mjs && node products/izakhono-ai-runtime/provision.test.mjs",
     "jarvis:typecheck": "tsc --noEmit --target ES2022 --lib ES2022,DOM --module NodeNext --moduleResolution NodeNext src/jarvis.ts",
     "jarvis:test": "npx --yes tsx@4.20.3 src/jarvis.test.ts",
-    "jarvis:validate": "npm run jarvis:typecheck && npm run jarvis:test && node --check public/jarvis/jarvis.js"
+    "jarvis:validate": "npm run jarvis:typecheck && npm run jarvis:test && node --check public/jarvis/jarvis.js",
+    "validate:host": "tsc --noEmit --target ES2022 --lib ES2022,DOM,DOM.Iterable --module ESNext products/izakhono-host/src/index.ts"
   },
   "dependencies": {
     "wrangler": "4.127.1"
