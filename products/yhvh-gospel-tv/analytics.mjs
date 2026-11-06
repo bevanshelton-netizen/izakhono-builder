@@ -1,13 +1,14 @@
 import crypto from 'node:crypto';
 
 const ALLOWED_EVENTS = new Set(['page_view', 'player_start']);
+const localDateKey = (date) => new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Johannesburg', year: 'numeric', month: '2-digit', day: '2-digit' }).format(date);
 
 export function recordAnalyticsEvent(analytics, { event, sessionId, now = new Date() }) {
   if (!ALLOWED_EVENTS.has(event)) throw new Error('invalid_analytics_event');
   if (typeof sessionId !== 'string' || !/^[a-zA-Z0-9-]{20,80}$/.test(sessionId)) {
     throw new Error('invalid_analytics_session');
   }
-  const date = now.toISOString().slice(0, 10);
+  const date = localDateKey(now);
   analytics.days = Array.isArray(analytics.days) ? analytics.days : [];
   let day = analytics.days.find((entry) => entry.date === date);
   if (!day) {
@@ -18,13 +19,13 @@ export function recordAnalyticsEvent(analytics, { event, sessionId, now = new Da
   if (!day.sessionHashes.includes(digest)) day.sessionHashes.push(digest);
   if (event === 'page_view') day.pageViews += 1;
   if (event === 'player_start') day.playerStarts += 1;
-  analytics.days = analytics.days.filter((entry) => entry.date >= new Date(now.getTime() - 29 * 86400000).toISOString().slice(0, 10));
+  analytics.days = analytics.days.filter((entry) => entry.date >= localDateKey(new Date(now.getTime() - 29 * 86400000)));
   return { accepted: true, date };
 }
 
-export function analyticsSummary(analytics, days = 30) {
+export function analyticsSummary(analytics, days = 30, now = new Date()) {
   const all = Array.isArray(analytics?.days) ? analytics.days : [];
-  const cutoff = new Date(Date.now() - (days - 1) * 86400000).toISOString().slice(0, 10);
+  const cutoff = localDateKey(new Date(now.getTime() - (days - 1) * 86400000));
   const selected = all.filter((entry) => entry.date >= cutoff).sort((a, b) => a.date.localeCompare(b.date));
   return {
     periodDays: days,
