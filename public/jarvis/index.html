@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#07120f"><meta name="description" content="IZAKHONO J.A.R.V.I.S. executive command centre">
+<title>J.A.R.V.I.S. — IZAKHONO</title><link rel="stylesheet" href="/jarvis/app.css">
+</head>
+<body>
+<div class="shell">
+<aside class="rail">
+  <a class="brand" href="/jarvis/"><span class="brand-mark">I</span><span>IZAKHONO<small>EXECUTIVE SYSTEMS</small></span></a>
+  <div class="rail-label">COMMAND</div><a class="nav active" href="#overview">◈ <span>Overview</span></a>
+  <a class="nav" href="#portfolio">▦ <span>Portfolio</span></a><a class="nav" href="#integrations">⌁ <span>Integrations</span></a>
+  <div class="rail-bottom"><span class="pulse"></span> PRIVATE WORKSPACE<br><small>Owner access required</small></div>
+</aside>
+<main>
+<header><div><div class="eyebrow">IZAKHONO AFRICA / EXECUTIVE INTELLIGENCE</div><h1>J.A.R.V.I.S.</h1><p class="sub">Your command centre. One view of the portfolio.</p></div><div class="header-actions"><span id="connection" class="connection">● NOT CONNECTED</span><button id="refresh" class="ghost">↻ Refresh</button></div></header>
+<section class="welcome"><div><div class="eyebrow">EXECUTIVE OVERVIEW</div><h2>Good to have you back.</h2><p>Verified operational visibility, without invented numbers.</p></div><div class="clock" id="observed">AWAITING SECURE CONNECTION</div></section>
+<section class="metrics" id="overview">
+ <article class="metric"><span>PORTFOLIO PROJECTS</span><strong id="total">—</strong><small>Recorded in Builder D1</small></article>
+ <article class="metric"><span>ACTIVE BUILD PIPELINE</span><strong id="pipeline">—</strong><small>Draft, planned and building</small></article>
+ <article class="metric"><span>DEPLOYED PROJECTS</span><strong id="deployed">—</strong><small>Builder status records only</small></article>
+ <article class="metric"><span>REVENUE / CASH</span><strong class="muted">Unavailable</strong><small>Finance adapter not connected</small></article>
+</section>
+<section class="columns">
+ <article class="panel" id="portfolio"><div class="panel-head"><div><div class="eyebrow">PORTFOLIO INTELLIGENCE</div><h3>Project status</h3></div><span class="tag">LIVE D1 READ</span></div><div id="status-list" class="status-list"><p class="empty">Connect as owner to load verified portfolio data.</p></div></article>
+ <article class="panel" id="integrations"><div class="panel-head"><div><div class="eyebrow">SYSTEM CONNECTIONS</div><h3>Integration health</h3></div><span class="tag">HONEST STATUS</span></div><div class="integrations">
+ <div><span>Finance</span><b>Not connected</b></div><div><span>Email</span><b>Not connected</b></div><div><span>CRM</span><b>Not connected</b></div><div><span>Manufacturing</span><b>Not connected</b></div><div><span>Education</span><b>Not connected</b></div></div></article>
+</section>
+<section class="panel security"><div><div class="eyebrow">SECURE OWNER SESSION</div><h3>Connect to your executive snapshot</h3><p>Your existing Builder owner secret is sent only to the same-origin API. It is held in memory for this page session and is not saved in browser storage.</p></div><form id="connect-form"><label for="secret">Owner access key</label><input id="secret" type="password" autocomplete="current-password" required placeholder="Enter owner access key"><button type="submit">Connect securely</button><span id="message" role="status"></span></form></section>
+<footer>IZAKHONO J.A.R.V.I.S. <span>Read-only foundation · External actions disabled</span></footer>
+</main></div><script src="/jarvis/app.js" defer></script>
+</body></html>
