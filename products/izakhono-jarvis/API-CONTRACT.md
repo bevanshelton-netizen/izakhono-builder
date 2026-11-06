@@ -131,3 +131,10 @@ Search is always filtered by authenticated tenant, user scope, project scope and
 ## Owner-facing context manager
 
 The authenticated command centre includes a Context Manager. Owners can create company-wide or project-specific records, choose a record type, add tags, filter the library and refresh it. Each record card has an explicit checkbox to attach that record to the next task submission. The task form submits only checked record IDs; the server validates every ID against the current owner and tenant before creating the task. The UI does not offer deletion or editing because retention and correction policy is not yet defined.
+
+
+## Executive intelligence snapshot
+
+- `GET /api/jarvis/v1/executive` returns owner-scoped task counts, action proposal counts, company/project knowledge counts, latest knowledge update, query timestamp and source readiness.
+- The endpoint aggregates only J.A.R.V.I.S. D1 records. Finance, email, CRM, manufacturing and education connectors are explicitly reported as not connected and not authorised until separately configured.
+- No external company KPIs are estimated or inferred. Each response includes scope and limitations; source freshness is reported separately from record update time.
