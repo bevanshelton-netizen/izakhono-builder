@@ -26,6 +26,4 @@ jobs:
           node-version: 22
       - run: npx --yes tsx@4.20.3 products/izakhono-jarvis/src/api.test.ts
       - run: npx --yes tsx@4.20.3 products/izakhono-jarvis/src/agents.test.ts
-      - run: npx --yes -p typescript@5.9.2 tsc --noEmit --target ES2022 --lib ES2022,DOM --module ESNext products/izakhono-jarvis/src/agents.ts
-      - run: npx --yes tsx@4.20.3 products/izakhono-jarvis/src/agents.test.ts
       - run: npx --yes -p typescript@5.9.2 tsc --noEmit --target ES2022 --lib ES2022,DOM --module ESNext products/izakhono-jarvis/src/api.ts products/izakhono-jarvis/src/agents.ts
