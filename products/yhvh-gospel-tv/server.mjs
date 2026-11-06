@@ -222,6 +222,29 @@ function contentQueue() {
   const byId=new Map(inspected.map((x)=>[x.id,x]));
   return m.items.map((x)=>byId.get(x.id)||{...x,eligible:false,blockedReasons:['inspection_unavailable']});
 }
+function decideSponsorSlot(b) {
+  const id=clean(b.id,100);
+  const item=state.sponsorSlots.find((x)=>x.id===id);
+  if (!item) throw new Error('sponsor_slot_not_found');
+  const allowed=['PROPOSAL','UNDER_REVIEW','APPROVED','SCHEDULED','DELIVERED','INVOICED','PAID','DECLINED'];
+  if (b.status!==undefined) {
+    const status=clean(b.status,24).toUpperCase();
+    if (!allowed.includes(status)) throw new Error('invalid_sponsor_status');
+    if (status==='PAID' && !clean(b.paymentReference??item.paymentReference,120)) throw new Error('payment_reference_required');
+    item.status=status;
+  }
+  if (b.valueZar!==undefined) {
+    const value=Number(b.valueZar);
+    if (!Number.isFinite(value) || value<0 || value>1000000000) throw new Error('invalid_sponsor_value');
+    item.valueZar=Math.round(value*100)/100;
+  }
+  if (b.paymentReference!==undefined) item.paymentReference=clean(b.paymentReference,120);
+  if (b.campaignReference!==undefined) item.campaignReference=clean(b.campaignReference,120);
+  item.updatedAt=new Date().toISOString();
+  saveState(state);
+  audit('sponsor_slot_updated',{id:item.id,status:item.status,valueZar:item.valueZar??null});
+  return item;
+}
 function dashboard() {
   const {current,next,index}=currentSchedule();
   return {ok:true,station:stationName,tagline:'FAITH. WORSHIP. WORD. — AFRICA TO THE WORLD.',runtime:'izakhono-owned',automation:state.automation,emergency:state.emergency,live:Boolean(liveUrl),liveUrl:liveUrl||null,current,next,index,schedule,playout:playout.snapshot(),broadcast:broadcast.snapshot(),counts:{submissions:state.submissions.length,events:state.events.length,sponsorSlots:state.sponsorSlots.length,audit:state.audit.length},recent:{submissions:state.submissions.slice(0,12),events:state.events.slice(0,12),sponsorSlots:state.sponsorSlots.slice(0,12),audit:state.audit.slice(0,30)},serverTime:new Date().toISOString()};
@@ -261,6 +284,7 @@ const server = http.createServer(async (req, res) => {
       if (req.method==='POST' && p==='/api/control/submission') { const item=addSubmission(await body(req),'owner'); return json(res,201,{ok:true,item}); }
       if (req.method==='POST' && p==='/api/control/event') { const item=addEvent(await body(req)); return json(res,201,{ok:true,item}); }
       if (req.method==='POST' && p==='/api/control/sponsor-slot') { const item=addSponsorSlot(await body(req)); return json(res,201,{ok:true,item}); }
+      if (req.method==='POST' && p==='/api/control/sponsor-slot/decision') { const item=decideSponsorSlot(await body(req)); return json(res,200,{ok:true,item}); }
       return json(res,404,{ok:false,error:'control_route_not_found'});
     }
     if (req.method==='GET' && (p==='/' || p==='/index.html')) return html(res,'index.html');
