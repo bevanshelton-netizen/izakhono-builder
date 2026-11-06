@@ -129,7 +129,7 @@ export async function runNativeBuilder(task) {
     fs.mkdirSync(publicDir, { recursive: true });
     writeJson(path.join(publicDir, 'site-content.json'), { schema: 'izakhono.site-content/v1', ...generated.brief });
     writeText(path.join(publicDir, 'index.html'), renderSite(generated.brief));
-    writeText(path.join(publicDir, 'styles.css'), SITE_CSS + '\\n');
+    writeText(path.join(publicDir, 'styles.css'), SITE_CSS + '\n');
     return { status: 'completed', provider: 'izakhono-native', generationMode: generated.mode, model: generated.model || null, evidence: evidence('site-generated', { html: true, css: true, structuredContent: true, modelBacked: generated.mode === 'local-model' }), ...artifactDetails(dir) };
   }
 
