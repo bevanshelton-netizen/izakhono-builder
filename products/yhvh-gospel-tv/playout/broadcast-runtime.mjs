@@ -7,6 +7,7 @@ const VIDEO_EXT = /\.(mp4|mkv|mov|webm|m4v)$/i;
 export class YhvhBroadcastRuntime {
   constructor({ vaultDir, hlsDir, rightsManifestPath, territory = 'ZA', outputUrl = '', standbySlate = false, autoRestart = true } = {}) {
     this.vaultDir = vaultDir || process.env.YHVH_CONTENT_VAULT || path.join(process.cwd(), 'content-vault');
+    fs.mkdirSync(this.vaultDir, { recursive: true });
     this.hlsDir = hlsDir || process.env.YHVH_HLS_DIR || path.join(process.cwd(), 'data', 'hls');
     this.rightsManifestPath = rightsManifestPath || process.env.YHVH_BROADCAST_MANIFEST || path.join(process.cwd(), 'playout', 'broadcast-inputs.json');
     this.territory = territory || process.env.YHVH_BROADCAST_TERRITORY || 'ZA';
@@ -28,11 +29,18 @@ export class YhvhBroadcastRuntime {
     const manifest = this.loadManifest();
     const rows = Array.isArray(manifest.items) ? manifest.items : [];
     const root = path.resolve(this.vaultDir) + path.sep;
+    const realRoot = fs.realpathSync(this.vaultDir) + path.sep;
     return rows.map((x) => {
-      const mediaPath = path.resolve(this.vaultDir, x?.path || '');
-      const insideVault = mediaPath.startsWith(root);
-      const fileExists = insideVault && fs.existsSync(mediaPath);
-      const videoType = VIDEO_EXT.test(mediaPath);
+      const candidatePath = path.resolve(this.vaultDir, x?.path || '');
+      const lexicalInside = candidatePath.startsWith(root);
+      let realMediaPath = null;
+      let fileExists = false;
+      if (lexicalInside && fs.existsSync(candidatePath)) {
+        realMediaPath = fs.realpathSync(candidatePath);
+        fileExists = realMediaPath.startsWith(realRoot) && fs.statSync(realMediaPath).isFile();
+      }
+      const insideVault = lexicalInside && (!realMediaPath || realMediaPath.startsWith(realRoot));
+      const videoType = VIDEO_EXT.test(candidatePath);
       const territoryClear = Array.isArray(x?.territories) && x.territories.includes(this.territory);
       const reasons = [];
       if (x?.status !== 'READY') reasons.push('status_not_ready');
@@ -42,10 +50,9 @@ export class YhvhBroadcastRuntime {
       if (!insideVault) reasons.push('path_outside_vault');
       if (!fileExists) reasons.push('media_missing');
       if (!videoType) reasons.push('unsupported_media_type');
-      return { ...x, mediaPath: insideVault ? mediaPath : null, fileExists, territoryClear, eligible: reasons.length === 0, blockedReasons: reasons };
+      return { ...x, mediaPath: fileExists ? realMediaPath : null, fileExists, territoryClear, eligible: reasons.length === 0, blockedReasons: reasons };
     });
   }
-
   approvedInputs() { return this.inspectInputs().filter((x) => x.eligible); }
 
   buildConcatFile(inputs) {
