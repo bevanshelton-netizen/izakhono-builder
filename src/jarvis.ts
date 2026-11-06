@@ -393,6 +393,46 @@ export async function jarvisRoute(
     });
   }
 
+  if (path === '/api/jarvis/v1/executive' && req.method === 'GET') {
+    const metrics = await env.DB.prepare(`SELECT
+      (SELECT COUNT(*) FROM jarvis_tasks WHERE tenant_id=? AND owner_user_id=? AND status='queued') AS queued_tasks,
+      (SELECT COUNT(*) FROM jarvis_tasks WHERE tenant_id=? AND owner_user_id=? AND status='running') AS running_tasks,
+      (SELECT COUNT(*) FROM jarvis_tasks WHERE tenant_id=? AND owner_user_id=? AND status='retry_wait') AS retry_tasks,
+      (SELECT COUNT(*) FROM jarvis_tasks WHERE tenant_id=? AND owner_user_id=? AND status='completed') AS completed_tasks,
+      (SELECT COUNT(*) FROM jarvis_tasks WHERE tenant_id=? AND owner_user_id=? AND status='failed') AS failed_tasks,
+      (SELECT COUNT(*) FROM jarvis_action_proposals WHERE tenant_id=? AND owner_user_id=? AND status='proposed') AS pending_proposals,
+      (SELECT COUNT(*) FROM jarvis_action_proposals WHERE tenant_id=? AND owner_user_id=? AND status='approved') AS approved_proposals,
+      (SELECT COUNT(*) FROM jarvis_context_records WHERE tenant_id=? AND owner_user_id=? AND scope='company') AS company_records,
+      (SELECT COUNT(*) FROM jarvis_context_records WHERE tenant_id=? AND owner_user_id=? AND scope='project') AS project_records,
+      (SELECT MAX(updated_at) FROM jarvis_context_records WHERE tenant_id=? AND owner_user_id=?) AS latest_context_update`)
+      .bind(TENANT,owner,TENANT,owner,TENANT,owner,TENANT,owner,TENANT,owner,TENANT,owner,TENANT,owner,TENANT,owner,TENANT,owner).first<any>();
+    const intelligenceConfigured = Boolean(env.IZAKHONO_SUPER_AI_URL && env.IZAKHONO_SUPER_AI_INTERNAL_KEY && env.IZAKHONO_SUPER_AI_WORKFLOW_KEY);
+    return response({
+      ok: true,
+      as_of: new Date().toISOString(),
+      scope: 'owner-scoped J.A.R.V.I.S. operational records only',
+      metrics: {
+        tasks: {
+          queued: Number(metrics?.queued_tasks || 0), running: Number(metrics?.running_tasks || 0),
+          retry_wait: Number(metrics?.retry_tasks || 0), completed: Number(metrics?.completed_tasks || 0),
+          failed: Number(metrics?.failed_tasks || 0),
+        },
+        proposals: { pending: Number(metrics?.pending_proposals || 0), approved: Number(metrics?.approved_proposals || 0) },
+        knowledge: { company_records: Number(metrics?.company_records || 0), project_records: Number(metrics?.project_records || 0), latest_update: metrics?.latest_context_update || null },
+      },
+      sources: [
+        { id: 'jarvis-d1', name: 'J.A.R.V.I.S. operational database', status: 'connected', access: 'read-only aggregation', freshness: 'queried-at-request' },
+        { id: 'super-ai', name: 'IZAKHONO SUPER AI gateway', status: intelligenceConfigured ? 'configured' : 'not-connected', access: 'reasoning gateway only' },
+        { id: 'finance', name: 'Finance and payment systems', status: 'not-connected', access: 'not authorised' },
+        { id: 'email', name: 'Business email', status: 'not-connected', access: 'not authorised' },
+        { id: 'crm', name: 'CRM and customer operations', status: 'not-connected', access: 'not authorised' },
+        { id: 'manufacturing', name: 'Manufacturing and inventory', status: 'not-connected', access: 'not authorised' },
+        { id: 'education', name: 'Education and campus operations', status: 'not-connected', access: 'not authorised' },
+      ],
+      limitations: ['This endpoint reports J.A.R.V.I.S. records only.', 'No external financial or operating KPIs are inferred.', 'Connector data requires explicit account selection and read-only authorisation.'],
+    });
+  }
+
   if (path === '/api/jarvis/v1/conversations' && req.method === 'GET') {
     const rows = await env.DB.prepare(`SELECT id,title,status,created_at,updated_at
       FROM jarvis_conversations WHERE tenant_id=? AND owner_user_id=?
