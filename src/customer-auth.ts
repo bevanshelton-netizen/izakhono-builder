@@ -63,9 +63,7 @@ export async function verifyCustomerPassword(password: string, stored: string): 
     const expected = fromHex(parts[3]);
     if (expected.length !== KEY_BYTES) return false;
     const actual = await derive(password, fromHex(parts[2]), iterations);
-    return crypto.subtle.timingSafeEqual
-      ? crypto.subtle.timingSafeEqual(actual, expected)
-      : actual.reduce((diff, byte, index) => diff | (byte ^ expected[index]), 0) === 0;
+    return actual.reduce((diff, byte, index) => diff | (byte ^ expected[index]), 0) === 0;
   } catch {
     return false;
   }
