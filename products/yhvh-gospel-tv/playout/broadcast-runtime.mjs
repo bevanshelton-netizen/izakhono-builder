@@ -13,6 +13,7 @@ export class YhvhBroadcastRuntime {
     this.outputUrl = outputUrl || process.env.YHVH_RTMP_URL || '';
     this.standbySlate = standbySlate ?? process.env.YHVH_STANDBY_SLATE === 'true';
     this.autoRestart = autoRestart ?? process.env.YHVH_AUTO_RESTART !== 'false';
+    this.manualStop = false;
     this.child = null;
     this.startedAt = null;
     this.lastExit = null;
@@ -75,6 +76,7 @@ export class YhvhBroadcastRuntime {
 
   start({ allowStandby = this.standbySlate } = {}) {
     if (this.child) return { ok: true, alreadyRunning: true, pid: this.child.pid };
+    this.manualStop = false;
     const previous = this.standbySlate;
     this.standbySlate = allowStandby;
     let inputs;
@@ -87,10 +89,15 @@ export class YhvhBroadcastRuntime {
     this.lastStderr = '';
     this.lastStartMode = cmd.mode;
     this.child.stderr.on('data', (b) => { this.lastStderr = (this.lastStderr + String(b)).slice(-4000); });
+    this.child.on('error', (error) => {
+      this.lastStderr = String(error?.message || error).slice(-4000);
+      this.lastExit = { code: null, signal: null, at: new Date().toISOString(), error: this.lastStderr };
+      this.child = null;
+    });
     this.child.on('exit', (code, signal) => {
       this.lastExit = { code, signal, at: new Date().toISOString() };
       this.child = null;
-      if (this.autoRestart && code !== 0) {
+      if (this.autoRestart && !this.manualStop && code !== 0) {
         clearTimeout(this.restartTimer);
         this.restartTimer = setTimeout(() => { try { this.start({ allowStandby: this.standbySlate }); } catch (e) { this.lastStderr = String(e?.message || e); } }, 3000);
       }
@@ -101,8 +108,8 @@ export class YhvhBroadcastRuntime {
   stop() {
     clearTimeout(this.restartTimer);
     this.restartTimer = null;
+    this.manualStop = true;
     if (!this.child) return { ok: true, stopped: false, reason: 'not_running' };
-    this.autoRestart = false;
     this.child.kill('SIGTERM');
     return { ok: true, stopped: true };
   }
