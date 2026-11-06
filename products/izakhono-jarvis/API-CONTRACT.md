@@ -101,6 +101,17 @@ The Worker Cron Trigger runs every minute and invokes the J.A.R.V.I.S. scheduled
 - If a prerequisite reaches `failed` or `cancelled`, the scheduled dispatcher marks dependent queued work `failed` with `dependency-failed`.
 - Dependency edges are persisted in `jarvis_task_dependencies`; task creation is naturally acyclic because new tasks can only depend on already-existing tasks.
 
+
+## Shared company and project context
+
+- `GET /api/jarvis/v1/context?scope=company` lists owner-scoped company context records.
+- `GET /api/jarvis/v1/context?scope=project&project_id=...` lists context for a specific project.
+- `POST /api/jarvis/v1/context` creates a company or project context record with a record type, title, content and optional tags.
+- Company records have no project ID; project records require one. Records are always scoped to the authenticated tenant and owner.
+- `POST /api/jarvis/v1/tasks` accepts an optional `context_ids` array of up to 20 record IDs. Every ID is validated against the authenticated owner before the task is created.
+- Both manual and scheduled execution retrieve only the task's explicitly linked context records, re-checking tenant and owner scope. Context is labelled as reference data, not agent instructions, and capped at 16,000 characters per task.
+- Context is not silently injected into unrelated tasks. No external company systems are read or modified by this feature.
+
 ## Memory
 
 `GET /api/jarvis/v1/memory/search?q=...`
