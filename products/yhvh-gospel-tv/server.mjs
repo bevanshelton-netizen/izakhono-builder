@@ -17,6 +17,7 @@ const port = Number(process.env.PORT || 8787);
 const host = process.env.HOST || '0.0.0.0';
 const controlToken = process.env.YHVH_CONTROL_TOKEN || '';
 const liveUrl = process.env.YHVH_LIVE_URL || '';
+const vaultDir = process.env.YHVH_CONTENT_VAULT || path.join(__dirname, 'content-vault');
 const stationName = 'YHVH GOSPEL TV';
 const intakeWindowMs = 60 * 60 * 1000;
 const intakeLimit = 12;
@@ -45,7 +46,6 @@ function loadState() {
 function saveState(nextState) { fs.writeFileSync(stateFile, JSON.stringify(nextState, null, 2)); }
 let state = loadState();
 
-const vaultDir = process.env.YHVH_CONTENT_VAULT || path.join(__dirname, 'content-vault');
 const playout = createPlayoutEngine({
   manifestPath: path.join(__dirname, 'playout', 'playlist.json'),
   vaultDir
