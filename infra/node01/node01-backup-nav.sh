@@ -22,7 +22,7 @@ BACKUP_ROOT="$(cd "$BACKUP_ROOT" && pwd)"
 chmod 0700 "$BACKUP_ROOT"
 # Keep the lock inside the private backup directory, not shared /tmp. Refuse
 # symlinked lock paths and use append mode so opening the lock never truncates it.
-LOCK_FILE="${NODE01_BACKUP_LOCK:-$BACKUP_ROOT/.backup.lock}"
+LOCK_FILE="$BACKUP_ROOT/.backup.lock"
 [[ ! -L "$LOCK_FILE" ]] || { echo "ERROR: backup lock must not be a symlink: $LOCK_FILE" >&2; exit 1; }
 exec 9>>"$LOCK_FILE"
 chmod 0600 "$LOCK_FILE"
