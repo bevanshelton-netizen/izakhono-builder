@@ -11,6 +11,12 @@ const probes = createNode01MailReadinessProbes({
   server,
   persistence,
   registry: { dkimSelectors: ["google"] },
+  dnsResolver: {
+    resolveTxt: async (name) => {
+      if (name === "google._domainkey.gmail.com") return [["v=DKIM1; k=rsa; p=ZmFrZS1rZXktZm9yLXRlc3Q="]];
+      throw new Error("UNEXPECTED_TEST_DNS_QUERY:" + name);
+    },
+  },
 });
 
 assert.equal((await probes.runtime()).ok, true);
