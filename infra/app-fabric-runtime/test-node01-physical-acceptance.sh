@@ -11,6 +11,15 @@ grep -q 'IZAKHONO_ACCEPTANCE_VERIFIED' "$SCRIPT" || { echo '[FAIL] independent a
 grep -q 'physical_host_is_separate.*true' "$SCRIPT" || { echo '[FAIL] physical host separation evidence missing'; exit 1; }
 grep -q 'artifact_digest_verified.*true' "$SCRIPT" || { echo '[FAIL] immutable digest evidence missing'; exit 1; }
 grep -q 'docker network inspect izakhono-edge' "$SCRIPT" || { echo '[FAIL] edge network verification missing'; exit 1; }
+grep -q 'docker compose version' "$SCRIPT" || { echo '[FAIL] Docker Compose plugin verification missing'; exit 1; }
+if grep -q 'command -v docker compose' "$SCRIPT"; then
+  echo '[FAIL] invalid Docker Compose executable check remains'
+  exit 1
+fi
+if grep -q 'curl -k' "$SCRIPT"; then
+  echo '[FAIL] TLS certificate verification must not be bypassed'
+  exit 1
+fi
 grep -q 'RELEASE_ADAPTER' "$SCRIPT" || { echo '[FAIL] release adapter verification missing'; exit 1; }
 
 # The collector requires root, live runtime checks, HTTPS, exact digest and
