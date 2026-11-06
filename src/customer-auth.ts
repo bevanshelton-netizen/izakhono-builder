@@ -110,3 +110,44 @@ export async function revokeCustomerSession(db: CustomerAuthDB, token: string, n
   await db.prepare('UPDATE builder_customer_sessions SET revoked_at=? WHERE token_hash=? AND revoked_at IS NULL')
     .bind(now.toISOString(), await digest(token)).run();
 }
+
+const EMAIL_VERIFICATION_TTL_SECONDS = 60 * 30;
+
+/** Creates a one-time email verification token; only its SHA-256 digest is persisted. */
+export async function createEmailVerificationToken(
+  db: CustomerAuthDB,
+  customerId: string,
+  now = new Date(),
+): Promise<{ token: string; expiresAt: string }> {
+  const token = randomHex(32);
+  const expiresAt = new Date(now.getTime() + EMAIL_VERIFICATION_TTL_SECONDS * 1000).toISOString();
+  await db.prepare(
+    'INSERT INTO builder_email_verification_tokens(id,customer_id,token_hash,expires_at,created_at) VALUES(?,?,?,?,?)',
+  ).bind(`bevt_${randomHex(16)}`, customerId, await digest(token), expiresAt, now.toISOString()).run();
+  return { token, expiresAt };
+}
+
+/** Atomically consumes a valid token and activates only its matching pending customer. */
+export async function consumeEmailVerificationToken(
+  db: CustomerAuthDB,
+  token: string,
+  now = new Date(),
+): Promise<string | null> {
+  if (!/^[a-f0-9]{64}$/i.test(token)) return null;
+  const consumed = await db.prepare(
+    `UPDATE builder_email_verification_tokens
+     SET used_at=?
+     WHERE token_hash=? AND used_at IS NULL AND expires_at>?
+     RETURNING customer_id`,
+  ).bind(now.toISOString(), await digest(token), now.toISOString()).first<{ customer_id: string }>();
+  if (!consumed?.customer_id) return null;
+  const activated = await db.prepare(
+    `UPDATE builder_customers SET status='active',email_verified_at=?,updated_at=?
+     WHERE id=? AND status='pending_verification'`,
+  ).bind(now.toISOString(), now.toISOString(), consumed.customer_id).run();
+  // A token for a customer no longer awaiting verification must not grant access.
+  const check = await db.prepare(
+    "SELECT id FROM builder_customers WHERE id=? AND status='active' AND email_verified_at=?",
+  ).bind(consumed.customer_id, now.toISOString()).first<{ id: string }>();
+  return check?.id || null;
+}
