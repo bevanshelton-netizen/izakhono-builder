@@ -146,9 +146,7 @@ export class NativeBuilderCore {
     const job = await this.requireJob(jobId);
     if (job.requiresApproval && !job.approvedBy && next !== "awaiting_approval" && next !== "cancelled") {
       if (job.status === "queued" || job.status === "planning") {
-        if (next !== "awaiting_approval") {
-          throw new BuilderError("Approval is required before execution.", "APPROVAL_REQUIRED");
-        }
+        throw new BuilderError("Approval is required before execution.", "APPROVAL_REQUIRED");
       }
     }
     if (job.status === "queued" && next !== "planning" && next !== "cancelled") {
