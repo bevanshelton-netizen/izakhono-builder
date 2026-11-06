@@ -1,4 +1,5 @@
 import secureApp from './secure';
+import { jarvisExecutiveSnapshotRoute } from '../products/izakhono-jarvis/src/api';
 import { ventureFactoryRoute } from './venture-factory';
 import { reviewLoopRoute } from './reviewloop';
 import { bidForgeRoute } from './bidforge';
@@ -1316,6 +1317,9 @@ async function publicAiCoreHost(req: Request, env: any, url: URL): Promise<Respo
 export default {
   async fetch(req: Request, env: any): Promise<Response> {
     const url = new URL(req.url);
+
+    const jarvisSnapshot = await jarvisExecutiveSnapshotRoute(req, env, () => ownerAuthorized(req, env));
+    if (jarvisSnapshot) return jarvisSnapshot;
 
     const commandsApi = await commandApiRoute(req, env, url);
     if (commandsApi) return commandsApi;
