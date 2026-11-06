@@ -57,7 +57,7 @@ Run `npm run jarvis:validate` to type-check the API, run the agent orchestration
 
 The current agent engine adds a durable D1 task queue and a small specialist-agent registry: J.A.R.V.I.S. Coordinator, Business Analyst, Research Briefing Agent, Project Planner and Reporting Agent. Tasks are tenant/owner scoped, type-checked against the selected agent, idempotent when a client key is supplied, prioritized, auditable and tracked through queued, running, retry-wait, completed, failed and cancelled states. A conditional database update claims queued work to reduce duplicate execution. Recoverable reasoning-gateway failures receive bounded exponential retry windows (up to three attempts).
 
-The owner API exposes agent discovery, task creation/listing/detail, explicit run and cancellation endpoints under `/api/jarvis/v1/agents` and `/api/jarvis/v1/tasks`. The command-centre now includes an Agent Workspace for queuing and running tasks and viewing results.
+The owner API exposes agent discovery, task creation/listing/detail, explicit run and cancellation endpoints under `/api/jarvis/v1/agents` and `/api/jarvis/v1/tasks`. The command-centre includes an Agent Workspace for queuing and running tasks and viewing results, plus an owner-facing Context Manager for creating and filtering company/project records and selecting records to attach to a task.
 
 **Execution boundary:** these agents are currently reasoning-only. They have no web, email, filesystem, shell, repository-write, payment, CRM, publishing or deployment tools. A task runs only when the owner explicitly selects Run agent. Cancellation marks the durable task cancelled; it cannot forcibly terminate a model request already in flight, and any late result is discarded. Automatic background dispatch and parallel worker execution are not enabled yet. Consequential tools require a separate immutable action proposal and owner approval workflow before any adapter is connected.
 
@@ -91,7 +91,7 @@ This is bounded scheduled concurrency, not an unlimited agent swarm. It is only 
 
 J.A.R.V.I.S. now supports owner-scoped company and project context records. The owner can create typed records through the context API, list them by scope, and explicitly attach up to 20 records to a task. Both manual and scheduled agent runs retrieve only those linked records after re-validating tenant and owner identity. The context is reference material, not an instruction override, and the prompt payload is bounded.
 
-This is an explicit context library, not a live integration into accounting, HR, CRM, manufacturing or other company systems. The initial API is append/list only; record editing and removal require a separately designed retention and audit policy.
+The Context Manager in the owner command centre supports company/project scope, record types, tags, filtering and refresh. Owners can explicitly select records to attach to a task in the Agent Workspace; task creation sends only selected record IDs. This is an explicit context library, not a live integration into accounting, HR, CRM, manufacturing or other company systems. The initial API is append/list only; record editing and removal require a separately designed retention and audit policy.
 
 ## API contract (initial)
 
