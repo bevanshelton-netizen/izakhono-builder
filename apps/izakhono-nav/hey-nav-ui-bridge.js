@@ -21,11 +21,13 @@
       button.dataset.voiceState = label;
     }
 
-    button.addEventListener('click', function () {
+    // Replace the legacy inline welcome handler. Keeping both handlers caused
+    // the static greeting to cancel Hey NAV's actual "I'm listening" prompt.
+    button.onclick = function () {
       if (!root.IZAKHONO_NAV_VOICE) return;
       root.IZAKHONO_NAV_VOICE.activateByTap();
       try { root.IZAKHONO_NAV_VOICE.startWakeListener(); } catch (_) {}
-    });
+    };
 
     root.addEventListener('izakhono-nav-voice', function (event) {
       const detail = event.detail || {};
