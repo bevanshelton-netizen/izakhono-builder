@@ -23,6 +23,16 @@ YHVH_CONTROL_TOKEN='use-a-long-random-secret' YHVH_LIVE_URL='https://authorised.
 
 Open `/` for the public station, `/control` for owner operations, and `/creator` for creator intake.
 
+## Sponsor and commercial operations
+
+The owner Broadcast Control Center includes a sponsor-slot workflow with auditable stages:
+PROPOSAL, UNDER_REVIEW, APPROVED, SCHEDULED, DELIVERED, INVOICED, PAID and DECLINED.
+Owners may record an indicative campaign value in ZAR and a campaign / insertion-order reference.
+Moving a slot to PAID requires a payment reference to be recorded by an authorised owner.
+This is an operational record, not an automatic payment-gateway confirmation; reconcile the reference
+against the relevant payment provider or bank statement before marking a slot PAID.
+Sponsor participation does not override editorial, rights, safeguarding or scheduling decisions.
+
 ## Important
 
 The software does not manufacture broadcast rights or programme media. A real channel feed requires an authorised live/stream source and content whose rights, territory, language, safeguarding and editorial checks have passed. Until `YHVH_LIVE_URL` is configured, the public experience honestly presents the station as ready for feed activation rather than pretending video is live.
