@@ -169,3 +169,15 @@ Rules:
 - An integration must not send email, update records, move funds, publish content, change infrastructure or deploy code.
 - Missing source permissions must not be bypassed by scraping or by reading a different account.
 - The current implementation's Executive Snapshot remains D1-only. This section specifies a future integration boundary; it does not claim any external connector is live.
+
+
+### Source registry endpoint (Phase 12 scaffold)
+
+`GET /api/jarvis/v1/sources` returns the configured read-only account labels and current integration readiness. Optional Worker bindings:
+- `JARVIS_FINANCE_READONLY_ACCOUNT`
+- `JARVIS_EMAIL_READONLY_ACCOUNT`
+- `JARVIS_CRM_READONLY_ACCOUNT`
+- `JARVIS_MANUFACTURING_READONLY_ACCOUNT`
+- `JARVIS_EDUCATION_READONLY_ACCOUNT`
+
+A binding produces `configured-pending-adapter`, never `connected`. It is only an account-scope label and does not grant access or prove a provider connection. Until a provider-specific adapter is implemented and independently verified, `metrics` remains null, `source_updated_at` remains null and freshness remains `unknown`. Do not place credentials in these labels. The endpoint performs no outbound requests.
