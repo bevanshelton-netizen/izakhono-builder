@@ -132,3 +132,8 @@ Serve `public/jarvis/index.html` through the existing IZAKHONO Builder static as
 ## Release status
 
 Source is in the feature branch and draft PR #585. This is not a production deployment and does not establish that J.A.R.V.I.S. is publicly reachable.
+
+
+### Group portfolio intelligence dashboard
+
+The authenticated command centre now displays the IZAKHONO group portfolio register across manufacturing, education, furniture, industrial services, agriculture, media/market access, fashion and technology. Each entry is labelled as owner portfolio context; the dashboard explicitly states that live operational feeds are not connected. It does not infer revenue, cash, production, enrolment, staffing or delivery KPIs. Future read-only connectors must show source identity and last-updated time before metrics can be treated as current.
