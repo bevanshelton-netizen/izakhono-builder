@@ -76,6 +76,25 @@
   <div id="task-list" class="task-list"><div class="empty"><span>◈</span><b>No queued tasks</b><small>Create a task to begin.</small></div></div>
 </div>
 </section>
+<section class="context-workspace requires-auth">
+<div class="panel context-editor">
+  <div class="section-head"><h2>COMPANY & PROJECT KNOWLEDGE</h2><span>OWNER-MANAGED · SCOPED MEMORY</span></div>
+  <p class="agent-intro">Create durable reference records for IZAKHONO companies and projects. Records are visible only to this owner. Nothing is deleted from this panel.</p>
+  <form id="context-form" class="task-form">
+    <label>Knowledge scope<select id="context-scope"><option value="company">Company-wide</option><option value="project">Specific project</option></select></label>
+    <label>Project identifier<input id="context-project" maxlength="100" placeholder="e.g. kora-network" disabled></label>
+    <label>Record type<select id="context-type"><option value="company_profile">Company profile</option><option value="strategy">Strategy</option><option value="operating_policy">Operating policy</option><option value="project_brief">Project brief</option><option value="milestone">Milestone</option><option value="risk">Risk / blocker</option><option value="financial_reference">Financial reference</option><option value="other">Other reference</option></select></label>
+    <label>Record title<input id="context-title" maxlength="180" required placeholder="e.g. Izakhono Africa manufacturing profile"></label>
+    <label class="wide">Knowledge / reference content<textarea id="context-content" rows="4" maxlength="12000" required placeholder="Enter verified company or project information. Include dates and source where relevant."></textarea></label>
+    <label class="wide">Tags (comma separated)<input id="context-tags" maxlength="500" placeholder="manufacturing, uniforms, strategy"></label>
+    <div class="task-submit"><button class="send-btn" id="save-context" type="submit">Save knowledge record ↗</button><small id="context-message" aria-live="polite"></small></div>
+  </form>
+</div>
+<div class="panel context-library">
+  <div class="section-head"><h2>KNOWLEDGE LIBRARY</h2><div class="context-controls"><select id="context-filter"><option value="all">All records</option><option value="company">Company</option><option value="project">Project</option></select><button class="refresh-btn" id="refresh-context" type="button">↻ Refresh</button></div></div>
+  <div id="context-list" class="context-list"><div class="empty"><span>⌕</span><b>No knowledge records loaded</b><small>Sign in and refresh the library.</small></div></div>
+</div>
+</section>
 <section class="action-workspace requires-auth">
 <div class="panel">
   <div class="section-head"><h2>ACTION PROPOSALS & OWNER APPROVAL</h2><span>IMMUTABLE · NO EXECUTION ENABLED</span></div>
