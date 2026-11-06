@@ -1,0 +1,28 @@
+name: J.A.R.V.I.S. isolated validation
+
+on:
+  push:
+    branches: [feature/jarvis-mainline-rebuild]
+    paths:
+      - "products/izakhono-jarvis/**"
+      - "src/sovereign.ts"
+      - ".github/workflows/jarvis-mainline-validation.yml"
+  pull_request:
+    paths:
+      - "products/izakhono-jarvis/**"
+      - "src/sovereign.ts"
+      - ".github/workflows/jarvis-mainline-validation.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  jarvis:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npx --yes tsx@4.20.3 products/izakhono-jarvis/src/api.test.ts
+      - run: npx --yes typescript@5.9.2 --noEmit --target ES2022 --lib ES2022,DOM --module ESNext products/izakhono-jarvis/src/api.ts
