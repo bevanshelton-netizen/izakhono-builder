@@ -9,6 +9,7 @@ export function createNode01MailReadinessProbes({
   server,
   registry = {},
   persistence,
+  dnsResolver = dns,
 } = {}) {
   if (!runtime) throw new Error("MAIL_RUNTIME_REQUIRED");
   if (!server) throw new Error("MAIL_SERVER_REQUIRED");
@@ -16,6 +17,7 @@ export function createNode01MailReadinessProbes({
   const network = createNode01MailProbes({ domain, mailHost });
   const now = () => new Date().toISOString();
   const local = (gate, details = {}) => ({ ok: true, source: `node01-mail-probe:${gate}`, verifiedAt: now(), ...details });
+  const fail = (gate, reason) => ({ ok: false, source: `node01-mail-probe:${gate}`, verifiedAt: now(), reason });
 
   return {
     runtime: async () => {
@@ -33,7 +35,7 @@ export function createNode01MailReadinessProbes({
       if (!selectors.length) throw new Error("DKIM_SELECTOR_NOT_CONFIGURED");
       const verified = [];
       for (const selector of selectors) {
-        const records = await dns.resolveTxt(`${selector}._domainkey.${domain}`);
+        const records = await dnsResolver.resolveTxt(`${selector}._domainkey.${domain}`);
         const record = records.flat().find(value => /(?:^|;)\s*v=DKIM1\s*(?:;|$)|(?:^|;)\s*p=/i.test(value));
         if (!record || !/\bp=[A-Za-z0-9+/=]+/i.test(record)) throw new Error(`DKIM_KEY_NOT_FOUND:${selector}`);
         verified.push({ selector, record });
@@ -41,7 +43,7 @@ export function createNode01MailReadinessProbes({
       return local("dkim", { selectors: verified.map(item => item.selector), records: verified });
     },
     dmarc: async () => {
-      const records = await dns.resolveTxt(`_dmarc.${domain}`);
+      const records = await dnsResolver.resolveTxt(`_dmarc.${domain}`);
       const record = records.flat().find(value => /^v=dmarc1(?:;|$)/i.test(value.trim()));
       if (!record) throw new Error("DMARC_NOT_FOUND");
       const tags = Object.fromEntries(record.split(";").slice(1).map(part => part.trim().split(/=(.*)/s)).filter(pair => pair[0] && pair[1]).map(([key, value]) => [key.toLowerCase(), value.trim()]));
@@ -58,7 +60,7 @@ export function createNode01MailReadinessProbes({
     },
     identities: async () => {
       const count = Array.isArray(registry.platforms) ? registry.platforms.length : 0;
-      if (!count && !registry.addresses) throw new Error("MAIL_IDENTITIES_NOT_CONFIGURED");
+      if (!count && !registry.addresses) return fail("identities", "MAIL_IDENTITIES_NOT_CONFIGURED");
       return local("identities", { platformCount: count });
     },
   };

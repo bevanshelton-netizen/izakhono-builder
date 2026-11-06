@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#071321"><meta name="description" content="IZAKHONO J.A.R.V.I.S. intelligent command centre">
+<title>IZAKHONO J.A.R.V.I.S.</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./jarvis.css">
+</head>
+<body>
+<div class="shell">
+<aside class="sidebar">
+  <a class="brand" href="#"><span class="brand-mark">J</span><span><b>IZAKHONO</b><small>INTELLIGENCE SYSTEMS</small></span></a>
+  <div class="side-label">COMMAND</div>
+  <button class="nav active"><i>⌘</i> Command centre</button>
+  <button class="nav" data-toast="Conversation history will be connected to the memory service."><i>◷</i> Conversations</button>
+  <button class="nav" data-toast="Memory service is not connected in this preview."><i>◎</i> Memory</button>
+  <div class="side-label">CAPABILITIES</div>
+  <button class="nav" data-toast="Use the Agent Workspace below to queue and run reasoning-only tasks."><i>◈</i> AI agents</button>
+  <button class="nav" data-toast="Tool integrations are not connected in this preview."><i>⌁</i> Integrations</button>
+  <button class="nav" data-toast="Audit service is planned for milestone 2."><i>▤</i> Activity & audit</button>
+  <div class="side-bottom"><div class="node"><span class="pulse"></span><span><b>LOCAL PREVIEW</b><small>Engine not connected</small></span></div><div class="profile"><div class="avatar">IS</div><span><b>IZAKHONO OWNER</b><small>Administrator preview</small></span><span class="dots">•••</span></div></div>
+</aside>
+<main class="main">
+<header class="topbar"><div><span class="crumb">IZAKHONO /</span> COMMAND CENTRE</div><div class="top-right"><span class="preview-pill" id="connection-state">FOUNDATION PREVIEW</span><span class="clock" id="clock">--:--</span></div></header>
+<section class="welcome"><div><div class="eyebrow"><span class="pulse"></span> INTELLIGENCE AT YOUR COMMAND</div><h1>Good evening.<br><em>What are we building?</em></h1><p>One command centre for your companies, platforms, projects and operations.</p></div><div class="orb-wrap"><div class="orb"><div class="orb-core">J<span>.</span>A<span>.</span>R<span>.</span>V<span>.</span>I<span>.</span>S</div><div class="orbit o1"></div><div class="orbit o2"></div><div class="orbit o3"></div></div><div class="orb-caption">IZAKHONO INTELLIGENCE</div></div></section>
+<section class="auth-panel" id="auth-panel" hidden><div class="section-head"><h2>OWNER AUTHENTICATION</h2><span>SECURE SESSION</span></div><p>Sign in with the JARVIS owner access credential. It is sent only to this same-origin server endpoint and is never saved in the browser.</p><form id="login-form"><input id="login-secret" type="password" autocomplete="current-password" placeholder="JARVIS owner access credential" required><button class="send-btn" type="submit">Secure sign in ↗</button></form><small id="auth-message" aria-live="polite"></small></section>
+<section class="composer requires-auth">
+  <div class="composer-head"><span class="live-dot"></span><span>NEW COMMAND</span><span class="secure">⌑ PRIVATE PREVIEW</span></div>
+  <textarea id="prompt" rows="2" placeholder="Tell J.A.R.V.I.S. what you need... e.g. Prepare a group-wide operations report."></textarea>
+  <div class="composer-foot"><div class="tools"><button id="mic" class="icon-btn" title="Voice input" aria-label="Voice input">♩</button><span id="voice-status">Voice input depends on browser support</span></div><button id="send" class="send-btn">Submit command <span>↗</span></button></div>
+  <div class="demo-note">Preview only: commands are not sent to an AI engine or executed.</div>
+</section>
+<section class="quick requires-auth"><div class="section-head"><h2>QUICK COMMANDS</h2><span>DEMO PROMPTS</span></div><div class="quick-grid">
+<button class="quick-card" data-prompt="Prepare an overview of all IZAKHONO companies and current priorities."><span>◫</span><b>Company overview</b><small>Group-wide operations</small><i>↗</i></button>
+<button class="quick-card" data-prompt="Review the status of our active software projects and identify blockers."><span>◈</span><b>Project intelligence</b><small>Progress and blockers</small><i>↗</i></button>
+<button class="quick-card" data-prompt="Prepare a list of outstanding decisions and approvals."><span>✓</span><b>Pending decisions</b><small>Approvals and actions</small><i>↗</i></button>
+<button class="quick-card" data-prompt="Research opportunities to grow revenue across IZAKHONO."><span>⌁</span><b>Growth opportunities</b><small>Revenue and partnerships</small><i>↗</i></button>
+</div></section>
+<section class="lower requires-auth">
+<div class="panel"><div class="section-head"><h2>INTELLIGENCE MODULES</h2><span>PLANNED CAPABILITIES</span></div><div class="module-list">
+<div class="module"><span class="module-icon">◉</span><span><b>Voice interface</b><small>Speech input and spoken responses</small></span><span class="state">PROTOTYPE</span></div>
+<div class="module"><span class="module-icon">⌕</span><span><b>Knowledge memory</b><small>Scoped business and project context</small></span><span class="state muted">PLANNED</span></div>
+<div class="module"><span class="module-icon">◈</span><span><b>Agent orchestration</b><small>Specialist agents and task workflows</small></span><span class="state muted">PLANNED</span></div>
+<div class="module"><span class="module-icon">▣</span><span><b>Visual intelligence</b><small>Images, documents and screen context</small></span><span class="state muted">PLANNED</span></div>
+<div class="module"><span class="module-icon">⛨</span><span><b>FORTRESS security</b><small>Permissions, approvals and audit</small></span><span class="state muted">PLANNED</span></div>
+</div></div>
+<div class="panel activity"><div class="section-head"><h2>ACTIVITY</h2><span>THIS SESSION</span></div><div id="activity-list"><div class="empty"><span>◷</span><b>No commands yet</b><small>Your preview interactions will appear here.</small></div></div><div class="activity-foot">No external actions have been performed.</div></div>
+</section>
+<section class="agent-workspace requires-auth">
+<div class="panel agent-panel">
+  <div class="section-head"><h2>AGENT WORKSPACE</h2><span>CONTROLLED ORCHESTRATION · REASONING ONLY</span></div>
+  <p class="agent-intro">Assign a bounded task to a registered specialist. Agents currently reason over the instruction you provide; no external tools or business actions are enabled.</p>
+  <form id="task-form" class="task-form">
+    <label>Specialist agent<select id="agent-select" required>
+      <option value="coordinator">J.A.R.V.I.S. Coordinator</option>
+      <option value="business-analyst">Business Analyst</option>
+      <option value="research-briefing">Research Briefing Agent</option>
+      <option value="project-planner">Project Planner</option>
+      <option value="reporting">Reporting Agent</option>
+    </select></label>
+    <label>Task type<select id="task-type" required>
+      <option value="coordination">Coordination</option><option value="analysis">Analysis</option>
+      <option value="research_brief">Research brief</option><option value="business_report">Business report</option>
+      <option value="project_plan">Project plan</option>
+    </select></label>
+    <label class="wide">Task title<input id="task-title" maxlength="160" required placeholder="e.g. Prepare Izakhono group operating plan"></label>
+    <label class="wide">Instructions<textarea id="task-instruction" rows="3" maxlength="8000" required placeholder="Describe the deliverable, context and constraints…"></textarea></label>
+    <label>Priority<select id="task-priority"><option value="normal">Normal</option><option value="high">High</option><option value="low">Low</option></select></label>
+    <div class="task-submit"><button class="send-btn" id="queue-task" type="submit">Queue task ↗</button><small id="task-message" aria-live="polite"></small></div>
+  </form>
+</div>
+<div class="panel task-panel">
+  <div class="section-head"><h2>TASK QUEUE</h2><button class="refresh-btn" id="refresh-tasks" type="button">↻ Refresh</button></div>
+  <div id="task-list" class="task-list"><div class="empty"><span>◈</span><b>No queued tasks</b><small>Create a task to begin.</small></div></div>
+</div>
+</section>
+<section class="context-workspace requires-auth">
+<div class="panel context-editor">
+  <div class="section-head"><h2>COMPANY & PROJECT KNOWLEDGE</h2><span>OWNER-MANAGED · SCOPED MEMORY</span></div>
+  <p class="agent-intro">Create durable reference records for IZAKHONO companies and projects. Records are visible only to this owner. Nothing is deleted from this panel.</p>
+  <form id="context-form" class="task-form">
+    <label>Knowledge scope<select id="context-scope"><option value="company">Company-wide</option><option value="project">Specific project</option></select></label>
+    <label>Project identifier<input id="context-project" maxlength="100" placeholder="e.g. kora-network" disabled></label>
+    <label>Record type<select id="context-type"><option value="company_profile">Company profile</option><option value="strategy">Strategy</option><option value="operating_policy">Operating policy</option><option value="project_brief">Project brief</option><option value="milestone">Milestone</option><option value="risk">Risk / blocker</option><option value="financial_reference">Financial reference</option><option value="other">Other reference</option></select></label>
+    <label>Record title<input id="context-title" maxlength="180" required placeholder="e.g. Izakhono Africa manufacturing profile"></label>
+    <label class="wide">Knowledge / reference content<textarea id="context-content" rows="4" maxlength="12000" required placeholder="Enter verified company or project information. Include dates and source where relevant."></textarea></label>
+    <label class="wide">Tags (comma separated)<input id="context-tags" maxlength="500" placeholder="manufacturing, uniforms, strategy"></label>
+    <div class="task-submit"><button class="send-btn" id="save-context" type="submit">Save knowledge record ↗</button><small id="context-message" aria-live="polite"></small></div>
+  </form>
+</div>
+<div class="panel context-library">
+  <div class="section-head"><h2>KNOWLEDGE LIBRARY</h2><div class="context-controls"><select id="context-filter"><option value="all">All records</option><option value="company">Company</option><option value="project">Project</option></select><button class="refresh-btn" id="refresh-context" type="button">↻ Refresh</button></div></div>
+  <div id="context-list" class="context-list"><div class="empty"><span>⌕</span><b>No knowledge records loaded</b><small>Sign in and refresh the library.</small></div></div>
+</div>
+</section>
+<section class="action-workspace requires-auth">
+<div class="panel">
+  <div class="section-head"><h2>ACTION PROPOSALS & OWNER APPROVAL</h2><span>IMMUTABLE · NO EXECUTION ENABLED</span></div>
+  <p class="agent-intro">Record a proposed operation, inspect its exact payload and approve or reject it. Approval is an auditable decision only; no external action is executed.</p>
+  <form id="action-form" class="task-form">
+    <label>Action type<input id="action-type" maxlength="80" required placeholder="e.g. customer.email.send"></label>
+    <label>Target<input id="action-target" maxlength="240" required placeholder="e.g. customer record or service"></label>
+    <label class="wide">Payload (JSON object)<textarea id="action-payload" rows="4" required>{}</textarea></label>
+    <div class="task-submit"><button class="send-btn" type="submit" id="propose-action">Create proposal ↗</button><small id="action-message" aria-live="polite"></small></div>
+  </form>
+</div>
+<div class="panel">
+  <div class="section-head"><h2>DECISION REGISTER</h2><button class="refresh-btn" id="refresh-actions" type="button">↻ Refresh</button></div>
+  <div id="action-list" class="task-list"><div class="empty"><span>◇</span><b>No action proposals</b><small>Proposed operations will appear here.</small></div></div>
+</div>
+</section>
+<footer><span>© IZAKHONO AFRICA (PTY) LTD</span><span>OWNED-FIRST · SECURE-BY-DESIGN · AFRICAN-FIRST</span></footer>
+</main>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<script src="./jarvis.js"></script>
+</body></html>

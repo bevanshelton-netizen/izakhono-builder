@@ -29,14 +29,14 @@
     "fortress:test": "npx --yes tsx@4.20.3 products/fortress-security/src/scanner.test.ts && npx --yes tsx@4.20.3 products/fortress-security/src/sarif.test.ts && npx --yes tsx@4.20.3 products/fortress-security/src/remediation.test.ts && npx --yes tsx@4.20.3 products/fortress-security/src/control-plane.test.ts",
     "fortress:remediation:test": "npx --yes tsx@4.20.3 products/fortress-security/src/remediation.test.ts",
     "fortress:control-plane-test": "npx --yes tsx@4.20.3 products/fortress-security/src/control-plane.test.ts",
-    "typecheck": "tsc --noEmit --target ES2022 --lib ES2022,DOM,DOM.Iterable --module ESNext src/index.ts src/superagent.ts src/factory-superagent.ts && tsc --noEmit --target ES2022 --lib ES2022,DOM,DOM.Iterable --module ESNext src/repository.ts src/internal-repository.ts && tsc --noEmit --noCheck --target ES2022 --lib ES2022,DOM --module ESNext src/secure.ts src/sovereign.ts && tsc --noEmit --noCheck --target ES2022 --lib ES2022,DOM --module ESNext products/izakhono-docflow/src/index.ts && tsc --noEmit --noCheck --target ES2022 --lib ES2022,DOM --module ESNext products/izakhono-super-app/src/index.ts && tsc --noEmit --noCheck --target ES2022 --lib ES2022,DOM --module ESNext products/izakhono-creator/src/index.ts products/izakhono-creator/src/provider-router.ts products/izakhono-creator/src/one-workflow.ts products/izakhono-creator/src/one-workflow-execution.ts products/izakhono-creator/src/one-master-assembly.ts products/izakhono-creator/src/one-distribution.ts",
+    "typecheck": "tsc --noEmit --target ES2022 --lib ES2022,DOM,DOM.Iterable --module ESNext --moduleResolution Bundler src/index.ts src/superagent.ts src/factory-superagent.ts && tsc --noEmit --target ES2022 --lib ES2022,DOM,DOM.Iterable --module ESNext --moduleResolution Bundler src/repository.ts src/internal-repository.ts && tsc --noEmit --noCheck --target ES2022 --lib ES2022,DOM --module ESNext --moduleResolution Bundler src/secure.ts src/sovereign.ts && tsc --noEmit --noCheck --target ES2022 --lib ES2022,DOM --module ESNext --moduleResolution Bundler products/izakhono-docflow/src/index.ts && tsc --noEmit --noCheck --target ES2022 --lib ES2022,DOM --module ESNext --moduleResolution Bundler products/izakhono-super-app/src/index.ts && tsc --noEmit --noCheck --target ES2022 --lib ES2022,DOM --module ESNext --moduleResolution Bundler products/izakhono-creator/src/index.ts products/izakhono-creator/src/provider-router.ts products/izakhono-creator/src/one-workflow.ts products/izakhono-creator/src/one-workflow-execution.ts products/izakhono-creator/src/one-master-assembly.ts products/izakhono-creator/src/one-distribution.ts",
     "superagent:typecheck": "tsc --noEmit --target ES2022 --lib ES2022,DOM,DOM.Iterable --module ESNext products/izakhono-superagent/src/index.ts src/superagent.ts",
-    "creator:typecheck": "tsc --noEmit --target ES2022 --lib ES2022,DOM,DOM.Iterable --module ESNext products/izakhono-creator/src/index.ts products/izakhono-creator/src/provider-router.ts products/izakhono-creator/src/one-workflow.ts products/izakhono-creator/src/one-workflow-execution.ts products/izakhono-creator/src/one-master-assembly.ts products/izakhono-creator/src/one-distribution.ts",
+    "creator:typecheck": "tsc --noEmit --target ES2022 --lib ES2022,DOM,DOM.Iterable --module ESNext --moduleResolution Bundler products/izakhono-creator/src/index.ts products/izakhono-creator/src/provider-router.ts products/izakhono-creator/src/one-workflow.ts products/izakhono-creator/src/one-workflow-execution.ts products/izakhono-creator/src/one-master-assembly.ts products/izakhono-creator/src/one-distribution.ts",
     "creator:one-workflow:test": "npx --yes tsx@4.20.3 products/izakhono-creator/src/one-workflow.test.ts",
     "creator:one-workflow:api:test": "npx --yes tsx@4.20.3 products/izakhono-creator/src/one-workflow-api.test.ts",
     "creator:one-master:test": "npx --yes tsx@4.20.3 products/izakhono-creator/src/one-master-assembly.test.ts",
     "creator:one-distribution:test": "npx --yes tsx@4.20.3 products/izakhono-creator/src/one-distribution.test.ts",
-    "registry:typecheck": "tsc --noEmit --target ES2022 --lib ES2022,DOM,DOM.Iterable --module NodeNext --moduleResolution NodeNext registry/*.ts",
+    "registry:typecheck": "tsc --noEmit --target ES2022 --lib ES2022,DOM,DOM.Iterable --module ESNext --moduleResolution Bundler registry/*.ts",
     "registry:dry": "wrangler deploy --config registry/wrangler.jsonc --dry-run",
     "registry:migrate": "wrangler d1 migrations apply DB --config registry/wrangler.jsonc --remote",
     "registry:deploy": "wrangler deploy --config registry/wrangler.jsonc",
@@ -58,7 +58,11 @@
     "builder:adapter:test": "node autonomy/builder-adapter.test.mjs && node autonomy/native-generation.test.mjs",
     "native-generation:test": "node autonomy/native-generation.test.mjs",
     "model-runtime:validate": "node products/izakhono-ai-runtime/validate.mjs",
-    "model-runtime:test": "node products/izakhono-ai-runtime/validate.mjs && node products/izakhono-ai-runtime/provision.test.mjs"
+    "model-runtime:test": "node products/izakhono-ai-runtime/validate.mjs && node products/izakhono-ai-runtime/provision.test.mjs",
+    "jarvis:typecheck": "tsc --noEmit --target ES2022 --lib ES2022,DOM --module NodeNext --moduleResolution NodeNext src/jarvis.ts",
+    "jarvis:test": "npx --yes tsx@4.20.3 src/jarvis.test.ts",
+    "jarvis:validate": "npm run jarvis:typecheck && npm run jarvis:test && node --check public/jarvis/jarvis.js",
+    "validate:host": "tsc --noEmit --target ES2022 --lib ES2022,DOM,DOM.Iterable --module NodeNext --moduleResolution NodeNext products/izakhono-host/src/index.ts"
   },
   "dependencies": {
     "wrangler": "4.127.1"

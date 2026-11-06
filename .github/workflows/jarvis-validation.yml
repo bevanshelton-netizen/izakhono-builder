@@ -1,0 +1,49 @@
+name: JARVIS validation
+
+on:
+  pull_request:
+    paths:
+      - "autonomy/model-runtime.mjs"
+      - "autonomy/native-generation.test.mjs"
+      - "src/jarvis.ts"
+      - "src/jarvis.test.ts"
+      - "src/sovereign.ts"
+      - "wrangler.jsonc"
+      - "public/jarvis/**"
+      - "products/izakhono-jarvis/**"
+      - "package.json"
+      - ".github/workflows/jarvis-validation.yml"
+  push:
+    branches:
+      - "feature/izakhono-jarvis-foundation"
+      - "integration/jarvis-foundation-mainline-2026-11-06"
+    paths:
+      - "autonomy/model-runtime.mjs"
+      - "autonomy/native-generation.test.mjs"
+      - "src/jarvis.ts"
+      - "src/sovereign.ts"
+      - "public/jarvis/**"
+      - "products/izakhono-jarvis/**"
+      - "package.json"
+      - ".github/workflows/jarvis-validation.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: jarvis-validation-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  typecheck:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install dependencies
+        run: npm install --ignore-scripts --no-audit --no-fund
+      - name: Validate native generation, JARVIS API, orchestration and browser
+        run: npm run native-generation:test && npm run jarvis:validate

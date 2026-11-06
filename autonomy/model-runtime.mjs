@@ -1,7 +1,7 @@
 import { isIP } from 'node:net';
 
 function isPrivateHost(hostname) {
-  const host = hostname.toLowerCase().replace(/^\\[|\\]$/g, '');
+  const host = hostname.toLowerCase().replace(/^\[|\]$/g, '');
   if (host === 'localhost' || host.endsWith('.localhost')) return true;
   const family = isIP(host);
   if (family === 4) {

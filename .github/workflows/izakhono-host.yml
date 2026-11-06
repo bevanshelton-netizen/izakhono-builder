@@ -18,6 +18,8 @@ permissions:
 
 env:
   HOST_RUNTIME_TOKEN: ci-host-runtime-token
+  IZAKHONO_MAIL_API_TOKEN: ci-mail-api-token
+  STALWART_RECOVERY_ADMIN: ci-stalwart-recovery-admin
   TLS_EMAIL: ci@example.com
   POSTGRES_PASSWORD: ci-postgres-password
   MINIO_ROOT_USER: ci-minio-admin
