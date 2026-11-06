@@ -12,10 +12,12 @@ for (const required of [
   'Hercules is not part of the IZAKHONO Builder execution path',
 ]) {
   if (!policy.toLowerCase().includes(required.toLowerCase())) {
-    throw new Error('credits-free-policy-incomplete:' + required);
+    throw new Error(`credits-free-policy-incomplete:${required}`);
   }
 }
 
+// Scan executable native control-plane components only. The manifest and policy
+// may describe the prohibition; executable code may not implement a native gate.
 const files = [
   path.join(root, 'autonomy', 'native-builder.mjs'),
   path.join(root, 'autonomy', 'builder-adapter.mjs'),
@@ -24,7 +26,9 @@ const files = [
   path.join(root, 'autonomy', 'software-node.mjs'),
   path.join(root, 'autonomy', 'workload-scheduler.mjs'),
 ];
-const prohibited = /(?:IZAKHONO|native|internal|execution)[^\n]{0,120}(?:credit|credits|quota|balance|pay[-_ ]?per[-_ ]?action|usage[-_ ]?meter)|(?:credit|credits|quota|balance|pay[-_ ]?per[-_ ]?action|usage[-_ ]?meter)[^\n]{0,120}(?:IZAKHONO|native|internal|execution)/i;
+
+const contextualProhibited = /(?:IZAKHONO|native|internal|execution)[^\n]{0,120}(?:credit|credits|quota|balance|pay[-_ ]?per[-_ ]?action|usage[-_ ]?meter)|(?:credit|credits|quota|balance|pay[-_ ]?per[-_ ]?action|usage[-_ ]?meter)[^\n]{0,120}(?:IZAKHONO|native|internal|execution)/i;
+const explicitProhibited = /\b(?:creditBalance|quotaRemaining|usageMeterEnabled|reserveCredits|decrementCredits|checkCredits|payPerAction)\b/i;
 
 for (const file of files) {
   if (!fs.existsSync(file)) continue;
@@ -32,8 +36,8 @@ for (const file of files) {
   const executableLines = source.split('\n').filter((line) =>
     !/creditsEnabled\s*!==\s*false|artificialUsageMeter\s*!==\s*false/.test(line)
   ).join('\n');
-  if (prohibited.test(executableLines)) {
-    throw new Error('native-credits-gate-detected:' + path.relative(root, file));
+  if (contextualProhibited.test(executableLines) || explicitProhibited.test(source)) {
+    throw new Error(`native-credits-gate-detected:${path.relative(root, file)}`);
   }
 }
 
