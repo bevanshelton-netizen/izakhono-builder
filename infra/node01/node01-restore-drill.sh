@@ -2,9 +2,11 @@
 set -euo pipefail
 umask 077
 
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 BACKUP_DIR="${1:-}"
 [[ -n "$BACKUP_DIR" && -d "$BACKUP_DIR" ]] || { echo "Usage: $0 /path/to/nav-backup" >&2; exit 2; }
 BACKUP_DIR="$(cd "$BACKUP_DIR" && pwd)"
+cd "$ROOT"
 HELPER_IMAGE="${NODE01_BACKUP_HELPER_IMAGE:-alpine:3.20}"
 CADDY_IMAGE="${NODE01_CADDY_IMAGE:-caddy:2-alpine}"
 NAV_DOMAIN="${NAV_DOMAIN:-nav.izakhono.africa}"
