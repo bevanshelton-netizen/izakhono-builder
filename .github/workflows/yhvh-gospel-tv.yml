@@ -1,0 +1,35 @@
+name: YHVH Gospel TV checks
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "products/yhvh-gospel-tv/**"
+      - ".github/workflows/yhvh-gospel-tv.yml"
+  pull_request:
+    paths:
+      - "products/yhvh-gospel-tv/**"
+      - ".github/workflows/yhvh-gospel-tv.yml"
+  workflow_dispatch:
+
+jobs:
+  station-engine:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: products/yhvh-gospel-tv
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Validate server and playout syntax
+        run: |
+          node --check server.mjs
+          node --check playout/playout-engine.mjs
+          node --check playout/broadcast-runtime.mjs
+          node --check playout/broadcast-runtime.test.mjs
+      - name: Run broadcast safety tests
+        run: npm test
