@@ -374,7 +374,7 @@ async function maybePreview(req: Request, env: any, url: URL): Promise<Response 
     const content = generated.files[asset.file];
     if (typeof content !== 'string') return new Response('Preview asset not found', { status: 404 });
     const rewritten = requestedPath === 'sw.js'
-      ? content.replaceAll("'/manifest.webmanifest'", `'${previewBase}manifest.webmanifest'`).replaceAll("['/']", `['${previewBase}']`)
+      ? content.replace("const CORE = ['/',", `const CORE = ['${previewBase}',`).replaceAll("'/manifest.webmanifest'", `'${previewBase}manifest.webmanifest'`)
       : content;
     return new Response(rewritten, { headers: { 'content-type': asset.type, 'cache-control': 'no-store', 'service-worker-allowed': previewBase } });
   }
