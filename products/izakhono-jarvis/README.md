@@ -86,6 +86,13 @@ Tasks may declare up to 20 `depends_on` task IDs at creation. Dependencies must 
 
 This is bounded scheduled concurrency, not an unlimited agent swarm. It is only active after the Worker is deployed with the updated configuration and required SUPER AI bindings. It does not grant agents external tools or write access.
 
+
+## Shared operating context
+
+J.A.R.V.I.S. now supports owner-scoped company and project context records. The owner can create typed records through the context API, list them by scope, and explicitly attach up to 20 records to a task. Both manual and scheduled agent runs retrieve only those linked records after re-validating tenant and owner identity. The context is reference material, not an instruction override, and the prompt payload is bounded.
+
+This is an explicit context library, not a live integration into accounting, HR, CRM, manufacturing or other company systems. The initial API is append/list only; record editing and removal require a separately designed retention and audit policy.
+
 ## API contract (initial)
 
 - `GET /api/jarvis/v1/status` — service readiness and enabled capability flags; never expose secrets.
