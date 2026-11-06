@@ -71,7 +71,60 @@ async function main() {
     assert.equal(result?.status, 401);
     assert.ok(!db.statements.some(sql => sql.includes('INSERT INTO jarvis_action_executions')));
   }
-  console.log('JARVIS orchestration and action-boundary contract tests passed.');
+  {
+    const db = new FakeDatabase();
+    const result = await call(db, '/api/jarvis/v1/context');
+    assert.equal(result?.status, 200);
+    assert.ok(db.statements.some(sql => sql.includes('FROM jarvis_context_records')));
+  }
+  {
+    const db = new FakeDatabase();
+    const result = await call(db, '/api/jarvis/v1/context', 'POST', {
+      scope: 'company',
+      record_type: 'company_profile',
+      title: 'IZAKHONO Africa',
+      content: 'Manufacturing and group operations reference.',
+      tags: ['company', 'manufacturing'],
+    });
+    assert.equal(result?.status, 201);
+    const data = await result!.json() as any;
+    assert.equal(data.record.scope, 'company');
+    assert.ok(db.statements.some(sql => sql.includes('INSERT INTO jarvis_context_records')));
+  }
+  {
+    const db = new FakeDatabase();
+    const result = await call(db, '/api/jarvis/v1/context', 'POST', {
+      scope: 'project',
+      record_type: 'project_brief',
+      title: 'KORA Network',
+      content: 'Project reference without project identifier.',
+    });
+    assert.equal(result?.status, 400);
+  }
+  {
+    const db = new FakeDatabase();
+    const result = await call(db, '/api/jarvis/v1/tasks', 'POST', {
+      agent_id: 'business-analyst',
+      task_type: 'analysis',
+      title: 'Cross-owner context must be rejected',
+      instruction: 'Do not accept unowned context.',
+      context_ids: ['jctx_not_owned'],
+    });
+    assert.equal(result?.status, 400);
+    assert.ok(!db.statements.some(sql => sql.includes('INSERT INTO jarvis_tasks')));
+  }
+  {
+    const db = new FakeDatabase();
+    const result = await call(db, '/api/jarvis/v1/context', 'POST', {
+      scope: 'company',
+      record_type: 'company_profile',
+      title: 'Unauthorised write',
+      content: 'Must not be persisted.',
+    }, false);
+    assert.equal(result?.status, 401);
+    assert.ok(!db.statements.some(sql => sql.includes('INSERT INTO jarvis_context_records')));
+  }
+  console.log('JARVIS context, orchestration and action-boundary contract tests passed.');
 }
 
 main().catch(error => {
