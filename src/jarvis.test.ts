@@ -25,6 +25,16 @@ async function call(db: FakeDatabase, path: string, method = 'GET', body?: unkno
 async function main() {
   {
     const db = new FakeDatabase();
+    const result = await call(db, '/api/jarvis/v1/sources');
+    assert.equal(result?.status, 200);
+    const data = await result!.json() as any;
+    assert.equal(data.items.length, 5);
+    assert.ok(data.items.every((source: any) => source.status === 'not-connected'));
+    assert.ok(data.items.every((source: any) => source.metrics === null));
+    assert.ok(data.items.every((source: any) => source.freshness === 'unknown'));
+  }
+  {
+    const db = new FakeDatabase();
     const result = await call(db, '/api/jarvis/v1/executive');
     assert.equal(result?.status, 200);
     const data = await result!.json() as any;
