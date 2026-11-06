@@ -102,3 +102,22 @@ export const IKHOKHA_PAYMENT_API = Object.freeze({
   productAmount: 14900,
   currency: 'ZAR',
 });
+
+/**
+ * Validate the authenticated status lookup response against the locally stored
+ * order/paylink mapping. A callback alone must never activate a sale.
+ */
+export function verifyPaymentStatus(status, {
+  expectedPaylinkId,
+  expectedExternalTransactionId,
+  expectedAmount = 14900,
+} = {}) {
+  if (!status || typeof status !== 'object') return false;
+  if (typeof expectedPaylinkId !== 'string' || !expectedPaylinkId.trim()) return false;
+  if (status.paylinkID !== expectedPaylinkId) return false;
+  if (status.status !== 'PAID') return false;
+  if (Number(status.amount) !== expectedAmount) return false;
+  if (status.externalTransactionID !== undefined &&
+      status.externalTransactionID !== expectedExternalTransactionId) return false;
+  return true;
+}
