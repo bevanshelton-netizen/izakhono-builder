@@ -47,14 +47,14 @@ Response should stream typed events: `message.delta`, `tool.proposed`, `approval
 
 - `GET /api/jarvis/v1/agents` — returns the registered specialist agents, supported task types and declared tool boundary. Current agents are reasoning-only and have no live tools.
 - `GET /api/jarvis/v1/tasks?status=queued` — lists the authenticated owner's tasks.
-- `POST /api/jarvis/v1/tasks` — creates a task with `agent_id`, `task_type`, `title`, `instruction`, optional `priority` and optional `idempotency_key`.
+- `POST /api/jarvis/v1/tasks` — creates a task with `agent_id`, `task_type`, `title`, `instruction`, optional `priority`, `idempotency_key`, up to 20 owner-validated `context_ids`, and up to 20 owner-validated `depends_on` task IDs.
 - `GET /api/jarvis/v1/tasks/:id` — retrieves the task and result.
 - `POST /api/jarvis/v1/tasks/:id/run` — explicitly claims and runs a queued task using the server-side reasoning gateway.
 - `POST /api/jarvis/v1/tasks/:id/cancel` — marks a non-terminal task cancelled. An in-flight model request cannot be forcibly stopped; its late result is discarded.
 
 Task states: `queued`, `running`, `retry_wait`, `completed`, `failed`, `cancelled`. Recoverable gateway failures use bounded exponential retry windows, up to three attempts. Task claims use a conditional database update to prevent two callers from claiming the same queued attempt.
 
-No task endpoint can invoke email, web, shell, filesystem, repository mutation, payment, CRM, publishing or deployment tools. Automatic background dispatch, task dependencies and parallel workers are not implemented yet.
+No task endpoint can invoke email, web, shell, filesystem, repository mutation, payment, CRM, publishing or deployment tools. The scheduled dispatcher supports bounded concurrency of up to three tasks per cron invocation; it is active only after the configured Worker is deployed.
 
 ## Action approval
 
@@ -126,3 +126,8 @@ Search is always filtered by authenticated tenant, user scope, project scope and
 - Add idempotency for writes and deduplicate client retries.
 - Log structured events without secrets or unnecessary personal data.
 - Return no stack traces or provider errors to clients.
+
+
+## Owner-facing context manager
+
+The authenticated command centre includes a Context Manager. Owners can create company-wide or project-specific records, choose a record type, add tags, filter the library and refresh it. Each record card has an explicit checkbox to attach that record to the next task submission. The task form submits only checked record IDs; the server validates every ID against the current owner and tenant before creating the task. The UI does not offer deletion or editing because retention and correction policy is not yet defined.
