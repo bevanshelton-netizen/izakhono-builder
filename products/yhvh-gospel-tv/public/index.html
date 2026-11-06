@@ -12,16 +12,18 @@
 <section class="hero"><div class="player" id="player"><div class="offline"><span class="live" id="feedStatus"><span class="dot"></span> CHECKING FEED</span><h1>Gospel.<br><span class="gold">24/7.</span></h1><p class="muted" id="feedMessage">Checking the authorised broadcast feed. Programme information remains available while the feed is prepared.</p></div></div>
 <div class="card side"><div class="muted">NOW PLAYING</div><div class="now" id="now">Loading…</div><div class="muted" id="genre"></div><hr style="border-color:#272a33;margin:22px 0"><div class="muted">UP NEXT</div><h2 id="next">Loading…</h2><div class="muted" id="time"></div><div class="links"><a class="btn" href="/control">Station Control</a><a class="btn alt" href="/creator">Submit Content</a></div></div></section>
 <section class="grid"><div class="card"><h2>📺 TV Guide</h2><div class="schedule" id="schedule"></div></div><div class="card"><h2>🌍 Global</h2><p class="muted">English • French • Portuguese • Spanish • Swahili • isiZulu • isiXhosa and more through the language-routing engine.</p><p class="gold">AFRICA → WORLD</p></div><div class="card"><h2>🎬 Creator Space</h2><p class="muted">Submit, protect, distribute and monetize Gospel work without surrendering ownership by default.</p><a class="btn" href="/creator">Enter Creator Space</a></div></section>
-</main><footer>YHVH GOSPEL TV · IZAKHONO MEDIA ENGINE · Editorial independence · Rights and territorial clearance apply.</footer>
+</main><footer>YHVH GOSPEL TV · IZAKHONO MEDIA ENGINE · Editorial independence · Rights and territorial clearance apply. Anonymous first-party usage counts help us improve the service; no advertising trackers or personal profile are used.</footer>
 <script>
 async function get(p){const r=await fetch(p);if(!r.ok)throw new Error('Station data unavailable');return r.json()}
+function analyticsSession(){try{let id=sessionStorage.getItem('yhvh_analytics_session');if(!id){id=crypto.randomUUID();sessionStorage.setItem('yhvh_analytics_session',id)}return id}catch{return crypto.randomUUID()}}
+function trackEvent(event){const sessionId=analyticsSession();fetch('/api/analytics/event',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({event,sessionId}),keepalive:true}).catch(()=>{})}
 function renderFeed(rawUrl){
   const player=document.querySelector('#player');
   let url;try{url=new URL(rawUrl)}catch{return}
   if(url.protocol!=='https:')return;
   const cleanUrl=url.href;
   if(/\.m3u8(?:$|[?#])/i.test(url.pathname+url.search)){
-    const video=document.createElement('video');video.controls=true;video.autoplay=true;video.playsInline=true;video.preload='none';video.setAttribute('aria-label','YHVH Gospel TV live broadcast');
+    const video=document.createElement('video');video.controls=true;video.autoplay=true;video.playsInline=true;video.preload='none';video.setAttribute('aria-label','YHVH Gospel TV live broadcast');video.addEventListener('play',()=>trackEvent('player_start'),{once:true});
     if(video.canPlayType('application/vnd.apple.mpegurl')){video.src=cleanUrl;player.replaceChildren(video)}
     else{const note=document.createElement('div');note.className='offline';note.textContent='This browser cannot play the configured HLS stream natively. Open the station on a browser or device with HLS playback support.';player.replaceChildren(note)}
     return;
@@ -29,5 +31,5 @@ function renderFeed(rawUrl){
   const frame=document.createElement('iframe');frame.src=cleanUrl;frame.title='YHVH Gospel TV live broadcast';frame.allow='autoplay; encrypted-media; picture-in-picture';frame.allowFullscreen=true;player.replaceChildren(frame);
 }
 async function refresh(){const [s,g]=await Promise.all([get('/api/status'),get('/api/schedule')]);document.querySelector('#now').textContent=s.current.title;document.querySelector('#genre').textContent=s.current.genre+' · '+s.current.language;document.querySelector('#next').textContent=s.next.title;document.querySelector('#time').textContent='Next scheduled block: '+s.next.time;document.querySelector('#schedule').innerHTML=g.schedule.map((x,i)=>`<div class="slot ${i===s.index?'active':''}"><b>${x.time}</b><span>${x.title}</span></div>`).join('');const status=document.querySelector('#feedStatus');const message=document.querySelector('#feedMessage');if(s.live&&s.liveUrl){status.innerHTML='<span class="dot"></span> LIVE FEED CONNECTED';message.textContent='The authorised station feed is connected. Live playback is provided by the configured broadcaster.';if(!document.querySelector('#player iframe, #player video'))renderFeed(s.liveUrl)}else{status.innerHTML='<span class="dot"></span> FEED NOT CONNECTED';message.textContent='The station schedule is running, but a live broadcast feed has not yet been configured. No live transmission is being claimed.'}}
-refresh();setInterval(refresh,15000)
+trackEvent('page_view');refresh();setInterval(refresh,15000)
 </script></body></html>
