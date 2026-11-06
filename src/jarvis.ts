@@ -11,6 +11,11 @@ type JarvisEnv = {
   IZAKHONO_SUPER_AI_INTERNAL_KEY?: string;
   IZAKHONO_SUPER_AI_WORKFLOW_KEY?: string;
   JARVIS_LOGIN_SECRET?: string;
+  JARVIS_FINANCE_READONLY_ACCOUNT?: string;
+  JARVIS_EMAIL_READONLY_ACCOUNT?: string;
+  JARVIS_CRM_READONLY_ACCOUNT?: string;
+  JARVIS_MANUFACTURING_READONLY_ACCOUNT?: string;
+  JARVIS_EDUCATION_READONLY_ACCOUNT?: string;
 };
 
 const TENANT = 'izakhono-africa';
@@ -390,6 +395,31 @@ export async function jarvisRoute(
         open_tasks: Number(counts?.open_tasks || 0),
       },
       tenant: TENANT,
+    });
+  }
+
+  if (path === '/api/jarvis/v1/sources' && req.method === 'GET') {
+    const observedAt = new Date().toISOString();
+    const configured = [
+      { id: 'finance', name: 'Finance and payment systems', account: env.JARVIS_FINANCE_READONLY_ACCOUNT },
+      { id: 'email', name: 'Business email', account: env.JARVIS_EMAIL_READONLY_ACCOUNT },
+      { id: 'crm', name: 'CRM and customer operations', account: env.JARVIS_CRM_READONLY_ACCOUNT },
+      { id: 'manufacturing', name: 'Manufacturing and inventory', account: env.JARVIS_MANUFACTURING_READONLY_ACCOUNT },
+      { id: 'education', name: 'Education and campus operations', account: env.JARVIS_EDUCATION_READONLY_ACCOUNT },
+    ];
+    return response({
+      ok: true,
+      observed_at: observedAt,
+      policy: 'Read-only source registration only; account labels do not prove connectivity or grant access.',
+      items: configured.map(source => ({
+        id: source.id, name: source.name,
+        status: source.account ? 'configured-pending-adapter' : 'not-connected',
+        account_scope: source.account || null,
+        permission: source.account ? 'read-only-requested' : 'not-authorised',
+        observed_at: observedAt, source_updated_at: null, freshness: 'unknown',
+        metrics: null,
+        limitation: 'No live provider adapter is enabled; no external records were queried.',
+      })),
     });
   }
 
