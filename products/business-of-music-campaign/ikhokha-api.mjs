@@ -28,10 +28,10 @@ function safeHexEqual(a, b) {
  * Build a signed iK Pay API create-payment-link request.
  * Credentials must come from server-side environment variables, never browser input.
  */
-export function buildCreatePaymentLink({ appId, appSecret, callbackUrl, successUrl, failureUrl, requesterUrl, externalTransactionId, customerReference, amount = 14900, mode = 'live' }) {
+export function buildCreatePaymentLink({ appId, appSecret, entityId, callbackUrl, successUrl, failureUrl, requesterUrl, externalTransactionId, customerReference, amount = 14900, mode = 'live' }) {
   const transactionId = required(externalTransactionId, 'externalTransactionId');
   const body = {
-    entityID: required(appId, 'appId'),
+    entityID: required(entityId, 'entityId'),
     externalEntityID: required(customerReference, 'customerReference'),
     amount,
     currency: 'ZAR',
