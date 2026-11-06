@@ -5,13 +5,15 @@ The Twilio adapter is the first concrete carrier implementation of the existing 
 ## Runtime-only configuration
 
 - `IZAKHONO_TWILIO_ACCOUNT_SID`
-- `IZAKHONO_TWILIO_AUTH_TOKEN` (secret)
+- `IZAKHONO_TWILIO_API_KEY_SID` (preferred username)
+- `IZAKHONO_TWILIO_API_KEY_SECRET` (secret)
+- `IZAKHONO_TWILIO_AUTH_TOKEN` (account Auth Token fallback; secret)
 - `IZAKHONO_TWILIO_FROM_NUMBER` (provisioned, voice/SMS-enabled number)
 - `IZAKHONO_TWILIO_VOICE_WEBHOOK_URL` (public HTTPS endpoint)
 - `IZAKHONO_TWILIO_STATUS_CALLBACK_URL` (public HTTPS endpoint)
 - `IZAKHONO_VOICE_MEDIA_STREAM_URL` (public WSS media bridge)
 
-Never commit these values. Store credentials in the deployment runtime secret manager. Use a least-privilege Twilio API key/secret in production where supported by the account's authentication model; rotate credentials and restrict account access.
+Never commit these values. Store credentials in the deployment runtime secret manager. Prefer a restricted Twilio API Key SID/Secret pair in production; the account Auth Token is supported only as a fallback. Rotate credentials and restrict account access.
 
 ## Adapter mapping
 
