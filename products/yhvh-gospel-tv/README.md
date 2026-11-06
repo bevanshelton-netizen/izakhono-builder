@@ -33,6 +33,10 @@ This is an operational record, not an automatic payment-gateway confirmation; re
 against the relevant payment provider or bank statement before marking a slot PAID.
 Sponsor participation does not override editorial, rights, safeguarding or scheduling decisions.
 
+## Public advertiser intake
+
+The public `/advertise` page presents four partnership pathways and collects proposal enquiries through `/api/commercial/enquiry`. Enquiries are rate-limited, validated and stored in the station's persistent state for authorised review in the Broadcast Control Center. The public package API returns descriptive inventory options with `QUOTE_ON_REQUEST`; no audience figures, guaranteed delivery or unverified rate card is published. A submitted enquiry is not a booking or contract.
+
 ## Important
 
 The software does not manufacture broadcast rights or programme media. A real channel feed requires an authorised live/stream source and content whose rights, territory, language, safeguarding and editorial checks have passed. Until `YHVH_LIVE_URL` is configured, the public experience honestly presents the station as ready for feed activation rather than pretending video is live.
