@@ -236,6 +236,13 @@ function contentQueue() {
   const byId=new Map(inspected.map((x)=>[x.id,x]));
   return m.items.map((x)=>byId.get(x.id)||{...x,eligible:false,blockedReasons:['inspection_unavailable']});
 }
+function decideCommercialEnquiry(b) {
+  const id=clean(b.id,100);const item=(state.commercialEnquiries||[]).find(x=>x.id===id);if(!item)throw new Error('commercial_enquiry_not_found');
+  const allowed=['NEW','REVIEWING','CONTACTED','PROPOSAL_SENT','WON','LOST'];
+  const status=clean(b.status,24).toUpperCase();if(!allowed.includes(status))throw new Error('invalid_enquiry_status');
+  item.status=status;item.updatedAt=new Date().toISOString();if(b.ownerNote!==undefined)item.ownerNote=clean(b.ownerNote,500);
+  saveState(state);audit('commercial_enquiry_updated',{id:item.id,status:item.status});return item;
+}
 function decideSponsorSlot(b) {
   const id=clean(b.id,100);
   const item=state.sponsorSlots.find((x)=>x.id===id);
@@ -301,6 +308,7 @@ const server = http.createServer(async (req, res) => {
       if (req.method==='POST' && p==='/api/control/event') { const item=addEvent(await body(req)); return json(res,201,{ok:true,item}); }
       if (req.method==='POST' && p==='/api/control/sponsor-slot') { const item=addSponsorSlot(await body(req)); return json(res,201,{ok:true,item}); }
       if (req.method==='POST' && p==='/api/control/sponsor-slot/decision') { const item=decideSponsorSlot(await body(req)); return json(res,200,{ok:true,item}); }
+      if (req.method==='POST' && p==='/api/control/commercial-enquiry/decision') { const item=decideCommercialEnquiry(await body(req)); return json(res,200,{ok:true,item}); }
       return json(res,404,{ok:false,error:'control_route_not_found'});
     }
     if (req.method==='GET' && (p==='/' || p==='/index.html')) return html(res,'index.html');
