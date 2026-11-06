@@ -341,11 +341,12 @@ async function maybePublishRepository(req: Request, env: any, url: URL, recovere
 
 async function maybePreview(req: Request, env: any, url: URL): Promise<Response | null> {
   if (req.method !== 'GET') return null;
-  const match = url.pathname.match(/^\/preview\/([a-z0-9]+(?:-[a-z0-9]+)*)(?:\/([a-f0-9]{12}))?(?:\/(api\/(health|features)))?\/?$/);
+  const match = url.pathname.match(/^\/preview\/([a-z0-9]+(?:-[a-z0-9]+)*)(?:\/([a-f0-9]{12}))?(?:\/(api\/(health|features)|styles\.css|manifest\.webmanifest|sw\.js))?\/?$/);
   if (!match) return null;
   const slug = match[1];
   const requestedRevision = match[2] || '';
-  const requestedApi = match[3] || '';
+  const requestedPath = match[3] || '';
+  const requestedApi = requestedPath.startsWith('api/') ? requestedPath : '';
   const project = await env.DB.prepare('SELECT * FROM builder_projects WHERE slug=?').bind(slug).first();
   if (!project) return new Response('Preview not found', { status: 404 });
   if (!['validated', 'deploy_ready', 'deployed'].includes(project.status)) return new Response('Preview is not validated yet', { status: 409 });
@@ -362,7 +363,26 @@ async function maybePreview(req: Request, env: any, url: URL): Promise<Response 
     return reply({ ok: true, app: project.name, revision: generated.revision, features: Object.fromEntries(modules.map(m => [m, true])), technical_preview: true });
   }
 
+  const previewBase = `/preview/${encodeURIComponent(slug)}/${encodeURIComponent(generated.revision)}/`;
+  const assets: Record<string, { file: string; type: string }> = {
+    'styles.css': { file: 'public/styles.css', type: 'text/css; charset=utf-8' },
+    'manifest.webmanifest': { file: 'public/manifest.webmanifest', type: 'application/manifest+json; charset=utf-8' },
+    'sw.js': { file: 'public/sw.js', type: 'application/javascript; charset=utf-8' },
+  };
+  if (requestedPath in assets) {
+    const asset = assets[requestedPath];
+    const content = generated.files[asset.file];
+    if (typeof content !== 'string') return new Response('Preview asset not found', { status: 404 });
+    const rewritten = requestedPath === 'sw.js'
+      ? content.replaceAll("'/manifest.webmanifest'", `'${previewBase}manifest.webmanifest'`).replaceAll("['/']", `['${previewBase}']`)
+      : content;
+    return new Response(rewritten, { headers: { 'content-type': asset.type, 'cache-control': 'no-store', 'service-worker-allowed': previewBase } });
+  }
+
   let landing = String(generated.files['public/index.html'] || '');
+  landing = landing.replace('href="/styles.css"', `href="${previewBase}styles.css"`);
+  landing = landing.replace('href="/manifest.webmanifest"', `href="${previewBase}manifest.webmanifest"`);
+  landing = landing.replace("navigator.serviceWorker.register('/sw.js')", `navigator.serviceWorker.register('${previewBase}sw.js')`);
   const banner = `<div style="font-family:system-ui;background:#fff3cd;color:#493b00;padding:10px 16px;text-align:center;font-size:13px"><b>IZAKHONO BUILDER technical preview · ${htmlEscape(generated.revision)}.</b> Source bundle passed deterministic validation. This is not a claim of commercial readiness.</div>`;
   landing = landing.replace('<body>', `<body>${banner}`);
   return new Response(landing, { headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' } });
