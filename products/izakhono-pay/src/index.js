@@ -1,6 +1,8 @@
 import {
   PAYFAST_DEFAULT_CIDRS,
   buildIkhokhaRequest,
+  buildIkhokhaStatusRequest,
+  verifyIkhokhaStatus,
   ikhokhaSignature,
   buildPayfastCheckout,
   buildPayfastItnParamString,
@@ -211,7 +213,7 @@ async function initializeIkhokha(env, intent, origin) {
     body: raw
   });
   const data = await res.json().catch(() => null);
-  if (!res.ok || data?.responseCode !== '00' || !data?.paylinkUrl) {
+  if (!res.ok || data?.responseCode !== '00' || !data?.paylinkUrl || !data?.paylinkID) {
     throw new Error(`iKhokha initialization failed (${res.status})`);
   }
   return {
@@ -345,8 +347,14 @@ async function handleIkhokhaWebhook(req, env) {
   const raw = await req.text();
   const appId = req.headers.get('ik-appid') || '';
   const signature = req.headers.get('ik-sign') || '';
-  const event = JSON.parse(raw);
-  if (event && typeof event === 'object') delete event.text;
+  let event;
+  try {
+    event = JSON.parse(raw);
+  } catch {
+    return fail('Invalid iKhokha webhook JSON', 400, 'invalid_payload');
+  }
+  if (!event || typeof event !== 'object' || Array.isArray(event)) return fail('Invalid iKhokha webhook payload', 400, 'invalid_payload');
+  delete event.text;
   const signedBody = JSON.stringify(event);
   if (!safeEqualText(appId, env.IKHOKHA_APP_ID) || !verifyIkhokhaSignature('/api/webhooks/ikhokha', signedBody, signature, env.IKHOKHA_APP_SECRET)) {
     await recordFortressEvent(env, { severity: 'high', category: 'webhook.invalid_signature', source: 'ikhokha', details: { payload_hash: sha256Hex(raw) } });
@@ -356,12 +364,33 @@ async function handleIkhokhaWebhook(req, env) {
   const intent = reference ? await findIntentByReference(env, reference) : null;
   if (!intent || intent.routed_provider !== 'ikhokha') return fail('Unknown iKhokha payment reference', 404, 'unknown_reference');
 
+  if (event?.status === 'SUCCESS' && event?.responseCode === '00') {
+    const statusRequest = buildIkhokhaStatusRequest({ env, reference });
+    let statusResponse;
+    try {
+      statusResponse = await fetch(statusRequest.url, {
+        method: 'GET',
+        headers: statusRequest.headers,
+        signal: AbortSignal.timeout(8000)
+      });
+    } catch {
+      await recordFortressEvent(env, { severity: 'high', category: 'webhook.provider_status_unavailable', source: 'ikhokha', merchantSlug: intent.app_slug, intentId: intent.id, details: { reference } });
+      return fail('Unable to confirm iKhokha payment status; no sale was activated', 503, 'provider_status_unavailable');
+    }
+    const statusPayload = await statusResponse.json().catch(() => null);
+    const verifiedStatus = Array.isArray(statusPayload) ? statusPayload[0] : statusPayload;
+    if (!statusResponse.ok || !verifyIkhokhaStatus(verifiedStatus, intent)) {
+      await recordFortressEvent(env, { severity: 'critical', category: 'payment.provider_status_mismatch', source: 'ikhokha', merchantSlug: intent.app_slug, intentId: intent.id, details: { reference, http_status: statusResponse.status, provider_status: verifiedStatus?.status || 'unavailable' } });
+      return fail('iKhokha payment status, payment link or amount did not match; no sale was activated', 409, 'payment_status_mismatch');
+    }
+  }
+
   const fingerprint = sha256Hex(`ikhokha:${raw}`);
   const fresh = await recordEvent(env, 'ikhokha', `payment.${String(event?.status || 'unknown').toLowerCase()}`, fingerprint, intent.id, event, true);
   if (!fresh) return response({ ok: true, duplicate: true });
 
   if (event?.status === 'SUCCESS' && event?.responseCode === '00') {
-    await markPaid(env, intent.id, cleanText(event?.paylinkID || intent.provider_reference || reference, 180));
+    await markPaid(env, intent.id, cleanText(event?.paylinkID || intent.provider_reference, 180));
   }
   return response({ ok: true });
 }
