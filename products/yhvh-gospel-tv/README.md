@@ -35,7 +35,7 @@ Sponsor participation does not override editorial, rights, safeguarding or sched
 
 ## Public advertiser intake
 
-The public `/advertise` page presents four partnership pathways and collects proposal enquiries through `/api/commercial/enquiry`. Enquiries are rate-limited, validated and stored in the station's persistent state for authorised review in the Broadcast Control Center. The public package API returns descriptive inventory options with `QUOTE_ON_REQUEST`; no audience figures, guaranteed delivery or unverified rate card is published. A submitted enquiry is not a booking or contract.
+The public `/advertise` page presents four partnership pathways and collects proposal enquiries through `/api/commercial/enquiry`. Enquiries are rate-limited, validated and stored in the station's persistent state for authorised review in the Broadcast Control Center. The public package API returns descriptive inventory options with `QUOTE_ON_REQUEST`; no audience figures, guaranteed delivery or unverified rate card is published. A submitted enquiry is not a booking or contract. Authorised owners can move leads through NEW, REVIEWING, CONTACTED, PROPOSAL_SENT, WON and LOST, with internal notes and audit entries, from the private control center.
 
 ## Important
 
