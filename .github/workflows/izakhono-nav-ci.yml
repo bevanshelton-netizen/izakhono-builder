@@ -51,9 +51,9 @@ jobs:
           node - <<'NODE'
           const fs = require('fs');
           const html = fs.readFileSync('index.html', 'utf8');
-          const scripts = [...html.matchAll(/<script(?:\\s[^>]*)?>([\\s\\S]*?)<\\/script>/g)].map(m => m[1]).filter(x => x.trim());
+          const scripts = [...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g)].map(m => m[1]).filter(x => x.trim());
           if (!scripts.length) throw new Error('No inline application script found');
-          fs.writeFileSync('/tmp/izakhono-nav-inline.js', scripts.join('\\n'));
+          fs.writeFileSync('/tmp/izakhono-nav-inline.js', scripts.join('\n'));
           NODE
           node --check /tmp/izakhono-nav-inline.js
       - name: Test AI provider security boundaries
