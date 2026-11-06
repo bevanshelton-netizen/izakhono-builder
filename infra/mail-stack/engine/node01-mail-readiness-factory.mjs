@@ -17,6 +17,7 @@ export function createNode01MailReadinessProbes({
   const network = createNode01MailProbes({ domain, mailHost });
   const now = () => new Date().toISOString();
   const local = (gate, details = {}) => ({ ok: true, source: `node01-mail-probe:${gate}`, verifiedAt: now(), ...details });
+  const fail = (gate, reason) => ({ ok: false, source: `node01-mail-probe:${gate}`, verifiedAt: now(), reason });
 
   return {
     runtime: async () => {
@@ -59,7 +60,7 @@ export function createNode01MailReadinessProbes({
     },
     identities: async () => {
       const count = Array.isArray(registry.platforms) ? registry.platforms.length : 0;
-      if (!count && !registry.addresses) throw new Error("MAIL_IDENTITIES_NOT_CONFIGURED");
+      if (!count && !registry.addresses) return fail("identities", "MAIL_IDENTITIES_NOT_CONFIGURED");
       return local("identities", { platformCount: count });
     },
   };
