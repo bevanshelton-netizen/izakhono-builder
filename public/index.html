@@ -148,7 +148,7 @@ async function buildAnything(){
   result.className='buildResult';result.innerHTML='';
   if(!state.secret){
     msg.className='message bad';
-    msg.textContent='Owner Access is required for this pilot so the generated source can be committed privately.';
+    msg.textContent='Owner Access is required for this controlled build pilot. Unlock to create a private project and preview.';
     document.querySelector('#secret').scrollIntoView({behavior:'smooth',block:'center'});
     document.querySelector('#secret').focus();
     return;
@@ -157,32 +157,41 @@ async function buildAnything(){
   const started=performance.now();
   let tick=null;
   const setStage=s=>{stage.textContent=s};
+  const slugify=s=>s.toLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,42).replace(/-$/,'')||'new-project';
+  const words=prompt.replace(/[^a-zA-Z0-9 ]/g,' ').trim().split(/\s+/).slice(0,5).join(' ');
+  const name=words.split(' ').map(w=>w.charAt(0).toUpperCase()+w.slice(1)).join(' ').slice(0,70)||'New IZAKHONO Project';
+  const slug=slugify(name)+'-'+crypto.randomUUID().slice(0,6);
+  const category=target==='website'?'business':target==='game'?'media':target==='software'?'general':'general';
   btn.disabled=true;btn.textContent='Building…';msg.className='message';msg.textContent='';
   progress.className='buildProgress on';
   setStage('Understanding your brief…');
   tick=setInterval(()=>{timer.textContent=((performance.now()-started)/1000).toFixed(1)+'s'},100);
-  const stageTimer1=setTimeout(()=>setStage('Generating source and UI…'),900);
-  const stageTimer2=setTimeout(()=>setStage('Running accuracy and technical checks…'),2200);
-  const stageTimer3=setTimeout(()=>setStage('Committing verified proof to IZAKHONO…'),4200);
+  let project=null;
   try{
-    const d=await api('/api/build-anything',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({prompt,target})});
-    const inferred=d.inference||{};const build=d.build||{};
+    setStage('Creating a private IZAKHONO project…');
+    const created=await api('/api/projects',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({name,slug,category,description:prompt,modules:target==='game'?['game']:target==='website'?['leads','seo']:[]})});
+    project={id:created.id,name:created.name,slug:created.slug};
+    setStage('Planning the application architecture…');
+    await api('/api/projects/'+encodeURIComponent(project.id)+'/plan',{method:'POST'});
+    setStage('Generating the website and application source…');
+    const made=await api('/api/projects/'+encodeURIComponent(project.id)+'/generate',{method:'POST'});
+    setStage('Running source, security and release checks…');
+    const checked=await api('/api/projects/'+encodeURIComponent(project.id)+'/validate-generated',{method:'POST'});
     const elapsed=((performance.now()-started)/1000).toFixed(1);
-    setStage('Build complete');
-    msg.className='message good';msg.textContent='Controlled release candidate created.';
-    const preview=build.preview?'<a class="btn primary" target="_blank" rel="noopener" href="'+esc(build.preview)+'">Open private preview</a>':'';
-    const quality=build.validation_passed?'<span class="qaPill ok">Technical validation passed</span>':'<span class="qaPill lock">Validation pending</span>';
-    const source=build.internal_repository?'<span class="qaPill ok">IZAKHONO source committed</span>':'<span class="qaPill lock">Source commit pending</span>';
+    setStage('Technical preview ready');
+    msg.className='message good';msg.textContent='A private technical preview has been generated and validated. Public publishing remains locked.';
+    const preview=checked.preview?'<a class="btn primary" target="_blank" rel="noopener" href="'+esc(checked.preview)+'">Open private preview</a>':'';
+    const quality=checked.validation?.passed?'<span class="qaPill ok">Technical validation passed · '+esc(checked.validation.checks.filter(c=>c.passed).length)+' checks</span>':'<span class="qaPill lock">Validation not passed</span>';
     const live='<span class="qaPill lock">Public live: locked until verified</span>';
-    const ai=inferred.intelligence?.mode==='super-ai'?'SUPER AI + deterministic checks':'Deterministic fallback';
     result.className='buildResult on';
-    result.innerHTML='<div class="previewGrid"><div><strong>'+esc(d.project?.name||'Build complete')+'</strong><div class="proofline">'+esc((inferred.target||'app').toUpperCase())+' · revision '+esc(build.revision||'n/a')+' · '+elapsed+' build time</div><div class="proofline">Modules: '+esc((inferred.modules||[]).join(', ')||'core')+'</div><div class="proofline">Intent engine: '+esc(ai)+'</div><div class="qaRow">'+quality+source+live+'</div></div><div class="projectActions">'+preview+'</div></div>';
+    result.innerHTML='<div class="previewGrid"><div><strong>'+esc(project.name)+'</strong><div class="proofline">'+esc((target||'app').toUpperCase())+' · revision '+esc(made.generated?.revision||'n/a')+' · '+elapsed+'s</div><div class="proofline">Project: '+esc(project.slug)+'</div><div class="proofline">'+esc(made.generated?.file_count||0)+' source files generated by IZAKHONO Builder.</div><div class="qaRow">'+quality+live+'</div></div><div class="projectActions">'+preview+'</div></div>';
     await loadProjects();
   }catch(e){
-    setStage('Build stopped safely');
-    msg.className='message bad';msg.textContent='Build stopped: '+(e.message||String(e));
+    setStage(project?'Build stopped at validation or generation':'Build stopped safely');
+    msg.className='message bad';msg.textContent=(project?'Project '+project.slug+' was created but the build did not finish: ':'Build stopped: ')+(e.message||String(e));
+    if(project){try{await loadProjects()}catch{}}
   }finally{
-    clearInterval(tick);clearTimeout(stageTimer1);clearTimeout(stageTimer2);clearTimeout(stageTimer3);
+    clearInterval(tick);
     timer.textContent=((performance.now()-started)/1000).toFixed(1)+'s';
     btn.disabled=false;btn.textContent='Build →';
     setTimeout(()=>{progress.className='buildProgress'},900);
