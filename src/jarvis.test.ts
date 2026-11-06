@@ -22,7 +22,18 @@ async function call(db: FakeDatabase, path: string, method = 'GET', body?: unkno
   return jarvisRoute(req, env(db) as any, new URL(req.url), async () => authorized);
 }
 
-async function main() {
+async function main() {\n  {
+    const db = new FakeDatabase();
+    const result = await call(db, '/api/jarvis/v1/executive');
+    assert.equal(result?.status, 200);
+    const data = await result!.json() as any;
+    assert.equal(data.ok, true);
+    assert.equal(data.metrics.tasks.queued, 0);
+    assert.equal(data.sources.find((source: any) => source.id === 'finance').status, 'not-connected');
+    assert.ok(data.limitations.some((item: string) => item.includes('not inferred')));
+    assert.ok(db.statements.some(sql => sql.includes('FROM jarvis_action_proposals')));
+  }
+
   {
     const db = new FakeDatabase();
     const result = await call(db, '/api/jarvis/v1/agents');
