@@ -6,6 +6,7 @@ on:
       - "autonomy/model-runtime.mjs"
       - "autonomy/native-generation.test.mjs"
       - "src/jarvis.ts"
+      - "src/jarvis.test.ts"
       - "src/sovereign.ts"
       - "wrangler.jsonc"
       - "public/jarvis/**"
