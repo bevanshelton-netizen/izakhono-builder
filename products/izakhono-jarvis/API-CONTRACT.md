@@ -138,3 +138,34 @@ The authenticated command centre includes a Context Manager. Owners can create c
 - `GET /api/jarvis/v1/executive` returns owner-scoped task counts, action proposal counts, company/project knowledge counts, latest knowledge update, query timestamp and source readiness.
 - The endpoint aggregates only J.A.R.V.I.S. D1 records. Finance, email, CRM, manufacturing and education connectors are explicitly reported as not connected and not authorised until separately configured.
 - No external company KPIs are estimated or inferred. Each response includes scope and limitations; source freshness is reported separately from record update time.
+
+
+## Read-only source connector contract (Phase 11)
+
+The Executive Snapshot may incorporate additional sources only through an explicitly configured, read-only connector. An unconfigured connector MUST remain `not-connected`; an error MUST be reported as `error` rather than silently falling back to stale figures.
+
+Each connector response must provide:
+
+```json
+{
+  "source_id": "github",
+  "account_scope": "explicitly-authorised-account-or-repository",
+  "permission": "read-only",
+  "status": "connected",
+  "observed_at": "2026-11-06T09:00:00Z",
+  "source_updated_at": "2026-11-06T08:59:00Z",
+  "freshness": "current",
+  "metrics": {},
+  "limitations": []
+}
+```
+
+Rules:
+- `observed_at` means when IZAKHONO queried the source; `source_updated_at` is a timestamp reported by the source. Never substitute one for the other.
+- Allowed statuses are `not-connected`, `connected`, `stale`, `error`, and `permission-denied`. Only verified, authorised data can be `connected`.
+- Every metric must include an explicit source and scope. No cross-company financial totals or comparisons may be produced without a verified common period, currency, entity mapping and reconciliation policy.
+- Connector credentials must remain server-side. No provider tokens, personal messages or raw financial transactions may be exposed in the command-centre browser.
+- Owner permission to view the command centre is not, by itself, authorisation to access an external account. Select and authorise each account and dataset independently.
+- An integration must not send email, update records, move funds, publish content, change infrastructure or deploy code.
+- Missing source permissions must not be bypassed by scraping or by reading a different account.
+- The current implementation's Executive Snapshot remains D1-only. This section specifies a future integration boundary; it does not claim any external connector is live.
