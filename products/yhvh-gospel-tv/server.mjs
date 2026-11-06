@@ -108,11 +108,14 @@ function hlsFile(res, pathname) {
   const filePath = path.resolve(hlsDir, rel);
   const root = path.resolve(hlsDir) + path.sep;
   if (!filePath.startsWith(root)) return json(res, 400, { error: 'bad_path' });
-  if (!fs.existsSync(filePath) || !fs.statSync(filePath).isFile()) return json(res, 404, { error: 'hls_not_found' });
-  const ext = path.extname(filePath).toLowerCase();
+  if (!fs.existsSync(filePath)) return json(res, 404, { error: 'hls_not_found' });
+  const realRoot = fs.realpathSync(hlsDir) + path.sep;
+  const realFile = fs.realpathSync(filePath);
+  if (!realFile.startsWith(realRoot) || !fs.statSync(realFile).isFile()) return json(res, 404, { error: 'hls_not_found' });
+  const ext = path.extname(realFile).toLowerCase();
   const type = ext === '.m3u8' ? 'application/vnd.apple.mpegurl' : ext === '.ts' ? 'video/mp2t' : 'application/octet-stream';
   res.writeHead(200, {'content-type':type,'cache-control':'no-cache','access-control-allow-origin':'*','x-content-type-options':'nosniff'});
-  fs.createReadStream(filePath).pipe(res);
+  fs.createReadStream(realFile).pipe(res);
 }
 function authorized(req) {
   if (!controlToken) return false;
