@@ -36,6 +36,7 @@ const seed = {
   submissions: [],
   events: [],
   sponsorSlots: [],
+  commercialEnquiries: [],
   audit: []
 };
 
@@ -140,6 +141,19 @@ function addEvent(b) {
   const item={id:`EVT-${Date.now()}-${crypto.randomBytes(2).toString('hex')}`,createdAt:new Date().toISOString(),title:clean(b.title,160),date:clean(b.date,32),time:clean(b.time,16),territory:clean(b.territory,64),language:clean(b.language || 'mul',16),status:'PLANNING'};
   if (!item.title || !item.date) throw new Error('event_title_and_date_required');
   state.events.unshift(item); state.events=state.events.slice(0,500); saveState(state); audit('event_created',{id:item.id,title:item.title}); return item;
+}
+const commercialPackages = [
+  {id:'COMMUNITY_SUPPORTER',name:'Community Supporter',description:'Support a community Gospel segment, local ministry feature or faith-based initiative.',inventory:'Community feature / segment association',price:'QUOTE_ON_REQUEST'},
+  {id:'PROGRAMME_PARTNER',name:'Programme Partner',description:'Partner with a recurring programme, subject to editorial independence and scheduling approval.',inventory:'Programme sponsorship association',price:'QUOTE_ON_REQUEST'},
+  {id:'PRIME_TIME_PARTNER',name:'Prime-Time Partner',description:'Request a premium association around selected evening programming and special broadcasts.',inventory:'Selected evening programme inventory',price:'QUOTE_ON_REQUEST'},
+  {id:'NATIONAL_CAMPAIGN',name:'National Campaign Partner',description:'Discuss a multi-programme or event-led campaign across approved station inventory.',inventory:'Multi-programme / event campaign',price:'QUOTE_ON_REQUEST'}
+];
+function addCommercialEnquiry(b, req) {
+  const item={id:'ADV-'+Date.now()+'-'+crypto.randomBytes(2).toString('hex'),createdAt:new Date().toISOString(),organisation:clean(b.organisation,160),contactName:clean(b.contactName,120),email:clean(b.email,180).toLowerCase(),phone:clean(b.phone,40),packageId:clean(b.packageId,48),campaign:clean(b.campaign,1000),budget:clean(b.budget,80),territory:clean(b.territory,80),status:'NEW'};
+  if(!item.organisation||!item.contactName||!item.email||!item.campaign)throw new Error('organisation_contact_email_and_campaign_required');
+  if(!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(item.email))throw new Error('valid_email_required');
+  if(!commercialPackages.some(x=>x.id===item.packageId))throw new Error('invalid_commercial_package');
+  state.commercialEnquiries=state.commercialEnquiries||[];state.commercialEnquiries.unshift(item);state.commercialEnquiries=state.commercialEnquiries.slice(0,1000);saveState(state);audit('commercial_enquiry_received',{id:item.id,packageId:item.packageId});return item;
 }
 function addSponsorSlot(b) {
   const item={id:`SP-${Date.now()}-${crypto.randomBytes(2).toString('hex')}`,createdAt:new Date().toISOString(),name:clean(b.name,160),slot:clean(b.slot,80),status:'PROPOSAL',editorialIndependent:true};
@@ -247,7 +261,7 @@ function decideSponsorSlot(b) {
 }
 function dashboard() {
   const {current,next,index}=currentSchedule();
-  return {ok:true,station:stationName,tagline:'FAITH. WORSHIP. WORD. — AFRICA TO THE WORLD.',runtime:'izakhono-owned',automation:state.automation,emergency:state.emergency,live:Boolean(liveUrl),liveUrl:liveUrl||null,current,next,index,schedule,playout:playout.snapshot(),broadcast:broadcast.snapshot(),counts:{submissions:state.submissions.length,events:state.events.length,sponsorSlots:state.sponsorSlots.length,audit:state.audit.length},recent:{submissions:state.submissions.slice(0,12),events:state.events.slice(0,12),sponsorSlots:state.sponsorSlots.slice(0,12),audit:state.audit.slice(0,30)},serverTime:new Date().toISOString()};
+  return {ok:true,station:stationName,tagline:'FAITH. WORSHIP. WORD. — AFRICA TO THE WORLD.',runtime:'izakhono-owned',automation:state.automation,emergency:state.emergency,live:Boolean(liveUrl),liveUrl:liveUrl||null,current,next,index,schedule,playout:playout.snapshot(),broadcast:broadcast.snapshot(),counts:{submissions:state.submissions.length,events:state.events.length,sponsorSlots:state.sponsorSlots.length,commercialEnquiries:(state.commercialEnquiries||[]).length,audit:state.audit.length},recent:{submissions:state.submissions.slice(0,12),events:state.events.slice(0,12),sponsorSlots:state.sponsorSlots.slice(0,12),commercialEnquiries:(state.commercialEnquiries||[]).slice(0,30),audit:state.audit.slice(0,30)},serverTime:new Date().toISOString()};
 }
 
 const server = http.createServer(async (req, res) => {
@@ -255,6 +269,8 @@ const server = http.createServer(async (req, res) => {
     const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`); const p=url.pathname;
     if (req.method==='GET' && p==='/health') return json(res,200,{ok:true,service:'yhvh-gospel-tv',runtime:'izakhono-owned',station:stationName,playout:playout.snapshot(),broadcast:broadcast.snapshot(),time:new Date().toISOString()});
     if (req.method==='GET' && p==='/api/status') return json(res,200,dashboard());
+    if (req.method==='GET' && p==='/api/commercial/packages') return json(res,200,{ok:true,packages:commercialPackages});
+    if (req.method==='POST' && p==='/api/commercial/enquiry') { if(!intakeAllowed(req))return json(res,429,{ok:false,error:'rate_limit'});const item=addCommercialEnquiry(await body(req),req);return json(res,201,{ok:true,item:{id:item.id,status:item.status}}); }
     if (req.method==='GET' && p==='/api/schedule') return json(res,200,{ok:true,schedule});
     if (req.method==='GET' && p==='/api/now') return json(res,200,{ok:true,...currentSchedule()});
     if (req.method==='GET' && p==='/api/live') return json(res,200,{ok:true,configured:Boolean(liveUrl),url:liveUrl||null});
@@ -292,6 +308,7 @@ const server = http.createServer(async (req, res) => {
     if (req.method==='GET' && p==='/control-center') return html(res,'control-center.html');
     if (req.method==='GET' && p==='/broadcast') return html(res,'broadcast.html');
     if (req.method==='GET' && p==='/creator') return html(res,'creator.html');
+    if (req.method==='GET' && p==='/advertise') return html(res,'advertise.html');
     return json(res,404,{ok:false,error:'not_found'});
   } catch (err) { return json(res,400,{ok:false,error:err?.message||'bad_request'}); }
 });
