@@ -1,0 +1,154 @@
+{
+  "schema": "yhvh.global-gospel-broadcast-network/v1",
+  "authority": "IZAKHONO",
+  "brand": "YHVH GOSPEL TV",
+  "mission": "Connect Christian television networks, Gospel radio stations, online radio, Christian audio platforms, churches, ministries, creators and distributors in a lawful, rights-respecting global broadcasting partnership ecosystem.",
+  "model": "NETWORK_OF_NETWORKS",
+  "principles": {
+    "editorial_independence": true,
+    "payment_guarantees_airtime": false,
+    "creator_ownership_default": true,
+    "written_rights_and_licences_required": true,
+    "territory_clearance_required": true,
+    "local_regulatory_review_required_where_applicable": true,
+    "safeguarding_required_for_minors": true,
+    "no_unlicensed_rebroadcast": true
+  },
+  "partner_types": [
+    "television_network",
+    "regional_or_national_tv_station",
+    "satellite_broadcaster",
+    "ott_fast_streaming_platform",
+    "gospel_radio_station",
+    "christian_online_radio",
+    "church_radio",
+    "christian_podcast_network",
+    "digital_audio_platform",
+    "church_or_ministry",
+    "gospel_artist_or_choir",
+    "content_producer_or_studio",
+    "live_event_producer",
+    "local_distribution_partner",
+    "commercial_or_founding_partner"
+  ],
+  "partnership_opportunities": [
+    "programme_exchange",
+    "licensed_content_syndication",
+    "live_event_simulcast",
+    "radio_and_tv simulcast",
+    "audio_and_video_on_demand",
+    "regional_distribution",
+    "language_and_subtitle_exchange",
+    "joint_original_production",
+    "creator_discovery_and_development",
+    "technical_and_training_collaboration",
+    "commercial_partnership"
+  ],
+  "radio_capabilities": {
+    "formats": ["FM", "AM", "DAB_PLUS", "WEB_RADIO", "MOBILE_APP", "PODCAST", "STREAMING_AUDIO"],
+    "content_categories": [
+      "Gospel_music",
+      "worship",
+      "Bible_teaching",
+      "prayer",
+      "testimonies",
+      "Christian_news_and_interviews",
+      "youth_and_family",
+      "community_and_church_events"
+    ],
+    "audio_delivery": ["live_stream", "scheduled_programme", "on_demand", "podcast_feed"],
+    "simulcast": "Subject to technical compatibility, written permissions and applicable music, performer and broadcast rights."
+  },
+  "television_capabilities": {
+    "formats": ["terrestrial", "satellite", "cable", "OTT", "FAST", "web", "mobile", "event_feed"],
+    "content_categories": [
+      "worship",
+      "Gospel_music",
+      "Bible_teaching",
+      "testimonies",
+      "Christian_documentary",
+      "church_and_ministry_programmes",
+      "Gospel_events",
+      "children_and_youth"
+    ]
+  },
+  "onboarding_pipeline": [
+    "prospect_identified",
+    "contact_verified",
+    "invitation_sent",
+    "response_received",
+    "due_diligence",
+    "partner_charter_accepted",
+    "identity_and_entity_verified",
+    "content_and_music_rights_review",
+    "territory_and_regulatory_review",
+    "commercial_and_editorial_terms_agreed",
+    "written_agreement_signed",
+    "technical_and_metadata_qc",
+    "test_exchange",
+    "approved_distribution",
+    "active_partner",
+    "performance_and_rights_review"
+  ],
+  "required_partner_record": {
+    "partnerId": "unique identifier",
+    "legalName": "verified organisation name",
+    "brandName": "public station or network name",
+    "partnerType": "one value from partner_types",
+    "country": "ISO 3166-1 alpha-2",
+    "territories": [],
+    "languages": [],
+    "website": null,
+    "publicContact": null,
+    "verifiedContact": false,
+    "platforms": [],
+    "formats": [],
+    "contentCategories": [],
+    "rightsAndLicences": "REVIEW_REQUIRED",
+    "regulatoryStatus": "REVIEW_REQUIRED",
+    "agreementStatus": "NOT_STARTED",
+    "technicalStatus": "NOT_TESTED",
+    "relationshipStatus": "PROSPECT",
+    "lastVerifiedAt": null,
+    "notes": []
+  },
+  "default_states": {
+    "rightsAndLicences": "REVIEW_REQUIRED",
+    "regulatoryStatus": "REVIEW_REQUIRED",
+    "agreementStatus": "NOT_STARTED",
+    "technicalStatus": "NOT_TESTED",
+    "relationshipStatus": "PROSPECT"
+  },
+  "registry": [],
+  "outreach_policy": {
+    "verify_public_contact_before_sending": true,
+    "record_actual_outreach_and_replies": true,
+    "never_mark_contacted_without_evidence": true,
+    "no_mass_spam": true,
+    "respect_opt_out_and_local_law": true,
+    "do_not_claim_partnership_until_written_and_verified": true
+  },
+  "distribution_gate": {
+    "default": "DENY_UNTIL_VERIFIED",
+    "required": [
+      "signed_or_documented_distribution_permission",
+      "content_specific_rights_clearance",
+      "territory_clearance",
+      "regulatory_review_where_applicable",
+      "technical_qc"
+    ],
+    "radio_music_note": "A station's permission alone may not clear underlying compositions, sound recordings, performers or collecting-society obligations. Verify each applicable right and territory before transmission."
+  },
+  "commercial_editorial_separation": "Sponsorship, advertising, membership or payment does not purchase editorial approval, ministry endorsement or guaranteed airtime.",
+  "reporting": [
+    "verified_partners_by_type",
+    "verified_partners_by_country",
+    "radio_and_tv_partner_mix",
+    "languages_and_territories",
+    "content_exchange_volume",
+    "distribution_routes",
+    "rights_and_agreement_expiry",
+    "technical_readiness",
+    "audience_and_revenue_where lawfully available"
+  ]
+}
