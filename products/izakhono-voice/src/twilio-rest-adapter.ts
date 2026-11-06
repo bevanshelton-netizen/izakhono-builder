@@ -2,7 +2,10 @@ import type { TelephonyAdapter } from "./types";
 
 export interface TwilioVoiceConfig {
   accountSid: string;
-  authToken: string;
+  authToken?: string;
+  /** Prefer a restricted API key over the account Auth Token in production. */
+  apiKeySid?: string;
+  apiKeySecret?: string;
   fromNumber: string;
   voiceWebhookUrl: string;
   statusCallbackUrl: string;
@@ -37,7 +40,8 @@ export class TwilioRestTelephonyAdapter implements TelephonyAdapter {
 
   constructor(private readonly config: TwilioVoiceConfig) {
     required(config.accountSid, "accountSid");
-    required(config.authToken, "authToken");
+    if (config.apiKeySid && !config.apiKeySecret) throw new Error("Missing Twilio configuration: apiKeySecret");
+    if (!config.apiKeySid && !config.authToken) throw new Error("Configure a Twilio API key pair or account Auth Token");
     required(config.fromNumber, "fromNumber");
     required(config.voiceWebhookUrl, "voiceWebhookUrl");
     required(config.statusCallbackUrl, "statusCallbackUrl");
@@ -96,7 +100,9 @@ export class TwilioRestTelephonyAdapter implements TelephonyAdapter {
   private async request(path: string, fields: Record<string, string>): Promise<void> {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), this.timeoutMs);
-    const credentials = btoa(`${this.config.accountSid}:${this.config.authToken}`);
+    const username = this.config.apiKeySid ?? this.config.accountSid;
+    const password = this.config.apiKeySecret ?? this.config.authToken!;
+    const credentials = btoa(`${username}:${password}`);
     try {
       const response = await fetch(`${this.apiBaseUrl}/Accounts/${encodeURIComponent(this.config.accountSid)}${path}`, {
         method: "POST",
