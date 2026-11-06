@@ -141,7 +141,7 @@ export async function consumeEmailVerificationToken(
      RETURNING customer_id`,
   ).bind(now.toISOString(), await digest(token), now.toISOString()).first<{ customer_id: string }>();
   if (!consumed?.customer_id) return null;
-  const activated = await db.prepare(
+  await db.prepare(
     `UPDATE builder_customers SET status='active',email_verified_at=?,updated_at=?
      WHERE id=? AND status='pending_verification'`,
   ).bind(now.toISOString(), now.toISOString(), consumed.customer_id).run();
