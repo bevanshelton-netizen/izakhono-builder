@@ -23,7 +23,7 @@ pass() { echo "[PASS] $*"; }
 [[ -d "$STATE_ROOT" ]] || fail "persistent state root missing: $STATE_ROOT"
 command -v docker >/dev/null 2>&1 || fail "Docker Engine unavailable"
 docker info >/dev/null 2>&1 || fail "Docker Engine not operational"
-command -v docker compose >/dev/null 2>&1 || fail "Docker Compose unavailable"
+docker compose version >/dev/null 2>&1 || fail "Docker Compose plugin unavailable"
 [[ -x "$RELEASE_ADAPTER" ]] || fail "release adapter missing or not executable: $RELEASE_ADAPTER"
 
 docker network inspect izakhono-edge >/dev/null 2>&1 || fail "izakhono-edge network missing"
@@ -34,11 +34,11 @@ docker network inspect izakhono-edge >/dev/null 2>&1 || fail "izakhono-edge netw
 [[ "$EXPECTED_DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]] || fail "expected digest must be sha256:<64 hex>"
 [[ "${IZAKHONO_ACCEPTANCE_VERIFIED:-}" == "true" ]] || fail "independent acceptance must explicitly set IZAKHONO_ACCEPTANCE_VERIFIED=true"
 
-HTTPS_STATUS="$(curl -k -L -sS -o /dev/null -w '%{http_code}' --max-time 15 "$HTTPS_URL")" || fail "public HTTPS check failed"
+HTTPS_STATUS="$(curl --fail --location --silent --show-error -o /dev/null -w '%{http_code}' --max-time 15 "$HTTPS_URL")" || fail "public HTTPS check failed"
 [[ "$HTTPS_STATUS" =~ ^2[0-9][0-9]$ ]] || fail "public HTTPS returned HTTP $HTTPS_STATUS"
 pass "public HTTPS verified"
 
-HEALTH_STATUS="$(curl -k -L -sS -o /dev/null -w '%{http_code}' --max-time 15 "$HEALTH_URL")" || fail "health endpoint check failed"
+HEALTH_STATUS="$(curl --fail --location --silent --show-error -o /dev/null -w '%{http_code}' --max-time 15 "$HEALTH_URL")" || fail "health endpoint check failed"
 [[ "$HEALTH_STATUS" =~ ^2[0-9][0-9]$ ]] || fail "health endpoint returned HTTP $HEALTH_STATUS"
 pass "health endpoint verified"
 
