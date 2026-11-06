@@ -9,7 +9,7 @@ function addActivity(title,detail){const list=$('#activity-list');if(list.queryS
 function showAuth(required,message=''){const panel=$('#auth-panel');panel.hidden=!required;document.querySelectorAll('.requires-auth').forEach(el=>el.classList.toggle('auth-hidden',required));$('#auth-message').textContent=message;if(required){$('#connection-state').textContent='SIGN IN REQUIRED';$('#login-secret').focus()}else if(!sessionConfigured){$('#connection-state').textContent='LOCAL PREVIEW'}}
 async function api(path,options={}){const response=await fetch(path,{...options,credentials:'same-origin',headers:{...(options.body?{'content-type':'application/json'}:{}),...(options.headers||{})}});let data={};try{data=await response.json()}catch{}if(!response.ok)throw new Error(data.error||'Request failed ('+response.status+')');return data}
 async function loadSession(){try{const state=await api('/api/jarvis/v1/session');sessionConfigured=!!state.login_configured;authenticated=!!state.authenticated;if(sessionConfigured&&!authenticated){showAuth(true);return}if(authenticated){showAuth(false);$('#connection-state').textContent='OWNER SESSION ACTIVE';await loadWorkspace();return}}catch{}sessionConfigured=false;authenticated=false;showAuth(false)}
-async function loadWorkspace(){try{const status=await api('/api/jarvis/v1/status');$('#connection-state').textContent=status.intelligence==='connected'?'AI CONNECTED':status.intelligence==='configured'?'AI GATEWAY READY':'OWNER SESSION ACTIVE';const conversations=await api('/api/jarvis/v1/conversations');if(conversations.items&&conversations.items.length){conversationId=conversations.items[0].id;const history=await api('/api/jarvis/v1/conversations/'+encodeURIComponent(conversationId)+'/messages');const list=$('#activity-list');list.innerHTML='';(history.items||[]).slice(-8).forEach(m=>addActivity(m.role==='assistant'?'J.A.R.V.I.S.':m.content,m.role==='assistant'?m.content.slice(0,240):'Owner command · saved to conversation'));}else{const created=await api('/api/jarvis/v1/conversations',{method:'POST',body:JSON.stringify({title:'J.A.R.V.I.S. session'})});conversationId=created.conversation.id}const node=document.querySelector('.node small');if(node)node.textContent='Owner session · D1 persistence';const note=document.querySelector('.demo-note');if(note)note.textContent='Authenticated owner session · Commands are stored securely; external actions remain approval-gated.';const activityFoot=document.querySelector('.activity-foot');if(activityFoot)activityFoot.textContent='Conversation and audit records are stored by the owner API.';await loadTasks();await loadActions()}catch(error){notify('Connected session, but workspace could not load: '+error.message)}}
+async function loadWorkspace(){try{const status=await api('/api/jarvis/v1/status');$('#connection-state').textContent=status.intelligence==='connected'?'AI CONNECTED':status.intelligence==='configured'?'AI GATEWAY READY':'OWNER SESSION ACTIVE';const conversations=await api('/api/jarvis/v1/conversations');if(conversations.items&&conversations.items.length){conversationId=conversations.items[0].id;const history=await api('/api/jarvis/v1/conversations/'+encodeURIComponent(conversationId)+'/messages');const list=$('#activity-list');list.innerHTML='';(history.items||[]).slice(-8).forEach(m=>addActivity(m.role==='assistant'?'J.A.R.V.I.S.':m.content,m.role==='assistant'?m.content.slice(0,240):'Owner command · saved to conversation'));}else{const created=await api('/api/jarvis/v1/conversations',{method:'POST',body:JSON.stringify({title:'J.A.R.V.I.S. session'})});conversationId=created.conversation.id}const node=document.querySelector('.node small');if(node)node.textContent='Owner session · D1 persistence';const note=document.querySelector('.demo-note');if(note)note.textContent='Authenticated owner session · Commands are stored securely; external actions remain approval-gated.';const activityFoot=document.querySelector('.activity-foot');if(activityFoot)activityFoot.textContent='Conversation and audit records are stored by the owner API.';await loadTasks();await loadActions();await loadContext()}catch(error){notify('Connected session, but workspace could not load: '+error.message)}}
 $('#login-form').addEventListener('submit',async e=>{e.preventDefault();const secret=$('#login-secret').value;if(!secret)return;const button=e.submitter;button.disabled=true;$('#auth-message').textContent='Authenticating securely…';try{await api('/api/jarvis/v1/session/login',{method:'POST',body:JSON.stringify({secret})});$('#login-secret').value='';authenticated=true;showAuth(false);$('#connection-state').textContent='OWNER SESSION ACTIVE';await loadWorkspace();notify('Secure owner session established.')}catch(error){$('#auth-message').textContent=error.message}finally{button.disabled=false}});
 async function submit(){const value=$('#prompt').value.trim();if(!value){notify('Enter a command first.');return}if(!authenticated){addActivity(value,'Captured locally · Preview only · Not executed');$('#prompt').value='';notify('Local preview only. Configure secure owner login to connect the workspace.');return}const button=$('#send');button.disabled=true;button.textContent='Working…';try{if(!conversationId){const created=await api('/api/jarvis/v1/conversations',{method:'POST',body:JSON.stringify({title:value.slice(0,72)})});conversationId=created.conversation.id}const result=await api('/api/jarvis/v1/conversations/'+encodeURIComponent(conversationId)+'/messages',{method:'POST',body:JSON.stringify({text:value,client_message_id:crypto.randomUUID()})});addActivity('YOU',value);if(result.assistant_message){addActivity('J.A.R.V.I.S.',result.assistant_message.content);$('#connection-state').textContent='AI CONNECTED'}else{addActivity('J.A.R.V.I.S. STATUS','Message saved. Intelligence gateway is not connected yet.');notify('Your command was saved. AI gateway credentials still need configuration.')}$('#prompt').value=''}catch(error){notify('Command could not be submitted: '+error.message)}finally{button.disabled=false;button.innerHTML='Submit command <span>↗</span>'}}
 $('#send').addEventListener('click',submit);
@@ -52,7 +52,7 @@ async function loadTasks(){
 $('#task-form').addEventListener('submit',async e=>{
  e.preventDefault();if(!authenticated){notify('Sign in to queue agent tasks.');return}
  const button=$('#queue-task');button.disabled=true;$('#task-message').textContent='Saving task…';
- try{const result=await api('/api/jarvis/v1/tasks',{method:'POST',body:JSON.stringify({agent_id:agentSelect.value,task_type:typeSelect.value,title:$('#task-title').value,instruction:$('#task-instruction').value,priority:$('#task-priority').value,idempotency_key:crypto.randomUUID()})});$('#task-message').textContent=result.duplicate?'Existing task found.':'Task queued successfully.';$('#task-title').value='';$('#task-instruction').value='';await loadTasks();notify('Task added to the J.A.R.V.I.S. queue.')}catch(error){$('#task-message').textContent=error.message}finally{button.disabled=false}
+ try{const result=await api('/api/jarvis/v1/tasks',{method:'POST',body:JSON.stringify({agent_id:agentSelect.value,task_type:typeSelect.value,title:$('#task-title').value,instruction:$('#task-instruction').value,priority:$('#task-priority').value,context_ids:Array.from(document.querySelectorAll('#context-list input[data-context-id]:checked')).map(input=>input.dataset.contextId),idempotency_key:crypto.randomUUID()})});$('#task-message').textContent=result.duplicate?'Existing task found.':'Task queued successfully.';$('#task-title').value='';$('#task-instruction').value='';await loadTasks();notify('Task added to the J.A.R.V.I.S. queue.')}catch(error){$('#task-message').textContent=error.message}finally{button.disabled=false}
 });
 $('#refresh-tasks').addEventListener('click',loadTasks);
 $('#task-list').addEventListener('click',async e=>{
@@ -107,3 +107,50 @@ $('#action-list').addEventListener('click',async e=>{
   notify(decision==='execute'?'Internal audit adapter completed. No external system was contacted.':'Proposal '+result.status+'. No external action was executed.');await loadActions();
  }catch(error){notify(error.message);button.disabled=false}
 });
+
+const contextScope=$('#context-scope'),contextProject=$('#context-project');
+contextScope.addEventListener('change',()=>{contextProject.disabled=contextScope.value!=='project';contextProject.required=contextScope.value==='project';});
+function contextElement(record){
+ const card=document.createElement('article');card.className='context-card';
+ const top=document.createElement('div');top.className='context-card-head';
+ const label=document.createElement('span');label.className='context-scope';label.textContent=record.scope==='project'?'PROJECT · '+(record.project_id||''):'COMPANY';
+ const type=document.createElement('small');type.textContent=String(record.record_type||'reference').replace(/_/g,' ');
+ top.append(label,type);card.append(top);
+ const title=document.createElement('b');title.className='context-title';title.textContent=record.title;card.append(title);
+ const content=document.createElement('p');content.className='context-content';content.textContent=record.content;card.append(content);
+ if(Array.isArray(record.tags)&&record.tags.length){const tags=document.createElement('small');tags.className='context-tags';tags.textContent=record.tags.join(' · ');card.append(tags)}
+ const footer=document.createElement('label');footer.className='context-attach';
+ const check=document.createElement('input');check.type='checkbox';check.dataset.contextId=record.id;check.setAttribute('aria-label','Attach '+record.title+' to next task');
+ const text=document.createElement('span');text.textContent='Attach to next task';
+ footer.append(check,text);card.append(footer);
+ return card;
+}
+async function loadContext(){
+ if(!authenticated)return;
+ try{
+  const filter=$('#context-filter').value;
+  const data=await api('/api/jarvis/v1/context'+(filter==='all'?'':'?scope='+encodeURIComponent(filter)));
+  const list=$('#context-list');list.innerHTML='';
+  if(!data.items||!data.items.length){const empty=document.createElement('div');empty.className='empty';empty.innerHTML='<span>⌕</span><b>No knowledge records yet</b><small>Add a company or project record to build the shared knowledge base.</small>';list.append(empty);return}
+  data.items.forEach(record=>list.append(contextElement(record)));
+ }catch(error){$('#context-message').textContent='Knowledge library unavailable: '+error.message}
+}
+$('#context-form').addEventListener('submit',async e=>{
+ e.preventDefault();if(!authenticated){notify('Sign in to manage company knowledge.');return}
+ const button=$('#save-context');button.disabled=true;$('#context-message').textContent='Saving owner-scoped record…';
+ try{
+  const scope=contextScope.value;
+  const result=await api('/api/jarvis/v1/context',{method:'POST',body:JSON.stringify({
+   scope,project_id:scope==='project'?contextProject.value.trim():null,
+   record_type:$('#context-type').value,title:$('#context-title').value.trim(),
+   content:$('#context-content').value.trim(),
+   tags:$('#context-tags').value.split(',').map(tag=>tag.trim()).filter(Boolean).slice(0,20)
+  })});
+  $('#context-message').textContent='Saved · '+result.record.id;
+  $('#context-title').value='';$('#context-content').value='';$('#context-tags').value='';
+  await loadContext();notify('Knowledge record saved to the owner-scoped library.');
+ }catch(error){$('#context-message').textContent=error.message}
+ finally{button.disabled=false}
+});
+$('#refresh-context').addEventListener('click',loadContext);
+$('#context-filter').addEventListener('change',loadContext);
