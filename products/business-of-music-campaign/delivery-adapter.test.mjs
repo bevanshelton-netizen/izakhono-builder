@@ -44,7 +44,7 @@ assert.throws(() => prepareDeliveryRequest({
 
 
 import { createHmac } from 'node:crypto';
-import { buildCreatePaymentLink, verifyIkhokhaWebhook, isValidPaymentNotification } from './ikhokha-api.mjs';
+import { buildCreatePaymentLink, verifyIkhokhaWebhook, isValidPaymentNotification, verifyPaymentStatus } from './ikhokha-api.mjs';
 
 const signedRequest = buildCreatePaymentLink({
   appId: 'APP-TEST',
@@ -96,3 +96,26 @@ assert.equal(verifyIkhokhaWebhook({
 }), false);
 assert.equal(isValidPaymentNotification(callbackBody), true);
 assert.equal(isValidPaymentNotification({ ...callbackBody, status: 'FAILURE' }), false);
+
+const verifiedStatus = {
+  paylinkID: 'PAYLINK-001',
+  status: 'PAID',
+  amount: 14900,
+  externalTransactionID: 'BOM-ORDER-001',
+};
+assert.equal(verifyPaymentStatus(verifiedStatus, {
+  expectedPaylinkId: 'PAYLINK-001',
+  expectedExternalTransactionId: 'BOM-ORDER-001',
+}), true);
+assert.equal(verifyPaymentStatus({ ...verifiedStatus, amount: 100 }, {
+  expectedPaylinkId: 'PAYLINK-001',
+  expectedExternalTransactionId: 'BOM-ORDER-001',
+}), false);
+assert.equal(verifyPaymentStatus({ ...verifiedStatus, status: 'PENDING' }, {
+  expectedPaylinkId: 'PAYLINK-001',
+  expectedExternalTransactionId: 'BOM-ORDER-001',
+}), false);
+assert.equal(verifyPaymentStatus({ ...verifiedStatus, paylinkID: 'OTHER' }, {
+  expectedPaylinkId: 'PAYLINK-001',
+  expectedExternalTransactionId: 'BOM-ORDER-001',
+}), false);
