@@ -12,7 +12,7 @@ assert.ok(!html.includes('<script>alert(1)</script>'));
 assert.ok(!html.includes('<img src=x'));
 assert.match(html, /&lt;script&gt;/);
 assert.ok(html.includes('\n'), 'rendered HTML uses real line breaks');
-assert.ok(!html.includes(String.raw`\\n`), 'rendered HTML does not contain escaped newline text');
+assert.ok(!html.includes(String.raw`\n`), 'rendered HTML does not contain escaped newline text');
 assert.throws(() => resolveLocalModelConfig({ IZAKHONO_LOCAL_MODEL_URL: 'https://example.com/api/chat' }), /not-private/);
 assert.equal(resolveLocalModelConfig({}).model, 'qwen2.5-coder:3b');
 console.log('[PASS] Native generation fallback, HTML escaping and local-only model routing verified.');
