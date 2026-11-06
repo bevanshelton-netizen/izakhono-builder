@@ -1,0 +1,28 @@
+name: Builder customer auth tests
+
+on:
+  push:
+    paths:
+      - 'src/customer-auth.ts'
+      - 'src/customer-auth.test.ts'
+      - '.github/workflows/builder-customer-auth.yml'
+  pull_request:
+    paths:
+      - 'src/customer-auth.ts'
+      - 'src/customer-auth.test.ts'
+      - '.github/workflows/builder-customer-auth.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  customer-auth:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Verify customer password hashing and validation
+        run: npm run builder:customer-auth:test
