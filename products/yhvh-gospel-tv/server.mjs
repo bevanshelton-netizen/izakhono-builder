@@ -151,7 +151,7 @@ const commercialPackages = [
 function addCommercialEnquiry(b, req) {
   const item={id:'ADV-'+Date.now()+'-'+crypto.randomBytes(2).toString('hex'),createdAt:new Date().toISOString(),organisation:clean(b.organisation,160),contactName:clean(b.contactName,120),email:clean(b.email,180).toLowerCase(),phone:clean(b.phone,40),packageId:clean(b.packageId,48),campaign:clean(b.campaign,1000),budget:clean(b.budget,80),territory:clean(b.territory,80),status:'NEW'};
   if(!item.organisation||!item.contactName||!item.email||!item.campaign)throw new Error('organisation_contact_email_and_campaign_required');
-  if(!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(item.email))throw new Error('valid_email_required');
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(item.email))throw new Error('valid_email_required');
   if(!commercialPackages.some(x=>x.id===item.packageId))throw new Error('invalid_commercial_package');
   state.commercialEnquiries=state.commercialEnquiries||[];state.commercialEnquiries.unshift(item);state.commercialEnquiries=state.commercialEnquiries.slice(0,1000);saveState(state);audit('commercial_enquiry_received',{id:item.id,packageId:item.packageId});return item;
 }
