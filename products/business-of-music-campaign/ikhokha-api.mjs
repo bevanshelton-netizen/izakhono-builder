@@ -44,6 +44,7 @@ export function buildCreatePaymentLink({ appId, appSecret, entityId, callbackUrl
       callbackUrl: required(callbackUrl, 'callbackUrl'),
       successPageUrl: required(successUrl, 'successUrl'),
       failurePageUrl: required(failureUrl, 'failureUrl'),
+      cancelUrl: required(failureUrl, 'failureUrl'),
     },
   };
   if (!Number.isSafeInteger(amount) || amount !== 14900) throw new RangeError('Unexpected product amount');
@@ -60,14 +61,24 @@ export function buildCreatePaymentLink({ appId, appSecret, entityId, callbackUrl
 }
 
 /**
- * Verify the documented iKhokha callback signature against the exact callback path
- * and raw JSON body. Callers must preserve rawBody before JSON parsing.
+ * Verify the iKhokha webhook using the documented JavaScript example:
+ * pathname from the configured callback URL + JSON.stringify(parsed body),
+ * after removing the optional "text" field. Do not sign raw HTTP bytes.
  */
-export function verifyIkhokhaWebhook({ appId, expectedAppId, appSecret, callbackPath, rawBody, signature }) {
-  if (required(appId, 'appId') !== required(expectedAppId, 'expectedAppId')) return false;
-  if (typeof rawBody !== 'string' || !rawBody.length) return false;
-  if (typeof callbackPath !== 'string' || !callbackPath.startsWith('/')) return false;
-  const expected = signatureFor(callbackPath, rawBody, appSecret);
+export function verifyIkhokhaWebhook({ appId, expectedAppId, appSecret, callbackUrl, body, signature }) {
+  if (typeof appId !== 'string' || typeof expectedAppId !== 'string' || appId !== expectedAppId) return false;
+  if (!body || typeof body !== 'object' || Array.isArray(body)) return false;
+  if (typeof callbackUrl !== 'string') return false;
+  let pathname;
+  try {
+    pathname = new URL(callbackUrl).pathname;
+  } catch {
+    return false;
+  }
+  if (!pathname.startsWith('/')) return false;
+  const normalizedBody = { ...body };
+  delete normalizedBody.text;
+  const expected = signatureFor(pathname, JSON.stringify(normalizedBody), appSecret);
   return safeHexEqual(expected, signature);
 }
 
