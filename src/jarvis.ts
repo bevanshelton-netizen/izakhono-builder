@@ -556,7 +556,7 @@ export async function jarvisRoute(
         .bind(TENANT, owner, idempotencyKey).first<any>();
       if (prior) return response({ ok: true, duplicate: true, task: prior });
     }
-    const dependencyIds = Array.isArray(body.depends_on) ? Array.from(new Set(body.depends_on.filter((v: unknown) => typeof v === 'string' && /^[a-zA-Z0-9_-]{1,100}$/.test(v))).slice(0, 20) as string[] : [];
+    const dependencyIds = Array.isArray(body.depends_on) ? Array.from(new Set(body.depends_on.filter((v: unknown) => typeof v === 'string' && /^[a-zA-Z0-9_-]{1,100}$/.test(v)))).slice(0, 20) as string[] : [];
     if (Array.isArray(body.depends_on) && dependencyIds.length !== body.depends_on.length) return response({ ok: false, error: 'depends_on must contain up to 20 unique task IDs.' }, 400);
     if (dependencyIds.length) {
       const placeholders = dependencyIds.map(() => '?').join(',');
@@ -565,7 +565,7 @@ export async function jarvisRoute(
       if ((parents.results || []).length !== dependencyIds.length) return response({ ok: false, error: 'Every dependency must be an existing task owned by this account.' }, 400);
       if ((parents.results || []).some((p: any) => ['failed','cancelled'].includes(p.status))) return response({ ok: false, error: 'A dependency has already failed or been cancelled.' }, 409);
     }
-    const contextIds=Array.isArray(body.context_ids)?Array.from(new Set(body.context_ids.filter((v:unknown)=>typeof v==='string'&&/^[a-zA-Z0-9_-]{1,100}$/.test(v))).slice(0,20) as string[]:[];
+    const contextIds=Array.isArray(body.context_ids)?Array.from(new Set(body.context_ids.filter((v:unknown)=>typeof v==='string'&&/^[a-zA-Z0-9_-]{1,100}$/.test(v)))).slice(0,20) as string[]:[];
     if(Array.isArray(body.context_ids)&&contextIds.length!==body.context_ids.length)return response({ok:false,error:'context_ids must contain up to 20 unique record IDs.'},400);
     if(contextIds.length){
       const marks=contextIds.map(()=>'?').join(',');
