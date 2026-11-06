@@ -42,3 +42,13 @@ The public `/advertise` page presents four partnership pathways and collects pro
 The software does not manufacture broadcast rights or programme media. A real channel feed requires an authorised live/stream source and content whose rights, territory, language, safeguarding and editorial checks have passed. Until `YHVH_LIVE_URL` is configured, the public experience honestly presents the station as ready for feed activation rather than pretending video is live.
 
 This product is designed to sit beneath the existing YHVH rights, language-routing, creator, commercial and distribution policies.
+
+## First-party audience measurement
+
+The public station records a minimal set of first-party events: page views and starts of the native HLS player.
+A random browser-tab session token is held in session storage and hashed on the server before storage; the raw token,
+IP address, referrer and user-agent are not added to analytics records. Daily aggregates are retained for up to 30 days.
+The owner dashboard displays platform-observed page views, native player starts and browser-tab session counts.
+These are operational measurements, not verified unique people, viewers, watch time, broadcast reach or advertising
+delivery. Embedded third-party player playback is not measured. The analytics endpoint is rate-limited and accepts
+only the two documented event types.
