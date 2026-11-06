@@ -68,7 +68,15 @@ const schedule = [
   ['20:00','Revival Nights','Event','mul'], ['22:00','Late Night Praise','Worship','mul']
 ].map(([time,title,genre,language]) => ({ time, title, genre, language }));
 
-function minutesNow() { const d = new Date(); return d.getHours() * 60 + d.getMinutes() + d.getSeconds() / 60; }
+function minutesNow() {
+  // EPG times are station-local, not host-local. Keep the schedule correct
+  // when the service runs in a UTC container or a non-South-African region.
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Africa/Johannesburg', hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23'
+  }).formatToParts(new Date());
+  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return Number(values.hour) * 60 + Number(values.minute) + Number(values.second) / 60;
+}
 function slotMinutes(t) { const [h,m] = t.split(':').map(Number); return h * 60 + m; }
 function currentSchedule() {
   const now = minutesNow();
