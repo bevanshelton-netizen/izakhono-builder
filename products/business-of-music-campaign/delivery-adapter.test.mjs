@@ -69,22 +69,30 @@ assert.throws(() => buildCreatePaymentLink({
   externalTransactionId: 'BOM-ORDER-002', customerReference: 'BOM-CUSTOMER-001', amount: 100,
 }), /Unexpected product amount/);
 
-const callbackPath = '/api/ikhokha/callback';
-const callbackBody = JSON.stringify({
+const callbackUrl = 'https://example.test/api/ikhokha/callback?order=123';
+const callbackBody = {
   paylinkID: 'PAYLINK-001',
   status: 'SUCCESS',
   externalTransactionID: 'BOM-ORDER-001',
   responseCode: '00',
-});
-const escapedPayload = (callbackPath + callbackBody).replace(/[\\\"']/g, '\\$&').replace(/\u0000/g, '\\0');
-const callbackSignature = createHmac('sha256', 'test-secret').update(escapedPayload, 'utf8').digest('hex');
+  text: 'optional ignored field',
+};
+const normalizedBody = { ...callbackBody };
+delete normalizedBody.text;
+const callbackPayload = ('/api/ikhokha/callback' + JSON.stringify(normalizedBody))
+  .replace(/[\\\"']/g, '\\$&').replace(/\u0000/g, '\\0');
+const callbackSignature = createHmac('sha256', 'test-secret').update(callbackPayload, 'utf8').digest('hex');
 assert.equal(verifyIkhokhaWebhook({
   appId: 'APP-TEST', expectedAppId: 'APP-TEST', appSecret: 'test-secret',
-  callbackPath, rawBody: callbackBody, signature: callbackSignature,
+  callbackUrl, body: callbackBody, signature: callbackSignature,
 }), true);
 assert.equal(verifyIkhokhaWebhook({
   appId: 'APP-OTHER', expectedAppId: 'APP-TEST', appSecret: 'test-secret',
-  callbackPath, rawBody: callbackBody, signature: callbackSignature,
+  callbackUrl, body: callbackBody, signature: callbackSignature,
 }), false);
-assert.equal(isValidPaymentNotification(JSON.parse(callbackBody)), true);
-assert.equal(isValidPaymentNotification({ ...JSON.parse(callbackBody), status: 'FAILURE' }), false);
+assert.equal(verifyIkhokhaWebhook({
+  appId: 'APP-TEST', expectedAppId: 'APP-TEST', appSecret: 'wrong-secret',
+  callbackUrl, body: callbackBody, signature: callbackSignature,
+}), false);
+assert.equal(isValidPaymentNotification(callbackBody), true);
+assert.equal(isValidPaymentNotification({ ...callbackBody, status: 'FAILURE' }), false);
