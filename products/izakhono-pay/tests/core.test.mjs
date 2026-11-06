@@ -80,7 +80,7 @@ test('iKhokha status lookup signs the external reference path and query', () => 
   assert.equal(url.pathname, '/public-api/v1/api/getStatus/external');
   assert.equal(url.searchParams.get('externalReference'), 'IZP-ORDER-123');
   assert.equal(request.headers['IK-APPID'], 'app-id');
-  assert.equal(request.headers['IK-SIGN'], ikhokhaSignature(url.pathname + url.search, '', 'app-secret'));
+  assert.equal(request.headers['IK-SIGN'], ikhokhaSignature(url.pathname, '', 'app-secret'));
 });
 
 test('iKhokha status must match paid state, paylink ID and exact amount', () => {
