@@ -1318,7 +1318,7 @@ export default {
   async fetch(req: Request, env: any): Promise<Response> {
     const url = new URL(req.url);
 
-    const jarvisSnapshot = await jarvisExecutiveSnapshotRoute(req, env, () => ownerAuthorized(req, env));
+    if ((url.pathname === '/jarvis' || url.pathname === '/jarvis/') && req.method === 'GET') {\n      const page = new URL(req.url);\n      page.pathname = '/jarvis/index.html';\n      return env.ASSETS.fetch(new Request(page.toString(), req));\n    }\n\n    const jarvisSnapshot = await jarvisExecutiveSnapshotRoute(req, env, () => ownerAuthorized(req, env));
     if (jarvisSnapshot) return jarvisSnapshot;
 
     const commandsApi = await commandApiRoute(req, env, url);
