@@ -191,7 +191,7 @@ export function buildIkhokhaStatusRequest({ env, reference }) {
     headers: {
       accept: 'application/json',
       'IK-APPID': env.IKHOKHA_APP_ID,
-      'IK-SIGN': ikhokhaSignature(path, '', env.IKHOKHA_APP_SECRET)
+      'IK-SIGN': ikhokhaSignature(url.pathname, '', env.IKHOKHA_APP_SECRET)
     }
   };
 }
