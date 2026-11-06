@@ -62,7 +62,7 @@
     "jarvis:typecheck": "tsc --noEmit --target ES2022 --lib ES2022,DOM --module NodeNext --moduleResolution NodeNext src/jarvis.ts",
     "jarvis:test": "npx --yes tsx@4.20.3 src/jarvis.test.ts",
     "jarvis:validate": "npm run jarvis:typecheck && npm run jarvis:test && node --check public/jarvis/jarvis.js",
-    "validate:host": "tsc --noEmit --target ES2022 --lib ES2022,DOM,DOM.Iterable --module ESNext products/izakhono-host/src/index.ts"
+    "validate:host": "tsc --noEmit --target ES2022 --lib ES2022,DOM,DOM.Iterable --module NodeNext --moduleResolution NodeNext products/izakhono-host/src/index.ts"
   },
   "dependencies": {
     "wrangler": "4.127.1"
