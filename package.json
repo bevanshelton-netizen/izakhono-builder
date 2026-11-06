@@ -58,7 +58,10 @@
     "builder:adapter:test": "node autonomy/builder-adapter.test.mjs && node autonomy/native-generation.test.mjs",
     "native-generation:test": "node autonomy/native-generation.test.mjs",
     "model-runtime:validate": "node products/izakhono-ai-runtime/validate.mjs",
-    "model-runtime:test": "node products/izakhono-ai-runtime/validate.mjs && node products/izakhono-ai-runtime/provision.test.mjs"
+    "model-runtime:test": "node products/izakhono-ai-runtime/validate.mjs && node products/izakhono-ai-runtime/provision.test.mjs",
+    "jarvis:typecheck": "tsc --noEmit --target ES2022 --lib ES2022,DOM --module NodeNext --moduleResolution NodeNext src/jarvis.ts",
+    "jarvis:test": "npx --yes tsx@4.20.3 src/jarvis.test.ts",
+    "jarvis:validate": "npm run jarvis:typecheck && npm run jarvis:test && node --check public/jarvis/jarvis.js"
   },
   "dependencies": {
     "wrangler": "4.127.1"
