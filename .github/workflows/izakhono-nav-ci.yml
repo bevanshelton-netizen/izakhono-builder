@@ -99,6 +99,7 @@ jobs:
           test -f infra/node01/node01-release-receipt.sh
           test -f infra/node01/node01-deploy-guard.sh
           test -f infra/node01/node01-promote-release.sh
+          test -f infra/node01/test-nav-release-guard.sh
           test -f infra/node01/node01-health-check.sh
           test -f infra/node01/node01-watchdog.sh
           test -f infra/node01/node01-backup-nav.sh
@@ -152,6 +153,8 @@ jobs:
           bash -n infra/node01/node01-restore-drill.sh
           bash -n infra/node01/replicate-nav-backup-offsite.sh
           bash -n infra/node01/node01-promote-release.sh
+          bash -n infra/node01/test-nav-release-guard.sh
+          bash infra/node01/test-nav-release-guard.sh
           node -e "const fs=require('fs'); const b=JSON.parse(fs.readFileSync('infra/node01/node01-backup-contract.json','utf8')); if(b.runtime_target!=='NODE01'||!b.safety||!b.limitations) process.exit(1); console.log('NODE01 backup contract OK')"
           bash infra/node01/test-nav-backup-verifier.sh
           echo 'Infrastructure scripts valid'
