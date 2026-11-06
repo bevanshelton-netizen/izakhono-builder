@@ -178,3 +178,27 @@ export function verifyPayfastItnSignature(rawBody, passphrase = '') {
   if (passphrase) source += `&passphrase=${payfastEncode(passphrase)}`;
   return supplied !== '' && safeEqualText(md5Hex(source), supplied);
 }
+
+export function buildIkhokhaStatusRequest({ env, reference }) {
+  const externalReference = String(reference || '').trim();
+  if (!externalReference) throw new Error('iKhokha payment reference is required');
+  const endpoint = 'https://api.ikhokha.com/public-api/v1/api/getStatus/external';
+  const url = new URL(endpoint);
+  url.searchParams.set('externalReference', externalReference);
+  const path = url.pathname + url.search;
+  return {
+    url: url.toString(),
+    headers: {
+      accept: 'application/json',
+      'IK-APPID': env.IKHOKHA_APP_ID,
+      'IK-SIGN': ikhokhaSignature(path, '', env.IKHOKHA_APP_SECRET)
+    }
+  };
+}
+
+export function verifyIkhokhaStatus(status, intent) {
+  if (!status || !intent) return false;
+  return status.status === 'PAID' &&
+    String(status.paylinkID || '') === String(intent.provider_reference || '') &&
+    Number(status.amount) === Number(intent.amount_minor);
+}
