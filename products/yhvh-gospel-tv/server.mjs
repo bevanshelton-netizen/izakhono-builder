@@ -5,6 +5,7 @@ import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { createPlayoutEngine } from './playout/playout-engine.mjs';
 import { createBroadcastRuntime } from './playout/broadcast-runtime.mjs';
+import { createRateLimiter, readJsonBody } from './request-guards.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const publicDir = path.join(__dirname, 'public');
@@ -19,9 +20,7 @@ const controlToken = process.env.YHVH_CONTROL_TOKEN || '';
 const liveUrl = process.env.YHVH_LIVE_URL || '';
 const vaultDir = process.env.YHVH_CONTENT_VAULT || path.join(__dirname, 'content-vault');
 const stationName = 'YHVH GOSPEL TV';
-const intakeWindowMs = 60 * 60 * 1000;
-const intakeLimit = 12;
-const intakeHits = new Map();
+const intakeAllowed = createRateLimiter({ windowMs: 60 * 60 * 1000, limit: 12, maxKeys: 10000 });
 
 fs.mkdirSync(dataDir, { recursive: true });
 fs.mkdirSync(hlsDir, { recursive: true });
@@ -86,13 +85,6 @@ function currentSchedule() {
   if (idx < 0) idx = schedule.length - 1;
   return { current: schedule[idx], next: schedule[(idx + 1) % schedule.length], index: idx };
 }
-function clientKey(req) { return String(req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown').split(',')[0].slice(0, 96); }
-function intakeAllowed(req) {
-  const key = clientKey(req); const now = Date.now();
-  const hits = (intakeHits.get(key) || []).filter(t => now - t < intakeWindowMs);
-  if (hits.length >= intakeLimit) return false;
-  hits.push(now); intakeHits.set(key, hits); return true;
-}
 function json(res, status, body) {
   const out = JSON.stringify(body);
   res.writeHead(status, {'content-type':'application/json; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff','x-frame-options':'DENY','referrer-policy':'no-referrer'});
@@ -124,12 +116,7 @@ function authorized(req) {
   const a = Buffer.from(supplied), b = Buffer.from(controlToken);
   return a.length === b.length && crypto.timingSafeEqual(a, b);
 }
-async function body(req) {
-  const chunks = []; for await (const chunk of req) chunks.push(chunk);
-  const raw = Buffer.concat(chunks).toString('utf8');
-  if (raw.length > 32768) throw new Error('payload_too_large');
-  return raw ? JSON.parse(raw) : {};
-}
+async function body(req) { return readJsonBody(req, 32768); }
 function clean(v, max=200) { return String(v ?? '').replace(/[<>]/g, '').trim().slice(0,max); }
 function audit(action, meta = {}) { state.audit.unshift({id:crypto.randomUUID(),at:new Date().toISOString(),action,...meta}); state.audit=state.audit.slice(0,200); saveState(state); }
 function addSubmission(b, source='public') {
@@ -148,7 +135,7 @@ const commercialPackages = [
   {id:'PRIME_TIME_PARTNER',name:'Prime-Time Partner',description:'Request a premium association around selected evening programming and special broadcasts.',inventory:'Selected evening programme inventory',price:'QUOTE_ON_REQUEST'},
   {id:'NATIONAL_CAMPAIGN',name:'National Campaign Partner',description:'Discuss a multi-programme or event-led campaign across approved station inventory.',inventory:'Multi-programme / event campaign',price:'QUOTE_ON_REQUEST'}
 ];
-function addCommercialEnquiry(b, req) {
+function addCommercialEnquiry(b) {
   const item={id:'ADV-'+Date.now()+'-'+crypto.randomBytes(2).toString('hex'),createdAt:new Date().toISOString(),organisation:clean(b.organisation,160),contactName:clean(b.contactName,120),email:clean(b.email,180).toLowerCase(),phone:clean(b.phone,40),packageId:clean(b.packageId,48),campaign:clean(b.campaign,1000),budget:clean(b.budget,80),territory:clean(b.territory,80),status:'NEW'};
   if(!item.organisation||!item.contactName||!item.email||!item.campaign)throw new Error('organisation_contact_email_and_campaign_required');
   if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(item.email))throw new Error('valid_email_required');
@@ -277,7 +264,7 @@ const server = http.createServer(async (req, res) => {
     if (req.method==='GET' && p==='/health') return json(res,200,{ok:true,service:'yhvh-gospel-tv',runtime:'izakhono-owned',station:stationName,playout:playout.snapshot(),broadcast:broadcast.snapshot(),time:new Date().toISOString()});
     if (req.method==='GET' && p==='/api/status') return json(res,200,dashboard());
     if (req.method==='GET' && p==='/api/commercial/packages') return json(res,200,{ok:true,packages:commercialPackages});
-    if (req.method==='POST' && p==='/api/commercial/enquiry') { if(!intakeAllowed(req))return json(res,429,{ok:false,error:'rate_limit'});const item=addCommercialEnquiry(await body(req),req);return json(res,201,{ok:true,item:{id:item.id,status:item.status}}); }
+    if (req.method==='POST' && p==='/api/commercial/enquiry') { if(!intakeAllowed(req))return json(res,429,{ok:false,error:'rate_limit'});const item=addCommercialEnquiry(await body(req));return json(res,201,{ok:true,item:{id:item.id,status:item.status}}); }
     if (req.method==='GET' && p==='/api/schedule') return json(res,200,{ok:true,schedule});
     if (req.method==='GET' && p==='/api/now') return json(res,200,{ok:true,...currentSchedule()});
     if (req.method==='GET' && p==='/api/live') return json(res,200,{ok:true,configured:Boolean(liveUrl),url:liveUrl||null});
@@ -318,6 +305,6 @@ const server = http.createServer(async (req, res) => {
     if (req.method==='GET' && p==='/creator') return html(res,'creator.html');
     if (req.method==='GET' && p==='/advertise') return html(res,'advertise.html');
     return json(res,404,{ok:false,error:'not_found'});
-  } catch (err) { return json(res,400,{ok:false,error:err?.message||'bad_request'}); }
+  } catch (err) { return json(res,err?.statusCode||400,{ok:false,error:err?.message||'bad_request'}); }
 });
 server.listen(port,host,()=>console.log(`${stationName} engine listening on http://${host}:${port}`));
