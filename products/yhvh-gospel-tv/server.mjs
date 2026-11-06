@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { createPlayoutEngine } from './playout/playout-engine.mjs';
 import { createBroadcastRuntime } from './playout/broadcast-runtime.mjs';
 import { createRateLimiter, readJsonBody } from './request-guards.mjs';
+import { recordAnalyticsEvent, analyticsSummary } from './analytics.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const publicDir = path.join(__dirname, 'public');
@@ -21,6 +22,7 @@ const liveUrl = process.env.YHVH_LIVE_URL || '';
 const vaultDir = process.env.YHVH_CONTENT_VAULT || path.join(__dirname, 'content-vault');
 const stationName = 'YHVH GOSPEL TV';
 const intakeAllowed = createRateLimiter({ windowMs: 60 * 60 * 1000, limit: 12, maxKeys: 10000 });
+const analyticsAllowed = createRateLimiter({ windowMs: 10 * 60 * 1000, limit: 120, maxKeys: 10000 });
 
 fs.mkdirSync(dataDir, { recursive: true });
 fs.mkdirSync(hlsDir, { recursive: true });
@@ -36,6 +38,7 @@ const seed = {
   events: [],
   sponsorSlots: [],
   commercialEnquiries: [],
+  analytics: { days: [] },
   audit: []
 };
 
@@ -255,7 +258,7 @@ function decideSponsorSlot(b) {
 }
 function dashboard() {
   const {current,next,index}=currentSchedule();
-  return {ok:true,station:stationName,tagline:'FAITH. WORSHIP. WORD. — AFRICA TO THE WORLD.',runtime:'izakhono-owned',automation:state.automation,emergency:state.emergency,live:Boolean(liveUrl),liveUrl:liveUrl||null,current,next,index,schedule,playout:playout.snapshot(),broadcast:broadcast.snapshot(),counts:{submissions:state.submissions.length,events:state.events.length,sponsorSlots:state.sponsorSlots.length,commercialEnquiries:(state.commercialEnquiries||[]).length,audit:state.audit.length},recent:{submissions:state.submissions.slice(0,12),events:state.events.slice(0,12),sponsorSlots:state.sponsorSlots.slice(0,12),commercialEnquiries:(state.commercialEnquiries||[]).slice(0,30),audit:state.audit.slice(0,30)},serverTime:new Date().toISOString()};
+  return {ok:true,station:stationName,tagline:'FAITH. WORSHIP. WORD. — AFRICA TO THE WORLD.',runtime:'izakhono-owned',automation:state.automation,emergency:state.emergency,live:Boolean(liveUrl),liveUrl:liveUrl||null,current,next,index,schedule,playout:playout.snapshot(),broadcast:broadcast.snapshot(),counts:{submissions:state.submissions.length,events:state.events.length,sponsorSlots:state.sponsorSlots.length,commercialEnquiries:(state.commercialEnquiries||[]).length,audit:state.audit.length},recent:{submissions:state.submissions.slice(0,12),events:state.events.slice(0,12),sponsorSlots:state.sponsorSlots.slice(0,12),commercialEnquiries:(state.commercialEnquiries||[]).slice(0,30),audit:state.audit.slice(0,30)},analytics:analyticsSummary(state.analytics,30),serverTime:new Date().toISOString()};
 }
 
 const server = http.createServer(async (req, res) => {
@@ -264,6 +267,13 @@ const server = http.createServer(async (req, res) => {
     if (req.method==='GET' && p==='/health') return json(res,200,{ok:true,service:'yhvh-gospel-tv',runtime:'izakhono-owned',station:stationName,playout:playout.snapshot(),broadcast:broadcast.snapshot(),time:new Date().toISOString()});
     if (req.method==='GET' && p==='/api/status') return json(res,200,dashboard());
     if (req.method==='GET' && p==='/api/commercial/packages') return json(res,200,{ok:true,packages:commercialPackages});
+    if (req.method==='POST' && p==='/api/analytics/event') {
+      if (!analyticsAllowed(req)) return json(res,429,{ok:false,error:'rate_limit'});
+      const b=await body(req);
+      const result=recordAnalyticsEvent(state.analytics||(state.analytics={days:[]}),{event:b.event,sessionId:b.sessionId});
+      saveState(state);
+      return json(res,202,{ok:true,...result});
+    }
     if (req.method==='POST' && p==='/api/commercial/enquiry') { if(!intakeAllowed(req))return json(res,429,{ok:false,error:'rate_limit'});const item=addCommercialEnquiry(await body(req));return json(res,201,{ok:true,item:{id:item.id,status:item.status}}); }
     if (req.method==='GET' && p==='/api/schedule') return json(res,200,{ok:true,schedule});
     if (req.method==='GET' && p==='/api/now') return json(res,200,{ok:true,...currentSchedule()});
@@ -282,6 +292,7 @@ const server = http.createServer(async (req, res) => {
       if (!authorized(req)) return json(res,401,{ok:false,error:'owner_authorization_required'});
       if (req.method==='GET' && p==='/api/control/state') return json(res,200,{ok:true,state:{automation:state.automation,emergency:state.emergency},audit:state.audit.slice(0,30),playout:playout.snapshot(),broadcast:broadcast.snapshot(),events:state.events.slice(0,50),sponsorSlots:state.sponsorSlots.slice(0,50),submissions:state.submissions.slice(0,100)});
       if (req.method==='GET' && p==='/api/control/dashboard') return json(res,200,dashboard());
+      if (req.method==='GET' && p==='/api/control/analytics') return json(res,200,{ok:true,analytics:analyticsSummary(state.analytics,30)});
       if (req.method==='GET' && p==='/api/control/broadcast') return json(res,200,{ok:true,broadcast:broadcast.snapshot()});
       if (req.method==='GET' && p==='/api/control/content') return json(res,200,{ok:true,territory:broadcast.territory,items:contentQueue()});
       if (req.method==='POST' && p==='/api/control/automation') { const b=await body(req); state.automation=Boolean(b.enabled); audit('automation_changed',{enabled:state.automation}); return json(res,200,{ok:true,automation:state.automation}); }
