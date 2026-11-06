@@ -524,16 +524,6 @@ export async function jarvisRoute(
     await audit(env.DB,owner,'context.created',recordId,{scope,project_id:scope==='project'?projectId:null,record_type:recordType});
     return response({ok:true,record:{id:recordId,scope,project_id:scope==='project'?projectId:null,record_type:recordType,title}},201);
   }
-  const contextMatch=path.match(/^\/api\/jarvis\/v1\/context\/([a-zA-Z0-9_-]+)$/);
-  if(contextMatch&&req.method==='DELETE'){
-    const result=await env.DB.prepare('DELETE FROM jarvis_context_records WHERE id=? AND tenant_id=? AND owner_user_id=? RETURNING id')
-      .bind(contextMatch[1],TENANT,owner).first<any>();
-    if(!result?.id)return response({ok:false,error:'Context record not found.'},404);
-    await env.DB.prepare('DELETE FROM jarvis_task_context WHERE context_id=? AND tenant_id=? AND owner_user_id=?').bind(contextMatch[1],TENANT,owner).run();
-    await audit(env.DB,owner,'context.deleted',contextMatch[1]);
-    return response({ok:true,deleted:true,id:contextMatch[1]});
-  }
-
   if (path === '/api/jarvis/v1/tasks' && req.method === 'GET') {
     const statusFilter = text(url.searchParams.get('status'), 20);
     const allowedStatuses = ['queued','running','retry_wait','completed','failed','cancelled'];
