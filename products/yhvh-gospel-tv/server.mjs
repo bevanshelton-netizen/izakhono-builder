@@ -24,6 +24,7 @@ const intakeHits = new Map();
 
 fs.mkdirSync(dataDir, { recursive: true });
 fs.mkdirSync(hlsDir, { recursive: true });
+fs.mkdirSync(vaultDir, { recursive: true });
 if (!fs.existsSync(broadcastManifestFile)) fs.copyFileSync(broadcastManifestTemplate, broadcastManifestFile);
 
 const seed = {
@@ -199,7 +200,12 @@ function decideContent(b) {
   }
   const mediaPath=path.resolve(vaultDir,item.path);
   const vaultRoot=path.resolve(vaultDir)+path.sep;
-  const physicallyPresent=mediaPath.startsWith(vaultRoot) && fs.existsSync(mediaPath) && fs.statSync(mediaPath).isFile();
+  const realVaultRoot=fs.realpathSync(vaultDir)+path.sep;
+  let physicallyPresent=false;
+  if (mediaPath.startsWith(vaultRoot) && fs.existsSync(mediaPath)) {
+    const realMediaPath=fs.realpathSync(mediaPath);
+    physicallyPresent=realMediaPath.startsWith(realVaultRoot) && fs.statSync(realMediaPath).isFile();
+  }
   const eligible=item.rightsStatus==='CLEAR' && item.qcStatus==='PASS' && item.territories.includes(broadcast.territory) && physicallyPresent;
   item.status=eligible?'READY':'REVIEW_REQUIRED';
   item.updatedAt=new Date().toISOString();
