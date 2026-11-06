@@ -10,7 +10,6 @@ BACKUP_ROOT="${NODE01_BACKUP_DIR:-/var/backups/izakhono-nav}"
 HELPER_IMAGE="${NODE01_BACKUP_HELPER_IMAGE:-alpine:3.20}"
 STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
 BACKUP_ID="nav-node01-$STAMP"
-LOCK_FILE="${NODE01_BACKUP_LOCK:-/tmp/izakhono-nav-backup.lock}"
 STAGING="$BACKUP_ROOT/.$BACKUP_ID.partial"
 FINAL="$BACKUP_ROOT/$BACKUP_ID"
 
@@ -21,7 +20,12 @@ command -v flock >/dev/null || { echo "ERROR: flock is required" >&2; exit 1; }
 mkdir -p "$BACKUP_ROOT"
 BACKUP_ROOT="$(cd "$BACKUP_ROOT" && pwd)"
 chmod 0700 "$BACKUP_ROOT"
-exec 9>"$LOCK_FILE"
+# Keep the lock inside the private backup directory, not shared /tmp. Refuse
+# symlinked lock paths and use append mode so opening the lock never truncates it.
+LOCK_FILE="${NODE01_BACKUP_LOCK:-$BACKUP_ROOT/.backup.lock}"
+[[ ! -L "$LOCK_FILE" ]] || { echo "ERROR: backup lock must not be a symlink: $LOCK_FILE" >&2; exit 1; }
+exec 9>>"$LOCK_FILE"
+chmod 0600 "$LOCK_FILE"
 flock -n 9 || { echo "ERROR: another NAV backup is running" >&2; exit 1; }
 [[ ! -e "$FINAL" && ! -e "$STAGING" ]] || { echo "ERROR: backup path already exists" >&2; exit 1; }
 
