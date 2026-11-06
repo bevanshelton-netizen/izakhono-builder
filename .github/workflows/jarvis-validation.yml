@@ -16,6 +16,7 @@ on:
   push:
     branches:
       - "feature/izakhono-jarvis-foundation"
+      - "integration/jarvis-foundation-mainline-2026-11-06"
     paths:
       - "autonomy/model-runtime.mjs"
       - "autonomy/native-generation.test.mjs"
