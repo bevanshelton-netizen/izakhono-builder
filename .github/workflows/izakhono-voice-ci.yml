@@ -27,6 +27,6 @@ jobs:
         with:
           node-version: '22'
       - name: Typecheck Twilio integration
-        run: npx --yes --package typescript@5.9.2 tsc --noEmit --target ES2022 --lib ES2022,DOM --module ESNext --moduleResolution Bundler products/izakhono-voice/src/types.ts products/izakhono-voice/src/twilio-rest-adapter.ts products/izakhono-voice/src/twilio-webhook-security.ts products/izakhono-voice/src/twilio-media-stream-bridge.ts
+        run: npx --yes --package typescript@5.9.2 tsc --pretty false --noEmit --target ES2022 --lib ES2022,DOM --module ESNext --moduleResolution Bundler products/izakhono-voice/src/types.ts products/izakhono-voice/src/twilio-rest-adapter.ts products/izakhono-voice/src/twilio-webhook-security.ts products/izakhono-voice/src/twilio-media-stream-bridge.ts
       - name: Test Twilio webhook security and media bridge
         run: npx --yes tsx@4.20.3 products/izakhono-voice/src/twilio-webhook-security.test.ts && npx --yes tsx@4.20.3 products/izakhono-voice/src/twilio-media-stream-bridge.test.ts
