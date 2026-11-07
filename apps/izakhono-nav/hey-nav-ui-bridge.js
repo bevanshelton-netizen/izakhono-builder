@@ -1,6 +1,6 @@
 /* IZAKHONO NAV — voice UI bridge.
  * Connects the existing NAV voice control to the Hey NAV runtime.
- * Tap remains the permanent fallback; wake listening begins after a user gesture.
+ * Microphone recognition is activated only by an explicit tap.
  */
 (function (root) {
   'use strict';
@@ -34,9 +34,6 @@
         case 'ready':
           setState('ready', false);
           break;
-        case 'wake_listener_ready':
-          setState('wake-listening', false);
-          break;
         case 'activated':
           setState('activated', true);
           break;
@@ -54,7 +51,6 @@
         case 'ended':
           setState('ready', false);
           break;
-        case 'wake_listener_unavailable':
         case 'recognition_error':
           setState('tap-fallback', false);
           break;
@@ -63,8 +59,7 @@
       }
     });
 
-    // Microphone access is opt-in: only tapping the NAV voice control starts recognition.
-    // Do not arm a continuous wake-word listener after unrelated page interactions.
+    // Microphone access is opt-in: only tapping this control starts recognition.
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
