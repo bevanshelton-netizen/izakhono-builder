@@ -29,6 +29,9 @@ async function main() {
   const version = await request('/version');
   add('version', version.status === 200 && JSON.parse(version.body).runtime === 'owned');
 
+  const hazards = await request('/api/nav/hazards');
+  add('hazard feed fails closed when unconfigured', hazards.status === 503 && JSON.parse(hazards.body).safety_status === 'PROVISIONAL');
+
   const method = await request('/api/nav/driver-companion', { method: 'GET' });
   add('AI method guard', method.status === 405);
 
