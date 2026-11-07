@@ -32,8 +32,12 @@ assert.equal(recognitionStarts, 0, 'loading NAV must not start microphone recogn
 assert.equal(typeof root.IZAKHONO_NAV_VOICE.startWakeListener, 'undefined', 'continuous wake listener must not be exposed');
 root.IZAKHONO_NAV_VOICE.activateByTap();
 assert.equal(recognitionStarts, 1, 'explicit voice-button activation starts one recognition session');
-root.IZAKHONO_NAV_VOICE.endSession();
+(async () => {
+  await root.IZAKHONO_NAV_VOICE.ask('hello NAV');
+  assert.equal(recognitionStarts, 1, 'speaking a reply must not silently reopen the microphone');
+  root.IZAKHONO_NAV_VOICE.endSession();
 assert.equal(recognitionStops, 1, 'ending the session stops recognition');
 assert.equal(recognitionStarts, 1, 'ending a session must not re-arm the microphone');
 assert.equal(root.IZAKHONO_NAV_VOICE.state.active, false);
-console.log('Hey NAV tap-only microphone tests passed');
+  console.log('Hey NAV tap-only microphone tests passed');
+})().catch(error => { console.error(error); process.exitCode = 1; });
