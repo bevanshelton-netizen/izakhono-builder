@@ -11,6 +11,7 @@ on:
       - '.github/workflows/izakhono-host-compliance.yml'
 
 env:
+  IZAKHONO_MAIL_API_TOKEN: ci-mail-api-token
   MINIO_ROOT_USER: ci-minio-admin
   MINIO_ROOT_PASSWORD: ci-minio-password
   POSTGRES_PASSWORD: ci-postgres-password
