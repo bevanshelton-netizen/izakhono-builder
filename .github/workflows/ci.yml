@@ -36,7 +36,7 @@ jobs:
           done < <(find products -mindepth 2 -maxdepth 3 -name package.json -print | sort)
 
       - name: SUPER SEO V5 + typecheck + Wrangler dry run
-        run: npm run validate:super-seo && npm run typecheck && npx --yes wrangler@4.127.1 deploy --dry-run
+        run: npm run validate:super-seo && npm run validate:affiliate && npm run typecheck && npx --yes wrangler@4.127.1 deploy --dry-run
 
       - name: Validate NODE01 command gateway package
         shell: bash
@@ -72,7 +72,7 @@ jobs:
       - name: Build generated Worker canary
         shell: bash
         run: |
-          npx tsc --noEmit --target ES2022 --lib ES2022,DOM --module ESNext fixtures/generated-worker-canary/src/index.ts
+          npx tsc --noEmit --target ES2022 --lib ES2022,DOM --module ESNext --moduleResolution Bundler fixtures/generated-worker-canary/src/index.ts
           npx wrangler deploy --dry-run --config fixtures/generated-worker-canary/wrangler.jsonc
           echo '[PASS] Generated Worker + static asset canary typechecks and passes Wrangler dry run.'
 

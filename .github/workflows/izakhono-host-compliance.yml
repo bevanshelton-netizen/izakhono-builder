@@ -10,6 +10,14 @@ on:
       - 'products/izakhono-host/**'
       - '.github/workflows/izakhono-host-compliance.yml'
 
+env:
+  IZAKHONO_MAIL_API_TOKEN: ci-mail-api-token
+  MINIO_ROOT_USER: ci-minio-admin
+  MINIO_ROOT_PASSWORD: ci-minio-password
+  POSTGRES_PASSWORD: ci-postgres-password
+  HOST_RUNTIME_TOKEN: ci-host-runtime-token
+  TLS_EMAIL: ci@example.com
+
 jobs:
   compliance-script:
     runs-on: ubuntu-latest
