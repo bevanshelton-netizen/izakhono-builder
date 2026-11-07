@@ -14,27 +14,34 @@ async function sign(token: string, value: string): Promise<string> {
   return btoa(binary);
 }
 
-const token = "test-auth-token";
-const publicUrl = "https://voice.example.test/webhooks/twilio/voice?tenant=demo";
-const params = { CallSid: "CA123", From: "+27110000000", To: "+27210000000", CallStatus: "ringing" };
-const canonical = publicUrl + Object.keys(params).sort().map((key) => key + params[key]).join("");
-const signature = await sign(token, canonical);
+async function main(): Promise<void> {
+  const token = "test-auth-token";
+  const publicUrl = "https://voice.example.test/webhooks/twilio/voice?tenant=demo";
+  const params = { CallSid: "CA123", From: "+27110000000", To: "+27210000000", CallStatus: "ringing" };
+  const canonical = publicUrl + Object.keys(params).sort().map((key) => key + params[key]).join("");
+  const signature = await sign(token, canonical);
 
-const valid = await verifyTwilioWebhook({ authToken: token, signature, publicUrl, params });
-if (!valid) throw new Error("Expected valid Twilio signature to pass");
+  const valid = await verifyTwilioWebhook({ authToken: token, signature, publicUrl, params });
+  if (!valid) throw new Error("Expected valid Twilio signature to pass");
 
-const invalid = await verifyTwilioWebhook({ authToken: token, signature: "invalid", publicUrl, params });
-if (invalid) throw new Error("Expected invalid Twilio signature to fail");
+  const invalid = await verifyTwilioWebhook({ authToken: token, signature: "invalid", publicUrl, params });
+  if (invalid) throw new Error("Expected invalid Twilio signature to fail");
 
-const altered = await verifyTwilioWebhook({
-  authToken: token,
-  signature,
-  publicUrl,
-  params: { ...params, From: "+27119999999" },
+  const altered = await verifyTwilioWebhook({
+    authToken: token,
+    signature,
+    publicUrl,
+    params: { ...params, From: "+27119999999" },
+  });
+  if (altered) throw new Error("Expected modified webhook parameters to fail");
+
+  const missing = await verifyTwilioWebhook({ authToken: token, signature: null, publicUrl, params });
+  if (missing) throw new Error("Expected missing signature to fail");
+
+  console.log("IZAKHONO VOICE Twilio webhook security tests passed");
+}
+
+void main().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
 });
-if (altered) throw new Error("Expected modified webhook parameters to fail");
-
-const missing = await verifyTwilioWebhook({ authToken: token, signature: null, publicUrl, params });
-if (missing) throw new Error("Expected missing signature to fail");
-
-console.log("IZAKHONO VOICE Twilio webhook security tests passed");
