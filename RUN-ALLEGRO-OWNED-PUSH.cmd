@@ -2,7 +2,7 @@
 setlocal EnableExtensions
 title IZAKHONO - PUSH ALLEGRO TO OWNED INFRASTRUCTURE
 cd /d "%~dp0"
-set HOST=allegro.izakhonoafrica.co.za
+set HOST=allegrovibez.com
 if not "%~1"=="" set HOST=%~1
 
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0infra\public-cutover\PUSH-ALLEGRO-OWNED.ps1" -AllegroHostname "%HOST%"
