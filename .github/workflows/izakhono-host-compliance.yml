@@ -15,6 +15,7 @@ env:
   MINIO_ROOT_PASSWORD: ci-minio-password
   POSTGRES_PASSWORD: ci-postgres-password
   HOST_RUNTIME_TOKEN: ci-host-runtime-token
+  TLS_EMAIL: ci@example.com
 
 jobs:
   compliance-script:
