@@ -1,5 +1,6 @@
 import secureApp from './secure';
 import { jarvisExecutiveSnapshotRoute } from '../products/izakhono-jarvis/src/api';
+import { jarvisTasksRoute } from '../products/izakhono-jarvis/src/tasks';
 import { ventureFactoryRoute } from './venture-factory';
 import { reviewLoopRoute } from './reviewloop';
 import { bidForgeRoute } from './bidforge';
@@ -1320,6 +1321,9 @@ export default {
 
     if ((url.pathname === '/jarvis' || url.pathname === '/jarvis/') && req.method === 'GET') {\n      const page = new URL(req.url);\n      page.pathname = '/jarvis/index.html';\n      return env.ASSETS.fetch(new Request(page.toString(), req));\n    }\n\n    const jarvisSnapshot = await jarvisExecutiveSnapshotRoute(req, env, () => ownerAuthorized(req, env));
     if (jarvisSnapshot) return jarvisSnapshot;
+
+    const jarvisTasks = await jarvisTasksRoute(req, env, () => ownerAuthorized(req, env));
+    if (jarvisTasks) return jarvisTasks;
 
     const commandsApi = await commandApiRoute(req, env, url);
     if (commandsApi) return commandsApi;
