@@ -3,23 +3,23 @@
   "feature": "Hey NAV Voice Interaction",
   "version": "0.1",
   "status": "architecture_ready",
-  "primary_interaction": "wake_phrase",
-  "wake_phrase": "Hey NAV",
+  "primary_interaction": "explicit_tap",
   "acknowledgement": "I'm listening.",
   "fallback_interaction": "tap_voice_signal",
   "principles": [
     "quiet_by_default",
-    "driver_initiated_conversation",
     "tap_remains_available",
     "short_voice_responses",
     "no_unsolicited_fatigue_questions",
     "no_automatic_mic_upload_to_cloud",
     "provider_credentials_server_side_only",
     "offline_graceful_degradation",
-    "safety_first"
+    "safety_first",
+    "microphone_starts_only_after_explicit_voice_button_tap",
+    "no_continuous_wake_word_listener"
   ],
   "session": {
-    "idle": "wake_phrase_listener",
+    "idle": "awaiting_explicit_tap",
     "activated": "listening",
     "acknowledged": "conversation",
     "processing": "thinking",
@@ -27,8 +27,7 @@
     "ended": "idle"
   },
   "fallbacks": {
-    "wake_phrase_unavailable": "tap_voice_signal",
-    "speech_recognition_unavailable": "tap_voice_signal_or_text",
+    "speech_recognition_unavailable": "text_destination_and_navigation_controls",
     "ai_provider_unavailable": "safe_local_voice_response",
     "network_unavailable": "offline_local_response"
   },
