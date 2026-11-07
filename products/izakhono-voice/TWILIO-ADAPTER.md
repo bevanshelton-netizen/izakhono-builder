@@ -33,7 +33,7 @@ Validate every Twilio webhook using `X-Twilio-Signature` and the exact public UR
 
 ## Media bridge
 
-The adapter only requests a Twilio Media Stream. A separately deployed WSS bridge must accept the stream, authenticate/associate the call, translate the bidirectional audio frames into the IZAKHONO real-time speech/model pipeline, enforce call limits, and emit audit events. Do not mark the service live until that bridge and real two-way audio have passed end-to-end tests.
+The adapter only requests a Twilio Media Stream. Twilio does not support query strings on the `<Stream>` WebSocket URL; call association is passed through the supported nested `<Parameter>` value instead. The adapter rejects WSS URLs containing a query string or fragment. A separately deployed WSS bridge must accept the stream, authenticate/associate the call, translate the bidirectional audio frames into the IZAKHONO real-time speech/model pipeline, enforce call limits, and emit audit events. Do not mark the service live until that bridge and real two-way audio have passed end-to-end tests.
 
 ## Activation checklist
 

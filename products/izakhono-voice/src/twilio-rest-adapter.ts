@@ -46,8 +46,14 @@ export class TwilioRestTelephonyAdapter implements TelephonyAdapter {
     required(config.voiceWebhookUrl, "voiceWebhookUrl");
     required(config.statusCallbackUrl, "statusCallbackUrl");
     required(config.mediaStreamUrl, "mediaStreamUrl");
-    if (!/^wss:\/\//i.test(config.mediaStreamUrl)) {
-      throw new Error("Twilio mediaStreamUrl must use wss://");
+    let mediaUrl: URL;
+    try {
+      mediaUrl = new URL(config.mediaStreamUrl);
+    } catch {
+      throw new Error("Twilio mediaStreamUrl must be an absolute wss:// URL");
+    }
+    if (mediaUrl.protocol !== "wss:" || mediaUrl.search || mediaUrl.hash || mediaUrl.username || mediaUrl.password) {
+      throw new Error("Twilio mediaStreamUrl must use wss:// and must not contain query, fragment, or credentials");
     }
     this.timeoutMs = config.timeoutMs ?? 10_000;
     this.apiBaseUrl = (config.apiBaseUrl ?? "https://api.twilio.com/2010-04-01").replace(/\/$/, "");
@@ -55,9 +61,9 @@ export class TwilioRestTelephonyAdapter implements TelephonyAdapter {
 
   /** Replaces the active call instructions with a secure Media Streams bridge. */
   async answer(callId: string): Promise<void> {
-    const streamUrl = new URL(this.config.mediaStreamUrl);
-    streamUrl.searchParams.set("callId", callId);
-    const twiml = `<Response><Connect><Stream url="${xml(streamUrl.toString())}"><Parameter name="callId" value="${xml(callId)}"/></Stream></Connect></Response>`;
+    // Twilio Media Streams does not support query strings on the Stream URL.
+    // Pass call association data only through the supported custom Parameter noun.
+    const twiml = `<Response><Connect><Stream url="${xml(this.config.mediaStreamUrl)}"><Parameter name="callId" value="${xml(callId)}"/></Stream></Connect></Response>`;
     await this.updateCall(callId, { Twiml: twiml });
   }
 
