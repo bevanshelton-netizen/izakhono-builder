@@ -16,7 +16,7 @@ async function main(){
  const badDecision=await jarvisApprovalsRoute(req("POST",{decision:"approved",reason:"again"},"/api/jarvis/proposals/prp_1/decision"),env,async()=>true);assert.equal(badDecision?.status,409);
  const audit=await jarvisApprovalsRoute(req("GET",undefined,"/api/jarvis/audit?limit=20"),env,async()=>true);assert.equal(audit?.status,200);
  const badLimit=await jarvisApprovalsRoute(req("GET",undefined,"/api/jarvis/audit?limit=999"),env,async()=>true);assert.equal(badLimit?.status,400);
- assert.ok(sqls.some(s=>s.includes("INSERT INTO jarvis_audit_events")));assert.equal(writes,4);
+ assert.ok(sqls.some(s=>s.includes("INSERT INTO jarvis_audit_events")));assert.equal(writes,5);
  console.log("J.A.R.V.I.S. approvals and audit tests passed");
 }
 main().catch(e=>{console.error(e);process.exitCode=1;});
