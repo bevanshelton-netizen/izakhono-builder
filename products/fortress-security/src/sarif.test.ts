@@ -28,7 +28,7 @@ assert.equal(sarif.runs.length, 1);
 assert.equal(sarif.runs[0].results.length, 1);
 assert.equal(sarif.runs[0].results[0].level, 'error');
 const physicalLocation = (sarif.runs[0].results[0].locations as Array<{ physicalLocation: { artifactLocation: { uri: string }; region: { startLine: number } } }>)[0].physicalLocation;
-assert.equal(physicalLocation.artifactLocation.uri, 'products/fortress-security/scope.example.json');
+assert.equal(physicalLocation.artifactLocation.uri, 'products/fortress-security/src/scanner.ts');
 assert.equal(physicalLocation.region.startLine, 1);
 assert.equal(sarif.runs[0].results[0].ruleId, 'FORTRESS/TCP/POSTGRESQL-SERVICE-EXPOSED');
 assert.equal((sarif.runs[0].results[0].fingerprints as Record<string, string>).fortressFindingId, 'finding-1');
