@@ -48,6 +48,7 @@ jobs:
           node --check driver-companion-ai-provider.test.js
           node --check driver-companion-ai-route.js
           node --check hey-nav-runtime.js
+          node --check hey-nav-runtime.test.js
           node - <<'NODE'
           const fs = require('fs');
           const html = fs.readFileSync('index.html', 'utf8');
@@ -58,6 +59,8 @@ jobs:
           node --check /tmp/izakhono-nav-inline.js
       - name: Test AI provider security boundaries
         run: node driver-companion-ai-provider.test.js
+      - name: Test tap-only microphone privacy
+        run: node hey-nav-runtime.test.js
       - name: Start owned NAV runtime
         run: |
           node server.js > /tmp/izakhono-nav.log 2>&1 &
