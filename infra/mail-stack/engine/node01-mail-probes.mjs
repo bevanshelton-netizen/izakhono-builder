@@ -27,9 +27,9 @@ function fail(gate, error) {
   };
 }
 
-export async function probeDnsMx(domain) {
+export async function probeDnsMx(domain, dnsResolver = dns) {
   try {
-    const records = await dns.resolveMx(domain);
+    const records = await dnsResolver.resolveMx(domain);
     if (!records.length) throw new Error("MX_NOT_FOUND");
     return evidence("dnsMx", { records: records.sort((a, b) => a.priority - b.priority) });
   } catch (error) { return fail("dnsMx", error); }
@@ -60,16 +60,16 @@ export async function probeTls(host, port = 465, timeoutMs = 5000) {
   });
 }
 
-export function createNode01MailProbes({ domain, mailHost = `mail.${domain}`, smtpPort = 25, submissionPort = 587, tlsPort = 465 } = {}) {
+export function createNode01MailProbes({ domain, mailHost = `mail.${domain}`, smtpPort = 25, submissionPort = 587, tlsPort = 465, dnsResolver = dns } = {}) {
   if (!domain) throw new Error("MAIL_DOMAIN_REQUIRED");
   return {
-    dnsMx: () => probeDnsMx(domain),
+    dnsMx: () => probeDnsMx(domain, dnsResolver),
     smtp: () => probeTcp(mailHost, smtpPort),
     submission: () => probeTcp(mailHost, submissionPort),
     tls: () => probeTls(mailHost, tlsPort),
     spf: async () => {
       try {
-        const records = await dns.resolveTxt(domain);
+        const records = await dnsResolver.resolveTxt(domain);
         const spf = records.flat().find(record => record.toLowerCase().startsWith("v=spf1"));
         if (!spf) throw new Error("SPF_NOT_FOUND");
         return evidence("spf", { record: spf });
