@@ -3,10 +3,8 @@
  */
 (function (root) {
   'use strict';
-
-  const WAKE = /^\s*hey\s+nav\b[\s,.:!?-]*/i;
   const SpeechRecognition = root.SpeechRecognition || root.webkitSpeechRecognition;
-  const state = { active:false, listening:false, sessionId:null, messages:[], recognition:null, wakeRecognition:null };
+  const state = { active:false, listening:false, sessionId:null, messages:[], recognition:null };
 
   function id(){ return 'nav-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2,8); }
   function emit(name,detail){ try{ root.dispatchEvent(new CustomEvent('izakhono-nav-voice',{detail:{name,...(detail||{})}})); }catch(_){} }
@@ -49,20 +47,16 @@
     }catch(_){ const reply=localReply(user); state.messages.push({role:'assistant',content:reply}); emit('response',{ok:false,provider:'UNAVAILABLE',text:reply}); speak(reply); }
   }
 
-  function stopRecognition(){ [state.recognition,state.wakeRecognition].forEach(r=>{try{if(r)r.stop();}catch(_){}}); state.recognition=null; state.wakeRecognition=null; state.listening=false; }
-  function beginConversation(source){ if(state.wakeRecognition){try{state.wakeRecognition.stop();}catch(_){} state.wakeRecognition=null;} state.active=true; state.sessionId=state.sessionId||id(); emit('activated',{source:source||'tap',session_id:state.sessionId}); if(root.speechSynthesis&&root.SpeechSynthesisUtterance){speak('I’m listening.');}else if(SpeechRecognition){startConversationRecognition();}else{emit('recognition_error',{error:'speech_recognition_unavailable'});} }
+  function stopRecognition(){ try{if(state.recognition)state.recognition.stop();}catch(_){} state.recognition=null; state.listening=false; }
+  function beginConversation(source){ state.active=true; state.sessionId=state.sessionId||id(); emit('activated',{source:source||'tap',session_id:state.sessionId}); if(root.speechSynthesis&&root.SpeechSynthesisUtterance){speak('I’m listening.');}else if(SpeechRecognition){startConversationRecognition();}else{emit('recognition_error',{error:'speech_recognition_unavailable'});} }
   function startConversationRecognition(){
     if(!SpeechRecognition||state.listening||!state.active)return false; const r=new SpeechRecognition(); r.lang=root.navigator.language||'en-ZA'; r.continuous=false; r.interimResults=false; r.maxAlternatives=1;
     r.onstart=()=>{state.listening=true;emit('listening');}; r.onresult=event=>{const transcript=event.results&&event.results[0]&&event.results[0][0]&&event.results[0][0].transcript;state.listening=false;ask(transcript||'');}; r.onerror=event=>{state.listening=false;emit('recognition_error',{error:event.error||'unknown'});}; r.onend=()=>{state.listening=false;emit('recognition_end');}; state.recognition=r; try{r.start();return true;}catch(_){state.listening=false;return false;}
   }
   function activateByTap(){beginConversation('tap');}
-  function startWakeListener(){
-    if(!SpeechRecognition||state.active||state.wakeRecognition)return false; const r=new SpeechRecognition(); r.lang=root.navigator.language||'en-ZA'; r.continuous=true; r.interimResults=false; r.maxAlternatives=1;
-    r.onresult=event=>{for(let i=event.resultIndex||0;i<event.results.length;i+=1){if(!event.results[i].isFinal)continue;const transcript=String(event.results[i][0]&&event.results[i][0].transcript||'').trim();const match=transcript.match(WAKE);if(match){const remainder=transcript.slice(match[0].length).trim();beginConversation('wake_phrase');if(remainder)ask(remainder);try{r.stop();}catch(_){}state.wakeRecognition=null;return;}}};
-    r.onerror=()=>{state.wakeRecognition=null;emit('wake_listener_unavailable');}; r.onend=()=>{if(!state.active)state.wakeRecognition=null;}; state.wakeRecognition=r; try{r.start();emit('wake_listener_ready',{wake_phrase:'Hey NAV'});return true;}catch(_){state.wakeRecognition=null;return false;}
-  }
-  function endSession(){stopRecognition();state.active=false;state.sessionId=null;state.messages=[];if(root.speechSynthesis)root.speechSynthesis.cancel();emit('ended');startWakeListener();}
 
-  const api={beginConversation,activateByTap,startWakeListener,startConversationRecognition,ask,endSession,state}; root.IZAKHONO_NAV_VOICE=api;
-  registerOwnedApp(); emit('ready',{wake_phrase:'Hey NAV',tap_fallback:true,speech_available:!!SpeechRecognition});
+  function endSession(){stopRecognition();state.active=false;state.sessionId=null;state.messages=[];if(root.speechSynthesis)root.speechSynthesis.cancel();emit('ended');}
+
+  const api={beginConversation,activateByTap,startConversationRecognition,ask,endSession,state}; root.IZAKHONO_NAV_VOICE=api;
+  registerOwnedApp(); emit('ready',{activation:'explicit_tap_only',tap_fallback:true,speech_available:!!SpeechRecognition});
 })(typeof window!=='undefined'?window:globalThis);
