@@ -21,12 +21,12 @@
     }catch(_){}
   }
 
-  function speak(text){
-    if(!text || !root.speechSynthesis || !root.SpeechSynthesisUtterance)return;
+  function speak(text, after){
+    if(!text || !root.speechSynthesis || !root.SpeechSynthesisUtterance){if(typeof after==='function')after();return;}
     root.speechSynthesis.cancel(); const utterance=new root.SpeechSynthesisUtterance(String(text));
     utterance.rate=1.02; utterance.pitch=1; utterance.volume=1;
     utterance.onstart=()=>emit('speaking',{text});
-    utterance.onend=()=>{ emit('speech_end'); if(state.active&&!state.listening&&SpeechRecognition) root.setTimeout(()=>startConversationRecognition(),180); };
+    utterance.onend=()=>{ emit('speech_end'); if(typeof after==='function')after(); };
     root.speechSynthesis.speak(utterance);
   }
 
@@ -48,7 +48,7 @@
   }
 
   function stopRecognition(){ try{if(state.recognition)state.recognition.stop();}catch(_){} state.recognition=null; state.listening=false; }
-  function beginConversation(source){ state.active=true; state.sessionId=state.sessionId||id(); emit('activated',{source:source||'tap',session_id:state.sessionId}); if(root.speechSynthesis&&root.SpeechSynthesisUtterance){speak('I’m listening.');}else if(SpeechRecognition){startConversationRecognition();}else{emit('recognition_error',{error:'speech_recognition_unavailable'});} }
+  function beginConversation(source){ state.active=true; state.sessionId=state.sessionId||id(); emit('activated',{source:source||'tap',session_id:state.sessionId}); if(root.speechSynthesis&&root.SpeechSynthesisUtterance){speak('I’m listening.',()=>startConversationRecognition());}else if(SpeechRecognition){startConversationRecognition();}else{emit('recognition_error',{error:'speech_recognition_unavailable'});} }
   function startConversationRecognition(){
     if(!SpeechRecognition||state.listening||!state.active)return false; const r=new SpeechRecognition(); r.lang=root.navigator.language||'en-ZA'; r.continuous=false; r.interimResults=false; r.maxAlternatives=1;
     r.onstart=()=>{state.listening=true;emit('listening');}; r.onresult=event=>{const transcript=event.results&&event.results[0]&&event.results[0][0]&&event.results[0][0].transcript;state.listening=false;ask(transcript||'');}; r.onerror=event=>{state.listening=false;emit('recognition_error',{error:event.error||'unknown'});}; r.onend=()=>{state.listening=false;emit('recognition_end');}; state.recognition=r; try{r.start();return true;}catch(_){state.listening=false;return false;}
