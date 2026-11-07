@@ -58,8 +58,8 @@ export function toSarif(report: ScanReport): SarifLog {
           // The scan scope manifest is the auditable source of each authorized asset.
           locations: [{
             physicalLocation: {
-              artifactLocation: { uri: 'products/fortress-security/scope.example.json' },
-              region: { startLine: 1 }
+              artifactLocation: { uri: 'products/fortress-security/src/scanner.ts' },
+              region: { startLine: 1, startColumn: 1, endLine: 1, endColumn: 1 }
             }
           }],
           properties: {
