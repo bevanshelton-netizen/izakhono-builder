@@ -26,7 +26,6 @@
     button.onclick = function () {
       if (!root.IZAKHONO_NAV_VOICE) return;
       root.IZAKHONO_NAV_VOICE.activateByTap();
-      try { root.IZAKHONO_NAV_VOICE.startWakeListener(); } catch (_) {}
     };
 
     root.addEventListener('izakhono-nav-voice', function (event) {
@@ -64,17 +63,8 @@
       }
     });
 
-    // A browser normally needs a user gesture before microphone access is allowed.
-    // The first meaningful NAV interaction unlocks the wake listener without
-    // forcing the driver into a conversation.
-    const arm = function () {
-      if (!root.IZAKHONO_NAV_VOICE) return;
-      try { root.IZAKHONO_NAV_VOICE.startWakeListener(); } catch (_) {}
-      root.removeEventListener('click', arm, true);
-      root.removeEventListener('touchstart', arm, true);
-    };
-    root.addEventListener('click', arm, true);
-    root.addEventListener('touchstart', arm, true);
+    // Microphone access is opt-in: only tapping the NAV voice control starts recognition.
+    // Do not arm a continuous wake-word listener after unrelated page interactions.
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
