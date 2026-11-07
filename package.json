@@ -5,6 +5,7 @@
   "scripts": {
     "mail:validate": "node mail/node01-mail-engine.mjs validate",
     "validate:mail": "node mail/node01-mail-engine.mjs validate",
+    "validate:host": "npm --prefix products/izakhono-host run typecheck",
     "mail:plan": "node mail/node01-mail-engine.mjs plan",
     "dev": "wrangler dev",
     "ai-agent:run": "node autonomy/ai-agent-worker.mjs",
