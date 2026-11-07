@@ -36,7 +36,7 @@ jobs:
           done < <(find products -mindepth 2 -maxdepth 3 -name package.json -print | sort)
 
       - name: SUPER SEO V5 + typecheck + Wrangler dry run
-        run: npm run validate:super-seo && npm run typecheck && npx --yes wrangler@4.127.1 deploy --dry-run
+        run: npm run validate:super-seo && npm run validate:affiliate && npm run typecheck && npx --yes wrangler@4.127.1 deploy --dry-run
 
       - name: Validate NODE01 command gateway package
         shell: bash
