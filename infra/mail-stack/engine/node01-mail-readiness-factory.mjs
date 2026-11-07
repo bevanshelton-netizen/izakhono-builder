@@ -9,6 +9,7 @@ export function createNode01MailReadinessProbes({
   server,
   registry = {},
   persistence,
+  dnsResolver = dns,
 } = {}) {
   if (!runtime) throw new Error("MAIL_RUNTIME_REQUIRED");
   if (!server) throw new Error("MAIL_SERVER_REQUIRED");
