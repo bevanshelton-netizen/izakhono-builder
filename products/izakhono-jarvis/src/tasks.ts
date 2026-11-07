@@ -1,3 +1,4 @@
+// Owner-only task queue; storage is enabled only after the reviewed D1 migration is applied.
 export interface JarvisTaskDb {
   prepare(sql: string): {
     bind(...values: unknown[]): {
