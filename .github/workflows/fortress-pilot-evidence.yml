@@ -5,6 +5,10 @@ on:
     paths:
       - 'products/fortress/**'
       - '.github/workflows/fortress-pilot-evidence.yml'
+  pull_request:
+    paths:
+      - 'products/fortress/**'
+      - '.github/workflows/fortress-pilot-evidence.yml'
   workflow_dispatch:
 
 permissions:
