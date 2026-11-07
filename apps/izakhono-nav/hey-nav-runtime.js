@@ -50,7 +50,7 @@
   }
 
   function stopRecognition(){ [state.recognition,state.wakeRecognition].forEach(r=>{try{if(r)r.stop();}catch(_){}}); state.recognition=null; state.wakeRecognition=null; state.listening=false; }
-  function beginConversation(source){ if(state.wakeRecognition){try{state.wakeRecognition.stop();}catch(_){} state.wakeRecognition=null;} state.active=true; state.sessionId=state.sessionId||id(); emit('activated',{source:source||'wake_phrase',session_id:state.sessionId}); speak('I’m listening.'); if(SpeechRecognition)startConversationRecognition(); }
+  function beginConversation(source){ if(state.wakeRecognition){try{state.wakeRecognition.stop();}catch(_){} state.wakeRecognition=null;} state.active=true; state.sessionId=state.sessionId||id(); emit('activated',{source:source||'tap',session_id:state.sessionId}); if(root.speechSynthesis&&root.SpeechSynthesisUtterance){speak('I’m listening.');}else if(SpeechRecognition){startConversationRecognition();}else{emit('recognition_error',{error:'speech_recognition_unavailable'});} }
   function startConversationRecognition(){
     if(!SpeechRecognition||state.listening||!state.active)return false; const r=new SpeechRecognition(); r.lang=root.navigator.language||'en-ZA'; r.continuous=false; r.interimResults=false; r.maxAlternatives=1;
     r.onstart=()=>{state.listening=true;emit('listening');}; r.onresult=event=>{const transcript=event.results&&event.results[0]&&event.results[0][0]&&event.results[0][0].transcript;state.listening=false;ask(transcript||'');}; r.onerror=event=>{state.listening=false;emit('recognition_error',{error:event.error||'unknown'});}; r.onend=()=>{state.listening=false;emit('recognition_end');}; state.recognition=r; try{r.start();return true;}catch(_){state.listening=false;return false;}
