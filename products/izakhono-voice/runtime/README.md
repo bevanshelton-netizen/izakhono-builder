@@ -27,7 +27,7 @@ Use opaque internal tenant and call IDs. The database account should have only t
 
 ## Stream authorisation lifecycle
 
-1. The signed `/twilio/voice` webhook verifies Twilio's signature and account SID, resolves the called E.164 number through `voice_tenant_numbers` (only where the tenant has an enabled policy), and inserts the call with the provider CallSid using `PostgresVoiceCallRegistry.registerCall`.
+1. For inbound calls, the signed `/twilio/voice` webhook verifies Twilio's signature and account SID, resolves the called E.164 number through `voice_tenant_numbers` (only where the tenant has an enabled policy), and idempotently registers the provider CallSid. For outbound calls, the trusted application first calls `createOutboundCall({ callId, tenantId })`; the Twilio REST adapter adds that opaque internal call reference to the signed voice webhook URL, and the webhook binds the resulting provider CallSid with `bindProviderCall`.
 2. Immediately before Twilio is instructed to connect its media stream, the trusted server issues a 90-second, one-time token using `issueStreamCredential(providerCallSid)`.
 3. Twilio receives that opaque token as a supported Stream custom parameter named `streamToken`. It is a bearer credential; do not log it or put it in a URL.
 4. On the WebSocket `start` event, the registry hashes the supplied token and performs one conditional SQL UPDATE. The operation succeeds only if CallSid, token hash, expiry, unused state, eligible call state and no-active-stream condition all match.
@@ -68,10 +68,10 @@ npm start
 
 Place the service behind the approved IZAKHONO EDGE/TLS path. Preserve the configured public WSS path and upgrade headers. Do not expose the private runtime port or PostgreSQL port publicly.
 
-## Inbound provisioning now implemented
+## Inbound and outbound provisioning now implemented
 
 The runtime exposes signed Twilio form endpoints:
-- `POST /twilio/voice` — verifies the exact configured HTTPS URL, signature and Twilio AccountSid; resolves the called number to an enabled tenant policy; creates a call record; issues a one-time token; and returns TwiML that connects the media stream.
+- `POST /twilio/voice` — verifies the exact configured HTTPS URL, signature and Twilio AccountSid. Inbound calls resolve the called number to an enabled tenant policy and create an idempotent call record. Outbound calls resolve a signed internal call reference and bind the returned provider CallSid. Both paths issue a one-time token and return TwiML that connects the media stream.
 - `POST /twilio/status` — verifies the exact configured HTTPS URL, signature and AccountSid, then persists call status by provider CallSid.
 
 Configure each Twilio number's incoming voice webhook to the public `/twilio/voice` URL and its call status callback to `/twilio/status`. Seed `voice_tenant_numbers` and `voice_tenant_policies` through the approved tenant onboarding process. Do not accept tenant IDs from the webhook body as authority.
@@ -79,8 +79,8 @@ Configure each Twilio number's incoming voice webhook to the public `/twilio/voi
 ## Production gates still open
 
 1. Apply the migration to the approved IZAKHONO DATA PostgreSQL service and create least-privilege database credentials.
-2. Configure inbound telephone numbers and tenant policies; verify the inbound webhook using real Twilio-signed requests.
-3. Complete outbound call provisioning: create the internal call before dialing, bind the returned provider CallSid, and issue the stream credential before the media connection is instructed.
+2. Configure inbound telephone numbers and tenant policies; verify inbound and outbound webhook signatures using real Twilio-signed requests.
+3. Ensure the trusted outbound application creates each call with `createOutboundCall({ callId, tenantId })` before invoking the Twilio REST adapter's `dial(phone, callId)` method.
 4. Configure Twilio REST adapter's `streamCredentialForCall` callback to call `issueStreamCredential`; the adapter intentionally refuses to connect media without it.
 5. Verify Twilio handshake signature behaviour against real provider requests and current SDK/reference vectors.
 6. Confirm public WSS, TLS, edge upgrade forwarding, health checks, limits and failover on an approved runtime.
