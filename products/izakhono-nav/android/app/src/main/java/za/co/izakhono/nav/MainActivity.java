@@ -19,7 +19,9 @@ import android.webkit.GeolocationPermissions;
 import android.webkit.JavascriptInterface;
 import android.webkit.PermissionRequest;
 import android.webkit.WebChromeClient;
+import android.webkit.WebResourceError;
 import android.webkit.WebResourceRequest;
+import android.webkit.WebResourceResponse;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
@@ -42,6 +44,7 @@ public class MainActivity extends Activity {
     private SpeechRecognizer speechRecognizer;
     private String pendingSpeechLocale = "en-ZA";
     private boolean pendingNativeLocationStart = false;
+    private boolean localFallbackLoaded = false;
     private GeolocationPermissions.Callback pendingGeoCallback;
     private String pendingGeoOrigin;
 
@@ -86,11 +89,29 @@ public class MainActivity extends Activity {
         webView.setWebViewClient(new WebViewClient() {
             @Override public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 String url = request.getUrl().toString();
-                if (url.startsWith("file:///android_asset/")) return false;
+                String host = request.getUrl().getHost();
+                if (url.startsWith("file:///android_asset/") ||
+                        "nav.izakhono.africa".equalsIgnoreCase(host)) return false;
                 try {
                     startActivity(new Intent(Intent.ACTION_VIEW, request.getUrl()));
                 } catch (Exception ignored) {}
                 return true;
+            }
+
+            @Override public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
+                super.onReceivedError(view, request, error);
+                if (request.isForMainFrame() && !localFallbackLoaded) {
+                    localFallbackLoaded = true;
+                    loadBundledApp();
+                }
+            }
+
+            @Override public void onReceivedHttpError(WebView view, WebResourceRequest request, WebResourceResponse response) {
+                super.onReceivedHttpError(view, request, response);
+                if (request.isForMainFrame() && response.getStatusCode() >= 400 && !localFallbackLoaded) {
+                    localFallbackLoaded = true;
+                    loadBundledApp();
+                }
             }
 
             @Override public void onPageFinished(WebView view, String url) {
@@ -120,7 +141,27 @@ public class MainActivity extends Activity {
         });
 
         requestLocationIfNeeded();
-        webView.loadUrl("file:///android_asset/www/index.html");
+        webView.loadUrl("https://nav.izakhono.africa/");
+    }
+
+    private void loadBundledApp() {
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(
+                getAssets().open("www/index.html"), StandardCharsets.UTF_8))) {
+            StringBuilder html = new StringBuilder();
+            String line;
+            while ((line = reader.readLine()) != null) html.append(line).append('\n');
+            // Keep the canonical HTTPS origin so owned API calls and any installed
+            // service worker use the same origin as the production NAV runtime.
+            webView.loadDataWithBaseURL(
+                    "https://nav.izakhono.africa/",
+                    html.toString(),
+                    "text/html",
+                    "UTF-8",
+                    null
+            );
+        } catch (Exception ignored) {
+            webView.loadUrl("https://nav.izakhono.africa/");
+        }
     }
 
     private void injectBootstrap() {
