@@ -14,6 +14,13 @@ test("SFG adapter uses the verified IZAKHONO ONE gateway routes", () => {
   assert.ok(gateway.includes("action === 'workload'"));
 });
 
+test("gateway isolates its public listener from the internal ONE service port", () => {
+  assert.ok(gateway.includes("process.env.PUBLIC_PORT || process.env.PORT || 8780"));
+  assert.ok(gateway.includes("process.env.IZAKHONO_ONE_INTERNAL_PORT || 8781"));
+  assert.ok(gateway.includes("publicPort === internalPort"));
+  assert.ok(gateway.includes("process.env.PORT = String(internalPort)"));
+});
+
 test("SFG adapter fails closed on missing credentials and non-HTTPS origins", () => {
   assert.ok(client.includes("NODE_CONTROL_NOT_CONFIGURED"));
   assert.ok(client.includes('url.protocol!=="https:"'));
