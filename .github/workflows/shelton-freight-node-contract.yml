@@ -4,14 +4,20 @@ on:
     paths:
       - 'products/shelton-freight-group/node01/**'
       - 'products/izakhono-one/node-gateway.mjs'
+      - 'products/izakhono-one/test-node-gateway.mjs'
+      - 'products/izakhono-one/package.json'
       - 'products/izakhono-one/services/persistent-node-control.mjs'
+      - 'products/izakhono-one/NODE-GATEWAY-DEPLOYMENT.md'
       - '.github/workflows/shelton-freight-node-contract.yml'
   push:
     branches: [main, 'feat/shelton-freight-node01-adapter-v14']
     paths:
       - 'products/shelton-freight-group/node01/**'
       - 'products/izakhono-one/node-gateway.mjs'
+      - 'products/izakhono-one/test-node-gateway.mjs'
+      - 'products/izakhono-one/package.json'
       - 'products/izakhono-one/services/persistent-node-control.mjs'
+      - 'products/izakhono-one/NODE-GATEWAY-DEPLOYMENT.md'
       - '.github/workflows/shelton-freight-node-contract.yml'
 jobs:
   contract:
@@ -22,4 +28,6 @@ jobs:
         with:
           node-version: 22
       - name: Verify Software NODE integration contract
-        run: node --test products/shelton-freight-group/node01/contract.test.mjs
+        run: |
+          node --test products/shelton-freight-group/node01/contract.test.mjs
+          node products/izakhono-one/test-node-gateway.mjs
