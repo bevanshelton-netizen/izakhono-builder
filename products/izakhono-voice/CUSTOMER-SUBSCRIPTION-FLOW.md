@@ -32,3 +32,7 @@ No public signup route should call the repository directly. Authentication, acco
 The service depends on replaceable interfaces. No South African number inventory, carrier forwarding tariff, or payment-provider event is assumed. The production adapter must be selected and verified before customer checkout or number promises are enabled. iKhokha/payment integration must be wired to verified payment events and a subscription ledger before this onboarding service is exposed publicly.
 
 The number-provider adapter must return `newlyProvisioned: true` only when this invocation created a new allocation. For an idempotent retry that returns an existing allocation, it must return `newlyProvisioned: false`; the onboarding service will never release a pre-existing number when a retry's database write fails. The provider must honour the tenant plus idempotency key consistently.
+
+
+## Subscription entitlement source of truth
+Migration `003_voice_subscription_entitlements.sql` adds `voice_tenant_subscriptions` and an idempotency/audit ledger for verified billing events. `PostgresVoiceSubscriptionGate` grants onboarding only when the tenant has an `active` subscription whose current billing period has not expired. The provider webhook adapter that verifies events and updates these records remains a separate trusted integration; no browser action can activate entitlement.
