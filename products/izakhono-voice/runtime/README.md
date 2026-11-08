@@ -92,6 +92,24 @@ curl --fail http://127.0.0.1:8962/health
 
 This local deployment command is a runbook only. No owner-node deployment, public DNS/TLS route or real call has been executed by this code change. The external EDGE route must be configured separately through the approved Runtime Fabric process.
 
+
+## Trusted outbound application boundary
+
+Use `OutboundCallService` from `src/outbound-call-service.ts` in the trusted server-side application layer rather than calling the Twilio adapter directly. Its `placeCall({ tenantId, destination })` method validates the E.164 destination, generates an internal UUID, persists the tenant-bound outbound call first, and only then invokes the carrier adapter. If carrier submission throws, it marks the still-unbound call failed. The provider webhook later binds the actual Twilio CallSid to that same internal call. Do not expose this service or its registry to an untrusted browser client.
+
+Example:
+
+```ts
+const outboundCalls = new OutboundCallService(callRegistry, twilioAdapter);
+const submitted = await outboundCalls.placeCall({
+  tenantId: authenticatedTenantId,
+  destination: "+27821234567",
+});
+// Persist/display submitted.callId; the call is submitted, not yet answered.
+```
+
+The service returns `status: "submitted"`, not "connected": carrier acceptance and the later call-status webhook are separate lifecycle events.
+
 ## Production gates still open
 
 1. Apply the migration to the approved IZAKHONO DATA PostgreSQL service and create least-privilege database credentials.
