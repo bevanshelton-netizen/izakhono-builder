@@ -38,3 +38,10 @@ test("rejects insecure or query-bearing configured public URLs", () => {
     canonicalPublicUrl: "wss://voice.example.com/twilio/media?x=1", authToken,
   }), false);
 });
+
+test("accepts Twilio's documented trailing-slash WSS signature variant", () => {
+  const slashSignature = createHmac("sha1", authToken).update(`${canonicalPublicUrl}/`).digest("base64");
+  assert.equal(verifyTwilioWebSocketHandshake({
+    method: "GET", requestUrl: "/twilio/media", signature: slashSignature, canonicalPublicUrl, authToken,
+  }), true);
+});
