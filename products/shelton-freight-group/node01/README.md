@@ -11,9 +11,11 @@ Server-only environment:
 - IZAKHONO_NODE_CONTROL_URL=https://<verified-control-origin>
 - IZAKHONO_CONTROL_TOKEN=<server-side-control-token>
 
-SFG endpoints (implemented in the freight portal package):
-- GET /api/admin/node01/status — staff-only registry read.
-- POST /api/admin/node01/authorize — owner-admin-only workload authorization request.
+Planned SHELTON FREIGHT GROUP portal integration surface (not implemented in this adapter PR):
+- GET /api/admin/node01/status — intended staff-only registry read.
+- POST /api/admin/node01/authorize — intended owner-admin-only workload authorization request.
+
+The standalone freight portal repository and these portal routes have not yet been located or connected to this adapter. They must be implemented in the actual freight application before the feature can be considered integrated.
 
 Authorization is not deployment. A Software NODE agent must execute the exact authorized revision and report it through /deploy before deployment is verified. No production-live claim, auto-registration, auto-promotion, or failover is made here.
 
