@@ -1,9 +1,14 @@
 import type { CustomerAuthDB, CustomerIdentity } from '../../../src/customer-auth';
 import { resolveOrganisationAccess } from './organisation-access';
 
-type BatchStatement = { bind(...values: unknown[]): BatchStatement };
+type WorkflowStatement = {
+  bind(...values: unknown[]): WorkflowStatement;
+  first<T = Record<string, unknown>>(): Promise<T | null>;
+  run(): Promise<unknown>;
+};
 export interface OrganisationWorkflowDB extends CustomerAuthDB {
-  batch?(statements: BatchStatement[]): Promise<unknown[]>;
+  prepare(sql: string): WorkflowStatement;
+  batch(statements: WorkflowStatement[]): Promise<unknown[]>;
 }
 const encoder = new TextEncoder();
 const hex = (bytes: Uint8Array) => Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');
@@ -22,7 +27,6 @@ export async function createOrganisationInvitation(
   role: InvitationRole,
   now = new Date(),
 ): Promise<InvitationResult> {
-  if (!db.batch) throw new Error('Transactional database batch support is required.');
   if (actor.status !== 'active' || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254) throw new Error('Invalid invitation request.');
   if (role !== 'admin' && role !== 'member') throw new Error('Only admin or member invitations are permitted.');
   const access = await resolveOrganisationAccess(db, actor, organisationId);
@@ -47,7 +51,6 @@ export async function acceptOrganisationInvitation(
   token: string,
   now = new Date(),
 ): Promise<boolean> {
-  if (!db.batch) throw new Error('Transactional database batch support is required.');
   if (identity.status !== 'active' || !/^[a-f0-9]{64}$/i.test(token)) return false;
   const tokenHash = await sha256(token);
   const timestamp = now.toISOString();
