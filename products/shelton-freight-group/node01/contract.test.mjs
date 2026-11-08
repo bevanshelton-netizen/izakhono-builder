@@ -6,6 +6,7 @@ const root = new URL("../../../", import.meta.url);
 const client = await readFile(new URL("products/shelton-freight-group/node01/client.ts", root), "utf8");
 const gateway = await readFile(new URL("products/izakhono-one/node-gateway.mjs", root), "utf8");
 const control = await readFile(new URL("products/izakhono-one/services/persistent-node-control.mjs", root), "utf8");
+const edgeApi = await readFile(new URL("products/izakhono-one/supabase/functions/izakhono-one-api/index.ts", root), "utf8");
 
 test("SFG adapter uses the verified IZAKHONO ONE gateway routes", () => {
   assert.ok(client.includes('request("/api/nodes")'));
@@ -33,4 +34,14 @@ test("workload authorization is separate from node deployment reporting", () => 
   assert.ok(control.includes("async function authorizeWorkload"));
   assert.ok(control.includes("async function recordDeployment"));
   assert.ok(gateway.includes("action === 'deploy'"));
+});
+
+test("deployed IZAKHONO ONE Edge Function contains the node-control security contract", () => {
+  assert.ok(edgeApi.includes('action==="node_control"'));
+  assert.ok(edgeApi.includes("node_control_credentials"));
+  assert.ok(edgeApi.includes("node_agent_credentials"));
+  assert.ok(edgeApi.includes("nodeFortress"));
+  assert.ok(edgeApi.includes('token_delivery:"one_time_only"'));
+  assert.ok(edgeApi.includes('"Accept-Profile":"one"'));
+  assert.ok(edgeApi.includes('"Content-Profile":"one"'));
 });
