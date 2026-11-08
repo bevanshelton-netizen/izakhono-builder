@@ -34,11 +34,23 @@ const sessions = new GptLiveVoiceStreamSessionFactory({
   apiKey: openAiApiKey,
   model: env.IZAKHONO_GPT_LIVE_MODEL ?? "gpt-live-1",
   voice: env.IZAKHONO_GPT_LIVE_VOICE ?? "marin",
-  instructions: "You are an IZAKHONO VOICE call session. Follow the tenant policy supplied for this call.",
-  onUsage: (tenantId, usage) => {
-    // The call/tenant association is resolved by the registry before a session exists.
-    // Durable attribution is completed through the audit/usage adapter after stream close.
-    void dependencies.audit?.({ tenantId, callId: "resolved-at-call-start", event: "gpt_live_usage", details: usage });
+  instructionsForCall: authorization => dependencies.instructionsForCall(authorization),
+  onUsage: (tenantId, usage, authorization) => {
+    void (async () => {
+      await dependencies.callRegistry.recordUsage?.({
+        tenantId,
+        callId: authorization.callId,
+        usage,
+      });
+      await dependencies.audit?.({
+        tenantId,
+        callId: authorization.callId,
+        event: "gpt_live_usage",
+        details: usage,
+      });
+    })().catch(error => {
+      console.error("IZAKHONO VOICE usage persistence failed", error instanceof Error ? error.message : "unknown_error");
+    });
   },
 }, new NodeGptLiveSocketConnector());
 
