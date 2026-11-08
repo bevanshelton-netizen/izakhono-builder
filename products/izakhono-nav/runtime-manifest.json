@@ -9,8 +9,8 @@
     "operator": "IZAKHONO AFRICA (PTY) LTD",
     "version": "1.0.0",
     "releaseId": "IZAKHONO-NAV-v1.0",
-    "artifactSha256": "6d458b36cd1fc93753152674739d98aacc21dd652f1fc65f79b6108611d7c0b0",
-    "status": "BUILT / CI VERIFICATION PENDING",
+    "artifactSha256": null,
+    "status": "SOURCE UPDATED / CI AND OWNED-RUNTIME VERIFICATION PENDING",
     "runtimePolicy": "node-agnostic-runtime-fabric",
     "healthPath": "/api/health",
     "webHealthPath": "/health",
@@ -102,10 +102,16 @@
       "search": "Nominatim 5.3",
       "maps": "tilemaker PMTiles + Martin 1.16.1-full",
       "sourceData": "Geofabrik South Africa OSM PBF",
-      "updatePolicy": "Nominatim continuous replication + weekly controlled router/map refresh",
+      "updatePolicy": "Nominatim continuous replication; weekly router/map refresh available through optional systemd timer installer",
       "activation": "scripts/activate.sh",
       "verification": "scripts/verify.sh",
-      "publicLiveVerified": false
-    }
+      "publicLiveVerified": false,
+      "deploymentPath": "infra/node01/deploy-nav-node01.sh",
+      "productionWorkflow": ".github/workflows/izakhono-nav-node01-production.yml",
+      "runnerLabel": "self-hosted,node01",
+      "deploymentStatus": "not-executed-from-chat"
+    },
+    "previousArtifactSha256": "6d458b36cd1fc93753152674739d98aacc21dd652f1fc65f79b6108611d7c0b0",
+    "lastSourceCommit": "bfa917d58b61f558951fd47e5b45d55738403c84"
   }
 }
