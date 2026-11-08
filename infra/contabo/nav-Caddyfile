@@ -4,7 +4,7 @@
   header Strict-Transport-Security "max-age=31536000"
   header {
     X-Content-Type-Options "nosniff"
-    Referrer-Policy "strict-origin-when-cross-origin"
+    Referrer-Policy "no-referrer"
     Permissions-Policy "geolocation=(self), microphone=(self), camera=()"
     -Server
   }
