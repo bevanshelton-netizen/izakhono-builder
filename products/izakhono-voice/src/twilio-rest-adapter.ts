@@ -48,6 +48,16 @@ export class TwilioRestTelephonyAdapter implements TelephonyAdapter {
     required(config.voiceWebhookUrl, "voiceWebhookUrl");
     required(config.statusCallbackUrl, "statusCallbackUrl");
     required(config.mediaStreamUrl, "mediaStreamUrl");
+    for (const [value, name] of [
+      [config.voiceWebhookUrl, "voiceWebhookUrl"],
+      [config.statusCallbackUrl, "statusCallbackUrl"],
+    ] as const) {
+      const webhookUrl = new URL(value);
+      if (webhookUrl.protocol !== "https:" || webhookUrl.search || webhookUrl.hash ||
+          webhookUrl.username || webhookUrl.password) {
+        throw new Error(`Twilio ${name} must be a canonical HTTPS URL without query, fragment, or credentials`);
+      }
+    }
     let mediaUrl: URL;
     try {
       mediaUrl = new URL(config.mediaStreamUrl);
