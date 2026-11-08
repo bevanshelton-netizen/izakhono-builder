@@ -64,3 +64,14 @@ test("uses the authenticated server tenant context for persistence", async () =>
   await service.onboard({ ...base, authenticatedTenantId: "tenant-from-session" });
   assert.equal(savedTenant, "tenant-from-session");
 });
+
+test("does not release an existing idempotent number allocation after a retry failure", async () => {
+  let released = false;
+  const service = new VoiceTenantOnboardingService(
+    { async assertSubscriptionActive() {} },
+    { async provisionNumber() { return { phoneNumber: "+27115550123", newlyProvisioned: false }; }, async releaseNumber() { released = true; } },
+    { async createTenantVoiceSetup() { throw new Error("temporary database failure"); } },
+  );
+  await assert.rejects(() => service.onboard(base), /temporary database failure/);
+  assert.equal(released, false);
+});
