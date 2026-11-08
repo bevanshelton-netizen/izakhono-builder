@@ -26,7 +26,7 @@ This product does not implement covert recording, hidden surveillance, private-a
 
 ## Current implementation status
 
-The directory now contains typed module contracts, automation definition validation and deterministic execution planning, plus an Android Kotlin/Jetpack Compose preview application with Home, Privacy Centre, Automation Studio and Social Intelligence screens. The Android screens are not connected to a production API, customer account, native permission inventory, social provider or live automation executor. No signed release or production deployment is claimed.
+The directory now contains typed module contracts, automation definition validation and deterministic execution planning, plus an Android Kotlin/Jetpack Compose preview application with Home, Privacy Centre, Automation Studio and Social Intelligence screens. A guarded GET endpoint at `/api/mobile-intelligence/session` resolves an existing customer session and returns account profile data without treating the organisation display label as tenant authorization. The Android source includes an HTTPS-only bearer session API client; the caller supplies a token in memory. The Android screens are not connected to a production API, customer account, native permission inventory, social provider or live automation executor. No signed release or production deployment is claimed.
 
 ## Local checks
 
