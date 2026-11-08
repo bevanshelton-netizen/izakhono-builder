@@ -58,22 +58,14 @@ export async function provisionOrganisationWithFirstOwner(
      SELECT ?,?,'active',id,?,? FROM builder_customers
      WHERE id=? AND status='active' AND email_verified_at IS NOT NULL`,
   ).bind(organisationId, name, timestamp, timestamp, owner.id);
-  const createOwner = db.prepare(
-    `INSERT INTO builder_organisation_memberships
-     (id,organisation_id,customer_id,role,status,invited_by_customer_id,created_at,updated_at)
-     SELECT ?,o.id,c.id,'owner','active',?,?,?
-     FROM builder_organisations o JOIN builder_customers c ON c.id=?
-     WHERE o.id=? AND o.status='active' AND c.status='active'
-       AND c.email_verified_at IS NOT NULL`,
-  ).bind(membershipId, platformAdmin.id, timestamp, timestamp, owner.id, organisationId);
   const audit = db.prepare(
     `INSERT INTO builder_customer_events(id,customer_id,event_type,detail,created_at)
      SELECT ?,?, 'mobile_org_first_owner_provisioned', ?, ?
      WHERE EXISTS (SELECT 1 FROM builder_organisation_memberships
-       WHERE id=? AND organisation_id=? AND customer_id=? AND role='owner' AND status='active')`,
-  ).bind(eventId, platformAdmin.id, JSON.stringify({ organisationId, ownerCustomerId: owner.id }), timestamp, membershipId, organisationId, owner.id);
+       WHERE organisation_id=? AND customer_id=? AND role='owner' AND status='active')`,
+  ).bind(eventId, platformAdmin.id, JSON.stringify({ organisationId, ownerCustomerId: owner.id }), timestamp, organisationId, owner.id);
 
-  const results = await db.batch([createOrganisation, createOwner, audit]);
+  const results = await db.batch([createOrganisation, audit]);
   const changes = results.map(result => (result as { meta?: { changes?: number } } | undefined)?.meta?.changes ?? 0);
   if (changes.some(count => count !== 1)) {
     throw new Error('Organisation provisioning was not completed; no owner access was granted.');
