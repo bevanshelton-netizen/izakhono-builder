@@ -7,9 +7,16 @@ BACKUP_DIR="$(cd "$BACKUP_DIR" && pwd)"
 command -v sha256sum >/dev/null
 command -v tar >/dev/null
 
-for required in SHA256SUMS backup-manifest.txt nav-compose.yml nav-Caddyfile; do
-  [[ -f "$BACKUP_DIR/$required" && ! -L "$BACKUP_DIR/$required" && -s "$BACKUP_DIR/$required" ]] || {
-    echo "ERROR: required backup file missing, empty, or symlinked: $required" >&2
+required=(
+  SHA256SUMS backup-manifest.txt
+  nav-compose.yml nav-Caddyfile
+  owned-stack-compose.yaml owned-stack-Caddyfile
+  owned-stack-martin.yaml owned-stack-style.json
+  runtime-manifest.json runtime-data.tar.gz
+)
+for file in "${required[@]}"; do
+  [[ -f "$BACKUP_DIR/$file" && ! -L "$BACKUP_DIR/$file" && -s "$BACKUP_DIR/$file" ]] || {
+    echo "ERROR: required backup file missing, empty, or symlinked: $file" >&2
     exit 1
   }
 done
@@ -25,9 +32,7 @@ BACKUP_ID="$(sed -n 's/^backup_id=//p' "$BACKUP_DIR/backup-manifest.txt")"
 }
 
 declare -A expected=()
-expected[nav-compose.yml]=1
-expected[nav-Caddyfile]=1
-expected[backup-manifest.txt]=1
+for file in "${required[@]}"; do expected[$file]=1; done
 volume_count=0
 while IFS= read -r line; do
   [[ "$line" == volume=* ]] || continue
@@ -51,10 +56,9 @@ while IFS= read -r line; do
   volume_count=$((volume_count + 1))
 done < "$BACKUP_DIR/backup-manifest.txt"
 
-(( volume_count > 0 )) || { echo "ERROR: no volume archives declared" >&2; exit 1; }
+(( volume_count >= 4 )) || { echo "ERROR: expected at least four persistent volumes across edge and owned stack; found $volume_count" >&2; exit 1; }
+tar -tzf "$BACKUP_DIR/runtime-data.tar.gz" >/dev/null
 
-# Only accept checksum entries for the exact expected regular files. This prevents
-# a crafted manifest/checksum pair from making the verifier read outside BACKUP_DIR.
 declare -A checksummed=()
 while IFS= read -r line; do
   [[ "$line" =~ ^[a-fA-F0-9]{64}[[:space:]][[:space:]]([A-Za-z0-9_.-]+)$ ]] || {
@@ -78,5 +82,5 @@ done < "$BACKUP_DIR/SHA256SUMS"
   sha256sum -c SHA256SUMS
 )
 
-echo "NAV backup verification PASS: $volume_count volume archive(s)"
-echo "Backup contents verified; this does not prove an application restore."
+echo "NAV backup verification PASS: $volume_count persistent volume archive(s) plus router/search/tile runtime data"
+echo "Backup contents verified; this does not prove a complete application restore."
