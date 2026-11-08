@@ -5,7 +5,7 @@
 The backup covers both deployment layers:
 
 - Public Caddy edge volumes: Caddy certificate and configuration state.
-- Owned NAV stack volumes: Nominatim/PostgreSQL database, Nominatim flatnode, and the owned web Caddy state.
+- Owned NAV stack volumes: Nominatim/PostgreSQL database and Nominatim flatnode. The internal web Caddy is stateless; its configuration is archived separately.
 - The owned stack's bind-mounted runtime data: South Africa OpenStreetMap extract, Valhalla routing graph, and locally generated PMTiles.
 - Edge and owned-stack Compose/Caddy/Martin configuration plus the runtime manifest.
 
