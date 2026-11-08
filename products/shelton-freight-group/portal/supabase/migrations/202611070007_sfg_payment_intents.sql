@@ -55,7 +55,6 @@ drop trigger if exists sfg_payment_intent_updated_at on public.sfg_payment_inten
 create trigger sfg_payment_intent_updated_at before update on public.sfg_payment_intents
 for each row execute function public.sfg_touch_payment_intent_updated_at();
 
--- Payment confirmation is kept in this same migration transaction.
 create unique index if not exists sfg_financial_entries_payment_reference_uidx
   on public.sfg_financial_entries(payment_reference)
   where payment_reference is not null;
@@ -76,6 +75,8 @@ as $$
 declare
   v_intent public.sfg_payment_intents%rowtype;
   v_event public.sfg_payment_provider_events%rowtype;
+  v_document public.sfg_financial_documents%rowtype;
+  v_received numeric(14,2);
 begin
   select * into v_event from public.sfg_payment_provider_events
   where id = p_event_id
@@ -96,6 +97,22 @@ begin
     raise exception 'Payment identifiers do not match';
   end if;
 
+  select * into v_document
+  from public.sfg_financial_documents
+  where id=v_intent.document_id
+  for update;
+  if not found then raise exception 'Linked financial document not found'; end if;
+  if v_document.document_type<>'customer_invoice'
+     or v_document.customer_id is distinct from v_intent.customer_id then
+    raise exception 'Payment intent customer/document mismatch';
+  end if;
+  if v_document.currency<>'ZAR' or v_intent.currency<>v_document.currency then
+    raise exception 'Payment currency does not match invoice currency';
+  end if;
+  if v_intent.amount<>v_document.amount then
+    raise exception 'Payment amount does not match invoice amount';
+  end if;
+
   if p_provider_status='SUCCESS' and p_response_code='00' then
     if v_intent.payment_status='paid' then
       update public.sfg_payment_provider_events
@@ -107,6 +124,22 @@ begin
       update public.sfg_payment_intents set payment_status='review_required' where id=v_intent.id;
       update public.sfg_payment_provider_events
       set processed_at=now(),processing_result='success_event_for_non_pending_intent'
+      where id=p_event_id;
+      return 'review_required';
+    end if;
+
+    select coalesce(sum(
+      case when entry_type='payment_received' then amount
+           when entry_type='refund_issued' then -amount
+           else 0 end
+    ),0)::numeric(14,2)
+    into v_received
+    from public.sfg_financial_entries
+    where document_id=v_document.id;
+    if v_received + v_intent.amount > v_document.amount then
+      update public.sfg_payment_intents set payment_status='review_required' where id=v_intent.id;
+      update public.sfg_payment_provider_events
+      set processed_at=now(),processing_result='invoice_overpayment_blocked'
       where id=p_event_id;
       return 'review_required';
     end if;
