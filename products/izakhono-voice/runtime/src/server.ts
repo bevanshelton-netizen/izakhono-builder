@@ -116,7 +116,7 @@ async function handleHttpRequest(request: IncomingMessage, response: ServerRespo
 
     const callSid = params.CallSid ?? "";
     const to = params.To ?? "";
-    if (!/^CA[0-9a-f]{32}$/i.test(callSid) || !/^\\+[1-9][0-9]{7,14}$/.test(to)) {
+    if (!/^CA[0-9a-f]{32}$/i.test(callSid) || !/^\+[1-9][0-9]{7,14}$/.test(to)) {
       reply(response, 400, "application/json; charset=utf-8", JSON.stringify({ error: "invalid_call" }));
       return;
     }
