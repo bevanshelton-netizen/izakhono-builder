@@ -51,7 +51,7 @@ export class VoiceTenantOnboardingService {
     await this.subscriptions.assertSubscriptionActive(tenantId);
     const assigned = await this.numbers.provisionNumber({ tenantId, idempotencyKey });
     if (!/^[+][1-9][0-9]{7,14}$/.test(assigned.phoneNumber)) {
-      if (assigned.newlyProvisioned) { if (assigned.newlyProvisioned) { try { await this.numbers.releaseNumber({ tenantId, ...assigned }); } catch { /* provider reconciliation */ } } }
+      if (assigned.newlyProvisioned) { try { await this.numbers.releaseNumber({ tenantId, phoneNumber: assigned.phoneNumber, providerReference: assigned.providerReference }); } catch { /* provider reconciliation */ } }
       throw new Error("Telephony provider returned an invalid E.164 destination number");
     }
 
@@ -61,7 +61,7 @@ export class VoiceTenantOnboardingService {
         forwardingMode: request.forwardingMode, systemInstructions,
       });
     } catch (error) {
-      try { await this.numbers.releaseNumber({ tenantId, ...assigned }); } catch { /* provider reconciliation */ }
+      if (assigned.newlyProvisioned) { try { await this.numbers.releaseNumber({ tenantId, phoneNumber: assigned.phoneNumber, providerReference: assigned.providerReference }); } catch { /* provider reconciliation */ } }
       throw error;
     }
     return { tenantId, businessName, customerMobileE164, voiceDestinationE164: assigned.phoneNumber,
