@@ -76,14 +76,12 @@ export class TwilioRestTelephonyAdapter implements TelephonyAdapter {
   async dial(phone: string, callId: string): Promise<void> {
     const to = required(phone, "destination phone number");
     const clientCallId = required(callId, "client call ID");
-    const callback = new URL(this.config.statusCallbackUrl);
-    callback.searchParams.set("clientCallId", clientCallId);
     await this.request("/Calls.json", {
       To: to,
       From: this.config.fromNumber,
       Url: this.config.voiceWebhookUrl,
       Method: "POST",
-      StatusCallback: callback.toString(),
+      StatusCallback: this.config.statusCallbackUrl,
       StatusCallbackMethod: "POST",
       StatusCallbackEvent: "initiated ringing answered completed",
     });
