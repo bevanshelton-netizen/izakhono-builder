@@ -1,6 +1,15 @@
 import type { VoiceStreamAuthorization } from "../../src/twilio-media-stream-bridge.js";
 
 export interface VoiceCallRegistry {
+  registerCall(input: {
+    callId: string;
+    tenantId: string;
+    providerCallSid: string;
+    direction: "inbound" | "outbound";
+    status?: "ringing" | "active" | "handoff";
+  }): Promise<void>;
+  issueStreamCredential(providerCallSid: string, ttlSeconds?: number): Promise<string>;
+  releaseStream(input: { tenantId: string; callId: string; streamSid: string }): Promise<void>;
   /**
    * Resolve CallSid to a persisted IZAKHONO call and tenant. The implementation
    * MUST validate call state, stream token/association, tenant, expiry, replay,
