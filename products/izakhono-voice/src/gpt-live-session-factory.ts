@@ -177,12 +177,11 @@ class GptLiveVoiceStreamSession implements VoiceStreamSession {
   }
 
   async close(reason = "Call ended"): Promise<void> {
-    if (this.closed) return;
-    if (!this.started) {
+    if (!this.started && !this.closed) {
       this.abort(reason);
       return;
     }
-    if (!this.closing) {
+    if (!this.closed && !this.closing) {
       this.closing = true;
       this.send({ type: "session.close", event_id: this.nextEventId("close") });
     }
