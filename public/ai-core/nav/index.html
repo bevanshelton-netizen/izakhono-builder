@@ -153,6 +153,8 @@ window.IZAKHONO_CONFIG = {
   },
   providers: {
     strategy: 'owned-first',
+    // External providers are disabled unless the owner explicitly enables resilience.
+    resilience: { enabled: false },
     map: {
       mode: 'owned-first',
       ownedTileUrl: '/tiles/{z}/{x}/{y}.png',
@@ -440,16 +442,24 @@ window.IZAKHONO_VOICE_REGISTRY = {
   async function fallbackGeocode(query){const url=new URL(cfg.providers.search.fallbackEndpoint);url.searchParams.set('q',query);url.searchParams.set('format','jsonv2');url.searchParams.set('limit','1');const r=await fetch(url,{headers:{'Accept-Language':navigator.language||'en'}});if(!r.ok)throw new Error('Destination search failed');const data=await r.json();if(!data.length)throw new Error('Destination not found');return {lat:+data[0].lat,lng:+data[0].lon,name:data[0].display_name};}
   async function geocode(query){
     const s=await probe();
-    if(s.ownedSearch){try{return await retryOnFabricFail(async()=>{const u=new URL(absolute(cfg.providers.search.ownedEndpoint),location.origin);u.searchParams.set('q',query);const r=await fetch(u);const data=await r.json();if(r.ok&&data.length){data[0].engine=`izakhono-fabric/${state.activeRuntime||'runtime'}`;return data[0];}throw new Error('Owned search runtime failed');});}catch{}}
+    if(s.ownedSearch){
+      try{return await retryOnFabricFail(async()=>{const u=new URL(absolute(cfg.providers.search.ownedEndpoint),location.origin);u.searchParams.set('q',query);const r=await fetch(u);const data=await r.json();if(r.ok&&data.length){data[0].engine=`izakhono-fabric/${state.activeRuntime||'runtime'}`;return data[0];}throw new Error('Owned search runtime failed');});}
+      catch(error){if(cfg.providers.resilience?.enabled!==true)throw error;}
+    }
+    if(cfg.providers.resilience?.enabled!==true)throw new Error('Owned search is unavailable. External resilience is disabled.');
     const result=await fallbackGeocode(query); result.engine='resilience/nominatim'; return result;
   }
   async function fallbackRoute(start,dest,mode){const ep=cfg.providers.route.fallbackProfiles[mode];if(!ep)throw new Error(`${mode[0].toUpperCase()+mode.slice(1)} routing requires a healthy IZAKHONO NAV runtime.`);const coords=`${start.lng},${start.lat};${dest.lng},${dest.lat}`;const url=`${ep}/${coords}?overview=full&geometries=geojson&steps=true&alternatives=false`;const r=await fetch(url);const data=await r.json();if(!r.ok||data.code!=='Ok'||!data.routes?.length)throw new Error('No route found');return data.routes[0];}
   async function route(start,dest,mode='driving'){
     const s=await probe();const coords=`${start.lng},${start.lat};${dest.lng},${dest.lat}`;
-    if(s.ownedRouting){try{return await retryOnFabricFail(async()=>{const r=await fetch(absolute(`${cfg.providers.route.ownedEndpoint}/${mode}/${coords}`));const data=await r.json();if(r.ok&&data.geometry?.coordinates?.length){data.engine=`izakhono-fabric/${state.activeRuntime||'runtime'}`;return data;}throw new Error('Owned route runtime failed');});}catch{}}
+    if(s.ownedRouting){
+      try{return await retryOnFabricFail(async()=>{const r=await fetch(absolute(`${cfg.providers.route.ownedEndpoint}/${mode}/${coords}`));const data=await r.json();if(r.ok&&data.geometry?.coordinates?.length){data.engine=`izakhono-fabric/${state.activeRuntime||'runtime'}`;return data;}throw new Error('Owned route runtime failed');});}
+      catch(error){if(cfg.providers.resilience?.enabled!==true)throw error;}
+    }
+    if(cfg.providers.resilience?.enabled!==true)throw new Error('Owned routing is unavailable. External resilience is disabled.');
     const result=await fallbackRoute(start,dest,mode); result.engine='resilience/osrm'; return result;
   }
-  function mapTileUrl(){const snap=fabric?.snapshot?.();const active=snap?.active;if(state.ownedTiles&&active?.target){const base=active.target.baseUrl||'';return base?`${base}${cfg.providers.map.ownedTileUrl}`:cfg.providers.map.ownedTileUrl;}return cfg.providers.map.fallbackTileUrl;}
+  function mapTileUrl(){const snap=fabric?.snapshot?.();const active=snap?.active;if(state.ownedTiles&&active?.target){const base=active.target.baseUrl||'';return base?`${base}${cfg.providers.map.ownedTileUrl}`:cfg.providers.map.ownedTileUrl;}return cfg.providers.resilience?.enabled===true?cfg.providers.map.fallbackTileUrl:cfg.providers.map.ownedTileUrl;}
   function fabricSnapshot(){return fabric?.snapshot?.()||null;}
   window.IZAKHONO_PROVIDERS={geocode,route,probe,state,mapTileUrl,fabricSnapshot};
   window.addEventListener('izakhono-fabric-state',()=>probe({force:true}));
