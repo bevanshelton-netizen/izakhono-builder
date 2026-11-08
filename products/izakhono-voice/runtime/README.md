@@ -19,6 +19,7 @@ Apply `migrations/001_voice_registry.sql` through the approved IZAKHONO DATA mig
 The migration creates:
 - `voice_calls` — canonical tenant/call association, provider CallSid, state and one-time stream credential hash.
 - `voice_tenant_policies` — tenant-scoped system instructions.
+- `voice_tenant_numbers` — inbound E.164 telephone number to tenant mapping.
 - `voice_call_usage` — per-call model usage.
 - `voice_audit_events` — tenant-scoped audit events.
 
@@ -26,7 +27,7 @@ Use opaque internal tenant and call IDs. The database account should have only t
 
 ## Stream authorisation lifecycle
 
-1. A trusted server-side call provisioning flow inserts the call and binds the provider CallSid to the canonical tenant/call record using `PostgresVoiceCallRegistry.registerCall`.
+1. The signed `/twilio/voice` webhook verifies Twilio's signature and account SID, resolves the called E.164 number through `voice_tenant_numbers` (only where the tenant has an enabled policy), and inserts the call with the provider CallSid using `PostgresVoiceCallRegistry.registerCall`.
 2. Immediately before Twilio is instructed to connect its media stream, the trusted server issues a 90-second, one-time token using `issueStreamCredential(providerCallSid)`.
 3. Twilio receives that opaque token as a supported Stream custom parameter named `streamToken`. It is a bearer credential; do not log it or put it in a URL.
 4. On the WebSocket `start` event, the registry hashes the supplied token and performs one conditional SQL UPDATE. The operation succeeds only if CallSid, token hash, expiry, unused state, eligible call state and no-active-stream condition all match.
@@ -40,6 +41,9 @@ The SQL conditional update is the concurrency control; it works across multiple 
 Required:
 - `DATABASE_URL` — private PostgreSQL connection string.
 - `IZAKHONO_TWILIO_MEDIA_PUBLIC_URL` — exact public `wss://` URL, without query or fragment.
+- `IZAKHONO_TWILIO_VOICE_WEBHOOK_PUBLIC_URL` — exact public HTTPS URL for `/twilio/voice`.
+- `IZAKHONO_TWILIO_STATUS_CALLBACK_PUBLIC_URL` — exact public HTTPS URL for `/twilio/status`.
+- `IZAKHONO_TWILIO_ACCOUNT_SID` — expected Twilio account SID.
 - `IZAKHONO_TWILIO_AUTH_TOKEN` — Twilio runtime secret.
 - `OPENAI_API_KEY` — server-only GPT-Live API key.
 
@@ -64,15 +68,24 @@ npm start
 
 Place the service behind the approved IZAKHONO EDGE/TLS path. Preserve the configured public WSS path and upgrade headers. Do not expose the private runtime port or PostgreSQL port publicly.
 
+## Inbound provisioning now implemented
+
+The runtime exposes signed Twilio form endpoints:
+- `POST /twilio/voice` — verifies the exact configured HTTPS URL, signature and Twilio AccountSid; resolves the called number to an enabled tenant policy; creates a call record; issues a one-time token; and returns TwiML that connects the media stream.
+- `POST /twilio/status` — verifies the exact configured HTTPS URL, signature and AccountSid, then persists call status by provider CallSid.
+
+Configure each Twilio number's incoming voice webhook to the public `/twilio/voice` URL and its call status callback to `/twilio/status`. Seed `voice_tenant_numbers` and `voice_tenant_policies` through the approved tenant onboarding process. Do not accept tenant IDs from the webhook body as authority.
+
 ## Production gates still open
 
 1. Apply the migration to the approved IZAKHONO DATA PostgreSQL service and create least-privilege database credentials.
-2. Implement and verify the trusted inbound/outbound call provisioning flow that creates call records and binds the Twilio CallSid before issuing stream credentials.
-3. Configure Twilio REST adapter's `streamCredentialForCall` callback to call `issueStreamCredential`; the adapter intentionally refuses to connect media without it.
-4. Verify Twilio handshake signature behaviour against real provider requests and current SDK/reference vectors.
-5. Confirm public WSS, TLS, edge upgrade forwarding, health checks, limits and failover on an approved runtime.
-6. Configure tenant policies and verify consent, retention, access control, privacy, incident response and South African regulatory requirements.
-7. Test real inbound/outbound calls, audio, barge-in, DTMF, transfer, SMS, hangup and failover.
-8. Verify durable per-call usage and audit records.
+2. Configure inbound telephone numbers and tenant policies; verify the inbound webhook using real Twilio-signed requests.
+3. Complete outbound call provisioning: create the internal call before dialing, bind the returned provider CallSid, and issue the stream credential before the media connection is instructed.
+4. Configure Twilio REST adapter's `streamCredentialForCall` callback to call `issueStreamCredential`; the adapter intentionally refuses to connect media without it.
+5. Verify Twilio handshake signature behaviour against real provider requests and current SDK/reference vectors.
+6. Confirm public WSS, TLS, edge upgrade forwarding, health checks, limits and failover on an approved runtime.
+7. Verify consent, retention, access control, privacy, incident response and South African regulatory requirements.
+8. Test real inbound/outbound calls, audio, barge-in, DTMF, transfer, SMS, hangup and failover.
+9. Verify durable per-call usage and audit records.
 
 This is executable runtime and registry code, not evidence of a live telephone service. Do not mark IZAKHONO VOICE live until every gate has evidence. Never commit credentials or customer call data.
