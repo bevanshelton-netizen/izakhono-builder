@@ -9,8 +9,9 @@ Native Android wrapper for the IZAKHONO NAV web client.
 - Android SpeechRecognizer destination input
 - Android share sheet
 - Screen-awake navigation bridge
-- local embedded NAV UI
-- owned NAV engine remains preferred when reachable
+- remote-first owned NAV HTTPS origin with a bundled local application-shell fallback
+- owned NAV engine remains the only default routing/search/tile provider; external resilience is disabled by default
+- native GPS, speech and share bridges are injected into the WebView
 - no analytics, advertising IDs or behavioural tracking
 
 ## Build
