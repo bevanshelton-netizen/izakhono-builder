@@ -75,7 +75,7 @@ export class TwilioRestTelephonyAdapter implements TelephonyAdapter {
 
   async dial(phone: string, callId: string): Promise<void> {
     const to = required(phone, "destination phone number");
-    const clientCallId = required(callId, "client call ID");
+    required(callId, "client call ID");
     await this.request("/Calls.json", {
       To: to,
       From: this.config.fromNumber,
