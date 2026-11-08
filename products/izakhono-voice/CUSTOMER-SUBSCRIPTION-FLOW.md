@@ -1,0 +1,32 @@
+# IZAKHONO VOICE — subscription and customer onboarding flow
+
+## Customer promise
+IZAKHONO supplies the VOICE software. The customer keeps their current cellphone, SIM and mobile number. No compulsory handset, SIM, PBX or office phone purchase.
+
+## Subscription-to-activation journey
+1. Customer creates an account and verifies identity/contact details in the IZAKHONO customer application.
+2. The application authenticates the user and resolves their tenant from the server-side session. Never accept a tenant ID from an untrusted browser field.
+3. Customer selects a published flat subscription plan. The plan must state included features, fair-use/call allowances, carrier charges and overage terms before payment.
+4. The payment adapter confirms payment and subscription status using a verified server-to-server event. A browser redirect or client-side paid flag is never proof of payment.
+5. The trusted onboarding service checks the tenant's active subscription before requesting a number from the configured telephony-number provider.
+6. The destination number is validated as E.164 and saved atomically with the tenant's enabled AI policy and BYOP endpoint metadata.
+7. The customer enters their business name, existing mobile number, forwarding preference and business instructions. The software does not ask for SIM credentials.
+8. The dashboard shows the assigned IZAKHONO answering number and carrier-specific forwarding instructions only when verified for that customer's carrier.
+9. Customer activates forwarding with their carrier and makes a test call.
+10. Only a successful controlled test changes forwarding status from pending to verified. The customer can then configure greetings, FAQs, transfer targets and notification preferences.
+
+## Trusted server boundary
+The VoiceTenantOnboardingService is the orchestration layer. It requires an authenticated tenant ID supplied by the application server, a subscription gate that confirms active entitlement, a number-provider adapter that provisions/releases numbers and supports idempotency, and a PostgreSQL setup repository that atomically enables the tenant policy, maps the assigned number and stores endpoint metadata.
+
+No public signup route should call the repository directly. Authentication, account verification, payment verification and subscription entitlements belong in the trusted application layer. Provider webhooks must be signature-verified before changing billing status.
+
+## Failure behaviour
+- Inactive subscription: stop before number provisioning.
+- Number provider failure: do not create tenant voice records.
+- Invalid provider number: attempt provider release and fail closed.
+- Database setup failure: rollback database changes and attempt provider release.
+- Provider release failure: preserve the original error and send the allocation to provider reconciliation.
+- Forwarding not tested: leave status pending. Do not tell the customer that the AI is answering calls yet.
+
+## Carrier and payment adapters
+The service depends on replaceable interfaces. No South African number inventory, carrier forwarding tariff, or payment-provider event is assumed. The production adapter must be selected and verified before customer checkout or number promises are enabled. iKhokha/payment integration must be wired to verified payment events and a subscription ledger before this onboarding service is exposed publicly.
