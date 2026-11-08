@@ -1,7 +1,7 @@
 import type { Pool } from "pg";
 
 export type VoiceForwardingMode = "unconditional" | "busy" | "no_answer" | "unreachable" | "busy_no_answer_unreachable";
-export interface ProvisionedVoiceNumber { phoneNumber: string; providerReference?: string; }
+export interface ProvisionedVoiceNumber { phoneNumber: string; providerReference?: string; newlyProvisioned: boolean; }
 export interface VoiceNumberProvisioner {
   provisionNumber(input: { tenantId: string; idempotencyKey: string }): Promise<ProvisionedVoiceNumber>;
   releaseNumber(input: { tenantId: string; phoneNumber: string; providerReference?: string }): Promise<void>;
@@ -51,7 +51,7 @@ export class VoiceTenantOnboardingService {
     await this.subscriptions.assertSubscriptionActive(tenantId);
     const assigned = await this.numbers.provisionNumber({ tenantId, idempotencyKey });
     if (!/^[+][1-9][0-9]{7,14}$/.test(assigned.phoneNumber)) {
-      try { await this.numbers.releaseNumber({ tenantId, ...assigned }); } catch { /* provider reconciliation */ }
+      if (assigned.newlyProvisioned) { if (assigned.newlyProvisioned) { try { await this.numbers.releaseNumber({ tenantId, ...assigned }); } catch { /* provider reconciliation */ } } }
       throw new Error("Telephony provider returned an invalid E.164 destination number");
     }
 
@@ -80,10 +80,11 @@ export class PostgresVoiceTenantSetupRepository implements VoiceTenantSetupRepos
         "INSERT INTO voice_tenant_policies (tenant_id, system_instructions, enabled) VALUES ($1, $2, TRUE) ON CONFLICT (tenant_id) DO UPDATE SET system_instructions = EXCLUDED.system_instructions, enabled = TRUE, updated_at = NOW()",
         [input.tenantId, "Business name: " + input.businessName + "\n\n" + input.systemInstructions],
       );
-      await client.query(
-        "INSERT INTO voice_tenant_numbers (phone_number, tenant_id, enabled) VALUES ($1, $2, TRUE)",
+      const numberMapping = await client.query(
+        "INSERT INTO voice_tenant_numbers (phone_number, tenant_id, enabled) VALUES ($1, $2, TRUE) ON CONFLICT (phone_number) DO UPDATE SET enabled = TRUE, updated_at = NOW() WHERE voice_tenant_numbers.tenant_id = EXCLUDED.tenant_id RETURNING phone_number",
         [input.voiceDestinationE164, input.tenantId],
       );
+      if (numberMapping.rowCount !== 1) throw new Error("AI destination number is already assigned to another tenant");
       await client.query(
         "INSERT INTO voice_customer_endpoints (tenant_id, business_name, customer_mobile_e164, voice_destination_e164, forwarding_mode, forwarding_status) VALUES ($1, $2, $3, $4, $5, 'pending') ON CONFLICT (tenant_id, customer_mobile_e164) DO UPDATE SET business_name = EXCLUDED.business_name, voice_destination_e164 = EXCLUDED.voice_destination_e164, forwarding_mode = EXCLUDED.forwarding_mode, forwarding_status = 'pending', verified_at = NULL, updated_at = NOW()",
         [input.tenantId, input.businessName, input.customerMobileE164, input.voiceDestinationE164, input.forwardingMode],
