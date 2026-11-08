@@ -123,3 +123,14 @@ The service returns `status: "submitted"`, not "connected": carrier acceptance a
 9. Verify durable per-call usage and audit records.
 
 This is executable runtime and registry code, not evidence of a live telephone service. Do not mark IZAKHONO VOICE live until every gate has evidence. Never commit credentials or customer call data.
+
+
+## Customer delivery model — BYOP
+
+IZAKHONO supplies the VOICE software platform. Customers bring their existing cellphone, SIM and mobile number; no compulsory handset, SIM or PBX purchase is part of the product. The MVP connects the customer's existing number to the software through carrier-supported call forwarding to an IZAKHONO-assigned AI answering number. The customer's mobile number is endpoint metadata, while the called IZAKHONO destination number in `voice_tenant_numbers` remains the authoritative tenant-routing key.
+
+See [BYOP customer onboarding](../../BYOP-CUSTOMER-ONBOARDING.md) for the customer journey, forwarding choices, activation checklist, privacy boundaries and release scope.
+
+Apply `migrations/002_voice_byop_endpoints.sql` through the approved IZAKHONO DATA migration process after reviewing it alongside migration 001. It records the customer's E.164 mobile number, assigned AI destination, forwarding condition and verification state. It deliberately does not store SIM PIN/PUK, ICCID or carrier credentials. A number is not marked verified until a controlled test call reaches the correct tenant's AI answering flow.
+
+Carrier forwarding support, codes, tariffs and South African number availability must be confirmed with the selected carrier. Do not promise a specific number or universal activation code before that verification.
