@@ -208,6 +208,20 @@ export class PostgresVoiceCallRegistry implements VoiceCallRegistry {
     if (result.rowCount !== 1) throw new Error("Outbound call could not be created for this tenant");
   }
 
+  async failUnboundOutboundCall(input: { callId: string; tenantId: string }): Promise<void> {
+    const result = await this.pool.query(
+      `UPDATE voice_calls
+       SET status = 'failed', updated_at = NOW()
+       WHERE call_id = $1
+         AND tenant_id = $2
+         AND direction = 'outbound'
+         AND provider_call_sid IS NULL
+         AND status = 'ringing'`,
+      [nonEmpty(input.callId, "callId"), nonEmpty(input.tenantId, "tenantId")],
+    );
+    if (result.rowCount !== 1) throw new Error("Unbound outbound call could not be marked failed");
+  }
+
   async bindProviderCall(callId: string, providerCallSid: string): Promise<string | null> {
     const result = await this.pool.query<{ tenant_id: string }>(
       `UPDATE voice_calls c
