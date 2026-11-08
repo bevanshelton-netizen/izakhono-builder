@@ -73,7 +73,7 @@ export async function acceptOrganisationInvitation(
      WHERE token_hash=? AND accepted_at IS NULL AND revoked_at IS NULL AND expires_at>?
        AND EXISTS (SELECT 1 FROM builder_organisation_memberships m
          WHERE m.organisation_id=builder_organisation_invitations.organisation_id
-           AND m.customer_id=? AND m.status='active')`,
+           AND m.customer_id=? AND m.id=? AND m.status='active')`,
   ).bind(timestamp, tokenHash, timestamp, identity.id, membershipId);
   const results = await db.batch([insert, consume]);
   const inserted = results[0] as { meta?: { changes?: number } } | undefined;
