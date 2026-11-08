@@ -91,3 +91,21 @@ test("binds an outbound provider CallSid idempotently to its internal call", asy
   assert.equal(tenantId, "tenant-1");
   assert.match(pool.calls[0].sql, /c\.provider_call_sid IS NULL OR c\.provider_call_sid = \$2/);
 });
+
+test("refreshes only the matching active tenant call stream lease", async () => {
+  const pool = new FakePool();
+  const registry = new PostgresVoiceCallRegistry(pool as unknown as Pool);
+  await registry.heartbeatStream({ tenantId: "tenant-1", callId: "call-1", streamSid: "MZ" + "3".repeat(32) });
+  assert.match(pool.calls[0].sql, /active_stream_expires_at = NOW\(\) \+ INTERVAL '90 seconds'/);
+  assert.match(pool.calls[0].sql, /active_stream_sid = \$3/);
+  assert.match(pool.calls[0].sql, /status IN \('active', 'handoff'\)/);
+});
+
+test("releases only the matching stream and clears its expiry lease", async () => {
+  const pool = new FakePool();
+  const registry = new PostgresVoiceCallRegistry(pool as unknown as Pool);
+  await registry.releaseStream({ tenantId: "tenant-1", callId: "call-1", streamSid: "MZ" + "4".repeat(32) });
+  assert.match(pool.calls[0].sql, /active_stream_sid = NULL/);
+  assert.match(pool.calls[0].sql, /active_stream_expires_at = NULL/);
+  assert.match(pool.calls[0].sql, /WHERE tenant_id = \$1 AND call_id = \$2 AND active_stream_sid = \$3/);
+});
