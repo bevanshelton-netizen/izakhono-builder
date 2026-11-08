@@ -17,7 +17,7 @@ async function run() {
   let authorized = 0;
   const authorizer = { async assertAuthorized() { authorized += 1; } };
   const result = await provisionOrganisationWithFirstOwner(
-    dbWith([1, 1, 1]), authorizer, identity('platform-admin'), identity('first-owner'),
+    dbWith([1, 1]), authorizer, identity('platform-admin'), identity('first-owner'),
     'Izakhono Customer', new Date('2026-11-08T12:00:00Z'),
   );
   assert.match(result.organisationId, /^org_[a-f0-9]{32}$/);
@@ -30,7 +30,7 @@ async function run() {
     /forbidden/,
   );
   await assert.rejects(
-    provisionOrganisationWithFirstOwner(dbWith([1, 0, 0]), authorizer, identity('platform-admin'),
+    provisionOrganisationWithFirstOwner(dbWith([1, 0]), authorizer, identity('platform-admin'),
       identity('first-owner'), 'Partial Org'),
     /not completed/,
   );
