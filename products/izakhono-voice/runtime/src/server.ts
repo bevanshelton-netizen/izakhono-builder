@@ -1,7 +1,9 @@
-import { createServer } from "node:http";
+import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
+import { randomUUID } from "node:crypto";
 import { WebSocket, WebSocketServer } from "ws";
 import { GptLiveVoiceStreamSessionFactory } from "../../src/gpt-live-session-factory.js";
 import { TwilioMediaStreamBridge } from "../../src/twilio-media-stream-bridge.js";
+import { verifyTwilioWebhook } from "../../src/twilio-webhook-security.js";
 import { NodeGptLiveSocketConnector } from "./node-gpt-live-connector.js";
 import { verifyTwilioWebSocketHandshake } from "./twilio-websocket-security.js";
 import { createVoiceRuntimeDependencies } from "./postgres-runtime-adapter.js";
@@ -19,6 +21,8 @@ if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error("IZAKHO
 
 const canonicalPublicUrl = required(env, "IZAKHONO_TWILIO_MEDIA_PUBLIC_URL");
 const twilioAuthToken = required(env, "IZAKHONO_TWILIO_AUTH_TOKEN");
+const voiceWebhookPublicUrl = required(env, "IZAKHONO_TWILIO_VOICE_WEBHOOK_PUBLIC_URL");
+const statusCallbackPublicUrl = required(env, "IZAKHONO_TWILIO_STATUS_CALLBACK_PUBLIC_URL");
 const openAiApiKey = required(env, "OPENAI_API_KEY");
 const dependencies = await createVoiceRuntimeDependencies(env);
 if (!dependencies?.callRegistry?.authorizeStart || !dependencies.instructionsForCall) {
@@ -45,14 +49,128 @@ const sessions = new GptLiveVoiceStreamSessionFactory({
     },
 }, new NodeGptLiveSocketConnector());
 
-const server = createServer((request, response) => {
+function xml(value: string): string {
+  return value.replace(/[<>&"']/g, char => ({
+    "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;", "'": "&apos;",
+  })[char] ?? char);
+}
+
+function reply(response: ServerResponse, status: number, contentType: string, body = ""): void {
+  response.writeHead(status, { "content-type": contentType, "cache-control": "no-store" });
+  response.end(body);
+}
+
+async function readTwilioForm(request: IncomingMessage): Promise<Record<string, string>> {
+  const contentType = request.headers["content-type"]?.split(";")[0].trim().toLowerCase();
+  if (contentType !== "application/x-www-form-urlencoded") throw new Error("Unsupported webhook content type");
+  const chunks: Buffer[] = [];
+  let size = 0;
+  for await (const chunk of request) {
+    const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+    size += buffer.length;
+    if (size > 16 * 1024) throw new Error("Webhook body exceeds size limit");
+    chunks.push(buffer);
+  }
+  return Object.fromEntries(new URLSearchParams(Buffer.concat(chunks).toString("utf8")).entries());
+}
+
+async function verifyFormWebhook(
+  request: IncomingMessage,
+  params: Record<string, string>,
+  publicUrl: string,
+): Promise<boolean> {
+  const configured = new URL(publicUrl);
+  if (request.url !== configured.pathname + configured.search) return false;
+  const signature = request.headers["x-twilio-signature"];
+  return verifyTwilioWebhook({
+    authToken: twilioAuthToken,
+    signature: typeof signature === "string" ? signature : null,
+    publicUrl,
+    params,
+  });
+}
+
+async function handleHttpRequest(request: IncomingMessage, response: ServerResponse): Promise<void> {
   if (request.method === "GET" && request.url === "/health") {
-    response.writeHead(200, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
-    response.end(JSON.stringify({ ok: true, service: "izakhono-voice-runtime", status: "ready" }));
+    reply(response, 200, "application/json; charset=utf-8", JSON.stringify({ ok: true, service: "izakhono-voice-runtime", status: "ready" }));
     return;
   }
-  response.writeHead(404, { "content-type": "application/json; charset=utf-8" });
-  response.end(JSON.stringify({ error: "not_found" }));
+
+  if (request.method === "POST" && request.url === new URL(voiceWebhookPublicUrl).pathname) {
+    let params: Record<string, string>;
+    try { params = await readTwilioForm(request); } catch {
+      reply(response, 400, "application/json; charset=utf-8", JSON.stringify({ error: "invalid_request" }));
+      return;
+    }
+    if (!await verifyFormWebhook(request, params, voiceWebhookPublicUrl)) {
+      reply(response, 401, "application/json; charset=utf-8", JSON.stringify({ error: "unauthorized" }));
+      return;
+    }
+
+    const callSid = params.CallSid ?? "";
+    const to = params.To ?? "";
+    if (!/^CA[0-9a-f]{32}$/i.test(callSid) || !/^\\+[1-9][0-9]{7,14}$/.test(to)) {
+      reply(response, 400, "application/json; charset=utf-8", JSON.stringify({ error: "invalid_call" }));
+      return;
+    }
+
+    try {
+      const tenantId = await dependencies.callRegistry.resolveTenantForInboundNumber(to);
+      if (!tenantId) {
+        reply(response, 404, "application/json; charset=utf-8", JSON.stringify({ error: "number_not_configured" }));
+        return;
+      }
+      const callId = randomUUID();
+      await dependencies.callRegistry.registerCall({
+        callId, tenantId, providerCallSid: callSid, direction: "inbound", status: "ringing",
+      });
+      const streamToken = await dependencies.callRegistry.issueStreamCredential(callSid);
+      const twiml = `<?xml version="1.0" encoding="UTF-8"?><Response><Connect><Stream url="${xml(canonicalPublicUrl)}"><Parameter name="callId" value="${xml(callId)}"/><Parameter name="streamToken" value="${xml(streamToken)}"/></Stream></Connect></Response>`;
+      reply(response, 200, "application/xml; charset=utf-8", twiml);
+    } catch (error) {
+      console.error("IZAKHONO VOICE inbound provisioning failed", error instanceof Error ? error.message : "unknown_error");
+      reply(response, 500, "application/json; charset=utf-8", JSON.stringify({ error: "call_setup_failed" }));
+    }
+    return;
+  }
+
+  if (request.method === "POST" && request.url === new URL(statusCallbackPublicUrl).pathname) {
+    let params: Record<string, string>;
+    try { params = await readTwilioForm(request); } catch {
+      reply(response, 400, "application/json; charset=utf-8", JSON.stringify({ error: "invalid_request" }));
+      return;
+    }
+    if (!await verifyFormWebhook(request, params, statusCallbackPublicUrl)) {
+      reply(response, 401, "application/json; charset=utf-8", JSON.stringify({ error: "unauthorized" }));
+      return;
+    }
+    const callSid = params.CallSid ?? "";
+    const providerStatus = (params.CallStatus ?? "").toLowerCase();
+    if (!/^CA[0-9a-f]{32}$/i.test(callSid)) {
+      reply(response, 400, "application/json; charset=utf-8", JSON.stringify({ error: "invalid_call" }));
+      return;
+    }
+    const mappedStatus = providerStatus === "completed" ? "completed"
+      : ["busy", "failed", "no-answer", "canceled"].includes(providerStatus) ? "failed"
+      : providerStatus === "in-progress" ? "active" : "ringing";
+    try {
+      await dependencies.callRegistry.updateCallStatus(callSid, mappedStatus);
+      reply(response, 204, "text/plain; charset=utf-8");
+    } catch {
+      reply(response, 404, "application/json; charset=utf-8", JSON.stringify({ error: "call_not_registered" }));
+    }
+    return;
+  }
+
+  reply(response, 404, "application/json; charset=utf-8", JSON.stringify({ error: "not_found" }));
+}
+
+const server = createServer((request, response) => {
+  void handleHttpRequest(request, response).catch(error => {
+    console.error("IZAKHONO VOICE HTTP handler failed", error instanceof Error ? error.message : "unknown_error");
+    if (!response.headersSent) reply(response, 500, "application/json; charset=utf-8", JSON.stringify({ error: "internal_error" }));
+    else response.destroy();
+  });
 });
 
 const wss = new WebSocketServer({ noServer: true, maxPayload: 64 * 1024, perMessageDeflate: false });
