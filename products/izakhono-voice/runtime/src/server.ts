@@ -262,6 +262,11 @@ wss.on("connection", (websocket: WebSocket) => {
       callId: input.authorization.callId,
       streamSid: input.streamSid,
     }),
+    onStreamActivity: input => dependencies.callRegistry.heartbeatStream({
+      tenantId: input.authorization.tenantId,
+      callId: input.authorization.callId,
+      streamSid: input.streamSid,
+    }),
     onError: error => {
       // Avoid logging payloads, credentials, caller audio, or raw provider events.
       console.error("IZAKHONO VOICE stream failed", error instanceof Error ? error.message : "unknown_error");
