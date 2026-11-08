@@ -1,27 +1,30 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-NAV_URL="${NAV_URL:-http://127.0.0.1:8080}"
+ENGINE_URL="${NAV_ENGINE_URL:-http://127.0.0.1:8788}"
+WEB_URL="${NAV_WEB_URL:-http://127.0.0.1:8787}"
 NODE01_ID="${NODE01_ID:-NODE01}"
 
-health="$(curl -fsS "$NAV_URL/health")"
-ready="$(curl -fsS "$NAV_URL/ready")"
-version="$(curl -fsS "$NAV_URL/version")"
+health="$(curl -fsS "$ENGINE_URL/api/health")"
+runtime="$(curl -fsS "$ENGINE_URL/v1/runtime")"
+curl -fsS "$WEB_URL/" | grep -q 'IZAKHONO NAV'
 
-HEALTH="$health" READY="$ready" VERSION="$version" NODE01_ID="$NODE01_ID" node <<'NODE'
+HEALTH="$health" RUNTIME="$runtime" NODE01_ID="$NODE01_ID" node <<'NODE'
 const health = JSON.parse(process.env.HEALTH);
-const ready = JSON.parse(process.env.READY);
-const version = JSON.parse(process.env.VERSION);
-
-if (health.product !== 'IZAKHONO NAV') throw new Error('Unexpected product identity');
-if (ready.ready !== true) throw new Error('NAV readiness check failed');
-if (version.runtime !== 'owned') throw new Error('NAV runtime is not owned');
-
+const runtime = JSON.parse(process.env.RUNTIME);
+if (health.product !== 'IZAKHONO NAV ENGINE') throw new Error('Unexpected NAV engine identity');
+if (health.ready !== true || health.routing !== 'ready' || health.search !== 'ready' || health.tiles !== 'ready') {
+  throw new Error('NAV owned dependencies are not ready');
+}
+if (runtime.runtimeClass !== 'owned') throw new Error('NAV runtime is not owned');
 console.log(JSON.stringify({
   node: process.env.NODE01_ID,
   product: health.product,
-  ready: ready.ready,
-  runtime: version.runtime,
+  releaseId: runtime.releaseId,
+  runtimeId: runtime.runtimeId,
+  routing: health.routing,
+  search: health.search,
+  tiles: health.tiles,
   status: 'PASS'
 }, null, 2));
 NODE
