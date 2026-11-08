@@ -1,5 +1,5 @@
 import { createHash, randomBytes } from "node:crypto";
-import type { Pool, PoolClient } from "pg";
+import type { Pool } from "pg";
 import type { VoiceStreamAuthorization } from "../../src/twilio-media-stream-bridge.js";
 import type { VoiceCallRegistry } from "./runtime-contract.js";
 
