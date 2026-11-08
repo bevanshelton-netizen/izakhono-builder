@@ -5,6 +5,7 @@
 CREATE TABLE IF NOT EXISTS voice_customer_endpoints (
   endpoint_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id TEXT NOT NULL,
+  business_name TEXT NOT NULL,
   customer_mobile_e164 TEXT NOT NULL,
   voice_destination_e164 TEXT NOT NULL,
   forwarding_mode TEXT NOT NULL DEFAULT 'no_answer'
