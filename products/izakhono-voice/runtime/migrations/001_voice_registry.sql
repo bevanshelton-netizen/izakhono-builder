@@ -52,3 +52,14 @@ CREATE TABLE IF NOT EXISTS voice_audit_events (
 );
 CREATE INDEX IF NOT EXISTS voice_audit_events_tenant_idx
   ON voice_audit_events (tenant_id, recorded_at DESC);
+
+-- Inbound number ownership is resolved server-side; the To field is only a lookup key.
+CREATE TABLE IF NOT EXISTS voice_tenant_numbers (
+  phone_number TEXT PRIMARY KEY,
+  tenant_id TEXT NOT NULL,
+  enabled BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS voice_tenant_numbers_tenant_idx
+  ON voice_tenant_numbers (tenant_id);
