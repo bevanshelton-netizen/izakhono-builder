@@ -6,17 +6,17 @@
   "edge": "Caddy",
   "tls": "Caddy-managed",
   "container_runtime": "Docker",
-  "production_execution": "NODE01",
+  "production_execution": "NODE01 Runtime Fabric target",
   "verification": {
-    "local_health": "/health",
-    "local_readiness": "/ready",
-    "runtime_identity": "/version",
-    "smoke_test": "infra/contabo/nav-smoke-test.sh",
+    "local_health": "/api/health",
+    "runtime_identity": "/v1/runtime",
+    "web_application": "http://127.0.0.1:8787/",
+    "local_smoke_test": "products/izakhono-nav/stack/scripts/verify.sh",
     "production_test": "infra/contabo/production-verify-nav.js"
   },
   "prohibited_runtime_dependencies": [
     "Vercel",
     "Netlify"
   ],
-  "status": "deployment_ready_not_executed_from_chat"
+  "status": "owned_stack_deployment_pending_runtime_access_and_verification"
 }
