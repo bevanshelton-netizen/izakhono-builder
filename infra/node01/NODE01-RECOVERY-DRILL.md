@@ -6,11 +6,11 @@
 bash infra/node01/verify-nav-backup.sh /var/backups/izakhono-nav/nav-node01-<UTC_TIMESTAMP>
 ```
 
-This validates the manifest, checksums, and gzip/tar archive readability. It is not an application restore test.
+This validates edge and owned-stack configuration, every named-volume archive, the South Africa OSM/router/tile runtime-data archive, and SHA-256 coverage. It does not by itself prove a live application restore.
 
-## Run an isolated Caddy restore drill
+## Run an isolated restore drill
 
-First ensure the approved helper and Caddy images are already present locally. The drill does not pull images and runs with Docker networking disabled.
+Ensure the approved helper and Caddy images are already present locally. The drill does not pull images and runs archive extraction and Caddy validation with Docker networking disabled.
 
 ```bash
 docker image inspect alpine:3.20
@@ -18,23 +18,13 @@ docker image inspect caddy:2-alpine
 bash infra/node01/node01-restore-drill.sh /var/backups/izakhono-nav/nav-node01-<UTC_TIMESTAMP>
 ```
 
-The drill creates uniquely named temporary Docker volumes, extracts only the two Caddy volumes into those isolated volumes, and runs Caddy's configuration validator offline against the archived Caddyfile. A trap removes the temporary volumes on exit. The production volumes are never mounted.
+The drill restores every named volume into newly created temporary Docker volumes, extracts runtime data into a temporary directory, and validates both public-edge and owned-web Caddy configurations offline. A cleanup trap removes all temporary targets. Production volumes and runtime directories are never mounted.
 
-This tests archive extraction and Caddy configuration parsing. It does not prove that public TLS renewal, DNS, external connectivity, or a complete production startup will work. Those require a controlled, separate staging environment with network access.
+This verifies archive readability, extraction and Caddy syntax. It does not prove that PostgreSQL/Nominatim can start from the restored database, Valhalla can load its graph, Martin can serve the restored PMTiles, or public TLS/DNS will work. Those require a controlled isolated staging runtime.
 
 ## Off-node replication
 
-A backup stored only on NODE01 does not protect against host or disk loss. Copy only after checksum verification, using an approved encrypted remote destination and credentials stored outside the repository. Example pattern (configure the destination and SSH identity in NODE01's protected environment):
-
-```bash
-rsync -a --partial --chmod=F600,D700 /var/backups/izakhono-nav/nav-node01-<UTC_TIMESTAMP>/ "$NODE01_BACKUP_REMOTE_DEST/"
-```
-
-Do not put credentials, private keys, tokens, or remote host secrets in Git. Verify checksums again at the destination. Retention and remote destination must be selected according to the actual storage capacity and recovery objectives; no retention deletion is automated here.
-
-## Verified off-node replication
-
-Configure an SSH host alias (or `user@host`) in NODE01's protected SSH configuration and provide the absolute destination path through the protected environment variable. The SSH identity must be provisioned outside Git and must have write/read access to the destination.
+A backup stored only on NODE01 does not protect against host or disk loss. After local verification, copy it to an independent protected destination using credentials held outside Git.
 
 ```bash
 NODE01_BACKUP_REMOTE_DEST='backup-user@backup-host:/srv/izakhono-backups/nav' \
@@ -42,8 +32,10 @@ NODE01_BACKUP_REMOTE_DEST='backup-user@backup-host:/srv/izakhono-backups/nav' \
   /var/backups/izakhono-nav/nav-node01-<UTC_TIMESTAMP>
 ```
 
-The script verifies the local archive first, copies the backup without deleting remote files, then verifies the remote SHA-256 checksums. It uses batch-mode SSH and fails rather than prompting for a password. No remote retention deletion is automated. Keep the remote destination on a separate failure domain from NODE01 and restrict access to the backup account.
+The script verifies the local archive, copies without remote deletion, and verifies remote SHA-256 checksums. No remote retention deletion is automated.
 
-## Evidence
+## Full recovery acceptance
 
-Record backup ID, checksum result, restore-drill result, NODE01 hostname, UTC time, image versions, and operator. Never mark recovery readiness complete until a drill has passed and a second copy has been verified off-node.
+A full recovery test must restore into a separate owned runtime, then start and verify Nominatim, Valhalla, Martin, the NAV engine, the owned web gateway and the public Caddy edge. Test search, routing, tiles, PWA assets and offline tile retrieval. Record the exact backup ID, Git release, checksums, runtime identity, UTC time and operator.
+
+No backup artifact, off-node copy or successful full-stack restore is verified from this chat. The procedure is committed but still requires NODE01 execution.
