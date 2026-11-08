@@ -26,10 +26,12 @@ jobs:
           BASE='https://yfawrenhudjomhnglfhq.supabase.co/functions/v1/izakhono-one-hub'
           health_code="$(curl -sS -L --max-time 20 -o /tmp/one-health.json -w '%{http_code}' "$BASE/health")"
           test "$health_code" = "200"
+          echo "HEALTH_RESPONSE=$(cat /tmp/one-health.json)"
           grep -q '"service":"IZAKHONO ONE HUB"' /tmp/one-health.json
           grep -q '"status":"healthy"' /tmp/one-health.json
           manifest_code="$(curl -sS -L --max-time 20 -o /tmp/one-manifest.json -w '%{http_code}' "$BASE/manifest")"
           test "$manifest_code" = "200"
+          echo "MANIFEST_RESPONSE=$(cat /tmp/one-manifest.json)"
           grep -q '"identity":"IZAKHONO ONE"' /tmp/one-manifest.json
           grep -q '"slug":"search"' /tmp/one-manifest.json
           grep -q '"slug":"fortress"' /tmp/one-manifest.json
