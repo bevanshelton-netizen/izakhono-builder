@@ -23,6 +23,13 @@ const canonicalPublicUrl = required(env, "IZAKHONO_TWILIO_MEDIA_PUBLIC_URL");
 const twilioAuthToken = required(env, "IZAKHONO_TWILIO_AUTH_TOKEN");
 const voiceWebhookPublicUrl = required(env, "IZAKHONO_TWILIO_VOICE_WEBHOOK_PUBLIC_URL");
 const statusCallbackPublicUrl = required(env, "IZAKHONO_TWILIO_STATUS_CALLBACK_PUBLIC_URL");
+const twilioAccountSid = required(env, "IZAKHONO_TWILIO_ACCOUNT_SID");
+for (const value of [voiceWebhookPublicUrl, statusCallbackPublicUrl]) {
+  const url = new URL(value);
+  if (url.protocol !== "https:" || url.search || url.hash || url.username || url.password) {
+    throw new Error("Twilio webhook public URLs must be canonical HTTPS URLs without query strings or credentials");
+  }
+}
 const openAiApiKey = required(env, "OPENAI_API_KEY");
 const dependencies = await createVoiceRuntimeDependencies(env);
 if (!dependencies?.callRegistry?.authorizeStart || !dependencies.instructionsForCall) {
@@ -146,7 +153,7 @@ async function handleHttpRequest(request: IncomingMessage, response: ServerRespo
     }
     const callSid = params.CallSid ?? "";
     const providerStatus = (params.CallStatus ?? "").toLowerCase();
-    if (!/^CA[0-9a-f]{32}$/i.test(callSid)) {
+    if (!/^CA[0-9a-f]{32}$/i.test(callSid) || params.AccountSid !== twilioAccountSid) {
       reply(response, 400, "application/json; charset=utf-8", JSON.stringify({ error: "invalid_call" }));
       return;
     }
