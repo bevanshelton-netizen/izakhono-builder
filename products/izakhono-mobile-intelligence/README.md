@@ -26,11 +26,11 @@ This product does not implement covert recording, hidden surveillance, private-a
 
 ## Current implementation status
 
-This directory is the first source foundation: typed module contracts, automation definition validation and deterministic execution planning. It is not yet an Android app, deployed API, production identity integration, or live automation executor.
+The directory now contains typed module contracts, automation definition validation and deterministic execution planning, plus an Android Kotlin/Jetpack Compose preview application with Home, Privacy Centre, Automation Studio and Social Intelligence screens. The Android screens are not connected to a production API, customer account, native permission inventory, social provider or live automation executor. No signed release or production deployment is claimed.
 
 ## Local checks
 
-Use the repository's pinned TypeScript/tsx toolchain. The product's pure logic tests are designed to run without credentials or external services.
+From the repository root, run `npm run mobile-intelligence:typecheck` and `npm run mobile-intelligence:test`. Build the Android debug APK from `products/izakhono-mobile-intelligence/android` with Gradle 8.11.1 and JDK 17 using `gradle assembleDebug`. The dedicated GitHub Actions workflow runs both the TypeScript checks and Android debug build.
 
 ## Release gates
 
