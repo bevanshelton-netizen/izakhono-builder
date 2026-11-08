@@ -64,3 +64,30 @@ test("rejects stream credential lifetimes outside policy", async () => {
   await assert.rejects(() => registry.issueStreamCredential("CA" + "f".repeat(32), 5));
   assert.equal(pool.calls.length, 0);
 });
+
+test("registers inbound calls idempotently by provider CallSid", async () => {
+  const pool = new FakePool();
+  pool.nextRows = [{ call_id: "stable-inbound-call-id" }];
+  const registry = new PostgresVoiceCallRegistry(pool as unknown as Pool);
+  const callId = await registry.registerInboundCall("tenant-1", "CA" + "1".repeat(32));
+  assert.equal(callId, "stable-inbound-call-id");
+  assert.match(pool.calls[0].sql, /ON CONFLICT \(provider_call_sid\) DO UPDATE/);
+  assert.match(pool.calls[0].sql, /voice_calls\.status IN \('ringing', 'active', 'handoff'\)/);
+});
+
+test("creates outbound calls only for enabled tenant policies", async () => {
+  const pool = new FakePool();
+  const registry = new PostgresVoiceCallRegistry(pool as unknown as Pool);
+  await registry.createOutboundCall({ callId: "call-out-1", tenantId: "tenant-1" });
+  assert.match(pool.calls[0].sql, /FROM voice_tenant_policies p/);
+  assert.match(pool.calls[0].sql, /p\.enabled = TRUE/);
+});
+
+test("binds an outbound provider CallSid idempotently to its internal call", async () => {
+  const pool = new FakePool();
+  pool.nextRows = [{ tenant_id: "tenant-1" }];
+  const registry = new PostgresVoiceCallRegistry(pool as unknown as Pool);
+  const tenantId = await registry.bindProviderCall("call-out-1", "CA" + "2".repeat(32));
+  assert.equal(tenantId, "tenant-1");
+  assert.match(pool.calls[0].sql, /c\.provider_call_sid IS NULL OR c\.provider_call_sid = \$2/);
+});
