@@ -3,7 +3,7 @@
 **Product:** IZAKHONO NAV  
 **Operator:** IZAKHONO AFRICA (PTY) LTD  
 **Current package:** v1.0  
-**Status:** BUILT / VERIFIED LOCALLY  
+**Status:** SOURCE UPDATED / CI AND OWNED-RUNTIME VERIFICATION PENDING  
 **Runtime policy:** IZAKHONO Runtime Fabric — no single node is a launch gate
 
 ## Product boundary
@@ -24,11 +24,7 @@ The application is packaged to run unchanged across approved Runtime Fabric targ
 
 ## Release evidence
 
-Package SHA-256:
-
-`6d458b36cd1fc93753152674739d98aacc21dd652f1fc65f79b6108611d7c0b0`
-
-The package passed JavaScript syntax, Runtime Fabric selection tests, gateway unit tests, Python compile, shell syntax, JSON/YAML parse, Android asset sync, local asset integrity and local HTTP 200 checks.
+The previously recorded v1.0 artifact hash belongs to an earlier build and is not asserted as the hash of the current source. The current source changes require a fresh CI run, owned-runtime activation, and public endpoint verification before a release hash or live status is issued.
 
 ## Public status
 
@@ -65,6 +61,8 @@ It deliberately fails closed: without an approved routing/search backend it retu
 
 The v1 owned stack lives under `products/izakhono-nav/stack` and combines NAV's own engine with Valhalla routing, Nominatim search, locally generated South Africa PMTiles, Martin raster rendering and Caddy edge/TLS.
 
-The web client and engine compatibility contracts are aligned. The stack is node-agnostic, external-host-independent by default, privacy-preserving, and includes first-run activation, OSM checksum verification, reboot persistence, scheduled map-data refresh and a full local verification script.
+The web client and engine compatibility contracts are aligned. The stack is node-agnostic, external-host-independent by default, privacy-preserving, and includes first-run activation, OSM checksum verification, restart policies, an optional scheduled map-data refresh installer, and a full local verification script. External routing/search/tile fallbacks are disabled by default and require explicit owner activation.
 
-Public-live status remains evidence-based: a real IZAKHONO-controlled runtime must complete the South Africa imports/builds and pass `stack/scripts/verify.sh`.
+The NODE01 promotion pipeline now targets this owned stack rather than the earlier lightweight app container. It waits for Valhalla, Nominatim and Martin to become ready, then verifies search, routing, tiles, PWA assets and public HTTPS. Backup and isolated restore procedures cover the owned database, map and routing data.
+
+Public-live status remains evidence-based: a real IZAKHONO-controlled runtime must complete the South Africa imports/builds and pass `stack/scripts/verify.sh` plus `infra/contabo/production-verify-nav.js`. The deployment workflow requires an online self-hosted runner labelled `node01`; no production activation or public DNS cutover is claimed from this chat.
