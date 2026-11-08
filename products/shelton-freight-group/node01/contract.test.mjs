@@ -8,22 +8,22 @@ const gateway = await readFile(new URL("products/izakhono-one/node-gateway.mjs",
 const control = await readFile(new URL("products/izakhono-one/services/persistent-node-control.mjs", root), "utf8");
 
 test("SFG adapter uses the verified IZAKHONO ONE gateway routes", () => {
-  assert.match(client, /request\("\/api\/nodes"\)/);
-  assert.match(client, /\/api\/nodes\/\+encodeURIComponent\(nodeId\)\+"\/workload"/);
-  assert.match(gateway, /url\.pathname === '\/api\/nodes'/);
-  assert.match(gateway, /action === 'workload'/);
+  assert.ok(client.includes('request("/api/nodes")'));
+  assert.ok(client.includes('request("/api/nodes/"+encodeURIComponent(nodeId)+"/workload"'));
+  assert.ok(gateway.includes("url.pathname === '/api/nodes'"));
+  assert.ok(gateway.includes("action === 'workload'"));
 });
 
 test("SFG adapter fails closed on missing credentials and non-HTTPS origins", () => {
-  assert.match(client, /NODE_CONTROL_NOT_CONFIGURED/);
-  assert.match(client, /url\.protocol!=="https:"/);
-  assert.match(client, /redirect:"manual"/);
-  assert.match(client, /AbortSignal\.timeout\(6000\)/);
+  assert.ok(client.includes("NODE_CONTROL_NOT_CONFIGURED"));
+  assert.ok(client.includes('url.protocol!=="https:"'));
+  assert.ok(client.includes('redirect:"manual"'));
+  assert.ok(client.includes("AbortSignal.timeout(6000)"));
 });
 
 test("workload authorization is separate from node deployment reporting", () => {
-  assert.match(client, /FORTRESS workload authorization only/);
-  assert.match(control, /async function authorizeWorkload/);
-  assert.match(control, /async function recordDeployment/);
-  assert.match(gateway, /action === 'deploy'/);
+  assert.ok(client.includes("FORTRESS workload authorization only"));
+  assert.ok(control.includes("async function authorizeWorkload"));
+  assert.ok(control.includes("async function recordDeployment"));
+  assert.ok(gateway.includes("action === 'deploy'"));
 });
