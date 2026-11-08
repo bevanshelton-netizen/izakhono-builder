@@ -71,9 +71,28 @@ export async function guardMobileApi(
   if (!originAllowed(request, env.ALLOWED_ORIGINS || '')) {
     return { ok: false, response: jsonError(403, 'ORIGIN_NOT_ALLOWED', requestId) };
   }
+  const maxBodyBytes = options.maxBodyBytes ?? MAX_BODY_BYTES;
   const declaredLength = Number(request.headers.get('content-length') || 0);
-  if (declaredLength > (options.maxBodyBytes ?? MAX_BODY_BYTES)) {
+  if (declaredLength > maxBodyBytes) {
     return { ok: false, response: jsonError(413, 'PAYLOAD_TOO_LARGE', requestId) };
+  }
+  // Content-Length is optional and can be forged; measure the streamed body as well.
+  if (request.body) {
+    const reader = request.clone().body!.getReader();
+    let total = 0;
+    try {
+      while (true) {
+        const chunk = await reader.read();
+        if (chunk.done) break;
+        total += chunk.value.byteLength;
+        if (total > maxBodyBytes) {
+          await reader.cancel();
+          return { ok: false, response: jsonError(413, 'PAYLOAD_TOO_LARGE', requestId) };
+        }
+      }
+    } catch {
+      return { ok: false, response: jsonError(400, 'INVALID_BODY', requestId) };
+    }
   }
   const token = requestToken(request);
   if (!token) return { ok: false, response: jsonError(401, 'UNAUTHENTICATED', requestId) };
