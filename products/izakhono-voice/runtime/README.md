@@ -8,6 +8,7 @@ This package hosts the provider-neutral Twilio media bridge and GPT-Live session
 - Canonical public WSS handshake validation against runtime-only Twilio credentials; never trusts Host or forwarded headers.
 - Node WebSocket connector for GPT-Live.
 - PostgreSQL-backed call registry with tenant isolation, short-lived one-time stream credentials, atomic token consumption, replay prevention and one-active-stream enforcement across replicas.
+- Expiring 90-second stream leases refreshed every 30 seconds during media traffic, allowing stale leases to be reclaimed after a runtime crash.
 - Stream lease release on Twilio stop, disconnect or bridge failure.
 - Tenant-scoped GPT-Live instructions, durable usage attribution and audit events.
 - Runtime and registry unit tests.
@@ -34,7 +35,7 @@ Use opaque internal tenant and call IDs. The database account should have only t
 5. The database returns canonical tenant/call IDs. Other custom parameters are not authority.
 6. On stop/disconnect/failure, the bridge releases the matching stream lease. A consumed token is cleared and cannot be replayed.
 
-The SQL conditional update is the concurrency control; it works across multiple runtime replicas. There is no process-local registry fallback.
+The SQL conditional update is the concurrency control; it works across multiple runtime replicas. A 90-second stream lease is refreshed every 30 seconds while media is flowing; a crashed runtime stops refreshing and its stale lease can be reclaimed. Lease heartbeats are fenced by tenant, internal call ID and exact StreamSid. There is no process-local registry fallback.
 
 ## Runtime environment
 
@@ -49,7 +50,6 @@ Required:
 
 Optional:
 - `DATABASE_SSL=require` — enable TLS to PostgreSQL.
-- `DATABASE_SSL_REJECT_UNAUTHORIZED=false` — only for a controlled private CA setup; prefer installing the CA and keeping verification enabled.
 - `IZAKHONO_VOICE_DB_POOL_MAX` — pool size, default 10.
 - `IZAKHONO_VOICE_HOST` — bind address, default `127.0.0.1`.
 - `IZAKHONO_VOICE_PORT` — bind port, default `8962`.
@@ -66,7 +66,7 @@ npm test
 npm start
 ```
 
-Place the service behind the approved IZAKHONO EDGE/TLS path. Preserve the configured public WSS path and upgrade headers. Do not expose the private runtime port or PostgreSQL port publicly.
+Place the service behind the approved IZAKHONO EDGE/TLS path. Preserve the configured public WSS path and upgrade headers. The `/health` endpoint checks PostgreSQL availability and returns 503 when the database is unavailable. PostgreSQL TLS certificate verification remains enabled when `DATABASE_SSL=require`. Do not expose the private runtime port or PostgreSQL port publicly.
 
 ## Inbound and outbound provisioning now implemented
 
@@ -80,7 +80,7 @@ Configure each Twilio number's incoming voice webhook to the public `/twilio/voi
 
 1. Apply the migration to the approved IZAKHONO DATA PostgreSQL service and create least-privilege database credentials.
 2. Configure inbound telephone numbers and tenant policies; verify inbound and outbound webhook signatures using real Twilio-signed requests.
-3. Ensure the trusted outbound application creates each call with `createOutboundCall({ callId, tenantId })` before invoking the Twilio REST adapter's `dial(phone, callId)` method.
+3. Ensure the trusted outbound application creates each call with `createOutboundCall({ callId, tenantId })` before invoking the Twilio REST adapter's `dial(phone, callId)` method. The signed Twilio webhook binds the returned CallSid idempotently; webhook retries for the same provider CallSid are safe.
 4. Configure Twilio REST adapter's `streamCredentialForCall` callback to call `issueStreamCredential`; the adapter intentionally refuses to connect media without it.
 5. Verify Twilio handshake signature behaviour against real provider requests and current SDK/reference vectors.
 6. Confirm public WSS, TLS, edge upgrade forwarding, health checks, limits and failover on an approved runtime.
