@@ -76,6 +76,22 @@ The runtime exposes signed Twilio form endpoints:
 
 Configure each Twilio number's incoming voice webhook to the public `/twilio/voice` URL and its call status callback to `/twilio/status`. Seed `voice_tenant_numbers` and `voice_tenant_policies` through the approved tenant onboarding process. Do not accept tenant IDs from the webhook body as authority.
 
+## Owner-node container deployment
+
+The production image is built from the repository root so it includes the runtime and shared provider-neutral voice modules. The container runs as the non-root Node user, has a read-only root filesystem, drops Linux capabilities, and publishes port 8962 only on host loopback for the local IZAKHONO EDGE reverse proxy.
+
+On an approved owner node, first create `/etc/izakhono/apps/izakhono-voice.env` with the required runtime variables and securely provision the PostgreSQL, Twilio and OpenAI credentials. Do not place this file in the repository.
+
+After the database migration and tenant setup are complete:
+
+```bash
+docker compose -f products/izakhono-voice/runtime/docker-compose.yml up -d --build
+docker compose -f products/izakhono-voice/runtime/docker-compose.yml ps
+curl --fail http://127.0.0.1:8962/health
+```
+
+This local deployment command is a runbook only. No owner-node deployment, public DNS/TLS route or real call has been executed by this code change. The external EDGE route must be configured separately through the approved Runtime Fabric process.
+
 ## Production gates still open
 
 1. Apply the migration to the approved IZAKHONO DATA PostgreSQL service and create least-privilege database credentials.
