@@ -103,39 +103,79 @@ async function handleHttpRequest(request: IncomingMessage, response: ServerRespo
     return;
   }
 
-  if (request.method === "POST" && request.url === new URL(voiceWebhookPublicUrl).pathname) {
+  const voiceWebhookPath = new URL(voiceWebhookPublicUrl).pathname;
+  const incomingRequestUrl = new URL(request.url ?? "/", "http://runtime.invalid");
+  if (request.method === "POST" && incomingRequestUrl.pathname === voiceWebhookPath) {
     let params: Record<string, string>;
     try { params = await readTwilioForm(request); } catch {
       reply(response, 400, "application/json; charset=utf-8", JSON.stringify({ error: "invalid_request" }));
       return;
     }
-    if (!await verifyFormWebhook(request, params, voiceWebhookPublicUrl)) {
-      reply(response, 401, "application/json; charset=utf-8", JSON.stringify({ error: "unauthorized" }));
-      return;
-    }
 
     const callSid = params.CallSid ?? "";
-    const to = params.To ?? "";
-    if (!/^CA[0-9a-f]{32}$/i.test(callSid) || !/^\+[1-9][0-9]{7,14}$/.test(to)) {
+    if (!/^CA[0-9a-f]{32}$/i.test(callSid) || params.AccountSid !== twilioAccountSid) {
       reply(response, 400, "application/json; charset=utf-8", JSON.stringify({ error: "invalid_call" }));
       return;
     }
 
-    try {
-      const tenantId = await dependencies.callRegistry.resolveTenantForInboundNumber(to);
-      if (!tenantId) {
-        reply(response, 404, "application/json; charset=utf-8", JSON.stringify({ error: "number_not_configured" }));
+    const outboundIds = incomingRequestUrl.searchParams.getAll("callId");
+    const isOutbound = outboundIds.length === 1 && incomingRequestUrl.searchParams.size === 1;
+    let signedVoiceUrl = voiceWebhookPublicUrl;
+    let callId: string;
+    let tenantId: string | null;
+
+    if (isOutbound) {
+      callId = outboundIds[0];
+      if (!/^[0-9a-f-]{36}$/i.test(callId)) {
+        reply(response, 400, "application/json; charset=utf-8", JSON.stringify({ error: "invalid_call_reference" }));
         return;
       }
-      const callId = randomUUID();
-      await dependencies.callRegistry.registerCall({
-        callId, tenantId, providerCallSid: callSid, direction: "inbound", status: "ringing",
-      });
+      const canonical = new URL(voiceWebhookPublicUrl);
+      canonical.searchParams.set("callId", callId);
+      signedVoiceUrl = canonical.toString();
+    } else {
+      callId = "";
+      if (incomingRequestUrl.search) {
+        reply(response, 400, "application/json; charset=utf-8", JSON.stringify({ error: "invalid_webhook_query" }));
+        return;
+      }
+    }
+
+    if (!await verifyFormWebhook(request, params, signedVoiceUrl)) {
+      reply(response, 401, "application/json; charset=utf-8", JSON.stringify({ error: "unauthorized" }));
+      return;
+    }
+
+    const to = params.To ?? "";
+    if (!isOutbound && !/^\\+[1-9][0-9]{7,14}$/.test(to)) {
+      reply(response, 400, "application/json; charset=utf-8", JSON.stringify({ error: "invalid_destination_number" }));
+      return;
+    }
+
+    try {
+      if (isOutbound) {
+        tenantId = await dependencies.callRegistry.bindProviderCall(callId, callSid);
+        if (!tenantId) {
+          reply(response, 404, "application/json; charset=utf-8", JSON.stringify({ error: "outbound_call_not_registered" }));
+          return;
+        }
+      } else {
+        tenantId = await dependencies.callRegistry.resolveTenantForInboundNumber(to);
+        if (!tenantId) {
+          reply(response, 404, "application/json; charset=utf-8", JSON.stringify({ error: "number_not_configured" }));
+          return;
+        }
+        callId = randomUUID();
+        await dependencies.callRegistry.registerCall({
+          callId, tenantId, providerCallSid: callSid, direction: "inbound", status: "ringing",
+        });
+      }
+
       const streamToken = await dependencies.callRegistry.issueStreamCredential(callSid);
       const twiml = `<?xml version="1.0" encoding="UTF-8"?><Response><Connect><Stream url="${xml(canonicalPublicUrl)}"><Parameter name="callId" value="${xml(callId)}"/><Parameter name="streamToken" value="${xml(streamToken)}"/></Stream></Connect></Response>`;
       reply(response, 200, "application/xml; charset=utf-8", twiml);
     } catch (error) {
-      console.error("IZAKHONO VOICE inbound provisioning failed", error instanceof Error ? error.message : "unknown_error");
+      console.error("IZAKHONO VOICE call provisioning failed", error instanceof Error ? error.message : "unknown_error");
       reply(response, 500, "application/json; charset=utf-8", JSON.stringify({ error: "call_setup_failed" }));
     }
     return;
