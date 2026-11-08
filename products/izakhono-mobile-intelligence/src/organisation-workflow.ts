@@ -80,3 +80,30 @@ export async function acceptOrganisationInvitation(
   const consumed = results[1] as { meta?: { changes?: number } } | undefined;
   return (inserted?.meta?.changes ?? 0) === 1 && (consumed?.meta?.changes ?? 0) === 1;
 }
+
+/** Revokes a still-pending invitation; only an active organisation owner/admin may revoke it. */
+export async function revokeOrganisationInvitation(
+  db: OrganisationWorkflowDB,
+  actor: CustomerIdentity,
+  organisationId: string,
+  invitationId: string,
+  now = new Date(),
+): Promise<boolean> {
+  if (actor.status !== 'active' || !/^boi_[a-f0-9]{32}$/i.test(invitationId)) return false;
+  const access = await resolveOrganisationAccess(db, actor, organisationId);
+  if (!access || !['owner', 'admin'].includes(access.role)) throw new Error('Organisation administrator access required.');
+  const timestamp = now.toISOString();
+  const update = db.prepare(
+    `UPDATE builder_organisation_invitations SET revoked_at=?
+     WHERE id=? AND organisation_id=? AND accepted_at IS NULL AND revoked_at IS NULL`,
+  ).bind(timestamp, invitationId, organisationId);
+  const audit = db.prepare(
+    `INSERT INTO builder_customer_events(id,customer_id,event_type,detail,created_at)
+     SELECT ?,?, 'mobile_org_invitation_revoked', ?, ?
+     WHERE EXISTS (SELECT 1 FROM builder_organisation_invitations
+       WHERE id=? AND organisation_id=? AND revoked_at=? AND accepted_at IS NULL)`,
+  ).bind('bce_' + randomHex(16), actor.id, JSON.stringify({ organisationId, invitationId }), timestamp, invitationId, organisationId, timestamp);
+  const results = await db.batch([update, audit]);
+  const updated = results[0] as { meta?: { changes?: number } } | undefined;
+  return (updated?.meta?.changes ?? 0) === 1;
+}
