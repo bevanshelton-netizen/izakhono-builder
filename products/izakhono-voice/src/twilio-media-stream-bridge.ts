@@ -187,6 +187,14 @@ export class TwilioMediaStreamBridge {
         throw new Error("Twilio call is not authorized by the IZAKHONO call registry");
       }
       this.authorization = authorization;
+      if (this.closed) {
+        await this.options.onStreamClosed?.({
+          authorization,
+          streamSid: this.streamSid,
+          reason: "WebSocket closed during call authorization",
+        });
+        return;
+      }
       const session = await this.options.sessions.create({
         callSid: this.callSid,
         streamSid: this.streamSid,
