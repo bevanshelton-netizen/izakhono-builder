@@ -35,11 +35,13 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Validate provider router and provisioning
+      - name: Validate provider router, mobile core and provisioning
         run: |
           node --check products/i-connect/api/network-route.js
           node --check products/i-connect/api/provisioning.js
           node --check products/i-connect/server.js
+          node --check products/i-connect/network/mobile-operator-core.mjs
+          node --test products/i-connect/network/mobile-operator-core.test.mjs
           node --experimental-default-type=module products/i-connect/network/provider-router.test.mjs
           node --experimental-default-type=module products/i-connect/network/provisioning-orchestrator.test.mjs
           node --experimental-default-type=module products/i-connect/network/carrier-bridge-adapter.mjs
@@ -58,5 +60,5 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          ! grep -REqi '(password|secret|api[_-]?key)[[:space:]]*[:=][[:space:]]*["'"'][^"'"']+["'"']' products/i-connect/network products/i-connect/api/network-route.js products/i-connect/api/provisioning.js
+          ! grep -REqi '(password|secret|api[_-]?key)[[:space:]]*[:=][[:space:]]*["'"'"'][^"'"'"']+["'"'"']' products/i-connect/network products/i-connect/api/network-route.js products/i-connect/api/provisioning.js
           echo '[PASS] No hard-coded provider credentials detected.'
