@@ -1,4 +1,4 @@
-import { createHash, randomBytes } from "node:crypto";
+import { createHash, randomBytes, randomUUID } from "node:crypto";
 import type { Pool } from "pg";
 import type { VoiceStreamAuthorization } from "../../src/twilio-media-stream-bridge.js";
 import type { VoiceCallRegistry } from "./runtime-contract.js";
@@ -27,6 +27,26 @@ function tokenHash(token: string): string {
  */
 export class PostgresVoiceCallRegistry implements VoiceCallRegistry {
   constructor(private readonly pool: Pool) {}
+
+
+  async registerInboundCall(tenantId: string, providerCallSid: string): Promise<string> {
+    const result = await this.pool.query<{ call_id: string }>(
+      `INSERT INTO voice_calls (call_id, tenant_id, provider_call_sid, direction, status)
+       SELECT $1, p.tenant_id, $2, 'inbound', 'ringing'
+       FROM voice_tenant_policies p
+       WHERE p.tenant_id = $3 AND p.enabled = TRUE
+       ON CONFLICT (provider_call_sid) DO UPDATE
+       SET updated_at = NOW()
+       WHERE voice_calls.tenant_id = EXCLUDED.tenant_id
+         AND voice_calls.direction = 'inbound'
+         AND voice_calls.status IN ('ringing', 'active', 'handoff')
+       RETURNING call_id`,
+      [randomUUID(), nonEmpty(providerCallSid, "providerCallSid"), nonEmpty(tenantId, "tenantId")],
+    );
+    const callId = result.rows[0]?.call_id;
+    if (!callId) throw new Error("Inbound call could not be registered for this tenant");
+    return callId;
+  }
 
   async registerCall(input: RegisterVoiceCallInput): Promise<void> {
     const callId = nonEmpty(input.callId, "callId");
@@ -176,7 +196,7 @@ export class PostgresVoiceCallRegistry implements VoiceCallRegistry {
          AND c.tenant_id = p.tenant_id
          AND p.enabled = TRUE
          AND c.direction = 'outbound'
-         AND c.provider_call_sid IS NULL
+         AND (c.provider_call_sid IS NULL OR c.provider_call_sid = $2)
          AND c.status = 'ringing'
        RETURNING c.tenant_id`,
       [nonEmpty(callId, "callId"), nonEmpty(providerCallSid, "providerCallSid")],
