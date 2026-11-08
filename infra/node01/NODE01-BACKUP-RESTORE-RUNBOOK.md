@@ -1,19 +1,19 @@
 # IZAKHONO NAV — NODE01 Backup & Restore Readiness
 
-## Current scope
+## Backup scope
 
-The Compose stack declares two persistent Caddy volumes: `nav-caddy-data` and `nav-caddy-config`. NAV itself is currently stateless at the container-volume layer. The backup script resolves the actual Docker volume names from the rendered Compose configuration rather than assuming Docker's project prefix.
+The backup covers both deployment layers:
 
-The backup includes:
-- Resolved named volumes declared by `infra/contabo/nav-compose.yml`.
-- The Compose file and Caddyfile used to define the deployment.
-- A manifest and SHA-256 checksums.
+- Public Caddy edge volumes: Caddy certificate and configuration state.
+- Owned NAV stack volumes: Nominatim/PostgreSQL database, Nominatim flatnode, and the owned web Caddy state.
+- The owned stack's bind-mounted runtime data: South Africa OpenStreetMap extract, Valhalla routing graph, and locally generated PMTiles.
+- Edge and owned-stack Compose/Caddy/Martin configuration plus the runtime manifest.
 
-It intentionally excludes runtime secrets, environment files, application source, host operating system state, and external DNS/provider configuration. Keep secrets in an approved secrets manager and protect them separately.
+The backup intentionally excludes `.env` files, credentials, application source, host operating system state, and external DNS/provider configuration. Application source is recoverable from the exact Git release. Runtime secrets must be protected separately through an approved secrets manager.
 
 ## Prepare NODE01
 
-Run from the repository root on NODE01. Confirm the approved helper image is already present locally; the script does not pull images or require network access for the archive operation.
+Run from the repository root on NODE01. Confirm the approved helper image is already present locally; the archive operation does not pull images.
 
 ```bash
 docker image inspect alpine:3.20
@@ -23,34 +23,47 @@ NODE01_BACKUP_DIR=/var/backups/izakhono-nav \
   bash infra/node01/node01-backup-nav.sh
 ```
 
-The script uses a single-flight lock, writes into a private staging directory, archives named volumes read-only, generates checksums, and renames the staging directory only after the archive set is complete. It does not stop, restart, or modify production containers.
+The script resolves named volumes from both Compose files, archives them read-only, and archives the owned runtime-data directory. It uses a single-flight lock, writes to a private staging directory, creates SHA-256 checksums, and renames the staging directory only after the complete backup set is present. It does not stop, restart, or modify production containers.
 
 ## Verify a backup
 
 ```bash
-cd /var/backups/izakhono-nav/nav-node01-<UTC_TIMESTAMP>
-sha256sum -c SHA256SUMS
-cat backup-manifest.txt
+bash infra/node01/verify-nav-backup.sh /var/backups/izakhono-nav/nav-node01-<UTC_TIMESTAMP>
 ```
 
-Treat any checksum failure, missing archive, or unexpected volume list as a failed backup. Copy verified backups to a separate protected storage location; a backup on the same NODE01 disk is not disaster recovery.
+The verifier checks required configuration, every named-volume archive, the runtime-data archive, archive readability, and exact checksum coverage. Treat any missing archive or checksum failure as a failed backup.
 
-## Consistency and restore boundary
+## Off-node replication
 
-This is a best-effort online archive. Caddy may write certificate or state data while a volume is being archived, so the result is not guaranteed to be application-consistent. Before treating this as a production recovery point, conduct an isolated restore drill using copies of the volumes and validate Caddy startup and TLS state without touching live volumes.
+A backup on the same NODE01 disk is not disaster recovery. After local verification, replicate to an independent protected storage target:
 
-An isolated restore-drill script is provided at `infra/node01/node01-restore-drill.sh`. It restores the two Caddy archives into newly created temporary Docker volumes, validates the backed-up Caddyfile offline, and removes the temporary volumes on exit. It never mounts production volumes. It is a validation drill, not a production restore procedure. Do not extract an archive over a live Docker volume or replace production volumes without a separately reviewed maintenance procedure, a verified pre-restore backup, and explicit operator approval.
+```bash
+NODE01_BACKUP_REMOTE_DEST='backup-user@backup-host:/srv/izakhono-backups/nav' \
+  bash infra/node01/replicate-nav-backup-offsite.sh \
+  /var/backups/izakhono-nav/nav-node01-<UTC_TIMESTAMP>
+```
 
-## Recovery sequence (controlled)
+The SSH identity and destination must be provisioned outside Git. The script verifies local checksums, copies without remote deletion, and verifies the remote copy. Retention deletion is not automated.
 
-1. Identify a backup directory and verify every checksum.
-2. Confirm the exact Compose project and resolved volume names on the target.
-3. Restore into newly named isolated test volumes, never the live volumes.
-4. Run `bash infra/node01/node01-restore-drill.sh /path/to/backup` to restore archives into isolated temporary volumes and validate the Caddyfile.
-5. Review the script output and confirm the temporary drill volumes were removed; the drill does not prove public TLS renewal, DNS reachability, or a full production startup.
-6. Record the drill outcome, tested backup ID, timestamps, and any gaps.
-7. Only after a successful drill, prepare a separately approved production recovery change.
+## Isolated restore drill
 
-## Status and claim boundaries
+```bash
+bash infra/node01/node01-restore-drill.sh /var/backups/izakhono-nav/nav-node01-<UTC_TIMESTAMP>
+```
 
-The script and runbook are committed to GitHub. They have not been executed on NODE01 from this chat. No backup artifact, off-node copy, or successful restore drill is currently verified. Do not describe NAV backups as operational until NODE01 execution and checksum verification are evidenced.
+The drill extracts every named-volume archive into newly created temporary Docker volumes, extracts runtime data into a temporary directory, and validates both Caddy configurations offline. A cleanup trap removes all temporary targets. It never mounts or changes production volumes.
+
+This is an archive and configuration drill, not a full NAV application recovery test. It does not prove Nominatim database recovery, Valhalla service startup, public DNS, TLS renewal, or end-to-end navigation after restoration.
+
+## Full recovery acceptance
+
+Before claiming disaster recovery is operational, complete a separately controlled recovery exercise on an isolated owned runtime:
+
+1. Verify the backup and off-node copy.
+2. Restore the owned runtime data and named volumes into isolated targets.
+3. Start Nominatim, Valhalla, Martin, the NAV engine and web gateway using the exact release.
+4. Verify search, road routing, owned tiles, PWA assets and offline route-tile retrieval.
+5. Validate public HTTPS on a controlled staging hostname.
+6. Record backup ID, Git release, checksums, restore results, runtime identity, UTC time and operator.
+
+No backup artifact, off-node copy, or successful full-stack restore has been verified from this chat. The scripts and runbook are committed; execution still requires NODE01 runtime access.
