@@ -3,15 +3,19 @@
   "runtime_target": "NODE01",
   "status": "backup_procedure_committed_not_executed",
   "backup_scope": [
-    "resolved Docker named volumes declared by nav-compose.yml",
-    "nav-compose.yml",
-    "nav-Caddyfile",
-    "SHA256SUMS",
-    "backup-manifest.txt"
+    "resolved Docker named volumes from the public Caddy edge and owned NAV stack",
+    "owned NAV runtime-data bind mount containing South Africa OSM extract, Valhalla graph and PMTiles",
+    "edge and owned-stack Compose/Caddy/Martin configuration",
+    "runtime manifest, backup manifest and SHA-256 checksums"
   ],
-  "expected_persistent_volumes": [
+  "expected_persistent_volume_suffixes": [
     "nav-caddy-data",
-    "nav-caddy-config"
+    "nav-caddy-config",
+    "nav-search-db",
+    "nav-search-flatnode"
+  ],
+  "bind_mounts": [
+    "products/izakhono-nav/stack/runtime-data"
   ],
   "excluded": [
     "runtime secrets",
@@ -26,17 +30,19 @@
     "backup directory permissions 0700; files 0600",
     "single-flight lock",
     "staging directory renamed only after checksums created",
-    "no automatic restore or destructive overwrite"
+    "no automatic restore or destructive overwrite",
+    "restore drill uses only isolated temporary Docker volumes and a temporary data directory"
   ],
   "limitations": [
-    "live named-volume archive is best-effort and not guaranteed application-consistent while Caddy is writing",
-    "backup does not prove restoreability until a separate isolated restore drill is completed",
+    "live named-volume and bind-mount archives are best-effort and not guaranteed application-consistent while services are writing",
+    "restore drill validates archive extraction and Caddy configuration but does not start a full restored NAV stack",
+    "backup does not prove public DNS, TLS renewal or external connectivity",
     "backup execution and off-node replication require NODE01 access"
   ],
   "verification": [
-    "sha256sum -c SHA256SUMS",
-    "inspect manifest and archive files",
-    "perform isolated restore drill before relying on recovery"
+    "infra/node01/verify-nav-backup.sh",
+    "infra/node01/node01-restore-drill.sh",
+    "perform a controlled full-stack recovery test before relying on disaster recovery"
   ],
   "secrets_handling": "secrets intentionally excluded; protect and back up separately through an approved secrets manager"
 }
