@@ -4,18 +4,12 @@ on:
   push:
     branches: [main]
     paths:
-      - 'products/i-connect/network/**'
-      - 'products/i-connect/api/network-route.js'
-      - 'products/i-connect/api/provisioning.js'
-      - 'products/i-connect/server.js'
+      - 'products/i-connect/**'
       - '.github/workflows/i-connect-network-ci.yml'
   pull_request:
     branches: [main]
     paths:
-      - 'products/i-connect/network/**'
-      - 'products/i-connect/api/network-route.js'
-      - 'products/i-connect/api/provisioning.js'
-      - 'products/i-connect/server.js'
+      - 'products/i-connect/**'
       - '.github/workflows/i-connect-network-ci.yml'
   workflow_dispatch:
 
@@ -35,22 +29,21 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Validate provider router, mobile core and provisioning
+      - name: Validate network and security modules
         run: |
+          set -euo pipefail
           node --check products/i-connect/api/network-route.js
           node --check products/i-connect/api/provisioning.js
           node --check products/i-connect/server.js
           node --check products/i-connect/network/mobile-operator-core.mjs
           node --check products/i-connect/network/emergency-communications-core.mjs
-          node --test products/i-connect/network/mobile-operator-core.test.mjs
-          node --test products/i-connect/network/emergency-communications-core.test.mjs
-      - name: Check FORTRESS device security policy
-        run: node --check products/i-connect/network/fortress-device-security.mjs
-      - name: Test FORTRESS device security policy
-        run: node --test products/i-connect/network/fortress-device-security.test.mjs
+          node --check products/i-connect/network/fortress-device-security.mjs
           node --experimental-default-type=module products/i-connect/network/provider-router.test.mjs
           node --experimental-default-type=module products/i-connect/network/provisioning-orchestrator.test.mjs
           node --experimental-default-type=module products/i-connect/network/carrier-bridge-adapter.mjs
+          node --test products/i-connect/network/mobile-operator-core.test.mjs
+          node --test products/i-connect/network/emergency-communications-core.test.mjs
+          node --test products/i-connect/network/fortress-device-security.test.mjs
 
       - name: Validate carrier-neutral contract
         shell: bash
