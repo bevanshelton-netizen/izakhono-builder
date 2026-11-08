@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
-const root = new URL("../", import.meta.url);
+const root = new URL("../../../", import.meta.url);
 const client = await readFile(new URL("products/shelton-freight-group/node01/client.ts", root), "utf8");
 const gateway = await readFile(new URL("products/izakhono-one/node-gateway.mjs", root), "utf8");
 const control = await readFile(new URL("products/izakhono-one/services/persistent-node-control.mjs", root), "utf8");
