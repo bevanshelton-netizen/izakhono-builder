@@ -32,6 +32,10 @@ jobs:
         run: npm install --prefix products/izakhono-voice/runtime --ignore-scripts --no-audit --no-fund
       - name: Typecheck owned WebSocket runtime
         run: npm run --prefix products/izakhono-voice/runtime typecheck
+      - name: Build production runtime bundle
+        run: npm run --prefix products/izakhono-voice/runtime build
+      - name: Build production runtime container
+        run: docker build -f products/izakhono-voice/runtime/Dockerfile -t izakhono-voice-runtime:ci .
       - name: Test owned runtime handshake security and PostgreSQL registry
         run: npm test --prefix products/izakhono-voice/runtime
       - name: Test webhook security, media bridge, and GPT-Live session
