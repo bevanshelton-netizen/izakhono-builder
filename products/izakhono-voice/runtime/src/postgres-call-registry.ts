@@ -219,7 +219,11 @@ export class PostgresVoiceCallRegistry implements VoiceCallRegistry {
   async updateCallStatus(providerCallSid: string, status: "ringing" | "active" | "handoff" | "completed" | "failed"): Promise<void> {
     const result = await this.pool.query(
       `UPDATE voice_calls
-       SET status = $2,
+       SET status = CASE
+             WHEN voice_calls.status IN ('completed', 'failed') THEN voice_calls.status
+             WHEN $2 = 'ringing' AND voice_calls.status IN ('active', 'handoff') THEN voice_calls.status
+             ELSE $2
+           END,
            stream_token_hash = CASE WHEN $2 IN ('completed', 'failed') THEN NULL ELSE stream_token_hash END,
            stream_token_expires_at = CASE WHEN $2 IN ('completed', 'failed') THEN NULL ELSE stream_token_expires_at END,
            stream_token_consumed_at = CASE WHEN $2 IN ('completed', 'failed') THEN NULL ELSE stream_token_consumed_at END,
