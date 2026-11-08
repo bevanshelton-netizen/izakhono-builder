@@ -35,8 +35,7 @@ const sessions = new GptLiveVoiceStreamSessionFactory({
   model: env.IZAKHONO_GPT_LIVE_MODEL ?? "gpt-live-1",
   voice: env.IZAKHONO_GPT_LIVE_VOICE ?? "marin",
   instructionsForCall: authorization => dependencies.instructionsForCall(authorization),
-  onUsage: (tenantId, usage, authorization) => {
-    void (async () => {
+  onUsage: async (tenantId, usage, authorization) => {
       await dependencies.callRegistry.recordUsage?.({
         tenantId,
         callId: authorization.callId,
@@ -48,10 +47,7 @@ const sessions = new GptLiveVoiceStreamSessionFactory({
         event: "gpt_live_usage",
         details: usage,
       });
-    })().catch(error => {
-      console.error("IZAKHONO VOICE usage persistence failed", error instanceof Error ? error.message : "unknown_error");
-    });
-  },
+    },
 }, new NodeGptLiveSocketConnector());
 
 const server = createServer((request, response) => {
@@ -70,7 +66,7 @@ server.on("upgrade", (request, socket, head) => {
   const valid = verifyTwilioWebSocketHandshake({
     method: request.method ?? "",
     requestUrl: request.url ?? "",
-    signature: request.headers["x-twilio-signature"],
+    signature: Array.isArray(request.headers["x-twilio-signature"]) ? undefined : request.headers["x-twilio-signature"],
     canonicalPublicUrl,
     authToken: twilioAuthToken,
   });
