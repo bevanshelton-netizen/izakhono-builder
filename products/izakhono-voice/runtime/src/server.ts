@@ -195,7 +195,13 @@ async function handleHttpRequest(request: IncomingMessage, response: ServerRespo
     }
     const mappedStatus = providerStatus === "completed" ? "completed"
       : ["busy", "failed", "no-answer", "canceled"].includes(providerStatus) ? "failed"
-      : providerStatus === "in-progress" ? "active" : "ringing";
+      : providerStatus === "in-progress" ? "active"
+      : ["queued", "initiated", "ringing"].includes(providerStatus) ? "ringing"
+      : null;
+    if (!mappedStatus) {
+      reply(response, 400, "application/json; charset=utf-8", JSON.stringify({ error: "unsupported_call_status" }));
+      return;
+    }
     try {
       await dependencies.callRegistry.updateCallStatus(callSid, mappedStatus);
       reply(response, 204, "text/plain; charset=utf-8");
