@@ -12,7 +12,7 @@ test("checks active subscription before provisioning an AI number", async () => 
   const events: string[] = [];
   const service = new VoiceTenantOnboardingService(
     { async assertSubscriptionActive(tenantId) { assert.equal(tenantId, base.authenticatedTenantId); events.push("billing"); } },
-    { async provisionNumber(input) { assert.deepEqual(input, { tenantId: base.authenticatedTenantId, idempotencyKey: base.idempotencyKey }); events.push("number"); return { phoneNumber: "+27115550123" }; }, async releaseNumber() {} },
+    { async provisionNumber(input) { assert.deepEqual(input, { tenantId: base.authenticatedTenantId, idempotencyKey: base.idempotencyKey }); events.push("number"); return { phoneNumber: "+27115550123", newlyProvisioned: true }; }, async releaseNumber() {} },
     { async createTenantVoiceSetup(input) { assert.equal(input.tenantId, base.authenticatedTenantId); events.push("persist"); } },
   );
   const result = await service.onboard(base);
@@ -36,7 +36,7 @@ test("releases a provisioned number if durable tenant setup fails", async () => 
   let released = false;
   const service = new VoiceTenantOnboardingService(
     { async assertSubscriptionActive() {} },
-    { async provisionNumber() { return { phoneNumber: "+27115550123", providerReference: "allocation-1" }; }, async releaseNumber(input) { assert.equal(input.providerReference, "allocation-1"); released = true; } },
+    { async provisionNumber() { return { phoneNumber: "+27115550123", providerReference: "allocation-1", newlyProvisioned: true }; }, async releaseNumber(input) { assert.equal(input.providerReference, "allocation-1"); released = true; } },
     { async createTenantVoiceSetup() { throw new Error("database write failed"); } },
   );
   await assert.rejects(() => service.onboard(base), /database write failed/);
