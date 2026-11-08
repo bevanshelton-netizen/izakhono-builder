@@ -30,3 +30,5 @@ No public signup route should call the repository directly. Authentication, acco
 
 ## Carrier and payment adapters
 The service depends on replaceable interfaces. No South African number inventory, carrier forwarding tariff, or payment-provider event is assumed. The production adapter must be selected and verified before customer checkout or number promises are enabled. iKhokha/payment integration must be wired to verified payment events and a subscription ledger before this onboarding service is exposed publicly.
+
+The number-provider adapter must return `newlyProvisioned: true` only when this invocation created a new allocation. For an idempotent retry that returns an existing allocation, it must return `newlyProvisioned: false`; the onboarding service will never release a pre-existing number when a retry's database write fails. The provider must honour the tenant plus idempotency key consistently.
