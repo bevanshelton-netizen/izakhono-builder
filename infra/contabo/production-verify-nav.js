@@ -1,4 +1,3 @@
-const http = require('node:http');
 const https = require('node:https');
 
 const base = process.argv[2] || process.env.NAV_URL;
@@ -6,96 +5,86 @@ if (!base) {
   console.error('Usage: node infra/contabo/production-verify-nav.js <HTTPS_NAV_URL>');
   process.exit(2);
 }
-
 const target = new URL(base);
 if (target.protocol !== 'https:') {
   console.error('Production verification requires HTTPS; refusing plaintext URL.');
   process.exit(2);
 }
-const transport = target.protocol === 'https:' ? https : http;
 
-function request(path, options = {}) {
+function request(path) {
   return new Promise((resolve, reject) => {
-    const req = transport.request(new URL(path, target), {
-      method: options.method || 'GET',
-      headers: options.headers || {},
-      timeout: 10000,
-    }, res => {
-      let body = '';
-      res.setEncoding('utf8');
-      res.on('data', chunk => { body += chunk; });
-      res.on('end', () => resolve({ status: res.statusCode, headers: res.headers, body }));
+    const req = https.request(new URL(path, target), { timeout: 15000 }, res => {
+      const chunks = [];
+      res.on('data', chunk => chunks.push(Buffer.from(chunk)));
+      res.on('end', () => resolve({
+        status: res.statusCode,
+        headers: res.headers,
+        body: Buffer.concat(chunks)
+      }));
     });
     req.on('timeout', () => req.destroy(new Error('request timeout')));
     req.on('error', reject);
-    if (options.body) req.write(options.body);
     req.end();
   });
 }
-
-function json(body) {
-  try { return JSON.parse(body); } catch (_) { return null; }
+function json(response) {
+  try { return JSON.parse(response.body.toString('utf8')); } catch { return null; }
 }
-
 async function main() {
   const checks = [];
   const add = (name, ok, detail = '') => checks.push({ name, ok, detail });
 
   const health = await request('/health');
-  const healthJson = json(health.body);
-  add('health', health.status === 200 && healthJson?.product === 'IZAKHONO NAV');
+  const healthJson = json(health);
+  add('owned engine health', health.status === 200 && healthJson?.product === 'IZAKHONO NAV ENGINE');
+  add('routing ready', health.status === 200 && healthJson?.routing === 'ready');
+  add('search ready', health.status === 200 && healthJson?.search === 'ready');
+  add('owned map tiles ready', health.status === 200 && healthJson?.tiles === 'ready');
+  add('owned runtime identity', health.status === 200 && healthJson?.runtimeClass === 'owned' && healthJson?.ready === true);
 
-  const ready = await request('/ready');
-  const readyJson = json(ready.body);
-  add('ready', ready.status === 200 && readyJson?.ready === true);
+  const runtime = await request('/v1/runtime');
+  const runtimeJson = json(runtime);
+  add('runtime identity endpoint', runtime.status === 200 && runtimeJson?.runtimeClass === 'owned' && Boolean(runtimeJson?.releaseId));
+  add('NODE01-independent engine', runtime.status === 200 && runtimeJson?.node01Required === false);
 
-  const version = await request('/version');
-  const versionJson = json(version.body);
-  add('owned runtime', version.status === 200 && versionJson?.runtime === 'owned');
   add('TLS HSTS', Boolean(health.headers['strict-transport-security']) && /max-age=31536000/.test(health.headers['strict-transport-security']));
+  add('security header: nosniff', String(health.headers['x-content-type-options'] || '') === 'nosniff');
+  add('security header: referrer policy', String(health.headers['referrer-policy'] || '') === 'no-referrer');
 
   const root = await request('/');
-  add('NAV shell', root.status === 200 && root.body.includes('IZAKHONO NAV'));
-  add('PWA manifest reference', root.status === 200 && root.body.includes('manifest.webmanifest'));
+  const rootText = root.body.toString('utf8');
+  add('NAV application shell', root.status === 200 && rootText.includes('IZAKHONO NAV'));
+  add('PWA manifest reference', root.status === 200 && rootText.includes('manifest.webmanifest'));
+  add('external resilience disabled by default', root.status === 200 && rootText.includes('resilience: { enabled: false }'));
 
   const manifest = await request('/manifest.webmanifest');
-  const manifestJson = json(manifest.body);
-  add('manifest', manifest.status === 200 && manifestJson?.name === 'IZAKHONO NAV');
+  add('PWA manifest', manifest.status === 200 && json(manifest)?.name === 'IZAKHONO NAV');
 
   const serviceWorker = await request('/sw.js');
-  add('service worker', serviceWorker.status === 200 && serviceWorker.body.includes('CACHE_NAME'));
+  const swText = serviceWorker.body.toString('utf8');
+  add('offline tile cache handler', serviceWorker.status === 200 && swText.includes('CACHE_URLS') && swText.includes('/tiles/'));
 
-  const method = await request('/api/nav/driver-companion', { method: 'GET' });
-  add('AI method guard', method.status === 405);
+  const search = await request('/api/search?q=Johannesburg');
+  const searchData = json(search);
+  add('owned place search', search.status === 200 && Array.isArray(searchData) && searchData.length > 0 && Number.isFinite(Number(searchData[0].lat)) && Number.isFinite(Number(searchData[0].lng)));
 
-  const malformed = await request('/api/nav/driver-companion', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: '{'
-  });
-  add('invalid JSON guard', malformed.status === 400);
+  const route = await request('/api/route/driving/28.0473,-26.2041;28.0478,-26.1950');
+  const routeData = json(route);
+  add('owned road route', route.status === 200 && routeData?.source === 'owned' && routeData?.geometry?.coordinates?.length > 1 && Number(routeData.distance) > 0 && Number(routeData.duration) > 0);
 
-  const requiredHeaders = [
-    ['X-Content-Type-Options', 'nosniff'],
-    ['Referrer-Policy', 'strict-origin-when-cross-origin'],
-    ['X-Frame-Options', 'SAMEORIGIN']
-  ];
-  for (const [name, expected] of requiredHeaders) {
-    add(`security header: ${name}`, String(health.headers[name.toLowerCase()] || '') === expected);
-  }
+  const tile = await request('/tiles/10/591/589.png');
+  add('owned map tile', tile.status === 200 && String(tile.headers['content-type'] || '').includes('image/') && tile.body.length > 0);
 
   for (const check of checks) {
     console.log(`${check.ok ? 'PASS' : 'FAIL'} ${check.name}${check.detail ? ` — ${check.detail}` : ''}`);
   }
-
   const failed = checks.filter(check => !check.ok);
   if (failed.length) {
     console.error(`Production verification failed: ${failed.length}/${checks.length} checks failed.`);
     process.exit(1);
   }
-  console.log(`IZAKHONO NAV production verification passed: ${checks.length}/${checks.length}`);
+  console.log(`IZAKHONO NAV owned production verification passed: ${checks.length}/${checks.length}`);
 }
-
 main().catch(error => {
   console.error(`Production verification error: ${error.message}`);
   process.exit(1);
