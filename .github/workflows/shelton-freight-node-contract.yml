@@ -1,0 +1,25 @@
+name: SHELTON Freight NODE adapter contract
+on:
+  pull_request:
+    paths:
+      - 'products/shelton-freight-group/node01/**'
+      - 'products/izakhono-one/node-gateway.mjs'
+      - 'products/izakhono-one/services/persistent-node-control.mjs'
+      - '.github/workflows/shelton-freight-node-contract.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'products/shelton-freight-group/node01/**'
+      - 'products/izakhono-one/node-gateway.mjs'
+      - 'products/izakhono-one/services/persistent-node-control.mjs'
+      - '.github/workflows/shelton-freight-node-contract.yml'
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Verify Software NODE integration contract
+        run: node --test products/shelton-freight-group/node01/contract.test.mjs
