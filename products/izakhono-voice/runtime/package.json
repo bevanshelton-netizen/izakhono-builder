@@ -7,9 +7,10 @@
     "node": ">=20"
   },
   "scripts": {
-    "start": "tsx src/server.ts",
+    "start": "node dist/runtime/src/server.js",
     "typecheck": "tsc --noEmit",
-    "test": "tsx --test src/*.test.ts"
+    "test": "tsx --test src/*.test.ts",
+    "build": "tsc --noEmit false --outDir dist"
   },
   "dependencies": {
     "ws": "8.18.3",
