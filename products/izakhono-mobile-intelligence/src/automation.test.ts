@@ -8,7 +8,7 @@ const base: AutomationDefinition = {
   createdBy: 'user_001',
   name: 'Morning reminder',
   enabled: true,
-  trigger: { type: 'schedule', cron: '0 8 * * 1-5', timezone: 'Africa/Johannesburg' },
+  trigger: { type: 'schedule', cron: '0 8 * * 1', timezone: 'Africa/Johannesburg' },
   conditions: [],
   actions: [{ type: 'send_notification', title: 'Good morning', body: 'Remember your daily checklist.' }],
   createdAt: '2026-11-08T08:00:00.000Z',
