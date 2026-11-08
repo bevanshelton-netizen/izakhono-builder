@@ -29,3 +29,7 @@ No supplier is represented as signed, approved, integrated or live until documen
 - Production service activation requires regulatory review, approved commercial terms, provider/network certification and verified end-to-end acceptance.
 - All money is stored in integer ZAR cents.
 - Orders are idempotent; uncertain transactions are reconciled before retry.
+
+
+## Global platform build specification
+The customer-facing IZAKHONO GLOBAL strategy, I-CONNECT Control Centre and smartphone app scope, tenant model, security requirements, release gates and sprint backlog are defined in `CONTROL-CENTRE-AND-GLOBAL-APP-SPEC.md`. The initial versioned API surface and lifecycle contract are defined in `API-CONTRACT-V1.md`. These documents are implementation specifications; they do not imply that the described endpoints or mobile application are already deployed.
