@@ -109,8 +109,8 @@ begin
   if v_document.currency<>'ZAR' or v_intent.currency<>v_document.currency then
     raise exception 'Payment currency does not match invoice currency';
   end if;
-  if v_intent.amount<>v_document.amount then
-    raise exception 'Payment amount does not match invoice amount';
+  if v_intent.amount<=0 or v_intent.amount>v_document.amount then
+    raise exception 'Payment amount is outside the invoice amount range';
   end if;
 
   if p_provider_status='SUCCESS' and p_response_code='00' then
