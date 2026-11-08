@@ -148,6 +148,33 @@ export class PostgresVoiceCallRegistry implements VoiceCallRegistry {
     if (result.rowCount !== 1) throw new Error("Audit attribution rejected: call/tenant association not found");
   }
 
+
+  async resolveTenantForInboundNumber(phoneNumber: string): Promise<string | null> {
+    const number = nonEmpty(phoneNumber, "phoneNumber");
+    const result = await this.pool.query<{ tenant_id: string }>(
+      `SELECT n.tenant_id
+       FROM voice_tenant_numbers n
+       INNER JOIN voice_tenant_policies p ON p.tenant_id = n.tenant_id AND p.enabled = TRUE
+       WHERE n.phone_number = $1 AND n.enabled = TRUE`,
+      [number],
+    );
+    return result.rows[0]?.tenant_id ?? null;
+  }
+
+  async updateCallStatus(providerCallSid: string, status: "ringing" | "active" | "handoff" | "completed" | "failed"): Promise<void> {
+    const result = await this.pool.query(
+      `UPDATE voice_calls
+       SET status = $2,
+           stream_token_hash = CASE WHEN $2 IN ('completed', 'failed') THEN NULL ELSE stream_token_hash END,
+           stream_token_expires_at = CASE WHEN $2 IN ('completed', 'failed') THEN NULL ELSE stream_token_expires_at END,
+           stream_token_consumed_at = CASE WHEN $2 IN ('completed', 'failed') THEN NULL ELSE stream_token_consumed_at END,
+           updated_at = NOW()
+       WHERE provider_call_sid = $1`,
+      [nonEmpty(providerCallSid, "providerCallSid"), status],
+    );
+    if (result.rowCount !== 1) throw new Error("Call status update rejected: provider call not registered");
+  }
+
   async getTenantInstructions(tenantId: string): Promise<string> {
     const result = await this.pool.query<{ system_instructions: string }>(
       `SELECT system_instructions
