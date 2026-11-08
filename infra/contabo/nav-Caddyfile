@@ -1,10 +1,11 @@
 {$NAV_DOMAIN:nav.izakhono.africa} {
   encode zstd gzip
-  reverse_proxy nav:8080
+  reverse_proxy 127.0.0.1:8787
   header Strict-Transport-Security "max-age=31536000"
   header {
     X-Content-Type-Options "nosniff"
     Referrer-Policy "strict-origin-when-cross-origin"
     Permissions-Policy "geolocation=(self), microphone=(self), camera=()"
+    -Server
   }
 }
