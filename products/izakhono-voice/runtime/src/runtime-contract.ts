@@ -1,6 +1,8 @@
 import type { VoiceStreamAuthorization } from "../../src/twilio-media-stream-bridge.js";
 
 export interface VoiceCallRegistry {
+  resolveTenantForInboundNumber(phoneNumber: string): Promise<string | null>;
+  updateCallStatus(providerCallSid: string, status: "ringing" | "active" | "handoff" | "completed" | "failed"): Promise<void>;
   registerCall(input: {
     callId: string;
     tenantId: string;
