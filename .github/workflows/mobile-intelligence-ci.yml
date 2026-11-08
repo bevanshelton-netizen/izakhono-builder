@@ -1,0 +1,55 @@
+name: IZAKHONO Mobile Intelligence CI
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'products/izakhono-mobile-intelligence/**'
+      - '.github/workflows/mobile-intelligence-ci.yml'
+  push:
+    branches: [mobile-intelligence/foundation-v1]
+    paths:
+      - 'products/izakhono-mobile-intelligence/**'
+      - '.github/workflows/mobile-intelligence-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  contracts:
+    name: TypeScript contracts and security tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install pinned root dependencies
+        run: npm install --ignore-scripts --no-audit --no-fund
+      - name: Typecheck Mobile Intelligence
+        run: npm run mobile-intelligence:typecheck
+      - name: Test Mobile Intelligence
+        run: npm run mobile-intelligence:test
+
+  android:
+    name: Android debug build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
+      - name: Assemble debug APK
+        working-directory: products/izakhono-mobile-intelligence/android
+        run: gradle assembleDebug
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: izakhono-mobile-intelligence-debug
+          path: products/izakhono-mobile-intelligence/android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error

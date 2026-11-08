@@ -1,4 +1,5 @@
 import app from './index';
+import { guardMobileApi } from '../products/izakhono-mobile-intelligence/src/api-guard';
 import {
   generatedRepositoryFiles,
   publishGeneratedRepository,
@@ -454,9 +455,40 @@ async function withAutopilotUi(response: Response): Promise<Response> {
   return new Response(html, { status: response.status, statusText: response.statusText, headers });
 }
 
+async function maybeMobileIntelligenceSession(req: Request, env: any, url: URL): Promise<Response | null> {
+  if (url.pathname !== '/api/mobile-intelligence/session' || req.method !== 'GET') return null;
+  const guarded = await guardMobileApi(req, {
+    DB: env.DB,
+    ALLOWED_ORIGINS: String(env.MOBILE_INTELLIGENCE_ALLOWED_ORIGINS || ''),
+  });
+  if (!guarded.ok) return guarded.response;
+  return reply({
+    ok: true,
+    account: {
+      id: guarded.identity.id,
+      email: guarded.identity.email,
+      display_name: guarded.identity.display_name,
+      organisation_label: guarded.identity.organization,
+      status: guarded.identity.status,
+    },
+    organisation_access: {
+      available: false,
+      reason: 'EXPLICIT_MEMBERSHIP_NOT_YET_CONFIGURED',
+    },
+    modules: {
+      privacy: 'preview',
+      automation: 'preview',
+      social_intelligence: 'preview',
+    },
+    request_id: guarded.requestId,
+  });
+}
+
 export default {
   async fetch(req: Request, env: any): Promise<Response> {
     const supplied = req.headers.get('x-admin-secret') || '';
+    const mobileSession = await maybeMobileIntelligenceSession(req, env, new URL(req.url));
+    if (mobileSession) return mobileSession;
     const recovered = await isRecoveryKey(supplied);
     const url = new URL(req.url);
 

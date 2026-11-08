@@ -37,7 +37,9 @@ function randomHex(bytes = 16): string {
 
 async function derive(password: string, salt: Uint8Array, iterations: number): Promise<Uint8Array> {
   const material = await crypto.subtle.importKey('raw', encoder.encode(password), 'PBKDF2', false, ['deriveBits']);
-  const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt, iterations }, material, KEY_BYTES * 8);
+  const saltBuffer = new ArrayBuffer(salt.byteLength);
+  new Uint8Array(saltBuffer).set(salt);
+  const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt: saltBuffer, iterations }, material, KEY_BYTES * 8);
   return new Uint8Array(bits);
 }
 
