@@ -363,7 +363,7 @@ async function marketingOauthStart(a,b){
 async function nodeDb(path,method="GET",body,prefer){
  if(!base||!secret)return{ok:false,status:503,data:null,reason:"node_control_database_not_configured"};
  try{
-  const r=await fetch(base+"/rest/v1/"+path,{method,headers:{apikey:secret,Authorization:"Bearer "+secret,"Content-Type":"application/json","Accept":"application/json","Accept-Profile":"one",...(method==="GET"?{}:{"Content-Profile":"one"}),...(prefer?{Prefer:prefer}:{})},body:body===undefined?undefined:JSON.stringify(body)});
+  const r=await fetch(base+"/rest/v1/"+path,{method,headers:{apikey:secret,"Content-Type":"application/json","Accept":"application/json","Accept-Profile":"one",...(method==="GET"?{}:{"Content-Profile":"one"}),...(prefer?{Prefer:prefer}:{})},body:body===undefined?undefined:JSON.stringify(body)});
   const t=await r.text();let d=null;try{d=t?JSON.parse(t):null}catch{d=t}
   return{ok:r.ok,status:r.status,data:d,reason:r.ok?null:"node_control_database_request_failed"};
  }catch{return{ok:false,status:502,data:null,reason:"node_control_database_unreachable"}}
@@ -497,7 +497,7 @@ async function nodeControl(req,b){
 
 Deno.serve(async req=>{
  if(req.method==="OPTIONS")return new Response("ok",{headers:cors});
- if(req.method==="GET"){const u=new URL(req.url);if(u.searchParams.get("marketing_oauth_callback")==="1")return marketingOauthCallback(req);if(u.searchParams.get("node_control_health")==="1"){const probe=await nodeDb("node_registry?select=node_id&limit=0");return json({ok:probe.ok,service:"izakhono-one-api",node_control:probe.ok?"available":"unavailable"},probe.ok?200:503);}return json({ok:true,service:"izakhono-one-api"});}
+ if(req.method==="GET"){const u=new URL(req.url);if(u.searchParams.get("marketing_oauth_callback")==="1")return marketingOauthCallback(req);if(u.searchParams.get("node_control_health")==="1"){const probe=await nodeDb("node_registry?select=node_id&limit=0");const detail=probe.data&&typeof probe.data==="object"?{code:probe.data.code||null,message:probe.data.message||null}:null;return json({ok:probe.ok,service:"izakhono-one-api",node_control:probe.ok?"available":"unavailable",database_status:probe.status,database_error:detail},probe.ok?200:503);}return json({ok:true,service:"izakhono-one-api"});}
  if(req.method!=="POST")return json({error:"POST only"},405);
  if(!base||!secret)return json({error:"Server configuration unavailable."},500);
  try{
