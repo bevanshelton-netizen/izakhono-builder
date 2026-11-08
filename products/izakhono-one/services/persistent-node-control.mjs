@@ -27,7 +27,7 @@ export function createPersistentNodeControl({ store, controlToken = process.env.
   function controlPrincipal(headers = {}) {
     const supplied = bearer(headers);
     if (!configuredControlToken || supplied !== configuredControlToken) return null;
-    return { id: 'izakhono-control', role: 'owner', type: 'control-plane' };
+    return { id: 'izakhono-control', role: 'owner', type: 'control-plane', authenticated: true, verified: true };
   }
 
   function nodePrincipal(headers = {}, nodeId) {

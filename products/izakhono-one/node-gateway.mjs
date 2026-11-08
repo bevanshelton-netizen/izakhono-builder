@@ -1,11 +1,23 @@
 import http from 'node:http';
 import { createNodeControlApi } from './services/node-control-api.mjs';
 
-const internalPort = Number(process.env.PORT || 8781);
-const publicPort = Number(process.env.PUBLIC_PORT || internalPort);
+// The public gateway and the internal ONE service must never bind the same port.
+const publicPort = Number(process.env.PUBLIC_PORT || process.env.PORT || 8780);
+const internalPort = Number(process.env.IZAKHONO_ONE_INTERNAL_PORT || 8781);
 const internalHost = String(process.env.INTERNAL_HOST || '127.0.0.1').trim() || '127.0.0.1';
 const host = String(process.env.HOST || '0.0.0.0').trim() || '0.0.0.0';
+
+if (!Number.isInteger(publicPort) || publicPort < 1 || publicPort > 65535 ||
+    !Number.isInteger(internalPort) || internalPort < 1 || internalPort > 65535 ||
+    publicPort === internalPort) {
+  console.error('IZAKHONO_ONE_START_BLOCKED=INVALID_OR_CONFLICTING_GATEWAY_PORTS');
+  process.exit(78);
+}
+
+// server.mjs owns the internal application listener on loopback.
+process.env.PORT = String(internalPort);
 const internalBase = `http://${internalHost}:${internalPort}`;
+
 const controlToken = String(process.env.IZAKHONO_CONTROL_TOKEN || '').trim();
 const nodeTokens = String(process.env.IZAKHONO_NODE_TOKENS_JSON || '').trim();
 const supabaseUrl = String(process.env.SUPABASE_URL || '').trim();
@@ -65,4 +77,4 @@ const server = http.createServer(async (req,res) => {
   return json(res,result.ok ? 200 : (result.status || 500),result);
 });
 
-server.listen(publicPort,host,()=>console.log(`IZAKHONO_ONE_GATEWAY=READY HOST=${host} PORT=${publicPort}`));
+server.listen(publicPort,host,()=>console.log(`IZAKHONO_ONE_GATEWAY=READY HOST=${host} PORT=${publicPort} INTERNAL_PORT=${internalPort}`));

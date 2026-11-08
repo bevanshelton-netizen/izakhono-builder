@@ -14,7 +14,7 @@ if (foundation.ok || foundation.reason !== 'runtime_not_verified' || foundation.
 const notReady = executeSearchProvider({prepared:foundation,executor:() => ({items:[]})});
 if (notReady.executed || notReady.reason !== 'search_not_ready') throw new Error('SEARCH execution must remain blocked before verification');
 
-const verified = prepareSearchRequest({query:'schools in Johannesburg',mode:'local',principal:{id:'u1',role:'member',authenticated:true,verified:true},runtime:{service_slug:'search',state:'verified',health:'healthy'}});
+const verified = prepareSearchRequest({query:'schools in Johannesburg',mode:'local',principal:{id:'u1',role:'member',authenticated:true,verified:true},runtime:{service_slug:'search',state:'verified',health:'healthy'},databaseSecurity:{ready_for_verified_runtime:true}});
 const executed = executeSearchProvider({prepared:verified,executor:({request,provider}) => ({query:request.query,provider,items:[]})});
 if (!executed.ok || !executed.executed || executed.provider !== 'owned' || executed.sideEffects !== false) throw new Error('SEARCH verified execution boundary failed');
 
