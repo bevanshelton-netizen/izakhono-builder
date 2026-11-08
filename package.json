@@ -60,8 +60,8 @@
     "model-runtime:validate": "node products/izakhono-ai-runtime/validate.mjs",
     "model-runtime:test": "node products/izakhono-ai-runtime/validate.mjs && node products/izakhono-ai-runtime/provision.test.mjs",
     "builder:customer-auth:test": "npx --yes tsx@4.20.3 src/customer-auth.test.ts",
-    "mobile-intelligence:test": "npx --yes tsx@4.20.3 products/izakhono-mobile-intelligence/src/automation.test.ts && npx --yes tsx@4.20.3 products/izakhono-mobile-intelligence/src/api-guard.test.ts",
-    "mobile-intelligence:typecheck": "npx --yes --package typescript@5.9.2 tsc --noEmit --target ES2022 --module NodeNext --moduleResolution NodeNext products/izakhono-mobile-intelligence/src/contracts.ts products/izakhono-mobile-intelligence/src/automation.ts products/izakhono-mobile-intelligence/src/api-guard.ts products/izakhono-mobile-intelligence/src/automation.test.ts products/izakhono-mobile-intelligence/src/api-guard.test.ts"
+    "mobile-intelligence:test": "npx --yes tsx@4.20.3 products/izakhono-mobile-intelligence/src/automation.test.ts && npx --yes tsx@4.20.3 products/izakhono-mobile-intelligence/src/api-guard.test.ts && npx --yes tsx@4.20.3 products/izakhono-mobile-intelligence/src/organisation-access.test.ts",
+    "mobile-intelligence:typecheck": "npx --yes --package typescript@5.9.2 tsc --noEmit --target ES2022 --module NodeNext --moduleResolution NodeNext products/izakhono-mobile-intelligence/src/contracts.ts products/izakhono-mobile-intelligence/src/automation.ts products/izakhono-mobile-intelligence/src/api-guard.ts products/izakhono-mobile-intelligence/src/automation.test.ts products/izakhono-mobile-intelligence/src/api-guard.test.ts products/izakhono-mobile-intelligence/src/organisation-access.ts products/izakhono-mobile-intelligence/src/organisation-access.test.ts"
   },
   "dependencies": {
     "wrangler": "4.127.1"
