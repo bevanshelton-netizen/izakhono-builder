@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { createOrganisationInvitation } from './organisation-workflow';
+import { createOrganisationInvitation, revokeOrganisationInvitation } from './organisation-workflow';
 import type { OrganisationWorkflowDB } from './organisation-workflow';
 import type { CustomerIdentity } from '../../../src/customer-auth';
 
@@ -21,7 +21,7 @@ function fakeDb(role: string, captured: unknown[][]): OrganisationWorkflowDB {
         },
       };
     },
-    async batch() { return []; },
+    async batch() { return [{ meta: { changes: 1 } }, { meta: { changes: 1 } }]; },
   } as unknown as OrganisationWorkflowDB;
 }
 const actor: CustomerIdentity = {
@@ -49,6 +49,13 @@ async function run() {
     createOrganisationInvitation(fakeDb('owner', []), { ...actor, status: 'suspended' }, 'org_123', 'person@example.org', 'member'),
     /Invalid invitation request/,
   );
+  const revoked = await revokeOrganisationInvitation(fakeDb('admin', []), actor, 'org_123', 'boi_0123456789abcdef0123456789abcdef', new Date('2026-11-08T12:00:00Z'));
+  assert.equal(revoked, true);
+  await assert.rejects(
+    revokeOrganisationInvitation(fakeDb('member', []), actor, 'org_123', 'boi_0123456789abcdef0123456789abcdef'),
+    /administrator access required/,
+  );
+  assert.equal(await revokeOrganisationInvitation(fakeDb('owner', []), actor, 'org_123', 'invalid'), false);
   console.log('IZAKHONO organisation invitation workflow tests passed');
 }
 run().catch(error => { console.error(error); process.exitCode = 1; });
