@@ -134,3 +134,11 @@ See [BYOP customer onboarding](../../BYOP-CUSTOMER-ONBOARDING.md) for the custom
 Apply `migrations/002_voice_byop_endpoints.sql` through the approved IZAKHONO DATA migration process after reviewing it alongside migration 001. It records the customer's E.164 mobile number, assigned AI destination, forwarding condition and verification state. It deliberately does not store SIM PIN/PUK, ICCID or carrier credentials. A number is not marked verified until a controlled test call reaches the correct tenant's AI answering flow.
 
 Carrier forwarding support, codes, tariffs and South African number availability must be confirmed with the selected carrier. Do not promise a specific number or universal activation code before that verification.
+
+## Subscription-gated customer onboarding
+
+The trusted onboarding domain service is implemented in `src/tenant-onboarding-service.ts`. It accepts tenant identity only from the authenticated application server, checks an injected active-subscription gate before number allocation, requests an AI destination number from a replaceable idempotent number-provider adapter, validates E.164, and atomically persists the tenant policy, assigned inbound number and BYOP endpoint through `PostgresVoiceTenantSetupRepository`. If database setup fails, it attempts to release the allocated number and preserves the original error.
+
+The service deliberately does not implement public authentication, payment processing or a carrier number inventory. Those adapters must be wired by the trusted customer application before public signup is enabled. Payment status must come from verified provider events, not browser redirects. See [customer subscription flow](../../CUSTOMER-SUBSCRIPTION-FLOW.md).
+
+The initial endpoint record remains `pending`; the software must not represent forwarding as active until a controlled test call confirms that the carrier forwards the customer's existing number to the assigned AI destination and that the correct tenant answers.
