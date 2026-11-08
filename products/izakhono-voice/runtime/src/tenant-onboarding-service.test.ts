@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { VoiceTenantOnboardingService } from "./tenant-onboarding-service.js";
+import { PostgresVoiceSubscriptionGate, VoiceTenantOnboardingService } from "./tenant-onboarding-service.js";
+import type { Pool } from "pg";
 
 const base = {
   authenticatedTenantId: "tenant-authenticated-1", idempotencyKey: "signup-req-001",
@@ -74,4 +75,25 @@ test("does not release an existing idempotent number allocation after a retry fa
   );
   await assert.rejects(() => service.onboard(base), /temporary database failure/);
   assert.equal(released, false);
+});
+
+test("PostgreSQL entitlement gate requires an active, unexpired subscription", async () => {
+  const calls: Array<{ sql: string; values: unknown[] }> = [];
+  const pool = {
+    async query(sql: string, values: unknown[]) {
+      calls.push({ sql, values });
+      return { rowCount: 1, rows: [{}] };
+    },
+  };
+  const gate = new PostgresVoiceSubscriptionGate(pool as unknown as Pool);
+  await gate.assertSubscriptionActive("tenant-1");
+  assert.match(calls[0].sql, /status = 'active'/);
+  assert.match(calls[0].sql, /current_period_end > NOW\(\)/);
+  assert.deepEqual(calls[0].values, ["tenant-1"]);
+});
+
+test("PostgreSQL entitlement gate rejects inactive or expired subscriptions", async () => {
+  const pool = { async query() { return { rowCount: 0, rows: [] }; } };
+  const gate = new PostgresVoiceSubscriptionGate(pool as unknown as Pool);
+  await assert.rejects(() => gate.assertSubscriptionActive("tenant-1"), /active IZAKHONO VOICE subscription/);
 });
