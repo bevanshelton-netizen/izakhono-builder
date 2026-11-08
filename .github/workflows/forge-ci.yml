@@ -1,0 +1,36 @@
+name: IZAKHONO Forge Isolated CI
+
+on:
+  pull_request:
+    paths:
+      - 'apps/izakhono-forge/**'
+      - '.github/workflows/forge-ci.yml'
+  push:
+    branches:
+      - 'builder/workbench-forge-connection'
+    paths:
+      - 'apps/izakhono-forge/**'
+      - '.github/workflows/forge-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  forge-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: apps/izakhono-forge
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Forge dependencies
+        run: npm install --ignore-scripts --no-audit --no-fund
+      - name: Build Forge application
+        run: npm run build
