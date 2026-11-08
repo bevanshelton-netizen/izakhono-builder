@@ -15,7 +15,7 @@ This package hosts the provider-neutral Twilio media bridge and GPT-Live session
 
 ## Data schema
 
-Apply `migrations/001_voice_registry.sql` through the approved IZAKHONO DATA migration process before starting the service. The runtime does not silently mutate production schemas.
+Apply `migrations/001_voice_registry.sql`, `migrations/002_voice_byop_endpoints.sql` and `migrations/003_voice_subscription_entitlements.sql` through the approved IZAKHONO DATA migration process before starting the service. The runtime does not silently mutate production schemas.
 
 The migration creates:
 - `voice_calls` — canonical tenant/call association, provider CallSid, state and one-time stream credential hash.
@@ -142,3 +142,6 @@ The trusted onboarding domain service is implemented in `src/tenant-onboarding-s
 The service deliberately does not implement public authentication, payment processing or a carrier number inventory. Those adapters must be wired by the trusted customer application before public signup is enabled. Payment status must come from verified provider events, not browser redirects. See [customer subscription flow](../../CUSTOMER-SUBSCRIPTION-FLOW.md).
 
 The initial endpoint record remains `pending`; the software must not represent forwarding as active until a controlled test call confirms that the carrier forwards the customer's existing number to the assigned AI destination and that the correct tenant answers.
+
+
+The subscription gate is implemented by `PostgresVoiceSubscriptionGate` and reads only an active, unexpired row from `voice_tenant_subscriptions`. Migration 003 also creates the provider-event idempotency ledger. Only a trusted billing adapter may write subscription rows after verifying the payment provider's webhook signature and event semantics; no public client or redirect may set entitlement state. The actual billing webhook adapter remains a production integration gate.
