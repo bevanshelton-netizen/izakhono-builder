@@ -21,11 +21,12 @@ export interface GptLiveVoiceConfig {
   apiKey: string;
   model?: string;
   voice?: string;
-  instructions: string;
+  instructions?: string;
+  instructionsForCall?: (authorization: VoiceStreamAuthorization) => Promise<string>;
   startupTimeoutMs?: number;
   closeTimeoutMs?: number;
   onEvent?: (tenantId: string, event: Record<string, unknown>) => void;
-  onUsage?: (tenantId: string, usage: unknown) => void;
+  onUsage?: (tenantId: string, usage: unknown, authorization: VoiceStreamAuthorization) => void;
 }
 
 const LIVE_SOCKET_URL = "wss://api.openai.com/v1/live/sessions";
@@ -72,7 +73,7 @@ export class GptLiveVoiceStreamSessionFactory implements VoiceStreamSessionFacto
     private readonly connector: GptLiveSocketConnector,
   ) {
     if (!config.apiKey.trim()) throw new Error("GPT-Live API key is required at runtime");
-    if (!config.instructions.trim()) throw new Error("GPT-Live instructions are required");
+    if (!config.instructions?.trim() && !config.instructionsForCall) throw new Error("GPT-Live instructions or a per-call instruction resolver is required");
     this.startupTimeoutMs = config.startupTimeoutMs ?? 15_000;
     this.closeTimeoutMs = config.closeTimeoutMs ?? 15_000;
   }
@@ -86,6 +87,11 @@ export class GptLiveVoiceStreamSessionFactory implements VoiceStreamSessionFacto
     sendMark: (name: string) => void;
     onError: (error: unknown) => void;
   }): Promise<VoiceStreamSession> {
+    const instructions = this.config.instructionsForCall
+      ? await this.config.instructionsForCall(input.authorization)
+      : this.config.instructions;
+    if (!instructions?.trim()) throw new Error("Resolved GPT-Live instructions must not be empty");
+    const sessionConfig = { ...this.config, instructions };
     const socket = await this.connector.connect(LIVE_SOCKET_URL, {
       authorization: `Bearer ${this.config.apiKey}`,
     });
@@ -94,7 +100,7 @@ export class GptLiveVoiceStreamSessionFactory implements VoiceStreamSessionFacto
       input.authorization,
       input.sendAudio,
       input.onError,
-      this.config,
+      sessionConfig,
       this.closeTimeoutMs,
     );
     try {
@@ -225,7 +231,7 @@ class GptLiveVoiceStreamSession implements VoiceStreamSession {
     if (event.type === "session.closed") {
       this.closed = true;
       try {
-        this.config.onUsage?.(this.authorization.tenantId, event.usage);
+        this.config.onUsage?.(this.authorization.tenantId, event.usage, this.authorization);
       } catch (error) {
         this.onError(error);
       }
