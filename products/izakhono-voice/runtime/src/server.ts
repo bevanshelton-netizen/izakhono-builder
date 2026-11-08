@@ -98,7 +98,12 @@ async function verifyFormWebhook(
 
 async function handleHttpRequest(request: IncomingMessage, response: ServerResponse): Promise<void> {
   if (request.method === "GET" && request.url === "/health") {
-    reply(response, 200, "application/json; charset=utf-8", JSON.stringify({ ok: true, service: "izakhono-voice-runtime", status: "ready" }));
+    try {
+      await dependencies.healthCheck?.();
+      reply(response, 200, "application/json; charset=utf-8", JSON.stringify({ ok: true, service: "izakhono-voice-runtime", status: "ready" }));
+    } catch {
+      reply(response, 503, "application/json; charset=utf-8", JSON.stringify({ ok: false, service: "izakhono-voice-runtime", status: "dependency_unavailable" }));
+    }
     return;
   }
 
@@ -274,10 +279,15 @@ server.listen(port, host, () => {
   console.log(`IZAKHONO VOICE runtime listening on ${host}:${port}`);
 });
 
+let shuttingDown = false;
 for (const signal of ["SIGINT", "SIGTERM"] as const) {
   process.on(signal, () => {
-    server.close();
+    if (shuttingDown) return;
+    shuttingDown = true;
     wss.clients.forEach(client => client.close(1001, "Runtime shutting down"));
-    setTimeout(() => process.exit(0), 5_000).unref();
+    server.close(() => {
+      void dependencies.shutdown?.().finally(() => process.exit(0));
+    });
+    setTimeout(() => process.exit(1), 5_000).unref();
   });
 }
