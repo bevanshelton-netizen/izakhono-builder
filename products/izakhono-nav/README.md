@@ -6,6 +6,10 @@
 **Status:** SOURCE UPDATED / CI AND OWNED-RUNTIME VERIFICATION PENDING  
 **Runtime policy:** IZAKHONO Runtime Fabric — no single node is a launch gate
 
+## Completion acceptance
+
+The authoritative capability matrix, release blockers and production acceptance checklist are maintained in [`COMPLETION-GATES.md`](./COMPLETION-GATES.md). Do not mark the product live until those gates pass.
+
 ## Product boundary
 
 IZAKHONO NAV is the portfolio's privacy-first multilingual voice navigation platform.
