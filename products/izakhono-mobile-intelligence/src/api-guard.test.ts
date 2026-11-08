@@ -48,6 +48,15 @@ async function main() {
   assert.equal(oversized.ok, false);
   if (!oversized.ok) assert.equal(oversized.response.status, 413);
 
+  const streamedOversized = new Request('https://api.example.test/mobile', {
+    method: 'POST',
+    headers: { authorization: `Bearer ${'a'.repeat(64)}` },
+    body: 'x'.repeat(70 * 1024),
+  });
+  const streamed = await guardMobileApi(streamedOversized, env);
+  assert.equal(streamed.ok, false);
+  if (!streamed.ok) assert.equal(streamed.response.status, 413);
+
   const allowed = await guardMobileApi(request('a'.repeat(64)), env);
   assert.equal(allowed.ok, true);
   if (allowed.ok) assert.equal(allowed.identity.id, 'customer_01');
