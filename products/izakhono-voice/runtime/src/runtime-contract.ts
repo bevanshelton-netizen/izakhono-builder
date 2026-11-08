@@ -3,6 +3,7 @@ import type { VoiceStreamAuthorization } from "../../src/twilio-media-stream-bri
 export interface VoiceCallRegistry {
   resolveTenantForInboundNumber(phoneNumber: string): Promise<string | null>;
   createOutboundCall(input: { callId: string; tenantId: string }): Promise<void>;
+  failUnboundOutboundCall(input: { callId: string; tenantId: string }): Promise<void>;
   bindProviderCall(callId: string, providerCallSid: string): Promise<string | null>;
   updateCallStatus(providerCallSid: string, status: "ringing" | "active" | "handoff" | "completed" | "failed"): Promise<void>;
   registerInboundCall(tenantId: string, providerCallSid: string): Promise<string>;
