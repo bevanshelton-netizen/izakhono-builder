@@ -44,6 +44,10 @@ jobs:
           node --check products/i-connect/network/emergency-communications-core.mjs
           node --test products/i-connect/network/mobile-operator-core.test.mjs
           node --test products/i-connect/network/emergency-communications-core.test.mjs
+      - name: Check FORTRESS device security policy
+        run: node --check products/i-connect/network/fortress-device-security.mjs
+      - name: Test FORTRESS device security policy
+        run: node --test products/i-connect/network/fortress-device-security.test.mjs
           node --experimental-default-type=module products/i-connect/network/provider-router.test.mjs
           node --experimental-default-type=module products/i-connect/network/provisioning-orchestrator.test.mjs
           node --experimental-default-type=module products/i-connect/network/carrier-bridge-adapter.mjs
