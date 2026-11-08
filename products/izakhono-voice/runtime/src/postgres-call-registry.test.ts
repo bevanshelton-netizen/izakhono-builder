@@ -109,3 +109,13 @@ test("releases only the matching stream and clears its expiry lease", async () =
   assert.match(pool.calls[0].sql, /active_stream_expires_at = NULL/);
   assert.match(pool.calls[0].sql, /WHERE tenant_id = \$1 AND call_id = \$2 AND active_stream_sid = \$3/);
 });
+
+test("fails only the matching unbound outbound call", async () => {
+  const pool = new FakePool();
+  const registry = new PostgresVoiceCallRegistry(pool as unknown as Pool);
+  await registry.failUnboundOutboundCall({ callId: "call-out-1", tenantId: "tenant-1" });
+  assert.match(pool.calls[0].sql, /direction = 'outbound'/);
+  assert.match(pool.calls[0].sql, /provider_call_sid IS NULL/);
+  assert.match(pool.calls[0].sql, /status = 'ringing'/);
+  assert.deepEqual(pool.calls[0].values, ["call-out-1", "tenant-1"]);
+});
