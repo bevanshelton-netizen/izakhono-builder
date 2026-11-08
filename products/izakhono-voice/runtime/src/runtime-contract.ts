@@ -39,6 +39,8 @@ export interface VoiceRuntimeDependencies {
   callRegistry: VoiceCallRegistry;
   /** Tenant-scoped policy instructions resolved from trusted call/tenant state. */
   instructionsForCall(input: VoiceStreamAuthorization): Promise<string>;
+  healthCheck?(): Promise<void>;
+  shutdown?(): Promise<void>;
   audit?(event: {
     tenantId: string;
     callId: string;
