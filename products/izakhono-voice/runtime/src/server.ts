@@ -1,12 +1,10 @@
 import { createServer } from "node:http";
-import { pathToFileURL } from "node:url";
-import { resolve } from "node:path";
 import { WebSocket, WebSocketServer } from "ws";
 import { GptLiveVoiceStreamSessionFactory } from "../../src/gpt-live-session-factory.js";
 import { TwilioMediaStreamBridge } from "../../src/twilio-media-stream-bridge.js";
 import { NodeGptLiveSocketConnector } from "./node-gpt-live-connector.js";
 import { verifyTwilioWebSocketHandshake } from "./twilio-websocket-security.js";
-import type { VoiceRuntimeAdapterModule } from "./runtime-contract.js";
+import { createVoiceRuntimeDependencies } from "./postgres-runtime-adapter.js";
 
 function required(env: NodeJS.ProcessEnv, key: string): string {
   const value = env[key]?.trim();
@@ -22,10 +20,7 @@ if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error("IZAKHO
 const canonicalPublicUrl = required(env, "IZAKHONO_TWILIO_MEDIA_PUBLIC_URL");
 const twilioAuthToken = required(env, "IZAKHONO_TWILIO_AUTH_TOKEN");
 const openAiApiKey = required(env, "OPENAI_API_KEY");
-const adapterPath = required(env, "IZAKHONO_VOICE_RUNTIME_ADAPTER");
-const adapterUrl = pathToFileURL(resolve(adapterPath)).href;
-const adapter = await import(adapterUrl) as VoiceRuntimeAdapterModule;
-const dependencies = await adapter.createVoiceRuntimeDependencies(env);
+const dependencies = await createVoiceRuntimeDependencies(env);
 if (!dependencies?.callRegistry?.authorizeStart || !dependencies.instructionsForCall) {
   throw new Error("Runtime adapter must provide a durable call registry and tenant-scoped instructions");
 }
@@ -90,6 +85,11 @@ wss.on("connection", (websocket: WebSocket) => {
     },
     sessions,
     authorizeStart: input => dependencies.callRegistry.authorizeStart(input),
+    onStreamClosed: input => dependencies.callRegistry.releaseStream({
+      tenantId: input.authorization.tenantId,
+      callId: input.authorization.callId,
+      streamSid: input.streamSid,
+    }),
     onError: error => {
       // Avoid logging payloads, credentials, caller audio, or raw provider events.
       console.error("IZAKHONO VOICE stream failed", error instanceof Error ? error.message : "unknown_error");
@@ -99,8 +99,8 @@ wss.on("connection", (websocket: WebSocket) => {
   websocket.on("message", data => {
     void bridge.handleMessage(data.toString("utf8"));
   });
-  websocket.on("close", () => { void bridge.close("Twilio WebSocket closed"); });
-  websocket.on("error", () => { void bridge.close("Twilio WebSocket error"); });
+  websocket.on("close", () => { void bridge.close("Twilio WebSocket closed").catch(() => undefined); });
+  websocket.on("error", () => { void bridge.close("Twilio WebSocket error").catch(() => undefined); });
 });
 
 server.listen(port, host, () => {
