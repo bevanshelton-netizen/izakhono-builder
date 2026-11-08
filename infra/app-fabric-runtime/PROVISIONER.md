@@ -7,7 +7,7 @@ The Application Fabric Provisioner is the common control path for IZAKHONO appli
 `SOURCE → VALIDATE → PACKAGE → REGISTER → PROVISION → DEPLOY → HEALTH → ACCEPTANCE → PROMOTE`
 
 This component owns the repository-side transition through `REGISTER` and `PROVISION`.
-It does **not** claim runtime-host deployment, public DNS/TLS, promotion, or LIVE status.
+It does **not** claim runtime execution, public DNS/TLS, promotion, or LIVE status.
 
 ## Commands
 
@@ -19,11 +19,15 @@ provisioner.sh provision <manifest.json>
 
 State is written atomically beneath `IZAKHONO_PROVISIONER_STATE` (default: local `state/`).
 
-## Runtime identity
+## Runtime identity — mandatory distinction
 
-`NODE01`–`NODE04` are logical software/runtime identities. They are not physical machines and must never be treated as hostnames, servers, or permanent hardware assignments. A logical node is bound at runtime to an approved host through `izakhono.runtime-binding/v1`.
+**NODE01–NODE04 are logical software/runtime identities. They are software, not physical machines, servers, computers, hostnames, or permanent hardware assignments.**
 
-The host may be physical or virtual and may move without changing the logical node identity. The release and acceptance contracts bind artifacts to the runtime host and logical identity, not to a machine name.
+The execution environment is separate infrastructure. It may be a physical host, virtual host, container platform, or distributed runtime. A runtime binding connects the logical software identity to that separately managed execution environment. The environment can change without changing NODE01's identity.
+
+For backward compatibility, the current `izakhono.runtime-binding/v1` field `runtime_host` refers only to the separate execution-environment locator. It must never be populated with or described as NODE01's identity. `runtime_host_is_separate` must remain true. A placeholder value is not an approved binding and cannot pass runtime verification.
+
+Release and acceptance evidence must bind the immutable artifact to both the logical software identity and the separately identified execution environment.
 
 ## Safety rules
 
@@ -33,5 +37,5 @@ The host may be physical or virtual and may move without changing the logical no
 - Registration and provisioning are state transitions, not deployment claims.
 - Immutable image digest remains the rollback artifact identity.
 - External providers remain adapters/fallbacks and are not promoted to runtime authority.
-- Runtime acceptance requires independent evidence from the actual approved runtime host.
-- Repository CI can validate contracts but cannot manufacture runtime-host, DNS/TLS, or LIVE evidence.
+- Runtime acceptance requires independent evidence from the actual approved execution environment.
+- Repository CI can validate contracts but cannot manufacture runtime, DNS/TLS, or LIVE evidence.
