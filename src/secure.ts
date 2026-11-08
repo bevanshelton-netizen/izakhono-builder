@@ -1,4 +1,5 @@
 import app from './index';
+import { guardMobileApi } from '../products/izakhono-mobile-intelligence/src/api-guard';
 import {
   generatedRepositoryFiles,
   publishGeneratedRepository,
@@ -456,7 +457,7 @@ async function withAutopilotUi(response: Response): Promise<Response> {
 
 export default {
   async fetch(req: Request, env: any): Promise<Response> {
-    const supplied = req.headers.get('x-admin-secret') || '';
+    const supplied = req.headers.get('x-admin-secret') || '';\n    const mobileSession = await maybeMobileIntelligenceSession(req, env, new URL(req.url));\n    if (mobileSession) return mobileSession;
     const recovered = await isRecoveryKey(supplied);
     const url = new URL(req.url);
 
