@@ -4,25 +4,14 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$ROOT"
 
-export NAV_URL="${NAV_URL:-http://127.0.0.1:8080}"
 export NODE01_ID="${NODE01_ID:-NODE01}"
+export NAV_ENGINE_VERIFY_URL="${NAV_ENGINE_VERIFY_URL:-http://127.0.0.1:8788}"
+export NAV_WEB_VERIFY_URL="${NAV_WEB_VERIFY_URL:-http://127.0.0.1:8787}"
+export NAV_PUBLIC_URL="${NAV_PUBLIC_URL:-https://nav.izakhono.africa}"
 
-printf '[NODE01] target=%s url=%s\n' "$NODE01_ID" "$NAV_URL"
+printf '[NODE01] verifying local owned engine and web gateway...\n'
+./products/izakhono-nav/stack/scripts/verify.sh
 
-curl -fsS "$NAV_URL/health" >/tmp/izakhono-nav-health.json
-curl -fsS "$NAV_URL/ready" >/tmp/izakhono-nav-ready.json
-curl -fsS "$NAV_URL/version" >/tmp/izakhono-nav-version.json
-
-node - <<'NODE'
-const fs = require('fs');
-const health = JSON.parse(fs.readFileSync('/tmp/izakhono-nav-health.json','utf8'));
-const ready = JSON.parse(fs.readFileSync('/tmp/izakhono-nav-ready.json','utf8'));
-const version = JSON.parse(fs.readFileSync('/tmp/izakhono-nav-version.json','utf8'));
-if (health.product !== 'IZAKHONO NAV') throw new Error('Unexpected product');
-if (ready.ready !== true) throw new Error('NAV is not ready');
-if (version.runtime !== 'owned') throw new Error('Runtime is not owned');
-console.log('NODE01 NAV health/readiness/runtime identity: PASS');
-NODE
-
-NAV_URL="$NAV_URL" node infra/contabo/production-verify-nav.js
-printf '[NODE01] NAV production verification passed.\n'
+printf '\n[NODE01] verifying public production endpoint...\n'
+node infra/contabo/production-verify-nav.js "$NAV_PUBLIC_URL"
+printf '[NODE01] owned NAV production verification passed.\n'
