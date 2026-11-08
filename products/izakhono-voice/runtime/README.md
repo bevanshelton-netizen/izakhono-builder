@@ -6,7 +6,7 @@ This package is the Node.js runtime host for the existing provider-neutral Twili
 
 - Node HTTP health endpoint at `/health`.
 - Twilio Media Streams WebSocket upgrade at the exact path configured by `IZAKHONO_TWILIO_MEDIA_PUBLIC_URL`.
-- Handshake validation against the configured canonical public WSS URL and runtime-only Twilio Auth Token. The implementation never builds the signature URL from Host or forwarded headers and rejects query strings.
+- Handshake validation against the configured canonical public WSS URL and runtime-only Twilio Auth Token, including Twilio's documented trailing-slash WSS validation variant. The implementation never builds the signature URL from Host or forwarded headers and rejects query strings.
 - Node `ws` connector for the GPT-Live server-side WebSocket API.
 - Existing per-connection media bridge, G.711 μ-law 8 kHz audio path, and session adapter.
 - A required runtime adapter contract for the durable call registry, tenant policy, audit and usage persistence.
@@ -54,7 +54,7 @@ Place the service behind the approved TLS edge/reverse proxy. The edge must pres
 This package is an executable runtime host, not proof of a live telephone service. Before activation:
 
 1. Implement and independently review the durable call-registry adapter.
-2. Verify Twilio's WebSocket handshake signature behaviour against a real Twilio Media Streams request and current Twilio SDK/reference vectors.
+2. Verify Twilio's WebSocket handshake signature behaviour against a real Twilio Media Streams request and current Twilio SDK/reference vectors, including the documented trailing-slash case.
 3. Confirm the exact public URL, TLS certificate, edge routing, upgrade forwarding and health checks on an approved runtime.
 4. Add concurrency, call-duration, tenant rate and resource limits at the edge and registry.
 5. Complete tenant consent, privacy, retention, access-control, incident-response and South African regulatory reviews.
