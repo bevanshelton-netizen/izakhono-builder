@@ -25,7 +25,7 @@ test("does not provision a number when subscription is inactive", async () => {
   let provisioned = false;
   const service = new VoiceTenantOnboardingService(
     { async assertSubscriptionActive() { throw new Error("subscription inactive"); } },
-    { async provisionNumber() { provisioned = true; return { phoneNumber: "+27115550123" }; }, async releaseNumber() {} },
+    { async provisionNumber() { provisioned = true; return { phoneNumber: "+27115550123", newlyProvisioned: true }; }, async releaseNumber() {} },
     { async createTenantVoiceSetup() {} },
   );
   await assert.rejects(() => service.onboard(base), /subscription inactive/);
