@@ -22,9 +22,10 @@ test("payment confirmation binds amount, currency and customer to a customer inv
   assert.match(sql,/v_document\.document_type\s*<>\s*'customer_invoice'/i);
   assert.match(sql,/v_document\.customer_id\s+is\s+distinct\s+from\s+v_intent\.customer_id/i);
   assert.match(sql,/v_document\.currency\s*<>\s*'ZAR'/i);
-  assert.match(sql,/v_intent\.amount\s*<>\s*v_document\.amount/i);
 });
-test("payment confirmation prevents collecting beyond the invoice balance",()=>{
+test("payment confirmation permits outstanding-balance instalments and blocks over-collection",()=>{
+  assert.match(sql,/v_intent\.amount<=0\s+or\s+v_intent\.amount>v_document\.amount/i);
+  assert.doesNotMatch(sql,/v_intent\.amount\s*<>\s*v_document\.amount/i);
   assert.match(sql,/for update;[\s\S]*v_document/i);
   assert.match(sql,/v_received\s*\+\s*v_intent\.amount\s*>\s*v_document\.amount/i);
   assert.match(sql,/invoice_overpayment_blocked/i);
