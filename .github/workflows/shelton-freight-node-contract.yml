@@ -7,7 +7,7 @@ on:
       - 'products/izakhono-one/services/persistent-node-control.mjs'
       - '.github/workflows/shelton-freight-node-contract.yml'
   push:
-    branches: [main]
+    branches: [main, 'feat/shelton-freight-node01-adapter-v14']
     paths:
       - 'products/shelton-freight-group/node01/**'
       - 'products/izakhono-one/node-gateway.mjs'
