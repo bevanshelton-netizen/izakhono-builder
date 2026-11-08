@@ -84,7 +84,7 @@ export class PostgresVoiceCallRegistry implements VoiceCallRegistry {
            updated_at = NOW()
        WHERE provider_call_sid = $1
          AND status IN ('ringing', 'active', 'handoff')
-         AND active_stream_sid IS NULL
+         AND (active_stream_sid IS NULL OR active_stream_expires_at < NOW())
        RETURNING call_id`,
       [sid, tokenHash(token), ttlSeconds],
     );
@@ -105,13 +105,14 @@ export class PostgresVoiceCallRegistry implements VoiceCallRegistry {
       `UPDATE voice_calls
        SET stream_token_consumed_at = NOW(),
            active_stream_sid = $3,
+           active_stream_expires_at = NOW() + INTERVAL '90 seconds',
            status = 'active',
            updated_at = NOW()
        WHERE provider_call_sid = $1
          AND stream_token_hash = $2
          AND stream_token_expires_at > NOW()
          AND stream_token_consumed_at IS NULL
-         AND active_stream_sid IS NULL
+         AND (active_stream_sid IS NULL OR active_stream_expires_at < NOW())
          AND status IN ('ringing', 'active', 'handoff')
        RETURNING call_id, tenant_id`,
       [input.callSid, tokenHash(token), input.streamSid],
@@ -128,6 +129,7 @@ export class PostgresVoiceCallRegistry implements VoiceCallRegistry {
     await this.pool.query(
       `UPDATE voice_calls
        SET active_stream_sid = NULL,
+           active_stream_expires_at = NULL,
            stream_token_hash = NULL,
            stream_token_expires_at = NULL,
            stream_token_consumed_at = NULL,
@@ -135,6 +137,25 @@ export class PostgresVoiceCallRegistry implements VoiceCallRegistry {
        WHERE tenant_id = $1 AND call_id = $2 AND active_stream_sid = $3`,
       [input.tenantId, input.callId, input.streamSid],
     );
+  }
+
+
+  async heartbeatStream(input: {
+    tenantId: string;
+    callId: string;
+    streamSid: string;
+  }): Promise<void> {
+    const result = await this.pool.query(
+      `UPDATE voice_calls
+       SET active_stream_expires_at = NOW() + INTERVAL '90 seconds',
+           updated_at = NOW()
+       WHERE tenant_id = $1
+         AND call_id = $2
+         AND active_stream_sid = $3
+         AND status IN ('active', 'handoff')`,
+      [input.tenantId, input.callId, input.streamSid],
+    );
+    if (result.rowCount !== 1) throw new Error("Media stream lease is no longer active");
   }
 
   async recordUsage(input: {
@@ -227,6 +248,8 @@ export class PostgresVoiceCallRegistry implements VoiceCallRegistry {
            stream_token_hash = CASE WHEN $2 IN ('completed', 'failed') THEN NULL ELSE stream_token_hash END,
            stream_token_expires_at = CASE WHEN $2 IN ('completed', 'failed') THEN NULL ELSE stream_token_expires_at END,
            stream_token_consumed_at = CASE WHEN $2 IN ('completed', 'failed') THEN NULL ELSE stream_token_consumed_at END,
+           active_stream_sid = CASE WHEN $2 IN ('completed', 'failed') THEN NULL ELSE active_stream_sid END,
+           active_stream_expires_at = CASE WHEN $2 IN ('completed', 'failed') THEN NULL ELSE active_stream_expires_at END,
            updated_at = NOW()
        WHERE provider_call_sid = $1`,
       [nonEmpty(providerCallSid, "providerCallSid"), status],
