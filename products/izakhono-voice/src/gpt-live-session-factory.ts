@@ -26,7 +26,7 @@ export interface GptLiveVoiceConfig {
   startupTimeoutMs?: number;
   closeTimeoutMs?: number;
   onEvent?: (tenantId: string, event: Record<string, unknown>) => void;
-  onUsage?: (tenantId: string, usage: unknown, authorization: VoiceStreamAuthorization) => void;
+  onUsage?: (tenantId: string, usage: unknown, authorization: VoiceStreamAuthorization) => void | Promise<void>;
 }
 
 const LIVE_SOCKET_URL = "wss://api.openai.com/v1/live/sessions";
@@ -125,6 +125,7 @@ class GptLiveVoiceStreamSession implements VoiceStreamSession {
   private closing = false;
   private closed = false;
   private eventSequence = 0;
+  private usagePersistence?: Promise<void>;
 
   constructor(
     private readonly socket: GptLiveSocket,
@@ -187,6 +188,7 @@ class GptLiveVoiceStreamSession implements VoiceStreamSession {
     }
     try {
       await waitFor(this.finalized, this.closeTimeoutMs, "session finalization");
+      await this.usagePersistence;
     } finally {
       this.closed = true;
       this.cleanup();
@@ -231,7 +233,8 @@ class GptLiveVoiceStreamSession implements VoiceStreamSession {
     if (event.type === "session.closed") {
       this.closed = true;
       try {
-        this.config.onUsage?.(this.authorization.tenantId, event.usage, this.authorization);
+        this.usagePersistence = Promise.resolve(this.config.onUsage?.(this.authorization.tenantId, event.usage, this.authorization));
+        void this.usagePersistence.catch(error => this.onError(error));
       } catch (error) {
         this.onError(error);
       }
