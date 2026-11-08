@@ -16,8 +16,8 @@ CREATE TABLE IF NOT EXISTS voice_customer_endpoints (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   UNIQUE (tenant_id, customer_mobile_e164),
-  CHECK (customer_mobile_e164 ~ '^\\+[1-9][0-9]{7,14}$'),
-  CHECK (voice_destination_e164 ~ '^\\+[1-9][0-9]{7,14}$')
+  CHECK (customer_mobile_e164 ~ '^[+][1-9][0-9]{7,14}$'),
+  CHECK (voice_destination_e164 ~ '^[+][1-9][0-9]{7,14}$')
 );
 
 CREATE INDEX IF NOT EXISTS voice_customer_endpoints_tenant_idx
