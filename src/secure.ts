@@ -486,7 +486,9 @@ async function maybeMobileIntelligenceSession(req: Request, env: any, url: URL):
 
 export default {
   async fetch(req: Request, env: any): Promise<Response> {
-    const supplied = req.headers.get('x-admin-secret') || '';\n    const mobileSession = await maybeMobileIntelligenceSession(req, env, new URL(req.url));\n    if (mobileSession) return mobileSession;
+    const supplied = req.headers.get('x-admin-secret') || '';
+    const mobileSession = await maybeMobileIntelligenceSession(req, env, new URL(req.url));
+    if (mobileSession) return mobileSession;
     const recovered = await isRecoveryKey(supplied);
     const url = new URL(req.url);
 
