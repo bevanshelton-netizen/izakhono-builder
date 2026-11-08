@@ -1,5 +1,4 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
-import { randomUUID } from "node:crypto";
 import { WebSocket, WebSocketServer } from "ws";
 import { GptLiveVoiceStreamSessionFactory } from "../../src/gpt-live-session-factory.js";
 import { TwilioMediaStreamBridge } from "../../src/twilio-media-stream-bridge.js";
@@ -165,10 +164,7 @@ async function handleHttpRequest(request: IncomingMessage, response: ServerRespo
           reply(response, 404, "application/json; charset=utf-8", JSON.stringify({ error: "number_not_configured" }));
           return;
         }
-        callId = randomUUID();
-        await dependencies.callRegistry.registerCall({
-          callId, tenantId, providerCallSid: callSid, direction: "inbound", status: "ringing",
-        });
+        callId = await dependencies.callRegistry.registerInboundCall(tenantId, callSid);
       }
 
       const streamToken = await dependencies.callRegistry.issueStreamCredential(callSid);
