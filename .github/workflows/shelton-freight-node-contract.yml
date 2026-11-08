@@ -31,8 +31,11 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
       - name: Verify Software NODE integration contract
         run: |
           node --test products/shelton-freight-group/node01/contract.test.mjs
           node products/izakhono-one/test-node-gateway.mjs
-          node --check --input-type=module < products/izakhono-one/supabase/functions/izakhono-one-api/index.ts
+          deno check products/izakhono-one/supabase/functions/izakhono-one-api/index.ts
