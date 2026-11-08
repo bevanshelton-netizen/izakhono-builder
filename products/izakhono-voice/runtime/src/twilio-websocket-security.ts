@@ -32,12 +32,18 @@ export function verifyTwilioWebSocketHandshake(input: TwilioHandshakeInput): boo
       canonical.username || canonical.password || request.search || request.hash ||
       request.pathname !== canonical.pathname) return false;
 
-  const expected = createHmac("sha1", input.authToken)
-    .update(canonical.toString())
-    .digest("base64");
-
   const suppliedBytes = Buffer.from(input.signature, "utf8");
-  const expectedBytes = Buffer.from(expected, "utf8");
-  return suppliedBytes.length === expectedBytes.length &&
-    timingSafeEqual(suppliedBytes, expectedBytes);
+  const canonicalCandidates = [canonical.toString()];
+  // Twilio's security guidance notes that WSS handshake validation may require
+  // a trailing slash. Try that documented variant without trusting request headers.
+  if (!canonical.pathname.endsWith("/")) canonicalCandidates.push(`${canonical.toString()}/`);
+
+  return canonicalCandidates.some(candidate => {
+    const expectedBytes = Buffer.from(
+      createHmac("sha1", input.authToken).update(candidate).digest("base64"),
+      "utf8",
+    );
+    return suppliedBytes.length === expectedBytes.length &&
+      timingSafeEqual(suppliedBytes, expectedBytes);
+  });
 }
