@@ -36,3 +36,19 @@ The number-provider adapter must return `newlyProvisioned: true` only when this 
 
 ## Subscription entitlement source of truth
 Migration `003_voice_subscription_entitlements.sql` adds `voice_tenant_subscriptions` and an idempotency/audit ledger for verified billing events. `PostgresVoiceSubscriptionGate` grants onboarding only when the tenant has an `active` subscription whose current billing period has not expired. The provider webhook adapter that verifies events and updates these records remains a separate trusted integration; no browser action can activate entitlement.
+
+
+## Verified billing-event writer (implemented)
+
+`runtime/src/billing-event-writer.ts` adds `PostgresVoiceBillingEventWriter`. It accepts only a canonical event produced by a trusted provider adapter after signature verification and tenant/subscription-reference resolution. The writer:
+
+- validates provider/event/tenant references, subscription status, timestamps and SHA-256 payload hash;
+- stores provider event IDs under a unique provider/event constraint for replay-safe idempotency;
+- writes the event ledger and subscription entitlement in one PostgreSQL transaction;
+- ignores duplicate provider event IDs without reapplying entitlement changes;
+- applies subscription state only when the provider event timestamp is newer than the last verified event, preventing out-of-order webhook delivery from reverting a newer state;
+- stores a payload hash rather than raw payment details.
+
+The provider adapter remains responsible for verifying the provider's exact signature scheme against the unmodified request body, resolving the provider's customer/subscription reference to the authenticated IZAKHONO tenant, and mapping provider-specific states into the canonical status contract. Never accept a canonical event from a browser, checkout redirect, or public client request.
+
+No iKhokha webhook format, signature header, recurring-subscription capability, or payment status mapping is assumed by this provider-neutral layer. Those must be verified against the merchant account and current provider documentation before a live adapter or checkout is enabled. The service is not yet connected to public signup or checkout.
