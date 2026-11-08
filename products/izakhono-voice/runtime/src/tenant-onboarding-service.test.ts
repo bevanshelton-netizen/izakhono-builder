@@ -58,7 +58,7 @@ test("uses the authenticated server tenant context for persistence", async () =>
   let savedTenant = "";
   const service = new VoiceTenantOnboardingService(
     { async assertSubscriptionActive(tenantId) { assert.equal(tenantId, "tenant-from-session"); } },
-    { async provisionNumber() { return { phoneNumber: "+27115550123" }; }, async releaseNumber() {} },
+    { async provisionNumber() { return { phoneNumber: "+27115550123", newlyProvisioned: true }; }, async releaseNumber() {} },
     { async createTenantVoiceSetup(input) { savedTenant = input.tenantId; } },
   );
   await service.onboard({ ...base, authenticatedTenantId: "tenant-from-session" });
