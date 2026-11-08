@@ -147,7 +147,7 @@ async function handleHttpRequest(request: IncomingMessage, response: ServerRespo
     }
 
     const to = params.To ?? "";
-    if (!isOutbound && !/^\\+[1-9][0-9]{7,14}$/.test(to)) {
+    if (!isOutbound && !/^\+[1-9][0-9]{7,14}$/.test(to)) {
       reply(response, 400, "application/json; charset=utf-8", JSON.stringify({ error: "invalid_destination_number" }));
       return;
     }
