@@ -41,6 +41,7 @@ export interface TwilioMediaBridgeOptions {
   onDtmf?: (callSid: string, digit: string) => void;
   onMark?: (callSid: string, name: string) => void;
   onError?: (error: unknown) => void;
+  onStreamClosed?: (input: { authorization: VoiceStreamAuthorization; streamSid: string; reason: string }) => Promise<void> | void;
 }
 
 const OPEN = 1;
@@ -147,7 +148,15 @@ export class TwilioMediaStreamBridge {
     this.closed = true;
     const active = this.session;
     this.session = undefined;
-    if (active) await active.close(reason);
+    const authorization = this.authorization;
+    const streamSid = this.streamSid;
+    try {
+      if (active) await active.close(reason);
+    } finally {
+      if (authorization && streamSid) {
+        await this.options.onStreamClosed?.({ authorization, streamSid, reason });
+      }
+    }
   }
 
   private async start(message: Record<string, any>): Promise<void> {
