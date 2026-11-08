@@ -17,8 +17,13 @@ CREATE TABLE IF NOT EXISTS voice_calls (
   stream_token_expires_at TIMESTAMPTZ,
   stream_token_consumed_at TIMESTAMPTZ,
   active_stream_sid TEXT UNIQUE,
+  active_stream_expires_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CHECK (
+    (active_stream_sid IS NULL AND active_stream_expires_at IS NULL)
+    OR (active_stream_sid IS NOT NULL AND active_stream_expires_at IS NOT NULL)
+  ),
   CHECK (
     (stream_token_hash IS NULL AND stream_token_expires_at IS NULL)
     OR (stream_token_hash IS NOT NULL AND stream_token_expires_at IS NOT NULL)
