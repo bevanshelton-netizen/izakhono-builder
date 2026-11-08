@@ -27,7 +27,7 @@ self.addEventListener('message',event=>{
       try{
         const response=await fetch(url,{cache:'no-store'});
         if(response.ok&&response.type!=='opaque'){
-          await cache.put(url,response.clone());
+          await cache.put(url.href,response.clone());
           saved++;
         }
       }catch{}
