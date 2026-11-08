@@ -7,6 +7,18 @@ export interface VoiceNumberProvisioner {
   releaseNumber(input: { tenantId: string; phoneNumber: string; providerReference?: string }): Promise<void>;
 }
 export interface VoiceSubscriptionGate { assertSubscriptionActive(tenantId: string): Promise<void>; }
+
+/** Reads entitlement written only by the trusted, verified billing-event adapter. */
+export class PostgresVoiceSubscriptionGate implements VoiceSubscriptionGate {
+  constructor(private readonly pool: Pool) {}
+  async assertSubscriptionActive(tenantId: string): Promise<void> {
+    const result = await this.pool.query(
+      "SELECT 1 FROM voice_tenant_subscriptions WHERE tenant_id = $1 AND status = 'active' AND current_period_end > NOW()",
+      [tenantId],
+    );
+    if (result.rowCount !== 1) throw new Error("An active IZAKHONO VOICE subscription is required");
+  }
+}
 export interface VoiceTenantSetupRepository {
   createTenantVoiceSetup(input: { tenantId: string; businessName: string; customerMobileE164: string; voiceDestinationE164: string; forwardingMode: VoiceForwardingMode; systemInstructions: string }): Promise<void>;
 }
