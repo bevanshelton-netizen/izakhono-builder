@@ -10,22 +10,21 @@ app.use('/agent', express.static(path.join(root, 'agent')));
 app.use(express.static(root));
 
 app.get('/api/health', (req, res) => {
-  const required = [
-    'I_CONNECT_SUPABASE_URL',
-    'I_CONNECT_SUPABASE_ANON_KEY',
-    'I_CONNECT_CARRIER_BRIDGE_URL',
-    'I_CONNECT_CARRIER_BRIDGE_SECRET',
-    'I_CONNECT_PAYMENT_PROVIDER_SECRET'
-  ];
-  const configured = Object.fromEntries(required.map(k => [k, Boolean(process.env[k])]));
-  const missing = required.filter(k => !configured[k]);
+  // Configuration is not proof of a functioning or commercially approved dependency.
+  // Report conservative readiness states until each integration has an active probe
+  // and documented production approval.
   res.json({
     service: 'I-CONNECT',
-    status: missing.length ? 'activation_required' : 'production_ready',
-    pstnLive: configured.I_CONNECT_CARRIER_BRIDGE_URL && configured.I_CONNECT_CARRIER_BRIDGE_SECRET,
-    realBilling: configured.I_CONNECT_PAYMENT_PROVIDER_SECRET,
-    networkRouter: 'ready',
-    missing
+    status: 'activation_required',
+    productionReady: false,
+    modules: {
+      webApp: 'ready',
+      agentApp: 'ready',
+      database: 'not_verified',
+      carrier: 'not_configured',
+      payments: 'not_configured'
+    },
+    readinessNote: 'Application shell is available. Database, carrier and payment integrations require verified health checks and approval.'
   });
 });
 
