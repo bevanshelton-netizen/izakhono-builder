@@ -14,10 +14,7 @@ export interface OutboundCallResult {
 
 /**
  * Trusted application boundary for outbound calls.
- *
  * The internal call is durably tenant-bound before the carrier is contacted.
- * A carrier submission failure closes the still-unbound record, preventing
- * abandoned pending calls from being mistaken for active calls.
  */
 export class OutboundCallService {
   constructor(
@@ -30,7 +27,7 @@ export class OutboundCallService {
     const tenantId = request.tenantId.trim();
     const destination = request.destination.trim();
     if (!tenantId) throw new Error("tenantId is required");
-    if (!/^\\+[1-9][0-9]{7,14}$/.test(destination)) {
+    if (!/^[+][1-9][0-9]{7,14}$/.test(destination)) {
       throw new Error("destination must be a valid E.164 phone number");
     }
 
@@ -44,8 +41,7 @@ export class OutboundCallService {
       try {
         await this.registry.failUnboundOutboundCall({ callId, tenantId });
       } catch {
-        // Preserve the carrier submission error; reconciliation can inspect
-        // the durable pending record if the cleanup write also fails.
+        // Preserve the carrier submission error; reconcile the durable record separately.
       }
       throw error;
     }
