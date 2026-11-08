@@ -149,6 +149,41 @@ export class PostgresVoiceCallRegistry implements VoiceCallRegistry {
   }
 
 
+
+  async createOutboundCall(input: { callId: string; tenantId: string }): Promise<void> {
+    const result = await this.pool.query(
+      `INSERT INTO voice_calls (call_id, tenant_id, direction, status)
+       SELECT $1, p.tenant_id, 'outbound', 'ringing'
+       FROM voice_tenant_policies p
+       WHERE p.tenant_id = $2 AND p.enabled = TRUE
+       ON CONFLICT (call_id) DO UPDATE
+       SET updated_at = NOW()
+       WHERE voice_calls.tenant_id = EXCLUDED.tenant_id
+         AND voice_calls.direction = 'outbound'
+         AND voice_calls.provider_call_sid IS NULL
+       RETURNING call_id`,
+      [nonEmpty(input.callId, "callId"), nonEmpty(input.tenantId, "tenantId")],
+    );
+    if (result.rowCount !== 1) throw new Error("Outbound call could not be created for this tenant");
+  }
+
+  async bindProviderCall(callId: string, providerCallSid: string): Promise<string | null> {
+    const result = await this.pool.query<{ tenant_id: string }>(
+      `UPDATE voice_calls c
+       SET provider_call_sid = $2, updated_at = NOW()
+       FROM voice_tenant_policies p
+       WHERE c.call_id = $1
+         AND c.tenant_id = p.tenant_id
+         AND p.enabled = TRUE
+         AND c.direction = 'outbound'
+         AND c.provider_call_sid IS NULL
+         AND c.status = 'ringing'
+       RETURNING c.tenant_id`,
+      [nonEmpty(callId, "callId"), nonEmpty(providerCallSid, "providerCallSid")],
+    );
+    return result.rows[0]?.tenant_id ?? null;
+  }
+
   async resolveTenantForInboundNumber(phoneNumber: string): Promise<string | null> {
     const number = nonEmpty(phoneNumber, "phoneNumber");
     const result = await this.pool.query<{ tenant_id: string }>(
