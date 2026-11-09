@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process';
+import http from 'node:http';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -30,9 +31,17 @@ try {
   await waitForHealth();
   const provisioned = await request('/api/sites/provision', {method:'POST',body:JSON.stringify({site_id:'smoke_site',domain:'smoke.example.test',source_ref:'ci'})});
   if (provisioned.site?.domain !== 'smoke.example.test') throw new Error('provision failed');
-  const page = await fetch(base+'/', {headers:{host:'smoke.example.test'}});
-  const html = await page.text();
-  if (!page.ok || !html.includes('smoke.example.test')) throw new Error('site serving failed');
+  const page = await new Promise((resolve, reject) => {
+    const req = http.get({ hostname: '127.0.0.1', port, path: '/', headers: { host: 'smoke.example.test' } }, response => {
+      const chunks = [];
+      response.on('data', chunk => chunks.push(chunk));
+      response.on('end', () => resolve({ status: response.statusCode || 0, html: Buffer.concat(chunks).toString('utf8') }));
+    });
+    req.once('error', reject);
+  });
+  if (page.status !== 200 || !page.html.includes('smoke.example.test')) {
+    throw new Error(`site serving failed: status=${page.status}; body=${page.html.slice(0, 240)}`);
+  }
   const ask = await fetch(base+'/api/tls/ask?domain=smoke.example.test');
   if (!ask.ok) throw new Error('TLS admission failed');
   const accepted = await request('/api/sites/smoke_site/accept', {method:'POST',body:JSON.stringify({https:true,dns:true,content:true})});
