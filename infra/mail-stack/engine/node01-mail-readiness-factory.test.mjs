@@ -34,7 +34,7 @@ assert.equal((await probes.dkim()).ok, true);
 assert.equal((await probes.dmarc()).policy, "reject");
 assert.equal((await probes.dnsMx()).ok, true);
 assert.equal((await probes.persistence()).ok, true);
-assert.equal((await probes.identities()).ok, false);
+await assert.rejects(() => probes.identities(), /MAIL_IDENTITIES_NOT_CONFIGURED/);
 const spf = await probes.spf();
 assert.equal(spf.ok, true);
 assert.equal(spf.source, "node01-mail-probe:spf");
