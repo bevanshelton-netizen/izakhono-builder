@@ -34,7 +34,7 @@ jobs:
           bash -n products/i-connect/deploy/deploy-owned.sh
           bash -n products/i-connect/deploy/backup-owned.sh
           bash -n products/i-connect/deploy/restore-owned.sh
-          bash -n products/i-connect/deploy/rehearse-owned-recovery.sh
+          bash -n products/i-connect/deploy/dr-rehearsal.sh
           echo '[PASS] I-CONNECT owned deployment, admission and recovery scripts parse successfully.'
 
       - name: Validate admission gate contract
@@ -67,7 +67,7 @@ jobs:
           set -euo pipefail
           python - <<'PY'
           from pathlib import Path
-          recovery = Path('products/i-connect/deploy/rehearse-owned-recovery.sh').read_text(encoding='utf-8')
+          recovery = Path('products/i-connect/deploy/dr-rehearsal.sh').read_text(encoding='utf-8')
           backup = Path('products/i-connect/deploy/backup-owned.sh').read_text(encoding='utf-8')
           restore = Path('products/i-connect/deploy/restore-owned.sh').read_text(encoding='utf-8')
           required_recovery = ['mktemp', 'docker compose', 'docker-compose.owned.yml', 'PASS']
