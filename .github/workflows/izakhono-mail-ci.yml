@@ -45,10 +45,9 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: '22'
-          cache: npm
 
       - name: Install root dependencies
-        run: npm ci --ignore-scripts --no-audit --no-fund
+        run: npm install --ignore-scripts --no-audit --no-fund
 
       - name: Validate IZAKHONO MAIL engine
         run: npm run validate:mail
