@@ -24,8 +24,8 @@ NODE_HEALTH_CMD="${IZAKHONO_NODE_HEALTH_CMD:-}"
 fail() { echo "KORA PRODUCTION ACTIVATION BLOCKED: $*" >&2; exit 1; }
 
 [[ -f "${WORKLOAD_FILE}" ]] || fail "KORA workload contract not found"
-[[ -x "${MAIL_ACTIVATOR}" ]] || fail "KORA mail activation adapter is not executable"
-[[ -x "${LIVE_GATE}" ]] || fail "KORA live gate is not executable"
+[[ -f bash "${MAIL_ACTIVATOR}" ]] || fail "KORA mail activation adapter is unavailable"
+[[ -f bash "${LIVE_GATE}" ]] || fail "KORA live gate is unavailable"
 
 python3 - "${WORKLOAD_FILE}" <<'PY'
 import json, sys
