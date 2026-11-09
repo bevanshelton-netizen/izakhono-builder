@@ -34,7 +34,7 @@ jobs:
       - name: Install root dependencies
         run: npm install --ignore-scripts --no-audit --no-fund
       - name: Typecheck HOST
-        run: npm run validate:host
+        run: npm --prefix products/izakhono-host run typecheck
       - name: Wrangler dry run
         run: npx wrangler deploy --dry-run --config products/izakhono-host/wrangler.jsonc
       - name: Validate shell gates
