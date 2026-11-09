@@ -50,7 +50,7 @@ jobs:
         run: npm install --ignore-scripts --no-audit --no-fund
 
       - name: Validate IZAKHONO MAIL engine
-        run: npm run validate:mail
+        run: npm run mail:validate
 
       - name: Validate NODE01 SMTP boundary
         run: node --check infra/mail-stack/engine/node01-mail-server.mjs
