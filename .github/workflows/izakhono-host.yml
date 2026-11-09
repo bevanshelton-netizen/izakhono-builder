@@ -22,6 +22,7 @@ env:
   POSTGRES_PASSWORD: ci-postgres-password
   MINIO_ROOT_USER: ci-minio-admin
   MINIO_ROOT_PASSWORD: ci-minio-password
+  IZAKHONO_MAIL_API_TOKEN: ci-mail-api-token
 
 jobs:
   validate:
