@@ -103,7 +103,7 @@ jobs:
           }
           store.save(job); queue.enqueue(job)
           worker = ProvisionerWorker(store, queue, build_catalog(), load_registry())
-          for _ in range(8): worker.run_once()
+          for _ in range(9): worker.run_once()
           assert job.state == State.HANDOVER_READY.value
           assert job.evidence[State.PAYMENT_VERIFIED.value]['verified'] is True
           print('DETERMINISTIC_RUNTIME: PASS')
