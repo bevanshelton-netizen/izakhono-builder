@@ -63,14 +63,14 @@ def activate(workload_path: Path, health: dict[str, bool], execute: bool = False
 
     root = workload_path.parents[1]
     adapter = root / "activation" / "KORA-MAIL-ACTIVATE.sh"
-    if not adapter.is_file() or not os.access(adapter, os.X_OK):
+    if not adapter.is_file():
         return Decision(decision.workload, decision.selected_node, "BLOCKED", "KORA activation adapter unavailable")
 
     env = os.environ.copy()
     env["IZAKHONO_NODE_ID"] = decision.selected_node
     try:
         completed = subprocess.run(
-            [str(adapter)],
+            ["bash", str(adapter)],
             cwd=str(root.parent),
             env=env,
             check=False,
