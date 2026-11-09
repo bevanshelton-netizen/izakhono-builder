@@ -25,6 +25,9 @@ jobs:
       - name: Install dependencies
         run: npm install --ignore-scripts --no-audit --no-fund
 
+      - name: Validate Affiliate Engine
+        run: npm run validate:affiliate
+
       - name: Install isolated product dependencies
         shell: bash
         run: |

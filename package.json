@@ -59,7 +59,8 @@
     "native-generation:test": "node autonomy/native-generation.test.mjs",
     "model-runtime:validate": "node products/izakhono-ai-runtime/validate.mjs",
     "model-runtime:test": "node products/izakhono-ai-runtime/validate.mjs && node products/izakhono-ai-runtime/provision.test.mjs",
-    "builder:customer-auth:test": "npx --yes tsx@4.20.3 src/customer-auth.test.ts"
+    "builder:customer-auth:test": "npx --yes tsx@4.20.3 src/customer-auth.test.ts",
+    "validate:affiliate": "node scripts/validate-affiliate-engine.mjs"
   },
   "dependencies": {
     "wrangler": "4.127.1"
