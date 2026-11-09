@@ -54,9 +54,10 @@ jobs:
           test ! -f products/i-connect/deploy/.env
           cp products/i-connect/deploy/.env.example products/i-connect/deploy/.env
           chmod 600 products/i-connect/deploy/.env
-          docker compose -f products/i-connect/deploy/docker-compose.owned.yml config >/tmp/i-connect-compose.yml
+          trap 'rm -f products/i-connect/deploy/.env' EXIT
+          I_CONNECT_HOST=connect.example.com docker compose -f products/i-connect/deploy/docker-compose.owned.yml config >/tmp/i-connect-compose.yml
           grep -q 'caddy:2-alpine' /tmp/i-connect-compose.yml
-          grep -q 'i-connect:3000' /tmp/i-connect-compose.yml
+          grep -q 'reverse_proxy i-connect:3000' products/i-connect/deploy/Caddyfile
           ! grep -Eq '(SUPABASE_ANON_KEY|CARRIER_BRIDGE_SECRET|PAYMENT_PROVIDER_SECRET):[[:space:]]*[^$[:space:]]+' /tmp/i-connect-compose.yml
           rm -f products/i-connect/deploy/.env
           echo '[PASS] Owned compose topology resolves without embedding production secrets.'
