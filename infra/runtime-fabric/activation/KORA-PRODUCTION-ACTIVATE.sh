@@ -24,8 +24,8 @@ NODE_HEALTH_CMD="${IZAKHONO_NODE_HEALTH_CMD:-}"
 fail() { echo "KORA PRODUCTION ACTIVATION BLOCKED: $*" >&2; exit 1; }
 
 [[ -f "${WORKLOAD_FILE}" ]] || fail "KORA workload contract not found"
-[[ -f bash "${MAIL_ACTIVATOR}" ]] || fail "KORA mail activation adapter is unavailable"
-[[ -f bash "${LIVE_GATE}" ]] || fail "KORA live gate is unavailable"
+[[ -f "${MAIL_ACTIVATOR}" ]] || fail "KORA mail activation adapter is unavailable"
+[[ -f "${LIVE_GATE}" ]] || fail "KORA live gate is unavailable"
 
 python3 - "${WORKLOAD_FILE}" <<'PY'
 import json, sys
@@ -83,14 +83,14 @@ chmod 600 "${EVIDENCE_DIR}/selection.json"
 # Delegate actual runtime work. Secrets remain in the protected runtime
 # environment and are not copied into evidence or logs.
 export IZAKHONO_NODE_ID="${SELECTED_NODE}"
-"${MAIL_ACTIVATOR}"
+bash "${MAIL_ACTIVATOR}"
 
 # The live gate is expected to return 2 until real external
 # send/receive/reply/authentication evidence exists. Any other nonzero result
 # is an actual failure and must remain BLOCKED rather than being relabeled as
 # a normal pending state.
 set +e
-"${LIVE_GATE}"
+bash "${LIVE_GATE}"
 GATE_STATUS=$?
 set -e
 
