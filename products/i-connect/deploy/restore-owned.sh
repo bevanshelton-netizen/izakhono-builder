@@ -23,6 +23,12 @@ trap 'rm -rf "$work"' EXIT
 
 tar -xzf "$ARCHIVE" -C "$work"
 
+RESTORED_COMPOSE="$work/products/i-connect/deploy/docker-compose.owned.yml"
+if [[ ! -f "$RESTORED_COMPOSE" ]]; then
+  echo "ERROR: backup does not contain docker-compose.owned.yml." >&2
+  exit 1
+fi
+
 if [[ -f "$work/products/i-connect/deploy/.env" ]]; then
   echo "ERROR: backup contains a forbidden .env file." >&2
   exit 1
