@@ -4,7 +4,7 @@ set -euo pipefail
 APP_DIR="${I_CONNECT_APP_DIR:-/opt/izakhono/i-connect}"
 BACKUP_DIR="${I_CONNECT_BACKUP_DIR:-/var/lib/i-connect-backups}"
 STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
-OUT="${BACKUP_DIR}/i-connect-${STAMP}.tar.gz"
+OUT="${BACKUP_DIR}/i-connect-backup-${STAMP}.tar.gz"
 
 if [[ "$(id -u)" -ne 0 ]]; then
   echo "ERROR: run as root." >&2
