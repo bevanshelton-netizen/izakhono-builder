@@ -172,7 +172,7 @@ export async function handleCinematicApi(request: Request, env: CinematicEnv): P
     const id = typeof body.id === 'string' && body.id.trim() ? body.id.trim() : `cin_${crypto.randomUUID()}`;
     if (await getProject(env, id)) return response({ error: 'project id already exists.' }, 409);
     const input: CinematicBriefInput = {
-      id, ownerId: body.ownerId.trim(), brief: body.brief.trim(),
+      id, ownerId: body.ownerId.trim(), ...(typeof body.tenantId === 'string' && body.tenantId.trim() ? { tenantId: body.tenantId.trim() } : {}), brief: body.brief.trim(),
       ...(typeof body.title === 'string' ? { title: body.title } : {}),
       ...(typeof body.format === 'string' ? { format: body.format as CinematicBriefInput['format'] } : {}),
       ...(typeof body.audience === 'string' ? { audience: body.audience } : {}),
@@ -208,7 +208,7 @@ export async function handleCinematicApi(request: Request, env: CinematicEnv): P
   if (!resource && request.method === 'PATCH') {
     const body = await parseBody(request);
     const candidate = body?.production as CinematicProduction | undefined;
-    if (!candidate || candidate.id !== id || candidate.metadata?.ownerId !== graph.metadata.ownerId) return response({ error: 'A production graph with the same project and immutable owner is required.' }, 400);
+    if (!candidate || candidate.id !== id || candidate.metadata?.ownerId !== graph.metadata.ownerId || candidate.metadata?.tenantId !== graph.metadata.tenantId) return response({ error: 'A production graph with the same project and immutable owner is required.' }, 400);
     const checked = validate(candidate);
     if (!checked.valid) return response({ error: 'Production graph validation failed.', issues: checked.issues }, 422);
     const updated = { ...candidate, metadata: { ...candidate.metadata, updatedAt: new Date().toISOString(), version: graph.metadata.version + 1 } };
