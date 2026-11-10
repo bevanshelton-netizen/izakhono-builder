@@ -19,8 +19,18 @@ The validator fails closed unless every manifest has:
 - `izakhono_private` runtime network
 - non-root `node` runtime user
 - IZAKHONO-owned, owned-first production policy
-- a software/runtime node target (`NODE01`–`NODE04`)
-- `live: false` before physical acceptance
+- a logical software/runtime target (`NODE01`–`NODE04`)
+- `live: false` until all independent production acceptance gates pass
 - mandatory immutable-image rollback identity
 
-The validator is repository-side evidence only. It does not claim that a physical node, public DNS, HTTPS, deployment or LIVE state exists.
+## NODE identity and execution infrastructure
+
+**NODE01–NODE04 are IZAKHONO software identities.** They are not physical machines, computers, servers, hostnames, or hardware assignments.
+
+The execution environment is separate infrastructure consumed by the software. It may be physical, virtual, containerized, or distributed, and can be replaced without changing the identity of the NODE software. A runtime binding identifies that separate execution environment; it does not define or rename the NODE software.
+
+## Evidence boundary
+
+Repository validation and CI prove source contracts only. They do not prove that the software runtime is executing, that an execution environment is bound, or that public DNS, HTTPS, deployment, acceptance, promotion, or LIVE status exists.
+
+Production acceptance must use independently collected evidence from the running software and its separately managed execution environment. Keep the immutable artifact identity available for rollback.
