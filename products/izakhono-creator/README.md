@@ -64,3 +64,67 @@ npx wrangler dev --config products/izakhono-creator/wrangler.jsonc
 ```
 
 The planner works without an AI provider. Provider generation requires the corresponding server-side credentials and explicit enablement.
+
+
+## CINEMATIC AI — ultimate production architecture
+
+The cinematic production programme extends Creator into a complete production operating system. Its canonical, provider-neutral project graph is implemented in:
+
+- `src/cinematic-production-graph.ts` — projects, character/location/prop bibles, scenes, shots, references, assets, tasks and approvals
+- `src/cinematic-production-graph.test.ts` — graph integrity, task readiness, evidence-gated completion and dependency-cycle tests
+- `CINEMATIC-AI-BLUEPRINT.md` — full product, architecture, commercial and phased delivery specification
+
+Specialist skills are registered for cinematic film direction, character continuity, commercial advertising and virtual production, alongside the existing music-video, social-pack and African-localization skills.
+
+### Production graph rules
+
+The Creator CI workflow typechecks the cinematic graph and brief compiler and runs their deterministic contract tests on pull requests.
+
+- Canonical project facts are separate from generated takes. A failed generation never rewrites the character or scene bible.
+- Shots and tasks use explicit dependencies. Cycles and broken references are validation errors.
+- A task cannot become completed without evidence; a submitted task must identify its provider.
+- Creative, generation, master and distribution approvals are explicit gates.
+- Projects are private by default. Planning or generation does not publish a project.
+- Assets carry provenance, parent relationships, content hashes and rights/consent metadata.
+- The graph is a domain contract; persistence, provider execution and user interface adapters must preserve it.
+
+### Current delivery boundary
+
+The graph contract and deterministic tests are committed on the cinematic foundation branch. This is not a claim that every production provider, GPU worker, 3D editor, audio model, timeline UI or proprietary foundation model is already operational. Those capabilities are delivered and verified in separate phases.
+
+
+## CINEMATIC API integration
+
+The cinematic production graph now persists inside the existing Creator project store. It does not create a second project, asset or render database.
+
+All routes below require the server-side `CREATOR_GENERATION_SECRET` via the `x-creator-generation-secret` header and an available Creator D1 binding. The secret must never be exposed in browser code.
+
+- `POST /api/cinematic/projects` — compile a brief, validate the graph and save it as a Creator project. Required body: `brief`, `ownerId`; optional: `id`, `title`, `format`, `audience`, `language`, `locale`, `targetRuntimeSeconds`, `aspectRatio`.
+- `GET /api/cinematic/projects` — list cinematic projects from the canonical Creator store.
+- `GET /api/cinematic/projects/:id` — retrieve the production graph, assumptions, next actions, runnable tasks and validation result.
+- `PATCH /api/cinematic/projects/:id` — save an edited graph after validation. Project ID and owner ID are immutable.
+- `POST /api/cinematic/projects/:id/approvals/:gate` — decide one pending creative, generation, master or distribution approval.
+- `PATCH /api/cinematic/projects/:id/tasks/:taskId` — advance a task with evidence required for completion and provider identity required for submission.
+
+The generation endpoint checks the generation approval gate for projects that contain a cinematic graph. Legacy Creator projects retain their existing workflow. A graph submission is not a completed generation: provider evidence, asset selection and render-worker evidence remain separate state transitions.
+
+### Security and deployment boundary
+
+Configure `CREATOR_GENERATION_SECRET` as a Worker secret before enabling the cinematic API. Do not put it in `studio.ts`, browser JavaScript, a public environment variable or source control. The existing Creator app's project APIs are legacy endpoints and should be placed behind the approved FORTRESS/identity gateway before multi-tenant production use. The cinematic API deliberately fails closed if the server secret or D1 storage is absent. CI now covers its fail-closed security boundary alongside graph, compiler and existing Creator workflow tests.
+
+
+### Owned Media Runtime Fabric integration
+
+The Creator Worker can submit compiled per-shot video-generation tasks to the existing owner-hosted Media Runtime Fabric. It does not create a second queue.
+
+Configure these Worker secrets/variables server-side:
+
+- `MEDIA_FABRIC_URL` — private-network or approved HTTPS base URL of the fabric broker
+- `MEDIA_FABRIC_KEY` — broker's internal key; never expose it to the browser
+
+Additional routes:
+
+- `POST /api/cinematic/projects/:id/tasks/:taskId/submit` — requires the generation approval gate and a base64 PNG/JPEG/WebP `sourceImage` keyframe; submits vertical 9:16 image-to-video work to the owned queue.
+- `GET /api/cinematic/projects/:id/tasks/:taskId/status` — polls the broker with the stored opaque job token and advances the task only from broker evidence.
+
+The broker schema supports `image`, `video`, `speech` and `transcription`, but the currently registered native worker advertises only `video` and `speech`, and implements video/speech execution. The cinematic adapter therefore enables video only, and the existing video runtime requires a supplied keyframe and 9:16 vertical aspect ratio. Image, audio generation and 3D remain gated until their workers and adapter contracts are registered. A broker-reported completion without artifact evidence is not marked complete. The polling token is stored only in the private Creator project record and is never returned by the API.
