@@ -51,20 +51,23 @@ export async function handleCinematicApi(request: Request, env: CinematicEnv): P
     if (!task) return response({ error: 'task not found.' }, 404);
     const base = env.MEDIA_FABRIC_URL.replace(/\/+$/, '');
     if (action === 'submit' && request.method === 'POST') {
-      if (!['image_generation', 'video_generation'].includes(task.kind)) return response({ error: 'The owned fabric currently supports image and video tasks only; audio and 3D require their registered worker capabilities.' }, 409);
+      if (task.kind !== 'video_generation') return response({ error: 'The currently registered owned worker supports video generation only. Image, audio and 3D workers are not yet registered.' }, 409);
       const generationApproval = graph.approvals.find(item => item.gate === 'generation');
       if (generationApproval?.status !== 'approved') return response({ error: 'generation approval is required before media submission.' }, 409);
       if (!['ready', 'approved', 'failed'].includes(task.status)) return response({ error: 'task is not in a submittable state.' }, 409);
       const shot = graph.shots.find(item => item.id === task.shotId);
       if (!shot) return response({ error: 'generation task must reference a valid shot.' }, 409);
-      const capability = task.kind === 'image_generation' ? 'image' : 'video';
+      const body = await parseBody(request);
+      if (shot.aspectRatio !== '9:16') return response({ error: 'The currently staged owned video runtime requires a 9:16 vertical shot.' }, 409);
+      if (typeof body?.sourceImage !== 'string' || body.sourceImage.length > 16000000 || !/^data:image\\/(png|jpeg|webp);base64,/.test(body.sourceImage)) return response({ error: 'A base64 PNG, JPEG or WebP sourceImage keyframe (maximum 16 MB) is required.' }, 400);
+      const capability = 'video';
       const prompt = shot.generationPrompt?.trim() || shot.action;
       const fabricPayload = {
         schema: 'izakhono.media.job.submit.v1',
         capability,
         payload: {
           schema: capability === 'video' ? 'izakhono.video.scene.v1' : 'izakhono.image.scene.v1',
-          project_id: id, shot_id: shot.id, prompt,
+          project_id: id, shot_id: shot.id, prompt, source_image: body.sourceImage,
           aspect_ratio: shot.aspectRatio, duration_seconds: shot.durationSeconds,
           continuity_locks: shot.continuityLocks,
           policy: { owned_first: true, no_tracking: true, originality_required: true },
