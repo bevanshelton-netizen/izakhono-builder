@@ -118,6 +118,7 @@ export interface ProductionTask {
   id: ProductionId;
   kind: 'script' | 'storyboard' | 'image_generation' | 'video_generation' | 'audio_generation' | '3d_generation' | 'edit' | 'composite' | 'render' | 'quality_check' | 'export';
   status: TaskStatus;
+  blockedReason?: 'dependencies' | 'approval' | 'policy' | 'capacity';
   dependsOnTaskIds: ProductionId[];
   inputAssetIds: ProductionId[];
   outputAssetIds: ProductionId[];
@@ -262,10 +263,14 @@ export function validateProductionGraph(project: CinematicProduction): GraphIssu
 
 export function getRunnableTasks(project: CinematicProduction): ProductionTask[] {
   const completed = new Set(project.tasks.filter(x => x.status === 'completed').map(x => x.id));
-  return project.tasks.filter(task =>
-    (task.status === 'ready' || task.status === 'approved') &&
-    task.dependsOnTaskIds.every(id => completed.has(id)),
-  );
+  return project.tasks
+    .filter(task => {
+      const dependenciesSatisfied = task.dependsOnTaskIds.every(id => completed.has(id));
+      const executableStatus = task.status === 'ready' || task.status === 'approved';
+      const dependencyBlockReleased = task.status === 'blocked' && task.blockedReason === 'dependencies';
+      return dependenciesSatisfied && (executableStatus || dependencyBlockReleased);
+    })
+    .map(task => task.status === 'blocked' ? { ...task, status: 'ready' as const, blockedReason: undefined } : task);
 }
 
 export function updateTaskWithEvidence(
