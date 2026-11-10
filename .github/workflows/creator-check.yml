@@ -20,4 +20,5 @@ jobs:
       - run: npx tsc --noEmit --skipLibCheck --target ES2022 --lib ES2022,DOM,DOM.Iterable --module ESNext --moduleResolution bundler products/izakhono-creator/src/index.ts products/izakhono-creator/src/cinematic-production-graph.ts products/izakhono-creator/src/cinematic-brief-compiler.ts products/izakhono-creator/src/cinematic-api.ts
       - run: npx --yes tsx@4.20.3 products/izakhono-creator/src/cinematic-production-graph.test.ts
       - run: npx --yes tsx@4.20.3 products/izakhono-creator/src/cinematic-brief-compiler.test.ts
+      - run: npx --yes tsx@4.20.3 products/izakhono-creator/src/cinematic-api.test.ts
       - run: npx --yes tsx@4.20.3 products/izakhono-creator/src/one-workflow.test.ts
