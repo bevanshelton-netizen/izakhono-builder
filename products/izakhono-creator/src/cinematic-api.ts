@@ -226,6 +226,10 @@ export async function handleCinematicApi(request: Request, env: CinematicEnv): P
     const approval = graph.approvals.find(item => item.gate === gate);
     if (!approval) return response({ error: 'approval gate missing from production.' }, 409);
     if (approval.status !== 'pending') return response({ error: 'approval has already been decided.' }, 409);
+    if (body.decision === 'approved' && gate === 'generation' && graph.approvals.find(item => item.gate === 'creative')?.status !== 'approved') return response({ error: 'creative approval must be completed before generation approval.' }, 409);
+    if (body.decision === 'approved' && gate === 'master' && graph.approvals.find(item => item.gate === 'generation')?.status !== 'approved') return response({ error: 'generation approval must be completed before master approval.' }, 409);
+    if (body.decision === 'approved' && gate === 'master' && graph.tasks.some(task => task.kind === 'video_generation' && task.status !== 'completed')) return response({ error: 'all planned video-generation tasks must be completed with worker evidence before master approval.' }, 409);
+    if (body.decision === 'approved' && gate === 'distribution' && graph.approvals.find(item => item.gate === 'master')?.status !== 'approved') return response({ error: 'master approval must be completed before distribution approval.' }, 409);
     const updated: CinematicProduction = {
       ...graph,
       approvals: graph.approvals.map(item => item.gate === gate ? {
@@ -245,6 +249,7 @@ export async function handleCinematicApi(request: Request, env: CinematicEnv): P
     if (!current) return response({ error: 'task not found.' }, 404);
     if (body.status === 'submitted' && typeof body.selectedProvider !== 'string') return response({ error: 'selectedProvider is required for submission.' }, 400);
     if (body.status === 'submitted' && ['image_generation', 'video_generation'].includes(current.kind)) return response({ error: 'Image and video generation tasks must be submitted through the owned Media Runtime Fabric route.' }, 409);
+    if (body.status === 'completed' && ['image_generation', 'video_generation', 'audio_generation', '3d_generation', 'render', 'export'].includes(current.kind)) return response({ error: 'Generation, render and export tasks can only be completed with evidence from their registered execution worker.' }, 409);
     try {
       const update: Pick<ProductionTask, 'status'> & { evidence?: string; selectedProvider?: string; errorCode?: string; errorMessage?: string } = {
         status: body.status as ProductionTask['status'],
