@@ -135,7 +135,7 @@ export async function handleCinematicApi(request: Request, env: CinematicEnv): P
       });
       updatedGraph = {
         ...taskUpdated,
-        assets: [...taskUpdated.assets, ...storedAssetIds.map((assetId, index) => {
+        assets: [...taskUpdated.assets.filter(asset => !storedAssetIds.includes(asset.id)), ...storedAssetIds.map((assetId, index) => {
           const asset = result.job!.artifacts![index];
           return {
             id: assetId, kind: 'video' as const, status: 'completed' as const, source: 'owned_model' as const,
@@ -145,8 +145,10 @@ export async function handleCinematicApi(request: Request, env: CinematicEnv): P
             provenance: { createdAt: new Date().toISOString(), consentRecordIds: [] },
           };
         })],
-        tasks: taskUpdated.tasks.map(item => item.id === taskId ? { ...item, outputAssetIds: [...item.outputAssetIds, ...storedAssetIds] } : item),
+        tasks: taskUpdated.tasks.map(item => item.id === taskId ? { ...item, outputAssetIds: [...new Set([...item.outputAssetIds, ...storedAssetIds])] } : item),
       };
+      const graphCheck = validate(updatedGraph);
+      if (!graphCheck.valid) return response({ error: 'Fabric result failed production graph validation.', issues: graphCheck.issues }, 422);
       await saveProject(env, { id, brief: updatedGraph.brief, packageData: { ...(project.packageData as Record<string, unknown>), cinematicProduction: updatedGraph } });
       return response({ status: 'polled', fabricStatus, task: updatedGraph.tasks.find(item => item.id === taskId), storedAssetIds, runnableTasks: getRunnableTasks(updatedGraph) });
     }
