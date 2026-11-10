@@ -8,6 +8,7 @@ import {
 export interface CinematicBriefInput {
   id: string;
   ownerId: string;
+  tenantId?: string;
   title?: string;
   brief: string;
   format?: CinematicProduction['format'];
@@ -200,6 +201,7 @@ export function compileCinematicBrief(input: CinematicBriefInput): CinematicBrie
     ],
     metadata: {
       createdAt, updatedAt: createdAt, ownerId: input.ownerId,
+      ...(input.tenantId ? { tenantId: input.tenantId } : {}),
       tags: ['cinematic-ai', format, 'draft'], version: 1,
     },
     publicLive: false,
