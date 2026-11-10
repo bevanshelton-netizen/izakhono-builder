@@ -46,7 +46,7 @@ async function verifyFortressSession(request: Request, env: FortressCreatorEnv):
   if (!claims.sub || claims.sub.length > 200 || !claims.tenant_id || claims.tenant_id.length > 200) return null;
   if (!claims.jti || claims.jti.length > 200 || !claims.active || !claims.role || !roles.has(claims.role)) return null;
   const now = Math.floor(Date.now() / 1000);
-  if (!Number.isInteger(claims.iat) || !Number.isInteger(claims.exp) || claims.exp! <= now || claims.iat! > now + 60 || claims.exp! - claims.iat! > 3600) return null;
+  if (!Number.isInteger(claims.iat) || !Number.isInteger(claims.exp) || claims.exp! <= now || claims.iat! > now + 60 || claims.exp! - claims.iat! > 900) return null;
   const key = await crypto.subtle.importKey('raw', encoder.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['verify']);
   const valid = await crypto.subtle.verify('HMAC', key, decodeBase64Url(parts[2]), encoder.encode(parts.slice(0, 2).join('.')));
   if (!valid) return null;
