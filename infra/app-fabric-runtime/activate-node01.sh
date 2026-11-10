@@ -2,7 +2,7 @@
 set -euo pipefail
 
 if [ "${EUID:-$(id -u)}" -ne 0 ]; then
-  echo '[STOP] Run as root on NODE01.'
+  echo '[STOP] Run with the required privileges in the approved execution environment used by NODE01 software.'
   exit 1
 fi
 
