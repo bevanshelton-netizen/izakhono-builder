@@ -25,6 +25,8 @@ jobs:
           node-version: '22'
       - name: Run cinematic production graph tests
         run: npx --yes tsx@4.20.3 products/izakhono-creator/src/cinematic-production-graph.test.ts
+      - name: Run cinematic brief compiler tests
+        run: npx --yes tsx@4.20.3 products/izakhono-creator/src/cinematic-brief-compiler.test.ts
       - name: Run existing one-workflow tests
         run: npx --yes tsx@4.20.3 products/izakhono-creator/src/one-workflow.test.ts
       - name: Secret hygiene
