@@ -59,7 +59,7 @@ export async function handleCinematicApi(request: Request, env: CinematicEnv): P
       if (!shot) return response({ error: 'generation task must reference a valid shot.' }, 409);
       const body = await parseBody(request);
       if (shot.aspectRatio !== '9:16') return response({ error: 'The currently staged owned video runtime requires a 9:16 vertical shot.' }, 409);
-      if (typeof body?.sourceImage !== 'string' || body.sourceImage.length > 16000000 || !/^data:image\\/(png|jpeg|webp);base64,/.test(body.sourceImage)) return response({ error: 'A base64 PNG, JPEG or WebP sourceImage keyframe (maximum 16 MB) is required.' }, 400);
+      if (typeof body?.sourceImage !== 'string' || body.sourceImage.length > 16000000 || !['data:image/png;base64,', 'data:image/jpeg;base64,', 'data:image/webp;base64,'].some(prefix => body.sourceImage.startsWith(prefix))) return response({ error: 'A base64 PNG, JPEG or WebP sourceImage keyframe (maximum 16 MB) is required.' }, 400);
       const capability = 'video';
       const prompt = shot.generationPrompt?.trim() || shot.action;
       const fabricPayload = {
