@@ -56,7 +56,7 @@ npx wrangler deploy --config products/izakhono-creator/wrangler.jsonc
 3. Read the returned project and verify the graph, private-by-default state, provisional assumptions and approval gates.
 4. Complete script, storyboard and quality-check tasks only with evidence.
 5. Approve the generation gate using the trusted approver identity.
-6. Submit a per-shot image task through `POST /api/cinematic/projects/:id/tasks/:taskId/submit`.
+6. Supply an approved PNG/JPEG/WebP keyframe and submit a per-shot vertical 9:16 video task through `POST /api/cinematic/projects/:id/tasks/:taskId/submit`.
 7. Poll through the status route until the broker reports a terminal state.
 8. Confirm that the task is marked complete only when artifact metadata and SHA-256 evidence are present.
 9. Connect the returned artifact into Creator's asset vault and review/select it.
