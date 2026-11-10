@@ -1,5 +1,5 @@
-import { createProvisionerJob, markValidated, startJob, recordEvidence, verifyLive, type Blueprint, type Capability, type ProvisionerJob } from './provisioner-runtime';
-import { advance, assertPublicActivation, createControlPlaneRecord, fail, type ControlPlaneRecord } from './provisioning-control-plane';
+import { createProvisionerJob, markValidated, startJob, recordEvidence, verifyLive, type Blueprint, type Capability, type ProvisionerJob } from './provisioner-runtime.js';
+import { advance, assertPublicActivation, createControlPlaneRecord, fail, type ControlPlaneRecord } from './provisioning-control-plane.js';
 
 /** Values loaded by the trusted server-side payment repository after provider verification. */
 export interface VerifiedOrderPayment {
