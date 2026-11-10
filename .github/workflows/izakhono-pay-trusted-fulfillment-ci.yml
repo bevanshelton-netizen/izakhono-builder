@@ -1,0 +1,42 @@
+name: IZAKHONO PAY Trusted Fulfillment CI
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'products/izakhono-business-studio/**'
+      - 'products/izakhono-super-engine/**'
+      - 'products/izakhono-pay/**'
+      - '.github/workflows/izakhono-pay-trusted-fulfillment-ci.yml'
+  push:
+    branches: [security/izakhono-pay-trusted-fulfillment]
+    paths:
+      - 'products/izakhono-business-studio/**'
+      - 'products/izakhono-super-engine/**'
+      - 'products/izakhono-pay/**'
+      - '.github/workflows/izakhono-pay-trusted-fulfillment-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  payment-and-provisioning:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install repository toolchain
+        run: npm install --ignore-scripts --no-audit --no-fund
+      - name: Test payment engine
+        run: npm run super-engine:payment:test
+      - name: Typecheck payment engine
+        run: npm run super-engine:payment:typecheck
+      - name: Test trusted payment provisioning gate
+        run: npm run business-studio:order-provisioning:test
+      - name: Test provisioner runtime contract
+        run: npm run business-studio:provisioner:test
+      - name: Test IZAKHONO PAY isolated product
+        working-directory: products/izakhono-pay
+        run: npm run check
