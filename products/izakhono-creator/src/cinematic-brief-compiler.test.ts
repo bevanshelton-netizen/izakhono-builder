@@ -10,9 +10,9 @@ const advert = compileCinematicBrief({
 if (advert.production.format !== 'advert') throw new Error('Advert format inference failed');
 if (advert.production.scenes.length !== 5) throw new Error('Advert scene outline is incomplete');
 if (advert.production.shots.length !== 15) throw new Error('Expected three editable coverage shots per scene');
-const imageTasks = advert.production.tasks.filter(task => task.kind === 'image_generation');
-if (imageTasks.length !== advert.production.shots.length) throw new Error('Every shot should receive a blocked, reviewable image-generation task.');
-if (imageTasks.some(task => !task.shotId || task.status !== 'blocked' || task.providerPreference?.[0] !== 'izakhono-media-runtime-fabric')) throw new Error('Shot generation tasks must be linked to shots and prefer the owned media fabric.');
+const imageTasks = advert.production.tasks.filter(task => task.kind === 'video_generation');
+if (imageTasks.length !== advert.production.shots.length) throw new Error('Every shot should receive a blocked, reviewable image-to-video task.');
+if (imageTasks.some(task => !task.shotId || task.status !== 'blocked' || task.providerPreference?.[0] !== 'izakhono-media-runtime-fabric')) throw new Error('Shot video tasks must be linked to shots and prefer the owned media fabric.');
 if (advert.production.publicLive !== false) throw new Error('Production must be private by default');
 if (validateProductionGraph(advert.production).some(x => x.severity === 'error')) throw new Error('Compiled advert graph is invalid');
 
