@@ -4,8 +4,6 @@ import { activateSkill } from './skill-instructions';
 import { compileProduction } from './production-compiler';
 import { compileMasterFactory } from './master-factory';
 import { planRenderJobs } from './render-engine';
-import { studioHtml } from './studio';
-import { vaultUiScript } from './vault-ui';
 import { handleCinematicApi } from './cinematic-api';
 import { handleFortressCinematicGateway, type FortressCreatorEnv } from './fortress-cinematic-gateway';
 import { cinematicStudioHtml } from './cinematic-studio';
