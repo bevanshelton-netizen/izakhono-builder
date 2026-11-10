@@ -37,7 +37,7 @@ export async function handleCinematicApi(request: Request, env: CinematicEnv): P
   if (!authenticated(request, env)) return response({ error: 'Cinematic API requires configured server-side CREATOR_GENERATION_SECRET authentication.' }, env.CREATOR_GENERATION_SECRET ? 401 : 503);
   if (!env.DB) return response({ error: 'Creator D1 storage is not configured.' }, 503);
 
-  const fabricRoute = url.pathname.match(/^\\/api\\/cinematic\\/projects\\/([^/]+)\\/tasks\\/([^/]+)\\/(submit|status)$/);
+  const fabricRoute = url.pathname.match(/^\/api\/cinematic\/projects\/([^/]+)\/tasks\/([^/]+)\/(submit|status)$/);
   if (fabricRoute) {
     const [, rawProjectId, rawTaskId, action] = fabricRoute;
     const id = decodeURIComponent(rawProjectId);
@@ -49,7 +49,7 @@ export async function handleCinematicApi(request: Request, env: CinematicEnv): P
     if (!env.MEDIA_FABRIC_URL || !env.MEDIA_FABRIC_KEY) return response({ error: 'Owned Media Runtime Fabric is not configured on this Creator Worker.' }, 503);
     const task = graph.tasks.find(item => item.id === taskId);
     if (!task) return response({ error: 'task not found.' }, 404);
-    const base = env.MEDIA_FABRIC_URL.replace(/\\/+$/, '');
+    const base = env.MEDIA_FABRIC_URL.replace(/\/+$/, '');
     if (action === 'submit' && request.method === 'POST') {
       if (!['image_generation', 'video_generation'].includes(task.kind)) return response({ error: 'The owned fabric currently supports image and video tasks only; audio and 3D require their registered worker capabilities.' }, 409);
       const generationApproval = graph.approvals.find(item => item.gate === 'generation');
