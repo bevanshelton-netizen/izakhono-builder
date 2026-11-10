@@ -166,6 +166,7 @@ export interface CinematicProduction {
     createdAt: string;
     updatedAt: string;
     ownerId: string;
+    tenantId?: string;
     tags: string[];
     version: number;
   };
