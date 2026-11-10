@@ -14,7 +14,7 @@ const project: CinematicProduction = {
   references: [], assets: [],
   tasks: [
     { id: 't1', kind: 'storyboard', status: 'ready', dependsOnTaskIds: [], inputAssetIds: [], outputAssetIds: [], attempts: 0 },
-    { id: 't2', kind: 'video_generation', status: 'blocked', dependsOnTaskIds: ['t1'], inputAssetIds: [], outputAssetIds: [], shotId: 'sh1', attempts: 0 },
+    { id: 't2', kind: 'video_generation', status: 'blocked', blockedReason: 'dependencies', dependsOnTaskIds: ['t1'], inputAssetIds: [], outputAssetIds: [], shotId: 'sh1', attempts: 0 },
   ],
   approvals: [
     { id: 'a1', gate: 'creative', status: 'pending' }, { id: 'a2', gate: 'generation', status: 'pending' },
