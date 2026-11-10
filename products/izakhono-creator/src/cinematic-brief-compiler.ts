@@ -124,7 +124,7 @@ export function compileCinematicBrief(input: CinematicBriefInput): CinematicBrie
   for (const scene of scenes) {
     const sceneShots: Array<Pick<Shot, 'purpose' | 'action' | 'shotSize' | 'cameraMove' | 'lensIntent'>> = [
       { purpose: 'Establish the scene', action: 'Introduce the scene subject and geography; final action to be specified by director.', shotSize: 'wide', cameraMove: 'static', lensIntent: 'Establishing perspective' },
-      { purpose: 'Capture the key beat', action: 'Cover the scene's principal action or message; exact performance to be directed.', shotSize: 'medium', cameraMove: 'tracking', lensIntent: 'Natural perspective' },
+      { purpose: 'Capture the key beat', action: "Cover the scene's principal action or message; exact performance to be directed.", shotSize: 'medium', cameraMove: 'tracking', lensIntent: 'Natural perspective' },
       { purpose: 'Capture detail and edit point', action: 'Capture a meaningful detail, reaction or transition point.', shotSize: 'close_up', cameraMove: 'dolly', lensIntent: 'Selective focus' },
     ];
     sceneShots.forEach((spec, index) => {
