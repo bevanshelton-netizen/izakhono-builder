@@ -4,7 +4,7 @@ import { handleFortressCinematicGateway } from './fortress-cinematic-gateway';
 const secret = 'fortress-test-session-secret-at-least-32-bytes';
 const csrf = '0123456789abcdef0123456789abcdef0123456789abcdef';
 const encoder = new TextEncoder();
-function b64(value: string) { return btoa(value).replace(/=/g, '').replace(/\\+/g, '-').replace(/\\//g, '_'); }
+function b64(value: string) { return btoa(value).split('=').join('').split('+').join('-').split('/').join('_'); }
 async function token(role: 'OWNER' | 'VIEWER' = 'OWNER', tenantId = 'tenant-a') {
   const header = b64(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
   const now = Math.floor(Date.now() / 1000);
