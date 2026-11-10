@@ -125,6 +125,8 @@ export interface ProductionTask {
   shotId?: ProductionId;
   providerPreference?: string[];
   selectedProvider?: string;
+  externalJobId?: string;
+  pollingToken?: string;
   attempts: number;
   errorCode?: string;
   errorMessage?: string;
@@ -276,7 +278,7 @@ export function getRunnableTasks(project: CinematicProduction): ProductionTask[]
 export function updateTaskWithEvidence(
   project: CinematicProduction,
   taskId: string,
-  update: Pick<ProductionTask, 'status'> & { evidence?: string; selectedProvider?: string; errorCode?: string; errorMessage?: string },
+  update: Pick<ProductionTask, 'status'> & { evidence?: string; selectedProvider?: string; externalJobId?: string; pollingToken?: string; errorCode?: string; errorMessage?: string },
 ): CinematicProduction {
   const task = project.tasks.find(x => x.id === taskId);
   if (!task) throw new Error(`Unknown task: ${taskId}`);
