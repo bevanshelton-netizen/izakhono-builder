@@ -115,7 +115,7 @@ Configure `CREATOR_GENERATION_SECRET` as a Worker secret before enabling the cin
 
 ### Owned Media Runtime Fabric integration
 
-The Creator Worker can submit compiled per-shot image tasks and video-generation tasks to the existing owner-hosted Media Runtime Fabric. It does not create a second queue.
+The Creator Worker can submit compiled per-shot video-generation tasks to the existing owner-hosted Media Runtime Fabric. It does not create a second queue.
 
 Configure these Worker secrets/variables server-side:
 
@@ -124,7 +124,7 @@ Configure these Worker secrets/variables server-side:
 
 Additional routes:
 
-- `POST /api/cinematic/projects/:id/tasks/:taskId/submit` — requires the generation approval gate and submits supported image/video work to the owned queue.
+- `POST /api/cinematic/projects/:id/tasks/:taskId/submit` — requires the generation approval gate and a base64 PNG/JPEG/WebP `sourceImage` keyframe; submits vertical 9:16 image-to-video work to the owned queue.
 - `GET /api/cinematic/projects/:id/tasks/:taskId/status` — polls the broker with the stored opaque job token and advances the task only from broker evidence.
 
-The current broker supports `image`, `video`, `speech` and `transcription`; the cinematic adapter currently enables image/video task submission. Audio/speech and 3D remain gated until their worker capabilities and adapter contracts are registered. A broker-reported completion without artifact evidence is not marked complete. The polling token is stored only in the private Creator project record and is never returned by the API.
+The broker schema supports `image`, `video`, `speech` and `transcription`, but the currently registered native worker advertises only `video` and `speech`, and implements video/speech execution. The cinematic adapter therefore enables video only, and the existing video runtime requires a supplied keyframe and 9:16 vertical aspect ratio. Image, audio generation and 3D remain gated until their workers and adapter contracts are registered. A broker-reported completion without artifact evidence is not marked complete. The polling token is stored only in the private Creator project record and is never returned by the API.
