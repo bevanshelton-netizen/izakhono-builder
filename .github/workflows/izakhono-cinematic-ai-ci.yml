@@ -27,6 +27,8 @@ jobs:
         run: npx --yes tsx@4.20.3 products/izakhono-creator/src/cinematic-production-graph.test.ts
       - name: Run cinematic brief compiler tests
         run: npx --yes tsx@4.20.3 products/izakhono-creator/src/cinematic-brief-compiler.test.ts
+      - name: Run FORTRESS cinematic gateway tests
+        run: npx --yes tsx@4.20.3 products/izakhono-creator/src/fortress-cinematic-gateway.test.ts
       - name: Run existing one-workflow tests
         run: npx --yes tsx@4.20.3 products/izakhono-creator/src/one-workflow.test.ts
       - name: Secret hygiene

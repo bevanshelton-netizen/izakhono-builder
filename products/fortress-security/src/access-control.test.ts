@@ -8,5 +8,8 @@ assert.doesNotThrow(() => authorize(analyst, 'tenant-a', 'scan:run'));
 assert.throws(() => authorize(viewer, 'tenant-a', 'scan:run'), /lacks scan:run/);
 assert.throws(() => authorize(analyst, 'tenant-b', 'finding:read'), /cross-tenant/);
 assert.throws(() => authorize({ ...analyst, active: false }, 'tenant-a', 'finding:read'), /inactive/);
+assert.doesNotThrow(() => authorize(analyst, 'tenant-a', 'creator:generate'));
+assert.throws(() => authorize(viewer, 'tenant-a', 'creator:write'), /lacks creator:write/);
+assert.throws(() => authorize(analyst, 'tenant-b', 'creator:read'), /cross-tenant/);
 
 console.log('FORTRESS access-control tests: PASS');

@@ -128,3 +128,18 @@ Additional routes:
 - `GET /api/cinematic/projects/:id/tasks/:taskId/status` — polls the broker with the stored opaque job token and advances the task only from broker evidence.
 
 The broker schema supports `image`, `video`, `speech` and `transcription`, but the currently registered native worker advertises only `video` and `speech`, and implements video/speech execution. The cinematic adapter therefore enables video only, and the existing video runtime requires a supplied keyframe and 9:16 vertical aspect ratio. Image, audio generation and 3D remain gated until their workers and adapter contracts are registered. A broker-reported completion without artifact evidence is not marked complete. The polling token is stored only in the private Creator project record and is never returned by the API.
+
+
+## FORTRESS-authenticated Cinematic Studio
+
+The primary studio UI is served at `/` and `/cinematic`. Browser API access is routed through `fortress-cinematic-gateway.ts`; the browser never receives `CREATOR_GENERATION_SECRET` or the Media Fabric key.
+
+The gateway verifies an HS256 FORTRESS access token, applies the shared FORTRESS role/tenant permission functions, derives owner and tenant identity from signed claims, and enforces CSRF protection for cookie-authenticated mutations. New production graphs carry the verified tenant ID. Project list/read/write/approval/generation operations are tenant-scoped.
+
+Configure the Creator Worker secrets/variables described in `FORTRESS-SESSION-CONTRACT.md`. The FORTRESS issuer must set the secure `__Host-izakhono_session` and `__Host-izakhono_csrf` cookies. The current in-memory IZAKHONO Identity prototype is not a production login issuer; the Creator UI deliberately reports sign-in unavailable until the central FORTRESS login/session service is deployed and verified.
+
+The legacy project, asset, render and generation APIs now fail closed unless a server-side Creator service credential is configured and supplied by a trusted service. The new browser UI uses only the FORTRESS-gated `/api/cinematic/*` routes.
+
+The Creator Check workflow also executes the FORTRESS Creator role-permission regression suite.
+
+The FORTRESS access-control test file is maintained with the shared FORTRESS security module and executed by Creator CI.

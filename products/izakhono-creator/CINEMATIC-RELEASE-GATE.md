@@ -21,7 +21,7 @@ Never place these values in browser code, public environment variables, Git, log
 
 ## 2. Identity and tenant boundary
 
-The cinematic API is service-to-service only. A trusted FORTRESS identity gateway must authenticate the human user, enforce tenant membership, derive the owner ID, and call the Worker with the server credential. Do not expose the shared Worker secret to a browser or mobile client. Before multi-tenant production, ensure project reads, writes, approvals, assets and job polling are scoped to the authenticated tenant at the gateway and storage layer.
+The browser-facing Cinematic Studio now verifies FORTRESS-signed HS256 access tokens, applies role permissions, derives owner/tenant identity from signed claims and requires CSRF protection for cookie-authenticated mutations. The central FORTRESS login/session issuer remains a separate release dependency; the in-memory Identity prototype is not a production issuer. Do not expose the shared Creator service secret to a browser or mobile client. Before multi-tenant production, deploy and test the issuer, session revocation/refresh, secure cookies and tenant-scoped asset delivery.
 
 The legacy Creator endpoints predate this API and need the same identity-gateway review before external multi-tenant use.
 
