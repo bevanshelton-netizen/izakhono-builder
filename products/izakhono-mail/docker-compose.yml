@@ -72,6 +72,9 @@ services:
     build: .
     restart: unless-stopped
     command: ["node", "src/auth-api.mjs"]
+    env_file:
+      - path: ./owner.env
+        required: false
     environment:
       MAIL_DATABASE_PATH: /app/data/mail.sqlite
       MAIL_AUTH_LISTEN_HOST: 0.0.0.0
