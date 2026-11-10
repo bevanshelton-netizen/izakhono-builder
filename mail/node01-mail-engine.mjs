@@ -18,7 +18,7 @@ function plan(identity) {
     dns: [
       { type: 'MX', name: domain, value: `10 ${MAIL_HOST}.` },
       { type: 'TXT', name: domain, value: 'v=spf1 mx -all' },
-      { type: 'TXT', name: `_dmarc.${domain}`, value: 'v=DMARC1; p=quarantine; rua=mailto:dmarc@${domain}' },
+      { type: 'TXT', name: `_dmarc.${domain}`, value: `v=DMARC1; p=quarantine; rua=mailto:dmarc@${domain}` },
       { type: 'TXT', name: `${DKIM_SELECTOR}._domainkey.${domain}`, value: '<GENERATED_DKIM_PUBLIC_KEY>' }
     ],
     ingress: {
