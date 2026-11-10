@@ -1,0 +1,33 @@
+name: IZAKHONO Cinematic AI CI
+
+on:
+  pull_request:
+    paths:
+      - 'products/izakhono-creator/**'
+      - '.github/workflows/izakhono-cinematic-ai-ci.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'products/izakhono-creator/**'
+      - '.github/workflows/izakhono-cinematic-ai-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  production-graph:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run cinematic production graph tests
+        run: npx --yes tsx@4.20.3 products/izakhono-creator/src/cinematic-production-graph.test.ts
+      - name: Run existing one-workflow tests
+        run: npx --yes tsx@4.20.3 products/izakhono-creator/src/one-workflow.test.ts
+      - name: Secret hygiene
+        run: |
+          set -euo pipefail
+          ! grep -R --line-number -E '(RUNWAY_API_KEY|KLING_API_KEY|LUMA_API_KEY)=[A-Za-z0-9_-]{16,}' products/izakhono-creator
