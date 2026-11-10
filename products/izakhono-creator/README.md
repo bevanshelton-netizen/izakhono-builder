@@ -141,3 +141,5 @@ Configure the Creator Worker secrets/variables described in `FORTRESS-SESSION-CO
 The legacy project, asset, render and generation APIs now fail closed unless a server-side Creator service credential is configured and supplied by a trusted service. The new browser UI uses only the FORTRESS-gated `/api/cinematic/*` routes.
 
 The Creator Check workflow also executes the FORTRESS Creator role-permission regression suite.
+
+The FORTRESS access-control test file is maintained with the shared FORTRESS security module and executed by Creator CI.
