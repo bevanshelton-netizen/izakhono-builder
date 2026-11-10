@@ -91,3 +91,23 @@ The Creator CI workflow typechecks the cinematic graph and brief compiler and ru
 ### Current delivery boundary
 
 The graph contract and deterministic tests are committed on the cinematic foundation branch. This is not a claim that every production provider, GPU worker, 3D editor, audio model, timeline UI or proprietary foundation model is already operational. Those capabilities are delivered and verified in separate phases.
+
+
+## CINEMATIC API integration
+
+The cinematic production graph now persists inside the existing Creator project store. It does not create a second project, asset or render database.
+
+All routes below require the server-side `CREATOR_GENERATION_SECRET` via the `x-creator-generation-secret` header and an available Creator D1 binding. The secret must never be exposed in browser code.
+
+- `POST /api/cinematic/projects` — compile a brief, validate the graph and save it as a Creator project. Required body: `brief`, `ownerId`; optional: `id`, `title`, `format`, `audience`, `language`, `locale`, `targetRuntimeSeconds`, `aspectRatio`.
+- `GET /api/cinematic/projects` — list cinematic projects from the canonical Creator store.
+- `GET /api/cinematic/projects/:id` — retrieve the production graph, assumptions, next actions, runnable tasks and validation result.
+- `PATCH /api/cinematic/projects/:id` — save an edited graph after validation. Project ID and owner ID are immutable.
+- `POST /api/cinematic/projects/:id/approvals/:gate` — decide one pending creative, generation, master or distribution approval.
+- `PATCH /api/cinematic/projects/:id/tasks/:taskId` — advance a task with evidence required for completion and provider identity required for submission.
+
+The generation endpoint checks the generation approval gate for projects that contain a cinematic graph. Legacy Creator projects retain their existing workflow. A graph submission is not a completed generation: provider evidence, asset selection and render-worker evidence remain separate state transitions.
+
+### Security and deployment boundary
+
+Configure `CREATOR_GENERATION_SECRET` as a Worker secret before enabling the cinematic API. Do not put it in `studio.ts`, browser JavaScript, a public environment variable or source control. The existing Creator app's project APIs are legacy endpoints and should be placed behind the approved FORTRESS/identity gateway before multi-tenant production use. The cinematic API deliberately fails closed if the server secret or D1 storage is absent.
