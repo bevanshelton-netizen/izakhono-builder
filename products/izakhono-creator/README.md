@@ -64,3 +64,28 @@ npx wrangler dev --config products/izakhono-creator/wrangler.jsonc
 ```
 
 The planner works without an AI provider. Provider generation requires the corresponding server-side credentials and explicit enablement.
+
+
+## CINEMATIC AI — ultimate production architecture
+
+The cinematic production programme extends Creator into a complete production operating system. Its canonical, provider-neutral project graph is implemented in:
+
+- `src/cinematic-production-graph.ts` — projects, character/location/prop bibles, scenes, shots, references, assets, tasks and approvals
+- `src/cinematic-production-graph.test.ts` — graph integrity, task readiness, evidence-gated completion and dependency-cycle tests
+- `CINEMATIC-AI-BLUEPRINT.md` — full product, architecture, commercial and phased delivery specification
+
+Specialist skills are registered for cinematic film direction, character continuity, commercial advertising and virtual production, alongside the existing music-video, social-pack and African-localization skills.
+
+### Production graph rules
+
+- Canonical project facts are separate from generated takes. A failed generation never rewrites the character or scene bible.
+- Shots and tasks use explicit dependencies. Cycles and broken references are validation errors.
+- A task cannot become completed without evidence; a submitted task must identify its provider.
+- Creative, generation, master and distribution approvals are explicit gates.
+- Projects are private by default. Planning or generation does not publish a project.
+- Assets carry provenance, parent relationships, content hashes and rights/consent metadata.
+- The graph is a domain contract; persistence, provider execution and user interface adapters must preserve it.
+
+### Current delivery boundary
+
+The graph contract and deterministic tests are committed on the cinematic foundation branch. This is not a claim that every production provider, GPU worker, 3D editor, audio model, timeline UI or proprietary foundation model is already operational. Those capabilities are delivered and verified in separate phases.
