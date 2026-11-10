@@ -7,7 +7,7 @@ import {
   type CinematicProduction,
   type ProductionTask,
 } from './cinematic-production-graph';
-import { getProject, listProjects, saveProject, type CreatorStorageEnv } from './project-store';
+import { getProject, listProjects, saveAsset, saveProject, type CreatorStorageEnv } from './project-store';
 
 type CinematicEnv = CreatorStorageEnv & { CREATOR_GENERATION_SECRET?: string; MEDIA_FABRIC_URL?: string; MEDIA_FABRIC_KEY?: string };
 const response = (body: unknown, status = 200) => new Response(JSON.stringify(body), {
@@ -95,22 +95,60 @@ export async function handleCinematicApi(request: Request, env: CinematicEnv): P
       const upstream = await fetch(`${base}/api/v1/jobs/${encodeURIComponent(task.externalJobId)}`, {
         headers: { 'x-izakhono-media-fabric-key': env.MEDIA_FABRIC_KEY, 'x-izakhono-job-token': task.pollingToken },
       });
-      const result = await upstream.json().catch(() => ({})) as { ok?: boolean; job?: { status?: string; artifacts?: Array<{ id?: string; name?: string; sha256?: string; bytes?: number; url?: string }>; last_error?: string } };
+      const result = await upstream.json().catch(() => ({})) as { ok?: boolean; job?: { status?: string; artifacts?: Array<{ id?: string; name?: string; mime?: string; sha256?: string; bytes?: number; url?: string }>; last_error?: string } };
       if (!upstream.ok || !result.job) return response({ error: 'Owned media job polling failed.', upstreamStatus: upstream.status }, 502);
       const fabricStatus = result.job.status || 'queued';
       let nextStatus: ProductionTask['status'] = fabricStatus === 'running' ? 'processing' : fabricStatus === 'failed' ? 'failed' : 'submitted';
       let evidence: string | undefined;
+      let storedAssetIds: string[] = [];
+      let updatedGraph = graph;
       if (fabricStatus === 'complete') {
         if (!result.job.artifacts?.length) return response({ status: 'complete_without_artifact', taskId, jobId: task.externalJobId, warning: 'Fabric reports completion but has not attached artifact evidence. The task remains submitted until an artifact is available.' }, 409);
+        if (!env.ASSETS) return response({ error: 'Creator R2 asset storage is required before a fabric result can be marked complete.' }, 503);
+        const shotIndex = graph.shots.findIndex(item => item.id === task.shotId);
+        const storedEvidence = [];
+        for (const artifact of result.job.artifacts) {
+          if (!artifact.id || !artifact.url || !artifact.sha256 || !artifact.name) return response({ error: 'Fabric artifact evidence is incomplete.' }, 502);
+          const artifactUrl = new URL(artifact.url);
+          if (artifactUrl.origin !== new URL(base).origin || !artifactUrl.pathname.startsWith(`/assets/${task.externalJobId}/`)) return response({ error: 'Fabric returned an artifact outside the approved broker origin.' }, 502);
+          const media = await fetch(artifactUrl.toString(), { headers: { 'x-izakhono-media-fabric-key': env.MEDIA_FABRIC_KEY } });
+          if (!media.ok || !media.body) return response({ error: 'Could not retrieve the verified fabric artifact.' }, 502);
+          const assetId = `fabric_${task.id}_${artifact.id}`;
+          const objectKey = `projects/${encodeURIComponent(id)}/assets/${encodeURIComponent(assetId)}`;
+          const contentType = artifact.mime || media.headers.get('content-type') || 'video/mp4';
+          await env.ASSETS.put(objectKey, media.body, { httpMetadata: { contentType } });
+          await saveAsset(env, {
+            id: assetId, projectId: id, shotIndex: shotIndex >= 0 ? shotIndex : undefined,
+            kind: 'video', status: 'completed', provider: 'izakhono-media-runtime-fabric',
+            externalId: task.externalJobId, objectKey, url: `/api/assets/${encodeURIComponent(assetId)}/content`,
+            metadata: { fabricJobId: task.externalJobId, sha256: artifact.sha256, bytes: artifact.bytes, contentType, selected: false, source: 'owned_fabric' },
+          });
+          storedAssetIds.push(assetId);
+          storedEvidence.push({ id: artifact.id, name: artifact.name, sha256: artifact.sha256, bytes: artifact.bytes, creatorAssetId: assetId });
+        }
         nextStatus = 'completed';
-        evidence = JSON.stringify({ fabricJobId: task.externalJobId, artifacts: result.job.artifacts.map(asset => ({ id: asset.id, name: asset.name, sha256: asset.sha256, bytes: asset.bytes, url: asset.url })) });
+        evidence = JSON.stringify({ fabricJobId: task.externalJobId, artifacts: storedEvidence });
       }
-      const updated = updateTaskWithEvidence(graph, task.id, {
+      const taskUpdated = updateTaskWithEvidence(graph, task.id, {
         status: nextStatus, ...(evidence ? { evidence } : {}),
         ...(fabricStatus === 'failed' ? { errorCode: 'MEDIA_FABRIC_FAILED', errorMessage: 'Owned media worker reported failure.' } : {}),
       });
-      await saveProject(env, { id, brief: updated.brief, packageData: { ...(project.packageData as Record<string, unknown>), cinematicProduction: updated } });
-      return response({ status: 'polled', fabricStatus, task: updated.tasks.find(item => item.id === taskId), runnableTasks: getRunnableTasks(updated) });
+      updatedGraph = {
+        ...taskUpdated,
+        assets: [...taskUpdated.assets, ...storedAssetIds.map((assetId, index) => {
+          const asset = result.job!.artifacts![index];
+          return {
+            id: assetId, kind: 'video' as const, status: 'completed' as const, source: 'owned_model' as const,
+            storageKey: `projects/${encodeURIComponent(id)}/assets/${encodeURIComponent(assetId)}`,
+            contentHash: asset.sha256, mimeType: asset.mime || 'video/mp4', provider: 'izakhono-media-runtime-fabric',
+            externalJobId: task.externalJobId!, parentAssetIds: [],
+            provenance: { createdAt: new Date().toISOString(), consentRecordIds: [] },
+          };
+        })],
+        tasks: taskUpdated.tasks.map(item => item.id === taskId ? { ...item, outputAssetIds: [...item.outputAssetIds, ...storedAssetIds] } : item),
+      };
+      await saveProject(env, { id, brief: updatedGraph.brief, packageData: { ...(project.packageData as Record<string, unknown>), cinematicProduction: updatedGraph } });
+      return response({ status: 'polled', fabricStatus, task: updatedGraph.tasks.find(item => item.id === taskId), storedAssetIds, runnableTasks: getRunnableTasks(updatedGraph) });
     }
     return response({ error: 'Method not allowed.' }, 405);
   }
