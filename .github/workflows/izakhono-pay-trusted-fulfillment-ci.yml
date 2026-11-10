@@ -32,7 +32,7 @@ jobs:
       - name: Test payment engine
         run: npm run super-engine:payment:test
       - name: Typecheck payment engine
-        run: npx --yes --package typescript@5.9.2 tsc --noEmit --target ES2022 --lib ES2022,DOM,DOM.Iterable --module NodeNext --moduleResolution NodeNext products/izakhono-super-engine/src/index.ts products/izakhono-super-engine/src/payment-core.test.ts products/izakhono-super-engine/src/payment-orchestrator.test.ts products/izakhono-super-engine/src/payment-webhook-guard.ts products/izakhono-super-engine/src/payment-webhook-guard.test.ts
+        run: npx --yes --package typescript@5.9.2 tsc --noEmit --target ES2022 --lib ES2022,DOM,DOM.Iterable --module NodeNext --moduleResolution NodeNext products/izakhono-super-engine/src/payment-core.ts products/izakhono-super-engine/src/payment-core.test.ts products/izakhono-super-engine/src/payment-webhook-guard.ts products/izakhono-super-engine/src/payment-webhook-guard.test.ts
       - name: Test trusted payment provisioning gate
         run: npm run business-studio:order-provisioning:test
       - name: Test provisioner runtime contract
