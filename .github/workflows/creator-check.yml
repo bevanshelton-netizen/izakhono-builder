@@ -22,5 +22,6 @@ jobs:
       - run: npx --yes tsx@4.20.3 products/izakhono-creator/src/cinematic-brief-compiler.test.ts
       - run: npx --yes tsx@4.20.3 products/izakhono-creator/src/cinematic-api.test.ts
       - run: npx --yes tsx@4.20.3 products/izakhono-creator/src/fortress-cinematic-gateway.test.ts
+      - run: npx --yes tsx@4.20.3 products/izakhono-creator/src/cinematic-studio.test.ts
       - run: npx --yes tsx@4.20.3 products/fortress-security/src/access-control.test.ts
       - run: npx --yes tsx@4.20.3 products/izakhono-creator/src/one-workflow.test.ts
