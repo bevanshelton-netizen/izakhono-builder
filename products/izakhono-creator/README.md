@@ -111,3 +111,20 @@ The generation endpoint checks the generation approval gate for projects that co
 ### Security and deployment boundary
 
 Configure `CREATOR_GENERATION_SECRET` as a Worker secret before enabling the cinematic API. Do not put it in `studio.ts`, browser JavaScript, a public environment variable or source control. The existing Creator app's project APIs are legacy endpoints and should be placed behind the approved FORTRESS/identity gateway before multi-tenant production use. The cinematic API deliberately fails closed if the server secret or D1 storage is absent. CI now covers its fail-closed security boundary alongside graph, compiler and existing Creator workflow tests.
+
+
+### Owned Media Runtime Fabric integration
+
+The Creator Worker can submit compiled per-shot image tasks and video-generation tasks to the existing owner-hosted Media Runtime Fabric. It does not create a second queue.
+
+Configure these Worker secrets/variables server-side:
+
+- `MEDIA_FABRIC_URL` — private-network or approved HTTPS base URL of the fabric broker
+- `MEDIA_FABRIC_KEY` — broker's internal key; never expose it to the browser
+
+Additional routes:
+
+- `POST /api/cinematic/projects/:id/tasks/:taskId/submit` — requires the generation approval gate and submits supported image/video work to the owned queue.
+- `GET /api/cinematic/projects/:id/tasks/:taskId/status` — polls the broker with the stored opaque job token and advances the task only from broker evidence.
+
+The current broker supports `image`, `video`, `speech` and `transcription`; the cinematic adapter currently enables image/video task submission. Audio/speech and 3D remain gated until their worker capabilities and adapter contracts are registered. A broker-reported completion without artifact evidence is not marked complete. The polling token is stored only in the private Creator project record and is never returned by the API.
