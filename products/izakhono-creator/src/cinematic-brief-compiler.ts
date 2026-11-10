@@ -157,7 +157,7 @@ export function compileCinematicBrief(input: CinematicBriefInput): CinematicBrie
     { id: 'task_002', kind: 'storyboard', status: 'blocked', blockedReason: 'dependencies', dependsOnTaskIds: ['task_001'], inputAssetIds: [], outputAssetIds: [], attempts: 0 },
     { id: 'task_003', kind: 'quality_check', status: 'blocked', blockedReason: 'dependencies', dependsOnTaskIds: ['task_002'], inputAssetIds: [], outputAssetIds: [], attempts: 0 },
     ...shots.map((shot, index): ProductionTask => ({
-      id: token('task_image', index + 1), kind: 'image_generation', status: 'blocked', blockedReason: 'dependencies',
+      id: token('task_video', index + 1), kind: 'video_generation', status: 'blocked', blockedReason: 'dependencies',
       dependsOnTaskIds: ['task_003'], inputAssetIds: [], outputAssetIds: [], shotId: shot.id,
       providerPreference: ['izakhono-media-runtime-fabric'], attempts: 0,
     })),
