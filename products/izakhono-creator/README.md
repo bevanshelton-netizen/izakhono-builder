@@ -78,6 +78,8 @@ Specialist skills are registered for cinematic film direction, character continu
 
 ### Production graph rules
 
+The Creator CI workflow typechecks the cinematic graph and brief compiler and runs their deterministic contract tests on pull requests.
+
 - Canonical project facts are separate from generated takes. A failed generation never rewrites the character or scene bible.
 - Shots and tasks use explicit dependencies. Cycles and broken references are validation errors.
 - A task cannot become completed without evidence; a submitted task must identify its provider.
