@@ -35,9 +35,9 @@ services:
     environment:
       PORT: 8091
       IZAKHONO_MAIL_API_TOKEN: ${IZAKHONO_MAIL_API_TOKEN:?set IZAKHONO_MAIL_API_TOKEN}
-      SMTP_HOST: ${SMTP_HOST:-stalwart}
-      SMTP_PORT: ${SMTP_PORT:-587}
-      SMTP_TLS_MODE: ${SMTP_TLS_MODE:-starttls}
+      SMTP_HOST: ${SMTP_HOST:?set SMTP_HOST to the private IZAKHONO MAIL node address}
+      SMTP_PORT: ${SMTP_PORT:-465}
+      SMTP_TLS_MODE: ${SMTP_TLS_MODE:-tls}
       SMTP_USER: ${SMTP_USER:-}
       SMTP_PASS: ${SMTP_PASS:-}
     networks: [izakhono, izakhono-mail]
