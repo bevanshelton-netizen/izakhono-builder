@@ -110,4 +110,4 @@ The generation endpoint checks the generation approval gate for projects that co
 
 ### Security and deployment boundary
 
-Configure `CREATOR_GENERATION_SECRET` as a Worker secret before enabling the cinematic API. Do not put it in `studio.ts`, browser JavaScript, a public environment variable or source control. The existing Creator app's project APIs are legacy endpoints and should be placed behind the approved FORTRESS/identity gateway before multi-tenant production use. The cinematic API deliberately fails closed if the server secret or D1 storage is absent.
+Configure `CREATOR_GENERATION_SECRET` as a Worker secret before enabling the cinematic API. Do not put it in `studio.ts`, browser JavaScript, a public environment variable or source control. The existing Creator app's project APIs are legacy endpoints and should be placed behind the approved FORTRESS/identity gateway before multi-tenant production use. The cinematic API deliberately fails closed if the server secret or D1 storage is absent. CI now covers its fail-closed security boundary alongside graph, compiler and existing Creator workflow tests.
