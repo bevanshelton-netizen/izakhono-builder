@@ -154,8 +154,8 @@ export function compileCinematicBrief(input: CinematicBriefInput): CinematicBrie
 
   const tasks: ProductionTask[] = [
     { id: 'task_001', kind: 'script', status: 'ready', dependsOnTaskIds: [], inputAssetIds: [], outputAssetIds: [], attempts: 0 },
-    { id: 'task_002', kind: 'storyboard', status: 'blocked', dependsOnTaskIds: ['task_001'], inputAssetIds: [], outputAssetIds: [], attempts: 0 },
-    { id: 'task_003', kind: 'quality_check', status: 'blocked', dependsOnTaskIds: ['task_002'], inputAssetIds: [], outputAssetIds: [], attempts: 0 },
+    { id: 'task_002', kind: 'storyboard', status: 'blocked', blockedReason: 'dependencies', dependsOnTaskIds: ['task_001'], inputAssetIds: [], outputAssetIds: [], attempts: 0 },
+    { id: 'task_003', kind: 'quality_check', status: 'blocked', blockedReason: 'dependencies', dependsOnTaskIds: ['task_002'], inputAssetIds: [], outputAssetIds: [], attempts: 0 },
   ];
 
   const production: CinematicProduction = {
