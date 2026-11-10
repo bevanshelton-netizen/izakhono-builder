@@ -1,65 +1,41 @@
 # IZAKHONO MAIL — Owned NODE Deployment
 
-This deployment unit runs the Stalwart mail transport and mailbox server on an IZAKHONO-owned MAIL workload node. It is separate from the web application and from Vercel.
+## Canonical runtime
 
-## Placement
+Use the existing IZAKHONO HOST mail plane. Do not deploy a second, competing mail stack.
 
-- Schedule this workload through the IZAKHONO Control Plane onto an approved owned node with the MAIL capability.
-- The MAIL node must have a stable public IP, inbound TCP 25/465/993/443, outbound TCP 25, persistent storage, and a hostname whose DNS resolves to that public IP.
-- Do not co-locate this Compose unit on a host already binding TCP 443 unless a separate public IP or an approved port-routing design is configured.
-- Keep the node's logical identity (NODE01–NODE04) separate from its physical/runtime host binding.
+- HOST runtime: `products/izakhono-host/docker-compose.owned.yml`
+- Stalwart SMTP/IMAP/JMAP server: `products/izakhono-host/mail/docker-compose.mail.yml`
+- Activation helper: `products/izakhono-host/mail/STALWART-ACTIVATE.sh`
+- HOST-to-mail bridge: `products/izakhono-host/runtime/mail-bridge`
 
-## Deploy
+The Stalwart service joins the HOST-created external Docker network `izakhono-mail`. The bridge reaches it using the service DNS name `stalwart` on that private network. Do not expose the bridge API publicly.
 
-From this directory on the selected MAIL node:
+## NODE activation
 
-```bash
-docker compose -f docker-compose.node.yml config
-docker compose -f docker-compose.node.yml up -d
-docker compose -f docker-compose.node.yml ps
-docker compose -f docker-compose.node.yml logs --tail=100 stalwart
-```
-
-The Compose file uses persistent volumes for both `/etc/stalwart` and `/var/lib/stalwart`. Do not remove these volumes during upgrades or troubleshooting.
-
-## First-run administration
-
-Stalwart's first start opens its setup wizard on port 8080. That port is published only on loopback. Reach it through an SSH tunnel from an authorised operator workstation:
+Run on the approved existing MAIL-capable owned NODE after its normal preflight and secure secret injection:
 
 ```bash
-ssh -L 8080:127.0.0.1:8080 <operator>@<mail-node-public-ip>
+cd products/izakhono-host
+docker compose --env-file .env -f docker-compose.owned.yml config >/dev/null
+docker compose --env-file .env -f docker-compose.owned.yml up -d
+docker compose --env-file .env -f mail/docker-compose.mail.yml config >/dev/null
+set -a
+. ./.env
+set +a
+bash mail/STALWART-ACTIVATE.sh
+docker compose --env-file .env -f docker-compose.owned.yml ps
+docker compose --env-file .env -f mail/docker-compose.mail.yml ps
 ```
 
-Then open `http://127.0.0.1:8080` locally. Complete the wizard using the approved mail hostname and first verified mail domain. Store the generated administrator credential in FORTRESS; never place it in Git, a ticket, or chat. After setup, confirm the HTTPS/JMAP endpoint and disable the setup listener/loopback mapping according to the approved Stalwart hardening procedure.
+The `.env` file must be created on the NODE from the approved secret store. It must contain the required HOST secrets, `STALWART_RECOVERY_ADMIN`, `IZAKHONO_MAIL_API_TOKEN`, and the dedicated SMTP submission credentials. Set `SMTP_HOST=stalwart`, `SMTP_PORT=465`, and `SMTP_TLS_MODE=tls` for the mail bridge. Credentials must never be committed to Git or sent in chat.
 
-## Application bridge
+## Network and domain gates
 
-The HOST mail bridge must connect to this MAIL node over the private IZAKHONO network, not by assuming the Docker service name `stalwart` resolves across nodes. Configure its server-side environment from FORTRESS:
+Before public mail traffic is enabled, confirm the selected NODE has a stable public IP and that the required ports are reachable: TCP 25, 465, 587, 993 and the approved webmail/HTTPS route. Resolve any existing 443 listener conflict through the approved EDGE routing design; do not blindly publish another service on 443.
 
-- `SMTP_HOST`: private address or private DNS name of the approved MAIL node
-- `SMTP_PORT=465`
-- `SMTP_TLS_MODE=tls`
-- `SMTP_USER` and `SMTP_PASS`: dedicated restricted submission identity, stored only in FORTRESS
-- `IZAKHONO_MAIL_API_TOKEN`: generated server-side secret, stored only in FORTRESS
+Verify ownership and existing provider dependencies for each domain. Do not change MX records until the existing mailboxes and a safe migration/cutover plan are confirmed. Publish only the records generated for the verified domain: MX, SPF, DKIM and DMARC. Confirm PTR/reverse DNS, TLS, inbound delivery, authenticated outbound submission, IMAP login, external reply, spam controls, rate limits and backup/restore.
 
-Do not expose the bridge API publicly. Permit access only from the approved IZAKHONO application/control-plane network.
+## Acceptance
 
-## DNS and activation gates
-
-For each domain, verify ownership and existing mail-provider dependencies before changing DNS. Do not replace MX records until a migration/cutover plan protects existing mailboxes and inbound delivery.
-
-Required records and checks include:
-
-- MX to the approved mail hostname
-- A/AAAA for the mail hostname
-- SPF authorising the actual outbound path
-- DKIM key generated by Stalwart and published exactly as issued
-- DMARC policy and reporting mailbox
-- PTR/reverse DNS matching the mail hostname
-- TLS certificates for the mail hostname
-- Inbound SMTP, authenticated submission, IMAPS, outbound delivery and external reply tests
-- Spam controls, rate limits, abuse handling, backups and a tested restore
-
-## Status
-
-This is a deployment definition, not evidence of a running service. Do not mark IZAKHONO MAIL live until the node, public network path, DNS, TLS, authentication, deliverability and end-to-end acceptance tests have passed.
+The source deployment is prepared, not live. Record current evidence for NODE health, container health, public reachability, DNS, TLS, SMTP send/receive, IMAP authentication, DKIM/SPF/DMARC alignment, abuse controls and restore. Only then may the control plane mark the service verified/live.
