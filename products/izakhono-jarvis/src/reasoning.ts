@@ -31,7 +31,7 @@ export async function jarvisReasoningRoute(req:Request,env:JarvisReasoningEnv,ow
  const agent=getJarvisAgent(agentId);if(!agent)return json({ok:false,error:"Agent unavailable"},503);
  const base=env.IZAKHONO_SUPER_AI_URL,key=env.IZAKHONO_SUPER_AI_INTERNAL_KEY,workflowKey=env.IZAKHONO_SUPER_AI_WORKFLOW_KEY;
  if(!base||!key||!workflowKey)return json({ok:false,error:"IZAKHONO SUPER AI gateway is not configured",provider_status:"not-configured",execution:"not-started"},503);
- let endpoint:URL;try{endpoint=new URL(base.replace(/\\/+$/,"")+"/api/v1/generate")}catch{return json({ok:false,error:"IZAKHONO SUPER AI gateway URL is invalid"},503)}
+ let endpoint:URL;try{endpoint=new URL(base.replace(/\/+$/,"")+"/api/v1/generate")}catch{return json({ok:false,error:"IZAKHONO SUPER AI gateway URL is invalid"},503)}
  if(endpoint.protocol!=="https:")return json({ok:false,error:"IZAKHONO SUPER AI gateway must use HTTPS"},503);
  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),25000);
  try{
