@@ -1,9 +1,8 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { WebSocket, WebSocketServer } from "ws";
-import { GptLiveVoiceStreamSessionFactory } from "../../src/gpt-live-session-factory.js";
+import { LocalVoiceStreamSessionFactory } from "../../src/local-voice-session-factory.js";
 import { TwilioMediaStreamBridge } from "../../src/twilio-media-stream-bridge.js";
 import { verifyTwilioWebhook } from "../../src/twilio-webhook-security.js";
-import { NodeGptLiveSocketConnector } from "./node-gpt-live-connector.js";
 import { verifyTwilioWebSocketHandshake } from "./twilio-websocket-security.js";
 import { createVoiceRuntimeDependencies } from "./postgres-runtime-adapter.js";
 
@@ -29,31 +28,22 @@ for (const value of [voiceWebhookPublicUrl, statusCallbackPublicUrl]) {
     throw new Error("Twilio webhook public URLs must be canonical HTTPS URLs without query strings or credentials");
   }
 }
-const openAiApiKey = required(env, "OPENAI_API_KEY");
 const dependencies = await createVoiceRuntimeDependencies(env);
 if (!dependencies?.callRegistry?.authorizeStart || !dependencies.instructionsForCall) {
   throw new Error("Runtime adapter must provide a durable call registry and tenant-scoped instructions");
 }
 
-const sessions = new GptLiveVoiceStreamSessionFactory({
-  apiKey: openAiApiKey,
-  model: env.IZAKHONO_GPT_LIVE_MODEL ?? "gpt-live-1",
-  voice: env.IZAKHONO_GPT_LIVE_VOICE ?? "marin",
+const sessions = new LocalVoiceStreamSessionFactory({
+  speechRecognitionUrl: required(env, "IZAKHONO_ASR_TRANSCRIBE_URL"),
+  speechRecognitionKey: required(env, "IZAKHONO_ASR_INTERNAL_KEY"),
+  languageModelUrl: required(env, "IZAKHONO_LOCAL_LLM_URL"),
+  languageModelName: required(env, "IZAKHONO_LOCAL_LLM_MODEL"),
   instructionsForCall: authorization => dependencies.instructionsForCall(authorization),
-  onUsage: async (tenantId, usage, authorization) => {
-      await dependencies.callRegistry.recordUsage?.({
-        tenantId,
-        callId: authorization.callId,
-        usage,
-      });
-      await dependencies.audit?.({
-        tenantId,
-        callId: authorization.callId,
-        event: "gpt_live_usage",
-        details: usage,
-      });
-    },
-}, new NodeGptLiveSocketConnector());
+  speechSynthesisUrl: required(env, "IZAKHONO_SPEECH_GENERATE_URL"),
+  speechSynthesisKey: required(env, "IZAKHONO_SPEECH_INTERNAL_KEY"),
+  voice: env.IZAKHONO_VOICE_SPEECH_VOICE ?? "af_heart",
+  language: env.IZAKHONO_VOICE_LANGUAGE ?? "English",
+});
 
 function xml(value: string): string {
   return value.replace(/[<>&"']/g, char => ({
