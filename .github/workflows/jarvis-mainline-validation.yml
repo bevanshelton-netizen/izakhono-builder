@@ -6,6 +6,7 @@ on:
     paths:
       - "products/izakhono-jarvis/**"
       - "src/sovereign.ts"
+      - "public/jarvis/**"
       - ".github/workflows/jarvis-mainline-validation.yml"
   pull_request:
     paths:
@@ -30,4 +31,5 @@ jobs:
       - run: npx --yes tsx@4.20.3 products/izakhono-jarvis/src/context.test.ts
       - run: npx --yes tsx@4.20.3 products/izakhono-jarvis/src/approvals.test.ts
       - run: npx --yes tsx@4.20.3 products/izakhono-jarvis/src/workspace.test.ts
+      - run: node --check public/jarvis/app.js
       - run: npx --yes -p typescript@5.9.2 tsc --noEmit --target ES2022 --lib ES2022,DOM --module ESNext products/izakhono-jarvis/src/api.ts products/izakhono-jarvis/src/agents.ts products/izakhono-jarvis/src/tasks.ts products/izakhono-jarvis/src/context.ts products/izakhono-jarvis/src/approvals.ts products/izakhono-jarvis/src/workspace.ts
