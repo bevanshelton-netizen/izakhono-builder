@@ -19,6 +19,27 @@ The pilot should establish whether AFRICA RISE can help a capable African manufa
 
 ## 3. Initial scope
 
+### Recommended first product family: school and corporate uniforms
+
+Use standardised school or corporate uniforms as the first product family to validate. This is a prioritisation recommendation, not a claim that buyer demand, capacity, price or delivery dates have already been verified.
+
+Why this is the sensible first test:
+- the IZAKHONO manufacturing operation already identifies uniforms among its product categories;
+- buyer requirements can be captured in measurable specifications: garment type, fabric, colour, size range, branding, construction, packaging and delivery;
+- samples and size sets can be approved before production;
+- repeat demand may exist where schools or employers have recurring uniform requirements;
+- the pilot can test sourcing, costing, production planning, quality and delivery without initially relying on unverified PPE certification claims.
+
+**First buyer segment:** approach private schools and private employers for discovery interviews. Do not imply that either segment has agreed to buy.
+
+**Defer from the first transaction:**
+- PPE until the exact protective function, applicable standard, test evidence and certification scope have been confirmed;
+- matric jackets until seasonal demand, design, order timing and capacity are verified;
+- sportswear until the buyer specification, fabric performance and sample requirements are defined.
+
+The selected uniform SKU must be narrowed further only after written buyer specifications and current production capability have been reviewed.
+
+
 ### Include
 - One product family initially, selected from uniforms, PPE, sportswear or matric jackets.
 - One defined buyer segment, such as schools, employers, institutions or corporate procurement.
