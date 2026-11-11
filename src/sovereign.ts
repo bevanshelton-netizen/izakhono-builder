@@ -899,6 +899,31 @@ async function commandApiRoute(req: Request, env: any, url: URL): Promise<Respon
   return json({ ok: false, error: 'Action /' + definition.name + ' has no executor.' }, 501);
 }
 
+async function africaRisePreviewPage(req: Request, env: any, url: URL): Promise<Response | null> {
+  if (!new Set(['/africa-rise', '/africa-rise/', '/africa-rise/index.html']).has(url.pathname)) return null;
+  if (req.method !== 'GET' && req.method !== 'HEAD') {
+    return new Response('Method not allowed', { status: 405, headers: { allow: 'GET, HEAD', 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'no-store' } });
+  }
+
+  const assetUrl = new URL(req.url);
+  assetUrl.pathname = '/africa-rise/index.html';
+  assetUrl.search = '';
+  const response = await env.ASSETS.fetch(new Request(assetUrl.toString(), req));
+  const headers = new Headers(response.headers);
+  headers.set('x-content-type-options', 'nosniff');
+  headers.set('referrer-policy', 'strict-origin-when-cross-origin');
+  headers.set('permissions-policy', 'camera=(), microphone=(), geolocation=()');
+  headers.set('content-security-policy', "default-src 'self'; connect-src 'self'; img-src 'self' data: https:; font-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; base-uri 'self'; frame-ancestors 'none'; form-action 'none'");
+  headers.set('cache-control', 'no-store');
+  headers.set('x-izakhono-route', 'africa-rise-branch-preview');
+  headers.delete('content-length');
+  return new Response(req.method === 'HEAD' ? null : response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
+}
+
 async function commandCentrePage(req: Request, env: any, url: URL): Promise<Response | null> {
   if (url.pathname !== '/commands' && url.pathname !== '/commands/') return null;
   if (req.method !== 'GET' && req.method !== 'HEAD') return new Response('Method not allowed', { status: 405, headers: { allow: 'GET, HEAD' } });
@@ -1316,6 +1341,9 @@ async function publicAiCoreHost(req: Request, env: any, url: URL): Promise<Respo
 export default {
   async fetch(req: Request, env: any): Promise<Response> {
     const url = new URL(req.url);
+
+    const africaRisePreview = await africaRisePreviewPage(req, env, url);
+    if (africaRisePreview) return africaRisePreview;
 
     const commandsApi = await commandApiRoute(req, env, url);
     if (commandsApi) return commandsApi;

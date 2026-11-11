@@ -1,4 +1,6 @@
-# NODE01 Hardware BOM
+# NODE01 Execution-Environment Hardware Bill of Materials
+
+This specification covers the separately managed compute appliance that may host NODE01 software. The appliance is infrastructure; NODE01 remains a logical software/runtime identity.
 
 ## Compute appliance
 | Component | Target |
@@ -22,4 +24,4 @@
 - Console/KVM access path for recovery.
 
 ## Procurement acceptance
-Exact vendor/model selection is intentionally deferred until procurement. Any selected component must satisfy the architecture and commissioning checklist. Commodity substitutions that weaken ECC memory, storage redundancy, management isolation, power redundancy or network capacity are not accepted as NODE01 production hardware.
+Exact vendor/model selection is intentionally deferred until procurement. Any selected component must satisfy the architecture and commissioning checklist. Commodity substitutions that weaken ECC memory, storage redundancy, management isolation, power redundancy or network capacity are not accepted for the NODE01 execution environment.

@@ -28,6 +28,9 @@ jobs:
       - name: Validate Affiliate Engine
         run: npm run validate:affiliate
 
+      - name: Validate AFRICA RISE branch preview contract
+        run: npm run africa-rise:preview:validate
+
       - name: Install isolated product dependencies
         shell: bash
         run: |

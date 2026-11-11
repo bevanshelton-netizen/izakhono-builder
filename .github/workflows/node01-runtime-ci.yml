@@ -25,6 +25,14 @@ jobs:
         working-directory: internal/node01-runtime
         run: npm test
 
+      - name: Validate container restart policy
+        working-directory: internal/node01-runtime
+        env:
+          NODE01_ADMIN_TOKEN: ci-canary-token
+        run: |
+          docker compose config --format json > /tmp/node01-compose.json
+          node -e "const c=require('/tmp/node01-compose.json'); for (const [name,service] of Object.entries(c.services)) if (service.restart !== 'unless-stopped') throw new Error(name + ' must use unless-stopped restart policy')"
+
       - name: Build runtime image
         working-directory: internal/node01-runtime
         run: docker build -t izakhono-node01:test .
