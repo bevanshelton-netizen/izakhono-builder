@@ -6,7 +6,7 @@ import re
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 STANDARD = ROOT / "architecture" / "NODE01-IDENTITY-STANDARD.md"
 SKIP_DIRS = {".git", ".next", "node_modules", "dist", "build", "coverage", ".venv", "venv"}
 TEXT_SUFFIXES = {".json", ".yaml", ".yml", ".toml", ".ini", ".cfg", ".conf", ".env", ".sh", ".bash", ".ps1", ".cmd", ".bat", ".service", ".md", ".txt", ".py", ".js", ".ts", ".tsx", ".jsx", ".go", ".rs", ".tf"}
