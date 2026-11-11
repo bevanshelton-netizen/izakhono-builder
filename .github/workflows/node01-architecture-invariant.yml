@@ -1,0 +1,23 @@
+name: NODE01 Architecture Invariant
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  node01-identity:
+    name: Enforce NODE01 is software
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+      - name: Enforce system-wide NODE01 identity
+        run: python3 scripts/architecture/check-node01-identity.py
