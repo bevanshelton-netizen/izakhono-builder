@@ -6,7 +6,7 @@ Visual, credits-free application factory and owned-first infrastructure control 
 
 **GOAL → IZAKHONO AI AGENT → IZAKHONO BUILDER → SOFTWARE NODE → BUILD → TEST → EVIDENCE → DEPLOY**
 
-IZAKHONO owns the source-of-truth state, validated source snapshots, provisioning workflow and preferred production runtime. Software NODE is the primary infrastructure unit; physical hardware is an optional execution substrate. External infrastructure is replaceable and reversible, not the assumed foundation.
+IZAKHONO owns the source-of-truth state, validated source snapshots, provisioning workflow and preferred production runtime. **NODE01 IS SOFTWARE.** Software NODE identities are logical software identities, never physical infrastructure. Separately managed execution environments (physical, virtual, containerised or distributed) are replaceable substrates and must never be named or treated as NODE01. External infrastructure is replaceable and reversible, not the assumed foundation.
 
 ## Hercules replacement
 
@@ -73,3 +73,10 @@ Validated generated applications are canonicalized, content-hashed and stored in
 **OWNED-FIRST. EXTERNALLY REVERSIBLE. NO HOSTAGE PLATFORM.**
 
 Production activation requires an eligible Software NODE, public network reachability, DNS delegation, TLS validation, backups/restore testing and end-to-end acceptance evidence. A physical server is not a prerequisite for Software NODE instantiation or software-level build execution.
+
+
+## Mandatory NODE01 identity standard
+
+The system-wide rule is **NODE01 IS SOFTWARE**. NODE01 is a stable logical software/runtime identity, never a server, computer, VM, host, container host or other physical/virtual infrastructure resource. Execution environments are separately managed, explicitly bound and replaceable. This standard applies to every product, repository, workflow, agent, API, installer and deployment:
+
+- [NODE01 Identity Standard](architecture/NODE01-IDENTITY-STANDARD.md)
