@@ -13,9 +13,9 @@ This directory documents one implementation of the IZAKHONO runtime cluster bene
 | NODE03 | peer controller preference | k3s server/control-plane + worker | identity may rebind to an approved host |
 | NODE04 | DR/workload preference | k3s worker + backup repository | identity may rebind to an approved host |
 
-These are **software identities**. The underlying runtime host is separate infrastructure and may be physical, virtual, owned, or an approved external adapter. A host may change without changing the logical identity. No release, deployment, DNS, TLS, health, acceptance, or LIVE contract may require a permanent physical machine named NODE01.
+These are **software identities**. The underlying runtime host is separate infrastructure and may be physical, virtual, owned, or an approved external adapter. A host may change without changing the logical identity. No release, deployment, DNS, TLS, health, acceptance, or LIVE contract may require a permanent runtime host to carry a NODE01 label.
 
-NODE01 may be the preferred logical bootstrap role for this specific k3s implementation, but production applications must not depend on a particular NODE01 host being alive. Public launch/failover is governed by the Runtime Fabric, not by this cluster's bootstrap order.
+NODE01 may be the preferred logical bootstrap role for this specific k3s implementation, but production applications must not depend on a particular runtime host for that role being alive. Public launch/failover is governed by the Runtime Fabric, not by this cluster's bootstrap order.
 
 The cluster uses three control-plane members (the logical NODE01-NODE03 roles) so control-plane quorum survives one controller failure. NODE04 remains outside the etcd voting set so it can act as a simpler disaster-recovery and workload role.
 
@@ -34,7 +34,7 @@ The cluster uses three control-plane members (the logical NODE01-NODE03 roles) s
 
 ## Cluster bootstrap order
 
-This order is only for forming this k3s implementation. It must not be interpreted as assigning physical machines the names NODE01-NODE04:
+This order is only for forming this k3s implementation. It must not be interpreted as assigning physical infrastructure labels NODE01-NODE04:
 
 1. Prepare the approved runtime hosts with static/reliable addressing, patched OS and SSH key access.
 2. Copy and edit `cluster.env.example` outside source control, including the logical identity-to-host bindings.
