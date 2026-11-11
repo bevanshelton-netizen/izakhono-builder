@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "IZAKHONO STREAM Entitlement Persistence V1",
+  "type": "object",
+  "required": ["entitlementId", "tenantId", "userId", "productId", "status", "sourceTransactionId", "startsAt"],
+  "properties": {
+    "entitlementId": { "type": "string" },
+    "tenantId": { "type": "string" },
+    "userId": { "type": "string" },
+    "productId": { "type": "string" },
+    "status": { "enum": ["ACTIVE", "REVOKED"] },
+    "sourceTransactionId": { "type": "string" },
+    "startsAt": { "type": "string", "format": "date-time" },
+    "endsAt": { "type": "string", "format": "date-time" }
+  },
+  "additionalProperties": false
+}
