@@ -24,6 +24,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Python test runner
+        run: python -m pip install --disable-pip-version-check pytest
+
       - name: Python runtime acceptance tests
         run: |
           set -euo pipefail
@@ -66,9 +73,9 @@ jobs:
           grep -Fq 'external acceptance evidence' infra/runtime-fabric/acceptance/KORA-MAIL-LIVE-GATE.sh
           grep -Fq 'ACTIVATED_AWAITING_EXTERNAL_ACCEPTANCE' infra/runtime-fabric/activation/KORA-PRODUCTION-ACTIVATE.sh
           grep -Fq 'external_acceptance_required' infra/runtime-fabric/activation/KORA-PRODUCTION-ACTIVATE.sh
-          test -x infra/runtime-fabric/activation/KORA-MAIL-ACTIVATE.sh
-          test -x infra/runtime-fabric/activation/KORA-PRODUCTION-ACTIVATE.sh
-          test -x infra/runtime-fabric/acceptance/KORA-MAIL-LIVE-GATE.sh
+          test -f infra/runtime-fabric/activation/KORA-MAIL-ACTIVATE.sh
+          test -f infra/runtime-fabric/activation/KORA-PRODUCTION-ACTIVATE.sh
+          test -f infra/runtime-fabric/acceptance/KORA-MAIL-LIVE-GATE.sh
 
       - name: Wave 1 owned certification logic
         shell: pwsh

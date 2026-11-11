@@ -49,7 +49,7 @@ def select_node(workload: dict, health: dict[str, bool]) -> str | None:
 def decide(workload: dict, health: dict[str, bool]) -> Decision:
     selected = select_node(workload, health)
     if selected is None:
-        return Decision(workload["workload"], None, "BLOCKED", "no healthy preferred node")
+        return Decision(workload["workload"], None, "BLOCKED", "NO_HEALTHY_NODE")
     return Decision(workload["workload"], selected, "READY", "healthy node selected")
 
 
@@ -63,14 +63,14 @@ def activate(workload_path: Path, health: dict[str, bool], execute: bool = False
 
     root = workload_path.parents[1]
     adapter = root / "activation" / "KORA-MAIL-ACTIVATE.sh"
-    if not adapter.is_file() or not os.access(adapter, os.X_OK):
+    if not adapter.is_file():
         return Decision(decision.workload, decision.selected_node, "BLOCKED", "KORA activation adapter unavailable")
 
     env = os.environ.copy()
     env["IZAKHONO_NODE_ID"] = decision.selected_node
     try:
         completed = subprocess.run(
-            [str(adapter)],
+            ["bash", str(adapter)],
             cwd=str(root.parent),
             env=env,
             check=False,
