@@ -15,6 +15,20 @@ MODEL = None
 MODEL_LOCK = threading.Lock()
 INFERENCE_LOCK = threading.Lock()
 
+def validate_payload(payload):
+    if not isinstance(payload, dict) or payload.get("schema") != "izakhono.speech.transcribe.v1":
+        raise ValueError("invalid_schema")
+    encoded = payload.get("audio_base64", "")
+    if not isinstance(encoded, str) or not encoded or len(encoded) > MAX_AUDIO * 4 // 3 + 8:
+        raise ValueError("invalid_audio")
+    audio = base64.b64decode(encoded, validate=True)
+    if len(audio) < 1024 or len(audio) > MAX_AUDIO or not audio.startswith(b"RIFF") or audio[8:12] != b"WAVE":
+        raise ValueError("expected_pcm_wav")
+    language = str(payload.get("language") or "en").strip().lower()
+    if language not in {"en", "af", "zu", "xh", "st", "tn", "nso", "ts", "ss", "ve"}:
+        raise ValueError("unsupported_language")
+    return audio, language
+
 def load_model():
     global MODEL
     if MODEL is not None:
@@ -64,17 +78,7 @@ class Handler(BaseHTTPRequestHandler):
             if size <= 0 or size > MAX_BODY:
                 raise ValueError("invalid_body_size")
             payload = json.loads(self.rfile.read(size))
-            if payload.get("schema") != "izakhono.speech.transcribe.v1":
-                raise ValueError("invalid_schema")
-            encoded = payload.get("audio_base64", "")
-            if not isinstance(encoded, str) or not encoded or len(encoded) > MAX_AUDIO * 4 // 3 + 8:
-                raise ValueError("invalid_audio")
-            audio = base64.b64decode(encoded, validate=True)
-            if len(audio) < 1024 or len(audio) > MAX_AUDIO or not audio.startswith(b"RIFF") or audio[8:12] != b"WAVE":
-                raise ValueError("expected_pcm_wav")
-            language = str(payload.get("language") or "en").strip().lower()
-            if language not in {"en", "af", "zu", "xh", "st", "tn", "nso", "ts", "ss", "ve"}:
-                raise ValueError("unsupported_language")
+            audio, language = validate_payload(payload)
         except (ValueError, TypeError, json.JSONDecodeError, binascii.Error) as exc:
             return send_json(self, 422, {"ok": False, "error": str(exc)[:120]})
         try:
