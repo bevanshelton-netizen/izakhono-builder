@@ -1,7 +1,21 @@
-import { createProvisionerJob, markValidated, startJob, recordEvidence, verifyLive, type Blueprint, type Capability, type ProvisionerJob } from './provisioner-runtime';
-import { advance, assertPublicActivation, createControlPlaneRecord, fail, type ControlPlaneRecord } from './provisioning-control-plane';
+import { createProvisionerJob, markValidated, startJob, recordEvidence, verifyLive, type Blueprint, type Capability, type ProvisionerJob } from './provisioner-runtime.js';
+import { advance, assertPublicActivation, createControlPlaneRecord, fail, type ControlPlaneRecord } from './provisioning-control-plane.js';
 
-export interface PaidOrder { orderId:string; customerId:string; blueprint:Blueprint; requestedCapabilities:Capability[]; payment:{verified:boolean;reference:string}; }
+/** Values loaded by the trusted server-side payment repository after provider verification. */
+export interface VerifiedOrderPayment {
+  status:'paid';
+  orderId:string;
+  customerId:string;
+  amountMinor:number;
+  currency:string;
+  reference:string;
+  provider:string;
+}
+export interface TrustedPaymentVerifier {
+  /** Must load persisted payment state; must never trust a client request's verified/paid boolean. */
+  resolvePaidOrder(input:{orderId:string;customerId:string}):Promise<VerifiedOrderPayment|null>;
+}
+export interface PaidOrder { orderId:string; customerId:string; amountMinor:number; currency:string; blueprint:Blueprint; requestedCapabilities:Capability[]; }
 export interface RuntimeAdapter {
   selectNode(order:PaidOrder):Promise<{nodeId:string;routeClass:'owned'|'external-resilience'|'external-auxiliary'}>;
   provisionNode(order:PaidOrder,nodeId:string):Promise<string>;
@@ -15,9 +29,20 @@ export interface RuntimeAdapter {
 }
 export interface ProvisioningResult { orderId:string; job:ProvisionerJob; controlPlane:ControlPlaneRecord; handover:{customerId:string;release:string;verifiedAt:string}; }
 
-export async function provisionPaidOrder(order:PaidOrder,adapter:RuntimeAdapter,now=new Date().toISOString()):Promise<ProvisioningResult> {
-  if(!order.payment.verified) throw new Error('payment must be verified before provisioning');
-  if(!order.payment.reference.trim()) throw new Error('payment verification reference is required');
+/**
+ * Resolve payment from the trusted server-side payment store before any runtime
+ * action. The browser/API request supplies only the order identity, never proof
+ * of payment. Production composition must inject a repository-backed verifier.
+ */
+export async function provisionPaidOrder(order:PaidOrder,adapter:RuntimeAdapter,paymentVerifier:TrustedPaymentVerifier,now=new Date().toISOString()):Promise<ProvisioningResult> {
+  if (!Number.isSafeInteger(order.amountMinor) || order.amountMinor <= 0) throw new Error('order amount must be a positive integer in minor units');
+  if (!/^[A-Z]{3}$/.test(order.currency)) throw new Error('order currency must be a three-letter code');
+  const payment=await paymentVerifier.resolvePaidOrder({orderId:order.orderId,customerId:order.customerId});
+  if (!payment || payment.status!=='paid') throw new Error('trusted payment record is not paid');
+  if (payment.orderId!==order.orderId || payment.customerId!==order.customerId) throw new Error('payment does not belong to this order and customer');
+  if (payment.amountMinor!==order.amountMinor || payment.currency!==order.currency) throw new Error('verified payment amount or currency does not match the order');
+  if (!payment.reference.trim() || !payment.provider.trim()) throw new Error('verified payment reference and provider are required');
+
   const jobId=`order:${order.orderId}`;
   let job=createProvisionerJob(order.blueprint,order.requestedCapabilities,jobId,now);
   job=markValidated(job,now); job=startJob(job,now);
