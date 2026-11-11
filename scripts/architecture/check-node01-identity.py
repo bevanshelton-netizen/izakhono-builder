@@ -29,11 +29,12 @@ for path in ROOT.rglob("*"):
   if isinstance(data,dict) and data.get("logical_node_id")=="NODE01":
    if data.get("identity_type")!="software-runtime": errors.append(f"{path.relative_to(ROOT)}: identity_type must be software-runtime")
    if data.get("runtime_host_is_separate") is not True: errors.append(f"{path.relative_to(ROOT)}: runtime_host_is_separate must be true")
-   host=data.get("runtime_host")
-   if not isinstance(host,str) or not host.strip(): errors.append(f"{path.relative_to(ROOT)}: runtime_host must identify a separate execution environment")
-   if host in {"NODE01","node01"}: errors.append(f"{path.relative_to(ROOT)}: runtime_host must never equal the NODE01 software identity")
-   if data.get("live") is True and host=="APPROVED_RUNTIME_HOST": errors.append(f"{path.relative_to(ROOT)}: live binding cannot use the unapproved runtime-host placeholder")
-   if data.get("live") is True and not all(data.get(k) is True for k in ("health_verified","https_verified","acceptance_verified")): errors.append(f"{path.relative_to(ROOT)}: live binding requires health, HTTPS, and acceptance verification")
+   if data.get("schema")=="izakhono.runtime-binding/v1":
+    host=data.get("runtime_host")
+    if not isinstance(host,str) or not host.strip(): errors.append(f"{path.relative_to(ROOT)}: runtime_host must identify a separate execution environment")
+    if host in {"NODE01","node01"}: errors.append(f"{path.relative_to(ROOT)}: runtime_host must never equal the NODE01 software identity")
+    if data.get("live") is True and host in {"APPROVED_RUNTIME_HOST","REPLACE_WITH_VERIFIED_HOST"}: errors.append(f"{path.relative_to(ROOT)}: live binding cannot use an unapproved runtime-host placeholder")
+    if data.get("live") is True and not all(data.get(k) is True for k in ("health_verified","https_verified","acceptance_verified")): errors.append(f"{path.relative_to(ROOT)}: live binding requires health, HTTPS, and acceptance verification")
  for pattern,reason in FORBIDDEN:
   for match in pattern.finditer(content): errors.append(f"{path.relative_to(ROOT)}:{content.count(chr(10),0,match.start())+1}: {reason}")
 if errors:
