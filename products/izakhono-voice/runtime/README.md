@@ -1,16 +1,16 @@
 # IZAKHONO VOICE — owned WebSocket runtime
 
-This package hosts the provider-neutral Twilio media bridge and GPT-Live session adapter on Node.js. It is portable across approved IZAKHONO-owned runtime targets and approved external resilience hosts. NODE01 is not a single point of failure.
+This package hosts the provider-neutral Twilio media bridge and owned local speech pipeline on Node.js. It is portable across approved IZAKHONO-owned runtime targets and approved external resilience hosts. NODE01 is not a single point of failure.
 
 ## Implemented
 
 - Node HTTP health endpoint and Twilio Media Streams WebSocket upgrade host.
 - Canonical public WSS handshake validation against runtime-only Twilio credentials; never trusts Host or forwarded headers.
-- Node WebSocket connector for GPT-Live.
+- Local turn-based pipeline: G.711 μ-law decoding, local ASR, local language-model reasoning, local Kokoro speech synthesis, and μ-law audio encoding.
 - PostgreSQL-backed call registry with tenant isolation, short-lived one-time stream credentials, atomic token consumption, replay prevention and one-active-stream enforcement across replicas.
 - Expiring 90-second stream leases refreshed every 30 seconds during media traffic, allowing stale leases to be reclaimed after a runtime crash.
 - Stream lease release on Twilio stop, disconnect or bridge failure.
-- Tenant-scoped GPT-Live instructions, durable usage attribution and audit events.
+- Tenant-scoped business instructions resolved from the trusted call registry.
 - Runtime and registry unit tests.
 
 ## Data schema
@@ -46,15 +46,20 @@ Required:
 - `IZAKHONO_TWILIO_STATUS_CALLBACK_PUBLIC_URL` — exact public HTTPS URL for `/twilio/status`.
 - `IZAKHONO_TWILIO_ACCOUNT_SID` — expected Twilio account SID.
 - `IZAKHONO_TWILIO_AUTH_TOKEN` — Twilio runtime secret.
-- `OPENAI_API_KEY` — server-only GPT-Live API key.
+- `IZAKHONO_ASR_TRANSCRIBE_URL` — private ASR `/api/v1/transcribe` endpoint.
+- `IZAKHONO_ASR_INTERNAL_KEY` — ASR service key.
+- `IZAKHONO_LOCAL_LLM_URL` — private Ollama-compatible local inference endpoint.
+- `IZAKHONO_LOCAL_LLM_MODEL` — locally installed and approved model name.
+- `IZAKHONO_SPEECH_GENERATE_URL` — private Kokoro `/api/v1/generate` endpoint.
+- `IZAKHONO_SPEECH_INTERNAL_KEY` — speech service key.
 
 Optional:
 - `DATABASE_SSL=require` — enable TLS to PostgreSQL.
 - `IZAKHONO_VOICE_DB_POOL_MAX` — pool size, default 10.
 - `IZAKHONO_VOICE_HOST` — bind address, default `127.0.0.1`.
 - `IZAKHONO_VOICE_PORT` — bind port, default `8962`.
-- `IZAKHONO_GPT_LIVE_MODEL` — default `gpt-live-1`.
-- `IZAKHONO_GPT_LIVE_VOICE` — default `marin`.
+- `IZAKHONO_VOICE_SPEECH_VOICE` — approved Kokoro voice, default `af_heart`.
+- `IZAKHONO_VOICE_LANGUAGE` — speech language label, default `English`.
 
 Install and run:
 
@@ -80,7 +85,7 @@ Configure each Twilio number's incoming voice webhook to the public `/twilio/voi
 
 The production image is built from the repository root so it includes the runtime and shared provider-neutral voice modules. The container runs as the non-root Node user, has a read-only root filesystem, drops Linux capabilities, and publishes port 8962 only on host loopback for the local IZAKHONO EDGE reverse proxy.
 
-On an approved owner node, first create `/etc/izakhono/apps/izakhono-voice.env` with the required runtime variables and securely provision the PostgreSQL, Twilio and OpenAI credentials. Do not place this file in the repository.
+On an approved owner node, first create `/etc/izakhono/apps/izakhono-voice.env` with the required runtime variables and securely provision PostgreSQL, Twilio, ASR, local inference and speech-service credentials. Do not place this file in the repository.
 
 After the database migration and tenant setup are complete:
 
@@ -145,3 +150,17 @@ The initial endpoint record remains `pending`; the software must not represent f
 
 
 The subscription gate is implemented by `PostgresVoiceSubscriptionGate` and reads only an active, unexpired row from `voice_tenant_subscriptions`. Migration 003 also creates the provider-event idempotency ledger. Only a trusted billing adapter may write subscription rows after verifying the payment provider's webhook signature and event semantics; no public client or redirect may set entitlement state. The actual billing webhook adapter remains a production integration gate.
+
+
+## Owned speech and reasoning services
+
+The runtime now composes three private services:
+1. **ASR:** `products/izakhono-asr-runtime` — faster-whisper, owner-hosted, offline inference after approved model staging.
+2. **Reasoning:** an Ollama-compatible local inference endpoint on the approved IZAKHONO compute node.
+3. **Speech:** `products/izakhono-speech-runtime` — the existing owner-hosted Kokoro runtime.
+
+The call pipeline buffers short caller turns, detects silence, transcribes locally, sends the transcript and tenant instructions to the local language model, synthesizes the response, and converts the returned mono PCM WAV to Twilio's 8 kHz μ-law frames.
+
+All three service URLs must be reachable from the VOICE runtime over a private, authenticated network. Do not point the runtime at a public unauthenticated model endpoint. Local model weights must be explicitly approved, staged and benchmarked; the code does not silently download them.
+
+This is a turn-based MVP, not full-duplex barge-in. The current pipeline must be latency-tested and evaluated for South African English and supported local languages before customer rollout. Silence detection is a simple energy gate and needs real-call tuning. The ASR service currently supports English, Afrikaans and selected South African language codes subject to model quality; no accuracy guarantee is implied.
