@@ -144,12 +144,14 @@ export class NativeBuilderCore {
 
   async advance(jobId: string, next: JobStatus, detail: string): Promise<BuildJob> {
     const job = await this.requireJob(jobId);
-    if (job.requiresApproval && !job.approvedBy && next !== "awaiting_approval" && next !== "cancelled") {
-      if (job.status === "queued" || job.status === "planning") {
-        if (next !== "awaiting_approval") {
-          throw new BuilderError("Approval is required before execution.", "APPROVAL_REQUIRED");
-        }
-      }
+    if (
+      job.requiresApproval &&
+      !job.approvedBy &&
+      job.status === "planning" &&
+      next !== "awaiting_approval" &&
+      next !== "cancelled"
+    ) {
+      throw new BuilderError("Approval is required before execution.", "APPROVAL_REQUIRED");
     }
     if (job.status === "queued" && next !== "planning" && next !== "cancelled") {
       throw new BuilderError("A queued job must enter planning first.", "INVALID_TRANSITION");
