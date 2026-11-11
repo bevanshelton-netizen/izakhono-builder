@@ -6,7 +6,7 @@ from typing import Any, Callable, Mapping
 from acceptance_engine import AcceptanceEngine, AcceptanceResult, EvidenceAcceptanceProbe
 from adapter_catalog import CAPABILITY_TO_ADAPTER, build_catalog
 from adapter_executor import AdapterExecutor
-from execution_contract import ExecutionResult, validate_result
+from execution_contract import validate_result
 from job_queue import JobQueue
 from job_store import AuditEvent, StoredJob, utc_now
 from state_machine import State
@@ -20,6 +20,19 @@ STATE_CAPABILITY = {
     State.TLS_READY.value: "mail",
     State.MAIL_READY.value: "crm_whatsapp",
     State.INTEGRATIONS_READY.value: "acceptance",
+}
+
+# Recovery targets the capability being attempted, not the already-completed
+# state from which that capability was entered.
+RECOVERY_TARGET_STATE = {
+    State.PAYMENT_VERIFIED.value: State.TENANT_CREATED.value,
+    State.TENANT_CREATED.value: State.DOMAIN_READY.value,
+    State.DOMAIN_READY.value: State.DNS_READY.value,
+    State.DNS_READY.value: State.SITE_READY.value,
+    State.SITE_READY.value: State.TLS_READY.value,
+    State.TLS_READY.value: State.MAIL_READY.value,
+    State.MAIL_READY.value: State.INTEGRATIONS_READY.value,
+    State.INTEGRATIONS_READY.value: State.ACCEPTANCE_PASSED.value,
 }
 
 
@@ -45,7 +58,7 @@ class ProvisionerWorker:
         self.recovery = None
         if recovery_store is not None:
             from recovery_orchestrator import RecoveryOrchestrator
-            self.recovery = RecoveryOrchestrator(recovery_store, recovery_executors or {})
+            self.recovery = RecoveryOrchestrator(self.store, recovery_store, recovery_executors or {})
 
     def _executor(self) -> AdapterExecutor:
         return AdapterExecutor(self.registry, self.implementations)
@@ -70,7 +83,8 @@ class ProvisionerWorker:
     def _failure(self, job: StoredJob, code: str, message: str, operation_id: str) -> WorkerResult:
         job.attempts += 1
         if self.recovery is not None:
-            recovered = self.recovery.recover(job, job.state, operation_id, message)
+            recovery_state = RECOVERY_TARGET_STATE.get(job.state, job.state)
+            recovered = self.recovery.recover(job, recovery_state, operation_id, message)
             if not recovered.ok:
                 return self._block(job, "RECOVERY_FAILED", recovered.reason)
             self.store.append_audit(AuditEvent(f"evt_{job.job_id}_recovery_resume_{job.attempts}", job.job_id,
@@ -105,8 +119,9 @@ class ProvisionerWorker:
         operation = self.registry.get("bindings", {}).get(capability, {}).get("operation", capability)
         operation_id = f"op_{job.job_id}_{job.attempts + 1}_{capability}"
         try:
-            result = self._executor().execute(self._request(job, capability, operation, operation_id))
-            validate_result(result)
+            request = self._request(job, capability, operation, operation_id)
+            result = self._executor().execute(request)
+            validate_result(result, request)
         except Exception as exc:
             return self._failure(job, "ADAPTER_EXECUTION_FAILED", str(exc), operation_id)
         next_state = {
@@ -129,31 +144,61 @@ class ProvisionerWorker:
         return WorkerResult(job.job_id, job.state, "verified")
 
     def run_once(self) -> WorkerResult | None:
-        item = self.queue.claim_next()
-        if item is None:
-            return None
-        job = self.store.get(item.job_id)
+        # The in-memory JobQueue is a simple FIFO, not the PostgreSQL lease queue.
+        # claim_next() returns the StoredJob directly; verified non-terminal jobs
+        # are re-enqueued for their next state. Durable lease handling belongs to
+        # DurableProvisionerWorker and must not be mixed into this adapter.
+        job = self.queue.claim_next()
         if job is None:
             return None
         result = self.process_job(job)
-        if result.status in {"verified", "accepted", "blocked", "terminal"}:
-            self.queue.complete(item.lease_id)
-        else:
-            self.queue.release(item.lease_id, retry_at=utc_now())
+        if result.status == "verified":
+            self.queue.enqueue(job)
+        elif result.status == "retry":
+            self.queue.retry(job, retryable=True, error_code=result.message or "ADAPTER_EXECUTION_FAILED")
+        # accepted, blocked and terminal are final for this in-memory queue.
         return result
 
 if __name__ == "__main__":
     from job_store import MemoryJobStore
-    store = MemoryJobStore(); queue = JobQueue(store)
-    registry = {"adapters": {k: {"owned": v} for k, v in CAPABILITY_TO_ADAPTER.items()},
-                "bindings": {name: {"operation": "smoke"} for name in STATE_CAPABILITY.values()}}
-    implementations = build_catalog()
+
+    store = MemoryJobStore()
+    queue = JobQueue(store)
+    registry = {
+        "adapters": {capability: {"owned": adapter} for capability, adapter in CAPABILITY_TO_ADAPTER.items()},
+        "bindings": {name: {"operation": "smoke"} for name in STATE_CAPABILITY.values()},
+    }
+
+    # Contract fixtures exercise the worker only; provider_adapters.py remains
+    # simulation-only and must never satisfy the independent acceptance engine.
+    def fixture(adapter_name):
+        def execute(request):
+            capability = request["capability"]
+            return {
+                "evidence_id": f"fixture-{adapter_name}-{request['operation_id']}",
+                "observed_at": utc_now(),
+                "verified": True,
+                "checks": [f"contract.{capability}"],
+            }
+        return execute
+
+    implementations = {name: fixture(name) for name in set(CAPABILITY_TO_ADAPTER.values())}
     job, _ = store.create_or_get("tenant-demo", "idem-demo", "prov-demo")
-    job.evidence["PAYMENT_VERIFIED"] = {"evidence_id": "pay-demo", "observed_at": utc_now(), "verified": True, "checks": ["payment.verified"]}
-    store.save(job); queue.enqueue(job)
+    job.evidence["PAYMENT_VERIFIED"] = {
+        "evidence_id": "pay-demo",
+        "observed_at": utc_now(),
+        "verified": True,
+        "checks": ["payment.verified"],
+    }
+    store.save(job)
+    queue.enqueue(job)
     worker = ProvisionerWorker(store, queue, implementations, registry)
     results = [worker.run_once() for _ in range(10)]
-    assert any(r is not None and r.status == "accepted" for r in results) and job.state == State.HANDOVER_READY.value
-    assert all(r is not None for r in results[:8])
-    assert set(job.evidence) == {"PAYMENT_VERIFIED", "TENANT_CREATED", "DOMAIN_READY", "DNS_READY", "SITE_READY", "TLS_READY", "MAIL_READY", "INTEGRATIONS_READY", "ACCEPTANCE_PASSED"}
+    assert any(r is not None and r.status == "accepted" for r in results), [r.status if r else None for r in results]
+    assert job.state == State.HANDOVER_READY.value, job.state
+    assert all(r is not None for r in results[:9])
+    assert set(job.evidence) == {
+        "PAYMENT_VERIFIED", "TENANT_CREATED", "DOMAIN_READY", "DNS_READY", "SITE_READY",
+        "TLS_READY", "MAIL_READY", "INTEGRATIONS_READY", "ACCEPTANCE_PASSED",
+    }
     print("PROVISIONER_WORKER_RUNTIME: PASS")

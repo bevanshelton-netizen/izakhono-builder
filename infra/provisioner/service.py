@@ -91,15 +91,40 @@ class ProvisionerService:
         return record
 
 if __name__=="__main__":
-    from adapter_catalog import build_catalog, CAPABILITY_TO_ADAPTER
+    from adapter_catalog import CAPABILITY_TO_ADAPTER
     from job_store import MemoryJobStore
+    from worker_runtime import STATE_CAPABILITY
+
     store=MemoryJobStore(); queue=JobQueue(store)
-    registry={"adapters":{k:{"owned":v} for k,v in CAPABILITY_TO_ADAPTER.items()},"bindings":{name:{"operation":"smoke"} for name in {"tenant","domain","dns","site","tls","mail","crm_whatsapp"}}}
-    service=ProvisionerService(store,queue,build_catalog(),registry)
-    first=service.create_job(CreateJobRequest("tenant-service","idem-service",{"payment_id":"pay-service","amount":"100.00","currency":"ZAR","verified":True}))
-    duplicate=service.create_job(CreateJobRequest("tenant-service","idem-service",{"payment_id":"pay-service","amount":"100.00","currency":"ZAR","verified":True}))
+    registry={
+        "adapters":{capability:{"owned":adapter} for capability,adapter in CAPABILITY_TO_ADAPTER.items()},
+        "bindings":{name:{"operation":"smoke"} for name in set(STATE_CAPABILITY.values())},
+    }
+    # Isolated in-memory contract fixtures only; never used by a deployed worker.
+    def fixture(adapter_name):
+        def execute(request):
+            capability=request["capability"]
+            return {
+                "evidence_id":f"fixture-{adapter_name}-{request['operation_id']}",
+                "observed_at":utc_now(),
+                "verified":True,
+                "checks":[f"contract.{capability}"],
+            }
+        return execute
+    implementations={name:fixture(name) for name in set(CAPABILITY_TO_ADAPTER.values())}
+    service=ProvisionerService(store,queue,implementations,registry)
+    request=CreateJobRequest("tenant-service","idem-service",{"payment_id":"pay-service","amount":"100.00","currency":"ZAR","verified":True})
+    first=service.create_job(request)
+    duplicate=service.create_job(request)
     assert first["created"] is True and duplicate["created"] is False and first["job_id"]==duplicate["job_id"]
-    for _ in range(8): service.worker_once()
+    try:
+        service.handover(first["job_id"])
+    except ServiceError as error:
+        assert error.code=="HANDOVER_NOT_READY"
+    else:
+        raise AssertionError("handover was available before acceptance")
+    for _ in range(9):
+        service.worker_once()
     handover=service.handover(first["job_id"])
     assert handover["status"]=="HANDOVER_READY"
     assert any(e.event_type=="HANDOVER_COMPLETED" for e in store.events)
