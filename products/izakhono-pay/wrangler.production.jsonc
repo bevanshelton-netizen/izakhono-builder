@@ -21,7 +21,7 @@
     "PAYMENT_MODE": "live",
     "IKHOKHA_ENABLED": "false",
     "PAYSTACK_ENABLED": "false",
-    "PAYFAST_ENABLED": "true",
+    "PAYFAST_ENABLED": "false",
     "PAYFAST_SANDBOX": "false",
     "PAYFAST_REQUIRE_IP": "true",
     "MERCHANT_WEBHOOK_ALLOWED_HOSTS": "kora-network.vercel.app"
