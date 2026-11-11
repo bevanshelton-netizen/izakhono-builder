@@ -11,8 +11,6 @@ STANDARD = ROOT / "architecture" / "NODE01-IDENTITY-STANDARD.md"
 SKIP_DIRS = {".git", ".next", "node_modules", "dist", "build", "coverage", ".venv", "venv"}
 TEXT_SUFFIXES = {".json", ".yaml", ".yml", ".toml", ".ini", ".cfg", ".conf", ".env", ".sh", ".bash", ".ps1", ".cmd", ".bat", ".service", ".md", ".txt", ".py", ".js", ".ts", ".tsx", ".jsx", ".go", ".rs", ".tf"}
 MAX_BYTES = 2_000_000
-
-# These patterns catch identity conflation, not ordinary references to NODE01 software.
 FORBIDDEN = [
     (re.compile(r"\bNODE01\s+(?:physical\s+)?(?:server|machine|computer|laptop|hardware|VM|virtual\s+machine)\b", re.I), "NODE01 is described as physical/virtual infrastructure"),
     (re.compile(r"\b(?:server|machine|computer|laptop|hardware|VM|virtual\s+machine)\s+(?:named|called|known\s+as)\s+NODE01\b", re.I), "Infrastructure is assigned NODE01 identity"),
@@ -35,6 +33,8 @@ scanned = 0
 for path in ROOT.rglob("*"):
     if not path.is_file() or any(part in SKIP_DIRS for part in path.parts):
         continue
+    if path.resolve() == STANDARD.resolve():
+        continue  # The policy necessarily quotes forbidden examples to prohibit them.
     if path.suffix.lower() not in TEXT_SUFFIXES or path.stat().st_size > MAX_BYTES:
         continue
     try:
@@ -42,7 +42,6 @@ for path in ROOT.rglob("*"):
     except (UnicodeDecodeError, OSError):
         continue
     scanned += 1
-
     if path.suffix.lower() == ".json":
         try:
             data = json.loads(content)
@@ -53,7 +52,6 @@ for path in ROOT.rglob("*"):
                 errors.append(f"{path.relative_to(ROOT)}: logical_node_id NODE01 must have identity_type software-runtime")
             if data.get("runtime_host_is_separate") is not True:
                 errors.append(f"{path.relative_to(ROOT)}: runtime_host_is_separate must be true")
-
     for pattern, reason in FORBIDDEN:
         for match in pattern.finditer(content):
             line = content.count("\n", 0, match.start()) + 1
@@ -63,5 +61,4 @@ if errors:
     for error in errors:
         print(f"NODE01 ARCHITECTURE GATE: {error}")
     fail(f"{len(errors)} violation(s) found across {scanned} text files")
-
 print(f"NODE01 ARCHITECTURE GATE: PASS — canonical standard present; {scanned} text files scanned; no identity violations.")
