@@ -40,6 +40,6 @@ jobs:
       - name: Test owned runtime handshake security and PostgreSQL registry
         run: npm test --prefix products/izakhono-voice/runtime
       - name: Test webhook security, media bridge, and local ASR runtime
-        run: npx --yes tsx@4.20.3 products/izakhono-voice/src/twilio-rest-adapter.test.ts && npx --yes tsx@4.20.3 products/izakhono-voice/src/twilio-webhook-security.test.ts && npx --yes tsx@4.20.3 products/izakhono-voice/src/twilio-media-stream-bridge.test.ts
+        run: npx --yes tsx@4.20.3 products/izakhono-voice/src/twilio-rest-adapter.test.ts && npx --yes tsx@4.20.3 products/izakhono-voice/src/twilio-webhook-security.test.ts && npx --yes tsx@4.20.3 products/izakhono-voice/src/twilio-media-stream-bridge.test.ts && npx --yes tsx@4.20.3 products/izakhono-voice/src/local-voice-session-factory.test.ts
       - name: Validate owner-hosted ASR service
         run: python3 -m py_compile products/izakhono-asr-runtime/app.py && python3 -m unittest discover -s products/izakhono-asr-runtime -p 'test_*.py'
