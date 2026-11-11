@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "IZAKHONO NODE01 Runtime Binding",
+  "description": "NODE01 is software bound to a separate execution environment.",
+  "type": "object",
+  "required": [
+    "schema",
+    "logical_node_id",
+    "identity_type",
+    "runtime_host",
+    "runtime_host_is_separate"
+  ],
+  "properties": {
+    "schema": {
+      "const": "izakhono.runtime-binding/v1"
+    },
+    "logical_node_id": {
+      "const": "NODE01"
+    },
+    "identity_type": {
+      "const": "software-runtime"
+    },
+    "runtime_host": {
+      "type": "string",
+      "minLength": 1,
+      "not": {
+        "enum": [
+          "NODE01",
+          "node01",
+          "APPROVED_RUNTIME_HOST"
+        ]
+      }
+    },
+    "runtime_host_is_separate": {
+      "const": true
+    }
+  },
+  "additionalProperties": true
+}
