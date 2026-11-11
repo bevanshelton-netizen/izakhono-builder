@@ -1,0 +1,111 @@
+{
+  "provider": "azure-speech",
+  "region": "southafricanorth",
+  "voices": {
+    "za-executive-warm": {
+      "name": "en-ZA-LeahNeural",
+      "locale": "en-ZA",
+      "pitch": "+1%"
+    },
+    "za-executive-warm-f": {
+      "name": "en-ZA-LeahNeural",
+      "locale": "en-ZA",
+      "pitch": "+1%"
+    },
+    "za-executive-warm-m": {
+      "name": "en-ZA-LukeNeural",
+      "locale": "en-ZA",
+      "pitch": "+1%"
+    },
+    "za-nav-calm": {
+      "name": "en-ZA-LeahNeural",
+      "locale": "en-ZA",
+      "pitch": "-3%"
+    },
+    "za-nav-calm-f": {
+      "name": "en-ZA-LeahNeural",
+      "locale": "en-ZA",
+      "pitch": "-3%"
+    },
+    "za-nav-calm-m": {
+      "name": "en-ZA-LukeNeural",
+      "locale": "en-ZA",
+      "pitch": "-3%"
+    },
+    "za-kora-friendly": {
+      "name": "en-ZA-LeahNeural",
+      "locale": "en-ZA",
+      "pitch": "+3%"
+    },
+    "za-kora-friendly-f": {
+      "name": "en-ZA-LeahNeural",
+      "locale": "en-ZA",
+      "pitch": "+3%"
+    },
+    "za-kora-friendly-m": {
+      "name": "en-ZA-LukeNeural",
+      "locale": "en-ZA",
+      "pitch": "+3%"
+    },
+    "za-builder-clear": {
+      "name": "en-ZA-LukeNeural",
+      "locale": "en-ZA",
+      "pitch": "-1%"
+    },
+    "za-builder-clear-f": {
+      "name": "en-ZA-LeahNeural",
+      "locale": "en-ZA",
+      "pitch": "-1%"
+    },
+    "za-builder-clear-m": {
+      "name": "en-ZA-LukeNeural",
+      "locale": "en-ZA",
+      "pitch": "-1%"
+    },
+    "za-fortress-composed": {
+      "name": "en-ZA-LukeNeural",
+      "locale": "en-ZA",
+      "pitch": "-4%"
+    },
+    "za-fortress-composed-f": {
+      "name": "en-ZA-LeahNeural",
+      "locale": "en-ZA",
+      "pitch": "-4%"
+    },
+    "za-fortress-composed-m": {
+      "name": "en-ZA-LukeNeural",
+      "locale": "en-ZA",
+      "pitch": "-4%"
+    },
+    "za-business-executive": {
+      "name": "en-ZA-LukeNeural",
+      "locale": "en-ZA",
+      "pitch": "+1%"
+    },
+    "za-business-executive-f": {
+      "name": "en-ZA-LeahNeural",
+      "locale": "en-ZA",
+      "pitch": "+1%"
+    },
+    "za-business-executive-m": {
+      "name": "en-ZA-LukeNeural",
+      "locale": "en-ZA",
+      "pitch": "+1%"
+    },
+    "za-edu-patient": {
+      "name": "en-ZA-LeahNeural",
+      "locale": "en-ZA",
+      "pitch": "+2%"
+    },
+    "za-edu-patient-f": {
+      "name": "en-ZA-LeahNeural",
+      "locale": "en-ZA",
+      "pitch": "+2%"
+    },
+    "za-edu-patient-m": {
+      "name": "en-ZA-LukeNeural",
+      "locale": "en-ZA",
+      "pitch": "+2%"
+    }
+  }
+}
