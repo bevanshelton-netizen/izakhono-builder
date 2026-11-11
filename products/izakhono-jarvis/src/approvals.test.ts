@@ -2,11 +2,11 @@ import assert from "node:assert/strict";
 import { jarvisApprovalsRoute } from "./approvals";
 function req(method:string,body?:unknown,path="/api/jarvis/proposals"){return new Request("https://builder.example"+path,{method,headers:body===undefined?{}:{"content-type":"application/json"},body:body===undefined?undefined:JSON.stringify(body)});}
 async function main(){
- let reads=0,writes=0,sqls:string[]=[];
+ let reads=0,writes=0,sqls:string[]=[],proposalStatus="proposed",decisionRecorded=false;
  const env={DB:{prepare(sql:string){sqls.push(sql);return{bind(..._v:unknown[]){return{
  async all(){reads++;return{results:[]};},
- async first(){reads++;return sql.includes("jarvis_action_proposals")?{id:"prp_1",status:"proposed",expires_at:null}:null;},
- async run(){writes++;return{meta:{changes:1}};}
+ async first(){reads++;return sql.includes("jarvis_action_proposals")?{id:"prp_1",status:proposalStatus,expires_at:null}:null;},
+ async run(){writes++;if(sql.includes("INSERT INTO jarvis_proposal_decisions")){if(decisionRecorded)throw new Error("unique decision");decisionRecorded=true;}if(sql.includes("UPDATE jarvis_action_proposals"))proposalStatus=String(_v[0]);return{meta:{changes:1}};}
  };}};}}};
  const denied=await jarvisApprovalsRoute(req("GET"),env,async()=>false);assert.equal(denied?.status,401);assert.equal(reads,0);
  const invalid=await jarvisApprovalsRoute(req("POST",{action_type:"shell_exec",title:"Run",description:"Do it"}),env,async()=>true);assert.equal(invalid?.status,400);
