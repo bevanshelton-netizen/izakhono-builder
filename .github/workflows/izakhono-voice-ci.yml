@@ -5,6 +5,7 @@ on:
     branches: [main, 'feat/izakhono-voice-*']
     paths:
       - 'products/izakhono-voice/**'
+      - 'products/izakhono-asr-runtime/**'
       - '.github/workflows/izakhono-voice-ci.yml'
   pull_request:
     paths:
@@ -26,8 +27,8 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Typecheck telephony and GPT-Live integration
-        run: npx --yes --package typescript@5.9.2 tsc --pretty false --noEmit --target ES2022 --lib ES2022,DOM --module ESNext --moduleResolution Bundler products/izakhono-voice/src/types.ts products/izakhono-voice/src/twilio-rest-adapter.ts products/izakhono-voice/src/twilio-webhook-security.ts products/izakhono-voice/src/twilio-media-stream-bridge.ts products/izakhono-voice/src/gpt-live-session-factory.ts
+      - name: Typecheck telephony and owned local voice pipeline
+        run: npx --yes --package typescript@5.9.2 tsc --pretty false --noEmit --target ES2022 --lib ES2022,DOM --module ESNext --moduleResolution Bundler products/izakhono-voice/src/types.ts products/izakhono-voice/src/twilio-rest-adapter.ts products/izakhono-voice/src/twilio-webhook-security.ts products/izakhono-voice/src/twilio-media-stream-bridge.ts products/izakhono-voice/src/local-voice-session-factory.ts
       - name: Install owned runtime dependencies
         run: npm install --prefix products/izakhono-voice/runtime --ignore-scripts --no-audit --no-fund
       - name: Typecheck owned WebSocket runtime
@@ -38,5 +39,7 @@ jobs:
         run: docker build -f products/izakhono-voice/runtime/Dockerfile -t izakhono-voice-runtime:ci .
       - name: Test owned runtime handshake security and PostgreSQL registry
         run: npm test --prefix products/izakhono-voice/runtime
-      - name: Test webhook security, media bridge, and GPT-Live session
-        run: npx --yes tsx@4.20.3 products/izakhono-voice/src/twilio-rest-adapter.test.ts && npx --yes tsx@4.20.3 products/izakhono-voice/src/twilio-webhook-security.test.ts && npx --yes tsx@4.20.3 products/izakhono-voice/src/twilio-media-stream-bridge.test.ts && npx --yes tsx@4.20.3 products/izakhono-voice/src/gpt-live-session-factory.test.ts
+      - name: Test webhook security, media bridge, and local ASR runtime
+        run: npx --yes tsx@4.20.3 products/izakhono-voice/src/twilio-rest-adapter.test.ts && npx --yes tsx@4.20.3 products/izakhono-voice/src/twilio-webhook-security.test.ts && npx --yes tsx@4.20.3 products/izakhono-voice/src/twilio-media-stream-bridge.test.ts
+      - name: Validate owner-hosted ASR service
+        run: python3 -m py_compile products/izakhono-asr-runtime/app.py && python3 -m unittest discover -s products/izakhono-asr-runtime -p 'test_*.py'
