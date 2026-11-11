@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Owner-hosted speech recognition API for IZAKHONO VOICE."""
 from __future__ import annotations
-import base64, binascii, hmac, json, os, tempfile, threading
+import base64, binascii, hmac, importlib.util, json, os, tempfile, threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
@@ -48,10 +48,10 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         if self.path != "/healthz":
             return send_json(self, 404, {"ok": False, "error": "not_found"})
-        ready = bool(KEY and (MODEL_PATH / "model.bin").is_file() and (MODEL_PATH / "config.json").is_file())
+        ready = bool(KEY and importlib.util.find_spec("faster_whisper") and (MODEL_PATH / "model.bin").is_file() and (MODEL_PATH / "config.json").is_file())
         return send_json(self, 200 if ready else 503, {
             "ok": ready, "service": "izakhono-asr-runtime", "backend": "faster-whisper-local",
-            "owned_runtime": True, "model_staged": (MODEL_PATH / "model.bin").is_file(),
+            "owned_runtime": True, "model_staged": (MODEL_PATH / "model.bin").is_file(), "runtime_dependency_ready": importlib.util.find_spec("faster_whisper") is not None,
             "inference_network_required": False,
         })
     def do_POST(self):
