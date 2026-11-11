@@ -24,6 +24,7 @@
     "business-studio:provisioner:test": "npx --yes tsx@4.20.3 products/izakhono-business-studio/provisioner-runtime.test.ts",
     "business-studio:order-provisioning:test": "npx --yes tsx@4.20.3 products/izakhono-business-studio/order-provisioning-orchestrator.test.ts",
     "infra:contabo:validate": "node infra/contabo/validate.mjs",
+    "validate:host": "npm --prefix products/izakhono-host run typecheck",
     "validate:super-seo": "node scripts/validate-super-seo.mjs",
     "fortress:typecheck": "tsc --noEmit --target ES2022 --module ESNext --moduleResolution Bundler --types node products/fortress-security/src/types.ts products/fortress-security/src/policy.ts products/fortress-security/src/scanner.ts products/fortress-security/src/sarif.ts products/fortress-security/src/remediation.ts products/fortress-security/src/cli.ts products/fortress-security/src/remediation-cli.ts products/fortress-security/src/control-plane.ts products/fortress-security/src/control-plane-cli.ts",
     "fortress:test": "npx --yes tsx@4.20.3 products/fortress-security/src/scanner.test.ts && npx --yes tsx@4.20.3 products/fortress-security/src/sarif.test.ts && npx --yes tsx@4.20.3 products/fortress-security/src/remediation.test.ts && npx --yes tsx@4.20.3 products/fortress-security/src/control-plane.test.ts",
