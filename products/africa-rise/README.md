@@ -10,7 +10,7 @@ A responsive, dependency-free public-facing microsite for the AFRICA RISE initia
 Open `index.html` in a modern browser or serve this directory with any static HTTP server.
 
 ## Current status
-This is a built preview artifact in the IZAKHONO Builder repository. It is **not yet deployed or publicly launched**. No domain, DNS, contact form, mailing list, analytics, CRM or partner-intake backend is configured by this artifact.
+The branch preview is deployed through Cloudflare Workers at `/africa-rise/` on the `feature/africa-rise-platform` preview alias. This is a non-production preview, not a public production launch. No custom domain, enquiry collection, mailing list, analytics, CRM or partner-intake backend is enabled.
 
 ## Launch gates
 Before public launch:
