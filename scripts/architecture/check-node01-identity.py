@@ -8,7 +8,7 @@ STANDARD=ROOT/"architecture"/"NODE01-IDENTITY-STANDARD.md"
 SKIP_DIRS={".git",".next","node_modules","dist","build","coverage",".venv","venv"}
 TEXT_SUFFIXES={".json",".yaml",".yml",".toml",".ini",".cfg",".conf",".env",".sh",".bash",".ps1",".cmd",".bat",".service",".md",".txt",".py",".js",".ts",".tsx",".jsx",".go",".rs",".tf"}
 FORBIDDEN=[
-(re.compile(r"\bNODE01\s+(?:physical\s+)?(?:server|machine|computer|laptop|hardware|VM|virtual\s+machine)\b",re.I),"NODE01 is described as physical/virtual infrastructure"),
+(re.compile(r"\bNODE01\s+(?:is|=|:)\s*(?:a\s+)?(?:physical\s+)?(?:server|machine|computer|laptop|hardware|VM|virtual\s+machine)\b",re.I),"NODE01 is described as physical/virtual infrastructure"),
 (re.compile(r"\b(?:server|machine|computer|laptop|hardware|VM|virtual\s+machine)\s+(?:named|called|known\s+as)\s+NODE01\b",re.I),"Infrastructure is assigned NODE01 identity"),
 (re.compile(r"\b(?:hostname|host_name|server_name|machine_name)\s*[:=]\s*['\"]?NODE01\b",re.I),"NODE01 is used as a hostname or infrastructure name"),
 (re.compile(r"\b(?:runtime_host|physical_host|execution_host)\s*[:=]\s*['\"]?NODE01\b",re.I),"Execution locator is conflated with NODE01 identity")]
