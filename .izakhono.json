@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "build_context": ".",
+  "dockerfile_path": "Dockerfile",
+  "container_port": 80,
+  "health_path": "/health.json"
+}
