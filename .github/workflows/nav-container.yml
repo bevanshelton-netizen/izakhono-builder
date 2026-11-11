@@ -1,0 +1,78 @@
+name: IZAKHONO NAV Container Verification
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'Dockerfile'
+      - '.izakhono.json'
+      - 'public/ai-core/nav/**'
+      - '.github/workflows/nav-container.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'Dockerfile'
+      - '.izakhono.json'
+      - 'public/ai-core/nav/**'
+      - '.github/workflows/nav-container.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-smoke-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate IZAKHONO deployment manifest
+        run: |
+          python - <<'PY'
+          import json, pathlib
+          m=json.loads(pathlib.Path('.izakhono.json').read_text())
+          assert m['version']==1
+          assert m['build_context']=='.'
+          assert m['dockerfile_path']=='Dockerfile'
+          assert m['container_port']==80
+          assert m['health_path']=='/health.json'
+          for p in ['Dockerfile','public/ai-core/nav/index.html',
+                    'public/ai-core/nav/manifest.webmanifest',
+                    'public/ai-core/nav/sw.js','public/ai-core/nav/health.json']:
+              assert pathlib.Path(p).is_file(), f'missing {p}'
+          print('Manifest and NAV build inputs: PASS')
+          PY
+
+      - name: Build NAV container
+        run: docker build --pull -t izakhono/nav:ci .
+
+      - name: Run container
+        run: docker run -d --rm --name izakhono-nav-ci -p 8080:80 izakhono/nav:ci
+
+      - name: Verify HTTP health and PWA assets
+        run: |
+          set -eu
+          for i in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:8080/health.json >/tmp/nav-health.json; then break; fi
+            sleep 2
+          done
+          python - <<'PY'
+          import json
+          h=json.load(open('/tmp/nav-health.json'))
+          assert h.get('ok') is True
+          assert h.get('product') == 'IZAKHONO NAV'
+          print('NAV health endpoint: PASS')
+          PY
+          curl --fail --silent http://127.0.0.1:8080/ | grep -q 'IZAKHONO NAV'
+          curl --fail --silent http://127.0.0.1:8080/manifest.webmanifest | python -c "import json,sys; m=json.load(sys.stdin); assert m['name']=='IZAKHONO NAV' and m['display']=='standalone'"
+          curl --fail --silent http://127.0.0.1:8080/sw.js | grep -q "izakhono-nav"
+          echo "HTML, PWA manifest and service worker: PASS"
+
+      - name: Container logs on failure
+        if: failure()
+        run: docker logs izakhono-nav-ci || true
+
+      - name: Stop container
+        if: always()
+        run: docker rm -f izakhono-nav-ci || true
