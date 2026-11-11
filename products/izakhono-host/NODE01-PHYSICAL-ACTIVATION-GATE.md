@@ -1,12 +1,12 @@
-# NODE01 Physical Activation Gate
+# Runtime-Host Activation Gate for NODE01 Software
 
 ## Purpose
 
-This gate is the final machine-side prerequisite before an IZAKHONO-owned node can be promoted as a public production execution target.
+This gate is the final execution-environment prerequisite before an IZAKHONO-owned runtime target can be promoted as a public production execution target. NODE01 remains the logical software identity; this procedure validates the separately managed host on which it runs.
 
 ## Required evidence
 
-Run on the actual NODE01 machine:
+Run on the approved runtime host bound to NODE01 software:
 
 ```bash
 cd products/izakhono-host
@@ -19,7 +19,7 @@ The activation sequence must complete successfully and the owned runtime health 
 
 ## Public acceptance evidence
 
-After machine activation, independently verify:
+After runtime-host activation, independently verify:
 
 - public IPv4 reachability
 - public IPv6 reachability where configured
@@ -39,7 +39,7 @@ No node is marked `LIVE` merely because the repository contains activation scrip
 
 ## XQWAXQWAMILÉ handoff
 
-Once NODE01 passes this gate, the XQWAXQWAMILÉ customer record can proceed through:
+Once NODE01 software passes this gate in its approved execution environment, the XQWAXQWAMILÉ customer record can proceed through:
 
 `PROVISION → CONTENT → DNS → HTTPS → ACCEPT → MAIL TRANSPORT → REAL MAIL TEST → MAILBOX/MX ACCEPTANCE → HANDOVER`
 

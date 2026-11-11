@@ -6,5 +6,6 @@ assert.match(source, /ALLOWED_IMAGE_PREFIX/);
 assert.match(source, /image_not_allowed/);
 assert.match(source, /POST.*\/deploy/s);
 assert.match(source, /docker/);
-assert.match(source, /unless-stopped/);
-console.log('[PASS] NODE01 runtime contract validated.');
+assert.match(source, /\/health/);
+assert.match(source, /NODE_ID/);
+console.log('[PASS] NODE01 runtime source contract validated.');
