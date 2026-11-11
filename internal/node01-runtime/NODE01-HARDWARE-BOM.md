@@ -31,4 +31,4 @@ This document specifies optional procurement requirements for a separately manag
 
 Procurement is independent of NODE01 software identity. The selected execution environment must be recorded through `izakhono.runtime-binding/v1`, with a real environment locator distinct from NODE01. Replacing, migrating, scaling or losing the environment must not change the NODE01 software identity.
 
-Do not use phrases such as “NODE01 server”, “NODE01 machine” or “NODE01 hardware” to name the purchased asset. Refer to it as the **NODE01 execution environment** or by its actual infrastructure locator.
+Use **NODE01 execution environment** or the actual infrastructure locator when referring to the purchased asset.
