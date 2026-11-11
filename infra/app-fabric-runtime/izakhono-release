@@ -84,6 +84,7 @@ if [ -n "${ACME_EMAIL:-}" ]; then
   export ACME_EMAIL
 fi
 
+cd "$SOURCE_DIR"
 bash "$SOURCE_DIR/scripts/izakhono/production-cutover.sh" \
   --revision "$REVISION" \
   --public-url "$PUBLIC_URL" \
