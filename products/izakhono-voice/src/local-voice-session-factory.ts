@@ -137,7 +137,7 @@ export class LocalVoiceStreamSessionFactory implements VoiceStreamSessionFactory
     customParameters: Record<string, string>; sendAudio: (frame: Uint8Array) => void;
     sendMark: (name: string) => void; onError: (error: unknown) => void;
   }): Promise<VoiceStreamSession> {
-    const instructions = await this.config.instructionsForCall(input.authorization);
+    const instructions = await this.instructionsForCall(input.authorization);
     if (!instructions?.trim()) throw new Error("Tenant voice instructions are required");
     return new LocalVoiceStreamSession(this.config, instructions, input.authorization, input.sendAudio, input.onError);
   }
