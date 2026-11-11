@@ -3,6 +3,7 @@ import { jarvisExecutiveSnapshotRoute } from '../products/izakhono-jarvis/src/ap
 import { jarvisTasksRoute } from '../products/izakhono-jarvis/src/tasks';
 import { jarvisContextRoute, jarvisTaskContextRoute } from '../products/izakhono-jarvis/src/context';
 import { jarvisApprovalsRoute } from '../products/izakhono-jarvis/src/approvals';
+import { jarvisWorkspaceRoute } from '../products/izakhono-jarvis/src/workspace';
 import { ventureFactoryRoute } from './venture-factory';
 import { reviewLoopRoute } from './reviewloop';
 import { bidForgeRoute } from './bidforge';
@@ -1335,6 +1336,9 @@ export default {
 
     const jarvisApprovals = await jarvisApprovalsRoute(req, env, () => ownerAuthorized(req, env));
     if (jarvisApprovals) return jarvisApprovals;
+
+    const jarvisWorkspace = await jarvisWorkspaceRoute(req, env, () => ownerAuthorized(req, env));
+    if (jarvisWorkspace) return jarvisWorkspace;
 
     const commandsApi = await commandApiRoute(req, env, url);
     if (commandsApi) return commandsApi;
