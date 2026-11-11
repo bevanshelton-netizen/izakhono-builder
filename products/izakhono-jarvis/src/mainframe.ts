@@ -1,6 +1,6 @@
 // IZAKHONO mainframe read-only bridge: first-party Builder and J.A.R.V.I.S. records only.
 export interface JarvisMainframeDb {
- prepare(sql:string):{bind(...values:unknown[]):{all<T=Record<string,unknown>>():Promise<{results?:T[]}>;first<T=Record<string,unknown>>():Promise<T|null>}};
+ prepare(sql:string):{all<T=Record<string,unknown>>():Promise<{results?:T[]}>;first<T=Record<string,unknown>>():Promise<T|null>;bind(...values:unknown[]):{all<T=Record<string,unknown>>():Promise<{results?:T[]}>;first<T=Record<string,unknown>>():Promise<T|null>}};
 }
 export interface JarvisMainframeEnv{DB:JarvisMainframeDb;IZAKHONO_SUPER_AI_URL?:string;IZAKHONO_SUPER_AI_INTERNAL_KEY?:string;IZAKHONO_SUPER_AI_WORKFLOW_KEY?:string;}
 const json=(data:unknown,status=200)=>new Response(JSON.stringify(data),{status,headers:{"content-type":"application/json; charset=utf-8","cache-control":"no-store","x-content-type-options":"nosniff"}});
