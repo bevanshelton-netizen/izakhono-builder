@@ -27,3 +27,8 @@ Before public launch:
 - No invented statistics, endorsements, partner logos, public contact details or operational claims.
 - No non-functional lead form pretending to submit data.
 - Clear distinction between strategic ambition, pilots under preparation and operational services.
+
+
+## Preview route
+
+The branch preview exposes the microsite at `/africa-rise/`. This is a non-production preview route; no public domain, customer enquiry collection or launch claim is enabled.
