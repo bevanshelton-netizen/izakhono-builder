@@ -9,6 +9,7 @@ export interface LocalVoicePipelineConfig {
   speechRecognitionKey: string;
   languageModelUrl: string;
   languageModelName: string;
+  instructionsForCall: (authorization: VoiceStreamAuthorization) => Promise<string>;
   speechSynthesisUrl: string;
   speechSynthesisKey: string;
   voice?: string;
@@ -136,7 +137,9 @@ export class LocalVoiceStreamSessionFactory implements VoiceStreamSessionFactory
     customParameters: Record<string, string>; sendAudio: (frame: Uint8Array) => void;
     sendMark: (name: string) => void; onError: (error: unknown) => void;
   }): Promise<VoiceStreamSession> {
-    return new LocalVoiceStreamSession(this.config, input.authorization, input.sendAudio, input.onError);
+    const instructions = await this.config.instructionsForCall(input.authorization);
+    if (!instructions?.trim()) throw new Error("Tenant voice instructions are required");
+    return new LocalVoiceStreamSession(this.config, instructions, input.authorization, input.sendAudio, input.onError);
   }
 }
 
@@ -153,12 +156,13 @@ class LocalVoiceStreamSession implements VoiceStreamSession {
 
   constructor(
     private readonly config: LocalVoicePipelineConfig,
+    private readonly instructions: string,
     private readonly authorization: VoiceStreamAuthorization,
     private readonly sendAudio: (frame: Uint8Array) => void,
     private readonly onError: (error: unknown) => void,
   ) {
     this.silenceMs = config.silenceMs ?? 700;
-    this.maxUtteranceBytes = Math.min(MAX_UTTERANCE_BYTES, Math.max(8000, (config.maxUtteranceMs ?? 12000) * 16));
+    this.maxUtteranceBytes = Math.min(MAX_UTTERANCE_BYTES / 2, Math.max(8000, Math.floor(SAMPLE_RATE * (config.maxUtteranceMs ?? 12000) / 1000)));
   }
 
   receiveAudio(frame: Uint8Array): void {
@@ -181,12 +185,12 @@ class LocalVoiceStreamSession implements VoiceStreamSession {
 
   async close(): Promise<void> {
     if (this.closed) return;
-    this.closed = true;
     if (this.totalBytes >= 1600) {
       const utterance = this.takeUtterance();
       this.processing = this.processing.then(() => this.processUtterance(utterance));
     }
     await this.processing;
+    this.closed = true;
   }
 
   private takeUtterance(): Uint8Array {
@@ -198,7 +202,7 @@ class LocalVoiceStreamSession implements VoiceStreamSession {
   }
 
   private async processUtterance(mulaw: Uint8Array): Promise<void> {
-    if (this.closed && mulaw.length === 0) return;
+    if (mulaw.length === 0) return;
     const pcm = new Int16Array(mulaw.length);
     for (let i = 0; i < mulaw.length; i++) pcm[i] = decodeMulawSample(mulaw[i]);
     const wav = wavPcm16(pcm, SAMPLE_RATE);
@@ -244,9 +248,10 @@ class LocalVoiceStreamSession implements VoiceStreamSession {
     const wavOutput = parsePcmWav(fromBase64(match[1]));
     const encoded = resampleToMulaw(wavOutput.samples, wavOutput.sampleRate);
     for (let offset = 0; offset < encoded.length; offset += FRAME_BYTES) {
-      if (this.closed) break;
-      const frame = encoded.slice(offset, Math.min(offset + FRAME_BYTES, encoded.length));
-      if (frame.length === FRAME_BYTES) this.sendAudio(frame);
+      const frame = new Uint8Array(FRAME_BYTES);
+      frame.fill(0xff);
+      frame.set(encoded.subarray(offset, Math.min(offset + FRAME_BYTES, encoded.length)));
+      this.sendAudio(frame);
     }
     this.turn++;
   }
