@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#101a17">
+  <meta name="description" content="AFRICA RISE is an enterprise, technology, skills and market-development initiative focused on African ownership and opportunity.">
+  <title>AFRICA RISE — Africa must build the future</title>
+  <style>
+    :root{--ink:#101a17;--paper:#f4f1e9;--muted:#b8c1b8;--gold:#e6b85c;--green:#83b79a;--line:rgba(255,255,255,.15);--max:1180px}
+    *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--ink);color:#f7f5ef;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;line-height:1.6}a{color:inherit;text-decoration:none}button{font:inherit}
+    .wrap{width:min(var(--max),calc(100% - 48px));margin:auto}.eyebrow{font-size:.72rem;letter-spacing:.2em;text-transform:uppercase;color:var(--gold);font-weight:750}.topbar{position:absolute;inset:0 0 auto;z-index:5;border-bottom:1px solid var(--line)}.nav{height:82px;display:flex;align-items:center;justify-content:space-between}.brand{display:flex;align-items:center;gap:12px;font-weight:850;letter-spacing:.12em}.brand-mark{width:38px;height:38px;border:1px solid var(--gold);display:grid;place-items:center;color:var(--gold);font-size:1.2rem;transform:rotate(45deg)}.brand-mark span{transform:rotate(-45deg)}.navlinks{display:flex;gap:28px;color:#d5ddd6;font-size:.88rem}.navlinks a:hover{color:var(--gold)}.nav-cta,.button{display:inline-flex;align-items:center;justify-content:center;padding:12px 19px;border:1px solid var(--gold);color:var(--gold);font-size:.8rem;font-weight:750;letter-spacing:.08em;text-transform:uppercase;transition:.2s}.nav-cta:hover,.button:hover{background:var(--gold);color:var(--ink)}.menu{display:none;background:none;border:1px solid var(--line);color:white;padding:8px 12px}
+    .hero{min-height:780px;display:flex;align-items:center;position:relative;overflow:hidden;background:radial-gradient(ellipse at 76% 38%,rgba(88,137,106,.26),transparent 34%),linear-gradient(115deg,#101a17 0%,#17251f 55%,#101a17 100%)}.hero:before{content:"";position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.035) 1px,transparent 1px);background-size:70px 70px;mask-image:linear-gradient(to right,transparent,black)}.hero:after{content:"AFRICA";position:absolute;right:-.05em;bottom:-.3em;font-size:clamp(12rem,31vw,31rem);font-weight:950;letter-spacing:-.09em;line-height:1;color:rgba(255,255,255,.025);pointer-events:none}.hero-inner{position:relative;z-index:1;padding:150px 0 105px;max-width:850px}.hero h1{font-size:clamp(3.8rem,9.6vw,8.8rem);letter-spacing:-.085em;line-height:.88;margin:26px 0 30px;font-weight:900}.hero h1 em{font-style:normal;color:var(--gold)}.hero p{font-size:clamp(1.05rem,2vw,1.3rem);color:#d0d9d1;max-width:650px}.hero-actions{display:flex;gap:14px;flex-wrap:wrap;margin-top:34px}.button.primary{background:var(--gold);color:var(--ink)}.hero-note{margin-top:70px;color:#9da99f;font-size:.78rem;letter-spacing:.04em}
+    section{padding:105px 0}.light{background:var(--paper);color:var(--ink)}.section-head{display:grid;grid-template-columns:1fr 1.1fr;gap:50px;align-items:end;margin-bottom:52px}.section-head h2{font-size:clamp(2.5rem,5vw,4.7rem);line-height:.98;letter-spacing:-.065em;margin:15px 0 0}.section-head p{margin:0;color:#647068;font-size:1.08rem;max-width:560px}.dark-head p{color:#bdc7bf}
+    .manifesto{display:grid;grid-template-columns:1fr 1fr;gap:70px;align-items:start}.manifesto blockquote{font-size:clamp(2rem,4vw,3.7rem);line-height:1.08;letter-spacing:-.055em;margin:0;font-weight:750}.manifesto blockquote span{color:#a2762c}.manifesto-copy{color:#536158;font-size:1.08rem}.manifesto-copy p{margin-top:0}
+    .programmes{display:grid;grid-template-columns:repeat(2,1fr);gap:1px;background:#d6d2c8;border:1px solid #d6d2c8}.programme{background:var(--paper);padding:34px;min-height:265px;position:relative}.programme:last-child{grid-column:span 2;min-height:220px}.programme .num{font-size:.75rem;color:#9b762e;letter-spacing:.15em;font-weight:800}.programme h3{font-size:1.7rem;letter-spacing:-.04em;margin:18px 0 10px}.programme p{color:#5e6b62;max-width:580px;margin:0}.programme .arrow{position:absolute;right:30px;top:30px;font-size:1.4rem;color:#a2762c}
+    .principles{display:grid;grid-template-columns:repeat(4,1fr);gap:24px}.principle{border-top:1px solid var(--line);padding-top:22px}.principle strong{display:block;font-size:1.12rem;margin-bottom:8px}.principle p{margin:0;color:#aebbb1;font-size:.92rem}
+    .roadmap{display:grid;grid-template-columns:repeat(4,1fr);gap:0}.stage{padding:26px;border-top:2px solid #c9c4b8;position:relative}.stage:before{content:"";width:10px;height:10px;border-radius:50%;background:#a2762c;position:absolute;top:-6px;left:26px}.stage small{color:#99712a;letter-spacing:.14em;font-weight:800}.stage h3{font-size:1.3rem;margin:12px 0}.stage p{color:#667168;font-size:.94rem;margin:0}
+    .governance{display:grid;grid-template-columns:.9fr 1.1fr;gap:60px}.governance h2{font-size:clamp(2.5rem,5vw,4.3rem);line-height:.98;letter-spacing:-.065em;margin:15px 0}.governance p{color:#bbc5bc}.guardrails{display:grid;gap:0}.guardrail{padding:17px 0;border-bottom:1px solid var(--line);display:flex;gap:16px}.check{color:var(--gold);font-weight:900}
+    .cta{background:var(--gold);color:var(--ink);padding:78px 0}.cta-inner{display:flex;justify-content:space-between;gap:35px;align-items:center}.cta h2{font-size:clamp(2.3rem,5vw,4.8rem);letter-spacing:-.07em;line-height:.95;margin:12px 0}.cta p{max-width:560px;color:#3f493e}.cta .button{border-color:var(--ink);color:var(--ink);white-space:nowrap}.cta .button:hover{background:var(--ink);color:var(--gold)}
+    footer{padding:34px 0;color:#9eaaa1;font-size:.82rem}.footer-inner{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap}.footer-brand{color:#f5f2e9;font-weight:800;letter-spacing:.12em}
+    @media(max-width:760px){.wrap{width:min(100% - 34px,var(--max))}.nav{height:70px}.menu{display:block}.navlinks{display:none;position:absolute;top:70px;left:0;right:0;background:#14211b;padding:22px 26px;flex-direction:column;gap:16px}.navlinks.open{display:flex}.nav-cta{display:none}.hero{min-height:720px}.hero-inner{padding:130px 0 85px}.section-head,.manifesto,.governance{grid-template-columns:1fr;gap:22px}.section-head{margin-bottom:34px}section{padding:75px 0}.programmes{grid-template-columns:1fr}.programme:last-child{grid-column:auto}.principles{grid-template-columns:1fr 1fr;gap:28px}.roadmap{grid-template-columns:1fr 1fr;row-gap:25px}.cta-inner{align-items:flex-start;flex-direction:column}.hero-note{margin-top:48px}}
+    @media(max-width:420px){.principles,.roadmap{grid-template-columns:1fr}.hero h1{font-size:3.8rem}.programme{padding:27px}}
+    @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*:before,*:after{transition:none!important}}
+  </style>
+</head>
+<body>
+<header class="topbar"><div class="wrap nav">
+  <a class="brand" href="#top" aria-label="Africa Rise home"><span class="brand-mark"><span>✳</span></span><span>AFRICA RISE</span></a>
+  <button class="menu" id="menu" aria-expanded="false" aria-controls="navlinks">MENU</button>
+  <nav class="navlinks" id="navlinks" aria-label="Main navigation"><a href="#mission">Mission</a><a href="#programmes">Programmes</a><a href="#roadmap">Roadmap</a><a href="#principles">Principles</a></nav>
+  <a class="nav-cta" href="#participate">Build with us <span aria-hidden="true">↗</span></a>
+</div></header>
+<main id="top">
+  <section class="hero"><div class="wrap hero-inner">
+    <div class="eyebrow">An IZAKHONO GLOBAL initiative</div>
+    <h1>AFRICA<br><em>MUST RISE.</em></h1>
+    <p>Not by waiting for the future. By building it — through African ownership, technology, enterprise, skills and trade.</p>
+    <div class="hero-actions"><a class="button primary" href="#programmes">Explore the mission <span aria-hidden="true">↘</span></a><a class="button" href="#roadmap">See how we build</a></div>
+    <div class="hero-note">AFRICAN OWNERSHIP &nbsp;·&nbsp; AFRICAN INNOVATION &nbsp;·&nbsp; AFRICAN OPPORTUNITY</div>
+  </div></section>
+  <section class="light" id="mission"><div class="wrap manifesto">
+    <blockquote>Our future must be shaped by the people who <span>build it.</span></blockquote>
+    <div class="manifesto-copy"><div class="eyebrow">The mission</div><p>AFRICA RISE is an enterprise, technology, skills and market-development initiative. It brings businesses, manufacturers, educators, innovators, investors and communities together around practical work that can be delivered, measured and sustained.</p><p>We begin in South Africa, build through partnerships across the continent, and connect African capability to global opportunity. We respect the diversity of African countries and communities. We earn trust through delivery, not promises.</p></div>
+  </div></section>
+  <section class="light" id="programmes" style="padding-top:25px"><div class="wrap">
+    <div class="section-head"><div><div class="eyebrow">Five founding programmes</div><h2>Turn ambition<br>into action.</h2></div><p>Five connected areas of work. Each programme will have accountable leadership, a defined customer or beneficiary, a delivery plan, funding controls and measurable outcomes.</p></div>
+    <div class="programmes">
+      <article class="programme"><span class="num">01 / CONNECT</span><span class="arrow">↗</span><h3>Connect Africa</h3><p>Build accessible communications and connectivity services through software, trusted network partnerships and infrastructure developed where it makes commercial and practical sense.</p></article>
+      <article class="programme"><span class="num">02 / BUILD</span><span class="arrow">↗</span><h3>Build Africa</h3><p>Strengthen manufacturing, industrial capability, technology development, local procurement and African-owned intellectual property.</p></article>
+      <article class="programme"><span class="num">03 / EMPOWER</span><span class="arrow">↗</span><h3>Empower Africa</h3><p>Connect education and technical skills to real opportunities, enterprise development, mentorship and pathways into work.</p></article>
+      <article class="programme"><span class="num">04 / PROTECT</span><span class="arrow">↗</span><h3>Protect Africa</h3><p>Advance digital trust, device security, safer mobility and responsible emergency communications through tested products and qualified partners.</p></article>
+      <article class="programme"><span class="num">05 / TRADE</span><span class="arrow">↗</span><h3>Trade Africa</h3><p>Connect African producers, service providers, buyers and markets — supporting verified suppliers, procurement pathways and cross-border commerce.</p></article>
+    </div>
+  </div></section>
+  <section id="principles"><div class="wrap">
+    <div class="section-head dark-head"><div><div class="eyebrow">How we work</div><h2>Ownership is<br>the foundation.</h2></div><p>We will build capability that lasts: technology we control, businesses that can sustain themselves, partnerships with clear terms and outcomes that can be independently checked.</p></div>
+    <div class="principles">
+      <div class="principle"><strong>Own what we build</strong><p>Protect African intellectual property, skills, customer relationships and productive capacity.</p></div>
+      <div class="principle"><strong>Partner intelligently</strong><p>Work with trusted local and international partners without surrendering strategic control.</p></div>
+      <div class="principle"><strong>Measure real outcomes</strong><p>Report delivery, jobs, skills, transactions, reliability and financial sustainability.</p></div>
+      <div class="principle"><strong>Earn public trust</strong><p>Be transparent about funding, governance, risks, limitations and what is not yet operational.</p></div>
+    </div>
+  </div></section>
+  <section class="light" id="roadmap"><div class="wrap">
+    <div class="section-head"><div><div class="eyebrow">A disciplined path</div><h2>Start here.<br>Scale with proof.</h2></div><p>Our expansion will follow verified demand, delivery capacity, local partnerships and country-specific legal requirements. The roadmap is a target sequence, not a claim of completed launches.</p></div>
+    <div class="roadmap">
+      <article class="stage"><small>STAGE 01</small><h3>South Africa</h3><p>Establish governance, validate customer needs, prepare and test initial pilots.</p></article>
+      <article class="stage"><small>STAGE 02</small><h3>Regional corridors</h3><p>Expand selected services through local partners and market-specific approvals.</p></article>
+      <article class="stage"><small>STAGE 03</small><h3>Continental network</h3><p>Connect repeatable programmes, suppliers, customers and institutions across regions.</p></article>
+      <article class="stage"><small>STAGE 04</small><h3>Global connections</h3><p>Take African products, talent, services and technology into international markets.</p></article>
+    </div>
+  </div></section>
+  <section class="governance" id="governance"><div class="wrap" style="display:contents">
+    <div><div class="eyebrow">Trust is built into the work</div><h2>Ambition.<br>With accountability.</h2><p>AFRICA RISE will not announce partnerships, funding, coverage, jobs or deployments without evidence. Each programme must pass governance, financial, operational and compliance checks before a pilot or public launch.</p></div>
+    <div class="guardrails">
+      <div class="guardrail"><span class="check">✓</span><span>Clear programme ownership and decision rights.</span></div>
+      <div class="guardrail"><span class="check">✓</span><span>Transparent budgets, procurement and funding restrictions.</span></div>
+      <div class="guardrail"><span class="check">✓</span><span>Privacy, security and local regulatory requirements respected.</span></div>
+      <div class="guardrail"><span class="check">✓</span><span>Verified partner agreements and honest capability claims.</span></div>
+      <div class="guardrail"><span class="check">✓</span><span>Quarterly reporting against measurable outcomes.</span></div>
+    </div>
+  </div></section>
+  <section class="cta" id="participate"><div class="wrap cta-inner">
+    <div><div class="eyebrow" style="color:#55451f">The invitation</div><h2>Be part of<br>what we build.</h2><p>We are preparing the programme framework and partner engagement process. Businesses, educators, manufacturers, innovators and institutions will be able to explore practical ways to contribute.</p></div>
+    <a class="button" href="#top">Explore the initiative ↑</a>
+  </div></section>
+</main>
+<footer><div class="wrap footer-inner"><div><div class="footer-brand">AFRICA RISE</div><div>An IZAKHONO GLOBAL initiative</div></div><div>Built on African ownership, enterprise and opportunity.</div><div>© <span id="year"></span> AFRICA RISE</div></div></footer>
+<script>
+  const menu=document.getElementById('menu');const links=document.getElementById('navlinks');
+  menu.addEventListener('click',()=>{const open=links.classList.toggle('open');menu.setAttribute('aria-expanded',String(open));});
+  links.querySelectorAll('a').forEach(a=>a.addEventListener('click',()=>{links.classList.remove('open');menu.setAttribute('aria-expanded','false');}));
+  document.getElementById('year').textContent=new Date().getFullYear();
+</script>
+</body>
+</html>
