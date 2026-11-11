@@ -41,6 +41,8 @@ export interface TwilioMediaBridgeOptions {
   onDtmf?: (callSid: string, digit: string) => void;
   onMark?: (callSid: string, name: string) => void;
   onError?: (error: unknown) => void;
+  onStreamClosed?: (input: { authorization: VoiceStreamAuthorization; streamSid: string; reason: string }) => Promise<void> | void;
+  onStreamActivity?: (input: { authorization: VoiceStreamAuthorization; streamSid: string }) => Promise<void> | void;
 }
 
 const OPEN = 1;
@@ -75,6 +77,7 @@ export class TwilioMediaStreamBridge {
   private streamSid?: string;
   private closed = false;
   private starting = false;
+  private lastLeaseHeartbeatAt = 0;
   private readonly maxFrameBytes: number;
 
   constructor(private readonly options: TwilioMediaBridgeOptions) {
@@ -101,6 +104,11 @@ export class TwilioMediaStreamBridge {
           throw new Error("Media received before authorized stream start or for an unknown stream");
         }
         if (message.media?.track !== "inbound") throw new Error("Unexpected media track");
+        const now = Date.now();
+        if (this.authorization && this.streamSid && now - this.lastLeaseHeartbeatAt >= 30_000) {
+          await this.options.onStreamActivity?.({ authorization: this.authorization, streamSid: this.streamSid });
+          this.lastLeaseHeartbeatAt = now;
+        }
         const frame = decodeBase64(message.media.payload, this.maxFrameBytes);
         await this.session.receiveAudio(frame);
         return;
@@ -147,7 +155,15 @@ export class TwilioMediaStreamBridge {
     this.closed = true;
     const active = this.session;
     this.session = undefined;
-    if (active) await active.close(reason);
+    const authorization = this.authorization;
+    const streamSid = this.streamSid;
+    try {
+      if (active) await active.close(reason);
+    } finally {
+      if (authorization && streamSid) {
+        await this.options.onStreamClosed?.({ authorization, streamSid, reason });
+      }
+    }
   }
 
   private async start(message: Record<string, any>): Promise<void> {
@@ -178,6 +194,15 @@ export class TwilioMediaStreamBridge {
         throw new Error("Twilio call is not authorized by the IZAKHONO call registry");
       }
       this.authorization = authorization;
+      this.lastLeaseHeartbeatAt = Date.now();
+      if (this.closed) {
+        await this.options.onStreamClosed?.({
+          authorization,
+          streamSid: this.streamSid,
+          reason: "WebSocket closed during call authorization",
+        });
+        return;
+      }
       const session = await this.options.sessions.create({
         callSid: this.callSid,
         streamSid: this.streamSid,

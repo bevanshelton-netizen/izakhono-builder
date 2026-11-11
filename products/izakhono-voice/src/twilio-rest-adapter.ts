@@ -11,6 +11,8 @@ export interface TwilioVoiceConfig {
   statusCallbackUrl: string;
   /** Public wss:// endpoint that bridges Twilio Media Streams to IZAKHONO VOICE. */
   mediaStreamUrl: string;
+  /** Issues a short-lived, one-time registry credential for this provider CallSid. */
+  streamCredentialForCall?: (providerCallSid: string) => Promise<string>;
   timeoutMs?: number;
   apiBaseUrl?: string;
 }
@@ -46,6 +48,16 @@ export class TwilioRestTelephonyAdapter implements TelephonyAdapter {
     required(config.voiceWebhookUrl, "voiceWebhookUrl");
     required(config.statusCallbackUrl, "statusCallbackUrl");
     required(config.mediaStreamUrl, "mediaStreamUrl");
+    for (const [value, name] of [
+      [config.voiceWebhookUrl, "voiceWebhookUrl"],
+      [config.statusCallbackUrl, "statusCallbackUrl"],
+    ] as const) {
+      const webhookUrl = new URL(value);
+      if (webhookUrl.protocol !== "https:" || webhookUrl.search || webhookUrl.hash ||
+          webhookUrl.username || webhookUrl.password) {
+        throw new Error(`Twilio ${name} must be a canonical HTTPS URL without query, fragment, or credentials`);
+      }
+    }
     let mediaUrl: URL;
     try {
       mediaUrl = new URL(config.mediaStreamUrl);
@@ -63,21 +75,25 @@ export class TwilioRestTelephonyAdapter implements TelephonyAdapter {
   async answer(callId: string): Promise<void> {
     // Twilio Media Streams does not support query strings on the Stream URL.
     // Pass call association data only through the supported custom Parameter noun.
-    const twiml = `<Response><Connect><Stream url="${xml(this.config.mediaStreamUrl)}"><Parameter name="callId" value="${xml(callId)}"/></Stream></Connect></Response>`;
+    if (!this.config.streamCredentialForCall) {
+      throw new Error("A one-time IZAKHONO stream credential issuer is required before connecting media");
+    }
+    const streamToken = required(await this.config.streamCredentialForCall(callId), "stream credential");
+    const twiml = `<Response><Connect><Stream url="${xml(this.config.mediaStreamUrl)}"><Parameter name="callId" value="${xml(callId)}"/><Parameter name="streamToken" value="${xml(streamToken)}"/></Stream></Connect></Response>`;
     await this.updateCall(callId, { Twiml: twiml });
   }
 
   async dial(phone: string, callId: string): Promise<void> {
     const to = required(phone, "destination phone number");
     const clientCallId = required(callId, "client call ID");
-    const callback = new URL(this.config.statusCallbackUrl);
-    callback.searchParams.set("clientCallId", clientCallId);
+    const voiceUrl = new URL(this.config.voiceWebhookUrl);
+    voiceUrl.searchParams.set("callId", clientCallId);
     await this.request("/Calls.json", {
       To: to,
       From: this.config.fromNumber,
-      Url: this.config.voiceWebhookUrl,
+      Url: voiceUrl.toString(),
       Method: "POST",
-      StatusCallback: callback.toString(),
+      StatusCallback: this.config.statusCallbackUrl,
       StatusCallbackMethod: "POST",
       StatusCallbackEvent: "initiated ringing answered completed",
     });

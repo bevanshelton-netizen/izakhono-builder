@@ -20,6 +20,7 @@ async function main(): Promise<void> {
     voiceWebhookUrl: "https://voice.example.test/twilio/voice",
     statusCallbackUrl: "https://voice.example.test/twilio/status",
     mediaStreamUrl: "wss://voice.example.test/twilio/stream",
+    streamCredentialForCall: async () => "test-one-time-stream-credential",
   };
   try {
     const adapter = new TwilioRestTelephonyAdapter(config);
@@ -29,6 +30,12 @@ async function main(): Promise<void> {
     assert(twiml.includes('url="wss://voice.example.test/twilio/stream"'), "Stream URL was not kept query-free");
     assert(!twiml.includes("?"), "TwiML Stream URL unexpectedly contains a query string");
     assert(twiml.includes(`<Parameter name="callId" value="${callSid}"/>`), "Call association was not passed as a custom parameter");
+    assert(twiml.includes(`<Parameter name="streamToken" value="test-one-time-stream-credential"/>`), "One-time stream credential was not passed as a custom parameter");
+
+    await adapter.dial("+27123456789", "11111111-1111-4111-8111-111111111111");
+    const outboundUrl = new URL(submitted?.get("Url") ?? "https://invalid.example");
+    assert(outboundUrl.searchParams.get("callId") === "11111111-1111-4111-8111-111111111111", "Outbound webhook did not carry the signed internal call reference");
+    assert(submitted?.get("StatusCallback") === config.statusCallbackUrl, "Status callback URL should remain canonical and query-free");
 
     let rejected = false;
     try {

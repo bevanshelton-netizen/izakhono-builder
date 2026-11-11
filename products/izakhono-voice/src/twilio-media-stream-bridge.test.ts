@@ -12,6 +12,7 @@ async function main(): Promise<void> {
   let dtmf = "";
   let authorizedTenant = "";
   let bridgeError: unknown;
+  let releasedStream = "";
   const factory: VoiceStreamSessionFactory = {
     async create(input) {
       authorizedTenant = input.authorization.tenantId;
@@ -35,6 +36,7 @@ async function main(): Promise<void> {
       return { tenantId: "tenant-verified-by-server", callId: "call-internal-42" };
     },
     onDtmf(_callSid, digit) { dtmf = digit; },
+    onStreamClosed(input) { releasedStream = input.streamSid; },
     onError(error) { bridgeError = error; },
   });
   await bridge.handleMessage(JSON.stringify({ event: "connected" }));
@@ -62,6 +64,7 @@ async function main(): Promise<void> {
   assert(dtmf === "5", "DTMF event was not forwarded");
   await bridge.handleMessage(JSON.stringify({ event: "stop", streamSid: "MZ" + "b".repeat(32) }));
   assert(closed, "Voice session was not closed on stream stop");
+  assert(releasedStream === "MZ" + "b".repeat(32), "Durable stream lease was not released on stop");
   assert(!bridgeError, "Valid stream unexpectedly raised an error");
 
   let rejectedSocketClosed = false;

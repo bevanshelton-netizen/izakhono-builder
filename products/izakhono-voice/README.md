@@ -40,8 +40,27 @@ CASE STORE / CRM / SMS / CALLBACKS
 FORTRESS AUDIT
 ```
 
-The initial adapter can target Azure Communication Services/OpenAI where useful, while keeping the interfaces provider-neutral so IZAKHONO can later switch telephony, speech, model or hosting providers without redesigning the product.
+The current owned-first voice path uses a local ASR service, an Ollama-compatible local language-model endpoint, and IZAKHONO's existing Kokoro speech runtime. Twilio is a replaceable carrier adapter; local model and speech services remain replaceable behind IZAKHONO interfaces.
 
 ## Status
 
 **Engineering foundation created — not production deployed.** Production activation still requires telephony credentials/numbers, a reachable IZAKHONO runtime, security review, data-protection controls, end-to-end call testing and acceptance evidence.
+
+
+## Owned local voice path
+
+```text
+TWILIO MEDIA STREAM (8 kHz μ-law)
+        ↓
+IZAKHONO VOICE GATEWAY
+        ↓
+LOCAL ASR (faster-whisper)
+        ↓
+LOCAL REASONING (Ollama-compatible runtime)
+        ↓
+LOCAL SPEECH (Kokoro)
+        ↓
+μ-law audio frames → caller
+```
+
+The first implementation is turn-based: it detects a pause, transcribes the caller's utterance, generates a response, and synthesizes audio. Full-duplex interruption/barge-in, advanced noise suppression and multi-party handling are later milestones. Local models must be approved, staged and benchmarked before commercial use.
