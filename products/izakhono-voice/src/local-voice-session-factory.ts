@@ -137,7 +137,7 @@ export class LocalVoiceStreamSessionFactory implements VoiceStreamSessionFactory
     customParameters: Record<string, string>; sendAudio: (frame: Uint8Array) => void;
     sendMark: (name: string) => void; onError: (error: unknown) => void;
   }): Promise<VoiceStreamSession> {
-    const instructions = await this.instructionsForCall(input.authorization);
+    const instructions = await this.config.instructionsForCall(input.authorization);
     if (!instructions?.trim()) throw new Error("Tenant voice instructions are required");
     return new LocalVoiceStreamSession(this.config, instructions, input.authorization, input.sendAudio, input.onError);
   }
@@ -221,7 +221,7 @@ class LocalVoiceStreamSession implements VoiceStreamSession {
       body: JSON.stringify({
         model: this.config.languageModelName, stream: false,
         messages: [
-          { role: "system", content: "You are the telephone receptionist for this business. Be warm, concise, accurate and helpful. Never invent prices, availability, policies or promises. If uncertain, take a message or offer a human callback. Business instructions:\n" + this.config.instructions },
+          { role: "system", content: "You are the telephone receptionist for this business. Be warm, concise, accurate and helpful. Never invent prices, availability, policies or promises. If uncertain, take a message or offer a human callback. Business instructions:\n" + this.instructions },
           { role: "user", content: transcript },
         ],
         options: { temperature: 0.3 },
