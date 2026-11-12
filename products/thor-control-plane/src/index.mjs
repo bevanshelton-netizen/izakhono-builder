@@ -67,7 +67,7 @@ export class MemoryThorStore {
 
   async heartbeat(taskId, workerId, leaseMs) {
     const task = this.tasks.get(taskId);
-    if (!task || task.state !== "running" || task.workerId !== workerId) return false;
+    if (!task || task.state !== "running" || task.workerId !== workerId || Date.parse(task.leaseUntil) <= this.clock()) return false;
     task.leaseUntil = iso(this.clock() + leaseMs);
     task.updatedAt = iso(this.clock());
     this.events.push({ taskId, type: "heartbeat", workerId, at: task.updatedAt });
