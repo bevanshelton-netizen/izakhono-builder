@@ -303,9 +303,11 @@ app.get('/api/outbound/drafts', async (req, res) => {
     const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
     if (!serviceKey) return res.status(503).json({ error: 'Outbound draft storage is not configured on this runtime.' });
     const admin = createClient(process.env.I_CONNECT_SUPABASE_URL, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
-    const { data, error } = await admin.from('ic_outbound_message_drafts')
+    let draftsQuery = admin.from('ic_outbound_message_drafts')
       .select('id,contact_id,thread_id,connection_id,channel,purpose,message_type,body,status,created_by,reviewed_by,reviewed_at,review_note,created_at')
-      .eq('organization_id',ctx.organizationId).order('created_at',{ascending:false}).limit(100);
+      .eq('organization_id',ctx.organizationId);
+    if (ctx.role === 'agent') draftsQuery = draftsQuery.eq('created_by',ctx.user.id);
+    const { data, error } = await draftsQuery.order('created_at',{ascending:false}).limit(100);
     if (error) return res.status(400).json({ error: 'Unable to load outbound drafts.' });
     res.json({ drafts: data || [], deliveryEnabled: false });
   } catch (_) { res.status(500).json({ error: 'Unexpected outbound draft list error.' }); }
