@@ -1,27 +1,18 @@
-# NODE01 Firmware Baseline
+# Physical Execution Environment — Firmware Baseline
 
-Before OS installation, record and standardize the firmware state for:
+This checklist applies only when NODE01 software is executed on physical hardware. Firmware belongs to the machine, not to NODE01. Replacing the machine replaces its firmware baseline; it does not replace the NODE01 software identity.
 
-1. BMC/IPMI controller
-2. System BIOS/UEFI
-3. CPU microcode exposure as managed by the supported OS/vendor baseline
-4. Storage controller or HBA
-5. NVMe/SAS drives
-6. Production NICs
-7. TPM 2.0 firmware/state where exposed
+Record firmware state for BMC/IPMI, BIOS/UEFI, storage controller, NVMe/SAS drives, production NICs and TPM where present.
 
-## Required configuration principles
-- UEFI boot mode.
-- Secure Boot enabled for the production baseline.
-- TPM 2.0 enabled.
-- Virtualization extensions enabled where required by future workloads.
-- Unneeded boot devices and external boot paths disabled.
-- BMC exposed only to the management network.
-- Administrative BMC credentials stored outside Git.
-- Firmware versions and update dates recorded in the commissioning record.
+## Security principles
 
-## Update rule
-Firmware updates must be validated against the selected hardware vendor's supported matrix before installation. Do not apply unverified firmware in production merely because a newer version exists.
+- UEFI boot and Secure Boot where supported.
+- TPM 2.0 enabled where available.
+- BMC isolated to the management network.
+- Administrative credentials stored outside Git.
+- Firmware updates validated against the hardware vendor's supported matrix.
+- Record versions, dates and diagnostics in the execution-environment commissioning record.
 
 ## Acceptance
-Firmware is green only when versions are recorded, security settings are applied, diagnostics are clean and the node can complete a controlled reboot into the intended UEFI/OS configuration.
+
+Firmware is accepted only for the actual replacement environment after versions are recorded, security settings are applied, diagnostics are clean and controlled reboot succeeds. Do not label the firmware or physical asset as NODE01.
