@@ -13,7 +13,7 @@ This directory documents one implementation of the IZAKHONO runtime cluster bene
 | NODE03 | peer controller preference | k3s server/control-plane + worker | identity may rebind to an approved host |
 | NODE04 | DR/workload preference | k3s worker + backup repository | identity may rebind to an approved host |
 
-These are **software identities**. The underlying runtime host is separate infrastructure and may be physical, virtual, owned, or an approved external adapter. A host may change without changing the logical identity. No release, deployment, DNS, TLS, health, acceptance, or LIVE contract may require a permanent physical machine named NODE01.
+These are **software identities**. The underlying runtime host is separate infrastructure and may be physical, virtual, owned, or an approved external adapter. A host may change without changing the logical identity. No release, deployment, DNS, TLS, health, acceptance, or LIVE contract may bind the logical software identity to a permanent physical host.
 
 NODE01 may be the preferred logical bootstrap role for this specific k3s implementation, but production applications must not depend on a particular NODE01 host being alive. Public launch/failover is governed by the Runtime Fabric, not by this cluster's bootstrap order.
 
