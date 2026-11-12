@@ -77,6 +77,17 @@
         const assign=document.createElement('button'); assign.type='button'; assign.className='btn'; assign.textContent='Assign';
         assign.addEventListener('click',()=>manageThread(id,'assign',{assigneeId:select.value || null}));
         actions.append(select,assign);
+        const queueData = await request('/api/inbox/queues?organizationId=' + encodeURIComponent(state.organizationId));
+        const queueSelect=document.createElement('select'); queueSelect.className='select'; queueSelect.setAttribute('aria-label','Route conversation to queue');
+        const noQueue=document.createElement('option'); noQueue.value=''; noQueue.textContent='No queue'; queueSelect.appendChild(noQueue);
+        for (const queue of queueData.queues || []) {
+          const option=document.createElement('option'); option.value=queue.id; option.textContent=queue.name;
+          if (queue.id===item?.queue_id) option.selected=true;
+          queueSelect.appendChild(option);
+        }
+        const routeQueue=document.createElement('button'); routeQueue.type='button'; routeQueue.className='btn'; routeQueue.textContent='Route';
+        routeQueue.addEventListener('click',()=>manageThread(id,'queue',{queueId:queueSelect.value || null}));
+        actions.append(queueSelect,routeQueue);
       } catch (_) {}
     } else if (item?.assigned_to === window.I_CONNECT_SESSION?.user?.id) {
       makeAction(item?.status === 'waiting_customer' ? 'Reopen' : 'Waiting for customer','status',{status:item?.status === 'waiting_customer' ? 'open' : 'waiting_customer'});
