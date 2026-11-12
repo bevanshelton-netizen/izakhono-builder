@@ -1,80 +1,48 @@
-# IZAKHONO NODE01 — Provisioning Runbook
+# IZAKHONO NODE01 Software — Execution Environment Provisioning Runbook
 
-This is the canonical host bring-up sequence for the owned NODE01 appliance.
+## Identity boundary
 
-## Phase 1 — Physical acceptance
+**NODE01 IS SOFTWARE. THE MACHINE IS REPLACEABLE.**
 
-1. Rack the enterprise server.
-2. Connect redundant power to the online UPS.
-3. Connect management and both production network links.
-4. Verify BMC/IPMI remote management.
-5. Run ECC, storage and thermal diagnostics.
-6. Record serials, drive layout, firmware versions and BMC state.
+The former execution machine has been replaced. This runbook provisions or rebinds a separate execution environment for the existing NODE01 software identity. It does not create or install a new NODE01 identity.
 
-## Phase 2 — Operating system
+## Phase 1 — Bind the replacement environment
 
-1. Install a currently supported Linux Server LTS release.
-2. Enable UEFI/Secure Boot where supported.
-3. Enable TPM 2.0.
-4. Apply all security updates.
-5. Configure SSH keys and disable password SSH.
-6. Enable host firewall with default-deny policy.
-7. Enable AppArmor/equivalent mandatory access controls.
-8. Configure time synchronisation and persistent logs.
+1. Identify the actual replacement environment through its verified provider/asset locator.
+2. Confirm that the former environment is no longer the active binding.
+3. Record `logical_node_id: NODE01` and `identity_type: software-runtime`.
+4. Record the replacement locator in `runtime_host`; it must not equal NODE01.
+5. Set `runtime_host_is_separate: true`.
+6. Keep execution disabled while the locator or ownership is unverified.
 
-## Phase 3 — Container foundation
+Do not guess a hostname, IP address, provider, OS or machine identifier. Do not copy an old machine locator into the new binding.
 
-1. Install Docker Engine and Compose.
-2. Verify Docker daemon recovery after reboot.
-3. Create the private `izakhono` network.
-4. Deploy the NODE01 control runtime on port 8090.
-5. Deploy the private registry on localhost port 5000.
-6. Confirm both health checks are green.
+## Phase 2 — Prepare the execution environment
 
-## Phase 4 — Resilience
+Apply only the controls relevant to the selected substrate: supported OS/runtime, security updates, least-privilege access, network policy, encrypted secrets, monitoring and recovery access. Hardware diagnostics, UPS and physical assembly checks apply to physical equipment only; they are not NODE01 identity checks.
 
-1. Install the NODE01 backup service and daily timer.
-2. Configure backup storage outside NODE01's primary storage failure domain.
-3. Run an initial backup.
-4. Verify its SHA-256 manifest.
-5. Perform a restore rehearsal before production promotion.
+## Phase 3 — Restore NODE01 software runtime
 
-## Phase 5 — Workload promotion
+1. Obtain the approved immutable NODE01 software release.
+2. Verify its source and artifact digest.
+3. Install or start the software using the selected environment's supported runtime mechanism.
+4. Restore approved configuration and state from verified backups.
+5. Keep administrative tokens and private keys outside source control.
+6. Confirm the software reports logical identity NODE01 and reports the separate execution-environment locator independently.
 
-1. Pull an approved workload image from the IZAKHONO namespace.
-2. Start it with the approved port and health endpoint.
-3. Require consecutive healthy checks.
-4. Promote the route only after health is green.
-5. Retain the previous known-good image for rollback.
+## Phase 4 — Validate services and recovery
 
-Initial workload:
+1. Verify runtime health and release identity.
+2. Verify application workloads and dependencies.
+3. Verify backups and perform a restore rehearsal.
+4. Verify edge routing, DNS and TLS independently where applicable.
+5. Test rollback and post-rollback health.
+6. Record timestamped acceptance evidence.
 
-- `izakhono-super-seo`
-- port `8097`
-- health `/health`
+## Phase 5 — Promote
 
-## Phase 6 — Owned edge
+Only after the replacement binding and all required acceptance evidence pass may the deployment be promoted. A successful repository CI run, an installed service or a configured binding alone is not production acceptance.
 
-1. Deploy the reverse proxy/TLS gateway on the edge zone.
-2. Keep workload ports private unless explicitly promoted.
-3. Route only to healthy services.
-4. Verify certificates, DNS and external reachability independently.
-5. Never call a route live until external verification succeeds.
+## Replacement continuity
 
-## Phase 7 — NODE02
-
-Provision NODE02 as a warm standby only after NODE01 passes the complete acceptance suite. Replicate approved configuration, workload manifests, registry metadata and image digests. Never copy administrative tokens or private keys through Git.
-
-## Final acceptance
-
-NODE01 is production-ready only when:
-
-- hardware diagnostics are green;
-- OS security baseline is green;
-- control plane is healthy;
-- registry is healthy and private;
-- backup completed and verified;
-- restore rehearsal passed;
-- workload health is green;
-- edge route is externally verified;
-- rollback procedure has been tested.
+NODE01 remains the same software identity across machine replacement, migration, scaling, restart and provider changes. Only the separate runtime binding changes.
