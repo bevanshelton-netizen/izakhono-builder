@@ -4,6 +4,7 @@ const path = require('path');
 const app = express();
 app.use(express.json({ limit: '1mb' }));
 const { createClient } = require('@supabase/supabase-js');
+const { simulateWorkflowGraph } = require('./workflow-test-simulator');
 
 async function automationContext(req, res, requiredRole = false) {
   const url = process.env.I_CONNECT_SUPABASE_URL;
@@ -166,30 +167,23 @@ function startWorkflowTestWorker() {
       const run = Array.isArray(data) ? data[0] : null;
       if (!run) return;
       claimedRun = run;
-      const nodes = Array.isArray(run.workflow_graph?.nodes) ? run.workflow_graph.nodes : [];
-      if (nodes.length > 200) {
+      let simulation;
+      try {
+        simulation = simulateWorkflowGraph(run.workflow_graph);
+      } catch (simulationError) {
         await workerClient.rpc('ic_finish_workflow_test_run', {
-          p_run_id: run.run_id, p_status: 'failed', p_output: {},
-          p_error: { code: 'GRAPH_LIMIT', message: 'Workflow test exceeds the 200-node simulation limit.' }
+          p_run_id: run.run_id,
+          p_status: 'failed',
+          p_output: {},
+          p_error: { code: simulationError.code || 'INVALID_GRAPH', message: simulationError.message }
         });
         return;
       }
-      const steps = nodes.map((node, index) => ({
-        nodeId: String(node.id || 'node_' + (index + 1)),
-        title: String(node.title || node.name || 'Workflow step').slice(0, 160),
-        type: String(node.type || 'action').slice(0, 40),
-        result: 'simulated',
-        externalActionExecuted: false
-      }));
       const { error: finishError } = await workerClient.rpc('ic_finish_workflow_test_run', {
         p_run_id: run.run_id,
         p_status: 'completed',
         p_output: {
-          mode: 'simulation',
-          stepCount: steps.length,
-          steps,
-          externalActionsExecuted: 0,
-          note: 'Simulation only. No customer messages, payments, CRM writes or external integrations were executed.'
+          ...simulation
         },
         p_error: {}
       });
