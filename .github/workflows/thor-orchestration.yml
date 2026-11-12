@@ -1,0 +1,27 @@
+name: THOR orchestration tests
+
+on:
+  pull_request:
+    paths:
+      - "products/thor-control-plane/**"
+      - ".github/workflows/thor-orchestration.yml"
+  push:
+    paths:
+      - "products/thor-control-plane/**"
+      - ".github/workflows/thor-orchestration.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  thor-orchestration:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Run THOR orchestration tests
+        run: node --test products/thor-control-plane/src/*.test.mjs
