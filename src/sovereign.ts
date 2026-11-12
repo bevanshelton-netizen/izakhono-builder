@@ -9,6 +9,7 @@ import { jarvisReasoningRoute } from '../products/izakhono-jarvis/src/reasoning'
 import { jarvisMainframeRoute } from '../products/izakhono-jarvis/src/mainframe';
 import { jarvisBriefingRoute } from '../products/izakhono-jarvis/src/briefing';
 import { jarvisConversationsRoute } from '../products/izakhono-jarvis/src/conversations';
+import { jarvisWorkforceRoute } from '../products/izakhono-jarvis/src/workforce';
 import { ventureFactoryRoute } from './venture-factory';
 import { reviewLoopRoute } from './reviewloop';
 import { bidForgeRoute } from './bidforge';
@@ -1356,6 +1357,9 @@ export default {
 
     const jarvisConversations = await jarvisConversationsRoute(req, env, () => ownerAuthorized(req, env));
     if (jarvisConversations) return jarvisConversations;
+
+    const jarvisWorkforce = await jarvisWorkforceRoute(req, env, () => ownerAuthorized(req, env));
+    if (jarvisWorkforce) return jarvisWorkforce;
 
     const jarvisMainframe = await jarvisMainframeRoute(req, env, () => ownerAuthorized(req, env));
     if (jarvisMainframe) return jarvisMainframe;
