@@ -8,9 +8,9 @@ Evidence-led inventory of the existing IZAKHONO Builder repository for THOR MVP-
 
 | THOR plane | Existing code | Verified capability | Gap / boundary |
 |---|---|---|---|
-| Native Builder | `autonomy/builder-adapter.mjs`, `autonomy/native-builder.mjs` (adapter imports this module), root `README.md` | Builder adapter routes to `runNativeBuilder`; root README documents native website artifact generation and deterministic fallback | Full arbitrary application/code generation and deployment are not established by this inspection |
+| Native Builder | `products/izakhono-native-builder/src/index.ts`, `products/izakhono-native-builder/src/queue.ts`, `autonomy/builder-adapter.mjs`, `autonomy/native-builder.mjs` | Native Builder Core defines project/job types, risk-based approval gates and explicit job transitions; DB-backed queue uses conditional queued-to-running claims and persists execution evidence; autonomy adapter routes to `runNativeBuilder` | Existing queue has no lease/heartbeat, retry/recovery, task dependency graph or concurrency proof; Native Builder Core persistence/authentication/worker isolation remain host-injected |
 | Planning | `autonomy/ai-agent-planner.mjs`, `autonomy/ai-agent.mjs` | Goal decomposition into ordered, dependency-aware stages; plan and queue persistence | Plan/queue are JSON files; no transactional multi-process claim semantics verified |
-| Worker | `autonomy/ai-agent-worker.mjs` | Processes queued/running items, executes native Builder or NODE actions, writes state and evidence | Iterates queue sequentially; no worker lease, heartbeat, claim lock, cancellation, handoff, dead-letter queue, or demonstrated concurrent workers |
+| Legacy autonomy worker | `autonomy/ai-agent-worker.mjs` | Processes JSON-file queue items and executes native Builder or NODE actions | Single-process sequential loop; no durable lease/heartbeat or demonstrated concurrent workers. THOR's separate `products/thor-control-plane/` is the newer orchestration implementation |
 | Worker tests | `autonomy/ai-agent-worker.test.mjs`, `autonomy/ai-agent-planner.test.mjs` | Tests native plan progression and generated portable artifacts; planner dependency tests | Tests do not prove multi-process safety, worker loss recovery, retries, or three-worker concurrency |
 | Software NODE | `node01/server.js`, `node01/package.json`, `node01/README.md` | Portable HTTP service, health/node endpoints, workspace registry, in-memory job acceptance | Job map is process-memory only; generic jobs explicitly do not execute arbitrary code; no auth or durable queue in v0.1 |
 | Software NODE lifecycle | `autonomy/software-node.mjs`, `autonomy/node-adapter.mjs` | Local software-node identity, heartbeat and basic eligibility checks; workload scheduler adapter | Local evidence is not proof of a persistent, remotely reachable, production worker fleet |
@@ -54,3 +54,27 @@ The root `package.json` exposes `ai-agent:test`, which runs the planner and work
 ## Verification limits
 
 This inventory was prepared by reading the repository files listed above through the connected GitHub integration. It did not execute repository tests, inspect a live NODE01 host, provision infrastructure, exercise model inference, or prove concurrent worker execution. No production or deployment claim is made.
+
+
+## Additional THOR branch inspection and CI evidence
+
+The THOR implementation is being developed on branch `thor-foundation`, which is why the Native Builder Core paths below were not present in the earlier default-branch fetch. They were subsequently fetched and inspected directly from the PR branch.
+
+- `products/izakhono-native-builder/src/index.ts`: project/job domain types, explicit state transitions, risk classes and approval separation. Persistence, authentication and worker isolation are injected boundaries.
+- `products/izakhono-native-builder/src/queue.ts`: D1-style database queue abstraction with conditional claim and execution-evidence writes. It has no lease recovery or retry lifecycle; the THOR control plane is the appropriate place to add those capabilities rather than duplicating this queue.
+- `products/thor-control-plane/src/index.mjs`: provider-neutral scheduler with dependency checks, lease ownership, heartbeat, retry, cancellation and portfolio snapshot.
+- `products/thor-control-plane/src/d1-store.mjs`: conditional D1 claim/update adapter, lease expiry recovery and event persistence. It has not yet been tested against a provisioned live D1 database.
+- `products/thor-control-plane/src/worker-contract.mjs` and `WORKER-SECURITY.md`: bounded repository/branch/path/command/resource policy. The code explicitly states that this is not an OS sandbox.
+
+### CI on inventory commit
+
+Commit: `3469e1a5c7004c8f439e23165829bdf7a7365ab6`
+
+- THOR orchestration tests: **passed**.
+- OpenAI Independence CI: **passed**.
+- Application Manifest Validation: **passed**.
+- NODE01 Architecture Invariant: **passed**.
+- Repository-wide IZAKHONO Builder CI: **in progress** at the time checked.
+- Vercel deployment status checks reported resource-limit failures across projects. Those checks are external deployment attempts and do not invalidate the passing THOR unit-test workflow; they are not a reason to introduce Vercel as a THOR hosting dependency.
+
+The PR remains unmerged. A green THOR test workflow proves the tested orchestration code path, not live D1 operation, a production sandbox, actual coding workers, three-project concurrency, or production deployment.
