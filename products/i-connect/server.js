@@ -4,6 +4,7 @@ const path = require('path');
 const app = express();
 app.use(express.json({ limit: '1mb', verify: (req, res, buffer) => { req.rawBody = Buffer.from(buffer); } }));
 const { createClient } = require('@supabase/supabase-js');
+const { isPrivateStaticPath } = require('./static-file-guard');
 const { simulateWorkflowGraph } = require('./workflow-test-simulator');
 const { verifyWebhookSignature, verifyWebhookChallenge, normaliseWhatsAppWebhook } = require('./whatsapp-webhook-adapter');
 
@@ -297,8 +298,12 @@ function startWorkflowTestWorker() {
 
 
 const root = __dirname;
-app.use('/agent', express.static(path.join(root, 'agent')));
-app.use(express.static(root));
+app.use((req, res, next) => {
+  if (isPrivateStaticPath(req.path)) return res.sendStatus(404);
+  next();
+});
+app.use('/agent', express.static(path.join(root, 'agent'), { dotfiles: 'deny', fallthrough: true }));
+app.use(express.static(root, { dotfiles: 'deny', fallthrough: true }));
 
 app.get('/api/config', (req, res) => {
   const supabaseUrl = process.env.I_CONNECT_SUPABASE_URL || '';
