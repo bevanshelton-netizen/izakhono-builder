@@ -82,9 +82,16 @@ All exposed tables require RLS. Every tenant-scoped query must enforce membershi
 - The browser adapter reads the access token from the shared I-CONNECT sign-in session (`window.I_CONNECT_SESSION.access_token`) and retries once after refreshing an expired session.
 - Workflow graph payloads are limited to 256 KB. Channel credentials are not accepted or stored by this endpoint.
 
+## Agent assignment and human handover
+- Agents can claim an unassigned conversation and release their own assignment.
+- Assigned agents can move conversations to waiting-for-customer or reopen them.
+- Owners, admins and managers can assign/unassign agents, close/reopen conversations, mark priority and route to an active organisation queue.
+- Every handover action is written to the organisation audit log with before/after state.
+- The database function verifies the actor's active membership and role, validates that the assignee is an active member of the same organisation, locks the conversation row, and rejects cross-tenant queue/thread references.
+
 ## Unified inbox application
 - The new `inbox.html` workspace loads organisation-scoped conversation lists and message history through authenticated read-only endpoints.
-- The UI uses text-safe DOM rendering for customer-controlled names and message bodies. It exposes no reply, assignment or channel-activation controls.
+- The UI uses text-safe DOM rendering for customer-controlled names and message bodies. It exposes claim/release and permitted status controls; no reply or channel-activation controls are available.
 - Contact Centre navigation opens the Unified Inbox directly. Empty states distinguish missing organisation membership from an empty conversation queue.
 
 ## Static asset exposure controls
