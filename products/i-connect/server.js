@@ -205,6 +205,15 @@ app.get('/api/inbox/threads', async (req, res) => {
 });
 
 
+app.get('/api/inbox/queues', async (req, res) => {
+  try {
+    const ctx = await automationContext(req, res, false);
+    if (!ctx) return;
+    const { data, error } = await ctx.supabase.from('ic_contact_queues').select('id,name,status').eq('organization_id',ctx.organizationId).eq('status','active').order('name');
+    if (error) return res.status(400).json({ error: 'Unable to load organisation queues.' });
+    res.json({ queues: data || [] });
+  } catch (_) { res.status(500).json({ error: 'Unexpected queue roster error.' }); }
+});
 app.get('/api/inbox/agents', async (req, res) => {
   try {
     const ctx = await automationContext(req, res, false);
