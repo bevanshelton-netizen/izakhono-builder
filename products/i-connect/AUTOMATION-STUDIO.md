@@ -51,6 +51,14 @@ All exposed tables require RLS. Every tenant-scoped query must enforce membershi
 - The script refuses to run if the organisation already has an active member, does not expose a public bootstrap endpoint, and never prints the password or service-role key.
 - Run it only from a trusted IZAKHONO-controlled environment using `npm run bootstrap:owner` in `products/i-connect`; do not commit the populated environment file.
 
+## WhatsApp Business webhook intake
+- A Meta-compatible GET verification handshake is implemented at `/api/webhooks/whatsapp`.
+- POST deliveries are verified against `X-Hub-Signature-256` using HMAC-SHA256 over the exact raw request bytes before payload processing.
+- The adapter normalises inbound message and delivery-status events, resolves `metadata.phone_number_id` to exactly one active organisation channel connection and inserts events idempotently into the server-only webhook inbox.
+- The endpoint only acknowledges and stores signed events. It does not send replies, start workflows or execute CRM/payment actions.
+- It is disabled by default. Enable only after an HTTPS endpoint, Meta app webhook subscription, `META_APP_SECRET`, `META_WEBHOOK_VERIFY_TOKEN`, `SUPABASE_SERVICE_ROLE_KEY`, `I_CONNECT_SUPABASE_URL` and an active `ic_channel_connections` record are configured. The connection's `external_account_id` must equal the Meta phone-number ID.
+- Review customer-data retention, POPIA notices/consent and access controls before accepting real customer messages. No Meta account credentials or secrets have been added to the repository.
+
 ## Workflow test execution
 - Owner/admin/manager users can enqueue a manual test for a saved draft workflow. The queue is idempotent per organisation and key.
 - The optional worker is enabled only with `I_CONNECT_WORKER_ENABLED=true` and the private `SUPABASE_SERVICE_ROLE_KEY` configured on the server.
@@ -69,7 +77,7 @@ All exposed tables require RLS. Every tenant-scoped query must enforce membershi
 
 ## Local validation
 - Run `npm run check:syntax` in `products/i-connect` to check server, browser adapter and bootstrap script syntax.
-- Run `npm run test:workflow-engine` in `products/i-connect` for the simulator safety tests.
+- Run `npm run test:workflow-engine` in `products/i-connect` for workflow simulation and WhatsApp webhook adapter tests.
 
 ## Activation gates
 A workflow must not be marked live until:
