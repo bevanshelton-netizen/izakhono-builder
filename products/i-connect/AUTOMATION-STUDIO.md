@@ -31,6 +31,13 @@ Use the existing I-CONNECT organisation and membership model. Add tenant-scoped 
 
 All exposed tables require RLS. Every tenant-scoped query must enforce membership in the owning organisation. Provider secrets must never be returned to browser clients; store them in a protected server-side secret store. Do not rely on user-editable JWT metadata for authorization.
 
+## Portable deployment
+- I-CONNECT already includes a Node container image definition and Docker Compose service; the application is not tied to Vercel.
+- Build from the repository root with `docker compose -f products/i-connect/docker-compose.yml build`.
+- Configure `products/i-connect/.env.production` from `.env.example` using deployment-specific secrets; do not commit the production file.
+- Start with `docker compose -f products/i-connect/docker-compose.yml up -d` and verify `/api/health` and `/api/runtime` on the host.
+- The container is portable to an IZAKHONO-controlled host or another compatible container runtime. No host deployment is claimed until the endpoint is externally verified.
+
 ## Cloud workflow persistence
 - `GET /api/automation/workflows` requires a valid Supabase access token and returns workflows only for an active organisation membership.
 - `POST /api/automation/workflows` requires owner/admin/manager membership and saves a workflow plus immutable version graph atomically through `public.ic_save_workflow`.
