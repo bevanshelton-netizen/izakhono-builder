@@ -97,7 +97,7 @@ app.post('/api/automation/workflows', async (req, res) => {
     });
     if (error) return res.status(400).json({ error: 'Workflow could not be saved. Check your permissions and workflow data.' });
     const saved = Array.isArray(data) ? data[0] : data;
-    res.status(201).json({ saved: true, workflowId: saved.workflow_id, version: saved.workflow_version });
+    res.status(201).json({ saved: true, organizationId: ctx.organizationId, workflowId: saved.workflow_id, version: saved.workflow_version });
   } catch (error) {
     res.status(500).json({ error: 'Unexpected workflow save error.' });
   }
