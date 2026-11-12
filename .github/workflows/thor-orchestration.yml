@@ -6,7 +6,6 @@ on:
       - "products/thor-control-plane/**"
       - ".github/workflows/thor-orchestration.yml"
   push:
-    branches: [main]
     paths:
       - "products/thor-control-plane/**"
       - ".github/workflows/thor-orchestration.yml"
