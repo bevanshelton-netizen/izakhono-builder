@@ -20,6 +20,12 @@ test('blocks environment files and source maps', () => {
   }
 });
 
+test('blocks encoded paths that resolve to private resources', () => {
+  for (const path of ['/scripts%2Fbootstrap-owner.js', '/server%2Ejs', '/%2e%2e%2fserver.js', '/%ZZ']) {
+    assert.equal(isPrivateStaticPath(path), true, path);
+  }
+});
+
 test('allows browser assets and public pages', () => {
   for (const path of ['/', '/index.html', '/styles.css', '/app.js', '/auth.js', '/agent/index.html']) {
     assert.equal(isPrivateStaticPath(path), false, path);
