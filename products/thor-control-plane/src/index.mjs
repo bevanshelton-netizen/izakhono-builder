@@ -33,7 +33,7 @@ export class MemoryThorStore {
     return task ? structuredClone(task) : null;
   }
 
-  async listTasks() { return [...this.tasks.values()].map(structuredClone); }
+  async listTasks() { return [...this.tasks.values()].map(task => structuredClone(task)); }
 
   // This method is atomic in this in-memory adapter because no await occurs
   // between candidate selection and mutation. Durable adapters must guarantee
