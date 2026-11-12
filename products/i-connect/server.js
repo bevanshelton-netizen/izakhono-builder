@@ -205,6 +205,23 @@ app.get('/api/inbox/threads', async (req, res) => {
 });
 
 
+app.get('/api/inbox/agents', async (req, res) => {
+  try {
+    const ctx = await automationContext(req, res, false);
+    if (!ctx) return;
+    if (!['owner','admin','manager'].includes(ctx.role)) return res.status(403).json({ error: 'Manager permissions are required to view the assignment roster.' });
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (!serviceKey) return res.status(503).json({ error: 'The organisation assignment roster is not configured on this runtime.' });
+    const admin = createClient(process.env.I_CONNECT_SUPABASE_URL, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
+    const { data: memberships, error } = await admin.from('ic_memberships').select('user_id, role').eq('organization_id', ctx.organizationId).eq('status','active').in('role',['owner','admin','manager','agent']).order('role');
+    if (error) return res.status(400).json({ error: 'Unable to load the organisation assignment roster.' });
+    const ids = [...new Set((memberships || []).map(row => row.user_id))];
+    const { data: profiles, error: profileError } = ids.length ? await admin.from('ic_profiles').select('id, display_name').in('id',ids) : { data: [], error: null };
+    if (profileError) return res.status(400).json({ error: 'Unable to load agent display names.' });
+    const profileMap = new Map((profiles || []).map(profile => [profile.id, profile.display_name]));
+    res.json({ agents: (memberships || []).map(row => ({ id: row.user_id, role: row.role, displayName: profileMap.get(row.user_id) || 'I-CONNECT ' + row.role })) });
+  } catch (_) { res.status(500).json({ error: 'Unexpected assignment roster error.' }); }
+});
 app.post('/api/inbox/threads/:threadId/actions', async (req, res) => {
   try {
     const ctx = await automationContext(req, res, false);
