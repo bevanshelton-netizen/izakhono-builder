@@ -47,7 +47,7 @@ async function automationContext(req, res, requiredRole = false) {
     res.status(403).json({ error: requiredRole ? 'Owner, admin or manager access is required to save workflows.' : 'No active I-CONNECT organisation membership was found.' });
     return null;
   }
-  return { supabase, user: authData.user, organizationId: membership.organization_id, memberships: memberships || [] };
+  return { supabase, user: authData.user, organizationId: membership.organization_id, role: membership.role, memberships: memberships || [] };
 }
 
 app.get('/api/automation/organizations', async (req, res) => {
@@ -201,6 +201,33 @@ app.get('/api/inbox/threads', async (req, res) => {
     res.json({ organizationId: ctx.organizationId, threads: (threads || []).map(thread => ({ ...thread, contact: contactMap.get(thread.contact_id) || null })) });
   } catch (_) {
     res.status(500).json({ error: 'Unexpected inbox list error.' });
+  }
+});
+
+
+app.post('/api/inbox/threads/:threadId/actions', async (req, res) => {
+  try {
+    const ctx = await automationContext(req, res, false);
+    if (!ctx) return;
+    const { action, assigneeId = null, status = null, priority = null, queueId = null } = req.body || {};
+    const allowed = new Set(['claim', 'release', 'assign', 'status', 'priority', 'queue']);
+    if (!allowed.has(action)) return res.status(400).json({ error: 'Unsupported inbox action.' });
+    if (['assign', 'priority', 'queue'].includes(action) && !['owner', 'admin', 'manager'].includes(ctx.role)) {
+      return res.status(403).json({ error: 'Manager permissions are required for this action.' });
+    }
+    const { data, error } = await ctx.supabase.rpc('ic_manage_inbox_thread', {
+      p_organization_id: ctx.organizationId,
+      p_thread_id: req.params.threadId,
+      p_action: action,
+      p_assignee_id: assigneeId,
+      p_status: status,
+      p_priority: priority,
+      p_queue_id: queueId
+    });
+    if (error) return res.status(403).json({ error: 'The conversation could not be updated. Check assignment and organisation permissions.' });
+    res.json({ success: true, result: data });
+  } catch (_) {
+    res.status(500).json({ error: 'Unexpected inbox handover error.' });
   }
 });
 
