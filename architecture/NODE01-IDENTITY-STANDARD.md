@@ -35,3 +35,6 @@ Do not say: “NODE01 server”, “NODE01 machine”, “the NODE01 hardware”
 
 ### Scope
 This standard applies to every IZAKHONO company system, product, repository, service, agent, workflow, environment, integration and future project. Product-specific documentation may explain implementation details but may not weaken or redefine this identity rule.
+
+### Machine replacement continuity — mandatory
+The previous execution machine has been replaced. The replacement is a separate execution environment running the existing NODE01 software identity. Preserve NODE01 across this replacement. Update only the runtime binding to the replacement's verified locator. Never derive or regenerate the NODE01 software identity from a machine fingerprint, machine-id, hostname, IP address, serial number, VM ID or cloud-provider instance ID. Never carry forward the former machine's locator as the active binding. If the replacement locator is not verified, record the binding as unverified and block production promotion.
