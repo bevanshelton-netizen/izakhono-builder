@@ -55,7 +55,7 @@ All exposed tables require RLS. Every tenant-scoped query must enforce membershi
 - Adds organisation-scoped contacts, provider identities, communication preference/lawful-basis records, inbox threads and message records.
 - Composite foreign keys prevent a contact, channel connection or thread from being attached across organisation boundaries.
 - Authenticated organisation members have read-only access under RLS. Writes are reserved for trusted server-side services until the inbox API enforces assignment, consent, suppression and audit rules.
-- Raw webhook events receive a 30-day expiry by default; inbox threads/messages receive 90-day expiry defaults. These are technical defaults, not a legal determination: set retention to IZAKHONO's approved schedule and run the server-only purge function on a controlled schedule. Message ingestion and outbound delivery remain disabled pending privacy review.
+- Raw webhook events receive a 30-day expiry by default; inbox threads/messages receive 90-day expiry defaults. These are technical defaults, not a legal determination: set retention to IZAKHONO's approved schedule. A database cron job is now configured daily at 02:17 UTC to purge expired webhook events, inbox messages and threads; contact and consent records are not automatically erased. Message ingestion and outbound delivery remain disabled pending privacy review.
 - The existing direct-message `conversations` and `messages` tables remain untouched because their current model is not organisation-scoped.
 
 ## WhatsApp Business webhook intake
