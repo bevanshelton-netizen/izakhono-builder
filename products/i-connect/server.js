@@ -212,6 +212,8 @@ app.post('/api/inbox/threads/:threadId/actions', async (req, res) => {
     const { action, assigneeId = null, status = null, priority = null, queueId = null } = req.body || {};
     const allowed = new Set(['claim', 'release', 'assign', 'status', 'priority', 'queue']);
     if (!allowed.has(action)) return res.status(400).json({ error: 'Unsupported inbox action.' });
+    if (action === 'status' && !['open','pending','waiting_customer','waiting_team','closed','archived'].includes(status)) return res.status(400).json({ error: 'Unsupported conversation status.' });
+    if (action === 'priority' && !['low','normal','high','urgent'].includes(priority)) return res.status(400).json({ error: 'Unsupported conversation priority.' });
     if (['assign', 'priority', 'queue'].includes(action) && !['owner', 'admin', 'manager'].includes(ctx.role)) {
       return res.status(403).json({ error: 'Manager permissions are required for this action.' });
     }
