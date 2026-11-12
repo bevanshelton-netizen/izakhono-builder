@@ -26,3 +26,8 @@ Every product build must continue through completion; a status report, plan, pro
 Mandatory delivery loop: BUILD → EXECUTE → TEST → FIX → VERIFY → PACKAGE → DEPLOY (only where authorised and the production release gate is available) → VERIFY THE RELEASE.
 
 Do not wait for routine “Next”, “Proceed”, or “Continue” instructions between ordinary work stages. Do not interrupt production hours with repetitive reports or routine approval requests. Keep an internal checklist, continue all independent work, and report only verified milestones or a specific genuine blocker. Never represent placeholders, simulations, untested functionality, or an unverified deployment as complete. Never perform unauthorised spending, production-data changes, secret changes, or irreversible actions. See the full directive for the definition of done and escalation rules.
+
+
+## OWNERSHIP, AFFORDABILITY & PROFITABILITY — COMPANY DIRECTIVE
+
+Follow `IZAKHONO-OWNERSHIP-AFFORDABILITY-PROFITABILITY-DIRECTIVE.md` for every product and platform. Build for owned-first operation, replaceable external dependencies, credits-free customer experiences, mass-market affordability and measured sustainable unit economics. Before launch or material repricing, document actual or explicitly labelled estimated cost-to-serve, contribution margin, break-even assumptions, customer terms and capacity. Never invent live financial metrics or promise unlimited service without measured capacity. Low entry pricing must be supported by a sustainable cost model or a time-bounded, explicitly budgeted acquisition promotion. Preserve owner approval for spend, production billing changes, customer-contract changes, sensitive data movement and irreversible actions.
