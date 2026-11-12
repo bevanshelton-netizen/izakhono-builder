@@ -1,6 +1,10 @@
 name: I-CONNECT Automation Validation
 
 on:
+  push:
+    paths:
+      - 'products/i-connect/**'
+      - '.github/workflows/i-connect-validation.yml'
   pull_request:
     paths:
       - 'products/i-connect/**'
