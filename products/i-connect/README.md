@@ -3,6 +3,7 @@
 I-CONNECT is the corporate communications control plane for the IZAKHONO ecosystem.
 
 ## Product scope
+- **Unified Inbox:** organisation-scoped customer conversations and message history with role-checked read APIs; outbound messaging and assignment are deliberately disabled pending consent and provider controls.
 - **CONNECT AI Automation Studio:** tenant-scoped workflow design, immutable versions, shared I-CONNECT sign-in, organisation switching, authenticated draft persistence, idempotent test-run queue, side-effect-free worker simulation and signed WhatsApp webhook intake. See [AUTOMATION-STUDIO.md](./AUTOMATION-STUDIO.md) for architecture, deployment and activation boundaries.
 - Corporate contact centre: IVR, queues, agent desktop, supervisor wallboard, analytics and omnichannel-ready architecture.
 - Fleet: tracking, driver communications, safety events, control-room workflows and IZAKHONO NAV/FORTRESS integration.
