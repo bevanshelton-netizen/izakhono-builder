@@ -55,7 +55,7 @@ assert.equal(recovered.attempts, 2);
 assert.equal(recovered.workerId, "replacement-worker");
 
 // Old worker cannot complete a task after lease ownership changes.
-await assert.rejects(() => store.finish("lease", "lost-worker", "late"), /does not own/);
+await assert.rejects(() => store.finish("lease", "lost-worker", "late"), /active lease/);
 const final = await store.finish("lease", "replacement-worker", "recovered");
 assert.equal(final.state, "succeeded");
 
