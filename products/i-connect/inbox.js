@@ -65,6 +65,19 @@
       if (item?.status !== 'closed') makeAction('Close','status',{status:'closed'});
       else makeAction('Reopen','status',{status:'open'});
       makeAction('Mark urgent','priority',{priority:'urgent'});
+      try {
+        const roster = await request('/api/inbox/agents?organizationId=' + encodeURIComponent(state.organizationId));
+        const select = document.createElement('select'); select.className='select'; select.setAttribute('aria-label','Assign conversation to agent');
+        const unassigned = document.createElement('option'); unassigned.value=''; unassigned.textContent='Unassigned'; select.appendChild(unassigned);
+        for (const agent of roster.agents || []) {
+          const option=document.createElement('option'); option.value=agent.id; option.textContent=agent.displayName+' · '+agent.role;
+          if (agent.id===item?.assigned_to) option.selected=true;
+          select.appendChild(option);
+        }
+        const assign=document.createElement('button'); assign.type='button'; assign.className='btn'; assign.textContent='Assign';
+        assign.addEventListener('click',()=>manageThread(id,'assign',{assigneeId:select.value || null}));
+        actions.append(select,assign);
+      } catch (_) {}
     } else if (item?.assigned_to === window.I_CONNECT_SESSION?.user?.id) {
       makeAction(item?.status === 'waiting_customer' ? 'Reopen' : 'Waiting for customer','status',{status:item?.status === 'waiting_customer' ? 'open' : 'waiting_customer'});
     }
