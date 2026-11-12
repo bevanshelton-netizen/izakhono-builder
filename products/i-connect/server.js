@@ -2,9 +2,10 @@ const express = require('express');
 const path = require('path');
 
 const app = express();
-app.use(express.json({ limit: '1mb' }));
+app.use(express.json({ limit: '1mb', verify: (req, res, buffer) => { req.rawBody = Buffer.from(buffer); } }));
 const { createClient } = require('@supabase/supabase-js');
 const { simulateWorkflowGraph } = require('./workflow-test-simulator');
+const { verifyWebhookSignature, verifyWebhookChallenge, normaliseWhatsAppWebhook } = require('./whatsapp-webhook-adapter');
 
 async function automationContext(req, res, requiredRole = false) {
   const url = process.env.I_CONNECT_SUPABASE_URL;
@@ -161,6 +162,73 @@ app.get('/api/automation/runs', async (req, res) => {
     res.json({ runs: data || [] });
   } catch (error) {
     res.status(500).json({ error: 'Unexpected workflow history error.' });
+  }
+});
+
+// Meta WhatsApp webhook verification and durable event intake.
+// This endpoint only stores signed events; it does not trigger workflows or send replies.
+app.get('/api/webhooks/whatsapp', (req, res) => {
+  const expectedToken = process.env.META_WEBHOOK_VERIFY_TOKEN;
+  if (!expectedToken || process.env.I_CONNECT_WHATSAPP_WEBHOOK_ENABLED !== 'true') {
+    return res.sendStatus(404);
+  }
+  const mode = req.query['hub.mode'];
+  const token = req.query['hub.verify_token'];
+  const challenge = req.query['hub.challenge'];
+  if (!verifyWebhookChallenge(mode, token, expectedToken, challenge)) return res.sendStatus(403);
+  res.type('text/plain').status(200).send(challenge);
+});
+
+app.post('/api/webhooks/whatsapp', async (req, res) => {
+  if (process.env.I_CONNECT_WHATSAPP_WEBHOOK_ENABLED !== 'true') return res.sendStatus(404);
+  const appSecret = process.env.META_APP_SECRET;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const supabaseUrl = process.env.I_CONNECT_SUPABASE_URL;
+  if (!appSecret || !serviceKey || !supabaseUrl) {
+    return res.status(503).json({ error: 'WhatsApp webhook intake is not configured.' });
+  }
+  const signature = req.get('x-hub-signature-256') || '';
+  if (!verifyWebhookSignature(req.rawBody, signature, appSecret)) {
+    return res.status(401).json({ error: 'Webhook signature verification failed.' });
+  }
+  try {
+    const events = normaliseWhatsAppWebhook(req.body);
+    if (!events.length) return res.status(200).json({ accepted: 0 });
+    const serviceClient = createClient(supabaseUrl, serviceKey, {
+      auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }
+    });
+    const rows = [];
+    for (const event of events) {
+      if (!event.phoneNumberId) return res.status(400).json({ error: 'Webhook event is missing its WhatsApp phone number identity.' });
+      const { data: connections, error: connectionError } = await serviceClient
+        .from('ic_channel_connections')
+        .select('id, organization_id')
+        .eq('provider', 'whatsapp')
+        .eq('external_account_id', event.phoneNumberId)
+        .eq('status', 'active')
+        .limit(2);
+      if (connectionError) return res.status(503).json({ error: 'Could not resolve the WhatsApp channel connection.' });
+      if (!connections || connections.length !== 1) {
+        return res.status(409).json({ error: 'WhatsApp phone number is not mapped to exactly one active I-CONNECT channel connection.' });
+      }
+      rows.push({
+        provider: 'whatsapp',
+        provider_event_id: event.providerEventId,
+        connection_id: connections[0].id,
+        organization_id: connections[0].organization_id,
+        event_type: event.eventType,
+        payload: event.payload,
+        signature_verified: true,
+        processing_state: 'received'
+      });
+    }
+    const { error: insertError } = await serviceClient
+      .from('ic_webhook_events')
+      .upsert(rows, { onConflict: 'provider,provider_event_id', ignoreDuplicates: true });
+    if (insertError) return res.status(503).json({ error: 'Signed webhook events could not be persisted.' });
+    return res.status(200).json({ accepted: rows.length });
+  } catch (error) {
+    return res.status(500).json({ error: 'WhatsApp webhook intake failed safely.' });
   }
 });
 
