@@ -1,24 +1,11 @@
-# NODE01 — IZAKHONO Owned Runtime
+# NODE01 Software Runtime — IZAKHONO NAV
 
-NODE01 is the authoritative IZAKHONO-owned runtime target for NAV.
+NODE01 is the stable software/runtime identity that governs the NAV release. It is not the server, machine, VM, VPS, cloud instance or physical asset executing the software.
+
+The previous execution machine has been replaced. The replacement is a separate execution environment. Keep its actual locator in the runtime binding and preserve `logical_node_id: NODE01`.
 
 ## NAV deployment
 
-From the repository root on NODE01:
+Use the approved deployment workflow for the selected execution environment. Verify the target binding, immutable release, runtime health, workload health, backup/restore and rollback before promotion.
 
-```bash
-./infra/node01/deploy-nav-node01.sh
-```
-
-The deployment uses the existing owned Docker/Caddy stack under `infra/contabo/` and performs local health, readiness and smoke verification before reporting completion.
-
-## Runtime principle
-
-- NODE01 is the production runtime target.
-- GitHub is the source-control and release source.
-- Docker provides application isolation.
-- Caddy provides the TLS edge.
-- `nav.izakhono.africa` is the intended public NAV domain.
-- Vercel and Netlify are not deployment dependencies.
-
-The script does not claim public availability until local verification succeeds.
+The deployment must not infer that a machine is NODE01 from its hostname or hardware identity. Public availability requires separate DNS/TLS/HTTPS verification. Repository files or CI success alone do not prove a live runtime.
