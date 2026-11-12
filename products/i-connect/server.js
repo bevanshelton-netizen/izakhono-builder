@@ -254,4 +254,7 @@ app.get('/api/runtime', (req, res) => res.json({
 }));
 
 const port = Number(process.env.PORT || 3000);
-app.listen(port, () => {\n  console.log(`I-CONNECT listening on ${port}`);\n  startWorkflowTestWorker();\n});
+app.listen(port, () => {
+  console.log(`I-CONNECT listening on ${port}`);
+  startWorkflowTestWorker();
+});
