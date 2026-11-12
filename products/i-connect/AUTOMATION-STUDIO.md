@@ -82,6 +82,12 @@ All exposed tables require RLS. Every tenant-scoped query must enforce membershi
 - The browser adapter reads the access token from the shared I-CONNECT sign-in session (`window.I_CONNECT_SESSION.access_token`) and retries once after refreshing an expired session.
 - Workflow graph payloads are limited to 256 KB. Channel credentials are not accepted or stored by this endpoint.
 
+## Communication permission enforcement
+- A server-only, fail-closed permission evaluator checks active contact status, the latest channel-specific or global permission record, expiry and purpose.
+- Marketing permission is rejected unless the latest applicable record is an explicit consent with lawful basis `consent`; global withdrawals override older channel-specific grants.
+- Consent records use a monotonic identity order so multiple changes in one transaction are still evaluated in the correct order.
+- The evaluator is a safety gate for future delivery workers. No outbound messaging is implemented or enabled, and the evaluator is not a substitute for legal review.
+
 ## Agent assignment and human handover
 - Agents can claim an unassigned conversation and release their own assignment.
 - Assigned agents can move conversations to waiting-for-customer or reopen them.
