@@ -31,6 +31,13 @@ Use the existing I-CONNECT organisation and membership model. Add tenant-scoped 
 
 All exposed tables require RLS. Every tenant-scoped query must enforce membership in the owning organisation. Provider secrets must never be returned to browser clients; store them in a protected server-side secret store. Do not rely on user-editable JWT metadata for authorization.
 
+## Cloud workflow persistence
+- `GET /api/automation/workflows` requires a valid Supabase access token and returns workflows only for an active organisation membership.
+- `POST /api/automation/workflows` requires owner/admin/manager membership and saves a workflow plus immutable version graph atomically through `public.ic_save_workflow`.
+- The API uses the Supabase anon key with the caller's bearer token so database RLS remains in force. It does not use the service-role key.
+- The browser adapter accepts the access token from `window.I_CONNECT_SESSION.access_token` or `sessionStorage.i_connect_access_token`; connect this to the platform's authenticated session manager before production use.
+- Workflow graph payloads are limited to 256 KB. Channel credentials are not accepted or stored by this endpoint.
+
 ## Activation gates
 A workflow must not be marked live until:
 - tenant identity and role permissions are verified;
