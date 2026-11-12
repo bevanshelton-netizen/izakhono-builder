@@ -225,21 +225,24 @@ app.get('/api/config', (req, res) => {
 });
 
 app.get('/api/health', (req, res) => {
-  const required = [
-    'I_CONNECT_SUPABASE_URL',
-    'I_CONNECT_SUPABASE_ANON_KEY',
-    'I_CONNECT_CARRIER_BRIDGE_URL',
-    'I_CONNECT_CARRIER_BRIDGE_SECRET',
-    'I_CONNECT_PAYMENT_PROVIDER_SECRET'
-  ];
-  const configured = Object.fromEntries(required.map(k => [k, Boolean(process.env[k])]));
-  const missing = required.filter(k => !configured[k]);
+  const databaseConfigured = Boolean(process.env.I_CONNECT_SUPABASE_URL && process.env.I_CONNECT_SUPABASE_ANON_KEY);
+  const carrierConfigured = Boolean(process.env.I_CONNECT_CARRIER_BRIDGE_URL && process.env.I_CONNECT_CARRIER_BRIDGE_SECRET);
+  const paymentsConfigured = Boolean(process.env.I_CONNECT_PAYMENT_PROVIDER_SECRET);
+  const workerConfigured = Boolean(process.env.I_CONNECT_WORKER_ENABLED === 'true' && process.env.SUPABASE_SERVICE_ROLE_KEY);
+  const modules = {
+    webApp: 'ready',
+    agentApp: 'ready',
+    database: databaseConfigured ? 'configured_not_verified' : 'missing_credentials',
+    carrier: carrierConfigured ? 'configured_not_verified' : 'missing_credentials',
+    payments: paymentsConfigured ? 'configured_not_verified' : 'missing_credentials'
+  };
   res.json({
     service: 'I-CONNECT',
-    status: missing.length ? 'activation_required' : 'production_ready',
-    pstnLive: configured.I_CONNECT_CARRIER_BRIDGE_URL && configured.I_CONNECT_CARRIER_BRIDGE_SECRET,
-    realBilling: configured.I_CONNECT_PAYMENT_PROVIDER_SECRET,
-    missing
+    status: 'activation_required',
+    productionReady: false,
+    modules,
+    workflowTestWorker: workerConfigured ? 'configured_not_verified' : 'disabled',
+    note: 'Configuration presence is not a production health check. Verify database connectivity, carrier delivery, payment callbacks and end-to-end service before activation.'
   });
 });
 
