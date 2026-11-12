@@ -48,7 +48,7 @@ export async function jarvisWorkforceRoute(req:Request,env:WorkforceEnv,owner:()
  if(s.status!=="in_progress")return out({ok:false,error:"Step is not claimed"},409);
  if(b.agent_id!==s.assigned_agent)return out({ok:false,error:"Claim belongs to another agent"},409);
  if(action==="heartbeat"){
-  const lease=new Date(Date.now()+300000).toISOString(),r=await env.DB.prepare("UPDATE jarvis_orchestration_steps SET lease_until=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND status='in_progress' undefined").bind(lease,stepId,b.agent_id,b.agent_id).run();
+  const lease=new Date(Date.now()+300000).toISOString(),r=await env.DB.prepare("UPDATE jarvis_orchestration_steps SET lease_until=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND status='in_progress' AND assigned_agent=? AND lease_owner=? AND datetime(lease_until)>CURRENT_TIMESTAMP").bind(lease,stepId,b.agent_id,b.agent_id).run();
   if(!r.meta?.changes)return out({ok:false,error:"Lease expired or claim changed"},409);
   return out({ok:true,lease_until:lease});
  }
