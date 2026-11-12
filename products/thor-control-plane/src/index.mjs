@@ -155,13 +155,41 @@ export class ThorOrchestrator {
     }
     const task = await this.store.claimNext(workerId, this.leaseMs);
     if (!task) return { claimed: false };
+
+    // Renew leases while long-running work is in progress. The executor may
+    // also heartbeat explicitly; the automatic renewal is the safety net.
+    let heartbeatFailure = null;
+    let heartbeatInFlight = Promise.resolve();
+    let heartbeatBusy = false;
+    const heartbeatEveryMs = Math.max(250, Math.floor(this.leaseMs / 3));
+    const heartbeatTimer = setInterval(() => {
+      if (heartbeatBusy || heartbeatFailure) return;
+      heartbeatBusy = true;
+      heartbeatInFlight = this.store.heartbeat(task.id, workerId, this.leaseMs)
+        .then(alive => {
+          if (!alive) heartbeatFailure = new ThorError("Worker lease was lost during execution", "LEASE_NOT_OWNED");
+        })
+        .catch(error => {
+          heartbeatFailure = new ThorError(
+            `Worker heartbeat failed: ${String(error?.message ?? error)}`,
+            "HEARTBEAT_FAILED",
+          );
+        })
+        .finally(() => { heartbeatBusy = false; });
+    }, heartbeatEveryMs);
+
     try {
       const result = await executor(structuredClone(task), {
         heartbeat: () => this.store.heartbeat(task.id, workerId, this.leaseMs),
       });
+      clearInterval(heartbeatTimer);
+      await heartbeatInFlight;
+      if (heartbeatFailure) throw heartbeatFailure;
       const completed = await this.store.finish(task.id, workerId, result ?? null);
       return { claimed: true, task: completed };
     } catch (error) {
+      clearInterval(heartbeatTimer);
+      await heartbeatInFlight;
       const updated = await this.store.fail(task.id, workerId, error);
       return { claimed: true, task: updated, error: updated.lastError };
     }
