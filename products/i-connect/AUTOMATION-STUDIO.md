@@ -87,6 +87,7 @@ All exposed tables require RLS. Every tenant-scoped query must enforce membershi
 - Assigned agents can move conversations to waiting-for-customer or reopen them.
 - Owners, admins and managers can assign/unassign active organisation agents, close/reopen conversations, mark priority and route to an active organisation queue. The workspace provides agent and queue selectors for these manager actions.
 - Every handover action is written to the organisation audit log with before/after state.
+- Assigned agents and managers can add private internal notes to the conversation. Notes are stored as internal-note records, never sent to the customer, and generate an audit event with note length rather than duplicating note contents into the audit log.
 - The database function verifies the actor's active membership and role, validates that the assignee is an active member of the same organisation, locks the conversation row, and rejects cross-tenant queue/thread references.
 
 ## Unified inbox application
