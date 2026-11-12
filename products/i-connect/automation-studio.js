@@ -23,4 +23,5 @@
  document.querySelectorAll('[data-template]').forEach(b=>b.onclick=()=>choose(b.dataset.template));
  const saved=localStorage.getItem('icai_automation_draft');if(saved){try{const d=JSON.parse(saved);title=d.title||title;description=d.description||description;steps=Array.isArray(d.steps)?d.steps:steps;}catch{}}
  render();
+ refreshRunHistory();
 })();
