@@ -28,6 +28,10 @@ Cloudflare Worker + D1 persistent identity/session authority. This source change
 7. Configure the Creator Worker with the same signing secret, issuer and audience.
 8. Verify login, CSRF, tenant/role checks, refresh rotation, logout and audit persistence before enabling sign-in.
 
+## Not yet implemented
+
+This first issuer milestone does not yet implement MFA enrollment/challenges, recovery codes, password reset, invitation workflows or administrative credential/role management. Do not enable a policy that requires MFA until that control is delivered and tested. Owner bootstrap is intentionally a one-time out-of-band operation; it is not a general user provisioning API.
+
 ## Integration boundary
 Creator currently verifies JWT signature, issuer, audience, role, tenant and a maximum 15-minute lifetime. This issuer emits 10-minute access tokens. Logout revokes refresh capability; an already-issued access JWT remains valid until expiry (maximum 10 minutes) unless online JTI revocation is added. Immediate access-token revocation is not claimed.
 
