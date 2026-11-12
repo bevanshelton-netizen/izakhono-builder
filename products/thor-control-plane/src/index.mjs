@@ -76,7 +76,7 @@ export class MemoryThorStore {
 
   async finish(taskId, workerId, result) {
     const task = this.tasks.get(taskId);
-    if (!task || task.state !== "running" || task.workerId !== workerId) {
+    if (!task || task.state !== "running" || task.workerId !== workerId || Date.parse(task.leaseUntil) <= this.clock()) {
       throw new ThorError("Worker does not own this running task", "LEASE_NOT_OWNED");
     }
     task.state = "succeeded";
