@@ -8,6 +8,7 @@ on:
   pull_request:
     paths:
       - 'products/izakhono-creator/**'
+      - 'products/fortress-identity/**'
 
 jobs:
   typecheck:
