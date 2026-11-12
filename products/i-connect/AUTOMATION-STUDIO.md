@@ -38,6 +38,12 @@ All exposed tables require RLS. Every tenant-scoped query must enforce membershi
 - Start with `docker compose -f products/i-connect/docker-compose.yml up -d` and verify `/api/health` and `/api/runtime` on the host.
 - The container is portable to an IZAKHONO-controlled host or another compatible container runtime. No host deployment is claimed until the endpoint is externally verified.
 
+## Initial organisation-owner bootstrap
+- The inspected Supabase project currently has one organisation but no authentication users or active organisation memberships. Cloud workflow save/load therefore cannot be exercised until the first authorised owner account is provisioned.
+- A guarded operator-only script is provided at `scripts/bootstrap-owner.js`; it requires the Supabase service-role key, exact organisation slug, owner email/password and an explicit `I_CONNECT_CONFIRM_OWNER_BOOTSTRAP=YES` acknowledgement.
+- The script refuses to run if the organisation already has an active member, does not expose a public bootstrap endpoint, and never prints the password or service-role key.
+- Run it only from a trusted IZAKHONO-controlled environment using `npm run bootstrap:owner` in `products/i-connect`; do not commit the populated environment file.
+
 ## Cloud workflow persistence
 - `GET /api/automation/workflows` requires a valid Supabase access token and returns workflows only for an active organisation membership.
 - `POST /api/automation/workflows` requires owner/admin/manager membership and saves a workflow plus immutable version graph atomically through `public.ic_save_workflow`.
