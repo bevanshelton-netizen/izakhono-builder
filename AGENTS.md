@@ -18,3 +18,11 @@ Mandatory order:
 10. If the owned route is unhealthy, keep or restore the last verified external route so customer access and revenue can continue.
 
 This instruction is portfolio policy issued by IZAKHONO AFRICA (PTY) LTD on 22 September 2026. It applies to this repository and every platform/package within it unless a signed product-specific exception supersedes it.
+
+## CONTINUOUS PRODUCT DELIVERY — CEO DIRECTIVE
+
+Every product build must continue through completion; a status report, plan, prototype, or partial implementation is not a stopping point. Follow the standing company directive in `IZAKHONO-CONTINUOUS-DELIVERY-DIRECTIVE.md`.
+
+Mandatory delivery loop: BUILD → EXECUTE → TEST → FIX → VERIFY → PACKAGE → DEPLOY (only where authorised and the production release gate is available) → VERIFY THE RELEASE.
+
+Do not wait for routine “Next”, “Proceed”, or “Continue” instructions between ordinary work stages. Do not interrupt production hours with repetitive reports or routine approval requests. Keep an internal checklist, continue all independent work, and report only verified milestones or a specific genuine blocker. Never represent placeholders, simulations, untested functionality, or an unverified deployment as complete. Never perform unauthorised spending, production-data changes, secret changes, or irreversible actions. See the full directive for the definition of done and escalation rules.
