@@ -69,6 +69,25 @@ now += 5_001;
 assert.equal(await exhaustedStore.claimNext("replacement", 5_000), null);
 assert.equal((await exhaustedStore.getTask("exhausted")).state, "failed");
 
+// An expired worker cannot revive, complete or fail its lease before recovery.
+const expiryStore = new MemoryThorStore(clock);
+const expiryThor = new ThorOrchestrator({ store: expiryStore, clock, leaseMs: 5_000 });
+await expiryThor.submit({ id: "expired-finish", projectId: "demo", title: "Expired finish", instruction: "Reject stale finish", maxAttempts: 2 });
+const staleFinisher = await expiryStore.claimNext("stale-finisher", 5_000);
+now += 5_001;
+assert.equal(await expiryStore.heartbeat(staleFinisher.id, "stale-finisher", 5_000), false);
+await assert.rejects(() => expiryStore.finish(staleFinisher.id, "stale-finisher", "late"), /active lease/);
+const replacementFinisher = await expiryStore.claimNext("replacement-finisher", 5_000);
+assert.equal(replacementFinisher.workerId, "replacement-finisher");
+await expiryStore.finish(replacementFinisher.id, "replacement-finisher", "on time");
+
+await expiryThor.submit({ id: "expired-fail", projectId: "demo", title: "Expired fail", instruction: "Reject stale failure", maxAttempts: 2 });
+const staleFailure = await expiryStore.claimNext("stale-failure", 5_000);
+now += 5_001;
+await assert.rejects(() => expiryStore.fail(staleFailure.id, "stale-failure", new Error("late failure")), /active lease/);
+const replacementFailure = await expiryStore.claimNext("replacement-failure", 5_000);
+assert.equal(replacementFailure.id, "expired-fail");
+
 const snapshot = await thor.snapshot();
 assert.equal(snapshot.counts.succeeded, 5);
 assert.equal(snapshot.counts.queued, 0);
