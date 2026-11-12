@@ -45,8 +45,26 @@ async function automationContext(req, res, requiredRole = false) {
     res.status(403).json({ error: requiredRole ? 'Owner, admin or manager access is required to save workflows.' : 'No active I-CONNECT organisation membership was found.' });
     return null;
   }
-  return { supabase, user: authData.user, organizationId: membership.organization_id };
+  return { supabase, user: authData.user, organizationId: membership.organization_id, memberships: memberships || [] };
 }
+
+app.get('/api/automation/organizations', async (req, res) => {
+  try {
+    const ctx = await automationContext(req, res, false);
+    if (!ctx) return;
+    const organizationIds = [...new Set((ctx.memberships || []).map(item => item.organization_id))];
+    if (!organizationIds.length) return res.json({ organizations: [] });
+    const { data, error } = await ctx.supabase.from('ic_organizations')
+      .select('id, name, slug, status')
+      .in('id', organizationIds)
+      .eq('status', 'active')
+      .order('name');
+    if (error) return res.status(400).json({ error: 'Unable to load organisation access.' });
+    res.json({ organizations: data || [] });
+  } catch (error) {
+    res.status(500).json({ error: 'Unexpected organisation access error.' });
+  }
+});
 
 app.get('/api/automation/workflows', async (req, res) => {
   try {
