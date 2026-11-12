@@ -48,17 +48,19 @@ export async function jarvisWorkforceRoute(req:Request,env:WorkforceEnv,owner:()
  if(s.status!=="in_progress")return out({ok:false,error:"Step is not claimed"},409);
  if(b.agent_id!==s.assigned_agent)return out({ok:false,error:"Claim belongs to another agent"},409);
  if(action==="heartbeat"){
-  const lease=new Date(Date.now()+300000).toISOString(),r=await env.DB.prepare("UPDATE jarvis_orchestration_steps SET lease_until=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND status='in_progress' AND assigned_agent=? AND datetime(lease_until)>CURRENT_TIMESTAMP").bind(lease,stepId,b.agent_id).run();
+  const lease=new Date(Date.now()+300000).toISOString(),r=await env.DB.prepare("UPDATE jarvis_orchestration_steps SET lease_until=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND status='in_progress' undefined").bind(lease,stepId,b.agent_id,b.agent_id).run();
   if(!r.meta?.changes)return out({ok:false,error:"Lease expired or claim changed"},409);
   return out({ok:true,lease_until:lease});
  }
  let status:string;
  if(action==="complete"){
   const evidence=typeof b.evidence==="string"?b.evidence.trim():"";if(evidence.length<8||evidence.length>2000)return out({ok:false,error:"Completion evidence (8–2000 characters) is required"},400);
-  status="completed";await env.DB.prepare("UPDATE jarvis_orchestration_steps SET status='completed',evidence_json=?,owner_verification='pending',owner_review_note=NULL,reviewed_at=NULL,lease_owner=NULL,lease_until=NULL,last_error=NULL,updated_at=CURRENT_TIMESTAMP WHERE id=? AND status='in_progress' AND assigned_agent=?").bind(JSON.stringify({evidence,verified_by_owner:false}),stepId,b.agent_id).run();
+  status="completed";const r=await env.DB.prepare("UPDATE jarvis_orchestration_steps SET status='completed',evidence_json=?,owner_verification='pending',owner_review_note=NULL,reviewed_at=NULL,lease_owner=NULL,lease_until=NULL,last_error=NULL,updated_at=CURRENT_TIMESTAMP WHERE id=? AND status='in_progress' AND assigned_agent=? AND lease_owner=? AND datetime(lease_until)>CURRENT_TIMESTAMP").bind(JSON.stringify({evidence,verified_by_owner:false}),stepId,b.agent_id,b.agent_id).run();
+  if(!r.meta?.changes)return out({ok:false,error:"Lease expired or claim changed"},409);
  }else if(action==="fail"){
   const error=typeof b.error==="string"?b.error.trim().slice(0,1000):"Worker reported failure";status=s.attempts<s.max_attempts?"pending":"blocked";
-  await env.DB.prepare("UPDATE jarvis_orchestration_steps SET status=?,last_error=?,lease_owner=NULL,lease_until=NULL,updated_at=CURRENT_TIMESTAMP WHERE id=? AND status='in_progress' AND assigned_agent=?").bind(status,error,stepId,b.agent_id).run();
+  const r=await env.DB.prepare("UPDATE jarvis_orchestration_steps SET status=?,last_error=?,lease_owner=NULL,lease_until=NULL,updated_at=CURRENT_TIMESTAMP WHERE id=? AND status='in_progress' AND assigned_agent=? AND lease_owner=? AND datetime(lease_until)>CURRENT_TIMESTAMP").bind(status,error,stepId,b.agent_id,b.agent_id).run();
+  if(!r.meta?.changes)return out({ok:false,error:"Lease expired or claim changed"},409);
  }else return out({ok:false,error:"Unsupported action"},404);
  await env.DB.prepare("INSERT INTO jarvis_audit_events(id,owner_scope,event_type,subject_type,subject_id,detail_json) VALUES(?,'owner',?,'step',?,?)").bind(uid(),"workforce."+status,stepId,JSON.stringify({agent_id:b.agent_id,evidence:b.evidence||null,error:b.error||null})).run();
  await refreshRun(env.DB,s.run_id);
