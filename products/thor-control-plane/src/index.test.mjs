@@ -59,6 +59,16 @@ await assert.rejects(() => store.finish("lease", "lost-worker", "late"), /does n
 const final = await store.finish("lease", "replacement-worker", "recovered");
 assert.equal(final.state, "succeeded");
 
+// An exhausted lease is terminal instead of being reclaimed forever.
+const exhaustedStore = new MemoryThorStore(clock);
+const exhaustedThor = new ThorOrchestrator({ store: exhaustedStore, clock, leaseMs: 5_000 });
+await exhaustedThor.submit({ id: "exhausted", projectId: "demo", title: "Exhausted lease", instruction: "Must terminate", maxAttempts: 1 });
+const exhaustedClaim = await exhaustedStore.claimNext("last-worker", 5_000);
+assert.equal(exhaustedClaim.attempts, 1);
+now += 5_001;
+assert.equal(await exhaustedStore.claimNext("replacement", 5_000), null);
+assert.equal((await exhaustedStore.getTask("exhausted")).state, "failed");
+
 const snapshot = await thor.snapshot();
 assert.equal(snapshot.counts.succeeded, 5);
 assert.equal(snapshot.counts.queued, 0);
