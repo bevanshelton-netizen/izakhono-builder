@@ -82,6 +82,11 @@ All exposed tables require RLS. Every tenant-scoped query must enforce membershi
 - The browser adapter reads the access token from the shared I-CONNECT sign-in session (`window.I_CONNECT_SESSION.access_token`) and retries once after refreshing an expired session.
 - Workflow graph payloads are limited to 256 KB. Channel credentials are not accepted or stored by this endpoint.
 
+## Unified inbox application
+- The new `inbox.html` workspace loads organisation-scoped conversation lists and message history through authenticated read-only endpoints.
+- The UI uses text-safe DOM rendering for customer-controlled names and message bodies. It exposes no reply, assignment or channel-activation controls.
+- Contact Centre navigation opens the Unified Inbox directly. Empty states distinguish missing organisation membership from an empty conversation queue.
+
 ## Static asset exposure controls
 - The portable web server serves the browser UI but blocks direct HTTP access to server source, package manifests, operator scripts, tests, migration SQL, environment files, container metadata, source maps and repository metadata.
 - Dotfiles are denied by the static file server. Browser assets remain available.
