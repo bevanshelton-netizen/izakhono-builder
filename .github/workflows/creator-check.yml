@@ -4,9 +4,11 @@ on:
   push:
     paths:
       - 'products/izakhono-creator/**'
+      - 'products/fortress-identity/**'
   pull_request:
     paths:
       - 'products/izakhono-creator/**'
+      - 'products/fortress-identity/**'
 
 jobs:
   typecheck:
@@ -25,3 +27,5 @@ jobs:
       - run: npx --yes tsx@4.20.3 products/izakhono-creator/src/cinematic-studio.test.ts
       - run: npx --yes tsx@4.20.3 products/fortress-security/src/access-control.test.ts
       - run: npx --yes tsx@4.20.3 products/izakhono-creator/src/one-workflow.test.ts
+      - run: npx tsc --noEmit --skipLibCheck --target ES2022 --lib ES2022,DOM --module ESNext --moduleResolution bundler products/fortress-identity/src/worker.ts products/fortress-identity/src/worker.test.ts
+      - run: npx --yes tsx@4.20.3 products/fortress-identity/src/worker.test.ts
