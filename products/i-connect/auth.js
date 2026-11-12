@@ -2,6 +2,7 @@
   const SESSION_KEY = 'i_connect_session';
   let config = null;
   let refreshTimer = null;
+  let refreshPromise = null;
   let resolveReady;
   window.I_CONNECT_AUTH_READY = new Promise(resolve => { resolveReady = resolve; });
 
@@ -101,19 +102,23 @@
       submitButton.textContent = 'Sign in securely';
     }
   }
-  async function refreshSession() {
-    const current = readStored();
-    if (!config || !current?.refresh_token) { clearSession(); return false; }
-    try {
-      const response = await authFetch('/auth/v1/token?grant_type=refresh_token', { refresh_token: current.refresh_token });
-      const result = await response.json();
-      if (!response.ok || !result.access_token) throw new Error('Refresh failed');
-      setSession(result);
-      return true;
-    } catch {
-      clearSession();
-      return false;
-    }
+  function refreshSession() {
+    if (refreshPromise) return refreshPromise;
+    refreshPromise = (async () => {
+      const current = readStored();
+      if (!config || !current?.refresh_token) { clearSession(); return false; }
+      try {
+        const response = await authFetch('/auth/v1/token?grant_type=refresh_token', { refresh_token: current.refresh_token });
+        const result = await response.json();
+        if (!response.ok || !result.access_token) throw new Error('Refresh failed');
+        setSession(result);
+        return true;
+      } catch {
+        clearSession();
+        return false;
+      }
+    })().finally(() => { refreshPromise = null; });
+    return refreshPromise;
   }
   async function signOut() {
     const current = readStored();
