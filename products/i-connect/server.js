@@ -294,6 +294,53 @@ app.get('/api/inbox/threads/:threadId/messages', async (req, res) => {
   }
 });
 
+// Outbound message preparation is draft-and-approval only. No provider send path exists.
+app.get('/api/outbound/drafts', async (req, res) => {
+  try {
+    const ctx = await automationContext(req, res, false);
+    if (!ctx) return;
+    if (!['owner','admin','manager','agent'].includes(ctx.role)) return res.status(403).json({ error: 'I-CONNECT membership is required.' });
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (!serviceKey) return res.status(503).json({ error: 'Outbound draft storage is not configured on this runtime.' });
+    const admin = createClient(process.env.I_CONNECT_SUPABASE_URL, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
+    const { data, error } = await admin.from('ic_outbound_message_drafts')
+      .select('id,contact_id,thread_id,connection_id,channel,purpose,message_type,body,status,created_by,reviewed_by,reviewed_at,review_note,created_at')
+      .eq('organization_id',ctx.organizationId).order('created_at',{ascending:false}).limit(100);
+    if (error) return res.status(400).json({ error: 'Unable to load outbound drafts.' });
+    res.json({ drafts: data || [], deliveryEnabled: false });
+  } catch (_) { res.status(500).json({ error: 'Unexpected outbound draft list error.' }); }
+});
+app.post('/api/outbound/drafts', async (req, res) => {
+  try {
+    const ctx = await automationContext(req, res, false);
+    if (!ctx) return;
+    const { contactId, threadId = null, connectionId, channel, purpose, messageType = 'text', body } = req.body || {};
+    if (![contactId,connectionId,channel,purpose,messageType,body].every(value => typeof value === 'string') || !body.trim() || body.length > 10000) {
+      return res.status(400).json({ error: 'Contact, active channel, purpose and a message body of 1 to 10000 characters are required.' });
+    }
+    const { data, error } = await ctx.supabase.rpc('ic_create_outbound_message_draft', {
+      p_organization_id:ctx.organizationId,p_contact_id:contactId,p_thread_id:threadId,
+      p_connection_id:connectionId,p_channel:channel,p_purpose:purpose,p_message_type:messageType,p_body:body
+    });
+    if (error) return res.status(403).json({ error: 'Draft could not be created. Check the active channel, contact and assignment permissions.' });
+    res.status(201).json({ created:true,draftId:data,status:'pending_approval',deliveryEnabled:false });
+  } catch (_) { res.status(500).json({ error: 'Unexpected outbound draft creation error.' }); }
+});
+app.post('/api/outbound/drafts/:draftId/review', async (req, res) => {
+  try {
+    const ctx = await automationContext(req, res, false);
+    if (!ctx) return;
+    if (!['owner','admin','manager'].includes(ctx.role)) return res.status(403).json({ error: 'Manager permissions are required to review outbound drafts.' });
+    const { decision, note = '' } = req.body || {};
+    if (!['approve','reject'].includes(decision) || typeof note !== 'string' || note.length > 1000) return res.status(400).json({ error: 'A valid approval decision and optional note are required.' });
+    const { data, error } = await ctx.supabase.rpc('ic_review_outbound_message_draft', {
+      p_organization_id:ctx.organizationId,p_draft_id:req.params.draftId,p_decision:decision,p_review_note:note
+    });
+    if (error) return res.status(403).json({ error: 'Draft review failed. The reviewer must be a different manager from the draft creator.' });
+    res.json({ ...data, deliveryEnabled:false });
+  } catch (_) { res.status(500).json({ error: 'Unexpected outbound draft review error.' }); }
+});
+
 app.get('/api/webhooks/whatsapp', (req, res) => {
   const expectedToken = process.env.META_WEBHOOK_VERIFY_TOKEN;
   if (!expectedToken || process.env.I_CONNECT_WHATSAPP_WEBHOOK_ENABLED !== 'true') {
