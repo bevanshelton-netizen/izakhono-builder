@@ -9,8 +9,7 @@
   ],
   "r2_buckets": [
     { "binding": "ASSETS", "bucket_name": "izakhono-creator-assets" }
-  ]
-  ,
+  ],
   "services": [
     { "binding": "FORTRESS_IDENTITY", "service": "izakhono-fortress-identity" }
   ]
