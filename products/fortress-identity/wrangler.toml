@@ -1,0 +1,16 @@
+name = "izakhono-fortress-identity"
+main = "src/worker.ts"
+compatibility_date = "2026-11-12"
+workers_dev = false
+
+[[d1_databases]]
+binding = "DB"
+database_name = "izakhono-fortress-identity"
+database_id = "REPLACE_WITH_CREATED_D1_DATABASE_ID"
+migrations_dir = "migrations"
+
+[vars]
+FORTRESS_SESSION_ISSUER = "https://fortress.izakhono.internal"
+FORTRESS_SESSION_AUDIENCE = "izakhono-creator"
+# Set exact Creator origin in FORTRESS_ALLOWED_ORIGINS.
+# Set signing and bootstrap secrets with wrangler secret put.
