@@ -214,6 +214,16 @@ const root = __dirname;
 app.use('/agent', express.static(path.join(root, 'agent')));
 app.use(express.static(root));
 
+app.get('/api/config', (req, res) => {
+  const supabaseUrl = process.env.I_CONNECT_SUPABASE_URL || '';
+  const anonKey = process.env.I_CONNECT_SUPABASE_ANON_KEY || '';
+  if (!supabaseUrl || !anonKey) {
+    return res.status(503).json({ error: 'I-CONNECT authentication is not configured on this runtime.' });
+  }
+  res.set('Cache-Control', 'no-store');
+  res.json({ supabaseUrl, anonKey });
+});
+
 app.get('/api/health', (req, res) => {
   const required = [
     'I_CONNECT_SUPABASE_URL',
