@@ -24,4 +24,4 @@ jobs:
         with:
           node-version: "22"
       - name: Run THOR orchestration tests
-        run: node --test products/thor-control-plane/src/index.test.mjs
+        run: node --test products/thor-control-plane/src/*.test.mjs
