@@ -22,6 +22,11 @@
   }
   window.IConnectAutomationApi = {
     list: () => request('/api/automation/workflows'),
+    runs: () => request('/api/automation/runs'),
+    testRun: (workflowId, organizationId, idempotencyKey, input = {}) => request('/api/automation/workflows/' + encodeURIComponent(workflowId) + '/test-run', {
+      method: 'POST',
+      body: JSON.stringify({ organizationId, idempotencyKey, input })
+    }),
     save: workflow => request('/api/automation/workflows', {
       method: 'POST',
       body: JSON.stringify(workflow)
