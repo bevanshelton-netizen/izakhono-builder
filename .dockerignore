@@ -1,0 +1,9 @@
+# Never bake runtime secrets or local credentials into the image.
+**/.env
+**/.env.*
+!**/.env.example
+**/.env.production
+**/node_modules
+**/.git
+**/.DS_Store
+**/npm-debug.log*
