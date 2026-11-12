@@ -5,7 +5,7 @@
   "scripts": {
     "start": "node server.js",
     "bootstrap:owner": "node scripts/bootstrap-owner.js",
-    "check:syntax": "node --check server.js && node --check automation-api.js && node --check automation-studio.js && node --check scripts/bootstrap-owner.js && node --check workflow-test-simulator.js",
+    "check:syntax": "node --check server.js && node --check auth.js && node --check automation-api.js && node --check automation-studio.js && node --check scripts/bootstrap-owner.js && node --check workflow-test-simulator.js",
     "test:workflow-engine": "node --test tests/workflow-test-simulator.test.js"
   },
   "dependencies": {
