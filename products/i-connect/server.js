@@ -259,6 +259,17 @@ app.post('/api/inbox/threads/:threadId/actions', async (req, res) => {
   }
 });
 
+app.post('/api/inbox/threads/:threadId/notes', async (req, res) => {
+  try {
+    const ctx = await automationContext(req, res, false);
+    if (!ctx) return;
+    const body = typeof req.body?.body === 'string' ? req.body.body : '';
+    if (!body.trim() || body.length > 5000) return res.status(400).json({ error: 'Internal note must contain 1 to 5000 characters.' });
+    const { data, error } = await ctx.supabase.rpc('ic_add_inbox_internal_note', { p_organization_id: ctx.organizationId, p_thread_id: req.params.threadId, p_body: body });
+    if (error) return res.status(403).json({ error: 'Internal note could not be saved. Check that you are assigned to this conversation or have manager access.' });
+    res.status(201).json({ saved: true, noteId: data });
+  } catch (_) { res.status(500).json({ error: 'Unexpected internal note error.' }); }
+});
 app.get('/api/inbox/threads/:threadId/messages', async (req, res) => {
   try {
     const ctx = await automationContext(req, res, false);
