@@ -5,7 +5,7 @@
     if (session.accessToken) return session.accessToken;
     try { return sessionStorage.getItem('i_connect_access_token') || ''; } catch { return ''; }
   };
-  async function request(path, options = {}) {
+  async function request(path, options = {}, retry = true) {
     const token = getAccessToken();
     if (!token) throw new Error('Sign in to I-CONNECT to sync this workflow to the IZAKHONO cloud.');
     const response = await fetch(path, {
@@ -16,6 +16,10 @@
         ...(options.headers || {})
       }
     });
+    if (response.status === 401 && retry && window.I_CONNECT_AUTH?.refresh) {
+      const refreshed = await window.I_CONNECT_AUTH.refresh();
+      if (refreshed) return request(path, options, false);
+    }
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(payload.error || 'The IZAKHONO workflow service could not complete the request.');
     return payload;
