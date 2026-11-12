@@ -40,8 +40,17 @@ export class MemoryThorStore {
   // the same property in their database.
   async claimNext(workerId, leaseMs) {
     const now = this.clock();
-    const tasks = [...this.tasks.values()].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+    const tasks = [...this.tasks.values()].sort((a, b) => a.priority - b.priority || a.createdAt.localeCompare(b.createdAt));
     for (const task of tasks) {
+      if (task.state === "running" && Date.parse(task.leaseUntil) <= now && task.attempts >= task.maxAttempts) {
+        task.state = "failed";
+        task.workerId = null;
+        task.leaseUntil = null;
+        task.lastError = task.lastError ?? "Worker lease expired after maximum attempts";
+        task.updatedAt = iso(now);
+        this.events.push({ taskId: task.id, type: "failed", reason: "lease_exhausted", at: iso(now) });
+        continue;
+      }
       if (task.state !== "queued" && !(task.state === "running" && Date.parse(task.leaseUntil) <= now)) continue;
       const dependencies = task.dependsOn.map(id => this.tasks.get(id));
       if (dependencies.some(dep => !dep || dep.state !== "succeeded")) continue;
