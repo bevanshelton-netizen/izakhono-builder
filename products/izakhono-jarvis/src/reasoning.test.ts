@@ -15,7 +15,7 @@ async function main(){
  const denied=await jarvisReasoningRoute(make({instruction:"Plan"}),env,async()=>false);assert.equal(denied?.status,401);assert.equal(calls,0);
  const noConfig=await jarvisReasoningRoute(make({instruction:"Plan"}),{},async()=>true);assert.equal(noConfig?.status,503);assert.equal(calls,0);
  const missing=await jarvisReasoningRoute(make({instruction:"Plan",conversation_id:"missing"}),{...env,DB:{prepare(){return{bind(){return{async all(){return{results:[]}}}}}}}},async()=>true);assert.equal(missing?.status,404);
- const ok=await jarvisReasoningRoute(make({instruction:"Create a delivery plan",conversation_id:"cnv_1"}),env,async()=>true);assert.equal(ok?.status,200);const result=await ok!.json() as any;assert.equal(result.plan.steps.length,2);assert.equal(result.provider,"IZAKHONO SUPER AI");assert.equal(result.execution,"not-started");assert.equal(result.conversation_context,1);assert.equal(calls,1);
+ const ok=await jarvisReasoningRoute(make({instruction:"Create a delivery plan",conversation_id:"cnv_1"}),env,async()=>true);assert.equal(ok?.status,200);const result=await ok!.json() as any;assert.equal(result.plan.steps.length,2);assert.equal(result.provider,"IZAKHONO SUPER AI");assert.equal(result.execution,"not-started");assert.equal(result.conversation_context,1);assert.equal(result.owner_context_items,0);assert.equal(calls,1);
  const badEnv={...env,JARVIS_AI_FETCH:async()=>new Response(JSON.stringify({output:{text:JSON.stringify({...plan,steps:[{title:"x",description:"x",depends_on:[1]}]})}}),{status:200})};
  const bad=await jarvisReasoningRoute(make({instruction:"Plan"}),badEnv,async()=>true);assert.equal(bad?.status,502);
  console.log("J.A.R.V.I.S. IZAKHONO SUPER AI adapter tests passed");
