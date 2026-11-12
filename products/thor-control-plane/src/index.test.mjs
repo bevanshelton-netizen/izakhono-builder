@@ -10,10 +10,6 @@ await thor.submit({ id: "a", projectId: "kora", title: "Build API", instruction:
 await thor.submit({ id: "b", projectId: "nav", title: "Build UI", instruction: "Create UI" });
 await thor.submit({ id: "c", projectId: "nav", title: "Integrate UI", instruction: "Integrate", dependsOn: ["b"] });
 
-// A dependent task must wait while its prerequisite remains queued.
-const blocked = await thor.runOne("worker-c", async () => "should not run");
-assert.equal(blocked.claimed, false);
-
 // Independent workers claim different projects concurrently.
 const claims = await Promise.all([
   thor.runOne("worker-a", async task => ({ worker: "a", project: task.projectId })),
@@ -21,13 +17,24 @@ const claims = await Promise.all([
 ]);
 assert.equal(claims.filter(result => result.claimed).length, 2);
 assert.notEqual(claims[0].task.id, claims[1].task.id);
+assert.equal((await store.getTask("b")).state, "succeeded");
 
-// Once prerequisite b succeeds, dependent c becomes eligible.
-const bTask = await store.getTask("b");
-assert.equal(bTask.state, "succeeded");
-const dependent = await thor.runOne("worker-f", async task => ({ dependsOn: task.dependsOn }));
+// A dependent task becomes eligible only after its prerequisite succeeds.
+const dependent = await thor.runOne("worker-c", async task => ({ dependsOn: task.dependsOn }));
 assert.equal(dependent.task.id, "c");
 assert.equal(dependent.task.state, "succeeded");
+
+// Isolated dependency gate: a running prerequisite does not unlock its child.
+const dependencyStore = new MemoryThorStore(clock);
+const dependencyThor = new ThorOrchestrator({ store: dependencyStore, clock, leaseMs: 5_000 });
+await dependencyThor.submit({ id: "parent", projectId: "demo", title: "Parent", instruction: "Build parent" });
+await dependencyThor.submit({ id: "child", projectId: "demo", title: "Child", instruction: "Build child", dependsOn: ["parent"] });
+const parent = await dependencyStore.claimNext("parent-worker", 5_000);
+assert.equal(parent.id, "parent");
+assert.equal(await dependencyStore.claimNext("child-worker", 5_000), null);
+await dependencyStore.finish("parent", "parent-worker", { ok: true });
+const child = await dependencyStore.claimNext("child-worker", 5_000);
+assert.equal(child.id, "child");
 
 // Failure is retried and does not freeze unrelated work.
 await thor.submit({ id: "retry", projectId: "edu-build", title: "Retry task", instruction: "Transient failure", maxAttempts: 2 });
