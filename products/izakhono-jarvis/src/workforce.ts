@@ -17,7 +17,7 @@ export async function jarvisWorkforceRoute(req:Request,env:WorkforceEnv,owner:()
   const steps=await env.DB.prepare("SELECT s.id,s.run_id,s.position,s.title,s.description,s.assigned_agent,s.status,s.attempts,s.max_attempts,s.lease_until,s.last_error,s.approval_required,s.evidence_json,s.owner_verification,s.owner_review_note,s.reviewed_at FROM jarvis_orchestration_steps s WHERE s.owner_scope='owner' ORDER BY s.run_id,s.position LIMIT 200").bind().all();
   return out({ok:true,runs:runs.results||[],steps:steps.results||[],execution_mode:"owner-controlled-queue",autonomous_workers_connected:false});
  }
- const claim=p==="/api/jarvis/workforce/claim",m=p.match(/^\\/api\\/jarvis\\/workforce\\/steps\\/([^/]+)\\/(heartbeat|complete|fail|review)$/);
+ const claim=p==="/api/jarvis/workforce/claim",m=p.match(/^\/api\/jarvis\/workforce\/steps\/([^/]+)\/(heartbeat|complete|fail|review)$/);
  if(req.method!==(claim||m?"POST":"GET"))return new Response("Method not allowed",{status:405,headers:{allow:claim||m?"POST":"GET","cache-control":"no-store"}});
  let b:any={};try{b=await req.json()}catch{return out({ok:false,error:"Expected JSON"},400)}
  if(claim){
