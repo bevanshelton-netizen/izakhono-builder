@@ -39,6 +39,12 @@ All exposed tables require RLS. Every tenant-scoped query must enforce membershi
 - Start with `docker compose -f products/i-connect/docker-compose.yml up -d` and verify `/api/health` and `/api/runtime` on the host.
 - The container is portable to an IZAKHONO-controlled host or another compatible container runtime. Put it behind an IZAKHONO-controlled TLS reverse proxy, restrict direct port access at the firewall and persist logs/metrics. No host deployment is claimed until the endpoint is externally verified.
 
+## I-CONNECT authentication
+- Corporate Command and Automation Studio load the same sign-in layer.
+- Browser sign-in uses Supabase Auth password flow with the public anon key returned by `/api/config`; only the public URL and anon key are exposed by that endpoint.
+- Access and refresh tokens are held in browser `sessionStorage`, refreshed before expiry and cleared on sign-out. The workflow API independently validates each bearer token and checks active organisation membership and role.
+- The application currently has no active organisation members. Provision the first owner using the guarded operator bootstrap below before expecting sign-in to succeed.
+
 ## Initial organisation-owner bootstrap
 - The inspected Supabase project currently has one organisation but no authentication users or active organisation memberships. Cloud workflow save/load therefore cannot be exercised until the first authorised owner account is provisioned.
 - A guarded operator-only script is provided at `scripts/bootstrap-owner.js`; it requires the Supabase service-role key, exact organisation slug, owner email/password and an explicit `I_CONNECT_CONFIRM_OWNER_BOOTSTRAP=YES` acknowledgement.
@@ -58,7 +64,7 @@ All exposed tables require RLS. Every tenant-scoped query must enforce membershi
 - `GET /api/automation/workflows` requires a valid Supabase access token and returns workflows only for an active organisation membership.
 - `POST /api/automation/workflows` requires owner/admin/manager membership and saves a workflow plus immutable version graph atomically through `public.ic_save_workflow`.
 - The API uses the Supabase anon key with the caller's bearer token so database RLS remains in force. It does not use the service-role key.
-- The browser adapter accepts the access token from `window.I_CONNECT_SESSION.access_token` or `sessionStorage.i_connect_access_token`; connect this to the platform's authenticated session manager before production use.
+- The browser adapter reads the access token from the shared I-CONNECT sign-in session (`window.I_CONNECT_SESSION.access_token`) and retries once after refreshing an expired session.
 - Workflow graph payloads are limited to 256 KB. Channel credentials are not accepted or stored by this endpoint.
 
 ## Local validation
