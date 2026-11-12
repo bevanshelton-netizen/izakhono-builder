@@ -168,6 +168,66 @@ app.get('/api/automation/runs', async (req, res) => {
 
 // Meta WhatsApp webhook verification and durable event intake.
 // This endpoint only stores signed events; it does not trigger workflows or send replies.
+
+app.get('/api/inbox/threads', async (req, res) => {
+  try {
+    const ctx = await automationContext(req, res, false);
+    if (!ctx) return;
+    const allowedStatuses = new Set(['open', 'pending', 'waiting_customer', 'waiting_team', 'closed', 'archived']);
+    const status = String(req.query.status || 'open');
+    if (status !== 'all' && !allowedStatuses.has(status)) return res.status(400).json({ error: 'Unsupported inbox status filter.' });
+    const limit = Math.min(100, Math.max(1, Number.parseInt(req.query.limit, 10) || 50));
+    const offset = Math.max(0, Math.min(10000, Number.parseInt(req.query.offset, 10) || 0));
+    let query = ctx.supabase.from('ic_inbox_threads')
+      .select('id, contact_id, channel, subject, status, priority, assigned_to, queue_id, last_message_at, created_at')
+      .eq('organization_id', ctx.organizationId)
+      .order('last_message_at', { ascending: false, nullsFirst: false })
+      .range(offset, offset + limit - 1);
+    if (status !== 'all') query = query.eq('status', status);
+    if (req.query.channel) query = query.eq('channel', String(req.query.channel));
+    const { data: threads, error } = await query;
+    if (error) return res.status(400).json({ error: 'Unable to load inbox conversations.' });
+    const contactIds = [...new Set((threads || []).map(item => item.contact_id))];
+    let contacts = [];
+    if (contactIds.length) {
+      const result = await ctx.supabase.from('ic_contacts')
+        .select('id, display_name, email, phone')
+        .eq('organization_id', ctx.organizationId)
+        .in('id', contactIds);
+      if (result.error) return res.status(400).json({ error: 'Unable to load inbox contact details.' });
+      contacts = result.data || [];
+    }
+    const contactMap = new Map(contacts.map(contact => [contact.id, contact]));
+    res.json({ organizationId: ctx.organizationId, threads: (threads || []).map(thread => ({ ...thread, contact: contactMap.get(thread.contact_id) || null })) });
+  } catch (_) {
+    res.status(500).json({ error: 'Unexpected inbox list error.' });
+  }
+});
+
+app.get('/api/inbox/threads/:threadId/messages', async (req, res) => {
+  try {
+    const ctx = await automationContext(req, res, false);
+    if (!ctx) return;
+    const { data: thread, error: threadError } = await ctx.supabase.from('ic_inbox_threads')
+      .select('id, channel, subject, status, priority, assigned_to, created_at, last_message_at')
+      .eq('organization_id', ctx.organizationId)
+      .eq('id', req.params.threadId)
+      .maybeSingle();
+    if (threadError) return res.status(400).json({ error: 'Unable to load this inbox conversation.' });
+    if (!thread) return res.status(404).json({ error: 'Inbox conversation not found.' });
+    const { data: messages, error } = await ctx.supabase.from('ic_inbox_messages')
+      .select('id, direction, message_type, body, delivery_status, provider_timestamp, created_at')
+      .eq('organization_id', ctx.organizationId)
+      .eq('thread_id', thread.id)
+      .order('created_at', { ascending: true })
+      .limit(100);
+    if (error) return res.status(400).json({ error: 'Unable to load conversation messages.' });
+    res.json({ thread, messages: messages || [] });
+  } catch (_) {
+    res.status(500).json({ error: 'Unexpected conversation history error.' });
+  }
+});
+
 app.get('/api/webhooks/whatsapp', (req, res) => {
   const expectedToken = process.env.META_WEBHOOK_VERIFY_TOKEN;
   if (!expectedToken || process.env.I_CONNECT_WHATSAPP_WEBHOOK_ENABLED !== 'true') {
