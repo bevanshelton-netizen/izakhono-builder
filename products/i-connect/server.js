@@ -159,11 +159,13 @@ function startWorkflowTestWorker() {
   const tick = async () => {
     if (busy) return;
     busy = true;
+    let claimedRun = null;
     try {
       const { data, error } = await workerClient.rpc('ic_claim_workflow_test_run', { p_worker_id: workerId });
       if (error) throw error;
       const run = Array.isArray(data) ? data[0] : null;
       if (!run) return;
+      claimedRun = run;
       const nodes = Array.isArray(run.workflow_graph?.nodes) ? run.workflow_graph.nodes : [];
       if (nodes.length > 200) {
         await workerClient.rpc('ic_finish_workflow_test_run', {
@@ -193,7 +195,17 @@ function startWorkflowTestWorker() {
       });
       if (finishError) throw finishError;
     } catch (error) {
-      // Avoid logging credentials or untrusted payloads.
+      // If a run was claimed, close it as failed rather than leaving it indefinitely running.
+      if (claimedRun?.run_id) {
+        try {
+          await workerClient.rpc('ic_finish_workflow_test_run', {
+            p_run_id: claimedRun.run_id,
+            p_status: 'failed',
+            p_output: {},
+            p_error: { code: 'WORKER_ERROR', message: 'The workflow simulation worker could not complete this run.' }
+          });
+        } catch (_) { /* Keep worker logs free of untrusted payloads and secrets. */ }
+      }
       console.error('I-CONNECT workflow test worker encountered an error.');
     } finally {
       busy = false;
