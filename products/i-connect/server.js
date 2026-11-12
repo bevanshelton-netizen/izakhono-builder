@@ -104,6 +104,106 @@ app.post('/api/automation/workflows', async (req, res) => {
 });
 
 
+app.post('/api/automation/workflows/:workflowId/test-run', async (req, res) => {
+  try {
+    const ctx = await automationContext(req, res, true);
+    if (!ctx) return;
+    const { idempotencyKey, input = {} } = req.body || {};
+    if (typeof idempotencyKey !== 'string' || idempotencyKey.length < 8 || idempotencyKey.length > 160) {
+      return res.status(400).json({ error: 'A valid idempotency key is required.' });
+    }
+    if (!input || typeof input !== 'object' || Array.isArray(input) || Buffer.byteLength(JSON.stringify(input), 'utf8') > 64 * 1024) {
+      return res.status(400).json({ error: 'Test input must be a JSON object under 64 KB.' });
+    }
+    const { data, error } = await ctx.supabase.rpc('ic_enqueue_workflow_test_run', {
+      p_organization_id: ctx.organizationId,
+      p_workflow_id: req.params.workflowId,
+      p_idempotency_key: idempotencyKey,
+      p_input: input
+    });
+    if (error) return res.status(400).json({ error: 'Could not queue workflow test. Confirm it is a saved draft and you have manager permissions.' });
+    const run = Array.isArray(data) ? data[0] : data;
+    res.status(202).json({ queued: true, runId: run.run_id, version: run.workflow_version, status: run.run_status });
+  } catch (error) {
+    res.status(500).json({ error: 'Unexpected workflow test queue error.' });
+  }
+});
+
+app.get('/api/automation/runs', async (req, res) => {
+  try {
+    const ctx = await automationContext(req, res, false);
+    if (!ctx) return;
+    const { data, error } = await ctx.supabase.from('ic_workflow_runs')
+      .select('id, workflow_id, workflow_version, trigger_type, status, attempts, output, error, created_at, started_at, finished_at')
+      .eq('organization_id', ctx.organizationId)
+      .order('created_at', { ascending: false })
+      .limit(30);
+    if (error) return res.status(400).json({ error: 'Unable to load workflow run history.' });
+    res.json({ runs: data || [] });
+  } catch (error) {
+    res.status(500).json({ error: 'Unexpected workflow history error.' });
+  }
+});
+
+// The worker is opt-in and runs only the no-side-effect manual_test queue.
+// Live channel/action execution is deliberately not implemented by this worker.
+function startWorkflowTestWorker() {
+  const url = process.env.I_CONNECT_SUPABASE_URL;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (process.env.I_CONNECT_WORKER_ENABLED !== 'true' || !url || !serviceKey) return;
+  const workerClient = createClient(url, serviceKey, {
+    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }
+  });
+  let busy = false;
+  const workerId = 'i-connect-test-worker';
+  const tick = async () => {
+    if (busy) return;
+    busy = true;
+    try {
+      const { data, error } = await workerClient.rpc('ic_claim_workflow_test_run', { p_worker_id: workerId });
+      if (error) throw error;
+      const run = Array.isArray(data) ? data[0] : null;
+      if (!run) return;
+      const nodes = Array.isArray(run.workflow_graph?.nodes) ? run.workflow_graph.nodes : [];
+      if (nodes.length > 200) {
+        await workerClient.rpc('ic_finish_workflow_test_run', {
+          p_run_id: run.run_id, p_status: 'failed', p_output: {},
+          p_error: { code: 'GRAPH_LIMIT', message: 'Workflow test exceeds the 200-node simulation limit.' }
+        });
+        return;
+      }
+      const steps = nodes.map((node, index) => ({
+        nodeId: String(node.id || 'node_' + (index + 1)),
+        title: String(node.title || node.name || 'Workflow step').slice(0, 160),
+        type: String(node.type || 'action').slice(0, 40),
+        result: 'simulated',
+        externalActionExecuted: false
+      }));
+      const { error: finishError } = await workerClient.rpc('ic_finish_workflow_test_run', {
+        p_run_id: run.run_id,
+        p_status: 'completed',
+        p_output: {
+          mode: 'simulation',
+          stepCount: steps.length,
+          steps,
+          externalActionsExecuted: 0,
+          note: 'Simulation only. No customer messages, payments, CRM writes or external integrations were executed.'
+        },
+        p_error: {}
+      });
+      if (finishError) throw finishError;
+    } catch (error) {
+      // Avoid logging credentials or untrusted payloads.
+      console.error('I-CONNECT workflow test worker encountered an error.');
+    } finally {
+      busy = false;
+    }
+  };
+  setInterval(tick, 2500);
+  tick();
+}
+
+
 const root = __dirname;
 app.use('/agent', express.static(path.join(root, 'agent')));
 app.use(express.static(root));
@@ -135,4 +235,4 @@ app.get('/api/runtime', (req, res) => res.json({
 }));
 
 const port = Number(process.env.PORT || 3000);
-app.listen(port, () => console.log(`I-CONNECT listening on ${port}`));
+app.listen(port, () => {\n  console.log(`I-CONNECT listening on ${port}`);\n  startWorkflowTestWorker();\n});
