@@ -7,7 +7,8 @@ Extend I-CONNECT's contact-centre and corporate customer platform with a Manycha
 - Adds an Automation Studio entry to the I-CONNECT Corporate Command navigation.
 - Adds a responsive, interactive workflow canvas.
 - Adds prompt-to-workflow draft generation for lead qualification, product enquiries, appointments and support triage.
-- Adds editable trigger/action steps, local draft save and a simulated test run.
+- Adds editable trigger/action steps, browser-local draft fallback, cloud save/load and a queued server-side simulation test.
+- Adds an idempotent test-run queue and atomic worker claim/finish RPCs. The worker only simulates nodes and records outcomes; it never sends messages or performs external actions.
 - Clearly marks the UI as prototype/demo mode. No channels are connected and no external messages or business actions are executed.
 
 ## Architecture target
@@ -44,6 +45,13 @@ All exposed tables require RLS. Every tenant-scoped query must enforce membershi
 - The script refuses to run if the organisation already has an active member, does not expose a public bootstrap endpoint, and never prints the password or service-role key.
 - Run it only from a trusted IZAKHONO-controlled environment using `npm run bootstrap:owner` in `products/i-connect`; do not commit the populated environment file.
 
+## Workflow test execution
+- Owner/admin/manager users can enqueue a manual test for a saved draft workflow. The queue is idempotent per organisation and key.
+- The optional worker is enabled only with `I_CONNECT_WORKER_ENABLED=true` and the private `SUPABASE_SERVICE_ROLE_KEY` configured on the server.
+- Worker RPCs atomically claim queued manual tests and record terminal outcomes. The worker accepts only the `manual_test` trigger type.
+- Simulation is intentionally side-effect free: it records the nodes visited and explicitly reports zero external actions executed.
+- Live triggers, messaging, CRM writes, payments, arbitrary code and external tool execution are not supported by this test worker.
+
 ## Cloud workflow persistence
 - `GET /api/automation/workflows` requires a valid Supabase access token and returns workflows only for an active organisation membership.
 - `POST /api/automation/workflows` requires owner/admin/manager membership and saves a workflow plus immutable version graph atomically through `public.ic_save_workflow`.
@@ -62,4 +70,4 @@ A workflow must not be marked live until:
 - an end-to-end test proves delivery through the selected provider.
 
 ## Non-goals for this prototype
-This branch does not claim a live WhatsApp/Meta/TikTok integration, persistent cloud workflow storage, AI model execution, payment execution, or production readiness. Local browser storage is used only to demonstrate draft interactions.
+This branch does not claim a live WhatsApp/Meta/TikTok integration, live workflow action execution, AI model execution, payment execution, or production readiness. Cloud draft persistence and side-effect-free workflow test-run queuing are implemented, subject to first-owner provisioning and runtime configuration.
