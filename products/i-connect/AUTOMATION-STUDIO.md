@@ -24,8 +24,8 @@ Extend I-CONNECT's contact-centre and corporate customer platform with a Manycha
 Use the existing I-CONNECT organisation and membership model. Add tenant-scoped tables for:
 - automation workflows and immutable workflow versions;
 - channel connections and channel identities;
-- contact profiles and channel identities;
-- conversations, messages and message delivery events;
+- tenant-scoped contact profiles, channel identities and append-only communication lawful-basis/consent records;
+- organisation-scoped inbox threads and minimal message records, with explicit retention expiry;
 - workflow execution runs and step execution attempts;
 - consent records, suppression lists and communication preferences;
 - AI agent profiles, knowledge sources and tool grants.
@@ -51,13 +51,20 @@ All exposed tables require RLS. Every tenant-scoped query must enforce membershi
 - The script refuses to run if the organisation already has an active member, does not expose a public bootstrap endpoint, and never prints the password or service-role key.
 - Run it only from a trusted IZAKHONO-controlled environment using `npm run bootstrap:owner` in `products/i-connect`; do not commit the populated environment file.
 
+## Unified inbox foundation
+- Adds organisation-scoped contacts, provider identities, communication preference/lawful-basis records, inbox threads and message records.
+- Composite foreign keys prevent a contact, channel connection or thread from being attached across organisation boundaries.
+- Authenticated organisation members have read-only access under RLS. Writes are reserved for trusted server-side services until the inbox API enforces assignment, consent, suppression and audit rules.
+- Raw webhook events receive a 30-day expiry by default; inbox threads/messages receive 90-day expiry defaults. These are technical defaults, not a legal determination: set retention to IZAKHONO's approved schedule and run the server-only purge function on a controlled schedule. Message ingestion and outbound delivery remain disabled pending privacy review.
+- The existing direct-message `conversations` and `messages` tables remain untouched because their current model is not organisation-scoped.
+
 ## WhatsApp Business webhook intake
 - A Meta-compatible GET verification handshake is implemented at `/api/webhooks/whatsapp`.
 - POST deliveries are verified against `X-Hub-Signature-256` using HMAC-SHA256 over the exact raw request bytes before payload processing.
 - The adapter normalises inbound message and delivery-status events, resolves `metadata.phone_number_id` to exactly one active organisation channel connection and inserts events idempotently into the server-only webhook inbox.
 - The endpoint only acknowledges and stores signed events. It does not send replies, start workflows or execute CRM/payment actions.
 - It is disabled by default. Enable only after an HTTPS endpoint, Meta app webhook subscription, `META_APP_SECRET`, `META_WEBHOOK_VERIFY_TOKEN`, `SUPABASE_SERVICE_ROLE_KEY`, `I_CONNECT_SUPABASE_URL` and an active `ic_channel_connections` record are configured. The connection's `external_account_id` must equal the Meta phone-number ID.
-- Review customer-data retention, POPIA notices/consent and access controls before accepting real customer messages. No Meta account credentials or secrets have been added to the repository.
+- Review customer-data retention, POPIA notices/lawful basis and access controls before accepting real customer messages. Raw webhook payloads expire after 30 days by default and require a scheduled server-side purge. No Meta account credentials or secrets have been added to the repository.
 
 ## Workflow test execution
 - Owner/admin/manager users can enqueue a manual test for a saved draft workflow. The queue is idempotent per organisation and key.
@@ -74,6 +81,10 @@ All exposed tables require RLS. Every tenant-scoped query must enforce membershi
 - The API uses the Supabase anon key with the caller's bearer token so database RLS remains in force. It does not use the service-role key.
 - The browser adapter reads the access token from the shared I-CONNECT sign-in session (`window.I_CONNECT_SESSION.access_token`) and retries once after refreshing an expired session.
 - Workflow graph payloads are limited to 256 KB. Channel credentials are not accepted or stored by this endpoint.
+
+## Static asset exposure controls
+- The portable web server serves the browser UI but blocks direct HTTP access to server source, package manifests, operator scripts, tests, migration SQL, environment files, container metadata, source maps and repository metadata.
+- Dotfiles are denied by the static file server. Browser assets remain available.
 
 ## Local validation
 - Run `npm run check:syntax` in `products/i-connect` to check server, browser adapter and bootstrap script syntax.
