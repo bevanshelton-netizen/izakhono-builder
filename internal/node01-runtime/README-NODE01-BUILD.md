@@ -1,38 +1,23 @@
-# IZAKHONO NODE01 — Owned Infrastructure Build
+# IZAKHONO NODE01 — Software Runtime Build and Replacement
 
-NODE01 is the primary IZAKHONO-owned compute node. External deployment providers are optional fallbacks, not the production foundation.
+NODE01 is the stable IZAKHONO software/runtime identity. It is not the physical or virtual compute asset. The machine previously used to execute it has been replaced; the same software identity must continue through a separately updated runtime binding.
 
-## Software stack
+## Software runtime
 
-1. Linux host/VM
-2. Docker Engine + Compose
-3. NODE01 control runtime on `8090`
-4. Private OCI registry on `127.0.0.1:5000`
-5. Private `izakhono` Docker network
-6. Workload runtime, beginning with SUPER SEO on `8097`
-7. Health-gated promotion and rollback
-8. Monitoring/heartbeat contracts
-9. Daily backup service with 30-day retention
-10. Restore verification before workload promotion
+- NODE01 control runtime and management API.
+- Approved release artifacts and workload contracts.
+- Optional OCI/container runtime and private registry.
+- Health-gated deployment and rollback.
+- Monitoring, backup and restore.
 
-## Backup scope
+## Replacement procedure
 
-- NODE01 configuration
-- workload/container inventory
-- image inventory
-- private registry metadata
-- private registry persistent volume
-- versioned policy/specification files
-- SHA-256 integrity manifest
+1. Verify the replacement execution environment's actual locator.
+2. Update the separate runtime binding; preserve NODE01 identity.
+3. Restore approved configuration and data.
+4. Start the approved NODE01 software release.
+5. Verify software identity and execution-environment separation.
+6. Run health, backup/restore, rollback and workload acceptance.
+7. Promote only on fresh evidence.
 
-## Recovery rule
-
-Restore configuration and registry state first. Verify NODE01 control and registry health. Restore/promote workloads individually. A restore is not considered successful until health checks pass.
-
-## First install
-
-Set `NODE01_ADMIN_TOKEN` on the host and run `node01-install.sh` as root. The installer builds the owned runtime, starts the private registry, installs a daily systemd backup timer, and creates the first backup.
-
-## Production rule
-
-No service is declared deployed merely because GitHub built an image. Production readiness requires the NODE01 host to run the workload and pass its health gate.
+Do not derive the software identity from machine-id, hostname, IP, serial number or cloud instance ID. Do not call the replacement machine NODE01.
