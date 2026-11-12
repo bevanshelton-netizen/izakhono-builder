@@ -38,3 +38,7 @@ test('sanitises node display fields to bounded strings', () => {
   assert.equal(result.steps[0].nodeId.length, 120);
   assert.equal(result.steps[0].title.length, 160);
 });
+
+test('rejects malformed node collections instead of silently simulating an empty graph', () => {
+  assert.throws(() => simulateWorkflowGraph({ nodes: 'not-an-array' }), /nodes must be an array/);
+});
