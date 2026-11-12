@@ -295,6 +295,51 @@ app.post('/api/webhooks/whatsapp', async (req, res) => {
 
 // The worker is opt-in and runs only the no-side-effect manual_test queue.
 // Live channel/action execution is deliberately not implemented by this worker.
+
+function startWhatsAppInboxWorker() {
+  const url = process.env.I_CONNECT_SUPABASE_URL;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const enabled = process.env.I_CONNECT_INBOX_PROCESSING_ENABLED === 'true';
+  const policyApproved = process.env.I_CONNECT_CUSTOMER_DATA_POLICY_APPROVED === 'YES';
+  if (!enabled || !policyApproved || !url || !serviceKey) return;
+
+  const workerClient = createClient(url, serviceKey, {
+    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }
+  });
+  let busy = false;
+  const tick = async () => {
+    if (busy) return;
+    busy = true;
+    let claimed = null;
+    try {
+      const { data, error } = await workerClient.rpc('ic_claim_whatsapp_inbox_event');
+      if (error) throw error;
+      claimed = Array.isArray(data) ? data[0] : null;
+      if (!claimed) return;
+      const { error: processError } = await workerClient.rpc('ic_process_whatsapp_inbox_event', {
+        p_event_id: claimed.event_id
+      });
+      if (processError) throw processError;
+    } catch (_) {
+      if (claimed?.event_id) {
+        const attempts = Number(claimed.attempts || 1);
+        try {
+          await workerClient.from('ic_webhook_events').update({
+            processing_state: attempts >= 3 ? 'dead_letter' : 'retry',
+            processing_started_at: null,
+            last_error: 'The signed inbound event could not be normalised into the I-CONNECT inbox.'
+          }).eq('id', claimed.event_id).eq('processing_state', 'processing');
+        } catch (_) { /* Keep customer payloads and provider details out of worker logs. */ }
+      }
+      console.error('I-CONNECT WhatsApp inbox worker encountered an error.');
+    } finally {
+      busy = false;
+    }
+  };
+  setInterval(tick, 3000);
+  tick();
+}
+
 function startWorkflowTestWorker() {
   const url = process.env.I_CONNECT_SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -408,4 +453,5 @@ const port = Number(process.env.PORT || 3000);
 app.listen(port, () => {
   console.log(`I-CONNECT listening on ${port}`);
   startWorkflowTestWorker();
+  startWhatsAppInboxWorker();
 });
