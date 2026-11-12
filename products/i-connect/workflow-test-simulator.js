@@ -6,7 +6,8 @@ function simulateWorkflowGraph(graph) {
   if (!graph || typeof graph !== 'object' || Array.isArray(graph)) {
     throw new TypeError('Workflow graph must be an object.');
   }
-  const nodes = Array.isArray(graph.nodes) ? graph.nodes : [];
+  if (graph.nodes !== undefined && !Array.isArray(graph.nodes)) throw new TypeError('Workflow graph nodes must be an array.');
+  const nodes = graph.nodes || [];
   if (nodes.length > 200) {
     const error = new Error('Workflow test exceeds the 200-node simulation limit.');
     error.code = 'GRAPH_LIMIT';
