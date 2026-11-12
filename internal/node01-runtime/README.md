@@ -1,27 +1,19 @@
-# IZAKHONO NODE01
+# IZAKHONO NODE01 Software Runtime
 
-NODE01 is the owned execution node for IZAKHONO workloads. It is deliberately independent of Vercel, Netlify and Cloudflare deployment control.
+**NODE01 is software, not a physical or virtual machine.** The execution environment is separately managed and replaceable. The previous machine has been replaced; the same NODE01 software identity continues on the replacement through an updated runtime binding.
 
-## Layers
+## Components
 
-- **Control runtime:** `server.mjs` — health, status and authenticated deployment contract.
-- **Private registry:** `docker-compose.yml` — local OCI registry bound to localhost:5000 and persisted on the NODE01 host.
-- **Container:** `Dockerfile` — reproducible NODE01 control runtime.
-- **Host bootstrap:** `install-node01.sh` — one-command installation on an owned Linux/Docker host.
-- **Workload promotion:** `promote-super-seo-to-local-registry.sh` — promotes the approved SUPER SEO image into the private NODE01 registry.
-- **Workload definition:** `super-seo.local.compose.yml` — declares SUPER SEO as a NODE01-managed workload on port 8097.
-- **CI:** `.github/workflows/node01-runtime-ci.yml` — builds and runs a NODE01 canary on every relevant change.
+- Control runtime and health/status API.
+- Workload and release contracts.
+- Optional private OCI registry and container runtime, where appropriate.
+- Health-gated promotion, monitoring and rollback.
+- Backup, restore and replacement runbooks.
 
-## Ports
+## Binding
 
-- NODE01 control runtime: `8090`
-- Private workload registry: `127.0.0.1:5000`
-- SUPER SEO workload: `8097`
+The runtime binding carries `logical_node_id: NODE01`, `identity_type: software-runtime`, a distinct `runtime_host` locator and `runtime_host_is_separate: true`. The locator must identify the actual replacement environment. A placeholder or unknown locator is not a verified binding.
 
-## Security boundary
+## Production
 
-The control runtime only accepts approved image prefixes and requires `NODE01_ADMIN_TOKEN` for administrative operations. It does not expose the Docker socket. The private registry is localhost-only; workloads are placed on the internal `izakhono` network.
-
-## Production direction
-
-NODE01 is the first owned compute layer. Additional nodes can later register as NODE02, NODE03, etc., behind the same control, workload, health, networking and recovery contracts.
+CI, a repository topology, an installed package or a successful local test does not prove the replacement environment is live. Require current runtime health, release identity, backup/restore and independent route acceptance.
