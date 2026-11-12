@@ -126,7 +126,7 @@ export class D1ThorStore {
     const now = this.stamp();
     const leaseUntil = new Date(this.clock() + leaseMs).toISOString();
     const result = await this.db.prepare(
-      "UPDATE thor_tasks SET lease_until = ?1, updated_at = ?2 WHERE id = ?3 AND state = 'running' AND worker_id = ?4",
+      "UPDATE thor_tasks SET lease_until = ?1, updated_at = ?2 WHERE id = ?3 AND state = 'running' AND worker_id = ?4 AND lease_until > ?2",
     ).bind(leaseUntil, now, taskId, workerId).run();
     if (result.meta?.changes === 1) {
       await this.event(taskId, "heartbeat", workerId, { leaseUntil });
@@ -138,7 +138,7 @@ export class D1ThorStore {
   async finish(taskId, workerId, result) {
     const now = this.stamp();
     const update = await this.db.prepare(
-      "UPDATE thor_tasks SET state = 'succeeded', result_json = ?1, worker_id = NULL, lease_until = NULL, updated_at = ?2 WHERE id = ?3 AND state = 'running' AND worker_id = ?4",
+      "UPDATE thor_tasks SET state = 'succeeded', result_json = ?1, worker_id = NULL, lease_until = NULL, updated_at = ?2 WHERE id = ?3 AND state = 'running' AND worker_id = ?4 AND lease_until > ?2",
     ).bind(JSON.stringify(result ?? null), now, taskId, workerId).run();
     if (update.meta?.changes !== 1) throw new ThorError("Worker does not own this running task", "LEASE_NOT_OWNED");
     await this.event(taskId, "succeeded", workerId);
@@ -155,7 +155,7 @@ export class D1ThorStore {
     const message = String(error?.message ?? error).slice(0, 2000);
     const now = this.stamp();
     const update = await this.db.prepare(
-      "UPDATE thor_tasks SET state = ?1, last_error = ?2, worker_id = NULL, lease_until = NULL, updated_at = ?3 WHERE id = ?4 AND state = 'running' AND worker_id = ?5",
+      "UPDATE thor_tasks SET state = ?1, last_error = ?2, worker_id = NULL, lease_until = NULL, updated_at = ?3 WHERE id = ?4 AND state = 'running' AND worker_id = ?5 AND lease_until > ?3",
     ).bind(state, message, now, taskId, workerId).run();
     if (update.meta?.changes !== 1) throw new ThorError("Worker lease changed during failure handling", "LEASE_NOT_OWNED");
     await this.event(taskId, retry ? "retry_queued" : "failed", workerId, { error: message });
