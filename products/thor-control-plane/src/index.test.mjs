@@ -88,6 +88,18 @@ await assert.rejects(() => expiryStore.fail(staleFailure.id, "stale-failure", ne
 const replacementFailure = await expiryStore.claimNext("replacement-failure", 5_000);
 assert.equal(replacementFailure.id, "expired-fail");
 
+
+// Long-running executors receive automatic lease renewal and can finish safely.
+const longTaskStore = new MemoryThorStore();
+const longTaskThor = new ThorOrchestrator({ store: longTaskStore, leaseMs: 1_000 });
+await longTaskThor.submit({ id: "long-task", projectId: "kora", title: "Long task", instruction: "Run longer than one lease", maxAttempts: 2 });
+const longTaskResult = await longTaskThor.runOne("long-worker", async () => {
+  await new Promise(resolve => setTimeout(resolve, 1_250));
+  return { completed: true };
+});
+assert.equal(longTaskResult.task.state, "succeeded");
+assert.ok(longTaskStore.events.some(event => event.taskId === "long-task" && event.type === "heartbeat"));
+
 const snapshot = await thor.snapshot();
 assert.equal(snapshot.counts.succeeded, 5);
 assert.equal(snapshot.counts.queued, 0);
