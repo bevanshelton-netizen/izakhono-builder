@@ -37,7 +37,7 @@ All exposed tables require RLS. Every tenant-scoped query must enforce membershi
 - Build from the repository root with `docker compose -f products/i-connect/docker-compose.yml build`.
 - Configure `products/i-connect/.env.production` from `.env.example` using deployment-specific secrets; do not commit the production file.
 - Start with `docker compose -f products/i-connect/docker-compose.yml up -d` and verify `/api/health` and `/api/runtime` on the host.
-- The container is portable to an IZAKHONO-controlled host or another compatible container runtime. No host deployment is claimed until the endpoint is externally verified.
+- The container is portable to an IZAKHONO-controlled host or another compatible container runtime. Put it behind an IZAKHONO-controlled TLS reverse proxy, restrict direct port access at the firewall and persist logs/metrics. No host deployment is claimed until the endpoint is externally verified.
 
 ## Initial organisation-owner bootstrap
 - The inspected Supabase project currently has one organisation but no authentication users or active organisation memberships. Cloud workflow save/load therefore cannot be exercised until the first authorised owner account is provisioned.
@@ -48,6 +48,8 @@ All exposed tables require RLS. Every tenant-scoped query must enforce membershi
 ## Workflow test execution
 - Owner/admin/manager users can enqueue a manual test for a saved draft workflow. The queue is idempotent per organisation and key.
 - The optional worker is enabled only with `I_CONNECT_WORKER_ENABLED=true` and the private `SUPABASE_SERVICE_ROLE_KEY` configured on the server.
+- Each organisation is limited to 20 queued/running manual simulations. The queue uses an organisation-scoped transaction lock and the existing unique idempotency constraint.
+- Abandoned worker claims are retried after ten minutes; after three claims they are marked failed rather than remaining stuck.
 - Worker RPCs atomically claim queued manual tests and record terminal outcomes. The worker accepts only the `manual_test` trigger type.
 - Simulation is intentionally side-effect free: it records the nodes visited and explicitly reports zero external actions executed.
 - Live triggers, messaging, CRM writes, payments, arbitrary code and external tool execution are not supported by this test worker.
@@ -58,6 +60,10 @@ All exposed tables require RLS. Every tenant-scoped query must enforce membershi
 - The API uses the Supabase anon key with the caller's bearer token so database RLS remains in force. It does not use the service-role key.
 - The browser adapter accepts the access token from `window.I_CONNECT_SESSION.access_token` or `sessionStorage.i_connect_access_token`; connect this to the platform's authenticated session manager before production use.
 - Workflow graph payloads are limited to 256 KB. Channel credentials are not accepted or stored by this endpoint.
+
+## Local validation
+- Run `npm run check:syntax` in `products/i-connect` to check server, browser adapter and bootstrap script syntax.
+- Run `npm run test:workflow-engine` in `products/i-connect` for the simulator safety tests.
 
 ## Activation gates
 A workflow must not be marked live until:
