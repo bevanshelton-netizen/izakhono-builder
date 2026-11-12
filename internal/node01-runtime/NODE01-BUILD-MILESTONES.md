@@ -1,73 +1,37 @@
-# NODE01 Build Milestones
+# NODE01 Software Runtime — Delivery Milestones
 
-## M1 — Architecture: COMPLETE
+## M1 — Software identity and architecture
+- Stable NODE01 software identity.
+- Separate, replaceable execution-environment binding.
+- Runtime contract and acceptance policy.
 
-- Hardware reference design
-- Storage topology
-- Network segmentation
-- OS baseline
-- Platform architecture
-- NODE02 strategy
+## M2 — Software runtime foundation
+- NODE01 controller and service contracts.
+- Immutable release and artifact identity.
+- Health-gated deployment and rollback.
 
-## M2 — Runtime foundation: COMPLETE
+## M3 — Resilience
+- Backup and restore procedure.
+- Health guard and heartbeat.
+- Recovery and environment-replacement runbook.
 
-- NODE01 control runtime
-- Private OCI registry
-- Private network
-- SUPER SEO workload contract
-- Health-gated deployment
-- Rollback contract
+## M4 — Replacement environment binding
+- Identify the actual replacement execution environment.
+- Verify its locator and ownership.
+- Bind the existing NODE01 software identity.
+- Confirm old environment is not still the active binding.
 
-## M3 — Resilience: COMPLETE
+## M5 — Runtime acceptance
+- Install/start the approved software release.
+- Verify software identity and environment separation.
+- Verify dependencies, health, backup/restore and recovery.
+- Verify edge/DNS/TLS independently where applicable.
 
-- Backup engine
-- Backup timer
-- Restore procedure
-- Health guard
-- Heartbeat policy
-- Disaster-recovery policy
-
-## M4 — Appliance provisioning: IN PROGRESS
-
-- Canonical provisioning runbook
-- Host acceptance procedure
-- Resource protection policy
-- Physical acceptance checklist
-- Owned edge installation contract
-
-## M5 — Hardware assembly
-
-- Procure reference hardware
-- Rack and cable
-- Install OS
-- Apply hardening
-- Execute acceptance suite
-
-## M6 — First owned production node
-
-- Bring NODE01 control plane healthy
-- Bring registry healthy
-- Promote SUPER SEO
-- Verify owned edge route
-- Run backup
-- Run restore rehearsal
-
-## M7 — NODE02
-
-- Build warm standby
-- Replicate approved artifacts
-- Validate recovery
-- Test controlled failover
-
-## M8 — IZAKHONO Private Cloud
-
-- Multi-node scheduling
-- Automated provisioning
-- Customer isolation
-- Usage metering
-- Managed service tiers
-- Sovereign hosting products
+## M6 — Workload promotion
+- Promote approved workloads only after acceptance.
+- Retain previous known-good artifact for rollback.
+- Record timestamped release and acceptance evidence.
 
 ## Definition of done
 
-The NODE01 initiative is complete when the physical appliance, software stack, backup system, recovery path and owned edge have all passed their acceptance tests. Repository artifacts alone are not represented as physical deployment.
+NODE01 identity remains stable across replacement. The replacement environment is bound and verified; the software runtime, workloads, recovery and required public routes pass their independent acceptance gates. Repository artifacts alone are not runtime evidence.
