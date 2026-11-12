@@ -77,7 +77,7 @@ export class MemoryThorStore {
   async finish(taskId, workerId, result) {
     const task = this.tasks.get(taskId);
     if (!task || task.state !== "running" || task.workerId !== workerId || Date.parse(task.leaseUntil) <= this.clock()) {
-      throw new ThorError("Worker does not own this running task", "LEASE_NOT_OWNED");
+      throw new ThorError("Worker does not own an active lease for this task", "LEASE_NOT_OWNED");
     }
     task.state = "succeeded";
     task.result = result;
@@ -90,7 +90,7 @@ export class MemoryThorStore {
 
   async fail(taskId, workerId, error) {
     const task = this.tasks.get(taskId);
-    if (!task || task.state !== "running" || task.workerId !== workerId) {
+    if (!task || task.state !== "running" || task.workerId !== workerId || Date.parse(task.leaseUntil) <= this.clock()) {
       throw new ThorError("Worker does not own this running task", "LEASE_NOT_OWNED");
     }
     const retry = task.attempts < task.maxAttempts;
