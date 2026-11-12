@@ -62,7 +62,7 @@ app.get('/api/automation/organizations', async (req, res) => {
       .eq('status', 'active')
       .order('name');
     if (error) return res.status(400).json({ error: 'Unable to load organisation access.' });
-    res.json({ organizations: data || [] });
+    res.json({ organizations: (data || []).map(org => ({ ...org, role: (ctx.memberships || []).find(m => m.organization_id === org.id)?.role || 'member' })) });
   } catch (error) {
     res.status(500).json({ error: 'Unexpected organisation access error.' });
   }
