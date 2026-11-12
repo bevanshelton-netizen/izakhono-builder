@@ -67,7 +67,23 @@ export class D1ThorStore {
     return (result.results ?? []).map(mapRow);
   }
 
+  async reapExhaustedLeases() {
+    const now = this.stamp();
+    const expired = await this.db.prepare(
+      "SELECT id, worker_id, attempts FROM thor_tasks WHERE state = 'running' AND lease_until <= ?1 AND attempts >= max_attempts",
+    ).bind(now).all();
+    for (const task of expired.results ?? []) {
+      const update = await this.db.prepare(
+        "UPDATE thor_tasks SET state = 'failed', worker_id = NULL, lease_until = NULL, last_error = COALESCE(last_error, 'Worker lease expired after maximum attempts'), updated_at = ?1 WHERE id = ?2 AND state = 'running' AND lease_until <= ?1 AND attempts >= max_attempts",
+      ).bind(now, task.id).run();
+      if (update.meta?.changes === 1) {
+        await this.event(task.id, "failed", task.worker_id, { reason: "lease_exhausted", attempts: task.attempts });
+      }
+    }
+  }
+
   async claimNext(workerId, leaseMs) {
+    await this.reapExhaustedLeases();
     // A small bounded retry handles a race where another worker wins the
     // candidate between SELECT and the guarded UPDATE.
     for (let attempt = 0; attempt < 8; attempt += 1) {
@@ -75,7 +91,7 @@ export class D1ThorStore {
       const leaseUntil = new Date(this.clock() + leaseMs).toISOString();
       const candidate = await this.db.prepare(
         `SELECT t.id FROM thor_tasks t
-         WHERE (t.state = 'queued' OR (t.state = 'running' AND t.lease_until <= ?1))
+         WHERE (t.state = 'queued' OR (t.state = 'running' AND t.lease_until <= ?1 AND t.attempts < t.max_attempts))
            AND NOT EXISTS (
              SELECT 1 FROM json_each(t.depends_on_json) dep
              LEFT JOIN thor_tasks prerequisite ON prerequisite.id = dep.value
@@ -90,7 +106,7 @@ export class D1ThorStore {
          SET state = 'running', worker_id = ?1, attempts = attempts + 1,
              lease_until = ?2, updated_at = ?3
          WHERE id = ?4
-           AND (state = 'queued' OR (state = 'running' AND lease_until <= ?3))
+           AND (state = 'queued' OR (state = 'running' AND lease_until <= ?3 AND attempts < max_attempts))
            AND NOT EXISTS (
              SELECT 1 FROM json_each(thor_tasks.depends_on_json) dep
              LEFT JOIN thor_tasks prerequisite ON prerequisite.id = dep.value
