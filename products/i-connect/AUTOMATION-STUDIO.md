@@ -46,8 +46,8 @@ All exposed tables require RLS. Every tenant-scoped query must enforce membershi
 - The application currently has no active organisation members. Provision the first owner using the guarded operator bootstrap below before expecting sign-in to succeed.
 
 ## Initial organisation-owner bootstrap
-- The inspected Supabase project currently has one organisation but no authentication users or active organisation memberships. Cloud workflow save/load therefore cannot be exercised until the first authorised owner account is provisioned.
-- A guarded operator-only script is provided at `scripts/bootstrap-owner.js`; it requires the Supabase service-role key, exact organisation slug, owner email/password and an explicit `I_CONNECT_CONFIRM_OWNER_BOOTSTRAP=YES` acknowledgement.
+- The inspected Supabase project currently has one active organisation (`IZAKHONO`, slug `izakhono`) but no authentication users or active organisation memberships. Cloud workflow save/load therefore cannot be exercised until the first authorised owner account is provisioned.
+- A guarded operator-only script is provided at `scripts/bootstrap-owner.js`; configure `I_CONNECT_BOOTSTRAP_ORG_SLUG=izakhono`, the Supabase service-role key, owner email/password and an explicit `I_CONNECT_CONFIRM_OWNER_BOOTSTRAP=YES` acknowledgement.
 - The script refuses to run if the organisation already has an active member, does not expose a public bootstrap endpoint, and never prints the password or service-role key.
 - Run it only from a trusted IZAKHONO-controlled environment using `npm run bootstrap:owner` in `products/i-connect`; do not commit the populated environment file.
 
