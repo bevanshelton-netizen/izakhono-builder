@@ -1,1 +1,15 @@
-{"name":"i-connect-core","private":true,"version":"1.0.0","scripts":{"start":"node server.js"},"dependencies":{"@supabase/supabase-js":"^2.58.0","express":"^5.1.0"}}
+{
+  "name": "i-connect-core",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "start": "node server.js",
+    "bootstrap:owner": "node scripts/bootstrap-owner.js",
+    "check:syntax": "node --check server.js && node --check auth.js && node --check automation-api.js && node --check automation-studio.js && node --check scripts/bootstrap-owner.js && node --check workflow-test-simulator.js && node --check whatsapp-webhook-adapter.js && node --check static-file-guard.js && node --check inbox.js",
+    "test:workflow-engine": "node --test tests/workflow-test-simulator.test.js tests/whatsapp-webhook-adapter.test.js tests/static-file-guard.test.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.58.0",
+    "express": "^5.1.0"
+  }
+}
