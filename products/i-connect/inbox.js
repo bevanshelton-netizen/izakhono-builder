@@ -93,6 +93,7 @@
       makeAction(item?.status === 'waiting_customer' ? 'Reopen' : 'Waiting for customer','status',{status:item?.status === 'waiting_customer' ? 'open' : 'waiting_customer'});
     }
     const badge=document.createElement('span'); badge.className='status'; badge.textContent=item?.status||'open'; head.append(details,actions,badge);
+    const noteAllowed=['owner','admin','manager'].includes(state.role) || item?.assigned_to === window.I_CONNECT_SESSION?.user?.id; $('noteForm').hidden=!noteAllowed; $('noteStatus').textContent='Internal notes are audited and never sent to customers.';
     const host=$('messages'); showEmpty(host,'Loading conversation history…');
     try {
       const data=await request('/api/inbox/threads/'+encodeURIComponent(id)+'/messages?organizationId='+encodeURIComponent(state.organizationId));
@@ -116,6 +117,18 @@
       state.organizationId=select.value; state.role=select.selectedOptions[0]?.dataset.role||'member'; await loadThreads();
     } catch(error) { showEmpty($('threads'),error.message); }
   }
+  $('noteForm').addEventListener('submit', async event => {
+    event.preventDefault();
+    const body=$('internalNote').value.trim();
+    if (!state.activeId || !body) return;
+    $('saveNote').disabled=true; $('noteStatus').textContent='Saving private note…';
+    try {
+      await request('/api/inbox/threads/'+encodeURIComponent(state.activeId)+'/notes?organizationId='+encodeURIComponent(state.organizationId),false,{method:'POST',body:JSON.stringify({organizationId:state.organizationId,body})});
+      $('internalNote').value=''; $('noteStatus').textContent='Private note saved to the conversation audit trail.';
+      await loadMessages(state.activeId);
+    } catch(error) { $('noteStatus').textContent=error.message; }
+    finally { $('saveNote').disabled=false; }
+  });
   $('org').addEventListener('change',async()=>{state.organizationId=$('org').value;state.role=$('org').selectedOptions[0]?.dataset.role||'member';state.activeId=null;await loadThreads();});
   $('filter').addEventListener('change',loadThreads);
   $('refresh').addEventListener('click',loadThreads);
