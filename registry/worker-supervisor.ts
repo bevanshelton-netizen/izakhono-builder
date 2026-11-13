@@ -1,7 +1,7 @@
 import {WORKERS,WORKER_INDEX} from './workers';
 import {D1Database} from './d1-store';
 import {discoverBuilderQueue,classifyBuilderIssue,shouldIngest} from './builder-queue';
-import {ensureSupervisorSchema,upsertSupervisorJob,listSupervisorJobs,supervisorCounts,claimSupervisorJob,recoverExpiredSupervisorLeases,transitionSupervisorJob,recordEvidence,SupervisorJob} from './supervisor-store';
+import {ensureSupervisorSchema,upsertSupervisorJob,listSupervisorJobs,supervisorCounts,claimSupervisorJob,recoverExpiredSupervisorLeases,transitionSupervisorJob,recordEvidence,renewSupervisorLease,verifyLeasedSupervisorJob,SupervisorJob} from './supervisor-store';
 import {executeWorker,hasWorkerHandler,executableWorkerIds} from './worker-execution';
 import {DIVISIONS,workersForDivision} from './divisions';
 
@@ -99,10 +99,15 @@ export async function workerControl(request:Request,authorized:boolean,db:D1Data
   if(body.dryRun)return json({ok:true,accepted:false,status:'queued',dryRun:true,preview:{jobId:job.id,workerId:job.workerId,handlerAvailable:true},note:'Dry run only; no state transition or handler execution occurred.'},200);
   return json({ok:true,accepted:true,...await executeClaimedJob(db,job,'worker-supervisor')},202);
  }
+ if(url.pathname==='/workers/renew'&&request.method==='POST'){
+  let body:{jobId?:string;leaseToken?:string;leaseMs?:number};try{body=await request.json();}catch{return json({ok:false,error:'invalid json'},400);}
+  if(!body.jobId||!body.leaseToken)return json({ok:false,error:'jobId and leaseToken required'},400);
+  try{return json({ok:true,lease:await renewSupervisorLease(db,body.jobId,body.leaseToken,Math.min(Math.max(body.leaseMs??120_000,30_000),300_000))});}catch(error){return json({ok:false,error:String(error)},409);}
+ }
  if(url.pathname==='/workers/verify'&&request.method==='POST'){
   if(!verifierAuthorized)return json({ok:false,error:'independent QA verifier credential required'},403);
-  let body:{jobId?:string;evidence?:unknown};try{body=await request.json();}catch{return json({ok:false,error:'invalid json'},400);}
-  if(!body.jobId)return json({ok:false,error:'jobId required'},400);const jobs=await listSupervisorJobs(db);const job=jobs.find(j=>j.id===body.jobId);if(!job)return json({ok:false,error:'unknown job'},404);if(job.status!=='running')return json({ok:false,error:'verification requires running state'},409);if(!body.evidence)return json({ok:false,error:'machine-readable evidence required'},400);await recordEvidence(db,job.id,{execution:job.evidence,independentVerification:body.evidence});const transitioned=await transitionSupervisorJob(db,job.id,'verified','evidence-gate',{evidence:body.evidence});const advanced=await advanceReadyWorkers(db);return json({ok:true,status:'verified',job:transitioned,advanced:advanced.length});
+  let body:{jobId?:string;leaseToken?:string;evidence?:unknown};try{body=await request.json();}catch{return json({ok:false,error:'invalid json'},400);}
+  if(!body.jobId||!body.leaseToken)return json({ok:false,error:'jobId and active leaseToken required'},400);const jobs=await listSupervisorJobs(db);const job=jobs.find(j=>j.id===body.jobId);if(!job)return json({ok:false,error:'unknown job'},404);if(job.status!=='running')return json({ok:false,error:'verification requires running state'},409);if(!body.evidence)return json({ok:false,error:'machine-readable evidence required'},400);try{const transitioned=await verifyLeasedSupervisorJob(db,job.id,body.leaseToken,{execution:job.evidence,independentVerification:body.evidence},'independent-qa-verifier');const advanced=await advanceReadyWorkers(db);return json({ok:true,status:'verified',job:transitioned,advanced:advanced.length});}catch(error){return json({ok:false,error:String(error)},409);}
  }
  if(url.pathname==='/workers/complete'&&request.method==='POST'){
   let body:{jobId?:string;evidence?:unknown};try{body=await request.json();}catch{return json({ok:false,error:'invalid json'},400);}
