@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-# IZAKHONO NODE01 Compliance Gate
-# This is a read-only acceptance check. It never exposes secrets and never
-# mutates host state. A node is COMPLIANT only when every required gate passes.
+# IZAKHONO NODE01 Software Runtime Compliance Gate
+# This is a read-only acceptance check for the deployed software runtime.
+# It never exposes secrets and never mutates execution-substrate state.
+# NODE01 remains a logical software identity, separate from this substrate.
 
 ROOT="$(cd "$(dirname "$0")" && pwd)"
 cd "$ROOT"
@@ -33,7 +34,7 @@ check_port_owned_or_free() {
   fi
 }
 
-printf '\nIZAKHONO NODE01 COMPLIANCE GATE\n'
+printf '\nIZAKHONO NODE01 SOFTWARE RUNTIME COMPLIANCE GATE\n'
 printf 'Node: %s\n' "$(hostname 2>/dev/null || echo unknown)"
 printf 'UTC:  %s\n\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
@@ -97,8 +98,8 @@ fi
 printf '\nRESULTS: PASS=%d FAIL=%d WARN=%d\n' "$pass_count" "$fail_count" "$warn_count"
 
 if (( fail > 0 )); then
-  echo 'NODE01 COMPLIANCE: FAILED'
+  echo 'NODE01 SOFTWARE RUNTIME COMPLIANCE: FAILED'
   exit 1
 fi
 
-echo 'NODE01 COMPLIANCE: PASSED'
+echo 'NODE01 SOFTWARE RUNTIME COMPLIANCE: PASSED'
