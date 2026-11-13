@@ -2,7 +2,6 @@ import http from 'node:http';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import { Pool } from 'pg';
 import { PostgresProvisioningStore } from './provisioner/postgres-provisioning-store.mjs';
 import { PaidProvisioningBridge } from './provisioner/payment-bridge.mjs';
 
@@ -12,7 +11,11 @@ const STATE_FILE = path.join(DATA_DIR, 'sites.json');
 const SITES_DIR = path.join(DATA_DIR, 'sites');
 const ADMIN_TOKEN = process.env.HOST_RUNTIME_TOKEN || '';
 const PAYMENT_BRIDGE_TOKEN = process.env.HOST_PAYMENT_BRIDGE_TOKEN || '';
-const pool = process.env.PGHOST ? new Pool({ host: process.env.PGHOST, port: Number(process.env.PGPORT || 5432), database: process.env.PGDATABASE || 'izakhono', user: process.env.PGUSER || 'izakhono', password: process.env.PGPASSWORD, max: 10, connectionTimeoutMillis: 5000 }) : null;
+let pool = null;
+if (process.env.PGHOST) {
+  const { Pool } = await import('pg');
+  pool = new Pool({ host: process.env.PGHOST, port: Number(process.env.PGPORT || 5432), database: process.env.PGDATABASE || 'izakhono', user: process.env.PGUSER || 'izakhono', password: process.env.PGPASSWORD, max: 10, connectionTimeoutMillis: 5000 });
+}
 const paymentBridge = pool ? new PaidProvisioningBridge(new PostgresProvisioningStore(pool)) : null;
 const MAX_FILES = 200;
 const MAX_FILE_BYTES = 512 * 1024;
