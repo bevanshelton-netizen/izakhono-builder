@@ -4,7 +4,7 @@
 
 The Creator Worker now verifies FORTRESS-issued sessions and applies the existing FORTRESS role/tenant authorization functions. This is the relying-party verifier and browser-facing gateway. It is **not** a login provider and does not create passwords, enroll users, issue identities or mint sessions.
 
-The current `products/izakhono-identity` prototype is an in-memory identity registry, not a production authentication/session authority. Do not connect it directly to a public login page or treat its identity records as authenticated principals. The central FORTRESS login/identity service must complete the issuer side of this contract before user sign-in is considered operational.
+The persistent issuer is implemented in `products/fortress-identity` using Cloudflare Worker + D1. It supports one-time owner bootstrap, PBKDF2 password verification, login throttling, HS256 access tokens, rotating refresh tokens, logout revocation and audit records. It is not yet a verified production deployment; do not consider sign-in operational until the D1 migrations, Worker deployment, secrets, same-origin routing and browser lifecycle tests are complete.
 
 ## Issued access token
 
@@ -60,6 +60,7 @@ Set these as Cloudflare Worker secrets/variables on the existing `izakhono-creat
 - `FORTRESS_SESSION_HMAC_SECRET` — shared signing secret, minimum 32 random bytes.
 - `FORTRESS_SESSION_ISSUER` — exact issuer URI.
 - `FORTRESS_SESSION_AUDIENCE` — `izakhono-creator`.
+- `FORTRESS_IDENTITY` — required Cloudflare service binding to the deployed `izakhono-fortress-identity` Worker. Creator now fails closed if this binding is absent or introspection is unavailable.
 - `CREATOR_GENERATION_SECRET` — private server-to-server credential used only between the gateway and Creator API.
 - Existing Media Fabric connection secrets remain server-side.
 
@@ -92,4 +93,4 @@ The existing FORTRESS role policy grants read-only Creator access to VIEWER; ANA
 
 ## Current implementation boundary
 
-The Creator verifier, CSRF guard, role permission checks, tenant-scoped project gateway and browser UI are implemented in the Creator branch. The central FORTRESS login issuer, durable identity store, session revocation/refresh service and production secrets are not yet verified. Until those issuer-side items are deployed and tested, the UI must show sign-in unavailable and no user session is considered live.
+The Creator verifier now requires live D1-backed FORTRESS introspection on every authenticated request; missing or unavailable service binding returns 503, and revoked or inactive sessions return 401. The persistent issuer and durable schema are implemented, but production deployment, secrets, database migration, same-origin cookie routing, initial owner bootstrap and full browser lifecycle verification remain release gates. The UI must continue to show sign-in unavailable until those checks pass.
