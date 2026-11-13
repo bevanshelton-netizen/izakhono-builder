@@ -10,7 +10,7 @@ class Statement implements D1Statement {
   constructor(private db: FakeDb, private sql: string) {}
   bind(...values: unknown[]) { this.values = values; return this; }
   first<T>() { return this.db.first<T>(this.sql, this.values); }
-  all<T>() { return this.db.all<T>(this.sql, this.values); }
+  all<T>() { return this.db.all<T>(this.sql); }
   run() { return this.db.run(this.sql, this.values); }
 }
 class FakeDb implements D1Database {
