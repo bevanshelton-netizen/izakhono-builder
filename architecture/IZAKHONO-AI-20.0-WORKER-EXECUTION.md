@@ -45,7 +45,7 @@ The repository CI runs registry TypeScript checks, supervisor contract tests, re
 
 - Implement and test durable claim/lease semantics for concurrent cron invocations.
 - Add a retry policy, lease expiry, bounded attempts and dead-letter review.
-- Bind each handler to a FORTRESS capability grant and authenticated workload identity.
+- Bind each handler to a FORTRESS capability grant and authenticated workload identity (not yet implemented).
 - Require independently authenticated verifier identity and structured test evidence.
 - Add typed artifact storage and immutable evidence provenance.
 - Implement additional handlers one capability at a time, each with contract tests and explicit side-effect declarations.
