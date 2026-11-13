@@ -32,7 +32,7 @@ export async function jarvisWorkforceRoute(req:Request,env:WorkforceEnv,owner:()
   return out({ok:true,claimed:true,step:{...c,assigned_agent:agent,lease_until:lease,status:"in_progress"}});
  }
  if(!m)return null;
- const stepId=decodeURIComponent(m[1]),action=m[2],s=await env.DB.prepare("SELECT id,run_id,assigned_agent,status,attempts,max_attempts,evidence_json,owner_verification FROM jarvis_orchestration_steps WHERE id=? AND owner_scope='owner'").bind(stepId).first<any>();
+ const stepId=decodeURIComponent(m[1]),action=m[2],s=await env.DB.prepare("SELECT id,run_id,assigned_agent,status,attempts,max_attempts,approval_required,evidence_json,owner_verification FROM jarvis_orchestration_steps WHERE id=? AND owner_scope='owner'").bind(stepId).first<any>();
  if(!s)return out({ok:false,error:"Step not found"},404);
  if(action==="approve"){
   if(s.status!=="pending")return out({ok:false,error:"Only pending steps can be approved"},409);
