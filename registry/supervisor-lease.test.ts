@@ -59,7 +59,7 @@ async function main(){
  const duplicate=await claimSupervisorLease(db,'job-a','build-worker','idem-2',60);
  assert.equal(duplicate,null,'active lease must block a second worker');
  assert.equal(await heartbeatSupervisorLease(db,lease!,60),true);
- assert.equal(await finishSupervisorLease(db,lease!,'verified',{checks:['contract']}),true);
+ assert.equal(await finishSupervisorLease(db,lease!,'verified',{summary:'Lease contract verified',checks:[{name:'lease-contract',passed:true,detail:'Lease completion contract'}]}),true);
  assert.equal(db.jobs[0].status,'verified');
  assert.equal(db.leases.length,0);
  const expiredDb=new FakeDb();
