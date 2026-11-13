@@ -1,0 +1,14 @@
+import {strict as assert} from 'node:assert';
+import {workerRouteAuthorized,workerRouteCredential} from './worker-route-auth';
+assert.equal(workerRouteCredential('/fortress/grants/issue'),'fortress-issuer');
+assert.equal(workerRouteCredential('/fortress/grants/revoke'),'fortress-issuer');
+assert.equal(workerRouteCredential('/workers/verify'),'qa-verifier');
+assert.equal(workerRouteCredential('/workers/dispatch'),'registry');
+assert.equal(workerRouteAuthorized('/fortress/grants/issue',false,false,true),true,'issuer-only credential must authorize issuer route');
+assert.equal(workerRouteAuthorized('/fortress/grants/revoke',false,false,true),true);
+assert.equal(workerRouteAuthorized('/workers/verify',false,true,false),true,'QA-only credential must authorize verifier route');
+assert.equal(workerRouteAuthorized('/workers/dispatch',true,false,false),true);
+assert.equal(workerRouteAuthorized('/fortress/grants/issue',true,false,false),false,'registry credential alone must not authorize issuer route');
+assert.equal(workerRouteAuthorized('/workers/verify',true,false,false),false,'registry credential alone must not authorize QA route');
+assert.equal(workerRouteAuthorized('/workers/dispatch',false,true,true),false,'specialist credentials must not authorize ordinary routes');
+console.log('worker route authentication contract tests: ok');
