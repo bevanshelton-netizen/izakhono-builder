@@ -1,88 +1,53 @@
 <!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>IZAKHONO EXECUTION OS</title>
-  <meta name="description" content="Turn approved objectives into controlled builds, launches, marketing and measurable outcomes.">
-  <style>
-    :root{--bg:#071018;--panel:#0d1822;--line:#203241;--text:#f4f8fb;--muted:#9eb0bd;--accent:#28d7b0;--warn:#f5c451}
-    *{box-sizing:border-box}body{margin:0;background:linear-gradient(145deg,#061018,#0b1720);color:var(--text);font:15px/1.5 system-ui,-apple-system,Segoe UI,sans-serif}
-    .wrap{max-width:1120px;margin:auto;padding:28px 18px 60px}.top{display:flex;justify-content:space-between;gap:20px;align-items:center}.brand{font-weight:800;letter-spacing:.08em}.pill{border:1px solid #2b4b59;border-radius:999px;padding:6px 10px;color:var(--accent);font-size:12px}
-    h1{font-size:clamp(34px,6vw,64px);line-height:1.02;margin:70px 0 16px;max-width:820px}.lead{font-size:19px;color:var(--muted);max-width:760px}.grid{display:grid;grid-template-columns:1.1fr .9fr;gap:18px;margin-top:34px}@media(max-width:800px){.grid{grid-template-columns:1fr}}
-    .card{background:rgba(13,24,34,.9);border:1px solid var(--line);border-radius:18px;padding:20px}.card h2{margin-top:0}.pipeline{display:grid;gap:10px}.stage{display:flex;justify-content:space-between;align-items:center;border:1px solid #223846;border-radius:12px;padding:12px}.stage b{font-size:14px}.status{font-size:11px;color:var(--muted)}
-    textarea,input,select{width:100%;background:#08131c;color:var(--text);border:1px solid #29414f;border-radius:10px;padding:12px;font:inherit;margin-top:7px}textarea{min-height:120px;resize:vertical}label{display:block;color:var(--muted);font-size:12px;margin-top:13px}button{border:0;border-radius:11px;padding:12px 16px;font-weight:800;cursor:pointer}button.primary{background:var(--accent);color:#03100d;margin-top:15px}button.secondary{background:#182a36;color:var(--text);margin-top:15px}.checks{display:grid;gap:9px}.check{padding:10px;border-radius:10px;background:#09151e;border:1px solid #1d3340}.check span{float:right;color:var(--accent)}.note{color:var(--muted);font-size:12px;margin-top:14px}
-    .output{white-space:pre-wrap;background:#061019;border:1px solid #203744;border-radius:12px;padding:14px;color:#dce9ef;min-height:130px;margin-top:14px}.footer{margin-top:30px;color:#728793;font-size:12px}
-  </style>
-</head>
-<body>
-<div class="wrap">
-  <div class="top"><div class="brand">IZAKHONO / EXECUTION OS</div><div class="pill">OWNED-FIRST • EVIDENCE-GATED</div></div>
-  <h1>Stop asking what can be built. Start moving work to completion.</h1>
-  <p class="lead">A controlled execution cockpit for turning an approved business objective into a build, release, marketing campaign, leads, sales and measurable delivery.</p>
-
-  <div class="grid">
-    <section class="card">
-      <h2>Start an execution</h2>
-      <label>Project objective</label>
-      <textarea id="objective" placeholder="Example: Launch THE BUSINESS OF MUSIC and generate the first 10 confirmed sales organically."></textarea>
-      <label>Execution template</label>
-      <select id="template"><option>Digital product sale</option><option>Product launch</option><option>Service launch</option><option>Lead-generation campaign</option><option>Website / project completion</option><option>Internal automation</option></select>
-      <label>Primary outcome</label>
-      <input id="outcome" placeholder="Example: 10 confirmed sales / R1,490 revenue">
-      <button class="primary" onclick="startExecution()">START CONTROLLED EXECUTION</button>
-      <div id="output" class="output">Execution has not started.</div>
-    </section>
-
-    <section class="card">
-      <h2>Delivery pipeline</h2>
-      <div class="pipeline">
-        <div class="stage"><b>01 — OBJECTIVE</b><span class="status">approval required</span></div>
-        <div class="stage"><b>02 — PLAN</b><span class="status">queued</span></div>
-        <div class="stage"><b>03 — BUILD</b><span class="status">evidence gated</span></div>
-        <div class="stage"><b>04 — TEST</b><span class="status">acceptance evidence</span></div>
-        <div class="stage"><b>05 — RELEASE</b><span class="status">approval gate</span></div>
-        <div class="stage"><b>06 — MARKET</b><span class="status">organic by default</span></div>
-        <div class="stage"><b>07 — LEADS / SALES</b><span class="status">measurement</span></div>
-        <div class="stage"><b>08 — REPORT</b><span class="status">outcome evidence</span></div>
-      </div>
-    </section>
-  </div>
-
-  <div class="grid">
-    <section class="card">
-      <h2>Marketing pack</h2>
-      <div class="checks">
-        <div class="check">Positioning & offer <span>READY</span></div>
-        <div class="check">Audience & messaging <span>READY</span></div>
-        <div class="check">Social campaign <span>READY</span></div>
-        <div class="check">Reels / short-form scripts <span>READY</span></div>
-        <div class="check">Landing page & CTA <span>READY</span></div>
-        <div class="check">Email / WhatsApp follow-up <span>READY</span></div>
-        <div class="check">Organic distribution plan <span>READY</span></div>
-        <div class="check">Conversion measurement <span>READY</span></div>
-      </div>
-    </section>
-    <section class="card">
-      <h2>Completion rules</h2>
-      <p>Generated code is not completion.</p>
-      <p>Completion requires the appropriate evidence: build/test result, deployment, acceptance, release status and outcome evidence.</p>
-      <p>No payment, publishing, regulated decision or destructive action is performed without the required approval gate.</p>
-      <p class="note">AI/model credentials stay server-side. The browser is a control surface, not a secret store.</p>
-    </section>
-  </div>
-  <div class="footer">IZAKHONO Execution OS • Foundation build • Owned-first • Externally reversible</div>
-</div>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>IZAKHONO EXECUTION OS</title><meta name="description" content="Live, evidence-gated IZAKHONO execution operations cockpit.">
+<style>
+:root{color-scheme:dark;--bg:#071018;--panel:#0d1b27;--line:#203747;--text:#f3f8fb;--muted:#9db0bd;--accent:#28d7b0;--warn:#f4c65e;--bad:#ff7979}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 15% 0%,#12303a 0,transparent 40%),var(--bg);color:var(--text);font:15px/1.5 system-ui,sans-serif}.wrap{max-width:1180px;margin:auto;padding:26px 18px 60px}.top{display:flex;justify-content:space-between;gap:16px;align-items:center}.brand{font-weight:900;letter-spacing:.09em}.pill{border:1px solid #2b665b;border-radius:99px;color:var(--accent);padding:6px 11px;font-size:11px}h1{font-size:clamp(34px,6vw,62px);line-height:1.02;margin:58px 0 12px;max-width:850px}.lead{color:var(--muted);font-size:18px;max-width:760px}.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:24px 0}.card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:18px}.metric{font-size:36px;font-weight:850;letter-spacing:-.04em}.muted{color:var(--muted)}.small{font-size:12px}.wide{grid-column:span 2}.panelgrid{display:grid;grid-template-columns:1.2fr .8fr;gap:14px}.row{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid #1d3442}.row:last-child{border:0}button,input{font:inherit;border-radius:10px;padding:11px 13px;border:1px solid #315061;background:#08141d;color:var(--text)}button{cursor:pointer;font-weight:800}button.primary{background:var(--accent);color:#04130f;border:0}button:disabled{opacity:.5;cursor:not-allowed}.auth{max-width:500px;margin:22px 0}.auth input{width:100%;margin:6px 0 12px}.hidden{display:none}.status{color:var(--accent)}.warning{color:var(--warn)}.error{color:var(--bad)}pre{white-space:pre-wrap;overflow-wrap:anywhere;color:#c6d6df;font-size:12px}.events{max-height:440px;overflow:auto}.footer{margin-top:28px;color:#6f8794;font-size:12px}@media(max-width:800px){.grid{grid-template-columns:repeat(2,1fr)}.panelgrid{grid-template-columns:1fr}.wide{grid-column:span 2}}
+</style></head><body><main class="wrap">
+<div class="top"><div class="brand">IZAKHONO / EXECUTION OS</div><div class="pill">OWNED-FIRST • EVIDENCE-GATED</div></div>
+<h1>Move approved work to verified completion.</h1><p class="lead">Live operational telemetry from the IZAKHONO worker queue. Authentication and administrator authorisation are required. No browser-side service credentials.</p>
+<section id="auth" class="card auth"><h2>Administrator sign-in</h2><p class="muted small">Sign in with your authorised IZAKHONO account. Access is restricted by server-verified administrator role.</p><label>Email</label><input id="email" type="email" autocomplete="username" placeholder="admin@example.com"><label>Password</label><input id="password" type="password" autocomplete="current-password" placeholder="Password"><button id="login" class="primary">Sign in securely</button><p id="authmsg" class="small muted" aria-live="polite"></p></section>
+<section id="dashboard" class="hidden">
+<div class="top"><div><h2>Operations telemetry</h2><div id="updated" class="muted small">Waiting for live data…</div></div><div><button id="refresh" class="primary">Refresh telemetry</button> <button id="logout">Sign out</button></div></div>
+<div class="grid">
+<div class="card"><div id="completed" class="metric">—</div><div class="muted">Completed jobs</div></div>
+<div class="card"><div id="queued" class="metric">—</div><div class="muted">Queued jobs</div></div>
+<div class="card"><div id="processing" class="metric">—</div><div class="muted">Processing jobs</div></div>
+<div class="card"><div id="failed" class="metric">—</div><div class="muted">Failed jobs</div></div>
+<div class="card wide"><h3>Execution controls</h3><div class="row"><span>Queue producer</span><b class="warning">PAUSED</b></div><div class="row"><span>Provisioner</span><b class="warning">PAUSED</b></div><div class="row"><span>External side effects</span><b class="status">DISABLED</b></div><p class="muted small">These are the current safety controls reported by the backend. Publishing, payments and customer communications remain approval-gated.</p></div>
+<div class="card wide"><h3>Worker registry</h3><div id="workers" class="muted small">Loading…</div></div>
+<div class="card wide"><h3>Recent worker events</h3><div id="events" class="events muted small">Loading…</div></div>
+<div class="card wide"><h3>Output evidence</h3><div id="outputs" class="muted small">Loading…</div></div>
+</div></section><div id="globalmsg" class="small muted" aria-live="polite"></div>
+<div class="footer">IZAKHONO Execution OS • Live source: Supabase • Telemetry is read-only • NODE01 is a logical runtime identity</div></main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-function startExecution(){
- const objective=document.getElementById('objective').value.trim();
- const template=document.getElementById('template').value;
- const outcome=document.getElementById('outcome').value.trim();
- const out=document.getElementById('output');
- if(!objective){out.textContent='Enter an objective first.';return}
- const id='exec-'+Date.now().toString(36);
- out.textContent=`Execution created: ${id}\n\nTemplate: ${template}\nOutcome: ${outcome||'Define measurable outcome'}\n\nNEXT:\n1. Convert objective into an acceptance plan.\n2. Build only the approved scope.\n3. Test and collect evidence.\n4. Release through the approval gate.\n5. Generate the marketing pack.\n6. Measure leads, sales and revenue.\n7. Report what is actually proven.`;
+const SUPABASE_URL='https://yfawrenhudjomhnglfhq.supabase.co';
+const SUPABASE_KEY='sb_publishable_3KY--8Y_uuKEdfdumC2txg__OWTRo2p';
+const client=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+const $=id=>document.getElementById(id);
+const fmt=n=>Number(n||0).toLocaleString();
+function showAuth(message=''){ $('auth').classList.remove('hidden');$('dashboard').classList.add('hidden');$('authmsg').textContent=message;}
+function showDash(){ $('auth').classList.add('hidden');$('dashboard').classList.remove('hidden');}
+async function load(){
+ $('globalmsg').textContent='Refreshing from live Supabase data…';
+ const {data:{session}}=await client.auth.getSession();
+ if(!session){showAuth('Session expired. Please sign in again.');return;}
+ const r=await fetch(SUPABASE_URL+'/functions/v1/webstart-health?telemetry=1',{headers:{apikey:SUPABASE_KEY,authorization:'Bearer '+session.access_token}});
+ const data=await r.json();
+ if(!r.ok){if(r.status===401){await client.auth.signOut();showAuth('Please sign in again.');}else{$('globalmsg').textContent=data.error==='FORBIDDEN'?'Access denied: this account is not authorised as an IZAKHONO administrator.':(data.error||'Telemetry unavailable');}return;}
+ const counts=Object.fromEntries(data.queue.map(x=>[x.status,x.count]));
+ $('completed').textContent=fmt(counts.completed);$('queued').textContent=fmt(counts.queued);$('processing').textContent=fmt(counts.processing);$('failed').textContent=fmt(counts.failed);
+ $('updated').textContent='Live snapshot • '+new Date(data.generated_at).toLocaleString()+' • Source: '+data.source;
+ $('workers').innerHTML=data.workers.map(w=>'<div class="row"><span>'+esc(w.display_name||w.worker_key)+' <span class="muted">('+esc(w.role||'worker')+')</span></span><b class="'+(w.active?'status':'warning')+'">'+esc(w.status|| (w.active?'ACTIVE':'INACTIVE'))+'</b></div>').join('');
+ $('events').innerHTML=data.events.map(e=>'<div class="row"><span><b>'+esc(e.event_type)+'</b> · '+esc(e.worker_key)+'<br><span class="muted">'+esc(e.job_id||'')+'</span></span><span class="muted">'+new Date(e.created_at).toLocaleString()+'</span></div>').join('');
+ $('outputs').textContent=fmt(data.outputs.ready_outputs)+' ready outputs recorded. Latest output: '+(data.outputs.latest_output_at?new Date(data.outputs.latest_output_at).toLocaleString():'not available');
+ $('globalmsg').textContent='Read-only telemetry loaded successfully.';
 }
-</script>
-</body>
-</html>
+function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+$('login').onclick=async()=>{ $('login').disabled=true;$('authmsg').textContent='Authenticating…';try{const {error}=await client.auth.signInWithPassword({email:$('email').value.trim(),password:$('password').value});if(error)throw error;showDash();await load();}catch(e){$('authmsg').textContent=e.message||'Sign-in failed.';}finally{$('login').disabled=false;}};
+$('refresh').onclick=load;$('logout').onclick=async()=>{await client.auth.signOut();showAuth('Signed out.');};
+client.auth.onAuthStateChange((_event,session)=>{if(session){showDash();load();}else showAuth();});
+client.auth.getSession().then(({data})=>{if(data.session){showDash();load();}});
+</script></body></html>
