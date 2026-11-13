@@ -49,6 +49,13 @@ export async function claimSupervisorJob(db:D1Database,id:string,actor:string,le
  await db.prepare('INSERT INTO supervisor_job_events(id,job_id,at,from_status,to_status,actor,detail_json) VALUES(?,?,?,?,?,?,?)').bind(crypto.randomUUID(),id,claimedAt,'queued','running',actor,JSON.stringify({leaseExpiresAt,claim:'atomic'})).run();
  return {id:row.id,status:row.status,attempts:Number(row.attempts),updatedAt:row.updated_at,leaseToken:row.lease_token,leaseExpiresAt:row.lease_expires_at,claimedBy:row.claimed_by};
 }
+/** Requeue expired leases with bounded retries; exhausted jobs move to failed for operator review. */
+export async function recoverExpiredSupervisorLeases(db:D1Database,maxAttempts=3,limit=50){
+ const at=new Date().toISOString();
+ const rows=await db.prepare("UPDATE supervisor_jobs SET status=CASE WHEN attempts>=? THEN 'failed' ELSE 'queued' END,lease_token=NULL,lease_expires_at=NULL,claimed_by=NULL,updated_at=? WHERE id IN (SELECT id FROM supervisor_jobs WHERE status='running' AND lease_expires_at IS NOT NULL AND lease_expires_at<=? ORDER BY priority DESC LIMIT ?) AND status='running' AND lease_expires_at<=? RETURNING id,source,source_id,worker_id,attempts,status").bind(maxAttempts,at,at,limit,at).all<{id:string;source:string;source_id:string;worker_id:string;attempts:number;status:SupervisorStatus}>();
+ for(const row of rows.results){const detail={reason:'lease-expired',attempts:Number(row.attempts),retryLimit:maxAttempts,disposition:row.status==='failed'?'dead-letter-review':'requeued'};await db.prepare('INSERT INTO supervisor_job_events(id,job_id,at,from_status,to_status,actor,detail_json) VALUES(?,?,?,?,?,?,?)').bind(crypto.randomUUID(),row.id,at,'running',row.status,'lease-recovery',JSON.stringify(detail)).run();}
+ return {recovered:rows.results.filter(x=>x.status==='queued').length,deadLettered:rows.results.filter(x=>x.status==='failed').length,jobIds:rows.results.map(x=>x.id)};
+}
 export async function transitionSupervisorJob(db:D1Database,id:string,to:SupervisorStatus,actor:string,detail:unknown={}){
  const current=await db.prepare('SELECT status,attempts FROM supervisor_jobs WHERE id=?').bind(id).first<{status:SupervisorStatus;attempts:number}>();
  if(!current)throw new Error(`Unknown supervisor job: ${id}`);
@@ -56,7 +63,7 @@ export async function transitionSupervisorJob(db:D1Database,id:string,to:Supervi
  if(!allowed[current.status].includes(to))throw new Error(`Invalid supervisor transition ${current.status} -> ${to}`);
  const attempts=to==='running'?Number(current.attempts||0)+1:Number(current.attempts||0);
  const at=new Date().toISOString();
- await db.prepare('UPDATE supervisor_jobs SET status=?,attempts=?,updated_at=? WHERE id=?').bind(to,attempts,at,id).run();
+ await db.prepare("UPDATE supervisor_jobs SET status=?,attempts=?,updated_at=?,lease_token=CASE WHEN ?='running' THEN lease_token ELSE NULL END,lease_expires_at=CASE WHEN ?='running' THEN lease_expires_at ELSE NULL END,claimed_by=CASE WHEN ?='running' THEN claimed_by ELSE NULL END WHERE id=?").bind(to,attempts,at,to,to,to,id).run();
  await db.prepare('INSERT INTO supervisor_job_events(id,job_id,at,from_status,to_status,actor,detail_json) VALUES(?,?,?,?,?,?,?)').bind(crypto.randomUUID(),id,at,current.status,to,actor,JSON.stringify(detail)).run();
  return {id,status:to,attempts,updatedAt:at};
 }
