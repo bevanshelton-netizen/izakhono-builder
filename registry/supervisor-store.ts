@@ -1,4 +1,5 @@
 import {D1Database} from './d1-store';
+import {evaluateWorkerPolicy} from './workers';
 
 export type SupervisorStatus='queued'|'running'|'verified'|'completed'|'blocked'|'failed';
 export type SupervisorRisk='low'|'medium'|'high';
@@ -101,7 +102,9 @@ export async function claimSupervisorLease(
   ).bind(jobId).first<{id:string;worker_id:string;status:SupervisorStatus;risk:SupervisorRisk;human_gate:string|null;attempts:number}>();
   if (!job) throw new Error('Unknown supervisor job');
   if (job.worker_id !== workerId) throw new Error('Worker does not own this job');
-  if (job.status !== 'queued' || job.risk === 'high' || job.human_gate) return null;
+  const policy = evaluateWorkerPolicy(workerId, job.risk, job.human_gate || undefined);
+  if (!policy.allowed) return null;
+  if (job.status !== 'queued') return null;
   const result = await db.prepare(`
     INSERT INTO supervisor_execution_leases(job_id,worker_id,lease_token_hash,leased_at,expires_at,heartbeat_at,attempt,idempotency_key)
     SELECT ?,?,?,?,?,?,?,?
