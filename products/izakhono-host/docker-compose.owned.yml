@@ -29,13 +29,17 @@ services:
       timeout: 5s
       retries: 5
 
+  # Optional mail transport bridge. The website-hosting core can start without
+  # an activated mail node. Enable only after the separate mail server is ready:
+  # docker compose --profile mail --env-file .env -f docker-compose.owned.yml up -d mail-bridge
   mail-bridge:
+    profiles: ["mail"]
     build: ./runtime/mail-bridge
     restart: unless-stopped
     environment:
       PORT: 8091
-      IZAKHONO_MAIL_API_TOKEN: ${IZAKHONO_MAIL_API_TOKEN:?set IZAKHONO_MAIL_API_TOKEN}
-      SMTP_HOST: ${SMTP_HOST:?set SMTP_HOST to the private IZAKHONO MAIL node address}
+      IZAKHONO_MAIL_API_TOKEN: ${IZAKHONO_MAIL_API_TOKEN:-}
+      SMTP_HOST: ${SMTP_HOST:-stalwart}
       SMTP_PORT: ${SMTP_PORT:-465}
       SMTP_TLS_MODE: ${SMTP_TLS_MODE:-tls}
       SMTP_USER: ${SMTP_USER:-}
