@@ -11,7 +11,7 @@ interface Env extends HostProviderEnv {
   APP_ENV?: string;
   OWNED_EDGE_IPV4?: string;
   OWNED_EDGE_IPV6?: string;
-  DNS_AUTHORITY_DOMAIN?: string;
+  DNS_AUTHORITY_DOMAIN?: string;\n  DNS_SYNC_TOKEN?: string;
 }
 
 const STATUS = new Set(['planned','queued','running','verified','failed','paused']);
@@ -30,6 +30,20 @@ async function api(req:Request,env:Env,url:URL):Promise<Response>{
     catch{return json({ok:false,service:'IZAKHONO HOST',database:'error'},503);}
   }
   if(!owner(req,env)) return json({ok:false,error:env.HOST_ADMIN_SECRET?'Unauthorized':'HOST_ADMIN_SECRET is not configured'},401);
+
+  // Authenticated read-only feed for the isolated authoritative-DNS sync agent.
+  // Only explicitly active zones are eligible for publication; planned zones never answer publicly.
+  if(url.pathname==='/internal/dns/snapshot' && req.method==='GET'){
+    const supplied=(req.headers.get('authorization')||'').replace(/^Bearer\\s+/i,'');
+    if(!env.DNS_SYNC_TOKEN || supplied!==env.DNS_SYNC_TOKEN) return json({ok:false,error:'Unauthorized'},401);
+    const zones=await env.DB.prepare("SELECT id,zone_name,serial,primary_nameserver,secondary_nameserver FROM dns_zones WHERE status='active' ORDER BY zone_name LIMIT 1000").all<any>();
+    const published=[];
+    for(const zone of zones.results||[]){
+      const records=await env.DB.prepare('SELECT name,type,ttl,priority,value,enabled FROM dns_records WHERE zone_id=? AND enabled=1 ORDER BY name,type').bind(zone.id).all<any>();
+      published.push({...zone,records:records.results||[]});
+    }
+    return json({ok:true,schema_version:1,generated_at:new Date().toISOString(),zones:published});
+  }
 
   // Native DNS control-plane API. Zones remain planned until two authoritative
   // nodes and public registrar delegation have been independently verified.
