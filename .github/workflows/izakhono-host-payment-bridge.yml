@@ -23,4 +23,6 @@ jobs:
         with:
           node-version: 22
       - name: Test verified-payment provisioning bridge
-        run: node products/izakhono-host/runtime/provisioner/payment-bridge.test.mjs
+        run: |
+          node products/izakhono-host/runtime/provisioner/payment-bridge.test.mjs
+          node products/izakhono-host/runtime/provisioner/postgres-provisioning-store.test.mjs
