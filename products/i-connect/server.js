@@ -1,6 +1,7 @@
 const express = require('express');
 const path = require('path');
 const networkRoute = require('./api/network-route');
+const { getReadiness } = require('./api/readiness');
 
 const app = express();
 app.use(express.json({ limit: '1mb' }));
@@ -9,23 +10,24 @@ const root = __dirname;
 app.use('/agent', express.static(path.join(root, 'agent')));
 app.use(express.static(root));
 
+// Liveness: proves only that this process can answer HTTP requests.
+// Keep this independent of supplier, database and payment activation.
 app.get('/api/health', (req, res) => {
-  // Configuration is not proof of a functioning or commercially approved dependency.
-  // Report conservative readiness states until each integration has an active probe
-  // and documented production approval.
-  res.json({
+  res.set('Cache-Control', 'no-store');
+  res.status(200).json({
     service: 'I-CONNECT',
-    status: 'activation_required',
-    productionReady: false,
-    modules: {
-      webApp: 'ready',
-      agentApp: 'ready',
-      database: 'not_verified',
-      carrier: 'not_configured',
-      payments: 'not_configured'
-    },
-    readinessNote: 'Application shell is available. Database, carrier and payment integrations require verified health checks and approval.'
+    status: 'alive',
+    process: 'ready',
+    productionReady: false
   });
+});
+
+// Readiness: reports integration configuration without exposing secret values.
+// Configuration alone is not proof of supplier approval or live commercial readiness.
+app.get('/api/readiness', (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  const readiness = getReadiness();
+  res.status(readiness.productionReady ? 200 : 503).json(readiness.body);
 });
 
 app.get('/api/runtime', (req, res) => res.json({
