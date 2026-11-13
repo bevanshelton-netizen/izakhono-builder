@@ -14,7 +14,7 @@ class Statement implements D1Statement {
 }
 class FakeDb implements D1Database {
   job: any = { id:"job-1", source:"test", source_id:"1", title:"Test build", worker_id:"build-worker", priority:1, risk:"low", status:"running", dependency_ids_json:"[]", human_gate:null, attempts:1, input_json:"{}", evidence_json:"{}", created_at:"now", updated_at:"now" };
-  leaseHash = createHash("sha256").update("secret-token").digest("hex");
+  leaseHash = createHash("sha256").update("secret-token").digest().toString("hex");
   prepare(sql:string) { return new Statement(this, sql); }
   async all<T>(sql:string):Promise<{results:T[]}> {
     if (sql.includes("FROM supervisor_jobs")) return {results:[this.job] as T[]};
