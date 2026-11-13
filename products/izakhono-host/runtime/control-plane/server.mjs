@@ -2,12 +2,18 @@ import http from 'node:http';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import { Pool } from 'pg';
+import { PostgresProvisioningStore } from './provisioner/postgres-provisioning-store.mjs';
+import { PaidProvisioningBridge } from './provisioner/payment-bridge.mjs';
 
 const PORT = Number(process.env.PORT || 8080);
 const DATA_DIR = process.env.DATA_DIR || '/data';
 const STATE_FILE = path.join(DATA_DIR, 'sites.json');
 const SITES_DIR = path.join(DATA_DIR, 'sites');
 const ADMIN_TOKEN = process.env.HOST_RUNTIME_TOKEN || '';
+const PAYMENT_BRIDGE_TOKEN = process.env.HOST_PAYMENT_BRIDGE_TOKEN || '';
+const pool = process.env.PGHOST ? new Pool({ host: process.env.PGHOST, port: Number(process.env.PGPORT || 5432), database: process.env.PGDATABASE || 'izakhono', user: process.env.PGUSER || 'izakhono', password: process.env.PGPASSWORD, max: 10, connectionTimeoutMillis: 5000 }) : null;
+const paymentBridge = pool ? new PaidProvisioningBridge(new PostgresProvisioningStore(pool)) : null;
 const MAX_FILES = 200;
 const MAX_FILE_BYTES = 512 * 1024;
 const MAX_TOTAL_BYTES = 8 * 1024 * 1024;
@@ -32,6 +38,11 @@ async function body(req) {
   const text=Buffer.concat(chunks).toString('utf8');
   if (!text) return {};
   return JSON.parse(text);
+}
+function constantTimeTokenMatch(req, expected) {
+  const supplied = String(req.headers['x-izakhono-payment-token'] || '');
+  const a = Buffer.from(supplied); const b = Buffer.from(expected);
+  return Boolean(expected) && a.length === b.length && crypto.timingSafeEqual(a, b);
 }
 function authorized(req) {
   if (!ADMIN_TOKEN) return false;
@@ -92,7 +103,20 @@ async function serveSite(req, res) {
 
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`);
-  if (req.method === 'GET' && url.pathname === '/health') return json(res, 200, {ok:true, service:'IZAKHONO HOST Runtime', version:'0.3.0'});
+  if (req.method === 'GET' && url.pathname === '/health') return json(res, 200, {ok:true, service:'IZAKHONO HOST Runtime', version:'0.3.0', payment_store_configured:Boolean(pool)});
+  if (req.method === 'GET' && url.pathname === '/ready') {
+    if (!pool) return json(res, 503, {ok:false, ready:false, reason:'PostgreSQL is not configured'});
+    try { await pool.query('SELECT 1'); return json(res, 200, {ok:true, ready:true}); }
+    catch { return json(res, 503, {ok:false, ready:false, reason:'PostgreSQL unavailable'}); }
+  }
+  if (req.method === 'POST' && url.pathname === '/internal/payments/verified') {
+    if (!paymentBridge || !constantTimeTokenMatch(req, PAYMENT_BRIDGE_TOKEN)) return json(res, 401, {ok:false,error:'Unauthorized payment bridge caller'});
+    try {
+      const input = await body(req);
+      const accepted = await paymentBridge.acceptPaidPayment({ payment: input.payment, order: input.order });
+      return json(res, accepted.created ? 201 : 200, {ok:true, created:accepted.created, provisioning_id:accepted.record.id, state:accepted.record.state});
+    } catch (error) { return json(res, 409, {ok:false,error:error?.message || 'Verified payment was not accepted'}); }
+  }
   if (req.method === 'GET' && url.pathname === '/api/tls/ask') {
     const site = await findSite(url.searchParams.get('domain') || '');
     return site ? json(res, 200, {ok:true,domain:site.domain}) : json(res, 403, {ok:false,error:'Domain is not provisioned'});
