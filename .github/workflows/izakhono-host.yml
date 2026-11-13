@@ -66,7 +66,7 @@ jobs:
       - name: Validate mail documentation contract
         run: test -s products/izakhono-host/mail/README.md && test -s products/izakhono-host/mail/MAILBOX-PROVISIONING.md
       - name: Build owned runtime image
-        run: docker build -t izakhono-host-runtime-ci products/izakhono-host/runtime/control-plane
+        run: docker build -f products/izakhono-host/runtime/control-plane/Dockerfile -t izakhono-host-runtime-ci products/izakhono-host
       - name: Build contact gateway image
         run: docker build -t izakhono-contact-gateway-ci products/izakhono-host/runtime/contact-gateway
       - name: Validate host contract
