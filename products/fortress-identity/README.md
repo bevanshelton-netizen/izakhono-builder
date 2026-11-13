@@ -7,7 +7,8 @@ Cloudflare Worker + D1 persistent identity/session authority. This source change
 - POST /api/fortress/login — email/password authentication, origin allowlist and per-IP/per-email rate limits.
 - POST /api/fortress/refresh — CSRF/origin protected refresh-token rotation.
 - POST /api/fortress/logout — CSRF/origin protected refresh-token revocation and cookie clearing.
-- GET /api/fortress/health — liveness only, not proof of database readiness or public deployment.\n- GET /api/fortress/session — signed-token and live D1 session introspection for Creator's service binding.
+- GET /api/fortress/health — liveness only, not proof of database readiness or public deployment.
+- GET /api/fortress/session — signed-token and live D1 session introspection for Creator's service binding.
 
 ## Controls
 - D1-backed principals, password credentials, refresh sessions and audit events.
