@@ -15,6 +15,18 @@ The user gives one objective through IZAKHONO WORK / the command surface. The or
 
 The product is not a chatbot wrapper and not a claim that an AI can compromise arbitrary websites. Security testing is limited to explicitly authorised assets and controlled environments.
 
+## 1A. Existing implementation to extend (repository inspection: 2026-11-13)
+
+The Builder repository already contains useful execution foundations. Extend these rather than creating a parallel orchestrator:
+
+- `src/superagent.ts`: provider-neutral SUPERAGENT v1 goal/plan/task/artifact lifecycle, dependency handling, retry/recovery and release gates. It currently has generic tool kinds and a sequential runnable-task selector; it is not yet a model router or a durable multi-worker computer-use runtime.
+- `src/runtime.ts`: existing Builder Worker entry point and factory execution route.
+- `src/mcp-bridge.ts`: authenticated MCP command surface for project status, build, autopilot, validation and evidence recording.
+- `src/secure.ts`: existing protected Builder API and generated-app security boundary.
+- `AUTONOMY-STACK.md`: establishes IZAKHONO WORK, AI Gateway, NODE/CONTROL, FORTRESS and the owned-inference independence rule.
+
+Implementation direction: evolve SUPERAGENT with durable queue-backed jobs and specialist worker contracts; add a separate model registry/router and isolated computer-use adapters; expose only approved capabilities through the existing secure command surface. Do not duplicate the Builder project database or bypass its release gates.
+
 ## 2. Placement in the sovereign stack
 
 ```text
