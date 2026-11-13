@@ -82,6 +82,7 @@ export async function workerControl(request:Request,authorized:boolean,db:D1Data
    if(job.risk==='high'||job.humanGate)return json({ok:true,accepted:false,status:'blocked',job,reason:'human-gate-required',gate:job.humanGate||'high-risk'},202);
    if(job.dependencyIds.length){const blockers=jobs.filter(j=>job.dependencyIds.some(dep=>dep===j.sourceId||dep===j.id)&&j.status!=='completed');if(blockers.length)return json({ok:true,accepted:false,status:'blocked',job,reason:'dependencies-incomplete',blockers},202);}
    if(!hasWorkerHandler(job.workerId))return json({ok:true,accepted:false,status:'queued',job,reason:'worker-handler-not-registered'},202);
+   if(body.dryRun)return json({ok:true,accepted:false,status:'queued',dryRun:true,preview:{jobId:job.id,workerId:job.workerId,handlerAvailable:true},note:'Dry run only; no state transition or handler execution occurred.'},200);
    return json({ok:true,accepted:true,...await executeClaimedJob(db,job,'worker-supervisor')},202);
   }
   if(!body.workerId||!WORKER_INDEX[body.workerId])return json({ok:false,error:'unknown worker'},404);
@@ -89,6 +90,7 @@ export async function workerControl(request:Request,authorized:boolean,db:D1Data
   const sourceId=`manual:${crypto.randomUUID()}`;const job:SupervisorJob={id:idFor('manual',sourceId),source:'manual',sourceId,title:`Manual ${w.id} job`,workerId:w.id,priority:10,risk:w.risk,status:w.humanGate||w.risk==='high'?'blocked':'queued',dependencyIds:[],humanGate:w.humanGate,attempts:0,input:body.input??{},evidence:{createdAt:now()},createdAt:now(),updatedAt:now()};await upsertSupervisorJob(db,job);
   if(job.status==='blocked')return json({ok:true,accepted:false,status:'blocked',job,reason:'human-gate-required',gate:job.humanGate||'high-risk'},202);
   if(!hasWorkerHandler(w.id))return json({ok:true,accepted:false,status:'queued',job,reason:'worker-handler-not-registered'},202);
+  if(body.dryRun)return json({ok:true,accepted:false,status:'queued',dryRun:true,preview:{jobId:job.id,workerId:job.workerId,handlerAvailable:true},note:'Dry run only; no state transition or handler execution occurred.'},200);
   return json({ok:true,accepted:true,...await executeClaimedJob(db,job,'worker-supervisor')},202);
  }
  if(url.pathname==='/workers/verify'&&request.method==='POST'){
