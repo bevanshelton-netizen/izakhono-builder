@@ -63,7 +63,8 @@
     "validate:affiliate": "node scripts/validate-affiliate-engine.mjs",
     "intelligence:test": "npx --yes tsx@4.20.3 src/intelligence.test.ts",
     "intelligence:typecheck": "tsc --noEmit --target ES2022 --lib ES2022,DOM,DOM.Iterable --module ESNext --moduleResolution Bundler src/intelligence.ts src/intelligence.test.ts",
-    "superagent:intelligence:test": "npx --yes tsx@4.20.3 src/superagent-intelligence.test.ts"
+    "superagent:intelligence:test": "npx --yes tsx@4.20.3 src/superagent-intelligence.test.ts",
+    "registry:lease-test": "npx --yes tsx@4.20.3 registry/supervisor-lease.test.ts"
   },
   "dependencies": {
     "wrangler": "4.127.1"
