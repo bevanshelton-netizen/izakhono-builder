@@ -4,6 +4,7 @@ import {discoverBuilderQueue,classifyBuilderIssue,shouldIngest} from './builder-
 import {ensureSupervisorSchema,upsertSupervisorJob,listSupervisorJobs,supervisorCounts,claimSupervisorJob,recoverExpiredSupervisorLeases,transitionSupervisorJob,recordEvidence,renewSupervisorLease,verifyLeasedSupervisorJob,SupervisorJob} from './supervisor-store';
 import {executeWorker,hasWorkerHandler,executableWorkerIds} from './worker-execution';
 import {DIVISIONS,workersForDivision} from './divisions';
+import {verifyFortressCapabilityGrant} from './fortress-capabilities';
 
 const json=(d:unknown,s=200)=>new Response(JSON.stringify(d),{status:s,headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store'}});
 const now=()=>new Date().toISOString();
@@ -22,7 +23,10 @@ function ready(job:SupervisorJob,jobs:SupervisorJob[]){
  return !jobs.some(j=>job.dependencyIds.some(dep=>dep===j.sourceId||dep===j.id)&&j.status!=='completed');
 }
 
-async function executeClaimedJob(db:D1Database,job:SupervisorJob,actor:string){
+async function executeClaimedJob(db:D1Database,job:SupervisorJob,actor:string,fortressSecret?:string){
+ const input=job.input&&typeof job.input==='object'?job.input as Record<string,unknown>:{};
+ const capability=await verifyFortressCapabilityGrant(input.fortressCapabilityGrant,job.workerId,job.risk,fortressSecret);
+ if(!capability.ok)return {id:job.id,workerId:job.workerId,status:'blocked',reason:capability.reason,required:'FORTRESS signed capability grant'};
  const claimed=await claimSupervisorJob(db,job.id,actor);
  if(!claimed)return {id:job.id,workerId:job.workerId,status:'not-claimed',reason:'another executor claimed or changed the job'};
  try{
@@ -37,27 +41,27 @@ async function executeClaimedJob(db:D1Database,job:SupervisorJob,actor:string){
  }
 }
 
-export async function advanceReadyWorkers(db:D1Database,limit=25){
+export async function advanceReadyWorkers(db:D1Database,limit=25,fortressSecret?:string){
  const jobs=await listSupervisorJobs(db);
  const advanced=[];
  for(const job of jobs.sort((a,b)=>b.priority-a.priority)){
   if(advanced.length>=limit)break;
   if(!ready(job,jobs))continue;
-  advanced.push(await executeClaimedJob(db,job,'continuous-supervisor'));
+  advanced.push(await executeClaimedJob(db,job,'continuous-supervisor',fortressSecret));
  }
  return advanced;
 }
 
-export async function pumpWorkers(db:D1Database){
+export async function pumpWorkers(db:D1Database,fortressSecret?:string){
  await ensureSupervisorSchema(db);
  const leaseRecovery=await recoverExpiredSupervisorLeases(db,3,50);
  const ingestion=await ingestDiscovered(db);
- const advanced=await advanceReadyWorkers(db);
+ const advanced=await advanceReadyWorkers(db,25,fortressSecret);
  const queue=await supervisorCounts(db);
  return {ok:true,generatedAt:now(),leaseRecovery,...ingestion,advanced:advanced.length,queue,jobs:advanced};
 }
 
-export async function workerControl(request:Request,authorized:boolean,db:D1Database,verifierAuthorized=false){
+export async function workerControl(request:Request,authorized:boolean,db:D1Database,verifierAuthorized=false,fortressSecret?:string){
  if(!authorized)return json({ok:false,error:'unauthorized'},401);
  await ensureSupervisorSchema(db);
  const url=new URL(request.url);
@@ -73,7 +77,7 @@ export async function workerControl(request:Request,authorized:boolean,db:D1Data
   try{return json({ok:true,...await ingestDiscovered(db),queue:await listSupervisorJobs(db)});}catch(error){return json({ok:false,error:String(error)},502);}
  }
  if(url.pathname==='/workers/pump'&&(request.method==='POST'||request.method==='GET')){
-  try{return json(await pumpWorkers(db));}catch(error){return json({ok:false,error:String(error)},502);}
+  try{return json(await pumpWorkers(db,fortressSecret));}catch(error){return json({ok:false,error:String(error)},502);}
  }
  if(url.pathname==='/workers/jobs'&&request.method==='GET'){
   const status=url.searchParams.get('status') as SupervisorJob['status']|null;
@@ -89,7 +93,7 @@ export async function workerControl(request:Request,authorized:boolean,db:D1Data
    if(job.dependencyIds.length){const blockers=jobs.filter(j=>job.dependencyIds.some(dep=>dep===j.sourceId||dep===j.id)&&j.status!=='completed');if(blockers.length)return json({ok:true,accepted:false,status:'blocked',job,reason:'dependencies-incomplete',blockers},202);}
    if(!hasWorkerHandler(job.workerId))return json({ok:true,accepted:false,status:'queued',job,reason:'worker-handler-not-registered'},202);
    if(body.dryRun)return json({ok:true,accepted:false,status:'queued',dryRun:true,preview:{jobId:job.id,workerId:job.workerId,handlerAvailable:true},note:'Dry run only; no state transition or handler execution occurred.'},200);
-   return json({ok:true,accepted:true,...await executeClaimedJob(db,job,'worker-supervisor')},202);
+   return json({ok:true,accepted:true,...await executeClaimedJob(db,job,'worker-supervisor',fortressSecret)},202);
   }
   if(!body.workerId||!WORKER_INDEX[body.workerId])return json({ok:false,error:'unknown worker'},404);
   const w=WORKER_INDEX[body.workerId];
@@ -97,7 +101,7 @@ export async function workerControl(request:Request,authorized:boolean,db:D1Data
   if(job.status==='blocked')return json({ok:true,accepted:false,status:'blocked',job,reason:'human-gate-required',gate:job.humanGate||'high-risk'},202);
   if(!hasWorkerHandler(w.id))return json({ok:true,accepted:false,status:'queued',job,reason:'worker-handler-not-registered'},202);
   if(body.dryRun)return json({ok:true,accepted:false,status:'queued',dryRun:true,preview:{jobId:job.id,workerId:job.workerId,handlerAvailable:true},note:'Dry run only; no state transition or handler execution occurred.'},200);
-  return json({ok:true,accepted:true,...await executeClaimedJob(db,job,'worker-supervisor')},202);
+  return json({ok:true,accepted:true,...await executeClaimedJob(db,job,'worker-supervisor',fortressSecret)},202);
  }
  if(url.pathname==='/workers/renew'&&request.method==='POST'){
   let body:{jobId?:string;leaseToken?:string;leaseMs?:number};try{body=await request.json();}catch{return json({ok:false,error:'invalid json'},400);}
@@ -107,7 +111,7 @@ export async function workerControl(request:Request,authorized:boolean,db:D1Data
  if(url.pathname==='/workers/verify'&&request.method==='POST'){
   if(!verifierAuthorized)return json({ok:false,error:'independent QA verifier credential required'},403);
   let body:{jobId?:string;leaseToken?:string;evidence?:unknown};try{body=await request.json();}catch{return json({ok:false,error:'invalid json'},400);}
-  if(!body.jobId||!body.leaseToken)return json({ok:false,error:'jobId and active leaseToken required'},400);const jobs=await listSupervisorJobs(db);const job=jobs.find(j=>j.id===body.jobId);if(!job)return json({ok:false,error:'unknown job'},404);if(job.status!=='running')return json({ok:false,error:'verification requires running state'},409);if(!body.evidence)return json({ok:false,error:'machine-readable evidence required'},400);try{const transitioned=await verifyLeasedSupervisorJob(db,job.id,body.leaseToken,{execution:job.evidence,independentVerification:body.evidence},'independent-qa-verifier');const advanced=await advanceReadyWorkers(db);return json({ok:true,status:'verified',job:transitioned,advanced:advanced.length});}catch(error){return json({ok:false,error:String(error)},409);}
+  if(!body.jobId||!body.leaseToken)return json({ok:false,error:'jobId and active leaseToken required'},400);const jobs=await listSupervisorJobs(db);const job=jobs.find(j=>j.id===body.jobId);if(!job)return json({ok:false,error:'unknown job'},404);if(job.status!=='running')return json({ok:false,error:'verification requires running state'},409);if(!body.evidence)return json({ok:false,error:'machine-readable evidence required'},400);try{const transitioned=await verifyLeasedSupervisorJob(db,job.id,body.leaseToken,{execution:job.evidence,independentVerification:body.evidence},'independent-qa-verifier');const advanced=await advanceReadyWorkers(db,25,fortressSecret);return json({ok:true,status:'verified',job:transitioned,advanced:advanced.length});}catch(error){return json({ok:false,error:String(error)},409);}
  }
  if(url.pathname==='/workers/complete'&&request.method==='POST'){
   let body:{jobId?:string;evidence?:unknown};try{body=await request.json();}catch{return json({ok:false,error:'invalid json'},400);}
