@@ -73,6 +73,10 @@ jobs:
         shell: bash
         run: bash infra/node-cluster/VERIFY-CONNECTA-PRODUCTION-PATH.sh
 
+      - name: Test four-node runtime evidence verifier
+        shell: bash
+        run: bash infra/node-cluster/test-node-cluster-evidence-verifier.sh
+
       - name: Enforce no legacy NODE01 production dependency
         shell: bash
         run: bash infra/node-cluster/VERIFY-CONNECTA-LEGACY-PATH.sh
