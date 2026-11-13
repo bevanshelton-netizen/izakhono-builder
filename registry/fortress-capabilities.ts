@@ -23,8 +23,8 @@ export async function verifyFortressCapabilityGrant(token:unknown,workerId:strin
   const parts=token.split('.');
   if(parts.length!==2)return {ok:false as const,reason:'malformed capability grant'};
   let claims:FortressCapabilityClaims;
-  try{claims=JSON.parse(new TextDecoder().decode(decode(parts[0])));}catch{return {ok:false as const,reason:'invalid capability claims'};}
-  if(claims.iss!=='IZAKHONO-FORTRESS'||claims.aud!=='IZAKHONO-WORKER-SUPERVISOR'||claims.sub!==workerId)return {ok:false as const,reason:'grant issuer, audience or worker identity mismatch'};
+  try{claims=JSON.parse(new TextDecoder().decode(decode(parts[0])));if(!claims||typeof claims!=='object'||Array.isArray(claims))return {ok:false as const,reason:'invalid capability claims'};}catch{return {ok:false as const,reason:'invalid capability claims'};}
+  if(typeof claims.sub!=='string'||typeof claims.aud!=='string'||claims.iss!=='IZAKHONO-FORTRESS'||claims.aud!=='IZAKHONO-WORKER-SUPERVISOR'||claims.sub!==workerId)return {ok:false as const,reason:'grant issuer, audience or worker identity mismatch'};
   if(!Array.isArray(claims.actions)||!claims.actions.includes('execute'))return {ok:false as const,reason:'execute capability not granted'};
   if(claims.risk!==risk)return {ok:false as const,reason:'grant risk does not match job risk'};
   if(!Number.isInteger(claims.iat)||!Number.isInteger(claims.nbf)||!Number.isInteger(claims.exp)||claims.exp<=nowSeconds||claims.nbf>nowSeconds||claims.iat>nowSeconds+30||claims.exp-claims.iat>900)return {ok:false as const,reason:'grant is expired, not yet valid, or exceeds 15-minute maximum lifetime'};
