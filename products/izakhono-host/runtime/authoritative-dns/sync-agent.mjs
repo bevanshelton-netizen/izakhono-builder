@@ -19,7 +19,7 @@ function ownerLabel(name, zone) {
 function quoteTxt(value) {
   const raw = String(value);
   assert(raw.length > 0 && raw.length <= 255 && !/[\r\n\0]/.test(raw), 'invalid TXT value length or characters');
-  return '"' + raw.replace(/\\/g, '\\5c').replace(/"/g, '\\22') + '"';
+  return '"' + raw.replace(/\\/g, '\\092').replace(/"/g, '\\034') + '"';
 }
 
 export function validateSnapshot(snapshot) {
