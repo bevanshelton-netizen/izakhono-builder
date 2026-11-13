@@ -29,6 +29,10 @@ These are deterministic code handlers, not a claim that every catalog worker is 
 
 Unsupported handlers are not started. High-risk or human-gated jobs remain blocked. Handler failures are recorded and transition the job to `failed`.
 
+## FORTRESS capability grants
+
+Worker execution now fails closed unless the job input carries a valid FORTRESS-signed capability grant and the runtime has `FORTRESS_CAPABILITY_SECRET` configured. The grant is an HMAC-SHA-256 signed payload with issuer `IZAKHONO-FORTRESS`, audience `IZAKHONO-WORKER-SUPERVISOR`, an exact worker subject, explicit `execute` action, matching risk class, unique grant ID, and a maximum 15-minute lifetime. The supervisor checks signature, issuer, audience, worker, action, risk, not-before and expiry before it claims or invokes a handler. The verifier secret must be provisioned only through runtime secret management; it is never committed. The current repository implements grant verification, not a production FORTRESS grant-issuing service or key-rotation/revocation registry. No worker should be issued a grant until the authoritative FORTRESS issuer and its key custody process are operational.
+
 ## Credential separation
 
 The persistent worker runtime now fails closed for private control-plane endpoints unless `REGISTRY_TOKEN_SHA256` is configured and the request presents the matching bearer token.
@@ -45,7 +49,8 @@ The repository CI runs registry TypeScript checks, supervisor contract tests, re
 
 - Implement and test durable claim/lease semantics for concurrent cron invocations.
 - Add a retry policy, lease expiry, bounded attempts and dead-letter review.
-- Bind each handler to a FORTRESS-issued capability grant and authenticated workload identity (not yet implemented; current FORTRESS code is defensive scan-scope policy, not worker identity).
+- Implement the authoritative FORTRESS grant issuer, key rotation/revocation and authenticated workload identity; current code verifies signed grants but does not issue them.
+- Add replay prevention using a durable consumed-grant/JTI ledger before enabling sensitive side effects.
 - Require independently authenticated verifier identity and structured test evidence.
 - Add typed artifact storage and immutable evidence provenance.
 - Implement additional handlers one capability at a time, each with contract tests and explicit side-effect declarations.
