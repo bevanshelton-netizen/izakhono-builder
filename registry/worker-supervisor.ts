@@ -1,7 +1,7 @@
 import {WORKERS,WORKER_INDEX} from './workers';
 import {D1Database} from './d1-store';
 import {discoverBuilderQueue,classifyBuilderIssue,shouldIngest} from './builder-queue';
-import {ensureSupervisorSchema,upsertSupervisorJob,listSupervisorJobs,supervisorCounts,transitionSupervisorJob,recordEvidence,SupervisorJob} from './supervisor-store';
+import {ensureSupervisorSchema,upsertSupervisorJob,listSupervisorJobs,supervisorCounts,transitionSupervisorJob,recordEvidence,SupervisorJob,claimSupervisorLease,heartbeatSupervisorLease,finishSupervisorLease,recoverExpiredSupervisorLeases,SupervisorLease} from './supervisor-store';
 
 const json=(d:unknown,s=200)=>new Response(JSON.stringify(d),{status:s,headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store'}});
 const now=()=>new Date().toISOString();
@@ -57,6 +57,22 @@ export async function workerControl(request:Request,authorized:boolean,db:D1Data
  if(url.pathname==='/workers/jobs'&&request.method==='GET'){
   const status=url.searchParams.get('status') as SupervisorJob['status']|null;
   return json({ok:true,counts:await supervisorCounts(db),jobs:await listSupervisorJobs(db,status||undefined)});
+ }
+ if(url.pathname==='/workers/claim'&&request.method==='POST'){
+  let body:{jobId?:string;workerId?:string;idempotencyKey?:string;leaseSeconds?:number};try{body=await request.json();}catch{return json({ok:false,error:'invalid json'},400);}
+  if(!body.jobId||!body.workerId||!body.idempotencyKey)return json({ok:false,error:'jobId, workerId and idempotencyKey required'},400);
+  try{const lease=await claimSupervisorLease(db,body.jobId,body.workerId,body.idempotencyKey,body.leaseSeconds);return lease?json({ok:true,lease},201):json({ok:false,error:'job unavailable, gated, already leased, or no longer queued'},409);}catch(error){return json({ok:false,error:String(error)},409);}
+ }
+ if(url.pathname==='/workers/heartbeat'&&request.method==='POST'){
+  let body:{lease?:SupervisorLease;leaseSeconds?:number};try{body=await request.json();}catch{return json({ok:false,error:'invalid json'},400);}
+  if(!body.lease)return json({ok:false,error:'lease required'},400);
+  try{const renewed=await heartbeatSupervisorLease(db,body.lease,body.leaseSeconds);return json({ok:renewed,renewed},renewed?200:409);}catch(error){return json({ok:false,error:String(error)},400);}
+ }
+ if(url.pathname==='/workers/finish'&&request.method==='POST'){
+  let body:{lease?:SupervisorLease;outcome?:'verified'|'failed'|'blocked';detail?:unknown};try{body=await request.json();}catch{return json({ok:false,error:'invalid json'},400);}
+  if(!body.lease||!body.outcome)return json({ok:false,error:'lease and outcome required'},400);
+  if(!['verified','failed','blocked'].includes(body.outcome))return json({ok:false,error:'invalid outcome'},400);
+  try{const finished=await finishSupervisorLease(db,body.lease,body.outcome,body.detail??{});return json({ok:finished,finished},finished?200:409);}catch(error){return json({ok:false,error:String(error)},400);}
  }
  if(url.pathname==='/workers/dispatch'&&request.method==='POST'){
   let body:{jobId?:string;workerId?:string;input?:unknown;dryRun?:boolean};
