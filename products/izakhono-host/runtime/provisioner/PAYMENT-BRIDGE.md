@@ -19,6 +19,10 @@ Implement `createOrGetByIdempotencyKey(record)` with a database transaction or a
 
 The checkout idempotency key must be created server-side and persisted with the order before redirecting the customer to a payment provider. Never accept the expected amount, currency, customer ID or domain from the webhook body.
 
+## Durable PostgreSQL store
+
+The migration `products/izakhono-host/migrations/001_host_provisioning_records.sql` creates the durable provisioning ledger. `PostgresProvisioningStore` implements the atomic insert-or-read contract against a node-postgres-compatible query client. Unique constraints protect checkout idempotency keys, payment-intent IDs and external transaction IDs; amount/currency equality and the non-live payment-verified invariant are also constrained in the database. The adapter deliberately receives a query client rather than creating credentials or a connection pool itself. Production wiring must inject the HOST-owned PostgreSQL pool and apply the migration before accepting paid orders. The tests use a deterministic query-client fake; they do not replace a live PostgreSQL integration test.
+
 ## iKhokha
 
 The repository already contains the iKhokha payment-link adapter and payment webhook guard in `products/izakhono-super-engine/src/payment-core.ts` and `payment-webhook-guard.ts`. Keep iKhokha credentials server-side. Route callback bytes to the provider's existing signature verifier before parsing or calling this bridge. Do not infer payment success from a return URL.
