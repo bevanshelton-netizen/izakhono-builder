@@ -24,5 +24,6 @@ jobs:
           node-version: 22
       - run: npm install --ignore-scripts --no-audit --no-fund
       - run: npm run registry:typecheck
+      - run: npm run registry:lease-test
       - run: npm run registry:test
       - run: npm run registry:dry
