@@ -12,7 +12,8 @@ function req(method: string, path: string, body?: unknown) {
 async function main() {
   let reads = 0;
   let writes = 0;
-  let stepStatus: "in_progress" | "completed" = "in_progress";
+  let stepStatus: "pending" | "in_progress" | "completed" = "pending";
+  let approvalRequired = true;
   const env = {
     DB: {
       prepare(sql: string) {
@@ -37,10 +38,12 @@ async function main() {
                   max_attempts: 3,
                   evidence_json: '{"evidence":"Internal validation report saved"}',
                   owner_verification: "pending",
+                  approval_required: approvalRequired ? 1 : 0,
                 };
               },
               async run() {
                 writes++;
+                if (sql.includes("SET approval_required=0")) approvalRequired = false;
                 if (sql.includes("SET status='completed'")) stepStatus = "completed";
                 return { meta: { changes: 1 } };
               },
@@ -64,6 +67,15 @@ async function main() {
     (await jarvisWorkforceRoute(req("POST", "/api/jarvis/workforce/claim", { agent_id: "reporting" }), env, async () => true))?.status,
     200,
   );
+  assert.equal(
+    (await jarvisWorkforceRoute(req("POST", "/api/jarvis/workforce/steps/stp1/approve", { reason: "short" }), env, async () => true))?.status,
+    400,
+  );
+  assert.equal(
+    (await jarvisWorkforceRoute(req("POST", "/api/jarvis/workforce/steps/stp1/approve", { reason: "Approved after owner risk review" }), env, async () => true))?.status,
+    200,
+  );
+  stepStatus = "in_progress";
   assert.equal(
     (await jarvisWorkforceRoute(req("POST", "/api/jarvis/workforce/steps/stp1/complete", { agent_id: "reporting", evidence: "x" }), env, async () => true))?.status,
     400,
