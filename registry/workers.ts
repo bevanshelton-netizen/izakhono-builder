@@ -23,3 +23,12 @@ W("mobility-worker","mobility","Coordinate mobility supply and demand."),W("trav
 W("model-router-worker","ai","Route AI jobs under policy."),W("agent-worker","ai","Run bounded multi-step agent tasks.","medium","high_impact_action"),W("evaluation-worker","ai","Evaluate models and agent outputs."),W("prompt-policy-worker","ai","Apply AI safety and privacy policy.","high","policy_override")
 ];
 export const WORKER_INDEX=Object.fromEntries(WORKERS.map(w=>[w.id,w]));
+
+export type WorkerPolicyDecision={allowed:boolean;reason:string;requiresHumanGate:boolean;};
+export function evaluateWorkerPolicy(workerId:string,jobRisk:"low"|"medium"|"high",jobHumanGate?:string):WorkerPolicyDecision{
+ const worker=WORKER_INDEX[workerId] as WorkerSpec|undefined;
+ if(!worker)return {allowed:false,reason:"unknown_worker",requiresHumanGate:true};
+ if(jobRisk==="high"||worker.risk==="high")return {allowed:false,reason:"high_risk_requires_human_authorization",requiresHumanGate:true};
+ if(jobHumanGate||worker.humanGate)return {allowed:false,reason:"human_gate_required",requiresHumanGate:true};
+ return {allowed:true,reason:"bounded_reversible_worker_operation",requiresHumanGate:false};
+}
