@@ -12,7 +12,7 @@ class FakeStatement implements D1Statement {
   async run():Promise<unknown>{return this.db.run(this.sql,this.values);}
 }
 class FakeDb implements D1Database {
-  jobs:Row[]=[{id:'job-a',worker_id:'builder',status:'queued',risk:'low',human_gate:null,attempts:0}];
+  jobs:Row[]=[{id:'job-a',worker_id:'build-worker',status:'queued',risk:'low',human_gate:null,attempts:0}];
   leases:Row[]=[]; attempts:Row[]=[]; events:Row[]=[];
   prepare(sql:string){return new FakeStatement(this,sql);}
   async first<T>(sql:string,v:unknown[]):Promise<T|null>{
@@ -54,23 +54,23 @@ class FakeDb implements D1Database {
 }
 async function main(){
  const db=new FakeDb();
- const lease=await claimSupervisorLease(db,'job-a','builder','idem-1',60);
+ const lease=await claimSupervisorLease(db,'job-a','build-worker','idem-1',60);
  assert.ok(lease);assert.equal(db.jobs[0].status,'running');
- const duplicate=await claimSupervisorLease(db,'job-a','builder','idem-2',60);
+ const duplicate=await claimSupervisorLease(db,'job-a','build-worker','idem-2',60);
  assert.equal(duplicate,null,'active lease must block a second worker');
  assert.equal(await heartbeatSupervisorLease(db,lease!,60),true);
  assert.equal(await finishSupervisorLease(db,lease!,'verified',{checks:['contract']}),true);
  assert.equal(db.jobs[0].status,'verified');
  assert.equal(db.leases.length,0);
  const expiredDb=new FakeDb();
- const expired=await claimSupervisorLease(expiredDb,'job-a','builder','idem-expired',15);
+ const expired=await claimSupervisorLease(expiredDb,'job-a','build-worker','idem-expired',15);
  assert.ok(expired);
  expiredDb.leases[0].expires_at='2000-01-01T00:00:00.000Z';
  const recovery=await recoverExpiredSupervisorLeases(expiredDb,3);
  assert.deepEqual(recovery,{requeued:1,failed:0});
  assert.equal(expiredDb.jobs[0].status,'queued');
  const gatedDb=new FakeDb();gatedDb.jobs[0].human_gate='production_deploy';
- assert.equal(await claimSupervisorLease(gatedDb,'job-a','builder','gated'),null);
+ assert.equal(await claimSupervisorLease(gatedDb,'job-a','build-worker','gated'),null);
  console.log('supervisor lease tests: ok (claim exclusivity, heartbeat, finish, expiry recovery, human gate)');
 }
 void main();
