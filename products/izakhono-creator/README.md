@@ -138,7 +138,7 @@ The gateway verifies an HS256 FORTRESS access token, applies the shared FORTRESS
 
 Configure the Creator Worker secrets/variables described in `FORTRESS-SESSION-CONTRACT.md`. The FORTRESS issuer must set the secure `__Host-izakhono_session` and `__Host-izakhono_csrf` cookies. The current in-memory IZAKHONO Identity prototype is not a production login issuer; the Creator UI deliberately reports sign-in unavailable until the central FORTRESS login/session service is deployed and verified.
 
-The legacy project, asset, render and generation APIs now fail closed unless a server-side Creator service credential is configured and supplied by a trusted service. The new browser UI uses only the FORTRESS-gated `/api/cinematic/*` routes.
+The legacy project, asset, render and generation APIs now fail closed unless a server-side Creator service credential is configured and supplied by a trusted service. The new browser UI uses only the FORTRESS-gated `/api/cinematic/*` routes. The sign-in panel now calls the same-origin FORTRESS login route, refreshes an expired access session using the rotating refresh cookie, and supports CSRF-protected logout. Every authenticated Creator request requires the `FORTRESS_IDENTITY` service binding and a live D1 session check; no offline JWT fallback is permitted.
 
 The Creator Check workflow also executes the FORTRESS Creator role-permission regression suite.
 
