@@ -48,6 +48,11 @@ async function run() {
   }), { ...env, FORTRESS_IDENTITY: { async fetch() { return new Response('unavailable', { status: 503 }); } } });
   assert.equal(unavailableAuthority?.status, 503, 'Creator fails closed when live FORTRESS introspection is unavailable');
 
+  const revokedAuthority = await handleFortressCinematicGateway(new Request('https://creator.example/api/cinematic/session', {
+    headers: { cookie: '__Host-izakhono_session=' + signedWithoutAuthority },
+  }), { ...env, FORTRESS_IDENTITY: { async fetch() { return new Response(JSON.stringify({ valid: false }), { status: 401 }); } } });
+  assert.equal(revokedAuthority?.status, 401, 'revoked or inactive live sessions are rejected even when the JWT signature is valid');
+
   const anonymous = await handleFortressCinematicGateway(new Request('https://creator.example/api/cinematic/session'), env);
   assert.equal(anonymous?.status, 401, 'anonymous users cannot open a Creator session');
 
