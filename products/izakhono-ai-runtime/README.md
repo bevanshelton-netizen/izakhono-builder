@@ -22,3 +22,20 @@ If the Builder and model runtime are on separate Software NODEs, connect them ov
 Check `curl http://127.0.0.1:11434/api/tags`. A generated build must report `generationMode=local-model` before model-backed generation is considered active. `deterministic-fallback` means the website artifact was produced without verified model inference.
 
 This eliminates proprietary AI credits, not real compute costs. CPU, memory, storage, download bandwidth, backup, security and availability remain operational requirements. The 3B model is a practical baseline, not a claim of frontier-model parity.
+
+## Intelligence Engine adapter
+
+The shared model-routing core lives in `src/intelligence.ts`. It supports the
+native Ollama `/api/chat` protocol used by this service and an OpenAI-compatible
+`/chat/completions` adapter for approved endpoints. The router filters models
+by declared task capabilities, health, context limit and explicit trust policy.
+External fallback is possible only when `approved_external` is explicitly
+allowed by the calling policy. The model endpoint's `baseUrl` is the API host
+(for this local service: `http://127.0.0.1:11434`), not the full `/api/chat`
+path.
+
+Run the shared router checks from the repository root:
+`npm run intelligence:test` and `npm run intelligence:typecheck`.
+
+A passing mock-adapter test does not prove the Ollama container or owner node is
+running. Use the provisioning/verification commands above for runtime acceptance.
