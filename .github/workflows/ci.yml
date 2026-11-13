@@ -44,6 +44,9 @@ jobs:
       - name: IZAKHONO Intelligence routing tests
         run: npm run intelligence:test && npm run intelligence:typecheck
 
+      - name: SUPERAGENT Intelligence planning contract
+        run: npm run superagent:intelligence:test
+
       - name: Validate NODE01 command gateway package
         shell: bash
         run: |
