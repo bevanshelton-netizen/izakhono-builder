@@ -51,6 +51,7 @@ const routing=await executeWorker(WORKER_INDEX['task-dispatcher'],{candidates:[
 assert.equal((routing.output.eligible as unknown[]).length,1);
 assert.equal((routing.output.withheld as unknown[]).length,2);
 assert.equal(routing.output.dispatchesPerformed,0,'routing analysis must not claim to have dispatched jobs');
+await assert.rejects(()=>executeWorker(WORKER_INDEX['task-dispatcher'],{}),/at least one item/);
 
 const evidence=await executeWorker(WORKER_INDEX['evidence-collector'],{evidence:[{id:'commit-1',kind:'git-commit',source:'github',observedAt:'2026-11-13T20:00:00Z'}]});
 assert.equal(evidence.output.count,1);
