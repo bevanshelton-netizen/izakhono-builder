@@ -26,5 +26,6 @@ jobs:
       - run: npm run registry:typecheck
       - run: npm run registry:lease-test
       - run: npm run registry:executor-test
+      - run: npm run registry:worker-test
       - run: npm run registry:test
       - run: npm run registry:dry
