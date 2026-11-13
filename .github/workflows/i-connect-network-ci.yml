@@ -47,6 +47,8 @@ jobs:
           node --check products/i-connect/api/readiness.js
           node --test products/i-connect/api/readiness.test.js
           node --test products/i-connect/supabase/functions/i-connect-mobisim-adapter/index.test.mjs
+          node --test products/i-connect/supabase/functions/i-connect-mobisim-events.test.mjs
+          node --test products/i-connect/payments/ikhokha-reconciliation.test.mjs
 
       - name: Validate carrier-neutral contract
         shell: bash
