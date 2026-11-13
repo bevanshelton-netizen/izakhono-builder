@@ -11,9 +11,9 @@ on:
       - '.github/workflows/izakhono-ai-20-division-registry.yml'
   pull_request:
     paths:
-      - 'registry/divisions.ts'
-      - 'registry/divisions.test.ts'
-      - 'registry/workers.ts'
+      - 'registry/**'
+      - 'package.json'
+      - 'package-lock.json'
       - '.github/workflows/izakhono-ai-20-division-registry.yml'
 
 permissions:
