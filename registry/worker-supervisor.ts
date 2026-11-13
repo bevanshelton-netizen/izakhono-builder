@@ -32,7 +32,7 @@ async function executeClaimedJob(db:D1Database,job:SupervisorJob,actor:string,fo
  const claimed=await claimSupervisorJob(db,job.id,actor);
  if(!claimed)return {id:job.id,workerId:job.workerId,status:'not-claimed',reason:'another executor claimed or changed the job'};
  try{
-  await consumeFortressGrant(db,capability.claims.jti,job.workerId);
+  await consumeFortressGrant(db,capability.claims.jti,job.workerId,await sha256(String(input.fortressCapabilityGrant)));
   const execution=await executeWorker(WORKER_INDEX[job.workerId],job.input);
   await recordEvidence(db,job.id,{execution,verification:{status:'pending',required:true},recordedAt:now()});
   return {id:job.id,workerId:job.workerId,status:'running',attempts:claimed.attempts,leaseToken:claimed.leaseToken,leaseExpiresAt:claimed.leaseExpiresAt,execution,verification:'pending'};
@@ -57,6 +57,7 @@ export async function advanceReadyWorkers(db:D1Database,limit=25,fortressSecret?
 
 export async function pumpWorkers(db:D1Database,fortressSecret?:string){
  await ensureSupervisorSchema(db);
+ await ensureFortressGrantSchema(db);
  const leaseRecovery=await recoverExpiredSupervisorLeases(db,3,50);
  const ingestion=await ingestDiscovered(db);
  const advanced=await advanceReadyWorkers(db,25,fortressSecret);
