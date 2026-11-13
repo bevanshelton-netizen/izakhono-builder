@@ -5,6 +5,8 @@ import {ensureSupervisorSchema,upsertSupervisorJob,listSupervisorJobs,supervisor
 import {executeWorker,hasWorkerHandler,executableWorkerIds} from './worker-execution';
 import {DIVISIONS,workersForDivision} from './divisions';
 import {verifyFortressCapabilityGrant} from './fortress-capabilities';
+import {ensureFortressGrantSchema,issueFortressGrant,registerFortressGrant,consumeFortressGrant,revokeFortressGrant} from './fortress-grant-store';
+import {sha256} from './security';
 
 const json=(d:unknown,s=200)=>new Response(JSON.stringify(d),{status:s,headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store'}});
 const now=()=>new Date().toISOString();
@@ -30,6 +32,7 @@ async function executeClaimedJob(db:D1Database,job:SupervisorJob,actor:string,fo
  const claimed=await claimSupervisorJob(db,job.id,actor);
  if(!claimed)return {id:job.id,workerId:job.workerId,status:'not-claimed',reason:'another executor claimed or changed the job'};
  try{
+  await consumeFortressGrant(db,capability.claims.jti,job.workerId);
   const execution=await executeWorker(WORKER_INDEX[job.workerId],job.input);
   await recordEvidence(db,job.id,{execution,verification:{status:'pending',required:true},recordedAt:now()});
   return {id:job.id,workerId:job.workerId,status:'running',attempts:claimed.attempts,leaseToken:claimed.leaseToken,leaseExpiresAt:claimed.leaseExpiresAt,execution,verification:'pending'};
@@ -61,10 +64,24 @@ export async function pumpWorkers(db:D1Database,fortressSecret?:string){
  return {ok:true,generatedAt:now(),leaseRecovery,...ingestion,advanced:advanced.length,queue,jobs:advanced};
 }
 
-export async function workerControl(request:Request,authorized:boolean,db:D1Database,verifierAuthorized=false,fortressSecret?:string){
+export async function workerControl(request:Request,authorized:boolean,db:D1Database,verifierAuthorized=false,fortressSecret?:string,issuerAuthorized=false){
  if(!authorized)return json({ok:false,error:'unauthorized'},401);
  await ensureSupervisorSchema(db);
+ await ensureFortressGrantSchema(db);
  const url=new URL(request.url);
+ if(url.pathname==='/fortress/grants/issue'&&request.method==='POST'){
+  if(!issuerAuthorized)return json({ok:false,error:'FORTRESS issuer credential required'},403);
+  let body:{workerId?:string;risk?:'low'|'medium'|'high';ttlSeconds?:number};try{body=await request.json();}catch{return json({ok:false,error:'invalid json'},400);}
+  if(!body.workerId||!WORKER_INDEX[body.workerId]||!body.risk)return json({ok:false,error:'valid workerId and risk required'},400);
+  if(WORKER_INDEX[body.workerId].risk!==body.risk)return json({ok:false,error:'requested risk must match registered worker risk'},400);
+  try{const issued=await issueFortressGrant({workerId:body.workerId,risk:body.risk,actions:['execute'],issuer:'FORTRESS-ISSUER-AUTHENTICATED',secret:fortressSecret,ttlSeconds:body.ttlSeconds});await registerFortressGrant(db,issued.claims,'FORTRESS-ISSUER-AUTHENTICATED',await sha256(issued.token));return json({ok:true,grant:issued},201);}catch(error){return json({ok:false,error:String(error)},400);}
+ }
+ if(url.pathname==='/fortress/grants/revoke'&&request.method==='POST'){
+  if(!issuerAuthorized)return json({ok:false,error:'FORTRESS issuer credential required'},403);
+  let body:{jti?:string};try{body=await request.json();}catch{return json({ok:false,error:'invalid json'},400);}
+  if(!body.jti)return json({ok:false,error:'jti required'},400);
+  try{return json({ok:true,grant:await revokeFortressGrant(db,body.jti,'FORTRESS-ISSUER-AUTHENTICATED')});}catch(error){return json({ok:false,error:String(error)},404);}
+ }
  if(url.pathname==='/workers/status'&&request.method==='GET'){
   const counts={total:WORKERS.length,low:0,medium:0,high:0,gateRequired:0,executable:0};
   for(const w of WORKERS){counts[w.risk]++;if(w.humanGate)counts.gateRequired++;if(hasWorkerHandler(w.id))counts.executable++;}
