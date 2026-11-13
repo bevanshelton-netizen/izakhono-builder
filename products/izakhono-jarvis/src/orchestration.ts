@@ -46,7 +46,7 @@ export async function jarvisOrchestrationRoute(req:Request,env:JarvisOrchestrati
  for(let i=0;i<p.steps.length;i++){
   const stepId=uid("stp"),title=p.steps[i].trim(),description=(descriptions[i]||title).trim(),depends=i?[steps[i-1].id]:[];
   await env.DB.prepare("INSERT INTO jarvis_orchestration_steps(id,run_id,owner_scope,position,title,description,assigned_agent,depends_on_json,status,approval_required) VALUES(?,?, 'owner',?,?,?,?,?,'pending',?)")
-   .bind(stepId,runId,i+1,title,description,agent,JSON.stringify(depends),risk==="high"||risk==="critical"?1:0).run();
+   .bind(stepId,runId,i+1,title,description,agent,JSON.stringify(depends),risk!=="low"?1:0).run();
   steps.push({id:stepId,position:i+1,title,description,assigned_agent:agent,depends_on:depends,status:"pending",approval_required:risk==="high"||risk==="critical"});
  }
  return out({ok:true,run:{id:runId,instruction,objective,agent_id:agent,status:"planned",risk_level:risk,evidence:[]},steps,execution:"not-started",message:"Work brief persisted. No reasoning model, external integration or action executor was invoked."},201);
