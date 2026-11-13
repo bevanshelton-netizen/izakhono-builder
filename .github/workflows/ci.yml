@@ -41,6 +41,9 @@ jobs:
       - name: SUPER SEO V5 + typecheck + Wrangler dry run
         run: npm run validate:super-seo && npm run typecheck && npx --yes wrangler@4.127.1 deploy --dry-run
 
+      - name: IZAKHONO Intelligence routing tests
+        run: npm run intelligence:test && npm run intelligence:typecheck
+
       - name: Validate NODE01 command gateway package
         shell: bash
         run: |
