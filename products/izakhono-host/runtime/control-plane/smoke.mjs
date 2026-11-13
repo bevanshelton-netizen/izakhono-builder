@@ -13,6 +13,9 @@ const child = spawn(process.execPath, ['server.mjs'], {
   env: {...process.env, PGHOST:'', PORT:String(port), DATA_DIR:root, HOST_RUNTIME_TOKEN:token},
   stdio:['ignore','pipe','pipe']
 });
+const childOutput = [];
+child.stdout.on('data', chunk => childOutput.push(chunk.toString()));
+child.stderr.on('data', chunk => childOutput.push(chunk.toString()));
 
 const base = `http://127.0.0.1:${port}`;
 async function waitForHealth() {
@@ -20,7 +23,7 @@ async function waitForHealth() {
     try { const r=await fetch(base+'/health'); if(r.ok) return; } catch {}
     await new Promise(r=>setTimeout(r,100));
   }
-  throw new Error('runtime did not become healthy');
+  throw new Error(`runtime did not become healthy; child output: ${childOutput.join('').slice(-4000) || '(no output)'}`);
 }
 async function request(path, init={}) {
   const r=await fetch(base+path, {headers:{authorization:`Bearer ${token}`,'content-type':'application/json'},...init});
