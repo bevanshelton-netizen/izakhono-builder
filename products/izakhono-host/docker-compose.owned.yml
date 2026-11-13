@@ -1,8 +1,8 @@
 services:
   host-runtime:
     build:
-      context: ./runtime
-      dockerfile: control-plane/Dockerfile
+      context: .
+      dockerfile: products/izakhono-host/runtime/control-plane/Dockerfile
     restart: unless-stopped
     environment:
       PORT: 8080
