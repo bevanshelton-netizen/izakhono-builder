@@ -5,9 +5,9 @@ on:
     branches:
       - feature/izakhono-ai-20-operating-system
     paths:
-      - 'registry/divisions.ts'
-      - 'registry/divisions.test.ts'
-      - 'registry/workers.ts'
+      - 'registry/**'
+      - 'package.json'
+      - 'package-lock.json'
       - '.github/workflows/izakhono-ai-20-division-registry.yml'
   pull_request:
     paths:
@@ -36,3 +36,7 @@ jobs:
           node-version: 22
       - name: Validate division and worker registry
         run: npx --yes tsx@4.20.3 registry/divisions.test.ts
+      - name: Validate supervisor and FORTRESS capability contracts
+        run: npm run registry:supervisor-test
+      - name: Typecheck registry
+        run: npx --yes -p typescript@5.9.2 tsc --noEmit --target ES2022 --lib ES2022,DOM,DOM.Iterable --module ESNext --moduleResolution Bundler registry/*.ts
