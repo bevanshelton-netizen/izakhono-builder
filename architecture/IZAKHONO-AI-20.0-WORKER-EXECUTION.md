@@ -22,7 +22,7 @@ These are deterministic code handlers, not a claim that every catalog worker is 
 
 1. The supervisor checks job state, dependencies, risk, human gate and handler registration.
 2. A dry run returns a preview and performs no state transition or handler execution.
-3. An executable job transitions to `running`, invokes its registered handler and records structured output plus a SHA-256 digest of the input.
+3. An executable job is claimed with one conditional D1 `UPDATE ... WHERE status='queued' RETURNING ...`; only one concurrent caller can win. The claim records a unique lease token, claimant and expiry before invoking its registered handler. Execution records structured output plus a SHA-256 digest of the input.
 4. Execution evidence is explicitly marked `verified: false`. It does not complete the job.
 5. Independent verification is required to move the job to `verified`.
 6. A separate completion evidence step is required to move the job to `completed`.
