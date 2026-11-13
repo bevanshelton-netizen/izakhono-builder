@@ -17,7 +17,7 @@ export async function jarvisWorkforceRoute(req:Request,env:WorkforceEnv,owner:()
   const steps=await env.DB.prepare("SELECT s.id,s.run_id,s.position,s.title,s.description,s.assigned_agent,s.status,s.attempts,s.max_attempts,s.lease_until,s.last_error,s.approval_required,s.evidence_json,s.owner_verification,s.owner_review_note,s.reviewed_at FROM jarvis_orchestration_steps s WHERE s.owner_scope='owner' ORDER BY s.run_id,s.position LIMIT 200").bind().all();
   return out({ok:true,runs:runs.results||[],steps:steps.results||[],execution_mode:"owner-controlled-queue",autonomous_workers_connected:false});
  }
- const claim=p==="/api/jarvis/workforce/claim",m=p.match(/^\/api\/jarvis\/workforce\/steps\/([^/]+)\/(heartbeat|complete|fail|review)$/);
+ const claim=p==="/api/jarvis/workforce/claim",m=p.match(/^\/api\/jarvis\/workforce\/steps\/([^/]+)\/(heartbeat|complete|fail|review|approve)$/);
  if(req.method!==(claim||m?"POST":"GET"))return new Response("Method not allowed",{status:405,headers:{allow:claim||m?"POST":"GET","cache-control":"no-store"}});
  let b:any={};try{b=await req.json()}catch{return out({ok:false,error:"Expected JSON"},400)}
  if(claim){
@@ -34,6 +34,16 @@ export async function jarvisWorkforceRoute(req:Request,env:WorkforceEnv,owner:()
  if(!m)return null;
  const stepId=decodeURIComponent(m[1]),action=m[2],s=await env.DB.prepare("SELECT id,run_id,assigned_agent,status,attempts,max_attempts,evidence_json,owner_verification FROM jarvis_orchestration_steps WHERE id=? AND owner_scope='owner'").bind(stepId).first<any>();
  if(!s)return out({ok:false,error:"Step not found"},404);
+ if(action==="approve"){
+  if(s.status!=="pending")return out({ok:false,error:"Only pending steps can be approved"},409);
+  const reason=typeof b.reason==="string"?b.reason.trim().slice(0,1200):"";
+  if(reason.length<8)return out({ok:false,error:"An approval reason of at least 8 characters is required"},400);
+  if(!s.approval_required)return out({ok:false,error:"This step does not require approval"},409);
+  const result=await env.DB.prepare("UPDATE jarvis_orchestration_steps SET approval_required=0,updated_at=CURRENT_TIMESTAMP WHERE id=? AND owner_scope='owner' AND status='pending' AND approval_required=1").bind(stepId).run();
+  if(!result.meta?.changes)return out({ok:false,error:"Step changed; refresh and retry"},409);
+  await env.DB.prepare("INSERT INTO jarvis_audit_events(id,owner_scope,event_type,subject_type,subject_id,detail_json) VALUES(?,'owner','workforce.owner_approved','step',?,?)").bind(uid(),stepId,JSON.stringify({reason})).run();
+  return out({ok:true,step_id:stepId,approval_required:false,execution_status:"pending"});
+ }
  if(action==="review"){
   if(s.status!=="completed")return out({ok:false,error:"Only completed steps can be reviewed"},409);
   if(!s.evidence_json)return out({ok:false,error:"No completion evidence is available"},409);
