@@ -21,13 +21,14 @@ function ready(job:SupervisorJob,jobs:SupervisorJob[]){
 }
 
 export async function advanceReadyWorkers(db:D1Database,limit=25){
+ await recoverExpiredSupervisorLeases(db);
  const jobs=await listSupervisorJobs(db);
  const advanced=[];
  for(const job of jobs.sort((a,b)=>b.priority-a.priority)){
   if(advanced.length>=limit)break;
   if(!ready(job,jobs))continue;
-  const transitioned=await transitionSupervisorJob(db,job.id,'running','continuous-supervisor',{mode:'auto-advance',workerId:job.workerId});
-  advanced.push(transitioned);
+  const lease=await claimSupervisorLease(db,job.id,job.workerId,`supervisor:${job.id}:${job.attempts+1}`);
+  if(lease)advanced.push({jobId:job.id,workerId:job.workerId,status:'leased',lease,attempt:lease.attempt});
  }
  return advanced;
 }
