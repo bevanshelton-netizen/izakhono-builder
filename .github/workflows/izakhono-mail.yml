@@ -19,8 +19,13 @@ jobs:
       - uses: actions/checkout@v4
       - name: Validate compose files
         env:
-          # Non-production placeholder: Compose interpolation only, never deployed.
+          # Non-production placeholders for Compose interpolation only; never deployed.
           TLS_EMAIL: ci@example.invalid
+          HOST_RUNTIME_TOKEN: ci-validation-token
+          POSTGRES_PASSWORD: ci-validation-postgres-password
+          MINIO_ROOT_USER: ci-validation-minio
+          MINIO_ROOT_PASSWORD: ci-validation-minio-password
+          STALWART_RECOVERY_ADMIN: ci-validation-recovery-admin
         run: |
           docker compose -f products/izakhono-host/docker-compose.owned.yml config >/dev/null
           docker compose -f products/izakhono-host/mail/docker-compose.mail.yml config >/dev/null
