@@ -29,8 +29,6 @@ async function api(req:Request,env:Env,url:URL):Promise<Response>{
     try{ const probe=await env.DB.prepare('SELECT 1 AS ok').first<any>(); return json({ok:probe?.ok===1,service:'IZAKHONO HOST',version:'0.2.0',runtime:'izakhono-native',environment:env.APP_ENV||'production'}); }
     catch{return json({ok:false,service:'IZAKHONO HOST',database:'error'},503);}
   }
-  if(!owner(req,env)) return json({ok:false,error:env.HOST_ADMIN_SECRET?'Unauthorized':'HOST_ADMIN_SECRET is not configured'},401);
-
   // Authenticated read-only feed for the isolated authoritative-DNS sync agent.
   // Only explicitly active zones are eligible for publication; planned zones never answer publicly.
   if(url.pathname==='/internal/dns/snapshot' && req.method==='GET'){
@@ -44,6 +42,8 @@ async function api(req:Request,env:Env,url:URL):Promise<Response>{
     }
     return json({ok:true,schema_version:1,generated_at:new Date().toISOString(),zones:published});
   }
+
+  if(!owner(req,env)) return json({ok:false,error:env.HOST_ADMIN_SECRET?'Unauthorized':'HOST_ADMIN_SECRET is not configured'},401);
 
   // Native DNS control-plane API. Zones remain planned until two authoritative
   // nodes and public registrar delegation have been independently verified.
