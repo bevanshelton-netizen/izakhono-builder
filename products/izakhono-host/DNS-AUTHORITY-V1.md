@@ -50,3 +50,19 @@ These are transition records, not the final owned-hosting architecture.
 ## Status rule
 
 A domain is **not** marked `live` merely because a zone exists in the control plane. It becomes `live` only after authoritative queries, registrar delegation and application/TLS checks all have evidence.
+
+
+## Control-plane publication feed (implemented, not yet activated)
+
+The HOST API exposes a private read-only feed at `GET /internal/dns/snapshot`.
+It requires `Authorization: Bearer <DNS_SYNC_TOKEN>` and returns only zones whose
+control-plane status is explicitly `active`, with enabled records and SOA serials.
+Planned zones are deliberately excluded. Configure a high-entropy
+`DNS_SYNC_TOKEN` independently on HOST and the private sync agent; never expose it
+to browsers or customer responses.
+
+This endpoint is a data contract for the isolated DNS synchronization agent. It
+does not itself publish records, reload nameservers, activate zones, or prove public
+authority. The current CoreDNS compose service still serves the static local fixture.
+The next implementation stage must validate and atomically apply snapshots on each
+DNS node, verify the resulting zone data, and only then enable controlled activation.
