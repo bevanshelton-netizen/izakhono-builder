@@ -22,9 +22,9 @@ const sample = {
 test('validates and renders a CoreDNS zone file', () => {
   assert.equal(validateSnapshot(sample).length, 1);
   const text = renderZone(sample.zones[0]);
-  assert.match(text, /\\$ORIGIN example\\.com\\./);
-  assert.match(text, /www\\. 300 IN A 192\\.0\\.2\\.10/);
-  assert.match(text, /@ 300 IN MX 10 mail\\.example\\.net\\./);
+  assert.match(text, /\$ORIGIN example\.com\./);
+  assert.match(text, /www\. 300 IN A 192\.0\.2\.10/);
+  assert.match(text, /@ 300 IN MX 10 mail\.example\.net\./);
   assert.match(text, /2026111301/);
 });
 
@@ -57,7 +57,7 @@ test('syncs files atomically and removes only previously managed stale files', a
       }
     });
     const zone = await readFile(path.join(dir, 'db.example.com'), 'utf8');
-    assert.match(zone, /www\\. 300 IN A 192\\.0\\.2\\.10/);
+    assert.match(zone, /www\. 300 IN A 192\.0\.2\.10/);
     const empty = { ...sample, zones: [] };
     await syncOnce({
       url: 'https://host.internal/internal/dns/snapshot', token: 'secret', directory: dir,
