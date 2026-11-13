@@ -28,6 +28,7 @@ const issued=await issueFortressGrant({workerId:'portfolio-orchestrator',risk:'l
 const digest='sha256-test-token-digest';
 await registerFortressGrant(db,issued.claims,'unit-test-issuer',digest);
 assert.equal(db.grants.size,1);
+await assert.rejects(()=>consumeFortressGrant(db,issued.claims.jti,'portfolio-orchestrator','wrong-token-digest','1970-01-01T00:20:30.000Z'),/unknown, revoked, expired, or already consumed/,'a grant must be bound to the exact signed token digest');
 await consumeFortressGrant(db,issued.claims.jti,'portfolio-orchestrator',digest,'1970-01-01T00:20:30.000Z');
 await assert.rejects(()=>consumeFortressGrant(db,issued.claims.jti,'portfolio-orchestrator',digest,'1970-01-01T00:20:31.000Z'),/unknown, revoked, expired, or already consumed/,'a grant must be consumed once only');
 const second=await issueFortressGrant({workerId:'portfolio-orchestrator',risk:'low',actions:['execute'],issuer:'unit-test-issuer',secret,ttlSeconds:120,nowSeconds:1200});
