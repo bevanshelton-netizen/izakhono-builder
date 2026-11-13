@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import {
   runOllamaChat,
+  runWithModelFallback,
   selectModel,
   validateModelEndpoint,
   type ModelEndpoint,
@@ -71,8 +72,36 @@ assert.equal(inference.outputTokens, 8);
 
 }
 
+
+async function testPolicyBoundedFallback() {
+  const routed = await runWithModelFallback([local, external], {
+    task: 'code',
+    policy: { allowedTrust: ['local', 'approved_external'], requiredCapabilities: [], preferLocal: true },
+    model: 'code-model',
+    messages: [{ role: 'user', content: 'Review this code.' }],
+  }, { list: async () => [local, external], getSecret: async () => undefined }, async (input) => {
+    if (String(input).includes('127.0.0.1')) return new Response('unavailable', { status: 503 });
+    return new Response(JSON.stringify({
+      choices: [{ message: { content: 'Fallback review complete.' } }],
+      usage: { prompt_tokens: 5, completion_tokens: 7 },
+    }), { status: 200, headers: { 'content-type': 'application/json' } });
+  });
+
+  assert.equal(routed.content, 'Fallback review complete.');
+  assert.equal(routed.fallbackUsed, true);
+  assert.equal(routed.attempts, 2);
+
+  await assert.rejects(() => runWithModelFallback([local, external], {
+    task: 'code',
+    policy: { allowedTrust: ['local'], requiredCapabilities: [], preferLocal: true },
+    model: 'qwen2.5-coder:3b',
+    messages: [{ role: 'user', content: 'Keep this local.' }],
+  }, { list: async () => [local], getSecret: async () => undefined }, async () => new Response('unavailable', { status: 503 })), /All eligible model endpoints failed/);
+}
+
 async function main() {
   await testOllamaAdapter();
+  await testPolicyBoundedFallback();
   console.log('[PASS] IZAKHONO Intelligence routing, policy filtering and native Ollama adapter.');
 }
 
