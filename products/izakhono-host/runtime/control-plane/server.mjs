@@ -2,8 +2,8 @@ import http from 'node:http';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import { PostgresProvisioningStore } from './provisioner/postgres-provisioning-store.mjs';
-import { PaidProvisioningBridge } from './provisioner/payment-bridge.mjs';
+import { PostgresProvisioningStore } from '../provisioner/postgres-provisioning-store.mjs';
+import { PaidProvisioningBridge } from '../provisioner/payment-bridge.mjs';
 
 const PORT = Number(process.env.PORT || 8080);
 const DATA_DIR = process.env.DATA_DIR || '/data';
