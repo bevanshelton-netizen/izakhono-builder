@@ -1,7 +1,7 @@
 import {WORKERS,WORKER_INDEX} from './workers';
 import {D1Database} from './d1-store';
 import {discoverBuilderQueue,classifyBuilderIssue,shouldIngest} from './builder-queue';
-import {ensureSupervisorSchema,upsertSupervisorJob,listSupervisorJobs,supervisorCounts,claimSupervisorJob,transitionSupervisorJob,recordEvidence,SupervisorJob} from './supervisor-store';
+import {ensureSupervisorSchema,upsertSupervisorJob,listSupervisorJobs,supervisorCounts,claimSupervisorJob,recoverExpiredSupervisorLeases,transitionSupervisorJob,recordEvidence,SupervisorJob} from './supervisor-store';
 import {executeWorker,hasWorkerHandler,executableWorkerIds} from './worker-execution';
 import {DIVISIONS,workersForDivision} from './divisions';
 
@@ -50,10 +50,11 @@ export async function advanceReadyWorkers(db:D1Database,limit=25){
 
 export async function pumpWorkers(db:D1Database){
  await ensureSupervisorSchema(db);
+ const leaseRecovery=await recoverExpiredSupervisorLeases(db,3,50);
  const ingestion=await ingestDiscovered(db);
  const advanced=await advanceReadyWorkers(db);
  const queue=await supervisorCounts(db);
- return {ok:true,generatedAt:now(),...ingestion,advanced:advanced.length,queue,jobs:advanced};
+ return {ok:true,generatedAt:now(),leaseRecovery,...ingestion,advanced:advanced.length,queue,jobs:advanced};
 }
 
 export async function workerControl(request:Request,authorized:boolean,db:D1Database,verifierAuthorized=false){
