@@ -28,7 +28,7 @@ async function executeClaimedJob(db:D1Database,job:SupervisorJob,actor:string){
  try{
   const execution=await executeWorker(WORKER_INDEX[job.workerId],job.input);
   await recordEvidence(db,job.id,{execution,verification:{status:'pending',required:true},recordedAt:now()});
-  return {id:job.id,workerId:job.workerId,status:'running',attempts:claimed.attempts,leaseExpiresAt:claimed.leaseExpiresAt,execution,verification:'pending'};
+  return {id:job.id,workerId:job.workerId,status:'running',attempts:claimed.attempts,leaseToken:claimed.leaseToken,leaseExpiresAt:claimed.leaseExpiresAt,execution,verification:'pending'};
  }catch(error){
   const detail={workerId:job.workerId,error:error instanceof Error?error.message:String(error),failedAt:now()};
   await recordEvidence(db,job.id,{executionFailure:detail});
