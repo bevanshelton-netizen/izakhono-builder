@@ -24,6 +24,7 @@ const external: ModelEndpoint = {
   ...local,
   id: 'external-code',
   provider: 'approved-provider',
+  protocol: 'openai-chat-completions',
   model: 'code-model',
   baseUrl: 'https://inference.example.test/v1',
   trust: 'approved_external',
