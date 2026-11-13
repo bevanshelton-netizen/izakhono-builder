@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS supervisor_jobs (
  worker_id TEXT NOT NULL, priority INTEGER NOT NULL, risk TEXT NOT NULL,
  status TEXT NOT NULL, dependency_ids_json TEXT NOT NULL DEFAULT '[]',
  human_gate TEXT, attempts INTEGER NOT NULL DEFAULT 0, input_json TEXT NOT NULL DEFAULT '{}',
- evidence_json TEXT NOT NULL DEFAULT '{}', created_at TEXT NOT NULL, updated_at TEXT NOT NULL,
+ evidence_json TEXT NOT NULL DEFAULT '{}', lease_token TEXT, lease_expires_at TEXT, claimed_by TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL,
  UNIQUE(source,source_id)
 );
 CREATE INDEX IF NOT EXISTS idx_supervisor_jobs_status_priority ON supervisor_jobs(status,priority);
@@ -28,7 +28,10 @@ CREATE TABLE IF NOT EXISTS supervisor_job_events (
 const splitSql=(sql:string)=>sql.split(';').map(s=>s.trim()).filter(Boolean);
 const parse=(v:unknown,fallback:unknown)=>{try{return JSON.parse(String(v??''))}catch{return fallback}};
 
-export async function ensureSupervisorSchema(db:D1Database){for(const sql of splitSql(TABLES))await db.prepare(sql).run();}
+export async function ensureSupervisorSchema(db:D1Database){
+ for(const sql of splitSql(TABLES))await db.prepare(sql).run();
+ for(const sql of ['ALTER TABLE supervisor_jobs ADD COLUMN lease_token TEXT','ALTER TABLE supervisor_jobs ADD COLUMN lease_expires_at TEXT','ALTER TABLE supervisor_jobs ADD COLUMN claimed_by TEXT']){try{await db.prepare(sql).run();}catch(error){if(!/duplicate column|already exists/i.test(String(error)))throw error;}}
+}
 
 export async function upsertSupervisorJob(db:D1Database,job:SupervisorJob){
  await db.prepare(`INSERT INTO supervisor_jobs(id,source,source_id,title,worker_id,priority,risk,status,dependency_ids_json,human_gate,attempts,input_json,evidence_json,created_at,updated_at)
@@ -38,6 +41,14 @@ export async function upsertSupervisorJob(db:D1Database,job:SupervisorJob){
  ).run();
 }
 
+/** Atomic conditional claim; only one concurrent caller can move queued -> running. */
+export async function claimSupervisorJob(db:D1Database,id:string,actor:string,leaseMs=120_000){
+ const at=new Date();const claimedAt=at.toISOString();const leaseExpiresAt=new Date(at.getTime()+leaseMs).toISOString();const leaseToken=crypto.randomUUID();
+ const row=await db.prepare("UPDATE supervisor_jobs SET status='running',attempts=attempts+1,updated_at=?,lease_token=?,lease_expires_at=?,claimed_by=? WHERE id=? AND status='queued' RETURNING id,status,attempts,updated_at,lease_token,lease_expires_at,claimed_by").bind(claimedAt,leaseToken,leaseExpiresAt,actor,id).first<{id:string;status:SupervisorStatus;attempts:number;updated_at:string;lease_token:string;lease_expires_at:string;claimed_by:string}>();
+ if(!row)return null;
+ await db.prepare('INSERT INTO supervisor_job_events(id,job_id,at,from_status,to_status,actor,detail_json) VALUES(?,?,?,?,?,?,?)').bind(crypto.randomUUID(),id,claimedAt,'queued','running',actor,JSON.stringify({leaseExpiresAt,claim:'atomic'})).run();
+ return {id:row.id,status:row.status,attempts:Number(row.attempts),updatedAt:row.updated_at,leaseToken:row.lease_token,leaseExpiresAt:row.lease_expires_at,claimedBy:row.claimed_by};
+}
 export async function transitionSupervisorJob(db:D1Database,id:string,to:SupervisorStatus,actor:string,detail:unknown={}){
  const current=await db.prepare('SELECT status,attempts FROM supervisor_jobs WHERE id=?').bind(id).first<{status:SupervisorStatus;attempts:number}>();
  if(!current)throw new Error(`Unknown supervisor job: ${id}`);
