@@ -10,6 +10,7 @@ on:
     branches: [main]
     paths:
       - 'products/izakhono-host/runtime/provisioner/**'
+      - 'products/izakhono-host/migrations/**'
       - '.github/workflows/izakhono-host-payment-bridge.yml'
 
 permissions:
