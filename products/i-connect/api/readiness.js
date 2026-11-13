@@ -9,23 +9,31 @@ function getReadiness(env = process.env) {
   const database = checks.supabaseUrl && checks.supabaseAnonKey;
   const carrier = checks.carrierBridgeUrl && checks.carrierBridgeSecret;
   const payments = checks.paymentProvider;
-  const productionReady = database && carrier && payments;
+  const configurationComplete = database && carrier && payments;
 
   return {
-    productionReady,
+    // Configuration is only one prerequisite. Live probes, supplier approval,
+    // payment acceptance and explicit activation are separate mandatory gates.
+    productionReady: false,
     body: {
       service: 'I-CONNECT',
-      status: productionReady ? 'production_ready' : 'activation_required',
-      productionReady,
+      status: configurationComplete ? 'configuration_complete_activation_required' : 'activation_required',
+      configurationComplete,
+      productionReady: false,
       modules: {
         webApp: 'ready',
         agentApp: 'ready',
-        database: database ? 'configured' : 'missing_credentials',
-        carrier: carrier ? 'configured' : 'missing_credentials',
-        payments: payments ? 'configured' : 'missing_credentials'
+        database: database ? 'configured_unverified' : 'missing_credentials',
+        carrier: carrier ? 'configured_unverified' : 'missing_credentials',
+        payments: payments ? 'configured_unverified' : 'missing_credentials'
       },
       missing: Object.entries(checks).filter(([, configured]) => !configured).map(([key]) => key),
-      safeguards: { pstnLive: carrier, realBilling: payments, demoFallback: true }
+      safeguards: {
+        pstnLive: false,
+        realBilling: false,
+        demoFallback: true,
+        activationRequiresIndependentApproval: true
+      }
     }
   };
 }
