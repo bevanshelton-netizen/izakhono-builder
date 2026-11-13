@@ -11,6 +11,9 @@ async function run(){
   assert.equal(unknown.status,404);
   const noBootstrap=await handleFortressIdentity(new Request('https://creator.example/api/fortress/bootstrap',{method:'POST',headers:{'content-type':'application/json','x-fortress-bootstrap-secret':'not-a-secret'},body:JSON.stringify({})}),env);
   assert.equal(noBootstrap.status,403,'owner bootstrap fails closed without the out-of-band secret');
+  const noSession=await handleFortressIdentity(new Request('https://creator.example/api/fortress/session'),env);
+  assert.equal(noSession.status,401,'session introspection rejects requests without an access token');
+  assert.deepEqual(await noSession.json(),{valid:false});
   const noOrigin=await handleFortressIdentity(new Request('https://creator.example/api/fortress/login',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({email:'owner@example.com',password:'not-a-real-password'})}),env);
   assert.equal(noOrigin.status,403,'login rejects missing/untrusted Origin before database access');
   const noCsrf=await handleFortressIdentity(new Request('https://creator.example/api/fortress/logout',{method:'POST',headers:{origin:'https://creator.example'}}),{...env,FORTRESS_ALLOWED_ORIGINS:'https://creator.example'});
