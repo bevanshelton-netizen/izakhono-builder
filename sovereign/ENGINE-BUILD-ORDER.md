@@ -21,10 +21,14 @@
 - BACKUP/REPLICATION ENGINE: snapshots, replication and recovery
 
 ## Wave 4 — Intelligence independence
-- AI GATEWAY: model-agnostic routing
-- SUPER AI orchestration: coding/build/test/deploy agents
-- OBSERVABILITY ENGINE: metrics, logs, traces, audit
-- SECURITY ENGINE: policy, capability enforcement, secrets and threat controls
+- AI GATEWAY: model-agnostic routing, local/owner-hosted inference adapters and capability-aware model registry
+- SUPER AI orchestration: durable planner, specialist coding/build/test/deploy agents, bounded parallel execution and recovery
+- COMPUTER-USE ENGINE: isolated browser workspace first, then separately authorised desktop automation
+- EVALUATION ENGINE: model/task evaluation, regression tests, evidence-based verification and routing benchmarks
+- OBSERVABILITY ENGINE: metrics, logs, traces, model/job costs and audit
+- SECURITY ENGINE: FORTRESS policy, scoped capabilities, secret references, sandboxing and threat controls
+
+Implementation contract: `sovereign/IZAKHONO-INTELLIGENCE-ENGINE.md`.
 
 ## Wave 5 — Commercial independence
 - PROVISIONER: payment verification → provisioning job → build → test → approval → release
