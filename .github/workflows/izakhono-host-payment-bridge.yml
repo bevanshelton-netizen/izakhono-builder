@@ -1,0 +1,26 @@
+name: IZAKHONO HOST payment bridge
+
+on:
+  pull_request:
+    paths:
+      - 'products/izakhono-host/runtime/provisioner/**'
+      - '.github/workflows/izakhono-host-payment-bridge.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'products/izakhono-host/runtime/provisioner/**'
+      - '.github/workflows/izakhono-host-payment-bridge.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  paid-provisioning-bridge:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Test verified-payment provisioning bridge
+        run: node products/izakhono-host/runtime/provisioner/payment-bridge.test.mjs
