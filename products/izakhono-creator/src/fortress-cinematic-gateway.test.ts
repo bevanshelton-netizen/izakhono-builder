@@ -20,7 +20,7 @@ async function token(role: 'OWNER' | 'VIEWER' = 'OWNER', tenantId = 'tenant-a') 
 }
 const identityBinding = {
   async fetch(request: Request) {
-    const token = request.headers.get('authorization')?.replace(/^Bearer\\s+/i, '') || '';
+    const token = request.headers.get('authorization')?.replace(/^Bearer\s+/i, '') || '';
     const payloadPart = token.split('.')[1];
     if (!payloadPart) return new Response(JSON.stringify({ valid: false }), { status: 401 });
     const normalized = payloadPart.replace(/-/g, '+').replace(/_/g, '/') + '='.repeat((4 - payloadPart.length % 4) % 4);
@@ -42,6 +42,11 @@ async function run() {
     headers: { cookie: '__Host-izakhono_session=' + signedWithoutAuthority },
   }), { FORTRESS_SESSION_HMAC_SECRET: secret, CREATOR_GENERATION_SECRET: 'creator-service-secret' });
   assert.equal(missingAuthority?.status, 503, 'a valid JWT is not accepted when the live FORTRESS authority binding is missing');
+
+  const unavailableAuthority = await handleFortressCinematicGateway(new Request('https://creator.example/api/cinematic/session', {
+    headers: { cookie: '__Host-izakhono_session=' + signedWithoutAuthority },
+  }), { ...env, FORTRESS_IDENTITY: { async fetch() { return new Response('unavailable', { status: 503 }); } } });
+  assert.equal(unavailableAuthority?.status, 503, 'Creator fails closed when live FORTRESS introspection is unavailable');
 
   const anonymous = await handleFortressCinematicGateway(new Request('https://creator.example/api/cinematic/session'), env);
   assert.equal(anonymous?.status, 401, 'anonymous users cannot open a Creator session');
