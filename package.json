@@ -64,7 +64,8 @@
     "intelligence:test": "npx --yes tsx@4.20.3 src/intelligence.test.ts",
     "intelligence:typecheck": "tsc --noEmit --target ES2022 --lib ES2022,DOM,DOM.Iterable --module ESNext --moduleResolution Bundler src/intelligence.ts src/intelligence.test.ts",
     "superagent:intelligence:test": "npx --yes tsx@4.20.3 src/superagent-intelligence.test.ts",
-    "registry:lease-test": "npx --yes tsx@4.20.3 registry/supervisor-lease.test.ts"
+    "registry:lease-test": "npx --yes tsx@4.20.3 registry/supervisor-lease.test.ts",
+    "registry:executor-test": "npx --yes tsx@4.20.3 registry/worker-executor.test.ts"
   },
   "dependencies": {
     "wrangler": "4.127.1"
