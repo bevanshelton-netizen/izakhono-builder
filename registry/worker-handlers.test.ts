@@ -41,13 +41,16 @@ async function main() {
     checks: ["deploy"],
   }), { attempt: 1, idempotencyKey: "idem-2" }), /not_allowlisted/);
 
-  await assert.rejects(() => handler(job({
+  const incomplete = createBuildWorkerHandler(async request => ({
+    summary: "Incomplete report",
+    revision: request.revision,
+    checks: [],
+  }));
+  await assert.rejects(() => incomplete(job({
     repository: "bevanshelton-netizen/izakhono-builder",
     revision: "abcdef1234567",
     checks: ["typecheck"],
-  }), { attempt: 1, idempotencyKey: "idem-3" }).then(() => {
-    throw new Error("test requires an incomplete verifier report");
-  }), /test requires/).catch(() => undefined);
+  }), { attempt: 1, idempotencyKey: "idem-3" }), /incomplete/);
 
   console.log("build worker tests: ok (allowlisted checks, revision binding, bounded verifier)");
 }
