@@ -56,7 +56,7 @@ async function api(req:Request,env:Env,url:URL):Promise<Response>{
     try{
       await env.DB.prepare('INSERT INTO host_customers(id,legal_name,trading_name,email,phone) VALUES(?,?,?,?,?)').bind(customerId,legalName,tradingName,email,clean(b.phone,60)).run();
       await env.DB.prepare('INSERT INTO host_domains(id,customer_id,domain,registrar,dns_provider,verification_status) VALUES(?,?,?,?,?,?)').bind(domainId,customerId,domain,clean(b.registrar||'Cloudflare',80),clean(b.dns_provider||'Cloudflare',80),'pending').run();
-      await env.DB.prepare('INSERT INTO host_sites(id,customer_id,domain_id,name,deployment_provider,canonical_host,status,ssl_status) VALUES(?,?,?,?,?,?,?,?)').bind(siteId,customerId,domain,'izakhono-runtime',domain,'planned','pending').run();
+      await env.DB.prepare('INSERT INTO host_sites(id,customer_id,domain_id,name,deployment_provider,canonical_host,status,ssl_status) VALUES(?,?,?,?,?,?,?,?)').bind(siteId,customerId,domain,'izakhono-runtime','','planned','pending').run();
       await env.DB.prepare('INSERT INTO host_subscriptions(id,customer_id,plan_id,status) VALUES(?,?,?,?)').bind(uid('sub'),customerId,'plan_business','pending').run();
       await env.DB.prepare('INSERT INTO host_invoices(id,customer_id,invoice_number,amount_cents,currency,status) VALUES(?,?,?,?,?,?)').bind(invoiceId,customerId,invoiceNumber,54800,'ZAR','unpaid').run();
 
