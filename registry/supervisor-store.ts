@@ -49,6 +49,21 @@ export async function claimSupervisorJob(db:D1Database,id:string,actor:string,le
  await db.prepare('INSERT INTO supervisor_job_events(id,job_id,at,from_status,to_status,actor,detail_json) VALUES(?,?,?,?,?,?,?)').bind(crypto.randomUUID(),id,claimedAt,'queued','running',actor,JSON.stringify({leaseExpiresAt,claim:'atomic'})).run();
  return {id:row.id,status:row.status,attempts:Number(row.attempts),updatedAt:row.updated_at,leaseToken:row.lease_token,leaseExpiresAt:row.lease_expires_at,claimedBy:row.claimed_by};
 }
+/** Extend a running lease only when the caller still owns the unexpired token. */
+export async function renewSupervisorLease(db:D1Database,id:string,leaseToken:string,leaseMs=120_000){
+ const at=new Date();const renewedAt=at.toISOString();const leaseExpiresAt=new Date(at.getTime()+leaseMs).toISOString();
+ const result=await db.prepare("UPDATE supervisor_jobs SET lease_expires_at=?,updated_at=? WHERE id=? AND status='running' AND lease_token=? AND lease_expires_at>?").bind(leaseExpiresAt,renewedAt,id,leaseToken,renewedAt).run() as {meta?:{changes?:number}};
+ if(Number(result.meta?.changes??0)!==1)throw new Error('Lease renewal rejected: token is stale, expired, or not owned by caller');
+ return {id,leaseExpiresAt,renewedAt};
+}
+/** Independent QA verification is an atomic compare-and-swap against the active lease. */
+export async function verifyLeasedSupervisorJob(db:D1Database,id:string,leaseToken:string,evidence:unknown,actor:string){
+ const at=new Date().toISOString();
+ const result=await db.prepare("UPDATE supervisor_jobs SET status='verified',evidence_json=?,updated_at=?,lease_token=NULL,lease_expires_at=NULL,claimed_by=NULL WHERE id=? AND status='running' AND lease_token=? AND lease_expires_at>?").bind(JSON.stringify(evidence),at,id,leaseToken,at).run() as {meta?:{changes?:number}};
+ if(Number(result.meta?.changes??0)!==1)throw new Error('Verification rejected: lease token is stale, expired, or not owned by caller');
+ await db.prepare('INSERT INTO supervisor_job_events(id,job_id,at,from_status,to_status,actor,detail_json) VALUES(?,?,?,?,?,?,?)').bind(crypto.randomUUID(),id,at,'running','verified',actor,JSON.stringify({verification:'independent',leaseBound:true})).run();
+ return {id,status:'verified' as const,updatedAt:at};
+}
 /** Requeue expired leases with bounded retries; exhausted jobs move to failed for operator review. */
 export async function recoverExpiredSupervisorLeases(db:D1Database,maxAttempts=3,limit=50){
  const at=new Date().toISOString();
@@ -63,7 +78,8 @@ export async function transitionSupervisorJob(db:D1Database,id:string,to:Supervi
  if(!allowed[current.status].includes(to))throw new Error(`Invalid supervisor transition ${current.status} -> ${to}`);
  const attempts=to==='running'?Number(current.attempts||0)+1:Number(current.attempts||0);
  const at=new Date().toISOString();
- await db.prepare("UPDATE supervisor_jobs SET status=?,attempts=?,updated_at=?,lease_token=CASE WHEN ?='running' THEN lease_token ELSE NULL END,lease_expires_at=CASE WHEN ?='running' THEN lease_expires_at ELSE NULL END,claimed_by=CASE WHEN ?='running' THEN claimed_by ELSE NULL END WHERE id=?").bind(to,attempts,at,to,to,to,id).run();
+ const result=await db.prepare("UPDATE supervisor_jobs SET status=?,attempts=?,updated_at=?,lease_token=CASE WHEN ?='running' THEN lease_token ELSE NULL END,lease_expires_at=CASE WHEN ?='running' THEN lease_expires_at ELSE NULL END,claimed_by=CASE WHEN ?='running' THEN claimed_by ELSE NULL END WHERE id=? AND status=?").bind(to,attempts,at,to,to,to,id,current.status).run() as {meta?:{changes?:number}};
+ if(Number(result.meta?.changes??0)!==1)throw new Error('Supervisor transition rejected: job state changed concurrently');
  await db.prepare('INSERT INTO supervisor_job_events(id,job_id,at,from_status,to_status,actor,detail_json) VALUES(?,?,?,?,?,?,?)').bind(crypto.randomUUID(),id,at,current.status,to,actor,JSON.stringify(detail)).run();
  return {id,status:to,attempts,updatedAt:at};
 }
