@@ -205,4 +205,9 @@ const server = http.createServer(async (req, res) => {
   return json(res,404,{ok:false,error:'Not found'});
 });
 
+if (pool) {
+  const migration = await fs.readFile('/app/migrations/001_host_provisioning_records.sql', 'utf8');
+  await pool.query(migration);
+}
+
 server.listen(PORT, '0.0.0.0', () => console.log(`IZAKHONO HOST Runtime listening on ${PORT}`));
