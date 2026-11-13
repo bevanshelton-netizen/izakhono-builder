@@ -80,6 +80,10 @@ async function main() {
     (await jarvisWorkforceRoute(req("POST", "/api/jarvis/workforce/steps/stp1/fail", { agent_id: "coordinator", error: "blocked" }), env, async () => true))?.status,
     409,
   );
+  assert.equal(
+    (await jarvisWorkforceRoute(req("POST", "/api/jarvis/workforce/steps/stp1/approve", { reason: "Approved after owner risk review" }), env, async () => true))?.status,
+    409,
+  );
   assert.ok(writes > 0);
   console.log("J.A.R.V.I.S. workforce queue and owner review tests passed");
 }
