@@ -54,7 +54,7 @@ export async function pumpWorkers(db:D1Database){
  return {ok:true,generatedAt:now(),...ingestion,advanced:advanced.length,queue,jobs:advanced};
 }
 
-export async function workerControl(request:Request,authorized:boolean,db:D1Database){
+export async function workerControl(request:Request,authorized:boolean,db:D1Database,verifierAuthorized=false){
  if(!authorized)return json({ok:false,error:'unauthorized'},401);
  await ensureSupervisorSchema(db);
  const url=new URL(request.url);
@@ -94,6 +94,7 @@ export async function workerControl(request:Request,authorized:boolean,db:D1Data
   return json({ok:true,accepted:true,...await executeClaimedJob(db,job,'worker-supervisor')},202);
  }
  if(url.pathname==='/workers/verify'&&request.method==='POST'){
+  if(!verifierAuthorized)return json({ok:false,error:'independent QA verifier credential required'},403);
   let body:{jobId?:string;evidence?:unknown};try{body=await request.json();}catch{return json({ok:false,error:'invalid json'},400);}
   if(!body.jobId)return json({ok:false,error:'jobId required'},400);const jobs=await listSupervisorJobs(db);const job=jobs.find(j=>j.id===body.jobId);if(!job)return json({ok:false,error:'unknown job'},404);if(job.status!=='running')return json({ok:false,error:'verification requires running state'},409);if(!body.evidence)return json({ok:false,error:'machine-readable evidence required'},400);await recordEvidence(db,job.id,{execution:job.evidence,independentVerification:body.evidence});const transitioned=await transitionSupervisorJob(db,job.id,'verified','evidence-gate',{evidence:body.evidence});const advanced=await advanceReadyWorkers(db);return json({ok:true,status:'verified',job:transitioned,advanced:advanced.length});
  }
