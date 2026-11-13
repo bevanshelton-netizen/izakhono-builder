@@ -27,6 +27,15 @@ The Builder repository already contains useful execution foundations. Extend the
 
 Implementation direction: evolve SUPERAGENT with durable queue-backed jobs and specialist worker contracts; add a separate model registry/router and isolated computer-use adapters; expose only approved capabilities through the existing secure command surface. Do not duplicate the Builder project database or bypass its release gates.
 
+### Implementation checkpoint — 2026-11-13
+
+- Added `src/intelligence.ts`: model endpoint validation, capability/policy filtering, model ranking, native Ollama chat adapter, OpenAI-compatible chat adapter and policy-bounded fallback.
+- Added `src/intelligence.test.ts`: routing, trust filtering, endpoint validation, Ollama request/response and fallback tests.
+- Added `intelligence:test` and `intelligence:typecheck` package scripts and a dedicated CI step.
+- Reuses the existing `products/izakhono-ai-runtime` Ollama service and its loopback-only exposure. The runtime's configured Qwen model is a baseline; model capability/context metadata must be verified before production registration.
+- The Builder's current generated-app path remains deterministic. Model-backed planning/generation is not yet wired into production project generation.
+- GitHub Actions validation has been triggered by the commits; owner-node inference and end-to-end runtime acceptance remain pending.
+
 ## 2. Placement in the sovereign stack
 
 ```text
