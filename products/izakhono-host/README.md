@@ -1,5 +1,7 @@
 # IZAKHONO HOST v0.3
 
+> **NODE01 IS SOFTWARE. NODE01 IS NOT PHYSICAL INFRASTRUCTURE.** NODE01 is the logical IZAKHONO control/edge/runtime software node. Containers, Docker, a cloud runtime or another approved compute substrate are execution environments for that software identity; none of them is NODE01 itself.
+
 IZAKHONO HOST is the owned-first customer hosting control plane for domains, websites, SSL, DNS, email and billing.
 
 ## Production architecture
@@ -39,19 +41,19 @@ A running bridge is not proof of email service readiness. Verify inbound and out
 
 ## Multi-node operation
 
-`CLUSTER-NODE-ROLES.md` defines the production roles and resilience model. `NODE-PREFLIGHT.sh` validates a physical node before activation.
+`CLUSTER-NODE-ROLES.md` defines the logical software-node roles and resilience model. `NODE-PREFLIGHT.sh` validates the selected execution substrate and deployment prerequisites; it does not define or identify NODE01.
 
 The platform can distribute CONTROL, EDGE, DNS, RUNTIME, DATA, MAIL, BACKUP and FORTRESS roles across the available owned nodes.
 
 ## Activation
 
-On each designated node, run the preflight first:
+For a selected deployment target, validate its execution substrate first. This target may be an owned or approved hosted compute environment; it is separate from the NODE01 software identity:
 
 ```bash
 ./NODE-PREFLIGHT.sh
 ```
 
-On the primary control/edge/runtime node:
+Deploy the NODE01 control/edge/runtime software bundle to its selected execution environment:
 
 ```bash
 ./NODE01-ACTIVATE.sh
