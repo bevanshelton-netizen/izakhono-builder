@@ -30,7 +30,7 @@ const text = (value: unknown, field: string): string => {
 const handlers: Record<string, Handler> = {
   'portfolio-orchestrator': (input) => {
     const data = objectInput(input);
-    const goal = text(data.goal, 'goal');
+    const goal = text(data.goal ?? data.title, 'goal or title');
     const raw = Array.isArray(data.workstreams) ? data.workstreams : [];
     if (raw.length > 20) throw new Error('workstreams cannot exceed 20 items');
     const workstreams = raw.map((item, index) => {
@@ -43,6 +43,7 @@ const handlers: Record<string, Handler> = {
   'task-dispatcher': (input) => {
     const data = objectInput(input);
     const candidates = Array.isArray(data.candidates) ? data.candidates : [];
+    if (!candidates.length) throw new Error('candidates must contain at least one item');
     if (candidates.length > 100) throw new Error('candidates cannot exceed 100 items');
     const eligible: Record<string, unknown>[] = [];
     const withheld: Record<string, unknown>[] = [];
