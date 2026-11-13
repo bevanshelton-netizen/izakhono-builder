@@ -55,18 +55,16 @@ async function verifyFortressSession(request: Request, env: FortressCreatorEnv):
   const signedContent = encoder.encode(parts.slice(0, 2).join('.'));
   const valid = await crypto.subtle.verify('HMAC', key, signature.buffer, signedContent.buffer);
   if (!valid) return null;
-  if (env.FORTRESS_IDENTITY) {
-    const introspection = await env.FORTRESS_IDENTITY.fetch(new Request('https://fortress.internal/api/fortress/session', {
-      headers: { authorization: `Bearer ${token}` }
-    }));
-    if (introspection.status >= 500) throw new Error('FORTRESS session authority is unavailable.');
-    if (!introspection.ok) return null;
-    const live = await introspection.json() as { valid?: boolean; principal?: { id?: string; tenantId?: string; role?: FortressRole }; expiresAt?: number };
-    if (!live.valid || live.principal?.id !== claims.sub || live.principal?.tenantId !== claims.tenant_id ||
-      live.principal?.role !== claims.role || !roles.has(live.principal.role)) return null;
-    return { principal: { id: live.principal.id, tenantId: live.principal.tenantId, role: live.principal.role, active: true }, expiresAt: live.expiresAt || claims.exp! };
-  }
-  return { principal: { id: claims.sub, tenantId: claims.tenant_id, role: claims.role, active: claims.active }, expiresAt: claims.exp! };
+  if (!env.FORTRESS_IDENTITY) throw new Error('FORTRESS live session authority is not configured.');
+  const introspection = await env.FORTRESS_IDENTITY.fetch(new Request('https://fortress.internal/api/fortress/session', {
+    headers: { authorization: `Bearer ${token}` }
+  }));
+  if (introspection.status >= 500) throw new Error('FORTRESS session authority is unavailable.');
+  if (!introspection.ok) return null;
+  const live = await introspection.json() as { valid?: boolean; principal?: { id?: string; tenantId?: string; role?: FortressRole }; expiresAt?: number };
+  if (!live.valid || live.principal?.id !== claims.sub || live.principal?.tenantId !== claims.tenant_id ||
+    live.principal?.role !== claims.role || !roles.has(live.principal.role)) return null;
+  return { principal: { id: live.principal.id, tenantId: live.principal.tenantId, role: live.principal.role, active: true }, expiresAt: live.expiresAt || claims.exp! };
 }
 function requireCsrf(request: Request): boolean {
   const origin = request.headers.get('origin');
