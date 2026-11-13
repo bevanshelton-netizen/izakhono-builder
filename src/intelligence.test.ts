@@ -45,6 +45,7 @@ assert.throws(() => selectModel([local], {
   policy: { allowedTrust: ['local'], requiredCapabilities: [] },
 }), /No healthy model endpoint/);
 
+async function testOllamaAdapter() {
 let calledUrl = '';
 let requestBody: any;
 const inference = await runOllamaChat(local, {
@@ -68,4 +69,11 @@ assert.match(inference.content, /Hello, IZAKHONO/);
 assert.equal(inference.inputTokens, 12);
 assert.equal(inference.outputTokens, 8);
 
-console.log('[PASS] IZAKHONO Intelligence routing, policy filtering and native Ollama adapter.');
+}
+
+async function main() {
+  await testOllamaAdapter();
+  console.log('[PASS] IZAKHONO Intelligence routing, policy filtering and native Ollama adapter.');
+}
+
+main().catch((error) => { console.error(error); process.exitCode = 1; });
