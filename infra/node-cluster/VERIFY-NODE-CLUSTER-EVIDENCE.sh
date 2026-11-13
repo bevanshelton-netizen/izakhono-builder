@@ -13,10 +13,24 @@ fi
 python3 - "$EVIDENCE_PATH" <<'PY'
 import json
 import sys
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 path = Path(sys.argv[1])
+MAX_AGE_SECONDS = 300
+
+def parse_fresh_timestamp(value, label):
+    try:
+        stamp = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+        if stamp.tzinfo is None:
+            blocked(f"{label} timestamp must include a timezone")
+        age = (datetime.now(timezone.utc) - stamp.astimezone(timezone.utc)).total_seconds()
+        if age < -30 or age > MAX_AGE_SECONDS:
+            blocked(f"{label} timestamp is outside the allowed 5-minute evidence window")
+    except SystemExit:
+        raise
+    except Exception:
+        blocked(f"{label} timestamp is invalid")
 
 def blocked(message):
     print(f"[BLOCKED] {message}", file=sys.stderr)
@@ -65,10 +79,7 @@ for record in nodes:
         blocked(f"{name} does not have passing runtime evidence")
     if not record.get("checkedAt"):
         blocked(f"{name} runtime timestamp is missing")
-    try:
-        datetime.fromisoformat(str(record["checkedAt"]).replace("Z", "+00:00"))
-    except Exception:
-        blocked(f"{name} runtime timestamp is invalid")
+    parse_fresh_timestamp(record["checkedAt"], f"{name} runtime")
 
 if seen != expected:
     blocked("runtime evidence does not cover NODE01-NODE04")
@@ -83,10 +94,7 @@ if data.get("source") != "operator-supplied-runtime-endpoints":
 checked_at = data.get("checkedAt")
 if not checked_at:
     blocked("cluster runtime evidence timestamp is missing")
-try:
-    datetime.fromisoformat(str(checked_at).replace("Z", "+00:00"))
-except Exception:
-    blocked("cluster runtime evidence timestamp is invalid")
+parse_fresh_timestamp(checked_at, "cluster runtime")
 
 print("[PASS] four-node runtime evidence verified: NODE01 NODE02 NODE03 NODE04")
 PY
