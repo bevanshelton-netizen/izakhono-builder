@@ -17,6 +17,7 @@ env:
   MINIO_ROOT_USER: ci-minio-admin
   MINIO_ROOT_PASSWORD: ci-minio-password
   IZAKHONO_MAIL_API_TOKEN: ci-mail-api-token
+  SMTP_HOST: mail.izakhono.internal\n  DNS_SYNC_URL: https://host-ci.example.com/internal/dns/snapshot\n  DNS_SYNC_TOKEN: ci-dns-sync-token
 
 jobs:
   compliance-script:

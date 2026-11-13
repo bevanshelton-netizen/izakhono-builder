@@ -23,7 +23,8 @@ env:
   MINIO_ROOT_USER: ci-minio-admin
   MINIO_ROOT_PASSWORD: ci-minio-password
   IZAKHONO_MAIL_API_TOKEN: ci-mail-api-token
-  STALWART_RECOVERY_ADMIN: ci-stalwart-recovery-admin
+  SMTP_HOST: mail.izakhono.internal
+  STALWART_RECOVERY_ADMIN: ci-stalwart-recovery-admin\n  DNS_SYNC_URL: https://host-ci.example.com/internal/dns/snapshot\n  DNS_SYNC_TOKEN: ci-dns-sync-token
 
 jobs:
   validate:
@@ -59,6 +60,25 @@ jobs:
         run: |
           node --check products/izakhono-host/scripts/provision-customer.mjs
           node -e "const fs=require('fs'); const m=JSON.parse(fs.readFileSync('products/izakhono-host/customers/XQWAXQWAMILE-HOLDINGS.json','utf8')); if(m.customer_id!=='cus_xqwaxqwamile_001'||m.sites.length!==2||m.content.length!==1) process.exit(1); console.log('[PASS] XQ customer provisioning manifest valid')"
+      - name: Smoke-test owned DNS control-plane migration
+        shell: bash
+        run: |
+          python - <<'PY'
+          import sqlite3
+          from pathlib import Path
+          db = sqlite3.connect(':memory:')
+          db.execute('PRAGMA foreign_keys=ON')
+          db.executescript(Path('products/izakhono-host/migrations/0001_host.sql').read_text())
+          db.executescript(Path('products/izakhono-host/migrations/0003_dns_authority.sql').read_text())
+          db.execute("INSERT INTO host_customers(id,legal_name) VALUES('dns-ci-customer','DNS CI Customer')")
+          db.execute("""INSERT INTO dns_zones(id,customer_id,zone_name,status,serial,primary_nameserver,secondary_nameserver,created_at,updated_at)
+                       VALUES('dns-ci-zone','dns-ci-customer','ci.example.com','planned',2026111301,'ns1.dns.example.com','ns2.dns.example.com','now','now')""")
+          db.execute("""INSERT INTO dns_records(id,zone_id,name,type,ttl,value,enabled,created_at,updated_at)
+                       VALUES('dns-ci-soa','dns-ci-zone','ci.example.com','SOA',300,'ns1.dns.example.com. hostmaster.ci.example.com. 2026111301 3600 600 1209600 300',1,'now','now')""")
+          assert db.execute("SELECT COUNT(*) FROM dns_zones").fetchone()[0] == 1
+          assert db.execute("SELECT COUNT(*) FROM dns_records WHERE type='SOA'").fetchone()[0] == 1
+          print('[PASS] DNS authority migration, foreign keys and SOA seed contract validated')
+          PY
       - name: Validate owned Compose definition
         run: docker compose -f products/izakhono-host/docker-compose.owned.yml config
       - name: Validate owned mail Compose definition

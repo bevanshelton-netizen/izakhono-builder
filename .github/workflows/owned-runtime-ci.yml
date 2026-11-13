@@ -33,3 +33,7 @@ jobs:
         run: |
           grep -q 'SOA' runtime/authoritative-dns/db.izakhono.local
           grep -q 'NS ns1.izakhono.local.' runtime/authoritative-dns/db.izakhono.local
+      - name: Validate authoritative DNS sync agent
+        run: |
+          node --check runtime/authoritative-dns/sync-agent.mjs
+          node --test runtime/authoritative-dns/sync-agent.test.mjs
