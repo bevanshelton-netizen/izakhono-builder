@@ -1,16 +1,27 @@
 services:
   host-runtime:
-    build: ./runtime/control-plane
+    build:
+      context: ./runtime
+      dockerfile: control-plane/Dockerfile
     restart: unless-stopped
     environment:
       PORT: 8080
       DATA_DIR: /data
       HOST_RUNTIME_TOKEN: ${HOST_RUNTIME_TOKEN:?set HOST_RUNTIME_TOKEN}
+      HOST_PAYMENT_BRIDGE_TOKEN: ${HOST_PAYMENT_BRIDGE_TOKEN:-}
+      PGHOST: postgres
+      PGPORT: 5432
+      PGDATABASE: ${POSTGRES_DB:-izakhono}
+      PGUSER: ${POSTGRES_USER:-izakhono}
+      PGPASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
     volumes:
       - host-runtime-data:/data
     networks: [izakhono]
+    depends_on:
+      postgres:
+        condition: service_healthy
     healthcheck:
-      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8080/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8080/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
       interval: 15s
       timeout: 5s
       retries: 5
