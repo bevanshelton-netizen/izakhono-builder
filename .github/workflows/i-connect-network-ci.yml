@@ -46,6 +46,7 @@ jobs:
           node --test products/i-connect/network/fortress-device-security.test.mjs
           node --check products/i-connect/api/readiness.js
           node --test products/i-connect/api/readiness.test.js
+          node --test products/i-connect/supabase/functions/i-connect-mobisim-adapter/index.test.mjs
 
       - name: Validate carrier-neutral contract
         shell: bash
