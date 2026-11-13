@@ -1,7 +1,7 @@
 import {WORKERS,WORKER_INDEX} from './workers';
 import {D1Database} from './d1-store';
 import {discoverBuilderQueue,classifyBuilderIssue,shouldIngest} from './builder-queue';
-import {ensureSupervisorSchema,upsertSupervisorJob,listSupervisorJobs,supervisorCounts,transitionSupervisorJob,recordEvidence,SupervisorJob} from './supervisor-store';
+import {ensureSupervisorSchema,upsertSupervisorJob,listSupervisorJobs,supervisorCounts,claimSupervisorJob,transitionSupervisorJob,recordEvidence,SupervisorJob} from './supervisor-store';
 import {executeWorker,hasWorkerHandler,executableWorkerIds} from './worker-execution';
 import {DIVISIONS,workersForDivision} from './divisions';
 
@@ -23,11 +23,12 @@ function ready(job:SupervisorJob,jobs:SupervisorJob[]){
 }
 
 async function executeClaimedJob(db:D1Database,job:SupervisorJob,actor:string){
- const transitioned=await transitionSupervisorJob(db,job.id,'running',actor,{workerId:job.workerId,handler:'registered'});
+ const claimed=await claimSupervisorJob(db,job.id,actor);
+ if(!claimed)return {id:job.id,workerId:job.workerId,status:'not-claimed',reason:'another executor claimed or changed the job'};
  try{
   const execution=await executeWorker(WORKER_INDEX[job.workerId],job.input);
   await recordEvidence(db,job.id,{execution,verification:{status:'pending',required:true},recordedAt:now()});
-  return {id:job.id,workerId:job.workerId,status:'running',execution,verification:'pending'};
+  return {id:job.id,workerId:job.workerId,status:'running',attempts:claimed.attempts,leaseExpiresAt:claimed.leaseExpiresAt,execution,verification:'pending'};
  }catch(error){
   const detail={workerId:job.workerId,error:error instanceof Error?error.message:String(error),failedAt:now()};
   await recordEvidence(db,job.id,{executionFailure:detail});
