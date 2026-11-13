@@ -44,6 +44,8 @@ jobs:
           node --test products/i-connect/network/mobile-operator-core.test.mjs
           node --test products/i-connect/network/emergency-communications-core.test.mjs
           node --test products/i-connect/network/fortress-device-security.test.mjs
+          node --check products/i-connect/api/readiness.js
+          node --test products/i-connect/api/readiness.test.js
 
       - name: Validate carrier-neutral contract
         shell: bash
