@@ -24,7 +24,7 @@ env:
   MINIO_ROOT_PASSWORD: ci-minio-password
   IZAKHONO_MAIL_API_TOKEN: ci-mail-api-token
   SMTP_HOST: mail.izakhono.internal
-  STALWART_RECOVERY_ADMIN: ci-stalwart-recovery-admin
+  STALWART_RECOVERY_ADMIN: ci-stalwart-recovery-admin\n  DNS_SYNC_URL: https://host-ci.example.com/internal/dns/snapshot\n  DNS_SYNC_TOKEN: ci-dns-sync-token
 
 jobs:
   validate:
