@@ -56,13 +56,13 @@ test('syncs files atomically and removes only previously managed stale files', a
         return { ok: true, json: async () => sample };
       }
     });
-    const zone = await readFile(path.join(dir, 'izakhono-example_com.zone'), 'utf8');
+    const zone = await readFile(path.join(dir, 'db.example.com'), 'utf8');
     assert.match(zone, /www\\. 300 IN A 192\\.0\\.2\\.10/);
     const empty = { ...sample, zones: [] };
     await syncOnce({
       url: 'https://host.internal/internal/dns/snapshot', token: 'secret', directory: dir,
       fetchImpl: async () => ({ ok: true, json: async () => empty })
     });
-    await assert.rejects(readFile(path.join(dir, 'izakhono-example_com.zone'), 'utf8'), { code: 'ENOENT' });
+    await assert.rejects(readFile(path.join(dir, 'db.example.com'), 'utf8'), { code: 'ENOENT' });
   } finally { await rm(dir, { recursive: true, force: true }); }
 });
