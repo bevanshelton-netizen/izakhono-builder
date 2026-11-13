@@ -2,6 +2,7 @@ import { strict as assert } from "node:assert";
 import { createHash } from "node:crypto";
 import { executeLeasedSupervisorJob } from "./worker-executor";
 import type { D1Database, D1Statement } from "./d1-store";
+import { finishSupervisorLease, heartbeatSupervisorLease } from "./supervisor-store";
 import type { SupervisorLease } from "./supervisor-store";
 
 class Statement implements D1Statement {
@@ -37,6 +38,10 @@ class FakeDb implements D1Database {
 }
 const lease:SupervisorLease = {jobId:"job-1",workerId:"build-worker",leaseToken:"secret-token",expiresAt:"2099-01-01T00:00:00.000Z",attempt:1,idempotencyKey:"idem-1"};
 async function main() {
+  const evidenceDb = new FakeDb();
+  await assert.rejects(() => finishSupervisorLease(evidenceDb, lease, "verified", {summary:"trust me",checks:[]} ), /requires at least one named, passing check/);
+  await assert.rejects(() => finishSupervisorLease(evidenceDb, lease, "verified", {checks:[{name:"tests",passed:false}]}), /requires at least one named, passing check/);
+  await assert.rejects(() => heartbeatSupervisorLease(evidenceDb, lease, 0), /leaseSeconds must be between 15 and 900/);
   const db = new FakeDb();
   const success = await executeLeasedSupervisorJob(db, lease, {
     "build-worker": async (_job, context) => {
