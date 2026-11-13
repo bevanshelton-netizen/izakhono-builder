@@ -19,6 +19,22 @@ permissions:
 jobs:
   paid-provisioning-bridge:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: izakhono_test
+          POSTGRES_USER: izakhono_test
+          POSTGRES_PASSWORD: izakhono_test_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U izakhono_test -d izakhono_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      HOST_TEST_DATABASE_URL: postgres://izakhono_test:izakhono_test_password@localhost:5432/izakhono_test
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -28,3 +44,7 @@ jobs:
         run: |
           node products/izakhono-host/runtime/provisioner/payment-bridge.test.mjs
           node products/izakhono-host/runtime/provisioner/postgres-provisioning-store.test.mjs
+      - name: Test against real PostgreSQL
+        run: |
+          npm install --no-save --no-package-lock pg@8
+          node products/izakhono-host/runtime/provisioner/postgres-provisioning-store.integration.test.mjs
