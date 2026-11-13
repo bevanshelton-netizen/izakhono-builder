@@ -102,13 +102,13 @@ export async function syncOnce({ url, token, directory, fetchImpl = fetch }) {
   assert(Array.isArray(previous), 'invalid managed-zone manifest');
   const current = [];
   for (const zone of zones) {
-    const fileName = 'izakhono-' + normalizeDomain(zone.zone_name).replace(/\./g, '_') + '.zone';
+    const fileName = 'db.' + normalizeDomain(zone.zone_name);
     await atomicWrite(path.join(directory, fileName), renderZone(zone));
     current.push(fileName);
   }
   await atomicWrite(manifestPath, JSON.stringify(current.sort(), null, 2) + '\n');
   for (const old of previous) {
-    if (typeof old === 'string' && /^izakhono-[a-z0-9_]+\.zone$/.test(old) && !current.includes(old)) {
+    if (typeof old === 'string' && /^db\.[a-z0-9.-]+$/.test(old) && !current.includes(old)) {
       await fs.rm(path.join(directory, old), { force: true });
     }
   }
