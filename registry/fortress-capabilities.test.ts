@@ -3,7 +3,7 @@ import {verifyFortressCapabilityGrant} from './fortress-capabilities';
 import {issueFortressGrant} from './fortress-grant-store';
 
 const secret='test-only-fortress-capability-secret';
-const b64=(bytes:Uint8Array)=>{let s='';for(const b of bytes)s+=String.fromCharCode(b);return btoa(s).replace(/=/g,'').replace(/\\+/g,'-').replace(/\\//g,'_');};
+const b64=(bytes:Uint8Array)=>{let s='';for(const b of bytes)s+=String.fromCharCode(b);return btoa(s).replace(/=/g,'').replace(/[+]/g,'-').replace(/[/]/g,'_');};
 async function grant(overrides:Record<string,unknown>={}){
  const claims={iss:'IZAKHONO-FORTRESS',sub:'portfolio-orchestrator',aud:'IZAKHONO-WORKER-SUPERVISOR',actions:['execute'],risk:'low',iat:1000,nbf:1000,exp:1600,jti:'fortress-test-grant-0001',...overrides};
  const payload=b64(new TextEncoder().encode(JSON.stringify(claims)));
