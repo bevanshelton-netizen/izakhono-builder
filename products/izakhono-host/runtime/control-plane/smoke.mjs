@@ -10,7 +10,7 @@ const port = 18080 + Math.floor(Math.random() * 500);
 const token = 'smoke-token';
 const child = spawn(process.execPath, ['server.mjs'], {
   cwd: new URL('.', import.meta.url).pathname,
-  env: {...process.env, PORT:String(port), DATA_DIR:root, HOST_RUNTIME_TOKEN:token},
+  env: {...process.env, PGHOST:'', PORT:String(port), DATA_DIR:root, HOST_RUNTIME_TOKEN:token},
   stdio:['ignore','pipe','pipe']
 });
 
