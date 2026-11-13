@@ -60,14 +60,8 @@ async function api(req:Request,env:Env,url:URL):Promise<Response>{
       await env.DB.prepare('INSERT INTO host_subscriptions(id,customer_id,plan_id,status) VALUES(?,?,?,?)').bind(uid('sub'),customerId,'plan_business','pending').run();
       await env.DB.prepare('INSERT INTO host_invoices(id,customer_id,invoice_number,amount_cents,currency,status) VALUES(?,?,?,?,?,?)').bind(invoiceId,customerId,invoiceNumber,54800,'ZAR','unpaid').run();
 
-      const dnsRecords:any[]=[];
-      if(env.OWNED_EDGE_IPV4) dnsRecords.push({type:'A',name:'@',content:env.OWNED_EDGE_IPV4,ttl:60,proxied:false});
-      if(env.OWNED_EDGE_IPV6) dnsRecords.push({type:'AAAA',name:'@',content:env.OWNED_EDGE_IPV6,ttl:60,proxied:false});
-      if(dnsRecords.length) await env.DB.prepare('INSERT INTO host_jobs(id,customer_id,job_type,target_id,provider,input_json) VALUES(?,?,?,?,?,?)').bind(uid('job'),customerId,'dns_apply',domainId,'izakhono-network',JSON.stringify({domain,records:dnsRecords})).run();
-      else await env.DB.prepare('INSERT INTO host_jobs(id,customer_id,job_type,target_id,provider,input_json) VALUES(?,?,?,?,?,?)').bind(uid('job'),customerId,'dns_apply',domainId,'pending-owned-dns',JSON.stringify({domain,records:[],reason:'OWNED_EDGE_IPV4/6 not configured'})).run();
-
-      await env.DB.prepare('INSERT INTO host_jobs(id,customer_id,job_type,target_id,provider,input_json) VALUES(?,?,?,?,?,?)').bind(uid('job'),customerId,'site_provision',siteId,'izakhono-native',JSON.stringify({domain,source_ref:clean(b.source_ref||'internal',200),site_id:siteId})).run();
-      await env.DB.prepare('INSERT INTO host_jobs(id,customer_id,job_type,target_id,provider,input_json) VALUES(?,?,?,?,?,?)').bind(uid('job'),customerId,'ssl_verify',siteId,'izakhono-edge',JSON.stringify({domain})).run();
+      // Provisioning is deliberately deferred until a trusted payment integration records
+      // a verified settlement. Customer-supplied fields never authorize paid-state changes.
       await audit(env,customerId,'customer.onboarded',{domain,invoice_number:invoiceNumber,plan:'business',runtime:'izakhono-native'});
     }catch(e){ return json({ok:false,error:'Onboarding failed; retry safely',detail:String(e)},500); }
     return json({ok:true,customer_id:customerId,domain_id:domainId,site_id:siteId,invoice_id:invoiceId,invoice_number:invoiceNumber,amount_zar:548,monthly_zar:249,mailboxes:[],next_gates:['cleared payment','owned DNS verification','native site provision','HTTPS/SSL verification','mail provider activation']},201);
@@ -79,6 +73,10 @@ async function api(req:Request,env:Env,url:URL):Promise<Response>{
   if(runJob && req.method==='POST'){
     const jobId=decodeURIComponent(runJob[1]); const job=await env.DB.prepare('SELECT * FROM host_jobs WHERE id=?').bind(jobId).first<any>();
     if(!job) return json({ok:false,error:'Job not found'},404);
+    if(job.job_type!=='invoice_issue') {
+      const invoice=await env.DB.prepare("SELECT status FROM host_invoices WHERE customer_id=? ORDER BY created_at DESC LIMIT 1").bind(job.customer_id).first<any>();
+      if(invoice?.status!=='paid') return json({ok:false,error:'Provisioning is locked until verified payment settlement',job_id:jobId,status:'queued'},409);
+    }
     await env.DB.prepare("UPDATE host_jobs SET status='running',attempts=attempts+1,updated_at=CURRENT_TIMESTAMP WHERE id=?").bind(jobId).run();
     try{
       const input=JSON.parse(job.input_json||'{}'); let result:any;
