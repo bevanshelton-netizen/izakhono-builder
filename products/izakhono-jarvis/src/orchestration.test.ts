@@ -12,7 +12,7 @@ async function main(){
  assert.equal(created?.status,201);const body=await created!.json() as any;assert.equal(body.steps.length,3);assert.deepEqual(body.steps[1].depends_on,[body.steps[0].id]);assert.equal(body.steps[0].approval_required,true);assert.equal(body.execution,"not-started");assert.equal(writes,4);
  assert.deepEqual(stepApprovalValues,[1,1,1]);
  const medium=await jarvisOrchestrationRoute(req("POST","/api/jarvis/orchestrations",{instruction:"Prepare customer outreach workflow",objective:"Create reviewed customer outreach workflow",agent_id:"coordinator",risk_level:"medium",steps:["Draft customer response"]}),env,async()=>true);
- assert.equal(medium?.status,201);assert.equal(stepApprovalValues[3],1);
+ assert.equal(medium?.status,201);const mediumBody=await medium!.json() as any;assert.equal(mediumBody.steps[0].approval_required,true);assert.equal(stepApprovalValues[3],1);
  const low=await jarvisOrchestrationRoute(req("POST","/api/jarvis/orchestrations",{instruction:"Summarize internal project notes",objective:"Produce internal summary",agent_id:"reporting",risk_level:"low",steps:["Summarize notes"]}),env,async()=>true);
  assert.equal(low?.status,201);assert.equal(stepApprovalValues[4],0);
  const listed=await jarvisOrchestrationRoute(req("GET"),env,async()=>true);assert.equal(listed?.status,200);
