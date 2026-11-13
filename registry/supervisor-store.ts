@@ -138,6 +138,7 @@ export async function claimSupervisorLease(
 }
 
 export async function heartbeatSupervisorLease(db:D1Database, lease:SupervisorLease, leaseSeconds=90): Promise<boolean> {
+  if (!Number.isInteger(leaseSeconds) || leaseSeconds < 15 || leaseSeconds > 900) throw new Error('leaseSeconds must be between 15 and 900');
   const at = new Date();
   const nowIso = at.toISOString();
   const expiresAt = new Date(at.getTime()+leaseSeconds*1000).toISOString();
@@ -151,6 +152,12 @@ export async function heartbeatSupervisorLease(db:D1Database, lease:SupervisorLe
 export async function finishSupervisorLease(
   db:D1Database, lease:SupervisorLease, outcome:'verified'|'failed'|'blocked', detail:unknown
 ):Promise<boolean>{
+  if (outcome === 'verified') {
+    const evidence = detail && typeof detail === 'object' ? detail as { checks?: unknown } : null;
+    if (!Array.isArray(evidence?.checks) || evidence.checks.length === 0 || evidence.checks.some((check) => !check || typeof check !== 'object' || typeof (check as {name?:unknown}).name !== 'string' || !(check as {name:string}).name.trim() || (check as {passed?:unknown}).passed !== true)) {
+      throw new Error('Verified outcome requires at least one named, passing check');
+    }
+  }
   const at=new Date().toISOString();
   const hash=await sha256(lease.leaseToken);
   const owned=await db.prepare('SELECT job_id FROM supervisor_execution_leases WHERE job_id=? AND worker_id=? AND lease_token_hash=? AND expires_at>?')
