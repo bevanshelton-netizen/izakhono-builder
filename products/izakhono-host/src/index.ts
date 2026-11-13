@@ -11,6 +11,7 @@ interface Env extends HostProviderEnv {
   APP_ENV?: string;
   OWNED_EDGE_IPV4?: string;
   OWNED_EDGE_IPV6?: string;
+  DNS_AUTHORITY_DOMAIN?: string;
 }
 
 const STATUS = new Set(['planned','queued','running','verified','failed','paused']);
@@ -29,6 +30,80 @@ async function api(req:Request,env:Env,url:URL):Promise<Response>{
     catch{return json({ok:false,service:'IZAKHONO HOST',database:'error'},503);}
   }
   if(!owner(req,env)) return json({ok:false,error:env.HOST_ADMIN_SECRET?'Unauthorized':'HOST_ADMIN_SECRET is not configured'},401);
+
+  // Native DNS control-plane API. Zones remain planned until two authoritative
+  // nodes and public registrar delegation have been independently verified.
+  if(url.pathname==='/api/dns/zones' && req.method==='GET'){
+    const rows=await env.DB.prepare('SELECT * FROM dns_zones ORDER BY created_at DESC LIMIT 500').all<any>();
+    return json({ok:true,zones:rows.results||[]});
+  }
+  if(url.pathname==='/api/dns/zones' && req.method==='POST'){
+    const b=await body(req);
+    const customerId=clean(b.customer_id,120);
+    const zoneName=clean(b.zone_name,253).toLowerCase().replace(/\\.+$/,'');
+    const authority=clean(env.DNS_AUTHORITY_DOMAIN,253).toLowerCase().replace(/\\.+$/,'');
+    if(!customerId || !/^(?=.{1,253}$)([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z]{2,63}$/.test(zoneName))
+      return json({ok:false,error:'A valid customer_id and fully-qualified zone_name are required'},400);
+    if(!authority || authority.endsWith('.invalid') || !/^(?=.{1,253}$)([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z]{2,63}$/.test(authority))
+      return json({ok:false,error:'DNS_AUTHORITY_DOMAIN must be configured to a registered authority domain'},503);
+    const customer=await env.DB.prepare('SELECT id FROM host_customers WHERE id=?').bind(customerId).first<any>();
+    if(!customer) return json({ok:false,error:'Customer not found'},404);
+    const id=uid('zone'), now=new Date().toISOString(), serial=Number(now.slice(0,10).replaceAll('-','')+'01');
+    const primary='ns1.'+authority, secondary='ns2.'+authority;
+    try{
+      await env.DB.prepare('INSERT INTO dns_zones(id,customer_id,zone_name,status,serial,primary_nameserver,secondary_nameserver,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?)')
+        .bind(id,customerId,zoneName,'planned',serial,primary,secondary,now,now).run();
+      await env.DB.prepare('INSERT INTO dns_records(id,zone_id,name,type,ttl,value,enabled,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?)')
+        .bind(uid('rec'),id,zoneName,'SOA',300,primary+'. hostmaster.'+zoneName+'. '+serial+' 3600 600 1209600 300',1,now,now).run();
+      for(const ns of [primary,secondary]) await env.DB.prepare('INSERT INTO dns_records(id,zone_id,name,type,ttl,value,enabled,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?)')
+        .bind(uid('rec'),id,zoneName,'NS',300,ns+'.',1,now,now).run();
+      await env.DB.prepare('INSERT INTO dns_audit_events(id,zone_id,action,actor,details_json,created_at) VALUES(?,?,?,?,?,?)')
+        .bind(uid('dns_evt'),id,'zone.created','owner',JSON.stringify({zone_name:zoneName,status:'planned'}),now).run();
+      return json({ok:true,zone:{id,customer_id:customerId,zone_name:zoneName,status:'planned',serial,primary_nameserver:primary,secondary_nameserver:secondary},public_authority:false},201);
+    }catch(e){return json({ok:false,error:'Zone creation failed',detail:String(e)},409);}
+  }
+  const dnsZoneMatch=url.pathname.match(/^\\/api\\/dns\\/zones\\/([^/]+)$/);
+  if(dnsZoneMatch && req.method==='GET'){
+    const zoneId=decodeURIComponent(dnsZoneMatch[1]);
+    const zone=await env.DB.prepare('SELECT * FROM dns_zones WHERE id=?').bind(zoneId).first<any>();
+    if(!zone) return json({ok:false,error:'Zone not found'},404);
+    const records=await env.DB.prepare('SELECT * FROM dns_records WHERE zone_id=? ORDER BY name,type').bind(zoneId).all<any>();
+    return json({ok:true,zone,records:records.results||[]});
+  }
+  const dnsRecordsMatch=url.pathname.match(/^\\/api\\/dns\\/zones\\/([^/]+)\\/records$/);
+  if(dnsRecordsMatch && req.method==='POST'){
+    const zoneId=decodeURIComponent(dnsRecordsMatch[1]), b=await body(req);
+    const zone=await env.DB.prepare('SELECT * FROM dns_zones WHERE id=?').bind(zoneId).first<any>();
+    if(!zone) return json({ok:false,error:'Zone not found'},404);
+    const type=clean(b.type,8).toUpperCase(), name=clean(b.name,253).toLowerCase(), value=clean(b.value,4096), ttl=Number(b.ttl??300);
+    if(!['A','NS','CNAME','MX','TXT'].includes(type)) return json({ok:false,error:'Record type is not supported by the current authoritative runtime'},400);
+    if(!name || !value || !Number.isInteger(ttl) || ttl<30 || ttl>86400) return json({ok:false,error:'Invalid record name, value or TTL'},400);
+    const fqdn=name==='@'?zone.zone_name:name.endsWith('.')?name.slice(0,-1):name+'.'+zone.zone_name;
+    if(fqdn!==zone.zone_name && !fqdn.endsWith('.'+zone.zone_name)) return json({ok:false,error:'Record name must be inside its zone'},400);
+    if(type==='A' && !/^(?:\\d{1,3}\\.){3}\\d{1,3}$/.test(value)) return json({ok:false,error:'A record must contain an IPv4 address'},400);
+    if(type==='MX' && (!Number.isInteger(Number(b.priority)) || Number(b.priority)<0 || Number(b.priority)>65535)) return json({ok:false,error:'MX priority must be 0..65535'},400);
+    const now=new Date().toISOString(), recordId=uid('rec'), serial=Number(zone.serial)+1;
+    await env.DB.prepare('INSERT INTO dns_records(id,zone_id,name,type,ttl,priority,value,enabled,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?)')
+      .bind(recordId,zoneId,fqdn,type,ttl,type==='MX'?Number(b.priority):null,value,1,now,now).run();
+    await env.DB.prepare('UPDATE dns_zones SET serial=?,updated_at=? WHERE id=?').bind(serial,now,zoneId).run();
+    await env.DB.prepare('INSERT INTO dns_audit_events(id,zone_id,action,actor,details_json,created_at) VALUES(?,?,?,?,?,?)')
+      .bind(uid('dns_evt'),zoneId,'record.created','owner',JSON.stringify({record_id:recordId,name:fqdn,type}),now).run();
+    return json({ok:true,record:{id:recordId,zone_id:zoneId,name:fqdn,type,ttl,priority:type==='MX'?Number(b.priority):null,value,enabled:true},zone_serial:serial,applied_to_authority:false},201);
+  }
+  const dnsRecordMatch=url.pathname.match(/^\\/api\\/dns\\/records\\/([^/]+)$/);
+  if(dnsRecordMatch && req.method==='DELETE'){
+    const recordId=decodeURIComponent(dnsRecordMatch[1]);
+    const record=await env.DB.prepare('SELECT * FROM dns_records WHERE id=?').bind(recordId).first<any>();
+    if(!record) return json({ok:false,error:'Record not found'},404);
+    if(['SOA','NS'].includes(record.type)) return json({ok:false,error:'System SOA/NS records cannot be deleted through this endpoint'},409);
+    const now=new Date().toISOString(), zone=await env.DB.prepare('SELECT serial FROM dns_zones WHERE id=?').bind(record.zone_id).first<any>();
+    await env.DB.prepare('DELETE FROM dns_records WHERE id=?').bind(recordId).run();
+    const serial=Number(zone?.serial||0)+1;
+    await env.DB.prepare('UPDATE dns_zones SET serial=?,updated_at=? WHERE id=?').bind(serial,now,record.zone_id).run();
+    await env.DB.prepare('INSERT INTO dns_audit_events(id,zone_id,action,actor,details_json,created_at) VALUES(?,?,?,?,?,?)')
+      .bind(uid('dns_evt'),record.zone_id,'record.deleted','owner',JSON.stringify({record_id:recordId,name:record.name,type:record.type}),now).run();
+    return json({ok:true,deleted:recordId,zone_serial:serial,applied_to_authority:false});
+  }
 
   if(url.pathname==='/api/dashboard' && req.method==='GET'){
     const [customers,domains,sites,jobs,invoices]=await Promise.all([
