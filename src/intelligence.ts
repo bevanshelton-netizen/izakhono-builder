@@ -208,8 +208,12 @@ export async function runOllamaChat(
         model: request.model || endpoint.model,
         messages: request.messages,
         stream: false,
-        ...(request.temperature === undefined ? {} : { options: { temperature: request.temperature } }),
-        ...(request.max_tokens === undefined ? {} : { options: { num_predict: request.max_tokens } }),
+        ...((request.temperature === undefined && request.max_tokens === undefined) ? {} : {
+          options: {
+            ...(request.temperature === undefined ? {} : { temperature: request.temperature }),
+            ...(request.max_tokens === undefined ? {} : { num_predict: request.max_tokens }),
+          },
+        }),
       }),
       signal: controller.signal,
     });
