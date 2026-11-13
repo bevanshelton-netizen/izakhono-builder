@@ -80,7 +80,7 @@ async function api(req:Request,env:Env,url:URL):Promise<Response>{
     if(!name || !value || !Number.isInteger(ttl) || ttl<30 || ttl>86400) return json({ok:false,error:'Invalid record name, value or TTL'},400);
     const fqdn=name==='@'?zone.zone_name:name.endsWith('.')?name.slice(0,-1):name+'.'+zone.zone_name;
     if(fqdn!==zone.zone_name && !fqdn.endsWith('.'+zone.zone_name)) return json({ok:false,error:'Record name must be inside its zone'},400);
-    if(type==='A' && (!/^(?:\\d{1,3}\\.){3}\\d{1,3}$/.test(value) || value.split('.').some((part:string)=>Number(part)>255))) return json({ok:false,error:'A record must contain a valid IPv4 address'},400);
+    if(type==='A' && (!/^(?:\d{1,3}\.){3}\d{1,3}$/.test(value) || value.split('.').some((part:string)=>Number(part)>255))) return json({ok:false,error:'A record must contain a valid IPv4 address'},400);
     if(type==='MX' && (!Number.isInteger(Number(b.priority)) || Number(b.priority)<0 || Number(b.priority)>65535)) return json({ok:false,error:'MX priority must be 0..65535'},400);
     if(type==='CNAME' && fqdn===zone.zone_name) return json({ok:false,error:'A zone apex cannot be a CNAME'},400);
     const conflicts=await env.DB.prepare('SELECT type FROM dns_records WHERE zone_id=? AND name=? AND enabled=1').bind(zoneId,fqdn).all<any>();
