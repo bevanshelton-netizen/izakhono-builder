@@ -2,7 +2,8 @@ import {WORKERS,WORKER_INDEX} from './workers';
 import {D1Database} from './d1-store';
 import {discoverBuilderQueue,classifyBuilderIssue,shouldIngest} from './builder-queue';
 import {ensureSupervisorSchema,upsertSupervisorJob,listSupervisorJobs,supervisorCounts,transitionSupervisorJob,recordEvidence,SupervisorJob} from './supervisor-store';
-import {executeWorker,hasWorkerHandler} from './worker-execution';
+import {executeWorker,hasWorkerHandler,executableWorkerIds} from './worker-execution';
+import {DIVISIONS,workersForDivision} from './divisions';
 
 const json=(d:unknown,s=200)=>new Response(JSON.stringify(d),{status:s,headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store'}});
 const now=()=>new Date().toISOString();
@@ -61,7 +62,10 @@ export async function workerControl(request:Request,authorized:boolean,db:D1Data
  if(url.pathname==='/workers/status'&&request.method==='GET'){
   const counts={total:WORKERS.length,low:0,medium:0,high:0,gateRequired:0,executable:0};
   for(const w of WORKERS){counts[w.risk]++;if(w.humanGate)counts.gateRequired++;if(hasWorkerHandler(w.id))counts.executable++;}
-  return json({ok:true,catalogReady:true,generatedAt:now(),workerCounts:counts,queue:await supervisorCounts(db)});
+  return json({ok:true,catalogReady:true,generatedAt:now(),workerCounts:counts,executableWorkers:executableWorkerIds(),queue:await supervisorCounts(db)});
+ }
+ if(url.pathname==='/workers/divisions'&&request.method==='GET'){
+  return json({ok:true,generatedAt:now(),divisionCount:DIVISIONS.length,divisions:DIVISIONS.map(division=>({...division,workers:workersForDivision(division.id).map(worker=>({id:worker.id,domain:worker.domain,risk:worker.risk,humanGate:worker.humanGate??null,executable:hasWorkerHandler(worker.id)}))}))});
  }
  if(url.pathname==='/workers/queue'&&request.method==='GET'){
   try{return json({ok:true,...await ingestDiscovered(db),queue:await listSupervisorJobs(db)});}catch(error){return json({ok:false,error:String(error)},502);}
