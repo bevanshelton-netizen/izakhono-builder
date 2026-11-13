@@ -93,8 +93,8 @@ function supports(endpoint: ModelEndpoint, required: ModelTask[]): boolean {
   return required.every((capability) => endpoint.capabilities.includes(capability));
 }
 
-/** Select the least-cost eligible endpoint, with local/owner preference as a tie-breaker. */
-export function selectModel(endpoints: ModelEndpoint[], request: ModelRequest): ModelSelection {
+/** Return all eligible endpoints in routing order for safe fallback. */
+export function rankModels(endpoints: ModelEndpoint[], request: ModelRequest): ModelEndpoint[] {
   const required = [...new Set([request.task, ...request.policy.requiredCapabilities])];
   const candidates = endpoints.filter((endpoint) =>
     endpoint.enabled &&
@@ -106,20 +106,24 @@ export function selectModel(endpoints: ModelEndpoint[], request: ModelRequest): 
       (endpoint.estimatedCostPer1kTokens ?? 0) <= request.policy.maxEstimatedCostPer1kTokens),
   );
 
-  if (!candidates.length) throw new Error('No healthy model endpoint satisfies the requested task and policy.');
-
   candidates.sort((a, b) => {
-    const cost = (a.estimatedCostPer1kTokens ?? 0) - (b.estimatedCostPer1kTokens ?? 0);
-    if (cost !== 0) return cost;
     if (request.policy.preferLocal) {
       const rank = (trust: ModelTrust) => trust === 'local' ? 0 : trust === 'owner' ? 1 : 2;
       const trustRank = rank(a.trust) - rank(b.trust);
       if (trustRank !== 0) return trustRank;
     }
+    const cost = (a.estimatedCostPer1kTokens ?? 0) - (b.estimatedCostPer1kTokens ?? 0);
+    if (cost !== 0) return cost;
     return (a.latencyMs ?? Number.MAX_SAFE_INTEGER) - (b.latencyMs ?? Number.MAX_SAFE_INTEGER);
   });
+  return candidates;
+}
 
-  const endpoint = candidates[0];
+/** Select the first policy-eligible endpoint. */
+export function selectModel(endpoints: ModelEndpoint[], request: ModelRequest): ModelSelection {
+  const required = [...new Set([request.task, ...request.policy.requiredCapabilities])];
+  const endpoint = rankModels(endpoints, request)[0];
+  if (!endpoint) throw new Error('No healthy model endpoint satisfies the requested task and policy.');
   return {
     endpoint,
     reason: `Selected ${endpoint.provider}/${endpoint.model}: healthy, policy-eligible, supports ${required.join(', ')}.`,
@@ -240,6 +244,41 @@ export async function runOllamaChat(
   } finally {
     clearTimeout(timeout);
   }
+}
+
+
+export interface RoutedInferenceResult extends InferenceResult {
+  attempts: number;
+  fallbackUsed: boolean;
+}
+
+/**
+ * Execute through ranked endpoints. External providers are never eligible unless
+ * explicitly included in policy.allowedTrust; local failure cannot silently
+ * widen the data trust boundary.
+ */
+export async function runWithModelFallback(
+  endpoints: ModelEndpoint[],
+  request: ModelRequest & InferenceRequest,
+  registry: ModelRegistry,
+  fetcher: FetchLike = fetch,
+): Promise<RoutedInferenceResult> {
+  const candidates = rankModels(endpoints, request);
+  if (!candidates.length) throw new Error('No healthy model endpoint satisfies the requested task and policy.');
+  const failures: string[] = [];
+
+  for (const [index, endpoint] of candidates.entries()) {
+    try {
+      const result = endpoint.protocol === 'ollama-chat'
+        ? await runOllamaChat(endpoint, request, fetcher)
+        : await runChatCompletion(endpoint, request, registry, fetcher);
+      return { ...result, attempts: index + 1, fallbackUsed: index > 0 };
+    } catch (error) {
+      // Error strings are intentionally generic; never include provider response bodies or credentials.
+      failures.push(`${endpoint.id}: ${String(error instanceof Error ? error.message : 'inference failed').slice(0, 120)}`);
+    }
+  }
+  throw new Error(`All eligible model endpoints failed (${failures.join('; ')}).`);
 }
 
 /** Safe registration validation. Call before persisting endpoint metadata. */
