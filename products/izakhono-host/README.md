@@ -21,6 +21,22 @@ The customer web runtime is owned by IZAKHONO. External services are bounded ada
 
 `docker-compose.owned.yml` supplies the owned-runtime baseline: native runtime, Caddy edge, CoreDNS, PostgreSQL, MinIO and Valkey.
 
+## Independent website and mail activation
+
+The website-hosting core must not be blocked by an email node that has not yet been activated.
+
+- The default compose profile starts the website runtime, contact gateway, edge, DNS, PostgreSQL, MinIO and Valkey.
+- The SMTP mail bridge is an optional `mail` profile.
+- Activate it only after the separate IZAKHONO MAIL/Stalwart server is reachable and SMTP credentials, TLS and domain authentication have been configured.
+
+After the base runtime is healthy, the mail bridge can be enabled with:
+
+```bash
+docker compose --profile mail --env-file .env -f docker-compose.owned.yml up -d mail-bridge
+```
+
+A running bridge is not proof of email service readiness. Verify inbound and outbound delivery, SPF, DKIM, DMARC, PTR/rDNS, TLS, spam controls and backup/restore before selling mailboxes. If mail transport is not configured, website hosting remains independently deployable; contact-form email delivery remains unavailable and must not be advertised as active.
+
 ## Multi-node operation
 
 `CLUSTER-NODE-ROLES.md` defines the production roles and resilience model. `NODE-PREFLIGHT.sh` validates a physical node before activation.
@@ -41,7 +57,7 @@ On the primary control/edge/runtime node:
 ./NODE01-ACTIVATE.sh
 ```
 
-For a first-time host this creates `.env` with generated secrets. Set `TLS_EMAIL` to the operational certificate address before public HTTPS activation. Never commit `.env`.
+For a first-time host this creates `.env` with generated secrets. Set `TLS_EMAIL` to the operational certificate address before public HTTPS activation. The base stack requires valid runtime/database/storage secrets. Never commit `.env`.
 
 ## Recovery
 
