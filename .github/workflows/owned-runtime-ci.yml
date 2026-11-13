@@ -28,7 +28,7 @@ jobs:
           sed -i 's#ops@example.com#ci@example.com#' .env
           docker compose --env-file .env -f docker-compose.owned.yml config --quiet
       - name: Build owned control plane
-        run: docker build -t izakhono-owned-runtime:ci runtime/control-plane
+        run: docker build -f runtime/control-plane/Dockerfile -t izakhono-owned-runtime:ci .
       - name: Validate DNS zone
         run: |
           grep -q 'SOA' runtime/authoritative-dns/db.izakhono.local
