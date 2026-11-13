@@ -83,8 +83,9 @@ export async function workerControl(request:Request,authorized:boolean,db:D1Data
    if(job.status!=='queued')return json({ok:false,error:`job is ${job.status}, expected queued`},409);
    if(job.risk==='high'||job.humanGate)return json({ok:true,accepted:false,status:'blocked',job,reason:'human-gate-required',gate:job.humanGate||'high-risk'},202);
    if(job.dependencyIds.length){const blockers=jobs.filter(j=>job.dependencyIds.some(dep=>dep===j.sourceId||dep===j.id)&&j.status!=='completed');if(blockers.length)return json({ok:true,accepted:false,status:'blocked',job,reason:'dependencies-incomplete',blockers},202);}
-   const transitioned=await transitionSupervisorJob(db,job.id,'running','worker-supervisor',{mode:body.dryRun?'dry-run':'dispatch',workerId:job.workerId});
-   return json({ok:true,accepted:true,status:'running',job:transitioned,note:'Accepted by the supervisor; execution evidence is still required before verification or completion.'},202);
+   const lease=await claimSupervisorLease(db,job.id,job.workerId,`dispatch:${job.id}:${job.attempts+1}`);
+   if(!lease)return json({ok:false,accepted:false,error:'job could not be exclusively leased'},409);
+   return json({ok:true,accepted:true,status:'leased',lease,note:'Lease granted. A registered worker must execute the bounded task and submit its evidence.'},202);
   }
   if(!body.workerId||!WORKER_INDEX[body.workerId])return json({ok:false,error:'unknown worker'},404);
   const w=WORKER_INDEX[body.workerId];
