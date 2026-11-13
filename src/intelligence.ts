@@ -12,10 +12,12 @@
 
 export type ModelTask = 'chat' | 'code' | 'reasoning' | 'vision' | 'audio' | 'embedding';
 export type ModelTrust = 'local' | 'owner' | 'approved_external';
+export type ModelProtocol = 'openai-chat-completions' | 'ollama-chat';
 
 export interface ModelEndpoint {
   id: string;
   provider: string;
+  protocol?: ModelProtocol;
   model: string;
   baseUrl: string;
   trust: ModelTrust;
@@ -178,6 +180,57 @@ export async function runChatCompletion(
       content,
       inputTokens: payload.usage?.prompt_tokens,
       outputTokens: payload.usage?.completion_tokens,
+      latencyMs: Date.now() - started,
+    };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+
+/** Native Ollama /api/chat adapter for the existing IZAKHONO local model runtime. */
+export async function runOllamaChat(
+  endpoint: ModelEndpoint,
+  request: InferenceRequest,
+  fetcher: FetchLike = fetch,
+  timeoutMs = 60_000,
+): Promise<InferenceResult> {
+  const baseUrl = normaliseBaseUrl(endpoint.baseUrl);
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  const started = Date.now();
+
+  try {
+    const response = await fetcher(`${baseUrl}/api/chat`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        model: request.model || endpoint.model,
+        messages: request.messages,
+        stream: false,
+        ...(request.temperature === undefined ? {} : { options: { temperature: request.temperature } }),
+        ...(request.max_tokens === undefined ? {} : { options: { num_predict: request.max_tokens } }),
+      }),
+      signal: controller.signal,
+    });
+
+    if (!response.ok) throw new Error(`Ollama endpoint returned HTTP ${response.status}.`);
+    const payload = await response.json() as {
+      message?: { content?: string };
+      prompt_eval_count?: number;
+      eval_count?: number;
+    };
+    const content = payload.message?.content;
+    if (typeof content !== 'string' || !content.trim()) {
+      throw new Error('Ollama endpoint returned no assistant text.');
+    }
+
+    return {
+      endpointId: endpoint.id,
+      model: request.model || endpoint.model,
+      content,
+      inputTokens: payload.prompt_eval_count,
+      outputTokens: payload.eval_count,
       latencyMs: Date.now() - started,
     };
   } finally {
