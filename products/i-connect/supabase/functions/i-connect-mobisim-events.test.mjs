@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
-const root = new URL("../", import.meta.url);
+const root = new URL("./", import.meta.url);
 const webhook = await readFile(new URL("i-connect-mobisim-webhook/index.ts", root), "utf8");
 const processor = await readFile(new URL("i-connect-mobisim-event-processor/index.ts", root), "utf8");
 
