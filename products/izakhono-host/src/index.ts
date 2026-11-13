@@ -80,12 +80,18 @@ async function api(req:Request,env:Env,url:URL):Promise<Response>{
     if(!name || !value || !Number.isInteger(ttl) || ttl<30 || ttl>86400) return json({ok:false,error:'Invalid record name, value or TTL'},400);
     const fqdn=name==='@'?zone.zone_name:name.endsWith('.')?name.slice(0,-1):name+'.'+zone.zone_name;
     if(fqdn!==zone.zone_name && !fqdn.endsWith('.'+zone.zone_name)) return json({ok:false,error:'Record name must be inside its zone'},400);
-    if(type==='A' && !/^(?:\d{1,3}\.){3}\d{1,3}$/.test(value)) return json({ok:false,error:'A record must contain an IPv4 address'},400);
+    if(type==='A' && (!/^(?:\\d{1,3}\\.){3}\\d{1,3}$/.test(value) || value.split('.').some((part:string)=>Number(part)>255))) return json({ok:false,error:'A record must contain a valid IPv4 address'},400);
     if(type==='MX' && (!Number.isInteger(Number(b.priority)) || Number(b.priority)<0 || Number(b.priority)>65535)) return json({ok:false,error:'MX priority must be 0..65535'},400);
+    if(type==='CNAME' && fqdn===zone.zone_name) return json({ok:false,error:'A zone apex cannot be a CNAME'},400);
+    const conflicts=await env.DB.prepare('SELECT type FROM dns_records WHERE zone_id=? AND name=? AND enabled=1').bind(zoneId,fqdn).all<any>();
+    if(type==='CNAME' && (conflicts.results||[]).length) return json({ok:false,error:'CNAME cannot coexist with other records at the same name'},409);
+    if(type!=='CNAME' && (conflicts.results||[]).some((r:any)=>r.type==='CNAME')) return json({ok:false,error:'A CNAME already exists at this name'},409);
     const now=new Date().toISOString(), recordId=uid('rec'), serial=Number(zone.serial)+1;
     await env.DB.prepare('INSERT INTO dns_records(id,zone_id,name,type,ttl,priority,value,enabled,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?)')
       .bind(recordId,zoneId,fqdn,type,ttl,type==='MX'?Number(b.priority):null,value,1,now,now).run();
     await env.DB.prepare('UPDATE dns_zones SET serial=?,updated_at=? WHERE id=?').bind(serial,now,zoneId).run();
+    await env.DB.prepare("UPDATE dns_records SET value=? WHERE zone_id=? AND type='SOA' AND name=?")
+      .bind(zone.primary_nameserver+'. hostmaster.'+zone.zone_name+'. '+serial+' 3600 600 1209600 300',zoneId,zone.zone_name).run();
     await env.DB.prepare('INSERT INTO dns_audit_events(id,zone_id,action,actor,details_json,created_at) VALUES(?,?,?,?,?,?)')
       .bind(uid('dns_evt'),zoneId,'record.created','owner',JSON.stringify({record_id:recordId,name:fqdn,type}),now).run();
     return json({ok:true,record:{id:recordId,zone_id:zoneId,name:fqdn,type,ttl,priority:type==='MX'?Number(b.priority):null,value,enabled:true},zone_serial:serial,applied_to_authority:false},201);
@@ -100,6 +106,9 @@ async function api(req:Request,env:Env,url:URL):Promise<Response>{
     await env.DB.prepare('DELETE FROM dns_records WHERE id=?').bind(recordId).run();
     const serial=Number(zone?.serial||0)+1;
     await env.DB.prepare('UPDATE dns_zones SET serial=?,updated_at=? WHERE id=?').bind(serial,now,record.zone_id).run();
+    const zoneDetails=await env.DB.prepare('SELECT zone_name,primary_nameserver FROM dns_zones WHERE id=?').bind(record.zone_id).first<any>();
+    if(zoneDetails) await env.DB.prepare("UPDATE dns_records SET value=? WHERE zone_id=? AND type='SOA' AND name=?")
+      .bind(zoneDetails.primary_nameserver+'. hostmaster.'+zoneDetails.zone_name+'. '+serial+' 3600 600 1209600 300',record.zone_id,zoneDetails.zone_name).run();
     await env.DB.prepare('INSERT INTO dns_audit_events(id,zone_id,action,actor,details_json,created_at) VALUES(?,?,?,?,?,?)')
       .bind(uid('dns_evt'),record.zone_id,'record.deleted','owner',JSON.stringify({record_id:recordId,name:record.name,type:record.type}),now).run();
     return json({ok:true,deleted:recordId,zone_serial:serial,applied_to_authority:false});
