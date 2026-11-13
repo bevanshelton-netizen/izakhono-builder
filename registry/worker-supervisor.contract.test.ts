@@ -1,6 +1,7 @@
 import {strict as assert} from 'node:assert';
 import {WORKERS,WORKER_INDEX} from './workers';
 import {classifyBuilderIssue} from './builder-queue';
+import {evaluateWorkerPolicy} from './workers';
 
 const ids=WORKERS.map(w=>w.id);
 assert.equal(new Set(ids).size,ids.length,'worker IDs must be unique');
@@ -31,3 +32,8 @@ for(const worker of WORKERS){
 }
 
 console.log(`worker supervisor contract tests: ok (${WORKERS.length} workers)`);
+
+assert.equal(evaluateWorkerPolicy('build-worker','low').allowed,true);
+assert.equal(evaluateWorkerPolicy('deployment-worker','low').allowed,false,'high-risk deployment worker must be gated');
+assert.equal(evaluateWorkerPolicy('build-worker','high').allowed,false,'high-risk jobs must be gated');
+assert.equal(evaluateWorkerPolicy('missing-worker','low').allowed,false,'unknown workers must fail closed');
