@@ -35,7 +35,7 @@ check_port_owned_or_free() {
 }
 
 printf '\nIZAKHONO NODE01 SOFTWARE RUNTIME COMPLIANCE GATE\n'
-printf 'Node: %s\n' "$(hostname 2>/dev/null || echo unknown)"
+printf 'Execution substrate: %s\n' "$(hostname 2>/dev/null || echo unknown)"
 printf 'UTC:  %s\n\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
 check_cmd 'Docker installed' docker
