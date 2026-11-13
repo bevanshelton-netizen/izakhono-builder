@@ -80,7 +80,24 @@ services:
       - "53:53/tcp"
     volumes:
       - ./runtime/authoritative-dns/Corefile:/etc/coredns/Corefile:ro
-      - ./runtime/authoritative-dns/db.izakhono.local:/zones/db.izakhono.local:ro
+      - dns-zones:/zones
+    networks: [izakhono]
+    depends_on:
+      - dns-sync
+
+  dns-sync:
+    image: node:22-alpine
+    restart: unless-stopped
+    working_dir: /app
+    command: ["node", "sync-agent.mjs"]
+    environment:
+      DNS_SYNC_URL: ${DNS_SYNC_URL:?set private HOST snapshot URL}
+      DNS_SYNC_TOKEN: ${DNS_SYNC_TOKEN:?set private DNS sync token}
+      DNS_ZONE_DIR: /zones
+      DNS_SYNC_INTERVAL_SECONDS: ${DNS_SYNC_INTERVAL_SECONDS:-30}
+    volumes:
+      - ./runtime/authoritative-dns:/app:ro
+      - dns-zones:/zones
     networks: [izakhono]
 
   postgres:
@@ -130,6 +147,7 @@ networks:
     driver: bridge
 
 volumes:
+  dns-zones:
   host-runtime-data:
   caddy-data:
   caddy-config:
