@@ -101,10 +101,10 @@ export async function workerControl(request:Request,authorized:boolean,db:D1Data
   return json({ok:true,counts:await supervisorCounts(db),jobs:await listSupervisorJobs(db,status||undefined)});
  }
  if(url.pathname==='/workers/dispatch'&&request.method==='POST'){
-  let body:{jobId?:string;workerId?:string;input?:unknown;dryRun?:boolean};
+  let body:{jobId?:string;workerId?:string;input?:unknown;dryRun?:boolean;fortressCapabilityGrant?:string};
   try{body=await request.json();}catch{return json({ok:false,error:'invalid json'},400);}
   if(body.jobId){
-   const jobs=await listSupervisorJobs(db);const job=jobs.find(j=>j.id===body.jobId);if(!job)return json({ok:false,error:'unknown job'},404);
+   const jobs=await listSupervisorJobs(db);const job=jobs.find(j=>j.id===body.jobId);if(!job)return json({ok:false,error:'unknown job'},404);if(body.fortressCapabilityGrant)job.input={...(job.input&&typeof job.input==='object'?job.input as Record<string,unknown>:{}),fortressCapabilityGrant:body.fortressCapabilityGrant};
    if(job.status!=='queued')return json({ok:false,error:`job is ${job.status}, expected queued`},409);
    if(job.risk==='high'||job.humanGate)return json({ok:true,accepted:false,status:'blocked',job,reason:'human-gate-required',gate:job.humanGate||'high-risk'},202);
    if(job.dependencyIds.length){const blockers=jobs.filter(j=>job.dependencyIds.some(dep=>dep===j.sourceId||dep===j.id)&&j.status!=='completed');if(blockers.length)return json({ok:true,accepted:false,status:'blocked',job,reason:'dependencies-incomplete',blockers},202);}
