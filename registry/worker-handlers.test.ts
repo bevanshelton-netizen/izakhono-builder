@@ -41,6 +41,15 @@ async function main() {
     checks: ["deploy"],
   }), { attempt: 1, idempotencyKey: "idem-2" }), /not_allowlisted/);
 
+  await assert.rejects(() => handler({
+    ...job({
+      repository: "bevanshelton-netizen/izakhono-builder",
+      revision: "abcdef1234567",
+      checks: ["typecheck"],
+    }),
+    workerId: "repo-worker",
+  }, { attempt: 1, idempotencyKey: "idem-wrong-worker" }), /worker_ownership_mismatch/);
+
   const incomplete = createBuildWorkerHandler(async request => ({
     summary: "Incomplete report",
     revision: request.revision,
