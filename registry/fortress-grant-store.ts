@@ -25,8 +25,8 @@ export async function registerFortressGrant(db:D1Database,claims:FortressCapabil
  await db.prepare('INSERT INTO fortress_capability_grants(jti,worker_id,risk,issuer,issued_at,expires_at,token_digest) VALUES(?,?,?,?,?,?,?)')
  .bind(claims.jti,claims.sub,claims.risk,issuer,new Date(claims.iat*1000).toISOString(),new Date(claims.exp*1000).toISOString(),tokenDigest).run();
 }
-export async function consumeFortressGrant(db:D1Database,jti:string,workerId:string,now=new Date().toISOString()){
- const result=await db.prepare('UPDATE fortress_capability_grants SET consumed_at=? WHERE jti=? AND worker_id=? AND revoked_at IS NULL AND consumed_at IS NULL AND expires_at>?').bind(now,jti,workerId,now).run() as {meta?:{changes?:number}};
+export async function consumeFortressGrant(db:D1Database,jti:string,workerId:string,tokenDigest:string,now=new Date().toISOString()){
+ const result=await db.prepare('UPDATE fortress_capability_grants SET consumed_at=? WHERE jti=? AND worker_id=? AND revoked_at IS NULL AND consumed_at IS NULL AND expires_at>? AND token_digest=?').bind(now,jti,workerId,now,tokenDigest).run() as {meta?:{changes?:number}};
  if(Number(result.meta?.changes??0)!==1)throw new Error('FORTRESS grant is unknown, revoked, expired, or already consumed');
  return {jti,consumedAt:now};
 }
