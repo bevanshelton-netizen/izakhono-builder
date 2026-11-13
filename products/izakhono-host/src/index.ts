@@ -40,11 +40,11 @@ async function api(req:Request,env:Env,url:URL):Promise<Response>{
   if(url.pathname==='/api/dns/zones' && req.method==='POST'){
     const b=await body(req);
     const customerId=clean(b.customer_id,120);
-    const zoneName=clean(b.zone_name,253).toLowerCase().replace(/\\.+$/,'');
-    const authority=clean(env.DNS_AUTHORITY_DOMAIN,253).toLowerCase().replace(/\\.+$/,'');
-    if(!customerId || !/^(?=.{1,253}$)([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z]{2,63}$/.test(zoneName))
+    const zoneName=clean(b.zone_name,253).toLowerCase().replace(/\.+$/,'');
+    const authority=clean(env.DNS_AUTHORITY_DOMAIN,253).toLowerCase().replace(/\.+$/,'');
+    if(!customerId || !/^(?=.{1,253}$)([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/.test(zoneName))
       return json({ok:false,error:'A valid customer_id and fully-qualified zone_name are required'},400);
-    if(!authority || authority.endsWith('.invalid') || !/^(?=.{1,253}$)([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z]{2,63}$/.test(authority))
+    if(!authority || authority.endsWith('.invalid') || !/^(?=.{1,253}$)([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/.test(authority))
       return json({ok:false,error:'DNS_AUTHORITY_DOMAIN must be configured to a registered authority domain'},503);
     const customer=await env.DB.prepare('SELECT id FROM host_customers WHERE id=?').bind(customerId).first<any>();
     if(!customer) return json({ok:false,error:'Customer not found'},404);
@@ -62,7 +62,7 @@ async function api(req:Request,env:Env,url:URL):Promise<Response>{
       return json({ok:true,zone:{id,customer_id:customerId,zone_name:zoneName,status:'planned',serial,primary_nameserver:primary,secondary_nameserver:secondary},public_authority:false},201);
     }catch(e){return json({ok:false,error:'Zone creation failed',detail:String(e)},409);}
   }
-  const dnsZoneMatch=url.pathname.match(/^\\/api\\/dns\\/zones\\/([^/]+)$/);
+  const dnsZoneMatch=url.pathname.match(/^\/api\/dns\/zones\/([^/]+)$/);
   if(dnsZoneMatch && req.method==='GET'){
     const zoneId=decodeURIComponent(dnsZoneMatch[1]);
     const zone=await env.DB.prepare('SELECT * FROM dns_zones WHERE id=?').bind(zoneId).first<any>();
@@ -70,7 +70,7 @@ async function api(req:Request,env:Env,url:URL):Promise<Response>{
     const records=await env.DB.prepare('SELECT * FROM dns_records WHERE zone_id=? ORDER BY name,type').bind(zoneId).all<any>();
     return json({ok:true,zone,records:records.results||[]});
   }
-  const dnsRecordsMatch=url.pathname.match(/^\\/api\\/dns\\/zones\\/([^/]+)\\/records$/);
+  const dnsRecordsMatch=url.pathname.match(/^\/api\/dns\/zones\/([^/]+)\/records$/);
   if(dnsRecordsMatch && req.method==='POST'){
     const zoneId=decodeURIComponent(dnsRecordsMatch[1]), b=await body(req);
     const zone=await env.DB.prepare('SELECT * FROM dns_zones WHERE id=?').bind(zoneId).first<any>();
@@ -80,7 +80,7 @@ async function api(req:Request,env:Env,url:URL):Promise<Response>{
     if(!name || !value || !Number.isInteger(ttl) || ttl<30 || ttl>86400) return json({ok:false,error:'Invalid record name, value or TTL'},400);
     const fqdn=name==='@'?zone.zone_name:name.endsWith('.')?name.slice(0,-1):name+'.'+zone.zone_name;
     if(fqdn!==zone.zone_name && !fqdn.endsWith('.'+zone.zone_name)) return json({ok:false,error:'Record name must be inside its zone'},400);
-    if(type==='A' && !/^(?:\\d{1,3}\\.){3}\\d{1,3}$/.test(value)) return json({ok:false,error:'A record must contain an IPv4 address'},400);
+    if(type==='A' && !/^(?:\d{1,3}\.){3}\d{1,3}$/.test(value)) return json({ok:false,error:'A record must contain an IPv4 address'},400);
     if(type==='MX' && (!Number.isInteger(Number(b.priority)) || Number(b.priority)<0 || Number(b.priority)>65535)) return json({ok:false,error:'MX priority must be 0..65535'},400);
     const now=new Date().toISOString(), recordId=uid('rec'), serial=Number(zone.serial)+1;
     await env.DB.prepare('INSERT INTO dns_records(id,zone_id,name,type,ttl,priority,value,enabled,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?)')
@@ -90,7 +90,7 @@ async function api(req:Request,env:Env,url:URL):Promise<Response>{
       .bind(uid('dns_evt'),zoneId,'record.created','owner',JSON.stringify({record_id:recordId,name:fqdn,type}),now).run();
     return json({ok:true,record:{id:recordId,zone_id:zoneId,name:fqdn,type,ttl,priority:type==='MX'?Number(b.priority):null,value,enabled:true},zone_serial:serial,applied_to_authority:false},201);
   }
-  const dnsRecordMatch=url.pathname.match(/^\\/api\\/dns\\/records\\/([^/]+)$/);
+  const dnsRecordMatch=url.pathname.match(/^\/api\/dns\/records\/([^/]+)$/);
   if(dnsRecordMatch && req.method==='DELETE'){
     const recordId=decodeURIComponent(dnsRecordMatch[1]);
     const record=await env.DB.prepare('SELECT * FROM dns_records WHERE id=?').bind(recordId).first<any>();
