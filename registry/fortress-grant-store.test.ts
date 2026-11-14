@@ -12,7 +12,7 @@ class FakeD1 implements D1Database{
    async run(){
     if(sql.includes('INSERT INTO fortress_capability_grants')){const [jti,worker_id,risk,issuer,issued_at,expires_at,token_digest]=values as string[];if(db.grants.has(jti))throw new Error('unique constraint');db.grants.set(jti,{jti,worker_id,risk,issuer,issued_at,expires_at,revoked_at:null,consumed_at:null,token_digest});return {meta:{changes:1}};}
     if(sql.includes('UPDATE fortress_capability_grants SET consumed_at')){const [at,jti,worker,expiry,digest]=values as string[];const row=db.grants.get(jti);if(!row||row.worker_id!==worker||row.revoked_at||row.consumed_at||row.expires_at<=expiry||row.token_digest!==digest)return {meta:{changes:0}};row.consumed_at=at;return {meta:{changes:1}};}
-    if(sql.includes('UPDATE fortress_capability_grants SET revoked_at')){const [at,jti]=values as string[];const row=db.grants.get(jti);if(!row||row.revoked_at)return {meta:{changes:0}};row.revoked_at=at;return {meta:{changes:1}};}
+    if(sql.includes('UPDATE fortress_capability_grants SET revoked_at')){const [at,_issuer,jti]=values as string[];const row=db.grants.get(jti);if(!row||row.revoked_at)return {meta:{changes:0}};row.revoked_at=at;return {meta:{changes:1}};}
     return {meta:{changes:0}};
    },
    async first<T>(){return null as T|null;},
