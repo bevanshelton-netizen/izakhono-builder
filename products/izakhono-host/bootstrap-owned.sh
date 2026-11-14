@@ -57,7 +57,7 @@ fi
 chmod 600 mail/secrets/roundcube_db_password mail/secrets/roundcube_des_key
 
 if grep -q '^MAIL_ADMIN_PASSWORD_HASH=REPLACE_WITH_CADDY_BCRYPT_HASHif grep -q 'REPLACE_WITH' .env; then
-  echo "Some mail settings remain intentionally unconfigured:"
+  echo "Some mail and hosting settings remain intentionally unconfigured:"
   grep -E '^(STALWART_API_KEY|SMTP_PASS|MAIL_PUBLIC_IP|DKIM_SELECTOR|HOST_PUBLIC_IP)=' .env || true
   echo "Create the Stalwart API token after first server setup; set SMTP_PASS after the notifications mailbox is activated."
 fi
