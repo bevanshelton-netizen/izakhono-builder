@@ -66,7 +66,8 @@
     "superagent:intelligence:test": "npx --yes tsx@4.20.3 src/superagent-intelligence.test.ts",
     "registry:lease-test": "npx --yes tsx@4.20.3 registry/supervisor-lease.test.ts",
     "registry:executor-test": "npx --yes tsx@4.20.3 registry/worker-executor.test.ts",
-    "registry:worker-test": "npx --yes tsx@4.20.3 registry/worker-handlers.test.ts"
+    "registry:worker-test": "npx --yes tsx@4.20.3 registry/worker-handlers.test.ts",
+    "registry:github-verifier-test": "npx --yes tsx@4.20.3 registry/github-build-verifier.test.ts"
   },
   "dependencies": {
     "wrangler": "4.127.1"
