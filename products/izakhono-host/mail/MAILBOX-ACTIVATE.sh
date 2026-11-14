@@ -9,8 +9,8 @@ command -v jq >/dev/null
 command -v python3 >/dev/null
 API="http://127.0.0.1:8082"
 
-HANDOVER_TOKEN="$(jq -r '.handover_token // empty' "$HANDOVER_FILE")"
-[[ -n "$HANDOVER_TOKEN" ]] || { echo "Handover token not found in file." >&2; exit 2; }
+HANDOVER_EMAIL="$(jq -r '.address // empty' "$HANDOVER_FILE")"
+[[ "$HANDOVER_EMAIL" == "$EMAIL" ]] || { echo "Email address does not match the handover file." >&2; exit 2; }
 
 TMP_ROOT="$(mktemp -d)"
 chmod 700 "$TMP_ROOT"
@@ -20,10 +20,7 @@ ACTIVATE_REQUEST="$TMP_ROOT/activate.json"
 HANDOVER_RESPONSE="$TMP_ROOT/activation-token.json"
 chmod 600 "$HANDOVER_REQUEST" "$ACTIVATE_REQUEST" "$HANDOVER_RESPONSE" 2>/dev/null || true
 
-python3 - "$HANDOVER_TOKEN" > "$HANDOVER_REQUEST" <<'PY'
-import json, sys
-print(json.dumps({"handover_token": sys.argv[1]}))
-PY
+jq -n --argfile handover "$HANDOVER_FILE" '{handover_token: $handover.handover_token}' > "$HANDOVER_REQUEST"
 curl -fsS -X POST "$API/api/mailboxes/handover" \
   -H "Content-Type: application/json" \
   --data-binary "@$HANDOVER_REQUEST" > "$HANDOVER_RESPONSE"
@@ -37,14 +34,11 @@ echo
 [[ "$NEW_PASSWORD" == "$CONFIRM_PASSWORD" ]] || { echo "Passwords do not match." >&2; exit 4; }
 [[ "${#NEW_PASSWORD}" -ge 12 ]] || { echo "Password must be at least 12 characters." >&2; exit 5; }
 
-ACTIVATION_TOKEN="$ACTIVATION_TOKEN" NEW_PASSWORD="$NEW_PASSWORD" python3 - > "$ACTIVATE_REQUEST" <<'PY'
-import json, os
-print(json.dumps({
-    "activation_token": os.environ["ACTIVATION_TOKEN"],
-    "new_password": os.environ["NEW_PASSWORD"],
-}))
-PY
-unset NEW_PASSWORD CONFIRM_PASSWORD ACTIVATION_TOKEN HANDOVER_TOKEN
+PASSWORD_FILE="$TMP_ROOT/new-password"
+printf '%s' "$NEW_PASSWORD" > "$PASSWORD_FILE"
+chmod 600 "$PASSWORD_FILE"
+jq -n --argfile activation "$HANDOVER_RESPONSE" --rawfile password "$PASSWORD_FILE" '{activation_token: $activation.activation_token, new_password: $password}' > "$ACTIVATE_REQUEST"
+unset NEW_PASSWORD CONFIRM_PASSWORD ACTIVATION_TOKEN
 
 curl -fsS -X POST "$API/api/account/activate" \
   -H "Content-Type: application/json" \
