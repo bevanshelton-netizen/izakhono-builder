@@ -10,11 +10,19 @@
   redir https://{host}{uri} permanent
 }
 
-mail.izakhonoafrica.co.za {
+mail.izakhonoafrica.co.za, autoconfig.izakhonoafrica.co.za, autodiscover.izakhonoafrica.co.za {
   tls {
     on_demand
   }
   reverse_proxy {$STALWART_HTTP_UPSTREAM}
+}
+
+mta-sts.izakhonoafrica.co.za {
+  tls {
+    on_demand
+  }
+  root * /srv/mta-sts
+  file_server
 }
 
 webmail.izakhonoafrica.co.za {
