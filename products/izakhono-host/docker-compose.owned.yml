@@ -24,9 +24,13 @@ services:
       COMPUTE_ADMIN_TOKEN: ${COMPUTE_ADMIN_TOKEN:?set COMPUTE_ADMIN_TOKEN}
       COMPUTE_WORKER_TOKEN: ${COMPUTE_WORKER_TOKEN:?set COMPUTE_WORKER_TOKEN}
       COMPUTE_LEASE_MS: ${COMPUTE_LEASE_MS:-120000}
+      DATABASE_URL: postgres://${POSTGRES_USER:-izakhono}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-izakhono}
     volumes:
       - compute-manager-data:/data
     networks: [izakhono]
+    depends_on:
+      postgres:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8082/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
       interval: 15s
