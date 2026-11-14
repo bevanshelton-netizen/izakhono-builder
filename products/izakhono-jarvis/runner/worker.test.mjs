@@ -29,7 +29,11 @@ const json = (body, status = 200) => new Response(JSON.stringify(body), { status
   assert.equal(calls.length, 3);
   assert.equal(calls[0].options.headers["x-admin-secret"], "test-owner-secret");
   assert.equal(calls[1].options.headers.authorization, "Bearer test-executor-token");
+  assert.equal(calls[1].options.headers["idempotency-key"], "jarvis-step-step-1");
   assert.equal(calls[1].options.redirect, "error");
+  const executorPayload = JSON.parse(calls[1].options.body);
+  assert.equal(executorPayload.idempotency_key, "jarvis-step-step-1");
+  assert.equal(executorPayload.step.id, "step-1");
   assert.equal(JSON.parse(calls[2].options.body).evidence, completedEvidence);
 }
 
