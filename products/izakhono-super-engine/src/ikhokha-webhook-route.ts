@@ -40,16 +40,17 @@ export function createIKhokhaWebhookRoute(config: IKhokhaWebhookRouteConfig) {
 
     const chunks: Buffer[] = [];
     let bytes = 0;
+    let oversized = false;
     try {
       for await (const chunk of req) {
         const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
         bytes += buffer.length;
-        if (bytes > maxBodyBytes) {
-          req.destroy();
-          reply(res, 413, { ok: false, error: 'payload_too_large' });
-          return true;
-        }
-        chunks.push(buffer);
+        if (bytes > maxBodyBytes) { oversized = true; continue; }
+        if (!oversized) chunks.push(buffer);
+      }
+      if (oversized) {
+        reply(res, 413, { ok: false, error: 'payload_too_large' });
+        return true;
       }
       const rawBody = Buffer.concat(chunks).toString('utf8');
       const headerValue = req.headers[config.signatureHeader.toLowerCase()];
