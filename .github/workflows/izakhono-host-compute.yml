@@ -28,6 +28,9 @@ jobs:
       - name: Test native HOST runtime
         working-directory: products/izakhono-host/runtime/control-plane
         run: node smoke.mjs
+      - name: Install compute manager runtime dependency
+        working-directory: products/izakhono-host/runtime/compute-manager
+        run: npm install --omit=dev --ignore-scripts --no-audit --no-fund
       - name: Test compute manager and real worker
         working-directory: products/izakhono-host/runtime/compute-manager
         run: node smoke.mjs
