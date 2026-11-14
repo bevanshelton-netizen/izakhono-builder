@@ -40,7 +40,7 @@ for current, dirs, names in os.walk(root, followlinks=False):
         rel = os.path.relpath(path, root).replace(os.sep, "/")
         lower = rel.lower()
         base = os.path.basename(lower)
-        blocked = base == ".env" or base.startswith(".env.") or base in {".npmrc", ".netrc", ".htpasswd", ".ds_store", "id_rsa", "id_ed25519", "authorized_keys", "credentials.json", "secrets.json"} or base.endswith((".pem", ".key", ".p12", ".pfx", ".sqlite", ".sqlite3", ".db", ".bak", ".log", ".dump", ".sql"))
+        blocked = base == ".env" or base.startswith(".env") or base in {".npmrc", ".netrc", ".htpasswd", ".ds_store", "id_rsa", "id_ed25519", "authorized_keys", "credentials.json", "secrets.json"} or base.endswith((".pem", ".key", ".p12", ".pfx", ".sqlite", ".sqlite3", ".db", ".bak", ".log", ".dump", ".sql"))
         if blocked:
             print(f"Skipping sensitive file: {rel}", file=sys.stderr)
             continue
