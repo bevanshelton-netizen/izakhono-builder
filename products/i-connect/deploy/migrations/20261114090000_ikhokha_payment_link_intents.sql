@@ -69,6 +69,7 @@ begin
   if t.provider_requested is distinct from 'ikhokha' then raise exception 'transaction_not_created_for_ikhokha'; end if;
   if t.status not in ('created','pending') then raise exception 'transaction_not_eligible'; end if;
   if t.merchant_account_id is null then raise exception 'merchant_account_missing'; end if;
+  if upper(t.currency) <> 'ZAR' then raise exception 'ikhokha_currency_not_supported_by_current_minor_unit_contract'; end if;
   select * into pc from public.pay_provider_connections
    where provider='ikhokha' and merchant_account_id=t.merchant_account_id
      and status in ('ready','active') order by created_at desc limit 1;
