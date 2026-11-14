@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { SupabaseCheckoutOrderStore, type CreateCheckoutOrderInput } from './checkout-order-store.js';
+import { SupabaseCheckoutOrderStore, createHostCheckoutOrderResolver, type CreateCheckoutOrderInput } from './checkout-order-store.js';
 
 const order: CreateCheckoutOrderInput = {
   orderId: 'ord_001', paymentIntentId: 'pay_001', externalTransactionId: 'txn_001',
@@ -53,6 +53,13 @@ const lookup = new SupabaseCheckoutOrderStore({
   fetcher: async () => new Response(JSON.stringify([row]), { status: 200 }),
 });
 assert.equal((await lookup.getByPaymentIntentId('pay_001'))?.domain, 'example.co.za');
+const resolver = createHostCheckoutOrderResolver({
+  createOrGet: async (input) => input,
+  getByPaymentIntentId: async (id) => id === 'pay_001' ? { ...order } : undefined,
+});
+const resolved = await resolver({ id: 'pay_001', externalTransactionId: 'txn_001' } as never, {} as never);
+assert.equal(resolved?.domain, 'example.co.za');
+assert.equal(await resolver({ id: 'pay_001', externalTransactionId: 'tampered' } as never, {} as never), undefined);
 
 await assert.rejects(() => inserted.createOrGet({ ...order, expectedAmountMinor: 0 }), /positive integer/);
 await assert.rejects(() => inserted.createOrGet({ ...order, domain: 'https://example.co.za' }), /normalized public DNS/);
