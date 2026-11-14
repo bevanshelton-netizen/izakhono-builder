@@ -1,4 +1,4 @@
-name: IZAKHONO HOST payment bridge
+name: IZAKHONO HOST payment bridge # immutable checkout snapshot validation
 
 on:
   pull_request:
