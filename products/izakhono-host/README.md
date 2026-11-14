@@ -29,7 +29,7 @@ The platform is not considered production-live merely because its Docker contain
 - Supabase tenant tables with row-level security restricted to tenant ownership; browser-side direct writes are disabled.
 - Persistent runtime and edge volumes.
 
-The current native host runtime is an owned static-site hosting baseline, not yet a full commercial PaaS. The site registry and deployment history are currently stored in a durable JSON file on a persistent volume. The customer self-service portal, registrar/DNS-provider automation, tenant billing lifecycle, complete object-storage integration, dynamic PHP/application runtimes, database provisioning, usage metering and production multi-node failover still require implementation and verification. Do not promise full Hostinger-equivalent hosting or one-click customer onboarding until those gates are complete.
+The current native host runtime is an owned static-site hosting baseline, not yet a full commercial PaaS. The site registry and deployment history are currently stored in a durable JSON file on a persistent volume. The customer self-service portal, registrar/DNS-provider automation, tenant billing lifecycle, complete object-storage integration, dynamic PHP/application runtimes, database provisioning, usage metering and production multi-node failover still require implementation and verification. The current CoreDNS service is a local fixture/private test zone, not a delegated public authoritative DNS service; production DNS requires two independent public nameserver nodes, DNSSEC, registrar delegation and external resolver tests. Do not promise full Hostinger-equivalent hosting or one-click customer onboarding until those gates are complete.
 
 ### Email infrastructure
 
