@@ -8,7 +8,7 @@ class MemoryQueueDb implements QueueDb {
   prepare(sql: string): QueueDbStatement {
     const normalized = sql.replace(/\s+/g, " ").trim();
     let values: unknown[] = [];
-    const statement = {
+    const statement: QueueDbStatement = {
       bind: (...args: unknown[]) => { values = args; return statement; },
       first: async <T>() => {
         if (!normalized.startsWith("SELECT id, payload_json FROM native_builder_jobs")) throw new Error("Unexpected first query: " + normalized);
