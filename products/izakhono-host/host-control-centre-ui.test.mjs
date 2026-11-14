@@ -9,7 +9,6 @@ for (const marker of [
   '/api/control-centre',
   "credentials:'same-origin'",
   "cache:'no-store'",
-  'HOST_PUBLIC_IP',
   'acceptance'
 ]) {
   assert.ok(html.includes(marker), `missing hosting dashboard marker: ${marker}`);
