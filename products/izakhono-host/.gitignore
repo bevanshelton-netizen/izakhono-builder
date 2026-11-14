@@ -1,4 +1,6 @@
 .env
+.backup.env
+mail/.backup.env
 mail/.env
 mail/secrets/*
 !mail/secrets/README.md
