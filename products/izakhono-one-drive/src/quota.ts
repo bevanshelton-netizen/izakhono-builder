@@ -22,6 +22,7 @@ export function reserveUpload(q: SpaceQuota,n: bigint): SpaceQuota {
 }
 export function commitUpload(q: SpaceQuota,reserved: bigint,actual: bigint): SpaceQuota {
  assertQuota(q); if(reserved<=0n||actual<0n||reserved>q.reservedBytes) throw new RangeError("invalid-reservation-transition");
+ if(actual>reserved) throw new RangeError("upload-exceeds-reservation");
  const next={...q,reservedBytes:q.reservedBytes-reserved,usedBytes:q.usedBytes+actual}; assertQuota(next); return next;
 }
 export function releaseReservation(q: SpaceQuota,n: bigint): SpaceQuota {
