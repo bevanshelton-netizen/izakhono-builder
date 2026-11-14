@@ -109,7 +109,17 @@ export async function workerControl(request:Request,authorized:boolean,db:D1Data
   if(!body.workerId||!WORKER_INDEX[body.workerId])return json({ok:false,error:'unknown worker'},404);
   const w=WORKER_INDEX[body.workerId];
   const sourceId=`manual:${crypto.randomUUID()}`;const job:SupervisorJob={id:idFor('manual',sourceId),source:'manual',sourceId,title:`Manual ${w.id} job`,workerId:w.id,priority:10,risk:w.risk,status:w.humanGate?'blocked':'queued',dependencyIds:[],humanGate:w.humanGate,attempts:0,input:body.input??{},evidence:{createdAt:now()},createdAt:now(),updatedAt:now()};await upsertSupervisorJob(db,job);
-  return json({ok:true,accepted:job.status!=='blocked',status:job.status,job,reason:job.humanGate?'human-gate-required':undefined},job.status==='blocked'?202:201);
+  if(job.status==='queued'&&handlers?.[job.workerId]){
+   const input=job.input as Record<string,unknown>|null;
+   if(job.workerId!=='build-worker'||(input&&typeof input.repository==='string'&&typeof input.revision==='string'&&Array.isArray(input.checks))){
+    const lease=await claimSupervisorLease(db,job.id,job.workerId,`manual-dispatch:${job.id}:1`);
+    if(lease){
+     const execution=await executeLeasedSupervisorJob(db,lease,handlers);
+     return json({ok:execution.ok,accepted:true,status:execution.outcome,jobId:job.id,execution},execution.ok?200:202);
+    }
+   }
+  }
+  return json({ok:true,accepted:job.status!=='blocked',status:job.status,job,reason:job.humanGate?'human-gate-required':handlers?.[job.workerId]?'required-input-missing':'worker-executor-unavailable'},job.status==='blocked'?202:201);
  }
  if(url.pathname==='/workers/verify'&&request.method==='POST'){
   let body:{jobId?:string;evidence?:unknown};try{body=await request.json();}catch{return json({ok:false,error:'invalid json'},400);}
