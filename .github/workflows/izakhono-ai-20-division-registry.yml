@@ -3,7 +3,7 @@ name: IZAKHONO AI 20.0 Division Registry
 on:
   push:
     branches:
-      - feature/izakhono-ai-20-operating-system
+      - feature/izakhono-ai-20-mergeable
     paths:
       - 'registry/**'
       - 'package.json'
@@ -38,7 +38,7 @@ jobs:
         run: npm install --no-save --ignore-scripts --no-audit --no-fund typescript@5.9.2 @types/node@22.15.30 tsx@4.20.3
       - name: Validate division and worker registry
         run: npx tsx registry/divisions.test.ts
-      - name: Validate supervisor and FORTRESS capability contracts
+      - name: Validate mainline supervisor contracts
         run: npm run registry:supervisor-test
       - name: Typecheck registry
         run: npx tsc --noEmit --target ES2022 --lib ES2022,DOM,DOM.Iterable --module ESNext --moduleResolution Bundler --types node registry/*.ts
