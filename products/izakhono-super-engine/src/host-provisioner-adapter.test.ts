@@ -40,7 +40,7 @@ await assert.rejects(
   () => adapter.provision({ job, payment: { ...payment, status: 'pending' } }),
   /persisted paid payment/,
 );
-await assert.rejects(
+assert.throws(
   () => new HostProvisionerAdapter({
     endpoint: 'http://host.example',
     bridgeToken: 'secret',
