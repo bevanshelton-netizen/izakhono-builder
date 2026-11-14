@@ -14,8 +14,28 @@ standard_mailboxes:
   - partnerships
   - security
   - noreply
+  - dmarc-reports
 
 platforms:
+  - id: izakhono-africa
+    name: IZAKHONO AFRICA
+    priority: critical
+    domain: izakhonoafrica.co.za
+    domain_status: existing_unverified
+    primary_owner_mailbox: bevans
+    mailboxes:
+      - bevans
+      - info
+      - admin
+      - support
+      - accounts
+      - sales
+      - partnerships
+      - security
+      - notifications
+      - noreply
+      - dmarc-reports
+      - orders
   - id: kora-network
     name: KORA NETWORK
     priority: critical
@@ -118,6 +138,7 @@ status_rules:
   - MAIL_READY
   - DELIVERY_VERIFIED
   - LIVE_VERIFIED
+  - EXISTING_UNVERIFIED
 
 never_claim_live_without_delivery_evidence: true
 never_store_mail_credentials_in_source: true
