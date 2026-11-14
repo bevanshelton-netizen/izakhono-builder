@@ -5,7 +5,7 @@ alter table public.pay_payment_transactions add column if not exists provider_re
 create or replace function public.pay_create_transaction(
   p_external_reference text, p_amount numeric, p_currency text, p_idempotency_key text,
   p_merchant_account_id uuid default null, p_provider text default 'stripe'
-) returns jsonb language plpgsql security definer set search_path=public as $
+) returns jsonb language plpgsql security definer set search_path=public as $$
 declare existing jsonb; tx_id uuid; provider_gate jsonb;
 begin
   if p_amount <= 0 then raise exception 'amount_must_be_positive'; end if;
@@ -33,7 +33,7 @@ begin
   return jsonb_build_object('id',tx_id,'external_reference',p_external_reference,'amount',p_amount,
     'currency',upper(p_currency),'status','created','provider',p_provider,'provider_requested',p_provider,
     'idempotency_key',p_idempotency_key,'idempotent_replay',false);
-end; $;
+end; $$;
 create table if not exists public.pay_ikhokha_payment_link_intents (
   id uuid primary key default gen_random_uuid(),
   transaction_id uuid not null unique references public.pay_payment_transactions(id),
