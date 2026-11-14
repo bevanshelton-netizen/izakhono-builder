@@ -116,3 +116,19 @@ The Worker refuses chat requests when any required secret is missing, the owner 
 ### Verification
 
 `src/index.test.ts` covers owner authorization, non-sensitive health reporting, server-side credential forwarding, payload validation and fail-closed behaviour. The dedicated GitHub Actions workflow runs these tests, TypeScript validation and the existing SUPER APP contract validator.
+
+
+### Production deployment gate
+
+The repository workflow `.github/workflows/deploy-izakhono-super-app.yml` deploys the SUPER APP Worker only after a live owner-model inference preflight succeeds. Configure these repository Actions secrets in GitHub (Settings → Secrets and variables → Actions):
+
+- `CLOUDFLARE_API_TOKEN`
+- `CLOUDFLARE_ACCOUNT_ID`
+- `IZAKHONO_OWNER_ACCESS_KEY`
+- `IZAKHONO_AI_GATEWAY_URL`
+- `IZAKHONO_AI_GATEWAY_INTERNAL_KEY`
+- `IZAKHONO_AI_WORKFLOW_KEY`
+
+The AI gateway URL must be an HTTPS endpoint reachable from the Worker; loopback URLs such as `127.0.0.1` are not reachable from the deployed Worker. The workflow verifies `/healthz`, the `izakhono-ai` workflow allowlist and a real response routed through the owned model before deployment. It then deploys, installs the Worker secrets, deploys the configured Worker and tests a real chat request. If any prerequisite is missing or owned inference fails, deployment is skipped or stopped; no simulated response is accepted.
+
+A Cloudflare Worker deployment is an externally reversible edge runtime, not proof that NODE01 is the owned-primary runtime. The existing owned-primary promotion gate remains authoritative.
