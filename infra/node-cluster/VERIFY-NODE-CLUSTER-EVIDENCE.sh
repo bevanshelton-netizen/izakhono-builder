@@ -80,8 +80,8 @@ for record in nodes:
     if record.get("status") != "PASS" or record.get("runtime_evidence") is not True:
         blocked(f"{name} does not have passing runtime evidence")
     response = record.get("http")
-    if not isinstance(response, dict) or response.get("ok") is not True or response.get("runtimeNode") != name:
-        blocked(f"{name} endpoint response does not prove its own runtime identity")
+    if not isinstance(response, dict) or response.get("ok") is not True or response.get("runtimeNode") != name or response.get("cluster") != "izakhono-production":
+        blocked(f"{name} endpoint response does not prove its own runtime and cluster identity")
     if not record.get("checkedAt"):
         blocked(f"{name} runtime timestamp is missing")
     parse_fresh_timestamp(record["checkedAt"], f"{name} runtime")
@@ -101,5 +101,5 @@ if not checked_at:
     blocked("cluster runtime evidence timestamp is missing")
 parse_fresh_timestamp(checked_at, "cluster runtime")
 
-print(" [PASS] four distinct runtime identities verified: NODE01 NODE02 NODE03 NODE04")
+print("[PASS] four distinct HTTPS runtime identities verified: NODE01 NODE02 NODE03 NODE04")
 PY
