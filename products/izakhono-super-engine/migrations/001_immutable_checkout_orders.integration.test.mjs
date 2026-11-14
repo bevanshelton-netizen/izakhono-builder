@@ -6,6 +6,13 @@ const connectionString = process.env.HOST_TEST_DATABASE_URL;
 if (!connectionString) throw new Error('HOST_TEST_DATABASE_URL is required');
 const pool = new pg.Pool({ connectionString });
 try {
+  await pool.query(`
+    do $ begin
+      if not exists (select 1 from pg_roles where rolname = 'anon') then create role anon nologin; end if;
+      if not exists (select 1 from pg_roles where rolname = 'authenticated') then create role authenticated nologin; end if;
+      if not exists (select 1 from pg_roles where rolname = 'service_role') then create role service_role nologin; end if;
+    end $;
+  `);
   const migration = await readFile(new URL('./001_immutable_checkout_orders.sql', import.meta.url), 'utf8');
   await pool.query(migration);
   const suffix = crypto.randomUUID();
