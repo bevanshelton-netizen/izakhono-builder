@@ -1,0 +1,155 @@
+name: Deploy IZAKHONO AI Command App
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'products/izakhono-super-app/**'
+      - '.github/workflows/deploy-izakhono-super-app.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: izakhono-super-app-production
+  cancel-in-progress: false
+
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    outputs:
+      ready: ${{ steps.gate.outputs.ready }}
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      IZAKHONO_OWNER_ACCESS_KEY: ${{ secrets.IZAKHONO_OWNER_ACCESS_KEY }}
+      IZAKHONO_AI_GATEWAY_URL: ${{ secrets.IZAKHONO_AI_GATEWAY_URL }}
+      IZAKHONO_AI_GATEWAY_INTERNAL_KEY: ${{ secrets.IZAKHONO_AI_GATEWAY_INTERNAL_KEY }}
+      IZAKHONO_AI_WORKFLOW_KEY: ${{ secrets.IZAKHONO_AI_WORKFLOW_KEY }}
+    steps:
+      - name: Check deployment prerequisites without exposing secrets
+        id: gate
+        shell: bash
+        run: |
+          missing=()
+          for name in CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID IZAKHONO_OWNER_ACCESS_KEY IZAKHONO_AI_GATEWAY_URL IZAKHONO_AI_GATEWAY_INTERNAL_KEY IZAKHONO_AI_WORKFLOW_KEY; do
+            if [ -z "${!name}" ]; then missing+=("$name"); fi
+          done
+          if [ "${#missing[@]}" -gt 0 ]; then
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            printf 'DEPLOYMENT_BLOCKED_MISSING_SECRET=%s\n' "${missing[@]}"
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+            echo "DEPLOYMENT_PREREQUISITES_PRESENT"
+          fi
+      - name: Checkout
+        if: steps.gate.outputs.ready == 'true'
+        uses: actions/checkout@v4
+      - name: Set up Node
+        if: steps.gate.outputs.ready == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify live owner AI runtime before deployment
+        if: steps.gate.outputs.ready == 'true'
+        run: |
+          node --input-type=module <<'NODE'
+          const base = new URL(process.env.IZAKHONO_AI_GATEWAY_URL);
+          if (base.protocol !== "https:") throw new Error("AI gateway must be reachable over HTTPS");
+          const healthResponse = await fetch(new URL("/healthz", base), { signal: AbortSignal.timeout(15000) });
+          if (!healthResponse.ok) throw new Error("Owner AI gateway health check failed");
+          const health = await healthResponse.json();
+          if (!health.ok || !health.workflow_mode_configured || !health.workflow_products?.includes("izakhono-ai")) {
+            throw new Error("Owner AI gateway is not configured for the IZAKHONO AI workflow");
+          }
+          const response = await fetch(new URL("/api/v1/chat", base), {
+            method: "POST",
+            headers: {
+              "content-type": "application/json",
+              "x-izakhono-ai-key": process.env.IZAKHONO_AI_GATEWAY_INTERNAL_KEY,
+              "x-izakhono-ai-workflow-key": process.env.IZAKHONO_AI_WORKFLOW_KEY
+            },
+            body: JSON.stringify({
+              entity_id: "izakhono-africa",
+              subject: "izakhono-owner",
+              product: "izakhono-ai",
+              access_mode: "workflow",
+              route: "owned",
+              data_classification: "internal",
+              messages: [{ role: "user", content: "Reply with exactly IZAKHONO_OWNER_RUNTIME_READY." }]
+            }),
+            signal: AbortSignal.timeout(120000)
+          });
+          const result = await response.json();
+          if (!response.ok || result.ok !== true || result.route !== "owned" || !String(result.answer || "").includes("IZAKHONO_OWNER_RUNTIME_READY")) {
+            throw new Error("Owned model inference acceptance check failed; deployment stopped");
+          }
+          console.log("OWNER_AI_GATEWAY=HEALTHY");
+          console.log("OWNER_MODEL_INFERENCE=VERIFIED");
+          console.log("INFERENCE_ROUTE=OWNED");
+          NODE
+
+  deploy:
+    needs: preflight
+    if: needs.preflight.outputs.ready == 'true'
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      IZAKHONO_OWNER_ACCESS_KEY: ${{ secrets.IZAKHONO_OWNER_ACCESS_KEY }}
+      IZAKHONO_AI_GATEWAY_URL: ${{ secrets.IZAKHONO_AI_GATEWAY_URL }}
+      IZAKHONO_AI_GATEWAY_INTERNAL_KEY: ${{ secrets.IZAKHONO_AI_GATEWAY_INTERNAL_KEY }}
+      IZAKHONO_AI_WORKFLOW_KEY: ${{ secrets.IZAKHONO_AI_WORKFLOW_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Create Worker shell
+        run: npx wrangler deploy --config products/izakhono-super-app/wrangler.jsonc
+      - name: Install private Worker secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf '%s' "$IZAKHONO_OWNER_ACCESS_KEY" | npx wrangler secret put IZAKHONO_OWNER_ACCESS_KEY --config products/izakhono-super-app/wrangler.jsonc
+          printf '%s' "$IZAKHONO_AI_GATEWAY_URL" | npx wrangler secret put IZAKHONO_AI_GATEWAY_URL --config products/izakhono-super-app/wrangler.jsonc
+          printf '%s' "$IZAKHONO_AI_GATEWAY_INTERNAL_KEY" | npx wrangler secret put IZAKHONO_AI_GATEWAY_INTERNAL_KEY --config products/izakhono-super-app/wrangler.jsonc
+          printf '%s' "$IZAKHONO_AI_WORKFLOW_KEY" | npx wrangler secret put IZAKHONO_AI_WORKFLOW_KEY --config products/izakhono-super-app/wrangler.jsonc
+      - name: Publish configured application
+        run: npx wrangler deploy --config products/izakhono-super-app/wrangler.jsonc | tee /tmp/izakhono-super-app-deploy.log
+      - name: Verify public HTTPS and real owner inference
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from "node:fs";
+          const log = fs.readFileSync("/tmp/izakhono-super-app-deploy.log", "utf8");
+          const urls = [...log.matchAll(/https:\/\/[^\s]+workers\.dev/g)].map(x => x[0]);
+          const appUrl = urls.at(-1);
+          if (!appUrl) throw new Error("Wrangler did not return a Worker HTTPS URL");
+          const health = await fetch(new URL("/api/health", appUrl), { signal: AbortSignal.timeout(15000) });
+          if (!health.ok) throw new Error("Deployed application health check failed");
+          const status = await fetch(new URL("/api/ai/status", appUrl), {
+            headers: { "x-izakhono-owner-key": process.env.IZAKHONO_OWNER_ACCESS_KEY }
+          });
+          const runtime = await status.json();
+          if (!status.ok || !runtime.authorized || !runtime.gateway_reachable) throw new Error("Deployed AI gateway connection failed");
+          const chat = await fetch(new URL("/api/ai/chat", appUrl), {
+            method: "POST",
+            headers: { "content-type": "application/json", "x-izakhono-owner-key": process.env.IZAKHONO_OWNER_ACCESS_KEY },
+            body: JSON.stringify({ messages: [{ role: "user", content: "Reply with exactly IZAKHONO_APP_CHAT_READY." }] }),
+            signal: AbortSignal.timeout(120000)
+          });
+          const answer = await chat.json();
+          if (!chat.ok || !answer.ok || answer.route !== "owned" || !String(answer.answer || "").includes("IZAKHONO_APP_CHAT_READY")) {
+            throw new Error("Deployed IZAKHONO AI chat acceptance check failed");
+          }
+          console.log("IZAKHONO_SUPER_APP_HTTPS=VERIFIED");
+          console.log("IZAKHONO_AI_OWNER_AUTH=VERIFIED");
+          console.log("IZAKHONO_AI_CHAT=VERIFIED");
+          console.log("INFERENCE_ROUTE=OWNED");
+          console.log("APPLICATION_URL=" + appUrl);
+          NODE
+      - name: Record external-resilience deployment classification
+        run: echo "Deployment is an externally reversible edge runtime; NODE01 remains the owned-primary authority until its independent public acceptance gate passes."
