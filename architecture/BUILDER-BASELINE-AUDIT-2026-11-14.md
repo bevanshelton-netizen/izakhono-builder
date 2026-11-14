@@ -52,6 +52,21 @@ Inspected in autonomy/builder-adapter.mjs and autonomy/native-builder.mjs:
 
 The inspected src/sovereign.ts Build Anything route does not directly import runBuilderAdapter or runNativeBuilder. A single authoritative execution path must be chosen and wired, or the duplication must be formally retired after proof. Do not assume the two paths are already integrated.
 
+### 2.4 Existing durable Native Builder API
+
+A further inspection of registry/worker-persistent.ts and products/izakhono-native-builder/src/d1-store.ts found an existing D1-backed Native Builder API on the IZAKHONO Registry Worker:
+
+- POST /native-builder/projects registers a native Builder project.
+- GET /native-builder/projects/:id retrieves a project.
+- POST /native-builder/jobs creates a controlled build job through NativeBuilderCore.
+- POST /native-builder/jobs/:id/approve enforces the core's distinct-approver check.
+- GET /native-builder/jobs/:id retrieves a job.
+- D1BuilderStore persists project and job payloads in native_builder_projects and native_builder_jobs.
+
+This is an important existing integration asset. It means the native Builder's project/job domain and durable D1 persistence already exist behind a bearer-token-protected Registry API. The missing bridge is narrower and more actionable than initially stated: the customer-facing Build Anything path does not yet call this Registry API, and the Registry API does not expose a complete external worker claim/lease/heartbeat/recovery/result contract for the native Builder jobs.
+
+The separate products/izakhono-native-builder/src/queue.ts contains a conditional queued-to-running claim and result evidence write, but it has no lease expiry or abandoned-running-job recovery. A worker crash after claim can therefore leave a job running without a reclaim path. Do not treat this queue as crash-resilient until leases, heartbeat, expiry recovery and concurrency tests are implemented.
+
 ## 3. Data and security observations
 
 Supabase project inspected: IZAKHONO WebStart.
