@@ -11,6 +11,9 @@ export type GitHubBuildVerifierOptions = {
   fetcher?: typeof fetch;
 };
 
+// GitHub exposes the Registry workflow as one aggregate job check named "registry".
+ // That job succeeds only after its configured typecheck and test steps all succeed;
+ // the two input groups therefore intentionally reference the same aggregate proof.
 const DEFAULT_CHECKS: GitHubCheckNameMap = {
   typecheck: ["registry"],
   "unit-tests": ["registry"],
