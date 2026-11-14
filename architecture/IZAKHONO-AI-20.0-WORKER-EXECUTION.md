@@ -1,58 +1,37 @@
-# IZAKHONO AI 20.0 — Worker Execution Baseline
+# IZAKHONO AI 20.0 — Worker Execution and Verification Baseline
 
-**Implementation status:** Initial deterministic execution slice; not a complete autonomous workforce.  
-**Code:** `registry/worker-execution.ts`, `registry/worker-supervisor.ts`, `registry/worker-persistent.ts`  
-**Release rule:** No production promotion until runtime secrets, FORTRESS policy integration and operator acceptance are verified.
+**Status:** Architecture and implementation map for the current mainline worker runtime.  
+**Owner:** IZAKHONO AFRICA (Pty) Ltd  
+**Release rule:** No production promotion without verified runtime configuration, D1 migration state, security controls and operator acceptance.
 
-## What changed
+## Existing mainline execution path
 
-The supervisor previously transitioned eligible queued work to `running` without invoking a worker. The current implementation invokes an explicitly registered handler before reporting execution. A worker without a registered handler remains queued with `worker-handler-not-registered`; the catalog is not misrepresented as fully executable.
+This document describes the worker runtime already present on the main branch. It does not replace or fork that implementation.
 
-Only these deterministic handlers are registered in version 1:
+- `registry/supervisor-store.ts` persists supervisor jobs, execution leases, attempts and events. Claims are bound to a worker, idempotency key and expiring lease; heartbeat and finish operations require lease ownership.
+- `registry/worker-executor.ts` executes one already-leased job through an explicitly registered handler. A job is only marked verified when the handler returns at least one valid, named, passing check.
+- `registry/worker-handlers.ts` constrains build verification inputs to an owner/repository identifier, commit SHA and a small allowlist of checks. It validates that the verifier reports the exact requested revision and every requested check.
+- `registry/github-build-verifier.ts` performs read-only GitHub check-run inspection for allowlisted repositories. It does not write source, publish artifacts or deploy.
+- `registry/worker-persistent.ts` wires the configured GitHub read-only verifier into the worker runtime only when its required runtime bindings are present. Missing bindings leave the build handler unavailable rather than pretending it is active.
 
-| Worker | Capability | Side effects |
-|---|---|---|
-| `portfolio-orchestrator` | Turns a goal and bounded workstream list into a draft dependency plan | None |
-| `task-dispatcher` | Classifies candidate jobs by state, risk, approval gate and dependency readiness | None; returns a plan only |
-| `evidence-collector` | Normalizes structured evidence references and labels them unverified | None |
+## Safety boundaries
 
-These are deterministic code handlers, not a claim that every catalog worker is backed by an autonomous AI model or external tool.
+1. Work must be explicitly queued and claimed before handler execution.
+2. The lease token, worker identity and idempotency key govern ownership and retry behavior.
+3. Handler registration is explicit. Unavailable handlers do not execute.
+4. The build verifier is read-only and uses an allowlist of repositories and checks.
+5. Verification requires complete, passing checks for the exact requested commit revision.
+6. Lease loss, failed checks, incomplete reports and handler exceptions cannot be reported as successful verification.
+7. Production deployment, financial actions, external commitments and destructive operations remain separate approval-controlled workflows.
 
-## Execution lifecycle
+## Division registry
 
-1. The supervisor checks job state, dependencies, risk, human gate and handler registration.
-2. A dry run returns a preview and performs no state transition or handler execution.
-3. An executable job is claimed with one conditional D1 `UPDATE ... WHERE status='queued' RETURNING ...`; only one concurrent caller can win. The claim records a unique lease token, claimant and expiry before invoking its registered handler. The authorized executor receives the lease token for renewal and QA hand-off. Execution records structured output plus a SHA-256 digest of the input.
-4. Execution evidence is explicitly marked `verified: false`. It does not complete the job.
-5. Independent verification is required to move the job to `verified`.
-6. A separate completion evidence step is required to move the job to `completed`. State transitions use conditional updates to reject concurrent stale-state writes.
+The IZAKHONO AI 20.0 division registry in `registry/divisions.ts` maps the enterprise accountability model to existing worker IDs. It is a governance and portfolio map; it does not activate a worker, grant a capability or imply that every catalogued worker is executable. Registry validation checks unique division identifiers, accountable roles, measurable outcomes, approval boundaries and worker references.
 
-Unsupported handlers are not started. High-risk or human-gated jobs remain blocked. Handler failures are recorded and transition the job to `failed`.
+## Validation still required
 
-## FORTRESS capability grants
-
-Worker execution now fails closed unless the job input carries a valid FORTRESS-signed capability grant and the runtime has `FORTRESS_CAPABILITY_SECRET` configured. The grant is an HMAC-SHA-256 signed payload with issuer `IZAKHONO-FORTRESS`, audience `IZAKHONO-WORKER-SUPERVISOR`, an exact worker subject, explicit `execute` action, matching risk class, unique grant ID, and a maximum 15-minute lifetime. The supervisor checks signature, issuer, audience, worker, action, risk, not-before and expiry before it claims or invokes a handler. The verifier secret must be provisioned only through runtime secret management; it is never committed. The registry now includes a constrained grant issuer endpoint (`/fortress/grants/issue`) protected by a separate `FORTRESS_ISSUER_TOKEN_SHA256` credential, plus `/fortress/grants/revoke`. Issued grants are registered in a D1 ledger, and execution consumes each grant exactly once by matching its JTI, worker identity and exact token digest. Revoked, expired, unknown or previously consumed grants fail closed. This is an initial HMAC-backed issuer workflow, not yet a full FORTRESS key-management service: asymmetric signing, rotation, external identity attestation and audited operator identity remain outstanding.
-
-## Credential separation
-
-The persistent worker runtime now fails closed for private control-plane endpoints unless `REGISTRY_TOKEN_SHA256` is configured and the request presents the matching bearer token.
-
-The `/workers/verify` route additionally requires a separately configured `QA_VERIFIER_TOKEN_SHA256`. The ordinary registry bearer token alone cannot promote a running job to verified. Store only SHA-256 hashes in Worker environment configuration; do not commit plaintext tokens. The QA token must be provisioned through the runtime's secret-management interface before independent verification can be used. Verification additionally requires the active, unexpired per-job lease token; it atomically stores verification evidence, advances `running` to `verified`, and clears the lease. `/workers/renew` only extends a lease when the caller presents its current unexpired token.
-
-This credential separation is a control boundary, not a substitute for full FORTRESS workload identity, approver identity, signed evidence provenance or role-based policy integration. Those remain required before production release.
-
-## Validation
-
-The repository CI runs registry TypeScript checks, supervisor contract tests, registry tests and a Wrangler dry run. A passing dry run does not establish a production deployment, live secret configuration, D1 migration state or customer acceptance.
-
-## Remaining work
-
-- Implement and test durable claim/lease semantics for concurrent cron invocations.
-- Add a retry policy, lease expiry, bounded attempts and dead-letter review.
-- Implement the authoritative FORTRESS grant issuer, key rotation/revocation and authenticated workload identity; current code verifies signed grants but does not issue them.
-- Add replay prevention using a durable consumed-grant/JTI ledger before enabling sensitive side effects.
-- Require independently authenticated verifier identity and structured test evidence.
-- Add typed artifact storage and immutable evidence provenance.
-- Implement additional handlers one capability at a time, each with contract tests and explicit side-effect declarations.
-- Add operational dashboards for queued, running, blocked, failed, verified and completed jobs.
-- Validate deployed Worker configuration and D1 migrations before enabling live dispatch.
+- Execute the current mainline registry, lease, executor and worker-handler test suites in CI.
+- Verify D1 migrations and lease behavior against a real D1-compatible database, including concurrent claim, heartbeat, expiry and recovery cases.
+- Confirm runtime bindings and repository allowlists from deployment configuration without exposing secrets.
+- Preserve read-only build verification unless a separately reviewed, narrowly scoped write-capability design is approved.
+- Keep deployment and release evidence distinct from code-review and CI evidence.
