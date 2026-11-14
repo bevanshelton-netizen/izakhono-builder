@@ -3,7 +3,7 @@ set -euo pipefail
 
 # IZAKHONO NODE CLUSTER HEALTH GATE
 # NODE01-NODE04 are software/runtime identities, never physical-machine names.
-# Each endpoint must use HTTPS and self-identify its node and canonical cluster.
+# Each endpoint must use HTTPS, be unique, and self-identify its node and canonical cluster.
 # Four generic OK responses or one endpoint reused four times are not proof.
 
 NODE01_URL="${NODE01_URL:-}"
@@ -31,6 +31,9 @@ for name, url in zip(names, urls):
         continue
     if not url.startswith("https://"):
         results.append({"node": name, "identityType": "software-runtime", "physicalHostIsSeparate": True, "status": "HTTPS_REQUIRED", "runtime_evidence": False, "checkedAt": checked})
+        continue
+    if urls.count(url) != 1:
+        results.append({"node": name, "identityType": "software-runtime", "physicalHostIsSeparate": True, "status": "DUPLICATE_ENDPOINT", "runtime_evidence": False, "checkedAt": checked})
         continue
     try:
         p = subprocess.run(
