@@ -370,10 +370,13 @@ def require_verified_domain(domain: str) -> None:
         ).fetchone()
     finally:
         connection.close()
-    if not row or not row[0]:
+    if not row:
         raise HTTPException(409, "Domain ownership has not been verified")
-    if int(row[1]) < int(time.time()) and not row[0]:
+    if row[0]:
+        return
+    if int(row[1]) < int(time.time()):
         raise HTTPException(410, "Domain verification has expired")
+    raise HTTPException(409, "Domain ownership has not been verified")
 
 
 @app.get("/api/health")
