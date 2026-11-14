@@ -2,6 +2,7 @@ import http from 'node:http';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import dns from 'node:dns/promises';
 
 const PORT = Number(process.env.PORT || 8080);
 const DATA_DIR = process.env.DATA_DIR || '/data';
@@ -11,6 +12,7 @@ const ADMIN_TOKEN = process.env.HOST_RUNTIME_TOKEN || '';
 const MAX_FILES = 200;
 const MAX_FILE_BYTES = 512 * 1024;
 const MAX_TOTAL_BYTES = 8 * 1024 * 1024;
+const MAX_REQUEST_BYTES = 12 * 1024 * 1024;
 
 async function loadState() {
   await fs.mkdir(SITES_DIR, { recursive: true });
@@ -28,7 +30,12 @@ function json(res, status, value) {
 }
 async function body(req) {
   const chunks=[];
-  for await (const chunk of req) chunks.push(chunk);
+  let total=0;
+  for await (const chunk of req) {
+    total += chunk.length;
+    if (total > MAX_REQUEST_BYTES) throw new Error('Request body exceeds 12 MiB');
+    chunks.push(chunk);
+  }
   const text=Buffer.concat(chunks).toString('utf8');
   if (!text) return {};
   return JSON.parse(text);
@@ -92,7 +99,7 @@ async function serveSite(req, res) {
 
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`);
-  if (req.method === 'GET' && url.pathname === '/health') return json(res, 200, {ok:true, service:'IZAKHONO HOST Runtime', version:'0.3.0'});
+  if (req.method === 'GET' && url.pathname === '/health') return json(res, 200, {ok:true, service:'IZAKHONO HOST Runtime', version:'0.4.0'});
   if (req.method === 'GET' && url.pathname === '/api/tls/ask') {
     const domain = String(url.searchParams.get('domain') || '').trim().toLowerCase();
     const platformHosts = new Set(
@@ -107,6 +114,24 @@ const server = http.createServer(async (req, res) => {
   }
   if (!url.pathname.startsWith('/api/')) return serveSite(req, res);
   if (!authorized(req)) return json(res, 401, {ok:false,error:'Unauthorized'});
+
+  if (req.method === 'GET' && url.pathname === '/api/control-centre') {
+    const state=await loadState();
+    const sites=[...state.sites].sort((a,b)=>String(b.created_at||'').localeCompare(String(a.created_at||'')));
+    const deployments=[...state.deployments].sort((a,b)=>String(b.created_at||'').localeCompare(String(a.created_at||''))).slice(0,100);
+    return json(res,200,{
+      ok:true,
+      generated_at:new Date().toISOString(),
+      summary:{
+        total_sites:sites.length,
+        live_sites:sites.filter(site=>site.public_live===true).length,
+        pending_acceptance:sites.filter(site=>site.public_live!==true).length,
+        deployments:state.deployments.length
+      },
+      sites,
+      deployments
+    });
+  }
 
   if (req.method === 'GET' && url.pathname === '/api/sites') {
     const state=await loadState();
@@ -144,23 +169,51 @@ const server = http.createServer(async (req, res) => {
       const site=state.sites.find(s=>s.id===siteId);
       if(!site) return json(res,404,{ok:false,error:'Site not found'});
       const normalized=[];
+      const seenPaths=new Set();
       let total=0;
       for (const item of files) {
         const relative=safeRelative(item?.path);
         if (!relative) return json(res,400,{ok:false,error:'Invalid file path'});
-        const content=String(item?.content ?? '');
-        const bytes=Buffer.byteLength(content,'utf8');
-        if (bytes > MAX_FILE_BYTES) return json(res,413,{ok:false,error:`File exceeds ${MAX_FILE_BYTES} bytes: ${relative}`});
-        total += bytes;
+        if (seenPaths.has(relative)) return json(res,400,{ok:false,error:`Duplicate deployment path: ${relative}`});
+        seenPaths.add(relative);
+        let data;
+        if (typeof item?.content_base64 === 'string') {
+          const encoded=item.content_base64;
+          if (!/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(encoded)) {
+            return json(res,400,{ok:false,error:`Invalid base64 content: ${relative}`});
+          }
+          data=Buffer.from(encoded,'base64');
+          if (data.toString('base64') !== encoded) return json(res,400,{ok:false,error:`Non-canonical base64 content: ${relative}`});
+        } else {
+          data=Buffer.from(String(item?.content ?? ''),'utf8');
+        }
+        if (data.length > MAX_FILE_BYTES) return json(res,413,{ok:false,error:`File exceeds ${MAX_FILE_BYTES} bytes: ${relative}`});
+        total += data.length;
         if (total > MAX_TOTAL_BYTES) return json(res,413,{ok:false,error:`Deployment exceeds ${MAX_TOTAL_BYTES} bytes`});
-        normalized.push({path:relative,content});
+        normalized.push({path:relative,data});
       }
+      if (!normalized.some(item=>item.path==='index.html')) return json(res,400,{ok:false,error:'Deployment must include index.html'});
       const base=path.resolve(siteDir(site.domain));
+      const siteRoot=path.dirname(base);
+      const stage=path.join(siteRoot,`.deploy-${crypto.randomUUID()}`);
+      const previous=path.join(siteRoot,`.previous-${crypto.randomUUID()}`);
+      await fs.mkdir(stage,{recursive:true});
       for (const item of normalized) {
-        const target=path.resolve(base,item.path);
-        if (!target.startsWith(base + path.sep)) return json(res,400,{ok:false,error:'Invalid deployment target'});
+        const target=path.resolve(stage,item.path);
+        if (!target.startsWith(stage + path.sep)) return json(res,400,{ok:false,error:'Invalid deployment target'});
         await fs.mkdir(path.dirname(target),{recursive:true});
-        await fs.writeFile(target,item.content,'utf8');
+        await fs.writeFile(target,item.data);
+      }
+      let movedPrevious=false;
+      try {
+        try { await fs.rename(base,previous); movedPrevious=true; }
+        catch (error) { if (error?.code !== 'ENOENT') throw error; }
+        await fs.rename(stage,base);
+        if (movedPrevious) await fs.rm(previous,{recursive:true,force:true});
+      } catch (error) {
+        if (movedPrevious) await fs.rename(previous,base).catch(()=>{});
+        await fs.rm(stage,{recursive:true,force:true}).catch(()=>{});
+        throw error;
       }
       site.status='content_ready';
       site.public_live=false;
@@ -174,16 +227,29 @@ const server = http.createServer(async (req, res) => {
 
   if (req.method === 'POST' && url.pathname.match(/^\/api\/sites\/[^/]+\/accept$/)) {
     const siteId=url.pathname.split('/')[3];
-    const input=await body(req).catch(()=>({}));
     const state=await loadState();
     const site=state.sites.find(s=>s.id===siteId);
     if(!site) return json(res,404,{ok:false,error:'Site not found'});
-    site.acceptance={https:Boolean(input.https), dns:Boolean(input.dns), content:Boolean(input.content)};
-    site.public_live=site.acceptance.https && site.acceptance.dns && site.acceptance.content;
+    const expectedIp=String(process.env.HOST_PUBLIC_IP||'').trim();
+    let resolvedARecords=[];
+    try { resolvedARecords=await dns.resolve4(site.domain); } catch {}
+    const dnsOk=Boolean(expectedIp && resolvedARecords.includes(expectedIp));
+    let httpsStatus=0;
+    let contentOk=false;
+    try {
+      const response=await fetch(`https://${site.domain}/`,{redirect:'follow',signal:AbortSignal.timeout(10000)});
+      httpsStatus=response.status;
+      const html=await response.text();
+      contentOk=response.ok && html.trim().length>0 && !html.includes('Site not provisioned on IZAKHONO HOST');
+    } catch {}
+    site.acceptance={dns:dnsOk,https:httpsStatus===200,content:contentOk};
+    site.public_live=site.acceptance.dns && site.acceptance.https && site.acceptance.content;
     site.status=site.public_live?'live':'provisioned';
     site.accepted_at=new Date().toISOString();
+    const deployment={id:id('dep'),site_id:site.id,action:'acceptance-check',status:site.public_live?'passed':'pending',created_at:new Date().toISOString(),evidence:{expected_ip:expectedIp||null,resolved_a_records:resolvedARecords,https_status:httpsStatus,content_ok:contentOk}};
+    state.deployments.push(deployment);
     await saveState(state);
-    return json(res,200,{ok:true,site});
+    return json(res,200,{ok:true,live:site.public_live,site,evidence:deployment.evidence});
   }
 
   return json(res,404,{ok:false,error:'Not found'});
