@@ -1,3 +1,4 @@
+name: izakhono-mail
 services:
   stalwart:
     image: stalwartlabs/stalwart:v0.16
