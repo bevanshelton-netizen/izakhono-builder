@@ -24,10 +24,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Install Python test dependencies
+        run: python -m pip install --disable-pip-version-check pytest
+
       - name: Python runtime acceptance tests
         run: |
           set -euo pipefail
-          python3 -m pytest -q infra/runtime-fabric/controller/test_runtime_fabric_controller.py infra/runtime-fabric/acceptance/test_kora_mail_live_gate.py infra/runtime-fabric/activation/test_kora_production_activate.py
+          python -m pytest -q infra/runtime-fabric/controller/test_runtime_fabric_controller.py infra/runtime-fabric/acceptance/test_kora_mail_live_gate.py infra/runtime-fabric/activation/test_kora_production_activate.py
 
       - name: Bash syntax
         run: |
@@ -43,6 +51,7 @@ jobs:
             "infra/runtime-fabric/REGISTER-ORACLE-A1-WORKER.ps1",
             "infra/runtime-fabric/VERIFY-ORACLE-A1-WORKER.ps1",
             "infra/runtime-fabric/CERTIFY-WAVE1-OWNED.ps1",
+            "infra/runtime-fabric/CERTIFY-OWNED-RUNTIME-WAVE1.ps1",
             "infra/public-cutover/VERIFY-WAVE1-PUBLIC.ps1"
           )
           foreach ($file in $files) {
