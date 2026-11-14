@@ -8,34 +8,71 @@
       "status": "primary",
       "runtime": "docker",
       "interface": "container-runtime",
-      "requiredInputs": ["runtimeEndpoint", "registryEndpoint", "domain", "secrets"],
-      "capabilities": ["build", "deploy", "rollback", "healthcheck", "logs", "tls", "domain-bind"]
+      "requiredInputs": [
+        "runtimeEndpoint",
+        "registryEndpoint",
+        "domain",
+        "secrets"
+      ],
+      "capabilities": [
+        "build",
+        "deploy",
+        "rollback",
+        "healthcheck",
+        "logs",
+        "tls",
+        "domain-bind"
+      ]
     },
     "vps": {
       "status": "supported-fallback",
       "runtime": "docker",
       "interface": "ssh-or-api",
-      "capabilities": ["build", "deploy", "rollback", "healthcheck", "logs", "tls", "domain-bind"]
+      "capabilities": [
+        "build",
+        "deploy",
+        "rollback",
+        "healthcheck",
+        "logs",
+        "tls",
+        "domain-bind"
+      ]
     },
     "cloudflare": {
       "status": "adapter",
       "role": "dns-cdn-edge",
-      "capabilities": ["dns", "proxy", "tls", "edge-routing"]
-    },
-    "vercel": {
-      "status": "legacy-fallback",
-      "role": "web-deployment",
-      "systemOfRecord": false,
-      "capabilities": ["deploy", "preview", "rollback"]
+      "capabilities": [
+        "dns",
+        "proxy",
+        "tls",
+        "edge-routing"
+      ]
     }
   },
   "selectionPolicy": [
     "Use owned when an owned runtime endpoint is configured and healthy.",
     "Use a neutral Docker VPS runtime when owned runtime is unavailable.",
     "Use edge adapters only for their declared edge responsibilities.",
-    "Use Vercel only when explicitly selected or when a configured fallback policy permits it.",
-    "Never make business data, deployment state, domains or customer configuration dependent on a provider-specific API."
+    "Never make business data, deployment state, domains or customer configuration dependent on a provider-specific API.",
+    "Use only the owned runtime or a provider-neutral VPS adapter; no vendor-specific web-hosting deployment is part of the approved production path."
   ],
-  "lifecycle": ["validate", "build", "package", "provision", "bind-domain", "tls", "healthcheck", "publish", "measure", "rollback"],
-  "requiredArtifacts": ["deployment-manifest", "container-image", "environment-contract", "healthcheck", "rollback-plan"]
+  "lifecycle": [
+    "validate",
+    "build",
+    "package",
+    "provision",
+    "bind-domain",
+    "tls",
+    "healthcheck",
+    "publish",
+    "measure",
+    "rollback"
+  ],
+  "requiredArtifacts": [
+    "deployment-manifest",
+    "container-image",
+    "environment-contract",
+    "healthcheck",
+    "rollback-plan"
+  ]
 }
