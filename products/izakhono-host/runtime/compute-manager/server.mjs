@@ -89,3 +89,4 @@ const server=http.createServer(async(req,res)=>{
 });
 await ensureDb();
 server.listen(PORT,'0.0.0.0',()=>console.log(`IZAKHONO Compute Manager listening on ${PORT}`));
+for(const signal of ['SIGTERM','SIGINT'])process.on(signal,()=>server.close(async()=>{if(pool)await pool.end();process.exit(0)}));
