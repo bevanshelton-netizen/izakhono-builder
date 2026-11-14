@@ -70,17 +70,42 @@ echo "[4/4] Confirm HOST bridge health"
 cd "$HOST_ROOT"
 docker compose --env-file .env -f docker-compose.owned.yml ps mail-bridge mail-control-plane roundcube
 
-for attempt in $(seq 1 30); do
-  if curl -fsS http://127.0.0.1:8082/api/ready >/dev/null; then
-    echo "Stalwart management API is ready."
-    break
+if [[ "$MAIL_MODE" == "local" ]]; then
+  cd "$ROOT"
+  CID="$(docker compose -f docker-compose.mail.yml ps -q stalwart)"
+  [[ -n "$CID" ]] || { echo "Stalwart container was not created." >&2; exit 14; }
+  for attempt in $(seq 1 30); do
+    HEALTH="$(docker inspect -f '{{.State.Health.Status}}' "$CID" 2>/dev/null || true)"
+    if [[ "$HEALTH" == "healthy" ]]; then
+      echo "Stalwart container health: healthy."
+      break
+    fi
+    if [[ "$attempt" -eq 30 ]]; then
+      echo "Stalwart did not become healthy; inspect mail/docker-compose.mail.yml logs." >&2
+      docker compose -f docker-compose.mail.yml logs --tail=100 stalwart || true
+      exit 15
+    fi
+    sleep 3
+  done
+else
+  if curl -fsS --max-time 8 "${STALWART_API_URL%/}/healthz/live" >/dev/null; then
+    echo "Remote Stalwart health endpoint is reachable."
+  else
+    echo "WARN: Remote Stalwart health endpoint is not reachable yet."
   fi
-  if [[ "$attempt" -eq 30 ]]; then
-    echo "Mail control plane did not become ready; inspect mail-control-plane and Stalwart logs." >&2
-    exit 14
-  fi
-  sleep 3
-done
+fi
+
+cd "$HOST_ROOT"
+if [[ "$STALWART_API_KEY" == REPLACE_WITH* ]]; then
+  echo "PENDING: Create a least-privilege Stalwart API token in the admin interface and set STALWART_API_KEY in .env."
+elif curl -fsS http://127.0.0.1:8082/api/ready >/dev/null 2>&1; then
+  echo "PASS: IZAKHONO Mail Control Plane is ready."
+else
+  echo "PENDING: Mail Control Plane is not ready; check Stalwart API token, STALWART_API_URL and control-plane logs."
+fi
+if [[ "$SMTP_PASS" == REPLACE_WITH* ]]; then
+  echo "PENDING: Activate notifications@izakhonoafrica.co.za and set SMTP_PASS before application email is enabled."
+fi
 
 echo
 echo "MAIL SERVICE ACTIVATION: CONTAINERS STARTED"
