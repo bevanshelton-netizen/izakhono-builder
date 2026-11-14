@@ -35,6 +35,7 @@ The current native host runtime is an owned baseline, not yet a full commercial 
 
 - Stalwart mail transport and mailbox storage.
 - Roundcube browser webmail with a separate PostgreSQL database.
+- Owner-only live Mail Control Centre at mail-admin.izakhonoafrica.co.za, protected by Caddy Basic Auth.
 - Private IZAKHONO Mail Control Plane with approved-domain allowlist and DNS TXT ownership verification.
 - One-time mailbox handover and password activation workflow.
 - Separate human and application mail identities.
