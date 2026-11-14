@@ -16,8 +16,16 @@ const MAX_REQUEST_BYTES = 12 * 1024 * 1024;
 
 async function loadState() {
   await fs.mkdir(SITES_DIR, { recursive: true });
-  try { return JSON.parse(await fs.readFile(STATE_FILE, 'utf8')); }
-  catch { return { version: 2, sites: [], deployments: [] }; }
+  try {
+    const parsed=JSON.parse(await fs.readFile(STATE_FILE, 'utf8'));
+    return {
+      version: 2,
+      sites: Array.isArray(parsed.sites) ? parsed.sites : [],
+      deployments: Array.isArray(parsed.deployments) ? parsed.deployments : []
+    };
+  } catch {
+    return { version: 2, sites: [], deployments: [] };
+  }
 }
 async function saveState(state) {
   const tmp = STATE_FILE + '.tmp';
