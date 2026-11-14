@@ -17,6 +17,24 @@ mail.izakhonoafrica.co.za, autoconfig.izakhonoafrica.co.za, autodiscover.izakhon
   reverse_proxy {$STALWART_HTTP_UPSTREAM}
 }
 
+mail-admin.izakhonoafrica.co.za {
+  tls {
+    on_demand
+  }
+  basic_auth {
+    {$MAIL_ADMIN_USER} {$MAIL_ADMIN_PASSWORD_HASH}
+  }
+  handle /api/* {
+    reverse_proxy mail-control-plane:8000 {
+      header_up Authorization "Bearer {$CONTROL_PLANE_TOKEN}"
+    }
+  }
+  handle {
+    root * /srv/mail-admin
+    file_server
+  }
+}
+
 mta-sts.izakhonoafrica.co.za {
   tls {
     on_demand
