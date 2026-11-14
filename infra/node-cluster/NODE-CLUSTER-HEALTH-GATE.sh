@@ -3,8 +3,8 @@ set -euo pipefail
 
 # IZAKHONO NODE CLUSTER HEALTH GATE
 # NODE01-NODE04 are software/runtime identities, never physical-machine names.
-# Each endpoint must self-identify; four URLs returning the same generic OK
-# response are not accepted as proof of four distinct runtime nodes.
+# Each endpoint must use HTTPS and self-identify its node and canonical cluster.
+# Four generic OK responses or one endpoint reused four times are not proof.
 
 NODE01_URL="${NODE01_URL:-}"
 NODE02_URL="${NODE02_URL:-}"
@@ -21,6 +21,7 @@ from datetime import datetime, timezone
 
 output, timeout, *urls = sys.argv[1:]
 names = ["NODE01", "NODE02", "NODE03", "NODE04"]
+cluster = "izakhono-production"
 results = []
 
 for name, url in zip(names, urls):
@@ -28,16 +29,21 @@ for name, url in zip(names, urls):
     if not url:
         results.append({"node": name, "identityType": "software-runtime", "physicalHostIsSeparate": True, "status": "MISSING_ENDPOINT", "runtime_evidence": False, "checkedAt": checked})
         continue
+    if not url.startswith("https://"):
+        results.append({"node": name, "identityType": "software-runtime", "physicalHostIsSeparate": True, "status": "HTTPS_REQUIRED", "runtime_evidence": False, "checkedAt": checked})
+        continue
     try:
         p = subprocess.run(
-            ["curl", "--fail", "--silent", "--show-error", "--max-time", timeout, url],
+            ["curl", "--proto", "=https", "--fail", "--silent", "--show-error", "--max-time", timeout, url],
             capture_output=True, text=True, check=False,
         )
         body = p.stdout.strip()
         payload = json.loads(body) if body else {}
-        # The response must identify the logical node being checked. This
-        # prevents one healthy endpoint being reused for all four variables.
-        identity_matches = isinstance(payload, dict) and payload.get("runtimeNode") == name
+        identity_matches = (
+            isinstance(payload, dict)
+            and payload.get("runtimeNode") == name
+            and payload.get("cluster") == cluster
+        )
         healthy = p.returncode == 0 and payload.get("ok") is True and identity_matches
         results.append({
             "node": name,
@@ -57,7 +63,7 @@ healthy = [r["node"] for r in results if r["runtime_evidence"]]
 passed = len(healthy) == 4
 record = {
     "schema": "izakhono.node-cluster-health.v1",
-    "cluster": "izakhono-production",
+    "cluster": cluster,
     "nodeIdentityType": "software-runtime",
     "physicalHostIsSeparate": True,
     "checkedAt": datetime.now(timezone.utc).isoformat(),
