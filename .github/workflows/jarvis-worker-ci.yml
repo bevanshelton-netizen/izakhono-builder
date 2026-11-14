@@ -3,7 +3,7 @@ name: J.A.R.V.I.S. worker CI
 on:
   push:
     branches:
-      - release/jarvis-mainline-port
+      - release/jarvis-mainline-port-v3
   pull_request:
     paths:
       - "products/izakhono-jarvis/**"
