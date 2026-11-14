@@ -74,5 +74,8 @@ jobs:
             -e MAIL_ADMIN_USER=admin \
             -e MAIL_ADMIN_PASSWORD_HASH="$HASH" \
             -e CONTROL_PLANE_TOKEN=ci-control-plane-token \
+            -e HOST_ADMIN_USER=admin \
+            -e HOST_ADMIN_PASSWORD_HASH="$HASH" \
+            -e HOST_RUNTIME_TOKEN=ci-host-runtime-token \
             -v "$PWD/edge/Caddyfile:/etc/caddy/Caddyfile:ro" \
             caddy:2-alpine caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
