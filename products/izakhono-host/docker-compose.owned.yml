@@ -15,6 +15,37 @@ services:
       timeout: 5s
       retries: 5
 
+  compute-manager:
+    build: ./runtime/compute-manager
+    restart: unless-stopped
+    environment:
+      PORT: 8082
+      DATA_DIR: /data
+      COMPUTE_ADMIN_TOKEN: ${COMPUTE_ADMIN_TOKEN:?set COMPUTE_ADMIN_TOKEN}
+      COMPUTE_WORKER_TOKEN: ${COMPUTE_WORKER_TOKEN:?set COMPUTE_WORKER_TOKEN}
+      COMPUTE_LEASE_MS: ${COMPUTE_LEASE_MS:-120000}
+    volumes:
+      - compute-manager-data:/data
+    networks: [izakhono]
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8082/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  compute-worker:
+    build: ./runtime/compute-worker
+    restart: unless-stopped
+    environment:
+      COMPUTE_MANAGER_URL: http://compute-manager:8082
+      COMPUTE_WORKER_TOKEN: ${COMPUTE_WORKER_TOKEN:?set COMPUTE_WORKER_TOKEN}
+      WORKER_ID: ${COMPUTE_WORKER_ID:-izakhono-worker-01}
+      WORKER_POLL_MS: ${COMPUTE_WORKER_POLL_MS:-3000}
+    networks: [izakhono]
+    depends_on:
+      compute-manager:
+        condition: service_healthy
+
   contact-gateway:
     build: ./runtime/contact-gateway
     restart: unless-stopped
@@ -131,6 +162,7 @@ networks:
 
 volumes:
   host-runtime-data:
+  compute-manager-data:
   caddy-data:
   caddy-config:
   postgres-data:
