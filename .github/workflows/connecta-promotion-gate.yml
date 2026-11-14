@@ -48,7 +48,7 @@ jobs:
           print('[PASS] CONNECTA remains owned-cluster canonical and truthfully not-public.')
           PY
 
-      - name: Fail closed without runtime evidence
+      - name: Prove the promotion gate fails closed without runtime evidence
         shell: bash
         run: |
           set +e
@@ -88,12 +88,10 @@ jobs:
           path: /tmp/connecta-node-cluster-health.json
           if-no-files-found: error
 
-      - name: Promotion decision
+      - name: Public promotion remains blocked pending independent production proofs
         shell: bash
         run: |
-          if [[ "${{ steps.health.outcome }}" != 'success' ]]; then
-            echo '[BLOCKED] Four-node runtime evidence is unavailable; public promotion remains blocked.'
-            exit 10
-          fi
-          echo '[PASS] CONNECTA four-node runtime prerequisite verified.'
-          echo '[BLOCKED] Public LIVE verification still requires deployment, EDGE, TLS, DNS, smoke and rollback evidence.'
+          echo '[BLOCKED] Four-node runtime evidence alone is not authorization to route public traffic.'
+          echo '[BLOCKED] Immutable deployment identity, EDGE, TLS, DNS, external HTTPS smoke and rollback evidence are still required.'
+          echo '[BLOCKED] No production promotion has been performed by this workflow.'
+          exit 10
