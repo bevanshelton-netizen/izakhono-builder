@@ -3,8 +3,8 @@ set -euo pipefail
 
 # IZAKHONO NODE CLUSTER HEALTH GATE
 # NODE01-NODE04 are software/runtime identities, never physical-machine names.
-# Produces evidence only from runtime endpoints supplied by the operator.
-# It never converts topology/configuration into runtime proof.
+# Each endpoint must self-identify; four URLs returning the same generic OK
+# response are not accepted as proof of four distinct runtime nodes.
 
 NODE01_URL="${NODE01_URL:-}"
 NODE02_URL="${NODE02_URL:-}"
@@ -35,12 +35,16 @@ for name, url in zip(names, urls):
         )
         body = p.stdout.strip()
         payload = json.loads(body) if body else {}
-        healthy = p.returncode == 0 and payload.get("ok") is True
+        # The response must identify the logical node being checked. This
+        # prevents one healthy endpoint being reused for all four variables.
+        identity_matches = isinstance(payload, dict) and payload.get("runtimeNode") == name
+        healthy = p.returncode == 0 and payload.get("ok") is True and identity_matches
         results.append({
             "node": name,
+            "runtimeNode": payload.get("runtimeNode") if isinstance(payload, dict) else None,
             "identityType": "software-runtime",
             "physicalHostIsSeparate": True,
-            "status": "PASS" if healthy else "FAIL",
+            "status": "PASS" if healthy else "IDENTITY_MISMATCH_OR_UNHEALTHY",
             "runtime_evidence": healthy,
             "checkedAt": checked,
             "http": payload,
