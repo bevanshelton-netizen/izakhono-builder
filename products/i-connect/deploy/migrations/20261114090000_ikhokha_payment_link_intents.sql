@@ -20,7 +20,11 @@ begin
     'status',status,'provider',coalesce(provider_requested,(select provider from public.pay_provider_connections pc where pc.id=t.provider_connection_id),p_provider),
     'provider_requested',provider_requested,'idempotency_key',idempotency_key)
     into existing from public.pay_payment_transactions t where idempotency_key=p_idempotency_key limit 1;
-  if existing is not null then return existing || jsonb_build_object('idempotent_replay',true); end if;
+  if existing is not null then
+    if existing->>'provider_requested' is distinct from p_provider then raise exception 'idempotency_key_provider_mismatch'; end if;
+    if existing->>'external_reference' is distinct from p_external_reference then raise exception 'idempotency_key_reference_mismatch'; end if;
+    return existing || jsonb_build_object('idempotent_replay',true);
+  end if;
   insert into public.pay_payment_transactions(external_reference,amount,currency,status,provider_status,idempotency_key,merchant_account_id,provider_requested)
     values(p_external_reference,p_amount,upper(p_currency),'created','created',p_idempotency_key,p_merchant_account_id,p_provider)
     returning id into tx_id;
@@ -62,7 +66,7 @@ declare
 begin
   select * into t from public.pay_payment_transactions where id=p_transaction_id for update;
   if not found then raise exception 'transaction_not_found'; end if;
-  if t.provider_requested <> 'ikhokha' then raise exception 'transaction_not_created_for_ikhokha'; end if;
+  if t.provider_requested is distinct from 'ikhokha' then raise exception 'transaction_not_created_for_ikhokha'; end if;
   if t.status not in ('created','pending') then raise exception 'transaction_not_eligible'; end if;
   if t.merchant_account_id is null then raise exception 'merchant_account_missing'; end if;
   select * into pc from public.pay_provider_connections
