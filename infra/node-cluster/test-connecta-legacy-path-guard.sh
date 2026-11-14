@@ -48,7 +48,7 @@ run_guard_expect "$tmp/allowed" 0
 
 # A legacy launcher in any CONNECTA workflow must block.
 make_fixture "$tmp/workflow-blocked"
-printf '%s\n' 'run: RUN-NODE01-WAVE1-LOCAL.cmd' > "$tmp/workflow-blocked/.github/workflows/connecta-deploy.yml"
+printf '%s\n' 'name: CONNECTA Deploy' 'run: RUN-NODE01-WAVE1-LOCAL.cmd' > "$tmp/workflow-blocked/.github/workflows/connecta-deploy.yml"
 run_guard_expect "$tmp/workflow-blocked" 10
 
 # Unrelated product workflows retain their own lifecycle and are not reclassified.
