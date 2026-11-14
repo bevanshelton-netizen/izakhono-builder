@@ -100,7 +100,8 @@ The platform still needs customer authentication and self-service, automated reg
 - Copy .backup.env.example to .backup.env and configure an encrypted Restic repository. Keep .backup.env and its Restic password separately in the organization's password manager; the repository cannot recover its own encryption credentials.
 - Run ./backup-owned.sh for the host runtime, Caddy, MinIO, Valkey, PostgreSQL, Roundcube and mail-control-plane state, including the owner dashboard passwords and Roundcube secrets.
 - Run ./mail/backup-mail-node.sh for Stalwart configuration and mailbox data. The Stalwart snapshot requires a short maintenance window.
-- Use ./restore-owned.sh <snapshot-id> for host recovery.
+- If the host .env or owner secrets are missing, run ./RESTORE-CONFIG-OWNED.sh <snapshot-id> first; it restores the encrypted configuration and missing secrets without overwriting existing credentials.
+- Use ./restore-owned.sh <snapshot-id> for the full host runtime and database recovery.
 - Use ./mail/restore-mail-node.sh <snapshot-id> for mail-server recovery.
 
 A backup is not considered verified until a restore drill has completed successfully.
