@@ -48,8 +48,9 @@ check 'User workspace writable' bash -c 'test -w "$HOME"'
 for port in 80 443 8080 8082 8443 25 465 587 110 143 993 995 4190; do
   check "TCP port $port free or already Docker-owned" check_port "$port"
 done
-check 'DNS UDP port 53 free or Docker-owned' bash -c '! ss -lun "sport = :53" 2>/dev/null | grep -q "\*:53" || docker ps --format "{{.Ports}}" | grep -q "53->53/udp"'
-check 'DNS TCP port 53 free or Docker-owned' bash -c '! ss -ltn "sport = :53" 2>/dev/null | grep -q LISTEN || docker ps --format "{{.Ports}}" | grep -q "53->53/tcp"'
+if ss -ltn 'sport = :53' 2>/dev/null | grep -q LISTEN || ss -lun 'sport = :53' 2>/dev/null | grep -q UNCONN; then
+  warn 'Port 53 is occupied; the current CoreDNS fixture uses loopback 5353 and public authoritative DNS is a separate future node.'
+fi
 
 if grep -qi microsoft /proc/sys/kernel/osrelease || [[ -n "${WSL_DISTRO_NAME:-}" ]]; then
   warn 'WSL2 detected: NAT does not provide a production public mail/DNS edge by itself.'
