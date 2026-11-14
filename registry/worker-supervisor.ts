@@ -21,13 +21,13 @@ function ready(job:SupervisorJob,jobs:SupervisorJob[]){
  return !jobs.some(j=>job.dependencyIds.some(dep=>dep===j.sourceId||dep===j.id)&&j.status!=='completed');
 }
 
-export async function advanceReadyWorkers(db:D1Database,limit=25){
+export async function advanceReadyWorkers(db:D1Database,limit=25,eligibleWorkerIds:readonly string[]=[]){
  await recoverExpiredSupervisorLeases(db);
  const jobs=await listSupervisorJobs(db);
  const advanced=[];
  for(const job of jobs.sort((a,b)=>b.priority-a.priority)){
   if(advanced.length>=limit)break;
-  if(!ready(job,jobs)||job.workerId==='build-worker')continue;
+  if(!ready(job,jobs)||!eligibleWorkerIds.includes(job.workerId))continue;
   const lease=await claimSupervisorLease(db,job.id,job.workerId,`supervisor:${job.id}:${job.attempts+1}`);
   if(lease)advanced.push({jobId:job.id,workerId:job.workerId,status:'leased',lease,attempt:lease.attempt});
  }
@@ -53,7 +53,8 @@ export async function pumpWorkers(db:D1Database,handlers?:SupervisorWorkerHandle
  await ensureSupervisorSchema(db);
  const ingestion=await ingestDiscovered(db);
  const executed=handlers?await runBuildWorkerCycle(db,handlers):[];
- const advanced=await advanceReadyWorkers(db);
+ const eligible=handlers?Object.keys(handlers).filter(id=>id!=='build-worker'):[];
+ const advanced=await advanceReadyWorkers(db,25,eligible);
  return {ok:true,generatedAt:now(),...ingestion,executed:executed.length,executionResults:executed,advanced:advanced.length,jobs:advanced};
 }
 
