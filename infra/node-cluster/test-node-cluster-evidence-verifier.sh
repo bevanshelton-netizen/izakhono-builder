@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Synthetic fixtures exercise verifier behavior only. They are never uploaded,
-# retained as certification artifacts, or used for production promotion.
+# Synthetic fixtures test verifier behavior only. They are never production
+# evidence and must never be uploaded or used for promotion.
 ROOT="$(git rev-parse --show-toplevel 2>/dev/null || printf '.')"
 cd "$ROOT"
 tmp="$(mktemp -d)"
@@ -16,11 +16,13 @@ stamp = datetime.now(timezone.utc).isoformat()
 names = ["NODE01", "NODE02", "NODE03", "NODE04"]
 nodes = [{
     "node": name,
+    "runtimeNode": name,
     "identityType": "software-runtime",
     "physicalHostIsSeparate": True,
     "status": "PASS",
     "runtime_evidence": True,
-    "checkedAt": stamp
+    "checkedAt": stamp,
+    "http": {"ok": True, "runtimeNode": name}
 } for name in names]
 record = {
     "schema": "izakhono.node-cluster-health.v1",
@@ -41,11 +43,12 @@ PY
 
 bash infra/node-cluster/VERIFY-NODE-CLUSTER-EVIDENCE.sh "$fixture"
 
+# Reject a node record whose endpoint response claims a different node.
 python3 - "$fixture" <<'PY'
 import json, sys
 p=sys.argv[1]
 d=json.load(open(p, encoding="utf-8"))
-d["nodes"][2]["runtime_evidence"] = False
+d["nodes"][2]["http"]["runtimeNode"]="NODE02"
 json.dump(d, open(p, "w", encoding="utf-8"))
 PY
 set +e
@@ -53,10 +56,11 @@ bash infra/node-cluster/VERIFY-NODE-CLUSTER-EVIDENCE.sh "$fixture"
 code=$?
 set -e
 if [[ "$code" -ne 10 ]]; then
-  echo "[FAIL] verifier accepted a node without runtime evidence (exit $code)" >&2
+  echo "[FAIL] verifier accepted a mismatched runtime identity (exit $code)" >&2
   exit 1
 fi
 
+# Reject stale evidence.
 python3 - "$fixture" <<'PY'
 import json, sys
 from datetime import datetime, timezone, timedelta
@@ -77,4 +81,4 @@ if [[ "$code" -ne 10 ]]; then
   exit 1
 fi
 
-echo "[PASS] verifier accepts a valid-shaped fixture and rejects failed-node and stale evidence."
+echo "[PASS] verifier accepts correctly identified nodes and rejects mismatched and stale evidence."
