@@ -82,9 +82,30 @@ echo "[4/5] Restore PostgreSQL databases"
 cat "$STAGE_DIR/izakhono-postgres.dump" | docker compose --env-file .env -f docker-compose.owned.yml exec -T postgres pg_restore -U "$POSTGRES_USER" -d "$POSTGRES_DB" --clean --if-exists --no-owner --exit-on-error
 cat "$STAGE_DIR/roundcube-postgres.dump" | docker compose --env-file .env -f docker-compose.owned.yml exec -T roundcube-db sh -c 'PGPASSWORD="$(cat /run/secrets/roundcube_db_password)" pg_restore -U roundcube -d roundcube --clean --if-exists --no-owner --exit-on-error'
 
-echo "[5/5] Preserve recovered configuration and restart host services"
+echo "[5/5] Restore missing owner secrets, preserve recovered configuration and restart host services"
 cp -a "$STAGE_DIR/." "$ARTIFACT_DIR/"
 chmod -R go-rwx "$ARTIFACT_DIR"
+
+# Restore missing secrets only; never overwrite credentials that already exist on the node.
+if [[ -d "$STAGE_DIR/host-secrets" ]]; then
+  mkdir -p host/secrets
+  for item in "$STAGE_DIR/host-secrets"/*; do
+    [[ -e "$item" ]] || continue
+    target="host/secrets/$(basename "$item")"
+    [[ -e "$target" ]] || cp -a "$item" "$target"
+  done
+  chmod -R go-rwx host/secrets
+fi
+if [[ -d "$STAGE_DIR/mail-secrets" ]]; then
+  mkdir -p mail/secrets
+  for item in "$STAGE_DIR/mail-secrets"/*; do
+    [[ -e "$item" ]] || continue
+    target="mail/secrets/$(basename "$item")"
+    [[ -e "$target" ]] || cp -a "$item" "$target"
+  done
+  chmod -R go-rwx mail/secrets
+fi
+
 docker compose --env-file .env -f docker-compose.owned.yml up -d
 
 CID="$(docker compose --env-file .env -f docker-compose.owned.yml ps -q host-runtime)"
