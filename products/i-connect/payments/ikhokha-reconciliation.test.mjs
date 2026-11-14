@@ -8,54 +8,65 @@ const expected = {
   amountMinor: 25900,
   currency: "ZAR"
 };
-
+const lookup = { queriedBy: "externalReference", externalReference: "IC-ORDER-1001" };
 const paid = {
-  externalTransactionID: "IC-ORDER-1001",
   paylinkID: "paylink-abc123",
   amount: 25900,
-  currency: "ZAR",
   status: "PAID",
-  responseCode: "00"
+  createdAt: "2026-11-14T08:15:30.000Z"
 };
 
-test("authoritative paid response passes only when identifiers, amount and currency match", () => {
-  const result = verifyAuthoritativePaymentStatus(expected, paid);
+test("authoritative status passes using immutable intent currency and exact lookup reference", () => {
+  const result = verifyAuthoritativePaymentStatus(expected, paid, lookup);
   assert.equal(result.verified, true);
   assert.equal(result.status, "VERIFIED_PAID");
+  assert.equal(result.trustedCurrency, "ZAR");
+  assert.equal(result.trustedExternalTransactionId, expected.externalTransactionId);
   assert.deepEqual(result.failures, []);
 });
 
-test("webhook-only callback shape fails closed because it has no amount or currency", () => {
+test("webhook callback cannot authorize payment or fulfilment", () => {
   const callback = {
     paylinkID: "paylink-abc123",
     externalTransactionID: "IC-ORDER-1001",
     status: "SUCCESS",
     responseCode: "00"
   };
-  const result = verifyAuthoritativePaymentStatus(expected, callback);
+  const result = verifyAuthoritativePaymentStatus(expected, callback, lookup);
   assert.equal(result.verified, false);
   assert.equal(result.status, "MANUAL_REVIEW");
   assert.ok(result.failures.includes("amount_minor_missing_or_mismatch"));
-  assert.ok(result.failures.includes("currency_missing_or_mismatch"));
+  assert.ok(result.failures.includes("provider_status_not_paid"));
+  assert.ok(result.failures.includes("provider_created_at_missing_or_invalid"));
 });
 
-test("amount, currency, payment link and transaction reference mismatches fail closed", () => {
+test("amount, paylink, status and timestamp mismatches fail closed", () => {
   for (const mutation of [
     { amount: 25899 },
-    { currency: "USD" },
     { paylinkID: "another-link" },
-    { externalTransactionID: "another-order" },
     { status: "PENDING" },
-    { responseCode: "05" }
+    { createdAt: "not-a-date" },
+    { createdAt: "2026-11-14" }
   ]) {
-    const result = verifyAuthoritativePaymentStatus(expected, { ...paid, ...mutation });
+    const result = verifyAuthoritativePaymentStatus(expected, { ...paid, ...mutation }, lookup);
     assert.equal(result.verified, false);
     assert.equal(result.status, "MANUAL_REVIEW");
   }
 });
 
-test("invalid expected transaction amounts and incomplete expected records fail closed", () => {
-  assert.equal(verifyAuthoritativePaymentStatus({ ...expected, amountMinor: 0 }, paid).verified, false);
-  assert.equal(verifyAuthoritativePaymentStatus({ ...expected, currency: "" }, paid).verified, false);
-  assert.equal(verifyAuthoritativePaymentStatus(null, paid).verified, false);
+test("lookup must be the exact external-reference query", () => {
+  for (const wrongLookup of [
+    { queriedBy: "paymentLinkId", paymentLinkId: expected.paylinkId },
+    { queriedBy: "externalReference", externalReference: "OTHER-ORDER" },
+    { queriedBy: "externalReference", externalReference: "" }
+  ]) {
+    assert.equal(verifyAuthoritativePaymentStatus(expected, paid, wrongLookup).verified, false);
+  }
+});
+
+test("invalid or incomplete immutable intent fails closed", () => {
+  assert.equal(verifyAuthoritativePaymentStatus(null, paid, lookup).verified, false);
+  assert.equal(verifyAuthoritativePaymentStatus({ ...expected, amountMinor: 0 }, paid, lookup).verified, false);
+  assert.equal(verifyAuthoritativePaymentStatus({ ...expected, currency: "US" }, paid, lookup).verified, false);
+  assert.equal(verifyAuthoritativePaymentStatus({ ...expected, externalTransactionId: "" }, paid, lookup).verified, false);
 });
