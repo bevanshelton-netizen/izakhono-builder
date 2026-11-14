@@ -5,6 +5,7 @@ mail/.env
 mail/secrets/*
 !mail/secrets/README.md
 mail/backups/
+mail/handover/
 *.sqlite3
 *.sqlite3-wal
 *.sqlite3-shm
