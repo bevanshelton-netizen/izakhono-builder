@@ -66,6 +66,11 @@ import json, sys
 from datetime import datetime, timezone, timedelta
 p=sys.argv[1]
 d=json.load(open(p, encoding="utf-8"))
+# Restore a valid identity fixture so this case isolates timestamp freshness.
+d["nodes"][2]["http"]["runtimeNode"]="NODE03"
+d["nodes"][2]["runtimeNode"]="NODE03"
+d["nodes"][2]["runtime_evidence"]=True
+d["nodes"][2]["status"]="PASS"
 old=(datetime.now(timezone.utc)-timedelta(minutes=10)).isoformat()
 d["checkedAt"]=old
 for n in d["nodes"]:
