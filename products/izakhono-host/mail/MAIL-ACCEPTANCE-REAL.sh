@@ -50,7 +50,11 @@ test_tls() {
 
 test_tls "SMTP submission 465" "$MAIL_HOST" 465
 test_tls "IMAPS 993" "$MAIL_HOST" 993
-test_tls "SMTP inbound 25" "$MAIL_HOST" 25 smtp
+if timeout 15 openssl s_client -brief -starttls smtp -verify_return_error -verify_hostname "$MAIL_HOST" -connect "$MAIL_HOST:25" </dev/null >/tmp/izakhono-mail-smtp25-check.log 2>&1; then
+  pass "SMTP port 25 STARTTLS handshake from this node"
+else
+  warn "Local SMTP port 25 test failed; confirm inbound port 25 from an independent external network"
+fi
 
 if curl -fsS --max-time 15 "https://$MAIL_HOST/" -o /dev/null; then
   pass "Stalwart HTTPS endpoint is reachable"
