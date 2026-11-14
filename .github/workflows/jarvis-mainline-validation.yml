@@ -2,7 +2,7 @@ name: J.A.R.V.I.S. isolated validation
 
 on:
   push:
-    branches: [release/jarvis-mainline-port]
+    branches: [release/jarvis-mainline-port-v3]
     paths:
       - "products/izakhono-jarvis/**"
       - "src/sovereign.ts"
