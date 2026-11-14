@@ -77,6 +77,8 @@ cp mail/docker-compose.mail.yml "$STAGE_DIR/docker-compose.mail.yml"
 cp mail/portfolio-mailboxes.yml "$STAGE_DIR/portfolio-mailboxes.yml"
 cp -a mail/mta-sts "$STAGE_DIR/mta-sts"
 cp -a mail/secrets "$STAGE_DIR/mail-secrets"
+[[ -s host/secrets/host_admin_password ]] || { echo "Hosting Control Centre password is missing; refusing incomplete configuration backup." >&2; exit 4; }
+cp -a host/secrets "$STAGE_DIR/host-secrets"
 if [[ -f mail/.env ]]; then cp mail/.env "$STAGE_DIR/mail-node.env"; fi
 
 echo "[6/6] Encrypt and upload off-host Restic snapshot"
