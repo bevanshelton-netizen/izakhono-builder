@@ -19,6 +19,10 @@ from pathlib import Path
 path = Path(sys.argv[1])
 MAX_AGE_SECONDS = 300
 
+def blocked(message):
+    print(f"[BLOCKED] {message}", file=sys.stderr)
+    raise SystemExit(10)
+
 def parse_fresh_timestamp(value, label):
     try:
         stamp = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
@@ -31,10 +35,6 @@ def parse_fresh_timestamp(value, label):
         raise
     except Exception:
         blocked(f"{label} timestamp is invalid")
-
-def blocked(message):
-    print(f"[BLOCKED] {message}", file=sys.stderr)
-    raise SystemExit(10)
 
 try:
     data = json.loads(path.read_text(encoding="utf-8"))
@@ -71,12 +71,17 @@ for record in nodes:
     if name not in expected or name in seen:
         blocked("node records must contain each of NODE01-NODE04 exactly once")
     seen.add(name)
+    if record.get("runtimeNode") != name:
+        blocked(f"{name} runtime identity does not match the endpoint being checked")
     if record.get("identityType") != "software-runtime":
         blocked(f"{name} is not identified as a software runtime")
     if record.get("physicalHostIsSeparate") is not True:
         blocked(f"{name} physical-host separation declaration is missing")
     if record.get("status") != "PASS" or record.get("runtime_evidence") is not True:
         blocked(f"{name} does not have passing runtime evidence")
+    response = record.get("http")
+    if not isinstance(response, dict) or response.get("ok") is not True or response.get("runtimeNode") != name:
+        blocked(f"{name} endpoint response does not prove its own runtime identity")
     if not record.get("checkedAt"):
         blocked(f"{name} runtime timestamp is missing")
     parse_fresh_timestamp(record["checkedAt"], f"{name} runtime")
@@ -96,5 +101,5 @@ if not checked_at:
     blocked("cluster runtime evidence timestamp is missing")
 parse_fresh_timestamp(checked_at, "cluster runtime")
 
-print("[PASS] four-node runtime evidence verified: NODE01 NODE02 NODE03 NODE04")
+print(" [PASS] four distinct runtime identities verified: NODE01 NODE02 NODE03 NODE04")
 PY
