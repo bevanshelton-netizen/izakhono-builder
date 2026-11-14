@@ -132,3 +132,11 @@ The repository workflow `.github/workflows/deploy-izakhono-super-app.yml` deploy
 The AI gateway URL must be an HTTPS endpoint reachable from the Worker; loopback URLs such as `127.0.0.1` are not reachable from the deployed Worker. The workflow verifies `/healthz`, the `izakhono-ai` workflow allowlist and a real response routed through the owned model before deployment. It then deploys, installs the Worker secrets, deploys the configured Worker and tests a real chat request. If any prerequisite is missing or owned inference fails, deployment is skipped or stopped; no simulated response is accepted.
 
 A Cloudflare Worker deployment is an externally reversible edge runtime, not proof that NODE01 is the owned-primary runtime. The existing owned-primary promotion gate remains authoritative.
+
+
+
+### Immediate usable device-local AI
+
+The existing `IZAKHONO ONE AI` device-local application is already deployed as the active Supabase Edge Function `izakhono-one-device-ai`. Its function logs show successful HTTP 200 responses for both the app page and its health route on 14 November 2026. Open it here: https://yfawrenhudjomhnglfhq.supabase.co/functions/v1/izakhono-one-device-ai
+
+It runs WebLLM inference in a compatible browser, offers Quick (SmolLM2 360M), Balanced (SmolLM2 1.7B) and Strong (Llama 3.2 3B) model tiers, five work modes, local text-file context, chat export and explicit feedback. Prompts remain in browser memory and are not sent to IZAKHONO application servers by this page. It has no live web access, no private account access, and no autonomous business-tool execution. The owner-gateway chat workspace above is the path to the broader sovereign assistant; its production deployment remains gated on the live owner runtime and required credentials.
