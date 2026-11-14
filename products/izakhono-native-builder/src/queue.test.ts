@@ -1,6 +1,7 @@
 import { strict as assert } from "node:assert";
 import { NativeBuilderQueue, type QueueDb, type QueueDbStatement, type QueueJob } from "./queue.js";
 
+async function runNativeBuilderTest(): Promise<void> {
 type Row = { id: string; payload_json: string };
 class MemoryQueueDb implements QueueDb {
   jobs = new Map<string, QueueJob>();
@@ -77,3 +78,6 @@ assert.equal(db.jobs.get("approved")?.status, "failed");
 assert.equal(db.evidence.length, 2);
 
 console.log("[PASS] Native Builder queue claims once under concurrent workers, respects approval gates and persists evidence for success/failure.");
+}
+
+void runNativeBuilderTest().catch((error) => { console.error(error); process.exitCode = 1; });
