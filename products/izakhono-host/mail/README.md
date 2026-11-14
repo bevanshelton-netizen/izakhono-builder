@@ -90,7 +90,17 @@ Stalwart's native delegated multi-tenant administration is an Enterprise feature
 
 ## Backups and migration
 
-Mail data and configuration must be included in encrypted off-host backups and tested restore drills. Do not treat a local tarball or an untested export as a verified backup. The restore process must preserve mailbox data, indexes, DKIM keys, server configuration and Roundcube database.
+Mail data and configuration must be included in encrypted off-host backups and tested restore drills. Do not treat a local tarball or an untested export as a verified backup.
+
+- Configure Restic using .backup.env.example and initialize the repository once.
+- Run ../backup-owned.sh for the host runtime, Roundcube database, mail-control-plane state, Caddy, MinIO and Valkey.
+- Run ./backup-mail-node.sh for Stalwart configuration and mailbox data. This takes the mail service offline briefly for a consistent snapshot.
+- Use ../restore-owned.sh <snapshot-id> for host recovery.
+- Use ./restore-mail-node.sh <snapshot-id> for Stalwart recovery.
+
+For a dedicated remote mail node, keep a separate mail/.backup.env on that node and run the mail backup/restore scripts there. Keep the Restic repository password and object-store credentials separate from the server's runtime secrets.
+
+The restore process must preserve mailbox data, indexes, DKIM keys, server configuration, Roundcube database and one-time handover state. Run a restore drill before treating backups as verified.
 
 Keep the current Hostinger service and MX records active during testing. Migrate existing mail and verify send/receive with independent providers before cutover. Retain a documented rollback path.
 
