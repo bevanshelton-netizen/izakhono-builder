@@ -1,7 +1,7 @@
 import {WORKERS,WORKER_INDEX} from './workers';
 import {D1Database} from './d1-store';
 import {discoverBuilderQueue,classifyBuilderIssue,shouldIngest} from './builder-queue';
-import {ensureSupervisorSchema,upsertSupervisorJob,listSupervisorJobs,supervisorCounts,claimSupervisorJob,recoverExpiredSupervisorLeases,transitionSupervisorJob,recordEvidence,renewSupervisorLease,verifyLeasedSupervisorJob,SupervisorJob} from './supervisor-store';
+import {ensureSupervisorSchema,upsertSupervisorJob,listSupervisorJobs,supervisorCounts,claimSupervisorJob,recoverExpiredSupervisorLeases,transitionSupervisorJob,recordEvidence,recordLeasedEvidence,failLeasedSupervisorJob,renewSupervisorLease,verifyLeasedSupervisorJob,SupervisorJob} from './supervisor-store';
 import {executeWorker,hasWorkerHandler,executableWorkerIds} from './worker-execution';
 import {DIVISIONS,workersForDivision} from './divisions';
 import {verifyFortressCapabilityGrant} from './fortress-capabilities';
@@ -34,13 +34,17 @@ async function executeClaimedJob(db:D1Database,job:SupervisorJob,actor:string,fo
  try{
   await consumeFortressGrant(db,capability.claims.jti,job.workerId,await sha256(String(input.fortressCapabilityGrant)));
   const execution=await executeWorker(WORKER_INDEX[job.workerId],job.input);
-  await recordEvidence(db,job.id,{execution,verification:{status:'pending',required:true},recordedAt:now()});
+  await recordLeasedEvidence(db,job.id,claimed.leaseToken,{execution,verification:{status:'pending',required:true},recordedAt:now()});
   return {id:job.id,workerId:job.workerId,status:'running',attempts:claimed.attempts,leaseToken:claimed.leaseToken,leaseExpiresAt:claimed.leaseExpiresAt,execution,verification:'pending'};
  }catch(error){
   const detail={workerId:job.workerId,error:error instanceof Error?error.message:String(error),failedAt:now()};
-  await recordEvidence(db,job.id,{executionFailure:detail});
-  const failed=await transitionSupervisorJob(db,job.id,'failed',actor,{reason:'worker-execution-failed',...detail});
-  return {...failed,workerId:job.workerId,error:detail.error};
+  try{
+   await recordLeasedEvidence(db,job.id,claimed.leaseToken,{executionFailure:detail});
+   const failed=await failLeasedSupervisorJob(db,job.id,claimed.leaseToken,actor,{reason:'worker-execution-failed',...detail});
+   return {...failed,workerId:job.workerId,error:detail.error};
+  }catch(ownershipError){
+   return {id:job.id,workerId:job.workerId,status:'lease-lost',error:detail.error,ownershipError:ownershipError instanceof Error?ownershipError.message:String(ownershipError)};
+  }
  }
 }
 
