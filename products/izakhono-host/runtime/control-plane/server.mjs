@@ -172,7 +172,7 @@ const server = http.createServer(async (req, res) => {
       };
       await ensureSiteFiles(site);
       state.sites.push(site);
-      state.deployments.push({id:id('dep'),site_id:site.id,action:'provision',status:'verified',created_at:new Date().toISOString()});
+      state.deployments.push({id:id('dep'),site_id:site.id,action:'provision',status:'provisioned',created_at:new Date().toISOString()});
       await saveState(state);
       return json(res,201,{ok:true,created:true,site});
     } catch (e) { return json(res,400,{ok:false,error:e?.message || 'Invalid request'}); }
@@ -237,8 +237,9 @@ const server = http.createServer(async (req, res) => {
       }
       site.status='content_ready';
       site.public_live=false;
-      site.acceptance={https:Boolean(site.acceptance?.https),dns:Boolean(site.acceptance?.dns),content:true};
-      const deployment={id:id('dep'),site_id:site.id,action:'content',status:'verified',file_count:normalized.length,total_bytes:total,created_at:new Date().toISOString()};
+      site.acceptance={https:false,dns:false,content:true};
+      site.accepted_at=null;
+      const deployment={id:id('dep'),site_id:site.id,action:'content',status:'deployed',file_count:normalized.length,total_bytes:total,created_at:new Date().toISOString()};
       state.deployments.push(deployment);
       await saveState(state);
       return json(res,200,{ok:true,site,deployment});
