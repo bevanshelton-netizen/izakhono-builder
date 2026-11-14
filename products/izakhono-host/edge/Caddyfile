@@ -10,6 +10,20 @@
   redir https://{host}{uri} permanent
 }
 
+mail.izakhonoafrica.co.za {
+  tls {
+    on_demand
+  }
+  reverse_proxy {$STALWART_HTTP_UPSTREAM}
+}
+
+webmail.izakhonoafrica.co.za {
+  tls {
+    on_demand
+  }
+  reverse_proxy roundcube:80
+}
+
 :443 {
   tls {
     on_demand
