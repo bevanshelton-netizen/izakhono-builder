@@ -54,6 +54,23 @@ async function main() {
   });
   assert.equal(pending.checks[0].passed, false);
   assert.match(pending.checks[0].detail, /pending/);
-  console.log("GitHub build verifier tests: ok (repository allowlist, commit binding, pass/fail/pending)");
+  const defaults = createGitHubReadOnlyBuildVerifier({
+    token: "test-token",
+    allowedRepositories: ["bevanshelton-netizen/izakhono-builder"],
+    fetcher: async () => new Response(JSON.stringify({
+      check_runs: [
+        { name: "registry", status: "completed", conclusion: "success" },
+        { name: "Validate application manifests", status: "completed", conclusion: "success" },
+      ],
+    }), { status: 200 }),
+  });
+  const defaultResult = await defaults({
+    repository: "bevanshelton-netizen/izakhono-builder",
+    revision: "abcdef1234567",
+    checks: ["typecheck", "unit-tests", "manifest"],
+  });
+  assert.deepEqual(defaultResult.checks.map(check => check.passed), [true, true, true]);
+  assert.match(defaultResult.checks[0].detail, /abcdef1234567/);
+  console.log("GitHub build verifier tests: ok (repository allowlist, commit binding, pass/fail/pending, observed default check names)");
 }
 void main();
