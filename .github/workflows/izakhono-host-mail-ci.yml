@@ -30,6 +30,7 @@ jobs:
         run: |
           node mail-control-centre-ui.test.mjs
           node host-control-centre-ui.test.mjs
+          node host-runtime.test.mjs
         working-directory: products/izakhono-host
 
       - name: Setup Python
