@@ -53,7 +53,7 @@ jobs:
         run: |
           npm run super-engine:payment:test
           npx --yes tsx@4.20.3 products/izakhono-super-engine/src/checkout-order-store.test.ts
-          npx tsc --noEmit --target ES2022 --lib ES2022,DOM,DOM.Iterable --types node --module NodeNext --moduleResolution NodeNext products/izakhono-super-engine/src/host-provisioner-adapter.ts products/izakhono-super-engine/src/checkout-order-store.ts
+          npx tsc --noEmit --target ES2022 --lib ES2022,DOM,DOM.Iterable --types node --module NodeNext --moduleResolution NodeNext products/izakhono-super-engine/src/host-provisioner-adapter.ts products/izakhono-super-engine/src/checkout-order-store.ts products/izakhono-super-engine/src/payment-core.ts
       - name: Test verified-payment provisioning bridge
         run: |
           node products/izakhono-host/runtime/provisioner/payment-bridge.test.mjs
