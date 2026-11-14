@@ -3,16 +3,109 @@
   "status": "configuration",
   "principle": "owned-first",
   "identities": [
-    {"business":"IZAKHONO","domain":"izakhono.co.za","addresses":["info","admin","accounts","sales","support","ceo"]},
-    {"business":"IZAKHONO AFRICA","domain":"izakhonoafrica.co.za","addresses":["info","sales","orders","accounts"]},
-    {"business":"KORA NETWORK","domain":"kora.network","addresses":["info","admin","support","content","partnerships","funding"]},
-    {"business":"EDU-BUILD INSTITUTE","domain":"edubuildshelton.org.za","addresses":["info","admissions","accounts","support"]},
-    {"business":"I-CONNECT","domain":"i-connect.co.za","addresses":["info","sales","support"]},
-    {"business":"IZAKHONO NAV","domain":"izakhononav.com","addresses":["info","support","fleet","enterprise"]},
-    {"business":"FAISREADY","domain":"faisready.co.za","addresses":["info","support","sales"]},
-    {"business":"ALLEGRO","domain":"allegro.co.za","addresses":["info","support","artists","partnerships"]},
-    {"business":"CLASSIQUE FURNITURE","domain":"classiquefurniture.co.za","addresses":["info","sales"]},
-    {"business":"KG INDUSTRIAL","domain":"kgindustrial.co.za","addresses":["info","operations"]},
-    {"business":"FREE BIRD AGRI-QUIP","domain":"freebirdagriquip.co.za","addresses":["info","sales"]}
+    {
+      "business": "IZAKHONO",
+      "domain": "izakhono.co.za",
+      "addresses": [
+        "info",
+        "admin",
+        "accounts",
+        "sales",
+        "support",
+        "ceo"
+      ]
+    },
+    {
+      "business": "IZAKHONO AFRICA",
+      "domain": "izakhonoafrica.co.za",
+      "addresses": [
+        "info",
+        "sales",
+        "orders",
+        "accounts",
+        "bevans",
+        "admin",
+        "support",
+        "notifications",
+        "noreply",
+        "dmarc-reports"
+      ]
+    },
+    {
+      "business": "KORA NETWORK",
+      "domain": "kora.network",
+      "addresses": [
+        "info",
+        "admin",
+        "support",
+        "content",
+        "partnerships",
+        "funding"
+      ]
+    },
+    {
+      "business": "EDU-BUILD INSTITUTE",
+      "domain": "edubuildshelton.org.za",
+      "addresses": [
+        "info",
+        "admissions",
+        "accounts",
+        "support"
+      ]
+    },
+    {
+      "business": "I-CONNECT",
+      "domain": "i-connect.co.za",
+      "addresses": [
+        "info",
+        "sales",
+        "support"
+      ]
+    },
+    {
+      "business": "IZAKHONO NAV",
+      "domain": "izakhononav.com",
+      "addresses": [
+        "info",
+        "support",
+        "fleet",
+        "enterprise"
+      ]
+    },
+    {
+      "business": "FAISREADY",
+      "domain": "faisready.co.za",
+      "addresses": [
+        "info",
+        "support",
+        "sales"
+      ]
+    },
+    {
+      "business": "ALLEGRO",
+      "domain": "allegro.co.za",
+      "addresses": [
+        "info",
+        "support",
+        "artists",
+        "partnerships"
+      ]
+    },
+    {
+      "business": "CLASSIQUE FURNITURE",
+      "domain": "classiquefurniture.co.za",
+      "addresses": [
+        "info",
+        "sales"
+      ]
+    },
+    {
+      "business": "FREE BIRD AGRI-QUIP",
+      "domain": "freebirdagriquip.co.za",
+      "addresses": [
+        "info",
+        "sales"
+      ]
+    }
   ]
 }
