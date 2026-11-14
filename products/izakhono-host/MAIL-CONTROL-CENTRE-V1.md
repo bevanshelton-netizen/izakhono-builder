@@ -12,13 +12,14 @@ Implemented in this repository:
 - Caddy Basic Auth protects the console; the generated password is stored in the ignored local file mail/secrets/mail_admin_password.
 - Caddy injects the server-side control-plane bearer token. The browser never receives the token.
 - Read-only GET /api/control-centre endpoint queries Stalwart domain and account inventory.
+- Owner-only mailbox creation form calls the approved-domain provisioning API and displays the one-time handover token without storing it in browser storage.
 - Live DNS checks for MX, SPF, DKIM, DMARC, MTA-STS and TLS-RPT.
 - Live endpoint checks for SMTP port 25, SMTP submission TLS, IMAPS TLS and MTA-STS policy availability.
 - Mailbox state reflects Stalwart enabled/emailSend permissions.
 - Unknown delivery, authentication, backup, incident and FORTRESS telemetry is explicitly reported as not connected or pending, never as a false zero.
 - The dashboard refreshes data on demand and labels its last update.
 
-This V1 is an owner-only, read-only operations view. It is not a customer self-service portal and does not yet implement role-based customer access or privileged mailbox actions.
+This V1 is an owner-only operations console. It provides read-only inventory and domain checks, plus a guarded mailbox-creation action that returns a one-time handover token. It is not a customer self-service portal and does not yet implement role-based customer access, suspension/reactivation, alias management or delivery diagnostics.
 
 ## Dashboard fields
 
@@ -74,7 +75,7 @@ The following are future integrations and must not be represented as operational
 
 The following are planned but are not available as V1 dashboard actions:
 
-- Provision, suspend, restore and delete mailboxes
+- Suspend, restore and delete mailboxes
 - Reset and rotate credentials
 - Create/delete aliases
 - Assign mailbox policies and quotas
