@@ -10,6 +10,7 @@ docker compose version >/dev/null 2>&1 || { echo "Docker Compose is required" >&
 if [[ ! -f .env ]]; then
   cp .env.example .env
   python3 ./generate-env-secrets.py
+  chmod 600 .env
   echo "Created .env with generated secrets. Set TLS_EMAIL before production use."
 fi
 
