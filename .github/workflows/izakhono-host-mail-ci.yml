@@ -26,8 +26,10 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Test Mail Control Centre UI contract
-        run: node mail-control-centre-ui.test.mjs
+      - name: Test Mail and Hosting Control Centre UI contracts
+        run: |
+          node mail-control-centre-ui.test.mjs
+          node host-control-centre-ui.test.mjs
         working-directory: products/izakhono-host
 
       - name: Setup Python
