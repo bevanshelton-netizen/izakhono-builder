@@ -1,9 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# CONNECTA production guard: legacy physical-NODE01 activation paths must never
-# become production dependencies again. Documentation may describe them, but
-# authoritative CONNECTA workflows/gates must not invoke or depend on them.
+# CONNECTA production guard: retired physical/workstation NODE01 activation
+# paths must never be invoked by a workflow, product runtime, or active
+# infrastructure entrypoint. Historical documentation and the retired files
+# themselves are deliberately excluded.
+
+ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+cd "$ROOT"
 
 forbidden=(
   'CERTIFY-WAVE1-OWNED.ps1'
@@ -12,27 +16,49 @@ forbidden=(
   'IZAKHONO-NODE01-WAVE1-REPORT.json'
 )
 
-# Only inspect authoritative CONNECTA execution surfaces. The deprecation and
-# certification documentation are intentionally excluded because they must name
-# the retired paths to prevent accidental reuse.
-paths=(
-  '.github/workflows/connecta-ci.yml'
-  '.github/workflows/connecta-owned-runtime-certification.yml'
-  '.github/workflows/connecta-promotion-gate.yml'
-  'infra/node-cluster/CONNECTA-PROMOTION-GATE.sh'
-  'infra/node-cluster/NODE-CLUSTER-HEALTH-GATE.sh'
-  'infra/node-cluster/VERIFY-NODE-CLUSTER-EVIDENCE.sh'
-  'infra/runtime-fabric/CERTIFY-OWNED-RUNTIME-WAVE1.ps1'
+excluded=(
+  'VERIFY-CONNECTA-LEGACY-PATH.sh'
+  'test-connecta-legacy-path-guard.sh'
+  'CERTIFY-WAVE1-OWNED.ps1'
+  'PUSH-WAVE1-OWNED.ps1'
+  'RUN-NODE01-WAVE1-LOCAL.cmd'
+  'IZAKHONO-NODE01-WAVE1-REPORT.json'
 )
 
-for path in "${paths[@]}"; do
-  [[ -f "$path" ]] || continue
+scan_roots=(
+  '.github/workflows'
+  'products/izakhono-social'
+  'products/izakhono-node'
+  'infra/node-cluster'
+  'infra/runtime-fabric'
+  'infra/public-cutover'
+)
+
+scan_extensions=(
+  '*.yml' '*.yaml' '*.sh' '*.ps1' '*.cmd' '*.bat'
+  '*.js' '*.mjs' '*.cjs' '*.ts' '*.tsx' '*.json'
+)
+
+files=()
+for root in "${scan_roots[@]}"; do
+  [[ -d "$root" ]] || continue
+  while IFS= read -r -d '' file; do
+    base="$(basename "$file")"
+    skip=false
+    for name in "${excluded[@]}"; do
+      [[ "$base" == "$name" ]] && skip=true && break
+    done
+    [[ "$skip" == true ]] || files+=("$file")
+  done < <(find "$root" -type f \( $(printf -- '-o -name %q ' "${scan_extensions[@]}" | sed 's/^-o /-name /') \) -print0 2>/dev/null)
+done
+
+for path in "${files[@]}"; do
   for token in "${forbidden[@]}"; do
-    if grep -Fq "$token" "$path"; then
+    if grep -Fq -- "$token" "$path"; then
       echo "[BLOCKED] CONNECTA production surface references deprecated legacy path: $token in $path" >&2
       exit 10
     fi
   done
 done
 
-echo "[PASS] CONNECTA production surfaces contain no legacy physical-NODE01 activation dependency."
+echo "[PASS] scanned ${#files[@]} active workflow, product and infrastructure files; no legacy physical-NODE01 production dependency found."
