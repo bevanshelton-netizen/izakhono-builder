@@ -73,7 +73,7 @@ export async function failLeasedSupervisorJob(db:D1Database,id:string,leaseToken
 /** Independent QA verification is an atomic compare-and-swap against the active lease. */
 export async function verifyLeasedSupervisorJob(db:D1Database,id:string,leaseToken:string,evidence:unknown,actor:string){
  const at=new Date().toISOString();
- const result=await db.prepare("UPDATE supervisor_jobs SET status='verified',evidence_json=?,updated_at=?,lease_token=NULL,lease_expires_at=NULL,claimed_by=NULL,event_actor=?,event_detail_json=? WHERE id=? AND status='running' AND lease_token=? AND lease_expires_at>?").bind(JSON.stringify(evidence),at,id,leaseToken,at).run() as {meta?:{changes?:number}};
+ const result=await db.prepare("UPDATE supervisor_jobs SET status='verified',evidence_json=?,updated_at=?,lease_token=NULL,lease_expires_at=NULL,claimed_by=NULL,event_actor=?,event_detail_json=? WHERE id=? AND status='running' AND lease_token=? AND lease_expires_at>?").bind(JSON.stringify(evidence),at,actor,JSON.stringify({verification:'independent',leaseBound:true}),id,leaseToken,at).run() as {meta?:{changes?:number}};
  if(Number(result.meta?.changes??0)!==1)throw new Error('Verification rejected: lease token is stale, expired, or not owned by caller');
  return {id,status:'verified' as const,updatedAt:at};
 }
