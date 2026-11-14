@@ -1,11 +1,13 @@
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
+import http from 'node:http';
 import { mkdtemp, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { setTimeout as delay } from 'node:timers/promises';
 
-const root = path.resolve(new URL('.', import.meta.url).pathname, '..');
+const root = path.dirname(fileURLToPath(import.meta.url));
 const serverPath = path.join(root, 'runtime/control-plane/server.mjs');
 const dataDir = await mkdtemp(path.join(os.tmpdir(), 'izakhono-host-runtime-'));
 const port = 18081;
@@ -16,6 +18,18 @@ const child = spawn(process.execPath, [serverPath], {
   env: { ...process.env, DATA_DIR: dataDir, PORT: String(port), HOST_RUNTIME_TOKEN: token, HOST_PUBLIC_IP: '' },
   stdio: 'ignore',
 });
+
+function getWithHost(hostname) {
+  return new Promise((resolve, reject) => {
+    const req = http.request({ hostname: '127.0.0.1', port, path: '/', method: 'GET', headers: { Host: hostname } }, response => {
+      const chunks = [];
+      response.on('data', chunk => chunks.push(chunk));
+      response.on('end', () => resolve({ status: response.statusCode, text: Buffer.concat(chunks).toString('utf8') }));
+    });
+    req.on('error', reject);
+    req.end();
+  });
+}
 
 async function request(url, options = {}) {
   return fetch(url, {
@@ -65,9 +79,9 @@ try {
   assert.equal(deploymentData.site.status, 'content_ready');
   assert.equal(deploymentData.deployment.status, 'deployed');
 
-  const served = await fetch(`${base}/`, { headers: { host: 'test.example.invalid' } });
+  const served = await getWithHost('test.example.invalid');
   assert.equal(served.status, 200);
-  assert.match(await served.text(), /IZAKHONO CI SITE/);
+  assert.match(served.text, /IZAKHONO CI SITE/);
 
   const blocked = await request(`${base}/api/sites/${siteId}/content`, {
     method: 'POST',
