@@ -94,7 +94,15 @@ const server = http.createServer(async (req, res) => {
   const url = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`);
   if (req.method === 'GET' && url.pathname === '/health') return json(res, 200, {ok:true, service:'IZAKHONO HOST Runtime', version:'0.3.0'});
   if (req.method === 'GET' && url.pathname === '/api/tls/ask') {
-    const site = await findSite(url.searchParams.get('domain') || '');
+    const domain = String(url.searchParams.get('domain') || '').trim().toLowerCase();
+    const platformHosts = new Set(
+      String(process.env.PLATFORM_TLS_HOSTS || '')
+        .split(',')
+        .map(value => value.trim().toLowerCase())
+        .filter(Boolean)
+    );
+    if (platformHosts.has(domain)) return json(res, 200, {ok:true,domain,platform:true});
+    const site = await findSite(domain);
     return site ? json(res, 200, {ok:true,domain:site.domain}) : json(res, 403, {ok:false,error:'Domain is not provisioned'});
   }
   if (!url.pathname.startsWith('/api/')) return serveSite(req, res);
