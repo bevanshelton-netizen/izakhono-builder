@@ -1,5 +1,7 @@
 import {registryFetch} from './api';
 import {workerControl,pumpWorkers} from './worker-supervisor';
+import {createWorkerHandlers} from './worker-handlers';
+import {createGitHubReadOnlyBuildVerifier} from './github-build-verifier';
 import {controlPlaneStatus} from './control-plane';
 import {diagnoseControlPlane} from './control-plane-diagnostics';
 import {bearerValid} from './security';
@@ -9,8 +11,14 @@ import {D1RegistrarStore,D1RegistrarDb} from './d1-registrar-store';
 import {D1RegistrationOrderStore} from './d1-registration-order';
 import {NativeBuilderCore,systemBuilderClock,type RiskClass} from '../products/izakhono-native-builder/src/index';
 import {D1BuilderStore} from '../products/izakhono-native-builder/src/d1-store';
-interface Env{DB:D1Database;REGISTRY_TOKEN_SHA256?:string;APP_ENV?:string}
+interface Env{DB:D1Database;REGISTRY_TOKEN_SHA256?:string;APP_ENV?:string;GITHUB_TOKEN?:string;BUILD_ALLOWED_REPOSITORIES?:string}
 const json=(data:unknown,status=200)=>new Response(JSON.stringify(data),{status,headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store'}});
+function buildHandlers(env:Env){
+ if(!env.GITHUB_TOKEN||!env.BUILD_ALLOWED_REPOSITORIES)return undefined;
+ const allowed=env.BUILD_ALLOWED_REPOSITORIES.split(',').map(value=>value.trim()).filter(Boolean);
+ if(!allowed.length)return undefined;
+ return createWorkerHandlers(createGitHubReadOnlyBuildVerifier({token:env.GITHUB_TOKEN,allowedRepositories:allowed}));
+}
 async function nativeBuilderFetch(request:Request,env:Env){
  const path=new URL(request.url).pathname;
  if(!env.REGISTRY_TOKEN_SHA256)return json({ok:false,error:'native builder API is disabled until REGISTRY_TOKEN_SHA256 is configured'},503);
@@ -54,4 +62,4 @@ async function nativeBuilderFetch(request:Request,env:Env){
   return json({ok:false,error:message},status);
  }
 }
-export default{async fetch(request:Request,env:Env){const authorized=!env.REGISTRY_TOKEN_SHA256||await bearerValid(request.headers.get('authorization')||undefined,env.REGISTRY_TOKEN_SHA256);const url=new URL(request.url);const path=url.pathname;if(path.startsWith('/native-builder/'))return nativeBuilderFetch(request,env);if(path==='/control-plane/status'){if(!authorized)return json({ok:false,error:'unauthorized'},401);return json({ok:true,...controlPlaneStatus()});}if(path==='/control-plane/diagnose'&&request.method==='GET'){if(!authorized)return json({ok:false,error:'unauthorized'},401);const domain=url.searchParams.get('domain');if(!domain)return json({ok:false,error:'domain required'},400);try{return json({ok:true,diagnostic:await diagnoseControlPlane(domain)});}catch(error){return json({ok:false,error:error instanceof Error?error.message:String(error)},400);}}if(path.startsWith('/workers/'))return workerControl(request,authorized,env.DB);const store=new D1RegistryStore(env.DB);const idempotency=new D1IdempotencyStore(env.DB as D1IdempotencyDb);const registrars=new D1RegistrarStore(env.DB as D1RegistrarDb);const orders=new D1RegistrationOrderStore(env.DB);return registryFetch(request,store,env,idempotency,registrars,orders);},async scheduled(_event:unknown,env:Env){await pumpWorkers(env.DB);}};
+export default{async fetch(request:Request,env:Env){const authorized=!env.REGISTRY_TOKEN_SHA256||await bearerValid(request.headers.get('authorization')||undefined,env.REGISTRY_TOKEN_SHA256);const url=new URL(request.url);const path=url.pathname;if(path.startsWith('/native-builder/'))return nativeBuilderFetch(request,env);if(path==='/control-plane/status'){if(!authorized)return json({ok:false,error:'unauthorized'},401);return json({ok:true,...controlPlaneStatus()});}if(path==='/control-plane/diagnose'&&request.method==='GET'){if(!authorized)return json({ok:false,error:'unauthorized'},401);const domain=url.searchParams.get('domain');if(!domain)return json({ok:false,error:'domain required'},400);try{return json({ok:true,diagnostic:await diagnoseControlPlane(domain)});}catch(error){return json({ok:false,error:error instanceof Error?error.message:String(error)},400);}}if(path.startsWith('/workers/'))return workerControl(request,authorized,env.DB,buildHandlers(env));const store=new D1RegistryStore(env.DB);const idempotency=new D1IdempotencyStore(env.DB as D1IdempotencyDb);const registrars=new D1RegistrarStore(env.DB as D1RegistrarDb);const orders=new D1RegistrationOrderStore(env.DB);return registryFetch(request,store,env,idempotency,registrars,orders);},async scheduled(_event:unknown,env:Env){await pumpWorkers(env.DB,buildHandlers(env));}};
