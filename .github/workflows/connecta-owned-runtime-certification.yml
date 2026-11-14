@@ -18,6 +18,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Enforce canonical CONNECTA production path
+        shell: bash
+        run: bash infra/node-cluster/VERIFY-CONNECTA-PRODUCTION-PATH.sh
+
+      - name: Enforce no legacy NODE01 production dependency
+        shell: bash
+        run: bash infra/node-cluster/VERIFY-CONNECTA-LEGACY-PATH.sh
+
       - name: Install runtime verification dependencies
         run: |
           python3 --version
@@ -38,7 +46,7 @@ jobs:
             echo "[BLOCKED] CONNECTA_NODE01_URL..CONNECTA_NODE04_URL production secrets are required."
             exit 10
           fi
-          infra/node-cluster/NODE-CLUSTER-HEALTH-GATE.sh
+          bash infra/node-cluster/NODE-CLUSTER-HEALTH-GATE.sh
 
       - name: Verify four-node evidence is runtime-produced and complete
         shell: bash
