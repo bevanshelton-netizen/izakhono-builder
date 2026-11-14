@@ -8,6 +8,12 @@ on:
       - 'infra/node-cluster/**'
       - 'infra/runtime-fabric/**'
       - '.github/workflows/connecta-ci.yml'
+      - '.github/workflows/connecta-owned-runtime-certification.yml'
+      - '.github/workflows/connecta-promotion-gate.yml'
+      - 'infra/runtime-fabric/LEGACY-NODE01-WAVE1-DEPRECATION.md'
+      - 'infra/node-cluster/test-node-cluster-evidence-verifier.sh'
+      - 'infra/node-cluster/VERIFY-CONNECTA-PRODUCTION-PATH.sh'
+      - 'infra/node-cluster/VERIFY-CONNECTA-LEGACY-PATH.sh'
   pull_request:
     branches: [main]
     paths:
@@ -15,6 +21,12 @@ on:
       - 'infra/node-cluster/**'
       - 'infra/runtime-fabric/**'
       - '.github/workflows/connecta-ci.yml'
+      - '.github/workflows/connecta-owned-runtime-certification.yml'
+      - '.github/workflows/connecta-promotion-gate.yml'
+      - 'infra/runtime-fabric/LEGACY-NODE01-WAVE1-DEPRECATION.md'
+      - 'infra/node-cluster/test-node-cluster-evidence-verifier.sh'
+      - 'infra/node-cluster/VERIFY-CONNECTA-PRODUCTION-PATH.sh'
+      - 'infra/node-cluster/VERIFY-CONNECTA-LEGACY-PATH.sh'
   workflow_dispatch:
 
 permissions:
