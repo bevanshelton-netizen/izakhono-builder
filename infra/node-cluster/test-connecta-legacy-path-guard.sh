@@ -46,12 +46,17 @@ make_fixture "$tmp/allowed"
 printf '%s\n' 'Require NODE01 NODE02 NODE03 NODE04 runtime health.' > "$tmp/allowed/.github/workflows/connecta-ci.yml"
 run_guard_expect "$tmp/allowed" 0
 
-# A legacy launcher in any workflow must block, not only the three named files.
+# A legacy launcher in any CONNECTA workflow must block.
 make_fixture "$tmp/workflow-blocked"
-printf '%s\n' 'run: RUN-NODE01-WAVE1-LOCAL.cmd' > "$tmp/workflow-blocked/.github/workflows/deploy.yml"
+printf '%s\n' 'run: RUN-NODE01-WAVE1-LOCAL.cmd' > "$tmp/workflow-blocked/.github/workflows/connecta-deploy.yml"
 run_guard_expect "$tmp/workflow-blocked" 10
 
-# A legacy report dependency in product runtime code must also block.
+# Unrelated product workflows retain their own lifecycle and are not reclassified.
+make_fixture "$tmp/unrelated-workflow"
+printf '%s\n' 'run: CERTIFY-WAVE1-OWNED.ps1' > "$tmp/unrelated-workflow/.github/workflows/runtime-fabric-ci.yml"
+run_guard_expect "$tmp/unrelated-workflow" 0
+
+# A legacy report dependency in CONNECTA product runtime code must block.
 make_fixture "$tmp/product-blocked"
 printf '%s\n' 'readFile("IZAKHONO-NODE01-WAVE1-REPORT.json")' > "$tmp/product-blocked/products/izakhono-social/scripts/runtime.js"
 run_guard_expect "$tmp/product-blocked" 10
@@ -61,4 +66,4 @@ make_fixture "$tmp/infra-blocked"
 printf '%s\n' 'powershell CERTIFY-WAVE1-OWNED.ps1' > "$tmp/infra-blocked/infra/runtime-fabric/CERTIFY-OWNED-RUNTIME-WAVE1.ps1"
 run_guard_expect "$tmp/infra-blocked" 10
 
-echo "[PASS] legacy guard permits logical NODE01-NODE04 references and blocks deprecated workflow, product-runtime and infrastructure dependencies."
+echo "[PASS] CONNECTA guard allows logical nodes and unrelated product workflows, while blocking legacy CONNECTA workflow, product-runtime and infrastructure dependencies."
