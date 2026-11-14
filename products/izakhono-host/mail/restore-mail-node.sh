@@ -29,8 +29,9 @@ read -r -p "Type RESTORE MAIL to continue: " CONFIRM
 
 RESTORE_ROOT="$(mktemp -d /var/tmp/izakhono-mail-restore.XXXXXX)"
 STAGE_DIR="$RESTORE_ROOT/stage"
-mkdir -p "$STAGE_DIR"
-chmod 700 "$RESTORE_ROOT" "$STAGE_DIR"
+PRE_RESTORE_DIR="$ROOT/backups/pre-restore-$(date -u +%Y%m%dT%H%M%SZ)"
+mkdir -p "$STAGE_DIR" "$PRE_RESTORE_DIR"
+chmod 700 "$RESTORE_ROOT" "$STAGE_DIR" "$PRE_RESTORE_DIR"
 trap 'rm -rf "$RESTORE_ROOT"' EXIT
 
 restic restore "$SNAPSHOT_ID" --target "$RESTORE_ROOT"
@@ -50,7 +51,7 @@ tar -xzf "$ARCHIVE" -C "$STAGE_DIR"
 backup_current_volume() {
   local volume="$1" filename="$2"
   docker volume inspect "$volume" >/dev/null 2>&1 || return 0
-  docker run --rm --network none -v "$volume:/source:ro" -v "$RESTORE_ROOT:/backup" alpine:3.21 sh -c "tar czf /backup/$filename -C /source ."
+  docker run --rm --network none -v "$volume:/source:ro" -v "$PRE_RESTORE_DIR:/backup" alpine:3.21 sh -c "tar czf /backup/$filename -C /source ."
 }
 
 restore_volume() {
@@ -82,6 +83,7 @@ fi
 echo "[4/4] Start and verify Stalwart"
 docker compose --env-file "$ENV_FILE" -f docker-compose.mail.yml up -d
 CID="$(docker compose --env-file "$ENV_FILE" -f docker-compose.mail.yml ps -q stalwart)"
+[[ -n "$CID" ]] || { echo "Stalwart container was not created after restore." >&2; exit 10; }
 for attempt in $(seq 1 30); do
   HEALTH="$(docker inspect -f '{{.State.Health.Status}}' "$CID" 2>/dev/null || true)"
   [[ "$HEALTH" == "healthy" ]] && break
@@ -89,6 +91,7 @@ for attempt in $(seq 1 30); do
   sleep 3
 done
 
+echo "Pre-restore local safety copy: $PRE_RESTORE_DIR"
 echo "Stalwart data restored. Review .env.restored and secrets.restored before replacing current secrets."
 echo "Run the full MAIL-ACCEPTANCE-REAL.sh checks and a real send/receive test."
 echo "A successful volume restore is not, by itself, a verified mail recovery drill."
