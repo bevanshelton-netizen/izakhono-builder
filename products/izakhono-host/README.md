@@ -29,13 +29,14 @@ The platform is not considered production-live merely because its Docker contain
 - Supabase tenant tables with row-level security restricted to tenant ownership; browser-side direct writes are disabled.
 - Persistent runtime and edge volumes.
 
-The current native host runtime is an owned baseline, not yet a full commercial PaaS. The customer self-service portal, registrar/DNS-provider automation, tenant billing lifecycle, complete object-storage integration and production multi-node failover still require implementation and verification. Do not promise one-click customer onboarding until those gates are complete.
+The current native host runtime is an owned static-site hosting baseline, not yet a full commercial PaaS. The site registry and deployment history are currently stored in a durable JSON file on a persistent volume. The customer self-service portal, registrar/DNS-provider automation, tenant billing lifecycle, complete object-storage integration, dynamic PHP/application runtimes, database provisioning, usage metering and production multi-node failover still require implementation and verification. Do not promise full Hostinger-equivalent hosting or one-click customer onboarding until those gates are complete.
 
 ### Email infrastructure
 
 - Stalwart mail transport and mailbox storage.
 - Roundcube browser webmail with a separate PostgreSQL database.
 - Owner-only live Mail Control Centre at mail-admin.izakhonoafrica.co.za, protected by Caddy Basic Auth.
+- Owner-only Hosting Control Centre at hosting-admin.izakhonoafrica.co.za, protected by a separate Caddy Basic Auth credential.
 - Private IZAKHONO Mail Control Plane with approved-domain allowlist and DNS TXT ownership verification.
 - One-time mailbox handover and password activation workflow.
 - Separate human and application mail identities.
@@ -75,6 +76,24 @@ NODE01-ACTIVATE.sh creates independent host secrets, creates protected Roundcube
 10. Test inbound and outbound mail from independent external providers before any MX cutover.
 
 See mail/README.md and mail/DNS-RECORDS-IZAKHONOAFRICA.md for the full mail runbook.
+
+## Owner hosting operations
+
+The owner-only hosting dashboard is served at https://hosting-admin.izakhonoafrica.co.za. Its generated Basic Auth password is stored in the ignored local file host/secrets/host_admin_password. It is read-only and reports actual provisioned sites and deployment records.
+
+The initial runtime supports static websites (HTML, CSS, JavaScript, images, fonts and common static assets). Current deployment limits are 200 files, 512 KiB per file and 8 MiB total per deployment. Website content is uploaded as binary-safe base64 and switched atomically. Known secret files and private-key paths are blocked.
+
+Operator commands, run from this directory:
+
+```bash
+./HOST-SITE-PROVISION.sh example.com
+./HOST-SITE-DEPLOY.sh example.com /path/to/built-static-site
+./HOST-SITE-ACCEPT.sh example.com
+```
+
+A deploy directory must contain index.html. The acceptance command does not trust caller-supplied booleans: the server checks the public A record against HOST_PUBLIC_IP, then performs an HTTPS request and content check. A site remains non-live unless all checks pass. WSL2 NAT or missing public routing will prevent acceptance; do not override that result.
+
+The platform still needs customer authentication and self-service, automated registrar/DNS integration, billing, quotas, object storage, dynamic runtimes, database services, usage metering, backups for site content and multi-node failover before it can be sold as a full commercial hosting service.
 
 ## Backup and restore
 
