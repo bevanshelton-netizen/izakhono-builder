@@ -6,6 +6,7 @@ const env = {
   JARVIS_OWNER_SECRET: "test-owner-secret",
   JARVIS_EXECUTOR_URL: "https://executor.example/api/jarvis/execute",
   JARVIS_EXECUTOR_TOKEN: "test-executor-token",
+  JARVIS_EXECUTOR_ALLOWED_HOSTS: "executor.example",
   JARVIS_AGENT_ID: "coordinator",
 };
 const validStep = { id: "step-1", assigned_agent: "coordinator", title: "Test", description: "Bounded test task" };
