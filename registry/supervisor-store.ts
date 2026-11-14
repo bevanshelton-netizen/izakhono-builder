@@ -99,6 +99,13 @@ export async function recordEvidence(db:D1Database,id:string,evidence:unknown){
  const at=new Date().toISOString();
  await db.prepare('UPDATE supervisor_jobs SET evidence_json=?,updated_at=? WHERE id=?').bind(JSON.stringify(evidence),at,id).run();
 }
+/** Atomically attach completion evidence and transition verified -> completed. */
+export async function completeVerifiedSupervisorJob(db:D1Database,id:string,evidence:unknown,actor:string){
+ const at=new Date().toISOString();
+ const result=await db.prepare("UPDATE supervisor_jobs SET status='completed',evidence_json=?,updated_at=?,event_actor=?,event_detail_json=? WHERE id=? AND status='verified'").bind(JSON.stringify(evidence),at,actor,JSON.stringify({completionEvidenceRecorded:true}),id).run() as {meta?:{changes?:number}};
+ if(Number(result.meta?.changes??0)!==1)throw new Error('Completion rejected: job is not verified or changed concurrently');
+ return {id,status:'completed' as const,updatedAt:at};
+}
 
 export async function listSupervisorJobs(db:D1Database,status?:SupervisorStatus){
  const q=status?'SELECT * FROM supervisor_jobs WHERE status=? ORDER BY priority DESC,created_at ASC':'SELECT * FROM supervisor_jobs ORDER BY priority DESC,created_at ASC';
