@@ -43,6 +43,9 @@ tar -xzf "$ARCHIVE" -C "$STAGE_DIR"
 for required in host-runtime-data.tar.gz caddy-data.tar.gz caddy-config.tar.gz minio-data.tar.gz valkey-data.tar.gz mail-control-plane-state.tar.gz izakhono-postgres.dump roundcube-postgres.dump; do
   [[ -f "$STAGE_DIR/$required" ]] || { echo "Required restore component missing: $required" >&2; exit 7; }
 done
+for required in host-secrets/host_admin_password mail-secrets/mail_admin_password mail-secrets/roundcube_db_password mail-secrets/roundcube_des_key; do
+  [[ -s "$STAGE_DIR/$required" ]] || { echo "Required recovery secret missing: $required" >&2; exit 7; }
+done
 
 backup_volume() {
   local volume="$1" filename="$2"
