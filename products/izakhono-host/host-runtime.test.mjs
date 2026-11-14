@@ -19,12 +19,12 @@ const child = spawn(process.execPath, [serverPath], {
   stdio: 'ignore',
 });
 
-function getWithHost(hostname) {
+function getWithHost(hostname, requestPath = '/') {
   return new Promise((resolve, reject) => {
-    const req = http.request({ hostname: '127.0.0.1', port, path: '/', method: 'GET', headers: { Host: hostname } }, response => {
+    const req = http.request({ hostname: '127.0.0.1', port, path: requestPath, method: 'GET', headers: { Host: hostname } }, response => {
       const chunks = [];
       response.on('data', chunk => chunks.push(chunk));
-      response.on('end', () => resolve({ status: response.statusCode, text: Buffer.concat(chunks).toString('utf8') }));
+      response.on('end', () => resolve({ status: response.statusCode, body: Buffer.concat(chunks), text: Buffer.concat(chunks).toString('utf8') }));
     });
     req.on('error', reject);
     req.end();
@@ -82,6 +82,9 @@ try {
   const served = await getWithHost('test.example.invalid');
   assert.equal(served.status, 200);
   assert.match(served.text, /IZAKHONO CI SITE/);
+  const asset = await getWithHost('test.example.invalid', '/assets/logo.png');
+  assert.equal(asset.status, 200);
+  assert.deepEqual([...asset.body], [0, 1, 2, 255], 'binary assets must survive base64 deployment intact');
 
   const blocked = await request(`${base}/api/sites/${siteId}/content`, {
     method: 'POST',
