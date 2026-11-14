@@ -59,7 +59,7 @@ export async function renewSupervisorLease(db:D1Database,id:string,leaseToken:st
 /** Record execution evidence only while the caller still owns the active, unexpired lease. */
 export async function recordLeasedEvidence(db:D1Database,id:string,leaseToken:string,evidence:unknown){
  const at=new Date().toISOString();
- const result=await db.prepare("UPDATE supervisor_jobs SET evidence_json=?,updated_at=? WHERE id=? AND status='running' AND lease_token=? AND lease_expires_at>?").bind(JSON.stringify(evidence),at,actor,JSON.stringify({verification:'independent',leaseBound:true}),id,leaseToken,at).run() as {meta?:{changes?:number}};
+ const result=await db.prepare("UPDATE supervisor_jobs SET evidence_json=?,updated_at=? WHERE id=? AND status='running' AND lease_token=? AND lease_expires_at>?").bind(JSON.stringify(evidence),at,id,leaseToken,at).run() as {meta?:{changes?:number}};
  if(Number(result.meta?.changes??0)!==1)throw new Error('Evidence write rejected: lease token is stale, expired, or not owned by caller');
  return {id,updatedAt:at};
 }
