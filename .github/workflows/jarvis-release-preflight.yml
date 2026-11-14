@@ -1,0 +1,98 @@
+name: J.A.R.V.I.S. production release preflight
+
+on:
+  push:
+    branches: [release/jarvis-mainline-port]
+    paths:
+      - "migrations/**"
+      - "wrangler.jsonc"
+      - "src/sovereign.ts"
+      - "products/izakhono-jarvis/**"
+      - ".github/workflows/jarvis-release-preflight.yml"
+  pull_request:
+    paths:
+      - "migrations/**"
+      - "wrangler.jsonc"
+      - "src/sovereign.ts"
+      - "products/izakhono-jarvis/**"
+      - ".github/workflows/jarvis-release-preflight.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install locked dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Validate J.A.R.V.I.S. migration chain in SQLite
+        run: |
+          python3 - <<'PY'
+          import pathlib, sqlite3
+          db = sqlite3.connect(":memory:")
+          db.execute("PRAGMA foreign_keys = ON")
+          migrations = sorted(pathlib.Path("migrations").glob("00[2-3]*_jarvis_*.sql"))
+          expected = [f"{n:04d}" for n in range(25, 32)]
+          actual = [p.name[:4] for p in migrations]
+          if actual != expected:
+              raise SystemExit(f"Expected J.A.R.V.I.S. migration versions {expected}, found {actual}")
+          for migration in migrations:
+              db.executescript(migration.read_text())
+              print(f"PASS {migration.name}")
+          tables = {r[0] for r in db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+          required = {"jarvis_tasks","jarvis_context_items","jarvis_task_context","jarvis_action_proposals","jarvis_proposal_decisions","jarvis_audit_events","jarvis_conversations","jarvis_messages","jarvis_orchestration_runs","jarvis_orchestration_steps"}
+          missing = required - tables
+          if missing:
+              raise SystemExit("Missing tables after migration: " + ", ".join(sorted(missing)))
+          columns = {r[1] for r in db.execute("PRAGMA table_info(jarvis_orchestration_steps)")}
+          required_columns = {"attempts","max_attempts","lease_owner","lease_until","last_error","evidence_json","updated_at","owner_verification","owner_review_note","reviewed_at"}
+          if required_columns - columns:
+              raise SystemExit("Missing workforce columns: " + ", ".join(sorted(required_columns-columns)))
+          print("PASS all seven J.A.R.V.I.S. migrations applied in order")
+          PY
+      - name: Check deployment and worker configuration without revealing values
+        id: config
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          JARVIS_OWNER_SECRET: ${{ secrets.JARVIS_OWNER_SECRET }}
+          JARVIS_EXECUTOR_URL: ${{ secrets.JARVIS_EXECUTOR_URL }}
+          JARVIS_EXECUTOR_TOKEN: ${{ secrets.JARVIS_EXECUTOR_TOKEN }}
+          JARVIS_EXECUTOR_ALLOWED_HOSTS: ${{ vars.JARVIS_EXECUTOR_ALLOWED_HOSTS }}
+          IZAKHONO_SUPER_AI_URL: ${{ secrets.IZAKHONO_SUPER_AI_URL }}
+          IZAKHONO_SUPER_AI_INTERNAL_KEY: ${{ secrets.IZAKHONO_SUPER_AI_INTERNAL_KEY }}
+          IZAKHONO_SUPER_AI_WORKFLOW_KEY: ${{ secrets.IZAKHONO_SUPER_AI_WORKFLOW_KEY }}
+        run: |
+          for name in CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID JARVIS_OWNER_SECRET JARVIS_EXECUTOR_URL JARVIS_EXECUTOR_TOKEN JARVIS_EXECUTOR_ALLOWED_HOSTS IZAKHONO_SUPER_AI_URL IZAKHONO_SUPER_AI_INTERNAL_KEY IZAKHONO_SUPER_AI_WORKFLOW_KEY; do
+            if [ -n "${!name}" ]; then echo "$name=present"; else echo "$name=missing"; fi
+          done
+          if [ -n "$CLOUDFLARE_API_TOKEN" ] && [ -n "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            echo "cloudflare_ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "cloudflare_ready=false" >> "$GITHUB_OUTPUT"
+          fi
+          if [ -n "$JARVIS_OWNER_SECRET" ] && [ -n "$JARVIS_EXECUTOR_URL" ] && [ -n "$JARVIS_EXECUTOR_TOKEN" ] && [ -n "$JARVIS_EXECUTOR_ALLOWED_HOSTS" ]; then
+            echo "executor_ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "executor_ready=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Verify Worker bundle builds
+        run: npx wrangler deploy --dry-run
+      - name: Inspect remote D1 migration state (read-only)
+        if: steps.config.outputs.cloudflare_ready == 'true'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx wrangler d1 migrations list DB --remote
+      - name: Report blocked remote D1 inspection
+        if: steps.config.outputs.cloudflare_ready != 'true'
+        run: echo "Remote D1 inspection skipped: Cloudflare deployment credentials are not configured."
