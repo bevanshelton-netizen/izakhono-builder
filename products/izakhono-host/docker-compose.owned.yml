@@ -158,8 +158,8 @@ services:
     restart: unless-stopped
     command: -conf /etc/coredns/Corefile
     ports:
-      - "53:53/udp"
-      - "53:53/tcp"
+      - "127.0.0.1:5353:53/udp"
+      - "127.0.0.1:5353:53/tcp"
     volumes:
       - ./runtime/authoritative-dns/Corefile:/etc/coredns/Corefile:ro
       - ./runtime/authoritative-dns/db.izakhono.local:/zones/db.izakhono.local:ro
