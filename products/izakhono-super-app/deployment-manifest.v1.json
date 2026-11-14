@@ -3,7 +3,9 @@
   "service": "izakhono-creator-studio",
   "controlPlane": "IZAKHONO PROVISIONER",
   "preferredAdapter": "owned",
-  "fallbackAdapters": ["vps", "vercel"],
+  "fallbackAdapters": [
+    "vps"
+  ],
   "runtime": {
     "packaging": "docker",
     "port": 3000,
@@ -23,7 +25,14 @@
     "dns": "adapter-managed"
   },
   "promotion": {
-    "flow": ["build", "test", "package", "deploy", "healthcheck", "promote"],
+    "flow": [
+      "build",
+      "test",
+      "package",
+      "deploy",
+      "healthcheck",
+      "promote"
+    ],
     "failureAction": "rollback"
   }
 }
