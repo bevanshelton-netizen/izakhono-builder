@@ -21,7 +21,7 @@ begin
     'provider_requested',provider_requested,'idempotency_key',idempotency_key)
     into existing from public.pay_payment_transactions t where idempotency_key=p_idempotency_key limit 1;
   if existing is not null then
-    if existing->>'provider_requested' is distinct from p_provider then raise exception 'idempotency_key_provider_mismatch'; end if;
+    if existing->>'provider' is distinct from p_provider then raise exception 'idempotency_key_provider_mismatch'; end if;
     if existing->>'external_reference' is distinct from p_external_reference then raise exception 'idempotency_key_reference_mismatch'; end if;
     if (existing->>'amount')::numeric is distinct from p_amount then raise exception 'idempotency_key_amount_mismatch'; end if;
     if upper(existing->>'currency') is distinct from upper(p_currency) then raise exception 'idempotency_key_currency_mismatch'; end if;
