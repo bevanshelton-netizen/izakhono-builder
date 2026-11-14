@@ -1,4 +1,33 @@
 -- I-CONNECT / IZAKHONO PAY: single-use iKhokha payment-link intent
+alter table public.pay_payment_transactions add column if not exists provider_requested text;
+
+-- Preserve the requested provider at transaction creation; provider_connection_id alone may be unset.
+create or replace function public.pay_create_transaction(
+  p_external_reference text, p_amount numeric, p_currency text, p_idempotency_key text,
+  p_merchant_account_id uuid default null, p_provider text default 'stripe'
+) returns jsonb language plpgsql security definer set search_path=public as $
+declare existing jsonb; tx_id uuid; provider_gate jsonb;
+begin
+  if p_amount <= 0 then raise exception 'amount_must_be_positive'; end if;
+  if p_currency is null or length(trim(p_currency)) <> 3 then raise exception 'invalid_currency'; end if;
+  if p_provider not in ('ikhokha','stripe','payfast') then raise exception 'unsupported_provider'; end if;
+  select jsonb_build_object('provider',p_provider,'live_enabled',coalesce(live_enabled,false),'gate_decision',coalesce(gate_decision,'NO_GO'))
+    into provider_gate from public.pay_live_activation_control where provider=p_provider order by changed_at desc limit 1;
+  if coalesce((provider_gate->>'live_enabled')::boolean,false) and coalesce(provider_gate->>'gate_decision','NO_GO') <> 'GO' then
+    raise exception 'live_activation_gate_inconsistent';
+  end if;
+  select jsonb_build_object('id',id,'external_reference',external_reference,'amount',amount,'currency',currency,
+    'status',status,'provider',coalesce(provider_requested,(select provider from public.pay_provider_connections pc where pc.id=t.provider_connection_id),p_provider),
+    'provider_requested',provider_requested,'idempotency_key',idempotency_key)
+    into existing from public.pay_payment_transactions t where idempotency_key=p_idempotency_key limit 1;
+  if existing is not null then return existing || jsonb_build_object('idempotent_replay',true); end if;
+  insert into public.pay_payment_transactions(external_reference,amount,currency,status,provider_status,idempotency_key,merchant_account_id,provider_requested)
+    values(p_external_reference,p_amount,upper(p_currency),'created','created',p_idempotency_key,p_merchant_account_id,p_provider)
+    returning id into tx_id;
+  return jsonb_build_object('id',tx_id,'external_reference',p_external_reference,'amount',p_amount,
+    'currency',upper(p_currency),'status','created','provider',p_provider,'provider_requested',p_provider,
+    'idempotency_key',p_idempotency_key,'idempotent_replay',false);
+end; $;
 create table if not exists public.pay_ikhokha_payment_link_intents (
   id uuid primary key default gen_random_uuid(),
   transaction_id uuid not null unique references public.pay_payment_transactions(id),
@@ -33,6 +62,7 @@ declare
 begin
   select * into t from public.pay_payment_transactions where id=p_transaction_id for update;
   if not found then raise exception 'transaction_not_found'; end if;
+  if t.provider_requested <> 'ikhokha' then raise exception 'transaction_not_created_for_ikhokha'; end if;
   if t.status not in ('created','pending') then raise exception 'transaction_not_eligible'; end if;
   if t.merchant_account_id is null then raise exception 'merchant_account_missing'; end if;
   select * into pc from public.pay_provider_connections
