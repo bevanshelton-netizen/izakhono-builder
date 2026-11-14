@@ -22,6 +22,11 @@ MX_TARGET="$(dig +short MX "$MAIL_DOMAIN" | sort -n | awk 'NR==1 {print $2}' | s
 A_RECORD="$(dig +short A "$MAIL_HOST" | head -n1 || true)"
 [[ "$A_RECORD" == "$MAIL_PUBLIC_IP" ]] && pass "Mail A record matches static public IP" || bad "Mail A record '$A_RECORD' does not match $MAIL_PUBLIC_IP"
 
+for service_host in "webmail.$MAIL_DOMAIN" "autoconfig.$MAIL_DOMAIN" "autodiscover.$MAIL_DOMAIN" "mta-sts.$MAIL_DOMAIN"; do
+  service_ip="$(dig +short A "$service_host" | head -n1 || true)"
+  [[ "$service_ip" == "$MAIL_PUBLIC_IP" ]] && pass "$service_host resolves to mail edge" || bad "$service_host resolves to '$service_ip', expected $MAIL_PUBLIC_IP"
+done
+
 PTR="$(dig +short -x "$MAIL_PUBLIC_IP" | sed 's/\.$//' | head -n1 || true)"
 [[ "$PTR" == "$MAIL_HOST" ]] && pass "Reverse DNS/PTR matches $MAIL_HOST" || bad "PTR is '$PTR', expected $MAIL_HOST"
 
