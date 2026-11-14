@@ -84,7 +84,7 @@ else
   fail 'Native host runtime health'
 fi
 
-for service in postgres minio valkey edge mail-bridge roundcube; do
+for service in postgres minio valkey edge authoritative-dns mail-control-plane roundcube-db mail-bridge roundcube; do
   CID="$(docker compose --env-file .env -f docker-compose.owned.yml ps -q "$service" 2>/dev/null || true)"
   if [[ -n "$CID" ]]; then pass "$service container created"; else warn "$service container not found"; fi
 done
