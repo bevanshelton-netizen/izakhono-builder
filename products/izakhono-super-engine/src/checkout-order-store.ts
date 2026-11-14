@@ -1,4 +1,6 @@
-import type { HostCheckoutOrder } from './host-provisioner-adapter.js';
+import type { HostCheckoutOrder, HostProvisionerAdapterConfig } from './host-provisioner-adapter.js';
+import type { PaymentIntent } from './payment-core.js';
+import type { FulfillmentJob } from './payment-fulfillment.js';
 
 export interface ImmutableCheckoutOrder extends HostCheckoutOrder {
   orderId: string;
@@ -127,5 +129,21 @@ function fromRow(row: CheckoutOrderRow): ImmutableCheckoutOrder {
     domain: row.domain, expectedAmountMinor: row.expected_amount_minor,
     currency: row.currency, idempotencyKey: row.idempotency_key,
     productId: row.product_id, createdAt: row.created_at,
+  };
+}
+
+
+/** Bind the adapter to the durable order store; payment identity must match the stored snapshot. */
+export function createHostCheckoutOrderResolver(store: CheckoutOrderStore): HostProvisionerAdapterConfig['resolveOrder'] {
+  return async (payment: PaymentIntent, _job: FulfillmentJob): Promise<HostCheckoutOrder | undefined> => {
+    const order = await store.getByPaymentIntentId(payment.id);
+    if (!order || order.externalTransactionId !== payment.externalTransactionId) return undefined;
+    return {
+      customerId: order.customerId,
+      domain: order.domain,
+      expectedAmountMinor: order.expectedAmountMinor,
+      currency: order.currency,
+      idempotencyKey: order.idempotencyKey,
+    };
   };
 }
