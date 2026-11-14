@@ -576,8 +576,8 @@ async def control_centre() -> dict[str, Any]:
             "storageUsedBytes": int(account["usedQuota"]) if account.get("usedQuota") is not None else None,
             "lastAuthenticationAt": None,
             "lastDeliveryAt": None,
-            "deliveryFailures": 0,
-            "securityStatus": "clear" if enabled else "attention",
+            "deliveryFailures": None,
+            "securityStatus": "not_monitored" if enabled else "attention",
             "backupStatus": "pending",
         })
 
@@ -590,6 +590,7 @@ async def control_centre() -> dict[str, Any]:
         "domains": domains,
         "mailboxes": mailboxes,
         "incidents": [],
+        "telemetry": {"incidents": "not_connected", "delivery": "not_connected", "authentication": "not_connected", "backups": "not_connected"},
         "summary": {
             "managedDomains": len(domains),
             "verifiedDomains": verified_count,
