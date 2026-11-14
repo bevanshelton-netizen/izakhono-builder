@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS supervisor_jobs (
  worker_id TEXT NOT NULL, priority INTEGER NOT NULL, risk TEXT NOT NULL,
  status TEXT NOT NULL, dependency_ids_json TEXT NOT NULL DEFAULT '[]',
  human_gate TEXT, attempts INTEGER NOT NULL DEFAULT 0, input_json TEXT NOT NULL DEFAULT '{}',
- evidence_json TEXT NOT NULL DEFAULT '{}', lease_token TEXT, lease_expires_at TEXT, claimed_by TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL,
+ evidence_json TEXT NOT NULL DEFAULT '{}', lease_token TEXT, lease_expires_at TEXT, claimed_by TEXT, event_actor TEXT, event_detail_json TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL,
  UNIQUE(source,source_id)
 );
 CREATE INDEX IF NOT EXISTS idx_supervisor_jobs_status_priority ON supervisor_jobs(status,priority);
@@ -30,7 +30,8 @@ const parse=(v:unknown,fallback:unknown)=>{try{return JSON.parse(String(v??''))}
 
 export async function ensureSupervisorSchema(db:D1Database){
  for(const sql of splitSql(TABLES))await db.prepare(sql).run();
- for(const sql of ['ALTER TABLE supervisor_jobs ADD COLUMN lease_token TEXT','ALTER TABLE supervisor_jobs ADD COLUMN lease_expires_at TEXT','ALTER TABLE supervisor_jobs ADD COLUMN claimed_by TEXT']){try{await db.prepare(sql).run();}catch(error){if(!/duplicate column|already exists/i.test(String(error)))throw error;}}
+ for(const sql of ['ALTER TABLE supervisor_jobs ADD COLUMN lease_token TEXT','ALTER TABLE supervisor_jobs ADD COLUMN lease_expires_at TEXT','ALTER TABLE supervisor_jobs ADD COLUMN claimed_by TEXT','ALTER TABLE supervisor_jobs ADD COLUMN event_actor TEXT','ALTER TABLE supervisor_jobs ADD COLUMN event_detail_json TEXT']){try{await db.prepare(sql).run();}catch(error){if(!/duplicate column|already exists/i.test(String(error)))throw error;}}
+ await db.prepare(`CREATE TRIGGER IF NOT EXISTS supervisor_job_status_audit AFTER UPDATE OF status ON supervisor_jobs WHEN OLD.status != NEW.status AND NEW.event_actor IS NOT NULL BEGIN INSERT INTO supervisor_job_events(id,job_id,at,from_status,to_status,actor,detail_json) VALUES(lower(hex(randomblob(16))),NEW.id,NEW.updated_at,OLD.status,NEW.status,NEW.event_actor,COALESCE(NEW.event_detail_json,'{}')); END`).run();
 }
 
 export async function upsertSupervisorJob(db:D1Database,job:SupervisorJob){
@@ -44,9 +45,8 @@ export async function upsertSupervisorJob(db:D1Database,job:SupervisorJob){
 /** Atomic conditional claim; only one concurrent caller can move queued -> running. */
 export async function claimSupervisorJob(db:D1Database,id:string,actor:string,leaseMs=120_000){
  const at=new Date();const claimedAt=at.toISOString();const leaseExpiresAt=new Date(at.getTime()+leaseMs).toISOString();const leaseToken=crypto.randomUUID();
- const row=await db.prepare("UPDATE supervisor_jobs SET status='running',attempts=attempts+1,updated_at=?,lease_token=?,lease_expires_at=?,claimed_by=? WHERE id=? AND status='queued' RETURNING id,status,attempts,updated_at,lease_token,lease_expires_at,claimed_by").bind(claimedAt,leaseToken,leaseExpiresAt,actor,id).first<{id:string;status:SupervisorStatus;attempts:number;updated_at:string;lease_token:string;lease_expires_at:string;claimed_by:string}>();
+ const row=await db.prepare("UPDATE supervisor_jobs SET status='running',attempts=attempts+1,updated_at=?,lease_token=?,lease_expires_at=?,claimed_by=?,event_actor=?,event_detail_json=? WHERE id=? AND status='queued' RETURNING id,status,attempts,updated_at,lease_token,lease_expires_at,claimed_by").bind(claimedAt,leaseToken,leaseExpiresAt,actor,actor,JSON.stringify({leaseExpiresAt,claim:'atomic'}),id).first<{id:string;status:SupervisorStatus;attempts:number;updated_at:string;lease_token:string;lease_expires_at:string;claimed_by:string}>();
  if(!row)return null;
- await db.prepare('INSERT INTO supervisor_job_events(id,job_id,at,from_status,to_status,actor,detail_json) VALUES(?,?,?,?,?,?,?)').bind(crypto.randomUUID(),id,claimedAt,'queued','running',actor,JSON.stringify({leaseExpiresAt,claim:'atomic'})).run();
  return {id:row.id,status:row.status,attempts:Number(row.attempts),updatedAt:row.updated_at,leaseToken:row.lease_token,leaseExpiresAt:row.lease_expires_at,claimedBy:row.claimed_by};
 }
 /** Extend a running lease only when the caller still owns the unexpired token. */
@@ -59,24 +59,22 @@ export async function renewSupervisorLease(db:D1Database,id:string,leaseToken:st
 /** Record execution evidence only while the caller still owns the active, unexpired lease. */
 export async function recordLeasedEvidence(db:D1Database,id:string,leaseToken:string,evidence:unknown){
  const at=new Date().toISOString();
- const result=await db.prepare("UPDATE supervisor_jobs SET evidence_json=?,updated_at=? WHERE id=? AND status='running' AND lease_token=? AND lease_expires_at>?").bind(JSON.stringify(evidence),at,id,leaseToken,at).run() as {meta?:{changes?:number}};
+ const result=await db.prepare("UPDATE supervisor_jobs SET evidence_json=?,updated_at=? WHERE id=? AND status='running' AND lease_token=? AND lease_expires_at>?").bind(JSON.stringify(evidence),at,actor,JSON.stringify({verification:'independent',leaseBound:true}),id,leaseToken,at).run() as {meta?:{changes?:number}};
  if(Number(result.meta?.changes??0)!==1)throw new Error('Evidence write rejected: lease token is stale, expired, or not owned by caller');
  return {id,updatedAt:at};
 }
 /** Fail a job only if the executor still owns the active lease; stale workers cannot fail a reclaimed job. */
 export async function failLeasedSupervisorJob(db:D1Database,id:string,leaseToken:string,actor:string,detail:unknown={}){
  const at=new Date().toISOString();
- const result=await db.prepare("UPDATE supervisor_jobs SET status='failed',updated_at=?,lease_token=NULL,lease_expires_at=NULL,claimed_by=NULL WHERE id=? AND status='running' AND lease_token=? AND lease_expires_at>?").bind(at,id,leaseToken,at).run() as {meta?:{changes?:number}};
+ const result=await db.prepare("UPDATE supervisor_jobs SET status='failed',updated_at=?,lease_token=NULL,lease_expires_at=NULL,claimed_by=NULL,event_actor=?,event_detail_json=? WHERE id=? AND status='running' AND lease_token=? AND lease_expires_at>?").bind(at,actor,JSON.stringify(detail),id,leaseToken,at).run() as {meta?:{changes?:number}};
  if(Number(result.meta?.changes??0)!==1)throw new Error('Failure transition rejected: lease token is stale, expired, or not owned by caller');
- await db.prepare('INSERT INTO supervisor_job_events(id,job_id,at,from_status,to_status,actor,detail_json) VALUES(?,?,?,?,?,?,?)').bind(crypto.randomUUID(),id,at,'running','failed',actor,JSON.stringify(detail)).run();
  return {id,status:'failed' as const,updatedAt:at};
 }
 /** Independent QA verification is an atomic compare-and-swap against the active lease. */
 export async function verifyLeasedSupervisorJob(db:D1Database,id:string,leaseToken:string,evidence:unknown,actor:string){
  const at=new Date().toISOString();
- const result=await db.prepare("UPDATE supervisor_jobs SET status='verified',evidence_json=?,updated_at=?,lease_token=NULL,lease_expires_at=NULL,claimed_by=NULL WHERE id=? AND status='running' AND lease_token=? AND lease_expires_at>?").bind(JSON.stringify(evidence),at,id,leaseToken,at).run() as {meta?:{changes?:number}};
+ const result=await db.prepare("UPDATE supervisor_jobs SET status='verified',evidence_json=?,updated_at=?,lease_token=NULL,lease_expires_at=NULL,claimed_by=NULL,event_actor=?,event_detail_json=? WHERE id=? AND status='running' AND lease_token=? AND lease_expires_at>?").bind(JSON.stringify(evidence),at,id,leaseToken,at).run() as {meta?:{changes?:number}};
  if(Number(result.meta?.changes??0)!==1)throw new Error('Verification rejected: lease token is stale, expired, or not owned by caller');
- await db.prepare('INSERT INTO supervisor_job_events(id,job_id,at,from_status,to_status,actor,detail_json) VALUES(?,?,?,?,?,?,?)').bind(crypto.randomUUID(),id,at,'running','verified',actor,JSON.stringify({verification:'independent',leaseBound:true})).run();
  return {id,status:'verified' as const,updatedAt:at};
 }
 /** Requeue expired leases with bounded retries; exhausted jobs move to failed for operator review. */
@@ -93,9 +91,8 @@ export async function transitionSupervisorJob(db:D1Database,id:string,to:Supervi
  if(!allowed[current.status].includes(to))throw new Error(`Invalid supervisor transition ${current.status} -> ${to}`);
  const attempts=to==='running'?Number(current.attempts||0)+1:Number(current.attempts||0);
  const at=new Date().toISOString();
- const result=await db.prepare("UPDATE supervisor_jobs SET status=?,attempts=?,updated_at=?,lease_token=CASE WHEN ?='running' THEN lease_token ELSE NULL END,lease_expires_at=CASE WHEN ?='running' THEN lease_expires_at ELSE NULL END,claimed_by=CASE WHEN ?='running' THEN claimed_by ELSE NULL END WHERE id=? AND status=?").bind(to,attempts,at,to,to,to,id,current.status).run() as {meta?:{changes?:number}};
+ const result=await db.prepare("UPDATE supervisor_jobs SET status=?,attempts=?,updated_at=?,lease_token=CASE WHEN ?='running' THEN lease_token ELSE NULL END,lease_expires_at=CASE WHEN ?='running' THEN lease_expires_at ELSE NULL END,claimed_by=CASE WHEN ?='running' THEN claimed_by ELSE NULL END,event_actor=?,event_detail_json=? WHERE id=? AND status=?").bind(to,attempts,at,to,to,to,actor,JSON.stringify(detail),id,current.status).run() as {meta?:{changes?:number}};
  if(Number(result.meta?.changes??0)!==1)throw new Error('Supervisor transition rejected: job state changed concurrently');
- await db.prepare('INSERT INTO supervisor_job_events(id,job_id,at,from_status,to_status,actor,detail_json) VALUES(?,?,?,?,?,?,?)').bind(crypto.randomUUID(),id,at,current.status,to,actor,JSON.stringify(detail)).run();
  return {id,status:to,attempts,updatedAt:at};
 }
 
