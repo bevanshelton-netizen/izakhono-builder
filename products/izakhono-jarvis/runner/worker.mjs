@@ -114,9 +114,14 @@ export async function runJarvisWorkerOnce(env = process.env, fetcher = fetch) {
     if (!validStep(step, agentId)) throw new Error("Claim response failed agent or task validation");
     const result = await requestJson(fetcher, adapter.toString(), {
       method: "POST",
-      headers: { "content-type": "application/json", authorization: "Bearer " + adapterToken },
+      headers: {
+        "content-type": "application/json",
+        authorization: "Bearer " + adapterToken,
+        "idempotency-key": "jarvis-step-" + step.id,
+      },
       body: JSON.stringify({
         contract: "izakhono.jarvis.executor/v1",
+        idempotency_key: "jarvis-step-" + step.id,
         step: {
           id: step.id,
           title: safeText(step.title, 300),
