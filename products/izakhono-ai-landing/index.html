@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#05020d" />
   <meta name="description" content="IZAKHONO AI — your AI operating platform. Talk to it. Tell it what you need. IZAKHONO thinks, builds, executes, tests and delivers." />
   <title>IZAKHONO AI — Put AI to Work</title>
   <style>
@@ -15,6 +16,44 @@
     .flow{display:grid;grid-template-columns:repeat(8,1fr);gap:8px;margin-top:44px}.flow div{padding:16px 8px;text-align:center;border:1px solid var(--line);border-radius:14px;background:rgba(255,255,255,.025);font-size:12px;font-weight:800}.flow div:nth-child(odd){color:var(--a)}.quote{padding:70px 0;text-align:center}.quote p{font-size:clamp(30px,4vw,54px);line-height:1.08;letter-spacing:-.04em;max-width:900px;margin:0 auto}.quote strong{color:var(--a)}.ecosystem{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:44px}.eco{padding:25px;border:1px solid var(--line);border-radius:20px;background:linear-gradient(145deg,rgba(255,255,255,.045),rgba(255,255,255,.015))}.eco strong{font-size:18px}.eco p{color:var(--muted);margin-bottom:0}.final{padding:110px 0 90px;text-align:center}.final h2{font-size:clamp(48px,7vw,90px);margin:0;line-height:.95;letter-spacing:-.06em}.final p{color:var(--muted);font-size:19px;margin:24px auto 32px}.footer{border-top:1px solid var(--line);padding:25px 0;color:#687386;font-size:12px;display:flex;justify-content:space-between}
     @media(max-width:900px){.hero{grid-template-columns:1fr;padding-top:70px}.grid{grid-template-columns:repeat(2,1fr)}.flow{grid-template-columns:repeat(4,1fr)}.ecosystem{grid-template-columns:1fr}.navlinks{display:none}}
     @media(max-width:520px){.wrap{padding:0 17px}.grid{grid-template-columns:1fr}.flow{grid-template-columns:repeat(2,1fr)}h1{font-size:55px}.hero{gap:35px}}
+  
+/* IZAKHONO cinematic visual profile — progressive, motion-safe and responsive */
+:root{--bg:#05020d;--panel:#10091f;--line:rgba(176,117,255,.25);--text:#f8f6ff;--muted:#b6a9c9;--a:#18e5ff;--b:#8752ff;--c:#f044ff;--gold:#f6bd4b}
+body{background:radial-gradient(ellipse at 50% 2%,rgba(129,38,255,.32),transparent 38%),radial-gradient(ellipse at 4% 45%,rgba(0,212,255,.14),transparent 34%),radial-gradient(ellipse at 96% 65%,rgba(225,35,255,.12),transparent 35%),#05020d}
+body:before{content:"";position:fixed;inset:0;pointer-events:none;opacity:.2;background-image:linear-gradient(rgba(115,75,180,.12) 1px,transparent 1px),linear-gradient(90deg,rgba(115,75,180,.12) 1px,transparent 1px);background-size:52px 52px;mask-image:linear-gradient(to bottom,#000,transparent 78%);z-index:-1}
+.nav{border-color:rgba(190,132,255,.22);backdrop-filter:blur(16px)}
+.orb{position:relative;border-radius:13px;background:linear-gradient(145deg,#f5f8ff,#9c8cff 42%,#20e6ff);box-shadow:0 0 22px #9d43ff99,0 0 42px #13dfff44}
+.orb:after{content:"I";position:absolute;inset:0;display:grid;place-items:center;color:#140827;font-size:24px;font-weight:1000;text-shadow:0 1px 0 #fff}
+.brand{letter-spacing:.15em;text-shadow:0 0 22px #a95bff66}
+.navcta{border-color:#b14cff88;background:linear-gradient(120deg,#321052aa,#071b35aa);box-shadow:inset 0 0 18px #9a42ff20,0 0 20px #9a42ff22}
+.navcta:hover,.secondary:hover{border-color:var(--a);box-shadow:0 0 24px #12dfff33}
+.hero{position:relative;padding-top:118px}
+.hero:after{content:"";position:absolute;z-index:-1;right:4%;top:8%;width:340px;height:390px;border:2px solid #bd52ff77;border-radius:48% 38% 44% 42%;transform:rotate(16deg);filter:drop-shadow(0 0 18px #a32bff);clip-path:polygon(47% 0,70% 8%,83% 21%,78% 32%,100% 42%,84% 56%,82% 72%,63% 79%,58% 100%,39% 91%,30% 75%,15% 65%,20% 49%,0 38%,19% 22%,25% 7%)}
+.eyebrow{color:#36e9ff;text-shadow:0 0 18px #21dfff55}
+.dot{box-shadow:0 0 8px var(--a),0 0 20px var(--a)}
+h1 span,.final h2 span{background:linear-gradient(100deg,#fff 0%,#52edff 26%,#c07aff 65%,#ff55e9 100%);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 0 18px #a83cff44)}
+.lead{color:#c8bed8}
+.primary{background:linear-gradient(110deg,#17dff4,#a56bff 58%,#ed55e9);color:#080415;box-shadow:0 0 28px #9c43ff55,0 12px 40px #07101c}
+.demo{border-color:#a54bff88;background:linear-gradient(145deg,rgba(45,18,77,.88),rgba(4,15,33,.92));box-shadow:0 0 0 1px #1be5ff22,0 0 36px #a12cff44,0 30px 100px #000b}
+.demo:before{background:linear-gradient(135deg,#12eaff,#a43dff 45%,#ff55dc 72%,#f8c45c)}
+.window{background:linear-gradient(145deg,#080516,#071426);border-color:#8e52cf55}
+.prompt{border-color:#a35aff55;background:linear-gradient(120deg,#29114a88,#08233a88)}
+.check{background:#0eddf522;color:#25eaff;box-shadow:0 0 14px #16eaff22}
+.ready{border-color:#18dfff66;background:linear-gradient(90deg,#12dfff20,#9e44ff2c,#ef4bdf18);box-shadow:inset 0 0 22px #9c42ff1b;color:#e9fbff}
+.strip{border-color:#8b4bcf44;color:#c4a6e9;background:#10091e88}
+.card,.eco,.flow div{border-color:#9450c84a;background:linear-gradient(145deg,#180d2acc,#071323dd);box-shadow:inset 0 1px #ffffff0c,0 14px 34px #0005}
+.card{position:relative;overflow:hidden;transition:transform .22s,border-color .22s,box-shadow .22s}
+.card:before,.eco:before{content:"";display:block;height:2px;background:linear-gradient(90deg,#19e5ff,#9c55ff,#ff55df);opacity:.75;margin:-22px -22px 20px}
+.card:hover{transform:translateY(-5px);border-color:#22e5ff99;box-shadow:0 0 28px #8f38ff33}
+.card h3{color:#f6eaff}.card p,.eco p{color:#b6a9c9}
+.flow div{color:#e6d9ff}.flow div:nth-child(odd){color:#28e7ff}
+.quote strong{color:#ed69ff;text-shadow:0 0 28px #a82dff77}
+.eco{position:relative;overflow:hidden}
+.footer{border-color:#8b4bcf44;color:#9885b2}
+@media(max-width:900px){.hero:after{right:2%;top:0;width:220px;height:260px;opacity:.42}}
+@media(prefers-reduced-motion:no-preference){.orb{animation:orbPulse 5s ease-in-out infinite alternate}.demo{animation:demoFloat 8s ease-in-out infinite}@keyframes orbPulse{to{filter:hue-rotate(28deg);box-shadow:0 0 32px #a34cff,0 0 52px #17dfff55}}@keyframes demoFloat{50%{transform:translateY(-7px)}}}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*:before,*:after{animation:none!important;transition:none!important}}
+
   </style>
 </head>
 <body>
