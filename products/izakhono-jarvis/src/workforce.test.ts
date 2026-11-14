@@ -22,6 +22,11 @@ async function main() {
             return {
               async all() {
                 reads++;
+                if (sql.includes("SELECT s.id,s.run_id,s.position")) return { results: [
+                  { id: "lease-1", status: "in_progress", assigned_agent: "coordinator", owner_verification: null },
+                  { id: "review-1", status: "completed", assigned_agent: "reporting", owner_verification: "pending" },
+                  { id: "done-1", status: "completed", assigned_agent: "reporting", owner_verification: "verified" },
+                ] };
                 return { results: [] };
               },
               async first() {
@@ -59,6 +64,19 @@ async function main() {
     401,
   );
   assert.equal(reads, 0);
+  const dashboardResponse = await jarvisWorkforceRoute(req("GET", "/api/jarvis/workforce"), env, async () => true);
+  assert.equal(dashboardResponse?.status, 200);
+  const dashboard = await dashboardResponse!.json() as any;
+  assert.deepEqual(dashboard.metrics, {
+    scope: "visible_steps_only",
+    visible_steps: 3,
+    by_status: { in_progress: 1, completed: 2 },
+    by_agent: { coordinator: 1, reporting: 2 },
+    by_owner_verification: { not_applicable: 1, pending: 1, verified: 1 },
+    active_leases: 1,
+    awaiting_owner_review: 1,
+    limit: 200,
+  });
   assert.equal(
     (await jarvisWorkforceRoute(req("POST", "/api/jarvis/workforce/claim", { agent_id: "intruder" }), env, async () => true))?.status,
     400,
