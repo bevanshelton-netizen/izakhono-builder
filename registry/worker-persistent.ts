@@ -3,6 +3,7 @@ import {workerControl,pumpWorkers} from './worker-supervisor';
 import {controlPlaneStatus} from './control-plane';
 import {diagnoseControlPlane} from './control-plane-diagnostics';
 import {bearerValid} from './security';
+import {workerRouteAuthorized} from './worker-route-auth';
 import {D1RegistryStore,D1Database} from './d1-store';
 import {D1IdempotencyStore,D1IdempotencyDb} from './d1-idempotency';
 import {D1RegistrarStore,D1RegistrarDb} from './d1-registrar-store';
