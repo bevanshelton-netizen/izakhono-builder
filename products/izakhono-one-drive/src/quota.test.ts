@@ -10,7 +10,7 @@ assert.equal(commitUpload(reserved,1024n,1000n).usedBytes,1000n);
 assert.equal(releaseReservation(reserved,1024n).reservedBytes,0n);
 assert.throws(()=>reserveUpload(base,DEFAULT_SPACE_QUOTA_BYTES+1n),/quota-exceeded/);
 assert.throws(()=>reserveUpload(base,0n),/upload-size-must-be-positive/);
-assert.throws(()=>commitUpload(reserved,1024n,1025n),/quota-invariant-violated/);
+assert.throws(()=>commitUpload(reserved,1024n,1025n),/upload-exceeds-reservation/);
 const principal={userId:"u-1",organisationIds:new Set(["org-1"])};
 assert.equal(canAccessSpace(principal,{kind:"personal",ownerUserId:"u-1"}),true);
 assert.equal(canAccessSpace(principal,{kind:"personal",ownerUserId:"u-2"}),false);
