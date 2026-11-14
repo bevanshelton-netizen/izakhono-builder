@@ -120,6 +120,16 @@
       "status": "architecture-ready",
       "engine": "independent",
       "description": "Owned recurring and condition-driven orchestration."
+    },
+    {
+      "id": "one-drive",
+      "name": "IZAKHONO ONE DRIVE",
+      "category": "Files + Storage",
+      "route": "/one-drive",
+      "status": "architecture-ready",
+      "engine": "independent",
+      "canonical_contract": "../izakhono-one-drive/README.md",
+      "description": "IZAKHONO-owned personal and business cloud file workspace with separate security domains, 50 GiB logical allowances per space, atomic quota reservations and provider-neutral object storage."
     }
   ],
   "affiliate": {
