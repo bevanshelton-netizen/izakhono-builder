@@ -56,6 +56,8 @@ The token must never be stored in D1 or returned in logs. Store only a one-way h
 
 Before adding migrations, inspect the repository's current migration sequence and the remote D1 migration ledger. Do not guess the next migration number or edit an already-applied migration.
 
+Additive migration draft: migrations/0025_native_builder_leases.sql. It defines worker registrations, execution leases, attempt records and append-only job events. This file has been committed but NOT applied. The remote D1 migration ledger has not been queried in this session, so no remote migration or deployment is authorised by this step. Before applying, reconcile the remote ledger against migrations 0001–0025 and verify the target database identity.
+
 The new schema must support:
 - registered worker identity and status;
 - job idempotency key with unique constraint;
