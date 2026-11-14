@@ -4,7 +4,7 @@
 Reintroduce the J.A.R.V.I.S. executive command centre onto the current IZAKHONO Builder mainline without replaying the divergent feature branch or overwriting newer platform work.
 
 ## Source-of-truth decisions
-- Base: current `main` commit `fec454557d8afb3c8bef1d6a59e10247e8721fef`; release branch `release/jarvis-mainline-port`.
+- Base: current `main` commit `8bcd0c994b2d854b9741f81788c4653063defb34`; release branch `release/jarvis-mainline-port-v2`.
 - Legacy source retained unchanged: `feature/izakhono-jarvis-foundation`.
 - The legacy feature branch is source material only and is not deployable. The release port is isolated on a branch based on current main. The CEO authorised completion and deployment on 2026-11-14; production credentials, migration review, CI, and release verification remain mandatory.
 - Treat the old branch as source material, not as a deployable release.
@@ -50,7 +50,7 @@ Reintroduce the J.A.R.V.I.S. executive command centre onto the current IZAKHONO 
 
 ## Current-mainline release port (2026-11-14)
 
-- Release branch: `release/jarvis-mainline-port`, based directly on current `main`.
+- Release branch: `release/jarvis-mainline-port-v2`, based directly on current `main`.
 - Legacy feature branch is not merged; only J.A.R.V.I.S.-scoped files were ported.
 - J.A.R.V.I.S. migrations are renumbered sequentially from `0025` through `0031` after mainline migration `0024`.
 - Production release requires CI, full validation, Cloudflare credential presence, migration preflight, and post-deployment health checks.
