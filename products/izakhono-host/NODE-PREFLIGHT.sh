@@ -62,6 +62,7 @@ if [[ -f .env ]]; then
   if grep -q '^STALWART_API_KEY=REPLACE_WITH' .env; then warn 'Stalwart API token still needs to be created in the admin interface and copied into .env.'; fi
   if grep -q '^SMTP_PASS=REPLACE_WITH' .env; then warn 'Notification mailbox SMTP password is not configured yet.'; fi
   if grep -q '^MAIL_PUBLIC_IP=REPLACE_WITH' .env; then warn 'Static public mail IP has not been verified/configured.'; fi
+  if grep -q '^HOST_PUBLIC_IP=REPLACE_WITH' .env; then warn 'Static public hosting IP has not been configured; site acceptance cannot pass.'; fi
   if grep -q '^DKIM_SELECTOR=REPLACE_AFTER' .env; then warn 'DKIM selector must be copied from the live Stalwart domain configuration.'; fi
 else
   warn '.env not present — bootstrap-owned.sh will create it.'
