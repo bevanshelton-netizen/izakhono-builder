@@ -133,6 +133,11 @@ if [[ -f .env ]] && ! grep -q '^MAIL_ADMIN_PASSWORD_HASH=REPLACE_WITH' .env; the
 else
   warn 'Mail Control Centre Basic Auth hash is not configured'
 fi
+if [[ -f .env ]] && ! grep -q '^HOST_ADMIN_PASSWORD_HASH=REPLACE_WITH' .env; then
+  pass 'Hosting Control Centre Basic Auth hash configured'
+else
+  warn 'Hosting Control Centre Basic Auth hash is not configured'
+fi
 
 if [[ -f .env ]] && grep -q '^MAIL_PUBLIC_IP=REPLACE_WITH' .env; then
   warn 'Static public mail IP not configured'
