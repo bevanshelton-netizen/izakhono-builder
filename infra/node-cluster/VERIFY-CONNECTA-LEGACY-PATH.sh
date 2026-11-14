@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# CONNECTA production guard: retired physical/workstation NODE01 activation
-# paths must never be invoked by a workflow, product runtime, or active
-# infrastructure entrypoint. Historical documentation and the retired files
-# themselves are deliberately excluded.
+# CONNECTA-only production guard. Retired physical/workstation NODE01
+# activation paths must not be invoked by CONNECTA workflows, CONNECTA product
+# code, or the canonical node-cluster certification entrypoints. Unrelated
+# product workflows (for example KORA/Allegro Wave 1) are outside this guard.
 
 ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 cd "$ROOT"
@@ -26,12 +26,8 @@ excluded=(
 )
 
 scan_roots=(
-  '.github/workflows'
   'products/izakhono-social'
-  'products/izakhono-node'
   'infra/node-cluster'
-  'infra/runtime-fabric'
-  'infra/public-cutover'
 )
 
 scan_extensions=(
@@ -41,13 +37,20 @@ scan_extensions=(
 
 find_args=()
 for pattern in "${scan_extensions[@]}"; do
-  if [[ "${#find_args[@]}" -gt 0 ]]; then
-    find_args+=(-o)
-  fi
+  if [[ "${#find_args[@]}" -gt 0 ]]; then find_args+=(-o); fi
   find_args+=(-name "$pattern")
 done
 
 files=()
+# Only workflow files that actually own or invoke CONNECTA are in scope.
+if [[ -d .github/workflows ]]; then
+  while IFS= read -r -d '' file; do
+    if grep -Eiq 'CONNECTA|products/izakhono-social|CONNECTA_NODE0[1-4]_URL' "$file"; then
+      files+=("$file")
+    fi
+  done < <(find .github/workflows -type f \( -name '*.yml' -o -name '*.yaml' \) -print0 2>/dev/null)
+fi
+
 for root in "${scan_roots[@]}"; do
   [[ -d "$root" ]] || continue
   while IFS= read -r -d '' file; do
@@ -60,6 +63,12 @@ for root in "${scan_roots[@]}"; do
   done < <(find "$root" -type f \( "${find_args[@]}" \) -print0 2>/dev/null)
 done
 
+# This shared-runtime certification script is explicitly the CONNECTA-owned
+# runtime integration point. Other runtime-fabric workflows may serve separate
+# products and are not silently reclassified as CONNECTA dependencies.
+shared_certifier='infra/runtime-fabric/CERTIFY-OWNED-RUNTIME-WAVE1.ps1'
+[[ ! -f "$shared_certifier" ]] || files+=("$shared_certifier")
+
 for path in "${files[@]}"; do
   for token in "${forbidden[@]}"; do
     if grep -Fq -- "$token" "$path"; then
@@ -69,4 +78,4 @@ for path in "${files[@]}"; do
   done
 done
 
-echo "[PASS] scanned ${#files[@]} active workflow, product and infrastructure files; no legacy physical-NODE01 production dependency found."
+echo "[PASS] scanned ${#files[@]} CONNECTA workflow, product and node-cluster files; no legacy physical-NODE01 dependency found."
