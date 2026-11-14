@@ -96,9 +96,9 @@ export async function workerControl(request:Request,authorized:boolean,db:D1Data
   return json({ok:true,generatedAt:now(),divisionCount:DIVISIONS.length,divisions:DIVISIONS.map(division=>({...division,workers:workersForDivision(division.id).map(worker=>({id:worker.id,domain:worker.domain,risk:worker.risk,humanGate:worker.humanGate??null,executable:hasWorkerHandler(worker.id)}))}))});
  }
  if(url.pathname==='/workers/queue'&&request.method==='GET'){
-  try{return json({ok:true,...await ingestDiscovered(db),queue:await listSupervisorJobs(db)});}catch(error){return json({ok:false,error:String(error)},502);}
+  try{return json({ok:true,queue:await listSupervisorJobs(db),counts:await supervisorCounts(db)});}catch(error){return json({ok:false,error:String(error)},502);}
  }
- if(url.pathname==='/workers/pump'&&(request.method==='POST'||request.method==='GET')){
+ if(url.pathname==='/workers/pump'&&request.method==='POST'){
   try{return json(await pumpWorkers(db,fortressSecret));}catch(error){return json({ok:false,error:String(error)},502);}
  }
  if(url.pathname==='/workers/dead-letter'&&request.method==='GET'){
