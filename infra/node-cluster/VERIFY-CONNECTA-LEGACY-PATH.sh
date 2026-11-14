@@ -39,6 +39,14 @@ scan_extensions=(
   '*.js' '*.mjs' '*.cjs' '*.ts' '*.tsx' '*.json'
 )
 
+find_args=()
+for pattern in "${scan_extensions[@]}"; do
+  if [[ "${#find_args[@]}" -gt 0 ]]; then
+    find_args+=(-o)
+  fi
+  find_args+=(-name "$pattern")
+done
+
 files=()
 for root in "${scan_roots[@]}"; do
   [[ -d "$root" ]] || continue
@@ -49,7 +57,7 @@ for root in "${scan_roots[@]}"; do
       [[ "$base" == "$name" ]] && skip=true && break
     done
     [[ "$skip" == true ]] || files+=("$file")
-  done < <(find "$root" -type f \( $(printf -- '-o -name %q ' "${scan_extensions[@]}" | sed 's/^-o /-name /') \) -print0 2>/dev/null)
+  done < <(find "$root" -type f \( "${find_args[@]}" \) -print0 2>/dev/null)
 done
 
 for path in "${files[@]}"; do
