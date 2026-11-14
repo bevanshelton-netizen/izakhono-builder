@@ -1,0 +1,34 @@
+name: J.A.R.V.I.S. worker CI
+
+on:
+  push:
+    branches:
+      - release/jarvis-mainline-port
+  pull_request:
+    paths:
+      - "products/izakhono-jarvis/**"
+      - "package.json"
+      - ".github/workflows/jarvis-worker-ci.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: jarvis-worker-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  worker-contracts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Worker and supervisor contracts
+        run: npm run jarvis:worker:test
+      - name: Workforce API contracts
+        run: npm run jarvis:workforce:test
