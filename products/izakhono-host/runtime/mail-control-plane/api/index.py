@@ -9,6 +9,8 @@ import re
 from typing import Any
 
 import httpx
+import dns.resolver
+import dns.exception
 from fastapi import Depends, FastAPI, Header, HTTPException
 from pydantic import BaseModel, Field, field_validator
 from cryptography.fernet import Fernet, InvalidToken
@@ -328,6 +330,52 @@ class MailboxCreate(BaseModel):
         return normalized
 
 
+
+DOMAIN_VERIFICATION_TTL_SECONDS = int(os.getenv("MAIL_DOMAIN_VERIFICATION_TTL_SECONDS", "604800"))
+
+
+def require_allowed_domain(domain: str) -> None:
+    allowed = {
+        item.strip().lower()
+        for item in os.getenv("MAIL_ALLOWED_DOMAINS", "").split(",")
+        if item.strip()
+    }
+    if not allowed or domain.lower() not in allowed:
+        raise HTTPException(403, "Domain is not approved for IZAKHONO mail provisioning")
+
+
+def domain_verification_db() -> sqlite3.Connection:
+    path = Path(os.getenv("MAIL_HANDOVER_DB", "/var/lib/izakhono-mail/handover.sqlite3"))
+    path.parent.mkdir(parents=True, exist_ok=True)
+    connection = sqlite3.connect(path, timeout=5, isolation_level=None)
+    connection.execute("PRAGMA journal_mode=WAL")
+    connection.execute("""
+        CREATE TABLE IF NOT EXISTS domain_verifications (
+            domain TEXT PRIMARY KEY,
+            token_hash TEXT NOT NULL,
+            expires_at INTEGER NOT NULL,
+            verified_at INTEGER
+        )
+    """)
+    return connection
+
+
+def require_verified_domain(domain: str) -> None:
+    require_allowed_domain(domain)
+    connection = domain_verification_db()
+    try:
+        row = connection.execute(
+            "SELECT verified_at, expires_at FROM domain_verifications WHERE domain=?",
+            (domain.lower(),),
+        ).fetchone()
+    finally:
+        connection.close()
+    if not row or not row[0]:
+        raise HTTPException(409, "Domain ownership has not been verified")
+    if int(row[1]) < int(time.time()) and not row[0]:
+        raise HTTPException(410, "Domain verification has expired")
+
+
 @app.get("/api/health")
 async def health() -> dict[str, str]:
     return {"service": "izakhono-mail-control-plane", "status": "ok"}
@@ -354,8 +402,78 @@ async def domains() -> dict[str, Any]:
     return {"domains": result.get("ids", [])}
 
 
+
+@app.post("/api/domains/verification", dependencies=[Depends(require_control_plane_token)])
+async def request_domain_verification(body: DomainCreate) -> dict[str, Any]:
+    require_allowed_domain(body.domain)
+    token = secrets.token_urlsafe(32)
+    token_hash = hashlib.sha256(token.encode("utf-8")).hexdigest()
+    expires_at = int(time.time()) + DOMAIN_VERIFICATION_TTL_SECONDS
+    connection = domain_verification_db()
+    try:
+        connection.execute(
+            "INSERT INTO domain_verifications(domain,token_hash,expires_at,verified_at) VALUES(?,?,?,NULL) "
+            "ON CONFLICT(domain) DO UPDATE SET token_hash=excluded.token_hash,expires_at=excluded.expires_at,verified_at=NULL",
+            (body.domain, token_hash, expires_at),
+        )
+    finally:
+        connection.close()
+    return {
+        "domain": body.domain,
+        "record_type": "TXT",
+        "record_name": f"_izakhono-verify.{body.domain}",
+        "record_value": f"izakhono-verification={token}",
+        "expires_at": expires_at,
+        "instruction": "Publish this TXT record, wait for DNS propagation, then call /api/domains/verify.",
+    }
+
+
+@app.post("/api/domains/verify", dependencies=[Depends(require_control_plane_token)])
+async def verify_domain_ownership(body: DomainCreate) -> dict[str, Any]:
+    require_allowed_domain(body.domain)
+    connection = domain_verification_db()
+    try:
+        row = connection.execute(
+            "SELECT token_hash,expires_at,verified_at FROM domain_verifications WHERE domain=?",
+            (body.domain,),
+        ).fetchone()
+        if not row:
+            raise HTTPException(404, "No domain verification request exists")
+        if row[2]:
+            return {"domain": body.domain, "status": "verified", "verified_at": row[2]}
+        if int(row[1]) < int(time.time()):
+            raise HTTPException(410, "Domain verification token has expired")
+        try:
+            answers = dns.resolver.resolve(f"_izakhono-verify.{body.domain}", "TXT", lifetime=8)
+        except (dns.exception.DNSException, OSError) as exc:
+            raise HTTPException(409, "Domain verification TXT record was not found") from exc
+        values = []
+        for answer in answers:
+            values.append(b"".join(answer.strings).decode("utf-8", errors="replace"))
+        matched = False
+        for value in values:
+            prefix = "izakhono-verification="
+            if value.startswith(prefix):
+                candidate = value[len(prefix):]
+                candidate_hash = hashlib.sha256(candidate.encode("utf-8")).hexdigest()
+                if secrets.compare_digest(candidate_hash, row[0]):
+                    matched = True
+                    break
+        if not matched:
+            raise HTTPException(409, "Domain verification TXT value does not match")
+        verified_at = int(time.time())
+        connection.execute(
+            "UPDATE domain_verifications SET verified_at=? WHERE domain=?",
+            (verified_at, body.domain),
+        )
+    finally:
+        connection.close()
+    return {"domain": body.domain, "status": "verified", "verified_at": verified_at}
+
+
 @app.post("/api/domains", dependencies=[Depends(require_control_plane_token)])
 async def create_domain(body: DomainCreate) -> dict[str, Any]:
+    require_verified_domain(body.domain)
     data = await jmap([
         [
             "x:Domain/set",
@@ -379,6 +497,7 @@ async def create_domain(body: DomainCreate) -> dict[str, Any]:
 
 @app.post("/api/mailboxes", dependencies=[Depends(require_control_plane_token)])
 async def create_mailbox(body: MailboxCreate) -> dict[str, Any]:
+    require_verified_domain(body.domain)
     # Provision the mail domain on first use. Repeated requests reuse its
     # existing Stalwart domain ID instead of failing with "domain missing".
     query = await jmap([
