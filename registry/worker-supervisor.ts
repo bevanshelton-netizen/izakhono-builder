@@ -53,8 +53,7 @@ export async function pumpWorkers(db:D1Database,handlers?:SupervisorWorkerHandle
  await ensureSupervisorSchema(db);
  const ingestion=await ingestDiscovered(db);
  const executed=handlers?await runBuildWorkerCycle(db,handlers):[];
- const eligible=handlers?Object.keys(handlers).filter(id=>id!=='build-worker'):[];
- const advanced=await advanceReadyWorkers(db,25,eligible);
+ const advanced=await advanceReadyWorkers(db,25,[]);
  return {ok:true,generatedAt:now(),...ingestion,executed:executed.length,executionResults:executed,advanced:advanced.length,jobs:advanced};
 }
 
@@ -99,6 +98,7 @@ export async function workerControl(request:Request,authorized:boolean,db:D1Data
   if(body.jobId){
    const jobs=await listSupervisorJobs(db);const job=jobs.find(j=>j.id===body.jobId);if(!job)return json({ok:false,error:'unknown job'},404);
    if(job.status!=='queued')return json({ok:false,error:`job is ${job.status}, expected queued`},409);
+   if(!handlers?.[job.workerId])return json({ok:true,accepted:false,status:'queued',job,reason:'worker-executor-unavailable'},202);
    if(job.risk==='high'||job.humanGate)return json({ok:true,accepted:false,status:'blocked',job,reason:'human-gate-required',gate:job.humanGate||'high-risk'},202);
    if(job.dependencyIds.length){const blockers=jobs.filter(j=>job.dependencyIds.some(dep=>dep===j.sourceId||dep===j.id)&&j.status!=='completed');if(blockers.length)return json({ok:true,accepted:false,status:'blocked',job,reason:'dependencies-incomplete',blockers},202);}
    const lease=await claimSupervisorLease(db,job.id,job.workerId,`dispatch:${job.id}:${job.attempts+1}`);
