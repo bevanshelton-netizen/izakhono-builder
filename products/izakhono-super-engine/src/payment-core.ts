@@ -13,7 +13,9 @@ export interface PaymentIntent {
   updatedAt: string;
 }
 
-export interface CheckoutOrderDraft { orderId: string; customerId: string; domain: string; productId: string; idempotencyKey: string; }\n\nexport interface CreatePaymentInput {
+export interface CheckoutOrderDraft { orderId: string; customerId: string; domain: string; productId: string; idempotencyKey: string; }
+
+export interface CreatePaymentInput {
   externalTransactionId: string;
   amountMinor: number;
   currency: 'ZAR' | string;
@@ -24,6 +26,8 @@ export interface CheckoutOrderDraft { orderId: string; customerId: string; domai
   failurePageUrl: string;
   cancelUrl?: string;
   mode?: 'live';
+  /** Server-authored order terms; persisted before a payment link is issued. */
+  checkoutOrder?: CheckoutOrderDraft;
 }
 
 export interface PaymentLink {
@@ -85,12 +89,18 @@ export class MemoryPaymentStore implements PaymentStore {
 }
 
 export class IzakhonoPay {
-  constructor(private readonly store: PaymentStore, private readonly provider: PaymentProvider) {}
+  constructor(
+    private readonly store: PaymentStore,
+    private readonly provider: PaymentProvider,
+    private readonly checkoutOrders?: import('./checkout-order-store.js').CheckoutOrderStore,
+  ) {}
 
   async createPayment(input: CreatePaymentInput): Promise<{ intent: PaymentIntent; link: PaymentLink }> {
     if (!Number.isSafeInteger(input.amountMinor) || input.amountMinor <= 0) throw new Error('Payment amount must be a positive integer in minor currency units');
     if (!/^[A-Z]{3}$/.test(input.currency)) throw new Error('Currency must be an ISO 4217 code');
-    if (!input.externalTransactionId.trim()) throw new Error('External transaction ID is required');\n    if (input.checkoutOrder && !this.checkoutOrders) throw new Error('Checkout order persistence is required when checkout order terms are supplied');
+    if (!input.externalTransactionId.trim()) throw new Error('External transaction ID is required');
+    if (input.checkoutOrder && !this.checkoutOrders) throw new Error('Checkout order persistence is required when checkout order terms are supplied');
+    if (input.checkoutOrder && !this.checkoutOrders) throw new Error('Checkout order persistence is required when checkout order terms are supplied');
     if (await this.store.getByExternalTransactionId(input.externalTransactionId)) throw new Error('Duplicate external transaction ID');
 
     const now = new Date().toISOString();
@@ -107,6 +117,16 @@ export class IzakhonoPay {
     };
     await this.store.save(intent);
     try {
+      if (input.checkoutOrder && this.checkoutOrders) {
+        await this.checkoutOrders.createOrGet({
+          ...input.checkoutOrder,
+          paymentIntentId: intent.id,
+          externalTransactionId: intent.externalTransactionId,
+          expectedAmountMinor: intent.amountMinor,
+          currency: intent.currency,
+          createdAt: intent.createdAt,
+        });
+      }
       const link = await this.provider.createPaymentLink(input);
       const updated = await this.store.update(intent.id, { status: 'pending', providerPaymentId: link.providerPaymentId });
       return { intent: updated, link: { ...link, paymentIntentId: intent.id } };
