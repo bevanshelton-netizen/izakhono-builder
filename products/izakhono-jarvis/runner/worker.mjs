@@ -27,9 +27,9 @@ function endpoint(value, name) {
 }
 
 function assertAllowedExecutor(adapter, env) {
-  const configured = env.JARVIS_EXECUTOR_ALLOWED_HOSTS;
-  if (configured === undefined || configured === "") return;
+  const configured = required(env.JARVIS_EXECUTOR_ALLOWED_HOSTS, "JARVIS_EXECUTOR_ALLOWED_HOSTS");
   const allowed = configured.split(",").map(host => host.trim().toLowerCase()).filter(Boolean);
+  if (allowed.length === 0) throw new Error("JARVIS_EXECUTOR_ALLOWED_HOSTS must contain at least one hostname");
   if (!allowed.includes(adapter.hostname.toLowerCase())) {
     throw new Error("Executor host is not in JARVIS_EXECUTOR_ALLOWED_HOSTS");
   }
