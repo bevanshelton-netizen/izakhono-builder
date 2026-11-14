@@ -4,29 +4,33 @@ set -Eeuo pipefail
 ROOT="$(cd "$(dirname "$0")" && pwd)"
 cd "$ROOT"
 
-printf '\nIZAKHONO HOST — NODE01 ACTIVATION\n\n'
+printf '\nIZAKHONO HOST — NODE01 SOFTWARE ACTIVATION ON ISN-01\n\n'
 
-# Stage 1: host/network preflight.
+# Stage 1: verify the actual execution environment.
 ./NODE-PREFLIGHT.sh
 
-# Stage 2: bootstrap the owned runtime. This creates local secrets when
-# necessary, validates compose, starts the stack and waits for health.
+# Stage 2: generate owner secrets, Roundcube secrets and start the owned host stack.
 ./bootstrap-owned.sh
 
-# Stage 3: formal compliance gate. Activation is not considered complete
-# unless the post-bootstrap node satisfies the same acceptance contract used
-# by the compliance report.
+# Stage 3: start the local or remote Stalwart mail plane.
+./mail/STALWART-ACTIVATE.sh
+
+# Stage 4: formal local compliance gate.
 ./NODE-COMPLIANCE.sh
 
-# Stage 4: explicit local health evidence.
+# Stage 5: explicit local host-runtime evidence.
 echo
 curl -fsS http://127.0.0.1:8080/health
 echo
 
-echo "NODE01 ACTIVATION: PASSED"
-echo "Owned runtime is healthy and the compliance gate passed."
-echo "Verification:"
+echo
+echo "NODE01 SOFTWARE ACTIVATION: HOST RUNTIME STARTED"
+echo "Mail services have been staged. Mailbox creation remains blocked until the Stalwart API token and domain ownership verification are completed."
+echo "Public LIVE status remains blocked until DNS, TLS, static-IP/PTR, external SMTP, IMAP, deliverability and restore acceptance pass."
+echo
+echo "Useful verification:"
 echo "  docker compose --env-file .env -f docker-compose.owned.yml ps"
-echo "  docker compose --env-file .env -f docker-compose.owned.yml logs --tail=100 host-runtime edge"
-echo "  ss -lntup | grep -E ':(53|80|443)\\b'"
+echo "  docker compose --env-file .env -f mail/docker-compose.mail.yml ps"
+echo "  ./mail/MAIL-CONTROL-PLANE-VERIFY.sh status"
+echo "  ./mail/MAIL-ACCEPTANCE-REAL.sh"
 echo
