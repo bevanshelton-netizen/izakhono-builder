@@ -78,7 +78,8 @@ export function registerPaymentFulfillment(bus: ServiceBus, store: FulfillmentSt
   const fulfillment = new PaymentFulfillment(store, provisioner);
   return bus.subscribe('provisioning', async (message) => {
     if (message.topic !== 'payment.paid') return;
-    const payment = await paymentResolver(message.payload.paymentIntentId);
+    const payload = message.payload as { paymentIntentId: string };
+    const payment = await paymentResolver(payload.paymentIntentId);
     if (!payment) throw new Error('Payment intent not found for fulfillment event');
     const job = await fulfillment.enqueue(payment, configResolver(payment));
     if (job.status !== 'completed') await fulfillment.execute(job, payment);

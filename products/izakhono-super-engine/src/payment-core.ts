@@ -178,8 +178,8 @@ export class IKhokhaProvider implements PaymentProvider {
   }
 
   parseWebhook(rawBody: string): PaymentWebhook {
-    const body = JSON.parse(rawBody) as Partial<PaymentWebhook>;
-    if (!body.paylinkID || !body.externalTransactionID || !body.status || !body.responseCode) throw new Error('Invalid iKhokha webhook payload');
+    const body = JSON.parse(rawBody) as { paylinkID?: unknown; externalTransactionID?: unknown; status?: unknown; responseCode?: unknown };
+    if (typeof body.paylinkID !== 'string' || !body.paylinkID || typeof body.externalTransactionID !== 'string' || !body.externalTransactionID || typeof body.status !== 'string' || typeof body.responseCode !== 'string' || !body.responseCode) throw new Error('Invalid iKhokha webhook payload');
     if (body.status !== 'SUCCESS' && body.status !== 'FAILURE') throw new Error('Invalid iKhokha webhook status');
     return { provider: this.id, providerPaymentId: body.paylinkID, externalTransactionId: body.externalTransactionID, status: body.status, responseCode: body.responseCode };
   }

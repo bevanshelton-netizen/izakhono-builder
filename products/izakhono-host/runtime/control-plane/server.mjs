@@ -75,7 +75,7 @@ const MIME = {
 
 async function serveSite(req, res) {
   const site = await findSite(req.headers.host);
-  if (!site) return json(res, 404, {ok:false,error:'Site not provisioned on IZAKHONO HOST'});
+  if (!site || site.public_live !== true) return json(res, 404, {ok:false,error:'Site is not publicly accepted on IZAKHONO HOST'});
   const base = siteDir(site.domain);
   const requested = decodeURIComponent(new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`).pathname);
   const relative = requested === '/' ? 'index.html' : requested.replace(/^\/+/, '');
@@ -116,7 +116,7 @@ const server = http.createServer(async (req, res) => {
       const site={
         id:String(input.site_id || id('site')), domain, source_ref:String(input.source_ref||'internal'),
         runtime:'izakhono-native', status:'provisioned', created_at:new Date().toISOString(),
-        public_live:false, acceptance:{https:false,content:true,dns:false}
+        public_live:false, acceptance:{https:false,content:true,dns:false,mail:false}
       };
       await ensureSiteFiles(site);
       state.sites.push(site);
@@ -156,7 +156,7 @@ const server = http.createServer(async (req, res) => {
       }
       site.status='content_ready';
       site.public_live=false;
-      site.acceptance={https:Boolean(site.acceptance?.https),dns:Boolean(site.acceptance?.dns),content:true};
+      site.acceptance={https:Boolean(site.acceptance?.https),dns:Boolean(site.acceptance?.dns),content:true,mail:Boolean(site.acceptance?.mail)};
       const deployment={id:id('dep'),site_id:site.id,action:'content',status:'verified',file_count:normalized.length,total_bytes:total,created_at:new Date().toISOString()};
       state.deployments.push(deployment);
       await saveState(state);
@@ -170,8 +170,8 @@ const server = http.createServer(async (req, res) => {
     const state=await loadState();
     const site=state.sites.find(s=>s.id===siteId);
     if(!site) return json(res,404,{ok:false,error:'Site not found'});
-    site.acceptance={https:Boolean(input.https), dns:Boolean(input.dns), content:Boolean(input.content)};
-    site.public_live=site.acceptance.https && site.acceptance.dns && site.acceptance.content;
+    site.acceptance={https:Boolean(input.https), dns:Boolean(input.dns), content:Boolean(input.content), mail:Boolean(input.mail)};
+    site.public_live=site.acceptance.https && site.acceptance.dns && site.acceptance.content && site.acceptance.mail;
     site.status=site.public_live?'live':'provisioned';
     site.accepted_at=new Date().toISOString();
     await saveState(state);

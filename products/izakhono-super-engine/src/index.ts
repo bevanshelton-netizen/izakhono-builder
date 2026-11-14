@@ -51,3 +51,4 @@ export const IZAKHONO_SUPER_ENGINE = {
   privacyByDefault: true,
   rollbackRequired: true,
 } as const;
+export * from './host-provisioner-adapter.js';
