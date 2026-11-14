@@ -40,7 +40,7 @@ check 'restic available for encrypted backups' command -v restic
 check 'systemd active for service supervision' bash -c 'test "$(ps -p 1 -o comm= | tr -d " ")" = systemd'
 check 'IPv4 default route' ip -4 route show default
 check 'Outbound DNS resolution' getent hosts github.com
-check 'Outbound HTTPS' curl -fsS --max-time 10 https://github.com/ >/dev/null
+check 'Outbound HTTPS' curl -fsS --max-time 10 https://github.com/
 check 'At least 8 GiB memory available to Linux' bash -c 'awk "/MemTotal/ {exit !($2 >= 8000000)}" /proc/meminfo'
 check 'At least 40 GiB free root filesystem space' bash -c 'df -Pk / | awk "NR==2 {exit !($4 >= 40000000)}"'
 check 'User workspace writable' bash -c 'test -w "$HOME"'
