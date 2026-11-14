@@ -12,9 +12,9 @@ export type GitHubBuildVerifierOptions = {
 };
 
 const DEFAULT_CHECKS: GitHubCheckNameMap = {
-  typecheck: ["registry:typecheck"],
-  "unit-tests": ["registry:lease-test", "registry:executor-test", "registry:worker-test", "registry:test"],
-  manifest: ["IZAKHONO Application Manifest Validation"],
+  typecheck: ["registry"],
+  "unit-tests": ["registry"],
+  manifest: ["Validate application manifests"],
 };
 
 type GitHubCheckRun = { name?: string; status?: string; conclusion?: string };
