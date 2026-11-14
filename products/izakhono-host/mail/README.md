@@ -10,12 +10,13 @@ This is the self-hosted mail service. Stalwart owns transport and mailbox storag
 
 - Mail and Stalwart account/admin interface: https://mail.izakhonoafrica.co.za
 - User webmail: https://webmail.izakhonoafrica.co.za
+- Owner-only Mail Control Centre: https://mail-admin.izakhonoafrica.co.za
 - Autoconfiguration: autoconfig.izakhonoafrica.co.za
 - Autodiscovery: autodiscover.izakhonoafrica.co.za
 - MTA-STS policy: https://mta-sts.izakhonoafrica.co.za/.well-known/mta-sts.txt
 - Local-only mail control-plane readiness: http://127.0.0.1:8082/api/ready
 
-These are intended endpoints, not a claim that DNS, certificates or delivery are already live. Public DNS and external acceptance tests must pass first.
+The Mail Control Centre is protected by Caddy Basic Auth. Its generated owner password is stored in mail/secrets/mail_admin_password; do not send it by email. The console is currently read-only and reports missing delivery, authentication, backup and incident telemetry as not connected. These are intended endpoints, not a claim that DNS, certificates or delivery are already live. Public DNS and external acceptance tests must pass first.
 
 ## Protocols
 
