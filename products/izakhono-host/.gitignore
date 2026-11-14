@@ -10,3 +10,6 @@ mail/handover/
 *.sqlite3
 *.sqlite3-wal
 *.sqlite3-shm
+
+host/secrets/*
+!host/secrets/README.md
