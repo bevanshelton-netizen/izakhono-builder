@@ -20,6 +20,7 @@ export async function ensureFortressGrantSchema(db:D1Database){
  token_digest TEXT NOT NULL
  )`).run();
  await db.prepare('CREATE INDEX IF NOT EXISTS idx_fortress_grants_worker_expiry ON fortress_capability_grants(worker_id,expires_at)').run();
+ await db.prepare(`CREATE TRIGGER IF NOT EXISTS fortress_grant_revocation_audit AFTER UPDATE OF revoked_at ON fortress_capability_grants WHEN OLD.revoked_at IS NULL AND NEW.revoked_at IS NOT NULL BEGIN INSERT INTO supervisor_job_events(id,job_id,at,from_status,to_status,actor,detail_json) VALUES(lower(hex(randomblob(16))),'fortress-grant:'||NEW.jti,NEW.revoked_at,'issued','revoked',NEW.issuer,json_object('jti',NEW.jti)); END`).run();
 }
 export async function registerFortressGrant(db:D1Database,claims:FortressCapabilityClaims,issuer:string,tokenDigest:string){
  await db.prepare('INSERT INTO fortress_capability_grants(jti,worker_id,risk,issuer,issued_at,expires_at,token_digest) VALUES(?,?,?,?,?,?,?)')
@@ -33,6 +34,5 @@ export async function consumeFortressGrant(db:D1Database,jti:string,workerId:str
 export async function revokeFortressGrant(db:D1Database,jti:string,issuer:string,now=new Date().toISOString()){
  const result=await db.prepare('UPDATE fortress_capability_grants SET revoked_at=? WHERE jti=? AND revoked_at IS NULL').bind(now,jti).run() as {meta?:{changes?:number}};
  if(Number(result.meta?.changes??0)!==1)throw new Error('grant not found or already revoked');
- await db.prepare('INSERT INTO supervisor_job_events(id,job_id,at,from_status,to_status,actor,detail_json) VALUES(?,?,?,?,?,?,?)').bind(crypto.randomUUID(),`fortress-grant:${jti}`,now,'issued','revoked',issuer,JSON.stringify({jti})).run();
  return {jti,revokedAt:now};
 }
