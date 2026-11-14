@@ -60,7 +60,11 @@ for root in "${scan_roots[@]}"; do
       [[ "$base" == "$name" ]] && skip=true && break
     done
     [[ "$skip" == true ]] || files+=("$file")
-  done < <(find "$root" -type f \( "${find_args[@]}" \) -print0 2>/dev/null)
+  done < <(
+    find "$root" \
+      \( -type d \( -name .git -o -name node_modules -o -name .next -o -name .turbo -o -name .vercel -o -name coverage -o -name dist -o -name build \) -prune \) -o \
+      \( -type f \( "${find_args[@]}" \) -print0 \) 2>/dev/null
+  )
 done
 
 # This shared-runtime certification script is explicitly the CONNECTA-owned
