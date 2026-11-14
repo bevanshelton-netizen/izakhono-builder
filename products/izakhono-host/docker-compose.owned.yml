@@ -7,11 +7,7 @@ services:
       PORT: 8080
       DATA_DIR: /data
       HOST_RUNTIME_TOKEN: ${HOST_RUNTIME_TOKEN:?set HOST_RUNTIME_TOKEN}
-      MAIL_ADMIN_USER: ${MAIL_ADMIN_USER:-admin}
-      MAIL_ADMIN_PASSWORD_HASH: ${MAIL_ADMIN_PASSWORD_HASH:?set MAIL_ADMIN_PASSWORD_HASH}
-      CONTROL_PLANE_TOKEN: ${CONTROL_PLANE_TOKEN:?set CONTROL_PLANE_TOKEN}
-      PLATFORM_TLS_HOSTS: ${PLATFORM_TLS_HOSTS:-mail.izakhonoafrica.co.za,webmail.izakhonoafrica.co.za,autoconfig.izakhonoafrica.co.za,autodiscover.izakhonoafrica.co.za,mta-sts.izakhonoafrica.co.za}
-      PLATFORM_TLS_HOSTS: ${PLATFORM_TLS_HOSTS:-mail.izakhonoafrica.co.za,webmail.izakhonoafrica.co.za}
+      PLATFORM_TLS_HOSTS: ${PLATFORM_TLS_HOSTS:-mail.izakhonoafrica.co.za,webmail.izakhonoafrica.co.za,autoconfig.izakhonoafrica.co.za,autodiscover.izakhonoafrica.co.za,mta-sts.izakhonoafrica.co.za,mail-admin.izakhonoafrica.co.za}
     volumes:
       - host-runtime-data:/data
     networks: [izakhono]
@@ -128,6 +124,9 @@ services:
     environment:
       TLS_EMAIL: ${TLS_EMAIL:?set TLS_EMAIL}
       STALWART_HTTP_UPSTREAM: ${STALWART_HTTP_UPSTREAM:-http://stalwart:8080}
+      MAIL_ADMIN_USER: ${MAIL_ADMIN_USER:-admin}
+      MAIL_ADMIN_PASSWORD_HASH: ${MAIL_ADMIN_PASSWORD_HASH:?set MAIL_ADMIN_PASSWORD_HASH}
+      CONTROL_PLANE_TOKEN: ${CONTROL_PLANE_TOKEN:?set CONTROL_PLANE_TOKEN}
     ports:
       - "80:80"
       - "443:443"
