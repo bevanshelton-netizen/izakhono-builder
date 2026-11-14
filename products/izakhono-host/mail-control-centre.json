@@ -1,21 +1,47 @@
 {
   "schema": "izakhono.mail-control/v1",
   "controlPlane": "izakhono-host",
-  "roles": ["owner", "mail-admin", "security-admin", "support-admin", "auditor"],
+  "roles": [
+    "owner"
+  ],
   "domains": [
-    {"platform":"izakhono-africa","domain":"izakhonoafrica.co.za","status":"registered"},
-    {"platform":"edu-build","domain":"edubuildshelton.org.za","status":"registered"},
-    {"platform":"allegro-vibez","domain":"allegrovibez.com","status":"registered"},
-    {"platform":"kora-network","domain":"streamkoraafrica.com","status":"registered"}
+    {
+      "platform": "izakhono-africa",
+      "domain": "izakhonoafrica.co.za",
+      "status": "existing_unverified",
+      "provisioningAllowed": true
+    },
+    {
+      "platform": "edu-build",
+      "domain": "edubuildshelton.org.za",
+      "status": "planned",
+      "provisioningAllowed": false
+    },
+    {
+      "platform": "allegro-vibez",
+      "domain": "allegrovibez.com",
+      "status": "planned",
+      "provisioningAllowed": false
+    },
+    {
+      "platform": "kora-network",
+      "domain": "streamkoraafrica.com",
+      "status": "planned",
+      "provisioningAllowed": false
+    }
   ],
   "healthChecks": [
+    "ownership",
     "mx",
     "spf",
     "dkim",
     "dmarc",
-    "tls",
+    "mtaSts",
+    "mtaStsPolicy",
+    "tlsRpt",
     "smtp",
-    "imap",
+    "submissionTls",
+    "imapTls",
     "backup",
     "fortress",
     "monitoring"
@@ -25,5 +51,18 @@
     "requiresExplicitPermission": true,
     "auditRequired": true
   },
-  "productionClaimsRequireEvidence": true
+  "productionClaimsRequireEvidence": true,
+  "futureRoles": [
+    "mail-admin",
+    "security-admin",
+    "support-admin",
+    "auditor"
+  ],
+  "telemetryStatus": {
+    "delivery": "not_connected",
+    "authentication": "not_connected",
+    "incidents": "not_connected",
+    "backup": "not_connected",
+    "fortress": "not_connected"
+  }
 }
