@@ -7,6 +7,7 @@ services:
       PORT: 8080
       DATA_DIR: /data
       HOST_RUNTIME_TOKEN: ${HOST_RUNTIME_TOKEN:?set HOST_RUNTIME_TOKEN}
+      HOST_PUBLIC_IP: ${HOST_PUBLIC_IP:-}
       PLATFORM_TLS_HOSTS: ${PLATFORM_TLS_HOSTS:-mail.izakhonoafrica.co.za,webmail.izakhonoafrica.co.za,autoconfig.izakhonoafrica.co.za,autodiscover.izakhonoafrica.co.za,mta-sts.izakhonoafrica.co.za,mail-admin.izakhonoafrica.co.za}
     volumes:
       - host-runtime-data:/data
@@ -57,6 +58,9 @@ services:
       STALWART_API_URL: ${STALWART_API_URL:-http://stalwart:8080}
       STALWART_API_KEY: ${STALWART_API_KEY:?set STALWART_API_KEY}
       CONTROL_PLANE_TOKEN: ${CONTROL_PLANE_TOKEN:?set CONTROL_PLANE_TOKEN}
+      HOST_ADMIN_USER: ${HOST_ADMIN_USER:-admin}
+      HOST_ADMIN_PASSWORD_HASH: ${HOST_ADMIN_PASSWORD_HASH:?set HOST_ADMIN_PASSWORD_HASH}
+      HOST_RUNTIME_TOKEN: ${HOST_RUNTIME_TOKEN:?set HOST_RUNTIME_TOKEN}
       MAIL_HANDOVER_ENCRYPTION_KEY: ${MAIL_HANDOVER_ENCRYPTION_KEY:?set MAIL_HANDOVER_ENCRYPTION_KEY}
       MAIL_HANDOVER_DB: /var/lib/izakhono-mail/handover.sqlite3
       MAIL_ALLOWED_DOMAINS: ${MAIL_ALLOWED_DOMAINS:-izakhonoafrica.co.za}
@@ -134,6 +138,7 @@ services:
       - ./edge/Caddyfile:/etc/caddy/Caddyfile:ro
       - ./mail/mta-sts:/srv/mta-sts:ro
       - ./mail/admin-ui:/srv/mail-admin:ro
+      - ./host/admin-ui:/srv/host-admin:ro
       - caddy-data:/data
       - caddy-config:/config
     networks: [izakhono, izakhono-mail]
