@@ -26,7 +26,7 @@ concurrency:
 jobs:
   division-registry:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 15
     steps:
       - name: Checkout
         uses: actions/checkout@v4
