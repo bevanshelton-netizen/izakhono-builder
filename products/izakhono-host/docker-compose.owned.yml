@@ -7,6 +7,9 @@ services:
       PORT: 8080
       DATA_DIR: /data
       HOST_RUNTIME_TOKEN: ${HOST_RUNTIME_TOKEN:?set HOST_RUNTIME_TOKEN}
+      MAIL_ADMIN_USER: ${MAIL_ADMIN_USER:-admin}
+      MAIL_ADMIN_PASSWORD_HASH: ${MAIL_ADMIN_PASSWORD_HASH:?set MAIL_ADMIN_PASSWORD_HASH}
+      CONTROL_PLANE_TOKEN: ${CONTROL_PLANE_TOKEN:?set CONTROL_PLANE_TOKEN}
       PLATFORM_TLS_HOSTS: ${PLATFORM_TLS_HOSTS:-mail.izakhonoafrica.co.za,webmail.izakhonoafrica.co.za,autoconfig.izakhonoafrica.co.za,autodiscover.izakhonoafrica.co.za,mta-sts.izakhonoafrica.co.za}
       PLATFORM_TLS_HOSTS: ${PLATFORM_TLS_HOSTS:-mail.izakhonoafrica.co.za,webmail.izakhonoafrica.co.za}
     volumes:
@@ -131,6 +134,7 @@ services:
     volumes:
       - ./edge/Caddyfile:/etc/caddy/Caddyfile:ro
       - ./mail/mta-sts:/srv/mta-sts:ro
+      - ./mail/admin-ui:/srv/mail-admin:ro
       - caddy-data:/data
       - caddy-config:/config
     networks: [izakhono, izakhono-mail]
