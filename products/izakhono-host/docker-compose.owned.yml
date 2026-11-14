@@ -6,6 +6,7 @@ services:
       PORT: 8080
       DATA_DIR: /data
       HOST_RUNTIME_TOKEN: ${HOST_RUNTIME_TOKEN:?set HOST_RUNTIME_TOKEN}
+      PLATFORM_TLS_HOSTS: ${PLATFORM_TLS_HOSTS:-mail.izakhonoafrica.co.za,webmail.izakhonoafrica.co.za,autoconfig.izakhonoafrica.co.za,autodiscover.izakhonoafrica.co.za,mta-sts.izakhonoafrica.co.za}
       PLATFORM_TLS_HOSTS: ${PLATFORM_TLS_HOSTS:-mail.izakhonoafrica.co.za,webmail.izakhonoafrica.co.za}
     volumes:
       - host-runtime-data:/data
