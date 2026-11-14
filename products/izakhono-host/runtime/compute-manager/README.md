@@ -45,6 +45,8 @@ node smoke.mjs
 - Manager and worker endpoints require separate bearer credentials.
 - The worker has no Docker socket, host mounts, shell execution, or dynamic code execution.
 - Job input is size-limited; queue length is bounded; leases expire and return jobs to the queue.
-- Persistent JSON state is an initial single-manager implementation. Before multi-manager HA, replace it with a transactional PostgreSQL-backed queue and distributed lease locking.
+- Production persistence uses the owned PostgreSQL database and a transactional row lock, so multiple manager instances cannot claim the same queued lease concurrently. A local JSON-file adapter remains available for isolated smoke tests only.
+- The compute state is currently stored as a single JSONB aggregate row. This is durable and transactionally serialized, but should be normalized into indexed node/job/audit tables as queue volume grows.
+- Job resource requests include bounded CPU and memory requirements; workers advertise available capacity. Lease expiry is retried up to five times before the job is failed.
 - Built-in tasks prove end-to-end scheduling only. Production app builds, sandboxed code execution, GPU scheduling and provider provisioning require dedicated isolated adapters and must not be enabled by passing arbitrary commands to this worker.
 - Keep manager port 8082 private; do not publish it through public edge routing. Use an authenticated private operator tunnel/network.
