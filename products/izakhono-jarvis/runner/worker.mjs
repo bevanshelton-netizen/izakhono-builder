@@ -1,20 +1,74 @@
-// J.A.R.V.I.S. external worker bridge. One bounded claim per invocation; disabled until credentials and an adapter are configured.
+// J.A.R.V.I.S. external worker bridge.
+// One bounded claim per invocation. Completion remains subject to owner verification.
 const DEFAULT_AGENT = "coordinator";
 const MAX_RESPONSE_CHARS = 4000;
+const MAX_EVIDENCE_CHARS = 2000;
+const CLAIM_TIMEOUT_MS = 15000;
+const EXECUTION_TIMEOUT_MS = 60000;
+
 function required(value, name) {
   if (typeof value !== "string" || !value.trim()) throw new Error(name + " is required");
   return value.trim();
 }
+
 function safeText(value, max = 1000) {
   return String(value ?? "Worker adapter failed").replace(/[\r\n\t]+/g, " ").slice(0, max);
 }
-async function requestJson(fetcher, url, options, timeoutMs = 15000) {
+
+function endpoint(value, name) {
+  const parsed = new URL(required(value, name));
+  if (parsed.protocol !== "https:") throw new Error("J.A.R.V.I.S. worker endpoints must use HTTPS");
+  if (parsed.username || parsed.password) throw new Error("Credentials must not be embedded in endpoint URLs");
+  if (parsed.search || parsed.hash) throw new Error("Worker endpoint URLs must not contain query strings or fragments");
+  if (parsed.hostname === "localhost" || parsed.hostname.endsWith(".localhost") || parsed.hostname === "0.0.0.0" || parsed.hostname === "::1") {
+    throw new Error("Local worker endpoints are not permitted");
+  }
+  return parsed;
+}
+
+function assertAllowedExecutor(adapter, env) {
+  const configured = env.JARVIS_EXECUTOR_ALLOWED_HOSTS;
+  if (configured === undefined || configured === "") return;
+  const allowed = configured.split(",").map(host => host.trim().toLowerCase()).filter(Boolean);
+  if (!allowed.includes(adapter.hostname.toLowerCase())) {
+    throw new Error("Executor host is not in JARVIS_EXECUTOR_ALLOWED_HOSTS");
+  }
+}
+
+async function readBoundedText(response, maxChars) {
+  const declared = Number(response.headers?.get?.("content-length"));
+  if (Number.isFinite(declared) && declared > maxChars * 4) {
+    try { await response.body?.cancel?.(); } catch {}
+    throw new Error("Worker endpoint response exceeded the size limit");
+  }
+  if (!response.body) return "";
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let text = "";
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      text += decoder.decode(value, { stream: true });
+      if (text.length > maxChars) {
+        try { await reader.cancel(); } catch {}
+        throw new Error("Worker endpoint response exceeded the size limit");
+      }
+    }
+    text += decoder.decode();
+  } finally {
+    reader.releaseLock?.();
+  }
+  if (text.length > maxChars) throw new Error("Worker endpoint response exceeded the size limit");
+  return text;
+}
+
+async function requestJson(fetcher, url, options, timeoutMs = CLAIM_TIMEOUT_MS) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const response = await fetcher(url, { ...options, signal: controller.signal });
-    const raw = await response.text();
-    if (raw.length > MAX_RESPONSE_CHARS) throw new Error("Worker endpoint response exceeded the size limit");
+    const response = await fetcher(url, { ...options, redirect: "error", signal: controller.signal });
+    const raw = await readBoundedText(response, MAX_RESPONSE_CHARS);
     let data;
     try { data = JSON.parse(raw); } catch { throw new Error("Worker endpoint returned invalid JSON"); }
     if (!response.ok) throw new Error("Worker endpoint returned HTTP " + response.status);
@@ -23,53 +77,88 @@ async function requestJson(fetcher, url, options, timeoutMs = 15000) {
     clearTimeout(timer);
   }
 }
+
+function validStep(step, agentId) {
+  return Boolean(
+    step &&
+    typeof step.id === "string" &&
+    step.id.trim() &&
+    step.id.length <= 200 &&
+    step.assigned_agent === agentId
+  );
+}
+
 export async function runJarvisWorkerOnce(env = process.env, fetcher = fetch) {
-  const base = required(env.JARVIS_API_BASE_URL, "JARVIS_API_BASE_URL").replace(/\/+$/, "");
+  const base = endpoint(env.JARVIS_API_BASE_URL, "JARVIS_API_BASE_URL");
   const secret = required(env.JARVIS_OWNER_SECRET, "JARVIS_OWNER_SECRET");
-  const adapterBase = required(env.JARVIS_EXECUTOR_URL, "JARVIS_EXECUTOR_URL");
+  const adapter = endpoint(env.JARVIS_EXECUTOR_URL, "JARVIS_EXECUTOR_URL");
   const adapterToken = required(env.JARVIS_EXECUTOR_TOKEN, "JARVIS_EXECUTOR_TOKEN");
-  const api = new URL(base);
-  const adapter = new URL(adapterBase);
-  if (api.protocol !== "https:" || adapter.protocol !== "https:") throw new Error("J.A.R.V.I.S. worker endpoints must use HTTPS");
-  if (api.username || api.password || adapter.username || adapter.password) throw new Error("Credentials must not be embedded in endpoint URLs");
-  const agentId = env.JARVIS_AGENT_ID || DEFAULT_AGENT;
+  assertAllowedExecutor(adapter, env);
+
+  const agentId = required(env.JARVIS_AGENT_ID || DEFAULT_AGENT, "JARVIS_AGENT_ID");
+  if (agentId.length > 128) throw new Error("JARVIS_AGENT_ID exceeds the size limit");
+  const baseUrl = base.toString().replace(/\/+$/, "");
   const ownerHeaders = { "content-type": "application/json", "x-admin-secret": secret };
-  const claim = await requestJson(fetcher, base + "/api/jarvis/workforce/claim", {
-    method: "POST", headers: ownerHeaders, body: JSON.stringify({ agent_id: agentId }),
+  const claim = await requestJson(fetcher, baseUrl + "/api/jarvis/workforce/claim", {
+    method: "POST",
+    headers: ownerHeaders,
+    body: JSON.stringify({ agent_id: agentId }),
   });
-  if (!claim.ok) throw new Error("J.A.R.V.I.S. claim request was rejected");
-  if (!claim.claimed) return { status: "idle", claimed: false };
+  if (!claim || claim.ok !== true) throw new Error("J.A.R.V.I.S. claim request was rejected");
+  if (claim.claimed === false) return { status: "idle", claimed: false };
+  if (claim.claimed !== true) throw new Error("J.A.R.V.I.S. claim response failed validation");
+
   const step = claim.step;
-  if (!step || typeof step.id !== "string" || step.assigned_agent !== agentId) throw new Error("Claim response failed validation");
+  const stepId = typeof step?.id === "string" && step.id.trim() ? step.id.trim() : null;
   try {
+    if (!validStep(step, agentId)) throw new Error("Claim response failed agent or task validation");
     const result = await requestJson(fetcher, adapter.toString(), {
       method: "POST",
-      headers: { "content-type": "application/json", "authorization": "Bearer " + adapterToken },
+      headers: { "content-type": "application/json", authorization: "Bearer " + adapterToken },
       body: JSON.stringify({
         contract: "izakhono.jarvis.executor/v1",
-        step: { id: step.id, title: step.title, description: step.description, agent_id: agentId },
+        step: {
+          id: step.id,
+          title: safeText(step.title, 300),
+          description: safeText(step.description, 2000),
+          agent_id: agentId,
+        },
       }),
-    }, 60000);
-    if (result.status !== "completed" || typeof result.evidence !== "string" || result.evidence.trim().length < 8 || result.evidence.length > 2000) {
+    }, EXECUTION_TIMEOUT_MS);
+
+    if (
+      result?.status !== "completed" ||
+      typeof result.evidence !== "string" ||
+      result.evidence.trim().length < 8 ||
+      result.evidence.length > MAX_EVIDENCE_CHARS
+    ) {
       throw new Error("Executor must return status=completed and 8–2000 characters of evidence");
     }
-    const completed = await requestJson(fetcher, base + "/api/jarvis/workforce/steps/" + encodeURIComponent(step.id) + "/complete", {
-      method: "POST", headers: ownerHeaders, body: JSON.stringify({ agent_id: agentId, evidence: result.evidence.trim() }),
+
+    const completed = await requestJson(fetcher, baseUrl + "/api/jarvis/workforce/steps/" + encodeURIComponent(step.id) + "/complete", {
+      method: "POST",
+      headers: ownerHeaders,
+      body: JSON.stringify({ agent_id: agentId, evidence: result.evidence.trim() }),
     });
-    if (!completed.ok) throw new Error("J.A.R.V.I.S. rejected completion evidence");
+    if (completed?.ok !== true) throw new Error("J.A.R.V.I.S. rejected completion evidence");
     return { status: "completed", claimed: true, step_id: step.id, owner_verification: "pending" };
   } catch (error) {
     const message = safeText(error instanceof Error ? error.message : error);
-    try {
-      await requestJson(fetcher, base + "/api/jarvis/workforce/steps/" + encodeURIComponent(step.id) + "/fail", {
-        method: "POST", headers: ownerHeaders, body: JSON.stringify({ agent_id: agentId, error: message }),
-      });
-    } catch {
-      // The five-minute lease expiry is the recovery path if failure reporting is unavailable.
+    if (stepId) {
+      try {
+        await requestJson(fetcher, baseUrl + "/api/jarvis/workforce/steps/" + encodeURIComponent(stepId) + "/fail", {
+          method: "POST",
+          headers: ownerHeaders,
+          body: JSON.stringify({ agent_id: agentId, error: message }),
+        });
+      } catch {
+        // The queue's lease expiry remains the recovery path if failure reporting is unavailable.
+      }
     }
-    return { status: "failed", claimed: true, step_id: step.id, error: message };
+    return { status: "failed", claimed: true, ...(stepId ? { step_id: stepId } : {}), error: message };
   }
 }
+
 if (import.meta.url === `file://${process.argv[1]}`) {
   runJarvisWorkerOnce().then(result => {
     process.stdout.write(JSON.stringify(result) + "\n");
