@@ -54,3 +54,5 @@ export const IZAKHONO_SUPER_ENGINE = {
 export * from './host-provisioner-adapter.js';
 
 export * from './checkout-order-store.js';
+
+export * from './ikhokha-webhook-route.js';
