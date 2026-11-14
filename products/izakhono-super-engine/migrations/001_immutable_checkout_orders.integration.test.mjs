@@ -6,7 +6,7 @@ const connectionString = process.env.HOST_TEST_DATABASE_URL;
 if (!connectionString) throw new Error('HOST_TEST_DATABASE_URL is required');
 const pool = new pg.Pool({ connectionString });
 try {
-  const migration = await readFile(new URL('../migrations/001_immutable_checkout_orders.sql', import.meta.url), 'utf8');
+  const migration = await readFile(new URL('./001_immutable_checkout_orders.sql', import.meta.url), 'utf8');
   await pool.query(migration);
   const suffix = crypto.randomUUID();
   const row = {
