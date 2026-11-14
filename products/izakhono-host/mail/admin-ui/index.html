@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>IZAKHONO Mail Control Centre</title>
+  <style>
+    :root{font-family:Inter,system-ui,sans-serif;color:#132033;background:#f5f7fb}*{box-sizing:border-box}body{margin:0}.shell{max-width:1500px;margin:auto;padding:28px}.top{display:flex;justify-content:space-between;align-items:center;gap:20px;margin-bottom:20px}.brand{font-size:23px;font-weight:800}.sub{color:#667085;font-size:13px;margin-top:5px}.actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.badge{padding:7px 11px;border-radius:999px;background:#eef2ff;color:#3446a3;font-size:12px;font-weight:700}.button{border:0;border-radius:9px;padding:10px 14px;background:#172b4d;color:white;font-weight:700;cursor:pointer}.button:disabled{opacity:.5;cursor:wait}.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}.card{background:#fff;border:1px solid #e5e9f0;border-radius:14px;padding:18px;box-shadow:0 2px 8px #1320330a}.metric{font-size:29px;font-weight:800;margin-top:8px}.label{color:#667085;font-size:13px}.section{margin-top:20px}.section h2{font-size:17px;margin:0 0 12px}.table{overflow:auto}.row{display:grid;grid-template-columns:1.5fr 1fr 1fr 1fr 1fr;min-width:800px;padding:13px 15px;border-top:1px solid #edf0f4;font-size:13px;gap:10px;align-items:center}.checks{grid-template-columns:1.6fr repeat(12,minmax(75px,1fr));min-width:1250px}.head{font-weight:700;color:#667085;background:#fafbfc;border-radius:10px}.status{font-weight:700}.verified,.passed,.active{color:#176b3a}.degraded,.pending,.configured,.not_monitored{color:#9a6700}.failed,.suspended,.attention{color:#b42318}.muted{color:#667085}.incident{padding:12px;border-left:4px solid #b42318;background:#fff5f4;border-radius:8px;margin:8px 0}.empty{color:#667085;font-size:13px;padding:14px 0}.notice{padding:12px 14px;border:1px solid #e5e9f0;border-radius:10px;background:#fff;color:#475467;font-size:13px;margin:14px 0}.error{color:#b42318}.meta{color:#667085;font-size:12px;margin-top:8px}@media(max-width:900px){.grid{grid-template-columns:repeat(2,1fr)}}@media(max-width:560px){.shell{padding:16px}.grid{grid-template-columns:1fr}.top{align-items:flex-start;flex-direction:column}}
+  </style>
+</head>
+<body>
+<main class="shell">
+  <header class="top">
+    <div><div class="brand">IZAKHONO MAIL CONTROL CENTRE</div><div class="sub">Owner-only operational oversight • Live data from the IZAKHONO Mail Control Plane</div></div>
+    <div class="actions"><span class="badge">OWNER ACCESS • V1</span><button class="button" id="refresh">Refresh data</button></div>
+  </header>
+  <div id="message" class="notice">Connecting to the protected mail control plane…</div>
+  <div class="meta" id="generated"></div>
+  <section class="grid" aria-label="Executive metrics">
+    <article class="card"><div class="label">Managed domains</div><div class="metric" id="domains">—</div></article>
+    <article class="card"><div class="label">Verified domains</div><div class="metric" id="verified">—</div></article>
+    <article class="card"><div class="label">Active mailboxes</div><div class="metric" id="mailboxes">—</div></article>
+    <article class="card"><div class="label">Security alerts</div><div class="metric" id="alerts">Not connected</div></article>
+  </section>
+  <section class="section card"><h2>Domain health</h2><div class="table"><div class="row head"><div>Domain</div><div>Platform</div><div>Status</div><div>Transport</div><div>Incidents</div></div><div id="domainRows"><div class="empty">Awaiting live data…</div></div></div></section>
+  <section class="section card"><h2>Domain acceptance checks</h2><div class="table"><div class="row checks head"><div>Domain</div><div>Ownership</div><div>MX</div><div>SPF</div><div>DKIM</div><div>DMARC</div><div>MTA-STS</div><div>Policy</div><div>TLS-RPT</div><div>SMTP</div><div>Sub TLS</div><div>IMAP TLS</div><div>Backup</div></div><div id="checkRows"><div class="empty">Awaiting live checks…</div></div></div></section>
+  <section class="section card"><h2>Mailbox operations</h2><div class="table"><div class="row head"><div>Address</div><div>Platform</div><div>Status</div><div>Security</div><div>Backup</div></div><div id="mailboxRows"><div class="empty">Awaiting live data…</div></div></div></section>
+  <section class="section card"><h2>Security and incidents</h2><div id="incidents"><div class="empty">Incident telemetry is not connected. No zero-incident status is being asserted.</div></div></section>
+  <div class="notice">This console is owner-only and currently read-only. Authentication, delivery, incident, backup and FORTRESS telemetry are shown as unknown or pending until their monitoring integrations are verified.</div>
+</main>
+<script>
+const esc=s=>String(s??'—').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const statusClass=s=>['verified','passed','active','degraded','pending','configured','failed','suspended','attention','not_monitored'].includes(String(s))?String(s):'muted';
+const pretty=s=>String(s??'Not connected').replaceAll('_',' ');
+const bytes=v=>v==null?'Not reported':(Number(v)<1024?'0 KB':(Number(v)/1024/1024).toFixed(1)+' MB');
+function render(snapshot){
+ const summary=snapshot.summary||{};
+ document.querySelector('#domains').textContent=summary.managedDomains??'—';
+ document.querySelector('#verified').textContent=summary.verifiedDomains??'—';
+ document.querySelector('#mailboxes').textContent=summary.activeMailboxes??'—';
+ document.querySelector('#alerts').textContent=summary.openSecurityAlerts==null?'Not connected':summary.openSecurityAlerts;
+ document.querySelector('#generated').textContent='Last refreshed: '+(snapshot.generatedAt||'not reported');
+ const domains=snapshot.domains||[];
+ document.querySelector('#domainRows').innerHTML=domains.length?domains.map(d=>'<div class="row"><div>'+esc(d.domain)+'</div><div>'+esc(d.platform)+'</div><div class="status '+statusClass(d.status)+'">'+esc(pretty(d.status))+'</div><div>'+esc(d.transport)+'</div><div>'+esc(d.openIncidents==null?'Not connected':d.openIncidents)+'</div></div>').join(''):'<div class="empty">No domains are currently registered in Stalwart.</div>';
+ const checkKeys=[['ownership','ownership'],['mx','mx'],['spf','spf'],['dkim','dkim'],['dmarc','dmarc'],['mtaSts','mtaSts'],['mtaStsPolicy','policy'],['tlsRpt','TLS-RPT'],['smtp','SMTP'],['submissionTls','Sub TLS'],['imapTls','IMAP TLS'],['backup','backup']];
+ document.querySelector('#checkRows').innerHTML=domains.length?domains.map(d=>'<div class="row checks"><div>'+esc(d.domain)+'</div>'+checkKeys.map(([key])=>'<div class="status '+statusClass((d.checks||{})[key])+'">'+esc(pretty((d.checks||{})[key]))+'</div>').join('')+'</div>').join(''):'<div class="empty">No domain checks available.</div>';
+ const mailboxes=snapshot.mailboxes||[];
+ document.querySelector('#mailboxRows').innerHTML=mailboxes.length?mailboxes.map(m=>'<div class="row"><div>'+esc(m.address)+'</div><div>'+esc(m.platform)+'</div><div class="status '+statusClass(m.status)+'">'+esc(pretty(m.status))+'</div><div class="status '+statusClass(m.securityStatus)+'">'+esc(pretty(m.securityStatus))+'</div><div class="status '+statusClass(m.backupStatus)+'">'+esc(pretty(m.backupStatus))+'</div></div>').join(''):'<div class="empty">No mailboxes are currently returned by Stalwart.</div>';
+ const telemetry=snapshot.telemetry||{};
+ const incidents=snapshot.incidents||[];
+ document.querySelector('#incidents').innerHTML=incidents.length?incidents.map(i=>'<div class="incident"><strong>'+esc(pretty(i.severity))+'</strong> — '+esc(i.type)+(i.domain?' · '+esc(i.domain):'')+'</div>').join(''):'<div class="empty">Incident feed: '+esc(pretty(telemetry.incidents||'not_connected'))+'. Authentication: '+esc(pretty(telemetry.authentication||'not_connected'))+'. Delivery: '+esc(pretty(telemetry.delivery||'not_connected'))+'. Backups: '+esc(pretty(telemetry.backups||'not_connected'))+'.</div>';
+ document.querySelector('#message').textContent='Live control-plane response received. Values marked pending or not connected are not certified.';
+ document.querySelector('#message').className='notice';
+}
+async function refresh(){
+ const button=document.querySelector('#refresh');const message=document.querySelector('#message');
+ button.disabled=true;message.textContent='Refreshing live mail data…';message.className='notice';
+ try{
+  const response=await fetch('/api/control-centre',{cache:'no-store',credentials:'same-origin',headers:{'Accept':'application/json'}});
+  if(!response.ok)throw new Error('Control plane returned HTTP '+response.status);
+  render(await response.json());
+ }catch(error){message.textContent='Unable to load live mail data: '+error.message;message.className='notice error';}
+ finally{button.disabled=false;}
+}
+document.querySelector('#refresh').addEventListener('click',refresh);
+refresh();
+</script>
+</body>
+</html>
