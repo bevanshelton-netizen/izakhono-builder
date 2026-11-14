@@ -10,29 +10,43 @@ on:
       - 'products/izakhono-host/**'
       - '.github/workflows/izakhono-host-compliance.yml'
 
-env:
-  HOST_RUNTIME_TOKEN: ci-host-runtime-token
-  TLS_EMAIL: ci@example.com
-  POSTGRES_PASSWORD: ci-postgres-password
-  MINIO_ROOT_USER: ci-minio-admin
-  MINIO_ROOT_PASSWORD: ci-minio-password
-  IZAKHONO_MAIL_API_TOKEN: ci-mail-api-token
+permissions:
+  contents: read
 
 jobs:
   compliance-script:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
-      - name: Validate node scripts
+          node-version: '22'
+
+      - name: Validate node and mail UI scripts
         run: |
-          bash -n products/izakhono-host/NODE-PREFLIGHT.sh
-          bash -n products/izakhono-host/NODE01-ACTIVATE.sh
-          bash -n products/izakhono-host/NODE-COMPLIANCE.sh
-          bash -n products/izakhono-host/bootstrap-owned.sh
-      - name: Validate runtime source
-        run: node --check products/izakhono-host/runtime/control-plane/server.mjs
-      - name: Validate compose syntax
-        run: docker compose -f products/izakhono-host/docker-compose.owned.yml config >/dev/null
+          node --check products/izakhono-host/runtime/control-plane/server.mjs
+          node products/izakhono-host/mail-control-centre-ui.test.mjs
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Validate mail control-plane source
+        run: |
+          python -m compileall -q products/izakhono-host/runtime/mail-control-plane/api
+
+      - name: Validate shell scripts
+        run: |
+          bash -n products/izakhono-host/*.sh
+          bash -n products/izakhono-host/mail/*.sh
+          bash -n products/izakhono-host/infra/isn-01/*.sh
+
+      - name: Validate Compose definitions
+        run: |
+          cp products/izakhono-host/.env.example products/izakhono-host/.env
+          mkdir -p products/izakhono-host/mail/secrets
+          printf 'ci-roundcube-db-secret' > products/izakhono-host/mail/secrets/roundcube_db_password
+          printf 'ci-roundcube-des-key' > products/izakhono-host/mail/secrets/roundcube_des_key
+          docker compose --env-file products/izakhono-host/.env -f products/izakhono-host/docker-compose.owned.yml config >/dev/null
+          docker compose --env-file products/izakhono-host/.env -f products/izakhono-host/mail/docker-compose.mail.yml config >/dev/null
