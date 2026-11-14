@@ -94,3 +94,25 @@ A daily 08:00 SAST database watch updates the R20k sprint task using verified re
 ## Current Creator Engine launch truth
 
 **Integration installed; public-live remains gated.** The SUPER APP surface and orchestration contract are present in source. This does not prove a public HTTPS route, reachable media renderer, authenticated publishing channels or paid-media authorisation. Those states must be verified independently before they are called live.
+
+
+## IZAKHONO AI owner command workspace
+
+The SUPER APP includes an owner-only conversational command workspace at the **AI Command** navigation item. It calls the IZAKHONO-owned SUPER AI gateway through a server-side Worker proxy; gateway credentials are never sent to the browser. Conversation state is held in page memory only and is cleared when the page is reloaded or the user clears the conversation.
+
+### Required Worker secrets
+
+Set these as Worker secrets/configuration before enabling the command workspace:
+
+- `IZAKHONO_OWNER_ACCESS_KEY` — high-entropy owner access key (minimum 32 random characters).
+- `IZAKHONO_AI_GATEWAY_URL` — HTTPS URL reachable from the Worker to the private SUPER AI gateway.
+- `IZAKHONO_AI_GATEWAY_INTERNAL_KEY` — gateway internal service credential.
+- `IZAKHONO_AI_WORKFLOW_KEY` — separate trusted-workflow credential.
+
+The gateway must include `izakhono-ai` in `IZAKHONO_AI_WORKFLOW_PRODUCTS`, have `IZAKHONO_AI_WORKFLOW_KEY` configured, and return a healthy `/healthz`. The text model runtime must independently be reachable and have an allowed chat model available. Use the included NODE01 launcher to start the owner gateway after setting its required secrets and model-runtime configuration.
+
+The Worker refuses chat requests when any required secret is missing, the owner key is invalid, the gateway URL is not HTTPS, the conversation payload is malformed, or the upstream runtime is unavailable. It does not mark a chat response as an executed business task. Durable task execution, tools, long-term memory, user/team authentication and independently verified deployment remain separate acceptance gates; this chat surface is not represented as a completed ChatGPT replacement until those gates pass.
+
+### Verification
+
+`src/index.test.ts` covers owner authorization, non-sensitive health reporting, server-side credential forwarding, payload validation and fail-closed behaviour. The dedicated GitHub Actions workflow runs these tests, TypeScript validation and the existing SUPER APP contract validator.

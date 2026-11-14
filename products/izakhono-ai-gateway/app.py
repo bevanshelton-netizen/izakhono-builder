@@ -18,7 +18,7 @@ INTERNAL_KEY = os.getenv("IZAKHONO_AI_GATEWAY_INTERNAL_KEY", "")
 ACCESS_URL = os.getenv("IZAKHONO_ACCESS_URL", "http://127.0.0.1:9494").rstrip("/")
 ACCESS_KEY = os.getenv("IZAKHONO_ACCESS_INTERNAL_KEY", "")
 WORKFLOW_KEY = os.getenv("IZAKHONO_AI_WORKFLOW_KEY", "")
-WORKFLOW_PRODUCTS = {x.strip().lower() for x in os.getenv("IZAKHONO_AI_WORKFLOW_PRODUCTS", "venture-factory,izakhono-builder,izakhono-docflow,izakhono-flow,izakhono-shorts,izakhono-create,kora,allegro,edu-build,izakhono-ads,izakhono-recording-studio,worknow,faisready,doxa-sure,auto-ai").split(",") if x.strip()}
+WORKFLOW_PRODUCTS = {x.strip().lower() for x in os.getenv("IZAKHONO_AI_WORKFLOW_PRODUCTS", "venture-factory,izakhono-ai,izakhono-builder,izakhono-docflow,izakhono-flow,izakhono-shorts,izakhono-create,kora,allegro,edu-build,izakhono-ads,izakhono-recording-studio,worknow,faisready,doxa-sure,auto-ai").split(",") if x.strip()}
 
 OWNER_ONLY = os.getenv("IZAKHONO_AI_OWNER_ONLY", "true").lower() != "false"
 ALLOW_EXTERNAL = os.getenv("IZAKHONO_AI_ALLOW_EXTERNAL", "false").lower() == "true"

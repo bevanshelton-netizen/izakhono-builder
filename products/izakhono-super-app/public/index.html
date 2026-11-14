@@ -17,6 +17,7 @@
       </div>
       <nav>
         <button class="nav active" data-view="home">Overview</button>
+        <button class="nav" data-view="ai-command">AI Command</button>
         <button class="nav" data-view="creator">Creator Engine</button>
         <button class="nav" data-view="affiliate">Affiliate</button>
         <button class="nav" data-view="finance">Finance Core</button>
@@ -90,6 +91,16 @@
             </ul>
           </article>
         </div>
+      </section>
+
+
+      <section id="ai-command" class="view">
+        <div class="section-head"><div><p class="eyebrow">YOUR INDEPENDENT AI COMMAND CENTRE</p><h2>IZAKHONO AI</h2><p>Give IZAKHONO an instruction. Its own intelligence gateway handles the response. Chat responses are distinct from verified execution and delivery.</p></div><span class="badge gold" id="aiGatewayStatus">CHECKING AI RUNTIME</span></div>
+        <div class="grid two ai-command-grid">
+          <article class="panel ai-session-panel"><h3>Owner access</h3><p>Enter the private IZAKHONO owner access key supplied by the system administrator. It is held only in this page's memory and is never saved in browser storage.</p><label class="ai-key-label" for="aiOwnerKey">Owner access key</label><input id="aiOwnerKey" type="password" autocomplete="off" spellcheck="false" placeholder="Enter private owner key"><button class="primary" id="aiConnect" type="button">Connect to IZAKHONO AI</button><p id="aiConnectionStatus" class="ai-status" role="status">Not connected.</p><div class="ai-runtime-facts"><span>Provider-neutral gateway</span><span>Owner-authorised workflow</span><span>No prompt history stored by this interface</span></div></article>
+          <article class="panel ai-chat-panel"><div class="panel-head"><h3>Conversation</h3><button class="secondary" id="aiClear" type="button">Clear conversation</button></div><div id="aiMessages" class="ai-messages" aria-live="polite"><div class="ai-empty">Connect with your owner key, then give IZAKHONO your first instruction.</div></div><form id="aiChatForm" class="ai-chat-form"><textarea id="aiPrompt" rows="3" maxlength="16000" placeholder="What do you want IZAKHONO to do?" required></textarea><div class="ai-chat-actions"><small>Enter to send · Shift+Enter for a new line</small><button class="primary" id="aiSend" type="submit">Send instruction</button></div></form></article>
+        </div>
+        <article class="panel ai-boundary"><strong>Execution truth</strong><p>Chat responses are not proof that a task was executed. IZAKHONO must return a job, artifact, test result or independently verified outcome before work is marked complete. High-impact actions remain approval-gated.</p></article>
       </section>
 
       <section id="creator" class="view">

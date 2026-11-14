@@ -1,0 +1,27 @@
+name: IZAKHONO SUPER APP CI
+on:
+  push:
+    paths:
+      - 'products/izakhono-super-app/**'
+      - '.github/workflows/izakhono-super-app-ci.yml'
+  pull_request:
+    paths:
+      - 'products/izakhono-super-app/**'
+      - '.github/workflows/izakhono-super-app-ci.yml'
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npx --yes tsx@4.20.3 products/izakhono-super-app/src/index.test.ts
+      - run: npx --yes -p typescript@5.9.2 tsc --noEmit --target ES2022 --lib ES2022,DOM --module ESNext --moduleResolution Bundler products/izakhono-super-app/src/index.ts
+      - run: node scripts/validate-super-app.mjs
+      - run: node --check products/izakhono-super-app/public/app.js
+      - run: test -s products/izakhono-super-app/public/index.html
+      - run: test -s products/izakhono-super-app/public/app.js
+      - run: test -s products/izakhono-super-app/public/styles.css
