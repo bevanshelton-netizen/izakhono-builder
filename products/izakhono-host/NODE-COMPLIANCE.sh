@@ -118,6 +118,17 @@ else
   warn 'Restic .backup.env not configured; off-host backups cannot run yet'
 fi
 
+if [[ -s mail/secrets/mail_admin_password && -f mail/admin-ui/index.html ]]; then
+  pass 'Owner-only Mail Control Centre UI and credential staged'
+else
+  warn 'Mail Control Centre owner credential or static UI is not staged'
+fi
+if [[ -f .env ]] && ! grep -q '^MAIL_ADMIN_PASSWORD_HASH=REPLACE_WITH' .env; then
+  pass 'Mail Control Centre Basic Auth hash configured'
+else
+  warn 'Mail Control Centre Basic Auth hash is not configured'
+fi
+
 if [[ -f .env ]] && grep -q '^MAIL_PUBLIC_IP=REPLACE_WITH' .env; then
   warn 'Static public mail IP not configured'
 fi
