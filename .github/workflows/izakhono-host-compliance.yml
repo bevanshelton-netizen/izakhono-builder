@@ -27,6 +27,7 @@ jobs:
         run: |
           node --check products/izakhono-host/runtime/control-plane/server.mjs
           node products/izakhono-host/mail-control-centre-ui.test.mjs
+          node products/izakhono-host/host-control-centre-ui.test.mjs
 
       - uses: actions/setup-python@v5
         with:
