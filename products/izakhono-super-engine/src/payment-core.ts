@@ -13,7 +13,7 @@ export interface PaymentIntent {
   updatedAt: string;
 }
 
-export interface CreatePaymentInput {
+export interface CheckoutOrderDraft { orderId: string; customerId: string; domain: string; productId: string; idempotencyKey: string; }\n\nexport interface CreatePaymentInput {
   externalTransactionId: string;
   amountMinor: number;
   currency: 'ZAR' | string;
@@ -90,7 +90,7 @@ export class IzakhonoPay {
   async createPayment(input: CreatePaymentInput): Promise<{ intent: PaymentIntent; link: PaymentLink }> {
     if (!Number.isSafeInteger(input.amountMinor) || input.amountMinor <= 0) throw new Error('Payment amount must be a positive integer in minor currency units');
     if (!/^[A-Z]{3}$/.test(input.currency)) throw new Error('Currency must be an ISO 4217 code');
-    if (!input.externalTransactionId.trim()) throw new Error('External transaction ID is required');
+    if (!input.externalTransactionId.trim()) throw new Error('External transaction ID is required');\n    if (input.checkoutOrder && !this.checkoutOrders) throw new Error('Checkout order persistence is required when checkout order terms are supplied');
     if (await this.store.getByExternalTransactionId(input.externalTransactionId)) throw new Error('Duplicate external transaction ID');
 
     const now = new Date().toISOString();
