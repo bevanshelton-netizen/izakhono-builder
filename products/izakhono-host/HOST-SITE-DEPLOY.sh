@@ -28,7 +28,7 @@ SITE_ID="$(jq -r '.site.id // empty' "$TMP/site.json")"
 python3 - "$SOURCE_DIR" > "$TMP/deploy.json" <<'PY'
 import base64, json, os, sys
 root = os.path.realpath(sys.argv[1])
-ignored = {".git", "node_modules", ".next", "dist", "build", "__pycache__", ".venv", "venv"}
+ignored = {".git", "node_modules", ".next", "__pycache__", ".venv", "venv", ".ssh", ".aws", ".azure", ".config", "secrets"}
 files = []
 total = 0
 for current, dirs, names in os.walk(root, followlinks=False):
@@ -38,6 +38,12 @@ for current, dirs, names in os.walk(root, followlinks=False):
         if os.path.islink(path) or not os.path.isfile(path):
             continue
         rel = os.path.relpath(path, root).replace(os.sep, "/")
+        lower = rel.lower()
+        base = os.path.basename(lower)
+        blocked = base == ".env" or base.startswith(".env.") or base in {".npmrc", ".netrc", ".htpasswd", ".ds_store", "id_rsa", "id_ed25519", "authorized_keys", "credentials.json", "secrets.json"} or base.endswith((".pem", ".key", ".p12", ".pfx", ".sqlite", ".sqlite3", ".db", ".bak", ".log", ".dump", ".sql"))
+        if blocked:
+            print(f"Skipping sensitive file: {rel}", file=sys.stderr)
+            continue
         data = open(path, "rb").read()
         if len(data) > 512 * 1024:
             raise SystemExit(f"File exceeds 512 KiB: {rel}")
