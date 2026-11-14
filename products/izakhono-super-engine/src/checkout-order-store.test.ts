@@ -42,7 +42,7 @@ assert.equal(requests.length, 2);
 
 const conflict = new SupabaseCheckoutOrderStore({
   url: 'https://db.example', serviceRoleKey: 'server-secret',
-  fetcher: async (url) => String(url).includes('order_id=') ?
+  fetcher: async (url, init) => init?.method === 'POST' || String(url).includes('order_id=') ?
     new Response('[]', { status: 201 }) :
     new Response(JSON.stringify([{ ...row, expected_amount_minor: 1 }]), { status: 200 }),
 });
