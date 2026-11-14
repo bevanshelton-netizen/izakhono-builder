@@ -13,7 +13,8 @@ const modules = [
   { id:"accountant", name:"SUPER ACCOUNTANT", route:"/accounting", status:"architecture-ready", engine:"independent" },
   { id:"fortress", name:"FORTRESS", route:"/fortress", status:"available", engine:"independent" },
   { id:"flowiq", name:"FLOWIQ", route:"/flowiq", status:"architecture-ready", engine:"independent" },
-  { id:"tasks", name:"IZAKHONO TASKS", route:"/tasks", status:"architecture-ready", engine:"independent" }
+  { id:"tasks", name:"IZAKHONO TASKS", route:"/tasks", status:"architecture-ready", engine:"independent" },
+  { id:"one-drive", name:"IZAKHONO ONE DRIVE", route:"/one-drive", status:"architecture-ready", engine:"independent" }
 ];
 
 const creator = {
@@ -67,6 +68,17 @@ const financeCore = {
   advertising_ids:false
 };
 
+
+const oneDrive = {
+  module_id:"one-drive", embedded:true, route:"/one-drive", engine:"independent",
+  source_of_truth:"products/izakhono-one-drive", owned_first:true,
+  public_status:"gated-until-live-storage-and-security-verification",
+  personal_space_quota_bytes:53687091200, business_space_quota_bytes:53687091200,
+  separate_security_domains:true, public_sharing_default:false,
+  identity_provider:"IZAKHONO CORE / FORTRESS", object_storage:"replaceable-s3-compatible-adapter",
+  production_ready:false, physical_capacity_verified:false, live_endpoint_verified:false
+};
+
 const affiliate = {
   module_id:"affiliate",
   embedded:true,
@@ -108,6 +120,9 @@ export default {
     }
     if(url.pathname==="/api/finance-core/status"){
       return json({ok:true,finance_core:financeCore});
+    }
+    if(url.pathname==="/api/one-drive/status"){
+      return json({ok:true,one_drive:oneDrive});
     }
     if(url.pathname.startsWith("/api/")) return json({ok:false,error:"Not found"},404);
     return env.ASSETS.fetch(req);
