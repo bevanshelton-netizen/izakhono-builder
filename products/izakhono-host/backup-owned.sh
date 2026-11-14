@@ -70,6 +70,9 @@ docker compose --env-file .env -f docker-compose.owned.yml exec -T postgres pg_d
 docker compose --env-file .env -f docker-compose.owned.yml exec -T roundcube-db sh -c 'PGPASSWORD="$(cat /run/secrets/roundcube_db_password)" pg_dump -U roundcube -d roundcube -Fc' > "$STAGE_DIR/roundcube-postgres.dump"
 
 echo "[5/6] Include recovery configuration and secrets"
+for secret in mail/secrets/roundcube_db_password mail/secrets/roundcube_des_key mail/secrets/mail_admin_password host/secrets/host_admin_password; do
+  [[ -s "$secret" ]] || { echo "Required owner secret is missing: $secret" >&2; exit 4; }
+done
 cp .env "$STAGE_DIR/host.env"
 cp docker-compose.owned.yml "$STAGE_DIR/docker-compose.owned.yml"
 cp edge/Caddyfile "$STAGE_DIR/Caddyfile"
