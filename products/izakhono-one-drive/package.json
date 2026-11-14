@@ -1,0 +1,7 @@
+{
+ "name":"@izakhono/one-drive",
+ "version":"0.1.0",
+ "private":true,
+ "type":"module",
+ "scripts":{"test":"tsx src/quota.test.ts","typecheck":"tsc --noEmit --target ES2022 --module NodeNext --moduleResolution NodeNext src/quota.ts src/quota.test.ts"}
+}
