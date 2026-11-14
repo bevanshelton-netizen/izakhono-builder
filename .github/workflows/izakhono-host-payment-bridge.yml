@@ -6,6 +6,8 @@ on:
       - 'products/izakhono-host/runtime/provisioner/**'
       - 'products/izakhono-host/migrations/**'
       - 'products/izakhono-super-engine/src/host-provisioner-adapter*'
+      - 'products/izakhono-super-engine/src/checkout-order-store*'
+      - 'products/izakhono-super-engine/migrations/**'
       - 'products/izakhono-super-engine/src/index.ts'
       - 'package.json'
       - '.github/workflows/izakhono-host-payment-bridge.yml'
@@ -14,6 +16,8 @@ on:
     paths:
       - 'products/izakhono-host/runtime/provisioner/**'
       - 'products/izakhono-host/migrations/**'
+      - 'products/izakhono-super-engine/src/checkout-order-store*'
+      - 'products/izakhono-super-engine/migrations/**'
       - '.github/workflows/izakhono-host-payment-bridge.yml'
 
 permissions:
@@ -45,8 +49,11 @@ jobs:
           node-version: 22
       - name: Install focused TypeScript validation tools
         run: npm install --no-save --no-package-lock typescript@5.9.2 @types/node@22
-      - name: Test Super Engine to HOST fulfillment adapter
-        run: npm run super-engine:payment:test && npx tsc --noEmit --target ES2022 --lib ES2022,DOM,DOM.Iterable --types node --module NodeNext --moduleResolution NodeNext products/izakhono-super-engine/src/host-provisioner-adapter.ts
+      - name: Test Super Engine payment and immutable checkout orders
+        run: |
+          npm run super-engine:payment:test
+          npx --yes tsx@4.20.3 products/izakhono-super-engine/src/checkout-order-store.test.ts
+          npx tsc --noEmit --target ES2022 --lib ES2022,DOM,DOM.Iterable --types node --module NodeNext --moduleResolution NodeNext products/izakhono-super-engine/src/host-provisioner-adapter.ts products/izakhono-super-engine/src/checkout-order-store.ts
       - name: Test verified-payment provisioning bridge
         run: |
           node products/izakhono-host/runtime/provisioner/payment-bridge.test.mjs
