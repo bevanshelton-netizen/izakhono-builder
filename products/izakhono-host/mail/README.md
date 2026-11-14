@@ -59,10 +59,11 @@ The mail control plane is internal-only and requires a separate bearer token. Th
 2. Publish the exact TXT record returned by the API at _izakhono-verify.izakhonoafrica.co.za.
 3. Wait for DNS propagation and call POST /api/domains/verify.
 4. The API refuses domain and mailbox creation until ownership is verified.
-5. Create the domain and mailbox through the internal control plane.
-6. The mailbox is created with sending disabled and a one-time activation handover.
-7. Deliver the handover token out-of-band. The user sets their own password; the token is one-time and expires.
+5. Run ./MAIL-CONTROL-PLANE-VERIFY.sh request, publish the returned TXT challenge, then run ./MAIL-CONTROL-PLANE-VERIFY.sh verify.
+6. Create a mailbox with ./MAILBOX-PROVISION.sh <local-part> "<display name>". The one-time handover token is stored in a protected, Git-ignored file under mail/handover/.
+7. Deliver the handover token out-of-band. The mailbox owner runs ./MAILBOX-ACTIVATE.sh <email-address> <handover-json-file> and chooses a new password. The token is one-time and expires.
 8. Log in through Roundcube at webmail.izakhonoafrica.co.za and verify IMAP/SMTP.
+9. Create notifications@izakhonoafrica.co.za separately. Set SMTP_PASS in the host .env to the exact password chosen during that mailbox's activation, then restart mail-bridge.
 
 The Stalwart management API token, control-plane token, handover encryption key, SMTP password and Roundcube secrets are separate credentials. Never put them in source control, browser JavaScript, email drafts or customer-visible logs.
 
