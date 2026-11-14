@@ -17,6 +17,26 @@ mail.izakhonoafrica.co.za, autoconfig.izakhonoafrica.co.za, autodiscover.izakhon
   reverse_proxy {$STALWART_HTTP_UPSTREAM}
 }
 
+hosting-admin.izakhonoafrica.co.za {
+  tls {
+    on_demand
+  }
+  route {
+    basic_auth {
+      {$HOST_ADMIN_USER} {$HOST_ADMIN_PASSWORD_HASH}
+    }
+    handle /api/* {
+      reverse_proxy host-runtime:8080 {
+        header_up Authorization "Bearer {$HOST_RUNTIME_TOKEN}"
+      }
+    }
+    handle {
+      root * /srv/host-admin
+      file_server
+    }
+  }
+}
+
 mail-admin.izakhonoafrica.co.za {
   tls {
     on_demand
