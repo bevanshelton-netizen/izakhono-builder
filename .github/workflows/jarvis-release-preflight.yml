@@ -95,4 +95,5 @@ jobs:
         run: npx wrangler d1 migrations list DB --remote
       - name: Report blocked remote D1 inspection
         if: steps.config.outputs.cloudflare_ready != 'true'
-        run: echo "Remote D1 inspection skipped: Cloudflare deployment credentials are not configured."
+        run: |
+          echo "Remote D1 inspection skipped: Cloudflare deployment credentials are not configured."
