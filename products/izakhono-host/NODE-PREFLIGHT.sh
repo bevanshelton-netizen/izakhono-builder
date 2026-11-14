@@ -12,7 +12,8 @@ check() {
   fi
 }
 
-printf '\nIZAKHONO NODE PREFLIGHT\n\n'
+printf '\nIZAKHONO SOFTWARE-NODE DEPLOYMENT PREFLIGHT\n'
+printf 'NODE01 identity: SOFTWARE (logical runtime); this checks only its selected execution substrate.\n\n'
 
 check 'Docker installed' command -v docker
 check 'Docker Compose available' docker compose version
@@ -33,8 +34,8 @@ fi
 
 printf '\n'
 if (( fail )); then
-  echo 'NODE PREFLIGHT: NOT READY'
+  echo 'EXECUTION SUBSTRATE PREFLIGHT: NOT READY'
   exit 1
 fi
 
-echo 'NODE PREFLIGHT: READY'
+echo 'EXECUTION SUBSTRATE PREFLIGHT: READY'
