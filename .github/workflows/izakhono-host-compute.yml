@@ -1,0 +1,36 @@
+name: IZAKHONO HOST — Compute Fabric CI
+on:
+  push:
+    branches:
+      - feat/izakhono-sovereign-compute-fabric-v1
+    paths:
+      - "products/izakhono-host/**"
+      - ".github/workflows/izakhono-host-compute.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "products/izakhono-host/**"
+      - ".github/workflows/izakhono-host-compute.yml"
+permissions:
+  contents: read
+concurrency:
+  group: izakhono-host-compute-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  compute-runtime:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Test native HOST runtime
+        working-directory: products/izakhono-host/runtime/control-plane
+        run: node smoke.mjs
+      - name: Test compute manager and real worker
+        working-directory: products/izakhono-host/runtime/compute-manager
+        run: node smoke.mjs
+      - name: Validate owned Docker Compose configuration
+        working-directory: products/izakhono-host
+        run: docker compose --env-file .env.example -f docker-compose.owned.yml config --quiet
