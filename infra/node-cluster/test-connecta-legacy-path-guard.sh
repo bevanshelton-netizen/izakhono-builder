@@ -56,4 +56,9 @@ make_fixture "$tmp/product-blocked"
 printf '%s\n' 'readFile("IZAKHONO-NODE01-WAVE1-REPORT.json")' > "$tmp/product-blocked/products/izakhono-social/scripts/runtime.js"
 run_guard_expect "$tmp/product-blocked" 10
 
-echo "[PASS] legacy guard permits logical NODE01-NODE04 references and blocks deprecated workflow and product-runtime dependencies."
+# Infrastructure certification scripts are production surfaces too.
+make_fixture "$tmp/infra-blocked"
+printf '%s\n' 'powershell CERTIFY-WAVE1-OWNED.ps1' > "$tmp/infra-blocked/infra/runtime-fabric/CERTIFY-OWNED-RUNTIME-WAVE1.ps1"
+run_guard_expect "$tmp/infra-blocked" 10
+
+echo "[PASS] legacy guard permits logical NODE01-NODE04 references and blocks deprecated workflow, product-runtime and infrastructure dependencies."
