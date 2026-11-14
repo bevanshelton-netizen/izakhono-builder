@@ -103,7 +103,8 @@ export async function workerControl(request:Request,authorized:boolean,db:D1Data
    if(job.dependencyIds.length){const blockers=jobs.filter(j=>job.dependencyIds.some(dep=>dep===j.sourceId||dep===j.id)&&j.status!=='completed');if(blockers.length)return json({ok:true,accepted:false,status:'blocked',job,reason:'dependencies-incomplete',blockers},202);}
    const lease=await claimSupervisorLease(db,job.id,job.workerId,`dispatch:${job.id}:${job.attempts+1}`);
    if(!lease)return json({ok:false,accepted:false,error:'job could not be exclusively leased'},409);
-   return json({ok:true,accepted:true,status:'leased',lease,note:'Lease granted. A registered worker must execute the bounded task and submit its evidence.'},202);
+   const execution=await executeLeasedSupervisorJob(db,lease,handlers);
+   return json({ok:execution.ok,accepted:true,status:execution.outcome,execution},execution.ok?200:202);
   }
   if(!body.workerId||!WORKER_INDEX[body.workerId])return json({ok:false,error:'unknown worker'},404);
   const w=WORKER_INDEX[body.workerId];
