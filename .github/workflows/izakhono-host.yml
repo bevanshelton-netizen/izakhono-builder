@@ -24,6 +24,8 @@ env:
   MINIO_ROOT_PASSWORD: ci-minio-password
   IZAKHONO_MAIL_API_TOKEN: ci-mail-api-token
   STALWART_RECOVERY_ADMIN: ci-stalwart-recovery-admin
+  # CI-only private-network placeholder; production SMTP_HOST is provisioned per node.
+  SMTP_HOST: 10.0.0.10
 
 jobs:
   validate:
