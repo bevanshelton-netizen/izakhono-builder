@@ -12,6 +12,7 @@ on:
       - '.github/workflows/connecta-promotion-gate.yml'
       - 'infra/runtime-fabric/LEGACY-NODE01-WAVE1-DEPRECATION.md'
       - 'infra/node-cluster/test-node-cluster-evidence-verifier.sh'
+      - 'infra/node-cluster/test-connecta-legacy-path-guard.sh'
       - 'infra/node-cluster/VERIFY-CONNECTA-PRODUCTION-PATH.sh'
       - 'infra/node-cluster/VERIFY-CONNECTA-LEGACY-PATH.sh'
   pull_request:
@@ -25,6 +26,7 @@ on:
       - '.github/workflows/connecta-promotion-gate.yml'
       - 'infra/runtime-fabric/LEGACY-NODE01-WAVE1-DEPRECATION.md'
       - 'infra/node-cluster/test-node-cluster-evidence-verifier.sh'
+      - 'infra/node-cluster/test-connecta-legacy-path-guard.sh'
       - 'infra/node-cluster/VERIFY-CONNECTA-PRODUCTION-PATH.sh'
       - 'infra/node-cluster/VERIFY-CONNECTA-LEGACY-PATH.sh'
   workflow_dispatch:
@@ -88,6 +90,10 @@ jobs:
       - name: Test four-node runtime evidence verifier
         shell: bash
         run: bash infra/node-cluster/test-node-cluster-evidence-verifier.sh
+
+      - name: Test legacy NODE01 regression guard
+        shell: bash
+        run: bash infra/node-cluster/test-connecta-legacy-path-guard.sh
 
       - name: Enforce no legacy NODE01 production dependency
         shell: bash
