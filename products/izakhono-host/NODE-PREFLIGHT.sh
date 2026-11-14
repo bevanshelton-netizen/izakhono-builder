@@ -43,7 +43,7 @@ check 'Outbound DNS resolution' getent hosts github.com
 check 'Outbound HTTPS' curl -fsS --max-time 10 https://github.com/ >/dev/null
 check 'At least 8 GiB memory available to Linux' bash -c 'awk "/MemTotal/ {exit !($2 >= 8000000)}" /proc/meminfo'
 check 'At least 40 GiB free root filesystem space' bash -c 'df -Pk / | awk "NR==2 {exit !($4 >= 40000000)}"'
-check 'Persistent storage writable' bash -c 'test -w /var/lib && test -w /opt'
+check 'User workspace writable' bash -c 'test -w "$HOME"'
 
 for port in 80 443 8080 8082 8443 25 465 587 110 143 993 995 4190; do
   check "TCP port $port free or already Docker-owned" check_port "$port"
