@@ -1,3 +1,4 @@
+name: izakhono-host
 services:
   host-runtime:
     build: ./runtime/control-plane
@@ -204,14 +205,23 @@ networks:
 
 volumes:
   host-runtime-data:
+    name: izakhono-host_host-runtime-data
   caddy-data:
+    name: izakhono-host_caddy-data
   caddy-config:
+    name: izakhono-host_caddy-config
   postgres-data:
+    name: izakhono-host_postgres-data
   minio-data:
+    name: izakhono-host_minio-data
   valkey-data:
+    name: izakhono-host_valkey-data
   mail-control-plane-state:
+    name: izakhono-host_mail-control-plane-state
   roundcube-db-data:
+    name: izakhono-host_roundcube-db-data
   roundcube-temp:
+    name: izakhono-host_roundcube-temp
 
 secrets:
   roundcube_db_password:
