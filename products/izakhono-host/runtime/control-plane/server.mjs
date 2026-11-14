@@ -229,7 +229,7 @@ const server = http.createServer(async (req, res) => {
         try { await fs.rename(base,previous); movedPrevious=true; }
         catch (error) { if (error?.code !== 'ENOENT') throw error; }
         await fs.rename(stage,base);
-        if (movedPrevious) await fs.rm(previous,{recursive:true,force:true});
+        if (movedPrevious) await fs.rm(previous,{recursive:true,force:true}).catch(()=>{});
       } catch (error) {
         if (movedPrevious) await fs.rename(previous,base).catch(()=>{});
         await fs.rm(stage,{recursive:true,force:true}).catch(()=>{});
