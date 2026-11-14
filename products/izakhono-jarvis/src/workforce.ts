@@ -15,7 +15,16 @@ export async function jarvisWorkforceRoute(req:Request,env:WorkforceEnv,owner:()
  if(p==="/api/jarvis/workforce"&&req.method==="GET"){
   const runs=await env.DB.prepare("SELECT id,objective,status,risk_level,created_at,updated_at FROM jarvis_orchestration_runs WHERE owner_scope='owner' ORDER BY created_at DESC LIMIT 30").bind().all();
   const steps=await env.DB.prepare("SELECT s.id,s.run_id,s.position,s.title,s.description,s.assigned_agent,s.status,s.attempts,s.max_attempts,s.lease_until,s.last_error,s.approval_required,s.evidence_json,s.owner_verification,s.owner_review_note,s.reviewed_at FROM jarvis_orchestration_steps s WHERE s.owner_scope='owner' ORDER BY s.run_id,s.position LIMIT 200").bind().all();
-  return out({ok:true,runs:runs.results||[],steps:steps.results||[],execution_mode:"owner-controlled-queue",autonomous_workers_connected:false});
+  const visibleSteps=steps.results||[];
+  const byStatus:Record<string,number>={},byAgent:Record<string,number>={},byVerification:Record<string,number>={};
+  let activeLeases=0,awaitingOwnerReview=0;
+  for(const step of visibleSteps){
+   const status=String((step as any).status||"unknown"),agent=String((step as any).assigned_agent||"unassigned"),verification=String((step as any).owner_verification||"not_applicable");
+   byStatus[status]=(byStatus[status]||0)+1;byAgent[agent]=(byAgent[agent]||0)+1;byVerification[verification]=(byVerification[verification]||0)+1;
+   if(status==="in_progress")activeLeases++;
+   if(status==="completed"&&verification==="pending")awaitingOwnerReview++;
+  }
+  return out({ok:true,runs:runs.results||[],steps:visibleSteps,metrics:{scope:"visible_steps_only",visible_steps:visibleSteps.length,by_status:byStatus,by_agent:byAgent,by_owner_verification:byVerification,active_leases:activeLeases,awaiting_owner_review:awaitingOwnerReview,limit:200},execution_mode:"owner-controlled-queue",autonomous_workers_connected:false});
  }
  const claim=p==="/api/jarvis/workforce/claim",m=p.match(/^\/api\/jarvis\/workforce\/steps\/([^/]+)\/(heartbeat|complete|fail|review|approve)$/);
  if(req.method!==(claim||m?"POST":"GET"))return new Response("Method not allowed",{status:405,headers:{allow:claim||m?"POST":"GET","cache-control":"no-store"}});
