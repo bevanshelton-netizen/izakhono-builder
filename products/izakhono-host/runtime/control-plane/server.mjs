@@ -68,7 +68,7 @@ function sensitiveDeploymentPath(relative) {
   const blockedDirs=new Set(['.git','.ssh','.aws','.azure','.config','secrets','node_modules','.next','.venv','venv','__pycache__']);
   if (parts.some(part=>blockedDirs.has(part))) return true;
   const name=parts.at(-1);
-  if (name === '.env' || name.startsWith('.env.') || [
+  if (name === '.env' || name.startsWith('.env') || [
     '.npmrc','.netrc','.htpasswd','.ds_store','id_rsa','id_ed25519','authorized_keys',
     'credentials.json','secrets.json'
   ].includes(name)) return true;
