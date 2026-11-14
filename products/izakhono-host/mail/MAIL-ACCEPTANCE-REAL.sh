@@ -31,7 +31,11 @@ PTR="$(dig +short -x "$MAIL_PUBLIC_IP" | sed 's/\.$//' | head -n1 || true)"
 [[ "$PTR" == "$MAIL_HOST" ]] && pass "Reverse DNS/PTR matches $MAIL_HOST" || bad "PTR is '$PTR', expected $MAIL_HOST"
 
 SPF="$(dig +short TXT "$MAIL_DOMAIN" | tr -d '"' | grep -m1 'v=spf1' || true)"
-[[ -n "$SPF" ]] && pass "SPF record exists: $SPF" || bad "SPF record missing"
+if [[ -n "$SPF" ]]; then
+  if [[ "$SPF" == *"ip4:$MAIL_PUBLIC_IP"* || "$SPF" == *" mx"* ]]; then pass "SPF authorizes the mail edge"; else bad "SPF exists but does not visibly authorize the mail edge"; fi
+else
+  bad "SPF record missing"
+fi
 DMARC="$(dig +short TXT "_dmarc.$MAIL_DOMAIN" | tr -d '"' | grep -m1 'v=DMARC1' || true)"
 [[ -n "$DMARC" ]] && pass "DMARC record exists" || bad "DMARC record missing"
 DKIM="$(dig +short TXT "$DKIM_SELECTOR._domainkey.$MAIL_DOMAIN" | tr -d '"' | grep -m1 'v=DKIM1' || true)"
@@ -54,7 +58,10 @@ test_tls() {
 }
 
 test_tls "SMTP submission 465" "$MAIL_HOST" 465
+test_tls "SMTP submission 587 STARTTLS" "$MAIL_HOST" 587 smtp
+test_tls "IMAP STARTTLS 143" "$MAIL_HOST" 143 imap
 test_tls "IMAPS 993" "$MAIL_HOST" 993
+test_tls "POP3S 995" "$MAIL_HOST" 995
 if timeout 15 openssl s_client -brief -starttls smtp -verify_return_error -verify_hostname "$MAIL_HOST" -connect "$MAIL_HOST:25" </dev/null >/tmp/izakhono-mail-smtp25-check.log 2>&1; then
   pass "SMTP port 25 STARTTLS handshake from this node"
 else
