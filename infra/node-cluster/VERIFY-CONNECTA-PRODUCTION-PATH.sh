@@ -33,6 +33,4 @@ done
 grep -q 'VERIFY-NODE-CLUSTER-EVIDENCE.sh' "$workflow" || fail "canonical certification workflow no longer invokes the four-node evidence verifier"
 grep -q 'CONNECTA-PROMOTION-GATE.sh' ".github/workflows/connecta-promotion-gate.yml" || fail "canonical promotion workflow no longer invokes the CONNECTA promotion gate"
 
-bash infra/node-cluster/VERIFY-CONNECTA-LEGACY-PATH.sh
-
-echo "[PASS] CONNECTA production path and four-node certification contract are intact."
+echo "[PASS] CONNECTA production path and four-node certification contract are intact. Run VERIFY-CONNECTA-LEGACY-PATH.sh as the separate legacy regression gate."
