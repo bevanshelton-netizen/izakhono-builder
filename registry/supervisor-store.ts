@@ -56,6 +56,21 @@ export async function renewSupervisorLease(db:D1Database,id:string,leaseToken:st
  if(Number(result.meta?.changes??0)!==1)throw new Error('Lease renewal rejected: token is stale, expired, or not owned by caller');
  return {id,leaseExpiresAt,renewedAt};
 }
+/** Record execution evidence only while the caller still owns the active, unexpired lease. */
+export async function recordLeasedEvidence(db:D1Database,id:string,leaseToken:string,evidence:unknown){
+ const at=new Date().toISOString();
+ const result=await db.prepare("UPDATE supervisor_jobs SET evidence_json=?,updated_at=? WHERE id=? AND status='running' AND lease_token=? AND lease_expires_at>?").bind(JSON.stringify(evidence),at,id,leaseToken,at).run() as {meta?:{changes?:number}};
+ if(Number(result.meta?.changes??0)!==1)throw new Error('Evidence write rejected: lease token is stale, expired, or not owned by caller');
+ return {id,updatedAt:at};
+}
+/** Fail a job only if the executor still owns the active lease; stale workers cannot fail a reclaimed job. */
+export async function failLeasedSupervisorJob(db:D1Database,id:string,leaseToken:string,actor:string,detail:unknown={}){
+ const at=new Date().toISOString();
+ const result=await db.prepare("UPDATE supervisor_jobs SET status='failed',updated_at=?,lease_token=NULL,lease_expires_at=NULL,claimed_by=NULL WHERE id=? AND status='running' AND lease_token=? AND lease_expires_at>?").bind(at,id,leaseToken,at).run() as {meta?:{changes?:number}};
+ if(Number(result.meta?.changes??0)!==1)throw new Error('Failure transition rejected: lease token is stale, expired, or not owned by caller');
+ await db.prepare('INSERT INTO supervisor_job_events(id,job_id,at,from_status,to_status,actor,detail_json) VALUES(?,?,?,?,?,?,?)').bind(crypto.randomUUID(),id,at,'running','failed',actor,JSON.stringify(detail)).run();
+ return {id,status:'failed' as const,updatedAt:at};
+}
 /** Independent QA verification is an atomic compare-and-swap against the active lease. */
 export async function verifyLeasedSupervisorJob(db:D1Database,id:string,leaseToken:string,evidence:unknown,actor:string){
  const at=new Date().toISOString();
