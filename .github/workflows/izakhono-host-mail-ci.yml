@@ -1,0 +1,76 @@
+name: IZAKHONO Host and Mail CI
+
+on:
+  push:
+    paths:
+      - 'products/izakhono-host/**'
+      - '.github/workflows/izakhono-host-mail-ci.yml'
+  pull_request:
+    paths:
+      - 'products/izakhono-host/**'
+      - '.github/workflows/izakhono-host-mail-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Test Mail Control Centre UI contract
+        run: node mail-control-centre-ui.test.mjs
+        working-directory: products/izakhono-host
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install mail control-plane test dependencies
+        run: pip install -r requirements-dev.txt
+        working-directory: products/izakhono-host/runtime/mail-control-plane
+
+      - name: Compile and test mail control plane
+        run: |
+          python -m compileall -q api
+          pytest -q api
+        working-directory: products/izakhono-host/runtime/mail-control-plane
+
+      - name: Check shell script syntax
+        run: |
+          bash -n ./*.sh
+          bash -n ./mail/*.sh
+          bash -n ./infra/isn-01/*.sh
+        working-directory: products/izakhono-host
+
+      - name: Validate Docker Compose definitions
+        run: |
+          cp .env.example .env
+          mkdir -p mail/secrets
+          printf 'ci-roundcube-db-secret' > mail/secrets/roundcube_db_password
+          printf 'ci-roundcube-des-key' > mail/secrets/roundcube_des_key
+          docker compose --env-file .env -f docker-compose.owned.yml config --quiet
+          docker compose --env-file .env -f mail/docker-compose.mail.yml config --quiet
+        working-directory: products/izakhono-host
+
+      - name: Validate Caddy configuration
+        working-directory: products/izakhono-host
+        run: |
+          HASH="$(docker run --rm caddy:2-alpine caddy hash-password --plaintext ci-password)"
+          docker run --rm \
+            -e TLS_EMAIL=ci@example.com \
+            -e STALWART_HTTP_UPSTREAM=http://stalwart:8080 \
+            -e MAIL_ADMIN_USER=admin \
+            -e MAIL_ADMIN_PASSWORD_HASH="$HASH" \
+            -e CONTROL_PLANE_TOKEN=ci-control-plane-token \
+            -v "$PWD/edge/Caddyfile:/etc/caddy/Caddyfile:ro" \
+            caddy:2-alpine caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
