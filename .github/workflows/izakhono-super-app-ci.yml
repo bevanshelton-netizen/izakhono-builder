@@ -21,6 +21,7 @@ jobs:
       - run: npx --yes tsx@4.20.3 products/izakhono-super-app/src/index.test.ts
       - run: npx --yes -p typescript@5.9.2 tsc --noEmit --target ES2022 --lib ES2022,DOM --module ESNext --moduleResolution Bundler products/izakhono-super-app/src/index.ts
       - run: node scripts/validate-super-app.mjs
+      - run: node --check products/izakhono-super-app/public/app.js
       - run: test -s products/izakhono-super-app/public/index.html
       - run: test -s products/izakhono-super-app/public/app.js
       - run: test -s products/izakhono-super-app/public/styles.css
