@@ -1,4 +1,15 @@
 import secureApp from './secure';
+import { jarvisExecutiveSnapshotRoute } from '../products/izakhono-jarvis/src/api';
+import { jarvisTasksRoute } from '../products/izakhono-jarvis/src/tasks';
+import { jarvisContextRoute, jarvisTaskContextRoute } from '../products/izakhono-jarvis/src/context';
+import { jarvisApprovalsRoute } from '../products/izakhono-jarvis/src/approvals';
+import { jarvisWorkspaceRoute } from '../products/izakhono-jarvis/src/workspace';
+import { jarvisOrchestrationRoute } from '../products/izakhono-jarvis/src/orchestration';
+import { jarvisReasoningRoute } from '../products/izakhono-jarvis/src/reasoning';
+import { jarvisMainframeRoute } from '../products/izakhono-jarvis/src/mainframe';
+import { jarvisBriefingRoute } from '../products/izakhono-jarvis/src/briefing';
+import { jarvisConversationsRoute } from '../products/izakhono-jarvis/src/conversations';
+import { jarvisWorkforceRoute } from '../products/izakhono-jarvis/src/workforce';
 import { ventureFactoryRoute } from './venture-factory';
 import { reviewLoopRoute } from './reviewloop';
 import { bidForgeRoute } from './bidforge';
@@ -1316,6 +1327,42 @@ async function publicAiCoreHost(req: Request, env: any, url: URL): Promise<Respo
 export default {
   async fetch(req: Request, env: any): Promise<Response> {
     const url = new URL(req.url);
+
+    if ((url.pathname === '/jarvis' || url.pathname === '/jarvis/') && req.method === 'GET') {\n      const page = new URL(req.url);\n      page.pathname = '/jarvis/index.html';\n      return env.ASSETS.fetch(new Request(page.toString(), req));\n    }\n\n    const jarvisSnapshot = await jarvisExecutiveSnapshotRoute(req, env, () => ownerAuthorized(req, env));
+    if (jarvisSnapshot) return jarvisSnapshot;
+
+    const jarvisTasks = await jarvisTasksRoute(req, env, () => ownerAuthorized(req, env));
+    if (jarvisTasks) return jarvisTasks;
+
+    const jarvisContext = await jarvisContextRoute(req, env, () => ownerAuthorized(req, env));
+    if (jarvisContext) return jarvisContext;
+
+    const jarvisTaskContext = await jarvisTaskContextRoute(req, env, () => ownerAuthorized(req, env));
+    if (jarvisTaskContext) return jarvisTaskContext;
+
+    const jarvisApprovals = await jarvisApprovalsRoute(req, env, () => ownerAuthorized(req, env));
+    if (jarvisApprovals) return jarvisApprovals;
+
+    const jarvisWorkspace = await jarvisWorkspaceRoute(req, env, () => ownerAuthorized(req, env));
+    if (jarvisWorkspace) return jarvisWorkspace;
+
+    const jarvisOrchestration = await jarvisOrchestrationRoute(req, env, () => ownerAuthorized(req, env));
+    if (jarvisOrchestration) return jarvisOrchestration;
+
+    const jarvisReasoning = await jarvisReasoningRoute(req, env, () => ownerAuthorized(req, env));
+    if (jarvisReasoning) return jarvisReasoning;
+
+    const jarvisBriefing = await jarvisBriefingRoute(req, env, () => ownerAuthorized(req, env));
+    if (jarvisBriefing) return jarvisBriefing;
+
+    const jarvisConversations = await jarvisConversationsRoute(req, env, () => ownerAuthorized(req, env));
+    if (jarvisConversations) return jarvisConversations;
+
+    const jarvisWorkforce = await jarvisWorkforceRoute(req, env, () => ownerAuthorized(req, env));
+    if (jarvisWorkforce) return jarvisWorkforce;
+
+    const jarvisMainframe = await jarvisMainframeRoute(req, env, () => ownerAuthorized(req, env));
+    if (jarvisMainframe) return jarvisMainframe;
 
     const commandsApi = await commandApiRoute(req, env, url);
     if (commandsApi) return commandsApi;
