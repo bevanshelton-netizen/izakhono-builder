@@ -55,15 +55,13 @@ else
   fail '.env present for activation'
 fi
 
-for port in 80 443 8080 8082 8443 53 25 465 587 110 143 993 995 4190; do
+for port in 80 443 8080 8082 8443 25 465 587 110 143 993 995 4190; do
   check_port_owned_or_free "TCP :$port" "$port"
 done
-if ! ss -lun 'sport = :53' 2>/dev/null | grep -q '\*:53'; then
-  pass 'DNS UDP :53 (free)'
-elif docker ps --format '{{.Ports}}' | grep -q '53->53/udp'; then
-  pass 'DNS UDP :53 (Docker-owned)'
+if ss -ltn 'sport = :53' 2>/dev/null | grep -q LISTEN || ss -lun 'sport = :53' 2>/dev/null | grep -q UNCONN; then
+  warn 'Port 53 is occupied; CoreDNS remains loopback-only on 5353 until public authoritative DNS nodes are deployed.'
 else
-  fail 'DNS UDP :53 (non-Docker listener)'
+  pass 'Public DNS port 53 currently unbound on this host'
 fi
 
 if ip -4 route show default >/dev/null 2>&1; then pass 'IPv4 default route'; else fail 'IPv4 default route'; fi
