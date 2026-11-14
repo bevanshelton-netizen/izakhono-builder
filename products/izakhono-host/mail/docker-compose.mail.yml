@@ -4,13 +4,18 @@ services:
     restart: unless-stopped
     environment:
       STALWART_RECOVERY_ADMIN: ${STALWART_RECOVERY_ADMIN:?set STALWART_RECOVERY_ADMIN}
+      STALWART_PUBLIC_URL: ${STALWART_PUBLIC_URL:-https://mail.izakhonoafrica.co.za}
     ports:
       - "25:25"
       - "465:465"
       - "587:587"
+      - "110:110"
       - "143:143"
       - "993:993"
-      - "8443:443"
+      - "995:995"
+      - "4190:4190"
+      - "${MAIL_NODE_BIND_IP:-127.0.0.1}:8080:8080"
+      - "127.0.0.1:8443:443"
     volumes:
       - stalwart-etc:/etc/stalwart
       - stalwart-data:/var/lib/stalwart
@@ -29,4 +34,6 @@ networks:
 
 volumes:
   stalwart-etc:
+    name: izakhono-stalwart-etc
   stalwart-data:
+    name: izakhono-stalwart-data
