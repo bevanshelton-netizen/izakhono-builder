@@ -32,7 +32,7 @@ jobs:
         with:
           node-version: 22
       - name: Install locked dependencies
-        run: npm ci --ignore-scripts --no-audit --no-fund
+        run: npm install --ignore-scripts --no-audit --no-fund
       - name: Validate J.A.R.V.I.S. migration chain in SQLite
         run: |
           python3 - <<'PY'
