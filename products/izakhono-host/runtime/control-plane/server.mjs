@@ -63,6 +63,17 @@ function safeRelative(filePath) {
   if (!value || value.includes('\0') || value.split('/').some(part => part === '..' || part === '.')) return null;
   return value;
 }
+function sensitiveDeploymentPath(relative) {
+  const parts=relative.toLowerCase().split('/');
+  const blockedDirs=new Set(['.git','.ssh','.aws','.azure','.config','secrets','node_modules','.next','.venv','venv','__pycache__']);
+  if (parts.some(part=>blockedDirs.has(part))) return true;
+  const name=parts.at(-1);
+  if (name === '.env' || name.startsWith('.env.') || [
+    '.npmrc','.netrc','.htpasswd','.ds_store','id_rsa','id_ed25519','authorized_keys',
+    'credentials.json','secrets.json'
+  ].includes(name)) return true;
+  return /\.(pem|key|p12|pfx|sqlite3?|db|bak|log|dump|sql)$/i.test(name);
+}
 function escapeHtml(value) { return String(value).replace(/[&<>\"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[c])); }
 
 async function ensureSiteFiles(site) {
@@ -182,6 +193,7 @@ const server = http.createServer(async (req, res) => {
       for (const item of files) {
         const relative=safeRelative(item?.path);
         if (!relative) return json(res,400,{ok:false,error:'Invalid file path'});
+        if (sensitiveDeploymentPath(relative)) return json(res,400,{ok:false,error:`Sensitive deployment path is blocked: ${relative}`});
         if (seenPaths.has(relative)) return json(res,400,{ok:false,error:`Duplicate deployment path: ${relative}`});
         seenPaths.add(relative);
         let data;
