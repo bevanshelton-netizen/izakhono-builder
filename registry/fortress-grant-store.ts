@@ -17,10 +17,12 @@ export async function ensureFortressGrantSchema(db:D1Database){
  await db.prepare(`CREATE TABLE IF NOT EXISTS fortress_capability_grants (
  jti TEXT PRIMARY KEY, worker_id TEXT NOT NULL, risk TEXT NOT NULL, issuer TEXT NOT NULL,
  issued_at TEXT NOT NULL, expires_at TEXT NOT NULL, revoked_at TEXT, consumed_at TEXT,
- token_digest TEXT NOT NULL
+ token_digest TEXT NOT NULL, revoked_by TEXT
  )`).run();
+ try{await db.prepare('ALTER TABLE fortress_capability_grants ADD COLUMN revoked_by TEXT').run();}catch(error){if(!/duplicate column|already exists/i.test(String(error)))throw error;}
  await db.prepare('CREATE INDEX IF NOT EXISTS idx_fortress_grants_worker_expiry ON fortress_capability_grants(worker_id,expires_at)').run();
- await db.prepare(`CREATE TRIGGER IF NOT EXISTS fortress_grant_revocation_audit AFTER UPDATE OF revoked_at ON fortress_capability_grants WHEN OLD.revoked_at IS NULL AND NEW.revoked_at IS NOT NULL BEGIN INSERT INTO supervisor_job_events(id,job_id,at,from_status,to_status,actor,detail_json) VALUES(lower(hex(randomblob(16))),'fortress-grant:'||NEW.jti,NEW.revoked_at,'issued','revoked',NEW.issuer,json_object('jti',NEW.jti)); END`).run();
+ await db.prepare(`CREATE TRIGGER IF NOT EXISTS fortress_grant_revocation_audit AFTER UPDATE OF revoked_at ON fortress_capability_grants WHEN OLD.revoked_at IS NULL AND NEW.revoked_at IS NOT NULL BEGIN INSERT INTO supervisor_job_events(id,job_id,at,from_status,to_status,actor,detail_json) VALUES(lower(hex(randomblob(16))),'fortress-grant:'||NEW.jti,NEW.revoked_at,'issued','revoked',COALESCE(NEW.revoked_by,NEW.issuer),json_object('jti',NEW.jti)); END`).run();
+ await db.prepare(`CREATE TRIGGER IF NOT EXISTS fortress_grant_consumption_audit AFTER UPDATE OF consumed_at ON fortress_capability_grants WHEN OLD.consumed_at IS NULL AND NEW.consumed_at IS NOT NULL BEGIN INSERT INTO supervisor_job_events(id,job_id,at,from_status,to_status,actor,detail_json) VALUES(lower(hex(randomblob(16))),'fortress-grant:'||NEW.jti,NEW.consumed_at,'issued','consumed',NEW.worker_id,json_object('jti',NEW.jti,'workerId',NEW.worker_id)); END`).run();
 }
 export async function registerFortressGrant(db:D1Database,claims:FortressCapabilityClaims,issuer:string,tokenDigest:string){
  await db.prepare('INSERT INTO fortress_capability_grants(jti,worker_id,risk,issuer,issued_at,expires_at,token_digest) VALUES(?,?,?,?,?,?,?)')
@@ -32,7 +34,7 @@ export async function consumeFortressGrant(db:D1Database,jti:string,workerId:str
  return {jti,consumedAt:now};
 }
 export async function revokeFortressGrant(db:D1Database,jti:string,issuer:string,now=new Date().toISOString()){
- const result=await db.prepare('UPDATE fortress_capability_grants SET revoked_at=? WHERE jti=? AND revoked_at IS NULL').bind(now,jti).run() as {meta?:{changes?:number}};
+ const result=await db.prepare('UPDATE fortress_capability_grants SET revoked_at=?,revoked_by=? WHERE jti=? AND revoked_at IS NULL').bind(now,issuer,jti).run() as {meta?:{changes?:number}};
  if(Number(result.meta?.changes??0)!==1)throw new Error('grant not found or already revoked');
  return {jti,revokedAt:now};
 }
