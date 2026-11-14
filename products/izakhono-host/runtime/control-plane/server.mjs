@@ -96,7 +96,7 @@ async function findSite(hostname) {
 const MIME = {
   '.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'text/javascript; charset=utf-8',
   '.json':'application/json; charset=utf-8','.svg':'image/svg+xml','.png':'image/png','.jpg':'image/jpeg','.jpeg':'image/jpeg',
-  '.webp':'image/webp','.ico':'image/x-icon','.txt':'text/plain; charset=utf-8','.xml':'application/xml'
+  '.webp':'image/webp','.avif':'image/avif','.gif':'image/gif','.ico':'image/x-icon','.txt':'text/plain; charset=utf-8','.xml':'application/xml','.pdf':'application/pdf','.woff':'font/woff','.woff2':'font/woff2','.ttf':'font/ttf','.eot':'application/vnd.ms-fontobject','.mp4':'video/mp4','.webm':'video/webm','.webmanifest':'application/manifest+json','.wasm':'application/wasm'
 };
 
 async function serveSite(req, res) {
