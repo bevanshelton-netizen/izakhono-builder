@@ -11,12 +11,14 @@ function equalSecret(a:string,b:string){if(!a||!b||a.length!==b.length)return fa
 function ownerOK(req:Request,env:Env){return !!env.IZAKHONO_OWNER_ACCESS_KEY&&equalSecret(req.headers.get("x-izakhono-owner-key")||"",env.IZAKHONO_OWNER_ACCESS_KEY);}
 function configured(env:Env){return !!(env.IZAKHONO_AI_GATEWAY_URL&&env.IZAKHONO_AI_GATEWAY_INTERNAL_KEY&&env.IZAKHONO_AI_WORKFLOW_KEY);}
 async function aiStatus(req:Request,env:Env){
- if(!ownerOK(req,env))return json({ok:false,authorized:false,error:"owner_access_required"},401);
- if(!configured(env))return json({ok:true,authorized:true,gateway_configured:false,gateway_reachable:false});
- try{const base=new URL(env.IZAKHONO_AI_GATEWAY_URL!);if(base.protocol!=="https:")return json({ok:true,authorized:true,gateway_configured:true,gateway_reachable:false});
+ const supplied=req.headers.get("x-izakhono-owner-key")||"";
+ const authorized=supplied?ownerOK(req,env):false;
+ if(supplied&&!authorized)return json({ok:false,authorized:false,error:"owner_access_required"},401);
+ if(!configured(env))return json({ok:true,authorized,gateway_configured:false,gateway_reachable:false});
+ try{const base=new URL(env.IZAKHONO_AI_GATEWAY_URL!);if(base.protocol!=="https:")return json({ok:true,authorized,gateway_configured:true,gateway_reachable:false});
  const r=await fetch(new URL("/healthz",base),{signal:AbortSignal.timeout(8000)});const d=await r.json() as Record<string,unknown>;
- return json({ok:true,authorized:true,gateway_configured:true,gateway_reachable:r.ok&&d.ok===true,service:"IZAKHONO SUPER AI",version:typeof d.version==="string"?d.version:undefined});
- }catch{return json({ok:true,authorized:true,gateway_configured:true,gateway_reachable:false});}
+ return json({ok:true,authorized,gateway_configured:true,gateway_reachable:r.ok&&d.ok===true,service:"IZAKHONO SUPER AI",version:typeof d.version==="string"?d.version:undefined});
+ }catch{return json({ok:true,authorized,gateway_configured:true,gateway_reachable:false});}
 }
 async function aiChat(req:Request,env:Env){
  if(!ownerOK(req,env))return json({ok:false,error:"owner_access_required"},401);
