@@ -106,6 +106,18 @@ export async function listSupervisorJobs(db:D1Database,status?:SupervisorStatus)
  return r.results.map(x=>({id:String(x.id),source:String(x.source),sourceId:String(x.source_id),title:String(x.title),workerId:String(x.worker_id),priority:Number(x.priority),risk:x.risk as SupervisorRisk,status:x.status as SupervisorStatus,dependencyIds:parse(x.dependency_ids_json,[]),humanGate:x.human_gate?String(x.human_gate):undefined,attempts:Number(x.attempts),input:parse(x.input_json,{}),evidence:parse(x.evidence_json,{}),createdAt:String(x.created_at),updatedAt:String(x.updated_at)} as SupervisorJob));
 }
 
+/** Operator read-only dead-letter inspection. Failed jobs remain unchanged until an authorized recovery workflow is implemented. */
+export async function listDeadLetterJobs(db:D1Database,limit=50){
+ const bounded=Math.min(Math.max(Math.floor(limit),1),100);
+ const jobs=await db.prepare("SELECT id,source,source_id,title,worker_id,priority,risk,attempts,input_json,evidence_json,created_at,updated_at FROM supervisor_jobs WHERE status='failed' ORDER BY updated_at DESC LIMIT ?").bind(bounded).all<Record<string,unknown>>();
+ const results=[];
+ for(const job of jobs.results){
+  const events=await db.prepare("SELECT at,from_status,to_status,actor,detail_json FROM supervisor_job_events WHERE job_id=? ORDER BY at ASC").bind(String(job.id)).all<Record<string,unknown>>();
+  results.push({id:String(job.id),source:String(job.source),sourceId:String(job.source_id),title:String(job.title),workerId:String(job.worker_id),priority:Number(job.priority),risk:String(job.risk),attempts:Number(job.attempts),input:parse(job.input_json,{}),evidence:parse(job.evidence_json,{}),createdAt:String(job.created_at),updatedAt:String(job.updated_at),events:events.results.map(e=>({at:String(e.at),fromStatus:e.from_status??null,toStatus:String(e.to_status),actor:String(e.actor),detail:parse(e.detail_json,{})}))});
+ }
+ return {count:results.length,jobs:results};
+}
+
 export async function supervisorCounts(db:D1Database){
  const r=await db.prepare('SELECT status,COUNT(*) as count FROM supervisor_jobs GROUP BY status').all<{status:SupervisorStatus;count:number}>();
  const counts={queued:0,running:0,verified:0,completed:0,blocked:0,failed:0};
