@@ -1,71 +1,104 @@
-# IZAKHONO HOST v0.3
+# IZAKHONO HOST — owned-first hosting and email infrastructure
 
-IZAKHONO HOST is the owned-first customer hosting control plane for domains, websites, SSL, DNS, email and billing.
+Project ID: IZK-INF-HOST-001
+Division: IZAKHONO Infrastructure
+Canonical platform: IZAKHONO HOSTING GATEWAY
+Mail service: IZAKHONO MAIL (IZK-INF-MAIL-001)
 
-## Production architecture
+## Physical host versus logical node
 
-`IZAKHONO CODE → BUILDER → PROVISIONER → IZAKHONO NODE CLUSTER → CoreDNS/Caddy/TLS → native site runtime → FORTRESS`
+- **ISN-01** is the physical execution environment currently designated for the owner-controlled deployment (Windows 11 + WSL2 Ubuntu 24.04).
+- **NODE01** is the logical software-node identity and role. It is not a physical computer.
+- The same logical NODE01 services can later move to dedicated Linux servers without changing the platform's canonical identity.
 
-The customer web runtime is owned by IZAKHONO. External services are bounded adapters and are not the runtime of record.
+## Purpose
 
-## Native runtime
+This repository contains the owner-controlled hosting runtime and the IZAKHONO email infrastructure. The design is owned-first and externally reversible: IZAKHONO owns the control plane, provisioning rules, customer configuration, domain and service records, while replaceable compute, DNS, storage and delivery providers may be used underneath where necessary.
 
-`runtime/control-plane` now:
-- provisions a tenant site record;
-- creates the site's persistent public document root;
-- serves static site content by customer hostname;
-- exposes `/health`;
-- exposes `/api/tls/ask` for Caddy on-demand TLS admission;
-- records acceptance evidence for HTTPS, DNS and content;
-- persists site/deployment state on the owned data volume.
+The platform is not considered production-live merely because its Docker containers start. Production status requires verified DNS, certificates, external reachability, mail delivery, backup recovery and tenant-security tests.
 
-`docker-compose.owned.yml` supplies the owned-runtime baseline: native runtime, Caddy edge, CoreDNS, PostgreSQL, MinIO and Valkey.
+## Current implementation
 
-## Multi-node operation
+### Hosting runtime
 
-`CLUSTER-NODE-ROLES.md` defines the production roles and resilience model. `NODE-PREFLIGHT.sh` validates a physical node before activation.
+- Caddy edge proxy with on-demand TLS allowlisting.
+- Native Node.js host runtime and internal control API.
+- Host provisioning and health endpoints.
+- PostgreSQL, MinIO, Valkey and CoreDNS services provisioned in the owned stack.
+- Contact gateway and mail bridge.
+- Supabase tenant tables with row-level security restricted to tenant ownership; browser-side direct writes are disabled.
+- Persistent runtime and edge volumes.
 
-The platform can distribute CONTROL, EDGE, DNS, RUNTIME, DATA, MAIL, BACKUP and FORTRESS roles across the available owned nodes.
+The current native host runtime is an owned baseline, not yet a full commercial PaaS. The customer self-service portal, registrar/DNS-provider automation, tenant billing lifecycle, complete object-storage integration and production multi-node failover still require implementation and verification. Do not promise one-click customer onboarding until those gates are complete.
 
-## Activation
+### Email infrastructure
 
-On each designated node, run the preflight first:
+- Stalwart mail transport and mailbox storage.
+- Roundcube browser webmail with a separate PostgreSQL database.
+- Private IZAKHONO Mail Control Plane with approved-domain allowlist and DNS TXT ownership verification.
+- One-time mailbox handover and password activation workflow.
+- Separate human and application mail identities.
+- Caddy HTTPS routes for mail, webmail, autoconfig, autodiscover and MTA-STS.
+- SPF, DKIM, DMARC, MTA-STS, TLS-RPT and PTR acceptance checks.
+- Separate encrypted Restic backup and restore workflows for host and Stalwart data.
 
-```bash
-./NODE-PREFLIGHT.sh
-```
+Initial approved domain: izakhonoafrica.co.za.
+Human mailbox target: bevans@izakhonoafrica.co.za.
+Application sender target: notifications@izakhonoafrica.co.za.
 
-On the primary control/edge/runtime node:
+Existing Hostinger mail must remain active until the IZAKHONO service passes independent send/receive tests and a controlled MX cutover is approved.
 
-```bash
-./NODE01-ACTIVATE.sh
-```
+## ISN-01 bootstrap and NODE01 activation
 
-For a first-time host this creates `.env` with generated secrets. Set `TLS_EMAIL` to the operational certificate address before public HTTPS activation. Never commit `.env`.
+Run these steps inside the Ubuntu WSL2 terminal on ISN-01:
 
-## Recovery
+1. From this directory, run ./infra/isn-01/ISN-01-BOOTSTRAP-WSL2.sh. It enables WSL2 systemd if required, installs Docker Engine and Compose, and installs operational tools.
+2. If the script asks for a WSL restart, run wsl --shutdown from Windows PowerShell, reopen Ubuntu and rerun the bootstrap.
+3. Close and reopen Ubuntu so Docker group membership takes effect.
+4. Run ./NODE-PREFLIGHT.sh.
+5. Run ./NODE01-ACTIVATE.sh.
 
-- `backup-owned.sh` creates a verified SHA-256 runtime backup.
-- `restore-owned.sh <backup.tar.gz>` performs a controlled state restore after explicit confirmation.
-- `runtime/control-plane/smoke.mjs` is the native end-to-end smoke test used by CI.
+NODE01-ACTIVATE.sh creates independent host secrets, creates protected Roundcube secrets, starts the host stack and starts the local or configured remote Stalwart mail service. It does not claim that the public mail service is live.
 
-## DNS and HTTPS
+## Mail setup sequence
 
-Caddy uses on-demand public TLS and asks the native runtime whether a hostname is provisioned before a certificate can be issued. Public DNS still requires the customer's A/AAAA records to reach the owned edge, and authoritative DNS delegation requires independent external resolver evidence.
+1. Configure a working TLS contact address and the owner-controlled host .env.
+2. Open the local Stalwart setup interface in co-located mode at http://127.0.0.1:8080 or https://127.0.0.1:8443.
+3. Create a dedicated least-privilege Stalwart API token and replace STALWART_API_KEY in .env.
+4. Restart the mail-control-plane service and run ./mail/MAIL-CONTROL-PLANE-VERIFY.sh status.
+5. Run ./mail/MAIL-CONTROL-PLANE-VERIFY.sh request; publish the exact TXT challenge; then run ./mail/MAIL-CONTROL-PLANE-VERIFY.sh verify.
+6. Provision bevans and notifications using ./mail/MAILBOX-PROVISION.sh.
+7. Activate each mailbox through ./mail/MAILBOX-ACTIVATE.sh. Store the chosen mailbox passwords in the owner's password manager.
+8. Set SMTP_PASS to the notifications mailbox password and restart mail-bridge.
+9. Complete the DNS worksheet and run ./mail/MAIL-ACCEPTANCE-REAL.sh.
+10. Test inbound and outbound mail from independent external providers before any MX cutover.
 
-CoreDNS is included as the owned authoritative-DNS baseline. Secondary DNS capacity should run on independent owned nodes before production delegation is considered complete.
+See mail/README.md and mail/DNS-RECORDS-IZAKHONOAFRICA.md for the full mail runbook.
 
-## Security
+## Backup and restore
 
-No customer can execute arbitrary infrastructure commands from the browser. Provisioning is represented as typed jobs and provider adapters. Production secrets are server-side only.
+- Copy .backup.env.example to .backup.env and configure an encrypted Restic repository.
+- Run ./backup-owned.sh for the host runtime, Caddy, MinIO, Valkey, PostgreSQL, Roundcube and mail-control-plane state.
+- Run ./mail/backup-mail-node.sh for Stalwart configuration and mailbox data. The Stalwart snapshot requires a short maintenance window.
+- Use ./restore-owned.sh <snapshot-id> for host recovery.
+- Use ./mail/restore-mail-node.sh <snapshot-id> for mail-server recovery.
 
-## Status vocabulary
+A backup is not considered verified until a restore drill has completed successfully.
 
-- `planned`
-- `queued`
-- `running`
-- `verified`
-- `failed`
-- `paused`
+## WSL2 and public-edge limitation
 
-A service is not marked live without current verification evidence.
+WSL2 NAT is not automatically a production public hosting or email edge. Public websites and especially inbound SMTP require stable public routing, Windows/router port forwarding, firewall rules, a static public IP, provider-controlled PTR/reverse DNS, outbound TCP 25 permission and independent external tests.
+
+If ISN-01 cannot satisfy those requirements, use a dedicated Linux mail/edge node under IZAKHONO's control and connect it over a private VPN. The service configuration supports local and remote mail modes; the private route itself must be tested from the Docker containers.
+
+## Production release gates — not yet certified
+
+- Physical ISN-01 Docker bootstrap has not been executed or verified in this repository workflow.
+- Public static IP, PTR and inbound/outbound SMTP reachability have not been verified.
+- Public DNS records and TLS certificates have not been verified.
+- Stalwart API token, initial domain verification and mailbox activation remain owner-side setup steps.
+- Real send/receive tests to independent providers remain outstanding.
+- Restic credentials, off-host snapshots and restore drills remain outstanding.
+- Customer self-service portal, tenant-aware provisioning, registrar/DNS automation and production multi-node failover remain outstanding.
+
+Until these are completed, report the system as **implementation committed / deployment pending**, not live or production-ready.
