@@ -26,6 +26,8 @@ echo
 echo
 echo "NODE01 SOFTWARE ACTIVATION: HOST RUNTIME STARTED"
 echo "Mail services have been staged. Mailbox creation remains blocked until the Stalwart API token and domain ownership verification are completed."
+echo "Hosting Control Centre: https://hosting-admin.izakhonoafrica.co.za (password file: host/secrets/host_admin_password)"
+echo "Mail Control Centre: https://mail-admin.izakhonoafrica.co.za (password file: mail/secrets/mail_admin_password)"
 echo "Public LIVE status remains blocked until DNS, TLS, static-IP/PTR, external SMTP, IMAP, deliverability and restore acceptance pass."
 echo
 echo "Useful verification:"
