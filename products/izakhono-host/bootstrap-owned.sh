@@ -11,13 +11,31 @@ if [[ ! -f .env ]]; then
   cp .env.example .env
   python3 - <<'PY'
 from pathlib import Path
+import re
 import secrets
 p=Path('.env')
-s=p.read_text()
-s=s.replace('replace-with-a-long-random-token', secrets.token_urlsafe(48), 1)
-s=s.replace('replace-with-a-long-random-password', secrets.token_urlsafe(32), 1)
-s=s.replace('replace-with-a-long-random-password', secrets.token_urlsafe(32), 1)
-p.write_text(s)
+lines=p.read_text().splitlines()
+generated = {
+    'HOST_RUNTIME_TOKEN': secrets.token_urlsafe(48),
+    'POSTGRES_PASSWORD': secrets.token_urlsafe(32),
+    'MINIO_ROOT_PASSWORD': secrets.token_urlsafe(32),
+    'IZAKHONO_MAIL_API_TOKEN': secrets.token_urlsafe(48),
+    'COMPUTE_ADMIN_TOKEN': secrets.token_urlsafe(48),
+    'COMPUTE_WORKER_TOKEN': secrets.token_urlsafe(48),
+    'STALWART_RECOVERY_ADMIN': 'admin:' + secrets.token_urlsafe(32),
+}
+seen=set()
+for i,line in enumerate(lines):
+    if not line or line.lstrip().startswith('#') or '=' not in line:
+        continue
+    key=line.split('=',1)[0].strip()
+    if key in generated:
+        lines[i]=key+'='+generated[key]
+        seen.add(key)
+missing=set(generated)-seen
+if missing:
+    raise SystemExit('Missing required secret settings: '+', '.join(sorted(missing)))
+p.write_text('\n'.join(lines)+'\n')
 PY
   echo "Created .env with generated secrets. Set TLS_EMAIL before production use."
 fi
