@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>IZAKHONO BUILDER — Describe It. See It Built.</title>
-  <meta name="description" content="IZAKHONO BUILDER turns a plain-language brief into a controlled app or website build with automated validation and owner-controlled source.">
+  <title>IZAKHONO AI — Private Development Workspace</title>
+  <meta name="description" content="IZAKHONO AI is your private workspace to build, create, manage, test and deploy your own apps, websites and projects."><meta name="theme-color" content="#0b1020"><meta name="application-name" content="IZAKHONO AI"><link rel="manifest" href="/manifest.webmanifest"><link rel="icon" href="/icons/izakhono-ai.svg" type="image/svg+xml"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="IZAKHONO AI">
   <style>
     :root{--bg:#07120f;--panel:#0d1b17;--panel2:#10231e;--line:#244238;--txt:#f4fff9;--muted:#9fb9ae;--green:#64f3a5;--gold:#ffd978;--cyan:#63d7ff;--danger:#ff9898}
     *{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 80% 0,#193f34 0,transparent 28%),linear-gradient(180deg,#07120f,#081512 55%,#06100e);color:var(--txt);font-family:Inter,system-ui,sans-serif;min-height:100vh}
@@ -27,13 +27,24 @@
     .ownerTools{margin-top:30px}
     .overlay{display:none;position:fixed;inset:0;background:#000c;z-index:50;padding:20px;align-items:center;justify-content:center}.overlay.on{display:flex}.modal{width:min(900px,100%);max-height:90vh;overflow:auto;border:1px solid var(--line);background:#0b1814;border-radius:20px;padding:22px}.modalTop{display:flex;gap:10px;align-items:center}.modalTop button{margin-left:auto}.recipe{white-space:pre-wrap;word-break:break-word;background:#06100e;border:1px solid var(--line);padding:14px;border-radius:12px;color:#c9e2d7;font-size:12px;line-height:1.5}.footer{text-align:center;color:#789488;font-size:11px;margin-top:40px}.lock{border:1px solid #5a4d26;background:#1e1a0b;color:#ffe8a1;border-radius:12px;padding:11px 13px;font-size:12px;margin-bottom:14px}
     @media(max-width:900px){.hero,.grid2{grid-template-columns:1fr}.modules{grid-template-columns:1fr}.tag{display:none}.wrap{padding-top:24px}}
+  
+    :root{--bg:#070b14;--panel:#0d1423;--panel2:#111d31;--line:#263852;--txt:#f4f6fb;--muted:#9eabc0;--green:#d6ad55;--gold:#f5d98c;--cyan:#62c9f4}
+    body{background:radial-gradient(circle at 82% 0,#1a3555 0,transparent 32%),linear-gradient(180deg,#070b14,#0a1220 58%,#070b14)}
+    .top{background:#070b14ee;border-bottom-color:#263852}
+    .logo{color:#101727;background:linear-gradient(135deg,#fff0b0,#d6ad55,#8d5d20);box-shadow:0 0 24px #d6ad5533}
+    .ey{color:#d6ad55}.primary{background:linear-gradient(135deg,#d6ad55,#f5d98c);color:#101727}
+    .card{background:linear-gradient(180deg,#101a2b,#0b1321);border-color:#263852}
+    .promptLab{border-color:#426080;background:radial-gradient(circle at 85% 20%,#17496a 0,transparent 30%),radial-gradient(circle at 20% 120%,#33264a 0,transparent 36%),linear-gradient(135deg,#101a2d,#0a1220)}
+    .promptShell h1 span{background:linear-gradient(90deg,#f5d98c,#d6ad55,#62c9f4);-webkit-background-clip:text;background-clip:text;color:transparent}
+    .quickControls .primary{background:linear-gradient(135deg,#d6ad55,#f5d98c);color:#101727}
+    #installApp[hidden]{display:none}
   </style>
 </head>
 <body>
 <header class="top">
   <div class="logo">I</div>
-  <div><div class="brand">IZAKHONO BUILDER</div><div class="tag">Build fast · own the source · validate automatically</div></div>
-  <div class="statusdot"><span class="dot" id="healthDot"></span><span id="healthText">Checking engine</span></div>
+  <div><div class="brand">IZAKHONO AI</div><div class="tag">PRIVATE DEVELOPMENT WORKSPACE · BUILD · CREATE · MANAGE · DEPLOY</div></div>
+  <button class="btn" id="installApp" type="button" hidden>Install IZAKHONO AI</button><div class="statusdot"><span class="dot" id="healthDot"></span><span id="healthText">Checking engine</span></div>
 </header>
 <main class="wrap">
   <section class="section card promptLab" id="buildAnything">
@@ -221,5 +232,5 @@ async function importHandoff(){
 createForm.addEventListener('submit',async e=>{e.preventDefault();createMsg.className='message';if(!state.secret){createMsg.className='message bad';createMsg.textContent='Unlock the builder first.';return}const fd=new FormData(createForm);const payload={name:fd.get('name'),slug:String(fd.get('slug')||'').toLowerCase(),category:fd.get('category'),description:fd.get('description'),modules:fd.getAll('module')};createMsg.textContent='Creating project…';try{const p=await api('/api/projects',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload)});await api(`/api/projects/${p.id}/plan`,{method:'POST'});createMsg.className='message good';createMsg.textContent='Project created and build plan generated. Generate the repository package from the build queue.';createForm.reset();await loadProjects()}catch(err){createMsg.className='message bad';createMsg.textContent=err.message}});
 health();loadModules();if(state.secret)unlockOwner();
 </script>
-<script src="/share-widget.js" defer></script></body>
+<script src="/share-widget.js" defer></script><script src="/pwa-install.js" defer></script></body>
 </html>
