@@ -23,6 +23,8 @@ begin
   if existing is not null then
     if existing->>'provider_requested' is distinct from p_provider then raise exception 'idempotency_key_provider_mismatch'; end if;
     if existing->>'external_reference' is distinct from p_external_reference then raise exception 'idempotency_key_reference_mismatch'; end if;
+    if (existing->>'amount')::numeric is distinct from p_amount then raise exception 'idempotency_key_amount_mismatch'; end if;
+    if upper(existing->>'currency') is distinct from upper(p_currency) then raise exception 'idempotency_key_currency_mismatch'; end if;
     return existing || jsonb_build_object('idempotent_replay',true);
   end if;
   insert into public.pay_payment_transactions(external_reference,amount,currency,status,provider_status,idempotency_key,merchant_account_id,provider_requested)
@@ -127,7 +129,7 @@ begin
     update public.pay_ikhokha_payment_link_intents
       set state='manual_review',failure_code='provider_response_invalid',updated_at=now()
       where id=i.id;
-    raise exception 'provider_payment_link_response_invalid';
+    return jsonb_build_object('state','manual_review','intent_id',i.id,'reason','provider_response_invalid');
   end if;
   update public.pay_ikhokha_payment_link_intents
     set state='created',paylink_id=p_paylink_id,paylink_url=p_paylink_url,
@@ -144,7 +146,8 @@ begin
           'ikhokha_intent_amount_minor',i.amount_minor
         ),
         updated_at=now()
-    where id=i.transaction_id and (provider_payment_id is null or provider_payment_id=p_paylink_id);
+    where id=i.transaction_id and provider_requested='ikhokha'
+      and (provider_payment_id is null or provider_payment_id=p_paylink_id);
   if not found then raise exception 'transaction_paylink_persistence_conflict'; end if;
   return jsonb_build_object('state','created','intent_id',i.id,'paylink_id',p_paylink_id);
 end; $$;
