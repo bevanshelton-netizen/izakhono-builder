@@ -19,6 +19,8 @@ export class PaymentWebhookGuard {
     const webhook = this.provider.parseWebhook(rawBody);
     const intent = await this.payments.getByExternalTransactionId(webhook.externalTransactionId);
     if (!intent) throw new Error('Unknown payment transaction');
+    if (intent.provider && webhook.provider !== intent.provider) throw new Error('Payment webhook provider does not match persisted payment');
+    if (intent.providerPaymentId && webhook.providerPaymentId !== intent.providerPaymentId) throw new Error('Payment webhook provider payment ID does not match persisted payment');
 
     const outcome = `${webhook.status}:${webhook.responseCode}:${webhook.providerPaymentId}`;
     const outcomeFingerprint = `webhook-outcome:${webhook.provider}:${webhook.externalTransactionId}:${outcome}`;
