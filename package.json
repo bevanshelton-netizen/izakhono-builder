@@ -61,7 +61,8 @@
     "model-runtime:test": "node products/izakhono-ai-runtime/validate.mjs && node products/izakhono-ai-runtime/provision.test.mjs",
     "builder:customer-auth:test": "npx --yes tsx@4.20.3 src/customer-auth.test.ts",
     "jarvis:worker:once": "node products/izakhono-jarvis/runner/worker.mjs",
-    "jarvis:worker:test": "node products/izakhono-jarvis/runner/worker.test.mjs"
+    "jarvis:worker:test": "node products/izakhono-jarvis/runner/worker.test.mjs && node products/izakhono-jarvis/runner/supervisor.test.mjs",
+    "jarvis:worker:supervise": "node products/izakhono-jarvis/runner/supervisor.mjs"
   },
   "dependencies": {
     "wrangler": "4.127.1"
