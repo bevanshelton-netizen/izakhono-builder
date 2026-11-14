@@ -88,6 +88,8 @@
   };
 
   let registry=fallback;
+  let aiOwnerKey="";
+  const aiConversation=[];
   const $=id=>document.getElementById(id);
   const $$=sel=>Array.from(document.querySelectorAll(sel));
 
@@ -216,5 +218,52 @@
     });
   }
 
-  document.addEventListener("DOMContentLoaded",()=>{bind();load();});
+
+  function aiAppend(role,content,meta=""){
+    const host=$("aiMessages");const empty=host.querySelector(".ai-empty");if(empty)empty.remove();
+    const item=document.createElement("article");item.className="ai-message "+(role==="user"?"user":"assistant");
+    const label=document.createElement("strong");label.textContent=role==="user"?"YOU":"IZAKHONO AI";
+    const body=document.createElement("p");body.textContent=content;item.append(label,body);
+    if(meta){const note=document.createElement("small");note.textContent=meta;item.append(note);}host.append(item);host.scrollTop=host.scrollHeight;
+  }
+  async function aiCheck(){
+    const badge=$("aiGatewayStatus");
+    try{const r=await fetch("/api/ai/status",{cache:"no-store"});const d=await r.json();
+      if(d.ok&&d.gateway_reachable){badge.textContent="AI RUNTIME REACHABLE";badge.className="badge good";}
+      else{badge.textContent=d.gateway_configured?"AI RUNTIME UNAVAILABLE":"AI RUNTIME NOT CONFIGURED";badge.className="badge danger";}
+    }catch(_){badge.textContent="AI STATUS UNAVAILABLE";badge.className="badge danger";}
+  }
+  async function aiConnect(){
+    const key=$("aiOwnerKey").value.trim();if(!key){$("aiConnectionStatus").textContent="Enter the owner access key.";return;}aiOwnerKey=key;
+    try{const r=await fetch("/api/ai/status",{headers:{"x-izakhono-owner-key":aiOwnerKey},cache:"no-store"});const d=await r.json();
+      if(!r.ok||!d.authorized){aiOwnerKey="";$("aiConnectionStatus").textContent="Access denied. Check the owner key and try again.";return;}
+      $("aiConnectionStatus").textContent=d.gateway_reachable?"Connected to the IZAKHONO AI gateway.":"Owner key accepted. The AI runtime is not reachable yet.";
+      toast(d.gateway_reachable?"Connected to IZAKHONO AI.":"Owner access verified; AI runtime unavailable.");
+    }catch(_){aiOwnerKey="";$("aiConnectionStatus").textContent="Could not verify the connection. Try again.";}
+  }
+  async function aiSend(event){
+    event.preventDefault();const prompt=$("aiPrompt").value.trim();if(!prompt)return;
+    if(!aiOwnerKey){$("aiConnectionStatus").textContent="Connect with your owner key before sending an instruction.";return;}
+    if(aiConversation.length>=28)aiConversation.splice(0,2);
+    aiConversation.push({role:"user",content:prompt});aiAppend("user",prompt);$("aiPrompt").value="";
+    const send=$("aiSend");send.disabled=true;send.textContent="IZAKHONO is thinking…";
+    const pending=document.createElement("div");pending.className="ai-pending";pending.textContent="Routing your instruction to the owner-controlled AI runtime…";$("aiMessages").append(pending);
+    try{
+      const r=await fetch("/api/ai/chat",{method:"POST",headers:{"content-type":"application/json","x-izakhono-owner-key":aiOwnerKey},body:JSON.stringify({messages:aiConversation})});
+      const d=await r.json().catch(()=>({}));pending.remove();
+      if(!r.ok||!d.ok){
+        const msg=d.error==="ai_runtime_unavailable"?"The owner AI runtime is currently unavailable. Your instruction was not executed.":d.error==="owner_access_required"?"Owner access expired or was rejected. Reconnect with your key.":"IZAKHONO could not complete this response (HTTP "+r.status+"). Your instruction was not marked as executed.";
+        aiAppend("assistant",msg);if(r.status===401){aiOwnerKey="";$("aiConnectionStatus").textContent="Access expired. Reconnect.";}return;
+      }
+      const answer=String(d.answer||"").trim()||"The AI runtime returned an empty response.";aiConversation.push({role:"assistant",content:answer});aiAppend("assistant",answer,(d.model?"Model: "+d.model:"")+(d.route?" · Route: "+d.route:""));
+    }catch(_){pending.remove();aiAppend("assistant","The connection failed. The task was not marked as executed.");}
+    finally{send.disabled=false;send.textContent="Send instruction";$("aiPrompt").focus();}
+  }
+  function bindAI(){
+    $("aiConnect")?.addEventListener("click",aiConnect);$("aiChatForm")?.addEventListener("submit",aiSend);
+    $("aiClear")?.addEventListener("click",()=>{aiConversation.length=0;$("aiMessages").replaceChildren(Object.assign(document.createElement("div"),{className:"ai-empty",textContent:"Conversation cleared. No chat history is retained by this interface."}));});
+    $("aiPrompt")?.addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();$("aiChatForm").requestSubmit();}});aiCheck();
+  }
+
+  document.addEventListener("DOMContentLoaded",()=>{bind();bindAI();load();});
 })();
