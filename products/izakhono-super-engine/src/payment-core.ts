@@ -100,7 +100,6 @@ export class IzakhonoPay {
     if (!/^[A-Z]{3}$/.test(input.currency)) throw new Error('Currency must be an ISO 4217 code');
     if (!input.externalTransactionId.trim()) throw new Error('External transaction ID is required');
     if (input.checkoutOrder && !this.checkoutOrders) throw new Error('Checkout order persistence is required when checkout order terms are supplied');
-    if (input.checkoutOrder && !this.checkoutOrders) throw new Error('Checkout order persistence is required when checkout order terms are supplied');
     if (await this.store.getByExternalTransactionId(input.externalTransactionId)) throw new Error('Duplicate external transaction ID');
 
     const now = new Date().toISOString();
