@@ -43,20 +43,62 @@ $public = Invoke-Health $PublicHealthUrl 'public'
 $clusterHealth = $null
 $clusterHealthVerified = $false
 $clusterHealthError = $null
-if (-not [string]::IsNullOrWhiteSpace($ClusterHealthEvidencePath)) {
+
+function Test-FreshRuntimeTimestamp([object]$Value,[string]$Label) {
+  try {
+    $stamp = [DateTimeOffset]::Parse([string]$Value)
+    $age = ([DateTimeOffset]::UtcNow - $stamp.ToUniversalTime()).TotalSeconds
+    if ($age -lt -30 -or $age -gt 300) {
+      throw "$Label timestamp is outside the allowed five-minute evidence window."
+    }
+    return $true
+  } catch {
+    throw "$Label timestamp is invalid or stale: $($_.Exception.Message)"
+  }
+}
+
+if ([string]::IsNullOrWhiteSpace($ClusterHealthEvidencePath)) {
+  $clusterHealthError = 'ClusterHealthEvidencePath is required for owned-cluster certification.'
+} else {
   try {
     $clusterHealth = Get-Content -Raw -Path $ClusterHealthEvidencePath | ConvertFrom-Json
-    $nodeNames = @($clusterHealth.nodes | ForEach-Object { $_.node })
-    $healthyNames = @($clusterHealth.healthyNodes)
     $requiredNames = @('NODE01','NODE02','NODE03','NODE04')
-    $clusterHealthVerified =
-      $clusterHealth.schema -eq 'izakhono.node-cluster-health.v1' -and
-      $clusterHealth.cluster -eq 'izakhono-production' -and
-      $clusterHealth.runtimeEvidence -eq $true -and
-      $clusterHealth.status -eq 'PASS' -and
-      [int]$clusterHealth.requiredHealthyNodes -eq 4 -and
-      @($nodeNames | Sort-Object) -ceq @($requiredNames | Sort-Object) -and
-      @($healthyNames | Sort-Object) -ceq @($requiredNames | Sort-Object)
+
+    if ($clusterHealth.schema -ne 'izakhono.node-cluster-health.v1') { throw 'Invalid cluster evidence schema.' }
+    if ($clusterHealth.cluster -ne 'izakhono-production') { throw 'Unexpected cluster identity.' }
+    if ($clusterHealth.nodeIdentityType -ne 'software-runtime') { throw 'Node identity must be software-runtime.' }
+    if ($clusterHealth.physicalHostIsSeparate -ne $true) { throw 'Logical runtime/physical-host separation is not declared.' }
+    if ($clusterHealth.runtimeEvidence -ne $true) { throw 'Evidence is not marked runtime-produced.' }
+    if ($clusterHealth.status -ne 'PASS') { throw 'Four-node cluster status is not PASS.' }
+    if ([int]$clusterHealth.requiredHealthyNodes -ne 4) { throw 'requiredHealthyNodes must equal four.' }
+    if ($clusterHealth.source -ne 'operator-supplied-runtime-endpoints') { throw 'Evidence source is not the runtime endpoint health gate.' }
+
+    $nodeRecords = @($clusterHealth.nodes)
+    if ($nodeRecords.Count -ne 4) { throw 'Exactly four node runtime records are required.' }
+    $seenNames = @()
+    foreach ($record in $nodeRecords) {
+      $name = [string]$record.node
+      if ($name -notin $requiredNames -or $name -in $seenNames) { throw 'Node records must contain NODE01-NODE04 exactly once.' }
+      $seenNames += $name
+      if ($record.runtimeNode -ne $name) { throw "$name endpoint runtime identity mismatch." }
+      if ($record.identityType -ne 'software-runtime') { throw "$name is not identified as a software runtime." }
+      if ($record.physicalHostIsSeparate -ne $true) { throw "$name physical-host separation declaration is missing." }
+      if ($record.status -ne 'PASS' -or $record.runtime_evidence -ne $true) { throw "$name runtime health did not pass." }
+      if ($null -eq $record.http -or $record.http.ok -ne $true -or $record.http.runtimeNode -ne $name -or $record.http.cluster -ne 'izakhono-production') {
+        throw "$name endpoint response does not prove its own runtime and cluster identity."
+      }
+      Test-FreshRuntimeTimestamp $record.checkedAt "$name runtime" | Out-Null
+    }
+
+    if ((@($seenNames | Sort-Object) -join ',') -ne (@($requiredNames | Sort-Object) -join ',')) {
+      throw 'Runtime evidence does not cover NODE01-NODE04.'
+    }
+    $healthyNames = @($clusterHealth.healthyNodes)
+    if ($healthyNames.Count -ne 4 -or (@($healthyNames | Sort-Object) -join ',') -ne (@($requiredNames | Sort-Object) -join ',')) {
+      throw 'healthyNodes must contain exactly NODE01-NODE04.'
+    }
+    Test-FreshRuntimeTimestamp $clusterHealth.checkedAt 'Cluster runtime' | Out-Null
+    $clusterHealthVerified = $true
   } catch {
     $clusterHealthError = $_.Exception.Message
     $clusterHealthVerified = $false
