@@ -1,4 +1,5 @@
 import {WORKERS,WORKER_INDEX} from './workers';
+import {executeLeasedSupervisorJob, type SupervisorWorkerHandlers} from './worker-executor';
 import {D1Database} from './d1-store';
 import {discoverBuilderQueue,classifyBuilderIssue,shouldIngest} from './builder-queue';
 import {ensureSupervisorSchema,upsertSupervisorJob,listSupervisorJobs,supervisorCounts,transitionSupervisorJob,recordEvidence,SupervisorJob,claimSupervisorLease,heartbeatSupervisorLease,finishSupervisorLease,recoverExpiredSupervisorLeases,SupervisorLease} from './supervisor-store';
@@ -26,21 +27,37 @@ export async function advanceReadyWorkers(db:D1Database,limit=25){
  const advanced=[];
  for(const job of jobs.sort((a,b)=>b.priority-a.priority)){
   if(advanced.length>=limit)break;
-  if(!ready(job,jobs))continue;
+  if(!ready(job,jobs)||job.workerId==='build-worker')continue;
   const lease=await claimSupervisorLease(db,job.id,job.workerId,`supervisor:${job.id}:${job.attempts+1}`);
   if(lease)advanced.push({jobId:job.id,workerId:job.workerId,status:'leased',lease,attempt:lease.attempt});
  }
  return advanced;
 }
 
-export async function pumpWorkers(db:D1Database){
- await ensureSupervisorSchema(db);
- const ingestion=await ingestDiscovered(db);
- const advanced=await advanceReadyWorkers(db);
- return {ok:true,generatedAt:now(),...ingestion,advanced:advanced.length,jobs:advanced};
+export async function runBuildWorkerCycle(db:D1Database,handlers:SupervisorWorkerHandlers,limit=5){
+ await recoverExpiredSupervisorLeases(db);
+ const jobs=await listSupervisorJobs(db);
+ const results=[];
+ for(const job of jobs.filter(j=>j.workerId==='build-worker'&&ready(j,jobs)).sort((a,b)=>b.priority-a.priority)){
+  if(results.length>=limit)break;
+  const input=job.input as Record<string,unknown>|null;
+  if(!input||typeof input.repository!=='string'||typeof input.revision!=='string'||!Array.isArray(input.checks))continue;
+  const lease=await claimSupervisorLease(db,job.id,job.workerId,`build-cycle:${job.id}:${job.attempts+1}`);
+  if(!lease)continue;
+  results.push(await executeLeasedSupervisorJob(db,lease,handlers));
+ }
+ return results;
 }
 
-export async function workerControl(request:Request,authorized:boolean,db:D1Database){
+export async function pumpWorkers(db:D1Database,handlers?:SupervisorWorkerHandlers){
+ await ensureSupervisorSchema(db);
+ const ingestion=await ingestDiscovered(db);
+ const executed=handlers?await runBuildWorkerCycle(db,handlers):[];
+ const advanced=await advanceReadyWorkers(db);
+ return {ok:true,generatedAt:now(),...ingestion,executed:executed.length,executionResults:executed,advanced:advanced.length,jobs:advanced};
+}
+
+export async function workerControl(request:Request,authorized:boolean,db:D1Database,handlers?:SupervisorWorkerHandlers){
  if(!authorized)return json({ok:false,error:'unauthorized'},401);
  await ensureSupervisorSchema(db);
  const url=new URL(request.url);
@@ -53,7 +70,7 @@ export async function workerControl(request:Request,authorized:boolean,db:D1Data
   try{return json({ok:true,...await ingestDiscovered(db),queue:await listSupervisorJobs(db)});}catch(error){return json({ok:false,error:String(error)},502);}
  }
  if(url.pathname==='/workers/pump'&&(request.method==='POST'||request.method==='GET')){
-  try{return json(await pumpWorkers(db));}catch(error){return json({ok:false,error:String(error)},502);}
+  try{return json(await pumpWorkers(db,handlers));}catch(error){return json({ok:false,error:String(error)},502);}
  }
  if(url.pathname==='/workers/jobs'&&request.method==='GET'){
   const status=url.searchParams.get('status') as SupervisorJob['status']|null;
