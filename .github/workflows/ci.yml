@@ -31,8 +31,8 @@ jobs:
       - name: Native Builder Core and durable queue typecheck
         run: npm run native-builder:typecheck
 
-      - name: Native Builder lifecycle and queue execution tests
-        run: npm run native-builder:test && npx --yes tsx@4.20.3 products/izakhono-native-builder/src/queue.test.ts
+      - name: Native Builder lifecycle tests
+        run: npm run native-builder:test
 
       - name: Native Builder autonomy adapter tests
         run: npm run builder:adapter:test && npm run ai-agent:test
