@@ -49,7 +49,7 @@ The physical execution machine is ISN-01. NODE01 is the logical software-node id
 5. Verify the host, mail bridge, Stalwart, mail control plane and Roundcube containers are healthy.
 6. Do not publish MX changes yet.
 
-The initial compose layout supports a co-located mail service on the same owner-controlled host through STALWART-ACTIVATE.sh. A dedicated mail node is also supported through MAIL-NODE-ACTIVATE.sh and its own mail/.env file. In that mode, set the host-side SMTP_HOST, STALWART_API_URL, STALWART_HTTP_UPSTREAM and MAIL_NODE_PRIVATE_IP to the verified private VPN endpoint, and set the mail-node MAIL_NODE_BIND_IP to its private VPN interface. Container-to-mail-node routing must be tested from the host stack. Port 8080 must remain private.
+Set MAIL_MODE=local for a co-located service; STALWART-ACTIVATE.sh starts both the host and local Stalwart stacks. Set MAIL_MODE=remote when using a dedicated mail node; run MAIL-NODE-ACTIVATE.sh on that node first, then run STALWART-ACTIVATE.sh on the host. The host-side SMTP_HOST, STALWART_API_URL, STALWART_HTTP_UPSTREAM and MAIL_NODE_PRIVATE_IP must point to the verified private VPN endpoint; the mail-node MAIL_NODE_BIND_IP must bind only to its private VPN interface. Container-to-mail-node routing must be tested from the host stack. Port 8080 must remain private.
 
 ## Domain ownership and mailbox provisioning
 
