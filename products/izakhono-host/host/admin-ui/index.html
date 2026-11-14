@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>IZAKHONO Hosting Control Centre</title>
+<style>
+:root{font-family:Inter,system-ui,sans-serif;color:#142033;background:#f5f7fb}*{box-sizing:border-box}body{margin:0}.shell{max-width:1450px;margin:auto;padding:28px}.top{display:flex;justify-content:space-between;align-items:center;gap:20px;margin-bottom:20px}.brand{font-size:23px;font-weight:800}.sub{font-size:13px;color:#667085;margin-top:5px}.actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.badge{padding:7px 11px;border-radius:999px;background:#eef2ff;color:#3446a3;font-size:12px;font-weight:700}.button{border:0;border-radius:9px;padding:10px 14px;background:#172b4d;color:#fff;font-weight:700;cursor:pointer}.button:disabled{opacity:.5}.notice{padding:12px 14px;border:1px solid #e5e9f0;border-radius:10px;background:#fff;color:#475467;font-size:13px;margin:14px 0}.error{color:#b42318}.meta{color:#667085;font-size:12px;margin:8px 0 14px}.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}.card{background:#fff;border:1px solid #e5e9f0;border-radius:14px;padding:18px;box-shadow:0 2px 8px #1320330a}.label{font-size:13px;color:#667085}.metric{font-size:30px;font-weight:800;margin-top:8px}.section{margin-top:20px}.section h2{font-size:17px;margin:0 0 12px}.table{overflow:auto}.row{display:grid;grid-template-columns:1.5fr 1fr 1fr 1.5fr 1fr;min-width:850px;gap:10px;padding:13px 15px;border-top:1px solid #edf0f4;align-items:center;font-size:13px}.deploy{grid-template-columns:1fr 1fr 1.5fr 1fr 1.5fr;min-width:850px}.head{font-weight:700;color:#667085;background:#fafbfc;border-radius:10px}.status{font-weight:700}.live,.passed{color:#176b3a}.provisioned,.pending{color:#9a6700}.failed{color:#b42318}.empty{color:#667085;font-size:13px;padding:14px 0}@media(max-width:900px){.grid{grid-template-columns:repeat(2,1fr)}}@media(max-width:560px){.shell{padding:16px}.grid{grid-template-columns:1fr}.top{align-items:flex-start;flex-direction:column}}
+</style>
+</head>
+<body>
+<main class="shell">
+<header class="top"><div><div class="brand">IZAKHONO HOSTING CONTROL CENTRE</div><div class="sub">Owner-only operational view • Native IZAKHONO HOST runtime</div></div><div class="actions"><span class="badge">OWNER ACCESS • READ ONLY</span><button id="refresh" class="button">Refresh data</button></div></header>
+<div id="message" class="notice">Connecting to the protected hosting runtime…</div>
+<div id="generated" class="meta"></div>
+<section class="grid">
+<article class="card"><div class="label">Provisioned sites</div><div class="metric" id="sites">—</div></article>
+<article class="card"><div class="label">Public live sites</div><div class="metric" id="live">—</div></article>
+<article class="card"><div class="label">Pending acceptance</div><div class="metric" id="pending">—</div></article>
+<article class="card"><div class="label">Deployment records</div><div class="metric" id="deployments">—</div></article>
+</section>
+<section class="section card"><h2>Hosted sites</h2><div class="table"><div class="row head"><div>Domain</div><div>Status</div><div>Runtime</div><div>Acceptance</div><div>Created</div></div><div id="siteRows"><div class="empty">Awaiting live data…</div></div></div></section>
+<section class="section card"><h2>Recent deployments</h2><div class="table"><div class="row deploy head"><div>Action</div><div>Status</div><div>Site ID</div><div>Files / bytes</div><div>Created</div></div><div id="deploymentRows"><div class="empty">Awaiting live data…</div></div></div></section>
+<div class="notice">This console reports actual runtime site and deployment records. Customer login, tenant billing, quotas, object-storage lifecycle, usage metering, backup telemetry and multi-node failover are not yet connected. A site is not labelled live until the server-side DNS, HTTPS and content acceptance checks all pass.</div>
+</main>
+<script>
+const esc=s=>String(s??'—').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const cls=s=>['live','passed','provisioned','pending','failed'].includes(String(s))?String(s):'';
+const date=s=>s?new Date(s).toLocaleString():'—';
+function render(data){
+ const x=data.summary||{};
+ document.querySelector('#sites').textContent=x.total_sites??'—';
+ document.querySelector('#live').textContent=x.live_sites??'—';
+ document.querySelector('#pending').textContent=x.pending_acceptance??'—';
+ document.querySelector('#deployments').textContent=x.deployments??'—';
+ document.querySelector('#generated').textContent='Last refreshed: '+date(data.generated_at);
+ const sites=data.sites||[];
+ document.querySelector('#siteRows').innerHTML=sites.length?sites.map(s=>{
+  const a=s.acceptance||{};
+  const acceptance=['dns','https','content'].map(k=>k.toUpperCase()+': '+(a[k]?'PASS':'PENDING')).join(' · ');
+  return '<div class="row"><div>'+esc(s.domain)+'</div><div class="status '+cls(s.status)+'">'+esc(s.status)+'</div><div>'+esc(s.runtime)+'</div><div>'+esc(acceptance)+'</div><div>'+esc(date(s.created_at))+'</div></div>';
+ }).join(''):'<div class="empty">No sites have been provisioned on the owned runtime.</div>';
+ const deployments=data.deployments||[];
+ document.querySelector('#deploymentRows').innerHTML=deployments.length?deployments.map(d=>'<div class="row deploy"><div>'+esc(d.action)+'</div><div class="status '+cls(d.status)+'">'+esc(d.status)+'</div><div>'+esc(d.site_id)+'</div><div>'+esc(d.file_count??'—')+' / '+esc(d.total_bytes??'—')+'</div><div>'+esc(date(d.created_at))+'</div></div>').join(''):'<div class="empty">No deployment records yet.</div>';
+ document.querySelector('#message').textContent='Live hosting runtime response received.';
+ document.querySelector('#message').className='notice';
+}
+async function refresh(){
+ const b=document.querySelector('#refresh'),m=document.querySelector('#message');b.disabled=true;m.textContent='Refreshing runtime data…';m.className='notice';
+ try{const r=await fetch('/api/control-centre',{cache:'no-store',credentials:'same-origin',headers:{'Accept':'application/json'}});if(!r.ok)throw new Error('Runtime returned HTTP '+r.status);render(await r.json());}
+ catch(e){m.textContent='Unable to load hosting data: '+e.message;m.className='notice error';}
+ finally{b.disabled=false;}
+}
+document.querySelector('#refresh').addEventListener('click',refresh);refresh();
+</script>
+</body>
+</html>
