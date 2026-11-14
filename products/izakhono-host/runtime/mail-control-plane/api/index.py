@@ -3,6 +3,9 @@ import os
 import secrets
 import sqlite3
 import time
+import socket
+import ssl
+from datetime import datetime, timezone
 from contextlib import closing
 from pathlib import Path
 import re
@@ -377,6 +380,221 @@ def require_verified_domain(domain: str) -> None:
     if int(row[1]) < int(time.time()):
         raise HTTPException(410, "Domain verification has expired")
     raise HTTPException(409, "Domain ownership has not been verified")
+
+
+def dns_txt_values(name: str) -> list[str] | None:
+    try:
+        answers = dns.resolver.resolve(name, "TXT", lifetime=3)
+        return [
+            b"".join(record.strings).decode("utf-8", "ignore")
+            for record in answers
+        ]
+    except (dns.resolver.NXDOMAIN, dns.resolver.NoAnswer):
+        return []
+    except (dns.exception.Timeout, dns.resolver.NoNameservers):
+        return None
+    except Exception:
+        return None
+
+
+def dns_check_txt(name: str, prefix: str) -> str:
+    values = dns_txt_values(name)
+    if values is None:
+        return "pending"
+    if any(value.startswith(prefix) for value in values):
+        return "passed"
+    return "failed"
+
+
+def dns_check_mx(domain: str, expected_host: str) -> str:
+    try:
+        answers = dns.resolver.resolve(domain, "MX", lifetime=3)
+        targets = {str(record.exchange).rstrip(".").lower() for record in answers}
+        return "passed" if expected_host.lower().rstrip(".") in targets else "failed"
+    except (dns.resolver.NXDOMAIN, dns.resolver.NoAnswer):
+        return "failed"
+    except (dns.exception.Timeout, dns.resolver.NoNameservers):
+        return "pending"
+    except Exception:
+        return "pending"
+
+
+def tcp_check(host: str, port: int) -> str:
+    try:
+        with socket.create_connection((host, port), timeout=3):
+            return "passed"
+    except OSError:
+        return "failed"
+
+
+def tls_check(host: str, port: int) -> str:
+    try:
+        context = ssl.create_default_context()
+        with socket.create_connection((host, port), timeout=4) as raw:
+            with context.wrap_socket(raw, server_hostname=host) as secure:
+                return "passed" if secure.version() else "failed"
+    except (OSError, ssl.SSLError):
+        return "failed"
+
+
+def domain_verified_at(domain: str) -> int | None:
+    connection = domain_verification_db()
+    try:
+        row = connection.execute(
+            "SELECT verified_at FROM domain_verifications WHERE domain=?",
+            (domain.lower(),),
+        ).fetchone()
+        return int(row[0]) if row and row[0] else None
+    finally:
+        connection.close()
+
+
+async def mta_sts_policy_check(domain: str) -> str:
+    try:
+        async with httpx.AsyncClient(timeout=5, follow_redirects=True) as client:
+            response = await client.get(
+                f"https://mta-sts.{domain}/.well-known/mta-sts.txt"
+            )
+        return "passed" if response.status_code == 200 and "version: STSv1" in response.text else "failed"
+    except httpx.HTTPError:
+        return "pending"
+
+
+async def domain_operational_checks(domain: str) -> dict[str, str]:
+    mail_host = os.getenv("MAIL_HOST", f"mail.{domain}").strip().lower()
+    public_ip = os.getenv("MAIL_PUBLIC_IP", "").strip()
+    selector = os.getenv("DKIM_SELECTOR", "").strip()
+
+    spf_values = dns_txt_values(domain)
+    if spf_values is None:
+        spf_status = "pending"
+    else:
+        spf_record = next((value for value in spf_values if value.startswith("v=spf1")), "")
+        if not spf_record:
+            spf_status = "failed"
+        elif not public_ip or public_ip.startswith("REPLACE_"):
+            spf_status = "pending"
+        else:
+            spf_status = "passed" if f"ip4:{public_ip}" in spf_record or re.search(r"(^|\\s)mx(\\s|$)", spf_record) else "failed"
+
+    if not selector or selector.startswith("REPLACE_"):
+        dkim_status = "pending"
+    else:
+        dkim_status = dns_check_txt(f"{selector}._domainkey.{domain}", "v=DKIM1")
+
+    return {
+        "ownership": "passed" if domain_verified_at(domain) else "pending",
+        "mx": dns_check_mx(domain, mail_host),
+        "spf": spf_status,
+        "dkim": dkim_status,
+        "dmarc": dns_check_txt(f"_dmarc.{domain}", "v=DMARC1"),
+        "mtaSts": dns_check_txt(f"_mta-sts.{domain}", "v=STSv1"),
+        "mtaStsPolicy": await mta_sts_policy_check(domain),
+        "tlsRpt": dns_check_txt(f"_smtp._tls.{domain}", "v=TLSRPTv1"),
+        "smtp": tcp_check(mail_host, 25),
+        "submissionTls": tls_check(mail_host, 465),
+        "imapTls": tls_check(mail_host, 993),
+        "backup": "pending",
+        "fortress": "pending",
+        "monitoring": "pending",
+    }
+
+
+@app.get("/api/control-centre", dependencies=[Depends(require_control_plane_token)])
+async def control_centre() -> dict[str, Any]:
+    domain_query = method_result(
+        await jmap([["x:Domain/query", {"filter": {}}, "control-domain-query"]]),
+        "control-centre domain query",
+    )
+    domain_ids = domain_query.get("ids", [])
+    domain_objects: list[dict[str, Any]] = []
+    if domain_ids:
+        domain_get = method_result(
+            await jmap([["x:Domain/get", {"ids": domain_ids}, "control-domain-get"]]),
+            "control-centre domain get",
+        )
+        domain_objects = domain_get.get("list", [])
+
+    account_query = method_result(
+        await jmap([["x:Account/query", {"filter": {}}, "control-account-query"]]),
+        "control-centre account query",
+    )
+    account_ids = account_query.get("ids", [])
+    account_objects: list[dict[str, Any]] = []
+    if account_ids:
+        account_get = method_result(
+            await jmap([["x:Account/get", {"ids": account_ids}, "control-account-get"]]),
+            "control-centre account get",
+        )
+        account_objects = account_get.get("list", [])
+
+    domain_by_id = {
+        str(item.get("id")): str(item.get("name", "")).lower()
+        for item in domain_objects
+        if item.get("id") and item.get("name")
+    }
+    domains: list[dict[str, Any]] = []
+    for item in domain_objects:
+        domain = str(item.get("name", "")).lower()
+        if not domain:
+            continue
+        checks = await domain_operational_checks(domain)
+        verified_at = domain_verified_at(domain)
+        check_values = list(checks.values())
+        status = "verified" if verified_at and all(value == "passed" for value in check_values) else (
+            "degraded" if verified_at and any(value == "failed" for value in check_values) else "configured"
+        )
+        domains.append({
+            "domain": domain,
+            "platform": "IZAKHONO AFRICA" if domain == "izakhonoafrica.co.za" else "Managed domain",
+            "status": status,
+            "transport": "owned",
+            "openIncidents": 0,
+            "lastVerifiedAt": datetime.fromtimestamp(verified_at, timezone.utc).isoformat() if verified_at else None,
+            "checks": checks,
+        })
+
+    mailboxes: list[dict[str, Any]] = []
+    for account in account_objects:
+        domain = domain_by_id.get(str(account.get("domainId")), "")
+        name = str(account.get("name", "")).strip()
+        address = str(account.get("email") or (f"{name}@{domain}" if name and domain else name))
+        if not address:
+            continue
+        enabled = account.get("enabled") is not False
+        can_send = account.get("emailSend") is True
+        status = "suspended" if not enabled else ("active" if can_send else "pending")
+        mailboxes.append({
+            "address": address,
+            "platform": "IZAKHONO AFRICA" if domain == "izakhonoafrica.co.za" else "Managed domain",
+            "status": status,
+            "storageUsedBytes": int(account.get("usedQuota", 0) or 0),
+            "lastAuthenticationAt": None,
+            "lastDeliveryAt": None,
+            "deliveryFailures": 0,
+            "securityStatus": "clear" if enabled else "attention",
+            "backupStatus": "pending",
+        })
+
+    verified_count = sum(1 for domain in domains if domain["status"] == "verified")
+    attention_count = sum(1 for domain in domains if domain["status"] == "degraded")
+    active_count = sum(1 for mailbox in mailboxes if mailbox["status"] == "active")
+    suspended_count = sum(1 for mailbox in mailboxes if mailbox["status"] == "suspended")
+    return {
+        "generatedAt": datetime.now(timezone.utc).isoformat(),
+        "domains": domains,
+        "mailboxes": mailboxes,
+        "incidents": [],
+        "summary": {
+            "managedDomains": len(domains),
+            "verifiedDomains": verified_count,
+            "attentionDomains": attention_count,
+            "totalMailboxes": len(mailboxes),
+            "activeMailboxes": active_count,
+            "suspendedMailboxes": suspended_count,
+            "openSecurityAlerts": 0,
+        },
+    }
 
 
 @app.get("/api/health")
