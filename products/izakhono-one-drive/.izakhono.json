@@ -1,0 +1,24 @@
+{
+  "schema": "izakhono.project.v1",
+  "project_id": "IZK-CLD-001",
+  "canonical_name": "IZAKHONO ONE DRIVE",
+  "portfolio": "IZAKHONO CLOUD",
+  "division": "IZAKHONO SUPER CLOUD",
+  "product_type": "personal-and-business-cloud-storage",
+  "execution_provider": "izakhono-native",
+  "credits_required": false,
+  "owned_first": true,
+  "provider_neutral": true,
+  "release_status": "foundation",
+  "production_ready": false,
+  "release_gates": [
+    "core-fortress-identity-integration",
+    "database-rls-and-isolation-tests",
+    "atomic-quota-concurrency-tests",
+    "object-store-integrity-and-malware-controls",
+    "backup-restore-and-node-failover",
+    "mobile-desktop-e2e",
+    "reachable-health-checked-endpoint",
+    "rollback-verification"
+  ]
+}
