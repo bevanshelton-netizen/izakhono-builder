@@ -475,7 +475,7 @@ async def domain_operational_checks(domain: str) -> dict[str, str]:
         elif not public_ip or public_ip.startswith("REPLACE_"):
             spf_status = "pending"
         else:
-            spf_status = "passed" if f"ip4:{public_ip}" in spf_record or re.search(r"(^|\\s)mx(\\s|$)", spf_record) else "failed"
+            spf_status = "passed" if f"ip4:{public_ip}" in spf_record or re.search(r"(^|\s)mx(\s|$)", spf_record) else "failed"
 
     if not selector or selector.startswith("REPLACE_"):
         dkim_status = "pending"
@@ -540,16 +540,21 @@ async def control_centre() -> dict[str, Any]:
             continue
         checks = await domain_operational_checks(domain)
         verified_at = domain_verified_at(domain)
-        check_values = list(checks.values())
-        status = "verified" if verified_at and all(value == "passed" for value in check_values) else (
-            "degraded" if verified_at and any(value == "failed" for value in check_values) else "configured"
+        required_checks = [
+            checks[key] for key in (
+                "ownership", "mx", "spf", "dkim", "dmarc", "mtaSts",
+                "mtaStsPolicy", "tlsRpt", "smtp", "submissionTls", "imapTls",
+            )
+        ]
+        status = "verified" if verified_at and all(value == "passed" for value in required_checks) else (
+            "degraded" if verified_at and any(value == "failed" for value in required_checks) else "configured"
         )
         domains.append({
             "domain": domain,
             "platform": "IZAKHONO AFRICA" if domain == "izakhonoafrica.co.za" else "Managed domain",
             "status": status,
             "transport": "owned",
-            "openIncidents": 0,
+            "openIncidents": None,
             "lastVerifiedAt": datetime.fromtimestamp(verified_at, timezone.utc).isoformat() if verified_at else None,
             "checks": checks,
         })
@@ -568,7 +573,7 @@ async def control_centre() -> dict[str, Any]:
             "address": address,
             "platform": "IZAKHONO AFRICA" if domain == "izakhonoafrica.co.za" else "Managed domain",
             "status": status,
-            "storageUsedBytes": int(account.get("usedQuota", 0) or 0),
+            "storageUsedBytes": int(account["usedQuota"]) if account.get("usedQuota") is not None else None,
             "lastAuthenticationAt": None,
             "lastDeliveryAt": None,
             "deliveryFailures": 0,
@@ -592,7 +597,7 @@ async def control_centre() -> dict[str, Any]:
             "totalMailboxes": len(mailboxes),
             "activeMailboxes": active_count,
             "suspendedMailboxes": suspended_count,
-            "openSecurityAlerts": 0,
+            "openSecurityAlerts": None,
         },
     }
 
