@@ -1,7 +1,7 @@
 import {WORKERS,WORKER_INDEX} from './workers';
 import {D1Database} from './d1-store';
 import {discoverBuilderQueue,classifyBuilderIssue,shouldIngest} from './builder-queue';
-import {ensureSupervisorSchema,upsertSupervisorJob,listSupervisorJobs,supervisorCounts,claimSupervisorJob,recoverExpiredSupervisorLeases,transitionSupervisorJob,recordEvidence,recordLeasedEvidence,failLeasedSupervisorJob,renewSupervisorLease,verifyLeasedSupervisorJob,SupervisorJob} from './supervisor-store';
+import {ensureSupervisorSchema,upsertSupervisorJob,listSupervisorJobs,listDeadLetterJobs,supervisorCounts,claimSupervisorJob,recoverExpiredSupervisorLeases,transitionSupervisorJob,recordEvidence,recordLeasedEvidence,failLeasedSupervisorJob,renewSupervisorLease,verifyLeasedSupervisorJob,SupervisorJob} from './supervisor-store';
 import {executeWorker,hasWorkerHandler,executableWorkerIds} from './worker-execution';
 import {DIVISIONS,workersForDivision} from './divisions';
 import {verifyFortressCapabilityGrant} from './fortress-capabilities';
@@ -100,6 +100,11 @@ export async function workerControl(request:Request,authorized:boolean,db:D1Data
  }
  if(url.pathname==='/workers/pump'&&(request.method==='POST'||request.method==='GET')){
   try{return json(await pumpWorkers(db,fortressSecret));}catch(error){return json({ok:false,error:String(error)},502);}
+ }
+ if(url.pathname==='/workers/dead-letter'&&request.method==='GET'){
+  const requested=Number(url.searchParams.get('limit')??50);
+  const limit=Number.isFinite(requested)?Math.min(Math.max(Math.floor(requested),1),100):50;
+  return json({ok:true,generatedAt:now(),...await listDeadLetterJobs(db,limit)});
  }
  if(url.pathname==='/workers/jobs'&&request.method==='GET'){
   const status=url.searchParams.get('status') as SupervisorJob['status']|null;
