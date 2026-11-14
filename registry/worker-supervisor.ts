@@ -1,7 +1,7 @@
 import {WORKERS,WORKER_INDEX} from './workers';
 import {D1Database} from './d1-store';
 import {discoverBuilderQueue,classifyBuilderIssue,shouldIngest} from './builder-queue';
-import {ensureSupervisorSchema,upsertSupervisorJob,listSupervisorJobs,listDeadLetterJobs,supervisorCounts,claimSupervisorJob,recoverExpiredSupervisorLeases,transitionSupervisorJob,recordEvidence,recordLeasedEvidence,failLeasedSupervisorJob,renewSupervisorLease,verifyLeasedSupervisorJob,SupervisorJob} from './supervisor-store';
+import {ensureSupervisorSchema,upsertSupervisorJob,listSupervisorJobs,listDeadLetterJobs,supervisorCounts,claimSupervisorJob,recoverExpiredSupervisorLeases,transitionSupervisorJob,completeVerifiedSupervisorJob,recordLeasedEvidence,failLeasedSupervisorJob,renewSupervisorLease,verifyLeasedSupervisorJob,SupervisorJob} from './supervisor-store';
 import {executeWorker,hasWorkerHandler,executableWorkerIds} from './worker-execution';
 import {DIVISIONS,workersForDivision} from './divisions';
 import {verifyFortressCapabilityGrant} from './fortress-capabilities';
@@ -142,7 +142,7 @@ export async function workerControl(request:Request,authorized:boolean,db:D1Data
  }
  if(url.pathname==='/workers/complete'&&request.method==='POST'){
   let body:{jobId?:string;evidence?:unknown};try{body=await request.json();}catch{return json({ok:false,error:'invalid json'},400);}
-  if(!body.jobId)return json({ok:false,error:'jobId required'},400);const jobs=await listSupervisorJobs(db);const job=jobs.find(j=>j.id===body.jobId);if(!job)return json({ok:false,error:'unknown job'},404);if(job.status!=='verified')return json({ok:false,error:'completion requires verified state'},409);if(!body.evidence)return json({ok:false,error:'completion evidence required'},400);await recordEvidence(db,job.id,{verification:job.evidence,completion:body.evidence});const transitioned=await transitionSupervisorJob(db,job.id,'completed','completion-gate',{evidence:body.evidence});const advanced=await advanceReadyWorkers(db);return json({ok:true,status:'completed',job:transitioned,advanced:advanced.length});
+  if(!body.jobId)return json({ok:false,error:'jobId required'},400);const jobs=await listSupervisorJobs(db);const job=jobs.find(j=>j.id===body.jobId);if(!job)return json({ok:false,error:'unknown job'},404);if(job.status!=='verified')return json({ok:false,error:'completion requires verified state'},409);if(!body.evidence)return json({ok:false,error:'completion evidence required'},400);const transitioned=await completeVerifiedSupervisorJob(db,job.id,{verification:job.evidence,completion:body.evidence},'completion-gate');const advanced=await advanceReadyWorkers(db);return json({ok:true,status:'completed',job:transitioned,advanced:advanced.length});
  }
  return json({ok:false,error:'not found'},404);
 }
