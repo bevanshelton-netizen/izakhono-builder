@@ -2,13 +2,27 @@
 
 ## Purpose
 
-The Mail Control Centre is the central operational console for all IZAKHONO-managed business email. It provides domain, mailbox, security, delivery, backup and infrastructure oversight from the IZAKHONO HOST control plane.
+The Mail Control Centre is the owner-facing operational console for IZAKHONO-managed business email. It is served by the IZAKHONO HOST Caddy edge and reads live domain/mailbox inventory from the private IZAKHONO Mail Control Plane.
 
-## Core dashboard
+## V1 implementation status
+
+Implemented in this repository:
+
+- Owner-only HTTPS hostname: mail-admin.izakhonoafrica.co.za.
+- Caddy Basic Auth protects the console; the generated password is stored in the ignored local file mail/secrets/mail_admin_password.
+- Caddy injects the server-side control-plane bearer token. The browser never receives the token.
+- Read-only GET /api/control-centre endpoint queries Stalwart domain and account inventory.
+- Live DNS checks for MX, SPF, DKIM, DMARC, MTA-STS and TLS-RPT.
+- Live endpoint checks for SMTP port 25, SMTP submission TLS, IMAPS TLS and MTA-STS policy availability.
+- Mailbox state reflects Stalwart enabled/emailSend permissions.
+- Unknown delivery, authentication, backup, incident and FORTRESS telemetry is explicitly reported as not connected or pending, never as a false zero.
+- The dashboard refreshes data on demand and labels its last update.
+
+This V1 is an owner-only, read-only operations view. It is not a customer self-service portal and does not yet implement role-based customer access or privileged mailbox actions.
+
+## Dashboard fields
 
 ### Executive view
-
-Display:
 
 - Total managed domains
 - Verified domains
@@ -16,99 +30,66 @@ Display:
 - Total mailboxes
 - Active mailboxes
 - Suspended mailboxes
-- Delivery health
-- Authentication health
-- Backup health
-- Security alerts
-- Mail infrastructure status
+- Security alerts — shown as not connected until an incident source is integrated
 
 ### Domain view
 
-For each domain:
-
 - Domain name
 - Platform/tenant
-- DNS status
-- MX status
-- SPF status
-- DKIM status
-- DMARC status
-- TLS status
-- Mail transport provider
-- Ownership mode: owned / external fallback
+- Status: configured / verified / degraded
+- Mail transport
+- Ownership verification
+- MX, SPF, DKIM, DMARC, MTA-STS, MTA-STS policy, TLS-RPT
+- SMTP, submission TLS and IMAPS TLS
+- Backup, FORTRESS and monitoring status
 - Last verification timestamp
-- Open incidents
+
+A domain is only shown as verified after ownership verification and all required public mail checks pass. Configuration alone is not health evidence.
 
 ### Mailbox view
-
-For each mailbox:
 
 - Address
 - Platform
 - Status
-- Storage usage
-- Last authentication activity
-- Last successful delivery
-- Recent delivery failures
-- Security status
+- Storage usage, when exposed by Stalwart
+- Security monitoring status
 - Backup status
-- Assigned policies
 
 Mailbox content is not exposed in the executive dashboard. Content access, where legally and operationally required, is a separately permissioned and audited administrative function.
 
-## Alerts
+## Telemetry not yet integrated
 
-Generate actionable alerts for:
+The following are future integrations and must not be represented as operational until connected and tested:
 
-- MX failure
-- SPF failure
-- DKIM failure
-- DMARC failure
-- TLS expiry or failure
-- SMTP delivery degradation
-- IMAP service degradation
-- abnormal authentication activity
-- excessive failed logins
-- mailbox quota threshold
-- backup failure
-- node heartbeat failure
-- mail-runtime outage
-- external provider degradation
+- Successful and failed delivery events
+- Authentication history and anomaly detection
+- Quota and storage telemetry
+- Incident and alert feed
+- Backup snapshot verification and restore evidence
+- FORTRESS security events
+- Node heartbeat and observability integration
+- Provider failover status
 
-Severity levels:
+## Future administrative capabilities
 
-- Critical — service/security impact requiring immediate action
-- High — likely operational impact
-- Medium — degradation or configuration drift
-- Low — advisory
+The following are planned but are not available as V1 dashboard actions:
 
-## Administrative actions
-
-Authorized administrators may:
-
-- Provision mailbox
-- Suspend mailbox
-- Restore mailbox
-- Reset credentials
-- Rotate credentials
+- Provision, suspend, restore and delete mailboxes
+- Reset and rotate credentials
 - Create/delete aliases
-- Assign mailbox policies
-- Verify DNS
-- Re-run DKIM generation
-- Re-run DMARC/SPF checks
+- Assign mailbox policies and quotas
 - Run delivery diagnostics
-- Trigger backup
-- Restore from approved backup
-- Move mail workload between eligible infrastructure adapters
+- Trigger and restore approved backups
+- Move workloads between eligible infrastructure adapters
 - Escalate security events to FORTRESS
 
-Destructive actions require explicit confirmation and audit logging.
+These actions require role-based authorization, audit logging, explicit confirmation for destructive operations and tenant-isolation tests before release.
 
 ## Security model
 
-The Mail Control Centre follows least privilege and role-based access control.
+V1 uses a generated owner-only Basic Auth credential at the Caddy edge and a server-side control-plane token injected by Caddy. The control-plane API is not exposed directly to the public internet.
 
-Roles:
+Future roles:
 
 - Owner — full infrastructure oversight
 - Mail Administrator — mail configuration and mailbox operations
@@ -116,70 +97,44 @@ Roles:
 - Support Administrator — customer support actions without unrestricted content access
 - Auditor — read-only evidence and event history
 
-Every privileged action records:
-
-- actor
-- timestamp
-- tenant/domain
-- action
-- target
-- result
-- correlation/request ID
-- relevant evidence
-
-## Monitoring integration
-
-Mail health is consumed by the IZAKHONO observability layer. A mailbox/domain must not be labelled healthy from configuration alone; health requires current verification evidence.
-
-## Infrastructure integration
-
-The Mail Control Centre is provider-neutral. It can supervise:
-
-- IZAKHONO MAIL on Software NODEs
-- approved external mail adapters
-- migration/failover states
-
-External capacity remains reversible. The control plane owns policy and evidence even when an external transport provider is temporarily used.
+Every future privileged action must record actor, timestamp, tenant/domain, action, target, result, correlation/request ID and relevant evidence.
 
 ## Provisioning flow
 
+The current operator workflow is:
+
 ```text
-CREATE TENANT
+CREATE VERIFICATION CHALLENGE
     ↓
-VERIFY DOMAIN
+PUBLISH DOMAIN TXT
     ↓
-CONFIGURE DNS
+VERIFY DOMAIN OWNERSHIP
     ↓
-CREATE MAIL TENANT
+CREATE MAILBOX THROUGH CONTROL PLANE
     ↓
-CREATE MAILBOXES / ALIASES
+ONE-TIME HANDOVER
     ↓
-SPF + DKIM + DMARC
+OWNER SETS PASSWORD
     ↓
-TLS
+TEST WEBMAIL / IMAP / SMTP
     ↓
-SMTP / IMAP TEST
+PUBLISH AND VERIFY AUTHENTICATION DNS
     ↓
-BACKUP + FORTRESS
-    ↓
-MONITORING
+EXTERNAL SEND/RECEIVE TESTS
     ↓
 ACCEPTANCE EVIDENCE
-    ↓
-MAIL CONTROL CENTRE
 ```
 
-## Platform coverage
+Automated registrar/DNS-provider integration, customer self-service onboarding, billing and production failover remain future work.
 
-The first registered platform set is:
+## Approved domain scope
 
-- IZAKHONO Africa — `izakhonoafrica.co.za`
-- Edu-Build — `edubuildshelton.org.za`
-- Allegro Vibez — `allegrovibez.com`
-- KORA Network — `streamkoraafrica.com`
+The initial provisioning allowlist contains only:
 
-Future platforms enter through the same domain-verification and acceptance workflow.
+- IZAKHONO AFRICA — izakhonoafrica.co.za
+
+Edu-Build, Allegro Vibez, KORA Network and other portfolio domains are not approved for mailbox provisioning until each domain is explicitly added to the allowlist and independently verified. A portfolio plan is not a live mail tenant.
 
 ## Non-negotiable rule
 
-The control centre may report **configured**, **degraded**, **verified**, or **failed**. It must never report **live**, **owned**, or **production-ready** without the corresponding evidence contract being satisfied.
+The control centre may report **configured**, **verified**, **degraded**, **pending**, **failed**, or **not connected**. It must never report **live**, **owned**, or **production-ready** without the corresponding evidence contract being satisfied.
