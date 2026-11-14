@@ -25,6 +25,8 @@ A build-worker job must carry an object with:
 
 Supported check groups map to required completed-success GitHub check runs. Every required check must exist on the exact requested commit and have conclusion `success`. Missing, pending, cancelled, timed-out, neutral, skipped, or failed checks are not verification success.
 
+**Observed GitHub check-run shape:** this repository exposes Registry CI as one aggregate job check named `registry`, while the application-manifest workflow exposes `Validate application manifests`. The Registry job is successful only after its configured typecheck and test steps complete successfully. Accordingly, the `typecheck` and `unit-tests` input groups currently reference the same aggregate Registry proof; they are not independent step-level attestations. The verifier does not claim otherwise.
+
 The default mapping is intentionally explicit in `registry/github-build-verifier.ts`. Adjust it only when the corresponding CI workflow names change, and update the mocked contract tests at the same time.
 
 ## Security boundaries
