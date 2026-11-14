@@ -29,7 +29,7 @@ Worker bearer token:
 From this directory's parent `products/izakhono-host`:
 
 ```sh
-./COMPUTE-ONLY-ACTIVATE.sh
+bash ./COMPUTE-ONLY-ACTIVATE.sh
 ```
 
 This provisions missing internal secrets, starts only PostgreSQL + the private compute manager + worker, waits for a registered worker, and opens no public port. It does not require a domain, public TLS, Vercel or mail service. Keep the host protected and use a private authenticated SSH tunnel for operator access.
