@@ -3,6 +3,7 @@ set -Eeuo pipefail
 
 ROOT="$(cd "$(dirname "$0")" && pwd)"
 cd "$ROOT"
+if [[ -f .env ]]; then set -a; . ./.env; set +a; fi
 
 failed=0
 pass_count=0
@@ -33,7 +34,7 @@ printf 'Physical host: %s\n' "$(hostname 2>/dev/null || echo unknown)"
 printf 'UTC: %s\n\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
 check_cmd 'Docker installed' docker
-check_cmd 'Docker Compose available' docker
+check_cmd 'Docker CLI available' docker
 check_cmd 'ss networking utility available' ss
 check_cmd 'curl available' curl
 check_cmd 'Python available' python3
