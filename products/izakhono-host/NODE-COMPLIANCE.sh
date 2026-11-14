@@ -123,6 +123,11 @@ if [[ -s mail/secrets/mail_admin_password && -f mail/admin-ui/index.html ]]; the
 else
   warn 'Mail Control Centre owner credential or static UI is not staged'
 fi
+if [[ -s host/secrets/host_admin_password && -f host/admin-ui/index.html ]]; then
+  pass 'Owner-only Hosting Control Centre UI and credential staged'
+else
+  warn 'Hosting Control Centre owner credential or static UI is not staged'
+fi
 if [[ -f .env ]] && ! grep -q '^MAIL_ADMIN_PASSWORD_HASH=REPLACE_WITH' .env; then
   pass 'Mail Control Centre Basic Auth hash configured'
 else
@@ -134,6 +139,9 @@ if [[ -f .env ]] && grep -q '^MAIL_PUBLIC_IP=REPLACE_WITH' .env; then
 fi
 if [[ -f .env ]] && grep -q '^DKIM_SELECTOR=REPLACE_AFTER' .env; then
   warn 'DKIM selector must be copied from the live Stalwart domain configuration'
+fi
+if [[ -f .env ]] && grep -q '^HOST_PUBLIC_IP=REPLACE_WITH' .env; then
+  warn 'Static public hosting IP not configured; site acceptance cannot pass'
 fi
 if [[ -f .env ]] && grep -q '^SMTP_PASS=REPLACE_WITH' .env; then
   warn 'Notifications mailbox password not configured; application email sending is not ready'
