@@ -44,6 +44,7 @@ function audit(s,action,actor,details={}){s.audit.push({id:id('evt'),at:now(),ac
 function cleanCapabilities(value){return Array.isArray(value)?[...new Set(value.filter(x=>TYPES.has(x)))]:[]}
 function expireLeases(s){const t=Date.now();for(const j of s.jobs){if(j.status==='leased'&&Date.parse(j.lease_expires_at)<=t){j.attempts++;j.status=j.attempts>=5?'failed':'queued';j.worker_id=null;j.lease_token=null;j.lease_expires_at=null;j.updated_at=now();if(j.status==='failed'){j.error='Maximum lease attempts exceeded';j.finished_at=now()}audit(s,'job.lease_expired','scheduler',{job_id:j.id,attempts:j.attempts,status:j.status})}}}
 function workerAuthorized(s,workerId,token){const n=s.nodes.find(x=>x.id===workerId);return Boolean(n?.worker_token_hash&&same(n.worker_token_hash,hash(token)))}
+function markStaleNodes(s){const t=Date.now();for(const n of s.nodes)if(n.status==='online'&&t-Date.parse(n.last_seen_at)>60000){n.status='offline';audit(s,'worker.offline','monitor',{worker_id:n.id})}}
 const server=http.createServer(async(req,res)=>{
  try{
   const u=new URL(req.url||'/',`http://${req.headers.host||'localhost'}`);
@@ -94,9 +95,10 @@ const server=http.createServer(async(req,res)=>{
    return send(res,201,{ok:true,node,worker_id:workerId,enrollment_token:enrollmentToken});
   }
   if(req.method==='GET'&&u.pathname==='/api/compute/summary'){
-   const s=await load();const t=Date.now();expireLeases(s);const counts={};for(const j of s.jobs)counts[j.status]=(counts[j.status]||0)+1;const nodes=s.nodes.map(n=>({...n,status:n.status==='online'&&t-Date.parse(n.last_seen_at)>60000?'offline':n.status,worker_token_hash:undefined,enrollment_token_hash:undefined}));return send(res,200,{ok:true,nodes:nodes.length,online_nodes:nodes.filter(n=>n.status==='online').length,jobs:counts,capacity:nodes.filter(n=>n.status==='online').reduce((a,n)=>({cpu_count:a.cpu_count+n.resources.cpu_count,memory_mb:a.memory_mb+n.resources.memory_mb}),{cpu_count:0,memory_mb:0})});
+   const result=await mutate(s=>{expireLeases(s);markStaleNodes(s);const counts={};for(const j of s.jobs)counts[j.status]=(counts[j.status]||0)+1;const nodes=s.nodes;return {nodes:nodes.length,online_nodes:nodes.filter(n=>n.status==='online').length,jobs:counts,capacity:nodes.filter(n=>n.status==='online').reduce((a,n)=>({cpu_count:a.cpu_count+n.resources.cpu_count,memory_mb:a.memory_mb+n.resources.memory_mb}),{cpu_count:0,memory_mb:0})}});
+   return send(res,200,{ok:true,...result});
   }
-  if(req.method==='GET'&&u.pathname==='/api/compute/nodes'){const s=await load();const nodes=s.nodes.map(n=>({...n,worker_token_hash:undefined,enrollment_token_hash:undefined}));return send(res,200,{ok:true,nodes})}
+  if(req.method==='GET'&&u.pathname==='/api/compute/nodes'){const nodes=await mutate(s=>{markStaleNodes(s);return s.nodes.map(n=>({...n,worker_token_hash:undefined,enrollment_token_hash:undefined}))});return send(res,200,{ok:true,nodes})}
   if(req.method==='GET'&&u.pathname==='/api/compute/jobs'){const s=await load();return send(res,200,{ok:true,jobs:s.jobs.slice(-250).reverse()})}
   if(req.method==='GET'&&u.pathname==='/api/compute/audit'){const s=await load();return send(res,200,{ok:true,events:s.audit.slice(-250).reverse()})}
   if(req.method==='POST'&&u.pathname==='/api/compute/jobs'){
