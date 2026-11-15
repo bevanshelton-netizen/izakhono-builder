@@ -1,0 +1,68 @@
+name: IZAKHONO HOST Private MVP
+
+on:
+  pull_request:
+    paths:
+      - "products/izakhono-host/**"
+      - ".github/workflows/izakhono-host-mvp.yml"
+  push:
+    branches: [main]
+    paths:
+      - "products/izakhono-host/**"
+      - ".github/workflows/izakhono-host-mvp.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  private-mvp-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check activation script syntax
+        run: bash -n products/izakhono-host/MVP-ACTIVATE.sh
+
+      - name: Validate private Compose contract
+        working-directory: products/izakhono-host
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > .env.mvp.ci <<'EOF'
+          POSTGRES_DB=izakhono
+          POSTGRES_USER=izakhono
+          POSTGRES_PASSWORD=ci-not-a-secret
+          COMPUTE_ADMIN_TOKEN=ci-not-a-secret
+          COMPUTE_WORKER_ID=izakhono-worker-01
+          COMPUTE_WORKER_ENROLLMENT_TOKEN=
+          HOST_RUNTIME_TOKEN=ci-not-a-secret
+          EOF
+          docker compose --env-file .env.mvp.ci -f docker-compose.mvp.yml config --format json > /tmp/izakhono-host-mvp.json
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          cfg=json.loads(Path('/tmp/izakhono-host-mvp.json').read_text())
+          services=cfg['services']
+          assert {'postgres','compute-manager','compute-worker','host-runtime'} <= set(services)
+          for name in ('compute-manager','compute-worker'):
+              assert not services[name].get('ports'), f'{name} must not publish ports'
+          ports=services['host-runtime'].get('ports', [])
+          assert len(ports)==1 and ports[0].get('host_ip')=='127.0.0.1' and str(ports[0].get('published'))=='18080', ports
+          for name,svc in services.items():
+              assert not svc.get('privileged',False), f'{name} must not be privileged'
+              for mount in svc.get('volumes',[]):
+                  source=str(mount.get('source',''))
+                  target=str(mount.get('target',''))
+                  assert '/var/run/docker.sock' not in source+target, f'{name} must not mount Docker socket'
+          assert services['compute-worker'].get('user') or 'USER node' in Path('runtime/compute-worker/Dockerfile').read_text(), 'worker must run non-root'
+          print('[PASS] Private MVP topology, loopback-only runtime and no privileged/Docker-socket access.')
+          PY
+          rm -f .env.mvp.ci
+
+      - name: Verify MVP documentation and activation entrypoint
+        run: |
+          test -s products/izakhono-host/PRIVATE-MVP.md
+          test -x products/izakhono-host/MVP-ACTIVATE.sh || chmod +x products/izakhono-host/MVP-ACTIVATE.sh
+          grep -q '127.0.0.1:18080' products/izakhono-host/docker-compose.mvp.yml
