@@ -10,7 +10,7 @@ const common={...process.env,DATA_DIR:dir,COMPUTE_ADMIN_TOKEN:admin};
 const manager=spawn(process.execPath,['server.mjs'],{cwd:new URL('.',import.meta.url).pathname,env:{...common,PORT:String(port),COMPUTE_LEASE_MS:'15000'},stdio:'ignore'});
 let agent;
 const wait=ms=>new Promise(r=>setTimeout(r,ms));
-async function req(url,token,body){const r=await fetch(base+url,{method:body?'POST':'GET',headers:{...(token?{authorization:`Bearer ${token}`:{}),'content-type':'application/json'},...(body?{body:JSON.stringify(body)}:{})});return {status:r.status,data:await r.json()}}
+async function req(url,token,body){const headers={'content-type':'application/json'};if(token)headers.authorization=`Bearer ${token}`;const r=await fetch(base+url,{method:body?'POST':'GET',headers,...(body?{body:JSON.stringify(body)}:{})});return {status:r.status,data:await r.json()}}
 try{
  let ready=false;for(let i=0;i<50;i++){try{if((await fetch(base+'/health')).ok){ready=true;break}}catch{}await wait(100)}if(!ready)throw Error('manager failed to start');
  if((await req('/api/compute/summary','wrong')).status!==401)throw Error('admin auth gate failed');
