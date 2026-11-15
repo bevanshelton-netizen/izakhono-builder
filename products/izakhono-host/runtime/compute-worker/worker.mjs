@@ -10,7 +10,6 @@ const DATA_DIR=process.env.WORKER_DATA_DIR||'/data';
 const TOKEN_FILE=path.join(DATA_DIR,'worker-token');
 const POLL_MS=Math.max(1000,Number(process.env.WORKER_POLL_MS||3000));
 const CAPABILITIES=['health-check','sha256','echo'];
-if(!ENROLLMENT_TOKEN)throw new Error('WORKER_ENROLLMENT_TOKEN is required for first enrollment');
 async function request(pathname,body,token){
  const response=await fetch(MANAGER_URL+pathname,{method:'POST',headers:{...(token?{authorization:`Bearer ${token}`}:{}),'content-type':'application/json'},body:JSON.stringify(body)});
  const data=await response.json();if(!response.ok)throw new Error(data.error||`HTTP ${response.status}`);return data;
@@ -18,6 +17,7 @@ async function request(pathname,body,token){
 async function loadOrEnroll(){
  await fs.mkdir(DATA_DIR,{recursive:true});
  try{const token=(await fs.readFile(TOKEN_FILE,'utf8')).trim();if(token)return token}catch(e){if(e.code!=='ENOENT')throw e}
+ if(!ENROLLMENT_TOKEN)throw new Error('WORKER_ENROLLMENT_TOKEN is required for first enrollment');
  const result=await request('/worker/register',{worker_id:WORKER_ID,enrollment_token:ENROLLMENT_TOKEN,hostname:os.hostname(),capabilities:CAPABILITIES,resources:{cpu_count:os.cpus().length,memory_mb:Math.round(os.totalmem()/1048576)}});
  const token=result.worker_token;if(!token)throw new Error('Manager did not issue a worker credential');
  const tmp=TOKEN_FILE+'.tmp';await fs.writeFile(tmp,token,{mode:0o600});await fs.rename(tmp,TOKEN_FILE);return token;
