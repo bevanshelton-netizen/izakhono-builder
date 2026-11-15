@@ -28,6 +28,15 @@ jobs:
       - name: Test native HOST runtime
         working-directory: products/izakhono-host/runtime/control-plane
         run: node smoke.mjs
+      - name: Validate compute and remote-node scripts
+        run: |
+          node --check products/izakhono-host/runtime/compute-manager/server.mjs
+          node --check products/izakhono-host/runtime/compute-worker/worker.mjs
+          node --check products/izakhono-host/runtime/compute-manager/smoke.mjs
+          bash -n products/izakhono-host/COMPUTE-ONLY-ACTIVATE.sh
+          bash -n products/izakhono-host/ENROLL-COMPUTE-NODE.sh
+          bash -n products/izakhono-host/worker-node/ACTIVATE-WORKER.sh
+          python3 -m py_compile products/izakhono-host/generate-env-secrets.py
       - name: Install compute manager runtime dependency
         working-directory: products/izakhono-host/runtime/compute-manager
         run: npm install --omit=dev --ignore-scripts --no-audit --no-fund
@@ -36,4 +45,6 @@ jobs:
         run: node smoke.mjs
       - name: Validate owned Docker Compose configuration
         working-directory: products/izakhono-host
-        run: docker compose --env-file .env.example -f docker-compose.owned.yml config --quiet
+        run: |
+          docker compose --env-file .env.example -f docker-compose.owned.yml config --quiet
+          docker compose --env-file worker-node/.env.example -f worker-node/docker-compose.yml config --quiet
