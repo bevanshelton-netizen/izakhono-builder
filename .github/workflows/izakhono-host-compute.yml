@@ -19,7 +19,23 @@ concurrency:
 jobs:
   compute-runtime:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: izakhono_ci
+          POSTGRES_USER: izakhono_ci
+          POSTGRES_PASSWORD: ci-compute-password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U izakhono_ci -d izakhono_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgres://izakhono_ci:ci-compute-password@127.0.0.1:5432/izakhono_ci
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
