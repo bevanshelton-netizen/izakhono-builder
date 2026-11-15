@@ -26,6 +26,8 @@ services:
       DATABASE_URL: postgres://${POSTGRES_USER:-izakhono}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-izakhono}
     volumes:
       - compute-manager-data:/data
+    ports:
+      - "${COMPUTE_MANAGER_BIND_IP:-127.0.0.1}:${COMPUTE_MANAGER_BIND_PORT:-8082}:8082"
     networks: [izakhono]
     depends_on:
       postgres:
