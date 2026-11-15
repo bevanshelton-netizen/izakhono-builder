@@ -44,7 +44,7 @@ done
 echo "[4/6] Issue single-use worker enrollment"
 ADMIN_TOKEN="$(sed -n 's/^COMPUTE_ADMIN_TOKEN=//p' "$ENV_FILE")"
 WORKER_ID="$(sed -n 's/^COMPUTE_WORKER_ID=//p' "$ENV_FILE")"
-ENROLLMENT_TOKEN="$("${COMPOSE[@]}" exec -T compute-manager node -e 'fetch("http://127.0.0.1:8082/api/compute/nodes/enroll",{method:"POST",headers:{authorization:"Bearer "+process.env.COMPUTE_ADMIN_TOKEN,"content-type":"application/json"},body:JSON.stringify({worker_id:process.env.WORKER_ID})}).then(async r=>{const d=await r.json();if(!r.ok)throw Error(d.error||r.status);process.stdout.write(d.enrollment_token)}).catch(e=>{console.error(e.message);process.exit(1)})' )"
+ENROLLMENT_TOKEN="$("${COMPOSE[@]}" exec -T -e WORKER_ID="$WORKER_ID" compute-manager node -e 'fetch("http://127.0.0.1:8082/api/compute/nodes/enroll",{method:"POST",headers:{authorization:"Bearer "+process.env.COMPUTE_ADMIN_TOKEN,"content-type":"application/json"},body:JSON.stringify({worker_id:process.env.WORKER_ID})}).then(async r=>{const d=await r.json();if(!r.ok)throw Error(d.error||r.status);process.stdout.write(d.enrollment_token)}).catch(e=>{console.error(e.message);process.exit(1)})' )"
 [[ -n "$ENROLLMENT_TOKEN" ]] || { echo "Enrollment token was not issued." >&2; exit 1; }
 python3 - "$ENV_FILE" "$ENROLLMENT_TOKEN" <<'PY'
 from pathlib import Path
@@ -59,7 +59,7 @@ echo "[5/6] Enrol worker and verify online state"
 "${COMPOSE[@]}" up -d compute-worker
 registered=0
 for _ in {1..45}; do
-  if "${COMPOSE[@]}" exec -T compute-manager node -e 'fetch("http://127.0.0.1:8082/api/compute/nodes",{headers:{authorization:"Bearer "+process.env.COMPUTE_ADMIN_TOKEN}}).then(async r=>{const d=await r.json();process.exit(r.ok&&d.nodes?.some(n=>n.id===process.env.WORKER_ID&&n.status==="online")?0:1)}).catch(()=>process.exit(1))' >/dev/null 2>&1; then registered=1; break; fi
+  if "${COMPOSE[@]}" exec -T -e WORKER_ID="$WORKER_ID" compute-manager node -e 'fetch("http://127.0.0.1:8082/api/compute/nodes",{headers:{authorization:"Bearer "+process.env.COMPUTE_ADMIN_TOKEN}}).then(async r=>{const d=await r.json();process.exit(r.ok&&d.nodes?.some(n=>n.id===process.env.WORKER_ID&&n.status==="online")?0:1)}).catch(()=>process.exit(1))' >/dev/null 2>&1; then registered=1; break; fi
   sleep 2
 done
 [[ "$registered" == 1 ]] || { "${COMPOSE[@]}" logs --tail=100 compute-worker compute-manager; echo "Worker did not enroll." >&2; exit 1; }
