@@ -41,7 +41,6 @@ services:
     restart: unless-stopped
     environment:
       COMPUTE_MANAGER_URL: http://compute-manager:8082
-      COMPUTE_WORKER_TOKEN: ${COMPUTE_WORKER_TOKEN:?set COMPUTE_WORKER_TOKEN}
       WORKER_ID: ${COMPUTE_WORKER_ID:-izakhono-worker-01}
       WORKER_ENROLLMENT_TOKEN: ${COMPUTE_WORKER_ENROLLMENT_TOKEN:-}
       WORKER_DATA_DIR: /data
