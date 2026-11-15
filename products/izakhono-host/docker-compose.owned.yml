@@ -22,7 +22,6 @@ services:
       PORT: 8082
       DATA_DIR: /data
       COMPUTE_ADMIN_TOKEN: ${COMPUTE_ADMIN_TOKEN:?set COMPUTE_ADMIN_TOKEN}
-      COMPUTE_WORKER_TOKEN: ${COMPUTE_WORKER_TOKEN:?set COMPUTE_WORKER_TOKEN}
       COMPUTE_LEASE_MS: ${COMPUTE_LEASE_MS:-120000}
       DATABASE_URL: postgres://${POSTGRES_USER:-izakhono}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-izakhono}
     volumes:
@@ -44,7 +43,11 @@ services:
       COMPUTE_MANAGER_URL: http://compute-manager:8082
       COMPUTE_WORKER_TOKEN: ${COMPUTE_WORKER_TOKEN:?set COMPUTE_WORKER_TOKEN}
       WORKER_ID: ${COMPUTE_WORKER_ID:-izakhono-worker-01}
+      WORKER_ENROLLMENT_TOKEN: ${COMPUTE_WORKER_ENROLLMENT_TOKEN:-}
+      WORKER_DATA_DIR: /data
       WORKER_POLL_MS: ${COMPUTE_WORKER_POLL_MS:-3000}
+    volumes:
+      - compute-worker-data:/data
     networks: [izakhono]
     depends_on:
       compute-manager:
@@ -167,6 +170,7 @@ networks:
 volumes:
   host-runtime-data:
   compute-manager-data:
+  compute-worker-data:
   caddy-data:
   caddy-config:
   postgres-data:
