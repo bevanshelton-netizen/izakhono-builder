@@ -9,6 +9,8 @@ set -a
 source .env
 set +a
 [[ -n "${COMPUTE_ADMIN_TOKEN:-}" ]] || { echo "COMPUTE_ADMIN_TOKEN is missing." >&2; exit 1; }
+[[ -n "${COMPUTE_MANAGER_PRIVATE_URL:-}" ]] || { echo "Set COMPUTE_MANAGER_PRIVATE_URL to the manager's private VPN address in HOST .env." >&2; exit 1; }
+[[ "${COMPUTE_MANAGER_PRIVATE_URL}" != *127.0.0.1* && "${COMPUTE_MANAGER_PRIVATE_URL}" != *localhost* ]] || { echo "The remote worker cannot use the control host's loopback address." >&2; exit 1; }
 command -v docker >/dev/null 2>&1 || { echo "Docker is required." >&2; exit 1; }
 TOKEN="$(docker compose --env-file .env -f docker-compose.owned.yml exec -T -e WORKER_ID="$WORKER_ID" compute-manager node -e "fetch('http://127.0.0.1:8082/api/compute/nodes/enroll',{method:'POST',headers:{authorization:'Bearer '+process.env.COMPUTE_ADMIN_TOKEN,'content-type':'application/json'},body:JSON.stringify({worker_id:process.env.WORKER_ID})}).then(async r=>{const d=await r.json();if(!r.ok)throw Error(d.error||r.status);process.stdout.write(d.enrollment_token)}).catch(e=>{console.error(e.message);process.exit(1)})")"
 [[ -n "$TOKEN" ]] || { echo "Enrollment token was not issued." >&2; exit 1; }
