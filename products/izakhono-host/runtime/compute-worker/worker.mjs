@@ -5,9 +5,10 @@ import path from 'node:path';
 
 const MANAGER_URL=(process.env.COMPUTE_MANAGER_URL||'http://compute-manager:8082').replace(/\/$/,'');
 const ENROLLMENT_TOKEN=process.env.WORKER_ENROLLMENT_TOKEN||'';
-const WORKER_ID=process.env.WORKER_ID||'izakhono-worker-01';
+const WORKER_ID=process.env.WORKER_ID||os.hostname();
 const DATA_DIR=process.env.WORKER_DATA_DIR||'/data';
-const TOKEN_FILE=path.join(DATA_DIR,'worker-token');
+if(!/^[-a-zA-Z0-9_.]{3,80}$/.test(WORKER_ID))throw new Error('WORKER_ID must be 3-80 safe characters');
+const TOKEN_FILE=path.join(DATA_DIR,`worker-${WORKER_ID}.token`);
 const POLL_MS=Math.max(1000,Number(process.env.WORKER_POLL_MS||3000));
 const CAPABILITIES=['health-check','sha256','echo'];
 async function request(pathname,body,token){
