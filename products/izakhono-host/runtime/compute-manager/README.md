@@ -13,8 +13,11 @@ Administrator bearer token:
 - `GET /health`
 - `GET /api/compute/summary`
 - `GET /api/compute/nodes`
+- `POST /api/compute/nodes/:worker_id/drain` — stop assigning new work to a node.
+- `POST /api/compute/nodes/:worker_id/resume` — return a recently seen enrolled node to scheduling.
 - `GET /api/compute/jobs`
 - `GET /api/compute/jobs/:id`
+- `POST /api/compute/jobs/:id/cancel` — cancel queued work or revoke a currently leased job; a running task may finish locally, but its revoked lease cannot publish a result.
 - `GET /api/compute/audit`
 - `POST /api/compute/jobs` with `{ "type": "health-check|sha256|echo", "input": {}, "priority": 0 }`
 
