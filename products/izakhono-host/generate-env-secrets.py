@@ -13,7 +13,6 @@ generated = {
     "MINIO_ROOT_PASSWORD": secrets.token_urlsafe(32),
     "IZAKHONO_MAIL_API_TOKEN": secrets.token_urlsafe(48),
     "COMPUTE_ADMIN_TOKEN": secrets.token_urlsafe(48),
-    "COMPUTE_WORKER_TOKEN": secrets.token_urlsafe(48),
     "STALWART_RECOVERY_ADMIN": "admin:" + secrets.token_urlsafe(32),
 }
 lines = path.read_text().splitlines()
