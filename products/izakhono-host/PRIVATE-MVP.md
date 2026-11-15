@@ -26,7 +26,7 @@ It deliberately excludes public ingress, customer DNS/TLS, mail, object storage,
 From this directory:
 
 ```bash
-./MVP-ACTIVATE.sh
+bash ./MVP-ACTIVATE.sh
 ```
 
 The script creates a private `.env.mvp` file with random secrets (mode 0600), validates the Compose model, builds the three owned services, starts PostgreSQL and the compute manager, issues a single-use enrollment token, verifies the worker is online, starts the native site runtime and checks its health endpoint. It then removes the consumed enrollment token from the environment file.
