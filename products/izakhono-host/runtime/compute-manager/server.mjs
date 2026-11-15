@@ -72,7 +72,7 @@ const server=http.createServer(async(req,res)=>{
    const auth=await load();
    if(!workerAuthorized(auth,workerId,req.headers.authorization?.replace(/^Bearer\s+/i,'')||''))return send(res,401,{ok:false,error:'Worker identity authentication failed'});
    if(u.pathname==='/worker/claim'){
-    const result=await mutate(s=>{expireLeases(s);const n=s.nodes.find(x=>x.id===workerId);if(!n)return {error:'Worker not found',status:404};n.last_seen_at=now();n.status='online';const job=s.jobs.filter(j=>j.status==='queued'&&n.capabilities.includes(j.type)&&n.resources.cpu_count>=(j.requirements?.cpu_count||1)&&n.resources.memory_mb>=(j.requirements?.memory_mb||128)).sort((a,b)=>b.priority-a.priority||a.created_at.localeCompare(b.created_at))[0];if(!job)return {job:null};job.status='leased';job.worker_id=workerId;job.lease_token=crypto.randomBytes(24).toString('hex');job.lease_expires_at=new Date(Date.now()+LEASE_MS).toISOString();job.updated_at=now();audit(s,'job.leased',workerId,{job_id:job.id});return {job:{id:job.id,type:job.type,input:job.input,lease_token:job.lease_token,lease_expires_at:job.lease_expires_at}}});
+    const result=await mutate(s=>{expireLeases(s);const n=s.nodes.find(x=>x.id===workerId);if(!n)return {error:'Worker not found',status:404};n.last_seen_at=now();if(n.status!=='draining')n.status='online';if(n.status!=='online')return {job:null,node_status:n.status};const job=s.jobs.filter(j=>j.status==='queued'&&n.capabilities.includes(j.type)&&n.resources.cpu_count>=(j.requirements?.cpu_count||1)&&n.resources.memory_mb>=(j.requirements?.memory_mb||128)).sort((a,b)=>b.priority-a.priority||a.created_at.localeCompare(b.created_at))[0];if(!job)return {job:null,node_status:n.status};job.status='leased';job.worker_id=workerId;job.lease_token=crypto.randomBytes(24).toString('hex');job.lease_expires_at=new Date(Date.now()+LEASE_MS).toISOString();job.updated_at=now();audit(s,'job.leased',workerId,{job_id:job.id});return {job:{id:job.id,type:job.type,input:job.input,lease_token:job.lease_token,lease_expires_at:job.lease_expires_at},node_status:n.status}});
     return result.error?send(res,result.status,{ok:false,error:result.error}):send(res,200,{ok:true,...result});
    }
    if(u.pathname==='/worker/heartbeat'){
@@ -93,6 +93,19 @@ const server=http.createServer(async(req,res)=>{
    const enrollmentToken=crypto.randomBytes(32).toString('base64url');
    const node=await mutate(s=>{let n=s.nodes.find(x=>x.id===workerId);if(!n){n={id:workerId,created_at:now()};s.nodes.push(n)}Object.assign(n,{status:'pending',enrollment_token_hash:hash(enrollmentToken),enrollment_expires_at:new Date(Date.now()+10*60*1000).toISOString(),worker_token_hash:null,last_seen_at:null});audit(s,'worker.enrollment_issued','administrator',{worker_id:workerId});return {id:n.id,status:n.status,expires_at:n.enrollment_expires_at}});
    return send(res,201,{ok:true,node,worker_id:workerId,enrollment_token:enrollmentToken});
+  }
+  const nodeAction=u.pathname.match(/^\\/api\\/compute\\/nodes\\/([a-zA-Z0-9_.-]+)\\/(drain|resume)$/);
+  if(req.method==='POST'&&nodeAction){
+   const workerId=nodeAction[1],action=nodeAction[2];
+   const result=await mutate(s=>{const n=s.nodes.find(x=>x.id===workerId);if(!n)return null;if(action==='drain'){n.status='draining';n.drain_requested_at=now();audit(s,'worker.drained','administrator',{worker_id:workerId})}else{n.status=n.worker_token_hash&&Date.now()-Date.parse(n.last_seen_at||0)<60000?'online':'offline';n.drain_requested_at=null;audit(s,'worker.resumed','administrator',{worker_id:workerId,status:n.status})}return {id:n.id,status:n.status}});
+   return result?send(res,200,{ok:true,node:result}):send(res,404,{ok:false,error:'Worker not found'});
+  }
+  const cancelJob=u.pathname.match(/^\\/api\\/compute\\/jobs\\/([a-zA-Z0-9_-]+)\\/cancel$/);
+  if(req.method==='POST'&&cancelJob){
+   const result=await mutate(s=>{const j=s.jobs.find(x=>x.id===cancelJob[1]);if(!j)return null;if(!['queued','leased'].includes(j.status))return {conflict:true,status:j.status};j.status='cancelled';j.lease_token=null;j.lease_expires_at=null;j.finished_at=now();j.updated_at=now();audit(s,'job.cancelled','administrator',{job_id:j.id});return {id:j.id,status:j.status}});
+   if(!result)return send(res,404,{ok:false,error:'Job not found'});
+   if(result.conflict)return send(res,409,{ok:false,error:'Job is already terminal',status:result.status});
+   return send(res,200,{ok:true,job:result});
   }
   if(req.method==='GET'&&u.pathname==='/api/compute/summary'){
    const result=await mutate(s=>{expireLeases(s);markStaleNodes(s);const counts={};for(const j of s.jobs)counts[j.status]=(counts[j.status]||0)+1;const nodes=s.nodes;return {nodes:nodes.length,online_nodes:nodes.filter(n=>n.status==='online').length,jobs:counts,capacity:nodes.filter(n=>n.status==='online').reduce((a,n)=>({cpu_count:a.cpu_count+n.resources.cpu_count,memory_mb:a.memory_mb+n.resources.memory_mb}),{cpu_count:0,memory_mb:0})}});
