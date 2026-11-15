@@ -18,8 +18,10 @@ Administrator bearer token:
 - `GET /api/compute/audit`
 - `POST /api/compute/jobs` with `{ "type": "health-check|sha256|echo", "input": {}, "priority": 0 }`
 
-Worker bearer token:
-- `POST /worker/register`
+Worker enrollment is administrator-issued and one-time:
+- `POST /api/compute/nodes/enroll` with `{ "worker_id": "node-01" }` returns a short-lived enrollment token exactly once.
+- The worker consumes that token at `POST /worker/register` and receives a unique worker credential.
+- The worker stores its credential in its private persistent `/data` volume; it is never returned by node inventory.
 - `POST /worker/claim`
 - `POST /worker/jobs/:id/complete`
 - `POST /worker/jobs/:id/fail`
@@ -52,7 +54,8 @@ node smoke.mjs
 
 ## Security and current boundaries
 
-- Manager and worker endpoints require separate bearer credentials.
+- Administrator endpoints require the administrator bearer credential. Every worker receives a unique credential through a short-lived, one-time enrollment token; the manager stores only its SHA-256 hash.
+- Worker credentials are persisted in a dedicated private volume with mode `0600`; the one-time enrollment token is removed from `.env` after successful activation.
 - The worker has no Docker socket, host mounts, shell execution, or dynamic code execution.
 - Job input is size-limited; queue length is bounded; leases expire and return jobs to the queue.
 - Production persistence uses the owned PostgreSQL database and a transactional row lock, so multiple manager instances cannot claim the same queued lease concurrently. A local JSON-file adapter remains available for isolated smoke tests only.
