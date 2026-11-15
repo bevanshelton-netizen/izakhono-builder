@@ -76,7 +76,7 @@ const server=http.createServer(async(req,res)=>{
     return result.error?send(res,result.status,{ok:false,error:result.error}):send(res,200,{ok:true,...result});
    }
    if(u.pathname==='/worker/heartbeat'){
-    const node=await mutate(s=>{const n=s.nodes.find(x=>x.id===workerId);if(!n)return null;n.last_seen_at=now();n.status='online';return true});
+    const node=await mutate(s=>{const n=s.nodes.find(x=>x.id===workerId);if(!n)return null;n.last_seen_at=now();if(n.status!=='draining')n.status='online';return true});
     return node?send(res,200,{ok:true}):send(res,404,{ok:false,error:'Worker not found'});
    }
    const m=u.pathname.match(/^\/worker\/jobs\/([a-zA-Z0-9_-]+)\/(complete|fail)$/);
@@ -94,13 +94,13 @@ const server=http.createServer(async(req,res)=>{
    const node=await mutate(s=>{let n=s.nodes.find(x=>x.id===workerId);if(!n){n={id:workerId,created_at:now()};s.nodes.push(n)}Object.assign(n,{status:'pending',enrollment_token_hash:hash(enrollmentToken),enrollment_expires_at:new Date(Date.now()+10*60*1000).toISOString(),worker_token_hash:null,last_seen_at:null});audit(s,'worker.enrollment_issued','administrator',{worker_id:workerId});return {id:n.id,status:n.status,expires_at:n.enrollment_expires_at}});
    return send(res,201,{ok:true,node,worker_id:workerId,enrollment_token:enrollmentToken});
   }
-  const nodeAction=u.pathname.match(/^\\/api\\/compute\\/nodes\\/([a-zA-Z0-9_.-]+)\\/(drain|resume)$/);
+  const nodeAction=u.pathname.match(/^\/api\/compute\/nodes\/([a-zA-Z0-9_.-]+)\/(drain|resume)$/);
   if(req.method==='POST'&&nodeAction){
    const workerId=nodeAction[1],action=nodeAction[2];
    const result=await mutate(s=>{const n=s.nodes.find(x=>x.id===workerId);if(!n)return null;if(action==='drain'){n.status='draining';n.drain_requested_at=now();audit(s,'worker.drained','administrator',{worker_id:workerId})}else{n.status=n.worker_token_hash&&Date.now()-Date.parse(n.last_seen_at||0)<60000?'online':'offline';n.drain_requested_at=null;audit(s,'worker.resumed','administrator',{worker_id:workerId,status:n.status})}return {id:n.id,status:n.status}});
    return result?send(res,200,{ok:true,node:result}):send(res,404,{ok:false,error:'Worker not found'});
   }
-  const cancelJob=u.pathname.match(/^\\/api\\/compute\\/jobs\\/([a-zA-Z0-9_-]+)\\/cancel$/);
+  const cancelJob=u.pathname.match(/^\/api\/compute\/jobs\/([a-zA-Z0-9_-]+)\/cancel$/);
   if(req.method==='POST'&&cancelJob){
    const result=await mutate(s=>{const j=s.jobs.find(x=>x.id===cancelJob[1]);if(!j)return null;if(!['queued','leased'].includes(j.status))return {conflict:true,status:j.status};j.status='cancelled';j.lease_token=null;j.lease_expires_at=null;j.finished_at=now();j.updated_at=now();audit(s,'job.cancelled','administrator',{job_id:j.id});return {id:j.id,status:j.status}});
    if(!result)return send(res,404,{ok:false,error:'Job not found'});
