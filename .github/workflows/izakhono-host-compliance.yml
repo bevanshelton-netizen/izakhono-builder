@@ -36,6 +36,8 @@ jobs:
           bash -n products/izakhono-host/NODE-COMPLIANCE.sh
           bash -n products/izakhono-host/bootstrap-owned.sh
           bash -n products/izakhono-host/COMPUTE-ONLY-ACTIVATE.sh
+          bash -n products/izakhono-host/ENROLL-COMPUTE-NODE.sh
+          bash -n products/izakhono-host/worker-node/ACTIVATE-WORKER.sh
           python3 -m py_compile products/izakhono-host/generate-env-secrets.py
       - name: Validate runtime source
         run: |
