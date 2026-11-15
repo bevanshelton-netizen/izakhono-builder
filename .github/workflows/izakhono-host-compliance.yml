@@ -19,6 +19,7 @@ env:
   IZAKHONO_MAIL_API_TOKEN: ci-mail-api-token
   COMPUTE_ADMIN_TOKEN: ci-compute-admin-token
   COMPUTE_WORKER_ENROLLMENT_TOKEN: ci-compute-enrollment-placeholder
+  SMTP_HOST: 10.0.0.10
 
 jobs:
   compliance-script:
@@ -34,7 +35,12 @@ jobs:
           bash -n products/izakhono-host/NODE01-ACTIVATE.sh
           bash -n products/izakhono-host/NODE-COMPLIANCE.sh
           bash -n products/izakhono-host/bootstrap-owned.sh
+          bash -n products/izakhono-host/COMPUTE-ONLY-ACTIVATE.sh
+          python3 -m py_compile products/izakhono-host/generate-env-secrets.py
       - name: Validate runtime source
-        run: node --check products/izakhono-host/runtime/control-plane/server.mjs
+        run: |
+          node --check products/izakhono-host/runtime/control-plane/server.mjs
+          node --check products/izakhono-host/runtime/compute-manager/server.mjs
+          node --check products/izakhono-host/runtime/compute-worker/worker.mjs
       - name: Validate compose syntax
         run: docker compose -f products/izakhono-host/docker-compose.owned.yml config >/dev/null
