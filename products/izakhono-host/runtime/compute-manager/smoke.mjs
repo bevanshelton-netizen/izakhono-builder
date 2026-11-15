@@ -21,7 +21,7 @@ try{
  const tokenFile=path.join(dir,'worker','worker-worker-test-01.token');
  if(!(await readFile(tokenFile,'utf8')).trim())throw Error('worker credential was not persisted');
  if(((await stat(tokenFile)).mode&0o777)!==0o600)throw Error('worker credential file permissions are not 0600');
- if((await req('/worker/claim','wrong-worker-token',{worker_id:'worker-test-01})).status!==401)throw Error('per-worker credential isolation failed');
+ if((await req('/worker/claim','wrong-worker-token',{worker_id:'worker-test-01'})).status!==401)throw Error('per-worker credential isolation failed');
  const drained=await req('/api/compute/nodes/worker-test-01/drain',admin,{});if(drained.status!==200||drained.data.node.status!=='draining')throw Error('node drain control failed');
  const cancelCandidate=await req('/api/compute/jobs',admin,{type:'echo',input:{test:'cancel'}});if(cancelCandidate.status!==202)throw Error('cancel test job submission failed');
  await wait(350);
