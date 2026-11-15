@@ -12,6 +12,18 @@ on:
       - 'products/izakhono-host/docker-compose.owned.yml'
       - '.github/workflows/izakhono-mail.yml'
 
+env:
+  HOST_RUNTIME_TOKEN: ci-host-runtime-token
+  TLS_EMAIL: ci@example.com
+  POSTGRES_PASSWORD: ci-postgres-password
+  MINIO_ROOT_USER: ci-minio-admin
+  MINIO_ROOT_PASSWORD: ci-minio-password
+  IZAKHONO_MAIL_API_TOKEN: ci-mail-api-token
+  SMTP_HOST: 10.0.0.10
+  STALWART_RECOVERY_ADMIN: ci-stalwart-recovery-admin
+  COMPUTE_ADMIN_TOKEN: ci-compute-admin-token
+  COMPUTE_WORKER_ENROLLMENT_TOKEN: ci-compute-enrollment-placeholder
+
 jobs:
   validate:
     runs-on: ubuntu-latest
