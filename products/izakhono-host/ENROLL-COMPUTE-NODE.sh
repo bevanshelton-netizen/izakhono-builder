@@ -17,7 +17,7 @@ TOKEN="$(docker compose --env-file .env -f docker-compose.owned.yml exec -T -e W
 OUT="$ROOT/worker-node/enrollments/$WORKER_ID.env"
 mkdir -p "$(dirname "$OUT")"
 chmod 700 "$(dirname "$OUT")"
-printf 'COMPUTE_MANAGER_URL=%s\nWORKER_ID=%s\nWORKER_ENROLLMENT_TOKEN=%s\nWORKER_POLL_MS=3000\n' "${COMPUTE_MANAGER_PRIVATE_URL:-http://127.0.0.1:8082}" "$WORKER_ID" "$TOKEN" > "$OUT"
+printf 'COMPUTE_MANAGER_URL=%s\nWORKER_ID=%s\nWORKER_ENROLLMENT_TOKEN=%s\nWORKER_POLL_MS=3000\n' "${COMPUTE_MANAGER_PRIVATE_URL}" "$WORKER_ID" "$TOKEN" > "$OUT"
 chmod 600 "$OUT"
 unset TOKEN
 echo "One-time enrollment file created: worker-node/enrollments/$WORKER_ID.env"
