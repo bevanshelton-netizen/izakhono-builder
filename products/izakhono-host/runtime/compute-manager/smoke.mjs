@@ -18,6 +18,12 @@ try{
  agent=spawn(process.execPath,['../compute-worker/worker.mjs'],{cwd:new URL('.',import.meta.url).pathname,env:{...common,COMPUTE_MANAGER_URL:base,WORKER_ID:'worker-test-01',WORKER_POLL_MS:'100',WORKER_ENROLLMENT_TOKEN:enrolled.data.enrollment_token,WORKER_DATA_DIR:path.join(dir,'worker')},stdio:'ignore'});
  let registered=false;for(let i=0;i<50;i++){const nodes=await req('/api/compute/nodes',admin);if(nodes.data.nodes.some(n=>n.id==='worker-test-01'&&n.status==='online')){registered=true;break}await wait(100)}if(!registered)throw Error('worker process did not enroll');
  if((await req('/worker/claim','wrong-worker-token',{worker_id:'worker-test-01'})).status!==401)throw Error('per-worker credential isolation failed');
+ const drained=await req('/api/compute/nodes/worker-test-01/drain',admin,{});if(drained.status!==200||drained.data.node.status!=='draining')throw Error('node drain control failed');
+ const cancelCandidate=await req('/api/compute/jobs',admin,{type:'echo',input:{test:'cancel'}});if(cancelCandidate.status!==202)throw Error('cancel test job submission failed');
+ await wait(350);
+ const stillQueued=await req(`/api/compute/jobs/${cancelCandidate.data.job.id}`,admin);if(stillQueued.data.job.status!=='queued')throw Error('draining worker claimed new work');
+ const cancelled=await req(`/api/compute/jobs/${cancelCandidate.data.job.id}/cancel`,admin,{});if(cancelled.status!==200||cancelled.data.job.status!=='cancelled')throw Error('queued job cancellation failed');
+ const resumed=await req('/api/compute/nodes/worker-test-01/resume',admin,{});if(resumed.status!==200||resumed.data.node.status!=='online')throw Error('node resume control failed');
  const value='izakhono sovereign compute';
  const queued=await req('/api/compute/jobs',admin,{type:'sha256',input:{value}});if(queued.status!==202)throw Error('job submission failed');
  let completed=null;for(let i=0;i<100;i++){const status=await req(`/api/compute/jobs/${queued.data.job.id}`,admin);if(status.data.job.status==='succeeded'){completed=status.data.job;break}if(status.data.job.status==='failed')throw Error(status.data.job.error);await wait(100)}if(!completed)throw Error('worker did not complete job');
