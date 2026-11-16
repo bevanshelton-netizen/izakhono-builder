@@ -10,7 +10,7 @@ That model is no longer authoritative for CONNECTA.
 
 `IZAKHONO CODE → IZAKHONO CONTROL → NODE01 → NODE02 → NODE03 → NODE04 → IZAKHONO EDGE/TLS → CONNECTA`
 
-NODE01–NODE04 are logical/runtime nodes. They are not required to be physical desktops or workstations.
+**NODE01 is IZAKHONO software**, a deployable runtime component/service. NODE02–NODE04 are software peer/failover nodes. Their execution hosts are infrastructure, not the software nodes themselves; no physical NODE01 desktop or workstation is required.
 
 The authoritative CONNECTA certification path is:
 
