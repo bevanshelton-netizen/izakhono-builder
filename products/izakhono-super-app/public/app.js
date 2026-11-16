@@ -265,5 +265,26 @@
     $("aiPrompt")?.addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();$("aiChatForm").requestSubmit();}});aiCheck();
   }
 
-  document.addEventListener("DOMContentLoaded",()=>{bind();bindAI();load();});
+
+  let installPrompt=null;
+  function setupPWA(){
+    const installButton=$("installApp");
+    if(installButton){
+      window.addEventListener("beforeinstallprompt",event=>{
+        event.preventDefault();installPrompt=event;installButton.hidden=false;
+      });
+      installButton.addEventListener("click",async()=>{
+        if(!installPrompt)return;
+        installButton.disabled=true;
+        try{await installPrompt.prompt();await installPrompt.userChoice;}catch(_){}
+        installPrompt=null;installButton.hidden=true;installButton.disabled=false;
+      });
+      window.addEventListener("appinstalled",()=>{installPrompt=null;installButton.hidden=true;});
+    }
+    if("serviceWorker" in navigator && location.protocol==="https:"){
+      window.addEventListener("load",()=>navigator.serviceWorker.register("/sw.js",{scope:"/"}).catch(()=>{}),{once:true});
+    }
+  }
+
+  document.addEventListener("DOMContentLoaded",()=>{bind();bindAI();load();setupPWA();});
 })();
