@@ -104,4 +104,16 @@ await assert.rejects(
 );
 assert.equal(verifyCalled, false, "verification must not run after an unconfirmed deployment");
 
+
+let handoverCalled = false;
+await assert.rejects(
+  executeApprovedRelease(release, {
+    ...adapter,
+    async verify() { return { status: "verified", evidenceRef: "evidence-bad", deploymentId: "deployment-001", artifactDigest: "b".repeat(64), logicalNodeId: "NODE01" }; },
+    async handover() { handoverCalled = true; return { status: "ready", packageRef: "handover-bad", deploymentId: "deployment-001", verificationEvidenceRef: "evidence-bad" }; },
+  }),
+  error => error instanceof ThorError && error.code === "PROVISION_VERIFY_FAILED",
+);
+assert.equal(handoverCalled, false, "handover must stop when verification evidence is not bound to the artifact");
+
 console.log("THOR -> Provisioner contract: all tests passed.");
