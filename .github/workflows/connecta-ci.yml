@@ -91,6 +91,10 @@ jobs:
         shell: bash
         run: bash infra/node-cluster/test-node-cluster-evidence-verifier.sh
 
+      - name: Test negative runtime evidence security matrix
+        shell: bash
+        run: bash infra/node-cluster/test-node-cluster-evidence-negative-matrix.sh
+
       - name: Test unique four-node runtime endpoints
         shell: bash
         run: bash infra/node-cluster/test-node-cluster-health-gate.sh
