@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'src/**'
+      - 'products/izakhono-jarvis/**'
       - 'public/**'
       - 'migrations/**'
       - 'wrangler.jsonc'
@@ -47,7 +48,7 @@ jobs:
 
       - name: Install dependencies
         if: steps.gate.outputs.ready == 'true'
-        run: npm ci --ignore-scripts --no-audit --no-fund
+        run: npm install --ignore-scripts --no-audit --no-fund
 
       - name: Validate candidate
         if: steps.gate.outputs.ready == 'true'
