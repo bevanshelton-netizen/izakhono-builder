@@ -90,6 +90,40 @@ for(const required of ['create','ads','crm','flow','finance-core','accountant','
   if(!modules.has(required)) errors.push('required SUPER APP module missing: '+required);
 }
 
+
+// Installable PWA shell: validate the manifest, icon and privacy-preserving cache boundary.
+const pwaManifestPath='products/izakhono-super-app/public/manifest.webmanifest';
+const pwaWorkerPath='products/izakhono-super-app/public/sw.js';
+const pwaIconPath='products/izakhono-super-app/public/icon.svg';
+const pwaHtmlPath='products/izakhono-super-app/public/index.html';
+const pwaAppPath='products/izakhono-super-app/public/app.js';
+let pwaManifest=null;
+try{pwaManifest=JSON.parse(fs.readFileSync(pwaManifestPath,'utf8'));}catch{errors.push('PWA manifest missing or invalid JSON');}
+if(pwaManifest){
+  if(pwaManifest.name!=='IZAKHONO SUPER APP') errors.push('PWA manifest name drift');
+  if(pwaManifest.start_url!=='/' || pwaManifest.scope!=='/') errors.push('PWA start URL and scope must remain root-scoped');
+  if(pwaManifest.display!=='standalone') errors.push('PWA must support standalone display');
+  if(!(pwaManifest.icons||[]).some(icon=>icon.src==='/icon.svg' && icon.type==='image/svg+xml')) errors.push('PWA icon declaration missing');
+}
+for(const path of [pwaWorkerPath,pwaIconPath,pwaHtmlPath,pwaAppPath]){
+  if(!fs.existsSync(path) || !fs.statSync(path).size) errors.push('PWA asset missing or empty: '+path);
+}
+if(fs.existsSync(pwaWorkerPath)){
+  const sw=fs.readFileSync(pwaWorkerPath,'utf8');
+  if(!sw.includes('url.pathname.startsWith("/api/")')) errors.push('service worker must bypass API requests');
+  if(!sw.includes('request.mode === "navigate"')) errors.push('service worker must provide an offline navigation shell');
+}
+if(fs.existsSync(pwaHtmlPath)){
+  const html=fs.readFileSync(pwaHtmlPath,'utf8');
+  if(!html.includes('rel="manifest"') || !html.includes('/manifest.webmanifest')) errors.push('HTML manifest link missing');
+  if(!html.includes('id="installApp"')) errors.push('PWA install control missing');
+}
+if(fs.existsSync(pwaAppPath)){
+  const app=fs.readFileSync(pwaAppPath,'utf8');
+  if(!app.includes('navigator.serviceWorker.register("/sw.js"')) errors.push('service worker registration missing');
+  if(!app.includes('beforeinstallprompt')) errors.push('browser install prompt handler missing');
+}
+
 if(errors.length){
   console.error('IZAKHONO SUPER APP validation failed:');
   for(const e of errors) console.error(' - '+e);
