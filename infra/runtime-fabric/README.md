@@ -5,7 +5,7 @@
 
 ## Core rule
 
-The authoritative unit is the **signed application release**. NODE01 is a logical runtime node, not a physical-workstation dependency.
+The authoritative unit is the **signed application release**. **NODE01 is IZAKHONO software**: a deployable software runtime component/service, not a physical machine, workstation, server, or hostname. Its execution host is separate infrastructure.
 
 Every platform must be deployable from the same immutable release artifact to any approved IZAKHONO runtime node without rebuilding the application.
 
@@ -15,9 +15,9 @@ The canonical cluster is:
 
 `NODE01 → NODE02 → NODE03 → NODE04`
 
-These identifiers represent IZAKHONO runtime nodes. They may be implemented on VMs, containers, bare-metal capacity, or other IZAKHONO-controlled execution capacity. The node identity is logical; the certification contract must prove that the named node actually exists and is running the release.
+NODE01–NODE04 are IZAKHONO software node components/instances. They run on approved execution capacity such as VMs, containers, or bare-metal hosts; that underlying host is not the node itself. Software identity and host identity must remain separate. Certification proves that each named software node is actually running the approved release.
 
-NODE01 is the preferred primary. NODE02, NODE03 and NODE04 provide failover/resilience according to the cluster topology. A node may be promoted or removed from traffic only on fresh runtime evidence.
+NODE01 is the primary software node. NODE02, NODE03 and NODE04 are peer/failover software nodes providing resilience according to the cluster topology. A node may be promoted or removed from traffic only on fresh runtime evidence.
 
 ## Platform independence decision
 
