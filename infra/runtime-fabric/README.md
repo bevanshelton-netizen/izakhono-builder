@@ -1,7 +1,7 @@
 # IZAKHONO Runtime Fabric Standard
 
 **Status:** Portfolio-wide runtime standard  
-**Policy:** IZAKHONO-owned runtime nodes are the canonical execution fabric. No external hosting provider is a required runtime dependency.
+**Policy:** IZAKHONO-owned runtime nodes are the canonical execution fabric. Vercel is not required and no external hosting provider is a required runtime dependency.
 
 ## Core rule
 
