@@ -1,6 +1,6 @@
 # IZAKHONO NODE CLUSTER v1
 
-> **Runtime Fabric boundary (2 Nov 2026):** This directory describes an owner-controlled HA cluster implementation. **NODE01-NODE04 are logical software/runtime identities, not physical machines, servers, hostnames, or permanent hardware assignments.** Each logical identity is bound at runtime to an approved physical or virtual runtime host through `izakhono.runtime-binding/v1`. The cluster is not a prerequisite for public product availability and it must not make NODE01 a portfolio-wide launch gate.
+> **Runtime Fabric boundary (2 Nov 2026):** This directory describes an owner-controlled HA cluster implementation. **NODE01 is IZAKHONO software**: a deployable software runtime component/service. NODE02–NODE04 are also software node components/instances in the cluster. None of these names denotes a physical machine, server, workstation, hostname, or permanent hardware assignment. Software nodes execute on separately managed physical or virtual hosts. The cluster is not a prerequisite for public product availability and it must not make NODE01 a portfolio-wide launch gate.
 
 This directory documents one implementation of the IZAKHONO runtime cluster beneath the logical node-identity layer. Products should first inherit the node-agnostic standard in `../runtime-fabric/README.md`.
 
@@ -13,9 +13,9 @@ This directory documents one implementation of the IZAKHONO runtime cluster bene
 | NODE03 | peer controller preference | k3s server/control-plane + worker | identity may rebind to an approved host |
 | NODE04 | DR/workload preference | k3s worker + backup repository | identity may rebind to an approved host |
 
-These are **software identities**. The underlying runtime host is separate infrastructure and may be physical, virtual, owned, or an approved external adapter. A host may change without changing the logical identity. No release, deployment, DNS, TLS, health, acceptance, or LIVE contract may bind the logical software identity to a permanent physical host.
+These are **software nodes**. The underlying runtime host is separate infrastructure and may be physical, virtual, owned, or an approved external adapter. A host may change without changing the software node or its identity. No release, deployment, DNS, TLS, health, acceptance, or LIVE contract may bind the logical software identity to a permanent physical host.
 
-NODE01 may be the preferred logical bootstrap role for this specific k3s implementation, but production applications must not depend on a particular NODE01 host being alive. Public launch/failover is governed by the Runtime Fabric, not by this cluster's bootstrap order.
+NODE01 is the primary software node and may perform the preferred bootstrap role for this specific k3s implementation, but production applications must not depend on a particular NODE01 host being alive. Public launch/failover is governed by the Runtime Fabric, not by this cluster's bootstrap order.
 
 The cluster uses three control-plane members (the logical NODE01-NODE03 roles) so control-plane quorum survives one controller failure. NODE04 remains outside the etcd voting set so it can act as a simpler disaster-recovery and workload role.
 
