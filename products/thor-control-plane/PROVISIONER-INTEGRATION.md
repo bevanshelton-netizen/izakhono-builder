@@ -41,7 +41,7 @@ The executable boundary is implemented in `src/provisioner-contract.mjs`.
 - `executeApprovedRelease(input, adapter)` invokes `authorize → plan → provision → verify → handover` in order.
 - `authorize(context)` must resolve the approval against the authoritative FORTRESS/approval service and return an evidence reference. A caller-supplied `status: approved` field is not sufficient.
 - Every adapter receives `thor-release:<releaseId>` as its idempotency key.
-- Each stage must return an explicit success state and durable evidence/reference.
+- Each stage must return an explicit success state and durable evidence/reference. Plan, deployment, verification and handover responses must all be bound to the exact artifact digest, logical NODE identity and runtime-host reference; a generic successful HTTP response is not sufficient.
 - Missing approval, scope mismatch, invalid artifact, failed authoritative authorization, unready plan, unconfirmed deployment, failed verification or missing handover fails closed.
 
 The adapter must be implemented by a server-side service. Do not expose service credentials to THOR browser clients or coding workers. Provider credentials are injected only by the trusted Provisioner runtime.
@@ -68,7 +68,7 @@ Do not promote a release until all evidence exists:
 - immutable artifact digest and provenance;
 - approved release record with exact scope;
 - provisioner plan and idempotency key;
-- deployment identifier and target binding;
+- deployment identifier, exact artifact digest and target binding;
 - independent health and application acceptance evidence;
 - rollback reference and tested recovery path;
 - backup/restore evidence for stateful workloads;
