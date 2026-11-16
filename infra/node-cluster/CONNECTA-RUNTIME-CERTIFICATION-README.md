@@ -4,7 +4,7 @@
 
 `IZAKHONO CODE → IZAKHONO CONTROL → NODE01 → NODE02 → NODE03 → NODE04 → IZAKHONO EDGE/TLS → CONNECTA`
 
-The four nodes are logical/runtime execution nodes. A physical NODE01 workstation is not required. **Vercel is not required, not the CONNECTA runtime, and not a production dependency.** CONNECTA must build, deploy, route and operate on IZAKHONO-controlled infrastructure.
+**NODE01 is IZAKHONO software**: a deployable runtime component/service. NODE02, NODE03 and NODE04 are peer/failover software nodes. They execute on infrastructure hosts; they are not physical machines or workstations. A physical NODE01 workstation is neither the software nor a requirement. **Vercel is not required, not the CONNECTA runtime, and not a production dependency.** CONNECTA must build, deploy, route and operate on IZAKHONO-controlled infrastructure.
 
 ## 1. Provision distinct HTTPS runtime endpoints
 
