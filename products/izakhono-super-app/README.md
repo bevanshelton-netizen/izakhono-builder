@@ -140,3 +140,10 @@ A Cloudflare Worker deployment is an externally reversible edge runtime, not pro
 The existing `IZAKHONO ONE AI` device-local application is already deployed as the active Supabase Edge Function `izakhono-one-device-ai`. Its function logs show successful HTTP 200 responses for both the app page and its health route on 14 November 2026. Open it here: https://yfawrenhudjomhnglfhq.supabase.co/functions/v1/izakhono-one-device-ai
 
 It runs WebLLM inference in a compatible browser, offers Quick (SmolLM2 360M), Balanced (SmolLM2 1.7B) and Strong (Llama 3.2 3B) model tiers, five work modes, local text-file context, chat export and explicit feedback. Prompts remain in browser memory and are not sent to IZAKHONO application servers by this page. It has no live web access, no private account access, and no autonomous business-tool execution. The owner-gateway chat workspace above is the path to the broader sovereign assistant; its production deployment remains gated on the live owner runtime and required credentials.
+
+
+## Installable mobile app shell
+
+The SUPER APP includes a standards-based PWA manifest, an IZAKHONO app icon, an install prompt for browsers that expose the install event, and a versioned service worker for the static application shell. The service worker deliberately does **not** cache `/api/*` requests, owner credentials, chat payloads or AI responses. Offline mode can display the cached shell; it does not imply that AI, account, portfolio or execution services are available offline.
+
+On Android, open the deployed HTTPS SUPER APP in Chrome and use the browser's **Install app** / **Add to Home screen** option. Installation and public-live status must be verified on the deployed origin after the release is promoted.
