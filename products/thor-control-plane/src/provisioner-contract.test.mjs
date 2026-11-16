@@ -47,6 +47,7 @@ for (const [patch, code] of [
 
 const calls = [];
 const adapter = {
+  async authorize(ctx) { calls.push(["authorize", ctx.approval.approvalId]); return { authorized: true, evidenceRef: "auth-evidence-001" }; },
   async plan(ctx) {
     calls.push(["plan", ctx.idempotencyKey]);
     return { ready: true, planId: "plan-001" };
@@ -66,9 +67,10 @@ const adapter = {
 };
 
 const result = await executeApprovedRelease(release, adapter);
-assert.deepEqual(calls.map(call => call[0]), ["plan", "provision", "verify", "handover"]);
+assert.deepEqual(calls.map(call => call[0]), ["authorize", "plan", "provision", "verify", "handover"]);
 assert.equal(result.state, "handed_over");
 assert.equal(result.handoverPackageRef, "handover-001");
+assert.equal(result.approvalEvidenceRef, "auth-evidence-001");
 
 let provisionCalled = false;
 await assert.rejects(
@@ -79,6 +81,17 @@ await assert.rejects(
   error => error instanceof ThorError && error.code === "APPROVAL_REQUIRED",
 );
 assert.equal(provisionCalled, false, "provisioning must never run before approval validation");
+
+let authorizePlanCalled = false;
+await assert.rejects(
+  executeApprovedRelease(release, {
+    ...adapter,
+    async authorize() { return { authorized: false }; },
+    async plan() { authorizePlanCalled = true; return { ready: true, planId: "plan-002" }; },
+  }),
+  error => error instanceof ThorError && error.code === "APPROVAL_NOT_AUTHORIZED",
+);
+assert.equal(authorizePlanCalled, false, "planning must stop when authoritative approval verification fails");
 
 let verifyCalled = false;
 await assert.rejects(
