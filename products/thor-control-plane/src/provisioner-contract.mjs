@@ -70,22 +70,34 @@ export async function executeApprovedRelease(input, adapter) {
     "Authoritative approval verification failed", "APPROVAL_NOT_AUTHORIZED");
 
   const plan = await adapter.plan({ ...context, authorizationEvidenceRef: authorization.evidenceRef });
-  requireValue(plan?.ready === true && safeRef(plan.planId), "Provisioner plan is not ready", "PROVISION_PLAN_BLOCKED");
+  requireValue(plan?.ready === true && safeRef(plan.planId)
+    && plan.artifactDigest?.toLowerCase() === release.artifact.digest
+    && plan.logicalNodeId === release.target.logicalNodeId
+    && plan.environment === release.environment,
+  "Provisioner plan is not ready or does not cover this exact artifact and target", "PROVISION_PLAN_BLOCKED");
 
   const deployment = await adapter.provision({ ...context, planId: plan.planId });
-  requireValue(deployment?.status === "deployed" && safeRef(deployment.deploymentId),
-    "Provisioner did not confirm deployment", "PROVISION_DEPLOY_FAILED");
+  requireValue(deployment?.status === "deployed" && safeRef(deployment.deploymentId)
+    && deployment.artifactDigest?.toLowerCase() === release.artifact.digest
+    && deployment.logicalNodeId === release.target.logicalNodeId
+    && deployment.runtimeHostRef === release.target.runtimeHostRef,
+  "Provisioner did not confirm deployment of this artifact to this exact target", "PROVISION_DEPLOY_FAILED");
 
   const verification = await adapter.verify({ ...context, planId: plan.planId, deploymentId: deployment.deploymentId });
-  requireValue(verification?.status === "verified" && safeRef(verification.evidenceRef),
-    "Independent deployment verification did not pass", "PROVISION_VERIFY_FAILED");
+  requireValue(verification?.status === "verified" && safeRef(verification.evidenceRef)
+    && verification.deploymentId === deployment.deploymentId
+    && verification.artifactDigest?.toLowerCase() === release.artifact.digest
+    && verification.logicalNodeId === release.target.logicalNodeId,
+  "Independent verification did not prove this exact deployment and artifact", "PROVISION_VERIFY_FAILED");
 
   const handover = await adapter.handover({
     ...context, planId: plan.planId, deploymentId: deployment.deploymentId,
     verificationEvidenceRef: verification.evidenceRef,
   });
-  requireValue(handover?.status === "ready" && safeRef(handover.packageRef),
-    "Provisioner did not produce a verified handover package", "PROVISION_HANDOVER_FAILED");
+  requireValue(handover?.status === "ready" && safeRef(handover.packageRef)
+    && handover.deploymentId === deployment.deploymentId
+    && handover.verificationEvidenceRef === verification.evidenceRef,
+  "Provisioner did not produce a handover package linked to verified deployment evidence", "PROVISION_HANDOVER_FAILED");
 
   return Object.freeze({
     releaseId: release.releaseId, state: "handed_over", planId: plan.planId,
