@@ -4,7 +4,7 @@
 
 `IZAKHONO CODE → IZAKHONO CONTROL → NODE01 → NODE02 → NODE03 → NODE04 → IZAKHONO EDGE/TLS → CONNECTA`
 
-The four nodes are logical/runtime execution nodes. A physical NODE01 workstation is not required.
+The four nodes are logical/runtime execution nodes. A physical NODE01 workstation is not required. **Vercel is not required, not the CONNECTA runtime, and not a production dependency.** CONNECTA must build, deploy, route and operate on IZAKHONO-controlled infrastructure.
 
 ## 1. Provision distinct HTTPS runtime endpoints
 
@@ -58,8 +58,8 @@ Missing, malformed, stale, simulated, inferred, topology-only, CI-only, reposito
 
 ## 4. Full activation
 
-Runtime-cluster certification alone does **not** authorize public traffic. Full activation additionally requires independently verified immutable deployment identity, EDGE, TLS, DNS, external HTTPS smoke, and rollback evidence. The promotion workflow deliberately exits blocked until those additional proofs are present; a green runtime prerequisite is not a production promotion.
+Runtime-cluster certification alone does **not** authorize public traffic. Full activation additionally requires independently verified immutable deployment identity, IZAKHONO EDGE, TLS, DNS, external HTTPS smoke, and rollback evidence. The promotion workflow deliberately exits blocked until those additional proofs are present; a green runtime prerequisite is not a production promotion.
 
 ## Deprecated flow
 
-Do not use the legacy physical/workstation-oriented `CERTIFY-WAVE1-OWNED.ps1`, `PUSH-WAVE1-OWNED.ps1`, Desktop NODE01 reports, or local NODE01 launcher as CONNECTA production proof. See `infra/runtime-fabric/LEGACY-NODE01-WAVE1-DEPRECATION.md`.
+Do not use the legacy physical/workstation-oriented `CERTIFY-WAVE1-OWNED.ps1`, `PUSH-WAVE1-OWNED.ps1`, Desktop NODE01 reports, or local NODE01 launcher as CONNECTA production proof. See [legacy NODE01 deprecation](../runtime-fabric/LEGACY-NODE01-WAVE1-DEPRECATION.md).
