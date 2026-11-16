@@ -50,19 +50,19 @@ const adapter = {
   async authorize(ctx) { calls.push(["authorize", ctx.approval.approvalId]); return { authorized: true, evidenceRef: "auth-evidence-001" }; },
   async plan(ctx) {
     calls.push(["plan", ctx.idempotencyKey]);
-    return { ready: true, planId: "plan-001" };
+    return { ready: true, planId: "plan-001", artifactDigest: digest, logicalNodeId: "NODE01", environment: "preview" };
   },
   async provision(ctx) {
     calls.push(["provision", ctx.planId]);
-    return { status: "deployed", deploymentId: "deployment-001" };
+    return { status: "deployed", deploymentId: "deployment-001", artifactDigest: digest, logicalNodeId: "NODE01", runtimeHostRef: "runtime-host-01" };
   },
   async verify(ctx) {
     calls.push(["verify", ctx.deploymentId]);
-    return { status: "verified", evidenceRef: "evidence-001" };
+    return { status: "verified", evidenceRef: "evidence-001", deploymentId: "deployment-001", artifactDigest: digest, logicalNodeId: "NODE01" };
   },
   async handover(ctx) {
     calls.push(["handover", ctx.verificationEvidenceRef]);
-    return { status: "ready", packageRef: "handover-001" };
+    return { status: "ready", packageRef: "handover-001", deploymentId: "deployment-001", verificationEvidenceRef: "evidence-001" };
   },
 };
 
@@ -87,7 +87,7 @@ await assert.rejects(
   executeApprovedRelease(release, {
     ...adapter,
     async authorize() { return { authorized: false }; },
-    async plan() { authorizePlanCalled = true; return { ready: true, planId: "plan-002" }; },
+    async plan() { authorizePlanCalled = true; return { ready: true, planId: "plan-002", artifactDigest: digest, logicalNodeId: "NODE01", environment: "preview" }; },
   }),
   error => error instanceof ThorError && error.code === "APPROVAL_NOT_AUTHORIZED",
 );
@@ -97,7 +97,7 @@ let verifyCalled = false;
 await assert.rejects(
   executeApprovedRelease(release, {
     ...adapter,
-    async provision() { return { status: "unknown", deploymentId: "deployment-002" }; },
+    async provision() { return { status: "unknown", deploymentId: "deployment-002", artifactDigest: digest, logicalNodeId: "NODE01", runtimeHostRef: "runtime-host-01" }; },
     async verify() { verifyCalled = true; return { status: "verified", evidenceRef: "evidence-002" }; },
   }),
   error => error instanceof ThorError && error.code === "PROVISION_DEPLOY_FAILED",
