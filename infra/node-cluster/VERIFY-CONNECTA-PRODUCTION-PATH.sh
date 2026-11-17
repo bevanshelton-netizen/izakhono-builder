@@ -19,6 +19,10 @@ required_files=(
   "products/izakhono-social/engine/src/server.js"
   "products/izakhono-social/engine/src/node-health.js"
   "products/izakhono-social/docker-compose.owned.yml"
+  "infra/node-cluster/connecta-runtime.yaml"
+  "infra/node-cluster/validate-connecta-runtime-manifest.sh"
+  "infra/node-cluster/CONNECTA-K3S-RUNTIME-DEPLOYMENT.md"
+  ".github/workflows/connecta-engine-image.yml"
   ".github/workflows/connecta-owned-runtime-certification.yml"
   ".github/workflows/connecta-promotion-gate.yml"
   "infra/runtime-fabric/LEGACY-NODE01-WAVE1-DEPRECATION.md"
@@ -35,6 +39,9 @@ done
 
 grep -q 'VERIFY-NODE-CLUSTER-EVIDENCE.sh' "$workflow" || fail "canonical certification workflow no longer invokes the four-node evidence verifier"
 grep -q 'CONNECTA-PROMOTION-GATE.sh' ".github/workflows/connecta-promotion-gate.yml" || fail "canonical promotion workflow no longer invokes the CONNECTA promotion gate"
+grep -q 'packages: write' ".github/workflows/connecta-engine-image.yml" || fail "CONNECTA engine image workflow must be able to publish its owned image"
+grep -q 'connecta-engine:0.3.0' "infra/node-cluster/connecta-runtime.yaml" || fail "K3s runtime manifest image release is not pinned"
+grep -q 'type: ClusterIP' "infra/node-cluster/connecta-runtime.yaml" || fail "CONNECTA runtime services must remain internal ClusterIP services"
 promotion_workflow=".github/workflows/connecta-promotion-gate.yml"
 for token in CONNECTA_NODE01_HEALTH_TOKEN CONNECTA_NODE02_HEALTH_TOKEN CONNECTA_NODE03_HEALTH_TOKEN CONNECTA_NODE04_HEALTH_TOKEN; do
   grep -q "$token" "$workflow" || fail "certification workflow is missing protected credential mapping: $token"
