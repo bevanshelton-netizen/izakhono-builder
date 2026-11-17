@@ -30,7 +30,7 @@ Never mark `live`, `deployed`, `mail-ready`, `payment-ready`, or `customer-ready
 
 Adapters are replaceable capabilities, not foundations:
 
-- `builder` — Hercules or another application builder;
+- `builder` — IZAKHONO-native Builder only; no external-builder runtime dependency;
 - `code` — GitHub/IZAKHONO CODE;
 - `deploy` — IZAKHONO NODE with Vercel as reversible fallback;
 - `data` — IZAKHONO DATA/Supabase adapter;
@@ -44,9 +44,9 @@ Adapters are replaceable capabilities, not foundations:
 
 `runner.mjs` is deliberately deterministic. It does not invent production claims. It reads `engine-manifest.json`, selects the next dependency-ready task, records transitions, and emits the adapter action required. A real adapter can be attached without changing the state machine.
 
-## AI execution
+## Native AI execution
 
-The AI/build provider is an adapter. Hercules is one supported adapter because its ChatGPT integration is designed to build, edit and publish Hercules apps from chat. IZAKHONO remains provider-independent: no commercial product may require Hercules, OpenAI, Vercel or another external platform.
+IZAKHONO-native Builder is the sole built-in application-builder provider. The durable agent worker drains the persisted agent queue and records each plan/step result. An empty queue is reported as idle, not as a completed customer build. Generated artifacts remain separate from production deployment; only an approved deployment adapter can promote them. No commercial product may require Hercules, OpenAI, Vercel or another external platform.
 
 ## Long-running execution
 
