@@ -1,10 +1,10 @@
-name: Deploy IZAKHONO PAY Production
+name: Deploy IZAKHONO PAY Fail-Closed Production
 
 on:
   workflow_dispatch:
     inputs:
-      confirm_live:
-        description: 'Type IZAKHONO PAY LIVE to deploy the production payment service'
+      confirm_production:
+        description: 'Type IZAKHONO PAY PRODUCTION to deploy the production runtime with all payment providers disabled'
         required: true
         type: string
 
@@ -27,8 +27,6 @@ jobs:
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       ADMIN_SECRET: ${{ secrets.IZAKHONO_PAY_ADMIN_SECRET }}
-      IKHOKHA_APP_ID: ${{ secrets.IKHOKHA_APP_ID }}
-      IKHOKHA_APP_SECRET: ${{ secrets.IKHOKHA_APP_SECRET }}
 
     steps:
       - uses: actions/checkout@v4
@@ -37,12 +35,14 @@ jobs:
         with:
           node-version: 22
 
-      - name: Require explicit live confirmation
+      - name: Require explicit fail-closed production confirmation
         shell: bash
+        env:
+          CONFIRM_PRODUCTION: ${{ inputs.confirm_production }}
         run: |
           set -euo pipefail
-          if [ '${{ inputs.confirm_live }}' != 'IZAKHONO PAY LIVE' ]; then
-            echo 'Live deployment confirmation did not match.' >&2
+          if [ "$CONFIRM_PRODUCTION" != 'IZAKHONO PAY PRODUCTION' ]; then
+            echo 'Production deployment confirmation did not match.' >&2
             exit 1
           fi
 
@@ -52,62 +52,66 @@ jobs:
       - name: Verify payment core before production deployment
         run: npm run check
 
-      - name: Require production infrastructure and provider secrets
+      - name: Require production infrastructure secrets
         shell: bash
         run: |
           set -euo pipefail
           missing=0
-          for name in CLOUDFLARE_ACCOUNT_ID CLOUDFLARE_API_TOKEN ADMIN_SECRET IKHOKHA_APP_ID IKHOKHA_APP_SECRET; do
-            if [ -z "${!name:-}" ]; then
+          for name in CLOUDFLARE_ACCOUNT_ID CLOUDFLARE_API_TOKEN ADMIN_SECRET; do
+            if [ -z "$\{!name:-}" ]; then
               echo "Missing required production secret: $name" >&2
               missing=1
             fi
           done
           test "$missing" -eq 0
 
-      - name: Bootstrap production Worker and D1 fail-closed
+      - name: Resolve existing production D1 binding without creating resources
+        run: >-
+          node scripts/resolve-d1-binding.mjs
+          --config wrangler.production.jsonc
+          --output wrangler.production.resolved.jsonc
+          --database izakhono-pay
+          --binding DB
+
+      - name: Bootstrap fail-closed production Worker
         shell: bash
         run: |
           set -euo pipefail
-          npx wrangler deploy --config wrangler.production.jsonc
+          npx wrangler deploy --config wrangler.production.resolved.jsonc
 
       - name: Apply production D1 migrations
         shell: bash
-        run: npx wrangler d1 migrations apply izakhono-pay --remote --config wrangler.production.jsonc
+        run: npx wrangler d1 migrations apply izakhono-pay --remote --config wrangler.production.resolved.jsonc
 
-      - name: Install server-only iKhokha secrets
+      - name: Install server-only operator secret
         shell: bash
         run: |
           set -euo pipefail
-          put_secret() {
-            local name="$1"
-            local value="$2"
-            printf '%s' "$value" | npx wrangler secret put "$name" --config wrangler.production.jsonc >/dev/null
-          }
-          put_secret ADMIN_SECRET "$ADMIN_SECRET"
-          put_secret IKHOKHA_APP_ID "$IKHOKHA_APP_ID"
-          put_secret IKHOKHA_APP_SECRET "$IKHOKHA_APP_SECRET"
+          printf '%s' "$ADMIN_SECRET" | npx wrangler secret put ADMIN_SECRET --config wrangler.production.resolved.jsonc >/dev/null
 
-      - name: Final production deployment
+      - name: Final fail-closed production deployment
         id: final
         shell: bash
         run: |
           set -euo pipefail
-          output="$(npx wrangler deploy --config wrangler.production.jsonc)"
+          output="$(npx wrangler deploy --config wrangler.production.resolved.jsonc)"
           printf '%s\n' "$output"
           url="$(printf '%s\n' "$output" | grep -Eo 'https://[^[:space:]]+\.workers\.dev' | tail -1 || true)"
+          if [ -z "$url" ]; then
+            echo 'Worker deployment did not return a workers.dev URL.' >&2
+            exit 1
+          fi
           echo "worker_url=$url" >> "$GITHUB_OUTPUT"
           {
-            echo '## IZAKHONO PAY Production'
+            echo '## IZAKHONO PAY — Fail-Closed Production Runtime'
             echo
-            if [ -n "$url" ]; then echo "Production service URL: $url"; fi
-            echo 'iKhokha credentials are installed server-side; provider routing remains disabled pending merchant acceptance and end-to-end verification.'
-            echo 'All merchant applications remain staged/fail-closed until individually provisioned and approved.'
-            echo 'No customer payment should be solicited until payout-bank verification and the controlled live transaction are completed.'
+            echo "Production service URL: $url"
+            echo 'All payment providers remain disabled. No live payment can be initiated.'
+            echo 'Merchant applications remain staged until individually verified and approved.'
+            echo 'The custom-domain cutover and real-money activation are separate release gates.'
           } >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Verify production health and iKhokha remains fail-closed
-        if: steps.final.outputs.worker_url != ''
+      - name: Verify production health and all providers remain disabled
         shell: bash
         run: |
           set -euo pipefail
@@ -116,14 +120,15 @@ jobs:
           curl --fail --silent --show-error --retry 6 --retry-delay 2 "$base/api/v1/capabilities" | tee /tmp/izp-capabilities.json
           grep -q '"service":"IZAKHONO PAY"' /tmp/izp-health.json
           grep -q '"mode":"live"' /tmp/izp-health.json
-          grep -q '"ikhokha"' /tmp/izp-capabilities.json
-          grep -q '"enabled":false' /tmp/izp-capabilities.json
+          grep -q '"ikhokha":{"enabled":false,"configured":false}' /tmp/izp-capabilities.json
+          grep -q '"paystack":{"enabled":false,"configured":false}' /tmp/izp-capabilities.json
+          grep -q '"payfast":{"enabled":false,"configured":false' /tmp/izp-capabilities.json
 
       - name: Confirm merchant gate remains closed
         shell: bash
         run: |
           set -euo pipefail
-          result="$(npx wrangler d1 execute izakhono-pay --remote --config wrangler.production.jsonc --command "SELECT COUNT(*) AS active_merchants FROM merchant_apps WHERE status='active';")"
+          result="$(npx wrangler d1 execute izakhono-pay --remote --config wrangler.production.resolved.jsonc --command "SELECT COUNT(*) AS active_merchants FROM merchant_apps WHERE status='active';")"
           printf '%s\n' "$result"
           if ! printf '%s\n' "$result" | grep -Eq '"active_merchants"[[:space:]]*:[[:space:]]*0'; then
             echo 'Production deployment aborted: one or more merchant apps are active before the controlled merchant activation step.' >&2
