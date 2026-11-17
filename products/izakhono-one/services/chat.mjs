@@ -41,16 +41,21 @@ function configuredEndpoint(env) {
   const loopback = ['localhost', '127.0.0.1', '::1'].includes(url.hostname);
   const trustedHosts = String(env.IZAKHONO_MODEL_TRUSTED_HOSTS || '')
     .split(',').map((host) => host.trim().toLowerCase()).filter(Boolean);
+  const hostGatewayHttp = url.protocol === 'http:'
+    && url.hostname.toLowerCase() === 'host.docker.internal'
+    && url.port === '11434'
+    && trustedHosts.includes(url.hostname.toLowerCase());
+
   if (url.username || url.password || url.search || url.hash) {
     throw new OneAIChatError('model_endpoint_invalid', 'ONE AI model endpoint configuration is invalid.');
   }
-  if (url.protocol !== 'https:' && !(loopback && url.protocol === 'http:')) {
-    throw new OneAIChatError('model_endpoint_untrusted', 'ONE AI is restricted to loopback or approved HTTPS model endpoints.');
+  if (url.protocol !== 'https:' && !(loopback && url.protocol === 'http:') && !hostGatewayHttp) {
+    throw new OneAIChatError('model_endpoint_untrusted', 'ONE AI is restricted to loopback, the explicitly trusted private Docker host gateway, or approved HTTPS model endpoints.');
   }
   if (!loopback && !trustedHosts.includes(url.hostname.toLowerCase())) {
     throw new OneAIChatError('model_endpoint_untrusted', 'ONE AI model endpoint is not on the approved host list.');
   }
-  if (!url.pathname.endsWith('/api/chat')) {
+  if (!['/api/chat', '/api/chat/'].includes(url.pathname)) {
     throw new OneAIChatError('model_endpoint_invalid', 'ONE AI requires an Ollama-compatible chat endpoint.');
   }
   return { url, model: env.IZAKHONO_LOCAL_MODEL || DEFAULT_MODEL, secret: env.IZAKHONO_LOCAL_MODEL_SECRET || '' };
