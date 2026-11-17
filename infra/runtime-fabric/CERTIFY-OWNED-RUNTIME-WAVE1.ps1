@@ -68,10 +68,12 @@ if ([string]::IsNullOrWhiteSpace($ClusterHealthEvidencePath)) {
     if ($clusterHealth.cluster -ne 'izakhono-production') { throw 'Unexpected cluster identity.' }
     if ($clusterHealth.nodeIdentityType -ne 'software-runtime') { throw 'Node identity must be software-runtime.' }
     if ($clusterHealth.physicalHostIsSeparate -ne $true) { throw 'Logical runtime/physical-host separation is not declared.' }
+    if ($clusterHealth.authentication.scheme -ne 'bearer-hmac-sha256' -or $clusterHealth.authentication.perNodeCredentials -ne $true) { throw 'Per-node HMAC challenge authentication is required.' }
     if ($clusterHealth.runtimeEvidence -ne $true) { throw 'Evidence is not marked runtime-produced.' }
     if ($clusterHealth.status -ne 'PASS') { throw 'Four-node cluster status is not PASS.' }
     if ([int]$clusterHealth.requiredHealthyNodes -ne 4) { throw 'requiredHealthyNodes must equal four.' }
     if ($clusterHealth.source -ne 'operator-supplied-runtime-endpoints') { throw 'Evidence source is not the runtime endpoint health gate.' }
+    if ($clusterHealth.source -ne 'operator-supplied-authenticated-runtime-endpoints') { throw 'Evidence source is not the authenticated runtime endpoint health gate.' }
 
     $nodeRecords = @($clusterHealth.nodes)
     if ($nodeRecords.Count -ne 4) { throw 'Exactly four node runtime records are required.' }
@@ -83,6 +85,9 @@ if ([string]::IsNullOrWhiteSpace($ClusterHealthEvidencePath)) {
       if ($record.runtimeNode -ne $name) { throw "$name endpoint runtime identity mismatch." }
       if ($record.identityType -ne 'software-runtime') { throw "$name is not identified as a software runtime." }
       if ($record.physicalHostIsSeparate -ne $true) { throw "$name physical-host separation declaration is missing." }
+      if ($record.authentication.scheme -ne 'bearer-hmac-sha256' -or $record.authentication.challengeVerified -ne $true) { throw "$name authenticated health challenge did not pass." }
+      if ([string]$record.probeNonce -notmatch '^[a-f0-9]{64}$' -or [string]$record.probeSignature -notmatch '^[a-f0-9]{64}$') { throw "$name HMAC challenge evidence is malformed." }
+      if ($record.http.authScheme -ne 'bearer-hmac-sha256') { throw "$name endpoint did not declare the required authentication scheme." }
       if ($record.status -ne 'PASS' -or $record.runtime_evidence -ne $true) { throw "$name runtime health did not pass." }
       if ($null -eq $record.http -or $record.http.ok -ne $true -or $record.http.runtimeNode -ne $name -or $record.http.cluster -ne 'izakhono-production') {
         throw "$name endpoint response does not prove its own runtime and cluster identity."
