@@ -44,7 +44,7 @@ jobs:
           set -euo pipefail
           cp autonomy/agent-queue.json "$IZAKHONO_AGENT_QUEUE_PATH"
           node autonomy/runner.mjs | tee "$RUNNER_TEMP/izakhono-runner-smoke.json"
-          node -e "const r=JSON.parse(require('fs').readFileSync(process.env.RUNNER_TEMP + '/izakhono-runner-smoke.json','utf8')); if (r.status !== 'waiting_external_capability' || r.gates?.length !== 1 || r.gates[0].task !== 'node-heartbeat') { console.error(JSON.stringify(r,null,2)); process.exit(1); } console.log('[PASS] Scheduler reports one genuine NODE evidence gate without retry loops or false completion.');"
+          node -e "const r=JSON.parse(require('fs').readFileSync(process.env.RUNNER_TEMP + '/izakhono-runner-smoke.json','utf8')); if (r.status !== 'waiting_external_capability' || r.gates?.length !== 1 || r.gates[0].id !== 'node-heartbeat') { console.error(JSON.stringify(r,null,2)); process.exit(1); } console.log('[PASS] Scheduler reports one genuine NODE evidence gate without retry loops or false completion.');"
 
       - name: Validate Affiliate Engine
         run: npm run validate:affiliate
