@@ -16,7 +16,11 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 if ([string]::IsNullOrWhiteSpace($EvidenceDirectory)) {
-  $EvidenceDirectory = Join-Path ([Environment]::GetFolderPath('Desktop')) 'IZAKHONO-RUNTIME-EVIDENCE'
+  $commonData = [Environment]::GetFolderPath('CommonApplicationData')
+  if ([string]::IsNullOrWhiteSpace($commonData)) {
+    throw 'EvidenceDirectory is required when the operating-system evidence root is unavailable.'
+  }
+  $EvidenceDirectory = Join-Path $commonData 'IZAKHONO\RUNTIME-EVIDENCE'
 }
 New-Item -ItemType Directory -Force -Path $EvidenceDirectory | Out-Null
 
