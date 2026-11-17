@@ -6,7 +6,7 @@ import { D1ThorStore } from "./d1-store.mjs";
 const calls = [];
 const row = {
   id: "task-1", project_id: "kora", title: "Build", instruction: "Build it",
-  depends_on_json: "[]", priority: 100, state: "queued", attempts: 0,
+  worker_envelope_json: JSON.stringify({ taskId: "task-1", projectId: "kora" }), depends_on_json: "[]", priority: 100, state: "queued", attempts: 0,
   max_attempts: 2, worker_id: null, lease_until: null, result_json: null,
   last_error: null, created_at: "2026-11-12T12:00:00.000Z", updated_at: "2026-11-12T12:00:00.000Z",
 };
@@ -31,10 +31,12 @@ const db = {
   },
 };
 const store = new D1ThorStore(db, () => Date.parse("2026-11-12T12:00:00.000Z"));
-const claimed = await store.claimNext("worker-1", 5_000);
+const claimed = await store.claimNext("worker-1", 5_000, { requireWorkerEnvelope: true });
 assert.equal(claimed.id, "task-1");
 assert.equal(claimed.workerId, "worker-1");
+assert.equal(claimed.workerEnvelope.taskId, "task-1");
 const guardedUpdate = calls.find(call => call.sql.includes("UPDATE thor_tasks") && call.sql.includes("state = 'running'"));
 assert.ok(guardedUpdate);
 assert.match(guardedUpdate.sql, /NOT EXISTS/);
+assert.match(guardedUpdate.sql, /worker_envelope_json IS NOT NULL/);
 console.log("THOR D1 adapter contract: all tests passed.");
