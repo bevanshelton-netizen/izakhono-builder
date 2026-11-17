@@ -4,6 +4,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const PLACEHOLDER_DATABASE_ID = '00000000-0000-0000-0000-000000000000';
 
 function parseListPayload(payload) {
   const parsed = typeof payload === 'string' ? JSON.parse(payload) : payload;
@@ -59,8 +60,12 @@ export function injectDatabaseId(configText, options) {
 
   const block = matches[0];
   const existing = block.match(/"database_id"\s*:\s*"([^"]+)"/);
-  if (existing && existing[1] !== databaseId) throw new Error('D1_CONFIG_ID_MISMATCH');
-  if (existing) return configText;
+  if (existing && existing[1] !== databaseId && existing[1] !== PLACEHOLDER_DATABASE_ID) throw new Error('D1_CONFIG_ID_MISMATCH');
+  if (existing && existing[1] === databaseId) return configText;
+  if (existing) {
+    const updatedBlock = block.replace(/("database_id"\\s*:\\s*")[^"]+("\)/, '$1' + databaseId + '$2');
+    return configText.replace(block, updatedBlock);
+  }
 
   const nameProperty = new RegExp('("database_name"\\s*:\\s*"' + databaseName + '")\\s*,?');
   const updatedBlock = block.replace(nameProperty, '$1,\n      "database_id": "' + databaseId + '",');
