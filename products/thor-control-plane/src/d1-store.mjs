@@ -1,12 +1,11 @@
 /**
  * Cloudflare D1 adapter for THOR tasks.
  *
- * claimNext uses a conditional UPDATE after selecting a candidate. The UPDATE
- * rechecks the lease and dependency predicates; only the worker whose update
- * reports exactly one changed row owns the task. This is the critical
- * concurrency boundary. Keep this adapter behind a private service binding.
+ * Every task transition and its audit event are committed in one D1 batch.
+ * claimNext rechecks lease and dependency predicates in the conditional UPDATE;
+ * the following event INSERT is gated by SQLite changes() so a losing worker
+ * cannot create a false claim event. Keep this adapter behind a private binding.
  */
-
 import { ThorError } from "./index.mjs";
 
 const parse = (value, fallback = null) => {
@@ -35,26 +34,34 @@ const mapRow = row => ({
 
 export class D1ThorStore {
   constructor(db, clock = () => Date.now()) {
-    if (!db?.prepare) throw new ThorError("A D1 database binding is required", "DB_REQUIRED");
+    if (!db?.prepare || typeof db.batch !== "function") {
+      throw new ThorError("A D1 database binding with transactional batch support is required", "DB_REQUIRED");
+    }
     this.db = db;
     this.clock = clock;
   }
 
   stamp() { return new Date(this.clock()).toISOString(); }
 
-  async event(taskId, type, workerId, detail = {}) {
-    await this.db.prepare(
-      "INSERT INTO thor_task_events (id, task_id, event_type, worker_id, event_json, created_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
-    ).bind(crypto.randomUUID(), taskId, type, workerId ?? null, JSON.stringify(detail), this.stamp()).run();
+  eventStatement(taskId, type, workerId, detail = {}, createdAt = this.stamp()) {
+    return this.db.prepare(
+      `INSERT INTO thor_task_events (id, task_id, event_type, worker_id, event_json, created_at)
+       SELECT ?1, ?2, ?3, ?4, ?5, ?6 WHERE changes() = 1`,
+    ).bind(crypto.randomUUID(), taskId, type, workerId ?? null, JSON.stringify(detail), createdAt);
   }
 
   async createTask(task) {
-    await this.db.prepare(
+    const insert = this.db.prepare(
       `INSERT INTO thor_tasks
        (id, project_id, title, instruction, worker_envelope_json, depends_on_json, priority, state, attempts, max_attempts, worker_id, lease_until, result_json, last_error, created_at, updated_at)
        VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, 'queued', 0, ?8, NULL, NULL, NULL, NULL, ?9, ?9)`,
-    ).bind(task.id, task.projectId, task.title, task.instruction, task.workerEnvelope ? JSON.stringify(task.workerEnvelope) : null, JSON.stringify(task.dependsOn), task.priority, task.maxAttempts, task.createdAt).run();
-    await this.event(task.id, "created", null, { projectId: task.projectId, dependsOn: task.dependsOn });
+    ).bind(task.id, task.projectId, task.title, task.instruction,
+      task.workerEnvelope ? JSON.stringify(task.workerEnvelope) : null,
+      JSON.stringify(task.dependsOn), task.priority, task.maxAttempts, task.createdAt);
+    const event = this.eventStatement(task.id, "created", null, {
+      projectId: task.projectId, dependsOn: task.dependsOn,
+    }, task.createdAt);
+    await this.db.batch([insert, event]);
     return task;
   }
 
@@ -73,22 +80,24 @@ export class D1ThorStore {
     const expired = await this.db.prepare(
       "SELECT id, worker_id, attempts FROM thor_tasks WHERE state = 'running' AND lease_until <= ?1 AND attempts >= max_attempts",
     ).bind(now).all();
+    let reaped = 0;
     for (const task of expired.results ?? []) {
-      const update = await this.db.prepare(
+      const update = this.db.prepare(
         "UPDATE thor_tasks SET state = 'failed', worker_id = NULL, lease_until = NULL, last_error = COALESCE(last_error, 'Worker lease expired after maximum attempts'), updated_at = ?1 WHERE id = ?2 AND state = 'running' AND lease_until <= ?1 AND attempts >= max_attempts",
-      ).bind(now, task.id).run();
-      if (update.meta?.changes === 1) {
-        await this.event(task.id, "failed", task.worker_id, { reason: "lease_exhausted", attempts: task.attempts });
-      }
+      ).bind(now, task.id);
+      const event = this.eventStatement(task.id, "failed", task.worker_id, {
+        reason: "lease_exhausted", attempts: task.attempts,
+      }, now);
+      const results = await this.db.batch([update, event]);
+      if (results[0]?.meta?.changes === 1) reaped += 1;
     }
+    return reaped;
   }
 
   async claimNext(workerId, leaseMs, options = {}) {
     await this.reapExhaustedLeases();
     const envelopeFilter = options.requireWorkerEnvelope ? " AND t.worker_envelope_json IS NOT NULL" : "";
     const updateEnvelopeFilter = options.requireWorkerEnvelope ? " AND worker_envelope_json IS NOT NULL" : "";
-    // A small bounded retry handles a race where another worker wins the
-    // candidate between SELECT and the guarded UPDATE.
     for (let attempt = 0; attempt < 8; attempt += 1) {
       const now = this.stamp();
       const leaseUntil = new Date(this.clock() + leaseMs).toISOString();
@@ -105,7 +114,7 @@ export class D1ThorStore {
       ).bind(now).first();
       if (!candidate) return null;
 
-      const update = await this.db.prepare(
+      const update = this.db.prepare(
         `UPDATE thor_tasks
          SET state = 'running', worker_id = ?1, attempts = attempts + 1,
              lease_until = ?2, updated_at = ?3
@@ -117,12 +126,11 @@ export class D1ThorStore {
              LEFT JOIN thor_tasks prerequisite ON prerequisite.id = dep.value
              WHERE prerequisite.id IS NULL OR prerequisite.state <> 'succeeded'
            )`,
-      ).bind(workerId, leaseUntil, now, candidate.id).run();
+      ).bind(workerId, leaseUntil, now, candidate.id);
+      const event = this.eventStatement(candidate.id, "claimed", workerId, { leaseUntil }, now);
+      const results = await this.db.batch([update, event]);
 
-      if (update.meta?.changes === 1) {
-        await this.event(candidate.id, "claimed", workerId, { leaseUntil });
-        return this.getTask(candidate.id);
-      }
+      if (results[0]?.meta?.changes === 1) return this.getTask(candidate.id);
     }
     return null;
   }
@@ -130,23 +138,24 @@ export class D1ThorStore {
   async heartbeat(taskId, workerId, leaseMs) {
     const now = this.stamp();
     const leaseUntil = new Date(this.clock() + leaseMs).toISOString();
-    const result = await this.db.prepare(
+    const update = this.db.prepare(
       "UPDATE thor_tasks SET lease_until = ?1, updated_at = ?2 WHERE id = ?3 AND state = 'running' AND worker_id = ?4 AND lease_until > ?2",
-    ).bind(leaseUntil, now, taskId, workerId).run();
-    if (result.meta?.changes === 1) {
-      await this.event(taskId, "heartbeat", workerId, { leaseUntil });
-      return true;
-    }
-    return false;
+    ).bind(leaseUntil, now, taskId, workerId);
+    const event = this.eventStatement(taskId, "heartbeat", workerId, { leaseUntil }, now);
+    const results = await this.db.batch([update, event]);
+    return results[0]?.meta?.changes === 1;
   }
 
   async finish(taskId, workerId, result) {
     const now = this.stamp();
-    const update = await this.db.prepare(
+    const update = this.db.prepare(
       "UPDATE thor_tasks SET state = 'succeeded', result_json = ?1, worker_id = NULL, lease_until = NULL, updated_at = ?2 WHERE id = ?3 AND state = 'running' AND worker_id = ?4 AND lease_until > ?2",
-    ).bind(JSON.stringify(result ?? null), now, taskId, workerId).run();
-    if (update.meta?.changes !== 1) throw new ThorError("Worker does not own this running task", "LEASE_NOT_OWNED");
-    await this.event(taskId, "succeeded", workerId);
+    ).bind(JSON.stringify(result ?? null), now, taskId, workerId);
+    const event = this.eventStatement(taskId, "succeeded", workerId, {
+      artifactDigest: result?.artifactDigest ?? null,
+    }, now);
+    const results = await this.db.batch([update, event]);
+    if (results[0]?.meta?.changes !== 1) throw new ThorError("Worker does not own this running task", "LEASE_NOT_OWNED");
     return this.getTask(taskId);
   }
 
@@ -159,21 +168,23 @@ export class D1ThorStore {
     const state = retry ? "queued" : "failed";
     const message = String(error?.message ?? error).slice(0, 2000);
     const now = this.stamp();
-    const update = await this.db.prepare(
+    const update = this.db.prepare(
       "UPDATE thor_tasks SET state = ?1, last_error = ?2, worker_id = NULL, lease_until = NULL, updated_at = ?3 WHERE id = ?4 AND state = 'running' AND worker_id = ?5 AND lease_until > ?3",
-    ).bind(state, message, now, taskId, workerId).run();
-    if (update.meta?.changes !== 1) throw new ThorError("Worker lease changed during failure handling", "LEASE_NOT_OWNED");
-    await this.event(taskId, retry ? "retry_queued" : "failed", workerId, { error: message });
+    ).bind(state, message, now, taskId, workerId);
+    const event = this.eventStatement(taskId, retry ? "retry_queued" : "failed", workerId, { error: message }, now);
+    const results = await this.db.batch([update, event]);
+    if (results[0]?.meta?.changes !== 1) throw new ThorError("Worker lease changed during failure handling", "LEASE_NOT_OWNED");
     return this.getTask(taskId);
   }
 
   async cancel(taskId) {
     const now = this.stamp();
-    const update = await this.db.prepare(
+    const update = this.db.prepare(
       "UPDATE thor_tasks SET state = 'cancelled', updated_at = ?1 WHERE id = ?2 AND state = 'queued'",
-    ).bind(now, taskId).run();
-    if (update.meta?.changes !== 1) throw new ThorError("Only queued tasks can be cancelled", "INVALID_CANCEL");
-    await this.event(taskId, "cancelled", null);
+    ).bind(now, taskId);
+    const event = this.eventStatement(taskId, "cancelled", null, {}, now);
+    const results = await this.db.batch([update, event]);
+    if (results[0]?.meta?.changes !== 1) throw new ThorError("Only queued tasks can be cancelled", "INVALID_CANCEL");
     return this.getTask(taskId);
   }
 }
