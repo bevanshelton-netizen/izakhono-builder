@@ -15,7 +15,7 @@ from datetime import datetime, timezone
 stamp = datetime.now(timezone.utc).isoformat()
 names = ["NODE01", "NODE02", "NODE03", "NODE04"]
 tokens = ["a"*64, "b"*64, "c"*64, "d"*64]
-nonce = "e"*64
+nonces = ["e"*64, "f"*64, "1"*64, "2"*64]
 nodes = []
 for name, token in zip(names, tokens):
     signature = hmac.new(bytes.fromhex(token), f"izakhono-production\n{name}\n{nonce}".encode(), hashlib.sha256).hexdigest()
