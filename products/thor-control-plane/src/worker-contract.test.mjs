@@ -7,7 +7,7 @@ const valid = {
   baseRef: "main", workRef: "thor/task-01",
   allowedPaths: ["products/thor-control-plane/src", "products/thor-control-plane/test"],
   commands: ["node --test", "npm run lint"],
-  limits: { timeoutMs: 120000, maxOutputBytes: 200000, maxChangedFiles: 12 },
+  limits: { timeoutMs: 120000, maxOutputBytes: 200000, maxChangedFiles: 12, memoryMb: 1024, cpuCount: 2 },
 };
 
 const envelope = validateWorkerEnvelope(valid);
