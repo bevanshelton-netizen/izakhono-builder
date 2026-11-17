@@ -2,6 +2,7 @@ import { strict as assert } from 'node:assert';
 import { provisionPaidOrder, type PaymentVerifier, type RuntimeAdapter, type VerifiedPaymentReceipt, type PaidOrder } from './order-provisioning-orchestrator';
 import type { Blueprint } from './provisioner-runtime';
 
+async function run() {
 const blueprint: Blueprint = {
   schemaVersion: '1.0',
   business: { name: 'Test Business', description: 'Provisioning test' },
@@ -90,3 +91,9 @@ await assert.rejects(
 );
 
 console.log('order-provisioning-orchestrator: PASS');
+}
+
+run().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});
