@@ -58,10 +58,11 @@ function transition(task, status, extra = {}) {
   state.history.push({ at, task: task.id, from: previous.status, to: status, ...extra });
 }
 function evidenceFor(task, status = 'pending') { return (task.evidence ?? []).map(name => ({ name, status })); }
+const deferredThisRun = new Set();
 function selectNext() {
   return manifest.queue.find(task => {
     const current = taskState(task.id);
-    return !['completed', 'blocked'].includes(current.status) && !persistentWaitFor(task) && ready(task);
+    return !['completed', 'blocked'].includes(current.status) && !deferredThisRun.has(task.id) && !persistentWaitFor(task) && ready(task);
   });
 }
 function executeInternal(task) {
@@ -132,6 +133,7 @@ while (progressed < manifest.queue.length) {
 
   if (!result) {
     transition(next, 'awaiting_adapter', { evidence: evidenceFor(next) });
+    deferredThisRun.add(next.id);
     externalGates.push(next);
   } else if (['completed', 'ready', 'assigned', 'eligible', 'instantiated'].includes(result.status)) {
     transition(next, 'completed', {
@@ -156,6 +158,7 @@ while (progressed < manifest.queue.length) {
       evidenceSource: result.source ?? null,
       acceptance: result.acceptance ?? null,
     });
+    deferredThisRun.add(next.id);
     externalGates.push(next);
   } else {
     const attempts = taskState(next.id).attempts;
