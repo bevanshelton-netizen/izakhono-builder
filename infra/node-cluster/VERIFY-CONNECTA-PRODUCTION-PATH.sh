@@ -40,7 +40,7 @@ done
 grep -q 'VERIFY-NODE-CLUSTER-EVIDENCE.sh' "$workflow" || fail "canonical certification workflow no longer invokes the four-node evidence verifier"
 grep -q 'CONNECTA-PROMOTION-GATE.sh' ".github/workflows/connecta-promotion-gate.yml" || fail "canonical promotion workflow no longer invokes the CONNECTA promotion gate"
 grep -q 'packages: write' ".github/workflows/connecta-engine-image.yml" || fail "CONNECTA engine image workflow must be able to publish its owned image"
-grep -q 'connecta-engine:0.3.0' "infra/node-cluster/connecta-runtime.yaml" || fail "K3s runtime manifest image release is not pinned"
+grep -q 'connecta-engine:0.3.0@sha256:838b095cd2b12a9f66526e5086501474f6958e20f597efa96875217390b580da' "infra/node-cluster/connecta-runtime.yaml" || fail "K3s runtime manifest image release is not pinned"
 grep -q 'type: ClusterIP' "infra/node-cluster/connecta-runtime.yaml" || fail "CONNECTA runtime services must remain internal ClusterIP services"
 promotion_workflow=".github/workflows/connecta-promotion-gate.yml"
 for token in CONNECTA_NODE01_HEALTH_TOKEN CONNECTA_NODE02_HEALTH_TOKEN CONNECTA_NODE03_HEALTH_TOKEN CONNECTA_NODE04_HEALTH_TOKEN; do
