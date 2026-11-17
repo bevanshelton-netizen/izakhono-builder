@@ -1,10 +1,10 @@
 /**
  * THOR coding-worker safety contract.
  *
- * This module validates a work envelope before an executor receives it. It is
- * deliberately not a process sandbox: production execution must still use an
- * isolated ephemeral workspace/container with OS-level resource and network
- * controls. Never pass host credentials or unrestricted shell access.
+ * This module validates a work envelope before an executor receives it.
+ * sandbox.mjs supplies an ephemeral Docker execution boundary; this contract
+ * is still not a substitute for that boundary. Never pass host credentials or
+ * unrestricted shell access to an executor.
  */
 
 import { ThorError } from "./index.mjs";
@@ -92,7 +92,7 @@ export function validateWorkerResult(result, envelope) {
     && /^[0-9]+$/.test(pullRequestNumber),
   "Pull request URL must belong to the scoped repository", "INVALID_RESULT");
 
-  assert(Array.isArray(result.changedFiles), "Changed-file evidence is required", "INVALID_RESULT");
+  assert(Array.isArray(result.changedFiles) && result.changedFiles.length > 0, "At least one changed file is required", "INVALID_RESULT");
   assertChangedPathsAllowed(result.changedFiles, envelope);
   assert(Array.isArray(result.tests) && result.tests.length === envelope.commands.length, "Every approved command must have test evidence", "INVALID_RESULT");
   const seen = new Set();
