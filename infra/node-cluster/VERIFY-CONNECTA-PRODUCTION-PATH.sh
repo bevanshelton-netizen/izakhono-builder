@@ -43,6 +43,9 @@ done
 grep -q '/health/cluster' "products/izakhono-social/engine/src/server.js" || fail "CONNECTA engine no longer exposes the cluster health endpoint"
 grep -q 'createNodeHealthChallenge' "products/izakhono-social/engine/src/server.js" || fail "CONNECTA engine no longer signs node health challenges"
 grep -q 'bearer-hmac-sha256' "products/izakhono-social/engine/src/node-health.js" || fail "CONNECTA node health HMAC challenge contract is missing"
+if grep -q "GetFolderPath('Desktop')" "infra/runtime-fabric/CERTIFY-OWNED-RUNTIME-WAVE1.ps1"; then
+  fail "shared runtime certifier must not depend on a desktop evidence directory"
+fi
 grep -q 'IZAKHONO_NODE_ID' "products/izakhono-social/docker-compose.owned.yml" || fail "owned runtime Compose does not pass logical node identity"
 grep -q 'IZAKHONO_CLUSTER_ID' "products/izakhono-social/docker-compose.owned.yml" || fail "owned runtime Compose does not pass cluster identity"
 grep -q 'IZAKHONO_NODE_HEALTH_TOKEN' "products/izakhono-social/docker-compose.owned.yml" || fail "owned runtime Compose does not pass the node health credential"
