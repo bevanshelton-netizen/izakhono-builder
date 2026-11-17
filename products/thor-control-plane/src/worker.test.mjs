@@ -131,7 +131,7 @@ await worker.fetch(request("/v1/tasks", {
   body: { ...createBody, id: "task-03", workerEnvelope: cancelledTaskEnvelope },
 }), env);
 const cancelled = await worker.fetch(request("/v1/tasks/task-03/cancel", {
-  method: "POST", token: apiToken, body: {},
+  method: "POST", token: apiToken,
 }), env);
 assert.equal(cancelled.status, 200);
 assert.equal((await cancelled.json()).task.state, "cancelled");
