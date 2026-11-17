@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { ThorError } from "./index.mjs";
-import { validateWorkerEnvelope, assertChangedPathsAllowed } from "./worker-contract.mjs";
+import { validateWorkerEnvelope, assertChangedPathsAllowed, validateWorkerResult } from "./worker-contract.mjs";
 
 const valid = {
   taskId: "task-01", projectId: "kora", repository: "bevanshelton-netizen/izakhono-builder",
@@ -38,3 +38,27 @@ assert.throws(
   error => error instanceof ThorError && error.code === "CHANGESET_TOO_LARGE",
 );
 console.log("THOR worker contract: all tests passed.");
+
+
+const validResult = {
+  commitSha: "a".repeat(40),
+  workRef: envelope.workRef,
+  artifactDigest: "b".repeat(64),
+  pullRequestUrl: "https://github.com/bevanshelton-netizen/izakhono-builder/pull/123",
+  changedFiles: ["products/thor-control-plane/src/worker.mjs"],
+  tests: envelope.commands.map(command => ({ command, exitCode: 0, durationMs: 10, output: "passed" })),
+};
+assert.equal(validateWorkerResult(validResult, envelope).verified, true);
+assert.throws(
+  () => validateWorkerResult({ ...validResult, pullRequestUrl: "https://github.com/other/repo/pull/123" }, envelope),
+  error => error instanceof ThorError && error.code === "INVALID_RESULT",
+);
+assert.throws(
+  () => validateWorkerResult({ ...validResult, tests: validResult.tests.map(test => ({ ...test, exitCode: 1 })) }, envelope),
+  error => error instanceof ThorError && error.code === "TESTS_NOT_PASSED",
+);
+assert.throws(
+  () => validateWorkerResult({ ...validResult, tests: validResult.tests.slice(0, 1) }, envelope),
+  error => error instanceof ThorError && error.code === "INVALID_RESULT",
+);
+console.log("THOR worker result evidence: all tests passed.");
