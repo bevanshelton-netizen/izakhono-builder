@@ -9,7 +9,7 @@ const env = {
   ...process.env,
   IZAKHONO_NODE_STORAGE_PATH: path.join(tempDir, 'node-data'),
   IZAKHONO_NODE_ID: 'test-software-node',
-  IZAKHONO_NODE_AUTH: '',
+  IZAKHONO_NODE_AUTH: 'test-token',
   IZAKHONO_BACKUP_TESTED: 'false',
   IZAKHONO_SECURITY_GATE: 'pending',
   IZAKHONO_MONITORING: 'offline',
@@ -34,7 +34,7 @@ try {
   const beat = run('heartbeat');
   assert.equal(beat.health, 'degraded');
   assert.equal(beat.checks.nodeReachable, true);
-  assert.equal(beat.checks.nodeAuthenticated, false);
+  assert.equal(beat.checks.nodeAuthenticated, true);
   assert.equal(beat.checks.backupTested, false);
   assert.equal(beat.checks.securityGatePassed, false);
   assert.equal(beat.checks.monitoringOnline, false);
@@ -42,7 +42,7 @@ try {
   const promoted = run('promote');
   assert.equal(promoted.status, 'waiting');
   assert.equal(promoted.reason, 'required-evidence-missing');
-  for (const gate of ['nodeAuthenticated', 'backupTested', 'securityGatePassed', 'monitoringOnline']) {
+  for (const gate of ['backupTested', 'securityGatePassed', 'monitoringOnline']) {
     assert.ok(promoted.missing.includes(gate), `expected missing gate: ${gate}`);
   }
   assert.ok(!JSON.stringify(promoted).includes('test-token'), 'secret values must not be emitted');
