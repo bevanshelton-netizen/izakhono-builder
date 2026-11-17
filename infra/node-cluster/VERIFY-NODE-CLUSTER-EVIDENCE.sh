@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Verify runtime-produced four-node health evidence emitted by
+# Verify authenticated runtime-produced four-node health evidence emitted by
 # NODE-CLUSTER-HEALTH-GATE.sh. This gate never creates or infers evidence.
 
 EVIDENCE_PATH="${1:-${CLUSTER_HEALTH_EVIDENCE_PATH:-}}"
@@ -12,12 +12,14 @@ fi
 
 python3 - "$EVIDENCE_PATH" <<'PY'
 import json
+import re
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
 path = Path(sys.argv[1])
 MAX_AGE_SECONDS = 300
+SCHEME = "bearer-hmac-sha256"
 
 def blocked(message):
     print(f"[BLOCKED] {message}", file=sys.stderr)
@@ -50,13 +52,16 @@ if data.get("cluster") != "izakhono-production":
 if data.get("nodeIdentityType") != "software-runtime":
     blocked("node identity must be software-runtime")
 if data.get("physicalHostIsSeparate") is not True:
-    blocked("logical runtime node identity was not declared")
+    blocked("logical runtime/physical-host separation is not declared")
 if data.get("runtimeEvidence") is not True:
     blocked("runtimeEvidence must be true")
 if data.get("status") != "PASS":
     blocked("four-node runtime status is not PASS")
 if data.get("requiredHealthyNodes") != 4:
     blocked("requiredHealthyNodes must equal 4")
+authentication = data.get("authentication")
+if not isinstance(authentication, dict) or authentication.get("scheme") != SCHEME or authentication.get("perNodeCredentials") is not True:
+    blocked("per-node HMAC challenge authentication is required")
 
 expected = {"NODE01", "NODE02", "NODE03", "NODE04"}
 nodes = data.get("nodes")
@@ -79,9 +84,18 @@ for record in nodes:
         blocked(f"{name} physical-host separation declaration is missing")
     if record.get("status") != "PASS" or record.get("runtime_evidence") is not True:
         blocked(f"{name} does not have passing runtime evidence")
+    node_auth = record.get("authentication")
+    if not isinstance(node_auth, dict) or node_auth.get("scheme") != SCHEME or node_auth.get("challengeVerified") is not True:
+        blocked(f"{name} authenticated challenge was not verified")
+    nonce = record.get("probeNonce")
+    signature = record.get("probeSignature")
+    if not isinstance(nonce, str) or not re.fullmatch(r"[a-f0-9]{64}", nonce):
+        blocked(f"{name} probe nonce is missing or malformed")
+    if not isinstance(signature, str) or not re.fullmatch(r"[a-f0-9]{64}", signature):
+        blocked(f"{name} HMAC signature is missing or malformed")
     response = record.get("http")
-    if not isinstance(response, dict) or response.get("ok") is not True or response.get("runtimeNode") != name or response.get("cluster") != "izakhono-production":
-        blocked(f"{name} endpoint response does not prove its own runtime and cluster identity")
+    if not isinstance(response, dict) or response.get("ok") is not True or response.get("runtimeNode") != name or response.get("cluster") != "izakhono-production" or response.get("authScheme") != SCHEME:
+        blocked(f"{name} endpoint response does not prove its own runtime, cluster and auth scheme")
     if not record.get("checkedAt"):
         blocked(f"{name} runtime timestamp is missing")
     parse_fresh_timestamp(record["checkedAt"], f"{name} runtime")
@@ -93,13 +107,13 @@ healthy = data.get("healthyNodes")
 if not isinstance(healthy, list) or len(healthy) != 4 or set(healthy) != expected:
     blocked("healthyNodes must contain exactly NODE01-NODE04")
 
-if data.get("source") != "operator-supplied-runtime-endpoints":
-    blocked("evidence source is not the runtime endpoint health gate")
+if data.get("source") != "operator-supplied-authenticated-runtime-endpoints":
+    blocked("evidence source is not the authenticated runtime endpoint health gate")
 
 checked_at = data.get("checkedAt")
 if not checked_at:
     blocked("cluster runtime evidence timestamp is missing")
-parse_fresh_timestamp(checked_at, "cluster runtime")
+parse_fresh_timestamp(checked_at, "Cluster runtime")
 
-print("[PASS] four distinct HTTPS runtime identities verified: NODE01 NODE02 NODE03 NODE04")
+print("[PASS] four distinct HTTPS runtime identities and fresh per-node HMAC challenges verified: NODE01 NODE02 NODE03 NODE04")
 PY
