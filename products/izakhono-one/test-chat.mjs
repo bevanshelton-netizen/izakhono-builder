@@ -34,11 +34,41 @@ assert.equal(requestedBody.messages[0].role, 'system');
 assert.equal(requestedBody.messages[1].content, 'Hello');
 assert.equal(requestedHeaders.authorization, 'Bearer test-secret');
 
+let gatewayRequestedUrl = '';
+const gateway = createOneAIChat({
+  env: {
+    IZAKHONO_LOCAL_MODEL_URL: 'http://host.docker.internal:11434/api/chat',
+    IZAKHONO_MODEL_TRUSTED_HOSTS: 'host.docker.internal'
+  },
+  fetcher: async (url) => {
+    gatewayRequestedUrl = String(url);
+    return { ok: true, json: async () => ({ message: { content: 'Private host gateway works.' } }) };
+  }
+});
+const gatewayResult = await gateway.chat([{ role: 'user', content: 'Hello' }]);
+assert.equal(gatewayResult.ok, true);
+assert.equal(gatewayRequestedUrl, 'http://host.docker.internal:11434/api/chat');
+
+const gatewayUntrusted = createOneAIChat({
+  env: { IZAKHONO_LOCAL_MODEL_URL: 'http://host.docker.internal:11434/api/chat' },
+  fetcher: async () => { throw new Error('must not make a network request'); }
+});
+await assert.rejects(() => gatewayUntrusted.chat([{ role: 'user', content: 'Hello' }]), /restricted to loopback/);
+
+const gatewayWrongPort = createOneAIChat({
+  env: {
+    IZAKHONO_LOCAL_MODEL_URL: 'http://host.docker.internal:8080/api/chat',
+    IZAKHONO_MODEL_TRUSTED_HOSTS: 'host.docker.internal'
+  },
+  fetcher: async () => { throw new Error('must not make a network request'); }
+});
+await assert.rejects(() => gatewayWrongPort.chat([{ role: 'user', content: 'Hello' }]), /restricted to loopback/);
+
 const untrusted = createOneAIChat({
   env: { IZAKHONO_LOCAL_MODEL_URL: 'http://example.com/api/chat' },
   fetcher: async () => { throw new Error('must not make a network request'); }
 });
-await assert.rejects(() => untrusted.chat([{ role: 'user', content: 'Hello' }]), /restricted to loopback or approved HTTPS/);
+await assert.rejects(() => untrusted.chat([{ role: 'user', content: 'Hello' }]), /restricted to loopback/);
 
 const health = createOneAIChat({
   env: { IZAKHONO_LOCAL_MODEL_URL: 'http://127.0.0.1:11434/api/chat', IZAKHONO_LOCAL_MODEL: 'qwen2.5-coder:3b' },
@@ -48,4 +78,4 @@ const health = createOneAIChat({
   }
 });
 assert.equal((await health.health()).status, 'connected');
-console.log(JSON.stringify({ status: 'passed', service: 'izakhono-one-chat', tests: 9 }));
+console.log(JSON.stringify({ status: 'passed', service: 'izakhono-one-chat', tests: 12 }));
