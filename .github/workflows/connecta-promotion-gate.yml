@@ -66,11 +66,15 @@ jobs:
           NODE02_URL: ${{ secrets.CONNECTA_NODE02_URL }}
           NODE03_URL: ${{ secrets.CONNECTA_NODE03_URL }}
           NODE04_URL: ${{ secrets.CONNECTA_NODE04_URL }}
+          NODE01_HEALTH_TOKEN: ${{ secrets.CONNECTA_NODE01_HEALTH_TOKEN }}
+          NODE02_HEALTH_TOKEN: ${{ secrets.CONNECTA_NODE02_HEALTH_TOKEN }}
+          NODE03_HEALTH_TOKEN: ${{ secrets.CONNECTA_NODE03_HEALTH_TOKEN }}
+          NODE04_HEALTH_TOKEN: ${{ secrets.CONNECTA_NODE04_HEALTH_TOKEN }}
           OUTPUT: /tmp/connecta-node-cluster-health.json
           TIMEOUT: '10'
         run: |
-          if [[ -z "$NODE01_URL" || -z "$NODE02_URL" || -z "$NODE03_URL" || -z "$NODE04_URL" ]]; then
-            echo '[BLOCKED] CONNECTA_NODE01_URL..CONNECTA_NODE04_URL production secrets are not configured.'
+          if [[ -z "$NODE01_URL" || -z "$NODE02_URL" || -z "$NODE03_URL" || -z "$NODE04_URL" || -z "$NODE01_HEALTH_TOKEN" || -z "$NODE02_HEALTH_TOKEN" || -z "$NODE03_HEALTH_TOKEN" || -z "$NODE04_HEALTH_TOKEN" ]]; then
+            echo '[BLOCKED] Four CONNECTA node URLs and four CONNECTA_NODE0x_HEALTH_TOKEN production secrets are not configured.'
             exit 10
           fi
           bash infra/node-cluster/NODE-CLUSTER-HEALTH-GATE.sh
