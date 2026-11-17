@@ -61,14 +61,14 @@ jobs:
         run: |
           set -euo pipefail
           if [ -n "${CLOUDFLARE_ACCOUNT_ID:-}" ] && [ -n "${CLOUDFLARE_API_TOKEN:-}" ]; then
-            echo 'DEPLOY_FLAGS=' >> "$GITHUB_ENV"
-            echo 'D1_FLAGS=--remote' >> "$GITHUB_ENV"
+            echo 'DEPLOY_FLAGS=--no-x-provision' >> "$GITHUB_ENV"
+            echo 'D1_FLAGS=--remote --no-x-provision' >> "$GITHUB_ENV"
             echo 'TEMPORARY_DEPLOY=false' >> "$GITHUB_ENV"
             echo 'WRANGLER_CONFIG=wrangler.sandbox.resolved.jsonc' >> "$GITHUB_ENV"
             echo 'Using the connected permanent Cloudflare account.' >> "$GITHUB_STEP_SUMMARY"
           else
             echo 'DEPLOY_FLAGS=--temporary' >> "$GITHUB_ENV"
-            echo 'D1_FLAGS=--remote --temporary' >> "$GITHUB_ENV"
+            echo 'D1_FLAGS=--remote' >> "$GITHUB_ENV"
             echo 'TEMPORARY_DEPLOY=true' >> "$GITHUB_ENV"
             echo 'WRANGLER_CONFIG=wrangler.sandbox.jsonc' >> "$GITHUB_ENV"
             echo 'No permanent Cloudflare credentials found; using a temporary Cloudflare preview account for sandbox proof.' >> "$GITHUB_STEP_SUMMARY"
