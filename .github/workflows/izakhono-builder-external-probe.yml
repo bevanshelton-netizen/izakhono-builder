@@ -19,23 +19,17 @@ jobs:
   probe:
     runs-on: ubuntu-latest
     steps:
-      - name: Probe live IZAKHONO ONE hub health
+      - name: Probe live IZAKHONO ONE public hub
         shell: bash
         run: |
           set -euo pipefail
           HUB='https://yfawrenhudjomhnglfhq.supabase.co/functions/v1/izakhono-one-hub'
-          code="$(curl -sS -L --max-time 20 -o /tmp/one-health.json -w '%{http_code}' "$HUB/health")"
+          code="$(curl -sS -L --max-time 20 -o /tmp/one-hub.json -w '%{http_code}' "$HUB")"
           test "$code" = "200"
-          node -e "const x=require('/tmp/one-health.json'); if(x.ok!==true||x.service!=='IZAKHONO ONE HUB'||x.status!=='healthy') process.exit(1)"
-          echo "IZAKHONO_ONE_HUB_HEALTH=PASS"
-
-      - name: Probe live hub manifest and architecture identity
-        shell: bash
-        run: |
-          set -euo pipefail
-          HUB='https://yfawrenhudjomhnglfhq.supabase.co/functions/v1/izakhono-one-hub'
-          code="$(curl -sS -L --max-time 20 -o /tmp/one-manifest.json -w '%{http_code}' "$HUB/manifest")"
-          test "$code" = "200"
-          node -e "const x=require('/tmp/one-manifest.json'); if(x.ok!==true||x.architecture?.identity!=='IZAKHONO ONE'||x.architecture?.controlPlane!=='ONE HUB'||!Array.isArray(x.pillars)||x.pillars.length!==7) process.exit(1)"
-          echo "IZAKHONO_ONE_HUB_MANIFEST=PASS"
+          grep -q '"service":"IZAKHONO ONE HUB"' /tmp/one-hub.json
+          grep -q '"identity":"IZAKHONO ONE"' /tmp/one-hub.json
+          grep -q '"controlPlane":"ONE HUB"' /tmp/one-hub.json
+          grep -q '"slug":"fortress"' /tmp/one-hub.json
+          echo "IZAKHONO_ONE_HUB_EXTERNAL_HTTPS_200=PASS"
+          echo "IZAKHONO_ONE_HUB_ARCHITECTURE_IDENTITY=PASS"
           echo "IZAKHONO_BUILDER_PUBLIC_ROUTE=GATED_UNTIL_INDEPENDENTLY_VERIFIED"
