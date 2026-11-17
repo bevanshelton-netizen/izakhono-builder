@@ -40,4 +40,31 @@ assert.ok(fs.existsSync(path.join(artifactDir, 'package.json')));
 assert.ok(fs.existsSync(path.join(artifactDir, 'index.mjs')));
 assert.ok(fs.existsSync(path.join(artifactDir, 'build-result.json')));
 
+const retryPlan = enqueue({
+  goal: 'Recover a waiting task after its missing capability is supplied',
+  steps: [{ id: 'retry-step', title: 'Retry after capability recovery', action: 'manual-review' }],
+});
+await runAgentWorker();
+let recoveryState = JSON.parse(fs.readFileSync(process.env.IZAKHONO_AGENT_STATE_PATH, 'utf8'));
+assert.equal(recoveryState.plans[retryPlan.planId].status, 'waiting');
+recoveryState.plans[retryPlan.planId].steps[0].action = 'plan-only';
+fs.writeFileSync(process.env.IZAKHONO_AGENT_STATE_PATH, JSON.stringify(recoveryState, null, 2) + '\n');
+await runAgentWorker();
+recoveryState = JSON.parse(fs.readFileSync(process.env.IZAKHONO_AGENT_STATE_PATH, 'utf8'));
+assert.equal(recoveryState.plans[retryPlan.planId].status, 'completed');
+
+const approvalPlan = enqueue({
+  goal: 'Resume a plan after explicit approval',
+  approvalRequired: true,
+  steps: [{ id: 'approved-step', title: 'Approved safe step', action: 'plan-only' }],
+});
+await runAgentWorker();
+let approvalState = JSON.parse(fs.readFileSync(process.env.IZAKHONO_AGENT_STATE_PATH, 'utf8'));
+assert.equal(approvalState.plans[approvalPlan.planId].status, 'awaiting_approval');
+approvalState.plans[approvalPlan.planId].approved = true;
+fs.writeFileSync(process.env.IZAKHONO_AGENT_STATE_PATH, JSON.stringify(approvalState, null, 2) + '\n');
+await runAgentWorker();
+approvalState = JSON.parse(fs.readFileSync(process.env.IZAKHONO_AGENT_STATE_PATH, 'utf8'));
+assert.equal(approvalState.plans[approvalPlan.planId].status, 'completed');
+
 console.log('[PASS] AI agent worker drains native Builder stages and records portable build artifacts.');
