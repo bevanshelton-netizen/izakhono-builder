@@ -86,7 +86,7 @@ async function readJson(request) {
 }
 
 async function defaultSchemaCheck(db) {
-  if (!db?.prepare) return false;
+  if (!db?.prepare || typeof db.batch !== "function") return false;
   await db.prepare("SELECT worker_envelope_json FROM thor_tasks LIMIT 0").all();
   await db.prepare("SELECT id FROM thor_task_events LIMIT 0").all();
   return true;
@@ -204,7 +204,7 @@ export function createThorWorker({
 
       if (method === "GET" && pathname === "/ready") {
         const checks = {
-          databaseConfigured: Boolean(env.THOR_DB?.prepare),
+          databaseConfigured: Boolean(env.THOR_DB?.prepare && typeof env.THOR_DB.batch === "function"),
           apiAuthConfigured: HASH.test(env.THOR_API_TOKEN_SHA256 || ""),
           workerAuthConfigured: Object.keys(workerTokenHashes(env)).length > 0,
           projectPoliciesConfigured: Object.keys(validatedProjectPolicies(env)).length > 0,
