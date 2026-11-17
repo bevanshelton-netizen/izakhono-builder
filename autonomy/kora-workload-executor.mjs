@@ -17,6 +17,8 @@ const image = process.env.KORA_IMAGE || 'kora-network:portable';
 const containerName = process.env.KORA_CONTAINER_NAME || `kora-${nodeId}`;
 const port = Number(process.env.KORA_PORT || workload.artifact.containerPort || 3000);
 const dryRun = process.env.IZAKHONO_DRY_RUN !== 'false';
+const testRuntime = process.env.GITHUB_ACTIONS === 'true' && process.env.IZAKHONO_NODE_SUBSTRATE === 'github-actions-software-node';
+const liveExecutionApproved = process.env.IZAKHONO_KORA_EXECUTION_APPROVED === 'true' || testRuntime;
 const healthPath = workload.artifact.healthPath || '/api/health';
 const healthAttempts = Number(process.env.KORA_HEALTH_ATTEMPTS || 30);
 const healthDelaySeconds = Number(process.env.KORA_HEALTH_DELAY_SECONDS || 2);
@@ -48,6 +50,12 @@ const evidence = [
   { name: 'workload-definition', status: 'passed', source: workloadPath },
   { name: 'image-built', status: 'pending', image },
 ];
+
+if (!dryRun && !liveExecutionApproved) {
+  record('awaiting-owner-approval', evidence, { acceptance: 'not-verified', runtimeAcceptance: 'not-started' });
+  console.log(JSON.stringify({ status: 'waiting', reason: 'owner-approval-required-for-live-kora-execution', workload: workload.workloadId, nodeId, dryRun: false, evidence }, null, 2));
+  process.exit(0);
+}
 
 if (dryRun) {
   record('execution-plan-ready', evidence, { acceptance: 'not-verified' });
