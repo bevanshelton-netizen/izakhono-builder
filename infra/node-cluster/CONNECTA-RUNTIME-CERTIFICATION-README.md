@@ -6,47 +6,45 @@
 
 **NODE01 is IZAKHONO software**: a deployable runtime component/service. NODE02, NODE03 and NODE04 are peer/failover software nodes. They execute on infrastructure hosts; they are not physical machines or workstations. A physical NODE01 workstation is neither the software nor a requirement. **Vercel is not required, not the CONNECTA runtime, and not a production dependency.** CONNECTA must build, deploy, route and operate on IZAKHONO-controlled infrastructure.
 
-## 1. Provision distinct HTTPS runtime endpoints
+## 1. Provision distinct authenticated HTTPS runtime endpoints
 
-Configure these protected GitHub Actions production environment secrets:
+Configure these protected GitHub Actions production-environment secrets:
 
 - `CONNECTA_NODE01_URL`
 - `CONNECTA_NODE02_URL`
 - `CONNECTA_NODE03_URL`
 - `CONNECTA_NODE04_URL`
+- `CONNECTA_NODE01_HEALTH_TOKEN`
+- `CONNECTA_NODE02_HEALTH_TOKEN`
+- `CONNECTA_NODE03_HEALTH_TOKEN`
+- `CONNECTA_NODE04_HEALTH_TOKEN`
 
-Each URL must point to its own logical/runtime node over HTTPS. All four URLs must not resolve to one generic endpoint.
+Generate each token independently as a 32-byte random value encoded in 64 hexadecimal characters, for example `openssl rand -hex 32`. Never reuse credentials across nodes or commit them to source control.
 
-Every endpoint must return HTTP 2xx and JSON that identifies itself and the canonical cluster. Example for NODE01:
-
-```json
-{
-  "ok": true,
-  "cluster": "izakhono-production",
-  "runtimeNode": "NODE01"
-}
-```
-
-NODE02, NODE03 and NODE04 must return their respective `runtimeNode` identity. The health gate rejects plaintext HTTP, generic health responses, mismatched node identity and mismatched cluster identity. See [CONNECTA runtime health endpoint contract](CONNECTA-RUNTIME-HEALTH-ENDPOINT-CONTRACT.md).
+Configure each runtime instance with `IZAKHONO_NODE_ID`, `IZAKHONO_CLUSTER_ID=izakhono-production` and its own `IZAKHONO_NODE_HEALTH_TOKEN`. The engine exposes `GET /health/cluster`, requires a Bearer token and signs a fresh 256-bit probe nonce using HMAC-SHA256. The health gate verifies the response signature and node identity. See [CONNECTA runtime health endpoint contract](CONNECTA-RUNTIME-HEALTH-ENDPOINT-CONTRACT.md).
 
 ## 2. Collect actual runtime evidence
 
-The manual **CONNECTA Owned Runtime Certification** workflow reads the four protected endpoint secrets, runs the health gate, verifies evidence freshness and identity, and retains the evidence artifact.
+The manual **CONNECTA Owned Runtime Certification** workflow reads the four protected endpoint URLs and four per-node health tokens, runs the authenticated health gate, verifies evidence freshness and identity, and retains the evidence artifact.
 
 For a controlled operator run:
 
 ```bash
-NODE01_URL=https://node01.example.invalid/health \
-NODE02_URL=https://node02.example.invalid/health \
-NODE03_URL=https://node03.example.invalid/health \
-NODE04_URL=https://node04.example.invalid/health \
+NODE01_URL=https://node01.example.invalid/health/cluster \
+NODE02_URL=https://node02.example.invalid/health/cluster \
+NODE03_URL=https://node03.example.invalid/health/cluster \
+NODE04_URL=https://node04.example.invalid/health/cluster \
+NODE01_HEALTH_TOKEN=<64-hex-token-01> \
+NODE02_HEALTH_TOKEN=<64-hex-token-02> \
+NODE03_HEALTH_TOKEN=<64-hex-token-03> \
+NODE04_HEALTH_TOKEN=<64-hex-token-04> \
 OUTPUT=/tmp/connecta-node-cluster-health.json \
 bash infra/node-cluster/NODE-CLUSTER-HEALTH-GATE.sh
 
 bash infra/node-cluster/VERIFY-NODE-CLUSTER-EVIDENCE.sh /tmp/connecta-node-cluster-health.json
 ```
 
-The `.example.invalid` hostnames above are placeholders only, not deployed endpoints.
+The `.example.invalid` hostnames and token placeholders above are examples only, not deployed endpoints or credentials.
 
 ## 3. Evaluate promotion prerequisite
 
@@ -54,7 +52,7 @@ The `.example.invalid` hostnames above are placeholders only, not deployed endpo
 bash infra/node-cluster/CONNECTA-PROMOTION-GATE.sh /tmp/connecta-node-cluster-health.json
 ```
 
-Missing, malformed, stale, simulated, inferred, topology-only, CI-only, repository-only, duplicate, or identity-mismatched evidence is rejected.
+Missing, malformed, stale, simulated, inferred, topology-only, CI-only, repository-only, duplicate, identity-mismatched, unauthenticated or invalid-HMAC evidence is rejected.
 
 ## 4. Full activation
 
