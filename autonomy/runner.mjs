@@ -7,7 +7,7 @@ import { runAgentWorker } from './ai-agent-worker.mjs';
 
 const root = process.cwd();
 const manifestPath = path.join(root, 'autonomy', 'engine-manifest.json');
-const statePath = path.join(root, 'autonomy', 'state.json');
+const statePath = process.env.IZAKHONO_STATE_PATH || path.join(root, 'autonomy', 'state.json');
 
 const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
 const state = fs.existsSync(statePath) ? JSON.parse(fs.readFileSync(statePath, 'utf8')) : { version: 2, tasks: {}, history: [] };
