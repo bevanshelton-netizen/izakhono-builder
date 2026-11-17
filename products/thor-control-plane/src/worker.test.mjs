@@ -60,7 +60,7 @@ const envelope = {
   workRef: "thor/task-01",
   allowedPaths: ["products/thor-control-plane/src"],
   commands: ["node --test", "npm test"],
-  limits: { timeoutMs: 120000, maxOutputBytes: 200000, maxChangedFiles: 12 },
+  limits: { timeoutMs: 120000, maxOutputBytes: 200000, maxChangedFiles: 12, memoryMb: 512, cpuCount: 1 },
 };
 const createBody = {
   id: envelope.taskId,
