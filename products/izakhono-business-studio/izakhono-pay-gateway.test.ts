@@ -97,4 +97,7 @@ async function run() {
   console.log('izakhono-pay-gateway: PASS');
 }
 
-await run();
+run().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});
