@@ -23,15 +23,16 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Instantiate Software NODE
+      - name: Confirm ephemeral CI runner is not promoted as a production NODE
         env:
-          IZAKHONO_NODE_ID: github-software-node-kora
-          IZAKHONO_NODE_SUBSTRATE: github-actions-software-node
+          IZAKHONO_NODE_ID: github-actions-kora-ci
+          IZAKHONO_NODE_SUBSTRATE: github-actions-ci-test-only
         run: |
           set -euo pipefail
           node autonomy/software-node.mjs '{"operation":"instantiate"}' | tee /tmp/software-node.json
           node autonomy/software-node.mjs '{"operation":"heartbeat"}' | tee /tmp/node-heartbeat.json
-          node autonomy/software-node.mjs '{"operation":"promote","requestId":"kora-runtime-gate"}' | tee /tmp/node-promotion.json
+          node autonomy/software-node.mjs '{"operation":"promote","requestId":"kora-ci-only"}' | tee /tmp/node-promotion.json
+          node -e "const p=require('/tmp/node-promotion.json'); if(p.status !== 'waiting' || !Array.isArray(p.missing) || p.missing.length === 0) process.exit(1); console.log('[PASS] Ephemeral CI substrate remains ineligible for production promotion.');"
 
       - name: Build KORA portable image
         run: |
@@ -40,12 +41,12 @@ jobs:
           docker build -t kora-network:portable /tmp/izakhono-downloads/kora-network
           docker image inspect kora-network:portable >/tmp/kora-image.json
 
-      - name: Execute KORA workload on Software NODE
+      - name: Smoke-test KORA in an ephemeral CI container
         env:
-          IZAKHONO_NODE_ID: github-software-node-kora
+          IZAKHONO_NODE_ID: github-actions-kora-ci
           IZAKHONO_DRY_RUN: 'false'
           KORA_IMAGE: kora-network:portable
-          KORA_CONTAINER_NAME: kora-software-node-gate
+          KORA_CONTAINER_NAME: kora-ci-smoke
           KORA_PORT: '3000'
           KORA_HEALTH_ATTEMPTS: '30'
           KORA_HEALTH_DELAY_SECONDS: '2'
@@ -54,6 +55,7 @@ jobs:
           node autonomy/kora-workload-executor.mjs | tee /tmp/kora-runtime.json
 
       - name: Verify current public KORA route without claiming cutover
+        if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
         run: |
           set -euo pipefail
           curl -fsS --retry 5 --retry-delay 2 https://streamkoraafrica.com/api/health >/tmp/kora-public-health.json
@@ -62,7 +64,7 @@ jobs:
           payload=json.load(open('/tmp/kora-public-health.json'))
           if payload.get('ok') is not True:
               raise SystemExit('Public KORA health endpoint did not return ok=true')
-          print('[PASS] Current public KORA route is healthy. This does not prove routing to the Software NODE.')
+          print('[PASS] Current public KORA route responds. This does not prove routing to the owned Software NODE or production independence.')
           PY
 
       - name: Publish runtime evidence
