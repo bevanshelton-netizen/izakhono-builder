@@ -168,7 +168,7 @@ export async function runDockerSandbox({
       if (remainingOutput <= 0) throw new ThorError("Sandbox output limit exceeded", "OUTPUT_LIMIT_EXCEEDED");
 
       const args = [
-        "run", "--rm",
+        "run", "--rm", "--pull", "never",
         "--network", "none",
         "--read-only",
         "--cap-drop", "ALL",
@@ -185,7 +185,7 @@ export async function runDockerSandbox({
         "--mount", `type=bind,src=${workspacePath},dst=/workspace,rw`,
       ];
       if (nodeModulesPath) args.push("--mount", `type=bind,src=${nodeModulesPath},dst=/workspace/node_modules,readonly`);
-      args.push("--workdir", "/workspace", "--entrypoint", "/bin/sh", IMAGE, "-lc", command);
+      args.push("--workdir", "/workspace", "--entrypoint", "/bin/sh", IMAGE, "-c", command);
 
       const started = Date.now();
       const result = await runDocker(args, {
