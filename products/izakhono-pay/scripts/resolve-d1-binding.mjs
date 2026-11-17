@@ -95,7 +95,7 @@ function main() {
   const workingDirectory = path.dirname(configPath);
 
   const listOutput = execFileSync('npx', [
-    'wrangler', 'd1', 'list', '--json', '--config', args['list-config'],
+    'wrangler', 'd1', 'list', '--json', '--no-x-provision', '--config', args['list-config'],
   ], { cwd: workingDirectory, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
 
   const databaseId = resolveDatabaseId(listOutput, args.database);
