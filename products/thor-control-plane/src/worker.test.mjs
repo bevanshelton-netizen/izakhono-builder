@@ -12,6 +12,17 @@ const env = {
   THOR_DB: { prepare() { return { async all() { return { results: [] }; } }; } },
   THOR_API_TOKEN_SHA256: await hash(apiToken),
   THOR_WORKER_TOKEN_HASHES: JSON.stringify({ "worker-01": await hash(workerToken) }),
+  THOR_PROJECT_POLICIES: JSON.stringify({
+    kora: {
+      repository: "bevanshelton-netizen/izakhono-builder",
+      baseRef: "main",
+      workRefPrefix: "thor/",
+      allowedPaths: ["products/thor-control-plane/src"],
+      commands: ["node --test", "npm test"],
+      limits: { timeoutMs: 120000, maxOutputBytes: 200000, maxChangedFiles: 12 },
+      maxAttempts: 3,
+    },
+  }),
   THOR_LEASE_MS: "5000",
 };
 const store = new MemoryThorStore();
@@ -66,6 +77,16 @@ const created = await worker.fetch(request("/v1/tasks", { method: "POST", body: 
 assert.equal(created.status, 201);
 const createdPayload = await created.json();
 assert.equal(createdPayload.task.workerEnvelope.workRef, "thor/task-01");
+
+const policyViolation = await worker.fetch(request("/v1/tasks", {
+  method: "POST", token: apiToken,
+  body: {
+    ...createBody,
+    id: "task-scope-violation",
+    workerEnvelope: { ...envelope, taskId: "task-scope-violation", allowedPaths: ["products/other"] },
+  },
+}), env);
+assert.equal(policyViolation.status, 403);
 
 const badEnvelope = await worker.fetch(request("/v1/tasks", {
   method: "POST",
