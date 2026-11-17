@@ -12,6 +12,7 @@ import { listPillars, pillarDescriptor, preparePillarRequest } from './services/
 import { authorizeRequest, evaluateAuthorization, fortressPermissions, fortressRoles, fortressResourceScopes } from './services/fortress.mjs';
 import { prepareSearchRequest, searchModes, searchProviders } from './services/search.mjs';
 import { createSearchApi } from './services/search-api.mjs';
+import { createOneAIChat } from './services/chat.mjs';
 
 const root = fileURLToPath(new URL('./public/', import.meta.url));
 const port = Number(process.env.PORT || 8781);
@@ -30,6 +31,7 @@ const services = [...parallel, ...registry.services.filter(service => !parallel.
 const bySlug = new Map(services.map(service => [service.slug, service]));
 const runtime = new Map(parallel.map(service => [service.slug, {service_slug:service.slug,state:'foundation',health:'unknown',version:'v1',last_check_at:null}]));
 const searchApi = createSearchApi();
+const oneAIChat = createOneAIChat({env:process.env});
 const builderInternalUrl = String(process.env.IZAKHONO_BUILDER_INTERNAL_URL || '').trim().replace(/\/+$/, '');
 const flowInternalUrl = String(process.env.IZAKHONO_FLOW_INTERNAL_URL || '').trim().replace(/\/+$/, '');
 const json = (res, status, body) => { res.writeHead(status, {'content-type':'application/json; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff'}); res.end(JSON.stringify(body)); };
@@ -42,6 +44,8 @@ async function proxyHealth(res,baseUrl,path,descriptor,errorPrefix){ if(!baseUrl
 const server=http.createServer(async(req,res)=>{
   const url=new URL(req.url||'/','http://localhost');
   if(url.pathname==='/health')return json(res,200,{status:'ok',platform:'IZAKHONO ONE',engine:registry.engine,services:services.length,parallelPillars:parallel.length,serviceContracts:Object.keys(contracts).length,pillarAdapters:7,adapterRegistry:adapterRegistry().length,noTracking:true,policyGate:true,actionGate:true,fortressGate:true,notificationChannels:supportedNotificationChannels(),runtimeState:true,dispatcher:true,searchAdapter:true,searchStore:searchApi.contract(),builderIntegration:{integrated:true,configured:Boolean(builderInternalUrl),engineIndependent:true},flowIntegration:{integrated:true,configured:Boolean(flowInternalUrl),engineIndependent:true}});
+  if(url.pathname==='/api/chat/health'&&req.method==='GET'){const health=await oneAIChat.health();return json(res,health.ok?200:503,health);}
+  if(url.pathname==='/api/chat'&&req.method==='POST'){const parsed=await readJsonRequest(req,32768);if(!parsed.ok)return json(res,parsed.status,{ok:false,error:parsed.error});try{return json(res,200,await oneAIChat.chat(parsed.value.messages));}catch(error){const status=Number.isInteger(error.statusCode)?error.statusCode:503;return json(res,status,{ok:false,error:error.code||'one_ai_unavailable',message:error.publicMessage||'ONE AI is not available right now.'});}}
   if(url.pathname==='/api/fortress'&&req.method==='GET')return json(res,200,{ok:true,version:'v1',mode:'prepare_only',gate:'FORTRESS',decisions:['allow','deny','review'],roles:fortressRoles(),permissions:fortressPermissions(),resourceScopes:fortressResourceScopes(),audit:{enabled:true,persistent:false,mode:'foundation'},sideEffects:false});
   if(url.pathname==='/api/fortress/authorize'&&req.method==='POST'){const parsed=await readJsonRequest(req);if(!parsed.ok)return json(res,parsed.status,{ok:false,error:parsed.error});const input=parsed.value;const normalized={...input,action:String(input.action||'').trim()==='read'?'read':'execute'};const decision=authorizeRequest(normalized);return json(res,decision.decision==='deny'?403:decision.decision==='review'?202:200,{ok:decision.decision==='allow',mode:'prepare_only',...decision});}
   if(url.pathname==='/api/adapters')return json(res,200,{ok:true,version:'v1',mode:'prepare_only',adapters:adapterRegistry()});
