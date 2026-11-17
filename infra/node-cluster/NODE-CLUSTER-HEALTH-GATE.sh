@@ -29,6 +29,7 @@ import secrets
 import subprocess
 import sys
 from datetime import datetime, timezone
+from urllib.parse import urlsplit
 
 output, timeout, *values = sys.argv[1:]
 urls = values[:4]
@@ -49,8 +50,13 @@ for name, url, token in zip(names, urls, tokens):
     if not re.fullmatch(r"[a-fA-F0-9]{64}", token):
         results.append({"node": name, "identityType": "software-runtime", "physicalHostIsSeparate": True, "status": "INVALID_CREDENTIAL", "runtime_evidence": False, "checkedAt": checked})
         continue
-    if not url.startswith("https://"):
-        results.append({"node": name, "identityType": "software-runtime", "physicalHostIsSeparate": True, "status": "HTTPS_REQUIRED", "runtime_evidence": False, "checkedAt": checked})
+    try:
+        parsed_url = urlsplit(url)
+        _ = parsed_url.port
+        if parsed_url.scheme != "https" or not parsed_url.hostname or parsed_url.username or parsed_url.password:
+            raise ValueError("HTTPS URL with a hostname and no embedded credentials is required")
+    except Exception:
+        results.append({"node": name, "identityType": "software-runtime", "physicalHostIsSeparate": True, "status": "INVALID_HTTPS_URL", "runtime_evidence": False, "checkedAt": checked})
         continue
     if urls.count(url) != 1:
         results.append({"node": name, "identityType": "software-runtime", "physicalHostIsSeparate": True, "status": "DUPLICATE_ENDPOINT", "runtime_evidence": False, "checkedAt": checked})
