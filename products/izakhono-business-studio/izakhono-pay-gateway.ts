@@ -92,7 +92,7 @@ export function createIzakhonoPayGateway(config: IzakhonoPayGatewayConfig): Paym
   } catch {
     throw new Error('IZAKHONO_PAY_BASE_URL_INVALID');
   }
-  if (base.protocol !== 'https:' || base.username || base.password || base.search || base.hash) {
+  if (base.protocol !== 'https:' || base.username || base.password || base.search || base.hash || base.pathname !== '/') {
     throw new Error('IZAKHONO_PAY_BASE_URL_MUST_USE_HTTPS_ORIGIN');
   }
   if (!/^[a-z0-9][a-z0-9_-]{0,59}$/.test(config.merchantSlug)) throw new Error('IZAKHONO_PAY_MERCHANT_SLUG_INVALID');
@@ -133,7 +133,8 @@ export function createIzakhonoPayGateway(config: IzakhonoPayGatewayConfig): Paym
       const response = await fetchImpl(endpoint('/api/v1/intents'), {
         method: 'POST',
         headers: { ...headers(), 'idempotency-key': input.idempotencyKey },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(payload),
+        redirect: 'error'
       });
       const body = await response.json().catch(() => null) as ApiResponse | null;
       const intent = parseIntent(body);
@@ -150,11 +151,12 @@ export function createIzakhonoPayGateway(config: IzakhonoPayGatewayConfig): Paym
         intent.merchant_reference !== input.orderId ||
         Number(intent.amount_minor) !== input.amountMinor ||
         String(intent.currency || '').toUpperCase() !== currency ||
-        typeof intent.id !== 'string' ||
-        typeof intent.reference !== 'string' ||
+        typeof intent.id !== 'string' || !intent.id.trim() ||
+        typeof intent.reference !== 'string' || !intent.reference.trim() ||
         !provider ||
         !status ||
-        (status === 'requires_action' && !checkoutUrl)
+        (status === 'requires_action' && !checkoutUrl) ||
+        (status === 'paid' && (typeof intent.provider_reference !== 'string' || !intent.provider_reference.trim() || typeof intent.paid_at !== 'string' || !intent.paid_at))
       ) throw new Error('IZAKHONO_PAY_INTENT_RESPONSE_MISMATCH');
 
       return {
@@ -179,7 +181,8 @@ export function createIzakhonoPayGateway(config: IzakhonoPayGatewayConfig): Paym
 
       const response = await fetchImpl(endpoint('/api/v1/intents/' + encodeURIComponent(request.intentId)), {
         method: 'GET',
-        headers: headers()
+        headers: headers(),
+        redirect: 'error'
       });
       const body = await response.json().catch(() => null) as ApiResponse | null;
       const intent = parseIntent(body);
