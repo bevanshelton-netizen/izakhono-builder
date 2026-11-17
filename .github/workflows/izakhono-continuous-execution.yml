@@ -3,8 +3,11 @@ name: IZAKHONO Continuous Execution
 on:
   workflow_dispatch:
   push:
+    branches: [main]
     paths-ignore:
       - 'autonomy/state.json'
+      - 'autonomy/agent-state.json'
+      - 'autonomy/agent-queue.json'
   schedule:
     - cron: '*/5 * * * *'
 
