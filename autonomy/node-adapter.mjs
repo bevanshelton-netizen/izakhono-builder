@@ -8,16 +8,18 @@ const root = process.cwd();
 const agent = path.join(root, 'autonomy', 'node-agent.mjs');
 const heartbeat = path.join(root, 'autonomy', 'node-heartbeat.mjs');
 const softwareNode = path.join(root, 'autonomy', 'software-node.mjs');
+const koraExecutor = path.join(root, 'autonomy', 'kora-workload-executor.mjs');
+const koraRouting = path.join(root, 'autonomy', 'kora-routing-acceptance.mjs');
 
 function evidencePath() {
   return process.env.IZAKHONO_NODE_HEARTBEAT_EVIDENCE_PATH
     || path.join(process.env.IZAKHONO_NODE_DATA_DIR || path.join(root, 'autonomy'), 'heartbeat.json');
 }
 
-function runProcess(script, request = null) {
+function runProcess(script, request = null, envOverrides = {}) {
   return new Promise((resolve) => {
     const args = request === null ? [script] : [script, typeof request === 'string' ? request : JSON.stringify(request)];
-    const child = spawn(process.execPath, args, { cwd: root, stdio: ['ignore', 'pipe', 'pipe'], env: process.env });
+    const child = spawn(process.execPath, args, { cwd: root, stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env, ...envOverrides } });
     let stdout = '';
     let stderr = '';
     const timer = setTimeout(() => {
@@ -89,6 +91,33 @@ export async function runNodeAdapter(action, input = {}) {
     });
   }
 
+  if (action === 'kora-workload-execute') {
+    // Generate a safe execution plan only. The local CI process is not the
+    // owned NODE executor and must never be mistaken for a production runtime.
+    const plan = await runProcess(koraExecutor, null, { IZAKHONO_DRY_RUN: 'true' });
+    if (plan.status === 'execution-plan-ready') {
+      return {
+        status: 'waiting',
+        reason: 'owned-node-executor-not-configured',
+        source: 'local-plan-only',
+        evidence: plan.evidence || [],
+        workload: plan.workload || input.workload?.workloadId || null,
+      };
+    }
+    return plan;
+  }
+
+  if (action === 'kora-routing-acceptance') {
+    const result = await runProcess(koraRouting);
+    if (result.status === 'awaiting-acceptance') {
+      return { ...result, status: 'waiting', reason: result.reason || 'kora-routing-evidence-pending' };
+    }
+    if (result.status === 'routing-candidate') {
+      return { ...result, status: 'completed', source: 'kora-routing-acceptance' };
+    }
+    return result;
+  }
+
   return { status: 'failed', reason: `unsupported-node-action:${action}` };
 }
 
@@ -113,8 +142,14 @@ function registerAndSummarize(result, source) {
     source,
     evidence: [
       { name: 'heartbeat-emitted', status: 'passed' },
-      { name: 'node-health-readable', status: healthy ? 'passed' : 'failed' },
-      { name: 'capacity-reported', status: result.capacity ? 'passed' : 'not-required' },
+      { name: 'node-health-healthy', status: healthy ? 'passed' : 'pending' },
+      { name: 'node-authenticated', status: result.checks?.nodeAuthenticated ? 'passed' : 'pending' },
+      { name: 'persistent-storage-ready', status: result.checks?.persistentStorageReady ? 'passed' : 'pending' },
+      { name: 'container-runtime-ready', status: result.checks?.containerRuntimeReady ? 'passed' : 'pending' },
+      { name: 'backup-tested', status: result.checks?.backupTested ? 'passed' : 'pending' },
+      { name: 'security-gate-passed', status: result.checks?.securityGatePassed ? 'passed' : 'pending' },
+      { name: 'monitoring-online', status: result.checks?.monitoringOnline ? 'passed' : 'pending' },
+      { name: 'capacity-reported', status: result.capacity ? 'passed' : 'not_required' },
       { name: 'heartbeat-persisted', status: result.evidence?.persisted === false ? 'failed' : 'passed' },
     ],
     heartbeat: result,
