@@ -18,7 +18,7 @@ if(!config.includes('00000000-0000-0000-0000-000000000000')) throw new Error('Ex
 
 const productionConfig=await readFile(new URL('../wrangler.production.jsonc',import.meta.url),'utf8');
 if(!productionConfig.includes('"database_name": "izakhono-pay"') || !productionConfig.includes('00000000-0000-0000-0000-000000000000')) throw new Error('Production D1 binding must remain fail-closed until the existing database ID is resolved');
-for(const flag of ['"IKHOKHA_ENABLED": false','"PAYSTACK_ENABLED": false','"PAYFAST_ENABLED": false']) {
+for(const flag of ['"IKHOKHA_ENABLED": "false"','"PAYSTACK_ENABLED": "false"','"PAYFAST_ENABLED": "false"']) {
   if(!productionConfig.includes(flag)) throw new Error('Production payment provider must remain disabled: '+flag);
 }
 const orderOrchestrator=await readFile(new URL('../../izakhono-business-studio/order-provisioning-orchestrator.ts',import.meta.url),'utf8');
