@@ -77,6 +77,7 @@ if ([string]::IsNullOrWhiteSpace($ClusterHealthEvidencePath)) {
     $nodeRecords = @($clusterHealth.nodes)
     if ($nodeRecords.Count -ne 4) { throw 'Exactly four node runtime records are required.' }
     $seenNames = @()
+    $seenNonces = @()
     foreach ($record in $nodeRecords) {
       $name = [string]$record.node
       if ($name -notin $requiredNames -or $name -in $seenNames) { throw 'Node records must contain NODE01-NODE04 exactly once.' }
@@ -86,6 +87,8 @@ if ([string]::IsNullOrWhiteSpace($ClusterHealthEvidencePath)) {
       if ($record.physicalHostIsSeparate -ne $true) { throw "$name physical-host separation declaration is missing." }
       if ($record.authentication.scheme -ne 'bearer-hmac-sha256' -or $record.authentication.challengeVerified -ne $true) { throw "$name authenticated health challenge did not pass." }
       if ([string]$record.probeNonce -notmatch '^[a-f0-9]{64}$' -or [string]$record.probeSignature -notmatch '^[a-f0-9]{64}$') { throw "$name HMAC challenge evidence is malformed." }
+      if ($record.probeNonce -in $seenNonces) { throw 'Runtime probe nonces must be unique per node.' }
+      $seenNonces += [string]$record.probeNonce
       if ($null -eq $record.http) { throw "$name endpoint response is missing." }
       if ($record.http.authScheme -ne 'bearer-hmac-sha256') { throw "$name endpoint did not declare the required authentication scheme." }
       if ($record.status -ne 'PASS' -or $record.runtime_evidence -ne $true) { throw "$name runtime health did not pass." }
