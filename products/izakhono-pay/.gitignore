@@ -4,3 +4,4 @@ node_modules/
 .env
 .env.*
 !.dev.vars.example
+wrangler.production.resolved.jsonc
