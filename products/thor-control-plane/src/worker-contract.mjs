@@ -18,6 +18,9 @@ const DENIED_PATHS = [
   /(^|\/)(secrets?|credentials?)(\/|$)/i,
   /(^|\/)id_rsa($|\.)/i,
   /(^|\/)\.ssh(\/|$)/i,
+  /(^|\/)\.npmrc($|\/)/i,
+  /(^|\/)(\.vercel|\.wrangler|\.aws|\.azure|\.gcloud)(\/|$)/i,
+  /\.(pem|key|p12|pfx)$/i,
 ];
 
 function assert(condition, message, code) {
@@ -42,6 +45,8 @@ export function validateWorkerEnvelope(input) {
   assert(limits && Number.isInteger(limits.timeoutMs) && limits.timeoutMs >= 1_000 && limits.timeoutMs <= 900_000, "timeoutMs must be between 1000 and 900000", "INVALID_LIMITS");
   assert(Number.isInteger(limits.maxOutputBytes) && limits.maxOutputBytes >= 1_024 && limits.maxOutputBytes <= 5_000_000, "maxOutputBytes must be between 1024 and 5000000", "INVALID_LIMITS");
   assert(Number.isInteger(limits.maxChangedFiles) && limits.maxChangedFiles >= 1 && limits.maxChangedFiles <= 100, "maxChangedFiles must be between 1 and 100", "INVALID_LIMITS");
+  assert(Number.isInteger(limits.memoryMb) && limits.memoryMb >= 256 && limits.memoryMb <= 8192, "memoryMb must be between 256 and 8192", "INVALID_LIMITS");
+  assert(Number.isInteger(limits.cpuCount) && limits.cpuCount >= 1 && limits.cpuCount <= 4, "cpuCount must be between 1 and 4", "INVALID_LIMITS");
   return Object.freeze({
     taskId, projectId, repository, baseRef, workRef,
     allowedPaths: Object.freeze([...new Set(allowedPaths)]),
