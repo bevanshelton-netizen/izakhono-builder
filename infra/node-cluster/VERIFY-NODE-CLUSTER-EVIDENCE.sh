@@ -69,6 +69,7 @@ if not isinstance(nodes, list) or len(nodes) != 4:
     blocked("nodes must contain exactly four runtime records")
 
 seen = set()
+seen_nonces = set()
 for record in nodes:
     if not isinstance(record, dict):
         blocked("each node record must be an object")
@@ -91,6 +92,9 @@ for record in nodes:
     signature = record.get("probeSignature")
     if not isinstance(nonce, str) or not re.fullmatch(r"[a-f0-9]{64}", nonce):
         blocked(f"{name} probe nonce is missing or malformed")
+    if nonce in seen_nonces:
+        blocked("runtime probe nonces must be unique per node")
+    seen_nonces.add(nonce)
     if not isinstance(signature, str) or not re.fullmatch(r"[a-f0-9]{64}", signature):
         blocked(f"{name} HMAC signature is missing or malformed")
     response = record.get("http")
