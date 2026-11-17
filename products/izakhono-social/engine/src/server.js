@@ -2,6 +2,7 @@ import http from 'node:http';
 import { createHash, randomUUID } from 'node:crypto';
 
 import { fingerprintImage, supportsPerceptualFingerprint } from './media-fingerprint.js';
+import { createNodeHealthChallenge } from './node-health.js';
 
 import { query, transaction } from './db.js';
 import {
@@ -787,6 +788,42 @@ async function route(req, res) {
   }
 
   const url = new URL(req.url, 'http://connecta.local');
+  if (req.method === 'GET' && url.pathname === '/health/cluster') {
+    const configuredToken = process.env.IZAKHONO_NODE_HEALTH_TOKEN || '';
+    const authorization = String(req.headers.authorization || '');
+    const suppliedToken = authorization.startsWith('Bearer ') ? authorization.slice(7).trim() : '';
+    if (!configuredToken) {
+      return send(res, 503, { ok: false, error: 'NODE_HEALTH_AUTH_NOT_CONFIGURED' });
+    }
+    if (!safeEqualText(suppliedToken, configuredToken)) {
+      return send(res, 401, { ok: false, error: 'NODE_HEALTH_AUTH_FAILED' });
+    }
+
+    const challenge = createNodeHealthChallenge({
+      nodeId: process.env.IZAKHONO_NODE_ID || '',
+      clusterId: process.env.IZAKHONO_CLUSTER_ID || '',
+      token: configuredToken,
+      nonce: String(req.headers['x-izakhono-probe-nonce'] || ''),
+    });
+    if (!challenge) {
+      return send(res, 503, { ok: false, error: 'NODE_HEALTH_IDENTITY_NOT_CONFIGURED' });
+    }
+
+    const database = await query('select 1 as ok').then(() => 'ok').catch(() => 'error');
+    const storage = await storageHealth().then(() => 'ok').catch(() => 'error');
+    const healthy = database === 'ok' && storage === 'ok';
+    return send(res, healthy ? 200 : 503, {
+      ...challenge,
+      service: 'CONNECTA ENGINE',
+      version: ENGINE_VERSION,
+      instance: ENGINE_INSTANCE,
+      database,
+      storage,
+      storageAdapter: storageInfo(),
+      providerIndependent: true,
+    });
+  }
+
   if (req.method === 'GET' && url.pathname === '/health') {
     const database = await query('select 1 as ok').then(() => 'ok').catch(() => 'error');
     const storage = await storageHealth().then(() => 'ok').catch(() => 'error');
