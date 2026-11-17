@@ -26,4 +26,6 @@ A worker that loses its lease must stop and discard its workspace. A worker that
 
 The control-plane HTTP API now enforces API-token hashes, per-worker token hashes, project-specific repository/branch/path/command/resource policies, and completion evidence (commit SHA, reviewable PR, changed paths, artifact digest and passing approved commands). The D1 adapter persists the validated worker envelope, and the coding-worker claim endpoint excludes tasks without one.
 
-This API is still **not a production sandbox**. No OS-level sandbox, repository-token broker, model adapter or continuously running coding worker is claimed. The API must not be connected to an untrusted executor until those components are independently implemented and verified.
+A disposable Docker sandbox runner now exists and is exercised in CI. It disables container networking, uses a read-only root filesystem, drops capabilities, applies no-new-privileges and bounded CPU/memory/PIDs, withholds Git metadata and host secrets, and enforces changed-path scope after execution. This is a meaningful isolation boundary, but it is not yet an independently audited production sandbox and is not integrated into a continuously running worker.
+
+The repository-token broker, model adapter, live D1 deployment and independent sandbox escape/security review remain outstanding. Do not connect the control plane to untrusted production tasks until those gates pass.
