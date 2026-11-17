@@ -33,6 +33,7 @@ The following capabilities have separate implementation work in the IZAKHONO Sup
 - Settlement and payout orchestration
 - Bank-statement reconciliation and verified settlement matching
 - Durable retry scheduling and delivery recovery for merchant webhooks
+- Deployment of the Business Studio server-side order API, authoritative order store and secret-backed gateway runtime
 - Full operational FORTRESS alerting, incident response and key-rotation evidence
 - Stripe or international currency processing
 
