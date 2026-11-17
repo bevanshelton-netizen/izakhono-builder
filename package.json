@@ -22,7 +22,7 @@
     "marketing-os:startup:test": "npx --yes tsx@4.20.3 products/izakhono-marketing-os/src/marketing-os-startup.test.ts",
     "marketing-os:startup:typecheck": "npx --yes typescript@5.9.2 --noEmit --target ES2022 --module NodeNext --moduleResolution NodeNext products/izakhono-marketing-os/src/marketing-os-startup.ts products/izakhono-marketing-os/src/startup-recovery-controller.ts products/izakhono-marketing-os/src/production-provider-observation.ts",
     "business-studio:provisioner:test": "npx --yes tsx@4.20.3 products/izakhono-business-studio/provisioner-runtime.test.ts",
-    "business-studio:order-provisioning:test": "npx --yes tsx@4.20.3 products/izakhono-business-studio/order-provisioning-orchestrator.test.ts",
+    "business-studio:order-provisioning:test": "npx --yes tsx@4.20.3 products/izakhono-business-studio/order-provisioning-orchestrator.test.ts && npx --yes tsx@4.20.3 products/izakhono-business-studio/izakhono-pay-gateway.test.ts",
     "infra:contabo:validate": "node infra/contabo/validate.mjs",
     "validate:super-seo": "node scripts/validate-super-seo.mjs",
     "fortress:typecheck": "tsc --noEmit --target ES2022 --module ESNext --moduleResolution Bundler --types node products/fortress-security/src/types.ts products/fortress-security/src/policy.ts products/fortress-security/src/scanner.ts products/fortress-security/src/sarif.ts products/fortress-security/src/remediation.ts products/fortress-security/src/cli.ts products/fortress-security/src/remediation-cli.ts products/fortress-security/src/control-plane.ts products/fortress-security/src/control-plane-cli.ts",
@@ -45,7 +45,7 @@
     "deploy": "npm run security:gate && wrangler deploy && npm run db:migrate && wrangler deploy",
     "security:gate": "node security-gate/audit.mjs ${SECURITY_TARGET:-.}",
     "security:gate:app": "node security-gate/audit.mjs",
-    "validate": "npm install --prefix products/izakhono-core --ignore-scripts --no-audit --no-fund && npm run super-engine:portfolio && npm run validate:portfolio-release && npm run validate:build-anything && npm run validate:portfolio-growth && npm run validate:growth-engine && npm run validate:growth-edge && npm run validate:affiliate && npm run validate:finance-core && npm run validate:super-app && npm run validate:mail && npm run validate:host && npm run validate:super-seo && npm run validate:media-core && npm run creator:typecheck && npm run creator:one-workflow:test && npm run creator:one-workflow:api:test && npm run creator:one-master:test && npm run creator:one-distribution:test && npm run registry:supervisor-test && npm run registry:control-plane-test && npm run typecheck && npm run superagent:typecheck && npm run validate:factory-runtime && wrangler deploy --dry-run",
+    "validate": "npm install --prefix products/izakhono-core --ignore-scripts --no-audit --no-fund && npm run super-engine:portfolio && npm run validate:portfolio-release && npm run validate:build-anything && npm run business-studio:provisioner:test && npm run business-studio:order-provisioning:test && npm run business-studio:order-provisioning:typecheck && npm run validate:portfolio-growth && npm run validate:growth-engine && npm run validate:growth-edge && npm run validate:affiliate && npm run validate:finance-core && npm run validate:super-app && npm run validate:mail && npm run validate:host && npm run validate:super-seo && npm run validate:media-core && npm run creator:typecheck && npm run creator:one-workflow:test && npm run creator:one-workflow:api:test && npm run creator:one-master:test && npm run creator:one-distribution:test && npm run registry:supervisor-test && npm run registry:control-plane-test && npm run typecheck && npm run superagent:typecheck && npm run validate:factory-runtime && wrangler deploy --dry-run",
     "super-engine:portfolio": "node scripts/super-engine-portfolio.mjs",
     "validate:portfolio-release": "node scripts/validate-portfolio-release.mjs",
     "validate:build-anything": "node scripts/validate-build-anything.mjs",
@@ -69,7 +69,8 @@
     "registry:worker-test": "npx --yes tsx@4.20.3 registry/worker-handlers.test.ts",
     "registry:github-verifier-test": "npx --yes tsx@4.20.3 registry/github-build-verifier.test.ts",
     "one-drive:test": "npx --yes tsx@4.20.3 products/izakhono-one-drive/src/quota.test.ts",
-    "one-drive:typecheck": "npx --yes typescript@5.9.2 --noEmit --target ES2022 --module NodeNext --moduleResolution NodeNext products/izakhono-one-drive/src/quota.ts products/izakhono-one-drive/src/quota.test.ts"
+    "one-drive:typecheck": "npx --yes typescript@5.9.2 --noEmit --target ES2022 --module NodeNext --moduleResolution NodeNext products/izakhono-one-drive/src/quota.ts products/izakhono-one-drive/src/quota.test.ts",
+    "business-studio:order-provisioning:typecheck": "npx --yes typescript@5.9.2 --noEmit --target ES2022 --lib ES2022,DOM,DOM.Iterable --module ESNext --moduleResolution Bundler products/izakhono-business-studio/order-provisioning-orchestrator.ts products/izakhono-business-studio/izakhono-pay-gateway.ts products/izakhono-business-studio/order-provisioning-orchestrator.test.ts products/izakhono-business-studio/izakhono-pay-gateway.test.ts"
   },
   "dependencies": {
     "wrangler": "4.127.1"
