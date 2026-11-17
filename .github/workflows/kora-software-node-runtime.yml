@@ -44,6 +44,7 @@ jobs:
       - name: Execute KORA workload on Software NODE
         env:
           IZAKHONO_NODE_ID: github-software-node-kora
+          IZAKHONO_NODE_SUBSTRATE: github-actions-software-node
           IZAKHONO_NODE_DATA_DIR: /tmp/izakhono-node-data
           IZAKHONO_DRY_RUN: 'false'
           KORA_IMAGE: kora-network:portable
