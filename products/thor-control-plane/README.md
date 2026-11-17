@@ -10,7 +10,7 @@ This package is the provider-neutral task control plane for the IZAKHONO build s
 - Require explicit per-project repository, base-branch, work-branch, path, command and resource policies.
 - Authenticate API clients and individual workers using SHA-256 token hashes; raw tokens are never stored in task records.
 - Support worker claim, heartbeat, completion, failure and task cancellation endpoints.
-- Require completion evidence: commit SHA, scoped branch, reviewable GitHub PR URL, changed-file list, artifact digest and passing evidence for every approved command.
+- Require structured completion evidence: commit SHA, scoped branch, GitHub PR URL, changed-file list, artifact digest and passing evidence for every approved command. A configured independent verifier must confirm the actual GitHub commit/PR before a task can be marked successful; the default Worker fails closed without it.
 - Run approved commands in a disposable Docker sandbox with network disabled, read-only container root, dropped Linux capabilities, no-new-privileges, bounded CPU/memory/PIDs, bounded output/time, no Git metadata or host secrets, and post-run changed-path enforcement. Docker shares the host kernel, so this is not the final hostile-code boundary; production should use a hardened microVM or equivalent.
 - Exercise the sandbox in CI, including a test that verifies public internet access is unavailable from the container.
 - Expose health, readiness and an authenticated portfolio snapshot.
