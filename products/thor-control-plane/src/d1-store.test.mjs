@@ -11,6 +11,11 @@ const row = {
   last_error: null, created_at: "2026-11-12T12:00:00.000Z", updated_at: "2026-11-12T12:00:00.000Z",
 };
 const db = {
+  async batch(statements) {
+    const results = [];
+    for (const statement of statements) results.push(await statement.run());
+    return results;
+  },
   prepare(sql) {
     const statement = {
       values: [],
