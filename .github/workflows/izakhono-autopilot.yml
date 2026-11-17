@@ -35,7 +35,7 @@ jobs:
           node -e "const r=JSON.parse(require('fs').readFileSync(process.env.RUNNER_TEMP + '/izakhono-autonomy-result.json','utf8')); if (r.status === 'blocked_or_waiting') { console.error('Autopilot is blocked: inspect remaining tasks and adapter evidence.'); process.exit(1); }"
 
       - name: Persist execution state
-        if: always()
+        if: github.ref == 'refs/heads/main' && always()
         run: |
           if [ ! -s autonomy/state.json ]; then
             echo 'No execution state was produced.'
