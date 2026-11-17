@@ -91,9 +91,51 @@ async function defaultSchemaCheck(db) {
   return true;
 }
 
+function projectPolicies(env) {
+  try {
+    const value = JSON.parse(env.THOR_PROJECT_POLICIES || "{}");
+    if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+    return value;
+  } catch {
+    return {};
+  }
+}
+
+function assertEnvelopeWithinPolicy(envelope, env) {
+  const policy = projectPolicies(env)[envelope.projectId];
+  if (!policy) throw new ThorError("Project execution policy is not configured", "PROJECT_POLICY_REQUIRED");
+  if (policy.repository !== envelope.repository
+    || policy.baseRef !== envelope.baseRef
+    || typeof policy.workRefPrefix !== "string"
+    || !envelope.workRef.startsWith(policy.workRefPrefix)) {
+    throw new ThorError("Task repository or branch exceeds its registered project policy", "PROJECT_SCOPE_VIOLATION");
+  }
+  if (!Array.isArray(policy.allowedPaths) || !Array.isArray(policy.commands) || !policy.limits) {
+    throw new ThorError("Registered project policy is incomplete", "PROJECT_POLICY_REQUIRED");
+  }
+  for (const requestedPath of envelope.allowedPaths) {
+    const allowed = policy.allowedPaths.some(scope => typeof scope === "string"
+      && (requestedPath === scope || requestedPath.startsWith(scope.endsWith("/") ? scope : scope + "/")));
+    if (!allowed) throw new ThorError("Task path scope exceeds its registered project policy", "PROJECT_SCOPE_VIOLATION");
+  }
+  for (const command of envelope.commands) {
+    if (!policy.commands.includes(command)) throw new ThorError("Task command exceeds its registered project policy", "PROJECT_SCOPE_VIOLATION");
+  }
+  for (const limit of ["timeoutMs", "maxOutputBytes", "maxChangedFiles"]) {
+    if (!Number.isInteger(policy.limits[limit]) || envelope.limits[limit] > policy.limits[limit]) {
+      throw new ThorError("Task resource limits exceed its registered project policy", "PROJECT_SCOPE_VIOLATION");
+    }
+  }
+  if (policy.maxAttempts != null && (!Number.isInteger(policy.maxAttempts) || envelope.maxAttempts > policy.maxAttempts)) {
+    throw new ThorError("Task retry count exceeds its registered project policy", "PROJECT_SCOPE_VIOLATION");
+  }
+  return true;
+}
+
 function errorStatus(error) {
   const code = error?.code || "INTERNAL_ERROR";
-  if (code === "DB_REQUIRED") return 503;
+  if (code === "DB_REQUIRED" || code === "PROJECT_POLICY_REQUIRED") return 503;
+  if (code === "PROJECT_SCOPE_VIOLATION") return 403;
   if (code === "BODY_TOO_LARGE") return 413;
   if (code === "TASK_NOT_FOUND") return 404;
   if (code === "TASK_EXISTS" || code === "INVALID_CANCEL" || code === "LEASE_NOT_OWNED" || code === "HEARTBEAT_FAILED") return 409;
@@ -135,6 +177,7 @@ export function createThorWorker({
           databaseConfigured: Boolean(env.THOR_DB?.prepare),
           apiAuthConfigured: HASH.test(env.THOR_API_TOKEN_SHA256 || ""),
           workerAuthConfigured: Object.keys(workerTokenHashes(env)).length > 0,
+          projectPoliciesConfigured: Object.keys(projectPolicies(env)).length > 0,
           schemaReady: false,
         };
         if (checks.databaseConfigured) {
@@ -166,6 +209,7 @@ export function createThorWorker({
           if (envelope.taskId !== body.id || envelope.projectId !== body.projectId) {
             throw new ThorError("Task identity does not match the worker envelope", "INVALID_ENVELOPE");
           }
+          assertEnvelopeWithinPolicy(envelope, env);
           const task = await thor.submit({ ...body, workerEnvelope: envelope });
           return json({ task }, 201);
         }
