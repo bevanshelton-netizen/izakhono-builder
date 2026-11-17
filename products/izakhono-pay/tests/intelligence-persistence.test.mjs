@@ -17,7 +17,7 @@ test('snapshot records are forced to remain non-live', () => {
 
 test('experiment records are sandbox-only', () => {
   const record = buildExperimentRecord(
-    { id: 'exp-1', baseline: 95, target: 98, guardrails: ['failure <= 2%'], minimum_sample_size: 100, observation_window: '24h', rollback_criteria: ['guardrail_breach'] },
+    { id: 'exp-1', baseline: 95, target: 98, measurement_source: 'synthetic_sandbox', guardrails: ['failure <= 2%'], minimum_sample_size: 100, observation_window: '24h', rollback_criteria: ['guardrail_breach'] },
     { id: 'candidate-1', change_class: 'payment_routing' }
   );
   assert.equal(record.stage, 'sandbox');

@@ -24,7 +24,8 @@ test('normalizes metrics and calculates a health score', () => {
 test('detects material metric movement against baseline', () => {
   const signals = detectSignals({ success: 90, latency: 120 }, { success: 100, latency: 100 }, { threshold_percent: 5 });
   assert.equal(signals.length, 2);
-  assert.equal(signals[0].name, 'success');
+  assert.equal(signals[0].name, 'latency');
+  assert.equal(signals[1].name, 'success');
 });
 
 test('ranks optimization candidates by impact, confidence and risk', () => {

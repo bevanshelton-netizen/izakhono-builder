@@ -15,6 +15,15 @@ for(const file of required) await access(new URL(`../${file}`,import.meta.url));
 
 const config=await readFile(new URL('../wrangler.jsonc',import.meta.url),'utf8');
 if(!config.includes('00000000-0000-0000-0000-000000000000')) throw new Error('Expected fail-closed D1 placeholder before infrastructure provisioning');
+if(!config.includes('"database_name":"izakhono-pay-sandbox"') || config.includes('"database_name":"izakhono-builder"')) throw new Error('IZAKHONO PAY local D1 must be isolated from the shared Builder database');
+
+const productionConfig=await readFile(new URL('../wrangler.production.jsonc',import.meta.url),'utf8');
+if(!productionConfig.includes('"database_name": "izakhono-pay"') || !productionConfig.includes('00000000-0000-0000-0000-000000000000')) throw new Error('Production D1 binding must remain fail-closed until the existing database ID is resolved');
+for(const flag of ['"IKHOKHA_ENABLED": "false"','"PAYSTACK_ENABLED": "false"','"PAYFAST_ENABLED": "false"']) {
+  if(!productionConfig.includes(flag)) throw new Error('Production payment provider must remain disabled: '+flag);
+}
+const orderOrchestrator=await readFile(new URL('../../izakhono-business-studio/order-provisioning-orchestrator.ts',import.meta.url),'utf8');
+if(orderOrchestrator.includes('payment.verified') || !orderOrchestrator.includes('paymentVerifier.verifyPayment')) throw new Error('Provisioning must require server-side payment verification');
 
 const reconciliation=await readFile(new URL('../src/reconciliation.js',import.meta.url),'utf8');
 for(const contract of [
