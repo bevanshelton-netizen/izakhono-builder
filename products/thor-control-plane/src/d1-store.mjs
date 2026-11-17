@@ -19,6 +19,7 @@ const mapRow = row => ({
   projectId: row.project_id,
   title: row.title,
   instruction: row.instruction,
+  workerEnvelope: parse(row.worker_envelope_json),
   dependsOn: parse(row.depends_on_json, []),
   priority: row.priority,
   state: row.state,
@@ -50,9 +51,9 @@ export class D1ThorStore {
   async createTask(task) {
     await this.db.prepare(
       `INSERT INTO thor_tasks
-       (id, project_id, title, instruction, depends_on_json, priority, state, attempts, max_attempts, worker_id, lease_until, result_json, last_error, created_at, updated_at)
-       VALUES (?1, ?2, ?3, ?4, ?5, ?6, 'queued', 0, ?7, NULL, NULL, NULL, NULL, ?8, ?8)`,
-    ).bind(task.id, task.projectId, task.title, task.instruction, JSON.stringify(task.dependsOn), task.priority, task.maxAttempts, task.createdAt).run();
+       (id, project_id, title, instruction, worker_envelope_json, depends_on_json, priority, state, attempts, max_attempts, worker_id, lease_until, result_json, last_error, created_at, updated_at)
+       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, 'queued', 0, ?8, NULL, NULL, NULL, NULL, ?9, ?9)`,
+    ).bind(task.id, task.projectId, task.title, task.instruction, task.workerEnvelope ? JSON.stringify(task.workerEnvelope) : null, JSON.stringify(task.dependsOn), task.priority, task.maxAttempts, task.createdAt).run();
     await this.event(task.id, "created", null, { projectId: task.projectId, dependsOn: task.dependsOn });
     return task;
   }
@@ -82,8 +83,10 @@ export class D1ThorStore {
     }
   }
 
-  async claimNext(workerId, leaseMs) {
+  async claimNext(workerId, leaseMs, options = {}) {
     await this.reapExhaustedLeases();
+    const envelopeFilter = options.requireWorkerEnvelope ? " AND t.worker_envelope_json IS NOT NULL" : "";
+    const updateEnvelopeFilter = options.requireWorkerEnvelope ? " AND worker_envelope_json IS NOT NULL" : "";
     // A small bounded retry handles a race where another worker wins the
     // candidate between SELECT and the guarded UPDATE.
     for (let attempt = 0; attempt < 8; attempt += 1) {
@@ -92,6 +95,7 @@ export class D1ThorStore {
       const candidate = await this.db.prepare(
         `SELECT t.id FROM thor_tasks t
          WHERE (t.state = 'queued' OR (t.state = 'running' AND t.lease_until <= ?1 AND t.attempts < t.max_attempts))
+           ${envelopeFilter}
            AND NOT EXISTS (
              SELECT 1 FROM json_each(t.depends_on_json) dep
              LEFT JOIN thor_tasks prerequisite ON prerequisite.id = dep.value
@@ -107,6 +111,7 @@ export class D1ThorStore {
              lease_until = ?2, updated_at = ?3
          WHERE id = ?4
            AND (state = 'queued' OR (state = 'running' AND lease_until <= ?3 AND attempts < max_attempts))
+           ${updateEnvelopeFilter}
            AND NOT EXISTS (
              SELECT 1 FROM json_each(thor_tasks.depends_on_json) dep
              LEFT JOIN thor_tasks prerequisite ON prerequisite.id = dep.value
