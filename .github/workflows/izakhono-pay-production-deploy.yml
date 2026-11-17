@@ -58,7 +58,7 @@ jobs:
           set -euo pipefail
           missing=0
           for name in CLOUDFLARE_ACCOUNT_ID CLOUDFLARE_API_TOKEN ADMIN_SECRET; do
-            if [ -z "$\{!name:-}" ]; then
+            if [ -z "${!name:-}" ]; then
               echo "Missing required production secret: $name" >&2
               missing=1
             fi
