@@ -1,0 +1,13 @@
+name = "izakhono-thor-control-plane"
+main = "src/worker.mjs"
+compatibility_date = "2026-11-17"
+workers_dev = true
+
+[vars]
+THOR_LEASE_MS = "60000"
+
+[[d1_databases]]
+binding = "THOR_DB"
+database_name = "thor-control-plane"
+database_id = "REPLACE_WITH_IZAKHONO_OWNED_D1_DATABASE_ID"
+migrations_dir = "migrations"
