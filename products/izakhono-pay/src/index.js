@@ -109,9 +109,15 @@ async function recordEvent(env, provider, eventType, fingerprint, intentId, payl
   try {
     await env.DB.prepare('INSERT INTO payment_events(id,provider,fingerprint,event_type,intent_id,payload_json,verified) VALUES(?,?,?,?,?,?,?)')
       .bind(id('evt'), provider, fingerprint, eventType, intentId || null, JSON.stringify(payload).slice(0, 50000), verified ? 1 : 0).run();
-    return true;
+    return { fresh: true, duplicate: false, error: false };
   } catch {
-    return false;
+    try {
+      const existing = await env.DB.prepare('SELECT id FROM payment_events WHERE fingerprint=?').bind(fingerprint).first();
+      if (existing) return { fresh: false, duplicate: true, error: false };
+    } catch {
+      // A failed insert and failed lookup is an infrastructure error, not a duplicate.
+    }
+    return { fresh: false, duplicate: false, error: true };
   }
 }
 
@@ -126,10 +132,11 @@ async function recordFortressEvent(env, { severity = 'medium', category, source,
 }
 
 async function markPaid(env, intentId, providerReference = null) {
-  await env.DB.prepare("UPDATE payment_intents SET status='paid',provider_reference=COALESCE(?,provider_reference),paid_at=COALESCE(paid_at,CURRENT_TIMESTAMP),updated_at=CURRENT_TIMESTAMP WHERE id=? AND status!='paid'")
+  const result = await env.DB.prepare("UPDATE payment_intents SET status='paid',provider_reference=COALESCE(?,provider_reference),paid_at=COALESCE(paid_at,CURRENT_TIMESTAMP),updated_at=CURRENT_TIMESTAMP WHERE id=? AND status!='paid'")
     .bind(providerReference, intentId).run();
+  const changed = Number(result?.meta?.changes ?? result?.changes ?? 0) > 0;
   const paidIntent = await findIntentById(env, intentId);
-  if (paidIntent) await dispatchMerchantPaymentPaid(env, paidIntent);
+  if (changed && paidIntent) await dispatchMerchantPaymentPaid(env, paidIntent);
   return paidIntent;
 }
 
@@ -387,11 +394,16 @@ async function handleIkhokhaWebhook(req, env) {
     }
   }
 
+  const successfulPayment = event?.status === 'SUCCESS' && event?.responseCode === '00';
   const fingerprint = sha256Hex(`ikhokha:${raw}`);
-  const fresh = await recordEvent(env, 'ikhokha', `payment.${String(event?.status || 'unknown').toLowerCase()}`, fingerprint, intent.id, event, true);
-  if (!fresh) return response({ ok: true, duplicate: true });
+  const claim = await recordEvent(env, 'ikhokha', `payment.${String(event?.status || 'unknown').toLowerCase()}`, fingerprint, intent.id, event, true);
+  if (claim.error) return fail('Unable to durably record verified iKhokha webhook', 503, 'event_persistence_failed');
+  if (!claim.fresh) {
+    if (successfulPayment) await markPaid(env, intent.id, cleanText(event?.paylinkID || intent.provider_reference, 180));
+    return response({ ok: true, duplicate: true, recovered: successfulPayment });
+  }
 
-  if (event?.status === 'SUCCESS' && event?.responseCode === '00') {
+  if (successfulPayment) {
     await markPaid(env, intent.id, cleanText(event?.paylinkID || intent.provider_reference, 180));
   }
   return response({ ok: true });
@@ -408,19 +420,25 @@ async function handlePaystackWebhook(req, env) {
   const event = JSON.parse(raw);
   const reference = event?.data?.reference;
   const intent = reference ? await findIntentByReference(env, reference) : null;
-  const fingerprint = sha256Hex(`paystack:${raw}`);
-  const fresh = await recordEvent(env, 'paystack', cleanText(event?.event || 'unknown', 80), fingerprint, intent?.id, event, true);
-  if (!fresh) return response({ ok: true, duplicate: true });
-
-  if (event?.event === 'charge.success' && intent) {
+  const successfulPayment = event?.event === 'charge.success' && Boolean(intent);
+  if (successfulPayment) {
     const amountMatches = Number(event?.data?.amount) === Number(intent.amount_minor);
     const currencyMatches = String(event?.data?.currency || '').toUpperCase() === intent.currency;
     if (!amountMatches || !currencyMatches) {
       await recordFortressEvent(env, { severity: 'critical', category: 'payment.amount_or_currency_mismatch', source: 'paystack', merchantSlug: intent.app_slug, intentId: intent.id, details: { reference } });
       return fail('Verified webhook did not match the expected amount/currency', 409, 'payment_mismatch');
     }
-    await markPaid(env, intent.id, String(event?.data?.id || reference));
   }
+
+  const fingerprint = sha256Hex(`paystack:${raw}`);
+  const claim = await recordEvent(env, 'paystack', cleanText(event?.event || 'unknown', 80), fingerprint, intent?.id, event, true);
+  if (claim.error) return fail('Unable to durably record verified Paystack webhook', 503, 'event_persistence_failed');
+  if (!claim.fresh) {
+    if (successfulPayment) await markPaid(env, intent.id, String(event?.data?.id || reference));
+    return response({ ok: true, duplicate: true, recovered: successfulPayment });
+  }
+
+  if (successfulPayment) await markPaid(env, intent.id, String(event?.data?.id || reference));
   return response({ ok: true });
 }
 
@@ -466,10 +484,15 @@ async function handlePayfastWebhook(req, env) {
 
   const fingerprint = sha256Hex(`payfast:${raw}`);
   const payload = Object.fromEntries(params.entries());
-  const fresh = await recordEvent(env, 'payfast', `payment.${params.get('payment_status') || 'unknown'}`, fingerprint, intent.id, payload, true);
-  if (!fresh) return new Response('OK', { status: 200 });
+  const successfulPayment = params.get('payment_status') === 'COMPLETE';
+  const claim = await recordEvent(env, 'payfast', `payment.${params.get('payment_status') || 'unknown'}`, fingerprint, intent.id, payload, true);
+  if (claim.error) return fail('Unable to durably record verified PayFast ITN', 503, 'event_persistence_failed');
+  if (!claim.fresh) {
+    if (successfulPayment) await markPaid(env, intent.id, params.get('pf_payment_id'));
+    return new Response('OK', { status: 200 });
+  }
 
-  if (params.get('payment_status') === 'COMPLETE') await markPaid(env, intent.id, params.get('pf_payment_id'));
+  if (successfulPayment) await markPaid(env, intent.id, params.get('pf_payment_id'));
   return new Response('OK', { status: 200 });
 }
 
