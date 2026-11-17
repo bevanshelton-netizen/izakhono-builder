@@ -27,4 +27,4 @@ After the account and database are authorized:
 
 ## Hard boundary
 
-This Worker stores task state and coordinates worker leases. It does not execute code, create repository branches, or deploy products. Production coding tasks remain disabled until the separate ephemeral sandbox, repository-token broker, model adapter and review-only PR publisher pass independent security tests. Do not point it at customer repositories or production projects before those gates pass.
+This Worker stores task state and coordinates worker leases. It does not execute code, create repository branches, or deploy products. Production coding tasks remain disabled until the Docker sandbox runner is integrated into a continuously running worker, the repository-token broker and model adapter are implemented, GitHub commit/PR evidence is independently verified, and the full worker path passes independent security tests. Do not point it at customer repositories or production projects before those gates pass.
