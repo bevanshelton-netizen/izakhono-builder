@@ -8,8 +8,9 @@ on:
 permissions:
   contents: write
 
+# Both schedulers mutate autonomy/state.json. Serialize them against one another.
 concurrency:
-  group: izakhono-autopilot
+  group: izakhono-autonomy-state
   cancel-in-progress: false
 
 jobs:
@@ -26,16 +27,32 @@ jobs:
         run: node -e "JSON.parse(require('fs').readFileSync('autonomy/engine-manifest.json','utf8')); console.log('manifest valid')"
 
       - name: Run continuous selector
-        run: node autonomy/runner.mjs
+        id: selector
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          node autonomy/runner.mjs | tee "$RUNNER_TEMP/izakhono-autonomy-result.json"
+          node -e "const r=JSON.parse(require('fs').readFileSync(process.env.RUNNER_TEMP + '/izakhono-autonomy-result.json','utf8')); if (r.status === 'blocked_or_waiting') { console.error('Autopilot is blocked: inspect remaining tasks and adapter evidence.'); process.exit(1); }"
 
       - name: Persist execution state
+        if: always()
         run: |
-          if git diff --quiet -- autonomy/state.json; then
-            echo 'No state change.'
+          if [ ! -s autonomy/state.json ]; then
+            echo 'No execution state was produced.'
+            exit 0
+          fi
+          git add -f autonomy/state.json
+          if git diff --cached --quiet -- autonomy/state.json; then
+            echo 'No execution-state change.'
             exit 0
           fi
           git config user.name 'IZAKHONO Autopilot'
           git config user.email 'autopilot@izakhono.africa'
-          git add autonomy/state.json
-          git commit -m 'chore: advance IZAKHONO autonomous execution state'
+          git commit -m 'chore: persist IZAKHONO autonomous execution state'
           git push
+
+      - name: Fail when autonomous execution is blocked
+        if: steps.selector.outcome == 'failure'
+        run: |
+          echo 'Autonomous execution did not complete its selected work. State has been persisted for recovery.'
+          exit 1
