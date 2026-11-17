@@ -31,6 +31,17 @@ const db = {
   },
 };
 const store = new D1ThorStore(db, () => Date.parse("2026-11-12T12:00:00.000Z"));
+const envelope = { taskId: "task-1", projectId: "kora" };
+await store.createTask({
+  id: "task-1", projectId: "kora", title: "Build", instruction: "Build it",
+  workerEnvelope: envelope, dependsOn: [], priority: 100, maxAttempts: 2,
+  createdAt: "2026-11-12T12:00:00.000Z",
+});
+const taskInsert = calls.find(call => call.sql.includes("INSERT INTO thor_tasks"));
+assert.ok(taskInsert);
+assert.match(taskInsert.sql, /worker_envelope_json/);
+assert.equal(taskInsert.values[4], JSON.stringify(envelope));
+
 const claimed = await store.claimNext("worker-1", 5_000, { requireWorkerEnvelope: true });
 assert.equal(claimed.id, "task-1");
 assert.equal(claimed.workerId, "worker-1");
