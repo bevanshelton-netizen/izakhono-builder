@@ -16,13 +16,12 @@ test("Docker sandbox enforces network isolation, resource limits and changed-pat
   const sourcePath = await mkdtemp(join(tmpdir(), "thor-sandbox-source-"));
   let result;
   try {
-    await mkdir(join(sourcePath, "tests"), { recursive: true });
     await mkdir(join(sourcePath, ".git"), { recursive: true });
     await mkdir(join(sourcePath, "secrets"), { recursive: true });
     await writeFile(join(sourcePath, ".env"), "SHOULD_NOT_ENTER_SANDBOX=secret");
     await writeFile(join(sourcePath, ".git", "config"), "[remote]\\nurl=private");
     await writeFile(join(sourcePath, "secrets", "token.txt"), "secret-token");
-    await writeFile(join(sourcePath, "tests", "sandbox-check.test.mjs"), `
+    await writeFile(join(sourcePath, "sandbox-check.test.mjs"), `
       import assert from "node:assert/strict";
       import { writeFile } from "node:fs/promises";
       import test from "node:test";
@@ -76,8 +75,7 @@ test("Docker sandbox rejects changes outside the task allow-list", async t => {
   }
   const sourcePath = await mkdtemp(join(tmpdir(), "thor-sandbox-scope-"));
   try {
-    await mkdir(join(sourcePath, "tests"), { recursive: true });
-    await writeFile(join(sourcePath, "tests", "scope-check.test.mjs"), `
+    await writeFile(join(sourcePath, "scope-check.test.mjs"), `
       import { writeFile } from "node:fs/promises";
       import test from "node:test";
       test("attempts an out-of-scope file change", async () => {
