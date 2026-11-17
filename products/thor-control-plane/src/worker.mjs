@@ -94,6 +94,7 @@ async function defaultSchemaCheck(db) {
 function errorStatus(error) {
   const code = error?.code || "INTERNAL_ERROR";
   if (code === "DB_REQUIRED") return 503;
+  if (code === "BODY_TOO_LARGE") return 413;
   if (code === "TASK_NOT_FOUND") return 404;
   if (code === "TASK_EXISTS" || code === "INVALID_CANCEL" || code === "LEASE_NOT_OWNED" || code === "HEARTBEAT_FAILED") return 409;
   if (code === "UNAUTHORIZED") return 401;
@@ -148,7 +149,9 @@ export function createThorWorker({
 
       try {
         const store = storeFactory(env);
-        const leaseMs = Number.isInteger(Number(env.THOR_LEASE_MS)) ? Number(env.THOR_LEASE_MS) : 60_000;
+        const configuredLease = Number(env.THOR_LEASE_MS);
+        const leaseMs = Number.isInteger(configuredLease) && configuredLease >= MIN_LEASE_MS && configuredLease <= MAX_LEASE_MS
+          ? configuredLease : 60_000;
         const thor = new ThorOrchestrator({ store, clock, leaseMs });
 
         if (method === "GET" && pathname === "/v1/portfolio") {
@@ -191,17 +194,20 @@ export function createThorWorker({
           }
 
           if (method !== "POST") throw new ThorError("Method not allowed", "METHOD_NOT_ALLOWED");
-          const body = await readJson(request);
-
           if (operation === "cancel") {
             if (!await authorized(request, env.THOR_API_TOKEN_SHA256)) throw new ThorError("API authentication required", "UNAUTHORIZED");
             return json({ task: await store.cancel(taskId) });
           }
 
+          const body = await readJson(request);
           if (!await workerAuthorized(request, env, body.workerId)) throw new ThorError("Worker authentication required", "UNAUTHORIZED");
 
           if (operation === "heartbeat") {
-            const renewed = await store.heartbeat(taskId, body.workerId, leaseMs);
+            const requestedLease = body.leaseMs == null ? leaseMs : Number(body.leaseMs);
+            if (!Number.isInteger(requestedLease) || requestedLease < MIN_LEASE_MS || requestedLease > MAX_LEASE_MS) {
+              throw new ThorError("Lease must be between 1 second and 15 minutes", "INVALID_LEASE");
+            }
+            const renewed = await store.heartbeat(taskId, body.workerId, requestedLease);
             if (!renewed) throw new ThorError("Worker lease is no longer active", "LEASE_NOT_OWNED");
             return json({ taskId, heartbeat: "renewed" });
           }
