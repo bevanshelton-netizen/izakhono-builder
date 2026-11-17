@@ -18,6 +18,7 @@ required_files=(
   "infra/node-cluster/CONNECTA-PROMOTION-GATE.sh"
   "products/izakhono-social/engine/src/server.js"
   "products/izakhono-social/engine/src/node-health.js"
+  "products/izakhono-social/docker-compose.owned.yml"
   ".github/workflows/connecta-owned-runtime-certification.yml"
   ".github/workflows/connecta-promotion-gate.yml"
   "infra/runtime-fabric/LEGACY-NODE01-WAVE1-DEPRECATION.md"
@@ -42,6 +43,9 @@ done
 grep -q '/health/cluster' "products/izakhono-social/engine/src/server.js" || fail "CONNECTA engine no longer exposes the cluster health endpoint"
 grep -q 'createNodeHealthChallenge' "products/izakhono-social/engine/src/server.js" || fail "CONNECTA engine no longer signs node health challenges"
 grep -q 'bearer-hmac-sha256' "products/izakhono-social/engine/src/node-health.js" || fail "CONNECTA node health HMAC challenge contract is missing"
+grep -q 'IZAKHONO_NODE_ID' "products/izakhono-social/docker-compose.owned.yml" || fail "owned runtime Compose does not pass logical node identity"
+grep -q 'IZAKHONO_CLUSTER_ID' "products/izakhono-social/docker-compose.owned.yml" || fail "owned runtime Compose does not pass cluster identity"
+grep -q 'IZAKHONO_NODE_HEALTH_TOKEN' "products/izakhono-social/docker-compose.owned.yml" || fail "owned runtime Compose does not pass the node health credential"
 for token in CONNECTA_NODE01_HEALTH_TOKEN CONNECTA_NODE02_HEALTH_TOKEN CONNECTA_NODE03_HEALTH_TOKEN CONNECTA_NODE04_HEALTH_TOKEN; do
   grep -q "$token" "$workflow" || fail "certification workflow is missing protected credential mapping: $token"
 done
