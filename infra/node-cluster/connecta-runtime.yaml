@@ -68,7 +68,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: engine
-          image: ghcr.io/bevanshelton-netizen/connecta-engine:0.3.0
+          image: ghcr.io/bevanshelton-netizen/connecta-engine:0.3.0@sha256:838b095cd2b12a9f66526e5086501474f6958e20f597efa96875217390b580da
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
@@ -249,7 +249,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: engine
-          image: ghcr.io/bevanshelton-netizen/connecta-engine:0.3.0
+          image: ghcr.io/bevanshelton-netizen/connecta-engine:0.3.0@sha256:838b095cd2b12a9f66526e5086501474f6958e20f597efa96875217390b580da
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
@@ -430,7 +430,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: engine
-          image: ghcr.io/bevanshelton-netizen/connecta-engine:0.3.0
+          image: ghcr.io/bevanshelton-netizen/connecta-engine:0.3.0@sha256:838b095cd2b12a9f66526e5086501474f6958e20f597efa96875217390b580da
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
@@ -611,7 +611,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: engine
-          image: ghcr.io/bevanshelton-netizen/connecta-engine:0.3.0
+          image: ghcr.io/bevanshelton-netizen/connecta-engine:0.3.0@sha256:838b095cd2b12a9f66526e5086501474f6958e20f597efa96875217390b580da
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
