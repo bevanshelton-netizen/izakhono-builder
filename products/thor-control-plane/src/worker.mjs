@@ -147,7 +147,7 @@ function assertEnvelopeWithinPolicy(envelope, env, taskOptions = {}) {
   for (const command of envelope.commands) {
     if (!policy.commands.includes(command)) throw new ThorError("Task command exceeds its registered project policy", "PROJECT_SCOPE_VIOLATION");
   }
-  for (const limit of ["timeoutMs", "maxOutputBytes", "maxChangedFiles"]) {
+  for (const limit of ["timeoutMs", "maxOutputBytes", "maxChangedFiles", "memoryMb", "cpuCount"]) {
     if (!Number.isInteger(policy.limits[limit]) || envelope.limits[limit] > policy.limits[limit]) {
       throw new ThorError("Task resource limits exceed its registered project policy", "PROJECT_SCOPE_VIOLATION");
     }
