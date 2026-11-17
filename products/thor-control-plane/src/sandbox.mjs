@@ -182,7 +182,7 @@ export async function runDockerSandbox({
         "--env", "NODE_ENV=test",
         "--env", "HOME=/tmp",
         "--env", "TMPDIR=/tmp",
-        "--mount", `type=bind,src=${workspacePath},dst=/workspace,rw`,
+        "--mount", `type=bind,src=${workspacePath},dst=/workspace`,
       ];
       if (nodeModulesPath) args.push("--mount", `type=bind,src=${nodeModulesPath},dst=/workspace/node_modules,readonly`);
       args.push("--workdir", "/workspace", "--entrypoint", "/bin/sh", IMAGE, "-c", command);
