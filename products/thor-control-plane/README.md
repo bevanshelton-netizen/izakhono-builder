@@ -1,30 +1,38 @@
 # THOR Control Plane — orchestration MVP
 
-This package is the first executable THOR orchestration slice. It is deliberately provider-neutral and uses an injected store so the scheduler can be tested independently of D1, another database, or a future IZAKHONO-owned runtime.
+This package is the provider-neutral task control plane for the IZAKHONO build system. It separates task state and worker authorization from repository-code execution.
 
 ## Current capability
 
-- Submit validated tasks against a project.
-- Declare dependencies between tasks.
-- Claim independent runnable tasks for separate workers.
-- Keep tasks blocked until all dependencies have succeeded.
-- Use worker leases and recover abandoned work after lease expiry.
-- Enforce lease ownership before completion or failure.
-- Retry failed work up to a configured attempt limit.
-- Expose an evidence-friendly portfolio snapshot.
+- Submit project-scoped tasks with dependencies, bounded retries and priority.
+- Persist tasks through the D1 adapter or exercise the orchestration core with the test-only memory store.
+- Claim only runnable tasks; recheck leases and dependency predicates in the conditional update.
+- Require explicit per-project repository, base-branch, work-branch, path, command and resource policies.
+- Authenticate API clients and individual workers using SHA-256 token hashes; raw tokens are never stored in task records.
+- Support worker claim, heartbeat, completion, failure and task cancellation endpoints.
+- Require completion evidence: commit SHA, scoped branch, reviewable GitHub PR, changed-file list, artifact digest and passing evidence for every approved command.
+- Expose health, readiness and an authenticated portfolio snapshot.
+- Persist validated worker envelopes with tasks; tasks without an envelope are not claimable by the coding-worker API.
 
 ## Run tests
 
 Requires Node.js 20 or newer:
 
 ```bash
-node --test products/thor-control-plane/src/index.test.mjs
+node --test products/thor-control-plane/src/*.test.mjs
 ```
 
-## Important production boundary
+## Production boundary
 
-`MemoryThorStore` is test-only. The SQL schema is a starting migration, not a production adapter. Before connecting live workers, implement a durable adapter with an atomic claim transaction, dependency validation, lease expiry, event writes, idempotency and crash-recovery tests.
+The HTTP Worker is a control-plane API only. It never executes repository code. The worker contract and completion evidence checks are policy gates, **not an operating-system sandbox**.
 
-The executor passed to `runOne` is an interface boundary, not yet a sandbox. Do not pass untrusted repository code to an unrestricted process. Production workers must run in isolated workspaces with scoped credentials, resource limits and network allow-lists.
+Still outstanding before live production use:
 
-No model API, external builder credits, deployment provider or production credential is required by this orchestration core.
+- provision and migrate a real D1 database, then run concurrency and crash-recovery tests against it;
+- configure API-token hash, per-worker token hashes and project-policy map in the Cloudflare secret store;
+- implement and independently verify the ephemeral container/VM coding sandbox;
+- implement the repository-token broker and model adapter;
+- deploy the Worker and verify its live health/readiness endpoints;
+- connect an independently owned execution node and prove end-to-end task execution.
+
+No model API, external builder credits, production credential, database, DNS change or production deployment is included in this code change.
