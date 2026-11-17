@@ -108,4 +108,9 @@ expect_blocked "invalid HMAC challenge" env "${COMMON_ENV[@]}" \
   NODE04_URL=https://node04-bad-signature.example.test/health/cluster OUTPUT="$tmp/bad-signature.json" \
   /usr/bin/bash "$ROOT/infra/node-cluster/NODE-CLUSTER-HEALTH-GATE.sh"
 
+# Credentials embedded in an endpoint URL are rejected before probing.
+expect_blocked "URL-embedded credentials" env "${COMMON_ENV[@]}" \
+  NODE04_URL=https://secret@node04.example.test/health/cluster OUTPUT="$tmp/url-credentials.json" \
+  /usr/bin/bash "$ROOT/infra/node-cluster/NODE-CLUSTER-HEALTH-GATE.sh"
+
 echo "[PASS] health gate verifies unique HTTPS endpoints, unique per-node credentials and fresh HMAC challenges."
