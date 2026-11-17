@@ -27,15 +27,16 @@ assert.equal(missingAccessBoundary.access_mode_valid, false);
 assert.equal(missingAccessBoundary.ready_for_verified_runtime, false);
 assert.equal(canServeRuntime('verified', 'healthy', missingAccessBoundary), false);
 
-const secure = databaseSecurityContract({
+const secureInput = {
   source: 'supabase',
   access_mode: 'backend_only',
   tables: Object.fromEntries(required.map((table) => [table, { rls_enabled: true }]))
-});
+};
+const secure = databaseSecurityContract(secureInput);
 assert.equal(secure.all_required_rls_enabled, true);
 assert.equal(secure.access_mode_valid, true);
 assert.equal(secure.ready_for_verified_runtime, true);
-assert.equal(canVerifyDatabaseRuntime(secure), true);
+assert.equal(canVerifyDatabaseRuntime(secureInput), true);
 assert.equal(canServeRuntime('verified', 'healthy', secure), true);
 
 console.log('database-security tests passed');
