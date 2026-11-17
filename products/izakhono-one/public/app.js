@@ -184,6 +184,18 @@ async function checkAIStatus() {
   }
 }
 
+function modelContext() {
+  let total = 0;
+  const selected = [];
+  for (let index = state.messages.length - 1; index >= 0 && selected.length < 20; index -= 1) {
+    const item = state.messages[index];
+    if (total + item.content.length > 30000) break;
+    selected.unshift(item);
+    total += item.content.length;
+  }
+  return selected;
+}
+
 async function sendMessage(text) {
   const content = String(text || '').trim();
   if (!content || state.busy) return;
@@ -200,7 +212,7 @@ async function sendMessage(text) {
     const response = await fetch('/api/chat', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ messages: state.messages.slice(-20) }),
+      body: JSON.stringify({ messages: modelContext() }),
       cache: 'no-store'
     });
     const data = await response.json().catch(() => ({}));
