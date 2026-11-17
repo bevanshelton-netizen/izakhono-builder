@@ -16,6 +16,7 @@ permissions:
 jobs:
   thor-orchestration:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -23,5 +24,11 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "22"
-      - name: Run THOR orchestration tests
+      - name: Verify Docker sandbox runtime
+        run: docker info
+
+      - name: Pull pinned sandbox image
+        run: docker pull node:22-bookworm-slim
+
+      - name: Run THOR orchestration and sandbox tests
         run: node --test products/thor-control-plane/src/*.test.mjs
