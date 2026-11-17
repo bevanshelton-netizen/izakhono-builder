@@ -35,7 +35,6 @@ const order: PaidOrder = {
 
 const receipt: VerifiedPaymentReceipt = {
   orderId: 'ORD-100',
-  customerId: 'CUS-1',
   merchantSlug: 'business-studio',
   intentId: 'pi_100',
   amountMinor: 14900,
