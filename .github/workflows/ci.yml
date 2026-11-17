@@ -25,6 +25,19 @@ jobs:
       - name: Install dependencies
         run: npm install --ignore-scripts --no-audit --no-fund
 
+      - name: Verify autonomous project factory and KORA gates
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm run ai-agent:test
+          node --check autonomy/runner.mjs
+          node --check autonomy/node-adapter.mjs
+          node --check autonomy/kora-workload-executor.mjs
+          node --check autonomy/kora-routing-acceptance.mjs
+          node -e "JSON.parse(require('fs').readFileSync('autonomy/engine-manifest.json','utf8'))"
+          node autonomy/kora-workload-executor.mjs >/tmp/kora-dry-run.json
+          node -e "const r=JSON.parse(require('fs').readFileSync('/tmp/kora-dry-run.json','utf8')); if(r.status!=='execution-plan-ready'||r.dryRun!==true) process.exit(1); console.log('[PASS] KORA runtime remains dry-run by default.')"
+
       - name: Validate Affiliate Engine
         run: npm run validate:affiliate
 
