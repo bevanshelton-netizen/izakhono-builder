@@ -84,7 +84,7 @@ There is no advertising ID, cross-site tracking identity, dwell-time score or hi
 - `PATCH /v1/admin/businesses/:id/verification`
 - `GET /v1/admin/growth`
 
-## NODE01 deployment
+## Owned Compose bootstrap (single runtime instance)
 
 From `products/izakhono-social`:
 
@@ -95,7 +95,13 @@ export CONNECTA_PORT=3080
 docker compose -f docker-compose.owned.yml up -d --build
 ```
 
-The public reverse proxy/TLS layer should expose only the web service. PostgreSQL and the engine remain on the private Docker network.
+This Compose file is a single-instance bootstrap/test topology, not the four-node HA production deployment. It does not bind a logical node identity to a physical NODE01 host. The production K3s topology is defined in `infra/node-cluster/connecta-runtime.yaml` and documented in `infra/node-cluster/CONNECTA-K3S-RUNTIME-DEPLOYMENT.md`.
+
+## Logical node health endpoint
+
+When a runtime instance is assigned to a logical node, configure `IZAKHONO_NODE_ID`, `IZAKHONO_CLUSTER_ID=izakhono-production` and its own 64-hex-character `IZAKHONO_NODE_HEALTH_TOKEN`. The engine exposes `GET /health/cluster`, requires a Bearer token, and signs the caller's fresh 256-bit nonce using HMAC-SHA256. The four-node health gate verifies the signature, runtime identity, cluster identity and freshness. See `infra/node-cluster/CONNECTA-RUNTIME-HEALTH-ENDPOINT-CONTRACT.md`.
+
+The public reverse proxy/TLS layer should expose only the web/customer service and the controlled IZAKHONO EDGE health routes. PostgreSQL and engine services remain private ClusterIP/private-network services.
 
 ## Independence boundary
 
