@@ -204,7 +204,11 @@ export async function runDockerSandbox({
     const after = await hashTree(workspacePath);
     const allPaths = new Set([...before.keys(), ...after.keys()]);
     const changedFiles = [...allPaths].filter(path => before.get(path) !== after.get(path)).sort();
-    if (changedFiles.length === 0) throw new ThorError("Sandbox produced no file changes", "NO_CHANGES");
+    if (changedFiles.length === 0) {
+      const error = new ThorError("Sandbox produced no file changes", "NO_CHANGES");
+      error.tests = tests;
+      throw error;
+    }
     assertChangedPathsAllowed(changedFiles, envelope);
     const artifactDigest = createHash("sha256")
       .update(JSON.stringify(changedFiles.map(path => [path, after.get(path) ?? "deleted"])))
