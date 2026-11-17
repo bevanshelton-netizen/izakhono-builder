@@ -202,3 +202,18 @@ export function verifyIkhokhaStatus(status, intent) {
     String(status.paylinkID || '') === String(intent.provider_reference || '') &&
     Number(status.amount) === Number(intent.amount_minor);
 }
+
+
+export function merchantReferenceFromMetadata(metadataJson) {
+  if (typeof metadataJson !== 'string' || !metadataJson) return null;
+  try {
+    const metadata = JSON.parse(metadataJson);
+    if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) return null;
+    const orderId = metadata.order_id;
+    if (typeof orderId !== 'string') return null;
+    const reference = orderId.trim().slice(0, 120);
+    return reference || null;
+  } catch {
+    return null;
+  }
+}
