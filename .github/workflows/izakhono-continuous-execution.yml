@@ -12,7 +12,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: izakhono-continuous-execution
+  group: izakhono-autonomous-execution
   cancel-in-progress: false
 
 jobs:
@@ -59,7 +59,8 @@ jobs:
 
       - name: Persist execution state
         run: |
-          if git diff --quiet -- autonomy/state.json; then
+          git add -- autonomy/state.json
+          if git diff --cached --quiet -- autonomy/state.json; then
             echo 'No execution-state change.'
             exit 0
           fi
