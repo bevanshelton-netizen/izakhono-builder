@@ -9,30 +9,40 @@ tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 fixture="$tmp/evidence.json"
 
+write_valid_fixture() {
 python3 - "$fixture" <<'PY'
-import json, sys
+import hashlib, hmac, json, sys
 from datetime import datetime, timezone
 stamp = datetime.now(timezone.utc).isoformat()
 names = ["NODE01", "NODE02", "NODE03", "NODE04"]
-nodes = [{
-    "node": n, "runtimeNode": n, "identityType": "software-runtime",
-    "physicalHostIsSeparate": True, "status": "PASS", "runtime_evidence": True,
-    "checkedAt": stamp,
-    "http": {"ok": True, "runtimeNode": n, "cluster": "izakhono-production"}
-} for n in names]
+tokens = ["a"*64, "b"*64, "c"*64, "d"*64]
+nonce = "e"*64
+nodes = []
+for name, token in zip(names, tokens):
+    signature = hmac.new(bytes.fromhex(token), f"izakhono-production\n{name}\n{nonce}".encode(), hashlib.sha256).hexdigest()
+    nodes.append({
+        "node": name, "runtimeNode": name, "identityType": "software-runtime",
+        "physicalHostIsSeparate": True, "status": "PASS", "runtime_evidence": True,
+        "checkedAt": stamp,
+        "authentication": {"scheme":"bearer-hmac-sha256","challengeVerified":True},
+        "probeNonce": nonce, "probeSignature": signature,
+        "http": {"ok": True, "runtimeNode": name, "cluster": "izakhono-production", "authScheme":"bearer-hmac-sha256"}
+    })
 data = {
     "schema": "izakhono.node-cluster-health.v1",
     "cluster": "izakhono-production",
     "nodeIdentityType": "software-runtime",
     "physicalHostIsSeparate": True,
+    "authentication": {"scheme":"bearer-hmac-sha256","perNodeCredentials":True},
     "checkedAt": stamp,
     "nodes": nodes, "healthyNodes": names,
     "requiredHealthyNodes": 4, "status": "PASS",
     "runtimeEvidence": True,
-    "source": "operator-supplied-runtime-endpoints"
+    "source": "operator-supplied-authenticated-runtime-endpoints"
 }
 json.dump(data, open(sys.argv[1], "w", encoding="utf-8"))
 PY
+}
 
 expect_blocked() {
   local label="$1" code
@@ -60,24 +70,18 @@ elif case == "missing-healthy-node": d["healthyNodes"] = d["healthyNodes"][:3]
 elif case == "wrong-cluster": d["cluster"] = "untrusted-cluster"
 elif case == "physical-identity": d["nodeIdentityType"] = "physical-workstation"
 elif case == "missing-timestamp": d.pop("checkedAt", None)
+elif case == "missing-authentication": d.pop("authentication", None)
+elif case == "challenge-failed": d["nodes"][0]["authentication"]["challengeVerified"] = False
+elif case == "signature-malformed": d["nodes"][1]["probeSignature"] = "invalid"
+elif case == "wrong-auth-scheme": d["nodes"][2]["http"]["authScheme"] = "bearer-only"
 json.dump(d, open(p, "w", encoding="utf-8"))
 PY
 }
 
-for case in runtimeEvidence status source missing-node duplicate-node missing-healthy-node wrong-cluster physical-identity missing-timestamp; do
+for case in runtimeEvidence status source missing-node duplicate-node missing-healthy-node wrong-cluster physical-identity missing-timestamp missing-authentication challenge-failed signature-malformed wrong-auth-scheme; do
+  write_valid_fixture
   mutate "$case"
   expect_blocked "$case"
-  # Restore the known-good fixture before testing the next independent mutation.
-  python3 - "$fixture" <<'PY'
-import json, sys
-from datetime import datetime, timezone
-p=sys.argv[1]
-stamp=datetime.now(timezone.utc).isoformat()
-names=["NODE01","NODE02","NODE03","NODE04"]
-nodes=[{"node":n,"runtimeNode":n,"identityType":"software-runtime","physicalHostIsSeparate":True,"status":"PASS","runtime_evidence":True,"checkedAt":stamp,"http":{"ok":True,"runtimeNode":n,"cluster":"izakhono-production"}} for n in names]
-d={"schema":"izakhono.node-cluster-health.v1","cluster":"izakhono-production","nodeIdentityType":"software-runtime","physicalHostIsSeparate":True,"checkedAt":stamp,"nodes":nodes,"healthyNodes":names,"requiredHealthyNodes":4,"status":"PASS","runtimeEvidence":True,"source":"operator-supplied-runtime-endpoints"}
-json.dump(d,open(p,"w",encoding="utf-8"))
-PY
 done
 
-echo "[PASS] verifier rejects nine independent malformed, incomplete, stale-trust or non-runtime evidence cases."
+echo "[PASS] verifier rejects twelve independent incomplete, stale-trust, non-runtime or unauthenticated evidence cases."
