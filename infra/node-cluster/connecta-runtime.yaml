@@ -1,0 +1,770 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: connecta
+  labels:
+    izakhono.africa/managed-by: izakhono
+    pod-security.kubernetes.io/enforce: restricted
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: connecta-engine
+  namespace: connecta
+automountServiceAccountToken: false
+imagePullSecrets:
+  - name: ghcr-pull-secret
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: connecta-node01
+  namespace: connecta
+  labels:
+    app.kubernetes.io/name: connecta-engine
+    app.kubernetes.io/component: runtime
+    izakhono.africa/logical-node: NODE01
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: connecta-engine
+      izakhono.africa/logical-node: NODE01
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: connecta-engine
+        app.kubernetes.io/component: runtime
+        izakhono.africa/logical-node: NODE01
+    spec:
+      serviceAccountName: connecta-engine
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 30
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: connecta-engine
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 50
+              podAffinityTerm:
+                topologyKey: kubernetes.io/hostname
+                labelSelector:
+                  matchLabels:
+                    app.kubernetes.io/name: connecta-engine
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: engine
+          image: ghcr.io/bevanshelton-netizen/connecta-engine:0.3.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 4100
+              protocol: TCP
+          env:
+            - name: PORT
+              value: "4100"
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: connecta-runtime-secrets
+                  key: database-url
+            - name: CONNECTA_OWNER_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: connecta-runtime-secrets
+                  key: owner-key
+            - name: CONNECTA_ENGINE_VERSION
+              value: "0.3.0"
+            - name: CONNECTA_ENGINE_INSTANCE
+              value: connecta-node01
+            - name: IZAKHONO_NODE_ID
+              value: NODE01
+            - name: IZAKHONO_CLUSTER_ID
+              value: izakhono-production
+            - name: IZAKHONO_NODE_HEALTH_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: connecta-runtime-secrets
+                  key: node01-health-token
+            - name: CONNECTA_STORAGE_DRIVER
+              value: s3
+            - name: CONNECTA_S3_ENDPOINT
+              valueFrom:
+                secretKeyRef:
+                  name: connecta-runtime-secrets
+                  key: s3-endpoint
+            - name: CONNECTA_S3_REGION
+              valueFrom:
+                secretKeyRef:
+                  name: connecta-runtime-secrets
+                  key: s3-region
+            - name: CONNECTA_S3_BUCKET
+              valueFrom:
+                secretKeyRef:
+                  name: connecta-runtime-secrets
+                  key: s3-bucket
+            - name: CONNECTA_S3_PREFIX
+              valueFrom:
+                secretKeyRef:
+                  name: connecta-runtime-secrets
+                  key: s3-prefix
+            - name: CONNECTA_S3_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: connecta-runtime-secrets
+                  key: s3-access-key-id
+            - name: CONNECTA_S3_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: connecta-runtime-secrets
+                  key: s3-secret-access-key
+            - name: CONNECTA_S3_FORCE_PATH_STYLE
+              valueFrom:
+                secretKeyRef:
+                  name: connecta-runtime-secrets
+                  key: s3-force-path-style
+            - name: ALLOWED_ORIGINS
+              valueFrom:
+                secretKeyRef:
+                  name: connecta-runtime-secrets
+                  key: allowed-origins
+                  optional: true
+            - name: REGISTER_RATE_LIMIT
+              value: "8"
+          startupProbe:
+            tcpSocket:
+              port: http
+            periodSeconds: 5
+            failureThreshold: 24
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          livenessProbe:
+            tcpSocket:
+              port: http
+            periodSeconds: 20
+            timeoutSeconds: 5
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 250m
+              memory: 256Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: connecta-node01-health
+  namespace: connecta
+  labels:
+    app.kubernetes.io/name: connecta-engine
+    izakhono.africa/logical-node: NODE01
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: connecta-engine
+    izakhono.africa/logical-node: NODE01
+  ports:
+    - name: http
+      port: 4100
+      targetPort: http
+      protocol: TCP
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: connecta-node02
+  namespace: connecta
+  labels:
+    app.kubernetes.io/name: connecta-engine
+    app.kubernetes.io/component: runtime
+    izakhono.africa/logical-node: NODE02
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: connecta-engine
+      izakhono.africa/logical-node: NODE02
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: connecta-engine
+        app.kubernetes.io/component: runtime
+        izakhono.africa/logical-node: NODE02
+    spec:
+      serviceAccountName: connecta-engine
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 30
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: connecta-engine
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 50
+              podAffinityTerm:
+                topologyKey: kubernetes.io/hostname
+                labelSelector:
+                  matchLabels:
+                    app.kubernetes.io/name: connecta-engine
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: engine
+          image: ghcr.io/bevanshelton-netizen/connecta-engine:0.3.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 4100
+              protocol: TCP
+          env:
+            - name: PORT
+              value: "4100"
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: connecta-runtime-secrets
+                  key: database-url
+            - name: CONNECTA_OWNER_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: connecta-runtime-secrets
+                  key: owner-key
+            - name: CONNECTA_ENGINE_VERSION
+              value: "0.3.0"
+            - name: CONNECTA_ENGINE_INSTANCE
+              value: connecta-node02
+            - name: IZAKHONO_NODE_ID
+              value: NODE02
+            - name: IZAKHONO_CLUSTER_ID
+              value: izakhono-production
+            - name: IZAKHONO_NODE_HEALTH_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: connecta-runtime-secrets
+                  key: node02-health-token
+            - name: CONNECTA_STORAGE_DRIVER
+              value: s3
+            - name: CONNECTA_S3_ENDPOINT
+              valueFrom:
+                secretKeyRef:
+                  name: connecta-runtime-secrets
+                  key: s3-endpoint
+            - name: CONNECTA_S3_REGION
+              valueFrom:
+                secretKeyRef:
+                  name: connecta-runtime-secrets
+                  key: s3-region
+            - name: CONNECTA_S3_BUCKET
+              valueFrom:
+                secretKeyRef:
+                  name: connecta-runtime-secrets
+                  key: s3-bucket
+            - name: CONNECTA_S3_PREFIX
+              valueFrom:
+                secretKeyRef:
+                  name: connecta-runtime-secrets
+                  key: s3-prefix
+            - name: CONNECTA_S3_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: connecta-runtime-secrets
+                  key: s3-access-key-id
+            - name: CONNECTA_S3_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: connecta-runtime-secrets
+                  key: s3-secret-access-key
+            - name: CONNECTA_S3_FORCE_PATH_STYLE
+              valueFrom:
+                secretKeyRef:
+                  name: connecta-runtime-secrets
+                  key: s3-force-path-style
+            - name: ALLOWED_ORIGINS
+              valueFrom:
+                secretKeyRef:
+                  name: connecta-runtime-secrets
+                  key: allowed-origins
+                  optional: true
+            - name: REGISTER_RATE_LIMIT
+              value: "8"
+          startupProbe:
+            tcpSocket:
+              port: http
+            periodSeconds: 5
+            failureThreshold: 24
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          livenessProbe:
+            tcpSocket:
+              port: http
+            periodSeconds: 20
+            timeoutSeconds: 5
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 250m
+              memory: 256Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: connecta-node02-health
+  namespace: connecta
+  labels:
+    app.kubernetes.io/name: connecta-engine
+    izakhono.africa/logical-node: NODE02
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: connecta-engine
+    izakhono.africa/logical-node: NODE02
+  ports:
+    - name: http
+      port: 4100
+      targetPort: http
+      protocol: TCP
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: connecta-node03
+  namespace: connecta
+  labels:
+    app.kubernetes.io/name: connecta-engine
+    app.kubernetes.io/component: runtime
+    izakhono.africa/logical-node: NODE03
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: connecta-engine
+      izakhono.africa/logical-node: NODE03
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: connecta-engine
+        app.kubernetes.io/component: runtime
+        izakhono.africa/logical-node: NODE03
+    spec:
+      serviceAccountName: connecta-engine
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 30
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: connecta-engine
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 50
+              podAffinityTerm:
+                topologyKey: kubernetes.io/hostname
+                labelSelector:
+                  matchLabels:
+                    app.kubernetes.io/name: connecta-engine
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: engine
+          image: ghcr.io/bevanshelton-netizen/connecta-engine:0.3.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 4100
+              protocol: TCP
+          env:
+            - name: PORT
+              value: "4100"
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: connecta-runtime-secrets
+                  key: database-url
+            - name: CONNECTA_OWNER_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: connecta-runtime-secrets
+                  key: owner-key
+            - name: CONNECTA_ENGINE_VERSION
+              value: "0.3.0"
+            - name: CONNECTA_ENGINE_INSTANCE
+              value: connecta-node03
+            - name: IZAKHONO_NODE_ID
+              value: NODE03
+            - name: IZAKHONO_CLUSTER_ID
+              value: izakhono-production
+            - name: IZAKHONO_NODE_HEALTH_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: connecta-runtime-secrets
+                  key: node03-health-token
+            - name: CONNECTA_STORAGE_DRIVER
+              value: s3
+            - name: CONNECTA_S3_ENDPOINT
+              valueFrom:
+                secretKeyRef:
+                  name: connecta-runtime-secrets
+                  key: s3-endpoint
+            - name: CONNECTA_S3_REGION
+              valueFrom:
+                secretKeyRef:
+                  name: connecta-runtime-secrets
+                  key: s3-region
+            - name: CONNECTA_S3_BUCKET
+              valueFrom:
+                secretKeyRef:
+                  name: connecta-runtime-secrets
+                  key: s3-bucket
+            - name: CONNECTA_S3_PREFIX
+              valueFrom:
+                secretKeyRef:
+                  name: connecta-runtime-secrets
+                  key: s3-prefix
+            - name: CONNECTA_S3_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: connecta-runtime-secrets
+                  key: s3-access-key-id
+            - name: CONNECTA_S3_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: connecta-runtime-secrets
+                  key: s3-secret-access-key
+            - name: CONNECTA_S3_FORCE_PATH_STYLE
+              valueFrom:
+                secretKeyRef:
+                  name: connecta-runtime-secrets
+                  key: s3-force-path-style
+            - name: ALLOWED_ORIGINS
+              valueFrom:
+                secretKeyRef:
+                  name: connecta-runtime-secrets
+                  key: allowed-origins
+                  optional: true
+            - name: REGISTER_RATE_LIMIT
+              value: "8"
+          startupProbe:
+            tcpSocket:
+              port: http
+            periodSeconds: 5
+            failureThreshold: 24
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          livenessProbe:
+            tcpSocket:
+              port: http
+            periodSeconds: 20
+            timeoutSeconds: 5
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 250m
+              memory: 256Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: connecta-node03-health
+  namespace: connecta
+  labels:
+    app.kubernetes.io/name: connecta-engine
+    izakhono.africa/logical-node: NODE03
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: connecta-engine
+    izakhono.africa/logical-node: NODE03
+  ports:
+    - name: http
+      port: 4100
+      targetPort: http
+      protocol: TCP
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: connecta-node04
+  namespace: connecta
+  labels:
+    app.kubernetes.io/name: connecta-engine
+    app.kubernetes.io/component: runtime
+    izakhono.africa/logical-node: NODE04
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: connecta-engine
+      izakhono.africa/logical-node: NODE04
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: connecta-engine
+        app.kubernetes.io/component: runtime
+        izakhono.africa/logical-node: NODE04
+    spec:
+      serviceAccountName: connecta-engine
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 30
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: connecta-engine
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 50
+              podAffinityTerm:
+                topologyKey: kubernetes.io/hostname
+                labelSelector:
+                  matchLabels:
+                    app.kubernetes.io/name: connecta-engine
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: engine
+          image: ghcr.io/bevanshelton-netizen/connecta-engine:0.3.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 4100
+              protocol: TCP
+          env:
+            - name: PORT
+              value: "4100"
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: connecta-runtime-secrets
+                  key: database-url
+            - name: CONNECTA_OWNER_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: connecta-runtime-secrets
+                  key: owner-key
+            - name: CONNECTA_ENGINE_VERSION
+              value: "0.3.0"
+            - name: CONNECTA_ENGINE_INSTANCE
+              value: connecta-node04
+            - name: IZAKHONO_NODE_ID
+              value: NODE04
+            - name: IZAKHONO_CLUSTER_ID
+              value: izakhono-production
+            - name: IZAKHONO_NODE_HEALTH_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: connecta-runtime-secrets
+                  key: node04-health-token
+            - name: CONNECTA_STORAGE_DRIVER
+              value: s3
+            - name: CONNECTA_S3_ENDPOINT
+              valueFrom:
+                secretKeyRef:
+                  name: connecta-runtime-secrets
+                  key: s3-endpoint
+            - name: CONNECTA_S3_REGION
+              valueFrom:
+                secretKeyRef:
+                  name: connecta-runtime-secrets
+                  key: s3-region
+            - name: CONNECTA_S3_BUCKET
+              valueFrom:
+                secretKeyRef:
+                  name: connecta-runtime-secrets
+                  key: s3-bucket
+            - name: CONNECTA_S3_PREFIX
+              valueFrom:
+                secretKeyRef:
+                  name: connecta-runtime-secrets
+                  key: s3-prefix
+            - name: CONNECTA_S3_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: connecta-runtime-secrets
+                  key: s3-access-key-id
+            - name: CONNECTA_S3_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: connecta-runtime-secrets
+                  key: s3-secret-access-key
+            - name: CONNECTA_S3_FORCE_PATH_STYLE
+              valueFrom:
+                secretKeyRef:
+                  name: connecta-runtime-secrets
+                  key: s3-force-path-style
+            - name: ALLOWED_ORIGINS
+              valueFrom:
+                secretKeyRef:
+                  name: connecta-runtime-secrets
+                  key: allowed-origins
+                  optional: true
+            - name: REGISTER_RATE_LIMIT
+              value: "8"
+          startupProbe:
+            tcpSocket:
+              port: http
+            periodSeconds: 5
+            failureThreshold: 24
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          livenessProbe:
+            tcpSocket:
+              port: http
+            periodSeconds: 20
+            timeoutSeconds: 5
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 250m
+              memory: 256Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: connecta-node04-health
+  namespace: connecta
+  labels:
+    app.kubernetes.io/name: connecta-engine
+    izakhono.africa/logical-node: NODE04
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: connecta-engine
+    izakhono.africa/logical-node: NODE04
+  ports:
+    - name: http
+      port: 4100
+      targetPort: http
+      protocol: TCP
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: connecta-engine
+  namespace: connecta
+  labels:
+    app.kubernetes.io/name: connecta-engine
+    app.kubernetes.io/component: customer-runtime
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: connecta-engine
+  ports:
+    - name: http
+      port: 4100
+      targetPort: http
+      protocol: TCP
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: connecta-engine
+  namespace: connecta
+spec:
+  minAvailable: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: connecta-engine
