@@ -67,4 +67,11 @@ await runAgentWorker();
 approvalState = JSON.parse(fs.readFileSync(process.env.IZAKHONO_AGENT_STATE_PATH, 'utf8'));
 assert.equal(approvalState.plans[approvalPlan.planId].status, 'completed');
 
+const { runNodeAdapter } = await import('./node-adapter.mjs');
+delete process.env.IZAKHONO_KORA_EXECUTION_APPROVED;
+delete process.env.IZAKHONO_DRY_RUN;
+const gatedKora = await runNodeAdapter('kora-workload-execute', { selectedNode: 'test-owned-node' });
+assert.equal(gatedKora.status, 'waiting');
+assert.equal(gatedKora.ownerGate, 'production_deploy');
+
 console.log('[PASS] AI agent worker drains native Builder stages and records portable build artifacts.');
