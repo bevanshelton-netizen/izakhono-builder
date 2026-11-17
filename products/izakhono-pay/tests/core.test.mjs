@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   chooseProvider,
+  merchantReferenceFromMetadata,
   ikhokhaSignature,
   verifyIkhokhaSignature,
   buildIkhokhaStatusRequest,
@@ -89,4 +90,12 @@ test('iKhokha status must match paid state, paylink ID and exact amount', () => 
   assert.equal(verifyIkhokhaStatus({ status: 'PENDING', paylinkID: 'PAYLINK-1', amount: 14900 }, intent), false);
   assert.equal(verifyIkhokhaStatus({ status: 'PAID', paylinkID: 'OTHER', amount: 14900 }, intent), false);
   assert.equal(verifyIkhokhaStatus({ status: 'PAID', paylinkID: 'PAYLINK-1', amount: 100 }, intent), false);
+});
+
+
+test('merchant order reference is exposed only from a valid order_id metadata field', () => {
+  assert.equal(merchantReferenceFromMetadata('{"order_id":" ORD-100 "}'), 'ORD-100');
+  assert.equal(merchantReferenceFromMetadata('{"other":"ORD-100"}'), null);
+  assert.equal(merchantReferenceFromMetadata('not-json'), null);
+  assert.equal(merchantReferenceFromMetadata('{"order_id":123}'), null);
 });
