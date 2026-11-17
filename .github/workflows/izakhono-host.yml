@@ -6,11 +6,13 @@ on:
       - 'products/izakhono-host/**'
       - '.github/workflows/izakhono-host.yml'
       - 'package.json'
+      - 'public/**'
   pull_request:
     paths:
       - 'products/izakhono-host/**'
       - '.github/workflows/izakhono-host.yml'
       - 'package.json'
+      - 'public/**'
   workflow_dispatch:
 
 permissions:
@@ -39,6 +41,8 @@ jobs:
         run: npm install --ignore-scripts --no-audit --no-fund
       - name: Typecheck HOST
         run: npm --prefix products/izakhono-host run typecheck
+      - name: Validate installable PWA shell
+        run: node products/izakhono-host/validate-pwa.mjs
       - name: Wrangler dry run
         run: npx wrangler deploy --dry-run --config products/izakhono-host/wrangler.jsonc
       - name: Validate shell gates

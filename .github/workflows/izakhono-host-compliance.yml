@@ -17,6 +17,9 @@ env:
   MINIO_ROOT_USER: ci-minio-admin
   MINIO_ROOT_PASSWORD: ci-minio-password
   IZAKHONO_MAIL_API_TOKEN: ci-mail-api-token
+  # Matches the service name documented by products/izakhono-host/mail/docker-compose.mail.yml.
+  # This is a CI-only Compose interpolation value, not a production endpoint or credential.
+  SMTP_HOST: stalwart
 
 jobs:
   compliance-script:
