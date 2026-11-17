@@ -69,7 +69,7 @@ COMMON_ENV=(
 )
 
 # Four distinct URLs, credentials and signed challenges must pass.
-env "${COMMON_ENV[@]}" OUTPUT="$tmp/valid.json" bash "$ROOT/infra/node-cluster/NODE-CLUSTER-HEALTH-GATE.sh"
+env "${COMMON_ENV[@]}" OUTPUT="$tmp/valid.json" /usr/bin/bash "$ROOT/infra/node-cluster/NODE-CLUSTER-HEALTH-GATE.sh"
 bash "$ROOT/infra/node-cluster/VERIFY-NODE-CLUSTER-EVIDENCE.sh" "$tmp/valid.json"
 python3 - "$tmp/valid.json" <<'PY'
 import json, sys
@@ -96,16 +96,16 @@ expect_blocked() {
 # Reusing one URL for four node names must fail before any curl request.
 expect_blocked "duplicate endpoint" env "${COMMON_ENV[@]}" \
   NODE02_URL=https://node01.example.test/health/cluster OUTPUT="$tmp/duplicate-url.json" \
-  bash "$ROOT/infra/node-cluster/NODE-CLUSTER-HEALTH-GATE.sh"
+  /usr/bin/bash "$ROOT/infra/node-cluster/NODE-CLUSTER-HEALTH-GATE.sh"
 
 # Reusing a credential across node identities must be rejected.
 expect_blocked "duplicate credential" env "${COMMON_ENV[@]}" \
   NODE04_HEALTH_TOKEN="$(printf 'c%.0s' {1..64})" OUTPUT="$tmp/duplicate-token.json" \
-  bash "$ROOT/infra/node-cluster/NODE-CLUSTER-HEALTH-GATE.sh"
+  /usr/bin/bash "$ROOT/infra/node-cluster/NODE-CLUSTER-HEALTH-GATE.sh"
 
 # A response with a bad HMAC must not certify the node.
 expect_blocked "invalid HMAC challenge" env "${COMMON_ENV[@]}" \
   NODE04_URL=https://node04-bad-signature.example.test/health/cluster OUTPUT="$tmp/bad-signature.json" \
-  bash "$ROOT/infra/node-cluster/NODE-CLUSTER-HEALTH-GATE.sh"
+  /usr/bin/bash "$ROOT/infra/node-cluster/NODE-CLUSTER-HEALTH-GATE.sh"
 
 echo "[PASS] health gate verifies unique HTTPS endpoints, unique per-node credentials and fresh HMAC challenges."
