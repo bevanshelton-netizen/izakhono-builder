@@ -10,32 +10,36 @@ trap 'rm -rf "$tmp"' EXIT
 fixture="$tmp/valid-fixture.json"
 
 python3 - "$fixture" <<'PY'
-import json, sys
+import hashlib, hmac, json, sys
 from datetime import datetime, timezone
 stamp = datetime.now(timezone.utc).isoformat()
 names = ["NODE01", "NODE02", "NODE03", "NODE04"]
-nodes = [{
-    "node": name,
-    "runtimeNode": name,
-    "identityType": "software-runtime",
-    "physicalHostIsSeparate": True,
-    "status": "PASS",
-    "runtime_evidence": True,
-    "checkedAt": stamp,
-    "http": {"ok": True, "runtimeNode": name, "cluster": "izakhono-production"}
-} for name in names]
+tokens = ["a"*64, "b"*64, "c"*64, "d"*64]
+nonce = "e"*64
+nodes = []
+for name, token in zip(names, tokens):
+    signature = hmac.new(bytes.fromhex(token), f"izakhono-production\n{name}\n{nonce}".encode(), hashlib.sha256).hexdigest()
+    nodes.append({
+        "node": name, "runtimeNode": name, "identityType": "software-runtime",
+        "physicalHostIsSeparate": True, "status": "PASS", "runtime_evidence": True,
+        "checkedAt": stamp,
+        "authentication": {"scheme":"bearer-hmac-sha256","challengeVerified":True},
+        "probeNonce": nonce, "probeSignature": signature,
+        "http": {"ok": True, "runtimeNode": name, "cluster": "izakhono-production", "authScheme":"bearer-hmac-sha256"}
+    })
 record = {
     "schema": "izakhono.node-cluster-health.v1",
     "cluster": "izakhono-production",
     "nodeIdentityType": "software-runtime",
     "physicalHostIsSeparate": True,
+    "authentication": {"scheme":"bearer-hmac-sha256","perNodeCredentials":True},
     "checkedAt": stamp,
     "nodes": nodes,
     "healthyNodes": names,
     "requiredHealthyNodes": 4,
     "status": "PASS",
     "runtimeEvidence": True,
-    "source": "operator-supplied-runtime-endpoints"
+    "source": "operator-supplied-authenticated-runtime-endpoints"
 }
 with open(sys.argv[1], "w", encoding="utf-8") as f:
     json.dump(record, f)
@@ -100,4 +104,4 @@ if [[ "$code" -ne 10 ]]; then
   exit 1
 fi
 
-echo "[PASS] verifier accepts correctly identified nodes and rejects mismatched node, cluster and stale evidence."
+echo "[PASS] verifier accepts authenticated node challenges and rejects mismatched identity, cluster and stale evidence."
