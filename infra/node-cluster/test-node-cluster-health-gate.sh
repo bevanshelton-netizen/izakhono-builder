@@ -81,7 +81,8 @@ assert all(n["authentication"]["challengeVerified"] for n in d["nodes"])
 PY
 
 expect_blocked() {
-  local output="$1" label="$2" code
+  local label="$1" code
+  shift
   set +e
   "$@" >/dev/null 2>&1
   code=$?
@@ -93,17 +94,17 @@ expect_blocked() {
 }
 
 # Reusing one URL for four node names must fail before any curl request.
-expect_blocked "$tmp/duplicate-url.json" "duplicate endpoint" env "${COMMON_ENV[@]}" \
+expect_blocked "duplicate endpoint" env "${COMMON_ENV[@]}" \
   NODE02_URL=https://node01.example.test/health/cluster OUTPUT="$tmp/duplicate-url.json" \
   bash "$ROOT/infra/node-cluster/NODE-CLUSTER-HEALTH-GATE.sh"
 
 # Reusing a credential across node identities must be rejected.
-expect_blocked "$tmp/duplicate-token.json" "duplicate credential" env "${COMMON_ENV[@]}" \
+expect_blocked "duplicate credential" env "${COMMON_ENV[@]}" \
   NODE04_HEALTH_TOKEN="$(printf 'c%.0s' {1..64})" OUTPUT="$tmp/duplicate-token.json" \
   bash "$ROOT/infra/node-cluster/NODE-CLUSTER-HEALTH-GATE.sh"
 
 # A response with a bad HMAC must not certify the node.
-expect_blocked "$tmp/bad-signature.json" "invalid HMAC challenge" env "${COMMON_ENV[@]}" \
+expect_blocked "invalid HMAC challenge" env "${COMMON_ENV[@]}" \
   NODE04_URL=https://node04-bad-signature.example.test/health/cluster OUTPUT="$tmp/bad-signature.json" \
   bash "$ROOT/infra/node-cluster/NODE-CLUSTER-HEALTH-GATE.sh"
 
