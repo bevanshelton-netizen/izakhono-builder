@@ -31,7 +31,8 @@
     "Prefer independent ready work over a single blocking dependency.",
     "Never fail over to an external provider when an owned NODE is unavailable; wait for an eligible owned NODE instead.",
     "IZAKHONO-native Builder is the sole built-in Builder provider; Hercules is not in the execution path.",
-    "Native execution has no artificial credits system; legitimate provider, capacity, security, and authorization limits remain operational constraints."
+    "Native execution has no artificial credits system; legitimate provider, capacity, security, and authorization limits remain operational constraints.",
+    "Vercel is not an execution provider, deployment target, fallback, or observability dependency for core IZAKHONO Builder."
   ],
   "stages": [
     "planning",
@@ -57,8 +58,7 @@
       "izakhono-code"
     ],
     "deploy": [
-      "izakhono-node",
-      "vercel"
+      "izakhono-node"
     ],
     "data": [
       "izakhono-data",
@@ -81,8 +81,7 @@
       "fortress"
     ],
     "observe": [
-      "izakhono-observe",
-      "vercel"
+      "izakhono-observe"
     ]
   },
   "queue": [
