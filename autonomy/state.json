@@ -23,10 +23,10 @@
     },
     "continuous-worker": {
       "status": "completed",
-      "attempts": 2,
+      "attempts": 4,
       "action": "run-worker",
       "adapter": "code",
-      "updatedAt": "2026-11-17T20:50:07.558Z",
+      "updatedAt": "2026-11-17T20:55:08.289Z",
       "evidence": [
         {
           "name": "worker-invoked",
@@ -100,10 +100,10 @@
     },
     "node-heartbeat": {
       "status": "waiting",
-      "attempts": 10,
+      "attempts": 11,
       "action": "node-heartbeat",
       "adapter": "deploy",
-      "updatedAt": "2026-11-17T20:50:07.807Z",
+      "updatedAt": "2026-11-17T20:55:08.351Z",
       "evidence": [
         {
           "name": "heartbeat-emitted",
@@ -147,7 +147,7 @@
         }
       ],
       "provider": "izakhono-node",
-      "selectedNode": "snode-08b3eb41-4fa",
+      "selectedNode": "snode-0939f078-bdb",
       "targetReason": null,
       "reason": "node-health-degraded",
       "assignmentId": null,
@@ -1259,6 +1259,139 @@
       "reason": "node-health-degraded",
       "provider": "izakhono-node",
       "selectedNode": "snode-08b3eb41-4fa",
+      "evidence": [
+        {
+          "name": "heartbeat-emitted",
+          "status": "passed"
+        },
+        {
+          "name": "node-health-healthy",
+          "status": "pending"
+        },
+        {
+          "name": "node-authenticated",
+          "status": "pending"
+        },
+        {
+          "name": "persistent-storage-ready",
+          "status": "passed"
+        },
+        {
+          "name": "container-runtime-ready",
+          "status": "passed"
+        },
+        {
+          "name": "backup-tested",
+          "status": "pending"
+        },
+        {
+          "name": "security-gate-passed",
+          "status": "pending"
+        },
+        {
+          "name": "monitoring-online",
+          "status": "pending"
+        },
+        {
+          "name": "capacity-reported",
+          "status": "not_required"
+        },
+        {
+          "name": "heartbeat-persisted",
+          "status": "passed"
+        }
+      ],
+      "evidenceSource": "software-node-heartbeat",
+      "acceptance": null
+    },
+    {
+      "at": "2026-11-17T20:55:08.210Z",
+      "task": "continuous-worker",
+      "from": "completed",
+      "to": "queued",
+      "reason": "continuous-worker-cycle-rearmed"
+    },
+    {
+      "at": "2026-11-17T20:55:08.210Z",
+      "task": "continuous-worker",
+      "from": "queued",
+      "to": "running",
+      "attempts": 3,
+      "action": "run-worker",
+      "adapter": "code"
+    },
+    {
+      "at": "2026-11-17T20:55:08.289Z",
+      "task": "continuous-worker",
+      "from": "running",
+      "to": "completed",
+      "attempts": 4,
+      "evidence": [
+        {
+          "name": "worker-invoked",
+          "status": "passed"
+        },
+        {
+          "name": "queued-work-progressed",
+          "status": "not_required",
+          "progressed": 0
+        },
+        {
+          "name": "worker-queue-state",
+          "status": "passed",
+          "queueStatus": "idle"
+        }
+      ],
+      "workerStatus": "idle",
+      "workerProgressed": 0
+    },
+    {
+      "at": "2026-11-17T20:55:08.289Z",
+      "task": "continuous-worker",
+      "from": "completed",
+      "to": "completed",
+      "evidence": [
+        {
+          "name": "worker-invoked",
+          "status": "passed"
+        },
+        {
+          "name": "queued-work-progressed",
+          "status": "not_required",
+          "progressed": 0
+        },
+        {
+          "name": "worker-queue-state",
+          "status": "passed",
+          "queueStatus": "idle"
+        }
+      ],
+      "provider": "github",
+      "selectedNode": null,
+      "targetReason": null,
+      "reason": null,
+      "assignmentId": null,
+      "evidenceSource": null,
+      "acceptance": null
+    },
+    {
+      "at": "2026-11-17T20:55:08.289Z",
+      "task": "node-heartbeat",
+      "from": "waiting",
+      "to": "running",
+      "attempts": 11,
+      "action": "node-heartbeat",
+      "adapter": "deploy"
+    },
+    {
+      "at": "2026-11-17T20:55:08.351Z",
+      "task": "node-heartbeat",
+      "from": "running",
+      "to": "waiting",
+      "ownerGate": null,
+      "reason": "node-health-degraded",
+      "provider": "izakhono-node",
+      "selectedNode": "snode-0939f078-bdb",
       "evidence": [
         {
           "name": "heartbeat-emitted",
