@@ -24,4 +24,6 @@ A worker that loses its lease must stop and discard its workspace. A worker that
 
 ## Current implementation status
 
-The validation contract and unit tests are implemented. No production sandbox, repository-token broker, model adapter or continuously running coding worker is claimed by this change. Those components must be independently implemented and verified before THOR can accept live untrusted coding tasks.
+The control-plane HTTP API now enforces API-token hashes, per-worker token hashes, project-specific repository/branch/path/command/resource policies, and completion evidence (commit SHA, reviewable PR, changed paths, artifact digest and passing approved commands). The D1 adapter persists the validated worker envelope, and the coding-worker claim endpoint excludes tasks without one.
+
+This API is still **not a production sandbox**. No OS-level sandbox, repository-token broker, model adapter or continuously running coding worker is claimed. The API must not be connected to an untrusted executor until those components are independently implemented and verified.
