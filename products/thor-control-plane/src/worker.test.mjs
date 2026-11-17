@@ -9,7 +9,10 @@ const hash = async value => {
   return [...new Uint8Array(digest)].map(byte => byte.toString(16).padStart(2, "0")).join("");
 };
 const env = {
-  THOR_DB: { prepare() { return { async all() { return { results: [] }; } }; } },
+  THOR_DB: {
+    prepare() { return { async all() { return { results: [] }; } }; },
+    async batch() { return []; },
+  },
   THOR_API_TOKEN_SHA256: await hash(apiToken),
   THOR_WORKER_TOKEN_HASHES: JSON.stringify({ "worker-01": await hash(workerToken) }),
   THOR_PROJECT_POLICIES: JSON.stringify({
