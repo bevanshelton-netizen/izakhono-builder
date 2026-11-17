@@ -125,7 +125,7 @@ export class ThorOrchestrator {
     this.leaseMs = leaseMs;
   }
 
-  async submit({ id, projectId, title, instruction, dependsOn = [], maxAttempts = 3, priority = 100 }) {
+  async submit({ id, projectId, title, instruction, dependsOn = [], maxAttempts = 3, priority = 100, workerEnvelope = null }) {
     if (!id?.trim() || !projectId?.trim() || !title?.trim() || !instruction?.trim()) {
       throw new ThorError("id, projectId, title and instruction are required", "INVALID_TASK");
     }
@@ -144,6 +144,7 @@ export class ThorOrchestrator {
     return this.store.createTask({
       id, projectId, title, instruction, dependsOn, priority,
       state: "queued", attempts: 0, maxAttempts,
+      workerEnvelope: workerEnvelope ? structuredClone(workerEnvelope) : null,
       workerId: null, leaseUntil: null, result: null, lastError: null,
       createdAt: now, updatedAt: now,
     });
