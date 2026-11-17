@@ -64,20 +64,31 @@ jobs:
             echo 'DEPLOY_FLAGS=' >> "$GITHUB_ENV"
             echo 'D1_FLAGS=--remote' >> "$GITHUB_ENV"
             echo 'TEMPORARY_DEPLOY=false' >> "$GITHUB_ENV"
+            echo 'WRANGLER_CONFIG=wrangler.sandbox.resolved.jsonc' >> "$GITHUB_ENV"
             echo 'Using the connected permanent Cloudflare account.' >> "$GITHUB_STEP_SUMMARY"
           else
             echo 'DEPLOY_FLAGS=--temporary' >> "$GITHUB_ENV"
             echo 'D1_FLAGS=--remote --temporary' >> "$GITHUB_ENV"
             echo 'TEMPORARY_DEPLOY=true' >> "$GITHUB_ENV"
+            echo 'WRANGLER_CONFIG=wrangler.sandbox.jsonc' >> "$GITHUB_ENV"
             echo 'No permanent Cloudflare credentials found; using a temporary Cloudflare preview account for sandbox proof.' >> "$GITHUB_STEP_SUMMARY"
           fi
+
+      - name: Resolve existing permanent sandbox D1 binding
+        if: env.TEMPORARY_DEPLOY == 'false'
+        run: >-
+          node scripts/resolve-d1-binding.mjs
+          --config wrangler.sandbox.jsonc
+          --output wrangler.sandbox.resolved.jsonc
+          --database izakhono-pay-sandbox
+          --binding DB
 
       - name: Bootstrap Worker and auto-provision sandbox D1
         id: bootstrap
         shell: bash
         run: |
           set -euo pipefail
-          output="$(npx wrangler deploy ${DEPLOY_FLAGS:-} --config wrangler.sandbox.jsonc \
+          output="$(npx wrangler deploy ${DEPLOY_FLAGS:-} --config "$WRANGLER_CONFIG" \
             --var ADMIN_SECRET:"$ADMIN_SECRET" \
             --var PAYFAST_MERCHANT_ID:"$PAYFAST_MERCHANT_ID" \
             --var PAYFAST_MERCHANT_KEY:"$PAYFAST_MERCHANT_KEY" \
@@ -90,7 +101,7 @@ jobs:
 
       - name: Apply D1 migrations
         shell: bash
-        run: npx wrangler d1 migrations apply DB ${D1_FLAGS:- --remote} --config wrangler.sandbox.jsonc
+        run: npx wrangler d1 migrations apply DB ${D1_FLAGS:- --remote} --config "$WRANGLER_CONFIG"
 
       - name: Provision ephemeral KORA sandbox merchant
         shell: bash
@@ -100,7 +111,7 @@ jobs:
           echo "::add-mask::$key"
           hash="$(printf '%s' "$key" | sha256sum | awk '{print $1}')"
           sql="UPDATE merchant_apps SET api_key_hash='$hash', status='active', return_origin='https://kora-network.vercel.app', updated_at=CURRENT_TIMESTAMP WHERE slug='kora' AND status IN ('staged','active');"
-          npx wrangler d1 execute DB ${D1_FLAGS:- --remote} --config wrangler.sandbox.jsonc --command "$sql"
+          npx wrangler d1 execute DB ${D1_FLAGS:- --remote} --config "$WRANGLER_CONFIG" --command "$sql"
           echo "KORA_SANDBOX_KEY=$key" >> "$GITHUB_ENV"
           echo 'KORA activated in sandbox only with an ephemeral merchant key and approved return origin.' >> "$GITHUB_STEP_SUMMARY"
 
@@ -112,7 +123,7 @@ jobs:
           put_secret() {
             local name="$1"
             local value="$2"
-            printf '%s' "$value" | npx wrangler secret put "$name" --config wrangler.sandbox.jsonc >/dev/null
+            printf '%s' "$value" | npx wrangler secret put "$name" --config "$WRANGLER_CONFIG" >/dev/null
           }
           put_secret ADMIN_SECRET "$ADMIN_SECRET"
           put_secret PAYFAST_MERCHANT_ID "$PAYFAST_MERCHANT_ID"
@@ -125,13 +136,13 @@ jobs:
         run: |
           set -euo pipefail
           if [ "${TEMPORARY_DEPLOY:-false}" = 'true' ]; then
-            output="$(npx wrangler deploy --temporary --config wrangler.sandbox.jsonc \
+            output="$(npx wrangler deploy --temporary --config "$WRANGLER_CONFIG" \
               --var ADMIN_SECRET:"$ADMIN_SECRET" \
               --var PAYFAST_MERCHANT_ID:"$PAYFAST_MERCHANT_ID" \
               --var PAYFAST_MERCHANT_KEY:"$PAYFAST_MERCHANT_KEY" \
               --var PAYFAST_PASSPHRASE:"$PAYFAST_PASSPHRASE")"
           else
-            output="$(npx wrangler deploy --config wrangler.sandbox.jsonc)"
+            output="$(npx wrangler deploy --config "$WRANGLER_CONFIG")"
           fi
           url="$(printf '%s\n' "$output" | grep -Eo 'https://[^[:space:]]+\.workers\.dev' | tail -1 || true)"
           claim="$(printf '%s\n' "$output" | grep -Eo 'https://dash\.cloudflare\.com/claim-preview\?claimToken=[^[:space:]]+' | tail -1 || true)"
