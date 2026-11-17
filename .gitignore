@@ -1,1 +1,5 @@
 .izakhono-private/
+.izakhono-node/
+autonomy/node-registry.json
+autonomy/heartbeat.json
+autonomy/workload-state.json
