@@ -2,9 +2,10 @@
 /**
  * IZAKHONO SOFTWARE NODE v1
  *
- * Software is the infrastructure unit. A node is instantiated in the
- * available execution substrate and promoted only after runtime evidence.
- * No physical-server prerequisite exists in this contract.
+ * NODE identity is logical software identity. This local adapter can instantiate
+ * that identity in a replaceable substrate, but it must not mark the substrate
+ * production-eligible without explicit authentication, container, backup,
+ * FORTRESS and monitoring evidence.
  */
 
 import fs from 'node:fs';
@@ -21,13 +22,21 @@ function has(command) {
   try { execFileSync('sh', ['-lc', `command -v ${command}`], { stdio: 'ignore' }); return true; }
   catch { return false; }
 }
-function write(path, value) {
-  const tmp = `${path}.tmp-${process.pid}`;
-  fs.writeFileSync(tmp, JSON.stringify(value, null, 2));
-  fs.renameSync(tmp, path);
+function writableStorage() {
+  try {
+    fs.accessSync(ROOT, fs.constants.R_OK | fs.constants.W_OK);
+    return true;
+  } catch {
+    return false;
+  }
 }
-function read(path) {
-  try { return JSON.parse(fs.readFileSync(path, 'utf8')); } catch { return null; }
+function write(file, value) {
+  const tmp = `${file}.tmp-${process.pid}`;
+  fs.writeFileSync(tmp, JSON.stringify(value, null, 2));
+  fs.renameSync(tmp, file);
+}
+function read(file) {
+  try { return JSON.parse(fs.readFileSync(file, 'utf8')); } catch { return null; }
 }
 
 function instantiate(request = {}) {
@@ -40,12 +49,14 @@ function instantiate(request = {}) {
     contract: 'izakhono.software-node/v1',
     nodeId,
     status: 'instantiated',
+    identityType: 'software-runtime',
     substrate,
+    runtimeHostIsSeparate: true,
     hostname: os.hostname(),
     runtime: { node: process.version, platform: process.platform, arch: process.arch },
     capabilities: {
       process: true,
-      persistentStorage: true,
+      persistentStorage: writableStorage(),
       containerRuntime: has('docker') || has('podman'),
       http: true,
       https: true
@@ -60,17 +71,24 @@ function instantiate(request = {}) {
 function heartbeat() {
   mkdir();
   const state = read(STATE) || instantiate();
+  const checks = {
+    nodeReachable: true,
+    nodeAuthenticated: Boolean(process.env.IZAKHONO_NODE_AUTH),
+    persistentStorageReady: writableStorage(),
+    containerRuntimeReady: state.capabilities.containerRuntime,
+    backupTested: process.env.IZAKHONO_BACKUP_TESTED === 'true',
+    securityGatePassed: process.env.IZAKHONO_SECURITY_GATE === 'passed',
+    monitoringOnline: process.env.IZAKHONO_MONITORING === 'online'
+  };
+  const health = Object.values(checks).every(Boolean) ? 'healthy' : 'degraded';
   const payload = {
     contract: 'izakhono.node-heartbeat/v1',
     nodeId: state.nodeId,
+    identityType: 'software-runtime',
+    runtimeHostIsSeparate: true,
     timestamp: new Date().toISOString(),
-    health: 'healthy',
-    checks: {
-      nodeReachable: true,
-      persistentStorageReady: fs.existsSync(ROOT),
-      containerRuntimeReady: state.capabilities.containerRuntime,
-      monitoringOnline: true
-    }
+    health,
+    checks
   };
   write(HEARTBEAT, payload);
   return payload;
@@ -79,12 +97,14 @@ function heartbeat() {
 function promote(request = {}) {
   const state = read(STATE) || instantiate(request);
   const beat = heartbeat();
-  const required = [
-    beat.checks.nodeReachable,
-    beat.checks.persistentStorageReady,
-    beat.checks.monitoringOnline
-  ];
-  if (!required.every(Boolean)) return { status: 'waiting', reason: 'required-evidence-missing', nodeId: state.nodeId, heartbeat: beat };
+  const missing = Object.entries(beat.checks).filter(([, passed]) => passed !== true).map(([name]) => name);
+  if (missing.length) {
+    state.status = 'waiting';
+    state.updatedAt = new Date().toISOString();
+    state.promotion = { status: 'waiting', requestId: request.requestId || null, missing, evidence: beat };
+    write(STATE, state);
+    return { contract: 'izakhono.software-node/v1', status: 'waiting', reason: 'required-evidence-missing', missing, nodeId: state.nodeId, heartbeat: beat };
+  }
   state.status = 'eligible';
   state.updatedAt = new Date().toISOString();
   state.promotion = { status: 'eligible', requestId: request.requestId || null, evidence: beat };

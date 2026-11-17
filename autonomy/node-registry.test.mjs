@@ -13,8 +13,11 @@ const { recordHeartbeat, listNodes, selectReadyNode } = await import('./node-reg
 
 const readiness = {
   nodeReachable: true,
+  nodeAuthenticated: true,
   persistentStorageReady: true,
   containerRuntimeReady: true,
+  backupTested: true,
+  securityGatePassed: true,
   monitoringOnline: true,
 };
 

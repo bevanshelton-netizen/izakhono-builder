@@ -96,8 +96,11 @@ export function selectReadyNode(requirements = {}) {
   );
   const requiredChecks = requirements.requiredChecks || [
     'nodeReachable',
+    'nodeAuthenticated',
     'persistentStorageReady',
     'containerRuntimeReady',
+    'backupTested',
+    'securityGatePassed',
     'monitoringOnline'
   ];
 

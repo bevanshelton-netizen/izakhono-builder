@@ -25,6 +25,27 @@ jobs:
       - name: Install dependencies
         run: npm install --ignore-scripts --no-audit --no-fund
 
+      - name: Verify Software NODE evidence gates
+        run: npm run software-node:test
+
+      - name: Verify autonomous scheduler reports genuine external gates
+        env:
+          IZAKHONO_STATE_PATH: /tmp/izakhono-ci-state.json
+          IZAKHONO_AGENT_STATE_PATH: /tmp/izakhono-ci-agent-state.json
+          IZAKHONO_AGENT_QUEUE_PATH: /tmp/izakhono-ci-agent-queue.json
+          IZAKHONO_NODE_STORAGE_PATH: /tmp/izakhono-ci-node
+          IZAKHONO_NODE_ID: ci-test-node
+          IZAKHONO_NODE_SUBSTRATE: ci-test-only
+          IZAKHONO_NODE_AUTH: ''
+          IZAKHONO_BACKUP_TESTED: 'false'
+          IZAKHONO_SECURITY_GATE: pending
+          IZAKHONO_MONITORING: offline
+        run: |
+          set -euo pipefail
+          cp autonomy/agent-queue.json "$IZAKHONO_AGENT_QUEUE_PATH"
+          node autonomy/runner.mjs | tee "$RUNNER_TEMP/izakhono-runner-smoke.json"
+          node -e "const r=JSON.parse(require('fs').readFileSync(process.env.RUNNER_TEMP + '/izakhono-runner-smoke.json','utf8')); if (r.status !== 'waiting_external_capability' || r.gates?.length !== 1 || r.gates[0].id !== 'node-heartbeat') { console.error(JSON.stringify(r,null,2)); process.exit(1); } console.log('[PASS] Scheduler reports one genuine NODE evidence gate without retry loops or false completion.');"
+
       - name: Validate Affiliate Engine
         run: npm run validate:affiliate
 

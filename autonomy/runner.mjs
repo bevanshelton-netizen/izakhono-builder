@@ -3,13 +3,44 @@ import path from 'node:path';
 import { runBuilderAdapter } from './builder-adapter.mjs';
 import { runNodeAdapter } from './node-adapter.mjs';
 import { resolveFailover } from './node-failover.mjs';
+import { runAgentWorker } from './ai-agent-worker.mjs';
 
 const root = process.cwd();
 const manifestPath = path.join(root, 'autonomy', 'engine-manifest.json');
-const statePath = path.join(root, 'autonomy', 'state.json');
+const statePath = process.env.IZAKHONO_STATE_PATH || path.join(root, 'autonomy', 'state.json');
 
 const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
-const state = fs.existsSync(statePath) ? JSON.parse(fs.readFileSync(statePath, 'utf8')) : { version: 1, tasks: {}, history: [] };
+const state = fs.existsSync(statePath) ? JSON.parse(fs.readFileSync(statePath, 'utf8')) : { version: 2, tasks: {}, history: [] };
+
+if ((state.version || 1) < 2) {
+  const at = new Date().toISOString();
+  const revalidate = [
+    'continuous-worker',
+    'node-heartbeat',
+    'node-target-selection',
+    'owned-node-failover',
+    'owned-node-promotion',
+    'workload-scheduler',
+    'kora-workload-execution',
+    'kora-routing-candidate',
+  ];
+  for (const id of revalidate) {
+    const previous = state.tasks[id];
+    if (!previous) continue;
+    state.tasks[id] = {
+      ...previous,
+      status: 'queued',
+      attempts: 0,
+      ownerGate: null,
+      selectedNode: null,
+      evidence: [],
+      reason: 'requeued-under-strict-runtime-evidence-v2',
+      updatedAt: at,
+    };
+    state.history.push({ at, task: id, from: previous.status, to: 'queued', reason: 'strict-runtime-evidence-v2-migration' });
+  }
+  state.version = 2;
+}
 
 function taskState(id) { return state.tasks[id] ?? { status: 'queued', attempts: 0 }; }
 function ready(task) { return task.dependsOn.every(id => taskState(id).status === 'completed'); }
@@ -34,21 +65,39 @@ function transition(task, status, extra = {}) {
   state.history.push({ at, task: task.id, from: previous.status, to: status, ...extra });
 }
 function evidenceFor(task, status = 'pending') { return (task.evidence ?? []).map(name => ({ name, status })); }
+const attemptedThisCycle = new Set();
+
 function selectNext() {
   return manifest.queue.find(task => {
     const current = taskState(task.id);
-    return !['completed', 'blocked'].includes(current.status) && !persistentWaitFor(task) && ready(task);
+    return !attemptedThisCycle.has(task.id) && !['completed', 'blocked'].includes(current.status) && !persistentWaitFor(task) && ready(task);
   });
 }
-function executeInternal(task) {
+async function executeInternal(task) {
   if (task.action === 'validate-manifest') {
     JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
     transition(task, 'completed', { attempts: taskState(task.id).attempts + 1, evidence: evidenceFor(task, 'passed') });
     return { status: 'completed' };
   }
   if (task.action === 'run-worker') {
-    transition(task, 'completed', { attempts: taskState(task.id).attempts + 1, evidence: evidenceFor(task, 'passed') });
-    return { status: 'completed' };
+    let worker;
+    try {
+      worker = await runAgentWorker();
+    } catch (error) {
+      return { status: 'failed', reason: `agent-worker-error:${error instanceof Error ? error.message : String(error)}` };
+    }
+    const evidence = [
+      { name: 'worker-invoked', status: 'passed' },
+      { name: 'queued-work-progressed', status: worker.progressed > 0 ? 'passed' : 'not_required', progressed: worker.progressed },
+      { name: 'worker-queue-state', status: 'passed', queueStatus: worker.status },
+    ];
+    transition(task, 'completed', {
+      attempts: taskState(task.id).attempts + 1,
+      evidence,
+      workerStatus: worker.status,
+      workerProgressed: worker.progressed,
+    });
+    return { status: 'completed', evidence, workerStatus: worker.status, workerProgressed: worker.progressed };
   }
   if (task.action === 'node-failover') {
     const result = resolveFailover(task.requirements ?? {});
@@ -59,16 +108,27 @@ function executeInternal(task) {
   return null;
 }
 
+// Re-arm the worker once per scheduler invocation so durable queued work is drained
+// on every five-minute execution cycle, without repeatedly claiming a build is complete.
+const workerTask = manifest.queue.find(task => task.id === 'continuous-worker');
+if (workerTask && taskState(workerTask.id).status === 'completed') {
+  const previous = taskState(workerTask.id);
+  const at = new Date().toISOString();
+  state.tasks[workerTask.id] = { ...previous, status: 'queued', reason: 'continuous-worker-cycle-rearmed', updatedAt: at };
+  state.history.push({ at, task: workerTask.id, from: previous.status, to: 'queued', reason: 'continuous-worker-cycle-rearmed' });
+}
+
 let progressed = 0;
 const externalGates = [];
 
 while (progressed < manifest.queue.length) {
   const next = selectNext();
   if (!next) break;
+  attemptedThisCycle.add(next.id);
   const current = taskState(next.id);
   transition(next, 'running', { attempts: current.attempts + 1, action: next.action, adapter: next.adapter });
 
-  let result = executeInternal(next);
+  let result = await executeInternal(next);
   if (!result && next.adapter === 'builder') result = await runBuilderAdapter(next);
 
   const nodeActions = ['node-discovery', 'software-node-instantiation', 'node-heartbeat', 'node-evidence', 'node-target', 'node-readiness', 'workload-schedule', 'kora-workload-execute', 'kora-routing-acceptance'];

@@ -13,8 +13,11 @@ const { selectFailoverTarget } = await import('./node-failover.mjs');
 
 const readyChecks = {
   nodeReachable: true,
+  nodeAuthenticated: true,
   persistentStorageReady: true,
   containerRuntimeReady: true,
+  backupTested: true,
+  securityGatePassed: true,
   monitoringOnline: true,
 };
 

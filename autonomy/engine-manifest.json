@@ -99,7 +99,7 @@
     },
     {
       "id": "continuous-worker",
-      "title": "Run the next dependency-ready task automatically",
+      "title": "Invoke the native agent worker and drain any queued build steps",
       "stage": "development",
       "adapter": "code",
       "dependsOn": [
@@ -107,7 +107,7 @@
       ],
       "action": "run-worker",
       "evidence": [
-        "worker-exit-zero"
+        "worker-invoked"
       ]
     },
     {
@@ -164,7 +164,11 @@
       "requirements": {
         "requiredChecks": [
           "nodeReachable",
+          "nodeAuthenticated",
           "persistentStorageReady",
+          "containerRuntimeReady",
+          "backupTested",
+          "securityGatePassed",
           "monitoringOnline"
         ]
       },
@@ -184,7 +188,11 @@
       "requirements": {
         "requiredChecks": [
           "nodeReachable",
+          "nodeAuthenticated",
           "persistentStorageReady",
+          "containerRuntimeReady",
+          "backupTested",
+          "securityGatePassed",
           "monitoringOnline"
         ]
       },
@@ -207,7 +215,11 @@
       "requirements": {
         "requiredChecks": [
           "nodeReachable",
+          "nodeAuthenticated",
           "persistentStorageReady",
+          "containerRuntimeReady",
+          "backupTested",
+          "securityGatePassed",
           "monitoringOnline"
         ]
       },
