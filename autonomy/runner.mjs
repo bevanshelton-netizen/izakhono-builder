@@ -65,10 +65,12 @@ function transition(task, status, extra = {}) {
   state.history.push({ at, task: task.id, from: previous.status, to: status, ...extra });
 }
 function evidenceFor(task, status = 'pending') { return (task.evidence ?? []).map(name => ({ name, status })); }
+const attemptedThisCycle = new Set();
+
 function selectNext() {
   return manifest.queue.find(task => {
     const current = taskState(task.id);
-    return !['completed', 'blocked'].includes(current.status) && !persistentWaitFor(task) && ready(task);
+    return !attemptedThisCycle.has(task.id) && !['completed', 'blocked'].includes(current.status) && !persistentWaitFor(task) && ready(task);
   });
 }
 async function executeInternal(task) {
@@ -122,6 +124,7 @@ const externalGates = [];
 while (progressed < manifest.queue.length) {
   const next = selectNext();
   if (!next) break;
+  attemptedThisCycle.add(next.id);
   const current = taskState(next.id);
   transition(next, 'running', { attempts: current.attempts + 1, action: next.action, adapter: next.adapter });
 
