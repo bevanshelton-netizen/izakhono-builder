@@ -162,7 +162,8 @@ function assertEnvelopeWithinPolicy(envelope, env, taskOptions = {}) {
 
 function errorStatus(error) {
   const code = error?.code || "INTERNAL_ERROR";
-  if (code === "DB_REQUIRED" || code === "PROJECT_POLICY_REQUIRED") return 503;
+  if (code === "DB_REQUIRED" || code === "PROJECT_POLICY_REQUIRED" || code === "RESULT_VERIFIER_REQUIRED") return 503;
+  if (code === "RESULT_VERIFICATION_FAILED") return 409;
   if (code === "PROJECT_SCOPE_VIOLATION") return 403;
   if (code === "BODY_TOO_LARGE") return 413;
   if (code === "TASK_NOT_FOUND") return 404;
@@ -188,6 +189,7 @@ function publicError(error) {
 export function createThorWorker({
   storeFactory = env => new D1ThorStore(env.THOR_DB),
   schemaCheck = defaultSchemaCheck,
+  resultVerifier = null,
   clock = () => Date.now(),
 } = {}) {
   return {
@@ -206,6 +208,7 @@ export function createThorWorker({
           apiAuthConfigured: HASH.test(env.THOR_API_TOKEN_SHA256 || ""),
           workerAuthConfigured: Object.keys(workerTokenHashes(env)).length > 0,
           projectPoliciesConfigured: Object.keys(validatedProjectPolicies(env)).length > 0,
+          resultVerificationConfigured: typeof resultVerifier === "function",
           schemaReady: false,
         };
         if (checks.databaseConfigured) {
@@ -243,6 +246,9 @@ export function createThorWorker({
         }
 
         if (method === "POST" && pathname === "/v1/workers/claim") {
+          if (typeof resultVerifier !== "function") {
+            throw new ThorError("Independent GitHub result verification is not configured", "RESULT_VERIFIER_REQUIRED");
+          }
           const body = await readJson(request);
           if (!await workerAuthorized(request, env, body.workerId)) throw new ThorError("Worker authentication required", "UNAUTHORIZED");
           const requestedLease = body.leaseMs == null ? leaseMs : Number(body.leaseMs);
@@ -289,6 +295,13 @@ export function createThorWorker({
             if (!task) throw new ThorError("Task not found", "TASK_NOT_FOUND");
             if (!task.workerEnvelope) throw new ThorError("Task has no validated worker envelope", "INVALID_ENVELOPE");
             const result = validateWorkerResult(body.result, task.workerEnvelope);
+            if (typeof resultVerifier !== "function") {
+              throw new ThorError("Independent GitHub result verification is not configured", "RESULT_VERIFIER_REQUIRED");
+            }
+            const independentlyVerified = await resultVerifier({ task, result, env });
+            if (independentlyVerified !== true) {
+              throw new ThorError("GitHub commit and pull request could not be independently verified", "RESULT_VERIFICATION_FAILED");
+            }
             return json({ task: await store.finish(taskId, body.workerId, result) });
           }
 
