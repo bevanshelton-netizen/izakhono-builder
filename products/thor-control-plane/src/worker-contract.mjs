@@ -65,3 +65,47 @@ export function assertChangedPathsAllowed(changedPaths, envelope) {
   }
   return true;
 }
+
+
+const SHA1 = /^[a-f0-9]{40}$/i;
+const SHA256 = /^[a-f0-9]{64}$/i;
+
+export function validateWorkerResult(result, envelope) {
+  assert(result && typeof result === "object" && !Array.isArray(result), "A worker result is required", "INVALID_RESULT");
+  assert(typeof result.commitSha === "string" && SHA1.test(result.commitSha), "A full commit SHA is required", "INVALID_RESULT");
+  assert(result.workRef === envelope.workRef, "Result branch does not match the scoped work branch", "INVALID_RESULT");
+  assert(typeof result.artifactDigest === "string" && SHA256.test(result.artifactDigest), "A SHA-256 artifact digest is required", "INVALID_RESULT");
+  assert(typeof result.pullRequestUrl === "string", "A reviewable pull request URL is required", "INVALID_RESULT");
+  let pullRequest;
+  try { pullRequest = new URL(result.pullRequestUrl); } catch { pullRequest = null; }
+  assert(pullRequest && pullRequest.protocol === "https:"
+    && pullRequest.hostname === "github.com"
+    && pullRequest.pathname.startsWith(`/${envelope.repository}/pull/`)
+    && /^\\/\\d+\\/?$/.test(pullRequest.pathname.slice(`/${envelope.repository}/pull`.length)),
+  "Pull request URL must belong to the scoped repository", "INVALID_RESULT");
+
+  assert(Array.isArray(result.changedFiles), "Changed-file evidence is required", "INVALID_RESULT");
+  assertChangedPathsAllowed(result.changedFiles, envelope);
+  assert(Array.isArray(result.tests) && result.tests.length === envelope.commands.length, "Every approved command must have test evidence", "INVALID_RESULT");
+  const seen = new Set();
+  const tests = result.tests.map(test => {
+    assert(test && typeof test === "object" && typeof test.command === "string", "Invalid test evidence", "INVALID_RESULT");
+    assert(envelope.commands.includes(test.command) && !seen.has(test.command), "Test command is not approved or is duplicated", "INVALID_RESULT");
+    seen.add(test.command);
+    assert(test.exitCode === 0, `Approved command did not pass: ${test.command}`, "TESTS_NOT_PASSED");
+    assert(Number.isFinite(test.durationMs) && test.durationMs >= 0, "Test duration is required", "INVALID_RESULT");
+    assert(typeof test.output === "string"
+      && new TextEncoder().encode(test.output).byteLength <= envelope.limits.maxOutputBytes,
+    "Test output exceeds the configured limit", "OUTPUT_LIMIT_EXCEEDED");
+    return Object.freeze({ command: test.command, exitCode: 0, durationMs: test.durationMs, output: test.output });
+  });
+  return Object.freeze({
+    commitSha: result.commitSha.toLowerCase(),
+    workRef: result.workRef,
+    artifactDigest: result.artifactDigest.toLowerCase(),
+    pullRequestUrl: result.pullRequestUrl,
+    changedFiles: Object.freeze([...result.changedFiles]),
+    tests: Object.freeze(tests),
+    verified: true,
+  });
+}
