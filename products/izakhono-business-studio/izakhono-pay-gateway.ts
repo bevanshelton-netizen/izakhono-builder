@@ -86,6 +86,7 @@ function parseIntent(body: ApiResponse | null): ApiIntent | null {
 export function createIzakhonoPayGateway(config: IzakhonoPayGatewayConfig): PaymentVerifier & {
   createOrderPaymentIntent(input: CreateOrderPaymentInput): Promise<OrderPaymentCheckout>;
 } {
+  if (typeof window !== 'undefined') throw new Error('IZAKHONO_PAY_GATEWAY_SERVER_ONLY');
   let base: URL;
   try {
     base = new URL(config.baseUrl);
