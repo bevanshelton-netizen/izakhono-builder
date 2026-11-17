@@ -70,7 +70,7 @@
     "registry:github-verifier-test": "npx --yes tsx@4.20.3 registry/github-build-verifier.test.ts",
     "one-drive:test": "npx --yes tsx@4.20.3 products/izakhono-one-drive/src/quota.test.ts",
     "one-drive:typecheck": "npx --yes typescript@5.9.2 --noEmit --target ES2022 --module NodeNext --moduleResolution NodeNext products/izakhono-one-drive/src/quota.ts products/izakhono-one-drive/src/quota.test.ts",
-    "business-studio:order-provisioning:typecheck": "npx --yes typescript@5.9.2 --noEmit --target ES2022 --lib ES2022,DOM,DOM.Iterable --module ESNext --moduleResolution Bundler products/izakhono-business-studio/order-provisioning-orchestrator.ts products/izakhono-business-studio/izakhono-pay-gateway.ts products/izakhono-business-studio/order-provisioning-orchestrator.test.ts products/izakhono-business-studio/izakhono-pay-gateway.test.ts"
+    "business-studio:order-provisioning:typecheck": "npx --yes -p typescript@5.9.2 tsc --noEmit --target ES2022 --lib ES2022,DOM,DOM.Iterable --module ESNext --moduleResolution Bundler products/izakhono-business-studio/order-provisioning-orchestrator.ts products/izakhono-business-studio/izakhono-pay-gateway.ts products/izakhono-business-studio/order-provisioning-orchestrator.test.ts products/izakhono-business-studio/izakhono-pay-gateway.test.ts"
   },
   "dependencies": {
     "wrangler": "4.127.1"
