@@ -70,3 +70,26 @@ test('refuses to silently replace a different pinned database id', () => {
     databaseId,
   }), /D1_CONFIG_ID_MISMATCH/);
 });
+
+
+test('replaces the explicit fail-closed placeholder with the verified D1 id', () => {
+  const config = [
+    '{',
+    '  "d1_databases": [',
+    '    {',
+    '      "binding": "DB",',
+    '      "database_name": "izakhono-pay",',
+    '      "database_id": "00000000-0000-0000-0000-000000000000",',
+    '      "migrations_dir": "migrations"',
+    '    }',
+    '  ]',
+    '}',
+  ].join('\n');
+  const resolved = injectDatabaseId(config, {
+    databaseName: 'izakhono-pay',
+    binding: 'DB',
+    databaseId,
+  });
+  assert.match(resolved, new RegExp('"database_id": "' + databaseId + '"'));
+  assert.doesNotMatch(resolved, /00000000-0000-0000-0000-000000000000/);
+});
