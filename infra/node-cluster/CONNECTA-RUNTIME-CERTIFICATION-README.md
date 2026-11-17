@@ -6,6 +6,12 @@
 
 **NODE01 is IZAKHONO software**: a deployable runtime component/service. NODE02, NODE03 and NODE04 are peer/failover software nodes. They execute on infrastructure hosts; they are not physical machines or workstations. A physical NODE01 workstation is neither the software nor a requirement. **Vercel is not required, not the CONNECTA runtime, and not a production dependency.** CONNECTA must build, deploy, route and operate on IZAKHONO-controlled infrastructure.
 
+## Owned runtime deployment package
+
+The four logical CONNECTA runtime deployments are defined in `infra/node-cluster/connecta-runtime.yaml`. The operator runbook is `infra/node-cluster/CONNECTA-K3S-RUNTIME-DEPLOYMENT.md`. The engine image is built and published by `.github/workflows/connecta-engine-image.yml` to `ghcr.io/bevanshelton-netizen/connecta-engine:0.3.0`.
+
+The K3s manifest creates four separately identified engine Deployments, one internal customer Service, four internal node-health Services, and a three-of-four PodDisruptionBudget. It uses shared IZAKHONO-owned PostgreSQL and S3-compatible media storage; it does not create or assume those services, public ingress, or EDGE routing.
+
 ## 1. Provision distinct authenticated HTTPS runtime endpoints
 
 Configure these protected GitHub Actions production-environment secrets:
