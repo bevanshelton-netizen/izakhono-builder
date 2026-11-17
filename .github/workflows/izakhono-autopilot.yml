@@ -41,8 +41,8 @@ jobs:
             echo 'No execution state was produced.'
             exit 0
           fi
-          git add -f autonomy/state.json
-          if git diff --cached --quiet -- autonomy/state.json; then
+          git add -f autonomy/state.json autonomy/agent-state.json autonomy/agent-queue.json
+          if git diff --cached --quiet -- autonomy/state.json autonomy/agent-state.json autonomy/agent-queue.json; then
             echo 'No execution-state change.'
             exit 0
           fi
