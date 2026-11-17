@@ -50,7 +50,7 @@ async function main() {
     });
     const payload = await response.json().catch(() => null);
     const finalUrl = new URL(response.url || healthUrl.toString());
-    httpsPassed = finalUrl.protocol === 'https:' && response.ok;
+    httpsPassed = finalUrl.protocol === 'https:';
     routePassed = response.ok && payload?.ok === true;
     routeDetail = `HTTP ${response.status}; final URL ${finalUrl.origin}; health payload ok=${payload?.ok === true}`;
     evidence.push({ name: 'public-route-verified', status: routePassed ? 'passed' : 'failed', url: finalUrl.toString(), detail: routeDetail });
