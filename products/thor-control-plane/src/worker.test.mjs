@@ -30,6 +30,7 @@ let now = Date.parse("2026-11-17T12:00:00.000Z");
 const worker = createThorWorker({
   storeFactory: () => store,
   schemaCheck: async () => true,
+  resultVerifier: async () => true,
   clock: () => now,
 });
 
@@ -163,5 +164,17 @@ const notReady = await worker.fetch(request("/ready"), {
   THOR_WORKER_TOKEN_HASHES: "{}",
 });
 assert.equal(notReady.status, 503);
+
+const verifierMissingWorker = createThorWorker({
+  storeFactory: () => store,
+  schemaCheck: async () => true,
+  clock: () => now,
+});
+const verifierMissingReady = await verifierMissingWorker.fetch(request("/ready"), env);
+assert.equal(verifierMissingReady.status, 503);
+const verifierMissingClaim = await verifierMissingWorker.fetch(request("/v1/workers/claim", {
+  method: "POST", token: workerToken, body: { workerId: "worker-01", leaseMs: 5000 },
+}), env);
+assert.equal(verifierMissingClaim.status, 503);
 
 console.log("THOR HTTP control plane: all tests passed.");
