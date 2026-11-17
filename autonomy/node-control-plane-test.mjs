@@ -27,8 +27,11 @@ run('heartbeat', {
   capacity: { loadAverage: [0.4, 0.5, 0.6] },
   checks: {
     nodeReachable: true,
+    nodeAuthenticated: true,
     persistentStorageReady: true,
     containerRuntimeReady: true,
+    backupTested: true,
+    securityGatePassed: true,
     monitoringOnline: true,
   },
 });
