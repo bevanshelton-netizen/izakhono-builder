@@ -32,7 +32,8 @@ test("Docker sandbox enforces network isolation, resource limits and changed-pat
         await assert.rejects(fetch("https://example.com", { signal: AbortSignal.timeout(500) }));
       });
     `);
-    result = await runDockerSandbox({
+    try {
+      result = await runDockerSandbox({
       sourcePath,
       workerEnvelope: {
         taskId: "sandbox-01",
@@ -50,7 +51,11 @@ test("Docker sandbox enforces network isolation, resource limits and changed-pat
           cpuCount: 1,
         },
       },
-    });
+      });
+    } catch (error) {
+      console.log("Sandbox diagnostic evidence:", JSON.stringify(error.tests || []));
+      throw error;
+    }
     assert.equal(result.success, true);
     assert.deepEqual(result.changedFiles, ["generated.txt"]);
     assert.equal(result.tests.length, 1);
@@ -102,7 +107,10 @@ test("Docker sandbox rejects changes outside the task allow-list", async t => {
           },
         },
       }),
-      error => error.code === "PATH_SCOPE_VIOLATION",
+      error => {
+        console.log("Sandbox scope diagnostic evidence:", JSON.stringify(error.tests || []));
+        return error.code === "PATH_SCOPE_VIOLATION";
+      },
     );
   } finally {
     await rm(sourcePath, { recursive: true, force: true });
