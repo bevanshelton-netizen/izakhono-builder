@@ -9,6 +9,8 @@ services:
       - .env.owned
     environment:
       IZAKHONO_FLOW_INTERNAL_URL: ${IZAKHONO_FLOW_INTERNAL_URL:-http://izakhono-flow:8794}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
       - "8781:8781"
     networks:
