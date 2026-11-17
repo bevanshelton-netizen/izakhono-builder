@@ -66,9 +66,9 @@ export async function runNativeBuilder(task) {
 
   if (action === 'run-worker') {
     return {
-      status: 'completed',
+      status: 'waiting',
       provider: 'izakhono-native',
-      evidence: evidence('worker-exit-zero'),
+      reason: 'worker-dispatch-must-run-through-agent-worker',
     };
   }
 
