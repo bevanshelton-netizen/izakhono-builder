@@ -20,7 +20,7 @@ The `CONNECTA Engine Image` GitHub Actions workflow builds the engine image and 
 - `ghcr.io/bevanshelton-netizen/connecta-engine:0.3.0`
 - `ghcr.io/bevanshelton-netizen/connecta-engine:sha-<commit>`
 
-The manifest pins release `0.3.0` to immutable OCI digest `sha256:838b095cd2b12a9f66526e5086501474f6958e20f597efa96875217390b580da`. The image was built from commit `425a1f57565a71335a59ebe3414f355f6e8b...` and published with provenance and SBOM attestations. When the engine changes, the image workflow publishes a new digest; update the manifest and validator together before rollout. If GHCR keeps the package private, create the `ghcr-pull-secret` in the `connecta` namespace and attach a read-only `read:packages` credential to it.
+The manifest pins release `0.3.0` to immutable OCI digest `sha256:838b095cd2b12a9f66526e5086501474f6958e20f597efa96875217390b580da`. The image was built from commit `425a1f57565a71335a59ebe3414f355f6e4ba216` and published with provenance and SBOM attestations. When the engine changes, the image workflow publishes a new digest; update the manifest and validator together before rollout. If GHCR keeps the package private, create the `ghcr-pull-secret` in the `connecta` namespace and attach a read-only `read:packages` credential to it.
 
 ## Required IZAKHONO-owned services
 
