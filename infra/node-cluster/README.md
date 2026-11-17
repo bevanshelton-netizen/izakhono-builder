@@ -47,6 +47,10 @@ This order is only for forming this k3s implementation. It must not be interpret
 
 Product releases do not wait for this procedure if another Runtime Fabric target is already healthy.
 
+## CONNECTA runtime deployment
+
+CONNECTA's four logical runtime identities are deployed as separate engine workloads through `connecta-runtime.yaml`. The image release workflow is `.github/workflows/connecta-engine-image.yml`; the operator procedure, shared database/storage requirements and EDGE health routes are documented in `CONNECTA-K3S-RUNTIME-DEPLOYMENT.md`. These logical identities are not pinned to the physical K3s hosts.
+
 ## Production proof for this cluster
 
 - all required logical node identities are bound to approved runtime hosts
