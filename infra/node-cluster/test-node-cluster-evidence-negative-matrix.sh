@@ -73,15 +73,16 @@ elif case == "missing-timestamp": d.pop("checkedAt", None)
 elif case == "missing-authentication": d.pop("authentication", None)
 elif case == "challenge-failed": d["nodes"][0]["authentication"]["challengeVerified"] = False
 elif case == "signature-malformed": d["nodes"][1]["probeSignature"] = "invalid"
+elif case == "duplicate-nonce": d["nodes"][1]["probeNonce"] = d["nodes"][0]["probeNonce"]
 elif case == "wrong-auth-scheme": d["nodes"][2]["http"]["authScheme"] = "bearer-only"
 json.dump(d, open(p, "w", encoding="utf-8"))
 PY
 }
 
-for case in runtimeEvidence status source missing-node duplicate-node missing-healthy-node wrong-cluster physical-identity missing-timestamp missing-authentication challenge-failed signature-malformed wrong-auth-scheme; do
+for case in runtimeEvidence status source missing-node duplicate-node missing-healthy-node wrong-cluster physical-identity missing-timestamp missing-authentication challenge-failed signature-malformed duplicate-nonce wrong-auth-scheme; do
   write_valid_fixture
   mutate "$case"
   expect_blocked "$case"
 done
 
-echo "[PASS] verifier rejects twelve independent incomplete, stale-trust, non-runtime or unauthenticated evidence cases."
+echo "[PASS] verifier rejects thirteen independent incomplete, stale-trust, non-runtime or unauthenticated evidence cases."
