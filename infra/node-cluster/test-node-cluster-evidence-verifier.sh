@@ -17,7 +17,7 @@ names = ["NODE01", "NODE02", "NODE03", "NODE04"]
 tokens = ["a"*64, "b"*64, "c"*64, "d"*64]
 nonces = ["e"*64, "f"*64, "1"*64, "2"*64]
 nodes = []
-for name, token in zip(names, tokens):
+for name, token, nonce in zip(names, tokens, nonces):
     signature = hmac.new(bytes.fromhex(token), f"izakhono-production\n{name}\n{nonce}".encode(), hashlib.sha256).hexdigest()
     nodes.append({
         "node": name, "runtimeNode": name, "identityType": "software-runtime",
