@@ -19,10 +19,10 @@ const paidIntent = {
   paid_at: '2026-11-17T12:00:00.000Z'
 };
 
-test('creates an order-bound payment intent using server-only merchant authentication', async () => {
+async function run() {
   let requestUrl = '';
   let requestInit: RequestInit | undefined;
-  const gateway = createIzakhonoPayGateway({
+  const checkoutGateway = createIzakhonoPayGateway({
     baseUrl: 'https://pay.example.test',
     merchantSlug: 'business-studio',
     apiKey: 'server-only-test-key',
@@ -41,7 +41,7 @@ test('creates an order-bound payment intent using server-only merchant authentic
     }) as typeof fetch
   });
 
-  const checkout = await gateway.createOrderPaymentIntent({
+  const checkout = await checkoutGateway.createOrderPaymentIntent({
     orderId: 'ORD-100',
     amountMinor: 14900,
     currency: 'ZAR',
@@ -60,10 +60,8 @@ test('creates an order-bound payment intent using server-only merchant authentic
   assert.equal(payload.metadata.order_id, 'ORD-100');
   assert.equal(checkout.intentId, 'pi_100');
   assert.equal(checkout.checkoutUrl, 'https://checkout.example.test/session');
-});
 
-test('verifies paid state and exact merchant, order, amount, currency and provider reference server-side', async () => {
-  const gateway = createIzakhonoPayGateway({
+  const verifyGateway = createIzakhonoPayGateway({
     baseUrl: 'https://pay.example.test',
     merchantSlug: 'business-studio',
     apiKey: 'server-only-test-key',
@@ -77,35 +75,26 @@ test('verifies paid state and exact merchant, order, amount, currency and provid
     amountMinor: 14900,
     currency: 'ZAR'
   };
-  const receipt = await gateway.verifyPayment(request);
+  const receipt = await verifyGateway.verifyPayment(request);
   assert.equal(receipt?.status, 'paid');
   assert.equal(receipt?.providerTransactionId, 'PAYLINK-100');
   assert.equal(receipt?.verificationSource, 'IZAKHONO_PAY_SERVER');
-});
 
-test('rejects a paid intent with a different order or amount', async () => {
-  const gateway = createIzakhonoPayGateway({
+  const mismatchGateway = createIzakhonoPayGateway({
     baseUrl: 'https://pay.example.test',
     merchantSlug: 'business-studio',
     apiKey: 'server-only-test-key',
     fetchImpl: (async () => response({ ok: true, intent: { ...paidIntent, merchant_reference: 'ORD-OTHER' } })) as typeof fetch
   });
-  const request: PaymentVerificationRequest = {
-    orderId: 'ORD-100',
-    merchantSlug: 'business-studio',
-    intentId: 'pi_100',
-    amountMinor: 14900,
-    currency: 'ZAR'
-  };
-  assert.equal(await gateway.verifyPayment(request), null);
-});
+  assert.equal(await mismatchGateway.verifyPayment(request), null);
 
-test('rejects non-HTTPS payment service endpoints', () => {
   assert.throws(() => createIzakhonoPayGateway({
     baseUrl: 'http://pay.example.test',
     merchantSlug: 'business-studio',
     apiKey: 'server-only-test-key'
   }), /MUST_USE_HTTPS/);
-});
 
-console.log('izakhono-pay-gateway: PASS');
+  console.log('izakhono-pay-gateway: PASS');
+}
+
+await run();
