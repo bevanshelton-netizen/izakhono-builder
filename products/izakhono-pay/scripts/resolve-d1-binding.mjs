@@ -63,7 +63,7 @@ export function injectDatabaseId(configText, options) {
   if (existing && existing[1] !== databaseId && existing[1] !== PLACEHOLDER_DATABASE_ID) throw new Error('D1_CONFIG_ID_MISMATCH');
   if (existing && existing[1] === databaseId) return configText;
   if (existing) {
-    const updatedBlock = block.replace(/("database_id"\\s*:\\s*")[^"]+("\)/, '$1' + databaseId + '$2');
+    const updatedBlock = block.replace(/("database_id"\s*:\s*")[^"]+("\)/, '$1' + databaseId + '$2');
     return configText.replace(block, updatedBlock);
   }
 
