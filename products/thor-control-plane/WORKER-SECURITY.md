@@ -30,4 +30,4 @@ A disposable Docker sandbox runner now exists and is exercised in CI. It disable
 
 **Important limitation:** Docker containers share the host kernel. This is an initial isolation layer, not a high-assurance boundary for hostile or adversarial code. Production execution should move to a hardened microVM or equivalent boundary (for example Firecracker/Kata/gVisor), with an independent escape review. The current Docker runner is not integrated into a continuously running worker.
 
-The repository-token broker, model adapter, live D1 deployment and independent sandbox escape/security review remain outstanding. Do not connect the control plane to untrusted production tasks until those gates pass.
+The GitHub result verifier/repository-token broker, model adapter, live D1 deployment and independent sandbox escape/security review remain outstanding. Until the verifier is wired, readiness remains false and worker claims/completion are rejected. Do not connect the control plane to untrusted production tasks until those gates pass.
