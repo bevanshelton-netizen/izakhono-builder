@@ -10,22 +10,33 @@
 
 ## Verified platform capabilities
 
-- Merchant payment orchestration and provider-adapter architecture
-- iKhokha payment-link creation and signed webhook verification path
-- Provider-side payment-status confirmation and amount matching before paid state
-- Idempotent transaction creation
-- Transaction state management
-- Reconciliation lifecycle
-- Refund lifecycle
-- Dispute lifecycle
-- Settlement lifecycle
-- Operational alerting and reconciliation exceptions
-- Merchant plans and fee model
-- Merchant API credentials with service-role protection
-- Benefits/rewards evaluation engine
-- FORTRESS security controls and audit-oriented architecture
-- Controlled acceptance suite: 6/6 passed
+- Merchant-scoped payment-intent creation and retrieval
+- D1-backed payment intent and durable provider-event records
+- iKhokha signed callback verification followed by provider-side status, paylink-ID and exact amount matching
+- Paystack signed webhook verification with exact amount/currency matching
+- PayFast signed ITN verification, source-IP allow-listing, provider VALID confirmation and amount matching
+- Idempotent payment-intent creation
+- Merchant API-key authentication and tenant-scoped intent retrieval
+- Signed merchant payment.paid webhook delivery records
+- FORTRESS security-event hooks for invalid signatures, provider mismatches and merchant authentication failures
+- Replay-recoverable webhook event claims and payment-state transitions
+- Business Studio server-side gateway contract that binds an order ID to a payment intent and verifies the paid intent before provisioning
+- Automated unit, syntax, layout and Worker-bundle checks; these are not provider certification or production acceptance
 
+## Not yet production capabilities
+
+The following capabilities have separate implementation work in the IZAKHONO Super Engine or design documents, but are not yet integrated and evidenced in the production IZAKHONO PAY Worker. They must not be marketed as live features:
+
+- Double-entry merchant ledger, balances and fee postings
+- Refund API and refund-ledger integration
+- Dispute/chargeback case management
+- Settlement and payout orchestration
+- Bank-statement reconciliation and verified settlement matching
+- Durable retry scheduling and delivery recovery for merchant webhooks
+- Full operational FORTRESS alerting, incident response and key-rotation evidence
+- Stripe or international currency processing
+
+The canonical production payment path for V1 is the Cloudflare Worker in products/izakhono-pay, backed by its dedicated D1 database. The separate Super Engine payment modules remain distinct components until an explicitly tested integration is approved.
 ## Production deployment boundary
 
 The production workflow deploys the Worker in a **fail-closed state**. It does not activate a payment provider, create a D1 database, activate a merchant, or move customer money.
@@ -58,9 +69,13 @@ iKhokha is the preferred initial South African provider. Live activation require
 
 The current Worker checkout path is ZAR-only. Stripe/international processing is not part of the verified V1 Worker release and must not be advertised as available until a production adapter, webhook verification, currency handling and end-to-end acceptance have been implemented.
 
-### 5. External production E2E
+### 5. Financial operations and merchant webhook recovery
 
-A real-provider production end-to-end payment has not been executed. This remains intentionally blocked until the regulatory/acquiring and provider activation prerequisites are satisfied.
+The production Worker does not yet expose a verified double-entry ledger, refund API, dispute workflow, settlement/payout orchestration or bank-statement reconciliation. Merchant webhook delivery also needs a durable retry worker. These controls must be integrated and independently tested before an external merchant pilot.
+
+### 6. External production E2E
+
+A real-provider production end-to-end payment has not been executed. This remains intentionally blocked until the regulatory/acquiring, financial-operations and provider activation prerequisites are satisfied.
 
 ## Activation sequence
 
