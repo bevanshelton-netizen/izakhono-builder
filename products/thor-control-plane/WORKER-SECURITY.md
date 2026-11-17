@@ -26,6 +26,8 @@ A worker that loses its lease must stop and discard its workspace. A worker that
 
 The control-plane HTTP API now enforces API-token hashes, per-worker token hashes, project-specific repository/branch/path/command/resource policies, and completion evidence (commit SHA, reviewable PR, changed paths, artifact digest and passing approved commands). The D1 adapter persists the validated worker envelope, and the coding-worker claim endpoint excludes tasks without one.
 
-A disposable Docker sandbox runner now exists and is exercised in CI. It disables container networking, uses a read-only root filesystem, drops capabilities, applies no-new-privileges and bounded CPU/memory/PIDs, withholds Git metadata and host secrets, and enforces changed-path scope after execution. This is a meaningful isolation boundary, but it is not yet an independently audited production sandbox and is not integrated into a continuously running worker.
+A disposable Docker sandbox runner now exists and is exercised in CI. It disables container networking, uses a read-only root filesystem, drops capabilities, applies no-new-privileges and bounded CPU/memory/PIDs, withholds Git metadata and host secrets, and enforces changed-path scope after execution.
+
+**Important limitation:** Docker containers share the host kernel. This is an initial isolation layer, not a high-assurance boundary for hostile or adversarial code. Production execution should move to a hardened microVM or equivalent boundary (for example Firecracker/Kata/gVisor), with an independent escape review. The current Docker runner is not integrated into a continuously running worker.
 
 The repository-token broker, model adapter, live D1 deployment and independent sandbox escape/security review remain outstanding. Do not connect the control plane to untrusted production tasks until those gates pass.
