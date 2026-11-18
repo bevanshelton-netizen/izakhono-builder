@@ -74,3 +74,32 @@ test("AI chat fails closed when the gateway is not configured",async()=>{
   assert.equal(response.status,503);
   assert.equal((await response.json() as any).error,"ai_runtime_unavailable");
 });
+
+
+test("owner chat rejects a gateway response that is not routed through owned inference",async()=>{
+  const original=globalThis.fetch;
+  globalThis.fetch=async()=>Response.json({ok:true,answer:"External response",model:"remote",route:"external"});
+  try{
+    const response=await worker.fetch(new Request("https://app.test/api/ai/chat",{
+      method:"POST",
+      headers:{"content-type":"application/json","x-izakhono-owner-key":"owner-secret-test-value"},
+      body:JSON.stringify({messages:[{role:"user",content:"Hello"}]})
+    }),env());
+    assert.equal(response.status,503);
+    assert.equal((await response.json() as any).error,"owned_inference_not_verified");
+  }finally{globalThis.fetch=original;}
+});
+
+test("owner chat rejects an empty answer even when the gateway claims owned inference",async()=>{
+  const original=globalThis.fetch;
+  globalThis.fetch=async()=>Response.json({ok:true,answer:"   ",model:"local",route:"owned"});
+  try{
+    const response=await worker.fetch(new Request("https://app.test/api/ai/chat",{
+      method:"POST",
+      headers:{"content-type":"application/json","x-izakhono-owner-key":"owner-secret-test-value"},
+      body:JSON.stringify({messages:[{role:"user",content:"Hello"}]})
+    }),env());
+    assert.equal(response.status,503);
+    assert.equal((await response.json() as any).error,"owned_inference_not_verified");
+  }finally{globalThis.fetch=original;}
+});

@@ -29,8 +29,10 @@ async function aiChat(req:Request,env:Env){
  if(messages[messages.length-1].role!=="user")return json({ok:false,error:"last_message_must_be_user"},422);
  try{const base=new URL(env.IZAKHONO_AI_GATEWAY_URL!);if(base.protocol!=="https:")return json({ok:false,error:"ai_runtime_unavailable"},503);
  const upstream=await fetch(new URL("/api/v1/chat",base),{method:"POST",headers:{"content-type":"application/json","x-izakhono-ai-key":env.IZAKHONO_AI_GATEWAY_INTERNAL_KEY!,"x-izakhono-ai-workflow-key":env.IZAKHONO_AI_WORKFLOW_KEY!},body:JSON.stringify({entity_id:"izakhono-africa",subject:"izakhono-owner",product:"izakhono-ai",access_mode:"workflow",route:"owned",data_classification:"internal",messages}),signal:AbortSignal.timeout(120000)});
- const result=await upstream.json() as Record<string,any>;if(!upstream.ok||result.ok!==true)return json({ok:false,error:"ai_runtime_unavailable",upstream_status:upstream.status},503);
- return json({ok:true,answer:typeof result.answer==="string"?result.answer:typeof result.output?.text==="string"?result.output.text:"",model:result.model,route:result.route});
+ const result=await upstream.json() as Record<string,any>;
+ const answer=typeof result.answer==="string"?result.answer:typeof result.output?.text==="string"?result.output.text:"";
+ if(!upstream.ok||result.ok!==true||result.route!=="owned"||!answer.trim())return json({ok:false,error:"owned_inference_not_verified"},503);
+ return json({ok:true,answer,model:result.model,route:"owned"});
  }catch{return json({ok:false,error:"ai_runtime_unavailable"},503);}
 }
 export default {async fetch(req:Request,env:Env):Promise<Response>{
