@@ -60,4 +60,8 @@ for token in CONNECTA_NODE01_HEALTH_TOKEN CONNECTA_NODE02_HEALTH_TOKEN CONNECTA_
   grep -q "$token" "$workflow" || fail "certification workflow is missing protected credential mapping: $token"
 done
 
-echo "[PASS] CONNECTA production path and four-node certification contract are intact. Run VERIFY-CONNECTA-LEGACY-PATH.sh as the separate legacy regression gate."
+# Make this gate self-contained: every caller enforces the legacy NODE01
+# regression policy, even if a future workflow omits the separate audit step.
+bash infra/node-cluster/VERIFY-CONNECTA-LEGACY-PATH.sh
+
+echo "[PASS] CONNECTA production path, four-node certification and legacy-path exclusion are intact."
