@@ -3,6 +3,7 @@ import path from 'node:path';
 import { runBuilderAdapter } from './builder-adapter.mjs';
 import { runNodeAdapter } from './node-adapter.mjs';
 import { resolveFailover } from './node-failover.mjs';
+import { runAgentWorker } from './ai-agent-worker.mjs';
 
 const root = process.cwd();
 const manifestPath = path.join(root, 'autonomy', 'engine-manifest.json');
@@ -10,6 +11,29 @@ const statePath = path.join(root, 'autonomy', 'state.json');
 
 const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
 const state = fs.existsSync(statePath) ? JSON.parse(fs.readFileSync(statePath, 'utf8')) : { version: 1, tasks: {}, history: [] };
+
+const hasPersistentAgentStorage = Boolean(
+  process.env.IZAKHONO_NODE_DATA_DIR ||
+  (process.env.IZAKHONO_AGENT_STATE_PATH && process.env.IZAKHONO_AGENT_QUEUE_PATH)
+);
+let agentWorkerResult = null;
+let agentWorkerError = null;
+if (process.env.GITHUB_ACTIONS === 'true' && !hasPersistentAgentStorage) {
+  agentWorkerResult = {
+    status: 'waiting',
+    reason: 'persistent-owned-node-agent-storage-not-configured',
+    ownerGate: 'owned-node-runtime',
+    progressed: 0,
+    plans: [],
+  };
+} else {
+  try {
+    agentWorkerResult = await runAgentWorker();
+  } catch (error) {
+    agentWorkerError = error instanceof Error ? error.message : String(error);
+    agentWorkerResult = { status: 'failed', reason: 'agent-worker-execution-failed', progressed: 0, plans: [] };
+  }
+}
 
 function taskState(id) { return state.tasks[id] ?? { status: 'queued', attempts: 0 }; }
 function ready(task) { return task.dependsOn.every(id => taskState(id).status === 'completed'); }
@@ -34,10 +58,11 @@ function transition(task, status, extra = {}) {
   state.history.push({ at, task: task.id, from: previous.status, to: status, ...extra });
 }
 function evidenceFor(task, status = 'pending') { return (task.evidence ?? []).map(name => ({ name, status })); }
+const deferredThisRun = new Set();
 function selectNext() {
   return manifest.queue.find(task => {
     const current = taskState(task.id);
-    return !['completed', 'blocked'].includes(current.status) && !persistentWaitFor(task) && ready(task);
+    return !['completed', 'blocked'].includes(current.status) && !deferredThisRun.has(task.id) && !persistentWaitFor(task) && ready(task);
   });
 }
 function executeInternal(task) {
@@ -47,8 +72,28 @@ function executeInternal(task) {
     return { status: 'completed' };
   }
   if (task.action === 'run-worker') {
-    transition(task, 'completed', { attempts: taskState(task.id).attempts + 1, evidence: evidenceFor(task, 'passed') });
-    return { status: 'completed' };
+    if (agentWorkerError) {
+      return { status: 'failed', reason: agentWorkerError, evidence: [{ name: 'agent-worker-invoked', status: 'failed' }] };
+    }
+    if (agentWorkerResult?.ownerGate) {
+      return {
+        status: 'waiting',
+        ownerGate: agentWorkerResult.ownerGate,
+        reason: agentWorkerResult.reason,
+        evidence: [{ name: 'durable-agent-storage', status: 'pending' }],
+      };
+    }
+    if (agentWorkerResult?.reason === 'agent-worker-lock-held') {
+      return { status: 'waiting', reason: agentWorkerResult.reason, evidence: [{ name: 'exclusive-worker-lock', status: 'pending' }] };
+    }
+    return {
+      status: 'completed',
+      workerResult: agentWorkerResult,
+      evidence: [
+        { name: 'agent-worker-invoked', status: 'passed' },
+        { name: 'agent-queue-inspected', status: 'passed' },
+      ],
+    };
   }
   if (task.action === 'node-failover') {
     const result = resolveFailover(task.requirements ?? {});
@@ -88,6 +133,7 @@ while (progressed < manifest.queue.length) {
 
   if (!result) {
     transition(next, 'awaiting_adapter', { evidence: evidenceFor(next) });
+    deferredThisRun.add(next.id);
     externalGates.push(next);
   } else if (['completed', 'ready', 'assigned', 'eligible', 'instantiated'].includes(result.status)) {
     transition(next, 'completed', {
@@ -99,6 +145,7 @@ while (progressed < manifest.queue.length) {
       assignmentId: result.assignmentId ?? null,
       evidenceSource: result.source ?? null,
       acceptance: result.acceptance ?? null,
+      workerResult: result.workerResult ?? null,
     });
   } else if (result.status === 'waiting') {
     const ownerGate = next.ownerGate ?? result.ownerGate ?? null;
@@ -111,6 +158,7 @@ while (progressed < manifest.queue.length) {
       evidenceSource: result.source ?? null,
       acceptance: result.acceptance ?? null,
     });
+    deferredThisRun.add(next.id);
     externalGates.push(next);
   } else {
     const attempts = taskState(next.id).attempts;
@@ -121,13 +169,30 @@ while (progressed < manifest.queue.length) {
 }
 
 const remaining = manifest.queue.filter(task => taskState(task.id).status !== 'completed');
-const status = externalGates.length ? 'waiting_external_capability' : remaining.length ? 'blocked_or_waiting' : 'complete';
+const workerPlans = agentWorkerResult?.plans ?? [];
+const workerBlocked = workerPlans.some(plan => ['blocked', 'awaiting_approval', 'waiting'].includes(plan.status));
+const workerQueued = workerPlans.some(plan => ['queued', 'running'].includes(plan.status));
+const status = agentWorkerError
+  ? 'worker_failed'
+  : workerBlocked
+    ? 'blocked_or_waiting'
+    : workerQueued
+      ? 'in_progress'
+      : externalGates.length
+        ? 'waiting_external_capability'
+        : remaining.length
+          ? 'blocked_or_waiting'
+          : 'complete';
 const nextGate = externalGates[0] || null;
 
-fs.writeFileSync(statePath, JSON.stringify(state, null, 2) + '\n');
+const temporaryStatePath = `${statePath}.tmp-${process.pid}`;
+fs.writeFileSync(temporaryStatePath, JSON.stringify(state, null, 2) + '\n');
+fs.renameSync(temporaryStatePath, statePath);
 console.log(JSON.stringify({
   mode: manifest.mode,
   status,
+  worker: agentWorkerResult,
+  workerError: agentWorkerError,
   progressed,
   next: nextGate?.id ?? null,
   gate: nextGate?.ownerGate ?? null,
