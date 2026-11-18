@@ -1,5 +1,5 @@
 import {strict as assert} from 'node:assert';
-import {claimSupervisorLease,heartbeatSupervisorLease,finishSupervisorLease,recoverExpiredSupervisorLeases,type SupervisorLease} from './supervisor-store';
+import {ensureSupervisorSchema,claimSupervisorLease,heartbeatSupervisorLease,finishSupervisorLease,recoverExpiredSupervisorLeases,type SupervisorLease} from './supervisor-store';
 import type {D1Database,D1Statement} from './d1-store';
 
 type Row=Record<string,any>;
@@ -12,7 +12,7 @@ class FakeStatement implements D1Statement {
   async run():Promise<unknown>{return this.db.run(this.sql,this.values);}
 }
 class FakeDb implements D1Database {
-  jobs:Row[]=[{id:'job-a',worker_id:'build-worker',status:'queued',risk:'low',human_gate:null,attempts:0}];
+  statements:string[]=[];\n  jobs:Row[]=[{id:'job-a',worker_id:'build-worker',status:'queued',risk:'low',human_gate:null,attempts:0}];
   leases:Row[]=[]; attempts:Row[]=[]; events:Row[]=[];
   prepare(sql:string){return new FakeStatement(this,sql);}
   async first<T>(sql:string,v:unknown[]):Promise<T|null>{
