@@ -56,6 +56,8 @@ powershell -NoProfile -Command "$r=Invoke-WebRequest -UseBasicParsing http://127
 powershell -NoProfile -Command "$r=Invoke-WebRequest -UseBasicParsing http://127.0.0.1:8781/api/flow -TimeoutSec 2; $j=$r.Content ^| ConvertFrom-Json; if($r.StatusCode -ne 200 -or -not $j.integrated -or -not $j.engineIndependent -or -not $j.internalHealthConfigured){exit 1}" || exit /b 1
 powershell -NoProfile -Command "$r=Invoke-WebRequest -UseBasicParsing http://127.0.0.1:8781/api/flow/health -TimeoutSec 4; $j=$r.Content ^| ConvertFrom-Json; if($r.StatusCode -ne 200 -or -not $j.ok -or $j.upstreamStatus -ne 200 -or $j.service.service -ne 'izakhono-flow'){exit 1}" || exit /b 1
 
+powershell -NoProfile -Command "try { $r=Invoke-WebRequest -UseBasicParsing http://127.0.0.1:8781/api/chat/health -TimeoutSec 4; $j=$r.Content ^| ConvertFrom-Json; if($r.StatusCode -eq 200 -and $j.status -eq 'connected') { 'ONE_AI_MODEL=CONNECTED' } else { 'ONE_AI_MODEL=DISCONNECTED' } } catch { 'ONE_AI_MODEL=DISCONNECTED' }"
+
 echo IZAKHONO_ONE_NODE01=INTERNAL_PASS
 echo BUILDER_INTEGRATION=SOURCE_BRIDGE_PASS
 echo FLOW_INTEGRATION=INTERNAL_HEALTH_PASS

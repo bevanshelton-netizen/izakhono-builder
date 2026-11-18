@@ -1,44 +1,286 @@
-const grid=document.querySelector('#service-grid');
-const search=document.querySelector('#search');
-const count=document.querySelector('#service-count');
-const status=document.querySelector('#engine-status');
-const esc=v=>String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const parallel=[
-{slug:'search',name:'IZAKHONO SEARCH',category:'Discovery',icon:'⌕',description:'African-first web, local, business, product and content discovery with AI answers and private search.',status:'foundation',path:'/search',actions:['Search the web','Find African businesses','Discover products and services']},
-{slug:'connecta',name:'CONNECTA',category:'Community',icon:'◉',description:'Social network, communities, messaging, creators, business pages, jobs and marketplace connections.',status:'foundation',path:'/connecta',actions:['Create a profile','Join communities','Connect creators and businesses']},
-{slug:'ai',name:'ONE AI',category:'Intelligence',icon:'✦',description:'Personal, business, school and developer intelligence with creation, analysis and automation.',status:'foundation',path:'/ai',actions:['Ask ONE AI','Create content','Automate work']},
-{slug:'cloud',name:'ONE CLOUD',category:'Workspace',icon:'☁',description:'Files, documents, sheets, presentations, mail, calendar and team collaboration.',status:'foundation',path:'/cloud',actions:['Store files','Create documents','Collaborate with teams']},
-{slug:'commerce',name:'ONE COMMERCE',category:'Commerce',icon:'◇',description:'Marketplace, storefronts, payments, invoicing, digital products and controlled advertising.',status:'foundation',path:'/commerce',actions:['Open a storefront','Create an invoice','Sell products and services']},
-{slug:'nav',name:'IZAKHONO NAV',category:'Mobility & Safety',icon:'⌖',description:'Navigation, driver safety, emergency response, fleet intelligence and African road intelligence.',status:'foundation',path:'/nav',actions:['Plan a journey','Activate safety tools','Manage fleet intelligence']},
-{slug:'fortress',name:'FORTRESS',category:'Security',icon:'◆',description:'Identity protection, fraud signals, device intelligence, permissions and security audit.',status:'foundation',path:'/fortress',actions:['Protect identity','Review security','Manage permissions']}
-];
-let services=[];
-function render(list){
- count.textContent=`${list.length} services · 7 parallel pillars`;
- grid.innerHTML=list.map(s=>`<article class="service" id="service-${esc(s.slug)}"><div class="service-icon">${s.icon}</div><div class="service-body"><div class="service-meta"><span>${esc(s.category)}</span><em>${esc(s.status)}</em></div><h3>${esc(s.name)}</h3><p>${esc(s.description)}</p><div class="service-actions">${(s.actions||[]).map(a=>`<span>${esc(a)}</span>`).join('')}</div><a class="open" href="${esc(s.path)}">Enter service →</a></div></article>`).join('')}
-function activateFromRoute(){
- const slug=new URLSearchParams(location.search).get('service');
- if(!slug)return;
- const item=parallel.find(s=>s.slug===slug);
- if(!item)return;
- const hero=document.querySelector('.hero-copy');
- if(hero){
-  const heading=hero.querySelector('h1');
-  const desc=hero.querySelector('p');
-  if(heading)heading.innerHTML=`${esc(item.name)}<br><span>${esc(item.category)}</span>`;
-  if(desc)desc.textContent=item.description;
- }
- const target=document.querySelector('#service-'+CSS.escape(item.slug));
- if(target){setTimeout(()=>target.scrollIntoView({behavior:'smooth',block:'center'}),80);target.classList.add('focus-service')}
+const STORAGE_KEY = 'izakhono-one:conversations:v1';
+const MAX_HISTORY = 30;
+
+const sidebar = document.querySelector('#sidebar');
+const mobileScrim = document.querySelector('#mobile-scrim');
+const welcome = document.querySelector('#welcome');
+const conversation = document.querySelector('#conversation');
+const messagesElement = document.querySelector('#messages');
+const chatList = document.querySelector('#chat-list');
+const form = document.querySelector('#chat-form');
+const input = document.querySelector('#message-input');
+const sendButton = document.querySelector('#send-button');
+const statusElement = document.querySelector('#ai-status');
+
+const state = {
+  conversations: loadConversations(),
+  activeId: null,
+  messages: [],
+  busy: false
+};
+
+function makeId() {
+  return globalThis.crypto && typeof globalThis.crypto.randomUUID === 'function'
+    ? globalThis.crypto.randomUUID()
+    : 'chat-' + Date.now() + '-' + Math.random().toString(36).slice(2, 9);
 }
-async function boot(){
- try{
-  const r=await fetch('./registry.json',{cache:'no-store'});
-  const data=await r.json();
-  const registry=Array.isArray(data.services)?data.services:[];
-  services=[...parallel,...registry.filter(s=>!parallel.some(p=>p.name===s.name))];
-  status.textContent='● ONE ENGINE READY';status.classList.add('ready');render(services);activateFromRoute();
- }catch{status.textContent='● DEGRADED';render(parallel);activateFromRoute()}
+
+function loadConversations() {
+  try {
+    const value = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+    if (!Array.isArray(value)) return [];
+    return value.filter((item) =>
+      item && typeof item.id === 'string' && Array.isArray(item.messages)
+    ).slice(0, MAX_HISTORY);
+  } catch {
+    return [];
+  }
 }
-search.addEventListener('input',()=>{const q=search.value.trim().toLowerCase();render(!q?services:services.filter(s=>[s.name,s.category,s.description,...(s.actions||[])].join(' ').toLowerCase().includes(q)))});
-boot();
+
+function titleFor(messages) {
+  const first = messages.find((item) => item.role === 'user');
+  if (!first) return 'New chat';
+  const title = first.content.replace(/\s+/g, ' ').trim();
+  return title.length > 38 ? title.slice(0, 38) + '…' : title;
+}
+
+function saveConversation() {
+  if (!state.activeId || !state.messages.length) return;
+  const now = new Date().toISOString();
+  const existing = state.conversations.find((item) => item.id === state.activeId);
+  const conversationData = {
+    id: state.activeId,
+    title: titleFor(state.messages),
+    messages: state.messages.slice(-MAX_HISTORY),
+    updatedAt: now
+  };
+  if (existing) Object.assign(existing, conversationData);
+  else state.conversations.unshift(conversationData);
+  state.conversations.sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)));
+  state.conversations = state.conversations.slice(0, MAX_HISTORY);
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state.conversations));
+  } catch {
+    // The current conversation remains usable if device storage is unavailable.
+  }
+  renderHistory();
+}
+
+function renderHistory() {
+  chatList.replaceChildren();
+  if (!state.conversations.length) {
+    const empty = document.createElement('p');
+    empty.className = 'history-empty';
+    empty.textContent = 'Your recent chats will appear here.';
+    chatList.append(empty);
+    return;
+  }
+  for (const item of state.conversations) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'history-item' + (item.id === state.activeId ? ' active' : '');
+    button.textContent = item.title || 'New chat';
+    button.title = item.title || 'New chat';
+    button.addEventListener('click', () => openConversation(item.id));
+    chatList.append(button);
+  }
+}
+
+function renderMessages() {
+  messagesElement.replaceChildren();
+  for (const message of state.messages) {
+    const article = document.createElement('article');
+    article.className = 'message message-' + message.role;
+    const avatar = document.createElement('div');
+    avatar.className = 'message-avatar' + (message.role === 'assistant' ? ' assistant-avatar' : '');
+    avatar.textContent = message.role === 'assistant' ? '✦' : 'Y';
+    const contentWrap = document.createElement('div');
+    contentWrap.className = 'message-wrap';
+    const author = document.createElement('div');
+    author.className = 'message-author';
+    author.textContent = message.role === 'assistant' ? 'IZAKHONO ONE' : 'You';
+    const content = document.createElement('div');
+    content.className = 'message-content';
+    content.textContent = message.content;
+    contentWrap.append(author, content);
+    article.append(avatar, contentWrap);
+    messagesElement.append(article);
+  }
+  if (state.busy) {
+    const typing = document.createElement('div');
+    typing.className = 'typing-indicator';
+    typing.innerHTML = '<span></span><span></span><span></span><em>IZAKHONO ONE is thinking…</em>';
+    messagesElement.append(typing);
+  }
+  messagesElement.scrollTop = messagesElement.scrollHeight;
+}
+
+function syncView() {
+  const hasMessages = state.messages.length > 0;
+  welcome.hidden = hasMessages;
+  conversation.hidden = !hasMessages;
+  renderMessages();
+  renderHistory();
+}
+
+function closeSidebar() {
+  sidebar.classList.remove('open');
+  mobileScrim.hidden = true;
+  document.querySelector('#menu-toggle').setAttribute('aria-expanded', 'false');
+}
+
+function newChat() {
+  if (state.busy) return;
+  state.activeId = makeId();
+  state.messages = [];
+  input.value = '';
+  input.focus();
+  closeSidebar();
+  syncView();
+  updateSendButton();
+}
+
+function openConversation(id) {
+  if (state.busy) return;
+  const selected = state.conversations.find((item) => item.id === id);
+  if (!selected) return;
+  state.activeId = selected.id;
+  state.messages = selected.messages.map((item) => ({ role: item.role, content: item.content }));
+  input.value = '';
+  closeSidebar();
+  syncView();
+  updateSendButton();
+}
+
+function updateSendButton() {
+  sendButton.disabled = state.busy || !input.value.trim();
+  sendButton.querySelector('span:first-child').textContent = state.busy ? 'Working…' : 'Send';
+}
+
+function resizeInput() {
+  input.style.height = 'auto';
+  input.style.height = Math.min(input.scrollHeight, 180) + 'px';
+  updateSendButton();
+}
+
+function setAIStatus(status, detail) {
+  const label = status === 'connected' ? 'ONE AI connected' : 'AI not connected';
+  statusElement.className = 'ai-status ' + (status === 'connected' ? 'connected' : 'disconnected');
+  statusElement.querySelector('span:last-child').textContent = label;
+  statusElement.title = detail || label;
+}
+
+async function checkAIStatus() {
+  try {
+    const response = await fetch('/api/chat/health', { cache: 'no-store' });
+    const data = await response.json();
+    setAIStatus(data.status, data.status === 'connected'
+      ? 'Connected to the approved IZAKHONO local AI runtime.'
+      : data.status === 'model_missing'
+        ? 'The approved local model is not installed yet.'
+        : 'The approved AI runtime is not reachable. No external provider fallback is used.');
+  } catch {
+    setAIStatus('offline', 'The ONE AI status service could not be reached.');
+  }
+}
+
+function modelContext() {
+  let total = 0;
+  const selected = [];
+  for (let index = state.messages.length - 1; index >= 0 && selected.length < 20; index -= 1) {
+    const item = state.messages[index];
+    if (total + item.content.length > 30000) break;
+    selected.unshift(item);
+    total += item.content.length;
+  }
+  return selected;
+}
+
+async function sendMessage(text) {
+  const content = String(text || '').trim();
+  if (!content || state.busy) return;
+  if (!state.activeId) state.activeId = makeId();
+  state.messages.push({ role: 'user', content });
+  input.value = '';
+  resizeInput();
+  state.busy = true;
+  syncView();
+  updateSendButton();
+  saveConversation();
+
+  try {
+    const response = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ messages: modelContext() }),
+      cache: 'no-store'
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || !data.ok || typeof data.message !== 'string') {
+      const explanation = data.message || (response.status === 503
+        ? 'ONE AI is not connected to its approved model runtime yet. Your message has not been sent to another provider.'
+        : 'I could not complete that request. Please try again.');
+      state.messages.push({ role: 'assistant', content: explanation });
+    } else {
+      state.messages.push({ role: 'assistant', content: data.message });
+      setAIStatus('connected', 'Connected to the approved IZAKHONO local AI runtime.');
+    }
+  } catch {
+    state.messages.push({
+      role: 'assistant',
+      content: 'I could not reach ONE AI. Please check the connection and try again. Your message has not been sent to another provider.'
+    });
+  } finally {
+    state.busy = false;
+    syncView();
+    updateSendButton();
+    saveConversation();
+    input.focus();
+  }
+}
+
+form.addEventListener('submit', (event) => {
+  event.preventDefault();
+  sendMessage(input.value);
+});
+
+input.addEventListener('input', resizeInput);
+input.addEventListener('keydown', (event) => {
+  if (event.key === 'Enter' && !event.shiftKey) {
+    event.preventDefault();
+    if (!sendButton.disabled) form.requestSubmit();
+  }
+});
+
+document.querySelectorAll('[data-prompt]').forEach((button) => {
+  button.addEventListener('click', () => {
+    input.value = button.dataset.prompt || '';
+    resizeInput();
+    input.focus();
+    closeSidebar();
+  });
+});
+
+document.querySelector('#new-chat').addEventListener('click', newChat);
+document.querySelector('#new-chat-top').addEventListener('click', newChat);
+document.querySelector('#clear-history').addEventListener('click', () => {
+  if (!state.conversations.length || !window.confirm('Clear chat history saved on this device?')) return;
+  state.conversations = [];
+  state.activeId = null;
+  state.messages = [];
+  try { localStorage.removeItem(STORAGE_KEY); } catch {}
+  syncView();
+  updateSendButton();
+});
+document.querySelector('#menu-toggle').addEventListener('click', () => {
+  sidebar.classList.add('open');
+  mobileScrim.hidden = false;
+  document.querySelector('#menu-toggle').setAttribute('aria-expanded', 'true');
+});
+document.querySelector('#sidebar-close').addEventListener('click', closeSidebar);
+mobileScrim.addEventListener('click', closeSidebar);
+
+renderHistory();
+syncView();
+updateSendButton();
+checkAIStatus();

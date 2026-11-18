@@ -1,11 +1,90 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="IZAKHONO ONE — the unified African-first digital operating layer."><meta name="referrer" content="no-referrer"><meta name="theme-color" content="#06100b"><link rel="manifest" href="./manifest.webmanifest"><title>IZAKHONO ONE</title><link rel="stylesheet" href="./styles.css"></head>
-<body><div class="app-shell">
-<header class="topbar"><a class="brand" href="/">IZAKHONO <b>ONE</b></a><nav><a href="#services">Services</a><a href="#architecture">Architecture</a><a href="#security">FORTRESS</a></nav><div class="status" id="engine-status">● STARTING</div></header>
-<main>
-<section class="hero"><div class="hero-copy"><div class="eyebrow">AFRICAN-FIRST · GLOBAL-READY · OWNED-FIRST</div><h1>One identity.<br><span>One ecosystem.</span></h1><p>IZAKHONO ONE is the control plane for Search, CONNECTA, ONE AI, ONE CLOUD, ONE COMMERCE, NAV and FORTRESS — with one service registry and one doorway.</p><div class="hero-actions"><a class="primary" href="#services">Open ecosystem</a><a class="secondary" href="#architecture">View architecture</a></div></div><div class="orbit"><div class="core">ONE<br><small>CONTROL PLANE</small></div><i>SEARCH</i><i>CONNECTA</i><i>AI</i><i>CLOUD</i><i>COMMERCE</i><i>NAV</i><i>FORTRESS</i></div></section>
-<section class="command"><div><label>UNIVERSAL SERVICE SEARCH</label><input id="search" type="search" placeholder="Search any IZAKHONO service…" aria-label="Search services"></div><strong id="service-count">Loading…</strong></section>
-<section id="services"><div class="section-head"><div><div class="eyebrow">SERVICE REGISTRY</div><h2>Everything connected.</h2></div><p>Each service remains independently deployable while sharing identity, AI context, notifications, commerce and security primitives.</p></div><div class="grid" id="service-grid" aria-live="polite"></div></section>
-<section id="architecture" class="architecture"><div class="section-head"><div><div class="eyebrow">SYSTEM ARCHITECTURE</div><h2>Built as infrastructure, not a collection of websites.</h2></div></div><div class="arch-grid"><article><b>01 · IDENTITY</b><h3>IZAKHONO ONE</h3><p>Universal account, profile, permissions and service access.</p></article><article><b>02 · INTELLIGENCE</b><h3>ONE AI</h3><p>Provider-neutral intelligence and automation across the ecosystem.</p></article><article><b>03 · SERVICE BUS</b><h3>COMMON PRIMITIVES</h3><p>Notifications, payments, customer context, APIs and audit events.</p></article><article><b>04 · SECURITY</b><h3>FORTRESS</h3><p>Identity protection, fraud signals, device intelligence and audit.</p></article><article><b>05 · PRODUCTS</b><h3>SEARCH · CONNECTA · CLOUD · COMMERCE · NAV</h3><p>Customer-facing services share the same control plane without becoming one monolith.</p></article><article><b>06 · RUNTIME</b><h3>OWNED-FIRST</h3><p>IZAKHONO infrastructure is primary; external capacity remains replaceable and reversible.</p></article></div></section>
-<section id="security" class="security"><div><div class="eyebrow">FORTRESS SECURITY LAYER</div><h2>Trust is a platform primitive.</h2><p>Security boundaries are designed into identity, permissions, routing, payments and audit. Unverified services stay visibly gated rather than being presented as live.</p></div><div class="checks"><span>✓ Identity boundary</span><span>✓ Provider-neutral</span><span>✓ No advertising IDs</span><span>✓ Audit-ready</span><span>✓ External-resilience</span><span>✓ Evidence-gated launch</span></div></section>
-</main><footer>IZAKHONO ONE · SUPER APP · OWNED-FIRST INFRASTRUCTURE · STATUS IS EVIDENCE-GATED</footer></div><script type="module" src="./app.js"></script><script>if('serviceWorker' in navigator){navigator.serviceWorker.register('./sw.js').catch(()=>{})}</script></body></html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="description" content="IZAKHONO ONE — one simple AI assistant for your ideas, business and work.">
+  <meta name="referrer" content="no-referrer">
+  <meta name="theme-color" content="#101714">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <title>IZAKHONO ONE</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebar" aria-label="Main navigation">
+      <div class="sidebar-header">
+        <a class="brand" href="/" aria-label="IZAKHONO ONE home">IZAKHONO <span>ONE</span></a>
+        <button class="icon-button sidebar-close" id="sidebar-close" type="button" aria-label="Close menu">×</button>
+      </div>
+      <button class="new-chat-button" id="new-chat" type="button">
+        <span class="plus">＋</span><span>New chat</span>
+      </button>
+      <div class="sidebar-section-label">YOUR WORK</div>
+      <nav class="quick-nav" aria-label="Quick actions">
+        <button class="nav-button" type="button" data-prompt="Help me research an opportunity and recommend the best next steps."><span class="nav-icon">⌕</span> Research</button>
+        <button class="nav-button" type="button" data-prompt="Help me start or improve a business. Ask me only for the information you need."><span class="nav-icon">◇</span> Business</button>
+        <button class="nav-button" type="button" data-prompt="Help me create a website or digital product."><span class="nav-icon">✧</span> Create something</button>
+        <button class="nav-button" type="button" data-prompt="Help me organise my projects and decide what needs attention next."><span class="nav-icon">▤</span> Projects</button>
+      </nav>
+      <div class="history-heading">
+        <span class="sidebar-section-label">RECENT CHATS</span>
+        <button class="text-button" id="clear-history" type="button">Clear</button>
+      </div>
+      <div class="chat-history" id="chat-list" aria-label="Recent chats"></div>
+      <div class="sidebar-footer">
+        <div class="privacy-line"><span class="privacy-dot"></span> Private by design</div>
+        <p>Your chat history is saved on this device.</p>
+      </div>
+    </aside>
+
+    <div class="mobile-scrim" id="mobile-scrim" hidden></div>
+
+    <section class="main-panel">
+      <header class="topbar">
+        <button class="icon-button menu-button" id="menu-toggle" type="button" aria-label="Open menu" aria-expanded="false">☰</button>
+        <div class="topbar-brand">IZAKHONO <span>ONE</span><small>Your AI assistant</small></div>
+        <div class="topbar-actions">
+          <div class="ai-status" id="ai-status" role="status"><span class="status-dot"></span><span>Checking AI…</span></div>
+          <button class="top-new-chat" id="new-chat-top" type="button">＋ <span>New chat</span></button>
+        </div>
+      </header>
+
+      <main class="workspace">
+        <section class="welcome" id="welcome">
+          <div class="welcome-mark" aria-hidden="true">✦</div>
+          <div class="eyebrow">ONE ASSISTANT. YOUR WHOLE ECOSYSTEM.</div>
+          <h1>What can I help you with?</h1>
+          <p>Ask a question, develop an idea, plan your business or get help with your work. Just tell me what you need.</p>
+          <div class="prompt-grid" aria-label="Suggested prompts">
+            <button class="prompt-card" type="button" data-prompt="Help me start a business in South Africa."><span class="prompt-icon">◇</span><span><strong>Start a business</strong><small>Turn an idea into a plan</small></span></button>
+            <button class="prompt-card" type="button" data-prompt="Help me create a professional website for my business."><span class="prompt-icon">⌘</span><span><strong>Build a website</strong><small>Create something online</small></span></button>
+            <button class="prompt-card" type="button" data-prompt="Research funding opportunities for my business and explain how to apply."><span class="prompt-icon">⌕</span><span><strong>Find opportunities</strong><small>Research and compare options</small></span></button>
+            <button class="prompt-card" type="button" data-prompt="Help me organise my current projects into a clear action plan."><span class="prompt-icon">▤</span><span><strong>Organise my work</strong><small>Plan projects and next steps</small></span></button>
+          </div>
+        </section>
+
+        <section class="conversation" id="conversation" hidden aria-label="Conversation">
+          <div class="messages" id="messages" aria-live="polite" aria-relevant="additions"></div>
+        </section>
+      </main>
+
+      <div class="composer-area">
+        <form class="composer-form" id="chat-form">
+          <div class="composer">
+            <label class="visually-hidden" for="message-input">Message IZAKHONO ONE</label>
+            <textarea id="message-input" rows="1" maxlength="8000" placeholder="Message IZAKHONO ONE…" autocomplete="off" required></textarea>
+            <div class="composer-bottom">
+              <span class="composer-hint">Enter to send · Shift + Enter for a new line</span>
+              <button class="send-button" id="send-button" type="submit" disabled><span>Send</span><span aria-hidden="true">↑</span></button>
+            </div>
+          </div>
+        </form>
+        <p class="disclaimer">IZAKHONO ONE can make mistakes. Check important information before acting.</p>
+      </div>
+    </section>
+  </div>
+  <script type="module" src="./app.js"></script>
+  <script>if('serviceWorker' in navigator){navigator.serviceWorker.register('./sw.js').catch(()=>{})}</script>
+</body>
+</html>
