@@ -15,10 +15,11 @@ try {
   process.env.IZAKHONO_NODE_ID = 'test-software-node';
   process.env.IZAKHONO_WORKLOAD_EXECUTION_STATE_PATH = path.join(temp, 'workload-execution.json');
 
-  const execution = await runNodeAdapter('kora-workload-execute');
+  const execution = await runNodeAdapter('kora-workload-execute', { selectedNode: 'test-software-node' });
   assert.equal(execution.status, 'waiting');
   assert.equal(execution.reason, 'kora-runtime-execution-requires-eligible-node');
   assert.equal(execution.acceptance, 'not-verified');
+  assert.equal(execution.nodeId, 'test-software-node');
 
   const routing = await runNodeAdapter('kora-routing-acceptance');
   assert.equal(routing.status, 'waiting');
