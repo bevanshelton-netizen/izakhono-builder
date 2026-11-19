@@ -17,7 +17,7 @@ function json(value) {
 }
 
 function safeProjectId(value) {
-  const id = String(value ?? '').toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 63);
+  const id = String(value ?? '').toLowerCase();
   if (!SAFE_ID.test(id)) throw new Error('application-project-id-invalid');
   return id;
 }
