@@ -34,8 +34,22 @@ async function recordDelivery(env, { eventId, merchantSlug, intentId, webhookUrl
     await env.DB.prepare('INSERT INTO merchant_webhook_deliveries(id,event_id,merchant_slug,intent_id,webhook_url,status,last_error) VALUES(?,?,?,?,?,?,?)')
       .bind(deliveryId(), eventId, merchantSlug, intentId, webhookUrl, status, error).run();
     return true;
-  } catch {
-    return false;
+  } catch (insertError) {
+    // A deterministic event ID means an existing row may be a replay. Only a
+    // previously failed delivery is eligible for an atomic retry claim.
+    let existing;
+    try {
+      existing = await env.DB.prepare('SELECT status FROM merchant_webhook_deliveries WHERE event_id=? LIMIT 1')
+        .bind(eventId).first();
+    } catch {
+      throw insertError;
+    }
+    if (!existing) throw insertError;
+    if (existing.status !== 'failed') return false;
+
+    const reclaimed = await env.DB.prepare("UPDATE merchant_webhook_deliveries SET status='pending',last_http_status=NULL,last_error=NULL WHERE event_id=? AND status='failed'")
+      .bind(eventId).run();
+    return Number(reclaimed?.meta?.changes ?? reclaimed?.changes ?? 0) === 1;
   }
 }
 
