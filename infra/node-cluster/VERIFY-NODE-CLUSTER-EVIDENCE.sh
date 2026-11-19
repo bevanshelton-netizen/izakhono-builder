@@ -11,7 +11,10 @@ if [[ -z "$EVIDENCE_PATH" || ! -f "$EVIDENCE_PATH" ]]; then
 fi
 
 python3 - "$EVIDENCE_PATH" <<'PY'
+import hashlib
+import hmac
 import json
+import os
 import re
 import sys
 from datetime import datetime, timezone
@@ -20,6 +23,19 @@ from pathlib import Path
 path = Path(sys.argv[1])
 MAX_AGE_SECONDS = 300
 SCHEME = "bearer-hmac-sha256"
+REQUIRE_CRYPTO = os.environ.get("CONNECTA_REQUIRE_CRYPTOGRAPHIC_EVIDENCE", "").lower() == "true"
+TOKEN_ENV = {
+    "NODE01": "NODE01_HEALTH_TOKEN",
+    "NODE02": "NODE02_HEALTH_TOKEN",
+    "NODE03": "NODE03_HEALTH_TOKEN",
+    "NODE04": "NODE04_HEALTH_TOKEN",
+}
+tokens = {node: os.environ.get(env, "") for node, env in TOKEN_ENV.items()}
+if REQUIRE_CRYPTO:
+    if any(not re.fullmatch(r"[a-fA-F0-9]{64}", token) for token in tokens.values()):
+        blocked("cryptographic verification requires four valid per-node health tokens")
+    if len(set(tokens.values())) != 4:
+        blocked("cryptographic verification requires four unique per-node health tokens")
 
 def blocked(message):
     print(f"[BLOCKED] {message}", file=sys.stderr)
@@ -97,6 +113,11 @@ for record in nodes:
     seen_nonces.add(nonce)
     if not isinstance(signature, str) or not re.fullmatch(r"[a-f0-9]{64}", signature):
         blocked(f"{name} HMAC signature is missing or malformed")
+    if REQUIRE_CRYPTO:
+        message = f"izakhono-production\\n{name}\\n{nonce}".encode("utf-8")
+        expected_signature = hmac.new(bytes.fromhex(tokens[name]), message, hashlib.sha256).hexdigest()
+        if not hmac.compare_digest(signature, expected_signature):
+            blocked(f"{name} HMAC signature does not match the protected runtime credential")
     response = record.get("http")
     if not isinstance(response, dict) or response.get("ok") is not True or response.get("runtimeNode") != name or response.get("cluster") != "izakhono-production" or response.get("authScheme") != SCHEME:
         blocked(f"{name} endpoint response does not prove its own runtime, cluster and auth scheme")
