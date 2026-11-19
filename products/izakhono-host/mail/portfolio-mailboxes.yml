@@ -47,6 +47,9 @@ platforms:
   - id: edu-build
     name: Edu-Build Institute
     priority: high
+    ownership_status: external
+    provisioning_enabled: false
+    authorization_required: true
     domain: TBD
   - id: allegro-vibez
     name: Allegro Vibez
