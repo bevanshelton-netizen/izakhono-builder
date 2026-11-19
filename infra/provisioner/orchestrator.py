@@ -21,6 +21,7 @@ STATE_CAPABILITY: dict[State, str] = {
     State.SITE_READY: "site",
     State.TLS_READY: "tls",
     State.MAIL_READY: "mail",
+    State.BILLING_VERIFIED: "payment",
     State.INTEGRATIONS_READY: "crm_whatsapp",
     State.ACCEPTANCE_PASSED: "acceptance",
 }
