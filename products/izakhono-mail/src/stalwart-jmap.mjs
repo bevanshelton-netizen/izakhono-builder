@@ -2,11 +2,11 @@ import { isIP } from 'node:net';
 
 const JMAP_CAPABILITIES = ['urn:ietf:params:jmap:core', 'urn:stalwart:jmap'];
 const MAX_RESPONSE_BYTES = 1024 * 1024;
-const DOMAIN_RE = /^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z]{2,63}$/i;
-const LOCAL_RE = /^[a-z0-9.!#$%&'*+\\/=?^_`{|}~-]{1,64}$/i;
+const DOMAIN_RE = /^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/i;
+const LOCAL_RE = /^[a-z0-9.!#$%&'*+\/=?^_{|}~-]{1,64}$/i;
 
 function privateHost(hostname) {
-  const host = String(hostname || '').toLowerCase().replace(/^\\[|\\]$/g, '');
+  const host = String(hostname || '').toLowerCase().replace(/^\[|\]$/g, '');
   if (host === 'localhost' || host.endsWith('.localhost') || host.endsWith('.local') || host.endsWith('.internal')) return true;
   if (/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(host) && !host.includes('.')) return true;
   const family = isIP(host);
@@ -21,7 +21,7 @@ function privateHost(hostname) {
 }
 
 function validateAddress(domain, mailbox) {
-  const canonicalDomain = String(domain || '').trim().toLowerCase().replace(/\\.$/, '');
+  const canonicalDomain = String(domain || '').trim().toLowerCase().replace(/\.$/, '');
   const local = String(mailbox || '').trim().toLowerCase();
   if (!DOMAIN_RE.test(canonicalDomain)) throw new Error('stalwart-domain-invalid');
   if (!LOCAL_RE.test(local) || local.startsWith('.') || local.endsWith('.') || local.includes('..')) {
@@ -90,7 +90,7 @@ export class StalwartJmapTransport {
   }
 
   async ensureDomain(domain) {
-    const canonical = String(domain || '').trim().toLowerCase().replace(/\\.$/, '');
+    const canonical = String(domain || '').trim().toLowerCase().replace(/\.$/, '');
     if (!DOMAIN_RE.test(canonical)) throw new Error('stalwart-domain-invalid');
     const query = await this.call('x:Domain/query', { filter: { name: canonical } });
     let domainId = Array.isArray(query.ids) ? query.ids[0] : null;
