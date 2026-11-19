@@ -116,8 +116,23 @@ jobs:
         working-directory: products/izakhono-mail/runtime-v1
         run: |
           cp .env.example .env
-          sed -i 's/CHANGE_ME_STRONG_PASSWORD/ci-mailbox-password-123456789/g; s/CHANGE_ME_DB_PASSWORD/ci-roundcube-db-password-123456789/g' .env
+          sed -i 's/CHANGE_ME_STRONG_PASSWORD/ci-mailbox-password-123456789/g; s/CHANGE_ME_DB_ROOT_PASSWORD/ci-roundcube-db-root-password-123456789/g; s/CHANGE_ME_DB_PASSWORD/ci-roundcube-db-password-123456789/g' .env
           docker compose config --quiet
+
+      - name: Enforce single canonical mail engine and shared edge
+        run: |
+          python3 - <<'PY'
+          import pathlib
+          runtime = pathlib.Path('products/izakhono-mail/runtime-v1/docker-compose.yml').read_text()
+          host_mail = pathlib.Path('products/izakhono-host/mail/docker-compose.mail.yml').read_text()
+          if '  roundcube-db:' not in runtime or '  roundcube:' not in runtime:
+              raise SystemExit('Roundcube services missing from mail runtime')
+          if '  stalwart:' in runtime or '  caddy:' in runtime:
+              raise SystemExit('Mail runtime must not launch duplicate Stalwart or Caddy services')
+          if 'izakhono-mail' not in runtime or '  stalwart:' not in host_mail:
+              raise SystemExit('Shared network or canonical HOST Stalwart service missing')
+          print('single mail engine/shared edge contract: PASS')
+          PY
 
       - name: Validate runtime-v1 required files
         working-directory: products/izakhono-mail/runtime-v1
@@ -127,12 +142,15 @@ jobs:
           test -f .env.example
           test -f ops/bootstrap.sh
           test -f ops/preflight.sh
+          test -f ../config/stalwart-provisioner-role.json
           test -f ops/PROVIDER-ACCEPTANCE.sh
+          test -f ops/backup.sh
+          test -f ops/restore.sh
           test -f ops/PROVISION-CONTABO.md
 
       - name: Verify no production secrets are tracked
         run: |
-          if git grep -n -E 'BEGIN (RSA|OPENSSH|PRIVATE) KEY|MAILBOX_PASSWORD=[^C]|ROUNDCUBE_DB_PASSWORD=[^C]' -- products/izakhono-mail/runtime-v1; then
+          if git grep -n -E 'BEGIN (RSA|OPENSSH|PRIVATE) KEY|MAILBOX_PASSWORD=[^C]|ROUNDCUBE_DB_PASSWORD=[^C]|ROUNDCUBE_DB_ROOT_PASSWORD=[^C]|STALWART_PROVISIONER_API_KEY=[^C]|STALWART_RECOVERY_ADMIN=admin:[^C]|AGE_RECIPIENT=age1' -- products/izakhono-mail/runtime-v1; then
             echo 'Tracked production secret material detected.'
             exit 1
           fi

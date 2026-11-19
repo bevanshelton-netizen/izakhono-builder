@@ -1,10 +1,11 @@
-mail.izakhonoafrica.co.za {
-    encode gzip
-    reverse_proxy roundcube:80
-    header {
-        Strict-Transport-Security "max-age=31536000; includeSubDomains"
-        X-Content-Type-Options "nosniff"
-        X-Frame-Options "SAMEORIGIN"
-        Referrer-Policy "strict-origin-when-cross-origin"
-    }
-}
+# Reference only — do not run a second Caddy container from this directory.
+# Public HTTP/HTTPS and ACME challenge routing are owned by:
+# products/izakhono-host/edge/Caddyfile
+#
+# The shared HOST EDGE:
+# - forwards mail.izakhonoafrica.co.za/.well-known/acme-challenge/* to stalwart:8080
+# - routes https://webmail.izakhonoafrica.co.za to roundcube:80
+# - keeps Stalwart admin/JMAP listeners loopback-only
+#
+# This file is retained as a stable runtime manifest pointer for existing
+# deployment tooling. The HOST EDGE configuration is the executable source.
