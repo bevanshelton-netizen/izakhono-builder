@@ -15,6 +15,7 @@ assert.ok(html.includes('\n'), 'rendered HTML uses real line breaks');
 assert.ok(!html.includes(String.raw`\n`), 'rendered HTML does not contain escaped newline text');
 assert.throws(() => resolveLocalModelConfig({ IZAKHONO_LOCAL_MODEL_URL: 'https://example.com/api/chat', IZAKHONO_MODEL_TRUSTED_HOSTS: 'example.com' }), /not-private/);
 assert.throws(() => resolveLocalModelConfig({ IZAKHONO_LOCAL_MODEL_URL: 'http://127.0.0.1:11434/api/chat', IZAKHONO_MODEL_TIMEOUT_MS: '10' }), /timeout-invalid/);
+assert.throws(() => resolveLocalModelConfig({ IZAKHONO_LOCAL_MODEL_URL: 'http://127.0.0.1:11434/api/generate' }), /endpoint-not-ollama-chat/);
 assert.equal(resolveLocalModelConfig({}).url, 'http://127.0.0.1:11434/api/chat');
 assert.equal(resolveLocalModelConfig({}).model, 'qwen2.5-coder:3b');
 console.log('[PASS] Native generation fallback, HTML escaping and local-only model routing verified.');
