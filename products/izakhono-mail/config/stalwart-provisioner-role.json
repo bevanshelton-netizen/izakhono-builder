@@ -5,7 +5,6 @@
   },
   "enabledPermissions": {
     "sysAccountCreate": true,
-    "sysAccountGet": true,
     "sysAccountQuery": true,
     "sysDomainGet": true,
     "sysDomainQuery": true
