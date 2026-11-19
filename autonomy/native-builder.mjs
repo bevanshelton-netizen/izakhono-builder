@@ -88,7 +88,6 @@ export async function runNativeBuilder(task) {
       stage: 'architecture',
       provider: 'izakhono-native',
       acceptance: task.evidence || [],
-      createdAt: new Date().toISOString(),
     });
     return { status: 'completed', provider: 'izakhono-native', evidence: evidence('architecture-recorded', artifactDetails(dir)), ...artifactDetails(dir) };
   }
@@ -134,7 +133,6 @@ export async function runNativeBuilder(task) {
     }
     const publicDir = path.join(dir, 'public');
     fs.mkdirSync(publicDir, { recursive: true });
-    writeJson(path.join(dir, 'src', 'content.mjs.json'), generated.brief);
     writeText(path.join(dir, 'src', 'content.mjs'), 'export const site = Object.freeze(' + JSON.stringify(generated.brief, null, 2) + ');\n');
     writeJson(path.join(publicDir, 'site-content.json'), { schema: 'izakhono.site-content/v1', ...generated.brief });
     writeText(path.join(publicDir, 'index.html'), renderSite(generated.brief));
@@ -208,7 +206,6 @@ export async function runNativeBuilder(task) {
       artifactType: applicationManifest(dir)?.templateId || 'control-plane-plan',
       provider: 'izakhono-native',
       credits: false,
-      generatedAt: new Date().toISOString(),
     });
     const snapshot = createCanonicalSnapshot({
       workspaceRoot: dir,
