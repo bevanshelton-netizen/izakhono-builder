@@ -83,7 +83,11 @@ def build_plan(brief: str, *, available_only: bool = True) -> dict[str, Any]:
         "llm": {
             "policy": config["policy"],
             "selected": candidates[0] if candidates else None,
-            "fallbacks": candidates[1:],
+            "fallbacks": [],
+            "execution_provider": "ollama-compatible-local" if candidates else "deterministic-native",
+            "deterministic_fallback": "native-template-or-rule-engine",
+            "external_inference_allowed": False,
+            "runtime_probe_required": bool(candidates),
         },
         "stages": stages,
         "gates": {
