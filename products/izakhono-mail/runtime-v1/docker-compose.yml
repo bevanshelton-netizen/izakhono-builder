@@ -1,34 +1,4 @@
 services:
-  mailserver:
-    image: stalwartlabs/stalwart:v0.16
-    container_name: izakhono-mailserver
-    hostname: ${MAIL_HOSTNAME}
-    environment:
-      TZ: ${TZ:-Africa/Johannesburg}
-    ports:
-      - "25:25"
-      - "465:465"
-      - "587:587"
-      - "993:993"
-      # Admin and JMAP bootstrap/API are loopback-only; public HTTPS belongs to HOST EDGE.
-      - "127.0.0.1:18080:443"
-      - "127.0.0.1:18081:8080"
-    volumes:
-      - ./stalwart-etc:/etc/stalwart
-      - ./stalwart-data:/var/lib/stalwart
-    networks:
-      mail-internal: {}
-      izakhono-mail:
-        aliases:
-          - ${MAIL_HOSTNAME}
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8080/ >/dev/null"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 60s
-
   roundcube-db:
     image: mariadb:11.8
     container_name: izakhono-roundcube-db
@@ -52,8 +22,6 @@ services:
     container_name: izakhono-roundcube
     depends_on:
       roundcube-db:
-        condition: service_healthy
-      mailserver:
         condition: service_healthy
     environment:
       ROUNDCUBEMAIL_DEFAULT_HOST: ssl://${MAIL_HOSTNAME}
