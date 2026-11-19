@@ -192,7 +192,7 @@ export function scaffoldApplication({ workspaceRoot, projectId, name, goal, temp
     generation: 'deterministic-native',
     externalAiRequired: false,
   };
-  fs.writeFileSync(path.join(root, 'izakhono.application.json'), json(manifest), { flag: 'wx' });
+  fs.writeFileSync(manifestPath, json(manifest), { flag: 'wx' });
   return { ...manifest, fileCount: manifest.files.length + 1, workspaceRoot: root };
 }
 
