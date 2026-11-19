@@ -26,6 +26,10 @@ jobs:
       - run: npm run registry:typecheck
       - run: npm run registry:lease-test
       - run: npm run registry:executor-test
+      - run: npm run registry:security-test
+      - run: npm run registry:api-security-test
+      - run: npm run registry:worker-auth-test
+      - run: npm run registry:dispatch-test
       - run: npm run registry:worker-test
       - run: npm run registry:github-verifier-test
       - run: npm run registry:test
