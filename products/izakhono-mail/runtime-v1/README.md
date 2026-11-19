@@ -69,7 +69,7 @@ The generated password is a one-time secret. Deliver it through the approved own
 
 ## Backup and recovery
 
-Backups require an `age` recipient and are encrypted before leaving the node. The archive excludes `.env`, admin passwords and other runtime secrets; those must be restored separately from the approved secrets store. Restore requires the matching age identity, integrity verification and a post-restore mail acceptance run.
+Backups require an `age` recipient and are encrypted locally. The archive includes sensitive Stalwart mail state and key material, but excludes `.env` and plaintext runtime credentials. The script creates a local encrypted artifact only; copy it to owner-controlled offsite storage (preferably IZAKHONO MinIO) and verify its SHA-256 before treating backup coverage as complete. Restore requires the matching age identity, integrity verification and a post-restore mail acceptance run.
 
 ## Production gate
 
