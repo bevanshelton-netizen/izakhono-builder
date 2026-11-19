@@ -47,6 +47,36 @@ PY
 
 bash infra/node-cluster/VERIFY-NODE-CLUSTER-EVIDENCE.sh "$fixture"
 
+# Production mode recomputes each HMAC with protected per-node credentials.
+env CONNECTA_REQUIRE_CRYPTOGRAPHIC_EVIDENCE=true \
+  NODE01_HEALTH_TOKEN="$(printf 'a%.0s' {1..64})" \
+  NODE02_HEALTH_TOKEN="$(printf 'b%.0s' {1..64})" \
+  NODE03_HEALTH_TOKEN="$(printf 'c%.0s' {1..64})" \
+  NODE04_HEALTH_TOKEN="$(printf 'd%.0s' {1..64})" \
+  bash infra/node-cluster/VERIFY-NODE-CLUSTER-EVIDENCE.sh "$fixture"
+
+# A syntactically valid but forged signature must fail cryptographic verification.
+python3 - "$fixture" <<'PY'
+import json, sys
+p=sys.argv[1]
+d=json.load(open(p, encoding="utf-8"))
+d["nodes"][0]["probeSignature"]="0"*64
+json.dump(d, open(p, "w", encoding="utf-8"))
+PY
+set +e
+env CONNECTA_REQUIRE_CRYPTOGRAPHIC_EVIDENCE=true \
+  NODE01_HEALTH_TOKEN="$(printf 'a%.0s' {1..64})" \
+  NODE02_HEALTH_TOKEN="$(printf 'b%.0s' {1..64})" \
+  NODE03_HEALTH_TOKEN="$(printf 'c%.0s' {1..64})" \
+  NODE04_HEALTH_TOKEN="$(printf 'd%.0s' {1..64})" \
+  bash infra/node-cluster/VERIFY-NODE-CLUSTER-EVIDENCE.sh "$fixture"
+crypto_code=$?
+set -e
+if [[ "$crypto_code" -ne 10 ]]; then
+  echo "[FAIL] verifier accepted a forged HMAC signature (exit $crypto_code)" >&2
+  exit 1
+fi
+
 # Reject an endpoint response that claims a different runtime identity.
 python3 - "$fixture" <<'PY'
 import json, sys
