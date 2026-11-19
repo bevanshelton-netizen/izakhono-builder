@@ -19,10 +19,6 @@ forbidden=(
 excluded=(
   'VERIFY-CONNECTA-LEGACY-PATH.sh'
   'test-connecta-legacy-path-guard.sh'
-  'CERTIFY-WAVE1-OWNED.ps1'
-  'PUSH-WAVE1-OWNED.ps1'
-  'RUN-NODE01-WAVE1-LOCAL.cmd'
-  'IZAKHONO-NODE01-WAVE1-REPORT.json'
 )
 
 scan_roots=(
@@ -74,7 +70,14 @@ shared_certifier='infra/runtime-fabric/CERTIFY-OWNED-RUNTIME-WAVE1.ps1'
 [[ ! -f "$shared_certifier" ]] || files+=("$shared_certifier")
 
 for path in "${files[@]}"; do
+  base="$(basename "$path")"
   for token in "${forbidden[@]}"; do
+    # A copied/renamed-in-place legacy executable is itself a regression,
+    # even if its contents no longer mention the historical filename.
+    if [[ "$base" == "$token" ]]; then
+      echo "[BLOCKED] deprecated legacy executable exists on a CONNECTA production surface: $path" >&2
+      exit 10
+    fi
     if grep -Fq -- "$token" "$path"; then
       echo "[BLOCKED] CONNECTA production surface references deprecated legacy path: $token in $path" >&2
       exit 10
