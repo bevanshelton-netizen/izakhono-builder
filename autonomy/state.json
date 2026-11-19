@@ -203,10 +203,10 @@
     },
     "kora-workload-execution": {
       "status": "waiting",
-      "attempts": 24,
+      "attempts": 35,
       "action": "kora-workload-execute",
       "adapter": "deploy",
-      "updatedAt": "2026-11-19T06:27:18.794Z",
+      "updatedAt": "2026-11-19T06:31:59.390Z",
       "ownerGate": null,
       "reason": "kora-runtime-execution-requires-eligible-node",
       "provider": "izakhono-node",
@@ -1296,6 +1296,369 @@
     },
     {
       "at": "2026-11-19T06:27:18.794Z",
+      "task": "kora-workload-execution",
+      "from": "running",
+      "to": "waiting",
+      "ownerGate": null,
+      "reason": "kora-runtime-execution-requires-eligible-node",
+      "provider": "izakhono-node",
+      "selectedNode": "snode-3e4df75d-9bc",
+      "evidence": [
+        {
+          "name": "workload-definition",
+          "status": "passed",
+          "source": "/home/runner/work/izakhono-builder/izakhono-builder/products/izakhono-host/kora-workload.json"
+        },
+        {
+          "name": "image-built",
+          "status": "pending",
+          "image": "kora-network:portable"
+        }
+      ],
+      "evidenceSource": null,
+      "acceptance": "not-verified"
+    },
+    {
+      "at": "2026-11-19T06:31:58.851Z",
+      "task": "kora-workload-execution",
+      "from": "waiting",
+      "to": "running",
+      "attempts": 25,
+      "action": "kora-workload-execute",
+      "adapter": "deploy"
+    },
+    {
+      "at": "2026-11-19T06:31:58.887Z",
+      "task": "kora-workload-execution",
+      "from": "running",
+      "to": "waiting",
+      "ownerGate": null,
+      "reason": "kora-runtime-execution-requires-eligible-node",
+      "provider": "izakhono-node",
+      "selectedNode": "snode-3e4df75d-9bc",
+      "evidence": [
+        {
+          "name": "workload-definition",
+          "status": "passed",
+          "source": "/home/runner/work/izakhono-builder/izakhono-builder/products/izakhono-host/kora-workload.json"
+        },
+        {
+          "name": "image-built",
+          "status": "pending",
+          "image": "kora-network:portable"
+        }
+      ],
+      "evidenceSource": null,
+      "acceptance": "not-verified"
+    },
+    {
+      "at": "2026-11-19T06:31:58.887Z",
+      "task": "kora-workload-execution",
+      "from": "waiting",
+      "to": "running",
+      "attempts": 26,
+      "action": "kora-workload-execute",
+      "adapter": "deploy"
+    },
+    {
+      "at": "2026-11-19T06:31:58.949Z",
+      "task": "kora-workload-execution",
+      "from": "running",
+      "to": "waiting",
+      "ownerGate": null,
+      "reason": "kora-runtime-execution-requires-eligible-node",
+      "provider": "izakhono-node",
+      "selectedNode": "snode-3e4df75d-9bc",
+      "evidence": [
+        {
+          "name": "workload-definition",
+          "status": "passed",
+          "source": "/home/runner/work/izakhono-builder/izakhono-builder/products/izakhono-host/kora-workload.json"
+        },
+        {
+          "name": "image-built",
+          "status": "pending",
+          "image": "kora-network:portable"
+        }
+      ],
+      "evidenceSource": null,
+      "acceptance": "not-verified"
+    },
+    {
+      "at": "2026-11-19T06:31:58.949Z",
+      "task": "kora-workload-execution",
+      "from": "waiting",
+      "to": "running",
+      "attempts": 27,
+      "action": "kora-workload-execute",
+      "adapter": "deploy"
+    },
+    {
+      "at": "2026-11-19T06:31:58.990Z",
+      "task": "kora-workload-execution",
+      "from": "running",
+      "to": "waiting",
+      "ownerGate": null,
+      "reason": "kora-runtime-execution-requires-eligible-node",
+      "provider": "izakhono-node",
+      "selectedNode": "snode-3e4df75d-9bc",
+      "evidence": [
+        {
+          "name": "workload-definition",
+          "status": "passed",
+          "source": "/home/runner/work/izakhono-builder/izakhono-builder/products/izakhono-host/kora-workload.json"
+        },
+        {
+          "name": "image-built",
+          "status": "pending",
+          "image": "kora-network:portable"
+        }
+      ],
+      "evidenceSource": null,
+      "acceptance": "not-verified"
+    },
+    {
+      "at": "2026-11-19T06:31:58.990Z",
+      "task": "kora-workload-execution",
+      "from": "waiting",
+      "to": "running",
+      "attempts": 28,
+      "action": "kora-workload-execute",
+      "adapter": "deploy"
+    },
+    {
+      "at": "2026-11-19T06:31:59.059Z",
+      "task": "kora-workload-execution",
+      "from": "running",
+      "to": "waiting",
+      "ownerGate": null,
+      "reason": "kora-runtime-execution-requires-eligible-node",
+      "provider": "izakhono-node",
+      "selectedNode": "snode-3e4df75d-9bc",
+      "evidence": [
+        {
+          "name": "workload-definition",
+          "status": "passed",
+          "source": "/home/runner/work/izakhono-builder/izakhono-builder/products/izakhono-host/kora-workload.json"
+        },
+        {
+          "name": "image-built",
+          "status": "pending",
+          "image": "kora-network:portable"
+        }
+      ],
+      "evidenceSource": null,
+      "acceptance": "not-verified"
+    },
+    {
+      "at": "2026-11-19T06:31:59.059Z",
+      "task": "kora-workload-execution",
+      "from": "waiting",
+      "to": "running",
+      "attempts": 29,
+      "action": "kora-workload-execute",
+      "adapter": "deploy"
+    },
+    {
+      "at": "2026-11-19T06:31:59.109Z",
+      "task": "kora-workload-execution",
+      "from": "running",
+      "to": "waiting",
+      "ownerGate": null,
+      "reason": "kora-runtime-execution-requires-eligible-node",
+      "provider": "izakhono-node",
+      "selectedNode": "snode-3e4df75d-9bc",
+      "evidence": [
+        {
+          "name": "workload-definition",
+          "status": "passed",
+          "source": "/home/runner/work/izakhono-builder/izakhono-builder/products/izakhono-host/kora-workload.json"
+        },
+        {
+          "name": "image-built",
+          "status": "pending",
+          "image": "kora-network:portable"
+        }
+      ],
+      "evidenceSource": null,
+      "acceptance": "not-verified"
+    },
+    {
+      "at": "2026-11-19T06:31:59.109Z",
+      "task": "kora-workload-execution",
+      "from": "waiting",
+      "to": "running",
+      "attempts": 30,
+      "action": "kora-workload-execute",
+      "adapter": "deploy"
+    },
+    {
+      "at": "2026-11-19T06:31:59.149Z",
+      "task": "kora-workload-execution",
+      "from": "running",
+      "to": "waiting",
+      "ownerGate": null,
+      "reason": "kora-runtime-execution-requires-eligible-node",
+      "provider": "izakhono-node",
+      "selectedNode": "snode-3e4df75d-9bc",
+      "evidence": [
+        {
+          "name": "workload-definition",
+          "status": "passed",
+          "source": "/home/runner/work/izakhono-builder/izakhono-builder/products/izakhono-host/kora-workload.json"
+        },
+        {
+          "name": "image-built",
+          "status": "pending",
+          "image": "kora-network:portable"
+        }
+      ],
+      "evidenceSource": null,
+      "acceptance": "not-verified"
+    },
+    {
+      "at": "2026-11-19T06:31:59.149Z",
+      "task": "kora-workload-execution",
+      "from": "waiting",
+      "to": "running",
+      "attempts": 31,
+      "action": "kora-workload-execute",
+      "adapter": "deploy"
+    },
+    {
+      "at": "2026-11-19T06:31:59.189Z",
+      "task": "kora-workload-execution",
+      "from": "running",
+      "to": "waiting",
+      "ownerGate": null,
+      "reason": "kora-runtime-execution-requires-eligible-node",
+      "provider": "izakhono-node",
+      "selectedNode": "snode-3e4df75d-9bc",
+      "evidence": [
+        {
+          "name": "workload-definition",
+          "status": "passed",
+          "source": "/home/runner/work/izakhono-builder/izakhono-builder/products/izakhono-host/kora-workload.json"
+        },
+        {
+          "name": "image-built",
+          "status": "pending",
+          "image": "kora-network:portable"
+        }
+      ],
+      "evidenceSource": null,
+      "acceptance": "not-verified"
+    },
+    {
+      "at": "2026-11-19T06:31:59.189Z",
+      "task": "kora-workload-execution",
+      "from": "waiting",
+      "to": "running",
+      "attempts": 32,
+      "action": "kora-workload-execute",
+      "adapter": "deploy"
+    },
+    {
+      "at": "2026-11-19T06:31:59.239Z",
+      "task": "kora-workload-execution",
+      "from": "running",
+      "to": "waiting",
+      "ownerGate": null,
+      "reason": "kora-runtime-execution-requires-eligible-node",
+      "provider": "izakhono-node",
+      "selectedNode": "snode-3e4df75d-9bc",
+      "evidence": [
+        {
+          "name": "workload-definition",
+          "status": "passed",
+          "source": "/home/runner/work/izakhono-builder/izakhono-builder/products/izakhono-host/kora-workload.json"
+        },
+        {
+          "name": "image-built",
+          "status": "pending",
+          "image": "kora-network:portable"
+        }
+      ],
+      "evidenceSource": null,
+      "acceptance": "not-verified"
+    },
+    {
+      "at": "2026-11-19T06:31:59.239Z",
+      "task": "kora-workload-execution",
+      "from": "waiting",
+      "to": "running",
+      "attempts": 33,
+      "action": "kora-workload-execute",
+      "adapter": "deploy"
+    },
+    {
+      "at": "2026-11-19T06:31:59.280Z",
+      "task": "kora-workload-execution",
+      "from": "running",
+      "to": "waiting",
+      "ownerGate": null,
+      "reason": "kora-runtime-execution-requires-eligible-node",
+      "provider": "izakhono-node",
+      "selectedNode": "snode-3e4df75d-9bc",
+      "evidence": [
+        {
+          "name": "workload-definition",
+          "status": "passed",
+          "source": "/home/runner/work/izakhono-builder/izakhono-builder/products/izakhono-host/kora-workload.json"
+        },
+        {
+          "name": "image-built",
+          "status": "pending",
+          "image": "kora-network:portable"
+        }
+      ],
+      "evidenceSource": null,
+      "acceptance": "not-verified"
+    },
+    {
+      "at": "2026-11-19T06:31:59.280Z",
+      "task": "kora-workload-execution",
+      "from": "waiting",
+      "to": "running",
+      "attempts": 34,
+      "action": "kora-workload-execute",
+      "adapter": "deploy"
+    },
+    {
+      "at": "2026-11-19T06:31:59.339Z",
+      "task": "kora-workload-execution",
+      "from": "running",
+      "to": "waiting",
+      "ownerGate": null,
+      "reason": "kora-runtime-execution-requires-eligible-node",
+      "provider": "izakhono-node",
+      "selectedNode": "snode-3e4df75d-9bc",
+      "evidence": [
+        {
+          "name": "workload-definition",
+          "status": "passed",
+          "source": "/home/runner/work/izakhono-builder/izakhono-builder/products/izakhono-host/kora-workload.json"
+        },
+        {
+          "name": "image-built",
+          "status": "pending",
+          "image": "kora-network:portable"
+        }
+      ],
+      "evidenceSource": null,
+      "acceptance": "not-verified"
+    },
+    {
+      "at": "2026-11-19T06:31:59.339Z",
+      "task": "kora-workload-execution",
+      "from": "waiting",
+      "to": "running",
+      "attempts": 35,
+      "action": "kora-workload-execute",
+      "adapter": "deploy"
+    },
+    {
+      "at": "2026-11-19T06:31:59.390Z",
       "task": "kora-workload-execution",
       "from": "running",
       "to": "waiting",
