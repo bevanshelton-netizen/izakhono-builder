@@ -44,7 +44,7 @@ function artifactDetails(dir) {
   return { artifactPath: path.relative(root, dir), portable: true, providerNeutral: true };
 }
 
-function applicationManifest(dir) {
+function artifactFile(dir, relative) {\n  const target = path.resolve(dir, relative);\n  if (!target.startsWith(path.resolve(dir) + path.sep)) throw new Error('builder-artifact-path-invalid');\n  return target;\n}\n\nfunction applicationManifest(dir) {
   const file = path.join(dir, 'izakhono.application.json');
   return fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : null;
 }
@@ -146,10 +146,10 @@ export async function runNativeBuilder(task) {
     if (!app || !Array.isArray(app.files) || !fs.existsSync(path.join(dir, 'package.json'))) return { status: 'failed', reason: 'native-scaffold-missing' };
     JSON.parse(fs.readFileSync(path.join(dir, 'package.json'), 'utf8'));
     if (fs.existsSync(path.join(dir, 'architecture.json'))) JSON.parse(fs.readFileSync(path.join(dir, 'architecture.json'), 'utf8'));
-    const missing = app.files.filter((relative) => !fs.existsSync(path.join(dir, relative)));
+    const missing = app.files.filter((relative) => !fs.existsSync(artifactFile(dir, relative)));
     if (missing.length) return { status: 'failed', reason: 'generated-files-missing', files: missing };
     const sourceFiles = app.files.filter((relative) => relative.endsWith('.mjs'));
-    for (const relative of sourceFiles) execFileSync(process.execPath, ['--check', path.join(dir, relative)], { cwd: dir, stdio: 'pipe' });
+    for (const relative of sourceFiles) execFileSync(process.execPath, ['--check', artifactFile(dir, relative)], { cwd: dir, stdio: 'pipe' });
     return {
       status: 'completed', provider: 'izakhono-native',
       evidence: evidence('structure-and-syntax-validated', { architecture: fs.existsSync(path.join(dir, 'architecture.json')), packageManifest: true, fileCount: app.files.length }),
@@ -164,7 +164,7 @@ export async function runNativeBuilder(task) {
     const app = applicationManifest(dir);
     if (app) {
       for (const relative of app.files) {
-        const file = path.join(dir, relative);
+        const file = artifactFile(dir, relative);
         if (!fs.existsSync(file)) return { status: 'failed', reason: 'generated-file-missing:' + relative };
         if (/\\.(?:mjs|js|cjs)$/.test(relative)) {
           const source = fs.readFileSync(file, 'utf8');
