@@ -19,6 +19,8 @@ try {
   assert.ok(fs.existsSync(path.join(workspace, 'tests/application.test.mjs')));
   assert.match(fs.readFileSync(path.join(workspace, 'public/index.html'), 'utf8'), /School Portal/);
   assert.equal(availableApplicationTemplates().length, 2);
+  assert.equal(availableApplicationTemplates()[0].version, '1.0.0');
+  assert.equal(JSON.parse(fs.readFileSync(path.join(workspace, 'izakhono.application.json'), 'utf8')).templateVersion, '1.0.0');
 
   const snapshotA = createCanonicalSnapshot({ workspaceRoot: workspace, repositoryRoot: path.join(temp, 'repository') });
   const snapshotB = createCanonicalSnapshot({ workspaceRoot: workspace, repositoryRoot: path.join(temp, 'repository') });
