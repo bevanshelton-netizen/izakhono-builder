@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+cd "$(dirname "$0")/.."
 
 read_env() {
   local key="$1" line value
@@ -52,7 +53,7 @@ for port in 25 465 587 993; do
   check "TCP ${HOSTNAME}:${port}" nc -z -w 8 "$HOSTNAME" "$port"
 done
 
-check "SMTP STARTTLS on port 25" bash -c "echo | timeout 12 openssl s_client -starttls smtp -connect '$HOSTNAME:25' -servername '$HOSTNAME' -verify_return_error -brief"
+check "SMTP STARTTLS on port 25" bash -c "echo | timeout 12 openssl s_client -starttls smtp -connect '$HOSTNAME:25' -servername '$HOSTNAME' -verify_hostname '$HOSTNAME' -verify_return_error -brief"
 check "SMTP STARTTLS on port 587" bash -c "echo | timeout 12 openssl s_client -starttls smtp -connect '$HOSTNAME:587' -servername '$HOSTNAME' -verify_return_error -brief"
 check "SMTPS certificate on port 465" bash -c "echo | timeout 12 openssl s_client -connect '$HOSTNAME:465' -servername '$HOSTNAME' -verify_return_error -brief"
 check "IMAPS certificate on port 993" bash -c "echo | timeout 12 openssl s_client -connect '$HOSTNAME:993' -servername '$HOSTNAME' -verify_return_error -brief"
