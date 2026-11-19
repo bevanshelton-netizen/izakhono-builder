@@ -25,7 +25,7 @@ for name, token, nonce in zip(names, tokens, nonces):
         "checkedAt": stamp,
         "authentication": {"scheme":"bearer-hmac-sha256","challengeVerified":True},
         "probeNonce": nonce, "probeSignature": signature,
-        "http": {"ok": True, "runtimeNode": name, "cluster": "izakhono-production", "authScheme":"bearer-hmac-sha256"}
+        "http": {"status": 200, "ok": True, "runtimeNode": name, "cluster": "izakhono-production", "authScheme":"bearer-hmac-sha256"}
     })
 record = {
     "schema": "izakhono.node-cluster-health.v1",
