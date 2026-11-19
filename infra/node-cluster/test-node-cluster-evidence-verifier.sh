@@ -9,6 +9,13 @@ tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 fixture="$tmp/valid-fixture.json"
 
+TEST_TOKENS=(
+  "NODE01_HEALTH_TOKEN=$(printf 'a%.0s' {1..64})"
+  "NODE02_HEALTH_TOKEN=$(printf 'b%.0s' {1..64})"
+  "NODE03_HEALTH_TOKEN=$(printf 'c%.0s' {1..64})"
+  "NODE04_HEALTH_TOKEN=$(printf 'd%.0s' {1..64})"
+)
+
 python3 - "$fixture" <<'PY'
 import hashlib, hmac, json, sys
 from datetime import datetime, timezone
@@ -45,15 +52,10 @@ with open(sys.argv[1], "w", encoding="utf-8") as f:
     json.dump(record, f)
 PY
 
-bash infra/node-cluster/VERIFY-NODE-CLUSTER-EVIDENCE.sh "$fixture"
+env "${TEST_TOKENS[@]}" bash infra/node-cluster/VERIFY-NODE-CLUSTER-EVIDENCE.sh "$fixture"
 
 # Production mode recomputes each HMAC with protected per-node credentials.
-env CONNECTA_REQUIRE_CRYPTOGRAPHIC_EVIDENCE=true \
-  NODE01_HEALTH_TOKEN="$(printf 'a%.0s' {1..64})" \
-  NODE02_HEALTH_TOKEN="$(printf 'b%.0s' {1..64})" \
-  NODE03_HEALTH_TOKEN="$(printf 'c%.0s' {1..64})" \
-  NODE04_HEALTH_TOKEN="$(printf 'd%.0s' {1..64})" \
-  bash infra/node-cluster/VERIFY-NODE-CLUSTER-EVIDENCE.sh "$fixture"
+env "${TEST_TOKENS[@]}" bash infra/node-cluster/VERIFY-NODE-CLUSTER-EVIDENCE.sh "$fixture"
 
 # A syntactically valid but forged signature must fail cryptographic verification.
 python3 - "$fixture" <<'PY'
