@@ -211,7 +211,8 @@ export function scaffoldApplication({ workspaceRoot, projectId, name, goal, temp
     schema: 'izakhono.application-scaffold/v1',
     projectId: id,
     templateId,
-    files: Object.keys(files).sort(),
+    templateVersion: template.version,
+    files: actualFiles,
     generation: 'deterministic-native',
     externalAiRequired: false,
   };
