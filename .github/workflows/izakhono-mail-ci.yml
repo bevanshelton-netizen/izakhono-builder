@@ -148,9 +148,18 @@ jobs:
           test -f ops/PROVISION-CONTABO.md
 
       - name: Verify no production secrets are tracked
+        shell: bash
         run: |
-          if git grep -n -E 'BEGIN (RSA|OPENSSH|PRIVATE) KEY|MAILBOX_PASSWORD=[^C]|ROUNDCUBE_DB_PASSWORD=[^C]|ROUNDCUBE_DB_ROOT_PASSWORD=[^C]|STALWART_PROVISIONER_API_KEY=[^C]|STALWART_RECOVERY_ADMIN=admin:[^C]|AGE_RECIPIENT=age1' -- products/izakhono-mail/runtime-v1; then
-            echo 'Tracked production secret material detected.'
+          if git grep -n -E 'BEGIN (RSA|OPENSSH|PRIVATE) KEY' -- products/izakhono-mail/runtime-v1; then
+            echo 'Private key material is tracked.'
+            exit 1
+          fi
+          if git ls-files --error-unmatch products/izakhono-mail/runtime-v1/.env >/dev/null 2>&1; then
+            echo 'Runtime .env must never be tracked.'
+            exit 1
+          fi
+          if grep -n -E '^(MAILBOX_PASSWORD|ROUNDCUBE_DB_PASSWORD|ROUNDCUBE_DB_ROOT_PASSWORD|STALWART_PROVISIONER_API_KEY)=([^C]|$)|^STALWART_RECOVERY_ADMIN=admin:([^C]|$)|^AGE_RECIPIENT=age1' products/izakhono-mail/runtime-v1/.env.example; then
+            echo 'A non-placeholder secret was found in .env.example.'
             exit 1
           fi
 
