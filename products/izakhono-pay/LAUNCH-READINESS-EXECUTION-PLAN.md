@@ -94,3 +94,15 @@ The following issues were confirmed by inspecting the checked-in deployment conf
 ### Release disposition as of 2026-11-19
 
 **Production launch: BLOCKED.** Do not merge or trigger the production workflow until the database identity/provisioning order, canonical entrypoint, fail-closed runtime mode, provider approval, and end-to-end acceptance evidence are resolved. A sandbox-only deployment may proceed through the dedicated sandbox workflow after its secrets and target account are verified. The current PR remains documentation-only and does not itself deploy IZAKHONO PAY.
+
+
+## Safe production pipeline remediation — 2026-11-19
+
+Committed on the launch branch:
+
+- Production `PAYMENT_MODE` is now explicitly `disabled`; all provider enable flags remain false. This prevents the production health endpoint from advertising a live payment mode while launch approvals are outstanding.
+- The production workflow no longer requires or installs iKhokha credentials for this disabled service deployment. Provider credentials remain outside the deployment until provider onboarding and the separately approved activation step.
+- The workflow now validates that the production D1 binding has a syntactically valid, provisioned `database_id` before attempting any Worker deployment or remote migration. The current production config still has no database ID, so the workflow will intentionally stop at this preflight.
+- The production health check now expects `mode=disabled`.
+
+This is a fail-closed pipeline correction, not a production deployment. The production D1 database must be provisioned in the authorised Cloudflare account and its verified ID added to the production config before the workflow can proceed. No Cloudflare resources, secrets, production payment switches, or live transactions were changed by these commits.
