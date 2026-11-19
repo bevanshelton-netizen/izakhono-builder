@@ -115,7 +115,7 @@ for record in nodes:
     if not isinstance(signature, str) or not re.fullmatch(r"[a-f0-9]{64}", signature):
         blocked(f"{name} HMAC signature is missing or malformed")
     if REQUIRE_CRYPTO:
-        message = f"izakhono-production\\n{name}\\n{nonce}".encode("utf-8")
+        message = f"izakhono-production\n{name}\n{nonce}".encode("utf-8")
         expected_signature = hmac.new(bytes.fromhex(tokens[name]), message, hashlib.sha256).hexdigest()
         if not hmac.compare_digest(signature, expected_signature):
             blocked(f"{name} HMAC signature does not match the protected runtime credential")
