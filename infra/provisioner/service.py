@@ -90,17 +90,44 @@ class ProvisionerService:
         self.store.append_audit(AuditEvent(f"evt_{job.job_id}_handover",job.job_id,"HANDOVER_COMPLETED",job.state,utc_now(),{"evidence_states":states,"handover_id":record.get("handover_id")}))
         return record
 
-if __name__=="__main__":
-    from adapter_catalog import build_catalog, CAPABILITY_TO_ADAPTER
+if __name__ == "__main__":
+    from adapter_catalog import CAPABILITY_TO_ADAPTER
     from job_store import MemoryJobStore
-    store=MemoryJobStore(); queue=JobQueue(store)
-    registry={"adapters":{k:{"owned":v} for k,v in CAPABILITY_TO_ADAPTER.items()},"bindings":{name:{"operation":"smoke"} for name in {"tenant","domain","dns","site","tls","mail","crm_whatsapp"}}}
-    service=ProvisionerService(store,queue,build_catalog(),registry)
-    first=service.create_job(CreateJobRequest("tenant-service","idem-service",{"payment_id":"pay-service","amount":"100.00","currency":"ZAR","verified":True}))
-    duplicate=service.create_job(CreateJobRequest("tenant-service","idem-service",{"payment_id":"pay-service","amount":"100.00","currency":"ZAR","verified":True}))
-    assert first["created"] is True and duplicate["created"] is False and first["job_id"]==duplicate["job_id"]
-    for _ in range(8): service.worker_once()
-    handover=service.handover(first["job_id"])
-    assert handover["status"]=="HANDOVER_READY"
-    assert any(e.event_type=="HANDOVER_COMPLETED" for e in store.events)
+    from worker_runtime import STATE_CAPABILITY
+
+    store = MemoryJobStore()
+    queue = JobQueue(store)
+    registry = {
+        "adapters": {capability: {"owned": adapter} for capability, adapter in CAPABILITY_TO_ADAPTER.items()},
+        "bindings": {name: {"operation": "smoke"} for name in set(STATE_CAPABILITY.values())},
+    }
+
+    # Contract fixtures keep this smoke deterministic and independent of provider credentials.
+    def fixture(adapter_name):
+        def execute(request):
+            capability = request["capability"]
+            return {
+                "evidence_id": f"fixture-{adapter_name}-{request['operation_id']}",
+                "observed_at": utc_now(),
+                "verified": True,
+                "checks": [f"contract.{capability}"],
+            }
+        return execute
+
+    implementations = {name: fixture(name) for name in set(CAPABILITY_TO_ADAPTER.values())}
+    service = ProvisionerService(store, queue, implementations, registry)
+    request = CreateJobRequest(
+        "tenant-service",
+        "idem-service",
+        {"payment_id": "pay-service", "amount": "100.00", "currency": "ZAR", "verified": True},
+    )
+    first = service.create_job(request)
+    duplicate = service.create_job(request)
+    assert first["created"] is True and duplicate["created"] is False
+    assert first["job_id"] == duplicate["job_id"]
+    for _ in range(9):
+        service.worker_once()
+    handover = service.handover(first["job_id"])
+    assert handover["status"] == "HANDOVER_READY"
+    assert any(event.event_type == "HANDOVER_COMPLETED" for event in store.events)
     print("PROVISIONER_SERVICE: PASS")
