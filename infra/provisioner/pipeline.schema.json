@@ -10,7 +10,7 @@
     "owned_first": { "const": true },
     "steps": {
       "type": "array",
-      "minItems": 10,
+      "minItems": 11,
       "items": {
         "type": "object",
         "additionalProperties": false,
@@ -25,6 +25,7 @@
               "SITE_READY",
               "TLS_READY",
               "MAIL_READY",
+              "BILLING_VERIFIED",
               "INTEGRATIONS_READY",
               "ACCEPTANCE_PASSED",
               "HANDOVER_READY"
