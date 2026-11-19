@@ -8,6 +8,8 @@ const DATA_DIR = process.env.DATA_DIR || '/data';
 const STATE_FILE = path.join(DATA_DIR, 'sites.json');
 const SITES_DIR = path.join(DATA_DIR, 'sites');
 const ADMIN_TOKEN = process.env.HOST_RUNTIME_TOKEN || '';
+if (!ADMIN_TOKEN) throw new Error('HOST_RUNTIME_TOKEN_REQUIRED');
+const MAX_REQUEST_BYTES = 10 * 1024 * 1024;
 const MAX_FILES = 200;
 const MAX_FILE_BYTES = 512 * 1024;
 const MAX_TOTAL_BYTES = 8 * 1024 * 1024;
@@ -28,14 +30,20 @@ function json(res, status, value) {
 }
 async function body(req) {
   const chunks=[];
-  for await (const chunk of req) chunks.push(chunk);
+  let total=0;
+  for await (const chunk of req) {
+    total += chunk.length;
+    if (total > MAX_REQUEST_BYTES) throw Object.assign(new Error('Request body too large'), { statusCode: 413 });
+    chunks.push(chunk);
+  }
   const text=Buffer.concat(chunks).toString('utf8');
   if (!text) return {};
   return JSON.parse(text);
 }
 function authorized(req) {
-  if (!ADMIN_TOKEN) return false;
-  return req.headers.authorization === `Bearer ${ADMIN_TOKEN}`;
+  const provided = Buffer.from(String(req.headers.authorization || ''), 'utf8');
+  const expected = Buffer.from(`Bearer ${ADMIN_TOKEN}`, 'utf8');
+  return provided.length === expected.length && crypto.timingSafeEqual(provided, expected);
 }
 function id(prefix) { return `${prefix}_${crypto.randomUUID().replaceAll('-','')}`; }
 function validDomain(domain) {
@@ -123,7 +131,7 @@ const server = http.createServer(async (req, res) => {
       state.deployments.push({id:id('dep'),site_id:site.id,action:'provision',status:'verified',created_at:new Date().toISOString()});
       await saveState(state);
       return json(res,201,{ok:true,created:true,site});
-    } catch (e) { return json(res,400,{ok:false,error:e?.message || 'Invalid request'}); }
+    } catch (e) { return json(res,e?.statusCode || 400,{ok:false,error:e?.message || 'Invalid request'}); }
   }
 
   if (req.method === 'POST' && url.pathname.match(/^\/api\/sites\/[^/]+\/content$/)) {
@@ -161,20 +169,37 @@ const server = http.createServer(async (req, res) => {
       state.deployments.push(deployment);
       await saveState(state);
       return json(res,200,{ok:true,site,deployment});
-    } catch (e) { return json(res,400,{ok:false,error:e?.message || 'Invalid deployment'}); }
+    } catch (e) { return json(res,e?.statusCode || 400,{ok:false,error:e?.message || 'Invalid deployment'}); }
   }
 
-  if (req.method === 'POST' && url.pathname.match(/^\/api\/sites\/[^/]+\/accept$/)) {
+  if (req.method === 'POST' && url.pathname.match(/^\\/api\\/sites\\/[^/]+\\/accept$/)) {
     const siteId=url.pathname.split('/')[3];
-    const input=await body(req).catch(()=>({}));
+    let input;
+    try { input=await body(req); }
+    catch (error) { return json(res,error?.statusCode || 400,{ok:false,error:error?.message || 'Invalid acceptance evidence'}); }
     const state=await loadState();
     const site=state.sites.find(s=>s.id===siteId);
     if(!site) return json(res,404,{ok:false,error:'Site not found'});
-    site.acceptance={https:Boolean(input.https), dns:Boolean(input.dns), content:Boolean(input.content)};
-    site.public_live=site.acceptance.https && site.acceptance.dns && site.acceptance.content;
+    const required=['https','dns','content'];
+    const evidence=input?.evidence && typeof input.evidence === 'object' ? input.evidence : {};
+    const acceptedEvidence={};
+    for (const kind of required) {
+      const item=evidence[kind] || {};
+      const evidenceId=String(item.evidence_id || '').trim();
+      const observedAt=String(item.observed_at || '');
+      acceptedEvidence[kind]={
+        verified:item.verified === true && evidenceId.length > 0 && evidenceId.length <= 256
+          && Number.isFinite(Date.parse(observedAt)),
+        evidence_id:evidenceId.slice(0,256),
+        observed_at:observedAt
+      };
+    }
+    site.acceptance=acceptedEvidence;
+    site.public_live=required.every(kind=>acceptedEvidence[kind].verified);
     site.status=site.public_live?'live':'provisioned';
-    site.accepted_at=new Date().toISOString();
+    site.accepted_at=site.public_live?new Date().toISOString():null;
     await saveState(state);
+    if (!site.public_live) return json(res,409,{ok:false,error:'acceptance_evidence_incomplete',site});
     return json(res,200,{ok:true,site});
   }
 
