@@ -27,8 +27,7 @@ const domainRecord = {
 
 {
   const { fetchImpl, calls } = mockFetch([
-    { ids: [] },
-    { created: { izakhonoDomain: { id: 'domain-1' } } },
+    { ids: ['domain-1'] },
     { list: [domainRecord] },
     { ids: [] },
     { created: { izakhonoMailbox: { id: 'account-1' } } },
@@ -50,13 +49,12 @@ const domainRecord = {
   assert.equal(result.address, 'info@example.test');
   assert.equal(result.accountId, 'account-1');
   assert.match(result.dnsZoneFile, /MX 10 mail\.example\.test/);
-  assert.equal(calls.length, 5);
+  assert.equal(calls.length, 4);
   assert.equal(calls[0].request.methodCalls[0][0], 'x:Domain/query');
-  assert.equal(calls[1].request.methodCalls[0][0], 'x:Domain/set');
-  assert.equal(calls[2].request.methodCalls[0][0], 'x:Domain/get');
-  assert.equal(calls[3].request.methodCalls[0][0], 'x:Account/query');
-  assert.equal(calls[4].request.methodCalls[0][0], 'x:Account/set');
-  assert.equal(calls[4].request.methodCalls[0][1].create.izakhonoMailbox.credentials['0'].secret, 'a-long-generated-password-value');
+  assert.equal(calls[1].request.methodCalls[0][0], 'x:Domain/get');
+  assert.equal(calls[2].request.methodCalls[0][0], 'x:Account/query');
+  assert.equal(calls[3].request.methodCalls[0][0], 'x:Account/set');
+  assert.equal(calls[3].request.methodCalls[0][1].create.izakhonoMailbox.credentials['0'].secret, 'a-long-generated-password-value');
   assert.match(calls[0].authorization, /^Basic /);
 }
 
