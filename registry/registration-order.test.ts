@@ -1,4 +1,6 @@
 import {MemoryRegistrationOrderStore,nextOrderState,transitionOrder} from './registration-order';
+
+async function main(){
 const store=new MemoryRegistrationOrderStore();
 const base={id:'o1',domain:'alpha.izt',registrarId:'r',state:'pending' as const,authorityConfirmed:false,dnsPublished:false,dnsVerified:false,rdapVerified:false,handedOver:false,createdAt:'x',updatedAt:'x'};
 if(nextOrderState(base)!=='pending')throw new Error('pending state failed');
@@ -15,3 +17,5 @@ if(authority.state!=='authorityConfirmed')throw new Error('authority transition 
 let invalid=false;try{transitionOrder(base,'readyForHandover',{authorityConfirmed:true,dnsPublished:true,dnsVerified:true,rdapVerified:true});}catch{invalid=true}
 if(!invalid)throw new Error('invalid order transition was allowed');
 console.log('IZAKHONO registration order tests passed');
+}
+void main();
