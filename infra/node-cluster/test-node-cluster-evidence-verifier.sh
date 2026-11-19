@@ -52,7 +52,25 @@ with open(sys.argv[1], "w", encoding="utf-8") as f:
     json.dump(record, f)
 PY
 
-env "${TEST_TOKENS[@]}" bash infra/node-cluster/VERIFY-NODE-CLUSTER-EVIDENCE.sh "$fixture"
+# Missing credentials and reused credentials must fail by default.
+set +e
+env -u NODE01_HEALTH_TOKEN -u NODE02_HEALTH_TOKEN -u NODE03_HEALTH_TOKEN -u NODE04_HEALTH_TOKEN \
+  bash infra/node-cluster/VERIFY-NODE-CLUSTER-EVIDENCE.sh "$fixture"
+missing_code=$?
+env "${TEST_TOKENS[0]}" "${TEST_TOKENS[1]}" "${TEST_TOKENS[2]}" "NODE04_HEALTH_TOKEN=$(printf 'c%.0s' {1..64})" \
+  bash infra/node-cluster/VERIFY-NODE-CLUSTER-EVIDENCE.sh "$fixture"
+duplicate_code=$?
+set -e
+if [[ "$missing_code" -ne 10 || "$duplicate_code" -ne 10 ]]; then
+  echo "[FAIL] verifier did not reject missing or reused per-node credentials" >&2
+  exit 1
+fi
+
+run_verifier() {
+  env "${TEST_TOKENS[@]}" bash infra/node-cluster/VERIFY-NODE-CLUSTER-EVIDENCE.sh "$fixture"
+}
+
+run_verifier
 
 # Production mode recomputes each HMAC with protected per-node credentials.
 env "${TEST_TOKENS[@]}" bash infra/node-cluster/VERIFY-NODE-CLUSTER-EVIDENCE.sh "$fixture"
@@ -66,12 +84,7 @@ d["nodes"][0]["probeSignature"]="0"*64
 json.dump(d, open(p, "w", encoding="utf-8"))
 PY
 set +e
-env CONNECTA_REQUIRE_CRYPTOGRAPHIC_EVIDENCE=true \
-  NODE01_HEALTH_TOKEN="$(printf 'a%.0s' {1..64})" \
-  NODE02_HEALTH_TOKEN="$(printf 'b%.0s' {1..64})" \
-  NODE03_HEALTH_TOKEN="$(printf 'c%.0s' {1..64})" \
-  NODE04_HEALTH_TOKEN="$(printf 'd%.0s' {1..64})" \
-  bash infra/node-cluster/VERIFY-NODE-CLUSTER-EVIDENCE.sh "$fixture"
+run_verifier
 crypto_code=$?
 set -e
 if [[ "$crypto_code" -ne 10 ]]; then
@@ -88,7 +101,7 @@ d["nodes"][2]["http"]["runtimeNode"]="NODE02"
 json.dump(d, open(p, "w", encoding="utf-8"))
 PY
 set +e
-bash infra/node-cluster/VERIFY-NODE-CLUSTER-EVIDENCE.sh "$fixture"
+run_verifier
 code=$?
 set -e
 if [[ "$code" -ne 10 ]]; then
@@ -106,7 +119,7 @@ d["nodes"][2]["http"]["cluster"]="another-cluster"
 json.dump(d, open(p, "w", encoding="utf-8"))
 PY
 set +e
-bash infra/node-cluster/VERIFY-NODE-CLUSTER-EVIDENCE.sh "$fixture"
+run_verifier
 code=$?
 set -e
 if [[ "$code" -ne 10 ]]; then
