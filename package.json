@@ -76,7 +76,8 @@
     "jarvis:worker:supervise": "node products/izakhono-jarvis/runner/supervisor.mjs",
     "jarvis:workforce:test": "npx --yes tsx@4.20.3 products/izakhono-jarvis/src/workforce.test.ts",
     "registry:api-security-test": "npx --yes tsx@4.20.3 registry/api.security.test.ts",
-    "registry:worker-auth-test": "npx --yes tsx@4.20.3 registry/worker-persistent.security.test.ts"
+    "registry:worker-auth-test": "npx --yes tsx@4.20.3 registry/worker-persistent.security.test.ts",
+    "registry:dispatch-test": "npx --yes tsx@4.20.3 registry/worker-supervisor.dispatch.test.ts"
   },
   "dependencies": {
     "wrangler": "4.127.1"
