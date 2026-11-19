@@ -396,12 +396,13 @@ async function handleIkhokhaWebhook(req, env) {
 
   const fingerprint = sha256Hex(`ikhokha:${raw}`);
   const fresh = await recordEvent(env, 'ikhokha', `payment.${String(event?.status || 'unknown').toLowerCase()}`, fingerprint, intent.id, event, true);
-  if (!fresh) return response({ ok: true, duplicate: true });
 
+  // Re-apply a verified success on duplicate delivery. This recovers when the
+  // event was persisted but the payment-state transition failed previously.
   if (event?.status === 'SUCCESS' && event?.responseCode === '00') {
     await markPaid(env, intent.id, cleanText(event?.paylinkID || intent.provider_reference, 180));
   }
-  return response({ ok: true });
+  return response({ ok: true, duplicate: !fresh });
 }
 
 async function handlePaystackWebhook(req, env) {
@@ -419,10 +420,6 @@ async function handlePaystackWebhook(req, env) {
     await recordFortressEvent(env, { severity: 'critical', category: 'payment.provider_identity_mismatch', source: 'paystack', merchantSlug: intent?.app_slug || null, intentId: intent?.id || null, details: { reference: cleanText(reference || '', 120) } });
     return fail('Paystack payment identity did not match the merchant payment intent', 409, 'payment_identity_mismatch');
   }
-  const fingerprint = sha256Hex(`paystack:${raw}`);
-  const fresh = await recordEvent(env, 'paystack', cleanText(event?.event || 'unknown', 80), fingerprint, intent?.id, event, true);
-  if (!fresh) return response({ ok: true, duplicate: true });
-
   if (event?.event === 'charge.success' && intent) {
     const amountMatches = Number(event?.data?.amount) === Number(intent.amount_minor);
     const currencyMatches = String(event?.data?.currency || '').toUpperCase() === intent.currency;
@@ -430,9 +427,16 @@ async function handlePaystackWebhook(req, env) {
       await recordFortressEvent(env, { severity: 'critical', category: 'payment.amount_or_currency_mismatch', source: 'paystack', merchantSlug: intent.app_slug, intentId: intent.id, details: { reference } });
       return fail('Verified webhook did not match the expected amount/currency', 409, 'payment_mismatch');
     }
+  }
+
+  const fingerprint = sha256Hex(`paystack:${raw}`);
+  const fresh = await recordEvent(env, 'paystack', cleanText(event?.event || 'unknown', 80), fingerprint, intent?.id, event, true);
+  // Do not skip a verified success merely because its event was already stored:
+  // the previous attempt may have failed before marking the intent paid.
+  if (event?.event === 'charge.success' && intent) {
     await markPaid(env, intent.id, String(event?.data?.id || reference));
   }
-  return response({ ok: true });
+  return response({ ok: true, duplicate: !fresh });
 }
 
 async function handlePayfastWebhook(req, env) {
@@ -478,10 +482,10 @@ async function handlePayfastWebhook(req, env) {
   const fingerprint = sha256Hex(`payfast:${raw}`);
   const payload = Object.fromEntries(params.entries());
   const fresh = await recordEvent(env, 'payfast', `payment.${params.get('payment_status') || 'unknown'}`, fingerprint, intent.id, payload, true);
-  if (!fresh) return new Response('OK', { status: 200 });
-
+  // A duplicate COMPLETE notification still retries the idempotent paid-state
+  // transition if the earlier delivery persisted its event but failed later.
   if (params.get('payment_status') === 'COMPLETE') await markPaid(env, intent.id, params.get('pf_payment_id'));
-  return new Response('OK', { status: 200 });
+  return new Response('OK', { status: 200, headers: { 'x-izakhono-duplicate': fresh ? 'false' : 'true' } });
 }
 
 async function handleMockComplete(req, env) {
