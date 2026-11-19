@@ -53,7 +53,7 @@ PY
 expect_blocked() {
   local label="$1" code
   set +e
-  env "${TEST_TOKENS[@]}" bash infra/node-cluster/VERIFY-NODE-CLUSTER-EVIDENCE.sh "$fixture" >/dev/null 2>&1
+  env "${TEST_TOKENS[@]}" env "${TEST_TOKENS[@]}" bash infra/node-cluster/VERIFY-NODE-CLUSTER-EVIDENCE.sh "$fixture" >/dev/null 2>&1
   code=$?
   set -e
   if [[ "$code" -ne 10 ]]; then
