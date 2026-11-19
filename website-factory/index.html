@@ -37,8 +37,7 @@
 <script>
 const form = document.querySelector('#job');
 const result = document.querySelector('#result');
-const submitButton = form.querySelector('button[type="submit"], button:not([type])');
-form.addEventListener('submit', async (event) => {
+form.addEventListener('submit', (event) => {
   event.preventDefault();
   const values = new FormData(form);
   const business = String(values.get('business') || '').trim();
@@ -46,41 +45,10 @@ form.addEventListener('submit', async (event) => {
   const type = String(values.get('type') || 'Business website').trim();
   const goal = String(values.get('goal') || '').trim();
   if (!business || !industry || !goal) {
-    result.textContent = 'Complete the business name, industry and primary goal before submitting.';
+    result.textContent = 'Complete the business name, industry and primary goal before continuing.';
     return;
   }
-  const prompt = 'Build a ' + type.toLowerCase() + ' for ' + business + ', operating in ' + industry + '. Primary business goal: ' + goal + '. Generate a responsive multi-page-ready website application using IZAKHONO native templates, tests and a content-addressed internal snapshot.';
-  submitButton.disabled = true;
-  result.textContent = 'Submitting the brief to the authenticated IZAKHONO Builder…';
-  try {
-    const response = await fetch('/api/build-anything', {
-      method: 'POST',
-      credentials: 'same-origin',
-      headers: { 'content-type': 'application/json', 'accept': 'application/json' },
-      body: JSON.stringify({ prompt, target: 'website', name: business })
-    });
-    const payload = await response.json().catch(() => ({}));
-    if (response.status === 401) throw new Error('Owner sign-in is required. Open the IZAKHONO Builder, authenticate, then return to this factory.');
-    if (!response.ok || payload.ok !== true) throw new Error(payload.error || 'Builder request failed with HTTP ' + response.status);
-    const project = payload.project || {};
-    const build = payload.build || {};
-    result.textContent = [
-      'RELEASE CANDIDATE CREATED',
-      'Project: ' + (project.name || business),
-      'Slug: ' + (project.slug || 'not returned'),
-      'Status: ' + (project.status || 'unknown'),
-      'Generated: ' + String(Boolean(build.generated)),
-      'Validation passed: ' + String(Boolean(build.validation_passed)),
-      'Internal repository: ' + (build.internal_repository?.head_commit_id || 'not yet committed'),
-      'Preview: ' + (build.preview || 'not yet available'),
-      'Public live: ' + String(payload.public_live === true),
-      'Next gate: ' + (payload.next_gate || 'verification required'),
-      payload.message || ''
-    ].filter(Boolean).join('\n');
-  } catch (error) {
-    result.textContent = 'BUILD NOT CONFIRMED\n' + String(error?.message || error);
-  } finally {
-    submitButton.disabled = false;
-  }
+  result.textContent = 'Opening the authenticated IZAKHONO Builder. Submit your complete brief in the Build Anything panel.';
+  window.location.assign('/#buildAnything');
 });
 </script></body></html>
