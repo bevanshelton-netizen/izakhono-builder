@@ -33,6 +33,7 @@ jobs:
         shell: bash
         run: |
           node --check products/izakhono-mail/src/server.mjs
+          node --check products/izakhono-mail/src/auth-api.mjs
           node --check products/izakhono-mail/src/dns-control.mjs
           node --check products/izakhono-mail/src/dns-control.test.mjs
           node --test products/izakhono-mail/src/dns-control.test.mjs
