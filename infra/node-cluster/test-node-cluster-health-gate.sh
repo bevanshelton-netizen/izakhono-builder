@@ -77,7 +77,7 @@ COMMON_ENV=(
 
 # Four distinct URLs, credentials and signed challenges must pass.
 env "${COMMON_ENV[@]}" OUTPUT="$tmp/valid.json" /usr/bin/bash "$ROOT/infra/node-cluster/NODE-CLUSTER-HEALTH-GATE.sh"
-env "${COMMON_ENV[@]}" env "${COMMON_ENV[@]}" bash "$ROOT/infra/node-cluster/VERIFY-NODE-CLUSTER-EVIDENCE.sh" "$tmp/valid.json"
+env "${COMMON_ENV[@]}" bash "$ROOT/infra/node-cluster/VERIFY-NODE-CLUSTER-EVIDENCE.sh" "$tmp/valid.json"
 python3 - "$tmp/valid.json" <<'PY'
 import json, sys
 d=json.load(open(sys.argv[1], encoding="utf-8"))
