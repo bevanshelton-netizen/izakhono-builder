@@ -1,0 +1,14 @@
+{
+  "description": "IZAKHONO NODE01 Mail Provisioner",
+  "roleIds": {
+    "<DEFAULT_USER_ROLE_ID>": true
+  },
+  "enabledPermissions": {
+    "sysAccountCreate": true,
+    "sysAccountGet": true,
+    "sysAccountQuery": true,
+    "sysDomainGet": true,
+    "sysDomainQuery": true
+  },
+  "disabledPermissions": {}
+}
