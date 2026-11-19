@@ -116,6 +116,36 @@ try:
     status,me=request("/api/v1/me",headers=bearer)
     assert status==200 and me["entity"]["id"]=="ent_a" and me["role"]=="admin"
 
+    # Internal introspection returns stable canonical IDs, never relying on email as a join key.
+    status,introspected=request("/api/v1/internal/introspect","POST",{
+        "token":login["access_token"],
+    },headers={"x-izakhono-id-internal-key":"internal-test"})
+    assert status==200 and introspected["active"] is True
+    assert introspected["user_id"]=="usr_1"
+    assert introspected["entity_id"]=="ent_a"
+    assert introspected["membership_id"]=="mem_a"
+    assert introspected["entity_slug"]=="entity-a"
+    assert introspected["role"]=="admin"
+    assert introspected["subject"]=="user@example.com"
+    assert introspected["session_id"]
+    assert introspected["expires_at"]
+
+    # A second membership for the same user must introspect to the other entity only.
+    status,introspected_b=request("/api/v1/internal/introspect","POST",{
+        "token":token_b,
+    },headers={"x-izakhono-id-internal-key":"internal-test"})
+    assert status==200 and introspected_b["active"] is True
+    assert introspected_b["user_id"]=="usr_1"
+    assert introspected_b["entity_id"]=="ent_b"
+    assert introspected_b["membership_id"]=="mem_b"
+    assert introspected_b["role"]=="member"
+
+    # Internal introspection remains protected by its independent service credential.
+    status,unauthorized=request("/api/v1/internal/introspect","POST",{
+        "token":login["access_token"],
+    },headers={"x-izakhono-id-internal-key":"wrong"})
+    assert status==401 and unauthorized["active"] is False if "active" in unauthorized else status==401
+
     # Password change requires current password and revokes other sessions.
     status,bad_change=request("/api/v1/change-password","POST",{
         "current_password":"wrong-password",
@@ -168,6 +198,10 @@ try:
     assert status==200 and out["ok"]
     status,_=request("/api/v1/me",headers=bearer2)
     assert status==401
+    status,revoked_introspection=request("/api/v1/internal/introspect","POST",{
+        "token":new_login["access_token"],
+    },headers={"x-izakhono-id-internal-key":"internal-test"})
+    assert status==200 and revoked_introspection["active"] is False
 
     # TOTP MFA enrollment and login challenge for a second user.
     status,mfa_login=request("/api/v1/login","POST",{
