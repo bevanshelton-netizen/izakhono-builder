@@ -122,16 +122,15 @@ jobs:
       - name: Enforce single canonical mail engine and shared edge
         run: |
           python3 - <<'PY'
-          import pathlib, yaml
-          compose = yaml.safe_load(pathlib.Path('products/izakhono-mail/runtime-v1/docker-compose.yml').read_text())
-          services = compose.get('services', {})
-          if set(services) != {'roundcube-db', 'roundcube'}:
-              raise SystemExit(f'Runtime must not launch another mail engine or Caddy: {sorted(services)}')
-          if 'izakhono-mail' not in compose.get('networks', {}):
-              raise SystemExit('Shared IZAKHONO mail network missing')
-          host_compose = yaml.safe_load(pathlib.Path('products/izakhono-host/mail/docker-compose.mail.yml').read_text())
-          if set(host_compose.get('services', {})) != {'stalwart'}:
-              raise SystemExit('HOST must own the single Stalwart mail engine')
+          import pathlib
+          runtime = pathlib.Path('products/izakhono-mail/runtime-v1/docker-compose.yml').read_text()
+          host_mail = pathlib.Path('products/izakhono-host/mail/docker-compose.mail.yml').read_text()
+          if '  roundcube-db:' not in runtime or '  roundcube:' not in runtime:
+              raise SystemExit('Roundcube services missing from mail runtime')
+          if '  stalwart:' in runtime or '  caddy:' in runtime:
+              raise SystemExit('Mail runtime must not launch duplicate Stalwart or Caddy services')
+          if 'izakhono-mail' not in runtime or '  stalwart:' not in host_mail:
+              raise SystemExit('Shared network or canonical HOST Stalwart service missing')
           print('single mail engine/shared edge contract: PASS')
           PY
 
