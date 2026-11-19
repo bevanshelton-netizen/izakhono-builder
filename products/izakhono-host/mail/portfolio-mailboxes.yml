@@ -15,6 +15,9 @@ standard_mailboxes:
   - security
   - noreply
 
+mandatory_mailboxes_before_handover:
+  - info
+
 platforms:
   - id: kora-network
     name: KORA NETWORK
@@ -97,6 +100,38 @@ platforms:
     domain: TBD
   - id: kora-market
     name: KORA MARKET
+    priority: high
+    domain: TBD
+
+  - id: izakhono-africa-parent
+    name: IZAKHONO AFRICA (PTY) LTD
+    priority: critical
+    domain: izakhonoafrica.co.za
+    mailbox_identity: IZAKHONO
+    provisioning_enabled: false
+    alias_of: IZAKHONO
+  - id: izakhono-manufacturing
+    name: IZAKHONO Manufacturing
+    priority: high
+    domain: TBD
+  - id: sheltonair
+    name: SHELTONAIR
+    priority: critical
+    domain: TBD
+  - id: shelton-freight-group
+    name: Shelton Freight Group
+    priority: high
+    domain: TBD
+  - id: shelton-technologies
+    name: Shelton Technologies
+    priority: critical
+    domain: TBD
+  - id: shelton-motor-company
+    name: SHELTON MOTOR COMPANY
+    priority: high
+    domain: TBD
+  - id: classique-furniture
+    name: Classique Furniture
     priority: high
     domain: TBD
 
