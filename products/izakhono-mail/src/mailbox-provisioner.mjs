@@ -40,8 +40,9 @@ export async function provisionMailbox({ platform, mailbox, displayName = '' }) 
   try {
     domainState = await transport.ensureDomain(target.domain);
   } catch (error) {
-    return failure('transport_domain_setup_failed', target, {
-      error_code: String(error?.message || 'stalwart_domain_setup_failed').slice(0, 120),
+    const errorCode = String(error?.message || 'stalwart_domain_setup_failed').slice(0, 120);
+    return failure(errorCode === 'stalwart-domain-not-provisioned' ? 'domain_not_provisioned' : 'transport_domain_setup_failed', target, {
+      error_code: errorCode,
     });
   }
 
@@ -58,7 +59,7 @@ export async function provisionMailbox({ platform, mailbox, displayName = '' }) 
     return failure('dns_pending', target, {
       dns: dnsVerification,
       dns_zone_file: domainState.dnsZoneFile,
-      domain_created: domainState.created,
+      domain_ready: true,
     });
   }
 
