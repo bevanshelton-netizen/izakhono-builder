@@ -53,7 +53,7 @@ At minimum, publish:
     mail.izakhonoafrica.co.za.       A       <PUBLIC_IPV4>
     webmail.izakhonoafrica.co.za.    A       <PUBLIC_IPV4>
     izakhonoafrica.co.za.            MX 10   mail.izakhonoafrica.co.za.
-    izakhonoafrica.co.za.            TXT     "v=spf1 mx -all"
+    izakhonoafrica.co.za.            TXT     "v=spf1 mx ~all"
     _dmarc.izakhonoafrica.co.za.     TXT     "v=DMARC1; p=none; rua=mailto:postmaster@izakhonoafrica.co.za"
     <selector>._domainkey.izakhonoafrica.co.za. TXT <EXACT_STALWART_DKIM_VALUE>
 
