@@ -7,7 +7,7 @@ function showOffline(){
 }
 function showOnline(){
   if(connection&&connection.textContent.includes("OFFLINE")){
-    connection.textContent="● ONLINE · RECONNECTING";
+    connection.textContent="● ONLINE · NOT CONNECTED";
     connection.style.color="var(--gold)";
   }
   const refresh=document.getElementById("refresh");
