@@ -1,5 +1,6 @@
 import {MemoryIdempotencyStore,hashRequest} from './idempotency';
 
+async function main(){
 const store=new MemoryIdempotencyStore();
 const hash=await hashRequest({domain:'alpha.test'});
 const first=await store.claim('k1',hash,'t1');
@@ -13,3 +14,5 @@ if(retry.claimed||retry.record?.status!=='completed'||JSON.stringify(retry.recor
 const mismatch=await store.claim('k1',await hashRequest({domain:'other.test'}),'t5');
 if(mismatch.claimed||mismatch.record?.requestHash===hash)throw new Error('idempotency hash mismatch was not detected');
 console.log('IZAKHONO idempotency tests passed');
+}
+void main();
