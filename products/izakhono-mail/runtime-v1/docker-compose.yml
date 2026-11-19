@@ -1,67 +1,58 @@
 services:
   mailserver:
-    image: ghcr.io/docker-mailserver/docker-mailserver:16.0.1
+    image: stalwartlabs/stalwart:v0.16
     container_name: izakhono-mailserver
     hostname: ${MAIL_HOSTNAME}
-    env_file:
-      - .env
     environment:
-      - TZ=${TZ}
-      - OVERRIDE_HOSTNAME=${MAIL_HOSTNAME}
-      - ENABLE_RSPAMD=1
-      - ENABLE_CLAMAV=0
-      - ENABLE_FAIL2BAN=1
-      - ENABLE_POSTGREY=1
-      - ENABLE_OPENDKIM=0
-      - ENABLE_OPENDMARC=0
-      - ENABLE_POLICYD_SPF=0
-      - SSL_TYPE=letsencrypt
-      - ONE_DIR=1
-      - ACCOUNT_PROVISIONER=FILE
-      - PERMIT_DOCKER=none
-      - POSTMASTER_ADDRESS=postmaster@${MAIL_DOMAIN}
-    cap_add:
-      - NET_ADMIN
-      - SYS_PTRACE
+      TZ: ${TZ:-Africa/Johannesburg}
     ports:
       - "25:25"
       - "465:465"
       - "587:587"
       - "993:993"
+      # Admin and JMAP bootstrap/API are loopback-only; public HTTPS belongs to HOST EDGE.
+      - "127.0.0.1:18080:443"
+      - "127.0.0.1:18081:8080"
     volumes:
-      - ./dms-config/:/tmp/docker-mailserver/
-      - ./mail-data/:/var/mail/
-      - ./mail-state/:/var/mail-state/
-      - ./mail-logs/:/var/log/mail/
-      - ./mail-config/:/tmp/docker-mailserver-config/
-      - ./letsencrypt/:/etc/letsencrypt/
-      - /etc/localtime:/etc/localtime:ro
+      - ./stalwart-etc:/etc/stalwart
+      - ./stalwart-data:/var/lib/stalwart
+    networks:
+      mail-internal: {}
+      izakhono-mail:
+        aliases:
+          - ${MAIL_HOSTNAME}
     restart: unless-stopped
-    stop_grace_period: 1m
     healthcheck:
-      test: ["CMD-SHELL", "ss -lnt | grep -q ':25' && ss -lnt | grep -q ':993'"]
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8080/ >/dev/null"]
       interval: 30s
       timeout: 10s
       retries: 5
+      start_period: 60s
 
   roundcube-db:
     image: mariadb:11.8
     container_name: izakhono-roundcube-db
     environment:
-      MARIADB_ROOT_PASSWORD: ${ROUNDCUBE_DB_PASSWORD}
+      MARIADB_ROOT_PASSWORD: ${ROUNDCUBE_DB_PASSWORD:?set ROUNDCUBE_DB_PASSWORD}
       MARIADB_DATABASE: roundcube
       MARIADB_USER: roundcube
-      MARIADB_PASSWORD: ${ROUNDCUBE_DB_PASSWORD}
+      MARIADB_PASSWORD: ${ROUNDCUBE_DB_PASSWORD:?set ROUNDCUBE_DB_PASSWORD}
     volumes:
       - ./roundcube-db:/var/lib/mysql
+    networks: [mail-internal]
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "mariadb-admin ping -h 127.0.0.1 -u roundcube -p\$\$MARIADB_PASSWORD --silent"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
 
   roundcube:
     image: roundcube/roundcubemail:1.6-apache
     container_name: izakhono-roundcube
     depends_on:
       roundcube-db:
-        condition: service_started
+        condition: service_healthy
       mailserver:
         condition: service_healthy
     environment:
@@ -73,22 +64,22 @@ services:
       ROUNDCUBEMAIL_DB_HOST: roundcube-db
       ROUNDCUBEMAIL_DB_NAME: roundcube
       ROUNDCUBEMAIL_DB_USER: roundcube
-      ROUNDCUBEMAIL_DB_PASSWORD: ${ROUNDCUBE_DB_PASSWORD}
+      ROUNDCUBEMAIL_DB_PASSWORD: ${ROUNDCUBE_DB_PASSWORD:?set ROUNDCUBE_DB_PASSWORD}
       ROUNDCUBEMAIL_SKIN: elastic
     ports:
       - "127.0.0.1:8088:80"
+    networks: [mail-internal, izakhono-mail]
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1/ >/dev/null"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
 
-  caddy:
-    image: caddy:2.10-alpine
-    container_name: izakhono-mail-web
-    depends_on:
-      - roundcube
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      - ./caddy-data:/data
-      - ./caddy-config:/config
-    restart: unless-stopped
+networks:
+  mail-internal:
+    internal: true
+  izakhono-mail:
+    external: true
+    name: izakhono-mail
