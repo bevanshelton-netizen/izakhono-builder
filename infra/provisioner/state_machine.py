@@ -9,7 +9,7 @@ from typing import Any
 class State(str, Enum):
     PAYMENT_VERIFIED="PAYMENT_VERIFIED"; TENANT_CREATED="TENANT_CREATED"; DOMAIN_READY="DOMAIN_READY"; DNS_READY="DNS_READY"; SITE_READY="SITE_READY"; TLS_READY="TLS_READY"; MAIL_READY="MAIL_READY"; BILLING_VERIFIED="BILLING_VERIFIED"; INTEGRATIONS_READY="INTEGRATIONS_READY"; ACCEPTANCE_PASSED="ACCEPTANCE_PASSED"; HANDOVER_READY="HANDOVER_READY"; BLOCKED="BLOCKED"
 
-PIPELINE=[State.PAYMENT_VERIFIED,State.TENANT_CREATED,State.DOMAIN_READY,State.DNS_READY,State.SITE_READY,State.TLS_READY,State.MAIL_READY,State.BILLING_VERIFIED,State.INTEGRATIONS_READY,State.ACCEPTANCE_PASSED,State.HANDOVER_READY]
+PIPELINE=[State.TENANT_CREATED,State.DOMAIN_READY,State.DNS_READY,State.SITE_READY,State.TLS_READY,State.MAIL_READY,State.BILLING_VERIFIED,State.INTEGRATIONS_READY,State.ACCEPTANCE_PASSED,State.HANDOVER_READY]
 
 @dataclass(frozen=True)
 class StepResult:
@@ -25,6 +25,7 @@ class ProvisioningJob:
     def record(self,event:str,**payload:Any)->None: self.audit.append({"ts":time(),"event":event,**payload})
     def next_state(self)->State|None:
         if self.state in (State.BLOCKED,State.HANDOVER_READY): return None
+        if self.state == State.PAYMENT_VERIFIED: return PIPELINE[0]
         i=PIPELINE.index(self.state); return PIPELINE[i+1] if i+1<len(PIPELINE) else None
 
 class Provisioner:
