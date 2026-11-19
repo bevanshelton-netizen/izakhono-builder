@@ -37,7 +37,7 @@ IZAKHONO PAY owns the merchant experience, payment-intent lifecycle, idempotency
 - Merchant/payment orchestration; providers handle regulated payment processing and settlement.
 - Sandbox/demo first; live processing stays disabled until signed release gates pass.
 
-Do not describe Alpha as global multi-currency processing. The global product architecture is the target; each market and payment rail must be explicitly certified, contracted, tested and enabled.
+Currency-safe groundwork now includes explicit exponent metadata and exact integer minor-unit conversion for ZAR, USD, EUR, GBP, AUD, CAD, NZD, CHF, JPY, KRW, BHD, KWD, JOD, OMR, TND, CLP, XAF, XOF, NGN, KES, GHS, EGP, INR, CNY, SGD, HKD, AED, SAR, BRL and MXN. This is a money-arithmetic foundation, not a statement that those currencies are enabled for checkout. The current provider router and checkout remain ZAR-only. Do not describe Alpha as global multi-currency processing. Each market and payment rail must be explicitly certified, contracted, tested and enabled.
 
 ## Payment flow
 
