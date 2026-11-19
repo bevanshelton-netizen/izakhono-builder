@@ -19,7 +19,7 @@ if [[ ! -f .env ]]; then
   exit 1
 fi
 
-for key in MAIL_DOMAIN MAIL_HOSTNAME MAILBOX ROUNDCUBE_DB_PASSWORD STALWART_RECOVERY_ADMIN; do
+for key in MAIL_DOMAIN MAIL_HOSTNAME MAILBOX ROUNDCUBE_DB_ROOT_PASSWORD ROUNDCUBE_DB_PASSWORD STALWART_RECOVERY_ADMIN; do
   value="$(read_env "$key")"
   if [[ -z "$value" ]]; then
     echo "BLOCKED: $key is missing from .env"
@@ -27,7 +27,7 @@ for key in MAIL_DOMAIN MAIL_HOSTNAME MAILBOX ROUNDCUBE_DB_PASSWORD STALWART_RECO
   fi
 done
 
-for key in ROUNDCUBE_DB_PASSWORD STALWART_RECOVERY_ADMIN; do
+for key in ROUNDCUBE_DB_ROOT_PASSWORD ROUNDCUBE_DB_PASSWORD STALWART_RECOVERY_ADMIN; do
   value="$(read_env "$key")"
   if [[ "$value" == *CHANGE_ME* ]]; then
     echo "BLOCKED: replace placeholder value for $key"
