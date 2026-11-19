@@ -137,7 +137,7 @@ jobs:
         working-directory: products/izakhono-mail/runtime-v1
         run: |
           test -f docker-compose.yml
-          test -f Caddyfile
+          test -f ../../izakhono-host/edge/Caddyfile
           test -f .env.example
           test -f ops/bootstrap.sh
           test -f ops/preflight.sh
