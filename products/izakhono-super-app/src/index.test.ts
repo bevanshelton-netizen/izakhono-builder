@@ -103,3 +103,34 @@ test("owner chat rejects an empty answer even when the gateway claims owned infe
     assert.equal((await response.json() as any).error,"owned_inference_not_verified");
   }finally{globalThis.fetch=original;}
 });
+
+
+test("durable supervisor status is owner-authenticated",async()=>{
+  let touched=false;
+  const DB={prepare(){touched=true;return {bind(){return this;},run:async()=>({}),all:async()=>({results:[]}),first:async()=>null};}};
+  const response=await worker.fetch(new Request("https://app.test/api/supervisor/status"),env({DB}));
+  assert.equal(response.status,401);
+  assert.equal(touched,false);
+});
+
+test("owner can read durable supervisor counts from the shared D1 store",async()=>{
+  const DB={prepare(){return {bind(){return this;},run:async()=>({}),all:async()=>({results:[]}),first:async()=>null};}};
+  const response=await worker.fetch(new Request("https://app.test/api/supervisor/status",{
+    headers:{"x-izakhono-owner-key":"owner-secret-test-value"}
+  }),env({DB}));
+  const data=await response.json() as any;
+  assert.equal(response.status,200);
+  assert.equal(data.storage,"shared-d1");
+  assert.deepEqual(data.counts,{queued:0,running:0,verified:0,completed:0,blocked:0,failed:0});
+});
+
+test("owner can read a bounded durable supervisor job list",async()=>{
+  const DB={prepare(){return {bind(){return this;},run:async()=>({}),all:async()=>({results:[]}),first:async()=>null};}};
+  const response=await worker.fetch(new Request("https://app.test/api/supervisor/jobs?status=queued",{
+    headers:{"x-izakhono-owner-key":"owner-secret-test-value"}
+  }),env({DB}));
+  const data=await response.json() as any;
+  assert.equal(response.status,200);
+  assert.deepEqual(data.jobs,[]);
+  assert.equal(data.truncated,false);
+});

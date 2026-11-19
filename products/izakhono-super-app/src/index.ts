@@ -1,5 +1,7 @@
+import {D1Database} from "../../../registry/d1-store";
+import {ensureSupervisorSchema,listSupervisorJobs,supervisorCounts,type SupervisorStatus} from "../../../registry/supervisor-store";
 interface Fetcher { fetch(request: Request): Promise<Response>; }
-interface Env { ASSETS:Fetcher; APP_ENV?:string; IZAKHONO_AI_GATEWAY_URL?:string; IZAKHONO_AI_GATEWAY_INTERNAL_KEY?:string; IZAKHONO_AI_WORKFLOW_KEY?:string; IZAKHONO_OWNER_ACCESS_KEY?:string; }
+interface Env { ASSETS:Fetcher; DB?:D1Database; APP_ENV?:string; IZAKHONO_AI_GATEWAY_URL?:string; IZAKHONO_AI_GATEWAY_INTERNAL_KEY?:string; IZAKHONO_AI_WORKFLOW_KEY?:string; IZAKHONO_OWNER_ACCESS_KEY?:string; }
 const modules=[{id:"builder",name:"IZAKHONO BUILDER AI",route:"/builder",status:"available",engine:"independent"},{id:"creator",name:"IZAKHONO Creator Engine",route:"/creator",status:"integrated",engine:"orchestrated-independent-engines"},{id:"affiliate",name:"IZAKHONO Affiliate",route:"/affiliate",status:"integrated",engine:"independent"},{id:"create",name:"IZAKHONO CREATE",route:"/create",status:"available",engine:"independent"},{id:"ads",name:"IZAKHONO ADS",route:"/ads",status:"available",engine:"independent"},{id:"crm",name:"IZAKHONO CRM",route:"/crm",status:"architecture-ready",engine:"independent"},{id:"flow",name:"IZAKHONO FLOW",route:"/flow",status:"integrated",engine:"independent"},{id:"finance-core",name:"IZAKHONO FINANCE CORE",route:"/finance-core",status:"integrated",engine:"independent"},{id:"accountant",name:"SUPER ACCOUNTANT",route:"/accounting",status:"architecture-ready",engine:"independent"},{id:"fortress",name:"FORTRESS",route:"/fortress",status:"available",engine:"independent"},{id:"flowiq",name:"FLOWIQ",route:"/flowiq",status:"architecture-ready",engine:"independent"},{id:"tasks",name:"IZAKHONO TASKS",route:"/tasks",status:"architecture-ready",engine:"independent"},{id:"one-drive",name:"IZAKHONO ONE DRIVE",route:"/one-drive",status:"architecture-ready",engine:"independent"}];
 const creator={module_id:"creator",embedded:true,route:"/creator",engine:"orchestrated-independent-engines",source_of_truth:"products/izakhono-super-app/creator-engine.v1.json",public_status:"integration-installed-public-live-gated",principle:"one brief -> plan -> create -> adapt -> approve -> distribute -> measure",capabilities:["ideas","writing","research","design","image","video","audio","automation"],handoffs:["izakhono-super-ai","izakhono-create","izakhono-shorts","izakhono-flow","izakhono-social","izakhono-ads","izakhono-affiliate","fortress"],owned_first:true,external_adapters_replaceable:true,behavioural_profiling:false,advertising_ids:false,raw_prompt_persistence:false,paid_spend_requires_authorisation:true,publishing_requires_approved_channel_credentials:true};
 const flow={module_id:"flow",embedded:true,route:"/flow",engine:"independent",source_of_truth:"products/izakhono-flow",owned_target:"NODE01",public_status:"gated-until-independently-verified",workflow:["lead","qualify","quote","pay","fulfil","invoice","support","retain","report"],verified_payment_only:true,entity_platform_isolation:true,behavioural_profiling:false,advertising_ids:false};
@@ -10,6 +12,20 @@ function json(data:unknown,status=200){return new Response(JSON.stringify(data),
 function equalSecret(a:string,b:string){if(!a||!b||a.length!==b.length)return false;let diff=0;for(let i=0;i<a.length;i++)diff|=a.charCodeAt(i)^b.charCodeAt(i);return diff===0;}
 function ownerOK(req:Request,env:Env){return !!env.IZAKHONO_OWNER_ACCESS_KEY&&equalSecret(req.headers.get("x-izakhono-owner-key")||"",env.IZAKHONO_OWNER_ACCESS_KEY);}
 function configured(env:Env){return !!(env.IZAKHONO_AI_GATEWAY_URL&&env.IZAKHONO_AI_GATEWAY_INTERNAL_KEY&&env.IZAKHONO_AI_WORKFLOW_KEY);}
+const supervisorStatuses:SupervisorStatus[]=['queued','running','verified','completed','blocked','failed'];
+async function supervisorRead(req:Request,env:Env,mode:'status'|'jobs'){
+ if(!ownerOK(req,env))return json({ok:false,error:"owner_access_required"},401);
+ if(!env.DB)return json({ok:false,error:"supervisor_store_unavailable"},503);
+ try{
+  await ensureSupervisorSchema(env.DB);
+  const counts=await supervisorCounts(env.DB);
+  if(mode==='status')return json({ok:true,service:"IZAKHONO durable supervisor",storage:"shared-d1",counts});
+  const requested=new URL(req.url).searchParams.get("status") as SupervisorStatus|null;
+  if(requested&&!supervisorStatuses.includes(requested))return json({ok:false,error:"invalid_status"},400);
+  const jobs=await listSupervisorJobs(env.DB,requested||undefined);
+  return json({ok:true,counts,jobs:jobs.slice(0,100),truncated:jobs.length>100});
+ }catch{return json({ok:false,error:"supervisor_store_unavailable"},503);}
+}
 async function aiStatus(req:Request,env:Env){
  const supplied=req.headers.get("x-izakhono-owner-key")||"";
  const authorized=supplied?ownerOK(req,env):false;
@@ -45,6 +61,8 @@ export default {async fetch(req:Request,env:Env):Promise<Response>{
  if(url.pathname==="/api/finance-core/status")return json({ok:true,finance_core:financeCore});
  if(url.pathname==="/api/one-drive/status")return json({ok:true,one_drive:oneDrive});
  if(url.pathname==="/api/ai/status"&&req.method==="GET")return aiStatus(req,env);
+ if(url.pathname==="/api/supervisor/status"&&req.method==="GET")return supervisorRead(req,env,"status");
+ if(url.pathname==="/api/supervisor/jobs"&&req.method==="GET")return supervisorRead(req,env,"jobs");
  if(url.pathname==="/api/ai/chat"&&req.method==="POST")return aiChat(req,env);
  if(url.pathname.startsWith("/api/"))return json({ok:false,error:"Not found"},404);
  return env.ASSETS.fetch(req);

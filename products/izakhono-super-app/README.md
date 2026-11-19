@@ -96,6 +96,17 @@ A daily 08:00 SAST database watch updates the R20k sprint task using verified re
 **Integration installed; public-live remains gated.** The SUPER APP surface and orchestration contract are present in source. This does not prove a public HTTPS route, reachable media renderer, authenticated publishing channels or paid-media authorisation. Those states must be verified independently before they are called live.
 
 
+## Durable supervisor integration
+
+The SUPER APP Worker is bound to the existing `izakhono-builder` D1 database used by the IZAKHONO Registry/Builder control plane. It reads the shared supervisor job and execution state through the canonical `registry/supervisor-store.ts` implementation; it does not create a second queue or database.
+
+Owner-authenticated read endpoints:
+
+- `GET /api/supervisor/status` — durable queue counts by lifecycle state.
+- `GET /api/supervisor/jobs` — latest 100 durable jobs, optionally filtered by `?status=queued|running|verified|completed|blocked|failed`.
+
+Both endpoints require the existing `x-izakhono-owner-key` and return no-store responses. These are visibility/read APIs only: they do not dispatch workers, approve high-risk work, bypass human gates or claim that a job has executed. The shared database migration history includes the supervisor jobs, events, execution leases and attempts. The SUPER APP does not independently apply or own that migration set.
+
 ## IZAKHONO AI owner command workspace
 
 The SUPER APP includes an owner-only conversational command workspace at the **AI Command** navigation item. It calls the IZAKHONO-owned SUPER AI gateway through a server-side Worker proxy; gateway credentials are never sent to the browser. Conversation state is held in page memory only and is cleared when the page is reloaded or the user clears the conversation.
