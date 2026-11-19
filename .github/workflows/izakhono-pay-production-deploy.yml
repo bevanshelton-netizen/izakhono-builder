@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       confirm_live:
-        description: 'Type IZAKHONO PAY LIVE to deploy the production payment service'
+        description: 'Type IZAKHONO PAY PRODUCTION to deploy the production service with payment routing disabled'
         required: true
         type: string
 
@@ -41,7 +41,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if [ '${{ inputs.confirm_live }}' != 'IZAKHONO PAY LIVE' ]; then
+          if [ '${{ inputs.confirm_live }}' != 'IZAKHONO PAY PRODUCTION' ]; then
             echo 'Live deployment confirmation did not match.' >&2
             exit 1
           fi
@@ -64,6 +64,21 @@ jobs:
             fi
           done
           test "$missing" -eq 0
+
+      - name: Require a provisioned production D1 database ID
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const raw = fs.readFileSync('wrangler.production.jsonc', 'utf8');
+          const config = JSON.parse(raw.replace(/^\\s*\\/\\/.*$/gm, '').replace(/,\\s*([}\\]])/g, '$1'));
+          const database = (config.d1_databases || []).find((entry) => entry.binding === 'DB');
+          if (!database?.database_id || !/^[0-9a-f-]{36}$/i.test(database.database_id)) {
+            throw new Error('Production D1 is not provisioned: set the verified database_id for binding DB before deployment. No Worker deployment or migration was attempted.');
+          }
+          console.log('Production D1 database binding is configured.');
+          NODE
 
       - name: Bootstrap production Worker and D1 fail-closed
         shell: bash
@@ -101,7 +116,7 @@ jobs:
             echo '## IZAKHONO PAY Production'
             echo
             if [ -n "$url" ]; then echo "Production service URL: $url"; fi
-            echo 'iKhokha credentials are installed server-side; provider routing remains disabled pending merchant acceptance and end-to-end verification.'
+            echo 'Production service is deployed with payment routing disabled. Provider credentials and activation remain separate, gated steps.'
             echo 'All merchant applications remain staged/fail-closed until individually provisioned and approved.'
             echo 'No customer payment should be solicited until payout-bank verification and the controlled live transaction are completed.'
           } >> "$GITHUB_STEP_SUMMARY"
