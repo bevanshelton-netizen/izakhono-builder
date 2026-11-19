@@ -52,8 +52,14 @@ jobs:
           fi
           bash infra/node-cluster/NODE-CLUSTER-HEALTH-GATE.sh
 
-      - name: Verify four-node evidence is runtime-produced and complete
+      - name: Verify four-node evidence is runtime-produced and cryptographically authentic
         shell: bash
+        env:
+          CONNECTA_REQUIRE_CRYPTOGRAPHIC_EVIDENCE: "true"
+          NODE01_HEALTH_TOKEN: ${{ secrets.CONNECTA_NODE01_HEALTH_TOKEN }}
+          NODE02_HEALTH_TOKEN: ${{ secrets.CONNECTA_NODE02_HEALTH_TOKEN }}
+          NODE03_HEALTH_TOKEN: ${{ secrets.CONNECTA_NODE03_HEALTH_TOKEN }}
+          NODE04_HEALTH_TOKEN: ${{ secrets.CONNECTA_NODE04_HEALTH_TOKEN }}
         run: |
           bash infra/node-cluster/VERIFY-NODE-CLUSTER-EVIDENCE.sh /tmp/connecta-node-cluster-health.json
 
