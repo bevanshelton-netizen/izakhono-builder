@@ -97,17 +97,18 @@ No direct registry access, data-provider contract, or legal compliance certifica
 
 ## Delivery stages
 
-### Stage 1 — foundation (this change)
-- architecture contract and canonical project identity;
-- additive private persistence schema;
-- immutable decision/audit record primitives;
-- no changes to existing production payment decisions or traffic.
+### Stage 1 — foundation (deployed)
+- canonical project identity and architecture contract;
+- eight-table private identity persistence schema;
+- append-only decision/audit records;
+- private `identity-evidence` storage bucket;
+- service-role-only schema/table access and forced RLS with service-role-only policies.
 
-### Stage 2 — service and evidence
-- private evidence storage bucket and lifecycle policy;
-- authenticated server-side verification API through existing IZAKHONO gateway/control plane (do not add a new Edge Function until current function quota/capacity is confirmed);
-- case, evidence, relationship, consent, screening and decision workflows;
-- contract tests, RLS/grant tests and audit immutability tests.
+### Stage 2 — service and evidence (API deployed; verification pending)
+- authenticated KYC/KYB case, evidence-upload, submit, relationship, consent and evaluation routes integrated into the existing IZAKHONO gateway (version 15);
+- Supabase Auth token validation in the identity module, user-scoped case retrieval, private file storage, MIME/magic-byte/size checks and SHA-256 evidence hashes;
+- fail-closed evaluation creates REVIEW decisions only; no self-approval path exists;
+- runtime end-to-end request tests and independent code/security review remain outstanding.
 
 ### Stage 3 — provider adapters and South African workflow
 - CIPC/company-registry adapter under authorised access;
@@ -131,4 +132,4 @@ No direct registry access, data-provider contract, or legal compliance certifica
 
 ## Release boundary
 
-The database foundation is not a live KYC/KYB service. No provider integrations, biometric checks, CIPC/SARS lookups, private evidence bucket, reviewer console, or public production endpoint are claimed complete until separately implemented and verified. Existing FORTRESS and IZAKHONO PAY gates remain closed unless their own acceptance evidence passes.
+The database and authenticated intake/evidence API are deployed, but this is not a complete regulated KYC/KYB verification service. No external identity-document, biometric/liveness, CIPC, SARS, sanctions, PEP or adverse-media provider is configured; uploaded evidence is not malware-scanned or externally verified; no reviewer console or reviewer-role provisioning is deployed; and the end-to-end API has not yet passed a real authenticated user-session test. The evaluation engine therefore returns REVIEW and cannot issue APPROVE. Existing FORTRESS and IZAKHONO PAY gates remain closed unless their own acceptance evidence passes.
