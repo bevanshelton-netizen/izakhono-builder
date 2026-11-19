@@ -17,6 +17,7 @@ import {
 } from './core.js';
 import { dispatchMerchantPaymentPaid } from './merchant-webhooks.js';
 import { providerIdentityMatches } from './payment-binding.js';
+import { recordPaymentEvent } from './payment-event-store.js';
 
 const JSON_HEADERS = { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' };
 
@@ -106,17 +107,17 @@ async function findMerchantIntentById(env, merchantSlug, intentId) {
 }
 
 async function findIntentByIdempotency(env, appSlug, idempotencyKey) {
-  return env.DB.prepare('SELECT * FROM payment_intents WHERE app_slug=? AND idempotency_key=?').bind(appSlug, idempotencyKey).first();
-}
-
-async function recordEvent(env, provider, eventType, fingerprint, intentId, payload, verified = true) {
-  try {
-    await env.DB.prepare('INSERT INTO payment_events(id,provider,fingerprint,event_type,intent_id,payload_json,verified) VALUES(?,?,?,?,?,?,?)')
-      .bind(id('evt'), provider, fingerprint, eventType, intentId || null, JSON.stringify(payload).slice(0, 50000), verified ? 1 : 0).run();
-    return true;
-  } catch {
-    return false;
-  }
+  return env.DB.prepare('SELECT * FROM payment_intents WHERE app_slug=? ANDasync function recordEvent(env, provider, eventType, fingerprint, intentId, payload, verified = true) {
+  return recordPaymentEvent({
+    db: env.DB,
+    eventId: id('evt'),
+    provider,
+    eventType,
+    fingerprint,
+    intentId,
+    payload,
+    verified
+  });
 }
 
 async function recordFortressEvent(env, { severity = 'medium', category, source, merchantSlug = null, intentId = null, details = {} }) {
