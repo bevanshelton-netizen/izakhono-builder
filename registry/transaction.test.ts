@@ -3,6 +3,7 @@ import {createDomain} from './core';
 import {handoverVerifiedRegistration,registerAuthoritatively} from './transaction';
 import {MemoryRegistrationOrderStore} from './registration-order';
 
+async function main(){
 const store=new MemoryRegistryStore();
 const orders=new MemoryRegistrationOrderStore();
 const now=()=>new Date(Date.now()+86400000).toISOString();
@@ -18,3 +19,5 @@ let blocked=false;
 try{await handoverVerifiedRegistration({...result,dnsVerified:false});}catch{blocked=true}
 if(!blocked) throw new Error('unverified registration handover was allowed');
 console.log('IZAKHONO transaction tests passed');
+}
+void main();
