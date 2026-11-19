@@ -63,7 +63,16 @@
       "domain_status": "domain_required"
     },
     {
-      "platform": "Allegro",
+      "platform": "Classique Furniture",
+      "domain": null,
+      "mailboxes": [
+        "info",
+        "sales"
+      ],
+      "domain_status": "domain_required"
+    },
+    {
+      "platform": "Allegro Vibez",
       "domain": null,
       "mailboxes": [
         "info",
@@ -74,11 +83,242 @@
       "domain_status": "domain_required"
     },
     {
-      "platform": "Classique Furniture",
+      "platform": "DOXA-SURE",
       "domain": null,
       "mailboxes": [
         "info",
-        "sales"
+        "admin",
+        "support",
+        "accounts",
+        "sales",
+        "partnerships",
+        "security",
+        "noreply"
+      ],
+      "domain_status": "domain_required"
+    },
+    {
+      "platform": "IZAKHONO ARTWORK",
+      "domain": null,
+      "mailboxes": [
+        "info",
+        "admin",
+        "support",
+        "accounts",
+        "sales",
+        "partnerships",
+        "security",
+        "noreply"
+      ],
+      "domain_status": "domain_required"
+    },
+    {
+      "platform": "IZAKHONO INVEST",
+      "domain": null,
+      "mailboxes": [
+        "info",
+        "admin",
+        "support",
+        "accounts",
+        "sales",
+        "partnerships",
+        "security",
+        "noreply"
+      ],
+      "domain_status": "domain_required"
+    },
+    {
+      "platform": "IZAKHONO BUILDER",
+      "domain": null,
+      "mailboxes": [
+        "info",
+        "admin",
+        "support",
+        "accounts",
+        "sales",
+        "partnerships",
+        "security",
+        "noreply"
+      ],
+      "domain_status": "domain_required"
+    },
+    {
+      "platform": "IZAKHONO HOST",
+      "domain": null,
+      "mailboxes": [
+        "info",
+        "admin",
+        "support",
+        "accounts",
+        "sales",
+        "partnerships",
+        "security",
+        "noreply"
+      ],
+      "domain_status": "domain_required"
+    },
+    {
+      "platform": "FORTRESS",
+      "domain": null,
+      "mailboxes": [
+        "info",
+        "admin",
+        "support",
+        "accounts",
+        "sales",
+        "partnerships",
+        "security",
+        "noreply"
+      ],
+      "domain_status": "domain_required"
+    },
+    {
+      "platform": "IZAKHONO CLOUD",
+      "domain": null,
+      "mailboxes": [
+        "info",
+        "admin",
+        "support",
+        "accounts",
+        "sales",
+        "partnerships",
+        "security",
+        "noreply"
+      ],
+      "domain_status": "domain_required"
+    },
+    {
+      "platform": "IZAKHONO CODE",
+      "domain": null,
+      "mailboxes": [
+        "info",
+        "admin",
+        "support",
+        "accounts",
+        "sales",
+        "partnerships",
+        "security",
+        "noreply"
+      ],
+      "domain_status": "domain_required"
+    },
+    {
+      "platform": "IZAKHONO WORK",
+      "domain": null,
+      "mailboxes": [
+        "info",
+        "admin",
+        "support",
+        "accounts",
+        "sales",
+        "partnerships",
+        "security",
+        "noreply"
+      ],
+      "domain_status": "domain_required"
+    },
+    {
+      "platform": "KORA GAMING",
+      "domain": null,
+      "mailboxes": [
+        "info",
+        "admin",
+        "support",
+        "accounts",
+        "sales",
+        "partnerships",
+        "security",
+        "noreply"
+      ],
+      "domain_status": "domain_required"
+    },
+    {
+      "platform": "KORA MARKET",
+      "domain": null,
+      "mailboxes": [
+        "info",
+        "admin",
+        "support",
+        "accounts",
+        "sales",
+        "partnerships",
+        "security",
+        "noreply"
+      ],
+      "domain_status": "domain_required"
+    },
+    {
+      "platform": "SHELTONAIR",
+      "domain": null,
+      "mailboxes": [
+        "info",
+        "admin",
+        "support",
+        "accounts",
+        "sales",
+        "partnerships",
+        "security",
+        "noreply"
+      ],
+      "domain_status": "domain_required"
+    },
+    {
+      "platform": "Shelton Freight Group",
+      "domain": null,
+      "mailboxes": [
+        "info",
+        "admin",
+        "support",
+        "accounts",
+        "sales",
+        "partnerships",
+        "security",
+        "noreply"
+      ],
+      "domain_status": "domain_required"
+    },
+    {
+      "platform": "Shelton Technologies",
+      "domain": null,
+      "mailboxes": [
+        "info",
+        "admin",
+        "support",
+        "accounts",
+        "sales",
+        "partnerships",
+        "security",
+        "noreply"
+      ],
+      "domain_status": "domain_required"
+    },
+    {
+      "platform": "SHELTON MOTOR COMPANY",
+      "domain": null,
+      "mailboxes": [
+        "info",
+        "admin",
+        "support",
+        "accounts",
+        "sales",
+        "partnerships",
+        "security",
+        "noreply"
+      ],
+      "domain_status": "domain_required"
+    },
+    {
+      "platform": "IZAKHONO Manufacturing",
+      "domain": null,
+      "mailboxes": [
+        "info",
+        "admin",
+        "support",
+        "accounts",
+        "sales",
+        "partnerships",
+        "security",
+        "noreply"
       ],
       "domain_status": "domain_required"
     }
@@ -88,7 +328,10 @@
     "never_store_mail_passwords_in_git": true,
     "external_relay_is_fallback_only": true,
     "idempotent_provisioning": true,
-    "provision_only_owned_entities": true
+    "provision_only_owned_entities": true,
+    "mandatory_mailboxes_before_handover": [
+      "info"
+    ]
   },
   "ownership_scope": "user-declared-owned-entities-only",
   "excluded_platforms": [
