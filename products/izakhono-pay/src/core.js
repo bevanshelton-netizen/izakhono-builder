@@ -124,6 +124,7 @@ export function chooseProvider(env, currency, requested = 'smart') {
   const code = String(currency || '').toUpperCase();
   const mode = env.PAYMENT_MODE || 'mock';
   if (mode === 'mock') return 'mock';
+  if (mode === 'disabled') return null;
   if (code !== 'ZAR') return null;
   if (requested !== 'smart') return providerConfigured(env, requested) ? requested : null;
   if (providerConfigured(env, 'ikhokha')) return 'ikhokha';
