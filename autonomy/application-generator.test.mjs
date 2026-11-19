@@ -12,6 +12,7 @@ try {
     goal: 'A secure portal for school uniform ordering', templateId: 'static-web',
   });
   assert.equal(first.fileCount, 10);
+  assert.equal(first.templateVersion, '1.0.0');
   assert.equal(scaffoldApplication({ workspaceRoot: workspace, projectId: 'school-portal', name: 'School Portal', goal: 'A secure portal for school uniform ordering', templateId: 'static-web' }).reused, true);
   assert.ok(fs.existsSync(path.join(workspace, 'src/server.mjs')));
   assert.ok(fs.existsSync(path.join(workspace, 'src/content.mjs')));
@@ -48,6 +49,33 @@ try {
   assert.equal(api.templateId, 'node-api');
   assert.ok(fs.existsSync(path.join(apiWorkspace, 'src/server.mjs')));
   assert.ok(fs.existsSync(path.join(apiWorkspace, 'tests/health.test.mjs')));
+  const tamperedWorkspace = path.join(temp, 'tampered');
+  scaffoldApplication({
+    workspaceRoot: tamperedWorkspace, projectId: 'tampered-app', name: 'Tampered App',
+    goal: 'A workspace tamper-resistance test', templateId: 'static-web',
+  });
+  fs.appendFileSync(path.join(tamperedWorkspace, 'README.md'), '\\nunauthorized edit\\n');
+  assert.throws(() => scaffoldApplication({
+    workspaceRoot: tamperedWorkspace, projectId: 'tampered-app', name: 'Tampered App',
+    goal: 'A workspace tamper-resistance test', templateId: 'static-web',
+  }), /workspace-modified/);
+
+  if (process.platform !== 'win32') {
+    const symlinkWorkspace = path.join(temp, 'symlinked');
+    const outsideFile = path.join(temp, 'outside-content.mjs');
+    scaffoldApplication({
+      workspaceRoot: symlinkWorkspace, projectId: 'symlink-app', name: 'Symlink App',
+      goal: 'A symlink rejection test', templateId: 'static-web',
+    });
+    fs.writeFileSync(outsideFile, 'export const compromised = true;\\n');
+    fs.unlinkSync(path.join(symlinkWorkspace, 'src/content.mjs'));
+    fs.symlinkSync(outsideFile, path.join(symlinkWorkspace, 'src/content.mjs'));
+    assert.throws(() => scaffoldApplication({
+      workspaceRoot: symlinkWorkspace, projectId: 'symlink-app', name: 'Symlink App',
+      goal: 'A symlink rejection test', templateId: 'static-web',
+    }), /symlink-not-allowed/);
+  }
+
   console.log('[PASS] deterministic multi-file templates, path safety and content-addressed snapshots');
 } finally {
   fs.rmSync(temp, { recursive: true, force: true });
