@@ -3,8 +3,8 @@ set -euo pipefail
 
 # IZAKHONO NODE CLUSTER HEALTH GATE
 # NODE01-NODE04 are software/runtime identities, never physical-machine names.
-# Each endpoint must use HTTPS, a unique per-node credential, and a fresh HMAC
-# challenge response bound to its own logical node and canonical cluster.
+# Each endpoint must use HTTPS, a unique per-node credential, a fresh HMAC
+# challenge response, and an actual HTTP 200 response.
 
 NODE01_URL="${NODE01_URL:-}"
 NODE02_URL="${NODE02_URL:-}"
@@ -28,6 +28,7 @@ import re
 import secrets
 import subprocess
 import sys
+import tempfile
 from datetime import datetime, timezone
 from urllib.parse import urlsplit
 
@@ -41,14 +42,15 @@ results = []
 
 for name, url, token in zip(names, urls, tokens):
     checked = datetime.now(timezone.utc).isoformat()
+    base = {"node": name, "identityType": "software-runtime", "physicalHostIsSeparate": True, "checkedAt": checked}
     if not url:
-        results.append({"node": name, "identityType": "software-runtime", "physicalHostIsSeparate": True, "status": "MISSING_ENDPOINT", "runtime_evidence": False, "checkedAt": checked})
+        results.append({**base, "status": "MISSING_ENDPOINT", "runtime_evidence": False})
         continue
     if not token:
-        results.append({"node": name, "identityType": "software-runtime", "physicalHostIsSeparate": True, "status": "MISSING_CREDENTIAL", "runtime_evidence": False, "checkedAt": checked})
+        results.append({**base, "status": "MISSING_CREDENTIAL", "runtime_evidence": False})
         continue
     if not re.fullmatch(r"[a-fA-F0-9]{64}", token):
-        results.append({"node": name, "identityType": "software-runtime", "physicalHostIsSeparate": True, "status": "INVALID_CREDENTIAL", "runtime_evidence": False, "checkedAt": checked})
+        results.append({**base, "status": "INVALID_CREDENTIAL", "runtime_evidence": False})
         continue
     try:
         parsed_url = urlsplit(url)
@@ -56,28 +58,37 @@ for name, url, token in zip(names, urls, tokens):
         if parsed_url.scheme != "https" or not parsed_url.hostname or parsed_url.username or parsed_url.password:
             raise ValueError("HTTPS URL with a hostname and no embedded credentials is required")
     except Exception:
-        results.append({"node": name, "identityType": "software-runtime", "physicalHostIsSeparate": True, "status": "INVALID_HTTPS_URL", "runtime_evidence": False, "checkedAt": checked})
+        results.append({**base, "status": "INVALID_HTTPS_URL", "runtime_evidence": False})
         continue
     if urls.count(url) != 1:
-        results.append({"node": name, "identityType": "software-runtime", "physicalHostIsSeparate": True, "status": "DUPLICATE_ENDPOINT", "runtime_evidence": False, "checkedAt": checked})
+        results.append({**base, "status": "DUPLICATE_ENDPOINT", "runtime_evidence": False})
         continue
     if tokens.count(token) != 1:
-        results.append({"node": name, "identityType": "software-runtime", "physicalHostIsSeparate": True, "status": "DUPLICATE_CREDENTIAL", "runtime_evidence": False, "checkedAt": checked})
+        results.append({**base, "status": "DUPLICATE_CREDENTIAL", "runtime_evidence": False})
         continue
 
     nonce = secrets.token_hex(32)
     try:
-        p = subprocess.run(
-            [
-                "curl", "--proto", "=https", "--fail", "--silent", "--show-error",
-                "--max-time", timeout,
-                "--header", f"Authorization: Bearer {token}",
-                "--header", f"X-IZAKHONO-Probe-Nonce: {nonce}",
-                url,
-            ],
-            capture_output=True, text=True, check=False,
-        )
-        body = p.stdout.strip()
+        # Capture the HTTP status separately from the signed JSON body. curl
+        # does not follow redirects; only an actual HTTP 200 can be healthy.
+        with tempfile.NamedTemporaryFile(prefix="connecta-node-health-", delete=True) as body_file:
+            p = subprocess.run(
+                [
+                    "curl", "--proto", "=https", "--silent", "--show-error",
+                    "--max-time", timeout, "--output", body_file.name,
+                    "--write-out", "%{http_code}",
+                    "--header", f"Authorization: Bearer {token}",
+                    "--header", f"X-IZAKHONO-Probe-Nonce: {nonce}",
+                    url,
+                ],
+                capture_output=True, text=True, check=False,
+            )
+            body_file.seek(0)
+            body = body_file.read().decode("utf-8", errors="replace").strip()
+        try:
+            http_status = int(p.stdout.strip())
+        except Exception:
+            http_status = 0
         payload = json.loads(body) if body else {}
         identity_matches = (
             isinstance(payload, dict)
@@ -98,19 +109,17 @@ for name, url, token in zip(names, urls, tokens):
             and isinstance(supplied_signature, str)
             and hmac.compare_digest(supplied_signature, expected_signature)
         )
-        healthy = p.returncode == 0 and identity_matches and challenge_verified
+        healthy = p.returncode == 0 and http_status == 200 and identity_matches and challenge_verified
         results.append({
-            "node": name,
+            **base,
             "runtimeNode": payload.get("runtimeNode") if isinstance(payload, dict) else None,
-            "identityType": "software-runtime",
-            "physicalHostIsSeparate": True,
-            "status": "PASS" if healthy else "IDENTITY_OR_CHALLENGE_MISMATCH",
+            "status": "PASS" if healthy else "HTTP_IDENTITY_OR_CHALLENGE_MISMATCH",
             "runtime_evidence": healthy,
-            "checkedAt": checked,
             "authentication": {"scheme": scheme, "challengeVerified": challenge_verified},
             "probeNonce": nonce,
             "probeSignature": supplied_signature if challenge_verified else None,
             "http": {
+                "status": http_status,
                 "ok": payload.get("ok") if isinstance(payload, dict) else False,
                 "cluster": payload.get("cluster") if isinstance(payload, dict) else None,
                 "runtimeNode": payload.get("runtimeNode") if isinstance(payload, dict) else None,
@@ -120,9 +129,7 @@ for name, url, token in zip(names, urls, tokens):
         })
     except Exception as exc:
         results.append({
-            "node": name, "identityType": "software-runtime",
-            "physicalHostIsSeparate": True, "status": "ERROR",
-            "runtime_evidence": False, "checkedAt": checked, "error": str(exc),
+            **base, "status": "ERROR", "runtime_evidence": False, "error": str(exc),
         })
 
 healthy = [r["node"] for r in results if r["runtime_evidence"]]
