@@ -110,10 +110,11 @@ export async function dispatchMerchantPaymentPaid(env, intent) {
   const timestamp = Math.floor(Date.now() / 1000).toString();
   const signature = merchantWebhookSignature(raw, timestamp, secret);
 
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 8000);
+  let result;
   try {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 8000);
-    const result = await fetch(webhookUrl, {
+    result = await fetch(webhookUrl, {
       method: 'POST',
       redirect: 'error',
       signal: controller.signal,
@@ -127,15 +128,17 @@ export async function dispatchMerchantPaymentPaid(env, intent) {
       },
       body: raw,
     });
-    clearTimeout(timer);
-    if (!result.ok) {
-      await updateDelivery(env, eventId, claim.leaseToken, { status: 'failed', httpStatus: result.status, error: `merchant_http_${result.status}` });
-      return { delivered: false, reason: 'merchant_rejected', status: result.status };
-    }
-    await updateDelivery(env, eventId, claim.leaseToken, { status: 'delivered', httpStatus: result.status });
-    return { delivered: true };
   } catch (error) {
     await updateDelivery(env, eventId, claim.leaseToken, { status: 'failed', error: error instanceof Error ? error.message.slice(0, 500) : 'delivery_failed' });
     return { delivered: false, reason: 'delivery_failed' };
+  } finally {
+    clearTimeout(timer);
   }
+
+  if (!result.ok) {
+    await updateDelivery(env, eventId, claim.leaseToken, { status: 'failed', httpStatus: result.status, error: `merchant_http_${result.status}` });
+    return { delivered: false, reason: 'merchant_rejected', status: result.status };
+  }
+  await updateDelivery(env, eventId, claim.leaseToken, { status: 'delivered', httpStatus: result.status });
+  return { delivered: true };
 }
