@@ -33,6 +33,10 @@ jobs:
         shell: bash
         run: |
           node --check products/izakhono-mail/src/server.mjs
+          node --check products/izakhono-mail/src/stalwart-jmap.mjs
+          node --check products/izakhono-mail/src/stalwart-jmap.test.mjs
+          node --check products/izakhono-mail/src/mailbox-provisioner.mjs
+          node products/izakhono-mail/src/stalwart-jmap.test.mjs
           node --check fixtures/izakhono-smtp-stub.mjs
           bash -n products/izakhono-mail/owner-node/prepare-env.sh
           bash -n products/izakhono-mail/owner-node/deploy-mail-sign.sh
