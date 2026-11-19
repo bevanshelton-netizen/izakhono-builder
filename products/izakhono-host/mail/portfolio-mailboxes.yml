@@ -14,6 +14,8 @@ standard_mailboxes:
   - partnerships
   - security
   - noreply
+  - postmaster
+  - abuse
 
 mandatory_mailboxes_before_handover:
   - info
