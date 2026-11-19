@@ -27,9 +27,33 @@ function envRecord(domain) {
 function parseStalwartDnsZone(domain, zoneFile) {
   const parsed = {};
   if (typeof zoneFile !== 'string' || !zoneFile.trim()) return parsed;
-  for (const rawLine of zoneFile.split(/\\r?\\n/)) {
+  for (const rawLine of zoneFile.split(/\r?\n/)) {
     const line = rawLine.trim();
-    if (!line || line.startsWith(';') || line.startsWith('
+    if (!line || line[0] === ';' || line[0] === '$') continue;
+    const tokens = line.match(/"[^"]*"|\S+/g) || [];
+    const typeIndex = tokens.findIndex(token => ['MX', 'TXT'].includes(token.toUpperCase()));
+    if (typeIndex < 1) continue;
+    const ownerToken = tokens[0].replace(/\.$/, '').toLowerCase();
+    const owner = ownerToken === '@' || ownerToken === domain ? domain
+      : ownerToken.endsWith('.' + domain) ? ownerToken : ownerToken + '.' + domain;
+    const type = tokens[typeIndex].toUpperCase();
+    if (type === 'MX' && owner === domain && tokens[typeIndex + 2]) {
+      parsed.mxHost = normalise(tokens[typeIndex + 2]);
+      parsed.mxPriority = Number(tokens[typeIndex + 1]) || 10;
+    }
+    if (type === 'TXT') {
+      const value = tokens.slice(typeIndex + 1).map(token => token.replace(/^"|"$/g, '')).join('');
+      if (owner === domain && /^v=spf1\b/i.test(value)) parsed.spf = value;
+      if (owner === '_dmarc.' + domain && /^v=DMARC1\b/i.test(value)) parsed.dmarc = value;
+      const suffix = '._domainkey.' + domain;
+      if (owner.endsWith(suffix) && /^v=DKIM1\b/i.test(value)) {
+        parsed.dkimSelector = owner.slice(0, -suffix.length);
+        parsed.dkim = value;
+      }
+    }
+  }
+  return parsed;
+}
 
 export function buildDnsIntent(domain, stalwartZoneFile = '') {
   if (!validDomain(domain)) return { domain, status: 'invalid_domain', records: [] };
