@@ -172,7 +172,7 @@ const server = http.createServer(async (req, res) => {
     } catch (e) { return json(res,e?.statusCode || 400,{ok:false,error:e?.message || 'Invalid deployment'}); }
   }
 
-  if (req.method === 'POST' && url.pathname.match(/^\\/api\\/sites\\/[^/]+\\/accept$/)) {
+  if (req.method === 'POST' && url.pathname.match(/^\/api\/sites\/[^/]+\/accept$/)) {
     const siteId=url.pathname.split('/')[3];
     let input;
     try { input=await body(req); }
