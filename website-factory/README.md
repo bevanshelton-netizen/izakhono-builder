@@ -7,7 +7,7 @@ The Website Factory is the owner-operated intake surface for the native IZAKHONO
 - One authorized owner request becomes one structured website build job.
 - The frontend sends no owner secret; it relies on the same-origin authenticated Builder session.
 - Unauthenticated requests receive HTTP 401 and do not create a job.
-- Generated applications use deterministic multi-file native templates and the local Ollama-compatible adapter when available.
+- The Worker handoff currently uses deterministic multi-file generation and does not perform model inference. The native Node Builder runtime separately supports the private Ollama-compatible adapter; unifying the production handoff with that runtime is part of the owned HOST cutover.
 - If local inference is unavailable, the Builder uses deterministic native generation; it never switches to a hosted inference provider.
 - NODE01 is a logical software/runtime identity, not a physical server.
 - Release candidates remain private until owned HOST, DNS/TLS, backup/restore and end-to-end acceptance evidence passes.
