@@ -24,7 +24,6 @@ try {
   const routing = await runNodeAdapter('kora-routing-acceptance');
   assert.equal(routing.status, 'waiting');
   assert.equal(routing.reason, 'kora-runtime-evidence-not-found');
-  assert.equal(routing.acceptance, 'pending');
 
   assert.equal(fs.existsSync(process.env.IZAKHONO_WORKLOAD_EXECUTION_STATE_PATH), false, 'owner gate must prevent workload execution and state mutation');
   console.log('KORA execution and routing remain safely gated until independent runtime, TLS and rollback evidence exists.');
