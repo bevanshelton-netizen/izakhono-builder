@@ -84,17 +84,41 @@ export async function runNodeAdapter(action, input = {}) {
   }
 
   if (action === 'kora-workload-execute') {
-    const result = await runProcess(koraExecutor, null, input.selectedNode ? { IZAKHONO_NODE_ID: input.selectedNode } : {});
-    if (result.status === 'execution-plan-ready') return { status: 'waiting', reason: 'kora-runtime-execution-requires-eligible-node', evidence: result.evidence, nodeId: result.nodeId, acceptance: 'not-verified' };
-    if (result.status === 'running-awaiting-acceptance-evidence') return { status: 'waiting', reason: 'kora-runtime-awaiting-independent-acceptance', evidence: result.evidence, nodeId: result.nodeId, acceptance: 'pending' };
-    return result;
+    if (!input.selectedNode) {
+      return { status: 'waiting', reason: 'eligible-owned-node-not-selected' };
+    }
+    if (process.env.IZAKHONO_KORA_EXECUTION_APPROVED !== 'true' || process.env.IZAKHONO_DRY_RUN !== 'false') {
+      return {
+        status: 'waiting',
+        ownerGate: 'production_deploy',
+        reason: 'explicit-owner-approval-and-live-runtime-configuration-required',
+        evidence: [{ name: 'production-execution-authorization', status: 'pending' }],
+      };
+    }
+    const localNode = await runProcess(softwareNode, { operation: 'inspect' });
+    const localNodeId = localNode.state?.nodeId || localNode.nodeId;
+    if (localNode.status === 'failed' || localNodeId !== input.selectedNode) {
+      return { status: 'waiting', reason: 'selected-owned-node-runtime-not-bound', selectedNode: input.selectedNode, localNodeId: localNodeId || null };
+    }
+    const result = await runProcess(koraExecutor);
+    if (result.status === 'failed') return result;
+    const runtimeChecks = ['image-built', 'container-started', 'health-200', 'runtime-healthy', 'service-connectivity', 'runtime-acceptance-recorded'];
+    const runtimeAccepted = result.runtimeAcceptance === 'passed'
+      && runtimeChecks.every(name => result.evidence?.some(item => item.name === name && item.status === 'passed'));
+    return runtimeAccepted
+      ? { ...result, status: 'completed', source: 'owned-node-runtime' }
+      : { ...result, status: 'waiting', reason: 'kora-runtime-acceptance-evidence-incomplete' };
   }
 
   if (action === 'kora-routing-acceptance') {
     const result = await runProcess(koraRouting);
-    if (result.status === 'routing-candidate') return { status: 'completed', evidence: result.evidence, selectedNode: result.nodeId, acceptance: 'passed' };
-    if (result.status === 'waiting' || result.status === 'awaiting-acceptance') return { status: 'waiting', reason: result.reason || 'kora-routing-awaiting-independent-acceptance', evidence: result.evidence, nodeId: result.nodeId, acceptance: 'pending' };
-    return result;
+    if (result.status === 'routing-candidate') {
+      return { ...result, status: 'completed', acceptance: 'passed', source: 'verified-public-route-and-rollback-evidence' };
+    }
+    if (result.status === 'awaiting-acceptance' || result.status === 'waiting') {
+      return { ...result, status: 'waiting', reason: result.reason || 'public-route-or-rollback-evidence-incomplete' };
+    }
+    return { ...result, status: 'failed', reason: result.reason || 'kora-routing-acceptance-failed' };
   }
 
   if (action === 'workload-schedule') {
