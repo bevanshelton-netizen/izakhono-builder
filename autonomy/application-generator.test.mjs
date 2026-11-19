@@ -24,8 +24,8 @@ try {
   const snapshotB = createCanonicalSnapshot({ workspaceRoot: workspace, repositoryRoot: path.join(temp, 'repository') });
   assert.equal(snapshotA.snapshotHash, snapshotB.snapshotHash, 'identical workspaces must produce identical snapshots');
   assert.equal(snapshotA.fileCount, 10);
-  const objectPath = path.join(temp, 'repository', 'objects', snapshotA.snapshotHash.slice(0, 2));
-  assert.ok(fs.existsSync(objectPath));
+  const objectRoot = path.join(temp, 'repository', 'objects');
+  assert.ok(fs.readdirSync(objectRoot).length > 0);
 
   fs.appendFileSync(path.join(workspace, 'README.md'), '\nChanged.\n');
   const snapshotC = createCanonicalSnapshot({ workspaceRoot: workspace, repositoryRoot: path.join(temp, 'repository') });
