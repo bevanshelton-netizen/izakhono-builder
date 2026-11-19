@@ -1,5 +1,6 @@
 import {ExternalRegistryAdapter} from './authority-adapter';
 
+async function main(){
 const calls:string[]=[];
 const adapter=new ExternalRegistryAdapter({
  check:async(name)=>{calls.push('check:'+name);return true},
@@ -11,3 +12,5 @@ if(!(await adapter.availability('Example.TEST'))) throw new Error('authority che
 if((await adapter.register({name:'Example.TEST',registrarId:'r',registrantId:'c',nameservers:[],status:'pendingCreate',createdAt:'x',updatedAt:'x',expiresAt:'y'})).transactionId!=='tx-1') throw new Error('authority register failed');
 if(calls[0]!=='check:example.test') throw new Error('domain normalization failed');
 console.log('IZAKHONO authority adapter tests passed');
+}
+void main();
