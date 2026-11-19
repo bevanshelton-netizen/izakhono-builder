@@ -37,6 +37,8 @@ jobs:
       - run: npx --yes tsx@4.20.3 products/izakhono-jarvis/src/briefing.test.ts
       - run: npx --yes tsx@4.20.3 products/izakhono-jarvis/src/conversations.test.ts
       - run: npx --yes tsx@4.20.3 products/izakhono-jarvis/src/workforce.test.ts
+      - run: npm run jarvis:connectivity:test
+      - run: npm run jarvis:connectivity:typecheck
       - run: node products/izakhono-jarvis/runner/worker.test.mjs
       - run: node products/izakhono-jarvis/runner/supervisor.test.mjs
       - run: node --check products/izakhono-jarvis/runner/worker.mjs
