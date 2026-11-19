@@ -1,0 +1,596 @@
+{
+  "version": 1,
+  "tasks": {
+    "platform-foundation": {
+      "status": "completed",
+      "attempts": 2,
+      "action": "validate-manifest",
+      "adapter": "code",
+      "updatedAt": "2026-11-19T06:21:46.830Z",
+      "evidence": [
+        {
+          "name": "manifest-valid",
+          "status": "passed"
+        }
+      ],
+      "provider": "github",
+      "selectedNode": null,
+      "targetReason": null,
+      "reason": null,
+      "assignmentId": null,
+      "evidenceSource": null,
+      "acceptance": null
+    },
+    "continuous-worker": {
+      "status": "completed",
+      "attempts": 2,
+      "action": "run-worker",
+      "adapter": "code",
+      "updatedAt": "2026-11-19T06:21:46.830Z",
+      "evidence": [
+        {
+          "name": "worker-exit-zero",
+          "status": "passed"
+        }
+      ],
+      "provider": "github",
+      "selectedNode": null,
+      "targetReason": null,
+      "reason": null,
+      "assignmentId": null,
+      "evidenceSource": null,
+      "acceptance": null
+    },
+    "builder-bridge": {
+      "status": "completed",
+      "attempts": 1,
+      "action": "adapter-contract",
+      "adapter": "builder",
+      "updatedAt": "2026-11-19T06:21:46.831Z",
+      "evidence": [
+        {
+          "name": "adapter-contract-valid",
+          "status": "passed"
+        }
+      ],
+      "provider": "izakhono-native",
+      "selectedNode": null,
+      "targetReason": null,
+      "reason": null,
+      "assignmentId": null,
+      "evidenceSource": null,
+      "acceptance": null
+    },
+    "software-node-instantiation": {
+      "status": "completed",
+      "attempts": 1,
+      "action": "node-discovery",
+      "adapter": "deploy",
+      "updatedAt": "2026-11-19T06:21:46.900Z",
+      "evidence": [
+        {
+          "name": "software-node-instantiated",
+          "status": "passed"
+        },
+        {
+          "name": "node-identity-created",
+          "status": "passed"
+        }
+      ],
+      "provider": "izakhono-node",
+      "selectedNode": "snode-3e4df75d-9bc",
+      "targetReason": null,
+      "reason": null,
+      "assignmentId": null,
+      "evidenceSource": null,
+      "acceptance": null
+    },
+    "node-heartbeat": {
+      "status": "completed",
+      "attempts": 1,
+      "action": "node-heartbeat",
+      "adapter": "deploy",
+      "updatedAt": "2026-11-19T06:21:46.935Z",
+      "evidence": [
+        {
+          "name": "heartbeat-emitted",
+          "status": "passed"
+        },
+        {
+          "name": "node-health-readable",
+          "status": "passed"
+        },
+        {
+          "name": "capacity-reported",
+          "status": "not-required"
+        },
+        {
+          "name": "heartbeat-persisted",
+          "status": "passed"
+        }
+      ],
+      "provider": "izakhono-node",
+      "selectedNode": "snode-3e4df75d-9bc",
+      "targetReason": null,
+      "reason": null,
+      "assignmentId": null,
+      "evidenceSource": "software-node-heartbeat",
+      "acceptance": null
+    },
+    "node-target-selection": {
+      "status": "completed",
+      "attempts": 1,
+      "action": "node-target",
+      "adapter": "deploy",
+      "updatedAt": "2026-11-19T06:21:46.936Z",
+      "evidence": [
+        {
+          "name": "eligible-node-selected",
+          "status": "passed"
+        }
+      ],
+      "provider": "izakhono-node",
+      "selectedNode": "snode-3e4df75d-9bc",
+      "targetReason": "healthy-node-selected",
+      "reason": null,
+      "assignmentId": null,
+      "evidenceSource": null,
+      "acceptance": null
+    },
+    "owned-node-failover": {
+      "status": "completed",
+      "attempts": 1,
+      "action": "node-failover",
+      "adapter": "deploy",
+      "updatedAt": "2026-11-19T06:21:46.936Z",
+      "evidence": [
+        {
+          "name": "failover-resolution-verified",
+          "status": "not_required"
+        }
+      ],
+      "provider": "izakhono-node",
+      "selectedNode": null,
+      "targetReason": null,
+      "reason": "no-failed-node-declared",
+      "assignmentId": null,
+      "evidenceSource": null,
+      "acceptance": null
+    },
+    "owned-node-promotion": {
+      "status": "completed",
+      "attempts": 1,
+      "action": "node-readiness",
+      "adapter": "deploy",
+      "updatedAt": "2026-11-19T06:21:46.973Z",
+      "evidence": [
+        {
+          "name": "persistent-storage-ready",
+          "status": "passed"
+        },
+        {
+          "name": "monitoring-online",
+          "status": "passed"
+        }
+      ],
+      "provider": "izakhono-node",
+      "selectedNode": "snode-3e4df75d-9bc",
+      "targetReason": "healthy-node-selected",
+      "reason": null,
+      "assignmentId": null,
+      "evidenceSource": null,
+      "acceptance": null
+    },
+    "workload-scheduler": {
+      "status": "completed",
+      "attempts": 1,
+      "action": "workload-schedule",
+      "adapter": "deploy",
+      "updatedAt": "2026-11-19T06:21:46.974Z",
+      "evidence": [
+        {
+          "name": "workload-assignment-recorded",
+          "status": "passed"
+        }
+      ],
+      "provider": "izakhono-node",
+      "selectedNode": "snode-3e4df75d-9bc",
+      "targetReason": "healthy-node-selected",
+      "reason": null,
+      "assignmentId": "13248d33-27f3-41da-959a-75bdd1cabbdb",
+      "evidenceSource": "izakhono-control-plane",
+      "acceptance": null
+    },
+    "kora-workload-execution": {
+      "status": "waiting",
+      "attempts": 2,
+      "action": "kora-workload-execute",
+      "adapter": "deploy",
+      "updatedAt": "2026-11-19T06:21:47.043Z",
+      "ownerGate": null,
+      "reason": "kora-runtime-execution-requires-eligible-node",
+      "provider": "izakhono-node",
+      "selectedNode": "software-node-2720",
+      "evidence": [
+        {
+          "name": "workload-definition",
+          "status": "passed",
+          "source": "/home/runner/work/izakhono-builder/izakhono-builder/products/izakhono-host/kora-workload.json"
+        },
+        {
+          "name": "image-built",
+          "status": "pending",
+          "image": "kora-network:portable"
+        }
+      ],
+      "evidenceSource": null,
+      "acceptance": "not-verified"
+    }
+  },
+  "history": [
+    {
+      "at": "2026-11-19T06:21:46.829Z",
+      "task": "platform-foundation",
+      "from": "queued",
+      "to": "running",
+      "attempts": 1,
+      "action": "validate-manifest",
+      "adapter": "code"
+    },
+    {
+      "at": "2026-11-19T06:21:46.830Z",
+      "task": "platform-foundation",
+      "from": "running",
+      "to": "completed",
+      "attempts": 2,
+      "evidence": [
+        {
+          "name": "manifest-valid",
+          "status": "passed"
+        }
+      ]
+    },
+    {
+      "at": "2026-11-19T06:21:46.830Z",
+      "task": "platform-foundation",
+      "from": "completed",
+      "to": "completed",
+      "evidence": [
+        {
+          "name": "manifest-valid",
+          "status": "passed"
+        }
+      ],
+      "provider": "github",
+      "selectedNode": null,
+      "targetReason": null,
+      "reason": null,
+      "assignmentId": null,
+      "evidenceSource": null,
+      "acceptance": null
+    },
+    {
+      "at": "2026-11-19T06:21:46.830Z",
+      "task": "continuous-worker",
+      "from": "queued",
+      "to": "running",
+      "attempts": 1,
+      "action": "run-worker",
+      "adapter": "code"
+    },
+    {
+      "at": "2026-11-19T06:21:46.830Z",
+      "task": "continuous-worker",
+      "from": "running",
+      "to": "completed",
+      "attempts": 2,
+      "evidence": [
+        {
+          "name": "worker-exit-zero",
+          "status": "passed"
+        }
+      ]
+    },
+    {
+      "at": "2026-11-19T06:21:46.830Z",
+      "task": "continuous-worker",
+      "from": "completed",
+      "to": "completed",
+      "evidence": [
+        {
+          "name": "worker-exit-zero",
+          "status": "passed"
+        }
+      ],
+      "provider": "github",
+      "selectedNode": null,
+      "targetReason": null,
+      "reason": null,
+      "assignmentId": null,
+      "evidenceSource": null,
+      "acceptance": null
+    },
+    {
+      "at": "2026-11-19T06:21:46.830Z",
+      "task": "builder-bridge",
+      "from": "queued",
+      "to": "running",
+      "attempts": 1,
+      "action": "adapter-contract",
+      "adapter": "builder"
+    },
+    {
+      "at": "2026-11-19T06:21:46.831Z",
+      "task": "builder-bridge",
+      "from": "running",
+      "to": "completed",
+      "evidence": [
+        {
+          "name": "adapter-contract-valid",
+          "status": "passed"
+        }
+      ],
+      "provider": "izakhono-native",
+      "selectedNode": null,
+      "targetReason": null,
+      "reason": null,
+      "assignmentId": null,
+      "evidenceSource": null,
+      "acceptance": null
+    },
+    {
+      "at": "2026-11-19T06:21:46.831Z",
+      "task": "software-node-instantiation",
+      "from": "queued",
+      "to": "running",
+      "attempts": 1,
+      "action": "node-discovery",
+      "adapter": "deploy"
+    },
+    {
+      "at": "2026-11-19T06:21:46.900Z",
+      "task": "software-node-instantiation",
+      "from": "running",
+      "to": "completed",
+      "evidence": [
+        {
+          "name": "software-node-instantiated",
+          "status": "passed"
+        },
+        {
+          "name": "node-identity-created",
+          "status": "passed"
+        }
+      ],
+      "provider": "izakhono-node",
+      "selectedNode": "snode-3e4df75d-9bc",
+      "targetReason": null,
+      "reason": null,
+      "assignmentId": null,
+      "evidenceSource": null,
+      "acceptance": null
+    },
+    {
+      "at": "2026-11-19T06:21:46.900Z",
+      "task": "node-heartbeat",
+      "from": "queued",
+      "to": "running",
+      "attempts": 1,
+      "action": "node-heartbeat",
+      "adapter": "deploy"
+    },
+    {
+      "at": "2026-11-19T06:21:46.935Z",
+      "task": "node-heartbeat",
+      "from": "running",
+      "to": "completed",
+      "evidence": [
+        {
+          "name": "heartbeat-emitted",
+          "status": "passed"
+        },
+        {
+          "name": "node-health-readable",
+          "status": "passed"
+        },
+        {
+          "name": "capacity-reported",
+          "status": "not-required"
+        },
+        {
+          "name": "heartbeat-persisted",
+          "status": "passed"
+        }
+      ],
+      "provider": "izakhono-node",
+      "selectedNode": "snode-3e4df75d-9bc",
+      "targetReason": null,
+      "reason": null,
+      "assignmentId": null,
+      "evidenceSource": "software-node-heartbeat",
+      "acceptance": null
+    },
+    {
+      "at": "2026-11-19T06:21:46.935Z",
+      "task": "node-target-selection",
+      "from": "queued",
+      "to": "running",
+      "attempts": 1,
+      "action": "node-target",
+      "adapter": "deploy"
+    },
+    {
+      "at": "2026-11-19T06:21:46.936Z",
+      "task": "node-target-selection",
+      "from": "running",
+      "to": "completed",
+      "evidence": [
+        {
+          "name": "eligible-node-selected",
+          "status": "passed"
+        }
+      ],
+      "provider": "izakhono-node",
+      "selectedNode": "snode-3e4df75d-9bc",
+      "targetReason": "healthy-node-selected",
+      "reason": null,
+      "assignmentId": null,
+      "evidenceSource": null,
+      "acceptance": null
+    },
+    {
+      "at": "2026-11-19T06:21:46.936Z",
+      "task": "owned-node-failover",
+      "from": "queued",
+      "to": "running",
+      "attempts": 1,
+      "action": "node-failover",
+      "adapter": "deploy"
+    },
+    {
+      "at": "2026-11-19T06:21:46.936Z",
+      "task": "owned-node-failover",
+      "from": "running",
+      "to": "completed",
+      "evidence": [
+        {
+          "name": "failover-resolution-verified",
+          "status": "not_required"
+        }
+      ],
+      "provider": "izakhono-node",
+      "selectedNode": null,
+      "targetReason": null,
+      "reason": "no-failed-node-declared",
+      "assignmentId": null,
+      "evidenceSource": null,
+      "acceptance": null
+    },
+    {
+      "at": "2026-11-19T06:21:46.936Z",
+      "task": "owned-node-promotion",
+      "from": "queued",
+      "to": "running",
+      "attempts": 1,
+      "action": "node-readiness",
+      "adapter": "deploy"
+    },
+    {
+      "at": "2026-11-19T06:21:46.973Z",
+      "task": "owned-node-promotion",
+      "from": "running",
+      "to": "completed",
+      "evidence": [
+        {
+          "name": "persistent-storage-ready",
+          "status": "passed"
+        },
+        {
+          "name": "monitoring-online",
+          "status": "passed"
+        }
+      ],
+      "provider": "izakhono-node",
+      "selectedNode": "snode-3e4df75d-9bc",
+      "targetReason": "healthy-node-selected",
+      "reason": null,
+      "assignmentId": null,
+      "evidenceSource": null,
+      "acceptance": null
+    },
+    {
+      "at": "2026-11-19T06:21:46.973Z",
+      "task": "workload-scheduler",
+      "from": "queued",
+      "to": "running",
+      "attempts": 1,
+      "action": "workload-schedule",
+      "adapter": "deploy"
+    },
+    {
+      "at": "2026-11-19T06:21:46.974Z",
+      "task": "workload-scheduler",
+      "from": "running",
+      "to": "completed",
+      "evidence": [
+        {
+          "name": "workload-assignment-recorded",
+          "status": "passed"
+        }
+      ],
+      "provider": "izakhono-node",
+      "selectedNode": "snode-3e4df75d-9bc",
+      "targetReason": "healthy-node-selected",
+      "reason": null,
+      "assignmentId": "13248d33-27f3-41da-959a-75bdd1cabbdb",
+      "evidenceSource": "izakhono-control-plane",
+      "acceptance": null
+    },
+    {
+      "at": "2026-11-19T06:21:46.974Z",
+      "task": "kora-workload-execution",
+      "from": "queued",
+      "to": "running",
+      "attempts": 1,
+      "action": "kora-workload-execute",
+      "adapter": "deploy"
+    },
+    {
+      "at": "2026-11-19T06:21:47.008Z",
+      "task": "kora-workload-execution",
+      "from": "running",
+      "to": "waiting",
+      "ownerGate": null,
+      "reason": "kora-runtime-execution-requires-eligible-node",
+      "provider": "izakhono-node",
+      "selectedNode": "software-node-2713",
+      "evidence": [
+        {
+          "name": "workload-definition",
+          "status": "passed",
+          "source": "/home/runner/work/izakhono-builder/izakhono-builder/products/izakhono-host/kora-workload.json"
+        },
+        {
+          "name": "image-built",
+          "status": "pending",
+          "image": "kora-network:portable"
+        }
+      ],
+      "evidenceSource": null,
+      "acceptance": "not-verified"
+    },
+    {
+      "at": "2026-11-19T06:21:47.008Z",
+      "task": "kora-workload-execution",
+      "from": "waiting",
+      "to": "running",
+      "attempts": 2,
+      "action": "kora-workload-execute",
+      "adapter": "deploy"
+    },
+    {
+      "at": "2026-11-19T06:21:47.043Z",
+      "task": "kora-workload-execution",
+      "from": "running",
+      "to": "waiting",
+      "ownerGate": null,
+      "reason": "kora-runtime-execution-requires-eligible-node",
+      "provider": "izakhono-node",
+      "selectedNode": "software-node-2720",
+      "evidence": [
+        {
+          "name": "workload-definition",
+          "status": "passed",
+          "source": "/home/runner/work/izakhono-builder/izakhono-builder/products/izakhono-host/kora-workload.json"
+        },
+        {
+          "name": "image-built",
+          "status": "pending",
+          "image": "kora-network:portable"
+        }
+      ],
+      "evidenceSource": null,
+      "acceptance": "not-verified"
+    }
+  ]
+}
