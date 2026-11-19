@@ -72,21 +72,30 @@ jobs:
           const raw = fs.readFileSync('wrangler.production.jsonc', 'utf8');
           const config = JSON.parse(raw.replace(/^\s*\/\/.*$/gm, '').replace(/,\s*([}\]])/g, '$1'));
           const database = (config.d1_databases || []).find((entry) => entry.binding === 'DB');
-          if (!database?.database_id || !/^[0-9a-f-]{36}$/i.test(database.database_id)) {
+          if (!database?.database_id || !/^[0-9a-f-]{36}$/i.test(database.database_id) || database.database_id === '00000000-0000-0000-0000-000000000000') {
             throw new Error('Production D1 is not provisioned: set the verified database_id for binding DB before deployment. No Worker deployment or migration was attempted.');
           }
           console.log('Production D1 database binding is configured.');
           NODE
 
-      - name: Bootstrap production Worker and D1 fail-closed
+      - name: Apply production D1 migrations before exposing the Worker
+        shell: bash
+        run: npx wrangler d1 migrations apply izakhono-pay --remote --config wrangler.production.jsonc
+
+      - name: Confirm merchant gate remains closed before deployment
         shell: bash
         run: |
           set -euo pipefail
-          npx wrangler deploy --config wrangler.production.jsonc
+          result="$(npx wrangler d1 execute izakhono-pay --remote --config wrangler.production.jsonc --command "SELECT COUNT(*) AS active_merchants FROM merchant_apps WHERE status='active';")"
+          printf '%s\\n' "$result"
+          if ! printf '%s\\n' "$result" | grep -Eq '"active_merchants"[[:space:]]*:[[:space:]]*0'; then
+            echo 'Production deployment blocked: one or more merchant apps are active before controlled activation.' >&2
+            exit 1
+          fi
 
-      - name: Apply production D1 migrations
+      - name: Deploy disabled production Worker
         shell: bash
-        run: npx wrangler d1 migrations apply izakhono-pay --remote --config wrangler.production.jsonc
+        run: npx wrangler deploy --config wrangler.production.jsonc
 
       - name: Install owner-controlled admin secret
         shell: bash
@@ -125,13 +134,3 @@ jobs:
           grep -q '"ikhokha"' /tmp/izp-capabilities.json
           grep -q '"enabled":false' /tmp/izp-capabilities.json
 
-      - name: Confirm merchant gate remains closed
-        shell: bash
-        run: |
-          set -euo pipefail
-          result="$(npx wrangler d1 execute izakhono-pay --remote --config wrangler.production.jsonc --command "SELECT COUNT(*) AS active_merchants FROM merchant_apps WHERE status='active';")"
-          printf '%s\n' "$result"
-          if ! printf '%s\n' "$result" | grep -Eq '"active_merchants"[[:space:]]*:[[:space:]]*0'; then
-            echo 'Production deployment aborted: one or more merchant apps are active before the controlled merchant activation step.' >&2
-            exit 1
-          fi
