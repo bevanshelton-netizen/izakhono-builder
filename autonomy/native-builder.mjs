@@ -44,7 +44,13 @@ function artifactDetails(dir) {
   return { artifactPath: path.relative(root, dir), portable: true, providerNeutral: true };
 }
 
-function artifactFile(dir, relative) {\n  const target = path.resolve(dir, relative);\n  if (!target.startsWith(path.resolve(dir) + path.sep)) throw new Error('builder-artifact-path-invalid');\n  return target;\n}\n\nfunction applicationManifest(dir) {
+function artifactFile(dir, relative) {
+  const target = path.resolve(dir, relative);
+  if (!target.startsWith(path.resolve(dir) + path.sep)) throw new Error('builder-artifact-path-invalid');
+  return target;
+}
+
+function applicationManifest(dir) {
   const file = path.join(dir, 'izakhono.application.json');
   return fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : null;
 }
