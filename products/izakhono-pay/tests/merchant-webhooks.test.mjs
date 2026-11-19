@@ -2,8 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { dispatchMerchantPaymentPaid } from '../src/merchant-webhooks.js';
 
-function createEnv() {
+function createEnv({ failDeliveryUpdate = false } = {}) {
   const deliveries = new Map();
+  let deliveryUpdateCalls = 0;
   const merchant = {
     slug: 'merchant-a',
     webhook_url: 'https://merchant.example.test/payments',
@@ -41,6 +42,8 @@ function createEnv() {
                   return { meta: { changes: 1 } };
                 }
                 if (sql.startsWith('UPDATE merchant_webhook_deliveries')) {
+                  deliveryUpdateCalls += 1;
+                  if (failDeliveryUpdate) throw new Error('simulated_delivery_persistence_failure');
                   const [status, httpStatus, error, , eventId, leaseToken] = args;
                   const row = deliveries.get(eventId);
                   if (!row || row.lease_token !== leaseToken) return { meta: { changes: 0 } };
@@ -60,7 +63,7 @@ function createEnv() {
       }
     }
   };
-  return { env, deliveries };
+  return { env, deliveries, get deliveryUpdateCalls() { return deliveryUpdateCalls; } };
 }
 
 const intent = {
@@ -113,6 +116,22 @@ test('a delivered merchant payment webhook is not sent again on duplicate replay
     assert.equal(duplicate.delivered, false);
     assert.equal(duplicate.reason, 'duplicate');
     assert.equal(attempts, 1);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+
+test('merchant webhook persistence failures propagate without a second misleading update', async () => {
+  const state = createEnv({ failDeliveryUpdate: true });
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => new Response('', { status: 200 });
+  try {
+    await assert.rejects(
+      dispatchMerchantPaymentPaid(state.env, intent),
+      /simulated_delivery_persistence_failure/
+    );
+    assert.equal(state.deliveryUpdateCalls, 1);
   } finally {
     globalThis.fetch = originalFetch;
   }
