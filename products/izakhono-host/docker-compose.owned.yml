@@ -59,7 +59,7 @@ services:
       - ./edge/Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy-data:/data
       - caddy-config:/config
-    networks: [izakhono]
+    networks: [izakhono, izakhono-mail]
     depends_on:
       host-runtime:
         condition: service_healthy
