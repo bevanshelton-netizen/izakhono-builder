@@ -14,6 +14,7 @@ python3 - "$EVIDENCE_PATH" <<'PY'
 import hashlib
 import hmac
 import json
+import os
 import re
 import sys
 from datetime import datetime, timezone
