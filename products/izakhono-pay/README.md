@@ -51,3 +51,8 @@ Merchant → IZAKHONO PAY API → Payment Intent → Eligibility & Risk Controls
 - Bind payment evidence to merchant, customer, order, amount, currency, reference and provider transaction.
 - Fail closed on unknown provider, unsupported currency, mismatched identity or uncertain payment state.
 - Separate sandbox from production accounts, databases, secrets, domains and deployment approvals.
+
+
+## Merchant webhook delivery
+
+See [Merchant Webhooks](docs/WEBHOOKS.md) for the signed callback contract, at-least-once delivery semantics, receiver-side idempotency and retry/dead-letter policy.
