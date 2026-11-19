@@ -1,10 +1,12 @@
 import http from 'node:http';
+import { timingSafeEqual } from 'node:crypto';
 import { createUser, login, revoke } from './auth.mjs';
 import { provisionMailbox } from './mailbox-provisioner.mjs';
 
 const host = process.env.MAIL_AUTH_LISTEN_HOST || '127.0.0.1';
 const port = Number(process.env.MAIL_AUTH_LISTEN_PORT || 8789);
 const ownerToken = process.env.MAIL_API_TOKEN || '';
+if (!['127.0.0.1', '::1', 'localhost'].includes(host)) throw new Error('MAIL_AUTH_API_MUST_BE_LOOPBACK');
 
 function json(res, status, body, extra = {}) {
   res.writeHead(status, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store', ...extra });
@@ -17,7 +19,10 @@ async function body(req) {
 }
 function token(req) { const h=String(req.headers.authorization||''); return h.startsWith('Bearer ')?h.slice(7):''; }
 function requireOwner(req) {
-  if (!ownerToken || token(req) !== ownerToken) throw Object.assign(new Error('owner_authorization_required'), { statusCode: 401 });
+  const provided = Buffer.from(token(req), 'utf8');
+  const expected = Buffer.from(ownerToken, 'utf8');
+  const valid = expected.length > 0 && provided.length === expected.length && timingSafeEqual(provided, expected);
+  if (!valid) throw Object.assign(new Error('owner_authorization_required'), { statusCode: 401 });
 }
 
 export function startAuthApi() {
