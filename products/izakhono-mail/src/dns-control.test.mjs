@@ -28,7 +28,7 @@ test('DNS intent derives MX SPF DKIM and DMARC from the Stalwart zone file', () 
     '@ 3600 IN TXT "v=spf1 mx ~all"',
     'node01._domainkey 3600 IN TXT "v=DKIM1; k=rsa; p=PUBLICKEY"',
     '_dmarc 3600 IN TXT "v=DMARC1; p=none; rua=mailto:dmarc@example.test"'
-  ].join('\\n');
+  ].join('\n');
   const intent = buildDnsIntent('example.test', zone);
   assert.equal(intent.status, 'dns_ready_for_verification');
   assert.equal(intent.records.find(r => r.type === 'MX').value, 'mail.example.test');
