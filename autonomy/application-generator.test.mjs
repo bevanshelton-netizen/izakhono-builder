@@ -11,7 +11,7 @@ try {
     workspaceRoot: workspace, projectId: 'school-portal', name: 'School Portal',
     goal: 'A secure portal for school uniform ordering', templateId: 'static-web',
   });
-  assert.equal(first.fileCount, 10);
+  assert.equal(first.fileCount, 10);\n  assert.equal(scaffoldApplication({ workspaceRoot: workspace, projectId: 'school-portal', name: 'School Portal', goal: 'A secure portal for school uniform ordering', templateId: 'static-web' }).reused, true);
   assert.ok(fs.existsSync(path.join(workspace, 'src/server.mjs')));
   assert.ok(fs.existsSync(path.join(workspace, 'src/content.mjs')));
   assert.ok(fs.existsSync(path.join(workspace, 'public/index.html')));
