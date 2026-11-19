@@ -197,7 +197,7 @@ export function scaffoldApplication({ workspaceRoot, projectId, name, goal, temp
 }
 
 function listFiles(root, current = root, result = []) {
-  for (const entry of fs.readdirSync(current, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
+  for (const entry of fs.readdirSync(current, { withFileTypes: true }).sort((a, b) => a.name < b.name ? -1 : a.name > b.name ? 1 : 0)) {
     if (current === root && ['.git', '.izakhono', 'node_modules'].includes(entry.name)) continue;
     const absolute = path.join(current, entry.name);
     if (entry.isSymbolicLink()) throw new Error('snapshot-symlink-not-allowed');
@@ -224,7 +224,7 @@ export function createCanonicalSnapshot({ workspaceRoot, repositoryRoot }) {
     const hash = crypto.createHash('sha256').update(data).digest('hex');
     entries.push({ path: relative, sha256: hash, size: data.length });
   }
-  entries.sort((a, b) => a.path.localeCompare(b.path));
+  entries.sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
   const canonical = entries.map((entry) => entry.path + '\0' + entry.sha256 + '\n').join('');
   const snapshotHash = crypto.createHash('sha256').update(canonical, 'utf8').digest('hex');
   const objectRoot = path.join(repository, 'objects');
