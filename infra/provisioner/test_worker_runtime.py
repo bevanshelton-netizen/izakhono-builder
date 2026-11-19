@@ -8,7 +8,7 @@ from execution_contract import validate_request
 from adapter_executor import AdapterExecutor
 from errors import ProvisionerError
 
-ADAPTERS={"tenant":"izakhono-control","domain":"izakhono-domain","dns":"izakhono-dns","site":"izakhono-host","tls":"izakhono-edge","mail":"izakhono-mail","crm_whatsapp":"izakhono-integrations"}
+ADAPTERS={"tenant":"izakhono-control","domain":"izakhono-domain","dns":"izakhono-dns","site":"izakhono-host","tls":"izakhono-edge","mail":"izakhono-mail","crm_whatsapp":"izakhono-integrations","acceptance":"izakhono-acceptance"}
 REGISTRY={"adapters":{k:{"owned":v,"external":[{"name":"fallback","enabled":True,"credentials_configured":True}]} for k,v in ADAPTERS.items()},"bindings":{k:{"operation":f"op_{k}"} for k in STATE_CAPABILITY.values()}}
 
 def evidence(payload):
@@ -20,7 +20,7 @@ def test_end_to_end():
     job.evidence["PAYMENT_VERIFIED"]={"evidence_id":"pay-test","observed_at":utc_now(),"verified":True,"checks":["payment.verified"]}
     store.save(job); queue.enqueue(job)
     worker=ProvisionerWorker(store,queue,{name:evidence for name in ADAPTERS},REGISTRY)
-    results=[worker.run_once() for _ in range(8)]
+    results=[worker.run_once() for _ in range(9)]
     assert results[-1].status=="accepted" and job.state=="HANDOVER_READY"
     assert set(job.evidence)==set(("PAYMENT_VERIFIED","TENANT_CREATED","DOMAIN_READY","DNS_READY","SITE_READY","TLS_READY","MAIL_READY","INTEGRATIONS_READY","ACCEPTANCE_PASSED"))
 
@@ -53,7 +53,7 @@ def test_fail_closed_after_retries():
     worker=ProvisionerWorker(store,queue,{"izakhono-control":evidence},REGISTRY)
     queue.claim_next()
     for _ in range(5):
-        result=worker._failure(job,"TEST_FAILURE","forced")
+        result=worker._failure(job,"TEST_FAILURE","forced","op-test")
         if result.status=="blocked": break
     assert job.state=="BLOCKED"
 
