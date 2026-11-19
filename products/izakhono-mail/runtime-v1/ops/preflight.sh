@@ -67,7 +67,7 @@ for host in "$mail_host" "$webmail_host"; do
   fi
 done
 
-if [[ -z "$(read_env STALWART_PROVISIONER_USERNAME)" || -z "$(read_env STALWART_PROVISIONER_PASSWORD)" || "$(read_env STALWART_PROVISIONER_PASSWORD)" == *CHANGE_ME* ]]; then
+if [[ -z "$(read_env STALWART_PROVISIONER_API_KEY)" || "$(read_env STALWART_PROVISIONER_API_KEY)" == *CHANGE_ME* ]]; then
   echo "WARN: restricted Stalwart JMAP provisioner credentials must be set after first-run setup."
 fi
 if [[ -z "$(read_env AGE_RECIPIENT)" ]]; then
