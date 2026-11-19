@@ -23,32 +23,12 @@
 </div>
 <div class="checks"><div class="check"><span class="ok">✓</span> SSL / HTTPS gate</div><div class="check"><span class="ok">✓</span> Privacy page</div><div class="check"><span class="ok">✓</span> Accessibility gate</div><div class="check"><span class="ok">✓</span> Performance gate</div><div class="check"><span class="ok">✓</span> Mobile QA</div><div class="check"><span class="ok">✓</span> Deployment proof</div></div>
 </section>
-<section class="card"><h2>Create a site job</h2><form class="form" id="job">
-<div><label>Business name</label><input required name="business" placeholder="e.g. Izakhono Africa"></div>
-<div><label>Industry</label><input required name="industry" placeholder="e.g. Manufacturing"></div>
-<div><label>Website type</label><select name="type"><option>Business website</option><option>Corporate profile</option><option>E-commerce</option><option>Training / education</option><option>Service business</option></select></div>
-<div><label>Primary goal</label><textarea name="goal" placeholder="What must this website achieve?"></textarea></div>
-<p class="foot">Owner authentication is required. This form sends no credentials or payment details.</p>
-<button class="btn">Generate Website Job</button>
-</form><div id="result" role="status" aria-live="polite" style="margin-top:16px;color:var(--muted);white-space:pre-wrap"></div></section>
+<section class="card"><h2>Create a site job</h2><div class="form">
+<p>Use the authenticated IZAKHONO Builder to submit a project brief, generate a multi-file application and review its validation evidence.</p>
+<p class="foot">Owner access is required. This page does not request, store or transmit administrative credentials.</p>
+<a class="btn" href="/#buildAnything" style="text-align:center;text-decoration:none">Open authenticated Builder</a>
+</div></section>
 </div>
 <footer class="foot">IZAKHONO Website Factory v1 · Execution is designed to be node-independent: NODE01 is a worker, not the product.</footer>
 </div>
-<script>
-const form = document.querySelector('#job');
-const result = document.querySelector('#result');
-form.addEventListener('submit', (event) => {
-  event.preventDefault();
-  const values = new FormData(form);
-  const business = String(values.get('business') || '').trim();
-  const industry = String(values.get('industry') || '').trim();
-  const type = String(values.get('type') || 'Business website').trim();
-  const goal = String(values.get('goal') || '').trim();
-  if (!business || !industry || !goal) {
-    result.textContent = 'Complete the business name, industry and primary goal before continuing.';
-    return;
-  }
-  result.textContent = 'Opening the authenticated IZAKHONO Builder. Submit your complete brief in the Build Anything panel.';
-  window.location.assign('/#buildAnything');
-});
-</script></body></html>
+</body></html>
