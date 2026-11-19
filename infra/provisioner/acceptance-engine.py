@@ -40,8 +40,8 @@ class AcceptanceProbe(Protocol):
 
 
 REQUIRED_CHECKS = tuple(
-    AcceptanceCheck(f"acceptance.{state.value.lower()}", state)
-    for state in PIPELINE[:-2]
+    [AcceptanceCheck("acceptance.payment_verified", State.PAYMENT_VERIFIED)]
+    + [AcceptanceCheck(f"acceptance.{state.value.lower()}", state) for state in PIPELINE[:-2]]
 )
 
 
@@ -114,7 +114,7 @@ def demo() -> None:
 
     provisioner = Provisioner()
     job = provisioner.create("tenant-acceptance", "acceptance-001")
-    for _ in PIPELINE[:-2]:
+    for _ in range(len(PIPELINE) - 1):
         provisioner.apply(job, StepResult(True, {"verified": True, "simulation": False}))
     assert job.state == State.ACCEPTANCE_PASSED
     engine = AcceptanceEngine(Probe())
