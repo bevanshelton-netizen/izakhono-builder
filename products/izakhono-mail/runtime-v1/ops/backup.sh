@@ -18,7 +18,7 @@ mkdir -p backups roundcube-db
 docker volume inspect izakhono-mail-etc >/dev/null 2>&1 || { echo "BLOCKED: Stalwart config volume is missing." >&2; exit 1; }
 docker volume inspect izakhono-mail-data >/dev/null 2>&1 || { echo "BLOCKED: Stalwart data volume is missing." >&2; exit 1; }
 
-existing_stalwart="$(docker ps --format '{{.Names}} {{.Image}}' | awk '$2 ~ /^stalwartlabs\\/stalwart/ {print $1}')"
+existing_stalwart="$(docker ps --format '{{.Names}} {{.Image}}' | awk '$2 ~ /^stalwartlabs\/stalwart/ {print $1}')"
 if [[ -n "$existing_stalwart" && "$existing_stalwart" != "izakhono-mailserver" ]]; then
   echo "BLOCKED: non-canonical Stalwart container is running: $existing_stalwart" >&2
   exit 1
