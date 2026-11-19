@@ -8,6 +8,12 @@ cd "$ROOT"
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 fixture="$tmp/evidence.json"
+TEST_TOKENS=(
+  "NODE01_HEALTH_TOKEN=$(printf 'a%.0s' {1..64})"
+  "NODE02_HEALTH_TOKEN=$(printf 'b%.0s' {1..64})"
+  "NODE03_HEALTH_TOKEN=$(printf 'c%.0s' {1..64})"
+  "NODE04_HEALTH_TOKEN=$(printf 'd%.0s' {1..64})"
+)
 
 write_valid_fixture() {
 python3 - "$fixture" <<'PY'
@@ -47,7 +53,7 @@ PY
 expect_blocked() {
   local label="$1" code
   set +e
-  bash infra/node-cluster/VERIFY-NODE-CLUSTER-EVIDENCE.sh "$fixture" >/dev/null 2>&1
+  env "${TEST_TOKENS[@]}" bash infra/node-cluster/VERIFY-NODE-CLUSTER-EVIDENCE.sh "$fixture" >/dev/null 2>&1
   code=$?
   set -e
   if [[ "$code" -ne 10 ]]; then
