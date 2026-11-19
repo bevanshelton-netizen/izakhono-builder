@@ -14,10 +14,9 @@ const superWorker=read("products/izakhono-super-app/src/index.ts");
 
 requireAll("sovereign",sovereign,[
   "async function buildAnythingRoute",
-  "async function enrichBuildIntentWithSuperAI",
-  "IZAKHONO_SUPER_AI_WORKFLOW_KEY",
-  "product: 'izakhono-builder'",
-  "capability: 'reasoning'",
+  "function buildIntentWithDeterministicFallback",
+  "worker-runtime-does-not-execute-hosted-inference",
+  "externalInferenceAllowed: false",
   "/api/build-anything",
   "/autopilot",
   "release_candidate:",
