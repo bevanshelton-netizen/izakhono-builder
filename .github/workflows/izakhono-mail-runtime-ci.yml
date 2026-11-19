@@ -25,12 +25,13 @@ jobs:
         run: |
           cp .env.example .env
           sed -i 's/CHANGE_ME_STRONG_PASSWORD/ci-only-mailbox-password-123456/' .env
+          sed -i 's/CHANGE_ME_DB_ROOT_PASSWORD/ci-only-db-root-password-123456/' .env
           sed -i 's/CHANGE_ME_DB_PASSWORD/ci-only-db-password-123456/' .env
           chmod +x ops/*.sh
 
       - name: Validate Compose configuration
         working-directory: products/izakhono-mail/runtime-v1
-        run: docker compose config
+        run: docker compose config --quiet
 
       - name: Shellcheck runtime scripts
         working-directory: products/izakhono-mail/runtime-v1
@@ -40,13 +41,13 @@ jobs:
         working-directory: products/izakhono-mail/runtime-v1
         run: |
           test -f docker-compose.yml
-          test -f Caddyfile
           test -f .env.example
           test -f ops/bootstrap.sh
           test -f ops/preflight.sh
           test -f ops/PROVIDER-ACCEPTANCE.sh
           test -f ops/backup.sh
-          test -f ops/renew-certificate.sh
+          test -f ops/restore.sh
+          test -f ops/PROVISION-CONTABO.md
           test -f ops/health.sh
 
       - name: Verify production secrets are not committed
