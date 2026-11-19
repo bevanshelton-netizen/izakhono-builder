@@ -107,7 +107,10 @@ async function findMerchantIntentById(env, merchantSlug, intentId) {
 }
 
 async function findIntentByIdempotency(env, appSlug, idempotencyKey) {
-  return env.DB.prepare('SELECT * FROM payment_intents WHERE app_slug=? ANDasync function recordEvent(env, provider, eventType, fingerprint, intentId, payload, verified = true) {
+  return env.DB.prepare('SELECT * FROM payment_intents WHERE app_slug=? AND idempotency_key=?').bind(appSlug, idempotencyKey).first();
+}
+
+async function recordEvent(env, provider, eventType, fingerprint, intentId, payload, verified = true) {
   return recordPaymentEvent({
     db: env.DB,
     eventId: id('evt'),
