@@ -93,7 +93,7 @@ export async function runNodeAdapter(action, input = {}) {
   if (action === 'kora-routing-acceptance') {
     const result = await runProcess(koraRouting);
     if (result.status === 'routing-candidate') return { status: 'completed', evidence: result.evidence, selectedNode: result.nodeId, acceptance: 'passed' };
-    if (result.status === 'awaiting-acceptance') return { status: 'waiting', reason: result.reason || 'kora-routing-awaiting-independent-acceptance', evidence: result.evidence, nodeId: result.nodeId, acceptance: 'pending' };
+    if (result.status === 'waiting' || result.status === 'awaiting-acceptance') return { status: 'waiting', reason: result.reason || 'kora-routing-awaiting-independent-acceptance', evidence: result.evidence, nodeId: result.nodeId, acceptance: 'pending' };
     return result;
   }
 
