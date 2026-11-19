@@ -50,7 +50,7 @@ jobs:
       - name: Verify payment core before production deployment
         run: npm run check
 
-      - name: Require production infrastructure and provider secrets
+      - name: Require production infrastructure secrets
         shell: bash
         run: |
           set -euo pipefail
@@ -115,7 +115,7 @@ jobs:
           curl --fail --silent --show-error --retry 6 --retry-delay 2 "$base/api/health" | tee /tmp/izp-health.json
           curl --fail --silent --show-error --retry 6 --retry-delay 2 "$base/api/v1/capabilities" | tee /tmp/izp-capabilities.json
           grep -q '"service":"IZAKHONO PAY"' /tmp/izp-health.json
-          grep -q '"mode":"live"' /tmp/izp-health.json
+          grep -q '"mode":"disabled"' /tmp/izp-health.json
           grep -q '"ikhokha"' /tmp/izp-capabilities.json
           grep -q '"enabled":false' /tmp/izp-capabilities.json
 
