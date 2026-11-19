@@ -187,9 +187,11 @@ const server = http.createServer(async (req, res) => {
       const item=evidence[kind] || {};
       const evidenceId=String(item.evidence_id || '').trim();
       const observedAt=String(item.observed_at || '');
+      const observedMs=Date.parse(observedAt);
+      const ageMs=Date.now()-observedMs;
       acceptedEvidence[kind]={
         verified:item.verified === true && evidenceId.length > 0 && evidenceId.length <= 256
-          && Number.isFinite(Date.parse(observedAt)),
+          && Number.isFinite(observedMs) && ageMs >= -60000 && ageMs <= 24*60*60*1000,
         evidence_id:evidenceId.slice(0,256),
         observed_at:observedAt
       };
