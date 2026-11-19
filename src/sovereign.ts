@@ -281,7 +281,7 @@ function buildModulesFromPrompt(prompt: string, target: string): string[] {
 function buildIntentWithDeterministicFallback(base: any): any {
   return {
     ...base,
-    summary: 'Deterministic IZAKHONO-native build intent; model inference is delegated to the local Ollama adapter in the owned Builder runtime.',
+    summary: 'Deterministic IZAKHONO-native build intent; this Worker path performs no model inference.',
     build_priorities: ['multi-file application scaffold', 'native validation', 'FORTRESS security evidence', 'content-addressed internal snapshot'],
     intelligence: {
       mode: 'deterministic-fallback',
