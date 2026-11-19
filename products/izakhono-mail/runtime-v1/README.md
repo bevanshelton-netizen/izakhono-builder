@@ -39,7 +39,7 @@ The mail runtime publishes no separate public web proxy. Public ports 80/443 rem
 
 1. Copy `.env.example` to `.env`; set separate high-entropy Roundcube database root and application passwords. Do not commit `.env`.
 2. Start the owned HOST stack first so its shared edge and `izakhono-mail` network exist.
-3. Run `./ops/preflight.sh`, then `./ops/bootstrap.sh`.
+3. Run `bash ops/preflight.sh`, then `bash ops/bootstrap.sh`.
 4. Complete Stalwart's first-run setup through an SSH tunnel to loopback port 18081. Never expose the bootstrap/admin listener publicly.
 5. Create a Stalwart ACME provider using HTTP-01. HOST EDGE forwards only `/.well-known/acme-challenge/*` for the mail hostname to Stalwart.
 6. As owner administrator, create the mail domain in Stalwart and enable automatic DKIM plus the configured ACME certificate provider. Export the domain DNS zone file.
