@@ -7,7 +7,7 @@ const source = path.join(root, 'website-factory', 'index.html');
 const destination = path.join(root, 'public', 'website-factory', 'index.html');
 if (!fs.existsSync(source)) throw new Error('website-factory-source-missing');
 const html = fs.readFileSync(source, 'utf8');
-if (!html.includes("window.location.assign('/#buildAnything')") || html.includes('innerHTML') || html.includes('localStorage')) {
+if (!html.includes('href="/#buildAnything"') || html.includes('innerHTML') || html.includes('localStorage') || html.includes('/api/build-anything')) {
   throw new Error('website-factory-must-use-authenticated-builder-api-and-safe-dom-rendering');
 }
 fs.mkdirSync(path.dirname(destination), { recursive: true });
