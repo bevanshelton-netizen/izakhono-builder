@@ -47,6 +47,7 @@ else
   fail=1
 fi
 
+# shellcheck disable=SC2016
 check "PTR resolves to ${HOSTNAME}" bash -c 'ip=$(dig +short A "$1" | head -n1); test -n "$ip" && dig +short -x "$ip" | grep -qi "$2."' _ "$HOSTNAME" "$HOSTNAME"
 
 for port in 25 465 587 993; do
