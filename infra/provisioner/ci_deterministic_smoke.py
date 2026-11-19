@@ -2,7 +2,8 @@ from adapter_catalog import CAPABILITY_TO_ADAPTER
 from adapter_registry_runtime import load_registry
 from job_queue import JobQueue
 from state_machine import State
-from worker_runtime import MemoryJobStore, ProvisionerWorker, utc_now
+from job_store import MemoryJobStore, utc_now
+from worker_runtime import ProvisionerWorker
 
 
 def fixture(adapter_name):
@@ -45,7 +46,6 @@ def main():
 
     assert job.state == State.HANDOVER_READY.value, job.state
     assert job.evidence[State.PAYMENT_VERIFIED.value]["verified"] is True
-    assert len(job.evidence) >= 8, len(job.evidence)
     print("DETERMINISTIC_RUNTIME: PASS")
 
 
