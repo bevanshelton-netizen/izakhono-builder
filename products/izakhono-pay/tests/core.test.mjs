@@ -22,7 +22,7 @@ test('disabled mode rejects every provider even when credentials are present', (
   const env = {
     PAYMENT_MODE: 'disabled',
     IKHOKHA_APP_ID: 'app', IKHOKHA_APP_SECRET: 'secret',
-    PAYSTACK_SECRET_KEY: 'sk_live_x',
+    PAYSTACK_SECRET_KEY: 'sk_test_x',
     PAYFAST_MERCHANT_ID: '1', PAYFAST_MERCHANT_KEY: 'key'
   };
   assert.equal(chooseProvider(env, 'ZAR', 'smart'), null);
