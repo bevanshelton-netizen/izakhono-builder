@@ -73,7 +73,7 @@ jobs:
           if any('info' not in x['mailboxes'] for x in managed['identities']):
               raise SystemExit('Every owned platform must include info before handover')
           high_level = pathlib.Path('products/izakhono-host/mail/portfolio-mailboxes.yml').read_text()
-          if 'mandatory_mailboxes_before_handover:\\n  - info' not in high_level:
+          if 'mandatory_mailboxes_before_handover:\n  - info' not in high_level:
               raise SystemExit('Portfolio info mailbox handover gate missing')
           print('portfolio ownership and mailbox manifest: PASS')
           PY
