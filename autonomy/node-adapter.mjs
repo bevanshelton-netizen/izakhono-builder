@@ -8,16 +8,18 @@ const root = process.cwd();
 const agent = path.join(root, 'autonomy', 'node-agent.mjs');
 const heartbeat = path.join(root, 'autonomy', 'node-heartbeat.mjs');
 const softwareNode = path.join(root, 'autonomy', 'software-node.mjs');
+const koraExecutor = path.join(root, 'autonomy', 'kora-workload-executor.mjs');
+const koraRouting = path.join(root, 'autonomy', 'kora-routing-acceptance.mjs');
 
 function evidencePath() {
   return process.env.IZAKHONO_NODE_HEARTBEAT_EVIDENCE_PATH
     || path.join(process.env.IZAKHONO_NODE_DATA_DIR || path.join(root, 'autonomy'), 'heartbeat.json');
 }
 
-function runProcess(script, request = null) {
+function runProcess(script, request = null, envOverrides = {}) {
   return new Promise((resolve) => {
     const args = request === null ? [script] : [script, typeof request === 'string' ? request : JSON.stringify(request)];
-    const child = spawn(process.execPath, args, { cwd: root, stdio: ['ignore', 'pipe', 'pipe'], env: process.env });
+    const child = spawn(process.execPath, args, { cwd: root, stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env, ...envOverrides } });
     let stdout = '';
     let stderr = '';
     const timer = setTimeout(() => {
@@ -79,6 +81,20 @@ export async function runNodeAdapter(action, input = {}) {
       ...input,
     });
     return { ...result, selectedNode: input.selectedNode || target.nodeId, target };
+  }
+
+  if (action === 'kora-workload-execute') {
+    const result = await runProcess(koraExecutor, null, input.selectedNode ? { IZAKHONO_NODE_ID: input.selectedNode } : {});
+    if (result.status === 'execution-plan-ready') return { status: 'waiting', reason: 'kora-runtime-execution-requires-eligible-node', evidence: result.evidence, nodeId: result.nodeId, acceptance: 'not-verified' };
+    if (result.status === 'running-awaiting-acceptance-evidence') return { status: 'waiting', reason: 'kora-runtime-awaiting-independent-acceptance', evidence: result.evidence, nodeId: result.nodeId, acceptance: 'pending' };
+    return result;
+  }
+
+  if (action === 'kora-routing-acceptance') {
+    const result = await runProcess(koraRouting);
+    if (result.status === 'routing-candidate') return { status: 'completed', evidence: result.evidence, selectedNode: result.nodeId, acceptance: 'passed' };
+    if (result.status === 'waiting' || result.status === 'awaiting-acceptance') return { status: 'waiting', reason: result.reason || 'kora-routing-awaiting-independent-acceptance', evidence: result.evidence, nodeId: result.nodeId, acceptance: 'pending' };
+    return result;
   }
 
   if (action === 'workload-schedule') {

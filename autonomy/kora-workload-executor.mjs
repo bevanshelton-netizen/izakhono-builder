@@ -4,7 +4,7 @@ import { execFileSync } from 'node:child_process';
 
 const root = process.cwd();
 const workloadPath = path.join(root, 'products', 'izakhono-host', 'kora-workload.json');
-const statePath = path.join(root, 'autonomy', 'workload-execution.json');
+const statePath = process.env.IZAKHONO_WORKLOAD_EXECUTION_STATE_PATH || path.join(root, 'autonomy', 'workload-execution.json');
 
 const workload = JSON.parse(fs.readFileSync(workloadPath, 'utf8'));
 const existing = fs.existsSync(statePath)
