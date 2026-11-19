@@ -84,7 +84,7 @@ cp -a "$stage/extracted/roundcube-db" roundcube-db
 echo "[6/6] Starting the canonical services and checking health..."
 docker compose --env-file .env -f ../../izakhono-host/mail/docker-compose.mail.yml up -d
 docker compose --env-file .env up -d
-for i in {1..30}; do
+for _ in {1..30}; do
   mail_health="$(docker inspect -f '{{.State.Health.Status}}' izakhono-mailserver 2>/dev/null || echo unavailable)"
   db_health="$(docker inspect -f '{{.State.Health.Status}}' izakhono-roundcube-db 2>/dev/null || echo unavailable)"
   web_health="$(docker inspect -f '{{.State.Health.Status}}' izakhono-roundcube 2>/dev/null || echo unavailable)"
