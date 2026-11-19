@@ -76,11 +76,13 @@ cat > "$output.evidence.json" <<EOF
   "sha256": "$digest",
   "encrypted": true,
   "components": ["stalwart-etc", "stalwart-data", "roundcube-db"],
-  "secrets_included": false,
+  "plaintext_runtime_secrets_included": false,
+  "encrypted_sensitive_mail_state_included": true,
+  "offsite_copy_verified": false,
   "runtime_secrets_source": "owner-controlled-secret-store"
 }
 EOF
 chmod 600 "$output.evidence.json"
 echo "BACKUP CREATED: $output"
 echo "SHA256: $digest"
-echo "The .env file, Stalwart admin credentials and age identity are not included."
+echo "The .env file and age identity are not included. Sensitive Stalwart data/key material is inside the age-encrypted archive."
