@@ -2,6 +2,7 @@ name: KORA Software NODE Runtime Gate
 
 on:
   push:
+    branches: [main]
     paths:
       - 'autonomy/**'
       - 'products/izakhono-host/**'
@@ -43,6 +44,8 @@ jobs:
       - name: Execute KORA workload on Software NODE
         env:
           IZAKHONO_NODE_ID: github-software-node-kora
+          IZAKHONO_NODE_SUBSTRATE: github-actions-software-node
+          IZAKHONO_NODE_DATA_DIR: /tmp/izakhono-node-data
           IZAKHONO_DRY_RUN: 'false'
           KORA_IMAGE: kora-network:portable
           KORA_CONTAINER_NAME: kora-software-node-gate
@@ -77,5 +80,5 @@ jobs:
             /tmp/kora-image.json
             /tmp/kora-runtime.json
             /tmp/kora-public-health.json
-            autonomy/workload-execution.json
+            /tmp/izakhono-node-data/workload-execution.json
           if-no-files-found: warn

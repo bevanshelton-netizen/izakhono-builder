@@ -18,7 +18,8 @@
     "ownerGates": [
       "credentials",
       "financial_authorization",
-      "security_exception"
+      "security_exception",
+      "production_deploy"
     ]
   },
   "principles": [
@@ -248,7 +249,7 @@
         "container-started",
         "health-200",
         "runtime-healthy",
-        "acceptance-recorded"
+        "runtime-acceptance-recorded"
       ]
     },
     {

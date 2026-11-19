@@ -4,7 +4,8 @@ import { execFileSync } from 'node:child_process';
 
 const root = process.cwd();
 const workloadPath = path.join(root, 'products', 'izakhono-host', 'kora-workload.json');
-const statePath = path.join(root, 'autonomy', 'workload-execution.json');
+const dataRoot = process.env.IZAKHONO_NODE_DATA_DIR || path.join(root, '.izakhono-private');
+const statePath = process.env.IZAKHONO_WORKLOAD_EXECUTION_STATE_PATH || path.join(dataRoot, 'workload-execution.json');
 
 const workload = JSON.parse(fs.readFileSync(workloadPath, 'utf8'));
 const existing = fs.existsSync(statePath)
@@ -16,6 +17,8 @@ const image = process.env.KORA_IMAGE || 'kora-network:portable';
 const containerName = process.env.KORA_CONTAINER_NAME || `kora-${nodeId}`;
 const port = Number(process.env.KORA_PORT || workload.artifact.containerPort || 3000);
 const dryRun = process.env.IZAKHONO_DRY_RUN !== 'false';
+const testRuntime = process.env.GITHUB_ACTIONS === 'true' && process.env.IZAKHONO_NODE_SUBSTRATE === 'github-actions-software-node';
+const liveExecutionApproved = process.env.IZAKHONO_KORA_EXECUTION_APPROVED === 'true' || testRuntime;
 const healthPath = workload.artifact.healthPath || '/api/health';
 const healthAttempts = Number(process.env.KORA_HEALTH_ATTEMPTS || 30);
 const healthDelaySeconds = Number(process.env.KORA_HEALTH_DELAY_SECONDS || 2);
@@ -36,7 +39,10 @@ function record(status, evidence, extra = {}) {
   };
   existing.workloads[workload.workloadId] = { ...event, containerName, image };
   existing.history.push(event);
-  fs.writeFileSync(statePath, JSON.stringify(existing, null, 2) + '\n');
+  fs.mkdirSync(path.dirname(statePath), { recursive: true });
+  const temporaryPath = `${statePath}.tmp-${process.pid}`;
+  fs.writeFileSync(temporaryPath, JSON.stringify(existing, null, 2) + '\n');
+  fs.renameSync(temporaryPath, statePath);
   return event;
 }
 
@@ -44,6 +50,12 @@ const evidence = [
   { name: 'workload-definition', status: 'passed', source: workloadPath },
   { name: 'image-built', status: 'pending', image },
 ];
+
+if (!dryRun && !liveExecutionApproved) {
+  record('awaiting-owner-approval', evidence, { acceptance: 'not-verified', runtimeAcceptance: 'not-started' });
+  console.log(JSON.stringify({ status: 'waiting', reason: 'owner-approval-required-for-live-kora-execution', workload: workload.workloadId, nodeId, dryRun: false, evidence }, null, 2));
+  process.exit(0);
+}
 
 if (dryRun) {
   record('execution-plan-ready', evidence, { acceptance: 'not-verified' });
@@ -98,6 +110,7 @@ try {
 
   const runtimeRequired = ['image-built', 'container-started', 'health-200', 'runtime-healthy', 'service-connectivity'];
   const runtimeAccepted = runtimeRequired.every(required => evidence.some(item => item.name === required && item.status === 'passed'));
+  evidence.push({ name: 'runtime-acceptance-recorded', status: runtimeAccepted ? 'passed' : 'failed' });
   const status = runtimeAccepted ? 'running-awaiting-acceptance-evidence' : 'failed';
   record(status, evidence, { acceptance: 'pending', runtimeAcceptance: runtimeAccepted ? 'passed' : 'failed', healthPayload: payload });
   console.log(JSON.stringify({ status, workload: workload.workloadId, nodeId, containerName, image, dryRun: false, evidence, next: runtimeAccepted ? 'collect-routing-and-production-evidence' : 'repair-runtime' }, null, 2));
