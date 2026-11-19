@@ -46,10 +46,10 @@ main{min-width:0}.top{display:flex;justify-content:space-between;gap:32px;align-
 .ai-supervisor-panel{margin-top:18px}
 .ai-supervisor-panel .panel-head p{margin:6px 0 0;color:var(--muted);font-size:.88rem;max-width:680px}
 .supervisor-counts{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;margin:18px 0}
-.supervisor-count{display:flex;flex-direction:column;gap:4px;padding:14px;border:1px solid var(--line);border-radius:12px;background:var(--surface-2)}
+.supervisor-count{display:flex;flex-direction:column;gap:4px;padding:14px;border:1px solid var(--line);border-radius:12px;background:#f7fafc}
 .supervisor-count strong{font-size:1.55rem;font-variant-numeric:tabular-nums}
 .supervisor-count small,.supervisor-job small{color:var(--muted)}
 .supervisor-jobs{display:grid;gap:8px}
-.supervisor-job{display:grid;gap:5px;padding:13px 15px;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+.supervisor-job{display:grid;gap:5px;padding:13px 15px;border:1px solid var(--line);border-radius:12px;background:#fff}
 .supervisor-job code{color:var(--muted);font-size:.75rem;overflow-wrap:anywhere}
 @media(max-width:760px){.supervisor-counts{grid-template-columns:repeat(3,minmax(0,1fr))}.ai-supervisor-panel .panel-head{align-items:flex-start;gap:12px;flex-direction:column}}
