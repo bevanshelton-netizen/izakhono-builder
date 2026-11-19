@@ -53,7 +53,7 @@ jobs:
           python3 - <<'PY'
           import pathlib
           p = pathlib.Path('products/izakhono-host/mail/portfolio-mailboxes.yml').read_text()
-          required = ['KORA NETWORK', 'I-CONNECT', 'FAISReady', 'DOXA-SURE', 'Edu-Build Institute', 'Allegro Vibez', 'IZAKHONO NAV', 'IZAKHONO HOST', 'FORTRESS']
+          required = ['KORA NETWORK', 'I-CONNECT', 'FAISReady', 'DOXA-SURE', 'Edu-Build Institute', 'Allegro Vibez', 'IZAKHONO NAV', 'IZAKHONO HOST', 'FORTRESS', 'SHELTONAIR', 'Shelton Freight Group', 'Shelton Technologies', 'SHELTON MOTOR COMPANY', 'IZAKHONO Manufacturing', 'Classique Furniture', 'IZAKHONO AFRICA (PTY) LTD']
           missing = [x for x in required if x not in p]
           if missing:
               raise SystemExit(f'Missing platforms: {missing}')
@@ -73,7 +73,7 @@ jobs:
           if any('info' not in x['mailboxes'] for x in managed['identities']):
               raise SystemExit('Every owned platform must include info before handover')
           high_level = pathlib.Path('products/izakhono-host/mail/portfolio-mailboxes.yml').read_text()
-          if 'mandatory_mailboxes_before_handover:' not in high_level or '  - info' not in high_level:
+          if 'mandatory_mailboxes_before_handover:\\n  - info' not in high_level:
               raise SystemExit('Portfolio info mailbox handover gate missing')
           print('portfolio ownership and mailbox manifest: PASS')
           PY
