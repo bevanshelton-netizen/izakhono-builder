@@ -23,6 +23,19 @@ if [[ -n "$existing_stalwart" && "$existing_stalwart" != "izakhono-mailserver" ]
   echo "BLOCKED: non-canonical Stalwart container is running: $existing_stalwart" >&2
   exit 1
 fi
+
+if [[ "$existing_stalwart" == "izakhono-mailserver" ]]; then
+  existing_volumes="$(docker inspect -f '{{range .Mounts}}{{.Name}} {{end}}' izakhono-mailserver)"
+  existing_networks="$(docker inspect -f '{{json .NetworkSettings.Networks}}' izakhono-mailserver)"
+  [[ "$existing_volumes" == *"izakhono-mail-etc"* && "$existing_volumes" == *"izakhono-mail-data"* ]] || {
+    echo "BLOCKED: canonical Stalwart volume binding is not verified." >&2
+    exit 1
+  }
+  [[ "$existing_networks" == *"izakhono-mail"* ]] || {
+    echo "BLOCKED: canonical Stalwart network binding is not verified." >&2
+    exit 1
+  }
+fi
 was_mail="$(docker inspect -f '{{.State.Running}}' izakhono-mailserver 2>/dev/null || echo false)"
 was_db="$(docker inspect -f '{{.State.Running}}' izakhono-roundcube-db 2>/dev/null || echo false)"
 was_webmail="$(docker inspect -f '{{.State.Running}}' izakhono-roundcube 2>/dev/null || echo false)"
