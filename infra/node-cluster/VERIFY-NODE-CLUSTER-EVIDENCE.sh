@@ -23,7 +23,6 @@ from pathlib import Path
 path = Path(sys.argv[1])
 MAX_AGE_SECONDS = 300
 SCHEME = "bearer-hmac-sha256"
-REQUIRE_CRYPTO = os.environ.get("CONNECTA_REQUIRE_CRYPTOGRAPHIC_EVIDENCE", "").lower() == "true"
 TOKEN_ENV = {
     "NODE01": "NODE01_HEALTH_TOKEN",
     "NODE02": "NODE02_HEALTH_TOKEN",
@@ -36,11 +35,10 @@ def blocked(message):
     print(f"[BLOCKED] {message}", file=sys.stderr)
     raise SystemExit(10)
 
-if REQUIRE_CRYPTO:
-    if any(not re.fullmatch(r"[a-fA-F0-9]{64}", token) for token in tokens.values()):
-        blocked("cryptographic verification requires four valid per-node health tokens")
-    if len(set(tokens.values())) != 4:
-        blocked("cryptographic verification requires four unique per-node health tokens")
+if any(not re.fullmatch(r"[a-fA-F0-9]{64}", token) for token in tokens.values()):
+    blocked("four valid per-node health tokens are required for every verification")
+if len(set(tokens.values())) != 4:
+    blocked("four unique per-node health tokens are required for every verification")
 
 def parse_fresh_timestamp(value, label):
     try:
@@ -114,11 +112,10 @@ for record in nodes:
     seen_nonces.add(nonce)
     if not isinstance(signature, str) or not re.fullmatch(r"[a-f0-9]{64}", signature):
         blocked(f"{name} HMAC signature is missing or malformed")
-    if REQUIRE_CRYPTO:
-        message = f"izakhono-production\n{name}\n{nonce}".encode("utf-8")
-        expected_signature = hmac.new(bytes.fromhex(tokens[name]), message, hashlib.sha256).hexdigest()
-        if not hmac.compare_digest(signature, expected_signature):
-            blocked(f"{name} HMAC signature does not match the protected runtime credential")
+    message = f"izakhono-production\n{name}\n{nonce}".encode("utf-8")
+    expected_signature = hmac.new(bytes.fromhex(tokens[name]), message, hashlib.sha256).hexdigest()
+    if not hmac.compare_digest(signature, expected_signature):
+        blocked(f"{name} HMAC signature does not match the protected runtime credential")
     response = record.get("http")
     if not isinstance(response, dict) or response.get("status") != 200 or response.get("ok") is not True or response.get("runtimeNode") != name or response.get("cluster") != "izakhono-production" or response.get("authScheme") != SCHEME:
         blocked(f"{name} endpoint response must be HTTP 200 and prove its own runtime, cluster and auth scheme")
