@@ -133,3 +133,37 @@ No direct registry access, data-provider contract, or legal compliance certifica
 ## Release boundary
 
 The database and authenticated intake/evidence API are deployed, but this is not a complete regulated KYC/KYB verification service. No external identity-document, biometric/liveness, CIPC, SARS, sanctions, PEP or adverse-media provider is configured; uploaded evidence is not malware-scanned or externally verified; no reviewer console or reviewer-role provisioning is deployed; and the end-to-end API has not yet passed a real authenticated user-session test. The evaluation engine therefore returns REVIEW and cannot issue APPROVE. Existing FORTRESS and IZAKHONO PAY gates remain closed unless their own acceptance evidence passes.
+
+
+## Security audit addendum — 2026-11-19
+
+The deployed version 16 handler and the PR branch source were inspected alongside the live `identity` schema. This review identified a release-blocking tenant-boundary gap; the current user-scoped implementation must not be represented as entity-scoped authorisation.
+
+### Verified implementation facts
+
+- The current request authenticator validates a Supabase Auth bearer token and returns only the Supabase user UUID. It does not introspect the canonical IZAKHONO ID service, resolve an active entity membership, or bind a request to an entity context.
+- `identity.verification_cases` has `opened_by` and `subject_id`, but no `entity_id` or membership reference. The other identity tables likewise do not carry an entity scope.
+- Case lookup is restricted by case UUID and `opened_by = authenticated user UUID`. This is a user-ownership check, not a tenant/entity-membership check.
+- Child records (evidence, screenings, decisions, relationships and consent) are queried or written through the case's subject/case IDs after that user-owned case check. This does not prove isolation between entities or product memberships belonging to the same person.
+- Business subject creation currently creates a subject and case for the caller without resolving an authorised business membership or canonical entity.
+- The live database schema confirms the absence of entity and canonical membership columns in the eight identity tables.
+
+### Required remediation before pilot or customer onboarding
+
+1. Establish the canonical IZAKHONO ID introspection endpoint and server-side credential through the approved deployment secret channel; never place the credential in source control or chat.
+2. Define the authoritative entity/membership contract with IZAKHONO ID, including active membership, entity ID/slug, role, expiry/revocation semantics and the trusted source of product scope.
+3. Design an additive migration for entity and membership references, including a safe backfill/reconciliation plan for existing cases. Do not infer an entity from user metadata, request body, URL parameters or untrusted JWT user metadata.
+4. Require entity context on every case creation, list, read and mutation. Enforce ownership through the canonical active membership and server-derived entity ID; ensure every child record is reached only through a case already authorised in that entity context.
+5. Add explicit reviewer/service permissions and audit actor/entity attribution; preserve least privilege and existing immutable decision/audit semantics.
+6. Test cross-user, cross-entity, same-user/multiple-entity, revoked-membership, expired-session, guessed-case-ID and child-resource IDOR scenarios using real authenticated sessions.
+7. Only after independent review may the corrected version be deployed. Keep the existing production handler and customer-facing routes unchanged until migration, compatibility and rollback plans are approved.
+
+### Release decision
+
+**BLOCKED — no pilot, public onboarding, production approval decisions, merchant activation or PR merge.** The existing version 16 deployment remains an authenticated intake foundation only. It is not yet a tenant-safe multi-entity verification service. No production schema, grants, policies, gateway routing or customer-facing behavior were changed during this audit.
+
+### Additional operational observations
+
+- The gateway's CORS helper defaults to reflecting any request origin when `IDENTITY_ALLOWED_ORIGINS` is unset. Before browser exposure, configure and verify an explicit origin allowlist against actual authorised clients; do not make an unverified production change that could interrupt existing gateway consumers.
+- Evidence uploads have MIME, magic-byte, size and SHA-256 checks, but no malware scanning or external issuer validation. Hashing and MIME checks do not establish document authenticity or safety.
+- The existing FORTRESS schema's access boundary remains separate and unresolved. Its data plane and authorised integration route must be established before wiring review cases into it; do not grant broad schema/table access as a shortcut.
