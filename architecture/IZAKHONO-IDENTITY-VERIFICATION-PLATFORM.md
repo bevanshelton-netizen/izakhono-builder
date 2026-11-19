@@ -167,3 +167,44 @@ The deployed version 16 handler and the PR branch source were inspected alongsid
 - The gateway's CORS helper defaults to reflecting any request origin when `IDENTITY_ALLOWED_ORIGINS` is unset. Before browser exposure, configure and verify an explicit origin allowlist against actual authorised clients; do not make an unverified production change that could interrupt existing gateway consumers.
 - Evidence uploads have MIME, magic-byte, size and SHA-256 checks, but no malware scanning or external issuer validation. Hashing and MIME checks do not establish document authenticity or safety.
 - The existing FORTRESS schema's access boundary remains separate and unresolved. Its data plane and authorised integration route must be established before wiring review cases into it; do not grant broad schema/table access as a shortcut.
+
+
+## Canonical identity contract and deployment discovery — 2026-11-19
+
+A further source-level review of `products/izakhono-id/app.py` found additional integration requirements that must be resolved before writing or applying a tenant migration.
+
+### Canonical ID identifier formats
+
+The canonical IZAKHONO ID service does not use UUID identifiers for its core identity records:
+- entity IDs are `ent_` followed by a 32-character hexadecimal UUID;
+- user IDs are `usr_` followed by a 32-character hexadecimal UUID;
+- membership IDs are `mem_` followed by a 32-character hexadecimal UUID.
+
+The existing verification schema uses PostgreSQL UUID columns for its own subjects/cases and `auth.users` foreign keys. It must not attempt to store canonical entity/user/membership identifiers in UUID columns or create false foreign keys across the independent SQLite identity service. The additive tenant-binding migration must use validated text identifiers (or a formally approved stable mapping table) and explicit indexes/constraints appropriate to these opaque canonical IDs.
+
+### Introspection response is not yet sufficient for a safe principal binding
+
+The current internal introspection response returns:
+- `subject` as the user's email address;
+- `entity_id`, `entity_slug`, `role`, `expires_at`, and `active`.
+
+It does **not** return the canonical `user_id` or `membership_id`. Email must not be used as an identity join key. Before integration, extend the internal-only response with stable `user_id` and `membership_id` claims (and preferably a session identifier for audit correlation), while retaining `subject` for compatibility. Add contract tests that prove inactive, revoked, expired, disabled-user, disabled-entity and disabled-membership sessions are rejected and that entity and membership claims match the same live session row.
+
+### Deployment discovery
+
+- The linked Vercel team/project inventory was inspected. It contains numerous IZAKHONO product projects, but no project named or linked as `izakhono-id`.
+- The known IZAKHONO ID runtime is still configured for a host/port process (defaults `127.0.0.1:9696`) and uses a local SQLite data directory. The repository source and connected deployment inventory do not establish a production HTTPS origin, persistent production volume/backup strategy, active node, DNS target or TLS certificate.
+- Prior NODE01 infrastructure records identify `NODE01` / `IZ-GATEWAY-01` and `api-owned-node` as planned/provisioning, with no endpoint. This is consistent with the current deployment discovery; it is not evidence of a live host.
+- Do not deploy the SQLite identity service to ephemeral serverless storage. A production target must provide durable encrypted storage, backups and restore testing, private network ingress, TLS, monitoring, controlled secret injection and an owner-controlled recovery path.
+
+### Safe next implementation sequence
+
+1. Extend canonical ID internal introspection to return `user_id` and `membership_id` in addition to current claims; add tests without changing login/session semantics.
+2. Provision the canonical ID service on an approved persistent runtime and verify HTTPS health, durable database path, backups, TLS and internal-key rotation. NODE01 remains the documented intended target, but no runtime is presently verified.
+3. Define a versioned service-to-service contract. The verification gateway must present the canonical ID session token to introspection over TLS using the internal key; the key is stored only in the gateway's protected secret store.
+4. Use server-returned `user_id`, `entity_id`, `membership_id`, `role` and expiry to establish a trusted principal. Never map by email or accept entity/membership values from request payloads.
+5. Design an additive text-ID tenant binding schema, reconcile existing cases explicitly, and scope all parent and child reads/writes to the authenticated entity and permitted role.
+6. Test against a staging ID deployment with seeded multiple entities and memberships, including same-user cross-entity isolation, revoked memberships, expiry and IDOR attempts.
+7. Only after verified migration, rollback, CI, end-to-end and independent security evidence may a controlled production rollout be considered.
+
+**Release remains BLOCKED.** No production deployment, schema migration, permission change, DNS/TLS change or customer-facing behavior was modified as part of this discovery.
