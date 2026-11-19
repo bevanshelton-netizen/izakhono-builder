@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import {
   allowedWebhookUrl,
   claimMerchantWebhookDelivery,
+  merchantWebhookRetryDelaySeconds,
+  merchantWebhookIsDeadLetter,
   retryPendingMerchantWebhooks
 } from '../src/merchant-webhooks.js';
 
@@ -78,4 +80,15 @@ test('scheduled retry scanner excludes dead-lettered deliveries', async () => {
   assert.match(DB.calls[0].sql, /next_attempt_at<=CURRENT_TIMESTAMP/);
   assert.match(DB.calls[0].sql, /d.dead_lettered_at IS NULL/);
   assert.equal(DB.calls[0].values[0], 100);
+});
+
+test('merchant webhook retry backoff is exponential, capped and bounded', () => {
+  assert.equal(merchantWebhookRetryDelaySeconds(1), 30);
+  assert.equal(merchantWebhookRetryDelaySeconds(2), 60);
+  assert.equal(merchantWebhookRetryDelaySeconds(3), 120);
+  assert.equal(merchantWebhookRetryDelaySeconds(8), 3600);
+  assert.equal(merchantWebhookRetryDelaySeconds(12), 3600);
+  assert.equal(merchantWebhookIsDeadLetter(11), false);
+  assert.equal(merchantWebhookIsDeadLetter(12), true);
+  assert.equal(merchantWebhookIsDeadLetter(13), true);
 });

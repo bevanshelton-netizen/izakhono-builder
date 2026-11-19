@@ -137,3 +137,16 @@ This is a fail-closed pipeline correction, not a production deployment. The prod
 - Added regression coverage for callback URL validation, atomic lease acquisition, concurrent claim rejection, terminal delivered records and dead-letter exclusion.
 
 These changes are source/migration/test commits only. No remote D1 migration has been run. The new migration must be exercised against a disposable database and the full ordered migration chain before any sandbox or production D1 is modified.
+
+
+### Runtime selection evidence — 2026-11-19
+
+- The checked-in PAY CI, sandbox and production Wrangler configurations all explicitly select `src/index.js`. The sandbox and production workflows also explicitly pass their respective Wrangler config files. This makes the JavaScript Worker the active launch-pipeline runtime.
+- The root `wrangler.jsonc` instead selects `src/index.ts`, names a different Worker and points at a D1 database named `izakhono-builder`. The TypeScript Worker exposes a separate `pay_*` merchant/payment model; the JavaScript Worker uses `merchant_apps` and `payment_intents`.
+- Do not deploy the root configuration or apply remote migrations to its D1 binding as part of PAY launch work. Retain the TypeScript implementation as a legacy/parallel application until its callers, data ownership and migration history are fully mapped. No automatic data migration or deletion is authorised.
+- The launch pipeline's JavaScript Worker remains the release candidate, subject to completing the ordered migration test, sandbox lifecycle acceptance, provider verification and security review. The shared migrations directory still contains both schema families; a future schema split requires verified remote migration history and a rollback plan.
+
+### Retry and schema dependency test additions — 2026-11-19
+
+- Exported and unit-tested merchant webhook retry timing: exponential delays from 30 seconds, capped at one hour, with a terminal dead-letter threshold at 12 attempts.
+- Added a migration integrity test confirming `pay_api_keys` and `pay_auth_events` are created before migration 0017 attempts to index the API-key table.

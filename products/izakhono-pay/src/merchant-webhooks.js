@@ -38,6 +38,17 @@ async function ensureDelivery(env, { eventId, merchantSlug, intentId, webhookUrl
     .bind(eventId).first();
 }
 
+export const MERCHANT_WEBHOOK_MAX_ATTEMPTS = 12;
+
+export function merchantWebhookRetryDelaySeconds(attemptCount) {
+  const attempt = Math.max(1, Math.trunc(Number(attemptCount) || 1));
+  return Math.min(3600, 30 * (2 ** (attempt - 1)));
+}
+
+export function merchantWebhookIsDeadLetter(attemptCount) {
+  return Math.trunc(Number(attemptCount) || 0) >= MERCHANT_WEBHOOK_MAX_ATTEMPTS;
+}
+
 function changedRows(result) {
   return Number(result?.meta?.changes ?? result?.changes ?? 0);
 }
@@ -62,9 +73,9 @@ export async function claimMerchantWebhookDelivery(env, eventId) {
 }
 
 async function updateDelivery(env, eventId, leaseToken, { status, httpStatus = null, error = null, attemptCount = 1 }) {
-  const delaySeconds = Math.min(3600, 30 * (2 ** Math.max(0, attemptCount - 1)));
+  const delaySeconds = merchantWebhookRetryDelaySeconds(attemptCount);
   await env.DB.prepare(
-    "UPDATE merchant_webhook_deliveries SET status=?,last_http_status=?,last_error=?,delivered_at=CASE WHEN ?='delivered' THEN CURRENT_TIMESTAMP ELSE delivered_at END,next_attempt_at=CASE WHEN ?='failed' AND ? < 12 THEN datetime('now',?) ELSE NULL END,dead_lettered_at=CASE WHEN ?='failed' AND ? >= 12 THEN CURRENT_TIMESTAMP ELSE dead_lettered_at END,lease_token=NULL,lease_expires_at=NULL WHERE event_id=? AND lease_token=?"
+    `UPDATE merchant_webhook_deliveries SET status=?,last_http_status=?,last_error=?,delivered_at=CASE WHEN ?='delivered' THEN CURRENT_TIMESTAMP ELSE delivered_at END,next_attempt_at=CASE WHEN ?='failed' AND ? < ${MERCHANT_WEBHOOK_MAX_ATTEMPTS} THEN datetime('now',?) ELSE NULL END,dead_lettered_at=CASE WHEN ?='failed' AND ? >= ${MERCHANT_WEBHOOK_MAX_ATTEMPTS} THEN CURRENT_TIMESTAMP ELSE dead_lettered_at END,lease_token=NULL,lease_expires_at=NULL WHERE event_id=? AND lease_token=?`
   ).bind(status, httpStatus, error, status, status, attemptCount, `+${delaySeconds} seconds`, status, attemptCount, eventId, leaseToken).run();
 }
 
