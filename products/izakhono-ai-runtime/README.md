@@ -23,19 +23,17 @@ Check `curl http://127.0.0.1:11434/api/tags`. A generated build must report `gen
 
 This eliminates proprietary AI credits, not real compute costs. CPU, memory, storage, download bandwidth, backup, security and availability remain operational requirements. The 3B model is a practical baseline, not a claim of frontier-model parity.
 
-## Intelligence Engine adapter
+## Inference trust boundary
 
-The shared model-routing core lives in `src/intelligence.ts`. It supports the
-native Ollama `/api/chat` protocol used by this service and an OpenAI-compatible
-`/chat/completions` adapter for approved endpoints. The router filters models
-by declared task capabilities, health, context limit and explicit trust policy.
-External fallback is possible only when `approved_external` is explicitly
-allowed by the calling policy. The model endpoint's `baseUrl` is the API host
-(for this local service: `http://127.0.0.1:11434`), not the full `/api/chat`
-path.
+All inference uses the Ollama-compatible `/api/chat` protocol on a loopback or private IZAKHONO-owned network endpoint. The default remains `http://127.0.0.1:11434/api/chat`.
+
+- Hosted model APIs and `approved_external` endpoints are disabled.
+- A second owner-controlled Software NODE may be reached only over a private overlay using a private IP or reserved `.local` / `.internal` hostname.
+- Public HTTPS model endpoints, API-key provider fallbacks and external provider rotation are rejected.
+- If no eligible local runtime is reachable, the caller uses deterministic native generation or returns a clear capability-unavailable result.
+- Model adapters do not own task state, repository state, authorization or release evidence.
 
 Run the shared router checks from the repository root:
 `npm run intelligence:test` and `npm run intelligence:typecheck`.
 
-A passing mock-adapter test does not prove the Ollama container or owner node is
-running. Use the provisioning/verification commands above for runtime acceptance.
+A passing mock-adapter test does not prove the Ollama container or owner node is running. Use the provisioning/verification commands above for runtime acceptance.
