@@ -184,11 +184,9 @@ The existing verification schema uses PostgreSQL UUID columns for its own subjec
 
 ### Introspection response is not yet sufficient for a safe principal binding
 
-The current internal introspection response returns:
-- `subject` as the user's email address;
-- `entity_id`, `entity_slug`, `role`, `expires_at`, and `active`.
+The original internal introspection response returned email as `subject` and omitted stable `user_id` / `membership_id` claims. The PR branch now extends the internal-only response additively with `user_id`, `membership_id`, and `session_id`, while retaining the existing `subject` email field for compatibility. The corresponding ID service test now asserts stable claims for the same user's two separate entity memberships, and rejects a wrong internal key and a revoked session. These changes are source-only and are not deployed to a production ID runtime.
 
-It does **not** return the canonical `user_id` or `membership_id`. Email must not be used as an identity join key. Before integration, extend the internal-only response with stable `user_id` and `membership_id` claims (and preferably a session identifier for audit correlation), while retaining `subject` for compatibility. Add contract tests that prove inactive, revoked, expired, disabled-user, disabled-entity and disabled-membership sessions are rejected and that entity and membership claims match the same live session row.
+Email must never be used as an identity join key. Before gateway integration, run the ID CI suite and add/verify explicit expiry, inactive-user, inactive-entity and inactive-membership contract cases in addition to the current revoked-session and cross-entity cases.
 
 ### Deployment discovery
 
