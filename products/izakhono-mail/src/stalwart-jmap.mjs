@@ -30,6 +30,30 @@ function validateAddress(domain, mailbox) {
   return { domain: canonicalDomain, mailbox: local, address: local + '@' + canonicalDomain };
 }
 
+async function readLimitedResponse(response) {
+  const declaredLength = Number(response.headers?.get?.('content-length') || 0);
+  if (declaredLength > MAX_RESPONSE_BYTES) throw new Error('stalwart-jmap-response-too-large');
+  if (response.body?.getReader) {
+    const reader = response.body.getReader();
+    const chunks = [];
+    let total = 0;
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      total += value.byteLength;
+      if (total > MAX_RESPONSE_BYTES) {
+        await reader.cancel();
+        throw new Error('stalwart-jmap-response-too-large');
+      }
+      chunks.push(Buffer.from(value));
+    }
+    return Buffer.concat(chunks).toString('utf8');
+  }
+  const raw = await response.text();
+  if (Buffer.byteLength(raw, 'utf8') > MAX_RESPONSE_BYTES) throw new Error('stalwart-jmap-response-too-large');
+  return raw;
+}
+
 function resultFor(methodResponses, method) {
   if (!Array.isArray(methodResponses)) throw new Error('stalwart-jmap-response-invalid');
   const entry = methodResponses.find((item) => Array.isArray(item) && item[0] === method && item[2] === 'izakhono');
@@ -74,8 +98,7 @@ export class StalwartJmapTransport {
         body: JSON.stringify({ using: JMAP_CAPABILITIES, methodCalls: [[method, args, 'izakhono']] }),
         signal: controller.signal,
       });
-      const raw = await response.text();
-      if (Buffer.byteLength(raw, 'utf8') > MAX_RESPONSE_BYTES) throw new Error('stalwart-jmap-response-too-large');
+      const raw = await readLimitedResponse(response);
       if (!response.ok) throw new Error('stalwart-jmap-http-' + response.status);
       let body;
       try { body = JSON.parse(raw); } catch { throw new Error('stalwart-jmap-response-invalid'); }
