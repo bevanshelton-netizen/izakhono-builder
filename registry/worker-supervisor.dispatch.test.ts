@@ -26,4 +26,5 @@ const jobs = [
 const selected = selectRunnableSupervisorJobs(jobs, handlers, 10);
 assert.deepEqual(selected.map(job => job.id), ["build-ready", "custom", "waiting-complete"]);
 assert.deepEqual(selectRunnableSupervisorJobs(jobs, handlers, 1).map(job => job.id), ["build-ready"]);
+assert.deepEqual(selectRunnableSupervisorJobs(jobs, handlers, 0), [], "zero dispatch limit must schedule no jobs");
 console.log("registered worker dispatch tests: ok (explicit handlers, risk gates, human gates, dependencies, immutable build inputs, priority and limit)");
