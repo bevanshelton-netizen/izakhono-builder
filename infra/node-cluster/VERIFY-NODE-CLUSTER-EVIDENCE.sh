@@ -120,8 +120,8 @@ for record in nodes:
         if not hmac.compare_digest(signature, expected_signature):
             blocked(f"{name} HMAC signature does not match the protected runtime credential")
     response = record.get("http")
-    if not isinstance(response, dict) or response.get("ok") is not True or response.get("runtimeNode") != name or response.get("cluster") != "izakhono-production" or response.get("authScheme") != SCHEME:
-        blocked(f"{name} endpoint response does not prove its own runtime, cluster and auth scheme")
+    if not isinstance(response, dict) or response.get("status") != 200 or response.get("ok") is not True or response.get("runtimeNode") != name or response.get("cluster") != "izakhono-production" or response.get("authScheme") != SCHEME:
+        blocked(f"{name} endpoint response must be HTTP 200 and prove its own runtime, cluster and auth scheme")
     if not record.get("checkedAt"):
         blocked(f"{name} runtime timestamp is missing")
     parse_fresh_timestamp(record["checkedAt"], f"{name} runtime")
