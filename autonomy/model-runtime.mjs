@@ -1,12 +1,14 @@
 import { isIP } from 'node:net';
 
 function isPrivateHost(hostname) {
-  const host = hostname.toLowerCase().replace(/^\\[|\\]$/g, '');
-  if (host === 'localhost' || host.endsWith('.localhost')) return true;
+  const host = hostname.toLowerCase().replace(/^\[|\]$/g, '');
+  if (host === 'localhost' || host.endsWith('.localhost') || host.endsWith('.local') || host.endsWith('.internal')) return true;
   const family = isIP(host);
   if (family === 4) {
-    const [a,b] = host.split('.').map(Number);
-    return a === 10 || a === 127 || (a === 192 && b === 168) || (a === 172 && b >= 16 && b <= 31) || (a === 169 && b === 254) || (a === 100 && b >= 64 && b <= 127);
+    const [a, b] = host.split('.').map(Number);
+    return a === 10 || a === 127 || (a === 192 && b === 168)
+      || (a === 172 && b >= 16 && b <= 31) || (a === 169 && b === 254)
+      || (a === 100 && b >= 64 && b <= 127);
   }
   if (family === 6) return host === '::1' || host.startsWith('fc') || host.startsWith('fd') || host.startsWith('fe80:');
   return false;
@@ -14,10 +16,12 @@ function isPrivateHost(hostname) {
 
 export function resolveLocalModelConfig(env = process.env) {
   const url = new URL(env.IZAKHONO_LOCAL_MODEL_URL || 'http://127.0.0.1:11434/api/chat');
-  const trusted = (env.IZAKHONO_MODEL_TRUSTED_HOSTS || '').split(',').map((v) => v.trim().toLowerCase()).filter(Boolean);
   if (!['http:', 'https:'].includes(url.protocol)) throw new Error('model-runtime-protocol-not-supported');
-  if (!isPrivateHost(url.hostname) && !trusted.includes(url.hostname.toLowerCase())) throw new Error('model-runtime-host-not-private-or-explicitly-trusted');
-  return { url: url.toString(), model: env.IZAKHONO_LOCAL_MODEL || 'qwen2.5-coder:3b' };
+  if (url.username || url.password || url.hash) throw new Error('model-runtime-url-contains-forbidden-components');
+  if (!isPrivateHost(url.hostname)) throw new Error('model-runtime-host-not-private');
+  const timeoutMs = Number(env.IZAKHONO_MODEL_TIMEOUT_MS || 45000);
+  if (!Number.isInteger(timeoutMs) || timeoutMs < 1000 || timeoutMs > 120000) throw new Error('model-runtime-timeout-invalid');
+  return { url: url.toString(), model: env.IZAKHONO_LOCAL_MODEL || 'qwen2.5-coder:3b', timeoutMs };
 }
 
 export function normalizeBrief(input, goal = 'Your project') {
@@ -40,12 +44,16 @@ export async function generateSiteBrief(goal, options = {}) {
   const config = resolveLocalModelConfig(env);
   const fetchImpl = options.fetchImpl || fetch;
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), Number(env.IZAKHONO_MODEL_TIMEOUT_MS || 45000));
+  const timeout = setTimeout(() => controller.abort(), config.timeoutMs);
   try {
     const response = await fetchImpl(config.url, {
-      method: 'POST', headers: { 'content-type': 'application/json' }, signal: controller.signal,
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      signal: controller.signal,
       body: JSON.stringify({
-        model: config.model, stream: false, format: 'json',
+        model: config.model,
+        stream: false,
+        format: 'json',
         messages: [
           { role: 'system', content: 'Return only JSON with keys title, tagline, description, sections (array of objects with heading and body), callToAction. Create concise, professional website content. Do not include HTML, scripts, markdown, secrets, or unsupported factual claims.' },
           { role: 'user', content: 'Create a website content brief for this project goal: ' + String(goal).slice(0, 4000) },
@@ -57,7 +65,9 @@ export async function generateSiteBrief(goal, options = {}) {
     const content = payload.message?.content || payload.response;
     if (typeof content !== 'string') throw new Error('local-model-empty-response');
     return { brief: normalizeBrief(JSON.parse(content), goal), mode: 'local-model', model: config.model };
-  } finally { clearTimeout(timeout); }
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 export function fallbackSiteBrief(goal) {
