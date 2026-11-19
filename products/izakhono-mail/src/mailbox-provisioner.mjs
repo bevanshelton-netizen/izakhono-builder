@@ -32,7 +32,7 @@ export async function provisionMailbox({ platform, mailbox, displayName = '' }) 
     transport = createStalwartTransportFromEnv();
   } catch {
     return failure('transport_unavailable', target, { required_configuration: [
-      'STALWART_JMAP_URL', 'STALWART_ADMIN_USERNAME', 'STALWART_ADMIN_PASSWORD',
+      'STALWART_JMAP_URL', 'STALWART_PROVISIONER_API_KEY',
     ] });
   }
 
