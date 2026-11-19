@@ -92,7 +92,7 @@ server.listen(port, '127.0.0.1');
     'public/index.html': `<!doctype html>
 <html lang="en">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="description" content="${description}"><title>${title}</title><link rel="stylesheet" href="/styles.css"></head>
-<body><main><p class="eyebrow">IZAKHONO BUILDER</p><h1>${title}</h1><p>${description}</p><a href="mailto:hello@izakhonoafrica.co.za">Contact us</a></main></body>
+<body><main><p class="eyebrow">IZAKHONO BUILDER</p><h1>${title}</h1><p>${description}</p><a href="#contact">Contact us</a><section id="contact"><h2>Start a conversation</h2><p>Use your approved IZAKHONO contact channel to continue.</p></section></main></body>
 </html>
 `,
     'public/styles.css': ':root{font-family:system-ui,sans-serif;color:#f4f7fb;background:#07111f}*{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;padding:2rem}main{max-width:58rem}h1{font-size:clamp(2.5rem,8vw,6rem);line-height:1.02;letter-spacing:-.05em}.eyebrow{color:#70e0c0;letter-spacing:.18em;font-size:.75rem}p{color:#bdcbd9;line-height:1.7}a{display:inline-block;padding:.85rem 1.2rem;background:#70e0c0;color:#07111f;border-radius:2rem;text-decoration:none;font-weight:700}\n',
