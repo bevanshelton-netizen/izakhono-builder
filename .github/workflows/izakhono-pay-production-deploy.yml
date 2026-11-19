@@ -37,12 +37,12 @@ jobs:
         with:
           node-version: 22
 
-      - name: Require explicit live confirmation
+      - name: Require explicit production deployment confirmation
         shell: bash
         run: |
           set -euo pipefail
           if [ '${{ inputs.confirm_live }}' != 'IZAKHONO PAY PRODUCTION' ]; then
-            echo 'Live deployment confirmation did not match.' >&2
+            echo 'Production deployment confirmation did not match.' >&2
             exit 1
           fi
 
