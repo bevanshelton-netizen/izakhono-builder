@@ -19,8 +19,8 @@ The previous Docker Mailserver deployment is superseded. Do not run DMS and Stal
 - SMTPS: `mail.izakhonoafrica.co.za:465`
 - IMAPS: `mail.izakhonoafrica.co.za:993`
 - Webmail: `https://webmail.izakhonoafrica.co.za`
-- Stalwart admin: loopback only at `https://127.0.0.1:18080/admin`
-- Stalwart bootstrap/JMAP: loopback only at `http://127.0.0.1:18081`
+- Stalwart admin: loopback only at `http://127.0.0.1:18081/admin`
+- Stalwart bootstrap/JMAP: loopback only at `http://127.0.0.1:18081` (JMAP path `/jmap/`)
 
 The mail runtime publishes no separate public web proxy. Public ports 80/443 remain owned by IZAKHONO HOST EDGE.
 
