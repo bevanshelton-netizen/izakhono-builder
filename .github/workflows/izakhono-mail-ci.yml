@@ -142,6 +142,7 @@ jobs:
           test -f .env.example
           test -f ops/bootstrap.sh
           test -f ops/preflight.sh
+          test -f ../config/stalwart-provisioner-role.json
           test -f ops/PROVIDER-ACCEPTANCE.sh
           test -f ops/backup.sh
           test -f ops/restore.sh
@@ -149,7 +150,7 @@ jobs:
 
       - name: Verify no production secrets are tracked
         run: |
-          if git grep -n -E 'BEGIN (RSA|OPENSSH|PRIVATE) KEY|MAILBOX_PASSWORD=[^C]|ROUNDCUBE_DB_PASSWORD=[^C]|STALWART_ADMIN_PASSWORD=[^C]|STALWART_RECOVERY_ADMIN=admin:[^C]|AGE_RECIPIENT=age1' -- products/izakhono-mail/runtime-v1; then
+          if git grep -n -E 'BEGIN (RSA|OPENSSH|PRIVATE) KEY|MAILBOX_PASSWORD=[^C]|ROUNDCUBE_DB_PASSWORD=[^C]|STALWART_PROVISIONER_API_KEY=[^C]|STALWART_RECOVERY_ADMIN=admin:[^C]|AGE_RECIPIENT=age1' -- products/izakhono-mail/runtime-v1; then
             echo 'Tracked production secret material detected.'
             exit 1
           fi
