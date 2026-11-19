@@ -278,18 +278,7 @@ function buildModulesFromPrompt(prompt: string, target: string): string[] {
 }
 
 
-function parseBuildAiJson(text: string): any | null {
-  const raw = String(text || '').trim().replace(/^`{3}(?:json)?\s*/i, '').replace(/\s*`{3}$/, '').trim();
-  if (!raw) return null;
-  try { return JSON.parse(raw); } catch {}
-  const start = raw.indexOf('{'), end = raw.lastIndexOf('}');
-  if (start >= 0 && end > start) {
-    try { return JSON.parse(raw.slice(start, end + 1)); } catch {}
-  }
-  return null;
-}
-
-function enrichBuildIntentWithSuperAI(_env: any, _prompt: string, base: any): any {
+function buildIntentWithDeterministicFallback(base: any): any {
   return {
     ...base,
     summary: 'Deterministic IZAKHONO-native build intent; model inference is delegated to the local Ollama adapter in the owned Builder runtime.',
@@ -332,7 +321,7 @@ async function buildAnythingRoute(req: Request, env: any, url: URL): Promise<Res
     name: deterministicName,
     modules: buildModulesFromPrompt(prompt, deterministicTarget),
   };
-  const intent = await enrichBuildIntentWithSuperAI(env, prompt, baseline);
+  const intent = buildIntentWithDeterministicFallback(baseline);
   const target = inferBuildTarget(prompt, payload?.target || intent.target);
   const name = String(payload?.name || '').trim().slice(0, 100) || String(intent.name || deterministicName).slice(0, 100);
   const slug = await uniqueBuildSlug(env, String(payload?.slug || name));
