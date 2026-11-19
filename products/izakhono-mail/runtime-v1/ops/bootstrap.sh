@@ -3,65 +3,101 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 if [[ ! -f .env ]]; then
-  echo "Missing .env. Copy .env.example to .env and set strong secrets." >&2
-  exit 1
-fi
-source .env
-: "${MAIL_DOMAIN:?MAIL_DOMAIN missing}"
-: "${MAIL_HOSTNAME:?MAIL_HOSTNAME missing}"
-: "${MAILBOX:?MAILBOX missing}"
-: "${MAILBOX_PASSWORD:?MAILBOX_PASSWORD missing}"
-: "${ROUNDCUBE_DB_PASSWORD:?ROUNDCUBE_DB_PASSWORD missing}"
-: "${ACME_EMAIL:?ACME_EMAIL missing}"
-
-if [[ "$MAILBOX_PASSWORD" == "CHANGE_ME"* || "$ROUNDCUBE_DB_PASSWORD" == "CHANGE_ME"* ]]; then
-  echo "Replace placeholder passwords in .env before deployment." >&2
+  echo "BLOCKED: copy .env.example to .env and set owner-controlled secrets." >&2
   exit 1
 fi
 
-mkdir -p dms-config/{ssl,opendkim,postfix,dovecot,rspamd} mail-data mail-state mail-logs mail-config roundcube-db caddy-data caddy-config letsencrypt certbot-logs
+read_env() {
+  local key="$1" line value
+  line="$(grep -m1 -E "^\${key}=" .env || true)"
+  value="${line#*=}"
+  value="${value%\"}"; value="${value#\"}"
+  value="${value%\'}"; value="${value#\'}"
+  printf '%s' "$value"
+}
 
-echo "[1/7] Pulling pinned mail runtime..."
-docker compose pull
+MAIL_DOMAIN="$(read_env MAIL_DOMAIN)"
+MAIL_HOSTNAME="$(read_env MAIL_HOSTNAME)"
+MAILBOX="$(read_env MAILBOX)"
+ROUNDCUBE_DB_PASSWORD="$(read_env ROUNDCUBE_DB_PASSWORD)"
+STALWART_RECOVERY_ADMIN="$(read_env STALWART_RECOVERY_ADMIN)"
 
-echo "[2/7] Checking required public DNS before ACME..."
-getent hosts "$MAIL_HOSTNAME" >/dev/null || { echo "DNS for $MAIL_HOSTNAME is not resolving on this node." >&2; exit 1; }
-
-echo "[3/7] Provisioning/renewing Let's Encrypt certificate..."
-# Caddy owns ports 80/443, so stop it while Certbot uses HTTP-01 on port 80.
-docker compose stop caddy >/dev/null 2>&1 || true
-docker rm -f izakhono-mail-certbot >/dev/null 2>&1 || true
-docker run --name izakhono-mail-certbot --rm \
-  -p 80:80 \
-  -v "$(pwd)/letsencrypt:/etc/letsencrypt" \
-  -v "$(pwd)/certbot-logs:/var/log/letsencrypt" \
-  certbot/certbot:latest certonly --standalone --non-interactive --agree-tos \
-  --email "$ACME_EMAIL" --keep-until-expiring -d "$MAIL_HOSTNAME"
-
-echo "[4/7] Starting mail core and webmail..."
-docker compose up -d
-
-echo "[5/7] Waiting for mailserver..."
-for i in {1..30}; do
-  if docker inspect -f '{{.State.Health.Status}}' izakhono-mailserver 2>/dev/null | grep -q healthy; then break; fi
-  sleep 5
+for name in MAIL_DOMAIN MAIL_HOSTNAME MAILBOX ROUNDCUBE_DB_PASSWORD STALWART_RECOVERY_ADMIN; do
+  value="$(read_env "$name")"
+  [[ -n "$value" ]] || { echo "BLOCKED: $name is missing from .env" >&2; exit 1; }
 done
-if ! docker inspect -f '{{.State.Health.Status}}' izakhono-mailserver 2>/dev/null | grep -q healthy; then
-  echo "Mailserver did not become healthy." >&2
-  docker compose ps
+
+if [[ "$ROUNDCUBE_DB_PASSWORD" == CHANGE_ME* || "$STALWART_RECOVERY_ADMIN" == *CHANGE_ME* ]]; then
+  echo "BLOCKED: replace all placeholder credentials in .env before bootstrap." >&2
+  exit 1
+fi
+if [[ "$MAILBOX" != *@"$MAIL_DOMAIN" ]]; then
+  echo "BLOCKED: MAILBOX must belong to MAIL_DOMAIN." >&2
   exit 1
 fi
 
-echo "[6/7] Creating mailbox and DKIM..."
-docker exec izakhono-mailserver setup email add "$MAILBOX" "$MAILBOX_PASSWORD" || true
-docker exec izakhono-mailserver setup config dkim domain "$MAIL_DOMAIN" || true
-docker compose restart mailserver
-sleep 10
+command -v docker >/dev/null || { echo "BLOCKED: Docker is not installed." >&2; exit 1; }
+docker compose version >/dev/null || { echo "BLOCKED: Docker Compose v2 is unavailable." >&2; exit 1; }
+docker network inspect izakhono-mail >/dev/null 2>&1 || {
+  echo "BLOCKED: start the owned IZAKHONO HOST stack first; it creates the izakhono-mail network." >&2
+  exit 1
+}
 
-echo "[7/7] Runtime status"
-docker compose ps
+echo "[1/6] Checking for an existing Stalwart runtime to prevent duplicate mail engines..."
+existing_stalwart="$(docker ps --format '{{.Names}} {{.Image}}' | awk '$2 ~ /^stalwartlabs\/stalwart/ {print $1}')"
+if [[ -n "$existing_stalwart" && "$existing_stalwart" != "izakhono-mailserver" ]]; then
+  echo "BLOCKED: another Stalwart container is already running: $existing_stalwart" >&2
+  echo "Inspect and reconcile its data/network binding before starting the canonical HOST mail service." >&2
+  exit 1
+fi
+
+echo "[2/6] Ensuring the shared persistent Stalwart volumes exist..."
+docker volume inspect izakhono-mail-etc >/dev/null 2>&1 || docker volume create izakhono-mail-etc >/dev/null
+docker volume inspect izakhono-mail-data >/dev/null 2>&1 || docker volume create izakhono-mail-data >/dev/null
+
+echo "[3/6] Validating both Compose configurations..."
+docker compose --env-file .env config --quiet
+docker compose --env-file .env -f ../../izakhono-host/mail/docker-compose.mail.yml config --quiet
+
+echo "[4/6] Pulling the canonical Stalwart and Roundcube images..."
+docker compose --env-file .env -f ../../izakhono-host/mail/docker-compose.mail.yml pull
+docker compose --env-file .env pull
+
+echo "[5/6] Starting the single canonical Stalwart service and Roundcube..."
+if [[ -z "$existing_stalwart" ]]; then
+  docker compose --env-file .env -f ../../izakhono-host/mail/docker-compose.mail.yml up -d
+fi
+docker compose --env-file .env up -d
+
+for i in {1..30}; do
+  if docker inspect -f '{{.State.Running}}' izakhono-mailserver 2>/dev/null | grep -q true; then break; fi
+  sleep 2
+done
+if ! docker inspect -f '{{.State.Running}}' izakhono-mailserver 2>/dev/null | grep -q true; then
+  echo "BLOCKED: canonical Stalwart container is not running." >&2
+  docker compose --env-file .env -f ../../izakhono-host/mail/docker-compose.mail.yml ps
+  exit 1
+fi
+
+for i in {1..30}; do
+  if docker inspect -f '{{.State.Health.Status}}' izakhono-roundcube 2>/dev/null | grep -q healthy; then break; fi
+  sleep 2
+done
+if ! docker inspect -f '{{.State.Health.Status}}' izakhono-roundcube 2>/dev/null | grep -q healthy; then
+  echo "BLOCKED: Roundcube did not become healthy." >&2
+  docker compose --env-file .env logs --tail=100 roundcube roundcube-db
+  exit 1
+fi
+
+echo "[6/6] Runtime status"
+docker compose --env-file .env -f ../../izakhono-host/mail/docker-compose.mail.yml ps
+docker compose --env-file .env ps
+
 echo
-echo "Webmail: https://$MAIL_HOSTNAME"
+echo "Stalwart bootstrap/admin: http://127.0.0.1:18081 (loopback only; use an SSH tunnel)"
+echo "Stalwart JMAP/API after setup: https://127.0.0.1:18080"
+echo "Webmail: https://webmail.izakhonoafrica.co.za"
 echo "IMAPS: $MAIL_HOSTNAME:993"
 echo "SMTP submission: $MAIL_HOSTNAME:587"
-echo "Certificate: letsencrypt/$MAIL_HOSTNAME"
+echo
+echo "No mailbox was created by this script. Complete owner-controlled Stalwart setup, configure ACME/DKIM, publish DNS, verify DNS, then use the IZAKHONO Provisioner."
