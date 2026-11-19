@@ -18,7 +18,8 @@ STATE_CAPABILITY = {
     State.DNS_READY.value: "site",
     State.SITE_READY.value: "tls",
     State.TLS_READY.value: "mail",
-    State.MAIL_READY.value: "crm_whatsapp",
+    State.MAIL_READY.value: "payment",
+    State.BILLING_VERIFIED.value: "crm_whatsapp",
     State.INTEGRATIONS_READY.value: "acceptance",
 }
 
@@ -116,6 +117,7 @@ class ProvisionerWorker:
             "site": State.SITE_READY.value,
             "tls": State.TLS_READY.value,
             "mail": State.MAIL_READY.value,
+            "payment": State.BILLING_VERIFIED.value,
             "crm_whatsapp": State.INTEGRATIONS_READY.value,
             "acceptance": State.ACCEPTANCE_PASSED.value,
         }[capability]
