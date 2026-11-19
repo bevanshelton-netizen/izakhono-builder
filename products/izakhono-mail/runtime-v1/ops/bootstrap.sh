@@ -9,7 +9,7 @@ fi
 
 read_env() {
   local key="$1" line value
-  line="$(grep -m1 -E "^\${key}=" .env || true)"
+  line="$(grep -m1 -E "^${key}=" .env || true)"
   value="${line#*=}"
   value="${value%\"}"; value="${value#\"}"
   value="${value%\'}"; value="${value#\'}"
