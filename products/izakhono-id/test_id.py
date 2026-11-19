@@ -144,7 +144,7 @@ try:
     status,unauthorized=request("/api/v1/internal/introspect","POST",{
         "token":login["access_token"],
     },headers={"x-izakhono-id-internal-key":"wrong"})
-    assert status==401 and unauthorized["active"] is False if "active" in unauthorized else status==401
+    assert status==401 and unauthorized["error"]=="unauthorized"
 
     # Password change requires current password and revokes other sessions.
     status,bad_change=request("/api/v1/change-password","POST",{
