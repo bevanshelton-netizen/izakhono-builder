@@ -36,7 +36,7 @@ jobs:
           docker compose -f products/izakhono-mail/runtime-v1/docker-compose.yml --env-file products/izakhono-mail/runtime-v1/.env.example config --quiet
       - name: Validate shared HOST EDGE Caddy configuration
         run: |
-          docker run --rm -v "$PWD/products/izakhono-host/edge/Caddyfile:/etc/caddy/Caddyfile:ro" \
+          docker run --rm -e TLS_EMAIL=ci@example.test -v "$PWD/products/izakhono-host/edge/Caddyfile:/etc/caddy/Caddyfile:ro" \
             caddy:2-alpine caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
       - name: Validate mail bridge JavaScript
         run: node --check products/izakhono-host/runtime/mail-bridge/server.mjs
