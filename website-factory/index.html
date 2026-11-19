@@ -28,12 +28,59 @@
 <div><label>Industry</label><input required name="industry" placeholder="e.g. Manufacturing"></div>
 <div><label>Website type</label><select name="type"><option>Business website</option><option>Corporate profile</option><option>E-commerce</option><option>Training / education</option><option>Service business</option></select></div>
 <div><label>Primary goal</label><textarea name="goal" placeholder="What must this website achieve?"></textarea></div>
-<div><label>Customer email</label><input type="email" name="email" placeholder="customer@example.com"></div>
+<p class="foot">Owner authentication is required. This form sends no credentials or payment details.</p>
 <button class="btn">Generate Website Job</button>
-</form><div id="result" style="margin-top:16px;color:var(--muted)"></div></section>
+</form><div id="result" role="status" aria-live="polite" style="margin-top:16px;color:var(--muted);white-space:pre-wrap"></div></section>
 </div>
 <footer class="foot">IZAKHONO Website Factory v1 · Execution is designed to be node-independent: NODE01 is a worker, not the product.</footer>
 </div>
 <script>
-document.querySelector('#job').addEventListener('submit',e=>{e.preventDefault();const f=new FormData(e.target);const id='WF-'+Date.now().toString(36).toUpperCase();document.querySelector('#result').innerHTML='<span class="ok">JOB CREATED: '+id+'</span><br>Site plan queued for '+(f.get('business')||'business')+'. The production gates are ready for the next engine layer.';});
+const form = document.querySelector('#job');
+const result = document.querySelector('#result');
+const submitButton = form.querySelector('button[type="submit"], button:not([type])');
+form.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const values = new FormData(form);
+  const business = String(values.get('business') || '').trim();
+  const industry = String(values.get('industry') || '').trim();
+  const type = String(values.get('type') || 'Business website').trim();
+  const goal = String(values.get('goal') || '').trim();
+  if (!business || !industry || !goal) {
+    result.textContent = 'Complete the business name, industry and primary goal before submitting.';
+    return;
+  }
+  const prompt = 'Build a ' + type.toLowerCase() + ' for ' + business + ', operating in ' + industry + '. Primary business goal: ' + goal + '. Generate a responsive multi-page-ready website application using IZAKHONO native templates, tests and a content-addressed internal snapshot.';
+  submitButton.disabled = true;
+  result.textContent = 'Submitting the brief to the authenticated IZAKHONO Builder…';
+  try {
+    const response = await fetch('/api/build-anything', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'content-type': 'application/json', 'accept': 'application/json' },
+      body: JSON.stringify({ prompt, target: 'website', name: business })
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (response.status === 401) throw new Error('Owner sign-in is required. Open the IZAKHONO Builder, authenticate, then return to this factory.');
+    if (!response.ok || payload.ok !== true) throw new Error(payload.error || 'Builder request failed with HTTP ' + response.status);
+    const project = payload.project || {};
+    const build = payload.build || {};
+    result.textContent = [
+      'RELEASE CANDIDATE CREATED',
+      'Project: ' + (project.name || business),
+      'Slug: ' + (project.slug || 'not returned'),
+      'Status: ' + (project.status || 'unknown'),
+      'Generated: ' + String(Boolean(build.generated)),
+      'Validation passed: ' + String(Boolean(build.validation_passed)),
+      'Internal repository: ' + (build.internal_repository?.head_commit_id || 'not yet committed'),
+      'Preview: ' + (build.preview || 'not yet available'),
+      'Public live: ' + String(payload.public_live === true),
+      'Next gate: ' + (payload.next_gate || 'verification required'),
+      payload.message || ''
+    ].filter(Boolean).join('\n');
+  } catch (error) {
+    result.textContent = 'BUILD NOT CONFIRMED\n' + String(error?.message || error);
+  } finally {
+    submitButton.disabled = false;
+  }
+});
 </script></body></html>
