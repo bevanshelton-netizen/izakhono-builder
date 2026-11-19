@@ -116,7 +116,7 @@ jobs:
         working-directory: products/izakhono-mail/runtime-v1
         run: |
           cp .env.example .env
-          sed -i 's/CHANGE_ME_STRONG_PASSWORD/ci-mailbox-password-123456789/g; s/CHANGE_ME_DB_PASSWORD/ci-roundcube-db-password-123456789/g' .env
+          sed -i 's/CHANGE_ME_STRONG_PASSWORD/ci-mailbox-password-123456789/g; s/CHANGE_ME_DB_ROOT_PASSWORD/ci-roundcube-db-root-password-123456789/g; s/CHANGE_ME_DB_PASSWORD/ci-roundcube-db-password-123456789/g' .env
           docker compose config --quiet
 
       - name: Enforce single canonical mail engine and shared edge
@@ -150,7 +150,7 @@ jobs:
 
       - name: Verify no production secrets are tracked
         run: |
-          if git grep -n -E 'BEGIN (RSA|OPENSSH|PRIVATE) KEY|MAILBOX_PASSWORD=[^C]|ROUNDCUBE_DB_PASSWORD=[^C]|STALWART_PROVISIONER_API_KEY=[^C]|STALWART_RECOVERY_ADMIN=admin:[^C]|AGE_RECIPIENT=age1' -- products/izakhono-mail/runtime-v1; then
+          if git grep -n -E 'BEGIN (RSA|OPENSSH|PRIVATE) KEY|MAILBOX_PASSWORD=[^C]|ROUNDCUBE_DB_PASSWORD=[^C]|ROUNDCUBE_DB_ROOT_PASSWORD=[^C]|STALWART_PROVISIONER_API_KEY=[^C]|STALWART_RECOVERY_ADMIN=admin:[^C]|AGE_RECIPIENT=age1' -- products/izakhono-mail/runtime-v1; then
             echo 'Tracked production secret material detected.'
             exit 1
           fi
