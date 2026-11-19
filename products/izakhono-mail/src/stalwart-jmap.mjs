@@ -41,8 +41,8 @@ function resultFor(methodResponses, method) {
 }
 
 export class StalwartJmapTransport {
-  constructor({ baseUrl, username, password, fetchImpl = globalThis.fetch, timeoutMs = 10000 }) {
-    if (!baseUrl || !username || !password || typeof fetchImpl !== 'function') {
+  constructor({ baseUrl, username = '', password = '', apiKey = '', fetchImpl = globalThis.fetch, timeoutMs = 10000 }) {
+    if (!baseUrl || (!apiKey && (!username || !password)) || typeof fetchImpl !== 'function') {
       throw new Error('stalwart-jmap-configuration-required');
     }
     let url;
@@ -55,7 +55,7 @@ export class StalwartJmapTransport {
       throw new Error('stalwart-jmap-timeout-invalid');
     }
     this.endpoint = new URL('/jmap/', url.origin).toString();
-    this.authorization = 'Basic ' + Buffer.from(String(username) + ':' + String(password), 'utf8').toString('base64');
+    this.authorization = apiKey ? 'Bearer ' + String(apiKey).trim() : 'Basic ' + Buffer.from(String(username) + ':' + String(password), 'utf8').toString('base64');
     this.fetchImpl = fetchImpl;
     this.timeoutMs = timeoutMs;
   }
@@ -176,6 +176,7 @@ export function createStalwartTransportFromEnv(env = process.env, options = {}) 
     baseUrl: env.STALWART_JMAP_URL,
     username: env.STALWART_PROVISIONER_USERNAME,
     password: env.STALWART_PROVISIONER_PASSWORD,
+    apiKey: env.STALWART_PROVISIONER_API_KEY,
     timeoutMs: Number(env.STALWART_JMAP_TIMEOUT_MS || 10000),
     ...options,
   });
