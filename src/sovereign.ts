@@ -289,79 +289,18 @@ function parseBuildAiJson(text: string): any | null {
   return null;
 }
 
-async function enrichBuildIntentWithSuperAI(env: any, prompt: string, base: any): Promise<any> {
-  const fallback = (reason: string) => ({ ...base, intelligence: { mode: 'deterministic-fallback', reason } });
-  if (!env.IZAKHONO_SUPER_AI_URL || !env.IZAKHONO_SUPER_AI_INTERNAL_KEY || !env.IZAKHONO_SUPER_AI_WORKFLOW_KEY) {
-    return fallback('super-ai-not-configured');
-  }
-
-  const endpoint = String(env.IZAKHONO_SUPER_AI_URL).replace(/\/+$/, '') + '/api/v1/generate';
-  const instruction = [
-    'You are the product architect inside IZAKHONO BUILDER.',
-    'Convert the owner brief into a concise build intent. Return ONLY valid JSON.',
-    'Allowed target values: app, website, game, software.',
-    'Allowed modules: ' + Array.from(ALLOWED_MODULES).join(', ') + '.',
-    'Never add secrets, paid-spend instructions, external publishing, legal acceptance or destructive actions.',
-    'JSON keys: name (string), target (string), modules (array of allowed strings), summary (string), build_priorities (array of strings).',
-    'Owner brief: ' + prompt,
-    'Deterministic baseline: ' + JSON.stringify(base),
-  ].join('\n');
-
-  try {
-    const response = await fetch(endpoint, {
-      method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-        'x-izakhono-ai-key': String(env.IZAKHONO_SUPER_AI_INTERNAL_KEY),
-        'x-izakhono-ai-workflow-key': String(env.IZAKHONO_SUPER_AI_WORKFLOW_KEY),
-      },
-      body: JSON.stringify({
-        entity_id: 'izakhono-africa',
-        product: 'izakhono-builder',
-        access_mode: 'workflow',
-        capability: 'reasoning',
-        messages: [
-          { role: 'system', content: 'Return strict JSON only. Stay inside the allowed target/module lists.' },
-          { role: 'user', content: instruction },
-        ],
-      }),
-    });
-    if (!response.ok) return fallback('super-ai-http-' + response.status);
-    const data: any = await response.json();
-    const parsed = parseBuildAiJson(String(data?.output?.text || data?.answer || ''));
-    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return fallback('super-ai-invalid-json');
-
-    const target = BUILD_TARGETS.has(String(parsed.target || '').toLowerCase())
-      ? String(parsed.target).toLowerCase()
-      : base.target;
-    const aiModules = Array.isArray(parsed.modules)
-      ? parsed.modules.filter((m: unknown) => typeof m === 'string' && ALLOWED_MODULES.has(m))
-      : [];
-    const modules = Array.from(new Set([...(base.modules || []), ...aiModules]));
-    const name = String(parsed.name || '').trim().slice(0, 100) || base.name;
-    const summary = String(parsed.summary || '').trim().slice(0, 600);
-    const priorities = Array.isArray(parsed.build_priorities)
-      ? parsed.build_priorities.filter((x: unknown) => typeof x === 'string').map((x: string) => x.trim().slice(0, 240)).filter(Boolean).slice(0, 12)
-      : [];
-
-    return {
-      ...base,
-      target,
-      name,
-      modules,
-      summary,
-      build_priorities: priorities,
-      intelligence: {
-        mode: 'super-ai',
-        service: 'IZAKHONO SUPER AI',
-        capability: 'reasoning',
-        model: String(data?.model || '').slice(0, 120) || null,
-        owner_only: data?.owner_only === true,
-      },
-    };
-  } catch {
-    return fallback('super-ai-unavailable');
-  }
+function enrichBuildIntentWithSuperAI(_env: any, _prompt: string, base: any): any {
+  return {
+    ...base,
+    summary: 'Deterministic IZAKHONO-native build intent; model inference is delegated to the local Ollama adapter in the owned Builder runtime.',
+    build_priorities: ['multi-file application scaffold', 'native validation', 'FORTRESS security evidence', 'content-addressed internal snapshot'],
+    intelligence: {
+      mode: 'deterministic-fallback',
+      provider: 'izakhono-native',
+      reason: 'worker-runtime-does-not-execute-hosted-inference',
+      externalInferenceAllowed: false,
+    },
+  };
 }
 
 async function uniqueBuildSlug(env: any, desired: string): Promise<string> {
