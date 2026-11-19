@@ -34,8 +34,8 @@ with tarfile.open(sys.argv[1], "r:gz") as archive:
     if not members:
         raise SystemExit("BLOCKED: empty backup archive")
     for member in members:
-        parts = member.name.split("/")
-        if member.name.startswith("/") or any(part in {"", ".", ".."} for part in parts):
+        name = member.name.rstrip("/")\n        parts = name.split("/")
+        if not name or name.startswith("/") or any(part in {"", ".", ".."} for part in parts):
             raise SystemExit(f"BLOCKED: unsafe archive path: {member.name!r}")
         if parts[0] not in allowed:
             raise SystemExit(f"BLOCKED: unexpected archive component: {member.name!r}")
