@@ -25,27 +25,31 @@ function createEnv() {
               },
               async run() {
                 if (sql.startsWith('INSERT INTO merchant_webhook_deliveries')) {
-                  const [, eventId, merchantSlug, intentId, webhookUrl, status, error] = args;
+                  const [, eventId, merchantSlug, intentId, webhookUrl, status, error, leaseToken] = args;
                   if (deliveries.has(eventId)) throw new Error('UNIQUE constraint failed: merchant_webhook_deliveries.event_id');
-                  deliveries.set(eventId, { event_id: eventId, merchant_slug: merchantSlug, intent_id: intentId, webhook_url: webhookUrl, status, last_error: error, attempt_count: 0 });
+                  deliveries.set(eventId, { event_id: eventId, merchant_slug: merchantSlug, intent_id: intentId, webhook_url: webhookUrl, status, last_error: error, attempt_count: 0, lease_token: leaseToken, lease_expires_at: leaseToken ? '2999-01-01 00:00:00' : null });
                   return { meta: { changes: 1 } };
                 }
                 if (sql.includes("SET status='pending'")) {
-                  const row = deliveries.get(args[0]);
-                  if (!row || row.status !== 'failed') return { meta: { changes: 0 } };
+                  const row = deliveries.get(args[1]);
+                  if (!row || !(row.status === 'failed' || (row.status === 'pending' && row.lease_expires_at <= '2026-11-19 00:00:00'))) return { meta: { changes: 0 } };
                   row.status = 'pending';
+                  row.lease_token = args[0];
+                  row.lease_expires_at = '2999-01-01 00:00:00';
                   row.last_error = null;
                   row.last_http_status = null;
                   return { meta: { changes: 1 } };
                 }
                 if (sql.startsWith('UPDATE merchant_webhook_deliveries')) {
-                  const [status, httpStatus, error, , eventId] = args;
+                  const [status, httpStatus, error, , eventId, leaseToken] = args;
                   const row = deliveries.get(eventId);
-                  if (!row) throw new Error('delivery row missing');
+                  if (!row || row.lease_token !== leaseToken) return { meta: { changes: 0 } };
                   row.status = status;
                   row.attempt_count += 1;
                   row.last_http_status = httpStatus;
                   row.last_error = error;
+                  row.lease_token = null;
+                  row.lease_expires_at = null;
                   return { meta: { changes: 1 } };
                 }
                 throw new Error(`Unexpected run query: ${sql}`);
