@@ -16,7 +16,7 @@ Set these variables for the Builder process on the same Software NODE:
 `IZAKHONO_LOCAL_MODEL_URL=http://127.0.0.1:11434/api/chat`
 `IZAKHONO_LOCAL_MODEL=qwen2.5-coder:3b`
 
-If the Builder and model runtime are on separate Software NODEs, connect them over an authenticated private overlay and explicitly allowlist the private hostname with IZAKHONO_MODEL_TRUSTED_HOSTS. Never expose the Ollama endpoint directly to public ingress.
+If the Builder and model runtime are on separate Software NODEs, connect them over an authenticated private overlay and use a private IP or reserved `.local` / `.internal` hostname. Public hostnames are rejected; no public-host allowlist exists. Never expose the Ollama endpoint directly to public ingress.
 
 ## Acceptance
 Check `curl http://127.0.0.1:11434/api/tags`. A generated build must report `generationMode=local-model` before model-backed generation is considered active. `deterministic-fallback` means the website artifact was produced without verified model inference.
