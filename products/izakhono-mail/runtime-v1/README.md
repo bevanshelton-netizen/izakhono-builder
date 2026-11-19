@@ -41,18 +41,20 @@ The mail runtime publishes no separate public web proxy. Public ports 80/443 rem
 2. Start the owned HOST stack first so its shared edge and `izakhono-mail` network exist.
 3. Run `./ops/preflight.sh`, then `./ops/bootstrap.sh`.
 4. Complete Stalwart's first-run setup through an SSH tunnel to loopback port 18081. Never expose the bootstrap/admin listener publicly.
-5. Create a Stalwart ACME provider using HTTP-01. HOST EDGE forwards only `/.well-known/acme-challenge/*` for the mail hostname to Stalwart. Record the provider ID in `STALWART_ACME_PROVIDER_ID`.
-6. Set `STALWART_ADMIN_USERNAME` and `STALWART_ADMIN_PASSWORD` in the protected runtime environment. The JMAP endpoint must remain private/loopback.
-7. Create the mail domain through the IZAKHONO Provisioner. It returns Stalwart's generated DNS zone material; publish the exact MX/SPF/DKIM/DMARC values through the approved DNS control plane.
-8. Wait for DNS verification. Only then create customer mailboxes. The initial password is returned once and is never written to evidence files.
-9. Run the full provider acceptance and independent send/receive tests before calling the service live.
+5. Create a Stalwart ACME provider using HTTP-01. HOST EDGE forwards only `/.well-known/acme-challenge/*` for the mail hostname to Stalwart.
+6. As owner administrator, create the mail domain in Stalwart and enable automatic DKIM plus the configured ACME certificate provider. Export the domain DNS zone file.
+7. Create the custom role from `config/stalwart-provisioner-role.json`, including the existing default User role. Create a dedicated service account (for example `node01-mail-provisioner@izakhonoafrica.co.za`) with that custom role. Never give the application System Administrator credentials.
+8. Set `STALWART_PROVISIONER_USERNAME` and `STALWART_PROVISIONER_PASSWORD` in the protected runtime environment. The JMAP endpoint must remain private/loopback.
+9. Publish the exact MX/SPF/DKIM/DMARC values from Stalwart's zone file through the approved DNS control plane. The Provisioner reads that zone file and verifies public DNS; it does not create domains or mutate public DNS.
+10. Wait for DNS verification. Only then create customer mailboxes. The initial password is returned once and is never written to evidence files.
+11. Run the full provider acceptance and independent send/receive tests before calling the service live.
 
 ## Provisioning contract
 
 The Stalwart JMAP adapter:
 - accepts only private/loopback JMAP endpoints;
-- uses owner-held admin credentials supplied at runtime, never committed;
-- creates or finds the mail domain and exports the server-generated DNS zone file;
+- uses a dedicated least-privilege provisioning service account, never System Administrator credentials;
+- reads an owner-created Stalwart domain and exports its server-generated DNS zone file; it refuses to create domains;
 - creates a mailbox only after the Provisioner verifies the required DNS;
 - detects an existing account and returns `credentials_recovery_required` rather than falsely reissuing a password;
 - stores only non-secret evidence (domain/account IDs, state and timestamps).
