@@ -8,9 +8,9 @@ Convert a paid customer order into an evidence-gated, repeatable provisioning jo
 
 Pipeline:
 
-`PAYMENT_VERIFIED → TENANT_CREATED → DOMAIN_READY → DNS_READY → SITE_READY → TLS_READY → MAIL_READY → INTEGRATIONS_READY → ACCEPTANCE_PASSED → HANDOVER_READY`
+`PAYMENT_VERIFIED (admission gate) → TENANT_CREATED (customer) → DOMAIN_READY → DNS_READY → SITE_READY → TLS_READY → MAIL_READY → BILLING_VERIFIED → INTEGRATIONS_READY → ACCEPTANCE_PASSED → HANDOVER_READY`
 
-The Provisioner owns workflow state, idempotency, retries, audit events, adapter selection and promotion rules. Providers are adapters only.
+The Provisioner owns workflow state, idempotency, retries, audit events, adapter selection and promotion rules. Providers are adapters only. The initial payment check is an order-admission gate; the distinct `BILLING_VERIFIED` stage executes after mail provisioning and before final acceptance.
 
 ## Executable registry
 
@@ -46,4 +46,4 @@ External adapters cannot silently replace an owned capability, and provider name
 
 ## Promotion rule
 
-`ACCEPTANCE_PASSED` is the first state that can produce a customer handover record. `LIVE` is an operational deployment status outside this reference state machine and requires current public/runtime evidence from the acceptance system.
+`ACCEPTANCE_PASSED` is the first state that can produce a customer handover record. Acceptance requires verified customer, domain, DNS, site, TLS, mail, billing and integration evidence. `LIVE` is an operational deployment status outside this reference state machine and requires current public/runtime evidence from the acceptance system.
