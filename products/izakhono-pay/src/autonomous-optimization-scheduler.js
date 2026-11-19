@@ -24,7 +24,7 @@ function applyLearningFeedback(candidates, learningOutcomes = []) {
     if (id) feedback.set(String(id), learningDecision(outcome));
   }
 
-  const eligible = candidates.filter((candidate) => learningDecision(feedback.get(String(candidate.id)) || {}) !== 'rollback');
+  const eligible = candidates.filter((candidate) => feedback.get(String(candidate.id)) !== 'rollback');
   const promoted = [];
   const remaining = [];
   for (const candidate of eligible) {
