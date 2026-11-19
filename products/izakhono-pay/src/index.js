@@ -383,7 +383,7 @@ async function handleIkhokhaWebhook(req, env) {
     }
     const statusPayload = await statusResponse.json().catch(() => null);
     const verifiedStatus = Array.isArray(statusPayload) ? statusPayload[0] : statusPayload;
-    if (!statusResponse.ok || !verifyIkhokhaStatus(verifiedStatus, intent) || !providerIdentityMatches(intent, 'ikhokha', { ...verifiedStatus, externalTransactionID: reference })) {
+    if (!statusResponse.ok || !verifyIkhokhaStatus(verifiedStatus, intent)) {
       await recordFortressEvent(env, { severity: 'critical', category: 'payment.provider_status_mismatch', source: 'ikhokha', merchantSlug: intent.app_slug, intentId: intent.id, details: { reference, http_status: statusResponse.status, provider_status: verifiedStatus?.status || 'unavailable' } });
       return fail('iKhokha payment status, payment link or amount did not match; no sale was activated', 409, 'payment_status_mismatch');
     }
