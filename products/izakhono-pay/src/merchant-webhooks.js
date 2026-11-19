@@ -34,7 +34,7 @@ async function merchantConfig(env, slug) {
 async function ensureDelivery(env, { eventId, merchantSlug, intentId, webhookUrl }) {
   await env.DB.prepare("INSERT OR IGNORE INTO merchant_webhook_deliveries(id,event_id,merchant_slug,intent_id,webhook_url,status) VALUES(?,?,?,?,?,'pending')")
     .bind(deliveryId(), eventId, merchantSlug, intentId, webhookUrl).run();
-  return env.DB.prepare('SELECT event_id,status,attempt_count,lease_token,lease_expires_at,next_attempt_at FROM merchant_webhook_deliveries WHERE event_id=?')
+  return env.DB.prepare('SELECT event_id,status,attempt_count,lease_token,lease_expires_at,next_attempt_at,dead_lettered_at FROM merchant_webhook_deliveries WHERE event_id=?')
     .bind(eventId).first();
 }
 
@@ -60,7 +60,7 @@ function changedRows(result) {
 export async function claimMerchantWebhookDelivery(env, eventId) {
   const leaseToken = `lease_${crypto.randomUUID().replaceAll('-', '')}`;
   const result = await env.DB.prepare(
-    "UPDATE merchant_webhook_deliveries SET lease_token=?,lease_expires_at=datetime('now','+30 seconds'),attempt_count=attempt_count+1 WHERE event_id=? AND status IN ('pending','failed') AND (lease_expires_at IS NULL OR lease_expires_at<=CURRENT_TIMESTAMP) AND (next_attempt_at IS NULL OR next_attempt_at<=CURRENT_TIMESTAMP)"
+    "UPDATE merchant_webhook_deliveries SET lease_token=?,lease_expires_at=datetime('now','+30 seconds'),attempt_count=attempt_count+1 WHERE event_id=? AND status IN ('pending','failed') AND (lease_expires_at IS NULL OR lease_expires_at<=CURRENT_TIMESTAMP) AND (next_attempt_at IS NULL OR next_attempt_at<=CURRENT_TIMESTAMP) AND dead_lettered_at IS NULL"
   ).bind(leaseToken, eventId).run();
   if (changedRows(result) > 0) {
     const row = await env.DB.prepare('SELECT attempt_count FROM merchant_webhook_deliveries WHERE event_id=? AND lease_token=?')
@@ -111,7 +111,7 @@ export async function dispatchMerchantPaymentPaid(env, intent) {
   const claim = await claimMerchantWebhookDelivery(env, eventId);
   if (!claim.claimed) {
     if (claim.row?.status === 'delivered') return { delivered: true, duplicate: true };
-    return { delivered: false, reason: claim.row?.status === 'failed' ? 'retry_scheduled' : 'delivery_in_progress' };
+    return { delivered: false, reason: claim.row?.dead_lettered_at ? 'dead_lettered' : claim.row?.status === 'failed' ? 'retry_scheduled' : 'delivery_in_progress' };
   }
 
   const occurredAt = new Date().toISOString();

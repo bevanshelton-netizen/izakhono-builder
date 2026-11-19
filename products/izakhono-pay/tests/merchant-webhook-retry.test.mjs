@@ -45,6 +45,7 @@ test('delivery claim obtains a unique lease and increments the attempt atomicall
   assert.match(DB.calls[0].sql, /lease_expires_at=datetime\('now','\+30 seconds'\)/);
   assert.match(DB.calls[0].sql, /attempt_count=attempt_count\+1/);
   assert.match(DB.calls[0].sql, /status IN \('pending','failed'\)/);
+  assert.match(DB.calls[0].sql, /dead_lettered_at IS NULL/);
 });
 
 test('a concurrent delivery cannot claim an already leased event', async () => {
@@ -91,4 +92,15 @@ test('merchant webhook retry backoff is exponential, capped and bounded', () => 
   assert.equal(merchantWebhookIsDeadLetter(11), false);
   assert.equal(merchantWebhookIsDeadLetter(12), true);
   assert.equal(merchantWebhookIsDeadLetter(13), true);
+});
+
+test('a dead-lettered delivery cannot be reclaimed by a duplicate provider callback', async () => {
+  const DB = fakeDb({
+    changes: 0,
+    row: { event_id: 'evt_1', status: 'failed', dead_lettered_at: '2026-11-19 10:00:00' }
+  });
+  const result = await claimMerchantWebhookDelivery({ DB }, 'evt_1');
+  assert.equal(result.claimed, false);
+  assert.ok(result.row.dead_lettered_at);
+  assert.match(DB.calls[0].sql, /dead_lettered_at IS NULL/);
 });
