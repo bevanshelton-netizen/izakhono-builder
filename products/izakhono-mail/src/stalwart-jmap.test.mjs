@@ -55,6 +55,10 @@ const domainRecord = {
   assert.equal(calls[2].request.methodCalls[0][0], 'x:Account/query');
   assert.equal(calls[3].request.methodCalls[0][0], 'x:Account/set');
   assert.equal(calls[3].request.methodCalls[0][1].create.izakhonoMailbox.credentials['0'].secret, 'a-long-generated-password-value');
+  assert.equal(calls[3].request.methodCalls[0][1].create.izakhonoMailbox['@type'], 'User');
+  assert.deepEqual(calls[3].request.methodCalls[0][1].create.izakhonoMailbox.aliases, {});
+  assert.deepEqual(calls[3].request.methodCalls[0][1].create.izakhonoMailbox.roles, { '@type': 'User' });
+  assert.deepEqual(calls[3].request.methodCalls[0][1].create.izakhonoMailbox.permissions, { '@type': 'Inherit' });
   assert.match(calls[0].authorization, /^Basic /);
 }
 
