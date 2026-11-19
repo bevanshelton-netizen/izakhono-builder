@@ -8,13 +8,15 @@ function safeJson(value, fallback = {}) {
   try { return JSON.parse(value || '{}'); } catch { return fallback; }
 }
 
-function allowedWebhookUrl(env, rawUrl) {
+export function allowedWebhookUrl(env, rawUrl) {
   try {
     const url = new URL(rawUrl);
     if (url.protocol !== 'https:' || url.username || url.password) return null;
     const hostname = url.hostname.toLowerCase();
-    if (hostname === 'localhost' || hostname.endsWith('.localhost')) return null;
-    if (/^\\d{1,3}(?:\\.\\d{1,3}){3}$/.test(hostname) || hostname.includes(':')) return null;
+    if (hostname === 'localhost' || hostname.endsWith('.localhost') || hostname.endsWith('.local') || hostname.endsWith('.internal') || hostname.endsWith('.test') || hostname.endsWith('.invalid')) return null;
+    const ipv4 = hostname.split('.');
+    const isIpv4 = ipv4.length === 4 && ipv4.every((part) => part.length > 0 && part.length <= 3 && [...part].every((character) => character >= '0' && character <= '9') && Number(part) <= 255);
+    if (isIpv4 || hostname.startsWith('[') || hostname.includes(':') || url.port) return null;
     const allowed = String(env.MERCHANT_WEBHOOK_ALLOWED_HOSTS || '')
       .split(',').map((value) => value.trim().toLowerCase()).filter(Boolean);
     if (!allowed.length || !allowed.includes(hostname)) return null;
@@ -49,16 +51,21 @@ export async function claimMerchantWebhookDelivery(env, eventId) {
   const result = await env.DB.prepare(
     "UPDATE merchant_webhook_deliveries SET lease_token=?,lease_expires_at=datetime('now','+30 seconds'),attempt_count=attempt_count+1 WHERE event_id=? AND status IN ('pending','failed') AND (lease_expires_at IS NULL OR lease_expires_at<=CURRENT_TIMESTAMP) AND (next_attempt_at IS NULL OR next_attempt_at<=CURRENT_TIMESTAMP)"
   ).bind(leaseToken, eventId).run();
-  if (changedRows(result) > 0) return { claimed: true, leaseToken };
+  if (changedRows(result) > 0) {
+    const row = await env.DB.prepare('SELECT attempt_count FROM merchant_webhook_deliveries WHERE event_id=? AND lease_token=?')
+      .bind(eventId, leaseToken).first();
+    return { claimed: true, leaseToken, attemptCount: Number(row?.attempt_count || 1) };
+  }
   const row = await env.DB.prepare('SELECT event_id,status,attempt_count,lease_token,lease_expires_at,next_attempt_at FROM merchant_webhook_deliveries WHERE event_id=?')
     .bind(eventId).first();
   return { claimed: false, row };
 }
 
-async function updateDelivery(env, eventId, leaseToken, { status, httpStatus = null, error = null }) {
+async function updateDelivery(env, eventId, leaseToken, { status, httpStatus = null, error = null, attemptCount = 1 }) {
+  const delaySeconds = Math.min(3600, 30 * (2 ** Math.max(0, attemptCount - 1)));
   await env.DB.prepare(
-    "UPDATE merchant_webhook_deliveries SET status=?,last_http_status=?,last_error=?,delivered_at=CASE WHEN ?='delivered' THEN CURRENT_TIMESTAMP ELSE delivered_at END,next_attempt_at=CASE WHEN ?='failed' THEN datetime('now','+30 seconds') ELSE NULL END,lease_token=NULL,lease_expires_at=NULL WHERE event_id=? AND lease_token=?"
-  ).bind(status, httpStatus, error, status, status, eventId, leaseToken).run();
+    "UPDATE merchant_webhook_deliveries SET status=?,last_http_status=?,last_error=?,delivered_at=CASE WHEN ?='delivered' THEN CURRENT_TIMESTAMP ELSE delivered_at END,next_attempt_at=CASE WHEN ?='failed' AND ? < 12 THEN datetime('now',?) ELSE NULL END,dead_lettered_at=CASE WHEN ?='failed' AND ? >= 12 THEN CURRENT_TIMESTAMP ELSE dead_lettered_at END,lease_token=NULL,lease_expires_at=NULL WHERE event_id=? AND lease_token=?"
+  ).bind(status, httpStatus, error, status, status, attemptCount, `+${delaySeconds} seconds`, status, attemptCount, eventId, leaseToken).run();
 }
 
 export async function dispatchMerchantPaymentPaid(env, intent) {
@@ -136,7 +143,7 @@ export async function dispatchMerchantPaymentPaid(env, intent) {
     });
     if (!result.ok) {
       await updateDelivery(env, eventId, claim.leaseToken, {
-        status: 'failed', httpStatus: result.status, error: `merchant_http_${result.status}`
+        status: 'failed', httpStatus: result.status, error: `merchant_http_${result.status}`, attemptCount: claim.attemptCount
       });
       return { delivered: false, reason: 'merchant_rejected', status: result.status };
     }
@@ -144,7 +151,7 @@ export async function dispatchMerchantPaymentPaid(env, intent) {
     return { delivered: true };
   } catch (error) {
     await updateDelivery(env, eventId, claim.leaseToken, {
-      status: 'failed', error: error instanceof Error ? error.message.slice(0, 500) : 'delivery_failed'
+      status: 'failed', error: error instanceof Error ? error.message.slice(0, 500) : 'delivery_failed', attemptCount: claim.attemptCount
     });
     return { delivered: false, reason: 'delivery_failed' };
   } finally {
@@ -155,7 +162,7 @@ export async function dispatchMerchantPaymentPaid(env, intent) {
 export async function retryPendingMerchantWebhooks(env, limit = 50) {
   const batchSize = Math.min(100, Math.max(1, Math.trunc(Number(limit) || 50)));
   const result = await env.DB.prepare(
-    "SELECT p.* FROM merchant_webhook_deliveries d JOIN payment_intents p ON p.id=d.intent_id WHERE p.status='paid' AND d.status IN ('pending','failed') AND (d.next_attempt_at IS NULL OR d.next_attempt_at<=CURRENT_TIMESTAMP) AND (d.lease_expires_at IS NULL OR d.lease_expires_at<=CURRENT_TIMESTAMP) ORDER BY d.created_at ASC LIMIT ?"
+    "SELECT p.* FROM merchant_webhook_deliveries d JOIN payment_intents p ON p.id=d.intent_id WHERE p.status='paid' AND d.status IN ('pending','failed') AND (d.next_attempt_at IS NULL OR d.next_attempt_at<=CURRENT_TIMESTAMP) AND (d.lease_expires_at IS NULL OR d.lease_expires_at<=CURRENT_TIMESTAMP) AND d.dead_lettered_at IS NULL ORDER BY d.created_at ASC LIMIT ?"
   ).bind(batchSize).all();
   let attempted = 0;
   let delivered = 0;
