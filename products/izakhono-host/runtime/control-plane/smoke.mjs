@@ -64,6 +64,15 @@ try {
     body:JSON.stringify({https:true,dns:true,content:true}),
   });
   if (booleanOnly.status !== 409) throw new Error('boolean-only acceptance bypassed evidence gate');
+  const staleEvidence = Object.fromEntries(['https','dns','content'].map(kind => [kind, {
+    verified:true, evidence_id:`stale-${kind}`, observed_at:new Date(Date.now()-48*60*60*1000).toISOString(),
+  }]));
+  const stale = await fetch(base+'/api/sites/smoke_site/accept', {
+    method:'POST',
+    headers:{authorization:`Bearer ${token}`,'content-type':'application/json'},
+    body:JSON.stringify({evidence:staleEvidence}),
+  });
+  if (stale.status !== 409) throw new Error('stale acceptance evidence was accepted');
   const observedAt = new Date().toISOString();
   const evidence = Object.fromEntries(['https','dns','content'].map(kind => [kind, {
     verified:true, evidence_id:`ci-${kind}`, observed_at:observedAt,
