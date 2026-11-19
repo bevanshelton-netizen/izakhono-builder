@@ -14,7 +14,11 @@
         "accounts",
         "sales",
         "support",
-        "ceo"
+        "ceo",
+        "postmaster",
+        "abuse",
+        "security",
+        "noreply"
       ],
       "domain_status": "pending_dns_verification"
     },
@@ -27,7 +31,11 @@
         "support",
         "content",
         "partnerships",
-        "funding"
+        "funding",
+        "postmaster",
+        "abuse",
+        "security",
+        "noreply"
       ],
       "domain_status": "domain_required"
     },
@@ -37,7 +45,11 @@
       "mailboxes": [
         "info",
         "sales",
-        "support"
+        "support",
+        "postmaster",
+        "abuse",
+        "security",
+        "noreply"
       ],
       "domain_status": "domain_required"
     },
@@ -48,7 +60,11 @@
         "info",
         "support",
         "fleet",
-        "enterprise"
+        "enterprise",
+        "postmaster",
+        "abuse",
+        "security",
+        "noreply"
       ],
       "domain_status": "domain_required"
     },
@@ -58,7 +74,11 @@
       "mailboxes": [
         "info",
         "support",
-        "sales"
+        "sales",
+        "postmaster",
+        "abuse",
+        "security",
+        "noreply"
       ],
       "domain_status": "domain_required"
     },
@@ -67,7 +87,11 @@
       "domain": null,
       "mailboxes": [
         "info",
-        "sales"
+        "sales",
+        "postmaster",
+        "abuse",
+        "security",
+        "noreply"
       ],
       "domain_status": "domain_required"
     },
@@ -78,7 +102,11 @@
         "info",
         "support",
         "artists",
-        "partnerships"
+        "partnerships",
+        "postmaster",
+        "abuse",
+        "security",
+        "noreply"
       ],
       "domain_status": "domain_required"
     },
@@ -93,7 +121,9 @@
         "sales",
         "partnerships",
         "security",
-        "noreply"
+        "noreply",
+        "postmaster",
+        "abuse"
       ],
       "domain_status": "domain_required"
     },
@@ -108,7 +138,9 @@
         "sales",
         "partnerships",
         "security",
-        "noreply"
+        "noreply",
+        "postmaster",
+        "abuse"
       ],
       "domain_status": "domain_required"
     },
@@ -123,7 +155,9 @@
         "sales",
         "partnerships",
         "security",
-        "noreply"
+        "noreply",
+        "postmaster",
+        "abuse"
       ],
       "domain_status": "domain_required"
     },
@@ -138,7 +172,9 @@
         "sales",
         "partnerships",
         "security",
-        "noreply"
+        "noreply",
+        "postmaster",
+        "abuse"
       ],
       "domain_status": "domain_required"
     },
@@ -153,7 +189,9 @@
         "sales",
         "partnerships",
         "security",
-        "noreply"
+        "noreply",
+        "postmaster",
+        "abuse"
       ],
       "domain_status": "domain_required"
     },
@@ -168,7 +206,9 @@
         "sales",
         "partnerships",
         "security",
-        "noreply"
+        "noreply",
+        "postmaster",
+        "abuse"
       ],
       "domain_status": "domain_required"
     },
@@ -183,7 +223,9 @@
         "sales",
         "partnerships",
         "security",
-        "noreply"
+        "noreply",
+        "postmaster",
+        "abuse"
       ],
       "domain_status": "domain_required"
     },
@@ -198,7 +240,9 @@
         "sales",
         "partnerships",
         "security",
-        "noreply"
+        "noreply",
+        "postmaster",
+        "abuse"
       ],
       "domain_status": "domain_required"
     },
@@ -213,7 +257,9 @@
         "sales",
         "partnerships",
         "security",
-        "noreply"
+        "noreply",
+        "postmaster",
+        "abuse"
       ],
       "domain_status": "domain_required"
     },
@@ -228,7 +274,9 @@
         "sales",
         "partnerships",
         "security",
-        "noreply"
+        "noreply",
+        "postmaster",
+        "abuse"
       ],
       "domain_status": "domain_required"
     },
@@ -243,7 +291,9 @@
         "sales",
         "partnerships",
         "security",
-        "noreply"
+        "noreply",
+        "postmaster",
+        "abuse"
       ],
       "domain_status": "domain_required"
     },
@@ -258,7 +308,9 @@
         "sales",
         "partnerships",
         "security",
-        "noreply"
+        "noreply",
+        "postmaster",
+        "abuse"
       ],
       "domain_status": "domain_required"
     },
@@ -273,7 +325,9 @@
         "sales",
         "partnerships",
         "security",
-        "noreply"
+        "noreply",
+        "postmaster",
+        "abuse"
       ],
       "domain_status": "domain_required"
     },
@@ -288,7 +342,9 @@
         "sales",
         "partnerships",
         "security",
-        "noreply"
+        "noreply",
+        "postmaster",
+        "abuse"
       ],
       "domain_status": "domain_required"
     },
@@ -303,7 +359,9 @@
         "sales",
         "partnerships",
         "security",
-        "noreply"
+        "noreply",
+        "postmaster",
+        "abuse"
       ],
       "domain_status": "domain_required"
     },
@@ -318,7 +376,9 @@
         "sales",
         "partnerships",
         "security",
-        "noreply"
+        "noreply",
+        "postmaster",
+        "abuse"
       ],
       "domain_status": "domain_required"
     }
