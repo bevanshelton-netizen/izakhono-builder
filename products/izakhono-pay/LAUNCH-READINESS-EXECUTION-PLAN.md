@@ -125,3 +125,15 @@ This is a fail-closed pipeline correction, not a production deployment. The prod
 - Added an explicit all-zero D1 database ID placeholder to the production Wrangler config and made the deployment preflight reject that placeholder. This satisfies the layout contract while ensuring an unprovisioned database cannot pass preflight.
 - Reordered the production pipeline to apply D1 migrations and verify that no merchant is active before deploying the Worker. The Worker remains payment-disabled; admin secret installation follows initial deployment.
 - Latest CI run must be inspected after these commits; no production deployment is authorised or claimed.
+
+
+### Migration dependency and webhook retry hardening — 2026-11-19
+
+- A repository-wide migration inventory found that migration `0017_izakhono_pay_api_key_issuance.sql` created an index on `pay_api_keys`, but no earlier checked-in migration created `pay_api_keys` or `pay_auth_events`, although `src/auth.ts` and `src/api-key-issuance.ts` require them.
+- Added `0016_pay_api_keys_and_auth_events.sql` ahead of migration 0017. It creates the hashed-key store, merchant key metadata and auditable issuance/revocation event table. Raw API keys are not stored.
+- Added a migration-integrity test to ensure these prerequisites exist before the 0017 index migration.
+- Merchant webhook delivery now uses bounded exponential retry intervals (30 seconds up to one hour), a 12-attempt limit and a dead-letter timestamp. The scheduled scanner excludes dead-lettered records; failed deliveries cannot retry forever without operator review.
+- Hardened merchant callback destinations: HTTPS only, exact hostname allowlist, no credentials, no non-default port, and reject IP literals and local/internal/reserved host suffixes. Redirects remain disabled.
+- Added regression coverage for callback URL validation, atomic lease acquisition, concurrent claim rejection, terminal delivered records and dead-letter exclusion.
+
+These changes are source/migration/test commits only. No remote D1 migration has been run. The new migration must be exercised against a disposable database and the full ordered migration chain before any sandbox or production D1 is modified.
