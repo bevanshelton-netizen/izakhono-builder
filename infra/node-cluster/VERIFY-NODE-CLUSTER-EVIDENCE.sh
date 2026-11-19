@@ -31,15 +31,16 @@ TOKEN_ENV = {
     "NODE04": "NODE04_HEALTH_TOKEN",
 }
 tokens = {node: os.environ.get(env, "") for node, env in TOKEN_ENV.items()}
+
+def blocked(message):
+    print(f"[BLOCKED] {message}", file=sys.stderr)
+    raise SystemExit(10)
+
 if REQUIRE_CRYPTO:
     if any(not re.fullmatch(r"[a-fA-F0-9]{64}", token) for token in tokens.values()):
         blocked("cryptographic verification requires four valid per-node health tokens")
     if len(set(tokens.values())) != 4:
         blocked("cryptographic verification requires four unique per-node health tokens")
-
-def blocked(message):
-    print(f"[BLOCKED] {message}", file=sys.stderr)
-    raise SystemExit(10)
 
 def parse_fresh_timestamp(value, label):
     try:
