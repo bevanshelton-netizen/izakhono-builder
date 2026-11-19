@@ -83,7 +83,7 @@ if [[ -z "$existing_stalwart" ]]; then
 fi
 docker compose --env-file .env up -d
 
-for i in {1..30}; do
+for _ in {1..30}; do
   if docker inspect -f '{{.State.Running}}' izakhono-mailserver 2>/dev/null | grep -q true; then break; fi
   sleep 2
 done
@@ -93,7 +93,7 @@ if ! docker inspect -f '{{.State.Running}}' izakhono-mailserver 2>/dev/null | gr
   exit 1
 fi
 
-for i in {1..30}; do
+for _ in {1..30}; do
   if docker inspect -f '{{.State.Health.Status}}' izakhono-roundcube 2>/dev/null | grep -q healthy; then break; fi
   sleep 2
 done
