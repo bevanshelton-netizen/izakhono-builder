@@ -17,10 +17,9 @@ const jobs = [
   makeJob({ id: "gated", sourceId: "gated", workerId: "custom-worker", risk: "high", priority: 100 }),
   makeJob({ id: "human", sourceId: "human", workerId: "custom-worker", humanGate: "owner_approval", priority: 90 }),
   makeJob({ id: "unregistered", sourceId: "unregistered", workerId: "unregistered-worker", priority: 80 }),
-  makeJob({ id: "waiting", sourceId: "waiting", workerId: "custom-worker", dependencyIds: ["dependency"], priority: 70 }),
+  makeJob({ id: "waiting", sourceId: "waiting", workerId: "custom-worker", dependencyIds: ["missing-dependency"], priority: 70 }),
   makeJob({ id: "build-no-input", sourceId: "build-no-input", workerId: "build-worker", priority: 60 }),
   makeJob({ id: "build-ready", sourceId: "build-ready", workerId: "build-worker", priority: 50, input: { repository: "owner/repo", revision: "abcdef1234567", checks: ["typecheck"] } }),
-  makeJob({ id: "dependency", sourceId: "dependency", status: "completed", workerId: "custom-worker" }),
 ];
 const selected = selectRunnableSupervisorJobs(jobs, handlers, 10);
 assert.deepEqual(selected.map(job => job.id), ["custom", "build-ready"]);
