@@ -42,6 +42,7 @@ jobs:
       - name: Smoke-test KORA workload on ephemeral CI runner
         env:
           IZAKHONO_NODE_ID: ci-software-node-kora
+          IZAKHONO_NODE_SUBSTRATE: github-actions-ephemeral-ci
           IZAKHONO_DRY_RUN: 'false'
           IZAKHONO_KORA_CI_SMOKE_TEST: 'true'
           KORA_IMAGE: kora-network:portable
