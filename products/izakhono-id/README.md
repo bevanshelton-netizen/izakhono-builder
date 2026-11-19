@@ -57,7 +57,7 @@ A session created for Entity A cannot silently become a session for Entity B.
 - `POST /api/v1/mfa/recovery/regenerate`
 - `POST /api/v1/mfa/disable`
 - `GET /api/v1/me`
-- `POST /api/v1/internal/introspect`
+- `POST /api/v1/internal/introspect` — protected by `x-izakhono-id-internal-key`; active-session response includes `user_id`, `entity_id`, `entity_slug`, `membership_id`, `session_id`, `role`, `subject` (email for display/compatibility only), and `expires_at`. Consumers must bind identity using stable IDs, never email.
 
 The recovery library is now implemented in `account_recovery.py`; HTTP route wiring is kept as the next integration step so no public recovery endpoint is exposed before its customer-facing policy is connected to the existing MFA/session model.
 
