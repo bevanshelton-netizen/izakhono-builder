@@ -20,13 +20,13 @@ self.addEventListener("install", (event) => {
 });
 
 self.addEventListener("activate", (event) => {
-  event.waitUntil(
+  event.waitUntil(Promise.all([
     caches.keys().then((keys) => Promise.all(
       keys.filter((key) => key.startsWith("jarvis-shell-") && key !== CACHE_NAME)
         .map((key) => caches.delete(key))
-    ))
-  );
-  self.clients.claim();
+    )),
+    self.clients.claim()
+  ]));
 });
 
 function cacheableShellResponse(response) {
@@ -74,12 +74,7 @@ self.addEventListener("fetch", (event) => {
   event.respondWith((async () => {
     const cache = await caches.open(CACHE_NAME);
     const cached = await cache.match(request);
-    if (cached) {
-      event.waitUntil(fetch(request).then(async (response) => {
-        if (cacheableShellResponse(response)) await cache.put(request, response);
-      }).catch(() => undefined));
-      return cached;
-    }
+    if (cached) return cached;
     try {
       const response = await fetch(request);
       if (cacheableShellResponse(response)) await cache.put(request, response.clone());
