@@ -79,3 +79,18 @@ A Vercel project named `izakhono-pay` also exists, but it is not evidence that t
 ## Release rule
 
 **No live-money launch** until every mandatory gate is evidenced. Passing unit tests, a green deployment, or the presence of payment code is not sufficient. Keep sandbox/staging isolated from production and default-deny live processing.
+
+
+## Additional deployment audit — 2026-11-19
+
+The following issues were confirmed by inspecting the checked-in deployment configurations and workflows:
+
+- `wrangler.production.jsonc` names the production D1 database but does not contain a `database_id`. The production workflow deploys the Worker before applying migrations and contains no verified database-provisioning step. Production deployment must not proceed until the intended D1 database is provisioned, its immutable ID is recorded, and the migration target is verified.
+- The production config sets `PAYMENT_MODE=live` while `IKHOKHA_ENABLED`, `PAYSTACK_ENABLED`, and `PAYFAST_ENABLED` are false. Keep the production service in a non-money-moving, fail-closed mode until provider onboarding, credentials, merchant eligibility, and end-to-end controls are evidenced. A production runtime label must not imply that live payments are authorised.
+- The default Worker config points to `src/index.ts`, while the sandbox and production configs point to `src/index.js`. The canonical entrypoint and route parity between these implementations must be established and tested before release; do not assume they are interchangeable.
+- The existing PAY CI workflow runs syntax/unit checks and a Wrangler dry-run on relevant changes. The observed successful Cloudflare check for PR #677 is a preview build of the Builder Worker, not a deployment or acceptance test of the IZAKHONO PAY Worker.
+- No connected Cloudflare deployment/secret-management action is available in this execution session. No production deployment, remote D1 migration, provider secret installation, or live transaction has been performed or verified here.
+
+### Release disposition as of 2026-11-19
+
+**Production launch: BLOCKED.** Do not merge or trigger the production workflow until the database identity/provisioning order, canonical entrypoint, fail-closed runtime mode, provider approval, and end-to-end acceptance evidence are resolved. A sandbox-only deployment may proceed through the dedicated sandbox workflow after its secrets and target account are verified. The current PR remains documentation-only and does not itself deploy IZAKHONO PAY.
