@@ -15,4 +15,4 @@ const temporary = destination + '.tmp-' + process.pid;
 fs.writeFileSync(temporary, html, { flag: 'w' });
 fs.renameSync(temporary, destination);
 if (fs.readFileSync(destination, 'utf8') !== html) throw new Error('website-factory-asset-copy-verification-failed');
-console.log('[PASS] Website Factory owner-authenticated Builder asset published to public/website-factory/index.html');
+console.log('[PASS] Website Factory navigation asset copied to public/website-factory/index.html');
