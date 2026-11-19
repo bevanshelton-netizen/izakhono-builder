@@ -59,5 +59,16 @@ jobs:
               raise SystemExit(f'Missing platforms: {missing}')
           if 'password:' in p.lower() or 'smtp_pass:' in p.lower():
               raise SystemExit('Secret-like mailbox credentials found in manifest')
-          print('portfolio manifest: PASS')
+          if 'ownership_status: external' not in p or 'provisioning_enabled: false' not in p:
+              raise SystemExit('Externally owned Edu-Build must be excluded from automatic provisioning')
+          import json
+          managed = json.loads(pathlib.Path('products/izakhono-mail/config/portfolio-identities.json').read_text())
+          excluded = set(managed.get('excluded_platforms', []))
+          names = {x['platform'] for x in managed.get('identities', [])}
+          expected = {'KG Industrial', 'Edu-Build Institute', 'Free Bird Agri-Quip'}
+          if not expected.issubset(excluded) or names.intersection(expected):
+              raise SystemExit('Mail provisioning manifest includes an excluded/non-owned entity')
+          if not any(x['platform'] == 'IZAKHONO' and x['domain'] == 'izakhonoafrica.co.za' and 'bevans' in x['mailboxes'] for x in managed['identities']):
+              raise SystemExit('CEO mailbox/domain target missing from IZAKHONO identity')
+          print('portfolio ownership and mailbox manifest: PASS')
           PY
