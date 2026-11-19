@@ -43,8 +43,8 @@ The mail runtime publishes no separate public web proxy. Public ports 80/443 rem
 4. Complete Stalwart's first-run setup through an SSH tunnel to loopback port 18081. Never expose the bootstrap/admin listener publicly.
 5. Create a Stalwart ACME provider using HTTP-01. HOST EDGE forwards only `/.well-known/acme-challenge/*` for the mail hostname to Stalwart.
 6. As owner administrator, create the mail domain in Stalwart and enable automatic DKIM plus the configured ACME certificate provider. Export the domain DNS zone file.
-7. Create the custom role from `config/stalwart-provisioner-role.json`, including the existing default User role. Create a dedicated service account (for example `node01-mail-provisioner@izakhonoafrica.co.za`) with that custom role. Never give the application System Administrator credentials.
-8. Set `STALWART_PROVISIONER_USERNAME` and `STALWART_PROVISIONER_PASSWORD` in the protected runtime environment. The JMAP endpoint must remain private/loopback.
+7. Create the custom role from `config/stalwart-provisioner-role.json`, including the existing default User role. Create a dedicated service account (for example `node01-mail-provisioner@izakhonoafrica.co.za`) with that custom role and `permissions: Inherit`. Create a scoped API key for that account in `Inherit` mode. Never give the application System Administrator credentials or the service account's interactive password.
+8. Create an API key for the dedicated service account with permission mode `Inherit`, then set `STALWART_PROVISIONER_API_KEY` in the protected runtime environment. The JMAP endpoint must remain private/loopback.
 9. Publish the exact MX/SPF/DKIM/DMARC values from Stalwart's zone file through the approved DNS control plane. The Provisioner reads that zone file and verifies public DNS; it does not create domains or mutate public DNS.
 10. Wait for DNS verification. Only then create customer mailboxes. The initial password is returned once and is never written to evidence files.
 11. Run the full provider acceptance and independent send/receive tests before calling the service live.
@@ -53,7 +53,7 @@ The mail runtime publishes no separate public web proxy. Public ports 80/443 rem
 
 The Stalwart JMAP adapter:
 - accepts only private/loopback JMAP endpoints;
-- uses a dedicated least-privilege provisioning service account, never System Administrator credentials;
+- authenticates with a scoped Bearer API key inherited from a dedicated least-privilege provisioning service account, never System Administrator credentials;
 - reads an owner-created Stalwart domain and exports its server-generated DNS zone file; it refuses to create domains;
 - creates a mailbox only after the Provisioner verifies the required DNS;
 - detects an existing account and returns `credentials_recovery_required` rather than falsely reissuing a password;
