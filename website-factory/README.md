@@ -1,6 +1,6 @@
 # IZAKHONO Website Factory v1
 
-The Website Factory is the portfolio-facing intake surface for IZAKHONO BUILDER. It collects a concise business brief locally in the browser and directs the owner to the existing authenticated Builder "Build Anything" panel for project creation. It does not create fake job IDs, store credentials, or call owner-only APIs without the established Builder authorization flow.
+The Website Factory is the portfolio-facing entry surface for IZAKHONO BUILDER. It directs the owner to the existing authenticated Builder "Build Anything" panel for project creation. It does not create fake job IDs, collect business data, store credentials, or call owner-only APIs without the established Builder authorization flow.
 
 ## Production contract
 
@@ -14,9 +14,9 @@ The Website Factory is the portfolio-facing intake surface for IZAKHONO BUILDER.
 
 ## Build and serve
 
-Run `npm run website-factory:build` from the repository root. This verifies the safe DOM/navigation contract and copies the canonical `website-factory/index.html` into `public/website-factory/index.html` for static delivery.
+Run `npm run website-factory:build` from the repository root. This verifies the safe navigation contract and copies the canonical `website-factory/index.html` into `public/website-factory/index.html` for static delivery.
 
-Open `/website-factory/` on the Builder origin. Submitting the brief opens `/#buildAnything`, where the existing owner authentication and Build Anything API are used.
+Open `/website-factory/` on the Builder origin. The Open authenticated Builder link opens `/#buildAnything`, where the existing owner authentication and Build Anything API are used.
 
 ## Release boundary
 
