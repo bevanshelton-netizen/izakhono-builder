@@ -29,7 +29,7 @@ jobs:
         run: npm run validate:affiliate
 
       - name: Registry fail-closed authorization regression tests
-        run: npm run registry:security-test && npm run registry:api-security-test && npm run registry:worker-auth-test
+        run: npm run registry:security-test && npm run registry:api-security-test && npm run registry:worker-auth-test && npm run registry:dispatch-test
 
       - name: Install isolated product dependencies
         shell: bash
