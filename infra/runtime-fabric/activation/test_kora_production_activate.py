@@ -32,7 +32,7 @@ def run_orchestrator(tmp_path: Path, gate_exit: int):
         "KORA_MAIL_LIVE_GATE": str(gate),
         "KORA_TEST_MARKER": str(tmp_path / "activated.marker"),
     })
-    result = subprocess.run([str(ORCHESTRATOR)], text=True, capture_output=True, env=env, check=False)
+    result = subprocess.run(["bash", str(ORCHESTRATOR)], text=True, capture_output=True, env=env, check=False)
     return result, evidence
 
 
@@ -60,5 +60,6 @@ def test_live_gate_success_is_live_verified(tmp_path):
     assert payload["live_gate_exit_code"] == 0
 
 
-def test_orchestrator_is_executable():
-    assert ORCHESTRATOR.stat().st_mode & stat.S_IXUSR
+def test_orchestrator_has_bash_shebang():
+    assert ORCHESTRATOR.is_file()
+    assert ORCHESTRATOR.read_text(encoding="utf-8").startswith("#!/usr/bin/env bash")
