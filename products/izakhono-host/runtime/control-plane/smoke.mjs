@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process';
+import http from 'node:http';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -26,17 +27,49 @@ async function request(path, init={}) {
   if(!r.ok) throw new Error(`${path}: ${r.status} ${JSON.stringify(data)}`);
   return data;
 }
+
+async function requestSiteWithHostHeader() {
+  return new Promise((resolve, reject) => {
+    const req = http.request({
+      hostname: '127.0.0.1',
+      port,
+      path: '/',
+      method: 'GET',
+      headers: { Host: 'smoke.example.test' },
+    }, response => {
+      const chunks = [];
+      response.on('data', chunk => chunks.push(chunk));
+      response.on('end', () => resolve({
+        statusCode: response.statusCode,
+        body: Buffer.concat(chunks).toString('utf8'),
+      }));
+    });
+    req.on('error', reject);
+    req.end();
+  });
+}
 try {
   await waitForHealth();
   const provisioned = await request('/api/sites/provision', {method:'POST',body:JSON.stringify({site_id:'smoke_site',domain:'smoke.example.test',source_ref:'ci'})});
   if (provisioned.site?.domain !== 'smoke.example.test') throw new Error('provision failed');
-  const page = await fetch(base+'/', {headers:{host:'smoke.example.test'}});
-  const html = await page.text();
-  if (!page.ok || !html.includes('smoke.example.test')) throw new Error('site serving failed');
+  const page = await requestSiteWithHostHeader();
+  if (page.statusCode !== 200 || !page.body.includes('smoke.example.test')) throw new Error(`site serving failed: ${page.statusCode}`);
+  const unauthorized = await fetch(base+'/api/sites');
+  if (unauthorized.status !== 401) throw new Error('owner authorization boundary failed');
   const ask = await fetch(base+'/api/tls/ask?domain=smoke.example.test');
   if (!ask.ok) throw new Error('TLS admission failed');
-  const accepted = await request('/api/sites/smoke_site/accept', {method:'POST',body:JSON.stringify({https:true,dns:true,content:true})});
-  if (!accepted.site?.public_live) throw new Error('acceptance gate failed');
+  const booleanOnly = await fetch(base+'/api/sites/smoke_site/accept', {
+    method:'POST',
+    headers:{authorization:`Bearer ${token}`,'content-type':'application/json'},
+    body:JSON.stringify({https:true,dns:true,content:true}),
+  });
+  if (booleanOnly.status !== 409) throw new Error('boolean-only acceptance bypassed evidence gate');
+  const observedAt = new Date().toISOString();
+  const evidence = Object.fromEntries(['https','dns','content'].map(kind => [kind, {
+    verified:true, evidence_id:`ci-${kind}`, observed_at:observedAt,
+  }]));
+  const accepted = await request('/api/sites/smoke_site/accept', {method:'POST',body:JSON.stringify({evidence})});
+  if (!accepted.site?.public_live) throw new Error('evidence-backed acceptance gate failed');
   console.log('IZAKHONO native runtime smoke test: PASS');
 } finally {
   child.kill('SIGTERM');
