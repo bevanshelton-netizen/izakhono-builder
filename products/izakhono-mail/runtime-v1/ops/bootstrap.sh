@@ -108,7 +108,7 @@ docker compose --env-file .env ps
 
 echo
 echo "Stalwart bootstrap/admin: http://127.0.0.1:18081 (loopback only; use an SSH tunnel)"
-echo "Stalwart JMAP/API after setup: https://127.0.0.1:18080"
+echo "Stalwart JMAP/API after setup: http://127.0.0.1:18081/jmap/"
 echo "Webmail: https://webmail.izakhonoafrica.co.za"
 echo "IMAPS: $MAIL_HOSTNAME:993"
 echo "SMTP submission: $MAIL_HOSTNAME:587"
