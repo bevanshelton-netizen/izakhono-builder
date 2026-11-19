@@ -136,3 +136,31 @@ test('merchant webhook persistence failures propagate without a second misleadin
     globalThis.fetch = originalFetch;
   }
 });
+
+
+test('an abandoned pending merchant webhook is reclaimed after its lease expires', async () => {
+  const { env, deliveries } = createEnv();
+  const originalFetch = globalThis.fetch;
+  let attempts = 0;
+  globalThis.fetch = async () => {
+    attempts += 1;
+    return new Response('', { status: 200 });
+  };
+  try {
+    const first = await dispatchMerchantPaymentPaid(env, intent);
+    assert.equal(first.delivered, true);
+    const row = [...deliveries.values()][0];
+    // Model a Worker crash after claiming but before recording delivery.
+    row.status = 'pending';
+    row.lease_token = 'abandoned-worker-token';
+    row.lease_expires_at = '2026-11-18 23:59:59';
+
+    const recovered = await dispatchMerchantPaymentPaid(env, intent);
+    assert.equal(recovered.delivered, true);
+    assert.equal(attempts, 2);
+    assert.equal(row.status, 'delivered');
+    assert.equal(row.attempt_count, 2);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
