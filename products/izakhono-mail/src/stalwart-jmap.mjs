@@ -197,8 +197,6 @@ export class StalwartJmapTransport {
 export function createStalwartTransportFromEnv(env = process.env, options = {}) {
   return new StalwartJmapTransport({
     baseUrl: env.STALWART_JMAP_URL,
-    username: env.STALWART_PROVISIONER_USERNAME,
-    password: env.STALWART_PROVISIONER_PASSWORD,
     apiKey: env.STALWART_PROVISIONER_API_KEY,
     timeoutMs: Number(env.STALWART_JMAP_TIMEOUT_MS || 10000),
     ...options,
