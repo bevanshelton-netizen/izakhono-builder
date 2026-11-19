@@ -76,7 +76,6 @@ jobs:
         if: steps.health.outcome == 'success'
         shell: bash
         env:
-          CONNECTA_REQUIRE_CRYPTOGRAPHIC_EVIDENCE: "true"
           NODE01_HEALTH_TOKEN: ${{ secrets.CONNECTA_NODE01_HEALTH_TOKEN }}
           NODE02_HEALTH_TOKEN: ${{ secrets.CONNECTA_NODE02_HEALTH_TOKEN }}
           NODE03_HEALTH_TOKEN: ${{ secrets.CONNECTA_NODE03_HEALTH_TOKEN }}
