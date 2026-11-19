@@ -10,9 +10,12 @@
     "portfolio:validate": "node scripts/validate-portfolio-rollout.mjs",
     "activation:validate": "node scripts/validate-activation.mjs",
     "improvement:test": "node --test tests/self-improvement-engine.test.mjs",
-    "dev": "wrangler dev",
-    "deploy": "wrangler deploy",
-    "db:migrate": "wrangler d1 migrations apply DB --remote"
+    "dev": "wrangler dev --config wrangler.sandbox.jsonc",
+    "deploy": "node -e \"console.error('Direct deployment is disabled. Use the owner-controlled sandbox or production GitHub Actions workflow.'); process.exit(1)\"",
+    "deploy:sandbox": "wrangler deploy --config wrangler.sandbox.jsonc",
+    "db:migrate": "wrangler d1 migrations apply DB --local --config wrangler.sandbox.jsonc",
+    "db:migrate:sandbox": "wrangler d1 migrations apply DB --remote --config wrangler.sandbox.jsonc",
+    "db:migrate:production": "node -e \"console.error('Production migrations are restricted to the owner-controlled production workflow after D1 identity preflight.'); process.exit(1)\""
   },
   "devDependencies": {
     "wrangler": "4.127.1"
