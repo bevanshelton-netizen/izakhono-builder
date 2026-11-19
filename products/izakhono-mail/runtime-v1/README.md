@@ -4,6 +4,8 @@ Owned mail hosting for IZAKHONO portfolio domains, using the existing Stalwart m
 
 ## Canonical stack
 
+Certificate lifecycle is split by service ownership: Stalwart manages mail-domain ACME certificates; HOST Caddy manages webmail HTTPS. Do not run Certbot or a separate mail Caddy service. The runtime intentionally contains no second Caddyfile or manual certificate-renewal script.
+
 - **Stalwart** — SMTP, submission, IMAP, JMAP, domain/mailbox directory, DKIM and ACME certificate management.
 - **Roundcube** — customer webmail over IMAPS and SMTP submission.
 - **MariaDB** — Roundcube session/preferences database only.
