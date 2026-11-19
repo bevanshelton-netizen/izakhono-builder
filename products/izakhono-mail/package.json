@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "start": "node src/server.mjs",
-    "check": "node --check src/server.mjs && node --check src/dns-control.mjs && node --check src/stalwart-jmap.mjs && node --check src/mailbox-provisioner.mjs && node --check src/mailbox-provisioner.test.mjs",
+    "check": "node --check src/server.mjs && node --check src/auth-api.mjs && node --check src/dns-control.mjs && node --check src/stalwart-jmap.mjs && node --check src/mailbox-provisioner.mjs && node --check src/mailbox-provisioner.test.mjs",
     "plan:portfolio": "node src/portfolio-provisioner.mjs",
     "plan:portfolio:legacy": "node scripts/node01-mail-plan.mjs",
     "dns:plan": "node -e \"import('./src/dns-control.mjs').then(m=>{const d=[...new Set(JSON.parse(require('fs').readFileSync('./config/portfolio-identities.json')).identities.map(x=>x.domain).filter(Boolean))]; console.log(JSON.stringify(d.map(m.buildDnsIntent),null,2))})\"",
