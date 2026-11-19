@@ -31,7 +31,6 @@ class State(str, Enum):
 
 
 PIPELINE = [
-    State.PAYMENT_VERIFIED,
     State.TENANT_CREATED,
     State.DOMAIN_READY,
     State.DNS_READY,
@@ -69,6 +68,8 @@ class ProvisioningJob:
     def next_state(self) -> State | None:
         if self.state in (State.BLOCKED, State.HANDOVER_READY):
             return None
+        if self.state == State.PAYMENT_VERIFIED:
+            return PIPELINE[0]
         index = PIPELINE.index(self.state)
         return PIPELINE[index + 1] if index + 1 < len(PIPELINE) else None
 
@@ -128,7 +129,7 @@ class Provisioner:
     def handover(self, job: ProvisioningJob) -> dict[str, Any]:
         if job.state != State.HANDOVER_READY:
             raise RuntimeError("handover requires HANDOVER_READY")
-        required = [s.value for s in PIPELINE[:-1]]
+        required = [State.PAYMENT_VERIFIED.value, *[s.value for s in PIPELINE[:-1]]]
         missing = [s for s in required if s not in job.evidence]
         if missing:
             raise RuntimeError(f"missing acceptance evidence: {missing}")
