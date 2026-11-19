@@ -24,7 +24,7 @@ function safeProjectId(value) {
 }
 
 function safeRelativePath(value) {
-  const normalized = String(value).replaceAll('\\\\', '/');
+  const normalized = String(value).replaceAll('\\', '/');
   if (!normalized || normalized.startsWith('/') || normalized.includes('\0')) throw new Error('application-template-path-invalid');
   const segments = normalized.split('/');
   if (segments.some((part) => !part || part === '.' || part === '..' || part === '.git')) throw new Error('application-template-path-invalid');
