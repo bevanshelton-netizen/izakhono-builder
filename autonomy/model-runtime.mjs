@@ -17,7 +17,7 @@ function isPrivateHost(hostname) {
 export function resolveLocalModelConfig(env = process.env) {
   const url = new URL(env.IZAKHONO_LOCAL_MODEL_URL || 'http://127.0.0.1:11434/api/chat');
   if (!['http:', 'https:'].includes(url.protocol)) throw new Error('model-runtime-protocol-not-supported');
-  if (url.username || url.password || url.hash) throw new Error('model-runtime-url-contains-forbidden-components');
+  if (url.username || url.password || url.hash || url.search) throw new Error('model-runtime-url-contains-forbidden-components');\n  if (url.pathname !== '/api/chat') throw new Error('model-runtime-endpoint-not-ollama-chat');
   if (!isPrivateHost(url.hostname)) throw new Error('model-runtime-host-not-private');
   const timeoutMs = Number(env.IZAKHONO_MODEL_TIMEOUT_MS || 45000);
   if (!Number.isInteger(timeoutMs) || timeoutMs < 1000 || timeoutMs > 120000) throw new Error('model-runtime-timeout-invalid');
