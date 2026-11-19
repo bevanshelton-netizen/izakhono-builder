@@ -21,6 +21,17 @@ function ready(job:SupervisorJob,jobs:SupervisorJob[]){
  return !jobs.some(j=>job.dependencyIds.some(dep=>dep===j.sourceId||dep===j.id)&&j.status!=='completed');
 }
 
+export function selectRunnableSupervisorJobs(jobs:SupervisorJob[],handlers:SupervisorWorkerHandlers,limit=5){
+ return jobs.filter(job=>{
+  if(!handlers[job.workerId]||!ready(job,jobs))return false;
+  if(job.workerId==='build-worker'){
+   const input=job.input as Record<string,unknown>|null;
+   return !!input&&typeof input.repository==='string'&&typeof input.revision==='string'&&Array.isArray(input.checks);
+  }
+  return true;
+ }).sort((a,b)=>b.priority-a.priority).slice(0,Math.max(0,limit));
+}
+
 export async function advanceReadyWorkers(db:D1Database,limit=25,eligibleWorkerIds:readonly string[]=[]){
  await recoverExpiredSupervisorLeases(db);
  const jobs=await listSupervisorJobs(db);
@@ -38,13 +49,7 @@ export async function runRegisteredWorkerCycle(db:D1Database,handlers:Supervisor
  await recoverExpiredSupervisorLeases(db);
  const jobs=await listSupervisorJobs(db);
  const results=[];
- for(const job of jobs.filter(j=>Boolean(handlers[j.workerId])&&ready(j,jobs)).sort((a,b)=>b.priority-a.priority)){
-  if(results.length>=limit)break;
-  // The read-only build verifier requires explicit immutable inputs; never infer them from issue text.
-  if(job.workerId==='build-worker'){
-   const input=job.input as Record<string,unknown>|null;
-   if(!input||typeof input.repository!=='string'||typeof input.revision!=='string'||!Array.isArray(input.checks))continue;
-  }
+ for(const job of selectRunnableSupervisorJobs(jobs,handlers,limit)){
   const lease=await claimSupervisorLease(db,job.id,job.workerId,`worker-cycle:${job.id}:${job.attempts+1}`);
   if(!lease)continue;
   results.push(await executeLeasedSupervisorJob(db,lease,handlers));
