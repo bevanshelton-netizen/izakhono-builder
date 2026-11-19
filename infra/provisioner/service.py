@@ -78,7 +78,7 @@ class ProvisionerService:
         if job.state!="HANDOVER_READY": raise ServiceError("HANDOVER_NOT_READY","independent acceptance is required")
         acceptance=job.evidence.get("ACCEPTANCE_PASSED",{})
         if acceptance.get("verified") is not True: raise ServiceError("ACCEPTANCE_NOT_PASSED","acceptance evidence required")
-        required={"PAYMENT_VERIFIED","TENANT_CREATED","DOMAIN_READY","DNS_READY","SITE_READY","TLS_READY","MAIL_READY","INTEGRATIONS_READY","ACCEPTANCE_PASSED"}
+        required={"PAYMENT_VERIFIED","TENANT_CREATED","DOMAIN_READY","DNS_READY","SITE_READY","TLS_READY","MAIL_READY","BILLING_VERIFIED","INTEGRATIONS_READY","ACCEPTANCE_PASSED"}
         missing=required-set(job.evidence)
         if missing: raise ServiceError("HANDOVER_EVIDENCE_INCOMPLETE",f"missing evidence: {sorted(missing)}")
         states=sorted(job.evidence.keys())
