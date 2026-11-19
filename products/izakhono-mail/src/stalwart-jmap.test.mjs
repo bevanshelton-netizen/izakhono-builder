@@ -93,3 +93,28 @@ assert.throws(() => new StalwartJmapTransport({
 }), /must-be-private/);
 
 console.log('[PASS] Stalwart JMAP private endpoint, domain creation, mailbox creation and idempotent recovery verified.');
+
+{
+  const { fetchImpl, calls } = mockFetch([
+    { ids: ['domain-1'] },
+    { list: [domainRecord] },
+  ]);
+  const transport = new StalwartJmapTransport({
+    baseUrl: 'http://127.0.0.1:18081',
+    apiKey: 'scoped-provisioner-token',
+    fetchImpl,
+  });
+  const domain = await transport.ensureDomain('example.test');
+  assert.equal(domain.domainId, 'domain-1');
+  assert.equal(calls[0].authorization, 'Bearer scoped-provisioner-token');
+}
+
+{
+  const { fetchImpl } = mockFetch([{ ids: [] }]);
+  const transport = new StalwartJmapTransport({
+    baseUrl: 'http://127.0.0.1:18081',
+    apiKey: 'scoped-provisioner-token',
+    fetchImpl,
+  });
+  await assert.rejects(() => transport.ensureDomain('example.test'), /domain-not-provisioned/);
+}
