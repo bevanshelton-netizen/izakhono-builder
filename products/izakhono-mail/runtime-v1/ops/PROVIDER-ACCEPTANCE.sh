@@ -1,10 +1,22 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-HOSTNAME="${MAIL_HOSTNAME:-mail.izakhonoafrica.co.za}"
-DOMAIN="${MAIL_DOMAIN:-izakhonoafrica.co.za}"
-WEBMAIL="${WEBMAIL_HOSTNAME:-webmail.izakhonoafrica.co.za}"
-DKIM_SELECTOR="${DKIM_SELECTOR:-}"
+read_env() {
+  local key="$1" line value
+  line="$(grep -m1 -E "^$key=" .env 2>/dev/null || true)"
+  value="${line#*=}"
+  value="${value%\"}"; value="${value#\"}"
+  value="${value%\'}"; value="${value#\'}"
+  printf '%s' "$value"
+}
+
+HOSTNAME="${MAIL_HOSTNAME:-$(read_env MAIL_HOSTNAME)}"
+DOMAIN="${MAIL_DOMAIN:-$(read_env MAIL_DOMAIN)}"
+WEBMAIL="${WEBMAIL_HOSTNAME:-$(read_env WEBMAIL_HOSTNAME)}"
+DKIM_SELECTOR="${DKIM_SELECTOR:-$(read_env DKIM_SELECTOR)}"
+HOSTNAME="${HOSTNAME:-mail.izakhonoafrica.co.za}"
+DOMAIN="${DOMAIN:-izakhonoafrica.co.za}"
+WEBMAIL="${WEBMAIL:-webmail.izakhonoafrica.co.za}"
 
 fail=0
 check() {
