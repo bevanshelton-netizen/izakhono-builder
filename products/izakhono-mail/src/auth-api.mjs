@@ -6,6 +6,7 @@ import { provisionMailbox } from './mailbox-provisioner.mjs';
 const host = process.env.MAIL_AUTH_LISTEN_HOST || '127.0.0.1';
 const port = Number(process.env.MAIL_AUTH_LISTEN_PORT || 8789);
 const ownerToken = process.env.MAIL_API_TOKEN || '';
+if (!ownerToken) throw new Error('MAIL_API_TOKEN_REQUIRED');
 if (!['127.0.0.1', '::1', 'localhost'].includes(host)) throw new Error('MAIL_AUTH_API_MUST_BE_LOOPBACK');
 
 function json(res, status, body, extra = {}) {
