@@ -5,13 +5,14 @@
   "type": "module",
   "scripts": {
     "start": "node src/server.mjs",
-    "check": "node --check src/server.mjs && node --check src/stalwart-jmap.mjs && node --check src/mailbox-provisioner.mjs",
+    "check": "node --check src/server.mjs && node --check src/dns-control.mjs && node --check src/stalwart-jmap.mjs && node --check src/mailbox-provisioner.mjs",
     "plan:portfolio": "node src/portfolio-provisioner.mjs",
     "plan:portfolio:legacy": "node scripts/node01-mail-plan.mjs",
     "dns:plan": "node -e \"import('./src/dns-control.mjs').then(m=>{const d=[...new Set(JSON.parse(require('fs').readFileSync('./config/portfolio-identities.json')).identities.map(x=>x.domain).filter(Boolean))]; console.log(JSON.stringify(d.map(m.buildDnsIntent),null,2))})\"",
     "dns:verify": "node src/dns-control.mjs",
     "mailbox:provision": "node src/mailbox-provisioner.mjs",
     "acceptance": "node src/acceptance.mjs",
-    "mail:transport:test": "node src/stalwart-jmap.test.mjs"
+    "mail:transport:test": "node src/stalwart-jmap.test.mjs",
+    "test": "node --test src/dns-control.test.mjs && node src/stalwart-jmap.test.mjs"
   }
 }
