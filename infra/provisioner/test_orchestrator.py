@@ -12,6 +12,7 @@ from state_machine import Provisioner, State, StepResult
 REGISTRY = {
     "adapters": {
         "tenant": {"owned": "izakhono-control"},
+        "payment": {"owned": "izakhono-pay"},
         "domain": {"owned": "izakhono-domain"},
         "dns": {"owned": "izakhono-dns"},
         "site": {"owned": "izakhono-host"},
