@@ -47,7 +47,7 @@ export async function provisionMailbox({ platform, mailbox, displayName = '' }) 
 
   let dnsVerification;
   try {
-    dnsVerification = await verifyDnsIntent(buildDnsIntent(target.domain));
+    dnsVerification = await verifyDnsIntent(buildDnsIntent(target.domain, domainState.dnsZoneFile));
   } catch (error) {
     return failure('dns_verification_failed', target, {
       dns_zone_file: domainState.dnsZoneFile,
