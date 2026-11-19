@@ -119,6 +119,22 @@ jobs:
           sed -i 's/CHANGE_ME_STRONG_PASSWORD/ci-mailbox-password-123456789/g; s/CHANGE_ME_DB_PASSWORD/ci-roundcube-db-password-123456789/g' .env
           docker compose config --quiet
 
+      - name: Enforce single canonical mail engine and shared edge
+        run: |
+          python3 - <<'PY'
+          import pathlib, yaml
+          compose = yaml.safe_load(pathlib.Path('products/izakhono-mail/runtime-v1/docker-compose.yml').read_text())
+          services = compose.get('services', {})
+          if set(services) != {'roundcube-db', 'roundcube'}:
+              raise SystemExit(f'Runtime must not launch another mail engine or Caddy: {sorted(services)}')
+          if 'izakhono-mail' not in compose.get('networks', {}):
+              raise SystemExit('Shared IZAKHONO mail network missing')
+          host_compose = yaml.safe_load(pathlib.Path('products/izakhono-host/mail/docker-compose.mail.yml').read_text())
+          if set(host_compose.get('services', {})) != {'stalwart'}:
+              raise SystemExit('HOST must own the single Stalwart mail engine')
+          print('single mail engine/shared edge contract: PASS')
+          PY
+
       - name: Validate runtime-v1 required files
         working-directory: products/izakhono-mail/runtime-v1
         run: |
@@ -128,11 +144,13 @@ jobs:
           test -f ops/bootstrap.sh
           test -f ops/preflight.sh
           test -f ops/PROVIDER-ACCEPTANCE.sh
+          test -f ops/backup.sh
+          test -f ops/restore.sh
           test -f ops/PROVISION-CONTABO.md
 
       - name: Verify no production secrets are tracked
         run: |
-          if git grep -n -E 'BEGIN (RSA|OPENSSH|PRIVATE) KEY|MAILBOX_PASSWORD=[^C]|ROUNDCUBE_DB_PASSWORD=[^C]' -- products/izakhono-mail/runtime-v1; then
+          if git grep -n -E 'BEGIN (RSA|OPENSSH|PRIVATE) KEY|MAILBOX_PASSWORD=[^C]|ROUNDCUBE_DB_PASSWORD=[^C]|STALWART_ADMIN_PASSWORD=[^C]|STALWART_RECOVERY_ADMIN=admin:[^C]|AGE_RECIPIENT=age1' -- products/izakhono-mail/runtime-v1; then
             echo 'Tracked production secret material detected.'
             exit 1
           fi
