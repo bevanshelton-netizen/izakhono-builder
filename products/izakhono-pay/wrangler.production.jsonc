@@ -18,7 +18,7 @@
   ],
   "vars": {
     "APP_ENV": "production",
-    "PAYMENT_MODE": "live",
+    "PAYMENT_MODE": "disabled",
     "IKHOKHA_ENABLED": "false",
     "PAYSTACK_ENABLED": "false",
     "PAYFAST_ENABLED": "false",
