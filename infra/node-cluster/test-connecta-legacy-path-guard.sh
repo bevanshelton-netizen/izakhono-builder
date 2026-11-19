@@ -66,4 +66,9 @@ make_fixture "$tmp/infra-blocked"
 printf '%s\n' 'powershell CERTIFY-WAVE1-OWNED.ps1' > "$tmp/infra-blocked/infra/runtime-fabric/CERTIFY-OWNED-RUNTIME-WAVE1.ps1"
 run_guard_expect "$tmp/infra-blocked" 10
 
-echo "[PASS] CONNECTA guard allows logical nodes and unrelated product workflows, while blocking legacy CONNECTA workflow, product-runtime and infrastructure dependencies."
+# A copied legacy executable must be rejected by path, even if its body is clean.
+make_fixture "$tmp/copied-legacy-executable"
+printf '%s\n' '# no legacy references in this body' > "$tmp/copied-legacy-executable/products/izakhono-social/scripts/CERTIFY-WAVE1-OWNED.ps1"
+run_guard_expect "$tmp/copied-legacy-executable" 10
+
+echo "[PASS] CONNECTA guard allows logical nodes and unrelated product workflows, while blocking legacy workflow, product-runtime, infrastructure and copied-executable dependencies."
