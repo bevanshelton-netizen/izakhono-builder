@@ -87,6 +87,10 @@ A provider is not selectable merely because its adapter exists. The routing engi
 - Deploy regional compute/data according to latency, resilience and legal requirements.
 - Independently benchmark checkout latency, uptime, conversion, reconciliation accuracy, fraud loss and support performance.
 
+## Currency implementation status
+
+A curated currency exponent registry and exact decimal-to-integer minor-unit helper now exist in `src/currency.js`, with tests for zero-, two- and three-decimal currencies. This is isolated groundwork only. The repository still contains two divergent Worker entrypoints: the root `wrangler.jsonc` points to `src/index.ts`, while sandbox and production configs point to `src/index.js`. The helper is not yet wired through every authoritative API, provider adapter, ledger, invoice, refund and settlement path. Do not enable non-ZAR routing until one canonical runtime and migration lineage is selected, all monetary calculations use currency-specific exponents end-to-end, and provider/settlement acceptance passes.
+
 ## Current Alpha constraints that must remain visible
 
 - Current checkout code rejects currencies other than ZAR. Do not remove that guard until end-to-end multi-currency correctness is implemented and tested.
