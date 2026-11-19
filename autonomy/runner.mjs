@@ -4,6 +4,7 @@ import { runBuilderAdapter } from './builder-adapter.mjs';
 import { runNodeAdapter } from './node-adapter.mjs';
 import { resolveFailover } from './node-failover.mjs';
 import { runAgentWorker } from './ai-agent-worker.mjs';
+import { classifyAgentWorkerResult } from './worker-result.mjs';
 
 const root = process.cwd();
 const manifestPath = path.join(root, 'autonomy', 'engine-manifest.json');
@@ -83,8 +84,22 @@ function executeInternal(task) {
         evidence: [{ name: 'durable-agent-storage', status: 'pending' }],
       };
     }
-    if (agentWorkerResult?.reason === 'agent-worker-lock-held') {
-      return { status: 'waiting', reason: agentWorkerResult.reason, evidence: [{ name: 'exclusive-worker-lock', status: 'pending' }] };
+    const outcome = classifyAgentWorkerResult(agentWorkerResult);
+    if (outcome.status === 'failed') {
+      return {
+        status: 'failed',
+        reason: outcome.reason,
+        workerResult: agentWorkerResult,
+        evidence: [{ name: 'agent-worker-invoked', status: 'passed' }, { name: 'agent-work-completed', status: 'failed' }],
+      };
+    }
+    if (outcome.status === 'waiting') {
+      return {
+        status: 'waiting',
+        reason: outcome.reason,
+        workerResult: agentWorkerResult,
+        evidence: [{ name: 'agent-worker-invoked', status: 'passed' }, { name: 'agent-work-completed', status: 'pending' }],
+      };
     }
     return {
       status: 'completed',
@@ -92,6 +107,7 @@ function executeInternal(task) {
       evidence: [
         { name: 'agent-worker-invoked', status: 'passed' },
         { name: 'agent-queue-inspected', status: 'passed' },
+        { name: 'agent-work-completed', status: 'passed' },
       ],
     };
   }
