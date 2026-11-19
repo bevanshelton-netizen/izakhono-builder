@@ -38,3 +38,15 @@ def test_deploy_and_revenue_are_side_effect_stages():
     stages = {stage["id"]: stage for stage in plan["stages"]}
     assert stages["deploy"]["side_effect"] is True
     assert stages["revenue"]["side_effect"] is True
+
+
+def test_factory_uses_only_local_inference_or_native_fallback():
+    code_plan = build_plan("Build a customer web app", available_only=False)
+    assert code_plan["llm"]["selected"]["id"] == "ollama-compatible-local"
+    assert code_plan["llm"]["external_inference_allowed"] is False
+    assert code_plan["llm"]["runtime_probe_required"] is True
+
+    vision_plan = build_plan("Create an image gallery", available_only=False)
+    assert vision_plan["llm"]["selected"] is None
+    assert vision_plan["llm"]["execution_provider"] == "deterministic-native"
+    assert vision_plan["llm"]["external_inference_allowed"] is False
