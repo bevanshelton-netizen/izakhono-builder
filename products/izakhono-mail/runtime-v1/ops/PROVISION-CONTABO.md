@@ -84,6 +84,7 @@ Production is BLOCKED until all of these pass with timestamped evidence:
 - IMAPS login and Roundcube login
 - DKIM signature validation and DMARC alignment
 - encrypted backup creation
+- verified offsite encrypted copy in owner-controlled storage
 - successful restore and post-restore mail delivery
 - FORTRESS access controls, audit trail and rollback proof
 
@@ -92,10 +93,11 @@ A running container, a created mailbox, or a successful CI run is not proof of p
 ## Recovery / provider replacement
 
 1. Create an encrypted backup with the owner-controlled age recipient.
-2. Provision the replacement runtime and deploy HOST EDGE.
-3. Restore using the matching age identity; keep .env and secrets separate.
-4. Reapply PTR and public DNS only after the replacement host passes preflight.
-5. Run the full mail acceptance gate.
-6. Move traffic only after the replacement has proven inbound/outbound delivery and restore integrity.
+2. Copy the encrypted artifact and checksum to owner-controlled offsite storage and verify the checksum.
+3. Provision the replacement runtime and deploy HOST EDGE.
+4. Restore using the matching age identity; keep .env and secrets separate.
+5. Reapply PTR and public DNS only after the replacement host passes preflight.
+6. Run the full mail acceptance gate.
+7. Move traffic only after the replacement has proven inbound/outbound delivery and restore integrity.
 
 The provider supplies replaceable compute and network reachability; IZAKHONO owns the mail runtime, provisioning logic, DNS intent, security policy and evidence contract.
