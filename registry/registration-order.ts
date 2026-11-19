@@ -19,7 +19,8 @@ export function nextOrderState(order:RegistrationOrder):RegistrationOrderState{
 }
 export function assertOrderTransition(from:RegistrationOrderState,to:RegistrationOrderState){
  const i=sequence.indexOf(from),j=sequence.indexOf(to);
- if(j!==i+1)throw new Error('invalid registration order transition: '+from+' -> '+to);
+ const verifiedHandoverReady=from==='dnsVerified'&&to==='readyForHandover';
+ if(j!==i+1&&!verifiedHandoverReady)throw new Error('invalid registration order transition: '+from+' -> '+to);
 }
 export function transitionOrder(order:RegistrationOrder,to:RegistrationOrderState,patch:Partial<RegistrationOrder>={}):RegistrationOrder{
  if(order.state===to)return order;
