@@ -1,8 +1,9 @@
 import crypto from 'node:crypto';
 import { DatabaseSync } from 'node:sqlite';
+import { assertManagedAddress } from './mail-domain-policy.mjs';
 
 const databasePath = process.env.MAIL_DATABASE_PATH || process.env.IZAKHONO_MAIL_DB || './izakhono-mail.sqlite';
-const domain = (process.env.MAIL_PRIVATE_DOMAIN || 'izakhono').toLowerCase();
+const privateDomain = (process.env.MAIL_PRIVATE_DOMAIN || 'izakhono').toLowerCase();
 
 const db = new DatabaseSync(databasePath);
 db.exec(`PRAGMA foreign_keys = ON;`);
@@ -29,9 +30,15 @@ db.exec(`CREATE TABLE IF NOT EXISTS mail_core_audit (
 const now = () => new Date().toISOString();
 const id = p => `${p}_${crypto.randomUUID()}`;
 
-export function ensureIdentity(address, displayName = 'Bevan Shelton') {
+function assertIdentityAddress(address) {
   const canonical = address.trim().toLowerCase();
-  if (!new RegExp(`^.+@${domain.replace('.', '\\.')}$`).test(canonical)) throw new Error('Private IZAKHONO identity required');
+  if (canonical.endsWith(`@${privateDomain}`)) return canonical;
+  assertManagedAddress(canonical);
+  return canonical;
+}
+
+export function ensureIdentity(address, displayName = 'Bevan Shelton') {
+  const canonical = assertIdentityAddress(address);
   const existing = db.prepare('SELECT * FROM mail_identities WHERE address = ?').get(canonical);
   if (existing) return existing;
   const ts = now();
@@ -47,7 +54,7 @@ export function ensureIdentity(address, displayName = 'Bevan Shelton') {
 
 function audit(eventType, actor, detail) {
   db.prepare('INSERT INTO mail_core_audit (id,event_type,actor,detail,created_at) VALUES (?,?,?,?,?)')
-    .run(id('audit'), eventType, detail ? actor : actor, detail || '', now());
+    .run(id('audit'), eventType, actor, detail || '', now());
 }
 
 function parseRaw(raw) {
@@ -89,7 +96,7 @@ export function deliverInbound({ messageId, from, recipients, raw }) {
 export function storeSent({ address, recipients, subject, body, messageId, deliveryState = 'queued' }) {
   const identity = ensureIdentity(address);
   const ts = now();
-  const idempotentMessageId = messageId || `<${crypto.randomUUID()}@${domain}>`;
+  const idempotentMessageId = messageId || `<${crypto.randomUUID()}@${privateDomain}>`;
   const existing = db.prepare('SELECT * FROM mail_messages WHERE message_id = ?').get(idempotentMessageId);
   if (existing) return existing;
   const safeRecipients = Array.isArray(recipients) ? recipients : [];
