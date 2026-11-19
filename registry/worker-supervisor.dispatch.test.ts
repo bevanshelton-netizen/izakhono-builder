@@ -20,8 +20,10 @@ const jobs = [
   makeJob({ id: "waiting", sourceId: "waiting", workerId: "custom-worker", dependencyIds: ["missing-dependency"], priority: 70 }),
   makeJob({ id: "build-no-input", sourceId: "build-no-input", workerId: "build-worker", priority: 60 }),
   makeJob({ id: "build-ready", sourceId: "build-ready", workerId: "build-worker", priority: 50, input: { repository: "owner/repo", revision: "abcdef1234567", checks: ["typecheck"] } }),
+  makeJob({ id: "waiting-complete", sourceId: "waiting-complete", workerId: "custom-worker", dependencyIds: ["done-dependency"], priority: 10 }),
+  makeJob({ id: "done-dependency", sourceId: "done-dependency", workerId: "custom-worker", status: "completed" }),
 ];
 const selected = selectRunnableSupervisorJobs(jobs, handlers, 10);
-assert.deepEqual(selected.map(job => job.id), ["custom", "build-ready"]);
-assert.deepEqual(selectRunnableSupervisorJobs(jobs, handlers, 1).map(job => job.id), ["custom"]);
+assert.deepEqual(selected.map(job => job.id), ["build-ready", "custom", "waiting-complete"]);
+assert.deepEqual(selectRunnableSupervisorJobs(jobs, handlers, 1).map(job => job.id), ["build-ready"]);
 console.log("registered worker dispatch tests: ok (explicit handlers, risk gates, human gates, dependencies, immutable build inputs, priority and limit)");
