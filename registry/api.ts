@@ -2,7 +2,7 @@ import {normalizeDomain,createDomain,RegistryStore,transitionDomain,DomainStatus
 import {MemoryRegistryStore} from './memory-store';
 import {rdapDomain} from './rdap';
 import {eppHandle} from './epp-server';
-import {bearerValid} from './security';
+import {registryAuthorized} from './security';
 import {hashRequest,IdempotencyStore,MemoryIdempotencyStore} from './idempotency';
 import {Registrar} from './registrar';
 import {RegistrarStore,MemoryRegistrarStore} from './registrar-store';
@@ -15,7 +15,7 @@ const memoryRegistrars=new MemoryRegistrarStore();
 const memoryOrders=new MemoryRegistrationOrderStore();
 const json=(data:unknown,status=200)=>new Response(JSON.stringify(data),{status,headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store'}});
 export interface RegistryEnv{REGISTRY_TOKEN_SHA256?:string;APP_ENV?:string}
-async function auth(request:Request,env:RegistryEnv){return !env.REGISTRY_TOKEN_SHA256 || await bearerValid(request.headers.get('authorization')||undefined,env.REGISTRY_TOKEN_SHA256)}
+async function auth(request:Request,env:RegistryEnv){return registryAuthorized(env.REGISTRY_TOKEN_SHA256,request.headers.get('authorization')||undefined)}
 export async function registryFetch(request:Request,store:RegistryStore=memory,env:RegistryEnv={},idempotency:IdempotencyStore=memoryIdempotency,registrars:RegistrarStore=memoryRegistrars,orders:RegistrationOrderStore=memoryOrders){
  const url=new URL(request.url);
  if(url.pathname==='/health')return json({ok:true,service:'IZAKHONO REGISTRY',mode:env.APP_ENV==='production'?'persistent-control-plane':'test-control-plane'});
@@ -88,7 +88,7 @@ export async function registryFetch(request:Request,store:RegistryStore=memory,e
   try{return json({ok:true,domain:await transitionDomain(store,body.name,body.status,'api')});}catch(e){return json({ok:false,error:e instanceof Error?e.message:'transition failed'},409);}
  }
  if(url.pathname==='/epp'&&request.method==='POST'){
-  if(env.REGISTRY_TOKEN_SHA256 && !(await bearerValid(request.headers.get('authorization')||undefined,env.REGISTRY_TOKEN_SHA256)))return new Response('<epp><response><result code="2201"><msg>authorization error</msg></result></response></epp>',{status:401,headers:{'content-type':'application/epp+xml'}});
+  if(!(await auth(request,env)))return new Response('<epp><response><result code="2201"><msg>authorization error</msg></result></response></epp>',{status:401,headers:{'content-type':'application/epp+xml'}});
   const registrarId=request.headers.get('x-registrar-id')?.trim();
   if(!registrarId)return new Response('<epp><response><result code="2201"><msg>registrar identity required</msg></result></response></epp>',{status:401,headers:{'content-type':'application/epp+xml'}});
   const registrar=await registrars.get(registrarId);
