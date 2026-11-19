@@ -173,6 +173,16 @@ export function scaffoldApplication({ workspaceRoot, projectId, name, goal, temp
   if (Object.keys(files).length > MAX_FILES) throw new Error('application-template-file-limit');
   const root = path.resolve(workspaceRoot);
   fs.mkdirSync(root, { recursive: true });
+  const manifestPath = path.join(root, 'izakhono.application.json');
+  if (fs.existsSync(manifestPath)) {
+    const existing = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+    if (existing.projectId !== id || existing.templateId !== templateId) throw new Error('application-workspace-conflict');
+    const missing = existing.files.filter((relative) => !fs.existsSync(ensureInside(root, safeRelativePath(relative))));
+    if (missing.length) throw new Error('application-workspace-incomplete');
+    return { ...existing, fileCount: existing.files.length + 1, workspaceRoot: root, reused: true };
+  }
+  const unexpected = fs.readdirSync(root).filter((entry) => entry !== 'architecture.json' && entry !== '.izakhono');
+  if (unexpected.length) throw new Error('application-workspace-not-empty');
   for (const [relative, content] of Object.entries(files)) {
     const target = ensureInside(root, safeRelativePath(relative));
     fs.mkdirSync(path.dirname(target), { recursive: true });
@@ -187,7 +197,7 @@ export function scaffoldApplication({ workspaceRoot, projectId, name, goal, temp
     externalAiRequired: false,
   };
   fs.writeFileSync(manifestPath, json(manifest), { flag: 'wx' });
-  return { ...manifest, fileCount: manifest.files.length + 1, workspaceRoot: root };
+  return { ...manifest, fileCount: manifest.files.length + 1, workspaceRoot: root, reused: false };
 }
 
 function listFiles(root, current = root, result = []) {
