@@ -55,10 +55,15 @@ The `.example.invalid` hostnames and token placeholders above are examples only,
 ## 3. Evaluate promotion prerequisite
 
 ```bash
+CONNECTA_REQUIRE_CRYPTOGRAPHIC_EVIDENCE=true \\
+NODE01_HEALTH_TOKEN="$CONNECTA_NODE01_HEALTH_TOKEN" \\
+NODE02_HEALTH_TOKEN="$CONNECTA_NODE02_HEALTH_TOKEN" \\
+NODE03_HEALTH_TOKEN="$CONNECTA_NODE03_HEALTH_TOKEN" \\
+NODE04_HEALTH_TOKEN="$CONNECTA_NODE04_HEALTH_TOKEN" \\
 bash infra/node-cluster/CONNECTA-PROMOTION-GATE.sh /tmp/connecta-node-cluster-health.json
 ```
 
-Missing, malformed, stale, simulated, inferred, topology-only, CI-only, repository-only, duplicate, identity-mismatched, unauthenticated or invalid-HMAC evidence is rejected.
+The promotion script forces cryptographic verification on every invocation. Four distinct protected 64-hex per-node credentials are mandatory; never use synthetic fixture tokens for promotion. Missing, malformed, stale, simulated, inferred, topology-only, CI-only, repository-only, duplicate, identity-mismatched, unauthenticated, non-HTTP-200 or invalid-HMAC evidence is rejected.
 
 ## 4. Full activation
 
