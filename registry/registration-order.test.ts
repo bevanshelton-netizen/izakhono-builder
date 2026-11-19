@@ -12,6 +12,10 @@ await store.put(done);
 if(!(await store.get('o1'))?.handedOver)throw new Error('order store failed');
 if((await store.listByDomain('alpha.izt')).length!==1)throw new Error('domain listing failed');
 
+const dnsVerified={...base,state:'dnsVerified' as const,authorityConfirmed:true,dnsPublished:true,dnsVerified:true};
+const handoverReady=transitionOrder(dnsVerified,'readyForHandover',{rdapVerified:true});
+if(handoverReady.state!=='readyForHandover'||!handoverReady.rdapVerified)throw new Error('verified RDAP transition to handover readiness failed');
+
 const authority=transitionOrder(base,'authorityConfirmed',{authorityConfirmed:true});
 if(authority.state!=='authorityConfirmed')throw new Error('authority transition failed');
 let invalid=false;try{transitionOrder(base,'readyForHandover',{authorityConfirmed:true,dnsPublished:true,dnsVerified:true,rdapVerified:true});}catch{invalid=true}
