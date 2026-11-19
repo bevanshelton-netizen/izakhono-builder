@@ -51,6 +51,19 @@ if [[ -n "$existing_stalwart" && "$existing_stalwart" != "izakhono-mailserver" ]
   exit 1
 fi
 
+if [[ "$existing_stalwart" == "izakhono-mailserver" ]]; then
+  existing_volumes="$(docker inspect -f '{{range .Mounts}}{{.Name}} {{end}}' izakhono-mailserver)"
+  existing_networks="$(docker inspect -f '{{json .NetworkSettings.Networks}}' izakhono-mailserver)"
+  [[ "$existing_volumes" == *"izakhono-mail-etc"* && "$existing_volumes" == *"izakhono-mail-data"* ]] || {
+    echo "BLOCKED: existing Stalwart is not using the canonical IZAKHONO mail volumes." >&2
+    exit 1
+  }
+  [[ "$existing_networks" == *"izakhono-mail"* ]] || {
+    echo "BLOCKED: existing Stalwart is not attached to the shared izakhono-mail network." >&2
+    exit 1
+  }
+fi
+
 echo "[2/6] Ensuring the shared persistent Stalwart volumes exist..."
 docker volume inspect izakhono-mail-etc >/dev/null 2>&1 || docker volume create izakhono-mail-etc >/dev/null
 docker volume inspect izakhono-mail-data >/dev/null 2>&1 || docker volume create izakhono-mail-data >/dev/null
