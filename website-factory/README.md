@@ -1,23 +1,23 @@
 # IZAKHONO Website Factory v1
 
-The Website Factory is the owner-operated intake surface for the native IZAKHONO BUILDER. It submits a structured website brief to the authenticated `POST /api/build-anything` route and displays the resulting project, validation, internal-repository and release-candidate evidence.
+The Website Factory is the portfolio-facing intake surface for IZAKHONO BUILDER. It collects a concise business brief locally in the browser and directs the owner to the existing authenticated Builder "Build Anything" panel for project creation. It does not create fake job IDs, store credentials, or call owner-only APIs without the established Builder authorization flow.
 
 ## Production contract
 
-- One authorized owner request becomes one structured website build job.
-- The frontend sends no owner secret; it relies on the same-origin authenticated Builder session.
-- Unauthenticated requests receive HTTP 401 and do not create a job.
-- The Worker handoff currently uses deterministic multi-file generation and does not perform model inference. The native Node Builder runtime separately supports the private Ollama-compatible adapter; unifying the production handoff with that runtime is part of the owned HOST cutover.
-- If local inference is unavailable, the Builder uses deterministic native generation; it never switches to a hosted inference provider.
+- The Website Factory page is a navigation/intake surface, not an independent provisioning backend.
+- The existing Builder dashboard remains the only owner-authenticated project creation surface.
+- No admin secret, recovery credential, API key or payment data is collected or stored by this page.
+- The native Node Builder supports deterministic multi-file templates and a private Ollama-compatible model adapter.
+- The legacy Worker handoff currently uses deterministic generation and does not perform model inference. Unifying the production handoff with the native runtime is part of the owned HOST cutover.
 - NODE01 is a logical software/runtime identity, not a physical server.
 - Release candidates remain private until owned HOST, DNS/TLS, backup/restore and end-to-end acceptance evidence passes.
 
 ## Build and serve
 
-Run `npm run website-factory:build` from the repository root. This verifies the safe DOM/API contract and copies the canonical `website-factory/index.html` into `public/website-factory/index.html` for same-origin static delivery.
+Run `npm run website-factory:build` from the repository root. This verifies the safe DOM/navigation contract and copies the canonical `website-factory/index.html` into `public/website-factory/index.html` for static delivery.
 
-Open `/website-factory/` on the authenticated Builder origin. The form does not accept API keys, passwords, payment details or owner credentials.
+Open `/website-factory/` on the Builder origin. Submitting the brief opens `/#buildAnything`, where the existing owner authentication and Build Anything API are used.
 
 ## Release boundary
 
-The intake UI and Builder handoff are implemented. Customer-facing public order intake, payment activation, custom-domain provisioning, DNS delegation, SSL, mail provisioning and public deployment remain separately gated HOST/Provisioner capabilities. A generated release candidate is not a production deployment.
+The navigation surface and native Builder template catalog are implemented. A separate customer-facing public order API, payment activation, custom-domain provisioning, DNS delegation, SSL, mail provisioning and public deployment remain separately gated HOST/Provisioner capabilities. A generated release candidate is not a production deployment.
