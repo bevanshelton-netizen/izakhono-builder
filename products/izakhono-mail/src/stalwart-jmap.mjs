@@ -41,7 +41,7 @@ function resultFor(methodResponses, method) {
 }
 
 export class StalwartJmapTransport {
-  constructor({ baseUrl, username, password, fetchImpl = globalThis.fetch, timeoutMs = 10000, acmeProviderId = '' }) {
+  constructor({ baseUrl, username, password, fetchImpl = globalThis.fetch, timeoutMs = 10000 }) {
     if (!baseUrl || !username || !password || typeof fetchImpl !== 'function') {
       throw new Error('stalwart-jmap-configuration-required');
     }
@@ -58,7 +58,6 @@ export class StalwartJmapTransport {
     this.authorization = 'Basic ' + Buffer.from(String(username) + ':' + String(password), 'utf8').toString('base64');
     this.fetchImpl = fetchImpl;
     this.timeoutMs = timeoutMs;
-    this.acmeProviderId = String(acmeProviderId || '').trim();
   }
 
   async call(method, args) {
@@ -93,43 +92,15 @@ export class StalwartJmapTransport {
     const canonical = String(domain || '').trim().toLowerCase().replace(/\.$/, '');
     if (!DOMAIN_RE.test(canonical)) throw new Error('stalwart-domain-invalid');
     const query = await this.call('x:Domain/query', { filter: { name: canonical } });
-    let domainId = Array.isArray(query.ids) ? query.ids[0] : null;
-    let created = false;
-
-    if (!domainId) {
-      const certificateManagement = this.acmeProviderId
-        ? { '@type': 'Automatic', acmeProviderId: this.acmeProviderId, subjectAlternativeNames: { mail: true } }
-        : { '@type': 'Manual' };
-      const create = await this.call('x:Domain/set', {
-        create: {
-          izakhonoDomain: {
-            name: canonical,
-            aliases: {},
-            certificateManagement,
-            dkimManagement: { '@type': 'Automatic' },
-            dnsManagement: { '@type': 'Manual' },
-            subAddressing: { '@type': 'Enabled' },
-          },
-        },
-      });
-      domainId = create.created?.izakhonoDomain?.id || null;
-      if (!domainId) {
-        const failure = create.notCreated?.izakhonoDomain;
-        if (failure) throw new Error('stalwart-domain-create-failed:' + String(failure.type || 'rejected'));
-        const retry = await this.call('x:Domain/query', { filter: { name: canonical } });
-        domainId = Array.isArray(retry.ids) ? retry.ids[0] : null;
-      } else {
-        created = true;
-      }
-    }
-    if (!domainId) throw new Error('stalwart-domain-not-found-after-create');
+    const domainId = Array.isArray(query.ids) ? query.ids[0] : null;
+    if (!domainId) throw new Error('stalwart-domain-not-provisioned');
     const fetched = await this.call('x:Domain/get', { ids: [domainId] });
     const record = Array.isArray(fetched.list) ? fetched.list.find((item) => item.id === domainId) : null;
     if (!record || record.name !== canonical) throw new Error('stalwart-domain-verification-failed');
     return {
       domainId,
       domain: canonical,
-      created,
+      created: false,
       dnsZoneFile: typeof record.dnsZoneFile === 'string' ? record.dnsZoneFile : '',
       certificateManagement: record.certificateManagement || null,
       dkimManagement: record.dkimManagement || null,
@@ -206,7 +177,6 @@ export function createStalwartTransportFromEnv(env = process.env, options = {}) 
     username: env.STALWART_PROVISIONER_USERNAME,
     password: env.STALWART_PROVISIONER_PASSWORD,
     timeoutMs: Number(env.STALWART_JMAP_TIMEOUT_MS || 10000),
-    acmeProviderId: env.STALWART_ACME_PROVIDER_ID || '',
     ...options,
   });
 }
