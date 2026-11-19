@@ -55,7 +55,7 @@ export async function runOptimizationCycle({ input = {}, persistence, lookupCycl
     snapshot_id: snapshot?.id || null,
     experiments_created: experiments.length,
     rejected_candidates: rejected.length,
-    measurement_sources: [...new Set(experiments.map((item) => item?.measurement_source).filter(Boolean))],
+    measurement_sources: [...new Set(experiments.map((item) => item?.record?.measurement_source || item?.measurement_source).filter(Boolean))],
     status: 'completed',
     live_money_movement: false,
     authorization_mode: 'sandbox_only',
