@@ -37,7 +37,7 @@ The mail runtime publishes no separate public web proxy. Public ports 80/443 rem
 
 ## Owner-controlled bootstrap
 
-1. Copy `.env.example` to `.env`; set a unique Roundcube DB password. Do not commit `.env`.
+1. Copy `.env.example` to `.env`; set separate high-entropy Roundcube database root and application passwords. Do not commit `.env`.
 2. Start the owned HOST stack first so its shared edge and `izakhono-mail` network exist.
 3. Run `./ops/preflight.sh`, then `./ops/bootstrap.sh`.
 4. Complete Stalwart's first-run setup through an SSH tunnel to loopback port 18081. Never expose the bootstrap/admin listener publicly.
