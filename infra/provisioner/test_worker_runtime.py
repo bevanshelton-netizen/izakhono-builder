@@ -20,9 +20,9 @@ def test_end_to_end():
     job.evidence["PAYMENT_VERIFIED"]={"evidence_id":"pay-test","observed_at":utc_now(),"verified":True,"checks":["payment.verified"]}
     store.save(job); queue.enqueue(job)
     worker=ProvisionerWorker(store,queue,{name:evidence for name in ADAPTERS},REGISTRY)
-    results=[worker.run_once() for _ in range(8)]
+    results=[worker.run_once() for _ in range(10)]
     assert results[-1].status=="accepted" and job.state=="HANDOVER_READY"
-    assert set(job.evidence)==set(("PAYMENT_VERIFIED","TENANT_CREATED","DOMAIN_READY","DNS_READY","SITE_READY","TLS_READY","MAIL_READY","INTEGRATIONS_READY","ACCEPTANCE_PASSED"))
+    assert set(job.evidence)==set(("PAYMENT_VERIFIED","TENANT_CREATED","DOMAIN_READY","DNS_READY","SITE_READY","TLS_READY","MAIL_READY","BILLING_VERIFIED","INTEGRATIONS_READY","ACCEPTANCE_PASSED"))
 
 def test_owned_first():
     executor=AdapterExecutor(REGISTRY,{"izakhono-host":evidence,"fallback":evidence})
