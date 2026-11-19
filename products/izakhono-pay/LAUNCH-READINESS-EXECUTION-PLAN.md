@@ -106,3 +106,11 @@ Committed on the launch branch:
 - The production health check now expects `mode=disabled`.
 
 This is a fail-closed pipeline correction, not a production deployment. The production D1 database must be provisioned in the authorised Cloudflare account and its verified ID added to the production config before the workflow can proceed. No Cloudflare resources, secrets, production payment switches, or live transactions were changed by these commits.
+
+
+### Additional fail-closed routing and operator-secret correction — 2026-11-19
+
+- The payment core now treats `PAYMENT_MODE=disabled` as an unconditional routing stop before provider selection. This remains true even if provider credentials are accidentally present; sandbox mode retains its existing test-provider routing behaviour.
+- Added a regression test proving disabled mode rejects iKhokha, Paystack and PayFast when all corresponding credentials are present.
+- Restored installation of the owner-controlled `ADMIN_SECRET` as a separate production secret step after the Worker bootstrap and D1 migrations. Provider credentials are not installed by this workflow.
+- These source changes require CI execution before merge. The production D1 identity is still absent, so the preflight continues to block deployment safely.
