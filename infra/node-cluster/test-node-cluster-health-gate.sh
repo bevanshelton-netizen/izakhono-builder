@@ -18,22 +18,26 @@ import sys
 args = sys.argv[1:]
 headers = {}
 url = args[-1]
+output = None
 for index, value in enumerate(args[:-1]):
     if value == "--header" and index + 1 < len(args):
         key, _, val = args[index + 1].partition(":")
         headers[key.strip().lower()] = val.strip()
+    if value == "--output" and index + 1 < len(args):
+        output = args[index + 1]
 
 nodes = {
-    "https://node01.example.test/health/cluster": ("NODE01", "a" * 64),
-    "https://node02.example.test/health/cluster": ("NODE02", "b" * 64),
-    "https://node03.example.test/health/cluster": ("NODE03", "c" * 64),
-    "https://node04.example.test/health/cluster": ("NODE04", "d" * 64),
-    "https://node04-bad-signature.example.test/health/cluster": ("NODE04", "d" * 64),
+    "https://node01.example.test/health/cluster": ("NODE01", "a" * 64, 200),
+    "https://node02.example.test/health/cluster": ("NODE02", "b" * 64, 200),
+    "https://node03.example.test/health/cluster": ("NODE03", "c" * 64, 200),
+    "https://node04.example.test/health/cluster": ("NODE04", "d" * 64, 200),
+    "https://node04-bad-signature.example.test/health/cluster": ("NODE04", "d" * 64, 200),
+    "https://node04-redirect.example.test/health/cluster": ("NODE04", "d" * 64, 302),
 }
 node = nodes.get(url)
-if node is None:
+if node is None or output is None:
     raise SystemExit(22)
-name, token = node
+name, token, status = node
 if headers.get("authorization") != f"Bearer {token}":
     raise SystemExit(22)
 nonce = headers.get("x-izakhono-probe-nonce", "")
@@ -44,14 +48,17 @@ signature = hmac.new(
 ).hexdigest()
 if "bad-signature" in url:
     signature = "0" * 64
-print(json.dumps({
+body = json.dumps({
     "ok": True,
     "cluster": "izakhono-production",
     "runtimeNode": name,
     "authScheme": "bearer-hmac-sha256",
     "probeNonce": nonce,
     "probeSignature": signature,
-}))
+})
+with open(output, "w", encoding="utf-8") as stream:
+    stream.write(body)
+print(status)
 PY
 chmod +x "$tmp/bin/curl"
 
@@ -78,6 +85,7 @@ assert d["status"] == "PASS"
 assert d["authentication"] == {"scheme":"bearer-hmac-sha256","perNodeCredentials":True}
 assert len(d["healthyNodes"]) == 4
 assert all(n["authentication"]["challengeVerified"] for n in d["nodes"])
+assert all(n["http"]["status"] == 200 for n in d["nodes"])
 PY
 
 expect_blocked() {
@@ -108,9 +116,14 @@ expect_blocked "invalid HMAC challenge" env "${COMMON_ENV[@]}" \
   NODE04_URL=https://node04-bad-signature.example.test/health/cluster OUTPUT="$tmp/bad-signature.json" \
   /usr/bin/bash "$ROOT/infra/node-cluster/NODE-CLUSTER-HEALTH-GATE.sh"
 
+# A valid-looking signed body on a redirect/non-200 response must not pass.
+expect_blocked "HTTP redirect" env "${COMMON_ENV[@]}" \
+  NODE04_URL=https://node04-redirect.example.test/health/cluster OUTPUT="$tmp/redirect.json" \
+  /usr/bin/bash "$ROOT/infra/node-cluster/NODE-CLUSTER-HEALTH-GATE.sh"
+
 # Credentials embedded in an endpoint URL are rejected before probing.
 expect_blocked "URL-embedded credentials" env "${COMMON_ENV[@]}" \
   NODE04_URL=https://secret@node04.example.test/health/cluster OUTPUT="$tmp/url-credentials.json" \
   /usr/bin/bash "$ROOT/infra/node-cluster/NODE-CLUSTER-HEALTH-GATE.sh"
 
-echo "[PASS] health gate verifies unique HTTPS endpoints, unique per-node credentials and fresh HMAC challenges."
+echo "[PASS] health gate requires HTTP 200, unique HTTPS endpoints, unique per-node credentials and fresh HMAC challenges."
