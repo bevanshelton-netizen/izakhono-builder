@@ -35,7 +35,7 @@ services:
     environment:
       PORT: 8091
       IZAKHONO_MAIL_API_TOKEN: ${IZAKHONO_MAIL_API_TOKEN:?set IZAKHONO_MAIL_API_TOKEN}
-      SMTP_HOST: ${SMTP_HOST:-stalwart}
+      SMTP_HOST: ${SMTP_HOST:-mail.izakhonoafrica.co.za}
       SMTP_PORT: ${SMTP_PORT:-587}
       SMTP_TLS_MODE: ${SMTP_TLS_MODE:-starttls}
       SMTP_USER: ${SMTP_USER:-}
