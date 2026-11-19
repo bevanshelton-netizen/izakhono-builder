@@ -1,6 +1,7 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const MAX_FILES = 128;
 const MAX_FILE_BYTES = 1024 * 1024;
@@ -151,11 +152,23 @@ test('health contract is stable', () => {
   };
 }
 
+function loadTemplateCatalog() {
+  const file = fileURLToPath(new URL('../templates/native-applications.v1.json', import.meta.url));
+  const catalog = JSON.parse(fs.readFileSync(file, 'utf8'));
+  if (catalog.schema !== 'izakhono.application-template-catalog/v1' || !Array.isArray(catalog.templates)) {
+    throw new Error('application-template-catalog-invalid');
+  }
+  return catalog;
+}
+
 export function availableApplicationTemplates() {
-  return Object.freeze([
-    { id: 'static-web', description: 'Responsive static website served by a hardened Node.js HTTP process' },
-    { id: 'node-api', description: 'Minimal Node.js HTTP API with health endpoint and built-in test runner' },
-  ]);
+  return Object.freeze(loadTemplateCatalog().templates.map((template) => ({
+    id: template.id,
+    version: template.version,
+    description: template.description,
+    fileCount: template.files.length,
+    externalAiRequired: template.externalAiRequired,
+  })));
 }
 
 export function scaffoldApplication({ workspaceRoot, projectId, name, goal, templateId = 'static-web' }) {
@@ -167,16 +180,22 @@ export function scaffoldApplication({ workspaceRoot, projectId, name, goal, temp
     goal: String(goal || '').trim().slice(0, 4000),
   };
   if (!project.goal) throw new Error('application-goal-required');
+  const catalog = loadTemplateCatalog();
+  const template = catalog.templates.find((entry) => entry.id === templateId);
+  if (!template) throw new Error('application-template-unsupported');
   const files = templateId === 'static-web' ? websiteTemplate(project)
     : templateId === 'node-api' ? apiTemplate(project) : null;
-  if (!files) throw new Error('application-template-unsupported');
-  if (Object.keys(files).length > MAX_FILES) throw new Error('application-template-file-limit');
+  if (!files) throw new Error('application-template-implementation-missing');
+  const actualFiles = Object.keys(files).sort();
+  const expectedFiles = [...template.files].sort();
+  if (JSON.stringify(actualFiles) !== JSON.stringify(expectedFiles)) throw new Error('application-template-catalog-mismatch');
+  if (actualFiles.length > MAX_FILES) throw new Error('application-template-file-limit');
   const root = path.resolve(workspaceRoot);
   fs.mkdirSync(root, { recursive: true });
   const manifestPath = path.join(root, 'izakhono.application.json');
   if (fs.existsSync(manifestPath)) {
     const existing = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
-    if (existing.projectId !== id || existing.templateId !== templateId) throw new Error('application-workspace-conflict');
+    if (existing.projectId !== id || existing.templateId !== templateId || existing.templateVersion !== template.version) throw new Error('application-workspace-conflict');
     const missing = existing.files.filter((relative) => !fs.existsSync(ensureInside(root, safeRelativePath(relative))));
     if (missing.length) throw new Error('application-workspace-incomplete');
     return { ...existing, fileCount: existing.files.length + 1, workspaceRoot: root, reused: true };
