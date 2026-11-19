@@ -6,7 +6,7 @@ cd "$(dirname "$0")/.."
 backup="${1:-}"
 identity="${2:-}"
 if [[ -z "$backup" || -z "$identity" || ! -f "$backup" || ! -f "$identity" ]]; then
-  echo "Usage: ./ops/restore.sh backups/izakhono-mail-<stamp>.tar.gz.age /secure/path/age-identity.txt" >&2
+  echo "Usage: bash ops/restore.sh backups/izakhono-mail-<stamp>.tar.gz.age /secure/path/age-identity.txt" >&2
   exit 2
 fi
 command -v age >/dev/null || { echo "BLOCKED: age is required for restore." >&2; exit 1; }
@@ -54,7 +54,7 @@ for component in stalwart-etc stalwart-data roundcube-db; do
 done
 
 echo "[3/6] Creating an encrypted pre-restore safety backup..."
-./ops/backup.sh
+bash ./ops/backup.sh
 
 was_mail="$(docker inspect -f '{{.State.Running}}' izakhono-mailserver 2>/dev/null || echo false)"
 was_db="$(docker inspect -f '{{.State.Running}}' izakhono-roundcube-db 2>/dev/null || echo false)"
