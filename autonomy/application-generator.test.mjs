@@ -11,7 +11,7 @@ try {
     workspaceRoot: workspace, projectId: 'school-portal', name: 'School Portal',
     goal: 'A secure portal for school uniform ordering', templateId: 'static-web',
   });
-  assert.equal(first.fileCount, 8);
+  assert.equal(first.fileCount, 10);
   assert.ok(fs.existsSync(path.join(workspace, 'src/server.mjs')));
   assert.ok(fs.existsSync(path.join(workspace, 'src/content.mjs')));
   assert.ok(fs.existsSync(path.join(workspace, 'public/index.html')));
@@ -22,7 +22,7 @@ try {
   const snapshotA = createCanonicalSnapshot({ workspaceRoot: workspace, repositoryRoot: path.join(temp, 'repository') });
   const snapshotB = createCanonicalSnapshot({ workspaceRoot: workspace, repositoryRoot: path.join(temp, 'repository') });
   assert.equal(snapshotA.snapshotHash, snapshotB.snapshotHash, 'identical workspaces must produce identical snapshots');
-  assert.equal(snapshotA.fileCount, 8);
+  assert.equal(snapshotA.fileCount, 10);
   const objectPath = path.join(temp, 'repository', 'objects', snapshotA.snapshotHash.slice(0, 2));
   assert.ok(fs.existsSync(objectPath));
 
