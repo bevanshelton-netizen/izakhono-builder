@@ -114,3 +114,14 @@ This is a fail-closed pipeline correction, not a production deployment. The prod
 - Added a regression test proving disabled mode rejects iKhokha, Paystack and PayFast when all corresponding credentials are present.
 - Restored installation of the owner-controlled `ADMIN_SECRET` as a separate production secret step after the Worker bootstrap and D1 migrations. Provider credentials are not installed by this workflow.
 - These source changes require CI execution before merge. The production D1 identity is still absent, so the preflight continues to block deployment safely.
+
+
+### CI remediation and deployment-order hardening — 2026-11-19
+
+- Corrected rollback-learning feedback filtering so a recorded rollback decision actually excludes that candidate from the next sandbox cycle.
+- Aligned the signal-ordering test with the implementation's impact-magnitude ordering (largest absolute movement first).
+- Updated the experiment-persistence test fixture to supply the required verified synthetic measurement source; production telemetry remains separately classified.
+- Corrected the optimization runner's reported measurement-source summary to read the persisted adapter record shape.
+- Added an explicit all-zero D1 database ID placeholder to the production Wrangler config and made the deployment preflight reject that placeholder. This satisfies the layout contract while ensuring an unprovisioned database cannot pass preflight.
+- Reordered the production pipeline to apply D1 migrations and verify that no merchant is active before deploying the Worker. The Worker remains payment-disabled; admin secret installation follows initial deployment.
+- Latest CI run must be inspected after these commits; no production deployment is authorised or claimed.
