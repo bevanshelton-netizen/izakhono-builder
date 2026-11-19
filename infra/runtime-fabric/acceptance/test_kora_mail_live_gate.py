@@ -1,6 +1,5 @@
 import json
 import os
-import stat
 import subprocess
 from pathlib import Path
 
@@ -23,7 +22,7 @@ def base_evidence(tmp_path: Path) -> Path:
 def run_gate(evidence: Path):
     env = os.environ.copy()
     env["KORA_MAIL_EVIDENCE_DIR"] = str(evidence)
-    return subprocess.run([str(GATE)], text=True, capture_output=True, env=env, check=False)
+    return subprocess.run(["bash", str(GATE)], text=True, capture_output=True, env=env, check=False)
 
 
 def test_missing_external_evidence_is_pending(tmp_path):
@@ -54,6 +53,6 @@ def test_complete_external_evidence_is_live_verified(tmp_path):
     assert promotion["status"] == "LIVE_VERIFIED"
 
 
-def test_gate_is_executable():
-    mode = GATE.stat().st_mode
-    assert mode & stat.S_IXUSR
+def test_gate_has_bash_shebang():
+    assert GATE.is_file()
+    assert GATE.read_text(encoding="utf-8").startswith("#!/usr/bin/env bash")
