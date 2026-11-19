@@ -1,20 +1,27 @@
 services:
   stalwart:
     image: stalwartlabs/stalwart:v0.16
+    container_name: izakhono-mailserver
     restart: unless-stopped
+    hostname: ${MAIL_HOSTNAME:-mail.izakhonoafrica.co.za}
     environment:
+      TZ: ${TZ:-Africa/Johannesburg}
       STALWART_RECOVERY_ADMIN: ${STALWART_RECOVERY_ADMIN:?set STALWART_RECOVERY_ADMIN}
     ports:
       - "25:25"
       - "465:465"
       - "587:587"
-      - "143:143"
       - "993:993"
-      - "8443:443"
+      # Admin/JMAP bootstrap listeners are loopback-only. Public HTTP/HTTPS belongs to HOST EDGE.
+      - "127.0.0.1:18080:443"
+      - "127.0.0.1:18081:8080"
     volumes:
       - stalwart-etc:/etc/stalwart
       - stalwart-data:/var/lib/stalwart
-    networks: [izakhono-mail]
+    networks:
+      izakhono-mail:
+        aliases:
+          - ${MAIL_HOSTNAME:-mail.izakhonoafrica.co.za}
     healthcheck:
       test: ["CMD", "sh", "-c", "wget -qO- http://127.0.0.1:8080/healthz/live >/dev/null 2>&1"]
       interval: 15s
@@ -29,4 +36,8 @@ networks:
 
 volumes:
   stalwart-etc:
+    external: true
+    name: izakhono-mail-etc
   stalwart-data:
+    external: true
+    name: izakhono-mail-data
