@@ -29,6 +29,8 @@ def _local_url() -> str:
     parsed = urlparse(value)
     if parsed.scheme not in {"http", "https"} or not parsed.hostname or parsed.username or parsed.password or parsed.fragment:
         raise ValueError("Invalid local Ollama-compatible endpoint")
+    if parsed.path != "/api/chat" or parsed.query:
+        raise ValueError("Local inference endpoint must use the Ollama-compatible /api/chat route")
     host = parsed.hostname.lower()
     local_name = host in {"localhost"} or host.endswith((".localhost", ".local", ".internal"))
     try:
