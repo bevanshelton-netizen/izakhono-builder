@@ -23,13 +23,19 @@ function failure(state, target, extra = {}) {
   };
 }
 
-export async function provisionMailbox({ platform, mailbox, displayName = '' }) {
+export async function provisionMailbox({
+  platform, mailbox, displayName = '',
+  transportFactory = createStalwartTransportFromEnv,
+  dnsVerifier = verifyDnsIntent,
+  dnsIntentBuilder = buildDnsIntent,
+  evidenceDirectory = evidenceDir,
+}) {
   const target = assertProvisionTarget({ platform, mailbox });
   if (!target.domain) return failure('domain_required', target);
 
   let transport;
   try {
-    transport = createStalwartTransportFromEnv();
+    transport = transportFactory();
   } catch {
     return failure('transport_unavailable', target, { required_configuration: [
       'STALWART_JMAP_URL', 'STALWART_PROVISIONER_API_KEY',
@@ -48,7 +54,7 @@ export async function provisionMailbox({ platform, mailbox, displayName = '' }) 
 
   let dnsVerification;
   try {
-    dnsVerification = await verifyDnsIntent(buildDnsIntent(target.domain, domainState.dnsZoneFile));
+    dnsVerification = await dnsVerifier(dnsIntentBuilder(target.domain, domainState.dnsZoneFile));
   } catch (error) {
     return failure('dns_verification_failed', target, {
       dns_zone_file: domainState.dnsZoneFile,
@@ -87,7 +93,7 @@ export async function provisionMailbox({ platform, mailbox, displayName = '' }) 
     });
   }
 
-  mkdirSync(evidenceDir, { recursive: true, mode: 0o700 });
+  mkdirSync(evidenceDirectory, { recursive: true, mode: 0o700 });
   const safeName = mailboxState.address.replace(/[^a-z0-9._-]/gi, '_');
   const evidence = {
     schema_version: '1.1',
@@ -106,7 +112,7 @@ export async function provisionMailbox({ platform, mailbox, displayName = '' }) 
     dns_verified: true,
     created_at: new Date().toISOString(),
   };
-  const evidencePath = resolve(evidenceDir, `mailbox-${safeName}.json`);
+  const evidencePath = resolve(evidenceDirectory, `mailbox-${safeName}.json`);
   writeFileSync(evidencePath, JSON.stringify(evidence, null, 2) + '\n', { mode: 0o600 });
 
   return {
