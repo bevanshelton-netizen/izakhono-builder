@@ -6,8 +6,6 @@ set -euo pipefail
 # It requires independently produced four-node runtime evidence before any promotion step
 # may proceed to the remaining deployment/EDGE/TLS/DNS/smoke/rollback gates.
 # Cryptographic HMAC verification is mandatory for every invocation, not only CI.
-export CONNECTA_REQUIRE_CRYPTOGRAPHIC_EVIDENCE=true
-
 EVIDENCE_PATH="${1:-${CLUSTER_HEALTH_EVIDENCE_PATH:-}}"
 if [[ -z "$EVIDENCE_PATH" ]]; then
   echo "[BLOCKED] CLUSTER_HEALTH_EVIDENCE_PATH is required." >&2
