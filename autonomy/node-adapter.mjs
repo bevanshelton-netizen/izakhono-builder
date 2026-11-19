@@ -16,10 +16,10 @@ function evidencePath() {
     || path.join(process.env.IZAKHONO_NODE_DATA_DIR || path.join(root, 'autonomy'), 'heartbeat.json');
 }
 
-function runProcess(script, request = null) {
+function runProcess(script, request = null, envOverrides = {}) {
   return new Promise((resolve) => {
     const args = request === null ? [script] : [script, typeof request === 'string' ? request : JSON.stringify(request)];
-    const child = spawn(process.execPath, args, { cwd: root, stdio: ['ignore', 'pipe', 'pipe'], env: process.env });
+    const child = spawn(process.execPath, args, { cwd: root, stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env, ...envOverrides } });
     let stdout = '';
     let stderr = '';
     const timer = setTimeout(() => {
@@ -84,7 +84,7 @@ export async function runNodeAdapter(action, input = {}) {
   }
 
   if (action === 'kora-workload-execute') {
-    const result = await runProcess(koraExecutor);
+    const result = await runProcess(koraExecutor, null, input.selectedNode ? { IZAKHONO_NODE_ID: input.selectedNode } : {});
     if (result.status === 'execution-plan-ready') return { status: 'waiting', reason: 'kora-runtime-execution-requires-eligible-node', evidence: result.evidence, nodeId: result.nodeId, acceptance: 'not-verified' };
     if (result.status === 'running-awaiting-acceptance-evidence') return { status: 'waiting', reason: 'kora-runtime-awaiting-independent-acceptance', evidence: result.evidence, nodeId: result.nodeId, acceptance: 'pending' };
     return result;
