@@ -18,6 +18,19 @@ test('mock mode always routes to mock', () => {
   assert.equal(chooseProvider({ PAYMENT_MODE: 'mock' }, 'ZAR', 'smart'), 'mock');
 });
 
+test('disabled mode rejects every provider even when credentials are present', () => {
+  const env = {
+    PAYMENT_MODE: 'disabled',
+    IKHOKHA_APP_ID: 'app', IKHOKHA_APP_SECRET: 'secret',
+    PAYSTACK_SECRET_KEY: 'sk_live_x',
+    PAYFAST_MERCHANT_ID: '1', PAYFAST_MERCHANT_KEY: 'key'
+  };
+  assert.equal(chooseProvider(env, 'ZAR', 'smart'), null);
+  assert.equal(chooseProvider(env, 'ZAR', 'paystack'), null);
+  assert.equal(chooseProvider(env, 'ZAR', 'payfast'), null);
+  assert.equal(chooseProvider(env, 'ZAR', 'ikhokha'), null);
+});
+
 test('smart ZAR routing prefers configured iKhokha in verified live mode', () => {
   const env = { PAYMENT_MODE: 'live', IKHOKHA_MODE: 'live', IKHOKHA_APP_ID: 'app', IKHOKHA_APP_SECRET: 'secret', PAYSTACK_SECRET_KEY: 'configured-test-key' };
   assert.equal(chooseProvider(env, 'ZAR', 'smart'), 'ikhokha');
