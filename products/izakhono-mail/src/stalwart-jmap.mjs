@@ -66,7 +66,10 @@ function resultFor(methodResponses, method) {
 
 export class StalwartJmapTransport {
   constructor({ baseUrl, username = '', password = '', apiKey = '', fetchImpl = globalThis.fetch, timeoutMs = 10000 }) {
-    if (!baseUrl || (!apiKey && (!username || !password)) || typeof fetchImpl !== 'function') {
+    const bearerToken = String(apiKey || '').trim();
+    const basicUser = String(username || '').trim();
+    const basicPassword = String(password || '');
+    if (!baseUrl || (!bearerToken && (!basicUser || !basicPassword)) || typeof fetchImpl !== 'function') {
       throw new Error('stalwart-jmap-configuration-required');
     }
     let url;
@@ -79,7 +82,7 @@ export class StalwartJmapTransport {
       throw new Error('stalwart-jmap-timeout-invalid');
     }
     this.endpoint = new URL('/jmap/', url.origin).toString();
-    this.authorization = apiKey ? 'Bearer ' + String(apiKey).trim() : 'Basic ' + Buffer.from(String(username) + ':' + String(password), 'utf8').toString('base64');
+    this.authorization = bearerToken ? 'Bearer ' + bearerToken : 'Basic ' + Buffer.from(basicUser + ':' + basicPassword, 'utf8').toString('base64');
     this.fetchImpl = fetchImpl;
     this.timeoutMs = timeoutMs;
   }
