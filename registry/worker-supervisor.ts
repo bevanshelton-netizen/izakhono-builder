@@ -18,7 +18,7 @@ async function ingestDiscovered(db:D1Database){
 function ready(job:SupervisorJob,jobs:SupervisorJob[]){
  if(job.status!=='queued'||job.risk==='high'||job.humanGate)return false;
  if(!job.dependencyIds.length)return true;
- return !jobs.some(j=>job.dependencyIds.some(dep=>dep===j.sourceId||dep===j.id)&&j.status!=='completed');
+ return job.dependencyIds.every(dep=>{const dependency=jobs.find(j=>dep===j.sourceId||dep===j.id);return !!dependency&&dependency.status==='completed';});
 }
 
 export function selectRunnableSupervisorJobs(jobs:SupervisorJob[],handlers:SupervisorWorkerHandlers,limit=5){
