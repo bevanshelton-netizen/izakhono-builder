@@ -88,6 +88,12 @@ jobs:
         shell: bash
         run: npx wrangler d1 migrations apply izakhono-pay --remote --config wrangler.production.jsonc
 
+      - name: Install owner-controlled admin secret
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf '%s' "$ADMIN_SECRET" | npx wrangler secret put ADMIN_SECRET --config wrangler.production.jsonc >/dev/null
+
       - name: Final production deployment
         id: final
         shell: bash
