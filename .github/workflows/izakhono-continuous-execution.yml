@@ -62,6 +62,10 @@ jobs:
 
       - name: Persist execution state
         run: |
+          if [ "$GITHUB_REF" != "refs/heads/main" ]; then
+            echo 'Feature-branch execution state is not written over the main control-plane state.'
+            exit 0
+          fi
           if [ ! -f autonomy/state.json ]; then
             echo 'No execution-state file was produced.'
             exit 0
