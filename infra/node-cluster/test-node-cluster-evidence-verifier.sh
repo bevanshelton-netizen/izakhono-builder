@@ -141,7 +141,7 @@ for n in d["nodes"]:
 json.dump(d, open(p, "w", encoding="utf-8"))
 PY
 set +e
-bash infra/node-cluster/VERIFY-NODE-CLUSTER-EVIDENCE.sh "$fixture"
+run_verifier
 code=$?
 set -e
 if [[ "$code" -ne 10 ]]; then
