@@ -3,9 +3,9 @@
 Base URL:
 `https://yfawrenhudjomhnglfhq.supabase.co/functions/v1/izakhono-gateway/identity`
 
-All routes require a valid Supabase user access token:
-`Authorization: Bearer <user-access-token>`.
-The gateway has JWT verification disabled for legacy public routes, so this module independently validates every identity request by calling Supabase Auth `/auth/v1/user`. Never use a service-role key in a browser.
+**Current transitional authentication:** all routes require a valid Supabase Auth user access token in `Authorization: Bearer <user-access-token>`. The gateway has JWT verification disabled for legacy public routes, so this module independently validates each identity request against Supabase Auth `/auth/v1/user`. Never use a service-role key in a browser.
+
+**Canonical integration requirement:** the repository already contains IZAKHONO ID (`products/izakhono-id`), with entity-scoped sessions, TOTP MFA, session revocation, rate limiting and audit events. The new KYC/KYB API must consume that existing authority rather than establish a second customer identity system. Its internal introspection endpoint requires the configured IZAKHONO ID service URL and internal integration key; no production URL/key was present in the audited repository or connected deployment context. Until this integration is configured and tested, Supabase Auth is a temporary adapter and this API is not approved for broad customer onboarding.
 
 ## Available endpoints
 
