@@ -27,7 +27,7 @@ create table if not exists identity.subjects (
 
 create unique index if not exists identity_subject_user_type_uq
   on identity.subjects(auth_user_id, subject_type)
-  where auth_user_id is not null;
+  where auth_user_id is not null and subject_type = 'individual';
 create index if not exists identity_subject_source_idx
   on identity.subjects(source_system, source_record_type, source_record_id);
 
