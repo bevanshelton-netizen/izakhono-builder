@@ -65,6 +65,8 @@ export function buildPayfastCheckout({ env, intent, origin }) {
     ['notify_url', `${origin}/api/webhooks/payfast`],
     ['email_address', intent.customer_email],
     ['m_payment_id', intent.reference],
+    ['custom_str1', intent.app_slug],
+    ['custom_str2', intent.id],
     ['amount', amount],
     ['item_name', intent.description || 'IZAKHONO PAY transaction'],
     ['item_description', `Payment reference ${intent.reference}`]
