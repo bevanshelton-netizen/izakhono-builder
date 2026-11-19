@@ -5,11 +5,15 @@ on:
     paths:
       - 'products/izakhono-host/mail/**'
       - 'products/izakhono-host/docker-compose.owned.yml'
+      - 'products/izakhono-host/edge/Caddyfile'
+      - 'products/izakhono-mail/runtime-v1/**'
       - '.github/workflows/izakhono-mail.yml'
   pull_request:
     paths:
       - 'products/izakhono-host/mail/**'
       - 'products/izakhono-host/docker-compose.owned.yml'
+      - 'products/izakhono-host/edge/Caddyfile'
+      - 'products/izakhono-mail/runtime-v1/**'
       - '.github/workflows/izakhono-mail.yml'
 
 jobs:
@@ -17,12 +21,33 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Validate compose files
+      - name: Validate owned HOST and Stalwart Compose files
+        env:
+          HOST_RUNTIME_TOKEN: ci-host-runtime-token
+          IZAKHONO_MAIL_API_TOKEN: ci-mail-api-token
+          TLS_EMAIL: ci@example.test
+          POSTGRES_PASSWORD: ci-postgres-password-only
+          MINIO_ROOT_USER: ci-minio-user
+          MINIO_ROOT_PASSWORD: ci-minio-password-only
+          STALWART_RECOVERY_ADMIN: admin:ci-only-placeholder
         run: |
-          docker compose -f products/izakhono-host/docker-compose.owned.yml config >/dev/null
-          docker compose -f products/izakhono-host/mail/docker-compose.mail.yml config >/dev/null
+          docker compose -f products/izakhono-host/docker-compose.owned.yml config --quiet
+          docker compose -f products/izakhono-host/mail/docker-compose.mail.yml config --quiet
+          docker compose -f products/izakhono-mail/runtime-v1/docker-compose.yml --env-file products/izakhono-mail/runtime-v1/.env.example config --quiet
+      - name: Validate shared HOST EDGE Caddy configuration
+        run: |
+          docker run --rm -v "$PWD/products/izakhono-host/edge/Caddyfile:/etc/caddy/Caddyfile:ro" \
+            caddy:2-alpine caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
       - name: Validate mail bridge JavaScript
         run: node --check products/izakhono-host/runtime/mail-bridge/server.mjs
+      - name: Validate runtime-v1 shell scripts
+        run: |
+          for f in products/izakhono-mail/runtime-v1/ops/*.sh; do bash -n "$f"; done
+      - name: Validate mail runtime files
+        run: |
+          test -f products/izakhono-mail/runtime-v1/ops/backup.sh
+          test -f products/izakhono-mail/runtime-v1/ops/restore.sh
+          test -f products/izakhono-mail/runtime-v1/ops/PROVIDER-ACCEPTANCE.sh
       - name: Validate portfolio manifest
         run: |
           python3 - <<'PY'
