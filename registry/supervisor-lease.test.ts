@@ -1,5 +1,5 @@
 import {strict as assert} from 'node:assert';
-import {claimSupervisorLease,heartbeatSupervisorLease,finishSupervisorLease,recoverExpiredSupervisorLeases,type SupervisorLease} from './supervisor-store';
+import {ensureSupervisorSchema,claimSupervisorLease,heartbeatSupervisorLease,finishSupervisorLease,recoverExpiredSupervisorLeases,type SupervisorLease} from './supervisor-store';
 import type {D1Database,D1Statement} from './d1-store';
 
 type Row=Record<string,any>;
@@ -12,6 +12,7 @@ class FakeStatement implements D1Statement {
   async run():Promise<unknown>{return this.db.run(this.sql,this.values);}
 }
 class FakeDb implements D1Database {
+  statements:string[]=[];
   jobs:Row[]=[{id:'job-a',worker_id:'build-worker',status:'queued',risk:'low',human_gate:null,attempts:0}];
   leases:Row[]=[]; attempts:Row[]=[]; events:Row[]=[];
   prepare(sql:string){return new FakeStatement(this,sql);}
@@ -25,6 +26,7 @@ class FakeDb implements D1Database {
     return {results:[]};
   }
   async run(sql:string,v:unknown[]):Promise<unknown>{
+    this.statements.push(sql);
     if(sql.includes('INSERT INTO supervisor_execution_leases')){
       const job=this.jobs.find(x=>x.id===v[8]&&x.worker_id===v[9]&&x.status==='queued'&&x.risk!=='high'&&!x.human_gate);
       const old=this.leases.find(x=>x.job_id===v[0]);
@@ -54,6 +56,9 @@ class FakeDb implements D1Database {
 }
 async function main(){
  const db=new FakeDb();
+ await ensureSupervisorSchema(db);
+ const schema=db.statements.join('\n');
+ for(const table of ['supervisor_jobs','supervisor_job_events','supervisor_execution_leases','supervisor_execution_attempts'])assert.ok(schema.includes('CREATE TABLE IF NOT EXISTS '+table),`schema bootstrap must create ${table}`);
  const lease=await claimSupervisorLease(db,'job-a','build-worker','idem-1',60);
  assert.ok(lease);assert.equal(db.jobs[0].status,'running');
  const duplicate=await claimSupervisorLease(db,'job-a','build-worker','idem-2',60);
