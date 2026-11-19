@@ -45,7 +45,8 @@ export async function runOptimizationCycle({ input = {}, persistence, lookupCycl
       const source = resolveMeasurementSource(input, experiment);
       const sourcedExperiment = attachMeasurementSource(experiment, source);
       const record = enforcePersistenceSafety(buildExperimentRecord(sourcedExperiment, { id: experiment.candidate_id }));
-      await persistence.insertExperiment(record);
+      const persistedExperiment = await persistence.insertExperiment(record);
+      experiments.push(persistedExperiment);
       measurementSources.add(source);
     } catch (error) {
       rejected.push({ candidate_id: experiment.candidate_id, reason: error.message });
