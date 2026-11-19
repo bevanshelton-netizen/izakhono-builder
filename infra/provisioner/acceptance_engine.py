@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from typing import Any, Mapping, Protocol
 from job_store import StoredJob, utc_now
 
-OPERATIONAL_STATES = ("PAYMENT_VERIFIED", "TENANT_CREATED", "DOMAIN_READY", "DNS_READY", "SITE_READY", "TLS_READY", "MAIL_READY", "INTEGRATIONS_READY")
+OPERATIONAL_STATES = ("PAYMENT_VERIFIED", "TENANT_CREATED", "DOMAIN_READY", "DNS_READY", "SITE_READY", "TLS_READY", "MAIL_READY", "BILLING_VERIFIED", "INTEGRATIONS_READY")
 
 @dataclass(frozen=True)
 class AcceptanceResult:
