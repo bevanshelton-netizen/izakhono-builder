@@ -26,7 +26,7 @@ function safeRelativePath(value) {
   const normalized = String(value).replaceAll('\\', '/');
   if (!normalized || normalized.startsWith('/') || normalized.includes('\0')) throw new Error('application-template-path-invalid');
   const segments = normalized.split('/');
-  if (segments.some((part) => !part || part === '.' || part === '..' || part.startsWith('.git'))) throw new Error('application-template-path-invalid');
+  if (segments.some((part) => !part || part === '.' || part === '..' || part === '.git')) throw new Error('application-template-path-invalid');
   return segments.join(path.sep);
 }
 
