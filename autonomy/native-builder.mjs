@@ -170,9 +170,9 @@ export async function runNativeBuilder(task) {
       for (const relative of app.files) {
         const file = artifactFile(dir, relative);
         if (!fs.existsSync(file)) return { status: 'failed', reason: 'generated-file-missing:' + relative };
-        if (/\\.(?:mjs|js|cjs)$/.test(relative)) {
+        if (/\.(?:mjs|js|cjs)$/.test(relative)) {
           const source = fs.readFileSync(file, 'utf8');
-          if (/\\beval\\s*\\(|\\bnew\\s+Function\\s*\\(|from\\s*['"]node:child_process['"]|from\\s*['"]child_process['"]/.test(source)) {
+          if (/\beval\s*\(|\bnew\s+Function\s*\(|from\s*['"]node:child_process['"]|from\s*['"]child_process['"]/.test(source)) {
             return { status: 'failed', reason: 'unsafe-generated-code:' + relative };
           }
         }
