@@ -24,7 +24,7 @@ function safeProjectId(value) {
 }
 
 function safeRelativePath(value) {
-  const normalized = String(value).replaceAll('\\', '/');
+  const normalized = String(value).replaceAll('\\\\', '/');
   if (!normalized || normalized.startsWith('/') || normalized.includes('\0')) throw new Error('application-template-path-invalid');
   const segments = normalized.split('/');
   if (segments.some((part) => !part || part === '.' || part === '..' || part === '.git')) throw new Error('application-template-path-invalid');
@@ -35,6 +35,31 @@ function ensureInside(root, relative) {
   const target = path.resolve(root, relative);
   const base = path.resolve(root) + path.sep;
   if (!target.startsWith(base)) throw new Error('application-template-path-escape');
+  return target;
+}
+
+function assertNoSymlinkComponents(target) {
+  const absolute = path.resolve(target);
+  const parsed = path.parse(absolute);
+  let current = parsed.root;
+  for (const segment of absolute.slice(parsed.root.length).split(path.sep).filter(Boolean)) {
+    current = path.join(current, segment);
+    let stat;
+    try {
+      stat = fs.lstatSync(current);
+    } catch (error) {
+      if (error.code === 'ENOENT') return;
+      throw error;
+    }
+    if (stat.isSymbolicLink()) throw new Error('application-workspace-symlink-not-allowed');
+  }
+}
+
+function assertRegularFile(root, relative) {
+  const target = ensureInside(root, safeRelativePath(relative));
+  assertNoSymlinkComponents(target);
+  const stat = fs.lstatSync(target);
+  if (!stat.isFile()) throw new Error('application-workspace-file-type-invalid');
   return target;
 }
 
@@ -190,23 +215,16 @@ export function scaffoldApplication({ workspaceRoot, projectId, name, goal, temp
   const expectedFiles = [...template.files].sort();
   if (JSON.stringify(actualFiles) !== JSON.stringify(expectedFiles)) throw new Error('application-template-catalog-mismatch');
   if (actualFiles.length > MAX_FILES) throw new Error('application-template-file-limit');
+  for (const content of Object.values(files)) {
+    if (Buffer.byteLength(content, 'utf8') > MAX_FILE_BYTES) throw new Error('application-template-file-size-limit');
+  }
+
   const root = path.resolve(workspaceRoot);
   fs.mkdirSync(root, { recursive: true });
+  assertNoSymlinkComponents(root);
+  if (!fs.lstatSync(root).isDirectory()) throw new Error('application-workspace-not-directory');
+
   const manifestPath = path.join(root, 'izakhono.application.json');
-  if (fs.existsSync(manifestPath)) {
-    const existing = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
-    if (existing.projectId !== id || existing.templateId !== templateId || existing.templateVersion !== template.version) throw new Error('application-workspace-conflict');
-    const missing = existing.files.filter((relative) => !fs.existsSync(ensureInside(root, safeRelativePath(relative))));
-    if (missing.length) throw new Error('application-workspace-incomplete');
-    return { ...existing, fileCount: existing.files.length + 1, workspaceRoot: root, reused: true };
-  }
-  const unexpected = fs.readdirSync(root).filter((entry) => entry !== 'architecture.json' && entry !== '.izakhono');
-  if (unexpected.length) throw new Error('application-workspace-not-empty');
-  for (const [relative, content] of Object.entries(files)) {
-    const target = ensureInside(root, safeRelativePath(relative));
-    fs.mkdirSync(path.dirname(target), { recursive: true });
-    fs.writeFileSync(target, content, { encoding: 'utf8', flag: 'wx' });
-  }
   const manifest = {
     schema: 'izakhono.application-scaffold/v1',
     projectId: id,
@@ -216,8 +234,42 @@ export function scaffoldApplication({ workspaceRoot, projectId, name, goal, temp
     generation: 'deterministic-native',
     externalAiRequired: false,
   };
-  fs.writeFileSync(manifestPath, json(manifest), { flag: 'wx' });
-  return { ...manifest, fileCount: manifest.files.length + 1, workspaceRoot: root, reused: false };
+
+  if (fs.existsSync(manifestPath)) {
+    assertNoSymlinkComponents(manifestPath);
+    if (!fs.lstatSync(manifestPath).isFile()) throw new Error('application-workspace-manifest-invalid');
+    const existing = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+    if (JSON.stringify(existing) !== JSON.stringify(manifest)) throw new Error('application-workspace-conflict');
+    for (const [relative, expected] of Object.entries(files)) {
+      const target = assertRegularFile(root, relative);
+      if (!fs.readFileSync(target).equals(Buffer.from(expected, 'utf8'))) {
+        throw new Error('application-workspace-modified:' + relative);
+      }
+    }
+    return { ...manifest, fileCount: actualFiles.length + 1, workspaceRoot: root, reused: true };
+  }
+
+  const unexpected = fs.readdirSync(root).filter((entry) => entry !== 'architecture.json' && entry !== '.izakhono');
+  if (unexpected.length) throw new Error('application-workspace-not-empty');
+  for (const allowed of ['architecture.json', '.izakhono']) {
+    const allowedPath = path.join(root, allowed);
+    if (fs.existsSync(allowedPath)) {
+      assertNoSymlinkComponents(allowedPath);
+      const stat = fs.lstatSync(allowedPath);
+      if (allowed === 'architecture.json' ? !stat.isFile() : !stat.isDirectory()) {
+        throw new Error('application-workspace-entry-type-invalid');
+      }
+    }
+  }
+
+  for (const [relative, content] of Object.entries(files)) {
+    const target = ensureInside(root, safeRelativePath(relative));
+    fs.mkdirSync(path.dirname(target), { recursive: true });
+    assertNoSymlinkComponents(target);
+    fs.writeFileSync(target, content, { encoding: 'utf8', flag: 'wx' });
+  }
+  fs.writeFileSync(manifestPath, json(manifest), { encoding: 'utf8', flag: 'wx' });
+  return { ...manifest, fileCount: actualFiles.length + 1, workspaceRoot: root, reused: false };
 }
 
 function listFiles(root, current = root, result = []) {
@@ -263,7 +315,8 @@ export function createCanonicalSnapshot({ workspaceRoot, repositoryRoot }) {
     if (!fs.existsSync(objectPath)) fs.writeFileSync(objectPath, data, { flag: 'wx' });
     else if (!fs.readFileSync(objectPath).equals(data)) throw new Error('snapshot-object-hash-collision');
   }
-  const manifest = {
+  const manifestPath = path.join(snapshotRoot, snapshotHash + '.json');
+  const snapshot = {
     schema: 'izakhono.repository-snapshot/v1',
     algorithm: 'sha256',
     snapshotHash,
@@ -271,8 +324,7 @@ export function createCanonicalSnapshot({ workspaceRoot, repositoryRoot }) {
     totalBytes,
     files: entries,
   };
-  const manifestPath = path.join(snapshotRoot, snapshotHash + '.json');
-  if (!fs.existsSync(manifestPath)) fs.writeFileSync(manifestPath, json(manifest), { flag: 'wx' });
-  else if (fs.readFileSync(manifestPath, 'utf8') !== json(manifest)) throw new Error('snapshot-manifest-conflict');
+  if (!fs.existsSync(manifestPath)) fs.writeFileSync(manifestPath, json(snapshot), { flag: 'wx' });
+  else if (fs.readFileSync(manifestPath, 'utf8') !== json(snapshot)) throw new Error('snapshot-manifest-conflict');
   return { snapshotHash, fileCount: entries.length, totalBytes, manifestPath, objectRoot };
 }
