@@ -74,7 +74,8 @@ export async function dispatchMerchantPaymentPaid(env, intent) {
         eventId, merchantSlug: intent.app_slug, intentId: intent.id,
         webhookUrl: merchant.webhook_url || 'https://suppressed.invalid/'
       });
-      if (row?.status !== 'delivered') {
+      if (row?.status === 'delivered') return { delivered: true, duplicate: true };
+      if (row?.status !== 'suppressed') {
         await env.DB.prepare("UPDATE merchant_webhook_deliveries SET status='suppressed',last_error=?,lease_token=NULL,lease_expires_at=NULL,next_attempt_at=NULL WHERE event_id=? AND status IN ('pending','failed')")
           .bind(!webhookUrl ? 'webhook_host_not_allowlisted' : 'webhook_secret_unavailable', eventId).run();
       }
@@ -149,4 +150,23 @@ export async function dispatchMerchantPaymentPaid(env, intent) {
   } finally {
     clearTimeout(timer);
   }
+}
+
+export async function retryPendingMerchantWebhooks(env, limit = 50) {
+  const batchSize = Math.min(100, Math.max(1, Math.trunc(Number(limit) || 50)));
+  const result = await env.DB.prepare(
+    "SELECT p.* FROM merchant_webhook_deliveries d JOIN payment_intents p ON p.id=d.intent_id WHERE p.status='paid' AND d.status IN ('pending','failed') AND (d.next_attempt_at IS NULL OR d.next_attempt_at<=CURRENT_TIMESTAMP) AND (d.lease_expires_at IS NULL OR d.lease_expires_at<=CURRENT_TIMESTAMP) ORDER BY d.created_at ASC LIMIT ?"
+  ).bind(batchSize).all();
+  let attempted = 0;
+  let delivered = 0;
+  for (const intent of result.results || []) {
+    attempted += 1;
+    try {
+      const outcome = await dispatchMerchantPaymentPaid(env, intent);
+      if (outcome.delivered) delivered += 1;
+    } catch (error) {
+      console.error('IZAKHONO PAY merchant webhook retry failed', error);
+    }
+  }
+  return { attempted, delivered };
 }

@@ -15,7 +15,7 @@ import {
   verifyPayfastItnSignature,
   verifyPaystackSignature
 } from './core.js';
-import { dispatchMerchantPaymentPaid } from './merchant-webhooks.js';
+import { dispatchMerchantPaymentPaid, retryPendingMerchantWebhooks } from './merchant-webhooks.js';
 import { providerIdentityMatches } from './payment-binding.js';
 import { recordPaymentEvent } from './payment-event-store.js';
 
@@ -619,5 +619,10 @@ export default {
       }
     }
     return env.ASSETS.fetch(req);
+  },
+  async scheduled(_controller, env, ctx) {
+    ctx.waitUntil(retryPendingMerchantWebhooks(env).catch((error) => {
+      console.error('IZAKHONO PAY scheduled merchant webhook retry failed', error);
+    }));
   }
 };

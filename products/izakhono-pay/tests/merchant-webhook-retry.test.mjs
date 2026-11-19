@@ -1,8 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { claimMerchantWebhookDelivery } from '../src/merchant-webhooks.js';
+import {
+  claimMerchantWebhookDelivery,
+  retryPendingMerchantWebhooks
+} from '../src/merchant-webhooks.js';
 
-function fakeDb({ changes = 1, row = null } = {}) {
+function fakeDb({ changes = 1, row = null, intents = [] } = {}) {
   const calls = [];
   return {
     calls,
@@ -11,7 +14,8 @@ function fakeDb({ changes = 1, row = null } = {}) {
         bind(...values) {
           return {
             async run() { calls.push({ kind: 'run', sql, values }); return { meta: { changes } }; },
-            async first() { calls.push({ kind: 'first', sql, values }); return row; }
+            async first() { calls.push({ kind: 'first', sql, values }); return row; },
+            async all() { calls.push({ kind: 'all', sql, values }); return { results: intents }; }
           };
         }
       };
@@ -48,4 +52,17 @@ test('a delivered event is not claimed again', async () => {
   const result = await claimMerchantWebhookDelivery({ DB }, 'evt_1');
   assert.equal(result.claimed, false);
   assert.equal(result.row.status, 'delivered');
+});
+
+test('scheduled retry scanner only selects due pending/failed paid deliveries', async () => {
+  const DB = fakeDb({ intents: [
+    { id: 'pi_1', app_slug: 'merchant-one', status: 'paid' },
+    { id: 'pi_2', app_slug: 'merchant-two', status: 'paid' }
+  ] });
+  const result = await retryPendingMerchantWebhooks({ DB }, 500);
+  assert.deepEqual(result, { attempted: 2, delivered: 0 });
+  assert.match(DB.calls[0].sql, /p.status='paid'/);
+  assert.match(DB.calls[0].sql, /d.status IN \('pending','failed'\)/);
+  assert.match(DB.calls[0].sql, /next_attempt_at<=CURRENT_TIMESTAMP/);
+  assert.equal(DB.calls[0].values[0], 100);
 });
