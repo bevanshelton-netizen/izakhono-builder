@@ -10,7 +10,7 @@
     "owned_first": { "const": true },
     "steps": {
       "type": "array",
-      "minItems": 11,
+      "minItems": 10,
       "items": {
         "type": "object",
         "additionalProperties": false,
@@ -18,7 +18,6 @@
         "properties": {
           "state": {
             "enum": [
-              "PAYMENT_VERIFIED",
               "TENANT_CREATED",
               "DOMAIN_READY",
               "DNS_READY",
