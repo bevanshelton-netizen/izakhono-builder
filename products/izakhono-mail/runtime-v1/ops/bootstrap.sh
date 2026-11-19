@@ -19,15 +19,16 @@ read_env() {
 MAIL_DOMAIN="$(read_env MAIL_DOMAIN)"
 MAIL_HOSTNAME="$(read_env MAIL_HOSTNAME)"
 MAILBOX="$(read_env MAILBOX)"
+ROUNDCUBE_DB_ROOT_PASSWORD="$(read_env ROUNDCUBE_DB_ROOT_PASSWORD)"
 ROUNDCUBE_DB_PASSWORD="$(read_env ROUNDCUBE_DB_PASSWORD)"
 STALWART_RECOVERY_ADMIN="$(read_env STALWART_RECOVERY_ADMIN)"
 
-for name in MAIL_DOMAIN MAIL_HOSTNAME MAILBOX ROUNDCUBE_DB_PASSWORD STALWART_RECOVERY_ADMIN; do
+for name in MAIL_DOMAIN MAIL_HOSTNAME MAILBOX ROUNDCUBE_DB_ROOT_PASSWORD ROUNDCUBE_DB_PASSWORD STALWART_RECOVERY_ADMIN; do
   value="$(read_env "$name")"
   [[ -n "$value" ]] || { echo "BLOCKED: $name is missing from .env" >&2; exit 1; }
 done
 
-if [[ "$ROUNDCUBE_DB_PASSWORD" == CHANGE_ME* || "$STALWART_RECOVERY_ADMIN" == *CHANGE_ME* ]]; then
+if [[ "$ROUNDCUBE_DB_ROOT_PASSWORD" == CHANGE_ME* || "$ROUNDCUBE_DB_PASSWORD" == CHANGE_ME* || "$STALWART_RECOVERY_ADMIN" == *CHANGE_ME* ]]; then
   echo "BLOCKED: replace all placeholder credentials in .env before bootstrap." >&2
   exit 1
 fi
