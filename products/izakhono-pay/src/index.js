@@ -16,6 +16,7 @@ import {
   verifyPaystackSignature
 } from './core.js';
 import { dispatchMerchantPaymentPaid } from './merchant-webhooks.js';
+import { providerIdentityMatches } from './provider-identity.js';
 
 const JSON_HEADERS = { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' };
 
@@ -361,8 +362,11 @@ async function handleIkhokhaWebhook(req, env) {
     return fail('Invalid iKhokha signature', 401, 'invalid_signature');
   }
   const reference = cleanText(event?.externalTransactionID || '', 120);
-  const intent = reference ? await findIntentByReference(env, reference) : null;
-  if (!intent || intent.routed_provider !== 'ikhokha') return fail('Unknown iKhokha payment reference', 404, 'unknown_reference');
+  const intent = reference ? await findIntentByProviderReference(env, reference, 'ikhokha') : null;
+  if (!intent || !providerIdentityMatches(intent, 'ikhokha', event)) {
+    await recordFortressEvent(env, { severity: 'critical', category: 'payment.provider_identity_mismatch', source: 'ikhokha', merchantSlug: intent?.app_slug || null, intentId: intent?.id || null, details: { reference } });
+    return fail('iKhokha merchant/payment identity did not match', 409, 'payment_identity_mismatch');
+  }
 
   if (event?.status === 'SUCCESS' && event?.responseCode === '00') {
     const statusRequest = buildIkhokhaStatusRequest({ env, reference });
@@ -379,7 +383,7 @@ async function handleIkhokhaWebhook(req, env) {
     }
     const statusPayload = await statusResponse.json().catch(() => null);
     const verifiedStatus = Array.isArray(statusPayload) ? statusPayload[0] : statusPayload;
-    if (!statusResponse.ok || !verifyIkhokhaStatus(verifiedStatus, intent)) {
+    if (!statusResponse.ok || !verifyIkhokhaStatus(verifiedStatus, intent) || !providerIdentityMatches(intent, 'ikhokha', { ...verifiedStatus, externalTransactionID: reference })) {
       await recordFortressEvent(env, { severity: 'critical', category: 'payment.provider_status_mismatch', source: 'ikhokha', merchantSlug: intent.app_slug, intentId: intent.id, details: { reference, http_status: statusResponse.status, provider_status: verifiedStatus?.status || 'unavailable' } });
       return fail('iKhokha payment status, payment link or amount did not match; no sale was activated', 409, 'payment_status_mismatch');
     }
@@ -403,23 +407,27 @@ async function handlePaystackWebhook(req, env) {
     await recordFortressEvent(env, { severity: 'high', category: 'webhook.invalid_signature', source: 'paystack', details: { payload_hash: sha256Hex(raw) } });
     return fail('Invalid Paystack signature', 401, 'invalid_signature');
   }
-  const event = JSON.parse(raw);
-  const reference = event?.data?.reference;
-  const intent = reference ? await findIntentByReference(env, reference) : null;
-  const fingerprint = sha256Hex(`paystack:${raw}`);
-  const fresh = await recordEvent(env, 'paystack', cleanText(event?.event || 'unknown', 80), fingerprint, intent?.id, event, true);
-  if (!fresh) return response({ ok: true, duplicate: true });
-
-  if (event?.event === 'charge.success' && intent) {
+  let event;
+  try { event = JSON.parse(raw); } catch { return fail('Invalid Paystack webhook JSON', 400, 'invalid_payload'); }
+  const reference = cleanText(event?.data?.reference || '', 120);
+  const intent = reference ? await findIntentByProviderReference(env, reference, 'paystack') : null;
+  if (!intent || !providerIdentityMatches(intent, 'paystack', event?.data)) {
+    await recordFortressEvent(env, { severity: 'critical', category: 'payment.provider_identity_mismatch', source: 'paystack', merchantSlug: intent?.app_slug || null, intentId: intent?.id || null, details: { reference } });
+    return fail('Paystack merchant/payment identity did not match', 409, 'payment_identity_mismatch');
+  }
+  if (event?.event === 'charge.success') {
     const amountMatches = Number(event?.data?.amount) === Number(intent.amount_minor);
     const currencyMatches = String(event?.data?.currency || '').toUpperCase() === intent.currency;
     if (!amountMatches || !currencyMatches) {
       await recordFortressEvent(env, { severity: 'critical', category: 'payment.amount_or_currency_mismatch', source: 'paystack', merchantSlug: intent.app_slug, intentId: intent.id, details: { reference } });
       return fail('Verified webhook did not match the expected amount/currency', 409, 'payment_mismatch');
     }
-    await markPaid(env, intent.id, String(event?.data?.id || reference));
   }
-  return response({ ok: true });
+
+  const fingerprint = sha256Hex(`paystack:${raw}`);
+  const fresh = await recordEvent(env, 'paystack', cleanText(event?.event || 'unknown', 80), fingerprint, intent.id, event, true);
+  if (event?.event === 'charge.success') await markPaid(env, intent.id, String(event?.data?.id || reference));
+  return response({ ok: true, duplicate: !fresh });
 }
 
 async function handlePayfastWebhook(req, env) {
@@ -427,8 +435,11 @@ async function handlePayfastWebhook(req, env) {
   const raw = await req.text();
   const params = new URLSearchParams(raw);
   const reference = params.get('m_payment_id') || '';
-  const intent = reference ? await findIntentByReference(env, reference) : null;
-  if (!intent) return fail('Unknown PayFast payment reference', 404, 'unknown_reference');
+  const intent = reference ? await findIntentByProviderReference(env, reference, 'payfast') : null;
+  if (!intent || !providerIdentityMatches(intent, 'payfast', Object.fromEntries(params.entries()))) {
+    await recordFortressEvent(env, { severity: 'critical', category: 'payment.provider_identity_mismatch', source: 'payfast', merchantSlug: intent?.app_slug || null, intentId: intent?.id || null, details: { reference } });
+    return fail('PayFast merchant/payment identity did not match', 409, 'payment_identity_mismatch');
+  }
 
   if (!verifyPayfastItnSignature(raw, env.PAYFAST_PASSPHRASE || '')) {
     await recordFortressEvent(env, { severity: 'high', category: 'webhook.invalid_signature', source: 'payfast', merchantSlug: intent.app_slug, intentId: intent.id, details: { reference } });
