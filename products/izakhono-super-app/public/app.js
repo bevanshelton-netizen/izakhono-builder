@@ -238,8 +238,49 @@
     try{const r=await fetch("/api/ai/status",{headers:{"x-izakhono-owner-key":aiOwnerKey},cache:"no-store"});const d=await r.json();
       if(!r.ok||!d.authorized){aiOwnerKey="";$("aiConnectionStatus").textContent="Access denied. Check the owner key and try again.";return;}
       $("aiConnectionStatus").textContent=d.gateway_reachable?"Connected to the IZAKHONO AI gateway.":"Owner key accepted. The AI runtime is not reachable yet.";
+      await loadSupervisor();
       toast(d.gateway_reachable?"Connected to IZAKHONO AI.":"Owner access verified; AI runtime unavailable.");
     }catch(_){aiOwnerKey="";$("aiConnectionStatus").textContent="Could not verify the connection. Try again.";}
+  }
+  async function loadSupervisor(){
+    if(!aiOwnerKey){$("supervisorStatus").textContent="Connect with your owner key to view the durable supervisor.";return;}
+    $("supervisorStatus").textContent="Loading durable supervisor state…";
+    $("supervisorRefresh").disabled=true;
+    try{
+      const headers={"x-izakhono-owner-key":aiOwnerKey};
+      const [statusResponse,jobsResponse]=await Promise.all([
+        fetch("/api/supervisor/status",{headers,cache:"no-store"}),
+        fetch("/api/supervisor/jobs",{headers,cache:"no-store"})
+      ]);
+      const [statusData,jobsData]=await Promise.all([statusResponse.json(),jobsResponse.json()]);
+      if(statusResponse.status===401||jobsResponse.status===401){
+        aiOwnerKey="";$("aiConnectionStatus").textContent="Owner access expired. Reconnect.";
+        $("supervisorStatus").textContent="Access expired. Reconnect with your owner key.";return;
+      }
+      if(!statusResponse.ok||!jobsResponse.ok||!statusData.ok||!jobsData.ok){
+        $("supervisorStatus").textContent="Durable supervisor is unavailable. No job state was changed.";return;
+      }
+      const counts=statusData.counts||{};
+      const countHost=$("supervisorCounts");countHost.replaceChildren();
+      ["queued","running","verified","completed","blocked","failed"].forEach(name=>{
+        const item=document.createElement("div");item.className="supervisor-count";
+        const value=document.createElement("strong");value.textContent=String(Number(counts[name]||0));
+        const label=document.createElement("small");label.textContent=titleize(name);
+        item.append(value,label);countHost.append(item);
+      });
+      const jobsHost=$("supervisorJobs");jobsHost.replaceChildren();
+      const jobs=Array.isArray(jobsData.jobs)?jobsData.jobs:[];
+      if(!jobs.length){const empty=document.createElement("div");empty.className="ai-empty";empty.textContent="No durable supervisor jobs are currently recorded.";jobsHost.append(empty);}
+      jobs.forEach(job=>{
+        const card=document.createElement("article");card.className="supervisor-job";
+        const title=document.createElement("strong");title.textContent=String(job.title||job.id||"Untitled job");
+        const meta=document.createElement("small");meta.textContent=[job.workerId||"unassigned",titleize(job.status||"unknown"),"Risk: "+String(job.risk||"unknown"),"Attempts: "+String(job.attempts??0)].join(" · ");
+        const id=document.createElement("code");id.textContent=String(job.id||"");
+        card.append(title,meta,id);jobsHost.append(card);
+      });
+      $("supervisorStatus").textContent="Connected to the shared D1 supervisor · "+jobs.length+" job(s) shown"+(jobsData.truncated?" · list capped at 100":"")+". Read-only; no workers were dispatched.";
+    }catch(_){$("supervisorStatus").textContent="Could not read the durable supervisor. No job state was changed.";}
+    finally{$("supervisorRefresh").disabled=false;}
   }
   async function aiSend(event){
     event.preventDefault();const prompt=$("aiPrompt").value.trim();if(!prompt)return;
@@ -260,7 +301,7 @@
     finally{send.disabled=false;send.textContent="Send instruction";$("aiPrompt").focus();}
   }
   function bindAI(){
-    $("aiConnect")?.addEventListener("click",aiConnect);$("aiChatForm")?.addEventListener("submit",aiSend);
+    $("aiConnect")?.addEventListener("click",aiConnect);$("aiChatForm")?.addEventListener("submit",aiSend);$("supervisorRefresh")?.addEventListener("click",loadSupervisor);
     $("aiClear")?.addEventListener("click",()=>{aiConversation.length=0;$("aiMessages").replaceChildren(Object.assign(document.createElement("div"),{className:"ai-empty",textContent:"Conversation cleared. No chat history is retained by this interface."}));});
     $("aiPrompt")?.addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();$("aiChatForm").requestSubmit();}});aiCheck();
   }
