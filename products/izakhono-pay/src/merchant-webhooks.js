@@ -14,7 +14,7 @@ function allowedWebhookUrl(env, rawUrl) {
     if (url.protocol !== 'https:' || url.username || url.password) return null;
     const hostname = url.hostname.toLowerCase();
     if (hostname === 'localhost' || hostname.endsWith('.localhost')) return null;
-    if (/^\d{1,3}(?:\.\d{1,3}){3}$/.test(hostname) || hostname.includes(':')) return null;
+    if (/^\\d{1,3}(?:\\.\\d{1,3}){3}$/.test(hostname) || hostname.includes(':')) return null;
     const allowed = String(env.MERCHANT_WEBHOOK_ALLOWED_HOSTS || '')
       .split(',').map((value) => value.trim().toLowerCase()).filter(Boolean);
     if (!allowed.length || !allowed.includes(hostname)) return null;
@@ -29,49 +29,71 @@ async function merchantConfig(env, slug) {
     .bind(slug).first();
 }
 
-async function recordDelivery(env, { eventId, merchantSlug, intentId, webhookUrl, status = 'pending', error = null }) {
-  try {
-    await env.DB.prepare('INSERT INTO merchant_webhook_deliveries(id,event_id,merchant_slug,intent_id,webhook_url,status,last_error) VALUES(?,?,?,?,?,?,?)')
-      .bind(deliveryId(), eventId, merchantSlug, intentId, webhookUrl, status, error).run();
-    return true;
-  } catch {
-    return false;
-  }
+async function ensureDelivery(env, { eventId, merchantSlug, intentId, webhookUrl }) {
+  await env.DB.prepare("INSERT OR IGNORE INTO merchant_webhook_deliveries(id,event_id,merchant_slug,intent_id,webhook_url,status) VALUES(?,?,?,?,?,'pending')")
+    .bind(deliveryId(), eventId, merchantSlug, intentId, webhookUrl).run();
+  return env.DB.prepare('SELECT event_id,status,attempt_count,lease_token,lease_expires_at,next_attempt_at FROM merchant_webhook_deliveries WHERE event_id=?')
+    .bind(eventId).first();
 }
 
-async function updateDelivery(env, eventId, { status, httpStatus = null, error = null }) {
-  await env.DB.prepare("UPDATE merchant_webhook_deliveries SET status=?,attempt_count=attempt_count+1,last_http_status=?,last_error=?,delivered_at=CASE WHEN ?='delivered' THEN CURRENT_TIMESTAMP ELSE delivered_at END WHERE event_id=?")
-    .bind(status, httpStatus, error, status, eventId).run();
+function changedRows(result) {
+  return Number(result?.meta?.changes ?? result?.changes ?? 0);
+}
+
+/**
+ * Atomically claims a pending/failed delivery. The lease prevents concurrent
+ * payment-webhook replays from dispatching the same merchant event at once.
+ */
+export async function claimMerchantWebhookDelivery(env, eventId) {
+  const leaseToken = `lease_${crypto.randomUUID().replaceAll('-', '')}`;
+  const result = await env.DB.prepare(
+    "UPDATE merchant_webhook_deliveries SET lease_token=?,lease_expires_at=datetime('now','+30 seconds'),attempt_count=attempt_count+1 WHERE event_id=? AND status IN ('pending','failed') AND (lease_expires_at IS NULL OR lease_expires_at<=CURRENT_TIMESTAMP) AND (next_attempt_at IS NULL OR next_attempt_at<=CURRENT_TIMESTAMP)"
+  ).bind(leaseToken, eventId).run();
+  if (changedRows(result) > 0) return { claimed: true, leaseToken };
+  const row = await env.DB.prepare('SELECT event_id,status,attempt_count,lease_token,lease_expires_at,next_attempt_at FROM merchant_webhook_deliveries WHERE event_id=?')
+    .bind(eventId).first();
+  return { claimed: false, row };
+}
+
+async function updateDelivery(env, eventId, leaseToken, { status, httpStatus = null, error = null }) {
+  await env.DB.prepare(
+    "UPDATE merchant_webhook_deliveries SET status=?,last_http_status=?,last_error=?,delivered_at=CASE WHEN ?='delivered' THEN CURRENT_TIMESTAMP ELSE delivered_at END,next_attempt_at=CASE WHEN ?='failed' THEN datetime('now','+30 seconds') ELSE NULL END,lease_token=NULL,lease_expires_at=NULL WHERE event_id=? AND lease_token=?"
+  ).bind(status, httpStatus, error, status, status, eventId, leaseToken).run();
 }
 
 export async function dispatchMerchantPaymentPaid(env, intent) {
-  const merchant = await merchantConfig(env, intent.app_slug);
-  if (!merchant?.webhook_url || !merchant?.webhook_secret_env) return { delivered: false, reason: 'not_configured' };
-
-  const webhookUrl = allowedWebhookUrl(env, merchant.webhook_url);
-  const secretRef = String(merchant.webhook_secret_env || '').trim();
-  const secret = /^[A-Z][A-Z0-9_]{2,127}$/.test(secretRef) ? env[secretRef] : null;
   const eventId = `evt_payment_paid_${sha256Hex(`${intent.id}:${intent.provider_reference || ''}`).slice(0, 32)}`;
+  const merchant = await merchantConfig(env, intent.app_slug);
+  const webhookUrl = merchant?.webhook_url ? allowedWebhookUrl(env, merchant.webhook_url) : null;
+  const secretRef = String(merchant?.webhook_secret_env || '').trim();
+  const secret = /^[A-Z][A-Z0-9_]{2,127}$/.test(secretRef) ? env[secretRef] : null;
 
   if (!webhookUrl || !secret) {
-    await recordDelivery(env, {
-      eventId,
-      merchantSlug: intent.app_slug,
-      intentId: intent.id,
-      webhookUrl: merchant.webhook_url,
-      status: 'suppressed',
-      error: !webhookUrl ? 'webhook_host_not_allowlisted' : 'webhook_secret_unavailable'
-    });
-    return { delivered: false, reason: 'suppressed' };
+    if (merchant?.webhook_url || merchant?.webhook_secret_env) {
+      const row = await ensureDelivery(env, {
+        eventId, merchantSlug: intent.app_slug, intentId: intent.id,
+        webhookUrl: merchant.webhook_url || 'https://suppressed.invalid/'
+      });
+      if (row?.status !== 'delivered') {
+        await env.DB.prepare("UPDATE merchant_webhook_deliveries SET status='suppressed',last_error=?,lease_token=NULL,lease_expires_at=NULL,next_attempt_at=NULL WHERE event_id=? AND status IN ('pending','failed')")
+          .bind(!webhookUrl ? 'webhook_host_not_allowlisted' : 'webhook_secret_unavailable', eventId).run();
+      }
+      return { delivered: false, reason: 'suppressed' };
+    }
+    return { delivered: false, reason: 'not_configured' };
   }
 
-  const created = await recordDelivery(env, {
-    eventId,
-    merchantSlug: intent.app_slug,
-    intentId: intent.id,
-    webhookUrl,
+  const row = await ensureDelivery(env, {
+    eventId, merchantSlug: intent.app_slug, intentId: intent.id, webhookUrl
   });
-  if (!created) return { delivered: false, reason: 'duplicate' };
+  if (row?.status === 'delivered') return { delivered: true, duplicate: true };
+  if (row?.status === 'suppressed') return { delivered: false, reason: 'suppressed' };
+
+  const claim = await claimMerchantWebhookDelivery(env, eventId);
+  if (!claim.claimed) {
+    if (claim.row?.status === 'delivered') return { delivered: true, duplicate: true };
+    return { delivered: false, reason: claim.row?.status === 'failed' ? 'retry_scheduled' : 'delivery_in_progress' };
+  }
 
   const occurredAt = new Date().toISOString();
   const payload = {
@@ -93,10 +115,10 @@ export async function dispatchMerchantPaymentPaid(env, intent) {
   const raw = JSON.stringify(payload);
   const timestamp = Math.floor(Date.now() / 1000).toString();
   const signature = merchantWebhookSignature(raw, timestamp, secret);
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 8000);
 
   try {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 8000);
     const result = await fetch(webhookUrl, {
       method: 'POST',
       redirect: 'error',
@@ -111,15 +133,20 @@ export async function dispatchMerchantPaymentPaid(env, intent) {
       },
       body: raw,
     });
-    clearTimeout(timer);
     if (!result.ok) {
-      await updateDelivery(env, eventId, { status: 'failed', httpStatus: result.status, error: `merchant_http_${result.status}` });
+      await updateDelivery(env, eventId, claim.leaseToken, {
+        status: 'failed', httpStatus: result.status, error: `merchant_http_${result.status}`
+      });
       return { delivered: false, reason: 'merchant_rejected', status: result.status };
     }
-    await updateDelivery(env, eventId, { status: 'delivered', httpStatus: result.status });
+    await updateDelivery(env, eventId, claim.leaseToken, { status: 'delivered', httpStatus: result.status });
     return { delivered: true };
   } catch (error) {
-    await updateDelivery(env, eventId, { status: 'failed', error: error instanceof Error ? error.message.slice(0, 500) : 'delivery_failed' });
+    await updateDelivery(env, eventId, claim.leaseToken, {
+      status: 'failed', error: error instanceof Error ? error.message.slice(0, 500) : 'delivery_failed'
+    });
     return { delivered: false, reason: 'delivery_failed' };
+  } finally {
+    clearTimeout(timer);
   }
 }
