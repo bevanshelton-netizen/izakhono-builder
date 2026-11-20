@@ -1,4 +1,4 @@
-import type { Principal, VerificationPurpose } from "./types.js";
+import type { Principal, VerificationCheck, VerificationPurpose } from "./types.js";
 
 export type Permission =
   | "identity:verify:create"
@@ -39,4 +39,13 @@ export function validatePurpose(purpose: VerificationPurpose): void {
     "regulated_service",
   ];
   if (!allowed.includes(purpose)) throw new AccessDeniedError("Unsupported verification purpose");
+}
+
+export function validateChecks(checks: VerificationCheck[]): void {
+  const allowed: VerificationCheck[] = [
+    "document_authenticity", "document_data", "face_match", "liveness", "nfc_chip",
+  ];
+  if (!Array.isArray(checks) || checks.length === 0 || checks.some((check) => !allowed.includes(check))) {
+    throw new AccessDeniedError("Unsupported or missing verification checks");
+  }
 }
