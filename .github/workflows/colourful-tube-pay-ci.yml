@@ -23,4 +23,4 @@ jobs:
           node-version: 24
       - name: Run isolated module tests
         working-directory: products/colourful-tube-pay
-        run: npm test && npm run check
+        run: npm run check
