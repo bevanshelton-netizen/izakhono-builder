@@ -39,6 +39,9 @@ export interface VerificationRequest {
   subjectRef: string;
   purpose: VerificationPurpose;
   requiredChecks: VerificationCheck[];
+  completedChecks: VerificationCheck[];
+  failedChecks: VerificationCheck[];
+  requestFingerprint: string;
   status: VerificationStatus;
   legalBasis: string;
   noticeVersion: string;
