@@ -57,6 +57,7 @@ export interface VerificationRequest {
 
 export interface VerificationEvidenceMetadata {
   id: string;
+  tenantId: string;
   requestId: string;
   kind: "identity_document" | "selfie" | "nfc_result" | "provider_receipt";
   objectRef: string;
@@ -146,6 +147,7 @@ export interface AuditEvent {
 export interface VerificationRepository {
   findByIdempotencyKey(tenantId: string, key: string): Promise<VerificationRequest | null>;
   createRequest(request: VerificationRequest): Promise<void>;
+  createEvidenceMetadata(metadata: VerificationEvidenceMetadata): Promise<void>;
   updateRequest(request: VerificationRequest): Promise<void>;
   persistProviderResult(request: VerificationRequest, result: ProviderVerificationResult): Promise<void>;
   appendAudit(event: AuditEvent): Promise<void>;
