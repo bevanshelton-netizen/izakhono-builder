@@ -21,25 +21,32 @@ export class WebhookRejectedError extends Error {
   }
 }
 
-/** Provider-neutral gate. Implement signature verification from the vendor's current specification. */
+/**
+ * Verify the exact raw bytes before parsing the envelope. The parser must
+ * derive every envelope field from the signed raw body, never from headers
+ * or separately supplied client values.
+ */
 export async function acceptProviderWebhook<T>(
   rawBody: string,
   headers: Headers,
-  envelope: VerifiedWebhookEnvelope<T>,
   verifier: WebhookSignatureVerifier,
   replayStore: WebhookReplayStore,
+  parseSignedBody: (rawBody: string) => VerifiedWebhookEnvelope<T>,
   now = new Date(),
   maxAgeMs = 5 * 60 * 1000,
-): Promise<boolean> {
-  if (!rawBody || !envelope.providerId || !envelope.eventId) {
+): Promise<VerifiedWebhookEnvelope<T> | null> {
+  if (!rawBody) throw new WebhookRejectedError("Webhook body is empty");
+  if (!(await verifier.verify(rawBody, headers))) {
+    throw new WebhookRejectedError("Webhook signature is invalid");
+  }
+  const envelope = parseSignedBody(rawBody);
+  if (!envelope.providerId || !envelope.eventId) {
     throw new WebhookRejectedError("Webhook envelope is incomplete");
   }
   const occurredAt = new Date(envelope.occurredAt);
   if (!Number.isFinite(occurredAt.getTime()) || Math.abs(now.getTime() - occurredAt.getTime()) > maxAgeMs) {
     throw new WebhookRejectedError("Webhook timestamp is outside the accepted window");
   }
-  if (!(await verifier.verify(rawBody, headers))) {
-    throw new WebhookRejectedError("Webhook signature is invalid");
-  }
-  return replayStore.claimOnce(envelope.providerId, envelope.eventId, now.toISOString());
+  const claimed = await replayStore.claimOnce(envelope.providerId, envelope.eventId, now.toISOString());
+  return claimed ? envelope : null;
 }
