@@ -74,7 +74,8 @@ create table if not exists identity_private.evidence_metadata (
   content_sha256 text not null check (content_sha256 ~ '^[a-f0-9]{64}$'),
   captured_at timestamptz not null,
   retention_until timestamptz,
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  unique (request_id, content_sha256)
 );
 
 create table if not exists identity_private.provider_attempts (
