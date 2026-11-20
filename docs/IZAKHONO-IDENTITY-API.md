@@ -67,3 +67,8 @@ Regula remains the preferred document/biometric technology evaluation candidate.
 ## Live database migration caution
 
 The connected project already has the eight identity tables, forced RLS and service-role-only policies. Its applied migration names differ from the migration filenames in the original source PR. The entity-scope SQL in `docs/IZAKHONO-IDENTITY-ENTITY-SCOPE-MIGRATION-DRAFT.sql` is review-only and must not be applied until the exact live migration history and SQL are reconciled.
+
+
+## Provider adapter implementation
+
+The gateway source includes a provider-neutral adapter contract and an unconfigured Regula adapter. The health endpoint reports provider readiness without exposing credentials. The adapter does not call Regula or make an onboarding decision until an approved transport and licence are configured. All provider evidence remains subject to IZAKHONO/FORTRESS policy and human-review rules.
