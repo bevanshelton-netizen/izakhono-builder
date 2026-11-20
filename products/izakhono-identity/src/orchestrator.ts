@@ -146,7 +146,7 @@ export class VerificationOrchestrator {
     request.failedChecks = [...new Set(result.failedChecks)];
     request.status = result.status;
     request.updatedAt = this.clock.now().toISOString();
-    await this.repository.updateRequest(request);
+    await this.repository.persistProviderResult(request, result);
     await this.audit(principal, request, "verification.result_recorded", result.status, {
       providerId: result.providerId,
       reasonCodeCount: result.reasonCodes.length,
