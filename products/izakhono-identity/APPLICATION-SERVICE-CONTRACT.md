@@ -7,6 +7,7 @@ IZAKHONO BUILDER documentation defines the internal repository and validated sou
 ## Required service boundaries
 
 1. Authentication adapter: validate JWT/session using the IZAKHONO-approved identity provider. Do not trust request-supplied user IDs or role claims without verified token provenance.
+2. Request-integrity adapter: enforce same-origin / CSRF validation for cookie-authenticated state-changing requests; reject missing or invalid CSRF tokens. Bearer-token clients must use an explicitly approved origin policy.
 2. Tenant authorizer: resolve active membership and permission from the private identity schema on every operation.
 3. Application service: call the provider-neutral orchestrator; never accept provider IDs from untrusted clients.
 4. Evidence storage adapter: write encrypted objects to an approved private object store; use short-lived, single-use upload intents.
