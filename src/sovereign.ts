@@ -25,7 +25,7 @@ const ALLOWED_MODULES = new Set([
   'speech', 'transcription', 'recurring', 'roles', 'integrations', 'publish',
   'admin', 'analytics', 'marketplace', 'learning', 'video', 'ai', 'revenue',
   'artist_protect', 'career', 'media_handoff', 'clearset', 'growth', 'affiliate',
-  'docflow', 'game', 'seo',
+  'docflow', 'game', 'seo', 'identity',
 ]);
 
 function json(data: unknown, status = 200, source?: Response): Response {
@@ -270,6 +270,7 @@ function buildModulesFromPrompt(prompt: string, target: string): string[] {
   if (/\b(email|newsletter|mail)\b/.test(p)) modules.add('email');
   if (/\b(affiliate|referral|commission|partner network)\b/.test(p)) modules.add('affiliate');
   if (/\b(document|proposal|contract|agreement|pdf|signature|signing)\b/.test(p)) modules.add('docflow');
+  if (/\b(identity|kyc|kyb|biometric|identity verification|passport verification|id verification)\b/.test(p)) modules.add('identity');
   if (/\b(schedule|scheduled|recurring|automation|workflow|reminder)\b/.test(p)) modules.add('recurring');
   if (/\b(team|staff|role|permission|admin users?)\b/.test(p)) modules.add('roles');
   if (/\b(audio|voice|speech|narrat)\b/.test(p)) modules.add('speech');
