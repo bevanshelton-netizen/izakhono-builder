@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="csrf-token" content="">
+  <meta name="theme-color" content="#10263d">
+  <title>IZAKHONO IDENTITY</title>
+  <style>
+    :root{color-scheme:light;--ink:#14263b;--muted:#64748b;--line:#dbe3eb;--paper:#f4f7fa;--panel:#fff;--navy:#10263d;--accent:#167d70;--warn:#9a5a0b}
+    *{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font:15px/1.5 Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,sans-serif}
+    header{background:var(--navy);color:#fff;padding:22px max(20px,calc((100vw - 1120px)/2));display:flex;justify-content:space-between;align-items:center;gap:20px}
+    .brand{font-weight:800;letter-spacing:.08em}.sub{color:#c8d5e2;font-size:12px}
+    main{max-width:1120px;margin:28px auto;padding:0 20px 48px}.intro{margin-bottom:22px}.intro h1{margin:0 0 5px;font-size:27px}.intro p{margin:0;color:var(--muted)}
+    nav{display:flex;flex-wrap:wrap;gap:8px;margin:20px 0}.tab{border:1px solid var(--line);background:#fff;border-radius:9px;padding:10px 15px;color:var(--ink);font-weight:650;cursor:pointer}.tab[aria-selected=true]{background:var(--navy);color:#fff;border-color:var(--navy)}
+    .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}.panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px;box-shadow:0 4px 16px #10263d08}.panel h2{font-size:18px;margin:0 0 5px}.hint{color:var(--muted);font-size:13px;margin:0 0 16px}
+    label{display:block;font-weight:650;font-size:13px;margin:13px 0 5px}input,select{width:100%;border:1px solid #cbd5e1;border-radius:8px;padding:11px 12px;font:inherit;background:#fff;color:var(--ink)}input:focus,select:focus,button:focus{outline:3px solid #167d7033;outline-offset:1px}
+    .checks{display:flex;flex-wrap:wrap;gap:12px}.checks label{display:flex;align-items:center;gap:6px;font-weight:500;margin:8px 0}.checks input{width:auto}
+    button.primary{border:0;background:var(--accent);color:#fff;padding:11px 16px;border-radius:8px;font-weight:700;cursor:pointer;margin-top:16px}button.secondary{border:1px solid var(--line);background:#fff;color:var(--ink);padding:9px 12px;border-radius:8px;cursor:pointer}
+    .status{margin:16px 0;padding:12px 14px;border-radius:9px;background:#e8eef4;color:var(--ink);font-size:13px;white-space:pre-wrap}.status.error{background:#fff0ef;color:#922d25}.status.good{background:#eaf7f1;color:#176247}
+    .hidden{display:none!important}.result{margin-top:12px;padding:12px;border:1px solid var(--line);border-radius:9px;background:#fbfdff}.pill{display:inline-block;border-radius:99px;background:#e8eef4;padding:3px 9px;font-size:12px;font-weight:700}
+    .provider{border:1px solid var(--line);border-radius:10px;padding:13px;margin-top:10px}.provider strong{display:block}.muted{color:var(--muted);font-size:13px}
+    footer{max-width:1120px;margin:0 auto;padding:0 20px 30px;color:var(--muted);font-size:12px}
+    @media(max-width:720px){header{align-items:flex-start;flex-direction:column}.grid{grid-template-columns:1fr}main{margin-top:20px}.intro h1{font-size:23px}}
+  </style>
+</head>
+<body>
+<header>
+  <div><div class="brand">IZAKHONO IDENTITY</div><div class="sub">Identity verification and trust infrastructure</div></div>
+  <div class="sub">IZAKHONO PAY · Central coordination</div>
+</header>
+<main>
+  <section class="intro">
+    <h1>Identity operations</h1>
+    <p>Purpose-bound verification, tenant-scoped access and provider-independent workflows.</p>
+  </section>
+  <nav aria-label="Identity operations">
+    <button class="tab" data-panel="overview" aria-selected="true">Overview</button>
+    <button class="tab" data-panel="new" aria-selected="false">New verification</button>
+    <button class="tab" data-panel="lookup" aria-selected="false">Find request</button>
+    <button class="tab" data-panel="review" aria-selected="false">Manual review</button>
+    <button class="tab" data-panel="providers" aria-selected="false">Providers</button>
+  </nav>
+  <div id="globalStatus" class="status" role="status" aria-live="polite">Checking your authenticated session…</div>
+
+  <section id="panel-overview" class="grid">
+    <article class="panel">
+      <h2>Verification control</h2>
+      <p class="hint">Create a verification request only after the business purpose and processing authorisation have been approved.</p>
+      <p><span class="pill">Provider independent</span> <span class="pill">Tenant isolated</span></p>
+      <p class="muted">Raw identity documents and biometric data are not displayed in this console. Use the approved secure evidence-capture workflow when it is enabled.</p>
+      <button class="primary" data-go="new">Create verification</button>
+    </article>
+    <article class="panel">
+      <h2>Provider health</h2>
+      <p class="hint">See enabled providers and their verified capabilities.</p>
+      <div id="overviewProviders" class="muted">Provider information has not been loaded.</div>
+      <button class="secondary" data-go="providers">View provider status</button>
+    </article>
+  </section>
+
+  <section id="panel-new" class="panel hidden">
+    <h2>Create verification</h2>
+    <p class="hint">Use an opaque subject reference. Do not enter a national ID number, passport number or other direct identifier here.</p>
+    <form id="createForm">
+      <label for="tenantId">Authorised business / tenant ID</label>
+      <input id="tenantId" name="tenantId" autocomplete="off" required>
+      <label for="subjectRef">Opaque subject reference</label>
+      <input id="subjectRef" name="subjectRef" maxlength="160" autocomplete="off" required>
+      <label for="purpose">Verification purpose</label>
+      <select id="purpose" name="purpose" required>
+        <option value="customer_onboarding">Customer onboarding</option>
+        <option value="business_onboarding">Business onboarding</option>
+        <option value="employment">Employment</option>
+        <option value="supplier_onboarding">Supplier onboarding</option>
+        <option value="account_recovery">Account recovery</option>
+        <option value="regulated_service">Regulated service</option>
+      </select>
+      <label>Required checks</label>
+      <div class="checks">
+        <label><input type="checkbox" name="check" value="document_authenticity" checked> Document authenticity</label>
+        <label><input type="checkbox" name="check" value="document_data" checked> Document data</label>
+        <label><input type="checkbox" name="check" value="face_match"> Face match</label>
+        <label><input type="checkbox" name="check" value="liveness"> Liveness</label>
+        <label><input type="checkbox" name="check" value="nfc_chip"> NFC chip</label>
+      </div>
+      <label for="countryCode">Document issuing country</label>
+      <input id="countryCode" name="countryCode" value="ZA" maxlength="2" pattern="[A-Z]{2}" required>
+      <label for="authorisationRef">Approved processing authorisation reference</label>
+      <input id="authorisationRef" name="authorisationRef" maxlength="160" autocomplete="off" required>
+      <p class="muted">The server resolves this reference against the authorised compliance register. A reference is not itself a legal approval.</p>
+      <button class="primary" type="submit">Create request</button>
+    </form>
+    <div id="createResult" class="result hidden" aria-live="polite"></div>
+  </section>
+
+  <section id="panel-lookup" class="panel hidden">
+    <h2>Find verification request</h2>
+    <p class="hint">The result is returned only when your authenticated account has access to the owning tenant.</p>
+    <form id="lookupForm">
+      <label for="lookupId">Verification request ID</label>
+      <input id="lookupId" required autocomplete="off">
+      <button class="primary" type="submit">Find request</button>
+    </form>
+    <div id="lookupResult" class="result hidden" aria-live="polite"></div>
+  </section>
+
+  <section id="panel-review" class="panel hidden">
+    <h2>Manual review</h2>
+    <p class="hint">Only requests in manual_review status can be decided. Approval requires evidence for every required check.</p>
+    <form id="reviewForm">
+      <label for="reviewId">Verification request ID</label>
+      <input id="reviewId" required autocomplete="off">
+      <label for="decision">Decision</label>
+      <select id="decision"><option value="verified">Approve as verified</option><option value="failed">Reject verification</option></select>
+      <label for="reasonCode">Review reason code</label>
+      <input id="reasonCode" maxlength="80" required>
+      <button class="primary" type="submit">Submit review decision</button>
+    </form>
+  </section>
+
+  <section id="panel-providers" class="panel hidden">
+    <h2>Verification providers</h2>
+    <p class="hint">Only server-approved capabilities are shown. Regula remains disabled until vendor, legal and technical approval.</p>
+    <div id="providersList" class="muted">Loading provider status…</div>
+    <button class="secondary" id="refreshProviders">Refresh</button>
+  </section>
+</main>
+<footer>IZAKHONO IDENTITY · Internal operations interface · No production access is enabled by this static file alone.</footer>
+<script>
+(function(){
+  "use strict";
+  var statusEl=document.getElementById("globalStatus");
+  function status(message,kind){statusEl.textContent=message;statusEl.className="status"+(kind?" "+kind:"");}
+  function show(panel){
+    document.querySelectorAll("[id^='panel-']").forEach(function(el){el.classList.toggle("hidden",el.id!=="panel-"+panel);});
+    document.querySelectorAll(".tab").forEach(function(el){el.setAttribute("aria-selected",String(el.dataset.panel===panel));});
+  }
+  document.querySelectorAll(".tab").forEach(function(btn){btn.addEventListener("click",function(){show(btn.dataset.panel);});});
+  document.querySelectorAll("[data-go]").forEach(function(btn){btn.addEventListener("click",function(){show(btn.dataset.go);});});
+  function csrf(){
+    var node=document.querySelector("meta[name='csrf-token']");
+    return node?node.content:"";
+  }
+  async function api(path,options){
+    var headers=new Headers((options&&options.headers)||{});
+    headers.set("accept","application/json");
+    if(options&&options.body)headers.set("content-type","application/json");
+    if(csrf())headers.set("x-csrf-token",csrf());
+    var response=await fetch(path,Object.assign({credentials:"same-origin",cache:"no-store"},options||{},{headers:headers}));
+    var data={};try{data=await response.json();}catch(_){}
+    if(!response.ok)throw new Error(data.error||("Request failed ("+response.status+")"));
+    return data;
+  }
+  function renderRecord(target,record){
+    target.classList.remove("hidden");
+    target.textContent="";
+    var title=document.createElement("strong");title.textContent="Request "+record.id;target.appendChild(title);
+    var details=document.createElement("p");details.textContent="Status: "+record.status+" · Purpose: "+record.purpose;target.appendChild(details);
+    var checks=document.createElement("p");checks.textContent="Completed checks: "+(record.completedChecks||[]).join(", ");target.appendChild(checks);
+    var failed=document.createElement("p");failed.textContent="Failed checks: "+(record.failedChecks||[]).join(", ");target.appendChild(failed);
+  }
+  async function loadProviders(){
+    var data=await api("/v1/providers",{method:"GET"});
+    var targets=[document.getElementById("providersList"),document.getElementById("overviewProviders")];
+    targets.forEach(function(target){
+      target.textContent="";
+      if(!data.length){target.textContent="No providers are configured.";return;}
+      data.forEach(function(provider){
+        var card=document.createElement("div");card.className="provider";
+        var name=document.createElement("strong");name.textContent=provider.id;card.appendChild(name);
+        var state=document.createElement("span");state.className="pill";state.textContent=provider.enabled?"Enabled":"Disabled";card.appendChild(state);
+        var detail=document.createElement("p");detail.className="muted";
+        detail.textContent="Verified checks: "+(provider.capabilities.checks||[]).join(", ")+" · Countries: "+(provider.capabilities.countries||[]).join(", ");
+        card.appendChild(detail);target.appendChild(card);
+      });
+    });
+  }
+  document.getElementById("createForm").addEventListener("submit",async function(event){
+    event.preventDefault();
+    var checks=Array.from(document.querySelectorAll("input[name='check']:checked")).map(function(el){return el.value;});
+    var key=window.crypto&&crypto.randomUUID?crypto.randomUUID():String(Date.now())+"-"+Math.random().toString(16).slice(2);
+    var body={
+      tenantId:document.getElementById("tenantId").value.trim(),
+      subjectRef:document.getElementById("subjectRef").value.trim(),
+      purpose:document.getElementById("purpose").value,
+      requiredChecks:checks,
+      countryCode:document.getElementById("countryCode").value.trim().toUpperCase(),
+      processingAuthorisationReference:document.getElementById("authorisationRef").value.trim()
+    };
+    try{
+      var data=await api("/v1/identity/verifications",{method:"POST",headers:{"idempotency-key":key},body:JSON.stringify(body)});
+      renderRecord(document.getElementById("createResult"),data);
+      status("Verification request created.","good");
+    }catch(error){status(error.message,"error");}
+  });
+  document.getElementById("lookupForm").addEventListener("submit",async function(event){
+    event.preventDefault();
+    try{
+      var data=await api("/v1/identity/verifications/"+encodeURIComponent(document.getElementById("lookupId").value.trim()),{method:"GET"});
+      renderRecord(document.getElementById("lookupResult"),data);status("Request retrieved.","good");
+    }catch(error){status(error.message,"error");}
+  });
+  document.getElementById("reviewForm").addEventListener("submit",async function(event){
+    event.preventDefault();
+    var id=document.getElementById("reviewId").value.trim();
+    try{
+      var data=await api("/v1/identity/verifications/"+encodeURIComponent(id)+"/review",{method:"POST",body:JSON.stringify({decision:document.getElementById("decision").value,reasonCode:document.getElementById("reasonCode").value.trim()})});
+      status("Manual review recorded: "+data.status,"good");
+    }catch(error){status(error.message,"error");}
+  });
+  document.getElementById("refreshProviders").addEventListener("click",function(){loadProviders().then(function(){status("Provider status refreshed.","good");}).catch(function(e){status(e.message,"error");});});
+  if(!csrf())status("Authenticated application shell required. The host must inject a CSRF token and establish an authorised session before actions are enabled.","error");
+  loadProviders().catch(function(error){status("Provider status unavailable: "+error.message,"error");});
+})();
+</script>
+</body>
+</html>
