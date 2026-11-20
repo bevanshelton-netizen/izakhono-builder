@@ -79,8 +79,10 @@ function headers(extra: Record<string, string> = {}) {
 }
 
 async function hash(v: Uint8Array | string) {
-  const b = typeof v === "string" ? enc.encode(v) : v;
-  const h = await crypto.subtle.digest("SHA-256", b);
+  const view = typeof v === "string" ? enc.encode(v) : v;
+  const copy = new Uint8Array(view.byteLength);
+  copy.set(view);
+  const h = await crypto.subtle.digest("SHA-256", copy.buffer);
   return [...new Uint8Array(h)].map((x) => x.toString(16).padStart(2, "0")).join("");
 }
 
