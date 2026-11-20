@@ -20,10 +20,13 @@ test('PayFast ITN must match provider, payment reference, merchant and intent', 
   assert.equal(providerIdentityMatches(payfastIntent, 'payfast', { ...valid, custom_str2: 'pi_other' }), false);
 });
 
-test('iKhokha callback must match external merchant and payment identity', () => {
-  const ikhIntent = { ...intent, routed_provider: 'ikhokha' };
-  const valid = { externalTransactionID: intent.reference, externalEntityID: intent.app_slug };
+test('iKhokha callback matches documented transaction reference and provider payment-link ID', () => {
+  const ikhIntent = { ...intent, routed_provider: 'ikhokha', provider_reference: 'PAYLINK-A-1' };
+  const valid = { paylinkID: 'PAYLINK-A-1', externalTransactionID: intent.reference, status: 'SUCCESS', responseCode: '00' };
   assert.equal(providerIdentityMatches(ikhIntent, 'ikhokha', valid), true);
-  assert.equal(providerIdentityMatches(ikhIntent, 'ikhokha', { ...valid, externalEntityID: 'merchant-b' }), false);
+  assert.equal(providerIdentityMatches(ikhIntent, 'ikhokha', { ...valid, paylinkID: 'PAYLINK-B-1' }), false);
   assert.equal(providerIdentityMatches(ikhIntent, 'ikhokha', { ...valid, externalTransactionID: 'IZP-B-1' }), false);
+  assert.equal(providerIdentityMatches(ikhIntent, 'ikhokha', { ...valid, externalEntityID: 'merchant-b' }), true);
+  assert.equal(providerIdentityMatches({ ...ikhIntent, provider_reference: null }, 'ikhokha', valid), false);
+  assert.equal(providerIdentityMatches({ ...ikhIntent, routed_provider: 'payfast' }, 'ikhokha', valid), false);
 });
