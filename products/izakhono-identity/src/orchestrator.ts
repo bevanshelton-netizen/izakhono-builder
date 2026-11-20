@@ -128,6 +128,7 @@ export class VerificationOrchestrator {
     const request = await this.repository.findRequest(requestId);
     if (!request) throw new Error("Verification request not found");
     requireTenantPermission(principal, request.tenantId, "identity:verify:review");
+    if (request.status !== "in_progress") throw new Error("Provider results are accepted only while a request is in progress");
     if (!request.providerId || !request.providerReference || request.providerId !== result.providerId || request.providerReference !== result.providerReference) {
       throw new Error("Provider result does not match the assigned verification");
     }
