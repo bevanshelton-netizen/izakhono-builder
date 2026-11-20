@@ -1,6 +1,7 @@
 import type { CreateVerificationInput, Principal, VerificationRepository } from "./types.js";
 import { requireTenantPermission } from "./policy.js";
 import { VerificationOrchestrator } from "./orchestrator.js";
+import { ProviderRouter } from "./provider-router.js";
 
 export interface IdentityHttpDependencies {
   authenticate(request: Request): Promise<Principal | null>;
@@ -12,6 +13,7 @@ export interface IdentityHttpDependencies {
   }): Promise<CreateVerificationInput["processingAuthorisation"] | null>;
   repository: VerificationRepository;
   orchestrator: VerificationOrchestrator;
+  providerRouter: ProviderRouter;
 }
 
 function json(data: unknown, status = 200): Response {
@@ -53,6 +55,7 @@ export function createIdentityHttpHandler(deps: IdentityHttpDependencies) {
       if (!tenantId || !authorisationReference) return json({ error: "missing_required_fields" }, 400);
 
       try {
+        requireTenantPermission(principal, tenantId, "identity:verify:create");
         const processingAuthorisation = await deps.resolveProcessingAuthorisation({
           principal, tenantId, purpose, reference: authorisationReference,
         });
@@ -73,6 +76,10 @@ export function createIdentityHttpHandler(deps: IdentityHttpDependencies) {
         if (error instanceof Error && error.name === "AccessDeniedError") return json({ error: "forbidden" }, 403);
         return json({ error: "invalid_verification_request" }, 400);
       }
+    }
+
+    if (request.method === "GET" && path === "/v1/providers") {
+      return json(deps.providerRouter.list().map((provider) => ({ id: provider.id, enabled: provider.enabled, capabilities: provider.capabilities })));
     }
 
     if (segments.length === 4 && segments[0] === "v1" && segments[1] === "identity" && segments[2] === "verifications" && request.method === "GET") {
