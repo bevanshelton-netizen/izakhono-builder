@@ -1,3 +1,5 @@
+import test from "node:test";
+import assert from "node:assert/strict";
 import {
   isAllowedOrigin,
   parseIdentityIntrospection,
@@ -16,52 +18,48 @@ const valid = {
   expires_at: "2027-01-01T00:00:00.000Z",
 };
 
-Deno.test("accepts a valid active canonical entity session", () => {
+test("accepts a valid active canonical entity session", () => {
   const result = parseIdentityIntrospection(valid, Date.parse("2026-11-20T00:00:00Z"));
-  if (!result || result.entityId !== valid.entity_id ||
-      result.membershipId !== valid.membership_id ||
-      result.userId !== valid.user_id) throw new Error("valid session was not accepted");
+  assert.ok(result);
+  assert.equal(result.entityId, valid.entity_id);
+  assert.equal(result.membershipId, valid.membership_id);
+  assert.equal(result.userId, valid.user_id);
 });
 
-Deno.test("rejects inactive or revoked sessions", () => {
-  if (parseIdentityIntrospection({ ...valid, active: false }) !== null) {
-    throw new Error("inactive session was accepted");
-  }
+test("rejects inactive or revoked sessions", () => {
+  assert.equal(parseIdentityIntrospection({ ...valid, active: false }), null);
 });
 
-Deno.test("rejects malformed or missing canonical identifiers", () => {
-  if (parseIdentityIntrospection({ ...valid, entity_id: "entity-from-request" }) !== null) {
-    throw new Error("malformed entity ID was accepted");
-  }
-  if (parseIdentityIntrospection({ ...valid, membership_id: "" }) !== null) {
-    throw new Error("missing membership ID was accepted");
-  }
+test("rejects malformed or missing canonical identifiers", () => {
+  assert.equal(parseIdentityIntrospection({ ...valid, entity_id: "entity-from-request" }), null);
+  assert.equal(parseIdentityIntrospection({ ...valid, membership_id: "" }), null);
 });
 
-Deno.test("rejects expired canonical sessions", () => {
-  if (parseIdentityIntrospection(valid, Date.parse("2027-01-02T00:00:00Z")) !== null) {
-    throw new Error("expired session was accepted");
-  }
+test("rejects expired canonical sessions", () => {
+  assert.equal(parseIdentityIntrospection(valid, Date.parse("2027-01-02T00:00:00Z")), null);
 });
 
-Deno.test("CORS allows only exact configured origins", () => {
+test("CORS allows only exact configured origins", () => {
   const allowed = ["https://pay.izakhono.africa", "https://id.izakhono.africa"];
-  if (!isAllowedOrigin("https://pay.izakhono.africa", allowed)) throw new Error("approved origin rejected");
-  if (isAllowedOrigin("https://evil.example", allowed)) throw new Error("unapproved origin accepted");
-  if (!isAllowedOrigin(null, allowed)) throw new Error("server-to-server request rejected");
+  assert.equal(isAllowedOrigin("https://pay.izakhono.africa", allowed), true);
+  assert.equal(isAllowedOrigin("https://evil.example", allowed), false);
+  assert.equal(isAllowedOrigin(null, allowed), true);
 });
 
-Deno.test("product access requires a server-side product-to-entity binding", () => {
+test("product access requires a server-side product-to-entity binding", () => {
   const map = JSON.stringify({
     IZAKHONO_PAY: ["ent_0123456789abcdef0123456789abcdef"],
   });
-  if (!productEntityAllowed(map, "IZAKHONO_PAY", "ent_0123456789abcdef0123456789abcdef")) {
-    throw new Error("configured product/entity binding rejected");
-  }
-  if (productEntityAllowed(map, "IZAKHONO_PAY", "ent_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")) {
-    throw new Error("cross-entity product binding accepted");
-  }
-  if (productEntityAllowed("", "IZAKHONO_PAY", "ent_0123456789abcdef0123456789abcdef")) {
-    throw new Error("missing product map was accepted");
-  }
+  assert.equal(
+    productEntityAllowed(map, "IZAKHONO_PAY", "ent_0123456789abcdef0123456789abcdef"),
+    true,
+  );
+  assert.equal(
+    productEntityAllowed(map, "IZAKHONO_PAY", "ent_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"),
+    false,
+  );
+  assert.equal(
+    productEntityAllowed("", "IZAKHONO_PAY", "ent_0123456789abcdef0123456789abcdef"),
+    false,
+  );
 });
