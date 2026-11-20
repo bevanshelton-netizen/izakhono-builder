@@ -7,6 +7,8 @@ on:
     paths:
       - 'products/izakhono-identity/**'
       - 'package.json'
+      - 'src/index.ts'
+      - 'src/sovereign.ts'
       - '.github/workflows/identity-validation.yml'
   pull_request:
     paths:
@@ -27,5 +29,9 @@ jobs:
           node-version: 22
       - name: Type-check identity service
         run: npm run identity:typecheck
+      - name: Builder integration type-check
+        run: npm run typecheck
+      - name: Check Builder route module syntax
+        run: npx --yes -p typescript@5.9.2 tsc --noEmit --noCheck --target ES2022 --lib ES2022,DOM,DOM.Iterable --module ESNext --moduleResolution Bundler src/sovereign.ts
       - name: Run identity core tests
         run: npm run identity:test
