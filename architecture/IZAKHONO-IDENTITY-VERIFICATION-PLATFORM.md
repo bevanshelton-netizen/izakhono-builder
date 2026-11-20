@@ -206,3 +206,35 @@ Email must never be used as an identity join key. Before gateway integration, ru
 7. Only after verified migration, rollback, CI, end-to-end and independent security evidence may a controlled production rollout be considered.
 
 **Release remains BLOCKED.** No production deployment, schema migration, permission change, DNS/TLS change or customer-facing behavior was modified as part of this discovery.
+
+
+## Follow-up remediation — 2026-11-20
+
+A dedicated source branch, `fix/idv-canonical-entity-boundary-v1`, was created from the existing IZAKHONO IDV foundation PR head. It reuses the existing gateway, identity schema, private evidence bucket and canonical ID source; it does not create a replacement platform.
+
+Source changes on that branch:
+
+- Introduce a canonical ID introspection client that requires HTTPS, the protected internal key, an active session and unexpired stable user/entity/membership identifiers.
+- Make the IZAKHONO ID session token the IDV API bearer credential. Supabase Auth JWTs are not treated as canonical business membership proof.
+- Scope cases by server-derived entity ID, membership ID and canonical user ID.
+- Bind KYC subjects to canonical user IDs and KYB subjects to canonical entity IDs.
+- Bind relationships and consent records to their verification case.
+- Attribute evidence submissions, decisions and audit events to canonical IDs.
+- Require an owner-configured product-to-entity map and explicit CORS allowlist.
+- Add pure contract tests for active/revoked/expired sessions, identifier validation, exact CORS matching and product/entity binding.
+- Keep verification decisions fail-closed as REVIEW.
+
+A review-only SQL draft is present at `docs/IZAKHONO-IDENTITY-ENTITY-SCOPE-MIGRATION-DRAFT.sql`. It deliberately does not infer tenant ownership for existing records. It must be converted to a proper Supabase CLI migration after reconciling the checked-in migration history with the live project.
+
+### Current blockers
+
+1. The canonical IZAKHONO ID service still has no verified production HTTPS endpoint, durable runtime, TLS/DNS and backup/restore evidence.
+2. No production internal introspection credential is available or installed.
+3. No approved product-to-canonical-entity mapping has been configured.
+4. The additive entity-scope schema draft has not been converted into a migration or tested against a disposable branch.
+5. Malware scanning and external issuer verification are not implemented.
+6. Regula and other external provider credentials/contracts are not configured.
+7. FORTRESS reviewer access and reviewer workflow are not yet proven end-to-end.
+8. No authenticated staging cross-entity, same-user/multiple-membership, revoked-session, expired-session or IDOR test evidence has been accepted.
+
+The follow-up branch is source-only. No Supabase production schema, grants, storage policies, Vercel deployment, DNS, secrets, merchant status or customer-facing traffic was changed.
