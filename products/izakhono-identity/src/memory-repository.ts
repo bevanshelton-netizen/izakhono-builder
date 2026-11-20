@@ -1,9 +1,10 @@
-import type { VerificationRepository, VerificationRequest, AuditEvent, ProviderVerificationResult } from "./types.js";
+import type { VerificationRepository, VerificationRequest, VerificationEvidenceMetadata, AuditEvent, ProviderVerificationResult } from "./types.js";
 
 export class MemoryVerificationRepository implements VerificationRepository {
   readonly requests = new Map<string, VerificationRequest>();
   readonly audits: AuditEvent[] = [];
   readonly results: Array<{ requestId: string; result: ProviderVerificationResult }> = [];
+  readonly evidence: VerificationEvidenceMetadata[] = [];
 
   async findByIdempotencyKey(tenantId: string, key: string): Promise<VerificationRequest | null> {
     const item = [...this.requests.values()].find(
@@ -18,6 +19,13 @@ export class MemoryVerificationRepository implements VerificationRepository {
       throw new Error("Duplicate idempotency key");
     }
     this.requests.set(request.id, structuredClone(request));
+  }
+
+  async createEvidenceMetadata(metadata: VerificationEvidenceMetadata): Promise<void> {
+    if (this.evidence.some((item) => item.requestId === metadata.requestId && item.contentSha256 === metadata.contentSha256)) {
+      throw new Error("Duplicate evidence object");
+    }
+    this.evidence.push(structuredClone(metadata));
   }
 
   async updateRequest(request: VerificationRequest): Promise<void> {
