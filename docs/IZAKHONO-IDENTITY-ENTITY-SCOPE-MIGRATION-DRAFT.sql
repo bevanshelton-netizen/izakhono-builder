@@ -6,6 +6,24 @@
 
 begin;
 
+-- Refuse to guess tenant ownership. The live audit on 2026-11-20 found all eight
+-- identity tables empty. If any rows exist at deployment time, stop and reconcile
+-- them explicitly before this schema change is applied.
+do $
+begin
+  if exists (select 1 from identity.subjects)
+     or exists (select 1 from identity.verification_cases)
+     or exists (select 1 from identity.evidence)
+     or exists (select 1 from identity.subject_relationships)
+     or exists (select 1 from identity.screenings)
+     or exists (select 1 from identity.consent_grants)
+     or exists (select 1 from identity.decisions)
+     or exists (select 1 from identity.audit_events) then
+    raise exception 'Identity records exist; reconcile canonical entity/membership ownership before applying this draft.';
+  end if;
+end;
+$;
+
 alter table identity.subjects
   add column if not exists canonical_user_id text,
   add column if not exists canonical_entity_id text;
@@ -55,6 +73,8 @@ alter table identity.subject_relationships
 alter table identity.subject_relationships
   add constraint identity_relationship_case_required
   check (verification_case_id is not null) not valid;
+alter table identity.subject_relationships
+  validate constraint identity_relationship_case_required;
 
 create index if not exists identity_relationship_case_idx
   on identity.subject_relationships(verification_case_id, relationship_type);
@@ -124,6 +144,8 @@ alter table identity.consent_grants
     verification_case_id is not null
     and granted_by_user_id ~ '^usr_[0-9a-f]{32}$'
   ) not valid;
+alter table identity.consent_grants
+  validate constraint identity_consent_canonical_actor_case_required;
 
 create index if not exists identity_consent_case_status_idx
   on identity.consent_grants(verification_case_id, status, granted_at desc);
@@ -192,6 +214,8 @@ commit;
 
     and length(canonical_session_id) between 1 and 160
   ) not valid;
+alter table identity.verification_cases
+  validate constraint identity_case_canonical_scope_required;
 
 create index if not exists identity_cases_entity_membership_created_idx
   on identity.verification_cases(entity_id, membership_id, created_at desc);
@@ -413,6 +437,8 @@ alter table identity.audit_events
 commit;
 
   ) not valid;
+alter table identity.evidence
+  validate constraint identity_evidence_canonical_submitter_required;
 
 alter table identity.subject_relationships
   add column if not exists verification_case_id uuid
