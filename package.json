@@ -74,7 +74,7 @@
     "jarvis:worker:test": "node products/izakhono-jarvis/runner/worker.test.mjs && node products/izakhono-jarvis/runner/supervisor.test.mjs",
     "jarvis:worker:supervise": "node products/izakhono-jarvis/runner/supervisor.mjs",
     "jarvis:workforce:test": "npx --yes tsx@4.20.3 products/izakhono-jarvis/src/workforce.test.ts",
-    "idv:auth:test": "npx --yes tsx@4.20.3 supabase/functions/izakhono-gateway/identity-auth.test.ts"
+    "idv:auth:test": "node --experimental-strip-types --test supabase/functions/izakhono-gateway/identity-auth.test.ts"
   },
   "dependencies": {
     "wrangler": "4.127.1"
