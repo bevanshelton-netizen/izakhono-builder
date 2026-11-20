@@ -75,7 +75,8 @@
     "jarvis:worker:supervise": "node products/izakhono-jarvis/runner/supervisor.mjs",
     "jarvis:workforce:test": "npx --yes tsx@4.20.3 products/izakhono-jarvis/src/workforce.test.ts",
     "idv:auth:test": "node --experimental-strip-types --test supabase/functions/izakhono-gateway/identity-auth.test.ts",
-    "idv:providers:test": "node --experimental-strip-types --test supabase/functions/izakhono-gateway/verification-providers.test.ts"
+    "idv:providers:test": "node --experimental-strip-types --test supabase/functions/izakhono-gateway/verification-providers.test.ts",
+    "idv:evidence:test": "node --experimental-strip-types --test supabase/functions/izakhono-gateway/evidence-scanner.test.ts"
   },
   "dependencies": {
     "wrangler": "4.127.1"
