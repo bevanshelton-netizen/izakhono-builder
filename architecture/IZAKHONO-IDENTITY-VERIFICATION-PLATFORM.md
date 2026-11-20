@@ -287,3 +287,6 @@ The live migration history records:
 The original PR branch contains migration filenames `20261119090000_izakhono_identity_verification_v1.sql` and `20261119091500_identity_service_access_and_storage.sql`. These names do not match the applied live migration history. Do not replay or apply those files blindly. Reconcile the exact live SQL, repository migration files and Supabase migration history before any migration deployment.
 
 The review-only entity-scope SQL draft includes a preflight that aborts if any identity records exist at application time. It does not assign tenant ownership by inference. The final migration must be generated through the Supabase CLI after the migration-history reconciliation and tested on a disposable branch/project.
+
+
+The provider-neutral adapter contract is now implemented in `supabase/functions/izakhono-gateway/verification-providers.ts`. The default registry exposes Regula as `not_configured`; it has no vendor transport, licence or credentials. The adapter accepts only evidence references/hashes and returns normalised provider evidence. A provider `clear` result is not an IZAKHONO approval decision. The actual Regula transport remains blocked on vendor-confirmed API/schema, test licence, secure endpoint and infrastructure decisions.
