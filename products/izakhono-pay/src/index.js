@@ -93,6 +93,10 @@ async function findIntentByReference(env, reference) {
   return env.DB.prepare('SELECT * FROM payment_intents WHERE reference=?').bind(reference).first();
 }
 
+async function findIntentByProviderReference(env, reference, provider) {
+  return env.DB.prepare('SELECT * FROM payment_intents WHERE reference=? AND routed_provider=?').bind(reference, provider).first();
+}
+
 async function findIntentById(env, intentId) {
   return env.DB.prepare('SELECT * FROM payment_intents WHERE id=?').bind(intentId).first();
 }
