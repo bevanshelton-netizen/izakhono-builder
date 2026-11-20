@@ -267,3 +267,23 @@ Official references:
 - https://docs.regulaforensics.com/develop/face-sdk/web-service/installation/
 
 No Regula licence, production endpoint, credentials, supplier contract or live processing is configured.
+
+
+## Live database verification and migration reconciliation — 2026-11-20
+
+Read-only inspection of the connected IZAKHONO WebStart Supabase project confirmed:
+
+- The eight `identity` tables already exist.
+- All eight identity tables have RLS enabled and forced.
+- Each identity table has one service-role-only policy; service_role has the required table privileges.
+- The private `identity-evidence` bucket exists, is not public, and is limited to PDF/JPEG/PNG with a 10 MiB object limit. No browser object policy referencing this bucket was found.
+- All eight identity tables had zero rows at the time of inspection.
+
+The live migration history records:
+- `20261119061402_izakhono_identity_verification_v1`
+- `20261119061439_expose_identity_schema_service_only`
+- `20261119061842_identity_service_role_rls_policies`
+
+The original PR branch contains migration filenames `20261119090000_izakhono_identity_verification_v1.sql` and `20261119091500_identity_service_access_and_storage.sql`. These names do not match the applied live migration history. Do not replay or apply those files blindly. Reconcile the exact live SQL, repository migration files and Supabase migration history before any migration deployment.
+
+The review-only entity-scope SQL draft includes a preflight that aborts if any identity records exist at application time. It does not assign tenant ownership by inference. The final migration must be generated through the Supabase CLI after the migration-history reconciliation and tested on a disposable branch/project.
