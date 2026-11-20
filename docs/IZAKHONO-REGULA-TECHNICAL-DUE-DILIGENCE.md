@@ -258,3 +258,50 @@ The contract:
 - Supports adding alternative adapters through the provider registry.
 
 **This is an adapter contract and fail-closed placeholder, not a live Regula connector.** No Regula API endpoint, license, credentials, HTTP transport or production processing has been configured. The transport must be implemented only after Regula confirms the exact API/SDK, version, authentication, payload, result schema and deployment model in the technical demonstration.
+
+
+## 13. Standalone Web Service API and perimeter security
+
+The Document Reader Web Service processes documents through \`POST /api/process\`; the documented request includes a processing scenario and base64-encoded image data. Its service does not inherently authenticate callers and processes incoming requests without distinction. Regula recommends keeping it inside a closed perimeter and placing an authenticated proxy in front of it. Its security documentation describes reverse-proxy controls including Basic authentication and JWT authorization.
+
+The Face SDK Web Service also does not inherently authenticate requests. Regula recommends a private perimeter and authenticated reverse proxy; its security documentation describes Basic authentication and mTLS patterns.
+
+References:
+- https://docs.regulaforensics.com/develop/doc-reader-sdk/web-service/development/usage/process/
+- https://docs.regulaforensics.com/develop/doc-reader-sdk/web-service/administration/security/
+- https://docs.regulaforensics.com/develop/face-sdk/web-service/administration/security/
+
+**IZAKHONO rule:** Neither standalone Regula service may be directly internet-accessible. The only permitted route is an owner-controlled private service endpoint behind FORTRESS/network controls and the IZAKHONO adapter. Browser clients must never receive Regula service credentials.
+
+## 14. Preliminary infrastructure sizing and licensing egress
+
+Regula's current Document Reader Web Service getting-started documentation lists a minimum of 1 CPU and 3.5 GB RAM per worker. Each worker processes one request at a time. The Face SDK Web Service documentation lists a recommended 1 CPU and 4.5 GB RAM per worker; worker count depends on available hardware and licence type.
+
+References:
+- https://docs.regulaforensics.com/develop/doc-reader-sdk/web-service/getting-started/
+- https://docs.regulaforensics.com/develop/face-sdk/web-service/getting-started/
+
+These are vendor minimum/recommended figures, not IZAKHONO production sizing. Load testing must establish concurrency, latency, memory, CPU/GPU and storage requirements.
+
+Regula documentation describes licensing-service communication for online licence models. The Face SDK FAQ states that the customer-hosted service keeps personal data on the customer's servers and does not communicate that personal data back to Regula; the licensing service is used to manage licence keys. Document Reader licensing documentation describes worker registration or transaction/heartbeat calls depending on licence type.
+
+References:
+- https://docs.regulaforensics.com/develop/face-sdk/web-service/faq/
+- https://docs.regulaforensics.com/develop/doc-reader-sdk/overview/licensing/
+
+Before network approval, Regula must document every outbound destination, payload category, cadence and failure mode for licence validation, updates, telemetry and support. IZAKHONO must permit only the minimum necessary egress and must confirm contractually that identity documents, face images and biometric data are not transmitted to licensing endpoints.
+
+## 15. Required Regula demonstration questions
+
+Regula must demonstrate, not merely state:
+
+1. How a South African Smart ID card is captured and processed end-to-end.
+2. The exact security checks and supported document database version used.
+3. How \`/api/process\` is authenticated at the proxy and how service-to-service access is restricted.
+4. How Face API liveness and 1:1 comparison are secured with mTLS.
+5. How request IDs, evidence hashes and provider transaction references are correlated.
+6. What identity/biometric data remains on the customer-controlled host.
+7. What licence metadata leaves the network and which Regula endpoints are required.
+8. How licensing behaves during a temporary loss of internet connectivity.
+9. How document/Face service upgrades, database packs and licence renewals are delivered.
+10. What data is retained in service logs, how logs are redacted, and how deletion is performed.
