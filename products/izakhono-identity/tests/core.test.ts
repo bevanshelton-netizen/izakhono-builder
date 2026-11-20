@@ -31,7 +31,7 @@ const provider: VerificationProvider = {
   async start(input) {
     return {
       providerId: "test-provider",
-      providerReference: \`ref-\${input.requestId}\`,
+      providerReference: "ref-" + input.requestId,
       status: "started",
     };
   },
