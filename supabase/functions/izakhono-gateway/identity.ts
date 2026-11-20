@@ -4,6 +4,7 @@ import {
   resolveIdentityContext,
   type IdentityContext,
 } from "./identity-auth.ts";
+import { createDefaultProviderRegistry } from "./verification-providers.ts";
 
 const SUPA = Deno.env.get("SUPABASE_URL") || "";
 const KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
@@ -15,6 +16,7 @@ const MIME: Record<string, string> = {
   "image/png": "png",
 };
 const enc = new TextEncoder();
+const PROVIDERS = createDefaultProviderRegistry();
 
 function responseHeaders(origin = "") {
   const h = new Headers({
@@ -181,7 +183,7 @@ export async function handleIdentity(req: Request, u: URL): Promise<Response | n
       canonical_identity_auth: Deno.env.get("IZAKHONO_ID_INTERNAL_URL") &&
           Deno.env.get("IZAKHONO_ID_INTERNAL_KEY") ? "configured" : "not_configured",
       product_entity_mapping: Deno.env.get("IDENTITY_PRODUCT_ENTITY_MAP") ? "configured" : "not_configured",
-      provider_integrations: "not_configured",
+      provider_integrations: PROVIDERS.list(),
       decision_mode: "fail_closed",
     }, 200, origin);
   }
