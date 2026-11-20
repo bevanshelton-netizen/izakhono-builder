@@ -299,3 +299,12 @@ Read-only inspection found an existing `fortress` database schema containing cas
 Do not grant the IDV gateway direct access to the FORTRESS schema and do not bypass the FORTRESS SSO boundary. The IDV gateway currently records `review_required` / `in_review` and fails closed. A future reviewer integration must be exposed by a FORTRESS-owned, owner-approved service API with its own least-privilege service identity, entity-scoped request contract, audit correlation and explicit approval of the service-to-service trust path.
 
 Until that interface exists and is tested, human review remains a recorded state in the identity-verification service, not a completed FORTRESS workflow.
+
+
+## Evidence malware scanning gate
+
+The gateway now has a fail-closed evidence-scanner contract in `supabase/functions/izakhono-gateway/evidence-scanner.ts`. The default ClamAV adapter is deliberately unconfigured. Until an approved private ClamAV transport is provisioned, evidence uploads are rejected with a service-unavailable response and no file is stored.
+
+When configured, the scanner must verify the exact SHA-256 digest of the bytes being scanned and return a clean result plus signature version. Only clean, hash-matched evidence may be stored. Submission and evaluation re-check the stored scan status and digest. Infected, unavailable, failed or mismatched scans never produce approval.
+
+This is not a live ClamAV deployment. The private scanner transport, host, service identity, network policy, signature-update process and recovery procedure remain deployment gates.
