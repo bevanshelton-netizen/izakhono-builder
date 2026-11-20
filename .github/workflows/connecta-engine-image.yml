@@ -36,6 +36,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and publish CONNECTA ENGINE
+        id: image
         uses: docker/build-push-action@v6
         with:
           context: products/izakhono-social
@@ -48,3 +49,17 @@ jobs:
           cache-to: type=gha,mode=max
           provenance: true
           sbom: true
+
+      - name: Render digest-matched K3s runtime release bundle
+        shell: bash
+        env:
+          CONNECTA_ENGINE_IMAGE: ghcr.io/${{ github.repository_owner }}/connecta-engine:0.3.0@${{ steps.image.outputs.digest }}
+        run: bash infra/node-cluster/RENDER-CONNECTA-RUNTIME-RELEASE.sh dist/connecta-runtime-release
+
+      - name: Publish immutable runtime release bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: connecta-runtime-release-${{ github.sha }}
+          path: dist/connecta-runtime-release/
+          if-no-files-found: error
+          retention-days: 30
