@@ -169,7 +169,11 @@ export class RegulaAdapter implements VerificationProviderAdapter {
     "liveness",
   ];
 
-  constructor(private readonly transport: RegulaTransport | null = null) {}
+  private readonly transport: RegulaTransport | null;
+
+  constructor(transport: RegulaTransport | null = null) {
+    this.transport = transport;
+  }
 
   isConfigured() {
     return this.transport !== null;
