@@ -58,3 +58,12 @@ Required server-side configuration:
 The SQL file `docs/IZAKHONO-IDENTITY-ENTITY-SCOPE-MIGRATION-DRAFT.sql` is a review draft only. It has not been converted into a Supabase CLI migration or applied. Existing unscoped records must not be assigned to an entity by inference.
 
 **Release remains blocked** until the canonical ID runtime is deployed on a verified persistent HTTPS host, the required secrets and product mappings are installed through the approved secret channel, the schema migration is generated/reconciled and tested, authenticated staging tests pass, and independent security/privacy reviews are complete.
+
+
+## Provider evaluation
+
+Regula remains the preferred document/biometric technology evaluation candidate. Its technical, commercial and legal assessment is recorded in `docs/IZAKHONO-REGULA-TECHNICAL-DUE-DILIGENCE.md`. The full Regula IDV Platform has separate MongoDB, message-broker and storage dependencies; it must not be assumed to fit directly inside the existing Supabase/PostgreSQL deployment.
+
+## Live database migration caution
+
+The connected project already has the eight identity tables, forced RLS and service-role-only policies. Its applied migration names differ from the migration filenames in the original source PR. The entity-scope SQL in `docs/IZAKHONO-IDENTITY-ENTITY-SCOPE-MIGRATION-DRAFT.sql` is review-only and must not be applied until the exact live migration history and SQL are reconciled.
