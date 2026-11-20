@@ -38,7 +38,7 @@ export function validatePurpose(purpose: VerificationPurpose): void {
     "account_recovery",
     "regulated_service",
   ];
-  if (!allowed.includes(purpose)) throw new AccessDeniedError("Unsupported verification purpose");
+  if (!allowed.includes(purpose)) throw new Error("Unsupported verification purpose");
 }
 
 export function validateChecks(checks: VerificationCheck[]): void {
@@ -46,6 +46,6 @@ export function validateChecks(checks: VerificationCheck[]): void {
     "document_authenticity", "document_data", "face_match", "liveness", "nfc_chip",
   ];
   if (!Array.isArray(checks) || checks.length === 0 || checks.some((check) => !allowed.includes(check))) {
-    throw new AccessDeniedError("Unsupported or missing verification checks");
+    throw new Error("Unsupported or missing verification checks");
   }
 }
