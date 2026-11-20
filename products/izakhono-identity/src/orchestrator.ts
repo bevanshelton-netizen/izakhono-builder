@@ -10,7 +10,7 @@ import type {
   VerificationRequest,
 } from "./types.js";
 import { requireTenantPermission, validatePurpose } from "./policy.js";
-import { ProviderRouter, type ProviderPreference } from "./provider-router.js";
+import { NoEligibleProviderError, ProviderRouter, type ProviderPreference } from "./provider-router.js";
 
 export class VerificationOrchestrator {
   constructor(
@@ -31,6 +31,15 @@ export class VerificationOrchestrator {
     if (!input.subjectRef.trim() || !input.idempotencyKey.trim()) {
       throw new Error("subjectRef and idempotencyKey are required");
     }
+    const authorisation = input.processingAuthorisation;
+    if (!authorisation?.legalBasis.trim() || !authorisation.noticeVersion.trim() || !authorisation.authorisationReference.trim()) {
+      throw new Error("A recorded processing authorisation is required before verification");
+    }
+    const authorisedAt = new Date(authorisation.confirmedAt);
+    if (!Number.isFinite(authorisedAt.getTime()) || authorisedAt > this.clock.now()) {
+      throw new Error("Processing authorisation timestamp is invalid");
+    }
+    if (input.requiredChecks.length === 0) throw new Error("At least one verification check is required");
     const expiry = new Date(input.expiresAt);
     if (!Number.isFinite(expiry.getTime()) || expiry <= this.clock.now()) {
       throw new Error("expiresAt must be a valid future timestamp");
@@ -46,28 +55,43 @@ export class VerificationOrchestrator {
       purpose: input.purpose,
       requiredChecks: [...new Set(input.requiredChecks)],
       status: "created",
+      legalBasis: authorisation.legalBasis,
+      noticeVersion: authorisation.noticeVersion,
+      authorisationReference: authorisation.authorisationReference,
       idempotencyKey: input.idempotencyKey,
       createdBy: principal.userId,
       createdAt: this.clock.now().toISOString(),
       updatedAt: this.clock.now().toISOString(),
       expiresAt: expiry.toISOString(),
     };
-    const provider = this.router.select(request, {
+    const preference = {
       ...this.preferenceFor(input.tenantId),
       requiredCountry: countryCode,
-    });
-    const started = await provider.start({
-      requestId: request.id,
-      tenantId: request.tenantId,
-      purpose: request.purpose,
-      requiredChecks: request.requiredChecks,
-      countryCode,
-      returnToken: this.ids.create(),
-    });
-
-    request.providerId = started.providerId;
-    request.providerReference = started.providerReference;
-    request.status = started.status === "started" ? "in_progress" : "provider_unavailable";
+    };
+    try {
+      const candidates = this.router.selectCandidates(request, preference);
+      for (const provider of candidates) {
+        const started = await provider.start({
+          requestId: request.id,
+          tenantId: request.tenantId,
+          purpose: request.purpose,
+          requiredChecks: request.requiredChecks,
+          countryCode,
+          returnToken: this.ids.create(),
+          idempotencyKey: request.idempotencyKey,
+        });
+        if (started.status === "started") {
+          request.providerId = started.providerId;
+          request.providerReference = started.providerReference;
+          request.status = "in_progress";
+          break;
+        }
+      }
+      if (request.status === "created") request.status = "provider_unavailable";
+    } catch (error) {
+      if (!(error instanceof NoEligibleProviderError)) throw error;
+      request.status = "provider_unavailable";
+    }
     request.updatedAt = this.clock.now().toISOString();
     await this.repository.createRequest(request);
     await this.audit(principal, request, "verification.created", request.status);
@@ -82,11 +106,17 @@ export class VerificationOrchestrator {
     const request = await this.repository.findRequest(requestId);
     if (!request) throw new Error("Verification request not found");
     requireTenantPermission(principal, request.tenantId, "identity:verify:review");
-    if (request.providerId !== result.providerId || request.providerReference !== result.providerReference) {
+    if (!request.providerId || !request.providerReference || request.providerId !== result.providerId || request.providerReference !== result.providerReference) {
       throw new Error("Provider result does not match the assigned verification");
     }
     if (["cancelled", "expired", "verified", "failed"].includes(request.status)) {
       throw new Error("Verification request is already terminal");
+    }
+    if (result.status === "verified" && !request.requiredChecks.every((check) => result.completedChecks.includes(check))) {
+      throw new Error("Provider cannot mark verification successful until all required checks are complete");
+    }
+    if (result.status === "failed" && result.failedChecks.length === 0) {
+      throw new Error("A failed verification must include at least one failed check");
     }
     request.status = result.status;
     request.updatedAt = this.clock.now().toISOString();
