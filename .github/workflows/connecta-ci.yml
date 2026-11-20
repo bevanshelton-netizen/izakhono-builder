@@ -11,8 +11,6 @@ on:
       - '.github/workflows/connecta-owned-runtime-certification.yml'
       - '.github/workflows/connecta-promotion-gate.yml'
       - '.github/workflows/connecta-engine-image.yml'
-      - 'infra/node-cluster/RENDER-CONNECTA-RUNTIME-RELEASE.sh'
-      - 'infra/node-cluster/test-connecta-runtime-release-renderer.sh'
       - 'infra/runtime-fabric/LEGACY-NODE01-WAVE1-DEPRECATION.md'
       - 'infra/node-cluster/test-node-cluster-evidence-verifier.sh'
       - 'infra/node-cluster/test-connecta-legacy-path-guard.sh'
@@ -34,6 +32,9 @@ on:
       - 'infra/node-cluster/test-connecta-legacy-path-guard.sh'
       - 'infra/node-cluster/VERIFY-CONNECTA-PRODUCTION-PATH.sh'
       - 'infra/node-cluster/VERIFY-CONNECTA-LEGACY-PATH.sh'
+      - 'infra/node-cluster/RENDER-CONNECTA-RUNTIME-RELEASE.sh'
+      - 'infra/node-cluster/test-connecta-runtime-release-renderer.sh'
+      - '.github/workflows/connecta-engine-image.yml'
   workflow_dispatch:
 
 permissions:
@@ -77,9 +78,6 @@ jobs:
 
       - name: Validate CONNECTA four-node K3s runtime manifest
         run: bash infra/node-cluster/validate-connecta-runtime-manifest.sh
-
-      - name: Test immutable runtime release bundle renderer
-        run: bash infra/node-cluster/test-connecta-runtime-release-renderer.sh
 
       - name: Test immutable runtime release bundle renderer
         run: bash infra/node-cluster/test-connecta-runtime-release-renderer.sh
