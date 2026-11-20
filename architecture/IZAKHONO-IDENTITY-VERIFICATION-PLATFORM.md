@@ -290,3 +290,12 @@ The review-only entity-scope SQL draft includes a preflight that aborts if any i
 
 
 The provider-neutral adapter contract is now implemented in `supabase/functions/izakhono-gateway/verification-providers.ts`. The default registry exposes Regula as `not_configured`; it has no vendor transport, licence or credentials. The adapter accepts only evidence references/hashes and returns normalised provider evidence. A provider `clear` result is not an IZAKHONO approval decision. The actual Regula transport remains blocked on vendor-confirmed API/schema, test licence, secure endpoint and infrastructure decisions.
+
+
+## FORTRESS reviewer integration boundary — 2026-11-20
+
+Read-only inspection found an existing `fortress` database schema containing case, evidence, finding, entity and mission tables. The schema is not exposed to `service_role`, `authenticated` or `anon` (no schema USAGE grant was present), and no table policies were returned for that schema. The existing `izakhono-fortress-intelligence` Vercel project has SSO protection enabled and no custom production domain was listed.
+
+Do not grant the IDV gateway direct access to the FORTRESS schema and do not bypass the FORTRESS SSO boundary. The IDV gateway currently records `review_required` / `in_review` and fails closed. A future reviewer integration must be exposed by a FORTRESS-owned, owner-approved service API with its own least-privilege service identity, entity-scoped request contract, audit correlation and explicit approval of the service-to-service trust path.
+
+Until that interface exists and is tested, human review remains a recorded state in the identity-verification service, not a completed FORTRESS workflow.
