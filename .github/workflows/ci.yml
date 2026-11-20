@@ -33,8 +33,11 @@ jobs:
       - name: IZAKHONO IDV canonical authentication contract
         run: npm run idv:auth:test
 
+      - name: IZAKHONO IDV provider adapter contract
+        run: npm run idv:providers:test
+
       - name: Typecheck IZAKHONO identity gateway
-        run: deno check supabase/functions/izakhono-gateway/identity.ts
+        run: deno check supabase/functions/izakhono-gateway/identity.ts supabase/functions/izakhono-gateway/verification-providers.ts
 
       - name: Validate Affiliate Engine
         run: npm run validate:affiliate
