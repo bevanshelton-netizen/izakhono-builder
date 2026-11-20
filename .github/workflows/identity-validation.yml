@@ -1,0 +1,31 @@
+name: IZAKHONO IDENTITY validation
+
+on:
+  push:
+    branches:
+      - feature/izakhono-identity-v1
+    paths:
+      - 'products/izakhono-identity/**'
+      - 'package.json'
+      - '.github/workflows/identity-validation.yml'
+  pull_request:
+    paths:
+      - 'products/izakhono-identity/**'
+      - 'package.json'
+      - '.github/workflows/identity-validation.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  identity-validation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Type-check identity service
+        run: npm run identity:typecheck
+      - name: Run identity core tests
+        run: npm run identity:test
