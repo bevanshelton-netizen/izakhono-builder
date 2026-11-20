@@ -154,7 +154,7 @@ function unavailable(
     providerTransactionRef: null,
     evidenceSha256: request.evidenceSha256.toLowerCase(),
     resultSha256: null,
-    checks: [{ code: "PROVIDER_NOT_CONFIGURED", status: "not_performed" }],
+    checks: [{ code: outcome === "error" ? "PROVIDER_ERROR" : "PROVIDER_NOT_CONFIGURED", status: "not_performed" }],
     checkedAt: new Date().toISOString(),
     expiresAt: null,
     requiresReview: true,
