@@ -67,6 +67,12 @@ async function run(): Promise<void> {
     countryCode: "ZA",
     idempotencyKey: "once-1",
     expiresAt: "2026-11-21T12:00:00.000Z",
+    processingAuthorisation: {
+      legalBasis: "approved_test_basis",
+      noticeVersion: "test-notice-v1",
+      authorisationReference: "test-authorisation-1",
+      confirmedAt: "2026-11-20T11:59:00.000Z",
+    },
   };
 
   const created = await service.create(principal, input, "ZA");
