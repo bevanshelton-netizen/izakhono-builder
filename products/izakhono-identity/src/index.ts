@@ -8,3 +8,4 @@ export * from "./state-machine.js";
 export * from "./webhook-guard.js";
 export * from "./postgres-repository.js";
 export * from "./http-handler.js";
+export * from "./evidence-service.js";
