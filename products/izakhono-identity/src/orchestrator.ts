@@ -11,6 +11,7 @@ import type {
 } from "./types.js";
 import { requireTenantPermission, validatePurpose } from "./policy.js";
 import { NoEligibleProviderError, ProviderRouter, type ProviderPreference } from "./provider-router.js";
+import { assertVerificationTransition } from "./state-machine.js";
 
 export class VerificationOrchestrator {
   constructor(
@@ -64,37 +65,48 @@ export class VerificationOrchestrator {
       updatedAt: this.clock.now().toISOString(),
       expiresAt: expiry.toISOString(),
     };
+    await this.repository.createRequest(request);
+    await this.audit(principal, request, "verification.created", "created");
+
     const preference = {
       ...this.preferenceFor(input.tenantId),
       requiredCountry: countryCode,
     };
+    let startedSuccessfully = false;
     try {
       const candidates = this.router.selectCandidates(request, preference);
       for (const provider of candidates) {
-        const started = await provider.start({
-          requestId: request.id,
-          tenantId: request.tenantId,
-          purpose: request.purpose,
-          requiredChecks: request.requiredChecks,
-          countryCode,
-          returnToken: this.ids.create(),
-          idempotencyKey: request.idempotencyKey,
-        });
-        if (started.status === "started") {
-          request.providerId = started.providerId;
-          request.providerReference = started.providerReference;
-          request.status = "in_progress";
-          break;
+        try {
+          const started = await provider.start({
+            requestId: request.id,
+            tenantId: request.tenantId,
+            purpose: request.purpose,
+            requiredChecks: request.requiredChecks,
+            countryCode,
+            returnToken: this.ids.create(),
+            idempotencyKey: request.idempotencyKey,
+          });
+          if (started.status === "started") {
+            request.providerId = started.providerId;
+            request.providerReference = started.providerReference;
+            request.status = "in_progress";
+            startedSuccessfully = true;
+            break;
+          }
+        } catch {
+          // Provider transport failure is isolated; continue to the next approved candidate.
         }
       }
-      if (request.status === "created") request.status = "provider_unavailable";
     } catch (error) {
       if (!(error instanceof NoEligibleProviderError)) throw error;
-      request.status = "provider_unavailable";
     }
+    if (!startedSuccessfully) request.status = "provider_unavailable";
+    assertVerificationTransition("created", request.status);
     request.updatedAt = this.clock.now().toISOString();
-    await this.repository.createRequest(request);
-    await this.audit(principal, request, "verification.created", request.status);
+    await this.repository.updateRequest(request);
+    await this.audit(principal, request, "verification.provider_routing", request.status, {
+      providerId: request.providerId ?? null,
+    });
     return request;
   }
 
@@ -118,6 +130,7 @@ export class VerificationOrchestrator {
     if (result.status === "failed" && result.failedChecks.length === 0) {
       throw new Error("A failed verification must include at least one failed check");
     }
+    assertVerificationTransition(request.status, result.status);
     request.status = result.status;
     request.updatedAt = this.clock.now().toISOString();
     await this.repository.updateRequest(request);
