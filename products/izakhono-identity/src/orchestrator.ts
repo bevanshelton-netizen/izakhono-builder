@@ -9,7 +9,7 @@ import type {
   VerificationRepository,
   VerificationRequest,
 } from "./types.js";
-import { requireTenantPermission, validatePurpose } from "./policy.js";
+import { requireTenantPermission, validateChecks, validatePurpose } from "./policy.js";
 import { NoEligibleProviderError, ProviderRouter, type ProviderPreference } from "./provider-router.js";
 import { assertVerificationTransition } from "./state-machine.js";
 
@@ -29,6 +29,9 @@ export class VerificationOrchestrator {
   ): Promise<VerificationRequest> {
     requireTenantPermission(principal, input.tenantId, "identity:verify:create");
     validatePurpose(input.purpose);
+    validateChecks(input.requiredChecks);
+    if (!/^[A-Z]{2}$/.test(countryCode)) throw new Error("countryCode must be an ISO alpha-2 code");
+    if (input.subjectRef.length > 160 || input.idempotencyKey.length > 128) throw new Error("Request field exceeds its maximum length");
     if (!input.subjectRef.trim() || !input.idempotencyKey.trim()) {
       throw new Error("subjectRef and idempotencyKey are required");
     }
