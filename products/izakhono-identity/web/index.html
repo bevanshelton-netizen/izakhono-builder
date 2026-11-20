@@ -149,7 +149,7 @@
     if(csrf())headers.set("x-csrf-token",csrf());
     var response=await fetch(path,Object.assign({credentials:"same-origin",cache:"no-store"},options||{},{headers:headers}));
     var data={};try{data=await response.json();}catch(_){}
-    if(!response.ok)throw new Error(data.error||("Request failed ("+response.status+")"));
+    if(!response.ok && !(response.status===503 && data && data.id))throw new Error(data.error||("Request failed ("+response.status+")"));
     return data;
   }
   function renderRecord(target,record){
@@ -191,7 +191,7 @@
     try{
       var data=await api("/v1/identity/verifications",{method:"POST",headers:{"idempotency-key":key},body:JSON.stringify(body)});
       renderRecord(document.getElementById("createResult"),data);
-      status("Verification request created.","good");
+      status(data.status==="provider_unavailable"?"Request saved, but no verification provider is currently available. Do not create a duplicate request.":"Verification request created.","good");
     }catch(error){status(error.message,"error");}
   });
   document.getElementById("lookupForm").addEventListener("submit",async function(event){
