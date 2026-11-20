@@ -242,3 +242,19 @@ Required next gates:
 - IDV Platform architecture: https://docs.regulaforensics.com/develop/idv/overview/architecture/
 - IDV Platform deployment: https://docs.regulaforensics.com/develop/idv/administration/deployment/
 - IDV Platform security: https://docs.regulaforensics.com/develop/idv/administration/security/
+
+
+## 12. Current source implementation boundary
+
+The repository now contains a provider-neutral adapter contract in `supabase/functions/izakhono-gateway/verification-providers.ts` and an unconfigured `RegulaAdapter`.
+
+The contract:
+- Separates provider capabilities and outcomes from IZAKHONO's final decision.
+- Requires canonical entity, membership and case references plus evidence hash/reference.
+- Does not pass raw identity documents or biometric templates through the provider interface.
+- Normalises only allowlisted outcome/check fields.
+- Downgrades a vendor `clear` response to `inconclusive` if required normalized checks or the result digest are absent.
+- Returns `unavailable` / `error` and requires review when the adapter is not configured or fails.
+- Supports adding alternative adapters through the provider registry.
+
+**This is an adapter contract and fail-closed placeholder, not a live Regula connector.** No Regula API endpoint, license, credentials, HTTP transport or production processing has been configured. The transport must be implemented only after Regula confirms the exact API/SDK, version, authentication, payload, result schema and deployment model in the technical demonstration.
