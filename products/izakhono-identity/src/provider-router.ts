@@ -36,11 +36,12 @@ function supports(
 export class ProviderRouter {
   constructor(private readonly providers: VerificationProvider[]) {}
 
-  select(request: VerificationRequest, preference: ProviderPreference): VerificationProvider {
+  selectCandidates(request: VerificationRequest, preference: ProviderPreference): VerificationProvider[] {
     const order = [
       ...(preference.preferredProviderId ? [preference.preferredProviderId] : []),
       ...preference.fallbackProviderIds,
     ];
+    const candidates: VerificationProvider[] = [];
     for (const id of [...new Set(order)]) {
       const provider = this.providers.find((item) => item.id === id);
       if (provider?.enabled && supports(
@@ -48,9 +49,14 @@ export class ProviderRouter {
         request,
         preference.requiredCountry,
         preference.requiredDocumentType,
-      )) return provider;
+      )) candidates.push(provider);
     }
-    throw new NoEligibleProviderError();
+    if (candidates.length === 0) throw new NoEligibleProviderError();
+    return candidates;
+  }
+
+  select(request: VerificationRequest, preference: ProviderPreference): VerificationProvider {
+    return this.selectCandidates(request, preference)[0];
   }
 
   list(): Array<{ id: string; enabled: boolean; capabilities: ProviderCapabilities }> {
