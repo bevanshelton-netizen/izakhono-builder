@@ -1,0 +1,147 @@
+openapi: 3.1.0
+info:
+  title: IZAKHONO IDENTITY API
+  version: 1.0.0
+  description: Provider-independent identity verification orchestration API. Draft contract; not deployed.
+servers:
+  - url: https://identity-api.example.invalid
+    description: Placeholder only; replace after IZAKHONO-owned runtime provisioning.
+security:
+  - bearerAuth: []
+paths:
+  /v1/identity/verifications:
+    post:
+      operationId: createVerification
+      summary: Create a tenant-scoped identity verification request
+      parameters:
+        - in: header
+          name: Idempotency-Key
+          required: true
+          schema: { type: string, minLength: 8, maxLength: 128 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateVerification' }
+      responses:
+        '201': { description: Verification request created }
+        '200': { description: Existing request returned for idempotent replay }
+        '400': { description: Invalid request or missing processing authorisation }
+        '401': { description: Authentication required }
+        '403': { description: Tenant permission denied }
+        '409': { description: Conflicting idempotency key }
+        '503': { description: No verification provider currently available }
+    get:
+      operationId: listVerifications
+      summary: List verification requests for an authorised tenant
+      parameters:
+        - in: query
+          name: tenantId
+          required: true
+          schema: { type: string, format: uuid }
+        - in: query
+          name: status
+          schema: { $ref: '#/components/schemas/VerificationStatus' }
+        - in: query
+          name: cursor
+          schema: { type: string }
+      responses:
+        '200': { description: Tenant-scoped verification requests }
+        '401': { description: Authentication required }
+        '403': { description: Tenant permission denied }
+  /v1/identity/verifications/{verificationId}:
+    get:
+      operationId: getVerification
+      summary: Retrieve a verification request and its normalised outcome
+      parameters:
+        - in: path
+          name: verificationId
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200': { description: Verification request }
+        '404': { description: Not found or not visible to caller }
+  /v1/identity/verifications/{verificationId}/review:
+    post:
+      operationId: submitManualReview
+      summary: Record a human review decision
+      parameters:
+        - in: path
+          name: verificationId
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [decision, reasonCode]
+              properties:
+                decision: { type: string, enum: [verified, failed, request_more_information] }
+                reasonCode: { type: string, minLength: 1, maxLength: 80 }
+                noteRef: { type: string, description: Reference to protected case notes; no raw identity data. }
+      responses:
+        '200': { description: Review recorded and audited }
+        '403': { description: Reviewer permission required }
+  /v1/identity/evidence/upload-intents:
+    post:
+      operationId: createEvidenceUploadIntent
+      summary: Request a short-lived, tenant-scoped encrypted object upload URL
+      description: Validate request ownership, evidence type, file size and content before issuing a single-use upload intent.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [tenantId, verificationId, evidenceKind, contentType, sizeBytes]
+              properties:
+                tenantId: { type: string, format: uuid }
+                verificationId: { type: string, format: uuid }
+                evidenceKind: { type: string, enum: [identity_document, selfie, nfc_result] }
+                contentType: { type: string }
+                sizeBytes: { type: integer, minimum: 1, maximum: 15000000 }
+      responses:
+        '201': { description: Short-lived upload intent; object remains private }
+        '403': { description: Tenant permission denied }
+  /v1/providers:
+    get:
+      operationId: listProviders
+      summary: List provider availability and capabilities without exposing secrets
+      responses:
+        '200': { description: Provider status and capability summary }
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    VerificationStatus:
+      type: string
+      enum: [created, consent_pending, in_progress, verified, failed, manual_review, provider_unavailable, expired, cancelled]
+    CreateVerification:
+      type: object
+      additionalProperties: false
+      required: [tenantId, subjectRef, purpose, requiredChecks, countryCode, processingAuthorisation]
+      properties:
+        tenantId: { type: string, format: uuid }
+        subjectRef: { type: string, minLength: 1, maxLength: 160, description: Opaque tenant-scoped subject reference; not an identity number. }
+        purpose: { type: string, enum: [customer_onboarding, business_onboarding, employment, supplier_onboarding, account_recovery, regulated_service] }
+        requiredChecks:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items: { type: string, enum: [document_authenticity, document_data, face_match, liveness, nfc_chip] }
+        countryCode: { type: string, pattern: '^[A-Z]{2}$' }
+        expiresAt: { type: string, format: date-time }
+        processingAuthorisation:
+          type: object
+          additionalProperties: false
+          required: [legalBasis, noticeVersion, authorisationReference, confirmedAt]
+          properties:
+            legalBasis: { type: string, minLength: 1, maxLength: 80 }
+            noticeVersion: { type: string, minLength: 1, maxLength: 80 }
+            authorisationReference: { type: string, minLength: 1, maxLength: 160 }
+            confirmedAt: { type: string, format: date-time }
