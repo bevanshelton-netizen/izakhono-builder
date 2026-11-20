@@ -5,6 +5,7 @@ import {
   type IdentityContext,
 } from "./identity-auth.ts";
 import { createDefaultProviderRegistry, type ProviderCapability } from "./verification-providers.ts";
+import { createDefaultEvidenceScanner } from "./evidence-scanner.ts";
 
 const SUPA = Deno.env.get("SUPABASE_URL") || "";
 const KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
@@ -17,6 +18,7 @@ const MIME: Record<string, string> = {
 };
 const enc = new TextEncoder();
 const PROVIDERS = createDefaultProviderRegistry();
+const EVIDENCE_SCANNER = createDefaultEvidenceScanner();
 const SCREENING_CAPABILITY: Record<string, ProviderCapability> = {
   identity_document: "document_authenticity",
   company_registry: "company_registry",
@@ -199,6 +201,7 @@ export async function handleIdentity(req: Request, u: URL): Promise<Response | n
       canonical_identity_auth: Deno.env.get("IZAKHONO_ID_INTERNAL_URL") &&
           Deno.env.get("IZAKHONO_ID_INTERNAL_KEY") ? "configured" : "not_configured",
       product_entity_mapping: Deno.env.get("IDENTITY_PRODUCT_ENTITY_MAP") ? "configured" : "not_configured",
+      evidence_scanner: EVIDENCE_SCANNER.isConfigured() ? "configured" : "not_configured",
       provider_integrations: PROVIDERS.list(),
       decision_mode: "fail_closed",
     }, 200, origin);
@@ -362,6 +365,21 @@ export async function handleIdentity(req: Request, u: URL): Promise<Response | n
       if (!valid) return bad("File content does not match its declared MIME type.", 415, origin);
 
       const digest = await hash(bytes);
+      const scan = await EVIDENCE_SCANNER.scan(bytes, digest);
+      if (scan.status !== "clean") {
+        await log(ctx, "evidence_scan_blocked", c.subject_id, caseId, {
+          scan_status: scan.status,
+          scan_code: scan.code,
+          sha256: digest,
+        });
+        return bad(
+          scan.status === "infected"
+            ? "Evidence was rejected by malware scanning."
+            : "Evidence scanning is unavailable or failed; upload blocked.",
+          scan.status === "infected" ? 415 : 503,
+          origin,
+        );
+      }
       const path = ctx.entityId + "/" + ctx.membershipId + "/" + caseId + "/" +
         crypto.randomUUID() + "." + MIME[file.type];
 
@@ -378,6 +396,11 @@ export async function handleIdentity(req: Request, u: URL): Promise<Response | n
             content_sha256: digest,
             status: "submitted",
             submitted_by_user_id: ctx.userId,
+            malware_scan_status: scan.status,
+            malware_scan_engine: scan.engine,
+            malware_signature_version: scan.signatureVersion,
+            malware_scanned_at: scan.scannedAt,
+            malware_scan_sha256: scan.sha256,
             metadata: { mime_type: file.type, size_bytes: file.size },
           }),
         }))[0];
@@ -389,7 +412,13 @@ export async function handleIdentity(req: Request, u: URL): Promise<Response | n
         });
         return out({
           ok: true,
-          evidence: { id: ev.id, evidence_type: ev.evidence_type, status: ev.status, sha256: digest },
+          evidence: {
+            id: ev.id,
+            evidence_type: ev.evidence_type,
+            status: ev.status,
+            sha256: digest,
+            malware_scan_status: ev.malware_scan_status,
+          },
         }, 201, origin);
       } catch (e) {
         await fetch(
@@ -405,9 +434,15 @@ export async function handleIdentity(req: Request, u: URL): Promise<Response | n
       if (!["draft", "in_review"].includes(c.status)) return bad("Case is not submittable.", 409, origin);
       const ev = await db(
         "evidence",
-        "case_id=eq." + encodeURIComponent(caseId) + "&select=id,evidence_type,status",
+        "case_id=eq." + encodeURIComponent(caseId) +
+          "&select=id,evidence_type,status,content_sha256,malware_scan_status,malware_scan_sha256",
       );
       if (!ev.length) return bad("At least one evidence document is required.", 422, origin);
+      if (ev.some((x: any) =>
+        x.malware_scan_status !== "clean" ||
+        !x.content_sha256 ||
+        x.content_sha256 !== x.malware_scan_sha256
+      )) return bad("All evidence must pass malware scanning before submission.", 422, origin);
       const needed = c.verification_type === "KYC" ? "identity_document" : "company_registration";
       if (!ev.some((x: any) => x.evidence_type === needed)) {
         return bad("Required evidence type missing: " + needed, 422, origin);
@@ -536,7 +571,8 @@ export async function handleIdentity(req: Request, u: URL): Promise<Response | n
 
     if (method === "POST" && r.length === 3 && r[2] === "evaluate") {
       const [ev, sc] = await Promise.all([
-        db("evidence", "case_id=eq." + encodeURIComponent(caseId) + "&select=id,status,evidence_type"),
+        db("evidence", "case_id=eq." + encodeURIComponent(caseId) +
+          "&select=id,status,evidence_type,content_sha256,malware_scan_status,malware_scan_sha256"),
         db("screenings", "case_id=eq." + encodeURIComponent(caseId) + "&select=id,screening_type,outcome,expires_at"),
       ]);
 
@@ -552,6 +588,11 @@ export async function handleIdentity(req: Request, u: URL): Promise<Response | n
       const reasons: string[] = [];
       if (!ev.length) reasons.push("EVIDENCE_MISSING");
       if (ev.some((x: any) => x.status !== "validated")) reasons.push("EVIDENCE_NOT_VALIDATED");
+      if (ev.some((x: any) =>
+        x.malware_scan_status !== "clean" ||
+        !x.content_sha256 ||
+        x.content_sha256 !== x.malware_scan_sha256
+      )) reasons.push("EVIDENCE_MALWARE_SCAN_MISSING_OR_HASH_MISMATCH");
       if (missing.length) reasons.push("PROVIDER_SCREENING_NOT_CONFIGURED");
       reasons.push("HUMAN_REVIEW_REQUIRED");
 
