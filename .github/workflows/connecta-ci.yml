@@ -18,6 +18,8 @@ on:
       - 'infra/node-cluster/test-connecta-legacy-path-guard.sh'
       - 'infra/node-cluster/VERIFY-CONNECTA-PRODUCTION-PATH.sh'
       - 'infra/node-cluster/VERIFY-CONNECTA-LEGACY-PATH.sh'
+      - 'infra/node-cluster/RENDER-CONNECTA-RUNTIME-RELEASE.sh'
+      - 'infra/node-cluster/test-connecta-runtime-release-renderer.sh'
   pull_request:
     branches: [main]
     paths:
@@ -75,6 +77,9 @@ jobs:
 
       - name: Validate CONNECTA four-node K3s runtime manifest
         run: bash infra/node-cluster/validate-connecta-runtime-manifest.sh
+
+      - name: Test immutable runtime release bundle renderer
+        run: bash infra/node-cluster/test-connecta-runtime-release-renderer.sh
 
       - name: Test immutable runtime release bundle renderer
         run: bash infra/node-cluster/test-connecta-runtime-release-renderer.sh
