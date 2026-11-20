@@ -1,805 +1,155 @@
--- REVIEW DRAFT ONLY — NOT AN APPLIED SUPABASE MIGRATION.
--- Generate the final migration with the Supabase CLI after repository/schema reconciliation.
--- This migration deliberately does not infer entity ownership for existing records.
--- Existing legacy cases without canonical scope remain inaccessible through the new API
--- until individually reconciled through an owner-approved process.
+-- REVIEW DRAFT ONLY. NOT AN APPLIED SUPABASE MIGRATION.
+-- Generate the final migration with the Supabase CLI after reconciling live history.
+-- Never infer canonical tenant ownership for legacy records.
+-- The live audit on 2026-11-20 found all eight identity tables empty.
+-- This preflight aborts if any identity rows exist when the migration is run.
+
+BEGIN;
+
+DO LANGUAGE plpgsql
+'BEGIN
+  IF EXISTS (SELECT 1 FROM identity.subjects)
+     OR EXISTS (SELECT 1 FROM identity.verification_cases)
+     OR EXISTS (SELECT 1 FROM identity.evidence)
+     OR EXISTS (SELECT 1 FROM identity.subject_relationships)
+     OR EXISTS (SELECT 1 FROM identity.screenings)
+     OR EXISTS (SELECT 1 FROM identity.consent_grants)
+     OR EXISTS (SELECT 1 FROM identity.decisions)
+     OR EXISTS (SELECT 1 FROM identity.audit_events) THEN
+    RAISE EXCEPTION ''Identity records exist; reconcile canonical entity and membership ownership before applying this draft.'';
+  END IF;
+END';
+
+ALTER TABLE identity.subjects
+  ADD COLUMN IF NOT EXISTS canonical_user_id text,
+  ADD COLUMN IF NOT EXISTS canonical_entity_id text;
+
+CREATE UNIQUE INDEX IF NOT EXISTS identity_subject_canonical_user_uq
+  ON identity.subjects(canonical_user_id)
+  WHERE subject_type = 'individual' AND canonical_user_id IS NOT NULL;
+
+CREATE UNIQUE INDEX IF NOT EXISTS identity_subject_canonical_entity_uq
+  ON identity.subjects(canonical_entity_id)
+  WHERE subject_type = 'business' AND canonical_entity_id IS NOT NULL;
+
+ALTER TABLE identity.verification_cases
+  ADD COLUMN IF NOT EXISTS entity_id text,
+  ADD COLUMN IF NOT EXISTS membership_id text,
+  ADD COLUMN IF NOT EXISTS opened_by_user_id text,
+  ADD COLUMN IF NOT EXISTS canonical_session_id text;
+
+ALTER TABLE identity.verification_cases
+  ADD CONSTRAINT identity_case_canonical_scope_required
+  CHECK (
+    entity_id IS NOT NULL
+    AND length(entity_id) = 36
+    AND left(entity_id, 4) = 'ent_'
+    AND substring(entity_id FROM 5) ~ '^[0-9a-f]{32}'
+    AND membership_id IS NOT NULL
+    AND length(membership_id) = 36
+    AND left(membership_id, 4) = 'mem_'
+    AND substring(membership_id FROM 5) ~ '^[0-9a-f]{32}'
+    AND opened_by_user_id IS NOT NULL
+    AND length(opened_by_user_id) = 36
+    AND left(opened_by_user_id, 4) = 'usr_'
+    AND substring(opened_by_user_id FROM 5) ~ '^[0-9a-f]{32}'
+    AND canonical_session_id IS NOT NULL
+    AND length(canonical_session_id) BETWEEN 1 AND 160
+  ) NOT VALID;
+
+ALTER TABLE identity.verification_cases
+  VALIDATE CONSTRAINT identity_case_canonical_scope_required;
+
+CREATE INDEX IF NOT EXISTS identity_cases_entity_membership_created_idx
+  ON identity.verification_cases(entity_id, membership_id, created_at DESC);
+
+CREATE INDEX IF NOT EXISTS identity_cases_entity_owner_created_idx
+  ON identity.verification_cases(entity_id, opened_by_user_id, created_at DESC);
+
+ALTER TABLE identity.evidence
+  ADD COLUMN IF NOT EXISTS submitted_by_user_id text,
+  ADD COLUMN IF NOT EXISTS malware_scan_status text,
+  ADD COLUMN IF NOT EXISTS malware_scan_engine text,
+  ADD COLUMN IF NOT EXISTS malware_signature_version text,
+  ADD COLUMN IF NOT EXISTS malware_scanned_at timestamptz,
+  ADD COLUMN IF NOT EXISTS malware_scan_sha256 text;
+
+ALTER TABLE identity.evidence
+  ADD CONSTRAINT identity_evidence_canonical_submitter_required
+  CHECK (
+    submitted_by_user_id IS NOT NULL
+    AND length(submitted_by_user_id) = 36
+    AND left(submitted_by_user_id, 4) = 'usr_'
+    AND substring(submitted_by_user_id FROM 5) ~ '^[0-9a-f]{32}'
+  ) NOT VALID;
+
+ALTER TABLE identity.evidence
+  VALIDATE CONSTRAINT identity_evidence_canonical_submitter_required;
+
+ALTER TABLE identity.evidence
+  ADD CONSTRAINT identity_evidence_clean_malware_scan_required
+  CHECK (
+    malware_scan_status = 'clean'
+    AND malware_scan_engine IS NOT NULL
+    AND length(malware_scan_engine) BETWEEN 1 AND 80
+    AND malware_signature_version IS NOT NULL
+    AND length(malware_signature_version) BETWEEN 1 AND 100
+    AND malware_scanned_at IS NOT NULL
+    AND malware_scan_sha256 IS NOT NULL
+    AND length(malware_scan_sha256) = 64
+    AND substring(malware_scan_sha256 FROM 1) ~ '^[0-9a-f]{64}'
+    AND malware_scan_sha256 = content_sha256
+  ) NOT VALID;
 
-begin;
+ALTER TABLE identity.evidence
+  VALIDATE CONSTRAINT identity_evidence_clean_malware_scan_required;
 
--- Refuse to guess tenant ownership. The live audit on 2026-11-20 found all eight
--- identity tables empty. If any rows exist at deployment time, stop and reconcile
--- them explicitly before this schema change is applied.
-do $
-begin
-  if exists (select 1 from identity.subjects)
-     or exists (select 1 from identity.verification_cases)
-     or exists (select 1 from identity.evidence)
-     or exists (select 1 from identity.subject_relationships)
-     or exists (select 1 from identity.screenings)
-     or exists (select 1 from identity.consent_grants)
-     or exists (select 1 from identity.decisions)
-     or exists (select 1 from identity.audit_events) then
-    raise exception 'Identity records exist; reconcile canonical entity/membership ownership before applying this draft.';
-  end if;
-end;
-$;
+ALTER TABLE identity.subject_relationships
+  ADD COLUMN IF NOT EXISTS verification_case_id uuid
+    REFERENCES identity.verification_cases(id) ON DELETE RESTRICT;
 
-alter table identity.subjects
-  add column if not exists canonical_user_id text,
-  add column if not exists canonical_entity_id text;
+ALTER TABLE identity.subject_relationships
+  ADD CONSTRAINT identity_relationship_case_required
+  CHECK (verification_case_id IS NOT NULL) NOT VALID;
 
-create unique index if not exists identity_subject_canonical_user_uq
-  on identity.subjects(canonical_user_id)
-  where subject_type = 'individual' and canonical_user_id is not null;
+ALTER TABLE identity.subject_relationships
+  VALIDATE CONSTRAINT identity_relationship_case_required;
 
-create unique index if not exists identity_subject_canonical_entity_uq
-  on identity.subjects(canonical_entity_id)
-  where subject_type = 'business' and canonical_entity_id is not null;
+CREATE INDEX IF NOT EXISTS identity_relationship_case_idx
+  ON identity.subject_relationships(verification_case_id, relationship_type);
 
-alter table identity.verification_cases
-  add column if not exists entity_id text,
-  add column if not exists membership_id text,
-  add column if not exists opened_by_user_id text,
-  add column if not exists canonical_session_id text;
+ALTER TABLE identity.consent_grants
+  ADD COLUMN IF NOT EXISTS verification_case_id uuid
+    REFERENCES identity.verification_cases(id) ON DELETE RESTRICT,
+  ADD COLUMN IF NOT EXISTS granted_by_user_id text;
 
-alter table identity.verification_cases
-  add constraint identity_case_canonical_scope_required
-  check (
-    entity_id is not null
-    and membership_id is not null
-    and opened_by_user_id is not null
-    and canonical_session_id is not null
-    and entity_id ~ '^ent_[0-9a-f]{32}
+ALTER TABLE identity.consent_grants
+  ALTER COLUMN granted_by DROP NOT NULL;
 
-create index if not exists identity_cases_entity_membership_created_idx
-  on identity.verification_cases(entity_id, membership_id, created_at desc);
+ALTER TABLE identity.consent_grants
+  ADD CONSTRAINT identity_consent_canonical_actor_case_required
+  CHECK (
+    verification_case_id IS NOT NULL
+    AND granted_by_user_id IS NOT NULL
+    AND length(granted_by_user_id) = 36
+    AND left(granted_by_user_id, 4) = 'usr_'
+    AND substring(granted_by_user_id FROM 5) ~ '^[0-9a-f]{32}'
+  ) NOT VALID;
 
-create index if not exists identity_cases_entity_owner_created_idx
-  on identity.verification_cases(entity_id, opened_by_user_id, created_at desc);
+ALTER TABLE identity.consent_grants
+  VALIDATE CONSTRAINT identity_consent_canonical_actor_case_required;
 
-alter table identity.evidence
-  add column if not exists submitted_by_user_id text;
+CREATE INDEX IF NOT EXISTS identity_consent_case_status_idx
+  ON identity.consent_grants(verification_case_id, status, granted_at DESC);
 
-alter table identity.evidence
-  add constraint identity_evidence_canonical_submitter_required
-  check (
-    submitted_by_user_id is not null
-    and submitted_by_user_id ~ '^usr_[0-9a-f]{32}
+ALTER TABLE identity.decisions
+  ADD COLUMN IF NOT EXISTS decided_by_user_id text;
 
-alter table identity.subject_relationships
-  add column if not exists verification_case_id uuid
-    references identity.verification_cases(id) on delete restrict;
+ALTER TABLE identity.audit_events
+  ADD COLUMN IF NOT EXISTS entity_id text,
+  ADD COLUMN IF NOT EXISTS membership_id text;
 
-alter table identity.subject_relationships
-  add constraint identity_relationship_case_required
-  check (verification_case_id is not null) not valid;
-alter table identity.subject_relationships
-  validate constraint identity_relationship_case_required;
+-- Keep the identity schema private. Do not grant browser roles.
+-- Preserve the existing forced RLS and service-role-only database access model.
 
-create index if not exists identity_relationship_case_idx
-  on identity.subject_relationships(verification_case_id, relationship_type);
-
-alter table identity.consent_grants
-  add column if not exists verification_case_id uuid
-    references identity.verification_cases(id) on delete restrict,
-  add column if not exists granted_by_user_id text;
-
-alter table identity.consent_grants
-  alter column granted_by drop not null;
-
-alter table identity.consent_grants
-  add constraint identity_consent_canonical_actor_case_required
-  check (
-    verification_case_id is not null
-    and granted_by_user_id is not null
-    and granted_by_user_id ~ '^usr_[0-9a-f]{32}
-
-create index if not exists identity_consent_case_status_idx
-  on identity.consent_grants(verification_case_id, status, granted_at desc);
-
-alter table identity.decisions
-  add column if not exists decided_by_user_id text;
-
-alter table identity.audit_events
-  add column if not exists entity_id text,
-  add column if not exists membership_id text;
-
--- Keep the identity schema private. Existing service_role-only grants and policies
--- remain the only intended database access path. Do not grant browser roles.
-commit;
-
-    and membership_id ~ '^mem_[0-9a-f]{32}
-
-create index if not exists identity_cases_entity_membership_created_idx
-  on identity.verification_cases(entity_id, membership_id, created_at desc);
-
-create index if not exists identity_cases_entity_owner_created_idx
-  on identity.verification_cases(entity_id, opened_by_user_id, created_at desc);
-
-alter table identity.evidence
-  add column if not exists submitted_by_user_id text;
-
-alter table identity.subject_relationships
-  add column if not exists verification_case_id uuid
-    references identity.verification_cases(id) on delete restrict;
-
-alter table identity.subject_relationships
-  add constraint identity_relationship_case_required
-  check (verification_case_id is not null) not valid;
-
-create index if not exists identity_relationship_case_idx
-  on identity.subject_relationships(verification_case_id, relationship_type);
-
-alter table identity.consent_grants
-  add column if not exists verification_case_id uuid
-    references identity.verification_cases(id) on delete restrict,
-  add column if not exists granted_by_user_id text;
-
-alter table identity.consent_grants
-  alter column granted_by drop not null;
-
-alter table identity.consent_grants
-  add constraint identity_consent_canonical_actor_case_required
-  check (
-    verification_case_id is not null
-    and granted_by_user_id ~ '^usr_[0-9a-f]{32}$'
-  ) not valid;
-alter table identity.consent_grants
-  validate constraint identity_consent_canonical_actor_case_required;
-
-create index if not exists identity_consent_case_status_idx
-  on identity.consent_grants(verification_case_id, status, granted_at desc);
-
-alter table identity.decisions
-  add column if not exists decided_by_user_id text;
-
-alter table identity.audit_events
-  add column if not exists entity_id text,
-  add column if not exists membership_id text;
-
--- Keep the identity schema private. Existing service_role-only grants and policies
--- remain the only intended database access path. Do not grant browser roles.
-commit;
-
-    and opened_by_user_id ~ '^usr_[0-9a-f]{32}
-
-create index if not exists identity_cases_entity_membership_created_idx
-  on identity.verification_cases(entity_id, membership_id, created_at desc);
-
-create index if not exists identity_cases_entity_owner_created_idx
-  on identity.verification_cases(entity_id, opened_by_user_id, created_at desc);
-
-alter table identity.evidence
-  add column if not exists submitted_by_user_id text;
-
-alter table identity.subject_relationships
-  add column if not exists verification_case_id uuid
-    references identity.verification_cases(id) on delete restrict;
-
-alter table identity.subject_relationships
-  add constraint identity_relationship_case_required
-  check (verification_case_id is not null) not valid;
-
-create index if not exists identity_relationship_case_idx
-  on identity.subject_relationships(verification_case_id, relationship_type);
-
-alter table identity.consent_grants
-  add column if not exists verification_case_id uuid
-    references identity.verification_cases(id) on delete restrict,
-  add column if not exists granted_by_user_id text;
-
-alter table identity.consent_grants
-  alter column granted_by drop not null;
-
-alter table identity.consent_grants
-  add constraint identity_consent_canonical_actor_case_required
-  check (
-    verification_case_id is not null
-    and granted_by_user_id ~ '^usr_[0-9a-f]{32}$'
-  ) not valid;
-
-create index if not exists identity_consent_case_status_idx
-  on identity.consent_grants(verification_case_id, status, granted_at desc);
-
-alter table identity.decisions
-  add column if not exists decided_by_user_id text;
-
-alter table identity.audit_events
-  add column if not exists entity_id text,
-  add column if not exists membership_id text;
-
--- Keep the identity schema private. Existing service_role-only grants and policies
--- remain the only intended database access path. Do not grant browser roles.
-commit;
-
-    and length(canonical_session_id) between 1 and 160
-  ) not valid;
-alter table identity.verification_cases
-  validate constraint identity_case_canonical_scope_required;
-
-create index if not exists identity_cases_entity_membership_created_idx
-  on identity.verification_cases(entity_id, membership_id, created_at desc);
-
-create index if not exists identity_cases_entity_owner_created_idx
-  on identity.verification_cases(entity_id, opened_by_user_id, created_at desc);
-
-alter table identity.evidence
-  add column if not exists submitted_by_user_id text;
-
-alter table identity.subject_relationships
-  add column if not exists verification_case_id uuid
-    references identity.verification_cases(id) on delete restrict;
-
-alter table identity.subject_relationships
-  add constraint identity_relationship_case_required
-  check (verification_case_id is not null) not valid;
-
-create index if not exists identity_relationship_case_idx
-  on identity.subject_relationships(verification_case_id, relationship_type);
-
-alter table identity.consent_grants
-  add column if not exists verification_case_id uuid
-    references identity.verification_cases(id) on delete restrict,
-  add column if not exists granted_by_user_id text;
-
-alter table identity.consent_grants
-  alter column granted_by drop not null;
-
-alter table identity.consent_grants
-  add constraint identity_consent_canonical_actor_case_required
-  check (
-    verification_case_id is not null
-    and granted_by_user_id ~ '^usr_[0-9a-f]{32}$'
-  ) not valid;
-
-create index if not exists identity_consent_case_status_idx
-  on identity.consent_grants(verification_case_id, status, granted_at desc);
-
-alter table identity.decisions
-  add column if not exists decided_by_user_id text;
-
-alter table identity.audit_events
-  add column if not exists entity_id text,
-  add column if not exists membership_id text;
-
--- Keep the identity schema private. Existing service_role-only grants and policies
--- remain the only intended database access path. Do not grant browser roles.
-commit;
-
-  ) not valid;
-
-create index if not exists identity_consent_case_status_idx
-  on identity.consent_grants(verification_case_id, status, granted_at desc);
-
-alter table identity.decisions
-  add column if not exists decided_by_user_id text;
-
-alter table identity.audit_events
-  add column if not exists entity_id text,
-  add column if not exists membership_id text;
-
--- Keep the identity schema private. Existing service_role-only grants and policies
--- remain the only intended database access path. Do not grant browser roles.
-commit;
-
-    and membership_id ~ '^mem_[0-9a-f]{32}
-
-create index if not exists identity_cases_entity_membership_created_idx
-  on identity.verification_cases(entity_id, membership_id, created_at desc);
-
-create index if not exists identity_cases_entity_owner_created_idx
-  on identity.verification_cases(entity_id, opened_by_user_id, created_at desc);
-
-alter table identity.evidence
-  add column if not exists submitted_by_user_id text;
-
-alter table identity.subject_relationships
-  add column if not exists verification_case_id uuid
-    references identity.verification_cases(id) on delete restrict;
-
-alter table identity.subject_relationships
-  add constraint identity_relationship_case_required
-  check (verification_case_id is not null) not valid;
-
-create index if not exists identity_relationship_case_idx
-  on identity.subject_relationships(verification_case_id, relationship_type);
-
-alter table identity.consent_grants
-  add column if not exists verification_case_id uuid
-    references identity.verification_cases(id) on delete restrict,
-  add column if not exists granted_by_user_id text;
-
-alter table identity.consent_grants
-  alter column granted_by drop not null;
-
-alter table identity.consent_grants
-  add constraint identity_consent_canonical_actor_case_required
-  check (
-    verification_case_id is not null
-    and granted_by_user_id ~ '^usr_[0-9a-f]{32}$'
-  ) not valid;
-
-create index if not exists identity_consent_case_status_idx
-  on identity.consent_grants(verification_case_id, status, granted_at desc);
-
-alter table identity.decisions
-  add column if not exists decided_by_user_id text;
-
-alter table identity.audit_events
-  add column if not exists entity_id text,
-  add column if not exists membership_id text;
-
--- Keep the identity schema private. Existing service_role-only grants and policies
--- remain the only intended database access path. Do not grant browser roles.
-commit;
-
-    and opened_by_user_id ~ '^usr_[0-9a-f]{32}
-
-create index if not exists identity_cases_entity_membership_created_idx
-  on identity.verification_cases(entity_id, membership_id, created_at desc);
-
-create index if not exists identity_cases_entity_owner_created_idx
-  on identity.verification_cases(entity_id, opened_by_user_id, created_at desc);
-
-alter table identity.evidence
-  add column if not exists submitted_by_user_id text;
-
-alter table identity.subject_relationships
-  add column if not exists verification_case_id uuid
-    references identity.verification_cases(id) on delete restrict;
-
-alter table identity.subject_relationships
-  add constraint identity_relationship_case_required
-  check (verification_case_id is not null) not valid;
-
-create index if not exists identity_relationship_case_idx
-  on identity.subject_relationships(verification_case_id, relationship_type);
-
-alter table identity.consent_grants
-  add column if not exists verification_case_id uuid
-    references identity.verification_cases(id) on delete restrict,
-  add column if not exists granted_by_user_id text;
-
-alter table identity.consent_grants
-  alter column granted_by drop not null;
-
-alter table identity.consent_grants
-  add constraint identity_consent_canonical_actor_case_required
-  check (
-    verification_case_id is not null
-    and granted_by_user_id ~ '^usr_[0-9a-f]{32}$'
-  ) not valid;
-
-create index if not exists identity_consent_case_status_idx
-  on identity.consent_grants(verification_case_id, status, granted_at desc);
-
-alter table identity.decisions
-  add column if not exists decided_by_user_id text;
-
-alter table identity.audit_events
-  add column if not exists entity_id text,
-  add column if not exists membership_id text;
-
--- Keep the identity schema private. Existing service_role-only grants and policies
--- remain the only intended database access path. Do not grant browser roles.
-commit;
-
-    and length(canonical_session_id) between 1 and 160
-  ) not valid;
-
-create index if not exists identity_cases_entity_membership_created_idx
-  on identity.verification_cases(entity_id, membership_id, created_at desc);
-
-create index if not exists identity_cases_entity_owner_created_idx
-  on identity.verification_cases(entity_id, opened_by_user_id, created_at desc);
-
-alter table identity.evidence
-  add column if not exists submitted_by_user_id text;
-
-alter table identity.subject_relationships
-  add column if not exists verification_case_id uuid
-    references identity.verification_cases(id) on delete restrict;
-
-alter table identity.subject_relationships
-  add constraint identity_relationship_case_required
-  check (verification_case_id is not null) not valid;
-
-create index if not exists identity_relationship_case_idx
-  on identity.subject_relationships(verification_case_id, relationship_type);
-
-alter table identity.consent_grants
-  add column if not exists verification_case_id uuid
-    references identity.verification_cases(id) on delete restrict,
-  add column if not exists granted_by_user_id text;
-
-alter table identity.consent_grants
-  alter column granted_by drop not null;
-
-alter table identity.consent_grants
-  add constraint identity_consent_canonical_actor_case_required
-  check (
-    verification_case_id is not null
-    and granted_by_user_id ~ '^usr_[0-9a-f]{32}$'
-  ) not valid;
-
-create index if not exists identity_consent_case_status_idx
-  on identity.consent_grants(verification_case_id, status, granted_at desc);
-
-alter table identity.decisions
-  add column if not exists decided_by_user_id text;
-
-alter table identity.audit_events
-  add column if not exists entity_id text,
-  add column if not exists membership_id text;
-
--- Keep the identity schema private. Existing service_role-only grants and policies
--- remain the only intended database access path. Do not grant browser roles.
-commit;
-
-  ) not valid;
-alter table identity.evidence
-  validate constraint identity_evidence_canonical_submitter_required;
-
-alter table identity.subject_relationships
-  add column if not exists verification_case_id uuid
-    references identity.verification_cases(id) on delete restrict;
-
-alter table identity.subject_relationships
-  add constraint identity_relationship_case_required
-  check (verification_case_id is not null) not valid;
-
-create index if not exists identity_relationship_case_idx
-  on identity.subject_relationships(verification_case_id, relationship_type);
-
-alter table identity.consent_grants
-  add column if not exists verification_case_id uuid
-    references identity.verification_cases(id) on delete restrict,
-  add column if not exists granted_by_user_id text;
-
-alter table identity.consent_grants
-  alter column granted_by drop not null;
-
-alter table identity.consent_grants
-  add constraint identity_consent_canonical_actor_case_required
-  check (
-    verification_case_id is not null
-    and granted_by_user_id is not null
-    and granted_by_user_id ~ '^usr_[0-9a-f]{32}
-
-create index if not exists identity_consent_case_status_idx
-  on identity.consent_grants(verification_case_id, status, granted_at desc);
-
-alter table identity.decisions
-  add column if not exists decided_by_user_id text;
-
-alter table identity.audit_events
-  add column if not exists entity_id text,
-  add column if not exists membership_id text;
-
--- Keep the identity schema private. Existing service_role-only grants and policies
--- remain the only intended database access path. Do not grant browser roles.
-commit;
-
-    and membership_id ~ '^mem_[0-9a-f]{32}
-
-create index if not exists identity_cases_entity_membership_created_idx
-  on identity.verification_cases(entity_id, membership_id, created_at desc);
-
-create index if not exists identity_cases_entity_owner_created_idx
-  on identity.verification_cases(entity_id, opened_by_user_id, created_at desc);
-
-alter table identity.evidence
-  add column if not exists submitted_by_user_id text;
-
-alter table identity.subject_relationships
-  add column if not exists verification_case_id uuid
-    references identity.verification_cases(id) on delete restrict;
-
-alter table identity.subject_relationships
-  add constraint identity_relationship_case_required
-  check (verification_case_id is not null) not valid;
-
-create index if not exists identity_relationship_case_idx
-  on identity.subject_relationships(verification_case_id, relationship_type);
-
-alter table identity.consent_grants
-  add column if not exists verification_case_id uuid
-    references identity.verification_cases(id) on delete restrict,
-  add column if not exists granted_by_user_id text;
-
-alter table identity.consent_grants
-  alter column granted_by drop not null;
-
-alter table identity.consent_grants
-  add constraint identity_consent_canonical_actor_case_required
-  check (
-    verification_case_id is not null
-    and granted_by_user_id ~ '^usr_[0-9a-f]{32}$'
-  ) not valid;
-
-create index if not exists identity_consent_case_status_idx
-  on identity.consent_grants(verification_case_id, status, granted_at desc);
-
-alter table identity.decisions
-  add column if not exists decided_by_user_id text;
-
-alter table identity.audit_events
-  add column if not exists entity_id text,
-  add column if not exists membership_id text;
-
--- Keep the identity schema private. Existing service_role-only grants and policies
--- remain the only intended database access path. Do not grant browser roles.
-commit;
-
-    and opened_by_user_id ~ '^usr_[0-9a-f]{32}
-
-create index if not exists identity_cases_entity_membership_created_idx
-  on identity.verification_cases(entity_id, membership_id, created_at desc);
-
-create index if not exists identity_cases_entity_owner_created_idx
-  on identity.verification_cases(entity_id, opened_by_user_id, created_at desc);
-
-alter table identity.evidence
-  add column if not exists submitted_by_user_id text;
-
-alter table identity.subject_relationships
-  add column if not exists verification_case_id uuid
-    references identity.verification_cases(id) on delete restrict;
-
-alter table identity.subject_relationships
-  add constraint identity_relationship_case_required
-  check (verification_case_id is not null) not valid;
-
-create index if not exists identity_relationship_case_idx
-  on identity.subject_relationships(verification_case_id, relationship_type);
-
-alter table identity.consent_grants
-  add column if not exists verification_case_id uuid
-    references identity.verification_cases(id) on delete restrict,
-  add column if not exists granted_by_user_id text;
-
-alter table identity.consent_grants
-  alter column granted_by drop not null;
-
-alter table identity.consent_grants
-  add constraint identity_consent_canonical_actor_case_required
-  check (
-    verification_case_id is not null
-    and granted_by_user_id ~ '^usr_[0-9a-f]{32}$'
-  ) not valid;
-
-create index if not exists identity_consent_case_status_idx
-  on identity.consent_grants(verification_case_id, status, granted_at desc);
-
-alter table identity.decisions
-  add column if not exists decided_by_user_id text;
-
-alter table identity.audit_events
-  add column if not exists entity_id text,
-  add column if not exists membership_id text;
-
--- Keep the identity schema private. Existing service_role-only grants and policies
--- remain the only intended database access path. Do not grant browser roles.
-commit;
-
-    and length(canonical_session_id) between 1 and 160
-  ) not valid;
-
-create index if not exists identity_cases_entity_membership_created_idx
-  on identity.verification_cases(entity_id, membership_id, created_at desc);
-
-create index if not exists identity_cases_entity_owner_created_idx
-  on identity.verification_cases(entity_id, opened_by_user_id, created_at desc);
-
-alter table identity.evidence
-  add column if not exists submitted_by_user_id text;
-
-alter table identity.subject_relationships
-  add column if not exists verification_case_id uuid
-    references identity.verification_cases(id) on delete restrict;
-
-alter table identity.subject_relationships
-  add constraint identity_relationship_case_required
-  check (verification_case_id is not null) not valid;
-
-create index if not exists identity_relationship_case_idx
-  on identity.subject_relationships(verification_case_id, relationship_type);
-
-alter table identity.consent_grants
-  add column if not exists verification_case_id uuid
-    references identity.verification_cases(id) on delete restrict,
-  add column if not exists granted_by_user_id text;
-
-alter table identity.consent_grants
-  alter column granted_by drop not null;
-
-alter table identity.consent_grants
-  add constraint identity_consent_canonical_actor_case_required
-  check (
-    verification_case_id is not null
-    and granted_by_user_id ~ '^usr_[0-9a-f]{32}$'
-  ) not valid;
-
-create index if not exists identity_consent_case_status_idx
-  on identity.consent_grants(verification_case_id, status, granted_at desc);
-
-alter table identity.decisions
-  add column if not exists decided_by_user_id text;
-
-alter table identity.audit_events
-  add column if not exists entity_id text,
-  add column if not exists membership_id text;
-
--- Keep the identity schema private. Existing service_role-only grants and policies
--- remain the only intended database access path. Do not grant browser roles.
-commit;
-
-  ) not valid;
-
-create index if not exists identity_consent_case_status_idx
-  on identity.consent_grants(verification_case_id, status, granted_at desc);
-
-alter table identity.decisions
-  add column if not exists decided_by_user_id text;
-
-alter table identity.audit_events
-  add column if not exists entity_id text,
-  add column if not exists membership_id text;
-
--- Keep the identity schema private. Existing service_role-only grants and policies
--- remain the only intended database access path. Do not grant browser roles.
-commit;
-
-    and membership_id ~ '^mem_[0-9a-f]{32}
-
-create index if not exists identity_cases_entity_membership_created_idx
-  on identity.verification_cases(entity_id, membership_id, created_at desc);
-
-create index if not exists identity_cases_entity_owner_created_idx
-  on identity.verification_cases(entity_id, opened_by_user_id, created_at desc);
-
-alter table identity.evidence
-  add column if not exists submitted_by_user_id text;
-
-alter table identity.subject_relationships
-  add column if not exists verification_case_id uuid
-    references identity.verification_cases(id) on delete restrict;
-
-alter table identity.subject_relationships
-  add constraint identity_relationship_case_required
-  check (verification_case_id is not null) not valid;
-
-create index if not exists identity_relationship_case_idx
-  on identity.subject_relationships(verification_case_id, relationship_type);
-
-alter table identity.consent_grants
-  add column if not exists verification_case_id uuid
-    references identity.verification_cases(id) on delete restrict,
-  add column if not exists granted_by_user_id text;
-
-alter table identity.consent_grants
-  alter column granted_by drop not null;
-
-alter table identity.consent_grants
-  add constraint identity_consent_canonical_actor_case_required
-  check (
-    verification_case_id is not null
-    and granted_by_user_id ~ '^usr_[0-9a-f]{32}$'
-  ) not valid;
-
-create index if not exists identity_consent_case_status_idx
-  on identity.consent_grants(verification_case_id, status, granted_at desc);
-
-alter table identity.decisions
-  add column if not exists decided_by_user_id text;
-
-alter table identity.audit_events
-  add column if not exists entity_id text,
-  add column if not exists membership_id text;
-
--- Keep the identity schema private. Existing service_role-only grants and policies
--- remain the only intended database access path. Do not grant browser roles.
-commit;
-
-    and opened_by_user_id ~ '^usr_[0-9a-f]{32}
-
-create index if not exists identity_cases_entity_membership_created_idx
-  on identity.verification_cases(entity_id, membership_id, created_at desc);
-
-create index if not exists identity_cases_entity_owner_created_idx
-  on identity.verification_cases(entity_id, opened_by_user_id, created_at desc);
-
-alter table identity.evidence
-  add column if not exists submitted_by_user_id text;
-
-alter table identity.subject_relationships
-  add column if not exists verification_case_id uuid
-    references identity.verification_cases(id) on delete restrict;
-
-alter table identity.subject_relationships
-  add constraint identity_relationship_case_required
-  check (verification_case_id is not null) not valid;
-
-create index if not exists identity_relationship_case_idx
-  on identity.subject_relationships(verification_case_id, relationship_type);
-
-alter table identity.consent_grants
-  add column if not exists verification_case_id uuid
-    references identity.verification_cases(id) on delete restrict,
-  add column if not exists granted_by_user_id text;
-
-alter table identity.consent_grants
-  alter column granted_by drop not null;
-
-alter table identity.consent_grants
-  add constraint identity_consent_canonical_actor_case_required
-  check (
-    verification_case_id is not null
-    and granted_by_user_id ~ '^usr_[0-9a-f]{32}$'
-  ) not valid;
-
-create index if not exists identity_consent_case_status_idx
-  on identity.consent_grants(verification_case_id, status, granted_at desc);
-
-alter table identity.decisions
-  add column if not exists decided_by_user_id text;
-
-alter table identity.audit_events
-  add column if not exists entity_id text,
-  add column if not exists membership_id text;
-
--- Keep the identity schema private. Existing service_role-only grants and policies
--- remain the only intended database access path. Do not grant browser roles.
-commit;
-
-    and length(canonical_session_id) between 1 and 160
-  ) not valid;
-
-create index if not exists identity_cases_entity_membership_created_idx
-  on identity.verification_cases(entity_id, membership_id, created_at desc);
-
-create index if not exists identity_cases_entity_owner_created_idx
-  on identity.verification_cases(entity_id, opened_by_user_id, created_at desc);
-
-alter table identity.evidence
-  add column if not exists submitted_by_user_id text;
-
-alter table identity.subject_relationships
-  add column if not exists verification_case_id uuid
-    references identity.verification_cases(id) on delete restrict;
-
-alter table identity.subject_relationships
-  add constraint identity_relationship_case_required
-  check (verification_case_id is not null) not valid;
-
-create index if not exists identity_relationship_case_idx
-  on identity.subject_relationships(verification_case_id, relationship_type);
-
-alter table identity.consent_grants
-  add column if not exists verification_case_id uuid
-    references identity.verification_cases(id) on delete restrict,
-  add column if not exists granted_by_user_id text;
-
-alter table identity.consent_grants
-  alter column granted_by drop not null;
-
-alter table identity.consent_grants
-  add constraint identity_consent_canonical_actor_case_required
-  check (
-    verification_case_id is not null
-    and granted_by_user_id ~ '^usr_[0-9a-f]{32}$'
-  ) not valid;
-
-create index if not exists identity_consent_case_status_idx
-  on identity.consent_grants(verification_case_id, status, granted_at desc);
-
-alter table identity.decisions
-  add column if not exists decided_by_user_id text;
-
-alter table identity.audit_events
-  add column if not exists entity_id text,
-  add column if not exists membership_id text;
-
--- Keep the identity schema private. Existing service_role-only grants and policies
--- remain the only intended database access path. Do not grant browser roles.
-commit;
+COMMIT;
