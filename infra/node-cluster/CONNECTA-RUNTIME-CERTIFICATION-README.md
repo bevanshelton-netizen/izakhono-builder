@@ -12,6 +12,8 @@ The four logical CONNECTA runtime deployments are defined in `infra/node-cluster
 
 The K3s manifest creates four separately identified engine Deployments, one internal customer Service, four internal node-health Services, and a three-of-four PodDisruptionBudget. It uses shared IZAKHONO-owned PostgreSQL and S3-compatible media storage; it does not create or assume those services, public ingress, or EDGE routing.
 
+The image workflow captures the registry digest returned by the actual build and calls `RENDER-CONNECTA-RUNTIME-RELEASE.sh` to produce a digest-matched `connecta-runtime.yaml` plus `release.json`. The bundle is retained as a GitHub Actions artifact. Its metadata explicitly sets `deploymentAuthorized=false` and `runtimeLiveVerified=false`: building/publishing an image and rendering a manifest do not deploy the cluster or certify runtime health. Do not apply the template manifest's committed reference as a substitute for the build artifact.
+
 ## 1. Provision distinct authenticated HTTPS runtime endpoints
 
 Configure these protected GitHub Actions production-environment secrets:
