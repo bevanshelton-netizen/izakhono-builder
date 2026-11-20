@@ -159,7 +159,7 @@ export async function handleIdentity(req: Request, u: URL): Promise<Response | n
 
   if (req.method === "OPTIONS") {
     const h = new Headers({
-      "access-control-allow-headers": "authorization, content-type, x-request-id",
+      "access-control-allow-headers": "authorization, apikey, content-type, x-request-id",
       "access-control-allow-methods": "GET,POST,OPTIONS",
       "access-control-max-age": "86400",
       "vary": "Origin",
