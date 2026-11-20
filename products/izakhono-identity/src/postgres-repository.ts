@@ -1,4 +1,4 @@
-import type { AuditEvent, ProviderVerificationResult, VerificationRepository, VerificationRequest } from "./types.js";
+import type { AuditEvent, ProviderVerificationResult, VerificationEvidenceMetadata, VerificationRepository, VerificationRequest } from "./types.js";
 
 export interface SqlResult<Row> {
   rows: Row[];
@@ -64,6 +64,13 @@ export class PostgresVerificationRepository implements VerificationRepository {
         request.idempotencyKey, request.createdBy, request.createdAt,
         request.updatedAt, request.expiresAt,
       ],
+    );
+  }
+
+  async createEvidenceMetadata(metadata: VerificationEvidenceMetadata): Promise<void> {
+    await this.sql.query(
+      "insert into identity_private.evidence_metadata (id, tenant_id, request_id, evidence_kind, encrypted_object_ref, content_sha256, captured_at, retention_until) values ($1,$2,$3,$4,$5,$6,$7,$8)",
+      [metadata.id, metadata.tenantId, metadata.requestId, metadata.kind, metadata.objectRef, metadata.contentSha256, metadata.capturedAt, metadata.retentionUntil ?? null],
     );
   }
 
