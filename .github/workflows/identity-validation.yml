@@ -27,6 +27,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+      - name: Install pinned project toolchain
+        run: npm install --ignore-scripts --no-audit --no-fund
       - name: Type-check identity service
         run: npm run identity:typecheck
       - name: Builder integration type-check
