@@ -4,7 +4,7 @@ import {
   resolveIdentityContext,
   type IdentityContext,
 } from "./identity-auth.ts";
-import { createDefaultProviderRegistry } from "./verification-providers.ts";
+import { createDefaultProviderRegistry, type ProviderCapability } from "./verification-providers.ts";
 
 const SUPA = Deno.env.get("SUPABASE_URL") || "";
 const KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
@@ -17,6 +17,22 @@ const MIME: Record<string, string> = {
 };
 const enc = new TextEncoder();
 const PROVIDERS = createDefaultProviderRegistry();
+const SCREENING_CAPABILITY: Record<string, ProviderCapability> = {
+  identity_document: "document_authenticity",
+  company_registry: "company_registry",
+  sanctions: "sanctions",
+  pep: "pep",
+};
+
+function screeningIsValid(screening: any, screeningType: string) {
+  const capability = SCREENING_CAPABILITY[screeningType];
+  return !!capability &&
+    typeof screening.provider_code === "string" &&
+    PROVIDERS.resolve(screening.provider_code, capability) !== null &&
+    screening.outcome === "clear" &&
+    !!screening.expires_at &&
+    new Date(screening.expires_at) > new Date();
+}
 
 function responseHeaders(origin = "") {
   const h = new Headers({
@@ -529,10 +545,7 @@ export async function handleIdentity(req: Request, u: URL): Promise<Response | n
         : ["company_registry", "sanctions", "pep"];
       const missing = types.filter((t) =>
         !sc.some((x: any) =>
-          x.screening_type === t &&
-          x.outcome === "clear" &&
-          x.expires_at &&
-          new Date(x.expires_at) > new Date()
+          x.screening_type === t && screeningIsValid(x, t)
         )
       );
 
