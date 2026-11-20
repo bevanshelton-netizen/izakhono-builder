@@ -3,7 +3,6 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 MANIFEST="${1:-$ROOT/infra/node-cluster/connecta-runtime.yaml}"
-EXPECTED_IMAGE="${CONNECTA_ENGINE_IMAGE:-ghcr.io/bevanshelton-netizen/connecta-engine:0.3.0@sha256:838b095cd2b12a9f66526e5086501474f6958e20f597efa96875217390b580da}"
 [[ -f "$MANIFEST" ]] || { echo "[BLOCKED] CONNECTA K3s runtime manifest is missing" >&2; exit 1; }
 command -v ruby >/dev/null 2>&1 || { echo "[BLOCKED] Ruby is required for YAML validation" >&2; exit 1; }
 
