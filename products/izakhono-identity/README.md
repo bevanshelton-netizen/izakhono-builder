@@ -47,4 +47,7 @@ This module provides the provider-neutral domain core, access policy, routing co
 
 ## Local validation
 
-The package is dependency-free TypeScript. Compile the \`src\` and \`tests\` files with the repository's pinned TypeScript toolchain. Add a project-level script only after the module is integrated and validated in the canonical IZAKHONO source repository.
+- `npm run identity:typecheck`
+- `npm run identity:test`
+
+CI also runs the Builder integration type-check and route syntax check. Passing tests do not authorise production deployment.
