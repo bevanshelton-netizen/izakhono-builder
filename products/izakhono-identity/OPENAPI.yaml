@@ -65,6 +65,39 @@ paths:
       responses:
         '200': { description: Review recorded and audited }
         '403': { description: Reviewer permission required }
+  /v1/identity/evidence/upload-intents:
+    post:
+      operationId: createEvidenceUploadIntent
+      summary: Create a short-lived private evidence upload intent
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [tenantId, requestId, kind, contentType, sizeBytes]
+              properties:
+                tenantId: { type: string, format: uuid }
+                requestId: { type: string, format: uuid }
+                kind: { type: string, enum: [identity_document, selfie, nfc_result, provider_receipt] }
+                contentType: { type: string }
+                sizeBytes: { type: integer, minimum: 1, maximum: 15000000 }
+      responses:
+        '201': { description: Short-lived signed upload URL and opaque intent ID }
+        '403': { description: Tenant permission or request-integrity check failed }
+  /v1/identity/evidence/upload-intents/{intentId}/finalise:
+    post:
+      operationId: finaliseEvidenceUpload
+      summary: Verify uploaded object metadata and persist evidence metadata
+      parameters:
+        - in: path
+          name: intentId
+          required: true
+          schema: { type: string }
+      responses:
+        '201': { description: Evidence metadata persisted; raw evidence is not returned }
+        '400': { description: Upload is invalid, expired or already finalised }
+        '403': { description: Tenant permission or request-integrity check failed }
   /v1/providers:
     get:
       operationId: listProviders
