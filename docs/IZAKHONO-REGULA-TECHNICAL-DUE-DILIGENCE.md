@@ -87,22 +87,25 @@ Regula's licensing documentation describes the Face SDK Web Service as intended 
 Regula IDV Platform is a complete workflow product, not merely a REST endpoint.
 
 Its documented architecture includes:
-- API gateway and authentication layer.
+- Backoffice/API gateway and authentication layer (the v3.10 documentation renames the API service to Backoffice while retaining the old service name for backward compatibility).
 - Workflow engine.
 - Scheduler.
 - Audit service.
 - Indexer.
-- Message bus.
+- Message broker.
 - MongoDB for structured platform data.
-- S3-compatible or filesystem storage for binary data.
+- S3-compatible, Azure Blob, Google Cloud Storage or NFS storage for binary data.
 - Optional vector database for similarity/search workloads.
+- Optional Kafka replication bus when multi-site replication is enabled.
 - Document Reader and Face services as processing components.
 
-The documented deployment prerequisites include MongoDB 8.0+ (or MongoDB Atlas), a message broker such as RabbitMQ/Amazon MQ/Kafka/Redis/Valkey, and S3-compatible or NFS storage. A vector database is optional for the Profile module.
+The v3.10 deployment guide lists MongoDB 8.0+ (or MongoDB Atlas), a message broker such as RabbitMQ/Amazon MQ/Redis/Valkey, and S3-compatible/MinIO, Azure Blob, Google Cloud Storage or NFS storage. Kafka is listed separately as an optional replication bus for multi-site deployments. A vector database (OpenSearch 2.19+ or MongoDB Atlas) is optional for the Profile module.
 
 References:
 - https://docs.regulaforensics.com/develop/idv/overview/architecture/
 - https://docs.regulaforensics.com/develop/idv/administration/deployment/
+- https://docs.regulaforensics.com/develop/idv/release-notes/3-10/
+- https://docs.regulaforensics.com/develop/idv/administration/rbac/
 
 **Architecture consequence:** IZAKHONO's existing Supabase/PostgreSQL project is not a substitute for the MongoDB dependency specified for the full Regula IDV Platform. Do not assume that the complete platform can be deployed by adding a few endpoints to the existing Supabase project.
 
@@ -305,3 +308,14 @@ Regula must demonstrate, not merely state:
 8. How licensing behaves during a temporary loss of internet connectivity.
 9. How document/Face service upgrades, database packs and licence renewals are delivered.
 10. What data is retained in service logs, how logs are redacted, and how deletion is performed.
+
+
+## 16. IDV Platform 3.10 RBAC consideration
+
+Regula IDV Platform 3.10 introduces configurable RBAC with entity-level access restrictions for selected scopes, including sessions, workflows, persons, pools, cases, groups, roles, banlists and IAM applications. It also provides creator-ownership access for resources created by a user.
+
+Reference:
+https://docs.regulaforensics.com/develop/idv/release-notes/3-10/
+https://docs.regulaforensics.com/develop/idv/administration/rbac/permissions/
+
+This is a useful capability if the full IDV Platform is ever selected. It does not replace IZAKHONO ID or the IZAKHONO entity/membership authority. Any integration must explicitly map Regula entity IDs and Regula user/group permissions to IZAKHONO's canonical entity, membership and service-account controls. Regula must not be allowed to grant access broader than the IZAKHONO policy permits.
