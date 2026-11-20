@@ -5,6 +5,7 @@ import { ProviderRouter } from "./provider-router.js";
 
 export interface IdentityHttpDependencies {
   authenticate(request: Request): Promise<Principal | null>;
+  verifyRequestIntegrity(request: Request, principal: Principal): Promise<boolean>;
   resolveProcessingAuthorisation(input: {
     principal: Principal;
     tenantId: string;
@@ -43,6 +44,7 @@ export function createIdentityHttpHandler(deps: IdentityHttpDependencies) {
     const segments = path.split("/").filter(Boolean);
 
     if (request.method === "POST" && path === "/v1/identity/verifications") {
+      if (!(await deps.verifyRequestIntegrity(request, principal))) return json({ error: "request_integrity_check_failed" }, 403);
       let body: Record<string, unknown>;
       try { body = await request.json() as Record<string, unknown>; }
       catch { return json({ error: "invalid_json" }, 400); }
@@ -91,6 +93,7 @@ export function createIdentityHttpHandler(deps: IdentityHttpDependencies) {
     }
 
     if (segments.length === 5 && segments[0] === "v1" && segments[1] === "identity" && segments[2] === "verifications" && segments[4] === "review" && request.method === "POST") {
+      if (!(await deps.verifyRequestIntegrity(request, principal))) return json({ error: "request_integrity_check_failed" }, 403);
       const record = await deps.repository.findRequest(segments[3]);
       if (!record) return json({ error: "not_found" }, 404);
       let body: Record<string, unknown>;
