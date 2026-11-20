@@ -38,6 +38,12 @@ Then open `http://localhost:4173`.
 
 The Vercel project should use this directory as its root, with SSO protection enabled. Preview deployment only until the app has real authentication, backend authorization, provider approval, data retention and security review. No production domain or public finance data should be attached to this demo build.
 
+## Backend contract and financial controls
+
+`API-CONTRACT.md` defines the planned server-side routes, trust boundaries, authentication and authorization requirements, idempotency, provider event handling, payout controls and release gates. These endpoints are a specification, not deployed APIs.
+
+The review-only SQL proposal now includes deferred per-currency ledger balance checks, append-only posted ledger transactions and append-only financial audit events. It still requires independent database/security review and has not been applied to any database.
+
 ## Database schema
 
 `schema/001_creator_finance.sql` is a proposed migration for review only. It has not been applied to any Supabase or production database. All tables enable row-level security and have no client policies, so access is denied until an explicit reviewed authorization model is implemented.
