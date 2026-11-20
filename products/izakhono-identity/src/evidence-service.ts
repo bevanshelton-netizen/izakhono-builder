@@ -70,7 +70,7 @@ export class EvidenceService {
     requireTenantPermission(principal, input.tenantId, "identity:verify:create");
     const request = await this.repository.findRequest(input.requestId);
     if (!request || request.tenantId !== input.tenantId) throw new Error("Verification request not found");
-    if (!["created", "in_progress", "manual_review"].includes(request.status)) {
+    if (!["created", "in_progress", "manual_review", "provider_unavailable"].includes(request.status)) {
       throw new Error("Evidence cannot be added to a terminal verification request");
     }
     if (!allowedTypes[input.kind]?.includes(input.contentType)) throw new Error("Evidence content type is not allowed");
