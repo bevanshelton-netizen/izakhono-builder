@@ -134,6 +134,22 @@ create table if not exists identity_private.audit_events (
 create index if not exists identity_audit_tenant_time_idx
   on identity_private.audit_events (tenant_id, occurred_at desc);
 
+-- Audit records are append-only even for privileged application credentials.
+create or replace function identity_private.prevent_audit_mutation()
+returns trigger
+language plpgsql
+as $
+begin
+  raise exception 'identity audit events are append-only';
+end;
+$;
+
+drop trigger if exists identity_audit_no_update on identity_private.audit_events;
+create trigger identity_audit_no_update
+before update or delete on identity_private.audit_events
+for each row execute function identity_private.prevent_audit_mutation();
+
+
 do $$
 declare t text;
 begin
