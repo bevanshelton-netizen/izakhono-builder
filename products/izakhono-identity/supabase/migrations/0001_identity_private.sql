@@ -38,6 +38,9 @@ create table if not exists identity_private.verification_requests (
     'supplier_onboarding','account_recovery','regulated_service'
   )),
   required_checks text[] not null,
+  completed_checks text[] not null default '{}',
+  failed_checks text[] not null default '{}',
+  request_fingerprint text not null,
   legal_basis text not null,
   notice_version text not null,
   authorisation_reference text not null,
