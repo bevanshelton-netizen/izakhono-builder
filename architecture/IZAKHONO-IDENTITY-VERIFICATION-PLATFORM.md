@@ -238,3 +238,32 @@ A review-only SQL draft is present at `docs/IZAKHONO-IDENTITY-ENTITY-SCOPE-MIGRA
 8. No authenticated staging cross-entity, same-user/multiple-membership, revoked-session, expired-session or IDOR test evidence has been accepted.
 
 The follow-up branch is source-only. No Supabase production schema, grants, storage policies, Vercel deployment, DNS, secrets, merchant status or customer-facing traffic was changed.
+
+
+## Regula provider evaluation — 2026-11-20
+
+Regula remains the preferred evaluation candidate for document and biometric verification, subject to a proof-of-capability, commercial proposal, privacy/legal review and security assessment.
+
+The official documentation snapshot lists Document Reader SDK 9.10, Face SDK 8.4.1 and IDV Platform 3.10. The Document Reader 9.9 release notes explicitly mention an updated South Africa ID Card barcode parser; this is not proof of coverage for every South African document variant. Smart ID card, legacy green ID book, passport and driving-licence support must be demonstrated with agreed samples.
+
+The full Regula IDV Platform has material infrastructure dependencies: MongoDB 8.0+ or Atlas, a message broker, S3-compatible/NFS storage, and optionally a vector database. Its internal architecture includes API, Workflow, Scheduler, Audit and Indexer services. The existing IZAKHONO Supabase/PostgreSQL project does not replace the documented MongoDB requirement.
+
+The current preferred technical evaluation path is therefore:
+1. Evaluate Document Reader and Face services behind the IZAKHONO-owned provider adapter.
+2. Keep all Regula services private and reachable only through the authenticated IZAKHONO/FORTRESS boundary.
+3. Evaluate the full Regula IDV Platform separately against the cost, operations, persistence, broker, MongoDB, storage and GPU requirements.
+4. Do not adopt the full platform until a written quote, data-flow review, licence model and deployment design are accepted.
+
+Regula documentation states that standalone Document Reader and Face SDK services do not provide their own access-control layer, whereas the IDV Platform API provides authentication/authorization and acts as a gateway to processing services. IZAKHONO must not expose standalone processing services directly to browsers or the public internet.
+
+Detailed assessment: `docs/IZAKHONO-REGULA-TECHNICAL-DUE-DILIGENCE.md`.
+
+Official references:
+- https://docs.regulaforensics.com/develop/overview/
+- https://docs.regulaforensics.com/develop/doc-reader-sdk/release-notes/9-9/
+- https://docs.regulaforensics.com/develop/idv/overview/architecture/
+- https://docs.regulaforensics.com/develop/idv/administration/deployment/
+- https://docs.regulaforensics.com/develop/idv/administration/security/
+- https://docs.regulaforensics.com/develop/face-sdk/web-service/installation/
+
+No Regula licence, production endpoint, credentials, supplier contract or live processing is configured.
