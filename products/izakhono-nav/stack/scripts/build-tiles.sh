@@ -10,7 +10,13 @@ STORE="$DATA_DIR/tilemaker-store"
 [[ -f "$PBF" ]] || { echo "Missing $PBF. Run bootstrap-data.sh first." >&2; exit 2; }
 mkdir -p "$(dirname "$OUT")" "$STORE"
 rm -f "$OUT.part"
-docker run --rm   -v "$DATA_DIR:/data"   ghcr.io/systemed/tilemaker:master   /data/osm/south-africa-latest.osm.pbf   --output /data/tiles/south-africa.pmtiles.part   --store /data/tilemaker-store
-mv "$TMP" "$OUT"
+docker run --rm \
+  -v "$DATA_DIR:/data" \
+  ghcr.io/systemed/tilemaker:master \
+  /data/osm/south-africa-latest.osm.pbf \
+  --output /data/tiles/south-africa.pmtiles.part \
+  --store /data/tilemaker-store
+test -s "$OUT.part" || { echo "Tilemaker did not produce $OUT.part" >&2; exit 3; }
+mv "$OUT.part" "$OUT"
 sha256sum "$OUT" > "$OUT.sha256"
 echo "Built $OUT"
