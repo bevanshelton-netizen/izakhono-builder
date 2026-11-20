@@ -5,6 +5,8 @@ import {
   AccessDeniedError,
   type Clock,
   type VerificationProvider,
+  type CreateVerificationInput,
+  type ProviderVerificationResult,
 } from "../src/index.js";
 
 function assert(condition: unknown, message: string): asserts condition {
@@ -57,7 +59,7 @@ async function run(): Promise<void> {
       status: "active" as const,
     }],
   };
-  const input = {
+  const input: CreateVerificationInput = {
     tenantId: "tenant-1",
     subjectRef: "subject-pseudonymous-1",
     purpose: "customer_onboarding" as const,
@@ -74,7 +76,7 @@ async function run(): Promise<void> {
   const replay = await service.create(principal, input, "ZA");
   assert(replay.id === created.id, "idempotent replay should return existing request");
 
-  const result = {
+  const result: ProviderVerificationResult = {
     providerId: "test-provider",
     providerReference: created.providerReference!,
     status: "verified" as const,
