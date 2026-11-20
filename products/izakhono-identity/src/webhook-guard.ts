@@ -10,8 +10,8 @@ export interface WebhookSignatureVerifier {
 }
 
 export interface WebhookReplayStore {
-  hasProcessed(providerId: string, eventId: string): Promise<boolean>;
-  markProcessed(providerId: string, eventId: string, processedAt: string): Promise<void>;
+  /** Atomically claim an event ID; false means it was already claimed. */
+  claimOnce(providerId: string, eventId: string, processedAt: string): Promise<boolean>;
 }
 
 export class WebhookRejectedError extends Error {
@@ -41,7 +41,5 @@ export async function acceptProviderWebhook<T>(
   if (!(await verifier.verify(rawBody, headers))) {
     throw new WebhookRejectedError("Webhook signature is invalid");
   }
-  if (await replayStore.hasProcessed(envelope.providerId, envelope.eventId)) return false;
-  await replayStore.markProcessed(envelope.providerId, envelope.eventId, now.toISOString());
-  return true;
+  return replayStore.claimOnce(envelope.providerId, envelope.eventId, now.toISOString());
 }
