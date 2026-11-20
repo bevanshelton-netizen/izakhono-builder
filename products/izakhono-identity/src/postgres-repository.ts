@@ -1,4 +1,4 @@
-import type { AuditEvent, VerificationRepository, VerificationRequest } from "./types.js";
+import type { AuditEvent, ProviderVerificationResult, VerificationRepository, VerificationRequest } from "./types.js";
 
 export interface SqlResult<Row> {
   rows: Row[];
@@ -8,6 +8,7 @@ export interface SqlResult<Row> {
 /** Server-side parameterised SQL adapter for the IZAKHONO-owned PostgreSQL runtime. */
 export interface SqlExecutor {
   query<Row = Record<string, unknown>>(sql: string, parameters?: unknown[]): Promise<SqlResult<Row>>;
+  transaction<T>(work: (transaction: SqlExecutor) => Promise<T>): Promise<T>;
 }
 
 interface RequestRow {
@@ -77,6 +78,28 @@ export class PostgresVerificationRepository implements VerificationRepository {
       ],
     );
     if (result.rowCount === 0) throw new Error("Verification request not found");
+  }
+
+  async persistProviderResult(request: VerificationRequest, result: ProviderVerificationResult): Promise<void> {
+    await this.sql.transaction(async (transaction) => {
+      const updated = await transaction.query(
+        "update identity_private.verification_requests set required_checks = $3, completed_checks = $4, failed_checks = $5, status = $6, updated_at = $7 where id = $1 and tenant_id = $2",
+        [
+          request.id, request.tenantId, request.requiredChecks,
+          request.completedChecks, request.failedChecks, request.status,
+          request.updatedAt,
+        ],
+      );
+      if (updated.rowCount === 0) throw new Error("Verification request not found");
+      await transaction.query(
+        "insert into identity_private.verification_results (tenant_id, request_id, provider_id, normalized_status, completed_checks, failed_checks, reason_codes, evidence_digest, completed_at) values ($1,$2,$3,$4,$5,$6,$7,$8,$9)",
+        [
+          request.tenantId, request.id, result.providerId, result.status,
+          result.completedChecks, result.failedChecks, result.reasonCodes,
+          result.evidenceDigest ?? null, result.completedAt,
+        ],
+      );
+    });
   }
 
   async appendAudit(event: AuditEvent): Promise<void> {
