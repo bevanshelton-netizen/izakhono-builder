@@ -147,6 +147,7 @@ export interface VerificationRepository {
   findByIdempotencyKey(tenantId: string, key: string): Promise<VerificationRequest | null>;
   createRequest(request: VerificationRequest): Promise<void>;
   updateRequest(request: VerificationRequest): Promise<void>;
+  persistProviderResult(request: VerificationRequest, result: ProviderVerificationResult): Promise<void>;
   appendAudit(event: AuditEvent): Promise<void>;
   findRequest(id: string): Promise<VerificationRequest | null>;
 }
