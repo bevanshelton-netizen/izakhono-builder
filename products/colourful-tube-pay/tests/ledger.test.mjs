@@ -37,7 +37,7 @@ test('zero and full creator allocations are valid', () => {
 test('uses exact integer arithmetic at the maximum safe minor-unit amount', () => {
   const amount = Number.MAX_SAFE_INTEGER;
   const result = splitMinorUnits(amount, 8000);
-  assert.equal(result.creator, 7205759403792793);
+  assert.equal(result.creator, 7205759403792792);
   assert.equal(result.platform, amount - result.creator);
   assert.equal(result.creator + result.platform, amount);
 });
