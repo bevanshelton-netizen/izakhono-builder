@@ -273,3 +273,38 @@ create table if not exists ct_pay_private.financial_audit_events (
 );
 
 alter table ct_pay_private.financial_audit_events enable row level security;
+
+
+create or replace function ct_pay_private.prevent_posted_transaction_mutation()
+returns trigger
+language plpgsql
+set search_path = pg_catalog, ct_pay_private
+as $$
+begin
+  if old.status = 'posted' then
+    raise exception 'Posted ledger transactions are immutable; post a reversal'
+      using errcode = '55000';
+  end if;
+  if tg_op = 'DELETE' then return old; end if;
+  return new;
+end;
+$$;
+
+create trigger ct_pay_transactions_immutable
+before update or delete on ct_pay_private.ledger_transactions
+for each row execute function ct_pay_private.prevent_posted_transaction_mutation();
+
+create or replace function ct_pay_private.prevent_audit_event_mutation()
+returns trigger
+language plpgsql
+set search_path = pg_catalog, ct_pay_private
+as $$
+begin
+  raise exception 'Financial audit events are append-only'
+    using errcode = '55000';
+end;
+$$;
+
+create trigger ct_pay_audit_events_immutable
+before update or delete on ct_pay_private.financial_audit_events
+for each row execute function ct_pay_private.prevent_audit_event_mutation();
