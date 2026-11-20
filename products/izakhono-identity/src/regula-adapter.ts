@@ -35,11 +35,11 @@ export class RegulaAdapter implements VerificationProvider {
   ) {
     this.enabled = Boolean(transport && approvedForProduction);
     this.capabilities = {
-      checks: ["document_authenticity", "document_data", "face_match", "liveness", "nfc_chip"],
-      countries: ["ZA"],
-      documentTypes: ["za_id_smart_card", "za_id_book", "za_passport", "passport"],
-      supportsWebhook: true,
-      supportsNfc: true,
+      checks: [],
+      countries: [],
+      documentTypes: [],
+      supportsWebhook: false,
+      supportsNfc: false,
     };
   }
 
