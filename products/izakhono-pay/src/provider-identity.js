@@ -11,8 +11,13 @@ export function providerIdentityMatches(intent, provider, data) {
       String(data.custom_str2 || '') === String(intent.id);
   }
   if (provider === 'ikhokha') {
+    // iKhokha's documented callback includes externalTransactionID and paylinkID,
+    // but does not echo externalEntityID. Bind the signed callback to the stored
+    // merchant-scoped intent using its unique transaction reference and the
+    // provider-issued payment-link ID saved during checkout initialization.
     return String(data.externalTransactionID || '') === String(intent.reference || '') &&
-      String(data.externalEntityID || '').toLowerCase() === String(intent.app_slug).toLowerCase();
+      Boolean(intent.provider_reference) &&
+      String(data.paylinkID || '') === String(intent.provider_reference);
   }
   return false;
 }
