@@ -77,7 +77,7 @@ async function run(): Promise<void> {
 
   const created = await service.create(principal, input, "ZA");
   assert(created.status === "in_progress", "request should start");
-  assert(repository.audits.length === 2, "creation and provider routing should be audited");
+  assert(Number(repository.audits.length) === 2, "creation and provider routing should be audited");
 
   const replay = await service.create(principal, input, "ZA");
   assert(replay.id === created.id, "idempotent replay should return existing request");
@@ -101,7 +101,7 @@ async function run(): Promise<void> {
   };
   const completed = await service.recordResult(principal, created.id, result);
   assert(completed.status === "verified", "provider result should be normalised");
-  assert(repository.audits.length === 3, "result should be audited");
+  assert(Number(repository.audits.length) === 3, "result should be audited");
 
   const reviewRequest = await service.create(principal, { ...input, idempotencyKey: "manual-review-1" }, "ZA");
   const reviewResult: ProviderVerificationResult = {
