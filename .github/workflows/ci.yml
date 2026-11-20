@@ -22,11 +22,19 @@ jobs:
         with:
           node-version: '22'
 
+      - name: Set up Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
       - name: Install dependencies
         run: npm install --ignore-scripts --no-audit --no-fund
 
       - name: IZAKHONO IDV canonical authentication contract
         run: npm run idv:auth:test
+
+      - name: Typecheck IZAKHONO identity gateway
+        run: deno check supabase/functions/izakhono-gateway/identity.ts
 
       - name: Validate Affiliate Engine
         run: npm run validate:affiliate
