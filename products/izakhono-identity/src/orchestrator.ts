@@ -46,8 +46,12 @@ export class VerificationOrchestrator {
       throw new Error("expiresAt must be a valid future timestamp");
     }
 
+    const requestFingerprint = await this.fingerprint(input, countryCode);
     const prior = await this.repository.findByIdempotencyKey(input.tenantId, input.idempotencyKey);
-    if (prior) return prior;
+    if (prior) {
+      if (prior.requestFingerprint !== requestFingerprint) throw new Error("Idempotency key was already used for a different request");
+      return prior;
+    }
 
     const request: VerificationRequest = {
       id: this.ids.create(),
@@ -55,6 +59,9 @@ export class VerificationOrchestrator {
       subjectRef: input.subjectRef,
       purpose: input.purpose,
       requiredChecks: [...new Set(input.requiredChecks)],
+      completedChecks: [],
+      failedChecks: [],
+      requestFingerprint,
       status: "created",
       legalBasis: authorisation.legalBasis,
       noticeVersion: authorisation.noticeVersion,
@@ -131,6 +138,8 @@ export class VerificationOrchestrator {
       throw new Error("A failed verification must include at least one failed check");
     }
     assertVerificationTransition(request.status, result.status);
+    request.completedChecks = [...new Set(result.completedChecks)];
+    request.failedChecks = [...new Set(result.failedChecks)];
     request.status = result.status;
     request.updatedAt = this.clock.now().toISOString();
     await this.repository.updateRequest(request);
@@ -141,6 +150,42 @@ export class VerificationOrchestrator {
       failedCheckCount: result.failedChecks.length,
     });
     return request;
+  }
+
+  async recordManualReview(
+    principal: Principal,
+    requestId: string,
+    decision: "verified" | "failed",
+    reasonCode: string,
+  ): Promise<VerificationRequest> {
+    const request = await this.repository.findRequest(requestId);
+    if (!request) throw new Error("Verification request not found");
+    requireTenantPermission(principal, request.tenantId, "identity:verify:review");
+    if (request.status !== "manual_review") throw new Error("Only requests awaiting manual review can be decided");
+    if (!reasonCode.trim()) throw new Error("A review reason code is required");
+    if (decision === "verified" && !request.requiredChecks.every((check) => request.completedChecks.includes(check))) {
+      throw new Error("Manual approval requires evidence for every required check");
+    }
+    assertVerificationTransition(request.status, decision);
+    request.status = decision;
+    request.updatedAt = this.clock.now().toISOString();
+    await this.repository.updateRequest(request);
+    await this.audit(principal, request, "verification.manual_review", decision, { reasonCode });
+    return request;
+  }
+
+  private async fingerprint(input: CreateVerificationInput, countryCode: string): Promise<string> {
+    const canonical = JSON.stringify({
+      tenantId: input.tenantId,
+      subjectRef: input.subjectRef,
+      purpose: input.purpose,
+      requiredChecks: [...new Set(input.requiredChecks)].sort(),
+      countryCode: countryCode.toUpperCase(),
+      expiresAt: new Date(input.expiresAt).toISOString(),
+      processingAuthorisation: input.processingAuthorisation,
+    });
+    const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(canonical));
+    return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
   }
 
   private async audit(
