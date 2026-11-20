@@ -2,6 +2,7 @@ import type { CreateVerificationInput, Principal, VerificationRepository } from 
 import { requireTenantPermission } from "./policy.js";
 import { VerificationOrchestrator } from "./orchestrator.js";
 import { ProviderRouter } from "./provider-router.js";
+import { EvidenceService, type EvidenceKind } from "./evidence-service.js";
 
 export interface IdentityHttpDependencies {
   authenticate(request: Request): Promise<Principal | null>;
@@ -15,6 +16,7 @@ export interface IdentityHttpDependencies {
   repository: VerificationRepository;
   orchestrator: VerificationOrchestrator;
   providerRouter: ProviderRouter;
+  evidenceService: EvidenceService;
 }
 
 function json(data: unknown, status = 200): Response {
@@ -77,6 +79,39 @@ export function createIdentityHttpHandler(deps: IdentityHttpDependencies) {
       } catch (error) {
         if (error instanceof Error && error.name === "AccessDeniedError") return json({ error: "forbidden" }, 403);
         return json({ error: "invalid_verification_request" }, 400);
+      }
+    }
+
+    if (request.method === "POST" && path === "/v1/identity/evidence/upload-intents") {
+      if (!(await deps.verifyRequestIntegrity(request, principal))) return json({ error: "request_integrity_check_failed" }, 403);
+      let body: Record<string, unknown>;
+      try { body = await request.json() as Record<string, unknown>; }
+      catch { return json({ error: "invalid_json" }, 400); }
+      try {
+        const result = await deps.evidenceService.createUploadIntent(principal, {
+          tenantId: String(body.tenantId ?? ""),
+          requestId: String(body.requestId ?? ""),
+          kind: body.kind as EvidenceKind,
+          contentType: String(body.contentType ?? ""),
+          sizeBytes: Number(body.sizeBytes),
+        });
+        return json(result, 201);
+      } catch {
+        return json({ error: "evidence_upload_intent_rejected" }, 400);
+      }
+    }
+
+    if (segments.length === 6 && segments[0] === "v1" && segments[1] === "identity" && segments[2] === "evidence" && segments[3] === "upload-intents" && segments[5] === "finalise" && request.method === "POST") {
+      if (!(await deps.verifyRequestIntegrity(request, principal))) return json({ error: "request_integrity_check_failed" }, 403);
+      try {
+        const metadata = await deps.evidenceService.finaliseUpload(principal, segments[4]);
+        return json({
+          id: metadata.id, requestId: metadata.requestId, kind: metadata.kind,
+          contentSha256: metadata.contentSha256, capturedAt: metadata.capturedAt,
+          retentionUntil: metadata.retentionUntil ?? null,
+        }, 201);
+      } catch {
+        return json({ error: "evidence_finalisation_rejected" }, 400);
       }
     }
 
