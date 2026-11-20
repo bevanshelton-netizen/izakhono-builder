@@ -82,6 +82,14 @@ async function run(): Promise<void> {
   const replay = await service.create(principal, input, "ZA");
   assert(replay.id === created.id, "idempotent replay should return existing request");
 
+  let idempotencyConflict = false;
+  try {
+    await service.create(principal, { ...input, subjectRef: "different-subject" }, "ZA");
+  } catch {
+    idempotencyConflict = true;
+  }
+  assert(idempotencyConflict, "same idempotency key with a different request must be rejected");
+
   const result: ProviderVerificationResult = {
     providerId: "test-provider",
     providerReference: created.providerReference!,
@@ -94,6 +102,20 @@ async function run(): Promise<void> {
   const completed = await service.recordResult(principal, created.id, result);
   assert(completed.status === "verified", "provider result should be normalised");
   assert(repository.audits.length === 3, "result should be audited");
+
+  const reviewRequest = await service.create(principal, { ...input, idempotencyKey: "manual-review-1" }, "ZA");
+  const reviewResult: ProviderVerificationResult = {
+    providerId: "test-provider",
+    providerReference: reviewRequest.providerReference!,
+    status: "manual_review",
+    completedChecks: ["document_authenticity", "document_data"],
+    failedChecks: [],
+    reasonCodes: ["low_confidence"],
+    completedAt: "2026-11-20T12:02:00.000Z",
+  };
+  await service.recordResult(principal, reviewRequest.id, reviewResult);
+  const manuallyApproved = await service.recordManualReview(principal, reviewRequest.id, "verified", "reviewer_confirmed");
+  assert(manuallyApproved.status === "verified", "manual reviewer can approve complete evidence");
 
   let denied = false;
   try {
