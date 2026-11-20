@@ -74,8 +74,8 @@
     "jarvis:worker:test": "node products/izakhono-jarvis/runner/worker.test.mjs && node products/izakhono-jarvis/runner/supervisor.test.mjs",
     "jarvis:worker:supervise": "node products/izakhono-jarvis/runner/supervisor.mjs",
     "jarvis:workforce:test": "npx --yes tsx@4.20.3 products/izakhono-jarvis/src/workforce.test.ts",
-    "identity:test": "npx --yes tsx@4.20.3 products/izakhono-identity/tests/core.test.ts && npx --yes tsx@4.20.3 products/izakhono-identity/tests/security.test.ts",
-    "identity:typecheck": "npx --yes -p typescript@5.9.2 tsc --noEmit --target ES2022 --lib ES2022,DOM,DOM.Iterable --module NodeNext --moduleResolution NodeNext products/izakhono-identity/src/index.ts products/izakhono-identity/src/postgres-repository.ts products/izakhono-identity/src/http-handler.ts products/izakhono-identity/tests/core.test.ts"
+    "identity:test": "npx --yes tsx@4.20.3 products/izakhono-identity/tests/core.test.ts && npx --yes tsx@4.20.3 products/izakhono-identity/tests/security.test.ts && npx --yes tsx@4.20.3 products/izakhono-identity/tests/evidence.test.ts",
+    "identity:typecheck": "npx --yes -p typescript@5.9.2 tsc --noEmit --target ES2022 --lib ES2022,DOM,DOM.Iterable --module NodeNext --moduleResolution NodeNext products/izakhono-identity/src/index.ts products/izakhono-identity/src/postgres-repository.ts products/izakhono-identity/src/http-handler.ts products/izakhono-identity/src/evidence-service.ts products/izakhono-identity/tests/core.test.ts"
   },
   "dependencies": {
     "wrangler": "4.127.1"
