@@ -16,7 +16,7 @@ function assert(condition: unknown, message: string): asserts condition {
 const fixedNow = new Date("2026-11-20T12:00:00.000Z");
 const clock: Clock = { now: () => new Date(fixedNow) };
 let sequence = 0;
-const ids = { create: () => \`id-\${++sequence}\` };
+const ids = { create: () => "id-" + (++sequence) };
 
 const provider: VerificationProvider = {
   id: "test-provider",
