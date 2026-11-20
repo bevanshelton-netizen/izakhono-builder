@@ -92,6 +92,20 @@
       <button class="primary" type="submit">Create request</button>
     </form>
     <div id="createResult" class="result hidden" aria-live="polite"></div>
+    <div class="result">
+      <h2>Secure evidence upload</h2>
+      <p class="hint">Upload only after a verification request exists. Files are sent directly to private encrypted storage using a short-lived signed URL.</p>
+      <form id="evidenceForm">
+        <label for="evidenceRequestId">Verification request ID</label>
+        <input id="evidenceRequestId" required autocomplete="off">
+        <label for="evidenceKind">Evidence type</label>
+        <select id="evidenceKind"><option value="identity_document">Identity document</option><option value="selfie">Selfie</option><option value="nfc_result">NFC result JSON</option></select>
+        <label for="evidenceFile">Evidence file</label>
+        <input id="evidenceFile" type="file" accept="image/jpeg,image/png,application/pdf,application/json" required>
+        <button class="primary" type="submit">Upload and finalise evidence</button>
+      </form>
+      <div id="evidenceResult" class="muted" aria-live="polite"></div>
+    </div>
   </section>
 
   <section id="panel-lookup" class="panel hidden">
@@ -191,8 +205,29 @@
     try{
       var data=await api("/v1/identity/verifications",{method:"POST",headers:{"idempotency-key":key},body:JSON.stringify(body)});
       renderRecord(document.getElementById("createResult"),data);
+      document.getElementById("evidenceRequestId").value=data.id;
+      document.getElementById("lookupId").value=data.id;
       status(data.status==="provider_unavailable"?"Request saved, but no verification provider is currently available. Do not create a duplicate request.":"Verification request created.","good");
     }catch(error){status(error.message,"error");}
+  });
+  document.getElementById("evidenceForm").addEventListener("submit",async function(event){
+    event.preventDefault();
+    var file=document.getElementById("evidenceFile").files[0];
+    var tenantId=document.getElementById("tenantId").value.trim();
+    var requestId=document.getElementById("evidenceRequestId").value.trim();
+    var output=document.getElementById("evidenceResult");
+    if(!file||!tenantId||!requestId){status("Tenant, request and evidence file are required.","error");return;}
+    try{
+      var intent=await api("/v1/identity/evidence/upload-intents",{method:"POST",body:JSON.stringify({
+        tenantId:tenantId,requestId:requestId,kind:document.getElementById("evidenceKind").value,
+        contentType:file.type,sizeBytes:file.size
+      })});
+      var upload=await fetch(intent.uploadUrl,{method:"PUT",headers:{"content-type":file.type},body:file,credentials:"omit"});
+      if(!upload.ok)throw new Error("Private evidence upload failed ("+upload.status+")");
+      var finalised=await api("/v1/identity/evidence/upload-intents/"+encodeURIComponent(intent.intentId)+"/finalise",{method:"POST",body:JSON.stringify({})});
+      output.textContent="Evidence stored. SHA-256: "+finalised.contentSha256;
+      status("Evidence upload verified and metadata recorded.","good");
+    }catch(error){output.textContent="";status(error.message,"error");}
   });
   document.getElementById("lookupForm").addEventListener("submit",async function(event){
     event.preventDefault();
