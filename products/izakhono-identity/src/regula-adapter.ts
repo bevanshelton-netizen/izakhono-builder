@@ -32,15 +32,12 @@ export class RegulaAdapter implements VerificationProvider {
   constructor(
     private readonly transport?: RegulaTransport,
     approvedForProduction = false,
+    verifiedCapabilities: ProviderCapabilities = {
+      checks: [], countries: [], documentTypes: [], supportsWebhook: false, supportsNfc: false,
+    },
   ) {
     this.enabled = Boolean(transport && approvedForProduction);
-    this.capabilities = {
-      checks: [],
-      countries: [],
-      documentTypes: [],
-      supportsWebhook: false,
-      supportsNfc: false,
-    };
+    this.capabilities = verifiedCapabilities;
   }
 
   async start(input: ProviderStartInput): Promise<ProviderStartResult> {
