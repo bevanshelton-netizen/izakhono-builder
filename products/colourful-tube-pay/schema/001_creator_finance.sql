@@ -144,3 +144,132 @@ alter table ct_pay_private.provider_events enable row level security;
 
 comment on schema ct_pay_private is
   'Private COLOURFUL TUBE PAY accounting and creator finance records. No client policies are defined in the initial proposal.';
+
+
+-- Transaction-level balance enforcement. A transaction may be marked posted only
+-- when every currency balances independently and at least two entries exist.
+create or replace function ct_pay_private.assert_ledger_transaction_balanced(p_transaction_id uuid)
+returns void
+language plpgsql
+set search_path = pg_catalog, ct_pay_private
+as $$
+declare
+  v_status text;
+  v_count bigint;
+  v_unbalanced bigint;
+begin
+  select status into v_status
+  from ct_pay_private.ledger_transactions
+  where id = p_transaction_id;
+
+  if not found or v_status <> 'posted' then
+    return;
+  end if;
+
+  select count(*),
+         count(*) filter (where debit_total <> credit_total)
+    into v_count, v_unbalanced
+  from (
+    select currency,
+           coalesce(sum(amount_minor) filter (where side = 'debit'), 0) as debit_total,
+           coalesce(sum(amount_minor) filter (where side = 'credit'), 0) as credit_total
+    from ct_pay_private.ledger_entries
+    where transaction_id = p_transaction_id
+    group by currency
+  ) balances;
+
+  if v_count = 0 or v_unbalanced <> 0 then
+    raise exception 'Ledger transaction % is not balanced', p_transaction_id
+      using errcode = '23514';
+  end if;
+
+  if (select count(*) from ct_pay_private.ledger_entries
+      where transaction_id = p_transaction_id) < 2 then
+    raise exception 'Posted ledger transaction % requires at least two entries', p_transaction_id
+      using errcode = '23514';
+  end if;
+end;
+$$;
+
+create or replace function ct_pay_private.check_ledger_balance_from_entry()
+returns trigger
+language plpgsql
+set search_path = pg_catalog, ct_pay_private
+as $$
+begin
+  if tg_op = 'DELETE' then
+    perform ct_pay_private.assert_ledger_transaction_balanced(old.transaction_id);
+    return old;
+  elsif tg_op = 'UPDATE' then
+    perform ct_pay_private.assert_ledger_transaction_balanced(old.transaction_id);
+    perform ct_pay_private.assert_ledger_transaction_balanced(new.transaction_id);
+    return new;
+  else
+    perform ct_pay_private.assert_ledger_transaction_balanced(new.transaction_id);
+    return new;
+  end if;
+end;
+$$;
+
+create or replace function ct_pay_private.check_ledger_balance_from_transaction()
+returns trigger
+language plpgsql
+set search_path = pg_catalog, ct_pay_private
+as $$
+begin
+  perform ct_pay_private.assert_ledger_transaction_balanced(new.id);
+  return new;
+end;
+$$;
+
+create constraint trigger ct_pay_entries_balance_check
+after insert or update or delete on ct_pay_private.ledger_entries
+deferrable initially deferred
+for each row execute function ct_pay_private.check_ledger_balance_from_entry();
+
+create constraint trigger ct_pay_transaction_balance_check
+after insert or update on ct_pay_private.ledger_transactions
+deferrable initially deferred
+for each row execute function ct_pay_private.check_ledger_balance_from_transaction();
+
+-- Posted entries and posted transaction identity are immutable. Corrections
+-- must be represented by a separately posted reversal transaction.
+create or replace function ct_pay_private.prevent_posted_entry_mutation()
+returns trigger
+language plpgsql
+set search_path = pg_catalog, ct_pay_private
+as $$
+declare
+  v_status text;
+begin
+  select status into v_status
+  from ct_pay_private.ledger_transactions
+  where id = case when tg_op = 'DELETE' then old.transaction_id else old.transaction_id end;
+
+  if v_status = 'posted' then
+    raise exception 'Entries on a posted transaction are immutable; post a reversal'
+      using errcode = '55000';
+  end if;
+
+  if tg_op = 'DELETE' then return old; end if;
+  return new;
+end;
+$$;
+
+create trigger ct_pay_entries_immutable
+before update or delete on ct_pay_private.ledger_entries
+for each row execute function ct_pay_private.prevent_posted_entry_mutation();
+
+create table if not exists ct_pay_private.financial_audit_events (
+  id uuid primary key,
+  actor_reference text not null,
+  action text not null,
+  entity_type text not null,
+  entity_reference text not null,
+  reason text,
+  correlation_reference text,
+  event_digest text not null,
+  occurred_at timestamptz not null default now()
+);
+
+alter table ct_pay_private.financial_audit_events enable row level security;
