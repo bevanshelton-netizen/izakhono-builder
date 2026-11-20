@@ -72,3 +72,12 @@ The connected project already has the eight identity tables, forced RLS and serv
 ## Provider adapter implementation
 
 The gateway source includes a provider-neutral adapter contract and an unconfigured Regula adapter. The health endpoint reports provider readiness without exposing credentials. The adapter does not call Regula or make an onboarding decision until an approved transport and licence are configured. All provider evidence remains subject to IZAKHONO/FORTRESS policy and human-review rules.
+
+
+## Evidence malware scanning gate
+
+The gateway now has a fail-closed evidence-scanner contract in `supabase/functions/izakhono-gateway/evidence-scanner.ts`. The default ClamAV adapter is deliberately unconfigured. Until an approved private ClamAV transport is provisioned, evidence uploads are rejected with a service-unavailable response and no file is stored.
+
+When configured, the scanner must verify the exact SHA-256 digest of the bytes being scanned and return a clean result plus signature version. Only clean, hash-matched evidence may be stored. Submission and evaluation re-check the stored scan status and digest. Infected, unavailable, failed or mismatched scans never produce approval.
+
+This is not a live ClamAV deployment. The private scanner transport, host, service identity, network policy, signature-update process and recovery procedure remain deployment gates.
