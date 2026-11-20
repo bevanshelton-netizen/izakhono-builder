@@ -2,7 +2,8 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
-MANIFEST="$ROOT/infra/node-cluster/connecta-runtime.yaml"
+MANIFEST="${1:-$ROOT/infra/node-cluster/connecta-runtime.yaml}"
+EXPECTED_IMAGE="${CONNECTA_ENGINE_IMAGE:-ghcr.io/bevanshelton-netizen/connecta-engine:0.3.0@sha256:838b095cd2b12a9f66526e5086501474f6958e20f597efa96875217390b580da}"
 [[ -f "$MANIFEST" ]] || { echo "[BLOCKED] CONNECTA K3s runtime manifest is missing" >&2; exit 1; }
 command -v ruby >/dev/null 2>&1 || { echo "[BLOCKED] Ruby is required for YAML validation" >&2; exit 1; }
 
@@ -27,7 +28,7 @@ deployments.each do |deployment|
   fail_with.call("#{node} must use the CONNECTA service account") unless pod['serviceAccountName'] == 'connecta-engine'
   container = pod.fetch('containers').find { |item| item['name'] == 'engine' }
   fail_with.call("#{node} engine container missing") unless container
-  fail_with.call("#{node} image must use the canonical CONNECTA ENGINE release") unless container['image'] == 'ghcr.io/bevanshelton-netizen/connecta-engine:0.3.0@sha256:838b095cd2b12a9f66526e5086501474f6958e20f597efa96875217390b580da'
+  fail_with.call("#{node} image must use the canonical CONNECTA ENGINE release") unless container['image'] == ENV.fetch('CONNECTA_ENGINE_IMAGE', 'ghcr.io/bevanshelton-netizen/connecta-engine:0.3.0@sha256:838b095cd2b12a9f66526e5086501474f6958e20f597efa96875217390b580da')
   env = container.fetch('env').to_h { |item| [item['name'], item] }
   required = %w[DATABASE_URL CONNECTA_OWNER_KEY IZAKHONO_NODE_ID IZAKHONO_CLUSTER_ID IZAKHONO_NODE_HEALTH_TOKEN CONNECTA_STORAGE_DRIVER CONNECTA_S3_ENDPOINT CONNECTA_S3_BUCKET CONNECTA_S3_ACCESS_KEY_ID CONNECTA_S3_SECRET_ACCESS_KEY]
   missing = required.reject { |key| env.key?(key) }
