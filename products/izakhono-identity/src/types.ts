@@ -26,6 +26,13 @@ export type VerificationCheck =
 
 export type ProviderId = string;
 
+export interface ProcessingAuthorisation {
+  legalBasis: string;
+  noticeVersion: string;
+  authorisationReference: string;
+  confirmedAt: string;
+}
+
 export interface VerificationRequest {
   id: string;
   tenantId: string;
@@ -33,6 +40,9 @@ export interface VerificationRequest {
   purpose: VerificationPurpose;
   requiredChecks: VerificationCheck[];
   status: VerificationStatus;
+  legalBasis: string;
+  noticeVersion: string;
+  authorisationReference: string;
   providerId?: ProviderId;
   providerReference?: string;
   idempotencyKey: string;
@@ -79,6 +89,7 @@ export interface ProviderStartInput {
   requiredChecks: VerificationCheck[];
   countryCode: string;
   returnToken: string;
+  idempotencyKey: string;
 }
 
 export interface ProviderStartResult {
@@ -114,6 +125,7 @@ export interface CreateVerificationInput {
   countryCode: string;
   idempotencyKey: string;
   expiresAt: string;
+  processingAuthorisation: ProcessingAuthorisation;
 }
 
 export interface AuditEvent {
