@@ -49,7 +49,9 @@ if docker compose version >/dev/null 2>&1; then pass 'Docker Compose operational
 if [[ -f docker-compose.owned.yml ]]; then pass 'Owned compose definition present'; else fail 'Owned compose definition present'; fi
 if [[ -f .env ]]; then
   pass '.env present'
-  if grep -q '^HOST_RUNTIME_TOKEN=' .env && ! grep -q 'replace-with' .env; then pass 'Runtime secret configured'; else fail 'Runtime secret configured'; fi
+  for key in HOST_RUNTIME_TOKEN POSTGRES_PASSWORD MINIO_ROOT_PASSWORD; do
+    if grep -Eq "^${key}=.+" .env && ! grep -q "^${key}=replace-with-" .env; then pass "$key configured"; else fail "$key configured"; fi
+  done
   if grep -q '^TLS_EMAIL=' .env && ! grep -q 'ops@example.com' .env; then pass 'TLS email configured'; else fail 'TLS email configured'; fi
 else
   fail '.env present for activation'
