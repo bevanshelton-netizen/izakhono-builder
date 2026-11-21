@@ -84,6 +84,10 @@ def decide_status(outcome: VerificationOutcome) -> Status:
         return "verified"
     if all(value == "not_run" for value in required):
         return "incomplete"
+    # A wholly indeterminate provider response means processing is not yet
+    # interpretable; keep polling rather than prematurely closing the session.
+    if all(value == "indeterminate" for value in required):
+        return "in_progress"
     # A failed, ambiguous or partial check is never auto-approved or silently rejected.
     return "review_required"
 
