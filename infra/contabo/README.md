@@ -1,6 +1,6 @@
 # IZAKHONO Contabo Runtime Fabric
 
-**Status:** BUILT / VERIFIED LOCALLY (design + configuration only)
+**Status:** NON-CANONICAL / NOT APPROVED FOR PURCHASE. The owner has directed IZAKHONO to build its own infrastructure without buying VPS, cloud-server or hosting capacity. This Contabo adapter is retained only as dormant, optional legacy reference; do not provision or incur charges. The canonical zero-purchase standard is `infra/owned-runtime/ZERO-PURCHASE-OWNED-RUNTIME.md`.
 
 This package adds Contabo as a replaceable execution target underneath the IZAKHONO Runtime Fabric. Contabo is infrastructure, not the IZAKHONO control plane or source of truth.
 
@@ -101,12 +101,12 @@ The output lists instance ID, display name, product, region, status, IPv4, OS an
 ## Provisioning
 
 1. Run the read-only inventory above and record any existing matching instance.
-2. If no suitable instance exists, confirm the account, selected product, billing period and charges before provisioning.
+2. **Do not provision or purchase.** The current owner directive prohibits buying hosting capacity. Use the zero-purchase owned-runtime standard and inventory existing owner-controlled execution capacity instead.
 3. Copy `.env.example` into a local secret store outside Git.
 4. Discover an Ubuntu 24.04 image and set `CONTABO_IMAGE_ID`.
 5. Set `IZAKHONO_NODE_ID` to the logical identity being bound (`NODE01`–`NODE04`).
 6. Set `IZAKHONO_RUNTIME_HOST_NAME` to the infrastructure host name. This is **not** the logical node identity.
-7. Run `provision.sh plus8` only after the existing-host check and purchase approval.
+7. Do not run `provision.sh` under the current owner directive.
 8. Capture the returned instance ID and public IP.
 9. Verify SSH, the actual health endpoint, Docker and the release identity.
 10. Bind the logical identity to the verified host using the runtime-binding contract.
