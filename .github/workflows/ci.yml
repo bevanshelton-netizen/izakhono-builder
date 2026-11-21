@@ -28,6 +28,9 @@ jobs:
       - name: Validate Affiliate Engine
         run: npm run validate:affiliate
 
+      - name: IZAKHONO Super Engine payment security regression
+        run: npm run super-engine:payment:test && npm run super-engine:payment:typecheck
+
       - name: Install isolated product dependencies
         shell: bash
         run: |
