@@ -21,7 +21,7 @@ for line in p.read_text().splitlines():
             value = secrets.token_urlsafe(48 if 'TOKEN' in key else 32)
             line = f'{key}={value}'
     lines.append(line)
-p.write_text('\\n'.join(lines) + '\\n')
+p.write_text(chr(10).join(lines) + chr(10))
 PY
   chmod 600 .env
   echo "Created .env with generated secrets. Set TLS_EMAIL and PUBLIC_EDGE_IPS before public verification."
