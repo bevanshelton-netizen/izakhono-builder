@@ -6,6 +6,7 @@ services:
       PORT: 8080
       DATA_DIR: /data
       HOST_RUNTIME_TOKEN: ${HOST_RUNTIME_TOKEN:?set HOST_RUNTIME_TOKEN}
+      PUBLIC_EDGE_IPS: ${PUBLIC_EDGE_IPS:-}
     volumes:
       - host-runtime-data:/data
     networks: [izakhono]
@@ -16,6 +17,7 @@ services:
       retries: 5
 
   contact-gateway:
+    profiles: [mail]
     build: ./runtime/contact-gateway
     restart: unless-stopped
     environment:
@@ -30,12 +32,13 @@ services:
       retries: 5
 
   mail-bridge:
+    profiles: [mail]
     build: ./runtime/mail-bridge
     restart: unless-stopped
     environment:
       PORT: 8091
-      IZAKHONO_MAIL_API_TOKEN: ${IZAKHONO_MAIL_API_TOKEN:?set IZAKHONO_MAIL_API_TOKEN}
-      SMTP_HOST: ${SMTP_HOST:?set SMTP_HOST to the private IZAKHONO MAIL node address}
+      IZAKHONO_MAIL_API_TOKEN: ${IZAKHONO_MAIL_API_TOKEN:-}
+      SMTP_HOST: ${SMTP_HOST:-mail-transport-not-configured.invalid}
       SMTP_PORT: ${SMTP_PORT:-465}
       SMTP_TLS_MODE: ${SMTP_TLS_MODE:-tls}
       SMTP_USER: ${SMTP_USER:-}
@@ -63,8 +66,6 @@ services:
     depends_on:
       host-runtime:
         condition: service_healthy
-      contact-gateway:
-        condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1:2019/config/" ]
       interval: 15s
@@ -76,8 +77,9 @@ services:
     restart: unless-stopped
     command: -conf /etc/coredns/Corefile
     ports:
-      - "53:53/udp"
-      - "53:53/tcp"
+    expose:
+      - "53/udp"
+      - "53/tcp"
     volumes:
       - ./runtime/authoritative-dns/Corefile:/etc/coredns/Corefile:ro
       - ./runtime/authoritative-dns/db.izakhono.local:/zones/db.izakhono.local:ro
