@@ -90,7 +90,7 @@ function validStep(step, agentId) {
 
 export async function runJarvisWorkerOnce(env = process.env, fetcher = fetch) {
   const base = endpoint(env.JARVIS_API_BASE_URL, "JARVIS_API_BASE_URL");
-  const secret = required(env.JARVIS_OWNER_SECRET, "JARVIS_OWNER_SECRET");
+  const workerToken = required(env.JARVIS_WORKER_TOKEN, "JARVIS_WORKER_TOKEN");
   const adapter = endpoint(env.JARVIS_EXECUTOR_URL, "JARVIS_EXECUTOR_URL");
   const adapterToken = required(env.JARVIS_EXECUTOR_TOKEN, "JARVIS_EXECUTOR_TOKEN");
   assertAllowedExecutor(adapter, env);
@@ -98,10 +98,10 @@ export async function runJarvisWorkerOnce(env = process.env, fetcher = fetch) {
   const agentId = required(env.JARVIS_AGENT_ID || DEFAULT_AGENT, "JARVIS_AGENT_ID");
   if (agentId.length > 128) throw new Error("JARVIS_AGENT_ID exceeds the size limit");
   const baseUrl = base.toString().replace(/\/+$/, "");
-  const ownerHeaders = { "content-type": "application/json", "x-admin-secret": secret };
+  const workerHeaders = { "content-type": "application/json", authorization: "Bearer " + workerToken };
   const claim = await requestJson(fetcher, baseUrl + "/api/jarvis/workforce/claim", {
     method: "POST",
-    headers: ownerHeaders,
+    headers: workerHeaders,
     body: JSON.stringify({ agent_id: agentId }),
   });
   if (!claim || claim.ok !== true) throw new Error("J.A.R.V.I.S. claim request was rejected");
@@ -142,7 +142,7 @@ export async function runJarvisWorkerOnce(env = process.env, fetcher = fetch) {
 
     const completed = await requestJson(fetcher, baseUrl + "/api/jarvis/workforce/steps/" + encodeURIComponent(step.id) + "/complete", {
       method: "POST",
-      headers: ownerHeaders,
+      headers: workerHeaders,
       body: JSON.stringify({ agent_id: agentId, evidence: result.evidence.trim() }),
     });
     if (completed?.ok !== true) throw new Error("J.A.R.V.I.S. rejected completion evidence");
@@ -153,7 +153,7 @@ export async function runJarvisWorkerOnce(env = process.env, fetcher = fetch) {
       try {
         await requestJson(fetcher, baseUrl + "/api/jarvis/workforce/steps/" + encodeURIComponent(stepId) + "/fail", {
           method: "POST",
-          headers: ownerHeaders,
+          headers: workerHeaders,
           body: JSON.stringify({ agent_id: agentId, error: message }),
         });
       } catch {

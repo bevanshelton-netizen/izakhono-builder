@@ -3,12 +3,12 @@ import { timingSafeEqual } from "node:crypto";
 import { Pool } from "pg";
 import { createJarvisPostgresAdapter } from "./db.mjs";
 import { jarvisWorkforceRoute } from "../src/workforce.ts";
-import { jarvisExecutiveSnapshotRoute } from "../src/api.ts";
 
 const PORT = Number(process.env.PORT || 8080);
 const HOST = process.env.HOST || "0.0.0.0";
 const DATABASE_URL = process.env.DATABASE_URL;
 const OWNER_SECRET = process.env.JARVIS_OWNER_SECRET;
+const WORKER_TOKEN = process.env.JARVIS_WORKER_TOKEN;
 
 function required(value, name) {
   if (typeof value !== "string" || !value.trim()) throw new Error(name + " is required");
@@ -35,7 +35,9 @@ function responseJson(data, status = 200) {
 
 required(DATABASE_URL, "DATABASE_URL");
 required(OWNER_SECRET, "JARVIS_OWNER_SECRET");
+required(WORKER_TOKEN, "JARVIS_WORKER_TOKEN");
 if (Buffer.byteLength(OWNER_SECRET) < 32) throw new Error("JARVIS_OWNER_SECRET must contain at least 32 bytes");
+if (Buffer.byteLength(WORKER_TOKEN) < 32) throw new Error("JARVIS_WORKER_TOKEN must contain at least 32 bytes");
 
 const pool = new Pool({
   connectionString: DATABASE_URL,
@@ -69,11 +71,13 @@ async function handle(request) {
   }
 
   const ownerAuthorized = async () => equalSecret(request.headers.get("x-admin-secret"), OWNER_SECRET);
+  const workerAuthorized = async () => equalSecret(
+    request.headers.get("authorization")?.replace(/^Bearer\\s+/i, ""),
+    WORKER_TOKEN,
+  );
   try {
-    const workforce = await jarvisWorkforceRoute(request, env, ownerAuthorized);
+    const workforce = await jarvisWorkforceRoute(request, env, ownerAuthorized, workerAuthorized);
     if (workforce) return workforce;
-    const snapshot = await jarvisExecutiveSnapshotRoute(request, env, ownerAuthorized);
-    if (snapshot) return snapshot;
     return responseJson({ ok: false, error: "Not found" }, 404);
   } catch {
     return responseJson({ ok: false, error: "Internal service error" }, 500);

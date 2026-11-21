@@ -9,9 +9,12 @@ async function refreshRun(db:WorkforceDb,runId:string){
  const status=Number(counts?.blocked||0)>0?"blocked":Number(counts?.unfinished||0)===0?"completed":"in_progress";
  await db.prepare("UPDATE jarvis_orchestration_runs SET status=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND owner_scope='owner'").bind(status,runId).run();
 }
-export async function jarvisWorkforceRoute(req:Request,env:WorkforceEnv,owner:()=>Promise<boolean>):Promise<Response|null>{
+export async function jarvisWorkforceRoute(req:Request,env:WorkforceEnv,owner:()=>Promise<boolean>,worker?:()=>Promise<boolean>):Promise<Response|null>{
  const u=new URL(req.url),p=u.pathname;if(!p.startsWith("/api/jarvis/workforce"))return null;
- if(!(await owner()))return out({ok:false,error:"Unauthorized"},401);
+ const claim=p==="/api/jarvis/workforce/claim",m=p.match(/^\\/api\\/jarvis\\/workforce\\/steps\\/([^/]+)\\/(heartbeat|complete|fail|review|approve)$/);
+ const workerMutation=claim||Boolean(m&&["heartbeat","complete","fail"].includes(m[2]));
+ const authorized=workerMutation?(worker||owner):owner;
+ if(!(await authorized()))return out({ok:false,error:"Unauthorized"},401);
  if(p==="/api/jarvis/workforce"&&req.method==="GET"){
   const runs=await env.DB.prepare("SELECT id,objective,status,risk_level,created_at,updated_at FROM jarvis_orchestration_runs WHERE owner_scope='owner' ORDER BY created_at DESC LIMIT 30").bind().all();
   const steps=await env.DB.prepare("SELECT s.id,s.run_id,s.position,s.title,s.description,s.assigned_agent,s.status,s.attempts,s.max_attempts,s.lease_until,s.last_error,s.approval_required,s.evidence_json,s.owner_verification,s.owner_review_note,s.reviewed_at FROM jarvis_orchestration_steps s WHERE s.owner_scope='owner' ORDER BY s.run_id,s.position LIMIT 200").bind().all();

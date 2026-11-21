@@ -5,7 +5,7 @@
 - Node.js 22 HTTP API using the existing J.A.R.V.I.S. workforce and executive snapshot route modules.
 - PostgreSQL adapter for the reviewed D1-shaped route contract, with explicit translation for positional parameters, SQLite `datetime()`, and dependency JSON iteration.
 - Transactional, checksum-recorded PostgreSQL schema installer. It is an explicit operator command and is never invoked during API startup.
-- Owner API secret is required (minimum 32 bytes) and compared in constant time. The service has no public CORS policy.
+- Separate owner API and workforce service credentials are required (minimum 32 bytes each) and compared in constant time. Worker tokens are limited to claim, heartbeat, completion and failure routes; owner-only queue review and approval remain protected by the owner secret. The service has no public CORS policy.
 - Readiness verifies PostgreSQL connectivity and the workforce schema; liveness is independent of database availability.
 - API request bodies are capped at 64 KiB. PostgreSQL connections use TLS verification by default; disable only for an explicitly isolated local development database.
 - Existing owner review remains mandatory. This runtime does not connect or activate an executor or autonomous workers.
@@ -34,7 +34,7 @@ The installer takes a PostgreSQL advisory transaction lock, applies the schema a
 
 ## API runtime
 
-Provide `DATABASE_URL` and `JARVIS_OWNER_SECRET` through the IZAKHONO FORTRESS secret store at runtime. Do not put credentials in source control, images, compose files or command-line history. The owner secret must be at least 32 bytes. Use a dedicated application role with only the required table privileges; do not run the API as a database owner or superuser.
+Provide `DATABASE_URL`, `JARVIS_OWNER_SECRET` and a separate `JARVIS_WORKER_TOKEN` through the IZAKHONO FORTRESS secret store at runtime. Do not put credentials in source control, images, compose files or command-line history. Both tokens must be at least 32 bytes. The worker token must never be the owner secret. Use a dedicated application role with only the required table privileges; do not run the API as a database owner or superuser.
 
 ```sh
 DATABASE_URL='postgresql://<app-role>:<secret>@<owned-db-host>:5432/<database>' \

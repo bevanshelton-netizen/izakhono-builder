@@ -18,6 +18,7 @@ async function call(path, body) {
     }),
     env,
     async () => true,
+    async () => true,
   );
 }
 
