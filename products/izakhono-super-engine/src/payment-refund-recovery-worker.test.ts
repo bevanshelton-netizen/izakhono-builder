@@ -20,7 +20,7 @@ class Queue implements RefundRecoveryQueue {
 }
 
 const now = new Date('2026-10-31T08:00:00.000Z');
-const payment: PaymentIntent = { id: 'pay_worker_1', merchantId: 'merchant_1', externalTransactionId: 'order_worker_1', amountMinor: 10000, currency: 'ZAR', status: 'paid', provider: 'test-provider', providerPaymentId: 'provider-payment-1', createdAt: now.toISOString(), updatedAt: now.toISOString() };
+const payment: PaymentIntent = { id: 'pay_worker_1', merchantId: 'merchant_1', serviceId: 'school-commerce', externalTransactionId: 'order_worker_1', amountMinor: 10000, currency: 'ZAR', status: 'paid', provider: 'test-provider', providerPaymentId: 'provider-payment-1', createdAt: now.toISOString(), updatedAt: now.toISOString() };
 const queue = new Queue({ id: 'op', paymentIntentId: payment.id, refundId: `refund:${payment.id}:10000`, amountMinor: 10000, currency: 'ZAR', status: 'processing', reason: 'Customer refund', reconciliationRequired: true });
 let refundRequests = 0;
 let lookups = 0;
