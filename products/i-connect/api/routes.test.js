@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const registerRoutes = require('./routes');
+const registerRoutes = require('../runtime/register-api-routes');
 
 function buildRegistry() {
   const routes = new Map();
