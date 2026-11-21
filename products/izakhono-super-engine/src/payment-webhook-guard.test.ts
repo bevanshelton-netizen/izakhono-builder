@@ -29,7 +29,7 @@ const provider: PaymentProvider = {
   };
 
 const payments = new MemoryPaymentStore();
-const pay = new IzakhonoPay(payments, provider, async () => 'merchant-1');
+const pay = new IzakhonoPay(payments, provider, async () => ({ merchantId: 'merchant-1', serviceId: 'school-commerce' }));
 await pay.createPayment(input, { principalId: 'principal-1' });
 const events = new MemoryPaymentEventStore();
 const guard = new PaymentWebhookGuard(payments, events, provider);
