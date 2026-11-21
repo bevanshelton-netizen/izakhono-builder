@@ -12,7 +12,7 @@ module.exports = async (req, res) => {
     const productCode = String(body.productCode || '').trim();
     if (!productCode) return json(res, 400, { error: 'product_code_required' });
 
-    return await rpc(req, res, 'ic_prepare_checkout_intent', {
+    return await rpc(req, res, 'ic_prepare_checkout_intent_for_customer', {
       p_product_code: productCode,
       p_customer_name: body.customerName ? String(body.customerName).trim() : null,
       p_customer_email: body.customerEmail ? String(body.customerEmail).trim().toLowerCase() : null,
