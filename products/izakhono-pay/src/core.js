@@ -65,6 +65,8 @@ export function buildPayfastCheckout({ env, intent, origin }) {
     ['notify_url', `${origin}/api/webhooks/payfast`],
     ['email_address', intent.customer_email],
     ['m_payment_id', intent.reference],
+    ['custom_str1', intent.app_slug],
+    ['custom_str2', intent.id],
     ['amount', amount],
     ['item_name', intent.description || 'IZAKHONO PAY transaction'],
     ['item_description', `Payment reference ${intent.reference}`]
@@ -124,6 +126,7 @@ export function chooseProvider(env, currency, requested = 'smart') {
   const code = String(currency || '').toUpperCase();
   const mode = env.PAYMENT_MODE || 'mock';
   if (mode === 'mock') return 'mock';
+  if (mode === 'disabled') return null;
   if (code !== 'ZAR') return null;
   if (requested !== 'smart') return providerConfigured(env, requested) ? requested : null;
   if (providerConfigured(env, 'ikhokha')) return 'ikhokha';

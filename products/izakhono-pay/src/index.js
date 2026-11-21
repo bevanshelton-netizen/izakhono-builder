@@ -15,7 +15,9 @@ import {
   verifyPayfastItnSignature,
   verifyPaystackSignature
 } from './core.js';
-import { dispatchMerchantPaymentPaid } from './merchant-webhooks.js';
+import { dispatchMerchantPaymentPaid, retryPendingMerchantWebhooks } from './merchant-webhooks.js';
+import { providerIdentityMatches } from './payment-binding.js';
+import { recordPaymentEvent } from './payment-event-store.js';
 
 const JSON_HEADERS = { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' };
 
@@ -92,6 +94,10 @@ async function findIntentByReference(env, reference) {
   return env.DB.prepare('SELECT * FROM payment_intents WHERE reference=?').bind(reference).first();
 }
 
+async function findIntentByProviderReference(env, reference, provider) {
+  return env.DB.prepare('SELECT * FROM payment_intents WHERE reference=? AND routed_provider=?').bind(reference, provider).first();
+}
+
 async function findIntentById(env, intentId) {
   return env.DB.prepare('SELECT * FROM payment_intents WHERE id=?').bind(intentId).first();
 }
@@ -105,13 +111,16 @@ async function findIntentByIdempotency(env, appSlug, idempotencyKey) {
 }
 
 async function recordEvent(env, provider, eventType, fingerprint, intentId, payload, verified = true) {
-  try {
-    await env.DB.prepare('INSERT INTO payment_events(id,provider,fingerprint,event_type,intent_id,payload_json,verified) VALUES(?,?,?,?,?,?,?)')
-      .bind(id('evt'), provider, fingerprint, eventType, intentId || null, JSON.stringify(payload).slice(0, 50000), verified ? 1 : 0).run();
-    return true;
-  } catch {
-    return false;
-  }
+  return recordPaymentEvent({
+    db: env.DB,
+    eventId: id('evt'),
+    provider,
+    eventType,
+    fingerprint,
+    intentId,
+    payload,
+    verified
+  });
 }
 
 async function recordFortressEvent(env, { severity = 'medium', category, source, merchantSlug = null, intentId = null, details = {} }) {
@@ -178,7 +187,7 @@ async function initializePaystack(env, intent, origin) {
     currency: intent.currency,
     reference: intent.reference,
     callback_url: intent.return_url || `${origin}/?payment=return&reference=${encodeURIComponent(intent.reference)}`,
-    metadata: JSON.stringify({ intent_id: intent.id, app_slug: intent.app_slug })
+    metadata: { intent_id: intent.id, app_slug: intent.app_slug }
   };
   const res = await fetch('https://api.paystack.co/transaction/initialize', {
     method: 'POST',
@@ -361,8 +370,8 @@ async function handleIkhokhaWebhook(req, env) {
     return fail('Invalid iKhokha signature', 401, 'invalid_signature');
   }
   const reference = cleanText(event?.externalTransactionID || '', 120);
-  const intent = reference ? await findIntentByReference(env, reference) : null;
-  if (!intent || intent.routed_provider !== 'ikhokha') return fail('Unknown iKhokha payment reference', 404, 'unknown_reference');
+  const intent = reference ? await findIntentByProviderReference(env, reference, 'ikhokha') : null;
+  if (!intent || !providerIdentityMatches(intent, 'ikhokha', event)) return fail('Unknown or mismatched iKhokha payment identity', 404, 'unknown_reference');
 
   if (event?.status === 'SUCCESS' && event?.responseCode === '00') {
     const statusRequest = buildIkhokhaStatusRequest({ env, reference });
@@ -387,12 +396,13 @@ async function handleIkhokhaWebhook(req, env) {
 
   const fingerprint = sha256Hex(`ikhokha:${raw}`);
   const fresh = await recordEvent(env, 'ikhokha', `payment.${String(event?.status || 'unknown').toLowerCase()}`, fingerprint, intent.id, event, true);
-  if (!fresh) return response({ ok: true, duplicate: true });
 
+  // Re-apply a verified success on duplicate delivery. This recovers when the
+  // event was persisted but the payment-state transition failed previously.
   if (event?.status === 'SUCCESS' && event?.responseCode === '00') {
     await markPaid(env, intent.id, cleanText(event?.paylinkID || intent.provider_reference, 180));
   }
-  return response({ ok: true });
+  return response({ ok: true, duplicate: !fresh });
 }
 
 async function handlePaystackWebhook(req, env) {
@@ -405,11 +415,11 @@ async function handlePaystackWebhook(req, env) {
   }
   const event = JSON.parse(raw);
   const reference = event?.data?.reference;
-  const intent = reference ? await findIntentByReference(env, reference) : null;
-  const fingerprint = sha256Hex(`paystack:${raw}`);
-  const fresh = await recordEvent(env, 'paystack', cleanText(event?.event || 'unknown', 80), fingerprint, intent?.id, event, true);
-  if (!fresh) return response({ ok: true, duplicate: true });
-
+  const intent = reference ? await findIntentByProviderReference(env, reference, 'paystack') : null;
+  if (!intent || !providerIdentityMatches(intent, 'paystack', event?.data)) {
+    await recordFortressEvent(env, { severity: 'critical', category: 'payment.provider_identity_mismatch', source: 'paystack', merchantSlug: intent?.app_slug || null, intentId: intent?.id || null, details: { reference: cleanText(reference || '', 120) } });
+    return fail('Paystack payment identity did not match the merchant payment intent', 409, 'payment_identity_mismatch');
+  }
   if (event?.event === 'charge.success' && intent) {
     const amountMatches = Number(event?.data?.amount) === Number(intent.amount_minor);
     const currencyMatches = String(event?.data?.currency || '').toUpperCase() === intent.currency;
@@ -417,9 +427,16 @@ async function handlePaystackWebhook(req, env) {
       await recordFortressEvent(env, { severity: 'critical', category: 'payment.amount_or_currency_mismatch', source: 'paystack', merchantSlug: intent.app_slug, intentId: intent.id, details: { reference } });
       return fail('Verified webhook did not match the expected amount/currency', 409, 'payment_mismatch');
     }
+  }
+
+  const fingerprint = sha256Hex(`paystack:${raw}`);
+  const fresh = await recordEvent(env, 'paystack', cleanText(event?.event || 'unknown', 80), fingerprint, intent?.id, event, true);
+  // Do not skip a verified success merely because its event was already stored:
+  // the previous attempt may have failed before marking the intent paid.
+  if (event?.event === 'charge.success' && intent) {
     await markPaid(env, intent.id, String(event?.data?.id || reference));
   }
-  return response({ ok: true });
+  return response({ ok: true, duplicate: !fresh });
 }
 
 async function handlePayfastWebhook(req, env) {
@@ -427,8 +444,8 @@ async function handlePayfastWebhook(req, env) {
   const raw = await req.text();
   const params = new URLSearchParams(raw);
   const reference = params.get('m_payment_id') || '';
-  const intent = reference ? await findIntentByReference(env, reference) : null;
-  if (!intent) return fail('Unknown PayFast payment reference', 404, 'unknown_reference');
+  const intent = reference ? await findIntentByProviderReference(env, reference, 'payfast') : null;
+  if (!intent || !providerIdentityMatches(intent, 'payfast', Object.fromEntries(params.entries()))) return fail('Unknown or mismatched PayFast payment identity', 404, 'unknown_reference');
 
   if (!verifyPayfastItnSignature(raw, env.PAYFAST_PASSPHRASE || '')) {
     await recordFortressEvent(env, { severity: 'high', category: 'webhook.invalid_signature', source: 'payfast', merchantSlug: intent.app_slug, intentId: intent.id, details: { reference } });
@@ -465,10 +482,10 @@ async function handlePayfastWebhook(req, env) {
   const fingerprint = sha256Hex(`payfast:${raw}`);
   const payload = Object.fromEntries(params.entries());
   const fresh = await recordEvent(env, 'payfast', `payment.${params.get('payment_status') || 'unknown'}`, fingerprint, intent.id, payload, true);
-  if (!fresh) return new Response('OK', { status: 200 });
-
+  // A duplicate COMPLETE notification still retries the idempotent paid-state
+  // transition if the earlier delivery persisted its event but failed later.
   if (params.get('payment_status') === 'COMPLETE') await markPaid(env, intent.id, params.get('pf_payment_id'));
-  return new Response('OK', { status: 200 });
+  return new Response('OK', { status: 200, headers: { 'x-izakhono-duplicate': fresh ? 'false' : 'true' } });
 }
 
 async function handleMockComplete(req, env) {
@@ -602,5 +619,10 @@ export default {
       }
     }
     return env.ASSETS.fetch(req);
+  },
+  async scheduled(_controller, env, ctx) {
+    ctx.waitUntil(retryPendingMerchantWebhooks(env).catch((error) => {
+      console.error('IZAKHONO PAY scheduled merchant webhook retry failed', error);
+    }));
   }
 };
