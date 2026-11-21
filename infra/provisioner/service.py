@@ -100,7 +100,15 @@ if __name__=="__main__":
     duplicate=service.create_job(CreateJobRequest("tenant-service","idem-service",{"payment_id":"pay-service","amount":"100.00","currency":"ZAR","verified":True}))
     assert first["created"] is True and duplicate["created"] is False and first["job_id"]==duplicate["job_id"]
     for _ in range(8): service.worker_once()
-    handover=service.handover(first["job_id"])
-    assert handover["status"]=="HANDOVER_READY"
-    assert any(e.event_type=="HANDOVER_COMPLETED" for e in store.events)
-    print("PROVISIONER_SERVICE: PASS")
+    job=store.get(first["job_id"])
+    # Contract adapters are simulations, never production acceptance evidence.
+    assert job.state=="BLOCKED"
+    assert job.evidence.get("ACCEPTANCE_PASSED", {}).get("simulation") is True
+    try:
+        service.handover(first["job_id"])
+    except ServiceError as exc:
+        assert exc.code=="HANDOVER_NOT_READY"
+    else:
+        raise AssertionError("simulated adapter evidence must not permit handover")
+    assert not any(e.event_type=="HANDOVER_COMPLETED" for e in store.events)
+    print("PROVISIONER_SERVICE_FAIL_CLOSED: PASS")
