@@ -11,8 +11,6 @@ import { IzakhonoRefunds, PaymentLifecycle, type PaymentStateEventStore, type Re
 import { IzakhonoRefundRecovery } from './payment-refund-recovery.js';
 import type { RefundOperationStore } from './payment-refund-operations-supabase.js';
 
-export interface PaymentOrchestratorConfig { serviceId: string; }
-
 /** Coordinates payment, ledger, fulfillment, reconciliation, settlement and refund transitions. */
 export class PaymentOrchestrator {
   private readonly fulfillment: PaymentFulfillment;
@@ -54,10 +52,9 @@ export class PaymentOrchestrator {
     return true;
   }
 
-  async fulfillPaid(candidate: PaymentIntent, config: PaymentOrchestratorConfig): Promise<FulfillmentJob> {
+  async fulfillPaid(candidate: PaymentIntent): Promise<FulfillmentJob> {
     const payment = await this.canonicalPaid(candidate);
-    this.assertService(config.serviceId);
-    return this.fulfillment.enqueue(payment, config);
+    return this.fulfillment.enqueue(payment);
   }
 
   async executeFulfillment(job: FulfillmentJob, candidate: PaymentIntent): Promise<FulfillmentJob> {
@@ -66,16 +63,15 @@ export class PaymentOrchestrator {
   }
   async reconcilePayment(input: { payment: PaymentIntent; observedAmountMinor: number; observedCurrency: string }): Promise<ReconciliationRecord> {
     const payment = await this.payments.getById(input.payment.id);
-    if (!payment || payment.id !== input.payment.id || !payment.merchantId?.trim()) throw new Error('Canonical payment intent not found');
+    if (!payment || payment.id !== input.payment.id || (!payment.merchantId?.trim() || !payment.serviceId?.trim())) throw new Error('Canonical payment intent not found');
     return this.reconciliation.reconcile({ provider: payment.provider, externalTransactionId: payment.externalTransactionId, expectedAmountMinor: payment.amountMinor, observedAmountMinor: input.observedAmountMinor, currency: input.observedCurrency });
   }
   async createSettlement(input: { merchantId: string; currency: string; amountMinor: number; transactionReferences: readonly string[] }): Promise<SettlementBatch> { this.assertMerchant(input.merchantId); return this.settlement.create(input); }
   async recordSettlement(input: { settlement: SettlementBatch; merchantPayableAccountId: string; settlementAccountId?: string }): Promise<void> { await this.settlementLedger.recordSettlement(input); }
   async markSettlementSettled(id: string): Promise<SettlementBatch> { return this.settlement.markSettled(id); }
 
-  async refund(payment: PaymentIntent, config: PaymentOrchestratorConfig, reason = 'Customer refund', amountMinor?: number): Promise<RefundLedgerResult & { payment: PaymentIntent; providerRefundId: string }> {
+  async refund(payment: PaymentIntent, reason = 'Customer refund', amountMinor?: number): Promise<RefundLedgerResult & { payment: PaymentIntent; providerRefundId: string }> {
     const canonical = await this.canonicalPaid(payment);
-    this.assertService(config.serviceId);
     if (!canonical.providerPaymentId) throw new Error('Paid payment has no provider payment ID');
     const amount = amountMinor ?? canonical.amountMinor;
     if (!Number.isSafeInteger(amount) || amount <= 0 || amount > canonical.amountMinor) throw new Error('Refund amount must be a positive integer not exceeding the payment amount');
@@ -87,9 +83,8 @@ export class PaymentOrchestrator {
   }
 
   /** Reconciles an ambiguous refund through a provider lookup only; it never submits another refund request. */
-  async reconcileRefund(payment: PaymentIntent, config: PaymentOrchestratorConfig, amountMinor = payment.amountMinor): Promise<RefundLedgerResult & { payment: PaymentIntent; providerRefundId: string }> {
+  async reconcileRefund(payment: PaymentIntent, amountMinor = payment.amountMinor): Promise<RefundLedgerResult & { payment: PaymentIntent; providerRefundId: string }> {
     const canonical = await this.canonicalPaid(payment);
-    this.assertService(config.serviceId);
     if (!this.refundRecovery) throw new Error('Durable refund operations are required for provider reconciliation');
     const operation = await this.refundRecovery.reconcile(canonical, amountMinor);
     if (operation.status === 'failed') throw new Error('Provider reconciliation confirmed that the refund was not completed');
@@ -111,10 +106,9 @@ export class PaymentOrchestrator {
     const payment = await this.payments.getById(candidate.id);
     if (!payment || payment.id !== candidate.id) throw new Error('Canonical payment intent not found');
     if (payment.status !== 'paid') throw new Error('Only canonically paid payments can enter this operation');
-    if (!payment.merchantId?.trim()) throw new Error('Payment intent has no trusted merchant identity');
+    if (!payment.merchantId?.trim() || !payment.serviceId?.trim()) throw new Error('Payment intent has no trusted merchant identity or service entitlement');
     return payment;
   }
 
   private assertMerchant(merchantId: string): void { if (!merchantId?.trim()) throw new Error('Merchant ID is required'); }
-  private assertService(serviceId: string): void { if (!serviceId?.trim()) throw new Error('Service ID is required'); }
 }
