@@ -24,3 +24,13 @@ The runtime needs an internet-reachable Linux host with a stable public IPv4 add
 6. Record external HTTP and DNS evidence before declaring `live`.
 
 Never mark a service live from a build-success signal alone.
+
+## Existing-capacity inventory
+
+Before binding NODE01, run the read-only inventory on a candidate execution environment:
+
+```sh
+python3 infra/owned-runtime/host-inventory.py > host-inventory.json
+```
+
+The script makes no outbound requests, reads no credentials, installs nothing, changes no services and provisions nothing. Review the report locally before sharing it. It is a discovery aid only: it does not establish ownership, authorization, public reachability, security compliance or production readiness. Do not run it on a machine unless you are authorized to inspect that environment.

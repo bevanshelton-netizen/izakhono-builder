@@ -99,8 +99,16 @@ if __name__=="__main__":
     first=service.create_job(CreateJobRequest("tenant-service","idem-service",{"payment_id":"pay-service","amount":"100.00","currency":"ZAR","verified":True}))
     duplicate=service.create_job(CreateJobRequest("tenant-service","idem-service",{"payment_id":"pay-service","amount":"100.00","currency":"ZAR","verified":True}))
     assert first["created"] is True and duplicate["created"] is False and first["job_id"]==duplicate["job_id"]
-    for _ in range(8): service.worker_once()
-    handover=service.handover(first["job_id"])
-    assert handover["status"]=="HANDOVER_READY"
-    assert any(e.event_type=="HANDOVER_COMPLETED" for e in store.events)
-    print("PROVISIONER_SERVICE: PASS")
+    for _ in range(9): service.worker_once()
+    job=store.get(first["job_id"])
+    # Contract adapters are simulations, never production acceptance evidence.
+    assert job.state=="BLOCKED"
+    assert all(job.evidence[s].get("simulation") is True for s in ("TENANT_CREATED", "DOMAIN_READY", "DNS_READY", "SITE_READY", "TLS_READY", "MAIL_READY", "INTEGRATIONS_READY")) and "ACCEPTANCE_PASSED" not in job.evidence
+    try:
+        service.handover(first["job_id"])
+    except ServiceError as exc:
+        assert exc.code=="HANDOVER_NOT_READY"
+    else:
+        raise AssertionError("simulated adapter evidence must not permit handover")
+    assert not any(e.event_type=="HANDOVER_COMPLETED" for e in store.events)
+    print("PROVISIONER_SERVICE_FAIL_CLOSED: PASS")

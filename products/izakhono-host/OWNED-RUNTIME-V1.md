@@ -39,8 +39,10 @@ The platform is not constrained to one machine. Multiple owned nodes can carry C
 
 A site is not called `live` until HTTPS, DNS and intended-content acceptance evidence all exist. A mail service is not called `live` until the full mail acceptance gate passes.
 
-## Physical activation gate
+## Execution-environment activation gate
 
-IZAKHONO has confirmed that the required nodes are available. The remaining work is execution and evidence on those nodes: Docker/runtime activation, public IPv4/IPv6 reachability, TCP/UDP 53 where delegated, ports 80/443, public DNS delegation, trusted HTTPS, backup/restore, mail acceptance, FORTRESS controls and end-to-end customer QA.
+NODE01 is a logical software runtime identity. HOST must provision and manage its execution environment using existing, owner-controlled capacity that has first been inventoried and security-assessed. This does not require IZAKHONO to own or purchase physical server hardware. No host, VM, node capacity, public route or production runtime is treated as available until its actual binding and independent checks are recorded.
 
-No repository commit is treated as proof that a physical node or public Internet path is live.
+The remaining activation evidence is gathered against the approved execution environment: runtime activation, public IPv4/IPv6 reachability where configured, required network ports, DNS delegation, trusted HTTPS, backup/restore, FORTRESS controls and end-to-end customer QA. If suitable existing capacity has not yet been verified, execution remains blocked; do not create a paid resource or purchase hardware to bypass the gate.
+
+No repository commit, topology declaration or CI result is treated as proof that an execution environment or public Internet path is live.

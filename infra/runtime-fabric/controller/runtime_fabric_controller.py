@@ -49,7 +49,7 @@ def select_node(workload: dict, health: dict[str, bool]) -> str | None:
 def decide(workload: dict, health: dict[str, bool]) -> Decision:
     selected = select_node(workload, health)
     if selected is None:
-        return Decision(workload["workload"], None, "BLOCKED", "no healthy preferred node")
+        return Decision(workload["workload"], None, "BLOCKED", "NO_HEALTHY_NODE")
     return Decision(workload["workload"], selected, "READY", "healthy node selected")
 
 

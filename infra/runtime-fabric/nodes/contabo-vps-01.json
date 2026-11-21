@@ -1,7 +1,7 @@
 {
   "nodeId": "CONTABO-VPS-01",
   "provider": "contabo",
-  "classification": "external-resilience",
+  "classification": "disabled-unapproved",
   "region": "EU",
   "profile": "plus8",
   "productId": "V161",
@@ -10,8 +10,8 @@
   "releasePolicy": "immutable-release",
   "healthEndpoint": "/health",
   "publicTraffic": false,
-  "status": "PROVISIONABLE",
+  "status": "DISABLED_BY_OWNER_NO_PURCHASE",
   "failoverOrder": 30,
   "dataSourceOfTruth": false,
-  "notes": "Provider can be replaced without changing IZAKHONO source, customer identity, pricing, payments or data authority. Public traffic remains disabled until the standard public cutover gates pass."
+  "notes": "Dormant legacy adapter. Owner directive prohibits purchasing VPS or hosting capacity. Do not provision; use existing owner-controlled execution capacity under infra/owned-runtime/ZERO-PURCHASE-OWNED-RUNTIME.md."
 }

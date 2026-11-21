@@ -17,6 +17,9 @@ env:
   MINIO_ROOT_USER: ci-minio-admin
   MINIO_ROOT_PASSWORD: ci-minio-password
   IZAKHONO_MAIL_API_TOKEN: ci-mail-api-token
+  STALWART_RECOVERY_ADMIN: ci-stalwart-recovery-admin
+  # CI-only non-routable placeholder; production value is provisioned per node.
+  SMTP_HOST: mail.test.invalid
 
 jobs:
   compliance-script:
