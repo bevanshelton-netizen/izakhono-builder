@@ -74,6 +74,8 @@ export class MemoryPaymentStore implements PaymentStore {
   private readonly intents = new Map<string, PaymentIntent>();
 
   async save(intent: PaymentIntent): Promise<void> {
+    if (!intent.merchantId?.trim()) throw new Error('Payment merchant identity is required');
+    if (this.intents.has(intent.id)) throw new Error('Duplicate payment intent ID');
     this.intents.set(intent.id, { ...intent });
   }
 
@@ -140,6 +142,7 @@ export class IzakhonoPay {
     await this.store.save(intent);
     try {
       const link = await this.provider.createPaymentLink(input);
+      if (link.provider !== this.provider.id || !link.providerPaymentId?.trim()) throw new Error('Payment provider returned an invalid payment reference');
       const updated = await this.store.update(intent.id, { status: 'pending', providerPaymentId: link.providerPaymentId });
       return { intent: updated, link: { ...link, paymentIntentId: intent.id } };
     } catch (error) {
