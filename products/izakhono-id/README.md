@@ -134,3 +134,15 @@ Document authenticity and biometric verification are being added as a separate c
 See IDENTITY-VERIFICATION-REGULA.md for the architecture, due-diligence questionnaire, POPIA/FICA controls and production acceptance gates.
 
 This capability does not replace IZAKHONO ID login/MFA or FORTRESS INTELLIGENCE PEP/sanctions screening. It is not production-enabled by this source change.
+
+
+### Identity verification API (sandbox integration gate)
+
+The following authenticated routes are wired to the entity-scoped verification service:
+
+- `POST /api/v1/identity-verification/start` — requires the existing IZAKHONO ID bearer session and an `Idempotency-Key` header. Body: `purpose`, `notice_version`, and optional `jurisdiction` (currently ZA only). Returns a one-time `handoff_url`; treat it as a bearer secret and never log it.
+- `GET /api/v1/identity-verification/{verification_id}` — requires the bearer session and scopes lookup to the authenticated entity.
+
+The API returns generic provider-unavailable errors and does not expose vendor response payloads. A repeated start with the same idempotency key returns the existing session without re-issuing the one-time hand-off URL. A client that loses that URL must start a new attempt with a new idempotency key after the prior session is reconciled.
+
+The current adapter intentionally maps retrieved vendor results to indeterminate checks until the licensed tenant workflow schema is confirmed. Consequently these routes cannot automatically mark an identity verified. Cancellation, callbacks, evidence retrieval/deletion and production activation remain disabled pending the relevant vendor contract and approvals.
