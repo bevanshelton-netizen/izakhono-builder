@@ -12,6 +12,8 @@ on:
 
 env:
   HOST_RUNTIME_TOKEN: ci-host-runtime-token
+  JARVIS_OWNER_SECRET: ci-jarvis-owner-secret-placeholder
+  JARVIS_WORKER_TOKEN: ci-jarvis-worker-token-placeholder
   TLS_EMAIL: ci@example.com
   POSTGRES_PASSWORD: ci-postgres-password
   MINIO_ROOT_USER: ci-minio-admin
