@@ -1,7 +1,7 @@
 services:
   izakhono-dns-secondary:
     build: .
-    image: izakhono/authoritative-dns:4.9.18
+    image: izakhono/authoritative-dns:5.1.5
     restart: unless-stopped
     environment:
       DNS_MODE: secondary
