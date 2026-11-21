@@ -29,7 +29,6 @@ export async function jarvisWorkforceRoute(req:Request,env:WorkforceEnv,owner:()
   }
   return out({ok:true,runs:runs.results||[],steps:visibleSteps,metrics:{scope:"visible_steps_only",visible_steps:visibleSteps.length,by_status:byStatus,by_agent:byAgent,by_owner_verification:byVerification,active_leases:activeLeases,awaiting_owner_review:awaitingOwnerReview,limit:200},execution_mode:"owner-controlled-queue",autonomous_workers_connected:false});
  }
- const claim=p==="/api/jarvis/workforce/claim",m=p.match(/^\/api\/jarvis\/workforce\/steps\/([^/]+)\/(heartbeat|complete|fail|review|approve)$/);
  if(req.method!==(claim||m?"POST":"GET"))return new Response("Method not allowed",{status:405,headers:{allow:claim||m?"POST":"GET","cache-control":"no-store"}});
  let b:any={};try{b=await req.json()}catch{return out({ok:false,error:"Expected JSON"},400)}
  if(claim){

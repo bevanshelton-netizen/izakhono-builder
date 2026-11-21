@@ -27,7 +27,7 @@ const json = (body, status = 200) => new Response(JSON.stringify(body), { status
   assert.equal(result.status, "completed");
   assert.equal(result.owner_verification, "pending");
   assert.equal(calls.length, 3);
-  assert.equal(calls[0].options.headers.authorization, "Bearer test-owner-token");
+  assert.equal(calls[0].options.headers.authorization, "Bearer test-worker-token-012345678901234567890123456789");
   assert.equal(calls[1].options.headers.authorization, "Bearer test-executor-token");
   assert.equal(calls[1].options.headers["idempotency-key"], "jarvis-step-step-1");
   assert.equal(calls[1].options.redirect, "error");
