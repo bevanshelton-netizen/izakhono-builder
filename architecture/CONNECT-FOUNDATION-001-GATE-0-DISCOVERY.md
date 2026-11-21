@@ -157,3 +157,78 @@ This is the safe logical mapping derived from the verified repository evidence; 
 **Not yet complete — recursive repository inventory, SQL/migration inventory, full RLS and tenant-security trace, communications module/schema inventory, shared-service ownership verification, deployment evidence and executed test baseline remain outstanding.**
 
 The next safe action is to complete the full read-only tree and database migration inventory, then produce the final verified component/data-ownership map. No application implementation or runtime activation is authorised by this report.
+
+
+## 9. Live I-CONNECT database inspection addendum — 2026-11-21
+
+This addendum supersedes the earlier statement that the live database and applied migration history had not yet been inspected. Inspection was read-only through the connected Supabase project tools; no SQL writes, DDL, migrations, Edge Function deployments or data mutations were performed.
+
+### Project and schema inventory
+
+- Supabase project name: **I-CONNECT**; status reported **ACTIVE_HEALTHY**; region `eu-west-1`; PostgreSQL 17.11.
+- Applied migration history: **371 migrations total**, of which **138** have I-CONNECT/`i_connect` names.
+- Inspected schemas: `public` has **196 tables** and `iptv_private` has **24 tables**.
+- All 196 public tables reported RLS enabled. None reported FORCE ROW LEVEL SECURITY.
+- The `public` schema contains **72 `ic_*` tables**, all with RLS enabled.
+- Those 72 tables have **107 RLS policies**. Twenty-one tables currently have no policy; the catalog query returned no `anon` or `authenticated` table grants for those 21 tables. They therefore appear intended for privileged/server-side access, but the service-role call paths and grants still require review before any client exposure.
+- Four non-internal triggers were found on I-CONNECT tables: two onboarding payment/KYC triggers and two supplier-evidence activity/qualification-sync triggers.
+- The inspected `public`/`ic_private` function set contains **111 I-CONNECT-named functions**; **99** are SECURITY DEFINER. The catalog check found no such SECURITY DEFINER function missing an explicit configured search_path. This is a configuration observation, not a complete function-security audit.
+
+### Confirmed existing engagement and automation foundations
+
+The live database already contains these I-CONNECT tables:
+
+- Channel accounts/connections: `ic_channel_connections`.
+- Contacts and channel identities: `ic_contacts`, `ic_contact_channel_identities`.
+- Consent: `ic_contact_consents`.
+- Unified inbox: `ic_inbox_threads`, `ic_inbox_messages`.
+- Outbound communications governance: `ic_outbound_message_drafts`.
+- Workflow automation: `ic_workflows`, `ic_workflow_versions`, `ic_workflow_runs`.
+- Webhook ingestion: `ic_webhook_events`.
+
+The applied migration history includes the following engagement/automation migrations (among others):
+
+- `i_connect_ai_automation_foundation_v1`
+- `i_connect_ai_workflow_save_rpc_v1`
+- `i_connect_ai_workflow_test_execution_v1`
+- `i_connect_ai_workflow_test_idempotency_fix_v1`
+- `i_connect_ai_workflow_test_queue_limits_v1`
+- `i_connect_ai_workflow_test_worker_recovery_v1`
+- `i_connect_unified_inbox_foundation_v1`
+- `i_connect_communications_retention_scheduler_v1`
+- `i_connect_consent_history_append_only_v1`
+- `i_connect_whatsapp_inbox_event_processor_v1`
+- `i_connect_whatsapp_inbox_worker_api_v1`
+- `i_connect_inbox_agent_handover_v1`
+- `i_connect_inbox_internal_notes_v1`
+- `i_connect_communication_permission_gate_v1`
+- `i_connect_outbound_draft_human_approval_v1`
+
+The Supabase table inventory reported zero rows for the inspected channel connections, contacts, contact-channel identities, contact consents, inbox threads/messages, outbound drafts, webhook events, workflows, workflow versions and workflow runs at inspection time. This is a schema/foundation finding, not proof of external channel readiness or a functioning customer-facing engagement service.
+
+### Workflow and outbound-delivery maturity
+
+Read-only inspection of the live RPC definitions establishes the following:
+
+- `ic_save_workflow` saves organisation-scoped, versioned workflow graphs after owner/admin/manager authorisation.
+- `ic_enqueue_workflow_test_run` explicitly queues only saved draft workflows as `manual_test`, marks the input as `mode: simulation`, applies an idempotency key and a per-organisation test-queue limit.
+- `ic_claim_workflow_test_run` claims only `manual_test` runs and requires service-role worker credentials. `ic_finish_workflow_test_run` likewise requires worker credentials.
+- Therefore, the inspected workflow engine is currently evidenced as a **workflow authoring and simulation/test-execution foundation**. A production trigger/action runtime, general-purpose automation worker, schedule/event execution path and retry/dead-letter operations have not been established by the inspected RPCs or deployed function inventory.
+- `ic_create_outbound_message_draft` validates organisation membership, active contact, active channel connection, channel/purpose/type and assigned-thread rules. Its currently accepted channel values are WhatsApp, Instagram, Facebook Messenger, Telegram, website chat, email and SMS. TikTok is not in this inspected allow-list.
+- `ic_review_outbound_message_draft` enforces manager review, maker-checker separation and a communication-permission check before approval; its response explicitly sets `delivery_enabled: false`. An approved draft is not evidence of a sent message or a live outbound channel.
+- Inbox RPCs support role-checked assignment, claiming/releasing, queue, priority and status management, plus internal notes with audit events.
+- The inspected engagement tables have RLS enabled. Authenticated access is selectively policy-controlled (for example, organisation-member reads and manager-controlled channel/workflow writes); webhook and outbound-draft storage are not directly granted to ordinary authenticated/anon clients in the inspected grant result.
+
+### Deployed Edge Functions
+
+The I-CONNECT Supabase project reports **25 active Edge Functions** in total. Ten are named `i-connect-*`, including provisioning, carrier control, MobiSIM adapter/webhook/event processing, staging checkout, admin overview and bootstrap-owner functions. `fortress-device-identity` is also active with JWT verification enabled. The separately named `connecta-engine` is active too, but its own session/account model means it must not be assumed to be the I-CONNECT automation worker or a shared IZAKHONO identity service without a separate review.
+
+Several I-CONNECT worker/webhook functions report `verify_jwt=false` because they use their own application-level worker-token or provider-signature checks in the inspected source. Their exact endpoint-by-endpoint authentication, replay protection and deployment configuration remain a dedicated review item; the flag alone is not proof of a vulnerability or proof of safety.
+
+No separately named I-CONNECT workflow-execution Edge Function appeared in the 25-function inventory. The `i-connect-provisioner` function is for connectivity provisioning and claims only the `ic-simulator` provider in the inspected source; it is not the CONNECT ENGAGEMENT workflow worker.
+
+### Updated architectural conclusion
+
+The correct path is **not** to create a second CONNECT ENGAGEMENT schema, contact store, inbox, consent ledger, channel registry or workflow authoring model. The existing I-CONNECT database already owns those foundations. CONNECT ENGAGEMENT should be treated as a bounded product division that progressively productises and completes the existing I-CONNECT engagement domain, subject to a reviewed service boundary and a distinct operational/tenant contract where needed.
+
+The remaining gap is primarily verified production-grade orchestration and channel delivery, not an absence of all underlying data structures. The next technical discovery task is to inspect every engagement migration in order, review all related RPC definitions and Edge Function callers, map consent and retention semantics, and prove whether the workflow test runner can be safely evolved into a separately controlled production execution service. No implementation or schema change is authorised by this finding.
