@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=IZAKHONO Easy Center
+Comment=The simple home for IZAKHONO OS
+Exec=/usr/local/bin/izakhono-easy-center
+Icon=system-help
+Terminal=false
+Categories=Utility;System;
+StartupNotify=true

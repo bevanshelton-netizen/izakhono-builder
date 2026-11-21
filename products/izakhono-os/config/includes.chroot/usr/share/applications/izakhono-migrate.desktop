@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Move My Things
+Comment=Preview moving files to IZAKHONO OS without touching the originals
+Exec=izakhono-migrate
+Icon=folder-copy
+Terminal=false
+Categories=Utility;System;

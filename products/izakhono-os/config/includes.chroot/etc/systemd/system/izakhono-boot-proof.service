@@ -1,0 +1,11 @@
+[Unit]
+Description=IZAKHONO OS VM boot proof
+After=graphical.target
+ConditionPathExists=/dev/ttyS0
+
+[Service]
+Type=oneshot
+ExecStart=/bin/sh -c 'printf "IZAKHONO_VM_BOOT_OK\n" > /dev/ttyS0'
+
+[Install]
+WantedBy=graphical.target
