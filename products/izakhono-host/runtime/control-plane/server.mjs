@@ -2,15 +2,20 @@ import http from 'node:http';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import { createWorkloadStore } from '../provisioner/workload-store.mjs';
+import { createNavDataJobStore } from '../provisioner/nav-data-job-store.mjs';
 
 const PORT = Number(process.env.PORT || 8080);
 const DATA_DIR = process.env.DATA_DIR || '/data';
 const STATE_FILE = path.join(DATA_DIR, 'sites.json');
 const SITES_DIR = path.join(DATA_DIR, 'sites');
 const ADMIN_TOKEN = process.env.HOST_RUNTIME_TOKEN || '';
+const workloadStore = createWorkloadStore({ filePath: path.join(DATA_DIR, 'workloads.json') });
+const navDataJobStore = createNavDataJobStore({ filePath: path.join(DATA_DIR, 'nav-data-jobs.json') });
 const MAX_FILES = 200;
 const MAX_FILE_BYTES = 512 * 1024;
 const MAX_TOTAL_BYTES = 8 * 1024 * 1024;
+const MAX_BODY_BYTES = MAX_TOTAL_BYTES + 1024 * 1024;
 
 async function loadState() {
   await fs.mkdir(SITES_DIR, { recursive: true });
@@ -28,7 +33,12 @@ function json(res, status, value) {
 }
 async function body(req) {
   const chunks=[];
-  for await (const chunk of req) chunks.push(chunk);
+  let size=0;
+  for await (const chunk of req) {
+    size += chunk.byteLength;
+    if (size > MAX_BODY_BYTES) throw new Error(`Request body exceeds ${MAX_BODY_BYTES} bytes`);
+    chunks.push(chunk);
+  }
   const text=Buffer.concat(chunks).toString('utf8');
   if (!text) return {};
   return JSON.parse(text);
@@ -99,6 +109,61 @@ const server = http.createServer(async (req, res) => {
   }
   if (!url.pathname.startsWith('/api/')) return serveSite(req, res);
   if (!authorized(req)) return json(res, 401, {ok:false,error:'Unauthorized'});
+
+  if (req.method === 'GET' && url.pathname === '/api/nav-data-jobs') {
+    const jobs = await navDataJobStore.list();
+    return json(res, 200, { ok: true, jobs });
+  }
+
+  if (req.method === 'POST' && url.pathname.startsWith('/api/workloads/') && url.pathname.endsWith('/data-imports')) {
+    try {
+      const recordId = url.pathname.split('/')[3];
+      const workload = await workloadStore.get(recordId);
+      if (!workload) return json(res, 404, { ok: false, error: 'Workload not found' });
+      if (workload.state !== 'PROVISIONING' || workload.execution_stage !== 'runtime-deployed-awaiting-data-pipeline' || !workload.runtime_target_id) {
+        return json(res, 409, { ok: false, error: 'NAV data import requires a verified runtime deployment and approved HOST target binding' });
+      }
+      const result = await navDataJobStore.create({ workloadId: workload.workload_id, releaseDigest: workload.release_digest });
+      return json(res, result.created ? 202 : 200, { ok: true, created: result.created, execution: 'queued-awaiting-nav-data-worker', job: result.job });
+    } catch (error) {
+      return json(res, 400, { ok: false, error: error?.message || 'Invalid NAV data import request' });
+    }
+  }
+
+  if (req.method === 'GET' && url.pathname.startsWith('/api/nav-data-jobs/')) {
+    const jobId = url.pathname.split('/')[3];
+    const job = await navDataJobStore.get(jobId);
+    return job ? json(res, 200, { ok: true, job }) : json(res, 404, { ok: false, error: 'NAV data job not found' });
+  }
+
+  if (req.method === 'GET' && url.pathname === '/api/workloads') {
+    const workloads = await workloadStore.list();
+    return json(res, 200, { ok: true, workloads });
+  }
+
+  if (req.method === 'POST' && url.pathname === '/api/workloads') {
+    try {
+      const input = await body(req);
+      const result = await workloadStore.create(input);
+      return json(res, result.created ? 202 : 200, {
+        ok: true,
+        created: result.created,
+        execution: 'queued-awaiting-runtime-adapter',
+        workload: result.workload
+      });
+    } catch (error) {
+      const status = error?.code === 'IDEMPOTENCY_CONFLICT' ? 409 : 400;
+      return json(res, status, { ok: false, error: error?.message || 'Invalid workload request' });
+    }
+  }
+
+  if (req.method === 'GET' && url.pathname.startsWith('/api/workloads/')) {
+    const workloadId = url.pathname.split('/')[3];
+    const workload = await workloadStore.get(workloadId);
+    return workload
+      ? json(res, 200, { ok: true, workload })
+      : json(res, 404, { ok: false, error: 'Workload not found' });
+  }
 
   if (req.method === 'GET' && url.pathname === '/api/sites') {
     const state=await loadState();

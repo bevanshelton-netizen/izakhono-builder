@@ -27,7 +27,7 @@ jobs:
       - name: Syntax check
         run: node --check server.mjs
       - name: Container build
-        run: docker build -t izakhono-host-runtime:ci .
+        run: docker build -f Dockerfile -t izakhono-host-runtime:ci ../..
       - name: Smoke start
         run: |
           docker run -d --name izakhono-host-runtime-ci -e HOST_RUNTIME_TOKEN=ci-token -p 18080:8080 izakhono-host-runtime:ci
