@@ -1,0 +1,23 @@
+{
+  "schema": "izakhono.host/runtime/v1",
+  "product": "IZAKHONO HOST",
+  "runtime": "native-build-worker",
+  "version": "0.1.0",
+  "owned_first": true,
+  "artifact_store": "content-addressed-sha256",
+  "build_isolation": "per-job-workspace",
+  "execution": "bounded-process",
+  "promotion": "receipt-gated",
+  "public_live": false,
+  "required_gates": [
+    "owned-node-capacity",
+    "artifact-persistence",
+    "build-isolation",
+    "deployment-receipt",
+    "production-serving",
+    "tls",
+    "dns",
+    "backup-restore",
+    "monitoring"
+  ]
+}
