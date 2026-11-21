@@ -1,11 +1,5 @@
 #!/usr/bin/env python3
-"""Plan a one-day IZAKHONO app build without exposing secrets or making deployment calls.
-
-The planner converts a capability request into a deterministic sequence of stages,
-selects free-first AI providers, and emits release gates and commercial outputs.
-Actual network/deployment/payment actions remain separate adapters and require
-explicit authorization where appropriate.
-"""
+"""Plan an IZAKHONO app build without external AI inference or deployment calls."""
 from __future__ import annotations
 
 import argparse
@@ -13,7 +7,7 @@ import json
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-CONFIG = ROOT / "config" / "one-day-app-factory.v1.json"
+CONFIG = ROOT / "config" / "free-llm-router.v1.json"
 
 
 def load() -> dict:
@@ -21,23 +15,31 @@ def load() -> dict:
 
 
 def build_plan(name: str, capabilities: list[str], cfg: dict) -> dict:
-    unknown = [c for c in capabilities if c not in cfg["capabilities"]]
+    routing = cfg.get("routing_defaults", {})
+    unknown = [capability for capability in capabilities if capability not in routing]
     if unknown:
         raise ValueError(f"Unsupported capabilities: {', '.join(unknown)}")
-    routes = {c: cfg["capabilities"][c] for c in capabilities}
+    routes = {
+        capability: {
+            "provider": "ollama-compatible-local" if routing[capability] else "deterministic-native",
+            "fallback": "deterministic-native",
+            "external_inference_allowed": False,
+        }
+        for capability in capabilities
+    }
     return {
         "app": name,
         "policy": cfg["policy"],
-        "stages": cfg["stages"],
+        "stages": ["intake", "plan", "build", "security", "qa", "package", "release-evidence"],
         "ai_routes": routes,
-        "release_gates": cfg["release_gates"],
-        "commercial_outputs": cfg["commercial_outputs"],
-        "execution_note": "Planning only: deployment, payments and external side effects require their dedicated authorized adapters.",
+        "release_gates": ["build", "security", "tests", "snapshot", "acceptance"],
+        "commercial_outputs": [],
+        "execution_note": "Planning only: inference is local-only; deterministic native fallbacks are used when a local capability is unavailable. Deployment, payments and external side effects require dedicated authorized adapters.",
     }
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="IZAKHONO One-Day App Factory planner")
+    parser = argparse.ArgumentParser(description="Create an IZAKHONO factory execution plan")
     parser.add_argument("name")
     parser.add_argument("capabilities", nargs="+", choices=["text", "reasoning", "code", "vision", "audio", "video", "pdf"])
     args = parser.parse_args()

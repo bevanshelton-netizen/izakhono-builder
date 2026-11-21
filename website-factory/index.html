@@ -23,17 +23,12 @@
 </div>
 <div class="checks"><div class="check"><span class="ok">✓</span> SSL / HTTPS gate</div><div class="check"><span class="ok">✓</span> Privacy page</div><div class="check"><span class="ok">✓</span> Accessibility gate</div><div class="check"><span class="ok">✓</span> Performance gate</div><div class="check"><span class="ok">✓</span> Mobile QA</div><div class="check"><span class="ok">✓</span> Deployment proof</div></div>
 </section>
-<section class="card"><h2>Create a site job</h2><form class="form" id="job">
-<div><label>Business name</label><input required name="business" placeholder="e.g. Izakhono Africa"></div>
-<div><label>Industry</label><input required name="industry" placeholder="e.g. Manufacturing"></div>
-<div><label>Website type</label><select name="type"><option>Business website</option><option>Corporate profile</option><option>E-commerce</option><option>Training / education</option><option>Service business</option></select></div>
-<div><label>Primary goal</label><textarea name="goal" placeholder="What must this website achieve?"></textarea></div>
-<div><label>Customer email</label><input type="email" name="email" placeholder="customer@example.com"></div>
-<button class="btn">Generate Website Job</button>
-</form><div id="result" style="margin-top:16px;color:var(--muted)"></div></section>
+<section class="card"><h2>Create a site job</h2><div class="form">
+<p>Use the authenticated IZAKHONO Builder to submit a project brief, generate a multi-file application and review its validation evidence.</p>
+<p class="foot">Owner access is required. This page does not request, store or transmit administrative credentials.</p>
+<a class="btn" href="/#buildAnything" style="text-align:center;text-decoration:none">Open authenticated Builder</a>
+</div></section>
 </div>
 <footer class="foot">IZAKHONO Website Factory v1 · Execution is designed to be node-independent: NODE01 is a worker, not the product.</footer>
 </div>
-<script>
-document.querySelector('#job').addEventListener('submit',e=>{e.preventDefault();const f=new FormData(e.target);const id='WF-'+Date.now().toString(36).toUpperCase();document.querySelector('#result').innerHTML='<span class="ok">JOB CREATED: '+id+'</span><br>Site plan queued for '+(f.get('business')||'business')+'. The production gates are ready for the next engine layer.';});
-</script></body></html>
+</body></html>

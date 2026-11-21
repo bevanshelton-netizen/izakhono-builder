@@ -1,0 +1,41 @@
+{
+  "schema": "izakhono.application-template-catalog/v1",
+  "version": 1,
+  "templates": [
+    {
+      "id": "static-web",
+      "version": "1.0.0",
+      "description": "Responsive static website served by a hardened Node.js HTTP process",
+      "runtime": "node>=20",
+      "files": [
+        ".env.example",
+        ".gitignore",
+        "README.md",
+        "package.json",
+        "public/index.html",
+        "public/styles.css",
+        "src/content.mjs",
+        "src/server.mjs",
+        "tests/application.test.mjs"
+      ],
+      "externalDependencies": [],
+      "externalAiRequired": false
+    },
+    {
+      "id": "node-api",
+      "version": "1.0.0",
+      "description": "Minimal Node.js HTTP API with health endpoint and built-in test runner",
+      "runtime": "node>=20",
+      "files": [
+        ".env.example",
+        ".gitignore",
+        "README.md",
+        "package.json",
+        "src/server.mjs",
+        "tests/health.test.mjs"
+      ],
+      "externalDependencies": [],
+      "externalAiRequired": false
+    }
+  ]
+}
