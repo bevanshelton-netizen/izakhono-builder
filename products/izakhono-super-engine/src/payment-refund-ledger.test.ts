@@ -36,7 +36,6 @@ describe('PaymentRefundLedger', () => {
     const second = await refunds.recordRefund({
       refundId: 'rf_123',
       payment: { ...payment, status: 'refunded' },
-      merchantId: 'merchant_1',
     });
 
     assert.equal(first.transaction.id, second.transaction.id);
