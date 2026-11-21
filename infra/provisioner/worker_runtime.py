@@ -45,7 +45,7 @@ class ProvisionerWorker:
         self.recovery = None
         if recovery_store is not None:
             from recovery_orchestrator import RecoveryOrchestrator
-            self.recovery = RecoveryOrchestrator(recovery_store, recovery_executors or {})
+            self.recovery = RecoveryOrchestrator(self.store, recovery_store, recovery_executors or {})
 
     def _executor(self) -> AdapterExecutor:
         return AdapterExecutor(self.registry, self.implementations)
