@@ -29,6 +29,8 @@ The platform can distribute CONTROL, EDGE, DNS, RUNTIME, DATA, MAIL, BACKUP and 
 
 ## Activation
 
+Before activation, inventory the existing approved execution host with `bash infra/owned-runtime/host-inventory.sh`. This is read-only and does not install or alter anything.
+
 On each designated node, run the preflight first:
 
 ```bash
