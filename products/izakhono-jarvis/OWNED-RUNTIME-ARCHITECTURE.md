@@ -44,7 +44,6 @@ NODE01–NODE04 remain IZAKHONO software-node identities. A workload is assigned
 | `SOURCE_VALIDATED` | Existing route, workforce, supervisor and original SQLite migration tests pass. |
 | `RUNTIME_ADAPTER_IMPLEMENTED` | Node 22 API adapter and PostgreSQL compatibility/schema code exist; disposable PostgreSQL 17 integration tests pass. |
 | `RUNTIME_ADAPTER_READY` | Owned production PostgreSQL, production-role permissions, backup/restore, and environment-specific integration tests are verified. |
-| `RUNTIME_ADAPTER_READY` | Node API and PostgreSQL adapters exist and pass integration tests. |
 | `EXECUTOR_VERIFIED` | Real private executor passes contract, idempotency and authorization tests. |
 | `DEPLOYED_HEALTHY` | Immutable release is running on a verified owned execution host and health checks pass. |
 | `LIVE_VERIFIED` | Owner acceptance, security, data, backup/restore, EDGE/TLS and external smoke evidence all pass. |
