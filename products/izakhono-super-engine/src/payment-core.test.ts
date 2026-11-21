@@ -31,6 +31,7 @@ assert.equal(created.link.url, 'https://pay.example/1');
 const paid = await pay.processWebhook('{}', '/api/payment/callback', 'valid');
 assert.equal(paid.status, 'paid');
 await assert.rejects(() => store.update(created.intent.id, { merchantId: 'merchant-attacker' }), /immutable/);
+await assert.rejects(() => store.update(created.intent.id, { serviceId: 'attacker-service' }), /immutable/);
 evidenceAmount = 1;
 await assert.rejects(() => pay.processWebhook('{}', '/api/payment/callback', 'valid'), /amount does not match/);
 evidenceAmount = 14900;
