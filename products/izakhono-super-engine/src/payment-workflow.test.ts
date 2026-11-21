@@ -5,6 +5,8 @@ import { PaymentWorkflow } from './payment-workflow.js';
 import { ServiceBus } from './service-bus.js';
 import type { EngineModuleId } from './types.js';
 
+
+async function main() {
 const input: CreatePaymentInput = {
   externalTransactionId: 'ORDER-WORKFLOW-1',
   amountMinor: 2500,
@@ -44,3 +46,6 @@ const repeated = await workflow.handlePaid({ ...paid, merchantId: 'merchant-atta
 assert.equal(repeated?.merchantId, 'merchant-canonical');
 assert.equal((await ledgerStore.listTransactions()).length, 1);
 console.log('payment-workflow.test.ts: ok');
+}
+
+void main();
