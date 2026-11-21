@@ -10,8 +10,6 @@ on:
       - 'products/izakhono-host/runtime/provisioner/workload-store.test.mjs'
       - 'products/izakhono-host/runtime/provisioner/workload-worker.mjs'
       - 'products/izakhono-host/runtime/provisioner/workload-worker.test.mjs'
-      - 'products/izakhono-host/runtime/provisioner/workload-worker.mjs'
-      - 'products/izakhono-host/runtime/provisioner/workload-worker.test.mjs'
       - 'products/izakhono-host/runtime/provisioner/runtime-adapter-contract.mjs'
       - 'products/izakhono-host/runtime/provisioner/runtime-adapter-contract.test.mjs'
       - 'products/izakhono-host/runtime/control-plane/server.mjs'
