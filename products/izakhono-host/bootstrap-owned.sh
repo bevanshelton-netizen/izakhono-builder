@@ -42,7 +42,7 @@ for key in ('JARVIS_OWNER_SECRET', 'JARVIS_WORKER_TOKEN'):
             break
     if not found:
         lines.append(key + '=' + secrets.token_urlsafe(48))
-p.write_text('\\n'.join(lines) + '\\n')
+p.write_text('\n'.join(lines) + '\n')
 PY
 chmod 600 .env
 
