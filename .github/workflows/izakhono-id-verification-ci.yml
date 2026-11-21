@@ -1,0 +1,34 @@
+name: IZAKHONO ID verification CI
+
+on:
+  pull_request:
+    paths:
+      - "products/izakhono-id/**"
+      - ".github/workflows/izakhono-id-verification-ci.yml"
+  push:
+    branches:
+      - "feat/izakhono-id-regula-provider-layer"
+    paths:
+      - "products/izakhono-id/**"
+      - ".github/workflows/izakhono-id-verification-ci.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  identity-verification:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Compile identity verification modules
+        working-directory: products/izakhono-id
+        run: python -m py_compile identity_verification.py test_identity_verification.py
+      - name: Run provider adapter and tenant isolation tests
+        working-directory: products/izakhono-id
+        run: python -m unittest -v test_identity_verification.py
+      - name: Regression test existing IZAKHONO ID authentication
+        working-directory: products/izakhono-id
+        run: python test_id.py
