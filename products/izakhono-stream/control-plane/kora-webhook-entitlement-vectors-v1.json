@@ -1,0 +1,12 @@
+{
+  "tenantId": "kora-network",
+  "cases": [
+    { "name": "paid", "status": "PAID", "expectedEntitlement": "ACTIVE" },
+    { "name": "refund", "status": "REFUNDED", "expectedEntitlement": "REVOKED" },
+    { "name": "cancel", "status": "CANCELLED", "expectedEntitlement": "REVOKED" },
+    { "name": "failed", "status": "FAILED", "expectedEntitlement": "REVOKED" },
+    { "name": "replay", "status": "PAID", "expectedDuplicate": true },
+    { "name": "missing-user", "status": "PAID", "expectedEntitlement": null },
+    { "name": "cross-tenant", "status": "PAID", "expectedEntitlement": null }
+  ]
+}

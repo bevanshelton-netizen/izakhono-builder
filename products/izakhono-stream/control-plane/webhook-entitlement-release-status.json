@@ -1,0 +1,5 @@
+{
+  "referenceLayer": "IMPLEMENTED",
+  "productionPayment": "BLOCKED",
+  "reason": "provider-specific cryptographic verification and durable persistence evidence required"
+}

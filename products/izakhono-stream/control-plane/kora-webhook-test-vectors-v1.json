@@ -1,0 +1,26 @@
+{
+  "tenantId": "kora-network",
+  "vectors": [
+    {
+      "name": "valid-payment-event",
+      "provider": "IKHOKHA",
+      "eventId": "evt-kora-paid-001",
+      "signature": "reference-valid-signature",
+      "expected": { "accepted": true, "duplicate": false }
+    },
+    {
+      "name": "replayed-payment-event",
+      "provider": "IKHOKHA",
+      "eventId": "evt-kora-paid-001",
+      "signature": "reference-valid-signature",
+      "expected": { "accepted": true, "duplicate": true }
+    },
+    {
+      "name": "invalid-signature",
+      "provider": "IKHOKHA",
+      "eventId": "evt-kora-paid-002",
+      "signature": "reference-invalid-signature",
+      "expected": { "accepted": false, "duplicate": false, "reason": "INVALID_SIGNATURE" }
+    }
+  ]
+}

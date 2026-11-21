@@ -1,0 +1,1 @@
+Payment webhook to entitlement reference layer for IZAKHONO STREAM. Includes verification boundary, replay protection, entitlement translation, KORA vectors, and production gates. No live payment processing claim.

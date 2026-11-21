@@ -1,0 +1,6 @@
+{
+  "version": "1.0.0",
+  "scope": "reference",
+  "flow": "PAYMENT_WEBHOOK_TO_ENTITLEMENT",
+  "tenant": "kora-network"
+}
