@@ -2,7 +2,6 @@ import http from 'node:http';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import dns from 'node:dns/promises';
 
 const PORT = Number(process.env.PORT || 8080);
 const DATA_DIR = process.env.DATA_DIR || '/data';
@@ -73,33 +72,57 @@ function expectedEdgeAddresses() {
   return String(process.env.PUBLIC_EDGE_IPS || '').split(',').map(x => x.trim()).filter(Boolean);
 }
 
+async function queryPublicResolver(provider, domain, type) {
+  const endpoint = provider === 'cloudflare'
+    ? `https://cloudflare-dns.com/dns-query?name=${encodeURIComponent(domain)}&type=${type}`
+    : `https://dns.google/resolve?name=${encodeURIComponent(domain)}&type=${type}`;
+  const response = await fetch(endpoint, {
+    headers: provider === 'cloudflare' ? { accept:'application/dns-json' } : {},
+    signal:AbortSignal.timeout(8000)
+  });
+  if (!response.ok) throw new Error('public_dns_resolver_unavailable');
+  const payload = await response.json();
+  if (payload.Status !== 0) throw new Error('public_dns_query_failed');
+  return (payload.Answer || [])
+    .filter(record => record.type === type)
+    .map(record => String(record.data || '').replace(/^\\[|\\]$/g,''))
+    .filter(Boolean);
+}
+
 async function verifyPublicSite(site) {
-  const expected = expectedEdgeAddresses();
+  const expected = [...new Set(expectedEdgeAddresses())].sort();
   if (!expected.length) return { ok:false, status:503, error:'public_edge_ips_not_configured' };
-  let addresses;
+  let resolverEvidence;
   try {
-    addresses = (await dns.lookup(site.domain, { all:true, verbatim:true })).map(x => x.address);
-  } catch {
-    return { ok:false, status:409, error:'public_dns_lookup_failed' };
-  }
-  const unique = [...new Set(addresses)].sort();
-  if (!unique.length || unique.some(address => !expected.includes(address)) || expected.some(address => !unique.includes(address))) {
-    return { ok:false, status:409, error:'public_dns_does_not_match_owned_edge', dns_addresses:unique };
+    resolverEvidence = {};
+    for (const provider of ['cloudflare','google']) {
+      const [a, aaaa] = await Promise.all([
+        queryPublicResolver(provider, site.domain, 1),
+        queryPublicResolver(provider, site.domain, 28)
+      ]);
+      const addresses = [...new Set([...a,...aaaa])].sort();
+      if (!addresses.length || addresses.length !== expected.length || addresses.some((address,index)=>address !== expected[index])) {
+        return { ok:false, status:409, error:'public_dns_does_not_match_owned_edge', resolver:provider, dns_addresses:addresses };
+      }
+      resolverEvidence[provider] = { ok:true, addresses };
+    }
+  } catch (error) {
+    return { ok:false, status:409, error:error?.message === 'public_dns_resolver_unavailable' ? 'independent_public_dns_unavailable' : 'independent_public_dns_verification_failed' };
   }
   let response;
   try {
     response = await fetch(`https://${site.domain}/`, { redirect:'manual', signal:AbortSignal.timeout(10000) });
   } catch {
-    return { ok:false, status:409, error:'public_https_or_tls_verification_failed', dns_addresses:unique };
+    return { ok:false, status:409, error:'public_https_or_tls_verification_failed' };
   }
   if (response.status < 200 || response.status >= 300) {
-    return { ok:false, status:409, error:'public_https_response_not_successful', http_status:response.status, dns_addresses:unique };
+    return { ok:false, status:409, error:'public_https_response_not_successful', http_status:response.status };
   }
   const contentType = response.headers.get('content-type') || '';
   if (!contentType.toLowerCase().includes('text/html')) {
-    return { ok:false, status:409, error:'public_content_type_not_html', http_status:response.status, dns_addresses:unique };
+    return { ok:false, status:409, error:'public_content_type_not_html', http_status:response.status };
   }
-  return { ok:true, evidence:{checked_at:new Date().toISOString(),dns:{ok:true,addresses:unique,expected_edge_addresses:expected},https:{ok:true,status:response.status,tls_verified:true,content_type:contentType}} };
+  return { ok:true, evidence:{checked_at:new Date().toISOString(),dns:resolverEvidence,https:{ok:true,status:response.status,tls_verified:true,content_type:contentType}} };
 }
 
 const MIME = {
