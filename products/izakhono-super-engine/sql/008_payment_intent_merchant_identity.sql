@@ -1,4 +1,4 @@
--- Bind every durable payment intent and fulfillment job to one immutable merchant.
+-- Bind every durable payment intent and fulfillment job to one immutable merchant and service entitlement.
 -- Existing records are deliberately not assigned a guessed merchant. If any exist,
 -- this migration aborts and requires an operator-reviewed, evidence-backed backfill.
 alter table iz_payment_intents
