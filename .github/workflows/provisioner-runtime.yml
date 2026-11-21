@@ -103,10 +103,13 @@ jobs:
           }
           store.save(job); queue.enqueue(job)
           worker = ProvisionerWorker(store, queue, build_catalog(), load_registry())
-          for _ in range(8): worker.run_once()
-          assert job.state == State.HANDOVER_READY.value
+          for _ in range(9): worker.run_once()
+          # The bundled adapters are simulations and must never produce a
+          # production handover or HANDOVER_READY state.
+          assert job.state == State.BLOCKED.value
+          assert job.evidence.get(State.ACCEPTANCE_PASSED.value, {}).get('simulation') is True
           assert job.evidence[State.PAYMENT_VERIFIED.value]['verified'] is True
-          print('DETERMINISTIC_RUNTIME: PASS')
+          print('DETERMINISTIC_RUNTIME_FAIL_CLOSED: PASS')
           PY
       - name: Run PostgreSQL durability integration tests
         env:
