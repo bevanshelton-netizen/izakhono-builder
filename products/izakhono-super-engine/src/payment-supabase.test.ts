@@ -48,6 +48,8 @@ assert.match(String(requests[0].init?.body), /order_test_1/);
 
 const found = await store.getByExternalTransactionId(intent.externalTransactionId);
 assert.deepEqual(found, intent);
+const byId = await store.getById(intent.id);
+assert.deepEqual(byId, intent);
 
 const updated = await store.update(intent.id, { status: 'paid' });
 assert.equal(updated.status, 'paid');
