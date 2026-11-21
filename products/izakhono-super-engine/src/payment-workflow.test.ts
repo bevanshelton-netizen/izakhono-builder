@@ -24,7 +24,7 @@ const provider: PaymentProvider = {
   async verifyPaymentEvidence(webhook, intent) { return { ...webhook, amountMinor: intent.amountMinor, currency: intent.currency }; },
 };
 const store = new MemoryPaymentStore();
-const pay = new IzakhonoPay(store, provider, async (context) => context.principalId === 'verified-principal' ? 'merchant-canonical' : '');
+const pay = new IzakhonoPay(store, provider, async (context) => context.principalId === 'verified-principal' ? { merchantId: 'merchant-canonical', serviceId: 'school-commerce' } : { merchantId: '', serviceId: '' });
 const ledgerStore = new MemoryPaymentLedgerStore();
 const ledger = new IzakhonoPaymentLedger(ledgerStore);
 const bus = new ServiceBus(['payments', 'provisioning'] as EngineModuleId[]);
@@ -36,6 +36,7 @@ const workflow = new PaymentWorkflow(pay, ledger, bus);
 
 const created = await pay.createPayment(input, { principalId: 'verified-principal' });
 assert.equal(created.intent.merchantId, 'merchant-canonical');
+assert.equal(created.intent.serviceId, 'school-commerce');
 const paid = await workflow.processConfirmedWebhook('{}', '/callback', 'valid');
 assert.equal(paid.status, 'paid');
 assert.equal(emittedMerchant, 'merchant-canonical');
