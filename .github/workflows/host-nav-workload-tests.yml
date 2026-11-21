@@ -64,8 +64,14 @@ jobs:
       - name: Smoke-test packaged HOST runtime container
         run: |
           set -euo pipefail
-          docker run -d --name izakhono-host-runtime-ci -p 127.0.0.1:18081:8080 -e HOST_RUNTIME_TOKEN=ci-host-runtime-token -e DATA_DIR=/data -v "$RUNNER_TEMP/host-runtime-data:/data" izakhono-host-runtime:ci
-          trap 'docker rm -f izakhono-host-runtime-ci >/dev/null 2>&1 || true' EXIT
+          volume_name=izakhono-host-runtime-data-ci
+          docker volume create "$volume_name" >/dev/null
+          cleanup() {
+            docker rm -f izakhono-host-runtime-ci >/dev/null 2>&1 || true
+            docker volume rm "$volume_name" >/dev/null 2>&1 || true
+          }
+          trap cleanup EXIT
+          docker run -d --name izakhono-host-runtime-ci -p 127.0.0.1:18081:8080 -e HOST_RUNTIME_TOKEN=ci-host-runtime-token -e DATA_DIR=/data -v "$volume_name:/data" izakhono-host-runtime:ci
           node --input-type=module <<'NODE'
           const base = 'http://127.0.0.1:18081';
           let healthy = false;
