@@ -39,8 +39,7 @@ assert.equal(authorizeGateway(crossUserGrant).requiresConsent, true);
 
 const crossServiceGrant = {
   ...request,
-  serviceId: 'cloud',
-  path: '/cloud/files',
+  consent: { ...consent, serviceId: 'cloud' },
 };
 assert.equal(authorizeGateway(crossServiceGrant).allowed, false);
 
