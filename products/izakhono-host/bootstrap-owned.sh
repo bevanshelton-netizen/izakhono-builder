@@ -13,13 +13,18 @@ if [[ ! -f .env ]]; then
 from pathlib import Path
 import secrets
 p=Path('.env')
-s=p.read_text()
-s=s.replace('replace-with-a-long-random-token', secrets.token_urlsafe(48), 1)
-s=s.replace('replace-with-a-long-random-password', secrets.token_urlsafe(32), 1)
-s=s.replace('replace-with-a-long-random-password', secrets.token_urlsafe(32), 1)
-p.write_text(s)
+lines=[]
+for line in p.read_text().splitlines():
+    if '=' in line and not line.lstrip().startswith('#'):
+        key, value = line.split('=', 1)
+        if value.startswith('replace-with-'):
+            value = secrets.token_urlsafe(48 if 'TOKEN' in key else 32)
+            line = f'{key}={value}'
+    lines.append(line)
+p.write_text('\\n'.join(lines) + '\\n')
 PY
-  echo "Created .env with generated secrets. Set TLS_EMAIL before production use."
+  chmod 600 .env
+  echo "Created .env with generated secrets. Set TLS_EMAIL and PUBLIC_EDGE_IPS before public verification."
 fi
 
 if grep -q 'ops@example.com' .env; then
