@@ -27,6 +27,8 @@ const created = await pay.createPayment(input, { principalId: 'principal-1' });
 assert.equal(created.intent.status, 'pending');
 assert.equal(created.intent.amountMinor, 14900);
 assert.equal(created.link.url, 'https://pay.example/1');
+await assert.rejects(() => pay.createPayment({ ...input, merchantId: 'merchant-attacker' } as CreatePaymentInput, { principalId: 'principal-1' }), /must be resolved server-side/);
+await assert.rejects(() => pay.createPayment({ ...input, serviceId: 'attacker-service' } as CreatePaymentInput, { principalId: 'principal-1' }), /must be resolved server-side/);
 
 const paid = await pay.processWebhook('{}', '/api/payment/callback', 'valid');
 assert.equal(paid.status, 'paid');
