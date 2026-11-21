@@ -15,7 +15,7 @@
 - All 13 inspected tables in schema `one` have RLS enabled, but `pg_policies` returns **zero policies** for the schema and `FORCE ROW LEVEL SECURITY` is false on every inspected table. `anon` and `authenticated` have no schema USAGE or table privileges; `service_role` has schema USAGE and broad table privileges, including UPDATE/DELETE on `audit_events`, `service_events`, and `service_registry`. Keep that role server-only and treat its privilege set as a least-privilege remediation item.
 - No triggers were found in schema `one`. Existing primary/foreign keys and selected CHECK constraints are present, but there is no database trigger evidence for append-only audit enforcement or automatic runtime/event maintenance.
 - The seven registry rows each have a matching contract and runtime row. All seven contracts are enabled, but every runtime row remains `state=foundation`, `health=unknown`, and has no `last_check_at` or `last_event_at`; these are not evidence of live/healthy services.
-- A source review found that the I-NET gateway previously accepted a consent grant based only on permission/domain scope, without binding the grant to the requesting subject and service. Its route guard used a raw string prefix, allowing sibling-prefix and dot-segment paths to pass. The feature branch now adds exact subject/service grant binding and decoded route-boundary checks with regression tests.
+- A source review found that the I-NET gateway previously accepted a consent grant based only on permission/domain scope, without binding the grant to the requesting subject and service. Its route guard used a raw string prefix, allowing sibling-prefix and dot-segment paths to pass. The feature branch now adds exact subject/service grant binding, decoded route-boundary checks, and rejection of malformed or future consent timestamps, with regression tests.
 
 ## 2. Integration gaps
 
@@ -45,7 +45,7 @@
 - Confirm the registry and contract rows agree and define the allowed status vocabulary.
 - Map the seven registered services to the existing shell and identify the 13 additional Power20 catalog entries as planned/unregistered unless proven otherwise.
 - Add deterministic contract tests for missing services, disabled services, unknown statuses, malformed routes, and version mismatch.
-- Completed in this branch: I-NET gateway checks now bind consent to the exact subject and service and reject sibling-prefix, encoded traversal, malformed encoding, and backslash route paths. Regression tests were added; execution evidence is still pending.
+- Completed in this branch: I-NET gateway checks now bind consent to the exact subject and service and reject sibling-prefix, encoded traversal, malformed encoding, and backslash route paths. Consent evaluation also rejects malformed expiry/grant timestamps and grants issued in the future. Regression tests were added; execution evidence is still pending.
 
 ### Gate B — database-backed read-only registry
 - Refactor the ONE HUB manifest/search/resolve/route endpoints to read from a bounded, server-side registry query.
