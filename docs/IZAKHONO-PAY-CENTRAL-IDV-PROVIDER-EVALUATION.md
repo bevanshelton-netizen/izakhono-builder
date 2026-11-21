@@ -166,3 +166,34 @@ The repository contains a provider-neutral adapter registry and a Regula adapter
 The evidence-scanning adapter is also fail-closed and unconfigured. The entity-scope migration is review-only and has not been applied. Canonical IZAKHONO ID runtime deployment, product/entity mapping, FORTRESS-owned reviewer API, staging integration tests, independent security review and legal review remain release gates.
 
 **Current decision:** Continue Regula evaluation as the preferred candidate while identifying comparable alternatives. Do not appoint Regula as exclusive or production supplier until the mandatory gates and owner approval are complete.
+
+
+## 11. Initial market shortlist — desk research only (2026-11-21)
+
+The following candidates are added for structured RFI and proof-of-capability comparison. This is not a ranking, endorsement, proof of compliance, or confirmation that a vendor's stated coverage is available under a proposed licence.
+
+| Candidate | Potential evaluation role | Publicly documented capability signal | Critical validation |
+|---|---|---|---|
+| **Regula** | Document authenticity and face/liveness technology; potentially customer-controlled deployment | Document Reader SDK 9.10; 9.9 release notes update South Africa ID Card barcode parser | Exact Smart ID revisions, ID book/passport/licence coverage, licensed checks, Face SDK liveness, API security, licensing egress and total infrastructure cost |
+| **Smile ID** | Africa-focused identity document and biometric verification | Its South Africa product page describes ID-document checks, selfie-to-document face matching, liveness and API/SDK integration | Exact SA document coverage and issuer/database source, independent performance evidence, data flows, residency, subprocessors, pricing and contractual controls |
+| **Sumsub** | Global identity verification platform and potential South African non-document check | Its documentation describes document verification and lists South Africa SAID and SAID Archive non-document verification products with stated coverage figures | Confirm live data-source access, meaning and measurement date of coverage percentages, availability to IZAKHONO, selfie matching/liveness, licence entitlement, data location and pricing |
+| **Entrust (Onfido)** | Global document and biometric SDK/API alternative | Entrust documentation describes document reports, facial similarity, motion/liveness and SDK integration; FIDO Alliance listing includes South African passport document testing for a Veriff product, not an Entrust certification | Do not conflate other vendors' FIDO certifications with Entrust. Require Entrust's own South African document matrix, independent test evidence, service model, data residency and commercial terms |
+| **VerifyNow** | Local South African identity, AML/PEP, CIPC and related data-source integration candidate | Its public API documentation describes SA ID/passport and company identifiers, AML/PEP datasets and CIPC endpoints; its product documentation also lists face match and document checks | Verify source authority and data rights, CIPC/DHA access basis, exact source coverage, accuracy/false-match controls, security assurance, retention, POPIA contract and enterprise support |
+| **Veriflow** | Local South African KYC workflow/API candidate | Its public site describes ID verification, facial match, liveness, CIPC company verification, director search, AML/PEP screening, API and sandbox access | Verify underlying data sources, direct vs reseller dependencies, coverage, biometric performance, security architecture, SLA, privacy terms and pricing |
+
+### Desk-research sources
+
+- Regula Document Reader SDK: https://docs.regulaforensics.com/develop/doc-reader-sdk/
+- Regula 9.9 release notes: https://docs.regulaforensics.com/develop/doc-reader-sdk/release-notes/9-9/
+- Smile ID — South Africa: https://smile.id/countries/south-africa
+- Sumsub — ID verification: https://docs.sumsub.com/docs/identity-verification
+- Sumsub — South African non-document identity verification: https://docs.sumsub.com/docs/non-doc-identity-verification
+- Entrust — SDK integration guide: https://documentation.identity.entrust.com/sdk/sdk-integration-guide-2025/
+- Entrust — verification overview: https://documentation.identity.entrust.com/getting-started/general-introduction
+- VerifyNow API documentation: https://www.verifynow.co.za/api-docs
+- VerifyNow product documentation: https://www.verifynow.co.za/documentation
+- Veriflow: https://www.veriflow.co.za/
+
+**Interpretation:** the shortlist contains different product categories. Regula may be a document/biometric engine; Smile ID and Sumsub present broader identity workflows; VerifyNow and Veriflow present South African data/workflow coverage. They should not be compared as if every one supplies the same underlying government source or the same verification assurance. IZAKHONO PAY should evaluate them by capability module and use a multi-provider composition where that produces stronger coverage, resilience or cost without creating duplicate identity authorities.
+
+No candidate has been scored because no common vendor demonstration, test set, written proposal, contract, security pack or legal review has been completed.
