@@ -119,3 +119,18 @@ Before broad public customer login, complete:
 - real HTTPS certificate/DNS cutover on an activated IZAKHONO node
 
 The identity service is a materially stronger boundary for controlled IZAKHONO use while these production gates are completed.
+
+
+## Document and biometric identity verification
+
+Document authenticity and biometric verification are being added as a separate capability from account authentication:
+
+- Provider-neutral orchestration is implemented in identity_verification.py.
+- Regula is the preferred provider candidate, subject to technical, commercial, POPIA and legal due diligence.
+- Entity-scoped sessions, idempotency, evidence references and fail-closed result handling are included.
+- Raw document images, selfie images, liveness video and biometric templates are not stored by this module.
+- The Regula transport remains an injected integration boundary until a licensed sandbox, exact API contract and credentials are approved.
+
+See IDENTITY-VERIFICATION-REGULA.md for the architecture, due-diligence questionnaire, POPIA/FICA controls and production acceptance gates.
+
+This capability does not replace IZAKHONO ID login/MFA or FORTRESS INTELLIGENCE PEP/sanctions screening. It is not production-enabled by this source change.
