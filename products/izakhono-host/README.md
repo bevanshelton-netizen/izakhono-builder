@@ -69,3 +69,17 @@ No customer can execute arbitrary infrastructure commands from the browser. Prov
 - `paused`
 
 A service is not marked live without current verification evidence.
+
+## Sovereign Compute Fabric
+
+The private compute fabric is implemented as part of IZAKHONO HOST:
+
+- `runtime/compute-manager`: authenticated control API, PostgreSQL-backed state, job scheduling, audit, node drain/resume and cancellation.
+- `runtime/compute-worker`: non-root worker with unique one-time enrollment and persisted per-node credentials.
+- `COMPUTE-ONLY-ACTIVATE.sh`: activates the private control node with loopback-only manager binding by default.
+- `ENROLL-COMPUTE-NODE.sh <worker-id>`: issues a one-time enrollment file for an additional virtual machine.
+- `worker-node/`: provider-neutral remote worker package and activation procedure.
+
+Remote nodes must connect through a private VPN or authenticated tunnel. Manager port 8082 is not bound publicly. The worker currently executes only the fixed health-check, SHA-256 and echo task allow-list; container builds, arbitrary code, GPU jobs and provider provisioning are not enabled until isolated execution and artifact verification are delivered.
+
+See `runtime/compute-manager/README.md` and `worker-node/README.md`.

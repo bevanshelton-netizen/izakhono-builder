@@ -9,16 +9,8 @@ docker compose version >/dev/null 2>&1 || { echo "Docker Compose is required" >&
 
 if [[ ! -f .env ]]; then
   cp .env.example .env
-  python3 - <<'PY'
-from pathlib import Path
-import secrets
-p=Path('.env')
-s=p.read_text()
-s=s.replace('replace-with-a-long-random-token', secrets.token_urlsafe(48), 1)
-s=s.replace('replace-with-a-long-random-password', secrets.token_urlsafe(32), 1)
-s=s.replace('replace-with-a-long-random-password', secrets.token_urlsafe(32), 1)
-p.write_text(s)
-PY
+  python3 ./generate-env-secrets.py
+  chmod 600 .env
   echo "Created .env with generated secrets. Set TLS_EMAIL before production use."
 fi
 
