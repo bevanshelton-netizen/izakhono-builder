@@ -1,0 +1,16 @@
+{
+  "id": "/",
+  "name": "IZAKHONO SUPER APP",
+  "short_name": "IZAKHONO",
+  "description": "One owner-controlled operating surface for IZAKHONO products, AI and operations.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "orientation": "any",
+  "background_color": "#071815",
+  "theme_color": "#071815",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
