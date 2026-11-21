@@ -347,3 +347,14 @@ This is a material source-of-truth/reproducibility gap. The migration files may 
 7. Keep both existing Supabase projects separate until an approved data ownership and migration decision proves otherwise.
 
 **Updated Gate 0 status: materially advanced, still open.** We have verified the principal product and database boundaries, identified a concrete inbox role-boundary defect and client/service-role mismatch, and identified migration-source provenance as a release blocker. No production SQL, data, application code or provider state has been changed.
+
+
+## 14. Migration-source search follow-up — 2026-11-21
+
+The linked GitHub account's accessible repository inventory was rechecked. Eight repositories are currently visible: `Downloads`, `the-chancellor`, `allegro-vibez`, `edubuild-ecd360`, `SHELTON-FORTRESS`, `bevanshelton-netizen-legacymart`, `nextradefinx`, and `izakhono-builder`. No additional dedicated migration-source repository is visible in that inventory.
+
+The GitHub connector reports code-search indexing unavailable (`is_code_search_indexed: false`) for the listed repositories. Exact searches for the known live migration/function identifiers returned no matches, but those empty search results are **not proof that the source does not exist** because repository code-search indexing is unavailable. The scan is limited to repositories visible to the linked account and the search capabilities available in this session.
+
+**Current conclusion:** the authoritative migration source remains unidentified. The next required input is the exact repository, deployment artifact store, or controlled backup location that owns the complete SQL histories for I-CONNECT and IZAKHONO WebStart, together with read access. Once located, recover the full histories, checksum them, map migration versions to commits, reconcile both live ledgers, and establish clean replay in isolated non-production projects.
+
+No migration files were reconstructed, no database writes/DDL or data changes were performed, and no deployment or production changes were made as part of this follow-up.
