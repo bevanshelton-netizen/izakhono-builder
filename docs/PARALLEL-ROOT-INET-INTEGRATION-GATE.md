@@ -12,7 +12,10 @@
 - The `one` schema contains `service_registry`, `service_contracts`, `service_runtime_state`, `service_events`, and `audit_events`.
 - Read-only inspection found seven rows in each of `service_registry`, `service_contracts`, and `service_runtime_state`; the seven registry entries are AI, Cloud, Commerce, CONNECTA, FORTRESS, NAV, and SEARCH.
 - Read-only inspection found zero rows in `service_events` and `audit_events` at audit time.
-- All inspected tables in schema `one` have row-level security enabled. Policy correctness and service-role exposure still require a separate review.
+- All 13 inspected tables in schema `one` have RLS enabled, but `pg_policies` returns **zero policies** for the schema and `FORCE ROW LEVEL SECURITY` is false on every inspected table. `anon` and `authenticated` have no schema USAGE or table privileges; `service_role` has schema USAGE and broad table privileges, including UPDATE/DELETE on `audit_events`, `service_events`, and `service_registry`. Keep that role server-only and treat its privilege set as a least-privilege remediation item.
+- No triggers were found in schema `one`. Existing primary/foreign keys and selected CHECK constraints are present, but there is no database trigger evidence for append-only audit enforcement or automatic runtime/event maintenance.
+- The seven registry rows each have a matching contract and runtime row. All seven contracts are enabled, but every runtime row remains `state=foundation`, `health=unknown`, and has no `last_check_at` or `last_event_at`; these are not evidence of live/healthy services.
+- A source review found that the I-NET gateway previously accepted a consent grant based only on permission/domain scope, without binding the grant to the requesting subject and service. Its route guard used a raw string prefix, allowing sibling-prefix and dot-segment paths to pass. The feature branch now adds exact subject/service grant binding and decoded route-boundary checks with regression tests.
 
 ## 2. Integration gaps
 
@@ -38,10 +41,11 @@
 ## 4. Delivery sequence
 
 ### Gate A — contract and data integrity
-- Inspect constraints, indexes, triggers, grants, RLS policies, and migration history for the five `one` tables.
+- Inspect constraints, indexes, triggers, grants, RLS policies, and migration history for the five `one` tables. **Observed:** no RLS policies exist; `anon`/`authenticated` lack schema/table access; `service_role` is privileged and server-only; audit/event tables are not append-only at the grant level; no triggers exist. Define explicit policies and least-privilege service-role access only after the intended access model and server-side caller are confirmed.
 - Confirm the registry and contract rows agree and define the allowed status vocabulary.
 - Map the seven registered services to the existing shell and identify the 13 additional Power20 catalog entries as planned/unregistered unless proven otherwise.
 - Add deterministic contract tests for missing services, disabled services, unknown statuses, malformed routes, and version mismatch.
+- Completed in this branch: I-NET gateway checks now bind consent to the exact subject and service and reject sibling-prefix, encoded traversal, malformed encoding, and backslash route paths. Regression tests were added; execution evidence is still pending.
 
 ### Gate B — database-backed read-only registry
 - Refactor the ONE HUB manifest/search/resolve/route endpoints to read from a bounded, server-side registry query.
@@ -79,4 +83,4 @@
 
 ## 6. Current release position
 
-This document records an audit and a safe implementation sequence. It does not claim that the integration, independent hosting, public DNS delegation, or production launch is complete. No live Edge Function or production database object was modified during this audit.
+This document records an audit and a safe implementation sequence. The I-NET library gateway and its regression tests have been hardened in the feature branch, but test execution is not yet evidenced. It does not claim that the integration, independent hosting, public DNS delegation, or production launch is complete. No live Edge Function or production database object was modified during this audit.
