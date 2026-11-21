@@ -6,11 +6,14 @@ A licensed Regula gateway is injected after vendor sandbox and legal approval.
 from __future__ import annotations
 import hashlib, json, secrets, sqlite3
 from dataclasses import asdict, dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any, Literal, Protocol
 
 Check = Literal["passed", "failed", "not_run", "indeterminate"]
 Status = Literal["pending", "in_progress", "verified", "review_required", "incomplete", "provider_unavailable", "cancelled"]
+
+# Conservative server-side ceiling when a provider omits its own expiry.
+DEFAULT_SESSION_TTL_SECONDS = 15 * 60
 
 def utc_now() -> str:
     return datetime.now(timezone.utc).isoformat()
@@ -20,10 +23,10 @@ def sha256(value: str) -> str:
 
 def expiry_has_passed(value: str | None, now: datetime | None = None) -> bool:
     """Treat malformed expiry metadata as expired; never poll beyond expiry."""
-    if not value:
-        return False
+    if not isinstance(value, str) or not value.strip():
+        return True
     try:
-        expiry = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        expiry = datetime.fromisoformat(value.strip().replace("Z", "+00:00"))
         if expiry.tzinfo is None:
             expiry = expiry.replace(tzinfo=timezone.utc)
         current = now or datetime.now(timezone.utc)
@@ -241,12 +244,21 @@ class IdentityVerificationService:
                 db.commit()
             raise RuntimeError("identity_verification_provider_unavailable") from None
 
+        # Every externally usable session receives a finite server-side expiry.
+        # Retain a provider expiry when supplied; otherwise impose a conservative
+        # local TTL instead of creating an unbounded session.
+        effective_expiry = started.expires_at
+        if effective_expiry is None:
+            effective_expiry = (
+                datetime.now(timezone.utc) + timedelta(seconds=DEFAULT_SESSION_TTL_SECONDS)
+            ).isoformat()
+
         with self.connect() as db:
             db.execute(
                 """UPDATE identity_verification_sessions
                    SET provider_session_ref=?,status='in_progress',expires_at=?,updated_at=?
                    WHERE entity_id=? AND id=?""",
-                (started.provider_session_ref, started.expires_at, utc_now(), request.entity_id, session_id),
+                (started.provider_session_ref, effective_expiry, utc_now(), request.entity_id, session_id),
             )
             db.commit()
             row = db.execute(
