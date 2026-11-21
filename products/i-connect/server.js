@@ -39,5 +39,14 @@ app.get('/api/runtime', (req, res) => res.json({
 
 app.all('/api/network/route', networkRoute);
 
+// Shared authenticated customer and lifecycle APIs. These handlers are also
+// Vercel-compatible, but must be mounted explicitly for the owned Express runtime.
+app.all('/api/customer-control', require('./api/customer-control'));
+app.all('/api/provisioning', require('./api/provisioning'));
+app.all('/api/handover', require('./api/handover'));
+app.all('/api/checkout-intent', require('./api/checkout-intent'));
+app.all('/api/checkout-state', require('./api/checkout-state'));
+app.all('/api/provider-attempt', require('./api/provider-attempt'));
+
 const port = Number(process.env.PORT || 3000);
 app.listen(port, () => console.log(`I-CONNECT listening on ${port}`));
