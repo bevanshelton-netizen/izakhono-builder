@@ -123,7 +123,7 @@ const server = http.createServer(async (req, res) => {
     }
   }
 
-  if (req.method === 'GET' && url.pathname.match(/^\\/api\\/workloads\\/[a-z0-9-]+$/)) {
+  if (req.method === 'GET' && url.pathname.startsWith('/api/workloads/')) {
     const workloadId = url.pathname.split('/')[3];
     const workload = await workloadStore.get(workloadId);
     return workload
