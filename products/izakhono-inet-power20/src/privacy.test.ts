@@ -16,6 +16,9 @@ assert.equal(decideAccess(grant, 'read:files', 'communications', now).allowed, f
 assert.equal(decideAccess(undefined, 'read:mail', 'communications', now).requiresConsent, true);
 assert.equal(decideAccess({ ...grant, revokedAt: now.toISOString() }, 'read:mail', 'communications', now).allowed, false);
 assert.equal(decideAccess({ ...grant, expiresAt: '2026-10-29T00:00:00.000Z' }, 'read:mail', 'communications', now).allowed, false);
+assert.equal(decideAccess({ ...grant, expiresAt: 'not-a-date' }, 'read:mail', 'communications', now).allowed, false);
+assert.equal(decideAccess({ ...grant, grantedAt: 'not-a-date' }, 'read:mail', 'communications', now).allowed, false);
+assert.equal(decideAccess({ ...grant, grantedAt: '2026-10-31T00:00:00.000Z' }, 'read:mail', 'communications', now).allowed, false);
 
 const defaults = privacyDefaults();
 assert.equal(defaults.silentCrossServiceTracking, false);
