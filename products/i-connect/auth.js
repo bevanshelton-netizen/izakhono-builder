@@ -27,7 +27,10 @@
     sessionStorage.removeItem('i_connect_access_token');
     localStorage.removeItem('I_CONNECT_ACCESS_TOKEN');
     localStorage.removeItem('i_connect_access_token');
+    sessionStorage.removeItem('i_connect_organization_id');
+    localStorage.removeItem('i_connect_organization_id');
     window.I_CONNECT_ACCESS_TOKEN = '';
+    window.I_CONNECT_ORGANIZATION_ID = '';
   }
 
   async function config() {
