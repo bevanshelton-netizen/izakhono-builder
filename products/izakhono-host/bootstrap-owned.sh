@@ -26,6 +26,7 @@ PY
   chmod 600 .env
   echo "Created .env with generated secrets. Set TLS_EMAIL and PUBLIC_EDGE_IPS before public verification."
 fi
+chmod 600 .env
 
 if grep -q 'ops@example.com' .env; then
   echo "Set TLS_EMAIL in .env before public HTTPS activation." >&2
