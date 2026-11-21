@@ -41,7 +41,7 @@ app.all('/api/network/route', networkRoute);
 
 // Shared authenticated customer and lifecycle APIs. Mount explicitly for the
 // owned Express runtime; these handlers also remain independently deployable.
-require('./api/routes')(app);
+require('./runtime/register-api-routes')(app);
 
 const port = Number(process.env.PORT || 3000);
 app.listen(port, () => console.log(`I-CONNECT listening on ${port}`));
