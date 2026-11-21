@@ -18,6 +18,21 @@ def utc_now() -> str:
 def sha256(value: str) -> str:
     return hashlib.sha256(value.encode("utf-8")).hexdigest()
 
+def expiry_has_passed(value: str | None, now: datetime | None = None) -> bool:
+    """Treat malformed expiry metadata as expired; never poll beyond expiry."""
+    if not value:
+        return False
+    try:
+        expiry = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        if expiry.tzinfo is None:
+            expiry = expiry.replace(tzinfo=timezone.utc)
+        current = now or datetime.now(timezone.utc)
+        if current.tzinfo is None:
+            current = current.replace(tzinfo=timezone.utc)
+        return current >= expiry
+    except (TypeError, ValueError, OverflowError):
+        return True
+
 @dataclass(frozen=True)
 class VerificationRequest:
     entity_id: str
@@ -252,6 +267,23 @@ class IdentityVerificationService:
                 raise LookupError("verification_session_not_found")
             if row["status"] in ("verified", "review_required", "incomplete", "cancelled"):
                 return self._row(row)
+            if expiry_has_passed(row["expires_at"]):
+                now = utc_now()
+                db.execute(
+                    """UPDATE identity_verification_sessions
+                       SET status='incomplete',completed_at=?,updated_at=?
+                       WHERE entity_id=? AND id=?
+                         AND status IN ('pending','in_progress','provider_unavailable')""",
+                    (now, now, entity_id, session_id),
+                )
+                self._audit(db, "identity_verification.expired", entity_id,
+                            row["subject_ref"], "provider_session_expired")
+                db.commit()
+                expired = db.execute(
+                    "SELECT * FROM identity_verification_sessions WHERE entity_id=? AND id=?",
+                    (entity_id, session_id),
+                ).fetchone()
+                return self._row(expired)
             provider = self.providers.get(row["provider"])
             provider_ref = row["provider_session_ref"]
             if provider is None or not provider_ref:
