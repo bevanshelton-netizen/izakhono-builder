@@ -1,7 +1,6 @@
 #!/bin/sh
 set -eu
 
-: "${PDNS_API_KEY:?PDNS_API_KEY is required}"
 : "${DNS_MODE:?DNS_MODE must be primary or secondary}"
 : "${PRIMARY_NS_FQDN:?PRIMARY_NS_FQDN is required}"
 : "${SECONDARY_NS_FQDN:?SECONDARY_NS_FQDN is required}"
@@ -48,18 +47,21 @@ allow-notify-from=$PRIMARY_PUBLIC_IPV4
 allow-axfr-ips=$PRIMARY_PUBLIC_IPV4
 xfr-cycle-interval=60
 EOF
-  sqlite3 "$DB" "INSERT OR IGNORE INTO supermasters(ip,nameserver,account) VALUES('$PRIMARY_PUBLIC_IPV4','$SECONDARY_NS_FQDN','izakhono');"
+  # The autoprimary row must pair the primary's source IP with a nameserver
+  # that is actually present in the zone's NS RRset (the primary NS name).
+  sqlite3 "$DB" "INSERT OR IGNORE INTO supermasters(ip,nameserver,account) VALUES('$PRIMARY_PUBLIC_IPV4','$PRIMARY_NS_FQDN','izakhono');"
 else
   echo "DNS_MODE must be primary or secondary" >&2
   exit 64
 fi
 
 if [ "${PDNS_API_ENABLED:-yes}" = "yes" ] && [ "$DNS_MODE" = "primary" ]; then
+  : "${PDNS_API_KEY:?PDNS_API_KEY is required when the primary API is enabled}"
   cat >> "$CONFIG" <<EOF
 api=yes
 api-key=$PDNS_API_KEY
 webserver=yes
-webserver-address=127.0.0.1
+webserver-address=0.0.0.0
 webserver-port=8081
 EOF
 else
