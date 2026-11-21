@@ -35,14 +35,19 @@ export class PaymentWorkflow {
     private readonly provisioningHandler?: ProvisioningHandler,
   ) {}
 
-  async processConfirmedWebhook(rawBody: string, callbackPath: string, signature: string, merchantId: string): Promise<PaymentIntent> {
+  async processConfirmedWebhook(rawBody: string, callbackPath: string, signature: string): Promise<PaymentIntent> {
     const intent = await this.payments.processWebhook(rawBody, callbackPath, signature);
     if (intent.status !== 'paid') return intent;
-    await this.handlePaid(intent, merchantId);
+    await this.handlePaid(intent);
     return intent;
   }
 
-  async handlePaid(intent: PaymentIntent, merchantId: string): Promise<ProvisioningJob | undefined> {
+  async handlePaid(candidate: PaymentIntent): Promise<ProvisioningJob | undefined> {
+    const intent = await this.payments.getPaymentIntent(candidate.id);
+    if (!intent || intent.id !== candidate.id) throw new Error('Canonical payment intent not found');
+    if (intent.status !== 'paid') throw new Error('Only a canonically paid payment intent can be provisioned');
+    if (!intent.merchantId?.trim()) throw new Error('Payment intent has no trusted merchant identity');
+    const merchantId = intent.merchantId;
     const key = intent.id;
     if (this.processed.has(key)) return this.jobs.get(key);
     await this.ledger.recordPayment({
