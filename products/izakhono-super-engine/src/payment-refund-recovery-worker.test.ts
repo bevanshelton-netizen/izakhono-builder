@@ -31,7 +31,7 @@ const provider: RefundProvider = {
 let finalized = 0;
 const worker = new RefundRecoveryWorker(queue, async (id) => id === payment.id ? payment : undefined, new Map([['test-provider', provider]]), { async finalize() { finalized += 1; } }, () => now);
 const result = await worker.run(10);
-assert.deepEqual(result, { scanned: 1, succeeded: 1, failed: 0, deferred: 0, skipped: 0 });
+assert.deepEqual(result, { scanned: 1, succeeded: 1, failed: 0, deferred: 0, skipped: 0, claimed: 0 });
 assert.equal(lookups, 1);
 assert.equal(refundRequests, 0);
 assert.equal(finalized, 1);
