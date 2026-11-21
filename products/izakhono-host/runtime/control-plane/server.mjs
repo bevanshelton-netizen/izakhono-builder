@@ -13,6 +13,7 @@ const workloadStore = createWorkloadStore({ filePath: path.join(DATA_DIR, 'workl
 const MAX_FILES = 200;
 const MAX_FILE_BYTES = 512 * 1024;
 const MAX_TOTAL_BYTES = 8 * 1024 * 1024;
+const MAX_BODY_BYTES = MAX_TOTAL_BYTES + 1024 * 1024;
 
 async function loadState() {
   await fs.mkdir(SITES_DIR, { recursive: true });
@@ -31,7 +32,9 @@ function json(res, status, value) {
 async function body(req) {
   const chunks=[];
   for await (const chunk of req) chunks.push(chunk);
-  const text=Buffer.concat(chunks).toString('utf8');
+  const buffer=Buffer.concat(chunks);
+  if (buffer.byteLength > MAX_BODY_BYTES) throw new Error(`Request body exceeds ${MAX_BODY_BYTES} bytes`);
+  const text=buffer.toString('utf8');
   if (!text) return {};
   return JSON.parse(text);
 }
