@@ -3,6 +3,8 @@ import { IzakhonoPay, MemoryPaymentStore, type CreatePaymentInput, type PaymentP
 import { MemoryPaymentEventStore } from './payment-events.js';
 import { PaymentWebhookGuard } from './payment-webhook-guard.js';
 
+
+async function main() {
 const input: CreatePaymentInput = {
   externalTransactionId: 'ORDER-WEBHOOK-1', amountMinor: 1000, currency: 'ZAR',
   requesterUrl: 'https://example.com/pay', callbackUrl: 'https://example.com/callback',
@@ -53,3 +55,6 @@ await assert.rejects(() => guard.process('{}', '/callback', 'valid'), /Contradic
 assert.equal((await payments.getByExternalTransactionId('ORDER-WEBHOOK-1'))?.status, 'paid');
 
 console.log('payment-webhook-guard.test.ts: ok');
+}
+
+void main();
