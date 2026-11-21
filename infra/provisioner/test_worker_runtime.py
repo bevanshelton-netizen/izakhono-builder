@@ -21,7 +21,7 @@ def test_end_to_end():
     store.save(job); queue.enqueue(job)
     worker=ProvisionerWorker(store,queue,{name:evidence for name in ADAPTERS},REGISTRY)
     results=[worker.run_once() for _ in range(8)]
-    # Provider-neutral adapters emit simulation evidence only. The worker must\n    # fail closed instead of treating that evidence as production acceptance.\n    assert results[-1].status=="blocked" and job.state=="BLOCKED"\n    assert job.evidence.get("ACCEPTANCE_PASSED", {}).get("simulation") is True\n    assert set(job.evidence)==set(("PAYMENT_VERIFIED","TENANT_CREATED","DOMAIN_READY","DNS_READY","SITE_READY","TLS_READY","MAIL_READY","INTEGRATIONS_READY","ACCEPTANCE_PASSED"))
+    # Provider-neutral adapters emit simulation evidence only. The worker must\n    # fail closed instead of treating that evidence as production acceptance.\n    assert results[-1].status=="blocked" and job.state=="BLOCKED"\n    assert all(job.evidence[s].get("simulation") is True for s in ("TENANT_CREATED", "DOMAIN_READY", "DNS_READY", "SITE_READY", "TLS_READY", "MAIL_READY", "INTEGRATIONS_READY")) and "ACCEPTANCE_PASSED" not in job.evidence\n    assert set(job.evidence)==set(("PAYMENT_VERIFIED","TENANT_CREATED","DOMAIN_READY","DNS_READY","SITE_READY","TLS_READY","MAIL_READY","INTEGRATIONS_READY","ACCEPTANCE_PASSED"))
 
 def test_owned_first():
     executor=AdapterExecutor(REGISTRY,{"izakhono-host":evidence,"fallback":evidence})
