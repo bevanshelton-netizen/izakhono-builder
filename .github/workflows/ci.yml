@@ -28,6 +28,19 @@ jobs:
       - name: Validate Affiliate Engine
         run: npm run validate:affiliate
 
+      - name: Native Builder Core and durable queue typecheck
+        run: npm run native-builder:typecheck
+
+      - name: Native Builder lifecycle tests
+        run: npm run native-builder:test
+
+      - name: Native Builder queue claim and evidence tests
+        run: npx --yes tsx@4.20.3 products/izakhono-native-builder/src/queue.test.ts
+
+      - name: Native Builder autonomy adapter tests
+        run: npm run builder:adapter:test && npm run ai-agent:test
+
+
       - name: Install isolated product dependencies
         shell: bash
         run: |

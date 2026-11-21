@@ -1,6 +1,7 @@
 import { strict as assert } from "node:assert";
 import { NativeBuilderCore, MemoryBuilderStore, type BuilderClock } from "./index.js";
 
+async function runNativeBuilderTest(): Promise<void> {
 const store = new MemoryBuilderStore();
 let sequence = 0;
 const clock: BuilderClock = {
@@ -55,3 +56,6 @@ assert.equal(approved.status, "running");
 assert.equal(approved.approvedBy, "independent-admin");
 
 console.log("IZAKHONO Native Builder Core: all tests passed.");
+}
+
+void runNativeBuilderTest().catch((error) => { console.error(error); process.exitCode = 1; });
