@@ -1,4 +1,5 @@
 function registerRoutes(app) {
+  app.all('/api/public-config', require('../api/public-config'));
   app.all('/api/customer-control', require('../api/customer-control'));
   app.all('/api/provisioning', require('../api/provisioning'));
   app.all('/api/handover', require('../api/handover'));
