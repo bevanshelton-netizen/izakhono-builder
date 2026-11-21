@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - 'infra/contabo/**'
+      - 'infra/runtime/**'
       - 'infra/runtime-fabric/nodes/contabo-vps-01.json'
       - 'package.json'
       - '.github/workflows/contabo-runtime-gate.yml'
@@ -12,6 +13,7 @@ on:
       - feat/izakhono-runtime-fabric-contabo
     paths:
       - 'infra/contabo/**'
+      - 'infra/runtime/**'
       - 'infra/runtime-fabric/nodes/contabo-vps-01.json'
       - 'package.json'
       - '.github/workflows/contabo-runtime-gate.yml'
@@ -31,7 +33,13 @@ jobs:
           bash -n infra/contabo/provision.sh
           bash -n infra/contabo/healthcheck.sh
           bash -n infra/contabo/deploy-stack.sh
+          bash -n infra/runtime/host-preflight.sh
       - name: Compose schema gate
         run: |
           docker compose --env-file infra/contabo/stack.env.example -f infra/contabo/compose.yml config >/tmp/izakhono-compose.yml
           test -s /tmp/izakhono-compose.yml
+      - name: Runtime preflight contract gate
+        run: |
+          grep -q 'izakhono.runtime-host-evidence/v1' infra/runtime/host-preflight.sh
+          grep -q 'runtimeHostIsSeparate' infra/runtime/host-preflight.sh
+          grep -q '"live": false' infra/runtime/host-preflight.sh
