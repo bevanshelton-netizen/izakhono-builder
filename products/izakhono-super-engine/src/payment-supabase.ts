@@ -12,6 +12,7 @@ export interface SupabasePaymentStoreConfig {
 interface PaymentRow {
   id: string;
   merchant_id: string;
+  service_id: string;
   external_transaction_id: string;
   amount_minor: number;
   currency: string;
@@ -60,13 +61,14 @@ export class SupabasePaymentStore implements PaymentStore {
   }
 
   async save(intent: PaymentIntent): Promise<void> {
-    if (!intent.merchantId?.trim()) throw new Error('Payment merchant identity is required');
+    if (!intent.merchantId?.trim() || !intent.serviceId?.trim()) throw new Error('Payment merchant identity and service entitlement are required');
     await this.request(this.baseUrl, {
       method: 'POST',
       headers: { Prefer: 'return=minimal' },
       body: JSON.stringify({
         id: intent.id,
         merchant_id: intent.merchantId,
+        service_id: intent.serviceId,
         external_transaction_id: intent.externalTransactionId,
         amount_minor: intent.amountMinor,
         currency: intent.currency,
@@ -122,6 +124,7 @@ function toPaymentIntent(row: PaymentRow): PaymentIntent {
   return {
     id: row.id,
     merchantId: row.merchant_id,
+    serviceId: row.service_id,
     externalTransactionId: row.external_transaction_id,
     amountMinor: row.amount_minor,
     currency: row.currency,
