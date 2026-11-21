@@ -1,5 +1,5 @@
 import type { PaymentIntent } from './payment-core.js';
-import type { RefundOperation } from './payment-refund-operations-supabase.js';
+import type { RefundOperation, RefundOperationStore } from './payment-refund-operations-supabase.js';
 import type { RefundProvider } from './payment-refunds.js';
 import { IzakhonoRefundRecovery } from './payment-refund-recovery.js';
 
@@ -53,8 +53,8 @@ export class RefundRecoveryWorker {
     return result;
   }
 
-  private queueAsRecoveryStore() {
-    return this.queue as Parameters<typeof IzakhonoRefundRecovery>[0];
+  private queueAsRecoveryStore(): RefundOperationStore {
+    return this.queue as RefundOperationStore;
   }
 
   private async defer(operation: RefundOperation, error: string): Promise<void> {
