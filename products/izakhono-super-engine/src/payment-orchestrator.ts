@@ -115,5 +115,6 @@ export class PaymentOrchestrator {
     return payment;
   }
 
+  private assertMerchant(merchantId: string): void { if (!merchantId?.trim()) throw new Error('Merchant ID is required'); }
   private assertService(serviceId: string): void { if (!serviceId?.trim()) throw new Error('Service ID is required'); }
 }
