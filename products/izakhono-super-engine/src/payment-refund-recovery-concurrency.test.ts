@@ -4,7 +4,7 @@ import type { RefundProvider } from './payment-refunds.js';
 import { RefundRecoveryWorker } from './payment-refund-recovery-worker.js';
 
 const payment: PaymentIntent = {
-  id: 'pay_concurrency_1', amountMinor: 1000, currency: 'ZAR', status: 'paid', provider: 'test', providerPaymentId: 'provider-payment-1', metadata: {}
+  id: 'pay_concurrency_1', merchantId: 'merchant_1', externalTransactionId: 'order_concurrency_1', amountMinor: 1000, currency: 'ZAR', status: 'paid', provider: 'test', providerPaymentId: 'provider-payment-1', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString()
 };
 
 const operation: RefundOperation = {
