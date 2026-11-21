@@ -83,14 +83,16 @@ export class PaymentOrchestrator {
   }
 
   /** Reconciles an ambiguous refund through a provider lookup only; it never submits another refund request. */
-  async reconcileRefund(payment: PaymentIntent, amountMinor = payment.amountMinor): Promise<RefundLedgerResult & { payment: PaymentIntent; providerRefundId: string }> {
+  async reconcileRefund(payment: PaymentIntent, amountMinor?: number): Promise<RefundLedgerResult & { payment: PaymentIntent; providerRefundId: string }> {
     const canonical = await this.canonicalPaid(payment);
     if (!this.refundRecovery) throw new Error('Durable refund operations are required for provider reconciliation');
-    const operation = await this.refundRecovery.reconcile(canonical, amountMinor);
+    const refundAmount = amountMinor ?? canonical.amountMinor;
+    if (!Number.isSafeInteger(refundAmount) || refundAmount <= 0 || refundAmount > canonical.amountMinor) throw new Error('Refund reconciliation amount must be positive and cannot exceed the canonical payment amount');
+    const operation = await this.refundRecovery.reconcile(canonical, refundAmount);
     if (operation.status === 'failed') throw new Error('Provider reconciliation confirmed that the refund was not completed');
     if (operation.status !== 'succeeded' || !operation.providerRefundId) throw new Error('Refund reconciliation did not produce a confirmed provider refund');
-    const updatedPayment = amountMinor === canonical.amountMinor ? await this.lifecycle.refund(canonical, 'Refund recovered after provider outcome reconciliation') : canonical;
-    const ledger = await this.refundLedger.recordRefund({ refundId: operation.providerRefundId, payment: updatedPayment, amountMinor });
+    const updatedPayment = refundAmount === canonical.amountMinor ? await this.lifecycle.refund(canonical, 'Refund recovered after provider outcome reconciliation') : canonical;
+    const ledger = await this.refundLedger.recordRefund({ refundId: operation.providerRefundId, payment: updatedPayment, amountMinor: refundAmount });
     await this.events.record(createPaymentEvent({ kind: 'payment.refunded', paymentIntentId: canonical.id, externalTransactionId: canonical.externalTransactionId, provider: canonical.provider, fingerprint: `payment.refunded:${canonical.id}:${operation.providerRefundId}` }));
     return { ...ledger, payment: updatedPayment, providerRefundId: operation.providerRefundId };
   }
