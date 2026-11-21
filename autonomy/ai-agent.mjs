@@ -4,8 +4,9 @@ import crypto from 'node:crypto';
 import { inferPlanSteps } from './ai-agent-planner.mjs';
 
 const root = process.cwd();
-const queuePath = process.env.IZAKHONO_AGENT_QUEUE_PATH || path.join(root, 'autonomy', 'agent-queue.json');
-const statePath = process.env.IZAKHONO_AGENT_STATE_PATH || path.join(root, 'autonomy', 'agent-state.json');
+const dataRoot = process.env.IZAKHONO_NODE_DATA_DIR || path.join(root, '.izakhono-private');
+const queuePath = process.env.IZAKHONO_AGENT_QUEUE_PATH || path.join(dataRoot, 'agent-queue.json');
+const statePath = process.env.IZAKHONO_AGENT_STATE_PATH || path.join(dataRoot, 'agent-state.json');
 
 function readJson(file, fallback) {
   if (!fs.existsSync(file)) return fallback;
