@@ -41,7 +41,7 @@ const duplicate = await guard.process('{}', '/callback', 'valid');
 assert.equal(duplicate.status, 'paid');
 
 providerPaymentId = 'provider-attacker';
-await assert.rejects(() => guard.process('{}', '/callback', 'valid'), /provider evidence does not match/);
+await assert.rejects(() => guard.process('{}', '/callback', 'valid'), /Provider payment evidence does not match/);
 providerPaymentId = 'provider-1';
 webhookAmount = 999;
 await assert.rejects(() => guard.process('{}', '/callback', 'valid'), /amount does not match/);
