@@ -1,7 +1,6 @@
 #!/bin/sh
 set -eu
 
-: "${PDNS_API_KEY:?PDNS_API_KEY is required}"
 : "${DNS_MODE:?DNS_MODE must be primary or secondary}"
 : "${PRIMARY_NS_FQDN:?PRIMARY_NS_FQDN is required}"
 : "${SECONDARY_NS_FQDN:?SECONDARY_NS_FQDN is required}"
@@ -55,11 +54,12 @@ else
 fi
 
 if [ "${PDNS_API_ENABLED:-yes}" = "yes" ] && [ "$DNS_MODE" = "primary" ]; then
+  : "${PDNS_API_KEY:?PDNS_API_KEY is required when the primary API is enabled}"
   cat >> "$CONFIG" <<EOF
 api=yes
 api-key=$PDNS_API_KEY
 webserver=yes
-webserver-address=127.0.0.1
+webserver-address=0.0.0.0
 webserver-port=8081
 EOF
 else
