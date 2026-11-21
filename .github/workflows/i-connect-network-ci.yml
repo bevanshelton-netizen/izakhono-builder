@@ -73,3 +73,23 @@ jobs:
           set -euo pipefail
           ! grep -REqi '(password|secret|api[_-]?key)[[:space:]]*[:=][[:space:]]*["'"'"'][^"'"'"']+["'"'"']' products/i-connect/network products/i-connect/api/network-route.js products/i-connect/api/provisioning.js
           echo '[PASS] No hard-coded provider credentials detected.'
+
+      - name: Build and smoke-test the owned I-CONNECT container
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker build -f products/i-connect/Dockerfile -t i-connect:ci .
+          docker run -d --name i-connect-ci -p 3000:3000 i-connect:ci
+          trap 'docker rm -f i-connect-ci >/dev/null 2>&1 || true' EXIT
+          for attempt in $(seq 1 20); do
+            if curl -fsS http://127.0.0.1:3000/api/health | grep -q '"status":"alive"'; then
+              break
+            fi
+            sleep 2
+          done
+          curl -fsS http://127.0.0.1:3000/api/health | grep -q '"productionReady":false'
+          config_status="$(curl -sS -o /tmp/i-connect-config.json -w '%{http_code}' http://127.0.0.1:3000/api/public-config)"
+          test "$config_status" = "503"
+          grep -q '"authentication_not_configured"' /tmp/i-connect-config.json
+          echo '[PASS] Owned container starts, health is live, and auth config fails closed without secrets.'
+
