@@ -95,7 +95,8 @@ class RegulaIDVHttpClient:
             raise RegulaAPIError("regula_timeout") from None
 
     def start_session(self, *, entity_ref: str, subject_ref_hash: str, purpose: str,
-                      jurisdiction: str, notice_version: str) -> dict[str, Any]:
+                      jurisdiction: str, notice_version: str,
+                      idempotency_key_hash: str | None = None) -> dict[str, Any]:
         """Create a hosted hand-off URL; caller must return it only to authorized subject."""
         values = (entity_ref, subject_ref_hash, purpose, jurisdiction, notice_version)
         if not all(isinstance(v, str) and v and len(v) <= 200 for v in values):
@@ -111,6 +112,7 @@ class RegulaIDVHttpClient:
                     "purpose": purpose,
                     "jurisdiction": jurisdiction,
                     "notice_version": notice_version,
+                    **({"izakhono_idempotency_key_hash": idempotency_key_hash} if idempotency_key_hash else {}),
                 },
                 "locale": self.config.locale,
                 "ttl": self.config.ttl_seconds,
