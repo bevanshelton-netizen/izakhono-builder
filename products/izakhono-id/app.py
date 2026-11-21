@@ -529,8 +529,19 @@ class Handler(BaseHTTPRequestHandler):
                     idempotency_key=idempotency_key,
                     notice_version=notice_version,
                 ))
+                # A hand-off URL is a one-time bearer secret and is never persisted.
+                # An idempotent replay therefore must not look like a fresh start
+                # with a null URL; require the client to reconcile the existing
+                # verification before creating a deliberately new attempt.
+                handoff_url = row.get("client_token")
+                if not handoff_url:
+                    return send_json(self, 409, {
+                        "ok": False,
+                        "error": "verification_attempt_already_exists",
+                        "verification": public_verification_session(row),
+                    })
                 result = public_verification_session(row)
-                result["handoff_url"] = row.get("client_token")
+                result["handoff_url"] = handoff_url
                 return send_json(self, 201, {"ok": True, "verification": result})
             except (ValueError, json.JSONDecodeError):
                 return send_json(self, 422, {"ok": False, "error": "invalid_verification_request"})
