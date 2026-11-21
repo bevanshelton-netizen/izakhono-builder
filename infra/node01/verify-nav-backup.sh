@@ -8,13 +8,13 @@ command -v sha256sum >/dev/null
 command -v tar >/dev/null
 
 required=(
-  SHA256SUMS backup-manifest.txt
+  backup-manifest.txt
   nav-compose.yml nav-Caddyfile
   owned-stack-compose.yaml owned-stack-Caddyfile
   owned-stack-martin.yaml owned-stack-style.json
   runtime-manifest.json runtime-data.tar.gz
 )
-for file in "${required[@]}"; do
+for file in "${required[@]}" SHA256SUMS; do
   [[ -f "$BACKUP_DIR/$file" && ! -L "$BACKUP_DIR/$file" && -s "$BACKUP_DIR/$file" ]] || {
     echo "ERROR: required backup file missing, empty, or symlinked: $file" >&2
     exit 1
@@ -31,6 +31,8 @@ BACKUP_ID="$(sed -n 's/^backup_id=//p' "$BACKUP_DIR/backup-manifest.txt")"
   exit 1
 }
 
+# SHA256SUMS is the checksum index and cannot checksum itself. All other
+# required files plus every declared volume archive must appear exactly once.
 declare -A expected=()
 for file in "${required[@]}"; do expected[$file]=1; done
 volume_count=0
