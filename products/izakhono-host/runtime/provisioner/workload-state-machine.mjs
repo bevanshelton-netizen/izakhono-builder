@@ -37,18 +37,18 @@ export function validateWorkloadSpec(spec = {}) {
   if (spec.workloadClass !== 'navigation-platform') throw new Error('workloadClass must be navigation-platform');
   if (!NODE.test(String(spec.logicalNodeId || ''))) throw new Error('logicalNodeId must be a logical NODE identity such as NODE01');
   if (!SHA256.test(String(spec.releaseDigest || ''))) throw new Error('releaseDigest must be a SHA-256 digest');
-  if (typeof spec.healthPath !== 'string' || !spec.healthPath.startsWith('/') || spec.healthPath.startsWith('//')) {
-    throw new Error('healthPath must be an absolute path');
+  if (typeof spec.healthPath !== 'string' || !/^\\/[A-Za-z0-9/_-]*$/.test(spec.healthPath) || spec.healthPath.startsWith('//')) {
+    throw new Error('healthPath must be a safe absolute path without query, fragment or traversal segments');
   }
   if (typeof spec.internalPort !== 'number' || !Number.isInteger(spec.internalPort) || spec.internalPort < 1 || spec.internalPort > 65535) {
     throw new Error('internalPort must be a valid TCP port');
   }
-  if (typeof spec.idempotencyKey !== 'string' || spec.idempotencyKey.length < 12 || spec.idempotencyKey.length > 200) {
-    throw new Error('idempotencyKey must contain 12-200 characters');
+  if (typeof spec.idempotencyKey !== 'string' || !/^[A-Za-z0-9._:-]{12,200}$/.test(spec.idempotencyKey)) {
+    throw new Error('idempotencyKey must contain 12-200 safe characters');
   }
   // Runtime target is deliberately an opaque HOST binding, not a physical machine identity.
-  if (spec.runtimeTargetId !== undefined && (typeof spec.runtimeTargetId !== 'string' || !spec.runtimeTargetId.trim())) {
-    throw new Error('runtimeTargetId must be a non-empty HOST runtime binding when supplied');
+  if (spec.runtimeTargetId !== undefined && (typeof spec.runtimeTargetId !== 'string' || !/^[A-Za-z0-9._:-]{1,128}$/.test(spec.runtimeTargetId))) {
+    throw new Error('runtimeTargetId must be a safe opaque HOST runtime binding when supplied');
   }
   return true;
 }
