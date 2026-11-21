@@ -11,13 +11,14 @@
   nav.insertBefore(button, nav.querySelector('[data-view="connectivity"]') || null);
 
   const token = () => window.I_CONNECT_ACCESS_TOKEN || sessionStorage.getItem('i_connect_access_token') || localStorage.getItem('i_connect_access_token') || '';
+  const accessToken = async () => window.I_CONNECT_AUTH?.getAccessToken ? await window.I_CONNECT_AUTH.getAccessToken() : token();
   const organizationId = () => window.I_CONNECT_ORGANIZATION_ID || sessionStorage.getItem('i_connect_organization_id') || localStorage.getItem('i_connect_organization_id') || '';
   const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const key = () => (crypto.randomUUID ? crypto.randomUUID() : `ic-${Date.now()}-${Math.random().toString(16).slice(2)}`);
   const stateClass = state => ['ACTIVE','READY'].includes(String(state).toUpperCase()) ? 'ok' : ['FAILED','TERMINATED'].includes(String(state).toUpperCase()) ? 'danger' : 'warn';
 
   async function api(path, options = {}) {
-    const t = token();
+    const t = await accessToken();
     if (!t) throw new Error('Sign in to I-CONNECT to manage services.');
     const headers = { 'content-type': 'application/json', authorization: `Bearer ${t}`, ...(options.headers || {}) };
     const response = await fetch(path, { ...options, headers });
@@ -54,7 +55,8 @@
     const state = document.getElementById('ic-state');
     const list = document.getElementById('ic-services');
     document.getElementById('ic-refresh').onclick = render;
-    if (!token() || !organizationId()) {
+    const access = await accessToken();
+    if (!access || !organizationId()) {
       state.innerHTML = 'Authentication is required. The production UI must receive a Supabase access token and organization ID; no demo customer data is shown.';
       return;
     }
