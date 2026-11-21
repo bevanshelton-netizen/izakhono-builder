@@ -63,7 +63,7 @@ export class PaymentOrchestrator {
   }
   async reconcilePayment(input: { payment: PaymentIntent; observedAmountMinor: number; observedCurrency: string }): Promise<ReconciliationRecord> {
     const payment = await this.payments.getById(input.payment.id);
-    if (!payment || payment.id !== input.payment.id || (!payment.merchantId?.trim() || !payment.serviceId?.trim())) throw new Error('Canonical payment intent not found');
+    if (!payment || payment.id !== input.payment.id || !payment.merchantId?.trim() || !payment.serviceId?.trim()) throw new Error('Canonical payment intent not found');
     return this.reconciliation.reconcile({ provider: payment.provider, externalTransactionId: payment.externalTransactionId, expectedAmountMinor: payment.amountMinor, observedAmountMinor: input.observedAmountMinor, currency: input.observedCurrency });
   }
   async createSettlement(input: { merchantId: string; currency: string; amountMinor: number; transactionReferences: readonly string[] }): Promise<SettlementBatch> { this.assertMerchant(input.merchantId); return this.settlement.create(input); }
@@ -97,7 +97,7 @@ export class PaymentOrchestrator {
 
   async issueReceipt(candidate: PaymentIntent): Promise<boolean> {
     const payment = await this.payments.getById(candidate.id);
-    if (!payment || payment.id !== candidate.id || !payment.merchantId?.trim()) throw new Error('Canonical payment intent not found');
+    if (!payment || payment.id !== candidate.id || !payment.merchantId?.trim() || !payment.serviceId?.trim()) throw new Error('Canonical payment intent not found');
     if (payment.status !== 'paid' && payment.status !== 'refunded') throw new Error('Receipt requires a paid or refunded payment');
     return this.events.record(createPaymentEvent({ kind: 'receipt.issued', paymentIntentId: payment.id, externalTransactionId: payment.externalTransactionId, provider: payment.provider, fingerprint: `receipt.issued:${payment.id}` }));
   }
