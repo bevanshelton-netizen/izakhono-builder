@@ -10,7 +10,7 @@
   nav.appendChild(button);
 
   const token = () => window.I_CONNECT_ACCESS_TOKEN || sessionStorage.getItem('I_CONNECT_ACCESS_TOKEN') || localStorage.getItem('I_CONNECT_ACCESS_TOKEN') || '';
-  const esc = (v) => String(v ?? '').replace(/[&<>\"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[c]));
+  const esc = (v) => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
   function render() {
     const existing = document.getElementById('i-connect-checkout');
@@ -27,27 +27,82 @@
         <div><label>Customer name</label><input id="ic-name" placeholder="Customer / company name" style="width:100%;margin-top:7px;padding:11px;border-radius:9px;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.15);color:inherit"></div>
         <div><label>Requested slug</label><input id="ic-slug" placeholder="customer-name" style="width:100%;margin-top:7px;padding:11px;border-radius:9px;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.15);color:inherit"></div>
       </div>
-      <div class="control-actions"><button class="primary" id="ic-checkout-start">Create checkout</button><span id="ic-checkout-result" class="muted"></span></div>`;
+      <div class="control-actions"><button class="primary" id="ic-checkout-start">Create checkout</button><span id="ic-checkout-result" class="muted" aria-live="polite"></span></div>
+      <div id="ic-checkout-tracking" style="margin-top:12px" aria-live="polite"></div>`;
     system.after(wrap);
-    document.getElementById('ic-checkout-start').onclick = async () => {
-      const result = document.getElementById('ic-checkout-result');
-      const productCode = document.getElementById('ic-product').value.trim();
-      if (!productCode) return result.textContent = 'Product code is required.';
-      result.textContent = 'Creating checkout intent…';
+
+    const result = document.getElementById('ic-checkout-result');
+    const tracking = document.getElementById('ic-checkout-tracking');
+    let activeIntentId = null;
+
+    async function refreshState() {
+      if (!activeIntentId) return;
+      const t = token();
+      if (!t) {
+        tracking.textContent = 'Sign in again to securely view this checkout status.';
+        return;
+      }
+      tracking.textContent = 'Refreshing checkout status…';
       try {
-        const headers = { 'content-type':'application/json' };
-        const t = token(); if (t) headers.authorization = 'Bearer ' + t;
-        const r = await fetch('/api/checkout-intent', { method:'POST', headers, body:JSON.stringify({
-          productCode,
-          customerName: document.getElementById('ic-name').value.trim(),
-          customerEmail: document.getElementById('ic-email').value.trim(),
-          requestedSlug: document.getElementById('ic-slug').value.trim()
-        }) });
-        const data = await r.json().catch(() => ({}));
-        if (!r.ok) throw new Error(data.error || 'checkout_intent_failed');
-        result.textContent = 'Checkout intent created: ' + esc(JSON.stringify(data.data || data));
+        const r = await fetch('/api/checkout-state', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', authorization: 'Bearer ' + t },
+          body: JSON.stringify({ checkoutIntentId: activeIntentId })
+        });
+        const payload = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(payload.error || 'checkout_state_unavailable');
+        const state = payload.data || payload;
+        const line = document.createElement('div');
+        line.style.cssText = 'padding:12px;border:1px solid rgba(255,255,255,.1);border-radius:10px';
+        const heading = document.createElement('strong');
+        heading.textContent = 'Checkout status: ' + String(state.state || 'unknown').replaceAll('_',' ');
+        const message = document.createElement('p');
+        message.className = 'muted';
+        message.style.margin = '6px 0 0';
+        message.textContent = state.message || 'Status received.';
+        const refresh = document.createElement('button');
+        refresh.className = 'nav';
+        refresh.style.marginTop = '10px';
+        refresh.textContent = 'Refresh status';
+        refresh.onclick = refreshState;
+        line.append(heading, message, refresh);
+        tracking.replaceChildren(line);
       } catch (e) {
-        result.textContent = 'Checkout unavailable: ' + esc(e.message);
+        tracking.textContent = 'Status unavailable: ' + e.message;
+      }
+    }
+
+    document.getElementById('ic-checkout-start').onclick = async () => {
+      const productCode = document.getElementById('ic-product').value.trim();
+      const customerName = document.getElementById('ic-name').value.trim();
+      const customerEmail = document.getElementById('ic-email').value.trim();
+      if (!productCode) return result.textContent = 'Product code is required.';
+      if (!customerName || !customerEmail) return result.textContent = 'Customer name and email are required.';
+      const t = token();
+      if (!t) return result.textContent = 'Sign in is required before creating a checkout.';
+      result.textContent = 'Creating checkout intent…';
+      tracking.textContent = '';
+      try {
+        const r = await fetch('/api/checkout-intent', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', authorization: 'Bearer ' + t },
+          body: JSON.stringify({
+            productCode,
+            customerName,
+            customerEmail,
+            requestedSlug: document.getElementById('ic-slug').value.trim()
+          })
+        });
+        const payload = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(payload.error || 'checkout_intent_failed');
+        const intent = payload.data || payload;
+        activeIntentId = intent.intent_id || intent.checkout_intent_id || null;
+        result.textContent = activeIntentId
+          ? 'Checkout intent created · ' + (intent.amount ?? '') + ' ' + (intent.currency ?? '')
+          : 'Checkout intent created, but no intent identifier was returned.';
+        if (activeIntentId) await refreshState();
+      } catch (e) {
+        result.textContent = 'Checkout unavailable: ' + e.message;
       }
     };
   }
