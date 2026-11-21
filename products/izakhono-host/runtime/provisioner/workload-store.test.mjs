@@ -45,6 +45,10 @@ test('rejects idempotency-key reuse for a different immutable release', async ()
       store.create({ ...spec, releaseDigest: 'c'.repeat(64) }),
       error => error.code === 'IDEMPOTENCY_CONFLICT'
     );
+    await assert.rejects(
+      store.create({ ...spec, internalPort: 8081 }),
+      error => error.code === 'IDEMPOTENCY_CONFLICT'
+    );
   } finally {
     await rm(root, { recursive: true, force: true });
   }
