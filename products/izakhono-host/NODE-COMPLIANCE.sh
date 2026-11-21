@@ -94,6 +94,16 @@ else
   warn 'Owned runtime not running yet'
 fi
 
+if docker compose --env-file .env -f docker-compose.owned.yml config --services 2>/dev/null | grep -qx 'jarvis-api'; then
+  if docker compose --env-file .env -f docker-compose.owned.yml exec -T jarvis-api node -e "fetch('http://127.0.0.1:8080/health/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))" >/dev/null 2>&1; then
+    pass 'J.A.R.V.I.S. API readiness and PostgreSQL schema'
+  else
+    fail 'J.A.R.V.I.S. API readiness and PostgreSQL schema'
+  fi
+else
+  fail 'J.A.R.V.I.S. owned runtime service declared'
+fi
+
 printf '\nRESULTS: PASS=%d FAIL=%d WARN=%d\n' "$pass_count" "$fail_count" "$warn_count"
 
 if (( fail > 0 )); then
