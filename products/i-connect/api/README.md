@@ -92,3 +92,9 @@ verification and a real payment acceptance test are separate requirements.
 ## Current checkout boundary
 
 A checkout intent is only a pre-payment request. It is not a payment session and does not charge a customer. The current I-CONNECT catalog has no active I-CONNECT-priced product, and `pay_provider_connections` has no configured provider connection. The UI must display the returned `payment_ready=false` reason and must not imply that payment or telecom provisioning has begun.
+
+## Organisation onboarding
+
+- `POST /api/my-organizations` returns only active organisations where the authenticated user has an active membership. The database function uses `auth.uid()`; anonymous execution is revoked.
+- `POST /api/onboarding` creates the authenticated user's owner organisation through `ic_create_owner_organization`. The database enforces one owner organisation per user and records an audit event.
+- The My I-CONNECT screen automatically selects a single organisation, prompts when the user has multiple memberships, and offers owner onboarding when none exists.
