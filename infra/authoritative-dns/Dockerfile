@@ -1,7 +1,5 @@
-FROM powerdns/pdns-auth-49:4.9.18
+FROM powerdns/pdns-auth-51:5.1.5
 
-# 4.9.18 moves the official image from EOL Debian Bullseye to Debian Trixie
-# and includes the 4.9.18 security fix. Keep runtime tooling on a supported base.
 USER root
 
 RUN apt-get update \
