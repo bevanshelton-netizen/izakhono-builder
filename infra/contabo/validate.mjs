@@ -43,7 +43,7 @@ if (deploy.includes('source /opt/izakhono/config/stack.env')) throw new Error('S
 if (deploy.indexOf('Missing regular secret file') > deploy.indexOf('mv -Tf "$NEXT_LINK" "$CURRENT"')) {
   throw new Error('Secret preflight must happen before release pointer switch');
 }
-if (!inventory.includes('GET-only') || !inventory.includes('/v1/compute/instances')) {
+if (!inventory.includes('--get') || !inventory.includes('/v1/compute/instances')) {
   throw new Error('Read-only Contabo inventory contract missing');
 }
 if (inventory.includes('-X POST "${API}/v1/compute/instances"')) {
