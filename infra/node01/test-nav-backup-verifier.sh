@@ -44,6 +44,14 @@ GOOD="$TMP/good"
 make_fixture "$GOOD"
 bash "$VERIFY" "$GOOD"
 
+BAD="$TMP/bad-incomplete-checksums"
+cp -a "$GOOD" "$BAD"
+sed -i '$d' "$BAD/SHA256SUMS"
+if bash "$VERIFY" "$BAD" >/dev/null 2>&1; then
+  echo "ERROR: verifier accepted incomplete checksum coverage" >&2
+  exit 1
+fi
+
 BAD="$TMP/bad-traversal"
 cp -a "$GOOD" "$BAD"
 sed -i 's#archive=volume-edge_nav-caddy-data.tar.gz#archive=../../outside.tar.gz#' "$BAD/backup-manifest.txt"
@@ -70,4 +78,4 @@ if bash "$VERIFY" "$BAD" >/dev/null 2>&1; then
   exit 1
 fi
 
-echo "NAV backup verifier tests PASS: full owned-stack archive accepted; traversal, unsafe checksum path, and symlink rejected"
+echo "NAV backup verifier tests PASS: complete checksum coverage accepted; incomplete coverage, traversal, unsafe checksum path, and symlink rejected"
