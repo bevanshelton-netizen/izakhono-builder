@@ -15,6 +15,16 @@ on:
 jobs:
   validate:
     runs-on: ubuntu-latest
+    env:
+      HOST_RUNTIME_TOKEN: ci-host-runtime-token
+      TLS_EMAIL: ci@example.com
+      POSTGRES_PASSWORD: ci-postgres-password
+      MINIO_ROOT_USER: ci-minio-admin
+      MINIO_ROOT_PASSWORD: ci-minio-password
+      IZAKHONO_MAIL_API_TOKEN: ci-mail-api-token
+      STALWART_RECOVERY_ADMIN: ci-stalwart-recovery-admin
+      # Non-routable placeholder used only for Compose interpolation validation.
+      SMTP_HOST: mail.test.invalid
     steps:
       - uses: actions/checkout@v4
       - name: Validate compose files
