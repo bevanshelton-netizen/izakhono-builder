@@ -103,7 +103,7 @@ if __name__=="__main__":
     job=store.get(first["job_id"])
     # Contract adapters are simulations, never production acceptance evidence.
     assert job.state=="BLOCKED"
-    assert job.evidence.get("ACCEPTANCE_PASSED", {}).get("simulation") is True
+    assert all(job.evidence[s].get("simulation") is True for s in ("TENANT_CREATED", "DOMAIN_READY", "DNS_READY", "SITE_READY", "TLS_READY", "MAIL_READY", "INTEGRATIONS_READY")) and "ACCEPTANCE_PASSED" not in job.evidence
     try:
         service.handover(first["job_id"])
     except ServiceError as exc:
