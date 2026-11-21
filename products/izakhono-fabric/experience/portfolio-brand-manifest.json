@@ -1,0 +1,323 @@
+{
+  "schema": "izakhono.experience.brands.v1",
+  "effective_date": "2026-09-25",
+  "policy": {
+    "preserve_existing_brand_identity": true,
+    "no_behavioural_tracking": true,
+    "no_advertising_ids": true,
+    "no_utm_or_referral_attribution": true,
+    "remote_fonts_required": false,
+    "international_quality_score": 95,
+    "browser_visual_review_required": true,
+    "independent_engine_required": true,
+    "verified_https_required": true
+  },
+  "families": {
+    "sovereign": {
+      "name": "Sovereign Infrastructure",
+      "tone": "precise, powerful, calm, technical",
+      "fallback": {
+        "brand": "#0B8F99",
+        "accent": "#D4AF37",
+        "dark": "#07111F"
+      }
+    },
+    "media": {
+      "name": "Media & Creator",
+      "tone": "alive, cinematic, expressive, premium",
+      "fallback": {
+        "brand": "#D86A21",
+        "accent": "#F1C75B",
+        "dark": "#110D0A"
+      }
+    },
+    "education": {
+      "name": "Education",
+      "tone": "credible, warm, clear, human",
+      "fallback": {
+        "brand": "#1597A5",
+        "accent": "#D4AF37",
+        "dark": "#0D2A38"
+      }
+    },
+    "finance": {
+      "name": "Trust & Finance",
+      "tone": "secure, measured, institutional",
+      "fallback": {
+        "brand": "#0A6470",
+        "accent": "#D4AF37",
+        "dark": "#07111F"
+      }
+    },
+    "services": {
+      "name": "Work & Services",
+      "tone": "direct, useful, optimistic",
+      "fallback": {
+        "brand": "#176B87",
+        "accent": "#F0B44D",
+        "dark": "#0A1722"
+      }
+    },
+    "mobility": {
+      "name": "Mobility & Industrial",
+      "tone": "engineered, confident, practical",
+      "fallback": {
+        "brand": "#B83227",
+        "accent": "#F3A712",
+        "dark": "#111315"
+      }
+    },
+    "commerce": {
+      "name": "Commerce & Apparel",
+      "tone": "premium, editorial, product-led",
+      "fallback": {
+        "brand": "#161616",
+        "accent": "#C9A24A",
+        "dark": "#090909"
+      }
+    },
+    "creative": {
+      "name": "Creative & Growth",
+      "tone": "bold, modern, inventive",
+      "fallback": {
+        "brand": "#6D5DFB",
+        "accent": "#14B8A6",
+        "dark": "#11142A"
+      }
+    }
+  },
+  "platforms": [
+    {
+      "id": "izakhono-one",
+      "family": "sovereign",
+      "preserve": true
+    },
+    {
+      "id": "izakhono-os",
+      "family": "sovereign",
+      "preserve": true,
+      "no_tracking": true
+    },
+    {
+      "id": "izakhono-builder",
+      "family": "sovereign",
+      "preserve": true
+    },
+    {
+      "id": "izakhono-code",
+      "family": "sovereign",
+      "preserve": true
+    },
+    {
+      "id": "izakhono-forge",
+      "family": "sovereign",
+      "preserve": true
+    },
+    {
+      "id": "izakhono-cloud",
+      "family": "sovereign",
+      "preserve": true
+    },
+    {
+      "id": "izakhono-work",
+      "family": "sovereign",
+      "preserve": true
+    },
+    {
+      "id": "izakhono-send",
+      "family": "sovereign",
+      "preserve": true
+    },
+    {
+      "id": "izakhono-pay",
+      "family": "finance",
+      "preserve": true
+    },
+    {
+      "id": "izakhono-fortress",
+      "family": "finance",
+      "preserve": true
+    },
+    {
+      "id": "kora",
+      "family": "media",
+      "preserve": true,
+      "identity": [
+        "African visual energy",
+        "Kora-instrument logo/mark"
+      ]
+    },
+    {
+      "id": "kora-cinema",
+      "family": "media",
+      "preserve": true
+    },
+    {
+      "id": "kora-kids",
+      "family": "media",
+      "preserve": true,
+      "safeguarding": true
+    },
+    {
+      "id": "yhvh-gospel-tv",
+      "family": "media",
+      "preserve": true
+    },
+    {
+      "id": "allegro-vibez",
+      "family": "media",
+      "preserve": true
+    },
+    {
+      "id": "allegro-radio",
+      "family": "media",
+      "preserve": true
+    },
+    {
+      "id": "music-school",
+      "family": "education",
+      "preserve": true
+    },
+    {
+      "id": "recording-studio",
+      "family": "creative",
+      "preserve": true
+    },
+    {
+      "id": "edu-build-institute",
+      "family": "education",
+      "preserve": true,
+      "identity": [
+        "official T-shirt master logo",
+        "turquoise/blue",
+        "gold",
+        "sky blue"
+      ]
+    },
+    {
+      "id": "edubuild-ecd360",
+      "family": "education",
+      "preserve": true
+    },
+    {
+      "id": "faisready",
+      "family": "education",
+      "preserve": true
+    },
+    {
+      "id": "matric-rewrite-academy",
+      "family": "education",
+      "preserve": true
+    },
+    {
+      "id": "studypal",
+      "family": "education",
+      "preserve": true
+    },
+    {
+      "id": "digital-finance-academy",
+      "family": "education",
+      "preserve": true
+    },
+    {
+      "id": "doxa-sure",
+      "family": "finance",
+      "preserve": true
+    },
+    {
+      "id": "super-accountant",
+      "family": "finance",
+      "preserve": true
+    },
+    {
+      "id": "worknow",
+      "family": "services",
+      "preserve": true
+    },
+    {
+      "id": "yenzanow",
+      "family": "services",
+      "preserve": true
+    },
+    {
+      "id": "auto-ai",
+      "family": "mobility",
+      "preserve": true
+    },
+    {
+      "id": "learner-driver-sa",
+      "family": "mobility",
+      "preserve": true
+    },
+    {
+      "id": "pimp-my-old-car",
+      "family": "mobility",
+      "preserve": true
+    },
+    {
+      "id": "shelton-motor-company",
+      "family": "mobility",
+      "preserve": true
+    },
+    {
+      "id": "jkmr-mining",
+      "family": "mobility",
+      "preserve": true
+    },
+    {
+      "id": "izakhono-create",
+      "family": "creative",
+      "preserve": true
+    },
+    {
+      "id": "izakhono-creative-suite",
+      "family": "creative",
+      "preserve": true
+    },
+    {
+      "id": "zeely-style-platform",
+      "family": "creative",
+      "preserve": true
+    },
+    {
+      "id": "business-websites",
+      "family": "creative",
+      "preserve": true
+    },
+    {
+      "id": "supercool",
+      "family": "creative",
+      "preserve": true
+    },
+    {
+      "id": "the-chancellor",
+      "family": "services",
+      "preserve": true
+    },
+    {
+      "id": "izakhono-clothing",
+      "family": "commerce",
+      "preserve": true
+    },
+    {
+      "id": "bevan-shelton",
+      "family": "commerce",
+      "preserve": true
+    },
+    {
+      "id": "legacymart",
+      "family": "commerce",
+      "preserve": true
+    },
+    {
+      "id": "edu-build-shop",
+      "family": "commerce",
+      "preserve": true
+    },
+    {
+      "id": "memory-mania",
+      "family": "creative",
+      "preserve": true
+    }
+  ]
+}

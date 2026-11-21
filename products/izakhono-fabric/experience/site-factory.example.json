@@ -1,0 +1,38 @@
+{
+  "id": "example-platform",
+  "name": "EXAMPLE PLATFORM",
+  "tagline": "Clear value. Clear action.",
+  "family": "services",
+  "mark": "EX",
+  "hero": "Clear value. Clear action.",
+  "description": "Replace this with the actual customer promise.",
+  "colors": {
+    "brand": "#0b8f99",
+    "accent": "#d4af37",
+    "dark": "#07111f"
+  },
+  "primary_action": {
+    "label": "Get started",
+    "href": "#contact"
+  },
+  "trust": [
+    "Privacy-first",
+    "Mobile-ready",
+    "Human-readable"
+  ],
+  "sections": [
+    {
+      "title": "Capability one",
+      "copy": "Concrete customer value."
+    },
+    {
+      "title": "Capability two",
+      "copy": "Concrete customer value."
+    },
+    {
+      "title": "Capability three",
+      "copy": "Concrete customer value."
+    }
+  ],
+  "indexable": false
+}
