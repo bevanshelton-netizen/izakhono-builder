@@ -4,6 +4,8 @@ import type { RefundOperation, RefundOperationReservation, RefundOperationStore 
 import type { RefundProvider } from './payment-refunds.js';
 import { RefundRecoveryWorker, type RefundRecoveryQueue } from './payment-refund-recovery-worker.js';
 
+
+async function main() {
 class Queue implements RefundRecoveryQueue {
   operation: RefundOperation;
   constructor(operation: RefundOperation) { this.operation = operation; }
@@ -36,3 +38,6 @@ assert.equal(finalized, 1);
 assert.equal(queue.operation.status, 'succeeded');
 
 console.log('payment-refund-recovery-worker.test.ts: ok');
+}
+
+void main();
