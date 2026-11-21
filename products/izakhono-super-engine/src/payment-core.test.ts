@@ -55,6 +55,6 @@ const evidence = await ikh.verifyPaymentEvidence(ikhWebhook, ikhIntent);
 assert.equal(evidence.amountMinor, 14900);
 assert.equal(evidence.currency, 'ZAR');
 assert.equal(statusRequests.length, 1);
-assert.match(statusRequests[0].url, /getStatus\\/external\\?externalReference=ORDER-1001/);
+assert.match(statusRequests[0].url, /getStatus\/external\?externalReference=ORDER-1001/);
 assert.equal(new Headers(statusRequests[0].init?.headers).get('IK-APPID'), 'app-id');
 console.log('IZAKHONO PAY core tests passed');
