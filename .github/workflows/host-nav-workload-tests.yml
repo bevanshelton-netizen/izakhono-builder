@@ -8,6 +8,8 @@ on:
       - 'products/izakhono-host/runtime/provisioner/workload-state-machine.test.mjs'
       - 'products/izakhono-host/runtime/provisioner/workload-store.mjs'
       - 'products/izakhono-host/runtime/provisioner/workload-store.test.mjs'
+      - 'products/izakhono-host/runtime/provisioner/workload-worker.mjs'
+      - 'products/izakhono-host/runtime/provisioner/workload-worker.test.mjs'
       - 'products/izakhono-host/runtime/provisioner/runtime-adapter-contract.mjs'
       - 'products/izakhono-host/runtime/provisioner/runtime-adapter-contract.test.mjs'
       - 'products/izakhono-host/runtime/control-plane/server.mjs'
@@ -56,11 +58,12 @@ jobs:
         run: |
           node --check products/izakhono-host/runtime/provisioner/workload-state-machine.mjs
           node --check products/izakhono-host/runtime/provisioner/workload-store.mjs
+          node --check products/izakhono-host/runtime/provisioner/workload-worker.mjs
           node --check products/izakhono-host/runtime/provisioner/runtime-adapter-contract.mjs
           node --check products/izakhono-host/runtime/control-plane/server.mjs
 
       - name: Run HOST NAV workload tests
-        run: node --test products/izakhono-host/runtime/provisioner/workload-state-machine.test.mjs products/izakhono-host/runtime/provisioner/workload-store.test.mjs products/izakhono-host/runtime/provisioner/runtime-adapter-contract.test.mjs
+        run: node --test products/izakhono-host/runtime/provisioner/workload-state-machine.test.mjs products/izakhono-host/runtime/provisioner/workload-store.test.mjs products/izakhono-host/runtime/provisioner/workload-worker.test.mjs products/izakhono-host/runtime/provisioner/runtime-adapter-contract.test.mjs
 
       - name: Run HOST control-plane smoke test
         run: node products/izakhono-host/runtime/control-plane/smoke.mjs
