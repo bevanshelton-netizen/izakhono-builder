@@ -21,7 +21,24 @@ jobs:
   source-validation:
     name: Validate J.A.R.V.I.S. source contracts (not deployment)
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: jarvis_test
+          POSTGRES_PASSWORD: jarvis_test_only
+          POSTGRES_DB: jarvis_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U jarvis_test -d jarvis_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://jarvis_test:jarvis_test_only@localhost:5432/jarvis_test
+      DATABASE_SSLMODE: disable
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -31,7 +48,11 @@ jobs:
         with:
           node-version: 22
 
-      - name: Install locked dependencies
+      - name: Install locked root dependencies
+        run: npm install --ignore-scripts --no-audit --no-fund
+
+      - name: Install isolated J.A.R.V.I.S. runtime dependencies
+        working-directory: products/izakhono-jarvis/runtime
         run: npm install --ignore-scripts --no-audit --no-fund
 
       - name: Test bounded worker and supervisor
@@ -40,7 +61,19 @@ jobs:
       - name: Test owner-controlled workforce queue
         run: npm run jarvis:workforce:test
 
-      - name: Validate J.A.R.V.I.S. migration chain in isolated SQLite
+      - name: Test PostgreSQL SQL adapter
+        working-directory: products/izakhono-jarvis/runtime
+        run: npm test
+
+      - name: Validate J.A.R.V.I.S. PostgreSQL schema and route integration
+        working-directory: products/izakhono-jarvis/runtime
+        env:
+          JARVIS_ALLOW_SCHEMA_MIGRATION: "1"
+        run: |
+          node postgres-migrate.mjs
+          npm run test:postgres
+
+      - name: Validate original SQLite migration chain
         shell: bash
         run: |
           python3 - <<'PY'
@@ -65,10 +98,10 @@ jobs:
           missing = required - tables
           if missing:
               raise SystemExit("Missing tables: " + ", ".join(sorted(missing)))
-          print("PASS all seven J.A.R.V.I.S. migrations applied in order")
+          print("PASS all seven J.A.R.V.I.S. SQLite migrations applied in order")
           PY
 
-      - name: Confirm deployment is not part of source validation
+      - name: Confirm owned-runtime source validation is not deployment
         shell: bash
         run: |
           set -euo pipefail
@@ -77,4 +110,4 @@ jobs:
             exit 1
           fi
           echo "PASS source validation does not deploy or require Cloudflare credentials."
-          echo "Production remains blocked until the owned Node/PostgreSQL adapters and real executor pass their separate acceptance gates."
+          echo "PostgreSQL integration runs against disposable CI only; production remains a separately gated operation."
