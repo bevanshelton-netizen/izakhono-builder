@@ -97,7 +97,7 @@ export class SupabasePaymentStore implements PaymentStore {
   }
 
   async update(id: string, patch: Partial<PaymentIntent>): Promise<PaymentIntent> {
-    if (patch.merchantId !== undefined) throw new Error('Payment merchant identity is immutable');
+    if (patch.merchantId !== undefined || patch.serviceId !== undefined) throw new Error('Payment merchant and service identity are immutable');
     const payload: Record<string, unknown> = { updated_at: new Date().toISOString() };
     if (patch.externalTransactionId !== undefined) payload.external_transaction_id = patch.externalTransactionId;
     if (patch.amountMinor !== undefined) payload.amount_minor = patch.amountMinor;
