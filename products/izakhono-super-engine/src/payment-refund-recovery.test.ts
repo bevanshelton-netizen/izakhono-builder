@@ -5,7 +5,7 @@ import { IzakhonoRefundRecovery } from './payment-refund-recovery.js';
 import type { RefundProvider } from './payment-refunds.js';
 
 const payment: PaymentIntent = {
-  id: 'pay_recovery_1', externalTransactionId: 'order_recovery_1', amountMinor: 10000, currency: 'ZAR', status: 'paid',
+  id: 'pay_recovery_1', merchantId: 'merchant_1', externalTransactionId: 'order_recovery_1', amountMinor: 10000, currency: 'ZAR', status: 'paid',
   provider: 'test-provider', providerPaymentId: 'provider-payment-1', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
 };
 
