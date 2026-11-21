@@ -16,6 +16,30 @@ services:
       timeout: 5s
       retries: 5
 
+  jarvis-api:
+    build:
+      context: ../..
+      dockerfile: products/izakhono-jarvis/runtime/Dockerfile
+    restart: unless-stopped
+    environment:
+      PORT: 8080
+      HOST: 0.0.0.0
+      DATABASE_URL: postgresql://${POSTGRES_USER:-izakhono}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-izakhono}
+      DATABASE_SSLMODE: disable
+      PG_POOL_MAX: ${JARVIS_PG_POOL_MAX:-10}
+      JARVIS_OWNER_SECRET: ${JARVIS_OWNER_SECRET:?set JARVIS_OWNER_SECRET}
+      JARVIS_WORKER_TOKEN: ${JARVIS_WORKER_TOKEN:?set JARVIS_WORKER_TOKEN}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks: [izakhono]
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8080/health/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      start_period: 20s
+      retries: 5
+
   contact-gateway:
     profiles: [mail]
     build: ./runtime/contact-gateway
