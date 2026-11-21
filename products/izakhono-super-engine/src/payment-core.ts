@@ -39,10 +39,14 @@ export interface PaymentWebhook {
   provider: string;
   providerPaymentId: string;
   externalTransactionId: string;
-  amountMinor: number;
-  currency: string;
   status: 'SUCCESS' | 'FAILURE';
   responseCode: string;
+}
+
+/** Provider-side status lookup evidence, normalized to the intent's currency and minor units. */
+export interface PaymentWebhookEvidence extends PaymentWebhook {
+  amountMinor: number;
+  currency: string;
 }
 
 /** Supplied only by the server's authenticated request boundary, never from a client payload. */
@@ -55,6 +59,7 @@ export interface PaymentProvider {
   createPaymentLink(input: CreatePaymentInput): Promise<PaymentLink>;
   verifyWebhook(rawBody: string, callbackPath: string, signature: string): Promise<boolean>;
   parseWebhook(rawBody: string): PaymentWebhook;
+  verifyPaymentEvidence(webhook: PaymentWebhook, intent: PaymentIntent): Promise<PaymentWebhookEvidence>;
 }
 
 export interface PaymentStore {
@@ -150,10 +155,12 @@ export class IzakhonoPay {
     if (!intent) throw new Error('Unknown payment transaction');
     if (!intent.merchantId?.trim()) throw new Error('Payment intent has no trusted merchant identity');
     if (webhook.provider !== intent.provider) throw new Error('Payment webhook provider does not match payment intent');
-    if (!intent.providerPaymentId || webhook.providerPaymentId !== intent.providerPaymentId) throw new Error('Payment webhook provider reference does not match payment intent');
-    if (!Number.isSafeInteger(webhook.amountMinor) || webhook.amountMinor !== intent.amountMinor) throw new Error('Payment webhook amount does not match payment intent');
-    if (webhook.currency !== intent.currency) throw new Error('Payment webhook currency does not match payment intent');
-    const success = webhook.status === 'SUCCESS' && webhook.responseCode === '00';
+    const evidence = await this.provider.verifyPaymentEvidence(webhook, intent);
+    if (evidence.provider !== intent.provider || evidence.providerPaymentId !== intent.providerPaymentId || evidence.externalTransactionId !== intent.externalTransactionId) throw new Error('Provider payment evidence does not match payment intent references');
+    if (!Number.isSafeInteger(evidence.amountMinor) || evidence.amountMinor !== intent.amountMinor) throw new Error('Provider payment evidence amount does not match payment intent');
+    if (evidence.currency !== intent.currency) throw new Error('Provider payment evidence currency does not match payment intent');
+    if (evidence.status !== webhook.status || evidence.responseCode !== webhook.responseCode) throw new Error('Provider payment evidence contradicts webhook outcome');
+    const success = evidence.status === 'SUCCESS' && evidence.responseCode === '00';
     if (intent.status === 'paid' && success) return intent;
     if (intent.status !== 'pending') throw new Error(`Payment webhook cannot transition intent from ${intent.status}`);
     const status: PaymentStatus = success ? 'paid' : 'failed';
@@ -213,10 +220,27 @@ export class IKhokhaProvider implements PaymentProvider {
   }
 
   parseWebhook(rawBody: string): PaymentWebhook {
-    const body = JSON.parse(rawBody) as Partial<PaymentWebhook> & { paylinkID?: string; externalTransactionID?: string };
-    if (!body.paylinkID || !body.externalTransactionID || !body.status || !body.responseCode || !Number.isSafeInteger(body.amountMinor) || !body.currency) throw new Error('Invalid iKhokha webhook payload: provider reference, amountMinor and currency are required');
+    const body = JSON.parse(rawBody) as { paylinkID?: string; externalTransactionID?: string; status?: string; responseCode?: string };
+    if (!body.paylinkID || !body.externalTransactionID || !body.status || !body.responseCode) throw new Error('Invalid iKhokha webhook payload');
     if (body.status !== 'SUCCESS' && body.status !== 'FAILURE') throw new Error('Invalid iKhokha webhook status');
-    return { provider: this.id, providerPaymentId: body.paylinkID, externalTransactionId: body.externalTransactionID, amountMinor: body.amountMinor!, currency: body.currency, status: body.status, responseCode: body.responseCode };
+    return { provider: this.id, providerPaymentId: body.paylinkID, externalTransactionId: body.externalTransactionID, status: body.status, responseCode: body.responseCode };
+  }
+
+  async verifyPaymentEvidence(webhook: PaymentWebhook, intent: PaymentIntent): Promise<PaymentWebhookEvidence> {
+    const path = `/public-api/v1/api/getStatus/external?externalReference=${encodeURIComponent(webhook.externalTransactionId)}`;
+    const response = await this.fetcher(`${this.baseUrl}${path}`, {
+      method: 'GET',
+      headers: { 'IK-APPID': this.config.appId, 'IK-SIGN': await hmacSha256Hex(path, this.config.appSecret) },
+    });
+    if (!response.ok) throw new Error(`iKhokha payment-status verification failed: HTTP ${response.status}`);
+    const data = await response.json() as { paylinkID?: string; status?: string; amount?: number };
+    if (!data.paylinkID || data.paylinkID !== intent.providerPaymentId || data.paylinkID !== webhook.providerPaymentId) throw new Error('iKhokha payment-status reference does not match payment intent');
+    if (!Number.isSafeInteger(data.amount) || data.amount !== intent.amountMinor) throw new Error('iKhokha payment-status amount does not match payment intent');
+    const providerStatus = String(data.status ?? '').toUpperCase();
+    const expectedSuccess = webhook.status === 'SUCCESS' && webhook.responseCode === '00';
+    if (expectedSuccess && providerStatus !== 'PAID') throw new Error('iKhokha status lookup does not confirm a paid transaction');
+    if (!expectedSuccess && !['FAILED', 'FAILURE'].includes(providerStatus)) throw new Error('iKhokha status lookup does not confirm the reported failed transaction');
+    return { provider: this.id, providerPaymentId: data.paylinkID, externalTransactionId: intent.externalTransactionId, amountMinor: data.amount, currency: intent.currency, status: webhook.status, responseCode: webhook.responseCode };
   }
 }
 
