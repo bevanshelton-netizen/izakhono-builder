@@ -181,20 +181,25 @@ class IdentityVerificationService:
                 (request.entity_id, idem_hash),
             ).fetchone()
             if existing:
-                return self._row(existing)
-            session_id = "idv_" + secrets.token_urlsafe(18)
-            now = utc_now()
-            db.execute(
-                """INSERT INTO identity_verification_sessions(
-                    id,entity_id,subject_ref,purpose,jurisdiction,provider,status,
-                    idempotency_hash,notice_version,created_at,updated_at
-                ) VALUES(?,?,?,?,?,?,'pending',?,?,?,?)""",
-                (session_id, request.entity_id, request.subject_ref, request.purpose,
-                 request.jurisdiction, provider.provider_id, idem_hash, request.notice_version, now, now),
-            )
-            self._audit(db, "identity_verification.started", request.entity_id,
-                        request.subject_ref, "provider_session_initializing")
-            db.commit()
+                # Retry only unfinished provider starts, using the same vendor idempotency key.
+                # A completed or already-created provider session is returned unchanged.
+                if existing["provider_session_ref"] or existing["status"] not in ("pending", "provider_unavailable"):
+                    return self._row(existing)
+                session_id = existing["id"]
+            else:
+                session_id = "idv_" + secrets.token_urlsafe(18)
+                now = utc_now()
+                db.execute(
+                    """INSERT INTO identity_verification_sessions(
+                        id,entity_id,subject_ref,purpose,jurisdiction,provider,status,
+                        idempotency_hash,notice_version,created_at,updated_at
+                    ) VALUES(?,?,?,?,?,?,'pending',?,?,?,?)""",
+                    (session_id, request.entity_id, request.subject_ref, request.purpose,
+                     request.jurisdiction, provider.provider_id, idem_hash, request.notice_version, now, now),
+                )
+                self._audit(db, "identity_verification.started", request.entity_id,
+                            request.subject_ref, "provider_session_initializing")
+                db.commit()
 
         try:
             if not provider.health():
