@@ -54,7 +54,7 @@ class VerificationProvider(Protocol):
 class RegulaTransport(Protocol):
     """Implement against the licensed Regula IDV/Document Reader/Face SDK contract."""
     def health(self) -> bool: ...
-    def create_verification(self, *, external_reference: str, jurisdiction: str, purpose: str, notice_version: str) -> VerificationStart: ...
+    def create_verification(self, *, entity_ref: str, subject_ref_hash: str, idempotency_key_hash: str, jurisdiction: str, purpose: str, notice_version: str) -> VerificationStart: ...
     def get_verification(self, provider_session_ref: str) -> VerificationOutcome: ...
     def cancel_verification(self, provider_session_ref: str) -> None: ...
 
@@ -66,7 +66,9 @@ class RegulaProvider:
         return bool(self.transport.health())
     def start(self, request: VerificationRequest) -> VerificationStart:
         return self.transport.create_verification(
-            external_reference=request.idempotency_key,
+            entity_ref=request.entity_id,
+            subject_ref_hash=sha256(request.subject_ref),
+            idempotency_key_hash=sha256(request.idempotency_key),
             jurisdiction=request.jurisdiction,
             purpose=request.purpose,
             notice_version=request.notice_version,
