@@ -16,7 +16,7 @@ Internet
 Authoritative DNS
   |
   +--> A / AAAA / CNAME / MX / TXT / SRV / CAA / NS
-  +--> DNSSEC signing
+  +--> DNSSEC capability (not production-enabled until key/delegation checks pass)
   +--> AXFR/IXFR replication
   +--> API-controlled provisioning
   +--> Health checks and serial monitoring
@@ -28,13 +28,15 @@ DNS -> public IP -> router/NAT -> NODE01 -> Caddy -> application
 ## Components
 
 - PowerDNS Authoritative Server
-- PostgreSQL-backed zone store
-- REST API for controlled provisioning
+- SQLite-backed local zone store in the current deployment profile
+- REST API for controlled provisioning on the primary only
 - Primary/secondary replication using AXFR/IXFR
-- DNSSEC capability
+- DNSSEC support; signing and parent DS publication remain explicit production gates
 - Health/readiness checks
 - No dependency on Vercel or Cloudflare for authoritative DNS
 - Mail remains isolated from the web plane
+
+The current SQLite backend is a deliberate single-primary control-plane implementation. Do not describe it as PostgreSQL-backed. A database-backend migration is a separate change and must preserve zone data and rollback capability.
 
 ## Important production rule
 
@@ -50,9 +52,10 @@ Set these in the deployment environment; never commit them:
 - `SECONDARY_NS_FQDN`
 - `PRIMARY_PUBLIC_IPV4`
 - `SECONDARY_PUBLIC_IPV4`
-- `PDNS_API_KEY`
-- `PDNS_DB_PASSWORD`
-- `AXFR_ALLOWED_NETS`
+- `PDNS_API_KEY` (primary only)
+- `AXFR_ALLOWED_NETS` (approved transfer source policy)
+
+The secondary does not need the primary API key. The primary API is bound inside the container for local management and published only on the host loopback interface.
 
 ## Deployment gates
 
@@ -68,8 +71,6 @@ A DNS server is NOT considered authoritative/live until all are true:
 8. DNSSEC is enabled only after DS/DNSKEY validation is verified end-to-end.
 9. Web records resolve to the intended owned edge.
 10. Existing MX/TXT records are preserved before any cutover.
-
-These gates follow the baseline requirements for authoritative name servers: at least two servers, distinct networks, UDP/TCP reachability, authoritative answers, and consistency between delegation and served data.
 
 ## ALLEGRO cutover
 
