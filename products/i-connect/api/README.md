@@ -62,3 +62,25 @@ The second migration moves privileged membership checks out of the exposed `publ
 The API contracts and schema are deployable, but real customer identity and persistent telecom state require the dedicated I-CONNECT Supabase project to be connected through environment variables.
 
 Real PSTN calls and live mobile service require an authorised carrier/SIP adapter, compliant numbering and credentials. The application must not represent those services as live until independently verified.
+
+## Customer checkout API
+
+The owned Express runtime mounts the shared customer endpoints through
+`runtime/register-api-routes.js`:
+
+- `POST /api/checkout-intent` creates a checkout intent through
+  `ic_prepare_checkout_intent_for_customer`. A valid Supabase user bearer token
+  is required; the database records the authenticated user as the owner.
+- `POST /api/checkout-state` reads the checkout state through
+  `ic_checkout_state_for_customer`. The database verifies ownership and omits
+  the external payment reference from the customer response.
+- `POST /api/provider-attempt` is deliberately disabled (HTTP 410). It must
+  not be exposed as a public service-role RPC. Provider orchestration belongs
+  behind a server-to-server integration with verified checkout-session
+  ownership and a restricted provider allowlist.
+
+The Supabase publishable/legacy anon key is only the API key; it does not
+authenticate a customer. Customer RPCs still require a valid Supabase Auth
+access token. A configured API key or checkout intent does not mean payment
+is ready. A live provider connection, merchant credentials, signed webhook
+verification and a real payment acceptance test are separate requirements.
