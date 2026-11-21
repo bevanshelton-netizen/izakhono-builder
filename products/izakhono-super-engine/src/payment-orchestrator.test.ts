@@ -10,7 +10,7 @@ import { PaymentOrchestrator } from './payment-orchestrator.js';
 
 
 async function main() {
-const payment: PaymentIntent = { id: 'pay_e2e_1', merchantId: 'merchant_1', externalTransactionId: 'order_e2e_1', amountMinor: 14900, currency: 'ZAR', status: 'paid', provider: 'ikhokha', providerPaymentId: 'ik_pay_1', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
+const payment: PaymentIntent = { id: 'pay_e2e_1', merchantId: 'merchant_1', serviceId: 'website', externalTransactionId: 'order_e2e_1', amountMinor: 14900, currency: 'ZAR', status: 'paid', provider: 'ikhokha', providerPaymentId: 'ik_pay_1', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
 const paymentStore = new MemoryPaymentStore();
 await paymentStore.save(payment);
 const ledgerStore = new MemoryPaymentLedgerStore();
@@ -29,7 +29,7 @@ assert.ok(await ledgerStore.getMerchantAccount('merchant_1', 'ZAR'));
 assert.equal(await ledgerStore.getMerchantAccount('merchant_attacker', 'ZAR'), undefined);
 assert.equal(await orchestrator.recordPaid(payment), false);
 assert.equal((await ledgerStore.listTransactions()).length, 1);
-const job = await orchestrator.fulfillPaid({ ...payment, merchantId: 'merchant_attacker' }, { serviceId: 'website' });
+const job = await orchestrator.fulfillPaid({ ...payment, merchantId: 'merchant_attacker', serviceId: 'attacker-service' });
 const completed = await orchestrator.executeFulfillment(job, { ...payment, merchantId: 'merchant_attacker' });
 assert.equal(completed.status, 'completed');
 assert.equal(provisioned, 1);
@@ -38,7 +38,7 @@ assert.equal(reconciliation.matched, true);
 const settlement = await orchestrator.createSettlement({ merchantId: 'merchant_1', currency: 'ZAR', amountMinor: 14900, transactionReferences: ['payment:pay_e2e_1'] });
 await orchestrator.recordSettlement({ settlement, merchantPayableAccountId: 'merchant_payable_1' });
 assert.equal((await orchestrator.markSettlementSettled(settlement.id)).status, 'settled');
-const refunded = await orchestrator.refund(payment, { serviceId: 'website' });
+const refunded = await orchestrator.refund(payment);
 assert.equal(refunded.payment.status, 'refunded');
 assert.equal(refunds, 1);
 assert.equal(refunded.transaction.type, 'refund');
