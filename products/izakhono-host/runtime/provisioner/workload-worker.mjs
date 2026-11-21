@@ -2,7 +2,7 @@ import { workloadRetryDelay } from './workload-state-machine.mjs';
 
 // One bounded execution pass. Provider selection is injected by trusted HOST
 // configuration; no request body can select code, credentials or provider APIs.
-export function createWorkloadWorker({ store, adapterRegistry, resolveBinding, workerId = 'host-nav-worker', leaseMs = 60000, now = () => new Date() }) {
+export function createWorkloadWorker({ store, adapterRegistry, resolveBinding, workerId = 'host-nav-worker', leaseMs = 180000, now = () => new Date() }) {
   if (!store || typeof store.claimNext !== 'function' || typeof store.recordExecution !== 'function' || typeof store.releaseClaim !== 'function') {
     throw new Error('A lease-capable durable workload store is required');
   }
