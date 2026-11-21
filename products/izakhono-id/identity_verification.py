@@ -357,6 +357,7 @@ class IdentityVerificationService:
             return self._row(updated)
 
     def cancel(self, entity_id: str, session_id: str) -> None:
+        terminal = ("verified", "review_required", "incomplete", "cancelled")
         with self.connect() as db:
             row = db.execute(
                 "SELECT * FROM identity_verification_sessions WHERE entity_id=? AND id=?",
@@ -364,18 +365,33 @@ class IdentityVerificationService:
             ).fetchone()
             if not row:
                 raise LookupError("verification_session_not_found")
-            if row["status"] in ("verified", "review_required", "cancelled"):
+            if row["status"] in terminal:
+                return
+            now = utc_now()
+            changed = db.execute(
+                """UPDATE identity_verification_sessions
+                   SET status='cancelled',updated_at=?
+                   WHERE entity_id=? AND id=?
+                     AND status IN ('pending','in_progress','provider_unavailable')""",
+                (now, entity_id, session_id),
+            ).rowcount
+            if changed:
+                self._audit(db, "identity_verification.cancelled", entity_id,
+                            row["subject_ref"], "cancelled_by_authorized_entity")
+            db.commit()
+            current = db.execute(
+                "SELECT * FROM identity_verification_sessions WHERE entity_id=? AND id=?",
+                (entity_id, session_id),
+            ).fetchone()
+            if not changed or current["status"] != "cancelled":
                 return
             provider = self.providers.get(row["provider"])
             provider_ref = row["provider_session_ref"]
+
+        # Local cancellation is committed first so a concurrent poll cannot
+        # resurrect the session if the vendor cancellation request is delayed.
         if provider and provider_ref:
-            provider.cancel(provider_ref)
-        with self.connect() as db:
-            db.execute(
-                """UPDATE identity_verification_sessions
-                   SET status='cancelled',updated_at=? WHERE entity_id=? AND id=?""",
-                (utc_now(), entity_id, session_id),
-            )
-            self._audit(db, "identity_verification.cancelled", entity_id,
-                        row["subject_ref"], "cancelled_by_authorized_entity")
-            db.commit()
+            try:
+                provider.cancel(provider_ref)
+            except Exception:
+                raise RuntimeError("verification_provider_cancel_unavailable") from None
