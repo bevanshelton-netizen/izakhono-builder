@@ -60,13 +60,16 @@ export class PaymentFulfillment {
       return existing;
     }
     const now = new Date().toISOString();
-    return this.store.create({ id: `fulfill_${crypto.randomUUID()}`, paymentIntentId: payment.id, merchantId: payment.merchantId, serviceId: config.serviceId, status: 'queued', attempts: 0, createdAt: now, updatedAt: now });
+    const created = await this.store.create({ id: `fulfill_${crypto.randomUUID()}`, paymentIntentId: payment.id, merchantId: payment.merchantId, serviceId: config.serviceId, status: 'queued', attempts: 0, createdAt: now, updatedAt: now });
+    if (created.paymentIntentId !== payment.id || created.merchantId !== payment.merchantId || created.serviceId !== config.serviceId) throw new Error('Persisted fulfillment ownership does not match canonical payment intent');
+    return created;
   }
   async execute(job: FulfillmentJob, payment: PaymentIntent): Promise<FulfillmentJob> {
     if (payment.status !== 'paid' || !payment.merchantId?.trim()) throw new Error('Fulfillment requires a canonically paid payment with merchant identity');
     if (job.paymentIntentId !== payment.id || job.merchantId !== payment.merchantId) throw new Error('Fulfillment job does not belong to the supplied payment intent');
     const persisted = await this.store.getByPaymentIntent(payment.id);
     if (!persisted || persisted.id !== job.id || persisted.merchantId !== payment.merchantId || persisted.serviceId !== job.serviceId) throw new Error('Persisted fulfillment ownership does not match payment intent');
+    if (persisted.status === 'completed') return persisted;
     const running = await this.store.update(persisted.id, { status: 'running', attempts: persisted.attempts + 1 });
     try {
       await this.provisioner.provision({ job: running, payment });
@@ -78,8 +81,9 @@ export class PaymentFulfillment {
   }
 }
 
-export function createPaymentPaidMessage(payment: PaymentIntent): ServiceMessage<{ paymentIntentId: string; externalTransactionId: string; amountMinor: number; currency: string }> {
-  return { id: `evt_payment_paid_${payment.id}`, source: 'payments', destination: 'provisioning', topic: 'payment.paid', payload: { paymentIntentId: payment.id, externalTransactionId: payment.externalTransactionId, amountMinor: payment.amountMinor, currency: payment.currency }, createdAt: new Date().toISOString(), external: false };
+export function createPaymentPaidMessage(payment: PaymentIntent): ServiceMessage<{ paymentIntentId: string; externalTransactionId: string; merchantId: string; amountMinor: number; currency: string }> {
+  if (!payment.merchantId?.trim()) throw new Error('Payment intent has no trusted merchant identity');
+  return { id: `evt_payment_paid_${payment.id}`, source: 'payments', destination: 'provisioning', topic: 'payment.paid', payload: { paymentIntentId: payment.id, externalTransactionId: payment.externalTransactionId, merchantId: payment.merchantId, amountMinor: payment.amountMinor, currency: payment.currency }, createdAt: new Date().toISOString(), external: false };
 }
 
 export function registerPaymentFulfillment(bus: ServiceBus, store: FulfillmentStore, provisioner: ProvisionerHandler, configResolver: (payment: PaymentIntent) => PaymentFulfillmentConfig, paymentResolver: (paymentIntentId: string) => Promise<PaymentIntent | undefined>): () => void {
