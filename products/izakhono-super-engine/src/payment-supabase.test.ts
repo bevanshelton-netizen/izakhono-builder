@@ -41,7 +41,13 @@ const store = new SupabasePaymentStore({
       created_at: intent.createdAt,
       updated_at: intent.updatedAt,
     }]);
-    return Response.json([{ ...intent, status: 'paid', updated_at: '2026-10-30T20:01:00.000Z' }]);
+    return Response.json([{
+      id: intent.id, merchant_id: intent.merchantId, service_id: intent.serviceId,
+      external_transaction_id: intent.externalTransactionId, amount_minor: intent.amountMinor,
+      currency: intent.currency, description: intent.description, status: 'paid',
+      provider: intent.provider, provider_payment_id: intent.providerPaymentId,
+      created_at: intent.createdAt, updated_at: '2026-10-30T20:01:00.000Z',
+    }]);
   },
 });
 
@@ -59,6 +65,8 @@ assert.equal(byId?.serviceId, 'school-commerce');
 const updated = await store.update(intent.id, { status: 'paid' });
 assert.equal(updated.status, 'paid');
 assert.equal(updated.id, intent.id);
+assert.equal(updated.merchantId, intent.merchantId);
+assert.equal(updated.serviceId, intent.serviceId);
 
 console.log('payment-supabase tests passed');
 }
