@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://izakhono.africa/schemas/stream/payment-entitlement-v1.json",
+  "title": "IZAKHONO STREAM Payment Entitlement Event",
+  "type": "object",
+  "required": ["eventId", "tenantId", "provider", "transactionId", "userId", "product", "status", "occurredAt"],
+  "properties": {
+    "eventId": { "type": "string", "minLength": 1 },
+    "tenantId": { "type": "string", "minLength": 1 },
+    "provider": { "type": "string", "enum": ["IKHOKHA", "STRIPE", "PAYFAST", "PAYSTACK", "YOCO", "OTHER"] },
+    "transactionId": { "type": "string", "minLength": 1 },
+    "userId": { "type": "string", "minLength": 1 },
+    "product": {
+      "type": "object",
+      "required": ["type", "productId", "currency", "amount"],
+      "properties": {
+        "type": { "enum": ["PLAN", "ASSET", "EVENT", "CHANNEL"] },
+        "productId": { "type": "string" },
+        "currency": { "type": "string", "minLength": 3, "maxLength": 3 },
+        "amount": { "type": "number", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "status": { "type": "string", "enum": ["PAID", "REFUNDED", "CANCELLED", "FAILED"] },
+    "occurredAt": { "type": "string", "format": "date-time" },
+    "idempotencyKey": { "type": "string" },
+    "metadata": { "type": "object", "additionalProperties": true }
+  },
+  "additionalProperties": false
+}

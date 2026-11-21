@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://izakhono.africa/schemas/stream/entitlement-v1.json",
+  "title": "IZAKHONO STREAM Entitlement",
+  "type": "object",
+  "required": ["id", "tenantId", "userId", "assetIds"],
+  "properties": {
+    "id": { "type": "string", "minLength": 1 },
+    "tenantId": { "type": "string", "minLength": 1 },
+    "userId": { "type": "string", "minLength": 1 },
+    "planId": { "type": "string" },
+    "assetIds": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+    "channelIds": { "type": "array", "items": { "type": "string" } },
+    "startsAt": { "type": "string", "format": "date-time" },
+    "endsAt": { "type": "string", "format": "date-time" },
+    "revoked": { "type": "boolean", "default": false }
+  },
+  "additionalProperties": false
+}
