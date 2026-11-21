@@ -19,8 +19,13 @@ const provider: PaymentProvider = {
   async createPaymentLink() { return { paymentIntentId: '', provider: 'test-provider', providerPaymentId: 'provider-1', url: 'https://pay.example/1' }; },
   async verifyWebhook() { return true; },
   parseWebhook() {
-    return { provider: 'test-provider', providerPaymentId, externalTransactionId: 'ORDER-WEBHOOK-1', amountMinor: webhookAmount, currency: webhookCurrency, status: outcome, responseCode };
+    return { provider: 'test-provider', providerPaymentId, externalTransactionId: 'ORDER-WEBHOOK-1', status: outcome, responseCode };
   },
+  async verifyPaymentEvidence(webhook, intent) {
+    return { ...webhook, amountMinor: webhookAmount, currency: webhookCurrency };
+  },
+  /*
+  */
 };
 
 const payments = new MemoryPaymentStore();
