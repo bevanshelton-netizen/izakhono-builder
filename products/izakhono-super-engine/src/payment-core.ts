@@ -238,7 +238,7 @@ export class IKhokhaProvider implements PaymentProvider {
     if (!response.ok) throw new Error(`iKhokha payment-status verification failed: HTTP ${response.status}`);
     const data = await response.json() as { paylinkID?: string; status?: string; amount?: number };
     if (!data.paylinkID || data.paylinkID !== intent.providerPaymentId || data.paylinkID !== webhook.providerPaymentId) throw new Error('iKhokha payment-status reference does not match payment intent');
-    if (!Number.isSafeInteger(data.amount) || data.amount !== intent.amountMinor) throw new Error('iKhokha payment-status amount does not match payment intent');
+    if (typeof data.amount !== 'number' || !Number.isSafeInteger(data.amount) || data.amount !== intent.amountMinor) throw new Error('iKhokha payment-status amount does not match payment intent');
     const providerStatus = String(data.status ?? '').toUpperCase();
     const expectedSuccess = webhook.status === 'SUCCESS' && webhook.responseCode === '00';
     if (expectedSuccess && providerStatus !== 'PAID') throw new Error('iKhokha status lookup does not confirm a paid transaction');
