@@ -175,6 +175,10 @@ jobs:
           grep -Fq 'izakhono-wave1-request.timer' scripts/launch-stack/install-automation.sh
           grep -Fq '/var/lib/izakhono-code/repos/allegro-vibez.git' scripts/launch-stack/watch-node01-wave1-request.sh
           grep -Fq 'github_actions_required' scripts/launch-stack/watch-node01-wave1-request.sh
+          grep -Fq 'ALLEGRO_ONLY' scripts/launch-stack/watch-node01-wave1-request.sh
+          grep -Fq 'run-allegro-local-proof' scripts/launch-stack/watch-node01-wave1-request.sh
+          grep -Fq 'watch-node01-wave1-request.sh' scripts/install-sovereign-deploy.sh
+          grep -Fq 'izakhono-wave1-request.timer' scripts/install-sovereign-deploy.sh
           grep -Fq "actions.runner.*.service" scripts/launch-stack/keepalive-actions-runners.sh
 
       - name: Validate Docker Compose model
