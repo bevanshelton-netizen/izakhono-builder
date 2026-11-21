@@ -12,12 +12,14 @@ const input: CreatePaymentInput = {
 let outcome: 'SUCCESS' | 'FAILURE' = 'SUCCESS';
 let responseCode = '00';
 let providerPaymentId = 'provider-1';
+let webhookAmount = 1000;
+let webhookCurrency = 'ZAR';
 const provider: PaymentProvider = {
   id: 'test-provider',
   async createPaymentLink() { return { paymentIntentId: '', provider: 'test-provider', providerPaymentId: 'provider-1', url: 'https://pay.example/1' }; },
   async verifyWebhook() { return true; },
   parseWebhook() {
-    return { provider: 'test-provider', providerPaymentId, externalTransactionId: 'ORDER-WEBHOOK-1', amountMinor: 1000, currency: 'ZAR', status: outcome, responseCode };
+    return { provider: 'test-provider', providerPaymentId, externalTransactionId: 'ORDER-WEBHOOK-1', amountMinor: webhookAmount, currency: webhookCurrency, status: outcome, responseCode };
   },
 };
 
@@ -33,9 +35,11 @@ assert.equal(first.status, 'paid');
 const duplicate = await guard.process('{}', '/callback', 'valid');
 assert.equal(duplicate.status, 'paid');
 
+webhookAmount = 999;
+await assert.rejects(() => guard.process('{}', '/callback', 'valid'), /amount does not match/);
+webhookAmount = 1000;
 outcome = 'FAILURE';
 responseCode = '99';
-providerPaymentId = 'provider-evil';
 await assert.rejects(() => guard.process('{}', '/callback', 'valid'), /Contradictory duplicate/);
 assert.equal((await payments.getByExternalTransactionId('ORDER-WEBHOOK-1'))?.status, 'paid');
 
