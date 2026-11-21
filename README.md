@@ -80,3 +80,15 @@ Production activation requires an eligible Software NODE, public network reachab
 The system-wide rule is **NODE01 IS SOFTWARE**. NODE01 is a stable logical software/runtime identity, never a server, computer, VM, host, container host or other physical/virtual infrastructure resource. Execution environments are separately managed, explicitly bound and replaceable. This standard applies to every product, repository, workflow, agent, API, installer and deployment:
 
 - [NODE01 Identity Standard](architecture/NODE01-IDENTITY-STANDARD.md)
+
+
+## Unified IZAKHONO CONNECT platform
+
+IZAKHONO CONNECT is the unified product umbrella for two distinct, integrated domains:
+
+- **CONNECT INFRASTRUCTURE** — the existing I-CONNECT connectivity catalogue, provider, coverage, order and provisioning capabilities.
+- **CONNECT ENGAGEMENT** — the planned omnichannel messaging, automation, AI agents, CRM, marketing and customer-support capabilities.
+
+The domains share approved platform services while retaining separate bounded contexts, data ownership, tenant/entity controls and release gates. Existing connectivity functionality and records must be preserved; no destructive consolidation is authorised by this architecture decision.
+
+See [IZAKHONO CONNECT — Unified Platform Architecture](architecture/IZAKHONO-CONNECT-UNIFIED-PLATFORM-ARCHITECTURE.md).
