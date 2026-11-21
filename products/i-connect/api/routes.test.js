@@ -31,6 +31,8 @@ test('owned runtime registers customer, provisioning and checkout endpoints', ()
   const routes = buildRegistry();
   for (const path of [
     '/api/public-config',
+    '/api/my-organizations',
+    '/api/onboarding',
     '/api/customer-control',
     '/api/provisioning',
     '/api/handover',
@@ -68,4 +70,22 @@ test('checkout intent route rejects unsupported methods', async () => {
   const response = await invoke(buildRegistry(), '/api/checkout-intent', { method: 'GET' });
   assert.equal(response.statusCode, 405);
   assert.equal(response.headers.allow, 'POST');
+});
+
+test('organization directory route rejects unauthenticated callers', async () => {
+  const response = await invoke(buildRegistry(), '/api/my-organizations', {
+    method: 'POST',
+    body: {}
+  });
+  assert.equal(response.statusCode, 401);
+  assert.equal(response.body.error, 'authentication_required');
+});
+
+test('owner onboarding route rejects unauthenticated callers', async () => {
+  const response = await invoke(buildRegistry(), '/api/onboarding', {
+    method: 'POST',
+    body: { name: 'Example Organisation', slug: 'example-org' }
+  });
+  assert.equal(response.statusCode, 401);
+  assert.equal(response.body.error, 'authentication_required');
 });
