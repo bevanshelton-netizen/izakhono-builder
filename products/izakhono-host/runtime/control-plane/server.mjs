@@ -2,6 +2,7 @@ import http from 'node:http';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import dns from 'node:dns/promises';
 
 const PORT = Number(process.env.PORT || 8080);
 const DATA_DIR = process.env.DATA_DIR || '/data';
@@ -65,6 +66,40 @@ async function findSite(hostname) {
   const host = String(hostname || '').split(':')[0].toLowerCase().replace(/^www\./, '');
   const state = await loadState();
   return state.sites.find(s => s.domain === host || `www.${s.domain}` === host) || null;
+}
+
+
+function expectedEdgeAddresses() {
+  return String(process.env.PUBLIC_EDGE_IPS || '').split(',').map(x => x.trim()).filter(Boolean);
+}
+
+async function verifyPublicSite(site) {
+  const expected = expectedEdgeAddresses();
+  if (!expected.length) return { ok:false, status:503, error:'public_edge_ips_not_configured' };
+  let addresses;
+  try {
+    addresses = (await dns.lookup(site.domain, { all:true, verbatim:true })).map(x => x.address);
+  } catch {
+    return { ok:false, status:409, error:'public_dns_lookup_failed' };
+  }
+  const unique = [...new Set(addresses)].sort();
+  if (!unique.length || unique.some(address => !expected.includes(address)) || expected.some(address => !unique.includes(address))) {
+    return { ok:false, status:409, error:'public_dns_does_not_match_owned_edge', dns_addresses:unique };
+  }
+  let response;
+  try {
+    response = await fetch(`https://${site.domain}/`, { redirect:'manual', signal:AbortSignal.timeout(10000) });
+  } catch {
+    return { ok:false, status:409, error:'public_https_or_tls_verification_failed', dns_addresses:unique };
+  }
+  if (response.status < 200 || response.status >= 300) {
+    return { ok:false, status:409, error:'public_https_response_not_successful', http_status:response.status, dns_addresses:unique };
+  }
+  const contentType = response.headers.get('content-type') || '';
+  if (!contentType.toLowerCase().includes('text/html')) {
+    return { ok:false, status:409, error:'public_content_type_not_html', http_status:response.status, dns_addresses:unique };
+  }
+  return { ok:true, evidence:{checked_at:new Date().toISOString(),dns:{ok:true,addresses:unique,expected_edge_addresses:expected},https:{ok:true,status:response.status,tls_verified:true,content_type:contentType}} };
 }
 
 const MIME = {
@@ -165,15 +200,29 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (req.method === 'POST' && url.pathname.match(/^\/api\/sites\/[^/]+\/accept$/)) {
+    return json(res,410,{ok:false,error:'manual_acceptance_disabled',message:'Public-live status requires real DNS and HTTPS verification'});
+  }
+
+  if (req.method === 'POST' && url.pathname.match(/^\/api\/sites\/[^/]+\/verify-public$/)) {
     const siteId=url.pathname.split('/')[3];
-    const input=await body(req).catch(()=>({}));
     const state=await loadState();
     const site=state.sites.find(s=>s.id===siteId);
     if(!site) return json(res,404,{ok:false,error:'Site not found'});
-    site.acceptance={https:Boolean(input.https), dns:Boolean(input.dns), content:Boolean(input.content)};
-    site.public_live=site.acceptance.https && site.acceptance.dns && site.acceptance.content;
-    site.status=site.public_live?'live':'provisioned';
-    site.accepted_at=new Date().toISOString();
+    const result=await verifyPublicSite(site);
+    if(!result.ok) {
+      site.public_live=false;
+      site.status='content_ready';
+      site.acceptance={https:false,dns:false,content:true};
+      site.verification_failure={checked_at:new Date().toISOString(),reason:result.error};
+      await saveState(state);
+      return json(res,result.status,{ok:false,error:result.error,dns_addresses:result.dns_addresses});
+    }
+    site.acceptance={https:true,dns:true,content:true};
+    site.public_live=true;
+    site.status='live';
+    site.public_verification=result.evidence;
+    site.verified_at=result.evidence.checked_at;
+    delete site.verification_failure;
     await saveState(state);
     return json(res,200,{ok:true,site});
   }
