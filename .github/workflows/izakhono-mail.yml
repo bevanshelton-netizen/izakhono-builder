@@ -5,11 +5,15 @@ on:
     paths:
       - 'products/izakhono-host/mail/**'
       - 'products/izakhono-host/docker-compose.owned.yml'
+      - 'products/izakhono-host/edge/Caddyfile'
+      - 'products/izakhono-mail/runtime-v1/**'
       - '.github/workflows/izakhono-mail.yml'
   pull_request:
     paths:
       - 'products/izakhono-host/mail/**'
       - 'products/izakhono-host/docker-compose.owned.yml'
+      - 'products/izakhono-host/edge/Caddyfile'
+      - 'products/izakhono-mail/runtime-v1/**'
       - '.github/workflows/izakhono-mail.yml'
 
 jobs:
@@ -17,22 +21,59 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Validate compose files
+      - name: Validate owned HOST and Stalwart Compose files
+        env:
+          HOST_RUNTIME_TOKEN: ci-host-runtime-token
+          IZAKHONO_MAIL_API_TOKEN: ci-mail-api-token
+          TLS_EMAIL: ci@example.test
+          POSTGRES_PASSWORD: ci-postgres-password-only
+          MINIO_ROOT_USER: ci-minio-user
+          MINIO_ROOT_PASSWORD: ci-minio-password-only
+          STALWART_RECOVERY_ADMIN: admin:ci-only-placeholder
         run: |
-          docker compose -f products/izakhono-host/docker-compose.owned.yml config >/dev/null
-          docker compose -f products/izakhono-host/mail/docker-compose.mail.yml config >/dev/null
+          docker compose -f products/izakhono-host/docker-compose.owned.yml config --quiet
+          docker compose -f products/izakhono-host/mail/docker-compose.mail.yml config --quiet
+          docker compose -f products/izakhono-mail/runtime-v1/docker-compose.yml --env-file products/izakhono-mail/runtime-v1/.env.example config --quiet
+      - name: Validate shared HOST EDGE Caddy configuration
+        run: |
+          docker run --rm -e TLS_EMAIL=ci@example.test -v "$PWD/products/izakhono-host/edge/Caddyfile:/etc/caddy/Caddyfile:ro" \
+            caddy:2-alpine caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
       - name: Validate mail bridge JavaScript
         run: node --check products/izakhono-host/runtime/mail-bridge/server.mjs
+      - name: Validate runtime-v1 shell scripts
+        run: |
+          for f in products/izakhono-mail/runtime-v1/ops/*.sh; do bash -n "$f"; done
+      - name: Validate mail runtime files
+        run: |
+          test -f products/izakhono-mail/runtime-v1/ops/backup.sh
+          test -f products/izakhono-mail/runtime-v1/ops/restore.sh
+          test -f products/izakhono-mail/runtime-v1/ops/PROVIDER-ACCEPTANCE.sh
       - name: Validate portfolio manifest
         run: |
           python3 - <<'PY'
           import pathlib
           p = pathlib.Path('products/izakhono-host/mail/portfolio-mailboxes.yml').read_text()
-          required = ['KORA NETWORK', 'I-CONNECT', 'FAISReady', 'DOXA-SURE', 'Edu-Build Institute', 'Allegro Vibez', 'IZAKHONO NAV', 'IZAKHONO HOST', 'FORTRESS']
+          required = ['KORA NETWORK', 'I-CONNECT', 'FAISReady', 'DOXA-SURE', 'Edu-Build Institute', 'Allegro Vibez', 'IZAKHONO NAV', 'IZAKHONO HOST', 'FORTRESS', 'SHELTONAIR', 'Shelton Freight Group', 'Shelton Technologies', 'SHELTON MOTOR COMPANY', 'IZAKHONO Manufacturing', 'Classique Furniture', 'IZAKHONO AFRICA (PTY) LTD']
           missing = [x for x in required if x not in p]
           if missing:
               raise SystemExit(f'Missing platforms: {missing}')
           if 'password:' in p.lower() or 'smtp_pass:' in p.lower():
               raise SystemExit('Secret-like mailbox credentials found in manifest')
-          print('portfolio manifest: PASS')
+          if 'ownership_status: external' not in p or 'provisioning_enabled: false' not in p:
+              raise SystemExit('Externally owned Edu-Build must be excluded from automatic provisioning')
+          import json
+          managed = json.loads(pathlib.Path('products/izakhono-mail/config/portfolio-identities.json').read_text())
+          excluded = set(managed.get('excluded_platforms', []))
+          names = {x['platform'] for x in managed.get('identities', [])}
+          expected = {'KG Industrial', 'Edu-Build Institute', 'Free Bird Agri-Quip'}
+          if not expected.issubset(excluded) or names.intersection(expected):
+              raise SystemExit('Mail provisioning manifest includes an excluded/non-owned entity')
+          if not any(x['platform'] == 'IZAKHONO' and x['domain'] == 'izakhonoafrica.co.za' and 'bevans' in x['mailboxes'] for x in managed['identities']):
+              raise SystemExit('CEO mailbox/domain target missing from IZAKHONO identity')
+          if any('info' not in x['mailboxes'] for x in managed['identities']):
+              raise SystemExit('Every owned platform must include info before handover')
+          high_level = pathlib.Path('products/izakhono-host/mail/portfolio-mailboxes.yml').read_text()
+          if 'mandatory_mailboxes_before_handover:\n  - info' not in high_level:
+              raise SystemExit('Portfolio info mailbox handover gate missing')
+          print('portfolio ownership and mailbox manifest: PASS')
           PY

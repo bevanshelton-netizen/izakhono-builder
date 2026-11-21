@@ -1,40 +1,88 @@
 # IZAKHONO MAIL Runtime v1
 
-Owner-hosted production mail runtime for `izakhonoafrica.co.za`.
+Owned mail hosting for IZAKHONO portfolio domains, using the existing Stalwart mail plane and Roundcube webmail. The runtime attaches to the shared IZAKHONO HOST EDGE; it does not start a second public Caddy instance.
 
-Target CEO mailbox: `bevans@izakhonoafrica.co.za`
-Mail host: `mail.izakhonoafrica.co.za`
+## Canonical stack
 
-## Stack
-- Docker Mailserver 16.0.1 — SMTP/IMAP and mail security
-- Roundcube — webmail
-- MariaDB — Roundcube state
-- Caddy — HTTPS for webmail
+Certificate lifecycle is split by service ownership: Stalwart manages mail-domain ACME certificates; HOST Caddy manages webmail HTTPS. Do not run Certbot or a separate mail Caddy service. The runtime intentionally contains no second Caddyfile or manual certificate-renewal script.
 
-## Production prerequisites
-- Public IPv4 (IPv6 recommended)
-- TCP 25, 465, 587, 993 and 443 reachable; TCP 80 for ACME
-- PTR/reverse DNS: public IP -> `mail.izakhonoafrica.co.za`
-- A record for `mail.izakhonoafrica.co.za`
-- MX, SPF, DKIM and DMARC published for `izakhonoafrica.co.za`
-- No conflicting services on mail/web ports
+- **Stalwart** — SMTP, submission, IMAP, JMAP, domain/mailbox directory, DKIM and ACME certificate management.
+- **Roundcube** — customer webmail over IMAPS and SMTP submission.
+- **MariaDB** — Roundcube session/preferences database only.
+- **IZAKHONO HOST EDGE / Caddy** — the only public HTTP/HTTPS edge; routes `webmail.izakhonoafrica.co.za` to Roundcube and forwards the mail-host HTTP-01 ACME challenge to Stalwart.
+- **IZAKHONO Provisioner** — creates mailboxes for owner-created domains through the private Stalwart JMAP adapter only after DNS verification.
 
-## Deploy on NODE01
+The previous Docker Mailserver deployment is superseded. Do not run DMS and Stalwart as parallel production mail engines for the same domain.
+
+## Names and ports
+
+- SMTP server-to-server: `mail.izakhonoafrica.co.za:25`
+- SMTP submission: `mail.izakhonoafrica.co.za:587` (STARTTLS)
+- SMTPS: `mail.izakhonoafrica.co.za:465`
+- IMAPS: `mail.izakhonoafrica.co.za:993`
+- Webmail: `https://webmail.izakhonoafrica.co.za`
+- Stalwart admin: loopback only at `http://127.0.0.1:18081/admin`
+- Stalwart bootstrap/JMAP: loopback only at `http://127.0.0.1:18081` (JMAP path `/jmap/`)
+
+The mail runtime publishes no separate public web proxy. Public ports 80/443 remain owned by IZAKHONO HOST EDGE.
+
+## Required infrastructure
+
+- An owner-approved Linux host with Docker Engine and Compose v2.
+- Public IPv4; IPv6 recommended.
+- Inbound TCP 25, 465, 587 and 993 available to Stalwart.
+- Shared HOST EDGE owns TCP 80 and 443.
+- Outbound TCP 25 and 443 available.
+- PTR/rDNS for the mail host points to `mail.izakhonoafrica.co.za`.
+- The `izakhono-mail` Docker network exists (created by the owned HOST Compose stack).
+- Public DNS A records for `mail` and `webmail`, MX, SPF, DKIM and DMARC.
+
+## Owner-controlled bootstrap
+
+1. Copy `.env.example` to `.env`; set separate high-entropy Roundcube database root and application passwords. Do not commit `.env`.
+2. Start the owned HOST stack first so its shared edge and `izakhono-mail` network exist.
+3. Run `bash ops/preflight.sh`, then `bash ops/bootstrap.sh`.
+4. Complete Stalwart's first-run setup through an SSH tunnel to loopback port 18081. Never expose the bootstrap/admin listener publicly.
+5. Create a Stalwart ACME provider using HTTP-01. HOST EDGE forwards only `/.well-known/acme-challenge/*` for the mail hostname to Stalwart.
+6. As owner administrator, create the mail domain in Stalwart and enable automatic DKIM plus the configured ACME certificate provider. Export the domain DNS zone file.
+7. Create the custom role from `config/stalwart-provisioner-role.json`, including the existing default User role. Create a dedicated service account (for example `node01-mail-provisioner@izakhonoafrica.co.za`) with that custom role and `permissions: Inherit`. Create an API key for that account in `Inherit` mode and set `STALWART_PROVISIONER_API_KEY` in the protected runtime environment. Never give the application System Administrator credentials or the service account's interactive password. The JMAP endpoint must remain private/loopback.
+8. Copy the exact DKIM selector from Stalwart's zone file into DKIM_SELECTOR in .env. Publish the exact MX/SPF/DKIM/DMARC values through the approved DNS control plane. The Provisioner reads that zone file and verifies public DNS; it does not create domains or mutate public DNS.
+9. Wait for DNS verification. Only then create customer mailboxes. The initial password is returned once and is never written to evidence files.
+10. Run the full provider acceptance and independent send/receive tests before calling the service live.
+
+## Provisioning contract
+
+The Stalwart JMAP adapter:
+- accepts only private/loopback JMAP endpoints;
+- authenticates with a scoped Bearer API key inherited from a dedicated least-privilege provisioning service account, never System Administrator credentials;
+- reads an owner-created Stalwart domain and exports its server-generated DNS zone file; it refuses to create domains;
+- creates a mailbox only after the Provisioner verifies the required DNS;
+- detects an existing account and returns `credentials_recovery_required` rather than falsely reissuing a password;
+- stores only non-secret evidence (domain/account IDs, state and timestamps).
+
+Example from the repository root after Stalwart bootstrap and DNS configuration:
 
 ```bash
-cp .env.example .env
-nano .env
-chmod +x ops/*.sh
-./ops/bootstrap.sh
+node --env-file=products/izakhono-mail/runtime-v1/.env \
+  products/izakhono-mail/src/mailbox-provisioner.mjs "IZAKHONO" bevans
 ```
 
-The package does not contain production credentials. Do not commit `.env`.
+The generated password is a one-time secret. Deliver it through the approved owner-controlled secret channel; do not paste it into source, issues, CI logs or chat transcripts.
 
-## Client settings
-- IMAPS: `mail.izakhonoafrica.co.za:993`
-- SMTP submission STARTTLS: `mail.izakhonoafrica.co.za:587`
-- Webmail: `https://mail.izakhonoafrica.co.za`
+## Backup and recovery
 
-## Readiness contract
+Backups require an `age` recipient and are encrypted locally. The archive includes sensitive Stalwart mail state and key material, but excludes `.env` and plaintext runtime credentials. The script creates a local encrypted artifact only; copy it to owner-controlled offsite storage (preferably IZAKHONO MinIO) and verify its SHA-256 before treating backup coverage as complete. Restore requires the matching age identity, integrity verification and a post-restore mail acceptance run.
 
-The runtime is **BUILD READY**, not **PRODUCTION VERIFIED**, until the real host proves SMTP send, inbound receive, IMAP login, TLS, SPF, DKIM and DMARC.
+## Production gate
+
+This package is **BUILD READY**, not **PRODUCTION VERIFIED**, until evidence exists for:
+- public DNS A/MX/SPF/DKIM/DMARC and PTR;
+- TCP 25/465/587/993 and valid certificates on SMTP/IMAP;
+- authenticated SMTP submission and independent outbound delivery;
+- inbound delivery from an independent sender;
+- IMAPS authentication and Roundcube login;
+- DKIM signature verification and DMARC alignment;
+- encrypted backup, successful restore and post-restore delivery;
+- FORTRESS access controls, audit evidence and rollback.
+
+A running container, a created account, or a successful CI run alone does not prove public mail delivery.

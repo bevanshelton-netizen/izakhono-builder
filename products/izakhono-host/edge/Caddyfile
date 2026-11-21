@@ -7,7 +7,16 @@
 }
 
 :80 {
-  redir https://{host}{uri} permanent
+  @stalwart_acme {
+    host mail.izakhonoafrica.co.za
+    path /.well-known/acme-challenge/*
+  }
+  handle @stalwart_acme {
+    reverse_proxy stalwart:8080
+  }
+  handle {
+    redir https://{host}{uri} permanent
+  }
 }
 
 :443 {
@@ -17,6 +26,14 @@
   @contact path /api/contact
   handle @contact {
     reverse_proxy contact-gateway:8090
+  }
+  @webmail host webmail.izakhonoafrica.co.za
+  handle @webmail {
+    reverse_proxy roundcube:80
+  }
+  @mailhost host mail.izakhonoafrica.co.za
+  handle @mailhost {
+    respond "Mail protocols are served over SMTP/IMAP TLS." 404
   }
   handle {
     reverse_proxy host-runtime:8080

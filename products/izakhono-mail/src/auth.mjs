@@ -1,5 +1,6 @@
 import crypto from 'node:crypto';
 import { DatabaseSync } from 'node:sqlite';
+import { assertManagedAddress } from './mail-domain-policy.mjs';
 
 const databasePath = process.env.MAIL_DATABASE_PATH || './izakhono-mail.sqlite';
 const db = new DatabaseSync(databasePath);
@@ -40,15 +41,15 @@ function verifyPassword(password, stored) {
 }
 
 export function createUser({ address, password, displayName = '' }) {
-  if (!/^.+@izakhono$/i.test(address || '')) throw new Error('IZAKHONO identity required');
+  const managed = assertManagedAddress(address);
   if (typeof password !== 'string' || password.length < 12) throw new Error('Password must be at least 12 characters');
-  const canonical = address.toLowerCase();
-  const existing = db.prepare('SELECT id FROM mail_auth_users WHERE address=?').get(canonical);
-  if (existing) throw new Error('Identity already exists');
+  const canonical = managed.address;
+  const existing = db.prepare('SELECT id,address,display_name,status FROM mail_auth_users WHERE address=?').get(canonical);
+  if (existing) return { address: existing.address, displayName: existing.display_name, created: false, status: existing.status };
   const ts = now();
   db.prepare('INSERT INTO mail_auth_users(id,address,password_hash,display_name,status,created_at,updated_at) VALUES(?,?,?,?,?,?,?)')
     .run(id('usr'), canonical, passwordHash(password), displayName, 'active', ts, ts);
-  return { address: canonical, displayName };
+  return { address: canonical, displayName, created: true, status: 'active' };
 }
 
 export function login({ address, password, ttlHours = 12 }) {
