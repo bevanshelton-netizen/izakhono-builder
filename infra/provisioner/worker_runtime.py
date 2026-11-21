@@ -164,7 +164,9 @@ if __name__ == "__main__":
     store.save(job); queue.enqueue(job)
     worker = ProvisionerWorker(store, queue, implementations, registry)
     results = [worker.run_once() for _ in range(10)]
-    assert any(r is not None and r.status == "accepted" for r in results) and job.state == State.HANDOVER_READY.value
-    assert all(r is not None for r in results[:8])
-    assert set(job.evidence) == {"PAYMENT_VERIFIED", "TENANT_CREATED", "DOMAIN_READY", "DNS_READY", "SITE_READY", "TLS_READY", "MAIL_READY", "INTEGRATIONS_READY", "ACCEPTANCE_PASSED"}
-    print("PROVISIONER_WORKER_RUNTIME: PASS")
+    # The bundled provider-neutral adapters are simulations. They must never
+    # satisfy independent acceptance or produce a handover-ready job.
+    assert any(r is not None and r.status == "blocked" for r in results)
+    assert job.state == State.BLOCKED.value
+    assert job.evidence.get("ACCEPTANCE_PASSED", {}).get("simulation") is True
+    print("PROVISIONER_WORKER_RUNTIME_FAIL_CLOSED: PASS")
