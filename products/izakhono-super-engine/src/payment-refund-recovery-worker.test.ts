@@ -9,7 +9,7 @@ async function main() {
 class Queue implements RefundRecoveryQueue {
   operation: RefundOperation;
   constructor(operation: RefundOperation) { this.operation = operation; }
-  async reserve(input: Omit<RefundOperation, 'id' | 'status' | 'providerRefundId'>): Promise<RefundOperationReservation> { this.operation = { ...input, id: 'op', status: 'processing' }; return { kind: 'reserved', operation: this.operation }; }
+  async reserve(): Promise<RefundOperationReservation> { return { kind: 'reconciliation-required', operation: this.operation }; }
   async markSucceeded(): Promise<RefundOperation> { throw new Error('not used'); }
   async markFailed(): Promise<RefundOperation> { throw new Error('not used'); }
   async markReconciliationRequired(): Promise<RefundOperation> { throw new Error('not used'); }
