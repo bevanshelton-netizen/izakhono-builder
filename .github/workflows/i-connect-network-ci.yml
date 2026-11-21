@@ -48,6 +48,7 @@ jobs:
           node --test products/i-connect/api/readiness.test.js
           node --check products/i-connect/runtime/register-api-routes.js
           node --check products/i-connect/api/public-config.js
+          node --check products/i-connect/api/my-organizations.js
           node --check products/i-connect/auth.js
           node --check products/i-connect/customer-control.js
           node --check products/i-connect/checkout.js
