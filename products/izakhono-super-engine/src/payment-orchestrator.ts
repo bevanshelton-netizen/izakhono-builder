@@ -76,7 +76,7 @@ export class PaymentOrchestrator {
     this.assertService(config.serviceId);
     if (!canonical.providerPaymentId) throw new Error('Paid payment has no provider payment ID');
     const amount = amountMinor ?? canonical.amountMinor;
-    if (!Number.isSafeInteger(amount) || amount <= 0 || amount > payment.amountMinor) throw new Error('Refund amount must be a positive integer not exceeding the payment amount');
+    if (!Number.isSafeInteger(amount) || amount <= 0 || amount > canonical.amountMinor) throw new Error('Refund amount must be a positive integer not exceeding the payment amount');
     await this.events.record(createPaymentEvent({ kind: 'refund.requested', paymentIntentId: canonical.id, externalTransactionId: canonical.externalTransactionId, provider: canonical.provider, fingerprint: `refund.requested:${canonical.id}:${amount}:${reason}` }));
     const providerRefund = await this.refunds.refund(canonical, reason, amount);
     const ledger = await this.refundLedger.recordRefund({ refundId: providerRefund.providerRefundId, payment: providerRefund.payment, amountMinor: amount });
