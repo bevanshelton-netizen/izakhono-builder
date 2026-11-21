@@ -19,7 +19,7 @@ export class PaymentWebhookGuard {
     const webhook = this.provider.parseWebhook(rawBody);
     const intent = await this.payments.getByExternalTransactionId(webhook.externalTransactionId);
     if (!intent) throw new Error('Unknown payment transaction');
-    if (!intent.merchantId?.trim()) throw new Error('Payment intent has no trusted merchant identity');
+    if (!intent.merchantId?.trim() || !intent.serviceId?.trim()) throw new Error('Payment intent has no trusted merchant identity or service entitlement');
     if (webhook.provider !== intent.provider) throw new Error('Payment webhook provider does not match payment intent');
     const evidence = await this.provider.verifyPaymentEvidence(webhook, intent);
     if (evidence.provider !== intent.provider || evidence.providerPaymentId !== intent.providerPaymentId || evidence.externalTransactionId !== intent.externalTransactionId) throw new Error('Provider payment evidence does not match payment intent references');
