@@ -115,7 +115,7 @@ const server = http.createServer(async (req, res) => {
     return json(res, 200, { ok: true, jobs });
   }
 
-  if (req.method === 'POST' && url.pathname.match(/^\\/api\\/workloads\\/[^/]+\\/data-imports$/)) {
+  if (req.method === 'POST' && url.pathname.startsWith('/api/workloads/') && url.pathname.endsWith('/data-imports')) {
     try {
       const recordId = url.pathname.split('/')[3];
       const workload = await workloadStore.get(recordId);
