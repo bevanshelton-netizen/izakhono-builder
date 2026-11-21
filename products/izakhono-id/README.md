@@ -129,7 +129,7 @@ Document authenticity and biometric verification are being added as a separate c
 - Regula is the preferred provider candidate, subject to technical, commercial, POPIA and legal due diligence.
 - Entity-scoped sessions, idempotency, evidence references and fail-closed result handling are included.
 - Raw document images, selfie images, liveness video and biometric templates are not stored by this module.
-- The Regula transport remains an injected integration boundary until a licensed sandbox, exact API contract and credentials are approved.
+- A server-side Regula HTTP client and conservative provider adapter are implemented for the documented hosted hand-off and session retrieval calls. Configure only through server environment variables; no credentials are accepted from client requests.\n- Vendor session status/check fields remain deliberately unmapped, so fetched results are indeterminate and cannot auto-verify. Cancellation is explicitly unsupported until the licensed tenant contract is confirmed.\n- The one-time hosted hand-off URL is returned as the service's one-time client token; protect it as a bearer secret and do not log it.
 
 See IDENTITY-VERIFICATION-REGULA.md for the architecture, due-diligence questionnaire, POPIA/FICA controls and production acceptance gates.
 
