@@ -6,7 +6,7 @@ from typing import Any, Callable, Mapping
 from acceptance_engine import AcceptanceEngine, AcceptanceResult, EvidenceAcceptanceProbe
 from adapter_catalog import CAPABILITY_TO_ADAPTER, build_catalog
 from adapter_executor import AdapterExecutor
-from execution_contract import ExecutionResult, validate_result
+from execution_contract import validate_result
 from job_queue import JobQueue
 from job_store import AuditEvent, StoredJob, utc_now
 from state_machine import State
@@ -105,8 +105,9 @@ class ProvisionerWorker:
         operation = self.registry.get("bindings", {}).get(capability, {}).get("operation", capability)
         operation_id = f"op_{job.job_id}_{job.attempts + 1}_{capability}"
         try:
-            result = self._executor().execute(self._request(job, capability, operation, operation_id))
-            validate_result(result)
+            request = self._request(job, capability, operation, operation_id)
+            result = self._executor().execute(request)
+            validate_result(result, request)
         except Exception as exc:
             return self._failure(job, "ADAPTER_EXECUTION_FAILED", str(exc), operation_id)
         next_state = {
