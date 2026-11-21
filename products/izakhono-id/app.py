@@ -393,6 +393,30 @@ def send_json(handler, status, obj):
     handler.end_headers()
     handler.wfile.write(body)
 
+
+
+def identity_verification_service():
+    """Build the Regula adapter from server-only environment configuration."""
+    from identity_verification import IdentityVerificationService, RegulaProvider
+    from regula_idv_http import load_regula_idv_client
+    from regula_idv_provider import RegulaIDVProviderTransport
+
+    provider = RegulaProvider(RegulaIDVProviderTransport(load_regula_idv_client()))
+    service = IdentityVerificationService(str(DB_PATH), [provider])
+    service.initialize()
+    return service
+
+
+def public_verification_session(row):
+    return {
+        "id": row["id"],
+        "status": row["status"],
+        "provider": row["provider"],
+        "created_at": row["created_at"],
+        "updated_at": row["updated_at"],
+        "expires_at": row.get("expires_at"),
+    }
+
 class Handler(BaseHTTPRequestHandler):
     server_version = "IzakhonoID/0.1"
 
@@ -434,6 +458,25 @@ class Handler(BaseHTTPRequestHandler):
                     "max_attempts": MFA_MAX_ATTEMPTS,
                 },
             })
+        if p.startswith("/api/v1/identity-verification/"):
+            token = bearer_token(self)
+            with db_connect() as db:
+                session = find_session(db, token)
+            if not session:
+                return send_json(self, 401, {"ok": False, "error": "invalid_session"})
+            parts = p.strip("/").split("/")
+            if len(parts) != 4 or parts[:3] != ["api", "v1", "identity-verification"]:
+                return send_json(self, 404, {"ok": False, "error": "not_found"})
+            verification_id = parts[3]
+            try:
+                service = identity_verification_service()
+                row = service.refresh(session["entity_id"], verification_id)
+                return send_json(self, 200, {"ok": True, "verification": public_verification_session(row)})
+            except LookupError:
+                return send_json(self, 404, {"ok": False, "error": "verification_not_found"})
+            except (RuntimeError, ValueError):
+                return send_json(self, 503, {"ok": False, "error": "verification_provider_unavailable"})
+
         if p == "/api/v1/me":
             token = bearer_token(self)
             with db_connect() as db:
@@ -459,6 +502,53 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         p = urlparse(self.path).path
+
+        if p == "/api/v1/identity-verification/start":
+            token = bearer_token(self)
+            with db_connect() as db:
+                auth_session = find_session(db, token)
+            if not auth_session:
+                return send_json(self, 401, {"ok": False, "error": "invalid_session"})
+            try:
+                data = self.read_json()
+                idempotency_key = str(self.headers.get("idempotency-key", "")).strip()
+                if not idempotency_key or len(idempotency_key) > 200:
+                    return send_json(self, 400, {"ok": False, "error": "idempotency_key_required"})
+                purpose = str(data.get("purpose") or "").strip()
+                notice_version = str(data.get("notice_version") or "").strip()
+                jurisdiction = str(data.get("jurisdiction") or "ZA").strip().upper()
+                if not purpose or len(purpose) > 120 or not notice_version or len(notice_version) > 120 or jurisdiction != "ZA":
+                    return send_json(self, 422, {"ok": False, "error": "invalid_verification_request"})
+                service = identity_verification_service()
+                from identity_verification import VerificationRequest
+                row = service.start(VerificationRequest(
+                    entity_id=auth_session["entity_id"],
+                    subject_ref=auth_session["user_id"],
+                    purpose=purpose,
+                    jurisdiction=jurisdiction,
+                    idempotency_key=idempotency_key,
+                    notice_version=notice_version,
+                ))
+                # A hand-off URL is a one-time bearer secret and is never persisted.
+                # An idempotent replay therefore must not look like a fresh start
+                # with a null URL; require the client to reconcile the existing
+                # verification before creating a deliberately new attempt.
+                handoff_url = row.get("client_token")
+                if not handoff_url:
+                    return send_json(self, 409, {
+                        "ok": False,
+                        "error": "verification_attempt_already_exists",
+                        "verification": public_verification_session(row),
+                    })
+                result = public_verification_session(row)
+                result["handoff_url"] = handoff_url
+                return send_json(self, 201, {"ok": True, "verification": result})
+            except (ValueError, json.JSONDecodeError):
+                return send_json(self, 422, {"ok": False, "error": "invalid_verification_request"})
+            except PermissionError:
+                return send_json(self, 403, {"ok": False, "error": "entity_not_authorized"})
+            except (RuntimeError, OSError):
+                return send_json(self, 503, {"ok": False, "error": "verification_provider_unavailable"})
 
         if p == "/api/v1/admin/entities":
             if not self.admin_authorized():

@@ -47,6 +47,16 @@ class IdentityVerificationTests(unittest.TestCase):
         self.transport.outcome = VerificationOutcome("passed", "passed", "passed", "indeterminate")
         result = self.service.refresh("entity-a", session["id"])
         self.assertEqual(result["status"], "review_required")
+    def test_wholly_indeterminate_provider_result_remains_pollable(self):
+        session = self.service.start(self.request)
+        self.transport.outcome = VerificationOutcome(
+            "indeterminate", "indeterminate", "indeterminate", "indeterminate"
+        )
+        first = self.service.refresh("entity-a", session["id"])
+        second = self.service.refresh("entity-a", session["id"])
+        self.assertEqual(first["status"], "in_progress")
+        self.assertEqual(second["status"], "in_progress")
+
     def test_entity_isolation(self):
         session = self.service.start(self.request)
         with self.assertRaises(LookupError):
