@@ -2,7 +2,7 @@
 
 **Decision:** J.A.R.V.I.S. production runtime belongs on IZAKHONO HOST / Runtime Fabric. Cloudflare Workers, D1, Wrangler deployment, and Cloudflare credentials are not production prerequisites.
 
-**Current state:** the command-centre routes and workforce queue are integrated in Builder mainline, but their current server adapter is Worker/D1-shaped. The worker bridge and bounded supervisor exist. This repository state does not yet prove a Node runtime adapter, PostgreSQL-backed J.A.R.V.I.S. store, deployed executor, or running production service.
+**Current state:** the command-centre routes and workforce queue are integrated in Builder mainline. The Node 22 HTTP adapter and PostgreSQL compatibility adapter are now implemented under `products/izakhono-jarvis/runtime/`; their SQL translation, schema installation and claim-to-owner-review lifecycle pass against disposable PostgreSQL 17 in CI. The explicit schema installer is not run at API startup. This repository state does not prove that an IZAKHONO-owned production database or execution host has been configured, that existing data has been migrated, or that a production service is running. The worker bridge and bounded supervisor exist, but no real private executor is connected.
 
 ## Target service topology
 
@@ -41,7 +41,9 @@ NODE01–NODE04 remain IZAKHONO software-node identities. A workload is assigned
 
 | State | Meaning |
 |---|---|
-| `SOURCE_VALIDATED` | Existing route, workforce, supervisor and migration tests pass. |
+| `SOURCE_VALIDATED` | Existing route, workforce, supervisor and original SQLite migration tests pass. |
+| `RUNTIME_ADAPTER_IMPLEMENTED` | Node 22 API adapter and PostgreSQL compatibility/schema code exist; disposable PostgreSQL 17 integration tests pass. |
+| `RUNTIME_ADAPTER_READY` | Owned production PostgreSQL, production-role permissions, backup/restore, and environment-specific integration tests are verified. |
 | `RUNTIME_ADAPTER_READY` | Node API and PostgreSQL adapters exist and pass integration tests. |
 | `EXECUTOR_VERIFIED` | Real private executor passes contract, idempotency and authorization tests. |
 | `DEPLOYED_HEALTHY` | Immutable release is running on a verified owned execution host and health checks pass. |
