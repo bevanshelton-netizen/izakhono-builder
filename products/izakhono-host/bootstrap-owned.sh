@@ -55,8 +55,8 @@ if grep -q 'ops@example.com' .env; then
   exit 1
 fi
 
-for key in HOST_RUNTIME_TOKEN JARVIS_OWNER_SECRET JARVIS_WORKER_TOKEN POSTGRES_PASSWORD MINIO_ROOT_PASSWORD; do
-  if ! grep -Eq "^${key}=.+" .env; then
+for key in HOST_RUNTIME_TOKEN JARVIS_OWNER_SECRET JARVIS_WORKER_TOKEN POSTGRES_PASSWORD MINIO_ROOT_USER MINIO_ROOT_PASSWORD; do
+  if ! grep -Eq "^${key}=.+" .env || grep -q "^${key}=replace-with-" .env; then
     echo "Required secret $key is missing." >&2
     exit 1
   fi
