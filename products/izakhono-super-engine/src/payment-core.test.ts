@@ -22,7 +22,7 @@ const provider: PaymentProvider = {
 };
 
 const store = new MemoryPaymentStore();
-const pay = new IzakhonoPay(store, provider, async (context) => context.principalId === 'principal-1' ? 'merchant-1' : '');
+const pay = new IzakhonoPay(store, provider, async (context) => context.principalId === 'principal-1' ? { merchantId: 'merchant-1', serviceId: 'digital-service' } : { merchantId: '', serviceId: '' });
 const created = await pay.createPayment(input, { principalId: 'principal-1' });
 assert.equal(created.intent.status, 'pending');
 assert.equal(created.intent.amountMinor, 14900);
