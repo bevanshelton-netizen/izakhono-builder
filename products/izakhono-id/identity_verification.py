@@ -258,6 +258,7 @@ class IdentityVerificationService:
             return result
 
     def refresh(self, entity_id: str, session_id: str) -> dict[str, Any]:
+        terminal = ("verified", "review_required", "incomplete", "cancelled")
         with self.connect() as db:
             row = db.execute(
                 "SELECT * FROM identity_verification_sessions WHERE entity_id=? AND id=?",
@@ -265,55 +266,89 @@ class IdentityVerificationService:
             ).fetchone()
             if not row:
                 raise LookupError("verification_session_not_found")
-            if row["status"] in ("verified", "review_required", "incomplete", "cancelled"):
+            if row["status"] in terminal:
                 return self._row(row)
             if expiry_has_passed(row["expires_at"]):
                 now = utc_now()
-                db.execute(
+                changed = db.execute(
                     """UPDATE identity_verification_sessions
                        SET status='incomplete',completed_at=?,updated_at=?
                        WHERE entity_id=? AND id=?
                          AND status IN ('pending','in_progress','provider_unavailable')""",
                     (now, now, entity_id, session_id),
-                )
-                self._audit(db, "identity_verification.expired", entity_id,
-                            row["subject_ref"], "provider_session_expired")
+                ).rowcount
+                if changed:
+                    self._audit(db, "identity_verification.expired", entity_id,
+                                row["subject_ref"], "provider_session_expired")
                 db.commit()
-                expired = db.execute(
+                current = db.execute(
                     "SELECT * FROM identity_verification_sessions WHERE entity_id=? AND id=?",
                     (entity_id, session_id),
                 ).fetchone()
-                return self._row(expired)
+                return self._row(current)
             provider = self.providers.get(row["provider"])
             provider_ref = row["provider_session_ref"]
             if provider is None or not provider_ref:
                 raise RuntimeError("verification_provider_session_unavailable")
+
         try:
             outcome = provider.retrieve(provider_ref)
             status = decide_status(outcome)
         except Exception:
             raise RuntimeError("verification_result_unavailable") from None
+
         with self.connect() as db:
+            current = db.execute(
+                "SELECT * FROM identity_verification_sessions WHERE entity_id=? AND id=?",
+                (entity_id, session_id),
+            ).fetchone()
+            if not current:
+                raise LookupError("verification_session_not_found")
+            # A cancellation or another terminal result may have won while the
+            # provider request was in flight. Never overwrite that decision.
+            if current["status"] in terminal:
+                return self._row(current)
+
             now = utc_now()
-            db.execute(
+            if expiry_has_passed(current["expires_at"]):
+                changed = db.execute(
+                    """UPDATE identity_verification_sessions
+                       SET status='incomplete',completed_at=?,updated_at=?
+                       WHERE entity_id=? AND id=?
+                         AND status IN ('pending','in_progress','provider_unavailable')""",
+                    (now, now, entity_id, session_id),
+                ).rowcount
+                if changed:
+                    self._audit(db, "identity_verification.expired", entity_id,
+                                current["subject_ref"], "provider_session_expired_during_poll")
+                db.commit()
+                final_row = db.execute(
+                    "SELECT * FROM identity_verification_sessions WHERE entity_id=? AND id=?",
+                    (entity_id, session_id),
+                ).fetchone()
+                return self._row(final_row)
+
+            changed = db.execute(
                 """UPDATE identity_verification_sessions
                    SET status=?,outcome_json=?,completed_at=?,updated_at=?
-                   WHERE entity_id=? AND id=?""",
+                   WHERE entity_id=? AND id=?
+                     AND status IN ('pending','in_progress','provider_unavailable')""",
                 (status, json.dumps(outcome.public_dict(), separators=(",", ":")),
                  outcome.completed_at if status in ("verified", "review_required") else None,
                  now, entity_id, session_id),
-            )
-            for evidence_ref in outcome.evidence_refs:
-                if evidence_ref and len(evidence_ref) <= 240:
-                    db.execute(
-                        """INSERT OR IGNORE INTO identity_verification_evidence_refs
-                           (id,entity_id,session_id,provider,evidence_ref,created_at)
-                           VALUES(?,?,?,?,?,?)""",
-                        ("idve_" + secrets.token_hex(12), entity_id, session_id,
-                         row["provider"], evidence_ref, now),
-                    )
-            self._audit(db, "identity_verification.result_recorded", entity_id,
-                        row["subject_ref"], "status=" + status)
+            ).rowcount
+            if changed:
+                for evidence_ref in outcome.evidence_refs:
+                    if evidence_ref and len(evidence_ref) <= 240:
+                        db.execute(
+                            """INSERT OR IGNORE INTO identity_verification_evidence_refs
+                               (id,entity_id,session_id,provider,evidence_ref,created_at)
+                               VALUES(?,?,?,?,?,?)""",
+                            ("idve_" + secrets.token_hex(12), entity_id, session_id,
+                             current["provider"], evidence_ref, now),
+                        )
+                self._audit(db, "identity_verification.result_recorded", entity_id,
+                            current["subject_ref"], "status=" + status)
             db.commit()
             updated = db.execute(
                 "SELECT * FROM identity_verification_sessions WHERE entity_id=? AND id=?",
