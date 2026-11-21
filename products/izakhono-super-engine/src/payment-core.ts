@@ -4,6 +4,8 @@ export interface PaymentIntent {
   id: string;
   /** Immutable merchant identity resolved from an authenticated server-side principal. */
   merchantId: string;
+  /** Immutable service/product entitlement resolved from the authenticated order context. */
+  serviceId: string;
   externalTransactionId: string;
   amountMinor: number;
   currency: string;
@@ -51,8 +53,9 @@ export interface PaymentWebhookEvidence extends PaymentWebhook {
 
 /** Supplied only by the server's authenticated request boundary, never from a client payload. */
 export interface AuthenticatedMerchantContext { principalId: string; }
-/** Resolves a verified principal to its canonical merchant record. */
-export type MerchantIdentityResolver = (context: AuthenticatedMerchantContext) => Promise<string>;
+/** Canonical tenant and entitlement mapping derived from a verified principal and server-side order. */
+export interface ResolvedPaymentOwnership { merchantId: string; serviceId: string; }
+export type PaymentOwnershipResolver = (context: AuthenticatedMerchantContext, input: CreatePaymentInput) => Promise<ResolvedPaymentOwnership>;
 
 export interface PaymentProvider {
   readonly id: string;
@@ -74,7 +77,7 @@ export class MemoryPaymentStore implements PaymentStore {
   private readonly intents = new Map<string, PaymentIntent>();
 
   async save(intent: PaymentIntent): Promise<void> {
-    if (!intent.merchantId?.trim()) throw new Error('Payment merchant identity is required');
+    if (!intent.merchantId?.trim() || !intent.serviceId?.trim()) throw new Error('Payment merchant identity and service entitlement are required');
     if (this.intents.has(intent.id)) throw new Error('Duplicate payment intent ID');
     this.intents.set(intent.id, { ...intent });
   }
@@ -112,15 +115,17 @@ export class IzakhonoPay {
   constructor(
     private readonly store: PaymentStore,
     private readonly provider: PaymentProvider,
-    private readonly resolveMerchantIdentity: MerchantIdentityResolver,
+    private readonly resolvePaymentOwnership: PaymentOwnershipResolver,
   ) {}
 
   async getPaymentIntent(id: string): Promise<PaymentIntent | undefined> { return this.store.getById(id); }
 
   async createPayment(input: CreatePaymentInput, context: AuthenticatedMerchantContext): Promise<{ intent: PaymentIntent; link: PaymentLink }> {
     if (!context?.principalId?.trim()) throw new Error('Authenticated merchant principal is required');
-    const merchantId = await this.resolveMerchantIdentity(context);
-    if (typeof merchantId !== 'string' || !merchantId.trim()) throw new Error('Authenticated principal is not mapped to an active merchant');
+    const ownership = await this.resolvePaymentOwnership(context, input);
+    if (!ownership || typeof ownership.merchantId !== 'string' || !ownership.merchantId.trim()) throw new Error('Authenticated principal is not mapped to an active merchant');
+    if (typeof ownership.serviceId !== 'string' || !ownership.serviceId.trim()) throw new Error('Payment order is not mapped to an active service entitlement');
+    const { merchantId, serviceId } = ownership;
     if (!Number.isSafeInteger(input.amountMinor) || input.amountMinor <= 0) throw new Error('Payment amount must be a positive integer in minor currency units');
     if (!/^[A-Z]{3}$/.test(input.currency)) throw new Error('Currency must be an ISO 4217 code');
     if (!input.externalTransactionId.trim()) throw new Error('External transaction ID is required');
@@ -130,6 +135,7 @@ export class IzakhonoPay {
     const intent: PaymentIntent = {
       id: `pay_${crypto.randomUUID()}`,
       merchantId,
+      serviceId,
       externalTransactionId: input.externalTransactionId,
       amountMinor: input.amountMinor,
       currency: input.currency,
@@ -156,7 +162,7 @@ export class IzakhonoPay {
     const webhook = this.provider.parseWebhook(rawBody);
     const intent = await this.store.getByExternalTransactionId(webhook.externalTransactionId);
     if (!intent) throw new Error('Unknown payment transaction');
-    if (!intent.merchantId?.trim()) throw new Error('Payment intent has no trusted merchant identity');
+    if (!intent.merchantId?.trim() || !intent.serviceId?.trim()) throw new Error('Payment intent has no trusted merchant identity or service entitlement');
     if (webhook.provider !== intent.provider) throw new Error('Payment webhook provider does not match payment intent');
     const evidence = await this.provider.verifyPaymentEvidence(webhook, intent);
     if (evidence.provider !== intent.provider || evidence.providerPaymentId !== intent.providerPaymentId || evidence.externalTransactionId !== intent.externalTransactionId) throw new Error('Provider payment evidence does not match payment intent references');
