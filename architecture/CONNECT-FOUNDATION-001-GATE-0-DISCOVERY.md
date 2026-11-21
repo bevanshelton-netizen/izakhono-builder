@@ -262,3 +262,88 @@ The project-wide advisor also reports 87 unindexed foreign keys, 190 unused inde
 ### Gate 0 disposition update
 
 The live schema, applied migration list, deployed Edge Function inventory, engagement RPC foundations, RLS policy metadata and advisor snapshots are now recorded. Remaining discovery is narrower but still material: review the source of each relevant migration and SECURITY DEFINER function, inspect all I-CONNECT and communications Edge Function call paths, establish the full repository/deployment tree, and run the existing safe test baseline. The advisor findings are review gates, not authorisation to change the database.
+
+
+## 11. RPC authorisation review and verified inbox role-boundary defect
+
+The ten I-CONNECT SECURITY DEFINER functions flagged by Supabase were inspected at definition level, including their argument signatures and ACLs. The review distinguishes a concrete role-boundary defect from functions whose current source shows caller/tenant checks.
+
+### Confirmed issue requiring a corrective migration
+
+**Finding IC-SEC-001 — inbox claim is not role-restricted (medium severity; remediation required before broad agent rollout).**
+
+- Function: `public.ic_manage_inbox_thread(uuid, uuid, text, uuid, text, text, uuid)`.
+- Execute ACL includes `authenticated`.
+- The function checks `auth.uid()` and an active membership in the supplied organisation, then locks a thread constrained by both thread ID and organisation ID.
+- In the `p_action = 'claim'` branch, it rejects a thread already assigned to a different user and assigns the caller, but does not check `v_role`.
+- The live `ic_memberships_role_check` constraint permits `owner`, `admin`, `manager`, `agent`, `dispatcher`, `finance`, and `viewer`.
+- Therefore, any active member in one of those roles can reach the claim branch, including finance/viewer roles, subject to the organisation/thread match. This is a confirmed missing role check in the function definition; no exploit attempt or data mutation was performed.
+- The intended role matrix must be agreed (likely operational roles such as owner/admin/manager/agent and possibly dispatcher), then enforced in SQL before changing the live function. Negative tests must prove viewer/finance and cross-organisation callers are rejected, and valid agent/manager claim/release behaviour remains intact.
+
+**No live fix was applied.** Do not patch the function ad hoc in the dashboard. Prepare a versioned, reviewed migration with regression tests and a controlled release/rollback plan after Gate 0.
+
+### Other reviewed I-CONNECT RPCs
+
+| Function | Verified source-level control | Review result |
+|---|---|---|
+| `ic_add_inbox_internal_note` | Active organisation membership; manager roles or the assigned agent only; thread scoped to organisation; bounded body; audit event. | No immediate role-boundary defect identified in inspected body. |
+| `ic_checkout_state_for_customer` | Requires authenticated user; compares checkout intent's `metadata.created_by` with caller; removes external reference from returned state. | Ownership check present; inspect downstream customer-state helper separately. |
+| `ic_create_outbound_message_draft` | Active role allow-list; active organisation contact/channel; thread/contact/connection match; agent must own assigned thread when thread supplied. | Controls present; validate channel-specific consent and service-window semantics in full lifecycle review. |
+| `ic_create_owner_organization` | Requires authenticated user; validates name/slug; prevents another active owner organisation for same user; creates caller's owner membership and audit event. | Self-service owner onboarding path; confirm global one-owner rule is intentional. |
+| `ic_create_staging_checkout_intent` | Requires authentication; validates customer fields and active connectivity product; records staging environment and created_by. | Staging-only intent; no live payment execution evidenced. |
+| `ic_enqueue_workflow_test_run` | Uses `ic_private.has_role` for owner/admin/manager; organisation-scoped draft workflow; idempotency key; per-org queue cap; hard-coded simulation mode. | Test/simulation path only; no production trigger/action worker evidenced. |
+| `ic_list_my_organizations` | Requires authentication and filters memberships by `auth.uid()` and active status. | Caller-scoped listing. |
+| `ic_manage_inbox_thread` | Active membership and organisation-scoped thread; branch-specific checks for release/status/priority/queue/assign. Claim branch has no role allow-list. | **IC-SEC-001 confirmed.** |
+| `ic_prepare_checkout_intent_for_customer` | Requires authentication; validates details; creates intent with caller in metadata; returns `payment_ready: false`. | No live payment path evidenced. |
+| `ic_review_outbound_message_draft` | Manager allow-list; organisation-scoped pending draft; maker-checker separation; consent check; audit event; `delivery_enabled: false`. | Human review gate exists; approved draft is not delivery. |
+
+This is a source-level review, not a complete adversarial audit. It does not replace cross-tenant tests, role-matrix tests, PostgREST execution tests or review of every downstream helper.
+
+## 12. Separate IZAKHONO CONNECT communications/workspace platform — live project review
+
+The browser/PWA product at `products/izakhono-connect/` points to a **different Supabase project** from I-CONNECT:
+
+- Project: **IZAKHONO WebStart**, ref `yfawrenhudjomhnglfhq`, status `ACTIVE_HEALTHY`, region `eu-west-1`, PostgreSQL 17.6.
+- Project inventory: **798 public tables** and **673 applied migrations**.
+- The inspected `connect_*` domain contains **25 tables**, all with RLS enabled, covered by **48 RLS policies**; none of those 25 tables lacked a policy in the catalog snapshot.
+- This database also contains a separate `connecta_*` social/community domain. Do not conflate `connecta-engine` or `connecta_*` accounts/sessions with IZAKHONO ID or the CONNECT communications client.
+
+### Communications and workspace capabilities already present
+
+The static browser application `products/izakhono-connect/index.html` loads `app.js` and versioned modules `connect004.js` through `connect031.js` (with numbering gaps). The modules and live schema show multiple distinct capability groups:
+
+- Core direct/group conversation messaging, receipts, presence, devices and WebRTC call signalling.
+- Workspace/channel membership and task/workspace collaboration.
+- Task activity, prioritisation, workload and executive views.
+- Command queue, role access, governance, approvals and execution-link tables.
+- Browser-side client access uses a Supabase publishable key; no service-role key is embedded in the inspected entry point. The project README explicitly does not claim audited end-to-end encryption.
+
+The live `connect_*` tables are separate from I-CONNECT's `ic_inbox_*` and `ic_contacts` engagement domain. They live in another Supabase project with a different schema and migration history. Integration must therefore be through authenticated, versioned APIs/events and explicit ownership mapping; no direct cross-project SQL joins or silent record migration.
+
+### Verified communications readiness limitations
+
+- README and infrastructure docs state that owned TURN, verified push delivery, media storage/attachment policy and UX, native Android/iOS signing, and real-device/network integration testing remain incomplete.
+- TURN documentation says the platform remains STUN-first until the owned TURN activation gate is completed and tested.
+- Push documentation says no delivery should be claimed until an owned sender/adapter and server-side credential flow are provisioned and tested.
+- The mobile package is a Capacitor 7 shell with push plugin configuration; no store-signing or native release evidence was established in this inspection.
+- The CI workflow `.github/workflows/izakhono-connect-ci.yml` checks `app.js` syntax, mobile package JSON, Capacitor config, manifest, secret-pattern guardrails and infrastructure docs. It does **not** syntax-check the versioned `connectNNN.js` modules or run communications/RLS/realtime/real-device integration tests.
+- Several task/workspace modules call `connect_mark_overdue_tasks` and `connect_record_task_activity` from the browser. In the live database snapshot, both functions are SECURITY DEFINER and executable only by `service_role`. The browser-authenticated calls therefore do not have execute permission under the observed ACL. The UI call sites need to be reconciled with the intended service-worker/direct-RLS write path; do not simply grant authenticated execution. In particular, `connect_mark_overdue_tasks` updates all overdue tasks and has no caller/tenant filter in its body, so it must remain privileged and be invoked only by a trusted scheduled worker.
+- The live `connect_execute_command` RPC is not SECURITY DEFINER and updates a task through ordinary table privileges/RLS; the inspected task RLS policies scope it to workspace members. The governance and approval RPCs include explicit role checks in the inspected definitions.
+
+### Repository-to-database migration source gap
+
+The recursive Git tree for `bevanshelton-netizen/izakhono-builder` was inspected (4,178 paths; GitHub reported the tree was not truncated). It contains seven root `supabase/migrations/*.sql` files and seven I-CONNECT `products/i-connect/deploy/migrations/*.sql` files. The live I-CONNECT database reports 371 applied migrations and IZAKHONO WebStart reports 673. The November 12 I-CONNECT engagement migrations and many of the CONNECT workspace/governance migrations appear in the live ledgers but are not present as corresponding SQL source files in this repository tree.
+
+This is a material source-of-truth/reproducibility gap. The migration files may be held in another controlled repository or deployment system; their location has not been established. Before any schema change, identify the authoritative migration source, recover and checksum the complete history, map each live migration to its source/commit, and prove a clean replay path in an isolated non-production project. Do not reconstruct and apply missing historical migrations from live catalog definitions as a substitute for provenance.
+
+## 13. Updated Gate 0 decisions and priority order
+
+1. **Contain and remediate IC-SEC-001** through a reviewed migration and role-matrix regression tests before enabling broad inbox use. No live change in this discovery step.
+2. Establish the authoritative migration source for both Supabase projects and reconcile live migration ledgers with version-controlled SQL.
+3. Define which data remains owned by I-CONNECT engagement (`ic_*`) and which remains owned by CONNECT communications/workspaces (`connect_*`); define customer/contact/conversation linking via opaque stable IDs and authenticated events.
+4. Repair the browser/service-role RPC call mismatch safely. Keep global scheduled mutations privileged; add narrow authenticated operations only when they are tenant-scoped and positively tested.
+5. Add syntax/unit/integration checks for every `connectNNN.js` module and test RLS, realtime, receipts, call signalling, push and workspace governance.
+6. Complete channel adapters, consent/template/service-window policies, production workflow workers, human handover and delivery receipts in I-CONNECT without creating duplicate foundations.
+7. Keep both existing Supabase projects separate until an approved data ownership and migration decision proves otherwise.
+
+**Updated Gate 0 status: materially advanced, still open.** We have verified the principal product and database boundaries, identified a concrete inbox role-boundary defect and client/service-role mismatch, and identified migration-source provenance as a release blocker. No production SQL, data, application code or provider state has been changed.
