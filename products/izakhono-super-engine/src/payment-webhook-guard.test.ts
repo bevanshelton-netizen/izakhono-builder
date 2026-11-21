@@ -24,9 +24,7 @@ const provider: PaymentProvider = {
   async verifyPaymentEvidence(webhook, intent) {
     return { ...webhook, amountMinor: webhookAmount, currency: webhookCurrency };
   },
-  /*
-  */
-};
+  };
 
 const payments = new MemoryPaymentStore();
 const pay = new IzakhonoPay(payments, provider, async () => 'merchant-1');
@@ -40,9 +38,15 @@ assert.equal(first.status, 'paid');
 const duplicate = await guard.process('{}', '/callback', 'valid');
 assert.equal(duplicate.status, 'paid');
 
+providerPaymentId = 'provider-attacker';
+await assert.rejects(() => guard.process('{}', '/callback', 'valid'), /provider evidence does not match/);
+providerPaymentId = 'provider-1';
 webhookAmount = 999;
 await assert.rejects(() => guard.process('{}', '/callback', 'valid'), /amount does not match/);
 webhookAmount = 1000;
+webhookCurrency = 'USD';
+await assert.rejects(() => guard.process('{}', '/callback', 'valid'), /currency does not match/);
+webhookCurrency = 'ZAR';
 outcome = 'FAILURE';
 responseCode = '99';
 await assert.rejects(() => guard.process('{}', '/callback', 'valid'), /Contradictory duplicate/);
