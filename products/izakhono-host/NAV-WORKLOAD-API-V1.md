@@ -44,5 +44,5 @@ Both require the HOST runtime bearer token.
 - Request bodies are size-bounded.
 - Records are written atomically with restrictive file permissions.
 - Idempotency is serialized within the single HOST control-plane process.
-- The runtime adapter, worker, data-import jobs, backup/restore execution and public edge activation are not yet connected.
+- The runtime worker module and lease/evidence primitives exist but are not started as an always-on service. No concrete runtime adapter or target is registered. Data-import jobs, service startup, backup/restore execution and public edge activation are not yet connected.
 - Do not promote a record to `READY` or public-live based on request acceptance. Use independent engine, data, routing, search, tile, persistence, backup/restore, HTTPS and DNS evidence.
