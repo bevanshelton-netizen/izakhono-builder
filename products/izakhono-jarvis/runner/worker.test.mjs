@@ -3,7 +3,7 @@ import { runJarvisWorkerOnce } from "./worker.mjs";
 
 const env = {
   JARVIS_API_BASE_URL: "https://jarvis.example",
-  JARVIS_WORKER_TOKEN: "test-owner-token",
+  JARVIS_WORKER_TOKEN: "test-worker-token-012345678901234567890123456789",
   JARVIS_EXECUTOR_URL: "https://executor.example/api/jarvis/execute",
   JARVIS_EXECUTOR_TOKEN: "test-executor-token",
   JARVIS_EXECUTOR_ALLOWED_HOSTS: "executor.example",
@@ -73,6 +73,10 @@ const json = (body, status = 200) => new Response(JSON.stringify(body), { status
   assert.match(result.message, /not in JARVIS_EXECUTOR_ALLOWED_HOSTS/);
 }
 
+await assert.rejects(
+  () => runJarvisWorkerOnce({ ...env, JARVIS_WORKER_TOKEN: "short" }),
+  /at least 32 bytes/
+);
 await assert.rejects(
   () => runJarvisWorkerOnce({ ...env, JARVIS_EXECUTOR_URL: "http://executor.example" }),
   /HTTPS/

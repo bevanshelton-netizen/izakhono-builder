@@ -91,6 +91,7 @@ function validStep(step, agentId) {
 export async function runJarvisWorkerOnce(env = process.env, fetcher = fetch) {
   const base = endpoint(env.JARVIS_API_BASE_URL, "JARVIS_API_BASE_URL");
   const workerToken = required(env.JARVIS_WORKER_TOKEN, "JARVIS_WORKER_TOKEN");
+  if (Buffer.byteLength(workerToken) < 32) throw new Error("JARVIS_WORKER_TOKEN must contain at least 32 bytes");
   const adapter = endpoint(env.JARVIS_EXECUTOR_URL, "JARVIS_EXECUTOR_URL");
   const adapterToken = required(env.JARVIS_EXECUTOR_TOKEN, "JARVIS_EXECUTOR_TOKEN");
   assertAllowedExecutor(adapter, env);

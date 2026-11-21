@@ -11,7 +11,7 @@ async function refreshRun(db:WorkforceDb,runId:string){
 }
 export async function jarvisWorkforceRoute(req:Request,env:WorkforceEnv,owner:()=>Promise<boolean>,worker?:()=>Promise<boolean>):Promise<Response|null>{
  const u=new URL(req.url),p=u.pathname;if(!p.startsWith("/api/jarvis/workforce"))return null;
- const claim=p==="/api/jarvis/workforce/claim",m=p.match(/^\\/api\\/jarvis\\/workforce\\/steps\\/([^/]+)\\/(heartbeat|complete|fail|review|approve)$/);
+ const claim=p==="/api/jarvis/workforce/claim",m=p.match(/^\/api\/jarvis\/workforce\/steps\/([^/]+)\/(heartbeat|complete|fail|review|approve)$/);
  const workerMutation=claim||Boolean(m&&["heartbeat","complete","fail"].includes(m[2]));
  const authorized=workerMutation?(worker||owner):owner;
  if(!(await authorized()))return out({ok:false,error:"Unauthorized"},401);

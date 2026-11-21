@@ -72,7 +72,7 @@ async function handle(request) {
 
   const ownerAuthorized = async () => equalSecret(request.headers.get("x-admin-secret"), OWNER_SECRET);
   const workerAuthorized = async () => equalSecret(
-    request.headers.get("authorization")?.replace(/^Bearer\\s+/i, ""),
+    request.headers.get("authorization")?.replace(/^Bearer\s+/i, ""),
     WORKER_TOKEN,
   );
   try {

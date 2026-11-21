@@ -47,4 +47,4 @@ Bind the service only to the private HOST/Runtime Fabric service network. Publis
 
 ## Release state
 
-This source implementation advances the code to `RUNTIME_ADAPTER_IMPLEMENTED`. It is not a claim of integration-tested PostgreSQL compatibility, a live database migration, a verified host deployment, or a live J.A.R.V.I.S. service. Production activation remains blocked pending a real PostgreSQL integration run, privilege review, backup/restore proof, verified owned host, FORTRESS secret provisioning, EDGE/TLS checks, and owner acceptance. No executor or worker service is started by this release.
+This source implementation advances the code to `RUNTIME_ADAPTER_IMPLEMENTED`; the SQL adapter and workforce claim-to-owner-review lifecycle pass against disposable PostgreSQL 17 in CI. This is not a claim of production database migration, a verified host deployment, or a live J.A.R.V.I.S. service. Production activation remains blocked pending a real PostgreSQL integration run, privilege review, backup/restore proof, verified owned host, FORTRESS secret provisioning, EDGE/TLS checks, and owner acceptance. No executor or worker service is started by this release.
