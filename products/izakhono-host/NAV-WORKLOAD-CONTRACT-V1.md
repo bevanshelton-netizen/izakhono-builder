@@ -59,4 +59,4 @@ Vercel previews and build quotas are not part of the owned-runtime acceptance pa
 
 ## Current implementation scope
 
-The provider-neutral lifecycle state machine and its automated tests are introduced alongside this contract. API persistence, authenticated HOST endpoints, concrete runtime adapter, durable import jobs and an actual isolated runtime activation remain subsequent implementation and verification gates. No deployment or public-live status is implied by this contract.
+The provider-neutral lifecycle state machine, file-backed workload registry, authenticated HOST workload request/list/lookup endpoints, registry tests and control-plane smoke coverage are implemented. Workload requests are durably recorded in the HOST data volume and idempotently replayed; the API explicitly reports `queued-awaiting-runtime-adapter` and does not claim that a runtime was provisioned. A concrete runtime adapter, durable map-data import jobs, backup/restore execution, isolated runtime verification and actual NAV activation remain subsequent implementation and verification gates. No deployment or public-live status is implied by this contract.
