@@ -95,7 +95,7 @@ export class MemoryPaymentStore implements PaymentStore {
   async update(id: string, patch: Partial<PaymentIntent>): Promise<PaymentIntent> {
     const current = this.intents.get(id);
     if (!current) throw new Error(`Unknown payment intent: ${id}`);
-    if (patch.merchantId !== undefined && patch.merchantId !== current.merchantId) throw new Error('Payment merchant identity is immutable');
+    if ((patch.merchantId !== undefined && patch.merchantId !== current.merchantId) || (patch.serviceId !== undefined && patch.serviceId !== current.serviceId)) throw new Error('Payment merchant and service identity are immutable');
     const updated = { ...current, ...patch, updatedAt: new Date().toISOString() };
     this.intents.set(id, updated);
     return { ...updated };
