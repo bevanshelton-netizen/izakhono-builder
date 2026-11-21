@@ -12,7 +12,8 @@ const provider: PaymentProvider = {
   id: 'test-provider',
   async createPaymentLink() { return { paymentIntentId: '', provider: 'test-provider', providerPaymentId: 'provider-1', url: 'https://pay.example/1' }; },
   async verifyWebhook() { return true; },
-  parseWebhook() { return { provider: 'test-provider', providerPaymentId: 'provider-1', externalTransactionId: webhookTransaction, amountMinor: 14900, currency: 'ZAR', status: 'SUCCESS', responseCode: '00' }; },
+  parseWebhook() { return { provider: 'test-provider', providerPaymentId: 'provider-1', externalTransactionId: webhookTransaction, status: 'SUCCESS', responseCode: '00' }; },
+  async verifyPaymentEvidence(webhook, intent) { return { ...webhook, amountMinor: intent.amountMinor, currency: intent.currency }; },
 };
 
 const store = new MemoryPaymentStore();
