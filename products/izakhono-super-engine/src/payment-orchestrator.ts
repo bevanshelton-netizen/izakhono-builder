@@ -11,7 +11,7 @@ import { IzakhonoRefunds, PaymentLifecycle, type PaymentStateEventStore, type Re
 import { IzakhonoRefundRecovery } from './payment-refund-recovery.js';
 import type { RefundOperationStore } from './payment-refund-operations-supabase.js';
 
-export interface PaymentOrchestratorConfig { merchantId: string; serviceId: string; }
+export interface PaymentOrchestratorConfig { serviceId: string; }
 
 /** Coordinates payment, ledger, fulfillment, reconciliation, settlement and refund transitions. */
 export class PaymentOrchestrator {
@@ -46,22 +46,24 @@ export class PaymentOrchestrator {
     this.refundRecovery = refundOperations ? new IzakhonoRefundRecovery(refundOperations, refundProvider) : undefined;
   }
 
-  async recordPaid(payment: PaymentIntent, config: PaymentOrchestratorConfig): Promise<boolean> {
-    this.assertMerchant(config.merchantId);
-    if (payment.status !== 'paid') throw new Error('Only paid payments can enter the payment fabric');
+  async recordPaid(candidate: PaymentIntent): Promise<boolean> {
+    const payment = await this.canonicalPaid(candidate);
     const first = await this.events.record(createPaymentEvent({ kind: 'payment.paid', paymentIntentId: payment.id, externalTransactionId: payment.externalTransactionId, provider: payment.provider, fingerprint: `payment.paid:${payment.id}` }));
     if (!first) return false;
-    await this.ledger.recordPayment({ paymentIntentId: payment.id, merchantId: config.merchantId, amountMinor: payment.amountMinor, currency: payment.currency });
+    await this.ledger.recordPayment({ paymentIntentId: payment.id, merchantId: payment.merchantId, amountMinor: payment.amountMinor, currency: payment.currency });
     return true;
   }
 
-  async fulfillPaid(payment: PaymentIntent, config: PaymentOrchestratorConfig): Promise<FulfillmentJob> {
-    this.assertMerchant(config.merchantId);
-    if (payment.status !== 'paid') throw new Error('Only paid payments can be fulfilled');
+  async fulfillPaid(candidate: PaymentIntent, config: PaymentOrchestratorConfig): Promise<FulfillmentJob> {
+    const payment = await this.canonicalPaid(candidate);
+    this.assertService(config.serviceId);
     return this.fulfillment.enqueue(payment, config);
   }
 
-  async executeFulfillment(job: FulfillmentJob, payment: PaymentIntent): Promise<FulfillmentJob> { return this.fulfillment.execute(job, payment); }
+  async executeFulfillment(job: FulfillmentJob, candidate: PaymentIntent): Promise<FulfillmentJob> {
+    const payment = await this.canonicalPaid(candidate);
+    return this.fulfillment.execute(job, payment);
+  }
   async reconcilePayment(input: { payment: PaymentIntent; observedAmountMinor: number; observedCurrency: string }): Promise<ReconciliationRecord> {
     return this.reconciliation.reconcile({ provider: input.payment.provider, externalTransactionId: input.payment.externalTransactionId, expectedAmountMinor: input.payment.amountMinor, observedAmountMinor: input.observedAmountMinor, currency: input.observedCurrency });
   }
@@ -70,35 +72,46 @@ export class PaymentOrchestrator {
   async markSettlementSettled(id: string): Promise<SettlementBatch> { return this.settlement.markSettled(id); }
 
   async refund(payment: PaymentIntent, config: PaymentOrchestratorConfig, reason = 'Customer refund', amountMinor?: number): Promise<RefundLedgerResult & { payment: PaymentIntent; providerRefundId: string }> {
-    this.assertMerchant(config.merchantId);
-    if (payment.status !== 'paid') throw new Error(`Refund requires a paid payment; current status is ${payment.status}`);
-    if (!payment.providerPaymentId) throw new Error('Paid payment has no provider payment ID');
-    const amount = amountMinor ?? payment.amountMinor;
+    const canonical = await this.canonicalPaid(payment);
+    this.assertService(config.serviceId);
+    if (!canonical.providerPaymentId) throw new Error('Paid payment has no provider payment ID');
+    const amount = amountMinor ?? canonical.amountMinor;
     if (!Number.isSafeInteger(amount) || amount <= 0 || amount > payment.amountMinor) throw new Error('Refund amount must be a positive integer not exceeding the payment amount');
-    await this.events.record(createPaymentEvent({ kind: 'refund.requested', paymentIntentId: payment.id, externalTransactionId: payment.externalTransactionId, provider: payment.provider, fingerprint: `refund.requested:${payment.id}:${amount}:${reason}` }));
-    const providerRefund = await this.refunds.refund(payment, reason, amount);
-    const ledger = await this.refundLedger.recordRefund({ refundId: providerRefund.providerRefundId, payment: providerRefund.payment, merchantId: config.merchantId, amountMinor: amount });
-    await this.events.record(createPaymentEvent({ kind: 'payment.refunded', paymentIntentId: payment.id, externalTransactionId: payment.externalTransactionId, provider: payment.provider, fingerprint: `payment.refunded:${payment.id}:${providerRefund.providerRefundId}` }));
+    await this.events.record(createPaymentEvent({ kind: 'refund.requested', paymentIntentId: canonical.id, externalTransactionId: canonical.externalTransactionId, provider: canonical.provider, fingerprint: `refund.requested:${canonical.id}:${amount}:${reason}` }));
+    const providerRefund = await this.refunds.refund(canonical, reason, amount);
+    const ledger = await this.refundLedger.recordRefund({ refundId: providerRefund.providerRefundId, payment: providerRefund.payment, amountMinor: amount });
+    await this.events.record(createPaymentEvent({ kind: 'payment.refunded', paymentIntentId: canonical.id, externalTransactionId: canonical.externalTransactionId, provider: canonical.provider, fingerprint: `payment.refunded:${canonical.id}:${providerRefund.providerRefundId}` }));
     return { ...ledger, payment: providerRefund.payment, providerRefundId: providerRefund.providerRefundId };
   }
 
   /** Reconciles an ambiguous refund through a provider lookup only; it never submits another refund request. */
   async reconcileRefund(payment: PaymentIntent, config: PaymentOrchestratorConfig, amountMinor = payment.amountMinor): Promise<RefundLedgerResult & { payment: PaymentIntent; providerRefundId: string }> {
-    this.assertMerchant(config.merchantId);
+    const canonical = await this.canonicalPaid(payment);
+    this.assertService(config.serviceId);
     if (!this.refundRecovery) throw new Error('Durable refund operations are required for provider reconciliation');
-    const operation = await this.refundRecovery.reconcile(payment, amountMinor);
+    const operation = await this.refundRecovery.reconcile(canonical, amountMinor);
     if (operation.status === 'failed') throw new Error('Provider reconciliation confirmed that the refund was not completed');
     if (operation.status !== 'succeeded' || !operation.providerRefundId) throw new Error('Refund reconciliation did not produce a confirmed provider refund');
-    const updatedPayment = amountMinor === payment.amountMinor ? await this.lifecycle.refund(payment, 'Refund recovered after provider outcome reconciliation') : payment;
-    const ledger = await this.refundLedger.recordRefund({ refundId: operation.providerRefundId, payment: updatedPayment, merchantId: config.merchantId, amountMinor });
-    await this.events.record(createPaymentEvent({ kind: 'payment.refunded', paymentIntentId: payment.id, externalTransactionId: payment.externalTransactionId, provider: payment.provider, fingerprint: `payment.refunded:${payment.id}:${operation.providerRefundId}` }));
+    const updatedPayment = amountMinor === canonical.amountMinor ? await this.lifecycle.refund(canonical, 'Refund recovered after provider outcome reconciliation') : canonical;
+    const ledger = await this.refundLedger.recordRefund({ refundId: operation.providerRefundId, payment: updatedPayment, amountMinor });
+    await this.events.record(createPaymentEvent({ kind: 'payment.refunded', paymentIntentId: canonical.id, externalTransactionId: canonical.externalTransactionId, provider: canonical.provider, fingerprint: `payment.refunded:${canonical.id}:${operation.providerRefundId}` }));
     return { ...ledger, payment: updatedPayment, providerRefundId: operation.providerRefundId };
   }
 
-  async issueReceipt(payment: PaymentIntent): Promise<boolean> {
+  async issueReceipt(candidate: PaymentIntent): Promise<boolean> {
+    const payment = await this.payments.getById(candidate.id);
+    if (!payment || payment.id !== candidate.id || !payment.merchantId?.trim()) throw new Error('Canonical payment intent not found');
     if (payment.status !== 'paid' && payment.status !== 'refunded') throw new Error('Receipt requires a paid or refunded payment');
     return this.events.record(createPaymentEvent({ kind: 'receipt.issued', paymentIntentId: payment.id, externalTransactionId: payment.externalTransactionId, provider: payment.provider, fingerprint: `receipt.issued:${payment.id}` }));
   }
 
-  private assertMerchant(merchantId: string): void { if (!merchantId.trim()) throw new Error('Merchant ID is required'); }
+  private async canonicalPaid(candidate: PaymentIntent): Promise<PaymentIntent> {
+    const payment = await this.payments.getById(candidate.id);
+    if (!payment || payment.id !== candidate.id) throw new Error('Canonical payment intent not found');
+    if (payment.status !== 'paid') throw new Error('Only canonically paid payments can enter this operation');
+    if (!payment.merchantId?.trim()) throw new Error('Payment intent has no trusted merchant identity');
+    return payment;
+  }
+
+  private assertService(serviceId: string): void { if (!serviceId?.trim()) throw new Error('Service ID is required'); }
 }
