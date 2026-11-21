@@ -5,6 +5,8 @@ on:
     branches: [main]
     paths:
       - "products/izakhono-jarvis/**"
+      - "products/izakhono-host/docker-compose.owned.yml"
+      - "products/izakhono-host/bootstrap-owned.sh"
       - "migrations/00[2-3]*_jarvis_*.sql"
       - ".github/workflows/jarvis-owned-runtime-validation.yml"
   push:
@@ -72,6 +74,30 @@ jobs:
         run: |
           node postgres-migrate.mjs
           npm run test:postgres
+
+      - name: Build owned J.A.R.V.I.S. runtime image
+        run: docker build -f products/izakhono-jarvis/runtime/Dockerfile -t izakhono-jarvis-api:ci .
+
+      - name: Smoke-test the owned J.A.R.V.I.S. container against disposable PostgreSQL
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run -d --network host --name jarvis-api-ci \
+            -e DATABASE_URL="$DATABASE_URL" \
+            -e DATABASE_SSLMODE=disable \
+            -e JARVIS_OWNER_SECRET=ci-owner-secret-at-least-32-bytes-long \
+            -e JARVIS_WORKER_TOKEN=ci-worker-token-at-least-32-bytes-long \
+            izakhono-jarvis-api:ci
+          trap 'docker rm -f jarvis-api-ci >/dev/null 2>&1 || true' EXIT
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8080/health/ready; then
+              echo
+              exit 0
+            fi
+            sleep 1
+          done
+          docker logs jarvis-api-ci
+          exit 1
 
       - name: Validate original SQLite migration chain
         shell: bash
