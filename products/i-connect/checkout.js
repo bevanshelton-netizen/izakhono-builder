@@ -19,7 +19,7 @@
     const wrap = document.createElement('section');
     wrap.id = 'i-connect-checkout';
     wrap.style.cssText = 'margin:0 22px 18px;padding:18px;border:1px solid rgba(255,255,255,.1);border-radius:14px;background:rgba(255,255,255,.035)';
-    wrap.innerHTML = `<div class="card-head"><div><h2>Customer Checkout</h2><span>Secure checkout → payment → provisioning</span></div></div>
+    wrap.innerHTML = `<div class="card-head"><div><h2>Checkout Request</h2><span>Pre-payment request · payment is not yet enabled</span></div></div>
       <div class="grid two" style="margin-top:14px">
         <div><label>Product code</label><input id="ic-product" value="" placeholder="Enter an active catalog product code" style="width:100%;margin-top:7px;padding:11px;border-radius:9px;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.15);color:inherit"></div>
         <div><label>Customer email</label><input id="ic-email" type="email" placeholder="customer@example.com" style="width:100%;margin-top:7px;padding:11px;border-radius:9px;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.15);color:inherit"></div>
@@ -99,8 +99,9 @@
         const intent = payload.data || payload;
         activeIntentId = intent.intent_id || intent.checkout_intent_id || null;
         result.textContent = activeIntentId
-          ? 'Checkout intent created · ' + (intent.amount ?? '') + ' ' + (intent.currency ?? '')
-          : 'Checkout intent created, but no intent identifier was returned.';
+          ? 'Checkout request recorded · ' + (intent.amount ?? '') + ' ' + (intent.currency ?? '') +
+            (intent.payment_ready === false ? ' · PAYMENT NOT AVAILABLE — ' + (intent.reason || 'Provider configuration is required.') : '')
+          : 'Checkout request recorded, but no intent identifier was returned.';
         if (activeIntentId) await refreshState();
       } catch (e) {
         result.textContent = 'Checkout unavailable: ' + e.message;
