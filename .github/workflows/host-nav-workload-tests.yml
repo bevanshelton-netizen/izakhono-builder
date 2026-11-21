@@ -6,6 +6,10 @@ on:
     paths:
       - 'products/izakhono-host/runtime/provisioner/workload-state-machine.mjs'
       - 'products/izakhono-host/runtime/provisioner/workload-state-machine.test.mjs'
+      - 'products/izakhono-host/runtime/provisioner/workload-store.mjs'
+      - 'products/izakhono-host/runtime/provisioner/workload-store.test.mjs'
+      - 'products/izakhono-host/runtime/control-plane/server.mjs'
+      - 'products/izakhono-host/runtime/control-plane/smoke.mjs'
       - 'products/izakhono-host/NAV-WORKLOAD-CONTRACT-V1.md'
       - '.github/workflows/host-nav-workload-tests.yml'
   push:
@@ -32,8 +36,14 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Syntax-check lifecycle module
-        run: node --check products/izakhono-host/runtime/provisioner/workload-state-machine.mjs
+      - name: Syntax-check HOST workload modules
+        run: |
+          node --check products/izakhono-host/runtime/provisioner/workload-state-machine.mjs
+          node --check products/izakhono-host/runtime/provisioner/workload-store.mjs
+          node --check products/izakhono-host/runtime/control-plane/server.mjs
 
-      - name: Run HOST NAV workload lifecycle tests
-        run: node --test products/izakhono-host/runtime/provisioner/workload-state-machine.test.mjs
+      - name: Run HOST NAV workload tests
+        run: node --test products/izakhono-host/runtime/provisioner/workload-state-machine.test.mjs products/izakhono-host/runtime/provisioner/workload-store.test.mjs
+
+      - name: Run HOST control-plane smoke test
+        run: node products/izakhono-host/runtime/control-plane/smoke.mjs
