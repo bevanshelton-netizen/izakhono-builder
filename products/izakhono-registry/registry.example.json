@@ -1,0 +1,13 @@
+{
+  "schema":"izakhono.registry/v1",
+  "updatedAt":"2026-10-04T00:00:00Z",
+  "platforms":[],
+  "nodes":[
+    {
+      "id":"NODE01",
+      "role":"primary",
+      "controlUrl":"http://127.0.0.1:9292",
+      "status":"unknown"
+    }
+  ]
+}

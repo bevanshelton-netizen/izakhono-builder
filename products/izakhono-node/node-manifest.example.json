@@ -1,0 +1,7 @@
+{
+  "schema":"izakhono.node-manifest/v1",
+  "nodeId":"NODE01",
+  "role":"primary",
+  "control":{"baseUrl":"http://127.0.0.1:9292"},
+  "capabilities":["docker","compose","build","health-gate","rollback","evidence"]
+}
