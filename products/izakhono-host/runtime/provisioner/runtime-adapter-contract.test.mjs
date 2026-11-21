@@ -14,7 +14,8 @@ function adapter(overrides = {}) {
 }
 
 test('requires the complete provider-neutral HOST lifecycle surface', () => {
-  assert.equal(assertRuntimeAdapter(adapter()), assert.ok ? assertRuntimeAdapter(adapter()) : null);
+  const complete = adapter();
+  assert.equal(assertRuntimeAdapter(complete), complete);
   for (const method of RUNTIME_ADAPTER_METHODS) {
     const incomplete = adapter();
     delete incomplete[method];
@@ -36,5 +37,5 @@ test('registers only allow-listed adapter IDs and prevents replacement', () => {
 test('does not infer or require physical machine identity', () => {
   const registry = createRuntimeAdapterRegistry();
   registry.register('provider-neutral', adapter());
-  assert.equal(registry.get('provider-neutral').resolveTarget instanceof Function, true);
+  assert.equal(typeof registry.get('provider-neutral').resolveTarget, 'function');
 });
