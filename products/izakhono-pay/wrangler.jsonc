@@ -1,7 +1,7 @@
 {
   "$schema": "../../node_modules/wrangler/config-schema.json",
   "name": "izakhono-pay-v1",
-  "main": "src/index.ts",
+  "main": "src/index.js",
   "compatibility_date": "2026-08-01",
   "workers_dev": true,
   "d1_databases": [
