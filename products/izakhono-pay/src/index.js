@@ -109,8 +109,13 @@ async function recordEvent(env, provider, eventType, fingerprint, intentId, payl
     await env.DB.prepare('INSERT INTO payment_events(id,provider,fingerprint,event_type,intent_id,payload_json,verified) VALUES(?,?,?,?,?,?,?)')
       .bind(id('evt'), provider, fingerprint, eventType, intentId || null, JSON.stringify(payload).slice(0, 50000), verified ? 1 : 0).run();
     return true;
-  } catch {
-    return false;
+  } catch (insertError) {
+    // A duplicate is safe to acknowledge. A database outage is not a duplicate:
+    // propagate it so the provider retries rather than losing a paid callback.
+    const existing = await env.DB.prepare('SELECT fingerprint FROM payment_events WHERE fingerprint=?')
+      .bind(fingerprint).first();
+    if (existing?.fingerprint === fingerprint) return false;
+    throw insertError;
   }
 }
 
@@ -406,17 +411,20 @@ async function handlePaystackWebhook(req, env) {
   const event = JSON.parse(raw);
   const reference = event?.data?.reference;
   const intent = reference ? await findIntentByReference(env, reference) : null;
-  const fingerprint = sha256Hex(`paystack:${raw}`);
-  const fresh = await recordEvent(env, 'paystack', cleanText(event?.event || 'unknown', 80), fingerprint, intent?.id, event, true);
-  if (!fresh) return response({ ok: true, duplicate: true });
-
-  if (event?.event === 'charge.success' && intent) {
+  if (event?.event === 'charge.success') {
+    if (!intent) return fail('Unknown Paystack payment reference', 404, 'unknown_reference');
     const amountMatches = Number(event?.data?.amount) === Number(intent.amount_minor);
     const currencyMatches = String(event?.data?.currency || '').toUpperCase() === intent.currency;
     if (!amountMatches || !currencyMatches) {
       await recordFortressEvent(env, { severity: 'critical', category: 'payment.amount_or_currency_mismatch', source: 'paystack', merchantSlug: intent.app_slug, intentId: intent.id, details: { reference } });
       return fail('Verified webhook did not match the expected amount/currency', 409, 'payment_mismatch');
     }
+  }
+  const fingerprint = sha256Hex(`paystack:${raw}`);
+  const fresh = await recordEvent(env, 'paystack', cleanText(event?.event || 'unknown', 80), fingerprint, intent?.id, event, true);
+  if (!fresh) return response({ ok: true, duplicate: true });
+
+  if (event?.event === 'charge.success' && intent) {
     await markPaid(env, intent.id, String(event?.data?.id || reference));
   }
   return response({ ok: true });
