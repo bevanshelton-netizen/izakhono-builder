@@ -67,6 +67,8 @@ assert.equal(updated.status, 'paid');
 assert.equal(updated.id, intent.id);
 assert.equal(updated.merchantId, intent.merchantId);
 assert.equal(updated.serviceId, intent.serviceId);
+await assert.rejects(() => store.update(intent.id, { merchantId: 'merchant-attacker' }), /immutable/);
+await assert.rejects(() => store.update(intent.id, { serviceId: 'attacker-service' }), /immutable/);
 
 console.log('payment-supabase tests passed');
 }
