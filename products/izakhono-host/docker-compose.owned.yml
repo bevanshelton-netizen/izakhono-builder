@@ -76,7 +76,6 @@ services:
     image: coredns/coredns:1.12.1
     restart: unless-stopped
     command: -conf /etc/coredns/Corefile
-    ports:
     expose:
       - "53/udp"
       - "53/tcp"
