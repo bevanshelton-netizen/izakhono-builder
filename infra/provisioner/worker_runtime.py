@@ -168,5 +168,5 @@ if __name__ == "__main__":
     # satisfy independent acceptance or produce a handover-ready job.
     assert any(r is not None and r.status == "blocked" for r in results)
     assert job.state == State.BLOCKED.value
-    assert job.evidence.get("ACCEPTANCE_PASSED", {}).get("simulation") is True
+    assert all(job.evidence[s].get("simulation") is True for s in ("TENANT_CREATED", "DOMAIN_READY", "DNS_READY", "SITE_READY", "TLS_READY", "MAIL_READY", "INTEGRATIONS_READY")) and "ACCEPTANCE_PASSED" not in job.evidence
     print("PROVISIONER_WORKER_RUNTIME_FAIL_CLOSED: PASS")
