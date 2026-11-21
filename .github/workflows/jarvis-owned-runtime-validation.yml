@@ -1,0 +1,80 @@
+name: J.A.R.V.I.S. owned-runtime source validation
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "products/izakhono-jarvis/**"
+      - "migrations/00[2-3]*_jarvis_*.sql"
+      - ".github/workflows/jarvis-owned-runtime-validation.yml"
+  push:
+    branches: [main]
+    paths:
+      - "products/izakhono-jarvis/**"
+      - "migrations/00[2-3]*_jarvis_*.sql"
+      - ".github/workflows/jarvis-owned-runtime-validation.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  source-validation:
+    name: Validate J.A.R.V.I.S. source contracts (not deployment)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install locked dependencies
+        run: npm install --ignore-scripts --no-audit --no-fund
+
+      - name: Test bounded worker and supervisor
+        run: npm run jarvis:worker:test
+
+      - name: Test owner-controlled workforce queue
+        run: npm run jarvis:workforce:test
+
+      - name: Validate J.A.R.V.I.S. migration chain in isolated SQLite
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import pathlib, sqlite3
+          db = sqlite3.connect(":memory:")
+          db.execute("PRAGMA foreign_keys = ON")
+          migrations = sorted(pathlib.Path("migrations").glob("00[2-3]*_jarvis_*.sql"))
+          expected = [f"{n:04d}" for n in range(25, 32)]
+          actual = [p.name[:4] for p in migrations]
+          if actual != expected:
+              raise SystemExit(f"Expected migrations {expected}, found {actual}")
+          for migration in migrations:
+              db.executescript(migration.read_text())
+              print(f"PASS {migration.name}")
+          tables = {r[0] for r in db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+          required = {
+              "jarvis_tasks", "jarvis_context_items", "jarvis_task_context",
+              "jarvis_action_proposals", "jarvis_proposal_decisions",
+              "jarvis_audit_events", "jarvis_conversations", "jarvis_messages",
+              "jarvis_orchestration_runs", "jarvis_orchestration_steps",
+          }
+          missing = required - tables
+          if missing:
+              raise SystemExit("Missing tables: " + ", ".join(sorted(missing)))
+          print("PASS all seven J.A.R.V.I.S. migrations applied in order")
+          PY
+
+      - name: Confirm deployment is not part of source validation
+        shell: bash
+        run: |
+          set -euo pipefail
+          if grep -R -nE 'wrangler (deploy|d1 migrations apply)|CLOUDFLARE_API_TOKEN|CLOUDFLARE_ACCOUNT_ID' products/izakhono-jarvis/runner products/izakhono-jarvis/OWNED-RUNTIME-ARCHITECTURE.md; then
+            echo "Unexpected Cloudflare deployment dependency in the owned-runtime worker boundary."
+            exit 1
+          fi
+          echo "PASS source validation does not deploy or require Cloudflare credentials."
+          echo "Production remains blocked until the owned Node/PostgreSQL adapters and real executor pass their separate acceptance gates."
