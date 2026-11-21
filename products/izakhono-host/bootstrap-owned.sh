@@ -17,8 +17,9 @@ lines=[]
 for line in p.read_text().splitlines():
     if '=' in line and not line.lstrip().startswith('#'):
         key, value = line.split('=', 1)
-        if value.startswith('replace-with-'):
-            value = secrets.token_urlsafe(48 if 'TOKEN' in key else 32)
+        if 'replace-with-' in value:
+            prefix = value.split('replace-with-', 1)[0]
+            value = prefix + secrets.token_urlsafe(48 if 'TOKEN' in key else 32)
             line = f'{key}={value}'
     lines.append(line)
 p.write_text(chr(10).join(lines) + chr(10))
