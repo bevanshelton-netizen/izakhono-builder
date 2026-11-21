@@ -30,6 +30,7 @@ async function invoke(routes, path, request) {
 test('owned runtime registers customer, provisioning and checkout endpoints', () => {
   const routes = buildRegistry();
   for (const path of [
+    '/api/public-config',
     '/api/customer-control',
     '/api/provisioning',
     '/api/handover',
