@@ -5,12 +5,15 @@ class FakeRegulaTransport:
     def __init__(self):
         self.available = True
         self.created = 0
+        self.retrieved = 0
         self.outcome = VerificationOutcome("passed", "passed", "passed", "passed", ("regula-evidence-1",), "2026-11-21T10:00:00+00:00")
     def health(self): return self.available
     def create_verification(self, **kwargs):
         self.created += 1
         return VerificationStart("regula-tx-1", "one-time-client-token")
-    def get_verification(self, ref): return self.outcome
+    def get_verification(self, ref):
+        self.retrieved += 1
+        return self.outcome
     def cancel_verification(self, ref): return None
 
 class IdentityVerificationTests(unittest.TestCase):
@@ -61,6 +64,28 @@ class IdentityVerificationTests(unittest.TestCase):
         session = self.service.start(self.request)
         with self.assertRaises(LookupError):
             self.service.refresh("entity-b", session["id"])
+    def test_expired_session_is_closed_without_provider_poll(self):
+        session = self.service.start(self.request)
+        with sqlite3.connect(self.db_path) as db:
+            db.execute(
+                "UPDATE identity_verification_sessions SET expires_at=? WHERE id=?",
+                ("2020-01-01T00:00:00+00:00", session["id"]),
+            )
+        result = self.service.refresh("entity-a", session["id"])
+        self.assertEqual(result["status"], "incomplete")
+        self.assertIsNotNone(result["completed_at"])
+        self.assertEqual(self.transport.retrieved, 0)
+
+    def test_malformed_expiry_fails_closed_without_provider_poll(self):
+        session = self.service.start(self.request)
+        with sqlite3.connect(self.db_path) as db:
+            db.execute(
+                "UPDATE identity_verification_sessions SET expires_at=? WHERE id=?",
+                ("not-a-timestamp", session["id"]),
+            )
+        result = self.service.refresh("entity-a", session["id"])
+        self.assertEqual(result["status"], "incomplete")
+        self.assertEqual(self.transport.retrieved, 0)
     def test_provider_unavailable_fails_closed(self):
         self.transport.available = False
         request = VerificationRequest("entity-a", "opaque-subject-002", "customer_onboarding",
