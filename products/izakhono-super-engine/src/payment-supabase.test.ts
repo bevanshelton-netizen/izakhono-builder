@@ -4,6 +4,7 @@ import type { PaymentIntent } from './payment-core.js';
 
 const intent: PaymentIntent = {
   id: 'pay_test_1',
+  merchantId: 'merchant_test_1',
   externalTransactionId: 'order_test_1',
   amountMinor: 14900,
   currency: 'ZAR',
@@ -25,6 +26,7 @@ const store = new SupabasePaymentStore({
     if (method === 'POST') return new Response(null, { status: 201 });
     if (method === 'GET') return Response.json([{
       id: intent.id,
+      merchant_id: intent.merchantId,
       external_transaction_id: intent.externalTransactionId,
       amount_minor: intent.amountMinor,
       currency: intent.currency,
