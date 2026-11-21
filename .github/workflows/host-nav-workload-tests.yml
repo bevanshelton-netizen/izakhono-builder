@@ -10,6 +10,8 @@ on:
       - 'products/izakhono-host/runtime/provisioner/workload-store.test.mjs'
       - 'products/izakhono-host/runtime/control-plane/server.mjs'
       - 'products/izakhono-host/runtime/control-plane/smoke.mjs'
+      - 'products/izakhono-host/runtime/control-plane/Dockerfile'
+      - 'products/izakhono-host/docker-compose.owned.yml'
       - 'products/izakhono-host/NAV-WORKLOAD-CONTRACT-V1.md'
       - '.github/workflows/host-nav-workload-tests.yml'
   push:
@@ -47,3 +49,6 @@ jobs:
 
       - name: Run HOST control-plane smoke test
         run: node products/izakhono-host/runtime/control-plane/smoke.mjs
+
+      - name: Build HOST runtime image with NAV workload modules
+        run: docker build -f products/izakhono-host/runtime/control-plane/Dockerfile -t izakhono-host-runtime:ci products/izakhono-host
