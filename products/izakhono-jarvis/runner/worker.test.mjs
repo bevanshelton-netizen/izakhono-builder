@@ -3,7 +3,7 @@ import { runJarvisWorkerOnce } from "./worker.mjs";
 
 const env = {
   JARVIS_API_BASE_URL: "https://jarvis.example",
-  JARVIS_OWNER_SECRET: "test-owner-secret",
+  JARVIS_WORKER_TOKEN: "test-worker-token-012345678901234567890123456789",
   JARVIS_EXECUTOR_URL: "https://executor.example/api/jarvis/execute",
   JARVIS_EXECUTOR_TOKEN: "test-executor-token",
   JARVIS_EXECUTOR_ALLOWED_HOSTS: "executor.example",
@@ -27,7 +27,7 @@ const json = (body, status = 200) => new Response(JSON.stringify(body), { status
   assert.equal(result.status, "completed");
   assert.equal(result.owner_verification, "pending");
   assert.equal(calls.length, 3);
-  assert.equal(calls[0].options.headers["x-admin-secret"], "test-owner-secret");
+  assert.equal(calls[0].options.headers.authorization, "Bearer test-worker-token-012345678901234567890123456789");
   assert.equal(calls[1].options.headers.authorization, "Bearer test-executor-token");
   assert.equal(calls[1].options.headers["idempotency-key"], "jarvis-step-step-1");
   assert.equal(calls[1].options.redirect, "error");
@@ -73,6 +73,10 @@ const json = (body, status = 200) => new Response(JSON.stringify(body), { status
   assert.match(result.message, /not in JARVIS_EXECUTOR_ALLOWED_HOSTS/);
 }
 
+await assert.rejects(
+  () => runJarvisWorkerOnce({ ...env, JARVIS_WORKER_TOKEN: "short" }),
+  /at least 32 bytes/
+);
 await assert.rejects(
   () => runJarvisWorkerOnce({ ...env, JARVIS_EXECUTOR_URL: "http://executor.example" }),
   /HTTPS/
