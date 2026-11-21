@@ -85,7 +85,7 @@ async function queryPublicResolver(provider, domain, type) {
   if (payload.Status !== 0) throw new Error('public_dns_query_failed');
   return (payload.Answer || [])
     .filter(record => record.type === type)
-    .map(record => String(record.data || '').replace(/^\\[|\\]$/g,''))
+    .map(record => String(record.data || ''))
     .filter(Boolean);
 }
 
