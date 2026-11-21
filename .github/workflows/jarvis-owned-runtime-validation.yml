@@ -2,7 +2,7 @@ name: J.A.R.V.I.S. owned-runtime source validation
 
 on:
   pull_request:
-    branches: [main]
+    branches: [main, host-public-verification-hardening]
     paths:
       - "products/izakhono-jarvis/**"
       - "products/izakhono-host/docker-compose.owned.yml"
