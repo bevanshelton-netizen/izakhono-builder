@@ -2,7 +2,7 @@
 
 ## Implemented source boundary
 
-- Node.js 22 HTTP API using the existing J.A.R.V.I.S. workforce and executive snapshot route modules.
+- Node.js 22 HTTP API exposing the existing owner-controlled J.A.R.V.I.S. workforce route. The executive snapshot remains outside this runtime until its Builder portfolio data source has a verified PostgreSQL adapter.
 - PostgreSQL adapter for the reviewed D1-shaped route contract, with explicit translation for positional parameters, SQLite `datetime()`, and dependency JSON iteration.
 - Transactional, checksum-recorded PostgreSQL schema installer. It is an explicit operator command and is never invoked during API startup.
 - Separate owner API and workforce service credentials are required (minimum 32 bytes each) and compared in constant time. Worker tokens are limited to claim, heartbeat, completion and failure routes; owner-only queue review and approval remain protected by the owner secret. The service has no public CORS policy.
@@ -24,10 +24,8 @@ docker build -f products/izakhono-jarvis/runtime/Dockerfile -t izakhono-jarvis-a
 Use a dedicated, least-privilege database role with DDL permissions only for the installation window. Confirm the database endpoint is an IZAKHONO-owned PostgreSQL instance, take and verify a backup, and review the SQL before installation.
 
 ```sh
-JARVIS_ALLOW_SCHEMA_MIGRATION=1 \
-DATABASE_URL='postgresql://<role>:<secret>@<owned-db-host>:5432/<database>' \
-DATABASE_SSLMODE=verify-full \
-node --experimental-strip-types products/izakhono-jarvis/runtime/postgres-migrate.mjs
+# DATABASE_URL and DATABASE_SSLMODE are injected by FORTRESS for this one-shot job.
+JARVIS_ALLOW_SCHEMA_MIGRATION=1 node --experimental-strip-types products/izakhono-jarvis/runtime/postgres-migrate.mjs
 ```
 
 The installer takes a PostgreSQL advisory transaction lock, applies the schema and records a SHA-256 checksum in one transaction. It refuses to overwrite a previously installed migration with a different checksum. It does not import or alter existing D1 data.
@@ -37,10 +35,8 @@ The installer takes a PostgreSQL advisory transaction lock, applies the schema a
 Provide `DATABASE_URL`, `JARVIS_OWNER_SECRET` and a separate `JARVIS_WORKER_TOKEN` through the IZAKHONO FORTRESS secret store at runtime. Do not put credentials in source control, images, compose files or command-line history. Both tokens must be at least 32 bytes. The worker token must never be the owner secret. Use a dedicated application role with only the required table privileges; do not run the API as a database owner or superuser.
 
 ```sh
-DATABASE_URL='postgresql://<app-role>:<secret>@<owned-db-host>:5432/<database>' \
-JARVIS_OWNER_SECRET='<owner-secret-from-FORTRESS>' \
-JARVIS_WORKER_TOKEN='<separate-worker-token-from-FORTRESS>' \
-DATABASE_SSLMODE=verify-full \
+# DATABASE_URL, JARVIS_OWNER_SECRET, JARVIS_WORKER_TOKEN and DATABASE_SSLMODE
+# are injected from FORTRESS at process start; never paste secret values into shell history.
 node --experimental-strip-types products/izakhono-jarvis/runtime/server.mjs
 ```
 
