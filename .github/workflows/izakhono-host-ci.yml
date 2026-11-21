@@ -1,0 +1,29 @@
+name: IZAKHONO HOST CI
+
+on:
+  push:
+    paths:
+      - "apps/izakhono-host/**"
+      - ".github/workflows/izakhono-host-ci.yml"
+  pull_request:
+    paths:
+      - "apps/izakhono-host/**"
+      - ".github/workflows/izakhono-host-ci.yml"
+
+jobs:
+  host:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/izakhono-host
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Syntax check
+        run: npm run check
+      - name: Docker build
+        run: docker build -t izakhono-host-ci .
+      - name: Control-plane smoke test
+        run: npm run smoke
