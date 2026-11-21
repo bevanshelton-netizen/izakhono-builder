@@ -49,7 +49,7 @@ if docker compose version >/dev/null 2>&1; then pass 'Docker Compose operational
 if [[ -f docker-compose.owned.yml ]]; then pass 'Owned compose definition present'; else fail 'Owned compose definition present'; fi
 if [[ -f .env ]]; then
   pass '.env present'
-  for key in HOST_RUNTIME_TOKEN POSTGRES_PASSWORD MINIO_ROOT_PASSWORD; do
+  for key in HOST_RUNTIME_TOKEN JARVIS_OWNER_SECRET JARVIS_WORKER_TOKEN POSTGRES_PASSWORD MINIO_ROOT_PASSWORD; do
     if grep -Eq "^${key}=.+" .env && ! grep -q "^${key}=replace-with-" .env; then pass "$key configured"; else fail "$key configured"; fi
   done
   if grep -q '^TLS_EMAIL=' .env && ! grep -q 'ops@example.com' .env; then pass 'TLS email configured'; else fail 'TLS email configured'; fi
@@ -94,6 +94,16 @@ if docker ps --format '{{.Names}}' | grep -q '^izakhono-host-runtime'; then
   if curl -fsS --max-time 5 http://127.0.0.1:8080/health >/dev/null; then pass 'Owned runtime health'; else fail 'Owned runtime health'; fi
 else
   warn 'Owned runtime not running yet'
+fi
+
+if docker compose --env-file .env -f docker-compose.owned.yml config --services 2>/dev/null | grep -qx 'jarvis-api'; then
+  if docker compose --env-file .env -f docker-compose.owned.yml exec -T jarvis-api node -e "fetch('http://127.0.0.1:8080/health/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))" >/dev/null 2>&1; then
+    pass 'J.A.R.V.I.S. API readiness and PostgreSQL schema'
+  else
+    fail 'J.A.R.V.I.S. API readiness and PostgreSQL schema'
+  fi
+else
+  fail 'J.A.R.V.I.S. owned runtime service declared'
 fi
 
 printf '\nRESULTS: PASS=%d FAIL=%d WARN=%d\n' "$pass_count" "$fail_count" "$warn_count"
