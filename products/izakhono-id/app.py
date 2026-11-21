@@ -853,8 +853,11 @@ class Handler(BaseHTTPRequestHandler):
                     "ok": True,
                     "active": True,
                     "subject": session["user_email"],
+                    "user_id": session["user_id"],
                     "entity_id": session["entity_id"],
                     "entity_slug": session["entity_slug"],
+                    "membership_id": session["membership_id"],
+                    "session_id": session["id"],
                     "role": session["membership_role"],
                     "expires_at": session["expires_at"],
                 })

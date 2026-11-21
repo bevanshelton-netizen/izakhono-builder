@@ -57,7 +57,7 @@ A session created for Entity A cannot silently become a session for Entity B.
 - `POST /api/v1/mfa/recovery/regenerate`
 - `POST /api/v1/mfa/disable`
 - `GET /api/v1/me`
-- `POST /api/v1/internal/introspect`
+- `POST /api/v1/internal/introspect` — protected by `x-izakhono-id-internal-key`; active-session response includes `user_id`, `entity_id`, `entity_slug`, `membership_id`, `session_id`, `role`, `subject` (email for display/compatibility only), and `expires_at`. Consumers must bind identity using stable IDs, never email.
 
 The recovery library is now implemented in `account_recovery.py`; HTTP route wiring is kept as the next integration step so no public recovery endpoint is exposed before its customer-facing policy is connected to the existing MFA/session model.
 
@@ -119,3 +119,16 @@ Before broad public customer login, complete:
 - real HTTPS certificate/DNS cutover on an activated IZAKHONO node
 
 The identity service is a materially stronger boundary for controlled IZAKHONO use while these production gates are completed.
+
+
+## Identity verification gateway integration contract
+
+The IZAKHONO identity-verification gateway consumes the canonical IZAKHONO ID session token as its bearer credential. It calls the internal introspection endpoint over HTTPS using a separate server-only integration key. The gateway binds authorisation to the returned stable `user_id`, `entity_id`, `membership_id`, `session_id`, role and expiry.
+
+- Consumers must not use email as an identity join key.
+- Consumers must not accept entity or membership identifiers from request payloads as authority.
+- The internal integration key must never be sent to browsers or committed to source control.
+- The gateway must fail closed if the ID runtime, HTTPS endpoint, internal key or introspection contract is unavailable.
+- A Supabase Auth token alone is not proof of an active IZAKHONO entity membership.
+
+The IDV gateway source integration is under review and is not deployed. Production use requires a verified persistent ID runtime, TLS/DNS, backup/restore, protected credential injection and cross-entity integration tests.

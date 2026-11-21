@@ -1,0 +1,39 @@
+[Unit]
+Description=IZAKHONO ID Entity-Scoped Identity Service
+Documentation=https://github.com/bevanshelton-netizen/izakhono-builder/tree/main/products/izakhono-id
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User=izakhono
+Group=izakhono
+WorkingDirectory=/opt/izakhono-id
+EnvironmentFile=/etc/izakhono/id.env
+Environment=IZAKHONO_ID_HOST=127.0.0.1
+Environment=IZAKHONO_ID_PORT=9696
+Environment=IZAKHONO_ID_DATA=/var/lib/izakhono-id
+StateDirectory=izakhono-id
+StateDirectoryMode=0700
+UMask=0077
+ExecStart=/usr/bin/python3 /opt/izakhono-id/app.py
+Restart=on-failure
+RestartSec=3
+TimeoutStopSec=30
+KillSignal=SIGTERM
+
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+ReadWritePaths=/var/lib/izakhono-id
+
+[Install]
+WantedBy=multi-user.target
