@@ -19,8 +19,13 @@ export class PaymentWebhookGuard {
     const webhook = this.provider.parseWebhook(rawBody);
     const intent = await this.payments.getByExternalTransactionId(webhook.externalTransactionId);
     if (!intent) throw new Error('Unknown payment transaction');
+    if (!intent.merchantId?.trim()) throw new Error('Payment intent has no trusted merchant identity');
+    if (webhook.provider !== intent.provider) throw new Error('Payment webhook provider does not match payment intent');
+    if (!intent.providerPaymentId || webhook.providerPaymentId !== intent.providerPaymentId) throw new Error('Payment webhook provider reference does not match payment intent');
+    if (!Number.isSafeInteger(webhook.amountMinor) || webhook.amountMinor !== intent.amountMinor) throw new Error('Payment webhook amount does not match payment intent');
+    if (webhook.currency !== intent.currency) throw new Error('Payment webhook currency does not match payment intent');
 
-    const outcome = `${webhook.status}:${webhook.responseCode}:${webhook.providerPaymentId}`;
+    const outcome = `${webhook.status}:${webhook.responseCode}:${webhook.providerPaymentId}:${webhook.amountMinor}:${webhook.currency}`;
     const outcomeFingerprint = `webhook-outcome:${webhook.provider}:${webhook.externalTransactionId}:${outcome}`;
 
     if (this.claims) {
@@ -55,9 +60,8 @@ export class PaymentWebhookGuard {
     }
 
     const status = webhook.status === 'SUCCESS' && webhook.responseCode === '00' ? 'paid' : 'failed';
-    return this.payments.update(intent.id, {
-      status,
-      providerPaymentId: webhook.providerPaymentId,
-    });
+    if (intent.status === 'paid' && status === 'paid') return intent;
+    if (intent.status !== 'pending') throw new Error(`Payment webhook cannot transition intent from ${intent.status}`);
+    return this.payments.update(intent.id, { status });
   }
 }
