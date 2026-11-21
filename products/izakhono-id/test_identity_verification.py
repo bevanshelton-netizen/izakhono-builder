@@ -1,10 +1,12 @@
 import os, sqlite3, tempfile, unittest
+from datetime import datetime, timedelta, timezone
 from identity_verification import IdentityVerificationService, RegulaProvider, VerificationOutcome, VerificationRequest, VerificationStart
 
 class FakeRegulaTransport:
     def __init__(self):
         self.available = True
         self.created = 0
+        self.omit_expiry = False
         self.retrieved = 0
         self.on_retrieve = None
         self.cancelled = 0
@@ -13,7 +15,10 @@ class FakeRegulaTransport:
     def health(self): return self.available
     def create_verification(self, **kwargs):
         self.created += 1
-        return VerificationStart("regula-tx-1", "one-time-client-token")
+        return VerificationStart(
+            "regula-tx-1", "one-time-client-token",
+            None if self.omit_expiry else (datetime.now(timezone.utc) + timedelta(minutes=10)).isoformat(),
+        )
     def get_verification(self, ref):
         self.retrieved += 1
         if self.on_retrieve:
@@ -72,6 +77,29 @@ class IdentityVerificationTests(unittest.TestCase):
         session = self.service.start(self.request)
         with self.assertRaises(LookupError):
             self.service.refresh("entity-b", session["id"])
+    def test_missing_expiry_values_fail_closed(self):
+        from identity_verification import expiry_has_passed
+        now = datetime(2026, 11, 21, 12, 0, tzinfo=timezone.utc)
+        for missing in (None, "", "   "):
+            with self.subTest(value=missing):
+                self.assertTrue(expiry_has_passed(missing, now))
+
+    def test_exact_expiry_boundary_is_expired_and_timezone_aware(self):
+        from identity_verification import expiry_has_passed
+        now = datetime(2026, 11, 21, 12, 0, tzinfo=timezone.utc)
+        self.assertTrue(expiry_has_passed("2026-11-21T14:00:00+02:00", now))
+        self.assertFalse(expiry_has_passed("2026-11-21T14:00:01+02:00", now))
+
+    def test_provider_omitting_expiry_gets_server_enforced_ttl(self):
+        self.transport.omit_expiry = True
+        before = datetime.now(timezone.utc)
+        session = self.service.start(self.request)
+        after = datetime.now(timezone.utc)
+        effective = datetime.fromisoformat(session["expires_at"])
+        self.assertGreaterEqual(effective, before + timedelta(minutes=14, seconds=59))
+        self.assertLessEqual(effective, after + timedelta(minutes=15, seconds=1))
+        self.assertIsNotNone(session["expires_at"])
+
     def test_expired_session_is_closed_without_provider_poll(self):
         session = self.service.start(self.request)
         with sqlite3.connect(self.db_path) as db:
