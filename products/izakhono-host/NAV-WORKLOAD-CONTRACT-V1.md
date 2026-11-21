@@ -23,7 +23,7 @@ HOST owns the workload lifecycle and durable operational record:
 2. resolve an approved execution environment through a replaceable runtime adapter;
 3. provision persistent storage and private service networking;
 4. deploy the immutable release and inject secrets through approved FORTRESS controls;
-5. run South Africa map, routing and search data preparation as observable durable jobs;
+5. queue South Africa map, routing and search data preparation as durable HOST jobs, then execute them through a separately configured trusted data adapter;
 6. start services in dependency order and collect readiness evidence;
 7. expose workload state, release identity, job status and audit history;
 8. coordinate backup, restore, replacement and rollback;
@@ -47,7 +47,7 @@ Router, search, tile and engine services remain on the private backplane. Persis
 
 HOST also supports controlled stop/start, backup/restore, replace, rollback, pause and failure states. Each transition records timestamped audit metadata. Retries are bounded and use capped backoff.
 
-A workload is not READY until runtime health, data import, routing, search, tile rendering and persistence checks pass.
+The authenticated HOST API can queue a durable NAV data-import job only after a runtime deployment has been independently confirmed and the workload has an approved target binding. A dedicated data worker and trusted import adapter must be configured separately; queue acceptance is not import completion. A workload is not READY until runtime health, data import, routing, search, tile rendering and persistence checks pass.
 
 ## Public activation is separate
 
@@ -59,4 +59,4 @@ Vercel previews and build quotas are not part of the owned-runtime acceptance pa
 
 ## Current implementation scope
 
-The provider-neutral lifecycle state machine, file-backed workload registry, authenticated HOST workload request/list/lookup endpoints, registry tests and control-plane smoke coverage are implemented. See [NAV-WORKLOAD-API-V1.md](./NAV-WORKLOAD-API-V1.md) for the API contract. Workload requests are durably recorded in the HOST data volume and idempotently replayed; the API explicitly reports `queued-awaiting-runtime-adapter` and does not claim that a runtime was provisioned. A concrete runtime adapter, always-on worker activation, durable map-data import jobs, service startup, backup/restore execution, isolated runtime verification and actual NAV activation remain subsequent implementation and verification gates. No deployment or public-live status is implied by this contract.
+The provider-neutral lifecycle state machine, file-backed workload registry, authenticated HOST workload request/list/lookup endpoints, registry tests and control-plane smoke coverage are implemented. See [NAV-WORKLOAD-API-V1.md](./NAV-WORKLOAD-API-V1.md) for the API contract. Workload requests are durably recorded in the HOST data volume and idempotently replayed; the API explicitly reports `queued-awaiting-runtime-adapter` and does not claim that a runtime was provisioned. The durable NAV data-job store, resumable data worker and authenticated queue/inspection API are implemented. The data worker is packaged in the HOST runtime image but is not started automatically; a trusted South Africa import adapter, approved target binding, managed worker activation, service startup, backup/restore execution, isolated runtime verification and actual NAV activation remain subsequent implementation and verification gates. The JSON job store is single-process/single-writer and must not be shared by multiple worker replicas. No deployment or public-live status is implied by this contract.

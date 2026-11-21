@@ -3,6 +3,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { createWorkloadStore } from '../provisioner/workload-store.mjs';
+import { createNavDataJobStore } from '../provisioner/nav-data-job-store.mjs';
 
 const PORT = Number(process.env.PORT || 8080);
 const DATA_DIR = process.env.DATA_DIR || '/data';
@@ -10,6 +11,7 @@ const STATE_FILE = path.join(DATA_DIR, 'sites.json');
 const SITES_DIR = path.join(DATA_DIR, 'sites');
 const ADMIN_TOKEN = process.env.HOST_RUNTIME_TOKEN || '';
 const workloadStore = createWorkloadStore({ filePath: path.join(DATA_DIR, 'workloads.json') });
+const navDataJobStore = createNavDataJobStore({ filePath: path.join(DATA_DIR, 'nav-data-jobs.json') });
 const MAX_FILES = 200;
 const MAX_FILE_BYTES = 512 * 1024;
 const MAX_TOTAL_BYTES = 8 * 1024 * 1024;
@@ -107,6 +109,32 @@ const server = http.createServer(async (req, res) => {
   }
   if (!url.pathname.startsWith('/api/')) return serveSite(req, res);
   if (!authorized(req)) return json(res, 401, {ok:false,error:'Unauthorized'});
+
+  if (req.method === 'GET' && url.pathname === '/api/nav-data-jobs') {
+    const jobs = await navDataJobStore.list();
+    return json(res, 200, { ok: true, jobs });
+  }
+
+  if (req.method === 'POST' && url.pathname.match(/^\\/api\\/workloads\\/[^/]+\\/data-imports$/)) {
+    try {
+      const recordId = url.pathname.split('/')[3];
+      const workload = await workloadStore.get(recordId);
+      if (!workload) return json(res, 404, { ok: false, error: 'Workload not found' });
+      if (workload.state !== 'PROVISIONING' || workload.execution_stage !== 'runtime-deployed-awaiting-data-pipeline' || !workload.runtime_target_id) {
+        return json(res, 409, { ok: false, error: 'NAV data import requires a verified runtime deployment and approved HOST target binding' });
+      }
+      const result = await navDataJobStore.create({ workloadId: workload.workload_id, releaseDigest: workload.release_digest });
+      return json(res, result.created ? 202 : 200, { ok: true, created: result.created, execution: 'queued-awaiting-nav-data-worker', job: result.job });
+    } catch (error) {
+      return json(res, 400, { ok: false, error: error?.message || 'Invalid NAV data import request' });
+    }
+  }
+
+  if (req.method === 'GET' && url.pathname.startsWith('/api/nav-data-jobs/')) {
+    const jobId = url.pathname.split('/')[3];
+    const job = await navDataJobStore.get(jobId);
+    return job ? json(res, 200, { ok: true, job }) : json(res, 404, { ok: false, error: 'NAV data job not found' });
+  }
 
   if (req.method === 'GET' && url.pathname === '/api/workloads') {
     const workloads = await workloadStore.list();

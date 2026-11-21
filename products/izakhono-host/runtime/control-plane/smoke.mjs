@@ -64,6 +64,11 @@ try {
   }
   const workloadRead = await request('/api/workloads/'+workloadCreated.workload.id);
   if (workloadRead.workload?.logical_node_id !== 'NODE01') throw new Error('workload lookup failed');
+  const blockedImport = await fetch(base+'/api/workloads/'+workloadCreated.workload.id+'/data-imports', {method:'POST',headers:{authorization:'Bearer '+token,'content-type':'application/json'},body:'{}'});
+  const blockedBody = await blockedImport.json();
+  if (blockedImport.status !== 409 || !String(blockedBody.error).includes('verified runtime deployment')) throw new Error('NAV data imports must be blocked until a runtime deployment is independently verified');
+  const dataJobs = await request('/api/nav-data-jobs');
+  if (!Array.isArray(dataJobs.jobs) || dataJobs.jobs.length !== 0) throw new Error('NAV data-job listing failed');
 
   const ask = await fetch(base+'/api/tls/ask?domain=smoke.example.test');
   if (!ask.ok) throw new Error('TLS admission failed');
