@@ -30,7 +30,10 @@ assert.equal(await ledgerStore.getMerchantAccount('merchant_attacker', 'ZAR'), u
 assert.equal(await orchestrator.recordPaid(payment), false);
 assert.equal((await ledgerStore.listTransactions()).length, 1);
 const job = await orchestrator.fulfillPaid({ ...payment, merchantId: 'merchant_attacker', serviceId: 'attacker-service' });
-const completed = await orchestrator.executeFulfillment(job, { ...payment, merchantId: 'merchant_attacker' });
+assert.equal(job.merchantId, 'merchant_1');
+assert.equal(job.serviceId, 'website');
+await assert.rejects(() => orchestrator.executeFulfillment({ ...job, serviceId: 'attacker-service' }, payment), /does not belong/);
+const completed = await orchestrator.executeFulfillment(job, { ...payment, merchantId: 'merchant_attacker', serviceId: 'attacker-service' });
 assert.equal(completed.status, 'completed');
 assert.equal(provisioned, 1);
 const reconciliation = await orchestrator.reconcilePayment({ payment, observedAmountMinor: 14900, observedCurrency: 'ZAR' });
