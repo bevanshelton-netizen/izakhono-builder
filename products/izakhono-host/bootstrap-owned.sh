@@ -50,11 +50,6 @@ p.write_text(chr(10).join(lines) + chr(10))
 PY
 chmod 600 .env
 
-if grep -q 'replace-with-' .env; then
-  echo "Replace all remaining secret placeholders in .env before activation." >&2
-  exit 1
-fi
-
 if grep -q 'ops@example.com' .env; then
   echo "Set TLS_EMAIL in .env before public HTTPS activation." >&2
   exit 1
