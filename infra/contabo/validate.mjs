@@ -7,12 +7,14 @@ const envExample = fs.readFileSync(path.join(root, '.env.example'), 'utf8');
 const stackExample = fs.readFileSync(path.join(root, 'stack.env.example'), 'utf8');
 const compose = fs.readFileSync(path.join(root, 'compose.yml'), 'utf8');
 const deploy = fs.readFileSync(path.join(root, 'deploy-stack.sh'), 'utf8');
+const inventory = fs.readFileSync(path.join(root, 'inventory.sh'), 'utf8');
 
 const requiredFiles = [
   'README.md',
   '.env.example',
   'cloud-init.yaml',
   'provision.sh',
+  'inventory.sh',
   'healthcheck.sh',
   'deploy-stack.sh',
   'compose.yml',
@@ -40,6 +42,12 @@ if (!deploy.includes('test("@sha256:[0-9a-f]{64}$")')) throw new Error('Deployme
 if (deploy.includes('source /opt/izakhono/config/stack.env')) throw new Error('Secret files must never be executed as shell code');
 if (deploy.indexOf('Missing regular secret file') > deploy.indexOf('mv -Tf "$NEXT_LINK" "$CURRENT"')) {
   throw new Error('Secret preflight must happen before release pointer switch');
+}
+if (!inventory.includes('--get') || !inventory.includes('/v1/compute/instances')) {
+  throw new Error('Read-only Contabo inventory contract missing');
+}
+if (inventory.includes('-X POST "${API}/v1/compute/instances"')) {
+  throw new Error('Inventory helper must not provision compute instances');
 }
 
 console.log('IZAKHONO Contabo Runtime Fabric gate: PASS');

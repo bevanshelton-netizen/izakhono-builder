@@ -38,6 +38,7 @@ jobs:
       - name: Validate shell scripts
         run: |
           bash -n infra/contabo/provision.sh
+          bash -n infra/contabo/inventory.sh
           bash -n infra/contabo/healthcheck.sh
           bash -n infra/contabo/deploy-stack.sh
 
