@@ -2,12 +2,14 @@ import http from 'node:http';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import { createWorkloadStore } from '../provisioner/workload-store.mjs';
 
 const PORT = Number(process.env.PORT || 8080);
 const DATA_DIR = process.env.DATA_DIR || '/data';
 const STATE_FILE = path.join(DATA_DIR, 'sites.json');
 const SITES_DIR = path.join(DATA_DIR, 'sites');
 const ADMIN_TOKEN = process.env.HOST_RUNTIME_TOKEN || '';
+const workloadStore = createWorkloadStore({ filePath: path.join(DATA_DIR, 'workloads.json') });
 const MAX_FILES = 200;
 const MAX_FILE_BYTES = 512 * 1024;
 const MAX_TOTAL_BYTES = 8 * 1024 * 1024;
@@ -99,6 +101,35 @@ const server = http.createServer(async (req, res) => {
   }
   if (!url.pathname.startsWith('/api/')) return serveSite(req, res);
   if (!authorized(req)) return json(res, 401, {ok:false,error:'Unauthorized'});
+
+  if (req.method === 'GET' && url.pathname === '/api/workloads') {
+    const workloads = await workloadStore.list();
+    return json(res, 200, { ok: true, workloads });
+  }
+
+  if (req.method === 'POST' && url.pathname === '/api/workloads') {
+    try {
+      const input = await body(req);
+      const result = await workloadStore.create(input);
+      return json(res, result.created ? 202 : 200, {
+        ok: true,
+        created: result.created,
+        execution: 'queued-awaiting-runtime-adapter',
+        workload: result.workload
+      });
+    } catch (error) {
+      const status = error?.code === 'IDEMPOTENCY_CONFLICT' ? 409 : 400;
+      return json(res, status, { ok: false, error: error?.message || 'Invalid workload request' });
+    }
+  }
+
+  if (req.method === 'GET' && url.pathname.match(/^\\/api\\/workloads\\/[a-z0-9-]+$/)) {
+    const workloadId = url.pathname.split('/')[3];
+    const workload = await workloadStore.get(workloadId);
+    return workload
+      ? json(res, 200, { ok: true, workload })
+      : json(res, 404, { ok: false, error: 'Workload not found' });
+  }
 
   if (req.method === 'GET' && url.pathname === '/api/sites') {
     const state=await loadState();
