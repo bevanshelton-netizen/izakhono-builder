@@ -60,6 +60,7 @@ export class SupabasePaymentStore implements PaymentStore {
   }
 
   async save(intent: PaymentIntent): Promise<void> {
+    if (!intent.merchantId?.trim()) throw new Error('Payment merchant identity is required');
     await this.request(this.baseUrl, {
       method: 'POST',
       headers: { Prefer: 'return=minimal' },
