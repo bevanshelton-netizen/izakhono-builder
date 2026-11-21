@@ -21,11 +21,13 @@ export class PaymentWebhookGuard {
     if (!intent) throw new Error('Unknown payment transaction');
     if (!intent.merchantId?.trim()) throw new Error('Payment intent has no trusted merchant identity');
     if (webhook.provider !== intent.provider) throw new Error('Payment webhook provider does not match payment intent');
-    if (!intent.providerPaymentId || webhook.providerPaymentId !== intent.providerPaymentId) throw new Error('Payment webhook provider reference does not match payment intent');
-    if (!Number.isSafeInteger(webhook.amountMinor) || webhook.amountMinor !== intent.amountMinor) throw new Error('Payment webhook amount does not match payment intent');
-    if (webhook.currency !== intent.currency) throw new Error('Payment webhook currency does not match payment intent');
+    const evidence = await this.provider.verifyPaymentEvidence(webhook, intent);
+    if (evidence.provider !== intent.provider || evidence.providerPaymentId !== intent.providerPaymentId || evidence.externalTransactionId !== intent.externalTransactionId) throw new Error('Provider payment evidence does not match payment intent references');
+    if (!Number.isSafeInteger(evidence.amountMinor) || evidence.amountMinor !== intent.amountMinor) throw new Error('Provider payment evidence amount does not match payment intent');
+    if (evidence.currency !== intent.currency) throw new Error('Provider payment evidence currency does not match payment intent');
+    if (evidence.status !== webhook.status || evidence.responseCode !== webhook.responseCode) throw new Error('Provider payment evidence contradicts webhook outcome');
 
-    const outcome = `${webhook.status}:${webhook.responseCode}:${webhook.providerPaymentId}:${webhook.amountMinor}:${webhook.currency}`;
+    const outcome = `${evidence.status}:${evidence.responseCode}:${evidence.providerPaymentId}:${evidence.amountMinor}:${evidence.currency}`;
     const outcomeFingerprint = `webhook-outcome:${webhook.provider}:${webhook.externalTransactionId}:${outcome}`;
 
     if (this.claims) {
@@ -59,7 +61,7 @@ export class PaymentWebhookGuard {
       }));
     }
 
-    const status = webhook.status === 'SUCCESS' && webhook.responseCode === '00' ? 'paid' : 'failed';
+    const status = evidence.status === 'SUCCESS' && evidence.responseCode === '00' ? 'paid' : 'failed';
     if (intent.status === 'paid' && status === 'paid') return intent;
     if (intent.status !== 'pending') throw new Error(`Payment webhook cannot transition intent from ${intent.status}`);
     return this.payments.update(intent.id, { status });
