@@ -51,4 +51,4 @@ Control-plane traffic remains private. Data services are never exposed directly 
 
 The node cluster is the deployment target. Repository code defines the software; the owned nodes provide the runtime capacity.
 
-Physical activation, public DNS delegation and external reachability are execution steps on the owned node fabric—not reasons to redesign the architecture around another machine or hosted platform.
+Software deployment, public DNS delegation and external reachability are execution steps for the logical node cluster. Execution substrates are implementation details, not NODE01 identities or reasons to redesign the architecture around another machine or hosted platform.

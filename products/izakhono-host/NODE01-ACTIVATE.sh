@@ -4,7 +4,7 @@ set -Eeuo pipefail
 ROOT="$(cd "$(dirname "$0")" && pwd)"
 cd "$ROOT"
 
-printf '\nIZAKHONO HOST — NODE01 ACTIVATION\n\n'
+printf '\nIZAKHONO HOST — NODE01 SOFTWARE RUNTIME DEPLOYMENT\n\n'
 
 # Stage 1: host/network preflight.
 ./NODE-PREFLIGHT.sh
@@ -23,8 +23,8 @@ echo
 curl -fsS http://127.0.0.1:8080/health
 echo
 
-echo "NODE01 ACTIVATION: PASSED"
-echo "Owned runtime is healthy and the compliance gate passed."
+echo "NODE01 SOFTWARE RUNTIME DEPLOYMENT: PASSED"
+echo "The NODE01 software runtime is healthy in its selected execution environment and the compliance gate passed."
 echo "Verification:"
 echo "  docker compose --env-file .env -f docker-compose.owned.yml ps"
 echo "  docker compose --env-file .env -f docker-compose.owned.yml logs --tail=100 host-runtime edge"
