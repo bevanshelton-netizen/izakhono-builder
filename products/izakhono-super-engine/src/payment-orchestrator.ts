@@ -65,7 +65,9 @@ export class PaymentOrchestrator {
     return this.fulfillment.execute(job, payment);
   }
   async reconcilePayment(input: { payment: PaymentIntent; observedAmountMinor: number; observedCurrency: string }): Promise<ReconciliationRecord> {
-    return this.reconciliation.reconcile({ provider: input.payment.provider, externalTransactionId: input.payment.externalTransactionId, expectedAmountMinor: input.payment.amountMinor, observedAmountMinor: input.observedAmountMinor, currency: input.observedCurrency });
+    const payment = await this.payments.getById(input.payment.id);
+    if (!payment || payment.id !== input.payment.id || !payment.merchantId?.trim()) throw new Error('Canonical payment intent not found');
+    return this.reconciliation.reconcile({ provider: payment.provider, externalTransactionId: payment.externalTransactionId, expectedAmountMinor: payment.amountMinor, observedAmountMinor: input.observedAmountMinor, currency: input.observedCurrency });
   }
   async createSettlement(input: { merchantId: string; currency: string; amountMinor: number; transactionReferences: readonly string[] }): Promise<SettlementBatch> { this.assertMerchant(input.merchantId); return this.settlement.create(input); }
   async recordSettlement(input: { settlement: SettlementBatch; merchantPayableAccountId: string; settlementAccountId?: string }): Promise<void> { await this.settlementLedger.recordSettlement(input); }
