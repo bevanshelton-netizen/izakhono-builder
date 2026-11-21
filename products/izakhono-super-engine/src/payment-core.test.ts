@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { IzakhonoPay, MemoryPaymentStore, type CreatePaymentInput, type PaymentProvider } from './payment-core.js';
+import { IKhokhaProvider, IzakhonoPay, MemoryPaymentStore, type CreatePaymentInput, type PaymentProvider } from './payment-core.js';
 
 const input: CreatePaymentInput = {
   externalTransactionId: 'ORDER-1001', amountMinor: 14900, currency: 'ZAR', description: 'Test purchase',
@@ -44,4 +44,17 @@ await assert.rejects(() => pay.processWebhook('{}', '/api/payment/callback', 'va
 
 assert.equal(created.intent.merchantId, 'merchant-1');
 await assert.rejects(() => pay.createPayment({ ...input, externalTransactionId: 'ORDER-1002' }, { principalId: 'unmapped' }), /not mapped/);
+const statusRequests: Array<{ url: string; init?: RequestInit }> = [];
+const ikh = new IKhokhaProvider({ appId: 'app-id', appSecret: 'server-secret', entityId: 'entity-1', baseUrl: 'https://api.ikhokha.test' }, async (url, init) => {
+  statusRequests.push({ url: String(url), init });
+  return Response.json({ paylinkID: 'provider-1', status: 'PAID', amount: 14900 });
+});
+const ikhIntent = { ...created.intent, provider: 'ikhokha' };
+const ikhWebhook = ikh.parseWebhook(JSON.stringify({ paylinkID: 'provider-1', externalTransactionID: 'ORDER-1001', status: 'SUCCESS', responseCode: '00' }));
+const evidence = await ikh.verifyPaymentEvidence(ikhWebhook, ikhIntent);
+assert.equal(evidence.amountMinor, 14900);
+assert.equal(evidence.currency, 'ZAR');
+assert.equal(statusRequests.length, 1);
+assert.match(statusRequests[0].url, /getStatus\\/external\\?externalReference=ORDER-1001/);
+assert.equal(new Headers(statusRequests[0].init?.headers).get('IK-APPID'), 'app-id');
 console.log('IZAKHONO PAY core tests passed');
