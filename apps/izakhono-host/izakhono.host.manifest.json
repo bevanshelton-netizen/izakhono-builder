@@ -1,0 +1,12 @@
+{
+  "schema":"izakhono.host/v1",
+  "product":"IZAKHONO HOST",
+  "engine":"izakhono-host",
+  "independently_deployable":true,
+  "owned_first":true,
+  "public_live":false,
+  "first_tenant":"izakhonoafrica.co.za",
+  "domain_layer":"../izakhono-domains",
+  "gates":["container-build","health-200","tenant-isolation","tls","backup-restore","mail-inbound","mail-outbound","spf","dkim","dmarc","monitoring"],
+  "adapters":{"registrar":"replaceable","dns":"replaceable","mail_edge":"replaceable","external_compute":"resilience-only"}
+}
