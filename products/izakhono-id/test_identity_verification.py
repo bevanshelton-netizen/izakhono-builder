@@ -57,6 +57,10 @@ class IdentityVerificationTests(unittest.TestCase):
                                       "ZA", "idem-002", "privacy-v1")
         with self.assertRaisesRegex(RuntimeError, "provider_unavailable"):
             self.service.start(request)
+        self.transport.available = True
+        recovered = self.service.start(request)
+        self.assertEqual(recovered["status"], "in_progress")
+        self.assertEqual(self.transport.created, 1)
 
 if __name__ == "__main__":
     unittest.main()
