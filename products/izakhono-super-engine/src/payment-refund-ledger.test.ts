@@ -11,6 +11,7 @@ describe('PaymentRefundLedger', () => {
     const payment = {
       id: 'pay_123',
       merchantId: 'merchant_1',
+      serviceId: 'school-commerce',
       externalTransactionId: 'ext_123',
       amountMinor: 14900,
       currency: 'ZAR',
