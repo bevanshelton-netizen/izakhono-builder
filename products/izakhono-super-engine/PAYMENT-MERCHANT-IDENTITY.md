@@ -2,12 +2,12 @@
 
 ## Canonical identity
 
-A payment intent owns exactly one immutable `merchantId`. The value is resolved by the server-injected `MerchantIdentityResolver` from an authenticated principal context at payment creation. Do not accept `merchantId` from request bodies, query strings, browser state, provider webhooks, or fulfilment messages.
+A payment intent owns exactly one immutable `merchantId` and one immutable `serviceId` entitlement. Both values are resolved by the server-injected `PaymentOwnershipResolver` from an authenticated principal and server-side order context at payment creation. Do not accept `merchantId` from request bodies, query strings, browser state, provider webhooks, or fulfilment messages.
 
 The application route must:
 1. Authenticate the caller using the platform's server-side session/token verifier.
 2. Pass only the verified principal context to `IzakhonoPay.createPayment(input, context)`.
-3. Configure the resolver to map that verified principal to the canonical, active merchant record. The resolver must reject unknown, suspended, or unmapped principals.
+3. Configure the resolver to map that verified principal to the canonical, active merchant record. The resolver must reject unknown, suspended, or unmapped principals and must derive the service entitlement from the authoritative server-side order/catalogue—not from a client-supplied service identifier.
 4. Keep the resolver and provider credentials in server-only code.
 
 The TypeScript context is a boundary contract, not an authentication mechanism. A caller that passes an unverified principal identifier defeats the trust model; route-level authentication and resolver enforcement are mandatory release gates.
@@ -16,8 +16,8 @@ The TypeScript context is a boundary contract, not an authentication mechanism. 
 
 - Payment intents are reloaded from the payment store before ledger, refund, reconciliation, receipt, and fulfilment operations.
 - Ledger merchant accounts and refund journal entries derive merchant identity from the canonical payment intent.
-- Fulfilment jobs derive `merchantId` from the payment intent; their payment, merchant, and service bindings are immutable.
-- The paid-event merchant must exactly match the canonical payment intent.
+- Fulfilment jobs derive both `merchantId` and `serviceId` from the payment intent; their payment, merchant, and service bindings are immutable.
+- The paid-event merchant and service must exactly match the canonical payment intent.
 - SQL enforces the fulfilment/payment merchant pair with a composite foreign key.
 
 ## Provider evidence
