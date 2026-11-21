@@ -319,3 +319,19 @@ https://docs.regulaforensics.com/develop/idv/release-notes/3-10/
 https://docs.regulaforensics.com/develop/idv/administration/rbac/permissions/
 
 This is a useful capability if the full IDV Platform is ever selected. It does not replace IZAKHONO ID or the IZAKHONO entity/membership authority. Any integration must explicitly map Regula entity IDs and Regula user/group permissions to IZAKHONO's canonical entity, membership and service-account controls. Regula must not be allowed to grant access broader than the IZAKHONO policy permits.
+
+
+## 17. Documentation refresh — 2026-11-21
+
+A fresh check of Regula's official developer documentation confirms that the current Document Reader SDK documentation is version **9.10**. The 9.9 release notes, dated 8 October 2026, explicitly list an updated parser for the **South Africa ID Card** barcode.
+
+Official references:
+- Current Document Reader SDK documentation (v9.10): https://docs.regulaforensics.com/develop/doc-reader-sdk/
+- Document Reader SDK 9.9 release notes (8 October 2026): https://docs.regulaforensics.com/develop/doc-reader-sdk/release-notes/9-9/
+- Regula product capability overview: https://regulaforensics.com/products/document-reader-sdk/
+
+This strengthens the evidence that Regula has a South African ID-card barcode parser. It does **not** establish support for every South African identity document, every Smart ID card revision, all front/back security features, or successful authenticity verification. The proof-of-capability must record exact document model/revision, SDK/database pack version, enabled checks, result fields and observed false-accept/false-reject behaviour.
+
+The v9.10 documentation page describes OCR, MRZ, barcode, RFID, image-quality and authenticity capabilities as dependent on the selected component and licence. The commercial proposal must therefore identify the exact licensed modules and document packs; a feature appearing in product documentation must not be assumed to be included in the quoted licence.
+
+**Assessment remains unchanged:** Regula is the preferred candidate for evaluation, not an appointed exclusive supplier. No licence, contract, credentials, endpoint or production connector is configured.
