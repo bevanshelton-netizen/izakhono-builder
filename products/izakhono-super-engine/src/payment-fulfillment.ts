@@ -64,7 +64,7 @@ export class PaymentFulfillment {
   }
   async execute(job: FulfillmentJob, payment: PaymentIntent): Promise<FulfillmentJob> {
     if (payment.status !== 'paid' || !payment.merchantId?.trim() || !payment.serviceId?.trim()) throw new Error('Fulfillment requires a canonically paid payment with merchant and service identity');
-    if (job.paymentIntentId !== payment.id || job.merchantId !== payment.merchantId) throw new Error('Fulfillment job does not belong to the supplied payment intent');
+    if (job.paymentIntentId !== payment.id || job.merchantId !== payment.merchantId || job.serviceId !== payment.serviceId) throw new Error('Fulfillment job does not belong to the supplied payment intent');
     const persisted = await this.store.getByPaymentIntent(payment.id);
     if (!persisted || persisted.id !== job.id || persisted.merchantId !== payment.merchantId || persisted.serviceId !== payment.serviceId || persisted.serviceId !== job.serviceId) throw new Error('Persisted fulfillment ownership does not match payment intent');
     if (persisted.status === 'completed') return persisted;
