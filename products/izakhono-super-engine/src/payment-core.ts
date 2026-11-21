@@ -121,6 +121,7 @@ export class IzakhonoPay {
   async getPaymentIntent(id: string): Promise<PaymentIntent | undefined> { return this.store.getById(id); }
 
   async createPayment(input: CreatePaymentInput, context: AuthenticatedMerchantContext): Promise<{ intent: PaymentIntent; link: PaymentLink }> {
+    if (Object.hasOwn(input, 'merchantId') || Object.hasOwn(input, 'serviceId')) throw new Error('Merchant and service IDs must be resolved server-side, not supplied in payment input');
     if (!context?.principalId?.trim()) throw new Error('Authenticated merchant principal is required');
     const ownership = await this.resolvePaymentOwnership(context, input);
     if (!ownership || typeof ownership.merchantId !== 'string' || !ownership.merchantId.trim()) throw new Error('Authenticated principal is not mapped to an active merchant');
