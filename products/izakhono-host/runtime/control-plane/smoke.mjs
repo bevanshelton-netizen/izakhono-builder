@@ -42,6 +42,29 @@ try {
   if (page.status !== 200 || !page.html.includes('smoke.example.test')) {
     throw new Error(`site serving failed: status=${page.status}; body=${page.html.slice(0, 240)}`);
   }
+  const denied = await fetch(base+'/api/workloads');
+  if (denied.status !== 401) throw new Error('workload API must reject unauthenticated requests');
+
+  const workloadSpec = {
+    workloadId: 'izakhono-nav',
+    workloadClass: 'navigation-platform',
+    logicalNodeId: 'NODE01',
+    releaseDigest: 'd'.repeat(64),
+    healthPath: '/health',
+    internalPort: 8080,
+    idempotencyKey: 'host-smoke-nav-release-0001'
+  };
+  const workloadCreated = await request('/api/workloads', {method:'POST',body:JSON.stringify(workloadSpec)});
+  if (workloadCreated.execution !== 'queued-awaiting-runtime-adapter' || workloadCreated.workload?.state !== 'REQUESTED') {
+    throw new Error('workload request must be durably queued without claiming runtime provisioning');
+  }
+  const workloadReplay = await request('/api/workloads', {method:'POST',body:JSON.stringify(workloadSpec)});
+  if (workloadReplay.created !== false || workloadReplay.workload?.id !== workloadCreated.workload.id) {
+    throw new Error('workload idempotency replay failed');
+  }
+  const workloadRead = await request('/api/workloads/'+workloadCreated.workload.id);
+  if (workloadRead.workload?.logical_node_id !== 'NODE01') throw new Error('workload lookup failed');
+
   const ask = await fetch(base+'/api/tls/ask?domain=smoke.example.test');
   if (!ask.ok) throw new Error('TLS admission failed');
   const accepted = await request('/api/sites/smoke_site/accept', {method:'POST',body:JSON.stringify({https:true,dns:true,content:true})});
