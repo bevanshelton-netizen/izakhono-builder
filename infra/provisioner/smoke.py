@@ -42,10 +42,16 @@ def main() -> None:
 
     for _ in range(9):
         service.worker_once()
-    assert store.get(first["job_id"]).state == "HANDOVER_READY"
-    handover = service.handover(first["job_id"])
-    assert handover["status"] == "HANDOVER_READY"
-    print("PROVISIONER_E2E_SMOKE: PASS")
+    # Provider-neutral adapters deliberately emit simulation evidence. The
+    # independent acceptance engine must block handover until real adapters run.
+    assert store.get(first["job_id"]).state == "BLOCKED"
+    try:
+        service.handover(first["job_id"])
+    except ServiceError as error:
+        assert error.code == "HANDOVER_NOT_READY"
+    else:
+        raise AssertionError("simulated adapter evidence reached handover")
+    print("PROVISIONER_E2E_FAIL_CLOSED_SMOKE: PASS")
 
 
 if __name__ == "__main__":
