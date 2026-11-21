@@ -9,7 +9,7 @@ const env = { DB: db };
 const runId = "jarvis-pg-it-" + crypto.randomUUID();
 const stepId = "jarvis-pg-step-" + crypto.randomUUID();
 
-async function call(path, body) {
+async function call(path, body, ownerAllowed = true, workerAllowed = true) {
   return jarvisWorkforceRoute(
     new Request("http://jarvis.test" + path, {
       method: "POST",
@@ -17,8 +17,8 @@ async function call(path, body) {
       body: JSON.stringify(body),
     }),
     env,
-    async () => true,
-    async () => true,
+    async () => ownerAllowed,
+    async () => workerAllowed,
   );
 }
 
@@ -31,7 +31,7 @@ async function main() {
       "INSERT INTO jarvis_orchestration_steps(id,run_id,position,title,description,assigned_agent,depends_on_json,status,approval_required) VALUES(?,?,?,?,?,?,?,?,?)",
     ).bind(stepId, runId, 1, "PostgreSQL integration", "Exercise claim, complete and owner review", "coordinator", "[]", "pending", 0).run();
 
-    const claim = await call("/api/jarvis/workforce/claim", { agent_id: "coordinator" });
+    const claim = await call("/api/jarvis/workforce/claim", { agent_id: "coordinator" }, false, true);
     assert.equal(claim.status, 200);
     const claimed = await claim.json();
     assert.equal(claimed.claimed, true);
@@ -40,14 +40,14 @@ async function main() {
     const complete = await call("/api/jarvis/workforce/steps/" + stepId + "/complete", {
       agent_id: "coordinator",
       evidence: "PostgreSQL-backed route integration passed.",
-    });
+    }, false, true);
     assert.equal(complete.status, 200);
     assert.equal((await complete.json()).status, "completed");
 
     const review = await call("/api/jarvis/workforce/steps/" + stepId + "/review", {
       decision: "verify",
       note: "Integration evidence verified by CI owner-review test.",
-    });
+    }, true, false);
     assert.equal(review.status, 200);
     assert.equal((await review.json()).owner_verification, "verified");
 

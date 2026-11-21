@@ -38,7 +38,8 @@ Provide `DATABASE_URL`, `JARVIS_OWNER_SECRET` and a separate `JARVIS_WORKER_TOKE
 
 ```sh
 DATABASE_URL='postgresql://<app-role>:<secret>@<owned-db-host>:5432/<database>' \
-JARVIS_OWNER_SECRET='<runtime-secret-from-FORTRESS>' \
+JARVIS_OWNER_SECRET='<owner-secret-from-FORTRESS>' \
+JARVIS_WORKER_TOKEN='<separate-worker-token-from-FORTRESS>' \
 DATABASE_SSLMODE=verify-full \
 node --experimental-strip-types products/izakhono-jarvis/runtime/server.mjs
 ```
