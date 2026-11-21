@@ -7,6 +7,7 @@ export interface PaidPaymentEvent {
   paymentIntentId: string;
   externalTransactionId: string;
   merchantId: string;
+  serviceId: string;
   amountMinor: number;
   currency: string;
   provider?: string;
@@ -17,6 +18,7 @@ export interface ProvisioningJob {
   id: string;
   paymentIntentId: string;
   merchantId: string;
+  serviceId: string;
   status: 'queued' | 'completed' | 'failed';
   createdAt: string;
 }
@@ -46,7 +48,7 @@ export class PaymentWorkflow {
     const intent = await this.payments.getPaymentIntent(candidate.id);
     if (!intent || intent.id !== candidate.id) throw new Error('Canonical payment intent not found');
     if (intent.status !== 'paid') throw new Error('Only a canonically paid payment intent can be provisioned');
-    if (!intent.merchantId?.trim()) throw new Error('Payment intent has no trusted merchant identity');
+    if (!intent.merchantId?.trim() || !intent.serviceId?.trim()) throw new Error('Payment intent has no trusted merchant identity or service entitlement');
     const merchantId = intent.merchantId;
     const key = intent.id;
     if (this.processed.has(key)) return this.jobs.get(key);
@@ -60,6 +62,7 @@ export class PaymentWorkflow {
       id: `provision_${crypto.randomUUID()}`,
       paymentIntentId: intent.id,
       merchantId,
+      serviceId: intent.serviceId,
       status: 'queued',
       createdAt: new Date().toISOString(),
     };
@@ -75,6 +78,7 @@ export class PaymentWorkflow {
         paymentIntentId: intent.id,
         externalTransactionId: intent.externalTransactionId,
         merchantId,
+        serviceId: intent.serviceId,
         amountMinor: intent.amountMinor,
         currency: intent.currency,
         provider: intent.provider,
