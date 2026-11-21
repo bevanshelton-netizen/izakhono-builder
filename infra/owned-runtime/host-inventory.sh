@@ -65,9 +65,11 @@ addresses = []
 out = run(["ip", "-o", "addr", "show", "scope", "global"])
 if out:
     for line in out.splitlines():
-        match = re.search(r"\\binet6?\\s+([^/\\s]+)", line)
-        if match:
-            addresses.append(match.group(1))
+        cols = line.split()
+        for index, token in enumerate(cols[:-1]):
+            if token in ("inet", "inet6"):
+                addresses.append(cols[index + 1].split("/", 1)[0])
+
 
 listeners = []
 out = run(["ss", "-H", "-lntu"])
