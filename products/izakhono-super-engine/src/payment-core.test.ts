@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import { IKhokhaProvider, IzakhonoPay, MemoryPaymentStore, type CreatePaymentInput, type PaymentProvider } from './payment-core.js';
 
+
+async function main() {
 const input: CreatePaymentInput = {
   externalTransactionId: 'ORDER-1001', amountMinor: 14900, currency: 'ZAR', description: 'Test purchase',
   requesterUrl: 'https://example.com/pay', callbackUrl: 'https://example.com/api/payment/callback',
@@ -58,3 +60,6 @@ assert.equal(statusRequests.length, 1);
 assert.match(statusRequests[0].url, /getStatus\/external\?externalReference=ORDER-1001/);
 assert.equal(new Headers(statusRequests[0].init?.headers).get('IK-APPID'), 'app-id');
 console.log('IZAKHONO PAY core tests passed');
+}
+
+void main();
