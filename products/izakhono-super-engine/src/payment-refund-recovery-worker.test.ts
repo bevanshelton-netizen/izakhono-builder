@@ -4,10 +4,12 @@ import type { RefundOperation, RefundOperationReservation, RefundOperationStore 
 import type { RefundProvider } from './payment-refunds.js';
 import { RefundRecoveryWorker, type RefundRecoveryQueue } from './payment-refund-recovery-worker.js';
 
+
+async function main() {
 class Queue implements RefundRecoveryQueue {
   operation: RefundOperation;
   constructor(operation: RefundOperation) { this.operation = operation; }
-  async reserve(input: Omit<RefundOperation, 'id' | 'status' | 'providerRefundId'>): Promise<RefundOperationReservation> { this.operation = { ...input, id: 'op', status: 'processing' }; return { kind: 'reserved', operation: this.operation }; }
+  async reserve(): Promise<RefundOperationReservation> { return { kind: 'reconciliation-required', operation: this.operation }; }
   async markSucceeded(): Promise<RefundOperation> { throw new Error('not used'); }
   async markFailed(): Promise<RefundOperation> { throw new Error('not used'); }
   async markReconciliationRequired(): Promise<RefundOperation> { throw new Error('not used'); }
@@ -18,7 +20,7 @@ class Queue implements RefundRecoveryQueue {
 }
 
 const now = new Date('2026-10-31T08:00:00.000Z');
-const payment: PaymentIntent = { id: 'pay_worker_1', externalTransactionId: 'order_worker_1', amountMinor: 10000, currency: 'ZAR', status: 'paid', provider: 'test-provider', providerPaymentId: 'provider-payment-1', createdAt: now.toISOString(), updatedAt: now.toISOString() };
+const payment: PaymentIntent = { id: 'pay_worker_1', merchantId: 'merchant_1', serviceId: 'school-commerce', externalTransactionId: 'order_worker_1', amountMinor: 10000, currency: 'ZAR', status: 'paid', provider: 'test-provider', providerPaymentId: 'provider-payment-1', createdAt: now.toISOString(), updatedAt: now.toISOString() };
 const queue = new Queue({ id: 'op', paymentIntentId: payment.id, refundId: `refund:${payment.id}:10000`, amountMinor: 10000, currency: 'ZAR', status: 'processing', reason: 'Customer refund', reconciliationRequired: true });
 let refundRequests = 0;
 let lookups = 0;
@@ -29,10 +31,13 @@ const provider: RefundProvider = {
 let finalized = 0;
 const worker = new RefundRecoveryWorker(queue, async (id) => id === payment.id ? payment : undefined, new Map([['test-provider', provider]]), { async finalize() { finalized += 1; } }, () => now);
 const result = await worker.run(10);
-assert.deepEqual(result, { scanned: 1, succeeded: 1, failed: 0, deferred: 0, skipped: 0 });
+assert.deepEqual(result, { scanned: 1, succeeded: 1, failed: 0, deferred: 0, skipped: 0, claimed: 0 });
 assert.equal(lookups, 1);
 assert.equal(refundRequests, 0);
 assert.equal(finalized, 1);
 assert.equal(queue.operation.status, 'succeeded');
 
 console.log('payment-refund-recovery-worker.test.ts: ok');
+}
+
+void main();

@@ -67,9 +67,7 @@ export class SupabaseFulfillmentStore extends SupabaseRestStore implements Fulfi
 
   async update(id: string, patch: Partial<FulfillmentJob>): Promise<FulfillmentJob> {
     const payload: Record<string, unknown> = { updated_at: new Date().toISOString() };
-    if (patch.paymentIntentId !== undefined) payload.payment_intent_id = patch.paymentIntentId;
-    if (patch.merchantId !== undefined) payload.merchant_id = patch.merchantId;
-    if (patch.serviceId !== undefined) payload.service_id = patch.serviceId;
+    if (patch.paymentIntentId !== undefined || patch.merchantId !== undefined || patch.serviceId !== undefined) throw new Error('Fulfillment payment, merchant, and service bindings are immutable');
     if (patch.status !== undefined) payload.status = patch.status;
     if (patch.attempts !== undefined) payload.attempts = patch.attempts;
     if (patch.lastError !== undefined) payload.last_error = patch.lastError ?? null;
