@@ -31,10 +31,13 @@ function json(res, status, value) {
 }
 async function body(req) {
   const chunks=[];
-  for await (const chunk of req) chunks.push(chunk);
-  const buffer=Buffer.concat(chunks);
-  if (buffer.byteLength > MAX_BODY_BYTES) throw new Error(`Request body exceeds ${MAX_BODY_BYTES} bytes`);
-  const text=buffer.toString('utf8');
+  let size=0;
+  for await (const chunk of req) {
+    size += chunk.byteLength;
+    if (size > MAX_BODY_BYTES) throw new Error(`Request body exceeds ${MAX_BODY_BYTES} bytes`);
+    chunks.push(chunk);
+  }
+  const text=Buffer.concat(chunks).toString('utf8');
   if (!text) return {};
   return JSON.parse(text);
 }
