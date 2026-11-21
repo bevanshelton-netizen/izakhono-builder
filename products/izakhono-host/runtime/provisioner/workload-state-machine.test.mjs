@@ -27,6 +27,7 @@ test('creates a workload without binding it to a physical host', () => {
 test('rejects mutable or invalid release identities', () => {
   assert.throws(() => createWorkloadRecord({ ...spec, releaseDigest:'latest' }, { id:'nav-workload-001' }), /SHA-256/);
   assert.throws(() => createWorkloadRecord({ ...spec, logicalNodeId:'server-01' }, { id:'nav-workload-001' }), /logical NODE/);
+  assert.throws(() => createWorkloadRecord({ ...spec, healthPath:'/health?debug=1' }, { id:'nav-workload-001' }), /safe absolute path/);
 });
 
 test('enforces lifecycle and requires service acceptance before READY', () => {
