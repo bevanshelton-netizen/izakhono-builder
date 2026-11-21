@@ -61,7 +61,10 @@ export function createWorkloadStore({ filePath }) {
           const same = duplicate.workload_id === spec.workloadId &&
             duplicate.workload_class === spec.workloadClass &&
             duplicate.logical_node_id === spec.logicalNodeId &&
-            duplicate.release_digest === spec.releaseDigest.toLowerCase();
+            duplicate.runtime_target_id === (spec.runtimeTargetId || null) &&
+            duplicate.release_digest === spec.releaseDigest.toLowerCase() &&
+            duplicate.health_path === spec.healthPath &&
+            duplicate.internal_port === spec.internalPort;
           if (!same) {
             const error = new Error('Idempotency key was already used for a different workload release');
             error.code = 'IDEMPOTENCY_CONFLICT';
