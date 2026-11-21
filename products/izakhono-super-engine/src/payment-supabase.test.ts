@@ -7,6 +7,7 @@ async function main() {
 const intent: PaymentIntent = {
   id: 'pay_test_1',
   merchantId: 'merchant_test_1',
+  serviceId: 'school-commerce',
   externalTransactionId: 'order_test_1',
   amountMinor: 14900,
   currency: 'ZAR',
@@ -29,6 +30,7 @@ const store = new SupabasePaymentStore({
     if (method === 'GET') return Response.json([{
       id: intent.id,
       merchant_id: intent.merchantId,
+      service_id: intent.serviceId,
       external_transaction_id: intent.externalTransactionId,
       amount_minor: intent.amountMinor,
       currency: intent.currency,
@@ -52,6 +54,7 @@ const found = await store.getByExternalTransactionId(intent.externalTransactionI
 assert.deepEqual(found, intent);
 const byId = await store.getById(intent.id);
 assert.deepEqual(byId, intent);
+assert.equal(byId?.serviceId, 'school-commerce');
 
 const updated = await store.update(intent.id, { status: 'paid' });
 assert.equal(updated.status, 'paid');
