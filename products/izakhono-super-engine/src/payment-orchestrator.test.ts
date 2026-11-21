@@ -8,6 +8,8 @@ import { MemorySettlementStore } from './payment-settlement.js';
 import { MemoryPaymentStateEventStore } from './payment-refunds.js';
 import { PaymentOrchestrator } from './payment-orchestrator.js';
 
+
+async function main() {
 const payment: PaymentIntent = { id: 'pay_e2e_1', merchantId: 'merchant_1', externalTransactionId: 'order_e2e_1', amountMinor: 14900, currency: 'ZAR', status: 'paid', provider: 'ikhokha', providerPaymentId: 'ik_pay_1', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
 const paymentStore = new MemoryPaymentStore();
 await paymentStore.save(payment);
@@ -45,3 +47,6 @@ assert.equal(await orchestrator.issueReceipt(refunded.payment), true);
 assert.equal(await orchestrator.issueReceipt(refunded.payment), false);
 assert.equal((await ledgerStore.listTransactions()).length, 3);
 console.log('payment-orchestrator.test.ts: ok');
+}
+
+void main();
