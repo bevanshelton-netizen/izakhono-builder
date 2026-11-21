@@ -232,3 +232,33 @@ No separately named I-CONNECT workflow-execution Edge Function appeared in the 2
 The correct path is **not** to create a second CONNECT ENGAGEMENT schema, contact store, inbox, consent ledger, channel registry or workflow authoring model. The existing I-CONNECT database already owns those foundations. CONNECT ENGAGEMENT should be treated as a bounded product division that progressively productises and completes the existing I-CONNECT engagement domain, subject to a reviewed service boundary and a distinct operational/tenant contract where needed.
 
 The remaining gap is primarily verified production-grade orchestration and channel delivery, not an absence of all underlying data structures. The next technical discovery task is to inspect every engagement migration in order, review all related RPC definitions and Edge Function callers, map consent and retention semantics, and prove whether the workflow test runner can be safely evolved into a separately controlled production execution service. No implementation or schema change is authorised by this finding.
+
+
+## 10. Supabase advisor snapshot — 2026-11-21
+
+Read-only Supabase security and performance advisors were run against the I-CONNECT project. Findings are observations for review; no automatic remediation was applied.
+
+### Security advisor
+
+- The project-wide advisor reports **88** `rls_enabled_no_policy` INFO findings across multiple product schemas. This includes the 21 I-CONNECT tables listed above, as well as tables belonging to other products. RLS is enabled on these tables; the advisor reports the absence of policies, not public exposure. The I-CONNECT tables in this group had no `anon` or `authenticated` table grants in the inspected role-grant query.
+- The advisor reports **10 WARN** findings for SECURITY DEFINER functions executable by `authenticated`. The I-CONNECT functions named are:
+  - `ic_add_inbox_internal_note`
+  - `ic_checkout_state_for_customer`
+  - `ic_create_outbound_message_draft`
+  - `ic_create_owner_organization`
+  - `ic_create_staging_checkout_intent`
+  - `ic_enqueue_workflow_test_run`
+  - `ic_list_my_organizations`
+  - `ic_manage_inbox_thread`
+  - `ic_prepare_checkout_intent_for_customer`
+  - `ic_review_outbound_message_draft`
+
+The warning means the functions are callable by authenticated clients and execute with definer privileges; it does not by itself prove an exploitable flaw. Several inspected functions explicitly check `auth.uid()`, active organisation membership, role, assigned-thread ownership, maker-checker separation and/or communication consent. All 99 I-CONNECT SECURITY DEFINER functions in the earlier catalog query had a configured search_path. A full function-by-function review must still verify execute grants, caller identity, organisation scoping, input validation, side effects and negative cross-tenant tests before these RPCs are accepted as the CONNECT shared engagement API.
+
+### Performance advisor
+
+The project-wide advisor also reports 87 unindexed foreign keys, 190 unused indexes and 7 duplicate-index groups. Some findings touch I-CONNECT tables (including carrier health checks, service provisioning jobs, worker dispatch outbox, inbox and workflow tables). Unused-index findings on empty engagement tables are not a basis for dropping indexes. Do not remove or alter indexes during CONNECT discovery; any eventual performance remediation needs workload evidence, migration review and regression testing.
+
+### Gate 0 disposition update
+
+The live schema, applied migration list, deployed Edge Function inventory, engagement RPC foundations, RLS policy metadata and advisor snapshots are now recorded. Remaining discovery is narrower but still material: review the source of each relevant migration and SECURITY DEFINER function, inspect all I-CONNECT and communications Edge Function call paths, establish the full repository/deployment tree, and run the existing safe test baseline. The advisor findings are review gates, not authorisation to change the database.
