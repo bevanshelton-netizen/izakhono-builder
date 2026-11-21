@@ -25,6 +25,27 @@ PY
   echo "Created .env with locally generated runtime secrets. Set TLS_EMAIL and review mail settings before public activation."
 fi
 
+# Upgrade existing NODE01 .env files created before J.A.R.V.I.S. was added.
+# Missing or example-value J.A.R.V.I.S. secrets are generated locally and never printed.
+python3 - <<'PY'
+from pathlib import Path
+import secrets
+p = Path('.env')
+lines = p.read_text().splitlines()
+for key in ('JARVIS_OWNER_SECRET', 'JARVIS_WORKER_TOKEN'):
+    found = False
+    for index, line in enumerate(lines):
+        if line.startswith(key + '='):
+            found = True
+            if not line.split('=', 1)[1] or 'replace-with' in line:
+                lines[index] = key + '=' + secrets.token_urlsafe(48)
+            break
+    if not found:
+        lines.append(key + '=' + secrets.token_urlsafe(48))
+p.write_text('\\n'.join(lines) + '\\n')
+PY
+chmod 600 .env
+
 if grep -q 'ops@example.com' .env; then
   echo "Set TLS_EMAIL in .env before public HTTPS activation." >&2
   exit 1
