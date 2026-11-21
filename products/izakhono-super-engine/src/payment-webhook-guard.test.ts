@@ -17,13 +17,13 @@ const provider: PaymentProvider = {
   async createPaymentLink() { return { paymentIntentId: '', provider: 'test-provider', providerPaymentId: 'provider-1', url: 'https://pay.example/1' }; },
   async verifyWebhook() { return true; },
   parseWebhook() {
-    return { provider: 'test-provider', providerPaymentId, externalTransactionId: 'ORDER-WEBHOOK-1', status: outcome, responseCode };
+    return { provider: 'test-provider', providerPaymentId, externalTransactionId: 'ORDER-WEBHOOK-1', amountMinor: 1000, currency: 'ZAR', status: outcome, responseCode };
   },
 };
 
 const payments = new MemoryPaymentStore();
-const pay = new IzakhonoPay(payments, provider);
-await pay.createPayment(input);
+const pay = new IzakhonoPay(payments, provider, async () => 'merchant-1');
+await pay.createPayment(input, { principalId: 'principal-1' });
 const events = new MemoryPaymentEventStore();
 const guard = new PaymentWebhookGuard(payments, events, provider);
 
