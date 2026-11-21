@@ -24,7 +24,7 @@ class MemoryRecoveryStore implements RefundOperationStore {
   }
   async markSucceeded(): Promise<RefundOperation> { throw new Error('not used'); }
   async markFailed(): Promise<RefundOperation> { throw new Error('not used'); }
-  async markReconciliationRequired(): Promise<RefundOperation> {
+  async markReconciliationRequired(_refundId: string, _error: string): Promise<RefundOperation> {
     if (!this.operation) throw new Error('missing operation');
     this.operation = { ...this.operation, reconciliationRequired: true };
     return this.operation;
