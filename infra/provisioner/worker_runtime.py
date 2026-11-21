@@ -133,14 +133,24 @@ class ProvisionerWorker:
         item = self.queue.claim_next()
         if item is None:
             return None
-        job = self.store.get(item.job_id)
+
+        # The in-memory JobQueue returns a StoredJob directly; the durable queue
+        # returns a lease carrying job_id/lease_id. Support both queue contracts.
+        durable_lease = hasattr(item, "lease_id") and hasattr(item, "job_id")
+        job = self.store.get(item.job_id) if durable_lease else item
         if job is None:
             return None
+
         result = self.process_job(job)
-        if result.status in {"verified", "accepted", "blocked", "terminal"}:
-            self.queue.complete(item.lease_id)
-        else:
-            self.queue.release(item.lease_id, retry_at=utc_now())
+        if durable_lease:
+            if result.status in {"verified", "accepted", "blocked", "terminal"}:
+                self.queue.complete(item.lease_id)
+            else:
+                self.queue.release(item.lease_id, retry_at=utc_now())
+        elif result.status == "retry":
+            self.queue.retry(job, retryable=True, error_code="ADAPTER_EXECUTION_FAILED")
+        elif result.status == "verified" and job.state not in {State.HANDOVER_READY.value, State.BLOCKED.value}:
+            self.queue.enqueue(job)
         return result
 
 if __name__ == "__main__":
