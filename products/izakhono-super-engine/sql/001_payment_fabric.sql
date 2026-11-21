@@ -4,6 +4,7 @@
 create table if not exists iz_payment_intents (
   id text primary key,
   merchant_id text not null,
+  service_id text not null,
   external_transaction_id text not null unique,
   amount_minor bigint not null check (amount_minor > 0),
   currency char(3) not null,
@@ -16,7 +17,7 @@ create table if not exists iz_payment_intents (
 );
 
 create index if not exists iz_payment_intents_status_idx on iz_payment_intents(status);
-create unique index if not exists iz_payment_intents_id_merchant_uq on iz_payment_intents(id, merchant_id);
+create unique index if not exists iz_payment_intents_id_merchant_service_uq on iz_payment_intents(id, merchant_id, service_id);
 
 create table if not exists iz_payment_events (
   id text primary key,
@@ -53,7 +54,7 @@ create table if not exists iz_fulfillment_jobs (
   created_at timestamptz not null,
   updated_at timestamptz not null,
   constraint iz_fulfillment_jobs_payment_intent_merchant_fkey
-    foreign key (payment_intent_id, merchant_id) references iz_payment_intents(id, merchant_id)
+    foreign key (payment_intent_id, merchant_id, service_id) references iz_payment_intents(id, merchant_id, service_id)
 );
 
 create table if not exists iz_settlement_batches (
