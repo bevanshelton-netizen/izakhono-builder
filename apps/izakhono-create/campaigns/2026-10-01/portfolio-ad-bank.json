@@ -1,0 +1,111 @@
+{
+  "schema": "izakhono.ad-bank.v1",
+  "date": "2026-10-01",
+  "paid_spend_authorised": false,
+  "ads": [
+    {
+      "product": "AUTO AI",
+      "destination": "https://auto-ai-eosin.vercel.app/#triage",
+      "headline": "BEFORE YOU SPEND MONEY ON YOUR CAR — CHECK IT.",
+      "primary": "Repair quote confusing? Buying a used car? AUTO AI gives you a plain-language second view before you spend.",
+      "bullets": [
+        "Vehicle Health Report — R79",
+        "Repair Quote Second Opinion — R99",
+        "Used-Car Buyer Check — R149"
+      ],
+      "cta": "CHECK MY CAR →",
+      "whatsapp": "Understand the risk before you spend. AUTO AI: R79 / R99 / R149. Start here: https://auto-ai-eosin.vercel.app/#triage"
+    },
+    {
+      "product": "WORKNOW",
+      "destination": "https://worknow-sa.vercel.app/",
+      "headline": "LOOKING FOR WORK? NEED TALENT?",
+      "primary": "WORKNOW connects job seekers, genuine vacancies and employers in one digital job centre.",
+      "bullets": [
+        "Job seekers register free",
+        "Employers can publish genuine vacancies",
+        "Build/upload a CV and discover opportunities"
+      ],
+      "cta": "ENTER WORKNOW →",
+      "whatsapp": "WORKNOW is open. Job seekers register free; employers can publish genuine vacancies. https://worknow-sa.vercel.app/"
+    },
+    {
+      "product": "IZAKHONO AFRICA",
+      "destination": "https://izakhonoafrica.co.za/",
+      "headline": "UNIFORMS. SPORTSWEAR. PPE. MADE FOR YOUR ORGANISATION.",
+      "primary": "Schools, clubs and companies: get your apparel requirements into one manufacturing conversation.",
+      "bullets": [
+        "School uniforms & matric jackets",
+        "Sportswear & team kits",
+        "PPE & corporate clothing"
+      ],
+      "cta": "REQUEST A QUOTE →",
+      "whatsapp": "Need uniforms, sportswear, PPE or corporate clothing? Talk to IZAKHONO Africa: https://izakhonoafrica.co.za/"
+    },
+    {
+      "product": "IZAKHONO HOST",
+      "destination": "https://izakhono-online.com/",
+      "headline": "YOUR BUSINESS NEEDS A PROFESSIONAL ONLINE HOME.",
+      "primary": "Website, hosting and business email for SMEs that need a credible digital presence.",
+      "bullets": [
+        "Professional business website",
+        "Hosting",
+        "Business email"
+      ],
+      "cta": "GET A BUSINESS AUDIT →",
+      "whatsapp": "Does your business need a better website, hosting or professional email? Start here: https://izakhono-online.com/"
+    },
+    {
+      "product": "KORA",
+      "destination": "https://kora-network.vercel.app/",
+      "headline": "AFRICA CREATES. KORA CONNECTS.",
+      "primary": "Discover African music, creators, live culture, tickets and opportunities in one growing network.",
+      "bullets": [
+        "Discover creators",
+        "Explore music & live culture",
+        "Creator and partner opportunities"
+      ],
+      "cta": "ENTER KORA →",
+      "whatsapp": "KORA is open for African creators and audiences. Explore: https://kora-network.vercel.app/"
+    },
+    {
+      "product": "ALLEGRO VIBEZ",
+      "destination": "https://allegro-vibez.vercel.app/",
+      "headline": "LISTEN. DISCOVER. JOIN AS AN ARTIST.",
+      "primary": "ALLEGRO VIBEZ is opening a practical music and creator discovery environment.",
+      "bullets": [
+        "Listen",
+        "Discover artists",
+        "Join the creator ecosystem"
+      ],
+      "cta": "JOIN ALLEGRO →",
+      "whatsapp": "ALLEGRO VIBEZ is live. Listen, discover and join the creator ecosystem: https://allegro-vibez.vercel.app/"
+    },
+    {
+      "product": "IZAKHONO DIGITAL FINANCE",
+      "destination": "https://izakhono-digital-finance.vercel.app/",
+      "headline": "UNDERSTAND DIGITAL FINANCE BEFORE YOU USE IT.",
+      "primary": "Start with practical foundations covering digital money, blockchain, wallets, custody and scam awareness.",
+      "bullets": [
+        "Free foundation",
+        "Plain-language learning",
+        "Risk and scam awareness"
+      ],
+      "cta": "START FREE →",
+      "whatsapp": "Start learning digital finance from the foundations. Free: https://izakhono-digital-finance.vercel.app/"
+    },
+    {
+      "product": "FORTRESS",
+      "destination": "https://ai.izakhono.co.za/",
+      "headline": "TRUST SHOULD BE PART OF THE TRANSACTION.",
+      "primary": "Explore an API-first enterprise trust and fraud-prevention concept through a structured discovery and pilot conversation.",
+      "bullets": [
+        "Enterprise discovery",
+        "API-first architecture",
+        "Pilot-led evaluation"
+      ],
+      "cta": "REQUEST DISCOVERY →",
+      "whatsapp": "If transaction trust and fraud prevention are strategic priorities, let's discuss a focused FORTRESS pilot."
+    }
+  ]
+}

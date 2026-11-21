@@ -1,0 +1,195 @@
+{
+  "schema": "izakhono.portfolio.distribution.wave.v1",
+  "effective_date": "2026-10-01",
+  "objective": "Maximise lawful distribution and revenue opportunities across the verified IZAKHONO product portfolio.",
+  "paid_spend_authorised": false,
+  "default_cta_policy": "Every advertisement must have one clear next action and link to the verified product destination.",
+  "channels": {
+    "owned": [
+      "IZAKHONO websites",
+      "portfolio cross-promotion",
+      "product homepages",
+      "email",
+      "CRM",
+      "WhatsApp"
+    ],
+    "organic": [
+      "Facebook",
+      "Instagram",
+      "LinkedIn",
+      "YouTube",
+      "Threads",
+      "TikTok",
+      "community groups where permitted"
+    ],
+    "direct": [
+      "warm email",
+      "partner introductions",
+      "employer outreach",
+      "artist outreach",
+      "institutional outreach"
+    ],
+    "paid_prepared": [
+      "Meta Ads",
+      "Google Ads",
+      "LinkedIn Ads",
+      "TikTok Ads",
+      "Microsoft Ads"
+    ],
+    "marketplaces_and_partners": [
+      "relevant industry associations",
+      "schools",
+      "clubs",
+      "music organisations",
+      "employer networks"
+    ]
+  },
+  "products": [
+    {
+      "slug": "auto-ai",
+      "offer": "R79 Vehicle Health Report / R99 Repair Quote Second Opinion / R149 Used-Car Buyer Check",
+      "destination": "https://auto-ai-eosin.vercel.app/#triage",
+      "status": "ACTIVE_MARKETING",
+      "audiences": [
+        "motorists",
+        "used-car buyers",
+        "workshops",
+        "fleets"
+      ],
+      "priority": 1
+    },
+    {
+      "slug": "worknow",
+      "offer": "Free job-seeker registration + employer vacancy participation",
+      "destination": "https://worknow-sa.vercel.app/",
+      "status": "ACTIVE_MARKETING",
+      "audiences": [
+        "job seekers",
+        "employers",
+        "recruiters",
+        "training providers"
+      ],
+      "priority": 1
+    },
+    {
+      "slug": "izakhono-africa",
+      "offer": "School uniforms, matric jackets, sportswear, PPE and corporate clothing",
+      "destination": "https://izakhonoafrica.co.za/",
+      "status": "ACTIVE_MARKETING",
+      "audiences": [
+        "schools",
+        "companies",
+        "clubs",
+        "procurement teams"
+      ],
+      "priority": 1
+    },
+    {
+      "slug": "izakhono-host",
+      "offer": "Business websites, hosting and professional email",
+      "destination": "https://izakhono-online.com/",
+      "status": "ACTIVE_DIRECT_OUTREACH",
+      "audiences": [
+        "SMEs",
+        "traders",
+        "professional practices",
+        "startups"
+      ],
+      "priority": 1
+    },
+    {
+      "slug": "kora",
+      "offer": "African music, creators, live culture, tickets and partnerships",
+      "destination": "https://kora-network.vercel.app/",
+      "status": "ACTIVE_MARKETING",
+      "audiences": [
+        "artists",
+        "fans",
+        "promoters",
+        "cultural organisations"
+      ],
+      "priority": 1
+    },
+    {
+      "slug": "allegro-vibez",
+      "offer": "Music discovery, radio and artist onboarding",
+      "destination": "https://allegro-vibez.vercel.app/",
+      "status": "ACTIVE_MARKETING",
+      "audiences": [
+        "artists",
+        "listeners",
+        "music schools",
+        "music organisations"
+      ],
+      "priority": 1
+    },
+    {
+      "slug": "digital-finance-free",
+      "offer": "Free digital-finance foundation learning",
+      "destination": "https://izakhono-digital-finance.vercel.app/",
+      "status": "ACTIVE_FREE_ACQUISITION",
+      "audiences": [
+        "individuals",
+        "employees",
+        "institutions"
+      ],
+      "priority": 2
+    },
+    {
+      "slug": "fortress",
+      "offer": "Enterprise trust/fraud-prevention discovery and pilot",
+      "destination": "https://ai.izakhono.co.za/",
+      "status": "ACTIVE_WARM_ENTERPRISE_OUTREACH",
+      "audiences": [
+        "banks",
+        "fintechs",
+        "enterprises"
+      ],
+      "priority": 2
+    },
+    {
+      "slug": "faisready",
+      "offer": "RE1 / RE5 preparation products",
+      "destination": "https://faisready.co.za/",
+      "status": "CONVERSION_GATE_REQUIRED",
+      "audiences": [
+        "financial-services candidates"
+      ],
+      "priority": 3
+    },
+    {
+      "slug": "edu-build",
+      "offer": "ECD training programmes",
+      "destination": "https://edubuildshelton.org.za/",
+      "status": "PUBLIC_CONTENT_CORRECTION_PENDING",
+      "audiences": [
+        "ECD students",
+        "education organisations"
+      ],
+      "priority": 3
+    }
+  ],
+  "creative_formula": {
+    "hook": "one problem",
+    "promise": "one specific customer outcome",
+    "proof": "only verified facts",
+    "bullets": 3,
+    "cta": "one action",
+    "urgency": "real deadlines/offers only",
+    "prohibited": [
+      "fake scarcity",
+      "guaranteed results",
+      "unverified accreditation",
+      "unapproved paid spend"
+    ]
+  },
+  "daily_operating_loop": [
+    "Generate channel-native creative for each ACTIVE_MARKETING product.",
+    "Publish/queue owned and organic content where account permissions exist.",
+    "Run warm/direct outreach to relevant prospects and partners without bulk spam.",
+    "Capture replies and leads into IZAKHONO CRM.",
+    "Review conversions and revenue by product.",
+    "Produce new creative variants from observed results.",
+    "Escalate paid campaigns for explicit budget approval."
+  ]
+}
