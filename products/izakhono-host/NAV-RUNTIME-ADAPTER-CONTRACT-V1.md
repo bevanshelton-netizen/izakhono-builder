@@ -19,7 +19,7 @@ Every trusted server-side adapter must implement:
 7. `backup({ target, resource, workload, signal })` — create a durable backup and return its immutable identifier and integrity evidence.
 8. `restore({ target, resource, backupId, workload, signal })` — restore a selected backup and return verification evidence.
 
-The contract module validates this method surface and provides an allow-listed adapter registry. It deliberately does not implement a cloud, container or hardware provider.
+The contract module validates this method surface and provides an allow-listed adapter registry. The worker consumes only a trusted server-side registry and HOST binding resolver. Neither module implements or assumes a cloud, container or hardware provider.
 
 ## Security requirements
 
@@ -42,13 +42,7 @@ A provider's asynchronous acceptance response is not proof of readiness. HOST mu
 
 The current HOST API records workload requests as `queued-awaiting-runtime-adapter`. The adapter contract does not change that status and does not claim that NAV is running.
 
-The next integration stage must add a durable worker that:
-1. claims a queued workload with a lease;
-2. resolves its approved adapter and opaque runtime target;
-3. advances the existing state machine only after each operation succeeds;
-4. persists operation evidence and retries safely;
-5. verifies runtime, data import, routing, search, tiles and persistence before READY;
-6. keeps backup/restore, HTTPS, DNS and public activation as separate acceptance gates.
+The worker module and durable lease/evidence primitives now exist. A worker pass can claim an explicitly target-bound request, resolve a trusted adapter binding, provision and deploy the immutable release, and inspect runtime health. It deliberately stops at `PROVISIONING` with `runtime-deployed-awaiting-data-pipeline`; it does not claim data import, application acceptance or READY. The worker is not yet started as a background service because no approved concrete adapter is registered. The next integration stage must add the NAV data-import and service-start pipeline, then independent routing, search, tile and persistence verification before READY. Backup/restore, HTTPS, DNS and public activation remain separate acceptance gates.
 
 No adapter may promote a workload directly to READY or public-live.
 
@@ -58,4 +52,4 @@ The adapter contract is intentionally provider-neutral. The concrete provider mu
 
 ## Current status
 
-The contract module and unit tests establish the adapter boundary and registry behavior. No concrete provider adapter is registered, no runtime target is bound, and no production execution resource has been provisioned by this change.
+The contract module, registry, durable lease/evidence primitives and bounded worker pass are implemented with tests. No concrete provider adapter is registered, no always-on worker is enabled, no runtime target is approved or bound for a real release, and no production execution resource has been provisioned by this change.
