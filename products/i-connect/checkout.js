@@ -10,6 +10,7 @@
   nav.appendChild(button);
 
   const token = () => window.I_CONNECT_ACCESS_TOKEN || sessionStorage.getItem('I_CONNECT_ACCESS_TOKEN') || localStorage.getItem('I_CONNECT_ACCESS_TOKEN') || '';
+  const accessToken = async () => window.I_CONNECT_AUTH?.getAccessToken ? await window.I_CONNECT_AUTH.getAccessToken() : token();
   const esc = (v) => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
   function render() {
@@ -37,7 +38,7 @@
 
     async function refreshState() {
       if (!activeIntentId) return;
-      const t = token();
+      const t = await accessToken();
       if (!t) {
         tracking.textContent = 'Sign in again to securely view this checkout status.';
         return;
@@ -78,7 +79,7 @@
       const customerEmail = document.getElementById('ic-email').value.trim();
       if (!productCode) return result.textContent = 'Product code is required.';
       if (!customerName || !customerEmail) return result.textContent = 'Customer name and email are required.';
-      const t = token();
+      const t = await accessToken();
       if (!t) return result.textContent = 'Sign in is required before creating a checkout.';
       result.textContent = 'Creating checkout intent…';
       tracking.textContent = '';
