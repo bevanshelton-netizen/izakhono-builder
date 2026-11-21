@@ -84,3 +84,11 @@ authenticate a customer. Customer RPCs still require a valid Supabase Auth
 access token. A configured API key or checkout intent does not mean payment
 is ready. A live provider connection, merchant credentials, signed webhook
 verification and a real payment acceptance test are separate requirements.
+
+## Browser authentication
+
+`GET /api/public-config` returns only the I-CONNECT Supabase URL and publishable/legacy anon API key. These values are public client configuration; no service-role key or provider secret is returned. The browser signs in or signs up directly with Supabase Auth, keeps its session in tab-scoped storage, and refreshes access tokens before customer API calls.
+
+## Current checkout boundary
+
+A checkout intent is only a pre-payment request. It is not a payment session and does not charge a customer. The current I-CONNECT catalog has no active I-CONNECT-priced product, and `pay_provider_connections` has no configured provider connection. The UI must display the returned `payment_ready=false` reason and must not imply that payment or telecom provisioning has begun.
