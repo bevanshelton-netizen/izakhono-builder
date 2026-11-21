@@ -1,6 +1,6 @@
 services:
   postgres:
-    image: ${POSTGRES_IMAGE:-pgvector/pgvector:pg17}
+    image: ${POSTGRES_IMAGE:?Set POSTGRES_IMAGE to a verified image digest}
     restart: unless-stopped
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-izakhono}
@@ -17,7 +17,7 @@ services:
     networks: [private]
 
   redis:
-    image: ${REDIS_IMAGE:-redis:7-alpine}
+    image: ${REDIS_IMAGE:?Set REDIS_IMAGE to a verified image digest}
     restart: unless-stopped
     command: ["redis-server", "--appendonly", "yes"]
     volumes:
@@ -30,7 +30,7 @@ services:
     networks: [private]
 
   qdrant:
-    image: ${QDRANT_IMAGE:-qdrant/qdrant:latest}
+    image: ${QDRANT_IMAGE:?Set QDRANT_IMAGE to a verified image digest}
     restart: unless-stopped
     volumes:
       - qdrant-data:/qdrant/storage
@@ -42,7 +42,7 @@ services:
     networks: [private]
 
   open-webui:
-    image: ${OPEN_WEBUI_IMAGE:-ghcr.io/open-webui/open-webui:main}
+    image: ${OPEN_WEBUI_IMAGE:?Set OPEN_WEBUI_IMAGE to a verified image digest}
     restart: unless-stopped
     profiles: [ai]
     environment:
