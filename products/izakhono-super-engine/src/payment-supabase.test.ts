@@ -2,6 +2,8 @@ import { strict as assert } from 'node:assert';
 import { SupabasePaymentStore } from './payment-supabase.js';
 import type { PaymentIntent } from './payment-core.js';
 
+
+async function main() {
 const intent: PaymentIntent = {
   id: 'pay_test_1',
   merchantId: 'merchant_test_1',
@@ -56,3 +58,6 @@ assert.equal(updated.status, 'paid');
 assert.equal(updated.id, intent.id);
 
 console.log('payment-supabase tests passed');
+}
+
+void main();
