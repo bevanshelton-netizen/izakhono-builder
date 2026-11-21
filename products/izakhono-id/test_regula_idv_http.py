@@ -72,6 +72,11 @@ class RegulaIDVHttpTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             RegulaIDVHttpClient(self.config()).get_session("../other")
 
+    @patch.dict("os.environ", {
+        "IZAKHONO_REGULA_BASE_URL": "http://not-secure.example",
+        "IZAKHONO_REGULA_API_KEY": "test-key",
+        "IZAKHONO_REGULA_WORKFLOW_ID": "workflow-123",
+    }, clear=True)
     def test_configuration_requires_https_and_workflow(self):
         with self.assertRaises(RegulaConfigurationError):
             RegulaIDVConfig.from_env()
