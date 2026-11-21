@@ -24,4 +24,15 @@ node -e 'const r=JSON.parse(process.argv[1]); if(!r.geometry?.coordinates?.lengt
 curl -fsS --max-time 15 "$HOST/tiles/10/591/589.png" -o /tmp/izakhono-nav-tile.png || fail "owned raster tile"
 test -s /tmp/izakhono-nav-tile.png && pass "owned raster tile" || fail "owned raster tile"
 
+# FORTRESS: verify engine security headers and deny-by-default cross-origin access.
+security_headers="$(curl -sS --max-time 8 -D - -o /dev/null -H 'Origin: https://untrusted.example' "$HOST/health")" || fail "FORTRESS security headers"
+printf '%s' "$security_headers" | grep -qi '^x-content-type-options: nosniff' && pass "FORTRESS content-type protection" || fail "FORTRESS content-type protection"
+printf '%s' "$security_headers" | grep -qi '^referrer-policy: no-referrer' && pass "FORTRESS referrer policy" || fail "FORTRESS referrer policy"
+printf '%s' "$security_headers" | grep -qi '^permissions-policy:' && pass "FORTRESS permissions policy" || fail "FORTRESS permissions policy"
+if printf '%s' "$security_headers" | grep -qi '^access-control-allow-origin:'; then
+  fail "FORTRESS denies unapproved CORS origins"
+else
+  pass "FORTRESS denies unapproved CORS origins"
+fi
+
 printf '\nOWNED STACK VERIFIED on runtime %s (public HTTPS not yet implied)\n' "${NAV_RUNTIME_ID:-unknown}" | tee -a "$REPORT"
