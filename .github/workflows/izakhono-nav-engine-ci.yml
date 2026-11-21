@@ -38,6 +38,16 @@ jobs:
             sleep 0.2
           done
           node -e "const r=require('/tmp/runtime.json'); if(r.node01Required!==false) process.exit(1)"
+          # FORTRESS acceptance: security headers must be present and unapproved
+          # cross-origin browser access must not be granted by the default config.
+          curl -sS -D /tmp/nav-headers.txt -o /tmp/nav-health.json -H 'Origin: https://untrusted.example' http://127.0.0.1:8799/health
+          grep -qi '^x-content-type-options: nosniff' /tmp/nav-headers.txt
+          grep -qi '^referrer-policy: no-referrer' /tmp/nav-headers.txt
+          grep -qi '^permissions-policy:' /tmp/nav-headers.txt
+          if grep -qi '^access-control-allow-origin:' /tmp/nav-headers.txt; then
+            echo 'Unapproved CORS origin was allowed' >&2
+            exit 1
+          fi
           code=$(curl -s -o /tmp/route.json -w '%{http_code}' 'http://127.0.0.1:8799/v1/route?start=28.0473,-26.2041&end=28.1000,-26.1000')
           test "$code" = "503"
           grep -q routing_unavailable /tmp/route.json
