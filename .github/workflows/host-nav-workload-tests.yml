@@ -13,13 +13,21 @@ on:
       - 'products/izakhono-host/runtime/control-plane/Dockerfile'
       - 'products/izakhono-host/docker-compose.owned.yml'
       - 'products/izakhono-host/NAV-WORKLOAD-CONTRACT-V1.md'
+      - 'products/izakhono-host/NAV-WORKLOAD-API-V1.md'
       - '.github/workflows/host-nav-workload-tests.yml'
   push:
     branches: [main]
     paths:
       - 'products/izakhono-host/runtime/provisioner/workload-state-machine.mjs'
       - 'products/izakhono-host/runtime/provisioner/workload-state-machine.test.mjs'
+      - 'products/izakhono-host/runtime/provisioner/workload-store.mjs'
+      - 'products/izakhono-host/runtime/provisioner/workload-store.test.mjs'
+      - 'products/izakhono-host/runtime/control-plane/server.mjs'
+      - 'products/izakhono-host/runtime/control-plane/smoke.mjs'
+      - 'products/izakhono-host/runtime/control-plane/Dockerfile'
+      - 'products/izakhono-host/docker-compose.owned.yml'
       - 'products/izakhono-host/NAV-WORKLOAD-CONTRACT-V1.md'
+      - 'products/izakhono-host/NAV-WORKLOAD-API-V1.md'
       - '.github/workflows/host-nav-workload-tests.yml'
   workflow_dispatch:
 
