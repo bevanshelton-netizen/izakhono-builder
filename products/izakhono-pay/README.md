@@ -53,7 +53,7 @@ I-PAY owns the merchant experience, orchestration logic, transaction records and
 
 ## Public experience
 
-The root `index.html` is the public I-PAY brand and merchant-plan information site. `public/index.html` is the payment operations/sandbox surface served by the Worker asset configuration. `public/mock-checkout.html` is a non-money-moving sandbox checkout. The responsive public website is not proof of a native mobile application or live payment availability.
+The root `index.html` is the public I-PAY brand and merchant-plan information site. `public/index.html` is the operations/sandbox presentation surface and `public/mock-checkout.html` is a non-money-moving sandbox checkout. Their actual public routing and API connectivity must be verified against the deployed Worker; the current `wrangler.jsonc` does not declare a static-assets binding. The Wrangler entrypoint is `src/index.ts`, while the package's Node check/test scripts also reference `src/index.js`; these are distinct code paths and must not be treated as one tested runtime. The responsive public website is not proof of a native mobile application or live payment availability.
 
 ## Deployment
 
