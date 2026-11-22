@@ -13,7 +13,8 @@
     {
       "binding": "DB",
       "database_name": "izakhono-builder",
-      "database_id": "a59d44af-22cc-4967-8b00-03c817d7a7dd"
+      "database_id": "a59d44af-22cc-4967-8b00-03c817d7a7dd",
+      "migrations_dir": "../../migrations"
     }
   ],
   "vars": {
