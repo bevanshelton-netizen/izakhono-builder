@@ -39,7 +39,17 @@ for name in required:
         if data.get("status") != "PASS":
             failures.append(f"not-pass:{name}")
         source = data.get("evidence_source")
-        if not source or source in {"inferred", "topology", "ci-only", "repository-only", "simulated"}:
+        expected_sources = {
+            "runtime": "software-runtime-execution",
+            "health": "software-runtime-execution",
+            "persistence": "software-runtime-execution",
+            "backup_restore": "software-runtime-execution",
+            "failover": "prove-failover-evidence.sh:approved-runtime-operator",
+            "security": "prove-security-evidence.sh:approved-runtime-execution",
+            "edge_tls": "prove-edge-tls-evidence.sh:approved-runtime-edge-verification",
+            "external_https": "prove-external-https-evidence.sh:independent-external-execution",
+        }
+        if not isinstance(source, str) or not source.startswith(expected_sources[name]):
             failures.append(f"untrusted-evidence-source:{name}")
         checked = data.get("checked_at_epoch")
         if not isinstance(checked, int) or isinstance(checked, bool):
