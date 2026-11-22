@@ -36,18 +36,22 @@ test("rejects healthy nodes without separate verified runtime binding", () => {
   assert.equal(result.selected_target, null);
 });
 
-test("selects only a fresh healthy node with all deployment readiness checks and separate runtime binding", () => {
+test("treats a fresh healthy node with separate runtime binding as a candidate, not authorized execution", () => {
   heartbeat("candidate-ready", {
     runtime: "container",
     runtime_host: "owner-runtime-binding-01",
     runtime_host_is_separate: true
   });
   const result = inspectDeploymentTargets();
-  assert.equal(result.status, "ready");
+  assert.equal(result.status, "waiting");
+  assert.equal(result.execution_authorized, false);
+  assert.equal(result.selected_target, null);
   assert.equal(result.logical_node_identity, "NODE01");
   assert.equal(result.identity_type, "software-runtime");
-  assert.equal(result.selected_target.node_id, "candidate-ready");
-  assert.equal(result.selected_target.runtime_binding_verified, true);
+  assert.equal(result.candidate_target.node_id, "candidate-ready");
+  assert.equal(result.candidate_target.runtime_binding_declared, true);
+  assert.equal(result.candidate_target.runtime_binding_verified, false);
+  assert.equal(result.candidate_target.owner_execution_authorized, false);
 });
 
 test("does not select a node missing backup readiness", () => {
@@ -56,8 +60,9 @@ test("does not select a node missing backup readiness", () => {
     runtime_host_is_separate: true
   }, { ...checks, backupReady: false });
   const result = inspectDeploymentTargets();
-  assert.equal(result.status, "ready");
-  assert.equal(result.selected_target.node_id, "candidate-ready");
+  assert.equal(result.status, "waiting");
+  assert.equal(result.selected_target, null);
+  assert.equal(result.candidate_target.node_id, "candidate-ready");
   assert.ok(result.candidates.find(x => x.node_id === "candidate-no-backup").missing_checks.includes("backupReady"));
 });
 
