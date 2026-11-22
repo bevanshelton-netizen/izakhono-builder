@@ -5,6 +5,7 @@ on:
     paths:
       - "deploy-control/**"
       - "autonomy/node-registry.mjs"
+      - "infra/runtime-fabric/controller/**"
       - ".github/workflows/izakhono-deploy-ci.yml"
   push:
     branches:
@@ -36,3 +37,31 @@ jobs:
         run: node --test deploy-control/lifecycle.test.mjs deploy-control/target-adapter.test.mjs deploy-control/authorization.test.mjs
       - name: Check NODE01 identity invariant
         run: python3 scripts/architecture/check-node01-identity.py
+
+  runtime-fabric-controller-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Install test dependency
+        run: python -m pip install --disable-pip-version-check pytest
+      - name: Run Runtime Fabric controller regressions
+        env:
+          PYTHONPATH: infra/runtime-fabric/controller
+        run: >-
+          python -m pytest -q
+          infra/runtime-fabric/controller/test_activation_transaction.py
+          infra/runtime-fabric/controller/test_deployment_state.py
+          infra/runtime-fabric/controller/test_observability.py
+          infra/runtime-fabric/controller/test_postgres_event_store.py
+          infra/runtime-fabric/controller/test_recovery_reconciler.py
+          infra/runtime-fabric/controller/test_recovery_supervisor.py
+          infra/runtime-fabric/controller/test_recovery_worker.py
+          infra/runtime-fabric/controller/test_runtime_fabric_controller.py
+          infra/runtime-fabric/controller/test_state_observability_integration.py
+          infra/runtime-fabric/controller/test_workload_activation.py
