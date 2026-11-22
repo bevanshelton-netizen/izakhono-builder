@@ -47,6 +47,8 @@ jobs:
             -c "CREATE ROLE owned_worker_gateway_ci LOGIN PASSWORD 'ci-only-password';"
           psql "$OWNED_WORKER_TEST_ADMIN_URL" -v ON_ERROR_STOP=1 \
             -c "GRANT owned_worker_gateway TO owned_worker_gateway_ci;"
+          psql "$OWNED_WORKER_TEST_ADMIN_URL" -v ON_ERROR_STOP=1 \
+            -c "INSERT INTO public.owned_worker_context_secret (singleton, secret) VALUES (true, decode('0000000000000000000000000000000000000000000000000000000000000000', 'hex')) ON CONFLICT (singleton) DO UPDATE SET secret = EXCLUDED.secret, updated_at = now();"
           psql "$OWNED_WORKER_TEST_ADMIN_URL" -v ON_ERROR_STOP=1 \\
             -c "INSERT INTO public.owned_worker_context_secret (singleton, secret) VALUES (true, decode('Y2ktb25seS1vd25lZC13b3JrZXItdGVuYW50LWNvbnRleHQtc2VjcmV0LTAx', 'base64')) ON CONFLICT (singleton) DO UPDATE SET secret = excluded.secret;"
       - run: npm run check
@@ -54,4 +56,5 @@ jobs:
         env:
           OWNED_WORKER_TEST_ADMIN_URL: postgresql://postgres:postgres@localhost:5432/owned_worker_gateway_test
           OWNED_WORKER_TEST_WORKER_URL: postgresql://owned_worker_gateway_ci:ci-only-password@localhost:5432/owned_worker_gateway_test
+          OWNED_WORKER_TEST_CONTEXT_SECRET: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
           OWNED_WORKER_TEST_CONTEXT_SECRET: Y2ktb25seS1vd25lZC13b3JrZXItdGVuYW50LWNvbnRleHQtc2VjcmV0LTAx
