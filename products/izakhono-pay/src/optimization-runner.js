@@ -38,6 +38,7 @@ export async function runOptimizationCycle({ input = {}, persistence, lookupCycl
   const snapshot = await persistence.insertSnapshot(snapshotRecord);
 
   const experiments = [];
+  const measurementSources = new Set();
   const rejected = [...cycle.rejected];
   for (const experiment of cycle.experiments) {
     try {
@@ -45,6 +46,7 @@ export async function runOptimizationCycle({ input = {}, persistence, lookupCycl
       const sourcedExperiment = attachMeasurementSource(experiment, source);
       const record = enforcePersistenceSafety(buildExperimentRecord(sourcedExperiment, { id: experiment.candidate_id }));
       experiments.push(await persistence.insertExperiment(record));
+      measurementSources.add(source);
     } catch (error) {
       rejected.push({ candidate_id: experiment.candidate_id, reason: error.message });
     }
@@ -55,7 +57,7 @@ export async function runOptimizationCycle({ input = {}, persistence, lookupCycl
     snapshot_id: snapshot?.id || null,
     experiments_created: experiments.length,
     rejected_candidates: rejected.length,
-    measurement_sources: [...new Set(experiments.map((item) => item?.measurement_source).filter(Boolean))],
+    measurement_sources: [...measurementSources],
     status: 'completed',
     live_money_movement: false,
     authorization_mode: 'sandbox_only',
