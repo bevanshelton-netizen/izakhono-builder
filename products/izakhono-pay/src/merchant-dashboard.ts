@@ -2,11 +2,11 @@ export function renderMerchantDashboard(merchantId: string) {
   const safeId = merchantId.replace(/[^A-Za-z0-9_-]/g, '');
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>IZAKHONO PAY — Merchant Console</title>
+<title>I-PAY™ — Merchant Console | by IZAKHONO</title>
 <style>
 :root{color-scheme:dark;font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}body{margin:0;background:#070914;color:#f6f8ff}main{max-width:1180px;margin:auto;padding:32px 20px}.top{display:flex;justify-content:space-between;align-items:center;gap:20px;margin-bottom:28px}.brand{font-weight:900;letter-spacing:.08em}.brand span{color:#63e6ff}.sub{color:#8f98b5;font-size:14px}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.card{background:#11162a;border:1px solid #252c47;border-radius:20px;padding:20px}.label{color:#8f98b5;font-size:13px}.value{font-size:28px;font-weight:900;margin-top:8px}.wide{grid-column:1/-1}.status{display:inline-flex;padding:6px 10px;border-radius:999px;background:#17243b;color:#63e6ff;font-size:12px;font-weight:800}.provider{display:flex;justify-content:space-between;padding:12px 0;border-bottom:1px solid #252c47}.provider:last-child{border-bottom:0}.ok{color:#b9ff67}.warn{color:#ffd166}.err{color:#ff7b8b}.error{color:#ff7b8b}.loading{color:#8f98b5}.key{display:flex;justify-content:space-between;gap:16px;align-items:center;padding:12px 0;border-bottom:1px solid #252c47}.key:last-child{border-bottom:0}.btn{border:1px solid #35405f;background:#18203a;color:#fff;border-radius:10px;padding:9px 12px;font-weight:800;cursor:pointer}.btn:hover{border-color:#63e6ff}.secret{margin-top:12px;padding:14px;border-radius:12px;background:#091b21;border:1px solid #2a6570;word-break:break-all}.form{display:flex;gap:10px;margin-top:14px}.input{flex:1;background:#090d1b;border:1px solid #2a3351;color:#fff;border-radius:10px;padding:11px}.small{font-size:12px;color:#8f98b5}@media(max-width:760px){.grid{grid-template-columns:1fr}.wide{grid-column:auto}.top{align-items:flex-start;flex-direction:column}.form{flex-direction:column}.key{align-items:flex-start;flex-direction:column}}
 </style></head><body><main>
-<div class="top"><div><div class="brand">IZAKHONO <span>PAY™</span></div><div class="sub">Merchant Control Centre</div></div><div id="status" class="status">Loading…</div></div>
+<div class="top"><div><div class="brand">I-<span>PAY™</span></div><div class="sub">by IZAKHONO · Merchant Control Centre</div></div><div id="status" class="status">Loading…</div></div>
 <div id="app" class="grid"><div class="card wide loading">Loading merchant control centre…</div></div>
 </main>
 <script>
