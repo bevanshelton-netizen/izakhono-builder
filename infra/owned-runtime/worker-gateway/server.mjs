@@ -1,5 +1,5 @@
 import http from 'node:http';
-import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
+import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import postgres from 'postgres';
 
 const PORT = Number(process.env.PORT || 8790);
@@ -7,7 +7,9 @@ const HOST = String(process.env.HOST || '127.0.0.1');
 const LEASE_SECONDS = Math.max(30, Math.min(900, Number(process.env.WORKER_LEASE_SECONDS || 120)));
 const MAX_BODY_BYTES = 65536;
 const DATABASE_URL = String(process.env.OWNED_WORKER_DATABASE_URL || '');
+const TENANT_CONTEXT_SECRET = String(process.env.OWNED_WORKER_TENANT_CONTEXT_SECRET || '');
 if (!DATABASE_URL) throw new Error('OWNED_WORKER_DATABASE_URL_REQUIRED');
+if (Buffer.from(TENANT_CONTEXT_SECRET, 'base64url').length < 32) throw new Error('OWNED_WORKER_TENANT_CONTEXT_SECRET_REQUIRED');
 
 const db = postgres(DATABASE_URL, {
   max: Number(process.env.DB_POOL_MAX || 5),
@@ -67,8 +69,10 @@ async function authenticate(req, res, capability) {
   return { ...worker, tokenHash };
 }
 async function tenantTx(tenantId, callback) {
+  const signature = createHmac('sha256', Buffer.from(TENANT_CONTEXT_SECRET, 'base64url'))
+    .update(String(tenantId)).digest('hex');
   return db.begin(async tx => {
-    await tx`select set_config('app.tenant_id', ${tenantId}, true)`;
+    await tx`select public.set_owned_worker_tenant_context(${tenantId}, ${signature})`;
     return callback(tx);
   });
 }
