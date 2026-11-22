@@ -7,44 +7,57 @@ import {
 } from "./authorization.mjs";
 
 const now = Date.now();
+const nowSeconds = Math.floor(now / 1000);
 const resource = { tenantId: "tenant-a", applicationId: "app-a", environmentId: "staging" };
 const validClaims = overrides => ({
-  iss: "https://id.izakhono.example",
+  iss: "https://fortress.izakhono.internal",
   aud: ["izakhono-deploy"],
   sub: "user-123",
   tenant_id: "tenant-a",
   application_ids: ["app-a"],
   environment_ids: ["staging"],
   scopes: ["deploy:read", "deploy:write"],
-  exp: Math.floor(now / 1000) + 300,
+  iat: nowSeconds - 30,
+  nbf: nowSeconds - 30,
+  exp: nowSeconds + 300,
+  jti: "session-token-123",
   ...overrides
 });
-const authenticate = (claims = validClaims(), at = now) => authenticateDeploymentRequest({
+const activeSession = (claims, overrides = {}) => ({
+  active: true, jti: claims.jti, subject: claims.sub,
+  tenantId: claims.tenant_id, expiresAt: claims.exp, ...overrides
+});
+const authenticate = (claims = validClaims(), options = {}) => authenticateDeploymentRequest({
   authorization: "Bearer signed-token",
-  issuer: "https://id.izakhono.example",
+  issuer: "https://fortress.izakhono.internal",
   audience: "izakhono-deploy",
-  now: at,
+  now,
   verifyAccessToken: async token => {
     assert.equal(token, "signed-token");
     return claims;
-  }
+  },
+  verifyActiveSession: async request => {
+    assert.equal(request.jti, claims.jti);
+    assert.equal(request.subject, claims.sub);
+    assert.equal(request.tenantId, claims.tenant_id);
+    return options.session === undefined ? activeSession(claims) : options.session;
+  },
+  ...options.config
 });
 
-test("accepts a verified principal for its exact tenant, application and environment", async () => {
+test("accepts only a verified DEPLOY principal with a matching active JTI session", async () => {
   const principal = await authenticate();
   assert.equal(authorizeDeploymentAccess(principal, resource, "read"), true);
   assert.equal(authorizeDeploymentAccess(principal, resource, "mutate"), true);
   assert.equal(principal.tenantId, "tenant-a");
+  assert.equal(principal.tokenId, "session-token-123");
 });
 
 test("rejects a caller-created principal even when its fields look valid", () => {
-  assert.throws(
-    () => authorizeDeploymentAccess({
-      subject: "attacker", tenantId: "tenant-a", applicationIds: ["app-a"],
-      environmentIds: ["staging"], scopes: ["deploy:admin"]
-    }, resource, "mutate"),
-    error => error instanceof DeploymentAuthorizationError && error.code === "PRINCIPAL_UNTRUSTED"
-  );
+  assert.throws(() => authorizeDeploymentAccess({
+    subject: "attacker", tenantId: "tenant-a", applicationIds: ["app-a"],
+    environmentIds: ["staging"], scopes: ["deploy:admin"]
+  }, resource, "mutate"), e => e.code === "PRINCIPAL_UNTRUSTED");
 });
 
 test("rejects cross-tenant, cross-application and cross-environment access", async () => {
@@ -54,74 +67,76 @@ test("rejects cross-tenant, cross-application and cross-environment access", asy
     [{ applicationId: "app-b" }, "APPLICATION_FORBIDDEN"],
     [{ environmentId: "production" }, "ENVIRONMENT_FORBIDDEN"]
   ]) {
-    assert.throws(
-      () => authorizeDeploymentAccess(principal, { ...resource, ...override }, "read"),
-      error => error.code === code
-    );
+    assert.throws(() => authorizeDeploymentAccess(principal, { ...resource, ...override }, "read"),
+      error => error.code === code);
   }
 });
 
 test("separates read, mutate and approval scopes", async () => {
   const principal = await authenticate(validClaims({ scopes: ["deploy:read"] }));
   assert.equal(authorizeDeploymentAccess(principal, resource, "read"), true);
-  assert.throws(
-    () => authorizeDeploymentAccess(principal, resource, "mutate"),
-    error => error.code === "SCOPE_FORBIDDEN"
-  );
-  assert.throws(
-    () => authorizeDeploymentAccess(principal, resource, "approve"),
-    error => error.code === "SCOPE_FORBIDDEN"
-  );
+  assert.throws(() => authorizeDeploymentAccess(principal, resource, "mutate"), e => e.code === "SCOPE_FORBIDDEN");
+  assert.throws(() => authorizeDeploymentAccess(principal, resource, "approve"), e => e.code === "SCOPE_FORBIDDEN");
 });
 
-test("rejects absent bearer credentials and failed token verification", async () => {
-  await assert.rejects(
-    authenticateDeploymentRequest({ issuer: "issuer", audience: "aud", verifyAccessToken: async () => ({}) }),
-    error => error.code === "AUTHENTICATION_REQUIRED"
-  );
-  await assert.rejects(
-    authenticateDeploymentRequest({
-      authorization: "Bearer bad", issuer: "issuer", audience: "aud",
-      verifyAccessToken: async () => { throw new Error("bad signature"); }
-    }),
-    error => error.code === "TOKEN_INVALID"
-  );
+test("rejects absent credentials and failed JWT verification", async () => {
+  await assert.rejects(authenticateDeploymentRequest({
+    issuer: "issuer", audience: "aud", verifyAccessToken: async () => ({}),
+    verifyActiveSession: async () => ({})
+  }), e => e.code === "AUTHENTICATION_REQUIRED");
+  await assert.rejects(authenticateDeploymentRequest({
+    authorization: "Bearer bad", issuer: "issuer", audience: "aud",
+    verifyAccessToken: async () => { throw new Error("bad signature"); },
+    verifyActiveSession: async () => ({})
+  }), e => e.code === "TOKEN_INVALID");
 });
 
-test("rejects expired tokens, wrong issuer/audience and incomplete scope claims", async () => {
+test("requires iat, nbf, exp, jti and a maximum ten-minute lifetime", async () => {
   for (const overrides of [
-    { exp: Math.floor(now / 1000) },
-    { nbf: Math.floor(now / 1000) + 60 },
-    { iss: "https://attacker.example" },
-    { aud: ["other-service"] },
-    { tenant_id: "" },
-    { application_ids: [] },
-    { environment_ids: [] },
-    { scopes: [] }
+    { iat: undefined }, { nbf: undefined }, { exp: undefined }, { jti: "" },
+    { iat: nowSeconds + 1 }, { nbf: nowSeconds + 1 },
+    { exp: nowSeconds }, { exp: nowSeconds + 601 }
   ]) {
-    await assert.rejects(
-      authenticate(validClaims(overrides)),
-      error => error.code === "TOKEN_CLAIMS_INVALID"
-    );
+    await assert.rejects(authenticate(validClaims(overrides)),
+      e => e.code === "TOKEN_CLAIMS_INVALID");
   }
 });
 
-test("does not allow a principal to be reused after token expiry", async () => {
-  const expired = await authenticate(validClaims({ exp: 1 }), 0);
-  assert.throws(
-    () => authorizeDeploymentAccess(expired, resource, "read"),
-    error => error.code === "PRINCIPAL_EXPIRED"
-  );
+test("rejects wrong issuer/audience and incomplete entitlement claims", async () => {
+  for (const overrides of [
+    { iss: "https://attacker.example" }, { aud: ["izakhono-creator"] },
+    { tenant_id: "" }, { application_ids: [] }, { environment_ids: [] }, { scopes: [] }
+  ]) {
+    await assert.rejects(authenticate(validClaims(overrides)),
+      e => e.code === "TOKEN_CLAIMS_INVALID");
+  }
 });
 
-test("rejects missing resource scope and unknown actions", async () => {
+test("rejects revoked, mismatched and expired live sessions", async () => {
+  const claims = validClaims();
+  for (const session of [
+    activeSession(claims, { active: false }),
+    activeSession(claims, { jti: "other-jti" }),
+    activeSession(claims, { subject: "other-user" }),
+    activeSession(claims, { tenantId: "tenant-b" }),
+    activeSession(claims, { expiresAt: nowSeconds })
+  ]) {
+    await assert.rejects(authenticate(claims, { session }), e => e.code === "SESSION_INVALID");
+  }
+});
+
+test("fails closed when live-session verification is unavailable", async () => {
+  await assert.rejects(authenticateDeploymentRequest({
+    authorization: "Bearer token", issuer: "issuer", audience: "aud",
+    verifyAccessToken: async () => validClaims(),
+    verifyActiveSession: async () => { throw new Error("identity unavailable"); }
+  }), e => e.code === "SESSION_VERIFICATION_UNAVAILABLE");
+});
+
+test("rejects expired principals, missing scope and unknown actions", async () => {
   const principal = await authenticate();
-  assert.throws(
-    () => authorizeDeploymentAccess(principal, { tenantId: "tenant-a" }, "read"),
-    error => error.code === "RESOURCE_SCOPE_REQUIRED"
-  );
-  assert.throws(
-    () => authorizeDeploymentAccess(principal, resource, "execute-shell"),
-    error => error.code === "ACTION_INVALID"
-  );
+  assert.throws(() => authorizeDeploymentAccess(principal, { tenantId: "tenant-a" }, "read"),
+    e => e.code === "RESOURCE_SCOPE_REQUIRED");
+  assert.throws(() => authorizeDeploymentAccess(principal, resource, "execute-shell"),
+    e => e.code === "ACTION_INVALID");
 });
