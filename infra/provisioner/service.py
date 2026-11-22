@@ -95,11 +95,15 @@ class ProvisionerService:
         return record
 
 if __name__=="__main__":
-    from adapter_catalog import build_catalog, CAPABILITY_TO_ADAPTER
+    from adapter_catalog import CAPABILITY_TO_ADAPTER
     from job_store import MemoryJobStore
     store=MemoryJobStore(); queue=JobQueue(store)
-    registry={"adapters":{k:{"owned":v} for k,v in CAPABILITY_TO_ADAPTER.items()},"bindings":{name:{"operation":"smoke"} for name in {"tenant","domain","dns","site","tls","mail","crm_whatsapp"}}}
-    service=ProvisionerService(store,queue,build_catalog(),registry)
+    registry={"adapters":{k:{"owned":v} for k,v in CAPABILITY_TO_ADAPTER.items()},"bindings":{name:{"operation":"smoke"} for name in CAPABILITY_TO_ADAPTER}}
+    def smoke_adapter(payload):
+        return {"evidence_id":f"ev_{payload['operation_id']}","observed_at":utc_now(),"verified":True,
+                "checks":[f"{payload['capability']}.verified"],"simulation":False}
+    implementations={adapter:smoke_adapter for adapter in CAPABILITY_TO_ADAPTER.values()}
+    service=ProvisionerService(store,queue,implementations,registry)
     first=service.create_job(CreateJobRequest("tenant-service","idem-service",{"payment_id":"pay-service","amount":"100.00","currency":"ZAR","verified":True}))
     duplicate=service.create_job(CreateJobRequest("tenant-service","idem-service",{"payment_id":"pay-service","amount":"100.00","currency":"ZAR","verified":True}))
     assert first["created"] is True and duplicate["created"] is False and first["job_id"]==duplicate["job_id"]
