@@ -127,7 +127,7 @@ test("rejects revoked, mismatched and expired live sessions", async () => {
 
 test("fails closed when live-session verification is unavailable", async () => {
   await assert.rejects(authenticateDeploymentRequest({
-    authorization: "Bearer token", issuer: "issuer", audience: "aud",
+    authorization: "Bearer token", issuer: "https://fortress.izakhono.internal", audience: "izakhono-deploy",
     verifyAccessToken: async () => validClaims(),
     verifyActiveSession: async () => { throw new Error("identity unavailable"); }
   }), e => e.code === "SESSION_VERIFICATION_UNAVAILABLE");
