@@ -19,11 +19,11 @@ const validClaims = overrides => ({
   exp: Math.floor(now / 1000) + 300,
   ...overrides
 });
-const authenticate = (claims = validClaims()) => authenticateDeploymentRequest({
+const authenticate = (claims = validClaims(), at = now) => authenticateDeploymentRequest({
   authorization: "Bearer signed-token",
   issuer: "https://id.izakhono.example",
   audience: "izakhono-deploy",
-  now,
+  now: at,
   verifyAccessToken: async token => {
     assert.equal(token, "signed-token");
     return claims;
@@ -91,6 +91,7 @@ test("rejects absent bearer credentials and failed token verification", async ()
 test("rejects expired tokens, wrong issuer/audience and incomplete scope claims", async () => {
   for (const overrides of [
     { exp: Math.floor(now / 1000) },
+    { nbf: Math.floor(now / 1000) + 60 },
     { iss: "https://attacker.example" },
     { aud: ["other-service"] },
     { tenant_id: "" },
@@ -103,6 +104,14 @@ test("rejects expired tokens, wrong issuer/audience and incomplete scope claims"
       error => error.code === "TOKEN_CLAIMS_INVALID"
     );
   }
+});
+
+test("does not allow a principal to be reused after token expiry", async () => {
+  const expired = await authenticate(validClaims({ exp: 1 }), 0);
+  assert.throws(
+    () => authorizeDeploymentAccess(expired, resource, "read"),
+    error => error.code === "PRINCIPAL_EXPIRED"
+  );
 });
 
 test("rejects missing resource scope and unknown actions", async () => {
