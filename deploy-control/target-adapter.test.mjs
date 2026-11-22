@@ -17,6 +17,7 @@ const checks = {
 function heartbeat(nodeId, runtime, readiness = checks) {
   return registry.recordHeartbeat({
     nodeId, status: "healthy", health: "healthy", checks: readiness,
+    identity: { logical_node_id: "NODE01", identity_type: "software-runtime" },
     runtime, timestamp: new Date().toISOString(), capacity: { loadAverage: [0.1] }
   });
 }
