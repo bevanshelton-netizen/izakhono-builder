@@ -1,6 +1,12 @@
 name: I-PAY brand verification
 
 on:
+  push:
+    branches:
+      - release/ipay-customer-brand-v1
+    paths:
+      - "products/izakhono-pay/**"
+      - ".github/workflows/ipay-brand-check.yml"
   pull_request:
     paths:
       - "products/izakhono-pay/**"
