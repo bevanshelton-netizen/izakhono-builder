@@ -129,9 +129,23 @@ test('PostgreSQL enforces owned-worker tenant isolation and least-privilege gran
       assert.deepEqual(events.map(row => row.job_id), [jobA], 'tenant A must read only its own events');
     });
 
+    // Arbitrary GUC writes cannot forge a signature for tenant B.
+    await worker.begin(async tx => {
+      await tx`select set_config('app.tenant_id', ${tenantB}, true)`;
+      await tx`select set_config('app.tenant_signature', ${tenantSignature(tenantA)}, true)`;
+      const forged = await tx`select id from public.owned_worker_jobs`;
+      assert.deepEqual(forged.map(row => row.id), [], 'forged tenant context must fail closed');
+      const forgedEvents = await tx`select job_id from public.owned_worker_events`;
+      assert.deepEqual(forgedEvents, [], 'forged tenant context must not expose events');
+    });
+    await assert.rejects(
+      worker`select public.set_owned_worker_tenant_context(${tenantB}, ${tenantSignature(tenantA)})`,
+      error => error.code === '42501'
+    );
+
     await assert.rejects(
       worker.begin(async tx => {
-        await tx`select set_config('app.tenant_id', ${tenantA}, true)`;
+        await tx`select public.set_owned_worker_tenant_context(${tenantA}, ${tenantSignature(tenantA)})`;
         await tx`
           insert into public.owned_worker_jobs
             (tenant_id, idempotency_key, worker_key, job_type)
