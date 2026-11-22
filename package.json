@@ -75,7 +75,8 @@
     "jarvis:worker:supervise": "node products/izakhono-jarvis/runner/supervisor.mjs",
     "jarvis:workforce:test": "npx --yes tsx@4.20.3 products/izakhono-jarvis/src/workforce.test.ts",
     "code-agent:test": "npx --yes tsx@4.20.3 products/izakhono-code-agent/src/index.test.ts",
-    "code-agent:typecheck": "tsc --noEmit --target ES2022 --lib ES2022,DOM --module NodeNext --moduleResolution NodeNext products/izakhono-code-agent/src/index.ts products/izakhono-code-agent/src/index.test.ts"
+    "code-agent:typecheck": "tsc --noEmit --target ES2022 --lib ES2022,DOM --module ESNext --moduleResolution Bundler products/izakhono-code-agent/src/index.ts products/izakhono-code-agent/src/worker.ts",
+    "code-agent:runner-check": "node --check products/izakhono-code-agent/runner/server.mjs"
   },
   "dependencies": {
     "wrangler": "4.127.1"
