@@ -8,7 +8,7 @@ test('device workspace exposes merchant-safe payment and activity workflows', ()
   assert.match(html, /\/v1\/merchants\//);
   assert.match(html, /navigator\.share/);
   assert.match(html, /navigator\.clipboard\.writeText/);
-  assert.doesNotMatch(html, /QRCode|qrcode\.min\.js|showQr|qrCanvas/);
+  assert.doesNotMatch(html, /QRCode|qrcode\.min\.js|showQr|qrCanvas|customer-facing QR|qrwrap/);
   assert.match(html, /printReceipt/);
   assert.match(html, /verified confirmation from the connected payment provider/);
 });
