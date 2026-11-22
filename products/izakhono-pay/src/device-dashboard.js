@@ -116,7 +116,7 @@ export function renderDeviceDashboard() {
     finally{$('refresh').disabled=false}
   };
   var printReceipt=function(row){
-    var w=window.open('','_blank','noopener,noreferrer');if(!w){showMessage('activityMessage','Allow pop-ups to print a receipt.',true);return}
+    var w=window.open('','_blank');if(!w){showMessage('activityMessage','Allow pop-ups to print a receipt.',true);return}
     var doc=w.document;doc.open();doc.write('<!doctype html><html><head><title>I-PAY receipt</title><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{font:15px system-ui;max-width:520px;margin:40px auto;padding:20px;color:#111}.brand{font-weight:900;font-size:22px}.muted{color:#555}.line{border-top:1px solid #ddd;margin:20px 0}.amount{font-size:28px;font-weight:900}</style></head><body><div class="brand">I-PAY</div><p class="muted">Transaction receipt · Merchant copy</p><div class="line"></div><p>Reference<br><b>'+escapeHtml(row.id||'')+'</b></p><p>Description<br><b>'+escapeHtml(row.description||'Payment')+'</b></p><p>Status<br><b>'+escapeHtml(row.status||'Unknown')+'</b></p><p>Provider<br><b>'+escapeHtml(row.provider||'—')+'</b></p><p>Date<br><b>'+escapeHtml(row.created_at||'—')+'</b></p><div class="line"></div><div class="amount">'+escapeHtml(money(row.amount)+' '+(row.currency||'ZAR'))+'</div><p class="muted">This receipt reflects the transaction status recorded by I-PAY. It is not proof of settlement unless the status explicitly confirms settlement.</p><script>window.onload=function(){window.print()}<\/script></body></html>');doc.close();
   };
   var escapeHtml=function(value){return String(value).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})};
