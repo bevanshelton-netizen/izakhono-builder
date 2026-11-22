@@ -2,7 +2,7 @@ name: I-CONNECT Network Routing CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, feat/i-connect-commercial-market-entry-v1]
     paths:
       - 'products/i-connect/**'
       - '.github/workflows/i-connect-network-ci.yml'
@@ -57,6 +57,7 @@ jobs:
           node --check products/i-connect/api/checkout-state.js
           node --check products/i-connect/api/provider-attempt.js
           node --test products/i-connect/api/routes.test.js
+          node --test products/i-connect/partners/partner-registry.test.mjs
           node --test products/i-connect/supabase/functions/i-connect-mobisim-adapter/index.test.mjs
           node --test products/i-connect/supabase/functions/i-connect-mobisim-events.test.mjs
           node --test products/i-connect/payments/ikhokha-reconciliation.test.mjs
