@@ -6,7 +6,7 @@ import {
   DeploymentAuthorizationError
 } from "./authorization.mjs";
 
-const now = Date.parse("2026-11-22T10:00:00Z");
+const now = Date.now();
 const resource = { tenantId: "tenant-a", applicationId: "app-a", environmentId: "staging" };
 const validClaims = overrides => ({
   iss: "https://id.izakhono.example",
