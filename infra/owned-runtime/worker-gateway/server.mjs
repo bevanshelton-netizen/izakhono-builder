@@ -119,13 +119,29 @@ const server = http.createServer(async (req, res) => {
       const leaseToken = randomBytes(32).toString('base64url');
       const leaseHash = sha256(leaseToken);
       const job = await tenantTx(worker.tenant_id, async tx => {
+        const exhausted = await tx`
+          update public.owned_worker_jobs
+          set status = 'failed', error_code = 'lease_expired_max_attempts',
+              error_message = 'Worker lease expired after maximum attempts',
+              lease_owner = null, lease_token_hash = null, lease_expires_at = null,
+              updated_at = now()
+          where tenant_id = ${worker.tenant_id} and worker_key = ${worker.worker_key}
+            and status = 'running' and lease_expires_at <= now()
+            and attempts >= max_attempts
+          returning id
+        `;
+        for (const row of exhausted) {
+          await recordEvent(tx, worker.tenant_id, row.id, worker.worker_key, 'failed', { reason: 'lease_expired_max_attempts' });
+        }
         const rows = await tx`
           with candidate as (
-            select id from public.owned_worker_jobs
+            select id, status as previous_status from public.owned_worker_jobs
             where tenant_id = ${worker.tenant_id}
               and worker_key = ${worker.worker_key}
-              and status = 'queued'
-              and not_before <= now()
+              and (
+                (status = 'queued' and not_before <= now())
+                or (status = 'running' and lease_expires_at <= now())
+              )
               and attempts < max_attempts
             order by priority desc, created_at asc
             for update skip locked
@@ -138,10 +154,12 @@ const server = http.createServer(async (req, res) => {
               updated_at = now()
           from candidate c
           where j.id = c.id and j.tenant_id = ${worker.tenant_id}
-          returning j.id, j.job_type, j.payload, j.attempts, j.max_attempts, j.lease_expires_at
+          returning j.id, j.job_type, j.payload, j.attempts, j.max_attempts, j.lease_expires_at, c.previous_status
         `;
         if (!rows[0]) return null;
-        await recordEvent(tx, worker.tenant_id, rows[0].id, worker.worker_key, 'claimed', { attempt: rows[0].attempts });
+        await recordEvent(tx, worker.tenant_id, rows[0].id, worker.worker_key,
+          rows[0].previous_status === 'running' ? 'lease_reclaimed' : 'claimed',
+          { attempt: rows[0].attempts });
         return rows[0];
       });
       return json(res, 200, job ? { ok: true, job: { ...job, lease_token: leaseToken } } : { ok: true, job: null });
