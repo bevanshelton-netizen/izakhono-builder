@@ -65,6 +65,78 @@ CREATE TABLE IF NOT EXISTS public.owned_worker_events (
 CREATE INDEX IF NOT EXISTS owned_worker_events_job_idx
   ON public.owned_worker_events (tenant_id, job_id, created_at DESC);
 
+-- Tenant context is authenticated with an HMAC secret unavailable to the runtime DB login.
+-- pgcrypto is used only inside SECURITY DEFINER functions with a fixed search_path.
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+CREATE TABLE IF NOT EXISTS public.owned_worker_context_secret (
+  singleton boolean PRIMARY KEY DEFAULT true CHECK (singleton),
+  secret bytea NOT NULL CHECK (octet_length(secret) >= 32),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+REVOKE ALL ON public.owned_worker_context_secret FROM PUBLIC, owned_worker_gateway;
+
+CREATE OR REPLACE FUNCTION public.owned_worker_current_tenant_id()
+RETURNS uuid
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = pg_catalog, public, extensions
+AS $tenant$
+DECLARE
+  tenant_text text := nullif(current_setting('app.tenant_id', true), '');
+  supplied_signature text := nullif(current_setting('app.tenant_signature', true), '');
+  secret_value bytea;
+  expected_signature text;
+BEGIN
+  IF tenant_text IS NULL OR supplied_signature IS NULL THEN
+    RETURN NULL;
+  END IF;
+  SELECT secret INTO secret_value
+  FROM public.owned_worker_context_secret WHERE singleton = true;
+  IF secret_value IS NULL THEN
+    RETURN NULL;
+  END IF;
+  expected_signature := encode(hmac(convert_to(tenant_text, 'UTF8'), secret_value, 'sha256'), 'hex');
+  IF expected_signature <> supplied_signature THEN
+    RETURN NULL;
+  END IF;
+  RETURN tenant_text::uuid;
+EXCEPTION WHEN invalid_text_representation THEN
+  RETURN NULL;
+END
+$tenant$;
+REVOKE ALL ON FUNCTION public.owned_worker_current_tenant_id() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.owned_worker_current_tenant_id() TO owned_worker_gateway;
+
+CREATE OR REPLACE FUNCTION public.set_owned_worker_tenant_context(p_tenant_id uuid, p_signature text)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, public, extensions
+AS $context$
+DECLARE
+  secret_value bytea;
+  expected_signature text;
+BEGIN
+  SELECT secret INTO secret_value
+  FROM public.owned_worker_context_secret WHERE singleton = true;
+  IF secret_value IS NULL THEN
+    RAISE EXCEPTION 'owned worker tenant context secret is not provisioned'
+      USING ERRCODE = '55000';
+  END IF;
+  expected_signature := encode(hmac(convert_to(p_tenant_id::text, 'UTF8'), secret_value, 'sha256'), 'hex');
+  IF expected_signature <> p_signature THEN
+    RAISE EXCEPTION 'invalid owned worker tenant context signature'
+      USING ERRCODE = '42501';
+  END IF;
+  PERFORM set_config('app.tenant_id', p_tenant_id::text, true);
+  PERFORM set_config('app.tenant_signature', p_signature, true);
+END
+$context$;
+REVOKE ALL ON FUNCTION public.set_owned_worker_tenant_context(uuid, text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.set_owned_worker_tenant_context(uuid, text) TO owned_worker_gateway;
+
 ALTER TABLE public.owned_worker_credentials ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.owned_worker_jobs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.owned_worker_events ENABLE ROW LEVEL SECURITY;
@@ -89,7 +161,7 @@ GRANT EXECUTE ON FUNCTION public.authenticate_owned_worker(text) TO owned_worker
 DROP POLICY IF EXISTS owned_worker_jobs_tenant_scope ON public.owned_worker_jobs;
 CREATE POLICY owned_worker_jobs_tenant_scope ON public.owned_worker_jobs
   FOR ALL TO owned_worker_gateway
-  USING (tenant_id = nullif(current_setting('app.tenant_id', true), '')::uuid)
+  USING (tenant_id = public.owned_worker_current_tenant_id())
   WITH CHECK (tenant_id = nullif(current_setting('app.tenant_id', true), '')::uuid);
 
 DROP POLICY IF EXISTS owned_worker_events_tenant_read ON public.owned_worker_events;
