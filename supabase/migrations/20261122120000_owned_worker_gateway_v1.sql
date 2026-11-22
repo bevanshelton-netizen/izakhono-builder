@@ -107,7 +107,7 @@ RETURNS boolean
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = pg_catalog, public
-AS $
+AS $touch$
 BEGIN
   UPDATE public.owned_worker_credentials
   SET last_seen_at = now(), updated_at = now()
@@ -115,7 +115,7 @@ BEGIN
     AND (expires_at IS NULL OR expires_at > now());
   RETURN FOUND;
 END
-$;
+$touch$;
 REVOKE ALL ON FUNCTION public.touch_owned_worker_credential(text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.touch_owned_worker_credential(text) TO owned_worker_gateway;
 
