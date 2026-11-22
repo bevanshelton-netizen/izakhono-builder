@@ -13,6 +13,10 @@ if ! docker compose version >/dev/null 2>&1; then
   echo "Docker Compose v2 is required." >&2
   exit 1
 fi
+if ! command -v curl >/dev/null 2>&1; then
+  echo "curl is required for the local runner health check." >&2
+  exit 1
+fi
 if ! command -v openssl >/dev/null 2>&1; then
   echo "OpenSSL is required to generate a runner credential." >&2
   exit 1
