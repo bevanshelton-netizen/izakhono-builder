@@ -19,7 +19,6 @@ STATE_CAPABILITY = {
     State.SITE_READY.value: "tls",
     State.TLS_READY.value: "mail",
     State.MAIL_READY.value: "crm_whatsapp",
-    State.INTEGRATIONS_READY.value: "acceptance",
 }
 
 
@@ -39,8 +38,7 @@ class ProvisionerWorker:
         self.queue = queue
         self.implementations = implementations
         self.registry = registry
-        # Always provide a real acceptance probe for the default path. Custom engines
-        # remain supported for production/provider-specific acceptance implementations.
+        # Only the independent AcceptanceEngine may certify production acceptance.
         self.acceptance = acceptance or AcceptanceEngine(EvidenceAcceptanceProbe())
         self.recovery = None
         if recovery_store is not None:
@@ -98,7 +96,13 @@ class ProvisionerWorker:
         if job.state in {State.HANDOVER_READY.value, State.BLOCKED.value}:
             return WorkerResult(job.job_id, job.state, "terminal")
         if job.state == State.ACCEPTANCE_PASSED.value:
+            # Legacy/inconsistent state is re-evaluated by the independent engine;
+            # adapter evidence alone is never accepted as certification.
+            job.state = State.INTEGRATIONS_READY.value
+            job.evidence.pop(State.ACCEPTANCE_PASSED.value, None)
+        if job.state == State.INTEGRATIONS_READY.value:
             return self._accept(job)
+
         capability = STATE_CAPABILITY.get(job.state)
         if capability is None:
             return self._block(job, "STATE_UNSUPPORTED", job.state)
@@ -110,6 +114,7 @@ class ProvisionerWorker:
             validate_result(result, request)
         except Exception as exc:
             return self._failure(job, "ADAPTER_EXECUTION_FAILED", str(exc), operation_id)
+
         next_state = {
             "tenant": State.TENANT_CREATED.value,
             "domain": State.DOMAIN_READY.value,
@@ -118,7 +123,6 @@ class ProvisionerWorker:
             "tls": State.TLS_READY.value,
             "mail": State.MAIL_READY.value,
             "crm_whatsapp": State.INTEGRATIONS_READY.value,
-            "acceptance": State.ACCEPTANCE_PASSED.value,
         }[capability]
         job.state = next_state
         job.evidence[next_state] = dict(result.evidence)
@@ -153,20 +157,34 @@ class ProvisionerWorker:
             self.queue.enqueue(job)
         return result
 
+
 if __name__ == "__main__":
     from job_store import MemoryJobStore
-    store = MemoryJobStore(); queue = JobQueue(store)
-    registry = {"adapters": {k: {"owned": v} for k, v in CAPABILITY_TO_ADAPTER.items()},
-                "bindings": {name: {"operation": "smoke"} for name in STATE_CAPABILITY.values()}}
+    store = MemoryJobStore()
+    queue = JobQueue(store)
+    registry = {
+        "adapters": {k: {"owned": v} for k, v in CAPABILITY_TO_ADAPTER.items()},
+        "bindings": {name: {"operation": "smoke"} for name in STATE_CAPABILITY.values()},
+    }
     implementations = build_catalog()
     job, _ = store.create_or_get("tenant-demo", "idem-demo", "prov-demo")
-    job.evidence["PAYMENT_VERIFIED"] = {"evidence_id": "pay-demo", "observed_at": utc_now(), "verified": True, "checks": ["payment.verified"]}
-    store.save(job); queue.enqueue(job)
+    job.evidence["PAYMENT_VERIFIED"] = {
+        "evidence_id": "pay-demo",
+        "observed_at": utc_now(),
+        "verified": True,
+        "checks": ["payment.verified"],
+    }
+    store.save(job)
+    queue.enqueue(job)
     worker = ProvisionerWorker(store, queue, implementations, registry)
     results = [worker.run_once() for _ in range(10)]
-    # The bundled provider-neutral adapters are simulations. They must never
-    # satisfy independent acceptance or produce a handover-ready job.
+    # Simulated adapter evidence must block independent acceptance and must never
+    # create an ACCEPTANCE_PASSED record or a handover-ready job.
     assert any(r is not None and r.status == "blocked" for r in results)
     assert job.state == State.BLOCKED.value
-    assert all(job.evidence[s].get("simulation") is True for s in ("TENANT_CREATED", "DOMAIN_READY", "DNS_READY", "SITE_READY", "TLS_READY", "MAIL_READY", "INTEGRATIONS_READY")) and "ACCEPTANCE_PASSED" not in job.evidence
+    assert all(job.evidence[s].get("simulation") is True for s in (
+        "TENANT_CREATED", "DOMAIN_READY", "DNS_READY", "SITE_READY",
+        "TLS_READY", "MAIL_READY", "INTEGRATIONS_READY",
+    ))
+    assert "ACCEPTANCE_PASSED" not in job.evidence
     print("PROVISIONER_WORKER_RUNTIME_FAIL_CLOSED: PASS")
