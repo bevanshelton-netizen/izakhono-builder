@@ -57,7 +57,7 @@ for name in required:
             failures.append(f"invalid-logical-runtime-id:{name}")
         if not isinstance(provider, str) or not provider.strip():
             failures.append(f"missing-runtime-provider:{name}")
-        if data.get("physical_hardware_required") is True:
+        if data.get("physical_hardware_required") is not False:
             failures.append(f"physical-hardware-dependency:{name}")
         if release_sha is None and isinstance(sha, str): release_sha = sha
         elif isinstance(sha, str) and sha != release_sha: failures.append(f"release-sha-mismatch:{name}")
