@@ -57,11 +57,12 @@ Next: allow the request to route. If there is no response, use MTN's published G
 The 22 November follow-up to business@telkom.co.za was rejected by Telkom's inbound Mimecast gateway with SMTP 554 / status 5.7.0. The message is not a delivered engagement.
 
 Verified alternative official routes:
-- Telkom FutureMakers: Enterprise Development / Accelerator and Supplier Development programme information.
+- Telkom IT Services Reseller application: https://www.telkom.co.za/reseller-applications. The form asks for company name, contact person, telephone, email, website, regions serviced, industry category, services offered and annual turnover.
 - Telkom Group Procurement: supplier onboarding and Ariba registration guidance.
-- Telkom Business official site: request routing to the correct Business Partnerships / digital-services owner through its published business contact route.
+- Telkom Business official site: use its published business contact route / 10213 to request the correct Business Partnerships or digital-services owner.
+- Telkom FutureMakers: Enterprise Development / Accelerator and Supplier Development programme information. The 2026 Township Incubator application window closed on 18 October 2026; this is not an open application route today.
 
-Eligibility for FutureMakers or supplier onboarding has not been assessed. No application has been submitted and no appointment is claimed.
+The reseller form has not been submitted because several required company fields (telephone, website, regions served and annual turnover) are not verified in the current company profile. Supplier/FutureMakers eligibility has not been assessed. No application has been submitted and no appointment is claimed.
 
 ## 4. Meeting objective and pilot ask
 
