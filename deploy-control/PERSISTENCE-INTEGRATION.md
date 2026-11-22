@@ -80,6 +80,14 @@ The connected project also reports a critical Supabase security-advisor finding:
 
 The I-CONNECT project separately reports RLS disabled for `ic_private.agent_endpoints`; this is another security remediation item, not evidence of Runtime Fabric database ownership.
 
+## Follow-up RLS and privilege verification (2026-11-22)
+
+A catalog-level, read-only check confirmed the 45 RLS-disabled tables are distributed as follows: `private` 20, `allegro_clean` 10, `fortress` 8, `engineering` 3, and `iz_data` 4. The inspected `public` schema has 798 tables and all 798 have RLS enabled; `one` has 13 tables and all 13 have RLS enabled.
+
+The same read-only check evaluated effective table privileges for the `anon` and `authenticated` roles on all 45 RLS-disabled tables. It returned **false for SELECT, INSERT, UPDATE and DELETE across every inspected table** for both roles. Therefore the advisor's RLS-disabled warning is a hardening/configuration gap, but these catalog checks did not establish direct table-grant exposure to those API roles. This does not prove absence of exposure through every possible function, view, owner role, service role, or future schema/API configuration; those paths need separate review.
+
+The advisor's 536 RLS-enabled/no-policy finding is distinct: RLS with no applicable policies normally denies role access rather than exposing rows, and may break intended application workflows. The 45 disabled tables and 536 no-policy tables must not be conflated. No grants, policies, RLS flags, functions, or data were changed.
+
 A follow-up security-advisor read on IZAKHONO WebStart also reported 536 tables with RLS enabled but no policies (an access-denial/availability risk that requires policy inventory), 38 functions with mutable search paths, 9 SECURITY DEFINER functions executable by `anon`, and 46 SECURITY DEFINER functions executable by `authenticated`. These findings require function-by-function privilege and search-path review; do not mass-revoke grants or change function security modes without tracing intended callers and tests. The 45 RLS-disabled table finding remains the immediate exposure concern. No security changes were applied during this inspection.
 
 ## Further database ownership investigation (2026-11-22)
