@@ -3,7 +3,7 @@ set -euo pipefail
 
 # CONNECTA provider-neutral production evidence gate.
 # It validates evidence only; it never performs DNS, TLS, EDGE routing or cutover.
-EVIDENCE_DIR="${CONNECTA_EVIDENCE_DIR:-/var/lib/izakhono/evidence/connecta}"
+EVIDENCE_DIR="${CONNECTA_EVIDENCE_ROOT:-${CONNECTA_EVIDENCE_DIR:-/var/lib/izakhono/evidence/connecta}}"
 MAX_AGE="${CONNECTA_READINESS_MAX_AGE_SECONDS:-86400}"
 REPORT="${CONNECTA_PROMOTION_REPORT:-$EVIDENCE_DIR/promotion-gate.json}"
 [[ "$MAX_AGE" =~ ^[0-9]+$ ]] || { echo "CONNECTA_READINESS_MAX_AGE_SECONDS must be an integer" >&2; exit 2; }
