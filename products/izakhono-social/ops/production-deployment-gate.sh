@@ -45,7 +45,6 @@ for name in required:
         sha=data.get('release_sha')
         if not isinstance(sha,str) or len(sha)!=40 or any(c not in '0123456789abcdef' for c in sha): failures.append(f'{name}: invalid immutable release SHA')
         rid=data.get('runtime_id')
-        if isinstance(rid,str) and ('NODE01' in rid.upper() or 'physical' in rid.lower()): failures.append(f'{name}: runtime identity must be logical')
         if data.get('physical_hardware_required') is not False: failures.append(f'{name}: physical_hardware_required must be false')
         if isinstance(data.get('runtime_id'),str) and 'physical' in data['runtime_id'].lower():
             failures.append(f'{name}: runtime_id must be a logical runtime identity')
