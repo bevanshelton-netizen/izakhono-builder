@@ -11,7 +11,7 @@ import {
   type WorkspaceDescriptor,
 } from './index';
 
-const policy: CodeAgentPolicy = {
+async function main() {\nconst policy: CodeAgentPolicy = {
   allowedRepositories: ['bevanshelton-netizen/izakhono-builder'],
   allowedCommands: ['npm'],
   maxCommandTimeoutMs: 120_000,
@@ -34,7 +34,7 @@ const workspace: WorkspaceDescriptor = {
   network: 'disabled',
 };
 
-assert.equal(validateWorkspacePath('src\\\\index.ts'), 'src/index.ts');
+assert.equal(validateWorkspacePath('src\\index.ts'), 'src/index.ts');
 assert.throws(() => validateWorkspacePath('../secrets'), /unsafe segment/);
 assert.throws(() => validateWorkspacePath('/etc/passwd'), /Absolute paths/);
 assert.throws(() => validateWorkspacePath('C:\\\\Windows\\\\system.ini'), /Absolute paths/);
@@ -81,4 +81,4 @@ const testResult = await runValidationCommand(runner, workspace, goal, policy, {
 assert.equal(testResult.passed, true);
 assert.equal(commandExecuted, true);
 
-console.log('[PASS] IZAKHONO CODE AGENT workspace policy and runner contracts.');
+console.log('[PASS] IZAKHONO CODE AGENT workspace policy and runner contracts.');\n}\n\nmain().catch((error) => { console.error(error); process.exitCode = 1; });
