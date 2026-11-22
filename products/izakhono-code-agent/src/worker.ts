@@ -248,7 +248,7 @@ async function route(req:Request,env:Env):Promise<Response>{
     return json({ok:true,sessions:rows.results});
   }
   if(url.pathname==='/v1/sessions'&&req.method==='POST')return createSession(req,env);
-  const match=url.pathname.match(/^\/v1\/sessions\/([A-Za-z0-9_-]+)(?:\/(turn|diff|pull-request|dependencies))?$/);
+  const match=url.pathname.match(/^\/v1\/sessions\/([A-Za-z0-9_-]+)(?:\/(turn|diff|pull-request|dependencies|files|file))?$/);
   if(match){
     const session=await getSession(env,match[1]);
     if(!session)return json({ok:false,error:'Session not found.'},404);
@@ -269,6 +269,17 @@ async function route(req:Request,env:Env):Promise<Response>{
         await env.DB.prepare("UPDATE code_agent_sessions SET status='blocked',updated_at=CURRENT_TIMESTAMP WHERE id=?").bind(session.id).run();
         return json({ok:false,error:message},409);
       }
+    }
+    if(match[2]==='files'&&req.method==='GET'){
+      const rawPath=url.searchParams.get('path')||'.';
+      const path=rawPath==='.'?'.':validateWorkspacePath(rawPath);
+      const result=await runnerCall(env,'/v1/execute',{workspace_id:session.workspace_id,action:'list_files',input:{path}},'POST');
+      return json({ok:true,path,files:result.files||[]});
+    }
+    if(match[2]==='file'&&req.method==='GET'){
+      const path=validateWorkspacePath(url.searchParams.get('path')||'');
+      const result=await runnerCall(env,'/v1/execute',{workspace_id:session.workspace_id,action:'read_file',input:{path}},'POST');
+      return json({ok:true,file:result});
     }
     if(match[2]==='dependencies'&&req.method==='POST'){
       const result=await runnerCall(env,'/v1/execute',{workspace_id:session.workspace_id,action:'install_dependencies',input:{}});
