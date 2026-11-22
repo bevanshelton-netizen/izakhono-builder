@@ -20,6 +20,8 @@
   "vars": {
     "APP_ENV": "production",
     "MAX_AGENT_STEPS": "8",
-    "MAX_REQUEST_BYTES": "200000"
+    "MAX_REQUEST_BYTES": "200000",
+    "ALLOWED_REPOSITORIES": "bevanshelton-netizen/izakhono-builder",
+    "MODEL_PROTOCOL": "openai-chat-completions"
   }
 }
