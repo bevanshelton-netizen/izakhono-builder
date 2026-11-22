@@ -20,6 +20,12 @@ IZAKHONO owns the source-of-truth state, validated source snapshots, provisionin
 
 The native Builder now includes a provider-neutral local-model adapter (Ollama-compatible chat endpoint) for website content generation, with a deterministic native fallback when a model runtime is not configured or reachable. The default model endpoint is loopback; non-private hosts are rejected unless explicitly trusted by the owner. Generated pages are rendered by IZAKHONO-owned code and HTML-escaped. This creates real website artifacts without a hosted AI-credit dependency. Full arbitrary application/code generation remains a separate capability and is not claimed as complete until model-backed code generation, broader project templates, deployment execution and end-to-end customer acceptance pass their tests.
 
+## Corporate service operating model
+
+IZAKHONO is one integrated technology engineering and infrastructure company across six practices: Intelligence, Engineering, Infrastructure, Security & Connectivity, Automation & Operations, and Data & Digital Products. Customer delivery follows **Assess → Architect → Build → Integrate → Secure → Deploy → Manage → Improve**.
+
+The canonical capability map, engagement models, revenue architecture, sales-to-delivery workflow, payment-provider boundaries, readiness taxonomy and public-claims governance are defined in [IZAKHONO Corporate Service & Commercial Operating Model](architecture/IZAKHONO-CORPORATE-SERVICE-OPERATING-MODEL.md). This is the source of truth for aligning corporate messaging and future service-platform implementation. It does not override product-specific release gates or authorize production deployment.
+
 ## Core capabilities
 
 - register applications and reusable product modules
