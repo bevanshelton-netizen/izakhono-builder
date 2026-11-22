@@ -33,6 +33,6 @@ test('new gateway is isolated from the legacy queue and payment/identity service
   assert.match(migration, /owned_worker_jobs/);
   assert.match(migration, /current_setting\('app\.tenant_id'/);
   assert.match(migration, /authenticate_owned_worker/);
-  assert.match(migration, /AS \\$touch\\$/);
-  assert.match(migration, /GRANT EXECUTE ON FUNCTION public\\.touch_owned_worker_credential/);
+  assert.match(migration, /AS \$touch\$/);
+  assert.match(migration, /GRANT EXECUTE ON FUNCTION public\.touch_owned_worker_credential/);
 });
