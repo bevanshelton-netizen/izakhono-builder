@@ -34,7 +34,7 @@ The authenticated device workspace is served at `/devices` and is designed for e
 - Merchant API-key sign-in; credentials remain in page memory and are cleared on sign-out.
 - Live merchant summary and recent transaction activity through merchant-scoped APIs.
 - Payment-link creation using the existing `POST /v1/payment-links` endpoint.
-- Copy/share checkout links and locally generated QR codes (QR payload is rendered in the browser).
+- Copy/share hosted checkout links without loading third-party scripts.
 - Printable merchant transaction receipts.
 - Installable PWA shell with a service worker that caches only the app shell; API responses and payment data are never cached.
 - Responsive layouts adapt the same workspace to mobile, tablet and desktop screens.
