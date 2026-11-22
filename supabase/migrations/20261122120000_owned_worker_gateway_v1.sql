@@ -101,4 +101,21 @@ CREATE POLICY owned_worker_events_tenant_insert ON public.owned_worker_events
 GRANT USAGE ON SCHEMA public TO owned_worker_gateway;
 GRANT SELECT, INSERT, UPDATE ON public.owned_worker_jobs TO owned_worker_gateway;
 GRANT SELECT, INSERT ON public.owned_worker_events TO owned_worker_gateway;
--- Credentials are accessed only through authenticate_owned_worker().
+-- Credentials are accessed only through narrow security-definer functions.
+CREATE OR REPLACE FUNCTION public.touch_owned_worker_credential(p_token_hash text)
+RETURNS boolean
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, public
+AS $
+BEGIN
+  UPDATE public.owned_worker_credentials
+  SET last_seen_at = now(), updated_at = now()
+  WHERE token_hash = p_token_hash AND active = true
+    AND (expires_at IS NULL OR expires_at > now());
+  RETURN FOUND;
+END
+$;
+REVOKE ALL ON FUNCTION public.touch_owned_worker_credential(text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.touch_owned_worker_credential(text) TO owned_worker_gateway;
+
