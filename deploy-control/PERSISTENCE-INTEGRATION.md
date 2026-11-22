@@ -80,6 +80,8 @@ The connected project also reports a critical Supabase security-advisor finding:
 
 The I-CONNECT project separately reports RLS disabled for `ic_private.agent_endpoints`; this is another security remediation item, not evidence of Runtime Fabric database ownership.
 
+A follow-up security-advisor read on IZAKHONO WebStart also reported 536 tables with RLS enabled but no policies (an access-denial/availability risk that requires policy inventory), 38 functions with mutable search paths, 9 SECURITY DEFINER functions executable by `anon`, and 46 SECURITY DEFINER functions executable by `authenticated`. These findings require function-by-function privilege and search-path review; do not mass-revoke grants or change function security modes without tracing intended callers and tests. The 45 RLS-disabled table finding remains the immediate exposure concern. No security changes were applied during this inspection.
+
 ## Further database ownership investigation (2026-11-22)
 
 The following repository evidence was inspected at PR head `3d180f780b087ff69f1021b4649f6d605be39bef`:
