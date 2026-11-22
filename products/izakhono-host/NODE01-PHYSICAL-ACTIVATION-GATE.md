@@ -8,17 +8,19 @@ This gate verifies a separately managed execution environment before it is bound
 
 The machine, VM, cloud instance or container host on which the software runs is an independently managed, replaceable execution environment. It must never be renamed or identified as NODE01.
 
-## Required evidence
+## Required evidence and procedure status
 
-Run the approved preflight and activation procedures against the actual execution environment, using its real infrastructure locator:
+The execution-environment locator must be obtained from the authorised infrastructure owner and recorded separately from the logical software identity.
 
-```bash
-./NODE-PREFLIGHT.sh
-./NODE-ENVIRONMENT-ACTIVATE.sh
-./NODE-COMPLIANCE.sh
-```
+**Procedure discrepancy:** Earlier versions of this gate referenced `NODE-ENVIRONMENT-ACTIVATE.sh`. That file is not present in the inspected repository tree. Do not execute, infer, or substitute a command for this missing procedure. The reference must be reconciled when an approved environment-activation procedure is implemented and reviewed.
 
-The activation sequence must complete successfully and the owned runtime health endpoint must respond locally. Record the environment locator separately from the logical software identity in the runtime-binding record.
+The existing `NODE01-ACTIVATE.sh` is not a read-only preflight. It invokes `NODE-PREFLIGHT.sh`, then `bootstrap-owned.sh`, then `NODE-COMPLIANCE.sh`, and finally checks the local health endpoint. The bootstrap can generate local secrets, build images and start services. Therefore, do not run `NODE01-ACTIVATE.sh` to discover host identity, test access, or establish readiness.
+
+Before any host-side operation, use only an independently reviewed, explicitly approved, demonstrably read-only discovery procedure. If none is available, stop and prepare one for review. Activation commands must be reviewed for their exact side effects and separately approved for the identified environment.
+
+## Runtime binding evidence
+
+The reviewed runtime-binding record must identify NODE01 as `software-runtime`, identify the actual execution environment using its own locator, and state `runtime_host_is_separate: true`. It must also record runner identity and registration/health evidence, deployment revision and timestamp, and the approving operator/change reference. Do not use a placeholder locator or equate the replaceable machine with the NODE01 software identity.
 
 ## Public acceptance evidence
 
@@ -35,11 +37,13 @@ Independently verify:
 - FORTRESS controls
 - mail transport readiness before mailbox activation
 
+Also verify runtime/service health, security controls and tenant isolation, persistent storage, and rollback readiness. A local health check alone is not sufficient evidence of public production readiness.
+
 ## Promotion rule
 
 No deployment is marked LIVE merely because the repository contains activation scripts, a software identity record, a container image, or a successful CI run. Promotion requires current execution-environment binding and independent machine-side and public-side evidence.
 
-The binding must identify NODE01 as `software-runtime`, identify the execution environment using its own locator, and state `runtime_host_is_separate: true`. A missing or placeholder locator blocks execution.
+DNS cutover and customer LIVE status require separate explicit approval after all applicable acceptance evidence passes.
 
 ## Customer handoff
 
