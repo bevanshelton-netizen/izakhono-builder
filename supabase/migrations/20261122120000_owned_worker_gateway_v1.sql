@@ -158,6 +158,8 @@ $$;
 REVOKE ALL ON FUNCTION public.authenticate_owned_worker(text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.authenticate_owned_worker(text) TO owned_worker_gateway;
 
+-- Every read and write must use the same verified HMAC-bound tenant context.
+-- Never authorize from the caller-writable tenant GUC alone.
 DROP POLICY IF EXISTS owned_worker_jobs_tenant_scope ON public.owned_worker_jobs;
 CREATE POLICY owned_worker_jobs_tenant_scope ON public.owned_worker_jobs
   FOR ALL TO owned_worker_gateway
