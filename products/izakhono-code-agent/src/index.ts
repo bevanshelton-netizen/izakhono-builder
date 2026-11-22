@@ -79,7 +79,7 @@ export interface CodeAgentPolicy {
 
 export function validateWorkspacePath(path: string): string {
   if (typeof path !== 'string' || !path.trim()) throw new Error('Workspace path is required.');
-  const normalized = path.replaceAll('\\\\', '/');
+  const normalized = path.replaceAll('\\', '/');
   if (normalized.startsWith('/') || /^[a-zA-Z]:/.test(normalized) || normalized.includes('\0')) {
     throw new Error('Absolute paths are not permitted.');
   }
