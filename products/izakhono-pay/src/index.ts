@@ -45,7 +45,7 @@ export default {async fetch(req:Request,env:Env):Promise<Response>{
  if(path.startsWith('/v1/webhooks/'))return webhook(req,env,path.split('/').pop()||'unknown');
  const publicIntent=path.match(/^\/v1\/public\/payment-links\/([^/]+)\/intent$/);
  if(req.method==='POST'&&publicIntent){const link=await env.DB.prepare('SELECT merchant_id,amount,currency,title,status FROM pay_links WHERE token=?').bind(publicIntent[1]).first<any>();if(!link||link.status!=='active')return json({error:'payment_link_unavailable'},404);return createIntent(env,link.merchant_id,link.amount,link.currency,link.title,req.headers.get('idempotency-key')||`public-${crypto.randomUUID()}`,{link_token:publicIntent[1]})}
- const apiKeys=path.match(/^\\/v1\\/merchants\\/([^/]+)\\/api-keys(?:\\/([^/]+)\\/revoke)?$/);
+ const apiKeys=path.match(/^\/v1\/merchants\/([^/]+)\/api-keys(?:\/([^/]+)\/revoke)?$/);
  if(apiKeys&&['GET','POST'].includes(req.method)){
   const merchantId=apiKeys[1],session=await sessionMerchant(req,env);
   if(!session||session.merchantId!==merchantId)return json({error:'merchant_unauthorized'},403);
