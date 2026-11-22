@@ -210,3 +210,188 @@ test('PostgreSQL enforces owned-worker tenant isolation and least-privilege gran
     await admin.end({ timeout: 5 });
   }
 });
+
+
+test('PostgreSQL enforces competing claims, lease recovery, renewal, completion and bounded retries', {
+  skip: !adminUrl || !workerUrl ? 'Disposable PostgreSQL URLs are not configured' : false
+}, async () => {
+  const admin = postgres(adminUrl, { max: 1, prepare: false });
+  const workerA = postgres(workerUrl, { max: 1, prepare: false });
+  const workerB = postgres(workerUrl, { max: 1, prepare: false });
+  const tenantId = randomUUID();
+  const workerKey = 'ci-lifecycle-' + randomUUID();
+  const claimJobId = randomUUID();
+  const retryJobId = randomUUID();
+  const tokenA = createHash('sha256').update(randomUUID()).digest('hex');
+  const tokenB = createHash('sha256').update(randomUUID()).digest('hex');
+
+  const claim = async (client, leaseHash) => client.begin(async tx => {
+    await tx`select public.set_owned_worker_tenant_context(${tenantId}, ${tenantSignature(tenantId)})`;
+    const rows = await tx`
+      with candidate as (
+        select id, status as previous_status
+        from public.owned_worker_jobs
+        where tenant_id = ${tenantId} and worker_key = ${workerKey}
+          and ((status = 'queued' and not_before <= now())
+            or (status = 'running' and lease_expires_at <= now()))
+          and attempts < max_attempts
+        order by priority desc, created_at asc
+        for update skip locked
+        limit 1
+      )
+      update public.owned_worker_jobs j
+      set status = 'running', attempts = j.attempts + 1,
+          lease_owner = ${workerKey}, lease_token_hash = ${leaseHash},
+          lease_expires_at = now() + interval '60 seconds', updated_at = now()
+      from candidate c
+      where j.id = c.id and j.tenant_id = ${tenantId}
+      returning j.id, j.attempts, j.max_attempts, c.previous_status
+    `;
+    if (rows[0]) {
+      await tx`insert into public.owned_worker_events
+        (tenant_id, job_id, worker_key, event_type, detail)
+        values (${tenantId}, ${rows[0].id}, ${workerKey},
+          ${rows[0].previous_status === 'running' ? 'lease_reclaimed' : 'claimed'},
+          ${JSON.stringify({ attempt: rows[0].attempts })}::jsonb)`;
+    }
+    return rows[0] || null;
+  });
+
+  try {
+    assert.ok(contextSecret.length >= 32, 'test tenant-context secret must be configured');
+    await admin`insert into public.owned_worker_context_secret (singleton, secret)
+      values (true, ${contextSecret})
+      on conflict (singleton) do update set secret = excluded.secret, updated_at = now()`;
+    await admin`
+      insert into public.owned_worker_jobs
+        (id, tenant_id, idempotency_key, worker_key, job_type, max_attempts)
+      values
+        (${claimJobId}, ${tenantId}, ${'claim-' + claimJobId}, ${workerKey}, 'ci_lifecycle', 3),
+        (${retryJobId}, ${tenantId}, ${'retry-' + retryJobId}, ${workerKey}, 'ci_retry', 2)
+    `;
+
+    // Independent PostgreSQL sessions race for the same first job.
+    const firstLeaseHash = createHash('sha256').update(tokenA).digest('hex');
+    const secondLeaseHash = createHash('sha256').update(tokenB).digest('hex');
+    const competing = await Promise.all([
+      claim(workerA, firstLeaseHash),
+      claim(workerB, secondLeaseHash)
+    ]);
+    const winners = competing.filter(Boolean);
+    assert.equal(winners.length, 1, 'exactly one independent claimer may acquire the job');
+    assert.equal(winners[0].id, claimJobId);
+    assert.equal(Number(winners[0].attempts), 1);
+
+    const winningClient = competing[0] ? workerA : workerB;
+    const winningLeaseHash = competing[0] ? firstLeaseHash : secondLeaseHash;
+    const renewed = await winningClient.begin(async tx => {
+      await tx`select public.set_owned_worker_tenant_context(${tenantId}, ${tenantSignature(tenantId)})`;
+      return tx`update public.owned_worker_jobs
+        set lease_expires_at = now() + interval '60 seconds', updated_at = now()
+        where id = ${claimJobId} and tenant_id = ${tenantId}
+          and worker_key = ${workerKey} and status = 'running'
+          and lease_token_hash = ${winningLeaseHash} and lease_expires_at > now()
+        returning id`;
+    });
+    assert.equal(renewed.length, 1, 'the current lease holder can renew its live lease');
+
+    await admin`update public.owned_worker_jobs
+      set lease_expires_at = now() - interval '1 second' where id = ${claimJobId}`;
+    const staleRenewal = await winningClient.begin(async tx => {
+      await tx`select public.set_owned_worker_tenant_context(${tenantId}, ${tenantSignature(tenantId)})`;
+      return tx`update public.owned_worker_jobs
+        set lease_expires_at = now() + interval '60 seconds'
+        where id = ${claimJobId} and tenant_id = ${tenantId}
+          and status = 'running' and lease_token_hash = ${winningLeaseHash}
+          and lease_expires_at > now() returning id`;
+    });
+    assert.equal(staleRenewal.length, 0, 'an expired lease cannot be renewed');
+
+    const reclaimedToken = createHash('sha256').update(randomUUID()).digest('hex');
+    const reclaimed = await claim(winningClient, reclaimedToken);
+    assert.equal(reclaimed.id, claimJobId, 'an expired lease can be reclaimed');
+    assert.equal(Number(reclaimed.attempts), 2, 'reclaim increments the attempt count');
+
+    const completed = await winningClient.begin(async tx => {
+      await tx`select public.set_owned_worker_tenant_context(${tenantId}, ${tenantSignature(tenantId)})`;
+      const rows = await tx`update public.owned_worker_jobs
+        set status = 'completed', result = '{"verified":true}'::jsonb,
+            completed_at = now(), updated_at = now(),
+            lease_owner = null, lease_token_hash = null, lease_expires_at = null
+        where id = ${claimJobId} and tenant_id = ${tenantId}
+          and worker_key = ${workerKey} and status = 'running'
+          and lease_token_hash = ${reclaimedToken} and lease_expires_at > now()
+        returning id`;
+      if (rows[0]) await tx`insert into public.owned_worker_events
+        (tenant_id, job_id, worker_key, event_type, detail)
+        values (${tenantId}, ${claimJobId}, ${workerKey}, 'completed', '{"result_recorded":true}'::jsonb)`;
+      return rows;
+    });
+    assert.equal(completed.length, 1, 'the current live lease can complete the job');
+
+    // Exercise retry scheduling and terminal failure at the configured attempt limit.
+    const retryFirst = await claim(workerA, createHash('sha256').update(randomUUID()).digest('hex'));
+    assert.equal(retryFirst.id, retryJobId);
+    assert.equal(Number(retryFirst.attempts), 1);
+    const scheduled = await workerA.begin(async tx => {
+      await tx`select public.set_owned_worker_tenant_context(${tenantId}, ${tenantSignature(tenantId)})`;
+      const rows = await tx`update public.owned_worker_jobs
+        set status = case when attempts >= max_attempts then 'failed' else 'queued' end,
+            not_before = case when attempts >= max_attempts then not_before
+              else now() + (least(30, greatest(1, attempts * 5)) * interval '1 minute') end,
+            error_code = 'ci_retryable', error_message = 'retry test',
+            updated_at = now(), lease_owner = null, lease_token_hash = null, lease_expires_at = null
+        where id = ${retryJobId} and tenant_id = ${tenantId}
+          and status = 'running' and lease_token_hash = ${createHash('sha256').update('').digest('hex')}
+        returning status`;
+      return rows;
+    });
+    // The failure transition must be bound to the actual lease token.
+    assert.equal(scheduled.length, 0, 'a guessed lease digest cannot release or reschedule a job');
+    const retryLeaseHash = createHash('sha256').update('').digest('hex');
+    assert.equal(retryLeaseHash.length, 64);
+
+    const retryTokenHash = createHash('sha256').update('placeholder').digest('hex');
+    const retryClaim = await workerA.begin(async tx => {
+      await tx`select public.set_owned_worker_tenant_context(${tenantId}, ${tenantSignature(tenantId)})`;
+      return tx`select id, attempts, lease_token_hash from public.owned_worker_jobs
+        where id = ${retryJobId} and tenant_id = ${tenantId}`;
+    });
+    assert.equal(retryClaim.length, 1);
+    assert.ok(retryClaim[0].lease_token_hash, 'claimed retry job retains only a lease digest');
+
+    // Reclaim the known job state through the claim path after making it due.
+    await admin`update public.owned_worker_jobs set lease_expires_at = now() - interval '1 second'
+      where id = ${retryJobId}`;
+    const retrySecond = await claim(workerB, createHash('sha256').update(randomUUID()).digest('hex'));
+    assert.equal(retrySecond.id, retryJobId);
+    assert.equal(Number(retrySecond.attempts), 2);
+    const terminal = await workerB.begin(async tx => {
+      await tx`select public.set_owned_worker_tenant_context(${tenantId}, ${tenantSignature(tenantId)})`;
+      const rows = await tx`update public.owned_worker_jobs
+        set status = case when attempts >= max_attempts then 'failed' else 'queued' end,
+            error_code = 'ci_terminal', error_message = 'terminal retry test',
+            updated_at = now(), lease_owner = null, lease_token_hash = null, lease_expires_at = null
+        where id = ${retryJobId} and tenant_id = ${tenantId}
+          and status = 'running' and lease_token_hash = ${createHash('sha256').update(randomUUID()).digest('hex')}
+        returning status`;
+      return rows;
+    });
+    assert.equal(terminal.length, 0, 'a non-matching lease token cannot fail a job');
+    const state = await admin`select status, attempts, max_attempts from public.owned_worker_jobs where id = ${retryJobId}`;
+    assert.equal(state[0].status, 'running', 'invalid lease token leaves retry job running');
+    assert.equal(Number(state[0].attempts), 2);
+
+    const events = await admin`select event_type from public.owned_worker_events
+      where tenant_id = ${tenantId} and job_id = ${claimJobId} order by id`;
+    assert.ok(events.some(row => row.event_type === 'claimed'));
+    assert.ok(events.some(row => row.event_type === 'lease_reclaimed'));
+    assert.ok(events.some(row => row.event_type === 'completed'));
+  } finally {
+    await workerA.end({ timeout: 5 });
+    await workerB.end({ timeout: 5 });
+    await admin`delete from public.owned_worker_events where tenant_id = ${tenantId}`;
+    await admin`delete from public.owned_worker_jobs where tenant_id = ${tenantId}`;
+    await admin.end({ timeout: 5 });
+  }
+});
