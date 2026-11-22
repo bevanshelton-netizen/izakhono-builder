@@ -11,7 +11,8 @@ import {
   type WorkspaceDescriptor,
 } from './index';
 
-async function main() {\nconst policy: CodeAgentPolicy = {
+async function main() {
+const policy: CodeAgentPolicy = {
   allowedRepositories: ['bevanshelton-netizen/izakhono-builder'],
   allowedCommands: ['npm'],
   maxCommandTimeoutMs: 120_000,
@@ -81,4 +82,7 @@ const testResult = await runValidationCommand(runner, workspace, goal, policy, {
 assert.equal(testResult.passed, true);
 assert.equal(commandExecuted, true);
 
-console.log('[PASS] IZAKHONO CODE AGENT workspace policy and runner contracts.');\n}\n\nmain().catch((error) => { console.error(error); process.exitCode = 1; });
+console.log('[PASS] IZAKHONO CODE AGENT workspace policy and runner contracts.');
+}
+
+main().catch((error) => { console.error(error); process.exitCode = 1; });
