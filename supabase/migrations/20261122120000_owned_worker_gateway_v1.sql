@@ -81,7 +81,7 @@ RETURNS uuid
 LANGUAGE plpgsql
 STABLE
 SECURITY DEFINER
-SET search_path = pg_catalog, public, extensions
+SET search_path = pg_catalog, extensions, public
 AS $tenant$
 DECLARE
   tenant_text text := nullif(current_setting('app.tenant_id', true), '');
@@ -113,7 +113,7 @@ CREATE OR REPLACE FUNCTION public.set_owned_worker_tenant_context(p_tenant_id uu
 RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = pg_catalog, public, extensions
+SET search_path = pg_catalog, extensions, public
 AS $context$
 DECLARE
   secret_value bytea;
