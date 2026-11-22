@@ -31,3 +31,5 @@ jobs:
           node-version: 24
       - name: Verify I-PAY brand and disclosure surfaces
         run: node --test tests/ipay-brand.test.mjs
+      - name: Build Worker bundle without deploying
+        run: npx --yes wrangler@4.127.1 deploy --dry-run
