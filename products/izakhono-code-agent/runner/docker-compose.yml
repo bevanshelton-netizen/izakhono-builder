@@ -1,0 +1,22 @@
+services:
+  izakhono-code-runner:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: izakhono-code-runner
+    restart: unless-stopped
+    environment:
+      PORT: 8860
+      IZAKHONO_CODE_RUNNER_TOKEN_FILE: /run/secrets/izakhono-code-runner-token
+      IZAKHONO_CODE_WORKSPACE_ROOT: /var/lib/izakhono-code/workspaces
+    ports:
+      - "127.0.0.1:8860:8860"
+    volumes:
+      - /var/lib/izakhono-code:/var/lib/izakhono-code
+      - /etc/izakhono/code-runner.owner-token:/run/secrets/izakhono-code-runner-token:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8860/healthz').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
