@@ -220,18 +220,19 @@ test('PostgreSQL enforces competing claims, lease recovery, renewal, completion 
   const workerB = postgres(workerUrl, { max: 1, prepare: false });
   const tenantId = randomUUID();
   const workerKey = 'ci-lifecycle-' + randomUUID();
+  const retryWorkerKey = 'ci-retry-' + randomUUID();
   const claimJobId = randomUUID();
   const retryJobId = randomUUID();
   const tokenA = createHash('sha256').update(randomUUID()).digest('hex');
   const tokenB = createHash('sha256').update(randomUUID()).digest('hex');
 
-  const claim = async (client, leaseHash) => client.begin(async tx => {
+  const claim = async (client, leaseHash, targetWorkerKey = workerKey) => client.begin(async tx => {
     await tx`select public.set_owned_worker_tenant_context(${tenantId}, ${tenantSignature(tenantId)})`;
     const rows = await tx`
       with candidate as (
         select id, status as previous_status
         from public.owned_worker_jobs
-        where tenant_id = ${tenantId} and worker_key = ${workerKey}
+        where tenant_id = ${tenantId} and worker_key = ${targetWorkerKey}
           and ((status = 'queued' and not_before <= now())
             or (status = 'running' and lease_expires_at <= now()))
           and attempts < max_attempts
@@ -241,7 +242,7 @@ test('PostgreSQL enforces competing claims, lease recovery, renewal, completion 
       )
       update public.owned_worker_jobs j
       set status = 'running', attempts = j.attempts + 1,
-          lease_owner = ${workerKey}, lease_token_hash = ${leaseHash},
+          lease_owner = ${targetWorkerKey}, lease_token_hash = ${leaseHash},
           lease_expires_at = now() + interval '60 seconds', updated_at = now()
       from candidate c
       where j.id = c.id and j.tenant_id = ${tenantId}
@@ -250,7 +251,7 @@ test('PostgreSQL enforces competing claims, lease recovery, renewal, completion 
     if (rows[0]) {
       await tx`insert into public.owned_worker_events
         (tenant_id, job_id, worker_key, event_type, detail)
-        values (${tenantId}, ${rows[0].id}, ${workerKey},
+        values (${tenantId}, ${rows[0].id}, ${targetWorkerKey},
           ${rows[0].previous_status === 'running' ? 'lease_reclaimed' : 'claimed'},
           ${JSON.stringify({ attempt: rows[0].attempts })}::jsonb)`;
     }
@@ -267,7 +268,7 @@ test('PostgreSQL enforces competing claims, lease recovery, renewal, completion 
         (id, tenant_id, idempotency_key, worker_key, job_type, max_attempts, priority)
       values
         (${claimJobId}, ${tenantId}, ${'claim-' + claimJobId}, ${workerKey}, 'ci_lifecycle', 3, 100),
-        (${retryJobId}, ${tenantId}, ${'retry-' + retryJobId}, ${workerKey}, 'ci_retry', 2, 50)
+        (${retryJobId}, ${tenantId}, ${'retry-' + retryJobId}, ${retryWorkerKey}, 'ci_retry', 2, 50)
     `;
 
     // Independent PostgreSQL sessions race for the same first job.
@@ -332,7 +333,7 @@ test('PostgreSQL enforces competing claims, lease recovery, renewal, completion 
     // Exercise retry scheduling and terminal failure at the configured attempt limit.
     const retryFirstToken = randomUUID() + randomUUID();
     const retryFirstHash = createHash('sha256').update(retryFirstToken).digest('hex');
-    const retryFirst = await claim(workerA, retryFirstHash);
+    const retryFirst = await claim(workerA, retryFirstHash, retryWorkerKey);
     assert.equal(retryFirst.id, retryJobId);
     assert.equal(Number(retryFirst.attempts), 1);
     const scheduled = await workerA.begin(async tx => {
@@ -344,12 +345,12 @@ test('PostgreSQL enforces competing claims, lease recovery, renewal, completion 
             error_code = 'ci_retryable', error_message = 'retry test',
             updated_at = now(), lease_owner = null, lease_token_hash = null, lease_expires_at = null
         where id = ${retryJobId} and tenant_id = ${tenantId}
-          and worker_key = ${workerKey} and status = 'running'
+          and worker_key = ${retryWorkerKey} and status = 'running'
           and lease_token_hash = ${retryFirstHash} and lease_expires_at > now()
         returning status`;
       if (rows[0]) await tx`insert into public.owned_worker_events
         (tenant_id, job_id, worker_key, event_type, detail)
-        values (${tenantId}, ${retryJobId}, ${workerKey}, 'retry_scheduled', '{"attempt":1}'::jsonb)`;
+        values (${tenantId}, ${retryJobId}, ${retryWorkerKey}, 'retry_scheduled', '{"attempt":1}'::jsonb)`;
       return rows;
     });
     assert.equal(scheduled[0].status, 'queued', 'first failure schedules a retry');
@@ -358,7 +359,7 @@ test('PostgreSQL enforces competing claims, lease recovery, renewal, completion 
 
     const retrySecondToken = randomUUID() + randomUUID();
     const retrySecondHash = createHash('sha256').update(retrySecondToken).digest('hex');
-    const retrySecond = await claim(workerB, retrySecondHash);
+    const retrySecond = await claim(workerB, retrySecondHash, retryWorkerKey);
     assert.equal(retrySecond.id, retryJobId);
     assert.equal(Number(retrySecond.attempts), 2);
     const terminal = await workerB.begin(async tx => {
@@ -368,12 +369,12 @@ test('PostgreSQL enforces competing claims, lease recovery, renewal, completion 
             error_code = 'ci_terminal', error_message = 'terminal retry test',
             updated_at = now(), lease_owner = null, lease_token_hash = null, lease_expires_at = null
         where id = ${retryJobId} and tenant_id = ${tenantId}
-          and worker_key = ${workerKey} and status = 'running'
+          and worker_key = ${retryWorkerKey} and status = 'running'
           and lease_token_hash = ${retrySecondHash} and lease_expires_at > now()
         returning status`;
       if (rows[0]) await tx`insert into public.owned_worker_events
         (tenant_id, job_id, worker_key, event_type, detail)
-        values (${tenantId}, ${retryJobId}, ${workerKey}, 'failed', '{"attempt":2}'::jsonb)`;
+        values (${tenantId}, ${retryJobId}, ${retryWorkerKey}, 'failed', '{"attempt":2}'::jsonb)`;
       return rows;
     });
     assert.equal(terminal[0].status, 'failed', 'failure at max_attempts is terminal');
