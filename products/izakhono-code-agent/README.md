@@ -7,7 +7,7 @@ IZAKHONO CODE is a repository-aware, model-driven coding agent with persistent D
 - `src/worker.ts`: authenticated API, D1 session/message/event persistence, GitHub archive checkout, OpenAI-compatible model adapter, bounded agent loop, runner bridge and explicit pull-request publishing.
 - `src/index.ts`: shared coding-agent contracts and path/command policy.
 - `runner/server.mjs`: owner-token-protected workspace service; validation commands run in network-disabled Docker containers with memory, CPU, PID, filesystem and capability limits. Dependency installation is a separate owner-approved action that accepts only lockfile URLs from registry.npmjs.org and disables lifecycle scripts.
-- `public/index.html`: browser workspace for creating tasks, chatting with the agent, reviewing diffs and opening pull requests.
+- `public/index.html`: browser workspace for creating tasks, chatting with the agent, browsing workspace files, viewing source, reviewing diffs, installing locked dependencies and opening pull requests.
 - `migrations/0003_code_agent.sql`: persistent sessions, messages and events.
 
 ## Configure Worker secrets
