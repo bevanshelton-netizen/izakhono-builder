@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=IZAKHONO Privacy Center
+Comment=See the IZAKHONO OS privacy promise and local status
+Exec=izakhono-privacy-center
+Icon=security-high
+Terminal=false
+Categories=Settings;Security;

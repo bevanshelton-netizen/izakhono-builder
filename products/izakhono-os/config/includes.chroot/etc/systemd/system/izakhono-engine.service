@@ -1,0 +1,31 @@
+[Unit]
+Description=IZAKHONO OS Local Platform Engine
+After=local-fs.target
+Wants=local-fs.target
+
+[Service]
+Type=simple
+User=izakhono
+Group=izakhono
+RuntimeDirectory=izakhono-engine
+RuntimeDirectoryMode=0700
+UMask=0077
+ExecStart=/usr/bin/python3 /usr/lib/izakhono-os/engine/server.py
+Restart=on-failure
+RestartSec=2
+NoNewPrivileges=yes
+PrivateNetwork=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=read-only
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+RestrictSUIDSGID=yes
+RestrictAddressFamilies=AF_UNIX
+ReadWritePaths=/run/izakhono-engine
+
+[Install]
+WantedBy=multi-user.target

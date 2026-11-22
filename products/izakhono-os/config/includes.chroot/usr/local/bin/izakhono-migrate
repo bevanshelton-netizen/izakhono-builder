@@ -1,0 +1,127 @@
+#!/usr/bin/env python3
+import os
+import sys
+from pathlib import Path
+
+from PyQt6.QtCore import Qt
+from PyQt6.QtWidgets import (
+    QApplication, QCheckBox, QFrame, QLabel, QListWidget, QMessageBox,
+    QPushButton, QVBoxLayout, QWidget
+)
+
+QSS = Path("/usr/share/izakhono-os/theme/izakhono.qss")
+
+def read_style():
+    try:
+        return QSS.read_text(encoding="utf-8")
+    except OSError:
+        return ""
+
+def candidate_sources():
+    user = os.environ.get("USER", "")
+    roots = [Path("/media") / user, Path("/run/media") / user, Path("/mnt")]
+    found = []
+    for root in roots:
+        if not root.exists():
+            continue
+        try:
+            for item in root.iterdir():
+                if not item.is_dir():
+                    continue
+                names = {p.name for p in item.iterdir() if p.is_dir()}
+                signals = {"Users", "Windows", "Documents and Settings"}
+                if names & signals:
+                    found.append(item)
+        except (OSError, PermissionError):
+            continue
+    return found
+
+class MigrationAssistant(QWidget):
+    def __init__(self):
+        super().__init__()
+        self.setObjectName("Shell")
+        self.setWindowTitle("IZAKHONO OS — Move My Things")
+        self.setMinimumSize(780, 650)
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(34, 32, 34, 32)
+        outer.setSpacing(15)
+
+        brand = QLabel("IZAKHONO OS · MOVE MY THINGS")
+        brand.setObjectName("Brand")
+        outer.addWidget(brand)
+
+        title = QLabel("Move without fear.")
+        title.setObjectName("Title")
+        outer.addWidget(title)
+
+        subtitle = QLabel(
+            "This Alpha assistant only discovers possible old-system drives and previews what could be copied. "
+            "It never deletes, formats or overwrites the original source."
+        )
+        subtitle.setObjectName("Subtitle")
+        subtitle.setWordWrap(True)
+        outer.addWidget(subtitle)
+
+        guarantee = QLabel("✓  Original files stay untouched")
+        guarantee.setObjectName("PrivacyBadge")
+        guarantee.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        outer.addWidget(guarantee)
+
+        panel = QFrame()
+        panel.setObjectName("Panel")
+        panel_layout = QVBoxLayout(panel)
+        panel_layout.setContentsMargins(22, 20, 22, 20)
+
+        self.sources = QListWidget()
+        sources = candidate_sources()
+        if sources:
+            self.sources.addItems([str(p) for p in sources])
+        else:
+            self.sources.addItem("No mounted Windows-style source detected yet")
+        panel_layout.addWidget(QLabel("<b>Possible old-computer sources</b>"))
+        panel_layout.addWidget(self.sources)
+
+        panel_layout.addWidget(QLabel("<b>What the future copy step can bring across</b>"))
+        for label in ["Documents", "Pictures", "Music", "Videos", "Supported browser bookmarks"]:
+            check = QCheckBox(label)
+            check.setChecked(True)
+            check.setEnabled(False)
+            panel_layout.addWidget(check)
+
+        outer.addWidget(panel)
+
+        note = QLabel(
+            "Copy execution is intentionally disabled in this Alpha until destination-space checks, "
+            "duplicate handling, rollback records and representative migration tests have passed."
+        )
+        note.setObjectName("Muted")
+        note.setWordWrap(True)
+        outer.addWidget(note)
+
+        preview = QPushButton("Preview migration safety rules")
+        preview.clicked.connect(self.show_rules)
+        outer.addWidget(preview)
+
+        close = QPushButton("Done")
+        close.setObjectName("Primary")
+        close.clicked.connect(self.close)
+        outer.addWidget(close)
+
+    def show_rules(self):
+        QMessageBox.information(
+            self,
+            "Migration safety",
+            "IZAKHONO migration rules:\n\n"
+            "• Never format the source drive\n"
+            "• Never delete original files\n"
+            "• Check free space before copy\n"
+            "• Preview conflicts before overwrite\n"
+            "• Keep a migration log locally\n"
+            "• Make rollback understandable"
+        )
+
+app = QApplication(sys.argv)
+app.setStyleSheet(read_style())
+window = MigrationAssistant()
+window.show()
+sys.exit(app.exec())

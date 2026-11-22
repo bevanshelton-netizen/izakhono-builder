@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=IZAKHONO Welcome
+Comment=First-run welcome for IZAKHONO OS
+Exec=/usr/local/bin/izakhono-welcome
+OnlyShowIn=KDE;
+X-KDE-autostart-after=panel
+X-KDE-StartupNotify=false
+Terminal=false

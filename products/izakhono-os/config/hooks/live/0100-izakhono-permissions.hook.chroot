@@ -1,0 +1,11 @@
+#!/bin/sh
+set -eu
+chmod 0755 /usr/local/bin/izakhono-easy-center
+chmod 0755 /usr/local/bin/izakhono-welcome
+chmod 0755 /usr/local/bin/izakhono-privacy-center
+chmod 0755 /usr/local/bin/izakhono-migrate
+chmod 0755 /usr/local/bin/izakhono-osctl
+chmod 0755 /usr/lib/izakhono-os/engine/server.py
+chmod 0644 /usr/lib/izakhono-os/engine/engine.py
+systemctl enable izakhono-boot-proof.service
+systemctl enable izakhono-engine.service

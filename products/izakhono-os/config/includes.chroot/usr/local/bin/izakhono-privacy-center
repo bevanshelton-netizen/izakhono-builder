@@ -1,0 +1,97 @@
+#!/usr/bin/env python3
+import shutil
+import subprocess
+import sys
+from pathlib import Path
+
+from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QFont
+from PyQt6.QtWidgets import QApplication, QFrame, QLabel, QPushButton, QVBoxLayout, QWidget
+
+QSS = Path("/usr/share/izakhono-os/theme/izakhono.qss")
+
+def read_style():
+    try:
+        return QSS.read_text(encoding="utf-8")
+    except OSError:
+        return ""
+
+def firewall_status():
+    if not shutil.which("ufw"):
+        return "Firewall tool not installed"
+    result = subprocess.run(["ufw", "status"], capture_output=True, text=True, timeout=3)
+    output = (result.stdout or result.stderr).strip().splitlines()
+    return output[0] if output else "Firewall status unavailable"
+
+class PrivacyCenter(QWidget):
+    def __init__(self):
+        super().__init__()
+        self.setObjectName("Shell")
+        self.setWindowTitle("IZAKHONO OS — Privacy Center")
+        self.setMinimumSize(760, 600)
+
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(34, 32, 34, 32)
+        outer.setSpacing(16)
+
+        brand = QLabel("IZAKHONO OS · PRIVACY CENTER")
+        brand.setObjectName("Brand")
+        outer.addWidget(brand)
+
+        title = QLabel("Your computer is yours.")
+        title.setObjectName("Title")
+        outer.addWidget(title)
+
+        subtitle = QLabel(
+            "IZAKHONO OS does not add behavioural telemetry, advertising IDs, profiling, "
+            "silent analytics or automatic crash uploads."
+        )
+        subtitle.setObjectName("Subtitle")
+        subtitle.setWordWrap(True)
+        outer.addWidget(subtitle)
+
+        badge = QLabel("✓  IZAKHONO TRACKING: NONE")
+        badge.setObjectName("PrivacyBadge")
+        badge.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        outer.addWidget(badge)
+
+        panel = QFrame()
+        panel.setObjectName("Panel")
+        panel_layout = QVBoxLayout(panel)
+        panel_layout.setContentsMargins(24, 22, 24, 22)
+        panel_layout.setSpacing(12)
+
+        rows = [
+            ("Behavioural telemetry", "Off / not included"),
+            ("Advertising identifier", "Not included"),
+            ("IZAKHONO profiling", "Not included"),
+            ("Automatic crash upload", "Off"),
+            ("Cloud account required", "No"),
+            ("Ask IZAKHONO cloud AI", "Not active in Alpha"),
+            ("Firewall", firewall_status()),
+        ]
+        for name, value in rows:
+            label = QLabel(f"<b>{name}</b><br><span style='color:#647487'>{value}</span>")
+            label.setWordWrap(True)
+            panel_layout.addWidget(label)
+
+        outer.addWidget(panel)
+
+        third_party = QLabel(
+            "Third-party websites, internet providers, hardware firmware and apps you install "
+            "may have their own privacy practices. The IZAKHONO guarantee covers IZAKHONO-controlled software."
+        )
+        third_party.setObjectName("Muted")
+        third_party.setWordWrap(True)
+        outer.addWidget(third_party)
+
+        close = QPushButton("Done")
+        close.setObjectName("Primary")
+        close.clicked.connect(self.close)
+        outer.addWidget(close)
+
+app = QApplication(sys.argv)
+app.setStyleSheet(read_style())
+window = PrivacyCenter()
+window.show()
+sys.exit(app.exec())
