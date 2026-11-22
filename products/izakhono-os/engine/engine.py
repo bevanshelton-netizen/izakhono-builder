@@ -132,8 +132,12 @@ class IzakhonoOsEngine:
             raise ValueError("only standard user folders may be previewed")
         results = []
         for name in requested:
-            root = (self.home_dir / name).resolve()
-            if root.parent != self.home_dir or not root.exists() or not root.is_dir() or root.is_symlink():
+            candidate = self.home_dir / name
+            if candidate.is_symlink():
+                results.append({"folder": name, "exists": False, "files": 0, "bytes": 0})
+                continue
+            root = candidate.resolve()
+            if root.parent != self.home_dir or not root.exists() or not root.is_dir():
                 results.append({"folder": name, "exists": False, "files": 0, "bytes": 0})
                 continue
             count = 0
