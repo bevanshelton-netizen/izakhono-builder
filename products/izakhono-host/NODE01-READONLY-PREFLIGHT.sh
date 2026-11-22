@@ -1,5 +1,5 @@
 #!/bin/sh
-# NODE01 read-only environment discovery. No activation, writes, network probes, or service changes.
+# NODE01 read-only local inventory. No activation, writes, daemon/API calls, or network probes.
 set -u
 
 section() { printf '\n== %s ==\n' "$1"; }
@@ -28,12 +28,11 @@ else
 fi
 if have df; then df -Pk / 2>/dev/null | awk 'NR == 1 || NR == 2 { print }'; else printf 'disk inventory: df unavailable\n'; fi
 
-section "Container tooling (version and daemon read checks only)"
+section "Container tooling (local client/version checks only)"
 if have docker; then
   printf 'docker client: '
   docker --version 2>/dev/null || printf 'UNAVAILABLE\n'
-  printf 'docker daemon: '
-  docker info --format 'server={{.ServerVersion}} storage-driver={{.Driver}}' 2>/dev/null || printf 'UNAVAILABLE OR ACCESS DENIED\n'
+  printf 'docker daemon: NOT CHECKED (no daemon/API connection attempted)\n'
   printf 'docker compose plugin: '
   docker compose version 2>/dev/null || printf 'UNAVAILABLE\n'
 else
@@ -52,7 +51,7 @@ for tool in ip ss curl; do
 done
 
 section "Safety result"
-printf '%s\n' 'READ-ONLY INVENTORY COMPLETE. No files were created or changed by this script.'
-printf '%s\n' 'No network requests, DNS changes, firewall changes, container starts, builds, or secret generation were performed.'
+printf '%s\n' 'READ-ONLY LOCAL INVENTORY COMPLETE. No files were created or changed by this script.'
+printf '%s\n' 'No Docker daemon/API calls, network requests, DNS changes, firewall changes, container starts, builds, or secret generation were performed.'
 printf '%s\n' 'This report does not authorise activation or prove production readiness.'
 exit 0
