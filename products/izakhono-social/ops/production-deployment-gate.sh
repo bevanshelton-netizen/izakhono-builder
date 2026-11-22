@@ -37,7 +37,7 @@ for name in required:
         rid=data.get('runtime_id')
         if isinstance(rid,str) and ('NODE01' in rid.upper() or 'physical' in rid.lower()): failures.append(f'{name}: runtime identity must be logical')
         if data.get('physical_hardware_required') is not False: failures.append(f'{name}: physical_hardware_required must be false')
-        if isinstance(data.get('runtime_id'),str) and ('NODE01' in data['runtime_id'].upper() or 'physical' in data['runtime_id'].lower()):
+        if isinstance(data.get('runtime_id'),str) and 'physical' in data['runtime_id'].lower():
             failures.append(f'{name}: runtime_id must be a logical runtime identity')
     except FileNotFoundError:
         failures.append(f'{name}: missing evidence')
