@@ -46,7 +46,7 @@ class ProvisionerWorker:
         self.recovery = None
         if recovery_store is not None:
             from recovery_orchestrator import RecoveryOrchestrator
-            self.recovery = RecoveryOrchestrator(recovery_store, recovery_executors or {})
+            self.recovery = RecoveryOrchestrator(self.store, recovery_store, recovery_executors or {})
 
     def _executor(self) -> AdapterExecutor:
         return AdapterExecutor(self.registry, self.implementations)
@@ -130,17 +130,20 @@ class ProvisionerWorker:
         return WorkerResult(job.job_id, job.state, "verified")
 
     def run_once(self) -> WorkerResult | None:
-        item = self.queue.claim_next()
-        if item is None:
-            return None
-        job = self.store.get(item.job_id)
+        """Process one in-memory queue item using the queue's actual contract.
+
+        Durable PostgreSQL queues are executed by DurableProvisionerWorker,
+        which owns lease claim/complete/release semantics. JobQueue instead
+        returns a StoredJob and exposes enqueue/retry; do not mix the APIs.
+        """
+        job = self.queue.claim_next()
         if job is None:
             return None
         result = self.process_job(job)
-        if result.status in {"verified", "accepted", "blocked", "terminal"}:
-            self.queue.complete(item.lease_id)
-        else:
-            self.queue.release(item.lease_id, retry_at=utc_now())
+        if result.status == "retry":
+            self.queue.retry(job, retryable=True, error_code=result.message or "ADAPTER_EXECUTION_FAILED")
+        elif result.status == "verified" and job.state not in {State.HANDOVER_READY.value, State.BLOCKED.value}:
+            self.queue.enqueue(job)
         return result
 
 if __name__ == "__main__":
