@@ -55,3 +55,36 @@ test("source commit comparison is case-insensitive but preserves the recorded so
   const validated = move(d, "VALIDATED", { source_commit: commit.toUpperCase(), policy_passed: true }, 1);
   assert.equal(validated.source_commit, commit);
 });
+
+test("deeply snapshots and freezes nested evidence", () => {
+  let d = base();
+  d = move(d, "VALIDATED", { source_commit: commit, policy_passed: true }, 1);
+  d = move(d, "BUILT", { image_digest: digest, artifact_reference: "registry/app@sha256" }, 2);
+  const runIds = ["ci-123"];
+  const evidence = { tests_passed: true, test_run_ids: runIds, report: { checks: ["unit"] } };
+  const tested = move(d, "TESTED", evidence, 3);
+  runIds.push("tampered");
+  evidence.report.checks.push("tampered");
+  assert.deepEqual(tested.evidence.test_run_ids, ["ci-123"]);
+  assert.deepEqual(tested.evidence.report.checks, ["unit"]);
+  assert.equal(Object.isFrozen(tested.evidence.test_run_ids), true);
+  assert.equal(Object.isFrozen(tested.history[2].evidence.report.checks), true);
+});
+
+test("rejects secret-bearing evidence keys at every nesting level", () => {
+  let d = base();
+  d = move(d, "VALIDATED", { source_commit: commit, policy_passed: true }, 1);
+  d = move(d, "BUILT", { image_digest: digest, artifact_reference: "registry/app@sha256" }, 2);
+  assert.throws(
+    () => move(d, "TESTED", { tests_passed: true, test_run_ids: ["ci-123"], metadata: { access_token: "do-not-store" } }, 3),
+    e => e instanceof DeploymentPolicyError && e.code === "SECRET_EVIDENCE_REJECTED"
+  );
+});
+
+test("rejects non-JSON evidence values", () => {
+  let d = base();
+  assert.throws(
+    () => move(d, "VALIDATED", { source_commit: commit, policy_passed: true, observed_at: new Date() }, 1),
+    e => e instanceof DeploymentPolicyError && e.code === "EVIDENCE_NOT_JSON"
+  );
+});
