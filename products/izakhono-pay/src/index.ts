@@ -2,7 +2,7 @@ import { IzakhonoSandboxProvider } from './providers/sandbox';
 import type { PaymentProvider } from './providers/types';
 import { assertPaymentAllowed, selectProvider, type MerchantOnboardingStatus, type ProviderRoute } from './routing';
 import { getMerchantControlCentre } from './merchant-control-centre';
-import { renderMerchantDashboard } from './merchant-dashboard';
+import { renderMerchantDashboard, renderMerchantLogin } from './merchant-dashboard';
 import { authenticateMerchant } from './auth';
 import { authenticateSession, createSession, readSessionCookie, sessionCookie, clearSessionCookie } from './session';
 import { invoiceApi, invoicePublicPage, linkInvoicePayment, attachInvoicePayment } from './invoice-api';
@@ -32,7 +32,7 @@ export default {async fetch(req:Request,env:Env):Promise<Response>{
  const publicLink=path.match(/^\/pay\/([^/]+)$/);
  if(req.method==='GET'&&publicLink){const r=await env.DB.prepare('SELECT title,amount,currency,status FROM pay_links WHERE token=?').bind(publicLink[1]).first<any>();if(!r||r.status!=='active')return new Response('Payment link unavailable',{status:404});return new Response(checkout(r.title,r.amount,r.currency,publicLink[1]),{headers:{'content-type':'text/html; charset=utf-8','cache-control':'no-store'}})}
  const dashboard=path.match(/^\/dashboard\/([^/]+)$/);
- if(req.method==='GET'&&dashboard){const s=await sessionMerchant(req,env);if(!s||s.merchantId!==dashboard[1])return new Response('Merchant sign-in required',{status:401,headers:{'content-type':'text/plain; charset=utf-8','cache-control':'no-store'}});return new Response(renderMerchantDashboard(dashboard[1]),{headers:{'content-type':'text/html; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff'}})}
+ if(req.method==='GET'&&dashboard){const s=await sessionMerchant(req,env);if(!s)return new Response(renderMerchantLogin(dashboard[1]),{headers:{'content-type':'text/html; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff'}});if(s.merchantId!==dashboard[1])return new Response('Merchant account mismatch',{status:403,headers:{'content-type':'text/plain; charset=utf-8','cache-control':'no-store'}});return new Response(renderMerchantDashboard(dashboard[1]),{headers:{'content-type':'text/html; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff'}})}
  const login=path.match(/^\/dashboard\/([^/]+)\/login$/);
  if(req.method==='POST'&&login){const b=await body(req);const token=clean(b?.api_key,300);if(!token)return json({error:'api_key_required'},400);const a=await authenticateMerchant(new Request(req.url,{headers:{authorization:`Bearer ${token}`}}),env.DB);if(!a||a.merchantId!==login[1])return json({error:'invalid_merchant_credentials'},401);const s=await createSession(env.DB,a.merchantId);return json({ok:true,merchant_id:a.merchantId,expires_at:s.expiresAt},{headers:{'set-cookie':sessionCookie(s.raw)}})}
  const logout=path.match(/^\/dashboard\/([^/]+)\/logout$/);
