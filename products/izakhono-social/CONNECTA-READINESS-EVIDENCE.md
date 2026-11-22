@@ -41,7 +41,7 @@ Each artifact is JSON and must include at least:
 }
 ```
 
-Evidence sources may not be `inferred`, `topology`, `ci-only`, `repository-only`, or `simulated`. All artifacts must identify the same release SHA, runtime ID and provider, and must be fresh within the configured evidence window.
+The gate accepts only the verifier identity assigned to each evidence class: `software-runtime-execution`, `prove-failover-evidence.sh:approved-runtime-operator`, `prove-security-evidence.sh:approved-runtime-execution`, `prove-edge-tls-evidence.sh:approved-runtime-edge-verification`, or `prove-external-https-evidence.sh:independent-external-execution`. It rejects inferred, topology-only, CI-only, repository-only and simulated evidence. All artifacts must identify the same release SHA, logical runtime ID and provider, and must be fresh within the configured evidence window. Logical node IDs such as `NODE01` remain valid; physical hardware is not a prerequisite.
 
 The local runtime launcher generates the first four artifacts only after actual deployment, health, persistence, backup and restore checks pass. Failover, security, EDGE/TLS and external HTTPS require their respective independent/operator verifiers.
 
