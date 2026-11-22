@@ -41,7 +41,8 @@ test('catalogue does not invent prices, coverage, or live provider status', () =
   handler({ method: 'GET' }, res);
   const serialised = JSON.stringify(res.body);
 
-  assert.doesNotMatch(serialised, /PRODUCTION_ELIGIBLE|LIVE|ACTIVE|R\s?\d/i);
+  // Match complete status tokens, not substrings such as "LIVE" in "deliveryModels".
+  assert.doesNotMatch(serialised, /\b(?:PRODUCTION_ELIGIBLE|LIVE|ACTIVE)\b|R\s?\d/i);
   assert.doesNotMatch(serialised, /coverageVerified|providerActivated/);
 });
 
