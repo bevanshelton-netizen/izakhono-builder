@@ -42,7 +42,7 @@ assert.throws(() => validateWorkspacePath('C:\\\\Windows\\\\system.ini'), /Absol
 assert.throws(() => validateWorkspacePath('src//file.ts'), /unsafe segment/);
 assert.throws(() => validateCommand({ id: 'bad', argv: ['bash', '-c', 'whoami'], timeoutMs: 1000 }, policy), /not allowlisted/);
 assert.throws(() => validateCommand({ id: 'slow', argv: ['npm', 'test'], timeoutMs: 999999 }, policy), /timeout/);
-assert.throws(() => assertWorkspaceAllowed({ ...workspace, isolated: false }, goal, policy), /isolated/);
+assert.throws(() => assertWorkspaceAllowed({ ...workspace, isolated: false } as any, goal, policy), /isolated/);
 assert.throws(() => assertWorkspaceAllowed({ ...workspace, network: 'allowlisted' }, goal, policy), /network/);
 assert.throws(() => assertWorkspaceAllowed(workspace, { ...goal, repository: 'other/repo' }, policy), /does not match/);
 
