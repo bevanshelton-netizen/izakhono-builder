@@ -19,6 +19,12 @@ class SupervisorConfig:
     interval_seconds: int = 30
     max_cycles: Optional[int] = None
 
+    def __post_init__(self) -> None:
+        if self.interval_seconds < 1:
+            raise ValueError("interval_seconds must be >= 1")
+        if self.max_cycles is not None and self.max_cycles < 1:
+            raise ValueError("max_cycles must be >= 1")
+
     @classmethod
     def from_env(cls) -> "SupervisorConfig":
         interval = int(os.getenv("IZAKHONO_RECOVERY_INTERVAL_SECONDS", "30"))
