@@ -22,7 +22,7 @@ fi
 section "Compute and storage (read-only inventory)"
 if have getconf; then printf 'online processors: '; getconf _NPROCESSORS_ONLN 2>/dev/null || printf 'UNAVAILABLE\n'; fi
 if [ -r /proc/meminfo ]; then
-  awk '/^MemTotal:/ { printf "memory total: %.0f MiB\\n", $2 / 1024 }' /proc/meminfo
+  awk '/^MemTotal:/ { printf "memory total: %.0f MiB\n", $2 / 1024 }' /proc/meminfo
 else
   printf 'memory total: UNAVAILABLE\n'
 fi
