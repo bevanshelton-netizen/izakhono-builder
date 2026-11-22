@@ -116,3 +116,12 @@ These are repository CI results only. They do not establish that a PostgreSQL se
 ## NODE01 and execution boundary
 
 Preserve `logical_node_id: NODE01` and `identity_type: software-runtime`. A verified `runtime_host` is a separate, replaceable execution-environment binding. Do not infer or invent that locator. No activation/bootstrap, deployment command, or HOST execution is authorized by this persistence work.
+
+
+## Identity verifier compatibility investigation (2026-11-22)
+
+The current repository contains a FORTRESS Identity issuer at `products/fortress-identity/src/worker.ts` and its deployment configuration at `products/fortress-identity/wrangler.toml`. Its documented access-token contract is HS256 with a 10-minute lifetime, issuer `https://fortress.izakhono.internal`, and audience `izakhono-creator`. The token claims include subject, tenant, role, active state, issue/expiry times, and JTI. The issuer's `GET /api/fortress/session` endpoint performs signature and live D1-session checks for the Creator service-binding integration.
+
+This is not yet a compatible DEPLOY verifier contract. The issuer's documented JWT does not provide DEPLOY's required `application_ids`, `environment_ids`, or action `scopes` claims, and its configured audience is Creator rather than a DEPLOY API audience. The separate `products/izakhono-identity/src/identity.mjs` module is an in-memory identity directory, not a JWT verifier or production authorization authority. No DEPLOY API route or server-side adapter wiring the FORTRESS session authority to `deploy-control/authorization.mjs` was identified in the inspected repository tree.
+
+**Decision:** do not pass Creator-audience tokens directly into DEPLOY, infer application/environment permissions from the FORTRESS role, or treat the in-memory IZAKHONO Identity directory as authentication. A compatible integration requires an explicit FORTRESS/IZAKHONO ID contract for a DEPLOY audience and resource/action entitlements, including the authoritative source and revocation semantics for those entitlements. Until then, the authorization module remains a policy boundary with an injected verifier, not a production-authenticated API.
