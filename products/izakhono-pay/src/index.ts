@@ -15,6 +15,8 @@ const json=(data:unknown,status=200,extra:Record<string,string>={})=>new Respons
 const id=(p:string)=>`${p}_${crypto.randomUUID()}`; const now=()=>new Date().toISOString();
 const money=(v:unknown)=>{const n=Number(v);return Number.isFinite(n)&&n>=0?Math.round(n*100)/100:null};
 const clean=(v:unknown,max=200)=>String(v??'').trim().slice(0,max);
+const pageNonce=()=>btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(16))));
+const pageCsp=(nonce:string)=>`default-src 'none'; script-src 'nonce-${nonce}'; style-src 'self' 'unsafe-inline'; connect-src 'self'; img-src 'self' data:; font-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'`;
 const esc=(v:unknown)=>clean(v,1000).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;');
 async function body(req:Request){try{return await req.json() as Record<string,unknown>}catch{return null}}
 async function auth(req:Request,env:Env){if(env.PAY_API_KEY&&req.headers.get('authorization')===`Bearer ${env.PAY_API_KEY}`)return true;return !!(env.DB&&await authenticateMerchant(req,env.DB))}
@@ -37,7 +39,7 @@ export default {async fetch(req:Request,env:Env):Promise<Response>{
  const publicLink=path.match(/^\/pay\/([^/]+)$/);
  if(req.method==='GET'&&publicLink){const r=await env.DB.prepare('SELECT title,amount,currency,status FROM pay_links WHERE token=?').bind(publicLink[1]).first<any>();if(!r||r.status!=='active')return new Response('Payment link unavailable',{status:404});return new Response(checkout(r.title,r.amount,r.currency,publicLink[1]),{headers:{'content-type':'text/html; charset=utf-8','cache-control':'no-store'}})}
  const dashboard=path.match(/^\/dashboard\/([^/]+)$/);
- if(req.method==='GET'&&dashboard){const s=await sessionMerchant(req,env);if(!s||s.merchantId!==dashboard[1])return new Response('Merchant sign-in required',{status:401,headers:{'content-type':'text/plain; charset=utf-8','cache-control':'no-store'}});return new Response(renderMerchantDashboard(dashboard[1]),{headers:{'content-type':'text/html; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff'}})}
+ if(req.method==='GET'&&dashboard){const s=await sessionMerchant(req,env);if(!s||s.merchantId!==dashboard[1])return new Response('Merchant sign-in required',{status:401,headers:{'content-type':'text/plain; charset=utf-8','cache-control':'no-store'}});const nonce=pageNonce();return new Response(renderMerchantDashboard(dashboard[1],nonce),{headers:{'content-type':'text/html; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff','content-security-policy':pageCsp(nonce)}})}
  const login=path.match(/^\/dashboard\/([^/]+)\/login$/);
  if(req.method==='POST'&&login){const b=await body(req);const token=clean(b?.api_key,300);if(!token)return json({error:'api_key_required'},400);const a=await authenticateMerchant(new Request(req.url,{headers:{authorization:`Bearer ${token}`}}),env.DB);if(!a||a.merchantId!==login[1])return json({error:'invalid_merchant_credentials'},401);const s=await createSession(env.DB,a.merchantId);return json({ok:true,merchant_id:a.merchantId,expires_at:s.expiresAt},{headers:{'set-cookie':sessionCookie(s.raw)}})}
  const logout=path.match(/^\/dashboard\/([^/]+)\/logout$/);
