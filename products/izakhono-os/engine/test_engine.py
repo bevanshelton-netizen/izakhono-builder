@@ -59,10 +59,12 @@ class OsEngineTests(unittest.TestCase):
         outside = self.root / "outside.txt"
         outside.write_text("do not follow")
         (docs / "linked.txt").symlink_to(outside)
-        result = self.engine.dispatch({"action": "migration.preview", "params": {"folders": ["Documents"]}})["result"]
+        (self.home / "Pictures").symlink_to(docs, target_is_directory=True)
+        result = self.engine.dispatch({"action": "migration.preview", "params": {"folders": ["Documents", "Pictures"]}})["result"]
         self.assertFalse(result["copy_performed"])
         self.assertFalse(result["source_files_modified"])
         self.assertEqual(result["folders"][0]["files"], 1)
+        self.assertFalse(result["folders"][1]["exists"])
         self.assertEqual(outside.read_text(), "do not follow")
 
     def test_updates_do_not_access_network_or_install(self):
