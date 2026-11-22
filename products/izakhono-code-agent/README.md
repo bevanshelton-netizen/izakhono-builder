@@ -6,7 +6,7 @@ IZAKHONO CODE is a repository-aware, model-driven coding agent with persistent D
 
 - `src/worker.ts`: authenticated API, D1 session/message/event persistence, GitHub archive checkout, OpenAI-compatible model adapter, bounded agent loop, runner bridge and explicit pull-request publishing.
 - `src/index.ts`: shared coding-agent contracts and path/command policy.
-- `runner/server.mjs`: owner-token-protected workspace service; validation commands run in network-disabled Docker containers with memory, CPU, PID, filesystem and capability limits.
+- `runner/server.mjs`: owner-token-protected workspace service; validation commands run in network-disabled Docker containers with memory, CPU, PID, filesystem and capability limits. Dependency installation is a separate owner-approved action that accepts only lockfile URLs from registry.npmjs.org and disables lifecycle scripts.
 - `public/index.html`: browser workspace for creating tasks, chatting with the agent, reviewing diffs and opening pull requests.
 - `migrations/0003_code_agent.sql`: persistent sessions, messages and events.
 
@@ -22,7 +22,7 @@ Set these using Wrangler secrets; never commit them:
 - `WORKSPACE_RUNNER_URL`: HTTPS URL for the authorised runner.
 - `WORKSPACE_RUNNER_TOKEN`: runner bearer token.
 
-Set `ALLOWED_REPOSITORIES` as an exact comma-separated Worker variable. The UI sends the owner key only in request headers and does not persist it in browser storage.
+Set `ALLOWED_REPOSITORIES` as an exact comma-separated Worker variable. The UI sends the owner key only in request headers and does not persist it in browser storage. The owner can explicitly approve lockfile-based dependency installation before tests.
 
 ## Worker setup
 
@@ -46,7 +46,9 @@ The runner mounts the Docker socket because it launches constrained per-command 
 ## Execution controls
 
 - Exact repository allowlist; GitHub archive checkout capped at 20 MB.
-- Workspace paths reject absolute paths and traversal; archive links are rejected.
+- Workspace paths reject absolute paths and traversal; archive links and special files are rejected.
+- Common secret files are stripped from the workspace; likely credentials are redacted from file reads and command output. Secret-bearing changed files cannot be published.
+- Dependency installation requires an explicit owner action, a modern package lock, registry.npmjs.org-only package URLs and disabled lifecycle scripts.
 - Commands are argv arrays, never shell strings; executable and dangerous interpreter flags are restricted.
 - Validation containers have no network, read-only root, bounded memory/CPU/PIDs, dropped capabilities and no-new-privileges.
 - The agent can create a reviewable GitHub pull request only through an explicit owner action in the UI. It cannot merge or deploy.
