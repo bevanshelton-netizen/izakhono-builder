@@ -23,7 +23,7 @@ Set these using Wrangler secrets; never commit them:
 - `WORKSPACE_RUNNER_URL`: HTTPS URL for the authorised runner.
 - `WORKSPACE_RUNNER_TOKEN`: runner bearer token.
 
-Set `ALLOWED_REPOSITORIES` as an exact comma-separated Worker variable. The UI sends the owner key only in request headers and does not persist it in browser storage. The owner can explicitly approve lockfile-based dependency installation before tests.
+The standalone Worker config defaults `ALLOWED_REPOSITORIES` to `bevanshelton-netizen/izakhono-builder` and `MODEL_PROTOCOL` to `openai-chat-completions`; extend the exact repository allowlist only as needed. Use `ollama-chat` for native Ollama. The UI sends the owner key only in request headers and does not persist it in browser storage. The owner can explicitly approve lockfile-based dependency installation before tests.
 
 ## Worker setup
 
