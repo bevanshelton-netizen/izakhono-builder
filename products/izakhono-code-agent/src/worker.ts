@@ -174,12 +174,15 @@ async function runTurn(session:Session,objective:string,env:Env):Promise<any>{
   const messages:Array<{role:string;content:string}>=[{role:'system',content:systemPrompt+'\nRepository: '+session.repository+'\nBase ref: '+session.base_ref+'\nOriginal objective: '+session.objective}];
   for(const item of history.results)if(item.role==='user'||item.role==='assistant')messages.push({role:item.role,content:item.content});
   let finalSummary='';
+  let validationPassed=false;
+  let diffInspected=false;
   const maxSteps=Math.min(Math.max(Number(env.MAX_AGENT_STEPS||8),1),12);
   for(let step=0;step<maxSteps;step++){
     const raw=await modelTurn(env,messages);
     const action=parseAction(raw);
     messages.push({role:'assistant',content:raw});
     if(action.action==='finish'){
+      if(!validationPassed||!diffInspected){messages.push({role:'user',content:'You cannot finish yet. Run at least one successful validation command and inspect the final diff before finishing.'});continue;}
       finalSummary=String(action.summary||'Task finished.').slice(0,5000);
       break;
     }
@@ -199,8 +202,10 @@ async function runTurn(session:Session,objective:string,env:Env):Promise<any>{
     }else if(action.action==='run_command'){
       if(!Array.isArray(action.argv)||action.argv.length<1||action.argv.length>12||action.argv.some((x:unknown)=>typeof x!=='string'||x.length>500))throw new Error('Invalid command arguments.');
       result=await runnerCall(env,'/v1/execute',{workspace_id:session.workspace_id,action:'run_command',input:{argv:action.argv,timeout_ms:Math.min(Math.max(Number(action.timeout_ms||30000),1000),120000)}});
+      validationPassed=Number(result.exit_code)===0;
     }else if(action.action==='diff'){
       result=await runnerCall(env,'/v1/execute',{workspace_id:session.workspace_id,action:'diff',input:{}});
+      diffInspected=true;
     }else{
       throw new Error('Unsupported model action.');
     }
