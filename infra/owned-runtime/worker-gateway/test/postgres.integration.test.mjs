@@ -1,12 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createHash, randomUUID } from 'node:crypto';
+import { createHash, createHmac, randomUUID } from 'node:crypto';
 import postgres from 'postgres';
 
 const adminUrl = process.env.OWNED_WORKER_TEST_ADMIN_URL || '';
 const workerUrl = process.env.OWNED_WORKER_TEST_WORKER_URL || '';
 const workerRole = 'owned_worker_gateway_ci';
 const gatewayRole = 'owned_worker_gateway';
+const contextSecret = Buffer.from(process.env.OWNED_WORKER_TEST_CONTEXT_SECRET || '', 'base64url');
+const tenantSignature = tenantId => createHmac('sha256', contextSecret).update(String(tenantId)).digest('hex');
 
 test('PostgreSQL enforces owned-worker tenant isolation and least-privilege grants', {
   skip: !adminUrl || !workerUrl ? 'Disposable PostgreSQL URLs are not configured' : false
@@ -22,6 +24,10 @@ test('PostgreSQL enforces owned-worker tenant isolation and least-privilege gran
   const tokenHash = createHash('sha256').update(token).digest('hex');
 
   try {
+    assert.ok(contextSecret.length >= 32, 'test tenant-context secret must be configured');
+    await admin`insert into public.owned_worker_context_secret (singleton, secret)
+      values (true, ${contextSecret})
+      on conflict (singleton) do update set secret = excluded.secret, updated_at = now()`;
     await admin`
       insert into public.owned_worker_jobs
         (id, tenant_id, idempotency_key, worker_key, job_type, payload)
@@ -67,7 +73,9 @@ test('PostgreSQL enforces owned-worker tenant isolation and least-privilege gran
         has_table_privilege(${workerRole}, 'public.owned_worker_events', 'UPDATE') as events_update,
         has_table_privilege(${workerRole}, 'public.owned_worker_events', 'DELETE') as events_delete,
         has_function_privilege(${workerRole}, 'public.authenticate_owned_worker(text)', 'EXECUTE') as authenticate_execute,
-        has_function_privilege(${workerRole}, 'public.touch_owned_worker_credential(text)', 'EXECUTE') as touch_execute
+        has_function_privilege(${workerRole}, 'public.touch_owned_worker_credential(text)', 'EXECUTE') as touch_execute,
+        has_function_privilege(${workerRole}, 'public.set_owned_worker_tenant_context(uuid,text)', 'EXECUTE') as set_context_execute,
+        has_table_privilege(${workerRole}, 'public.owned_worker_context_secret', 'SELECT') as context_secret_select
     `;
     const p = privileges[0];
     assert.equal(p.credentials_select, false, 'credentials must not be directly readable');
@@ -82,6 +90,8 @@ test('PostgreSQL enforces owned-worker tenant isolation and least-privilege gran
     assert.equal(p.events_delete, false, 'events must not be deletable by the worker role');
     assert.equal(p.authenticate_execute, true);
     assert.equal(p.touch_execute, true);
+    assert.equal(p.set_context_execute, true);
+    assert.equal(p.context_secret_select, false, 'runtime login must not read the context-signing secret');
 
     await assert.rejects(
       worker`select * from public.owned_worker_credentials`,
@@ -99,7 +109,7 @@ test('PostgreSQL enforces owned-worker tenant isolation and least-privilege gran
     assert.deepEqual(unscoped.map(row => row.id), [], 'missing tenant context must reveal no jobs');
 
     await worker.begin(async tx => {
-      await tx`select set_config('app.tenant_id', ${tenantA}, true)`;
+      await tx`select public.set_owned_worker_tenant_context(${tenantA}, ${tenantSignature(tenantA)})`;
       const visible = await tx`select id from public.owned_worker_jobs order by id`;
       assert.deepEqual(visible.map(row => row.id), [jobA], 'tenant A must not see tenant B jobs');
 
