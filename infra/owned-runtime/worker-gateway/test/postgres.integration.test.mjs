@@ -157,7 +157,7 @@ test('PostgreSQL enforces owned-worker tenant isolation and least-privilege gran
 
     await assert.rejects(
       worker.begin(async tx => {
-        await tx`select set_config('app.tenant_id', ${tenantA}, true)`;
+        await tx`select public.set_owned_worker_tenant_context(${tenantA}, ${tenantSignature(tenantA)})`;
         await tx`
           insert into public.owned_worker_events
             (tenant_id, job_id, worker_key, event_type)
@@ -169,14 +169,14 @@ test('PostgreSQL enforces owned-worker tenant isolation and least-privilege gran
 
     await assert.rejects(
       worker.begin(async tx => {
-        await tx`select set_config('app.tenant_id', ${tenantA}, true)`;
+        await tx`select public.set_owned_worker_tenant_context(${tenantA}, ${tenantSignature(tenantA)})`;
         await tx`delete from public.owned_worker_jobs where id = ${jobA}`;
       }),
       error => error.code === '42501'
     );
     await assert.rejects(
       worker.begin(async tx => {
-        await tx`select set_config('app.tenant_id', ${tenantA}, true)`;
+        await tx`select public.set_owned_worker_tenant_context(${tenantA}, ${tenantSignature(tenantA)})`;
         await tx`update public.owned_worker_events set event_type = 'tampered' where job_id = ${jobA}`;
       }),
       error => error.code === '42501'
