@@ -1,64 +1,78 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# CONNECTA production deployment gate.
-# Fail-closed: promotion is authorized only when all required evidence is
-# fresh, PASS, schema-correct, and sourced from an operator-controlled runtime.
-# This script never performs DNS, TLS, EDGE routing, or public cutover.
-
-EVIDENCE_DIR="${CONNECTA_EVIDENCE_DIR:-/var/lib/izakhono/evidence/connecta}"
+# CONNECTA provider-neutral production evidence gate.
+# It validates evidence only; it never performs DNS, TLS, EDGE routing or cutover.
+EVIDENCE_DIR="${CONNECTA_EVIDENCE_ROOT:-${CONNECTA_EVIDENCE_DIR:-/var/lib/izakhono/evidence/connecta}}"
 MAX_AGE="${CONNECTA_READINESS_MAX_AGE_SECONDS:-86400}"
-REPORT="${CONNECTA_PROMOTION_REPORT:-${EVIDENCE_DIR}/promotion-gate.json}"
+REPORT="${CONNECTA_PROMOTION_REPORT:-$EVIDENCE_DIR/promotion-gate.json}"
+[[ "$MAX_AGE" =~ ^[0-9]+$ ]] || { echo "CONNECTA_READINESS_MAX_AGE_SECONDS must be an integer" >&2; exit 2; }
 
 python3 - "$EVIDENCE_DIR" "$MAX_AGE" "$REPORT" <<'PY'
-import json, os, sys, time
-
-evidence_dir, max_age_raw, report_path = sys.argv[1:]
-max_age = int(max_age_raw)
-now = int(time.time())
-required = {
-    "cluster-physical.json": "izakhono.connecta.gate.cluster-physical.v1",
-    "connecta-local.json": "izakhono.connecta.gate.local.v1",
-    "failover.json": "izakhono.connecta.gate.failover.v1",
-    "backup-restore.json": "izakhono.connecta.gate.backup-restore.v1",
-    "security.json": "izakhono.connecta.gate.security.v1",
-    "edge-tls.json": "izakhono.connecta.gate.edge-tls.v1",
-    "external-https.json": "izakhono.connecta.gate.external-https.v1",
-}
-failures=[]; checks={}
-for filename, schema in required.items():
-    path=os.path.join(evidence_dir, filename)
-    item={"schema":schema,"status":"MISSING","path":path}
+import json,os,pathlib,sys,time
+root,max_age_raw,report_path=sys.argv[1:]
+max_age=int(max_age_raw); now=int(time.time())
+required=('runtime','health','persistence','backup_restore','failover','security','edge_tls','external_https')
+failures=[]; checks={}; expected={}
+for name in required:
+    path=pathlib.Path(root)/f'{name}.ok'
+    item={'gate':name,'path':str(path),'status':'MISSING'}
     try:
-        with open(path, encoding="utf-8") as f: data=json.load(f)
-        item.update(status=data.get("status"), checked_at_epoch=data.get("checked_at_epoch"), evidence_source=data.get("evidence_source"))
-        if data.get("schema") != schema: failures.append(f"{filename}: schema mismatch")
-        if data.get("status") != "PASS": failures.append(f"{filename}: status is not PASS")
-        ts=data.get("checked_at_epoch")
-        if not isinstance(ts, int): failures.append(f"{filename}: invalid checked_at_epoch")
-        elif ts > now: failures.append(f"{filename}: timestamp is in the future")
-        elif now-ts > max_age: failures.append(f"{filename}: evidence is stale")
-        source=data.get("evidence_source")
-        if not source or source in {"inferred","topology","ci-only","repository-only","simulated"}:
-            failures.append(f"{filename}: evidence source is not physical/operator evidence")
+        data=json.loads(path.read_text(encoding='utf-8'))
+        item.update(status=data.get('status'),evidence_source=data.get('evidence_source'),checked_at_epoch=data.get('checked_at_epoch'))
+        if data.get('status')!='PASS': failures.append(f'{name}: status is not PASS')
+        source=data.get('evidence_source')
+        expected_sources={
+            'runtime':'software-runtime-execution',
+            'health':'software-runtime-execution',
+            'persistence':'software-runtime-execution',
+            'backup_restore':'software-runtime-execution',
+            'failover':'prove-failover-evidence.sh:approved-runtime-operator',
+            'security':'prove-security-evidence.sh:approved-runtime-execution',
+            'edge_tls':'prove-edge-tls-evidence.sh:approved-runtime-edge-verification',
+            'external_https':'prove-external-https-evidence.sh:independent-external-execution',
+        }
+        if not isinstance(source,str) or not source.startswith(expected_sources[name]): failures.append(f'{name}: untrusted evidence source')
+        ts=data.get('checked_at_epoch')
+        if not isinstance(ts,int) or isinstance(ts,bool): failures.append(f'{name}: invalid timestamp')
+        elif ts>now+300: failures.append(f'{name}: future timestamp')
+        elif now-ts>max_age: failures.append(f'{name}: stale evidence')
+        for key in ('release_sha','runtime_id','runtime_provider'):
+            value=data.get(key)
+            if not isinstance(value,str) or not value.strip(): failures.append(f'{name}: missing {key}')
+            elif key not in expected: expected[key]=value
+            elif expected[key]!=value: failures.append(f'{name}: {key} mismatch')
+        sha=data.get('release_sha')
+        if not isinstance(sha,str) or len(sha)!=40 or any(c not in '0123456789abcdef' for c in sha): failures.append(f'{name}: invalid immutable release SHA')
+        rid=data.get('runtime_id')
+        if data.get('physical_hardware_required') is not False: failures.append(f'{name}: physical_hardware_required must be false')
+        if isinstance(data.get('runtime_id'),str) and 'physical' in data['runtime_id'].lower():
+            failures.append(f'{name}: runtime_id must be a logical runtime identity')
+    except FileNotFoundError:
+        failures.append(f'{name}: missing evidence')
     except Exception as exc:
-        failures.append(f"{filename}: {exc}")
-    checks[filename]=item
-status="PRODUCTION_GATES_PASS" if not failures else "NOT_READY"
+        item['status']='INVALID'; item['error']=str(exc); failures.append(f'{name}: invalid evidence: {exc}')
+    checks[name]=item
+status='PRODUCTION_GATES_PASS' if not failures else 'NOT_READY'
 report={
-    "schema":"izakhono.connecta.gate.production-promotion.v1",
-    "status":status,
-    "promotion_allowed":status=="PRODUCTION_GATES_PASS",
-    "public_cutover_performed":False,
-    "checked_at_epoch":now,
-    "max_age_seconds":max_age,
-    "evidence_source":"operator_controlled_production_gate",
-    "checks":checks,
-    "failures":failures,
-    "next_action":"Independent DNS/TLS/routing verification is still required after any public promotion." if status=="PRODUCTION_GATES_PASS" else "Supply fresh passing physical/runtime evidence for every required gate."
+ 'schema':'izakhono.connecta.gate.production-promotion.v2',
+ 'status':status,
+ 'promotion_allowed':status=='PRODUCTION_GATES_PASS',
+ 'public_cutover_performed':False,
+ 'checked_at_epoch':now,
+ 'max_age_seconds':max_age,
+ 'release_sha':expected.get('release_sha'),
+ 'runtime_id':expected.get('runtime_id'),
+ 'runtime_provider':expected.get('runtime_provider'),
+ 'physical_hardware_required':False,
+ 'evidence_source':'fail-closed-provider-neutral-production-gate',
+ 'checks':checks,'failures':failures,
+ 'next_action':'Promotion still requires the separately authorised change procedure.' if status=='PRODUCTION_GATES_PASS' else 'Supply fresh, consistent PASS evidence for every runtime gate.'
 }
-os.makedirs(os.path.dirname(report_path) or ".", exist_ok=True)
-with open(report_path,"w",encoding="utf-8") as f: json.dump(report,f,indent=2); f.write("\n")
-print(json.dumps(report,indent=2))
-if status != "PRODUCTION_GATES_PASS": raise SystemExit(2)
+target=pathlib.Path(report_path); target.parent.mkdir(parents=True,exist_ok=True)
+tmp=target.with_suffix(target.suffix+'.tmp')
+tmp.write_text(json.dumps(report,indent=2,sort_keys=True)+'\n',encoding='utf-8')
+os.chmod(tmp,0o600); os.replace(tmp,target)
+print(json.dumps(report,indent=2,sort_keys=True))
+if status!='PRODUCTION_GATES_PASS': raise SystemExit(2)
 PY

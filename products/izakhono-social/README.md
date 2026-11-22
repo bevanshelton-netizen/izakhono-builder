@@ -14,7 +14,7 @@ An African-built, privacy-first public conversation network operated by IZAKHONO
 
 ## Current product
 
-CONNECTA now combines an X/Twitter-class public-conversation experience with its existing sovereign backend:
+CONNECTA combines an X/Twitter-class public-conversation experience with its sovereign backend:
 
 - secure local registration/login with HTTP-only browser sessions;
 - three-column desktop experience plus responsive mobile navigation and composer;
@@ -39,9 +39,9 @@ Bookmarks, trends, suggestions and social-graph actions are product features onl
 
 ## Architecture
 
-Primary owned route:
+Primary route:
 
-`IZAKHONO CODE -> NODE01 -> PostgreSQL + CONNECTA ENGINE + CONNECTA Web -> FORTRESS -> EDGE/TLS -> IZAKHONO DNS`
+`IZAKHONO CODE -> APPROVED IZAKHONO SOFTWARE RUNTIME -> PostgreSQL + CONNECTA ENGINE + CONNECTA Web -> FORTRESS -> EDGE/TLS -> IZAKHONO DNS`
 
 The web tier proxies browser calls to CONNECTA ENGINE server-side. Engine session tokens remain in secure HTTP-only cookies and are not returned to browser JavaScript.
 
@@ -52,14 +52,14 @@ The September 2026 Supabase CONNECTA compatibility bridge remains an external re
 See:
 - `docs/CONNECTA-HYBRID-DEPLOYMENT.md`
 - `docs/CONNECTA-ZERO-TOLERANCE-SAFETY.md`
+- [Provider-neutral runtime activation contract](../izakhono-node/CONNECTA-RUNTIME-FABRIC-ACTIVATION.md)
+- [Production readiness evidence contract](CONNECTA-READINESS-EVIDENCE.md)
 
-## NODE01
+## Runtime activation
 
-Prepare `/etc/izakhono/apps/connecta.env` from `.env.example`, then run:
+CONNECTA is packaged for an approved logical software runtime. Owned compute is preferred; an approved external runtime can be used as a reversible fallback. No physical NODE01 prerequisite exists.
 
-`RUN-CONNECTA-NODE01.cmd`
-
-The launcher performs local owned proof only. It does not change public DNS.
+The legacy launcher filename `RUN-CONNECTA-NODE01.sh` is retained for compatibility, but the launcher itself follows the provider-neutral runtime contract and explicitly does not perform public DNS cutover. Review the runtime activation contract and public launch gate before any operator-controlled execution.
 
 ## Verification
 
@@ -67,20 +67,21 @@ The launcher performs local owned proof only. It does not change public DNS.
 
 HTTP 200 means the Next.js web tier reached a healthy CONNECTA ENGINE whose PostgreSQL database and configured storage also passed. A rendering-only web server cannot pass this gate.
 
-The CI workflow also typechecks/builds the web app, syntax-checks/tests the engine, builds owned and portable containers, boots complete stacks, verifies schema migrations, exercises the web-to-engine session proxy, and proves backup/restore plus growth, safety, content-provenance, business-verification and media-protection workflows.
+The CI workflow typechecks/builds the web app, syntax-checks/tests the engine, builds owned and portable containers, boots complete stacks, verifies schema migrations, exercises the web-to-engine session proxy, and tests backup/restore plus growth, safety, content-provenance, business-verification and media-protection workflows.
 
 ## Current evidence status
 
 **NOT YET PUBLIC**
 
-The application/package may be called **BUILT / VERIFIED LOCALLY** only after the current branch/PR completes full CI successfully. Public LIVE status still requires independently verified HTTPS, DNS/TLS, backup/restore and rollback/failback evidence for the intended release.
+The application/package may be called **BUILT / VERIFIED LOCALLY** only after the current branch/PR completes full CI successfully. Public LIVE status still requires independently verified runtime execution, HTTPS, DNS/TLS, backup/restore and rollback/failback evidence for the intended release.
 
 ## Remaining public-launch gates
 
 1. Merge a green public-readiness build.
-2. Execute the immutable release on the actual IZAKHONO owned runtime/NODE01 path.
+2. Execute the immutable release on an approved IZAKHONO software runtime.
 3. Retain backup + restore evidence for PostgreSQL and media storage.
-4. Stage FORTRESS, EDGE/TLS and the chosen CONNECTA hostname.
-5. Verify public HTTPS 200 on `/health` and the real registration/feed/message experience from outside the IZAKHONO network.
-6. Verify rollback/failback and an external resilience route without replacing the owned authority.
-7. Only then change the evidence label to **OWNED LIVE VERIFIED** or **EXTERNAL LIVE VERIFIED**.
+4. Verify failover/failback and security controls.
+5. Stage FORTRESS, EDGE/TLS and the chosen CONNECTA hostname.
+6. Verify public HTTPS 200 on `/health` and the real registration/feed/message experience from outside the IZAKHONO network.
+7. Verify rollback/failback and an external resilience route without replacing the owned authority.
+8. Only then change the evidence label to **OWNED LIVE VERIFIED** or **EXTERNAL LIVE VERIFIED**.
