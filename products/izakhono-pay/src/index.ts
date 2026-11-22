@@ -3,7 +3,7 @@ import type { PaymentProvider } from './providers/types';
 import { assertPaymentAllowed, selectProvider, type MerchantOnboardingStatus, type ProviderRoute } from './routing';
 import { getMerchantControlCentre } from './merchant-control-centre';
 import { renderMerchantDashboard } from './merchant-dashboard';
-import { authenticateMerchant } from './auth';
+import { authenticateMerchant, generatePayApiKey, sha256 } from './auth';
 import { authenticateSession, createSession, readSessionCookie, sessionCookie, clearSessionCookie } from './session';
 import { invoiceApi, invoicePublicPage, linkInvoicePayment, attachInvoicePayment } from './invoice-api';
 import { renderDeviceDashboard, DEVICE_MANIFEST, DEVICE_ICON, DEVICE_SERVICE_WORKER } from './device-dashboard.js';
@@ -45,6 +45,29 @@ export default {async fetch(req:Request,env:Env):Promise<Response>{
  if(path.startsWith('/v1/webhooks/'))return webhook(req,env,path.split('/').pop()||'unknown');
  const publicIntent=path.match(/^\/v1\/public\/payment-links\/([^/]+)\/intent$/);
  if(req.method==='POST'&&publicIntent){const link=await env.DB.prepare('SELECT merchant_id,amount,currency,title,status FROM pay_links WHERE token=?').bind(publicIntent[1]).first<any>();if(!link||link.status!=='active')return json({error:'payment_link_unavailable'},404);return createIntent(env,link.merchant_id,link.amount,link.currency,link.title,req.headers.get('idempotency-key')||`public-${crypto.randomUUID()}`,{link_token:publicIntent[1]})}
+ const apiKeys=path.match(/^\\/v1\\/merchants\\/([^/]+)\\/api-keys(?:\\/([^/]+)\\/revoke)?$/);
+ if(apiKeys&&['GET','POST'].includes(req.method)){
+  const merchantId=apiKeys[1],session=await sessionMerchant(req,env);
+  if(!session||session.merchantId!==merchantId)return json({error:'merchant_unauthorized'},403);
+  if(req.method==='GET'&&!apiKeys[2]){
+   const rows=await env.DB.prepare('SELECT id,label,key_prefix,status,created_at,last_used_at,revoked_at FROM pay_api_keys WHERE merchant_id=? ORDER BY created_at DESC').bind(merchantId).all();
+   return json({merchant_id:merchantId,data:rows.results||[]});
+  }
+  if(req.method==='POST'&&!apiKeys[2]){
+   const b=await body(req);if(!b)return json({error:'invalid_json'},400);
+   const label=clean(b.label||'Merchant API key',120);if(!label)return json({error:'label_required'},400);
+   const key=generatePayApiKey(),keyId=id('key'),created=now(),hash=await sha256(key.raw);
+   await env.DB.prepare('INSERT INTO pay_api_keys (id,merchant_id,key_hash,key_prefix,label,status,created_at) VALUES (?,?,?,?,?,?,?)').bind(keyId,merchantId,hash,key.prefix,label,'active',created).run();
+   await audit(env,merchantId,'merchant.api_key.created',{key_id:keyId,key_prefix:key.prefix,label});
+   return json({id:keyId,api_key:key.raw,key_prefix:key.prefix,label,status:'active',created_at:created},201);
+  }
+  if(req.method==='POST'&&apiKeys[2]){
+   const result=await env.DB.prepare("UPDATE pay_api_keys SET status='revoked',revoked_at=? WHERE id=? AND merchant_id=? AND status='active'").bind(now(),apiKeys[2],merchantId).run();
+   if(!Number(result.meta?.changes||0))return json({error:'api_key_not_found_or_inactive'},404);
+   await audit(env,merchantId,'merchant.api_key.revoked',{key_id:apiKeys[2]});
+   return json({ok:true,id:apiKeys[2],status:'revoked'});
+  }
+ }
  if(!(await auth(req,env)))return json({error:'unauthorized'},401);
  const invoiceHandled=await invoiceApi(req,env,path);if(invoiceHandled)return invoiceHandled;
  if(req.method==='POST'&&path==='/v1/merchants'){const b=await body(req);if(!b)return json({error:'invalid_json'},400);const name=clean(b.name,160);if(!name)return json({error:'name_required'},400);const merchantId=id('mch');await env.DB.prepare('INSERT INTO pay_merchants (id,name,email,status,created_at) VALUES (?,?,?,?,?)').bind(merchantId,name,clean(b.email,254),'pending_kyb',now()).run();await audit(env,merchantId,'merchant.created',{status:'pending_kyb'});return json({id:merchantId,name,status:'pending_kyb'},201)}
