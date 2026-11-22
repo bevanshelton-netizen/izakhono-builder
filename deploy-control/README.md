@@ -45,4 +45,4 @@ The management API is read-only by default. Mutations require a narrowly scoped 
 
 ## Current state
 
-This repository addition defines the product boundary and build contract. It does not assert that a target is connected, that a deployment has run, or that public HTTPS is live. Runtime binding and owner-environment acceptance remain separate verification gates.
+This repository addition now includes a dependency-free lifecycle policy module and tests (`lifecycle.mjs`, `lifecycle.test.mjs`) as well as the product boundary and build contract. The policy module does not execute deployments or persist records. It does not assert that a target is connected, that a deployment has run, or that public HTTPS is live. Authenticated API integration, durable transactional persistence, target selection, runtime binding and owner-environment acceptance remain separate verification gates.
