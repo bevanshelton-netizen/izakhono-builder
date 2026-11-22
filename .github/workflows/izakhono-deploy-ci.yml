@@ -1,0 +1,38 @@
+name: IZAKHONO DEPLOY lifecycle CI
+
+on:
+  pull_request:
+    paths:
+      - "deploy-control/**"
+      - "autonomy/node-registry.mjs"
+      - ".github/workflows/izakhono-deploy-ci.yml"
+  push:
+    branches:
+      - "feat/izakhono-deploy-owned-control-plane"
+    paths:
+      - "deploy-control/**"
+      - "autonomy/node-registry.mjs"
+      - ".github/workflows/izakhono-deploy-ci.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: izakhono-deploy-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lifecycle-policy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Test lifecycle policy and target adapter
+        run: node --test deploy-control/lifecycle.test.mjs deploy-control/target-adapter.test.mjs
+      - name: Check NODE01 identity invariant
+        run: python3 scripts/architecture/check-node01-identity.py
