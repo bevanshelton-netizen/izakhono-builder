@@ -47,14 +47,24 @@ The Runtime Fabric event store is also not yet a DEPLOY audit ledger: its event 
 7. Add PostgreSQL integration tests for transaction rollback, exact replay, conflicting replay, cross-tenant isolation, authorization failure, immutable audit, and concurrent claims. Mock-only cursor tests are not sufficient for these guarantees.
 8. Keep the management API read-only until the transaction, authorization, isolation, and audit tests pass.
 
+## Further database ownership investigation (2026-11-22)
+
+The following repository evidence was inspected at PR head `3d180f780b087ff69f1021b4649f6d605be39bef`:
+
+- `infra/runtime-fabric/controller/runtime_store_factory.py` reads only `IZAKHONO_RUNTIME_DATABASE_URL`, creates a psycopg connection factory, and initializes the deployment store. It does not identify a database instance, provisioning owner, migration authority, or environment binding.
+- `infra/runtime-fabric/controller/RECOVERY-RUNNER.md` documents the same protected DSN as an operator-supplied runtime input; it does not identify who provisions or migrates that database.
+- `infra/runtime-fabric/controller/postgres_deployment_store.py` and `postgres_event_store.py` each create their tables through inline SQL in separate `initialize()` methods. The deployment store and event store each open and commit their own connections.
+- `infra/runtime-fabric/releases/kora-owned.compose.yaml` does not define or bind the Runtime Fabric control-plane database. Its adjacent KORA environment example contains application service placeholders, not proof of the Runtime Fabric database.
+- `migrations/0001_init.sql` defines Builder project/event tables. `migrations/0022_builder_customer_tenancy.sql` uses SQLite-specific `PRAGMA` and schema conventions. Neither establishes Runtime Fabric PostgreSQL ownership.
+- `migrations/0010_idempotency_claims.sql` remains globally keyed and lacks tenant/deployment scope.
+
+This confirms the ownership gap is not merely an unknown database URL: the repository currently lacks evidence of the authoritative Runtime Fabric database provisioning owner, migration runner, and environment-to-database binding. No schema change or database mutation is authorized on this evidence.
+
 ## Validation observed on 2026-11-22
 
-For the latest PR head `d84213cac6e64643a350cefdee3c79c63590ba75`, GitHub Actions reported successful completion of all four workflows:
+At PR head `3d180f780b087ff69f1021b4649f6d605be39bef`, GitHub reported all 9 check runs completed successfully, including Builder CI, DEPLOY lifecycle CI, owned-infrastructure validation, NAV runtime validation, application-manifest validation, NODE01 identity-invariant checks, and the Cloudflare Workers build.
 
-- IZAKHONO DEPLOY lifecycle CI (run 11)
-- NODE01 Architecture Invariant (run 2851)
-- IZAKHONO Application Manifest Validation (run 1712)
-- IZAKHONO Builder CI (run 5825)
+The separate commit status remained failed on 25 Vercel deployment contexts due to deployment rate limits. Those statuses are not failed owned-infrastructure test runs and do not establish an owned-host deployment.
 
 These are repository CI results only. They do not establish that a PostgreSQL service, owner runtime, HOST execution access, or production deployment is available.
 
