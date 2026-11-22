@@ -7,7 +7,7 @@ on:
       - 'products/i-connect/**'
       - '.github/workflows/i-connect-network-ci.yml'
   pull_request:
-    branches: [main]
+    branches: [main, feat/i-connect-commercial-market-entry-v1]
     paths:
       - 'products/i-connect/**'
       - '.github/workflows/i-connect-network-ci.yml'
@@ -48,6 +48,8 @@ jobs:
           node --test products/i-connect/api/readiness.test.js
           node --check products/i-connect/runtime/register-api-routes.js
           node --check products/i-connect/api/public-config.js
+          node --check products/i-connect/api/catalogue.js
+          node --test products/i-connect/api/catalogue.test.js
           node --check products/i-connect/api/my-organizations.js
           node --check products/i-connect/auth.js
           node --check products/i-connect/customer-control.js
@@ -97,4 +99,3 @@ jobs:
           test "$config_status" = "503"
           grep -q '"authentication_not_configured"' /tmp/i-connect-config.json
           echo '[PASS] Owned container starts, health is live, and auth config fails closed without secrets.'
-
