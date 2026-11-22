@@ -264,10 +264,10 @@ test('PostgreSQL enforces competing claims, lease recovery, renewal, completion 
       on conflict (singleton) do update set secret = excluded.secret, updated_at = now()`;
     await admin`
       insert into public.owned_worker_jobs
-        (id, tenant_id, idempotency_key, worker_key, job_type, max_attempts)
+        (id, tenant_id, idempotency_key, worker_key, job_type, max_attempts, priority)
       values
-        (${claimJobId}, ${tenantId}, ${'claim-' + claimJobId}, ${workerKey}, 'ci_lifecycle', 3),
-        (${retryJobId}, ${tenantId}, ${'retry-' + retryJobId}, ${workerKey}, 'ci_retry', 2)
+        (${claimJobId}, ${tenantId}, ${'claim-' + claimJobId}, ${workerKey}, 'ci_lifecycle', 3, 100),
+        (${retryJobId}, ${tenantId}, ${'retry-' + retryJobId}, ${workerKey}, 'ci_retry', 2, 50)
     `;
 
     // Independent PostgreSQL sessions race for the same first job.
