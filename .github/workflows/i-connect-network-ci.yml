@@ -2,7 +2,7 @@ name: I-CONNECT Network Routing CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, feat/i-connect-commercial-market-entry-v1]
     paths:
       - 'products/i-connect/**'
       - '.github/workflows/i-connect-network-ci.yml'
