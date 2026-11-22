@@ -77,17 +77,120 @@ async function installDependencies(root){
   return exec('docker',args,{timeout:180000});
 }
 async function runSandbox(root,argv,timeout){if(!Array.isArray(argv)||!argv.length||argv.length>12||argv.some(x=>typeof x!=='string'||x.length>500))throw new Error('Invalid argv');if(!COMMANDS.has(argv[0]))throw new Error('Executable is not allowlisted');if(argv.some(x=>['-c','--eval','--require','-e','-r','--import','--inspect','--inspect-brk'].includes(x)))throw new Error('Interpreter/eval/debug flags are forbidden');if(argv[0]==='npm'){const allowed=argv[1]==='test'||(argv[1]==='run'&&['test','typecheck','lint','build','check'].includes(argv[2]));if(!allowed)throw new Error('Only test, typecheck, lint, build and check npm scripts are permitted');}if(argv[0]==='npx'&&argv[1]!=='--no-install')throw new Error('npx must use --no-install; network package execution is disabled');if(argv[0]==='node'&&argv[1]?.startsWith('-'))throw new Error('Node runtime flags are not permitted');const args=['run','--rm','--network','none','--memory=1g','--cpus=2','--pids-limit=128','--read-only','--tmpfs','/tmp:rw,noexec,nosuid,size=128m','--cap-drop=ALL','--security-opt=no-new-privileges','--user','10001:10001','--env','HOME=/tmp','--env','npm_config_cache=/tmp/npm-cache','--mount','type=bind,src='+root+',dst=/workspace,rw','-w','/workspace','node:22-bookworm-slim',...argv];return exec('docker',args,{timeout:Math.min(Math.max(timeout||30000,1000),120000)})}
-async function handler(req,res){const url=new URL(req.url||'/','http://localhost');if(req.method==='GET'&&url.pathname==='/healthz')return send(res,200,{ok:true,service:'IZAKHONO CODE isolated runner',version:'1.0.0',docker:true});const expected=await token();if(expected.length<32)return send(res,503,{ok:false,error:'Runner owner token is not configured securely'});if(!equal(req.headers.authorization?.replace(/^Bearer\s+/i,''),expected))return send(res,401,{ok:false,error:'Unauthorized'});try{
-if(req.method==='POST'&&url.pathname==='/v1/workspaces'){const repo=String(req.headers['x-repository']||'');const ref=String(req.headers['x-base-ref']||'main');if(!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repo))return send(res,400,{ok:false,error:'Invalid repository'});const archive=await readBody(req);const id=crypto.randomUUID();const root=rootOf(id);await fs.mkdir(root,{recursive:true,mode:0o777});await extractArchive(root,archive);await stripSensitiveFiles(root);await fs.writeFile(path.join(root,'.izakhono-workspace.json'),JSON.stringify({repository:repo,base_ref:ref,created_at:new Date().toISOString()}));await exec('git',['init','-q'],{cwd:root});await exec('git',['add','-A'],{cwd:root});await exec('git',['-c','user.name=IZAKHONO CODE','-c','user.email=code@izakhono.local','commit','-qm','Workspace baseline'],{cwd:root});workspaces.set(id,{repository:repo,base_ref:ref});return send(res,201,{ok:true,workspace_id:id})}
-if(req.method==='POST'&&url.pathname==='/v1/execute'){const body=JSON.parse((await readBody(req)).toString('utf8'));const id=String(body.workspace_id||'');const root=rootOf(id);await fs.access(root);if(!workspaces.has(id)){const meta=JSON.parse(await fs.readFile(path.join(root,'.izakhono-workspace.json'),'utf8'));workspaces.set(id,meta)}const action=body.action,input=body.input||{};
-if(action==='list_files'){const raw=String(input.path||'src');const rel=raw==='.'?'':safePath(raw);const target=await ensureInside(root,rel);const entries=await fs.readdir(target,{withFileTypes:true});return send(res,200,{ok:true,files:entries.map(e=>({name:e.name,type:e.isDirectory()?'directory':'file'}))})}
-if(action==='read_file'){const rel=safePath(input.path);if(sensitiveName(rel))return send(res,403,{ok:false,error:'Sensitive files are not available to the coding agent'});const target=await ensureInside(root,rel);const stat=await fs.stat(target);if(!stat.isFile()||stat.size>1000000)return send(res,413,{ok:false,error:'File missing, not regular, or exceeds 1 MB'});const bytes=await fs.readFile(target);let content;try{content=new TextDecoder('utf-8',{fatal:true}).decode(bytes)}catch{return send(res,415,{ok:false,error:'Binary or non-UTF-8 files cannot be read or published'})}const safe=redactSecrets(content);return send(res,200,{ok:true,path:rel,content:safe,secret_detected:safe!==content})}
-if(action==='apply_patch'){const rel=safePath(input.path);if(sensitiveName(rel))throw new Error('Sensitive files cannot be edited');await ensureInside(root,rel);const patch=String(input.patch||'');if(!patch||patch.length>100000)throw new Error('Patch exceeds policy');if(/120000|160000|GIT binary patch/.test(patch))throw new Error('Symlink and submodule patches are not permitted');const temp=path.join(os.tmpdir(),'izakhono-patch-'+crypto.randomUUID()+'.diff');await fs.writeFile(temp,patch);try{const result=await exec('git',['apply','--whitespace=error',temp],{cwd:root,timeout:10000});if(result.exit_code!==0)throw new Error('Patch rejected: '+result.stderr.slice(0,1000))}finally{await fs.rm(temp,{force:true})}return send(res,200,{ok:true,path:rel,applied:true})}
-if(action==='install_dependencies'){const result=await installDependencies(root);return send(res,result.exit_code===0?200:409,{ok:result.exit_code===0,...result})}
-if(action==='run_command'){const result=await runSandbox(root,input.argv,input.timeout_ms);return send(res,200,{ok:true,...result,stdout:redactSecrets(result.stdout),stderr:redactSecrets(result.stderr)})}
-if(action==='diff'){const result=await exec('git',['diff','--no-ext-diff','--'],{cwd:root,timeout:10000});const names=await exec('git',['status','--short'],{cwd:root,timeout:10000});return send(res,200,{ok:true,diff:result.stdout,status:names.stdout})}
-if(action==='changed_files'){const tracked=await exec('git',['diff','--name-only','HEAD'],{cwd:root,timeout:10000});const untracked=await exec('git',['ls-files','--others','--exclude-standard'],{cwd:root,timeout:10000});const paths=[...new Set([...tracked.stdout.split('\n'),...untracked.stdout.split('\n')].filter(Boolean))];if(paths.length>200)throw new Error('Too many changed files for one pull request');const files=[];for(const value of paths){const rel=safePath(value);if(sensitiveName(rel))throw new Error('Sensitive files cannot be published');const target=await ensureInside(root,rel);try{const stat=await fs.lstat(target);if(stat.isSymbolicLink()||!stat.isFile())throw new Error('Only regular files may be published');files.push({path:rel,deleted:false})}catch(error){if(error.code==='ENOENT')files.push({path:rel,deleted:true});else throw error}}return send(res,200,{ok:true,files})}
-return send(res,400,{ok:false,error:'Unsupported action'});
-}catch(error){return send(res,400,{ok:false,error:error instanceof Error?error.message:'Runner error'})}}
+async function handler(req,res){
+  const url=new URL(req.url||'/','http://localhost');
+  if(req.method==='GET'&&url.pathname==='/healthz'){
+    return send(res,200,{ok:true,service:'IZAKHONO CODE isolated runner',version:'1.0.0',docker_socket_required:true});
+  }
+  const expected=await token();
+  if(expected.length<32)return send(res,503,{ok:false,error:'Runner owner token is not configured securely'});
+  if(!equal(req.headers.authorization?.replace(/^Bearer\\s+/i,''),expected)){
+    return send(res,401,{ok:false,error:'Unauthorized'});
+  }
+  try{
+    if(req.method==='POST'&&url.pathname==='/v1/workspaces'){
+      const repo=String(req.headers['x-repository']||'');
+      const ref=String(req.headers['x-base-ref']||'main');
+      if(!/^[A-Za-z0-9_.-]+\\/[A-Za-z0-9_.-]+$/.test(repo))return send(res,400,{ok:false,error:'Invalid repository'});
+      const archive=await readBody(req);
+      const id=crypto.randomUUID();
+      const root=rootOf(id);
+      await fs.mkdir(root,{recursive:true,mode:0o777});
+      await extractArchive(root,archive);
+      await stripSensitiveFiles(root);
+      await fs.writeFile(path.join(root,'.izakhono-workspace.json'),JSON.stringify({repository:repo,base_ref:ref,created_at:new Date().toISOString()}));
+      await exec('git',['init','-q'],{cwd:root});
+      await exec('git',['add','-A'],{cwd:root});
+      await exec('git',['-c','user.name=IZAKHONO CODE','-c','user.email=code@izakhono.local','commit','-qm','Workspace baseline'],{cwd:root});
+      workspaces.set(id,{repository:repo,base_ref:ref});
+      return send(res,201,{ok:true,workspace_id:id});
+    }
+    if(req.method==='POST'&&url.pathname==='/v1/execute'){
+      const body=JSON.parse((await readBody(req)).toString('utf8'));
+      const workspaceId=String(body.workspace_id||'');
+      const root=rootOf(workspaceId);
+      await fs.access(root);
+      if(!workspaces.has(workspaceId)){
+        const meta=JSON.parse(await fs.readFile(path.join(root,'.izakhono-workspace.json'),'utf8'));
+        workspaces.set(workspaceId,meta);
+      }
+      const action=body.action;
+      const input=body.input||{};
+      if(action==='list_files'){
+        const raw=String(input.path||'src');
+        const rel=raw==='.'?'':safePath(raw);
+        const target=await ensureInside(root,rel);
+        const entries=await fs.readdir(target,{withFileTypes:true});
+        return send(res,200,{ok:true,files:entries.map(entry=>({name:entry.name,type:entry.isDirectory()?'directory':'file'}))});
+      }
+      if(action==='read_file'){
+        const rel=safePath(input.path);
+        if(sensitiveName(rel))return send(res,403,{ok:false,error:'Sensitive files are not available to the coding agent'});
+        const target=await ensureInside(root,rel);
+        const stat=await fs.stat(target);
+        if(!stat.isFile()||stat.size>1000000)return send(res,413,{ok:false,error:'File missing, not regular, or exceeds 1 MB'});
+        const bytes=await fs.readFile(target);
+        let content;
+        try{content=new TextDecoder('utf-8',{fatal:true}).decode(bytes);}
+        catch{return send(res,415,{ok:false,error:'Binary or non-UTF-8 files cannot be read or published'});}
+        const safe=redactSecrets(content);
+        return send(res,200,{ok:true,path:rel,content:safe,secret_detected:safe!==content});
+      }
+      if(action==='apply_patch'){
+        const rel=safePath(input.path);
+        if(sensitiveName(rel))throw new Error('Sensitive files cannot be edited');
+        await ensureInside(root,rel);
+        const patch=String(input.patch||'');
+        if(!patch||patch.length>100000)throw new Error('Patch exceeds policy');
+        if(/120000|160000|GIT binary patch/.test(patch))throw new Error('Symlink and submodule patches are not permitted');
+        const temp=path.join(os.tmpdir(),'izakhono-patch-'+crypto.randomUUID()+'.diff');
+        await fs.writeFile(temp,patch);
+        try{
+          const result=await exec('git',['apply','--whitespace=error',temp],{cwd:root,timeout:10000});
+          if(result.exit_code!==0)throw new Error('Patch rejected: '+result.stderr.slice(0,1000));
+        }finally{await fs.rm(temp,{force:true});}
+        return send(res,200,{ok:true,path:rel,applied:true});
+      }
+      if(action==='install_dependencies'){
+        const result=await installDependencies(root);
+        return send(res,result.exit_code===0?200:409,{ok:result.exit_code===0,...result});
+      }
+      if(action==='run_command'){
+        const result=await runSandbox(root,input.argv,input.timeout_ms);
+        return send(res,200,{ok:true,...result,stdout:redactSecrets(result.stdout),stderr:redactSecrets(result.stderr)});
+      }
+      if(action==='diff'){
+        const result=await exec('git',['diff','--no-ext-diff','--'],{cwd:root,timeout:10000});
+        const names=await exec('git',['status','--short'],{cwd:root,timeout:10000});
+        return send(res,200,{ok:true,diff:result.stdout,status:names.stdout});
+      }
+      if(action==='changed_files'){
+        const tracked=await exec('git',['diff','--name-only','HEAD'],{cwd:root,timeout:10000});
+        const untracked=await exec('git',['ls-files','--others','--exclude-standard'],{cwd:root,timeout:10000});
+        const paths=[...new Set([...tracked.stdout.split('\\n'),...untracked.stdout.split('\\n')].filter(Boolean))];
+        if(paths.length>200)throw new Error('Too many changed files for one pull request');
+        const files=[];
+        for(const value of paths){
+          const rel=safePath(value);
+          if(sensitiveName(rel))throw new Error('Sensitive files cannot be published');
+          const target=await ensureInside(root,rel);
+          try{
+            const stat=await fs.lstat(target);
+            if(stat.isSymbolicLink()||!stat.isFile())throw new Error('Only regular files may be published');
+            files.push({path:rel,deleted:false});
+          }catch(error){
+            if(error.code==='ENOENT')files.push({path:rel,deleted:true});
+            else throw error;
+          }
+        }
+        return send(res,200,{ok:true,files});
+      }
+      return send(res,400,{ok:false,error:'Unsupported action'});
+    }
+    return send(res,404,{ok:false,error:'Not found'});
+  }catch(error){
+    return send(res,400,{ok:false,error:error instanceof Error?error.message:'Runner error'});
+  }
+}
 await fs.mkdir(ROOT,{recursive:true});
 http.createServer((req,res)=>{handler(req,res).catch(e=>send(res,500,{ok:false,error:e.message}))}).listen(PORT,process.env.IZAKHONO_CODE_RUNNER_BIND_HOST||'0.0.0.0',()=>process.stdout.write('[IZAKHONO CODE] runner listening on '+(process.env.IZAKHONO_CODE_RUNNER_BIND_HOST||'0.0.0.0')+':'+PORT+'\n'));
