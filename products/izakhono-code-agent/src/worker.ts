@@ -289,7 +289,8 @@ async function route(req:Request,env:Env):Promise<Response>{
     if(match[2]==='pull-request'&&req.method==='POST'){
       try{return json({ok:true,pull_request:await createPullRequest(session,env)},201)}
       catch(error){return json({ok:false,error:error instanceof Error?error.message:'Pull request creation failed.'},409)}
-    }\n    if(match[2]==='diff'&&req.method==='GET'){
+    }
+    if(match[2]==='diff'&&req.method==='GET'){
       const result=await runnerCall(env,'/v1/execute',{workspace_id:session.workspace_id,action:'diff',input:{}});
       return json({ok:true,diff:result});
     }
