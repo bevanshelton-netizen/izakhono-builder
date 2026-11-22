@@ -11,10 +11,13 @@ const port=20000+Math.floor(Math.random()*20000);
 const token='test-runner-token-that-is-long-enough';
 const tokenFile=path.join(root,'token');
 await writeFile(tokenFile,token,{mode:0o600});
+let stdout='',stderr='';
 const child=spawn(process.execPath,[path.join(here,'server.mjs')],{
   env:{...process.env,PORT:String(port),IZAKHONO_CODE_WORKSPACE_ROOT:path.join(root,'workspaces'),IZAKHONO_CODE_RUNNER_TOKEN_FILE:tokenFile},
-  stdio:'ignore',
+  stdio:['ignore','pipe','pipe'],
 });
+child.stdout.on('data',chunk=>stdout+=chunk.toString());
+child.stderr.on('data',chunk=>stderr+=chunk.toString());
 const base='http://127.0.0.1:'+port;
 try{
   let ready=false;
@@ -22,7 +25,7 @@ try{
     try{const response=await fetch(base+'/healthz');if(response.ok){ready=true;break}}catch{}
     await new Promise(resolve=>setTimeout(resolve,100));
   }
-  assert.equal(ready,true,'runner health endpoint should become ready');
+  assert.equal(ready,true,'runner health endpoint should become ready. stdout='+stdout+' stderr='+stderr+' exit='+child.exitCode);
   const health=await fetch(base+'/healthz').then(r=>r.json());
   assert.equal(health.service,'IZAKHONO CODE isolated runner');
   const unauthorized=await fetch(base+'/v1/execute',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({workspace_id:'00000000-0000-4000-8000-000000000000',action:'diff',input:{}})});
