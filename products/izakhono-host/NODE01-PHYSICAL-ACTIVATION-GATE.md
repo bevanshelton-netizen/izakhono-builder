@@ -16,7 +16,7 @@ The execution-environment locator must be obtained from the authorised infrastru
 
 The existing `NODE01-ACTIVATE.sh` is not a read-only preflight. It invokes `NODE-PREFLIGHT.sh`, then `bootstrap-owned.sh`, then `NODE-COMPLIANCE.sh`, and finally checks the local health endpoint. The bootstrap can generate local secrets, build images and start services. Therefore, do not run `NODE01-ACTIVATE.sh` to discover host identity, test access, or establish readiness.
 
-Before any host-side operation, use only an independently reviewed, explicitly approved, demonstrably read-only discovery procedure. If none is available, stop and prepare one for review. Activation commands must be reviewed for their exact side effects and separately approved for the identified environment.
+A repository-side candidate read-only inventory script is provided at `NODE01-READONLY-PREFLIGHT.sh`. Review its exact contents and obtain the infrastructure owner's approval before running it on any host. It inventories local system and container-tool facts; it does not perform network probes, writes, builds, starts, secret generation or configuration changes. Its output is discovery evidence only. Activation commands must be reviewed for their exact side effects and separately approved for the identified environment.
 
 ## Runtime binding evidence
 
