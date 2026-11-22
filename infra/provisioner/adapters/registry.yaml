@@ -12,6 +12,9 @@ selection_policy:
   unavailable_action: block
 
 adapters:
+  tenant:
+    owned: izakhono-control
+    external: []
   payment:
     owned: izakhono-pay
     external: []
