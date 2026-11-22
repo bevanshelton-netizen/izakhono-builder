@@ -50,9 +50,11 @@ export async function authenticateDeploymentRequest({
   const audiences = typeof claims?.aud === "string" ? [claims.aud] : claims?.aud;
   if (!claims || claims.iss !== issuer || !Array.isArray(audiences) ||
       !audiences.includes(audience) || !Number.isInteger(claims.exp) ||
-      claims.exp <= nowSeconds || !nonEmpty(claims.sub) ||
-      !nonEmpty(claims.tenant_id) || !stringArray(claims.application_ids) ||
-      !stringArray(claims.environment_ids) || !stringArray(claims.scopes)) {
+      claims.exp <= nowSeconds || (claims.nbf !== undefined &&
+      (!Number.isInteger(claims.nbf) || claims.nbf > nowSeconds)) ||
+      !nonEmpty(claims.sub) || !nonEmpty(claims.tenant_id) ||
+      !stringArray(claims.application_ids) || !stringArray(claims.environment_ids) ||
+      !stringArray(claims.scopes)) {
     throw new DeploymentAuthorizationError("TOKEN_CLAIMS_INVALID", "Verified token claims do not grant a valid DEPLOY principal.");
   }
 
@@ -76,6 +78,9 @@ export async function authenticateDeploymentRequest({
 export function authorizeDeploymentAccess(principal, resource, action) {
   if (!principal || !trustedPrincipals.has(principal)) {
     throw new DeploymentAuthorizationError("PRINCIPAL_UNTRUSTED", "A verified server-side principal is required.");
+  }
+  if (principal.expiresAt <= Math.floor(Date.now() / 1000)) {
+    throw new DeploymentAuthorizationError("PRINCIPAL_EXPIRED", "The authenticated principal has expired.");
   }
   if (!resource || !nonEmpty(resource.tenantId) || !nonEmpty(resource.applicationId) ||
       !nonEmpty(resource.environmentId)) {
