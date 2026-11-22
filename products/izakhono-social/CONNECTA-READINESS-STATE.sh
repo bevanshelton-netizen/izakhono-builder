@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Fail-closed CONNECTA production readiness state machine.
-# Run on an authorized production/audit host. Evidence must be produced by
-# the actual runtime or an independent verifier; this script never infers it.
+# Fail-closed, provider-neutral CONNECTA production readiness state machine.
+# Evidence must come from the selected runtime or an independent verifier.
+# This script never changes DNS, EDGE/TLS, routing, or product metadata.
 
 EVIDENCE_ROOT="${CONNECTA_EVIDENCE_ROOT:-/var/lib/izakhono/evidence/connecta}"
 REPORT="${CONNECTA_READINESS_REPORT:-$EVIDENCE_ROOT/connecta-production-readiness.json}"
@@ -12,125 +12,93 @@ MAX_AGE_SECONDS="${CONNECTA_READINESS_MAX_AGE_SECONDS:-86400}"
 mkdir -p "$EVIDENCE_ROOT"
 chmod 700 "$EVIDENCE_ROOT"
 
-GATES=(
-  cluster-physical
-  connecta-local
-  failover
-  backup-restore
-  security
-  edge-tls
-  external-https
+python3 - "$EVIDENCE_ROOT" "$REPORT" "$MAX_AGE_SECONDS" <<'PY'
+import json, os, pathlib, sys, time
+
+root, report_path, max_age_raw = sys.argv[1:]
+max_age = int(max_age_raw)
+now = int(time.time())
+required = (
+    "runtime", "health", "persistence", "backup_restore",
+    "failover", "security", "edge_tls", "external_https",
 )
+checks = {}
+failures = []
+release_sha = runtime_id = runtime_provider = None
 
-FAILURES=()
-RESULTS=()
+for name in required:
+    path = pathlib.Path(root) / f"{name}.ok"
+    item = {"gate": name, "path": str(path), "status": "MISSING"}
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+        item.update({
+            "status": data.get("status", "INVALID"),
+            "evidence_source": data.get("evidence_source"),
+            "checked_at_epoch": data.get("checked_at_epoch"),
+        })
+        if data.get("status") != "PASS":
+            failures.append(f"not-pass:{name}")
+        source = data.get("evidence_source")
+        if not source or source in {"inferred", "topology", "ci-only", "repository-only", "simulated"}:
+            failures.append(f"untrusted-evidence-source:{name}")
+        checked = data.get("checked_at_epoch")
+        if not isinstance(checked, int) or isinstance(checked, bool):
+            failures.append(f"invalid-timestamp:{name}")
+        elif checked > now + 300:
+            failures.append(f"future-timestamp:{name}")
+        elif now - checked > max_age:
+            failures.append(f"stale-evidence:{name}")
+        sha = data.get("release_sha")
+        rid = data.get("runtime_id")
+        provider = data.get("runtime_provider")
+        if not isinstance(sha, str) or len(sha) != 40 or any(c not in "0123456789abcdef" for c in sha):
+            failures.append(f"invalid-release-sha:{name}")
+        if not isinstance(rid, str) or not rid.strip() or "NODE01" in rid.upper() or "PHYSICAL" in rid.lower():
+            failures.append(f"invalid-logical-runtime-id:{name}")
+        if not isinstance(provider, str) or not provider.strip():
+            failures.append(f"missing-runtime-provider:{name}")
+        if data.get("physical_hardware_required") is True:
+            failures.append(f"physical-hardware-dependency:{name}")
+        if release_sha is None and isinstance(sha, str): release_sha = sha
+        elif isinstance(sha, str) and sha != release_sha: failures.append(f"release-sha-mismatch:{name}")
+        if runtime_id is None and isinstance(rid, str): runtime_id = rid
+        elif isinstance(rid, str) and rid != runtime_id: failures.append(f"runtime-id-mismatch:{name}")
+        if runtime_provider is None and isinstance(provider, str): runtime_provider = provider
+        elif isinstance(provider, str) and provider != runtime_provider: failures.append(f"runtime-provider-mismatch:{name}")
+    except FileNotFoundError:
+        failures.append(f"missing:{name}")
+    except Exception as exc:
+        item["status"] = "INVALID"
+        item["error"] = str(exc)
+        failures.append(f"invalid-evidence:{name}")
+    checks[name] = item
 
-check_gate() {
-  local name="$1" file="$2" expected_schema="$3"
-  if [[ ! -f "$file" ]]; then
-    FAILURES+=("missing:$name")
-    RESULTS+=("$(python3 - "$name" <<'PY'
-import json,sys
-print(json.dumps({'gate':sys.argv[1],'status':'MISSING_EVIDENCE'},separators=(',',':')))
-PY
-)")
-    return
-  fi
-
-  if ! python3 - "$file" "$name" "$expected_schema" "$MAX_AGE_SECONDS" <<'PY'
-import json,sys,time
-path,name,schema,max_age=sys.argv[1:]
-max_age=int(max_age)
-try:
-    with open(path,encoding='utf-8') as f: d=json.load(f)
-except Exception as exc:
-    print(f'INVALID {name}: {exc}')
-    raise SystemExit(1)
-if d.get('schema') != schema:
-    print(f"INVALID {name}: schema={d.get('schema')!r} expected={schema!r}")
-    raise SystemExit(1)
-if d.get('status') != 'PASS':
-    print(f"NOT_PASS {name}: status={d.get('status')!r}")
-    raise SystemExit(1)
-if d.get('evidence_source') in (None,'','inferred','topology','ci-only','repository-only'):
-    print(f'INVALID {name}: evidence source is not independently identified')
-    raise SystemExit(1)
-try:
-    checked=int(d['checked_at_epoch'])
-except Exception:
-    print(f'INVALID {name}: checked_at_epoch is missing or invalid')
-    raise SystemExit(1)
-now=int(time.time())
-if checked > now + 300:
-    print(f'INVALID {name}: checked_at_epoch is in the future')
-    raise SystemExit(1)
-if now - checked > max_age:
-    print(f'STALE {name}: evidence age={now-checked}s max={max_age}s')
-    raise SystemExit(1)
-print('PASS')
-PY
-  then
-    FAILURES+=("failed:$name")
-    RESULTS+=("$(python3 - "$name" "$file" <<'PY'
-import json,sys
-with open(sys.argv[2],encoding='utf-8') as f: d=json.load(f)
-print(json.dumps({'gate':sys.argv[1],'status':d.get('status','INVALID'),'evidence_source':d.get('evidence_source'),'checked_at_epoch':d.get('checked_at_epoch')},separators=(',',':')))
-PY
-)")
-    return
-  fi
-
-  RESULTS+=("$(python3 - "$name" "$file" <<'PY'
-import json,sys
-with open(sys.argv[2],encoding='utf-8') as f: d=json.load(f)
-print(json.dumps({'gate':sys.argv[1],'status':d.get('status'),'evidence_source':d.get('evidence_source'),'checked_at_epoch':d.get('checked_at_epoch')},separators=(',',':')))
-PY
-)")
+status = "PRODUCTION_READY" if not failures else "NOT_READY"
+record = {
+    "schema": "izakhono.connecta.production-readiness.v2",
+    "checked_at_epoch": now,
+    "status": status,
+    "promotion_allowed": status == "PRODUCTION_READY",
+    "release_sha": release_sha,
+    "runtime_id": runtime_id,
+    "runtime_provider": runtime_provider,
+    "physical_hardware_required": False,
+    "failures": failures,
+    "gates": checks,
+    "evidence_source": "fail-closed-provider-neutral-gate",
+    "public_cutover_action": "NONE",
+    "evidence_max_age_seconds": max_age,
+    "note": "A passing report only validates fresh, consistent evidence. It does not perform or claim public promotion."
 }
-
-check_gate cluster-physical "$EVIDENCE_ROOT/cluster-physical.json" izakhono.connecta.gate.cluster-physical.v1
-check_gate connecta-local "$EVIDENCE_ROOT/connecta-local.json" izakhono.connecta.gate.local.v1
-check_gate failover "$EVIDENCE_ROOT/failover.json" izakhono.connecta.gate.failover.v1
-check_gate backup-restore "$EVIDENCE_ROOT/backup-restore.json" izakhono.connecta.gate.backup-restore.v1
-check_gate security "$EVIDENCE_ROOT/security.json" izakhono.connecta.gate.security.v1
-check_gate edge-tls "$EVIDENCE_ROOT/edge-tls.json" izakhono.connecta.gate.edge-tls.v1
-check_gate external-https "$EVIDENCE_ROOT/external-https.json" izakhono.connecta.gate.external-https.v1
-
-STATUS="PRODUCTION_READY"
-if (( ${#FAILURES[@]} > 0 )); then
-  STATUS="NOT_READY"
-fi
-
-python3 - "$REPORT" "$STATUS" "${FAILURES[*]-}" "${RESULTS[@]}" <<'PY'
-import json,os,sys,time
-report,status,failures=sys.argv[1:4]
-results=[json.loads(x) for x in sys.argv[4:]]
-record={
-  'schema':'izakhono.connecta.production-readiness.v1',
-  'checked_at_epoch':int(time.time()),
-  'status':status,
-  'promotion_allowed':status=='PRODUCTION_READY',
-  'failures':failures.split() if failures else [],
-  'gates':results,
-  'evidence_source':'fail-closed-gate-state-machine',
-  'public_cutover_action':'NONE',
-  'evidence_max_age_seconds':int(os.environ.get('CONNECTA_READINESS_MAX_AGE_SECONDS','86400')),
-  'note':'This report never changes DNS, EDGE/TLS, routing, or product metadata. A PRODUCTION_READY result only means every required evidence artifact passed validation and is fresh enough for the configured evidence window.'
-}
-tmp=report+'.tmp'
-with open(tmp,'w',encoding='utf-8') as f:
-    json.dump(record,f,indent=2,sort_keys=True)
-    f.write('\n')
-os.chmod(tmp,0o600)
-os.replace(tmp,report)
-print(json.dumps(record,indent=2,sort_keys=True))
+target = pathlib.Path(report_path)
+target.parent.mkdir(parents=True, exist_ok=True)
+tmp = target.with_suffix(target.suffix + ".tmp")
+tmp.write_text(json.dumps(record, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+os.chmod(tmp, 0o600)
+os.replace(tmp, target)
+print(json.dumps(record, indent=2, sort_keys=True))
+if status != "PRODUCTION_READY":
+    print("CONNECTA_PRODUCTION_READINESS=NOT_READY")
+    raise SystemExit(4)
+print("CONNECTA_PRODUCTION_READINESS=PRODUCTION_READY")
 PY
-
-if [[ "$STATUS" != "PRODUCTION_READY" ]]; then
-  echo "CONNECTA_PRODUCTION_READINESS=NOT_READY"
-  echo "EVIDENCE=$REPORT"
-  exit 4
-fi
-
-echo "CONNECTA_PRODUCTION_READINESS=PRODUCTION_READY"
-echo "EVIDENCE=$REPORT"
