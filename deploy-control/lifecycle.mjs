@@ -20,11 +20,12 @@ const gitSha = value => typeof value === "string" && /^[a-f0-9]{40,64}$/i.test(v
 function requireEvidence(ok, code, message) {
   if (!ok) throw new DeploymentPolicyError(code, message);
 }
-function validateEvidence(state, e) {
+function validateEvidence(state, e, current) {
   requireEvidence(e && typeof e === "object" && !Array.isArray(e), "EVIDENCE_REQUIRED", "Structured evidence is required.");
   switch (state) {
     case "VALIDATED":
       requireEvidence(gitSha(e.source_commit), "SOURCE_COMMIT_INVALID", "A full Git commit SHA is required.");
+      requireEvidence(e.source_commit.toLowerCase() === current.source_commit.toLowerCase(), "SOURCE_COMMIT_MISMATCH", "Validated source commit must match the deployment source commit.");
       requireEvidence(e.policy_passed === true, "POLICY_NOT_PASSED", "Policy checks must pass before building."); break;
     case "BUILT":
       requireEvidence(sha256(e.image_digest), "IMAGE_DIGEST_INVALID", "An immutable sha256 image digest is required.");
@@ -61,7 +62,7 @@ export function transitionDeployment(current, nextState, evidence, { actor, at, 
     "Actor, timestamp and idempotency key are required.");
   requireEvidence(nextState !== "FAILED" && NEXT[current.state] === nextState, "INVALID_TRANSITION",
     "Transition from " + current.state + " to " + nextState + " is not permitted.");
-  validateEvidence(nextState, evidence);
+  validateEvidence(nextState, evidence, current);
   if (nextState === "RELEASED") requireEvidence(evidence.image_digest === current.evidence.image_digest,
     "DIGEST_MISMATCH", "Released image digest must match the tested build artifact.");
   const event = Object.freeze({ from: current.state, to: nextState, actor, at,
