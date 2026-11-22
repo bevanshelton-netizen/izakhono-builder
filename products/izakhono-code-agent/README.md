@@ -17,6 +17,7 @@ Set these using Wrangler secrets; never commit them:
 - `CODE_AGENT_SECRET`: owner API/UI access key.
 - `MODEL_URL`: HTTPS OpenAI-compatible base URL ending before `/chat/completions`.
 - `MODEL_NAME`: model identifier (e.g. an owner-approved Qwen Coder deployment).
+- `MODEL_PROTOCOL`: `ollama-chat` for native Ollama `/api/chat`, or `openai-chat-completions` for OpenAI-compatible `/chat/completions` (default).
 - `MODEL_API_KEY`: optional model credential.
 - `GITHUB_TOKEN`: fine-grained token with read/write access to allowlisted repositories and pull requests.
 - `WORKSPACE_RUNNER_URL`: HTTPS URL for the authorised runner.
