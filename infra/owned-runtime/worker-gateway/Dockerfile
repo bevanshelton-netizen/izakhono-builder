@@ -1,7 +1,7 @@
 FROM node:22-alpine
 ENV NODE_ENV=production PORT=8790 HOST=0.0.0.0
 WORKDIR /app
-COPY package.json package-lock.json* ./
+COPY package.json ./
 RUN npm install --omit=dev --ignore-scripts
 COPY server.mjs ./
 USER node
