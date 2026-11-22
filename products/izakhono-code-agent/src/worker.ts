@@ -110,7 +110,7 @@ async function modelTurn(env:Env,messages:Array<{role:string;content:string}>):P
   const protocol=env.MODEL_PROTOCOL||'openai-chat-completions';
   const nativeOllama=protocol==='ollama-chat';
   if(!nativeOllama&&protocol!=='openai-chat-completions')throw new Error('Unsupported model protocol.');
-  const endpoint=url.toString().replace(/\\/$/,'')+(nativeOllama?'/api/chat':'/chat/completions');
+  const endpoint=url.toString().replace(/\/+$/,'')+(nativeOllama?'/api/chat':'/chat/completions');
   const payload=nativeOllama
     ? {model:env.MODEL_NAME,messages,stream:false,format:'json',options:{temperature:0.1,num_predict:3000}}
     : {model:env.MODEL_NAME,messages,temperature:0.1,max_tokens:3000,response_format:{type:'json_object'}};
