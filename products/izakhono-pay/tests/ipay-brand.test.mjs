@@ -20,7 +20,7 @@ test('merchant tariffs are explicitly non-binding proposals', async () => {
   const html = await read('index.html');
   const tariff = await read('docs/I-PAY-COMMERCIAL-TARIFF-PROPOSAL-v1.md');
   assert.match(html, /Proposed tariff — not yet an active offer/);
-  assert.match(html, /not a binding quote or currently available merchant tariff/);
+  assert.match(html, /not binding quotes or currently available merchant tariffs/);
   assert.match(tariff, /PROPOSAL ONLY — NOT ACTIVE OR BINDING/);
   assert.match(tariff, /Activation gates/);
 });
