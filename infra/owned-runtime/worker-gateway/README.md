@@ -14,6 +14,12 @@ Standalone, provider-neutral worker ingress for the IZAKHONO owned runtime. It i
 
 All worker routes require an opaque bearer token. Only its SHA-256 digest is stored. Authentication resolves tenant, worker identity and capabilities server-side. Database operations set a transaction-local tenant context and RLS policies independently enforce tenant scope. Claims use `FOR UPDATE SKIP LOCKED`; lease tokens are random, hashed at rest, and expire. Retries are bounded by each job's `max_attempts`.
 
+## Security boundary and current limitation
+
+The current RLS policies use the transaction-local PostgreSQL setting `app.tenant_id` as their tenant selector. This protects against accidental unscoped queries and ordinary gateway application mistakes when the gateway sets the context correctly. It is **not** a cryptographically trusted identity boundary: a holder of the runtime database login can set or replace that custom setting and select another tenant's context. The present PostgreSQL CI test verifies isolation under a correctly supplied context; it does not prove resistance to a compromised runtime database credential.
+
+Accordingly, this version is **not approved for production use with mutually untrusted tenants**. Before production promotion, replace the caller-writable GUC trust model with a database-verifiable tenant identity/context mechanism (or tenant-bound database identities), and add a PostgreSQL test that attempts tenant-context forgery using only the actual restricted runtime login and proves it is rejected. Do not treat application-side tenant checks or a signed value that the database does not independently verify as sufficient.
+
 ## Isolation from existing services
 
 This service uses new `owned_worker_*` tables only. It does not read, update, claim, or replay `public.iz_worker_jobs`. It does not call or replace any Supabase Edge Function. No payment, identity, publishing, customer-message, provisioning or external-spend adapter is included.
@@ -36,8 +42,9 @@ The migration creates a NOLOGIN group role. An operator must provision a dedicat
 1. Review and apply `supabase/migrations/20261122120000_owned_worker_gateway_v1.sql` only through the approved database change process.
 2. Provision the restricted DB login and seed a tenant-scoped worker credential using a secure operator process. The plaintext token is shown only once to the operator; only its digest is stored.
 3. Run unit and integration tests against a disposable tenant/test database.
-4. Verify tenant A cannot claim, renew, complete or read tenant B jobs; verify revoked/expired credentials fail.
-5. Verify retry limits, lease expiry, duplicate claims and audit events.
-6. Deploy to an authorized IZAKHONO NODE after host identity, capacity and runner access are verified.
+4. Replace the caller-writable tenant context as described above; prove tenant-context forgery is rejected by PostgreSQL using the restricted runtime login.
+5. Verify tenant A cannot claim, renew, complete or read tenant B jobs; verify revoked/expired credentials fail.
+6. Verify retry limits, lease expiry, duplicate claims and audit events.
+7. Deploy to an authorized IZAKHONO NODE only after the security gate, host identity, capacity and runner access are verified.
 
 No deployment is performed by this repository change. NODE01 remains a logical runtime identity until a real authorized node reports health evidence.
