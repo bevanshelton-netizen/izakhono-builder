@@ -138,3 +138,24 @@ The owner decision record must name the accountable service owners, approved aud
 8. Only then proceed to the separately gated PostgreSQL transaction/persistence implementation.
 
 No implementation step in this section authorizes a production migration, deployment, secret configuration, HOST activation, NODE01 bootstrap or DNS cutover.
+
+## 12. Creator consumer and signing-key trust findings
+
+A source inspection of `products/izakhono-creator/src/fortress-cinematic-gateway.ts`, `products/izakhono-creator/src/index.ts`, and `products/izakhono-creator/wrangler.jsonc` establishes the current Creator consumer pattern:
+
+- Creator verifies the HS256 signature locally using `FORTRESS_SESSION_HMAC_SECRET`, then checks issuer, configured Creator audience, subject, tenant, role, active state, JTI and time bounds.
+- Creator subsequently calls the `FORTRESS_IDENTITY` service binding at `/api/fortress/session`. It compares the live introspected principal ID, tenant and role with the token and uses the live identity response expiry.
+- The Creator Worker configuration declares a service binding named `FORTRESS_IDENTITY` targeting `izakhono-fortress-identity`. This is a Creator deployment binding, not evidence that a DEPLOY runtime has an approved equivalent binding.
+- The current integration therefore relies on a shared HMAC verification secret being available to both issuer and Creator consumer, in addition to the private live-session service binding. The inspected source does not establish an independently scoped DEPLOY signing-key trust arrangement.
+
+These findings sharpen, but do not resolve, the DEPLOY signing-key decision. Copying the current HMAC secret into DEPLOY would expand the set of systems capable of minting FORTRESS tokens if that secret is compromised. Reusing Creator's service binding or its audience would also couple DEPLOY authorization to the Creator trust boundary. Neither is approved by this contract.
+
+Before DEPLOY integration, the identity and runtime owners must select and document one explicit trust model:
+
+1. **Asymmetric issuer verification:** FORTRESS signs with a protected private key and publishes/serves a controlled public-key set (for example, JWKS) to DEPLOY. Key IDs, rotation, cache lifetime, revocation and algorithm allowlists must be specified. DEPLOY receives no signing private key.
+2. **Private identity-mediated verification/exchange:** DEPLOY sends the presented credential over an approved private service binding; FORTRESS validates signature, audience, live session and entitlements, then returns a narrowly scoped, authenticated DEPLOY principal result. The binding's caller authentication, request audience, response integrity, timeout and outage behavior must be specified. The response must be bound to the exact token/session and requested DEPLOY audience.
+3. **Another owner-approved key-management design:** document its threat model, key custody, separation of issuer and verifier privileges, rotation and emergency revocation before implementation.
+
+The owners must also confirm whether the existing Creator HMAC key is already shared with other consumers and define a migration/rotation plan that preserves Creator sessions. Do not rotate or replace existing secrets as part of this DEPLOY design task.
+
+**Acceptance condition:** DEPLOY's verifier must not be considered production-ready until its trust model and private live-session path are approved, implemented in the actual DEPLOY runtime, and tested for wrong audience, unknown key/key ID, signature failure, revoked JTI, tenant mismatch, entitlement revocation, verifier outage and key rotation. The current Creator integration is evidence of an existing pattern only; it is not authorization to copy that pattern into DEPLOY.
