@@ -30,6 +30,7 @@ jobs:
           npm run code-agent:test
           npm run code-agent:typecheck
           npm run code-agent:runner-check
+          npm run code-agent:dry-run
           docker compose -f products/izakhono-code-agent/runner/docker-compose.yml config >/tmp/izakhono-code-runner-compose.yml
 
       - name: Validate Affiliate Engine
