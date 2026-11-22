@@ -23,6 +23,21 @@ jobs:
       - name: Validate browser JavaScript syntax
         run: node --check products/izakhono-connect/app.js
 
+      - name: Validate all versioned browser modules
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          modules=(products/izakhono-connect/connect[0-9][0-9][0-9].js)
+          if (("${#modules[@]}" == 0)); then
+            echo 'No versioned CONNECT browser modules were found.'
+            exit 1
+          fi
+          for module in "${modules[@]}"; do
+            echo "Checking ${module}"
+            node --check "${module}"
+          done
+
       - name: Validate mobile package JSON
         run: node -e "JSON.parse(require('fs').readFileSync('products/izakhono-connect/mobile/package.json','utf8')); console.log('mobile package.json OK')"
 
