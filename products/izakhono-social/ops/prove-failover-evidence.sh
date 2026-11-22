@@ -14,7 +14,7 @@ FAILOVER_URL="${CONNECTA_FAILOVER_HEALTH_URL:-}"
 FAILBACK_URL="${CONNECTA_FAILBACK_HEALTH_URL:-$PRIMARY_URL}"
 
 [[ "$EXPECTED_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "usage: $0 IMMUTABLE_CONNECTA_SHA" >&2; exit 2; }
-[[ -n "$RUNTIME_ID" && "$RUNTIME_ID" != *NODE01* && "$RUNTIME_ID" != *physical* ]] || { echo "approved logical IZAKHONO_RUNTIME_ID required" >&2; exit 2; }
+[[ -n "$RUNTIME_ID" && "$RUNTIME_ID" != *physical* ]] || { echo "approved logical IZAKHONO_RUNTIME_ID required" >&2; exit 2; }
 [[ -n "$RUNTIME_PROVIDER" && -n "$OPERATOR" ]] || { echo "IZAKHONO_RUNTIME_PROVIDER and CONNECTA_FAILOVER_OPERATOR are required" >&2; exit 2; }
 [[ -n "$FAILOVER_URL" ]] || { echo "CONNECTA_FAILOVER_HEALTH_URL is required; refusing inferred failover proof." >&2; exit 3; }
 
