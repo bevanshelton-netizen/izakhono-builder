@@ -42,3 +42,16 @@ test("failure is auditable and terminal in this lifecycle", () => {
   assert.throws(() => move(failed, "VALIDATED", { source_commit: commit, policy_passed: true }, 2),
     e => e.code === "INVALID_TRANSITION");
 });
+
+test("rejects validation evidence for a different source commit", () => {
+  const d = base();
+  assert.throws(
+    () => move(d, "VALIDATED", { source_commit: "c".repeat(40), policy_passed: true }, 1),
+    e => e instanceof DeploymentPolicyError && e.code === "SOURCE_COMMIT_MISMATCH"
+  );
+});
+test("source commit comparison is case-insensitive but preserves the recorded source", () => {
+  const d = base();
+  const validated = move(d, "VALIDATED", { source_commit: commit.toUpperCase(), policy_passed: true }, 1);
+  assert.equal(validated.source_commit, commit);
+});
