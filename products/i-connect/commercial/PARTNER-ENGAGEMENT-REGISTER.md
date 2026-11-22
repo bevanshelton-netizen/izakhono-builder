@@ -7,13 +7,13 @@
 
 ## Active partner engagement
 
-| Partner | Contact channel | Previous position | Latest action | Status | Next action |
+| Partner | Contact channel | Previous position | Latest action / response | Status | Next action |
 |---|---|---|---|---|---|
-| MTN Group / MTN South Africa | Group.CorporateAffairs@mtn.com | 6 Nov 2026 routing request for I-CONNECT wholesale/MVNO hosting and connectivity evaluation; earlier digital-services proposal sent 26 Sep | Follow-up sent 22 Nov 2026 requesting routing to MTN Wholesale, MVNO/MVNE or Enterprise Connectivity and relevant SME digital-services owners | Awaiting response; no appointment or partnership claimed | Obtain named owner; request discovery; complete wholesale/MVNE due diligence only after routing |
+| MTN Group / MTN South Africa | Group.CorporateAffairs@mtn.com | 6 Nov 2026 routing request for I-CONNECT wholesale/MVNO hosting and connectivity evaluation; earlier digital-services proposal sent 26 Sep | Follow-up sent 22 Nov 2026 requesting routing to MTN Wholesale, MVNO/MVNE or Enterprise Connectivity and relevant SME digital-services owners | Awaiting substantive response; no appointment or partnership claimed | Obtain named owner; request discovery; complete wholesale/MVNE due diligence only after routing |
 | Telkom Business | business@telkom.co.za | SME and digital-services 90-day pilot proposal sent 26 Sep | Follow-up sent 22 Nov 2026 requesting confirmation of receipt and routing to partnerships/digital-services owner | Awaiting response; no appointment or partnership claimed | Obtain named owner; propose discovery and define pilot scope |
 | FNB Merchant Services | corpescalations@fnb.co.za | Merchant acquiring / platform enquiry acknowledged 16 Nov 2026 under case CAS-5905715-D9D6X5; acknowledgement supplied escalation address | Escalation follow-up sent 22 Nov 2026 requesting case owner, onboarding requirements and timeline | Awaiting response; no acquiring approval claimed | Track case; provide requested KYC/business/technical material through official channel |
 | Paystack | hello@paystack.com | Partnership enquiry received attention; Paystack scheduled an introductory call for 30 Sep 2026 at 13:00 SAST | Follow-up sent 22 Nov 2026 requesting confirmation of discussion outcome/current owner and next step | Awaiting response; call outcome not verified in accessible correspondence | Confirm relationship status; if appropriate schedule a fresh discovery and select one low-risk pilot |
-| Absa | absa@absa.co.za | Merchant Service Support redirected the fintech/commercial payments proposal to this address on 28 Sep 2026 | Follow-up sent 22 Nov 2026 requesting routing to fintech/innovation, commercial payments/API or Business Banking owner | Awaiting response; no partnership or approval claimed | Obtain named owner; request discovery; use NDA before proprietary FORTRESS disclosure |
+| Absa | absa@absa.co.za | Merchant Service Support redirected the fintech/commercial payments proposal to this address on 28 Sep 2026 | Follow-up sent 22 Nov 2026; Absa acknowledged receipt, created reference **C-78218334**, and stated the request was forwarded to a consultant | Acknowledged and routed; consultant response and relevant business/payments owner still pending. No partnership or approval claimed | Track reference C-78218334; request named consultant and correct fintech/commercial payments/API or Business Banking owner; use NDA before proprietary FORTRESS disclosure |
 
 ## Commercial engagement rules
 
@@ -45,4 +45,6 @@
 - [I-CONNECT commercial market-entry PR #740](https://github.com/bevanshelton-netizen/izakhono-builder/pull/740)
 - [IZAKHONO corporate operating model PR #737](https://github.com/bevanshelton-netizen/izakhono-builder/pull/737)
 - [I-PAY customer launch PR #725](https://github.com/bevanshelton-netizen/izakhono-builder/pull/725)
-
+- [Open Economy execution playbook](OPEN-ECONOMY-EXECUTION-PLAYBOOK.md)
+- [Partner readiness and integration matrix](PARTNER-READINESS-AND-INTEGRATION-MATRIX.md)
+- [Regulatory, privacy and customer controls register](REGULATORY-PRIVACY-AND-CUSTOMER-CONTROLS-REGISTER.md)
