@@ -13,6 +13,17 @@ The existing implementation points are:
 - `infra/provisioner/idempotency_tenant_scope_test.py`: tenant-scoped idempotency invariant.
 - `migrations/0010_idempotency_claims.sql`: existing idempotency-claim contract. Its actual database/runtime ownership must be verified before reuse; do not assume it is the PostgreSQL Runtime Fabric store.
 
+## Implemented authorization boundary (2026-11-22)
+
+- `deploy-control/authorization.mjs` requires a bearer token and delegates cryptographic token verification to an injected trusted IZAKHONO ID/JWT verifier.
+- It independently checks issuer, audience, expiry, subject, tenant, application, environment and scope claims before minting a request-scoped principal.
+- A private `WeakSet` prevents callers from fabricating a principal object by copying its fields.
+- `authorizeDeploymentAccess` enforces exact tenant, application and environment scope and distinct `deploy:read`, `deploy:write` and `deploy:approve` permissions. Unknown actions fail closed.
+- `authorization.test.mjs` covers forged principals, token failures, expiry, issuer/audience mismatch, missing claims, cross-tenant/application/environment access and action-scope separation.
+- DEPLOY lifecycle CI now runs these authorization tests.
+
+**Boundary:** this is a tested authorization policy module, not a completed authenticated API integration. No production identity verifier is wired by this module itself. The server must inject the approved IZAKHONO ID verifier; browser-supplied claims or tenant IDs must never be treated as authority. No persistence operation is yet wired through this guard.
+
 ## Schema ownership investigation (2026-11-22)
 
 The repository inspection does **not** establish an authoritative, versioned PostgreSQL migration owner for Runtime Fabric:
@@ -42,7 +53,7 @@ The Runtime Fabric event store is also not yet a DEPLOY audit ledger: its event 
 2. Extend the existing Runtime Fabric store contract, not create another deployment database, to persist DEPLOY's full immutable record and event evidence.
 3. Add a transaction method that uses one connection and transaction to lock the deployment row, claim `(tenant_id, deployment_id, idempotency_key)`, compare the canonical request hash, apply the lifecycle policy, and append the attributable audit event.
 4. Reject key reuse with a different request body; return the prior result for an exact replay.
-5. Enforce tenant/application/environment authorization from a verified authenticated principal before reading or mutating any record. The existing business-engine `dbFetch` service-role helper is not end-user authorization and must not be exposed as a browser-facing control-plane API.
+5. Wire the verified IZAKHONO ID token verifier into the server API and call the authorization guard before any record read or mutation. The existing business-engine `dbFetch` service-role helper is not end-user authorization and must not be exposed as a browser-facing control-plane API.
 6. Reject secret-bearing audit/evidence fields and store secret references only.
 7. Add PostgreSQL integration tests for transaction rollback, exact replay, conflicting replay, cross-tenant isolation, authorization failure, immutable audit, and concurrent claims. Mock-only cursor tests are not sufficient for these guarantees.
 8. Keep the management API read-only until the transaction, authorization, isolation, and audit tests pass.
