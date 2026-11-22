@@ -358,3 +358,15 @@ The GitHub connector reports code-search indexing unavailable (`is_code_search_i
 **Current conclusion:** the authoritative migration source remains unidentified. The next required input is the exact repository, deployment artifact store, or controlled backup location that owns the complete SQL histories for I-CONNECT and IZAKHONO WebStart, together with read access. Once located, recover the full histories, checksum them, map migration versions to commits, reconcile both live ledgers, and establish clean replay in isolated non-production projects.
 
 No migration files were reconstructed, no database writes/DDL or data changes were performed, and no deployment or production changes were made as part of this follow-up.
+
+
+## 15. Communications CI syntax-coverage improvement — 2026-11-22
+
+The existing `.github/workflows/izakhono-connect-ci.yml` was inspected. Its browser JavaScript syntax step checked only `products/izakhono-connect/app.js`, despite the product loading separately numbered `connectNNN.js` modules.
+
+The workflow now includes a fail-closed Bash step that:
+- discovers all files matching `products/izakhono-connect/connect[0-9][0-9][0-9].js`;
+- fails if no versioned modules are found; and
+- runs `node --check` on every discovered module.
+
+This is a CI configuration change only. The workflow has been committed but **has not yet been observed passing in GitHub Actions**; no test pass is claimed. It adds syntax coverage, not runtime, browser, RLS, realtime, WebRTC, push-delivery or security integration coverage. Those remain separate validation gates.
