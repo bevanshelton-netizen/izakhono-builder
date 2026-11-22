@@ -43,7 +43,8 @@ CREATE TABLE IF NOT EXISTS public.owned_worker_jobs (
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now(),
   completed_at timestamptz,
-  CONSTRAINT owned_worker_jobs_idempotency_unique UNIQUE (tenant_id, idempotency_key)
+  CONSTRAINT owned_worker_jobs_idempotency_unique UNIQUE (tenant_id, idempotency_key),
+  CONSTRAINT owned_worker_jobs_tenant_id_unique UNIQUE (tenant_id, id)
 );
 CREATE INDEX IF NOT EXISTS owned_worker_jobs_claim_idx
   ON public.owned_worker_jobs (tenant_id, worker_key, status, not_before, priority DESC, created_at);
@@ -53,7 +54,9 @@ CREATE INDEX IF NOT EXISTS owned_worker_jobs_lease_idx
 CREATE TABLE IF NOT EXISTS public.owned_worker_events (
   id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   tenant_id uuid NOT NULL,
-  job_id uuid NOT NULL REFERENCES public.owned_worker_jobs(id) ON DELETE RESTRICT,
+  job_id uuid NOT NULL,
+  CONSTRAINT owned_worker_events_job_tenant_fk FOREIGN KEY (tenant_id, job_id)
+    REFERENCES public.owned_worker_jobs(tenant_id, id) ON DELETE RESTRICT,
   worker_key text NOT NULL,
   event_type text NOT NULL,
   detail jsonb NOT NULL DEFAULT '{}'::jsonb,
