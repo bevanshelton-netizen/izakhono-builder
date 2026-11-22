@@ -51,8 +51,8 @@ test('device workspace response applies a restrictive same-origin security polic
   const router = await readFile(new URL('../src/index.ts', import.meta.url), 'utf8');
   const route = router.split("path==='/devices'")[1]?.split("if(req.method")[0] || '';
   assert.match(route, /content-security-policy/);
-  assert.match(route, /default-src 'none'/);
-  assert.match(route, /connect-src 'self'/);\n  assert.match(route, /renderDeviceDashboard\(nonce\)/);\n  assert.match(route, /script-src 'nonce-/);
+  assert.match(router, /default-src 'none'/);
+  assert.match(route, /connect-src 'self'/);\n  assert.match(route, /renderDeviceDashboard\(nonce\)/);\n  assert.match(router, /script-src 'nonce-/);
   assert.match(route, /object-src 'none'/);
   assert.match(route, /frame-ancestors 'none'/);
   assert.match(route, /referrer-policy':'no-referrer'/);
