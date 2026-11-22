@@ -25,7 +25,7 @@ function checkout(title:string,amount:number,currency:string,token:string){retur
 export default {async fetch(req:Request,env:Env):Promise<Response>{
  const url=new URL(req.url),path=url.pathname;
  if(req.method==='GET'&&path==='/health')return json({ok:true,service:'izakhono-pay-v1',ownedFirst:true,providerReplaceable:true,regulatedPartnerBoundary:true});
- if(req.method==='GET'&&path==='/devices')return new Response(renderDeviceDashboard(),{headers:{'content-type':'text/html; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff'}});
+ if(req.method==='GET'&&path==='/devices')return new Response(renderDeviceDashboard(),{headers:{'content-type':'text/html; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff','referrer-policy':'no-referrer','permissions-policy':'camera=(), microphone=(), geolocation=()','content-security-policy':\"default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self'; img-src 'self' data:; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'\"}});
  if(req.method==='GET'&&path==='/device.webmanifest')return json(DEVICE_MANIFEST,200,{'content-type':'application/manifest+json; charset=utf-8'});
  if(req.method==='GET'&&path==='/device-icon.svg')return new Response(DEVICE_ICON,{headers:{'content-type':'image/svg+xml; charset=utf-8','cache-control':'public, max-age=86400','x-content-type-options':'nosniff'}});
  if(req.method==='GET'&&path==='/device-sw.js')return new Response(DEVICE_SERVICE_WORKER,{headers:{'content-type':'application/javascript; charset=utf-8','cache-control':'no-cache','service-worker-allowed':'/','x-content-type-options':'nosniff'}});

@@ -45,3 +45,16 @@ test('merchant API key management is session-scoped and stores hashes only', asy
   assert.match(migration, /key_hash TEXT NOT NULL UNIQUE/);
   assert.match(migration, /FOREIGN KEY \(merchant_id\) REFERENCES pay_merchants\(id\)/);
 });
+
+
+test('device workspace response applies a restrictive same-origin security policy', async () => {
+  const router = await readFile(new URL('../src/index.ts', import.meta.url), 'utf8');
+  const route = router.split("path==='/devices'")[1]?.split("if(req.method")[0] || '';
+  assert.match(route, /content-security-policy/);
+  assert.match(route, /default-src 'self'/);
+  assert.match(route, /connect-src 'self'/);
+  assert.match(route, /object-src 'none'/);
+  assert.match(route, /frame-ancestors 'none'/);
+  assert.match(route, /referrer-policy':'no-referrer'/);
+  assert.match(route, /camera=\(\), microphone=\(\), geolocation=\(\)/);
+});
