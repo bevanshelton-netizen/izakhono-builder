@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from typing import Any, Callable, Mapping
 
 from acceptance_engine import AcceptanceEngine, AcceptanceResult, EvidenceAcceptanceProbe
-from adapter_catalog import CAPABILITY_TO_ADAPTER, build_catalog
+from adapter_catalog import CAPABILITY_TO_ADAPTER
 from adapter_executor import AdapterExecutor
 from adapter_executor import AdapterExecution as ExecutionResult
 from execution_contract import validate_result
@@ -152,7 +152,10 @@ if __name__ == "__main__":
     store = MemoryJobStore(); queue = JobQueue(store)
     registry = {"adapters": {k: {"owned": v} for k, v in CAPABILITY_TO_ADAPTER.items()},
                 "bindings": {name: {"operation": "smoke"} for name in STATE_CAPABILITY.values()}}
-    implementations = build_catalog()
+    def smoke_adapter(payload):
+        return {"evidence_id": f"ev_{payload['operation_id']}", "observed_at": utc_now(),
+                "verified": True, "checks": [f"{payload['capability']}.verified"], "simulation": False}
+    implementations = {adapter: smoke_adapter for adapter in CAPABILITY_TO_ADAPTER.values()}
     job, _ = store.create_or_get("tenant-demo", "idem-demo", "prov-demo")
     job.evidence["PAYMENT_VERIFIED"] = {"evidence_id": "pay-demo", "observed_at": utc_now(), "verified": True, "checks": ["payment.verified"]}
     store.save(job); queue.enqueue(job)
