@@ -47,7 +47,8 @@ async function equalSecret(a:string,b:string):Promise<boolean>{
   return diff===0;
 }
 async function authorized(req:Request,env:Env):Promise<boolean>{
-  return equalSecret(req.headers.get('x-code-agent-secret')||'',env.CODE_AGENT_SECRET||'');
+  const configured=env.CODE_AGENT_SECRET||'';
+  return configured.length>=32&&equalSecret(req.headers.get('x-code-agent-secret')||'',configured);
 }
 async function bodyJson(req:Request,env:Env):Promise<any>{
   const limit=Math.min(Number(env.MAX_REQUEST_BYTES||200000),1_000_000);
@@ -62,7 +63,7 @@ function validateRepo(repo:string,env:Env):void{
   if(!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repo)||!allowedRepos(env).includes(repo))throw new Error('Repository is not in the owner allowlist.');
 }
 function runnerConfig(env:Env):{url:string;token:string}{
-  if(!env.WORKSPACE_RUNNER_URL||!env.WORKSPACE_RUNNER_TOKEN)throw new Error('An authorised isolated workspace runner is not registered.');
+  if(!env.WORKSPACE_RUNNER_URL||!env.WORKSPACE_RUNNER_TOKEN||env.WORKSPACE_RUNNER_TOKEN.length<32)throw new Error('An authorised isolated workspace runner is not registered with a strong token.');
   const url=new URL(env.WORKSPACE_RUNNER_URL);
   if(url.protocol!=='https:' && !['localhost','127.0.0.1'].includes(url.hostname))throw new Error('Workspace runner must use HTTPS.');
   return {url:url.toString().replace(/\/$/,''),token:env.WORKSPACE_RUNNER_TOKEN};
@@ -247,8 +248,9 @@ async function route(req:Request,env:Env):Promise<Response>{
       const body=await bodyJson(req,env);
       const objective=String(body.objective||'').trim();
       if(!objective||objective.length>10000)return json({ok:false,error:'Turn objective must be 1–10000 characters.'},400);
+      const lock=await env.DB.prepare("UPDATE code_agent_sessions SET status='running',updated_at=CURRENT_TIMESTAMP WHERE id=? AND status!='running'").bind(session.id).run() as {meta?:{changes?:number}};
+      if(lock.meta?.changes===0)return json({ok:false,error:'This session already has an active agent turn.'},409);
       await addMessage(env,session.id,'user',objective);
-      await env.DB.prepare("UPDATE code_agent_sessions SET status='running',updated_at=CURRENT_TIMESTAMP WHERE id=?").bind(session.id).run();
       try{
         const result=await runTurn(session,objective,env);
         await env.DB.prepare("UPDATE code_agent_sessions SET status=?,updated_at=CURRENT_TIMESTAMP WHERE id=?").bind(result.complete?'ready':'blocked',session.id).run();
