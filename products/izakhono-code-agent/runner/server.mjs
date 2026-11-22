@@ -25,7 +25,7 @@ function sensitiveName(name){
   if(['.npmrc','.pypirc','.netrc','credentials.json','service-account.json','id_rsa','id_ed25519'].includes(base))return true;
   if(base==='.env'||(base.startsWith('.env.')&&!['.env.example','.env.sample','.env.template'].includes(base)))return true;
   if(['.ssh','.aws','.gnupg'].includes(base))return true;
-  return /\\.(?:pem|key|p12|pfx|keystore|jks)$/i.test(base);
+  return /\.(?:pem|key|p12|pfx|keystore|jks)$/i.test(base);
 }
 async function stripSensitiveFiles(root,dir=root){
   for(const entry of await fs.readdir(dir,{withFileTypes:true})){
@@ -37,9 +37,9 @@ async function stripSensitiveFiles(root,dir=root){
 }
 function redactSecrets(value){
   return String(value)
-    .replace(/-----BEGIN [A-Z ]*PRIVATE KEY-----[\\s\\S]*?-----END [A-Z ]*PRIVATE KEY-----/g,'[REDACTED PRIVATE KEY]')
-    .replace(/\\b(?:AKIA[0-9A-Z]{16}|gh[pousr]_[A-Za-z0-9_]{20,}|github_pat_[A-Za-z0-9_]{20,}|sk-[A-Za-z0-9]{20,})\\b/g,'[REDACTED TOKEN]')
-    .replace(/((?:api[_-]?key|client[_-]?secret|access[_-]?token|password|passwd|secret)\\s*[:=]\\s*["'])[^"']{8,}(["'])/gi,'$1[REDACTED]$2');
+    .replace(/-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z ]*PRIVATE KEY-----/g,'[REDACTED PRIVATE KEY]')
+    .replace(/\b(?:AKIA[0-9A-Z]{16}|gh[pousr]_[A-Za-z0-9_]{20,}|github_pat_[A-Za-z0-9_]{20,}|sk-[A-Za-z0-9]{20,})\b/g,'[REDACTED TOKEN]')
+    .replace(/((?:api[_-]?key|client[_-]?secret|access[_-]?token|password|passwd|secret)\s*[:=]\s*["'])[^"']{8,}(["'])/gi,'$1[REDACTED]$2');
 }
 async function extractArchive(dir,archive){
   const tmp=path.join(os.tmpdir(),'izakhono-'+crypto.randomUUID()+'.tgz');
