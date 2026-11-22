@@ -43,4 +43,10 @@ test('new gateway is isolated from the legacy queue and payment/identity service
   assert.match(source, /OWNED_WORKER_TENANT_CONTEXT_SECRET/);
   assert.match(migration, /AS \$touch\$/);
   assert.match(migration, /GRANT EXECUTE ON FUNCTION public\.touch_owned_worker_credential/);
+  for (const signature of [
+    /REVOKE ALL ON FUNCTION public\.owned_worker_current_tenant_id\(\) FROM PUBLIC, anon, authenticated, service_role/i,
+    /REVOKE ALL ON FUNCTION public\.set_owned_worker_tenant_context\(uuid, text\) FROM PUBLIC, anon, authenticated, service_role/i,
+    /REVOKE ALL ON FUNCTION public\.authenticate_owned_worker\(text\) FROM PUBLIC, anon, authenticated, service_role/i,
+    /REVOKE ALL ON FUNCTION public\.touch_owned_worker_credential\(text\) FROM PUBLIC, anon, authenticated, service_role/i
+  ]) assert.match(migration, signature);
 });

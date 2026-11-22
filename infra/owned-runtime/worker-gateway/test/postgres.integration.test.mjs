@@ -93,6 +93,27 @@ test('PostgreSQL enforces owned-worker tenant isolation and least-privilege gran
     assert.equal(p.set_context_execute, true);
     assert.equal(p.context_secret_select, false, 'runtime login must not read the context-signing secret');
 
+    const exposedFunctionGrants = await admin`
+      select role_name, function_name,
+        has_function_privilege(role_name, function_name, 'EXECUTE') as can_execute
+      from (values
+        ('anon', 'public.owned_worker_current_tenant_id()'),
+        ('authenticated', 'public.owned_worker_current_tenant_id()'),
+        ('service_role', 'public.owned_worker_current_tenant_id()'),
+        ('anon', 'public.set_owned_worker_tenant_context(uuid,text)'),
+        ('authenticated', 'public.set_owned_worker_tenant_context(uuid,text)'),
+        ('service_role', 'public.set_owned_worker_tenant_context(uuid,text)'),
+        ('anon', 'public.authenticate_owned_worker(text)'),
+        ('authenticated', 'public.authenticate_owned_worker(text)'),
+        ('service_role', 'public.authenticate_owned_worker(text)'),
+        ('anon', 'public.touch_owned_worker_credential(text)'),
+        ('authenticated', 'public.touch_owned_worker_credential(text)'),
+        ('service_role', 'public.touch_owned_worker_credential(text)')
+      ) as grants(role_name, function_name)
+    `;
+    assert.ok(exposedFunctionGrants.every(row => row.can_execute === false),
+      'Supabase API roles must not execute gateway SECURITY DEFINER functions');
+
     await assert.rejects(
       worker`select * from public.owned_worker_credentials`,
       error => error.code === '42501'

@@ -42,6 +42,8 @@ jobs:
           OWNED_WORKER_TEST_ADMIN_URL: postgresql://postgres:postgres@localhost:5432/owned_worker_gateway_test
         run: |
           psql "$OWNED_WORKER_TEST_ADMIN_URL" -v ON_ERROR_STOP=1 \
+            -c "CREATE ROLE anon NOLOGIN; CREATE ROLE authenticated NOLOGIN; CREATE ROLE service_role NOLOGIN; ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT EXECUTE ON FUNCTIONS TO anon, authenticated, service_role;"
+          psql "$OWNED_WORKER_TEST_ADMIN_URL" -v ON_ERROR_STOP=1 \
             -f ../../../supabase/migrations/20261122120000_owned_worker_gateway_v1.sql
           psql "$OWNED_WORKER_TEST_ADMIN_URL" -v ON_ERROR_STOP=1 \
             -c "CREATE ROLE owned_worker_gateway_ci LOGIN PASSWORD 'ci-only-password';"

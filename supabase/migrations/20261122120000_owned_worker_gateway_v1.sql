@@ -106,7 +106,7 @@ EXCEPTION WHEN invalid_text_representation THEN
   RETURN NULL;
 END
 $tenant$;
-REVOKE ALL ON FUNCTION public.owned_worker_current_tenant_id() FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.owned_worker_current_tenant_id() FROM PUBLIC, anon, authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.owned_worker_current_tenant_id() TO owned_worker_gateway;
 
 CREATE OR REPLACE FUNCTION public.set_owned_worker_tenant_context(p_tenant_id uuid, p_signature text)
@@ -134,7 +134,7 @@ BEGIN
   PERFORM set_config('app.tenant_signature', p_signature, true);
 END
 $context$;
-REVOKE ALL ON FUNCTION public.set_owned_worker_tenant_context(uuid, text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.set_owned_worker_tenant_context(uuid, text) FROM PUBLIC, anon, authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.set_owned_worker_tenant_context(uuid, text) TO owned_worker_gateway;
 
 ALTER TABLE public.owned_worker_credentials ENABLE ROW LEVEL SECURITY;
@@ -155,7 +155,7 @@ AS $$
     AND (c.expires_at IS NULL OR c.expires_at > now())
   LIMIT 1
 $$;
-REVOKE ALL ON FUNCTION public.authenticate_owned_worker(text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.authenticate_owned_worker(text) FROM PUBLIC, anon, authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.authenticate_owned_worker(text) TO owned_worker_gateway;
 
 -- Every read and write must use the same verified HMAC-bound tenant context.
@@ -193,6 +193,6 @@ BEGIN
   RETURN FOUND;
 END
 $touch$;
-REVOKE ALL ON FUNCTION public.touch_owned_worker_credential(text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.touch_owned_worker_credential(text) FROM PUBLIC, anon, authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.touch_owned_worker_credential(text) TO owned_worker_gateway;
 
