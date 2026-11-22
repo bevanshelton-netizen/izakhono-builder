@@ -185,7 +185,8 @@ async function runTurn(session:Session,objective:string,env:Env):Promise<any>{
     }
     let result:any;
     if(action.action==='list_files'){
-      const path=validateWorkspacePath(String(action.path||'src'));
+      const rawPath=String(action.path||'src');
+      const path=rawPath==='.'?'.':validateWorkspacePath(rawPath);
       result=await runnerCall(env,'/v1/execute',{workspace_id:session.workspace_id,action:'list_files',input:{path}});
     }else if(action.action==='read_file'){
       const path=validateWorkspacePath(String(action.path||''));
@@ -224,7 +225,7 @@ async function route(req:Request,env:Env):Promise<Response>{
     return json({ok:true,sessions:rows.results});
   }
   if(url.pathname==='/v1/sessions'&&req.method==='POST')return createSession(req,env);
-  const match=url.pathname.match(/^\/v1\/sessions\/([A-Za-z0-9_-]+)(?:\/(turn|diff))?$/);
+  const match=url.pathname.match(/^\/v1\/sessions\/([A-Za-z0-9_-]+)(?:\/(turn|diff|pull-request))?$/);
   if(match){
     const session=await getSession(env,match[1]);
     if(!session)return json({ok:false,error:'Session not found.'},404);
@@ -245,7 +246,10 @@ async function route(req:Request,env:Env):Promise<Response>{
         return json({ok:false,error:message},409);
       }
     }
-    if(match[2]==='pull-request'&&req.method==='POST'){\n      try{return json({ok:true,pull_request:await createPullRequest(session,env)},201)}\n      catch(error){return json({ok:false,error:error instanceof Error?error.message:'Pull request creation failed.'},409)}\n    }\n    if(match[2]==='diff'&&req.method==='GET'){
+    if(match[2]==='pull-request'&&req.method==='POST'){
+      try{return json({ok:true,pull_request:await createPullRequest(session,env)},201)}
+      catch(error){return json({ok:false,error:error instanceof Error?error.message:'Pull request creation failed.'},409)}
+    }\n    if(match[2]==='diff'&&req.method==='GET'){
       const result=await runnerCall(env,'/v1/execute',{workspace_id:session.workspace_id,action:'diff',input:{}});
       return json({ok:true,diff:result});
     }
