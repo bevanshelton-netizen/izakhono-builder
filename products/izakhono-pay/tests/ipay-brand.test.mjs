@@ -41,7 +41,7 @@ test('operations, checkout and merchant dashboard use the customer-facing brand'
   assert.match(operations, /I-PAY™ — by IZAKHONO/);
   assert.match(mockCheckout, /I-PAY™ Sandbox Checkout/);
   assert.match(worker, /I-PAY™ — by IZAKHONO/);
-  assert.match(dashboard, /I-PAY™ — Merchant Console/);
+  assert.match(dashboard, /I-PAY™ — Merchant Console/);\n  assert.match(dashboard, /I-PAY™ — Merchant Sign In/);\n  assert.match(dashboard, /does not save your API key/);
 });
 
 test('release documentation distinguishes Vercel website and Worker deployment', async () => {
