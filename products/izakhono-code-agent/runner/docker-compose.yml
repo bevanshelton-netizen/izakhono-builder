@@ -1,8 +1,8 @@
 services:
   izakhono-code-runner:
     build:
-      context: .
-      dockerfile: Dockerfile
+      context: ..
+      dockerfile: runner/Dockerfile
     container_name: izakhono-code-runner
     restart: unless-stopped
     environment:
