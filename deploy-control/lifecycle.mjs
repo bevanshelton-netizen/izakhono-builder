@@ -20,6 +20,30 @@ const gitSha = value => typeof value === "string" && /^[a-f0-9]{40,64}$/i.test(v
 function requireEvidence(ok, code, message) {
   if (!ok) throw new DeploymentPolicyError(code, message);
 }
+function cloneSafeEvidence(value, path = "evidence") {
+  if (value === null || typeof value === "string" || typeof value === "boolean") return value;
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (Array.isArray(value)) return value.map((item, index) => cloneSafeEvidence(item, path + "[" + index + "]"));
+  requireEvidence(value && typeof value === "object" &&
+    (Object.getPrototypeOf(value) === Object.prototype || Object.getPrototypeOf(value) === null),
+    "EVIDENCE_NOT_JSON", "Evidence must contain only plain JSON values.");
+  const copy = {};
+  for (const [key, item] of Object.entries(value)) {
+    requireEvidence(!["__proto__", "prototype", "constructor"].includes(key),
+      "EVIDENCE_KEY_INVALID", "Evidence contains a prohibited object key.");
+    requireEvidence(!/(secret|token|password|authorization|private.?key|credential)/i.test(key),
+      "SECRET_EVIDENCE_REJECTED", "Secret or credential material must never be stored in deployment evidence.");
+    copy[key] = cloneSafeEvidence(item, path + "." + key);
+  }
+  return copy;
+}
+function deepFreeze(value) {
+  if (value && typeof value === "object" && !Object.isFrozen(value)) {
+    for (const item of Object.values(value)) deepFreeze(item);
+    Object.freeze(value);
+  }
+  return value;
+}
 function validateEvidence(state, e, current) {
   requireEvidence(e && typeof e === "object" && !Array.isArray(e), "EVIDENCE_REQUIRED", "Structured evidence is required.");
   switch (state) {
@@ -62,13 +86,14 @@ export function transitionDeployment(current, nextState, evidence, { actor, at, 
     "Actor, timestamp and idempotency key are required.");
   requireEvidence(nextState !== "FAILED" && NEXT[current.state] === nextState, "INVALID_TRANSITION",
     "Transition from " + current.state + " to " + nextState + " is not permitted.");
-  validateEvidence(nextState, evidence, current);
-  if (nextState === "RELEASED") requireEvidence(evidence.image_digest === current.evidence.image_digest,
+  const safeEvidence = deepFreeze(cloneSafeEvidence(evidence));
+  validateEvidence(nextState, safeEvidence, current);
+  if (nextState === "RELEASED") requireEvidence(safeEvidence.image_digest === current.evidence.image_digest,
     "DIGEST_MISMATCH", "Released image digest must match the tested build artifact.");
   const event = Object.freeze({ from: current.state, to: nextState, actor, at,
-    idempotency_key: idempotencyKey, evidence: Object.freeze({ ...evidence }) });
+    idempotency_key: idempotencyKey, evidence: safeEvidence });
   return Object.freeze({ ...current, state: nextState, updated_at: at,
-    evidence: Object.freeze({ ...current.evidence, ...evidence }),
+    evidence: deepFreeze({ ...current.evidence, ...safeEvidence }),
     history: Object.freeze([...current.history, event]) });
 }
 export function failDeployment(current, { actor, at, reason, idempotencyKey } = {}) {
