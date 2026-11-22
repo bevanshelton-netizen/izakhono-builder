@@ -76,6 +76,19 @@ jobs:
           CONNECTA_OWNER_KEY: ci-only-owner-key
         run: docker compose -f products/izakhono-social/docker-compose.owned.yml config
 
+      - name: Validate CONNECTA readiness evidence gates
+        shell: bash
+        run: |
+          bash -n products/izakhono-social/CONNECTA-READINESS-STATE.sh
+          bash -n products/izakhono-social/ops/production-deployment-gate.sh
+          bash -n products/izakhono-social/ops/write-readiness-evidence.sh
+          bash -n products/izakhono-social/ops/prove-failover-evidence.sh
+          bash -n products/izakhono-social/ops/prove-security-evidence.sh
+          bash -n products/izakhono-social/ops/prove-edge-tls-evidence.sh
+          bash -n products/izakhono-social/ops/prove-external-https-evidence.sh
+          bash products/izakhono-social/ops/readiness-state.test.sh
+
+
       - name: Validate CONNECTA four-node K3s runtime manifest
         run: bash infra/node-cluster/validate-connecta-runtime-manifest.sh
 
