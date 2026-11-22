@@ -44,8 +44,12 @@ try {
   }
   const ask = await fetch(base+'/api/tls/ask?domain=smoke.example.test');
   if (!ask.ok) throw new Error('TLS admission failed');
-  const accepted = await request('/api/sites/smoke_site/accept', {method:'POST',body:JSON.stringify({https:true,dns:true,content:true})});
-  if (!accepted.site?.public_live) throw new Error('acceptance gate failed');
+  const manualAcceptance = await fetch(base+'/api/sites/smoke_site/accept', {method:'POST',headers:{authorization:`Bearer ${token}`,'content-type':'application/json'},body:JSON.stringify({https:true,dns:true,content:true})});
+  if (manualAcceptance.status !== 410) throw new Error('manual public-live acceptance must be disabled');
+  const verification = await fetch(base+'/api/sites/smoke_site/verify-public', {method:'POST',headers:{authorization:`Bearer ${token}`,'content-type':'application/json'},body:'{}'});
+  if (verification.status !== 503) throw new Error('public verification must fail closed without configured owned EDGE IPs');
+  const listed = await request('/api/sites');
+  if (listed.sites.find(x=>x.id==='smoke_site')?.public_live !== false) throw new Error('site must remain not-live without real public evidence');
   console.log('IZAKHONO native runtime smoke test: PASS');
 } finally {
   child.kill('SIGTERM');

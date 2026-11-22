@@ -31,13 +31,14 @@ Open-source components are replaceable implementation dependencies; IZAKHONO own
 
 ## Execution sequence
 
-1. Inventory existing owner-controlled compute, storage, network, power, and internet connectivity. Record actual capacity; do not assume it exists.
-2. Select an existing host only after OS, patching, disk, memory, network, firewall, remote administration, and recovery checks pass.
-3. Run HOST preflight and the owned-runtime bootstrap in an isolated validation environment first.
-4. Deploy NODE01 software identity to the approved existing execution environment; preserve the separation between node ID and host ID.
-5. Verify application health, release identity, TLS, DNS, backups, restore, access controls, and rollback.
-6. Add NODE02–NODE04 as independently available execution capacity when existing approved capacity is identified and validated.
-7. Promote public traffic only after the owned public-cutover gates pass. Keep any already-verified public route intact until a controlled cutover is proven.
+1. On the existing owner-controlled IZAKHONO HOST replacement, run the read-only inventory: `bash infra/owned-runtime/host-inventory.sh`. It reports OS, architecture, CPU, RAM, storage, network addresses, listening sockets and Docker/K3s availability; it does not change the machine or collect secrets. Share only its JSON output for capacity assessment.
+2. Inventory storage, network, power/UPS and internet connectivity. Record actual capacity; do not assume it exists.
+3. Select an existing host only after OS, patching, disk, memory, network, firewall, remote administration, and recovery checks pass.
+4. Run HOST preflight and the owned-runtime bootstrap in an isolated validation environment first.
+5. Deploy NODE01 software identity to the approved existing execution environment; preserve the separation between node ID and host ID.
+6. Verify application health, release identity, TLS, DNS, backups, restore, access controls, and rollback.
+7. Add NODE02–NODE04 as independently available execution capacity when existing approved capacity is identified and validated.
+8. Promote public traffic only after the owned public-cutover gates pass. Keep any already-verified public route intact until a controlled cutover is proven.
 
 ## Non-negotiable controls
 
