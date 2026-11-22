@@ -46,3 +46,8 @@ The management API is read-only by default. Mutations require a narrowly scoped 
 ## Current state
 
 This repository addition now includes a dependency-free lifecycle policy module and tests (`lifecycle.mjs`, `lifecycle.test.mjs`) as well as the product boundary and build contract. The policy module does not execute deployments or persist records. It does not assert that a target is connected, that a deployment has run, or that public HTTPS is live. Authenticated API integration, durable transactional persistence, target selection, runtime binding and owner-environment acceptance remain separate verification gates.
+
+
+## Identity integration gate
+
+The FORTRESS-to-DEPLOY token, entitlement, live-session and API enforcement requirements are specified in [IDENTITY-INTEGRATION-CONTRACT.md](./IDENTITY-INTEGRATION-CONTRACT.md). This is a design contract, not a deployed integration. Creator-audience tokens are not valid DEPLOY credentials; production API authentication remains blocked until the issuer contract and server-side verifier adapter are implemented and tested.
