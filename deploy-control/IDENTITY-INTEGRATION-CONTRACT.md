@@ -95,3 +95,46 @@ Until the issuer supports this contract and a server-side DEPLOY API adapter is 
 - DEPLOY has no completed production-authenticated management API.
 - The current Creator JWT is not accepted as a DEPLOY credential.
 - No database persistence, deployment execution, HOST activation, NODE01 bootstrap, or DNS cutover is authorized by this identity design.
+
+
+## 9. Source-level issuer compatibility check
+
+A source inspection of the current FORTRESS Identity Worker and its D1 migrations confirms the following implementation facts:
+
+- `products/fortress-identity/src/worker.ts` issues HS256 access tokens with `iss`, `aud`, `sub`, `tenant_id`, `role`, `active`, `iat`, `exp`, and `jti`. The current issuer does not emit `nbf`, `application_ids`, `environment_ids`, or `scopes`.
+- `products/fortress-identity/wrangler.toml` currently defaults `FORTRESS_SESSION_AUDIENCE` to `izakhono-creator`. Although configurable, changing this shared setting would alter the Creator token contract and is not an acceptable DEPLOY-only integration.
+- `GET /api/fortress/session` verifies HS256, the configured issuer/audience, token time bounds and the live `refresh_sessions.access_jti` record. It returns `valid`, principal identity/role and `expiresAt`; it does not return resource/action entitlements.
+- `0001_identity.sql` stores principals, credentials, refresh sessions, rate limits and security audit. `0002_access_session_jti.sql` adds the live access-token JTI index. Neither migration defines application/environment grants or DEPLOY scopes.
+- The current issuer's `Env` contract has a D1 binding and signing/configuration values, but no DEPLOY-specific entitlement binding or private DEPLOY consumer contract is declared in the inspected Worker source/configuration.
+
+This source inspection confirms that a DEPLOY adapter cannot safely be completed by merely calling the existing Creator session endpoint: the endpoint enforces the Creator audience and returns no deployment grants. It also confirms that the existing D1 schema cannot answer which applications, environments or deployment actions a principal may access.
+
+## 10. Owner decisions required before implementation
+
+The FORTRESS Identity owner and DEPLOY/runtime platform owner must jointly record these decisions before code or migrations are added:
+
+| Decision | Required owner confirmation | Safe default until confirmed |
+| --- | --- | --- |
+| Entitlement authority | Which existing authoritative system owns tenant-bound principal-to-application, environment and action grants? | No grants; deny DEPLOY access. |
+| Grant lifecycle | Who can grant/revoke access, how are changes audited, and what is the revocation SLA? | No self-service or role-derived grants. |
+| Token issuance | Dedicated DEPLOY audience value and whether DEPLOY receives a separate short-lived token or a service-bound exchange. | Do not change Creator token audience or accept Creator tokens. |
+| Live session check | Approved private service-binding topology, binding name, request/response schema and failure semantics. | No public introspection expansion; fail closed. |
+| Signing-key trust | How DEPLOY validates HS256 keys without exposing the shared HMAC secret to another service, or whether an asymmetric signing/JWKS model is approved. | No secret copying or new key distribution. |
+| D1 ownership | Confirmation that FORTRESS Identity owns the entitlement migration and rollout, including compatibility/backfill. | No D1 schema changes. |
+| Resource ownership | Authoritative server-side lookup for tenant/application/environment ownership in DEPLOY. | No browser-supplied ownership claims. |
+| API hosting | Approved DEPLOY API runtime and its private identity-service connectivity. | No public management route. |
+
+The owner decision record must name the accountable service owners, approved audience, entitlement source and migration owner, service-binding contract, key-trust model, revocation objective, and rollout/rollback plan. These are architecture inputs, not values to infer from repository names or existing role labels.
+
+## 11. Implementation sequence after decisions
+
+1. Extend FORTRESS entitlement storage only under the confirmed schema owner; define tenant-bound grants and an audited grant/revocation lifecycle.
+2. Implement server-side entitlement evaluation. The issuer must ignore any client-supplied application, environment or scope claims.
+3. Add a DEPLOY-specific issuance/exchange path with a distinct audience and explicit claims, or an approved private principal exchange that returns the same verified authority.
+4. Implement the approved live-session check bound to JTI, subject and tenant. Keep Creator introspection behavior compatible.
+5. Implement the DEPLOY verifier adapter in the actual API runtime and invoke the existing policy guard before any deployment read/write.
+6. Derive resource ownership from authoritative stored records; then enforce tenant/application/environment/action grants.
+7. Add issuer and actual API integration tests for entitlement issuance, revocation, audience isolation, outage behavior, cross-resource denial and browser-claim tampering.
+8. Only then proceed to the separately gated PostgreSQL transaction/persistence implementation.
+
+No implementation step in this section authorizes a production migration, deployment, secret configuration, HOST activation, NODE01 bootstrap or DNS cutover.
