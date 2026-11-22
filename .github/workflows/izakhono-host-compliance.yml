@@ -17,6 +17,8 @@ env:
   MINIO_ROOT_USER: ci-minio-admin
   MINIO_ROOT_PASSWORD: ci-minio-password
   IZAKHONO_MAIL_API_TOKEN: ci-mail-api-token
+  # Non-routable placeholder for Compose interpolation only; never used for deployment.
+  SMTP_HOST: mail.invalid
 
 jobs:
   compliance-script:
