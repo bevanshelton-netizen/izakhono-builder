@@ -21,6 +21,8 @@ Its state machine (`CREATED`, `PLANNED`, `ACTIVATING`, `DEPLOYED`, `HEALTH_CHECK
 
 The deployment store and event store currently commit independently. That is insufficient for DEPLOY's requirement that state, idempotency claim, and immutable audit event commit atomically. A new adapter must use one PostgreSQL transaction/connection for all three operations, with tenant-scoped uniqueness and request-hash conflict detection.
 
+The existing Provisioner PostgreSQL store is not a drop-in substitute: `provisioner_jobs` has `UNIQUE (tenant_id, idempotency_key)` but no canonical request hash, and its job save, local audit append, and FORTRESS mirror each commit separately. `migrations/0010_idempotency_claims.sql` defines a globally unique `key` and text timestamps/response, with no tenant/deployment scope; it cannot be assumed safe for DEPLOY without proving its owning database and migration runtime. The FORTRESS audit table includes tenant attribution, but its append method commits its supplied connection and therefore cannot currently participate atomically in a separate Runtime Fabric transaction. The existing tenant-scope unit test proves an in-memory Provisioner invariant only, not PostgreSQL isolation or authorization.
+
 ## Required next implementation gate
 
 1. Verify the authoritative PostgreSQL schema/migration owner and connection contract for Runtime Fabric.
@@ -33,10 +35,12 @@ The deployment store and event store currently commit independently. That is ins
 
 ## Validation observed on 2026-11-22
 
-For PR head `250e4710f1fe00223adceb62cc1067299ae622e0`, GitHub Actions reported successful completion of:
+For PR head `a11add3c2244e1635460589076e4c66ab99c2529`, GitHub Actions reported successful completion of all four workflows:
 
-- IZAKHONO DEPLOY lifecycle CI (run 7)
-- NODE01 Architecture Invariant (run 2845)
+- IZAKHONO DEPLOY lifecycle CI
+- NODE01 Architecture Invariant
+- IZAKHONO Application Manifest Validation
+- IZAKHONO Builder CI
 
 These are repository CI results only. They do not establish that a PostgreSQL service, owner runtime, HOST execution access, or production deployment is available.
 
