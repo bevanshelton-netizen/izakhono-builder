@@ -1,5 +1,5 @@
 export function renderDeviceDashboard() {
-  return String.raw\`<!doctype html>
+  return String.raw`<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -150,7 +150,7 @@ export function renderDeviceDashboard() {
   if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('/device-sw.js').catch(function(){});
 })();
 </script>
-</body></html>\`;
+</body></html>`;
 }
 
 export const DEVICE_MANIFEST = {
@@ -167,7 +167,7 @@ export const DEVICE_MANIFEST = {
 
 export const DEVICE_ICON = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" rx="112" fill="#080d1b"/><path d="M112 146h288v58H112zm0 81h58v139h-58zm115 0h58v139h-58zm115 0h58v139h-58z" fill="#69e4ee"/><path d="M112 402h288v24H112z" fill="#91b4ff"/></svg>';
 
-export const DEVICE_SERVICE_WORKER = String.raw\`const CACHE='ipay-device-shell-v1';
+export const DEVICE_SERVICE_WORKER = String.raw`const CACHE='ipay-device-shell-v1';
 const SHELL=['/devices','/device.webmanifest','/device-icon.svg'];
 self.addEventListener('install',event=>event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(SHELL)).then(()=>self.skipWaiting())));
 self.addEventListener('activate',event=>event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(key=>key!==CACHE).map(key=>caches.delete(key)))).then(()=>self.clients.claim())));
@@ -180,4 +180,4 @@ self.addEventListener('fetch',event=>{
     if(response.ok){const copy=response.clone();caches.open(CACHE).then(cache=>cache.put(request,copy))}
     return response;
   })));
-});\`;
+});`;
