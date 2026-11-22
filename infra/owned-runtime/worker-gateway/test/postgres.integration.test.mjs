@@ -330,7 +330,9 @@ test('PostgreSQL enforces competing claims, lease recovery, renewal, completion 
     assert.equal(completed.length, 1, 'the current live lease can complete the job');
 
     // Exercise retry scheduling and terminal failure at the configured attempt limit.
-    const retryFirst = await claim(workerA, createHash('sha256').update(randomUUID()).digest('hex'));
+    const retryFirstToken = randomUUID() + randomUUID();
+    const retryFirstHash = createHash('sha256').update(retryFirstToken).digest('hex');
+    const retryFirst = await claim(workerA, retryFirstHash);
     assert.equal(retryFirst.id, retryJobId);
     assert.equal(Number(retryFirst.attempts), 1);
     const scheduled = await workerA.begin(async tx => {
@@ -342,28 +344,21 @@ test('PostgreSQL enforces competing claims, lease recovery, renewal, completion 
             error_code = 'ci_retryable', error_message = 'retry test',
             updated_at = now(), lease_owner = null, lease_token_hash = null, lease_expires_at = null
         where id = ${retryJobId} and tenant_id = ${tenantId}
-          and status = 'running' and lease_token_hash = ${createHash('sha256').update('').digest('hex')}
+          and worker_key = ${workerKey} and status = 'running'
+          and lease_token_hash = ${retryFirstHash} and lease_expires_at > now()
         returning status`;
+      if (rows[0]) await tx`insert into public.owned_worker_events
+        (tenant_id, job_id, worker_key, event_type, detail)
+        values (${tenantId}, ${retryJobId}, ${workerKey}, 'retry_scheduled', '{"attempt":1}'::jsonb)`;
       return rows;
     });
-    // The failure transition must be bound to the actual lease token.
-    assert.equal(scheduled.length, 0, 'a guessed lease digest cannot release or reschedule a job');
-    const retryLeaseHash = createHash('sha256').update('').digest('hex');
-    assert.equal(retryLeaseHash.length, 64);
+    assert.equal(scheduled[0].status, 'queued', 'first failure schedules a retry');
+    await admin`update public.owned_worker_jobs set not_before = now()
+      where id = ${retryJobId} and tenant_id = ${tenantId}`;
 
-    const retryTokenHash = createHash('sha256').update('placeholder').digest('hex');
-    const retryClaim = await workerA.begin(async tx => {
-      await tx`select public.set_owned_worker_tenant_context(${tenantId}, ${tenantSignature(tenantId)})`;
-      return tx`select id, attempts, lease_token_hash from public.owned_worker_jobs
-        where id = ${retryJobId} and tenant_id = ${tenantId}`;
-    });
-    assert.equal(retryClaim.length, 1);
-    assert.ok(retryClaim[0].lease_token_hash, 'claimed retry job retains only a lease digest');
-
-    // Reclaim the known job state through the claim path after making it due.
-    await admin`update public.owned_worker_jobs set lease_expires_at = now() - interval '1 second'
-      where id = ${retryJobId}`;
-    const retrySecond = await claim(workerB, createHash('sha256').update(randomUUID()).digest('hex'));
+    const retrySecondToken = randomUUID() + randomUUID();
+    const retrySecondHash = createHash('sha256').update(retrySecondToken).digest('hex');
+    const retrySecond = await claim(workerB, retrySecondHash);
     assert.equal(retrySecond.id, retryJobId);
     assert.equal(Number(retrySecond.attempts), 2);
     const terminal = await workerB.begin(async tx => {
@@ -373,14 +368,22 @@ test('PostgreSQL enforces competing claims, lease recovery, renewal, completion 
             error_code = 'ci_terminal', error_message = 'terminal retry test',
             updated_at = now(), lease_owner = null, lease_token_hash = null, lease_expires_at = null
         where id = ${retryJobId} and tenant_id = ${tenantId}
-          and status = 'running' and lease_token_hash = ${createHash('sha256').update(randomUUID()).digest('hex')}
+          and worker_key = ${workerKey} and status = 'running'
+          and lease_token_hash = ${retrySecondHash} and lease_expires_at > now()
         returning status`;
+      if (rows[0]) await tx`insert into public.owned_worker_events
+        (tenant_id, job_id, worker_key, event_type, detail)
+        values (${tenantId}, ${retryJobId}, ${workerKey}, 'failed', '{"attempt":2}'::jsonb)`;
       return rows;
     });
-    assert.equal(terminal.length, 0, 'a non-matching lease token cannot fail a job');
-    const state = await admin`select status, attempts, max_attempts from public.owned_worker_jobs where id = ${retryJobId}`;
-    assert.equal(state[0].status, 'running', 'invalid lease token leaves retry job running');
-    assert.equal(Number(state[0].attempts), 2);
+    assert.equal(terminal[0].status, 'failed', 'failure at max_attempts is terminal');
+    const retryState = await admin`select status, attempts, max_attempts from public.owned_worker_jobs where id = ${retryJobId}`;
+    assert.equal(retryState[0].status, 'failed');
+    assert.equal(Number(retryState[0].attempts), 2);
+    const retryEvents = await admin`select event_type from public.owned_worker_events
+      where tenant_id = ${tenantId} and job_id = ${retryJobId} order by id`;
+    assert.ok(retryEvents.some(row => row.event_type === 'retry_scheduled'));
+    assert.ok(retryEvents.some(row => row.event_type === 'failed'));
 
     const events = await admin`select event_type from public.owned_worker_events
       where tenant_id = ${tenantId} and job_id = ${claimJobId} order by id`;
