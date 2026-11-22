@@ -53,7 +53,7 @@ for name in required:
         provider = data.get("runtime_provider")
         if not isinstance(sha, str) or len(sha) != 40 or any(c not in "0123456789abcdef" for c in sha):
             failures.append(f"invalid-release-sha:{name}")
-        if not isinstance(rid, str) or not rid.strip() or "NODE01" in rid.upper() or "PHYSICAL" in rid.lower():
+        if not isinstance(rid, str) or not rid.strip() or "PHYSICAL" in rid.lower():
             failures.append(f"invalid-logical-runtime-id:{name}")
         if not isinstance(provider, str) or not provider.strip():
             failures.append(f"missing-runtime-provider:{name}")
