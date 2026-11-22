@@ -74,7 +74,7 @@
     "jarvis:worker:test": "node products/izakhono-jarvis/runner/worker.test.mjs && node products/izakhono-jarvis/runner/supervisor.test.mjs",
     "jarvis:worker:supervise": "node products/izakhono-jarvis/runner/supervisor.mjs",
     "jarvis:workforce:test": "npx --yes tsx@4.20.3 products/izakhono-jarvis/src/workforce.test.ts",
-    "code-agent:test": "npx --yes tsx@4.20.3 products/izakhono-code-agent/src/index.test.ts && npx --yes tsx@4.20.3 products/izakhono-code-agent/src/worker.test.ts && npm run code-agent:runner-test",
+    "code-agent:test": "rm -rf /tmp/izakhono-code-agent-test && tsc --target ES2022 --lib ES2022,DOM --module commonjs --moduleResolution node --esModuleInterop --skipLibCheck --outDir /tmp/izakhono-code-agent-test products/izakhono-code-agent/src/index.ts products/izakhono-code-agent/src/index.test.ts products/izakhono-code-agent/src/worker.ts products/izakhono-code-agent/src/worker.test.ts && node /tmp/izakhono-code-agent-test/index.test.js && node /tmp/izakhono-code-agent-test/worker.test.js && npm run code-agent:runner-test",
     "code-agent:typecheck": "tsc --noEmit --target ES2022 --lib ES2022,DOM --module ESNext --moduleResolution Bundler products/izakhono-code-agent/src/index.ts products/izakhono-code-agent/src/worker.ts",
     "code-agent:runner-check": "node --check products/izakhono-code-agent/runner/server.mjs",
     "code-agent:runner-test": "node products/izakhono-code-agent/runner/server.test.mjs",
