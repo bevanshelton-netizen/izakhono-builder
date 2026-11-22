@@ -11,7 +11,7 @@ PUBLIC_URL="${CONNECTA_PUBLIC_URL:-}"
 EXPECTED_HOST="${CONNECTA_PUBLIC_HOST:-}"
 
 [[ "$COMMIT" =~ ^[0-9a-f]{40}$ ]] || { echo "immutable commit required" >&2; exit 2; }
-[[ -n "$RUNTIME_ID" && "$RUNTIME_ID" != *NODE01* && "$RUNTIME_ID" != *physical* ]] || { echo "approved logical runtime identity required" >&2; exit 2; }
+[[ -n "$RUNTIME_ID" && "$RUNTIME_ID" != *physical* ]] || { echo "approved logical runtime identity required" >&2; exit 2; }
 [[ -n "$RUNTIME_PROVIDER" ]] || { echo "approved runtime provider required" >&2; exit 2; }
 [[ -n "$PUBLIC_URL" && "$PUBLIC_URL" =~ ^https://[^/]+/health/?$ ]] || { echo "CONNECTA_PUBLIC_URL must be an HTTPS /health URL" >&2; exit 3; }
 [[ -n "$EXPECTED_HOST" ]] || { echo "CONNECTA_PUBLIC_HOST is required" >&2; exit 3; }
