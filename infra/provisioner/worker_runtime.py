@@ -106,8 +106,9 @@ class ProvisionerWorker:
         operation = self.registry.get("bindings", {}).get(capability, {}).get("operation", capability)
         operation_id = f"op_{job.job_id}_{job.attempts + 1}_{capability}"
         try:
-            result = self._executor().execute(self._request(job, capability, operation, operation_id))
-            validate_result(result)
+            request = self._request(job, capability, operation, operation_id)
+            result = self._executor().execute(request)
+            validate_result(result, request)
         except Exception as exc:
             return self._failure(job, "ADAPTER_EXECUTION_FAILED", str(exc), operation_id)
         next_state = {
