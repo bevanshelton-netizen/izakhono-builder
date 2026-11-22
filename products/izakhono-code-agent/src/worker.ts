@@ -142,6 +142,7 @@ async function createPullRequest(session:Session,env:Env):Promise<any>{
     const filePath=validateWorkspacePath(String(file.path||''));
     if(file.deleted){tree.push({path:filePath,mode:'100644',type:'blob',sha:null});continue;}
     const result=await runnerCall(env,'/v1/execute',{workspace_id:session.workspace_id,action:'read_file',input:{path:filePath}});
+    if(result.secret_detected)throw new Error('A changed file contains secret-like content and cannot be published. Remove or rotate the secret first.');
     if(typeof result.content!=='string')throw new Error('Runner did not return file content for '+filePath+'.');
     totalBytes+=new TextEncoder().encode(result.content).byteLength;
     if(totalBytes>10*1024*1024)throw new Error('Pull request file content exceeds 10 MB.');
