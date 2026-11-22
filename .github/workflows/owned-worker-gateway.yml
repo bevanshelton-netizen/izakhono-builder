@@ -6,7 +6,7 @@ on:
       - 'supabase/migrations/20261122120000_owned_worker_gateway_v1.sql'
       - '.github/workflows/owned-worker-gateway.yml'
   push:
-    branches: [main]
+    branches: [main, 'feat/**']
     paths:
       - 'infra/owned-runtime/worker-gateway/**'
       - 'supabase/migrations/20261122120000_owned_worker_gateway_v1.sql'
