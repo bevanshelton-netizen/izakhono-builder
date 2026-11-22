@@ -25,6 +25,15 @@ jobs:
       - name: Install dependencies
         run: npm install --ignore-scripts --no-audit --no-fund
 
+      - name: Validate IZAKHONO CODE Agent
+        run: |
+          npm run code-agent:runner-check
+          npm run code-agent:typecheck
+          npm run code-agent:test
+          bash -n products/izakhono-code-agent/runner/install.sh
+          npm run code-agent:dry-run
+          docker compose -f products/izakhono-code-agent/runner/docker-compose.yml config >/tmp/izakhono-code-runner-compose.yml
+
       - name: Validate Affiliate Engine
         run: npm run validate:affiliate
 
