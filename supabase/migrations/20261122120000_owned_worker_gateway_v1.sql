@@ -162,16 +162,16 @@ DROP POLICY IF EXISTS owned_worker_jobs_tenant_scope ON public.owned_worker_jobs
 CREATE POLICY owned_worker_jobs_tenant_scope ON public.owned_worker_jobs
   FOR ALL TO owned_worker_gateway
   USING (tenant_id = public.owned_worker_current_tenant_id())
-  WITH CHECK (tenant_id = nullif(current_setting('app.tenant_id', true), '')::uuid);
+  WITH CHECK (tenant_id = public.owned_worker_current_tenant_id());
 
 DROP POLICY IF EXISTS owned_worker_events_tenant_read ON public.owned_worker_events;
 CREATE POLICY owned_worker_events_tenant_read ON public.owned_worker_events
   FOR SELECT TO owned_worker_gateway
-  USING (tenant_id = nullif(current_setting('app.tenant_id', true), '')::uuid);
+  USING (tenant_id = public.owned_worker_current_tenant_id());
 DROP POLICY IF EXISTS owned_worker_events_tenant_insert ON public.owned_worker_events;
 CREATE POLICY owned_worker_events_tenant_insert ON public.owned_worker_events
   FOR INSERT TO owned_worker_gateway
-  WITH CHECK (tenant_id = nullif(current_setting('app.tenant_id', true), '')::uuid);
+  WITH CHECK (tenant_id = public.owned_worker_current_tenant_id());
 
 GRANT USAGE ON SCHEMA public TO owned_worker_gateway;
 GRANT SELECT, INSERT, UPDATE ON public.owned_worker_jobs TO owned_worker_gateway;
