@@ -33,7 +33,7 @@ After access is established, first perform read-only identity and capability che
 
 Then review the exact contents and side effects of every proposed command. The current `NODE01-ACTIVATE.sh` is **not** a read-only preflight: it proceeds into `bootstrap-owned.sh`, which can generate secrets, build images and start services. Do not run it as an access test or discovery command.
 
-A separately approved, demonstrably read-only preflight must be used for discovery. If no such verified procedure exists, stop and prepare one for review rather than improvising on the production host.
+A repository-side candidate is now provided at `NODE01-READONLY-PREFLIGHT.sh`. It inventories local identity, OS, compute/storage and container-tool availability; its Docker checks are limited to client/version and formatted daemon information reads. It performs no network probes, writes, builds, starts, secret generation or configuration changes. Review the exact script and obtain the infrastructure owner's approval before running it on any host. Its output is discovery evidence only, not authorisation or production acceptance. Do not improvise additional commands on the production host.
 
 ## Runtime binding evidence
 
