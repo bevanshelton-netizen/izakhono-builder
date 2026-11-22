@@ -10,11 +10,12 @@ const required=[
   'migrations/0007_reconciliation.sql',
   'ZERO-TOUCH-RECONCILIATION.md',
   'wrangler.jsonc',
+  'wrangler.production.jsonc',
 ];
 for(const file of required) await access(new URL(`../${file}`,import.meta.url));
 
-const config=await readFile(new URL('../wrangler.jsonc',import.meta.url),'utf8');
-if(!config.includes('00000000-0000-0000-0000-000000000000')) throw new Error('Expected fail-closed D1 placeholder before infrastructure provisioning');
+const config=await readFile(new URL('../wrangler.production.jsonc',import.meta.url),'utf8');
+if(!config.includes('00000000-0000-0000-0000-000000000000')) throw new Error('Expected fail-closed production D1 placeholder before infrastructure provisioning');
 
 const reconciliation=await readFile(new URL('../src/reconciliation.js',import.meta.url),'utf8');
 for(const contract of [

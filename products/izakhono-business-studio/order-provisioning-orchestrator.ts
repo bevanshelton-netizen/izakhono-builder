@@ -1,7 +1,36 @@
 import { createProvisionerJob, markValidated, startJob, recordEvidence, verifyLive, type Blueprint, type Capability, type ProvisionerJob } from './provisioner-runtime';
 import { advance, assertPublicActivation, createControlPlaneRecord, fail, type ControlPlaneRecord } from './provisioning-control-plane';
 
-export interface PaidOrder { orderId:string; customerId:string; blueprint:Blueprint; requestedCapabilities:Capability[]; payment:{verified:boolean;reference:string}; }
+/**
+ * Order data is descriptive only. It is never accepted as payment proof.
+ * The verifier must query IZAKHONO PAY server-to-server using its own
+ * server-held credentials and bind the confirmed payment to every order field.
+ */
+export interface PaidOrder {
+  orderId:string;
+  customerId:string;
+  merchantId:string;
+  amountMinor:number;
+  currency:string;
+  blueprint:Blueprint;
+  requestedCapabilities:Capability[];
+  payment:{reference:string};
+}
+export interface VerifiedPaymentEvidence {
+  verified:true;
+  status:'paid'|'settled';
+  orderId:string;
+  customerId:string;
+  merchantId:string;
+  amountMinor:number;
+  currency:string;
+  paymentReference:string;
+  providerTransactionId:string;
+  evidenceId:string;
+}
+export interface PaymentEvidenceVerifier {
+  verify(input:{orderId:string;customerId:string;merchantId:string;amountMinor:number;currency:string;paymentReference:string}):Promise<VerifiedPaymentEvidence>;
+}
 export interface RuntimeAdapter {
   selectNode(order:PaidOrder):Promise<{nodeId:string;routeClass:'owned'|'external-resilience'|'external-auxiliary'}>;
   provisionNode(order:PaidOrder,nodeId:string):Promise<string>;
@@ -13,11 +42,21 @@ export interface RuntimeAdapter {
   smoke(order:PaidOrder,nodeId:string):Promise<string>;
   rollbackReady(order:PaidOrder,nodeId:string):Promise<string>;
 }
-export interface ProvisioningResult { orderId:string; job:ProvisionerJob; controlPlane:ControlPlaneRecord; handover:{customerId:string;release:string;verifiedAt:string}; }
+export interface ProvisioningResult { orderId:string; job:ProvisionerJob; controlPlane:ControlPlaneRecord; handover:{customerId:string;release:string;verifiedAt:string}; paymentEvidence:{evidenceId:string;providerTransactionId:string;status:'paid'|'settled'}; }
 
-export async function provisionPaidOrder(order:PaidOrder,adapter:RuntimeAdapter,now=new Date().toISOString()):Promise<ProvisioningResult> {
-  if(!order.payment.verified) throw new Error('payment must be verified before provisioning');
-  if(!order.payment.reference.trim()) throw new Error('payment verification reference is required');
+export async function provisionPaidOrder(order:PaidOrder,adapter:RuntimeAdapter,paymentVerifier:PaymentEvidenceVerifier,now=new Date().toISOString()):Promise<ProvisioningResult> {
+  if(!order.orderId.trim()||!order.customerId.trim()||!order.merchantId.trim()) throw new Error('order, customer and merchant identity are required');
+  if(!Number.isSafeInteger(order.amountMinor)||order.amountMinor<=0) throw new Error('order amount must be a positive integer in minor currency units');
+  if(!/^[A-Z]{3}$/.test(order.currency)) throw new Error('order currency must be an ISO 4217 code');
+  const paymentReference=order.payment.reference.trim();
+  if(!paymentReference) throw new Error('payment reference is required');
+  // This server-side lookup, not a caller-controlled Boolean, is the sole
+  // authorization source for paid-order provisioning.
+  const evidence=await paymentVerifier.verify({orderId:order.orderId,customerId:order.customerId,merchantId:order.merchantId,amountMinor:order.amountMinor,currency:order.currency,paymentReference});
+  if(!evidence||evidence.verified!==true||!['paid','settled'].includes(evidence.status)) throw new Error('payment must be independently confirmed as paid or settled');
+  if(evidence.orderId!==order.orderId||evidence.customerId!==order.customerId||evidence.merchantId!==order.merchantId) throw new Error('verified payment identity does not match the order');
+  if(evidence.amountMinor!==order.amountMinor||evidence.currency!==order.currency) throw new Error('verified payment amount or currency does not match the order');
+  if(evidence.paymentReference!==paymentReference||!evidence.providerTransactionId?.trim()||!evidence.evidenceId?.trim()) throw new Error('verified payment evidence is incomplete or mismatched');
   const jobId=`order:${order.orderId}`;
   let job=createProvisionerJob(order.blueprint,order.requestedCapabilities,jobId,now);
   job=markValidated(job,now); job=startJob(job,now);
@@ -37,7 +76,7 @@ export async function provisionPaidOrder(order:PaidOrder,adapter:RuntimeAdapter,
     assertPublicActivation(control);
     const verifiedAt=new Date().toISOString();
     job=verifyLive(job,`${control.release}:verified`,verifiedAt);
-    return {orderId:order.orderId,job,controlPlane:control,handover:{customerId:order.customerId,release:control.release,verifiedAt}};
+    return {orderId:order.orderId,job,controlPlane:control,handover:{customerId:order.customerId,release:control.release,verifiedAt},paymentEvidence:{evidenceId:evidence.evidenceId,providerTransactionId:evidence.providerTransactionId,status:evidence.status}};
   } catch(error) {
     control=fail(control,error instanceof Error?error.message:String(error));
     throw Object.assign(new Error(`provisioning failed for ${order.orderId}: ${control.failureReason}`),{controlPlane:control});

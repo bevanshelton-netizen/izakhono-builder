@@ -31,6 +31,8 @@ jobs:
         run: npm run check
       - name: Verify product layout
         run: node scripts/verify-layout.mjs
+      - name: Apply the complete D1 migration chain to an isolated local database
+        run: npx wrangler d1 migrations apply DB --local --config wrangler.ci.jsonc
       - name: Bundle Cloudflare Worker without production bindings
         run: npx wrangler deploy --dry-run --config wrangler.ci.jsonc
       - name: Fail if obvious live secrets were committed
