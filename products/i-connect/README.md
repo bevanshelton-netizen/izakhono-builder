@@ -33,3 +33,20 @@ No supplier is represented as signed, approved, integrated or live until documen
 
 ## Global platform build specification
 The customer-facing IZAKHONO GLOBAL strategy, I-CONNECT Control Centre and smartphone app scope, tenant model, security requirements, release gates and sprint backlog are defined in `CONTROL-CENTRE-AND-GLOBAL-APP-SPEC.md`. The initial versioned API surface and lifecycle contract are defined in `API-CONTRACT-V1.md`. These documents are implementation specifications; they do not imply that the described endpoints or mobile application are already deployed.
+
+
+## IZAKHONO Infrastructure commercial launch
+
+The commercial operating plan is built on the existing IZAKHONO Infrastructure practice and HOST estate. IZAKHONO GLOBAL is the customer-facing connectivity/business-services brand; I-CONNECT is the operating platform. I-CONNECT must reuse HOST, Runtime Fabric, PROVISIONER, FORTRESS and I-PAY through their authoritative contracts and release gates rather than creating parallel infrastructure.
+
+Commercial documents:
+- \`commercial/GO-TO-MARKET-AND-OPERATING-PLAN.md\` — positioning, segments, offers, revenue streams, operating model and launch sequence.
+- \`commercial/SERVICE-CATALOGUE-AND-PRICEBOOK-DRAFT.md\` — indicative internal price hypotheses and approval/margin controls; not public tariffs.
+- \`commercial/HOST-INTEGRATION-AND-SERVICE-BOUNDARIES.md\` — system-of-record boundaries, integration and security contract.
+- \`commercial/PARTNER-ENGAGEMENT-PLAYBOOK.md\` — provider due diligence, partner scorecard and engagement process.
+- \`commercial/MTN-BUSINESS-PARTNERSHIP-PROPOSAL.md\` — tailored exploratory proposal for MTN Business.
+- \`commercial/TELKOM-BUSINESS-PARTNERSHIP-PROPOSAL.md\` — tailored exploratory proposal for Telkom Business and relevant group entities.
+- \`commercial/WEBSITE-POSITIONING-AND-MESSAGING.md\` — customer-facing positioning and website copy.
+- \`commercial/90-DAY-PILOT-AND-READINESS-GATES.md\` — phased pilot and mandatory readiness gates.
+
+All partnership proposals are exploratory. No carrier relationship, reseller appointment, wholesale price, live integration or service availability is claimed. Indicative package prices are internal hypotheses pending cost, tax, capacity and margin approval. Production hosting and carrier activation remain subject to their existing evidence and authorization gates.
