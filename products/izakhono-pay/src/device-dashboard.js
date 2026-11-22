@@ -121,7 +121,7 @@ export function renderDeviceDashboard() {
   $('connectForm').addEventListener('submit',async function(event){
     event.preventDefault();merchantId=$('merchantId').value.trim();apiKey=$('apiKey').value.trim();showMessage('connectMessage','Checking merchant access…');
     try{await api('/v1/merchants/'+encodeURIComponent(merchantId));$('connect').classList.add('hidden');$('app').classList.remove('hidden');$('apiKey').value='';await loadData()}
-    catch(error){apiKey='';showMessage('connectMessage',error.message,true)}
+    catch(error){apiKey='';$('apiKey').value='';showMessage('connectMessage',error.message,true)}
   });
   $('linkForm').addEventListener('submit',async function(event){
     event.preventDefault();var amount=Number($('linkAmount').value),title=$('linkTitle').value.trim();if(!Number.isFinite(amount)||amount<=0){showMessage('linkMessage','Enter a valid amount.',true);return}
