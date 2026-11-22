@@ -42,6 +42,6 @@ def run_transaction(
         return TransactionResult(decision.workload, node, "BLOCKED", "activation", "ACTIVATION_FAILED")
 
     if not acceptance(node):
-        return TransactionResult(decision.workload, node, "BLOCKED", "acceptance", "acceptance evidence failed")
+        return TransactionResult(decision.workload, node, "BLOCKED", "acceptance", "ACCEPTANCE_FAILED")
 
     return TransactionResult(decision.workload, node, "READY_FOR_PROMOTION", "acceptance", "all pre-promotion gates passed")
