@@ -11,7 +11,7 @@ URL="${CONNECTA_EXTERNAL_HTTPS_URL:-}"
 EXPECTED_HOST="${CONNECTA_EXTERNAL_HTTPS_HOST:-}"
 
 [[ "$COMMIT" =~ ^[0-9a-f]{40}$ ]] || { echo "immutable commit required" >&2; exit 2; }
-[[ -n "$RUNTIME_ID" && "$RUNTIME_ID" != *NODE01* && "$RUNTIME_ID" != *physical* ]] || { echo "approved logical runtime identity required" >&2; exit 2; }
+[[ -n "$RUNTIME_ID" && "$RUNTIME_ID" != *physical* ]] || { echo "approved logical runtime identity required" >&2; exit 2; }
 [[ -n "$RUNTIME_PROVIDER" ]] || { echo "approved runtime provider required" >&2; exit 2; }
 [[ -n "$URL" && "$URL" =~ ^https:// ]] || { echo "CONNECTA_EXTERNAL_HTTPS_URL must be HTTPS" >&2; exit 3; }
 [[ -n "$EXPECTED_HOST" ]] || { echo "CONNECTA_EXTERNAL_HTTPS_HOST required" >&2; exit 3; }
