@@ -50,15 +50,20 @@ test('merchant API key management is session-scoped and stores hashes only', asy
 test('device workspace response applies a restrictive same-origin security policy', async () => {
   const router = await readFile(new URL('../src/index.ts', import.meta.url), 'utf8');
   const route = router.split("path==='/devices'")[1]?.split("if(req.method")[0] || '';
-  assert.match(route, /content-security-policy/);
+  assert.match(route, /content-security-policy':pageCsp\(nonce\)/);
+  assert.match(route, /const nonce=pageNonce\(\)/);
+  assert.match(route, /renderDeviceDashboard\(nonce\)/);
   assert.match(router, /default-src 'none'/);
-  assert.match(route, /connect-src 'self'/);\n  assert.match(route, /renderDeviceDashboard\(nonce\)/);\n  assert.match(router, /script-src 'nonce-/);
-  assert.match(route, /object-src 'none'/);
-  assert.match(route, /frame-ancestors 'none'/);
+  assert.match(router, /script-src 'nonce-/);
+  assert.doesNotMatch(router, /script-src[^;]*unsafe-inline/);
+  assert.match(router, /connect-src 'self'/);
+  assert.match(router, /object-src 'none'/);
+  assert.match(router, /base-uri 'none'/);
+  assert.match(router, /form-action 'self'/);
+  assert.match(router, /frame-ancestors 'none'/);
   assert.match(route, /referrer-policy':'no-referrer'/);
   assert.match(route, /camera=\(\), microphone=\(\), geolocation=\(\)/);
 });
-
 test('device workspace supports request-scoped nonce markup', () => {
   const html = renderDeviceDashboard('unit-test-nonce');
   assert.match(html, /<style nonce="unit-test-nonce">/);
