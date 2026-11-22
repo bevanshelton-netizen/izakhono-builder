@@ -6,7 +6,7 @@ from typing import Any, Callable, Mapping
 from acceptance_engine import AcceptanceEngine, AcceptanceResult, EvidenceAcceptanceProbe
 from adapter_catalog import CAPABILITY_TO_ADAPTER, build_catalog
 from adapter_executor import AdapterExecutor
-from execution_contract import ExecutionResult, validate_result
+from adapter_executor import AdapterExecution as ExecutionResult\nfrom execution_contract import validate_result
 from job_queue import JobQueue
 from job_store import AuditEvent, StoredJob, utc_now
 from state_machine import State
