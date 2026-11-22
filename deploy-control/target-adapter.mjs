@@ -18,6 +18,8 @@ export function inspectDeploymentTargets() {
   const eligible = nodes.filter(node =>
     node.health === "online" &&
     node.status === "healthy" &&
+    node.identity?.logical_node_id === "NODE01" &&
+    node.identity?.identity_type === "software-runtime" &&
     REQUIRED_DEPLOYMENT_CHECKS.every(check => node.readiness?.[check] === true) &&
     typeof node.runtime?.runtime_host === "string" &&
     node.runtime.runtime_host.trim().length > 0 &&
