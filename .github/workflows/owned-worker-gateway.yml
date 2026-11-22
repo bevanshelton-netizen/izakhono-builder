@@ -14,14 +14,61 @@ on:
 jobs:
   validate:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: infra/owned-runtime/worker-gateway
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: owned_worker_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d owned_worker_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      PGHOST: localhost
+      PGPORT: 5432
+      PGDATABASE: owned_worker_ci
+      PGUSER: postgres
+      PGPASSWORD: postgres
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - run: npm install --ignore-scripts
-      - run: npm run check
-      - run: npm test
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+      - name: Install gateway dependencies
+        working-directory: infra/owned-runtime/worker-gateway
+        run: npm install --ignore-scripts
+      - name: Run gateway static checks and unit tests
+        working-directory: infra/owned-runtime/worker-gateway
+        run: |
+          npm run check
+          npm test
+      - name: Apply additive migration to disposable PostgreSQL
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261122120000_owned_worker_gateway_v1.sql
+      - name: Provision restricted CI login and isolated fixtures
+        run: |
+          RUNTIME_DB_PASSWORD="$(openssl rand -hex 24)"
+          echo "RUNTIME_DB_PASSWORD=$RUNTIME_DB_PASSWORD" >> "$GITHUB_ENV"
+          psql -v ON_ERROR_STOP=1 -v runtime_password="$RUNTIME_DB_PASSWORD" <<'SQL'
+          CREATE ROLE owned_worker_ci LOGIN INHERIT PASSWORD :'runtime_password';
+          GRANT owned_worker_gateway TO owned_worker_ci;
+          CREATE TABLE public.owned_worker_ci_unrelated (id integer PRIMARY KEY);
+          INSERT INTO public.owned_worker_jobs
+            (tenant_id, idempotency_key, worker_key, job_type)
+          VALUES
+            ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'ci-tenant-a', 'worker-a', 'ci-test'),
+            ('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', 'ci-tenant-b', 'worker-b', 'ci-test');
+          SQL
+      - name: Verify tenant isolation and least-privilege permissions as runtime login
+        env:
+          PGUSER: owned_worker_ci
+          PGPASSWORD: ${{ env.RUNTIME_DB_PASSWORD }}
+        run: psql -v ON_ERROR_STOP=1 -f infra/owned-runtime/worker-gateway/test/postgres-security.sql
