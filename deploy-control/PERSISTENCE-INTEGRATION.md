@@ -13,6 +13,16 @@ The existing implementation points are:
 - `infra/provisioner/idempotency_tenant_scope_test.py`: tenant-scoped idempotency invariant.
 - `migrations/0010_idempotency_claims.sql`: existing idempotency-claim contract. Its actual database/runtime ownership must be verified before reuse; do not assume it is the PostgreSQL Runtime Fabric store.
 
+## Reconciliation addendum (2026-11-22)
+
+The original decision above remains the intended product architecture: DEPLOY should integrate with Runtime Fabric's existing durable deployment store rather than create a parallel deployment database. It is an architectural direction, **not evidence that the configured Runtime Fabric database is provisioned, owner-identified, or shared with IZAKHONO WebStart**.
+
+The detailed schema and transaction reconciliation is recorded in [WEBSTART-RUNTIME-FABRIC-RECONCILIATION.md](./WEBSTART-RUNTIME-FABRIC-RECONCILIATION.md). That document qualifies implementation readiness: no new schema, authenticated write path, idempotency table, audit integration, or migration may be implemented until the Runtime Fabric database owner, provisioning/migration authority, environment binding, and actual database relationship to WebStart are verified.
+
+The transaction requirement is stricter than simply calling the current deployment and event stores in sequence. State, scoped idempotency claim/result, and attributable immutable DEPLOY audit must share one database transaction and one connection. The current Runtime Fabric event store is operational telemetry and does not yet satisfy the DEPLOY audit contract. The current FORTRESS audit append method commits independently and must not be called as-is from the transaction.
+
+If the existing Runtime Fabric database is the approved authoritative store, implement the transaction there and publish any WebStart projection through a transactional outbox in that same database. If the owner establishes that WebStart is the authoritative store instead, record that explicit architecture decision before changing the persistence adapter. Do not dual-write two databases and call it atomic.
+
 ## Implemented authorization boundary (2026-11-22)
 
 - `deploy-control/authorization.mjs` requires a bearer token and delegates cryptographic token verification to an injected trusted IZAKHONO ID/JWT verifier.
