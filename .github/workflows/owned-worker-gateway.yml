@@ -1,0 +1,27 @@
+name: IZAKHONO Owned Worker Gateway
+on:
+  pull_request:
+    paths:
+      - 'infra/owned-runtime/worker-gateway/**'
+      - 'supabase/migrations/20261122120000_owned_worker_gateway_v1.sql'
+      - '.github/workflows/owned-worker-gateway.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'infra/owned-runtime/worker-gateway/**'
+      - 'supabase/migrations/20261122120000_owned_worker_gateway_v1.sql'
+      - '.github/workflows/owned-worker-gateway.yml'
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: infra/owned-runtime/worker-gateway
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --ignore-scripts
+      - run: npm run check
+      - run: npm test
