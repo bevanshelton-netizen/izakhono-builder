@@ -237,7 +237,7 @@ async function route(req:Request,env:Env):Promise<Response>{
     return json({ok:true,sessions:rows.results});
   }
   if(url.pathname==='/v1/sessions'&&req.method==='POST')return createSession(req,env);
-  const match=url.pathname.match(/^\/v1\/sessions\/([A-Za-z0-9_-]+)(?:\/(turn|diff|pull-request))?$/);
+  const match=url.pathname.match(/^\/v1\/sessions\/([A-Za-z0-9_-]+)(?:\/(turn|diff|pull-request|dependencies))?$/);
   if(match){
     const session=await getSession(env,match[1]);
     if(!session)return json({ok:false,error:'Session not found.'},404);
@@ -257,6 +257,11 @@ async function route(req:Request,env:Env):Promise<Response>{
         await env.DB.prepare("UPDATE code_agent_sessions SET status='blocked',updated_at=CURRENT_TIMESTAMP WHERE id=?").bind(session.id).run();
         return json({ok:false,error:message},409);
       }
+    }
+    if(match[2]==='dependencies'&&req.method==='POST'){
+      const result=await runnerCall(env,'/v1/execute',{workspace_id:session.workspace_id,action:'install_dependencies',input:{}});
+      await addEvent(env,session.id,'dependencies.installed',JSON.stringify({exit_code:result.exit_code,ok:result.ok}));
+      return json({ok:Boolean(result.ok),result},result.ok?200:409);
     }
     if(match[2]==='pull-request'&&req.method==='POST'){
       try{return json({ok:true,pull_request:await createPullRequest(session,env)},201)}
