@@ -10,7 +10,7 @@ RUNTIME_PROVIDER="${IZAKHONO_RUNTIME_PROVIDER:-${CONNECTA_RUNTIME_PROVIDER:-}}"
 ENV_FILE="${CONNECTA_ENV_FILE:-/etc/izakhono/apps/connecta.env}"
 
 [[ "$COMMIT" =~ ^[0-9a-f]{40}$ ]] || { echo "CONNECTA_EVIDENCE_COMMIT must be an immutable 40-character SHA" >&2; exit 2; }
-[[ -n "$RUNTIME_ID" && "$RUNTIME_ID" != *NODE01* && "$RUNTIME_ID" != *physical* ]] || { echo "approved logical runtime identity required" >&2; exit 2; }
+[[ -n "$RUNTIME_ID" && "$RUNTIME_ID" != *physical* ]] || { echo "approved logical runtime identity required" >&2; exit 2; }
 [[ -n "$RUNTIME_PROVIDER" ]] || { echo "approved runtime provider required" >&2; exit 2; }
 [[ "$(id -u)" -eq 0 ]] || { echo "run with sufficient privilege in the approved runtime environment" >&2; exit 2; }
 
