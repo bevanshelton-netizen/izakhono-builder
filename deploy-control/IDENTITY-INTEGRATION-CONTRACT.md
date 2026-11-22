@@ -91,7 +91,7 @@ Do not add speculative D1 migrations, alter the existing Creator token audience,
 
 Until the issuer supports this contract and a server-side DEPLOY API adapter is implemented and tested:
 
-- `deploy-control/authorization.mjs` remains a tested policy helper with an injected verifier.
+- `deploy-control/authorization.mjs` remains a tested policy helper with injected JWT and live-session verifiers. It requires `iat`, `nbf`, `exp`, `jti`, a maximum ten-minute token lifetime, and a live-session result bound to JTI, subject, tenant and expiry. These callbacks are contracts, not a deployed FORTRESS adapter.
 - DEPLOY has no completed production-authenticated management API.
 - The current Creator JWT is not accepted as a DEPLOY credential.
 - No database persistence, deployment execution, HOST activation, NODE01 bootstrap, or DNS cutover is authorized by this identity design.
