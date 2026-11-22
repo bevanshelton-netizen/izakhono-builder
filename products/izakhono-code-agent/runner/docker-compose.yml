@@ -5,6 +5,16 @@ services:
       dockerfile: runner/Dockerfile
     container_name: izakhono-code-runner
     restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 128
+    mem_limit: 512m
+    cpus: 1.0
     environment:
       PORT: 8860
       IZAKHONO_CODE_RUNNER_TOKEN_FILE: /run/secrets/izakhono-code-runner-token
