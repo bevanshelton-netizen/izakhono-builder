@@ -77,6 +77,8 @@ async function githubArchive(repo:string,ref:string,env:Env):Promise<ArrayBuffer
   if(!env.GITHUB_TOKEN)throw new Error('GitHub token is not configured for private repository checkout.');
   const response=await fetch('https://api.github.com/repos/'+repo+'/tarball/'+encodeURIComponent(ref),{headers:{authorization:'Bearer '+env.GITHUB_TOKEN,accept:'application/vnd.github+json','x-github-api-version':'2022-11-28','user-agent':'IZAKHONO-CODE'},redirect:'follow',signal:AbortSignal.timeout(45_000)});
   if(!response.ok)throw new Error('GitHub checkout failed with HTTP '+response.status+'.');
+  const advertised=Number(response.headers.get('content-length')||0);
+  if(advertised>MAX_ARCHIVE_BYTES)throw new Error('Repository archive exceeds 20 MB limit.');
   const data=await response.arrayBuffer();
   if(data.byteLength>MAX_ARCHIVE_BYTES)throw new Error('Repository archive exceeds 20 MB limit.');
   return data;
@@ -135,11 +137,14 @@ async function createPullRequest(session:Session,env:Env):Promise<any>{
   if(typeof baseSha!=='string')throw new Error('GitHub did not return the base commit.');
   const baseCommit=await githubApi(env,`/repos/${session.repository}/git/commits/${baseSha}`);
   const tree=[];
+  let totalBytes=0;
   for(const file of files){
     const filePath=validateWorkspacePath(String(file.path||''));
     if(file.deleted){tree.push({path:filePath,mode:'100644',type:'blob',sha:null});continue;}
     const result=await runnerCall(env,'/v1/execute',{workspace_id:session.workspace_id,action:'read_file',input:{path:filePath}});
     if(typeof result.content!=='string')throw new Error('Runner did not return file content for '+filePath+'.');
+    totalBytes+=new TextEncoder().encode(result.content).byteLength;
+    if(totalBytes>10*1024*1024)throw new Error('Pull request file content exceeds 10 MB.');
     tree.push({path:filePath,mode:'100644',type:'blob',content:result.content});
   }
   const nextTree=await githubApi(env,`/repos/${session.repository}/git/trees`,{method:'POST',body:JSON.stringify({base_tree:baseCommit.tree.sha,tree})});
@@ -170,10 +175,11 @@ async function createSession(req:Request,env:Env):Promise<Response>{
 }
 async function runTurn(session:Session,objective:string,env:Env):Promise<any>{
   if(!session.workspace_id)throw new Error('Session has no workspace.');
-  const history=await env.DB.prepare('SELECT role,content FROM code_agent_messages WHERE session_id=? ORDER BY created_at ASC LIMIT 80').bind(session.id).all<{role:string;content:string}>();
+  const history=await env.DB.prepare('SELECT role,content FROM code_agent_messages WHERE session_id=? ORDER BY rowid ASC LIMIT 80').bind(session.id).all<{role:string;content:string}>();
   const messages:Array<{role:string;content:string}>=[{role:'system',content:systemPrompt+'\nRepository: '+session.repository+'\nBase ref: '+session.base_ref+'\nOriginal objective: '+session.objective}];
   for(const item of history.results)if(item.role==='user'||item.role==='assistant')messages.push({role:item.role,content:item.content});
   let finalSummary='';
+  let finished=false;
   let validationPassed=false;
   let diffInspected=false;
   const maxSteps=Math.min(Math.max(Number(env.MAX_AGENT_STEPS||8),1),12);
@@ -184,6 +190,7 @@ async function runTurn(session:Session,objective:string,env:Env):Promise<any>{
     if(action.action==='finish'){
       if(!validationPassed||!diffInspected){messages.push({role:'user',content:'You cannot finish yet. Run at least one successful validation command and inspect the final diff before finishing.'});continue;}
       finalSummary=String(action.summary||'Task finished.').slice(0,5000);
+      finished=true;
       break;
     }
     let result:any;
@@ -214,10 +221,10 @@ async function runTurn(session:Session,objective:string,env:Env):Promise<any>{
     await addMessage(env,session.id,'tool',toolText,{action:action.action});
     await addEvent(env,session.id,'tool.'+action.action,'Completed '+action.action+'.');
   }
-  if(!finalSummary)finalSummary='Agent step budget reached. Review the workspace diff before continuing.';
+  if(!finished)finalSummary='Agent step budget reached before validation and diff review were both completed. Continue the session to finish safely.';
   await addMessage(env,session.id,'assistant',finalSummary);
   await addEvent(env,session.id,'turn.completed',finalSummary);
-  return {summary:finalSummary,workspace_id:session.workspace_id};
+  return {summary:finalSummary,workspace_id:session.workspace_id,complete:finished};
 }
 async function route(req:Request,env:Env):Promise<Response>{
   const url=new URL(req.url);
@@ -242,8 +249,8 @@ async function route(req:Request,env:Env):Promise<Response>{
       await env.DB.prepare("UPDATE code_agent_sessions SET status='running',updated_at=CURRENT_TIMESTAMP WHERE id=?").bind(session.id).run();
       try{
         const result=await runTurn(session,objective,env);
-        await env.DB.prepare("UPDATE code_agent_sessions SET status='ready',updated_at=CURRENT_TIMESTAMP WHERE id=?").bind(session.id).run();
-        return json({ok:true,result});
+        await env.DB.prepare("UPDATE code_agent_sessions SET status=?,updated_at=CURRENT_TIMESTAMP WHERE id=?").bind(result.complete?'ready':'blocked',session.id).run();
+        return json({ok:true,result},result.complete?200:409);
       }catch(error){
         const message=error instanceof Error?error.message:'Agent turn failed.';
         await addEvent(env,session.id,'turn.failed',message);
@@ -260,7 +267,7 @@ async function route(req:Request,env:Env):Promise<Response>{
     }
     if(!match[2]&&req.method==='GET'){
       const [messages,events]=await Promise.all([
-        env.DB.prepare('SELECT role,content,metadata_json,created_at FROM code_agent_messages WHERE session_id=? ORDER BY created_at ASC').bind(session.id).all(),
+        env.DB.prepare('SELECT role,content,metadata_json,created_at FROM code_agent_messages WHERE session_id=? ORDER BY rowid ASC').bind(session.id).all(),
         env.DB.prepare('SELECT event_type,detail,created_at FROM code_agent_events WHERE session_id=? ORDER BY created_at ASC').bind(session.id).all()
       ]);
       return json({ok:true,session,messages:messages.results,events:events.results});
