@@ -33,7 +33,7 @@ export function renderDeviceDashboard() {
 </div>
 <div id="app" class="shell hidden">
   <header class="top"><div><div class="brand">I-PAY<span>™</span></div><div class="sub">Merchant workspace</div></div><div class="topnote"><span class="device-pill"><i class="led" id="onlineLed"></i><span id="deviceType">DEVICE READY</span></span><div id="connectionState" style="margin-top:6px">Connected</div></div></header>
-  <section class="hero"><div><div class="eyebrow">ONE MERCHANT ACCOUNT · EVERY SCREEN</div><h1>Payments, wherever business happens.</h1><p>Use this device to create payment links, show customer QR codes, review transactions and print simple receipts.</p></div><div class="hero-actions"><button id="refresh" class="btn">Refresh activity</button><button id="install" class="btn hidden">Install I-PAY</button><button id="logout" class="btn">Sign out</button></div></section>
+  <section class="hero"><div><div class="eyebrow">ONE MERCHANT ACCOUNT · EVERY SCREEN</div><h1>Payments, wherever business happens.</h1><p>Use this device to create payment links, share hosted checkout URLs, review transactions and print simple receipts.</p></div><div class="hero-actions"><button id="refresh" class="btn">Refresh activity</button><button id="install" class="btn hidden">Install I-PAY</button><button id="logout" class="btn">Sign out</button></div></section>
   <div class="layout">
     <div class="stack">
       <section class="card">
@@ -57,21 +57,19 @@ export function renderDeviceDashboard() {
         </form>
         <div id="linkResult" class="link-result">
           <b>Payment link ready</b><div id="linkUrl" class="link-url"></div>
-          <div class="link-actions"><button id="copyLink" class="btn">Copy link</button><button id="shareLink" class="btn">Share</button><button id="showQr" class="btn">Show QR</button></div>
-          <div id="qrWrap" class="qrwrap"><canvas id="qrCanvas" width="240" height="240"></canvas><div class="sub" style="margin-top:8px">Customer scans this code with their phone camera.</div></div>
+          <div class="link-actions"><button id="copyLink" class="btn">Copy link</button><button id="shareLink" class="btn">Share</button></div>
         </div>
         <div class="notice warn">Creating a link does not mean a payment has been made. Only verified confirmation from the connected payment provider can mark a transaction paid.</div>
       </section>
       <section class="card">
         <h2>Works across your devices</h2><p class="sub">No dedicated terminal is needed for these software features.</p>
-        <div class="device-grid"><div class="device-tile"><b>Phone</b><span>Share links, display QR, review activity.</span></div><div class="device-tile"><b>Tablet</b><span>Counter checkout and customer-facing QR.</span></div><div class="device-tile"><b>Computer</b><span>Business overview and printable receipts.</span></div></div>
+        <div class="device-grid"><div class="device-tile"><b>Phone</b><span>Share checkout links and review activity.</span></div><div class="device-tile"><b>Tablet</b><span>Counter checkout and customer-facing QR.</span></div><div class="device-tile"><b>Computer</b><span>Business overview and printable receipts.</span></div></div>
         <div class="notice">Tap-to-Pay / Tap-to-Phone is not enabled here. It requires an approved acquiring partner, supported device, certified solution and explicit activation.</div>
       </section>
     </aside>
   </div>
   <footer class="footer">I-PAY device workspace · Provider processing and settlement remain with your approved payment partner. No card number, CVV or bank login is collected by this page.</footer>
 </div>
-<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js" defer></script>
 <script>
 (function(){
   var merchantId='',apiKey='',currentLink='',deferredInstall=null;
@@ -130,17 +128,12 @@ export function renderDeviceDashboard() {
     $('createLink').disabled=true;showMessage('linkMessage','Creating payment link…');
     try{
       var result=await api('/v1/payment-links',{method:'POST',body:JSON.stringify({merchant_id:merchantId,amount:amount,currency:'ZAR',title:title})});
-      currentLink=new URL(result.url,location.origin).toString();$('linkUrl').textContent=currentLink;$('linkResult').style.display='block';$('qrWrap').style.display='none';showMessage('linkMessage','Link created. Share it with your customer.');$('linkAmount').value='';await loadData();
+      currentLink=new URL(result.url,location.origin).toString();$('linkUrl').textContent=currentLink;$('linkResult').style.display='block';showMessage('linkMessage','Link created. Share it with your customer.');$('linkAmount').value='';await loadData();
     }catch(error){showMessage('linkMessage',error.message,true)}
     finally{$('createLink').disabled=false}
   });
   $('copyLink').addEventListener('click',async function(){if(!currentLink)return;try{await navigator.clipboard.writeText(currentLink);showMessage('linkMessage','Payment link copied.')}catch(error){showMessage('linkMessage','Copy is unavailable. Select and copy the link above.',true)}});
   $('shareLink').addEventListener('click',async function(){if(!currentLink)return;if(navigator.share){try{await navigator.share({title:'I-PAY payment link',text:'Complete your payment securely:',url:currentLink})}catch(error){if(error.name!=='AbortError')showMessage('linkMessage','Sharing was not available.',true)}}else{try{await navigator.clipboard.writeText(currentLink);showMessage('linkMessage','Sharing is not supported here. Link copied instead.')}catch(error){showMessage('linkMessage','Use Copy link to share this checkout.',true)}}});
-  $('showQr').addEventListener('click',function(){
-    if(!currentLink)return;$('qrWrap').style.display='block';
-    if(window.QRCode&&window.QRCode.toCanvas){window.QRCode.toCanvas($('qrCanvas'),currentLink,{width:240,margin:1,errorCorrectionLevel:'M'},function(error){if(error)showMessage('linkMessage','QR could not be generated on this device.',true)})}
-    else showMessage('linkMessage','QR generator is unavailable. Copy or share the payment link instead.',true);
-  });
   $('refresh').addEventListener('click',loadData);
   $('logout').addEventListener('click',function(){merchantId='';apiKey='';currentLink='';$('app').classList.add('hidden');$('connect').classList.remove('hidden');$('merchantId').value='';$('apiKey').value='';$('linkResult').style.display='none';$('connectMessage').textContent='Signed out. Your credentials have been cleared from memory.'});
   window.addEventListener('online',function(){$('connectionState').textContent='Connected';$('onlineLed').classList.remove('offline')});
@@ -170,7 +163,7 @@ export const DEVICE_ICON = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0
 export const DEVICE_SERVICE_WORKER = String.raw`const CACHE='ipay-device-shell-v1';
 const SHELL=['/devices','/device.webmanifest','/device-icon.svg'];
 self.addEventListener('install',event=>event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(SHELL)).then(()=>self.skipWaiting())));
-self.addEventListener('activate',event=>event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(key=>key!==CACHE).map(key=>caches.delete(key)))).then(()=>self.clients.claim())));
+self.addEventListener('activate',event=>event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(key=>key.startsWith('ipay-device-')&&key!==CACHE).map(key=>caches.delete(key)))).then(()=>self.clients.claim())));
 self.addEventListener('fetch',event=>{
   const request=event.request;
   if(request.method!=='GET')return;
