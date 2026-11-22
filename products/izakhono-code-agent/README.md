@@ -40,7 +40,7 @@ The standalone Worker config points its migration directory to the repository ro
 
 The runner requires Docker on the authorised owned host. Create a random token and install it at `/etc/izakhono/code-runner.owner-token` with root-only permissions. Build and start the Compose service from `products/izakhono-code-agent/runner`.
 
-The service is published on host loopback only. Expose it to the Worker only through an authenticated TLS owner tunnel or private network. Do not publish port 8860 directly to the internet.
+The service is published on host loopback only. On the verified, authorised NODE01 host, run `sudo bash products/izakhono-code-agent/runner/install.sh` from the repository root. Expose it to the Worker only through an authenticated TLS owner tunnel or private network. Do not publish port 8860 directly to the internet.
 
 The runner mounts the Docker socket because it launches constrained per-command containers. It is a privileged host component and must only be installed by an authorised operator on a verified host.
 
