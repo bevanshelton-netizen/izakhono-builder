@@ -29,3 +29,7 @@ node --test lifecycle.test.mjs
 ```
 
 No third-party package, paid builder, hosted inference, AI token or usage-credit account is required.
+
+## Shared registry adapter
+
+A read-only adapter now bridges DEPLOY to the existing NODE registry. It requires a fresh healthy heartbeat, explicit separate runtime binding, and reachability, persistent storage, container runtime, monitoring and backup readiness. It never instantiates, promotes or executes against a target. Its focused tests use an isolated temporary registry and do not contact an owner runtime.
