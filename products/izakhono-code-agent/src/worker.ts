@@ -14,6 +14,7 @@ interface Env {
   MODEL_URL?: string;
   MODEL_API_KEY?: string;
   MODEL_NAME?: string;
+  MODEL_PROTOCOL?: string;
   WORKSPACE_RUNNER_URL?: string;
   WORKSPACE_RUNNER_TOKEN?: string;
   GITHUB_TOKEN?: string;
@@ -106,10 +107,17 @@ async function modelTurn(env:Env,messages:Array<{role:string;content:string}>):P
   if(!env.MODEL_URL||!env.MODEL_NAME)throw new Error('Model endpoint and model name are not configured.');
   const url=new URL(env.MODEL_URL);
   if(url.protocol!=='https:' && !['localhost','127.0.0.1'].includes(url.hostname))throw new Error('Model endpoint must use HTTPS.');
-  const response=await fetch(url.toString().replace(/\/$/,'')+'/chat/completions',{method:'POST',headers:{'content-type':'application/json',...(env.MODEL_API_KEY?{authorization:'Bearer '+env.MODEL_API_KEY}:{})},body:JSON.stringify({model:env.MODEL_NAME,messages,temperature:0.1,max_tokens:3000,response_format:{type:'json_object'}}),signal:AbortSignal.timeout(90_000)});
+  const protocol=env.MODEL_PROTOCOL||'openai-chat-completions';
+  const nativeOllama=protocol==='ollama-chat';
+  if(!nativeOllama&&protocol!=='openai-chat-completions')throw new Error('Unsupported model protocol.');
+  const endpoint=url.toString().replace(/\\/$/,'')+(nativeOllama?'/api/chat':'/chat/completions');
+  const payload=nativeOllama
+    ? {model:env.MODEL_NAME,messages,stream:false,format:'json',options:{temperature:0.1,num_predict:3000}}
+    : {model:env.MODEL_NAME,messages,temperature:0.1,max_tokens:3000,response_format:{type:'json_object'}};
+  const response=await fetch(endpoint,{method:'POST',headers:{'content-type':'application/json',...(env.MODEL_API_KEY?{authorization:'Bearer '+env.MODEL_API_KEY}:{})},body:JSON.stringify(payload),signal:AbortSignal.timeout(90_000)});
   if(!response.ok)throw new Error('Model endpoint returned HTTP '+response.status+'.');
-  const payload=await response.json() as any;
-  const content=payload.choices?.[0]?.message?.content;
+  const result=await response.json() as any;
+  const content=nativeOllama?result.message?.content:result.choices?.[0]?.message?.content;
   if(typeof content!=='string'||!content.trim())throw new Error('Model returned an empty response.');
   return content;
 }
