@@ -58,6 +58,28 @@ The Runtime Fabric event store is also not yet a DEPLOY audit ledger: its event 
 7. Add PostgreSQL integration tests for transaction rollback, exact replay, conflicting replay, cross-tenant isolation, authorization failure, immutable audit, and concurrent claims. Mock-only cursor tests are not sufficient for these guarantees.
 8. Keep the management API read-only until the transaction, authorization, isolation, and audit tests pass.
 
+## Connected control-plane database discovery (2026-11-22)
+
+A read-only inspection of the connected Supabase organization found an active project named **IZAKHONO WebStart** (`yfawrenhudjomhnglfhq`, region `eu-west-1`, PostgreSQL 17.6.1). Its migration history includes the IZ DATA Cloud v3 deployment control-plane, host bootstrap enrollment, runtime verification, agent runtime package manifest, and agent-registry hardening migrations dated 2026-11-22. Its schema contains:
+
+- `public.izakhono_runtime_nodes` and `public.izakhono_deployment_targets`
+- `public.izakhono_hosting_nodes` and `public.izakhono_infra_nodes`
+- `one.node_registry`, `one.node_agent_credentials`, and `one.node_control_credentials`
+- `iz_data.data_plane_nodes`, `iz_data.node_agents`, `iz_data.node_heartbeats`, and `iz_data.host_runtime_attestations`
+- `iz_data.deployment_intents`, `iz_data.deployment_manifests`, `iz_data.deployment_steps`, `iz_data.deployment_health_checks`, and `iz_data.deployment_verification_evidence`
+
+Read-only row inspection found:
+- The managed Supabase runtime is recorded as online, while `owned-node-primary` and `owned-node-dr` are only planned.
+- Owned container API, worker and hosting targets are marked planned. Vercel is recorded as a degraded fallback.
+- The only `public.izakhono_hosting_nodes` record is a disabled test placeholder (`test-node-placeholder`) in blocked state.
+- `one.node_registry`, `iz_data.data_plane_nodes`, `iz_data.node_agents`, `iz_data.node_heartbeats`, `iz_data.host_runtime_attestations`, and `iz_data.deployment_intents` currently return no records.
+
+**Interpretation:** IZAKHONO WebStart is a strong candidate for the shared management/control-plane database because it has the matching IZ DATA Cloud v3 schema and migration history. It is still a managed Supabase PostgreSQL service, not proof of an owner-hosted NODE01 execution environment. The empty registry/attestation/deployment tables and planned/blocked targets mean it does not provide a verified runtime binding or production deployment evidence. Do not treat the database project ID, a planned target, or NODE01 software identity as a host locator.
+
+The connected project also reports a critical Supabase security-advisor finding: 45 tables across `private`, `fortress`, `iz_data`, `engineering`, and `allegro_clean` have RLS disabled. The advisor warns these tables may be exposed to `anon` and `authenticated` API roles. Do not bulk-enable RLS without a table-by-table policy plan; doing so without policies may break legitimate access. Review this separately as a security remediation gate.
+
+The I-CONNECT project separately reports RLS disabled for `ic_private.agent_endpoints`; this is another security remediation item, not evidence of Runtime Fabric database ownership.
+
 ## Further database ownership investigation (2026-11-22)
 
 The following repository evidence was inspected at PR head `3d180f780b087ff69f1021b4649f6d605be39bef`:
