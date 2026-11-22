@@ -25,6 +25,8 @@ test('job claims are atomic, tenant and worker scoped, and lease protected', () 
   assert.match(source, /worker_key = \$\{worker\.worker_key\}/);
   assert.match(source, /lease_expires_at > now\(\)/);
   assert.match(source, /attempts >= max_attempts/);
+  assert.match(source, /lease_expires_at <= now\(\)/);
+  assert.match(source, /lease_reclaimed/);
 });
 
 test('new gateway is isolated from the legacy queue and payment/identity services', () => {
