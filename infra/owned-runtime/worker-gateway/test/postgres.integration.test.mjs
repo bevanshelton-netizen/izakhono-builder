@@ -136,7 +136,7 @@ test('PostgreSQL enforces owned-worker tenant isolation and least-privilege gran
       const forged = await tx`select id from public.owned_worker_jobs`;
       assert.deepEqual(forged.map(row => row.id), [], 'forged tenant context must fail closed');
       const forgedEvents = await tx`select job_id from public.owned_worker_events`;
-      assert.deepEqual(forgedEvents, [], 'forged tenant context must not expose events');
+      assert.equal(forgedEvents.length, 0, 'forged tenant context must not expose events');
     });
     await assert.rejects(
       worker`select public.set_owned_worker_tenant_context(${tenantB}, ${tenantSignature(tenantA)})`,
