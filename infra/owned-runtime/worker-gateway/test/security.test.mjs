@@ -35,6 +35,12 @@ test('new gateway is isolated from the legacy queue and payment/identity service
   assert.match(migration, /owned_worker_jobs/);
   assert.match(migration, /current_setting\('app\.tenant_id'/);
   assert.match(migration, /authenticate_owned_worker/);
+  assert.match(migration, /owned_worker_context_secret/);
+  assert.match(migration, /hmac\(convert_to\(tenant_text/);
+  assert.match(migration, /set_owned_worker_tenant_context/);
+  assert.match(migration, /tenant_id = public\.owned_worker_current_tenant_id\(\)/);
+  assert.match(source, /createHmac\('sha256'/);
+  assert.match(source, /OWNED_WORKER_TENANT_CONTEXT_SECRET/);
   assert.match(migration, /AS \$touch\$/);
   assert.match(migration, /GRANT EXECUTE ON FUNCTION public\.touch_owned_worker_credential/);
 });
