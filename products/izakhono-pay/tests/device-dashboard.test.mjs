@@ -58,3 +58,23 @@ test('device workspace response applies a restrictive same-origin security polic
   assert.match(route, /referrer-policy':'no-referrer'/);
   assert.match(route, /camera=\(\), microphone=\(\), geolocation=\(\)/);
 });
+
+test('device workspace supports request-scoped nonce markup', () => {
+  const html = renderDeviceDashboard('unit-test-nonce');
+  assert.match(html, /<style nonce="unit-test-nonce">/);
+  assert.match(html, /<script nonce="unit-test-nonce">/);
+});
+
+test('merchant workspace removes inline event handlers and uses delegated actions', async () => {
+  const dashboard = await readFile(new URL('../src/merchant-dashboard.ts', import.meta.url), 'utf8');
+  const router = await readFile(new URL('../src/index.ts', import.meta.url), 'utf8');
+  assert.doesNotMatch(dashboard, /onclick=/i);
+  assert.match(dashboard, /data-action="create-key"/);
+  assert.match(dashboard, /data-revoke-id=/);
+  assert.match(dashboard, /<script nonce="\$\{nonce\}">/);
+  assert.match(router, /base-uri 'none'/);
+  assert.match(router, /frame-ancestors 'none'/);
+  assert.match(router, /form-action 'self'/);
+  assert.match(router, /connect-src 'self'/);
+  assert.match(router, /script-src 'nonce-/);
+});
