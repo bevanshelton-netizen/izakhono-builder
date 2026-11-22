@@ -84,14 +84,14 @@ async function handler(req,res){
   }
   const expected=await token();
   if(expected.length<32)return send(res,503,{ok:false,error:'Runner owner token is not configured securely'});
-  if(!equal(req.headers.authorization?.replace(/^Bearer\\s+/i,''),expected)){
+  if(!equal(req.headers.authorization?.replace(/^Bearer\s+/i,''),expected)){
     return send(res,401,{ok:false,error:'Unauthorized'});
   }
   try{
     if(req.method==='POST'&&url.pathname==='/v1/workspaces'){
       const repo=String(req.headers['x-repository']||'');
       const ref=String(req.headers['x-base-ref']||'main');
-      if(!/^[A-Za-z0-9_.-]+\\/[A-Za-z0-9_.-]+$/.test(repo))return send(res,400,{ok:false,error:'Invalid repository'});
+      if(!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repo))return send(res,400,{ok:false,error:'Invalid repository'});
       const archive=await readBody(req);
       const id=crypto.randomUUID();
       const root=rootOf(id);
@@ -167,7 +167,7 @@ async function handler(req,res){
       if(action==='changed_files'){
         const tracked=await exec('git',['diff','--name-only','HEAD'],{cwd:root,timeout:10000});
         const untracked=await exec('git',['ls-files','--others','--exclude-standard'],{cwd:root,timeout:10000});
-        const paths=[...new Set([...tracked.stdout.split('\\n'),...untracked.stdout.split('\\n')].filter(Boolean))];
+        const paths=[...new Set([...tracked.stdout.split('\n'),...untracked.stdout.split('\n')].filter(Boolean))];
         if(paths.length>200)throw new Error('Too many changed files for one pull request');
         const files=[];
         for(const value of paths){
