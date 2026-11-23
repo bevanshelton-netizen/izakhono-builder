@@ -72,7 +72,7 @@ const growthModule=modules.get('growth-engine');
 if(!growthModule) errors.push('Growth Engine module missing from SUPER APP');
 else {
   if(growthModule.route!=='/growth-engine') errors.push('Growth Engine reserved route drift');
-  if(growthModule.route_status!=='workspace-view') errors.push('Growth Engine route must remain explicitly unimplemented');
+  if(growthModule.route_status!=='workspace-view') errors.push('Growth Engine workspace route status drift');
   if(growthModule.status!=='architecture-ready') errors.push('Growth Engine must remain architecture-ready');
   if(growthModule.engine!=='orchestrated-independent-engines') errors.push('Growth Engine must preserve independent underlying engines');
 }
@@ -83,8 +83,8 @@ if(growth.policy?.behavioural_tracking!==false || growth.policy?.advertising_ids
 if(growth.policy?.paid_spend_requires_explicit_owner_or_client_authorisation!==true) errors.push('Growth Engine paid spend must remain owner/client authorised');
 if(growth.policy?.campaign_mutations_require_explicit_approval!==true) errors.push('Growth Engine campaign mutations must remain approval-gated');
 if(growth.provider_adapters?.meta?.connected!==false || growth.provider_adapters?.google?.connected!==false) errors.push('Growth Engine providers cannot be marked connected without authenticated evidence');
-if(registry.growth_engine?.public_live!==false || registry.growth_engine?.embedded!==true) errors.push('SUPER APP Growth Engine registry must remain non-live and unembedded');
-if(registry.growth_engine?.route_status!=='not-implemented') errors.push('Growth Engine workspace route status drift');
+if(registry.growth_engine?.public_live!==false || registry.growth_engine?.embedded!==true) errors.push('SUPER APP Growth Engine registry must remain embedded but non-live');
+if(registry.growth_engine?.route_status!=='workspace-view') errors.push('Growth Engine workspace route status drift');
 const growthCapabilityIds=new Set((growth.capabilities||[]).map(x=>x.id));
 for(const required of ['paid-media-planning','creative-operations','growth-intelligence','conversion-optimisation','client-service','strategy']){
   if(!growthCapabilityIds.has(required)) errors.push('Growth Engine capability missing: '+required);
