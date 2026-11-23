@@ -67,6 +67,12 @@ class MemoryJobStore(JobStore):
     def record_terminal_receipt(self, job: StoredJob, event: AuditEvent) -> None:
         if job.state not in TERMINAL_STATES or event.event_type != "TERMINAL_RECEIPT":
             raise ValueError("terminal receipt requires a terminal job state")
+        existing = next((item for item in self._events if item.event_id == event.event_id), None)
+        if existing is not None:
+            receipt = existing.data.get("receipt")
+            if isinstance(receipt, dict):
+                job.evidence["TERMINAL_RECEIPT"] = receipt
+            return
         self.save(job)
         self.append_audit(event)
     def append_audit(self, event: AuditEvent) -> None:
