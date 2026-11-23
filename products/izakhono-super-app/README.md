@@ -160,8 +160,8 @@ It runs WebLLM inference in a compatible browser, offers Quick (SmolLM2 360M), B
 The module coordinates existing independent systems: SUPER AI, CREATE, ADS, CRM, FLOW, BUILDER, FORTRESS and I-PAY. It does not replace their engines or create parallel identity, customer, payment, audit or analytics stores.
 
 Current truth:
-- The module registry and read-only `GET /api/growth-engine/status` descriptor are present.
-- The `/growth-engine` user-interface route is reserved but not implemented.
+- The module registry, read-only `GET /api/growth-engine/status` descriptor and local planning workspace are present.
+- The workspace produces a deterministic planning preview only; it does not create or publish campaigns.
 - Meta Ads and Google Ads adapters are not connected or enabled.
 - Campaign mutations, external publishing and paid spend are disabled.
 - No client account, provider credential, production database or runtime has been connected by this registration.
