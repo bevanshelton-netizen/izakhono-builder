@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - 'infra/runtime-fabric/controller/izakhono_mail_activation.py'
+      - 'infra/runtime-fabric/controller/test_izakhono_mail_stack_contract.py'
       - 'infra/provisioner/job_store.py'
       - 'infra/provisioner/job_queue.py'
       - 'infra/provisioner/postgres_job_store.py'
@@ -25,6 +26,7 @@ on:
     branches: [main]
     paths:
       - 'infra/runtime-fabric/controller/izakhono_mail_activation.py'
+      - 'infra/runtime-fabric/controller/test_izakhono_mail_stack_contract.py'
       - 'infra/runtime-fabric/controller/test_izakhono_mail_activation.py'
       - 'infra/runtime-fabric/workloads/izakhono-mail.json'
       - 'products/izakhono-mail/NODE-DEPLOYMENT.md'
@@ -40,6 +42,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: Validate workload contract JSON
         run: python -m json.tool infra/runtime-fabric/workloads/izakhono-mail.json >/dev/null
+      - name: Validate canonical Stalwart stack binding
+        run: python infra/runtime-fabric/controller/test_izakhono_mail_stack_contract.py
       - name: Test fail-closed gateway binding
         working-directory: infra/runtime-fabric/controller
         run: python test_izakhono_mail_activation.py
