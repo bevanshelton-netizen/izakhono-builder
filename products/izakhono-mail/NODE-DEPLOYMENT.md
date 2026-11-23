@@ -111,6 +111,14 @@ Verify ownership and existing provider dependencies for each domain. Do not chan
 
 The activation binding returns `BLOCKED` if the command-gateway adapter or acceptance-evidence adapter is missing. A successful adapter call is not itself proof of public production readiness.
 
-Record current evidence for NODE/runtime health, container health, public reachability, DNS, TLS, SMTP send/receive/reply, IMAP authentication, DKIM/SPF/DMARC alignment, abuse controls and restore. Only then may the control plane mark the service `LIVE_VERIFIED`.
+The real external delivery probe is `products/izakhono-host/mail/MAIL-ACCEPTANCE-E2E.py`. The registered Runtime Fabric acceptance adapter must execute it only after workload activation, using SMTP/IMAP credentials injected from FORTRESS for one IZAKHONO mailbox and one authorized external test mailbox. It performs and separately records:
+
+1. external SMTP → Stalwart mailbox, confirmed through Stalwart IMAP;
+2. Stalwart authenticated SMTP → external mailbox, confirmed through external IMAP;
+3. external SMTP reply → Stalwart mailbox, confirmed through Stalwart IMAP and matched to the outbound `Message-ID` using `In-Reply-To`.
+
+The probe emits a JSON receipt with per-direction Message-IDs and timestamps, without exposing credentials. The acceptance adapter must persist this receipt, selected runtime identity, tenant/workload authorization ID and FORTRESS audit correlation. A DNS/TLS probe or SMTP submission response alone does not satisfy external delivery acceptance. The E2E probe has not been run because no authorized live execution registration or external test-mailbox credentials are currently available.
+
+Record current evidence for NODE/runtime health, container health, public reachability, DNS, TLS, external inbound/outbound/reply delivery, IMAP authentication, DKIM/SPF/DMARC alignment, abuse controls and restore. Only then may the control plane mark the service `LIVE_VERIFIED`.
 
 **Current repository status:** integration contract and fail-closed activation binding prepared; live gateway registration, FORTRESS authorization, runtime binding and execution remain unverified.
