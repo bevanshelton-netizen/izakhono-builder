@@ -411,3 +411,67 @@ The following interfaces are required before the corresponding capability can be
 | Automated tests executed | <b>Not run</b>; this was read-only source reconciliation |
 
 **Disposition:** Phase 0 documentation and ownership mapping are complete. Phase 0 production-readiness gates are not complete. Proceed to Phase 1 contract design only as a non-deploying, reviewable specification and test-fixture exercise. Do not implement persistence migrations, enable execution, register assumed adapters, or change production state until the unresolved owners and gates are confirmed.
+
+
+## 19. Phase 0 — component ownership and interface reconciliation
+
+This matrix distinguishes the intended owner from what the inspected source actually demonstrates. “Observed” means repository source/documentation was inspected; it does not mean the interface was exercised or deployed.
+
+| Capability / interface | Canonical responsibility owner | Existing evidence in repository | Reconciliation decision / missing proof |
+|---|---|---|---|
+| Agent catalogue and specialist capability definitions | NODE01 Agent Fabric | `README.md`, `registry.py`, specialist manifest; local agent specs | Reuse as capability catalogue. It is not yet a durable, tenant-scoped identity registry. |
+| Agent identity, tenant ownership and lifecycle | Canonical Agent Registry service (owner and persistence authority unconfirmed) | NODE01 agent specs; separate Commander device records; separate IZAKHONO namespace identity | No existing source is established as canonical workforce-agent identity owner. Owner, storage boundary, uniqueness and migration authority require explicit confirmation. |
+| Objective/task planning, dependency graph and dispatch | NODE01 Agent Fabric | `ORCHESTRATION-V1.md`, planner/scheduler implementation | Keep NODE01 as the single orchestrator/scheduler. Do not create a second fleet scheduler. |
+| Registered tool invocation | NODE01 Tool Fabric | `TOOL-FABRIC.md`; registered tools and local risk checks | Reuse the narrow tool boundary. Replace caller-supplied approval flags with verifiable FORTRESS decisions before consequential production execution. |
+| Policy decision, approval and grant/revocation authority | FORTRESS | `products/izakhono-fortress/README.md`; local default-deny egress policy decision endpoint | FORTRESS remains the sole policy authority. Existing egress authorization is not yet proof of agent-task authorization, human approval issuance, or enforcement at every executor. |
+| Credential storage and secret references | FORTRESS | FORTRESS security boundary and secret-handling rules | Only opaque references may cross service boundaries. Confirm actual secret broker/injection interface and rotation/revocation acknowledgements before integration. |
+| Human principal/session identity | FORTRESS Identity & Session Issuer | Repository identity/session design and revocation/audit documentation | Potential principal source; verify deployed issuer, token audience/claims, revocation and service-to-service validation. Do not conflate this with independent identity verification. |
+| Commander device enrollment | IZAKHONO Commander | Existing device enrollment/pairing and device audit schema | Remains device identity only. Do not repurpose it as the agent registry. |
+| Logical runtime identity | NODE01 / Runtime Fabric contract | Control NODE Fabric and NODE01 runtime identity documentation | NODE01 is a logical runtime/workload identity, not a physical host or proof of execution access. |
+| Workload scheduling, registration, state, health and failover | Runtime Fabric | Runtime Fabric architecture and MAIL integration contract references | Keep Runtime Fabric as workload scheduler/state owner. Obtain the exact registration API, health TTL, state transition and acknowledgement contracts before binding agents. |
+| Actual command execution | Authorized HOST execution adapter/runner | Architecture and MAIL gate documentation identify the required boundary | No verified production runner/interface is established by this source review. Do not infer it from a callback, CI runner, process health or generic API. |
+| Queue durability and worker leases | NODE01 queue adapter; production persistence owner unconfirmed | `PERSISTENT-RUNTIME.md`; SQLite reference adapter | Reuse queue semantics as a reference. SQLite/local durability is not proof of multi-host production persistence. Database owner, transaction boundary and migration authority remain open. |
+| Task receipts and orchestration observations | NODE01 emits execution observations; authoritative evidence owner must be designated | `OBSERVE-CONTROL.md`; in-memory reference ledger and deterministic evidence hashes | Local event ledger is bounded/in-memory and not authoritative immutable audit. Design durable evidence acknowledgement and independent verification before production claims. |
+| Audit decision trail and policy evidence | FORTRESS for authorization decisions; durable evidence service owner to be confirmed | FORTRESS policy/audit design; NODE01 event observations | Preserve decision provenance and correlate events. Confirm append-only persistence, retention, signing/checkpoint ownership and atomicity with execution state. |
+| Objective delivery state and acceptance | IZAKHONO Execution OS | `EXECUTION-CONTRACT.md` | Execution OS owns objective lifecycle and acceptance coordination, not authorization or low-level scheduling. |
+| Model inference and provider-specific capabilities | AI Gateway/provider adapters | AI Gateway and NODE01 provider adapter documentation | Optional capability only. Maintain explicit per-provider support/limitations; never treat provider as identity, policy, secrets or customer-data system of record. |
+| AgentSync package format and portability policy | AI Workforce product contract; enforcement by FORTRESS and source/destination adapters | Proposed AgentSync manifest and exclusions in interface contract | Contract design only. No provider-neutral hidden-memory export or restore capability is implied. Require scanning, policy re-evaluation and restore evidence. |
+| Fleet telemetry and health aggregation | Fleet Monitor projection; authoritative signals remain with source owners | NODE01 observations and Runtime Fabric health concepts | Read from authoritative sources; attach source, scope, timestamp and freshness. Missing telemetry is UNKNOWN, never healthy. |
+| Training and competency assessment | Agent Academy product; authorization remains FORTRESS | Proposed architecture only | Training records cannot grant permissions. Assessor, evidence, version and expiry are required. |
+
+### 19.1 Contract inventory and integration gates
+
+The companion `IZAKHONO-AI-WORKFORCE-CONTRACTS-V1.md` is a proposed interface design, not an implementation. It defines the common request envelope, Agent Registry API, FORTRESS decision and approval model, RuntimeBinding, task receipts, event envelope and AgentSync manifest.
+
+Before implementation, owners must approve these contract questions:
+
+1. **Registry authority:** Which IZAKHONO service owns the canonical agent ID namespace, tenant uniqueness, lifecycle writes and production persistence? Which existing service owns migrations?
+2. **Principal validation:** Which FORTRESS issuer and audience validate human and workload principals? What is the revocation propagation bound?
+3. **Authorization artifact:** Is the enforcement artifact a signed short-lived capability, an online decision reference, or both? Define cryptographic verification, key rotation, audience binding and outage behavior.
+4. **Approval semantics:** Identify the human approval service, delegation rules, request fingerprint, expiry/revocation and evidence acknowledgement.
+5. **Runtime registration:** Specify Runtime Fabric registration, health freshness, workload binding, isolation and revocation interfaces.
+6. **HOST execution:** Identify the authorized runner, environment identity, allowlist, command protocol, receipt signature, timeout and cancellation semantics. This is a separate proof from Runtime Fabric health.
+7. **Persistence and atomicity:** Confirm database owner, migration authority, transaction model, outbox/inbox or equivalent, idempotency scope, retention and recovery. No database is selected by this document.
+8. **Evidence authority:** Name the durable evidence service and signing/checkpoint owner. Define when an action may be reported complete and how auditors independently verify it.
+9. **Provider matrix:** For each adapter, record actual stop/cancel, tool, memory export, telemetry, cost, retention, rate-limit and data-class capabilities with evidence dates.
+10. **Tenant isolation:** Specify enforcement and negative tests across APIs, queues, caches, search, evidence, backups, restore and operator views.
+
+### 19.2 Phase 0 exit assessment
+
+| Exit criterion | Assessment |
+|---|---|
+| Existing component responsibility map | Documented from repository source; owner review still required |
+| Existing source/interface inventory | Documented at source level; not all interfaces were executed or independently probed |
+| Duplicate/overlapping registry and control-plane risks | Identified; canonical agent registry remains unresolved |
+| FORTRESS authorization integration | Contract proposed; not implemented or verified |
+| Durable evidence and atomic commit | Gap identified; production owner and transaction boundary unresolved |
+| Runtime registration and HOST execution | Required interfaces identified; production capability not verified |
+| Persistence and migration authority | Unresolved; no schema or migration authorized |
+| Provider capability truth | Matrix required; provider-specific verification remains outstanding |
+
+**Phase 0 disposition: architecture reconciliation is documented, but operational exit is conditional.** The source inventory and ownership proposal are ready for owner review; Phase 0 is not fully accepted until the canonical registry/persistence owner and the FORTRESS, Runtime Fabric, HOST execution and evidence owners confirm their interfaces. No implementation gate is implied by this document.
+
+### 19.3 Phase 1 implementation gate
+
+Phase 1 remains contract-first. Implementation may begin only after the registry owner and persistence/migration authority are confirmed and the FORTRESS decision/approval contract is accepted. Runtime-dependent execution remains blocked until Runtime Fabric registration and the authorized HOST adapter are independently verified. Evidence and state changes must share a defined atomicity/recovery boundary before any consequential operation is enabled.
+
