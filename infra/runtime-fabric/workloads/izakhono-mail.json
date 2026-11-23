@@ -10,8 +10,17 @@
   },
   "runtime": {
     "mode": "node-agnostic",
-    "preferred_nodes": ["node01", "node02", "node03", "node04"],
-    "failover_order": ["node02", "node03", "node04"],
+    "preferred_nodes": [
+      "node01",
+      "node02",
+      "node03",
+      "node04"
+    ],
+    "failover_order": [
+      "node02",
+      "node03",
+      "node04"
+    ],
     "binding_required": true,
     "binding_source": "verified-runtime-registration",
     "persistent_state": true
@@ -20,7 +29,11 @@
     "gateway": "NODE01 command gateway",
     "adapter": "node01-command-gateway",
     "registration_required": true,
-    "required_capabilities": ["runtime.deploy", "mail.activate", "runtime.health"],
+    "required_capabilities": [
+      "runtime.deploy",
+      "mail.activate",
+      "runtime.health"
+    ],
     "authorization": "FORTRESS",
     "audit_required": true,
     "arbitrary_shell_over_http": false
@@ -47,9 +60,29 @@
     "never_return_to_client": true
   },
   "acceptance": {
-    "runtime": ["registered-node", "adapter-authorized", "containers-healthy", "persistent-storage"],
-    "mail": ["smtp-submission", "smtp-inbound", "imap-authentication", "tls", "spf", "dkim", "dmarc", "ptr", "send-receive-reply"],
-    "security": ["fortress-authorization", "private-bridge", "audit-trail", "backup-restore"],
+    "runtime": [
+      "registered-node",
+      "adapter-authorized",
+      "containers-healthy",
+      "persistent-storage"
+    ],
+    "mail": [
+      "smtp-submission",
+      "smtp-inbound",
+      "imap-authentication",
+      "tls",
+      "spf",
+      "dkim",
+      "dmarc",
+      "ptr",
+      "send-receive-reply"
+    ],
+    "security": [
+      "fortress-authorization",
+      "private-bridge",
+      "audit-trail",
+      "backup-restore"
+    ],
     "promotion": "LIVE_VERIFIED only after all runtime, security, DNS, TLS and end-to-end mail acceptance evidence passes"
   },
   "deployment": {
@@ -58,5 +91,6 @@
     "rollback_required": true,
     "public_dns_cutover_requires_verified_runtime": true,
     "current_state": "integration-contract-prepared-execution-unverified"
-  }
+  },
+  "environment": "production"
 }
