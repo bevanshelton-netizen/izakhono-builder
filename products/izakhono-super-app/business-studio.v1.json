@@ -1,0 +1,221 @@
+{
+  "schema": "izakhono.business-studio.v1",
+  "product": "IZAKHONO SUPER APP",
+  "module": "IZAKHONO Business Studio",
+  "version": "1.0.0",
+  "status": "planning-workspace",
+  "public_live": false,
+  "owned_first": true,
+  "positioning": "An integrated, IZAKHONO-owned business transformation studio combining brand, digital experience, software, AI, automation, growth and ongoing technology leadership.",
+  "principles": [
+    "outcomes-over-disconnected-deliverables",
+    "one-client-one-governed-engagement",
+    "reuse-independent-izakhono-engines",
+    "build-sustain-align",
+    "evidence-before-claims",
+    "human-accountability-for-material-decisions"
+  ],
+  "capabilities": [
+    {
+      "id": "brand-identity",
+      "name": "Brand strategy & identity",
+      "engine": "IZAKHONO CREATE",
+      "scope": [
+        "positioning",
+        "research",
+        "messaging",
+        "identity-systems",
+        "brand-guidelines"
+      ]
+    },
+    {
+      "id": "websites-ux",
+      "name": "Websites, platforms & UX",
+      "engine": "IZAKHONO BUILDER",
+      "scope": [
+        "discovery-and-information-architecture",
+        "UX-and-conversion-design",
+        "accessible-responsive-websites",
+        "performance-and-SEO-readiness",
+        "CMS-and-platform-builds"
+      ]
+    },
+    {
+      "id": "strategic-communications",
+      "name": "Strategic communications & marketing",
+      "engine": "IZAKHONO CREATE + IZAKHONO SOCIAL",
+      "scope": [
+        "audience-and-message-frameworks",
+        "campaign-planning",
+        "content-direction",
+        "storytelling",
+        "channel-coordination"
+      ]
+    },
+    {
+      "id": "digital-marketing",
+      "name": "Digital marketing, SEO & answer visibility",
+      "engine": "IZAKHONO GROWTH ENGINE",
+      "scope": [
+        "technical-and-content-SEO",
+        "search-and-answer-engine-readiness",
+        "campaign-planning",
+        "analytics-and-reporting",
+        "iterative-optimisation"
+      ]
+    },
+    {
+      "id": "software-it",
+      "name": "Software development & IT solutions",
+      "engine": "IZAKHONO BUILDER + approved engineering engines",
+      "scope": [
+        "custom-platforms",
+        "APIs-and-backend-systems",
+        "integration-engineering",
+        "operational-software",
+        "technical-support"
+      ]
+    },
+    {
+      "id": "ai-automation",
+      "name": "AI development & integration",
+      "engine": "IZAKHONO SUPER AI + IZAKHONO FLOW",
+      "scope": [
+        "purpose-built-AI-workflows",
+        "retrieval-and-data-integration",
+        "agent-and-assistant-design",
+        "workflow-automation",
+        "evaluation-and-governance"
+      ]
+    },
+    {
+      "id": "systems-integration",
+      "name": "Systems & integrations",
+      "engine": "IZAKHONO FLOW + FORTRESS",
+      "scope": [
+        "system-mapping",
+        "versioned-API-integration",
+        "identity-and-access-boundaries",
+        "workflow-orchestration",
+        "observability-and-recovery"
+      ]
+    },
+    {
+      "id": "managed-ai",
+      "name": "Managed AI capability subscriptions",
+      "engine": "IZAKHONO SUPER AI + Runtime Fabric",
+      "scope": [
+        "runtime-oversight",
+        "model-and-cost-optimisation",
+        "quality-monitoring",
+        "security-and-governance",
+        "continuous-improvement"
+      ]
+    },
+    {
+      "id": "fractional-cio",
+      "name": "Fractional CIO & technology leadership",
+      "engine": "IZAKHONO governance and architecture",
+      "scope": [
+        "technology-roadmaps",
+        "architecture-review",
+        "vendor-and-risk-governance",
+        "investment-prioritisation",
+        "executive-advisory"
+      ]
+    },
+    {
+      "id": "venture-lab",
+      "name": "Venture design & venture lab",
+      "engine": "IZAKHONO Venture Factory",
+      "scope": [
+        "opportunity-discovery",
+        "validation-and-prototyping",
+        "product-architecture",
+        "commercial-model-design",
+        "venture-operations"
+      ]
+    }
+  ],
+  "engagement_models": [
+    {
+      "id": "project",
+      "name": "Project-based",
+      "description": "Defined discovery, brand, website, platform, software or AI implementation."
+    },
+    {
+      "id": "retainer",
+      "name": "Ongoing capability retainer",
+      "description": "Continuous creative, marketing, engineering or optimisation support."
+    },
+    {
+      "id": "subscription",
+      "name": "Managed AI capability subscription",
+      "description": "Governed runtime, monitoring, optimisation and ongoing AI support."
+    },
+    {
+      "id": "fractional-cio",
+      "name": "Fractional CIO",
+      "description": "Recurring senior technology leadership and architecture oversight."
+    },
+    {
+      "id": "venture",
+      "name": "Venture partnership",
+      "description": "Structured co-design, validation and development of new products and platforms."
+    }
+  ],
+  "delivery_lifecycle": [
+    "discover",
+    "diagnose",
+    "align",
+    "design",
+    "build",
+    "verify",
+    "launch",
+    "sustain",
+    "optimise",
+    "govern",
+    "renew-or-transition"
+  ],
+  "operating_model": {
+    "build": "Create the brand, platform, software, integrations and AI capability.",
+    "sustain": "Operate, support, measure and continuously improve approved services.",
+    "align": "Maintain strategic oversight, architecture, risk, vendor and investment alignment."
+  },
+  "integrations": {
+    "registry": "IZAKHONO ONE",
+    "workspace": "IZAKHONO SUPER APP",
+    "brand_and_creative": "IZAKHONO CREATE",
+    "web_and_platforms": "IZAKHONO BUILDER",
+    "growth": "IZAKHONO Growth Engine",
+    "ai": "IZAKHONO SUPER AI",
+    "automation": "IZAKHONO FLOW",
+    "customer_operations": "IZAKHONO CRM",
+    "security": "FORTRESS",
+    "commercials": "I-PAY",
+    "venture_creation": "IZAKHONO Venture Factory",
+    "runtime": "Runtime Fabric / authorised HOST"
+  },
+  "governance": {
+    "tenant_isolation_required": true,
+    "fortress_authorisation_required": true,
+    "client_scope_and_approval_required": true,
+    "production_changes_require_release_gate": true,
+    "provider_credentials_server_side": true,
+    "ai_data_use_requires_contract_and_policy": true,
+    "privacy_by_design": true,
+    "popia_review_required_where_applicable": true,
+    "accessibility_and_performance_acceptance_required": true,
+    "claims_require_evidence": true,
+    "no_unapproved_vendor_or_provider_dependency": true
+  },
+  "launch_truth": {
+    "workspace_view_implemented": false,
+    "registry_registered": false,
+    "independent_engines_connected": false,
+    "client_data_persistence_enabled": false,
+    "production_deployment_authorised": false,
+    "public_live": false,
+    "note": "Planning and service taxonomy only until workspace, integration contracts, tenant permissions, operational evidence and release gates are verified. No production access, client data or vendor connection is implied."
+  }
+}
