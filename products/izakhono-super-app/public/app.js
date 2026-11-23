@@ -196,6 +196,37 @@
     toast("Growth plan preview created. No spend or publishing.");
   }
 
+
+  function buildStudioPlan(){
+    const client=$("studioClient")?.value.trim()||"";
+    if(!client){toast("Enter a client or business name first.");$("studioClient")?.focus();return;}
+    const need=$("studioNeed")?.value||"integrated";
+    const model=$("studioModel")?.value||"project";
+    const needLabels={brand:"Brand & identity",digital:"Website & digital platform",software:"Software & systems",ai:"AI & automation",growth:"Marketing & growth",leadership:"Technology leadership",venture:"New venture or product",integrated:"Integrated transformation"};
+    const modelLabels={project:"Project-based",retainer:"Ongoing capability retainer",subscription:"Managed AI capability subscription","fractional-cio":"Fractional CIO",venture:"Venture partnership"};
+    const streams={
+      brand:["Brand discovery, stakeholder interviews and positioning","Audience, competitor and category research","Messaging, identity system and brand standards","Creative production, review and handover"],
+      digital:["Business goals, user research and information architecture","UX/UI design, content structure and accessibility criteria","Responsive platform build, integrations and CMS","Performance, SEO/AEO, security and acceptance testing"],
+      software:["Process and systems discovery; requirements and architecture","Data boundaries, API contracts and security design","Incremental implementation, integration and automated tests","Operational handover, monitoring and support model"],
+      ai:["Use-case selection, risk assessment and workflow mapping","Data permissions, model selection and evaluation design","Controlled prototype, integration and human approval paths","Quality, cost, security monitoring and ongoing governance"],
+      growth:["Market, audience, offer and channel audit","SEO/AEO, content, campaign and creative strategy","Landing-page and conversion optimisation plan","Measurement, attribution and evidence-led optimisation"],
+      leadership:["Technology estate, risk and capability assessment","Target architecture and prioritised roadmap","Vendor, investment, security and governance review","Executive reporting and ongoing decision support"],
+      venture:["Opportunity framing, user discovery and validation","Business model, product scope and technical feasibility","Prototype, test programme and launch-readiness gates","Commercialisation, operating model and venture governance"],
+      integrated:["Business model, brand, customer journey and systems diagnosis","Prioritised brand, digital, software, AI and growth architecture","Coordinated delivery across approved specialist engines","Measurement, adoption, operational handover and continuous improvement"]
+    };
+    const stages=[["01","DISCOVER","Goals, stakeholders, current state, constraints and success measures."],["02","DIAGNOSE","Evidence-led audit of brand, customer experience, technology, data, operations and risks."],["03","ALIGN","Agree outcomes, scope, ownership, budget assumptions, dependencies and decision rights."],["04","DESIGN","Approve the service blueprint, architecture, delivery plan and acceptance criteria."],["05","BUILD","Deliver through the relevant independent IZAKHONO engines with versioned handoffs."],["06","VERIFY","Test functionality, accessibility, performance, security, privacy and business acceptance."],["07","LAUNCH","Release only through authorised HOST/runtime, owner approvals and verified operational gates."],["08","SUSTAIN + ALIGN","Support, measure, optimise and maintain strategic technology oversight."]];
+    const host=$("studioPlan");host.replaceChildren();
+    const summary=document.createElement("div");summary.className="creator-plan-summary";
+    [[ "CLIENT",client ],[ "NEED",needLabels[need] ],[ "MODEL",modelLabels[model] ]].forEach(([label,value])=>{const cell=document.createElement("div");const k=document.createElement("span");k.className="kicker";k.textContent=label;const strong=document.createElement("strong");strong.textContent=value;cell.append(k,strong);summary.append(cell);});
+    const heading=document.createElement("h4");heading.textContent="Recommended workstreams";
+    const work=document.createElement("ul");(streams[need]||streams.integrated).forEach(item=>{const li=document.createElement("li");li.textContent=item;work.append(li);});
+    const list=document.createElement("div");list.className="creator-plan-list";
+    stages.forEach(([n,title,description])=>{const step=document.createElement("div");step.className="creator-plan-step";const num=document.createElement("span");num.textContent=n;const body=document.createElement("div");const h=document.createElement("strong");h.textContent=title;const p=document.createElement("small");p.textContent=description;body.append(h,p);step.append(num,body);list.append(step);});
+    host.append(summary,heading,work,list);
+    $("studioStatus").textContent="Local blueprint created for "+client+". No client record, quote, contract, task, invoice, integration or production change was created.";
+    toast("Engagement blueprint created locally.");
+  }
+
   function switchView(id){
     $$(".view").forEach(v=>v.classList.toggle("active",v.id===id));
     $$(".nav").forEach(b=>b.classList.toggle("active",b.dataset.view===id));
@@ -240,6 +271,8 @@
     $$("[data-jump]").forEach(b=>b.addEventListener("click",()=>switchView(b.dataset.jump)));
     $("planCreator")?.addEventListener("click",buildCreatorPlan);
     $("buildGrowthPlan")?.addEventListener("click",buildGrowthPlan);
+    $("buildStudioPlan")?.addEventListener("click",buildStudioPlan);
+    $("clearStudioPlan")?.addEventListener("click",()=>{if($("studioClient"))$("studioClient").value="";$("studioPlan")?.replaceChildren(Object.assign(document.createElement("div"),{className:"creator-plan-empty",textContent:"Choose a client, need and engagement model to generate a structured delivery blueprint."}));if($("studioStatus"))$("studioStatus").textContent="This creates a local scope outline only. It does not create a client record, quote, contract, invoice or production task.";});
     $("clearGrowthPlan")?.addEventListener("click",()=>{if($("growthBusiness"))$("growthBusiness").value="";$("growthPlan")?.replaceChildren(Object.assign(document.createElement("div"),{className:"creator-plan-empty",textContent:"Enter a brand or business and build a plan. The preview is not an advertisement, campaign, forecast or performance guarantee."}));if($("growthStatus"))$("growthStatus").textContent="Planning is available locally. No account is connected, no campaign is created and no money can be spent from this workspace.";});
     $("clearCreator")?.addEventListener("click",()=>{
       if($("creatorBrief")) $("creatorBrief").value="";
