@@ -5,6 +5,7 @@ on:
     paths:
       - 'infra/runtime-fabric/controller/izakhono_mail_activation.py'
       - 'infra/provisioner/job_store.py'
+      - 'infra/provisioner/job_queue.py'
       - 'infra/provisioner/postgres_job_store.py'
       - 'infra/provisioner/postgres_job_queue.py'
       - 'infra/provisioner/durable_worker_runtime.py'
