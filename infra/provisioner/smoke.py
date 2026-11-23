@@ -2,12 +2,34 @@
 """Deterministic end-to-end Provisioner contract smoke tests."""
 from __future__ import annotations
 
-from acceptance_engine import AcceptanceEngine, EvidenceAcceptanceProbe
-from adapter_catalog import CAPABILITY_TO_ADAPTER, build_catalog
+from datetime import datetime, timezone
+
+from acceptance_engine import AcceptanceEngine
+from adapter_catalog import CAPABILITY_TO_ADAPTER
 from job_queue import JobQueue
 from job_store import MemoryJobStore
 from service import CreateJobRequest, ProvisionerService, ServiceError
 from state_machine import State
+
+
+def smoke_catalog():
+    capabilities = ("tenant", "domain", "dns", "site", "tls", "mail", "crm_whatsapp", "acceptance")
+
+    def implementation(capability):
+        def execute(payload):
+            return {
+                "evidence_id": f"test-{capability}-{payload['operation_id']}",
+                "observed_at": datetime.now(timezone.utc).isoformat(),
+                "verified": True,
+                "checks": [f"test.{capability}"],
+                "simulation": False,
+            }
+        return execute
+
+    return {
+        CAPABILITY_TO_ADAPTER[capability]: implementation(capability)
+        for capability in capabilities
+    }
 
 
 def registry():
@@ -36,7 +58,7 @@ class RejectAcceptanceProbe:
 def main() -> None:
     store = MemoryJobStore()
     queue = JobQueue(store)
-    service = ProvisionerService(store, queue, build_catalog(), registry())
+    service = ProvisionerService(store, queue, smoke_catalog(), registry())
     request = CreateJobRequest(
         "tenant-smoke", "order-001",
         {"payment_id": "pay-1", "amount": 548, "currency": "ZAR", "verified": True},
@@ -62,7 +84,7 @@ def main() -> None:
     failed_store = MemoryJobStore()
     failed_queue = JobQueue(failed_store)
     rejecting = ProvisionerService(
-        failed_store, failed_queue, build_catalog(), registry(),
+        failed_store, failed_queue, smoke_catalog(), registry(),
         acceptance=AcceptanceEngine(RejectAcceptanceProbe()),
     )
     failed = rejecting.create_job(CreateJobRequest(
