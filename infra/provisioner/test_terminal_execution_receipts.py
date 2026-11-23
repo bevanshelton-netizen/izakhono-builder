@@ -18,9 +18,12 @@ def test_idempotency_replays_and_rejects_payload_conflicts() -> None:
     queue = JobQueue(store)
     service = ProvisionerService(store, queue)
     first = service.create_job(CreateJobRequest("tenant-a", "order-1", payment("pay-1")))
-    replay = service.create_job(CreateJobRequest("tenant-a", "order-1", payment("pay-1")))
     assert first["created"] is True
+    # Simulate a process crash after job persistence but before queue insertion.
+    queue._items.clear()
+    replay = service.create_job(CreateJobRequest("tenant-a", "order-1", payment("pay-1")))
     assert replay["created"] is False
+    assert queue.pending() == 1
     assert first["job_id"] == replay["job_id"]
     try:
         service.create_job(CreateJobRequest("tenant-a", "order-1", payment("pay-different")))
