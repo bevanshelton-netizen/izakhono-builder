@@ -23,11 +23,13 @@ def main() -> None:
     mail_path = ROOT / "products/izakhono-host/mail/docker-compose.mail.yml"
     bridge_path = ROOT / "products/izakhono-host/runtime/mail-bridge/server.mjs"
     activation_path = ROOT / "products/izakhono-host/mail/STALWART-ACTIVATE.sh"
+    e2e_path = ROOT / "products/izakhono-host/mail/MAIL-ACCEPTANCE-E2E.py"
 
     host = host_path.read_text()
     mail = mail_path.read_text()
     bridge = bridge_path.read_text()
     activation = activation_path.read_text()
+    e2e = e2e_path.read_text()
 
     services = contract["services"]
     assert services["control_plane"] == "products/izakhono-host"
@@ -62,7 +64,11 @@ def main() -> None:
     assert "docker compose -f docker-compose.mail.yml up -d" in activation
 
     mail_acceptance = set(contract["acceptance"]["mail"])
-    assert {"smtp-submission", "smtp-inbound", "imap-authentication", "spf", "dkim", "dmarc", "ptr", "send-receive-reply"} <= mail_acceptance
+    assert {"smtp-submission", "smtp-inbound", "imap-authentication", "spf", "dkim", "dmarc", "ptr", "send-receive-reply",
+            "external-inbound-delivery", "external-outbound-delivery", "external-reply-delivery"} <= mail_acceptance
+    assert "external-inbound" in e2e and "external-outbound" in e2e and "external-reply" in e2e
+    assert "In-Reply-To" in e2e and '"status": "VERIFIED"' in e2e
+    assert "EXTERNAL_SMTP_PASS" in e2e and "IZAKHONO_MAIL_SMTP_PASS" in e2e
     assert contract["deployment"]["current_state"] == "integration-contract-prepared-execution-unverified"
     print("IZAKHONO MAIL STACK CONTRACT: PASS")
 
