@@ -5,6 +5,7 @@ on:
     paths:
       - 'infra/runtime-fabric/controller/izakhono_mail_activation.py'
       - 'infra/runtime-fabric/controller/test_izakhono_mail_stack_contract.py'
+      - 'products/izakhono-host/mail/MAIL-ACCEPTANCE-E2E.py'
       - 'infra/provisioner/job_store.py'
       - 'infra/provisioner/job_queue.py'
       - 'infra/provisioner/postgres_job_store.py'
@@ -44,6 +45,8 @@ jobs:
         run: python -m json.tool infra/runtime-fabric/workloads/izakhono-mail.json >/dev/null
       - name: Validate canonical Stalwart stack binding
         run: python infra/runtime-fabric/controller/test_izakhono_mail_stack_contract.py
+      - name: Compile real external mail acceptance probe
+        run: python -m py_compile products/izakhono-host/mail/MAIL-ACCEPTANCE-E2E.py
       - name: Test fail-closed gateway binding
         working-directory: infra/runtime-fabric/controller
         run: python test_izakhono_mail_activation.py
