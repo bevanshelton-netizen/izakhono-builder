@@ -58,7 +58,7 @@ The FORTRESS policy must authorize the requested tenant/environment/workload ope
 
 ## Gateway registration evidence contract
 
-The legacy generic profile at `internal/node01-command-gateway/deploy-profiles/izakhono-mail.json` is deliberately non-deployable: its `approved_ref` is a non-commit sentinel so the generic `/deploy` command rejects it before reaching CONTROL. It still describes the older single-container path and must not be used to activate the mail workload. The supported route remains the Runtime Fabric workload contract and registration-bound adapter described below.
+The legacy generic profile at `internal/node01-command-gateway/deploy-profiles/izakhono-mail.json` is deliberately non-deployable: its `approved_ref` is a non-commit sentinel so the generic `/deploy` command rejects it before reaching CONTROL. It still describes the older single-container path and must not be used to activate the mail workload. The supported route remains the Runtime Fabric workload contract and registration-bound adapter described below. CI verifies that the generic gateway rejects this legacy profile before it can submit a deployment to CONTROL.
 
 The Runtime Fabric activation binding now requires a fresh registration response from the real NODE01 command-gateway registry before it will call the execution adapter. The response must prove all of the following:
 
