@@ -11,6 +11,9 @@ on:
 permissions:
   contents: read
 
+env:
+  KORA_SOURCE_SHA: d15d4a4dbcc54a3569bf52715de1c7ddfa224049
+
 jobs:
   kora-runtime:
     runs-on: ubuntu-latest
@@ -36,7 +39,12 @@ jobs:
       - name: Build KORA portable image
         run: |
           set -euo pipefail
-          git clone --depth 1 https://github.com/bevanshelton-netizen/Downloads.git /tmp/izakhono-downloads
+          git init /tmp/izakhono-downloads
+          git -C /tmp/izakhono-downloads remote add origin https://github.com/bevanshelton-netizen/Downloads.git
+          git -C /tmp/izakhono-downloads fetch --depth 1 origin "$KORA_SOURCE_SHA"
+          git -C /tmp/izakhono-downloads checkout --detach FETCH_HEAD
+          test "$(git -C /tmp/izakhono-downloads rev-parse HEAD)" = "$KORA_SOURCE_SHA"
+          printf '{"repository":"bevanshelton-netizen/Downloads","commit":"%s"}\n' "$KORA_SOURCE_SHA" >/tmp/kora-source-revision.json
           docker build -t kora-network:portable /tmp/izakhono-downloads/kora-network
           docker image inspect kora-network:portable >/tmp/kora-image.json
 
@@ -53,15 +61,30 @@ jobs:
           set -euo pipefail
           node autonomy/kora-workload-executor.mjs | tee /tmp/kora-runtime.json
 
-      - name: Verify current public KORA route without claiming cutover
+      - name: Diagnose current public KORA routes without weakening acceptance
         run: |
           set -euo pipefail
-          curl -fsS --retry 5 --retry-delay 2 https://streamkoraafrica.com/api/health >/tmp/kora-public-health.json
+          curl --silent --show-error --max-time 30 --output /dev/null --dump-header /tmp/kora-public-home.headers --write-out '%{http_code}\n' https://streamkoraafrica.com/ >/tmp/kora-public-home.status
+          curl --silent --show-error --max-time 30 --output /tmp/kora-public-health.body --dump-header /tmp/kora-public-health.headers --write-out '%{http_code}\n' https://streamkoraafrica.com/api/health >/tmp/kora-public-health.status || echo 'curl_transport_error=true' >/tmp/kora-public-health.transport-error
           python - <<'PY'
           import json
-          payload=json.load(open('/tmp/kora-public-health.json'))
-          if payload.get('ok') is not True:
-              raise SystemExit('Public KORA health endpoint did not return ok=true')
+          from pathlib import Path
+          status=int(Path('/tmp/kora-public-health.status').read_text().strip() or '0')
+          headers=Path('/tmp/kora-public-health.headers').read_text(errors='replace')
+          body=Path('/tmp/kora-public-health.body').read_text(errors='replace')
+          try:
+              payload=json.loads(body)
+          except Exception:
+              payload=None
+          print(f'Public homepage HTTP: {Path("/tmp/kora-public-home.status").read_text().strip()}')
+          print(f'Public health HTTP: {status}')
+          for line in headers.splitlines():
+              if line.lower().startswith(('server:', 'via:', 'location:', 'cf-ray:', 'x-vercel-id:', 'x-powered-by:', 'cache-control:')):
+                  print(line)
+          print(f'Public health JSON ok: {payload.get("ok") if isinstance(payload, dict) else "not-json"}')
+          print(f'Public health body preview: {body[:1000]!r}')
+          if status != 200 or not isinstance(payload, dict) or payload.get('ok') is not True:
+              raise SystemExit('Public KORA health route acceptance failed; diagnostic response retained as artifact.')
           print('[PASS] Current public KORA route is healthy. This does not prove routing to the Software NODE.')
           PY
 
@@ -75,7 +98,13 @@ jobs:
             /tmp/node-heartbeat.json
             /tmp/node-promotion.json
             /tmp/kora-image.json
+            /tmp/kora-source-revision.json
             /tmp/kora-runtime.json
-            /tmp/kora-public-health.json
+            /tmp/kora-public-health.body
+            /tmp/kora-public-health.headers
+            /tmp/kora-public-health.status
+            /tmp/kora-public-health.transport-error
+            /tmp/kora-public-home.headers
+            /tmp/kora-public-home.status
             autonomy/workload-execution.json
           if-no-files-found: warn
