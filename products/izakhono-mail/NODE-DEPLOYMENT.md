@@ -64,7 +64,7 @@ The Runtime Fabric activation binding now requires a fresh registration response
 - the logical identity is `NODE01`, while the execution environment has a separate runtime ID;
 - the selected software node is registered and its execution environment is healthy;
 - the registered adapter exposes `runtime.deploy`, `mail.activate` and `runtime.health`;
-- FORTRESS returns an explicit allow decision scoped to the IZAKHONO MAIL production workload and tenant;
+- the activation caller supplies the expected tenant ID and FORTRESS returns an explicit allow decision for that exact tenant, the IZAKHONO MAIL workload and the production environment;
 - the corresponding audit event is acknowledged and references the same authorization;
 - the registration observation is no more than five minutes old.
 
