@@ -5,15 +5,17 @@ from typing import Any, Callable, Mapping
 from rollback_store import RollbackStore
 from job_store import AuditEvent, JobStore, StoredJob, utc_now
 
+# Keys are the last verified state; values reconcile the next operation that
+# failed while attempting to advance from that state.
 RECOVERY_ACTIONS: dict[str, str] = {
-    "PAYMENT_VERIFIED": "reconcile_payment",
-    "TENANT_CREATED": "reconcile_tenant",
-    "DOMAIN_READY": "reconcile_domain",
-    "DNS_READY": "reconcile_dns",
-    "SITE_READY": "reconcile_site",
-    "TLS_READY": "reconcile_tls",
-    "MAIL_READY": "reconcile_mail",
-    "INTEGRATIONS_READY": "reconcile_integrations",
+    "PAYMENT_VERIFIED": "reconcile_tenant",
+    "TENANT_CREATED": "reconcile_domain",
+    "DOMAIN_READY": "reconcile_dns",
+    "DNS_READY": "reconcile_site",
+    "SITE_READY": "reconcile_tls",
+    "TLS_READY": "reconcile_mail",
+    "MAIL_READY": "reconcile_integrations",
+    "INTEGRATIONS_READY": "reconcile_acceptance",
 }
 
 @dataclass(frozen=True)
