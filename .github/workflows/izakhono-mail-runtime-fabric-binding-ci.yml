@@ -12,6 +12,7 @@ on:
       - 'infra/provisioner/service.py'
       - 'infra/provisioner/execution_receipt.py'
       - 'infra/provisioner/test_terminal_execution_receipts.py'
+      - 'infra/provisioner/test_worker_runtime.py'
       - 'infra/runtime-fabric/controller/test_izakhono_mail_activation.py'
       - 'infra/runtime-fabric/workloads/izakhono-mail.json'
       - 'products/izakhono-mail/NODE-DEPLOYMENT.md'
@@ -49,3 +50,9 @@ jobs:
       - name: Run Provisioner end-to-end contract smoke
         working-directory: infra/provisioner
         run: python smoke.py
+      - name: Run Provisioner worker terminal smoke
+        working-directory: infra/provisioner
+        run: python worker_runtime.py
+      - name: Run Provisioner runtime regression tests
+        working-directory: infra/provisioner
+        run: python test_worker_runtime.py
