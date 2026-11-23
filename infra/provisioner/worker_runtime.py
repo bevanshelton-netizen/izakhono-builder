@@ -7,6 +7,7 @@ from acceptance_engine import AcceptanceEngine, AcceptanceResult, EvidenceAccept
 from adapter_catalog import CAPABILITY_TO_ADAPTER, build_catalog
 from adapter_executor import AdapterExecutor
 from execution_contract import validate_request, validate_result
+from execution_receipt import build_terminal_receipt
 from job_queue import JobQueue
 from job_store import AuditEvent, StoredJob, utc_now
 from state_machine import State
@@ -62,7 +63,9 @@ class ProvisionerWorker:
 
     def _block(self, job: StoredJob, code: str, message: str = "") -> WorkerResult:
         job.state = State.BLOCKED.value
-        self.store.save(job)
+        receipt, event = build_terminal_receipt(job, {"error_code": code})
+        job.evidence["TERMINAL_RECEIPT"] = receipt
+        self.store.record_terminal_receipt(job, event)
         self.store.append_audit(AuditEvent(f"evt_{job.job_id}_blocked", job.job_id, "BLOCKED", job.state, utc_now(),
                                            {"error_code": code, "message": message}))
         return WorkerResult(job.job_id, job.state, "blocked", message)
@@ -87,7 +90,9 @@ class ProvisionerWorker:
     def _accept(self, job: StoredJob) -> WorkerResult:
         result: AcceptanceResult = self.acceptance.promote(job)
         if result.status == "PASSED":
-            self.store.save(job)
+            receipt, event = build_terminal_receipt(job, {"checks": list(result.checks)})
+            job.evidence["TERMINAL_RECEIPT"] = receipt
+            self.store.record_terminal_receipt(job, event)
             self.store.append_audit(AuditEvent(f"evt_{job.job_id}_accepted", job.job_id, "ACCEPTANCE_PASSED", job.state,
                                                utc_now(), {"checks": result.checks}))
             return WorkerResult(job.job_id, job.state, "accepted")
