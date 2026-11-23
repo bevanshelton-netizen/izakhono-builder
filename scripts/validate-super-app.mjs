@@ -106,6 +106,14 @@ if(growth.policy?.campaign_mutations_require_explicit_approval!==true) errors.pu
 if(growth.provider_adapters?.meta?.connected!==false || growth.provider_adapters?.google?.connected!==false) errors.push('Growth Engine providers cannot be marked connected without authenticated evidence');
 if(registry.growth_engine?.public_live!==false || registry.growth_engine?.embedded!==true) errors.push('SUPER APP Growth Engine registry must remain embedded but non-live');
 if(registry.growth_engine?.route_status!=='workspace-view') errors.push('Growth Engine workspace route status drift');
+
+if(growth.integration_contracts?.crm?.inbound_route!=='POST /api/flow' || growth.integration_contracts?.crm?.authentication!=='Bearer CRM_INGEST_TOKEN') errors.push('Growth Engine CRM handoff contract drift');
+if(JSON.stringify(growth.integration_contracts?.crm?.required_scope_headers||[])!==JSON.stringify(['X-Entity-ID','X-Platform-ID'])) errors.push('Growth Engine CRM scope headers drift');
+if(growth.integration_contracts?.flow?.event_route!=='POST /api/events' || growth.integration_contracts?.flow?.authentication!=='Bearer FLOW_INGEST_TOKEN') errors.push('Growth Engine FLOW event contract drift');
+if(!growth.integration_contracts?.flow?.initial_event_types?.includes('lead.created')) errors.push('Growth Engine FLOW lead event missing');
+if(!String(growth.integration_contracts?.flow?.payment_confirmation_rule||'').includes('verification.status is verified')) errors.push('Growth Engine verified-payment gate missing');
+if(growth.integration_contracts?.ads?.creative_source_of_truth!=='IZAKHONO CREATE' || growth.integration_contracts?.ads?.external_ad_accounts_connected!==false) errors.push('Growth Engine ADS/CREATE source or account gate drift');
+
 const growthCapabilityIds=new Set((growth.capabilities||[]).map(x=>x.id));
 for(const required of ['paid-media-planning','creative-operations','growth-intelligence','conversion-optimisation','client-service','strategy']){
   if(!growthCapabilityIds.has(required)) errors.push('Growth Engine capability missing: '+required);
