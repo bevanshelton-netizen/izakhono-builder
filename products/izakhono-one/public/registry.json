@@ -203,6 +203,22 @@
         "capabilityStatus": "architecture-ready",
         "publicRouteStatus": "not-yet-verified"
       }
+    },
+    {
+      "slug": "izakhono-business-studio",
+      "name": "IZAKHONO Business Studio",
+      "category": "Business Transformation",
+      "description": "Integrated brand, digital, software, AI, automation, growth, managed capability, technology leadership and venture design.",
+      "status": "gated",
+      "publicUrl": null,
+      "featured": false,
+      "integration": {
+        "mode": "owned-module-registry",
+        "sourceOfTruth": "products/izakhono-super-app/business-studio.v1.json",
+        "capabilityStatus": "planning-workspace",
+        "publicRouteStatus": "workspace-view",
+        "publicLive": false
+      }
     }
   ]
 }
