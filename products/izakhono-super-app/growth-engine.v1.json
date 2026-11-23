@@ -120,12 +120,12 @@
   },
   "launch_truth": {
     "registry_status": "architecture-ready",
-    "integration_status": "contract-and-registry-installed",
-    "user_interface_route_implemented": false,
+    "integration_status": "planning-workspace-and-registry-installed",
+    "user_interface_route_implemented": true,
     "provider_connections_live": false,
     "campaign_execution_enabled": false,
     "paid_spend_enabled": false,
     "public_live": false,
-    "note": "This contract and registry entry do not connect provider accounts, publish campaigns, spend money, or establish a production service. Existing independent engines remain authoritative."
+    "note": "The SUPER APP provides a local planning workspace and read-only status descriptor. Meta/Google provider accounts remain disconnected; campaign execution, publishing and paid spend remain disabled. Existing independent engines remain authoritative."
   }
 }
