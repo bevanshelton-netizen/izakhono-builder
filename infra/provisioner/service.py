@@ -1,6 +1,8 @@
 """IZAKHONO Provisioner service boundary: verified payment -> durable worker -> acceptance -> handover."""
 from __future__ import annotations
 from dataclasses import dataclass
+import hashlib
+import json
 from typing import Any, Callable, Dict, Mapping, Optional
 from job_queue import JobQueue
 from job_store import AuditEvent, JobStore, utc_now
@@ -47,7 +49,18 @@ class ProvisionerService:
         if not request.tenant_id or not request.idempotency_key: raise ServiceError("INVALID_REQUEST","tenant_id and idempotency_key are required")
         if e.get("verified") is not True: raise ServiceError("PAYMENT_NOT_VERIFIED","verified payment evidence is required")
         if any(not e.get(f) for f in ("payment_id","amount","currency")): raise ServiceError("PAYMENT_EVIDENCE_INCOMPLETE","payment_id, amount and currency required")
-        job,created=self.store.create_or_get(request.tenant_id,request.idempotency_key,Provisioner.make_job_id(request.tenant_id,request.idempotency_key))
+        canonical = json.dumps(e, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+        request_digest = hashlib.sha256(canonical).hexdigest()
+        try:
+            job,created=self.store.create_or_get_submission(
+                request.tenant_id, request.idempotency_key,
+                Provisioner.make_job_id(request.tenant_id,request.idempotency_key),
+                request_digest,
+            )
+        except ValueError as exc:
+            if "IDEMPOTENCY_KEY_REUSED_WITH_DIFFERENT_REQUEST" in str(exc):
+                raise ServiceError("IDEMPOTENCY_CONFLICT","idempotency key was already used with a different request") from exc
+            raise
         if created:
             job.evidence["PAYMENT_VERIFIED"]={"payment_id":e["payment_id"],"amount":e["amount"],"currency":e["currency"],"verified":True,"evidence_id":f"pay_{e['payment_id']}","observed_at":utc_now(),"checks":["payment.verified","payment.amount_match"]}
             self.store.save(job); self.store.append_audit(AuditEvent(f"evt_{job.job_id}_created",job.job_id,"JOB_CREATED",job.state,utc_now())); self.queue.enqueue(job)
