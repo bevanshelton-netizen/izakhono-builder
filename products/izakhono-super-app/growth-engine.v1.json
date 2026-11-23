@@ -1,0 +1,131 @@
+{
+  "schema": "izakhono.growth-engine.v1",
+  "product": "IZAKHONO SUPER APP",
+  "module": "IZAKHONO Growth Engine",
+  "version": "1.0.0",
+  "status": "architecture-ready",
+  "public_live": false,
+  "objective": "Coordinate approved customer-acquisition, creative, paid-media, conversion-optimisation and revenue-measurement workflows across existing IZAKHONO engines.",
+  "lifecycle": [
+    "discover",
+    "qualify",
+    "audit",
+    "propose",
+    "contract",
+    "plan",
+    "approve",
+    "launch",
+    "measure",
+    "optimise",
+    "report",
+    "renew-or-close"
+  ],
+  "capabilities": [
+    {
+      "id": "paid-media-planning",
+      "label": "Paid media planning",
+      "owners": [
+        "IZAKHONO ADS"
+      ],
+      "state": "contract-defined",
+      "mutations_enabled": false
+    },
+    {
+      "id": "creative-operations",
+      "label": "Creative operations",
+      "owners": [
+        "IZAKHONO CREATE",
+        "IZAKHONO Creator Engine"
+      ],
+      "state": "contract-defined"
+    },
+    {
+      "id": "growth-intelligence",
+      "label": "Growth intelligence and attribution",
+      "owners": [
+        "IZAKHONO ADS",
+        "approved analytics sources"
+      ],
+      "state": "contract-defined"
+    },
+    {
+      "id": "conversion-optimisation",
+      "label": "Conversion-rate optimisation",
+      "owners": [
+        "IZAKHONO BUILDER",
+        "approved analytics sources"
+      ],
+      "state": "contract-defined"
+    },
+    {
+      "id": "client-service",
+      "label": "Client onboarding and account operations",
+      "owners": [
+        "IZAKHONO CRM",
+        "IZAKHONO FLOW"
+      ],
+      "state": "contract-defined"
+    },
+    {
+      "id": "strategy",
+      "label": "Growth strategy and consultancy",
+      "owners": [
+        "IZAKHONO SUPER AI",
+        "IZAKHONO CRM"
+      ],
+      "state": "contract-defined"
+    }
+  ],
+  "integrations": {
+    "intelligence": "IZAKHONO SUPER AI",
+    "creative": "IZAKHONO CREATE",
+    "distribution": "products/izakhono-ads",
+    "customer_relationships": "products/izakhono-crm",
+    "workflow": "products/izakhono-flow",
+    "payments": "I-PAY",
+    "security": "FORTRESS",
+    "landing_pages": "IZAKHONO BUILDER",
+    "service_discovery": "products/izakhono-one/public/registry.json"
+  },
+  "provider_adapters": {
+    "meta": {
+      "provider": "Meta Ads",
+      "connected": false,
+      "enabled": false,
+      "mode": "not-configured"
+    },
+    "google": {
+      "provider": "Google Ads",
+      "connected": false,
+      "enabled": false,
+      "mode": "not-configured"
+    }
+  },
+  "policy": {
+    "owned_first": true,
+    "external_adapters_replaceable": true,
+    "tenant_isolation_required": true,
+    "behavioural_tracking": false,
+    "advertising_ids": false,
+    "sensitive_trait_targeting": false,
+    "provider_credentials_server_side": true,
+    "client_account_authorisation_required": true,
+    "campaign_mutations_require_explicit_approval": true,
+    "paid_spend_requires_explicit_owner_or_client_authorisation": true,
+    "budget_caps_required": true,
+    "publish_requires_content_and_channel_approval": true,
+    "metrics_require_source_and_attribution_provenance": true,
+    "finance_confirmed_revenue_distinct_from_platform_attribution": true,
+    "public_case_studies_require_evidence_and_publication_approval": true
+  },
+  "launch_truth": {
+    "registry_status": "architecture-ready",
+    "integration_status": "contract-and-registry-installed",
+    "user_interface_route_implemented": false,
+    "provider_connections_live": false,
+    "campaign_execution_enabled": false,
+    "paid_spend_enabled": false,
+    "public_live": false,
+    "note": "This contract and registry entry do not connect provider accounts, publish campaigns, spend money, or establish a production service. Existing independent engines remain authoritative."
+  }
+}
