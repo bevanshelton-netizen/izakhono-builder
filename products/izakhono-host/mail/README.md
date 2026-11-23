@@ -15,15 +15,13 @@ Stalwart provides SMTP, IMAP, JMAP and the management interface in one server im
 
 ## Activation
 
-On NODE01:
+Activate Stalwart only through the authorized IZAKHONO Runtime Fabric execution adapter, using the existing HOST mail plane and the separately registered execution environment selected by Runtime Fabric.
 
-```bash
-cd products/izakhono-host/mail
-export STALWART_RECOVERY_ADMIN='admin:REPLACE_WITH_A_REAL_SECRET'
-docker compose -f docker-compose.mail.yml up -d
-```
+NODE01 is the logical software-runtime identity and command-gateway route; it is not the execution host. Do not SSH to a presumed NODE01 machine, run this stack from a developer workstation or CI runner, or start a competing standalone mail stack. The gateway must first prove fresh adapter registration, a healthy execution-environment binding, the required runtime capabilities, tenant/workload/environment authorization from FORTRESS, and a correlated audit acknowledgement.
 
-Never commit the recovery credential. Prefer a protected `.env` or secret store.
+The execution adapter may run the owned HOST activation sequence documented in [NODE-DEPLOYMENT.md](../../../izakhono-mail/NODE-DEPLOYMENT.md) after the deployment gate is satisfied. Inject `STALWART_RECOVERY_ADMIN` and all other secrets from FORTRESS at execution time; never commit credentials or paste them into chat.
+
+A compose configuration check or CI result is not a live activation receipt. If the registered executor or any authorization/evidence adapter is unavailable, activation must remain blocked.
 
 ## Mailbox provisioning
 
