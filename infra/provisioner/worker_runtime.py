@@ -148,7 +148,9 @@ class ProvisionerWorker:
                 self.queue.complete(claimed.lease_id)
             else:
                 self.queue.release(claimed.lease_id, retry_at=utc_now())
-        elif result.status == "retry":
+        elif result.status in {"retry", "verified"} and job.state not in {
+            State.HANDOVER_READY.value, State.BLOCKED.value
+        }:
             self.queue.enqueue(job)
         return result
 
