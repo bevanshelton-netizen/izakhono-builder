@@ -3,6 +3,7 @@ import path from 'node:path';
 import { runBuilderAdapter } from './builder-adapter.mjs';
 import { runNodeAdapter } from './node-adapter.mjs';
 import { resolveFailover } from './node-failover.mjs';
+import { runAgentWorker } from './ai-agent-worker.mjs';
 
 const root = process.cwd();
 const manifestPath = path.join(root, 'autonomy', 'engine-manifest.json');
@@ -40,15 +41,22 @@ function selectNext() {
     return !['completed', 'blocked'].includes(current.status) && !persistentWaitFor(task) && ready(task);
   });
 }
-function executeInternal(task) {
+async function executeInternal(task) {
   if (task.action === 'validate-manifest') {
     JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
     transition(task, 'completed', { attempts: taskState(task.id).attempts + 1, evidence: evidenceFor(task, 'passed') });
     return { status: 'completed' };
   }
   if (task.action === 'run-worker') {
-    transition(task, 'completed', { attempts: taskState(task.id).attempts + 1, evidence: evidenceFor(task, 'passed') });
-    return { status: 'completed' };
+    const result = await runAgentWorker();
+    if (result.progressed > 0) {
+      return {
+        status: 'completed',
+        evidence: [{ name: 'agent-worker-executed', status: 'passed', progressed: result.progressed, plans: result.plans }],
+        workerResult: result,
+      };
+    }
+    return { status: 'waiting', reason: 'agent-queue-empty-or-no-ready-work', workerResult: result, evidence: [{ name: 'agent-worker-idle', status: 'waiting', progressed: 0 }] };
   }
   if (task.action === 'node-failover') {
     const result = resolveFailover(task.requirements ?? {});
@@ -68,7 +76,7 @@ while (progressed < manifest.queue.length) {
   const current = taskState(next.id);
   transition(next, 'running', { attempts: current.attempts + 1, action: next.action, adapter: next.adapter });
 
-  let result = executeInternal(next);
+  let result = await executeInternal(next);
   if (!result && next.adapter === 'builder') result = await runBuilderAdapter(next);
 
   const nodeActions = ['node-discovery', 'software-node-instantiation', 'node-heartbeat', 'node-evidence', 'node-target', 'node-readiness', 'workload-schedule', 'kora-workload-execute', 'kora-routing-acceptance'];
