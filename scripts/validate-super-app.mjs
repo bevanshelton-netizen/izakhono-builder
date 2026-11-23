@@ -6,6 +6,7 @@ const flowPath='products/izakhono-flow/.izakhono.json';
 const financePath='products/izakhono-finance-core/finance-core.v1.json';
 const creatorPath='products/izakhono-super-app/creator-engine.v1.json';
 const growthPath='products/izakhono-super-app/growth-engine.v1.json';
+const businessStudioPath='products/izakhono-super-app/business-studio.v1.json';
 const oneRegistryPath='products/izakhono-one/public/registry.json';
 const superAppHtmlPath='products/izakhono-super-app/public/index.html';
 const registry=JSON.parse(fs.readFileSync(regPath,'utf8'));
@@ -14,6 +15,7 @@ const flow=JSON.parse(fs.readFileSync(flowPath,'utf8'));
 const finance=JSON.parse(fs.readFileSync(financePath,'utf8'));
 const creator=JSON.parse(fs.readFileSync(creatorPath,'utf8'));
 const growth=JSON.parse(fs.readFileSync(growthPath,'utf8'));
+const businessStudio=JSON.parse(fs.readFileSync(businessStudioPath,'utf8'));
 const oneRegistry=JSON.parse(fs.readFileSync(oneRegistryPath,'utf8'));
 const superAppHtml=fs.readFileSync(superAppHtmlPath,'utf8');
 const errors=[];
@@ -55,6 +57,25 @@ if(registry.creator_engine?.route!=='/creator') errors.push('SUPER APP creator_e
 if(registry.creator_engine?.public_live!==false) errors.push('SUPER APP registry must not claim Creator Engine public-live');
 
 
+
+
+const businessStudioModule=modules.get('business-studio');
+if(!businessStudioModule) errors.push('Business Studio module missing from SUPER APP');
+else {
+ if(businessStudioModule.route!=='/business-studio') errors.push('Business Studio route drift');
+ if(businessStudioModule.status!=='planning-workspace') errors.push('Business Studio must remain a planning workspace');
+ if(businessStudioModule.engine!=='orchestrated-independent-engines') errors.push('Business Studio must reuse independent engines');
+}
+if(!superAppHtml.includes('id="business-studio"')) errors.push('Business Studio workspace view missing');
+if(!superAppHtml.includes('data-view="business-studio"')) errors.push('Business Studio navigation missing');
+if(businessStudio.schema!=='izakhono.business-studio.v1') errors.push('Business Studio contract schema drift');
+if(businessStudio.public_live!==false || businessStudio.launch_truth?.public_live!==false) errors.push('Business Studio cannot claim public-live');
+if(businessStudio.capabilities?.length!==10) errors.push('Business Studio capability catalogue must contain ten capabilities');
+if(businessStudio.governance?.fortress_authorisation_required!==true || businessStudio.governance?.client_scope_and_approval_required!==true) errors.push('Business Studio governance controls missing');
+if(businessStudio.launch_truth?.production_deployment_authorised!==false) errors.push('Business Studio production deployment must remain gated');
+const oneBusinessStudio=(oneRegistry.services||[]).find(service=>service.slug==='izakhono-business-studio');
+if(!oneBusinessStudio) errors.push('IZAKHONO ONE service registry missing Business Studio');
+else if(oneBusinessStudio.status!=='gated' || oneBusinessStudio.publicUrl!==null) errors.push('Business Studio public service must remain gated without URL');
 
 const oneGrowthService=(oneRegistry.services||[]).find(service=>service.slug==='izakhono-growth-engine');
 if(!oneGrowthService) errors.push('IZAKHONO ONE canonical service registry missing Growth Engine');
@@ -145,6 +166,8 @@ console.log(JSON.stringify({
   creator_embedded:true,
   growth_engine_registered:true,
   growth_engine_live:false,
+  business_studio_registered:true,
+  business_studio_public_live:false,
   creator_route:'/creator',
   creator_capabilities:creator.capabilities.length,
   flow_embedded:true,
