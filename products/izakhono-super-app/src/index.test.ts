@@ -159,3 +159,23 @@ test("SUPER APP module API includes Growth Engine as architecture-ready only",as
   assert.equal(growth.status,"architecture-ready");
   assert.equal(growth.route,"/growth-engine");
 });
+
+
+test("Business Studio is discoverable as a non-live planning workspace",async()=>{
+ const response=await worker.fetch(new Request("https://app.test/api/business-studio/status"),env());
+ const data=await response.json() as any;
+ assert.equal(response.status,200);
+ assert.equal(data.business_studio.module_id,"business-studio");
+ assert.equal(data.business_studio.public_live,false);
+ assert.equal(data.business_studio.capability_count,10);
+ assert.equal(data.business_studio.client_record_creation,false);
+ assert.equal(data.business_studio.commercial_mutations,false);
+ assert.equal(data.business_studio.production_mutations,false);
+});
+
+test("SUPER APP module discovery includes Business Studio without replacing Growth Engine",async()=>{
+ const response=await worker.fetch(new Request("https://app.test/api/modules"),env());
+ const data=await response.json() as any;
+ assert.ok(data.modules.some((item:any)=>item.id==="business-studio"));
+ assert.ok(data.modules.some((item:any)=>item.id==="growth-engine"));
+});
