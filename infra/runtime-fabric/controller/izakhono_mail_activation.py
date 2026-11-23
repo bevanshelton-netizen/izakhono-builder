@@ -63,7 +63,7 @@ def load_contract(path: Path) -> dict:
 
 
 def validate_gateway_registration(
-    registration: Mapping[str, Any], selected_node: str, contract: Mapping[str, Any]
+    registration: Mapping[str, Any], selected_node: str, contract: Mapping[str, Any], expected_tenant_id: str
 ) -> None:
     """Validate a fresh gateway registry response before any deployment side effect."""
     if not isinstance(registration, Mapping):
@@ -110,6 +110,7 @@ def validate_gateway_registration(
         or authorization.get("workload") != contract.get("workload")
         or authorization.get("environment") != environment
         or not tenant_id
+        or tenant_id != expected_tenant_id
         or not authorization.get("authorization_id")
     ):
         raise ValueError("scoped FORTRESS authorization is absent or does not match the workload")
@@ -129,6 +130,8 @@ def activate_izakhono_mail(
     gateway_registration: Callable[[str, Mapping], Mapping[str, Any]] | None = None,
     gateway_execute: Callable[[str, Mapping, Mapping[str, Any]], bool] | None = None,
     acceptance_check: Callable[[str, Mapping], bool] | None = None,
+    *,
+    tenant_id: str | None = None,
 ) -> TransactionResult:
     """Activate only through a registered, authorized gateway and fresh evidence.
 
@@ -136,6 +139,10 @@ def activate_izakhono_mail(
     It must not synthesize a registration from repository configuration or CI.
     """
     contract = load_contract(contract_path)
+    if not isinstance(tenant_id, str) or not tenant_id.strip():
+        return TransactionResult("izakhono-mail", None, "BLOCKED", "authorization-scope",
+                                 "explicit tenant scope is required for FORTRESS authorization")
+    tenant_id = tenant_id.strip()
     if not callable(gateway_registration):
         return TransactionResult("izakhono-mail", None, "BLOCKED", "adapter-registration",
                                  "live NODE01 gateway registration lookup unavailable")
@@ -153,7 +160,7 @@ def activate_izakhono_mail(
     selected_node = decision.selected_node
     try:
         registration = gateway_registration(selected_node, contract)
-        validate_gateway_registration(registration, selected_node, contract)
+        validate_gateway_registration(registration, selected_node, contract, tenant_id)
     except Exception as exc:
         return TransactionResult("izakhono-mail", selected_node, "BLOCKED", "adapter-registration",
                                  str(exc) or "gateway registration verification failed")
