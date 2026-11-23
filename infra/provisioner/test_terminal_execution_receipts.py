@@ -67,6 +67,20 @@ def test_successful_job_persists_terminal_receipt() -> None:
     assert any(event.event_type == "TERMINAL_RECEIPT" for event in store.events)
 
 
+def test_terminal_receipt_replay_is_immutable() -> None:
+    store = MemoryJobStore()
+    job, _ = store.create_or_get("tenant", "idem-replay", "job-replay")
+    job.state = "BLOCKED"
+    first, first_event = build_terminal_receipt(job)
+    job.evidence["TERMINAL_RECEIPT"] = first
+    store.record_terminal_receipt(job, first_event)
+    replay, replay_event = build_terminal_receipt(job)
+    job.evidence["TERMINAL_RECEIPT"] = replay
+    store.record_terminal_receipt(job, replay_event)
+    assert job.evidence["TERMINAL_RECEIPT"]["completed_at"] == first["completed_at"]
+    assert len([event for event in store.events if event.event_type == "TERMINAL_RECEIPT"]) == 1
+
+
 def test_receipt_identity_is_bound_to_evidence() -> None:
     store = MemoryJobStore()
     job, _ = store.create_or_get("tenant", "idem", "job-receipt")
@@ -85,4 +99,5 @@ if __name__ == "__main__":
     test_failed_job_persists_terminal_receipt_and_audit()
     test_successful_job_persists_terminal_receipt()
     test_receipt_identity_is_bound_to_evidence()
+    test_terminal_receipt_replay_is_immutable()
     print("PROVISIONER_TERMINAL_RECEIPT_TESTS: PASS")
