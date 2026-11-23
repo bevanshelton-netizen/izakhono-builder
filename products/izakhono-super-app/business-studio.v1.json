@@ -210,12 +210,12 @@
     "no_unapproved_vendor_or_provider_dependency": true
   },
   "launch_truth": {
-    "workspace_view_implemented": false,
-    "registry_registered": false,
+    "workspace_view_implemented": true,
+    "registry_registered": true,
     "independent_engines_connected": false,
     "client_data_persistence_enabled": false,
     "production_deployment_authorised": false,
     "public_live": false,
-    "note": "Planning and service taxonomy only until workspace, integration contracts, tenant permissions, operational evidence and release gates are verified. No production access, client data or vendor connection is implied."
+    "note": "The Business Studio planning workspace and module/service registry entries are present. Engagement blueprints are generated locally only. Independent engines, CRM records, commercial mutations, client data persistence and production deployment remain unconnected or gated."
   }
 }
