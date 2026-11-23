@@ -33,7 +33,11 @@ CONTRACT = {
     },
     "acceptance": {
         "runtime": ["registered-node", "containers-healthy"],
-        "mail": ["send-receive-reply"],
+        "mail": [
+            "smtp-submission", "smtp-inbound", "imap-authentication", "tls",
+            "spf", "dkim", "dmarc", "ptr", "send-receive-reply",
+            "external-inbound-delivery", "external-outbound-delivery", "external-reply-delivery",
+        ],
         "security": ["fortress-authorization", "audit-trail"],
         "promotion": "LIVE_VERIFIED only after all runtime, security, DNS, TLS and end-to-end mail acceptance evidence passes",
     },
