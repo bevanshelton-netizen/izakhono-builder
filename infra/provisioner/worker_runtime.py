@@ -45,7 +45,7 @@ class ProvisionerWorker:
         self.recovery = None
         if recovery_store is not None:
             from recovery_orchestrator import RecoveryOrchestrator
-            self.recovery = RecoveryOrchestrator(recovery_store, recovery_executors or {})
+            self.recovery = RecoveryOrchestrator(self.store, recovery_store, recovery_executors or {})
 
     def _executor(self) -> AdapterExecutor:
         return AdapterExecutor(self.registry, self.implementations)
@@ -131,17 +131,25 @@ class ProvisionerWorker:
         return WorkerResult(job.job_id, job.state, "verified")
 
     def run_once(self) -> WorkerResult | None:
-        item = self.queue.claim_next()
-        if item is None:
+        claimed = self.queue.claim_next()
+        if claimed is None:
             return None
-        job = self.store.get(item.job_id)
+        # The in-memory queue returns a StoredJob directly; durable queues return
+        # a lease envelope and are handled by DurableProvisionerWorker.
+        if hasattr(claimed, "lease_id"):
+            job = self.store.get(claimed.job_id)
+        else:
+            job = claimed
         if job is None:
             return None
         result = self.process_job(job)
-        if result.status in {"verified", "accepted", "blocked", "terminal"}:
-            self.queue.complete(item.lease_id)
-        else:
-            self.queue.release(item.lease_id, retry_at=utc_now())
+        if hasattr(self.queue, "complete") and hasattr(self.queue, "release"):
+            if result.status in {"verified", "accepted", "blocked", "terminal"}:
+                self.queue.complete(claimed.lease_id)
+            else:
+                self.queue.release(claimed.lease_id, retry_at=utc_now())
+        elif result.status == "retry":
+            self.queue.enqueue(job)
         return result
 
 if __name__ == "__main__":
