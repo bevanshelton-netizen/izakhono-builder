@@ -159,7 +159,7 @@ def test_logical_node_cannot_be_used_as_execution_host():
     evidence = registration()
     evidence["runtime"]["execution_environment_id"] = "NODE01"
     try:
-        validate_gateway_registration(evidence, "node02", CONTRACT)
+        validate_gateway_registration(evidence, "node02", CONTRACT, "tenant-test")
     except ValueError as exc:
         assert "separate execution environment" in str(exc)
     else:
@@ -170,7 +170,7 @@ def test_fortress_denial_and_missing_audit_block():
     denied = registration()
     denied["authorization"]["decision"] = "deny"
     try:
-        validate_gateway_registration(denied, "node02", CONTRACT)
+        validate_gateway_registration(denied, "node02", CONTRACT, "tenant-test")
     except ValueError as exc:
         assert "FORTRESS" in str(exc)
     else:
@@ -179,7 +179,7 @@ def test_fortress_denial_and_missing_audit_block():
     missing_audit = registration()
     missing_audit["audit"]["acknowledged"] = False
     try:
-        validate_gateway_registration(missing_audit, "node02", CONTRACT)
+        validate_gateway_registration(missing_audit, "node02", CONTRACT, "tenant-test")
     except ValueError as exc:
         assert "audit acknowledgement" in str(exc)
     else:
