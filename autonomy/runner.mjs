@@ -49,6 +49,23 @@ async function executeInternal(task) {
   }
   if (task.action === 'run-worker') {
     const result = await runAgentWorker();
+    const planStatuses = (result.plans ?? []).map((plan) => plan.status);
+    if (planStatuses.includes('blocked')) {
+      return {
+        status: 'failed',
+        reason: 'agent-plan-blocked',
+        workerResult: result,
+        evidence: [{ name: 'agent-worker-blocked', status: 'failed', progressed: result.progressed ?? 0, plans: result.plans }],
+      };
+    }
+    if (planStatuses.includes('waiting')) {
+      return {
+        status: 'waiting',
+        reason: 'agent-plan-awaiting-capability-or-approval',
+        workerResult: result,
+        evidence: [{ name: 'agent-worker-waiting', status: 'waiting', progressed: result.progressed ?? 0, plans: result.plans }],
+      };
+    }
     if (result.progressed > 0) {
       return {
         status: 'completed',
