@@ -72,6 +72,16 @@ The Runtime Fabric activation binding now requires a fresh registration response
 
 A configured adapter name, repository manifest, CI success, or a callback that merely returns true is not registration evidence. Missing, stale, mismatched or denied evidence returns `BLOCKED` before deployment execution. The repository does not currently establish that a live registration response exists; the runtime must supply the real registry lookup and execution callbacks.
 
+### Verified gap in the existing control path
+
+Repository inspection confirms the current interfaces do not yet produce the required registration object:
+
+- `internal/node01-command-gateway/server.mjs` exposes process health and owner commands, and forwards generic deployment requests to IZAKHONO CONTROL. It does not expose an adapter-registration registry or a MAIL activation executor.
+- `products/izakhono-control/control.py` exposes `/v1/fabric`, `/v1/node`, `/v1/status` and `/v1/deploy`. Its fabric snapshot reports node probe health/capabilities, but not a separately identified execution-environment registration, gateway adapter registration ID, tenant-scoped MAIL authorization or correlated FORTRESS audit acknowledgement.
+- `products/izakhono-one/services/persistent-node-control.mjs` has FORTRESS-gated node registration and workload authorization, but its current workload authorization contract is node/revision scoped; it does not provide the exact tenant + workload + production grant and audit response required by this MAIL gate.
+
+Therefore, the existing interfaces can help establish node reachability and generic deployment routing, but they cannot safely be adapted into the required MAIL execution adapter by inference. The next implementation dependency is an owner-approved control-plane contract for tenant-scoped workload authorization and audit, plus a runtime registry record that binds the logical NODE01 identity to a separate execution-environment ID and the registered command-gateway adapter. Do not add a guessed database migration or claim the registry is active until persistence ownership and migration authority are confirmed.
+
 ## Runtime activation
 
 Once the gateway adapter is actually registered and authorized, the runtime integration may execute the HOST mail activation sequence on the selected execution environment:
