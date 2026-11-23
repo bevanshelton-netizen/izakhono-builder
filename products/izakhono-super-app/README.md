@@ -166,3 +166,15 @@ Current truth:
 - Campaign mutations, external publishing and paid spend are disabled.
 - No client account, provider credential, production database or runtime has been connected by this registration.
 - The module remains non-live until the dedicated UI, tenant/RBAC controls, provider adapters, audit, end-to-end tests and authorised release gates are complete.
+
+
+## IZAKHONO Business Studio
+
+Business Studio extends the Growth Engine into a broader, integrated business transformation capability. It coordinates ten service domains: brand strategy and identity; websites, platforms and UX; strategic communications; digital marketing, SEO and answer visibility; software and IT; AI and automation; systems integration; managed AI subscriptions; fractional CIO; and venture design.
+
+The operating model is **Build / Sustain / Align**:
+- Build the brand, platform, software, integrations and AI capability.
+- Sustain it through managed services, support, measurement and optimisation.
+- Align technology, architecture, vendors, risk and investment through ongoing leadership.
+
+The local SUPER APP workspace can generate a client engagement blueprint. It does not create CRM records, quotes, contracts, invoices, tasks, integrations or production changes. CRM, FORTRESS, I-PAY and the specialist engines remain authoritative. The ONE service catalogue entry is gated with no public URL.
