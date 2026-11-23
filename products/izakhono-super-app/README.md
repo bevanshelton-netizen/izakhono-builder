@@ -178,3 +178,16 @@ The operating model is **Build / Sustain / Align**:
 - Align technology, architecture, vendors, risk and investment through ongoing leadership.
 
 The local SUPER APP workspace can generate a client engagement blueprint. It does not create CRM records, quotes, contracts, invoices, tasks, integrations or production changes. CRM, FORTRESS, I-PAY and the specialist engines remain authoritative. The ONE service catalogue entry is gated with no public URL.
+
+
+## CRM and FLOW handoff contract
+
+The planned lead lifecycle uses the existing service boundaries:
+1. Growth Engine submits a scoped `lead.created` event to FLOW at `POST /api/events` using server-side `FLOW_INGEST_TOKEN` and both `X-Entity-ID` / `X-Platform-ID` headers.
+2. FLOW records the event and creates its durable `crm.intake.requested` action.
+3. FLOW's configured CRM adapter calls CRM `POST /api/flow` with server-side `CRM_INGEST_TOKEN` and the same entity/platform scope.
+4. CRM remains the system of record for contacts, opportunities, activities and its audit trail. CRM's action receipt is replay-safe by action ID.
+
+This is a verified source-code contract mapping, not a live connection. FLOW's adapter endpoint and credentials are not configured by this PR. CRM and FLOW remain packages awaiting independent NODE01 activation and persistence/backup/restore/HTTPS acceptance. The Growth Engine browser never receives either token.
+
+Payment events are never fabricated by Growth Engine. FLOW only accepts `payment.confirmed` from IZAKHONO PAY with verified status and a payment reference. IZAKHONO ADS remains downstream of original IZAKHONO CREATE marketing packages (`izakhono.marketing.package.v1`); no Meta or Google account is connected.
