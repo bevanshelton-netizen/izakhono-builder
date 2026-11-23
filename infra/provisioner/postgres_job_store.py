@@ -146,13 +146,15 @@ class PostgresJobStore(JobStore):
                                ON CONFLICT (event_id) DO NOTHING""",
                             (event.event_id, event.job_id, event.event_type, event.state,
                              event.observed_at, json.dumps(event.data)))
+            # FortressAuditStore shares this connection: its commit includes the
+            # job update, local receipt event and Fortress mirror as one transaction.
+            self.fortress_audit.append(event=event, tenant_id=job.tenant_id,
+                                       operation_id=event.event_id, actor="provisioner-worker",
+                                       adapter="terminal-receipt")
             self.connection.commit()
         except Exception:
             self.connection.rollback()
             raise
-        self.fortress_audit.append(event=event, tenant_id=job.tenant_id,
-                                   operation_id=event.event_id, actor="provisioner-worker",
-                                   adapter="terminal-receipt")
 
     def audit_events(self, job_id: str) -> list[AuditEvent]:
         with self.connection.cursor() as cur:
