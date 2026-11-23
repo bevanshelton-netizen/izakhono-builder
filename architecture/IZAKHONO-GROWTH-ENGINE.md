@@ -281,4 +281,4 @@ The first read-only registration slice is included in the Growth Engine integrat
 - read-only `GET /api/growth-engine/status` descriptor and module discovery entry;
 - tests and contract validation for the non-live state.
 
-The `/growth-engine` UI route is reserved but not implemented. Meta/Google connections, campaign execution, publishing, spend, customer-data persistence, and production activation remain disabled. This registration is not evidence of provider access or live service availability.
+The SUPER APP now includes a local `/growth-engine` planning view. It creates a deterministic workflow preview only. Meta/Google connections, campaign execution, publishing, spend, customer-data persistence, and production activation remain disabled. This registration is not evidence of provider access or live service availability.
