@@ -7,6 +7,7 @@ from job_store import AuditEvent, JobStore, utc_now
 from state_machine import Provisioner
 from errors import ServiceError
 from worker_runtime import ProvisionerWorker
+from acceptance_engine import AcceptanceEngine
 from rollback_store import RollbackStore
 from handover_store import HandoverStore
 
@@ -30,13 +31,15 @@ class ProvisionerService:
                  registry:Optional[Mapping[str,Any]]=None,
                  recovery_store:Optional[RollbackStore]=None,
                  recovery_executors:Optional[Mapping[str,Callable[[Any],Mapping[str,Any]]]]=None,
-                 handover_store:Optional[HandoverStore]=None)->None:
+                 handover_store:Optional[HandoverStore]=None,
+                 acceptance:Optional[AcceptanceEngine]=None)->None:
         self.store,self.queue=store,queue
         self.adapter_implementations=dict(adapter_implementations or {})
         self.registry=registry
         self.recovery_store=recovery_store
         self.recovery_executors=dict(recovery_executors or {})
         self.handover_store=handover_store
+        self.acceptance=acceptance
         self._handover:Dict[str,Dict[str,Any]]={}
 
     def create_job(self,request:CreateJobRequest)->Dict[str,Any]:
@@ -68,7 +71,8 @@ class ProvisionerService:
             if not processed or worker.last_result is None: return None
             return self.status(worker.last_result.job_id)
         worker=ProvisionerWorker(self.store,self.queue,self.adapter_implementations,self.registry,
-                                 recovery_store=self.recovery_store,recovery_executors=self.recovery_executors)
+                                 acceptance=self.acceptance,recovery_store=self.recovery_store,
+                                 recovery_executors=self.recovery_executors)
         result=worker.run_once()
         return None if result is None else self.status(result.job_id)
 
