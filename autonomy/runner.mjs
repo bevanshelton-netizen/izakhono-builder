@@ -58,15 +58,15 @@ async function executeInternal(task) {
         evidence: [{ name: 'agent-worker-blocked', status: 'failed', progressed: result.progressed ?? 0, plans: result.plans }],
       };
     }
-    if (planStatuses.includes('waiting')) {
+    if (planStatuses.some((status) => ['waiting', 'awaiting_approval', 'queued', 'running'].includes(status))) {
       return {
         status: 'waiting',
-        reason: 'agent-plan-awaiting-capability-or-approval',
+        reason: 'agent-plan-awaiting-capability-approval-or-next-worker-cycle',
         workerResult: result,
         evidence: [{ name: 'agent-worker-waiting', status: 'waiting', progressed: result.progressed ?? 0, plans: result.plans }],
       };
     }
-    if (result.progressed > 0) {
+    if (result.progressed > 0 && planStatuses.length > 0 && planStatuses.every((status) => status === 'completed')) {
       return {
         status: 'completed',
         evidence: [{ name: 'agent-worker-executed', status: 'passed', progressed: result.progressed, plans: result.plans }],
