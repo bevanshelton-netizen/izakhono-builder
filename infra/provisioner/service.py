@@ -63,7 +63,11 @@ class ProvisionerService:
             raise
         if created:
             job.evidence["PAYMENT_VERIFIED"]={"payment_id":e["payment_id"],"amount":e["amount"],"currency":e["currency"],"verified":True,"evidence_id":f"pay_{e['payment_id']}","observed_at":utc_now(),"checks":["payment.verified","payment.amount_match"]}
-            self.store.save(job); self.store.append_audit(AuditEvent(f"evt_{job.job_id}_created",job.job_id,"JOB_CREATED",job.state,utc_now())); self.queue.enqueue(job)
+            self.store.save(job); self.store.append_audit(AuditEvent(f"evt_{job.job_id}_created",job.job_id,"JOB_CREATED",job.state,utc_now()))
+        # Replays repair the persist-before-enqueue crash window. Durable queue
+        # insertion is unique by job_id, so this is safe for exact retries.
+        if job.state not in {"HANDOVER_READY", "BLOCKED"}:
+            self.queue.enqueue(job)
         return self.status(job.job_id,created)
 
     def status(self,job_id:str,created:Optional[bool]=None)->Dict[str,Any]:
