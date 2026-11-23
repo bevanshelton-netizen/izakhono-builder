@@ -29,6 +29,19 @@ Never commit the recovery credential. Prefer a protected `.env` or secret store.
 
 After initial setup, provision the domain and accounts through the Stalwart management API/CLI. Account passwords are customer secrets and must never be committed to Git.
 
+## External delivery acceptance
+
+`MAIL-ACCEPTANCE-REAL.sh` is a read-only DNS/TLS/network prerequisite probe. It does not prove message delivery.
+
+`MAIL-ACCEPTANCE-E2E.py` performs the real three-way test:
+1. external mailbox → Stalwart mailbox (inbound);
+2. Stalwart mailbox → external mailbox (outbound);
+3. external mailbox reply → Stalwart mailbox, with the reply's `In-Reply-To` checked against the outbound Message-ID.
+
+Run the E2E probe only through the verified Runtime Fabric execution environment and its acceptance adapter. SMTP/IMAP credentials for both mailboxes must be injected from FORTRESS at execution time. Required settings are `IZAKHONO_MAIL_SMTP_HOST/USER/PASS`, `IZAKHONO_MAIL_IMAP_HOST`, `EXTERNAL_SMTP_HOST/USER/PASS`, and `EXTERNAL_IMAP_HOST`; ports, TLS modes and mailbox identities can be supplied through the corresponding `*_PORT`, `*_TLS_MODE`, `*_USER` and `*_EMAIL` settings. The probe never prints credentials.
+
+Its JSON receipt records each verified direction, Message-ID and observation time. The Runtime Fabric acceptance adapter must persist that receipt and its authorization/audit correlation in FORTRESS. A probe result is not itself a production deployment or DNS promotion.
+
 ## Acceptance gate
 
 A mailbox is not considered LIVE until all of these are independently verified:
