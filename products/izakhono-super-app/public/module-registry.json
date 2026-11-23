@@ -130,6 +130,17 @@
       "engine": "independent",
       "canonical_contract": "../izakhono-one-drive/README.md",
       "description": "IZAKHONO-owned personal and business cloud file workspace with separate security domains, 50 GiB logical allowances per space, atomic quota reservations and provider-neutral object storage."
+    },
+    {
+      "id": "growth-engine",
+      "name": "IZAKHONO Growth Engine",
+      "category": "Growth & Marketing",
+      "route": "/growth-engine",
+      "route_status": "not-implemented",
+      "status": "architecture-ready",
+      "engine": "orchestrated-independent-engines",
+      "canonical_contract": "../growth-engine.v1.json",
+      "description": "Coordinates approved growth strategy, creative, paid-media planning, CRO, client operations and evidence-based measurement across existing IZAKHONO engines."
     }
   ],
   "affiliate": {
@@ -305,5 +316,17 @@
     "final_automated_credit_decisions": false,
     "behavioural_profiling": false,
     "advertising_ids": false
+  },
+  "growth_engine": {
+    "module_id": "growth-engine",
+    "embedded": false,
+    "route": "/growth-engine",
+    "route_status": "not-implemented",
+    "engine": "orchestrated-independent-engines",
+    "source_of_truth": "products/izakhono-super-app/growth-engine.v1.json",
+    "public_status": "architecture-ready-public-live-gated",
+    "public_live": false,
+    "paid_spend_requires_authorisation": true,
+    "provider_connections_live": false
   }
 }
