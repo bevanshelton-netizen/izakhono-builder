@@ -133,6 +133,16 @@ class PostgresJobStore(JobStore):
             raise ValueError("terminal receipt requires a terminal job state")
         try:
             with self.connection.cursor() as cur:
+                cur.execute("SELECT data FROM provisioner_audit_events WHERE event_id=%s FOR UPDATE",
+                            (event.event_id,))
+                existing = cur.fetchone()
+                if existing is not None:
+                    existing_data = existing[0] or {}
+                    existing_receipt = existing_data.get("receipt") if isinstance(existing_data, dict) else None
+                    if isinstance(existing_receipt, dict):
+                        job.evidence["TERMINAL_RECEIPT"] = existing_receipt
+                    self.connection.commit()
+                    return
                 cur.execute("""UPDATE provisioner_jobs
                                SET state=%s,attempts=%s,evidence=%s::jsonb,
                                    next_attempt_at=NULL,updated_at=NOW()
