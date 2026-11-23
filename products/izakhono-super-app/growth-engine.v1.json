@@ -126,6 +126,11 @@
     "campaign_execution_enabled": false,
     "paid_spend_enabled": false,
     "public_live": false,
-    "note": "The SUPER APP provides a local planning workspace and read-only status descriptor. Meta/Google provider accounts remain disconnected; campaign execution, publishing and paid spend remain disabled. Existing independent engines remain authoritative."
+    "note": "The SUPER APP provides a local planning workspace and read-only status descriptor. Meta/Google provider accounts remain disconnected; campaign execution, publishing and paid spend remain disabled. Existing independent engines remain authoritative.",
+    "workspace_view_implemented": true,
+    "registry_registered": true,
+    "independent_engines_connected": false,
+    "client_data_persistence_enabled": false,
+    "production_deployment_authorised": false
   }
 }
