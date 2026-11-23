@@ -7,6 +7,7 @@ const financePath='products/izakhono-finance-core/finance-core.v1.json';
 const creatorPath='products/izakhono-super-app/creator-engine.v1.json';
 const growthPath='products/izakhono-super-app/growth-engine.v1.json';
 const oneRegistryPath='products/izakhono-one/public/registry.json';
+const superAppHtmlPath='products/izakhono-super-app/public/index.html';
 const registry=JSON.parse(fs.readFileSync(regPath,'utf8'));
 const affiliate=JSON.parse(fs.readFileSync(affiliatePath,'utf8'));
 const flow=JSON.parse(fs.readFileSync(flowPath,'utf8'));
@@ -14,6 +15,7 @@ const finance=JSON.parse(fs.readFileSync(financePath,'utf8'));
 const creator=JSON.parse(fs.readFileSync(creatorPath,'utf8'));
 const growth=JSON.parse(fs.readFileSync(growthPath,'utf8'));
 const oneRegistry=JSON.parse(fs.readFileSync(oneRegistryPath,'utf8'));
+const superAppHtml=fs.readFileSync(superAppHtmlPath,'utf8');
 const errors=[];
 
 if(registry.schema!=='izakhono.super-app.module-registry.v1') errors.push('unexpected SUPER APP registry schema');
@@ -63,23 +65,26 @@ else {
   if(oneGrowthService.integration?.publicRouteStatus!=='not-yet-verified') errors.push('IZAKHONO ONE Growth Engine public route must remain unverified');
 }
 
+if(!superAppHtml.includes('id="growth-engine"')) errors.push('Growth Engine planning workspace view missing');
+if(!superAppHtml.includes('data-view="growth-engine"')) errors.push('Growth Engine navigation entry missing');
+
 const growthModule=modules.get('growth-engine');
 if(!growthModule) errors.push('Growth Engine module missing from SUPER APP');
 else {
   if(growthModule.route!=='/growth-engine') errors.push('Growth Engine reserved route drift');
-  if(growthModule.route_status!=='not-implemented') errors.push('Growth Engine route must remain explicitly unimplemented');
+  if(growthModule.route_status!=='workspace-view') errors.push('Growth Engine route must remain explicitly unimplemented');
   if(growthModule.status!=='architecture-ready') errors.push('Growth Engine must remain architecture-ready');
   if(growthModule.engine!=='orchestrated-independent-engines') errors.push('Growth Engine must preserve independent underlying engines');
 }
 if(growth.schema!=='izakhono.growth-engine.v1') errors.push('unexpected Growth Engine contract schema');
-if(growth.status!=='architecture-ready' || growth.public_live!==false) errors.push('Growth Engine must remain non-live');
+if(growth.status!=='architecture-ready' || growth.public_live!==false || growth.launch_truth?.user_interface_route_implemented!==true) errors.push('Growth Engine must remain non-live with a planning-only workspace');
 if(growth.policy?.owned_first!==true) errors.push('Growth Engine must remain owned-first');
 if(growth.policy?.behavioural_tracking!==false || growth.policy?.advertising_ids!==false) errors.push('Growth Engine privacy contract drift');
 if(growth.policy?.paid_spend_requires_explicit_owner_or_client_authorisation!==true) errors.push('Growth Engine paid spend must remain owner/client authorised');
 if(growth.policy?.campaign_mutations_require_explicit_approval!==true) errors.push('Growth Engine campaign mutations must remain approval-gated');
 if(growth.provider_adapters?.meta?.connected!==false || growth.provider_adapters?.google?.connected!==false) errors.push('Growth Engine providers cannot be marked connected without authenticated evidence');
-if(registry.growth_engine?.public_live!==false || registry.growth_engine?.embedded!==false) errors.push('SUPER APP Growth Engine registry must remain non-live and unembedded');
-if(registry.growth_engine?.route_status!=='not-implemented') errors.push('Growth Engine route must remain unimplemented');
+if(registry.growth_engine?.public_live!==false || registry.growth_engine?.embedded!==true) errors.push('SUPER APP Growth Engine registry must remain non-live and unembedded');
+if(registry.growth_engine?.route_status!=='not-implemented') errors.push('Growth Engine workspace route status drift');
 const growthCapabilityIds=new Set((growth.capabilities||[]).map(x=>x.id));
 for(const required of ['paid-media-planning','creative-operations','growth-intelligence','conversion-optimisation','client-service','strategy']){
   if(!growthCapabilityIds.has(required)) errors.push('Growth Engine capability missing: '+required);
