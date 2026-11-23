@@ -75,7 +75,10 @@
       "dkim",
       "dmarc",
       "ptr",
-      "send-receive-reply"
+      "send-receive-reply",
+      "external-inbound-delivery",
+      "external-outbound-delivery",
+      "external-reply-delivery"
     ],
     "security": [
       "fortress-authorization",
