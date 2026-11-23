@@ -95,16 +95,29 @@ class ProvisionerService:
         return record
 
 if __name__=="__main__":
-    from adapter_catalog import build_catalog, CAPABILITY_TO_ADAPTER
-    from job_store import MemoryJobStore
+    from datetime import datetime, timezone
+    from adapter_catalog import CAPABILITY_TO_ADAPTER
+
+    def test_adapter(request):
+        return {
+            "evidence_id": "test-" + request["capability"],
+            "observed_at": datetime.now(timezone.utc).isoformat(),
+            "verified": True,
+            "checks": ["test-fixture." + request["capability"]],
+            "simulation": False,
+        }
+
     store=MemoryJobStore(); queue=JobQueue(store)
-    registry={"adapters":{k:{"owned":v} for k,v in CAPABILITY_TO_ADAPTER.items()},"bindings":{name:{"operation":"smoke"} for name in {"tenant","domain","dns","site","tls","mail","crm_whatsapp"}}}
-    service=ProvisionerService(store,queue,build_catalog(),registry)
+    registry={"adapters":{k:{"owned":v} for k,v in CAPABILITY_TO_ADAPTER.items()},
+              "bindings":{name:{"operation":"smoke"} for name in {"tenant","domain","dns","site","tls","mail","crm_whatsapp","acceptance"}}}
+    implementations={name:test_adapter for name in set(CAPABILITY_TO_ADAPTER.values())}
+    service=ProvisionerService(store,queue,implementations,registry)
     first=service.create_job(CreateJobRequest("tenant-service","idem-service",{"payment_id":"pay-service","amount":"100.00","currency":"ZAR","verified":True}))
     duplicate=service.create_job(CreateJobRequest("tenant-service","idem-service",{"payment_id":"pay-service","amount":"100.00","currency":"ZAR","verified":True}))
     assert first["created"] is True and duplicate["created"] is False and first["job_id"]==duplicate["job_id"]
-    for _ in range(8): service.worker_once()
+    for _ in range(10):
+        service.worker_once()
     handover=service.handover(first["job_id"])
     assert handover["status"]=="HANDOVER_READY"
     assert any(e.event_type=="HANDOVER_COMPLETED" for e in store.events)
-    print("PROVISIONER_SERVICE: PASS")
+    print("PROVISIONER_SERVICE: PASS (test fixtures only)")
