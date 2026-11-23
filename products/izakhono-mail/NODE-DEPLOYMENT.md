@@ -56,6 +56,20 @@ Before execution, the registered gateway integration must provide all of these c
 
 The FORTRESS policy must authorize the requested tenant/environment/workload operation and retain an audit record. The Runtime Fabric binding must identify the actual execution environment separately from `logical_node_id: NODE01`. A missing or ambiguous registration fails closed.
 
+## Gateway registration evidence contract
+
+The Runtime Fabric activation binding now requires a fresh registration response from the real NODE01 command-gateway registry before it will call the execution adapter. The response must prove all of the following:
+
+- adapter registration is active and has a stable registration ID;
+- the logical identity is `NODE01`, while the execution environment has a separate runtime ID;
+- the selected software node is registered and its execution environment is healthy;
+- the registered adapter exposes `runtime.deploy`, `mail.activate` and `runtime.health`;
+- FORTRESS returns an explicit allow decision scoped to the IZAKHONO MAIL production workload and tenant;
+- the corresponding audit event is acknowledged and references the same authorization;
+- the registration observation is no more than five minutes old.
+
+A configured adapter name, repository manifest, CI success, or a callback that merely returns true is not registration evidence. Missing, stale, mismatched or denied evidence returns `BLOCKED` before deployment execution. The repository does not currently establish that a live registration response exists; the runtime must supply the real registry lookup and execution callbacks.
+
 ## Runtime activation
 
 Once the gateway adapter is actually registered and authorized, the runtime integration may execute the HOST mail activation sequence on the selected execution environment:
