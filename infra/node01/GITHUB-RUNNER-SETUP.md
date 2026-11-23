@@ -1,40 +1,33 @@
-# NODE01 GitHub Actions Runner
+# NODE01 Runtime and Deployment Executor Boundary
 
-NODE01 is the authoritative IZAKHONO-owned production runtime for IZAKHONO NAV.
+NODE01 is a **logical IZAKHONO software-runtime identity**, not proof of a physical host, machine address, or authenticated execution session.
 
-## Purpose
+## Separation of concerns
 
-A self-hosted GitHub Actions runner on NODE01 allows the repository to execute the existing NAV deployment and verification scripts directly on the production node.
+- The HOST is the separately identified physical or virtual machine that may execute workloads.
+- NODE01 is the logical runtime identity bound to an approved HOST through explicit, auditable configuration.
+- A GitHub Actions runner is a separate execution capability. Its registration does not establish HOST ownership or NODE01 authorization.
+- Do not assume that the production runtime itself should host an unrestricted CI runner.
 
-## Runner label
+## Registration gate
 
-Use the runner label:
+Do not register or activate a runner until all of the following are independently verified:
 
-`node01`
+1. The HOST identity and ownership are documented and approved.
+2. An authenticated operator session and least-privilege permissions are verified.
+3. The approved HOST-to-NODE01 runtime binding is present and independently checked.
+4. The runner execution boundary is approved, isolated from untrusted pull requests, and restricted to the intended repository and protected deployment environment.
+5. The runner service account, filesystem access, container privileges, network egress, secret access, update policy, and audit retention are reviewed.
+6. A human-approved change record authorizes registration.
 
-The runner should also retain the standard `self-hosted` label.
+Use a dedicated deployment executor where possible. Do not grant a general-purpose runner unrestricted root or Docker access on a production host without an explicit security decision.
 
-## Required NODE01 capabilities
+## Labels and workflow policy
 
-- Linux host
-- Docker Engine
-- Docker Compose v2
-- Git
-- curl
-- outbound HTTPS access to GitHub
-- inbound access for the NAV domain through the existing IZAKHONO edge
+If and only if a deployment executor is approved and registered, use narrowly scoped labels that identify its approved environment. The label `node01` alone is not authorization and must never be treated as proof of runtime binding.
 
-## Security requirements
+Do not use an arbitrary user-supplied SSH host, disable SSH host-key verification, or expose a runner listener publicly. Untrusted pull-request jobs must not share a privileged deployment runner.
 
-- Register the runner only to the IZAKHONO repository/organisation that owns this deployment.
-- Do not place provider API keys in the repository.
-- Keep AI credentials and other secrets on NODE01/server-side infrastructure.
-- Do not expose the runner listener publicly.
-- Run the runner under a dedicated non-root account where practical.
-- Keep Docker access restricted to the runner account.
+## Current state
 
-## Production flow
-
-GitHub main branch -> NODE01 runner -> NAV deployment script -> Docker runtime -> Caddy TLS edge -> NAV verification.
-
-The repository's `infra/node01/deploy-nav-node01.sh` and `infra/node01/verify-node01-nav.sh` remain the source-of-truth deployment and verification scripts.
+No HOST access, HOST-to-NODE01 binding, runner registration, or production execution is asserted by this document. The current owned-runtime workflow performs package validation only; remote deployment is intentionally disabled until the authorization and runtime gates pass.

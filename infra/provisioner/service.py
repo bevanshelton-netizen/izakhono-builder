@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, Mapping, Optional
 from job_queue import JobQueue
+from acceptance_engine import AcceptanceEngine
 from job_store import AuditEvent, JobStore, utc_now
 from state_machine import Provisioner
 from errors import ServiceError
@@ -30,13 +31,15 @@ class ProvisionerService:
                  registry:Optional[Mapping[str,Any]]=None,
                  recovery_store:Optional[RollbackStore]=None,
                  recovery_executors:Optional[Mapping[str,Callable[[Any],Mapping[str,Any]]]]=None,
-                 handover_store:Optional[HandoverStore]=None)->None:
+                 handover_store:Optional[HandoverStore]=None,
+                 acceptance:Optional[AcceptanceEngine]=None)->None:
         self.store,self.queue=store,queue
         self.adapter_implementations=dict(adapter_implementations or {})
         self.registry=registry
         self.recovery_store=recovery_store
         self.recovery_executors=dict(recovery_executors or {})
         self.handover_store=handover_store
+        self.acceptance=acceptance
         self._handover:Dict[str,Dict[str,Any]]={}
 
     def create_job(self,request:CreateJobRequest)->Dict[str,Any]:
@@ -68,6 +71,7 @@ class ProvisionerService:
             if not processed or worker.last_result is None: return None
             return self.status(worker.last_result.job_id)
         worker=ProvisionerWorker(self.store,self.queue,self.adapter_implementations,self.registry,
+                                 acceptance=self.acceptance,
                                  recovery_store=self.recovery_store,recovery_executors=self.recovery_executors)
         result=worker.run_once()
         return None if result is None else self.status(result.job_id)
@@ -91,15 +95,19 @@ class ProvisionerService:
         return record
 
 if __name__=="__main__":
-    from adapter_catalog import build_catalog, CAPABILITY_TO_ADAPTER
+    from adapter_catalog import CAPABILITY_TO_ADAPTER
     from job_store import MemoryJobStore
     store=MemoryJobStore(); queue=JobQueue(store)
-    registry={"adapters":{k:{"owned":v} for k,v in CAPABILITY_TO_ADAPTER.items()},"bindings":{name:{"operation":"smoke"} for name in {"tenant","domain","dns","site","tls","mail","crm_whatsapp"}}}
-    service=ProvisionerService(store,queue,build_catalog(),registry)
+    registry={"adapters":{k:{"owned":v} for k,v in CAPABILITY_TO_ADAPTER.items()},"bindings":{name:{"operation":"smoke"} for name in CAPABILITY_TO_ADAPTER}}
+    def smoke_adapter(payload):
+        return {"evidence_id":f"ev_{payload['operation_id']}","observed_at":utc_now(),"verified":True,
+                "checks":[f"{payload['capability']}.verified"],"simulation":False}
+    implementations={adapter:smoke_adapter for adapter in CAPABILITY_TO_ADAPTER.values()}
+    service=ProvisionerService(store,queue,implementations,registry)
     first=service.create_job(CreateJobRequest("tenant-service","idem-service",{"payment_id":"pay-service","amount":"100.00","currency":"ZAR","verified":True}))
     duplicate=service.create_job(CreateJobRequest("tenant-service","idem-service",{"payment_id":"pay-service","amount":"100.00","currency":"ZAR","verified":True}))
     assert first["created"] is True and duplicate["created"] is False and first["job_id"]==duplicate["job_id"]
-    for _ in range(8): service.worker_once()
+    for _ in range(9): service.worker_once()
     handover=service.handover(first["job_id"])
     assert handover["status"]=="HANDOVER_READY"
     assert any(e.event_type=="HANDOVER_COMPLETED" for e in store.events)
