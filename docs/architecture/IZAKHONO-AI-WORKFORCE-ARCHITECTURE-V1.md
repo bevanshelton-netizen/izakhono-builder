@@ -311,7 +311,7 @@ This is a read-only source inspection of the repository main branch. It is not a
 
 | Existing source | Observed implementation | Architectural consequence |
 |---|---|---|
-| NODE01 registry.py and agent-manifest.v1.json | 25 specialist AgentSpec entries; registry is a process-local Python list/dictionary | Reuse the capability catalogue, but do not treat it as a durable, tenant-scoped identity registry |
+| NODE01 registry.py and agent-manifest.v1.json | 24 specialist roles are stated in the package README; the registry is a process-local Python list/dictionary. The role count should be reconciled against the manifest during code-level implementation review | Reuse the capability catalogue, but do not treat it as a durable, tenant-scoped identity registry |
 | NODE01 workforce.py | SubagentFactory appends new agents to process-global collections | Dynamic creation is currently process-local; persistent ownership, tenant scope, lifecycle and versioning remain unspecified in this implementation |
 | NODE01 models.py | AgentSpec contains id/name/domain/capabilities/concurrency/risks; no tenant, owner, provider binding, runtime binding or lifecycle fields | Extend via versioned contracts; do not overload capability records with identity or authorization |
 | NODE01 policy.py and tool_fabric.py | Local risk-based policy; external actions can return approval_required; ToolRequest carries an approval_granted boolean | Useful deterministic baseline, but not proof of FORTRESS-issued, actor-bound, scoped approval. A caller-supplied boolean must not be the production authorization artifact |
@@ -346,3 +346,68 @@ This is a read-only source inspection of the repository main branch. It is not a
 The source inspection supports an additive architecture, not a new scheduler or a new competing device registry. NODE01 Agent Fabric remains the orchestration and capability-execution layer; FORTRESS remains the authorization authority; Runtime Fabric remains the workload scheduler/state manager; the verified HOST adapter remains the execution mechanism.
 
 No production database, migration, credential, runtime, deployment, DNS or external provider action was performed. No tests were run as part of this documentation-only reconciliation.
+
+
+## 15. Phase 0 — canonical ownership and interface matrix
+
+The matrix distinguishes a documented/code-level responsibility from a production-ready integration. "Exists" below means the referenced source describes or implements a local/reference capability; it does not imply deployment or registration.
+
+| Domain | Canonical owner (target) | Existing source/interface evidence | Missing contract or proof | Decision |
+|---|---|---|---|---|
+| Human principal/session | FORTRESS Identity & Session Issuer | D1-backed principal/session design, revocation and audit are documented in the identity issuer source | Confirm deployed issuer, authenticated service-to-service claims, tenant/entity mapping and external human-verification issuer validation | Reuse FORTRESS principal identity; do not create a competing human identity store |
+| Agent identity and lifecycle | Agent Registry service (new bounded domain, owner to be assigned under FORTRESS governance) | NODE01 capability catalogue and process-local registry; Commander schema is device-focused | Durable agent_id, tenant/owner binding, lifecycle/version contract, uniqueness and audit semantics | New agent registry domain; not a new scheduler and not the Commander device registry |
+| Agent capability catalogue | NODE01 Agent Fabric | AgentSpec, specialist manifest, registry and workforce factory | Versioned capability schema, provenance, declared/observed/verified evidence classes | Extend NODE01 catalogue; separate capability claims from identity and authorization |
+| Objective/task orchestration | NODE01 Agent Fabric | Planner, task graph, bounded orchestration, registered ToolFabric and execution receipts | Authenticated operator entrypoint, durable orchestration state, production-grade replay/recovery | Keep one orchestrator: NODE01 |
+| Tool execution | NODE01 Tool Fabric | Explicit tool registration, risk matching, fail-closed local policy and evidence hash | FORTRESS-issued scoped authorization at enforcement point; registered production adapters; cancellation/timeout semantics | Keep tool allowlisting in NODE01; authorization decisions belong to FORTRESS |
+| Policy and approvals | FORTRESS | Default-deny external egress PDP with entity and data-class checks; token-protected localhost API | Agent/task/tool action decision schema, actor-bound approval artifact, expiry/revocation, decision verification, correlated audit acknowledgement | FORTRESS is sole policy authority; NODE01 must not trust a boolean as proof of approval |
+| Runtime/workload scheduling | Runtime Fabric | Architecture and MAIL integration documentation define scheduling, runtime registration, health/state and failover responsibility | Live interface schema, registration evidence, state transition contract, health freshness and authorization handshake | Runtime Fabric remains scheduler/state owner; no parallel fleet scheduler |
+| Execution environment | Authorized HOST execution adapter | MAIL PR #744 documentation identifies this as a separate real execution boundary and a current gate | Verified runner identity, command contract, environment registration, scoped credentials, execution receipt and revocation | No execution until actual authorized adapter and target registration are proven |
+| Logical workload identity | NODE01 runtime identity | Existing architecture defines NODE01 as logical identity/workload target | Explicit binding from agent/task to registered workload and environment | NODE01 is not a physical host and does not prove host access |
+| Queue/task durability | Runtime Fabric persistence adapter, with NODE01 queue interface | NODE01 SQLiteTaskQueue reference adapter provides task rows, leases, retry/dead-letter and idempotency semantics | Owner confirmation, multi-host concurrency, atomic task+audit commit, transaction/idempotency scope, backup/restore and migration authority | Reuse adapter semantics; select production store only after owner confirmation |
+| Evidence and audit | FORTRESS-governed durable evidence service (implementation owner to be confirmed) | NODE01 receipts and in-memory observation ledger; FORTRESS identity issuer audit; Execution OS evidence references | Unified event envelope, append-only durable write path, atomicity/transaction boundary, retention, signing/checkpoint keys and independent verification | Separate operational event stream from authoritative audit/evidence record |
+| Portable state and backup | AgentSync service (new bounded domain) under FORTRESS data policy | No reviewed source establishes a cross-provider portable state contract | Export schema, data classification, secret exclusion, encryption, scanning, provenance, staged restore and restore-test evidence | New portability service; must not claim provider hidden-memory export |
+| Provider/model integration | IZAKHONO AI Gateway and explicit provider adapters | NODE01 orchestration docs identify DeterministicModel as offline reference and production adapters as future explicit registrations | Per-provider capability matrix, data egress policy, credentials, tool semantics, rate limits, cancellation, memory and retention | Provider is replaceable inference only, never core identity, authorization, secrets or state authority |
+| Fleet telemetry | Runtime Fabric + NODE01 observation; FORTRESS security events | NODE01 reference observer and control events; runtime health responsibilities documented | Durable telemetry contract, source/freshness/coverage, tenant scoping, cost actuals and alert delivery | Aggregate signals; preserve source ownership; unknown is not healthy |
+| Training/competency | Agent Academy (new product capability) with NODE01 evidence | No reviewed source establishes assessed agent credentials or competency lifecycle | Versioned courses, assessor, evidence, expiry and verification; strict separation from authorization | Training records attest learning only and never grant access |
+| Delivery acceptance | IZAKHONO Execution OS | Explicit project lifecycle, blockers, evidence and completion criteria | Mapping from agent/task receipts into objective-stage evidence | Execution OS owns outcome acceptance, not agent scheduling |
+
+### Interface contract inventory
+
+The following interfaces are required before the corresponding capability can be marked implemented or production-ready:
+
+| Contract | Required minimum | Current disposition |
+|---|---|---|
+| Agent Registry API | create/read/list/update lifecycle; tenant-scoped authorization; immutable identity; version/ETag; audit event | Proposed; not found in reviewed sources |
+| FORTRESS decision API | principal, tenant/entity, target, action, resource, purpose, data class, expiry, decision ID, policy version, reason and signed/verifiable result | Egress PDP exists; agent-task decision contract not established |
+| Approval API | request, approve/deny, actor, scope, expiry, one-time/replay semantics, revocation and evidence | Not established by reviewed ToolFabric boolean field |
+| Runtime registration API | workload identity, adapter identity, environment identity, health/freshness, capability set, registration lease and revocation | Required by architecture; live registration not verified |
+| HOST execution API | authenticated command envelope, allowlisted operation, scoped grant, timeout, idempotency, output redaction, cancellation and receipt | Execution gate remains unverified |
+| Task persistence API | durable submit/lease/heartbeat/complete/fail/dead-letter; transaction and idempotency semantics | Local SQLite reference adapter exists; production owner unconfirmed |
+| Evidence append API | append-only event, correlation/causation, policy decision, actor, payload classification, durable acknowledgement and checkpoint | NODE01 local receipts/events exist; authoritative durable service not established |
+| AgentSync package API | signed manifest, versioned schema, encrypted payload, provenance, classification, scan result and restore transaction | Proposed; no implementation evidence reviewed |
+| Provider adapter API | capability declaration, credential reference, egress policy, timeout/retry/rate limit, cancellation and provider receipt | Deterministic reference provider exists; production adapters not verified |
+
+### Canonical ownership decisions
+
+1. **One scheduler:** NODE01 Agent Fabric owns agent/task planning and orchestration. Runtime Fabric schedules and manages registered workloads; it does not become a second agent planner.
+2. **One policy authority:** FORTRESS owns authorization, approvals, credential protection and policy versioning. Local NODE01 risk checks are defense-in-depth, not a substitute for FORTRESS.
+3. **One agent identity domain:** establish an Agent Registry domain for agent identity and ownership. Keep human principal identity in FORTRESS, device identity in Commander, and private namespace identity in IZAKHONO Identity.
+4. **One execution boundary:** the verified authorized HOST adapter executes commands in a separately registered environment. NODE01 remains logical workload identity, not a server.
+5. **One authoritative evidence path:** NODE01 emits task receipts/events; FORTRESS and Runtime Fabric emit their own decision/runtime events; a governed evidence service correlates and durably retains them. Do not equate the current in-memory observer with this service.
+6. **One delivery acceptance owner:** Execution OS decides whether an objective is complete based on acceptance evidence from all contributing systems.
+7. **Persistence is not yet assigned:** Runtime Fabric is the target owner for runtime state; the production persistence engine, database ownership, migration authority and atomic transaction boundary remain unresolved and require explicit owner confirmation.
+
+### Phase 0 exit assessment
+
+| Exit criterion | Result |
+|---|---|
+| Existing component responsibilities mapped | <b>Completed</b> at source/documentation level |
+| Canonical target ownership proposed | <b>Completed</b>; persistence owner remains explicitly unresolved |
+| Existing interfaces and gaps inventoried | <b>Completed</b> for reviewed sources |
+| Runtime/production registration proven | <b>Not met</b> |
+| Database owner and migration authority confirmed | <b>Not met</b> |
+| Durable cross-system audit transaction proven | <b>Not met</b> |
+| Provider capability matrix empirically validated | <b>Not met</b> |
+| Automated tests executed | <b>Not run</b>; this was read-only source reconciliation |
+
+**Disposition:** Phase 0 documentation and ownership mapping are complete. Phase 0 production-readiness gates are not complete. Proceed to Phase 1 contract design only as a non-deploying, reviewable specification and test-fixture exercise. Do not implement persistence migrations, enable execution, register assumed adapters, or change production state until the unresolved owners and gates are confirmed.
