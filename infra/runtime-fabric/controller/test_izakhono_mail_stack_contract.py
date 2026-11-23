@@ -13,7 +13,7 @@ def service_block(source: str, service: str) -> str:
     start = next((i for i, line in enumerate(lines) if line == f"  {service}:"), None)
     if start is None:
         raise AssertionError(f"compose service missing: {service}")
-    end = next((i for i in range(start + 1, len(lines)) if lines[i] and not lines[i].startswith(" ")), len(lines))
+    end = next((i for i in range(start + 1, len(lines)) if lines[i] and len(lines[i]) - len(lines[i].lstrip(" ")) == 2), len(lines))
     return "\n".join(lines[start:end])
 
 
@@ -39,7 +39,8 @@ def main() -> None:
     assert services["parallel_mail_stack_allowed"] is False
 
     host_bridge = service_block(host, "mail-bridge")
-    assert "SMTP_HOST:" in host_bridge and "stalwart" in host_bridge
+    assert "SMTP_HOST:" in host_bridge
+    assert 'SMTP_HOST="${SMTP_HOST:-stalwart}"' in activation
     assert "networks: [izakhono, izakhono-mail]" in host_bridge
     assert "ports:" not in host_bridge
     assert "name: izakhono-mail" in host
