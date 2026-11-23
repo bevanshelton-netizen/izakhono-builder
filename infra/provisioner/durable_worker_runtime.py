@@ -31,7 +31,7 @@ class DurableProvisionerWorker:
             self.last_result = result
             if result.status == "verified":
                 self.queue.enqueue(job)
-                self.queue.complete(job.job_id, lease_id)
+                self.queue.complete(job.job_id, lease_id, keep_queued=True)
             elif result.status == "retry":
                 retry_at = (datetime.now(timezone.utc) + timedelta(seconds=5)).isoformat()
                 self.queue.release(job.job_id, lease_id, retry_at, result.state)
