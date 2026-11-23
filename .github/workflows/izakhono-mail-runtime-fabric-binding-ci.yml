@@ -18,6 +18,9 @@ on:
       - 'infra/runtime-fabric/controller/test_izakhono_mail_activation.py'
       - 'infra/runtime-fabric/workloads/izakhono-mail.json'
       - 'products/izakhono-mail/NODE-DEPLOYMENT.md'
+      - 'internal/node01-command-gateway/server.mjs'
+      - 'internal/node01-command-gateway/test.mjs'
+      - 'internal/node01-command-gateway/deploy-profiles/izakhono-mail.json'
       - '.github/workflows/izakhono-mail-runtime-fabric-binding-ci.yml'
 
 jobs:
