@@ -70,6 +70,8 @@ if(!superAppHtml.includes('id="business-studio"')) errors.push('Business Studio 
 if(!superAppHtml.includes('data-view="business-studio"')) errors.push('Business Studio navigation missing');
 if(businessStudio.schema!=='izakhono.business-studio.v1') errors.push('Business Studio contract schema drift');
 if(businessStudio.public_live!==false || businessStudio.launch_truth?.public_live!==false) errors.push('Business Studio cannot claim public-live');
+if(businessStudio.launch_truth?.workspace_view_implemented!==true || businessStudio.launch_truth?.registry_registered!==true) errors.push('Business Studio workspace/registry state drift');
+if(businessStudioModule.route_status!=='workspace-view') errors.push('Business Studio workspace route status drift');
 if(businessStudio.capabilities?.length!==10) errors.push('Business Studio capability catalogue must contain ten capabilities');
 if(businessStudio.governance?.fortress_authorisation_required!==true || businessStudio.governance?.client_scope_and_approval_required!==true) errors.push('Business Studio governance controls missing');
 if(businessStudio.launch_truth?.production_deployment_authorised!==false) errors.push('Business Studio production deployment must remain gated');
