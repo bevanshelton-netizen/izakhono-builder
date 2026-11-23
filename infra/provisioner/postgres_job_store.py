@@ -131,6 +131,12 @@ class PostgresJobStore(JobStore):
         """Commit terminal job state and its immutable receipt event together."""
         if job.state not in {"HANDOVER_READY", "BLOCKED"} or event.event_type != "TERMINAL_RECEIPT":
             raise ValueError("terminal receipt requires a terminal job state")
+        receipt = event.data.get("receipt", {})
+        if (event.job_id != job.job_id or event.state != job.state
+                or receipt.get("job_id") != job.job_id
+                or receipt.get("tenant_id") != job.tenant_id
+                or receipt.get("terminal_state") != job.state):
+            raise ValueError("terminal receipt identity mismatch")
         try:
             with self.connection.cursor() as cur:
                 cur.execute("SELECT data FROM provisioner_audit_events WHERE event_id=%s FOR UPDATE",
