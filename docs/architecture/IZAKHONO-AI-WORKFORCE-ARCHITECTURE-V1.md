@@ -303,3 +303,46 @@ A state is never inferred from a prior state.
 Complete Phase 0 reconciliation against the current main branch and active IZAKHONO MAIL Runtime Fabric integration work. Produce a component/interface matrix and identify canonical owners for agent identity/ownership, policy/authorization, orchestration/task execution, runtime registration/execution, durable state/audit, portability/backup and fleet telemetry/assurance.
 
 Keep this proposal isolated for review. Do not merge it into the active MAIL integration branch or alter its release state. No production deployment, DNS change, database migration or runtime activation is authorized by this document.
+
+
+## 14. Phase 0 — preliminary source reconciliation (2026-11-23)
+
+This is a read-only source inspection of the repository main branch. It is not a runtime test, security certification or production integration check.
+
+| Existing source | Observed implementation | Architectural consequence |
+|---|---|---|
+| NODE01 registry.py and agent-manifest.v1.json | 25 specialist AgentSpec entries; registry is a process-local Python list/dictionary | Reuse the capability catalogue, but do not treat it as a durable, tenant-scoped identity registry |
+| NODE01 workforce.py | SubagentFactory appends new agents to process-global collections | Dynamic creation is currently process-local; persistent ownership, tenant scope, lifecycle and versioning remain unspecified in this implementation |
+| NODE01 models.py | AgentSpec contains id/name/domain/capabilities/concurrency/risks; no tenant, owner, provider binding, runtime binding or lifecycle fields | Extend via versioned contracts; do not overload capability records with identity or authorization |
+| NODE01 policy.py and tool_fabric.py | Local risk-based policy; external actions can return approval_required; ToolRequest carries an approval_granted boolean | Useful deterministic baseline, but not proof of FORTRESS-issued, actor-bound, scoped approval. A caller-supplied boolean must not be the production authorization artifact |
+| NODE01 persistent_queue.py | SQLiteTaskQueue with durable local tables, leases, idempotency key and receipts; documented as replaceable adapter | Reuse queue semantics as a reference. It does not establish multi-host owned-runtime persistence or database ownership |
+| NODE01 control_plane.py | Default InMemoryQueue, DeterministicGateway, InMemoryObserver, DraftMail and ProvisionerPlan | Safe local/reference adapters, not live provider, mail, provisioning or production queue integrations |
+| NODE01 observe.py and control.py | In-memory event ledger with a maximum length that deletes oldest events; pause/resume/drain methods mutate local flags and append local events | Not a durable immutable audit ledger or verified cross-runtime emergency enforcement |
+| FORTRESS policy.json and guard.py | Default-deny external egress decision with entity scope and data-class filtering; localhost policy endpoint; README says it is a policy decision point, not a transparent network firewall | Strong policy baseline to extend. Agent task authorization, approval issuance, runtime enforcement and correlated audit acknowledgement are not proven by this egress guard alone |
+| FORTRESS Identity & Session Issuer | D1-backed principal/session design with token revocation and audit; documented as a source change, not a deployment | Potential human/session identity integration. It is not, by itself, an agent identity registry or third-party human ID-verification result |
+| IZAKHONO Commander schema | Device enrollment/pairing and device audit tables | Device registry is not the canonical agent registry; reuse only where device identity is relevant |
+| IZAKHONO Identity V1 | Private IZAKHONO namespace identity and mailbox binding | Distinct from workforce agent identity and external human identity verification |
+| IZAKHONO Control NODE Fabric | Logical node roles, node pool and health-based selection | Preserve logical NODE identity. Health and role selection do not establish authorized execution adapter registration |
+| IZAKHONO MAIL Runtime Fabric PR #744 | PR documentation reports missing verified gateway adapter, separate execution environment, tenant-scoped MAIL grant and correlated FORTRESS audit acknowledgement | The same real-registration and authorization gate must apply to AI Workforce execution; do not infer readiness from generic callbacks or CI |
+
+### Phase 0 gap register
+
+**G0 — Canonical identity ownership:** Existing capability registry is process-local; Commander devices and private namespace identities serve different purposes. Decide the canonical owner and storage boundary for agent identity, tenant ownership and lifecycle before schema work.
+
+**G1 — FORTRESS task authorization contract:** Define an actor-bound decision/approval contract for agent and tool actions. Replace caller-asserted approval booleans at production enforcement points with verifiable, scoped FORTRESS decisions.
+
+**G2 — Durable evidence:** NODE01's bounded in-memory event ledger is unsuitable as the authoritative audit record. Define a durable append-only event/receipt contract, transaction boundary, retention and independent checkpoint strategy. Do not assume the existing local ledger is immutable.
+
+**G3 — Runtime registration and execution:** Require the real registered gateway adapter, separately registered healthy execution environment, tenant/workload-scoped authorization and correlated audit acknowledgement. These remain external interface gates, not documentation-only features.
+
+**G4 — Persistence authority:** SQLite provides local queue durability, while the production persistence owner, transaction semantics and migration authority still require explicit confirmation. Do not create or migrate a production database as part of Phase 0.
+
+**G5 — Provider capability truth:** Build a per-provider matrix for cancellation, tool execution, memory export, telemetry, identity mapping, data retention and rate limits. Do not promise universal cross-provider stop or memory portability.
+
+**G6 — Identity verification:** Separate authenticated IZAKHONO principals from independently verified human identity assertions. Any external verification integration requires purpose limitation, issuer validation, expiry/revocation and minimal retention.
+
+### Phase 0 disposition
+
+The source inspection supports an additive architecture, not a new scheduler or a new competing device registry. NODE01 Agent Fabric remains the orchestration and capability-execution layer; FORTRESS remains the authorization authority; Runtime Fabric remains the workload scheduler/state manager; the verified HOST adapter remains the execution mechanism.
+
+No production database, migration, credential, runtime, deployment, DNS or external provider action was performed. No tests were run as part of this documentation-only reconciliation.
