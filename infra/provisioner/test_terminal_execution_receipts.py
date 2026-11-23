@@ -70,6 +70,18 @@ def test_successful_job_persists_terminal_receipt() -> None:
     assert any(event.event_type == "TERMINAL_RECEIPT" for event in store.events)
 
 
+def test_receipt_rejects_secret_material() -> None:
+    store = MemoryJobStore()
+    job, _ = store.create_or_get("tenant", "idem-secret", "job-secret")
+    job.state = "BLOCKED"
+    try:
+        build_terminal_receipt(job, {"api_key": "must-not-be-recorded"})
+    except ValueError as error:
+        assert "secret field prohibited" in str(error)
+    else:
+        raise AssertionError("terminal receipt accepted secret material")
+
+
 def test_terminal_receipt_replay_is_immutable() -> None:
     store = MemoryJobStore()
     job, _ = store.create_or_get("tenant", "idem-replay", "job-replay")
@@ -103,4 +115,5 @@ if __name__ == "__main__":
     test_successful_job_persists_terminal_receipt()
     test_receipt_identity_is_bound_to_evidence()
     test_terminal_receipt_replay_is_immutable()
+    test_receipt_rejects_secret_material()
     print("PROVISIONER_TERMINAL_RECEIPT_TESTS: PASS")
