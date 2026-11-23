@@ -1,0 +1,62 @@
+{
+  "schema": "izakhono.runtime-fabric.workload.v1",
+  "workload": "izakhono-mail",
+  "product": "izakhono-mail",
+  "description": "IZAKHONO MAIL on the existing IZAKHONO HOST mail plane.",
+  "identity": {
+    "logical_node_id": "NODE01",
+    "identity_type": "software-runtime",
+    "runtime_host_is_separate": true
+  },
+  "runtime": {
+    "mode": "node-agnostic",
+    "preferred_nodes": ["node01", "node02", "node03", "node04"],
+    "failover_order": ["node02", "node03", "node04"],
+    "binding_required": true,
+    "binding_source": "verified-runtime-registration",
+    "persistent_state": true
+  },
+  "execution": {
+    "gateway": "NODE01 command gateway",
+    "adapter": "node01-command-gateway",
+    "registration_required": true,
+    "required_capabilities": ["runtime.deploy", "mail.activate", "runtime.health"],
+    "authorization": "FORTRESS",
+    "audit_required": true,
+    "arbitrary_shell_over_http": false
+  },
+  "services": {
+    "control_plane": "products/izakhono-host",
+    "mail_transport": "products/izakhono-host/mail/docker-compose.mail.yml",
+    "mail_transport_service": "stalwart",
+    "mail_bridge": "products/izakhono-host/runtime/mail-bridge",
+    "private_network": "izakhono-mail",
+    "canonical_runtime": true,
+    "parallel_mail_stack_allowed": false
+  },
+  "secrets": {
+    "source": "FORTRESS-protected-runtime-secret-store",
+    "required": [
+      "HOST_RUNTIME_TOKEN",
+      "IZAKHONO_MAIL_API_TOKEN",
+      "STALWART_RECOVERY_ADMIN",
+      "SMTP_USER",
+      "SMTP_PASS"
+    ],
+    "never_commit": true,
+    "never_return_to_client": true
+  },
+  "acceptance": {
+    "runtime": ["registered-node", "adapter-authorized", "containers-healthy", "persistent-storage"],
+    "mail": ["smtp-submission", "smtp-inbound", "imap-authentication", "tls", "spf", "dkim", "dmarc", "ptr", "send-receive-reply"],
+    "security": ["fortress-authorization", "private-bridge", "audit-trail", "backup-restore"],
+    "promotion": "LIVE_VERIFIED only after all runtime, security, DNS, TLS and end-to-end mail acceptance evidence passes"
+  },
+  "deployment": {
+    "strategy": "idempotent",
+    "backup_before_promotion": true,
+    "rollback_required": true,
+    "public_dns_cutover_requires_verified_runtime": true,
+    "current_state": "integration-contract-prepared-execution-unverified"
+  }
+}
