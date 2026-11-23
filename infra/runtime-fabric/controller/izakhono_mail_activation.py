@@ -55,8 +55,13 @@ def load_contract(path: Path) -> dict:
     acceptance = contract.get("acceptance", {})
     if not acceptance.get("runtime") or not acceptance.get("mail") or not acceptance.get("security"):
         raise ValueError("runtime, mail and security acceptance gates are required")
-    if "send-receive-reply" not in acceptance["mail"]:
-        raise ValueError("end-to-end send/receive/reply acceptance is required")
+    required_mail_acceptance = {
+        "smtp-submission", "smtp-inbound", "imap-authentication", "tls",
+        "spf", "dkim", "dmarc", "ptr", "send-receive-reply",
+        "external-inbound-delivery", "external-outbound-delivery", "external-reply-delivery",
+    }
+    if not required_mail_acceptance.issubset(set(acceptance["mail"])):
+        raise ValueError("complete external inbound/outbound/reply acceptance is required")
     if not str(acceptance.get("promotion", "")).startswith("LIVE_VERIFIED only after all"):
         raise ValueError("promotion rule must remain fail-closed")
     return contract
