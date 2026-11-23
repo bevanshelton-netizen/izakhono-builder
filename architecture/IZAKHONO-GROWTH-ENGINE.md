@@ -282,3 +282,14 @@ The first read-only registration slice is included in the Growth Engine integrat
 - tests and contract validation for the non-live state.
 
 The SUPER APP now includes a local `/growth-engine` planning view. It creates a deterministic workflow preview only. Meta/Google connections, campaign execution, publishing, spend, customer-data persistence, and production activation remain disabled. This registration is not evidence of provider access or live service availability.
+
+
+## 14. Verified CRM, FLOW and ADS handoff boundaries
+
+Repository source inspection confirms the existing integration contracts:
+- CRM's FLOW adapter accepts `POST /api/flow`, requires `X-Entity-ID` and `X-Platform-ID`, authenticates the integration caller with `CRM_INGEST_TOKEN`, and deduplicates replayed action IDs.
+- FLOW accepts scoped `POST /api/events` using `FLOW_INGEST_TOKEN`, records the event and creates a durable action outbox. A `lead.created` event routes a `crm.intake.requested` action to its CRM adapter when a real adapter is configured.
+- FLOW rejects payment confirmation unless the source is `izakhono-pay`, verification status is `verified`, and a payment reference is present.
+- IZAKHONO ADS requires a valid `izakhono.marketing.package.v1` sourced from IZAKHONO CREATE before campaign creative/distribution workflow; external ad accounts remain disconnected in its current alpha.
+
+The Growth Engine contract now records these exact handoff requirements. No internal endpoint, bearer token, staff credential, ad account or client data is configured or transmitted by this change. CRM/FLOW/ADS runtime activation remains independently gated.
