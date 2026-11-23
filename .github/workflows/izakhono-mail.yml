@@ -24,6 +24,7 @@ jobs:
           HOST_RUNTIME_TOKEN: ci-not-used
           IZAKHONO_MAIL_API_TOKEN: ci-not-used
           SMTP_HOST: stalwart
+          STALWART_RECOVERY_ADMIN: ci-not-used
           TLS_EMAIL: ci@example.invalid
           POSTGRES_PASSWORD: ci-not-used
           MINIO_ROOT_USER: ci-not-used
