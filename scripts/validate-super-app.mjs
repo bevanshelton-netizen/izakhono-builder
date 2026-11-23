@@ -6,12 +6,14 @@ const flowPath='products/izakhono-flow/.izakhono.json';
 const financePath='products/izakhono-finance-core/finance-core.v1.json';
 const creatorPath='products/izakhono-super-app/creator-engine.v1.json';
 const growthPath='products/izakhono-super-app/growth-engine.v1.json';
+const oneRegistryPath='products/izakhono-one/public/registry.json';
 const registry=JSON.parse(fs.readFileSync(regPath,'utf8'));
 const affiliate=JSON.parse(fs.readFileSync(affiliatePath,'utf8'));
 const flow=JSON.parse(fs.readFileSync(flowPath,'utf8'));
 const finance=JSON.parse(fs.readFileSync(financePath,'utf8'));
 const creator=JSON.parse(fs.readFileSync(creatorPath,'utf8'));
 const growth=JSON.parse(fs.readFileSync(growthPath,'utf8'));
+const oneRegistry=JSON.parse(fs.readFileSync(oneRegistryPath,'utf8'));
 const errors=[];
 
 if(registry.schema!=='izakhono.super-app.module-registry.v1') errors.push('unexpected SUPER APP registry schema');
@@ -50,6 +52,16 @@ for(const required of ['ideas','writing','research','design','video','audio','au
 if(registry.creator_engine?.route!=='/creator') errors.push('SUPER APP creator_engine registry route drift');
 if(registry.creator_engine?.public_live!==false) errors.push('SUPER APP registry must not claim Creator Engine public-live');
 
+
+
+const oneGrowthService=(oneRegistry.services||[]).find(service=>service.slug==='izakhono-growth-engine');
+if(!oneGrowthService) errors.push('IZAKHONO ONE canonical service registry missing Growth Engine');
+else {
+  if(oneGrowthService.status!=='gated') errors.push('IZAKHONO ONE Growth Engine service must remain gated');
+  if(oneGrowthService.publicUrl!==null) errors.push('IZAKHONO ONE Growth Engine must not expose a public URL');
+  if(oneGrowthService.integration?.capabilityStatus!=='architecture-ready') errors.push('IZAKHONO ONE Growth Engine capability status drift');
+  if(oneGrowthService.integration?.publicRouteStatus!=='not-yet-verified') errors.push('IZAKHONO ONE Growth Engine public route must remain unverified');
+}
 
 const growthModule=modules.get('growth-engine');
 if(!growthModule) errors.push('Growth Engine module missing from SUPER APP');
