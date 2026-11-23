@@ -176,6 +176,15 @@ def test_fortress_denial_and_missing_audit_block():
     else:
         raise AssertionError("FORTRESS denial was accepted")
 
+    wrong_tenant = registration()
+    wrong_tenant["authorization"]["tenant_id"] = "another-tenant"
+    try:
+        validate_gateway_registration(wrong_tenant, "node02", CONTRACT, "tenant-test")
+    except ValueError as exc:
+        assert "FORTRESS" in str(exc)
+    else:
+        raise AssertionError("authorization for another tenant was accepted")
+
     missing_audit = registration()
     missing_audit["audit"]["acknowledged"] = False
     try:
