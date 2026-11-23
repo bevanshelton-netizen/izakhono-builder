@@ -20,12 +20,12 @@ def main():
         root.mkdir(parents=True)
         (root / "izakhono.db").write_text(ZONE, encoding="utf-8")
         (root / "Corefile").write_text(COREFILE, encoding="utf-8")
-        evidence = IzakhonoDomainAdapter(str(root.parent.parent)).execute(request())
+        evidence = IzakhonoDomainAdapter(str(root.parent)).execute(request())
         assert evidence.verified and evidence.ownership == "owned"
         assert evidence.reversible and not evidence.simulation
 
         try:
-            IzakhonoDomainAdapter(str(root.parent.parent)).execute(request("public.example"))
+            IzakhonoDomainAdapter(str(root.parent)).execute(request("public.example"))
         except RuntimeError as exc:
             assert str(exc) == "DOMAIN_NAMESPACE_NOT_SUPPORTED"
         else:
