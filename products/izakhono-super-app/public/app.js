@@ -158,6 +158,44 @@
     toast("Creator workflow built.");
   }
 
+
+  function buildGrowthPlan(){
+    const business=($("growthBusiness")?.value||"").trim();
+    if(!business){toast("Enter a brand or business name first.");$("growthBusiness")?.focus();return;}
+    const objective=$("growthObjective")?.value||"sales";
+    const channel=$("growthChannels")?.value||"both";
+    const days=Number($("growthWindow")?.value||30);
+    const objectives={sales:"Increase sales",leads:"Generate qualified leads",awareness:"Build awareness",launch:"Launch a product",retention:"Improve retention"};
+    const channels={both:"Meta + Google planning",meta:"Meta planning",google:"Google planning",organic:"Organic + owned channels"};
+    const stages=[
+      ["01","DISCOVERY + BASELINE","Confirm the offer, target market, customer journey, current conversion baseline and available first-party evidence."],
+      ["02","STRATEGY + ECONOMICS","Define the audience, positioning, value proposition, target outcomes and budget assumptions. No spend is authorised."],
+      ["03","CREATIVE BRIEF","Route original creative requirements to IZAKHONO CREATE for review, rights checks and approval."],
+      ["04","CONVERSION EXPERIENCE","Review the landing page, product page, checkout, accessibility and page performance before buying traffic."],
+      ["05","CHANNEL PLAN",channels[channel]+" through IZAKHONO ADS. Provider connections and campaign publishing are currently disabled."],
+      ["06","MEASUREMENT DESIGN","Define conversion events, attribution windows, source provenance, reporting cadence and finance reconciliation."],
+      ["07","CLIENT + OWNER APPROVAL","Confirm scope, creative, destination URLs, account permissions, spend caps and accountable approvers."],
+      ["08","CONTROLLED LAUNCH GATE","Launch remains blocked until provider access, FORTRESS authorisation, audit and end-to-end acceptance are verified."],
+      ["09","OPTIMISE + REPORT","Review validated delivery, conversion quality, CAC, ROAS and contribution margin without confusing platform attribution with confirmed revenue."]
+    ];
+    const host=$("growthPlan");host.replaceChildren();
+    const summary=document.createElement("div");summary.className="creator-plan-summary";
+    [["BRAND",business],["OBJECTIVE",objectives[objective]||objective],["CHANNEL",channels[channel]||channel],["HORIZON",days+" days"]].forEach(([label,value])=>{
+      const cell=document.createElement("div");const kicker=document.createElement("span");kicker.className="kicker";kicker.textContent=label;
+      const strong=document.createElement("strong");strong.textContent=value;cell.append(kicker,strong);summary.append(cell);
+    });
+    const list=document.createElement("div");list.className="creator-plan-list";
+    stages.forEach(([number,title,description])=>{
+      const step=document.createElement("div");step.className="creator-plan-step";
+      const index=document.createElement("span");index.textContent=number;
+      const body=document.createElement("div");const heading=document.createElement("strong");heading.textContent=title;
+      const detail=document.createElement("small");detail.textContent=description;body.append(heading,detail);step.append(index,body);list.append(step);
+    });
+    host.append(summary,list);
+    $("growthStatus").textContent="Local growth plan created for "+business+". This is planning output only: no provider account was accessed, no advertisement was created or published, and no spend was authorised.";
+    toast("Growth plan preview created. No spend or publishing.");
+  }
+
   function switchView(id){
     $$(".view").forEach(v=>v.classList.toggle("active",v.id===id));
     $$(".nav").forEach(b=>b.classList.toggle("active",b.dataset.view===id));
@@ -201,6 +239,8 @@
     $$(".nav").forEach(b=>b.addEventListener("click",()=>switchView(b.dataset.view)));
     $$("[data-jump]").forEach(b=>b.addEventListener("click",()=>switchView(b.dataset.jump)));
     $("planCreator")?.addEventListener("click",buildCreatorPlan);
+    $("buildGrowthPlan")?.addEventListener("click",buildGrowthPlan);
+    $("clearGrowthPlan")?.addEventListener("click",()=>{if($("growthBusiness"))$("growthBusiness").value="";$("growthPlan")?.replaceChildren(Object.assign(document.createElement("div"),{className:"creator-plan-empty",textContent:"Enter a brand or business and build a plan. The preview is not an advertisement, campaign, forecast or performance guarantee."}));if($("growthStatus"))$("growthStatus").textContent="Planning is available locally. No account is connected, no campaign is created and no money can be spent from this workspace.";});
     $("clearCreator")?.addEventListener("click",()=>{
       if($("creatorBrief")) $("creatorBrief").value="";
       const plan=$("creatorPlan");
