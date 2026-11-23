@@ -18,7 +18,7 @@ assert.equal(allegroProfile.public_build_env_file,'/etc/izakhono/apps/allegro-vi
 const mailProfile=JSON.parse(await fs.readFile('internal/node01-command-gateway/deploy-profiles/izakhono-mail.json','utf8'));
 assert.equal(mailProfile.deployment_gate,'runtime-fabric-registration-required');
 assert.equal(mailProfile.runtime_fabric_workload,'infra/runtime-fabric/workloads/izakhono-mail.json');
-assert.notMatch(mailProfile.approved_ref,/^[0-9a-f]{40}$/);
+assert.ok(!/^[0-9a-f]{40}$/.test(mailProfile.approved_ref),'mail profile must not expose a deployable immutable ref');
 
 const tmp=await fs.mkdtemp(path.join(os.tmpdir(),'izakhono-command-test-'));
 const ownerFile=path.join(tmp,'owner');
