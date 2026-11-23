@@ -168,6 +168,8 @@ def main() -> None:
         send_message(ext_smtp_host, ext_smtp_port, ext_smtp_mode, ext_smtp_user, ext_smtp_pass, reply)
         received_reply = find_message(iz_imap_host, iz_imap_port, iz_imap_user, iz_imap_pass,
                                       reply_token, timeout, interval)
+        if received_reply.get("In-Reply-To") != outbound_id:
+            raise RuntimeError("reply_thread_mismatch")
         checks.append(observed("external-reply", received_reply))
 
         print(json.dumps({
