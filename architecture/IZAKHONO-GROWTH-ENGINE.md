@@ -293,3 +293,10 @@ Repository source inspection confirms the existing integration contracts:
 - IZAKHONO ADS requires a valid `izakhono.marketing.package.v1` sourced from IZAKHONO CREATE before campaign creative/distribution workflow; external ad accounts remain disconnected in its current alpha.
 
 The Growth Engine contract now records these exact handoff requirements. No internal endpoint, bearer token, staff credential, ad account or client data is configured or transmitted by this change. CRM/FLOW/ADS runtime activation remains independently gated.
+
+
+## 15. Business Studio umbrella integration
+
+The same SUPER APP branch also contains the complementary IZAKHONO Business Studio workspace and canonical service contract. Business Studio is the broader client-facing service umbrella—brand, websites, software, AI, systems, growth, managed AI, fractional CIO and venture design—while Growth Engine remains its specialist marketing and revenue-optimisation capability.
+
+The Business Studio engagement blueprint is generated locally and does not create CRM records, quotes, contracts, invoices, tasks or production changes. Its registry state remains a planning workspace; specialist engines and commercial systems retain their own authority.
