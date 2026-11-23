@@ -67,6 +67,12 @@ class MemoryJobStore(JobStore):
     def record_terminal_receipt(self, job: StoredJob, event: AuditEvent) -> None:
         if job.state not in TERMINAL_STATES or event.event_type != "TERMINAL_RECEIPT":
             raise ValueError("terminal receipt requires a terminal job state")
+        receipt = event.data.get("receipt", {})
+        if (event.job_id != job.job_id or event.state != job.state
+                or receipt.get("job_id") != job.job_id
+                or receipt.get("tenant_id") != job.tenant_id
+                or receipt.get("terminal_state") != job.state):
+            raise ValueError("terminal receipt identity mismatch")
         existing = next((item for item in self._events if item.event_id == event.event_id), None)
         if existing is not None:
             receipt = existing.data.get("receipt")
