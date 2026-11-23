@@ -270,3 +270,15 @@ Growth Engine is considered operational only when:
 - deployment and production status are supported by independent runtime evidence.
 
 **IZAKHONO Growth Engine — acquire responsibly, convert intelligently, measure honestly, and scale with control.**
+
+
+## 13. Repository integration progress — 23 November 2026
+
+The first read-only registration slice is included in the Growth Engine integration branch:
+- canonical capability contract: `products/izakhono-super-app/growth-engine.v1.json`;
+- SUPER APP module registry entry, marked `architecture-ready`;
+- IZAKHONO ONE service registry entry, marked `gated` with no public URL;
+- read-only `GET /api/growth-engine/status` descriptor and module discovery entry;
+- tests and contract validation for the non-live state.
+
+The `/growth-engine` UI route is reserved but not implemented. Meta/Google connections, campaign execution, publishing, spend, customer-data persistence, and production activation remain disabled. This registration is not evidence of provider access or live service availability.
