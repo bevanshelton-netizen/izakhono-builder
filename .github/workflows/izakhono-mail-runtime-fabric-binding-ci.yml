@@ -1,0 +1,29 @@
+name: IZAKHONO MAIL Runtime Fabric Binding CI
+
+on:
+  pull_request:
+    paths:
+      - 'infra/runtime-fabric/controller/izakhono_mail_activation.py'
+      - 'infra/runtime-fabric/controller/test_izakhono_mail_activation.py'
+      - 'infra/runtime-fabric/workloads/izakhono-mail.json'
+      - 'products/izakhono-mail/NODE-DEPLOYMENT.md'
+      - '.github/workflows/izakhono-mail-runtime-fabric-binding-ci.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'infra/runtime-fabric/controller/izakhono_mail_activation.py'
+      - 'infra/runtime-fabric/controller/test_izakhono_mail_activation.py'
+      - 'infra/runtime-fabric/workloads/izakhono-mail.json'
+      - 'products/izakhono-mail/NODE-DEPLOYMENT.md'
+      - '.github/workflows/izakhono-mail-runtime-fabric-binding-ci.yml'
+
+jobs:
+  binding-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate workload contract JSON
+        run: python -m json.tool infra/runtime-fabric/workloads/izakhono-mail.json >/dev/null
+      - name: Test fail-closed gateway binding
+        working-directory: infra/runtime-fabric/controller
+        run: python test_izakhono_mail_activation.py
