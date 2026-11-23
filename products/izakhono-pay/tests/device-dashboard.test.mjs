@@ -11,7 +11,6 @@ test('device workspace exposes merchant-safe payment and activity workflows', ()
   assert.match(html, /navigator\.clipboard\.writeText/);
   assert.doesNotMatch(html, /QRCode|qrcode\.min\.js|showQr|qrCanvas|customer-facing QR|qrwrap/);
   assert.match(html, /printReceipt/);
-  assert.match(html, /<script nonce=\"unit-test-nonce\">window\.onload/);
   assert.match(html, /verified confirmation from the connected payment provider/);
 });
 
@@ -69,6 +68,7 @@ test('device workspace supports request-scoped nonce markup', () => {
   const html = renderDeviceDashboard('unit-test-nonce');
   assert.match(html, /<style nonce="unit-test-nonce">/);
   assert.match(html, /<script nonce="unit-test-nonce">/);
+  assert.match(html, /<script nonce=\"unit-test-nonce\">window\.onload/);
 });
 
 test('merchant workspace removes inline event handlers and uses delegated actions', async () => {
