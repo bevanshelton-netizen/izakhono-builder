@@ -53,7 +53,7 @@ def test_fail_closed_after_retries():
     worker=ProvisionerWorker(store,queue,{"izakhono-control":evidence},REGISTRY)
     queue.claim_next()
     for _ in range(5):
-        result=worker._failure(job,"TEST_FAILURE","forced")
+        result=worker._failure(job,"TEST_FAILURE","forced","op-test")
         if result.status=="blocked": break
     assert job.state=="BLOCKED"
 
