@@ -132,5 +132,50 @@
     "independent_engines_connected": false,
     "client_data_persistence_enabled": false,
     "production_deployment_authorised": false
+  },
+  "integration_contracts": {
+    "crm": {
+      "system_of_record": "products/izakhono-crm",
+      "inbound_route": "POST /api/flow",
+      "caller": "IZAKHONO FLOW adapter only",
+      "authentication": "Bearer CRM_INGEST_TOKEN",
+      "required_scope_headers": [
+        "X-Entity-ID",
+        "X-Platform-ID"
+      ],
+      "accepted_actions": [
+        "crm.intake.requested",
+        "crm.payment.confirmed",
+        "crm.fulfilment.completed"
+      ],
+      "isolation": "entity_id + platform_id",
+      "state": "not-connected"
+    },
+    "flow": {
+      "orchestrator": "products/izakhono-flow",
+      "event_route": "POST /api/events",
+      "authentication": "Bearer FLOW_INGEST_TOKEN",
+      "required_scope_headers": [
+        "X-Entity-ID",
+        "X-Platform-ID"
+      ],
+      "initial_event_types": [
+        "lead.created",
+        "lead.qualified",
+        "quote.requested",
+        "quote.sent"
+      ],
+      "lead_handoff": "lead.created -> crm.intake.requested -> CRM /api/flow through the FLOW durable action outbox",
+      "payment_confirmation_rule": "Only accept payment.confirmed when source_service is izakhono-pay, verification.status is verified, and a payment reference is present.",
+      "state": "not-connected"
+    },
+    "ads": {
+      "distribution_engine": "products/izakhono-ads",
+      "creative_source_of_truth": "IZAKHONO CREATE",
+      "required_creative_package_schema": "izakhono.marketing.package.v1",
+      "external_ad_accounts_connected": false,
+      "campaign_mutations_enabled": false,
+      "external_publishing_enabled": false
+    }
   }
 }
