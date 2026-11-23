@@ -97,6 +97,7 @@ def test_missing_registration_lookup_fails_closed():
             path, {"node01": True}, None,
             lambda *_: calls.append("execute") or True,
             lambda *_: calls.append("accept") or True,
+            tenant_id="tenant-test",
         )
         assert result.status == "BLOCKED"
         assert result.stage == "adapter-registration"
@@ -109,7 +110,7 @@ def test_missing_execution_adapter_fails_closed():
     path = contract_file()
     try:
         result = activate_izakhono_mail(path, {"node01": True}, lambda *_: registration("node01"), None,
-                                        lambda *_: True)
+                                        lambda *_: True, tenant_id="tenant-test")
         assert result.status == "BLOCKED"
         assert result.stage == "adapter-execution"
     finally:
@@ -120,7 +121,7 @@ def test_missing_acceptance_adapter_fails_closed():
     path = contract_file()
     try:
         result = activate_izakhono_mail(path, {"node01": True}, lambda *_: registration("node01"),
-                                        lambda *_: True, None)
+                                        lambda *_: True, None, tenant_id="tenant-test")
         assert result.status == "BLOCKED"
         assert result.stage == "acceptance-registration"
     finally:
@@ -135,7 +136,7 @@ def test_inactive_registration_blocks_before_execution():
     try:
         result = activate_izakhono_mail(path, {"node01": True}, lambda *_: evidence,
                                         lambda *_: calls.append("execute") or True,
-                                        lambda *_: calls.append("accept") or True)
+                                        lambda *_: calls.append("accept") or True, tenant_id="tenant-test")
         assert result.status == "BLOCKED"
         assert result.stage == "adapter-registration"
         assert calls == []
@@ -147,7 +148,7 @@ def test_stale_registration_blocks_before_execution():
     evidence = registration()
     evidence["observed_at"] = (datetime.now(timezone.utc) - timedelta(minutes=10)).isoformat()
     try:
-        validate_gateway_registration(evidence, "node02", CONTRACT)
+        validate_gateway_registration(evidence, "node02", CONTRACT, "tenant-test")
     except ValueError as exc:
         assert "stale" in str(exc)
     else:
@@ -197,6 +198,7 @@ def test_registered_callbacks_execute_on_selected_software_node():
                 ("gateway", node, contract["workload"], evidence["registration_id"])
             ) or True,
             lambda node, contract: calls.append(("acceptance", node, contract["workload"])) or True,
+            tenant_id="tenant-test",
         )
         assert result.node == "node02"
         assert result.status == "READY_FOR_PROMOTION"
