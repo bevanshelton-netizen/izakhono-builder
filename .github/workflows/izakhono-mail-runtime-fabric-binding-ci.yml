@@ -4,6 +4,14 @@ on:
   pull_request:
     paths:
       - 'infra/runtime-fabric/controller/izakhono_mail_activation.py'
+      - 'infra/provisioner/job_store.py'
+      - 'infra/provisioner/postgres_job_store.py'
+      - 'infra/provisioner/postgres_job_queue.py'
+      - 'infra/provisioner/durable_worker_runtime.py'
+      - 'infra/provisioner/worker_runtime.py'
+      - 'infra/provisioner/service.py'
+      - 'infra/provisioner/execution_receipt.py'
+      - 'infra/provisioner/test_terminal_execution_receipts.py'
       - 'infra/runtime-fabric/controller/test_izakhono_mail_activation.py'
       - 'infra/runtime-fabric/workloads/izakhono-mail.json'
       - 'products/izakhono-mail/NODE-DEPLOYMENT.md'
@@ -35,3 +43,9 @@ jobs:
         run: python test_izakhono_mail_activation.py
       - name: Test NODE01 generic deploy guard for IZAKHONO MAIL
         run: node internal/node01-command-gateway/test.mjs
+      - name: Test durable submission idempotency and terminal receipts
+        working-directory: infra/provisioner
+        run: python test_terminal_execution_receipts.py
+      - name: Run Provisioner end-to-end contract smoke
+        working-directory: infra/provisioner
+        run: python smoke.py
