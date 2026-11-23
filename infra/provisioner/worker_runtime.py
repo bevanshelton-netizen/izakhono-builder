@@ -174,6 +174,6 @@ if __name__ == "__main__":
     results = [worker.run_once() for _ in range(10)]
     assert any(r is not None and r.status == "blocked" for r in results) and job.state == State.BLOCKED.value
     assert all(r is not None for r in results[:9])
-    assert set(job.evidence) == {"PAYMENT_VERIFIED", "TENANT_CREATED", "DOMAIN_READY", "DNS_READY", "SITE_READY", "TLS_READY", "MAIL_READY", "INTEGRATIONS_READY", "ACCEPTANCE_PASSED"}
+    assert set(job.evidence) == {"PAYMENT_VERIFIED", "TENANT_CREATED", "DOMAIN_READY", "DNS_READY", "SITE_READY", "TLS_READY", "MAIL_READY", "INTEGRATIONS_READY", "ACCEPTANCE_PASSED", "TERMINAL_RECEIPT"}
     assert any(event.event_type == "BLOCKED" for event in store.events)
     print("PROVISIONER_WORKER_RUNTIME: PASS (simulated evidence blocked)")
