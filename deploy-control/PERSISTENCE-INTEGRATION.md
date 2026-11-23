@@ -135,3 +135,14 @@ The current repository contains a FORTRESS Identity issuer at `products/fortress
 This is not yet a compatible DEPLOY verifier contract. The issuer's documented JWT does not provide DEPLOY's required `application_ids`, `environment_ids`, or action `scopes` claims, and its configured audience is Creator rather than a DEPLOY API audience. The separate `products/izakhono-identity/src/identity.mjs` module is an in-memory identity directory, not a JWT verifier or production authorization authority. No DEPLOY API route or server-side adapter wiring the FORTRESS session authority to `deploy-control/authorization.mjs` was identified in the inspected repository tree.
 
 **Decision:** do not pass Creator-audience tokens directly into DEPLOY, infer application/environment permissions from the FORTRESS role, or treat the in-memory IZAKHONO Identity directory as authentication. A compatible integration requires an explicit FORTRESS/IZAKHONO ID contract for a DEPLOY audience and resource/action entitlements, including the authoritative source and revocation semantics for those entitlements. Until then, the authorization module remains a policy boundary with an injected verifier, not a production-authenticated API.
+
+
+## Provisioner RPC privilege migration scope (2026-11-23)
+
+The branch includes `supabase/migrations/20261122180000_harden_provisioner_worker_rpc_privileges.sql`. Its intended effect is narrowly limited to the existing `public.provisioner_run_once(integer)` function when that exact signature exists: revoke EXECUTE from `PUBLIC`, `anon`, and `authenticated`; grant EXECUTE to `service_role`; and pin that function's `search_path` to `pg_catalog, public`.
+
+The accompanying `infra/provisioner/provisioner_rpc_privileges_test.py` applies the SQL only to the disposable PostgreSQL service created by GitHub Actions and verifies the three role grants and function search path. A passing CI run is not evidence that the migration has been applied to any connected Supabase project.
+
+**Execution gate:** this migration is separate from the DEPLOY/Runtime Fabric deployment-state schema and does not resolve Runtime Fabric database ownership. Before applying it to any shared or production Supabase project, the Provisioner database owner must confirm the exact target project, function definition and signature, service-role invocation path, migration runner, and rollback procedure. No connected project or production database has been changed by this PR workflow.
+
+**Privilege-review limitation:** the migration changes privileges only on `provisioner_run_once(integer)`. It does not enumerate or alter any underlying claim/complete/release helper functions, and the test does not prove their privileges. Do not infer that helper-function grants are restricted based on this migration; inspect their exact deployed definitions and grants under the database owner's approved read-only review before production application.
