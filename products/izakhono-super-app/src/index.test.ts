@@ -142,8 +142,8 @@ test("Growth Engine status is registered but remains non-live and fail-closed",a
   assert.equal(response.status,200);
   assert.equal(data.growth_engine.module_id,"growth-engine");
   assert.equal(data.growth_engine.public_live,false);
-  assert.equal(data.growth_engine.embedded,false);
-  assert.equal(data.growth_engine.route_status,"not-implemented");
+  assert.equal(data.growth_engine.embedded,true);
+  assert.equal(data.growth_engine.route_status,"workspace-view");
   assert.equal(data.growth_engine.providers.meta.connected,false);
   assert.equal(data.growth_engine.providers.google.connected,false);
   assert.equal(data.growth_engine.paid_spend_requires_authorisation,true);
