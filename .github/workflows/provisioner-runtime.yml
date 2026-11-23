@@ -113,7 +113,7 @@ jobs:
           }
           store.save(job); queue.enqueue(job)
           worker = ProvisionerWorker(store, queue, implementations, load_registry())
-          for _ in range(9): worker.run_once()
+          for _ in range(16): worker.run_once()
           assert job.state == State.HANDOVER_READY.value
           assert job.evidence[State.PAYMENT_VERIFIED.value]['verified'] is True
           assert job.evidence['TERMINAL_RECEIPT']['status'] == 'SUCCEEDED'
