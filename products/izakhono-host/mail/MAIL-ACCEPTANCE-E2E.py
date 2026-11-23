@@ -109,6 +109,10 @@ def observed(check: str, message: EmailMessage) -> dict:
         "check": check,
         "status": "VERIFIED",
         "message_id": str(message.get("Message-ID", "")),
+        "in_reply_to": str(message.get("In-Reply-To", "")),
+        "from": str(message.get("From", "")),
+        "to": str(message.get("To", "")),
+        "subject": str(message.get("Subject", "")),
         "observed_at": datetime.now(timezone.utc).isoformat(),
     }
 
