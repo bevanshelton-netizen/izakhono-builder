@@ -40,10 +40,13 @@ command -v git >/dev/null 2>&1 || fail "Git is required to pin the approved sour
 [[ -f "$SIGNATURE_FILE" && ! -L "$SIGNATURE_FILE" ]] || fail "detached approval signature is missing or is a symlink"
 [[ -f "$PUBLIC_KEY" && ! -L "$PUBLIC_KEY" ]] || fail "trusted owner public key is missing or is a symlink"
 
-# Approval material must live outside the repository so host-specific details
-# and signatures cannot be committed accidentally.
+REPO_ROOT="$(git -C "$ROOT" rev-parse --show-toplevel 2>/dev/null)" ||
+  fail "the repository root cannot be verified"
+
+# Approval material must live outside the entire repository, not merely outside
+# the products/izakhono-host subdirectory.
 case "$APPROVAL_FILE:$SIGNATURE_FILE:$PUBLIC_KEY" in
-  *"$ROOT"/*) fail "approval material and owner public key must be stored outside the repository" ;;
+  *"$REPO_ROOT"/*) fail "approval material and owner public key must be stored outside the repository" ;;
 esac
 
 EXPECTED_OWNER="$(id -u)"
@@ -73,7 +76,7 @@ openssl dgst -sha256 -verify "$PUBLIC_KEY" -signature "$SIGNATURE_FILE" "$APPROV
   fail "owner signature verification failed"
 
 CURRENT_HOST="$(hostname -f 2>/dev/null || hostname)"
-CURRENT_REVISION="$(git -C "$ROOT" rev-parse HEAD 2>/dev/null)" ||
+CURRENT_REVISION="$(git -C "$REPO_ROOT" rev-parse HEAD 2>/dev/null)" ||
   fail "the current source revision cannot be verified"
 
 RUNNER_SERVICE="$(
