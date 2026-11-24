@@ -1,14 +1,17 @@
 /**
- * PostgreSQL transaction adapter for the DEPLOY transaction coordinator.
+ * PostgreSQL transaction adapter for IZAKHONO DEPLOY.
  *
- * Uses a caller-owned pg Pool. Every operation in one callback shares exactly
- * one checked-out client and one BEGIN/COMMIT boundary. The adapter targets an
- * explicit table contract; it does not create schemas or run migrations.
+ * Reuses the existing Runtime Fabric deployment row (metadata.deploy_control)
+ * and the existing FORTRESS fortress_audit_events table. It creates no tables,
+ * runs no DDL, and never opens a second connection inside a transaction.
  *
- * This adapter is not production-wired. Table ownership, approved schema,
- * database identity, migration authority and RLS/grants remain owner decisions.
+ * Both tables MUST be on the same approved PostgreSQL database. If the FORTRESS
+ * audit table is absent or the database binding is wrong, the operation fails
+ * and the Runtime Fabric row update rolls back. Do not use this adapter against
+ * production until database ownership, migration authority and DSN binding are
+ * verified by the infrastructure owner.
  */
-import { randomUUID } from "node:crypto";
+import { createHash } from "node:crypto";
 
 export class PostgresAdapterError extends Error {
   constructor(code, message) {
@@ -18,22 +21,40 @@ export class PostgresAdapterError extends Error {
   }
 }
 
-const identifier = value => {
-  if (typeof value !== "string" || !/^[a-z][a-z0-9_]{0,62}$/.test(value)) {
-    throw new PostgresAdapterError("SCHEMA_INVALID", "PostgreSQL schema must be a simple lowercase identifier.");
+const nonEmpty = value => typeof value === "string" && value.trim().length > 0;
+
+function objectValue(value) {
+  if (value && typeof value === "object" && !Array.isArray(value)) return value;
+  if (typeof value === "string") {
+    try {
+      const parsed = JSON.parse(value);
+      return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+    } catch {
+      return {};
+    }
   }
-  return '"' + value + '"';
-};
+  return {};
+}
 
-const json = value => JSON.stringify(value);
-const parseJson = value => typeof value === "string" ? JSON.parse(value) : value;
+function assertLocked(locked, resource, deploymentId) {
+  if (!locked || locked.deploymentId !== deploymentId ||
+      locked.resource?.tenantId !== resource.tenantId ||
+      locked.resource?.applicationId !== resource.applicationId ||
+      locked.resource?.environmentId !== resource.environmentId) {
+    throw new PostgresAdapterError("DEPLOYMENT_SCOPE_MISMATCH",
+      "A deployment row locked outside the authorized resource scope cannot be changed.");
+  }
+}
 
-export function createPostgresTransactionRunner(pool, { schema = "deploy_control" } = {}) {
+/**
+ * Adapt a pg-compatible Pool to the transaction runner expected by
+ * transitionDeploymentAtomically. The pool is used only to acquire one client;
+ * every operation in the callback uses that exact client until COMMIT/ROLLBACK.
+ */
+export function createPostgresTransactionRunner(pool) {
   if (!pool || typeof pool.connect !== "function") {
     throw new PostgresAdapterError("POOL_REQUIRED", "A trusted pg Pool with connect() is required.");
   }
-  const ns = identifier(schema);
-  const table = name => ns + '."' + name + '"';
 
   return async function withPostgresTransaction(work) {
     if (typeof work !== "function") {
@@ -44,94 +65,157 @@ export function createPostgresTransactionRunner(pool, { schema = "deploy_control
     try {
       await client.query("BEGIN");
       began = true;
+      let locked = null;
+      let pendingClaim = null;
+
       const tx = Object.freeze({
-        claimIdempotency: async ({ tenantId, deploymentId, idempotencyKey, requestHash }) => {
-          const claimId = randomUUID();
-          const inserted = await client.query(
-            `INSERT INTO ${table("idempotency_claims")}
-              (tenant_id, deployment_id, idempotency_key, request_hash, claim_id)
-             VALUES ($1, $2, $3, $4, $5)
-             ON CONFLICT (tenant_id, deployment_id, idempotency_key) DO NOTHING
-             RETURNING claim_id`,
-            [tenantId, deploymentId, idempotencyKey, requestHash, claimId]
-          );
-          if (inserted.rowCount === 1) return { status: "claimed", claimId };
-
-          // The unique-index conflict waits for an in-flight claimant to commit.
-          // FOR UPDATE then serializes replay/conflict inspection with completion.
-          const existing = await client.query(
-            `SELECT claim_id, request_hash, response
-               FROM ${table("idempotency_claims")}
-              WHERE tenant_id = $1 AND deployment_id = $2 AND idempotency_key = $3
-              FOR UPDATE`,
-            [tenantId, deploymentId, idempotencyKey]
-          );
-          if (existing.rowCount !== 1) {
-            throw new PostgresAdapterError("IDEMPOTENCY_CLAIM_LOST", "The idempotency claim disappeared during conflict resolution.");
-          }
-          const row = existing.rows[0];
-          if (row.request_hash !== requestHash) return { status: "conflict" };
-          if (row.response === null || row.response === undefined) {
-            throw new PostgresAdapterError("IDEMPOTENCY_RESULT_INCOMPLETE", "A committed idempotency claim has no replay result.");
-          }
-          return { status: "replay", claimId: row.claim_id, requestHash: row.request_hash, response: parseJson(row.response) };
-        },
-
-        lockDeployment: async ({ deploymentId, tenantId, applicationId, environmentId }) => {
+        async lockDeployment({ deploymentId, tenantId, applicationId, environmentId }) {
           const result = await client.query(
-            `SELECT record, tenant_id, application_id, environment_id
-               FROM ${table("deployment_records")}
-              WHERE deployment_id = $1 AND tenant_id = $2
-                AND application_id = $3 AND environment_id = $4
+            `SELECT deployment_id, metadata
+               FROM izakhono_runtime_deployments
+              WHERE deployment_id = $1
+                AND metadata->>'tenant_id' = $2
+                AND metadata->>'application_id' = $3
+                AND metadata->>'environment_id' = $4
               FOR UPDATE`,
             [deploymentId, tenantId, applicationId, environmentId]
           );
-          if (result.rowCount !== 1) return { record: null, resource: null };
-          const row = result.rows[0];
+          if (result.rowCount !== 1) {
+            locked = null;
+            return { record: null, resource: null };
+          }
+          const metadata = objectValue(result.rows[0].metadata);
+          const deployControl = objectValue(metadata.deploy_control);
+          const resource = {
+            tenantId: metadata.tenant_id,
+            applicationId: metadata.application_id,
+            environmentId: metadata.environment_id
+          };
+          locked = { deploymentId, resource, metadata, deployControl };
           return {
-            record: parseJson(row.record),
-            resource: {
-              tenantId: row.tenant_id,
-              applicationId: row.application_id,
-              environmentId: row.environment_id
-            }
+            record: objectValue(deployControl.record),
+            resource
           };
         },
 
-        saveDeployment: async ({ resource, deployment }) => {
-          const result = await client.query(
-            `UPDATE ${table("deployment_records")}
-                SET record = $1::jsonb, updated_at = NOW()
-              WHERE deployment_id = $2 AND tenant_id = $3
-                AND application_id = $4 AND environment_id = $5`,
-            [json(deployment), deployment.deployment_id, resource.tenantId, resource.applicationId, resource.environmentId]
-          );
-          if (result.rowCount !== 1) {
-            throw new PostgresAdapterError("DEPLOYMENT_SCOPE_CHANGED", "The scoped deployment row was not updated.");
+        async claimIdempotency({ tenantId, deploymentId, idempotencyKey, requestHash }) {
+          assertLocked(locked, {
+            tenantId,
+            applicationId: locked?.resource?.applicationId,
+            environmentId: locked?.resource?.environmentId
+          }, deploymentId);
+          if (!nonEmpty(idempotencyKey) || !/^[a-f0-9]{64}$/.test(requestHash || "")) {
+            throw new PostgresAdapterError("IDEMPOTENCY_INPUT_INVALID",
+              "A non-empty idempotency key and SHA-256 request hash are required.");
           }
+          const keyDigest = createHash("sha256").update(idempotencyKey).digest("hex");
+          const idempotency = objectValue(locked.deployControl.idempotency);
+          const existing = idempotency[keyDigest];
+          if (existing) {
+            if (existing.request_hash !== requestHash) return { status: "conflict" };
+            return {
+              status: "replay",
+              requestHash: existing.request_hash,
+              response: existing.response
+            };
+          }
+          pendingClaim = { claimId: keyDigest, requestHash, idempotencyKey };
+          return { status: "claimed", claimId: keyDigest };
         },
 
-        appendAudit: async ({ event }) => {
+        async saveDeployment({ resource, deployment }) {
+          assertLocked(locked, resource, locked?.deploymentId);
+          const result = await client.query(
+            `UPDATE izakhono_runtime_deployments
+                SET metadata = COALESCE(metadata, '{}'::jsonb) ||
+                  jsonb_build_object(
+                    'deploy_control',
+                    COALESCE(metadata->'deploy_control', '{}'::jsonb) ||
+                    jsonb_build_object('record', $5::jsonb)
+                  ),
+                    updated_at = NOW()
+              WHERE deployment_id = $1
+                AND metadata->>'tenant_id' = $2
+                AND metadata->>'application_id' = $3
+                AND metadata->>'environment_id' = $4
+              RETURNING deployment_id`,
+            [locked.deploymentId, resource.tenantId, resource.applicationId,
+              resource.environmentId, JSON.stringify(deployment)]
+          );
+          if (result.rowCount !== 1) {
+            throw new PostgresAdapterError("DEPLOYMENT_WRITE_CONFLICT",
+              "The locked deployment row was not updated exactly once.");
+          }
+          locked.deployControl.record = deployment;
+        },
+
+        async appendAudit({ event }) {
+          assertLocked(locked, {
+            tenantId: event.tenantId,
+            applicationId: event.applicationId,
+            environmentId: event.environmentId
+          }, event.deploymentId);
+          const data = {
+            application_id: event.applicationId,
+            environment_id: event.environmentId,
+            from_state: event.fromState,
+            to_state: event.toState,
+            request_hash: event.requestHash,
+            evidence: event.evidence
+          };
+          // Reuse the existing FORTRESS ledger. A missing table or uniqueness
+          // conflict aborts this transaction; no second audit database is used.
           await client.query(
-            `INSERT INTO ${table("audit_events")}
-              (event_id, tenant_id, application_id, environment_id, deployment_id,
-               actor, event_type, event)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb)`,
-            [event.eventId, event.tenantId, event.applicationId, event.environmentId,
-             event.deploymentId, event.actor, event.eventType, json(event)]
+            `INSERT INTO fortress_audit_events
+              (event_id, job_id, tenant_id, operation_id, event_type, actor,
+               adapter, state, observed_at, data)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb)`,
+            [event.eventId, event.deploymentId, event.tenantId, event.idempotencyKey,
+              event.eventType, event.actor, "izakhono-deploy", event.toState,
+              event.observedAt, JSON.stringify(data)]
           );
         },
 
-        completeIdempotency: async ({ claimId, response }) => {
+        async completeIdempotency({ claimId, response }) {
+          if (!pendingClaim || pendingClaim.claimId !== claimId) {
+            throw new PostgresAdapterError("IDEMPOTENCY_CLAIM_MISMATCH",
+              "The idempotency result does not match the active transaction claim.");
+          }
+          const entry = {
+            request_hash: pendingClaim.requestHash,
+            response,
+            created_at: new Date().toISOString()
+          };
           const result = await client.query(
-            `UPDATE ${table("idempotency_claims")}
-                SET response = $1::jsonb, completed_at = NOW()
-              WHERE claim_id = $2 AND response IS NULL`,
-            [json(response), claimId]
+            `UPDATE izakhono_runtime_deployments
+                SET metadata = COALESCE(metadata, '{}'::jsonb) ||
+                  jsonb_build_object(
+                    'deploy_control',
+                    COALESCE(metadata->'deploy_control', '{}'::jsonb) ||
+                    jsonb_build_object(
+                      'idempotency',
+                      COALESCE(metadata->'deploy_control'->'idempotency', '{}'::jsonb) ||
+                      jsonb_build_object($5, $6::jsonb)
+                    )
+                  ),
+                    updated_at = NOW()
+              WHERE deployment_id = $1
+                AND metadata->>'tenant_id' = $2
+                AND metadata->>'application_id' = $3
+                AND metadata->>'environment_id' = $4
+              RETURNING deployment_id`,
+            [locked.deploymentId, locked.resource.tenantId, locked.resource.applicationId,
+              locked.resource.environmentId, claimId, JSON.stringify(entry)]
           );
           if (result.rowCount !== 1) {
-            throw new PostgresAdapterError("IDEMPOTENCY_COMPLETION_FAILED", "The idempotency result could not be completed exactly once.");
+            throw new PostgresAdapterError("IDEMPOTENCY_WRITE_CONFLICT",
+              "The idempotency result was not persisted exactly once.");
           }
+          locked.deployControl.idempotency = {
+            ...objectValue(locked.deployControl.idempotency),
+            [claimId]: entry
+          };
+          pendingClaim = null;
         }
       });
 
@@ -141,7 +225,7 @@ export function createPostgresTransactionRunner(pool, { schema = "deploy_control
       return result;
     } catch (error) {
       if (began) {
-        try { await client.query("ROLLBACK"); } catch { /* preserve original failure */ }
+        try { await client.query("ROLLBACK"); } catch { /* preserve the original failure */ }
       }
       throw error;
     } finally {
