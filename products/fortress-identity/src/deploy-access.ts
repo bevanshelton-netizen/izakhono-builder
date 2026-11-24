@@ -113,11 +113,13 @@ async function verifySignedClaims(
     const issuedAt = claims.iat;
     const notBefore = claims.nbf;
     const expiresAt = claims.exp;
+    const notBeforeValid = notBefore === undefined ||
+      (Number.isInteger(notBefore) && notBefore <= now + 60);
     if (header.alg !== "HS256" || (header.typ && header.typ !== "JWT") ||
         claims.iss !== issuer(env) || claims.aud !== expectedAudience ||
         !nonEmpty(claims.sub) || !nonEmpty(claims.jti) ||
-        !Number.isInteger(issuedAt) || !Number.isInteger(notBefore) || !Number.isInteger(expiresAt) ||
-        issuedAt > now + 60 || notBefore > now + 60 || expiresAt <= now ||
+        !Number.isInteger(issuedAt) || !notBeforeValid || !Number.isInteger(expiresAt) ||
+        issuedAt > now + 60 || expiresAt <= now ||
         expiresAt <= issuedAt || expiresAt - issuedAt > maxLifetimeSeconds) return null;
     const secret = env.FORTRESS_SESSION_HMAC_SECRET || "";
     if (enc.encode(secret).byteLength < 32) return null;
@@ -264,7 +266,7 @@ export async function introspectDeployAccessToken(request: Request, env: DeployA
   const token = bearer(request);
   const now = Math.floor(Date.now() / 1000);
   const claims = await verifySignedClaims(token, env, deployAudience(env), now, 300);
-  if (!claims || !nonEmpty(claims.tenant_id) || !nonEmpty(claims.parent_jti) ||
+  if (!claims || !Number.isInteger(claims.nbf) || !nonEmpty(claims.tenant_id) || !nonEmpty(claims.parent_jti) ||
       !Array.isArray(claims.application_ids) || claims.application_ids.length !== 1 ||
       !Array.isArray(claims.environment_ids) || claims.environment_ids.length !== 1 ||
       !Array.isArray(claims.scopes) || !claims.scopes.every(scope => typeof scope === "string")) {
@@ -291,7 +293,8 @@ export async function introspectDeployAccessToken(request: Request, env: DeployA
       claims.tenant_id !== row.tenant_id || claims.parent_jti !== row.parent_access_jti ||
       claims.application_ids[0] !== row.application_id ||
       claims.environment_ids[0] !== row.environment_id ||
-      claims.iat !== Number(row.issued_at) || claims.exp !== Number(row.expires_at)) {
+      claims.iat !== Number(row.issued_at) || claims.nbf !== Number(row.issued_at) ||
+      claims.exp !== Number(row.expires_at)) {
     return json({ valid: false }, 401);
   }
 
