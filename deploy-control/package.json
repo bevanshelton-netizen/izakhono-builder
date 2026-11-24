@@ -8,8 +8,6 @@
   },
   "scripts": {
     "start": "node server.mjs",
-    "migrate:check": "node migrate.mjs --check",
-    "migrate:apply": "node migrate.mjs --apply",
     "test": "node --test"
   },
   "dependencies": {
