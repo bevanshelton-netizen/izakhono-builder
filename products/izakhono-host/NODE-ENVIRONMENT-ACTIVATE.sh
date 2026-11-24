@@ -187,4 +187,4 @@ IFS= read -r confirmation
 [[ "$confirmation" == "ACTIVATE NODE01 ON $CURRENT_HOST" ]] || fail "operator confirmation did not match"
 
 printf '%s\n' "Executing the separately reviewed NODE01 activation sequence."
-exec bash "$ROOT/NODE01-ACTIVATE.sh"
+IZAKHONO_ACTIVATE_DEPLOY_CONTROL="$DEPLOY_CONTROL_APPROVED" exec bash "$ROOT/NODE01-ACTIVATE.sh"
