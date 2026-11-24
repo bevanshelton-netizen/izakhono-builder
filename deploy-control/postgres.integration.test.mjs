@@ -368,6 +368,14 @@ integration("signed migration runner applies atomically and is idempotent on exa
     await pool.query("DROP TABLE IF EXISTS fortress_audit_events CASCADE");
     await pool.query("DROP TABLE IF EXISTS izakhono_runtime_deployments CASCADE");
     await pool.query("DROP TABLE IF EXISTS izakhono_runtime_schema_migrations CASCADE");
+    const checked = JSON.parse(execFileSync(process.execPath, [runnerPath, "--check"], {
+      env, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"]
+    }));
+    assert.equal(checked.status, "NOT_APPLIED");
+    const ledgerBeforeApply = await pool.query(
+      "SELECT to_regclass('public.izakhono_runtime_schema_migrations') AS ledger"
+    );
+    assert.equal(ledgerBeforeApply.rows[0].ledger, null);
     const applied = JSON.parse(execFileSync(process.execPath, [runnerPath, "--apply"], {
       env, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"]
     }));
