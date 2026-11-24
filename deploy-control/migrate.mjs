@@ -1,6 +1,7 @@
 import { createHash, createPublicKey, verify } from "node:crypto";
 import { readFile, lstat } from "node:fs/promises";
 import { Pool } from "pg";
+import { pathToFileURL } from "node:url";
 
 const MIGRATION_ID = "0001_runtime_fabric_deploy";
 const MIGRATION_URL = new URL("./migrations/0001_runtime_fabric_deploy.sql", import.meta.url);
