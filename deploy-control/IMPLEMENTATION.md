@@ -16,7 +16,9 @@ This change adds a dependency-free Node.js ES module for deployment record creat
 
 ## Required integration responsibilities
 
-The module is policy logic, not persistence or transport. The caller must authenticate and authorize tenant scope; persist state and idempotency key atomically; enforce unique (deployment_id, idempotency_key) and reject key reuse with a different request; append immutable audit events; keep secrets out of records and logs; and require a fresh registry heartbeat, verified runtime binding and readiness before target selection.
+The lifecycle module remains policy logic, but the persistence boundary is now implemented by `transaction.mjs` and `postgres-adapter.mjs`. The coordinator authenticates/authorizes tenant scope before database access, computes a canonical request hash, distinguishes exact replay from conflicting key reuse, and requires state, FORTRESS audit append and idempotency completion to share one transaction. The PostgreSQL adapter uses one checked-out client, locks the existing Runtime Fabric deployment row, stores the small idempotency map in `metadata.deploy_control`, and inserts into the existing `fortress_audit_events` table. It creates no schema and runs no migration.
+
+The Runtime Fabric `PostgresDeploymentStore.put()` path preserves DEPLOY's reserved metadata and tenant/application/environment bindings during ordinary runtime updates. Disposable PostgreSQL CI tests exercise concurrent requests, rollback on audit failure, replay, conflicts and resource scoping. The adapter is not production-wired and fails closed unless the two existing tables are co-located in the same approved database.
 
 NODE01 remains the logical software identity. Its execution environment is a separately verified binding. Production promotion stays blocked until owner-runtime acceptance, backups, rollback and independent HTTPS checks are demonstrated.
 
