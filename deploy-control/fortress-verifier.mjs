@@ -39,15 +39,32 @@ export function createFortressAccessTokenVerifier({
         redirect: "error",
         signal: AbortSignal.timeout(timeoutMs)
       });
-      if (!response.ok) return null;
-      const result = await response.json();
-      if (result?.valid !== true || result?.sessionActive !== true ||
-          !result.claims || typeof result.claims !== "object" || Array.isArray(result.claims)) {
-        return null;
+      if (response.status === 401) return null;
+      if (!response.ok) {
+        const error = new Error("FORTRESS introspection service is unavailable.");
+        error.code = "IDENTITY_VERIFIER_UNAVAILABLE";
+        throw error;
+      }
+      let result;
+      try { result = await response.json(); }
+      catch {
+        const error = new Error("FORTRESS introspection returned invalid JSON.");
+        error.code = "IDENTITY_VERIFIER_UNAVAILABLE";
+        throw error;
+      }
+      if (result?.valid !== true) return null;
+      if (result?.sessionActive !== true || !result.claims ||
+          typeof result.claims !== "object" || Array.isArray(result.claims)) {
+        const error = new Error("FORTRESS introspection response is incomplete.");
+        error.code = "IDENTITY_VERIFIER_UNAVAILABLE";
+        throw error;
       }
       return createVerifiedAccessToken(result.claims, { sessionActive: true });
-    } catch {
-      return null;
+    } catch (error) {
+      if (error?.code === "IDENTITY_VERIFIER_UNAVAILABLE") throw error;
+      const unavailable = new Error("FORTRESS introspection request failed.");
+      unavailable.code = "IDENTITY_VERIFIER_UNAVAILABLE";
+      throw unavailable;
     }
   };
 }
