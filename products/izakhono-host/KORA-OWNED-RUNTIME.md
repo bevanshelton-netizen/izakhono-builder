@@ -15,7 +15,7 @@ This integration is deliberately opt-in. Adding these files does not start a con
 
 The KORA source revision used by this integration is:
 
-`bevanshelton-netizen/Downloads@7e51386031821fbb9953981ce2dc07fbf6d9a110`
+`bevanshelton-netizen/Downloads@d9f0774175e665e6eabfed16ebbb5709e1f0e48f`
 
 That revision adds configurable public build arguments to `kora-network/Dockerfile`. No production credentials are included in the image build.
 
@@ -38,7 +38,7 @@ From this directory, use the normal authenticated Git credential mechanism appro
 
 ```bash
 git clone https://github.com/bevanshelton-netizen/Downloads.git kora-source
-git -C kora-source checkout --detach 7e51386031821fbb9953981ce2dc07fbf6d9a110
+git -C kora-source checkout --detach d9f0774175e665e6eabfed16ebbb5709e1f0e48f
 git -C kora-source rev-parse HEAD
 ```
 
