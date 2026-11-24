@@ -13,6 +13,7 @@ CREATE TABLE deploy_access_sessions (
   issued_at INTEGER NOT NULL,
   expires_at INTEGER NOT NULL,
   revoked_at INTEGER,
+  revocation_event_id TEXT,
   FOREIGN KEY(parent_access_jti) REFERENCES refresh_sessions(access_jti) ON DELETE CASCADE
 );
 
