@@ -12,5 +12,9 @@ migrations_dir = "migrations"
 [vars]
 FORTRESS_SESSION_ISSUER = "https://fortress.izakhono.internal"
 FORTRESS_SESSION_AUDIENCE = "izakhono-creator"
+FORTRESS_DEPLOY_AUDIENCE = "izakhono-deploy"
+FORTRESS_DEPLOY_ACCESS_TTL_SECONDS = "300"
 # Set exact Creator origin in FORTRESS_ALLOWED_ORIGINS.
-# Set signing and bootstrap secrets with wrangler secret put.
+# Set FORTRESS_SESSION_HMAC_SECRET, FORTRESS_BOOTSTRAP_SECRET and
+# FORTRESS_DEPLOY_INTROSPECTION_SECRET with wrangler secret put.
+# The deploy introspection secret is separate from the JWT signing secret.
