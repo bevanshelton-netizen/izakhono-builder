@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { FACEBOOK_REELS_1080X1920, buildFfmpegExportArgs, validateMediaProbe } from './media-export-profile';
+import { FACEBOOK_REELS_1080X1920, buildFfmpegExportArgs, validateMediaProbe, validateMp4FastStart } from './media-export-profile';
 
 const goodProbe = {
   streams: [
@@ -23,6 +23,18 @@ assert.ok(wrongDimensions.checks.some(check => check.id === 'video-dimensions' &
 const missingAudio = validateMediaProbe({ ...goodProbe, streams: goodProbe.streams.filter(stream => stream.codec_type !== 'audio') });
 assert.equal(missingAudio.passed, false);
 assert.ok(missingAudio.checks.some(check => check.id === 'audio-stream-present' && !check.passed));
+
+function box(type: string, payload: number[] = []): number[] {
+  const size = payload.length + 8;
+  return [(size >>> 24) & 255, (size >>> 16) & 255, (size >>> 8) & 255, size & 255, ...Array.from(type).map(char => char.charCodeAt(0)), ...payload];
+}
+const fastStartBytes = new Uint8Array([...box('ftyp'), ...box('moov', [1, 2, 3, 4]), ...box('mdat', [5, 6, 7, 8])]);
+assert.equal(validateMp4FastStart(fastStartBytes).passed, true);
+const slowStartBytes = new Uint8Array([...box('ftyp'), ...box('mdat', [5, 6, 7, 8]), ...box('moov', [1, 2, 3, 4])]);
+assert.equal(validateMp4FastStart(slowStartBytes).passed, false);
+assert.equal(validateMp4FastStart(new Uint8Array([0, 1, 2])).passed, false);
+const malformedBytes = new Uint8Array([0, 0, 0, 2, 102, 116, 121, 112]);
+assert.equal(validateMp4FastStart(malformedBytes).passed, false);
 
 const args = buildFfmpegExportArgs('/staging/master.mov', '/exports/facebook-reels.mp4');
 assert.ok(args.includes('+faststart'));
