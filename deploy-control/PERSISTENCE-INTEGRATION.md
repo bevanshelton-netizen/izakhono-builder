@@ -148,20 +148,21 @@ The accompanying `infra/provisioner/provisioner_rpc_privileges_test.py` applies 
 **Privilege-review limitation:** the migration changes privileges only on `provisioner_run_once(integer)`. It does not enumerate or alter any underlying claim/complete/release helper functions, and the test does not prove their privileges. Do not infer that helper-function grants are restricted based on this migration; inspect their exact deployed definitions and grants under the database owner's approved read-only review before production application.
 
 
-## Transaction coordinator implementation (2026-11-24)
+## Transaction and PostgreSQL adapter implementation (2026-11-24)
 
-A driver-neutral coordinator now exists in `deploy-control/transaction.mjs`. It:
+The transaction path now has both a coordinator and a concrete PostgreSQL adapter:
 
-- authorizes the verified principal against tenant, application and environment scope before opening a transaction;
-- derives a canonical SHA-256 request hash and scopes idempotency to tenant, deployment and key;
-- distinguishes exact replay from conflicting key reuse;
-- requires the deployment row to be locked and its stored tenant/application/environment binding to match the authorized resource;
-- routes approval transitions through the separate `deploy:approve` scope;
-- sends deployment update, immutable audit append and idempotency-result completion through the same transaction handle;
-- rejects secret-bearing request fields before persistence.
+- `deploy-control/transaction.mjs` authorizes the verified principal against tenant/application/environment scope before database access, hashes the canonical request, separates exact replay from conflicting idempotency-key reuse, and coordinates the deployment write, FORTRESS audit append and idempotency result through one transaction handle.
+- `deploy-control/postgres-adapter.mjs` acquires one node-postgres client and uses that same connection for `BEGIN`, the scoped `izakhono_runtime_deployments` row lock, idempotency lookup/update, deployment metadata update, `fortress_audit_events` insert, and `COMMIT`/rollback.
+- Idempotency is stored under a SHA-256 digest in the existing deployment row's `metadata.deploy_control.idempotency` object. The row lock serializes concurrent requests for that deployment; no separate idempotency table is introduced.
+- The adapter reuses the existing Runtime Fabric deployment table and FORTRESS audit table. It creates no tables, runs no DDL, and does not select or read a production DSN.
+- `PostgresDeploymentStore.put()` now preserves the reserved DEPLOY record, idempotency map and tenant/application/environment metadata when Runtime Fabric updates its deployment row.
+- `deploy-control/postgres.integration.test.mjs` exercises real PostgreSQL commit, replay, request-hash conflict, audit-failure rollback, concurrent identical/conflicting requests and resource-scope enforcement. `test_postgres_deployment_store.py` verifies Runtime Fabric updates preserve DEPLOY metadata. Both run only against disposable GitHub Actions PostgreSQL services.
 
-Focused contract tests cover same-handle transaction use, replay, conflicting replay, cross-tenant rejection, stored-scope mismatch, approval scope, missing deployment rollback and audit-failure rollback. The DEPLOY CI workflow now runs these tests.
+**Production boundary remains closed.** The adapter assumes `izakhono_runtime_deployments` and `fortress_audit_events` resolve to the same approved PostgreSQL database. If the audit table is absent or in another database, the transaction fails and rolls back; there is no dual-write fallback. That same-database identity is not yet independently verified. The current test proves PostgreSQL behavior against the disposable schema, not the production database identity, owner, grants/RLS or migration authority.
 
-**This is not yet a PostgreSQL adapter or production API.** The transaction runner and its five storage operations are injected interfaces. The current tests use a rollback-capable deterministic adapter; they do not prove PostgreSQL locking, concurrent claim serialization, actual database rollback, RLS, or durable audit immutability. Those guarantees still require an owner-approved Runtime Fabric schema and real PostgreSQL integration tests.
+The FORTRESS audit append is performed as an INSERT inside the transaction; database-level prevention of UPDATE/DELETE remains a separate owner-approved hardening item. The adapter does not claim that a test schema establishes production audit immutability.
 
-No migration, DDL, production database write, identity-provider binding, HOST execution, runtime registration, deployment, DNS change or production activation was performed. The existing database ownership/migration-authority gate remains in force.
+Before production wiring, the accountable database owner must confirm the authoritative database, environment binding, metadata/schema mapping, migration runner, rollback, privilege/RLS model, audit-table co-location and approval to use this transaction boundary. If WebStart and Runtime Fabric are separate databases, select one authoritative store and design a transactional outbox in that store; do not dual-write and claim atomicity.
+
+No production DSN was read, no production schema or data was changed, and no HOST execution, runtime registration, deployment, DNS change or production activation occurred.
