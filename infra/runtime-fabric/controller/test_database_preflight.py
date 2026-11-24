@@ -103,7 +103,7 @@ def test_preflight_blocks_runtime_role_with_audit_mutation_privilege():
     assert report["checks"]["runtime_role_is_not_table_owner"]
     assert not report["checks"]["fortress_audit_select_insert_only"]
     assert report["checks"]["fortress_audit_append_only_trigger"]
-    assert report["technical_checks_passed"] is False
+    assert report["status"] == "BLOCKED_TECHNICAL"
 
     with psycopg.connect(DATABASE_URL, autocommit=True) as owner:
         owner.execute("REVOKE UPDATE ON TABLE fortress_audit_events FROM deploy_preflight_runtime")
@@ -118,4 +118,4 @@ def test_preflight_rejects_table_owner_as_runtime_identity():
     report = inspect_runtime_database(lambda: psycopg.connect(DATABASE_URL), {})
     assert not report["checks"]["runtime_role_is_not_table_owner"]
     assert not report["checks"]["fortress_audit_select_insert_only"]
-    assert report["technical_checks_passed"] is False
+    assert report["status"] == "BLOCKED_TECHNICAL"
