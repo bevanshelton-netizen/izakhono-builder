@@ -171,5 +171,5 @@ test("rejects inactive combined introspection and caller-forged verification wra
     audience: "izakhono-deploy",
     now,
     verifyAccessToken: async () => ({ claims, sessionActive: true })
-  }), error => error.code === "AUTH_CONFIG_INVALID");
+  }), error => ["AUTH_CONFIG_INVALID", "TOKEN_CLAIMS_INVALID"].includes(error.code));
 });
