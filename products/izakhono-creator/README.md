@@ -143,3 +143,21 @@ The legacy project, asset, render and generation APIs now fail closed unless a s
 The Creator Check workflow also executes the FORTRESS Creator role-permission regression suite.
 
 The FORTRESS access-control test file is maintained with the shared FORTRESS security module and executed by Creator CI.
+
+
+## Reusable media QA and Facebook delivery profiles
+
+Media delivery is profile-driven, not hard-coded to a single film. The reusable contract in `src/media-export-profile.ts` provides:
+
+- A versioned Facebook Reels profile: MP4, H.264, 1080×1920 (9:16), 30 fps, yuv420p, AAC stereo, 48 kHz and MP4 fast-start.
+- An FFmpeg argument builder that returns an argv array (not a shell command string), scales/pads to the target frame and writes the fast-start MP4.
+- An ffprobe-based QA report for container, duration, video codec, dimensions, pixel format, frame rate, audio presence, AAC codec, sample rate and stereo channels.
+- Explicit manual review gates for playback integrity, dialogue/music rights and sync, captions and safe areas, continuity, credits, fast-start placement and approval before publication.
+
+Run the deterministic contract test from the repository root:
+
+```bash
+npm run creator:media-export:test
+```
+
+The probe validator must be run against the actual rendered file's ffprobe JSON before a delivery can pass. A passing synthetic contract test is only a software test; it is not proof that a film file exists or passed media QA. The FFmpeg export profile does not create source footage, generate dialogue/music, or bypass generation, master or distribution approvals. External publication remains a separate authorised action.
