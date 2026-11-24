@@ -98,10 +98,45 @@ function requiredEnv(name) {
 
 async function main() {
   const mode = process.argv[2];
-  if (!["--check", "--apply"].includes(mode) || process.argv.length !== 3) {
-    throw new Error("Usage: node migrate.mjs --check|--apply");
+  if (process.argv.length !== 3) {
+    throw new Error("Usage: node migrate.mjs --fingerprint|--check|--apply");
   }
   const dsn = requiredEnv("IZAKHONO_RUNTIME_DATABASE_URL");
+  if (mode === "--fingerprint") {
+    const identityPool = new Pool({ connectionString: dsn, max: 1, connectionTimeoutMillis: 5000 });
+    try {
+      const client = await identityPool.connect();
+      try {
+        await client.query("BEGIN READ ONLY");
+        const identity = await client.query(
+          "SELECT current_database() AS database_name, " +
+          "COALESCE(inet_server_addr()::text, 'local-socket') AS server_address, " +
+          "current_setting('server_version') AS server_version"
+        );
+        const row = identity.rows[0];
+        const fingerprint = calculateDatabaseFingerprint(row);
+        await client.query("ROLLBACK");
+        process.stdout.write(JSON.stringify({
+          status: "IDENTITY_ONLY",
+          database_name: row.database_name,
+          server_address: row.server_address,
+          server_version: row.server_version,
+          database_fingerprint: fingerprint
+        }) + "\\n");
+      } catch (error) {
+        await client.query("ROLLBACK").catch(() => {});
+        throw error;
+      } finally {
+        client.release();
+      }
+    } finally {
+      await identityPool.end();
+    }
+    return;
+  }
+  if (!["--check", "--apply"].includes(mode)) {
+    throw new Error("Usage: node migrate.mjs --fingerprint|--check|--apply");
+  }
   const databaseId = requiredEnv("IZAKHONO_RUNTIME_DATABASE_ID");
   const databaseEnvironment = requiredEnv("IZAKHONO_RUNTIME_DATABASE_ENVIRONMENT");
   const databaseOwner = requiredEnv("IZAKHONO_RUNTIME_DATABASE_OWNER");
