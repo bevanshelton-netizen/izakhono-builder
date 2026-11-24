@@ -47,6 +47,12 @@ approval = {
     "approved_at": now.isoformat().replace("+00:00", "Z"),
     "expires_at": expires.isoformat().replace("+00:00", "Z"),
     "allowed_actions": ["activate-owned-runtime"] + (["activate-deploy-control-api"] if deploy_action == "yes" else []),
+    "runtime_database_fingerprint": "a" * 64,
+    "runtime_database_id": "runtime-fabric-production",
+    "runtime_database_environment": "production",
+    "runtime_database_owner": "IZAKHONO Africa (Pty) Ltd",
+    "runtime_migration_runner": "NODE01-approved-runner",
+    "fortress_introspection_endpoint": "https://fortress.test.invalid/api/fortress/deploy-token/introspect",
 }
 with open(path, "w", encoding="utf-8") as handle:
     json.dump(approval, handle, sort_keys=True)
