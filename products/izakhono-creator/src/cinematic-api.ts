@@ -10,7 +10,7 @@ import {
 import { findAssetByExternalId, getProject, listProjects, saveAsset, saveProject, updateAsset, type CreatorStorageEnv } from './project-store';
 import { chooseProvider, createAdapters, type GenerationRequest, type ProviderEnv } from './provider-router';
 
-type CinematicEnv = CreatorStorageEnv & ProviderEnv & { CREATOR_GENERATION_SECRET?: string; MEDIA_FABRIC_URL?: string; MEDIA_FABRIC_KEY?: string };
+type CinematicEnv = CreatorStorageEnv & ProviderEnv & { CREATOR_GENERATION_SECRET?: string; CREATOR_IMAGE_PROVIDER?: string; MEDIA_FABRIC_URL?: string; MEDIA_FABRIC_KEY?: string };
 const response = (body: unknown, status = 200) => new Response(JSON.stringify(body), {
   status,
   headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' },
@@ -54,6 +54,7 @@ export async function handleCinematicApi(request: Request, env: CinematicEnv): P
     // Luma is currently the only registered image-capable adapter; credentials
     // remain server-side and generation approval is mandatory.
     if (action === 'submit' && request.method === 'POST' && task.kind === 'image_generation') {
+      if (env.CREATOR_GENERATION_ENABLED !== 'true') return response({ error: 'Image generation is disabled. Enable it only after provider, rights and cost review.' }, 403);
       const generationApproval = graph.approvals.find(item => item.gate === 'generation');
       if (generationApproval?.status !== 'approved') return response({ error: 'generation approval is required before image submission.' }, 409);
       if (!['ready', 'approved', 'failed'].includes(task.status)) return response({ error: 'task is not in a submittable state.' }, 409);
@@ -65,7 +66,7 @@ export async function handleCinematicApi(request: Request, env: CinematicEnv): P
         aspectRatio: shot.aspectRatio === 'custom' ? '9:16' : shot.aspectRatio,
         shotIndex: shot.sequence,
       };
-      const adapter = chooseProvider(generation, createAdapters(env), env.CREATOR_PROVIDER);
+      const adapter = chooseProvider(generation, createAdapters(env), env.CREATOR_IMAGE_PROVIDER || 'luma');
       if (!adapter) return response({ error: 'No enabled image-generation provider is configured. Configure the approved Luma server-side credential; no generation has been submitted.' }, 503);
       const job = await adapter.submit(generation);
       const failed = job.status === 'failed';
