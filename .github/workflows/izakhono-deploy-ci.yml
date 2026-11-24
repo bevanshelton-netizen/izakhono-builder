@@ -54,6 +54,22 @@ jobs:
         run: npm install --no-save --ignore-scripts --no-audit --no-fund pg@8.16.3
       - name: Test lifecycle policy, target adapter, authorization and PostgreSQL transaction boundary
         run: node --test deploy-control/lifecycle.test.mjs deploy-control/target-adapter.test.mjs deploy-control/authorization.test.mjs deploy-control/transaction.test.mjs deploy-control/postgres.integration.test.mjs
+      - name: Syntax-check DEPLOY transaction adapter
+        run: |
+          node --check deploy-control/transaction.mjs
+          node --check deploy-control/postgres-adapter.mjs
+      - name: Verify database preflight blocks without an operator DSN
+        shell: bash
+        run: |
+          if output="$(env -u IZAKHONO_RUNTIME_DATABASE_URL python3 infra/runtime-fabric/controller/database_preflight.py 2>&1)"; then
+            echo "database preflight unexpectedly succeeded without an operator DSN" >&2
+            exit 1
+          else
+            status=$?
+          fi
+          [[ "$status" -eq 2 ]]
+          grep -q '"status": "BLOCKED_CONFIGURATION"' <<<"$output"
+          grep -q '"production_authorized": false' <<<"$output"
       - name: Check NODE01 identity invariant
         run: python3 scripts/architecture/check-node01-identity.py
       - name: Set up Python
