@@ -53,11 +53,14 @@ jobs:
       - name: Install PostgreSQL integration-test driver
         run: npm install --no-save --ignore-scripts --no-audit --no-fund pg@8.16.3
       - name: Test lifecycle policy, target adapter, authorization and PostgreSQL transaction boundary
-        run: node --test deploy-control/lifecycle.test.mjs deploy-control/target-adapter.test.mjs deploy-control/authorization.test.mjs deploy-control/transaction.test.mjs deploy-control/postgres.integration.test.mjs
+        run: node --test deploy-control/lifecycle.test.mjs deploy-control/target-adapter.test.mjs deploy-control/authorization.test.mjs deploy-control/transaction.test.mjs deploy-control/fortress-verifier.test.mjs deploy-control/postgres.integration.test.mjs
       - name: Syntax-check DEPLOY transaction adapter
         run: |
           node --check deploy-control/transaction.mjs
           node --check deploy-control/postgres-adapter.mjs
+          node --check deploy-control/fortress-verifier.mjs
+          node --check deploy-control/api.mjs
+          node --check deploy-control/server.mjs
       - name: Verify database preflight blocks without an operator DSN
         shell: bash
         run: |
