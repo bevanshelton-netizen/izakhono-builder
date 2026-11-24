@@ -153,9 +153,13 @@ require(expires_at <= approved_at + dt.timedelta(hours=24), "approval validity m
 
 activate_deploy_control = "activate-deploy-control-api" in actions
 database_fingerprint = ""
+migration_sha256 = ""
 fortress_endpoint = ""
 if activate_deploy_control:
     database_fingerprint = nonempty("runtime_database_fingerprint")
+    migration_sha256 = nonempty("runtime_migration_sha256")
+    require(re.fullmatch(r"[0-9a-f]{64}", migration_sha256) is not None,
+            "DEPLOY approval must bind the reviewed migration SHA-256")
     require(re.fullmatch(r"[0-9a-f]{64}", database_fingerprint) is not None,
             "DEPLOY approval must bind a SHA-256 Runtime Fabric database fingerprint")
     nonempty("runtime_database_id")
@@ -174,6 +178,7 @@ print(runner_service)
 print("1" if activate_deploy_control else "0")
 print(database_fingerprint)
 print(fortress_endpoint)
+print(migration_sha256)
 PY
 )" || fail "signed owner approval is invalid or does not match this host/revision"
 
@@ -182,10 +187,13 @@ RUNNER_SERVICE="${APPROVAL_LINES[0]:-}"
 DEPLOY_CONTROL_APPROVED="${APPROVAL_LINES[1]:-0}"
 DEPLOY_CONTROL_DATABASE_FINGERPRINT="${APPROVAL_LINES[2]:-}"
 DEPLOY_CONTROL_FORTRESS_ENDPOINT="${APPROVAL_LINES[3]:-}"
+DEPLOY_CONTROL_MIGRATION_SHA256="${APPROVAL_LINES[4]:-}"
 [[ -n "$RUNNER_SERVICE" && ( "$DEPLOY_CONTROL_APPROVED" == "0" || "$DEPLOY_CONTROL_APPROVED" == "1" ) ]] ||
   fail "owner approval action data is invalid"
 if [[ "$DEPLOY_CONTROL_APPROVED" == "1" ]]; then
-  [[ "$DEPLOY_CONTROL_DATABASE_FINGERPRINT" =~ ^[0-9a-f]{64}$ && "$DEPLOY_CONTROL_FORTRESS_ENDPOINT" == https://* ]] ||
+  [[ "$DEPLOY_CONTROL_DATABASE_FINGERPRINT" =~ ^[0-9a-f]{64}$ &&
+     "$DEPLOY_CONTROL_FORTRESS_ENDPOINT" == https://* &&
+     "$DEPLOY_CONTROL_MIGRATION_SHA256" =~ ^[0-9a-f]{64}$ ]] ||
     fail "signed DEPLOY database/identity binding is invalid"
 fi
 
@@ -217,4 +225,5 @@ printf '%s\n' "Executing the separately reviewed NODE01 activation sequence."
 IZAKHONO_ACTIVATE_DEPLOY_CONTROL="$DEPLOY_CONTROL_APPROVED" \
 IZAKHONO_DEPLOY_CONTROL_APPROVAL_DATABASE_FINGERPRINT="$DEPLOY_CONTROL_DATABASE_FINGERPRINT" \
 IZAKHONO_DEPLOY_CONTROL_APPROVAL_FORTRESS_ENDPOINT="$DEPLOY_CONTROL_FORTRESS_ENDPOINT" \
+IZAKHONO_DEPLOY_CONTROL_APPROVAL_MIGRATION_SHA256="$DEPLOY_CONTROL_MIGRATION_SHA256" \
 exec bash "$ROOT/NODE01-ACTIVATE.sh"
