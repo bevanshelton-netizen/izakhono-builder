@@ -3,13 +3,17 @@ services:
     profiles: ["kora"]
     build:
       context: ./kora-source
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.izakhono-production
       args:
         NEXT_PUBLIC_APP_NAME: ${KORA_PUBLIC_APP_NAME:-KORA}
         NEXT_PUBLIC_APP_URL: ${KORA_PUBLIC_APP_URL:-https://streamkoraafrica.com}
         NEXT_PUBLIC_SUPABASE_URL: ${KORA_SUPABASE_URL:?set KORA_SUPABASE_URL in .env}
         NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${KORA_SUPABASE_PUBLISHABLE_KEY:?set KORA_SUPABASE_PUBLISHABLE_KEY in .env}
         NEXT_PUBLIC_KORA_DB_SCHEMA: ${KORA_DB_SCHEMA:-kora}
+        NEXT_PUBLIC_OPERATOR_NAME: ${KORA_OPERATOR_NAME:-IZAKHONO AFRICA}
+        NEXT_PUBLIC_SUPPORT_EMAIL: ${KORA_SUPPORT_EMAIL:-}
+        NEXT_PUBLIC_PRIVACY_EMAIL: ${KORA_PRIVACY_EMAIL:-}
+        NEXT_PUBLIC_RIGHTS_EMAIL: ${KORA_RIGHTS_EMAIL:-}
         VIDEO_PROVIDER: ${KORA_VIDEO_PROVIDER:-cloudflare}
     image: izakhono/kora-network:owned-7e513860
     restart: unless-stopped
