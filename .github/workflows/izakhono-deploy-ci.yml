@@ -35,7 +35,7 @@ jobs:
         with:
           node-version: "22"
       - name: Test lifecycle policy, target adapter and authorization boundary
-        run: node --test deploy-control/lifecycle.test.mjs deploy-control/target-adapter.test.mjs deploy-control/authorization.test.mjs
+        run: node --test deploy-control/lifecycle.test.mjs deploy-control/target-adapter.test.mjs deploy-control/authorization.test.mjs deploy-control/transaction.test.mjs
       - name: Check NODE01 identity invariant
         run: python3 scripts/architecture/check-node01-identity.py
 
