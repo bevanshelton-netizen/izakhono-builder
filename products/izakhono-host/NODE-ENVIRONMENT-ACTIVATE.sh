@@ -107,6 +107,7 @@ require(approval.get("logical_node_id") == "NODE01", "logical software identity 
 require(approval.get("identity_type") == "software-runtime", "identity type must be software-runtime")
 require(approval.get("runtime_host_is_separate") is True, "runtime host must be declared separately")
 require(approval.get("runner_registered") is True, "owner approval must attest runner registration")
+require(approval.get("runner_health") == "online", "owner approval must attest that the runner is online")
 require(nonempty("approval_id"), "approval ID is missing")
 require(nonempty("environment"), "environment is missing")
 locator = nonempty("environment_locator")
@@ -124,12 +125,13 @@ runner_service = nonempty("runner_service")
 require(re.fullmatch(r"[A-Za-z0-9_.-]{3,128}", runner_id) is not None, "runner ID has invalid characters")
 require(re.fullmatch(r"actions\.runner\.[A-Za-z0-9_.-]+\.service", runner_service) is not None, "runner service name is invalid")
 labels = approval.get("runner_labels")
-require(isinstance(labels, list), "runner labels must be an array")
+require(isinstance(labels, list) and all(isinstance(label, str) for label in labels), "runner labels must be an array of strings")
 required_labels = {"self-hosted", "izakhono-owned-host", "node01-runtime"}
 require(required_labels.issubset(set(labels)), "runner is missing required IZAKHONO host labels")
 
 actions = approval.get("allowed_actions")
-require(isinstance(actions, list) and "activate-owned-runtime" in actions, "approval does not authorize owned-runtime activation")
+require(isinstance(actions, list) and all(isinstance(action, str) for action in actions)
+        and "activate-owned-runtime" in actions, "approval does not authorize owned-runtime activation")
 
 def parse_time(key):
     value = nonempty(key)
