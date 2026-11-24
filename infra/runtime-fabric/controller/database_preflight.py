@@ -22,6 +22,10 @@ REQUIRED_COLUMNS = {
         "event_id", "job_id", "tenant_id", "operation_id", "event_type",
         "actor", "adapter", "state", "observed_at", "data",
     },
+    "izakhono_runtime_schema_migrations": {
+        "migration_id", "checksum_sha256", "applied_at", "applied_by",
+        "approval_id", "change_reference", "rollback_reference",
+    },
 }
 
 
@@ -73,11 +77,13 @@ def inspect_runtime_database(
                     table_schemas[table_name] = schema_name
 
             role_info = None
-            if runtime_reg and fortress_reg:
+            migration_row = None
+            if runtime_reg and fortress_reg and migration_reg:
                 cur.execute(
                     """
                     SELECT pg_get_userbyid(runtime.relowner),
                            pg_get_userbyid(audit.relowner),
+                           pg_get_userbyid(ledger.relowner),
                            has_table_privilege(current_user, runtime.oid, 'SELECT'),
                            has_table_privilege(current_user, runtime.oid, 'INSERT'),
                            has_table_privilege(current_user, runtime.oid, 'UPDATE'),
@@ -86,6 +92,7 @@ def inspect_runtime_database(
                            has_table_privilege(current_user, audit.oid, 'UPDATE'),
                            has_table_privilege(current_user, audit.oid, 'DELETE'),
                            has_table_privilege(current_user, audit.oid, 'TRUNCATE'),
+                           has_table_privilege(current_user, ledger.oid, 'SELECT'),
                            EXISTS (
                                SELECT 1 FROM pg_trigger t
                                 WHERE t.tgrelid = audit.oid
@@ -95,11 +102,19 @@ def inspect_runtime_database(
                            )
                       FROM pg_class runtime
                       CROSS JOIN pg_class audit
+                      CROSS JOIN pg_class ledger
                      WHERE runtime.oid = to_regclass('izakhono_runtime_deployments')
                        AND audit.oid = to_regclass('fortress_audit_events')
+                       AND ledger.oid = to_regclass('izakhono_runtime_schema_migrations')
                     """
                 )
                 role_info = cur.fetchone()
+                cur.execute(
+                    "SELECT checksum_sha256 FROM izakhono_runtime_schema_migrations " 
+                    "WHERE migration_id = %s",
+                    ("0001_runtime_fabric_deploy",),
+                )
+                migration_row = cur.fetchone()
             cur.execute("ROLLBACK")
 
         required_columns_present = all(
@@ -112,22 +127,32 @@ def inspect_runtime_database(
         )
         runtime_owner = role_info[0] if role_info else None
         fortress_owner = role_info[1] if role_info else None
-        runtime_permissions = role_info[2:5] if role_info else (False, False, False)
-        audit_permissions = role_info[5:10] if role_info else (False, False, False, False, False)
-        append_only_trigger = bool(role_info[10]) if role_info else False
+        migration_owner = role_info[2] if role_info else None
+        runtime_permissions = role_info[3:6] if role_info else (False, False, False)
+        audit_permissions = role_info[6:11] if role_info else (False, False, False, False, False)
+        migration_ledger_select = bool(role_info[11]) if role_info else False
+        append_only_trigger = bool(role_info[12]) if role_info else False
+        migration_path = Path(__file__).resolve().parents[3] / "deploy-control" / "migrations" / "0001_runtime_fabric_deploy.sql"
+        expected_migration_sha256 = hashlib.sha256(migration_path.read_bytes()).hexdigest() if migration_path.is_file() else ""
+        migration_checksum_match = bool(
+            migration_row and str(migration_row[0]).strip() == expected_migration_sha256
+        )
         checks = {
             "read_only_transaction": read_only == "on",
             "runtime_deployment_table_present": bool(runtime_reg),
             "fortress_audit_table_present": bool(fortress_reg),
+            "migration_ledger_table_present": bool(migration_reg),
             "required_columns_present": required_columns_present,
             "jsonb_contract": jsonb_contract,
-            "same_database_connection": bool(runtime_reg and fortress_reg),
-            "runtime_role_is_not_table_owner": bool(role_info and database_role not in (runtime_owner, fortress_owner)),
+            "same_database_connection": bool(runtime_reg and fortress_reg and migration_reg),
+            "runtime_role_is_not_table_owner": bool(role_info and database_role not in (runtime_owner, fortress_owner, migration_owner)),
             "runtime_deployment_select_insert_update": all(runtime_permissions),
             "fortress_audit_select_insert_only": (
                 audit_permissions[0] and audit_permissions[1] and not any(audit_permissions[2:])
             ),
             "fortress_audit_append_only_trigger": append_only_trigger,
+            "migration_ledger_select": migration_ledger_select,
+            "migration_checksum_matches_reviewed_source": migration_checksum_match,
         }
         technical_pass = all(checks.values())
         declared = {
@@ -156,6 +181,7 @@ def inspect_runtime_database(
             "table_owners": {
                 "runtime_deployments": runtime_owner,
                 "fortress_audit_events": fortress_owner,
+                "izakhono_runtime_schema_migrations": migration_owner,
             },
             "tables": {
                 "runtime_deployments": {
