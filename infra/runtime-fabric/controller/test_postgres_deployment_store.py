@@ -79,6 +79,9 @@ def test_runtime_store_put_preserves_reserved_deploy_control_metadata():
         assert row is not None
         assert row[0]["runtime_marker"] == "updated"
         assert row[0]["deploy_control"] == deploy_control
+        assert row[0]["tenant_id"] == "tenant-1"
+        assert row[0]["application_id"] == "app-1"
+        assert row[0]["environment_id"] == "staging"
     finally:
         with psycopg.connect(DATABASE_URL) as admin:
             admin.execute("DROP SCHEMA IF EXISTS deploy_test CASCADE")
