@@ -1,6 +1,11 @@
 import test, { after, before, beforeEach } from "node:test";
 import assert from "node:assert/strict";
-import { randomUUID, createHash } from "node:crypto";
+import { randomUUID, createHash, generateKeyPairSync, sign } from "node:crypto";
+import { execFileSync } from "node:child_process";
+import { mkdtempSync, writeFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { readFile } from "node:fs/promises";
 import pg from "pg";
 import { createPostgresTransactionRunner } from "./postgres-adapter.mjs";
@@ -303,4 +308,80 @@ integration("HTTP API fails closed on identity-service outage and cross-tenant p
   const forbidden = await crossTenant(crossTenantRequest);
   assert.equal(forbidden.status, 403);
   assert.equal((await pool.query("SELECT count(*)::int AS n FROM fortress_audit_events")).rows[0].n, 0);
+});
+
+
+integration("signed migration runner applies atomically and is idempotent on exact checksum", async () => {
+  const migrationUrl = new URL("./migrations/0001_runtime_fabric_deploy.sql", import.meta.url);
+  const migrationBytes = await readFile(migrationUrl);
+  const migrationSha256 = createHash("sha256").update(migrationBytes).digest("hex");
+  const identity = await pool.query(
+    "SELECT current_database() AS database_name, " +
+    "COALESCE(inet_server_addr()::text, 'local-socket') AS server_address, " +
+    "current_setting('server_version') AS server_version"
+  );
+  const row = identity.rows[0];
+  const databaseFingerprint = createHash("sha256").update([
+    row.database_name, row.server_address, row.server_version
+  ].join("|"), "utf8").digest("hex");
+  const { publicKey, privateKey } = generateKeyPairSync("ed25519");
+  const approval = {
+    version: 1,
+    action: "apply-runtime-fabric-deploy-migration",
+    approval_id: "ci-migration-approval-" + randomUUID(),
+    migration_id: "0001_runtime_fabric_deploy",
+    migration_sha256: migrationSha256,
+    runtime_database_fingerprint: databaseFingerprint,
+    runtime_database_id: "ci-disposable-db",
+    runtime_database_environment: "ci",
+    runtime_database_owner: "ci-test-owner",
+    runtime_migration_runner: "ci-migration-runner",
+    approved_by: "ci-test-owner",
+    approved_at: new Date(Date.now() - 60_000).toISOString(),
+    expires_at: new Date(Date.now() + 60 * 60_000).toISOString(),
+    change_reference: "CI-CHANGE-" + randomUUID(),
+    rollback_reference: "CI-ROLLBACK-" + randomUUID()
+  };
+  const approvalBytes = Buffer.from(JSON.stringify(approval));
+  const signatureBytes = sign(null, approvalBytes, privateKey);
+  const directory = mkdtempSync(join(tmpdir(), "izakhono-migration-"));
+  const approvalPath = join(directory, "approval.json");
+  const signaturePath = join(directory, "approval.sig");
+  const publicKeyPath = join(directory, "owner.pub");
+  writeFileSync(approvalPath, approvalBytes, { mode: 0o600 });
+  writeFileSync(signaturePath, signatureBytes, { mode: 0o600 });
+  writeFileSync(publicKeyPath, publicKey.export({ type: "spki", format: "pem" }), { mode: 0o600 });
+
+  const env = {
+    ...process.env,
+    IZAKHONO_RUNTIME_DATABASE_URL: connectionString,
+    IZAKHONO_RUNTIME_DATABASE_ID: approval.runtime_database_id,
+    IZAKHONO_RUNTIME_DATABASE_ENVIRONMENT: approval.runtime_database_environment,
+    IZAKHONO_RUNTIME_DATABASE_OWNER: approval.runtime_database_owner,
+    IZAKHONO_MIGRATION_RUNNER_ID: approval.runtime_migration_runner,
+    IZAKHONO_MIGRATION_APPROVAL_FILE: approvalPath,
+    IZAKHONO_MIGRATION_APPROVAL_SIGNATURE_FILE: signaturePath,
+    IZAKHONO_MIGRATION_OWNER_PUBLIC_KEY_FILE: publicKeyPath
+  };
+  const runnerPath = fileURLToPath(new URL("./migrate.mjs", import.meta.url));
+  try {
+    await pool.query("DROP TABLE IF EXISTS fortress_audit_events CASCADE");
+    await pool.query("DROP TABLE IF EXISTS izakhono_runtime_deployments CASCADE");
+    await pool.query("DROP TABLE IF EXISTS izakhono_runtime_schema_migrations CASCADE");
+    const applied = JSON.parse(execFileSync(process.execPath, [runnerPath, "--apply"], {
+      env, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"]
+    }));
+    assert.equal(applied.status, "APPLIED");
+    const replay = JSON.parse(execFileSync(process.execPath, [runnerPath, "--apply"], {
+      env, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"]
+    }));
+    assert.equal(replay.status, "ALREADY_APPLIED");
+    const ledger = await pool.query(
+      "SELECT checksum_sha256 FROM izakhono_runtime_schema_migrations WHERE migration_id = $1",
+      ["0001_runtime_fabric_deploy"]
+    );
+    assert.equal(ledger.rows[0].checksum_sha256.trim(), migrationSha256);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
 });
