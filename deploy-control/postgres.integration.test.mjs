@@ -1,4 +1,4 @@
-import test, { after, before } from "node:test";
+import test, { after, before, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import pg from "pg";
@@ -90,7 +90,7 @@ before(async () => {
   withTransaction = createPostgresTransactionRunner(pool, { schema });
 });
 
-after(async () => {
+beforeEach(async () => {\n  if (!enabled) return;\n  await pool.query(`TRUNCATE ${qualified("audit_events")}, ${qualified("idempotency_claims")}, ${qualified("deployment_records")}`);\n});\n\nafter(async () => {
   if (pool) {
     await pool.query(`DROP SCHEMA IF EXISTS "${schema}" CASCADE`);
     await pool.end();
