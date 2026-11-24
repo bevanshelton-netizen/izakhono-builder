@@ -147,7 +147,8 @@ async function verifyCreatorSession(
         AND s.expires_at > ?
       LIMIT 1`
   ).bind(claims.jti, claims.sub, now).first<Principal>();
-  if (!principal || principal.active !== 1 || !nonEmpty(principal.tenant_id)) return null;
+  if (!principal || principal.active !== 1 || !nonEmpty(principal.tenant_id) ||
+      claims.tenant_id !== principal.tenant_id) return null;
   return { claims, principal };
 }
 
