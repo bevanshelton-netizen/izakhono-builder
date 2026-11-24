@@ -102,7 +102,8 @@ try {
   });
   const device = await deviceContext.newPage();
   await device.goto(`${origin}/devices`);
-  await device.waitForFunction(() => window.__cspViolations.some(x => x.startsWith('script-src')));
+  const devicePolicy = await device.locator('html').evaluate(() => document.contentType).then(async () => (await device.request.get(`${origin}/devices`)).headers()['content-security-policy']);
+  assert.match(devicePolicy, /script-src 'nonce-[^']+'/);
   assert.equal(await device.evaluate(() => window.__untrustedInlineRan), undefined, 'untrusted inline script must be blocked by CSP');
   await device.locator('#merchantId').fill('demo');
   await device.locator('#apiKey').fill('browser-test-key');
@@ -126,7 +127,8 @@ try {
   });
   const merchant = await merchantContext.newPage();
   await merchant.goto(`${origin}/dashboard/demo`);
-  await merchant.waitForFunction(() => window.__cspViolations.some(x => x.startsWith('script-src')));
+  const merchantPolicy = (await merchant.request.get(`${origin}/dashboard/demo`)).headers()['content-security-policy'];
+  assert.match(merchantPolicy, /script-src 'nonce-[^']+'/);
   assert.equal(await merchant.evaluate(() => window.__untrustedInlineRan), undefined, 'merchant dashboard must block untrusted inline scripts');
   await merchant.locator('#keyLabel').fill('Browser test key');
   await merchant.locator('[data-action="create-key"]').click();
