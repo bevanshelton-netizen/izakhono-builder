@@ -9,6 +9,33 @@ import pytest
 DATABASE_URL = os.getenv("DEPLOY_TEST_DATABASE_URL")
 
 
+def runtime_role_dsn():
+    import psycopg
+    from psycopg.conninfo import make_conninfo
+
+    role = "deploy_preflight_runtime"
+    password = "ci-only-runtime-role-password"
+    with psycopg.connect(DATABASE_URL, autocommit=True) as owner:
+        owner.execute(
+            """
+            DO $$
+            BEGIN
+              IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'deploy_preflight_runtime') THEN
+                EXECUTE 'CREATE ROLE deploy_preflight_runtime LOGIN PASSWORD ''ci-only-runtime-role-password''';
+              ELSE
+                EXECUTE 'ALTER ROLE deploy_preflight_runtime WITH LOGIN PASSWORD ''ci-only-runtime-role-password''';
+              END IF;
+            END
+            $$;
+            """
+        )
+        owner.execute("GRANT CONNECT ON DATABASE deploy_control_test TO deploy_preflight_runtime")
+        owner.execute("GRANT USAGE ON SCHEMA public TO deploy_preflight_runtime")
+        owner.execute("GRANT SELECT, INSERT, UPDATE ON TABLE izakhono_runtime_deployments TO deploy_preflight_runtime")
+        owner.execute("GRANT SELECT, INSERT ON TABLE fortress_audit_events TO deploy_preflight_runtime")
+    return make_conninfo(DATABASE_URL, user=role, password=password)
+
+
 @pytest.mark.skipif(not DATABASE_URL, reason="requires disposable DEPLOY_TEST_DATABASE_URL")
 def test_preflight_checks_both_stores_read_only_and_never_authorizes_production():
     import psycopg
@@ -18,8 +45,9 @@ def test_preflight_checks_both_stores_read_only_and_never_authorizes_production(
     with psycopg.connect(DATABASE_URL) as conn:
         before = conn.execute("SELECT count(*) FROM fortress_audit_events").fetchone()[0]
 
+    runtime_dsn = runtime_role_dsn()
     report = inspect_runtime_database(
-        lambda: psycopg.connect(DATABASE_URL),
+        lambda: psycopg.connect(runtime_dsn),
         {
             "database_id": "ci-disposable-db",
             "environment": "ci",
@@ -32,6 +60,10 @@ def test_preflight_checks_both_stores_read_only_and_never_authorizes_production(
     assert report["production_authorized"] is False
     assert report["owner_attestation"] == "DECLARED_UNVERIFIED"
     assert all(report["checks"].values())
+    assert report["checks"]["runtime_role_is_not_table_owner"]
+    assert report["checks"]["fortress_audit_select_insert_only"]
+    assert report["checks"]["fortress_audit_append_only_trigger"]
+    assert report["database"]["role"] == "deploy_preflight_runtime"
     assert report["tables"]["runtime_deployments"]["resolved_name"]
     assert report["tables"]["fortress_audit_events"]["resolved_name"]
     assert report["database"]["fingerprint"]
@@ -48,7 +80,8 @@ def test_preflight_keeps_missing_owner_declarations_blocked():
 
     from database_preflight import inspect_runtime_database
 
-    report = inspect_runtime_database(lambda: psycopg.connect(DATABASE_URL), {})
+    runtime_dsn = runtime_role_dsn()
+    report = inspect_runtime_database(lambda: psycopg.connect(runtime_dsn), {})
     assert report["status"] == "TECHNICAL_CHECKS_PASSED_OWNER_ATTESTATION_REQUIRED"
     assert report["owner_attestation"] == "MISSING"
     assert report["production_authorized"] is False
