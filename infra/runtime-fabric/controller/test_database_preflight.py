@@ -31,6 +31,8 @@ def runtime_role_dsn():
         )
         owner.execute("GRANT CONNECT ON DATABASE deploy_control_test TO deploy_preflight_runtime")
         owner.execute("GRANT USAGE ON SCHEMA public TO deploy_preflight_runtime")
+        owner.execute("REVOKE ALL PRIVILEGES ON TABLE izakhono_runtime_deployments FROM deploy_preflight_runtime")
+        owner.execute("REVOKE ALL PRIVILEGES ON TABLE fortress_audit_events FROM deploy_preflight_runtime")
         owner.execute("GRANT SELECT, INSERT, UPDATE ON TABLE izakhono_runtime_deployments TO deploy_preflight_runtime")
         owner.execute("GRANT SELECT, INSERT ON TABLE fortress_audit_events TO deploy_preflight_runtime")
     return make_conninfo(DATABASE_URL, user=role, password=password)
@@ -85,3 +87,35 @@ def test_preflight_keeps_missing_owner_declarations_blocked():
     assert report["status"] == "TECHNICAL_CHECKS_PASSED_OWNER_ATTESTATION_REQUIRED"
     assert report["owner_attestation"] == "MISSING"
     assert report["production_authorized"] is False
+
+
+@pytest.mark.skipif(not DATABASE_URL, reason="requires ephemeral DEPLOY_TEST_DATABASE_URL")
+def test_preflight_blocks_runtime_role_with_audit_mutation_privilege():
+    import psycopg
+
+    from database_preflight import inspect_runtime_database
+
+    runtime_dsn = runtime_role_dsn()
+    with psycopg.connect(DATABASE_URL, autocommit=True) as owner:
+        owner.execute("GRANT UPDATE ON TABLE fortress_audit_events TO deploy_preflight_runtime")
+
+    report = inspect_runtime_database(lambda: psycopg.connect(runtime_dsn), {})
+    assert report["checks"]["runtime_role_is_not_table_owner"]
+    assert not report["checks"]["fortress_audit_select_insert_only"]
+    assert report["checks"]["fortress_audit_append_only_trigger"]
+    assert report["technical_checks_passed"] is False
+
+    with psycopg.connect(DATABASE_URL, autocommit=True) as owner:
+        owner.execute("REVOKE UPDATE ON TABLE fortress_audit_events FROM deploy_preflight_runtime")
+
+
+@pytest.mark.skipif(not DATABASE_URL, reason="requires ephemeral DEPLOY_TEST_DATABASE_URL")
+def test_preflight_rejects_table_owner_as_runtime_identity():
+    import psycopg
+
+    from database_preflight import inspect_runtime_database
+
+    report = inspect_runtime_database(lambda: psycopg.connect(DATABASE_URL), {})
+    assert not report["checks"]["runtime_role_is_not_table_owner"]
+    assert not report["checks"]["fortress_audit_select_insert_only"]
+    assert report["technical_checks_passed"] is False
