@@ -104,7 +104,7 @@ integration("commits Runtime Fabric state, idempotency result and FORTRESS audit
   const result = await run(auth, id, "atomic-1");
   assert.equal(result.deployment.state, "VALIDATED");
   const row = await pool.query(
-    "SELECT metadata->'deploy_control'->'record'->>'state' AS state, (SELECT count(*) FROM jsonb_object_keys(metadata->'deploy_control'->'idempotency')) AS keys FROM izakhono_runtime_deployments WHERE deployment_id = $1",
+    "SELECT metadata->'deploy_control'->'record'->>'state' AS state, (SELECT count(*)::int FROM jsonb_object_keys(metadata->'deploy_control'->'idempotency')) AS keys FROM izakhono_runtime_deployments WHERE deployment_id = $1",
     [id]
   );
   assert.equal(row.rows[0].state, "VALIDATED");
