@@ -62,6 +62,7 @@ class FakeDatabase {
   async withTransaction(work) {
     const working = {
       record: this.state.record,
+      resource: this.state.resource,
       claims: new Map(this.state.claims),
       audits: [...this.state.audits]
     };
