@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { createServer } from "node:http";
 import { Pool } from "pg";
 import { createDeployApiHandler } from "./api.mjs";
@@ -14,6 +15,8 @@ function required(name) {
 const databaseUrl = required("IZAKHONO_RUNTIME_DATABASE_URL");
 const introspectionUrl = required("FORTRESS_DEPLOY_INTROSPECTION_URL");
 const introspectionSecret = required("FORTRESS_DEPLOY_INTROSPECTION_SECRET");
+const approvalDatabaseFingerprint = required("DEPLOY_CONTROL_APPROVAL_DATABASE_FINGERPRINT");
+const approvalFortressEndpoint = required("DEPLOY_CONTROL_APPROVAL_FORTRESS_ENDPOINT");
 const issuer = process.env.FORTRESS_SESSION_ISSUER || "https://fortress.izakhono.internal";
 const audience = process.env.FORTRESS_DEPLOY_AUDIENCE || "izakhono-deploy";
 const host = process.env.DEPLOY_API_HOST || "127.0.0.1";
@@ -22,8 +25,10 @@ const port = Number(process.env.DEPLOY_API_PORT || 8090);
 if (!Number.isInteger(port) || port < 1 || port > 65535) {
   throw new Error("DEPLOY_API_PORT must be an integer between 1 and 65535.");
 }
-if (!/^https:\/\//.test(issuer) || !audience.trim()) {
-  throw new Error("FORTRESS issuer/audience configuration is invalid.");
+if (!/^https:\/\//.test(issuer) || !audience.trim() ||
+    !/^[0-9a-f]{64}$/.test(approvalDatabaseFingerprint) ||
+    approvalFortressEndpoint !== introspectionUrl) {
+  throw new Error("FORTRESS issuer/audience or signed DEPLOY activation binding is invalid.");
 }
 
 const pool = new Pool({
@@ -88,8 +93,10 @@ async function start() {
   // already exist, and the separate FORTRESS introspection secret must work.
   await pool.query("SELECT 1");
   const schema = await pool.query(
-    "SELECT pg_get_userbyid(runtime.relowner) AS runtime_owner, " +
-    "pg_get_userbyid(audit.relowner) AS audit_owner, current_user AS runtime_role, " +
+    "SELECT current_database() AS database_name, current_user AS runtime_role, " +
+    "inet_server_addr()::text AS server_address, version() AS server_version, " +
+    "pg_get_userbyid(runtime.relowner) AS runtime_owner, " +
+    "pg_get_userbyid(audit.relowner) AS audit_owner, " +
     "has_table_privilege(current_user, runtime.oid, 'SELECT') AS runtime_select, " +
     "has_table_privilege(current_user, runtime.oid, 'INSERT') AS runtime_insert, " +
     "has_table_privilege(current_user, runtime.oid, 'UPDATE') AS runtime_update, " +
@@ -112,6 +119,14 @@ async function start() {
       !role.audit_select || !role.audit_insert || role.audit_update ||
       role.audit_delete || role.audit_truncate || !role.audit_append_only_trigger) {
     throw new Error("Runtime DB role separation, least-privilege grants or append-only FORTRESS audit gate failed; DEPLOY will not start.");
+  }
+  const serverAddress = role.server_address === null ? "None" : role.server_address;
+  const fingerprintMaterial = [
+    role.database_name, role.runtime_role, serverAddress, role.server_version
+  ].join("|");
+  const actualFingerprint = createHash("sha256").update(fingerprintMaterial, "utf8").digest("hex");
+  if (actualFingerprint !== approvalDatabaseFingerprint) {
+    throw new Error("Runtime Fabric database fingerprint does not match signed owner approval.");
   }
   await verifyAccessToken("startup.invalid.probe");
   server.listen(port, host, () => {
