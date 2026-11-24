@@ -1,0 +1,11 @@
+{
+  "name": "@izakhono/fortress-identity",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "test:deploy-access": "tsx test/deploy-access.test.mjs"
+  }
+}
