@@ -26,12 +26,12 @@ EOF
 MODE="$1"
 
 if [[ "$MODE" == "--preflight" ]]; then
-  [[ -x "$ROOT/NODE01-READONLY-PREFLIGHT.sh" ]] || fail "read-only preflight script is missing or not executable"
-  exec "$ROOT/NODE01-READONLY-PREFLIGHT.sh"
+  [[ -f bash "$ROOT/NODE01-READONLY-PREFLIGHT.sh" ]] || fail "read-only preflight script is missing or not executable"
+  exec bash "$ROOT/NODE01-READONLY-PREFLIGHT.sh"
 fi
 
 [[ "$MODE" == "--verify-approval" || "$MODE" == "--activate" ]] || usage
-[[ -x "$ROOT/NODE01-ACTIVATE.sh" ]] || fail "NODE01-ACTIVATE.sh is missing or not executable"
+[[ -f "$ROOT/NODE01-ACTIVATE.sh" ]] || fail "NODE01-ACTIVATE.sh is missing or not executable"
 command -v openssl >/dev/null 2>&1 || fail "OpenSSL is required"
 command -v python3 >/dev/null 2>&1 || fail "Python 3 is required"
 command -v git >/dev/null 2>&1 || fail "Git is required to pin the approved source revision"
@@ -156,7 +156,7 @@ fi
 
 command -v systemctl >/dev/null 2>&1 || fail "systemd is required to verify the approved self-hosted runner"
 systemctl is-active --quiet "$RUNNER_SERVICE" || fail "the owner-approved self-hosted runner service is not active"
-[[ -x "$ROOT/NODE01-READONLY-PREFLIGHT.sh" ]] || fail "read-only preflight script is missing or not executable"
+[[ -f "$ROOT/NODE01-READONLY-PREFLIGHT.sh" ]] || fail "read-only preflight script is missing or not executable"
 
 printf '%s\n' "Signed owner approval and runner service verified."
 printf '%s\n' "Running local read-only inventory before activation."
@@ -169,4 +169,4 @@ IFS= read -r confirmation
 [[ "$confirmation" == "ACTIVATE NODE01 ON $CURRENT_HOST" ]] || fail "operator confirmation did not match"
 
 printf '%s\n' "Executing the separately reviewed NODE01 activation sequence."
-exec "$ROOT/NODE01-ACTIVATE.sh"
+exec bash "$ROOT/NODE01-ACTIVATE.sh"
