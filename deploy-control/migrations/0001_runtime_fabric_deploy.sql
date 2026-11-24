@@ -1,5 +1,3 @@
-BEGIN;
-
 CREATE TABLE IF NOT EXISTS izakhono_runtime_deployments (
   deployment_id TEXT PRIMARY KEY,
   workload TEXT NOT NULL,
@@ -70,5 +68,3 @@ COMMENT ON TABLE izakhono_runtime_deployments IS
   'Runtime Fabric deployment records; scope is materialized from metadata for owner-controlled authorization.';
 COMMENT ON TABLE fortress_audit_events IS
   'Append-only DEPLOY/FORTRESS audit ledger. Runtime role must not own this table or hold UPDATE/DELETE/TRUNCATE privileges.';
-
-COMMIT;
