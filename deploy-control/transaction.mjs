@@ -109,15 +109,18 @@ export async function transitionDeploymentAtomically({
 
   return withTransaction(async tx => {
     assertTransactionAdapter(tx);
+    // Lock and verify the persisted resource before claiming idempotency.
+    // This also lets the PostgreSQL adapter keep the small idempotency ledger
+    // inside the existing deployment row without a second table.
+    const locked = await tx.lockDeployment({ deploymentId, ...resource });
+    assertScope(locked, resource);
+
     const claim = await tx.claimIdempotency({
       tenantId: resource.tenantId,
       deploymentId,
       idempotencyKey,
       requestHash
     });
-
-    const locked = await tx.lockDeployment({ deploymentId, ...resource });
-    assertScope(locked, resource);
 
     if (!claim || !["claimed", "replay", "conflict"].includes(claim.status)) {
       throw new DeploymentTransactionError("IDEMPOTENCY_ADAPTER_INVALID", "The idempotency adapter returned an invalid claim result.");
