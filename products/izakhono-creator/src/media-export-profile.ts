@@ -1,6 +1,6 @@
 /**
  * Reusable, provider-neutral media export contracts for IZAKHONO Creator.
- * This module validates an ffprobe JSON result; it does not claim to render media.
+ * This module validates an ffprobe JSON result and MP4 container layout; it does not claim to render media.
  */
 
 export type MediaExportProfile = {
@@ -60,6 +60,60 @@ function closeEnough(actual: number | null, expected: number): boolean {
   return actual !== null && Math.abs(actual - expected) < 0.001;
 }
 
+/**
+ * Verify ISO-BMFF top-level box ordering from actual MP4 bytes.
+ * A fast-start MP4 places the moov index before the mdat media payload.
+ * This accepts a byte window only when it contains the complete top-level box sequence.
+ */
+export function validateMp4FastStart(bytes: Uint8Array): MediaQaCheck {
+  const fail = (actual: string): MediaQaCheck => ({
+    id: 'mp4-fast-start',
+    passed: false,
+    actual,
+    expected: 'complete MP4 with moov before mdat',
+  });
+  if (bytes.byteLength < 16) return fail('file too small or incomplete');
+
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  let offset = 0;
+  let moovOffset = -1;
+  let mdatOffset = -1;
+
+  while (offset < bytes.byteLength) {
+    if (bytes.byteLength - offset < 8) return fail('truncated top-level box header');
+    const size32 = view.getUint32(offset, false);
+    const type = String.fromCharCode(bytes[offset + 4], bytes[offset + 5], bytes[offset + 6], bytes[offset + 7]);
+    let headerSize = 8;
+    let boxSize: number;
+
+    if (size32 === 1) {
+      if (bytes.byteLength - offset < 16) return fail('truncated extended-size box header');
+      const extendedSize = view.getBigUint64(offset + 8, false);
+      if (extendedSize > BigInt(Number.MAX_SAFE_INTEGER)) return fail('box size exceeds safe parser limit');
+      boxSize = Number(extendedSize);
+      headerSize = 16;
+    } else if (size32 === 0) {
+      boxSize = bytes.byteLength - offset;
+    } else {
+      boxSize = size32;
+    }
+
+    if (boxSize < headerSize || boxSize > bytes.byteLength - offset) return fail(`invalid ${type} box size`);
+    if (type === 'moov' && moovOffset < 0) moovOffset = offset;
+    if (type === 'mdat' && mdatOffset < 0) mdatOffset = offset;
+    offset += boxSize;
+  }
+
+  if (moovOffset < 0 || mdatOffset < 0) return fail('moov or mdat box missing');
+  const passed = moovOffset < mdatOffset;
+  return {
+    id: 'mp4-fast-start',
+    passed,
+    actual: passed ? 'moov precedes mdat' : 'mdat precedes moov',
+    expected: 'moov before mdat',
+  };
+}
+
 /** Validate actual ffprobe JSON against a named delivery profile. */
 export function validateMediaProbe(probe: ProbeDocument, profile: MediaExportProfile = FACEBOOK_REELS_1080X1920): MediaQaReport {
   const streams = probe.streams ?? [];
@@ -92,7 +146,8 @@ export function validateMediaProbe(probe: ProbeDocument, profile: MediaExportPro
       'Review dialogue, music and effects for intelligibility, clipping, sync and rights clearance.',
       'Review captions, spelling, language, timing and Facebook/Reels safe areas on a mobile-sized display.',
       'Review character, wardrobe, location and shot continuity; confirm titles, credits and end card.',
-      'Inspect MP4 fast-start metadata placement and verify playback after upload to a private test destination.',
+      'Verify moov-before-mdat using validateMp4FastStart on the actual complete MP4 bytes.',
+      'Verify playback after upload to a private test destination.',
       'Confirm the approved master and distribution gates before any external publication.',
     ],
   };
