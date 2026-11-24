@@ -13,6 +13,7 @@ on:
       - 'products/fortress-security/src/access-control.ts'
       - 'products/fortress-security/src/access-control.test.ts'
       - 'products/fortress-security/src/audit-log.ts'
+      - 'products/fortress-identity/**'
       - '.github/workflows/fortress-identity-access-ci.yml'
 
 jobs:
