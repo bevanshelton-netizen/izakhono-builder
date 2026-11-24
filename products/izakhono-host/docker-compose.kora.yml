@@ -15,7 +15,7 @@ services:
         NEXT_PUBLIC_PRIVACY_EMAIL: ${KORA_PRIVACY_EMAIL:-}
         NEXT_PUBLIC_RIGHTS_EMAIL: ${KORA_RIGHTS_EMAIL:-}
         VIDEO_PROVIDER: ${KORA_VIDEO_PROVIDER:-cloudflare}
-    image: izakhono/kora-network:owned-7e513860
+    image: izakhono/kora-network:owned-d9f07741
     restart: unless-stopped
     init: true
     security_opt:
