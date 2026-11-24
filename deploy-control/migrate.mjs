@@ -122,7 +122,7 @@ async function main() {
           server_address: row.server_address,
           server_version: row.server_version,
           database_fingerprint: fingerprint
-        }) + "\\n");
+        }) + "\n");
       } catch (error) {
         await client.query("ROLLBACK").catch(() => {});
         throw error;
