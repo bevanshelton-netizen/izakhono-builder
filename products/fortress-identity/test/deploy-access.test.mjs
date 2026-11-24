@@ -6,6 +6,7 @@ import {
   introspectDeployAccessToken,
   revokeDeployAccessToken
 } from "../src/deploy-access.ts";
+import { handleFortressIdentity } from "../src/worker.ts";
 
 globalThis.crypto ??= webcrypto;
 
@@ -204,7 +205,7 @@ function revokeRequest(token, jti) {
 test("OWNER receives a one-resource DEPLOY token; introspection and revocation follow D1 state", async () => {
   const env = makeEnv();
   const ownerToken = await creatorToken();
-  const issued = await issueDeployAccessToken(issueRequest(ownerToken, {
+  const issued = await handleFortressIdentity(issueRequest(ownerToken, {
     applicationId: "kora-network",
     environmentId: "staging",
     scopes: ["deploy:read", "deploy:write", "deploy:approve"]
@@ -227,14 +228,14 @@ test("OWNER receives a one-resource DEPLOY token; introspection and revocation f
   assert.deepEqual(claims.environment_ids, ["staging"]);
   assert.equal(claims.exp - claims.iat, 300);
 
-  const introspected = await introspectDeployAccessToken(introspectRequest(payload.access_token), env);
+  const introspected = await handleFortressIdentity(introspectRequest(payload.access_token), env);
   assert.equal(introspected.status, 200);
   const verified = await introspected.json();
   assert.equal(verified.valid, true);
   assert.equal(verified.sessionActive, true);
   assert.equal(verified.claims.jti, claims.jti);
 
-  const revoked = await revokeDeployAccessToken(revokeRequest(ownerToken, claims.jti), env);
+  const revoked = await handleFortressIdentity(revokeRequest(ownerToken, claims.jti), env);
   assert.equal(revoked.status, 200);
   assert.equal((await revoked.json()).revoked, true);
   assert.equal(env.DB.auditRows.length, 2);
