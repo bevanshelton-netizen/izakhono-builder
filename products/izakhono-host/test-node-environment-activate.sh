@@ -16,13 +16,13 @@ openssl pkey -in "$PRIVATE_KEY" -pubout -out "$PUBLIC_KEY" >/dev/null 2>&1
 chmod 600 "$PRIVATE_KEY" "$PUBLIC_KEY"
 
 write_approval() {
-  local expected_host="$1" expiry="$2"
-  python3 - "$APPROVAL" "$expected_host" "$REVISION" "$expiry" <<'PY'
+  local expected_host="$1" expiry="$2" deploy_action="${3:-no}"
+  python3 - "$APPROVAL" "$expected_host" "$REVISION" "$expiry" "$deploy_action" <<'PY'
 import datetime as dt
 import json
 import sys
 
-path, host, revision, expiry_kind = sys.argv[1:5]
+path, host, revision, expiry_kind, deploy_action = sys.argv[1:6]
 now = dt.datetime.now(dt.timezone.utc)
 expires = now - dt.timedelta(minutes=1) if expiry_kind == "expired" else now + dt.timedelta(hours=1)
 approval = {
@@ -46,7 +46,7 @@ approval = {
     "backup_restore_reference": "CI-BACKUP-1",
     "approved_at": now.isoformat().replace("+00:00", "Z"),
     "expires_at": expires.isoformat().replace("+00:00", "Z"),
-    "allowed_actions": ["activate-owned-runtime"],
+    "allowed_actions": ["activate-owned-runtime"] + (["activate-deploy-control-api"] if deploy_action == "yes" else []),
 }
 with open(path, "w", encoding="utf-8") as handle:
     json.dump(approval, handle, sort_keys=True)
@@ -66,9 +66,15 @@ verify_approval() {
     bash "$ROOT/NODE-ENVIRONMENT-ACTIVATE.sh" --verify-approval
 }
 
-write_approval "$HOST" "valid"
+write_approval "$HOST" "valid" "yes"
 sign_approval
-verify_approval
+VERIFY_OUTPUT="$(verify_approval)"
+grep -q "Optional DEPLOY API activation: owner-authorised." <<<"$VERIFY_OUTPUT"
+
+write_approval "$HOST" "valid" "no"
+sign_approval
+VERIFY_OUTPUT="$(verify_approval)"
+grep -q "Optional DEPLOY API activation: not authorised." <<<"$VERIFY_OUTPUT"
 
 # A signed record must be invalidated by even a one-byte change.
 printf ' ' >> "$APPROVAL"
