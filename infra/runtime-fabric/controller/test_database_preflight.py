@@ -33,8 +33,10 @@ def runtime_role_dsn():
         owner.execute("GRANT USAGE ON SCHEMA public TO deploy_preflight_runtime")
         owner.execute("REVOKE ALL PRIVILEGES ON TABLE izakhono_runtime_deployments FROM deploy_preflight_runtime")
         owner.execute("REVOKE ALL PRIVILEGES ON TABLE fortress_audit_events FROM deploy_preflight_runtime")
+        owner.execute("REVOKE ALL PRIVILEGES ON TABLE izakhono_runtime_schema_migrations FROM deploy_preflight_runtime")
         owner.execute("GRANT SELECT, INSERT, UPDATE ON TABLE izakhono_runtime_deployments TO deploy_preflight_runtime")
         owner.execute("GRANT SELECT, INSERT ON TABLE fortress_audit_events TO deploy_preflight_runtime")
+        owner.execute("GRANT SELECT ON TABLE izakhono_runtime_schema_migrations TO deploy_preflight_runtime")
     return make_conninfo(DATABASE_URL, user=role, password=password)
 
 
