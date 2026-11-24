@@ -197,8 +197,7 @@ integration("HTTP API authenticates a FORTRESS-verified capability and commits a
     pool,
     issuer: claims.iss,
     audience: claims.aud,
-    verifyAccessToken: async () => createVerifiedAccessToken(claims, { sessionActive: true }),
-    clock: () => new Date("2026-11-24T06:00:01.000Z")
+    verifyAccessToken: async () => createVerifiedAccessToken(claims, { sessionActive: true })
   });
   const request = new Request(
     `http://127.0.0.1/api/tenants/${resource.tenantId}/applications/${resource.applicationId}/environments/${resource.environmentId}/deployments/${id}/transitions`,
@@ -233,8 +232,7 @@ integration("HTTP API returns the committed result on exact replay without a sec
   };
   const handler = createDeployApiHandler({
     pool, issuer: claims.iss, audience: claims.aud,
-    verifyAccessToken: async () => createVerifiedAccessToken(claims, { sessionActive: true }),
-    clock: () => new Date("2026-11-24T06:00:01.000Z")
+    verifyAccessToken: async () => createVerifiedAccessToken(claims, { sessionActive: true })
   });
   const makeRequest = () => new Request(
     `http://127.0.0.1/api/tenants/${resource.tenantId}/applications/${resource.applicationId}/environments/${resource.environmentId}/deployments/${id}/transitions`,
