@@ -61,6 +61,8 @@ jobs:
           node --check deploy-control/fortress-verifier.mjs
           node --check deploy-control/api.mjs
           node --check deploy-control/server.mjs
+      - name: Build owned-host DEPLOY API image
+        run: docker build --file deploy-control/Dockerfile --tag izakhono-deploy-control:ci .
       - name: Verify database preflight blocks without an operator DSN
         shell: bash
         run: |
