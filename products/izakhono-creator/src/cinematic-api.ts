@@ -7,9 +7,10 @@ import {
   type CinematicProduction,
   type ProductionTask,
 } from './cinematic-production-graph';
-import { getProject, listProjects, saveAsset, saveProject, type CreatorStorageEnv } from './project-store';
+import { findAssetByExternalId, getProject, listProjects, saveAsset, saveProject, updateAsset, type CreatorStorageEnv } from './project-store';
+import { chooseProvider, createAdapters, type GenerationRequest, type ProviderEnv } from './provider-router';
 
-type CinematicEnv = CreatorStorageEnv & { CREATOR_GENERATION_SECRET?: string; MEDIA_FABRIC_URL?: string; MEDIA_FABRIC_KEY?: string };
+type CinematicEnv = CreatorStorageEnv & ProviderEnv & { CREATOR_GENERATION_SECRET?: string; MEDIA_FABRIC_URL?: string; MEDIA_FABRIC_KEY?: string };
 const response = (body: unknown, status = 200) => new Response(JSON.stringify(body), {
   status,
   headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' },
@@ -46,9 +47,82 @@ export async function handleCinematicApi(request: Request, env: CinematicEnv): P
     if (!project) return response({ error: 'project not found.' }, 404);
     const graph = graphFrom(project);
     if (!graph) return response({ error: 'project has no cinematic production graph.' }, 409);
-    if (!env.MEDIA_FABRIC_URL || !env.MEDIA_FABRIC_KEY) return response({ error: 'Owned Media Runtime Fabric is not configured on this Creator Worker.' }, 503);
     const task = graph.tasks.find(item => item.id === taskId);
     if (!task) return response({ error: 'task not found.' }, 404);
+
+    // Still-image keyframes use the existing provider-neutral Creator adapter.
+    // Luma is currently the only registered image-capable adapter; credentials
+    // remain server-side and generation approval is mandatory.
+    if (action === 'submit' && request.method === 'POST' && task.kind === 'image_generation') {
+      const generationApproval = graph.approvals.find(item => item.gate === 'generation');
+      if (generationApproval?.status !== 'approved') return response({ error: 'generation approval is required before image submission.' }, 409);
+      if (!['ready', 'approved', 'failed'].includes(task.status)) return response({ error: 'task is not in a submittable state.' }, 409);
+      const shot = graph.shots.find(item => item.id === task.shotId);
+      if (!shot) return response({ error: 'image-generation task must reference a valid shot.' }, 409);
+      const generation: GenerationRequest = {
+        kind: 'image',
+        prompt: shot.generationPrompt?.trim() || shot.firstFrameIntent?.trim() || shot.action,
+        aspectRatio: shot.aspectRatio === 'custom' ? '9:16' : shot.aspectRatio,
+        shotIndex: shot.sequence,
+      };
+      const adapter = chooseProvider(generation, createAdapters(env), env.CREATOR_PROVIDER);
+      if (!adapter) return response({ error: 'No enabled image-generation provider is configured. Configure the approved Luma server-side credential; no generation has been submitted.' }, 503);
+      const job = await adapter.submit(generation);
+      const failed = job.status === 'failed';
+      const updated = updateTaskWithEvidence(graph, task.id, {
+        status: failed ? 'failed' : 'submitted',
+        selectedProvider: job.provider,
+        ...(job.externalId ? { externalJobId: job.externalId } : {}),
+        ...(failed ? { errorCode: 'IMAGE_PROVIDER_SUBMISSION_FAILED', errorMessage: job.error || 'Image provider submission failed.' } : {}),
+      });
+      await saveAsset(env, {
+        id: job.id, projectId: id, shotIndex: shot.sequence, kind: 'image',
+        status: failed ? 'failed' : 'submitted', provider: job.provider,
+        externalId: job.externalId, url: job.outputUrl,
+        metadata: { taskId, shotId: shot.id, request: generation, selected: false, source: 'external_provider', error: job.error },
+      });
+      await saveProject(env, { id, brief: updated.brief, packageData: { ...(project.packageData as Record<string, unknown>), cinematicProduction: updated } });
+      return response({ status: failed ? 'failed' : 'submitted', taskId, provider: job.provider, externalJobId: job.externalId, assetId: job.id, error: job.error }, failed ? 502 : 202);
+    }
+
+    // Poll an image provider through the same adapter used for submission.
+    if (action === 'status' && request.method === 'GET' && task.kind === 'image_generation' && task.selectedProvider !== 'izakhono-media-runtime-fabric') {
+      if (!task.externalJobId || !task.selectedProvider) return response({ error: 'image task has no provider job to poll.' }, 409);
+      const provider = task.selectedProvider;
+      const asset = await findAssetByExternalId(env, provider, task.externalJobId);
+      if (!asset) return response({ error: 'tracked image provider job was not found.' }, 404);
+      const adapter = createAdapters(env).find(item => item.id === provider);
+      if (!adapter?.enabled) return response({ error: 'the selected image provider is not configured on this Creator Worker.' }, 503);
+      const job = await adapter.poll(task.externalJobId, 'image');
+      await updateAsset(env, asset.id, {
+        status: job.status, url: job.outputUrl ?? asset.url,
+        metadata: { ...(asset.metadata as Record<string, unknown> ?? {}), lastPoll: job, error: job.error },
+      });
+      if (job.status === 'completed' && !job.outputUrl) return response({ error: 'provider reported completion without an image URL; task remains uncompleted.' }, 409);
+      const nextStatus: ProductionTask['status'] = job.status === 'completed' ? 'completed' : job.status === 'failed' ? 'failed' : 'processing';
+      const assetId = asset.id;
+      const updatedTaskGraph = updateTaskWithEvidence(graph, task.id, {
+        status: nextStatus,
+        ...(job.status === 'completed' ? { evidence: JSON.stringify({ provider, externalJobId: task.externalJobId, outputUrl: job.outputUrl }) } : {}),
+        ...(job.status === 'failed' ? { errorCode: 'IMAGE_PROVIDER_FAILED', errorMessage: job.error || 'Image provider reported failure.' } : {}),
+      });
+      const updatedGraph = job.status === 'completed' ? {
+        ...updatedTaskGraph,
+        assets: [...updatedTaskGraph.assets.filter(item => item.id !== assetId), {
+          id: assetId, kind: 'image' as const, status: 'completed' as const, source: 'external_provider' as const,
+          contentHash: undefined, mimeType: 'image/*', provider,
+          externalJobId: task.externalJobId, parentAssetIds: [],
+          provenance: { createdAt: new Date().toISOString(), consentRecordIds: [] },
+        }],
+        tasks: updatedTaskGraph.tasks.map(item => item.id === taskId ? { ...item, outputAssetIds: [...new Set([...item.outputAssetIds, assetId])] } : item),
+      } : updatedTaskGraph;
+      const checked = validate(updatedGraph);
+      if (!checked.valid) return response({ error: 'Provider image result failed production graph validation.', issues: checked.issues }, 422);
+      await saveProject(env, { id, brief: updatedGraph.brief, packageData: { ...(project.packageData as Record<string, unknown>), cinematicProduction: updatedGraph } });
+      return response({ status: 'polled', job, task: updatedGraph.tasks.find(item => item.id === taskId), assetId, runnableTasks: getRunnableTasks(updatedGraph) });
+    }
+
+    if (!env.MEDIA_FABRIC_URL || !env.MEDIA_FABRIC_KEY) return response({ error: 'Owned Media Runtime Fabric is not configured on this Creator Worker.' }, 503);
     const base = env.MEDIA_FABRIC_URL.replace(/\/+$/, '');
     if (action === 'submit' && request.method === 'POST') {
       if (task.kind !== 'video_generation') return response({ error: 'The currently registered owned worker supports video generation only. Image, audio and 3D workers are not yet registered.' }, 409);
