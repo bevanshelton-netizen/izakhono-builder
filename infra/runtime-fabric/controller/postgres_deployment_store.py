@@ -100,7 +100,16 @@ class PostgresDeploymentStore:
                             izakhono_runtime_deployments.metadata->'deploy_control'
                           )
                           ELSE '{}'::jsonb
-                        END,
+                        END ||
+                        CASE WHEN izakhono_runtime_deployments.metadata ? 'tenant_id'
+                          THEN jsonb_build_object('tenant_id', izakhono_runtime_deployments.metadata->'tenant_id')
+                          ELSE '{}'::jsonb END ||
+                        CASE WHEN izakhono_runtime_deployments.metadata ? 'application_id'
+                          THEN jsonb_build_object('application_id', izakhono_runtime_deployments.metadata->'application_id')
+                          ELSE '{}'::jsonb END ||
+                        CASE WHEN izakhono_runtime_deployments.metadata ? 'environment_id'
+                          THEN jsonb_build_object('environment_id', izakhono_runtime_deployments.metadata->'environment_id')
+                          ELSE '{}'::jsonb END,
                       updated_at = NOW()""",
                     (record.deployment_id, record.workload, record.state, record.node,
                      record.checkpoint, record.attempts, json.dumps(record.metadata, sort_keys=True)),
