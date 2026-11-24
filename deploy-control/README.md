@@ -53,3 +53,61 @@ This is implementation code, not a production activation claim. The API is not y
 ## Identity integration gate
 
 The FORTRESS-to-DEPLOY token, entitlement, live-session and API enforcement requirements are specified in [IDENTITY-INTEGRATION-CONTRACT.md](./IDENTITY-INTEGRATION-CONTRACT.md). This is a design contract, not a deployed integration. Creator-audience tokens are not valid DEPLOY credentials; production API authentication remains blocked until the issuer contract and server-side verifier adapter are implemented and tested. The policy helper requires integer `iat`, `nbf`, and `exp` claims, a `jti`, a maximum ten-minute token lifetime, and a separate live-session callback bound to JTI, subject, tenant and expiry. The callbacks are interfaces only; no FORTRESS adapter or production service binding is implemented.
+
+
+## Owned-host DEPLOY API
+
+The owned-host HTTP boundary is implemented in `api.mjs`, `server.mjs` and `fortress-verifier.mjs`. It is deliberately separate from NODE01 bootstrap and FORTRESS identity. It does not create databases, run migrations, provision hosts, change DNS or deploy applications.
+
+### HTTP contract
+
+- `GET /healthz` — liveness only.
+- `POST /api/tenants/{tenantId}/applications/{applicationId}/environments/{environmentId}/deployments/{deploymentId}/transitions` — authenticated state transition.
+  - `Authorization: Bearer <FORTRESS DEPLOY capability>`
+  - `Idempotency-Key: <8–256 character stable key>`
+  - JSON body: `{"nextState":"VALIDATED","evidence":{...}}`
+
+Responses are JSON, carry a request ID and use `Cache-Control: no-store`. The API has no public CORS policy and the host Compose profile publishes no host port.
+
+The API delegates token verification to the FORTRESS internal introspection endpoint. The verifier accepts only a successful, live-session result and marks it with a process-local trust marker. A caller-supplied object cannot forge that marker. The API then enforces tenant/application/environment/scope binding and executes the transition, idempotency record and audit event in one PostgreSQL transaction.
+
+### Required runtime configuration
+
+- `IZAKHONO_RUNTIME_DATABASE_URL` — explicitly owner-provisioned Runtime Fabric PostgreSQL DSN.
+- `FORTRESS_DEPLOY_INTROSPECTION_URL` — exact HTTPS URL ending in `/api/fortress/deploy-token/introspect`.
+- `FORTRESS_DEPLOY_INTROSPECTION_SECRET` — separate 32+ byte secret; never the JWT signing secret.
+- `FORTRESS_SESSION_ISSUER` and `FORTRESS_DEPLOY_AUDIENCE`.
+- `DEPLOY_CONTROL_APPROVAL_DATABASE_FINGERPRINT` — SHA-256 fingerprint from the read-only Runtime Fabric preflight and included in the detached NODE01 owner approval.
+- `DEPLOY_CONTROL_APPROVAL_FORTRESS_ENDPOINT` — exact introspection endpoint included in the same signed approval.
+
+Startup is fail-closed. It requires the Runtime Fabric deployment and FORTRESS audit tables, a non-owner runtime database role, deployment SELECT/INSERT/UPDATE, audit SELECT/INSERT only, an enabled append-only audit trigger, a matching signed database fingerprint, an exact FORTRESS endpoint match, and a reachable introspection endpoint with the separate internal secret. No schema is created or changed at startup.
+
+### Database schema
+
+Migration source: `migrations/0001_runtime_fabric_deploy.sql`.
+
+The migration creates:
+- `izakhono_runtime_deployments`, with tenant/application/environment scope generated from JSONB metadata.
+- `fortress_audit_events`, tenant-bound to its deployment and protected by UPDATE/DELETE/TRUNCATE triggers plus revoked PUBLIC mutation privileges.
+
+The migration must be reviewed and applied by the owner-approved migration runner. The service runtime role must not own either table. Grant it SELECT/INSERT/UPDATE on deployment rows and SELECT/INSERT only on the audit ledger. The read-only preflight checks these grants and the append-only trigger. No remote migration has been run by this change.
+
+### NODE01 activation gate
+
+The service is an optional `deploy-control` Compose profile on the internal `izakhono` network. NODE01 starts it only when the detached owner approval includes `activate-deploy-control-api`. That signed approval must also include:
+
+- `runtime_database_fingerprint` (64 lowercase hexadecimal characters),
+- `runtime_database_id`,
+- `runtime_database_environment` (must be `production` for NODE01),
+- `runtime_database_owner`,
+- `runtime_migration_runner`,
+- `fortress_introspection_endpoint` (exact HTTPS introspection URL).
+
+The wrapper verifies the detached signature and passes the signed fingerprint and endpoint to the container. The container recomputes the fingerprint from the connected database identity and refuses to listen if it differs. Without the optional action, the base owned runtime remains unchanged and DEPLOY is not started.
+
+### Local tests
+
+- `npm install --no-save --ignore-scripts --no-audit --no-fund pg@8.16.3`
+- `node --test deploy-control/lifecycle.test.mjs deploy-control/target-adapter.test.mjs deploy-control/authorization.test.mjs deploy-control/transaction.test.mjs deploy-control/postgres.integration.test.mjs`
+
+PostgreSQL integration tests require a disposable `DEPLOY_TEST_DATABASE_URL`. They create and drop test tables in that database only.
