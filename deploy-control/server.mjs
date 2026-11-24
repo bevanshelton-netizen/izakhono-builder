@@ -120,7 +120,13 @@ async function start() {
     "AND ledger.oid = to_regclass('public.izakhono_runtime_schema_migrations')"
   );
   const role = schema.rows[0];
+  const actualDatabaseFingerprint = role
+    ? createHash("sha256").update([
+        role.database_name, role.server_address, role.server_version
+      ].join("|"), "utf8").digest("hex")
+    : "";
   if (!role ||
+      actualDatabaseFingerprint !== approvalDatabaseFingerprint ||
       role.runtime_role === role.runtime_owner || role.runtime_role === role.audit_owner ||
       role.runtime_role === role.migration_owner || !role.migration_ledger_select ||
       String(role.applied_migration_sha256 || "").trim() !== approvalMigrationSha256 ||
