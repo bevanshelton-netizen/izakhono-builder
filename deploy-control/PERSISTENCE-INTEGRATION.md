@@ -166,3 +166,18 @@ The FORTRESS audit append is performed as an INSERT inside the transaction; data
 Before production wiring, the accountable database owner must confirm the authoritative database, environment binding, metadata/schema mapping, migration runner, rollback, privilege/RLS model, audit-table co-location and approval to use this transaction boundary. If WebStart and Runtime Fabric are separate databases, select one authoritative store and design a transactional outbox in that store; do not dual-write and claim atomicity.
 
 No production DSN was read, no production schema or data was changed, and no HOST execution, runtime registration, deployment, DNS change or production activation occurred.
+
+
+## Read-only database binding preflight (2026-11-24)
+
+Added `infra/runtime-fabric/controller/database_preflight.py`. It reads the operator-supplied `IZAKHONO_RUNTIME_DATABASE_URL`, opens one `BEGIN READ ONLY` transaction, and checks that the existing Runtime Fabric deployment table and FORTRESS audit table resolve through that same database connection with the required columns and JSONB fields. It emits a database fingerprint and the declared database/environment/owner/migration-runner labels without printing the DSN or credentials.
+
+The tool always returns `production_authorized: false`. Even when all technical checks pass, the status is `TECHNICAL_CHECKS_PASSED_OWNER_ATTESTATION_REQUIRED`; environment and owner labels are declarations, not proof of authority. Missing tables/columns or connection errors fail closed. Disposable PostgreSQL CI tests verify the read-only result and that missing owner declarations remain unverified.
+
+Run it only from an approved operator environment after the owner has supplied the DSN through the host's secret manager:
+
+```sh
+python3 infra/runtime-fabric/controller/database_preflight.py
+```
+
+No DSN was available to this repository workflow, so no production database was inspected. The preflight is ready to collect evidence; it does not establish ownership, migration authority, production binding, RLS/grants, backup/restore, or audit immutability.
