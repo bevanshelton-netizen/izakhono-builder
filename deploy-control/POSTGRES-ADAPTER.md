@@ -15,7 +15,11 @@ a store, run migrations, change grants/RLS, or select a production database.
 The Runtime Fabric deployment row lock serializes operations for one
 deployment; idempotency records are stored under a SHA-256 digest of the
 idempotency key inside the deployment's `metadata.deploy_control` JSON object.
-Only the digest, request hash and replayable response are persisted.
+Only the digest, request hash and replayable response are persisted. The
+Runtime Fabric `PostgresDeploymentStore.put()` upsert preserves this reserved
+subdocument and the tenant/application/environment binding fields when it
+updates ordinary runtime metadata. A real PostgreSQL regression verifies that
+preservation.
 
 ## Disposable PostgreSQL integration tests
 
