@@ -46,11 +46,12 @@ def inspect_runtime_database(
                        current_setting('server_version'),
                        current_setting('transaction_read_only'),
                        to_regclass('izakhono_runtime_deployments')::text,
-                       to_regclass('fortress_audit_events')::text
+                       to_regclass('fortress_audit_events')::text,
+                       to_regclass('izakhono_runtime_schema_migrations')::text
                 """
             )
             identity = cur.fetchone()
-            database_name, database_role, server_address, server_version, read_only, runtime_reg, fortress_reg = identity
+            database_name, database_role, server_address, server_version, read_only, runtime_reg, fortress_reg, migration_reg = identity
 
             cur.execute(
                 """
@@ -61,7 +62,8 @@ def inspect_runtime_database(
                   JOIN pg_attribute a ON a.attrelid = c.oid
                  WHERE c.oid IN (
                      to_regclass('izakhono_runtime_deployments'),
-                     to_regclass('fortress_audit_events')
+                     to_regclass('fortress_audit_events'),
+                     to_regclass('izakhono_runtime_schema_migrations')
                  )
                    AND a.attnum > 0
                    AND NOT a.attisdropped
