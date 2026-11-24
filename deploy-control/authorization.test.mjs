@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   authenticateDeploymentRequest,
   authorizeDeploymentAccess,
+  createVerifiedAccessToken,
   DeploymentAuthorizationError
 } from "./authorization.mjs";
 
@@ -139,4 +140,36 @@ test("rejects expired principals, missing scope and unknown actions", async () =
     e => e.code === "RESOURCE_SCOPE_REQUIRED");
   assert.throws(() => authorizeDeploymentAccess(principal, resource, "execute-shell"),
     e => e.code === "ACTION_INVALID");
+});
+
+
+test("accepts a trusted FORTRESS introspection result that already verified the live parent session", async () => {
+  const claims = validClaims();
+  const principal = await authenticateDeploymentRequest({
+    authorization: "Bearer signed-token",
+    issuer: "https://fortress.izakhono.internal",
+    audience: "izakhono-deploy",
+    now,
+    verifyAccessToken: async () => createVerifiedAccessToken(claims, { sessionActive: true })
+  });
+  assert.equal(authorizeDeploymentAccess(principal, resource, "mutate"), true);
+});
+
+test("rejects inactive combined introspection and caller-forged verification wrappers", async () => {
+  const claims = validClaims();
+  await assert.rejects(authenticateDeploymentRequest({
+    authorization: "Bearer signed-token",
+    issuer: "https://fortress.izakhono.internal",
+    audience: "izakhono-deploy",
+    now,
+    verifyAccessToken: async () => createVerifiedAccessToken(claims, { sessionActive: false })
+  }), error => error.code === "SESSION_INVALID");
+
+  await assert.rejects(authenticateDeploymentRequest({
+    authorization: "Bearer signed-token",
+    issuer: "https://fortress.izakhono.internal",
+    audience: "izakhono-deploy",
+    now,
+    verifyAccessToken: async () => ({ claims, sessionActive: true })
+  }), error => error.code === "AUTH_CONFIG_INVALID");
 });
