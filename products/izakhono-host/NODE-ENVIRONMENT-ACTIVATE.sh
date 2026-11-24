@@ -79,7 +79,7 @@ CURRENT_HOST="$(hostname -f 2>/dev/null || hostname)"
 CURRENT_REVISION="$(git -C "$REPO_ROOT" rev-parse HEAD 2>/dev/null)" ||
   fail "the current source revision cannot be verified"
 
-RUNNER_SERVICE="$(
+APPROVAL_INFO="$(
 python3 - "$APPROVAL_FILE" "$CURRENT_HOST" "$CURRENT_REVISION" <<'PY'
 import datetime as dt
 import json
@@ -150,11 +150,64 @@ require(expires_at > now, "owner approval has expired")
 require(expires_at > approved_at, "approval expiry must follow approval time")
 require(expires_at <= approved_at + dt.timedelta(hours=24), "approval validity must not exceed 24 hours")
 
+activate_deploy_control = "activate-deploy-control-api" in actions
+
 print(runner_service)
+print("1" if activate_deploy_control else "0")
 PY
 )" || fail "signed owner approval is invalid or does not match this host/revision"
 
+RUNNER_SERVICE="${APPROVAL_INFO%%
+  exit 0
+fi
+
+command -v systemctl >/dev/null 2>&1 || fail "systemd is required to verify the approved self-hosted runner"
+systemctl is-active --quiet "$RUNNER_SERVICE" || fail "the owner-approved self-hosted runner service is not active"
+[[ -f "$ROOT/NODE01-READONLY-PREFLIGHT.sh" ]] || fail "read-only preflight script is missing or not executable"
+
+printf '%s\n' "Signed owner approval and runner service verified."
+printf '%s\n' "Running local read-only inventory before activation."
+bash "$ROOT/NODE01-READONLY-PREFLIGHT.sh"
+
+[[ -t 0 ]] || fail "activation requires an interactive operator confirmation"
+printf 'This will generate/check host secrets, build images and start the owned runtime.\n'
+printf 'Type exactly: ACTIVATE NODE01 ON %s\n> ' "$CURRENT_HOST"
+IFS= read -r confirmation
+[[ "$confirmation" == "ACTIVATE NODE01 ON $CURRENT_HOST" ]] || fail "operator confirmation did not match"
+
+printf '%s\n' "Executing the separately reviewed NODE01 activation sequence."
+IZAKHONO_ACTIVATE_DEPLOY_CONTROL="$DEPLOY_CONTROL_APPROVED" exec bash "$ROOT/NODE01-ACTIVATE.sh"
+\n'*}"
+DEPLOY_CONTROL_APPROVED="${APPROVAL_INFO#*
+  exit 0
+fi
+
+command -v systemctl >/dev/null 2>&1 || fail "systemd is required to verify the approved self-hosted runner"
+systemctl is-active --quiet "$RUNNER_SERVICE" || fail "the owner-approved self-hosted runner service is not active"
+[[ -f "$ROOT/NODE01-READONLY-PREFLIGHT.sh" ]] || fail "read-only preflight script is missing or not executable"
+
+printf '%s\n' "Signed owner approval and runner service verified."
+printf '%s\n' "Running local read-only inventory before activation."
+bash "$ROOT/NODE01-READONLY-PREFLIGHT.sh"
+
+[[ -t 0 ]] || fail "activation requires an interactive operator confirmation"
+printf 'This will generate/check host secrets, build images and start the owned runtime.\n'
+printf 'Type exactly: ACTIVATE NODE01 ON %s\n> ' "$CURRENT_HOST"
+IFS= read -r confirmation
+[[ "$confirmation" == "ACTIVATE NODE01 ON $CURRENT_HOST" ]] || fail "operator confirmation did not match"
+
+printf '%s\n' "Executing the separately reviewed NODE01 activation sequence."
+exec bash "$ROOT/NODE01-ACTIVATE.sh"
+\n'}"
+[[ -n "$RUNNER_SERVICE" && ( "$DEPLOY_CONTROL_APPROVED" == "0" || "$DEPLOY_CONTROL_APPROVED" == "1" ) ]] ||
+  fail "owner approval action data is invalid"
+
 if [[ "$MODE" == "--verify-approval" ]]; then
+  if [[ "$DEPLOY_CONTROL_APPROVED" == "1" ]]; then
+    printf '%s\n' "Optional DEPLOY API activation: owner-authorised."
+  else
+    printf '%s\n' "Optional DEPLOY API activation: not authorised."
+  fi
   printf '%s\n' "Owner signature, NODE01 identity, host binding and source revision verified. No activation performed."
   exit 0
 fi
