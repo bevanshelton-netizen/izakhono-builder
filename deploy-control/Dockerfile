@@ -5,7 +5,7 @@ WORKDIR /app
 COPY deploy-control/package.json ./package.json
 RUN npm install --omit=dev --no-audit --no-fund
 
-COPY deploy-control/*.mjs ./
+COPY deploy-control/api.mjs deploy-control/authorization.mjs deploy-control/fortress-verifier.mjs deploy-control/lifecycle.mjs deploy-control/postgres-adapter.mjs deploy-control/server.mjs deploy-control/target-adapter.mjs deploy-control/transaction.mjs ./
 
 ENV NODE_ENV=production
 ENV DEPLOY_API_HOST=0.0.0.0
