@@ -43,6 +43,10 @@ On the primary control/edge/runtime node:
 
 For a first-time host this creates `.env` with generated secrets. Set `TLS_EMAIL` to the operational certificate address before public HTTPS activation. Never commit `.env`.
 
+The optional DEPLOY API is a separate Compose profile and is not started by the normal bootstrap. The signed owner approval must explicitly include `activate-deploy-control-api` in `allowed_actions`; otherwise NODE01 skips it. When authorised, NODE01 starts the internal-only `deploy-control` service and waits for its database-role, append-only audit and FORTRESS introspection startup checks.
+
+Before adding that action to an owner approval, the infrastructure owner must provision the authoritative Runtime Fabric PostgreSQL database, apply the reviewed `deploy-control/migrations/0001_runtime_fabric_deploy.sql` through the approved migration runner, provision a non-owner runtime role with deployment SELECT/INSERT/UPDATE and audit SELECT/INSERT-only privileges, deploy the FORTRESS DEPLOY capability endpoints, and install the separate introspection secret in both approved secret stores. The optional service has no published host port; it is reachable only on the internal `izakhono` network. The repository changes do not apply migrations, configure secrets, deploy FORTRESS or activate the profile.
+
 ## Recovery
 
 - `backup-owned.sh` creates a verified SHA-256 runtime backup.
