@@ -28,4 +28,4 @@ jobs:
       - name: Test FORTRESS DEPLOY capability routes and D1 audit rollback
         run: npx --yes tsx@4.20.3 products/fortress-identity/test/deploy-access.test.mjs
       - name: Validate FORTRESS DEPLOY capability D1 migration
-        run: python3 -m unittest discover -s products/fortress-identity/test -p 'migration.test.py' -v
+        run: python3 -m unittest discover -s products/fortress-identity/test -p 'test_migration.py' -v
