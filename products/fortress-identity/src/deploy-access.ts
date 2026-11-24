@@ -5,7 +5,7 @@ export interface D1Statement {
   first<T = Record<string, unknown>>(): Promise<T | null>;
   run<T = Record<string, unknown>>(): Promise<{ success: boolean; meta?: { changes?: number }; results?: T[] }>;
 }
-export interface D1Database { prepare(sql: string): D1Statement }
+export interface D1Database { prepare(sql: string): D1Statement; batch(statements: D1Statement[]): Promise<Array<{ success: boolean; meta?: { changes?: number } }>> }
 export interface DeployAccessEnv {
   DB: D1Database;
   FORTRESS_SESSION_HMAC_SECRET: string;
@@ -151,23 +151,21 @@ async function verifyCreatorSession(
   return { claims, principal };
 }
 
-async function audit(
+async function auditStatement(
   env: DeployAccessEnv,
   event: string,
   principal: Principal,
   request: Request,
-  metadata: Record<string, unknown>
-): Promise<void> {
+  metadata: Record<string, unknown>,
+  occurredAt = Math.floor(Date.now() / 1000)
+): Promise<D1Statement> {
   const ip = request.headers.get("cf-connecting-ip");
-  await env.DB.prepare(
-    `INSERT INTO security_audit
-      (id, event, principal_id, tenant_id, ip_hash, occurred_at, metadata_json)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`
+  return env.DB.prepare(
+    "INSERT INTO security_audit (id, event, principal_id, tenant_id, ip_hash, occurred_at, metadata_json) VALUES (?, ?, ?, ?, ?, ?, ?)"
   ).bind(
     crypto.randomUUID(), event, principal.id, principal.tenant_id,
-    ip ? await sha256(ip) : null, Math.floor(Date.now() / 1000),
-    JSON.stringify(metadata)
-  ).run();
+    ip ? await sha256(ip) : null, occurredAt, JSON.stringify(metadata)
+  );
 }
 
 function validScopes(value: unknown, role: Principal["role"]): string[] | null {
@@ -225,22 +223,22 @@ export async function issueDeployAccessToken(request: Request, env: DeployAccess
 
   try {
     const token = await signClaims(claims, env);
-    const inserted = await env.DB.prepare(
-      `INSERT INTO deploy_access_sessions
-        (jti, parent_access_jti, principal_id, tenant_id, application_id,
-         environment_id, scopes_json, issued_at, expires_at, revoked_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)`
+    const insert = env.DB.prepare(
+      "INSERT INTO deploy_access_sessions (jti, parent_access_jti, principal_id, tenant_id, application_id, environment_id, scopes_json, issued_at, expires_at, revoked_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)"
     ).bind(
       jti, session.claims.jti, principal.id, principal.tenant_id,
       body.applicationId, body.environmentId, JSON.stringify(scopes), now, expiresAt
-    ).run();
-    if (!inserted.success) return json({ error: "Deployment capability could not be recorded" }, 503);
-    await audit(env, "deploy.access.issued", principal, request, {
+    );
+    const audit = await auditStatement(env, "deploy.access.issued", principal, request, {
       application_id: body.applicationId,
       environment_id: body.environmentId,
       scopes,
       jti_hash: await sha256(jti)
-    });
+    }, now);
+    const results = await env.DB.batch([insert, audit]);
+    if (results.some(result => !result.success)) {
+      return json({ error: "Deployment capability and audit event could not be committed" }, 503);
+    }
     return json({
       access_token: token,
       token_type: "Bearer",
@@ -323,23 +321,30 @@ export async function revokeDeployAccessToken(request: Request, env: DeployAcces
     return json({ error: "A valid deployment capability JTI is required" }, 400);
   }
   const row = await env.DB.prepare(
-    `SELECT jti, principal_id, tenant_id
-       FROM deploy_access_sessions
-      WHERE jti = ? AND tenant_id = ?
-      LIMIT 1`
+    "SELECT jti, principal_id, tenant_id, revoked_at FROM deploy_access_sessions WHERE jti = ? AND tenant_id = ? LIMIT 1"
   ).bind(body.jti, session.principal.tenant_id).first<Record<string, unknown>>();
   if (!row) return json({ error: "Deployment capability not found" }, 404);
+  if (row.revoked_at !== null) return json({ error: "Deployment capability is already revoked" }, 409);
   if (session.principal.role !== "OWNER" && row.principal_id !== session.principal.id) {
     return json({ error: "Security administrators may revoke only their own capabilities" }, 403);
   }
-  const result = await env.DB.prepare(
-    `UPDATE deploy_access_sessions
-        SET revoked_at = ?
-      WHERE jti = ? AND tenant_id = ? AND revoked_at IS NULL`
-  ).bind(now, body.jti, session.principal.tenant_id).run();
-  if ((result.meta?.changes || 0) !== 1) return json({ error: "Capability is already revoked or unavailable" }, 409);
-  await audit(env, "deploy.access.revoked", session.principal, request, {
-    jti_hash: await sha256(body.jti)
-  });
+  const eventId = crypto.randomUUID();
+  const update = env.DB.prepare(
+    "UPDATE deploy_access_sessions SET revoked_at = ?, revocation_event_id = ? WHERE jti = ? AND tenant_id = ? AND revoked_at IS NULL"
+  ).bind(now, eventId, body.jti, session.principal.tenant_id);
+  const ip = request.headers.get("cf-connecting-ip");
+  const auditInsert = env.DB.prepare(
+    "INSERT INTO security_audit (id, event, principal_id, tenant_id, ip_hash, occurred_at, metadata_json) " +
+    "SELECT ?, ?, ?, ?, ?, ?, ? WHERE EXISTS (" +
+    "SELECT 1 FROM deploy_access_sessions WHERE jti = ? AND tenant_id = ? AND revoked_at = ? AND revocation_event_id = ?)"
+  ).bind(
+    eventId, "deploy.access.revoked", session.principal.id, session.principal.tenant_id,
+    ip ? await sha256(ip) : null, now, JSON.stringify({ jti_hash: await sha256(body.jti) }),
+    body.jti, session.principal.tenant_id, now, eventId
+  );
+  const results = await env.DB.batch([update, auditInsert]);
+  if ((results[0]?.meta?.changes || 0) !== 1 || (results[1]?.meta?.changes || 0) !== 1) {
+    return json({ error: "Capability is already revoked or unavailable" }, 409);
+  }
   return json({ revoked: true });
 }
