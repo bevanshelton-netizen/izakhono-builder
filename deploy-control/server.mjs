@@ -16,6 +16,7 @@ const databaseUrl = required("IZAKHONO_RUNTIME_DATABASE_URL");
 const introspectionUrl = required("FORTRESS_DEPLOY_INTROSPECTION_URL");
 const introspectionSecret = required("FORTRESS_DEPLOY_INTROSPECTION_SECRET");
 const approvalDatabaseFingerprint = required("DEPLOY_CONTROL_APPROVAL_DATABASE_FINGERPRINT");
+const approvalMigrationSha256 = required("DEPLOY_CONTROL_APPROVAL_MIGRATION_SHA256");
 const approvalFortressEndpoint = required("DEPLOY_CONTROL_APPROVAL_FORTRESS_ENDPOINT");
 const issuer = process.env.FORTRESS_SESSION_ISSUER || "https://fortress.izakhono.internal";
 const audience = process.env.FORTRESS_DEPLOY_AUDIENCE || "izakhono-deploy";
@@ -27,6 +28,7 @@ if (!Number.isInteger(port) || port < 1 || port > 65535) {
 }
 if (!/^https:\/\//.test(issuer) || !audience.trim() ||
     !/^[0-9a-f]{64}$/.test(approvalDatabaseFingerprint) ||
+    !/^[0-9a-f]{64}$/.test(approvalMigrationSha256) ||
     approvalFortressEndpoint !== introspectionUrl) {
   throw new Error("FORTRESS issuer/audience or signed DEPLOY activation binding is invalid.");
 }
@@ -98,6 +100,9 @@ async function start() {
     "current_setting('server_version') AS server_version, " +
     "pg_get_userbyid(runtime.relowner) AS runtime_owner, " +
     "pg_get_userbyid(audit.relowner) AS audit_owner, " +
+    "pg_get_userbyid(ledger.relowner) AS migration_owner, " +
+    "has_table_privilege(current_user, ledger.oid, 'SELECT') AS migration_ledger_select, " +
+    "(SELECT checksum_sha256 FROM izakhono_runtime_schema_migrations WHERE migration_id = '0001_runtime_fabric_deploy') AS applied_migration_sha256, " +
     "has_table_privilege(current_user, runtime.oid, 'SELECT') AS runtime_select, " +
     "has_table_privilege(current_user, runtime.oid, 'INSERT') AS runtime_insert, " +
     "has_table_privilege(current_user, runtime.oid, 'UPDATE') AS runtime_update, " +
@@ -109,13 +114,16 @@ async function start() {
     "EXISTS (SELECT 1 FROM pg_trigger t WHERE t.tgrelid = audit.oid " +
     "AND t.tgname = 'fortress_audit_events_no_mutation' AND t.tgenabled IN ('O','A') " +
     "AND NOT t.tgisinternal) AS audit_append_only_trigger " +
-    "FROM pg_class runtime CROSS JOIN pg_class audit " +
+    "FROM pg_class runtime CROSS JOIN pg_class audit CROSS JOIN pg_class ledger " +
     "WHERE runtime.oid = to_regclass('public.izakhono_runtime_deployments') " +
-    "AND audit.oid = to_regclass('public.fortress_audit_events')"
+    "AND audit.oid = to_regclass('public.fortress_audit_events') " +
+    "AND ledger.oid = to_regclass('public.izakhono_runtime_schema_migrations')"
   );
   const role = schema.rows[0];
   if (!role ||
       role.runtime_role === role.runtime_owner || role.runtime_role === role.audit_owner ||
+      role.runtime_role === role.migration_owner || !role.migration_ledger_select ||
+      String(role.applied_migration_sha256 || "").trim() !== approvalMigrationSha256 ||
       !role.runtime_select || !role.runtime_insert || !role.runtime_update ||
       !role.audit_select || !role.audit_insert || role.audit_update ||
       role.audit_delete || role.audit_truncate || !role.audit_append_only_trigger) {
