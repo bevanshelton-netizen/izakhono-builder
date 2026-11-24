@@ -20,12 +20,12 @@ const sha256 = bytes => createHash("sha256").update(bytes).digest("hex");
 const nonEmpty = value => typeof value === "string" && value.trim().length > 0;
 
 export function calculateDatabaseFingerprint(row) {
-  if (!row || !nonEmpty(row.database_name) || !nonEmpty(row.runtime_role) ||
+  if (!row || !nonEmpty(row.database_name) ||
       !nonEmpty(row.server_address) || !nonEmpty(row.server_version)) {
     throw new TypeError("Database identity response is incomplete.");
   }
   return sha256(Buffer.from([
-    row.database_name, row.runtime_role, row.server_address, row.server_version
+    row.database_name, row.server_address, row.server_version
   ].join("|"), "utf8"));
 }
 
