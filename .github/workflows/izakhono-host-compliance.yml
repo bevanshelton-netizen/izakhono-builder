@@ -37,7 +37,7 @@ jobs:
           bash -n products/izakhono-host/NODE-ENVIRONMENT-ACTIVATE.sh
           bash -n products/izakhono-host/test-node-environment-activate.sh
           sh -n products/izakhono-host/NODE01-READONLY-PREFLIGHT.sh
-      - name: Verify signed NODE01 activation approval without activating
+      - name: Verify signed NODE01 approval, online-runner attestation and tamper rejection
         run: bash products/izakhono-host/test-node-environment-activate.sh
       - name: Validate runtime source
         run: node --check products/izakhono-host/runtime/control-plane/server.mjs
