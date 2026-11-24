@@ -12,7 +12,9 @@ The machine, VM, cloud instance or container host on which the software runs is 
 
 The execution-environment locator must be obtained from the authorised infrastructure owner and recorded separately from the logical software identity.
 
-**Procedure discrepancy:** Earlier versions of this gate referenced `NODE-ENVIRONMENT-ACTIVATE.sh`. That file is not present in the inspected repository tree. Do not execute, infer, or substitute a command for this missing procedure. The reference must be reconciled when an approved environment-activation procedure is implemented and reviewed.
+**Repository procedure now exists:** `NODE-ENVIRONMENT-ACTIVATE.sh` provides three explicit modes: `--preflight` runs only the local read-only inventory; `--verify-approval` verifies a detached owner signature and the signed NODE01/host/source-revision binding without activation; `--activate` requires root, a root-owned signed approval record, an active approved self-hosted runner service, read-only inventory and an exact interactive confirmation before it invokes `NODE01-ACTIVATE.sh`.
+
+The owner private key is never stored in Git. The public key, approval JSON and detached signature must be installed by the authorised owner outside the repository (default paths under `/etc/izakhono`). The signed record binds the logical NODE01 software identity to a separate environment locator, expected hostname, exact Git revision, runner identity/labels, approving operator, change reference, rollback and backup/restore references, allowed action and a maximum 24-hour approval window. The procedure does not register a runner or independently query GitHub; runner registration is owner-attested and the local systemd service must be active. The procedure has not been run against a production host.
 
 The existing `NODE01-ACTIVATE.sh` is not a read-only preflight. It invokes `NODE-PREFLIGHT.sh`, then `bootstrap-owned.sh`, then `NODE-COMPLIANCE.sh`, and finally checks the local health endpoint. The bootstrap can generate local secrets, build images and start services. Therefore, do not run `NODE01-ACTIVATE.sh` to discover host identity, test access, or establish readiness.
 
