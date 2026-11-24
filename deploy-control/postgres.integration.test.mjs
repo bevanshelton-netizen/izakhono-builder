@@ -80,7 +80,7 @@ before(async () => {
 
 beforeEach(async () => {
   if (!enabled) return;
-  await pool.query("DROP TABLE IF EXISTS fortress_audit_events CASCADE; DROP TABLE IF EXISTS izakhono_runtime_deployments CASCADE");
+  await pool.query("DROP TABLE IF EXISTS fortress_audit_events CASCADE; DROP TABLE IF EXISTS izakhono_runtime_deployments CASCADE; DROP TABLE IF EXISTS izakhono_runtime_schema_migrations CASCADE");
   const migration = await readFile(new URL("./migrations/0001_runtime_fabric_deploy.sql", import.meta.url), "utf8");
   const client = await pool.connect();
   try {
