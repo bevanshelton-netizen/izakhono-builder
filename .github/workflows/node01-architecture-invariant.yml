@@ -21,3 +21,5 @@ jobs:
           python-version: "3.x"
       - name: Enforce system-wide NODE01 identity
         run: python3 scripts/architecture/check-node01-identity.py
+      - name: Verify signed NODE01 activation gate without activating
+        run: bash products/izakhono-host/test-node-environment-activate.sh
