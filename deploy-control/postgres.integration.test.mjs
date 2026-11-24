@@ -161,10 +161,8 @@ integration("rejects concurrent conflicting claims without a second mutation", a
 });
 
 integration("scopes deployment lookup by tenant, application and environment", async () => {
-  const auth = await principal(), id = await seed();
-  await assert.rejects(
-    run(auth, id, "scope-1", { resource: { ...resource, environmentId: "production" } }),
-    { code: "DEPLOYMENT_NOT_FOUND" }
-  );
+  const auth = await principal();
+  const id = await seed("deployment-" + randomUUID(), { ...resource, environmentId: "production" });
+  await assert.rejects(run(auth, id, "scope-1"), { code: "DEPLOYMENT_NOT_FOUND" });
   assert.equal((await pool.query(`SELECT count(*)::int AS n FROM ${qualified("idempotency_claims")}`)).rows[0].n, 0);
 });
