@@ -37,6 +37,9 @@ function canonicalize(value) {
     if (["__proto__", "prototype", "constructor"].includes(key)) {
       throw new DeploymentTransactionError("REQUEST_KEY_INVALID", "The deployment request contains a prohibited object key.");
     }
+    if (/(secret|token|password|authorization|private.?key|credential)/i.test(key)) {
+      throw new DeploymentTransactionError("SECRET_EVIDENCE_REJECTED", "Secret or credential material must never enter a deployment request.");
+    }
     result[key] = canonicalize(value[key]);
   }
   return result;
