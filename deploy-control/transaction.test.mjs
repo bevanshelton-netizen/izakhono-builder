@@ -19,17 +19,19 @@ const baseRecord = () => createDeployment({
 const validationEvidence = { source_commit: commit, policy_passed: true };
 
 async function principal(scopes = ["deploy:write", "deploy:approve"], tenantId = resource.tenantId) {
+  const issuedAt = Math.floor(Date.now() / 1000) - 5;
+  const expiresAt = issuedAt + 600;
   return authenticateDeploymentRequest({
     authorization: "Bearer test-token",
     issuer: "https://identity.example.invalid",
     audience: "izakhono-deploy",
-    now: Date.parse("2026-11-24T06:00:00.000Z"),
+    now: Date.now(),
     verifyAccessToken: async () => ({
       iss: "https://identity.example.invalid",
       aud: "izakhono-deploy",
-      iat: 1795500000,
-      nbf: 1795500000,
-      exp: 1795500600,
+      iat: issuedAt,
+      nbf: issuedAt,
+      exp: expiresAt,
       jti: "session-1",
       sub: "operator-1",
       tenant_id: tenantId,
@@ -37,7 +39,7 @@ async function principal(scopes = ["deploy:write", "deploy:approve"], tenantId =
       environment_ids: [resource.environmentId],
       scopes
     }),
-    verifyActiveSession: async ({ jti, subject, tenantId: tid, expiresAt }) => ({
+    verifyActiveSession: async ({ jti, subject, tenantId: tid }) => ({
       active: true, jti, subject, tenantId: tid, expiresAt
     })
   });
