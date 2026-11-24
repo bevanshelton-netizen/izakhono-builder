@@ -64,7 +64,10 @@ export async function authenticateDeploymentRequest({
   let verification;
   try {
     verification = await verifyAccessToken(token, { issuer, audience });
-  } catch {
+  } catch (error) {
+    if (error?.code === "IDENTITY_VERIFIER_UNAVAILABLE") {
+      throw new DeploymentAuthorizationError("SESSION_VERIFICATION_UNAVAILABLE", "FORTRESS identity introspection is unavailable.");
+    }
     throw new DeploymentAuthorizationError("TOKEN_INVALID", "The access token could not be verified.");
   }
   const combinedVerification = Boolean(verification && verifiedAccessTokens.has(verification));
