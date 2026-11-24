@@ -32,7 +32,9 @@ async function readJsonLimited(request, maxBytes) {
 
 function errorStatus(code) {
   if (["AUTH_CONFIG_INVALID", "SESSION_VERIFICATION_UNAVAILABLE", "TRANSACTION_RUNNER_REQUIRED",
-       "POOL_REQUIRED", "DEPLOYMENT_WRITE_CONFLICT", "IDEMPOTENCY_WRITE_CONFLICT"].includes(code)) return 503;
+       "TRANSACTION_ADAPTER_INVALID", "IDEMPOTENCY_ADAPTER_INVALID", "IDEMPOTENCY_CLAIM_INVALID",
+       "CALLBACK_REQUIRED", "POOL_REQUIRED", "DEPLOYMENT_WRITE_CONFLICT",
+       "IDEMPOTENCY_WRITE_CONFLICT"].includes(code) || /^[0-9A-Z]{5}$/.test(code)) return 503;
   if (["AUTHENTICATION_REQUIRED", "TOKEN_INVALID", "TOKEN_CLAIMS_INVALID",
        "SESSION_INVALID", "SESSION_VERIFICATION_UNAVAILABLE"].includes(code)) return 401;
   if (["TENANT_FORBIDDEN", "APPLICATION_FORBIDDEN", "ENVIRONMENT_FORBIDDEN",
@@ -84,7 +86,7 @@ export function createDeployApiHandler({
 
     if (url.pathname === "/healthz") {
       if (request.method !== "GET") return json({ error: "METHOD_NOT_ALLOWED", request_id: requestId }, 405, { allow: "GET" });
-      return json({ service: "IZAKHONO DEPLOY", status: "ready", request_id: requestId });
+      return json({ service: "IZAKHONO DEPLOY", status: "alive", request_id: requestId });
     }
 
     const match = url.pathname.match(
@@ -116,8 +118,11 @@ export function createDeployApiHandler({
     if (!/^[A-Za-z0-9._:-]{8,256}$/.test(idempotencyKey)) {
       return json({ error: "IDEMPOTENCY_KEY_REQUIRED", request_id: requestId }, 400);
     }
-    const body = await readJsonLimited(request, maxBodyBytes);
-    if (!body || typeof body.nextState !== "string" ||
+    let body;
+    try { body = await readJsonLimited(request, maxBodyBytes); }
+    catch { return json({ error: "TRANSITION_BODY_INVALID", request_id: requestId }, 400); }
+    if (!body || Object.keys(body).some(key => !["nextState", "evidence"].includes(key)) ||
+        typeof body.nextState !== "string" ||
         !body.evidence || typeof body.evidence !== "object" || Array.isArray(body.evidence)) {
       return json({ error: "TRANSITION_BODY_INVALID", request_id: requestId }, 400);
     }
