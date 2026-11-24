@@ -94,7 +94,8 @@ async function start() {
   await pool.query("SELECT 1");
   const schema = await pool.query(
     "SELECT current_database() AS database_name, current_user AS runtime_role, " +
-    "inet_server_addr()::text AS server_address, version() AS server_version, " +
+    "COALESCE(inet_server_addr()::text, 'local-socket') AS server_address, " +
+    "current_setting('server_version') AS server_version, " +
     "pg_get_userbyid(runtime.relowner) AS runtime_owner, " +
     "pg_get_userbyid(audit.relowner) AS audit_owner, " +
     "has_table_privilege(current_user, runtime.oid, 'SELECT') AS runtime_select, " +
@@ -120,9 +121,8 @@ async function start() {
       role.audit_delete || role.audit_truncate || !role.audit_append_only_trigger) {
     throw new Error("Runtime DB role separation, least-privilege grants or append-only FORTRESS audit gate failed; DEPLOY will not start.");
   }
-  const serverAddress = role.server_address === null ? "None" : role.server_address;
   const fingerprintMaterial = [
-    role.database_name, role.runtime_role, serverAddress, role.server_version
+    role.database_name, role.runtime_role, role.server_address, role.server_version
   ].join("|");
   const actualFingerprint = createHash("sha256").update(fingerprintMaterial, "utf8").digest("hex");
   if (actualFingerprint !== approvalDatabaseFingerprint) {
