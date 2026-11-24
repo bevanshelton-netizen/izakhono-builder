@@ -39,6 +39,7 @@ approval = {
     "runner_service": "actions.runner.test-org.izakhono-node01.service",
     "runner_labels": ["self-hosted", "izakhono-owned-host", "node01-runtime"],
     "runner_registered": True,
+    "runner_health": "online",
     "approved_by": "ci-test-owner",
     "change_reference": "CI-CHANGE-1",
     "rollback_reference": "CI-ROLLBACK-1",
