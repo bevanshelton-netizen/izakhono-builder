@@ -138,14 +138,14 @@ async function verifyCreatorSession(
   const claims = await verifySignedClaims(token, env, creatorAudience(env), now, 900);
   if (!claims) return null;
   const principal = await env.DB.prepare(
-    \`SELECT p.id, p.tenant_id, p.email, p.display_name, p.role, p.active
+    `SELECT p.id, p.tenant_id, p.email, p.display_name, p.role, p.active
        FROM refresh_sessions s
        JOIN principals p ON p.id = s.principal_id
       WHERE s.access_jti = ?
         AND s.principal_id = ?
         AND s.revoked_at IS NULL
         AND s.expires_at > ?
-      LIMIT 1\`
+      LIMIT 1`
   ).bind(claims.jti, claims.sub, now).first<Principal>();
   if (!principal || principal.active !== 1 || !nonEmpty(principal.tenant_id)) return null;
   return { claims, principal };
@@ -160,9 +160,9 @@ async function audit(
 ): Promise<void> {
   const ip = request.headers.get("cf-connecting-ip");
   await env.DB.prepare(
-    \`INSERT INTO security_audit
+    `INSERT INTO security_audit
       (id, event, principal_id, tenant_id, ip_hash, occurred_at, metadata_json)
-     VALUES (?, ?, ?, ?, ?, ?, ?)\`
+     VALUES (?, ?, ?, ?, ?, ?, ?)`
   ).bind(
     crypto.randomUUID(), event, principal.id, principal.tenant_id,
     ip ? await sha256(ip) : null, Math.floor(Date.now() / 1000),
@@ -226,10 +226,10 @@ export async function issueDeployAccessToken(request: Request, env: DeployAccess
   try {
     const token = await signClaims(claims, env);
     const inserted = await env.DB.prepare(
-      \`INSERT INTO deploy_access_sessions
+      `INSERT INTO deploy_access_sessions
         (jti, parent_access_jti, principal_id, tenant_id, application_id,
          environment_id, scopes_json, issued_at, expires_at, revoked_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)\`
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)`
     ).bind(
       jti, session.claims.jti, principal.id, principal.tenant_id,
       body.applicationId, body.environmentId, JSON.stringify(scopes), now, expiresAt
@@ -273,7 +273,7 @@ export async function introspectDeployAccessToken(request: Request, env: DeployA
   }
 
   const row = await env.DB.prepare(
-    \`SELECT d.jti, d.parent_access_jti, d.principal_id, d.tenant_id,
+    `SELECT d.jti, d.parent_access_jti, d.principal_id, d.tenant_id,
             d.application_id, d.environment_id, d.scopes_json, d.issued_at,
             d.expires_at, d.revoked_at, p.active, p.tenant_id AS principal_tenant_id,
             s.revoked_at AS parent_revoked_at, s.expires_at AS parent_expires_at
@@ -284,7 +284,7 @@ export async function introspectDeployAccessToken(request: Request, env: DeployA
         AND s.principal_id = d.principal_id
       WHERE d.jti = ?
         AND d.principal_id = ?
-      LIMIT 1\`
+      LIMIT 1`
   ).bind(claims.jti, claims.sub).first<Record<string, unknown>>();
   if (!row || row.revoked_at !== null || Number(row.expires_at) <= now ||
       row.parent_revoked_at !== null || Number(row.parent_expires_at) <= now ||
@@ -323,19 +323,19 @@ export async function revokeDeployAccessToken(request: Request, env: DeployAcces
     return json({ error: "A valid deployment capability JTI is required" }, 400);
   }
   const row = await env.DB.prepare(
-    \`SELECT jti, principal_id, tenant_id
+    `SELECT jti, principal_id, tenant_id
        FROM deploy_access_sessions
       WHERE jti = ? AND tenant_id = ?
-      LIMIT 1\`
+      LIMIT 1`
   ).bind(body.jti, session.principal.tenant_id).first<Record<string, unknown>>();
   if (!row) return json({ error: "Deployment capability not found" }, 404);
   if (session.principal.role !== "OWNER" && row.principal_id !== session.principal.id) {
     return json({ error: "Security administrators may revoke only their own capabilities" }, 403);
   }
   const result = await env.DB.prepare(
-    \`UPDATE deploy_access_sessions
+    `UPDATE deploy_access_sessions
         SET revoked_at = ?
-      WHERE jti = ? AND tenant_id = ? AND revoked_at IS NULL\`
+      WHERE jti = ? AND tenant_id = ? AND revoked_at IS NULL`
   ).bind(now, body.jti, session.principal.tenant_id).run();
   if ((result.meta?.changes || 0) !== 1) return json({ error: "Capability is already revoked or unavailable" }, 409);
   await audit(env, "deploy.access.revoked", session.principal, request, {
