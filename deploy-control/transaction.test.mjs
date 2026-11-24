@@ -44,9 +44,10 @@ async function principal(scopes = ["deploy:write", "deploy:approve"], tenantId =
 }
 
 class FakeDatabase {
-  constructor(record = baseRecord()) {
+  constructor(record = baseRecord(), storedResource = resource) {
     this.state = {
       record,
+      resource: storedResource,
       claims: new Map(),
       audits: [],
       commits: 0,
@@ -77,7 +78,7 @@ class FakeDatabase {
       lockDeployment: async ({ deploymentId, tenantId, applicationId, environmentId }) => ({
         record: working.record.deployment_id === deploymentId ? working.record : null,
         resource: working.record.deployment_id === deploymentId
-          ? { tenantId, applicationId, environmentId } : null
+          ? working.resource : null
       }),
       saveDeployment: async ({ deployment }) => { working.record = deployment; },
       appendAudit: async ({ event }) => {
@@ -208,4 +209,17 @@ test("rejects secret-bearing evidence before any database transaction", async ()
     error => error?.code === "SECRET_EVIDENCE_REJECTED"
   );
   assert.equal(db.state.txHandles.length, 0);
+});
+
+test("rejects a deployment row whose stored tenant or environment binding differs", async () => {
+  const db = new FakeDatabase(baseRecord(), {
+    tenantId: "tenant-2", applicationId: resource.applicationId, environmentId: resource.environmentId
+  });
+  const auth = await principal();
+  await assert.rejects(
+    run(db, auth),
+    error => error instanceof DeploymentTransactionError && error.code === "DEPLOYMENT_NOT_FOUND"
+  );
+  assert.equal(db.state.claims.size, 0);
+  assert.equal(db.state.rollbacks, 1);
 });
