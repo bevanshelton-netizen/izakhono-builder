@@ -3,7 +3,8 @@ import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import pg from "pg";
 import { createPostgresTransactionRunner } from "./postgres-adapter.mjs";
-import { authenticateDeploymentRequest } from "./authorization.mjs";
+import { authenticateDeploymentRequest, createVerifiedAccessToken } from "./authorization.mjs";
+import { createDeployApiHandler } from "./api.mjs";
 import { createDeployment } from "./lifecycle.mjs";
 import { transitionDeploymentAtomically } from "./transaction.mjs";
 
@@ -172,5 +173,122 @@ integration("enforces tenant, application and environment scope in the Runtime F
   const auth = await principal();
   const id = await seed("deployment-" + randomUUID(), { ...resource, environmentId: "production" });
   await assert.rejects(run(auth, id, "scope-1"), { code: "DEPLOYMENT_NOT_FOUND" });
+  assert.equal((await pool.query("SELECT count(*)::int AS n FROM fortress_audit_events")).rows[0].n, 0);
+});
+
+
+integration("HTTP API authenticates a FORTRESS-verified capability and commits a scoped transition", async () => {
+  const id = await seed();
+  const issuedAt = Math.floor(Date.now() / 1000) - 5;
+  const claims = {
+    iss: "https://identity.integration.invalid",
+    aud: "izakhono-deploy",
+    iat: issuedAt,
+    nbf: issuedAt,
+    exp: issuedAt + 600,
+    jti: "api-session-" + randomUUID(),
+    sub: "integration-operator",
+    tenant_id: resource.tenantId,
+    application_ids: [resource.applicationId],
+    environment_ids: [resource.environmentId],
+    scopes: ["deploy:write", "deploy:approve"]
+  };
+  const handler = createDeployApiHandler({
+    pool,
+    issuer: claims.iss,
+    audience: claims.aud,
+    verifyAccessToken: async () => createVerifiedAccessToken(claims, { sessionActive: true }),
+    clock: () => new Date("2026-11-24T06:00:01.000Z")
+  });
+  const request = new Request(
+    `http://127.0.0.1/api/tenants/${resource.tenantId}/applications/${resource.applicationId}/environments/${resource.environmentId}/deployments/${id}/transitions`,
+    {
+      method: "POST",
+      headers: {
+        authorization: "Bearer f0rtress-capability",
+        "content-type": "application/json",
+        "idempotency-key": "api-transition-0001"
+      },
+      body: JSON.stringify({ nextState: "VALIDATED", evidence })
+    }
+  );
+  const response = await handler(request);
+  assert.equal(response.status, 200);
+  const result = await response.json();
+  assert.equal(result.deployment.state, "VALIDATED");
+  assert.equal(result.replayed, false);
+  assert.ok(result.request_id);
+  assert.equal((await pool.query("SELECT count(*)::int AS n FROM fortress_audit_events WHERE job_id = $1", [id])).rows[0].n, 1);
+});
+
+integration("HTTP API returns the committed result on exact replay without a second audit event", async () => {
+  const id = await seed();
+  const issuedAt = Math.floor(Date.now() / 1000) - 5;
+  const claims = {
+    iss: "https://identity.integration.invalid", aud: "izakhono-deploy",
+    iat: issuedAt, nbf: issuedAt, exp: issuedAt + 600,
+    jti: "api-replay-" + randomUUID(), sub: "integration-operator",
+    tenant_id: resource.tenantId, application_ids: [resource.applicationId],
+    environment_ids: [resource.environmentId], scopes: ["deploy:write"]
+  };
+  const handler = createDeployApiHandler({
+    pool, issuer: claims.iss, audience: claims.aud,
+    verifyAccessToken: async () => createVerifiedAccessToken(claims, { sessionActive: true }),
+    clock: () => new Date("2026-11-24T06:00:01.000Z")
+  });
+  const makeRequest = () => new Request(
+    `http://127.0.0.1/api/tenants/${resource.tenantId}/applications/${resource.applicationId}/environments/${resource.environmentId}/deployments/${id}/transitions`,
+    {
+      method: "POST",
+      headers: {
+        authorization: "Bearer f0rtress-capability",
+        "content-type": "application/json",
+        "idempotency-key": "api-replay-0001"
+      },
+      body: JSON.stringify({ nextState: "VALIDATED", evidence })
+    }
+  );
+  const first = await (await handler(makeRequest())).json();
+  const replay = await (await handler(makeRequest())).json();
+  assert.equal(first.replayed, false);
+  assert.equal(replay.replayed, true);
+  assert.deepEqual(replay.deployment, first.deployment);
+  assert.equal((await pool.query("SELECT count(*)::int AS n FROM fortress_audit_events WHERE job_id = $1", [id])).rows[0].n, 1);
+});
+
+integration("HTTP API fails closed on identity-service outage and cross-tenant path scope", async () => {
+  const id = await seed();
+  const issuedAt = Math.floor(Date.now() / 1000) - 5;
+  const claims = {
+    iss: "https://identity.integration.invalid", aud: "izakhono-deploy",
+    iat: issuedAt, nbf: issuedAt, exp: issuedAt + 600,
+    jti: "api-outage-" + randomUUID(), sub: "integration-operator",
+    tenant_id: resource.tenantId, application_ids: [resource.applicationId],
+    environment_ids: [resource.environmentId], scopes: ["deploy:write"]
+  };
+  const baseUrl = `http://127.0.0.1/api/tenants/${resource.tenantId}/applications/${resource.applicationId}/environments/${resource.environmentId}/deployments/${id}/transitions`;
+  const unavailable = createDeployApiHandler({
+    pool, issuer: claims.iss, audience: claims.aud,
+    verifyAccessToken: async () => { const error = new Error("offline"); error.code = "IDENTITY_VERIFIER_UNAVAILABLE"; throw error; }
+  });
+  const request = () => new Request(baseUrl, {
+    method: "POST",
+    headers: { authorization: "Bearer f0rtress-capability", "content-type": "application/json", "idempotency-key": "api-outage-0001" },
+    body: JSON.stringify({ nextState: "VALIDATED", evidence })
+  });
+  const outage = await unavailable(request());
+  assert.equal(outage.status, 503);
+
+  const crossTenant = createDeployApiHandler({
+    pool, issuer: claims.iss, audience: claims.aud,
+    verifyAccessToken: async () => createVerifiedAccessToken(claims, { sessionActive: true })
+  });
+  const crossTenantRequest = new Request(baseUrl.replace("/tenants/tenant-a/", "/tenants/tenant-b/"), {
+    method: "POST",
+    headers: { authorization: "Bearer f0rtress-capability", "content-type": "application/json", "idempotency-key": "api-cross-tenant-01" },
+    body: JSON.stringify({ nextState: "VALIDATED", evidence })
+  });
+  const forbidden = await crossTenant(crossTenantRequest);
+  assert.equal(forbidden.status, 403);
   assert.equal((await pool.query("SELECT count(*)::int AS n FROM fortress_audit_events")).rows[0].n, 0);
 });
