@@ -48,6 +48,7 @@ approval = {
     "expires_at": expires.isoformat().replace("+00:00", "Z"),
     "allowed_actions": ["activate-owned-runtime"] + (["activate-deploy-control-api"] if deploy_action == "yes" else []),
     "runtime_database_fingerprint": "a" * 64,
+    "runtime_migration_sha256": "b" * 64,
     "runtime_database_id": "runtime-fabric-production",
     "runtime_database_environment": "production",
     "runtime_database_owner": "IZAKHONO Africa (Pty) Ltd",
