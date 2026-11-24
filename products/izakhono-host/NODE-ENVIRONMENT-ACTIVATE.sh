@@ -26,7 +26,7 @@ EOF
 MODE="$1"
 
 if [[ "$MODE" == "--preflight" ]]; then
-  [[ -f bash "$ROOT/NODE01-READONLY-PREFLIGHT.sh" ]] || fail "read-only preflight script is missing or not executable"
+  [[ -f "$ROOT/NODE01-READONLY-PREFLIGHT.sh" ]] || fail "read-only preflight script is missing or not executable"
   exec bash "$ROOT/NODE01-READONLY-PREFLIGHT.sh"
 fi
 
@@ -160,7 +160,7 @@ systemctl is-active --quiet "$RUNNER_SERVICE" || fail "the owner-approved self-h
 
 printf '%s\n' "Signed owner approval and runner service verified."
 printf '%s\n' "Running local read-only inventory before activation."
-"$ROOT/NODE01-READONLY-PREFLIGHT.sh"
+bash "$ROOT/NODE01-READONLY-PREFLIGHT.sh"
 
 [[ -t 0 ]] || fail "activation requires an interactive operator confirmation"
 printf 'This will generate/check host secrets, build images and start the owned runtime.\n'
