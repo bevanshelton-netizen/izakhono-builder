@@ -166,7 +166,7 @@ def inspect_runtime_database(
         }
         declarations_complete = all(bool(value.strip()) for value in declared.values())
         fingerprint_material = "|".join(
-            [str(database_name), str(database_role), str(server_address), str(server_version)]
+            [str(database_name), str(server_address), str(server_version)]
         )
         fingerprint = hashlib.sha256(fingerprint_material.encode("utf-8")).hexdigest()
         return {
