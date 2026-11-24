@@ -92,7 +92,16 @@ class PostgresDeploymentStore:
                     ON CONFLICT (deployment_id) DO UPDATE SET
                       workload = EXCLUDED.workload, state = EXCLUDED.state, node = EXCLUDED.node,
                       checkpoint = EXCLUDED.checkpoint, attempts = EXCLUDED.attempts,
-                      metadata = EXCLUDED.metadata, updated_at = NOW()""",
+                      metadata = EXCLUDED.metadata ||
+                        CASE
+                          WHEN izakhono_runtime_deployments.metadata ? 'deploy_control'
+                          THEN jsonb_build_object(
+                            'deploy_control',
+                            izakhono_runtime_deployments.metadata->'deploy_control'
+                          )
+                          ELSE '{}'::jsonb
+                        END,
+                      updated_at = NOW()""",
                     (record.deployment_id, record.workload, record.state, record.node,
                      record.checkpoint, record.attempts, json.dumps(record.metadata, sort_keys=True)),
                 )
