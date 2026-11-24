@@ -82,7 +82,9 @@ export function validateMigrationApproval({
 
 async function readRegularFile(path, label) {
   const info = await lstat(path);
-  if (!info.isFile() || info.isSymbolicLink()) throw new Error(`${label} must be a regular, non-symlink file.`);
+  if (!info.isFile() || info.isSymbolicLink() || (info.mode & 0o022) !== 0) {
+    throw new Error(`${label} must be a regular, non-symlink file not writable by group or other users.`);
+  }
   return readFile(path);
 }
 
