@@ -5,7 +5,7 @@ import { createFortressAccessTokenVerifier } from "./fortress-verifier.mjs";
 
 function required(name) {
   const value = process.env[name];
-  if (!value || !value.trim() || /^(replace-with|changeme|todo|tbd)$/i.test(value.trim())) {
+  if (!value || !value.trim() || /replace-with|changeme|todo|tbd|example\\.com|\\.invalid/i.test(value.trim())) {
     throw new Error(`Required DEPLOY configuration is missing: ${name}`);
   }
   return value.trim();
@@ -88,11 +88,30 @@ async function start() {
   // already exist, and the separate FORTRESS introspection secret must work.
   await pool.query("SELECT 1");
   const schema = await pool.query(
-    "SELECT to_regclass('public.izakhono_runtime_deployments') AS deployments, " +
-    "to_regclass('public.fortress_audit_events') AS fortress_audit"
+    "SELECT pg_get_userbyid(runtime.relowner) AS runtime_owner, " +
+    "pg_get_userbyid(audit.relowner) AS audit_owner, current_user AS runtime_role, " +
+    "has_table_privilege(current_user, runtime.oid, 'SELECT') AS runtime_select, " +
+    "has_table_privilege(current_user, runtime.oid, 'INSERT') AS runtime_insert, " +
+    "has_table_privilege(current_user, runtime.oid, 'UPDATE') AS runtime_update, " +
+    "has_table_privilege(current_user, audit.oid, 'SELECT') AS audit_select, " +
+    "has_table_privilege(current_user, audit.oid, 'INSERT') AS audit_insert, " +
+    "has_table_privilege(current_user, audit.oid, 'UPDATE') AS audit_update, " +
+    "has_table_privilege(current_user, audit.oid, 'DELETE') AS audit_delete, " +
+    "has_table_privilege(current_user, audit.oid, 'TRUNCATE') AS audit_truncate, " +
+    "EXISTS (SELECT 1 FROM pg_trigger t WHERE t.tgrelid = audit.oid " +
+    "AND t.tgname = 'fortress_audit_events_no_mutation' AND t.tgenabled IN ('O','A') " +
+    "AND NOT t.tgisinternal) AS audit_append_only_trigger " +
+    "FROM pg_class runtime CROSS JOIN pg_class audit " +
+    "WHERE runtime.oid = to_regclass('public.izakhono_runtime_deployments') " +
+    "AND audit.oid = to_regclass('public.fortress_audit_events')"
   );
-  if (!schema.rows[0]?.deployments || !schema.rows[0]?.fortress_audit) {
-    throw new Error("Required Runtime Fabric and FORTRESS audit tables are not provisioned; DEPLOY will not start.");
+  const role = schema.rows[0];
+  if (!role ||
+      role.runtime_role === role.runtime_owner || role.runtime_role === role.audit_owner ||
+      !role.runtime_select || !role.runtime_insert || !role.runtime_update ||
+      !role.audit_select || !role.audit_insert || role.audit_update ||
+      role.audit_delete || role.audit_truncate || !role.audit_append_only_trigger) {
+    throw new Error("Runtime DB role separation, least-privilege grants or append-only FORTRESS audit gate failed; DEPLOY will not start.");
   }
   await verifyAccessToken("startup.invalid.probe");
   server.listen(port, host, () => {
