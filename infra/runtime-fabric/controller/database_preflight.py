@@ -110,14 +110,24 @@ def inspect_runtime_database(
             column_types.get(("izakhono_runtime_deployments", "metadata")) == "jsonb"
             and column_types.get(("fortress_audit_events", "data")) == "jsonb"
         )
+        runtime_owner = role_info[0] if role_info else None
+        fortress_owner = role_info[1] if role_info else None
+        runtime_permissions = role_info[2:5] if role_info else (False, False, False)
+        audit_permissions = role_info[5:10] if role_info else (False, False, False, False, False)
+        append_only_trigger = bool(role_info[10]) if role_info else False
         checks = {
             "read_only_transaction": read_only == "on",
             "runtime_deployment_table_present": bool(runtime_reg),
             "fortress_audit_table_present": bool(fortress_reg),
             "required_columns_present": required_columns_present,
             "jsonb_contract": jsonb_contract,
-            # Both table lookups were resolved by the same connection/database.
             "same_database_connection": bool(runtime_reg and fortress_reg),
+            "runtime_role_is_not_table_owner": bool(role_info and database_role not in (runtime_owner, fortress_owner)),
+            "runtime_deployment_select_insert_update": all(runtime_permissions),
+            "fortress_audit_select_insert_only": (
+                audit_permissions[0] and audit_permissions[1] and not any(audit_permissions[2:])
+            ),
+            "fortress_audit_append_only_trigger": append_only_trigger,
         }
         technical_pass = all(checks.values())
         declared = {
