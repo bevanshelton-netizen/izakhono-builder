@@ -81,3 +81,19 @@ test("rejects expired, wrong-environment and wrong-runner approvals", () => {
     ...expected, migrationRunnerId: "unapproved-runner"
   }), /does not match/);
 });
+
+test("database fingerprint is stable across migration-owner and runtime roles", () => {
+  const migrationOwner = calculateDatabaseFingerprint({
+    database_name: "runtime_fabric",
+    runtime_role: "izakhono_migration_owner",
+    server_address: "10.0.0.12",
+    server_version: "16.4"
+  });
+  const runtimeRole = calculateDatabaseFingerprint({
+    database_name: "runtime_fabric",
+    runtime_role: "izakhono_deploy_runtime",
+    server_address: "10.0.0.12",
+    server_version: "16.4"
+  });
+  assert.equal(migrationOwner, runtimeRole);
+});
