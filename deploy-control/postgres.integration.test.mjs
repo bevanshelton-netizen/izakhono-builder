@@ -365,6 +365,12 @@ integration("signed migration runner applies atomically and is idempotent on exa
   };
   const runnerPath = fileURLToPath(new URL("./migrate.mjs", import.meta.url));
   try {
+    const discovered = JSON.parse(execFileSync(process.execPath, [runnerPath, "--fingerprint"], {
+      env: { ...process.env, IZAKHONO_RUNTIME_DATABASE_URL: connectionString },
+      encoding: "utf8", stdio: ["ignore", "pipe", "pipe"]
+    }));
+    assert.equal(discovered.status, "IDENTITY_ONLY");
+    assert.equal(discovered.database_fingerprint, databaseFingerprint);
     await pool.query("DROP TABLE IF EXISTS fortress_audit_events CASCADE");
     await pool.query("DROP TABLE IF EXISTS izakhono_runtime_deployments CASCADE");
     await pool.query("DROP TABLE IF EXISTS izakhono_runtime_schema_migrations CASCADE");
