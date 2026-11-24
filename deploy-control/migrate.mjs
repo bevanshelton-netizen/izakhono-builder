@@ -195,7 +195,9 @@ async function main() {
   }
 }
 
-main().catch(() => {
-  process.stderr.write("DEPLOY migration runner blocked: approval, database binding, migration checksum or transaction gate failed. No success is claimed.\n");
-  process.exitCode = 1;
-});
+if (process.argv[1] && pathToFileURL(process.argv[1]).href === import.meta.url) {
+  main().catch(() => {
+    process.stderr.write("DEPLOY migration runner blocked: approval, database binding, migration checksum or transaction gate failed. No success is claimed.\\n");
+    process.exitCode = 1;
+  });
+}
