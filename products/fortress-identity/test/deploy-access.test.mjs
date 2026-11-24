@@ -304,7 +304,7 @@ test("D1 capability and audit writes roll back together on audit failure", async
   assert.equal(env.DB.auditRows.length, 0);
 
   env.DB.failAudit = false;
-  const issued = await handleFortressIdentity(issueRequest(ownerToken, {
+  const issued = await issueDeployAccessToken(issueRequest(ownerToken, {
     applicationId: "app-atomic", environmentId: "staging", scopes: ["deploy:write"]
   }), env);
   assert.equal(issued.status, 201);
