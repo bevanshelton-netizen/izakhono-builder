@@ -5,7 +5,7 @@ import { createFortressAccessTokenVerifier } from "./fortress-verifier.mjs";
 
 function required(name) {
   const value = process.env[name];
-  if (!value || !value.trim() || /replace-with|changeme|todo|tbd|example\\.com|\\.invalid/i.test(value.trim())) {
+  if (!value || !value.trim() || /replace-with|changeme|todo|tbd|example\.com|\.invalid/i.test(value.trim())) {
     throw new Error(`Required DEPLOY configuration is missing: ${name}`);
   }
   return value.trim();
