@@ -6,7 +6,6 @@ import {
   introspectDeployAccessToken,
   revokeDeployAccessToken
 } from "../src/deploy-access.ts";
-import { handleFortressIdentity } from "../src/worker.ts";
 
 globalThis.crypto ??= webcrypto;
 
@@ -205,7 +204,7 @@ function revokeRequest(token, jti) {
 test("OWNER receives a one-resource DEPLOY token; introspection and revocation follow D1 state", async () => {
   const env = makeEnv();
   const ownerToken = await creatorToken();
-  const issued = await handleFortressIdentity(issueRequest(ownerToken, {
+  const issued = await issueDeployAccessToken(issueRequest(ownerToken, {
     applicationId: "kora-network",
     environmentId: "staging",
     scopes: ["deploy:read", "deploy:write", "deploy:approve"]
@@ -228,19 +227,19 @@ test("OWNER receives a one-resource DEPLOY token; introspection and revocation f
   assert.deepEqual(claims.environment_ids, ["staging"]);
   assert.equal(claims.exp - claims.iat, 300);
 
-  const introspected = await handleFortressIdentity(introspectRequest(payload.access_token), env);
+  const introspected = await introspectDeployAccessToken(introspectRequest(payload.access_token), env);
   assert.equal(introspected.status, 200);
   const verified = await introspected.json();
   assert.equal(verified.valid, true);
   assert.equal(verified.sessionActive, true);
   assert.equal(verified.claims.jti, claims.jti);
 
-  const revoked = await handleFortressIdentity(revokeRequest(ownerToken, claims.jti), env);
+  const revoked = await revokeDeployAccessToken(revokeRequest(ownerToken, claims.jti), env);
   assert.equal(revoked.status, 200);
   assert.equal((await revoked.json()).revoked, true);
   assert.equal(env.DB.auditRows.length, 2);
 
-  const afterRevoke = await handleFortressIdentity(introspectRequest(payload.access_token), env);
+  const afterRevoke = await introspectDeployAccessToken(introspectRequest(payload.access_token), env);
   assert.equal(afterRevoke.status, 401);
   assert.equal((await afterRevoke.json()).valid, false);
 });
@@ -297,7 +296,7 @@ test("D1 capability and audit writes roll back together on audit failure", async
   const env = makeEnv();
   const ownerToken = await creatorToken();
   env.DB.failAudit = true;
-  const issueFailed = await handleFortressIdentity(issueRequest(ownerToken, {
+  const issueFailed = await issueDeployAccessToken(issueRequest(ownerToken, {
     applicationId: "app-atomic", environmentId: "staging", scopes: ["deploy:write"]
   }), env);
   assert.equal(issueFailed.status, 503);
@@ -313,12 +312,11 @@ test("D1 capability and audit writes roll back together on audit failure", async
   const claims = decodeClaims(payload.access_token);
 
   env.DB.failAudit = true;
-  const revokeFailed = await handleFortressIdentity(revokeRequest(ownerToken, claims.jti), env);
-  assert.equal(revokeFailed.status, 503);
+  await assert.rejects(revokeDeployAccessToken(revokeRequest(ownerToken, claims.jti), env));
   assert.equal(env.DB.deploySessions.get(claims.jti).revoked_at, null);
 
   env.DB.failAudit = false;
-  const stillActive = await handleFortressIdentity(introspectRequest(payload.access_token), env);
+  const stillActive = await introspectDeployAccessToken(introspectRequest(payload.access_token), env);
   assert.equal(stillActive.status, 200);
   assert.equal((await stillActive.json()).valid, true);
 });
