@@ -7,15 +7,16 @@ import {
   type CinematicProduction,
   type ProductionTask,
 } from './cinematic-production-graph';
-import { findAssetByExternalId, getProject, listProjects, saveAsset, saveProject, updateAsset, type CreatorStorageEnv } from './project-store';
+import { findAssetByExternalId, getAsset, getProject, listProjects, saveAsset, saveProject, updateAsset, type CreatorStorageEnv } from './project-store';
 import { chooseProvider, createAdapters, type GenerationRequest, type ProviderEnv } from './provider-router';
 
-type CinematicEnv = CreatorStorageEnv & ProviderEnv & { CREATOR_GENERATION_SECRET?: string; CREATOR_IMAGE_PROVIDER?: string; MEDIA_FABRIC_URL?: string; MEDIA_FABRIC_KEY?: string };
+type CinematicEnv = CreatorStorageEnv & ProviderEnv & { CREATOR_GENERATION_SECRET?: string; CREATOR_IMAGE_PROVIDER?: string; CREATOR_IMAGE_ASSET_HOSTS?: string; MEDIA_FABRIC_URL?: string; MEDIA_FABRIC_KEY?: string };
 const response = (body: unknown, status = 200) => new Response(JSON.stringify(body), {
   status,
   headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' },
 });
 const gates: ApprovalGate[] = ['creative', 'generation', 'master', 'distribution'];
+async function findAssetByIdForProject(env: CreatorStorageEnv, assetId: string, projectId: string) { const asset = await getAsset(env, assetId); return asset?.projectId === projectId ? asset : null; }
 const parseBody = async (request: Request) => request.json().catch(() => null) as Promise<Record<string, unknown> | null>;
 const authenticated = (request: Request, env: CinematicEnv) =>
   Boolean(env.CREATOR_GENERATION_SECRET) &&
@@ -95,23 +96,45 @@ export async function handleCinematicApi(request: Request, env: CinematicEnv): P
       const adapter = createAdapters(env).find(item => item.id === provider);
       if (!adapter?.enabled) return response({ error: 'the selected image provider is not configured on this Creator Worker.' }, 503);
       const job = await adapter.poll(task.externalJobId, 'image');
-      await updateAsset(env, asset.id, {
-        status: job.status, url: job.outputUrl ?? asset.url,
-        metadata: { ...(asset.metadata as Record<string, unknown> ?? {}), lastPoll: job, error: job.error },
-      });
       if (job.status === 'completed' && !job.outputUrl) return response({ error: 'provider reported completion without an image URL; task remains uncompleted.' }, 409);
+      let storedObjectKey: string | undefined;
+      let storedMimeType: string | undefined;
+      let storedSha256: string | undefined;
+      if (job.status === 'completed') {
+        if (!env.ASSETS) return response({ error: 'Creator R2 asset storage is required before an image result can be marked complete.' }, 503);
+        const allowedHosts = (env.CREATOR_IMAGE_ASSET_HOSTS || '').split(',').map(host => host.trim().toLowerCase()).filter(Boolean);
+        if (!allowedHosts.length) return response({ error: 'CREATOR_IMAGE_ASSET_HOSTS must explicitly allowlist the image provider asset host before ingestion.' }, 503);
+        const output = new URL(job.outputUrl!);
+        if (output.protocol !== 'https:' || !allowedHosts.includes(output.hostname.toLowerCase())) return response({ error: 'Image provider returned an asset outside the configured HTTPS host allowlist.' }, 502);
+        const downloaded = await fetch(output.toString(), { redirect: 'error' });
+        const contentType = (downloaded.headers.get('content-type') || '').split(';')[0].toLowerCase();
+        const length = Number(downloaded.headers.get('content-length') || 0);
+        if (!downloaded.ok || !downloaded.body || !['image/png', 'image/jpeg', 'image/webp'].includes(contentType) || (length && length > 16_000_000)) return response({ error: 'Image provider asset failed download, MIME type or size validation.' }, 502);
+        const bytes = await downloaded.arrayBuffer();
+        if (!bytes.byteLength || bytes.byteLength > 16_000_000) return response({ error: 'Image provider asset is empty or exceeds the 16 MB ingestion limit.' }, 502);
+        const digest = await crypto.subtle.digest('SHA-256', bytes);
+        storedSha256 = [...new Uint8Array(digest)].map(value => value.toString(16).padStart(2, '0')).join('');
+        storedMimeType = contentType;
+        storedObjectKey = `projects/${encodeURIComponent(id)}/assets/${encodeURIComponent(asset.id)}`;
+        await env.ASSETS.put(storedObjectKey, new ReadableStream({ start(controller) { controller.enqueue(bytes); controller.close(); } }), { httpMetadata: { contentType } });
+      }
+      await updateAsset(env, asset.id, {
+        status: job.status, url: storedObjectKey ? `/api/assets/${encodeURIComponent(asset.id)}/content` : job.outputUrl ?? asset.url,
+        ...(storedObjectKey ? { objectKey: storedObjectKey } : {}),
+        metadata: { ...(asset.metadata as Record<string, unknown> ?? {}), lastPoll: job, error: job.error, ...(storedSha256 ? { sha256: storedSha256, contentType: storedMimeType, ingestedToR2: true } : {}) },
+      });
       const nextStatus: ProductionTask['status'] = job.status === 'completed' ? 'completed' : job.status === 'failed' ? 'failed' : 'processing';
       const assetId = asset.id;
       const updatedTaskGraph = updateTaskWithEvidence(graph, task.id, {
         status: nextStatus,
-        ...(job.status === 'completed' ? { evidence: JSON.stringify({ provider, externalJobId: task.externalJobId, outputUrl: job.outputUrl }) } : {}),
+        ...(job.status === 'completed' ? { evidence: JSON.stringify({ provider, externalJobId: task.externalJobId, creatorAssetId: assetId, objectKey: storedObjectKey, sha256: storedSha256 }) } : {}),
         ...(job.status === 'failed' ? { errorCode: 'IMAGE_PROVIDER_FAILED', errorMessage: job.error || 'Image provider reported failure.' } : {}),
       });
       const updatedGraph = job.status === 'completed' ? {
         ...updatedTaskGraph,
         assets: [...updatedTaskGraph.assets.filter(item => item.id !== assetId), {
           id: assetId, kind: 'image' as const, status: 'completed' as const, source: 'external_provider' as const,
-          contentHash: undefined, mimeType: 'image/*', provider,
+          storageKey: storedObjectKey, contentHash: storedSha256, mimeType: storedMimeType, provider,
           externalJobId: task.externalJobId, parentAssetIds: [],
           provenance: { createdAt: new Date().toISOString(), consentRecordIds: [] },
         }],
@@ -133,9 +156,23 @@ export async function handleCinematicApi(request: Request, env: CinematicEnv): P
       const shot = graph.shots.find(item => item.id === task.shotId);
       if (!shot) return response({ error: 'generation task must reference a valid shot.' }, 409);
       const body = await parseBody(request);
-      const sourceImage = body?.sourceImage;
+      let sourceImage = body?.sourceImage;
+      if (typeof body?.sourceAssetId === 'string') {
+        if (!env.ASSETS) return response({ error: 'Creator R2 asset storage is required to resolve a selected keyframe asset.' }, 503);
+        const selected = await findAssetByIdForProject(env, body.sourceAssetId, id);
+        if (!selected || selected.kind !== 'image' || selected.status !== 'completed' || !selected.objectKey) return response({ error: 'sourceAssetId must reference a completed image asset in this project.' }, 400);
+        const object = await env.ASSETS.get(selected.objectKey);
+        if (!object) return response({ error: 'Selected keyframe asset is missing from Creator R2 storage.' }, 404);
+        const bytes = await new Response(object.body).arrayBuffer();
+        if (!bytes.byteLength || bytes.byteLength > 12_000_000) return response({ error: 'Selected keyframe image is empty or exceeds the video worker payload limit.' }, 413);
+        const mime = String((selected.metadata as Record<string, unknown> | undefined)?.contentType || 'image/png');
+        if (!['image/png', 'image/jpeg', 'image/webp'].includes(mime)) return response({ error: 'Selected keyframe image has an unsupported MIME type.' }, 415);
+        let binary = '';
+        for (const byte of new Uint8Array(bytes)) binary += String.fromCharCode(byte);
+        sourceImage = `data:${mime};base64,${btoa(binary)}`;
+      }
       if (shot.aspectRatio !== '9:16') return response({ error: 'The currently staged owned video runtime requires a 9:16 vertical shot.' }, 409);
-      if (typeof sourceImage !== 'string' || sourceImage.length > 16000000 || !['data:image/png;base64,', 'data:image/jpeg;base64,', 'data:image/webp;base64,'].some(prefix => sourceImage.startsWith(prefix))) return response({ error: 'A base64 PNG, JPEG or WebP sourceImage keyframe (maximum 16 MB) is required.' }, 400);
+      if (typeof sourceImage !== 'string' || sourceImage.length > 16000000 || !['data:image/png;base64,', 'data:image/jpeg;base64,', 'data:image/webp;base64,'].some(prefix => sourceImage.startsWith(prefix))) return response({ error: 'A base64 PNG, JPEG or WebP sourceImage or completed sourceAssetId keyframe (maximum 16 MB) is required.' }, 400);
       const capability = 'video';
       const prompt = shot.generationPrompt?.trim() || shot.action;
       const fabricPayload = {
