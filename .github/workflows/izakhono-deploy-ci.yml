@@ -64,6 +64,8 @@ jobs:
           node --check deploy-control/migrate.mjs
       - name: Build owned-host DEPLOY API image
         run: docker build --file deploy-control/Dockerfile --tag izakhono-deploy-control:ci .
+      - name: Build one-shot signed migration runner image
+        run: docker build --file deploy-control/Dockerfile.migration --tag izakhono-deploy-migration:ci .
       - name: Verify database preflight blocks without an operator DSN
         shell: bash
         run: |
