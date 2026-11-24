@@ -1,6 +1,7 @@
 import test, { after, before, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
+import { readFile } from "node:fs/promises";
 import pg from "pg";
 import { createPostgresTransactionRunner } from "./postgres-adapter.mjs";
 import { authenticateDeploymentRequest, createVerifiedAccessToken } from "./authorization.mjs";
@@ -74,24 +75,14 @@ before(async () => {
     throw new Error("DEPLOY_TEST_DATABASE_URL must target a local disposable database named deploy_control_test.");
   }
   pool = new pg.Pool({ connectionString, max: 12 });
-  await pool.query(`CREATE TABLE IF NOT EXISTS izakhono_runtime_deployments (
-    deployment_id text PRIMARY KEY, workload text NOT NULL, state text NOT NULL,
-    node text, checkpoint text, attempts integer NOT NULL DEFAULT 0,
-    metadata jsonb NOT NULL DEFAULT '{}'::jsonb, updated_at timestamptz NOT NULL DEFAULT now()
-  )`);
-  await pool.query(`CREATE TABLE IF NOT EXISTS fortress_audit_events (
-    event_id text PRIMARY KEY, job_id text NOT NULL, tenant_id text NOT NULL,
-    operation_id text NOT NULL, event_type text NOT NULL, actor text NOT NULL,
-    adapter text, state text NOT NULL, observed_at timestamptz NOT NULL,
-    data jsonb NOT NULL DEFAULT '{}'::jsonb,
-    UNIQUE (job_id, operation_id, event_type)
-  )`);
   withTransaction = createPostgresTransactionRunner(pool);
 });
 
 beforeEach(async () => {
   if (!enabled) return;
-  await pool.query("TRUNCATE fortress_audit_events, izakhono_runtime_deployments");
+  await pool.query("DROP TABLE IF EXISTS fortress_audit_events CASCADE; DROP TABLE IF EXISTS izakhono_runtime_deployments CASCADE");
+  const migration = await readFile(new URL("./migrations/0001_runtime_fabric_deploy.sql", import.meta.url), "utf8");
+  await pool.query(migration);
 });
 
 after(async () => {
