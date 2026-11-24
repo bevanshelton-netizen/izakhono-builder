@@ -1,6 +1,6 @@
 import test, { after, before, beforeEach } from "node:test";
 import assert from "node:assert/strict";
-import { randomUUID } from "node:crypto";
+import { randomUUID, createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import pg from "pg";
 import { createPostgresTransactionRunner } from "./postgres-adapter.mjs";
@@ -82,7 +82,30 @@ beforeEach(async () => {
   if (!enabled) return;
   await pool.query("DROP TABLE IF EXISTS fortress_audit_events CASCADE; DROP TABLE IF EXISTS izakhono_runtime_deployments CASCADE");
   const migration = await readFile(new URL("./migrations/0001_runtime_fabric_deploy.sql", import.meta.url), "utf8");
-  await pool.query(migration);
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    await client.query(migration);
+    await client.query(
+      "CREATE TABLE izakhono_runtime_schema_migrations (" +
+      "migration_id TEXT PRIMARY KEY, checksum_sha256 CHAR(64) NOT NULL, " +
+      "applied_at TIMESTAMPTZ NOT NULL DEFAULT now(), applied_by TEXT NOT NULL, " +
+      "approval_id TEXT NOT NULL, change_reference TEXT NOT NULL, rollback_reference TEXT NOT NULL)"
+    );
+    await client.query(
+      "INSERT INTO izakhono_runtime_schema_migrations " +
+      "(migration_id, checksum_sha256, applied_by, approval_id, change_reference, rollback_reference) " +
+      "VALUES ($1, $2, $3, $4, $5, $6)",
+      ["0001_runtime_fabric_deploy", createHash("sha256").update(migration).digest("hex"),
+       "integration-owner", "ci-approval", "ci-change", "ci-rollback"]
+    );
+    await client.query("COMMIT");
+  } catch (error) {
+    await client.query("ROLLBACK").catch(() => {});
+    throw error;
+  } finally {
+    client.release();
+  }
 });
 
 after(async () => {
