@@ -157,48 +157,8 @@ print("1" if activate_deploy_control else "0")
 PY
 )" || fail "signed owner approval is invalid or does not match this host/revision"
 
-RUNNER_SERVICE="${APPROVAL_INFO%%
-  exit 0
-fi
-
-command -v systemctl >/dev/null 2>&1 || fail "systemd is required to verify the approved self-hosted runner"
-systemctl is-active --quiet "$RUNNER_SERVICE" || fail "the owner-approved self-hosted runner service is not active"
-[[ -f "$ROOT/NODE01-READONLY-PREFLIGHT.sh" ]] || fail "read-only preflight script is missing or not executable"
-
-printf '%s\n' "Signed owner approval and runner service verified."
-printf '%s\n' "Running local read-only inventory before activation."
-bash "$ROOT/NODE01-READONLY-PREFLIGHT.sh"
-
-[[ -t 0 ]] || fail "activation requires an interactive operator confirmation"
-printf 'This will generate/check host secrets, build images and start the owned runtime.\n'
-printf 'Type exactly: ACTIVATE NODE01 ON %s\n> ' "$CURRENT_HOST"
-IFS= read -r confirmation
-[[ "$confirmation" == "ACTIVATE NODE01 ON $CURRENT_HOST" ]] || fail "operator confirmation did not match"
-
-printf '%s\n' "Executing the separately reviewed NODE01 activation sequence."
-IZAKHONO_ACTIVATE_DEPLOY_CONTROL="$DEPLOY_CONTROL_APPROVED" exec bash "$ROOT/NODE01-ACTIVATE.sh"
-\n'*}"
-DEPLOY_CONTROL_APPROVED="${APPROVAL_INFO#*
-  exit 0
-fi
-
-command -v systemctl >/dev/null 2>&1 || fail "systemd is required to verify the approved self-hosted runner"
-systemctl is-active --quiet "$RUNNER_SERVICE" || fail "the owner-approved self-hosted runner service is not active"
-[[ -f "$ROOT/NODE01-READONLY-PREFLIGHT.sh" ]] || fail "read-only preflight script is missing or not executable"
-
-printf '%s\n' "Signed owner approval and runner service verified."
-printf '%s\n' "Running local read-only inventory before activation."
-bash "$ROOT/NODE01-READONLY-PREFLIGHT.sh"
-
-[[ -t 0 ]] || fail "activation requires an interactive operator confirmation"
-printf 'This will generate/check host secrets, build images and start the owned runtime.\n'
-printf 'Type exactly: ACTIVATE NODE01 ON %s\n> ' "$CURRENT_HOST"
-IFS= read -r confirmation
-[[ "$confirmation" == "ACTIVATE NODE01 ON $CURRENT_HOST" ]] || fail "operator confirmation did not match"
-
-printf '%s\n' "Executing the separately reviewed NODE01 activation sequence."
-exec bash "$ROOT/NODE01-ACTIVATE.sh"
-\n'}"
+RUNNER_SERVICE="$(printf '%s\n' "$APPROVAL_INFO" | head -n 1)"
+DEPLOY_CONTROL_APPROVED="$(printf '%s\n' "$APPROVAL_INFO" | tail -n 1)"
 [[ -n "$RUNNER_SERVICE" && ( "$DEPLOY_CONTROL_APPROVED" == "0" || "$DEPLOY_CONTROL_APPROVED" == "1" ) ]] ||
   fail "owner approval action data is invalid"
 
