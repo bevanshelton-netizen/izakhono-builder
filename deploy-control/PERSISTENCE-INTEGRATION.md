@@ -146,3 +146,22 @@ The accompanying `infra/provisioner/provisioner_rpc_privileges_test.py` applies 
 **Execution gate:** this migration is separate from the DEPLOY/Runtime Fabric deployment-state schema and does not resolve Runtime Fabric database ownership. Before applying it to any shared or production Supabase project, the Provisioner database owner must confirm the exact target project, function definition and signature, service-role invocation path, migration runner, and rollback procedure. No connected project or production database has been changed by this PR workflow.
 
 **Privilege-review limitation:** the migration changes privileges only on `provisioner_run_once(integer)`. It does not enumerate or alter any underlying claim/complete/release helper functions, and the test does not prove their privileges. Do not infer that helper-function grants are restricted based on this migration; inspect their exact deployed definitions and grants under the database owner's approved read-only review before production application.
+
+
+## Transaction coordinator implementation (2026-11-24)
+
+A driver-neutral coordinator now exists in `deploy-control/transaction.mjs`. It:
+
+- authorizes the verified principal against tenant, application and environment scope before opening a transaction;
+- derives a canonical SHA-256 request hash and scopes idempotency to tenant, deployment and key;
+- distinguishes exact replay from conflicting key reuse;
+- requires the deployment row to be locked and its stored tenant/application/environment binding to match the authorized resource;
+- routes approval transitions through the separate `deploy:approve` scope;
+- sends deployment update, immutable audit append and idempotency-result completion through the same transaction handle;
+- rejects secret-bearing request fields before persistence.
+
+Focused contract tests cover same-handle transaction use, replay, conflicting replay, cross-tenant rejection, stored-scope mismatch, approval scope, missing deployment rollback and audit-failure rollback. The DEPLOY CI workflow now runs these tests.
+
+**This is not yet a PostgreSQL adapter or production API.** The transaction runner and its five storage operations are injected interfaces. The current tests use a rollback-capable deterministic adapter; they do not prove PostgreSQL locking, concurrent claim serialization, actual database rollback, RLS, or durable audit immutability. Those guarantees still require an owner-approved Runtime Fabric schema and real PostgreSQL integration tests.
+
+No migration, DDL, production database write, identity-provider binding, HOST execution, runtime registration, deployment, DNS change or production activation was performed. The existing database ownership/migration-authority gate remains in force.
