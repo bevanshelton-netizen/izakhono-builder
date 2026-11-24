@@ -15,7 +15,8 @@ from typing import Any, Callable
 
 REQUIRED_COLUMNS = {
     "izakhono_runtime_deployments": {
-        "deployment_id", "metadata", "updated_at",
+        "deployment_id", "workload", "state", "metadata", "tenant_id",
+        "application_id", "environment_id", "updated_at",
     },
     "fortress_audit_events": {
         "event_id", "job_id", "tenant_id", "operation_id", "event_type",
@@ -71,6 +72,34 @@ def inspect_runtime_database(
                     column_types[(table_name, column_name)] = data_type
                     table_schemas[table_name] = schema_name
 
+            role_info = None
+            if runtime_reg and fortress_reg:
+                cur.execute(
+                    """
+                    SELECT pg_get_userbyid(runtime.relowner),
+                           pg_get_userbyid(audit.relowner),
+                           has_table_privilege(current_user, runtime.oid, 'SELECT'),
+                           has_table_privilege(current_user, runtime.oid, 'INSERT'),
+                           has_table_privilege(current_user, runtime.oid, 'UPDATE'),
+                           has_table_privilege(current_user, audit.oid, 'SELECT'),
+                           has_table_privilege(current_user, audit.oid, 'INSERT'),
+                           has_table_privilege(current_user, audit.oid, 'UPDATE'),
+                           has_table_privilege(current_user, audit.oid, 'DELETE'),
+                           has_table_privilege(current_user, audit.oid, 'TRUNCATE'),
+                           EXISTS (
+                               SELECT 1 FROM pg_trigger t
+                                WHERE t.tgrelid = audit.oid
+                                  AND t.tgname = 'fortress_audit_events_no_mutation'
+                                  AND t.tgenabled IN ('O', 'A')
+                                  AND NOT t.tgisinternal
+                           )
+                      FROM pg_class runtime
+                      CROSS JOIN pg_class audit
+                     WHERE runtime.oid = to_regclass('izakhono_runtime_deployments')
+                       AND audit.oid = to_regclass('fortress_audit_events')
+                    """
+                )
+                role_info = cur.fetchone()
             cur.execute("ROLLBACK")
 
         required_columns_present = all(
@@ -114,6 +143,10 @@ def inspect_runtime_database(
                 "server_version": server_version,
                 "fingerprint": fingerprint,
             },
+            "table_owners": {
+                "runtime_deployments": runtime_owner,
+                "fortress_audit_events": fortress_owner,
+            },
             "tables": {
                 "runtime_deployments": {
                     "resolved_name": runtime_reg,
@@ -132,7 +165,8 @@ def inspect_runtime_database(
             "limitations": [
                 "A successful connection does not prove who owns or controls the database.",
                 "Environment and owner values are declarations, not independently verified authority.",
-                "This preflight does not verify production DSN provenance, grants/RLS, migration authority, backups, or audit UPDATE/DELETE protections.",
+                "This preflight does not verify production DSN provenance, legal database ownership, migration authority, backups, or every row-level security policy.",
+                "The runtime role must still be explicitly attested by the database owner; technical privilege checks do not confer production authority.",
                 "No write, DDL, migration, grant, policy, or production action is performed.",
             ],
         }
