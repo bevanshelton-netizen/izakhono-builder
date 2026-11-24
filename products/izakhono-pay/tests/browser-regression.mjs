@@ -101,6 +101,11 @@ try {
     Object.defineProperty(navigator, 'share', { configurable: true, value: async () => { window.__shareCalled = true; } });
   });
   const device = await deviceContext.newPage();
+  const browserDiagnostics = [];
+  device.on('pageerror', error => browserDiagnostics.push('pageerror: ' + error.message));
+  device.on('console', message => { if (message.type() === 'error') browserDiagnostics.push('console: ' + message.text()); });
+  device.on('requestfailed', request => browserDiagnostics.push('request failed: ' + request.method() + ' ' + request.url() + ' ' + (request.failure()?.errorText || 'unknown')));
+  device.on('response', response => { if (new URL(response.url()).pathname.startsWith('/v1/')) browserDiagnostics.push('API ' + response.status() + ' ' + new URL(response.url()).pathname); });
   await device.goto(`${origin}/devices`);
   const devicePolicy = await device.locator('html').evaluate(() => document.contentType).then(async () => (await device.request.get(`${origin}/devices`)).headers()['content-security-policy']);
   assert.match(devicePolicy, /script-src 'nonce-[^']+'/);
@@ -108,7 +113,12 @@ try {
   await device.locator('#merchantId').fill('demo');
   await device.locator('#apiKey').fill('browser-test-key');
   await device.locator('#connectForm button[type=submit]').click();
-  await device.locator('#app:not(.hidden)').waitFor();
+  try {
+    await device.locator('#app:not(.hidden)').waitFor({ timeout: 10000 });
+  } catch (error) {
+    const message = await device.locator('#connectMessage').textContent().catch(() => '');
+    throw new Error('Merchant workspace did not open. Connect message: ' + message + '. Browser diagnostics: ' + browserDiagnostics.join(' | '), { cause: error });
+  }
   await device.locator('#linkTitle').fill('Browser regression payment');
   await device.locator('#linkAmount').fill('125');
   await device.locator('#linkForm button[type=submit]').click();
