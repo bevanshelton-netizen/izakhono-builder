@@ -195,7 +195,7 @@ export function createPostgresTransactionRunner(pool) {
                     jsonb_build_object(
                       'idempotency',
                       COALESCE(metadata->'deploy_control'->'idempotency', '{}'::jsonb) ||
-                      jsonb_build_object($5, $6::jsonb)
+                      jsonb_build_object($5::text, $6::jsonb)
                     )
                   ),
                     updated_at = NOW()
