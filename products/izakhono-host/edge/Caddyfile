@@ -14,6 +14,10 @@
   tls {
     on_demand
   }
+  @kora host streamkoraafrica.com
+  handle @kora {
+    reverse_proxy kora-app:3000
+  }
   @contact path /api/contact
   handle @contact {
     reverse_proxy contact-gateway:8090
