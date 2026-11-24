@@ -1,37 +1,37 @@
 # DEPLOY PostgreSQL transaction adapter
 
-## What is implemented
+## Implementation
 
 `postgres-adapter.mjs` adapts a trusted node-postgres Pool to the existing
-`transitionDeploymentAtomically()` contract. One checked-out client is used
-for BEGIN, scoped deployment row locking, idempotency claim/replay handling,
-deployment update, audit append, idempotency-result completion, and COMMIT.
-Any callback or SQL failure triggers ROLLBACK before the client is released.
+`transitionDeploymentAtomically()` contract. It checks out one client and
+uses that same connection for BEGIN, tenant/application/environment-scoped
+deployment row locking, idempotency lookup/update, deployment metadata update,
+FORTRESS audit append, and COMMIT. Any failure rolls back the entire transaction.
 
-The adapter intentionally does not import or construct a Pool, read a DSN,
-create tables, run migrations, change grants/RLS, or select a production
-database. The caller must supply a Pool and an explicit schema name.
+The adapter deliberately reuses the existing Runtime Fabric
+`izakhono_runtime_deployments` table and the existing
+`fortress_audit_events` table. It does not create tables, read a DSN, initialize
+a store, run migrations, change grants/RLS, or select a production database.
+The Runtime Fabric deployment row lock serializes operations for one
+deployment; idempotency records are stored under a SHA-256 digest of the
+idempotency key inside the deployment's `metadata.deploy_control` JSON object.
+Only the digest, request hash and replayable response are persisted.
 
-## SQL contract exercised by integration tests
+## Disposable PostgreSQL integration tests
 
-The disposable integration fixture defines three tables in a unique temporary
-schema:
+`postgres.integration.test.mjs` creates the two existing table shapes in a
+dedicated local disposable database named `deploy_control_test`. It tests:
 
-- `deployment_records`: deployment JSON plus tenant/application/environment
-  ownership columns and a scoped unique key.
-- `idempotency_claims`: unique (tenant, deployment, idempotency key), canonical
-  request hash, claim ID and replayable response.
-- `audit_events`: immutable-by-application event rows with actor and complete
-  resource scope.
+- Deployment state, idempotency response and FORTRESS audit commit together.
+- Exact replay returns the original result without a duplicate audit event.
+- Reuse of a key with a different canonical request hash is rejected.
+- An injected FORTRESS audit failure rolls back deployment and idempotency
+  metadata.
+- Concurrent identical requests serialize to one transition and one replay.
+- Concurrent conflicting requests cannot both mutate the deployment.
+- Tenant/application/environment scope is enforced by the row lookup.
 
-The unique idempotency constraint serializes concurrent claims. A second
-transaction waits for the first insert to commit, then locks and compares the
-stored request hash. Identical requests replay the stored response; a different
-hash is rejected. No committed incomplete claim is accepted as a replay.
-
-## Run locally
-
-Use only a disposable local PostgreSQL database named `deploy_control_test`:
+Run against a disposable local PostgreSQL instance only:
 
 ```sh
 npm install --no-save --ignore-scripts --no-audit --no-fund pg@8.16.3
@@ -39,21 +39,26 @@ DEPLOY_TEST_DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/deploy_co
   node --test deploy-control/postgres.integration.test.mjs
 ```
 
-Without `DEPLOY_TEST_DATABASE_URL`, the integration tests are explicitly
-skipped. When supplied, the test refuses non-local hosts or a database name
-other than `deploy_control_test`, creates a unique schema, and drops only that
-schema on completion.
+The test refuses non-local hosts and any database name other than
+`deploy_control_test`. It truncates only the two test tables and never reads a
+production environment variable. Without `DEPLOY_TEST_DATABASE_URL`, tests
+are explicitly skipped.
 
-## Security and release boundary
+## Release boundary
 
-This is a concrete adapter and disposable-schema integration contract, not an
-approved production persistence rollout. The fixture is not a production
-migration. It does not prove RLS policies, grants, audit immutability against
-privileged database roles, identity-provider integration, or the mapping to
-WebStart/Runtime Fabric's live database.
+This is a concrete adapter implementation against the inspected existing
+Runtime Fabric/FORTRESS table contracts, not approval to wire production writes.
+The adapter assumes the two tables resolve to the same PostgreSQL database.
+That identity and shared transaction boundary are not yet verified. It also
+uses tenant/application/environment identifiers in deployment metadata because
+the existing Runtime Fabric table has no first-class columns for them; database
+constraints and RLS isolation are not thereby proven.
 
 Before production wiring, the accountable database owner must approve the
-authoritative database, environment binding, schema mapping, migration runner,
-rollback, privilege/RLS model and whether the authoritative transaction is
-WebStart or Runtime Fabric. If they are separate databases, use an outbox in
-the owner-selected authoritative database; do not dual-write and claim atomicity.
+authoritative database, environment binding, metadata/schema mapping, migration
+runner, rollback, privilege/RLS model and whether this is the authoritative
+DEPLOY transaction boundary. If WebStart and Runtime Fabric are separate
+databases, choose one authoritative owner and use a transactional outbox in
+that database; do not dual-write and claim atomicity. The FORTRESS audit append
+must remain inside the caller's transaction; do not call the existing
+`FortressAuditStore.append()` method because it commits its connection.
