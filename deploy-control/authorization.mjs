@@ -6,6 +6,21 @@
  * callback must validate JTI, subject, tenant, expiry and revocation at FORTRESS.
  */
 const trustedPrincipals = new WeakSet();
+const verifiedAccessTokens = new WeakSet();
+
+/**
+ * Mark claims returned by a trusted identity service that has already verified
+ * both the JWT and its live parent session. A token payload cannot forge this
+ * process-local WeakSet marker.
+ */
+export function createVerifiedAccessToken(claims, { sessionActive = false } = {}) {
+  if (!claims || typeof claims !== "object" || Array.isArray(claims)) {
+    throw new TypeError("Verified access-token claims must be an object.");
+  }
+  const result = Object.freeze({ claims, sessionActive: sessionActive === true });
+  verifiedAccessTokens.add(result);
+  return result;
+}
 
 export class DeploymentAuthorizationError extends Error {
   constructor(code, message) {
@@ -22,8 +37,9 @@ const DEFAULT_MAX_TOKEN_LIFETIME_SECONDS = 600;
 
 /**
  * Authenticate a DEPLOY bearer token through owner-approved adapters.
- * verifyActiveSession must perform a live, fail-closed JTI lookup; it is not
- * interchangeable with JWT signature verification or a cached role check.
+ * A trusted identity-service verifier may return createVerifiedAccessToken()
+ * after checking signature and live session together. Otherwise verifyActiveSession
+ * must perform a separate live, fail-closed JTI lookup.
  */
 export async function authenticateDeploymentRequest({
   authorization,
@@ -34,7 +50,7 @@ export async function authenticateDeploymentRequest({
   now = Date.now(),
   maxTokenLifetimeSeconds = DEFAULT_MAX_TOKEN_LIFETIME_SECONDS
 } = {}) {
-  if (typeof verifyAccessToken !== "function" || typeof verifyActiveSession !== "function" ||
+  if (typeof verifyAccessToken !== "function" ||
       !nonEmpty(issuer) || !nonEmpty(audience) ||
       !Number.isInteger(maxTokenLifetimeSeconds) || maxTokenLifetimeSeconds < 1 ||
       maxTokenLifetimeSeconds > DEFAULT_MAX_TOKEN_LIFETIME_SECONDS) {
@@ -45,12 +61,14 @@ export async function authenticateDeploymentRequest({
   }
 
   const token = authorization.replace(/^Bearer\s+/i, "");
-  let claims;
+  let verification;
   try {
-    claims = await verifyAccessToken(token, { issuer, audience });
+    verification = await verifyAccessToken(token, { issuer, audience });
   } catch {
     throw new DeploymentAuthorizationError("TOKEN_INVALID", "The access token could not be verified.");
   }
+  const combinedVerification = Boolean(verification && verifiedAccessTokens.has(verification));
+  const claims = combinedVerification ? verification.claims : verification;
 
   const nowSeconds = Math.floor(now / 1000);
   const audiences = typeof claims?.aud === "string" ? [claims.aud] : claims?.aud;
@@ -65,24 +83,33 @@ export async function authenticateDeploymentRequest({
     throw new DeploymentAuthorizationError("TOKEN_CLAIMS_INVALID", "Verified token claims do not grant a valid DEPLOY principal.");
   }
 
-  let session;
-  try {
-    session = await verifyActiveSession({
-      jti: claims.jti,
-      subject: claims.sub,
-      tenantId: claims.tenant_id,
-      expiresAt: claims.exp,
-      issuer,
-      audience
-    });
-  } catch {
-    throw new DeploymentAuthorizationError("SESSION_VERIFICATION_UNAVAILABLE", "The live identity session could not be verified.");
-  }
-  if (!session || session.active !== true || session.jti !== claims.jti ||
-      session.subject !== claims.sub || session.tenantId !== claims.tenant_id ||
-      !Number.isInteger(session.expiresAt) || session.expiresAt <= nowSeconds ||
-      session.expiresAt < claims.exp) {
-    throw new DeploymentAuthorizationError("SESSION_INVALID", "The token session is inactive, revoked, expired or does not match its principal.");
+  if (combinedVerification) {
+    if (verification.sessionActive !== true) {
+      throw new DeploymentAuthorizationError("SESSION_INVALID", "The identity service reports that the token session is inactive or revoked.");
+    }
+  } else {
+    if (typeof verifyActiveSession !== "function") {
+      throw new DeploymentAuthorizationError("AUTH_CONFIG_INVALID", "A separate live-session verifier is required for this token verifier.");
+    }
+    let session;
+    try {
+      session = await verifyActiveSession({
+        jti: claims.jti,
+        subject: claims.sub,
+        tenantId: claims.tenant_id,
+        expiresAt: claims.exp,
+        issuer,
+        audience
+      });
+    } catch {
+      throw new DeploymentAuthorizationError("SESSION_VERIFICATION_UNAVAILABLE", "The live identity session could not be verified.");
+    }
+    if (!session || session.active !== true || session.jti !== claims.jti ||
+        session.subject !== claims.sub || session.tenantId !== claims.tenant_id ||
+        !Number.isInteger(session.expiresAt) || session.expiresAt <= nowSeconds ||
+        session.expiresAt < claims.exp) {
+      throw new DeploymentAuthorizationError("SESSION_INVALID", "The token session is inactive, revoked, expired or does not match its principal.");
+    }
   }
 
   const principal = Object.freeze({
