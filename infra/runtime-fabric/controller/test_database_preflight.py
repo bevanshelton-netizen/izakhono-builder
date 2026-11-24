@@ -42,10 +42,13 @@ def test_preflight_checks_both_stores_read_only_and_never_authorizes_production(
     assert after == before
 
 
-def test_preflight_does_not_treat_missing_owner_declarations_as_verified():
+@pytest.mark.skipif(not DATABASE_URL, reason="requires disposable DEPLOY_TEST_DATABASE_URL")
+def test_preflight_keeps_missing_owner_declarations_blocked():
+    import psycopg
+
     from database_preflight import inspect_runtime_database
 
-    # The database is not opened when no connection factory is supplied; this
-    # test exercises the status contract through the required callable guard.
-    with pytest.raises(TypeError):
-        inspect_runtime_database(None, {})
+    report = inspect_runtime_database(lambda: psycopg.connect(DATABASE_URL), {})
+    assert report["status"] == "TECHNICAL_CHECKS_PASSED_OWNER_ATTESTATION_REQUIRED"
+    assert report["owner_attestation"] == "MISSING"
+    assert report["production_authorized"] is False
