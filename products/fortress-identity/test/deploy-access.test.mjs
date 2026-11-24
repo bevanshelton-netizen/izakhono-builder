@@ -72,7 +72,7 @@ class FakeD1 {
       if (!row || row.tenant_id !== tenantId) return null;
       return { jti: row.jti, principal_id: row.principal_id, tenant_id: row.tenant_id, revoked_at: row.revoked_at };
     }
-    if (sql.includes("FROM refresh_sessions s JOIN principals p")) {
+    if (sql.includes("FROM refresh_sessions s") && sql.includes("JOIN principals p")) {
       const [jti, principalId, now] = values;
       const session = this.refreshSessions.get(jti);
       const principal = this.principals.get(principalId);
