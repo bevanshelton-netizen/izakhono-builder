@@ -93,7 +93,7 @@ export function createPostgresTransactionRunner(pool) {
           };
           locked = { deploymentId, resource, metadata, deployControl };
           return {
-            record: objectValue(deployControl.record),
+            record: deployControl.record ? objectValue(deployControl.record) : null,
             resource
           };
         },
