@@ -80,7 +80,7 @@ The API delegates token verification to the FORTRESS internal introspection endp
 - `DEPLOY_CONTROL_APPROVAL_DATABASE_FINGERPRINT` — SHA-256 fingerprint from the read-only Runtime Fabric preflight and included in the detached NODE01 owner approval.
 - `DEPLOY_CONTROL_APPROVAL_FORTRESS_ENDPOINT` — exact introspection endpoint included in the same signed approval.
 
-Startup is fail-closed. It requires the Runtime Fabric deployment and FORTRESS audit tables, a non-owner runtime database role, deployment SELECT/INSERT/UPDATE, audit SELECT/INSERT only, an enabled append-only audit trigger, a matching signed database fingerprint, an exact FORTRESS endpoint match, and a reachable introspection endpoint with the separate internal secret. No schema is created or changed at startup.
+Startup is fail-closed. It requires the Runtime Fabric deployment, FORTRESS audit and migration-ledger tables; a non-owner runtime database role; deployment SELECT/INSERT/UPDATE; audit SELECT/INSERT only; migration-ledger SELECT; an enabled append-only audit trigger; an applied migration checksum matching the signed NODE01 approval; a matching signed database fingerprint; an exact FORTRESS endpoint match; and a reachable introspection endpoint with the separate internal secret. No schema is created or changed at startup.
 
 ### Database schema
 
@@ -90,7 +90,9 @@ The migration creates:
 - `izakhono_runtime_deployments`, with tenant/application/environment scope generated from JSONB metadata.
 - `fortress_audit_events`, tenant-bound to its deployment and protected by UPDATE/DELETE/TRUNCATE triggers plus revoked PUBLIC mutation privileges.
 
-The migration must be reviewed and applied by the owner-approved migration runner. The service runtime role must not own either table. Grant it SELECT/INSERT/UPDATE on deployment rows and SELECT/INSERT only on the audit ledger. The read-only preflight checks these grants and the append-only trigger. No remote migration has been run by this change.
+The migration must be reviewed and applied by the owner-approved migration runner. `migrate.mjs` is the new explicit runner: `node deploy-control/migrate.mjs --check` verifies the detached Ed25519 approval, exact migration checksum, database fingerprint and migration ledger without writes; `--apply` is the only mode that applies the SQL. It uses an advisory transaction lock and records the migration checksum, runner ID, approval ID, change reference and rollback reference in `izakhono_runtime_schema_migrations`. Reapplication with the same checksum is idempotent; a changed checksum is rejected.
+
+The runner requires `IZAKHONO_RUNTIME_DATABASE_URL`, `IZAKHONO_RUNTIME_DATABASE_ID`, `IZAKHONO_RUNTIME_DATABASE_ENVIRONMENT`, `IZAKHONO_RUNTIME_DATABASE_OWNER`, `IZAKHONO_MIGRATION_RUNNER_ID`, `IZAKHONO_MIGRATION_APPROVAL_FILE`, `IZAKHONO_MIGRATION_APPROVAL_SIGNATURE_FILE` and `IZAKHONO_MIGRATION_OWNER_PUBLIC_KEY_FILE`. The signed approval binds the migration ID/SHA-256, database fingerprint/ID/environment/owner, migration runner, approver, approval/expiry timestamps, change reference and rollback reference. The service runtime role must not own the deployment, audit or migration-ledger tables. Grant it SELECT/INSERT/UPDATE on deployment rows, SELECT/INSERT only on the audit ledger, and SELECT on the migration ledger. The read-only preflight checks these grants, the append-only trigger and the applied migration checksum. No remote migration has been run by this change.
 
 ### NODE01 activation gate
 
