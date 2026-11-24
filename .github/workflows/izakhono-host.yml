@@ -69,10 +69,8 @@ jobs:
         run: |
           cp .env.example .env
           sed -i 's#ops@example.com#ci@example.com#' .env
-          cat >> .env <<'ENV'
-          KORA_SUPABASE_URL=https://ci-project.supabase.co
-          KORA_SUPABASE_PUBLISHABLE_KEY=ci-public-publishable-key
-          ENV
+          sed -i 's#^KORA_SUPABASE_URL=.*#KORA_SUPABASE_URL=https://ci-project.supabase.co#' .env
+          sed -i 's#^KORA_SUPABASE_PUBLISHABLE_KEY=.*#KORA_SUPABASE_PUBLISHABLE_KEY=ci-public-publishable-key#' .env
           cp kora.env.example kora.env
           mkdir -p kora-source
           docker compose --env-file .env -f docker-compose.owned.yml -f docker-compose.kora.yml --profile kora config --quiet
