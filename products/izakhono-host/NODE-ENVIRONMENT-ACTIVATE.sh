@@ -85,6 +85,7 @@ import datetime as dt
 import json
 import re
 import sys
+from urllib.parse import urlparse
 
 path, current_host, current_revision = sys.argv[1:4]
 try:
@@ -151,16 +152,42 @@ require(expires_at > approved_at, "approval expiry must follow approval time")
 require(expires_at <= approved_at + dt.timedelta(hours=24), "approval validity must not exceed 24 hours")
 
 activate_deploy_control = "activate-deploy-control-api" in actions
+database_fingerprint = ""
+fortress_endpoint = ""
+if activate_deploy_control:
+    database_fingerprint = nonempty("runtime_database_fingerprint")
+    require(re.fullmatch(r"[0-9a-f]{64}", database_fingerprint) is not None,
+            "DEPLOY approval must bind a SHA-256 Runtime Fabric database fingerprint")
+    nonempty("runtime_database_id")
+    require(nonempty("runtime_database_environment") == "production",
+            "DEPLOY API activation requires production database attestation")
+    nonempty("runtime_database_owner")
+    nonempty("runtime_migration_runner")
+    fortress_endpoint = nonempty("fortress_introspection_endpoint")
+    parsed_endpoint = urlparse(fortress_endpoint)
+    require(parsed_endpoint.scheme == "https" and
+            parsed_endpoint.path.endswith("/api/fortress/deploy-token/introspect") and
+            not parsed_endpoint.username and not parsed_endpoint.password,
+            "DEPLOY approval must bind the HTTPS FORTRESS introspection endpoint")
 
 print(runner_service)
 print("1" if activate_deploy_control else "0")
+print(database_fingerprint)
+print(fortress_endpoint)
 PY
 )" || fail "signed owner approval is invalid or does not match this host/revision"
 
-RUNNER_SERVICE="$(printf '%s\n' "$APPROVAL_INFO" | head -n 1)"
-DEPLOY_CONTROL_APPROVED="$(printf '%s\n' "$APPROVAL_INFO" | tail -n 1)"
+mapfile -t APPROVAL_LINES <<< "$APPROVAL_INFO"
+RUNNER_SERVICE="${APPROVAL_LINES[0]:-}"
+DEPLOY_CONTROL_APPROVED="${APPROVAL_LINES[1]:-0}"
+DEPLOY_CONTROL_DATABASE_FINGERPRINT="${APPROVAL_LINES[2]:-}"
+DEPLOY_CONTROL_FORTRESS_ENDPOINT="${APPROVAL_LINES[3]:-}"
 [[ -n "$RUNNER_SERVICE" && ( "$DEPLOY_CONTROL_APPROVED" == "0" || "$DEPLOY_CONTROL_APPROVED" == "1" ) ]] ||
   fail "owner approval action data is invalid"
+if [[ "$DEPLOY_CONTROL_APPROVED" == "1" ]]; then
+  [[ "$DEPLOY_CONTROL_DATABASE_FINGERPRINT" =~ ^[0-9a-f]{64}$ && "$DEPLOY_CONTROL_FORTRESS_ENDPOINT" == https://* ]] ||
+    fail "signed DEPLOY database/identity binding is invalid"
+fi
 
 if [[ "$MODE" == "--verify-approval" ]]; then
   if [[ "$DEPLOY_CONTROL_APPROVED" == "1" ]]; then
@@ -187,4 +214,7 @@ IFS= read -r confirmation
 [[ "$confirmation" == "ACTIVATE NODE01 ON $CURRENT_HOST" ]] || fail "operator confirmation did not match"
 
 printf '%s\n' "Executing the separately reviewed NODE01 activation sequence."
-IZAKHONO_ACTIVATE_DEPLOY_CONTROL="$DEPLOY_CONTROL_APPROVED" exec bash "$ROOT/NODE01-ACTIVATE.sh"
+IZAKHONO_ACTIVATE_DEPLOY_CONTROL="$DEPLOY_CONTROL_APPROVED" \
+IZAKHONO_DEPLOY_CONTROL_APPROVAL_DATABASE_FINGERPRINT="$DEPLOY_CONTROL_DATABASE_FINGERPRINT" \
+IZAKHONO_DEPLOY_CONTROL_APPROVAL_FORTRESS_ENDPOINT="$DEPLOY_CONTROL_FORTRESS_ENDPOINT" \
+exec bash "$ROOT/NODE01-ACTIVATE.sh"
