@@ -1,0 +1,40 @@
+services:
+  kora-app:
+    profiles: ["kora"]
+    build:
+      context: ./kora-source
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_APP_NAME: ${KORA_PUBLIC_APP_NAME:-KORA}
+        NEXT_PUBLIC_APP_URL: ${KORA_PUBLIC_APP_URL:-https://streamkoraafrica.com}
+        NEXT_PUBLIC_SUPABASE_URL: ${KORA_SUPABASE_URL:?set KORA_SUPABASE_URL in .env}
+        NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${KORA_SUPABASE_PUBLISHABLE_KEY:?set KORA_SUPABASE_PUBLISHABLE_KEY in .env}
+        NEXT_PUBLIC_KORA_DB_SCHEMA: ${KORA_DB_SCHEMA:-kora}
+        VIDEO_PROVIDER: ${KORA_VIDEO_PROVIDER:-cloudflare}
+    image: izakhono/kora-network:owned-7e513860
+    restart: unless-stopped
+    init: true
+    security_opt:
+      - no-new-privileges:true
+    env_file:
+      - ./kora.env
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      HOSTNAME: 0.0.0.0
+      KORA_PRIMARY_RUNTIME: owned
+      KORA_FALLBACK_RUNTIME: other
+      KORA_EXPECTED_SERVICE: kora-tv
+    expose:
+      - "3000"
+    networks: [izakhono]
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:3000/api/health').then(async r=>{const p=await r.json();process.exit(r.ok&&p.ok===true&&p.service==='kora-tv'?0:1)}).catch(()=>process.exit(1))"
+      interval: 20s
+      timeout: 8s
+      retries: 6
+      start_period: 90s
