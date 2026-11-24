@@ -1,0 +1,30 @@
+name: FORTRESS Identity CI
+
+on:
+  push:
+    branches:
+      - main
+      - feat/fortress-deploy-access-token-v1
+    paths:
+      - "products/fortress-identity/**"
+      - ".github/workflows/fortress-identity-ci.yml"
+  pull_request:
+    paths:
+      - "products/fortress-identity/**"
+      - ".github/workflows/fortress-identity-ci.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  fortress-deploy-capability:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Test FORTRESS DEPLOY capability issuance, introspection and revocation
+        run: npx --yes tsx@4.20.3 products/fortress-identity/test/deploy-access.test.mjs
+      - name: Validate FORTRESS D1 migrations and parent-session binding
+        run: python3 -m unittest discover -s products/fortress-identity/test -p 'migration.test.py' -v
