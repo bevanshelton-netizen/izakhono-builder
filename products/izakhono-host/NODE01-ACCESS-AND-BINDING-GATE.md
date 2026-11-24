@@ -10,10 +10,11 @@ This document records the repository-side gate for activating the IZAKHONO-owned
 
 - `NODE01-ACTIVATE.sh` exists and invokes `NODE-PREFLIGHT.sh`, then `bootstrap-owned.sh`, then `NODE-COMPLIANCE.sh`, and finally checks the local health endpoint.
 - `bootstrap-owned.sh` can create a local `.env` containing generated secrets, validate and build the Compose runtime, start services, and wait for health.
-- `NODE01-PHYSICAL-ACTIVATION-GATE.md` refers to `NODE-ENVIRONMENT-ACTIVATE.sh`, but that file is not present in the inspected repository tree.
+- `NODE-ENVIRONMENT-ACTIVATE.sh` now exists with read-only preflight, signed-approval verification and owner-gated activation modes. It verifies a detached signature, NODE01/software identity, separate environment locator, local hostname, exact source revision, runner attestation, approval expiry, change reference and rollback/backup references. Activation additionally requires root, an active systemd runner service, a read-only preflight and typed operator confirmation.
+- The procedure does not create the owner key, sign an approval, register the runner or discover the physical host. Those remain owner-controlled handoff steps. No production host operation has been run.
 - No root-level runtime-binding manifest or dedicated runner-registration script was found in the inspected `products/izakhono-host` tree.
 
-These discrepancies must be resolved explicitly. Do not assume a missing script or manifest exists, and do not substitute a guessed command.
+The missing activation wrapper has been built, but the signed owner approval and actual host/runner binding remain external prerequisites.
 
 ## Required access handoff
 
