@@ -90,7 +90,12 @@ before(async () => {
   withTransaction = createPostgresTransactionRunner(pool, { schema });
 });
 
-beforeEach(async () => {\n  if (!enabled) return;\n  await pool.query(`TRUNCATE ${qualified("audit_events")}, ${qualified("idempotency_claims")}, ${qualified("deployment_records")}`);\n});\n\nafter(async () => {
+beforeEach(async () => {
+  if (!enabled) return;
+  await pool.query(`TRUNCATE ${qualified("audit_events")}, ${qualified("idempotency_claims")}, ${qualified("deployment_records")}`);
+});
+
+after(async () => {
   if (pool) {
     await pool.query(`DROP SCHEMA IF EXISTS "${schema}" CASCADE`);
     await pool.end();
