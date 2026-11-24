@@ -66,3 +66,8 @@ databases, choose one authoritative owner and use a transactional outbox in
 that database; do not dual-write and claim atomicity. The FORTRESS audit append
 must remain inside the caller's transaction; do not call the existing
 `FortressAuditStore.append()` method because it commits its connection.
+
+
+## Database binding preflight
+
+`infra/runtime-fabric/controller/database_preflight.py` is the read-only operator-side companion. With `IZAKHONO_RUNTIME_DATABASE_URL` supplied through the host secret manager, it checks both existing tables and their required columns over one `BEGIN READ ONLY` connection. It never prints the DSN and always reports `production_authorized: false`. A technical pass still requires separate owner attestation and does not prove migration authority, RLS/grants or audit immutability.
