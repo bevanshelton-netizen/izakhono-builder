@@ -5,11 +5,13 @@ on:
     branches: [main, 'feat/node-independence-v1']
     paths:
       - 'infra/node-independence/**'
+      - 'infra/authoritative-dns/**'
       - 'docs/NODE-INDEPENDENCE-V1.md'
       - '.github/workflows/node-independence-validation.yml'
   pull_request:
     paths:
       - 'infra/node-independence/**'
+      - 'infra/authoritative-dns/**'
       - 'docs/NODE-INDEPENDENCE-V1.md'
       - '.github/workflows/node-independence-validation.yml'
 
@@ -45,6 +47,15 @@ jobs:
           PY
       - name: Compile guardian
         run: python -m py_compile infra/node-independence/guardian.py
+      - name: Validate authoritative DNS manifest
+        run: python infra/authoritative-dns/validate-config.py
+      - name: Check authoritative DNS shell syntax
+        run: |
+          set -eu
+          sh -n infra/authoritative-dns/entrypoint.sh
+          sh -n infra/authoritative-dns/provision-zone.sh
+          sh -n infra/authoritative-dns/verify-authority.sh
+          sh -n infra/authoritative-dns/verify-public-cutover-v2.sh
       - name: Static safety check
         run: |
-          ! grep -RniE '(BEGIN (RSA|OPENSSH|EC|DSA) PRIVATE KEY|AKIA[0-9A-Z]{16}|ghp_[A-Za-z0-9]{20,}|sk-[A-Za-z0-9_-]{20,})' infra/node-independence docs/NODE-INDEPENDENCE-V1.md
+          ! grep -RniE '(BEGIN (RSA|OPENSSH|EC|DSA) PRIVATE KEY|AKIA[0-9A-Z]{16}|ghp_[A-Za-z0-9]{20,}|sk-[A-Za-z0-9_-]{20,})' infra/node-independence infra/authoritative-dns docs/NODE-INDEPENDENCE-V1.md
