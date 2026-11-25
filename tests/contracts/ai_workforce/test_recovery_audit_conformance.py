@@ -47,6 +47,15 @@ class RecoveryAuditLedger:
             raise ContractError("AUDIT_PREVIOUS_HASH_MISMATCH")
         if self._records and candidate["occurred_at"] <= self._records[-1]["occurred_at"]:
             raise ContractError("AUDIT_TIME_NOT_MONOTONIC")
+        if any(record["event_id"] == candidate["event_id"] for record in self._records):
+            raise ContractError("AUDIT_EVENT_ID_DUPLICATE")
+        for record in self._records:
+            prior = record
+            if prior["case_id"] == candidate["case_id"]:
+                if any(prior[key] != candidate[key] for key in (
+                    "tenant_id", "operation_id", "request_fingerprint"
+                )):
+                    raise ContractError("AUDIT_CASE_BINDING_CHANGED")
         checkpoint_copy = copy.deepcopy(dict(checkpoint))
         if checkpoint_copy.get("sequence") != expected_sequence:
             raise ContractError("CHECKPOINT_SEQUENCE_MISMATCH")
@@ -81,8 +90,12 @@ class RecoveryAuditLedger:
     @staticmethod
     def _validate_event(event: Mapping[str, Any]) -> None:
         required = (
-            "event_id", "case_id", "operation_id", "tenant_id",
-            "request_fingerprint", "event_type", "occurred_at", "sequence",
+            "event_id", "schema_version", "event_type", "occurred_at",
+            "tenant_id", "organization_id", "agent_id", "workload_id", "actor",
+            "source_component", "correlation_id", "causation_id", "idempotency_key",
+            "policy_decision_ref", "approval_ref", "classification",
+            "redaction_profile", "payload_digest", "evidence_ref",
+            "case_id", "operation_id", "request_fingerprint", "sequence",
             "previous_event_hash", "initiator", "operator_id", "approver_id",
             "reason", "requested_action", "approval_decision_id",
             "policy_version", "evidence", "reconciliation_query_ids",
@@ -92,8 +105,12 @@ class RecoveryAuditLedger:
         if any(key not in event or event[key] is None for key in required):
             raise ContractError("AUDIT_FIELD_MISSING")
         if not all(isinstance(event[key], str) and event[key].strip() for key in (
-            "event_id", "case_id", "operation_id", "tenant_id",
-            "request_fingerprint", "event_type", "previous_event_hash",
+            "event_id", "schema_version", "event_type", "tenant_id",
+            "organization_id", "agent_id", "workload_id", "source_component",
+            "correlation_id", "causation_id", "idempotency_key",
+            "policy_decision_ref", "approval_ref", "classification",
+            "redaction_profile", "payload_digest", "evidence_ref",
+            "case_id", "operation_id", "request_fingerprint", "previous_event_hash",
             "operator_id", "approver_id", "reason", "requested_action",
             "approval_decision_id", "policy_version", "execution_attempt_id",
             "disposition", "outcome_certainty",
@@ -109,6 +126,19 @@ class RecoveryAuditLedger:
             for key in ("principal_id", "session_id", "actor_type")
         ):
             raise ContractError("AUDIT_INITIATOR_UNAUTHENTICATED")
+        if event["schema_version"] != "1.0" or event["source_component"] != "recovery-coordinator":
+            raise ContractError("AUDIT_ENVELOPE_VERSION_OR_SOURCE_INVALID")
+        if event["classification"] not in ("internal", "confidential", "restricted"):
+            raise ContractError("AUDIT_CLASSIFICATION_INVALID")
+        if not event["payload_digest"].startswith("sha256:"):
+            raise ContractError("AUDIT_PAYLOAD_DIGEST_INVALID")
+        actor = event["actor"]
+        if not isinstance(actor, Mapping) or actor.get("type") != "principal" or actor.get("id") != event["initiator"]["principal_id"]:
+            raise ContractError("AUDIT_ACTOR_INITIATOR_MISMATCH")
+        if event["policy_decision_ref"] != event["approval_decision_id"] or not event["approval_ref"]:
+            raise ContractError("AUDIT_FORTRESS_DECISION_REFERENCE_INVALID")
+        if event["evidence_ref"] not in {item.get("evidence_id") for item in event["evidence"] if isinstance(item, Mapping)}:
+            raise ContractError("AUDIT_ENVELOPE_EVIDENCE_REFERENCE_INVALID")
         if event["operator_id"] == event["approver_id"]:
             raise ContractError("AUDIT_OPERATOR_SELF_APPROVAL")
         evidence = event["evidence"]
@@ -151,9 +181,19 @@ class RecoveryAuditLedger:
 
 def sample_event() -> dict[str, Any]:
     return {
-        "event_id": "audit-1", "case_id": "case-1", "operation_id": "op-1",
-        "tenant_id": "tenant-a", "request_fingerprint": "sha256:request",
-        "event_type": "RECOVERY_RESOLVED", "occurred_at": 200, "sequence": 1,
+        "event_id": "audit-1", "schema_version": "1.0",
+        "event_type": "recovery.case.resolved", "occurred_at": 200,
+        "tenant_id": "tenant-a", "organization_id": "org-a",
+        "agent_id": "agent-a", "workload_id": "workload-a",
+        "actor": {"type": "principal", "id": "human-1"},
+        "source_component": "recovery-coordinator",
+        "correlation_id": "correlation-1", "causation_id": "cause-1",
+        "idempotency_key": "recovery-idem-1",
+        "policy_decision_ref": "decision-9", "approval_ref": "approval-9",
+        "classification": "internal", "redaction_profile": "workforce-event-v1",
+        "payload_digest": "sha256:payload", "evidence_ref": "evidence-1",
+        "case_id": "case-1", "operation_id": "op-1",
+        "request_fingerprint": "sha256:request", "sequence": 1,
         "previous_event_hash": "GENESIS",
         "initiator": {"principal_id": "human-1", "session_id": "session-1", "actor_type": "HUMAN"},
         "operator_id": "operator-1", "approver_id": "approver-2",
@@ -288,6 +328,48 @@ class RecoveryAuditTests(unittest.TestCase):
         event = sample_event()
         event["reconciliation_query_ids"] = []
         with self.assertRaisesRegex(ContractError, "AUDIT_RECONCILIATION_REFERENCE_MISSING"):
+            self.append_event(event)
+
+
+    def test_rejects_actor_not_matching_authenticated_initiator(self):
+        event = sample_event()
+        event["actor"]["id"] = "different-human"
+        with self.assertRaisesRegex(ContractError, "AUDIT_ACTOR_INITIATOR_MISMATCH"):
+            self.append_event(event)
+
+    def test_rejects_missing_fortress_approval_reference(self):
+        event = sample_event()
+        event["approval_ref"] = ""
+        with self.assertRaisesRegex(ContractError, "AUDIT_FIELD_INVALID"):
+            self.append_event(event)
+
+    def test_rejects_fortress_decision_reference_mismatch(self):
+        event = sample_event()
+        event["policy_decision_ref"] = "locally-created-decision"
+        with self.assertRaisesRegex(ContractError, "AUDIT_FORTRESS_DECISION_REFERENCE_INVALID"):
+            self.append_event(event)
+
+    def test_rejects_event_without_canonical_evidence_reference(self):
+        event = sample_event()
+        event["evidence_ref"] = "missing-evidence"
+        with self.assertRaisesRegex(ContractError, "AUDIT_ENVELOPE_EVIDENCE_REFERENCE_INVALID"):
+            self.append_event(event)
+
+    def test_rejects_duplicate_event_id(self):
+        self.append_event()
+        event = sample_event()
+        event.update(event_id="audit-1", sequence=2, occurred_at=210,
+                     previous_event_hash=self.ledger.records[-1]["event_hash"])
+        with self.assertRaisesRegex(ContractError, "AUDIT_EVENT_ID_DUPLICATE"):
+            self.append_event(event)
+
+    def test_rejects_case_fingerprint_change_across_events(self):
+        self.append_event()
+        event = sample_event()
+        event.update(event_id="audit-2", sequence=2, occurred_at=210,
+                     previous_event_hash=self.ledger.records[-1]["event_hash"],
+                     request_fingerprint="sha256:altered")
+        with self.assertRaisesRegex(ContractError, "AUDIT_CASE_BINDING_CHANGED"):
             self.append_event(event)
 
     def test_evidence_content_is_referenced_by_digest_not_embedded(self):
