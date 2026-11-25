@@ -24,6 +24,13 @@ assert.equal(plan.status, 'queued');
 const queued = enqueue({ goal: 'Build a native web application artifact' });
 assert.equal(queued.status, 'queued');
 
+const lockPath = `${process.env.IZAKHONO_AGENT_STATE_PATH}.worker.lock`;
+fs.writeFileSync(lockPath, JSON.stringify({ pid: 999999, startedAt: new Date().toISOString() }));
+const busy = await runAgentWorker();
+assert.equal(busy.status, 'busy');
+assert.equal(busy.progressed, 0);
+fs.unlinkSync(lockPath);
+
 const result = await runAgentWorker();
 assert.equal(result.status, 'progressed');
 assert.ok(result.progressed >= 1);
