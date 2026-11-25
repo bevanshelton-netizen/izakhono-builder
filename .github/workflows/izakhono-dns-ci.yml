@@ -17,7 +17,14 @@ jobs:
       - uses: actions/checkout@v4
       - name: Validate Python controller
         run: python -m py_compile infra/izakhono-dns/controller/app.py
-      - name: Validate BIND zone
+      - name: Validate first-party BIND zone
+        run: |
+          docker run --rm \
+            -v "$PWD/infra/izakhono-dns/bind/primary/zones:/zones:ro" \
+            --entrypoint named-checkzone \
+            internetsystemsconsortium/bind9:9.20 \
+            izakhono.africa /zones/izakhono.africa.zone
+      - name: Validate retained legacy BIND zone
         run: |
           docker run --rm \
             -v "$PWD/infra/izakhono-dns/bind/primary/zones:/zones:ro" \
@@ -25,4 +32,4 @@ jobs:
             internetsystemsconsortium/bind9:9.20 \
             izakhonoafrica.co.za /zones/izakhonoafrica.co.za.zone
       - name: Validate Docker Compose
-        run: docker compose -f infra/izakhono-dns/docker-compose.yml config
+        run: docker compose --env-file infra/izakhono-dns/.env.example -f infra/izakhono-dns/docker-compose.yml config
