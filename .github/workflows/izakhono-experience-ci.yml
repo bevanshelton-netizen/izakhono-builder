@@ -1,0 +1,29 @@
+name: IZAKHONO EXPERIENCE CI
+
+on:
+  pull_request:
+    paths:
+      - 'products/izakhono-experience/**'
+      - '.github/workflows/izakhono-experience-ci.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'products/izakhono-experience/**'
+      - '.github/workflows/izakhono-experience-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  domain-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile
+        run: python3 -m py_compile products/izakhono-experience/domain.py products/izakhono-experience/test_domain.py
+      - name: Domain tests
+        working-directory: products/izakhono-experience
+        run: python3 -m unittest -v test_domain
+      - name: NODE01 identity invariant
+        run: python3 scripts/architecture/check-node01-identity.py
