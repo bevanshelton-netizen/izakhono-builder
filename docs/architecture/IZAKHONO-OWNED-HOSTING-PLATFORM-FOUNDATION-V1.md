@@ -197,7 +197,7 @@ DNS-specific gates are defined in `infra/authoritative-dns/README.md`.
 Verified from repository source:
 - HOST owned-runtime architecture and Compose baseline exist on the mail-hosting implementation branch.
 - HOST documentation describes native web runtime, Caddy edge, CoreDNS baseline, PostgreSQL, MinIO and Valkey.
-- Stalwart/Roundcube mail integration and mailbox/DNS acceptance gates are implemented in the open PR #695 branch.
+- Stalwart/Roundcube mail integration and mailbox/DNS acceptance gates are implemented in open PR #695. Its latest source changes align the runtime with `izakhono.africa` and the five requested mailboxes; CI reruns are pending.
 - PowerDNS authoritative DNS architecture and deployment gates are documented in `infra/authoritative-dns/README.md`.
 - The mail deployment status file explicitly reports runtime NOT PROVISIONED, public DNS NOT VERIFIED and send/receive NOT VERIFIED.
 
@@ -215,7 +215,7 @@ The SentinelX account currently reports zero enrolled hosts and zero connected i
 
 ## 9. Immediate execution queue
 
-1. Reconcile PR #695 against current `main` and existing HOST/mail implementations; resolve its non-mergeable state before considering integration.
+1. Review PR #695's latest domain-alignment changes and CI results, then reconcile the mail implementation against current `main` before merge.
 2. Identify and enroll the existing IZAKHONO-controlled Linux host; inspect it read-only first.
 3. Connect the authorized DNS/registrar account through a secure integration flow; never paste credentials into chat.
 4. Confirm whether `izakhono.africa` is registered, who controls its authoritative DNS and what records currently exist.
