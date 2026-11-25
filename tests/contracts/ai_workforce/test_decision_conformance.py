@@ -165,7 +165,7 @@ class DecisionContractTests(unittest.TestCase):
 
     def test_rejects_non_mapping_decision(self):
         with self.assertRaisesRegex(ContractError, "INVALID_DECISION_MAPPING"):
-            self.verify(None)
+            verify_synthetic_decision(None, self.expected, now=1_800_000_100)
 
     def test_rejects_boolean_time_claims(self):
         artifact = dict(self.decision, not_before=True)
@@ -313,7 +313,10 @@ class HumanApprovalContractTests(unittest.TestCase):
 
     def test_rejects_non_mapping_approval(self):
         with self.assertRaisesRegex(ContractError, "INVALID_APPROVAL_MAPPING"):
-            self.verify(None)
+            verify_synthetic_approval(
+                None, expected=self.expected, now=1_800_000_100,
+                eligible_approvers={"human:approver-01"},
+            )
 
     def test_rejects_boolean_approval_time_claims(self):
         approval = dict(self.approval, expires_at=True)
