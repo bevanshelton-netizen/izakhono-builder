@@ -43,7 +43,7 @@ Only after owner approval of the target, configuration, cost and change plan, ru
 ./NODE01-ACTIVATE.sh
 ```
 
-The script name preserves the existing logical NODE01 role label; it does not mean NODE01 is a machine. For a first-time host this creates `.env` with generated secrets. Set `TLS_EMAIL` to the operational certificate address before public HTTPS activation. Never commit `.env`.
+The script name preserves the logical role label; its target is the separately approved execution host. For a first-time host this creates `.env` with generated secrets. Set `TLS_EMAIL` to the operational certificate address before public HTTPS activation. Never commit `.env`.
 
 Activation starts workloads and is therefore not a read-only inspection step. Do not run it on an unidentified workstation, CI runner or production host without explicit approval.
 
