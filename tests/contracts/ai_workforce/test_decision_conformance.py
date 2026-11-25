@@ -190,8 +190,8 @@ class DecisionContractTests(unittest.TestCase):
             self.verify(artifact)
 
     def test_rejects_invalid_validity_window(self):
-        artifact = dict(self.decision, not_before=1_800_000_200, expires_at=1_800_000_100)
-        with self.assertRaisesRegex(ContractError, "DECISION_NOT_YET_VALID"):
+        artifact = dict(self.decision, not_before=1_800_000_050, expires_at=1_800_000_040)
+        with self.assertRaisesRegex(ContractError, "INVALID_VALIDITY_WINDOW"):
             self.verify(artifact)
 
     def test_rejects_non_integer_time_claims(self):
