@@ -88,14 +88,14 @@ class RecoveryCoordinator:
 
     def record_execution_attempt(self, operation_id: str, attempt_id: str) -> None:
         operation = self._operation(operation_id)
-        if operation.state != "EXECUTION_PENDING":
-            raise ContractError("EXECUTION_NOT_READY")
-        if not attempt_id:
-            raise ContractError("EXECUTION_ATTEMPT_ID_MISSING")
         if operation.execution_state in ("STARTED", "OUTCOME_UNKNOWN", "RECONCILIATION_REQUIRED"):
             raise ContractError("EXECUTION_OUTCOME_MUST_BE_RECONCILED")
         if operation.execution_state in ("SUCCEEDED", "FAILED"):
             raise ContractError("EXECUTION_ALREADY_TERMINAL")
+        if operation.state != "EXECUTION_PENDING":
+            raise ContractError("EXECUTION_NOT_READY")
+        if not attempt_id:
+            raise ContractError("EXECUTION_ATTEMPT_ID_MISSING")
         operation.execution_attempt_id = attempt_id
         operation.execution_state = "STARTED"
 
