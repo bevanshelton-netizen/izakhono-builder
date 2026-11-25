@@ -51,3 +51,7 @@ Each case has a monotonically increasing version. Transitions run in a SQLite wr
 Existing alpha databases receive an additive schema upgrade for case version/idempotency fields and a baseline history event. That baseline is explicitly labelled as a migration snapshot; it does not fabricate historical actors or claim that pre-existing transitions can be reconstructed.
 
 These controls improve alpha-level accountability and retry safety. They are not a substitute for an independently protected, tamper-evident production audit store, cross-process deployment validation, backup/restore testing or an approved production migration plan.
+
+## Integration contract
+
+See [ID and FORTRESS Integration Contract v1](ID-FORTRESS-INTEGRATION-V1.md) for the service trust chain, private transport requirements, permission namespace, owner-reviewed policy administration and production acceptance gates. It is a design contract, not evidence that private connectivity or production activation exists.
