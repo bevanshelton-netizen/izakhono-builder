@@ -1,4 +1,4 @@
-"""Tests for real Ed25519 attestation signature and trust validation."""
+"""Tests for Ed25519 signatures, canonical claims, key trust, and revocation."""
 import base64
 from datetime import datetime, timedelta, timezone
 import unittest
