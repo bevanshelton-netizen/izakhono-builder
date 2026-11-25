@@ -298,3 +298,42 @@ Fresh GitHub Actions results for that exact commit:
 - General IZAKHONO Builder CI — **in progress** at the latest check.
 
 This verifies the mandatory actor refinement on the alpha branch. It does not constitute production acceptance or prove the pending general Builder workflow has completed.
+
+
+## 12. FORTRESS product-permission decision point is now present in the alpha proposal
+
+A subsequent inspection of the current PR #759 branch confirms that the earlier Phase 0 gap — absence of a FORTRESS product-permission endpoint — has been addressed in the proposal itself. The current branch adds the FORTRESS policy decision endpoint and the EXPERIENCE HTTPS client that calls it.
+
+### Confirmed source contracts
+
+- FORTRESS exposes `POST /v1/authorize-product` alongside its egress decision route.
+- The request must exactly identify subject, entity ID, role, product and permission.
+- Matching is exact; no wildcard subject/entity/role/permission and no implicit role inheritance.
+- Policy version 2 has `default: deny` and an empty `izakhono-experience` grant list. Therefore no EXPERIENCE permission is granted by default.
+- The FORTRESS policy is validated before decisions. Malformed or unsafe policy is rejected.
+- The endpoint requires a configured bearer service token and the service binds to loopback by default.
+- The EXPERIENCE `FortressPermissionClient` requires HTTPS, a configured token, fixed resource `izakhono-experience`, and a traceable decision response containing a boolean outcome, decision ID and integer policy version. HTTP 403 is treated as denial; unavailable, malformed or untraceable responses fail closed.
+- `authorised_experience_store` derives subject/entity/role from the active ID introspection response, not client-supplied identity fields, and requires literal `True` from the FORTRESS decision callback.
+- Unit tests cover exact grants/denials, malformed policy, missing or untraceable decision fields, wrong resource, missing configuration and identity/FORTRESS failures.
+
+### What this does and does not establish
+
+This is a meaningful source-level integration contract and removes the previous claim that the product-permission endpoint itself was absent from the proposal branch. It does **not** establish a deployed or reachable service, approved private transport, service credential provisioning, owner-approved EXPERIENCE grants, or production enforcement.
+
+The current policy's EXPERIENCE grant list is deliberately empty. Keep it empty until an owner-approved exact subject/entity/role/permission grant and its rationale are reviewed through the protected source-policy process. Do not create a grant merely to make an integration test pass.
+
+The current store authorization helper checks permission before returning a store object. The domain store methods are not themselves a policy enforcement boundary. Before exposing a long-lived service or route, enforce authorization at every operation/action boundary (including decision freshness/revocation), rather than assuming the initial store-construction decision remains valid indefinitely.
+
+FORTRESS decision events currently go to the service logging stream. Durable central audit retention and tamper-evident storage are still future work; EXPERIENCE must preserve the decision ID in a protected operation audit record when the service layer is designed.
+
+### Updated gap disposition
+
+- **FORTRESS policy decision logic and client contract:** present in PR #759 and covered by source tests/CI.
+- **FORTRESS runtime reachability/private transport/service credentials:** unverified and not activated.
+- **Owner-approved exact EXPERIENCE grants:** intentionally absent; default deny remains.
+- **Per-operation authorization and decision freshness:** still requires a service boundary design and tests.
+- **Durable audit/evidence:** still unresolved.
+
+The PR #759 head recorded in its current PR description is `53d9924c7cddf4a9c232a09934735900d5bb5f30`. All six reported workflows for that head completed successfully: EXPERIENCE CI, FORTRESS CI, NODE01 Architecture Invariant, OpenAI Independence CI, Application Manifest Validation and the broader IZAKHONO Builder CI. This supersedes the earlier observation that the general Builder CI was still running.
+
+PR #759 remains open and draft. No merge, rebase, service deployment, credential creation, permission grant, migration or network exposure was performed.
