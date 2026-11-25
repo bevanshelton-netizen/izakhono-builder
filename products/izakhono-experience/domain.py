@@ -87,6 +87,29 @@ class ExperienceStore:
                 FROM cases WHERE NOT EXISTS (
                     SELECT 1 FROM case_events e WHERE e.entity_id=cases.entity_id
                     AND e.platform_id=cases.platform_id AND e.case_id=cases.id)""")
+    def list_surveys(self, *, limit=100):
+        if type(limit) is not int or not 1 <= limit <= 200: raise ExperienceError("invalid_limit")
+        with self.connect() as db:
+            rows=db.execute("SELECT * FROM surveys WHERE entity_id=? AND platform_id=? ORDER BY updated_at DESC LIMIT ?",(self.entity_id,self.platform_id,limit)).fetchall()
+        return [dict(row) for row in rows]
+
+    def list_questions(self, sid):
+        self.get_survey(sid)
+        with self.connect() as db:
+            rows=db.execute("SELECT * FROM questions WHERE survey_id=? AND entity_id=? AND platform_id=? ORDER BY position",(sid,self.entity_id,self.platform_id)).fetchall()
+        return [dict(row) for row in rows]
+
+    def list_cases(self, *, limit=100):
+        if type(limit) is not int or not 1 <= limit <= 200: raise ExperienceError("invalid_limit")
+        with self.connect() as db:
+            rows=db.execute("SELECT * FROM cases WHERE entity_id=? AND platform_id=? ORDER BY updated_at DESC LIMIT ?",(self.entity_id,self.platform_id,limit)).fetchall()
+        return [dict(row) for row in rows]
+
+    def get_case(self, cid):
+        with self.connect() as db:
+            row=db.execute("SELECT * FROM cases WHERE id=? AND entity_id=? AND platform_id=?",(cid,self.entity_id,self.platform_id)).fetchone()
+        if row is None: raise ExperienceError("case_not_found")
+        return dict(row)
     def get_survey(self, sid):
         with self.connect() as db: row=db.execute("SELECT * FROM surveys WHERE id=? AND entity_id=? AND platform_id=?",(sid,self.entity_id,self.platform_id)).fetchone()
         if row is None: raise ExperienceError("survey_not_found")
