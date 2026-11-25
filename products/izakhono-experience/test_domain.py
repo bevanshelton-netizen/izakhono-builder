@@ -37,7 +37,7 @@ class ExperienceTests(unittest.TestCase):
   with self.assertRaises(ExperienceError): self.a.submit_response(s["id"],{})
   with self.assertRaises(ExperienceError): self.a.add_question(s["id"],position=1,kind="text",prompt="Why?")
  def test_case_lifecycle(self):
-  s,q=self.survey(); rid=self.a.submit_response(s["id"],{q["id"]:2})["id"]; c=self.a.open_case(rid,severity="high")
+  s,q=self.survey(); rid=self.a.submit_response(s["id"],{q["id"]:2})["id"]; c=self.a.open_case(rid,actor_id="operator",severity="high")
   c=self.a.transition_case(c["id"],status="acknowledged",actor_id="agent")
   c=self.a.transition_case(c["id"],status="in_progress",actor_id="agent")
   with self.assertRaises(ExperienceError): self.a.transition_case(c["id"],status="resolved",actor_id="agent")
@@ -65,7 +65,7 @@ class ExperienceTests(unittest.TestCase):
   with self.assertRaises(ExperienceError): self.b.case_history(c["id"])
  def test_case_transition_rejects_stale_version(self):
   s,q=self.survey(); rid=self.a.submit_response(s["id"],{q["id"]:2})["id"]
-  c=self.a.open_case(rid)
+  c=self.a.open_case(rid,actor_id="operator")
   updated=self.a.transition_case(c["id"],status="acknowledged",actor_id="operator",expected_version=1)
   self.assertEqual(updated["version"],2)
   with self.assertRaisesRegex(ExperienceError,"stale_case_version"):
