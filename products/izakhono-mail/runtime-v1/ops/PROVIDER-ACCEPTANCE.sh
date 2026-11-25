@@ -15,9 +15,9 @@ HOSTNAME="${MAIL_HOSTNAME:-$(read_env MAIL_HOSTNAME)}"
 DOMAIN="${MAIL_DOMAIN:-$(read_env MAIL_DOMAIN)}"
 WEBMAIL="${WEBMAIL_HOSTNAME:-$(read_env WEBMAIL_HOSTNAME)}"
 DKIM_SELECTOR="${DKIM_SELECTOR:-$(read_env DKIM_SELECTOR)}"
-HOSTNAME="${HOSTNAME:-mail.izakhonoafrica.co.za}"
-DOMAIN="${DOMAIN:-izakhonoafrica.co.za}"
-WEBMAIL="${WEBMAIL:-webmail.izakhonoafrica.co.za}"
+HOSTNAME="${HOSTNAME:-mail.izakhono.africa}"
+DOMAIN="${DOMAIN:-izakhono.africa}"
+WEBMAIL="${WEBMAIL:-webmail.izakhono.africa}"
 
 fail=0
 check() {
