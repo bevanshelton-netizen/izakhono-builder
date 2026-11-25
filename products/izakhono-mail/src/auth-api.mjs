@@ -1,10 +1,13 @@
 import http from 'node:http';
-import crypto from 'node:crypto';
+import { timingSafeEqual } from 'node:crypto';
 import { createUser, login, revoke } from './auth.mjs';
+import { provisionMailbox } from './mailbox-provisioner.mjs';
 
 const host = process.env.MAIL_AUTH_LISTEN_HOST || '127.0.0.1';
 const port = Number(process.env.MAIL_AUTH_LISTEN_PORT || 8789);
-const bootstrapToken = process.env.MAIL_BOOTSTRAP_TOKEN || '';
+const ownerToken = process.env.MAIL_API_TOKEN || '';
+if (!ownerToken) throw new Error('MAIL_API_TOKEN_REQUIRED');
+if (!['127.0.0.1', '::1', 'localhost'].includes(host)) throw new Error('MAIL_AUTH_API_MUST_BE_LOOPBACK');
 
 function json(res, status, body, extra = {}) {
   res.writeHead(status, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store', ...extra });
@@ -16,23 +19,28 @@ async function body(req) {
   return chunks.length ? JSON.parse(Buffer.concat(chunks).toString('utf8')) : {};
 }
 function token(req) { const h=String(req.headers.authorization||''); return h.startsWith('Bearer ')?h.slice(7):''; }
-function bootstrapAuthorized(req) {
-  const supplied = token(req);
-  if (!bootstrapToken || !supplied) return false;
-  const a = Buffer.from(supplied);
-  const b = Buffer.from(bootstrapToken);
-  return a.length === b.length && crypto.timingSafeEqual(a, b);
+function requireOwner(req) {
+  const provided = Buffer.from(token(req), 'utf8');
+  const expected = Buffer.from(ownerToken, 'utf8');
+  const valid = expected.length > 0 && provided.length === expected.length && timingSafeEqual(provided, expected);
+  if (!valid) throw Object.assign(new Error('owner_authorization_required'), { statusCode: 401 });
 }
 
 export function startAuthApi() {
   const server = http.createServer(async (req,res) => {
     const path = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`).pathname;
     try {
-      if (req.method==='GET' && path==='/healthz') return json(res,200,{ok:true,service:'izakhono-mail-auth',bootstrap_configured:Boolean(bootstrapToken)});
+      if (req.method==='GET' && path==='/healthz') return json(res,200,{ok:true,service:'izakhono-mail-auth'});
       if (req.method==='POST' && path==='/v1/auth/bootstrap') {
-        if (!bootstrapAuthorized(req)) return json(res,403,{ok:false,error:'owner_bootstrap_authorization_required'});
+        requireOwner(req);
         const input=await body(req);
-        return json(res,201,{ok:true,user:createUser({address:input.address,password:input.password,displayName:input.display_name||'IZAKHONO Mail Admin'})});
+        return json(res,201,{ok:true,user:createUser({address:input.address,password:input.password,displayName:input.display_name||''})});
+      }
+      if (req.method==='POST' && path==='/v1/mailboxes/provision') {
+        requireOwner(req);
+        const input=await body(req);
+        const result=await provisionMailbox({platform:input.platform,mailbox:input.mailbox,displayName:input.display_name||''});
+        return json(res,result.ok?201:409,result);
       }
       if (req.method==='POST' && path==='/v1/auth/login') {
         const input=await body(req); const result=login({address:input.address,password:input.password});
@@ -44,7 +52,8 @@ export function startAuthApi() {
       return json(res,404,{ok:false,error:'not_found'});
     } catch(error) {
       const message=String(error?.message||error);
-      return json(res,message==='body_too_large'?413:message==='Invalid credentials'?401:400,{ok:false,error:message});
+      const status=error?.statusCode || (message==='body_too_large'?413:message==='Invalid credentials'?401:400);
+      return json(res,status,{ok:false,error:message});
     }
   });
   server.listen(port,host,()=>console.log(`[IZAKHONO MAIL] auth API listening on ${host}:${port}`));
