@@ -195,9 +195,13 @@ Potential capabilities include DNS/global traffic management, routing policy, TL
 
 The architecture must distinguish edge infrastructure (where traffic is processed) from edge services (what capabilities are provided). Multi-edge orchestration must preserve provider adapters, credentials isolation, policy versioning, health evidence and safe rollback. Third-party networks remain optional and replaceable. Claims of performance, availability, sovereignty or protection require measured evidence and must not be assumed from a product feature list.
 
-### 4.7 J.A.R.V.I.S. and CONNECTA
+### 4.7 IZAKHONO AI, J.A.R.V.I.S. and CONNECTA
 
-These are application/product domains that consume shared identity, policy, data, agent and infrastructure contracts. Their product-specific business logic remains within their own boundaries. Integration must not silently move their source of truth or production hosting to an external provider.
+IZAKHONO AI is the first-party assistant and intelligence platform across the ecosystem. It owns the assistant experience, model gateway, conversation and memory services, knowledge retrieval, model routing and AI-specific evaluation. It must not require ChatGPT or an OpenAI API account as its primary production dependency. The preferred production inference path is an approved model served on IZAKHONO-controlled hardware, subject to measured capacity, model licensing and acceptance gates. Optional external model adapters remain disabled unless explicitly approved and must never receive data through silent fallback.
+
+J.A.R.V.I.S. remains the owner/operator command centre and controlled operations interface. It may embed or invoke IZAKHONO AI, but must not create a competing general assistant brand, second model gateway, memory system or agent scheduler. CONNECTA remains a business application domain. All three consume shared identity, policy, data, agent and infrastructure contracts while retaining their own product-specific responsibilities. Integration must not silently move their source of truth or production hosting to an external provider.
+
+The detailed first-party AI platform architecture is defined in `IZAKHONO-AI-FIRST-PARTY-PLATFORM-ARCHITECTURE-V1.md`. It distinguishes ownership of the assistant platform and serving stack from authorship of underlying model weights: licensed open-weight models may be used initially, while training an original foundation model is a separately gated long-term research programme.
 
 ## 5. Shared data and evidence model
 
