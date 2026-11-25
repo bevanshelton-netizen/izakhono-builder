@@ -24,6 +24,13 @@ const missingAudio = validateMediaProbe({ ...goodProbe, streams: goodProbe.strea
 assert.equal(missingAudio.passed, false);
 assert.ok(missingAudio.checks.some(check => check.id === 'audio-stream-present' && !check.passed));
 
+const duplicateAudio = validateMediaProbe({ ...goodProbe, streams: [...goodProbe.streams, { ...goodProbe.streams[1] }] });
+assert.equal(duplicateAudio.passed, false);
+assert.ok(duplicateAudio.checks.some(check => check.id === 'audio-stream-count' && !check.passed));
+const duplicateVideo = validateMediaProbe({ ...goodProbe, streams: [...goodProbe.streams, { ...goodProbe.streams[0] }] });
+assert.equal(duplicateVideo.passed, false);
+assert.ok(duplicateVideo.checks.some(check => check.id === 'video-stream-count' && !check.passed));
+
 function box(type: string, payload: number[] = []): number[] {
   const size = payload.length + 8;
   return [(size >>> 24) & 255, (size >>> 16) & 255, (size >>> 8) & 255, size & 255, ...Array.from(type).map(char => char.charCodeAt(0)), ...payload];
