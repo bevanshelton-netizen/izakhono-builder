@@ -38,6 +38,8 @@ def verify_synthetic_decision(
     signature_verifier: Callable[[Mapping[str, Any]], bool] | None = None,
 ) -> None:
     """Validate a synthetic decision against one exact request context."""
+    if not isinstance(decision, Mapping):
+        raise ContractError("INVALID_DECISION_MAPPING")
     required = (
         "issuer", "audience", "tenant_id", "actor_id", "agent_id",
         "action", "resource", "request_fingerprint", "policy_version",
@@ -63,7 +65,7 @@ def verify_synthetic_decision(
         if decision[field] != value:
             raise ContractError(f"MISMATCH_{field.upper()}")
 
-    if not isinstance(decision["not_before"], int) or not isinstance(decision["expires_at"], int):
+    if type(decision["not_before"]) is not int or type(decision["expires_at"]) is not int:
         raise ContractError("INVALID_TIME_CLAIMS")
     if decision["expires_at"] <= decision["not_before"]:
         raise ContractError("INVALID_VALIDITY_WINDOW")
@@ -89,6 +91,8 @@ def verify_synthetic_approval(
     signature_verifier: Callable[[Mapping[str, Any]], bool] | None = None,
 ) -> None:
     """Check a synthetic human approval bound to the same request."""
+    if not isinstance(approval, Mapping):
+        raise ContractError("INVALID_APPROVAL_MAPPING")
     required = ("approval_id", "state", "human_principal_id", "tenant_id",
                 "request_fingerprint", "not_before", "expires_at", "signature")
     for field in required:
@@ -104,7 +108,7 @@ def verify_synthetic_approval(
         raise ContractError("APPROVAL_TENANT_MISMATCH")
     if approval["request_fingerprint"] != expected.fingerprint:
         raise ContractError("APPROVAL_FINGERPRINT_MISMATCH")
-    if not isinstance(approval["not_before"], int) or not isinstance(approval["expires_at"], int):
+    if type(approval["not_before"]) is not int or type(approval["expires_at"]) is not int:
         raise ContractError("APPROVAL_INVALID_TIME_CLAIMS")
     if approval["expires_at"] <= approval["not_before"]:
         raise ContractError("APPROVAL_INVALID_VALIDITY_WINDOW")
@@ -158,6 +162,15 @@ class DecisionContractTests(unittest.TestCase):
     def test_rejects_empty_decision_mapping(self):
         with self.assertRaisesRegex(ContractError, "MISSING_ISSUER"):
             self.verify({})
+
+    def test_rejects_non_mapping_decision(self):
+        with self.assertRaisesRegex(ContractError, "INVALID_DECISION_MAPPING"):
+            self.verify(None)
+
+    def test_rejects_boolean_time_claims(self):
+        artifact = dict(self.decision, not_before=True)
+        with self.assertRaisesRegex(ContractError, "INVALID_TIME_CLAIMS"):
+            self.verify(artifact)
 
     def test_rejects_wrong_issuer(self):
         artifact = dict(self.decision, issuer="https://untrusted.test")
@@ -297,6 +310,15 @@ class HumanApprovalContractTests(unittest.TestCase):
     def test_rejects_empty_approval_mapping(self):
         with self.assertRaisesRegex(ContractError, "MISSING_APPROVAL_APPROVAL_ID"):
             self.verify({})
+
+    def test_rejects_non_mapping_approval(self):
+        with self.assertRaisesRegex(ContractError, "INVALID_APPROVAL_MAPPING"):
+            self.verify(None)
+
+    def test_rejects_boolean_approval_time_claims(self):
+        approval = dict(self.approval, expires_at=True)
+        with self.assertRaisesRegex(ContractError, "APPROVAL_INVALID_TIME_CLAIMS"):
+            self.verify(approval)
 
     def test_rejects_expired_approval(self):
         approval = dict(self.approval, expires_at=1_800_000_100)
