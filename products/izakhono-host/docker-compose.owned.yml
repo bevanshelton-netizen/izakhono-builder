@@ -122,6 +122,32 @@ services:
       timeout: 5s
       retries: 5
 
+
+  deploy-control:
+    profiles: ["deploy-control"]
+    build:
+      context: ../..
+      dockerfile: deploy-control/Dockerfile
+    restart: unless-stopped
+    environment:
+      DEPLOY_API_HOST: 0.0.0.0
+      DEPLOY_API_PORT: 8090
+      IZAKHONO_RUNTIME_DATABASE_URL: ${IZAKHONO_RUNTIME_DATABASE_URL:-}
+      FORTRESS_DEPLOY_INTROSPECTION_URL: ${FORTRESS_DEPLOY_INTROSPECTION_URL:-}
+      FORTRESS_DEPLOY_INTROSPECTION_SECRET: ${FORTRESS_DEPLOY_INTROSPECTION_SECRET:-}
+      DEPLOY_CONTROL_APPROVAL_DATABASE_FINGERPRINT: ${IZAKHONO_DEPLOY_CONTROL_APPROVAL_DATABASE_FINGERPRINT:-}
+      DEPLOY_CONTROL_APPROVAL_MIGRATION_SHA256: ${IZAKHONO_DEPLOY_CONTROL_APPROVAL_MIGRATION_SHA256:-}
+      DEPLOY_CONTROL_APPROVAL_FORTRESS_ENDPOINT: ${IZAKHONO_DEPLOY_CONTROL_APPROVAL_FORTRESS_ENDPOINT:-}
+      FORTRESS_SESSION_ISSUER: ${FORTRESS_SESSION_ISSUER:-https://fortress.izakhono.internal}
+      FORTRESS_DEPLOY_AUDIENCE: ${FORTRESS_DEPLOY_AUDIENCE:-izakhono-deploy}
+    networks: [izakhono]
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8090/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
 networks:
   izakhono:
     driver: bridge
