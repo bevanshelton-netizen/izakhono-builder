@@ -33,8 +33,8 @@ class TrustedAttestationKey:
 
 def canonical_attestation_payload(evidence: Mapping[str, Any]) -> bytes:
     """Canonical UTF-8 JSON bytes for all signed claims, excluding signature."""
-    if not isinstance(evidence, Mapping) or "signature" not in evidence:
-        raise AttestationVerificationError("ATTESTATION_SIGNATURE_MISSING")
+    if not isinstance(evidence, Mapping):
+        raise AttestationVerificationError("ATTESTATION_PAYLOAD_INVALID")
     payload = {key: value for key, value in evidence.items() if key != "signature"}
     try:
         return json.dumps(
