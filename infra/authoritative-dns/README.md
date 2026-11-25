@@ -9,9 +9,9 @@ Internet
   |
   +--> Parent registry (.com/.org/etc.)
           |
-          +--> ns1.<zone>  ---> IZAKHONO DNS PRIMARY
+          +--> ns1.<zone>  ---> IZAKHONO DNS PRIMARY (logical role on an approved execution host)
           |
-          +--> ns2.<zone>  ---> IZAKHONO DNS SECONDARY
+          +--> ns2.<zone>  ---> IZAKHONO DNS SECONDARY (logical role on a separate failure domain)
 
 Authoritative DNS
   |
@@ -22,8 +22,10 @@ Authoritative DNS
   +--> Health checks and serial monitoring
 
 Web routing remains separate:
-DNS -> public IP -> router/NAT -> NODE01 -> Caddy -> application
+DNS -> public IP -> approved execution host running EDGE/Caddy -> application
 ```
+
+NODE01/NODE02/NODE03 are logical software/orchestration identities and role assignments, not physical machines. The execution host is a separately identified physical or virtual resource. The mapping from DNS or EDGE logical roles to execution hosts must be explicitly approved and evidenced.
 
 ## Components
 
@@ -40,7 +42,7 @@ DNS -> public IP -> router/NAT -> NODE01 -> Caddy -> application
 
 Creating the DNS service is only one half of sovereignty. The domain's registrar/registry delegation must point to the deployed authoritative nameservers. For in-bailiwick nameservers, the registrar must publish the required glue records.
 
-For `allegrovibez.com`, the intended production nameservers are configured through environment variables rather than hard-coded until the actual public IPs are verified.
+For `allegrovibez.com`, the intended production nameservers are configured through environment variables rather than hard-coded until the actual public IPs are verified. This example zone is not evidence of a live IZAKHONO DNS deployment.
 
 ## Required production inputs
 
