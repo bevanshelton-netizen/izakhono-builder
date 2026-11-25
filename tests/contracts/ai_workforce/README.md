@@ -46,15 +46,16 @@ python -m unittest discover -s tests/contracts/ai_workforce -p 'test_*.py' -v
   operator and approver, and unresolved closure. An operator cannot declare
   execution successful through a recovery-resolution action.
 
-- Recovery-audit tests model a sequenced event ledger binding each recovery case
-  and operation to tenant and request fingerprint; authenticated initiating
-  principal/session context; assigned operator and distinct approver; reason,
-  action, approval decision and policy version; hashed evidence references;
-  reconciliation queries, receipt-verification result and execution-attempt
-  correlation; and final disposition/outcome certainty. They reject
-  cross-scope references, missing actor/evidence, operator self-approval,
-  altered fingerprints, unverified checkpoints, sequence/time rollback,
-  unsupported terminal dispositions and event mutation/deletion.
+- Recovery-audit tests bind recovery events to the canonical workforce event
+  envelope: schema/source, tenant/organization/agent/workload, actor, correlation
+  and causation IDs, idempotency key, classification/redaction metadata,
+  payload digest, FORTRESS decision/approval references and evidence reference.
+  Recovery-specific fields bind case, operation and immutable request
+  fingerprint; authenticated initiating principal/session; distinct operator
+  and approver; reason/action/policy version; hashed evidence references;
+  reconciliation queries, receipt verification, execution attempt and final
+  disposition/outcome certainty. Cross-event case/operation/fingerprint
+  consistency and duplicate event IDs are enforced by the synthetic model.
 - The recovery-audit ledger is a synthetic in-memory hash-chain reference
   model. A hash chain is **not** tamper-proof or immutable storage and does not
   prove signer identity, key custody, atomicity, retention or independent
