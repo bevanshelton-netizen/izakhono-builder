@@ -54,7 +54,7 @@ class RecoveryGovernance:
             case.state = "ESCALATION_REQUIRED"
             case.escalation_reason = "RETRY_BUDGET_EXHAUSTED"
             raise ContractError("RETRY_BUDGET_EXHAUSTED")
-        if isinstance(backoff_seconds, bool) or backoff_seconds <= 0:
+        if isinstance(backoff_seconds, bool) or not isinstance(backoff_seconds, int) or backoff_seconds <= 0:
             raise ContractError("RETRY_BACKOFF_INVALID")
         if now < case.last_attempt_at:
             raise ContractError("RECOVERY_CLOCK_INVALID")
@@ -135,6 +135,10 @@ class RetryBudgetTests(unittest.TestCase):
     def test_retry_observes_positive_backoff(self):
         with self.assertRaisesRegex(ContractError, "RETRY_BACKOFF_INVALID"):
             self.gov.schedule_retry("op-1", now=110, backoff_seconds=0, retry_policy_verified=True)
+
+    def test_retry_rejects_boolean_backoff(self):
+        with self.assertRaisesRegex(ContractError, "RETRY_BACKOFF_INVALID"):
+            self.gov.schedule_retry("op-1", now=110, backoff_seconds=True, retry_policy_verified=True)
 
     def test_retry_backoff_is_calculated_from_current_time(self):
         result = self.gov.schedule_retry("op-1", now=110, backoff_seconds=30, retry_policy_verified=True)
