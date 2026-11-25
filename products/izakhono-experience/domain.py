@@ -1,5 +1,5 @@
 """Tenant-scoped survey, response, NPS and case domain; no HTTP/auth bypass."""
-import json, sqlite3, uuid
+import hashlib, json, sqlite3, uuid
 from datetime import datetime, timezone
 
 class ExperienceError(ValueError):
@@ -48,9 +48,17 @@ CREATE TABLE IF NOT EXISTS cases(
  id TEXT PRIMARY KEY, entity_id TEXT NOT NULL, platform_id TEXT NOT NULL, response_id TEXT NOT NULL,
  severity TEXT NOT NULL CHECK(severity IN ('low','normal','high','urgent')),
  status TEXT NOT NULL CHECK(status IN ('open','acknowledged','in_progress','resolved','follow_up','closed','unable_to_resolve')),
- assigned_to TEXT, resolution_note TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL, updated_at TEXT NOT NULL,
+ assigned_to TEXT, resolution_note TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL, updated_at TEXT NOT NULL, version INTEGER NOT NULL DEFAULT 1,
+ idempotency_key TEXT, request_hash TEXT,
  FOREIGN KEY(entity_id,platform_id,response_id) REFERENCES responses(entity_id,platform_id,id),
  UNIQUE(entity_id,platform_id,response_id), UNIQUE(entity_id,platform_id,id));
+CREATE UNIQUE INDEX IF NOT EXISTS cases_idempotency ON cases(entity_id,platform_id,idempotency_key) WHERE idempotency_key IS NOT NULL;
+CREATE TABLE IF NOT EXISTS case_events(
+ id TEXT PRIMARY KEY, entity_id TEXT NOT NULL, platform_id TEXT NOT NULL, case_id TEXT NOT NULL,
+ from_status TEXT, to_status TEXT NOT NULL, actor_id TEXT NOT NULL, note TEXT NOT NULL DEFAULT '',
+ occurred_at TEXT NOT NULL, version INTEGER NOT NULL,
+ FOREIGN KEY(entity_id,platform_id,case_id) REFERENCES cases(entity_id,platform_id,id),
+ UNIQUE(entity_id,platform_id,case_id,version));
 """
 
 class ExperienceStore:
@@ -60,7 +68,26 @@ class ExperienceStore:
     def connect(self):
         db=sqlite3.connect(self.database); db.row_factory=sqlite3.Row; db.execute("PRAGMA foreign_keys=ON"); return db
     def initialise(self):
-        with self.connect() as db: db.executescript(SCHEMA)
+        with self.connect() as db:
+            db.executescript(SCHEMA)
+            columns={row["name"] for row in db.execute("PRAGMA table_info(cases)")}
+            if "version" not in columns: db.execute("ALTER TABLE cases ADD COLUMN version INTEGER NOT NULL DEFAULT 1")
+            if "idempotency_key" not in columns: db.execute("ALTER TABLE cases ADD COLUMN idempotency_key TEXT")
+            if "request_hash" not in columns: db.execute("ALTER TABLE cases ADD COLUMN request_hash TEXT")
+            db.execute("CREATE UNIQUE INDEX IF NOT EXISTS cases_idempotency ON cases(entity_id,platform_id,idempotency_key) WHERE idempotency_key IS NOT NULL")
+            db.execute("""CREATE TABLE IF NOT EXISTS case_events(
+                id TEXT PRIMARY KEY, entity_id TEXT NOT NULL, platform_id TEXT NOT NULL, case_id TEXT NOT NULL,
+                from_status TEXT, to_status TEXT NOT NULL, actor_id TEXT NOT NULL, note TEXT NOT NULL DEFAULT '',
+                occurred_at TEXT NOT NULL, version INTEGER NOT NULL,
+                FOREIGN KEY(entity_id,platform_id,case_id) REFERENCES cases(entity_id,platform_id,id),
+                UNIQUE(entity_id,platform_id,case_id,version))""")
+            db.execute("""INSERT INTO case_events
+                (id,entity_id,platform_id,case_id,from_status,to_status,actor_id,note,occurred_at,version)
+                SELECT 'evt_baseline_'||id,entity_id,platform_id,id,NULL,status,'system:migration',
+                       'Baseline snapshot; prior transition history unavailable',created_at,1
+                FROM cases WHERE NOT EXISTS (
+                    SELECT 1 FROM case_events e WHERE e.entity_id=cases.entity_id
+                    AND e.platform_id=cases.platform_id AND e.case_id=cases.id)""")
     def get_survey(self, sid):
         with self.connect() as db: row=db.execute("SELECT * FROM surveys WHERE id=? AND entity_id=? AND platform_id=?",(sid,self.entity_id,self.platform_id)).fetchone()
         if row is None: raise ExperienceError("survey_not_found")
@@ -116,22 +143,62 @@ class ExperienceStore:
         with self.connect() as db:
             rows=db.execute("SELECT a.answer_json FROM answers a JOIN responses r ON r.id=a.response_id AND r.entity_id=a.entity_id AND r.platform_id=a.platform_id JOIN questions q ON q.id=a.question_id AND q.entity_id=a.entity_id AND q.platform_id=a.platform_id WHERE a.entity_id=? AND a.platform_id=? AND r.survey_id=? AND q.kind='nps'",(self.entity_id,self.platform_id,sid)).fetchall()
         return {"survey_id":sid,**calculate_nps([json.loads(x["answer_json"]) for x in rows])}
-    def open_case(self,rid,*,severity="normal",assigned_to=None):
+    def open_case(self,rid,*,severity="normal",assigned_to=None,actor_id="system:experience",idempotency_key=None):
         if severity not in {"low","normal","high","urgent"}: raise ExperienceError("invalid_severity")
+        if not isinstance(actor_id,str) or not actor_id.strip(): raise ExperienceError("actor_required")
+        if idempotency_key is not None and (not isinstance(idempotency_key,str) or not idempotency_key.strip() or len(idempotency_key)>200):
+            raise ExperienceError("invalid_idempotency_key")
+        request_hash=hashlib.sha256(json.dumps({"response_id":rid,"severity":severity,"assigned_to":assigned_to},sort_keys=True,separators=(",",":")).encode()).hexdigest()
         cid,ts=uid("case"),now()
         with self.connect() as db:
-            if not db.execute("SELECT 1 FROM responses WHERE id=? AND entity_id=? AND platform_id=?",(rid,self.entity_id,self.platform_id)).fetchone(): raise ExperienceError("response_not_found")
-            db.execute("INSERT INTO cases VALUES(?,?,?,?,?,'open',?,'',?,?)",(cid,self.entity_id,self.platform_id,rid,severity,assigned_to,ts,ts))
+            db.execute("BEGIN IMMEDIATE")
+            if not db.execute("SELECT 1 FROM responses WHERE id=? AND entity_id=? AND platform_id=?",(rid,self.entity_id,self.platform_id)).fetchone():
+                raise ExperienceError("response_not_found")
+            if idempotency_key:
+                prior=db.execute("SELECT * FROM cases WHERE entity_id=? AND platform_id=? AND idempotency_key=?",(self.entity_id,self.platform_id,idempotency_key)).fetchone()
+                if prior:
+                    if prior["request_hash"]!=request_hash: raise ExperienceError("idempotency_key_reused_with_different_request")
+                    return dict(prior)
+            db.execute("""INSERT INTO cases
+                (id,entity_id,platform_id,response_id,severity,status,assigned_to,resolution_note,created_at,updated_at,version,idempotency_key,request_hash)
+                VALUES(?,?,?,?,?,'open',?,'',?,?,1,?,?)""",
+                (cid,self.entity_id,self.platform_id,rid,severity,assigned_to,ts,ts,idempotency_key,request_hash))
+            db.execute("""INSERT INTO case_events
+                (id,entity_id,platform_id,case_id,from_status,to_status,actor_id,note,occurred_at,version)
+                VALUES(?,?,?,?,NULL,'open',?,'Case opened',?,1)""",
+                (uid("evt"),self.entity_id,self.platform_id,cid,actor_id,ts))
             row=db.execute("SELECT * FROM cases WHERE id=? AND entity_id=? AND platform_id=?",(cid,self.entity_id,self.platform_id)).fetchone()
         return dict(row)
-    def transition_case(self,cid,*,status,actor_id,resolution_note=""):
+    def transition_case(self,cid,*,status,actor_id,resolution_note="",expected_version=None):
         transitions={"open":{"acknowledged","in_progress","closed","unable_to_resolve"},"acknowledged":{"in_progress","closed","unable_to_resolve"},"in_progress":{"resolved","unable_to_resolve"},"resolved":{"follow_up","closed","in_progress"},"follow_up":{"closed","in_progress"},"closed":set(),"unable_to_resolve":{"follow_up","closed"}}
-        if not actor_id: raise ExperienceError("actor_required")
+        if not isinstance(actor_id,str) or not actor_id.strip(): raise ExperienceError("actor_required")
+        if not isinstance(status,str): raise ExperienceError("invalid_case_transition")
+        if not isinstance(resolution_note,str): raise ExperienceError("invalid_resolution_note")
         with self.connect() as db:
+            db.execute("BEGIN IMMEDIATE")
             row=db.execute("SELECT * FROM cases WHERE id=? AND entity_id=? AND platform_id=?",(cid,self.entity_id,self.platform_id)).fetchone()
             if row is None: raise ExperienceError("case_not_found")
+            current_version=row["version"]
+            if expected_version is not None and expected_version!=current_version: raise ExperienceError("stale_case_version")
             if status not in transitions[row["status"]]: raise ExperienceError("invalid_case_transition")
             if status=="resolved" and not resolution_note.strip(): raise ExperienceError("resolution_note_required")
-            db.execute("UPDATE cases SET status=?,resolution_note=?,updated_at=? WHERE id=? AND entity_id=? AND platform_id=?",(status,resolution_note[:4000],now(),cid,self.entity_id,self.platform_id))
+            ts=now(); next_version=current_version+1
+            next_note=resolution_note[:4000] if resolution_note.strip() else row["resolution_note"]
+            changed=db.execute("""UPDATE cases SET status=?,resolution_note=?,updated_at=?,version=?
+                WHERE id=? AND entity_id=? AND platform_id=? AND version=?""",
+                (status,next_note,ts,next_version,cid,self.entity_id,self.platform_id,current_version)).rowcount
+            if changed!=1: raise ExperienceError("stale_case_version")
+            db.execute("""INSERT INTO case_events
+                (id,entity_id,platform_id,case_id,from_status,to_status,actor_id,note,occurred_at,version)
+                VALUES(?,?,?,?,?,?,?,?,?,?)""",
+                (uid("evt"),self.entity_id,self.platform_id,cid,row["status"],status,actor_id,resolution_note[:4000],ts,next_version))
             updated=db.execute("SELECT * FROM cases WHERE id=? AND entity_id=? AND platform_id=?",(cid,self.entity_id,self.platform_id)).fetchone()
         return dict(updated)
+    def case_history(self,cid):
+        with self.connect() as db:
+            if not db.execute("SELECT 1 FROM cases WHERE id=? AND entity_id=? AND platform_id=?",(cid,self.entity_id,self.platform_id)).fetchone():
+                raise ExperienceError("case_not_found")
+            rows=db.execute("""SELECT id,from_status,to_status,actor_id,note,occurred_at,version
+                FROM case_events WHERE case_id=? AND entity_id=? AND platform_id=? ORDER BY version""",
+                (cid,self.entity_id,self.platform_id)).fetchall()
+        return [dict(row) for row in rows]
