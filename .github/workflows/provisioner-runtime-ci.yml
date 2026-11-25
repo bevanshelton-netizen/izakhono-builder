@@ -35,6 +35,9 @@ jobs:
       - name: Run execution-environment provisioning policy tests
         working-directory: infra/provisioner
         run: python test_execution_environment_provisioning.py
+      - name: Run execution-environment provider coordinator tests
+        working-directory: infra/provisioner
+        run: python test_execution_environment_provider.py
       - name: Run contract smoke
         working-directory: infra/provisioner
         run: python execution_contract.py
