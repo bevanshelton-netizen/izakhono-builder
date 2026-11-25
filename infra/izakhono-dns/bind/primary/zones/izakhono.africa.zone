@@ -1,0 +1,19 @@
+$TTL 300
+@ IN SOA ns1.izakhono.africa. dns-admin.izakhono.africa. (
+  2026112501 ; serial
+  3600       ; refresh
+  900        ; retry
+  1209600    ; expire
+  300        ; negative cache
+)
+
+@ IN NS ns1.izakhono.africa.
+@ IN NS ns2.izakhono.africa.
+
+; Documentation-only placeholders. 192.0.2.0/24 is TEST-NET-1.
+; Replace with independently verified public IPs before registrar delegation.
+ns1 IN A 192.0.2.1
+ns2 IN A 192.0.2.2
+
+; No MX, SPF, DKIM, DMARC, A/AAAA or service records are published here.
+; Add only exact owner-approved values generated/verified for the live services.

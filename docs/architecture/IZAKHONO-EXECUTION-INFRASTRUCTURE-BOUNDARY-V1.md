@@ -6,7 +6,7 @@
 
 ## 1. Purpose and correction
 
-This document makes the execution-infrastructure boundary explicit and supersedes any wording elsewhere that implies NODE01 is a physical machine or that an existing IZAKHONO-controlled Linux server has already been identified.
+This document makes the execution-infrastructure boundary explicit and supersedes any wording elsewhere that implies the NODE01 identity refers to physical infrastructure or that an existing IZAKHONO-controlled Linux server has already been identified.
 
 **NODE01 is software: a logical node identity and orchestration/execution component within Runtime Fabric. It is not a computer, VM, server, cloud instance, IP address or SentinelX host.** A logical NODE01 identity may be bound to an execution target only through a separately approved, evidenced binding process.
 
