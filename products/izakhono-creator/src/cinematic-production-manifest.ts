@@ -57,7 +57,7 @@ export function buildProductionManifest(project: CinematicProduction, generatedA
       shot.continuityLocks.length ? `Continuity locks recorded: ${shot.continuityLocks.join(', ')}` : 'No shot continuity locks recorded',
       requiredConsentIds.length ? (consentCovered ? 'Applicable character consent records linked' : 'Applicable character consent evidence missing') : 'No character consent record is declared as applicable',
     ];
-    entries.push({ id: shot.id, category: 'shot', label: `Shot ${shot.sequence}: ${shot.purpose}`, state: video ? 'complete' : linked.some(a=>a.status==='submitted'||a.status==='processing') ? 'in_progress' : 'missing', relatedIds: linked.map(a=>a.id), details });
+    entries.push({ id: shot.id, category: 'shot', label: `Shot ${shot.sequence}: ${shot.purpose}`, state: video ? 'complete' : linked.some(a=>a.status==='submitted'||a.status==='processing') ? 'in_progress' : 'missing', relatedIds: [shot.id, ...linked.map(a=>a.id)], details });
   }
   for (const asset of project.assets) {
     const linked = Boolean(asset.storageKey || asset.contentHash);
