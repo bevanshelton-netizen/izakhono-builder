@@ -142,3 +142,4 @@ export function createIZAKHONOAIChat({ env = process.env, fetcher = fetch } = {}
 
 // Backward-compatible internal alias for existing callers during the product transition.
 export const createOneAIChat = createIZAKHONOAIChat;
+export const OneAIChatError = IZAKHONOAIChatError;
