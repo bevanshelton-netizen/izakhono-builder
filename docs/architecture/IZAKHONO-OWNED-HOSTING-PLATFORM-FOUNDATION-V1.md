@@ -188,7 +188,7 @@ Common gates:
 - externally verified DNS and TLS;
 - resource headroom and capacity plan.
 
-Mail-specific gates are defined in `products/izakhono-host/mail/README.md` and `products/izakhono-mail/runtime-v1/DEPLOYMENT-STATUS.md`.
+Mail-specific gates are defined in `products/izakhono-host/mail/README.md`, `products/izakhono-mail/runtime-v1/DEPLOYMENT-STATUS.md` and `products/izakhono-mail/runtime-v1/ops/PROVISION-CONTABO.md` (now the owner-controlled hardware runbook; the legacy filename is retained to avoid breaking references).
 
 DNS-specific gates are defined in `infra/authoritative-dns/README.md`.
 
@@ -227,6 +227,6 @@ The SentinelX account currently reports zero enrolled hosts and zero connected i
 - Do not treat Cloudflare Email Routing as a full mailbox server.
 - Do not treat Gmail SMTP relay or a transactional email API as owned mail hosting.
 - Do not deploy production web or mail runtime to Vercel.
-- Do not purchase compute or incur recurring charges without explicit approval.
+- Current policy is zero spend: do not purchase compute or incur recurring charges. Any proposed exception requires a separate explicit owner decision after a written estimate.
 - Do not change registrar delegation, public DNS, MX, production data or firewall exposure without a reviewed change plan and authorization.
 - Do not mark a service LIVE based on source code, CI success, a running process or a successful control-plane response alone.
