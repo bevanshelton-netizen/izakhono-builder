@@ -10,6 +10,7 @@ export type ProductionId = string;
 export type ProductionStatus = 'draft' | 'planned' | 'approved' | 'in_progress' | 'review' | 'completed' | 'archived';
 export type TaskStatus = 'blocked' | 'ready' | 'approved' | 'queued' | 'submitted' | 'processing' | 'completed' | 'failed' | 'cancelled';
 export type MediaKind = 'image' | 'video' | 'audio' | '3d' | 'document';
+export type AssetRole = 'source' | 'reference' | 'shot_video' | 'shot_audio' | 'voiceover' | 'music' | 'sound_effect' | 'caption' | 'master' | 'distribution_export' | 'thumbnail' | 'other';
 export type ShotSize = 'extreme_wide' | 'wide' | 'full' | 'medium' | 'close_up' | 'extreme_close_up' | 'insert';
 export type CameraMove = 'static' | 'pan' | 'tilt' | 'dolly' | 'tracking' | 'crane' | 'handheld' | 'orbit' | 'drone' | 'zoom';
 export type ApprovalGate = 'creative' | 'generation' | 'master' | 'distribution';
@@ -97,6 +98,11 @@ export interface ProductionAsset {
   kind: MediaKind;
   status: TaskStatus;
   source: 'user' | 'owned_model' | 'external_provider' | 'edited' | 'assembled';
+  /** Optional production-graph ownership links for shot-to-media traceability. */
+  role?: AssetRole;
+  sceneId?: ProductionId;
+  shotId?: ProductionId;
+  createdByTaskId?: ProductionId;
   storageKey?: string;
   contentHash?: string;
   mimeType?: string;
@@ -230,6 +236,11 @@ export function validateProductionGraph(project: CinematicProduction): GraphIssu
     requireRefs(task.dependsOnTaskIds, taskIds, `tasks.${task.id}.dependsOnTaskIds`, 'task');
     requireRefs(task.inputAssetIds, assetIds, `tasks.${task.id}.inputAssetIds`, 'input asset');
     requireRefs(task.outputAssetIds, assetIds, `tasks.${task.id}.outputAssetIds`, 'output asset');
+    if (task.shotId && !shotIds.has(task.shotId)) issues.push({ code: 'UNKNOWN_TASK_SHOT', path: `tasks.${task.id}.shotId`, message: 'Task references a shot that does not exist.', severity: 'error' });
+    for (const assetId of task.outputAssetIds) {
+      const asset = project.assets.find(item => item.id === assetId);
+      if (asset?.createdByTaskId && asset.createdByTaskId !== task.id) issues.push({ code: 'TASK_ASSET_CREATOR_MISMATCH', path: `tasks.${task.id}.outputAssetIds`, message: `Asset ${assetId} identifies a different creating task.`, severity: 'error' });
+    }
     if (task.attempts < 0) issues.push({ code: 'INVALID_ATTEMPTS', path: `tasks.${task.id}.attempts`, message: 'Task attempts cannot be negative.', severity: 'error' });
     if (task.status === 'completed' && !task.evidence) issues.push({ code: 'MISSING_COMPLETION_EVIDENCE', path: `tasks.${task.id}`, message: 'Completed tasks require evidence.', severity: 'error' });
     if (task.status === 'submitted' && !task.selectedProvider) issues.push({ code: 'MISSING_PROVIDER', path: `tasks.${task.id}`, message: 'Submitted tasks must identify the selected provider.', severity: 'error' });
