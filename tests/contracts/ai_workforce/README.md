@@ -2,7 +2,7 @@
 
 This directory contains isolated, standard-library Python tests for the proposed
 IZAKHONO AI Workforce authorization-decision, human-approval, runtime-binding,
-execution-receipt and tenant-isolation contracts.
+execution-receipt, tenant-isolation, idempotency and atomic-evidence contracts.
 
 ## Run
 
@@ -15,23 +15,32 @@ python -m unittest discover -s tests/contracts/ai_workforce -p 'test_*.py' -v
 ## Scope and limitations
 
 - Synthetic fixtures and fixed test clocks only.
-- The signature-verifier and cursor-signing callbacks are injected by the test;
-  they are **not** cryptographic implementations or production trust anchors.
+- Signature-verifier and cursor-signing callbacks are injected by tests; they
+  are **not** cryptographic implementations or production trust anchors.
 - No network calls, FORTRESS requests, credentials, databases, migrations,
   registry, cache, search index, object store, backup, runtime registration,
   HOST execution or provider operations.
-- Tests cover exact issuer/audience/tenant/actor/agent/action/resource/fingerprint/
-  policy binding, time bounds, revocation, ALLOW semantics, separately bound
-  human approval, fresh tenant/agent-scoped runtime registration, health and
-  revocation checks, and correlated execution receipts.
-- Tenant-isolation tests exercise tenant-scoped query/filter results, pagination
-  cursor binding to tenant/query/object scope, export manifest and item-set
-  ownership, evidence retrieval scope, tenant-namespaced cache keys, and
-  tenant-bound backup/restore verification. Unknown ownership or verification
-  fails closed in the reference model.
-- These tests validate test-only reference models. They do not prove that
-  FORTRESS, NODE01, Runtime Fabric, a registry, cache, evidence store or
-  execution adapter implements the proposed contracts.
+- Decision and approval tests cover exact issuer/audience/tenant/actor/agent/
+  action/resource/fingerprint/policy binding, time bounds, revocation, ALLOW
+  semantics and separately bound human approval.
+- Runtime tests cover fresh tenant/agent-scoped registration, health and
+  revocation checks, plus correlated execution receipts and their time/scope.
+- Tenant-isolation tests exercise tenant-scoped query/filter results,
+  pagination cursor binding to tenant/query/object scope, export manifest and
+  item-set ownership, evidence retrieval by tenant/object/object ID,
+  tenant-namespaced cache keys, and tenant-bound backup/restore verification.
+- Idempotency tests model tenant-scoped idempotency keys: a repeated key and
+  identical request fingerprint returns the original operation; reuse with a
+  different fingerprint conflicts.
+- Atomic-evidence tests model copy-on-write publication of operation state,
+  evidence and an outbox event as one unit. Injected failures before commit
+  publish none of the staged records.
+- The idempotency ledger and atomic store are in-memory reference models. They
+  do not prove database uniqueness, isolation levels, crash consistency,
+  distributed locking, transactional outbox delivery, durability, or exactly-
+  once execution. Real systems must define retry and reconciliation semantics.
+- These tests do not prove that FORTRESS, NODE01, Runtime Fabric, a registry,
+  cache, evidence store or execution adapter implements the proposed contracts.
 
 Production adoption requires service-owner approval, a reviewed cryptographic
 profile, independently managed keys and revocation, approved tenant ownership
