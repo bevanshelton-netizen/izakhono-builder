@@ -146,9 +146,25 @@ def create_plan(request: Mapping[str, Any], provider_capability: Mapping[str, An
     )
 
 
+def _plan_payload(plan: ProvisioningPlan) -> dict[str, Any]:
+    return {
+        "request_id": plan.request_id, "idempotency_key": plan.idempotency_key,
+        "provider": plan.provider, "provider_account_ref": plan.provider_account_ref,
+        "region": plan.region, "resource_class": plan.resource_class,
+        "environment": plan.environment, "currency": plan.currency,
+        "estimated_recurring_cost": plan.estimated_recurring_cost,
+        "maximum_approved_cost": plan.maximum_approved_cost,
+        "created_at": plan.created_at, "expires_at": plan.expires_at,
+        "capabilities": tuple(sorted(set(plan.capabilities))),
+    }
+
+
 def approve_plan(plan: ProvisioningPlan, approval: ProvisioningApproval, *, now: str) -> None:
     """Validate exact-plan FORTRESS approval; performs no provisioning."""
     _reject_secrets(asdict(approval))
+    recomputed_digest = _canonical_hash(_plan_payload(plan))
+    if recomputed_digest != plan.plan_digest or plan.plan_id != f"plan_{recomputed_digest[:24]}":
+        raise ProvisioningPolicyError("PLAN_INTEGRITY_MISMATCH")
     if approval.plan_id != plan.plan_id or approval.plan_digest != plan.plan_digest:
         raise ProvisioningPolicyError("APPROVAL_PLAN_MISMATCH")
     if approval.environment != plan.environment or approval.currency != plan.currency:
