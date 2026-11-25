@@ -47,4 +47,9 @@ assert.ok(fs.existsSync(path.join(artifactDir, 'package.json')));
 assert.ok(fs.existsSync(path.join(artifactDir, 'index.mjs')));
 assert.ok(fs.existsSync(path.join(artifactDir, 'build-result.json')));
 
-console.log('[PASS] AI agent worker drains native Builder stages and records portable build artifacts.');
+// A worker that fails while reading state must release its exclusive lock.
+fs.writeFileSync(process.env.IZAKHONO_AGENT_STATE_PATH, '{ invalid json');
+await assert.rejects(runAgentWorker(), SyntaxError);
+assert.equal(fs.existsSync(lockPath), false);
+
+console.log('[PASS] AI agent worker drains native Builder stages, records portable artifacts, rejects concurrent execution, and releases its lock after failure.');
