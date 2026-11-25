@@ -1,5 +1,6 @@
 import { getRunnableTasks, validateProductionGraph, updateTaskWithEvidence, type CinematicProduction } from './cinematic-production-graph';
 import { buildProductionManifest } from './cinematic-production-manifest';
+import { buildProductionReadinessReport } from './cinematic-production-readiness';
 
 const project: CinematicProduction = {
   schema: 'izakhono.cinematic/production-v1', id: 'p1', title: 'Test production',
@@ -101,5 +102,13 @@ const unauditedApprovalProject: CinematicProduction = {
   approvals: completeShotProject.approvals.map(approval => approval.gate === 'generation' ? { ...approval, approverId: undefined, decidedAt: undefined } : approval),
 };
 if (buildProductionManifest(unauditedApprovalProject).summary.readyForMaster) throw new Error('Approval without approver and decision timestamp must not unlock master readiness');
+
+
+const readiness = buildProductionReadinessReport(project, '2026-11-25T00:00:00.000Z');
+if (readiness.schema !== 'izakhono.creator/readiness-report-v1') throw new Error('Readiness report schema is incorrect');
+if (readiness.state !== 'blocked') throw new Error('Production with missing approvals and exports must be blocked');
+if (!readiness.actions.some(action => action.category === 'shot' && action.relatedIds.includes('sh1') && action.candidateTaskIds.includes('t2'))) throw new Error('Readiness report must connect shot gaps to candidate production tasks');
+if (!readiness.actions.some(action => action.category === 'approval' && action.priority === 'critical')) throw new Error('Missing approval must be a critical readiness action');
+if (readiness.actions.some((action, index) => index > 0 && action.priority === 'critical' && readiness.actions[index - 1].priority !== 'critical')) throw new Error('Readiness actions must be ordered by priority');
 
 console.log('IZAKHONO CINEMATIC production graph: PASS');
