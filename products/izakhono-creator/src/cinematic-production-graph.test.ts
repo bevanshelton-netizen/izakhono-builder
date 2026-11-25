@@ -1,4 +1,5 @@
 import { getRunnableTasks, validateProductionGraph, updateTaskWithEvidence, type CinematicProduction } from './cinematic-production-graph';
+import { buildProductionManifest } from './cinematic-production-manifest';
 
 const project: CinematicProduction = {
   schema: 'izakhono.cinematic/production-v1', id: 'p1', title: 'Test production',
@@ -66,5 +67,25 @@ const mismatchedSceneShot = {
   assets: traced.assets.map(asset => ({ ...asset, sceneId: 's2' })),
 };
 if (!validateProductionGraph(mismatchedSceneShot).some(x => x.code === 'ASSET_SCENE_SHOT_MISMATCH')) throw new Error('Asset scene/shot mismatch must be rejected');
+
+
+const manifest = buildProductionManifest(project, '2026-11-25T00:00:00.000Z');
+if (manifest.schema !== 'izakhono.creator/production-manifest-v1') throw new Error('Production manifest schema is incorrect');
+if (manifest.entries.filter(entry => entry.category === 'shot').length !== project.shots.length) throw new Error('Manifest must include every planned shot');
+if (manifest.summary.readyForMaster || manifest.summary.readyForDistribution) throw new Error('Manifest must not report delivery readiness without completed stored shot media and approvals');
+if (!manifest.entries.some(entry => entry.category === 'export' && entry.state === 'missing')) throw new Error('Missing master/export evidence must be visible');
+const completeShotProject: CinematicProduction = {
+  ...project,
+  approvals: project.approvals.map(approval => ({ ...approval, status: 'approved' as const, approverId: 'producer', decidedAt: '2026-11-25T00:00:00.000Z' })),
+  assets: project.shots.map(shot => ({
+    id: `video-${shot.id}`, kind: 'video' as const, status: 'completed' as const,
+    source: 'owned_model' as const, role: 'shot_video' as const, sceneId: shot.sceneId, shotId: shot.id,
+    storageKey: `projects/p1/${shot.id}.mp4`, parentAssetIds: [],
+    provenance: { createdAt: '2026-11-25T00:00:00.000Z', licence: 'owned', consentRecordIds: [] },
+  })),
+};
+const readyManifest = buildProductionManifest(completeShotProject);
+if (!readyManifest.summary.readyForMaster) throw new Error('Manifest should recognize fully evidenced approved shot media');
+if (readyManifest.summary.readyForDistribution) throw new Error('Distribution must remain blocked until master and distribution exports are recorded');
 
 console.log('IZAKHONO CINEMATIC production graph: PASS');
