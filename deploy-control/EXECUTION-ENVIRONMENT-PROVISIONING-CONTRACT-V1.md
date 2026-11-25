@@ -71,7 +71,7 @@ The attestation must bind:
 
 Evidence must be fresh (no more than five minutes old), not future-dated beyond clock-skew tolerance, and unexpired. Missing, stale, mismatched or unverifiable evidence quarantines the resource. A provider's `attested: true` boolean by itself is never sufficient.
 
-The verifier callback is an explicit trust boundary. The current tests use a deterministic fake verifier only; they do not constitute production cryptographic verification or a live FORTRESS integration. Eligibility is an execution-capacity state, not production authorization and not application deployment success.
+The verifier callback is an explicit trust boundary. The repository now includes an Ed25519 verifier that canonicalizes the signed claims, validates the signature against an explicitly pinned public key, enforces provider/account key scope, and rejects revoked or out-of-validity keys. Private signing keys are not stored in the repository. CI creates ephemeral test keys and verifies tamper, unknown-key, revoked-key, algorithm and scope failures. Production use still requires an owner-controlled trusted-key distribution/rotation/revocation process and a live FORTRESS trust-policy integration; a test key or permissive callback is not production trust. Eligibility is an execution-capacity state, not production authorization and not application deployment success.
 
 ## 6. Identity and binding
 
@@ -121,7 +121,7 @@ At the time of this implementation update:
 - The connected SentinelX host registry returned zero enrolled hosts.
 - The connected SentinelX integrations list returned zero configured integrations.
 - No provider account, authoritative Runtime Fabric database binding, or authorized migration runner has been established by those checks.
-- The new attestation path and tests exist in the review branch; the verifier in tests is simulated, not a production trust integration.
+- The review branch contains the provider-neutral attestation gate and Ed25519 signature verifier. CI uses ephemeral test signing keys; no production public key has been enrolled and no live FORTRESS trust integration exists.
 
 These observations do not alter NODE01's established logical Software NODE identity or require manual server enrollment. They mean no connected execution substrate or provider adapter is currently available through those inspected integrations.
 
