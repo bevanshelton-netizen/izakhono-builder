@@ -40,6 +40,11 @@ python -m unittest discover -s tests/contracts/ai_workforce -p 'test_*.py' -v
   acknowledgement, consumer idempotency, and explicit reconciliation when an
   executor's outcome is unknown. Only a scope-matched, independently verified
   receipt may move an uncertain operation to ACKNOWLEDGED or FAILED.
+- Recovery-governance tests model bounded retry budgets, policy-verified
+  backoff, stale-operation escalation, assigned operator ownership, evidence
+  preservation, tenant/fingerprint-bound recovery approval, separation of
+  operator and approver, and unresolved closure. An operator cannot declare
+  execution successful through a recovery-resolution action.
 - The idempotency ledger, atomic store and recovery coordinator are in-memory
   reference models. They do not prove database uniqueness, isolation levels,
   crash consistency, distributed locking, durable outbox delivery, delivery
