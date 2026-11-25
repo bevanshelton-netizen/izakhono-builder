@@ -19,7 +19,7 @@ export interface ProductionManifest {
 }
 
 const isApproved = (project: CinematicProduction, gate: string) =>
-  project.approvals.some(item => item.gate === gate && item.status === 'approved');
+  project.approvals.some(item => item.gate === gate && item.status === 'approved' && Boolean(item.approverId && item.decidedAt));
 const assetsForShot = (assets: ProductionAsset[], shotId: string) => assets.filter(asset => asset.shotId === shotId);
 const stateForTask = (task: ProductionTask): ManifestState =>
   task.status === 'completed' ? 'complete' :
@@ -36,9 +36,9 @@ export function buildProductionManifest(project: CinematicProduction, generatedA
   }
   for (const shot of [...project.shots].sort((a,b) => a.sequence-b.sequence)) {
     const linked = assetsForShot(project.assets, shot.id);
-    const video = linked.some(asset => asset.kind === 'video' && asset.status === 'completed' && asset.role === 'shot_video');
-    const image = linked.some(asset => asset.kind === 'image' && asset.status === 'completed' && (asset.role === 'reference' || asset.role === 'source'));
-    const audio = linked.some(asset => asset.kind === 'audio' && asset.status === 'completed' && asset.role === 'shot_audio');
+    const video = linked.some(asset => asset.kind === 'video' && asset.status === 'completed' && asset.role === 'shot_video' && Boolean(asset.storageKey || asset.contentHash));
+    const image = linked.some(asset => asset.kind === 'image' && asset.status === 'completed' && (asset.role === 'reference' || asset.role === 'source') && Boolean(asset.storageKey || asset.contentHash));
+    const audio = linked.some(asset => asset.kind === 'audio' && asset.status === 'completed' && asset.role === 'shot_audio' && Boolean(asset.storageKey || asset.contentHash));
     const details = [
       video ? 'Completed shot video linked' : 'Missing completed shot video',
       image ? 'Completed source/reference image linked' : 'No completed source/reference image linked',
