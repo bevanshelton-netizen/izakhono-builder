@@ -120,3 +120,62 @@ def authorised_experience_store(
         "role": role,
         "permission": permission,
     }
+
+
+class FortressPermissionClient:
+    """Service-to-service client for FORTRESS product permission decisions."""
+
+    def __init__(self, *, base_url=None, token=None, timeout=3):
+        self.base_url = (base_url or os.getenv("IZAKHONO_FORTRESS_URL", "")).rstrip("/")
+        self.token = token or os.getenv("IZAKHONO_FORTRESS_TOKEN", "")
+        self.timeout = timeout
+
+    def __call__(self, decision_input):
+        if not self.base_url.startswith("https://") or not self.token:
+            raise IdentityBoundaryError("fortress_permission_client_not_configured")
+        if not isinstance(decision_input, dict):
+            raise IdentityBoundaryError("invalid_fortress_decision_input")
+        required = ("subject", "entity_id", "role", "permission", "resource")
+        if any(not isinstance(decision_input.get(key), str) or not decision_input[key].strip()
+               for key in required):
+            raise IdentityBoundaryError("incomplete_fortress_decision_input")
+        if decision_input["resource"] != "izakhono-experience":
+            raise IdentityBoundaryError("fortress_resource_mismatch")
+
+        payload = json.dumps({
+            "subject": decision_input["subject"],
+            "entity_id": decision_input["entity_id"],
+            "role": decision_input["role"],
+            "product": decision_input["resource"],
+            "permission": decision_input["permission"],
+        }).encode()
+        request = Request(
+            self.base_url + "/v1/authorize-product",
+            data=payload,
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": "Bearer " + self.token,
+                "Cache-Control": "no-store",
+            },
+            method="POST",
+        )
+        try:
+            with urlopen(request, timeout=self.timeout) as response:
+                if response.status != 200:
+                    raise IdentityBoundaryError("fortress_permission_decision_failed")
+                result = json.loads(response.read(65536))
+        except HTTPError as exc:
+            if exc.code == 403:
+                return False
+            raise IdentityBoundaryError("fortress_permission_service_unavailable") from exc
+        except (URLError, TimeoutError, ValueError, OSError) as exc:
+            raise IdentityBoundaryError("fortress_permission_service_unavailable") from exc
+        if not isinstance(result, dict):
+            raise IdentityBoundaryError("invalid_fortress_decision_response")
+        if type(result.get("allowed")) is not bool:
+            raise IdentityBoundaryError("indeterminate_fortress_decision")
+        if not isinstance(result.get("decision_id"), str) or not result["decision_id"].startswith("fdc_"):
+            raise IdentityBoundaryError("untraceable_fortress_decision")
+        if type(result.get("policy_version")) is not int:
+            raise IdentityBoundaryError("unversioned_fortress_decision")
+        return result["allowed"] is True
