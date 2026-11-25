@@ -156,6 +156,7 @@ export function validateMediaProbe(probe: ProbeDocument, profile: MediaExportPro
 /** Build an argv array (not a shell string) for a deterministic profile transcode. */
 export function buildFfmpegExportArgs(inputPath: string, outputPath: string, profile: MediaExportProfile = FACEBOOK_REELS_1080X1920): string[] {
   if (!inputPath.trim() || !outputPath.trim()) throw new Error('Input and output paths are required.');
+  if (inputPath === outputPath) throw new Error('Input and output paths must be different to protect the source media.');
   return [
     '-hide_banner', '-y', '-i', inputPath,
     '-map', '0:v:0', '-map', '0:a:0',
