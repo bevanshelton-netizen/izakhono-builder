@@ -52,4 +52,32 @@ class ExperienceTests(unittest.TestCase):
   with self.assertRaises(ExperienceError): self.a.submit_response(s["id"],{r["id"]:4,c["id"]:"other"})
   self.a.submit_response(s["id"],{r["id"]:4,c["id"]:"email"})
 
+
+ def test_case_history_is_append_only_and_actor_attributed(self):
+  s,q=self.survey(); rid=self.a.submit_response(s["id"],{q["id"]:2})["id"]
+  c=self.a.open_case(rid,actor_id="operator-1")
+  c=self.a.transition_case(c["id"],status="acknowledged",actor_id="operator-2",expected_version=1)
+  c=self.a.transition_case(c["id"],status="in_progress",actor_id="agent-7",expected_version=2)
+  history=self.a.case_history(c["id"])
+  self.assertEqual([e["to_status"] for e in history],["open","acknowledged","in_progress"])
+  self.assertEqual([e["actor_id"] for e in history],["operator-1","operator-2","agent-7"])
+  self.assertEqual([e["version"] for e in history],[1,2,3])
+  with self.assertRaises(ExperienceError): self.b.case_history(c["id"])
+ def test_case_transition_rejects_stale_version(self):
+  s,q=self.survey(); rid=self.a.submit_response(s["id"],{q["id"]:2})["id"]
+  c=self.a.open_case(rid)
+  updated=self.a.transition_case(c["id"],status="acknowledged",actor_id="operator",expected_version=1)
+  self.assertEqual(updated["version"],2)
+  with self.assertRaisesRegex(ExperienceError,"stale_case_version"):
+   self.a.transition_case(c["id"],status="in_progress",actor_id="other-operator",expected_version=1)
+  self.assertEqual(self.a.get_case_status_for_test(c["id"]),"acknowledged") if hasattr(self.a,"get_case_status_for_test") else self.assertEqual(self.a.case_history(c["id"])[-1]["to_status"],"acknowledged")
+ def test_case_creation_idempotency_and_payload_conflict(self):
+  s,q=self.survey(); rid=self.a.submit_response(s["id"],{q["id"]:2})["id"]
+  first=self.a.open_case(rid,severity="high",actor_id="operator",idempotency_key="request-123")
+  retry=self.a.open_case(rid,severity="high",actor_id="operator",idempotency_key="request-123")
+  self.assertEqual(first["id"],retry["id"])
+  self.assertEqual(len(self.a.case_history(first["id"])),1)
+  with self.assertRaisesRegex(ExperienceError,"idempotency_key_reused_with_different_request"):
+   self.a.open_case(rid,severity="urgent",actor_id="operator",idempotency_key="request-123")
+
 if __name__=="__main__": unittest.main()
