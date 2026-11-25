@@ -39,16 +39,39 @@ export function buildProductionManifest(project: CinematicProduction, generatedA
     const video = linked.some(asset => asset.kind === 'video' && asset.status === 'completed' && asset.role === 'shot_video' && Boolean(asset.storageKey || asset.contentHash));
     const image = linked.some(asset => asset.kind === 'image' && asset.status === 'completed' && (asset.role === 'reference' || asset.role === 'source') && Boolean(asset.storageKey || asset.contentHash));
     const audio = linked.some(asset => asset.kind === 'audio' && asset.status === 'completed' && asset.role === 'shot_audio' && Boolean(asset.storageKey || asset.contentHash));
+    const shotCharacters = project.characters.filter(character => shot.characterIds.includes(character.id));
+    const requiredConsentIds = shotCharacters.map(character => character.consentRecordId).filter((id): id is string => Boolean(id));
+    const consentCovered = requiredConsentIds.every(id => linked.some(asset => asset.provenance.consentRecordIds.includes(id)));
     const details = [
       video ? 'Completed shot video linked' : 'Missing completed shot video',
       image ? 'Completed source/reference image linked' : 'No completed source/reference image linked',
       audio ? 'Completed shot audio linked' : 'No completed shot audio linked',
+      shot.continuityLocks.length ? `Continuity locks recorded: ${shot.continuityLocks.join(', ')}` : 'No shot continuity locks recorded',
+      requiredConsentIds.length ? (consentCovered ? 'Applicable character consent records linked' : 'Applicable character consent evidence missing') : 'No character consent record is declared as applicable',
     ];
     entries.push({ id: shot.id, category: 'shot', label: `Shot ${shot.sequence}: ${shot.purpose}`, state: video ? 'complete' : linked.some(a=>a.status==='submitted'||a.status==='processing') ? 'in_progress' : 'missing', relatedIds: linked.map(a=>a.id), details });
   }
   for (const asset of project.assets) {
     const linked = Boolean(asset.storageKey || asset.contentHash);
-    entries.push({ id: asset.id, category: 'asset', label: asset.role ?? asset.kind, state: asset.status === 'completed' && linked ? 'complete' : asset.status === 'failed' || asset.status === 'cancelled' ? 'blocked' : asset.status === 'submitted' || asset.status === 'processing' ? 'in_progress' : 'missing', relatedIds: [asset.sceneId,asset.shotId,asset.createdByTaskId].filter((x): x is string=>Boolean(x)), details: [`kind=${asset.kind}`,`status=${asset.status}`,linked ? 'Storage key or content hash recorded' : 'No storage key or content hash recorded',asset.provenance.licence ? `licence=${asset.provenance.licence}` : 'Licence not recorded',asset.provenance.consentRecordIds.length ? 'Consent evidence linked' : 'No consent evidence linked'] });
+    const licenceRecorded = Boolean(asset.provenance.licence?.trim());
+    const shot = asset.shotId ? project.shots.find(item => item.id === asset.shotId) : undefined;
+    const applicableConsentIds = shot
+      ? project.characters.filter(character => shot.characterIds.includes(character.id)).map(character => character.consentRecordId).filter((id): id is string => Boolean(id))
+      : [];
+    const consentCovered = applicableConsentIds.every(id => asset.provenance.consentRecordIds.includes(id));
+    const evidenceComplete = asset.status === 'completed' && linked && licenceRecorded && consentCovered;
+    const assetState: ManifestState = evidenceComplete ? 'complete' : asset.status === 'failed' || asset.status === 'cancelled' ? 'blocked' : asset.status === 'submitted' || asset.status === 'processing' ? 'in_progress' : 'missing';
+    entries.push({
+      id: asset.id, category: 'asset', label: asset.role ?? asset.kind, state: assetState,
+      relatedIds: [asset.sceneId,asset.shotId,asset.createdByTaskId,...asset.provenance.consentRecordIds].filter((x): x is string=>Boolean(x)),
+      details: [
+        `kind=${asset.kind}`, `source=${asset.source}`, `status=${asset.status}`,
+        linked ? 'Storage key or content hash recorded' : 'No storage key or content hash recorded',
+        asset.provenance.createdAt ? `createdAt=${asset.provenance.createdAt}` : 'Creation timestamp not recorded',
+        licenceRecorded ? `licence=${asset.provenance.licence}` : 'Licence not recorded',
+        applicableConsentIds.length ? (consentCovered ? 'Applicable consent evidence linked' : 'Applicable consent evidence missing') : 'No character consent record is declared as applicable',
+      ],
+    });
   }
   for (const task of project.tasks) entries.push({ id: task.id, category: 'task', label: task.kind, state: stateForTask(task), relatedIds: [...task.inputAssetIds,...task.outputAssetIds,...(task.shotId?[task.shotId]:[])], details: [`status=${task.status}`,task.evidence ? 'Completion evidence recorded' : 'No completion evidence',task.errorMessage ?? ''] .filter(Boolean) });
   for (const approval of project.approvals) entries.push({ id: approval.id, category: 'approval', label: `${approval.gate} approval`, state: approval.status === 'approved' ? 'complete' : approval.status === 'rejected' ? 'blocked' : 'missing', relatedIds: [], details: [`status=${approval.status}`,approval.approverId ? `approver=${approval.approverId}` : 'Approver not recorded',approval.decidedAt ? `decidedAt=${approval.decidedAt}` : 'Decision timestamp not recorded'] });
