@@ -96,6 +96,20 @@ class ExperienceAPITests(unittest.TestCase):
         self.assertEqual(response["status"],200)
         self.assertEqual(response["body"]["surveys"],[])
 
+    def test_non_json_content_type_rejected(self):
+        raw=json.dumps({"name":"x","metric":"NPS"}).encode()
+        env={"REQUEST_METHOD":"POST","PATH_INFO":"/api/v1/surveys",
+             "CONTENT_LENGTH":str(len(raw)),"CONTENT_TYPE":"text/plain",
+             "wsgi.input":io.BytesIO(raw),"HTTP_AUTHORIZATION":"Bearer valid"}
+        captured={}
+        def start(status,headers): captured["status"]=int(status.split()[0])
+        b"".join(self.app(env,start))
+        self.assertEqual(captured["status"],415)
+
+    def test_missing_survey_fields_rejected(self):
+        response=self.request("POST","/api/v1/surveys",{"metric":"NPS"})
+        self.assertEqual(response["status"],400)
+
     def test_oversized_and_non_json_bodies_rejected(self):
         raw=b"x"*(65536+1)
         env={"REQUEST_METHOD":"POST","PATH_INFO":"/api/v1/surveys",
