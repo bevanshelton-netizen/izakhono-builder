@@ -2,7 +2,8 @@
 
 This directory contains isolated, standard-library Python tests for the proposed
 IZAKHONO AI Workforce authorization-decision, human-approval, runtime-binding,
-execution-receipt, tenant-isolation, idempotency and atomic-evidence contracts.
+execution-receipt, tenant-isolation, idempotency, atomic-evidence and
+recovery/reconciliation contracts.
 
 ## Run
 
@@ -35,10 +36,15 @@ python -m unittest discover -s tests/contracts/ai_workforce -p 'test_*.py' -v
 - Atomic-evidence tests model copy-on-write publication of operation state,
   evidence and an outbox event as one unit. Injected failures before commit
   publish none of the staged records.
-- The idempotency ledger and atomic store are in-memory reference models. They
-  do not prove database uniqueness, isolation levels, crash consistency,
-  distributed locking, transactional outbox delivery, durability, or exactly-
-  once execution. Real systems must define retry and reconciliation semantics.
+- Recovery tests model pending outbox delivery, retry after uncertain delivery
+  acknowledgement, consumer idempotency, and explicit reconciliation when an
+  executor's outcome is unknown. Only a scope-matched, independently verified
+  receipt may move an uncertain operation to ACKNOWLEDGED or FAILED.
+- The idempotency ledger, atomic store and recovery coordinator are in-memory
+  reference models. They do not prove database uniqueness, isolation levels,
+  crash consistency, distributed locking, durable outbox delivery, delivery
+  guarantees, durable recovery, or exactly-once execution. Real systems must
+  define retry, reconciliation, duplicate suppression and operator escalation.
 - These tests do not prove that FORTRESS, NODE01, Runtime Fabric, a registry,
   cache, evidence store or execution adapter implements the proposed contracts.
 
