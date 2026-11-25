@@ -143,7 +143,7 @@ Every execution environment requires a verified provider/ownership boundary, env
 
 ### Phase 1 — owned foundation
 - Finalize HOST control-plane service contracts and tenant/domain/site/mail inventory.
-- Establish host enrollment, secure operator access, monitoring and audit.
+- Establish execution-environment enrollment, secure operator access, monitoring and audit.
 - Define software Node identity, role, capability and lifecycle contracts independently of compute resources.
 - Identify and validate an already available, authorised execution environment; do not assume one exists.
 - If capacity or network feasibility fails, stop and document the gap; no purchase or provider substitution is implied or authorized.
@@ -223,7 +223,7 @@ The SentinelX account currently reports zero enrolled hosts and zero connected i
 2. Define the logical Node model and identify an already available, explicitly authorised execution environment; only then perform read-only environment discovery.
 3. Connect the authorized DNS/registrar account through a secure integration flow; never paste credentials into chat.
 4. Confirm whether `izakhono.africa` is registered, who controls its authoritative DNS and what records currently exist.
-5. Produce a host-specific deployment and rollback plan using only available owner-controlled resources.
+5. Produce an execution-environment-specific deployment and rollback plan using only already available and explicitly authorised resources.
 6. Deploy staging only on an explicitly authorised and verified execution environment, then run independent acceptance tests before any production traffic or MX cutover.
 
 ## 10. Non-goals and prohibited shortcuts
