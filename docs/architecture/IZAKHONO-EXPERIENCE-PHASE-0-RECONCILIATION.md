@@ -425,3 +425,16 @@ Before implementing autonomous EXPERIENCE agents or connecting them to live cust
 6. Keep all twelve AI Workforce owner decisions unconfirmed until evidence-backed acceptance is recorded.
 
 This establishes the integration direction, not production readiness. PR #748 remains an open design dependency.
+
+
+## 15. Tenant-scoped management read operations added to the EXPERIENCE alpha
+
+A subsequent PR #759 commit `7ed9e54f40a7c12621727f2542f2816b0fbd3690` adds four bounded read operations to the existing domain store:
+- `list_surveys(limit)` with a validated 1–200 result limit and entity/platform filtering;
+- `list_questions(survey_id)` after verifying the survey is visible in the caller's scope;
+- `list_cases(limit)` with the same bounded limit and entity/platform filtering;
+- `get_case(case_id)` with entity/platform scoping and a tenant-safe not-found result.
+
+These are domain-store read methods, not authenticated API routes. They do not replace the requirement for FORTRESS authorization at the service operation boundary. The new commit's EXPERIENCE CI and broader Builder CI were still in progress at the latest check; therefore these additions are not yet reported as test-verified. Application Manifest Validation, NODE01 Architecture Invariant, FORTRESS CI and OpenAI Independence CI had completed successfully for this head.
+
+The previous exact-head CI statements in sections 12–13 apply to earlier commits. The current PR #759 head at this inspection is `7ed9e54f40a7c12621727f2542f2816b0fbd3690`; do not carry forward earlier passing results as if they tested this new commit.
