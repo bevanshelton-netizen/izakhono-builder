@@ -1,17 +1,17 @@
-# IZAKHONO OWNED-HARDWARE DEPLOYMENT PLAN — V1
+# IZAKHONO SOFTWARE-DEFINED NODE AND EXECUTION DEPLOYMENT PLAN — V1
 
-**Status:** Implementation plan; no physical host has yet been enrolled or inspected.  
+**Status:** Architecture and implementation plan; no execution environment is currently enrolled, connected or approved.  
 **Owner:** IZAKHONO  
 **Repository:** `bevanshelton-netizen/izakhono-builder`  
 **Date:** 25 November 2026
 
 ## 1. Non-negotiable deployment principle
 
-IZAKHONO builds and owns its hosting platform. The first deployment target is owner-controlled physical hardware, not a newly purchased VPS, managed hosting plan, or third-party hosting platform.
+IZAKHONO builds and owns its hosting platform and software-defined Nodes. A Node is a logical software identity and workload boundary; it is not a physical computer, virtual machine or compute provider. Workloads execute only through a separately identified, authorised HOST execution environment. No execution environment is currently confirmed.
 
-No purchase, subscription, paid compute allocation, domain transfer, production DNS change, or production traffic cutover is authorised by this plan. If the currently available owner-controlled machine is insufficient, stop and present the measured gap and no-cost alternatives. Any future expenditure requires a separate explicit approval.
+This plan authorises zero spend. No cloud instance, physical hardware, subscription, managed service, domain transfer, production DNS change or production traffic cutover may be created or initiated. If execution capacity is required, first document the technical requirements, available no-cost options and any proposed costs; obtain separate explicit approval before any billable provisioning.
 
-Open-source software and replaceable upstream network services may be used. Using an ISP for connectivity or a registrar for domain registration does not transfer ownership of the IZAKHONO control plane or workloads.
+Open-source software and replaceable infrastructure adapters may be used. Compute, network, storage and DNS are execution dependencies behind explicit interfaces; using an external execution provider does not transfer ownership of IZAKHONO's control plane, Node definitions, workloads, data model or customer services.
 
 ## 2. Scope of ownership
 
@@ -27,27 +27,15 @@ IZAKHONO owns and operates:
 
 External parties may provide commodity connectivity, power-grid service, upstream routing, domain registration or peer delivery. They are not the hosting platform.
 
-## 3. Phase A — inspect existing owner-controlled equipment
+## 3. Phase A — define the logical Node and execution contract
 
-Before installing workloads, enroll the existing machine using the approved host-management agent and perform read-only discovery.
+Define each Node as a versioned software object with a stable logical identity, declared role, approved capabilities, desired state, policy bindings, workload references and audit history. Node identity must not be inferred from a machine hostname, IP address, container ID or cloud-provider resource ID.
 
-Record and verify:
-- physical/virtual status and owner confirmation;
-- manufacturer/model where available;
-- CPU model, cores and virtualization support;
-- installed RAM and memory pressure;
-- disks, capacity, health indicators, filesystem and free space;
-- OS distribution/version, kernel and patch status;
-- hostname, local interfaces, routes and current public-IP visibility;
-- firewall state and listening ports;
-- Docker/Compose availability and existing containers;
-- current services, workloads and occupied ports;
-- UPS/power protection, cooling and physical access arrangements;
-- backup destination and whether it is independent of the primary machine.
+For each workload, define a separate execution-environment record containing its provider/ownership boundary, environment identity, region or failure domain where applicable, OS/runtime, capacity, network and storage capabilities, operator authority, credential scope, health evidence and lifecycle state. Bind a Node to an execution environment only through an explicit, reviewed and auditable authorization.
 
-Do not print secrets, private keys, tokens, passwords, environment-file contents or personal data into inspection output. Do not stop, restart, update, reformat, repartition, overwrite or remove existing services during discovery.
+The execution adapter must expose typed, allow-listed operations; it must not turn the Node control plane into arbitrary shell access. Enrollment of an execution environment is a separate process from creating or identifying a logical Node. A successful agent connection does not prove authorization, capacity, security or production suitability.
 
-**Gate A:** No deployment until the machine's ownership, role, capacity, existing workload impact, storage health and recovery path are understood and approved.
+**Gate A:** Node identity, execution target, ownership/authority, isolation, capacity, network reachability, secrets boundary and recovery path must all be evidenced and approved before workload deployment.
 
 ## 4. Phase B — network and site-readiness assessment
 
@@ -69,25 +57,26 @@ Do not expose Stalwart administration, JMAP administration, database ports, Dock
 
 **DNS-specific warning:** A sovereign authoritative DNS service needs at least two independently reachable nameserver instances in distinct failure domains. One physical machine cannot provide genuine multi-site DNS resilience. Until a second owner-controlled failure domain exists, keep the existing registrar/DNS arrangement as a clearly labelled transitional dependency; do not claim sovereign DNS is live.
 
-## 5. Phase C — safe staging on the owned machine
+## 5. Phase C — safe staging on an approved execution environment
 
-After Gate A and network assessment:
-1. Produce a host-specific deployment plan and resource budget.
-2. Confirm the intended host paths, storage mounts and network boundaries.
-3. Confirm that existing services will not be displaced.
-4. Establish a tested encrypted backup before changing host state.
+After Gate A and network assessment, and only after any required cost approval:
+1. Produce an environment-specific deployment plan, resource budget and failure-domain assessment.
+2. Confirm runtime, storage mounts, network boundaries and workload isolation.
+3. Confirm that no existing service or tenant will be displaced.
+4. Establish and test encrypted backup and recovery before changing persistent state.
 5. Deploy one service group at a time, beginning with the minimum HOST control/edge dependencies.
-6. Use pinned and reviewed container images, persistent volumes, least-privilege identities and explicit resource limits.
+6. Use pinned and reviewed images, persistent volumes, least-privilege identities and explicit resource limits.
 7. Keep management endpoints private and require owner-controlled authentication.
 8. Capture logs, health checks, versions and rollback instructions.
 9. Test restart persistence and restore in an isolated target before any public exposure.
 
-Do not run an all-in-one bootstrap blindly on a machine with unknown workloads. Existing scripts may refuse to proceed if canonical networks, volumes or services are absent; treat these guards as intentional.
+Do not run an all-in-one bootstrap against an unverified environment. Existing scripts may refuse to proceed if canonical networks, volumes or services are absent; treat these guards as intentional.
 
 ## 6. Platform deployment order
 
 The logical service sequence is:
-1. Host baseline, secure operator access, monitoring and backup.
+1. Define and validate Node identities, policy bindings, typed execution adapters and audit evidence.
+2. Establish an authorised execution environment, secure operator access, monitoring and backup.
 2. HOST control plane and private management plane.
 3. HOST Caddy edge, initially serving a controlled test endpoint.
 4. PostgreSQL and object storage with tested persistence and recovery.
@@ -124,14 +113,14 @@ Wait for explicit approval before ordering, subscribing, provisioning paid capac
 
 ## 9. Current blockers and next action
 
-As of this plan's creation, SentinelX reports zero enrolled hosts and zero saved provider integrations. Therefore no physical machine has been inspected and no deployment can safely be run remotely.
+As of this plan's creation, SentinelX reports zero enrolled hosts and zero saved provider integrations. No execution environment is currently connected or verified. This does not mean a software-defined Node is a physical host; Node definitions and execution-environment enrollment are separate concerns.
 
-The next action is to run the current one-time enrollment command on the existing owner-controlled machine. Once the host appears, perform Phase A read-only discovery. Do not interpret an enrollment token or a successful agent connection as proof that the machine is suitable for production.
+The next action is to reconcile the Node and HOST execution contracts in source, then identify an execution environment that is already available and explicitly authorised. Do not generate or run an enrollment command until its target type, authority, security scope and cost implications are known. Perform read-only discovery only after that environment is connected.
 
 The Cloudflare integration-link request has not returned a completed result and no Cloudflare integration is saved. Do not create duplicate connection jobs. Cloudflare zone access is not required for the first read-only hardware inspection.
 
 ## 10. Definition of success
 
-The first milestone is not “containers started.” It is a verified owner-controlled host with documented capacity, a safe deployment boundary, reliable access, network feasibility, monitoring and a tested independent recovery path.
+The first milestone is not “containers started.” It is a verified software-defined Node model, an explicitly authorised execution binding, a safe deployment boundary, documented capacity, network feasibility, monitoring and a tested independent recovery path.
 
 IZAKHONO HOST becomes production-ready only when each service has externally verifiable acceptance evidence, tenant/security controls, operational ownership and a proven rollback/restore procedure.
