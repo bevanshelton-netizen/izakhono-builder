@@ -20,7 +20,7 @@ def test_no_healthy_node_blocks() -> None:
         lambda _node: True,
     )
     assert result.status == "BLOCKED"
-    assert result.reason == "NO_HEALTHY_NODE"
+    assert result.stage == "selection"
 
 
 def test_node01_failure_fails_over_to_node02() -> None:
@@ -42,7 +42,7 @@ def test_activation_failure_blocks() -> None:
         lambda _node: True,
     )
     assert result.status == "BLOCKED"
-    assert result.reason == "ACTIVATION_FAILED"
+    assert result.stage == "activation"
 
 
 def test_acceptance_failure_blocks() -> None:
@@ -53,7 +53,7 @@ def test_acceptance_failure_blocks() -> None:
         lambda _node: False,
     )
     assert result.status == "BLOCKED"
-    assert result.reason == "ACCEPTANCE_FAILED"
+    assert result.stage == "acceptance"
 
 
 def test_successful_handoff_is_not_live_promotion() -> None:

@@ -40,6 +40,16 @@ External adapters cannot silently replace an owned capability, and provider name
 
 `acceptance-engine.py` independently checks every required completed stage. Adapter success alone never establishes customer handover; missing or failed evidence blocks certification.
 
+## Durable submission and execution receipts
+
+The PostgreSQL-backed service binds each tenant-scoped idempotency key to a SHA-256 digest of the canonical request body. An exact replay returns the original job; reusing the key with a different request is rejected with `IDEMPOTENCY_CONFLICT`. Replays also reassert the unique queue row, repairing a process interruption after job persistence but before queue insertion.
+
+The durable queue leases work with `FOR UPDATE SKIP LOCKED`. A verified intermediate step is re-queued for the next state-machine stage; a terminal job is removed from the runnable queue. Lease loss remains an explicit error rather than silently acknowledging work.
+
+When a job reaches `HANDOVER_READY` or `BLOCKED`, the worker records a terminal receipt containing the outcome, job/tenant identity, completion time, attempt count, evidence-state list and SHA-256 evidence digest. Receipt identity is deterministic and replay-safe. PostgreSQL commits the terminal job state, append-only receipt event and FORTRESS audit mirror through the same connection transaction. The receipt is exposed in the job's evidence/status record.
+
+The current implementation reuses the existing JSONB evidence and audit tables; it introduces no schema migration. Production database ownership, migration authority and transaction behaviour still require owner confirmation and authorized integration testing before activation.
+
 ## Reference implementation
 
 `state-machine.py` is a dependency-free reference engine suitable for unit tests and later embedding behind an API/worker runtime. It intentionally contains no provider credentials and performs no real DNS, hosting, mail or payment calls.

@@ -1,0 +1,80 @@
+name: IZAKHONO MAIL Runtime Fabric Binding CI
+
+on:
+  pull_request:
+    paths:
+      - 'infra/runtime-fabric/controller/izakhono_mail_activation.py'
+      - 'infra/runtime-fabric/controller/test_izakhono_mail_stack_contract.py'
+      - 'products/izakhono-host/mail/MAIL-ACCEPTANCE-E2E.py'
+      - 'infra/provisioner/job_store.py'
+      - 'infra/provisioner/job_queue.py'
+      - 'infra/provisioner/postgres_job_store.py'
+      - 'infra/provisioner/postgres_job_queue.py'
+      - 'infra/provisioner/durable_worker_runtime.py'
+      - 'infra/provisioner/worker_runtime.py'
+      - 'infra/provisioner/service.py'
+      - 'infra/provisioner/execution_receipt.py'
+      - 'infra/provisioner/test_terminal_execution_receipts.py'
+      - 'infra/provisioner/test_worker_runtime.py'
+      - 'infra/runtime-fabric/controller/test_izakhono_mail_activation.py'
+      - 'infra/runtime-fabric/workloads/izakhono-mail.json'
+      - 'products/izakhono-mail/NODE-DEPLOYMENT.md'
+      - 'internal/node01-command-gateway/server.mjs'
+      - 'internal/node01-command-gateway/test.mjs'
+      - 'internal/node01-command-gateway/deploy-profiles/izakhono-mail.json'
+      - '.github/workflows/izakhono-mail-runtime-fabric-binding-ci.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'infra/runtime-fabric/controller/izakhono_mail_activation.py'
+      - 'products/izakhono-host/mail/MAIL-ACCEPTANCE-E2E.py'
+      - 'infra/provisioner/job_store.py'
+      - 'infra/provisioner/job_queue.py'
+      - 'infra/provisioner/postgres_job_store.py'
+      - 'infra/provisioner/postgres_job_queue.py'
+      - 'infra/provisioner/durable_worker_runtime.py'
+      - 'infra/provisioner/worker_runtime.py'
+      - 'infra/provisioner/service.py'
+      - 'infra/provisioner/execution_receipt.py'
+      - 'infra/provisioner/test_terminal_execution_receipts.py'
+      - 'infra/provisioner/test_worker_runtime.py'
+      - 'infra/provisioner/README.md'
+      - 'products/izakhono-host/mail/README.md'
+      - 'products/izakhono-mail/NODE-DEPLOYMENT.md'
+      - 'infra/runtime-fabric/controller/test_izakhono_mail_stack_contract.py'
+      - 'infra/runtime-fabric/controller/test_izakhono_mail_activation.py'
+      - 'infra/runtime-fabric/workloads/izakhono-mail.json'
+      - 'products/izakhono-mail/NODE-DEPLOYMENT.md'
+      - 'internal/node01-command-gateway/server.mjs'
+      - 'internal/node01-command-gateway/test.mjs'
+      - 'internal/node01-command-gateway/deploy-profiles/izakhono-mail.json'
+      - '.github/workflows/izakhono-mail-runtime-fabric-binding-ci.yml'
+
+jobs:
+  binding-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate workload contract JSON
+        run: python -m json.tool infra/runtime-fabric/workloads/izakhono-mail.json >/dev/null
+      - name: Validate canonical Stalwart stack binding
+        run: python infra/runtime-fabric/controller/test_izakhono_mail_stack_contract.py
+      - name: Compile real external mail acceptance probe
+        run: python -m py_compile products/izakhono-host/mail/MAIL-ACCEPTANCE-E2E.py
+      - name: Test fail-closed gateway binding
+        working-directory: infra/runtime-fabric/controller
+        run: python test_izakhono_mail_activation.py
+      - name: Test NODE01 generic deploy guard for IZAKHONO MAIL
+        run: node internal/node01-command-gateway/test.mjs
+      - name: Test durable submission idempotency and terminal receipts
+        working-directory: infra/provisioner
+        run: python test_terminal_execution_receipts.py
+      - name: Run Provisioner end-to-end contract smoke
+        working-directory: infra/provisioner
+        run: python smoke.py
+      - name: Run Provisioner worker terminal smoke
+        working-directory: infra/provisioner
+        run: python worker_runtime.py
+      - name: Run Provisioner runtime regression tests
+        working-directory: infra/provisioner
+        run: python test_worker_runtime.py

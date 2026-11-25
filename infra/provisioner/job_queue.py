@@ -17,6 +17,7 @@ class JobQueue:
     def __init__(self, store: JobStore) -> None: self.store, self._items = store, []
     def enqueue(self, job: StoredJob) -> None:
         if job.state in {"HANDOVER_READY", "BLOCKED"}: return
+        if any(item.job_id == job.job_id for item in self._items): return
         self._items.append(QueueItem(job.job_id, job.next_attempt_at or utc_now(), job.attempts))
     def claim_next(self, now: Optional[datetime] = None) -> Optional[StoredJob]:
         now = now or datetime.now(timezone.utc)

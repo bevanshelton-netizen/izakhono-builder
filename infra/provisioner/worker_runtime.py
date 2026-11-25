@@ -6,7 +6,8 @@ from typing import Any, Callable, Mapping
 from acceptance_engine import AcceptanceEngine, AcceptanceResult, EvidenceAcceptanceProbe
 from adapter_catalog import CAPABILITY_TO_ADAPTER, build_catalog
 from adapter_executor import AdapterExecutor
-from execution_contract import ExecutionResult, validate_result
+from execution_contract import validate_request, validate_result
+from execution_receipt import build_terminal_receipt
 from job_queue import JobQueue
 from job_store import AuditEvent, StoredJob, utc_now
 from state_machine import State
@@ -45,7 +46,7 @@ class ProvisionerWorker:
         self.recovery = None
         if recovery_store is not None:
             from recovery_orchestrator import RecoveryOrchestrator
-            self.recovery = RecoveryOrchestrator(recovery_store, recovery_executors or {})
+            self.recovery = RecoveryOrchestrator(self.store, recovery_store, recovery_executors or {})
 
     def _executor(self) -> AdapterExecutor:
         return AdapterExecutor(self.registry, self.implementations)
@@ -62,7 +63,9 @@ class ProvisionerWorker:
 
     def _block(self, job: StoredJob, code: str, message: str = "") -> WorkerResult:
         job.state = State.BLOCKED.value
-        self.store.save(job)
+        receipt, event = build_terminal_receipt(job, {"error_code": code})
+        job.evidence["TERMINAL_RECEIPT"] = receipt
+        self.store.record_terminal_receipt(job, event)
         self.store.append_audit(AuditEvent(f"evt_{job.job_id}_blocked", job.job_id, "BLOCKED", job.state, utc_now(),
                                            {"error_code": code, "message": message}))
         return WorkerResult(job.job_id, job.state, "blocked", message)
@@ -87,7 +90,9 @@ class ProvisionerWorker:
     def _accept(self, job: StoredJob) -> WorkerResult:
         result: AcceptanceResult = self.acceptance.promote(job)
         if result.status == "PASSED":
-            self.store.save(job)
+            receipt, event = build_terminal_receipt(job, {"checks": list(result.checks)})
+            job.evidence["TERMINAL_RECEIPT"] = receipt
+            self.store.record_terminal_receipt(job, event)
             self.store.append_audit(AuditEvent(f"evt_{job.job_id}_accepted", job.job_id, "ACCEPTANCE_PASSED", job.state,
                                                utc_now(), {"checks": result.checks}))
             return WorkerResult(job.job_id, job.state, "accepted")
@@ -105,8 +110,10 @@ class ProvisionerWorker:
         operation = self.registry.get("bindings", {}).get(capability, {}).get("operation", capability)
         operation_id = f"op_{job.job_id}_{job.attempts + 1}_{capability}"
         try:
-            result = self._executor().execute(self._request(job, capability, operation, operation_id))
-            validate_result(result)
+            request = self._request(job, capability, operation, operation_id)
+            validate_request(request)
+            result = self._executor().execute(request)
+            validate_result(result, request)
         except Exception as exc:
             return self._failure(job, "ADAPTER_EXECUTION_FAILED", str(exc), operation_id)
         next_state = {
@@ -129,17 +136,27 @@ class ProvisionerWorker:
         return WorkerResult(job.job_id, job.state, "verified")
 
     def run_once(self) -> WorkerResult | None:
-        item = self.queue.claim_next()
-        if item is None:
+        claimed = self.queue.claim_next()
+        if claimed is None:
             return None
-        job = self.store.get(item.job_id)
+        # The in-memory queue returns a StoredJob directly; durable queues return
+        # a lease envelope and are handled by DurableProvisionerWorker.
+        if hasattr(claimed, "lease_id"):
+            job = self.store.get(claimed.job_id)
+        else:
+            job = claimed
         if job is None:
             return None
         result = self.process_job(job)
-        if result.status in {"verified", "accepted", "blocked", "terminal"}:
-            self.queue.complete(item.lease_id)
-        else:
-            self.queue.release(item.lease_id, retry_at=utc_now())
+        if hasattr(self.queue, "complete") and hasattr(self.queue, "release"):
+            if result.status in {"verified", "accepted", "blocked", "terminal"}:
+                self.queue.complete(claimed.lease_id)
+            else:
+                self.queue.release(claimed.lease_id, retry_at=utc_now())
+        elif result.status in {"retry", "verified"} and job.state not in {
+            State.HANDOVER_READY.value, State.BLOCKED.value
+        }:
+            self.queue.enqueue(job)
         return result
 
 if __name__ == "__main__":
@@ -152,8 +169,11 @@ if __name__ == "__main__":
     job.evidence["PAYMENT_VERIFIED"] = {"evidence_id": "pay-demo", "observed_at": utc_now(), "verified": True, "checks": ["payment.verified"]}
     store.save(job); queue.enqueue(job)
     worker = ProvisionerWorker(store, queue, implementations, registry)
+    # build_catalog deliberately emits simulation evidence. This smoke verifies
+    # that simulated adapter output cannot pass independent acceptance or handover.
     results = [worker.run_once() for _ in range(10)]
-    assert any(r is not None and r.status == "accepted" for r in results) and job.state == State.HANDOVER_READY.value
-    assert all(r is not None for r in results[:8])
-    assert set(job.evidence) == {"PAYMENT_VERIFIED", "TENANT_CREATED", "DOMAIN_READY", "DNS_READY", "SITE_READY", "TLS_READY", "MAIL_READY", "INTEGRATIONS_READY", "ACCEPTANCE_PASSED"}
-    print("PROVISIONER_WORKER_RUNTIME: PASS")
+    assert any(r is not None and r.status == "blocked" for r in results) and job.state == State.BLOCKED.value
+    assert all(r is not None for r in results[:9])
+    assert set(job.evidence) == {"PAYMENT_VERIFIED", "TENANT_CREATED", "DOMAIN_READY", "DNS_READY", "SITE_READY", "TLS_READY", "MAIL_READY", "INTEGRATIONS_READY", "ACCEPTANCE_PASSED", "TERMINAL_RECEIPT"}
+    assert any(event.event_type == "BLOCKED" for event in store.events)
+    print("PROVISIONER_WORKER_RUNTIME: PASS (simulated evidence blocked)")

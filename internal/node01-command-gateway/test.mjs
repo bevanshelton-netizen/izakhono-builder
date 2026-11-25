@@ -15,12 +15,18 @@ assert.equal(allegroProfile.container_port,8080);
 assert.equal(allegroProfile.health_path,'/healthz');
 assert.equal(allegroProfile.public_build_env_file,'/etc/izakhono/apps/allegro-vibez.public-build.env');
 
+const mailProfile=JSON.parse(await fs.readFile('internal/node01-command-gateway/deploy-profiles/izakhono-mail.json','utf8'));
+assert.equal(mailProfile.deployment_gate,'runtime-fabric-registration-required');
+assert.equal(mailProfile.runtime_fabric_workload,'infra/runtime-fabric/workloads/izakhono-mail.json');
+assert.ok(!/^[0-9a-f]{40}$/.test(mailProfile.approved_ref),'mail profile must not expose a deployable immutable ref');
+
 const tmp=await fs.mkdtemp(path.join(os.tmpdir(),'izakhono-command-test-'));
 const ownerFile=path.join(tmp,'owner');
 const controlFile=path.join(tmp,'control');
 await fs.writeFile(ownerFile,'owner-test\n');
 await fs.writeFile(controlFile,'control-test\n');
 
+let deployRequests=0;
 const control=http.createServer(async(req,res)=>{
   const auth=req.headers.authorization||'';
   if(auth!=='Bearer control-test'){res.writeHead(401,{'content-type':'application/json'});res.end('{"error":"bad-auth"}');return;}
@@ -28,6 +34,7 @@ const control=http.createServer(async(req,res)=>{
   if(req.method==='GET'&&req.url==='/v1/node'){res.end('{"node_id":"node01","ready":true}');return;}
   if(req.method==='GET'&&req.url==='/v1/status'){res.end('{"ok":true,"jobs":[]}');return;}
   if(req.method==='POST'&&req.url==='/v1/deploy'){
+    deployRequests+=1;
     let body='';for await(const chunk of req)body+=chunk;
     const job=JSON.parse(body);
     assert.equal(job.app,'izakhono-commands');
@@ -75,6 +82,13 @@ try{
   assert.equal(r.status,202);
   d=await r.json();
   assert.equal(d.data.status,'queued');
+
+  r=await fetch('http://127.0.0.1:18091/api/commands/run',{method:'POST',headers:{'content-type':'application/json','x-admin-secret':'owner-test'},body:JSON.stringify({input:'/deploy izakhono-mail '+sha})});
+  assert.equal(r.status,409);
+  d=await r.json();
+  assert.equal(d.ok,false);
+  assert.match(d.error,/approved Runtime Fabric release/);
+  assert.equal(deployRequests,1,'legacy IZAKHONO MAIL profile must never reach generic NODE deploy');
 
   console.log('IZAKHONO_COMMAND_GATEWAY_CONTROL_NODE_TEST=PASS');
 } finally {

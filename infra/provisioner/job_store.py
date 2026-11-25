@@ -35,9 +35,12 @@ class StoredJob:
 
 class JobStore:
     def create_or_get(self, tenant_id: str, idempotency_key: str, job_id: str) -> Tuple[StoredJob, bool]: raise NotImplementedError
+    def create_or_get_submission(self, tenant_id: str, idempotency_key: str, job_id: str,
+                                 request_digest: str) -> Tuple[StoredJob, bool]: raise NotImplementedError
     def get(self, job_id: str) -> Optional[StoredJob]: raise NotImplementedError
     def save(self, job: StoredJob) -> None: raise NotImplementedError
     def append_audit(self, event: AuditEvent) -> None: raise NotImplementedError
+    def record_terminal_receipt(self, job: StoredJob, event: AuditEvent) -> None: raise NotImplementedError
 
 class MemoryJobStore(JobStore):
     def __init__(self) -> None:
@@ -50,8 +53,34 @@ class MemoryJobStore(JobStore):
         job = StoredJob(job_id, tenant_id, idempotency_key)
         self._jobs[job_id] = job; self._idempotency[key] = job_id
         return job, True
+    def create_or_get_submission(self, tenant_id: str, idempotency_key: str, job_id: str,
+                                 request_digest: str) -> Tuple[StoredJob, bool]:
+        job, created = self.create_or_get(tenant_id, idempotency_key, job_id)
+        submission = job.evidence.get("SUBMISSION", {})
+        if created:
+            job.evidence["SUBMISSION"] = {"request_digest": request_digest}
+        elif submission.get("request_digest") != request_digest:
+            raise ValueError("IDEMPOTENCY_KEY_REUSED_WITH_DIFFERENT_REQUEST")
+        return job, created
     def get(self, job_id: str) -> Optional[StoredJob]: return self._jobs.get(job_id)
     def save(self, job: StoredJob) -> None: self._jobs[job.job_id] = job
+    def record_terminal_receipt(self, job: StoredJob, event: AuditEvent) -> None:
+        if job.state not in TERMINAL_STATES or event.event_type != "TERMINAL_RECEIPT":
+            raise ValueError("terminal receipt requires a terminal job state")
+        receipt = event.data.get("receipt", {})
+        if (event.job_id != job.job_id or event.state != job.state
+                or receipt.get("job_id") != job.job_id
+                or receipt.get("tenant_id") != job.tenant_id
+                or receipt.get("terminal_state") != job.state):
+            raise ValueError("terminal receipt identity mismatch")
+        existing = next((item for item in self._events if item.event_id == event.event_id), None)
+        if existing is not None:
+            receipt = existing.data.get("receipt")
+            if isinstance(receipt, dict):
+                job.evidence["TERMINAL_RECEIPT"] = receipt
+            return
+        self.save(job)
+        self.append_audit(event)
     def append_audit(self, event: AuditEvent) -> None:
         self._events.append(event)
         if event.job_id in self._jobs: self._jobs[event.job_id].audit.append(event)

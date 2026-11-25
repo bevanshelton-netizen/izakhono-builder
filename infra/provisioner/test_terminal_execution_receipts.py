@@ -1,0 +1,119 @@
+"""Submission idempotency and terminal receipt regression tests."""
+from __future__ import annotations
+
+from acceptance_engine import AcceptanceEngine, EvidenceAcceptanceProbe, OPERATIONAL_STATES
+from execution_receipt import build_terminal_receipt
+from job_queue import JobQueue
+from job_store import MemoryJobStore, utc_now
+from service import CreateJobRequest, ProvisionerService, ServiceError
+from worker_runtime import ProvisionerWorker
+
+
+def payment(payment_id: str) -> dict:
+    return {"payment_id": payment_id, "amount": "548.00", "currency": "ZAR", "verified": True}
+
+
+def test_idempotency_replays_and_rejects_payload_conflicts() -> None:
+    store = MemoryJobStore()
+    queue = JobQueue(store)
+    service = ProvisionerService(store, queue)
+    first = service.create_job(CreateJobRequest("tenant-a", "order-1", payment("pay-1")))
+    assert first["created"] is True
+    # Simulate a process crash after job persistence but before queue insertion.
+    queue._items.clear()
+    replay = service.create_job(CreateJobRequest("tenant-a", "order-1", payment("pay-1")))
+    assert replay["created"] is False
+    assert queue.pending() == 1
+    assert first["job_id"] == replay["job_id"]
+    try:
+        service.create_job(CreateJobRequest("tenant-a", "order-1", payment("pay-different")))
+    except ServiceError as error:
+        assert error.code == "IDEMPOTENCY_CONFLICT"
+    else:
+        raise AssertionError("same idempotency key accepted a different request")
+    other_tenant = service.create_job(CreateJobRequest("tenant-b", "order-1", payment("pay-1")))
+    assert other_tenant["job_id"] != first["job_id"]
+
+
+def test_failed_job_persists_terminal_receipt_and_audit() -> None:
+    store = MemoryJobStore()
+    queue = JobQueue(store)
+    job, _ = store.create_or_get("tenant-fail", "idem-fail", "job-fail")
+    worker = ProvisionerWorker(store, queue, {}, {})
+    result = worker._block(job, "ADAPTER_UNAVAILABLE", "adapter unavailable")
+    assert result.status == "blocked"
+    receipt = job.evidence["TERMINAL_RECEIPT"]
+    assert receipt["status"] == "FAILED"
+    assert receipt["terminal_state"] == "BLOCKED"
+    assert receipt["job_id"] == job.job_id
+    assert any(event.event_type == "TERMINAL_RECEIPT" for event in store.events)
+
+
+def test_successful_job_persists_terminal_receipt() -> None:
+    store = MemoryJobStore()
+    queue = JobQueue(store)
+    job, _ = store.create_or_get("tenant-ok", "idem-ok", "job-ok")
+    for state in OPERATIONAL_STATES:
+        job.evidence[state] = {
+            "evidence_id": f"ev-{state.lower()}",
+            "observed_at": utc_now(),
+            "verified": True,
+            "checks": [f"{state.lower()}.verified"],
+            "simulation": False,
+        }
+    worker = ProvisionerWorker(store, queue, {}, {}, acceptance=AcceptanceEngine(EvidenceAcceptanceProbe()))
+    result = worker._accept(job)
+    assert result.status == "accepted"
+    receipt = job.evidence["TERMINAL_RECEIPT"]
+    assert receipt["status"] == "SUCCEEDED"
+    assert receipt["terminal_state"] == "HANDOVER_READY"
+    assert any(event.event_type == "TERMINAL_RECEIPT" for event in store.events)
+
+
+def test_receipt_rejects_secret_material() -> None:
+    store = MemoryJobStore()
+    job, _ = store.create_or_get("tenant", "idem-secret", "job-secret")
+    job.state = "BLOCKED"
+    try:
+        build_terminal_receipt(job, {"api_key": "must-not-be-recorded"})
+    except ValueError as error:
+        assert "secret field prohibited" in str(error)
+    else:
+        raise AssertionError("terminal receipt accepted secret material")
+
+
+def test_terminal_receipt_replay_is_immutable() -> None:
+    store = MemoryJobStore()
+    job, _ = store.create_or_get("tenant", "idem-replay", "job-replay")
+    job.state = "BLOCKED"
+    first, first_event = build_terminal_receipt(job)
+    job.evidence["TERMINAL_RECEIPT"] = first
+    store.record_terminal_receipt(job, first_event)
+    replay, replay_event = build_terminal_receipt(job)
+    job.evidence["TERMINAL_RECEIPT"] = replay
+    store.record_terminal_receipt(job, replay_event)
+    assert job.evidence["TERMINAL_RECEIPT"]["completed_at"] == first["completed_at"]
+    assert len([event for event in store.events if event.event_type == "TERMINAL_RECEIPT"]) == 1
+
+
+def test_receipt_identity_is_bound_to_evidence() -> None:
+    store = MemoryJobStore()
+    job, _ = store.create_or_get("tenant", "idem", "job-receipt")
+    job.state = "BLOCKED"
+    job.evidence["MAIL_READY"] = {"verified": False, "evidence_id": "ev-1"}
+    first, _ = build_terminal_receipt(job)
+    second, _ = build_terminal_receipt(job)
+    assert first["receipt_id"] == second["receipt_id"]
+    job.evidence["MAIL_READY"] = {"verified": True, "evidence_id": "ev-2"}
+    changed, _ = build_terminal_receipt(job)
+    assert changed["receipt_id"] != first["receipt_id"]
+
+
+if __name__ == "__main__":
+    test_idempotency_replays_and_rejects_payload_conflicts()
+    test_failed_job_persists_terminal_receipt_and_audit()
+    test_successful_job_persists_terminal_receipt()
+    test_receipt_identity_is_bound_to_evidence()
+    test_terminal_receipt_replay_is_immutable()
+    test_receipt_rejects_secret_material()
+    print("PROVISIONER_TERMINAL_RECEIPT_TESTS: PASS")

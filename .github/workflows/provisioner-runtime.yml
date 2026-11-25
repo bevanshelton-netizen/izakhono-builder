@@ -90,9 +90,19 @@ jobs:
           from job_queue import JobQueue
           from state_machine import State
           from worker_runtime import ProvisionerWorker
-          from adapter_catalog import build_catalog
+          from adapter_catalog import CAPABILITY_TO_ADAPTER
           from adapter_registry_runtime import load_registry
 
+          def verified_test_adapter(request):
+              return {
+                  'evidence_id': f"ev-{request['operation_id']}",
+                  'observed_at': utc_now(),
+                  'verified': True,
+                  'checks': [f"test.{request['capability']}"],
+                  'simulation': False,
+              }
+
+          implementations = {name: verified_test_adapter for name in set(CAPABILITY_TO_ADAPTER.values())}
           store = MemoryJobStore()
           queue = JobQueue(store)
           job, created = store.create_or_get('tenant-ci', 'idem-ci', 'prov-ci')
@@ -102,10 +112,11 @@ jobs:
               'verified': True, 'checks': ['payment.verified']
           }
           store.save(job); queue.enqueue(job)
-          worker = ProvisionerWorker(store, queue, build_catalog(), load_registry())
-          for _ in range(8): worker.run_once()
+          worker = ProvisionerWorker(store, queue, implementations, load_registry())
+          for _ in range(16): worker.run_once()
           assert job.state == State.HANDOVER_READY.value
           assert job.evidence[State.PAYMENT_VERIFIED.value]['verified'] is True
+          assert job.evidence['TERMINAL_RECEIPT']['status'] == 'SUCCEEDED'
           print('DETERMINISTIC_RUNTIME: PASS')
           PY
       - name: Run PostgreSQL durability integration tests

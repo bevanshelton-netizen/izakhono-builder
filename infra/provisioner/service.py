@@ -1,12 +1,15 @@
 """IZAKHONO Provisioner service boundary: verified payment -> durable worker -> acceptance -> handover."""
 from __future__ import annotations
 from dataclasses import dataclass
+import hashlib
+import json
 from typing import Any, Callable, Dict, Mapping, Optional
 from job_queue import JobQueue
 from job_store import AuditEvent, JobStore, utc_now
 from state_machine import Provisioner
 from errors import ServiceError
 from worker_runtime import ProvisionerWorker
+from acceptance_engine import AcceptanceEngine
 from rollback_store import RollbackStore
 from handover_store import HandoverStore
 
@@ -30,13 +33,15 @@ class ProvisionerService:
                  registry:Optional[Mapping[str,Any]]=None,
                  recovery_store:Optional[RollbackStore]=None,
                  recovery_executors:Optional[Mapping[str,Callable[[Any],Mapping[str,Any]]]]=None,
-                 handover_store:Optional[HandoverStore]=None)->None:
+                 handover_store:Optional[HandoverStore]=None,
+                 acceptance:Optional[AcceptanceEngine]=None)->None:
         self.store,self.queue=store,queue
         self.adapter_implementations=dict(adapter_implementations or {})
         self.registry=registry
         self.recovery_store=recovery_store
         self.recovery_executors=dict(recovery_executors or {})
         self.handover_store=handover_store
+        self.acceptance=acceptance
         self._handover:Dict[str,Dict[str,Any]]={}
 
     def create_job(self,request:CreateJobRequest)->Dict[str,Any]:
@@ -44,10 +49,25 @@ class ProvisionerService:
         if not request.tenant_id or not request.idempotency_key: raise ServiceError("INVALID_REQUEST","tenant_id and idempotency_key are required")
         if e.get("verified") is not True: raise ServiceError("PAYMENT_NOT_VERIFIED","verified payment evidence is required")
         if any(not e.get(f) for f in ("payment_id","amount","currency")): raise ServiceError("PAYMENT_EVIDENCE_INCOMPLETE","payment_id, amount and currency required")
-        job,created=self.store.create_or_get(request.tenant_id,request.idempotency_key,Provisioner.make_job_id(request.tenant_id,request.idempotency_key))
+        canonical = json.dumps(e, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+        request_digest = hashlib.sha256(canonical).hexdigest()
+        try:
+            job,created=self.store.create_or_get_submission(
+                request.tenant_id, request.idempotency_key,
+                Provisioner.make_job_id(request.tenant_id,request.idempotency_key),
+                request_digest,
+            )
+        except ValueError as exc:
+            if "IDEMPOTENCY_KEY_REUSED_WITH_DIFFERENT_REQUEST" in str(exc):
+                raise ServiceError("IDEMPOTENCY_CONFLICT","idempotency key was already used with a different request") from exc
+            raise
         if created:
             job.evidence["PAYMENT_VERIFIED"]={"payment_id":e["payment_id"],"amount":e["amount"],"currency":e["currency"],"verified":True,"evidence_id":f"pay_{e['payment_id']}","observed_at":utc_now(),"checks":["payment.verified","payment.amount_match"]}
-            self.store.save(job); self.store.append_audit(AuditEvent(f"evt_{job.job_id}_created",job.job_id,"JOB_CREATED",job.state,utc_now())); self.queue.enqueue(job)
+            self.store.save(job); self.store.append_audit(AuditEvent(f"evt_{job.job_id}_created",job.job_id,"JOB_CREATED",job.state,utc_now()))
+        # Replays repair the persist-before-enqueue crash window. Durable queue
+        # insertion is unique by job_id, so this is safe for exact retries.
+        if job.state not in {"HANDOVER_READY", "BLOCKED"}:
+            self.queue.enqueue(job)
         return self.status(job.job_id,created)
 
     def status(self,job_id:str,created:Optional[bool]=None)->Dict[str,Any]:
@@ -68,7 +88,8 @@ class ProvisionerService:
             if not processed or worker.last_result is None: return None
             return self.status(worker.last_result.job_id)
         worker=ProvisionerWorker(self.store,self.queue,self.adapter_implementations,self.registry,
-                                 recovery_store=self.recovery_store,recovery_executors=self.recovery_executors)
+                                 acceptance=self.acceptance,recovery_store=self.recovery_store,
+                                 recovery_executors=self.recovery_executors)
         result=worker.run_once()
         return None if result is None else self.status(result.job_id)
 
@@ -91,16 +112,30 @@ class ProvisionerService:
         return record
 
 if __name__=="__main__":
-    from adapter_catalog import build_catalog, CAPABILITY_TO_ADAPTER
+    from datetime import datetime, timezone
+    from adapter_catalog import CAPABILITY_TO_ADAPTER
     from job_store import MemoryJobStore
+
+    def test_adapter(request):
+        return {
+            "evidence_id": "test-" + request["capability"],
+            "observed_at": datetime.now(timezone.utc).isoformat(),
+            "verified": True,
+            "checks": ["test-fixture." + request["capability"]],
+            "simulation": False,
+        }
+
     store=MemoryJobStore(); queue=JobQueue(store)
-    registry={"adapters":{k:{"owned":v} for k,v in CAPABILITY_TO_ADAPTER.items()},"bindings":{name:{"operation":"smoke"} for name in {"tenant","domain","dns","site","tls","mail","crm_whatsapp"}}}
-    service=ProvisionerService(store,queue,build_catalog(),registry)
+    registry={"adapters":{k:{"owned":v} for k,v in CAPABILITY_TO_ADAPTER.items()},
+              "bindings":{name:{"operation":"smoke"} for name in {"tenant","domain","dns","site","tls","mail","crm_whatsapp","acceptance"}}}
+    implementations={name:test_adapter for name in set(CAPABILITY_TO_ADAPTER.values())}
+    service=ProvisionerService(store,queue,implementations,registry)
     first=service.create_job(CreateJobRequest("tenant-service","idem-service",{"payment_id":"pay-service","amount":"100.00","currency":"ZAR","verified":True}))
     duplicate=service.create_job(CreateJobRequest("tenant-service","idem-service",{"payment_id":"pay-service","amount":"100.00","currency":"ZAR","verified":True}))
     assert first["created"] is True and duplicate["created"] is False and first["job_id"]==duplicate["job_id"]
-    for _ in range(8): service.worker_once()
+    for _ in range(10):
+        service.worker_once()
     handover=service.handover(first["job_id"])
     assert handover["status"]=="HANDOVER_READY"
     assert any(e.event_type=="HANDOVER_COMPLETED" for e in store.events)
-    print("PROVISIONER_SERVICE: PASS")
+    print("PROVISIONER_SERVICE: PASS (test fixtures only)")

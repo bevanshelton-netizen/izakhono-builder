@@ -75,8 +75,19 @@ class PostgresJobQueue:
         from postgres_job_store import PostgresJobStore
         return PostgresJobStore._row_to_job(job_row), lease_id
 
-    def complete(self, job_id: str, lease_id: str) -> None:
-        self._lease_update(job_id, lease_id, available_at=None, error_code=None)
+    def complete(self, job_id: str, lease_id: str, keep_queued: bool = False) -> None:
+        """Finish a lease; retain only jobs that have another state-machine step."""
+        if keep_queued:
+            self._lease_update(job_id, lease_id, available_at=None, error_code=None)
+            return
+        with self.connection.cursor() as cur:
+            cur.execute(
+                "DELETE FROM provisioner_queue WHERE job_id=%s AND lease_id=%s",
+                (job_id, lease_id),
+            )
+            if cur.rowcount != 1:
+                raise RuntimeError("QUEUE_LEASE_LOST")
+        self.connection.commit()
 
     def release(self, job_id: str, lease_id: str, available_at: Optional[str] = None, error_code: Optional[str] = None) -> None:
         self._lease_update(job_id, lease_id, available_at=available_at, error_code=error_code)

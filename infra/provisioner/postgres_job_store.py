@@ -66,6 +66,35 @@ class PostgresJobStore(JobStore):
             raise RuntimeError("provisioner job could not be created or recovered")
         return self._row_to_job(row), created
 
+    def create_or_get_submission(self, tenant_id: str, idempotency_key: str, job_id: str,
+                                 request_digest: str) -> Tuple[StoredJob, bool]:
+        """Atomically bind a tenant-scoped idempotency key to one request body."""
+        evidence = json.dumps({"SUBMISSION": {"request_digest": request_digest}})
+        try:
+            with self.connection.cursor() as cur:
+                cur.execute("""INSERT INTO provisioner_jobs
+                               (job_id,tenant_id,idempotency_key,state,evidence)
+                               VALUES (%s,%s,%s,'PAYMENT_VERIFIED',%s::jsonb)
+                               ON CONFLICT (tenant_id,idempotency_key) DO NOTHING""",
+                            (job_id, tenant_id, idempotency_key, evidence))
+                created = cur.rowcount == 1
+                cur.execute("""SELECT job_id,tenant_id,idempotency_key,state,attempts,evidence,next_attempt_at
+                               FROM provisioner_jobs
+                               WHERE tenant_id=%s AND idempotency_key=%s FOR UPDATE""",
+                            (tenant_id, idempotency_key))
+                row = cur.fetchone()
+                if row is None:
+                    raise RuntimeError("provisioner job could not be created or recovered")
+                job = self._row_to_job(row)
+                stored_digest = (job.evidence.get("SUBMISSION") or {}).get("request_digest")
+                if stored_digest != request_digest:
+                    raise ValueError("IDEMPOTENCY_KEY_REUSED_WITH_DIFFERENT_REQUEST")
+            self.connection.commit()
+            return job, created
+        except Exception:
+            self.connection.rollback()
+            raise
+
     def get(self, job_id: str) -> Optional[StoredJob]:
         with self.connection.cursor() as cur:
             cur.execute("""SELECT job_id,tenant_id,idempotency_key,state,attempts,evidence,next_attempt_at
@@ -97,6 +126,51 @@ class PostgresJobStore(JobStore):
                                        operation_id=event.data.get("operation_id", event.event_id),
                                        actor=event.data.get("actor", "provisioner-worker"),
                                        adapter=event.data.get("adapter"))
+
+    def record_terminal_receipt(self, job: StoredJob, event: AuditEvent) -> None:
+        """Commit terminal job state and its immutable receipt event together."""
+        if job.state not in {"HANDOVER_READY", "BLOCKED"} or event.event_type != "TERMINAL_RECEIPT":
+            raise ValueError("terminal receipt requires a terminal job state")
+        receipt = event.data.get("receipt", {})
+        if (event.job_id != job.job_id or event.state != job.state
+                or receipt.get("job_id") != job.job_id
+                or receipt.get("tenant_id") != job.tenant_id
+                or receipt.get("terminal_state") != job.state):
+            raise ValueError("terminal receipt identity mismatch")
+        try:
+            with self.connection.cursor() as cur:
+                cur.execute("SELECT data FROM provisioner_audit_events WHERE event_id=%s FOR UPDATE",
+                            (event.event_id,))
+                existing = cur.fetchone()
+                if existing is not None:
+                    existing_data = existing[0] or {}
+                    existing_receipt = existing_data.get("receipt") if isinstance(existing_data, dict) else None
+                    if isinstance(existing_receipt, dict):
+                        job.evidence["TERMINAL_RECEIPT"] = existing_receipt
+                    self.connection.commit()
+                    return
+                cur.execute("""UPDATE provisioner_jobs
+                               SET state=%s,attempts=%s,evidence=%s::jsonb,
+                                   next_attempt_at=NULL,updated_at=NOW()
+                               WHERE job_id=%s""",
+                            (job.state, job.attempts, json.dumps(job.evidence), job.job_id))
+                if cur.rowcount != 1:
+                    raise KeyError(job.job_id)
+                cur.execute("""INSERT INTO provisioner_audit_events
+                               (event_id,job_id,event_type,state,observed_at,data)
+                               VALUES (%s,%s,%s,%s,%s,%s::jsonb)
+                               ON CONFLICT (event_id) DO NOTHING""",
+                            (event.event_id, event.job_id, event.event_type, event.state,
+                             event.observed_at, json.dumps(event.data)))
+            # FortressAuditStore shares this connection: its commit includes the
+            # job update, local receipt event and Fortress mirror as one transaction.
+            self.fortress_audit.append(event=event, tenant_id=job.tenant_id,
+                                       operation_id=event.event_id, actor="provisioner-worker",
+                                       adapter="terminal-receipt")
+            self.connection.commit()
+        except Exception:
+            self.connection.rollback()
+            raise
 
     def audit_events(self, job_id: str) -> list[AuditEvent]:
         with self.connection.cursor() as cur:
