@@ -45,6 +45,22 @@ python -m unittest discover -s tests/contracts/ai_workforce -p 'test_*.py' -v
   preservation, tenant/fingerprint-bound recovery approval, separation of
   operator and approver, and unresolved closure. An operator cannot declare
   execution successful through a recovery-resolution action.
+
+- Recovery-audit tests model a sequenced event ledger binding each recovery case
+  and operation to tenant and request fingerprint; authenticated initiating
+  principal/session context; assigned operator and distinct approver; reason,
+  action, approval decision and policy version; hashed evidence references;
+  reconciliation queries, receipt-verification result and execution-attempt
+  correlation; and final disposition/outcome certainty. They reject
+  cross-scope references, missing actor/evidence, operator self-approval,
+  altered fingerprints, unverified checkpoints, sequence/time rollback,
+  unsupported terminal dispositions and event mutation/deletion.
+- The recovery-audit ledger is a synthetic in-memory hash-chain reference
+  model. A hash chain is **not** tamper-proof or immutable storage and does not
+  prove signer identity, key custody, atomicity, retention or independent
+  verification. Production requires signed checkpoints, separately controlled
+  append-only storage, independently verifiable evidence, managed signing-key
+  lifecycle, retention/access segregation and atomic state-plus-audit commits.
 - The idempotency ledger, atomic store and recovery coordinator are in-memory
   reference models. They do not prove database uniqueness, isolation levels,
   crash consistency, distributed locking, durable outbox delivery, delivery
