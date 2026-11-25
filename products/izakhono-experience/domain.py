@@ -52,7 +52,6 @@ CREATE TABLE IF NOT EXISTS cases(
  idempotency_key TEXT, request_hash TEXT,
  FOREIGN KEY(entity_id,platform_id,response_id) REFERENCES responses(entity_id,platform_id,id),
  UNIQUE(entity_id,platform_id,response_id), UNIQUE(entity_id,platform_id,id));
-CREATE UNIQUE INDEX IF NOT EXISTS cases_idempotency ON cases(entity_id,platform_id,idempotency_key) WHERE idempotency_key IS NOT NULL;
 CREATE TABLE IF NOT EXISTS case_events(
  id TEXT PRIMARY KEY, entity_id TEXT NOT NULL, platform_id TEXT NOT NULL, case_id TEXT NOT NULL,
  from_status TEXT, to_status TEXT NOT NULL, actor_id TEXT NOT NULL, note TEXT NOT NULL DEFAULT '',
