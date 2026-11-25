@@ -1,4 +1,5 @@
-const STORAGE_KEY = 'izakhono-one:conversations:v1';
+const STORAGE_KEY = 'izakhono-ai:conversations:v1';
+const LEGACY_STORAGE_KEY = 'izakhono-one:conversations:v1';
 const MAX_HISTORY = 30;
 
 const sidebar = document.querySelector('#sidebar');
@@ -27,11 +28,22 @@ function makeId() {
 
 function loadConversations() {
   try {
-    const value = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+    const current = localStorage.getItem(STORAGE_KEY);
+    const legacy = current === null ? localStorage.getItem(LEGACY_STORAGE_KEY) : null;
+    const value = JSON.parse(current ?? legacy ?? '[]');
     if (!Array.isArray(value)) return [];
-    return value.filter((item) =>
+    const conversations = value.filter((item) =>
       item && typeof item.id === 'string' && Array.isArray(item.messages)
     ).slice(0, MAX_HISTORY);
+    if (current === null && legacy !== null) {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(conversations));
+        localStorage.removeItem(LEGACY_STORAGE_KEY);
+      } catch {
+        // Preserve the legacy copy if the new key cannot be written.
+      }
+    }
+    return conversations;
   } catch {
     return [];
   }
@@ -98,7 +110,7 @@ function renderMessages() {
     contentWrap.className = 'message-wrap';
     const author = document.createElement('div');
     author.className = 'message-author';
-    author.textContent = message.role === 'assistant' ? 'IZAKHONO ONE' : 'You';
+    author.textContent = message.role === 'assistant' ? 'IZAKHONO AI' : 'You';
     const content = document.createElement('div');
     content.className = 'message-content';
     content.textContent = message.content;
@@ -109,7 +121,7 @@ function renderMessages() {
   if (state.busy) {
     const typing = document.createElement('div');
     typing.className = 'typing-indicator';
-    typing.innerHTML = '<span></span><span></span><span></span><em>IZAKHONO ONE is thinking…</em>';
+    typing.innerHTML = '<span></span><span></span><span></span><em>IZAKHONO AI is thinking…</em>';
     messagesElement.append(typing);
   }
   messagesElement.scrollTop = messagesElement.scrollHeight;
@@ -164,7 +176,7 @@ function resizeInput() {
 }
 
 function setAIStatus(status, detail) {
-  const label = status === 'connected' ? 'ONE AI connected' : 'AI not connected';
+  const label = status === 'connected' ? 'IZAKHONO AI connected' : 'AI not connected';
   statusElement.className = 'ai-status ' + (status === 'connected' ? 'connected' : 'disconnected');
   statusElement.querySelector('span:last-child').textContent = label;
   statusElement.title = detail || label;
@@ -172,7 +184,7 @@ function setAIStatus(status, detail) {
 
 async function checkAIStatus() {
   try {
-    const response = await fetch('/api/chat/health', { cache: 'no-store' });
+    const response = await fetch('/api/ai/health', { cache: 'no-store' });
     const data = await response.json();
     setAIStatus(data.status, data.status === 'connected'
       ? 'Connected to the approved IZAKHONO local AI runtime.'
@@ -180,7 +192,7 @@ async function checkAIStatus() {
         ? 'The approved local model is not installed yet.'
         : 'The approved AI runtime is not reachable. No external provider fallback is used.');
   } catch {
-    setAIStatus('offline', 'The ONE AI status service could not be reached.');
+    setAIStatus('offline', 'The IZAKHONO AI status service could not be reached.');
   }
 }
 
@@ -209,7 +221,7 @@ async function sendMessage(text) {
   saveConversation();
 
   try {
-    const response = await fetch('/api/chat', {
+    const response = await fetch('/api/ai/chat', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ messages: modelContext() }),
@@ -218,7 +230,7 @@ async function sendMessage(text) {
     const data = await response.json().catch(() => ({}));
     if (!response.ok || !data.ok || typeof data.message !== 'string') {
       const explanation = data.message || (response.status === 503
-        ? 'ONE AI is not connected to its approved model runtime yet. Your message has not been sent to another provider.'
+        ? 'IZAKHONO AI is not connected to its approved model runtime yet. Your message has not been sent to another provider.'
         : 'I could not complete that request. Please try again.');
       state.messages.push({ role: 'assistant', content: explanation });
     } else {
@@ -228,7 +240,7 @@ async function sendMessage(text) {
   } catch {
     state.messages.push({
       role: 'assistant',
-      content: 'I could not reach ONE AI. Please check the connection and try again. Your message has not been sent to another provider.'
+      content: 'I could not reach IZAKHONO AI. Please check the connection and try again. Your message has not been sent to another provider.'
     });
   } finally {
     state.busy = false;
@@ -268,7 +280,7 @@ document.querySelector('#clear-history').addEventListener('click', () => {
   state.conversations = [];
   state.activeId = null;
   state.messages = [];
-  try { localStorage.removeItem(STORAGE_KEY); } catch {}
+  try { localStorage.removeItem(STORAGE_KEY); localStorage.removeItem(LEGACY_STORAGE_KEY); } catch {}
   syncView();
   updateSendButton();
 });
