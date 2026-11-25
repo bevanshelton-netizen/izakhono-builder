@@ -129,7 +129,7 @@ Separate logical roles:
 - BACKUP;
 - SECURITY/FORTRESS.
 
-Roles may initially share a physical machine only where resource, isolation and failure-domain analysis permits. DNS primary/secondary must ultimately occupy distinct network/failure domains. Mail and web workloads must not expose their administrative control surfaces publicly.
+Roles may initially share an execution environment only where resource, isolation and failure-domain analysis permits. DNS primary/secondary must ultimately occupy distinct independently reachable network/failure domains. Mail and web workloads must not expose their administrative control surfaces publicly.
 
 Every execution environment requires a verified provider/ownership boundary, environment identifier, failure domain, OS/runtime, capacity, network and storage capabilities, firewall policy, monitoring, backup coverage and authorized execution identity before activation. A logical Node requires its own stable identity, declared role, policy bindings, desired state and audit history.
 
@@ -192,7 +192,7 @@ Common gates:
 - externally verified DNS and TLS;
 - resource headroom and capacity plan.
 
-Mail-specific gates are defined in `products/izakhono-host/mail/README.md`, `products/izakhono-mail/runtime-v1/DEPLOYMENT-STATUS.md` and `products/izakhono-mail/runtime-v1/ops/PROVISION-CONTABO.md` (now the owner-controlled hardware runbook; the legacy filename is retained to avoid breaking references).
+Mail-specific gates are defined in `products/izakhono-host/mail/README.md`, `products/izakhono-mail/runtime-v1/DEPLOYMENT-STATUS.md` and `products/izakhono-mail/runtime-v1/ops/PROVISION-CONTABO.md` (now the authorised execution-environment runbook; the legacy filename is retained to avoid breaking references).
 
 DNS-specific gates are defined in `infra/authoritative-dns/README.md`.
 
@@ -224,7 +224,7 @@ The SentinelX account currently reports zero enrolled hosts and zero connected i
 3. Connect the authorized DNS/registrar account through a secure integration flow; never paste credentials into chat.
 4. Confirm whether `izakhono.africa` is registered, who controls its authoritative DNS and what records currently exist.
 5. Produce a host-specific deployment and rollback plan using only available owner-controlled resources.
-6. Deploy staging on approved existing hardware, then run independent acceptance tests before any production traffic or MX cutover.
+6. Deploy staging only on an explicitly authorised and verified execution environment, then run independent acceptance tests before any production traffic or MX cutover.
 
 ## 10. Non-goals and prohibited shortcuts
 
