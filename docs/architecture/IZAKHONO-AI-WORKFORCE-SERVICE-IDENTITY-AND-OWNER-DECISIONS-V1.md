@@ -190,7 +190,11 @@ The following decisions require named accountable owners. Until accepted, the it
 | Human approval service | FORTRESS governance owner | Approver eligibility, delegation, fingerprint binding, expiry/revocation and audit contract | UNCONFIRMED |
 | Runtime registration | Runtime Fabric owner | Authoritative registration schema, tenant/workload binding, health TTL and revocation evidence | UNCONFIRMED |
 | HOST execution identity and receipt | HOST/platform execution owner | Actual runner identity, environment attestation, command authentication, signed receipt and cancellation evidence | UNCONFIRMED |
-| Atomic evidence boundary | Persistence/evidence owner | State-plus-evidence transaction/outbox, durability acknowledgement, retention and restore evidence | UNCONFIRMED |
+| Operation-state persistence | Runtime Fabric/persistence owner | Authoritative operation store, tenant isolation, isolation level, unique constraints, concurrency and state-transition transaction semantics | UNCONFIRMED |
+| Evidence metadata and content store | Evidence/persistence owner | Evidence metadata authority, byte-store topology, digest verification, encryption/key custody, retention, restore and orphan cleanup | UNCONFIRMED |
+| Transactional outbox and consumer inbox | Persistence/eventing owners | Atomic outbox ownership, relay delivery semantics, consumer deduplication/inbox, replay/dead-letter and retention controls | UNCONFIRMED |
+| Atomic evidence boundary | Joint persistence/evidence owners | State-plus-evidence metadata-plus-outbox transaction, durability acknowledgement, crash/restart tests, restore evidence and independent audit access | UNCONFIRMED |
+| Approved migration and recovery authority | Database/platform owner | Named migration runner, approval path, backup/restore, rollback/forward-fix and incident recovery responsibilities | UNCONFIRMED |
 
 A decision becomes ACCEPTED only when the named owner, decision date, approved contract version, evidence references, limitations and test results are recorded. An informal discussion, code comment, successful local mock or documentation example is not acceptance.
 
@@ -217,6 +221,32 @@ Copy and complete one record per decision. Do not fill in an owner or evidence r
 - Decision date and review/expiry date:
 
 No production implementation proceeds on a DEFER, missing owner, missing evidence, or unresolved disagreement between FORTRESS and the consuming enforcement owner.
+
+
+### 8.1 Persistence/evidence acceptance record
+
+Complete this record only with an accountable owner and verifiable evidence.
+A proposed architecture or passing in-memory test is not production acceptance.
+
+- Authoritative operation-state owner and store:
+- Evidence metadata owner and evidence-byte storage location/classification:
+- Transaction boundary and isolation level:
+- Tenant-scoped uniqueness constraints and idempotency key retention:
+- Outbox relay owner, delivery semantics and retry/dead-letter policy:
+- Consumer inbox/deduplication owner and replay horizon:
+- Evidence digest, encryption, key custody and retention controls:
+- Staged-object protocol and orphan cleanup authority (if applicable):
+- Durability acknowledgement definition:
+- Backup/restore owner, RPO/RTO and last verified restore evidence:
+- Concurrent request and crash-boundary test evidence:
+- Migration runner, approval and rollback/forward-fix authority:
+- Independent audit access and retention evidence:
+- Accepted limitations, residual risks and review date:
+
+No record is ACCEPTED until the relevant owners agree on the complete boundary
+and the evidence demonstrates the required properties in the approved
+environment. A component's local transaction cannot be represented as atomic
+across a separate database, object store, broker or execution host.
 
 ## 9. Required isolated contract tests
 
