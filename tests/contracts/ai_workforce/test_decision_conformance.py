@@ -142,7 +142,7 @@ class DecisionContractTests(unittest.TestCase):
 
     def verify(self, decision=None, **kwargs) -> None:
         verify_synthetic_decision(
-            decision or self.decision, self.expected, now=1_800_000_100,
+            self.decision if decision is None else decision, self.expected, now=1_800_000_100,
             signature_verifier=self.verify_signature, **kwargs
         )
 
@@ -154,6 +154,10 @@ class DecisionContractTests(unittest.TestCase):
         del artifact["audience"]
         with self.assertRaisesRegex(ContractError, "MISSING_AUDIENCE"):
             self.verify(artifact)
+
+    def test_rejects_empty_decision_mapping(self):
+        with self.assertRaisesRegex(ContractError, "MISSING_ISSUER"):
+            self.verify({})
 
     def test_rejects_wrong_issuer(self):
         artifact = dict(self.decision, issuer="https://untrusted.test")
@@ -255,7 +259,7 @@ class HumanApprovalContractTests(unittest.TestCase):
 
     def verify(self, approval=None, **kwargs) -> None:
         verify_synthetic_approval(
-            approval or self.approval, expected=self.expected,
+            self.approval if approval is None else approval, expected=self.expected,
             now=1_800_000_100, eligible_approvers={"human:approver-01"},
             signature_verifier=self.verify_signature, **kwargs
         )
@@ -289,6 +293,10 @@ class HumanApprovalContractTests(unittest.TestCase):
         del approval["request_fingerprint"]
         with self.assertRaisesRegex(ContractError, "MISSING_APPROVAL_REQUEST_FINGERPRINT"):
             self.verify(approval)
+
+    def test_rejects_empty_approval_mapping(self):
+        with self.assertRaisesRegex(ContractError, "MISSING_APPROVAL_APPROVAL_ID"):
+            self.verify({})
 
     def test_rejects_expired_approval(self):
         approval = dict(self.approval, expires_at=1_800_000_100)
