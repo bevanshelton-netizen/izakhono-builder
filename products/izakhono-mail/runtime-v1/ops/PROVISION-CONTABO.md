@@ -1,12 +1,11 @@
-# IZAKHONO MAIL — Owner-Controlled Hardware Provisioning
+# IZAKHONO MAIL — Authorised Execution Environment Provisioning
 
 ## Deployment decision
 
-The first deployment target is an existing, IZAKHONO-controlled physical machine. IZAKHONO builds and operates the hosting platform and owns its service configuration, control plane, data, security policy and operational procedures.
+IZAKHONO builds and operates the hosting platform and owns its service configuration, software-defined Node identities, control plane, data, security policy and operational procedures. Nodes are logical software entities, not physical machines. Mail workloads execute only in a separately identified and explicitly authorised execution environment.
 
-**Zero-spend rule:** this runbook authorises no purchase, VPS, managed mailbox, paid service, subscription or other recurring charge. Do not create cloud compute or substitute a hosting provider. If the existing machine cannot meet a requirement, stop, document the measured gap and evaluate no-cost options. Any future spending decision requires a separate explicit owner approval after a written estimate.
+**Zero-spend rule:** this runbook authorises no purchase, paid compute, managed mailbox, subscription or recurring charge. Do not provision an execution environment or substitute a hosting provider without explicit owner approval. If no suitable environment is already available, stop, document the requirements and evaluate no-cost options. Any future spending decision requires a separate explicit owner approval after a written estimate.
 
-A physical machine still depends on electricity and network connectivity. Those dependencies do not transfer ownership of the platform or its services to an infrastructure supplier.
 
 ## Canonical runtime
 
@@ -19,19 +18,20 @@ A physical machine still depends on electricity and network connectivity. Those 
 
 Do not deploy a second mail engine, public Caddy edge, Certbot renewal job or competing state store.
 
-## Phase A — identify and inspect the existing machine
+## Phase A — identify the authorised execution environment
 
-1. Confirm the machine is owned or explicitly controlled by IZAKHONO and identify its physical location and responsible operator.
-2. Enrol the machine with the approved host-management agent. Enrollment connects to an existing machine; it does not create compute capacity.
-3. Run `infra/owned-hardware/inspect-host.sh` from the repository on the machine, or perform an equivalent read-only inventory.
-4. Record hostname, OS, CPU, RAM, storage layout and health, network interfaces, routes, listening sockets, firewall policy, container runtime, running workloads, power/UPS and backup arrangements.
-5. Review resource headroom and existing workloads before proposing any installation. Do not run bootstrap scripts or alter services during discovery.
+1. Confirm the execution environment's provider/ownership boundary, responsible operator and explicit authorization for IZAKHONO workloads.
+2. Define the logical Node identity and role separately; do not use a machine hostname, IP address or provider resource ID as the Node identity.
+3. Bind the Node/workload to the execution environment through a reviewed, auditable authorization contract.
+4. Only after the environment is connected through an approved adapter, perform read-only discovery. `infra/owned-hardware/inspect-host.sh` is a Linux host inventory utility for a suitable Linux execution target; it does not create or enrol a logical Node.
+5. Record OS/runtime, CPU, RAM, storage, network interfaces, routes, listening sockets, firewall policy, container runtime, existing workloads, backup arrangements and the relevant provider/site failure-domain constraints.
+6. Review resource headroom and existing workloads before proposing any installation. Do not run bootstrap scripts or alter services during discovery.
 
-If host ownership, access authority, disk health or sufficient isolation cannot be established, stop.
+If execution authority, isolation, capacity, storage health or recovery access cannot be established, stop.
 
 ## Phase B — prove network feasibility before deployment
 
-Verify from the existing owner-controlled network:
+Verify from the authorised execution environment and its actual network path:
 
 - whether the machine has a stable, publicly reachable address;
 - whether the connection is behind CGNAT or requires router port forwarding;
@@ -40,7 +40,7 @@ Verify from the existing owner-controlled network:
 - whether the owner can set reverse DNS/PTR for the public mail address;
 - whether the address has acceptable reputation and is not on relevant blocklists;
 - whether firewall rules can restrict SSH and keep administrative interfaces private;
-- whether power, cooling and physical access are sufficiently reliable;
+- whether the execution environment's availability, operator access and underlying power/site resilience are documented;
 - whether encrypted backups can be copied to a separate, owner-controlled failure domain.
 
 Do not assume residential connectivity supports production mail. If SMTP port 25 or PTR control is unavailable, record mail delivery as blocked. Do not silently route around this by buying a VPS, using a hosted mailbox provider or substituting a transactional email service.
@@ -124,7 +124,7 @@ Production remains BLOCKED until all of the following pass with timestamped evid
 - successful restore and post-restore mail delivery;
 - FORTRESS access controls, audit trail and rollback proof.
 
-If the current ISP/network cannot satisfy mail requirements, mail production is blocked. Do not relabel a forwarding service or external relay as IZAKHONO-owned mailbox hosting.
+If the selected execution environment or its network path cannot satisfy mail requirements, mail production is blocked. Do not relabel a forwarding service or external relay as IZAKHONO-owned mailbox hosting.
 
 A running container, created mailbox, successful CI run or local SMTP test is not proof of public mail delivery.
 
