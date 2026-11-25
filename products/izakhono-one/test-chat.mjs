@@ -9,7 +9,7 @@ assert.throws(() => validateChatMessages([{ role: 'assistant', content: 'Not a f
 let requestedUrl = '';
 let requestedBody;
 let requestedHeaders;
-const service = createOneAIChat({
+const service = createIZAKHONOAIChat({
   env: {
     IZAKHONO_AI_MODEL_URL: 'http://127.0.0.1:11434/api/chat',
     IZAKHONO_AI_MODEL: 'qwen2.5-coder:3b',
@@ -37,7 +37,7 @@ assert.equal(requestedBody.messages[1].content, 'Hello');
 assert.equal(requestedHeaders.authorization, 'Bearer test-secret');
 
 let gatewayRequestedUrl = '';
-const gateway = createOneAIChat({
+const gateway = createIZAKHONOAIChat({
   env: {
     IZAKHONO_AI_MODEL_URL: 'http://host.docker.internal:11434/api/chat',
     IZAKHONO_AI_MODEL_TRUSTED_HOSTS: 'host.docker.internal'
@@ -51,13 +51,13 @@ const gatewayResult = await gateway.chat([{ role: 'user', content: 'Hello' }]);
 assert.equal(gatewayResult.ok, true);
 assert.equal(gatewayRequestedUrl, 'http://host.docker.internal:11434/api/chat');
 
-const gatewayUntrusted = createOneAIChat({
+const gatewayUntrusted = createIZAKHONOAIChat({
   env: { IZAKHONO_AI_MODEL_URL: 'http://host.docker.internal:11434/api/chat' },
   fetcher: async () => { throw new Error('must not make a network request'); }
 });
 await assert.rejects(() => gatewayUntrusted.chat([{ role: 'user', content: 'Hello' }]), /restricted to loopback/);
 
-const gatewayWrongPort = createOneAIChat({
+const gatewayWrongPort = createIZAKHONOAIChat({
   env: {
     IZAKHONO_AI_MODEL_URL: 'http://host.docker.internal:8080/api/chat',
     IZAKHONO_AI_MODEL_TRUSTED_HOSTS: 'host.docker.internal'
@@ -66,13 +66,13 @@ const gatewayWrongPort = createOneAIChat({
 });
 await assert.rejects(() => gatewayWrongPort.chat([{ role: 'user', content: 'Hello' }]), /restricted to loopback/);
 
-const untrusted = createOneAIChat({
+const untrusted = createIZAKHONOAIChat({
   env: { IZAKHONO_AI_MODEL_URL: 'http://example.com/api/chat' },
   fetcher: async () => { throw new Error('must not make a network request'); }
 });
 await assert.rejects(() => untrusted.chat([{ role: 'user', content: 'Hello' }]), /restricted to loopback/);
 
-const health = createOneAIChat({
+const health = createIZAKHONOAIChat({
   env: { IZAKHONO_AI_MODEL_URL: 'http://127.0.0.1:11434/api/chat', IZAKHONO_AI_MODEL: 'qwen2.5-coder:3b' },
   fetcher: async (url) => {
     assert.equal(String(url), 'http://127.0.0.1:11434/api/tags');
@@ -80,4 +80,10 @@ const health = createOneAIChat({
   }
 });
 assert.equal((await health.health()).status, 'connected');
-console.log(JSON.stringify({ status: 'passed', service: 'izakhono-ai-chat', tests: 12 }));
+const legacyConfig = createIZAKHONOAIChat({
+  env: { IZAKHONO_LOCAL_MODEL_URL: 'http://127.0.0.1:11434/api/chat', IZAKHONO_LOCAL_MODEL: 'qwen2.5-coder:3b' },
+  fetcher: async () => ({ ok: true, json: async () => ({ message: { content: 'Legacy config remains compatible.' } }) })
+});
+assert.equal((await legacyConfig.chat([{ role: 'user', content: 'Hello' }])).message, 'Legacy config remains compatible.');
+
+console.log(JSON.stringify({ status: 'passed', service: 'izakhono-ai-chat', tests: 13 }));
