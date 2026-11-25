@@ -2,7 +2,7 @@
 
 ## Status
 
-Architecture contract only. This document authorizes no provider connection, resource creation, payment, DNS change, database migration, runner registration, workload execution, or production promotion.
+Architecture and implementation contract. It authorizes no provider connection, resource creation, payment, DNS change, database migration, runner registration, workload execution, or production promotion.
 
 ## 1. Core architectural decision
 
@@ -35,7 +35,7 @@ Each adapter must expose the same logical operations:
 - `plan(request)`: return a deterministic, expiring plan with resource shape, provider identity, location, limits, estimated recurring/usage cost and required permissions. Planning is read-only.
 - `provision(approved_plan)`: create only the exact resources in an unexpired, explicitly approved plan. Require an idempotency key and return provider resource identifiers.
 - `inspect(resource_id)`: retrieve current resource state and capability evidence without mutation.
-- `attest(resource_id)`: verify the execution agent identity, runtime compatibility, control-plane binding and security posture.
+- `attest(resource_id)`: return signed or otherwise independently verifiable runtime-agent evidence bound to the exact provider resource.
 - `drain(resource_id)`: stop new scheduling and allow controlled workload evacuation.
 - `release(resource_id, approved_request)`: destroy/release only the exact resource explicitly approved for retirement, after backup and workload evacuation checks.
 
@@ -55,7 +55,25 @@ Failure and retirement paths:
 
 Only `ELIGIBLE` capacity may receive workloads. Runtime Fabric retains the logical NODE identity independently of any one provider resource.
 
-## 5. Identity and binding
+## 5. Attestation and NODE binding
+
+The current coordinator deliberately keeps a provisioned resource in `PROVISIONED_PENDING_ATTESTATION`. It can return `ELIGIBLE` only after an independent evidence-verifier callback accepts the provider's attestation and all required claims pass validation.
+
+The attestation must bind:
+
+- exact provider resource ID, provider ID, provider-account reference and region;
+- environment scope;
+- logical NODE ID `NODE01` and logical type `software-runtime`;
+- a non-empty runtime-agent identity and unique evidence ID;
+- attestation observation time and expiry;
+- all capabilities required by the approved plan;
+- checks for agent identity, NODE/runtime binding, security baseline and live heartbeat.
+
+Evidence must be fresh (no more than five minutes old), not future-dated beyond clock-skew tolerance, and unexpired. Missing, stale, mismatched or unverifiable evidence quarantines the resource. A provider's `attested: true` boolean by itself is never sufficient.
+
+The verifier callback is an explicit trust boundary. The current tests use a deterministic fake verifier only; they do not constitute production cryptographic verification or a live FORTRESS integration. Eligibility is an execution-capacity state, not production authorization and not application deployment success.
+
+## 6. Identity and binding
 
 The binding record must distinguish at least:
 
@@ -71,7 +89,7 @@ The binding record must distinguish at least:
 
 The binding must explicitly assert `runtime_host_is_separate: true`. Provider resource IDs are not NODE IDs. A hostname, VM name, container name or provider label must never be used as the canonical logical NODE identity.
 
-## 6. Authorization, cost and safety invariants
+## 7. Authorization, cost and safety invariants
 
 1. Capability discovery and planning are read-only.
 2. No infrastructure resource may be created, resized, retained as paid capacity, or released without an explicit approval bound to the exact plan/resource, environment, cost ceiling and expiry.
@@ -84,7 +102,7 @@ The binding must explicitly assert `runtime_host_is_separate: true`. Provider re
 9. Backup/restore readiness and data placement must be evaluated before production eligibility.
 10. Provider failure must not destroy logical NODE identity or customer state.
 
-## 7. Initial implementation sequence
+## 8. Initial implementation sequence
 
 1. Keep the logical NODE registry and execution-environment registry separate.
 2. Define and test the adapter interface and deterministic plan schema without provider credentials.
@@ -95,18 +113,19 @@ The binding must explicitly assert `runtime_host_is_separate: true`. Provider re
 7. Connect DEPLOY to Runtime Fabric scheduling only after the database owner, authoritative database binding, transaction boundary and migration authority are confirmed.
 8. Promote workloads only after independent runtime, storage, network, backup, security and application acceptance evidence.
 
-## 8. Current verified boundary
+## 9. Current verified boundary
 
-At the time this contract was prepared:
+At the time of this implementation update:
 
 - The repository contains the logical Software NODE architecture and the owned HOST multi-node design.
 - The connected SentinelX host registry returned zero enrolled hosts.
 - The connected SentinelX integrations list returned zero configured integrations.
 - No provider account, authoritative Runtime Fabric database binding, or authorized migration runner has been established by those checks.
+- The new attestation path and tests exist in the review branch; the verifier in tests is simulated, not a production trust integration.
 
 These observations do not alter NODE01's established logical Software NODE identity or require manual server enrollment. They mean no connected execution substrate or provider adapter is currently available through those inspected integrations.
 
-## 9. Explicit non-goals
+## 10. Explicit non-goals
 
 This contract does not select or purchase infrastructure, create cloud resources, enroll a physical host, configure a provider integration, execute a deployment, run a database preflight against production, apply migrations, change DNS, or authorize production traffic.
 
