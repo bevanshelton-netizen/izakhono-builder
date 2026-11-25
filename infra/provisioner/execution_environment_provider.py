@@ -2,9 +2,12 @@
 
 No concrete cloud/vendor adapter is registered here. Provider implementations
 must enforce idempotency at their API boundary and honor the approved cost cap.
+Attestation promotion requires an independent evidence-verifier callback.
 """
 from __future__ import annotations
 
+from datetime import datetime, timedelta, timezone
+from decimal import Decimal, InvalidOperation
 from typing import Any, Callable, Mapping, Protocol
 
 from execution_environment_provisioning import (
@@ -53,7 +56,7 @@ class ExecutionEnvironmentProviderRegistry:
 
 
 class ExecutionEnvironmentProvisioningCoordinator:
-    """Coordinates planning and provisioning after independent FORTRESS approval."""
+    """Coordinates planning, approved provisioning and evidence-gated eligibility."""
 
     def __init__(
         self,
@@ -98,7 +101,6 @@ class ExecutionEnvironmentProvisioningCoordinator:
             raise ProvisioningPolicyError("PROVIDER_RESOURCE_SCOPE_MISMATCH")
         if result["currency"] != plan.currency or result["idempotency_key"] != plan.idempotency_key:
             raise ProvisioningPolicyError("PROVIDER_RESOURCE_COST_OR_IDEMPOTENCY_MISMATCH")
-        from decimal import Decimal, InvalidOperation
         try:
             actual_cost = Decimal(str(result["recurring_cost"]))
             approved_cost = Decimal(str(approval.maximum_cost))
@@ -118,4 +120,93 @@ class ExecutionEnvironmentProvisioningCoordinator:
             "status": "PROVISIONED_PENDING_ATTESTATION",
             "promotion_eligible": False,
             "evidence": dict(result),
+        }
+
+    def attest_and_promote(
+        self,
+        provisioned: Mapping[str, Any],
+        plan: ProvisioningPlan,
+        *,
+        now: str,
+        verify_evidence: Callable[[Mapping[str, Any]], bool],
+    ) -> Mapping[str, Any]:
+        """Validate fresh, independently verified runtime evidence before eligibility.
+
+        The verifier must validate the provider/agent evidence cryptographically
+        or against an owner-controlled trust source. A provider's boolean claim
+        alone is deliberately insufficient.
+        """
+        if not callable(verify_evidence):
+            raise ProvisioningPolicyError("ATTESTATION_VERIFIER_REQUIRED")
+        resource_id = provisioned.get("execution_environment_id")
+        if (
+            provisioned.get("status") != "PROVISIONED_PENDING_ATTESTATION"
+            or provisioned.get("promotion_eligible") is not False
+            or provisioned.get("provider_id") != plan.provider
+            or provisioned.get("environment") != plan.environment
+            or not resource_id
+        ):
+            raise ProvisioningPolicyError("PROVISIONED_RESOURCE_BINDING_INVALID")
+
+        provider = self._registry.resolve(plan.provider)
+        evidence = provider.attest(str(resource_id))
+        try:
+            if not isinstance(evidence, Mapping) or verify_evidence(evidence) is not True:
+                raise ProvisioningPolicyError("ATTESTATION_EVIDENCE_UNVERIFIED")
+            required = {
+                "resource_id", "provider_id", "provider_account_ref", "region",
+                "environment", "logical_node_id", "logical_node_type",
+                "runtime_agent_identity", "evidence_id", "attested_at",
+                "expires_at", "capabilities", "checks",
+            }
+            if not required.issubset(evidence):
+                raise ProvisioningPolicyError("ATTESTATION_EVIDENCE_INCOMPLETE")
+            if (
+                evidence["resource_id"] != resource_id
+                or evidence["provider_id"] != plan.provider
+                or evidence["provider_account_ref"] != plan.provider_account_ref
+                or evidence["region"] != plan.region
+                or evidence["environment"] != plan.environment
+                or evidence["logical_node_id"] != "NODE01"
+                or evidence["logical_node_type"] != "software-runtime"
+                or not isinstance(evidence["runtime_agent_identity"], str)
+                or not evidence["runtime_agent_identity"].strip()
+                or not isinstance(evidence["evidence_id"], str)
+                or not evidence["evidence_id"].strip()
+            ):
+                raise ProvisioningPolicyError("ATTESTATION_BINDING_MISMATCH")
+            observed = datetime.fromisoformat(str(evidence["attested_at"]).replace("Z", "+00:00"))
+            expires = datetime.fromisoformat(str(evidence["expires_at"]).replace("Z", "+00:00"))
+            current = datetime.fromisoformat(now.replace("Z", "+00:00"))
+            if observed.tzinfo is None or expires.tzinfo is None or current.tzinfo is None:
+                raise ProvisioningPolicyError("ATTESTATION_TIMEZONE_REQUIRED")
+            observed = observed.astimezone(timezone.utc)
+            expires = expires.astimezone(timezone.utc)
+            current = current.astimezone(timezone.utc)
+            if observed > current + timedelta(seconds=60) or observed < current - timedelta(minutes=5) or expires <= current:
+                raise ProvisioningPolicyError("ATTESTATION_STALE_OR_EXPIRED")
+            capabilities = evidence["capabilities"]
+            checks = evidence["checks"]
+            if not isinstance(capabilities, (list, tuple, set)) or not set(plan.capabilities).issubset(set(capabilities)):
+                raise ProvisioningPolicyError("ATTESTATION_CAPABILITY_MISMATCH")
+            required_checks = {
+                "agent_identity_verified", "runtime_binding_verified",
+                "security_baseline_verified", "heartbeat_verified",
+            }
+            if not isinstance(checks, (list, tuple, set)) or not required_checks.issubset(set(checks)):
+                raise ProvisioningPolicyError("ATTESTATION_REQUIRED_CHECKS_MISSING")
+        except Exception as exc:
+            provider.quarantine(str(resource_id), f"attestation rejected: {type(exc).__name__}")
+            if isinstance(exc, ProvisioningPolicyError):
+                raise
+            raise ProvisioningPolicyError("ATTESTATION_EVIDENCE_INVALID") from exc
+
+        return {
+            **dict(provisioned),
+            "status": "ELIGIBLE",
+            "promotion_eligible": True,
+            "logical_node_id": "NODE01",
+            "logical_node_identity": "software-runtime",
+            "runtime_host_is_separate": True,
+            "attestation": dict(evidence),
         }
