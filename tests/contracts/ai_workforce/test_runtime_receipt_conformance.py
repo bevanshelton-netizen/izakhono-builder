@@ -20,6 +20,8 @@ def verify_runtime_binding(
     health_verifier: Callable[[Mapping[str, Any]], bool] | None,
     revocation_verifier: Callable[[str], bool] | None,
 ) -> None:
+    if not isinstance(binding, Mapping):
+        raise ContractError("RUNTIME_INVALID_BINDING_MAPPING")
     required = (
         "binding_id", "tenant_id", "agent_id", "runtime_id", "environment_id",
         "adapter_id", "registered_at", "expires_at", "status", "credential_ref",
@@ -33,7 +35,7 @@ def verify_runtime_binding(
         raise ContractError("RUNTIME_AGENT_MISMATCH")
     if binding["status"] != "ACTIVE":
         raise ContractError("RUNTIME_NOT_ACTIVE")
-    if not isinstance(binding["registered_at"], int) or not isinstance(binding["expires_at"], int):
+    if type(binding["registered_at"]) is not int or type(binding["expires_at"]) is not int:
         raise ContractError("RUNTIME_INVALID_TIME_CLAIMS")
     if binding["expires_at"] <= now:
         raise ContractError("RUNTIME_BINDING_EXPIRED")
@@ -53,6 +55,8 @@ def verify_execution_receipt(
     receipt: Mapping[str, Any], *, expected: Mapping[str, str], now: int,
     verifier: Callable[[Mapping[str, Any]], bool] | None,
 ) -> None:
+    if not isinstance(receipt, Mapping):
+        raise ContractError("RECEIPT_INVALID_MAPPING")
     required = (
         "receipt_id", "task_id", "attempt_id", "tenant_id", "agent_id",
         "runtime_binding_id", "environment_id", "adapter_id", "decision_id",
@@ -65,7 +69,7 @@ def verify_execution_receipt(
     for field, value in expected.items():
         if receipt.get(field) != value:
             raise ContractError(f"RECEIPT_MISMATCH_{field.upper()}")
-    if not isinstance(receipt["started_at"], int) or not isinstance(receipt["completed_at"], int):
+    if type(receipt["started_at"]) is not int or type(receipt["completed_at"]) is not int:
         raise ContractError("RECEIPT_INVALID_TIME_CLAIMS")
     if receipt["completed_at"] < receipt["started_at"] or receipt["completed_at"] > now:
         raise ContractError("RECEIPT_INVALID_TIME_ORDER")
@@ -89,17 +93,33 @@ class RuntimeBindingTests(unittest.TestCase):
         self.not_revoked = lambda binding_id: True
 
     def verify(self, binding=None, **kwargs):
+        options = {
+            "expected_tenant": "tenant-01", "expected_agent": "agent-01",
+            "now": 1_800_000_100, "max_age_seconds": 300,
+            "registration_verifier": self.registration_ok,
+            "health_verifier": self.health_ok,
+            "revocation_verifier": self.not_revoked,
+        }
+        options.update(kwargs)
         verify_runtime_binding(
-            self.binding if binding is None else binding,
-            expected_tenant="tenant-01", expected_agent="agent-01",
-            now=1_800_000_100, max_age_seconds=300,
-            registration_verifier=self.registration_ok,
-            health_verifier=self.health_ok,
-            revocation_verifier=self.not_revoked, **kwargs,
+            self.binding if binding is None else binding, **options,
         )
 
     def test_accepts_fresh_registered_healthy_binding(self):
         self.verify()
+
+    def test_rejects_non_mapping_binding(self):
+        with self.assertRaisesRegex(ContractError, "RUNTIME_INVALID_BINDING_MAPPING"):
+            verify_runtime_binding(
+                None, expected_tenant="tenant-01", expected_agent="agent-01",
+                now=1_800_000_100, max_age_seconds=300,
+                registration_verifier=self.registration_ok,
+                health_verifier=self.health_ok, revocation_verifier=self.not_revoked,
+            )
+
+    def test_rejects_boolean_registration_time(self):
+        with self.assertRaisesRegex(ContractError, "RUNTIME_INVALID_TIME_CLAIMS"):
+            self.verify(dict(self.binding, registered_at=True))
 
     def test_rejects_wrong_tenant(self):
         with self.assertRaisesRegex(ContractError, "RUNTIME_TENANT_MISMATCH"):
@@ -160,14 +180,28 @@ class ExecutionReceiptTests(unittest.TestCase):
         self.signature_ok = lambda r: r["signature"] == "synthetic-sig"
 
     def verify(self, receipt=None, **kwargs):
+        options = {
+            "expected": self.expected, "now": 1_800_000_100,
+            "verifier": self.signature_ok,
+        }
+        options.update(kwargs)
         verify_execution_receipt(
-            self.receipt if receipt is None else receipt,
-            expected=self.expected, now=1_800_000_100,
-            verifier=self.signature_ok, **kwargs,
+            self.receipt if receipt is None else receipt, **options,
         )
 
     def test_accepts_correlated_signed_receipt(self):
         self.verify()
+
+    def test_rejects_non_mapping_receipt(self):
+        with self.assertRaisesRegex(ContractError, "RECEIPT_INVALID_MAPPING"):
+            verify_execution_receipt(
+                None, expected=self.expected, now=1_800_000_100,
+                verifier=self.signature_ok,
+            )
+
+    def test_rejects_boolean_receipt_timestamps(self):
+        with self.assertRaisesRegex(ContractError, "RECEIPT_INVALID_TIME_CLAIMS"):
+            self.verify(dict(self.receipt, started_at=True))
 
     def test_rejects_empty_receipt(self):
         with self.assertRaisesRegex(ContractError, "RECEIPT_MISSING_RECEIPT_ID"):
