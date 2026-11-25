@@ -95,6 +95,25 @@ function applyResult(step, result) {
 }
 
 export async function runAgentWorker() {
+  const lockPath = process.env.IZAKHONO_AGENT_LOCK_PATH || `${statePath}.worker.lock`;
+  let lockFd;
+  try {
+    lockFd = fs.openSync(lockPath, 'wx', 0o600);
+    fs.writeFileSync(lockFd, JSON.stringify({ pid: process.pid, startedAt: new Date().toISOString() }) + '\n');
+  } catch (error) {
+    if (error.code === 'EEXIST') {
+      return {
+        schema: 'izakhono.agent-worker/v1',
+        status: 'busy',
+        progressed: 0,
+        plans: [],
+        reason: 'another-worker-holds-exclusive-lock',
+      };
+    }
+    throw error;
+  }
+
+  try {
   const state = readJson(statePath, { schema: 'izakhono.agent-state/v1', plans: {} });
   const queue = readJson(queuePath, { schema: 'izakhono.agent-queue/v1', items: [] });
   let progressed = 0;
@@ -158,6 +177,10 @@ export async function runAgentWorker() {
     progressed,
     plans: Object.values(state.plans).map((plan) => ({ planId: plan.planId, status: plan.status })),
   };
+  } finally {
+    fs.closeSync(lockFd);
+    fs.unlinkSync(lockPath);
+  }
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
