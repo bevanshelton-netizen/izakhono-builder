@@ -68,8 +68,17 @@ jobs:
           expected = {'KG Industrial', 'Edu-Build Institute', 'Free Bird Agri-Quip'}
           if not expected.issubset(excluded) or names.intersection(expected):
               raise SystemExit('Mail provisioning manifest includes an excluded/non-owned entity')
-          if not any(x['platform'] == 'IZAKHONO' and x['domain'] == 'izakhono.africa' and 'ceo' in x['mailboxes'] for x in managed['identities']):
-              raise SystemExit('CEO mailbox/domain target missing from IZAKHONO identity')
+          izakhono = next((x for x in managed['identities'] if x['platform'] == 'IZAKHONO'), None)
+          if not izakhono or izakhono['domain'] != 'izakhono.africa':
+              raise SystemExit('IZAKHONO must target izakhono.africa')
+          if izakhono['mailboxes'] != ['ceo', 'sales', 'info', 'support', 'finance']:
+              raise SystemExit('IZAKHONO initial mailbox set must be exactly CEO, Sales, Info, Support and Finance')
+          env = pathlib.Path('products/izakhono-mail/runtime-v1/.env.example').read_text()
+          if 'MAIL_DOMAIN=izakhono.africa' not in env or 'MAILBOX=ceo@izakhono.africa' not in env:
+              raise SystemExit('Mail runtime defaults do not match the approved IZAKHONO domain and CEO mailbox')
+          for path in ['products/izakhono-host/edge/Caddyfile', 'products/izakhono-host/docker-compose.owned.yml', 'products/izakhono-host/mail/docker-compose.mail.yml']:
+              if 'izakhonoafrica.co.za' in pathlib.Path(path).read_text():
+                  raise SystemExit(f'Legacy domain remains in canonical runtime file: {path}')
           if any('info' not in x['mailboxes'] for x in managed['identities']):
               raise SystemExit('Every owned platform must include info before handover')
           high_level = pathlib.Path('products/izakhono-host/mail/portfolio-mailboxes.yml').read_text()
