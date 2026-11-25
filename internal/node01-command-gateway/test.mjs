@@ -6,6 +6,10 @@ import path from 'node:path';
 import { spawn } from 'node:child_process';
 
 const allegroProfile=JSON.parse(await fs.readFile('internal/node01-command-gateway/deploy-profiles/allegro-vibez.json','utf8'));
+const mailProfile=JSON.parse(await fs.readFile('internal/node01-command-gateway/deploy-profiles/izakhono-mail.json','utf8'));
+const commandsProfile=JSON.parse(await fs.readFile('internal/node01-command-gateway/deploy-profiles/izakhono-commands.json','utf8'));
+assert.equal(Object.hasOwn(mailProfile,'approved_ref'),false);
+assert.equal(Object.hasOwn(commandsProfile,'approved_ref'),false);
 assert.equal(allegroProfile.source,'izakhono-code');
 assert.equal(allegroProfile.repository,'allegro-vibez');
 assert.equal(allegroProfile.app,'allegro-vibez');
@@ -21,6 +25,7 @@ const controlFile=path.join(tmp,'control');
 await fs.writeFile(ownerFile,'owner-test\n');
 await fs.writeFile(controlFile,'control-test\n');
 
+let deployRequests=0;
 const control=http.createServer(async(req,res)=>{
   const auth=req.headers.authorization||'';
   if(auth!=='Bearer control-test'){res.writeHead(401,{'content-type':'application/json'});res.end('{"error":"bad-auth"}');return;}
@@ -28,13 +33,11 @@ const control=http.createServer(async(req,res)=>{
   if(req.method==='GET'&&req.url==='/v1/node'){res.end('{"node_id":"node01","ready":true}');return;}
   if(req.method==='GET'&&req.url==='/v1/status'){res.end('{"ok":true,"jobs":[]}');return;}
   if(req.method==='POST'&&req.url==='/v1/deploy'){
+    deployRequests++;
     let body='';for await(const chunk of req)body+=chunk;
     const job=JSON.parse(body);
-    assert.equal(job.app,'izakhono-commands');
-    assert.equal(job.repository,'izakhono-builder');
-    assert.match(job.ref,/^[0-9a-f]{40}$/);
     res.writeHead(202,{'content-type':'application/json'});
-    res.end('{"id":"job_test","status":"queued"}');return;
+    res.end(JSON.stringify({id:'job_test',status:'queued',app:job.app}));return;
   }
   res.writeHead(404,{'content-type':'application/json'});res.end('{"error":"not-found"}');
 });
@@ -71,10 +74,14 @@ try{
   assert.equal(d.data.node_id,'node01');
 
   const sha='a'.repeat(40);
-  r=await fetch('http://127.0.0.1:18091/api/commands/run',{method:'POST',headers:{'content-type':'application/json','x-admin-secret':'owner-test'},body:JSON.stringify({input:'/deploy izakhono-commands '+sha})});
-  assert.equal(r.status,202);
-  d=await r.json();
-  assert.equal(d.data.status,'queued');
+  for (const profile of ['izakhono-mail','izakhono-commands']) {
+    r=await fetch('http://127.0.0.1:18091/api/commands/run',{method:'POST',headers:{'content-type':'application/json','x-admin-secret':'owner-test'},body:JSON.stringify({input:'/deploy '+profile+' '+sha})});
+    assert.equal(r.status,409);
+    d=await r.json();
+    assert.equal(d.ok,false);
+    assert.equal(d.data.approval,'missing_or_invalid_approval');
+  }
+  assert.equal(deployRequests,0,'unapproved profiles must never be forwarded to CONTROL');
 
   console.log('IZAKHONO_COMMAND_GATEWAY_CONTROL_NODE_TEST=PASS');
 } finally {
