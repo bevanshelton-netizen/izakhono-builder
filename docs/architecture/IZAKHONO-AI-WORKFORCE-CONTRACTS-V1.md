@@ -202,6 +202,55 @@ The event envelope is illustrative, not a deployed schema. Sensitive payloads ar
 
 For consequential operations, the command cannot be reported as complete until both the enforcement acknowledgement and the durable evidence acknowledgement required by policy have been recorded. The production atomicity boundary (transactional outbox, shared transaction, or equivalent) remains a design decision pending persistence-owner confirmation.
 
+
+### 7.1 Recovery audit as a canonical workforce event
+
+Recovery audit records use the common event envelope above; they are not a second
+audit authority or a parallel event bus. A recovery-specific payload adds:
+
+- `recovery_case_id`, `operation_id` and the immutable
+  `request_fingerprint`, all bound to the same tenant and, where
+  applicable, organization, agent, task and workload scope;
+- authenticated initiating `actor` (principal identity plus the
+  authenticated session/authentication-context reference), distinct from the
+  assigned operator and the separately authorized human approver;
+- recovery reason, requested action, FORTRESS `policy_decision_ref`,
+  `approval_ref` and policy version. These are references to
+  authoritative FORTRESS records, not locally minted approval claims;
+- reconciliation query IDs, execution-attempt correlation, receipt issuer and
+  verification result, outcome certainty and final disposition;
+- evidence references containing immutable evidence IDs, source, capture time,
+  classification and content digest. Sensitive evidence remains in its
+  separately controlled store; the event must not embed credentials, tokens,
+  session material or unnecessary personal data.
+
+The common envelope's `event_id`, `schema_version`,
+`source_component`, `correlation_id`,
+`causation_id`, `idempotency_key`,
+`classification`, `redaction_profile`,
+`payload_digest` and `evidence_ref` remain mandatory
+where required by the envelope. A recovery sequence and previous-event digest
+may be added as partition-scoped ordering/integrity metadata; consumers must
+not infer global ordering from them.
+
+FORTRESS remains the sole authority for authorization, policy decisions and
+human approval. The recovery coordinator may request recovery actions and
+record their provenance, but cannot synthesize, amend or override a FORTRESS
+decision. An operator cannot approve their own recovery action. Changed
+tenant, operation or request fingerprint requires a new authorization and
+approval evaluation.
+
+A terminal `CLOSED_SUCCEEDED` or `CLOSED_FAILED` disposition
+requires independently verified, scope-matched outcome evidence. If execution
+cannot be proven, record `CLOSED_UNRESOLVED` with outcome certainty
+`UNKNOWN`, or keep the case open/escalated. Never translate missing
+telemetry or an unacknowledged receipt into success.
+
+The synthetic conformance model checks envelope alignment and cross-event
+case/operation/fingerprint consistency. It does not establish a deployed event
+schema, signed FORTRESS artifact, durable evidence store or atomic production
+transaction.
+
 ## 8. AgentSync export manifest
 
 Proposed manifest fields:
