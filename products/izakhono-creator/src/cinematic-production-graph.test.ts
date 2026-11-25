@@ -111,4 +111,27 @@ if (!readiness.actions.some(action => action.category === 'shot' && action.relat
 if (!readiness.actions.some(action => action.category === 'approval' && action.priority === 'critical')) throw new Error('Missing approval must be a critical readiness action');
 if (readiness.actions.some((action, index) => index > 0 && action.priority === 'critical' && readiness.actions[index - 1].priority !== 'critical')) throw new Error('Readiness actions must be ordered by priority');
 
+
+const unlicensedProject: CinematicProduction = {
+  ...completeShotProject,
+  assets: completeShotProject.assets.map(asset => ({ ...asset, provenance: { ...asset.provenance, licence: undefined } })),
+};
+const unlicensedManifest = buildProductionManifest(unlicensedProject);
+if (unlicensedManifest.summary.readyForMaster) throw new Error('Shot media without recorded licence evidence must not unlock master readiness');
+if (!unlicensedManifest.entries.some(entry => entry.category === 'asset' && entry.details.includes('Licence not recorded'))) throw new Error('Missing licence evidence must be visible in the manifest');
+
+const consentRequiredProject: CinematicProduction = {
+  ...completeShotProject,
+  characters: project.characters.map(character => ({ ...character, consentRecordId: 'consent-lead-1' })),
+};
+const consentMissingManifest = buildProductionManifest(consentRequiredProject);
+if (consentMissingManifest.summary.readyForMaster) throw new Error('Applicable character consent evidence must be linked before master readiness');
+if (!consentMissingManifest.entries.some(entry => entry.category === 'asset' && entry.details.includes('Applicable consent evidence missing'))) throw new Error('Missing applicable consent evidence must be visible');
+
+const consentCoveredProject: CinematicProduction = {
+  ...consentRequiredProject,
+  assets: completeShotProject.assets.map(asset => ({ ...asset, provenance: { ...asset.provenance, consentRecordIds: ['consent-lead-1'] } })),
+};
+if (!buildProductionManifest(consentCoveredProject).summary.readyForMaster) throw new Error('Recorded licence and applicable consent evidence should satisfy rights checks');
+
 console.log('IZAKHONO CINEMATIC production graph: PASS');
