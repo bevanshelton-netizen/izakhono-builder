@@ -65,12 +65,12 @@ def verify_synthetic_decision(
 
     if not isinstance(decision["not_before"], int) or not isinstance(decision["expires_at"], int):
         raise ContractError("INVALID_TIME_CLAIMS")
+    if decision["expires_at"] <= decision["not_before"]:
+        raise ContractError("INVALID_VALIDITY_WINDOW")
     if now < decision["not_before"]:
         raise ContractError("DECISION_NOT_YET_VALID")
     if now >= decision["expires_at"]:
         raise ContractError("DECISION_EXPIRED")
-    if decision["expires_at"] <= decision["not_before"]:
-        raise ContractError("INVALID_VALIDITY_WINDOW")
     if decision.get("decision") != "ALLOW":
         raise ContractError("DECISION_NOT_ALLOW")
     if decision["decision_id"] in (revoked_ids or set()):
