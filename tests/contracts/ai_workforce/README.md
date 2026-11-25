@@ -1,7 +1,7 @@
 # AI Workforce contract conformance harness
 
 This directory contains isolated, standard-library Python tests for the proposed
-IZAKHONO AI Workforce authorization-decision and human-approval contracts.
+IZAKHONO AI Workforce authorization-decision, human-approval, runtime-binding and execution-receipt contracts.
 
 ## Run
 
@@ -19,8 +19,9 @@ python -m unittest discover -s tests/contracts/ai_workforce -p 'test_*.py' -v
 - No network calls, FORTRESS requests, credentials, databases, migrations,
   runtime registration, HOST execution or provider operations.
 - Tests cover exact issuer/audience/tenant/actor/agent/action/resource/
-  fingerprint/policy binding, time bounds, revocation, ALLOW semantics and
-  separately bound human approval.
+  fingerprint/policy binding, time bounds, revocation, ALLOW semantics, separately
+  bound human approval, fresh tenant/agent-scoped runtime registration, health and
+  revocation checks, and correlated execution receipts.
 - These tests validate a test-only reference model. They do not prove that
   FORTRESS, NODE01, Runtime Fabric or an execution adapter implements the
   proposed contract.
