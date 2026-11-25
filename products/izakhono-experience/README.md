@@ -41,3 +41,13 @@ No third-party package is required. No existing environment migration is applied
 
 ## Not included
 No HTTP routes, public survey links, owner permission grants, email/SMS distribution, automated contact, AI sentiment/churn models, production deployment, backup certification, paid connectors or infrastructure purchases. These require separate privacy, retention, security and production acceptance reviews.
+
+## Closed-loop case integrity (alpha hardening)
+
+Case creation supports an optional idempotency key. Repeating the same request with the same key returns the existing case; reusing that key with a different request is rejected. A unique scoped index prevents duplicate key use within an entity/platform.
+
+Each case has a monotonically increasing version. Transitions run in a SQLite write transaction and use a version-checked update; callers may supply `expected_version` to reject stale decisions. Every creation and transition appends a case event with actor, previous/new state, note, timestamp and version. `case_history(case_id)` returns this ordered history within the caller's tenant scope.
+
+Existing alpha databases receive an additive schema upgrade for case version/idempotency fields and a baseline history event. That baseline is explicitly labelled as a migration snapshot; it does not fabricate historical actors or claim that pre-existing transitions can be reconstructed.
+
+These controls improve alpha-level accountability and retry safety. They are not a substitute for an independently protected, tamper-evident production audit store, cross-process deployment validation, backup/restore testing or an approved production migration plan.
