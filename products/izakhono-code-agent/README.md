@@ -1,6 +1,16 @@
 # IZAKHONO CODE
 
-IZAKHONO CODE is a repository-aware, model-driven coding agent with persistent D1 sessions and an isolated NODE01 Docker execution runner.
+IZAKHONO CODE is a repository-aware, model-driven coding agent with persistent D1 sessions and an isolated workspace execution runner. The runner is a separately managed execution component; it is not NODE01 itself.
+
+## Runtime architecture
+
+The intended owned-runtime path is:
+
+`IZAKHONO CODE → IZAKHONO BUILDER → IZAKHONO Runtime/App Fabric → EDGE/TLS`
+
+NODE01 is a logical IZAKHONO software-runtime identity, not a machine, VM, container host or other physical infrastructure. The execution host is a separately managed, replaceable infrastructure resource. A runtime-binding record must bind the NODE01 software identity to an independently identified execution host and must state `runtime_host_is_separate: true`.
+
+The workspace runner described below is an execution component deployed on an approved execution host and registered through the authorised runtime control plane. Do not label the host itself NODE01 or infer a valid NODE01 binding merely because the runner is installed or reachable.
 
 ## Components
 
@@ -34,15 +44,15 @@ npx wrangler@4.127.1 d1 migrations apply DB --remote
 npx wrangler@4.127.1 deploy --config products/izakhono-code-agent/wrangler.jsonc
 ```
 
-The standalone Worker config points its migration directory to the repository root migration set. Deploy only after the migration and all required secrets are configured.
+The standalone Worker config points its migration directory to the repository root migration set. Deploy only after the migration and all required secrets are configured through the approved production control plane.
 
-## NODE01 runner installation
+## Workspace runner installation
 
-The runner requires Docker on the authorised owned host. Create a random token and install it at `/etc/izakhono/code-runner.owner-token` with root-only permissions. Build and start the Compose service from `products/izakhono-code-agent/runner`.
+The runner requires Docker on an approved execution host that has been independently authorised and bound to the IZAKHONO Runtime/App Fabric. Create a random token and install it at `/etc/izakhono/code-runner.owner-token` with root-only permissions. Build and start the Compose service from `products/izakhono-code-agent/runner`.
 
-The service is published on host loopback only. On the verified, authorised NODE01 host, run `sudo bash products/izakhono-code-agent/runner/install.sh` from the repository root. Expose it to the Worker only through an authenticated TLS owner tunnel or private network. Do not publish port 8860 directly to the internet.
+The service is published on execution-host loopback only. Install it only after verifying the execution host locator, runtime-binding record, host ownership/authorisation and approved deployment procedure. Expose it to the Worker only through an authenticated TLS owner tunnel or private network. Do not publish port 8860 directly to the internet.
 
-The runner mounts the Docker socket because it launches constrained per-command containers. It is a privileged host component and must only be installed by an authorised operator on a verified host.
+The runner mounts the Docker socket because it launches constrained per-command containers. It is a privileged host component and must only be installed by an authorised operator on the verified, approved execution host. Installing the runner does not create, rename or activate NODE01; the NODE01 software identity remains separate.
 
 ## Execution controls
 
@@ -66,4 +76,13 @@ docker compose -f products/izakhono-code-agent/runner/docker-compose.yml config
 
 ## Activation prerequisites
 
-The implementation is prepared for the owned-hosting architecture, but cannot be activated until the authorised NODE01 host session is available, the runner is installed and health-checked, owner secrets and a model endpoint are configured, the D1 migration is applied, and the Worker is deployed through the approved production control plane. No credentials are embedded in this repository.
+The implementation is prepared for the owned-runtime architecture, but cannot be activated until all of the following are verified:
+
+1. An approved execution host is registered and reachable through the authorised runtime control plane.
+2. The NODE01 software-runtime identity is bound to that host through the authoritative runtime-binding record, with `runtime_host_is_separate: true` and a real infrastructure locator.
+3. The workspace runner is installed on that approved host, registered with the runtime and health-checked over its private authenticated route.
+4. Owner secrets and an approved model endpoint are configured securely.
+5. The D1 migration is applied and the Worker is deployed through the approved production control plane.
+6. Runtime, security, health and acceptance evidence is independently verified before any LIVE or production-ready status is declared.
+
+No credentials are embedded in this repository. A successful repository build, CI run, runner installation or container health check alone does not prove that NODE01 is bound, accepted or LIVE.
