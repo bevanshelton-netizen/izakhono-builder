@@ -35,10 +35,18 @@ function transition(task, status, extra = {}) {
   state.history.push({ at, task: task.id, from: previous.status, to: status, ...extra });
 }
 function evidenceFor(task, status = 'pending') { return (task.evidence ?? []).map(name => ({ name, status })); }
+// A task that returns waiting must not be re-invoked repeatedly in the same
+// controller process. It remains persisted as waiting and can be reconsidered
+// by the next scheduled/controller invocation after its external condition changes.
+const attemptedThisRun = new Set();
+
 function selectNext() {
   return manifest.queue.find(task => {
     const current = taskState(task.id);
-    return !['completed', 'blocked'].includes(current.status) && !persistentWaitFor(task) && ready(task);
+    return !attemptedThisRun.has(task.id)
+      && !['completed', 'blocked'].includes(current.status)
+      && !persistentWaitFor(task)
+      && ready(task);
   });
 }
 async function executeInternal(task) {
@@ -90,6 +98,7 @@ const externalGates = [];
 while (progressed < manifest.queue.length) {
   const next = selectNext();
   if (!next) break;
+  attemptedThisRun.add(next.id);
   const current = taskState(next.id);
   transition(next, 'running', { attempts: current.attempts + 1, action: next.action, adapter: next.adapter });
 
