@@ -44,7 +44,7 @@ No HTTP routes, public survey links, owner permission grants, email/SMS distribu
 
 ## Closed-loop case integrity (alpha hardening)
 
-Case creation supports an optional idempotency key. Repeating the same request with the same key returns the existing case; reusing that key with a different request is rejected. A unique scoped index prevents duplicate key use within an entity/platform.
+Case creation requires an explicit actor identity and supports an optional idempotency key. Repeating the same request with the same key returns the existing case; reusing that key with a different request is rejected. A unique scoped index prevents duplicate key use within an entity/platform.
 
 Each case has a monotonically increasing version. Transitions run in a SQLite write transaction and use a version-checked update; callers may supply `expected_version` to reject stale decisions. Every creation and transition appends a case event with actor, previous/new state, note, timestamp and version. `case_history(case_id)` returns this ordered history within the caller's tenant scope.
 
