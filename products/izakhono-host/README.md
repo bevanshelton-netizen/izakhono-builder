@@ -4,7 +4,7 @@ IZAKHONO HOST is the owned-first customer hosting control plane for domains, web
 
 ## Production architecture
 
-`IZAKHONO CODE → BUILDER → PROVISIONER → IZAKHONO NODE CLUSTER → CoreDNS/Caddy/TLS → native site runtime → FORTRESS`
+`IZAKHONO CODE → BUILDER → PROVISIONER → IZAKHONO logical node roles → execution-host capacity → CoreDNS/Caddy/TLS → native site runtime`
 
 The customer web runtime is owned by IZAKHONO. External services are bounded adapters and are not the runtime of record.
 
@@ -21,27 +21,31 @@ The customer web runtime is owned by IZAKHONO. External services are bounded ada
 
 `docker-compose.owned.yml` supplies the owned-runtime baseline: native runtime, Caddy edge, CoreDNS, PostgreSQL, MinIO and Valkey.
 
-## Multi-node operation
+## Logical node roles and execution hosts
 
-`CLUSTER-NODE-ROLES.md` defines the production roles and resilience model. `NODE-PREFLIGHT.sh` validates a physical node before activation.
+`CLUSTER-NODE-ROLES.md` defines logical workload roles and the resilience model. Role names such as NODE01, NODE02 and NODE03 are software/orchestration identities; they are not physical servers or cloud instances.
 
-The platform can distribute CONTROL, EDGE, DNS, RUNTIME, DATA, MAIL, BACKUP and FORTRESS roles across the available owned nodes.
+A separate physical or virtual **execution host** supplies CPU, memory, storage and network capacity. The execution host must be identified, ownership/administrative authority verified, inspected and approved before activation. A logical node role is bound to a real execution host only through the documented Runtime Fabric/FORTRESS authorization and evidence process.
+
+`NODE-PREFLIGHT.sh` is a read-only host suitability check. It must be run on the actual designated Linux execution host after its identity and authorization are established; it does not discover, create or enroll a server.
 
 ## Activation
 
-On each designated node, run the preflight first:
+On the approved execution host designated for the initial CONTROL/EDGE/RUNTIME roles, run the preflight first:
 
 ```bash
 ./NODE-PREFLIGHT.sh
 ```
 
-On the primary control/edge/runtime node:
+Only after owner approval of the target, configuration, cost and change plan, run the activation script on that same execution host:
 
 ```bash
 ./NODE01-ACTIVATE.sh
 ```
 
-For a first-time host this creates `.env` with generated secrets. Set `TLS_EMAIL` to the operational certificate address before public HTTPS activation. Never commit `.env`.
+The script name preserves the existing logical NODE01 role label; it does not mean NODE01 is a machine. For a first-time host this creates `.env` with generated secrets. Set `TLS_EMAIL` to the operational certificate address before public HTTPS activation. Never commit `.env`.
+
+Activation starts workloads and is therefore not a read-only inspection step. Do not run it on an unidentified workstation, CI runner or production host without explicit approval.
 
 ## Recovery
 
@@ -53,7 +57,7 @@ For a first-time host this creates `.env` with generated secrets. Set `TLS_EMAIL
 
 Caddy uses on-demand public TLS and asks the native runtime whether a hostname is provisioned before a certificate can be issued. Public DNS still requires the customer's A/AAAA records to reach the owned edge, and authoritative DNS delegation requires independent external resolver evidence.
 
-CoreDNS is included as the owned authoritative-DNS baseline. Secondary DNS capacity should run on independent owned nodes before production delegation is considered complete.
+CoreDNS is included as the owned authoritative-DNS baseline. Secondary DNS capacity should run in an independent network/failure domain before production delegation is considered complete.
 
 ## Security
 
