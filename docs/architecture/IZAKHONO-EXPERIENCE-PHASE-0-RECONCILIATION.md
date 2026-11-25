@@ -238,3 +238,46 @@ D. Confirm authoritative persistence and migration governance; then introduce an
 E. Only after the above gates, design distribution, notifications, dashboards, analytics and optional model-based feedback interpretation.
 
 No source code in PR #759 was changed by this review. No tests were run by this inspection.
+
+
+## 11. Follow-on alpha hardening delivered on PR #759
+
+After the source review in section 10, a focused case-integrity increment was committed to the existing PR #759 implementation branch. No second EXPERIENCE implementation was created.
+
+**Commit:** `20923a36bd800c1053b0fd748608a5b37c50c35c`
+
+The alpha now includes:
+- tenant-scoped append-only `case_events` for case creation and transitions;
+- actor, previous/new status, note, timestamp and monotonically increasing version per event;
+- transactional version-checked case transitions and optional `expected_version` rejection of stale actions;
+- optional idempotency keys with request fingerprints, identical retry replay and conflicting-payload rejection;
+- additive SQLite alpha upgrade for existing case tables, with an explicitly labelled baseline event for each pre-existing case;
+- tests for actor-attributed history, stale-version rejection, identical retry behavior and idempotency-key payload conflicts.
+
+The PR #759 README describes the feature and explicitly distinguishes alpha-level history from a production tamper-evident audit system. No production audit service is claimed.
+
+### CI evidence
+
+GitHub Actions run results for commit `20923a36bd800c1053b0fd748608a5b37c50c35c`:
+- **IZAKHONO EXPERIENCE CI:** success. Compile, domain/identity tests and NODE01 identity invariant all completed successfully.
+- **IZAKHONO FORTRESS CI:** success. Policy JSON validation, Python validation, policy tests and OpenAI independence check all completed successfully.
+- **NODE01 Architecture Invariant:** success.
+- **IZAKHONO Application Manifest Validation:** success.
+- **IZAKHONO Builder CI:** still in progress when inspected.
+- Separate Vercel deployment status contexts showed rate-limit failures for other projects. These are not failures of the EXPERIENCE/FORTRESS test workflows; no deployment retry, paid upgrade or hosting purchase was attempted.
+
+PR #759 remains open and draft. Its branch was 20 commits ahead and 1 commit behind `main` at comparison. The single base-only commit adds an unrelated MAIL Runtime Fabric integration contract. The compare endpoint reported mergeable=true, but no merge or rebase was performed.
+
+### Updated Phase 0 disposition
+
+The EXPERIENCE domain now has a tested alpha case-integrity foundation. Phase 0 is still **partially complete**, not complete. Remaining gates include:
+- survey versioning and immutable published instruments;
+- complete versioned CSAT/CES scoring definitions;
+- authorization enforcement at each service operation and decision freshness;
+- authoritative production persistence and migration owner/runner;
+- consent/contact-preference source of truth and retention/deletion operations;
+- approved private FORTRESS service connectivity and owner-authorized exact grants;
+- durable production audit/evidence and channel-adapter contracts;
+- broader integration and security review.
+
+No public routes, survey distribution, external communications, production migration, infrastructure purchase or deployment was activated.
