@@ -286,7 +286,7 @@ class ExportAndEvidenceTests(unittest.TestCase):
         }
         with self.assertRaisesRegex(ContractError, "EVIDENCE_OBJECT_SCOPE_MISMATCH"):
             retrieve_evidence(evidence, tenant_id="tenant-a", object_scope="agent",
-                              verifier=self.verify_signature)
+                              object_id="agent-1", verifier=self.verify_signature)
 
     def test_evidence_for_another_object_is_rejected(self):
         evidence = {
@@ -337,6 +337,16 @@ class CacheAndRestoreIsolationTests(unittest.TestCase):
             "signature": "synthetic-signature",
         }
         with self.assertRaisesRegex(ContractError, "RESTORE_TENANT_MISMATCH"):
+            verify_restore_snapshot(snapshot, expected_tenant="tenant-a", expected_scope="tenant",
+                                    verifier=lambda value: True)
+
+    def test_restore_rejects_wrong_scope(self):
+        snapshot = {
+            "snapshot_id": "snapshot-a", "tenant_id": "tenant-a",
+            "scope": "agent", "content_digest": "sha256:snapshot",
+            "signature": "synthetic-signature",
+        }
+        with self.assertRaisesRegex(ContractError, "RESTORE_SCOPE_MISMATCH"):
             verify_restore_snapshot(snapshot, expected_tenant="tenant-a", expected_scope="tenant",
                                     verifier=lambda value: True)
 
