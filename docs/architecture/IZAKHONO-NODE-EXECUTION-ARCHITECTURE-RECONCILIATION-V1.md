@@ -44,7 +44,7 @@ The health, readiness, status and deployment-proof responses then report this va
 
 **Required correction before enrollment:** separate an explicitly configured logical software identity from a separately registered execution-environment identity and locator. Missing logical identity or missing authorised binding must fail closed. Do not silently migrate or reinterpret existing hostnames as Node IDs.
 
-The same agent launches a configured deployer subprocess and checks Docker readiness. Its existing HMAC request verification and job validation are useful controls, but they do not establish an approved Node-to-environment binding, a FORTRESS authorization receipt or a centrally durable audit transaction.
+The same agent launches a configured deployer subprocess and checks Docker readiness. Its existing HMAC request verification and job validation are useful controls, but they do not establish an approved Node-to-environment binding, a FORTRESS authorization receipt or a centrally durable audit transaction. The existing `products/izakhono-node/install.sh` also writes the legacy `IZAKHONO_NODE_ID=node01` setting and does not provision a separately approved execution-environment identity. The existing `products/izakhono-node/README.md` still describes the product in hardware/physical-node terms, despite the mandatory system-wide identity standard.
 
 ### G2 — No authoritative infrastructure Node/binding registry is established by inspected code
 
@@ -74,7 +74,7 @@ HOST's provisioner governs customer onboarding from payment through domain, DNS,
 
 ### G6 — Operational documents still contain stale or conflicting substrate assumptions
 
-The repository includes a software-node standard and a corrected execution-environment activation gate, but other HOST and MAIL documents still use language such as physical-node activation, refer to available owned nodes as if execution capacity were already verified, or describe a preferred external provider. For example, `products/izakhono-host/README.md` still refers to validating a “physical node”; `products/izakhono-mail/runtime-v1/ops/DEPLOY-PROVIDER-NEUTRAL.md` specifies a public Linux/Docker target; and `PROVIDER-GATE.md` records an earlier preferred-provider research position.
+The repository includes a software-node standard and a corrected execution-environment activation gate, but other HOST, NODE and MAIL documents still use language such as physical-node activation, refer to available owned nodes as if execution capacity were already verified, or describe a preferred external provider. For example, `products/izakhono-host/README.md` still refers to validating a “physical node”; `products/izakhono-node/README.md` describes hardware-controlled compute and physical nodes; `products/izakhono-mail/runtime-v1/ops/DEPLOY-PROVIDER-NEUTRAL.md` specifies a public Linux/Docker target; and `PROVIDER-GATE.md` records an earlier preferred-provider research position.
 
 **Required correction:** classify each statement as logical architecture, execution-environment requirement, historical research or current verified operational fact. Preserve provider-neutrality and the zero-spend rule. Do not treat a provider preference, runbook or repository configuration as an approved environment or purchase authorization.
 
@@ -98,7 +98,7 @@ This responsibility split is a reconciliation target, not a claim that every int
 4. **Define durable transaction and audit semantics:** idempotency, approval, state transition and audit/outbox must be recoverable and concurrency-safe.
 5. **Specify typed adapter operations:** begin with read-only discovery and capability inspection. Mutating operations remain unavailable until binding, approval, policy and audit tests pass.
 6. **Reconcile HOST and MAIL runbooks:** remove stale physical-Node language and distinguish provider research from approved execution-environment records.
-7. **Validate in CI:** run the mandatory NODE01 identity checker and targeted tests for identity separation, missing binding, expired/revoked approval, replay, tenant/environment mismatch, adapter scope and audit evidence.
+7. **Validate in CI:** run the mandatory NODE01 identity checker and targeted tests for identity separation, missing binding, expired/revoked approval, replay, tenant/environment mismatch, adapter scope and audit evidence. Extend the identity checker or add a targeted static test so hostname-derived identity (including `socket.gethostname()`) and legacy `IZAKHONO_NODE_ID` configuration are detected; the current regex gate can pass while this semantic fallback remains present.
 8. **Only after all gates pass:** propose a separately reviewed, owner-approved execution-environment connection. No provisioning, spending, DNS changes, mail cutover or production deployment is included in this sequence without explicit approval.
 
 ## 6. Explicit non-claims and current state
