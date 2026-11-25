@@ -22,8 +22,49 @@ FORBIDDEN_FIELDS = {
 }
 
 
+import re
+
+PERMISSION_PATTERN = re.compile(r"^[a-z][a-z0-9-]*(?::[a-z][a-z0-9-]*){1,3}$")
+
+
+def validate_policy(policy):
+    """Reject unsafe or ambiguous policy documents before any decision."""
+    if not isinstance(policy, dict):
+        raise ValueError("policy_must_be_object")
+    if type(policy.get("version")) is not int or policy["version"] < 1:
+        raise ValueError("policy_version_invalid")
+    if policy.get("default") != "deny":
+        raise ValueError("policy_default_must_deny")
+    product_map = policy.get("product_permissions")
+    if not isinstance(product_map, dict):
+        raise ValueError("product_permissions_must_be_object")
+    for product, rules in product_map.items():
+        if not isinstance(product, str) or not product or product.strip() != product:
+            raise ValueError("product_identifier_invalid")
+        if not isinstance(rules, list):
+            raise ValueError("product_rules_must_be_list")
+        seen = set()
+        for rule in rules:
+            if not isinstance(rule, dict) or set(rule) != {"subject", "entity_id", "role", "permissions"}:
+                raise ValueError("product_rule_shape_invalid")
+            identity = tuple(rule.get(k) for k in ("subject", "entity_id", "role"))
+            if any(not isinstance(v, str) or not v.strip() or v.strip() != v or v == "*" for v in identity):
+                raise ValueError("product_rule_identity_invalid")
+            if identity in seen:
+                raise ValueError("duplicate_product_rule")
+            seen.add(identity)
+            permissions = rule.get("permissions")
+            if not isinstance(permissions, list) or not permissions:
+                raise ValueError("product_rule_permissions_required")
+            if any(not isinstance(p, str) or not PERMISSION_PATTERN.fullmatch(p) for p in permissions):
+                raise ValueError("product_permission_identifier_invalid")
+            if len(set(permissions)) != len(permissions):
+                raise ValueError("duplicate_product_permission")
+    return policy
+
+
 def load_policy():
-    return json.loads(POLICY_PATH.read_text(encoding="utf-8"))
+    return validate_policy(json.loads(POLICY_PATH.read_text(encoding="utf-8")))
 
 
 def _contains_forbidden_field(value):
@@ -37,7 +78,7 @@ def _contains_forbidden_field(value):
 
 
 def authorize(req, policy=None):
-    policy = policy or load_policy()
+    policy = validate_policy(policy if policy is not None else load_policy())
     if not isinstance(req, dict):
         return False, "invalid_request"
     entity_id = str(req.get("entity_id") or "").strip()
@@ -48,8 +89,11 @@ def authorize(req, policy=None):
 
     if not entity_id:
         return False, "entity_scope_required"
-    forbidden = set(policy["data_classes"]["forbidden_external"])
-    allowed = set(policy["data_classes"]["allowed_external"])
+    classes = policy.get("data_classes", {})
+    if not isinstance(classes, dict):
+        return False, "policy_data_classes_invalid"
+    forbidden = set(classes.get("forbidden_external", []))
+    allowed = set(classes.get("allowed_external", []))
     if data_class in forbidden:
         return False, "forbidden_data_class"
     if data_class not in allowed:
@@ -57,10 +101,10 @@ def authorize(req, policy=None):
     if _contains_forbidden_field(payload):
         return False, "secret_like_field_detected"
     if provider_class == "external_ai":
-        ai = policy["external_ai"]
-        if purpose in ai["forbidden_purposes"]:
+        ai = policy.get("external_ai", {})
+        if purpose in ai.get("forbidden_purposes", []):
             return False, "forbidden_external_ai_purpose"
-        if purpose not in ai["allowed_purposes"]:
+        if purpose not in ai.get("allowed_purposes", []):
             return False, "external_ai_purpose_not_allowlisted"
         return True, "allowed_external_ai_advisory"
     return False, "provider_class_not_allowlisted"
@@ -68,22 +112,19 @@ def authorize(req, policy=None):
 
 def authorize_product(req, policy=None):
     """Exact-match product permission policy. No wildcard or role inheritance."""
-    policy = policy or load_policy()
+    policy = validate_policy(policy if policy is not None else load_policy())
     if not isinstance(req, dict):
         return False, "invalid_request"
     fields = ("subject", "entity_id", "role", "product", "permission")
     values = {key: req.get(key) for key in fields}
-    if any(not isinstance(value, str) or not value.strip() for value in values.values()):
+    if any(not isinstance(value, str) or not value.strip() or value.strip() != value for value in values.values()):
         return False, "product_permission_scope_incomplete"
-    rules = policy.get("product_permissions", {}).get(values["product"], [])
-    if not isinstance(rules, list):
-        return False, "product_policy_invalid"
+    if not PERMISSION_PATTERN.fullmatch(values["permission"]):
+        return False, "product_permission_identifier_invalid"
+    rules = policy["product_permissions"].get(values["product"], [])
     for rule in rules:
-        if not isinstance(rule, dict):
-            continue
-        if all(rule.get(key) == values[key] for key in ("subject", "entity_id", "role")):
-            permissions = rule.get("permissions")
-            if isinstance(permissions, list) and values["permission"] in permissions:
+        if all(rule[key] == values[key] for key in ("subject", "entity_id", "role")):
+            if values["permission"] in rule["permissions"]:
                 return True, "explicit_product_permission_granted"
     return False, "product_permission_not_allowlisted"
 
