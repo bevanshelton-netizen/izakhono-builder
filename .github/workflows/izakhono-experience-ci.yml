@@ -21,7 +21,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Compile
-        run: python3 -m py_compile products/izakhono-experience/domain.py products/izakhono-experience/identity.py products/izakhono-experience/test_domain.py products/izakhono-experience/test_identity.py
+        run: python3 -m py_compile products/izakhono-experience/domain.py products/izakhono-experience/identity.py products/izakhono-experience/test_domain.py products/izakhono-experience/test_identity.py products/izakhono-experience/api.py products/izakhono-experience/test_api.py
       - name: Domain and identity boundary tests
         working-directory: products/izakhono-experience
         run: python3 -m unittest discover -v -p 'test_*.py'
