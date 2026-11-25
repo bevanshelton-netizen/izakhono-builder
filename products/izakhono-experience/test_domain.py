@@ -70,7 +70,7 @@ class ExperienceTests(unittest.TestCase):
   self.assertEqual(updated["version"],2)
   with self.assertRaisesRegex(ExperienceError,"stale_case_version"):
    self.a.transition_case(c["id"],status="in_progress",actor_id="other-operator",expected_version=1)
-  self.assertEqual(self.a.get_case_status_for_test(c["id"]),"acknowledged") if hasattr(self.a,"get_case_status_for_test") else self.assertEqual(self.a.case_history(c["id"])[-1]["to_status"],"acknowledged")
+  self.assertEqual(self.a.case_history(c["id"])[-1]["to_status"],"acknowledged")
  def test_case_creation_idempotency_and_payload_conflict(self):
   s,q=self.survey(); rid=self.a.submit_response(s["id"],{q["id"]:2})["id"]
   first=self.a.open_case(rid,severity="high",actor_id="operator",idempotency_key="request-123")
