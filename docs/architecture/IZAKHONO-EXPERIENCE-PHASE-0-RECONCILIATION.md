@@ -195,3 +195,46 @@ The earlier statement that no canonical EXPERIENCE implementation had been confi
 - decide whether the V2 specification should be merged into or superseded by the Intelligence Platform architecture proposal after review.
 
 PR #759 remains an open proposal according to the available PR search result; its merge state and latest CI outcome must be checked again before implementation or merge planning.
+
+
+## 10. Source-level review of the EXPERIENCE alpha
+
+The following observations come from reading the current PR #759 source files. They are engineering review findings, not claims that the code has been executed or that defects have been reproduced.
+
+### Confirmed useful foundation
+
+- The standard NPS calculation uses the correct 0–6 / 7–8 / 9–10 boundaries and returns an unavailable score for an empty sample.
+- Composite tenant/platform foreign keys are applied to the survey, question, response, answer and case relationships.
+- Response submission validates question ownership, required answers and supported question types.
+- Anonymous mode does not persist a respondent reference.
+- The identity adapter requires an active ID session, an unexpired timestamp and a literal `True` from the FORTRESS callback; failures deny access.
+- The code does not expose an HTTP route or public survey endpoint.
+
+### Required hardening before a wider implementation
+
+1. **Metric-definition integrity:** CSAT and CES currently have metric identifiers and generic rating question validation, but no complete versioned CSAT/CES definitions, scale direction, positive threshold, denominator or aggregation rules.
+2. **Survey immutability/versioning:** draft-only question editing is a useful start, but published survey versions, immutable historical instruments and explicit version binding on each response are not yet represented.
+3. **Case audit history:** case status is updated in place. Add an append-only transition/action history with actor, reason, timestamp, correlation and evidence reference before operational use.
+4. **Concurrency and idempotency:** case transitions do not use an expected-current-state compare-and-set or version number. Define transaction boundaries, concurrent update behavior and idempotency keys.
+5. **Response-to-case policy:** the code can open a case for a response, but does not yet implement governed qualification rules, duplicate event handling, case ownership policy or a complete follow-up/verification workflow.
+6. **Authorization granularity:** the store factory checks a permission when creating a store, but the store methods themselves do not enforce per-operation policy. A future API/service boundary must not create a long-lived store and assume that one prior decision authorizes every later operation indefinitely. Define permission-to-operation mapping, decision freshness and enforcement at the action boundary.
+7. **Identity contract hardening:** the introspection client checks HTTPS and a configured internal key, but production integration still needs verified issuer/audience/service identity, key rotation, response schema/version, revocation behavior, bounded response handling and network policy.
+8. **Persistence abstraction:** direct SQLite coupling is suitable for an isolated alpha/test library, but production requires a repository interface and an approved database adapter. No SQLite-to-production migration should be attempted until the authoritative persistence and migration owner are confirmed.
+9. **Data lifecycle:** add purpose, collection notice/consent reference where applicable, retention class, access/export/correction/deletion workflows and backup deletion behavior.
+10. **Anonymity claims:** omitting respondent_ref is not sufficient to establish anonymity. Review IP/device/request logs, timestamps, small-group reporting and linkage risks before using the term anonymous in customer-facing claims.
+11. **Survey input safety:** validate question configuration schemas and choice types, enforce text length and payload size at the service boundary, and guard against malformed JSON/configuration.
+12. **Observability and recovery:** define transaction rollback behavior, backup/restore, integrity checks, operational metrics and failure reconciliation before production use.
+
+### Recommended engineering sequence for the alpha
+
+A. Keep PR #759 as the sole existing EXPERIENCE domain implementation line; do not fork a second survey/case data model in PR #760.
+
+B. Review and harden the domain contract with deterministic tests for survey versioning, CSAT/CES definitions, concurrent case transitions, idempotent case creation, audit history and response integrity.
+
+C. Resolve the real FORTRESS permission-decision contract and its enforcement point. Until then, keep the adapter fail-closed and do not expose routes.
+
+D. Confirm authoritative persistence and migration governance; then introduce an adapter behind a repository boundary without changing the alpha's tested domain semantics.
+
+E. Only after the above gates, design distribution, notifications, dashboards, analytics and optional model-based feedback interpretation.
+
+No source code in PR #759 was changed by this review. No tests were run by this inspection.
