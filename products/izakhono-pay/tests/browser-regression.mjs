@@ -1,9 +1,17 @@
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
 import { once } from 'node:events';
+import { Script } from 'node:vm';
 import { chromium } from 'playwright';
 import { renderDeviceDashboard } from '../src/device-dashboard.js';
 import { renderMerchantDashboard } from '../src/merchant-dashboard.ts';
+
+// Parse the exact inline JavaScript emitted into the device page before Chromium starts.
+// This turns opaque browser parse errors into a deterministic filename/line/column failure.
+const renderedDeviceHtml = renderDeviceDashboard('static-script-validation');
+const inlineScripts = [...renderedDeviceHtml.matchAll(/<script\\b[^>]*>([\\s\\S]*?)<\\/script>/gi)];
+assert.ok(inlineScripts.length > 0, 'device dashboard must emit its application script');
+inlineScripts.forEach((match, index) => new Script(match[1], { filename: 'device-dashboard.inline-' + index + '.js' }));
 
 const keys = new Map();
 let keySequence = 0;
