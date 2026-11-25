@@ -12,4 +12,7 @@ assert.ok(cinematicStudioHtml.includes('__Host-izakhono_csrf'));
 assert.ok(!cinematicStudioHtml.includes('CREATOR_GENERATION_SECRET'));
 assert.ok(!cinematicStudioHtml.includes('MEDIA_FABRIC_KEY'));
 assert.ok(cinematicStudioHtml.includes('noindex,nofollow'));
+assert.ok(cinematicStudioHtml.includes('Production readiness'), 'Studio must expose its production readiness workspace panel.');
+assert.ok(cinematicStudioHtml.includes('function renderReadiness()'), 'Studio must render readiness actions and evidence counts.');
+assert.ok(cinematicStudioHtml.includes('candidateTaskIds'), 'Studio must display candidate task links from the readiness report.');
 console.log('Cinematic Studio browser contract tests: PASS');
