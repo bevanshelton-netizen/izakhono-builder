@@ -79,3 +79,58 @@ def test_product_permissions():
 
 test_product_permissions()
 print("IZAKHONO_FORTRESS_POLICY=PASS")
+
+
+# Policy documents are validated before either egress or product authorisation.
+def test_policy_integrity():
+    unsafe = []
+    candidate = deepcopy(p)
+    candidate["default"] = "allow"
+    unsafe.append(candidate)
+
+    candidate = deepcopy(p)
+    candidate["product_permissions"]["izakhono-experience"] = [{
+        "subject": "*", "entity_id": "entity-izakhono", "role": "experience-manager",
+        "permissions": ["experience:survey:read"]
+    }]
+    unsafe.append(candidate)
+
+    candidate = deepcopy(p)
+    candidate["product_permissions"]["izakhono-experience"] = [{
+        "subject": "member-17", "entity_id": "entity-izakhono", "role": "experience-manager",
+        "permissions": ["*"]
+    }]
+    unsafe.append(candidate)
+
+    candidate = deepcopy(p)
+    candidate["product_permissions"]["izakhono-experience"] = [
+        {"subject": "member-17", "entity_id": "entity-izakhono", "role": "experience-manager",
+         "permissions": ["experience:survey:read"]},
+        {"subject": "member-17", "entity_id": "entity-izakhono", "role": "experience-manager",
+         "permissions": ["experience:survey:write"]}
+    ]
+    unsafe.append(candidate)
+
+    candidate = deepcopy(p)
+    candidate["version"] = True
+    unsafe.append(candidate)
+
+    for policy in unsafe:
+        try:
+            m.validate_policy(policy)
+        except ValueError:
+            continue
+        raise AssertionError("unsafe_policy_was_accepted")
+
+    malformed = deepcopy(p)
+    malformed["product_permissions"]["izakhono-experience"] = "allow-all"
+    try:
+        m.authorize_product(product_request(), malformed)
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("malformed_policy_did_not_fail_closed")
+
+
+test_policy_integrity()
+print("IZAKHONO_FORTRESS_POLICY_INTEGRITY=PASS")
