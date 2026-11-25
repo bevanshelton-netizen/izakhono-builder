@@ -9,7 +9,7 @@
 
 IZAKHONO will build and operate its own hosting platform. The platform is the system of record for customer domains, websites, certificates, DNS zones, mail domains and mailboxes, storage, databases, backups, usage and service health.
 
-IZAKHONO owns the control plane, service definitions, automation, data model, security policy, operational evidence and customer experience. The first deployment target is existing, IZAKHONO-controlled physical hardware. The current execution policy is zero spend: do not purchase compute, storage, domains, network services or subscriptions, and do not substitute a VPS or managed hosting provider. Physical machines necessarily depend on electricity and network connectivity; those dependencies do not transfer ownership of the platform. If existing capacity is insufficient, stop, document the measured gap and assess no-cost options. Any future paid exception requires a separate explicit owner approval after a written estimate.
+IZAKHONO owns the control plane, software-defined Node identities and roles, service definitions, automation, data model, security policy, operational evidence and customer experience. A Node is a logical software entity, not a physical machine or virtual server. Workloads execute in separately identified and authorised execution environments through provider-neutral adapters. Current execution policy is zero spend: do not purchase or provision compute, storage, domains, network services or subscriptions without a separate explicit owner approval after a written estimate.
 
 The platform must not depend on Vercel as its production web or mail runtime. Cloudflare may remain a transitional registrar/DNS/security adapter for domains where it is already configured, but it is not the long-term authoritative DNS runtime for the sovereign DNS service.
 
@@ -47,13 +47,15 @@ secondary  runtimes   SMTP/IMAP   Valkey       offsite copy
   |          |           |           |           |
   +----------+-----------+-----------+-----------+
              |
-       owned node cluster
+   software-defined Node layer
              |
-  compute / network / storage suppliers
-       (replaceable capacity only)
+   authorised execution adapters
+             |
+  compute / network / storage environments
+       (replaceable execution capacity)
 ```
 
-FORTRESS remains the policy and identity authority. NODE01/Runtime Fabric remains the orchestration and workload-state layer where already defined by the repository architecture. HOST owns the customer hosting domain and its typed provisioning workflows. The physical execution host is a separately identified and approved machine; logical NODE identities are not physical servers.
+FORTRESS remains the policy and identity authority. NODE01/Runtime Fabric remains the orchestration and workload-state layer where already defined by the repository architecture. HOST owns the customer hosting domain and its typed provisioning workflows. NODE01 and other Nodes are software-defined identities; each workload's execution environment is a separately identified, authorised and auditable binding. Neither a Node ID nor a Node agent is itself compute capacity.
 
 ## 4. Platform service planes
 
@@ -129,7 +131,7 @@ Separate logical roles:
 
 Roles may initially share a physical machine only where resource, isolation and failure-domain analysis permits. DNS primary/secondary must ultimately occupy distinct network/failure domains. Mail and web workloads must not expose their administrative control surfaces publicly.
 
-Every physical host requires a verified hostname, owner, location/failure domain, OS, capacity, public/private addressing, firewall policy, storage layout, monitoring, backup coverage and authorized execution identity before activation.
+Every execution environment requires a verified provider/ownership boundary, environment identifier, failure domain, OS/runtime, capacity, network and storage capabilities, firewall policy, monitoring, backup coverage and authorized execution identity before activation. A logical Node requires its own stable identity, declared role, policy bindings, desired state and audit history.
 
 ## 6. Delivery sequence
 
@@ -142,13 +144,14 @@ Every physical host requires a verified hostname, owner, location/failure domain
 ### Phase 1 — owned foundation
 - Finalize HOST control-plane service contracts and tenant/domain/site/mail inventory.
 - Establish host enrollment, secure operator access, monitoring and audit.
-- Validate the existing owner-controlled physical host and available capacity.
+- Define software Node identity, role, capability and lifecycle contracts independently of compute resources.
+- Identify and validate an already available, authorised execution environment; do not assume one exists.
 - If capacity or network feasibility fails, stop and document the gap; no purchase or provider substitution is implied or authorized.
 
-### Phase 2 — staging on owned hardware
-- Use only existing owner-controlled machine(s) that pass the host and network acceptance gates.
-- Deploy control, edge, DNS, data, storage and backup services in staging, subject to an approved host-specific change plan.
-- If existing hardware cannot safely support staging, pause; do not create cloud compute or incur costs.
+### Phase 2 — staging through an authorised execution adapter
+- Use only an execution environment that has been explicitly identified, authorised and verified against the host and network acceptance gates.
+- Deploy control, edge, DNS, data, storage and backup services in staging, subject to an approved environment-specific change plan.
+- If no suitable execution environment is available, pause; do not create cloud compute or incur costs.
 - Establish encrypted offsite backup and perform restore drills.
 - Validate isolation, firewall policy, service recovery and observability.
 
@@ -158,7 +161,7 @@ Every physical host requires a verified hostname, owner, location/failure domain
 - Complete rollback rehearsal before customer traffic.
 
 ### Phase 4 — owned mail service
-- Deploy Stalwart and Roundcube on the approved owned host.
+- Deploy Stalwart and Roundcube on the approved execution environment.
 - Verify public mail DNS, PTR, port reachability, TLS and reputation.
 - Provision the five IZAKHONO mailboxes only after DNS gates pass.
 - Complete inbound, outbound, reply, IMAP, webmail and restore tests.
@@ -179,7 +182,7 @@ Every physical host requires a verified hostname, owner, location/failure domain
 No service is production-live until its service-specific tests pass and evidence is recorded with timestamp, target identity, software revision and test result.
 
 Common gates:
-- verified host ownership and authorized access;
+- verified execution-environment ownership/authority and authorized access;
 - patched OS, firewall and least-privilege service identities;
 - current monitoring and alert delivery;
 - encrypted backup and successful restore;
@@ -212,12 +215,12 @@ Not verified operationally:
 - end-to-end mail delivery;
 - encrypted offsite backup and successful restore.
 
-The SentinelX account currently reports zero enrolled hosts and zero connected integrations. Therefore no server-side inspection, provisioning or deployment can be truthfully claimed from this session.
+The SentinelX account currently reports zero enrolled hosts and zero connected integrations. Therefore no execution environment has been inspected, provisioned or deployed from this session. This host-enrollment status is separate from the existence or identity of software-defined Nodes.
 
 ## 9. Immediate execution queue
 
 1. Verify the merged PR #695 mail implementation against current `main`; keep its Stalwart engine, Roundcube webmail and shared HOST edge as the single canonical mail runtime.
-2. Identify and enroll the existing IZAKHONO-controlled Linux host; inspect it read-only first.
+2. Define the logical Node model and identify an already available, explicitly authorised execution environment; only then perform read-only environment discovery.
 3. Connect the authorized DNS/registrar account through a secure integration flow; never paste credentials into chat.
 4. Confirm whether `izakhono.africa` is registered, who controls its authoritative DNS and what records currently exist.
 5. Produce a host-specific deployment and rollback plan using only available owner-controlled resources.
@@ -228,6 +231,6 @@ The SentinelX account currently reports zero enrolled hosts and zero connected i
 - Do not treat Cloudflare Email Routing as a full mailbox server.
 - Do not treat Gmail SMTP relay or a transactional email API as owned mail hosting.
 - Do not deploy production web or mail runtime to Vercel.
-- Current policy is zero spend: do not purchase compute or incur recurring charges. Any proposed exception requires a separate explicit owner decision after a written estimate.
+- Current policy is zero spend: do not purchase or provision compute or incur recurring charges. Any proposed exception requires a separate explicit owner decision after a written estimate.
 - Do not change registrar delegation, public DNS, MX, production data or firewall exposure without a reviewed change plan and authorization.
 - Do not mark a service LIVE based on source code, CI success, a running process or a successful control-plane response alone.
