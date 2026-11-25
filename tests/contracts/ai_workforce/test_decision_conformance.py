@@ -163,6 +163,42 @@ class DecisionContractTests(unittest.TestCase):
         with self.assertRaisesRegex(ContractError, "MISMATCH_REQUEST_FINGERPRINT"):
             self.verify(artifact)
 
+
+    def test_rejects_wrong_actor(self):
+        artifact = dict(self.decision, actor_id="service:other")
+        with self.assertRaisesRegex(ContractError, "MISMATCH_ACTOR_ID"):
+            self.verify(artifact)
+
+    def test_rejects_wrong_agent(self):
+        artifact = dict(self.decision, agent_id="agent-other")
+        with self.assertRaisesRegex(ContractError, "MISMATCH_AGENT_ID"):
+            self.verify(artifact)
+
+    def test_rejects_wrong_action(self):
+        artifact = dict(self.decision, action="tool.delete")
+        with self.assertRaisesRegex(ContractError, "MISMATCH_ACTION"):
+            self.verify(artifact)
+
+    def test_rejects_wrong_resource(self):
+        artifact = dict(self.decision, resource="tool:records.delete")
+        with self.assertRaisesRegex(ContractError, "MISMATCH_RESOURCE"):
+            self.verify(artifact)
+
+    def test_rejects_stale_policy_version(self):
+        artifact = dict(self.decision, policy_version="policy-old")
+        with self.assertRaisesRegex(ContractError, "MISMATCH_POLICY_VERSION"):
+            self.verify(artifact)
+
+    def test_rejects_invalid_validity_window(self):
+        artifact = dict(self.decision, not_before=1_800_000_200, expires_at=1_800_000_100)
+        with self.assertRaisesRegex(ContractError, "DECISION_NOT_YET_VALID"):
+            self.verify(artifact)
+
+    def test_rejects_non_integer_time_claims(self):
+        artifact = dict(self.decision, expires_at="1800000300")
+        with self.assertRaisesRegex(ContractError, "INVALID_TIME_CLAIMS"):
+            self.verify(artifact)
+
     def test_rejects_expired_decision(self):
         artifact = dict(self.decision, expires_at=1_800_000_100)
         with self.assertRaisesRegex(ContractError, "DECISION_EXPIRED"):
@@ -224,6 +260,18 @@ class HumanApprovalContractTests(unittest.TestCase):
     def test_rejects_approval_for_different_fingerprint(self):
         approval = dict(self.approval, request_fingerprint="sha256:other")
         with self.assertRaisesRegex(ContractError, "APPROVAL_FINGERPRINT_MISMATCH"):
+            self.verify(approval)
+
+
+    def test_rejects_cross_tenant_approval(self):
+        approval = dict(self.approval, tenant_id="tenant-other")
+        with self.assertRaisesRegex(ContractError, "APPROVAL_TENANT_MISMATCH"):
+            self.verify(approval)
+
+    def test_rejects_missing_approval_fingerprint(self):
+        approval = dict(self.approval)
+        del approval["request_fingerprint"]
+        with self.assertRaisesRegex(ContractError, "MISSING_APPROVAL_REQUEST_FINGERPRINT"):
             self.verify(approval)
 
     def test_rejects_expired_approval(self):
