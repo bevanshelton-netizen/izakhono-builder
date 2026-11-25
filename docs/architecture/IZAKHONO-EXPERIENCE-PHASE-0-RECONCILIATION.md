@@ -373,3 +373,55 @@ The PR #759 current head recorded after the integration-contract commit is `ea34
 This supersedes the previous all-six-passed statement, which applied to the earlier head `53d9924c7cddf4a9c232a09934735900d5bb5f30`.
 
 PR #759 remains open and draft. No private network path, credential, permission grant, public route, database migration, deployment, merge or rebase was activated.
+
+
+## 14. AI Workforce architecture reconciliation — PR #748
+
+The AI Workforce proposal is the relevant shared contract for EXPERIENCE's future specialist agents. It must be reused rather than recreated inside EXPERIENCE.
+
+**PR:** [#748 — Define IZAKHONO AI Workforce architecture v1](https://github.com/bevanshelton-netizen/izakhono-builder/pull/748)  
+**Branch:** `feat/ai-workforce-governance-architecture-v1`  
+**State:** open draft, unmerged according to its current issue record.
+
+### Shared ownership and non-duplication
+
+- NODE01 Agent Fabric remains the one agent orchestrator.
+- FORTRESS remains the policy/authorization authority.
+- Runtime Fabric remains the workload scheduler/state owner.
+- HOST remains a separately authorized execution boundary.
+- Execution OS remains the delivery acceptance owner.
+- EXPERIENCE defines its specialist agent roles and domain actions; it does not create a second agent registry, scheduler, task graph, approval engine or execution host.
+
+EXPERIENCE agents (for example Survey Intelligence, Feedback Analysis, Sentiment, Customer Risk, Escalation, Resolution and Reporting) must use the shared workforce contracts for identity, task dispatch, approval, runtime binding, execution receipts, cancellation, evidence and recovery.
+
+### Important boundary between two FORTRESS contracts
+
+The current EXPERIENCE FORTRESS product-permission endpoint makes exact subject/entity/role/product/permission decisions for application access. The AI Workforce proposal defines a stronger consequential agent-task decision contract, including actor and tenant scope, subject agent/task, action/resource/environment/tool, purpose/data classification, audience, request fingerprint, expiry, constraints, approval and revocation evidence.
+
+These are related but not interchangeable:
+- Product permission answers whether an identified principal may perform a defined EXPERIENCE product operation.
+- Agent-task authorization answers whether a particular agent/workload may perform a specific consequential action under a current, scoped and verifiable decision.
+- An EXPERIENCE product permission must not be treated as a HOST execution authorization or as proof that an agent action was approved.
+- FORTRESS remains the common authority; do not create an EXPERIENCE-local policy engine.
+
+### Production gates inherited from PR #748
+
+The AI Workforce owner acceptance register contains twelve decisions, all initially UNCONFIRMED. They include Agent Registry ownership, persistence/migration authority, human and service identity, task authorization, revocation, human approval, RuntimeBinding, HOST execution receipts, atomic state/evidence persistence, provider capability truth and independent assurance.
+
+The proposal's synthetic conformance harness is test-only; it is not a deployed authorization library, signed decision verifier or production integration. No owner acceptance is inferred from the PR or its passing tests.
+
+### Branch divergence and integration decision
+
+The current comparison of the AI Workforce branch against `main` reports 49 commits ahead and 16 behind. This is a diverged proposal branch, not a cleanly current base. Do not merge, rebase or assume its contracts are already present on `main`. Reconcile accepted shared contracts through review after the relevant owners and base-branch changes are understood.
+
+### EXPERIENCE sequencing consequence
+
+Before implementing autonomous EXPERIENCE agents or connecting them to live customer/employee data:
+1. Keep specialist agent definitions at the EXPERIENCE domain layer.
+2. Bind orchestration to NODE01 Agent Fabric using the accepted AI Workforce contract.
+3. Require FORTRESS product permission for the initiating principal and a separate current task decision for consequential agent execution.
+4. Require verified RuntimeBinding and HOST receipts where execution leaves the logical runtime.
+5. Use the approved authoritative transaction/evidence boundary for consequential state changes.
+6. Keep all twelve AI Workforce owner decisions unconfirmed until evidence-backed acceptance is recorded.
+
+This establishes the integration direction, not production readiness. PR #748 remains an open design dependency.
