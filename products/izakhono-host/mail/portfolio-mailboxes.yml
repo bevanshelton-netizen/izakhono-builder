@@ -108,7 +108,7 @@ platforms:
   - id: izakhono-africa-parent
     name: IZAKHONO AFRICA (PTY) LTD
     priority: critical
-    domain: izakhonoafrica.co.za
+    domain: izakhono.africa
     mailbox_identity: IZAKHONO
     provisioning_enabled: false
     alias_of: IZAKHONO
