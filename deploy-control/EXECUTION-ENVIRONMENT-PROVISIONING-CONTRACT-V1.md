@@ -104,7 +104,7 @@ At the time this contract was prepared:
 - The connected SentinelX integrations list returned zero configured integrations.
 - No provider account, authoritative Runtime Fabric database binding, or authorized migration runner has been established by those checks.
 
-These observations do not imply that NODE01 is a physical machine or that the architecture must depend on manual server enrollment. They mean no connected execution substrate or provider adapter is currently available through those inspected integrations.
+These observations do not alter NODE01's established logical Software NODE identity or require manual server enrollment. They mean no connected execution substrate or provider adapter is currently available through those inspected integrations.
 
 ## 9. Explicit non-goals
 
