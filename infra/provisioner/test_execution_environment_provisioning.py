@@ -64,7 +64,7 @@ class ProvisioningPolicyTests(unittest.TestCase):
 
     def test_tampered_plan_is_rejected(self):
         plan = valid_plan()
-        with self.assertRaisesRegex(ProvisioningPolicyError, "APPROVAL_PLAN_MISMATCH"):
+        with self.assertRaisesRegex(ProvisioningPolicyError, "PLAN_INTEGRITY_MISMATCH"):
             approve_plan(replace(plan, region="different-region"), valid_approval(plan), now="2026-11-25T19:02:00+00:00")
 
     def test_approval_cannot_raise_cost_ceiling(self):
