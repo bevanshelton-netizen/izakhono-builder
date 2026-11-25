@@ -231,7 +231,14 @@ export function validateProductionGraph(project: CinematicProduction): GraphIssu
     if (shot.dependsOnShotIds.includes(shot.id)) issues.push({ code: 'SELF_DEPENDENCY', path: `shots.${shot.id}`, message: 'A shot cannot depend on itself.', severity: 'error' });
   }
   for (const ref of project.references) requireRefs([ref.assetId], assetIds, `references.${ref.id}.assetId`, 'asset');
-  for (const asset of project.assets) requireRefs(asset.parentAssetIds, assetIds, `assets.${asset.id}.parentAssetIds`, 'parent asset');
+  for (const asset of project.assets) {
+    requireRefs(asset.parentAssetIds, assetIds, `assets.${asset.id}.parentAssetIds`, 'parent asset');
+    if (asset.sceneId && !sceneIds.has(asset.sceneId)) issues.push({ code: 'UNKNOWN_ASSET_SCENE', path: `assets.${asset.id}.sceneId`, message: 'Asset references a scene that does not exist.', severity: 'error' });
+    if (asset.shotId && !shotIds.has(asset.shotId)) issues.push({ code: 'UNKNOWN_ASSET_SHOT', path: `assets.${asset.id}.shotId`, message: 'Asset references a shot that does not exist.', severity: 'error' });
+    if (asset.shotId && asset.sceneId && project.shots.some(shot => shot.id === asset.shotId && shot.sceneId !== asset.sceneId)) issues.push({ code: 'ASSET_SCENE_SHOT_MISMATCH', path: `assets.${asset.id}`, message: 'Asset sceneId must match the scene that owns its shotId.', severity: 'error' });
+    if (asset.createdByTaskId && !taskIds.has(asset.createdByTaskId)) issues.push({ code: 'UNKNOWN_ASSET_TASK', path: `assets.${asset.id}.createdByTaskId`, message: 'Asset references a task that does not exist.', severity: 'error' });
+    if (asset.createdByTaskId && project.tasks.some(task => task.id === asset.createdByTaskId && !task.outputAssetIds.includes(asset.id))) issues.push({ code: 'ASSET_TASK_OUTPUT_MISMATCH', path: `assets.${asset.id}.createdByTaskId`, message: 'The creating task must list this asset as an output.', severity: 'error' });
+  }
   for (const task of project.tasks) {
     requireRefs(task.dependsOnTaskIds, taskIds, `tasks.${task.id}.dependsOnTaskIds`, 'task');
     requireRefs(task.inputAssetIds, assetIds, `tasks.${task.id}.inputAssetIds`, 'input asset');
