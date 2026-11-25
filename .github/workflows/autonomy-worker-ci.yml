@@ -1,0 +1,32 @@
+name: IZAKHONO Autonomous Worker CI
+
+on:
+  pull_request:
+    paths:
+      - 'autonomy/ai-agent-worker.mjs'
+      - 'autonomy/ai-agent-worker.test.mjs'
+      - 'autonomy/ai-agent.mjs'
+      - 'autonomy/runner.mjs'
+      - '.github/workflows/autonomy-worker-ci.yml'
+  push:
+    paths:
+      - 'autonomy/ai-agent-worker.mjs'
+      - 'autonomy/ai-agent-worker.test.mjs'
+      - 'autonomy/ai-agent.mjs'
+      - 'autonomy/runner.mjs'
+      - '.github/workflows/autonomy-worker-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  worker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Exercise real worker and lock behavior
+        run: node autonomy/ai-agent-worker.test.mjs
