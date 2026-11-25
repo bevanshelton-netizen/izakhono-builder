@@ -94,3 +94,12 @@ Production adoption requires service-owner approval, a reviewed cryptographic
 profile, independently managed keys and revocation, approved tenant ownership
 and persistence boundaries, and conformance tests against actual approved
 services at their enforcement boundaries.
+
+- Independent-verifier operational-contract tests model a tenant-scoped,
+  read-only verifier identity; authenticated, fresh, operation-correlated
+  source records; explicit versioned profiles; trusted-time availability;
+  trusted/revoked key status; append-only findings; and verifier compromise
+  containment that revokes access while preserving prior findings. This is
+  an in-memory contract model only: it does not implement cryptography,
+  workload identity, authoritative source adapters, trusted time, durable
+  append-only storage, independent audit reproduction or incident response.
