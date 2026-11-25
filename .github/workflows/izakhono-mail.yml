@@ -68,7 +68,7 @@ jobs:
           expected = {'KG Industrial', 'Edu-Build Institute', 'Free Bird Agri-Quip'}
           if not expected.issubset(excluded) or names.intersection(expected):
               raise SystemExit('Mail provisioning manifest includes an excluded/non-owned entity')
-          if not any(x['platform'] == 'IZAKHONO' and x['domain'] == 'izakhonoafrica.co.za' and 'bevans' in x['mailboxes'] for x in managed['identities']):
+          if not any(x['platform'] == 'IZAKHONO' and x['domain'] == 'izakhono.africa' and 'ceo' in x['mailboxes'] for x in managed['identities']):
               raise SystemExit('CEO mailbox/domain target missing from IZAKHONO identity')
           if any('info' not in x['mailboxes'] for x in managed['identities']):
               raise SystemExit('Every owned platform must include info before handover')
