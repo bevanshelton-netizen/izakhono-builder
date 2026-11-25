@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <title>IZAKHONO EXPERIENCE</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="./" aria-label="IZAKHONO EXPERIENCE home"><span class="mark">I</span><span>IZAKHONO <b>EXPERIENCE</b></span></a>
+    <span class="environment">MANAGEMENT ALPHA</span>
+  </header>
+  <main class="shell">
+    <section class="intro">
+      <p class="eyebrow">FIRST-PARTY EXPERIENCE INTELLIGENCE</p>
+      <h1>Listen carefully.<br><em>Improve deliberately.</em></h1>
+      <p class="lede">Create surveys, understand customer experience and follow issues through to resolution — within your authorised organisation.</p>
+    </section>
+    <section class="auth panel" aria-labelledby="auth-title">
+      <div><p class="eyebrow">SECURE SESSION</p><h2 id="auth-title">Connect your IZAKHONO ID session</h2><p class="muted">Your session token stays in this page's memory and is cleared when you disconnect or close the page. It is never saved in browser storage.</p></div>
+      <label for="session-token">IZAKHONO ID bearer session</label>
+      <div class="token-row"><input id="session-token" type="password" autocomplete="off" spellcheck="false" placeholder="Paste your existing ID session token"><button id="connect" class="button primary">Connect</button></div>
+      <div class="session-status" id="session-status" role="status" aria-live="polite">Not connected</div>
+    </section>
+    <section id="workspace" hidden>
+      <div class="section-heading"><div><p class="eyebrow">YOUR WORKSPACE</p><h2>Experience overview</h2></div><button id="disconnect" class="button quiet">Disconnect</button></div>
+      <div class="metrics">
+        <article class="metric-card"><span>Surveys</span><strong id="survey-count">—</strong><small>In your organisation</small></article>
+        <article class="metric-card"><span>Open cases</span><strong id="case-count">—</strong><small>Awaiting resolution</small></article>
+        <article class="metric-card"><span>Active surveys</span><strong id="active-count">—</strong><small>Currently collecting</small></article>
+      </div>
+      <div class="columns">
+        <section class="panel">
+          <div class="panel-heading"><div><p class="eyebrow">SURVEY DESIGN</p><h2>Create a survey</h2></div></div>
+          <form id="create-survey" class="stack">
+            <label for="survey-name">Survey name</label><input id="survey-name" name="name" maxlength="200" required placeholder="e.g. Customer support experience">
+            <label for="survey-metric">Measurement</label><select id="survey-metric" name="metric"><option value="NPS">Net Promoter Score (NPS)</option><option value="CSAT">Customer Satisfaction (CSAT)</option><option value="CES">Customer Effort Score (CES)</option><option value="CUSTOM">Custom</option></select>
+            <button class="button primary" type="submit">Create draft survey</button>
+          </form>
+          <p class="notice">Drafts are private to your authorised organisation. Activation does not create a public survey link.</p>
+        </section>
+        <section class="panel">
+          <div class="panel-heading"><div><p class="eyebrow">SURVEY LIBRARY</p><h2>Your surveys</h2></div><button id="refresh" class="button quiet">Refresh</button></div>
+          <div id="surveys" class="item-list"><p class="muted">Connect to load surveys.</p></div>
+        </section>
+      </div>
+      <section class="panel detail-panel" id="survey-detail" hidden>
+        <div class="panel-heading"><div><p class="eyebrow">SURVEY WORKBENCH</p><h2 id="detail-title">Survey</h2><p id="detail-meta" class="muted"></p></div><button id="activate" class="button primary">Activate survey</button></div>
+        <div class="detail-grid">
+          <div><h3>Questions</h3><div id="questions" class="item-list"></div></div>
+          <form id="add-question" class="stack">
+            <h3>Add a question</h3>
+            <label for="question-kind">Question type</label><select id="question-kind"><option value="nps">NPS (0–10)</option><option value="rating">Rating</option><option value="text">Written response</option><option value="choice">Multiple choice</option></select>
+            <label for="question-prompt">Question</label><textarea id="question-prompt" rows="3" maxlength="2000" required></textarea>
+            <label class="check"><input id="question-required" type="checkbox" checked> Required question</label>
+            <button class="button secondary" type="submit">Add question</button>
+          </form>
+        </div>
+        <div id="nps-result" class="result" hidden></div>
+      </section>
+      <section class="panel">
+        <div class="panel-heading"><div><p class="eyebrow">CLOSED-LOOP SERVICE</p><h2>Experience cases</h2></div><button id="refresh-cases" class="button quiet">Refresh</button></div>
+        <div id="cases" class="item-list"><p class="muted">No cases loaded.</p></div>
+      </section>
+      <div id="notice" class="notice" role="status" aria-live="polite"></div>
+    </section>
+    <footer><span>IZAKHONO · OWNED-FIRST INTELLIGENCE</span><span>ALPHA · AUTHORISED ACCESS ONLY</span></footer>
+  </main>
+</body>
+</html>
