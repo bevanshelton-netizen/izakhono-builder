@@ -32,9 +32,10 @@ export function buildProductionReadinessReport(project: CinematicProduction, gen
         .filter(task => task.relatedIds.includes(entry.id) && (task.state === 'missing' || task.state === 'blocked' || task.state === 'in_progress'))
         .map(task => task.id);
       const guidance = actionFor(entry);
+      const priority: ReadinessAction['priority'] = entry.category === 'approval' || entry.category === 'export' ? 'critical' : entry.category === 'shot' || entry.category === 'asset' ? 'high' : 'normal';
       return {
         id: `resolve:${entry.category}:${entry.id}`,
-        priority: entry.category === 'approval' || entry.category === 'export' ? 'critical' : entry.category === 'shot' || entry.category === 'asset' ? 'high' : 'normal',
+        priority,
         category: entry.category,
         title: `Resolve ${entry.label}`,
         reason: entry.details.join('; '),
