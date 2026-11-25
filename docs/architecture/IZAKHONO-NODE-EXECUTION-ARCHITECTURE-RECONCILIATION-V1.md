@@ -18,9 +18,12 @@ The existing software-node architecture in `products/izakhono-host/SOFTWARE-NODE
 | Concern | Existing repository source | What it actually establishes | Reconciliation decision |
 |---|---|---|---|
 | NODE01 identity | `architecture/NODE01-IDENTITY-STANDARD.md`; root `AGENTS.md` | Stable logical software identity; environment locator is separate; replacement must preserve NODE01 | Highest-priority identity invariant; product docs and code must conform |
+| Portfolio runtime standard | `infra/runtime-fabric/README.md`; `architecture/NODE01-IDENTITY-STANDARD.md` | Signed release is authoritative; logical software Nodes run on separately managed execution environments; no external hosting provider is required | Retain as portfolio-wide runtime direction; reconcile lower-level cluster and product configuration to it |
 | Software Node architecture | `products/izakhono-host/SOFTWARE-NODE-ARCHITECTURE.md`; `SOFTWARE-NODE-V1.md` | Provider-neutral logical Nodes, capabilities, evidence-based promotion and replaceable substrates | Retain as HOST's infrastructure architecture baseline |
 | Node roles and placement | `products/izakhono-host/CLUSTER-NODE-ROLES.md` | CONTROL, EDGE, DNS, RUNTIME, DATA, MAIL, BACKUP and FORTRESS are workload/role responsibilities | Treat role labels as logical placement intent, not machines or proof of capacity |
 | NODE01 orchestration | `products/node01-agent-fabric/ORCHESTRATION-V1.md`; `src/node01/registry.py`, `policy.py`, `executors.py` | Agent capability registry, bounded task policy and deterministic executor | This is an agent/tool registry, not an infrastructure Node or execution-environment registry |
+| CONTROL node routing | `products/izakhono-control/NODE-FABRIC.md`; `node_fabric.py`; `infra/node-cluster/topology.yaml` and `cluster.env.example` | A pool of endpoint IDs, URLs, secrets and cluster topology labels named `node01`–`node04` | Treat these as legacy execution-target/cluster-member aliases until explicitly mapped; they are not proof of the corresponding logical software Node identity |
+| Cluster identity documentation | `infra/node-cluster/NODE-IDENTITY-CONTRACT.md`; `infra/node-cluster/README.md` | Explains software identity and separate hosts, but the older contract declares itself authoritative and uses `physicalHostIsSeparate` vocabulary | Root `architecture/NODE01-IDENTITY-STANDARD.md` takes precedence; align this older contract and its examples to the canonical field names |
 | NODE01 control-plane prototype | `products/node01-agent-fabric/src/node01/control_plane.py` | In-memory queue, observer and planning/draft interfaces; provisioner currently returns a plan | Useful orchestration prototype; not the durable Runtime Fabric deployment authority |
 | HOST runtime state | `products/izakhono-host/runtime/control-plane/state.mjs` | JSON state shape includes nodes, deployments, revisions and routes | Existing state container, but no versioned Node/environment binding schema or transactional registry is established by this file |
 | HOST site control plane | `products/izakhono-host/runtime/control-plane/server.mjs` | Authenticated site provisioning/content API and local JSON persistence | Owns site workflow; it is not the source of truth for Node identity or execution authorization |
@@ -72,7 +75,15 @@ HOST's provisioner governs customer onboarding from payment through domain, DNS,
 
 **Required correction:** retain this state machine for customer provisioning. Implement the Node, workload, environment and binding lifecycle separately within the designated infrastructure authority. Customer `LIVE` must depend on accepted workload evidence and must never be inferred from a binding being active.
 
-### G6 — Operational documents still contain stale or conflicting substrate assumptions
+### G6 — CONTROL and cluster routing conflate logical Node labels with execution targets
+
+The existing `products/izakhono-control/node_fabric.py` models each `FabricNode` with a `node_id`, URL and secret environment variable. Its default configuration uses `IZAKHONO_NODE_ID=node01` alongside the local agent URL, while multi-node configuration associates `node01`–`node03` directly with endpoint URLs and per-endpoint secrets. The `products/izakhono-control/NODE-FABRIC.md` describes these as logical roles that an approved Linux host can assume. The cluster `topology.yaml` and `cluster.env.example` similarly use `node01` names alongside IP addresses and K3s host settings.
+
+This is a second, distinct identity/routing model alongside the logical Node standard. The current pool is operationally useful for selecting healthy agent endpoints, but its `node_id` is functioning as a target alias, not as a separately registered software identity with an independently authorised environment binding. The older `infra/node-cluster/NODE-IDENTITY-CONTRACT.md` also calls itself authoritative, but the root identity standard is the system-wide authority and uses the canonical `logical_node_id`, `identity_type`, `runtime_host` and `runtime_host_is_separate` vocabulary.
+
+**Required correction:** retain endpoint health/failover functionality, but model each endpoint as an execution-environment/agent target record with its own ID and locator. Resolve it through an approved binding to a logical Node and workload. Align cluster topology and environment examples so IPs, hostnames, K3s members and endpoint secrets cannot be mistaken for logical Node IDs. Do not register another independent Node registry.
+
+### G7 — Operational documents still contain stale or conflicting substrate assumptions
 
 The repository includes a software-node standard and a corrected execution-environment activation gate, but other HOST, NODE and MAIL documents still use language such as physical-node activation, refer to available owned nodes as if execution capacity were already verified, or describe a preferred external provider. For example, `products/izakhono-host/README.md` still refers to validating a “physical node”; `products/izakhono-node/README.md` describes hardware-controlled compute and physical nodes; `products/izakhono-mail/runtime-v1/ops/DEPLOY-PROVIDER-NEUTRAL.md` specifies a public Linux/Docker target; and `PROVIDER-GATE.md` records an earlier preferred-provider research position.
 
@@ -93,7 +104,7 @@ This responsibility split is a reconciliation target, not a claim that every int
 ## 5. Required implementation sequence
 
 1. **Correct identity derivation:** update the existing node agent contract so hostname, IP, provider ID and container ID are execution-environment metadata only. Add tests that reject hostname-derived logical identity.
-2. **Approve the authority map:** identify the existing authoritative FORTRESS policy/identity interface and NODE01/Runtime Fabric durable state owner. Record explicit owners and API boundaries. Do not create a duplicate registry.
+2. **Approve the authority map:** identify the existing authoritative FORTRESS policy/identity interface and NODE01/Runtime Fabric durable state owner. Record explicit owners and API boundaries. Reclassify the existing CONTROL `node_fabric.py` entries as execution-target records or adapters; do not create a duplicate registry.
 3. **Define schemas:** version Node, workload, execution-environment, binding, approval, attestation and execution-receipt records. Add uniqueness, lifecycle and referential-integrity rules.
 4. **Define durable transaction and audit semantics:** idempotency, approval, state transition and audit/outbox must be recoverable and concurrency-safe.
 5. **Specify typed adapter operations:** begin with read-only discovery and capability inspection. Mutating operations remain unavailable until binding, approval, policy and audit tests pass.
