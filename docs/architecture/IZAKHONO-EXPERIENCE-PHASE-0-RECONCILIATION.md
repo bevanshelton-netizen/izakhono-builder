@@ -337,3 +337,39 @@ FORTRESS decision events currently go to the service logging stream. Durable cen
 The PR #759 head recorded in its current PR description is `53d9924c7cddf4a9c232a09934735900d5bb5f30`. All six reported workflows for that head completed successfully: EXPERIENCE CI, FORTRESS CI, NODE01 Architecture Invariant, OpenAI Independence CI, Application Manifest Validation and the broader IZAKHONO Builder CI. This supersedes the earlier observation that the general Builder CI was still running.
 
 PR #759 remains open and draft. No merge, rebase, service deployment, credential creation, permission grant, migration or network exposure was performed.
+
+
+## 13. Dedicated ID–FORTRESS integration contract added to PR #759
+
+The latest PR #759 source now includes `products/izakhono-experience/ID-FORTRESS-INTEGRATION-V1.md`. This is a significant improvement over relying on the adapter code and README alone: it defines the security trust chain, exact service contracts, permission vocabulary, private transport gates, owner-controlled grant process, audit/privacy requirements and runtime acceptance criteria.
+
+### Contract decisions confirmed
+
+- ID is the authority for bearer-session validity and entity membership; EXPERIENCE derives subject, entity and role from ID introspection.
+- FORTRESS is the separate policy decision point; EXPERIENCE accepts only an explicit, traceable and versioned decision.
+- ID and FORTRESS use distinct service credentials and approved private HTTPS service paths.
+- The permission catalogue is action-specific. It is a design vocabulary, not an active grant.
+- The default EXPERIENCE grant list remains empty.
+- Product credentials cannot administer grants. Policy changes require owner-reviewed source changes, exact scope, rationale, version increment and CI negative tests.
+- Anonymous public collection, if ever approved, requires a separate narrowly scoped capability; it is not an identity bypass.
+- FORTRESS currently binds to loopback. The contract explicitly prohibits public exposure, changing the bind address, opening ports, DNS changes, paid tunnels or infrastructure purchases as part of source-only work.
+- NODE01 remains a logical software/runtime identity, not an execution host or network endpoint. The contract keeps execution environments separately managed and authorised.
+- Durable central audit retention, credential rotation, private transport and production approval remain acceptance gates.
+
+### Remaining design issue highlighted by the contract
+
+The contract requires permissions to be checked at the operation boundary, but the current helper returns a scoped store after one successful decision. That is not yet sufficient to prove ongoing per-operation authorization, decision freshness or revocation. A service/API boundary must re-evaluate the exact permission for each protected action, and preserve the FORTRESS decision ID in protected audit evidence.
+
+### Exact-head validation update
+
+The PR #759 current head recorded after the integration-contract commit is `ea34068adf1c412016acdd4b6d80afebecc64a93`.
+- EXPERIENCE CI: completed successfully.
+- FORTRESS CI: completed successfully.
+- NODE01 Architecture Invariant: completed successfully.
+- OpenAI Independence CI: completed successfully.
+- Application Manifest Validation: completed successfully.
+- Broader IZAKHONO Builder CI: still in progress when inspected.
+
+This supersedes the previous all-six-passed statement, which applied to the earlier head `53d9924c7cddf4a9c232a09934735900d5bb5f30`.
+
+PR #759 remains open and draft. No private network path, credential, permission grant, public route, database migration, deployment, merge or rebase was activated.
