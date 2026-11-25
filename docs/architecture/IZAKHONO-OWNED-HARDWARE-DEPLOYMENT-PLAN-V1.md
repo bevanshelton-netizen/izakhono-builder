@@ -55,7 +55,7 @@ Do not expose Stalwart administration, JMAP administration, database ports, Dock
 
 **Mail-specific warning:** Residential or dynamic ISP connections may block SMTP, lack usable PTR control, or have poor reputation. If so, do not claim direct-to-internet mail hosting is viable on that connection. First investigate an owner-controlled network arrangement or an explicitly approved mail transport arrangement; do not silently substitute a third-party mailbox provider.
 
-**DNS-specific warning:** A sovereign authoritative DNS service needs at least two independently reachable nameserver instances in distinct failure domains. One physical machine cannot provide genuine multi-site DNS resilience. Until a second owner-controlled failure domain exists, keep the existing registrar/DNS arrangement as a clearly labelled transitional dependency; do not claim sovereign DNS is live.
+**DNS-specific warning:** A sovereign authoritative DNS service needs at least two independently reachable nameserver instances in distinct failure domains. Two instances on the same host or in the same network/site failure domain do not provide genuine resilience. Until two suitable failure domains are available, keep the existing registrar/DNS arrangement as a clearly labelled transitional dependency; do not claim sovereign DNS is live.
 
 ## 5. Phase C — safe staging on an approved execution environment
 
@@ -106,7 +106,7 @@ This plan authorises zero spend. Before any proposed spend, report:
 - why existing owned equipment cannot meet the requirement;
 - measured capacity or connectivity shortfall;
 - no-cost remediation options;
-- any proposed hardware/network purchase and its full recurring/once-off cost;
+- any proposed infrastructure/network purchase and its full recurring/once-off cost;
 - the operational benefit and failure-domain improvement.
 
 Wait for explicit approval before ordering, subscribing, provisioning paid capacity or initiating a billable service.
@@ -117,7 +117,7 @@ As of this plan's creation, SentinelX reports zero enrolled hosts and zero saved
 
 The next action is to reconcile the Node and HOST execution contracts in source, then identify an execution environment that is already available and explicitly authorised. Do not generate or run an enrollment command until its target type, authority, security scope and cost implications are known. Perform read-only discovery only after that environment is connected.
 
-The Cloudflare integration-link request has not returned a completed result and no Cloudflare integration is saved. Do not create duplicate connection jobs. Cloudflare zone access is not required for the first read-only hardware inspection.
+The Cloudflare integration-link request has not returned a completed result and no Cloudflare integration is saved. Do not create duplicate connection jobs. Cloudflare zone access is not required to define the logical Node model or execution adapter contracts.
 
 ## 10. Definition of success
 
