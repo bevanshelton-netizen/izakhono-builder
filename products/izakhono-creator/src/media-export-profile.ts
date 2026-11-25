@@ -119,6 +119,8 @@ export function validateMediaProbe(probe: ProbeDocument, profile: MediaExportPro
   const streams = probe.streams ?? [];
   const video = streams.find(stream => stream.codec_type === 'video');
   const audio = streams.find(stream => stream.codec_type === 'audio');
+  const videoStreams = streams.filter(stream => stream.codec_type === 'video');
+  const audioStreams = streams.filter(stream => stream.codec_type === 'audio');
   const formatNames = (probe.format?.format_name ?? '').split(',');
   const duration = Number(probe.format?.duration);
   const expectedFps = profile.video.frameRate.numerator / profile.video.frameRate.denominator;
@@ -127,11 +129,13 @@ export function validateMediaProbe(probe: ProbeDocument, profile: MediaExportPro
     { id: 'container-mp4', passed: formatNames.includes('mp4'), actual: formatNames.join(',') || 'missing', expected: 'mp4 container' },
     { id: 'duration-positive', passed: Number.isFinite(duration) && duration > 0, actual: String(probe.format?.duration ?? 'missing'), expected: 'finite duration greater than zero' },
     { id: 'video-stream-present', passed: Boolean(video), actual: video ? 'present' : 'missing', expected: 'one video stream' },
+    { id: 'video-stream-count', passed: videoStreams.length === 1, actual: String(videoStreams.length), expected: 'exactly one video stream' },
     { id: 'video-h264', passed: video?.codec_name === profile.video.codec, actual: video?.codec_name ?? 'missing', expected: profile.video.codec },
     { id: 'video-dimensions', passed: video?.width === profile.video.width && video?.height === profile.video.height, actual: video ? `${video.width}x${video.height}` : 'missing', expected: `${profile.video.width}x${profile.video.height}` },
     { id: 'video-pixel-format', passed: video?.pix_fmt === profile.video.pixelFormat, actual: video?.pix_fmt ?? 'missing', expected: profile.video.pixelFormat },
     { id: 'video-frame-rate', passed: closeEnough(actualFps, expectedFps), actual: actualFps === null ? 'unreadable' : String(actualFps), expected: String(expectedFps) },
     { id: 'audio-stream-present', passed: Boolean(audio), actual: audio ? 'present' : 'missing', expected: 'one audio stream' },
+    { id: 'audio-stream-count', passed: audioStreams.length === 1, actual: String(audioStreams.length), expected: 'exactly one audio stream' },
     { id: 'audio-aac', passed: audio?.codec_name === profile.audio.codec, actual: audio?.codec_name ?? 'missing', expected: profile.audio.codec },
     { id: 'audio-sample-rate', passed: Number(audio?.sample_rate) === profile.audio.sampleRate, actual: audio?.sample_rate ?? 'missing', expected: String(profile.audio.sampleRate) },
     { id: 'audio-stereo', passed: audio?.channels === profile.audio.channels, actual: audio?.channels === undefined ? 'missing' : String(audio.channels), expected: String(profile.audio.channels) },
