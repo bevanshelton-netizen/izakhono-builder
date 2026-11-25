@@ -30,7 +30,7 @@ class ExperienceTests(unittest.TestCase):
  def test_cross_tenant_reads_and_writes_denied(self):
   s,q=self.survey(); rid=self.a.submit_response(s["id"],{q["id"]:1})["id"]
   with self.assertRaises(ExperienceError): self.b.get_survey(s["id"])
-  with self.assertRaises(ExperienceError): self.b.open_case(rid)
+  with self.assertRaises(ExperienceError): self.b.open_case(rid,actor_id="operator")
   with self.assertRaises(ExperienceError): self.b.submit_response(s["id"],{q["id"]:3})
  def test_required_answers_and_edit_lock(self):
   s,q=self.survey()
@@ -52,6 +52,11 @@ class ExperienceTests(unittest.TestCase):
   with self.assertRaises(ExperienceError): self.a.submit_response(s["id"],{r["id"]:4,c["id"]:"other"})
   self.a.submit_response(s["id"],{r["id"]:4,c["id"]:"email"})
 
+
+ def test_case_creation_requires_actor(self):
+  s,q=self.survey(); rid=self.a.submit_response(s["id"],{q["id"]:2})["id"]
+  with self.assertRaisesRegex(TypeError,"actor_id"):
+   self.a.open_case(rid)
 
  def test_case_history_is_append_only_and_actor_attributed(self):
   s,q=self.survey(); rid=self.a.submit_response(s["id"],{q["id"]:2})["id"]
