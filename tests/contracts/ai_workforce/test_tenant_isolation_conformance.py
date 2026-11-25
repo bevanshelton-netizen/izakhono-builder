@@ -243,8 +243,9 @@ class ExportAndEvidenceTests(unittest.TestCase):
                           verifier=self.verify_signature)
 
     def test_rejects_incomplete_export_item_set(self):
+        wrong_items = [self.items[0], {"tenant_id": "tenant-a", "object_id": "agent-3"}]
         with self.assertRaisesRegex(ContractError, "EXPORT_ITEM_SET_MISMATCH"):
-            verify_export(self.manifest, self.items[:1], expected_tenant="tenant-a",
+            verify_export(self.manifest, wrong_items, expected_tenant="tenant-a",
                           verifier=self.verify_signature)
 
     def test_rejects_duplicate_export_ids(self):
