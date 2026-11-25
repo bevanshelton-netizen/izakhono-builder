@@ -9,7 +9,7 @@
 
 IZAKHONO will build and operate its own hosting platform. The platform is the system of record for customer domains, websites, certificates, DNS zones, mail domains and mailboxes, storage, databases, backups, usage and service health.
 
-IZAKHONO owns the control plane, service definitions, automation, data model, security policy, operational evidence and customer experience. Physical compute, network transit, power and upstream connectivity may initially be purchased from infrastructure suppliers. Those suppliers provide raw capacity; they do not become the hosting platform or the system of record.
+IZAKHONO owns the control plane, service definitions, automation, data model, security policy, operational evidence and customer experience. The first deployment target is existing, IZAKHONO-controlled physical hardware. The current execution policy is zero spend: do not purchase compute, storage, domains, network services or subscriptions, and do not substitute a VPS or managed hosting provider. Physical machines necessarily depend on electricity and network connectivity; those dependencies do not transfer ownership of the platform. If existing capacity is insufficient, stop, document the measured gap and assess no-cost options. Any future paid exception requires a separate explicit owner approval after a written estimate.
 
 The platform must not depend on Vercel as its production web or mail runtime. Cloudflare may remain a transitional registrar/DNS/security adapter for domains where it is already configured, but it is not the long-term authoritative DNS runtime for the sovereign DNS service.
 
@@ -142,12 +142,13 @@ Every physical host requires a verified hostname, owner, location/failure domain
 ### Phase 1 — owned foundation
 - Finalize HOST control-plane service contracts and tenant/domain/site/mail inventory.
 - Establish host enrollment, secure operator access, monitoring and audit.
-- Validate the existing physical host and available capacity.
-- Produce an infrastructure bill of materials and cost estimate before any purchase.
+- Validate the existing owner-controlled physical host and available capacity.
+- If capacity or network feasibility fails, stop and document the gap; no purchase or provider substitution is implied or authorized.
 
-### Phase 2 — staging cluster
-- Provision only after owner approval.
-- Deploy control, edge, DNS, data, storage and backup services in staging.
+### Phase 2 — staging on owned hardware
+- Use only existing owner-controlled machine(s) that pass the host and network acceptance gates.
+- Deploy control, edge, DNS, data, storage and backup services in staging, subject to an approved host-specific change plan.
+- If existing hardware cannot safely support staging, pause; do not create cloud compute or incur costs.
 - Establish encrypted offsite backup and perform restore drills.
 - Validate isolation, firewall policy, service recovery and observability.
 
@@ -219,8 +220,8 @@ The SentinelX account currently reports zero enrolled hosts and zero connected i
 2. Identify and enroll the existing IZAKHONO-controlled Linux host; inspect it read-only first.
 3. Connect the authorized DNS/registrar account through a secure integration flow; never paste credentials into chat.
 4. Confirm whether `izakhono.africa` is registered, who controls its authoritative DNS and what records currently exist.
-5. Produce a host-specific deployment plan and cost estimate; obtain explicit approval before any paid compute or storage.
-6. Deploy staging first, then run independent acceptance tests before any production traffic or MX cutover.
+5. Produce a host-specific deployment and rollback plan using only available owner-controlled resources.
+6. Deploy staging on approved existing hardware, then run independent acceptance tests before any production traffic or MX cutover.
 
 ## 10. Non-goals and prohibited shortcuts
 
