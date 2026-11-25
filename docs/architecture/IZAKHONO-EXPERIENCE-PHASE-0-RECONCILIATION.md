@@ -281,3 +281,20 @@ The EXPERIENCE domain now has a tested alpha case-integrity foundation. Phase 0 
 - broader integration and security review.
 
 No public routes, survey distribution, external communications, production migration, infrastructure purchase or deployment was activated.
+
+
+### Latest-head refinement and CI refresh
+
+The case-creation API was tightened after the first successful run: `actor_id` is now mandatory when opening a case, avoiding a silent default system identity that could mask the real initiating actor. The tenant-isolation test now supplies an actor so it still exercises the cross-tenant boundary. The README documents the requirement.
+
+Latest PR #759 commit: `53d9924c7cddf4a9c232a09934735900d5bb5f30`.
+
+Fresh GitHub Actions results for that exact commit:
+- EXPERIENCE CI — **success** (compile, domain/identity tests, NODE01 identity invariant).
+- FORTRESS CI — **success** (policy JSON, Python, policy tests, OpenAI independence check).
+- NODE01 Architecture Invariant — **success**.
+- Application Manifest Validation — **success**.
+- OpenAI Independence CI — **success**.
+- General IZAKHONO Builder CI — **in progress** at the latest check.
+
+This verifies the mandatory actor refinement on the alpha branch. It does not constitute production acceptance or prove the pending general Builder workflow has completed.
