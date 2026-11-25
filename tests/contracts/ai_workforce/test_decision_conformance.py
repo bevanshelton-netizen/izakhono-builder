@@ -85,10 +85,12 @@ def verify_synthetic_approval(
     expected: ExpectedRequest,
     now: int,
     eligible_approvers: set[str],
+    revoked_ids: set[str] | None = None,
+    signature_verifier: Callable[[Mapping[str, Any]], bool] | None = None,
 ) -> None:
-    """Check a separately supplied human approval bound to the same request."""
+    """Check a synthetic human approval bound to the same request."""
     required = ("approval_id", "state", "human_principal_id", "tenant_id",
-                "request_fingerprint", "expires_at")
+                "request_fingerprint", "not_before", "expires_at", "signature")
     for field in required:
         if field not in approval or approval[field] in (None, ""):
             raise ContractError(f"MISSING_APPROVAL_{field.upper()}")
@@ -102,8 +104,18 @@ def verify_synthetic_approval(
         raise ContractError("APPROVAL_TENANT_MISMATCH")
     if approval["request_fingerprint"] != expected.fingerprint:
         raise ContractError("APPROVAL_FINGERPRINT_MISMATCH")
-    if not isinstance(approval["expires_at"], int) or now >= approval["expires_at"]:
+    if not isinstance(approval["not_before"], int) or not isinstance(approval["expires_at"], int):
+        raise ContractError("APPROVAL_INVALID_TIME_CLAIMS")
+    if approval["expires_at"] <= approval["not_before"]:
+        raise ContractError("APPROVAL_INVALID_VALIDITY_WINDOW")
+    if now < approval["not_before"]:
+        raise ContractError("APPROVAL_NOT_YET_VALID")
+    if now >= approval["expires_at"]:
         raise ContractError("APPROVAL_EXPIRED")
+    if approval["approval_id"] in (revoked_ids or set()):
+        raise ContractError("APPROVAL_REVOKED")
+    if signature_verifier is None or not signature_verifier(approval):
+        raise ContractError("APPROVAL_SIGNATURE_NOT_VERIFIED")
 
 
 class DecisionContractTests(unittest.TestCase):
@@ -235,13 +247,17 @@ class HumanApprovalContractTests(unittest.TestCase):
             "human_principal_id": "human:approver-01",
             "tenant_id": self.expected.tenant_id,
             "request_fingerprint": self.expected.fingerprint,
+            "not_before": 1_800_000_000,
             "expires_at": 1_800_000_300,
+            "signature": "synthetic-approval-signature",
         }
+        self.verify_signature = lambda artifact: artifact.get("signature") == "synthetic-approval-signature"
 
-    def verify(self, approval=None) -> None:
+    def verify(self, approval=None, **kwargs) -> None:
         verify_synthetic_approval(
             approval or self.approval, expected=self.expected,
             now=1_800_000_100, eligible_approvers={"human:approver-01"},
+            signature_verifier=self.verify_signature, **kwargs
         )
 
     def test_accepts_eligible_human_approval_for_exact_request(self):
@@ -283,6 +299,28 @@ class HumanApprovalContractTests(unittest.TestCase):
         approval = dict(self.approval, state="PENDING")
         with self.assertRaisesRegex(ContractError, "APPROVAL_NOT_APPROVED"):
             self.verify(approval)
+
+    def test_rejects_not_yet_valid_approval(self):
+        approval = dict(self.approval, not_before=1_800_000_101)
+        with self.assertRaisesRegex(ContractError, "APPROVAL_NOT_YET_VALID"):
+            self.verify(approval)
+
+    def test_rejects_invalid_approval_validity_window(self):
+        approval = dict(self.approval, not_before=1_800_000_200, expires_at=1_800_000_100)
+        with self.assertRaisesRegex(ContractError, "APPROVAL_INVALID_VALIDITY_WINDOW"):
+            self.verify(approval)
+
+    def test_rejects_revoked_approval(self):
+        with self.assertRaisesRegex(ContractError, "APPROVAL_REVOKED"):
+            self.verify(revoked_ids={"approval-test-01"})
+
+    def test_rejects_unverified_approval_signature(self):
+        with self.assertRaisesRegex(ContractError, "APPROVAL_SIGNATURE_NOT_VERIFIED"):
+            verify_synthetic_approval(
+                self.approval, expected=self.expected, now=1_800_000_100,
+                eligible_approvers={"human:approver-01"},
+                signature_verifier=lambda artifact: False,
+            )
 
 
 if __name__ == "__main__":
