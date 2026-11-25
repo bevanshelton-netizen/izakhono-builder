@@ -81,7 +81,7 @@ Acceptance requires external DNS resolution, HTTPS certificate validation, expec
 
 Canonical mail engine: Stalwart. Canonical webmail: Roundcube. HOST Caddy remains the only public HTTP/HTTPS edge. SMTP/IMAP are exposed only on the documented mail ports; administrative/JMAP interfaces remain private.
 
-The existing mail implementation is tracked in PR #695 and related mail work. It is not production-live merely because its source is present. The implementation must be reconciled and reviewed before deployment.
+The canonical Stalwart/Roundcube mail implementation was merged into `main` through PR #695 (merge commit `d9f9b12cf09a9b260cbcc3a6ded984a6688a3871`) after 13 successful GitHub Actions workflows. It is not production-live merely because its source is present.
 
 Initial IZAKHONO mail identities:
 - ceo@izakhono.africa
@@ -215,7 +215,7 @@ The SentinelX account currently reports zero enrolled hosts and zero connected i
 
 ## 9. Immediate execution queue
 
-1. Review PR #695's latest domain-alignment changes and CI results, then reconcile the mail implementation against current `main` before merge.
+1. Verify the merged PR #695 mail implementation against current `main`; keep its Stalwart engine, Roundcube webmail and shared HOST edge as the single canonical mail runtime.
 2. Identify and enroll the existing IZAKHONO-controlled Linux host; inspect it read-only first.
 3. Connect the authorized DNS/registrar account through a secure integration flow; never paste credentials into chat.
 4. Confirm whether `izakhono.africa` is registered, who controls its authoritative DNS and what records currently exist.
