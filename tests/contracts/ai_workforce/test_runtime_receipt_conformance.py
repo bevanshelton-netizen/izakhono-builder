@@ -37,6 +37,10 @@ def verify_runtime_binding(
         raise ContractError("RUNTIME_NOT_ACTIVE")
     if type(binding["registered_at"]) is not int or type(binding["expires_at"]) is not int:
         raise ContractError("RUNTIME_INVALID_TIME_CLAIMS")
+    if binding["expires_at"] <= binding["registered_at"]:
+        raise ContractError("RUNTIME_INVALID_VALIDITY_WINDOW")
+    if type(now) is not int or type(max_age_seconds) is not int or max_age_seconds < 0:
+        raise ContractError("RUNTIME_INVALID_VERIFIER_TIME_CONFIG")
     if binding["expires_at"] <= now:
         raise ContractError("RUNTIME_BINDING_EXPIRED")
     if binding["registered_at"] > now:
@@ -57,6 +61,10 @@ def verify_execution_receipt(
 ) -> None:
     if not isinstance(receipt, Mapping):
         raise ContractError("RECEIPT_INVALID_MAPPING")
+    if not isinstance(expected, Mapping):
+        raise ContractError("RECEIPT_INVALID_EXPECTED_CONTEXT")
+    if type(now) is not int:
+        raise ContractError("RECEIPT_INVALID_VERIFIER_TIME")
     required = (
         "receipt_id", "task_id", "attempt_id", "tenant_id", "agent_id",
         "runtime_binding_id", "environment_id", "adapter_id", "decision_id",
@@ -137,6 +145,14 @@ class RuntimeBindingTests(unittest.TestCase):
         with self.assertRaisesRegex(ContractError, "RUNTIME_BINDING_EXPIRED"):
             self.verify(dict(self.binding, expires_at=1_800_000_100))
 
+    def test_rejects_expiry_before_registration(self):
+        with self.assertRaisesRegex(ContractError, "RUNTIME_INVALID_VALIDITY_WINDOW"):
+            self.verify(dict(self.binding, expires_at=1_799_999_999))
+
+    def test_rejects_negative_health_age_configuration(self):
+        with self.assertRaisesRegex(ContractError, "RUNTIME_INVALID_VERIFIER_TIME_CONFIG"):
+            self.verify(max_age_seconds=-1)
+
     def test_rejects_stale_registration(self):
         with self.assertRaisesRegex(ContractError, "RUNTIME_REGISTRATION_STALE"):
             self.verify(dict(self.binding, registered_at=1_799_999_700))
@@ -196,6 +212,13 @@ class ExecutionReceiptTests(unittest.TestCase):
         with self.assertRaisesRegex(ContractError, "RECEIPT_INVALID_MAPPING"):
             verify_execution_receipt(
                 None, expected=self.expected, now=1_800_000_100,
+                verifier=self.signature_ok,
+            )
+
+    def test_rejects_non_mapping_expected_context(self):
+        with self.assertRaisesRegex(ContractError, "RECEIPT_INVALID_EXPECTED_CONTEXT"):
+            verify_execution_receipt(
+                self.receipt, expected=None, now=1_800_000_100,
                 verifier=self.signature_ok,
             )
 
