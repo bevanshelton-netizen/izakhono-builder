@@ -117,7 +117,7 @@ def verify_export(
 
 def retrieve_evidence(
     evidence: Mapping[str, Any], *, tenant_id: str, object_scope: str,
-    verifier: Callable[[Mapping[str, Any]], bool] | None,
+    object_id: str, verifier: Callable[[Mapping[str, Any]], bool] | None,
 ) -> Mapping[str, Any]:
     if not isinstance(evidence, Mapping):
         raise ContractError("EVIDENCE_INVALID_MAPPING")
@@ -128,6 +128,8 @@ def retrieve_evidence(
         raise ContractError("EVIDENCE_TENANT_MISMATCH")
     if evidence["object_scope"] != object_scope:
         raise ContractError("EVIDENCE_OBJECT_SCOPE_MISMATCH")
+    if evidence["object_id"] != object_id:
+        raise ContractError("EVIDENCE_OBJECT_ID_MISMATCH")
     if verifier is None or not verifier(evidence):
         raise ContractError("EVIDENCE_NOT_VERIFIED")
     return evidence
@@ -144,7 +146,7 @@ def tenant_cache_key(*, tenant_id: str, namespace: str, object_id: str) -> str:
 
 
 def verify_restore_snapshot(
-    snapshot: Mapping[str, Any], *, expected_tenant: str,
+    snapshot: Mapping[str, Any], *, expected_tenant: str, expected_scope: str,
     verifier: Callable[[Mapping[str, Any]], bool] | None,
 ) -> None:
     if not isinstance(snapshot, Mapping):
@@ -154,6 +156,8 @@ def verify_restore_snapshot(
         raise ContractError("RESTORE_SNAPSHOT_INCOMPLETE")
     if snapshot["tenant_id"] != expected_tenant:
         raise ContractError("RESTORE_TENANT_MISMATCH")
+    if snapshot["scope"] != expected_scope:
+        raise ContractError("RESTORE_SCOPE_MISMATCH")
     if verifier is None or not verifier(snapshot):
         raise ContractError("RESTORE_SNAPSHOT_NOT_VERIFIED")
 
@@ -260,7 +264,7 @@ class ExportAndEvidenceTests(unittest.TestCase):
             "digest": "sha256:evidence", "signature": "synthetic-signature",
         }
         self.assertEqual(retrieve_evidence(
-            evidence, tenant_id="tenant-a", object_scope="agent",
+            evidence, tenant_id="tenant-a", object_scope="agent", object_id="agent-1",
             verifier=self.verify_signature,
         ), evidence)
 
@@ -272,7 +276,7 @@ class ExportAndEvidenceTests(unittest.TestCase):
         }
         with self.assertRaisesRegex(ContractError, "EVIDENCE_TENANT_MISMATCH"):
             retrieve_evidence(evidence, tenant_id="tenant-a", object_scope="agent",
-                              verifier=self.verify_signature)
+                              object_id="agent-1", verifier=self.verify_signature)
 
     def test_evidence_from_another_object_scope_is_rejected(self):
         evidence = {
@@ -284,6 +288,16 @@ class ExportAndEvidenceTests(unittest.TestCase):
             retrieve_evidence(evidence, tenant_id="tenant-a", object_scope="agent",
                               verifier=self.verify_signature)
 
+    def test_evidence_for_another_object_is_rejected(self):
+        evidence = {
+            "evidence_id": "ev-1", "tenant_id": "tenant-a",
+            "object_scope": "agent", "object_id": "agent-2",
+            "digest": "sha256:evidence", "signature": "synthetic-signature",
+        }
+        with self.assertRaisesRegex(ContractError, "EVIDENCE_OBJECT_ID_MISMATCH"):
+            retrieve_evidence(evidence, tenant_id="tenant-a", object_scope="agent",
+                              object_id="agent-1", verifier=self.verify_signature)
+
     def test_unknown_evidence_verification_fails_closed(self):
         evidence = {
             "evidence_id": "ev-1", "tenant_id": "tenant-a",
@@ -292,7 +306,7 @@ class ExportAndEvidenceTests(unittest.TestCase):
         }
         with self.assertRaisesRegex(ContractError, "EVIDENCE_NOT_VERIFIED"):
             retrieve_evidence(evidence, tenant_id="tenant-a", object_scope="agent",
-                              verifier=None)
+                              object_id="agent-1", verifier=None)
 
 
 class CacheAndRestoreIsolationTests(unittest.TestCase):
@@ -313,7 +327,8 @@ class CacheAndRestoreIsolationTests(unittest.TestCase):
             "signature": "synthetic-signature",
         }
         verify_restore_snapshot(snapshot, expected_tenant="tenant-a",
-                                verifier=lambda value: value["signature"] == "synthetic-signature")
+                                expected_scope="tenant",
+            verifier=lambda value: value["signature"] == "synthetic-signature")
 
     def test_restore_rejects_cross_tenant_snapshot(self):
         snapshot = {
@@ -322,7 +337,7 @@ class CacheAndRestoreIsolationTests(unittest.TestCase):
             "signature": "synthetic-signature",
         }
         with self.assertRaisesRegex(ContractError, "RESTORE_TENANT_MISMATCH"):
-            verify_restore_snapshot(snapshot, expected_tenant="tenant-a",
+            verify_restore_snapshot(snapshot, expected_tenant="tenant-a", expected_scope="tenant",
                                     verifier=lambda value: True)
 
     def test_restore_verification_unknown_fails_closed(self):
@@ -332,7 +347,8 @@ class CacheAndRestoreIsolationTests(unittest.TestCase):
             "signature": "synthetic-signature",
         }
         with self.assertRaisesRegex(ContractError, "RESTORE_SNAPSHOT_NOT_VERIFIED"):
-            verify_restore_snapshot(snapshot, expected_tenant="tenant-a", verifier=None)
+            verify_restore_snapshot(snapshot, expected_tenant="tenant-a", expected_scope="tenant",
+                                    verifier=None)
 
 
 if __name__ == "__main__":
