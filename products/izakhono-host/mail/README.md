@@ -11,7 +11,7 @@ This directory defines the single Stalwart mail engine used by IZAKHONO HOST. Cu
 - Stalwart HTTPS/admin: loopback-only host port 18080
 - Stalwart bootstrap/JMAP HTTP: loopback-only host port 18081
 
-Plaintext IMAP on TCP 143 is not published. Stalwart admin/JMAP listeners are not public. Webmail is routed by HOST EDGE at webmail.izakhonoafrica.co.za; mail.izakhonoafrica.co.za is used for SMTP/IMAP and the HTTP-01 ACME challenge only.
+Plaintext IMAP on TCP 143 is not published. Stalwart admin/JMAP listeners are not public. Webmail is routed by HOST EDGE at webmail.izakhono.africa; mail.izakhono.africa is used for SMTP/IMAP and the HTTP-01 ACME challenge only.
 
 ## Persistent data and shared network
 
