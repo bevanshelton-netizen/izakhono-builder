@@ -88,4 +88,18 @@ const readyManifest = buildProductionManifest(completeShotProject);
 if (!readyManifest.summary.readyForMaster) throw new Error('Manifest should recognize fully evidenced approved shot media');
 if (readyManifest.summary.readyForDistribution) throw new Error('Distribution must remain blocked until master and distribution exports are recorded');
 
+
+const unstoredShotProject: CinematicProduction = {
+  ...completeShotProject,
+  assets: completeShotProject.assets.map(asset => ({ ...asset, storageKey: undefined })),
+};
+const unstoredManifest = buildProductionManifest(unstoredShotProject);
+if (unstoredManifest.summary.readyForMaster) throw new Error('Shot videos without storage/hash evidence must not unlock master readiness');
+if (unstoredManifest.entries.filter(entry => entry.category === 'shot').some(entry => entry.state === 'complete')) throw new Error('Shot without stored video evidence must not be marked complete');
+const unauditedApprovalProject: CinematicProduction = {
+  ...completeShotProject,
+  approvals: completeShotProject.approvals.map(approval => approval.gate === 'generation' ? { ...approval, approverId: undefined, decidedAt: undefined } : approval),
+};
+if (buildProductionManifest(unauditedApprovalProject).summary.readyForMaster) throw new Error('Approval without approver and decision timestamp must not unlock master readiness');
+
 console.log('IZAKHONO CINEMATIC production graph: PASS');
