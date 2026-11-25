@@ -12,13 +12,16 @@ check() {
   fi
 }
 
-printf '\nIZAKHONO NODE PREFLIGHT\n\n'
+printf '\nIZAKHONO EXECUTION-HOST PREFLIGHT (READ-ONLY)\n\n'
+
+# Run only on the actual, identified and authorized Linux execution host.
+# This script checks local suitability; it does not discover or provision a host.
 
 check 'Docker installed' command -v docker
 check 'Docker Compose available' docker compose version
 check 'Port 80 free/owned by Docker' bash -c '! ss -lnt "sport = :80" | grep -q LISTEN || docker ps --format "{{.Ports}}" | grep -q "0.0.0.0:80->"'
 check 'Port 443 free/owned by Docker' bash -c '! ss -lnt "sport = :443" | grep -q LISTEN || docker ps --format "{{.Ports}}" | grep -q "0.0.0.0:443->"'
-check 'Port 53 UDP available' bash -c '! ss -lun "sport = :53" | grep -q "\*:53" || docker ps --format "{{.Ports}}" | grep -q "53->53/udp"'
+check 'Port 53 UDP available' bash -c '! ss -lun "sport = :53" | grep -q "\\*:53" || docker ps --format "{{.Ports}}" | grep -q "53->53/udp"'
 check 'Port 53 TCP available' bash -c '! ss -ltn "sport = :53" | grep -q LISTEN || docker ps --format "{{.Ports}}" | grep -q "53->53/tcp"'
 check 'IPv4 default route' ip -4 route show default
 check 'IPv6 capability' ip -6 addr show
@@ -33,8 +36,8 @@ fi
 
 printf '\n'
 if (( fail )); then
-  echo 'NODE PREFLIGHT: NOT READY'
+  echo 'EXECUTION-HOST PREFLIGHT: NOT READY'
   exit 1
 fi
 
-echo 'NODE PREFLIGHT: READY'
+echo 'EXECUTION-HOST PREFLIGHT: READY'
