@@ -36,6 +36,19 @@ python -m unittest discover -s tests/contracts/ai_workforce -p 'test_*.py' -v
 - Atomic-evidence tests model copy-on-write publication of operation state,
   evidence and an outbox event as one unit. Injected failures before commit
   publish none of the staged records.
+- The production acceptance contract now separates the authoritative database
+  transaction (operation state + evidence metadata/reference + outbox row) from
+  FORTRESS calls, event publication and HOST/provider execution. It specifies
+  at-least-once outbox delivery, consumer inbox/deduplication, revalidation at
+  the enforcement boundary, and a staged immutable-object protocol when
+  evidence bytes live outside the database. It explicitly rejects exactly-once
+  execution claims.
+- The acceptance checklist requires named persistence/evidence/eventing owners,
+  transaction and isolation semantics, tenant-scoped uniqueness, relay/inbox
+  ownership, evidence retention/key custody, durability acknowledgement,
+  crash/replay/concurrency tests, restore evidence and an approved migration
+  and recovery authority. None of these production decisions is marked
+  accepted by the synthetic tests.
 - Recovery tests model pending outbox delivery, retry after uncertain delivery
   acknowledgement, consumer idempotency, and explicit reconciliation when an
   executor's outcome is unknown. Only a scope-matched, independently verified
