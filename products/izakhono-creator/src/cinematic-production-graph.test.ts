@@ -38,4 +38,33 @@ const cyclic = { ...project, tasks: [
 ] };
 if (!validateProductionGraph(cyclic).some(x => x.code === 'DEPENDENCY_CYCLE')) throw new Error('Dependency cycles must be rejected');
 
+
+const traced = {
+  ...project,
+  assets: [{
+    id: 'asset-video-1', kind: 'video' as const, status: 'completed' as const,
+    source: 'owned_model' as const, role: 'shot_video' as const,
+    sceneId: 's1', shotId: 'sh1', createdByTaskId: 't2',
+    parentAssetIds: [], provenance: { createdAt: '2026-01-01T00:00:00.000Z', consentRecordIds: [] },
+  }],
+  tasks: project.tasks.map(task => task.id === 't2' ? { ...task, outputAssetIds: ['asset-video-1'] } : task),
+};
+if (validateProductionGraph(traced).some(x => x.severity === 'error')) throw new Error('Valid scene/shot/task asset traceability rejected');
+const mismatchedAsset = {
+  ...traced,
+  assets: traced.assets.map(asset => ({ ...asset, sceneId: 'missing-scene' })),
+};
+if (!validateProductionGraph(mismatchedAsset).some(x => x.code === 'UNKNOWN_ASSET_SCENE')) throw new Error('Unknown asset scene must be rejected');
+const mismatchedCreator = {
+  ...traced,
+  assets: traced.assets.map(asset => ({ ...asset, createdByTaskId: 't1' })),
+};
+if (!validateProductionGraph(mismatchedCreator).some(x => x.code === 'ASSET_TASK_OUTPUT_MISMATCH')) throw new Error('Asset/task creator mismatch must be rejected');
+const mismatchedSceneShot = {
+  ...traced,
+  scenes: [...project.scenes, { ...project.scenes[0], id: 's2', sequence: 2 }],
+  assets: traced.assets.map(asset => ({ ...asset, sceneId: 's2' })),
+};
+if (!validateProductionGraph(mismatchedSceneShot).some(x => x.code === 'ASSET_SCENE_SHOT_MISMATCH')) throw new Error('Asset scene/shot mismatch must be rejected');
+
 console.log('IZAKHONO CINEMATIC production graph: PASS');
