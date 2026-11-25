@@ -1,7 +1,7 @@
 import unittest
 from datetime import datetime, timedelta, timezone
 
-from identity import IdentityBoundaryError, authorised_experience_store
+from identity import IdentityBoundaryError, FortressPermissionClient, authorised_experience_store
 
 
 def active_claims(**overrides):
@@ -95,6 +95,76 @@ class IdentityBoundaryTests(unittest.TestCase):
                     ":memory:", bearer_token=token, permission=permission,
                     introspect=self.introspect, fortress_decide=self.allow,
                 )
+
+
+if __name__ == "__main__":
+    unittest.main()
+
+
+class FortressClientTests(unittest.TestCase):
+    def setUp(self):
+        self.decision = {
+            "subject": "member@example.test",
+            "entity_id": "entity-a",
+            "role": "operator",
+            "permission": "experience:survey:read",
+            "resource": "izakhono-experience",
+        }
+
+    def test_missing_configuration_fails_closed(self):
+        client = FortressPermissionClient(base_url="http://localhost:9999", token="token")
+        with self.assertRaises(IdentityBoundaryError):
+            client(self.decision)
+
+    def test_resource_cannot_be_substituted(self):
+        client = FortressPermissionClient(base_url="https://fortress.example.test", token="token")
+        with self.assertRaises(IdentityBoundaryError):
+            client({**self.decision, "resource": "another-product"})
+
+    def test_invalid_or_untraceable_response_fails_closed(self):
+        from unittest.mock import patch
+        import json
+
+        class Response:
+            status = 200
+            def __init__(self, value):
+                self.value = value
+            def __enter__(self):
+                return self
+            def __exit__(self, *args):
+                return False
+            def read(self, limit):
+                return json.dumps(self.value).encode()
+
+        client = FortressPermissionClient(base_url="https://fortress.example.test", token="token")
+        for value in (
+            {"allowed": True},
+            {"allowed": "true", "decision_id": "fdc_123", "policy_version": 2},
+            {"allowed": True, "decision_id": "wrong", "policy_version": 2},
+            {"allowed": True, "decision_id": "fdc_123", "policy_version": "2"},
+        ):
+            with self.subTest(value=value), patch("identity.urlopen", return_value=Response(value)):
+                with self.assertRaises(IdentityBoundaryError):
+                    client(self.decision)
+
+    def test_explicit_fortress_grant_requires_traceable_decision(self):
+        from unittest.mock import patch
+        import json
+
+        class Response:
+            status = 200
+            def __enter__(self):
+                return self
+            def __exit__(self, *args):
+                return False
+            def read(self, limit):
+                return json.dumps({
+                    "allowed": True, "decision_id": "fdc_123", "policy_version": 2
+                }).encode()
+
+        client = FortressPermissionClient(base_url="https://fortress.example.test", token="token")
+        with patch("identity.urlopen", return_value=Response()):
+            self.assertIs(client(self.decision), True)
 
 
 if __name__ == "__main__":
