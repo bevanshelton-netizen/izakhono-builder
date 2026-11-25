@@ -108,13 +108,19 @@ class ExperienceAPI:
             if method == "GET" and path == "/api/v1/surveys":
                 return self._response(start_response,200,{"surveys":[_public_survey(row) for row in store.list_surveys()]})
             if method == "POST" and path == "/api/v1/surveys":
-                survey = store.create_survey(body.get("name"),metric=body.get("metric"),created_by=actor["subject"])
+                if not isinstance(body.get("name"),str) or not isinstance(body.get("metric"),str):
+                    raise ValueError("survey_name_and_metric_required")
+                survey = store.create_survey(body["name"],metric=body["metric"],created_by=actor["subject"])
                 return self._response(start_response,201,{"survey":_public_survey(survey)})
             if len(parts) == 4 and parts[:3] == ["api","v1","surveys"] and method == "GET":
                 survey = store.get_survey(parts[3])
                 return self._response(start_response,200,{"survey":_public_survey(survey),"questions":[_public_question(row) for row in store.list_questions(parts[3])]})
             if len(parts) == 5 and parts[:3] == ["api","v1","surveys"] and parts[4] == "questions":
-                question = store.add_question(parts[3],position=body.get("position"),kind=body.get("kind"),prompt=body.get("prompt"),required=body.get("required",True),config=body.get("config"))
+                if type(body.get("position")) is not int or not isinstance(body.get("kind"),str) or not isinstance(body.get("prompt"),str):
+                    raise ValueError("question_position_kind_and_prompt_required")
+                if type(body.get("required",True)) is not bool or not isinstance(body.get("config",{}),dict):
+                    raise ValueError("question_required_and_config_invalid")
+                question = store.add_question(parts[3],position=body["position"],kind=body["kind"],prompt=body["prompt"],required=body.get("required",True),config=body.get("config",{}))
                 return self._response(start_response,201,{"question":_public_question(question)})
             if len(parts) == 5 and parts[:3] == ["api","v1","surveys"] and parts[4] == "activate":
                 survey = store.activate_survey(parts[3])
@@ -124,7 +130,11 @@ class ExperienceAPI:
             if method == "GET" and path == "/api/v1/cases":
                 return self._response(start_response,200,{"cases":[_public_case(row) for row in store.list_cases()]})
             if len(parts) == 5 and parts[:3] == ["api","v1","cases"] and parts[4] == "transition":
-                case = store.transition_case(parts[3],status=body.get("status"),actor_id=actor["subject"],resolution_note=body.get("resolution_note",""),expected_version=body.get("expected_version"))
+                if not isinstance(body.get("status"),str) or not isinstance(body.get("resolution_note",""),str):
+                    raise ValueError("case_transition_fields_invalid")
+                if body.get("expected_version") is not None and type(body["expected_version"]) is not int:
+                    raise ValueError("expected_version_must_be_integer")
+                case = store.transition_case(parts[3],status=body["status"],actor_id=actor["subject"],resolution_note=body.get("resolution_note",""),expected_version=body.get("expected_version"))
                 return self._response(start_response,200,{"case":_public_case(case)})
             return self._response(start_response,404,{"error":"not_found"})
         except IdentityBoundaryError as exc:
