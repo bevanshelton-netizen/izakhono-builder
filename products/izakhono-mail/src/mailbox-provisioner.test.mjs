@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { provisionMailbox } from './mailbox-provisioner.mjs';
 
-const domainState = { domainId: 'domain-1', domain: 'izakhonoafrica.co.za', dnsZoneFile: 'zone-data', created: false };
+const domainState = { domainId: 'domain-1', domain: 'izakhono.africa', dnsZoneFile: 'zone-data', created: false };
 
 test('mailbox provisioning fails closed when no verified domain exists', async () => {
   let factoryCalled = false;
@@ -22,7 +22,7 @@ test('mailbox provisioning fails closed when no verified domain exists', async (
 test('mailbox provisioning requires a pre-created Stalwart domain', async () => {
   const result = await provisionMailbox({
     platform: 'IZAKHONO',
-    mailbox: 'bevans',
+    mailbox: 'ceo',
     transportFactory: () => ({
       ensureDomain: async () => { throw new Error('stalwart-domain-not-provisioned'); },
     }),
@@ -35,7 +35,7 @@ test('mailbox provisioning does not create accounts until public DNS verifies', 
   let createCalled = false;
   const result = await provisionMailbox({
     platform: 'IZAKHONO',
-    mailbox: 'bevans',
+    mailbox: 'ceo',
     transportFactory: () => ({
       ensureDomain: async () => domainState,
       createMailbox: async () => { createCalled = true; throw new Error('must-not-run'); },
@@ -54,7 +54,7 @@ test('mailbox provisioning returns a one-time password but never stores it in ev
     let suppliedPassword = '';
     const result = await provisionMailbox({
       platform: 'IZAKHONO',
-      mailbox: 'bevans',
+      mailbox: 'ceo',
       evidenceDirectory,
       transportFactory: () => ({
         ensureDomain: async () => domainState,
@@ -62,7 +62,7 @@ test('mailbox provisioning returns a one-time password but never stores it in ev
           suppliedPassword = input.password;
           return {
             created: true,
-            address: 'bevans@izakhonoafrica.co.za',
+            address: 'ceo@izakhono.africa',
             domainId: 'domain-1',
             accountId: 'account-1',
           };
@@ -86,13 +86,13 @@ test('mailbox provisioning returns a one-time password but never stores it in ev
 test('existing Stalwart mailbox never receives a silently regenerated password', async () => {
   const result = await provisionMailbox({
     platform: 'IZAKHONO',
-    mailbox: 'bevans',
+    mailbox: 'ceo',
     transportFactory: () => ({
       ensureDomain: async () => domainState,
       createMailbox: async () => ({
         created: false,
         state: 'credentials_recovery_required',
-        address: 'bevans@izakhonoafrica.co.za',
+        address: 'ceo@izakhono.africa',
         accountId: 'account-1',
       }),
     }),
