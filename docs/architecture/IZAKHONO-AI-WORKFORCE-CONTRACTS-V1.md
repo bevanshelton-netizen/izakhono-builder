@@ -251,6 +251,82 @@ case/operation/fingerprint consistency. It does not establish a deployed event
 schema, signed FORTRESS artifact, durable evidence store or atomic production
 transaction.
 
+
+### 7.2 Production acceptance boundary: operation, evidence and outbox
+
+The production design must identify one authoritative transaction owner for the
+operation state, durable evidence metadata/reference and event-outbox record.
+For a consequential state transition, these records must commit together or the
+operation must remain explicitly pending/unknown. A successful application
+callback or a sequence of independent writes is not an atomicity guarantee.
+
+The preferred review baseline, subject to owner approval, is:
+
+1. Authenticate the caller and validate tenant/actor scope.
+2. Obtain and verify a current FORTRESS decision and any separately bound human
+   approval for the exact request fingerprint, audience and constraints.
+3. In the authoritative persistence transaction, enforce a unique
+   (tenant_id, idempotency_key) constraint and persist the operation in a
+   non-success state, the evidence metadata/reference, and a uniquely identified
+   outbox event. Enforce tenant, operation and fingerprint consistency with
+   database constraints or equivalent transactionally enforced invariants.
+4. Commit once. Only a successful durable commit may be acknowledged as
+   RECEIVED/PENDING; it is not execution acknowledgement or effect proof.
+5. An outbox relay publishes committed events at least once. Consumers use a
+   durable inbox/deduplication key and verify event scope before applying a
+   transition. A crash after publish but before marking delivery may cause
+   redelivery; duplicate delivery must be safe.
+6. Before consequential dispatch, the enforcement point revalidates the
+   FORTRESS decision/approval, revocation and runtime binding under the approved
+   verification profile. Dispatch occurs outside the database transaction.
+7. Authenticated executor receipts and independently verified postconditions
+   drive later state transitions. Each transition atomically records its state,
+   evidence reference and outbox event using the same transaction boundary.
+
+Do not hold a database transaction open across FORTRESS network calls, provider
+calls, HOST execution or event-broker publication. Those are distributed
+operations and require explicit pending states, idempotent commands, bounded
+retries, reconciliation and compensation/recovery rules. Never claim
+exactly-once execution: the contract is durable idempotency plus at-least-once
+delivery and verified outcome reconciliation.
+
+If evidence bytes live in an object store outside the authoritative database,
+the owner must choose and test a staged-object protocol. Upload immutable,
+tenant-scoped, encrypted content under a provisional reference; verify its
+digest and retention/classification metadata; then atomically commit the
+operation, evidence metadata/reference and outbox row in the authoritative
+database. A failed database commit may leave an orphaned staged object, which
+must remain inaccessible to ordinary consumers and be safely reconciled or
+expired by a separately authorized cleanup process. A committed database
+reference to missing or unverified evidence is forbidden. If evidence is stored
+inside the same transactional database, the owner must still demonstrate
+durability, access segregation, retention and restore properties.
+
+The owner must explicitly select and document:
+- authoritative operation/evidence metadata store and tenant isolation model;
+- transaction engine/isolation level, uniqueness constraints and concurrency
+  strategy for idempotency and state transitions;
+- transactional outbox schema, relay ownership, retry/dead-letter and replay
+  controls;
+- consumer inbox/deduplication scope and retention horizon;
+- evidence byte-store topology, digest algorithm, encryption/key custody,
+  immutability/retention and staged-object cleanup;
+- durability acknowledgement meaning, backup/restore objectives and recovery
+  point/time objectives;
+- atomicity across state, evidence metadata and outbox, including failure
+  injection and crash/restart evidence;
+- operational ownership, approved migration runner, rollback/forward-fix plan
+  and independent audit access.
+
+Acceptance evidence must include concurrent duplicate-request tests, same-key
+different-fingerprint conflicts, tenant-isolation tests, process termination
+at each commit/publish/ack boundary, duplicate and out-of-order delivery,
+consumer crash/replay, evidence-object missing/corrupt/unavailable cases,
+restore verification, and proof that no consequential side effect occurs
+before the required durable commit and FORTRESS enforcement checks. Synthetic
+copy-on-write tests are useful contract examples but cannot satisfy this
+production acceptance gate.
+
 ## 8. AgentSync export manifest
 
 Proposed manifest fields:
