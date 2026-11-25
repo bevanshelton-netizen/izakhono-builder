@@ -94,10 +94,10 @@ def verify_synthetic_approval(
             raise ContractError(f"MISSING_APPROVAL_{field.upper()}")
     if approval["state"] != "APPROVED":
         raise ContractError("APPROVAL_NOT_APPROVED")
-    if approval["human_principal_id"] not in eligible_approvers:
-        raise ContractError("APPROVER_NOT_ELIGIBLE")
     if approval["human_principal_id"] == expected.actor_id:
         raise ContractError("SERVICE_CANNOT_APPROVE")
+    if approval["human_principal_id"] not in eligible_approvers:
+        raise ContractError("APPROVER_NOT_ELIGIBLE")
     if approval["tenant_id"] != expected.tenant_id:
         raise ContractError("APPROVAL_TENANT_MISMATCH")
     if approval["request_fingerprint"] != expected.fingerprint:
@@ -218,7 +218,7 @@ class HumanApprovalContractTests(unittest.TestCase):
 
     def test_rejects_service_as_approver(self):
         approval = dict(self.approval, human_principal_id=self.expected.actor_id)
-        with self.assertRaisesRegex(ContractError, "APPROVER_NOT_ELIGIBLE"):
+        with self.assertRaisesRegex(ContractError, "SERVICE_CANNOT_APPROVE"):
             self.verify(approval)
 
     def test_rejects_approval_for_different_fingerprint(self):
