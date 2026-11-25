@@ -59,6 +59,13 @@ python -m unittest discover -s tests/contracts/ai_workforce -p 'test_*.py' -v
   operator and approver, and unresolved closure. An operator cannot declare
   execution successful through a recovery-resolution action.
 
+- Production-acceptance verification tests assemble a synthetic bundle across
+  immutable request/operation, FORTRESS decision, human approval, RuntimeBinding,
+  HOST receipt, evidence manifest, canonical outbox event and audit checkpoint.
+  They recompute the request fingerprint and reject cross-record tenant,
+  environment, approval, receipt, evidence, outbox and checkpoint mismatches.
+  Trust and digest verification are injected callbacks, not production
+  cryptographic implementations or independent trust anchors.
 - Recovery-audit tests bind recovery events to the canonical workforce event
   envelope: schema/source, tenant/organization/agent/workload, actor, correlation
   and causation IDs, idempotency key, classification/redaction metadata,
