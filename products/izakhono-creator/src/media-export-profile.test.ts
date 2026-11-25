@@ -42,5 +42,6 @@ assert.ok(args.includes('yuv420p'));
 assert.ok(args.includes('48000'));
 assert.equal(args.at(-1), '/exports/facebook-reels.mp4');
 assert.throws(() => buildFfmpegExportArgs(' ', '/exports/out.mp4'));
+assert.throws(() => buildFfmpegExportArgs('/staging/master.mov', '/staging/master.mov'), /must be different/);
 
 console.log('IZAKHONO Creator reusable Facebook export profile and media QA: PASS');
