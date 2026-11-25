@@ -19,7 +19,29 @@ function writeJson(file, value) {
   fs.renameSync(tmp, file);
 }
 
-export function createPlan(request = {}) {
+function withAgentLock(operation) {
+  const lockPath = process.env.IZAKHONO_AGENT_LOCK_PATH || `${statePath}.worker.lock`;
+  let lockFd;
+  try {
+    lockFd = fs.openSync(lockPath, 'wx', 0o600);
+    fs.writeFileSync(lockFd, JSON.stringify({ pid: process.pid, startedAt: new Date().toISOString(), operation }) + '\n');
+  } catch (error) {
+    if (error.code === 'EEXIST') {
+      const busy = new Error('agent queue/state is locked by another operation');
+      busy.code = 'EAGENTBUSY';
+      throw busy;
+    }
+    throw error;
+  }
+  try {
+    return operation();
+  } finally {
+    fs.closeSync(lockFd);
+    fs.unlinkSync(lockPath);
+  }
+}
+
+function createPlanUnlocked(request = {}) {
   if (!request.goal) throw new Error('goal is required');
   const planId = crypto.randomUUID();
   const steps = Array.isArray(request.steps) && request.steps.length
@@ -54,12 +76,18 @@ export function nextReadyStep(plan) {
   return plan.steps.find((step) => step.status === 'queued' && step.dependsOn.every((id) => plan.steps.find((candidate) => candidate.id === id)?.status === 'completed')) || null;
 }
 
+export function createPlan(request = {}) {
+  return withAgentLock(() => createPlanUnlocked(request));
+}
+
 export function enqueue(request = {}) {
-  const queue = readJson(queuePath, { schema: 'izakhono.agent-queue/v1', items: [] });
-  const plan = createPlan(request);
-  queue.items.push({ id: crypto.randomUUID(), planId: plan.planId, queuedAt: new Date().toISOString(), status: 'queued' });
-  writeJson(queuePath, queue);
-  return plan;
+  return withAgentLock(() => {
+    const queue = readJson(queuePath, { schema: 'izakhono.agent-queue/v1', items: [] });
+    const plan = createPlanUnlocked(request);
+    queue.items.push({ id: crypto.randomUUID(), planId: plan.planId, queuedAt: new Date().toISOString(), status: 'queued' });
+    writeJson(queuePath, queue);
+    return plan;
+  });
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
