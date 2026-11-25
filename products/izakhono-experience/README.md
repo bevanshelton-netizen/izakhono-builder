@@ -55,3 +55,25 @@ These controls improve alpha-level accountability and retry safety. They are not
 ## Integration contract
 
 See [ID and FORTRESS Integration Contract v1](ID-FORTRESS-INTEGRATION-V1.md) for the service trust chain, private transport requirements, permission namespace, owner-reviewed policy administration and production acceptance gates. It is a design contract, not evidence that private connectivity or production activation exists.
+
+## Authenticated management API (alpha)
+
+api.py provides a framework-free WSGI application. It does not start a listener, initialise a database or perform a migration. The caller must supply a database path and configure the approved ID and FORTRESS service clients.
+
+Routes:
+- GET /api/v1/surveys — experience:survey:read
+- POST /api/v1/surveys — experience:survey:write
+- GET /api/v1/surveys/{id} — experience:survey:read
+- POST /api/v1/surveys/{id}/questions — experience:survey:write
+- POST /api/v1/surveys/{id}/activate — experience:survey:write
+- GET /api/v1/surveys/{id}/metrics/nps — experience:analytics:read
+- GET /api/v1/cases — experience:case:read
+- POST /api/v1/cases/{id}/transition — experience:case:resolve
+
+Every request independently introspects the bearer session with ID and obtains a fresh exact permission decision from FORTRESS. The entity and actor are derived only from ID. Request bodies cannot choose entity, subject, role, actor or platform scope. JSON bodies are capped at 64 KiB. Responses use no-store and security headers. No CORS policy is enabled by the application.
+
+The static alpha management interface is in management/. It is designed to be served from the same trusted origin as /api/v1; it accepts an existing ID bearer session in memory only and never writes it to localStorage, sessionStorage, cookies or URLs. The page is a management shell, not an ID login implementation. Integrate it with an approved ID-authenticated application shell before general use. The web server must serve the static files with a restrictive CSP and HTTPS; do not expose the WSGI application or service ports publicly without an approved deployment design.
+
+This alpha API intentionally has no public anonymous response endpoint, survey distribution, email/SMS, respondent export, user/role administration or remote FORTRESS policy administration. The initial FORTRESS EXPERIENCE grant list remains empty, so API requests are denied until an exact owner-reviewed policy change is approved and activated.
+
+To create an app object for a controlled WSGI host, call create_app() with IZAKHONO_EXPERIENCE_DATABASE, IZAKHONO_ID_INTERNAL_URL, IZAKHONO_ID_INTERNAL_KEY, IZAKHONO_FORTRESS_URL and IZAKHONO_FORTRESS_TOKEN supplied securely. Database schema initialisation remains a separate, explicit operator action.
