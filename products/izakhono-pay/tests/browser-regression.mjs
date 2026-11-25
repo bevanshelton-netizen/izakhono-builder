@@ -102,7 +102,7 @@ try {
   });
   const device = await deviceContext.newPage();
   const browserDiagnostics = [];
-  device.on('pageerror', error => browserDiagnostics.push('pageerror: ' + error.message));
+  device.on('pageerror', error => browserDiagnostics.push('pageerror: ' + error.message + ' stack: ' + error.stack));
   device.on('console', message => { if (message.type() === 'error') browserDiagnostics.push('console: ' + message.text()); });
   device.on('requestfailed', request => browserDiagnostics.push('request failed: ' + request.method() + ' ' + request.url() + ' ' + (request.failure()?.errorText || 'unknown')));
   device.on('response', response => { if (new URL(response.url()).pathname.startsWith('/v1/')) browserDiagnostics.push('API ' + response.status() + ' ' + new URL(response.url()).pathname); });
