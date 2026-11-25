@@ -8,6 +8,7 @@ import {
   type ProductionTask,
 } from './cinematic-production-graph';
 import { findAssetByExternalId, getAsset, getProject, listProjects, saveAsset, saveProject, updateAsset, type CreatorStorageEnv } from './project-store';
+import { buildProductionReadinessReport } from './cinematic-production-readiness';
 import { chooseProvider, createAdapters, type GenerationRequest, type ProviderEnv } from './provider-router';
 
 type CinematicEnv = CreatorStorageEnv & ProviderEnv & { CREATOR_GENERATION_SECRET?: string; CREATOR_IMAGE_PROVIDER?: string; CREATOR_IMAGE_ASSET_HOSTS?: string; MEDIA_FABRIC_URL?: string; MEDIA_FABRIC_KEY?: string };
@@ -314,7 +315,7 @@ export async function handleCinematicApi(request: Request, env: CinematicEnv): P
 
   if (!resource && request.method === 'GET') {
     const assets = (project.packageData as Record<string, unknown>).cinematic;
-    return response({ project: { id: project.id, brief: project.brief, createdAt: project.createdAt, updatedAt: project.updatedAt }, production: graph, ...(assets && typeof assets === 'object' ? assets : {}), runnableTasks: getRunnableTasks(graph), validation: validate(graph) });
+    return response({ project: { id: project.id, brief: project.brief, createdAt: project.createdAt, updatedAt: project.updatedAt }, production: graph, ...(assets && typeof assets === 'object' ? assets : {}), runnableTasks: getRunnableTasks(graph), readiness: buildProductionReadinessReport(graph), validation: validate(graph) });
   }
 
   if (!resource && request.method === 'PATCH') {
