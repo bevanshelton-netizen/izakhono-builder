@@ -142,7 +142,7 @@ class ExperienceStore:
         with self.connect() as db:
             rows=db.execute("SELECT a.answer_json FROM answers a JOIN responses r ON r.id=a.response_id AND r.entity_id=a.entity_id AND r.platform_id=a.platform_id JOIN questions q ON q.id=a.question_id AND q.entity_id=a.entity_id AND q.platform_id=a.platform_id WHERE a.entity_id=? AND a.platform_id=? AND r.survey_id=? AND q.kind='nps'",(self.entity_id,self.platform_id,sid)).fetchall()
         return {"survey_id":sid,**calculate_nps([json.loads(x["answer_json"]) for x in rows])}
-    def open_case(self,rid,*,severity="normal",assigned_to=None,actor_id="system:experience",idempotency_key=None):
+    def open_case(self,rid,*,actor_id,severity="normal",assigned_to=None,idempotency_key=None):
         if severity not in {"low","normal","high","urgent"}: raise ExperienceError("invalid_severity")
         if not isinstance(actor_id,str) or not actor_id.strip(): raise ExperienceError("actor_required")
         if idempotency_key is not None and (not isinstance(idempotency_key,str) or not idempotency_key.strip() or len(idempotency_key)>200):
