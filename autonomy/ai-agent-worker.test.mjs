@@ -26,6 +26,8 @@ assert.equal(queued.status, 'queued');
 
 const lockPath = `${process.env.IZAKHONO_AGENT_STATE_PATH}.worker.lock`;
 fs.writeFileSync(lockPath, JSON.stringify({ pid: 999999, startedAt: new Date().toISOString() }));
+assert.throws(() => createPlan({ goal: 'Must not race worker state' }), { code: 'EAGENTBUSY' });
+assert.throws(() => enqueue({ goal: 'Must not race worker queue' }), { code: 'EAGENTBUSY' });
 const busy = await runAgentWorker();
 assert.equal(busy.status, 'busy');
 assert.equal(busy.progressed, 0);
