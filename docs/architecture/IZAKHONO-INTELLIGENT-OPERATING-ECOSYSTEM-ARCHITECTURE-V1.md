@@ -64,7 +64,7 @@ These are logical domains. Their deployment topology may vary. A domain may cons
 
 | Shared capability | Responsibility |
 |---|---|
-| FORTRESS | Identity, authentication, authorisation, policy, secrets access, approvals and audit |
+| IZAKHONO AI | First-party assistant experience, model gateway, conversation, memory, retrieval and model evaluation; see `IZAKHONO-AI-FIRST-PARTY-PLATFORM-ARCHITECTURE-V1.md` |\n| FORTRESS | Identity, authentication, authorisation, policy, secrets access, approvals and audit |
 | Runtime Fabric | Coordination of separately managed execution environments, runtime placement/bindings and execution lifecycle controls |
 | NODE01 software runtime | Stable logical software/runtime identity and its governed software capabilities; never a physical host |
 | DATABASE | Persistence services, data lifecycle, backup/restore and tenant-scoped data access |
