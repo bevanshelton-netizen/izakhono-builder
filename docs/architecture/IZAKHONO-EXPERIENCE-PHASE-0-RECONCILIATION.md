@@ -145,3 +145,53 @@ Phase 0 is **partially complete**. The shared architecture boundaries listed abo
 This was a read-only repository inspection followed by documentation planning. It did not create or modify application code, database objects, migrations, credentials, provider accounts, paid services, customer/employee communications, DNS, runtime registrations, infrastructure or production deployments.
 
 Do not interpret architecture documentation, a branch, a pull request, a passing CI job or a model-generated recommendation as proof of implementation, authorization, registration, deployment or production readiness.
+
+
+## 9. Subsequent discovery — PR #759 contains an existing EXPERIENCE alpha
+
+A follow-up inspection of the active Intelligence Platform proposal identified a first-party EXPERIENCE domain foundation that was not visible on `main` during the initial targeted inspection.
+
+**PR:** [#759 — IZAKHONO Intelligence Platform Architecture v1](https://github.com/bevanshelton-netizen/izakhono-builder/pull/759)  
+**Branch:** `feat/izakhono-intelligence-platform-architecture-v1`  
+**Comparison against main at inspection:** 9 commits ahead, 0 behind. The PR's seven changed files are all additions.
+
+Confirmed changed files:
+- `architecture/IZAKHONO-INTELLIGENCE-PLATFORM-V1.md`
+- `products/izakhono-experience/README.md`
+- `products/izakhono-experience/domain.py`
+- `products/izakhono-experience/identity.py`
+- `products/izakhono-experience/test_domain.py`
+- `products/izakhono-experience/test_identity.py`
+- `.github/workflows/izakhono-experience-ci.yml`
+
+The branch README describes an **alpha domain library, not a public or production service**. Source inspection confirms:
+- SQLite tenant-scoped survey, question, response, answer and case records with composite entity/platform scoping;
+- survey lifecycle and NPS/CSAT/CES/custom metric identifiers;
+- NPS, rating, text and choice question validation;
+- anonymous, pseudonymous and identified response modes;
+- standard NPS classification and calculation;
+- case transitions with resolution-note requirement;
+- an IZAKHONO ID session-introspection client and a mandatory fail-closed FORTRESS decision callback;
+- unit tests covering NPS, validation, privacy-mode behavior, tenant isolation, case lifecycle and identity/policy denial paths;
+- a path-filtered CI workflow for compilation, unit tests and the NODE01 identity invariant.
+
+### Important limitations found in the source
+
+1. The domain foundation uses SQLite. This is a useful deterministic alpha/reference persistence implementation, but it does not establish the production authoritative database or multi-instance persistence strategy.
+2. The FORTRESS permission callback is an integration seam. The PR explicitly states the currently inspected FORTRESS implementation does not yet expose the required product-permission decision endpoint. It fails closed; no public HTTP route or survey access is exposed.
+3. The current implementation does not provide survey distribution, email/SMS, public survey links, AI sentiment/churn prediction, production migrations or production deployment.
+4. The domain source requires further review for transaction atomicity, case transition concurrency/idempotency, append-only audit/evidence, response-to-case workflow policy, data retention/deletion, and production-grade privacy/anonymity guarantees.
+5. The CI workflow definition is present. This reconciliation did not independently verify a completed passing run for the PR head.
+
+### Revised finding and decision
+
+The earlier statement that no canonical EXPERIENCE implementation had been confirmed applies only to the inspected `main` branch. It must not be read as saying that no implementation exists anywhere in the repository.
+
+**PR #759 is now the leading existing EXPERIENCE alpha foundation.** PR #760 V2 is an architecture hardening/reconciliation companion, not authorization to create a second implementation. Before any new EXPERIENCE product code is written:
+- reconcile the V2 requirements with PR #759's actual domain API and schema;
+- avoid duplicating survey, question, response, answer, metric and case entities;
+- preserve the alpha's fail-closed security boundary;
+- define a migration path from SQLite alpha to the confirmed authoritative persistence owner only after ownership and runner are verified;
+- decide whether the V2 specification should be merged into or superseded by the Intelligence Platform architecture proposal after review.
+
+PR #759 remains an open proposal according to the available PR search result; its merge state and latest CI outcome must be checked again before implementation or merge planning.
