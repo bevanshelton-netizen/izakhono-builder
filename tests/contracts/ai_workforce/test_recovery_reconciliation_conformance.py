@@ -181,6 +181,19 @@ class OutboxRecoveryTests(unittest.TestCase):
         self.assertEqual(self.operation.outbox_state, "DELIVERED")
         self.assertEqual(calls, ["event-001"])
 
+    def test_retry_after_lost_delivery_ack_uses_same_stable_event_id(self):
+        attempts = []
+        def delivery(event):
+            attempts.append(event)
+            if len(attempts) == 1:
+                raise TimeoutError("synthetic lost acknowledgement")
+            return True
+        with self.assertRaisesRegex(ContractError, "OUTBOX_DELIVERY_UNCERTAIN"):
+            self.coordinator.publish_outbox("op-1", deliver=delivery)
+        self.assertTrue(self.coordinator.publish_outbox("op-1", deliver=delivery))
+        self.assertEqual(attempts, ["event-001", "event-001"])
+        self.assertEqual(self.operation.outbox_state, "DELIVERED")
+
     def test_repeated_delivery_does_not_republish_recorded_event(self):
         calls = []
         deliver = lambda event: calls.append(event) or True
