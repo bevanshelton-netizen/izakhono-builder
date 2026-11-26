@@ -4,6 +4,8 @@
 
 Define one tenant-aware API as the source of truth for IZAKHONO-managed zones and edge policies. DNS provider adapters execute approved changes; the API never equates a queued change with a live DNS answer.
 
+The API and DNS/edge services are packaged as NODE01-managed software workloads. NODE01 owns workload release and execution lifecycle; EDGE owns tenant DNS and edge domain data. See `NODE01-INTEGRATION-V1.md`.
+
 ## Core resources
 
 ### Zone
@@ -48,7 +50,7 @@ Every mutating operation creates a durable change request:
 
 ## API surface
 
-All management endpoints require a scoped service identity, TLS, request-size limits, rate limits, and audit logging. Customer and operator roles are separated. Secrets are referenced by secret IDs and never returned.
+All management endpoints require a scoped service identity, TLS, request-size limits, rate limits and audit logging. Customer and operator roles are separated. Secrets are referenced by secret IDs and never returned.
 
 ### Zones
 - `GET /v1/zones`
@@ -109,6 +111,12 @@ Adapters implement:
 
 The production adapter is PowerDNS. BIND and Knot adapters may be used for migration/testing. Cloudflare is an optional import/transition adapter only and is never the IZAKHONO source of truth.
 
+## NODE01 execution contract
+
+EDGE workload execution must use NODE01's current canonical manifest, immutable artifact, release approval and workload lifecycle interfaces. The adapter is not permitted to invent a parallel deployment API or call an execution host directly. Before implementation, map this specification to the actual NODE01 schema and APIs and add contract tests against their canonical fixtures.
+
+NODE01 manages software workload lifecycle. It does not itself supply public IP addresses, network transit, parent-zone delegation or physical compute capacity. These dependencies must be separately provisioned and verified.
+
 ## Security invariants
 
 1. Tenant ID is derived from the authenticated identity, never trusted from request JSON.
@@ -119,3 +127,4 @@ The production adapter is PowerDNS. BIND and Knot adapters may be used for migra
 6. No API endpoint exposes arbitrary shell execution.
 7. A change cannot be marked verified without querying the actual authoritative nameservers.
 8. Customer-facing DNS and edge controls cannot modify platform authority zones.
+9. EDGE cannot bypass NODE01/FORTRESS release authorization or immutable artifact pinning.
