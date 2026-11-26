@@ -97,6 +97,7 @@ function applyResult(step, result) {
 
 export async function runAgentWorker() {
   const lockPath = process.env.IZAKHONO_AGENT_LOCK_PATH || `${statePath}.worker.lock`;
+  fs.mkdirSync(path.dirname(lockPath), { recursive: true });
   let lockFd;
   try {
     lockFd = fs.openSync(lockPath, 'wx', 0o600);
