@@ -32,15 +32,37 @@ export function createNavDataWorker({ store, adapter, workloadStore = null, work
         // concurrently mutate the same pipeline while this pass is active.
         const signal = AbortSignal.timeout(MAX_PASS_MS);
         for (const stage of NAV_DATA_PIPELINE_STAGES) {
-          if (job.pipeline.stages[stage.id].status === 'succeeded') continue;
+          const currentStage = job.pipeline.stages[stage.id];
+          if (currentStage.status === 'succeeded') continue;
           signal.throwIfAborted();
-          const evidence = await adapter[METHODS[stage.id]]({
+          let result;
+          const input = {
+            stageId: stage.id,
+            operationId: currentStage.operationId || null,
             workloadId: job.pipeline.workloadId,
             releaseDigest: job.pipeline.releaseDigest,
             priorEvidence: job.pipeline.stages,
             signal
-          });
+          };
+          if (currentStage.status === 'running') {
+            if (typeof adapter.pollStage !== 'function') throw new Error('NAV data adapter cannot resume a running stage');
+            result = await adapter.pollStage(input);
+          } else if (typeof adapter.startStage === 'function') {
+            result = await adapter.startStage(input);
+          } else {
+            result = await adapter[METHODS[stage.id]](input);
+          }
           signal.throwIfAborted();
+          if (result?.status === 'running') {
+            const updated = await store.recordOperation(job.id, workerId, job.lease.leaseId, stage.id, result.operationId, now().toISOString());
+            if (!updated) throw new Error('NAV data job disappeared while recording operation state');
+            job.pipeline = updated.pipeline;
+            const retryAfter = new Date(now().getTime() + 10000).toISOString();
+            await store.release(job.id, workerId, job.lease.leaseId, { retryAfter });
+            return { processed: true, jobId: job.id, waiting: true, stage: stage.id, retryAfter };
+          }
+          if (result?.status === 'failed') throw new Error('NAV_DATA_STAGE_FAILED');
+          const evidence = result?.status === 'succeeded' ? result.evidence : result;
           const updated = await store.recordStage(job.id, workerId, job.lease.leaseId, stage.id, evidence, now().toISOString());
           if (!updated) throw new Error('NAV data job disappeared while recording stage evidence');
           job.pipeline = updated.pipeline;
@@ -66,8 +88,9 @@ export function createNavDataWorker({ store, adapter, workloadStore = null, work
         await store.release(job.id, workerId, job.lease.leaseId);
         return { processed: true, jobId: job.id, state: job.pipeline.state, dataReady: true };
       } catch (error) {
-        const exhausted = job.attempts >= 5;
-        const delay = [1000, 5000, 30000, 120000, 600000][Math.max(0, job.attempts - 1)];
+        const nextAttempt = (job.attempts || 0) + 1;
+        const exhausted = nextAttempt >= 5;
+        const delay = [1000, 5000, 30000, 120000, 600000][Math.max(0, nextAttempt - 1)];
         const retryAfter = exhausted ? null : new Date(now().getTime() + delay).toISOString();
         if (exhausted && workloadStore && job.workloadRecordId) {
           const workload = await workloadStore.get(job.workloadRecordId);
