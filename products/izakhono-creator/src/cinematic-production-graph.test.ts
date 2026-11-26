@@ -1,4 +1,4 @@
-import { getRunnableTasks, validateProductionGraph, updateTaskWithEvidence, type CinematicProduction } from './cinematic-production-graph';
+import { getRunnableTasks, validateProductionGraph, updateTaskWithEvidence, recordMediaQaEvidence, type CinematicProduction } from './cinematic-production-graph';
 import { buildProductionManifest } from './cinematic-production-manifest';
 import { buildProductionReadinessReport } from './cinematic-production-readiness';
 
