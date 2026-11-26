@@ -36,7 +36,20 @@ label{display:block;margin:12px 0;color:#b9c7d2}input,select{display:block;width
 <label>Next action <input name="next_action"></label>
 <label>Correspondence notes <textarea name="correspondence_notes" rows="4"></textarea></label>
 <button type="submit">Update application record</button>
-</form></section>
+</form>
+<form id="correspondence-form" class="card">
+<label>Application <select name="application_id" id="correspondence-application-select" required></select></label>
+<label>Direction <select name="direction"><option value="outgoing">Outgoing</option><option value="incoming">Incoming</option></select></label>
+<label>Date and time <input name="occurred_at" type="datetime-local" required></label>
+<label>Recipient / sender <input name="recipient"></label>
+<label>CC <input name="cc"></label>
+<label>Subject <input name="subject"></label>
+<label>Evidence reference <input name="evidence_ref" placeholder="Email message ID, letter or document reference"></label>
+<label>Summary <textarea name="summary" rows="4" required></textarea></label>
+<button type="submit">Append correspondence record</button>
+</form>
+<table><thead><tr><th>Date</th><th>Direction</th><th>Subject</th><th>Summary</th></tr></thead><tbody id="correspondence-list"><tr><td colspan="4">No correspondence loaded.</td></tr></tbody></table>
+</section>
 <section><h2>Register a new work</h2>
 <form id="work-form" class="card">
 <label>Book title <input name="title" required maxlength="500"></label>
@@ -122,24 +135,25 @@ label{display:block;margin:12px 0;color:#b9c7d2}input,select{display:block;width
     }
     adminHeaders = { Authorization: "Bearer " + token };
     try {
-      const [dash, catalogue, applications, works, editions] = await Promise.all([
+      const [dash, catalogue, applications, works, editions, correspondence] = await Promise.all([
         fetch("/api/dashboard", { headers: adminHeaders }),
         fetch("/api/catalogue", { headers: adminHeaders }),
         fetch("/api/applications", { headers: adminHeaders }),
         fetch("/api/works", { headers: adminHeaders }),
-        fetch("/api/editions", { headers: adminHeaders })
+        fetch("/api/editions", { headers: adminHeaders }),
+        fetch("/api/correspondence", { headers: adminHeaders })
       ]);
-      if ([dash, catalogue, applications, works, editions].some(r => r.status === 401)) {
+      if ([dash, catalogue, applications, works, editions, correspondence].some(r => r.status === 401)) {
         sessionStorage.removeItem(tokenKey);
         adminHeaders = null;
         status.textContent = "Access token rejected. Reload and enter the correct token.";
         return;
       }
-      if (![dash, catalogue, applications, works, editions].every(r => r.ok)) {
+      if (![dash, catalogue, applications, works, editions, correspondence].every(r => r.ok)) {
         throw new Error("Registry API is not configured yet.");
       }
-      const [d, c, a, w, e] = await Promise.all([
-        dash.json(), catalogue.json(), applications.json(), works.json(), editions.json()
+      const [d, c, a, w, e, correspondenceData] = await Promise.all([
+        dash.json(), catalogue.json(), applications.json(), works.json(), editions.json(), correspondence.json()
       ]);
       document.getElementById("works").textContent = d.works;
       document.getElementById("editions").textContent = d.editions;
@@ -149,6 +163,26 @@ label{display:block;margin:12px 0;color:#b9c7d2}input,select{display:block;width
       const applicationSelect = document.getElementById("application-select");
       applicationSelect.replaceChildren();
       for (const application of a.items) { const option=document.createElement("option"); option.value=application.id; option.textContent=application.agency_name + " • " + application.status; applicationSelect.append(option); }
+
+      const correspondenceApplicationSelect = document.getElementById("correspondence-application-select");
+      correspondenceApplicationSelect.replaceChildren();
+      for (const application of a.items) {
+        const option = document.createElement("option");
+        option.value = application.id;
+        option.textContent = application.agency_name + " • " + application.status;
+        correspondenceApplicationSelect.append(option);
+      }
+      const correspondenceList = document.getElementById("correspondence-list");
+      correspondenceList.replaceChildren();
+      for (const entry of correspondenceData.items) {
+        const tr = document.createElement("tr");
+        for (const value of [entry.occurred_at, entry.direction, entry.subject || "—", entry.summary]) {
+          const td = document.createElement("td");
+          td.textContent = value;
+          tr.append(td);
+        }
+        correspondenceList.append(tr);
+      }
 
       const workSelect = document.getElementById("work-select");
       const editionSelect = document.getElementById("edition-select");
@@ -211,6 +245,23 @@ label{display:block;margin:12px 0;color:#b9c7d2}input,select{display:block;width
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || "Application update failed");
       formStatus.textContent = "Agency application updated.";
+      await connect();
+    } catch (error) { formStatus.textContent = error.message; }
+  });
+
+  document.getElementById("correspondence-form").addEventListener("submit", async event => {
+    event.preventDefault();
+    try {
+      const payload = formData(event.currentTarget);
+      const response = await fetch("/api/correspondence", {
+        method: "POST",
+        headers: { ...adminHeaders, "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Correspondence record could not be saved");
+      formStatus.textContent = "Correspondence appended to the immutable audit history.";
+      event.currentTarget.reset();
       await connect();
     } catch (error) { formStatus.textContent = error.message; }
   });
