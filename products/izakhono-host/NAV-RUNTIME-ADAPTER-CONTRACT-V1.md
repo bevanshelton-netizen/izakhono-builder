@@ -55,7 +55,7 @@ The adapter contract is intentionally provider-neutral. The concrete provider mu
 The trusted generic HTTP adapter is implemented in the HOST provisioner:
 
 - GET /v1/runtime-targets/{runtimeTargetId} returns the exact runtimeTargetId, approved=true, enabled=true and an opaque providerTargetRef.
-- POST /v1/runtime-targets/{runtimeTargetId}/workloads returns a stable resourceId.
+- POST /v1/runtime-targets/{runtimeTargetId}/workloads returns a stable resourceId. Provision and release requests carry deterministic idempotency keys derived from workload identity, immutable release digest and operation so worker retries cannot create duplicate runtimes or releases.
 - POST /v1/runtime-targets/{runtimeTargetId}/workloads/{resourceId}/release deploys the requested releaseDigest; GET /v1/runtime-targets/{runtimeTargetId}/workloads/{resourceId} returns healthy=true and the exact releaseDigest only after independent runtime inspection.
 - Backup returns backupId, SHA-256 and a positive byte count. Restore accepts only a provider-issued backupId. Destroy preserves persistent data.
 - POST /v1/nav-data/{stage} must be idempotent by the supplied idempotencyKey and may return {status:"running",operationId} or {status:"succeeded",evidence}. GET /v1/nav-data/operations/{operationId} returns the same status contract. A failed operation returns {status:"failed"}; raw provider details are not exposed to HOST callers.
