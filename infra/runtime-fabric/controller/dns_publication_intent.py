@@ -7,6 +7,7 @@ registrar, or any public DNS provider.
 from __future__ import annotations
 
 import hashlib
+import re
 from dataclasses import dataclass
 from typing import Protocol
 
@@ -58,12 +59,10 @@ def _validate(request: DnsPublicationRequest, authorization: DnsPublicationAutho
     if not request.tenant_id.strip() or not request.zone_id.strip() or not request.approval_id.strip():
         raise ValueError("tenant, zone and approval identifiers are required")
     zone = request.zone_name.strip().lower().removesuffix(".")
-    if len(zone) > 253 or not zone or not all(
-        label and len(label) <= 63 and label[0].isalnum() and label[-1].isalnum()
-        and all(char.isalnum() or char == "-" for char in label)
-        for label in zone.split(".")
+    if len(zone) > 253 or not re.fullmatch(
+        r"(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z]{2,63}", zone
     ):
-        raise ValueError("valid DNS zone name is required")
+        raise ValueError("valid ASCII DNS zone name is required")
     if not isinstance(request.desired_serial, int) or request.desired_serial < 1:
         raise ValueError("positive desired SOA serial is required")
     if request.environment != "production":
