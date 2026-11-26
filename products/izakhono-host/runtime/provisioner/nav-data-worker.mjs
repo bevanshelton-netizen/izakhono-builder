@@ -41,7 +41,7 @@ export function createNavDataWorker({ store, adapter, workloadStore = null, work
             signal
           });
           signal.throwIfAborted();
-          const updated = await store.recordStage(job.id, workerId, stage.id, evidence, now().toISOString());
+          const updated = await store.recordStage(job.id, workerId, job.lease.leaseId, stage.id, evidence, now().toISOString());
           if (!updated) throw new Error('NAV data job disappeared while recording stage evidence');
           job.pipeline = updated.pipeline;
         }
@@ -63,7 +63,7 @@ export function createNavDataWorker({ store, adapter, workloadStore = null, work
           }
           if (workload?.state !== 'READY') throw new Error('NAV data pipeline completed but HOST workload readiness transition did not complete');
         }
-        await store.release(job.id, workerId);
+        await store.release(job.id, workerId, job.lease.leaseId);
         return { processed: true, jobId: job.id, state: job.pipeline.state, dataReady: true };
       } catch (error) {
         const exhausted = job.attempts >= 5;
@@ -75,7 +75,7 @@ export function createNavDataWorker({ store, adapter, workloadStore = null, work
             await workloadStore.transition(workload.id, 'FAILED', { error: 'NAV_DATA_PIPELINE_RETRY_LIMIT_REACHED', dataJobId: job.id });
           }
         }
-        await store.release(job.id, workerId, {
+        await store.release(job.id, workerId, job.lease.leaseId, {
           retryAfter,
           failedAt: exhausted ? now().toISOString() : null,
           error: String(error?.message || 'NAV data import failed')
