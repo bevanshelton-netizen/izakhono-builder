@@ -18,7 +18,7 @@ export function createNavDataJobStore({ filePath }) {
   function serialize(fn) { const result=queue.then(fn,fn); queue=result.then(()=>undefined,()=>undefined); return result; }
   return Object.freeze({
     async create({workloadId,workloadRecordId,releaseDigest,now=new Date().toISOString()}) {
-      return serialize(async()=>{ const state=await read(); const existing=state.jobs.find(j=>j.pipeline.workloadId===workloadId&&j.pipeline.releaseDigest===String(releaseDigest).toLowerCase()); if(existing)return {created:false,job:existing};
+      return serialize(async()=>{ const state=await read(); const existing=state.jobs.find(j=>j.pipeline.workloadId===workloadId&&j.workloadRecordId===workloadRecordId&&j.pipeline.releaseDigest===String(releaseDigest).toLowerCase()); if(existing)return {created:false,job:existing};
         if(typeof workloadRecordId!=='string'||!/^nav-workload-[a-f0-9]{20}$/.test(workloadRecordId))throw new Error('A valid HOST workload record ID is required');
         const job={id:`nav-data-${crypto.randomUUID().replaceAll('-','').slice(0,20)}`,workloadRecordId,attempts:0,retryAfter:null,lease:null,lastError:null,pipeline:createNavDataPipelineRecord({workloadId,releaseDigest,now})}; state.jobs.push(job); await write(state); return {created:true,job}; });
     },
@@ -27,7 +27,7 @@ export function createNavDataJobStore({ filePath }) {
     async claimNext({workerId,leaseMs=180000,now=new Date()}={}) {
       return serialize(async()=>{ if(typeof workerId!=='string'||!/^[a-z0-9][a-z0-9-]{2,62}$/.test(workerId))throw new Error('workerId must be a stable lowercase identifier'); if(!Number.isInteger(leaseMs)||leaseMs<1000||leaseMs>300000)throw new Error('leaseMs must be between 1000 and 300000');
         const instant=now instanceof Date?now:new Date(now); if(!Number.isFinite(instant.getTime()))throw new Error('now must be a valid date'); const state=await read();
-        const job=state.jobs.find(j=>j.pipeline.state==='IMPORTING_DATA'&&j.attempts<5&&(!j.retryAfter||Date.parse(j.retryAfter)<=instant.getTime())&&(!j.lease||Date.parse(j.lease.expiresAt)<=instant.getTime()));
+        const job=state.jobs.find(j=>['IMPORTING_DATA','VERIFYING'].includes(j.pipeline.state)&&j.attempts<5&&(!j.retryAfter||Date.parse(j.retryAfter)<=instant.getTime())&&(!j.lease||Date.parse(j.lease.expiresAt)<=instant.getTime()));
         if(!job)return null; job.attempts++; job.retryAfter=null; job.lease={workerId,expiresAt:new Date(instant.getTime()+leaseMs).toISOString()}; await write(state); return job; });
     },
     async recordStage(id,workerId,stageId,evidence,now=new Date().toISOString()) {
