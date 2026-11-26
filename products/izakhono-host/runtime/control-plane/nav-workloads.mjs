@@ -172,8 +172,9 @@ export function createNavWorkloadController({ dataDir, provider = null, now = ()
       try { input = await readBody(req); } catch (error) { sendJson(res, error.statusCode || 400, { ok: false, error: safeError(error) }); return; }
       if (action === 'replace') {
         try { input = validateSpec(input); } catch (error) { sendJson(res, error.statusCode || 400, { ok: false, error: safeError(error) }); return; }
+        if (input.logical_runtime_id !== record.logical_runtime_id) { sendJson(res, 409, { ok: false, error: 'LOGICAL_RUNTIME_ID_IMMUTABLE' }); return; }
       }
-      if (action === 'restore' && !/^backup:\/\/[a-zA-Z0-9._/-]{1,240}$/.test(String(input.backup_ref || ''))) { sendJson(res, 400, { ok: false, error: 'VERIFIED_BACKUP_REFERENCE_REQUIRED' }); return; }
+      if (action === 'restore' && (!/^backup:\/\/[a-zA-Z0-9._/-]{1,240}$/.test(String(input.backup_ref || '')) || input.backup_ref !== record.last_backup_ref)) { sendJson(res, 400, { ok: false, error: 'VERIFIED_BACKUP_REFERENCE_REQUIRED' }); return; }
       const task = job(state, action, workloadId);
       record.last_job_id = task.id;
       await save(state);
@@ -186,7 +187,11 @@ export function createNavWorkloadController({ dataDir, provider = null, now = ()
           record.status = 'provisioned';
           record.health = null;
         }
-        if (action === 'backup') record.last_backup_ref = String(result?.backup_ref || '');
+        if (action === 'backup') {
+          const backupRef = String(result?.backup_ref || '');
+          if (!/^backup:\/\/[a-zA-Z0-9._/-]{1,240}$/.test(backupRef)) throw Object.assign(new Error('NAV_PROVIDER_BACKUP_REFERENCE_MISSING'), { statusCode: 502, code: 'NAV_PROVIDER_BACKUP_REFERENCE_MISSING' });
+          record.last_backup_ref = backupRef;
+        }
         if (action === 'restore') record.status = 'restored';
         record.updated_at = now().toISOString();
         task.status = 'verified';
