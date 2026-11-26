@@ -6,6 +6,8 @@ services:
       PORT: 8080
       DATA_DIR: /data
       HOST_RUNTIME_TOKEN: ${HOST_RUNTIME_TOKEN:?set HOST_RUNTIME_TOKEN}
+      HOST_NAV_PROVIDER_URL: ${HOST_NAV_PROVIDER_URL:-}
+      HOST_NAV_PROVIDER_TOKEN: ${HOST_NAV_PROVIDER_TOKEN:-}
     volumes:
       - host-runtime-data:/data
     networks: [izakhono]
