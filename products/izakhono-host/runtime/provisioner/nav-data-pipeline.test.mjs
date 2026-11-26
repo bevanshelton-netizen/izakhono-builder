@@ -55,6 +55,20 @@ test('requires Geofabrik MD5 source evidence and PMTiles SHA-256 evidence', () =
   assert.throws(() => recordNavDataStage(withSource, 'map-tiles', { ...tiles, checksumAlgorithm: 'md5' }), /PMTiles archive must include a SHA-256/);
 });
 
+test('requires the correct evidence type for routing and search imports', () => {
+  const withSource = recordNavDataStage(
+    createNavDataPipelineRecord({ workloadId: 'izakhono-nav', releaseDigest: digest }),
+    'osm-source',
+    source
+  );
+  assert.throws(() => recordNavDataStage(withSource, 'routing-graph', {
+    artifactPath: 'router/valhalla-tiles.tar', importId: 'wrong-evidence-type', healthCheck: true
+  }), /buildId is required/);
+  assert.throws(() => recordNavDataStage(withSource, 'search-index', {
+    artifactPath: 'search/nominatim-db', buildId: 'wrong-evidence-type', healthCheck: true
+  }), /importId is required/);
+});
+
 test('does not accept service readiness until all imported artifacts exist', () => {
   const record = completeImports(createNavDataPipelineRecord({ workloadId: 'izakhono-nav', releaseDigest: digest }));
   assert.throws(() => recordNavDataStage(record, 'service-acceptance', { ...accepted, services: { ...services, 'nav-search': { healthy: false } } }), /nav-search/);
