@@ -74,7 +74,7 @@ test("invalid JSON is rejected with a structured error", async () => {
     method: "POST",
     headers: { "content-type": "application/json", "authorization": "Bearer valid-session-token-123456" },
     body: "{"
-  }), { DB: {}, FORTRESS_IDENTITY: { fetch: async () => new Response(JSON.stringify({ valid: true, principal: { id: "principal-1", tenantId: "tenant-1", role: "OWNER" } }), { status: 200 }) } });
+  }), { DB: {}, FORTRESS_IDENTITY: { fetch: async () => new Response(JSON.stringify({ valid: true, audience: "izakhono-commerce", principal: { id: "principal-1", tenantId: "tenant-1", role: "OWNER" } }), { status: 200 }) } });
   assert.equal(response.status, 400);
   assert.equal((await response.json()).error.code, "invalid_json");
 });
