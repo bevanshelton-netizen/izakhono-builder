@@ -93,7 +93,7 @@ export function createWorkloadStore({ filePath }) {
         });
         if (!candidate) return null;
         const attempted = recordWorkloadAttempt(candidate, instant.toISOString());
-        attempted.worker_lease = { worker_id: workerId, expires_at: new Date(instant.getTime() + leaseMs).toISOString() };
+        attempted.worker_lease = { worker_id: workerId, lease_id: crypto.randomUUID(), expires_at: new Date(instant.getTime() + leaseMs).toISOString() };
         attempted.retry_after = null;
         const index = state.workloads.findIndex(item => item.id === candidate.id);
         state.workloads[index] = attempted;
@@ -101,13 +101,13 @@ export function createWorkloadStore({ filePath }) {
         return attempted;
       });
     },
-    async recordExecution(id, workerId, event, details = {}, now = new Date().toISOString()) {
+    async recordExecution(id, workerId, event, details = {}, now = new Date().toISOString(), leaseId = null) {
       return serialize(async () => {
         const state = await read();
         const index = state.workloads.findIndex(item => item.id === id);
         if (index < 0) return null;
         const record = state.workloads[index];
-        if (record.worker_lease?.worker_id !== workerId || Date.parse(record.worker_lease.expires_at) <= Date.parse(now)) {
+        if (record.worker_lease?.worker_id !== workerId || record.worker_lease?.lease_id !== leaseId || Date.parse(record.worker_lease.expires_at) <= Date.parse(now)) {
           throw new Error('Worker lease is missing, expired or owned by another worker');
         }
         if (typeof event !== 'string' || !/^[A-Z0-9_]{3,64}$/.test(event)) throw new Error('Execution event must be a stable uppercase identifier');
@@ -119,13 +119,13 @@ export function createWorkloadStore({ filePath }) {
         return record;
       });
     },
-    async releaseClaim(id, workerId, { retryAfter = null, errorCode = null } = {}, now = new Date().toISOString()) {
+    async releaseClaim(id, workerId, { retryAfter = null, errorCode = null } = {}, now = new Date().toISOString(), leaseId = null) {
       return serialize(async () => {
         const state = await read();
         const index = state.workloads.findIndex(item => item.id === id);
         if (index < 0) return null;
         const record = state.workloads[index];
-        if (record.worker_lease?.worker_id !== workerId) throw new Error('Worker lease is owned by another worker');
+        if (record.worker_lease?.worker_id !== workerId || record.worker_lease?.lease_id !== leaseId) throw new Error('Worker lease is owned by another worker or has been superseded');
         delete record.worker_lease;
         if (retryAfter) record.retry_after = retryAfter;
         if (errorCode) record.last_execution_error = String(errorCode).slice(0, 80);
