@@ -61,7 +61,7 @@ test("rejects expired or malformed attestation lifetime", () => {
 
 test("rejects unknown fields and oversized attestations", () => {
   assert.equal(validateIsolationAttestation(attestation({ hostCommand: "sh" }), identity).reason, "unknown_attestation_field");
-  assert.equal(validateIsolationAttestation(attestation({ padding: "x".repeat(9000) }), identity).reason, "unknown_attestation_field");
+  assert.equal(validateIsolationAttestation(attestation({ controllerIdentity: "x".repeat(9000) }), identity).reason, "attestation_too_large");
 });
 
 test("publishes explicit isolation requirements without claiming they are deployed", () => {
