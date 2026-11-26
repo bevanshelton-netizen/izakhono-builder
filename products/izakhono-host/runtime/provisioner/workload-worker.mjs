@@ -26,7 +26,7 @@ export function createWorkloadWorker({ store, adapterRegistry, resolveBinding, n
           });
           const current = await store.get(workload.id);
           if (current?.state === 'PROVISIONING') {
-            await store.transition(workload.id, 'IMPORTING_DATA', { dataJobId: job.job.id, automatic: true });
+            await store.transition(workload.id, 'IMPORTING_DATA', { dataJobId: job.job.id, automatic: true }, now().toISOString(), { workerId, leaseId });
           }
           await store.releaseClaim(workload.id, workerId, {}, now().toISOString(), leaseId);
           return { processed: true, workloadId: workload.id, stage: 'data-import-queued', recovered: true };
@@ -46,11 +46,11 @@ export function createWorkloadWorker({ store, adapterRegistry, resolveBinding, n
 
         let current = await store.get(claimed.id);
         if (current?.state === 'REQUESTED') {
-          await store.transition(claimed.id, 'VALIDATING', { workerId, adapterId: binding.adapterId });
+          await store.transition(claimed.id, 'VALIDATING', { workerId, adapterId: binding.adapterId }, now().toISOString(), { workerId, leaseId });
           current = await store.get(claimed.id);
         }
         if (current?.state === 'VALIDATING') {
-          await store.transition(claimed.id, 'PROVISIONING', { workerId, adapterId: binding.adapterId });
+          await store.transition(claimed.id, 'PROVISIONING', { workerId, adapterId: binding.adapterId }, now().toISOString(), { workerId, leaseId });
         }
 
         const resource = await adapter.provision({ target, workload, signal });
@@ -85,7 +85,7 @@ export function createWorkloadWorker({ store, adapterRegistry, resolveBinding, n
           });
           const current = await store.get(claimed.id);
           if (current?.state === 'PROVISIONING') {
-            await store.transition(claimed.id, 'IMPORTING_DATA', { dataJobId: job.job.id, automatic: true });
+            await store.transition(claimed.id, 'IMPORTING_DATA', { dataJobId: job.job.id, automatic: true }, now().toISOString(), { workerId, leaseId });
           }
           stage = 'data-import-queued';
         }
@@ -99,7 +99,7 @@ export function createWorkloadWorker({ store, adapterRegistry, resolveBinding, n
         if (terminal) {
           const current = await store.get(claimed.id);
           if (current && ['REQUESTED','VALIDATING','PROVISIONING'].includes(current.state)) {
-            await store.transition(claimed.id, 'FAILED', { error: 'WORKLOAD_EXECUTION_RETRY_LIMIT_REACHED' }, now().toISOString());
+            await store.transition(claimed.id, 'FAILED', { error: 'WORKLOAD_EXECUTION_RETRY_LIMIT_REACHED' }, now().toISOString(), { workerId, leaseId: claimed.worker_lease.lease_id });
           }
         }
         await store.releaseClaim(claimed.id, workerId, {
