@@ -3,12 +3,7 @@ import { config } from './config.js';
 import { json, parsePoint, clientId, rateAllowed, corsHeaders, routeRequest, searchRequest, tileTarget, dependencyHealth } from './lib.js';
 
 function cors(req) {
-  const origin = req.headers.origin;
-  if (!origin) return {};
-  if (!config.allowedOrigins.length || config.allowedOrigins.includes(origin)) {
-    return { 'access-control-allow-origin': origin, 'vary': 'origin', 'access-control-allow-methods': 'GET,OPTIONS', 'access-control-allow-headers': 'content-type' };
-  }
-  return {};
+  return corsHeaders(req.headers.origin);
 }
 function securityHeaders() {
   return {
