@@ -172,6 +172,18 @@ No production implementation proposal is ready until all accountable owners and 
 
 Synthetic tests and architecture documents do not satisfy these gates.
 
-## 13. Current disposition
+## 13. Machine-readable contract artifact
+
+The proposed JSON Schema is located at
+`schemas/ai-workforce/evidence-contracts-v1.schema.json`. It defines shared
+evidence references, exact-version resolve request/response and manifest
+shapes. Its namespace is illustrative, not a deployed endpoint or public
+schema registration. The schema provides structural validation only; runtime
+validation must additionally enforce FORTRESS authorization, tenant isolation,
+cross-record binding, digest recomputation, canonicalization, trusted time,
+revocation and audit acknowledgement. The selected digest/signature algorithms
+and canonicalization profile remain UNCONFIRMED.
+
+## 14. Current disposition
 
 This is a proposed service interface and ownership handoff only. It does not establish a deployed API, service identity, object store, database, transaction owner, cryptographic trust root, retention policy, auditor account, operational SLA or production readiness. No credentials, provisioning, database initialization, migration, production write, deployment, DNS change, infrastructure expenditure, merge or runtime activation is authorized.
