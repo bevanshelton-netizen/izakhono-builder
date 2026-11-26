@@ -14,6 +14,7 @@ const source = {
   artifactPath: 'osm/south-africa-latest.osm.pbf',
   checksumAlgorithm: 'md5',
   checksum: 'b'.repeat(32),
+  sha256: sourceSha256,
   bytes: 1024
 };
 const routing = { artifactPath: 'router/valhalla-tiles.tar', buildId: 'valhalla-build-001', checksumAlgorithm: 'sha256', checksum: '1'.repeat(64), sourceSha256, healthCheck: true };
