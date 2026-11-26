@@ -53,9 +53,14 @@ export async function executeProductionDistributionExport(
   }
   const task = project.tasks.find(item => item.id === request.exportTaskId);
   if (!task || task.kind !== 'export') throw new Error('A valid export task is required.');
+  if (!task.inputAssetIds.includes(master.id)) throw new Error('The selected master asset must be declared as an input to this export task.');
   if (!getRunnableTasks(project).some(item => item.id === task.id)) throw new Error('The export task is not runnable; complete its dependencies first.');
   if (!request.outputAssetId.trim() || !request.outputPath.trim() || !request.objectKey.trim() || !request.recordedBy.trim()) {
     throw new Error('Output asset ID, worker path, storage key and worker identity are required.');
+  }
+  const allowedObjectKeyPrefix = `projects/${encodeURIComponent(project.id)}/exports/`;
+  if (!request.objectKey.startsWith(allowedObjectKeyPrefix) || request.objectKey.includes('..') || request.objectKey.includes('\\\\')) {
+    throw new Error('Distribution export storage key must remain inside this project’s exports namespace.');
   }
   if (project.assets.some(asset => asset.id === request.outputAssetId)) throw new Error('Distribution export asset ID already exists.');
   if (project.assets.some(asset => asset.storageKey === request.objectKey)) throw new Error('Distribution export storage key already exists.');
