@@ -50,4 +50,3 @@ test('data adapter resumes long-running imports through operation polling', asyn
   assert.equal(calls[1].url, 'https://runtime-fabric.example/v1/nav-data/operations/op-nav-import-001');
   assert.equal(calls[1].init.method, 'GET');
 });
-});
