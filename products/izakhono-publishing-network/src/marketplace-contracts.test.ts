@@ -40,7 +40,8 @@ const offer: PublisherOffer = {
 };
 expect(validatePublisherOffer(offer).length === 0, 'valid publisher offer should pass');
 expect(validatePublisherOffer({ ...offer, linkQualification: 'none' }).includes('PAID_LINK_REQUIRES_QUALIFICATION'), 'paid placement without qualification must fail');
-expect(validatePublisherOffer({ ...offer, currency: 'R' }).includes('CURRENCY_MUST_BE_ISO_4217'), 'invalid currency must fail');
+expect(validatePublisherOffer({ ...offer, currency: 'R' }).includes('CURRENCY_CODE_FORMAT_INVALID'), 'malformed currency code must fail');
+expect(validatePublisherOffer({ ...offer, disclosureRequired: false }).includes('PAID_FORMAT_REQUIRES_DISCLOSURE'), 'paid format must require disclosure');
 
 const hash = 'a'.repeat(64);
 const approval: ContentApproval = {
@@ -57,6 +58,8 @@ const placement: PlacementEvidence = {
 };
 expect(verifyPlacementEvidence(placement).length === 0, 'complete live placement evidence should pass');
 expect(verifyPlacementEvidence({ ...placement, resolvedDomain: 'other.example' }).includes('PUBLISHER_DOMAIN_MISMATCH'), 'domain mismatch must fail');
+expect(verifyPlacementEvidence({ ...placement, url: 'https://other.example/article' }).includes('PUBLISHER_DOMAIN_MISMATCH'), 'URL hostname must match verified publisher domain');
+expect(verifyPlacementEvidence({ ...placement, url: 'https://user:pass@publisher.example/article' }).includes('PLACEMENT_URL_CREDENTIALS_FORBIDDEN'), 'credential-bearing URL must fail');
 expect(verifyPlacementEvidence({ ...placement, status: 'unknown' }).includes('PLACEMENT_NOT_CONFIRMED_LIVE'), 'unknown status must not be reported as live');
 expect(verifyPlacementEvidence({ ...placement, disclosurePresent: false }).includes('DISCLOSURE_NOT_VERIFIED'), 'missing disclosure must fail verification');
 expect(verifyPlacementEvidence({ ...placement, linkQualification: 'none' }).includes('LINK_QUALIFICATION_NOT_COMPLIANT'), 'unqualified paid link must fail verification');
