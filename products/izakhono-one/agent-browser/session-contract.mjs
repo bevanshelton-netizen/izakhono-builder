@@ -254,6 +254,19 @@ export function createBrowserSessionRegistry({
       return { ok: true, state: session.state, runtimeMustBeTerminated: Boolean(session.runtimeInstanceId) };
     },
 
+    quarantine(sessionId, identity, reason = "runtime_integrity_failure") {
+      const found = getOwned(sessionId, identity);
+      if (found.error) return { ok: false, reason: found.error };
+      const session = found.session;
+      if (!["STARTING", "READY", "RUNNING", "CLOSING"].includes(session.state)) {
+        return { ok: false, reason: "session_not_quarantinable" };
+      }
+      session.pendingRequest = null;
+      const result = transition(session, "QUARANTINED", reason);
+      if (result.ok) emit(session, "session.quarantined", { reason_code: reason });
+      return result;
+    },
+
     beginClose(sessionId, identity) {
       const found = getOwned(sessionId, identity);
       if (found.error) return { ok: false, reason: found.error };
