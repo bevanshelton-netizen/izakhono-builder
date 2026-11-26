@@ -29,7 +29,7 @@ The private-college register distinguishes cancelled registrations from currentl
 
 - DHET, *Statistics on Post-School Education and Training in South Africa: 2024*: https://www.dhet.gov.za/Information%20Systems%20Management%20Documents/Statistical%20Reports%20and%20Data/Reports/Statistics%20on%20Post-School%20Education%20and%20Training%20in%20South%20Africa%2C%202024.pdf
 
-The report records 26 public higher-education institutions, 137 private higher-education institutions, 50 public TVET colleges, 146 private colleges and 9 community education and training colleges in the 2024 PSET institutional landscape. These are dated sector statistics, not a substitute for current registration checks.
+The report records 26 public higher-education institutions, 138 private higher-education institutions, 50 public TVET colleges, 146 private colleges and 9 community education and training colleges in the 2024 PSET institutional landscape. These are dated sector statistics, not a substitute for current registration checks.
 
 ## Required next data-import work
 
