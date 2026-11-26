@@ -74,6 +74,7 @@ export function createNavWorkloadController({ dataDir, provider = null, now = ()
       error_code: null
     };
     state.jobs.push(record);
+    if (state.jobs.length > 1000) state.jobs.splice(0, state.jobs.length - 1000);
     return record;
   }
 
@@ -122,6 +123,7 @@ export function createNavWorkloadController({ dataDir, provider = null, now = ()
         try {
           const result = await providerCall('provision', { workload_id: workloadId, spec });
           record.provider_ref = String(result?.provider_ref || '');
+          if (!record.provider_ref || record.provider_ref.length > 256) throw Object.assign(new Error('NAV_PROVIDER_REFERENCE_MISSING'), { statusCode: 502, code: 'NAV_PROVIDER_REFERENCE_MISSING' });
           record.status = 'provisioned';
           record.updated_at = now().toISOString();
           task.status = 'verified';
@@ -147,7 +149,7 @@ export function createNavWorkloadController({ dataDir, provider = null, now = ()
     if (!ACTIONS.has(action) || (parts.length > 1 && !['inspect','stop','replace','backup','restore'].includes(action))) {
       sendJson(res, 404, { ok: false, error: 'UNKNOWN_WORKLOAD_ACTION' }); return true;
     }
-    if (req.method !== 'GET' && req.method !== 'POST') { sendJson(res, 405, { ok: false, error: 'METHOD_NOT_ALLOWED' }); return true; }
+    if ((action === 'inspect' && req.method !== 'GET') || (action !== 'inspect' && req.method !== 'POST')) { sendJson(res, 405, { ok: false, error: 'METHOD_NOT_ALLOWED' }); return true; }
 
     await serialized(async () => {
       const state = await load();
@@ -171,6 +173,7 @@ export function createNavWorkloadController({ dataDir, provider = null, now = ()
       if (action === 'replace') {
         try { input = validateSpec(input); } catch (error) { sendJson(res, error.statusCode || 400, { ok: false, error: safeError(error) }); return; }
       }
+      if (action === 'restore' && !/^backup:\/\/[a-zA-Z0-9._/-]{1,240}$/.test(String(input.backup_ref || ''))) { sendJson(res, 400, { ok: false, error: 'VERIFIED_BACKUP_REFERENCE_REQUIRED' }); return; }
       const task = job(state, action, workloadId);
       record.last_job_id = task.id;
       await save(state);
