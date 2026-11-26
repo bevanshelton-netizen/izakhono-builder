@@ -16,6 +16,10 @@ try {
     db.prepare("SELECT subject FROM agency_correspondence WHERE id=?").get("correspondence-nlsa-escalation-2026-11-26").subject,
     "Escalation: Outstanding ISBN application and publisher registration – IZAKHONO AFRICA (PTY) LTD"
   );
+  assert.equal(
+    db.prepare("SELECT evidence_ref FROM agency_correspondence WHERE id=?").get("correspondence-nlsa-escalation-2026-11-26").evidence_ref,
+    "gmail-message:1a21752f0d53d530"
+  );
   assert.throws(
     () => db.prepare("UPDATE agency_correspondence SET summary=? WHERE id=?").run("changed", "correspondence-nlsa-escalation-2026-11-26"),
     /agency_correspondence_is_append_only/
@@ -58,7 +62,7 @@ try {
   assert.throws(() => insertIsbn("isbn-missing-date", "test-missing-date", "9780201633610", { date: "" }), /verified_isbn_requires_allocation_date/);
 
   assert.throws(() => db.prepare("UPDATE isbn_records SET isbn13=? WHERE id=?").run("9780306406158", "isbn-valid-978"), /isbn13_checksum_invalid/);
-  console.log("ISBN registry SQLite migration tests passed (13 assertions).");
+  console.log("ISBN registry SQLite migration tests passed (14 assertions).");
 } finally {
   db.close();
 }
