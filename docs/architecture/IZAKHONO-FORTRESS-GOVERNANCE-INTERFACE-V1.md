@@ -40,6 +40,25 @@ FORTRESS does not replace domain validation, application-level input validation,
 
 FORTRESS does not give agents unrestricted autonomy, allow agents to approve their own requests, or convert a user's identity into an unrestricted service credential.
 
+## 2.3 Existing FORTRESS implementation evidence and boundary
+
+A targeted repository inspection found an existing FORTRESS implementation proposal in the separate `feat/ai-workforce-governance-architecture-v1` branch (associated with draft PR #748). The branch contains `products/izakhono-fortress/README.md` and `products/izakhono-fortress/guard.py`. Because that branch and PR are unmerged, these findings are branch-scoped evidence and MUST NOT be represented as proof that the same code is present in the default branch or deployed in production.
+
+The inspected implementation currently documents and provides a narrow external-egress policy decision point:
+
+- `GET /healthz` exposes a basic service health response.
+- `GET /v1/policy` returns selected policy metadata and requires the configured bearer token.
+- `POST /v1/authorize-egress` evaluates a declared egress request and requires the configured bearer token.
+- The server defaults to loopback binding (`127.0.0.1`) and requires `IZAKHONO_FORTRESS_TOKEN` to start.
+- The policy requires an `entity_id`, allowlists external data classes and purposes, rejects configured forbidden data classes and secret-like payload field names, and denies unrecognised provider classes.
+- The README explicitly describes this as a policy decision point, not a transparent network firewall. Products must route declared external egress through the decision; operating-system-level blocking is not guaranteed by this service alone.
+
+The AI Workforce architecture review in draft PR #748 additionally records that the current FORTRESS surface includes human-session introspection and a separate narrow external-egress policy check, and that neither is yet the proposed agent-task authorisation/approval contract. That review also identifies a Tool Fabric caller-supplied approval boolean as insufficient proof of FORTRESS authorisation. These findings are recorded in an unmerged architecture branch and require source-level revalidation before implementation planning.
+
+**Current-state conclusion:** the inspected egress guard is a useful existing security component and should be preserved and assessed—not replaced by this document. It is not, by itself, a complete identity registry, general-purpose PDP/PEP, tenant membership authority, delegated agent permission system, exact-scope approval service, secret broker or comprehensive security audit platform. The target interface in this specification is additive: it must evolve from verified existing capabilities through explicit adapters and staged conformance, not through an assumed greenfield rewrite.
+
+Before implementation, re-check the default branch and deployed environment, identify all existing FORTRESS routes and callers, inspect policy files and tests, and reconcile PR #748's findings with current source. Do not infer production availability from a repository file or a localhost health endpoint.
+
 ## 3. Normative language and design principles
 
 **MUST**, **MUST NOT**, **SHOULD**, **SHOULD NOT** and **MAY** express requirement strength.
