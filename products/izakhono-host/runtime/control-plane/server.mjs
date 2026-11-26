@@ -47,8 +47,8 @@ function startNavWorkers() {
   const runtimeUrl = process.env.HOST_NAV_RUNTIME_ADAPTER_URL || '';
   const runtimeToken = process.env.HOST_NAV_RUNTIME_ADAPTER_TOKEN || '';
   const runtimeTargetId = process.env.HOST_NAV_RUNTIME_TARGET_ID || '';
-  const dataUrl = process.env.HOST_NAV_DATA_ADAPTER_URL || runtimeUrl;
-  const dataToken = process.env.HOST_NAV_DATA_ADAPTER_TOKEN || runtimeToken;
+  const dataUrl = process.env.HOST_NAV_DATA_ADAPTER_URL || '';
+  const dataToken = process.env.HOST_NAV_DATA_ADAPTER_TOKEN || '';
 
   if (runtimeUrl && runtimeToken && runtimeTargetId) {
     const adapterId = process.env.HOST_NAV_RUNTIME_ADAPTER_ID || 'host-runtime-http';
