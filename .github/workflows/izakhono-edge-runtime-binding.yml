@@ -1,0 +1,32 @@
+name: IZAKHONO EDGE Runtime Binding CI
+
+on:
+  push:
+    paths:
+      - "infra/runtime-fabric/workloads/izakhono-edge.json"
+      - "infra/runtime-fabric/controller/izakhono_edge_activation.py"
+      - "infra/runtime-fabric/controller/test_izakhono_edge_activation.py"
+      - ".github/workflows/izakhono-edge-runtime-binding.yml"
+  pull_request:
+    paths:
+      - "infra/runtime-fabric/workloads/izakhono-edge.json"
+      - "infra/runtime-fabric/controller/izakhono_edge_activation.py"
+      - "infra/runtime-fabric/controller/test_izakhono_edge_activation.py"
+      - ".github/workflows/izakhono-edge-runtime-binding.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  edge-runtime-binding:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Validate EDGE Runtime Fabric workload contract
+        run: python -m json.tool infra/runtime-fabric/workloads/izakhono-edge.json > /dev/null
+      - name: Run fail-closed NODE01 / Runtime Fabric binding tests
+        working-directory: infra/runtime-fabric/controller
+        run: python -m unittest -v test_izakhono_edge_activation.py
