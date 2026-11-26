@@ -71,7 +71,7 @@ export function buildNode01DockerPlan({
     "--read-only",
     "--user", "10001:10001",
     "--cap-drop", "ALL",
-    "--security-opt", "no-new-privileges:true",
+    "--security-opt", "no-new-privileges",
     "--security-opt", `seccomp=${seccompProfilePath}`,
     "--pids-limit", String(pidsLimit),
     "--memory", String(memoryBytes),
@@ -81,8 +81,7 @@ export function buildNode01DockerPlan({
     "--tmpfs", `/home/browser:rw,nosuid,nodev,size=${tmpfsBytes}`,
     "--tmpfs", `/dev/shm:rw,nosuid,nodev,size=${tmpfsBytes}`,
     "--ipc", "private",
-    "--pid", "private",
-    "--uts", "private",
+    "--cgroupns", "private",
     "--network", isolatedNetworkName,
     "--restart", "no",
     "--init",
@@ -119,6 +118,7 @@ export function buildNode01DockerPlan({
       independentlyAttested: true
     }),
     seccompPrerequisite: Object.freeze({ profilePath: seccompProfilePath, mustBeInstalledAndReviewed: true }),
+    daemonPrerequisite: Object.freeze({ userNamespaceRemapping: "rootless-or-userns-remap", cgroupVersion: "v2", seccompEnabled: true }),
     createArgv: Object.freeze(create),
     startArgv: Object.freeze(["start", name]),
     inspectArgv: Object.freeze(["inspect", "--format", "{{.State.Running}}", name]),
@@ -153,9 +153,15 @@ export function validateNode01DockerPlan(plan) {
   if (argv.some(arg => arg === "-v" || arg === "--volume" || arg === "--mount" || arg.startsWith("--mount=") || arg.startsWith("--volume="))) {
     return { ok: false, reason: "host_mount_forbidden" };
   }
-  if (argv.some(arg => forbidden.has(arg) || arg.startsWith("--device=") || arg.startsWith("--cap-add=")) ||
+  if (argv.some(arg => forbidden.has(arg) || arg.startsWith("--device=") || arg.startsWith("--cap-add=") || arg.startsWith("--privileged=") || arg.startsWith("--network=")) ||
       argv.includes("seccomp=unconfined") || argv.includes("no-new-privileges:false")) {
     return { ok: false, reason: "unsafe_container_override" };
+  }
+  if (argv.filter(arg => arg === "--network").length !== 1 || argv[argv.indexOf("--network") + 1] !== plan.networkPrerequisite.networkName) {
+    return { ok: false, reason: "network_argument_mismatch" };
+  }
+  if (plan.daemonPrerequisite?.userNamespaceRemapping !== "rootless-or-userns-remap" || plan.daemonPrerequisite?.cgroupVersion !== "v2" || plan.daemonPrerequisite?.seccompEnabled !== true) {
+    return { ok: false, reason: "daemon_hardening_prerequisite_missing" };
   }
   if (plan.networkPrerequisite.mustBeInternal !== true ||
       plan.networkPrerequisite.onlyPeer !== "approved-egress-proxy" ||
