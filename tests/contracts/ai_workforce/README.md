@@ -137,3 +137,11 @@ services at their enforcement boundaries.
   mutable latest aliases, content-digest validation and scope-bound audit
   references. The model is synthetic; it does not call FORTRESS, implement
   cryptography, access an object store or prove production audit durability.
+
+- Evidence-service threat-model tests exercise synthetic abuse cases for tenant
+  spoofing, decision scope/audience/purpose/fingerprint mismatch, expiry and
+  revocation, content substitution and truncation after metadata lookup,
+  audit-unavailable fail-closed behavior, legal holds, self-approval and
+  disposition denial. These tests do not constitute penetration testing,
+  cryptographic verification, source-enforced authorization or production
+  storage assurance.
