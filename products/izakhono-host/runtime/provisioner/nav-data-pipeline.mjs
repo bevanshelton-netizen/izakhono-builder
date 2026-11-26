@@ -110,7 +110,8 @@ export function recordNavDataStage(record, stageId, evidence, now = new Date().t
   }
   if (stageId === 'routing-graph' || stageId === 'search-index') {
     requireSafeArtifactPath(evidence.artifactPath);
-    requireText(evidence.buildId || evidence.importId, 'buildId/importId');
+    if (stageId === 'routing-graph') requireText(evidence.buildId, 'buildId');
+    if (stageId === 'search-index') requireText(evidence.importId, 'importId');
     if (evidence.healthCheck !== true) throw new Error(`${stageId} healthCheck must be true`);
   }
   if (stageId === 'map-tiles') {
