@@ -8,9 +8,12 @@ This system manages publisher identity, imprints, authors, works, edition metada
 
 ISBNs are never fabricated, auto-reserved, or inferred from a title. Every ISBN record must retain its allocation authority, evidence reference, format, edition and verification status.
 
-## Runtime
+## Runtime and software-node architecture
 
-- Cloudflare Worker + D1 SQLite, matching the repository's existing low-dependency Cloudflare architecture.
+- Registry application: Cloudflare Worker + D1 SQLite.
+- **NODE01 is an IZAKHONO software node, not a physical server.** It is governed by the repository's software-node contract in `autonomy/software-node.mjs`; it can be instantiated in an available software execution substrate and is promoted only after runtime evidence.
+- NODE01's software-node identity/control plane and this registry's Cloudflare Worker runtime are distinct components. Do not assume a local software-node process can be deployed unchanged inside the Cloudflare Worker runtime.
+- No physical-server enrolment is required merely to define NODE01. Any additional execution substrate, hosting, database or paid service must be separately configured and must not be provisioned without explicit cost approval.
 - No paid service or infrastructure is provisioned by this change.
 - D1 database and Worker secrets must be configured by an authorised operator before production deployment.
 - All management endpoints require `Authorization: Bearer <ISBN_ADMIN_TOKEN>`. Keep the token in a Worker secret; never commit it.
