@@ -45,3 +45,16 @@ INSERT OR IGNORE INTO agency_correspondence (
   NULL,
   'Escalation sent; Motubatse.Kgatle@nlsa.ac.za copied. Requested acknowledgement and status, commercial publisher registration, SELFHELP Stories imprint recognition, ISBN allocation process, metadata/legal-deposit instructions, and a named contact/reference. No reply or ISBN allocation is yet verified.'
 );
+
+-- Preserve correspondence as an immutable audit trail.
+CREATE TRIGGER IF NOT EXISTS agency_correspondence_no_update
+BEFORE UPDATE ON agency_correspondence
+BEGIN
+  SELECT RAISE(ABORT, 'agency_correspondence_is_append_only');
+END;
+
+CREATE TRIGGER IF NOT EXISTS agency_correspondence_no_delete
+BEFORE DELETE ON agency_correspondence
+BEGIN
+  SELECT RAISE(ABORT, 'agency_correspondence_is_append_only');
+END;
