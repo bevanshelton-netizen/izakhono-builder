@@ -45,6 +45,7 @@ assert(validateMessageTransition(outbound, "delivered", {
   source: "channel_webhook", provider_event_id: "evt-1", observed_at: "2026-11-26T10:01:00Z",
 }).includes("MESSAGE_TRANSITION_NOT_ALLOWED"), "queued must not jump directly to delivered");
 assert(validateMessageTransition({ ...outbound, state: "attempting" }, "accepted_by_channel").includes("MESSAGE_TRANSITION_EVIDENCE_REQUIRED"), "provider acceptance requires evidence");
+assert(validateMessageTransition({ ...outbound, state: "attempting" }, "unknown").includes("MESSAGE_TRANSITION_EVIDENCE_REQUIRED"), "unknown send outcomes require evidence");
 assert(validateMessageTransition({ ...outbound, state: "accepted_by_channel" }, "delivered", {
   source: "provider_response", provider_event_id: "evt-2", observed_at: "2026-11-26T10:01:00Z",
 }).includes("DELIVERY_RECEIPT_SOURCE_NOT_TRUSTED"), "delivery requires a trusted receipt/reconciliation source");
@@ -80,6 +81,8 @@ const agentBase: AgentActionContext = {
   authorised_action_adapter: false,
 };
 assert(evaluateAgentAction(agentBase).outcome === "allow", "guarded, sourced and permitted reply should be allowed");
+assert(evaluateAgentAction({ ...agentBase, action: "draft_reply", mode: "draft_only" }).outcome === "allow", "draft generation may proceed while send remains human-gated");
+assert(evaluateAgentAction({ ...agentBase, mode: "disabled" }).outcome === "deny", "disabled AI agent must not execute actions");
 assert(evaluateAgentAction({ ...agentBase, confidence: 0.62 }).outcome === "requires_human", "low confidence requires human");
 assert(evaluateAgentAction({ ...agentBase, approved_knowledge_refs: [] }).outcome === "requires_human", "unsourced answer requires human");
 assert(evaluateAgentAction({ ...agentBase, consent_allows_message: false }).outcome === "requires_human", "AI cannot bypass outbound consent");
