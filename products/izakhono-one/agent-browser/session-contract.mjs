@@ -199,7 +199,10 @@ export function createBrowserSessionRegistry({
       const current = now();
       if (!Number.isInteger(request.deadline) || request.deadline <= current ||
           request.deadline > current + maxRequestMs) return { ok: false, reason: "invalid_request_deadline" };
-      if (request.method !== "navigate" && request.url !== undefined) return { ok: false, reason: "unexpected_request_argument" };\n      if (request.method !== "extract_text" && request.textOffset !== undefined) return { ok: false, reason: "unexpected_request_argument" };\n      if (request.method !== "wait" && request.timeoutMs !== undefined) return { ok: false, reason: "unexpected_request_argument" };\n      if (request.method === "navigate" && (typeof request.url !== "string" || request.url.length > 2048)) {
+      if (request.method !== "navigate" && request.url !== undefined) return { ok: false, reason: "unexpected_request_argument" };
+      if (request.method !== "extract_text" && request.textOffset !== undefined) return { ok: false, reason: "unexpected_request_argument" };
+      if (request.method !== "wait" && request.timeoutMs !== undefined) return { ok: false, reason: "unexpected_request_argument" };
+      if (request.method === "navigate" && (typeof request.url !== "string" || request.url.length > 2048)) {
         return { ok: false, reason: "invalid_navigation_target" };
       }
       if (request.method === "extract_text" && request.textOffset !== undefined &&
