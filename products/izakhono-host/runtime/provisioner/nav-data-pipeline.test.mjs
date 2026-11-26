@@ -7,7 +7,7 @@ import {
   assertNavDataReady
 } from './nav-data-pipeline.mjs';
 
-const digest = 'a'.repeat(64);
+const digest = 'a'.repeat(64);\nconst sourceSha256 = 'e'.repeat(64);
 const source = {
   sourceUrl: 'https://download.geofabrik.de/africa/south-africa-latest.osm.pbf',
   artifactPath: 'osm/south-africa-latest.osm.pbf',
@@ -15,9 +15,9 @@ const source = {
   checksum: 'b'.repeat(32),
   bytes: 1024
 };
-const routing = { artifactPath: 'router/valhalla-tiles.tar', buildId: 'valhalla-build-001', healthCheck: true };
-const search = { artifactPath: 'search/nominatim-db', importId: 'nominatim-import-001', healthCheck: true };
-const tiles = { artifactPath: 'tiles/south-africa.pmtiles', checksumAlgorithm: 'sha256', checksum: 'c'.repeat(64), tileCount: 5000 };
+const routing = { artifactPath: 'router/valhalla-tiles.tar', buildId: 'valhalla-build-001', checksumAlgorithm: 'sha256', checksum: '1'.repeat(64), sourceSha256, healthCheck: true };
+const search = { artifactPath: 'search/nominatim-db', importId: 'nominatim-import-001', checksumAlgorithm: 'sha256', checksum: '2'.repeat(64), sourceSha256, healthCheck: true };
+const tiles = { artifactPath: 'tiles/south-africa.pmtiles', checksumAlgorithm: 'sha256', checksum: 'c'.repeat(64), sourceSha256, tileCount: 5000 };
 const services = {
   'nav-router': { healthy: true },
   'nav-search': { healthy: true },
@@ -107,4 +107,13 @@ test('rejects unapproved OSM origins and unsafe artifact paths', () => {
   assert.throws(() => recordNavDataStage(withSource, 'routing-graph', {
     ...routing, artifactPath: '/etc/passwd'
   }), /safe relative path/);
+});
+
+
+test('binds every generated data artifact to the exact verified OSM source SHA-256', () => {
+  const withSource = recordNavDataStage(createNavDataPipelineRecord({ workloadId: 'izakhono-nav', releaseDigest: digest }), 'osm-source', source);
+  for (const [stageId, evidence] of [['routing-graph', routing], ['search-index', search], ['map-tiles', tiles]]) {
+    assert.throws(() => recordNavDataStage(withSource, stageId, { ...evidence, sourceSha256: 'f'.repeat(64) }), /sourceSha256 does not match/);
+  }
+  assert.throws(() => recordNavDataStage(createNavDataPipelineRecord({ workloadId: 'izakhono-nav', releaseDigest: digest }), 'osm-source', { ...source, sha256: undefined }), /local SHA-256 content digest/);
 });
