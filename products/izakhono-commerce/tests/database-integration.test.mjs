@@ -48,8 +48,15 @@ async function json(response) {
 test("database-backed B2B flow persists orders, replays idempotently and isolates buyers", async t => {
   const DB = createD1Adapter();
   t.after(() => DB.close());
-  const env = { DB, COMMERCE_ADMIN_KEY: "integration-admin-secret" };
-  const admin = { "x-izakhono-commerce-admin": env.COMMERCE_ADMIN_KEY };
+  const env = {
+    DB,
+    FORTRESS_IDENTITY: {
+      fetch: async request => request.headers.get("authorization") === "Bearer integration-fortress-session-token"
+        ? new Response(JSON.stringify({ valid: true, principal: { id: "principal-owner-1", tenantId: "tenant-acme", role: "OWNER" } }), { status: 200 })
+        : new Response(JSON.stringify({ valid: false }), { status: 401 })
+    }
+  };
+  const admin = { authorization: "Bearer integration-fortress-session-token" };
 
   const sellerResponse = await call(env, "/api/v1/admin/sellers", {
     method: "POST", headers: admin, body: { slug: "acme-industrial", name: "Acme Industrial" }
@@ -58,10 +65,10 @@ test("database-backed B2B flow persists orders, replays idempotently and isolate
   const seller = (await json(sellerResponse)).seller;
 
   const buyerAResponse = await call(env, "/api/v1/admin/buyers", {
-    method: "POST", headers: admin, body: { organisation_name: "Buyer A Ltd" }
+    method: "POST", headers: admin, body: { seller_slug: "acme-industrial", organisation_name: "Buyer A Ltd" }
   });
   const buyerBResponse = await call(env, "/api/v1/admin/buyers", {
-    method: "POST", headers: admin, body: { organisation_name: "Buyer B Ltd" }
+    method: "POST", headers: admin, body: { seller_slug: "acme-industrial", organisation_name: "Buyer B Ltd" }
   });
   assert.equal(buyerAResponse.status, 201);
   assert.equal(buyerBResponse.status, 201);
@@ -129,8 +136,13 @@ test("database-backed B2B flow persists orders, replays idempotently and isolate
 test("database constraints reject duplicate seller slugs and duplicate seller SKUs", async t => {
   const DB = createD1Adapter();
   t.after(() => DB.close());
-  const env = { DB, COMMERCE_ADMIN_KEY: "integration-admin-secret" };
-  const headers = { "x-izakhono-commerce-admin": env.COMMERCE_ADMIN_KEY };
+  const env = {
+    DB,
+    FORTRESS_IDENTITY: {
+      fetch: async () => new Response(JSON.stringify({ valid: true, principal: { id: "principal-owner-2", tenantId: "tenant-unique", role: "OWNER" } }), { status: 200 })
+    }
+  };
+  const headers = { authorization: "Bearer integration-fortress-session-token" };
   const createSeller = () => call(env, "/api/v1/admin/sellers", {
     method: "POST", headers, body: { slug: "unique-seller", name: "Unique Seller" }
   });
