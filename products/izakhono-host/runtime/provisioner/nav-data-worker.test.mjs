@@ -76,3 +76,14 @@ test('persists and resumes a long-running South Africa import operation without 
  saved=await store.get(job.id);assert.equal(saved.pipeline.state,'VERIFYING');assert.equal(saved.attempts,0);assert.equal(saved.pipeline.stages['osm-source'].status,'succeeded');
  assert.deepEqual(calls.slice(0,2),['start:osm-source','poll:geofabrik-import-001']);
 }finally{await rm(root,{recursive:true,force:true});}});
+
+test('stale data-job lease tokens cannot record stages after reclaim',async()=>{const root=await mkdtemp(path.join(os.tmpdir(),'nav-data-lease-'));try{
+ const store=createNavDataJobStore({filePath:path.join(root,'jobs.json')});
+ const {job}=await store.create({workloadId:'izakhono-nav',workloadRecordId:'nav-workload-0123456789abcdefabcd',releaseDigest:digest});
+ const first=await store.claimNext({workerId:'host-data-a',leaseMs:1000,now:new Date('2026-11-21T12:00:00.000Z')});
+ const second=await store.claimNext({workerId:'host-data-b',leaseMs:1000,now:new Date('2026-11-21T12:00:02.000Z')});
+ assert.notEqual(first.lease.leaseId,second.lease.leaseId);
+ await assert.rejects(store.recordStage(job.id,'host-data-a',first.lease.leaseId,'osm-source',evidence['osm-source'],'2026-11-21T12:00:02.000Z'),/lease is missing, expired or owned by another worker/);
+ await store.recordStage(job.id,'host-data-b',second.lease.leaseId,'osm-source',evidence['osm-source'],'2026-11-21T12:00:02.000Z');
+ await store.release(job.id,'host-data-b',second.lease.leaseId);
+}finally{await rm(root,{recursive:true,force:true});}});
