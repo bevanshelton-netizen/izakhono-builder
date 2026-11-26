@@ -37,7 +37,7 @@ async function run(principal = owner, value: DnsDeploymentApproval | null = appr
   return { decision, events };
 }
 
-const allowed = await run();
+async function main() {\nconst allowed = await run();
 assert.equal(allowed.decision.allowed, true);
 assert.equal(allowed.decision.authorizationId, 'approval-1');
 assert.equal(allowed.events.length, 1);
@@ -77,4 +77,4 @@ await assert.rejects(
   /audit store unavailable/,
 );
 
-console.log('FORTRESS DNS deployment authorization tests: PASS');
+console.log('FORTRESS DNS deployment authorization tests: PASS');\n}\n\nmain().catch(error => { console.error(error); process.exitCode = 1; });
