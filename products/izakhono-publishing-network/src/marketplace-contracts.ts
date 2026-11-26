@@ -115,10 +115,12 @@ export interface PublisherOffer {
 export function validatePublisherOffer(offer: PublisherOffer): string[] {
   const errors: string[] = [];
   if (!offer.offerId.trim() || !offer.publisherId.trim()) errors.push('OFFER_IDENTIFIERS_REQUIRED');
-  if (!/^[A-Z]{3}$/.test(offer.currency)) errors.push('CURRENCY_MUST_BE_ISO_4217');
+  if (!/^[A-Z]{3}$/.test(offer.currency)) errors.push('CURRENCY_CODE_FORMAT_INVALID');
   if (!Number.isSafeInteger(offer.amountMinor) || offer.amountMinor < 0) errors.push('INVALID_AMOUNT_MINOR');
   if (!offer.scopeDescription.trim()) errors.push('OFFER_SCOPE_REQUIRED');
   if (offer.finalEditorialControl !== true) errors.push('PUBLISHER_EDITORIAL_CONTROL_REQUIRED');
+  const paidFormats = ['sponsored_article', 'product_feature', 'newsletter', 'press_release', 'display_sponsorship'];
+  if (paidFormats.includes(offer.offerType) && !offer.disclosureRequired) errors.push('PAID_FORMAT_REQUIRES_DISCLOSURE');
   if (offer.disclosureRequired && !['sponsored', 'nofollow'].includes(offer.linkQualification)) {
     errors.push('PAID_LINK_REQUIRES_QUALIFICATION');
   }
@@ -165,7 +167,9 @@ export function verifyPlacementEvidence(evidence: PlacementEvidence): string[] {
   let parsed: URL | undefined;
   try { parsed = new URL(evidence.url); } catch { errors.push('INVALID_PLACEMENT_URL'); }
   if (parsed && parsed.protocol !== 'https:') errors.push('PLACEMENT_MUST_USE_HTTPS');
-  if (!evidence.publisherDomain || evidence.resolvedDomain.toLowerCase() !== evidence.publisherDomain.toLowerCase()) errors.push('PUBLISHER_DOMAIN_MISMATCH');
+  if (parsed && (parsed.username || parsed.password)) errors.push('PLACEMENT_URL_CREDENTIALS_FORBIDDEN');
+  const expectedDomain = evidence.publisherDomain.toLowerCase();
+  if (!expectedDomain || evidence.resolvedDomain.toLowerCase() !== expectedDomain || parsed?.hostname.toLowerCase() !== expectedDomain) errors.push('PUBLISHER_DOMAIN_MISMATCH');
   if (!evidence.contentMatchesApprovedVersion) errors.push('CONTENT_VERSION_NOT_VERIFIED');
   if (!evidence.disclosurePresent) errors.push('DISCLOSURE_NOT_VERIFIED');
   if (!['sponsored', 'nofollow'].includes(evidence.linkQualification)) errors.push('LINK_QUALIFICATION_NOT_COMPLIANT');
