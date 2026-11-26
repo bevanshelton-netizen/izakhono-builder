@@ -16,16 +16,6 @@ export function createWorkloadWorker({ store, adapterRegistry, resolveBinding, n
       if (!claimed) return { processed: false, reason: 'no-runnable-bound-workload' };
 
       try {
-        // A single deadline covers target resolution, provisioning, deployment
-        // and post-deployment inspection. Never drop cancellation at a boundary.
-        const signal = AbortSignal.timeout(120000);
-        const binding = await resolveBinding(claimed, { signal });
-        if (!binding || typeof binding.adapterId !== 'string' || binding.runtimeTargetId !== claimed.runtime_target_id) {
-          throw new Error('No approved adapter binding matches this HOST runtime target');
-        }
-        const adapter = adapterRegistry.get(binding.adapterId);
-        if (!adapter) throw new Error('Approved runtime adapter is not registered');
-
         const leaseId = claimed.worker_lease.lease_id;
         const workload = claimed;
         if (navDataJobStore && workload.execution_stage === 'runtime-deployed-awaiting-data-pipeline') {
@@ -41,6 +31,16 @@ export function createWorkloadWorker({ store, adapterRegistry, resolveBinding, n
           await store.releaseClaim(workload.id, workerId, {}, now().toISOString(), leaseId);
           return { processed: true, workloadId: workload.id, stage: 'data-import-queued', recovered: true };
         }
+
+        // A single deadline covers target resolution, provisioning, deployment
+        // and post-deployment inspection. Never drop cancellation at a boundary.
+        const signal = AbortSignal.timeout(120000);
+        const binding = await resolveBinding(claimed, { signal });
+        if (!binding || typeof binding.adapterId !== 'string' || binding.runtimeTargetId !== claimed.runtime_target_id) {
+          throw new Error('No approved adapter binding matches this HOST runtime target');
+        }
+        const adapter = adapterRegistry.get(binding.adapterId);
+        if (!adapter) throw new Error('Approved runtime adapter is not registered');
         const target = await adapter.resolveTarget({ runtimeTargetId: claimed.runtime_target_id, workload, signal });
         if (!target) throw new Error('Runtime adapter could not resolve the approved target');
 
