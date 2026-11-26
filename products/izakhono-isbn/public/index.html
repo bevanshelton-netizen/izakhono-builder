@@ -28,6 +28,15 @@ label{display:block;margin:12px 0;color:#b9c7d2}input,select{display:block;width
 <section><h2>Publishing operations</h2><p>Publisher: <strong>IZAKHONO AFRICA (PTY) LTD</strong><br>Imprint: <strong>SELFHELP Stories</strong></p>
 <p>Planned formats are tracked as separate editions. ISBNs remain pending until official allocation evidence has been recorded and checked.</p></section>
 <section><h2>Catalogue</h2><p id="status">Management API is not yet connected. This private dashboard becomes operational after the D1 database, admin secret and access policy are configured.</p><table><thead><tr><th>Title</th><th>Format</th><th>Publication status</th><th>ISBN status</th></tr></thead><tbody id="catalogue"><tr><td colspan="4">No live catalogue connection.</td></tr></tbody></table></section>
+<section><h2>Manage ISBN agency correspondence</h2>
+<form id="application-form" class="card">
+<label>Agency application <select name="id" id="application-select" required></select></label>
+<label>Application status <select name="status"><option value="draft">Draft</option><option value="submitted">Submitted</option><option value="acknowledged">Acknowledged</option><option value="information_requested">Information requested</option><option value="approved">Approved</option><option value="rejected">Rejected</option><option value="closed">Closed</option></select></label>
+<label>Agency reference number <input name="reference_number"></label>
+<label>Next action <input name="next_action"></label>
+<label>Correspondence notes <textarea name="correspondence_notes" rows="4"></textarea></label>
+<button type="submit">Update application record</button>
+</form></section>
 <section><h2>Register a new work</h2>
 <form id="work-form" class="card">
 <label>Book title <input name="title" required maxlength="500"></label>
@@ -137,6 +146,10 @@ label{display:block;margin:12px 0;color:#b9c7d2}input,select{display:block;width
       document.getElementById("isbns").textContent = d.verifiedIsbns;
       document.getElementById("applications").textContent = d.openApplications;
 
+      const applicationSelect = document.getElementById("application-select");
+      applicationSelect.replaceChildren();
+      for (const application of a.items) { const option=document.createElement("option"); option.value=application.id; option.textContent=application.agency_name + " • " + application.status; applicationSelect.append(option); }
+
       const workSelect = document.getElementById("work-select");
       const editionSelect = document.getElementById("edition-select");
       const contributorWorkSelect = document.getElementById("contributor-work-select");
@@ -185,6 +198,22 @@ label{display:block;margin:12px 0;color:#b9c7d2}input,select{display:block;width
       status.textContent = err.message + " The release remains private and non-production.";
     }
   }
+
+  document.getElementById("application-form").addEventListener("submit", async event => {
+    event.preventDefault();
+    try {
+      const payload = formData(event.currentTarget);
+      const response = await fetch("/api/applications", {
+        method: "PATCH",
+        headers: { ...adminHeaders, "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Application update failed");
+      formStatus.textContent = "Agency application updated.";
+      await connect();
+    } catch (error) { formStatus.textContent = error.message; }
+  });
 
   document.getElementById("work-form").addEventListener("submit", async event => {
     event.preventDefault();
