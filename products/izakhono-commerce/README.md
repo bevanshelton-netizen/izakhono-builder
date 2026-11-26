@@ -7,9 +7,10 @@ IZAKHONO COMMERCE is the first-party commercial transaction domain. This initial
 
 ## Implemented source capabilities
 
-- Admin-key-gated seller creation.
-- Admin-key-gated buyer onboarding with a one-time buyer API key (stored as a SHA-256 hash).
-- Admin-key-gated product creation.
+- FORTRESS-session-gated seller, buyer and product administration.
+- Seller records are bound to the authenticated FORTRESS tenant.
+- Buyer onboarding is scoped to a seller owned by that tenant; buyer API keys are issued once and only their SHA-256 hashes are stored.
+- Buyer API keys are seller-scoped and cannot submit orders to another seller.
 - Public published catalogue by seller slug.
 - Buyer-key-gated order submission and buyer-scoped order retrieval.
 - Server-side price snapshots, safe integer totals and currency consistency.
@@ -21,13 +22,13 @@ IZAKHONO COMMERCE is the first-party commercial transaction domain. This initial
 
 - `GET /health`
 - `GET /api/v1/catalog/:seller_slug`
-- `POST /api/v1/admin/sellers` — `x-izakhono-commerce-admin`
-- `POST /api/v1/admin/buyers` — `x-izakhono-commerce-admin`
-- `POST /api/v1/admin/products` — `x-izakhono-commerce-admin`
+- `POST /api/v1/admin/sellers` — FORTRESS Bearer session
+- `POST /api/v1/admin/buyers` — FORTRESS Bearer session; body includes `seller_slug`
+- `POST /api/v1/admin/products` — FORTRESS Bearer session
 - `POST /api/v1/orders` — `x-izakhono-commerce-buyer-key` and `Idempotency-Key`
 - `GET /api/v1/orders/:order_id` — `x-izakhono-commerce-buyer-key`
 
-The admin key is supplied only through runtime secret configuration; it is not included in source. Buyer API keys are returned once during onboarding and must be stored securely by the owner.
+Administrative routes require `Authorization: Bearer <FORTRESS access token>` and call the `FORTRESS_IDENTITY` service binding for live session introspection. Only `OWNER` and `SECURITY_ADMIN` principals are permitted. The introspection response must explicitly identify the `izakhono-commerce` audience; sessions for other IZAKHONO services are rejected. Buyer API keys are returned once during onboarding and must be stored securely by the owner.
 
 ## Domain boundaries
 
@@ -36,7 +37,10 @@ The admin key is supplied only through runtime secret configuration; it is not i
 - ERP/inventory/MES remains authoritative for stock, reservations, valuation and manufacturing availability. This first slice does not reserve or promise stock.
 - Finance/ERP owns accounting and tax ledgers.
 - FLOW owns cross-product workflow orchestration.
-- IZAKHONO ID/FORTRESS must provide the production identity, policy and security integration before broader deployment.
+- FORTRESS Identity is the administrative identity authority; Commerce does not issue or validate human passwords or JWT signatures itself.
+- Seller administration is tenant-scoped. A buyer credential is bound to one seller and cannot be replayed against another seller.
+- The FORTRESS service binding must be private to the Commerce runtime and must return a verified `izakhono-commerce` audience. The current shared FORTRESS Identity source returns its configured single audience (default `izakhono-creator`); audience-specific introspection/issuance must be completed before production activation. Commerce therefore fails closed for Creator-audience tokens.
+- No fallback admin key exists. If the identity binding is absent, unavailable, malformed or returns a token for another audience, administrative requests are rejected.
 
 ## Runtime and storage
 
@@ -53,6 +57,6 @@ The migration is `migrations/0001_commerce_core.sql`. The integration suite uses
 
 ## Not implemented
 
-Customer-specific contract price books, quotations and approval chains, stock integration, payment initiation, fulfilment, returns, multi-vendor marketplace, B2C checkout, tax calculation, production FORTRESS/IZAKHONO ID integration, deployment configuration and live acceptance.
+Customer-specific contract price books, quotations and approval chains, stock integration, payment initiation, fulfilment, returns, multi-vendor marketplace, B2C checkout, tax calculation, audience-specific FORTRESS issuer/introspection support, deployment configuration and live acceptance.
 
 No payment, inventory, compliance, deployment or production-readiness claim is made.
