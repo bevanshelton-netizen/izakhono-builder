@@ -41,7 +41,11 @@ assert.equal(verify({ workload: 'other-app' }).reason, 'scope_mismatch_workload'
 assert.equal(verify({ environment: 'production' }).reason, 'scope_mismatch_environment');
 assert.equal(verify({ action: 'rollback' }).reason, 'scope_mismatch_action');
 assert.equal(verify({}, { keyring: {} }).reason, 'unknown_key');
-assert.equal(verify({}, { keyring: { [statement.keyId]: { publicKey, revokedAt: '2026-11-26T09:30:00.000Z' } } }).reason, 'revoked_key');
+assert.equal(verify({}, { keyring: { [statement.keyId]: { publicKey, principal: 'test-owner', revokedAt: '2026-11-26T09:30:00.000Z' } } }).reason, 'revoked_key');
+assert.equal(verify({}, { keyring: { [statement.keyId]: { publicKey } } }).reason, 'key_principal_missing');
+assert.equal(verify({}, { keyring: { [statement.keyId]: { publicKey, principal: 'test-owner', notAfter: 'not-a-date' } } }).reason, 'invalid_key_lifecycle_timestamp');
+assert.equal(verify({}, { keyring: { [statement.keyId]: { publicKey, principal: 'test-owner', notAfter: '2026-11-26T09:30:00.000Z' } } }).reason, 'key_expired');
+assert.equal(verify({ approvalId: 'approval-test-tampered' }).reason, 'signature_invalid');
 assert.equal(verify({}, { now: Date.parse('2026-11-26T12:00:00.000Z') }).reason, 'expired');
 assert.equal(verify({ issuedAt: '2026-11-26T12:00:00.000Z' }).reason, 'issued_in_future');
 assert.equal(verify({ approvedBy: 'different-owner' }).reason, 'principal_key_mismatch');
