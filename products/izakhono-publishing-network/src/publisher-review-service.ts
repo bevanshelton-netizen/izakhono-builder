@@ -108,11 +108,11 @@ export class ReviewServiceError extends Error {
   constructor(readonly code: ReviewServiceErrorCode, message = code) { super(message); this.name = 'ReviewServiceError'; }
 }
 const permissionByAction: Record<ReviewDecisionKind, string> = {
-  approve: 'publishing.review.approve',
-  reject: 'publishing.review.reject',
-  request_evidence: 'publishing.review.request_evidence',
-  return_to_queue: 'publishing.review.assign',
-  close: 'publishing.review.close',
+  approve: 'publishing:review:approve',
+  reject: 'publishing:review:reject',
+  request_evidence: 'publishing:review:request_evidence',
+  return_to_queue: 'publishing:review:assign',
+  close: 'publishing:review:close',
 };
 const targetByAction: Record<ReviewDecisionKind, ReviewCaseStatus> = {
   approve: 'approved', reject: 'rejected', request_evidence: 'awaiting_evidence',
@@ -142,11 +142,11 @@ export class PublisherReviewService {
     const session = await this.resolveSession(sessionCredential);
     const auth = await this.ports.authorization.authorize({
       tenant: session.tenant, principalRef: session.principalRef, identityRole: session.role,
-      resourceRef: `publisher-review:${caseId}`, permission: 'publishing.review.read',
+      resourceRef: `publisher-review:${caseId}`, permission: 'publishing:review:read',
       purpose: 'publisher_review',
     });
     if (!auth.allowed) throw new ReviewServiceError('REVIEW_AUTHORIZATION_DENIED');
-    if (!this.validAuthorization(auth, session.principalRef, 'publishing.review.read')) throw new ReviewServiceError('REVIEW_AUTHORIZATION_RESPONSE_INVALID');
+    if (!this.validAuthorization(auth, session.principalRef, 'publishing:review:read')) throw new ReviewServiceError('REVIEW_AUTHORIZATION_RESPONSE_INVALID');
     const record = await this.ports.store.getCase(session.tenant, caseId);
     if (!record || !sameTenant(record.tenant, session.tenant)) throw new ReviewServiceError('REVIEW_CASE_NOT_FOUND');
     const errors = validateReviewCase(record, this.clock());
