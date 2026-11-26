@@ -211,3 +211,74 @@ Truehost's own public business-email guidance emphasizes verifying outbound TCP 
 Truehost appears technically plausible as a supplier for a controlled staging VPS and potentially a larger production host, but no specific product is accepted. Its published base VPS tiers do not meet our production application profile as a single host. Its listed dedicated H3 has substantial RAM/storage but only 6 physical cores/12 threads as advertised, so it does not directly match the 8-vCPU planning baseline without a workload benchmark and architecture review.
 
 The next external step is a supplier inquiry for written technical answers and a complete quote. No email has been sent, no account created, and no purchase or infrastructure change has occurred.
+
+
+## 12. Supplier go/no-go gate and normalized comparison scorecard
+
+This section converts the assessment into a repeatable decision instrument. It applies to Truehost and every alternative supplier; it is not a Truehost-specific approval.
+
+### 12.1 Hard gates — any failure means no-go for the intended role
+
+A supplier/SKU cannot be approved for the intended workload until all applicable gates are evidenced:
+
+- **Control:** owner-level root/admin access, supported automation path, and no requirement to surrender IZAKHONO's application, tenant or service control.
+- **Capacity:** documented CPU, RAM, usable persistent storage, disk performance and network limits meet the role profile; capacity must be tested, not inferred from product names.
+- **Mail (if mail-hosting role):** written permission for the exact customer-mail use; required ports; static IP; controllable PTR/rDNS; acceptable IP reputation and abuse process.
+- **Security:** account MFA, least-privilege access, recovery/console path, provider firewall controls, security patch responsibility and incident escalation are understood.
+- **Resilience:** backup is independent of the workload host; restore procedure, retention and costs are documented; a restore test is required before production.
+- **Supplier transparency:** exact location, full quote, tax, term, prepayment, renewal, cancellation, support and data deletion/export terms are written and unambiguous.
+- **Exit:** data and configuration can be exported; supplier termination does not prevent migration of customer data, DNS zone data, mailbox data or platform configuration.
+- **Approval:** total financial commitment is presented and explicitly approved before order or provisioning.
+
+A hard-gate answer marked **unknown**, **verbal only**, or **not applicable without rationale** is not a pass. Unknown evidence remains a blocker, not an assumed capability.
+
+### 12.2 Weighted comparison (100 points)
+
+Score only after hard-gate evidence is collected. Use 0–5 per category, where 0 = absent/unacceptable, 1 = poor, 2 = partial, 3 = meets minimum, 4 = strong, and 5 = excellent with verifiable evidence. Weighted points = score ÷ 5 × category weight.
+
+| Category | Weight | Evidence to score |
+|---|---:|---|
+| Technical fit and performance | 20 | CPU allocation, RAM, storage/IOPS, network, benchmark and workload headroom |
+| Mail delivery suitability | 20 | Written policy, TCP 25/465/587/993, static IP, PTR/rDNS, reputation and multi-domain permission |
+| Security and operational control | 15 | Root access, MFA, firewall, console, API/IaC, auditability and incident response |
+| Resilience and recovery | 15 | Independent backup, restore, failure-domain separation, SLA and recovery support |
+| Total cost and contract clarity | 15 | Full upfront/recurring/renewal/VAT/egress costs, billing term and cancellation |
+| Portability and exit | 10 | Export, migration, termination/deletion and supplier independence |
+| Support and location fit | 5 | Data-centre geography, support response/escalation and data-residency needs |
+| **Total** | **100** | |
+
+Interpretation after all hard gates pass:
+- 85–100: preferred candidate for a controlled pilot, subject to explicit cost approval.
+- 70–84: viable reserve; resolve weaknesses and compare alternatives.
+- 50–69: unsuitable unless a clearly bounded role and remediation plan are approved.
+- Below 50: reject for the assessed role.
+
+A high score cannot override a failed hard gate. Do not score a missing answer as a positive.
+
+### 12.3 Supplier comparison worksheet
+
+Maintain one row per exact SKU, not one row per provider brand. Include:
+- supplier, exact SKU and quote date/expiry;
+- workload role (staging, application, mail, DNS secondary, backup);
+- hard-gate result and evidence link;
+- weighted score and category scores;
+- full upfront commitment, equivalent monthly cost, renewal price and exit cost;
+- known risks, unresolved questions and decision owner;
+- status: **unassessed / evidence requested / blocked / eligible for pilot / rejected / approved**.
+
+Never label a provider “approved” based only on public marketing pages or an aggregate score. Approval is role-specific and SKU-specific.
+
+### 12.4 Current Truehost scorecard status
+
+| Gate/category | Current result |
+|---|---|
+| Exact SKU and full quote | **Unknown — blocker** |
+| Written self-hosted Stalwart/customer-mail permission | **Unknown — blocker for mail** |
+| TCP 25 and static IPv4/PTR control | **Unknown — blocker for direct mail** |
+| Production capacity against measured workload | **Not validated** |
+| Security/recovery and backup acceptance | **Not tested** |
+| Supplier exit and data-export evidence | **Not verified** |
+| Weighted score | **Not scored — insufficient evidence** |
+| Decision | **Candidate only; no purchase or deployment approval** |
+
+This scorecard is intended to prevent premature selection and make the next supplier response actionable. It does not authorize contact, purchase, account creation, resource provisioning, DNS changes or production deployment.
