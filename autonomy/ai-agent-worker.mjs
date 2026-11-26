@@ -21,6 +21,11 @@ function writeJson(file, value) {
   fs.renameSync(tmp, file);
 }
 
+function queuedPlanSummaries(state, queue) {
+  return queue.items.map((item) => state.plans[item.planId]).filter(Boolean)
+    .map((plan) => ({ planId: plan.planId, status: plan.status }));
+}
+
 async function execute(step, plan) {
   const nodeActions = new Set([
     'node-discovery',
@@ -145,7 +150,7 @@ export async function runAgentWorker() {
       status: 'recovery_required',
       progressed: 0,
       interrupted,
-      plans: Object.values(state.plans).map((plan) => ({ planId: plan.planId, status: plan.status })),
+      plans: queuedPlanSummaries(state, queue),
     };
   }
 
@@ -206,7 +211,7 @@ export async function runAgentWorker() {
     schema: 'izakhono.agent-worker/v1',
     status: progressed ? 'progressed' : 'idle',
     progressed,
-    plans: Object.values(state.plans).map((plan) => ({ planId: plan.planId, status: plan.status })),
+    plans: queuedPlanSummaries(state, queue),
   };
   } finally {
     fs.closeSync(lockFd);
