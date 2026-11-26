@@ -16,6 +16,8 @@ on:
       - 'autonomy/ai-agent-worker.test.mjs'
       - 'autonomy/ai-agent.mjs'
       - 'autonomy/runner.mjs'
+      - 'autonomy/retry-policy.mjs'
+      - 'autonomy/retry-policy.test.mjs'
       - '.github/workflows/autonomy-worker-ci.yml'
 
 permissions:
