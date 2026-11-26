@@ -95,6 +95,7 @@ profile, independently managed keys and revocation, approved tenant ownership
 and persistence boundaries, and conformance tests against actual approved
 services at their enforcement boundaries.
 
+- Independent-verifier operational-contract tests also require the complete, non-duplicated authoritative source set, all source-specific read audiences, the full trust-key purpose set, unique key IDs, and valid freshness limits. Missing or duplicate sources, missing trust purposes, wrong-purpose keys, or incomplete read scopes are rejected/unknown rather than silently accepted.
 - Independent-verifier operational-contract tests model a tenant-scoped,
   read-only verifier identity; authenticated, fresh, operation-correlated
   source records; explicit versioned profiles; trusted-time availability;
