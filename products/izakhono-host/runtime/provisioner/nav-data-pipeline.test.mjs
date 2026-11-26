@@ -71,3 +71,20 @@ test('records immutable evidence and rejects duplicate stage completion', () => 
   assert.throws(() => recordNavDataStage(updated, 'osm-source', source), /already completed/);
   assert.throws(() => assertNavDataReady(updated), /not ready/);
 });
+
+test('rejects unapproved OSM origins and unsafe artifact paths', () => {
+  const record = createNavDataPipelineRecord({ workloadId: 'izakhono-nav', releaseDigest: digest });
+  assert.throws(() => recordNavDataStage(record, 'osm-source', {
+    ...source, sourceUrl: 'http://download.geofabrik.de/africa/south-africa-latest.osm.pbf'
+  }), /official Geofabrik/);
+  assert.throws(() => recordNavDataStage(record, 'osm-source', {
+    ...source, sourceUrl: 'https://example.com/africa/south-africa-latest.osm.pbf'
+  }), /official Geofabrik/);
+  assert.throws(() => recordNavDataStage(record, 'osm-source', {
+    ...source, artifactPath: '../outside/sa.osm.pbf'
+  }), /safe relative path/);
+  const withSource = recordNavDataStage(record, 'osm-source', source);
+  assert.throws(() => recordNavDataStage(withSource, 'routing-graph', {
+    ...routing, artifactPath: '/etc/passwd'
+  }), /safe relative path/);
+});
