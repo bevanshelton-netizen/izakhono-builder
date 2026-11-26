@@ -5,10 +5,12 @@ import { json, parsePoint, clientId, rateAllowed, routeRequest, searchRequest, t
 function cors(req) {
   const origin = req.headers.origin;
   if (!origin) return {};
-  if (!config.allowedOrigins.length || config.allowedOrigins.includes(origin)) {
+  // FORTRESS: cross-origin access is deny-by-default. Same-origin NAV web traffic
+  // does not require CORS; explicitly approved origins must be configured by HOST.
+  if (config.allowedOrigins.includes(origin)) {
     return { 'access-control-allow-origin': origin, 'vary': 'origin', 'access-control-allow-methods': 'GET,OPTIONS', 'access-control-allow-headers': 'content-type' };
   }
-  return {};
+  return { 'vary': 'origin' };
 }
 function securityHeaders() {
   return {
