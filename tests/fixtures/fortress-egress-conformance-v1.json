@@ -1,0 +1,299 @@
+{
+  "suite_id": "fortress.egress.authorization.v1",
+  "suite_version": 1,
+  "scope": "Current guard.py authorize(req, policy) evaluator only",
+  "fixture_policy": "products/izakhono-fortress/policy.json",
+  "fixtures": [
+    {
+      "id": "EG-001",
+      "name": "allow public research",
+      "request": {
+        "entity_id": "entity_demo",
+        "provider_class": "external_ai",
+        "purpose": "research",
+        "data_class": "public",
+        "payload": {
+          "query": "public market trends"
+        }
+      },
+      "expected": {
+        "allowed": true,
+        "reason": "allowed_external_ai_advisory"
+      }
+    },
+    {
+      "id": "EG-002",
+      "name": "allow non-sensitive advisory",
+      "request": {
+        "entity_id": "entity_demo",
+        "provider_class": "external_ai",
+        "purpose": "advisory",
+        "data_class": "non_sensitive",
+        "payload": {
+          "question": "Explain a public concept"
+        }
+      },
+      "expected": {
+        "allowed": true,
+        "reason": "allowed_external_ai_advisory"
+      }
+    },
+    {
+      "id": "EG-003",
+      "name": "allow sanitized internal debugging",
+      "request": {
+        "entity_id": "entity_demo",
+        "provider_class": "external_ai",
+        "purpose": "sanitized_debugging",
+        "data_class": "internal_sanitized",
+        "payload": {
+          "error": "synthetic failure code E42"
+        }
+      },
+      "expected": {
+        "allowed": true,
+        "reason": "allowed_external_ai_advisory"
+      }
+    },
+    {
+      "id": "EG-004",
+      "name": "deny missing entity scope",
+      "request": {
+        "provider_class": "external_ai",
+        "purpose": "research",
+        "data_class": "public",
+        "payload": {}
+      },
+      "expected": {
+        "allowed": false,
+        "reason": "entity_scope_required"
+      }
+    },
+    {
+      "id": "EG-005",
+      "name": "deny blank entity scope",
+      "request": {
+        "entity_id": "   ",
+        "provider_class": "external_ai",
+        "purpose": "research",
+        "data_class": "public",
+        "payload": {}
+      },
+      "expected": {
+        "allowed": false,
+        "reason": "entity_scope_required"
+      }
+    },
+    {
+      "id": "EG-006",
+      "name": "deny forbidden credentials class",
+      "request": {
+        "entity_id": "entity_demo",
+        "provider_class": "external_ai",
+        "purpose": "research",
+        "data_class": "credentials",
+        "payload": {}
+      },
+      "expected": {
+        "allowed": false,
+        "reason": "forbidden_data_class"
+      }
+    },
+    {
+      "id": "EG-007",
+      "name": "deny sensitive customer data class",
+      "request": {
+        "entity_id": "entity_demo",
+        "provider_class": "external_ai",
+        "purpose": "research",
+        "data_class": "customer_private_data",
+        "payload": {}
+      },
+      "expected": {
+        "allowed": false,
+        "reason": "forbidden_data_class"
+      }
+    },
+    {
+      "id": "EG-008",
+      "name": "deny unknown data class",
+      "request": {
+        "entity_id": "entity_demo",
+        "provider_class": "external_ai",
+        "purpose": "research",
+        "data_class": "unknown_class",
+        "payload": {}
+      },
+      "expected": {
+        "allowed": false,
+        "reason": "data_class_not_allowlisted"
+      }
+    },
+    {
+      "id": "EG-009",
+      "name": "deny missing data class",
+      "request": {
+        "entity_id": "entity_demo",
+        "provider_class": "external_ai",
+        "purpose": "research",
+        "payload": {}
+      },
+      "expected": {
+        "allowed": false,
+        "reason": "data_class_not_allowlisted"
+      }
+    },
+    {
+      "id": "EG-010",
+      "name": "deny forbidden external authority purpose",
+      "request": {
+        "entity_id": "entity_demo",
+        "provider_class": "external_ai",
+        "purpose": "identity_authority",
+        "data_class": "public",
+        "payload": {}
+      },
+      "expected": {
+        "allowed": false,
+        "reason": "forbidden_external_ai_purpose"
+      }
+    },
+    {
+      "id": "EG-011",
+      "name": "deny external core runtime dependency",
+      "request": {
+        "entity_id": "entity_demo",
+        "provider_class": "external_ai",
+        "purpose": "core_runtime_inference_dependency",
+        "data_class": "public",
+        "payload": {}
+      },
+      "expected": {
+        "allowed": false,
+        "reason": "forbidden_external_ai_purpose"
+      }
+    },
+    {
+      "id": "EG-012",
+      "name": "deny unknown purpose",
+      "request": {
+        "entity_id": "entity_demo",
+        "provider_class": "external_ai",
+        "purpose": "unregistered_purpose",
+        "data_class": "public",
+        "payload": {}
+      },
+      "expected": {
+        "allowed": false,
+        "reason": "external_ai_purpose_not_allowlisted"
+      }
+    },
+    {
+      "id": "EG-013",
+      "name": "deny unknown provider class",
+      "request": {
+        "entity_id": "entity_demo",
+        "provider_class": "unregistered_provider",
+        "purpose": "research",
+        "data_class": "public",
+        "payload": {}
+      },
+      "expected": {
+        "allowed": false,
+        "reason": "provider_class_not_allowlisted"
+      }
+    },
+    {
+      "id": "EG-014",
+      "name": "deny nested API key field",
+      "request": {
+        "entity_id": "entity_demo",
+        "provider_class": "external_ai",
+        "purpose": "research",
+        "data_class": "public",
+        "payload": {
+          "context": {
+            "api_key": "SYNTHETIC_NOT_A_SECRET"
+          }
+        }
+      },
+      "expected": {
+        "allowed": false,
+        "reason": "secret_like_field_detected"
+      }
+    },
+    {
+      "id": "EG-015",
+      "name": "deny secret field in array item",
+      "request": {
+        "entity_id": "entity_demo",
+        "provider_class": "external_ai",
+        "purpose": "research",
+        "data_class": "public",
+        "payload": [
+          {
+            "safe": "value"
+          },
+          {
+            "private_key": "SYNTHETIC_NOT_A_SECRET"
+          }
+        ]
+      },
+      "expected": {
+        "allowed": false,
+        "reason": "secret_like_field_detected"
+      }
+    },
+    {
+      "id": "EG-016",
+      "name": "deny raw authorization field",
+      "request": {
+        "entity_id": "entity_demo",
+        "provider_class": "external_ai",
+        "purpose": "research",
+        "data_class": "public",
+        "payload": {
+          "headers": {
+            "Authorization": "Bearer synthetic"
+          }
+        }
+      },
+      "expected": {
+        "allowed": false,
+        "reason": "secret_like_field_detected"
+      }
+    },
+    {
+      "id": "EG-017",
+      "name": "deny payment card field",
+      "request": {
+        "entity_id": "entity_demo",
+        "provider_class": "external_ai",
+        "purpose": "public_content_generation",
+        "data_class": "public",
+        "payload": {
+          "card_number": "4111111111111111"
+        }
+      },
+      "expected": {
+        "allowed": false,
+        "reason": "secret_like_field_detected"
+      }
+    },
+    {
+      "id": "EG-018",
+      "name": "deny non-object malformed request through evaluator contract",
+      "request": null,
+      "expected": {
+        "raises_or_rejects": true
+      },
+      "execution": "Negative robustness probe; current function has no explicit request-schema validator. A crash is not a passing safe-deny result."
+    }
+  ],
+  "notes": [
+    "All entity identifiers and payload values are synthetic placeholders.",
+    "These fixtures target the pure authorize(req, policy) function and do not exercise HTTP authentication, network controls, rate limiting or deployment.",
+    "The current evaluator checks exact forbidden field names recursively; it does not prove detection of secrets embedded in arbitrary free text or encoded blobs.",
+    "The current request contract has entity_id but no verified tenant_id, principal_id, action/resource binding, approval reference or delegation chain. Those belong to future conformance suites and must not be marked implemented."
+  ]
+}
