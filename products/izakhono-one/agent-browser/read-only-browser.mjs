@@ -85,6 +85,7 @@ export function createReadOnlyBrowserAdapter({
       if (!contract.ok) return { ok: false, reason: contract.reason };
       const initial = validateBrowserUrl(task.url, { allowLocalFixtures });
       if (!initial.ok) return { ok: false, reason: initial.reason };
+      if (!initial.fixture) return { ok: false, reason: "public_navigation_not_enabled" };
 
       const controller = new AbortController();
       const timeoutMs = task.timeoutMs ?? 10000;
