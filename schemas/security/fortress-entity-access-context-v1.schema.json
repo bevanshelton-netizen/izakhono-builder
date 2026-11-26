@@ -1,0 +1,183 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://izakhono.local/schemas/security/fortress-entity-access-context-v1.schema.json",
+  "title": "IZAKHONO FORTRESS Entity Access Decision Request V1",
+  "description": "Proposed internal decision request. A schema-valid payload is not proof of authentication; trusted_principal must be injected by a verified server-side adapter and never accepted directly from an untrusted client.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "trusted_principal",
+    "tenant_context",
+    "resource",
+    "action",
+    "purpose",
+    "environment",
+    "correlation_id"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "1.0"
+    },
+    "trusted_principal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "principal_id",
+        "actor_id",
+        "actor_type",
+        "issuer",
+        "audience",
+        "credential_ref",
+        "issued_at",
+        "not_before",
+        "expires_at",
+        "authentication_strength"
+      ],
+      "properties": {
+        "principal_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "actor_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "actor_type": {
+          "enum": [
+            "user",
+            "service",
+            "agent",
+            "system"
+          ]
+        },
+        "issuer": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "audience": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "credential_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "issued_at": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "not_before": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "expires_at": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "authentication_strength": {
+          "enum": [
+            "basic",
+            "strong",
+            "hardware_backed",
+            "service_attested"
+          ]
+        }
+      }
+    },
+    "tenant_context": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "tenant_id",
+        "entity_id"
+      ],
+      "properties": {
+        "tenant_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "entity_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      }
+    },
+    "resource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "resource_type",
+        "resource_id",
+        "owner_domain"
+      ],
+      "properties": {
+        "resource_type": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "resource_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "owner_domain": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "environment": {
+          "enum": [
+            "development",
+            "test",
+            "staging",
+            "production"
+          ]
+        }
+      }
+    },
+    "action": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160,
+      "pattern": "^[a-z][a-z0-9_.:-]*$"
+    },
+    "purpose": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160,
+      "pattern": "^[a-z][a-z0-9_.:-]*$"
+    },
+    "environment": {
+      "enum": [
+        "development",
+        "test",
+        "staging",
+        "production"
+      ]
+    },
+    "correlation_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160
+    },
+    "delegation_ref": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160
+    },
+    "approval_ref": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160
+    }
+  }
+}
