@@ -1,6 +1,6 @@
 import http from 'node:http';
 import { config } from './config.js';
-import { json, parsePoint, clientId, rateAllowed, routeRequest, searchRequest, tileTarget, dependencyHealth } from './lib.js';
+import { json, parsePoint, clientId, rateAllowed, corsHeaders, routeRequest, searchRequest, tileTarget, dependencyHealth } from './lib.js';
 
 function cors(req) {
   const origin = req.headers.origin;
