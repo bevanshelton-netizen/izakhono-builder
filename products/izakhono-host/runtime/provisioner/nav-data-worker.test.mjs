@@ -33,7 +33,7 @@ test('resumes completed stages after a later stage fails',async()=>{const root=a
  const adapter=Object.fromEntries(Object.entries(methods).map(([s,m])=>[m,async()=>{if(s==='search-index'&&fail)throw new Error('search import interrupted');return evidence[s];}]));
  let clock=new Date('2026-11-21T12:00:00.000Z');const worker=createNavDataWorker({store,adapter,now:()=>clock});const first=await worker.runOnce();assert.match(first.error,/search import interrupted/);
  let saved=await store.get(job.id);assert.equal(saved.pipeline.stages['osm-source'].status,'succeeded');fail=false;clock=new Date(Date.parse(first.retryAfter)+1000);
- const second=await worker.runOnce();assert.equal(second.dataReady,true);saved=await store.get(job.id);assert.equal(saved.pipeline.state,'VERIFYING');
+ const second=await worker.runOnce();assert.equal(second.dataReady,true);saved=await store.get(job.id);assert.equal(saved.pipeline.state,'COMPLETED');
 }finally{await rm(root,{recursive:true,force:true});}});
 
 test('marks a NAV data job failed after the fifth bounded attempt',async()=>{const root=await mkdtemp(path.join(os.tmpdir(),'nav-data-jobs-'));try{
@@ -73,7 +73,7 @@ test('persists and resumes a long-running South Africa import operation without 
  let saved=await store.get(job.id);assert.equal(saved.pipeline.stages['osm-source'].status,'running');assert.equal(saved.pipeline.stages['osm-source'].operationId,'geofabrik-import-001');assert.equal(saved.attempts,0);assert.equal(saved.lease,null);
  clock=new Date(Date.parse(first.retryAfter)+1000);
  const second=await worker.runOnce();assert.equal(second.dataReady,true);
- saved=await store.get(job.id);assert.equal(saved.pipeline.state,'VERIFYING');assert.equal(saved.attempts,0);assert.equal(saved.pipeline.stages['osm-source'].status,'succeeded');
+ saved=await store.get(job.id);assert.equal(saved.pipeline.state,'COMPLETED');assert.equal(saved.attempts,0);assert.equal(saved.pipeline.stages['osm-source'].status,'succeeded');
  assert.deepEqual(calls.slice(0,2),['start:osm-source','poll:geofabrik-import-001']);
 }finally{await rm(root,{recursive:true,force:true});}});
 
