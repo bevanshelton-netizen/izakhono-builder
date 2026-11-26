@@ -35,13 +35,13 @@ try {
   assert.throws(() => insertIsbn("isbn-bad-checksum", "test-bad-checksum", "9780306406158"), /isbn13_checksum_invalid/);
 
   addEdition("test-noncanonical");
-  assert.throws(() => insertIsbn("isbn-noncanonical", "test-noncanonical", "978-0-306-40615-7"), /isbn13_must_be_canonical/);
+  assert.throws(() => insertIsbn("isbn-noncanonical", "test-noncanonical", "978-0-13-110362-7"), /isbn13_must_be_canonical/);
 
   addEdition("test-missing-evidence");
-  assert.throws(() => insertIsbn("isbn-missing-evidence", "test-missing-evidence", "9780306406157", { evidence: "" }), /allocation_authority_publisher_and_evidence_required/);
+  assert.throws(() => insertIsbn("isbn-missing-evidence", "test-missing-evidence", "9780262033848", { evidence: "" }), /allocation_authority_publisher_and_evidence_required/);
 
   addEdition("test-missing-date");
-  assert.throws(() => insertIsbn("isbn-missing-date", "test-missing-date", "9780306406157", { date: null }), /verified_isbn_requires_allocation_date/);
+  assert.throws(() => insertIsbn("isbn-missing-date", "test-missing-date", "9780201633610", { date: null }), /verified_isbn_requires_allocation_date/);
 
   assert.throws(() => db.prepare("UPDATE isbn_records SET isbn13=? WHERE id=?").run("9780306406158", "isbn-valid-978"), /isbn13_checksum_invalid/);
   console.log("ISBN registry SQLite migration tests passed (8 assertions).");
