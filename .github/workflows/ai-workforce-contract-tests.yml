@@ -1,0 +1,25 @@
+name: ai-workforce-contract-tests
+
+on:
+  push:
+    paths:
+      - 'tests/contracts/ai_workforce/**'
+      - '.github/workflows/ai-workforce-contract-tests.yml'
+  pull_request:
+    paths:
+      - 'tests/contracts/ai_workforce/**'
+      - '.github/workflows/ai-workforce-contract-tests.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  synthetic-contract-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Run isolated synthetic contract tests
+        run: python -m unittest discover -s tests/contracts/ai_workforce -p 'test_*.py' -v
