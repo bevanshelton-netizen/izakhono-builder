@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { saveProjectIfUnchanged, type CreatorD1Database, type CreatorD1PreparedStatement } from './project-store';
 
 async function main() {
-  const currentUpdatedAt = '2026-11-26T09:00:00.000Z';
+  const currentUpdatedAt = '2099-11-26T09:00:00.000Z';
   let storedUpdatedAt = currentUpdatedAt;
   const storedId = 'film-1';
   let updateAttempts = 0;
@@ -39,6 +39,7 @@ async function main() {
   }, currentUpdatedAt);
   assert.equal(saved, true);
   assert.equal(updateAttempts, 1);
+  assert.ok(Date.parse(storedUpdatedAt) > Date.parse(currentUpdatedAt), 'CAS must advance the version even when the host clock is behind');
 
   const stale = await saveProjectIfUnchanged({ DB: db }, {
     id: 'film-1', brief: 'Stale update', packageData: {},
@@ -53,6 +54,10 @@ async function main() {
   await assert.rejects(
     () => saveProjectIfUnchanged({ DB: db }, { id: ' ', brief: 'x', packageData: {} }, storedUpdatedAt),
     /Project ID and expected update timestamp are required/,
+  );
+  await assert.rejects(
+    () => saveProjectIfUnchanged({ DB: db }, { id: 'film-1', brief: 'x', packageData: {} }, 'not-a-timestamp'),
+    /valid expected update timestamp/,
   );
   console.log('Creator project optimistic compare-and-swap persistence: PASS');
 }
