@@ -91,6 +91,31 @@ export default {
           const result = await db.prepare(`SELECT * FROM ${spec.table} ORDER BY created_at DESC LIMIT 500`).all<Row>();
           return json({ items: result.results ?? [] });
         }
+        if (request.method === "PATCH") {
+          const body = await request.json() as Row;
+          const recordId = String(body.id ?? "");
+          if (!recordId) return error("record_id_required");
+          const values = spec.fields.filter(field => body[field] !== undefined);
+          if (!values.length) return error("no_valid_fields");
+          const statusRules: Record<string, Record<string, string[]>> = {
+            applications: { status: ["draft","submitted","acknowledged","information_requested","approved","rejected","closed"] },
+            editions: { status: ["planned","metadata_ready","submitted_to_agency","isbn_assigned","production_ready","published","withdrawn"] },
+            works: { publication_status: ["development","metadata_ready","in_production","published","withdrawn"] },
+            "legal-deposits": { status: ["not_started","prepared","submitted","acknowledged","not_required"] },
+            isbns: { verification_status: ["unverified","evidence_pending","verified","disputed","withdrawn"] }
+          };
+          for (const field of values) {
+            const allowed = statusRules[key]?.[field];
+            if (allowed && !allowed.includes(String(body[field]))) return error("invalid_" + field);
+          }
+          if (key === "isbns" && body.isbn13 !== undefined && !validIsbn13(String(body.isbn13))) return error("invalid_isbn13_checksum");
+          const assignments = values.map(field => field + "=?").join(",");
+          const result = await db.prepare(`UPDATE ${spec.table} SET ${assignments} WHERE id=?`).bind(...values.map(field => body[field]), recordId).run();
+          const changes = Number(result.meta?.changes ?? 0);
+          if (!changes) return error("record_not_found", 404);
+          await audit(db, actor, "update", key, recordId, { fields: values });
+          return json({ id: recordId, updated: true });
+        }
         if (request.method === "POST") {
           const body = await request.json() as Row;
           const values = spec.fields.filter(f => body[f] !== undefined);
