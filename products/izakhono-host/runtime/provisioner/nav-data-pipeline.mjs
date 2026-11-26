@@ -117,7 +117,7 @@ export function recordNavDataStage(record, stageId, evidence, now = new Date().t
       throw new Error(`${stageId} must include a SHA-256 digest of its generated artifact`);
     }
     const sourceSha256 = record.stages['osm-source']?.evidence?.sha256;
-    if (String(evidence.sourceSha256).toLowerCase() !== sourceSha256) {
+    if (String(evidence.sourceSha256).toLowerCase() !== String(sourceSha256).toLowerCase()) {
       throw new Error(`${stageId} sourceSha256 does not match the verified South Africa OSM source`);
     }
     if (evidence.healthCheck !== true) throw new Error(`${stageId} healthCheck must be true`);
@@ -127,7 +127,7 @@ export function recordNavDataStage(record, stageId, evidence, now = new Date().t
     if (evidence.checksumAlgorithm !== 'sha256' || !SHA256.test(String(evidence.checksum))) {
       throw new Error('South Africa PMTiles archive must include a SHA-256 checksum');
     }
-    if (String(evidence.sourceSha256).toLowerCase() !== record.stages['osm-source']?.evidence?.sha256) {
+    if (String(evidence.sourceSha256).toLowerCase() !== String(record.stages['osm-source']?.evidence?.sha256 || '').toLowerCase()) {
       throw new Error('map-tiles sourceSha256 does not match the verified South Africa OSM source');
     }
     if (!Number.isSafeInteger(evidence.tileCount) || evidence.tileCount <= 0) throw new Error('tileCount must be a positive safe integer');
