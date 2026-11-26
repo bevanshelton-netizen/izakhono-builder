@@ -28,3 +28,4 @@ export default { async fetch(request:Request,env:Env):Promise<Response>{const ur
 export { buildProductionManifest, type ProductionManifest, type ManifestEntry, type ManifestState } from './cinematic-production-manifest';
 export { buildProductionReadinessReport, type ProductionReadinessReport, type ReadinessAction } from './cinematic-production-readiness';
 \nexport { executeMediaExport, exportAndStore, type MediaExportRuntime, type MediaExportRequest, type MediaExportResult } from './media-export-executor';\n
+export { recordMediaQaEvidence, type MediaQaEvidence } from './cinematic-production-graph';
