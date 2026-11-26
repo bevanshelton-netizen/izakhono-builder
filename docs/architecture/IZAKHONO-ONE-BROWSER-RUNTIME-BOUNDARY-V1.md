@@ -188,7 +188,7 @@ The browser policy test command now includes the supervisor suite. CI for the cu
 
 ## 13. Isolation policy and attestation gate
 
-`products/izakhono-one/agent-browser/isolation-policy.mjs` defines the minimum runtime controls and validates a controller-signed isolation attestation. The supervisor does not mark a runtime READY until the attestation binds the exact session, runtime instance and policy version, has an accepted signature through an injected trusted verifier, and asserts all mandatory controls.
+`products/izakhono-one/agent-browser/isolation-policy.mjs` defines the minimum runtime controls and validates a controller-signed isolation attestation. The supervisor does not mark a runtime READY until the attestation binds the exact session, runtime instance and policy version, has an accepted signature through an injected trusted verifier, and asserts all mandatory controls, uses the exact isolated-egress-proxy-only network mode, and falls within its signed validity window.
 
 The required controls include a dedicated unprivileged identity, read-only root filesystem, per-session ephemeral profile, no host mounts or host IPC, no privileged mode, dropped capabilities, no-new-privileges, reviewed seccomp enforcement, resource limits, process-tree supervision, authenticated narrow bridge, runtime deadlines, egress firewall, DNS/IP pinning, private/reserved/metadata address blocking, and profile destruction.
 
