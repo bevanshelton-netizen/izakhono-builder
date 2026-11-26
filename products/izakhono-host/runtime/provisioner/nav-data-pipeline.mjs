@@ -28,7 +28,7 @@ export const NAV_DATA_PIPELINE_STAGES = Object.freeze([
   Object.freeze({
     id: 'service-acceptance',
     dependsOn: ['routing-graph', 'search-index', 'map-tiles'],
-    evidence: Object.freeze(['releaseDigest', 'services'])
+    evidence: Object.freeze(['releaseDigest', 'services', 'persistenceCheck'])
   })
 ]);
 
@@ -129,6 +129,7 @@ export function recordNavDataStage(record, stageId, evidence, now = new Date().t
     }
     const unhealthy = REQUIRED_SERVICES.filter(name => evidence.services[name]?.healthy !== true);
     if (unhealthy.length) throw new Error(`Service acceptance failed: ${unhealthy.join(', ')}`);
+    if (evidence.persistenceCheck !== true) throw new Error('Service acceptance requires verified persistent-data health');
   }
 
   const stages = {
