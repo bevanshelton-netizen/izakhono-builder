@@ -1,10 +1,12 @@
 import { compileCinematicBrief, type CinematicBriefInput } from './cinematic-brief-compiler';
 import {
   getRunnableTasks,
+  recordMediaQaEvidence,
   updateTaskWithEvidence,
   validateProductionGraph,
   type ApprovalGate,
   type CinematicProduction,
+  type MediaQaEvidence,
   type ProductionTask,
 } from './cinematic-production-graph';
 import { findAssetByExternalId, getAsset, getProject, listProjects, saveAsset, saveProject, updateAsset, type CreatorStorageEnv } from './project-store';
@@ -302,6 +304,35 @@ export async function handleCinematicApi(request: Request, env: CinematicEnv): P
       packageData: { cinematicProduction: compiled.production, cinematic: { assumptions: compiled.assumptions, nextActions: compiled.nextActions } },
     });
     return response({ status: 'created', project: { id: project.id, brief: project.brief, production: compiled.production, assumptions: compiled.assumptions, nextActions: compiled.nextActions }, validation: checked }, 201);
+  }
+
+
+  const mediaQaRoute = url.pathname.match(/^\/api\/cinematic\/projects\/([^/]+)\/assets\/([^/]+)\/media-qa$/);
+  if (mediaQaRoute) {
+    if (request.method !== 'POST') return response({ error: 'Method not allowed.' }, 405);
+    const id = decodeURIComponent(mediaQaRoute[1]);
+    const assetId = decodeURIComponent(mediaQaRoute[2]);
+    const project = await getProject(env, id);
+    if (!project) return response({ error: 'project not found.' }, 404);
+    const graph = graphFrom(project);
+    if (!graph) return response({ error: 'project has no cinematic production graph.' }, 409);
+    const body = await parseBody(request);
+    if (!body?.evidence || typeof body.evidence !== 'object') return response({ error: 'media QA evidence object is required.' }, 400);
+    try {
+      const updated = recordMediaQaEvidence(graph, assetId, body.evidence as MediaQaEvidence);
+      const checked = validate(updated);
+      if (!checked.valid) return response({ error: 'Media QA recording violates production graph rules.', issues: checked.issues }, 422);
+      await saveProject(env, { id, brief: updated.brief, packageData: { ...(project.packageData as Record<string, unknown>), cinematicProduction: updated } });
+      return response({
+        status: 'recorded',
+        assetId,
+        mediaQa: updated.assets.find(asset => asset.id === assetId)?.mediaQa,
+        productionVersion: updated.metadata.version,
+        readiness: buildProductionReadinessReport(updated),
+      });
+    } catch (error) {
+      return response({ error: error instanceof Error ? error.message : 'Media QA evidence could not be recorded.' }, 400);
+    }
   }
 
   const match = url.pathname.match(/^\/api\/cinematic\/projects\/([^/]+)(?:\/(approvals|tasks)\/([^/]+))?$/);
