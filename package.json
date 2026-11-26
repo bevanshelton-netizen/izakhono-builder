@@ -79,7 +79,7 @@
     "code-agent:runner-check": "node --check products/izakhono-code-agent/runner/server.mjs",
     "code-agent:runner-test": "node products/izakhono-code-agent/runner/server.test.mjs",
     "code-agent:dry-run": "npx --yes wrangler@4.127.1 deploy --dry-run --config products/izakhono-code-agent/wrangler.jsonc",
-    "creator:media-export:test": "npx --yes tsx@4.20.3 products/izakhono-creator/src/media-export-profile.test.ts && npx --yes tsx@4.20.3 products/izakhono-creator/src/media-export-executor.test.ts && npx --yes tsx@4.20.3 products/izakhono-creator/src/media-export-node-runtime.test.ts"
+    "creator:media-export:test": "npx --yes tsx@4.20.3 products/izakhono-creator/src/media-export-profile.test.ts && npx --yes tsx@4.20.3 products/izakhono-creator/src/media-export-executor.test.ts && npx --yes tsx@4.20.3 products/izakhono-creator/src/media-export-node-runtime.test.ts && npx --yes tsx@4.20.3 products/izakhono-creator/src/cinematic-media-export-worker.test.ts"
   },
   "dependencies": {
     "wrangler": "4.127.1"
