@@ -8,7 +8,7 @@ function readyAttestation(runtimeInstanceId, sessionId, policyVersion) {
     sessionId, runtimeInstanceId, policyVersion,
     networkMode: "isolated-egress-proxy-only",
     controls: {"dedicated_runtime_identity":true,"non_root_user":true,"read_only_root_filesystem":true,"ephemeral_browser_profile":true,"no_host_mounts":true,"no_host_ipc":true,"no_privileged_mode":true,"drop_all_capabilities":true,"no_new_privileges":true,"seccomp_enforced":true,"egress_firewall_enforced":true,"dns_ip_pinning_enforced":true,"metadata_ip_blocked":true,"private_address_space_blocked":true,"resource_limits_enforced":true,"process_tree_supervision":true,"runtime_deadline_enforced":true,"profile_destroy_on_exit":true,"bridge_authenticated":true},
-    issuedAt: 1000, expiresAt: 9000000000000,
+    issuedAt: Date.now() - 1000, expiresAt: Date.now() + 60_000,
     controllerIdentity: "test-runtime-controller", signature: "test-signature"
   };
 }
