@@ -1,0 +1,23 @@
+{
+  "apiVersion": "hosting.izakhono.africa/supplier-evidence-event-v1",
+  "kind": "SupplierEvidenceEvent",
+  "eventId": "synthetic-event-0001",
+  "sequence": 1,
+  "recordedAt": "2026-11-26T00:00:00Z",
+  "eventType": "evidence-received",
+  "supplierId": "synthetic-example",
+  "sku": "example-8vcpu-32gib",
+  "requirementId": "outbound_tcp25",
+  "claimValue": "Supplier states outbound TCP 25 is enabled by default.",
+  "evidenceStatus": "pending",
+  "sourceType": "supplier-email",
+  "sourceReference": "synthetic://example/message-001",
+  "sourceSha256": null,
+  "capturedAt": "2026-11-26T00:00:00Z",
+  "validUntil": null,
+  "verificationMethod": "supplier-assertion",
+  "reviewer": null,
+  "rationale": "Synthetic training fixture only. Supplier assertion has not been independently verified.",
+  "previousEventHash": null,
+  "eventHash": "REPLACE_WITH_GENERATED_HASH"
+}
