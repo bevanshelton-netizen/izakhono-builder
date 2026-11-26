@@ -30,3 +30,5 @@ jobs:
         run: node autonomy/software-node.test.mjs
       - name: Run ISBN-13 validation tests
         run: npx --yes tsx@4.20.3 products/izakhono-isbn/src/index.test.ts
+      - name: Run D1 SQLite migration integrity tests
+        run: node --experimental-sqlite products/izakhono-isbn/src/migrations.test.mjs
