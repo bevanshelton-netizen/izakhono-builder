@@ -36,7 +36,7 @@ async function introspect(r:Request,e:Env){
   if(!await crypto.subtle.verify('HMAC',key,un64(parts[2]),enc.encode(parts[0]+'.'+parts[1])))return json({valid:false},401);
   const p=await e.DB.prepare('SELECT p.id,p.tenant_id,p.email,p.display_name,p.role,p.active FROM refresh_sessions s JOIN principals p ON p.id=s.principal_id WHERE s.access_jti=? AND s.principal_id=? AND s.revoked_at IS NULL AND s.expires_at>? LIMIT 1').bind(claims.jti,claims.sub,now).first<any>();
   if(!p||p.active!==1)return json({valid:false},401);
-  return json({valid:true,principal:{id:p.id,tenantId:p.tenant_id,email:p.email,displayName:p.display_name,role:p.role},expiresAt:claims.exp});
+  return json({valid:true,audience,principal:{id:p.id,tenantId:p.tenant_id,email:p.email,displayName:p.display_name,role:p.role},expiresAt:claims.exp});
  }catch{return json({valid:false},401)}
 }
 export async function handleFortressIdentity(r:Request,e:Env){const p=new URL(r.url).pathname;try{if(p==='/api/fortress/session'&&r.method==='GET')return await introspect(r,e);if(p==='/api/fortress/bootstrap')return await bootstrap(r,e);if(p==='/api/fortress/login')return await login(r,e);if(p==='/api/fortress/refresh')return await refresh(r,e);if(p==='/api/fortress/logout')return await logout(r,e);if(p==='/api/fortress/health')return json({service:'FORTRESS Identity',status:'ready'});return json({error:'Not found'},404)}catch{return json({error:'FORTRESS identity service unavailable'},503)}}
