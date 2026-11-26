@@ -5,6 +5,7 @@ import { runNodeAdapter } from './node-adapter.mjs';
 import { resolveFailover } from './node-failover.mjs';
 import { runAgentWorker } from './ai-agent-worker.mjs';
 import { classifyAgentWorkerResult } from './worker-result.mjs';
+import { hasPersistentAgentStorage } from './worker-storage-policy.mjs';
 
 const root = process.cwd();
 const manifestPath = path.join(root, 'autonomy', 'engine-manifest.json');
@@ -50,8 +51,7 @@ async function executeInternal(task) {
     return { status: 'completed' };
   }
   if (task.action === 'run-worker') {
-    const hasPersistentAgentStorage = Boolean(process.env.IZAKHONO_NODE_DATA_DIR || (process.env.IZAKHONO_AGENT_STATE_PATH && process.env.IZAKHONO_AGENT_QUEUE_PATH));
-    if (process.env.GITHUB_ACTIONS === 'true' && !hasPersistentAgentStorage) {
+    if (!hasPersistentAgentStorage(process.env)) {
       return { status: 'waiting', ownerGate: 'owned-node-runtime', reason: 'persistent-owned-node-agent-storage-not-configured', evidence: [{ name: 'durable-agent-storage', status: 'pending' }] };
     }
     let worker;
