@@ -15,6 +15,7 @@
 - CSV catalogue export.
 - Private dashboard UI with work, edition, author/pen-name, contributor, agency application, agency-allocated ISBN and legal-deposit management forms.
 - Audited PATCH updates for application and publishing metadata.
+- Protected append-only agency correspondence API and dashboard form for incoming/outgoing messages, evidence references and dated summaries; no edit/delete endpoint.
 - Edition-level catalogue showing the ISBN verification state.
 - Automated GitHub Actions test workflow for ISBN validation and fail-closed API checks.
 - Operating boundary and deployment runbook.
