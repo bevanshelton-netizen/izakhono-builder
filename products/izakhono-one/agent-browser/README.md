@@ -40,3 +40,9 @@ The isolation policy is a fail-closed acceptance gate, not a sandbox implementat
 `oci-runtime-spec.mjs` generates a pinned-image, non-root, read-only-root, no-host-mounts, no-capabilities, no-new-privileges, seccomp-referenced, resource-bounded, proxy-only OCI launch specification. The validator rejects unsafe host mounts, direct egress, incomplete namespaces, retained capabilities, mutable image references and unsafe cleanup/retry policy.
 
 This is not a container engine adapter and has not launched a container. No image was selected or pulled, no runtime was installed, and no network/firewall/seccomp controls were applied to a host.
+
+## NODE01 Docker Engine plan
+
+The target is the existing Windows NODE01 host via WSL2 + Ubuntu + open-source Docker Engine (not Docker Desktop). `node01-docker-plan.mjs` builds argv-only container lifecycle commands for a digest-pinned browser image and applies the planned read-only/non-root/capability/resource/seccomp/tmpfs controls. The browser joins only a pre-provisioned internal network with the controlled egress proxy as its sole peer; direct Internet and DNS are prohibited.
+
+This is a plan generator only. It does not run Docker, access NODE01, pull images, create networks or launch Chromium. The seccomp profile, image, proxy and internal network remain deployment prerequisites.
