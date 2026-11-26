@@ -228,6 +228,16 @@ for (const invalidEvidence of [
   try { recordMediaQaEvidence(qaAssetBase, 'export-1', invalidEvidence); } catch { rejected = true; }
   if (!rejected) throw new Error('Invalid or incomplete media QA evidence must be rejected');
 }
+
+const failedLocalExport: CinematicProduction = {
+  ...qaAssetBase,
+  assets: qaAssetBase.assets.map(asset => asset.id === 'export-1' ? { ...asset, status: 'failed' as const, storageKey: undefined } : asset),
+};
+const failedLocalRecorded = recordMediaQaEvidence(failedLocalExport, 'export-1', failedEvidence);
+const failedLocalEntry = buildProductionManifest(failedLocalRecorded).entries.find(entry => entry.id === 'export-1');
+if (!failedLocalEntry?.details.some(detail => detail.includes('mediaQa=failed'))) throw new Error('Failed local export QA evidence must remain visible in the asset manifest');
+if (buildProductionManifest(failedLocalRecorded).summary.readyForDistribution) throw new Error('Failed local export QA evidence must not unlock distribution');
+
 const unstoredExport: CinematicProduction = {
   ...qaAssetBase,
   assets: qaAssetBase.assets.map(asset => asset.id === 'export-1' ? { ...asset, storageKey: undefined } : asset),
