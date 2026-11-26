@@ -92,16 +92,17 @@ public class MainActivity extends Activity {
 
         webView.setWebViewClient(new WebViewClient() {
             @Override public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
-                String url = request.getUrl().toString();
-                String host = request.getUrl().getHost();
-                String scheme = request.getUrl().getScheme();
-                boolean bundledAsset = url.startsWith("file:///android_asset/");
-                boolean trustedNavHttps = "https".equalsIgnoreCase(scheme)
-                        && "nav.izakhono.africa".equalsIgnoreCase(host);
-                if (bundledAsset || trustedNavHttps) return false;
-                try {
-                    startActivity(new Intent(Intent.ACTION_VIEW, request.getUrl()));
-                } catch (Exception ignored) {}
+                android.net.Uri uri = request.getUrl();
+                if (isBundledAssetUri(uri) || isTrustedNavUri(uri)) return false;
+
+                // Only hand ordinary web links to Android. Block intent:, javascript:,
+                // data:, content: and other non-web schemes at the WebView boundary.
+                String scheme = uri.getScheme();
+                if ("https".equalsIgnoreCase(scheme) || "http".equalsIgnoreCase(scheme)) {
+                    try {
+                        startActivity(new Intent(Intent.ACTION_VIEW, uri));
+                    } catch (Exception ignored) {}
+                }
                 return true;
             }
 
@@ -187,13 +188,28 @@ public class MainActivity extends Activity {
 
     private boolean isTrustedNavOrigin(String origin) {
         try {
-            android.net.Uri uri = android.net.Uri.parse(origin);
-            return "https".equalsIgnoreCase(uri.getScheme())
-                    && "nav.izakhono.africa".equalsIgnoreCase(uri.getHost())
-                    && (uri.getPort() == -1 || uri.getPort() == 443);
+            return isTrustedNavUri(android.net.Uri.parse(origin));
         } catch (Exception ignored) {
             return false;
         }
+    }
+
+    private boolean isTrustedNavUri(android.net.Uri uri) {
+        return "https".equalsIgnoreCase(uri.getScheme())
+                && "nav.izakhono.africa".equalsIgnoreCase(uri.getHost())
+                && (uri.getPort() == -1 || uri.getPort() == 443);
+    }
+
+    private boolean isBundledAssetUri(android.net.Uri uri) {
+        if (!"file".equalsIgnoreCase(uri.getScheme()) || uri.getAuthority() != null) {
+            return false;
+        }
+        String path = uri.getPath();
+        if (path == null || !path.startsWith("/android_asset/")) return false;
+        for (String segment : path.split("/")) {
+            if ("..".equals(segment)) return false;
+        }
+        return true;
     }
 
     private boolean hasLocationPermission() {
