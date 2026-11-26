@@ -25,7 +25,7 @@ const services = {
   'nav-engine': { healthy: true },
   'nav-web': { healthy: true }
 };
-const accepted = { releaseDigest: digest, services };
+const accepted = { releaseDigest: digest, services, persistenceCheck: true };
 
 function completeImports(record) {
   record = recordNavDataStage(record, 'osm-source', source);
