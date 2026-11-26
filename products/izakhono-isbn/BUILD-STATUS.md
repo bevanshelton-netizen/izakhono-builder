@@ -3,7 +3,9 @@
 ## Delivered in this branch
 - Cloudflare Worker API foundation.
 - D1 schema for publisher, imprint, author, work, edition, ISBN, application and audit records.
-- ISBN-13 checksum validation; no ISBN generation/allocation.
+- ISBN-13 checksum validation and digits-only canonicalisation; no ISBN generation/allocation.
+- Database-level SQLite triggers enforce ISBN-13 prefix/checksum, canonical storage, allocation authority/evidence and allocation dates before a record can be marked verified.
+- Migration integration test covers valid 978/979 numbers and rejects bad checksums, noncanonical formatting, missing evidence/dates and invalid updates.
 - ISBN validation regression tests and a repository test command.
 - Edition-level catalogue endpoint and corrected multi-edition dashboard rendering.
 - Removed caller-controlled audit actor and suppressed raw internal exception details in API responses.
