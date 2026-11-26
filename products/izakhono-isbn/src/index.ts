@@ -11,7 +11,7 @@ const json = (data: Row, status = 200) => new Response(JSON.stringify(data), {
 const error = (code: string, status = 400) => json({ error: code }, status);
 const id = () => crypto.randomUUID();
 
-function validIsbn13(input: string): boolean {
+export function validIsbn13(input: string): boolean {
   const digits = input.replace(/[\s-]/g, "");
   if (!/^97[89]\d{10}$/.test(digits)) return false;
   const sum = [...digits.slice(0, 12)].reduce((n, d, i) => n + Number(d) * (i % 2 ? 3 : 1), 0);
@@ -37,10 +37,10 @@ export default {
     if (request.headers.get("authorization") !== `Bearer ${env.ISBN_ADMIN_TOKEN}`) return error("unauthorized", 401);
     if (!env.DB) return error("database_not_configured", 503);
     const db = env.DB;
-    const actor = request.headers.get("x-actor") || "registry-admin";
+    const actor = "registry-admin";
 
     try {
-      if (request.method === "GET" && url.pathname === "/api/dashboard") {
+      if (request.method === "GET" && url.pathname === "/api/catalogue") {\n        const result = await db.prepare(`SELECT w.id AS work_id,w.title,w.subtitle,w.language_code,e.id AS edition_id,e.edition_statement,e.format_code,e.publication_date,e.status AS edition_status,i.isbn13,i.verification_status,i.publisher_of_record FROM works w JOIN editions e ON e.work_id=w.id LEFT JOIN isbn_records i ON i.edition_id=e.id ORDER BY w.title,e.language_code,e.format_code`).all<Row>();\n        return json({ items: result.results ?? [] });\n      }\n\n      if (request.method === "GET" && url.pathname === "/api/dashboard") {
         const [works, editions, allocated, pending, applications] = await Promise.all([
           db.prepare("SELECT COUNT(*) n FROM works").first<Row>(),
           db.prepare("SELECT COUNT(*) n FROM editions").first<Row>(),
@@ -75,7 +75,7 @@ export default {
             const number = String(body.isbn13 ?? "");
             if (!validIsbn13(number)) return error("invalid_isbn13_checksum");
             if (!body.allocation_authority || !body.publisher_of_record || !body.evidence_ref) return error("allocation_authority_publisher_and_evidence_required");
-            if (body.verification_status === "verified" && !body.evidence_ref) return error("verification_evidence_required");
+            if (body.verification_status === "verified" && !body.evidence_ref) return error("verification_evidence_required");\n            if (body.verification_status && !["unverified","evidence_pending","verified","disputed","withdrawn"].includes(String(body.verification_status))) return error("invalid_verification_status");
           }
           const recordId = id();
           const columns = ["id", ...values];
@@ -95,7 +95,7 @@ export default {
       }
       return env.ASSETS ? env.ASSETS.fetch(request) : error("not_found", 404);
     } catch (e) {
-      return json({ error: "request_failed", message: e instanceof Error ? e.message : "unknown" }, 500);
+      return json({ error: "request_failed", message: "The request could not be completed. Check the supplied fields and registry logs." }, 500);
     }
   }
 };
