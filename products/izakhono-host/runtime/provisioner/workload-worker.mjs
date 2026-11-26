@@ -25,6 +25,7 @@ export function createWorkloadWorker({ store, adapterRegistry, resolveBinding, w
         const adapter = adapterRegistry.get(binding.adapterId);
         if (!adapter) throw new Error('Approved runtime adapter is not registered');
 
+        const leaseId = claimed.worker_lease.lease_id;
         const workload = claimed;
         const target = await adapter.resolveTarget({ runtimeTargetId: claimed.runtime_target_id, workload, signal });
         if (!target) throw new Error('Runtime adapter could not resolve the approved target');
@@ -43,7 +44,7 @@ export function createWorkloadWorker({ store, adapterRegistry, resolveBinding, w
           adapterId: binding.adapterId,
           runtimeTargetId: claimed.runtime_target_id,
           resourceId: typeof resource?.id === 'string' ? resource.id : null
-        }, now().toISOString());
+        }, now().toISOString(), leaseId);
 
         await adapter.deploy({ target, resource, releaseDigest: claimed.release_digest, workload, signal });
         await store.recordExecution(claimed.id, workerId, 'RELEASE_DEPLOYED', {
@@ -61,7 +62,7 @@ export function createWorkloadWorker({ store, adapterRegistry, resolveBinding, w
           releaseDigest: claimed.release_digest,
           stage: 'runtime-deployed-awaiting-data-pipeline'
         }, now().toISOString());
-        await store.releaseClaim(claimed.id, workerId, {}, now().toISOString());
+        await store.releaseClaim(claimed.id, workerId, {}, now().toISOString(), leaseId);
         return { processed: true, workloadId: claimed.id, stage: 'runtime-deployed-awaiting-data-pipeline' };
       } catch (error) {
         const delay = workloadRetryDelay(claimed.attempts);
@@ -69,7 +70,7 @@ export function createWorkloadWorker({ store, adapterRegistry, resolveBinding, w
         await store.releaseClaim(claimed.id, workerId, {
           retryAfter,
           errorCode: 'WORKLOAD_EXECUTION_FAILED'
-        }, now().toISOString());
+        }, now().toISOString(), claimed.worker_lease.lease_id);
         return { processed: true, workloadId: claimed.id, retryAfter, error: String(error?.message || 'Runtime execution failed').slice(0, 240) };
       }
     }
