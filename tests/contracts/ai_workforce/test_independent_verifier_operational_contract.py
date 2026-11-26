@@ -211,11 +211,13 @@ class IndependentVerifierOperationalContractTests(unittest.TestCase):
                                 trusted_time_healthy=False), "UNKNOWN")
 
     def test_untrusted_key_is_rejected(self):
-        keys = [TrustKey("key-1", "fortress-decision", trusted=False)]
+        keys = list(self.keys)
+        keys[0] = TrustKey("key-1", "fortress-decision", trusted=False)
         self.assertEqual(verify(self.identity, self.sources, keys, self.profile), "REJECTED")
 
     def test_revoked_key_is_rejected(self):
-        keys = [TrustKey("key-1", "fortress-decision", revoked=True)]
+        keys = list(self.keys)
+        keys[0] = TrustKey("key-1", "fortress-decision", revoked=True)
         self.assertEqual(verify(self.identity, self.sources, keys, self.profile), "REJECTED")
 
     def test_missing_key_identity_is_rejected(self):
