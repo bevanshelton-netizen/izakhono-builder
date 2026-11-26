@@ -63,6 +63,10 @@ test("database-backed B2B flow persists orders, replays idempotently and isolate
   });
   assert.equal(sellerResponse.status, 201);
   const seller = (await json(sellerResponse)).seller;
+  const otherSellerResponse = await call(env, "/api/v1/admin/sellers", {
+    method: "POST", headers: admin, body: { slug: "other-acme-line", name: "Other Acme Line" }
+  });
+  assert.equal(otherSellerResponse.status, 201);
 
   const buyerAResponse = await call(env, "/api/v1/admin/buyers", {
     method: "POST", headers: admin, body: { seller_slug: "acme-industrial", organisation_name: "Buyer A Ltd" }
@@ -121,6 +125,14 @@ test("database-backed B2B flow persists orders, replays idempotently and isolate
   });
   assert.equal(conflictResponse.status, 409);
   assert.equal((await json(conflictResponse)).error.code, "idempotency_conflict");
+
+  const crossSellerResponse = await call(env, "/api/v1/orders", {
+    method: "POST",
+    headers: { ...orderHeaders, "idempotency-key": "cross-seller-order-0001" },
+    body: { seller_slug: "other-acme-line", items: [{ sku: "PUMP-001", quantity: 1 }] }
+  });
+  assert.equal(crossSellerResponse.status, 403);
+  assert.equal((await json(crossSellerResponse)).error.code, "buyer_seller_scope_denied");
 
   const ownOrderResponse = await call(env, `/api/v1/orders/${first.order.id}`, {
     headers: { "x-izakhono-commerce-buyer-key": buyerA.api_key }
