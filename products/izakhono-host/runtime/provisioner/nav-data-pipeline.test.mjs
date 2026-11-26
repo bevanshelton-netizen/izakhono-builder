@@ -117,5 +117,5 @@ test('binds every generated data artifact to the exact verified OSM source SHA-2
   for (const [stageId, evidence] of [['routing-graph', routing], ['search-index', search], ['map-tiles', tiles]]) {
     assert.throws(() => recordNavDataStage(withSource, stageId, { ...evidence, sourceSha256: 'f'.repeat(64) }), /sourceSha256 does not match/);
   }
-  assert.throws(() => recordNavDataStage(createNavDataPipelineRecord({ workloadId: 'izakhono-nav', releaseDigest: digest }), 'osm-source', { ...source, sha256: undefined }), /local SHA-256 content digest/);
+  assert.throws(() => recordNavDataStage(createNavDataPipelineRecord({ workloadId: 'izakhono-nav', releaseDigest: digest }), 'osm-source', { ...source, sha256: undefined }), /missing evidence: sha256/);
 });
