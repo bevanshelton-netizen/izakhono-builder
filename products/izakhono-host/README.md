@@ -21,6 +21,24 @@ The customer web runtime is owned by IZAKHONO. External services are bounded ada
 
 `docker-compose.owned.yml` supplies the owned-runtime baseline: native runtime, Caddy edge, CoreDNS, PostgreSQL, MinIO and Valkey.
 
+## Managed NAV workload runtime
+
+HOST exposes an authenticated workload lifecycle API and runs its lease-fenced NAV runtime/data workers inside the same control-plane process as the file-backed single-writer stores. The generic HTTP adapters are disabled by default. They start only when an owner-approved HTTPS adapter URL, server-side token and logical HOST target binding are injected through FORTRESS-controlled runtime configuration.
+
+Runtime worker configuration:
+- HOST_NAV_RUNTIME_ADAPTER_URL
+- HOST_NAV_RUNTIME_ADAPTER_TOKEN
+- HOST_NAV_RUNTIME_TARGET_ID
+- HOST_NAV_RUNTIME_ADAPTER_ID (optional)
+
+Data worker configuration:
+- HOST_NAV_DATA_ADAPTER_URL
+- HOST_NAV_DATA_ADAPTER_TOKEN
+
+The data adapter URL/token may use the runtime adapter's values when the same trusted service implements both contracts. The runtime worker deploys an immutable digest and verifies the deployed release. The data worker verifies the South Africa Geofabrik source, Valhalla graph, Nominatim index, PMTiles archive, all five NAV service health checks and persistent-data health before HOST advances the workload to internal READY. Public-live still requires independent backup/restore, HTTPS and DNS evidence.
+
+The JSON workload/data-job stores are single-process/single-writer. Keep both worker loops in this same HOST process; do not scale multiple replicas against the same files. Move state to a transactional shared database before multi-replica operation.
+
 ## Multi-node operation
 
 `CLUSTER-NODE-ROLES.md` defines the production roles and resilience model. `NODE-PREFLIGHT.sh` validates a physical node before activation.
