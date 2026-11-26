@@ -104,3 +104,14 @@ services at their enforcement boundaries.
   an in-memory contract model only: it does not implement cryptography,
   workload identity, authoritative source adapters, trusted time, durable
   append-only storage, independent audit reproduction or incident response.
+
+- Independent audit reproducibility tests model a signed, tenant-scoped package
+  containing immutable source/evidence references, trust/time/profile/build
+  artifacts and provenance. They reject missing/duplicate artifacts, digest
+  mismatches, cross-tenant scope, untrusted package signers, package-supplied
+  trust anchors, incomplete or inconsistent snapshots, pagination gaps,
+  build/profile mismatch and runners with mutating capability. Historical
+  reproduction outcomes are distinguished from current reassessment. This is
+  an in-memory model only: it does not implement signatures, digest algorithms,
+  snapshot APIs, immutable object storage, deterministic containers, trusted
+  trust-anchor distribution, reviewer identity or production audit.
