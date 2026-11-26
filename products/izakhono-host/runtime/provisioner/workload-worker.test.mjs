@@ -116,3 +116,48 @@ test('automatically queues the South Africa data pipeline after verified runtime
     await rm(root, { recursive: true, force: true });
   }
 });
+
+test('recovers a verified runtime when the automatic data-job queue is temporarily unavailable', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'host-worker-requeue-'));
+  try {
+    const store = createWorkloadStore({ filePath: path.join(root, 'workloads.json') });
+    const durableJobs = createNavDataJobStore({ filePath: path.join(root, 'nav-data-jobs.json') });
+    const { workload } = await store.create(spec);
+    let failOnce = true;
+    const navDataJobStore = {
+      async create(input) {
+        if (failOnce) { failOnce = false; throw new Error('temporary data-job store outage'); }
+        return durableJobs.create(input);
+      }
+    };
+    let provisions = 0;
+    const registry = createRuntimeAdapterRegistry();
+    registry.register('test-adapter', {
+      async resolveTarget() { return { id: 'nav-target-a' }; },
+      async provision() { provisions += 1; return { id: 'runtime-resource-1' }; },
+      async deploy() {},
+      async inspect() { return { healthy: true, releaseDigest: spec.releaseDigest }; },
+      async stop() {}, async destroy() {}, async backup() {}, async restore() {}
+    });
+    let clock = new Date('2026-11-21T10:00:00.000Z');
+    const worker = createWorkloadWorker({
+      store, adapterRegistry: registry, navDataJobStore,
+      resolveBinding: async record => ({ adapterId: 'test-adapter', runtimeTargetId: record.runtime_target_id }),
+      now: () => clock
+    });
+    const first = await worker.runOnce();
+    assert.equal(first.error, 'temporary data-job store outage');
+    let saved = await store.get(workload.id);
+    assert.equal(saved.state, 'PROVISIONING');
+    assert.equal(saved.execution_stage, 'runtime-deployed-awaiting-data-pipeline');
+    clock = new Date(Date.parse(first.retryAfter) + 1000);
+    const second = await worker.runOnce();
+    assert.equal(second.recovered, true);
+    saved = await store.get(workload.id);
+    assert.equal(saved.state, 'IMPORTING_DATA');
+    assert.equal(provisions, 1, 'recovery must not provision the runtime twice');
+    assert.equal((await durableJobs.list()).length, 1);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
