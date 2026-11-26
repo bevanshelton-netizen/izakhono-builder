@@ -159,8 +159,9 @@ async function handleRecordRequest(req: Request, env: DnsEnv, zoneId: string, cu
   if (type !== 'CNAME' && existingTypes.includes('CNAME')) return json({ ok: false, error: 'A CNAME already exists at this name' }, 409);
 
   const recordId = id('rec');
+  let serial: number;
   try {
-    const serial = await bumpSerial(env, zoneId, customerId);
+    serial = await bumpSerial(env, zoneId, customerId);
     await env.DB.prepare(
       'INSERT INTO dns_records(id,zone_id,name,type,ttl,priority,value,proxied,enabled,created_at,updated_at) VALUES(?,?,?,?,?,?,?,0,1,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)'
     ).bind(recordId, zoneId, name, type, ttl, priority ?? null, value).run();
