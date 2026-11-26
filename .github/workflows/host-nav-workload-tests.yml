@@ -93,7 +93,7 @@ jobs:
           node --check products/izakhono-host/runtime/control-plane/server.mjs
 
       - name: Run HOST NAV workload tests
-        run: node --test products/izakhono-host/runtime/provisioner/workload-state-machine.test.mjs products/izakhono-host/runtime/provisioner/workload-store.test.mjs products/izakhono-host/runtime/provisioner/workload-worker.test.mjs products/izakhono-host/runtime/provisioner/runtime-adapter-contract.test.mjs products/izakhono-host/runtime/provisioner/nav-data-pipeline.test.mjs products/izakhono-host/runtime/provisioner/nav-data-worker.test.mjs
+        run: node --test products/izakhono-host/runtime/provisioner/workload-state-machine.test.mjs products/izakhono-host/runtime/provisioner/workload-store.test.mjs products/izakhono-host/runtime/provisioner/workload-worker.test.mjs products/izakhono-host/runtime/provisioner/runtime-adapter-contract.test.mjs products/izakhono-host/runtime/provisioner/nav-data-pipeline.test.mjs products/izakhono-host/runtime/provisioner/nav-data-worker.test.mjs products/izakhono-host/runtime/provisioner/provider-http-client.test.mjs products/izakhono-host/runtime/provisioner/http-runtime-adapter.test.mjs products/izakhono-host/runtime/provisioner/nav-data-http-adapter.test.mjs
 
       - name: Run HOST control-plane smoke test
         run: node products/izakhono-host/runtime/control-plane/smoke.mjs
