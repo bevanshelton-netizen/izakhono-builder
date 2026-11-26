@@ -46,7 +46,7 @@ All non-health routes are protected. Input validation, audit logging and explici
 
 ## Agency correspondence history
 
-The database preserves dated outgoing and incoming agency correspondence as separate records linked to the application. Initial application (6 October 2026), follow-up (14 October 2026) and escalation (26 November 2026) are seeded. An outgoing email is not evidence of agency acknowledgement or ISBN allocation; attach agency replies and allocation documents when received.
+The database preserves dated outgoing and incoming agency correspondence as separate records linked to the application. Database triggers reject updates and deletions so the correspondence ledger remains immutable; corrections must be added as new records. Initial application (6 October 2026), follow-up (14 October 2026) and escalation (26 November 2026) are seeded. An outgoing email is not evidence of agency acknowledgement or ISBN allocation; attach agency replies and allocation documents when received.
 
 ## Local development
 
