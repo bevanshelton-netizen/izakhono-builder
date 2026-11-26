@@ -124,14 +124,14 @@ class EdgeActivationTests(unittest.TestCase):
         )
 
     def test_rejects_same_dns_execution_environment(self):
-        with self.assertRaisesRegex(ValueError, "same execution environment"):
+        with self.assertRaisesRegex(ValueError, "share one execution environment"):
             validate_dns_placement(
                 {"execution_environment_id": "env-a", "network_failure_domain_id": "network-a", "healthy": True},
                 {"execution_environment_id": "env-a", "network_failure_domain_id": "network-b", "healthy": True},
             )
 
     def test_rejects_same_dns_failure_domain(self):
-        with self.assertRaisesRegex(ValueError, "same network failure domain"):
+        with self.assertRaisesRegex(ValueError, "share one network failure domain"):
             validate_dns_placement(
                 {"execution_environment_id": "env-a", "network_failure_domain_id": "network-a", "healthy": True},
                 {"execution_environment_id": "env-b", "network_failure_domain_id": "network-a", "healthy": True},
