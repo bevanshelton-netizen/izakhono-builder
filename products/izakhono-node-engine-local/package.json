@@ -8,7 +8,10 @@
     "start": "node src/cli.mjs",
     "test": "node --test",
     "test:policy": "node --test test/resource-policy.test.mjs",
-    "test:control": "node --test test/control-plane.test.mjs"
+    "test:control": "node --test test/control-plane.test.mjs",
+    "test:enforcement": "node --test test/resource-enforcement.test.mjs"
   },
-  "engines": { "node": ">=20" }
+  "engines": {
+    "node": ">=20"
+  }
 }
