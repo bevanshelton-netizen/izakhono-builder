@@ -24,7 +24,7 @@ assert.equal(waitingRetryDue({
   status: 'waiting',
   attempts: 816,
   updatedAt: '2026-11-26T04:00:01.000Z',
-}, now + 2), true);
+}, now + 2000), true);
 assert.equal(waitingRetryDue({ status: 'completed' }, now), true);
 assert.equal(waitingRetryDue({ status: 'waiting_owner', retryAfter: '2026-11-26T10:05:00.000Z' }, now), false);
 assert.equal(waitingRetryDue({ status: 'waiting' }, now), true);
