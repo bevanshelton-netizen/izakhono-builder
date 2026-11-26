@@ -63,7 +63,7 @@ async function executeInternal(task) {
     const outcome = classifyAgentWorkerResult(worker);
     if (outcome.status === 'failed') return { status: 'failed', reason: outcome.reason, workerResult: worker, evidence: [{ name: 'agent-worker-invoked', status: 'passed' }, { name: 'agent-work-completed', status: 'failed' }] };
     if (outcome.status === 'waiting') return { status: 'waiting', reason: outcome.reason, workerResult: worker, evidence: [{ name: 'agent-worker-invoked', status: 'passed' }, { name: 'agent-work-completed', status: 'pending' }] };
-    return { status: 'completed', workerResult: worker, evidence: [{ name: 'agent-worker-invoked', status: 'passed' }, { name: 'agent-queue-inspected', status: 'passed' }, { name: 'agent-work-completed', status: 'passed' }] };
+    return { status: 'completed', workerResult: worker, evidence: [{ name: 'agent-worker-invoked', status: 'passed' }, { name: 'agent-queue-inspected', status: 'passed' }, { name: 'agent-work-executed', status: outcome.idle ? 'not-required' : 'passed' }] };
   }
   if (task.action === 'node-failover') {
     const result = resolveFailover(task.requirements ?? {});
