@@ -17,6 +17,15 @@ Global Campus handles institution/programme/module discovery and supplementary p
 - Curriculum alignment validation with evidence and explicit non-endorsement disclosure.
 - Tests for the critical trust and discovery rules.
 
+
+## Initial official curriculum source capture
+
+`data/za-curriculum-source-captures-2026-11.json` stages curriculum records from:
+- University of Cape Town, 2026 Commerce Undergraduate Handbook (BCom Financial Accounting: General Accounting, programme code CB001ACC08).
+- University of South Africa, official BEd Financial Accounting subject-combination page and FAC1502 module description.
+
+These records remain `needs-review`. They are not returned by verified-only student discovery and are not yet institutional endorsements or product alignments. A dedicated test checks source presence and confirms none are marked verified.
+
 ## Run tests
 
 From this directory:
