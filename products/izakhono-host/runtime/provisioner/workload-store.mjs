@@ -89,7 +89,8 @@ export function createWorkloadStore({ filePath }) {
           const leaseExpired = !item.worker_lease || Date.parse(item.worker_lease.expires_at) <= instant.getTime();
           const retryReady = !item.retry_after || Date.parse(item.retry_after) <= instant.getTime();
           const runnableState = ['REQUESTED', 'VALIDATING', 'PROVISIONING'].includes(item.state);
-          return runnableState && item.runtime_target_id && !item.execution_stage && leaseExpired && retryReady && Number(item.attempts || 0) < 5;
+          const recoverQueue = includeRuntimeVerified && item.state === 'PROVISIONING' && item.execution_stage === 'runtime-deployed-awaiting-data-pipeline';
+          return runnableState && item.runtime_target_id && (!item.execution_stage || recoverQueue) && leaseExpired && retryReady && Number(item.attempts || 0) < 5;
         });
         if (!candidate) return null;
         const attempted = { ...candidate, lease_count: (candidate.lease_count || 0) + 1 };
