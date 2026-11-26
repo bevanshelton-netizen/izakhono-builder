@@ -93,6 +93,16 @@ export interface Shot {
   generationPrompt?: string;
 }
 
+export interface MediaQaEvidence {
+  schema: 'izakhono.creator/media-qa-evidence-v1';
+  profileId: string;
+  passed: boolean;
+  assetContentHash: string;
+  recordedAt: string;
+  recordedBy: string;
+  checks: Array<{ id: string; passed: boolean; actual: string; expected: string }>;
+}
+
 export interface ProductionAsset {
   id: ProductionId;
   kind: MediaKind;
@@ -106,6 +116,8 @@ export interface ProductionAsset {
   storageKey?: string;
   contentHash?: string;
   mimeType?: string;
+  /** Machine QA evidence bound to the exact exported bytes by SHA-256. */
+  mediaQa?: MediaQaEvidence;
   width?: number;
   height?: number;
   durationSeconds?: number;
