@@ -30,3 +30,7 @@ The resource-policy module validates owner-defined budgets and conservatively bl
 - No external security review.
 
 Do not expose this prototype to a public network. Keep both listeners on loopback. The project must implement and test platform-specific enforcement and security before managing arbitrary user workloads.
+
+## Platform support boundaries
+
+The platform detector reports Windows, macOS and Linux as prototype-runtime targets, Android as experimental runtime-only, and iOS as not supported by this Node.js prototype. These labels do not imply installers, background services, OS-enforced quotas, isolation or network publishing. See [docs/PLATFORM-CAPABILITY-MATRIX.md](docs/PLATFORM-CAPABILITY-MATRIX.md) for the capability matrix and implementation sequence.
