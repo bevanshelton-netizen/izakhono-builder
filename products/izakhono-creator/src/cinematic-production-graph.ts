@@ -294,6 +294,53 @@ export function validateProductionGraph(project: CinematicProduction): GraphIssu
   return issues;
 }
 
+
+const requiredMediaQaCheckIds = [
+  'container-mp4', 'duration-positive', 'video-stream-present', 'video-stream-count',
+  'video-h264', 'video-dimensions', 'video-pixel-format', 'video-frame-rate',
+  'audio-stream-present', 'audio-stream-count', 'audio-aac', 'audio-sample-rate',
+  'audio-stereo', 'mp4-fast-start',
+];
+
+/**
+ * Attach machine QA evidence to the exact stored distribution-export asset.
+ * Failed QA is retained for audit; it can never be promoted to a passing record
+ * unless all required checks pass for the asset's current SHA-256.
+ */
+export function recordMediaQaEvidence(
+  project: CinematicProduction,
+  assetId: ProductionId,
+  evidence: MediaQaEvidence,
+): CinematicProduction {
+  const asset = project.assets.find(item => item.id === assetId);
+  if (!asset) throw new Error(`Unknown media QA asset: ${assetId}`);
+  if (asset.kind !== 'video' || asset.role !== 'distribution_export') {
+    throw new Error('Media QA evidence can only be recorded against a video distribution export.');
+  }
+  if (!asset.contentHash || !/^[a-f0-9]{64}$/i.test(asset.contentHash)) {
+    throw new Error('Distribution export must have a SHA-256 content hash before QA evidence is recorded.');
+  }
+  if (evidence.schema !== 'izakhono.creator/media-qa-evidence-v1') throw new Error('Unsupported media QA evidence schema.');
+  if (evidence.profileId !== 'facebook-reels-1080x1920-v1') throw new Error('Unsupported distribution profile for this QA record.');
+  if (evidence.assetContentHash.toLowerCase() !== asset.contentHash.toLowerCase()) {
+    throw new Error('Media QA evidence hash does not match the current distribution asset bytes.');
+  }
+  if (!evidence.recordedBy.trim() || !Number.isFinite(Date.parse(evidence.recordedAt))) {
+    throw new Error('Media QA evidence requires a worker identity and valid timestamp.');
+  }
+  const checks = new Map(evidence.checks.map(check => [check.id, check]));
+  if (checks.size !== evidence.checks.length || !requiredMediaQaCheckIds.every(id => checks.has(id))) {
+    throw new Error('Media QA evidence must contain every required Facebook profile check exactly once.');
+  }
+  const checksPassed = requiredMediaQaCheckIds.every(id => checks.get(id)?.passed === true);
+  if (evidence.passed !== checksPassed) throw new Error('Media QA overall result must agree with all required checks.');
+  return {
+    ...project,
+    assets: project.assets.map(item => item.id === assetId ? { ...item, mediaQa: { ...evidence, checks: evidence.checks.map(check => ({ ...check })) } } : item),
+    metadata: { ...project.metadata, updatedAt: evidence.recordedAt, version: project.metadata.version + 1 },
+  };
+}
+
 export function getRunnableTasks(project: CinematicProduction): ProductionTask[] {
   const completed = new Set(project.tasks.filter(x => x.status === 'completed').map(x => x.id));
   return project.tasks
