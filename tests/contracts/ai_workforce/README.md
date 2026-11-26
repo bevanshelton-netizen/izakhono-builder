@@ -152,3 +152,10 @@ services at their enforcement boundaries.
   hard-coded) digest algorithm identifiers. These are structural checks; a
   production API validator must additionally enforce the approved format,
   canonicalization, authorization and cross-record semantic rules.
+
+- Evidence API state/retry/error tests model tenant- and operation-family-scoped
+  idempotency, same-key fingerprint conflicts, legal ingest state transitions,
+  UNKNOWN reconciliation, terminal-state rules and safe error-envelope fields.
+  The tests are synthetic; they do not prove concurrent database uniqueness,
+  distributed crash consistency, actual FORTRESS re-authorization, durable
+  audit acknowledgement or storage-side disposition.
