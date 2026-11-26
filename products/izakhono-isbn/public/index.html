@@ -43,6 +43,31 @@ label{display:block;margin:12px 0;color:#b9c7d2}input,select{display:block;width
 <label>Publication date <input name="publication_date" type="date"></label>
 <button type="submit">Save edition</button>
 </form></section>
+<section><h2>Register an author or pen name</h2>
+<form id="author-form" class="card">
+<label>Display name <input name="display_name" required maxlength="250"></label>
+<label>Legal name (private record) <input name="legal_name" maxlength="250"></label>
+<label>Pen name? <select name="pen_name"><option value="0">No</option><option value="1">Yes</option></select></label>
+<label>Contact email <input name="email" type="email"></label>
+<button type="submit">Save author</button>
+</form></section>
+<section><h2>Credit a contributor on a book</h2>
+<form id="contributor-form" class="card">
+<label>Work <select name="work_id" id="contributor-work-select" required></select></label>
+<label>Author / pen name <select name="author_id" id="author-select" required></select></label>
+<label>Contribution <select name="contributor_role"><option>author</option><option>editor</option><option>translator</option><option>illustrator</option><option>narrator</option><option>compiler</option><option>other</option></select></label>
+<label>Display order <input name="display_order" type="number" min="1" max="1000" value="1"></label>
+<button type="submit">Link contributor</button>
+</form></section>
+<section><h2>Track legal deposit</h2>
+<form id="deposit-form" class="card">
+<label>Edition <select name="edition_id" id="deposit-edition-select" required></select></label>
+<label>Deposit recipient <input name="recipient" placeholder="Legal deposit library"></label>
+<label>Due date <input name="due_date" type="date"></label>
+<label>Deposit status <select name="status"><option value="not_started">Not started</option><option value="prepared">Prepared</option><option value="submitted">Submitted</option><option value="acknowledged">Acknowledged</option><option value="not_required">Not required</option></select></label>
+<label>Proof reference <input name="proof_ref" placeholder="Receipt or correspondence reference"></label>
+<button type="submit">Save deposit record</button>
+</form></section>
 <section><h2>Record an agency-allocated ISBN</h2>
 <p>Only enter an ISBN after the authorised agency has allocated it. Keep the allocation evidence reference with the record.</p>
 <form id="isbn-form" class="card">
@@ -170,6 +195,12 @@ label{display:block;margin:12px 0;color:#b9c7d2}input,select{display:block;width
       await connect();
     } catch (error) { formStatus.textContent = error.message; }
   });
+
+  document.getElementById("author-form").addEventListener("submit", async event => { event.preventDefault(); try { await post("/api/authors", formData(event.currentTarget)); formStatus.textContent="Author record saved."; event.currentTarget.reset(); await connect(); } catch (error) { formStatus.textContent=error.message; } });
+
+  document.getElementById("contributor-form").addEventListener("submit", async event => { event.preventDefault(); try { await post("/api/work-authors", formData(event.currentTarget)); formStatus.textContent="Contributor linked to work."; await connect(); } catch (error) { formStatus.textContent=error.message; } });
+
+  document.getElementById("deposit-form").addEventListener("submit", async event => { event.preventDefault(); try { await post("/api/legal-deposits", formData(event.currentTarget)); formStatus.textContent="Legal deposit record saved."; await connect(); } catch (error) { formStatus.textContent=error.message; } });
 
   document.getElementById("isbn-form").addEventListener("submit", async event => {
     event.preventDefault();
