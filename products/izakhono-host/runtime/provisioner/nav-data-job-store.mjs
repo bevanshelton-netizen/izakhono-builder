@@ -28,13 +28,13 @@ export function createNavDataJobStore({ filePath }) {
       return serialize(async()=>{ if(typeof workerId!=='string'||!/^[a-z0-9][a-z0-9-]{2,62}$/.test(workerId))throw new Error('workerId must be a stable lowercase identifier'); if(!Number.isInteger(leaseMs)||leaseMs<1000||leaseMs>300000)throw new Error('leaseMs must be between 1000 and 300000');
         const instant=now instanceof Date?now:new Date(now); if(!Number.isFinite(instant.getTime()))throw new Error('now must be a valid date'); const state=await read();
         const job=state.jobs.find(j=>['IMPORTING_DATA','VERIFYING'].includes(j.pipeline.state)&&j.attempts<5&&(!j.retryAfter||Date.parse(j.retryAfter)<=instant.getTime())&&(!j.lease||Date.parse(j.lease.expiresAt)<=instant.getTime()));
-        if(!job)return null; job.attempts++; job.retryAfter=null; job.lease={workerId,expiresAt:new Date(instant.getTime()+leaseMs).toISOString()}; await write(state); return job; });
+        if(!job)return null; job.attempts++; job.retryAfter=null; job.lease={workerId,leaseId:crypto.randomUUID(),expiresAt:new Date(instant.getTime()+leaseMs).toISOString()}; await write(state); return job; });
     },
-    async recordStage(id,workerId,stageId,evidence,now=new Date().toISOString()) {
-      return serialize(async()=>{const state=await read();const job=state.jobs.find(j=>j.id===id);if(!job)return null;if(job.lease?.workerId!==workerId||Date.parse(job.lease.expiresAt)<=Date.parse(now))throw new Error('NAV data-job lease is missing, expired or owned by another worker');job.pipeline=recordNavDataStage(job.pipeline,stageId,evidence,now);await write(state);return job;});
+    async recordStage(id,workerId,leaseId,stageId,evidence,now=new Date().toISOString()) {
+      return serialize(async()=>{const state=await read();const job=state.jobs.find(j=>j.id===id);if(!job)return null;if(job.lease?.workerId!==workerId||job.lease?.leaseId!==leaseId||Date.parse(job.lease.expiresAt)<=Date.parse(now))throw new Error('NAV data-job lease is missing, expired or owned by another worker');job.pipeline=recordNavDataStage(job.pipeline,stageId,evidence,now);await write(state);return job;});
     },
-    async release(id,workerId,{retryAfter=null,error=null,failedAt=null}={}) {
-      return serialize(async()=>{const state=await read();const job=state.jobs.find(j=>j.id===id);if(!job)return null;if(job.lease?.workerId!==workerId)throw new Error('NAV data-job lease is owned by another worker');job.lease=null;job.lastError=error?String(error).slice(0,240):null;
+    async release(id,workerId,leaseId,{retryAfter=null,error=null,failedAt=null}={}) {
+      return serialize(async()=>{const state=await read();const job=state.jobs.find(j=>j.id===id);if(!job)return null;if(job.lease?.workerId!==workerId||job.lease?.leaseId!==leaseId)throw new Error('NAV data-job lease is owned by another worker or has been superseded');job.lease=null;job.lastError=error?String(error).slice(0,240):null;
         if(error&&job.attempts>=5){job.pipeline={...job.pipeline,state:'FAILED',updatedAt:failedAt||new Date().toISOString(),failedAt:failedAt||new Date().toISOString()};job.retryAfter=null;}
         else job.retryAfter=retryAfter;
         await write(state);return job;});
