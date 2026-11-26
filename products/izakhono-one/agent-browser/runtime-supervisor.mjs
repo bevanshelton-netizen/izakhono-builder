@@ -1,3 +1,5 @@
+import { validateIsolationAttestation } from "./isolation-policy.mjs";
+
 const ALLOWED_METHODS = new Set(["navigate", "snapshot", "extract_text", "wait"]);
 const MAX_RESULT_BYTES = 64 * 1024;
 
@@ -22,7 +24,7 @@ function requiredFunction(value, name) {
  * Driver methods must be implemented by a separately reviewed isolation layer.
  * Calls are never retried. Any uncertain dispatch result quarantines the session.
  */
-export function createBrowserRuntimeSupervisor({ registry, driver, now = () => Date.now(), setTimer = setTimeout, clearTimer = clearTimeout } = {}) {
+export function createBrowserRuntimeSupervisor({ registry, driver, verifyIsolationSignature, now = () => Date.now(), setTimer = setTimeout, clearTimer = clearTimeout } = {}) {
   if (!registry || !driver || typeof now !== "function") throw new TypeError("registry, driver and now are required");
   for (const name of ["create", "probeReady", "dispatch", "terminateProcessTree", "destroyProfile", "closeIpc"]) {
     requiredFunction(driver[name], name);
@@ -76,8 +78,14 @@ export function createBrowserRuntimeSupervisor({ registry, driver, now = () => D
         const started = registry.start(sessionId, identity, { runtimeInstanceId: runtimeId });
         if (!started.ok) throw new Error(started.reason);
         runtimes.set(runtimeId, { sessionId, identity: Object.freeze({ ...identity }), policyVersion: session.policyVersion });
-        const ready = await driver.probeReady(runtimeId, Object.freeze({ sessionId, deadline: session.expiresAt }));
-        if (ready !== true) throw new Error("runtime_readiness_failed");
+        const attestation = await driver.probeReady(runtimeId, Object.freeze({ sessionId, deadline: session.expiresAt }));
+        const verified = validateIsolationAttestation(attestation, {
+          expectedSessionId: sessionId,
+          expectedRuntimeInstanceId: runtimeId,
+          expectedPolicyVersion: session.policyVersion,
+          verifySignature: verifyIsolationSignature
+        });
+        if (!verified.ok) throw new Error(verified.reason);
         const marked = registry.ready(sessionId, identity);
         if (!marked.ok) throw new Error(marked.reason);
         return { ok: true, runtimeInstanceId: runtimeId, state: marked.state };
