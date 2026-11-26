@@ -422,3 +422,26 @@ The private review queue is the next deterministic operations layer. It is not a
 - Evidence payloads are opaque references only. Raw identity documents, personal data, credentials and uploaded files must be held only by a future approved secure evidence-storage service; reviewer notes are references, not free-form personal-data fields.
 - Review decisions are immutable records with the case version, actor, FORTRESS decision, reason, evidence-request references, audit-event reference and timestamp. Corrections require a superseding decision, not editing history.
 - These functions validate conformance data only. They do not assign a real reviewer, call FORTRESS, verify a document, store evidence, notify a publisher or approve/list a publisher in production.
+
+
+## 19. Review service and integration boundary verification
+
+A provider-neutral application service now orchestrates private review reads and decisions through explicit ports:
+
+- The authorization port receives the authenticated principal, tenant scope, exact review resource and action permission. Authorization is checked before the case is read, so denied callers cannot use the review endpoint to enumerate case existence.
+- The service validates the returned authorization decision against the requesting principal, requested permission, policy version and decision timestamp. Caller-supplied permission strings are never treated as proof of authority.
+- The persistence port is required to atomically compare the expected version and commit the updated case, immutable decision, append-only audit event and idempotency receipt. A version race returns a conflict; a repeated idempotency key must replay the original result.
+- Reads and returned commit records are checked against the requested tenant scope. Cross-tenant cases are returned as not found.
+- The service is dependency-injected and has deterministic tests for authorization-first ordering, principal mismatch, exact permissions, tenant isolation and optimistic concurrency.
+
+### Verified FORTRESS / ID / DATABASE findings
+
+- FORTRESS's apps/izakhono-one/service-contracts.json names an identity service with tenant.create, user.create, role.assign, session.issue and session.revoke operations. This is a useful IZAKHONO ID capability contract, but the inspected file is a service catalogue, not an executable endpoint or SDK contract. No supported API route, request/response schema, service authentication method or decision/audit contract for those operations was verified in the inspected implementation.
+- FORTRESS apps/api/app/main.py includes local user authentication, JWT subject/organisation/role claims and a role hierarchy for FORTRESS's own product. That is not sufficient evidence that the API is the canonical IZAKHONO ID service or that it exposes resource-level publishing permissions. IDENTITY GUARD and partner API scopes remain risk-assessment interfaces, not application authorization.
+- The FORTRESS API uses SQLAlchemy with PostgreSQL DATABASE_URL and Alembic migrations for its own service database. It is not the marketplace's approved shared DATABASE service.
+- Builder's wrangler.jsonc declares a Cloudflare D1 binding named DB, and src/internal-repository.ts uses it for Builder project/repository records. That is a Builder-owned persistence boundary, not proof that D1 is the canonical IZAKHONO DATABASE service or approved for marketplace records.
+- Repository discovery did not identify a separate installed repository explicitly providing the canonical IZAKHONO DATABASE service. No marketplace migration or production persistence adapter is therefore added.
+
+### Composition and activation gate
+
+The review service remains unbound until the owner-approved IZAKHONO ID/FORTRESS authorization endpoint and canonical DATABASE adapter are identified. The service's ports are intentionally not wired to FORTRESS's local product login, the identity-risk endpoint, partner risk scopes, or Builder's D1 database. No credentials, external service connections, migrations, document storage or public review portal are created by this change.
