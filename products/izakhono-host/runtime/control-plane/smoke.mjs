@@ -56,6 +56,41 @@ try {
   if (page.statusCode !== 200 || !page.body.includes('smoke.example.test')) throw new Error(`site serving failed: status=${page.statusCode}; body=${page.body.slice(0,240)}`);
   const unauthorized = await fetch(base+'/api/sites');
   if (unauthorized.status !== 401) throw new Error('owner authorization boundary failed');
+
+  const denied = await fetch(base+'/api/workloads');
+  if (denied.status !== 401) throw new Error('workload API must reject unauthenticated requests');
+
+  const workloadSpec = {
+    workloadId: 'izakhono-nav',
+    workloadClass: 'navigation-platform',
+    logicalNodeId: 'NODE01',
+    releaseDigest: 'd'.repeat(64),
+    healthPath: '/health',
+    internalPort: 8080,
+    idempotencyKey: 'host-smoke-nav-release-0001'
+  };
+  const workloadCreated = await request('/api/workloads', {method:'POST',body:JSON.stringify(workloadSpec)});
+  if (workloadCreated.execution !== 'queued-awaiting-runtime-adapter' || workloadCreated.workload?.state !== 'REQUESTED') {
+    throw new Error('workload request must be durably queued without claiming runtime provisioning');
+  }
+  const workloadReplay = await request('/api/workloads', {method:'POST',body:JSON.stringify(workloadSpec)});
+  if (workloadReplay.created !== false || workloadReplay.workload?.id !== workloadCreated.workload.id) {
+    throw new Error('workload idempotency replay failed');
+  }
+  const workloadRead = await request('/api/workloads/'+workloadCreated.workload.id);
+  if (workloadRead.workload?.logical_node_id !== 'NODE01') throw new Error('workload lookup failed');
+  const blockedImport = await fetch(base+'/api/workloads/'+workloadCreated.workload.id+'/data-imports', {
+    method:'POST',
+    headers:{authorization:'Bearer '+token,'content-type':'application/json'},
+    body:'{}'
+  });
+  const blockedBody = await blockedImport.json();
+  if (blockedImport.status !== 409 || !String(blockedBody.error).includes('verified runtime deployment')) {
+    throw new Error('NAV data imports must be blocked until a runtime deployment is independently verified');
+  }
+  const dataJobs = await request('/api/nav-data-jobs');
+  if (!Array.isArray(dataJobs.jobs) || dataJobs.jobs.length !== 0) throw new Error('NAV data-job listing failed');
+
   const ask = await fetch(base+'/api/tls/ask?domain=smoke.example.test');
   if (!ask.ok) throw new Error('TLS admission failed');
   const booleanOnly = await fetch(base+'/api/sites/smoke_site/accept', {
