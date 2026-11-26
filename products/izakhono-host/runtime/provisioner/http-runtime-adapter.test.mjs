@@ -73,5 +73,5 @@ test('runtime backups require a valid checksum and positive size', async () => {
     baseUrl: 'https://runtime-fabric.example', token: 'test',
     fetchImpl: async () => ({ ok: true, json: async () => ({ backupId: 'backup-001', sha256: 'invalid', bytes: 100 }) })
   });
-  await assert.rejects(adapter.backup({ target: { id: 'nav-target-a' }, resource: { id: 'resource-001' } }), /BACKUP_SHA256_INVALID/);
+  await assert.rejects(adapter.backup({ target: { id: 'nav-target-a' }, resource: { id: 'resource-001' }, idempotencyKey: 'backup-run-0001' }), /BACKUP_SHA256_INVALID/);
 });
