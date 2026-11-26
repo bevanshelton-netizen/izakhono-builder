@@ -19,7 +19,7 @@ function attestation(overrides = {}) {
   ].map(key => [key, true]));
   return {
     sessionId: "session-1", runtimeInstanceId: "runtime-1", policyVersion: "policy-v1",
-    networkMode: "isolated-egress-proxy-only", controls, issuedAt: 1000, expiresAt: 2000,
+    networkMode: "isolated-egress-proxy-only", controls, issuedAt: Date.now() - 1000, expiresAt: Date.now() + 60_000,
     controllerIdentity: "izakhono-runtime-controller", signature: "trusted-test-signature",
     ...overrides
   };
