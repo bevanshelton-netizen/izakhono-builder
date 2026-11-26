@@ -3,10 +3,15 @@
 ## Delivered in this branch
 - Cloudflare Worker API foundation.
 - D1 schema for publisher, imprint, author, work, edition, ISBN, application and audit records.
-- ISBN-13 checksum validation; no ISBN generation/allocation.\n- ISBN validation regression tests and a repository test command.\n- Edition-level catalogue endpoint and corrected multi-edition dashboard rendering.\n- Removed caller-controlled audit actor and suppressed raw internal exception details in API responses.
+- ISBN-13 checksum validation; no ISBN generation/allocation.
+- ISBN validation regression tests and a repository test command.
+- Edition-level catalogue endpoint and corrected multi-edition dashboard rendering.
+- Removed caller-controlled audit actor and suppressed raw internal exception details in API responses.
 - Bearer-token protection for management endpoints.
 - CSV catalogue export.
-- Minimal private dashboard UI.
+- Private dashboard UI with work, edition and agency-allocated ISBN entry forms.
+- Edition-level catalogue showing the ISBN verification state.
+- Automated GitHub Actions test workflow for ISBN validation and fail-closed API checks.
 - Operating boundary and deployment runbook.
 
 ## Not yet complete / not claimed
