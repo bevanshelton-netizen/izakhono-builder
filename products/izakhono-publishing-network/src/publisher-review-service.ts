@@ -153,6 +153,9 @@ export class PublisherReviewService {
     const current = await this.ports.store.getCase(command.tenant, command.caseId);
     if (!current || !sameTenant(current.tenant, command.tenant)) throw new ReviewServiceError('REVIEW_CASE_NOT_FOUND');
     const now = this.clock();
+    const caseErrors = validateReviewCase(current, now);
+    if (caseErrors.length) throw new ReviewServiceError('REVIEW_CASE_INVALID', caseErrors.join(','));
+    const requestFingerprint = await fingerprint(command);
     const action: ReviewAction = {
       from: current.status, to: targetByAction[command.action], action: command.action,
       actor: this.toReviewAuthorization(authorization), occurredAt: now,
@@ -168,7 +171,7 @@ export class PublisherReviewService {
       ...current, status: action.to, updatedAt: now, version: current.version + 1,
     };
     const decision: Omit<ImmutableReviewDecision, 'auditEventRef'> = {
-      decisionId: `decision:${command.idempotencyKey}`, caseId: current.caseId,
+      decisionId: `decision:${requestFingerprint.slice(0, 32)}`, caseId: current.caseId,
       tenant: command.tenant, kind: command.action, actorPrincipalRef: authorization.principalRef,
       authorizationDecisionRef: authorization.decisionRef, reasonCode: command.reasonCode,
       reviewerNoteRef: command.reviewerNoteRef,
@@ -184,7 +187,7 @@ export class PublisherReviewService {
     const commit = await this.ports.store.commitMutation({
       tenant: command.tenant, caseId: command.caseId, expectedVersion: command.expectedVersion,
       nextCase, decision, audit, idempotencyKey: command.idempotencyKey,
-      requestFingerprint: await fingerprint(command),
+      requestFingerprint,
     });
     if (commit.status === 'conflict') throw new ReviewServiceError('REVIEW_VERSION_CONFLICT');
     if (!sameTenant(commit.reviewCase.tenant, command.tenant) || !sameTenant(commit.decision.tenant, command.tenant)) throw new ReviewServiceError('REVIEW_CASE_NOT_FOUND');
