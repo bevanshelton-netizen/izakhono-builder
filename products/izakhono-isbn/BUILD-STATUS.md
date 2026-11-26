@@ -3,6 +3,7 @@
 ## Delivered in this branch
 - Cloudflare Worker API foundation.
 - D1 schema for publisher, imprint, author, work, edition, ISBN, application and audit records.
+- Seeds the six first-season SELFHELP Stories titles as development works only; does not invent edition formats, author/pen-name assignments or ISBNs.
 - ISBN-13 checksum validation and digits-only canonicalisation; no ISBN generation/allocation.
 - Database-level SQLite triggers enforce ISBN-13 prefix/checksum, canonical storage, allocation authority/evidence and allocation dates before a record can be marked verified.
 - Migration integration test covers valid 978/979 numbers and rejects bad checksums, noncanonical formatting, missing evidence/dates and invalid updates.
