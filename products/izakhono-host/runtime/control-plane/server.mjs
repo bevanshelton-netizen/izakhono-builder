@@ -17,6 +17,7 @@ const SITES_DIR = path.join(DATA_DIR, 'sites');
 const ADMIN_TOKEN = process.env.HOST_RUNTIME_TOKEN || '';
 const workloadStore = createWorkloadStore({ filePath: path.join(DATA_DIR, 'workloads.json') });
 const navDataJobStore = createNavDataJobStore({ filePath: path.join(DATA_DIR, 'nav-data-jobs.json') });
+const navWorkerStatus = { runtimeEnabled: false, dataEnabled: false };
 if (!ADMIN_TOKEN) throw new Error('HOST_RUNTIME_TOKEN_REQUIRED');
 const MAX_REQUEST_BYTES = 10 * 1024 * 1024;
 const MAX_FILES = 200;
@@ -63,6 +64,7 @@ function startNavWorkers() {
         : null
     });
     startWorkerLoop('nav-runtime-worker', worker);
+    navWorkerStatus.runtimeEnabled = true;
     console.info('[nav-runtime-worker] enabled for the approved logical HOST target');
   }
 
@@ -74,6 +76,7 @@ function startNavWorkers() {
       workerId: 'host-nav-data-worker-01'
     });
     startWorkerLoop('nav-data-worker', worker);
+    navWorkerStatus.dataEnabled = true;
     console.info('[nav-data-worker] enabled for the approved NAV data adapter');
   }
 }
@@ -165,7 +168,7 @@ async function serveSite(req, res) {
 
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`);
-  if (req.method === 'GET' && url.pathname === '/health') return json(res, 200, {ok:true, service:'IZAKHONO HOST Runtime', version:'0.3.0'});
+  if (req.method === 'GET' && url.pathname === '/health') return json(res, 200, {ok:true, service:'IZAKHONO HOST Runtime', version:'0.3.0', navWorkers:{...navWorkerStatus}});
   if (req.method === 'GET' && url.pathname === '/api/tls/ask') {
     const site = await findSite(url.searchParams.get('domain') || '');
     return site ? json(res, 200, {ok:true,domain:site.domain}) : json(res, 403, {ok:false,error:'Domain is not provisioned'});
