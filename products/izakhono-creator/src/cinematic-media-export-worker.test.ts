@@ -30,8 +30,8 @@ const project: CinematicProduction = {
   approvals:[{id:'master-approval',gate:'master',status:'approved',approverId:'producer-1',decidedAt:'2026-11-26T08:00:00.000Z'}],
   metadata:{createdAt:'2026-11-26T00:00:00.000Z',updatedAt:'2026-11-26T00:00:00.000Z',ownerId:'owner-1',tags:[],version:1},
 };
-const store={async put(key:string,bytes:Uint8Array,metadata:{contentType:string;sha256:string}){storeCount++;assert.equal(key,'exports/facebook.mp4');assert.equal(bytes.byteLength,mp4.byteLength);assert.equal(metadata.contentType,'video/mp4');}};
-const request={masterAssetId:'master-1',exportTaskId:'export-task',outputAssetId:'distribution-1',outputPath:'/worker/distribution.mp4',objectKey:'exports/facebook.mp4',recordedBy:'worker-node-01'};
+const store={async put(key:string,bytes:Uint8Array,metadata:{contentType:string;sha256:string}){storeCount++;assert.equal(key,'projects/film-1/exports/facebook.mp4');assert.equal(bytes.byteLength,mp4.byteLength);assert.equal(metadata.contentType,'video/mp4');}};
+const request={masterAssetId:'master-1',exportTaskId:'export-task',outputAssetId:'distribution-1',outputPath:'/worker/distribution.mp4',objectKey:'projects/film-1/exports/facebook.mp4',recordedBy:'worker-node-01'};
 const resolve=async(key:string)=>{assert.equal(key,'masters/master-1.mp4');return '/worker/master.mp4';};
 const passed=await executeProductionDistributionExport(project,request,runtime,store,resolve,()=> '2026-11-26T09:00:00.000Z');
 assert.equal(passed.export.status,'qa_passed');
@@ -53,4 +53,12 @@ await assert.rejects(()=>executeProductionDistributionExport({...project,approva
 await assert.rejects(()=>executeProductionDistributionExport({...project,assets:project.assets.map(a=>({...a,provenance:{...a.provenance,licence:undefined}}))},request,runtime,store,resolve),/licence evidence/);
 await assert.rejects(()=>executeProductionDistributionExport({...project,assets:project.assets.map(a=>({...a,contentHash:'c'.repeat(64)}))},request,runtime,store,resolve),/do not match/);
 await assert.rejects(()=>executeProductionDistributionExport({...project,tasks:[{...project.tasks[0],status:'blocked',blockedReason:'dependencies'}]},request,runtime,store,resolve),/not runnable/);
+
+await assert.rejects(()=>executeProductionDistributionExport({
+  ...project,
+  tasks:[{...project.tasks[0],inputAssetIds:[]}],
+},request,runtime,store,resolve),/declared as an input/);
+await assert.rejects(()=>executeProductionDistributionExport(project,{
+  ...request,outputAssetId:'unsafe-key-export',objectKey:'projects/other-film/exports/out.mp4',
+},runtime,store,resolve),/project’s exports namespace/);
 console.log('IZAKHONO production-graph to FFmpeg distribution worker integration: PASS');
