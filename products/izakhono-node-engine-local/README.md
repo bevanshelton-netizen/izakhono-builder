@@ -34,3 +34,7 @@ Do not expose this prototype to a public network. Keep both listeners on loopbac
 ## Platform support boundaries
 
 The platform detector reports Windows, macOS and Linux as prototype-runtime targets, Android as experimental runtime-only, and iOS as not supported by this Node.js prototype. These labels do not imply installers, background services, OS-enforced quotas, isolation or network publishing. See [docs/PLATFORM-CAPABILITY-MATRIX.md](docs/PLATFORM-CAPABILITY-MATRIX.md) for the capability matrix and implementation sequence.
+
+## Resource enforcement preflight
+
+A read-only preflight contract now checks whether Linux cgroup v2 controllers appear available and explicitly keeps Windows/macOS enforcement marked unimplemented. Managed workload launch requires owner policy approval, verified OS enforcement and verified isolation; the current prototype does not launch arbitrary workloads. See [docs/RESOURCE-ENFORCEMENT-PREFLIGHT.md](docs/RESOURCE-ENFORCEMENT-PREFLIGHT.md).
