@@ -161,3 +161,8 @@ npm run creator:media-export:test
 ```
 
 The probe validator must be run against the actual rendered file's ffprobe JSON before a delivery can pass. A passing synthetic contract test is only a software test; it is not proof that a film file exists or passed media QA. The FFmpeg export profile does not create source footage, generate dialogue/music, or bypass generation, master or distribution approvals. External publication remains a separate authorised action.
+
+
+### Hash-bound distribution QA evidence
+
+The canonical production graph exposes `recordMediaQaEvidence(project, assetId, evidence)` to attach a media worker's machine-QA result to the exact video distribution-export asset. It requires the asset's current SHA-256, the Facebook Reels profile, a worker identity and timestamp, and every required profile check exactly once. Failed QA is retained for audit but cannot unlock distribution. The helper returns a new graph with an incremented version; callers remain responsible for authorised persistence. It does not write to production storage, publish media, or approve distribution.
