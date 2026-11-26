@@ -81,6 +81,12 @@ test('rejects unapproved OSM origins and unsafe artifact paths', () => {
     ...source, sourceUrl: 'https://example.com/africa/south-africa-latest.osm.pbf'
   }), /official Geofabrik/);
   assert.throws(() => recordNavDataStage(record, 'osm-source', {
+    ...source, sourceUrl: 'https://user:pass@download.geofabrik.de/africa/south-africa-latest.osm.pbf'
+  }), /official Geofabrik/);
+  assert.throws(() => recordNavDataStage(record, 'osm-source', {
+    ...source, sourceUrl: 'https://download.geofabrik.de:8443/africa/south-africa-latest.osm.pbf'
+  }), /official Geofabrik/);
+  assert.throws(() => recordNavDataStage(record, 'osm-source', {
     ...source, artifactPath: '../outside/sa.osm.pbf'
   }), /safe relative path/);
   const withSource = recordNavDataStage(record, 'osm-source', source);
