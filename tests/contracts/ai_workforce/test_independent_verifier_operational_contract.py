@@ -57,6 +57,22 @@ class FindingsLedger:
         raise PermissionError("findings are append-only")
 
 
+REQUIRED_SOURCES = {
+    "operation": "operations.read",
+    "fortress": "fortress.read",
+    "identity": "identity.read",
+    "runtime": "runtime.read",
+    "host": "host-receipts.read",
+    "evidence": "evidence.read",
+    "events": "events.read",
+    "audit": "audit.read",
+}
+REQUIRED_KEY_PURPOSES = {
+    "fortress-decision", "human-approval", "runtime-registration",
+    "host-receipt", "audit-checkpoint",
+}
+
+
 def verify(identity, sources, keys, profile, *, trusted_time_healthy=True,
            outcome_used_as_authorization=False):
     if not identity.active or not identity.read_only:
@@ -66,21 +82,40 @@ def verify(identity, sources, keys, profile, *, trusted_time_healthy=True,
         "host-receipts.read", "evidence.read", "events.read", "audit.read"
     } for aud in identity.audiences):
         return "REJECTED"
-    if not profile.profile_id or not profile.version:
+    if (not profile.profile_id or not profile.version
+            or not isinstance(profile.max_source_age_seconds, int)
+            or isinstance(profile.max_source_age_seconds, bool)
+            or profile.max_source_age_seconds < 0):
         return "REJECTED"
     if profile.require_trusted_time and not trusted_time_healthy:
         return "UNKNOWN"
     if not sources:
         return "UNKNOWN"
+    source_names = [source.source for source in sources]
+    if (len(source_names) != len(set(source_names))
+            or set(source_names) != set(REQUIRED_SOURCES)):
+        return "UNKNOWN"
+    if not set(REQUIRED_SOURCES.values()).issubset(identity.audiences):
+        return "REJECTED"
+    operation_ids = {source.operation_id for source in sources}
+    if len(operation_ids) != 1:
+        return "REJECTED"
     for source in sources:
-        if not source.authenticated:
+        if source.source not in REQUIRED_SOURCES or not source.authenticated:
             return "UNKNOWN"
         if source.tenant_id != identity.tenant_id:
             return "REJECTED"
-        if source.observed_age_seconds < 0 or source.observed_age_seconds > profile.max_source_age_seconds:
+        if (not isinstance(source.observed_age_seconds, int)
+                or isinstance(source.observed_age_seconds, bool)
+                or source.observed_age_seconds < 0
+                or source.observed_age_seconds > profile.max_source_age_seconds):
             return "UNKNOWN"
-        if source.operation_id != sources[0].operation_id:
-            return "REJECTED"
+    key_ids = [key.key_id for key in keys]
+    purposes = [key.purpose for key in keys]
+    if (not keys or len(key_ids) != len(set(key_ids))
+            or set(purposes) != REQUIRED_KEY_PURPOSES
+            or len(purposes) != len(set(purposes))):
+        return "REJECTED"
     for key in keys:
         if not key.trusted or key.revoked or not key.key_id or not key.purpose:
             return "REJECTED"
@@ -103,10 +138,17 @@ class IndependentVerifierOperationalContractTests(unittest.TestCase):
             SourceRecord("runtime", "tenant-a", "op-1"),
             SourceRecord("host", "tenant-a", "op-1"),
             SourceRecord("evidence", "tenant-a", "op-1"),
+            SourceRecord("identity", "tenant-a", "op-1"),
+            SourceRecord("events", "tenant-a", "op-1"),
             SourceRecord("audit", "tenant-a", "op-1"),
         ]
-        self.keys = [TrustKey("key-1", "fortress-decision"),
-                     TrustKey("key-2", "host-receipt")]
+        self.keys = [
+            TrustKey("key-1", "fortress-decision"),
+            TrustKey("key-2", "human-approval"),
+            TrustKey("key-3", "runtime-registration"),
+            TrustKey("key-4", "host-receipt"),
+            TrustKey("key-5", "audit-checkpoint"),
+        ]
         self.profile = VerificationProfile("baseline", "1.0")
 
     def test_accepts_scoped_read_only_identity_and_fresh_sources(self):
@@ -138,6 +180,17 @@ class IndependentVerifierOperationalContractTests(unittest.TestCase):
     def test_missing_sources_is_unknown(self):
         self.assertEqual(verify(self.identity, [], self.keys, self.profile), "UNKNOWN")
 
+    def test_incomplete_authoritative_source_set_is_unknown(self):
+        self.assertEqual(verify(self.identity, self.sources[:-1], self.keys, self.profile), "UNKNOWN")
+
+    def test_duplicate_authoritative_source_is_unknown(self):
+        sources = self.sources + [self.sources[0]]
+        self.assertEqual(verify(self.identity, sources, self.keys, self.profile), "UNKNOWN")
+
+    def test_missing_required_read_audience_is_rejected(self):
+        identity = VerifierIdentity("tenant-a", True, frozenset({"operations.read"}))
+        self.assertEqual(verify(identity, self.sources, self.keys, self.profile), "REJECTED")
+
     def test_unauthenticated_source_is_unknown(self):
         sources = list(self.sources)
         sources[0] = SourceRecord("operation", "tenant-a", "op-1", False)
@@ -166,11 +219,23 @@ class IndependentVerifierOperationalContractTests(unittest.TestCase):
         self.assertEqual(verify(self.identity, self.sources, keys, self.profile), "REJECTED")
 
     def test_missing_key_identity_is_rejected(self):
-        keys = [TrustKey("", "fortress-decision")]
+        keys = [TrustKey("", "fortress-decision")] + self.keys[1:]
+        self.assertEqual(verify(self.identity, self.sources, keys, self.profile), "REJECTED")
+
+    def test_missing_trust_key_purpose_is_rejected(self):
+        self.assertEqual(verify(self.identity, self.sources, self.keys[:-1], self.profile), "REJECTED")
+
+    def test_wrong_key_purpose_is_rejected(self):
+        keys = list(self.keys)
+        keys[-1] = TrustKey("key-5", "host-receipt")
         self.assertEqual(verify(self.identity, self.sources, keys, self.profile), "REJECTED")
 
     def test_missing_profile_version_is_rejected(self):
         profile = VerificationProfile("baseline", "")
+        self.assertEqual(verify(self.identity, self.sources, self.keys, profile), "REJECTED")
+
+    def test_invalid_profile_freshness_limit_is_rejected(self):
+        profile = VerificationProfile("baseline", "1.0", -1)
         self.assertEqual(verify(self.identity, self.sources, self.keys, profile), "REJECTED")
 
     def test_verifier_result_cannot_be_used_as_authorization(self):
