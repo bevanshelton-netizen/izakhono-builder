@@ -54,7 +54,7 @@ The adapter contract is intentionally provider-neutral. The concrete provider mu
 
 The trusted generic HTTP adapter is implemented in the HOST provisioner:
 - runtime operations use fixed routes under /v1/runtime-targets and require an explicitly approved target response;
-- data operations use fixed routes under /v1/nav-data for the five pipeline stages;
+- data operations use fixed routes under /v1/nav-data for the five pipeline stages plus GET /v1/nav-data/operations/{operationId} for durable completion polling;
 - provider calls require HTTPS except loopback development, bearer authentication, bounded timeouts, normalized errors and no-store responses;
 - provider URLs, credentials and target bindings are server-side environment configuration only.
 
@@ -67,7 +67,7 @@ The HOST control-plane process starts its bounded runtime and data worker loops 
 
 The workers run inside the same HOST process as the JSON stores. This preserves the stores' documented single-process/single-writer requirement. Do not scale the file-backed control plane to multiple replicas. A future multi-replica deployment must move workload and data-job state to a transactional shared database before scaling.
 
-The runtime worker verifies the deployed immutable digest and records runtime-deployed-awaiting-data-pipeline. The data worker then runs the Geofabrik source, Valhalla, Nominatim, PMTiles and service-acceptance stages. A workload becomes internally READY only after all five services and persistent-data health are verified. Public-live remains separately gated by backup/restore, HTTPS and DNS evidence.
+The runtime worker verifies the deployed immutable digest and records runtime-deployed-awaiting-data-pipeline. The data worker then runs the Geofabrik source, Valhalla, Nominatim, PMTiles and service-acceptance stages. Each stage uses an idempotent POST start operation that may return a durable operation ID; the worker stores that ID, releases its lease while the provider performs long-running imports, and polls the operation on a later pass. Waiting/polling does not consume failure retries. Provider operations must be idempotent by workload, immutable release digest and stage. A workload becomes internally READY only after all five services and persistent-data health are verified. Public-live remains separately gated by backup/restore, HTTPS and DNS evidence.
 
 ## Current status
 
