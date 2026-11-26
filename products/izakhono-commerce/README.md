@@ -49,7 +49,7 @@ npm test
 npm run check
 ```
 
-The migration is `migrations/0001_commerce_core.sql`.
+The migration is `migrations/0001_commerce_core.sql`. The integration suite uses Node 22's built-in `node:sqlite` module and an in-memory SQLite database; it introduces no third-party runtime or database dependency.
 
 ## Not implemented
 
