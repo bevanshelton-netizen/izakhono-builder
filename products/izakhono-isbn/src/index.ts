@@ -116,8 +116,7 @@ export default {
         const result = await db.prepare(`SELECT w.title,w.subtitle,w.language_code,e.edition_statement,e.format_code,e.publication_date,e.status,i.isbn13,i.verification_status,i.publisher_of_record FROM works w JOIN editions e ON e.work_id=w.id LEFT JOIN isbn_records i ON i.edition_id=e.id ORDER BY w.title,e.format_code`).all<Row>();
         const fields = ["title","subtitle","language_code","edition_statement","format_code","publication_date","status","isbn13","verification_status","publisher_of_record"];
         const lines = [fields.join(","), ...(result.results ?? []).map(row => fields.map(f => csvCell(row[f])).join(","))];
-        return new Response(lines.join("\r
-"), { headers: { "content-type": "text/csv; charset=utf-8", "content-disposition": 'attachment; filename="izakhono-publishing-catalogue.csv"', "cache-control": "no-store" } });
+        return new Response(lines.join("\\r\\n"), { headers: { "content-type": "text/csv; charset=utf-8", "content-disposition": 'attachment; filename="izakhono-publishing-catalogue.csv"', "cache-control": "no-store" } });
       }
       return env.ASSETS ? env.ASSETS.fetch(request) : error("not_found", 404);
     } catch (e) {
