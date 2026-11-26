@@ -47,7 +47,7 @@ All non-health routes are protected. Input validation, audit logging and explici
 ## Local development
 
 1. Create a D1 database and bind it as `DB` in `wrangler.jsonc`.
-2. Apply `migrations/0001_initial.sql` followed by `migrations/0002_seed_initial_publisher_and_application.sql`.
+2. Apply migrations in order: `0001_initial.sql`, `0002_seed_initial_publisher_and_application.sql`, then `0003_isbn_integrity_guards.sql`. The third migration adds database-level ISBN checksum/canonical-format and verification-evidence guards; the Worker also normalises accepted ISBNs to digits-only before storage.
 3. Set `ISBN_ADMIN_TOKEN` as a local secret.
 4. Run `npx wrangler dev --config products/izakhono-isbn/wrangler.jsonc`.
 
