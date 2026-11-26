@@ -53,7 +53,7 @@ function startNavWorkers() {
   if (runtimeUrl && runtimeToken && runtimeTargetId) {
     const adapterId = process.env.HOST_NAV_RUNTIME_ADAPTER_ID || 'host-runtime-http';
     const registry = createRuntimeAdapterRegistry();
-    registry.register(adapterId, createHttpRuntimeAdapter({ baseUrl: runtimeUrl, token: runtimeToken }));
+    registry.register(adapterId, createHttpRuntimeAdapter({ baseUrl: runtimeUrl, token: runtimeToken, timeoutMs: 110000 }));
     const worker = createWorkloadWorker({
       store: workloadStore,
       adapterRegistry: registry,
