@@ -314,7 +314,7 @@ export function recordMediaQaEvidence(
 ): CinematicProduction {
   const asset = project.assets.find(item => item.id === assetId);
   if (!asset) throw new Error(`Unknown media QA asset: ${assetId}`);
-  if (asset.kind !== 'video' || asset.role !== 'distribution_export') {
+  if (asset.kind !== 'video' || asset.role !== 'distribution_export' || asset.status !== 'completed' || !asset.storageKey?.trim()) {
     throw new Error('Media QA evidence can only be recorded against a video distribution export.');
   }
   if (!asset.contentHash || !/^[a-f0-9]{64}$/i.test(asset.contentHash)) {
@@ -336,7 +336,7 @@ export function recordMediaQaEvidence(
   if (evidence.passed !== checksPassed) throw new Error('Media QA overall result must agree with all required checks.');
   return {
     ...project,
-    assets: project.assets.map(item => item.id === assetId ? { ...item, mediaQa: { ...evidence, checks: evidence.checks.map(check => ({ ...check })) } } : item),
+    assets: project.assets.map(item => item.id === assetId ? { ...item, mediaQa: { ...evidence, assetContentHash: evidence.assetContentHash.toLowerCase(), checks: evidence.checks.map(check => ({ ...check })) } } : item),
     metadata: { ...project.metadata, updatedAt: evidence.recordedAt, version: project.metadata.version + 1 },
   };
 }
