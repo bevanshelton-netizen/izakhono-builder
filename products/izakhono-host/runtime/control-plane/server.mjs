@@ -56,6 +56,7 @@ function startNavWorkers() {
     const worker = createWorkloadWorker({
       store: workloadStore,
       adapterRegistry: registry,
+      navDataJobStore,
       workerId: 'host-nav-runtime-worker-01',
       resolveBinding: async record => record.runtime_target_id === runtimeTargetId
         ? { adapterId, runtimeTargetId }
