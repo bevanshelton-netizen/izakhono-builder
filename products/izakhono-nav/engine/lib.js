@@ -18,13 +18,45 @@ export function clientId(req) {
   return req.socket?.remoteAddress || 'unknown';
 }
 
+export function corsHeaders(origin) {
+  if (!origin || !config.allowedOrigins.includes(origin)) return {};
+  return {
+    'access-control-allow-origin': origin,
+    'vary': 'origin',
+    'access-control-allow-methods': 'GET,OPTIONS',
+    'access-control-allow-headers': 'content-type',
+  };
+}
+
 const buckets = new Map();
+const MAX_RATE_BUCKETS = 10_000;
+const CLEANUP_EVERY = 256;
+let rateLimitCalls = 0;
+
 export function rateAllowed(id, now = Date.now()) {
   const key = String(id || 'unknown');
   let bucket = buckets.get(key);
-  if (!bucket || now - bucket.start >= config.rateLimit.windowMs) bucket = { start: now, count: 0 };
+
+  if (!bucket || now - bucket.start >= config.rateLimit.windowMs) {
+    bucket = { start: now, count: 0 };
+  }
+
   bucket.count += 1;
+  // Refresh insertion order so the size cap evicts the least recently used key.
+  buckets.delete(key);
   buckets.set(key, bucket);
+
+  rateLimitCalls += 1;
+  if (rateLimitCalls % CLEANUP_EVERY === 0 || buckets.size > MAX_RATE_BUCKETS) {
+    for (const [candidate, entry] of buckets) {
+      if (now - entry.start >= config.rateLimit.windowMs) buckets.delete(candidate);
+    }
+  }
+
+  while (buckets.size > MAX_RATE_BUCKETS) {
+    buckets.delete(buckets.keys().next().value);
+  }
+
   return bucket.count <= config.rateLimit.max;
 }
 
