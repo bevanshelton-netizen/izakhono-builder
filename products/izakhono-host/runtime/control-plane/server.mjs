@@ -123,7 +123,8 @@ const server = http.createServer(async (req, res) => {
       if (workload.state !== 'PROVISIONING' || workload.execution_stage !== 'runtime-deployed-awaiting-data-pipeline' || !workload.runtime_target_id) {
         return json(res, 409, { ok: false, error: 'NAV data import requires a verified runtime deployment and approved HOST target binding' });
       }
-      const result = await navDataJobStore.create({ workloadId: workload.workload_id, releaseDigest: workload.release_digest });
+      const result = await navDataJobStore.create({ workloadId: workload.workload_id, workloadRecordId: recordId, releaseDigest: workload.release_digest });
+      if (workload.state === 'PROVISIONING') await workloadStore.transition(recordId, 'IMPORTING_DATA', { dataJobId: result.job.id });
       return json(res, result.created ? 202 : 200, { ok: true, created: result.created, execution: 'queued-awaiting-nav-data-worker', job: result.job });
     } catch (error) {
       return json(res, 400, { ok: false, error: error?.message || 'Invalid NAV data import request' });
