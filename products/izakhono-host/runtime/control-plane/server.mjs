@@ -4,6 +4,11 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { createWorkloadStore } from '../provisioner/workload-store.mjs';
 import { createNavDataJobStore } from '../provisioner/nav-data-job-store.mjs';
+import { createRuntimeAdapterRegistry } from '../provisioner/runtime-adapter-contract.mjs';
+import { createWorkloadWorker } from '../provisioner/workload-worker.mjs';
+import { createNavDataWorker } from '../provisioner/nav-data-worker.mjs';
+import { createHttpRuntimeAdapter } from '../provisioner/http-runtime-adapter.mjs';
+import { createHttpNavDataAdapter } from '../provisioner/nav-data-http-adapter.mjs';
 
 const PORT = Number(process.env.PORT || 8080);
 const DATA_DIR = process.env.DATA_DIR || '/data';
@@ -16,6 +21,61 @@ const MAX_FILES = 200;
 const MAX_FILE_BYTES = 512 * 1024;
 const MAX_TOTAL_BYTES = 8 * 1024 * 1024;
 const MAX_BODY_BYTES = MAX_TOTAL_BYTES + 1024 * 1024;
+
+let shuttingDown = false;
+function startWorkerLoop(name, worker) {
+  const run = async () => {
+    if (shuttingDown) return;
+    try {
+      const result = await worker.runOnce();
+      if (result.processed) console.info(`[${name}] pass complete; terminal=${Boolean(result.terminal)}`);
+    } catch {
+      console.error(`[${name}] pass failed; see provider audit record`);
+    }
+    if (!shuttingDown) {
+      const timer = setTimeout(run, 5000);
+      timer.unref();
+    }
+  };
+  const timer = setTimeout(run, 1000);
+  timer.unref();
+}
+
+function startNavWorkers() {
+  const runtimeUrl = process.env.HOST_NAV_RUNTIME_ADAPTER_URL || '';
+  const runtimeToken = process.env.HOST_NAV_RUNTIME_ADAPTER_TOKEN || '';
+  const runtimeTargetId = process.env.HOST_NAV_RUNTIME_TARGET_ID || '';
+  const dataUrl = process.env.HOST_NAV_DATA_ADAPTER_URL || runtimeUrl;
+  const dataToken = process.env.HOST_NAV_DATA_ADAPTER_TOKEN || runtimeToken;
+
+  if (runtimeUrl && runtimeToken && runtimeTargetId) {
+    const adapterId = process.env.HOST_NAV_RUNTIME_ADAPTER_ID || 'host-runtime-http';
+    const registry = createRuntimeAdapterRegistry();
+    registry.register(adapterId, createHttpRuntimeAdapter({ baseUrl: runtimeUrl, token: runtimeToken }));
+    const worker = createWorkloadWorker({
+      store: workloadStore,
+      adapterRegistry: registry,
+      workerId: 'host-nav-runtime-worker-01',
+      resolveBinding: async record => record.runtime_target_id === runtimeTargetId
+        ? { adapterId, runtimeTargetId }
+        : null
+    });
+    startWorkerLoop('nav-runtime-worker', worker);
+    console.info('[nav-runtime-worker] enabled for the approved logical HOST target');
+  }
+
+  if (dataUrl && dataToken) {
+    const worker = createNavDataWorker({
+      store: navDataJobStore,
+      workloadStore,
+      adapter: createHttpNavDataAdapter({ baseUrl: dataUrl, token: dataToken }),
+      workerId: 'host-nav-data-worker-01'
+    });
+    startWorkerLoop('nav-data-worker', worker);
+    console.info('[nav-data-worker] enabled for the approved NAV data adapter');
+  }
+}
+
 
 async function loadState() {
   await fs.mkdir(SITES_DIR, { recursive: true });
@@ -247,4 +307,9 @@ const server = http.createServer(async (req, res) => {
   return json(res,404,{ok:false,error:'Not found'});
 });
 
-server.listen(PORT, '0.0.0.0', () => console.log(`IZAKHONO HOST Runtime listening on ${PORT}`));
+server.on('close', () => { shuttingDown = true; });
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(`IZAKHONO HOST Runtime listening on ${PORT}`);
+  try { startNavWorkers(); }
+  catch { console.error('[nav-workers] disabled; provider configuration is invalid'); }
+});
