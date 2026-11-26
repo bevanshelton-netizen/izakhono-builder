@@ -28,3 +28,9 @@ From this directory's parent package:
 ```sh
 npm run browser-policy
 ```
+
+## Runtime supervisor and isolation gate
+
+The session registry and runtime supervisor are dependency-free reference contracts. The supervisor requires a trusted signature verifier and a controller-signed isolation attestation before it marks a runtime ready. The attestation must bind the session, runtime instance and policy version and assert the full isolation control set.
+
+The isolation policy is a fail-closed acceptance gate, not a sandbox implementation. Test signatures and fake drivers are used only in unit tests. No production controller, signing key, container, Chromium process, seccomp profile, firewall, DNS proxy or network egress control has been deployed. Do not interpret a passing fake-driver test as evidence of operating-system isolation.
