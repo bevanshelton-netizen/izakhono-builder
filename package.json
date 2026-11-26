@@ -78,7 +78,9 @@
     "code-agent:typecheck": "tsc --noEmit --target ES2022 --lib ES2022,DOM --module ESNext --moduleResolution Bundler products/izakhono-code-agent/src/index.ts products/izakhono-code-agent/src/worker.ts",
     "code-agent:runner-check": "node --check products/izakhono-code-agent/runner/server.mjs",
     "code-agent:runner-test": "node products/izakhono-code-agent/runner/server.test.mjs",
-    "code-agent:dry-run": "npx --yes wrangler@4.127.1 deploy --dry-run --config products/izakhono-code-agent/wrangler.jsonc"
+    "code-agent:dry-run": "npx --yes wrangler@4.127.1 deploy --dry-run --config products/izakhono-code-agent/wrangler.jsonc",
+    "publishing:marketplace:test": "npx --yes tsx@4.20.3 products/izakhono-publishing-network/src/marketplace-contracts.test.ts",
+    "publishing:marketplace:typecheck": "npx --yes typescript@5.9.2 --noEmit --target ES2022 --lib ES2022,DOM --module NodeNext --moduleResolution NodeNext products/izakhono-publishing-network/src/marketplace-contracts.ts products/izakhono-publishing-network/src/marketplace-contracts.test.ts"
   },
   "dependencies": {
     "wrangler": "4.127.1"
