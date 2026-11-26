@@ -380,3 +380,33 @@ Before any customer/publisher portal, API or database adapter is implemented, th
 A cross-repository check of `bevanshelton-netizen/SHELTON-FORTRESS` confirms that FORTRESS IDENTITY GUARD currently describes an explainable identity-risk layer around authentication performed by an authorised upstream system. Its documented `POST /api/v1/identity/risk` and `GET /api/v1/identity/events` interfaces assess and expose risk decisions; the documentation explicitly assumes banks already authenticate their customers and employees.
 
 For this marketplace, those risk interfaces may become a supplementary FORTRESS signal after their service authentication, tenant scope and data contract are verified. They must not be mistaken for a complete marketplace login, session, membership, role, delegation or per-resource authorization API. The FORTRESS product remains the intended canonical authority in the IZAKHONO architecture; the current implementation gap is to locate or define its approved application access-control interface, not to substitute another identity system.
+
+
+## 17. Publisher onboarding and verification workflow
+
+The first operational workflow is now defined as a pure, testable state machine. It does not create accounts, contact publishers, resolve DNS, fetch websites or persist evidence.
+
+### Lifecycle
+`draft → submitted → identity_review → domain_verification → editorial_review → approved → listed`
+
+Review may reject a submission. Approved/listed publishers may be suspended or expired; suspended/expired profiles can re-enter review. There is no direct transition from a submitted or review-stage publisher to public listing.
+
+### Evidence gates before approval
+- Legal identity evidence, with source and evidence reference.
+- Authorised representative evidence tied to a principal reference.
+- Exact primary-domain control evidence.
+- Editorial policy evidence and explicit publisher acceptance.
+- Confirmation that the publisher retains final editorial control.
+- Acceptance of the paid-content disclosure policy.
+- Reviewer principal and FORTRESS authorization-decision provenance for verified evidence.
+
+Evidence records carry observation time, optional expiry, verifier principal, authorization-decision reference and status. Missing, stale or unprovenanced evidence cannot satisfy approval gates. Domain normalization rejects URLs, paths and wildcard primary domains; a future DNS/HTTP challenge adapter must prove control of the normalized exact domain before recording verified evidence.
+
+### Metrics and publisher claims
+Traffic/audience metrics are separate evidence types. They require a source, reference, observation date and freshness expiry. Undated, future-dated or stale metrics are rejected by the contract. Metrics are descriptive evidence, not ranking promises, and must retain provider/source scope and limitations in the eventual presentation.
+
+### Authorization and integration boundary
+Every state transition requires a principal reference, FORTRESS authorization-decision reference and the permission appropriate to the action. This contract validates those fields; a future service must obtain the decision from the approved FORTRESS access-control interface for the current actor, tenant and publisher resource. No browser-supplied permission or self-asserted verification status is authoritative.
+
+### Implementation boundary
+No public publisher registration form, login, email verification, DNS challenge, external analytics connection, document upload, moderation console, database migration or public directory has been activated. Those require the canonical FORTRESS application authorization interface, approved DATABASE adapter, secure evidence storage, privacy/legal review and operational ownership. The current onboarding state machine and tests are the conformance specification for that implementation.
