@@ -150,7 +150,8 @@ export function validateNode01DockerPlan(plan) {
   const hasPair = (flag, value) => argv.filter(arg => arg === flag).length === 1 && argv[argv.indexOf(flag) + 1] === value;
   for (const required of ["--read-only", "--cap-drop", "ALL", "--user", "10001:10001",
     "--pull=never", "--init", "--tmpfs", `/tmp:rw,nosuid,nodev,size=${plan.limits?.tmpfsBytes}`,
-    "--tmpfs", `/home/browser:rw,nosuid,nodev,size=${plan.limits?.tmpfsBytes}`]) {
+    "--tmpfs", `/home/browser:rw,nosuid,nodev,size=${plan.limits?.tmpfsBytes}`,
+    "--tmpfs", `/dev/shm:rw,nosuid,nodev,size=${plan.limits?.tmpfsBytes}`]) {
     if (!argv.includes(required)) return { ok: false, reason: "required_docker_hardening_missing" };
   }
   if (argv.filter(arg => arg === "--security-opt").length !== 2 ||
