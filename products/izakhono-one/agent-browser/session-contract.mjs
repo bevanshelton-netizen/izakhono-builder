@@ -1,8 +1,8 @@
 const TERMINAL = new Set(["DENIED", "FAILED", "EXPIRED", "CANCELLED", "CLOSED", "QUARANTINED"]);
 const TRANSITIONS = Object.freeze({
-  REQUESTED: new Set(["AUTHORISED", "DENIED", "CANCELLED"]),
+  REQUESTED: new Set(["AUTHORISED", "DENIED", "CANCELLED", "EXPIRED"]),
   AUTHORISED: new Set(["STARTING", "CANCELLED", "EXPIRED"]),
-  STARTING: new Set(["READY", "FAILED", "CANCELLED", "QUARANTINED"]),
+  STARTING: new Set(["READY", "FAILED", "CANCELLED", "EXPIRED", "QUARANTINED"]),
   READY: new Set(["RUNNING", "CLOSING", "CANCELLED", "EXPIRED", "QUARANTINED"]),
   RUNNING: new Set(["READY", "CLOSING", "CANCELLED", "EXPIRED", "QUARANTINED"]),
   CLOSING: new Set(["CLOSED", "QUARANTINED"]),
@@ -199,7 +199,7 @@ export function createBrowserSessionRegistry({
       const current = now();
       if (!Number.isInteger(request.deadline) || request.deadline <= current ||
           request.deadline > current + maxRequestMs) return { ok: false, reason: "invalid_request_deadline" };
-      if (request.method === "navigate" && (typeof request.url !== "string" || request.url.length > 2048)) {
+      if (request.method !== "navigate" && request.url !== undefined) return { ok: false, reason: "unexpected_request_argument" };\n      if (request.method !== "extract_text" && request.textOffset !== undefined) return { ok: false, reason: "unexpected_request_argument" };\n      if (request.method !== "wait" && request.timeoutMs !== undefined) return { ok: false, reason: "unexpected_request_argument" };\n      if (request.method === "navigate" && (typeof request.url !== "string" || request.url.length > 2048)) {
         return { ok: false, reason: "invalid_navigation_target" };
       }
       if (request.method === "extract_text" && request.textOffset !== undefined &&
