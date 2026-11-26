@@ -107,6 +107,7 @@ export function buildNode01DockerPlan({
   return Object.freeze({
     platform: "NODE01-WINDOWS-WSL2-UBUNTU-DOCKER-ENGINE",
     containerName: name,
+    imageReference,
     networkPrerequisite: Object.freeze({
       networkName: isolatedNetworkName,
       mustBeInternal: true,
@@ -145,9 +146,35 @@ export function validateNode01DockerPlan(plan) {
   if (!Array.isArray(argv) || argv.some(arg => typeof arg !== "string" || arg.includes("\0"))) {
     return { ok: false, reason: "invalid_docker_argv" };
   }
+  const hasPair = (flag, value) => argv.filter(arg => arg === flag).length === 1 && argv[argv.indexOf(flag) + 1] === value;
   for (const required of ["--read-only", "--cap-drop", "ALL", "--user", "10001:10001",
-    "--network", plan.networkPrerequisite.networkName, "--pull=never", "--init"]) {
+    "--pull=never", "--init", "--tmpfs", "/tmp:rw,nosuid,nodev,size=134217728",
+    "--tmpfs", "/home/browser:rw,nosuid,nodev,size=134217728"]) {
     if (!argv.includes(required)) return { ok: false, reason: "required_docker_hardening_missing" };
+  }
+  if (!hasPair("--security-opt", "no-new-privileges") ||
+      !hasPair("--security-opt", `seccomp=${plan.seccompPrerequisite?.profilePath}`) ||
+      !hasPair("--ipc", "private") || !hasPair("--cgroupns", "private") ||
+      !hasPair("--network", plan.networkPrerequisite?.networkName) ||
+      !hasPair("--proxy-server", "http://invalid")) {
+    if (!argv.includes(`--proxy-server=http://${plan.networkPrerequisite?.proxyHost}:${plan.networkPrerequisite?.proxyPort}`)) {
+      return { ok: false, reason: "required_docker_hardening_missing" };
+    }
+    if (!hasPair("--security-opt", "no-new-privileges") ||
+        !hasPair("--security-opt", `seccomp=${plan.seccompPrerequisite?.profilePath}`) ||
+        !hasPair("--ipc", "private") || !hasPair("--cgroupns", "private") ||
+        !hasPair("--network", plan.networkPrerequisite?.networkName)) {
+      return { ok: false, reason: "required_docker_hardening_missing" };
+    }
+  }
+  if (!SHA256_IMAGE.test(plan.imageReference ?? "") || !argv.includes(plan.imageReference) ||
+      !argv.includes("--disable-quic") || argv.includes("--no-sandbox") ||
+      !plan.seccompPrerequisite?.mustBeInstalledAndReviewed) {
+    return { ok: false, reason: "image_or_browser_policy_mismatch" };
+  }
+  const envValues = argv.flatMap((arg, index) => arg === "--env" ? [argv[index + 1]] : []);
+  if (envValues.length !== 3 || !["HOME=/home/browser", "LANG=C.UTF-8", "TZ=UTC"].every(value => envValues.includes(value))) {
+    return { ok: false, reason: "unexpected_container_environment" };
   }
   const forbidden = new Set(["-v", "--volume", "--mount", "--privileged", "--cap-add", "--device", "--publish", "-p", "--add-host", "--dns", "--env-file", "--entrypoint", "--network=host", "--pid=host", "--ipc=host", "--uts=host", "--userns=host", "--security-opt=seccomp=unconfined", "--read-only=false"]);
   if (argv.some(arg => arg === "-v" || arg === "--volume" || arg === "--mount" || arg.startsWith("--mount=") || arg.startsWith("--volume="))) {
