@@ -31,7 +31,7 @@ const hasVerifiedFacebookQa = (asset: ProductionAsset): boolean => {
   const qa = asset.mediaQa;
   if (!qa || qa.schema !== 'izakhono.creator/media-qa-evidence-v1' || !qa.passed) return false;
   if (qa.profileId !== 'facebook-reels-1080x1920-v1') return false;
-  if (!asset.contentHash || !/^[a-f0-9]{64}$/i.test(asset.contentHash) || qa.assetContentHash !== asset.contentHash) return false;
+  if (!asset.contentHash || !/^[a-f0-9]{64}$/i.test(asset.contentHash) || qa.assetContentHash.toLowerCase() !== asset.contentHash.toLowerCase()) return false;
   if (!qa.recordedAt || !Number.isFinite(Date.parse(qa.recordedAt)) || !qa.recordedBy?.trim()) return false;
   if (!Array.isArray(qa.checks)) return false;
   const checks = new Map<string, (typeof qa.checks)[number]>();
@@ -104,7 +104,7 @@ export function buildProductionManifest(project: CinematicProduction, generatedA
   for (const task of project.tasks) entries.push({ id: task.id, category: 'task', label: task.kind, state: stateForTask(task), relatedIds: [...task.inputAssetIds,...task.outputAssetIds,...(task.shotId?[task.shotId]:[])], details: [`status=${task.status}`,task.evidence ? 'Completion evidence recorded' : 'No completion evidence',task.errorMessage ?? ''] .filter(Boolean) });
   for (const approval of project.approvals) entries.push({ id: approval.id, category: 'approval', label: `${approval.gate} approval`, state: approval.status === 'approved' ? 'complete' : approval.status === 'rejected' ? 'blocked' : 'missing', relatedIds: [], details: [`status=${approval.status}`,approval.approverId ? `approver=${approval.approverId}` : 'Approver not recorded',approval.decidedAt ? `decidedAt=${approval.decidedAt}` : 'Decision timestamp not recorded'] });
   const masterAssets = project.assets.filter(asset => asset.role === 'master' && asset.kind === 'video' && asset.status === 'completed' && Boolean(asset.storageKey || asset.contentHash));
-  const exportAssets = project.assets.filter(asset => asset.role === 'distribution_export' && asset.kind === 'video' && asset.status === 'completed' && Boolean(asset.storageKey || asset.contentHash));
+  const exportAssets = project.assets.filter(asset => asset.role === 'distribution_export' && asset.kind === 'video' && asset.status === 'completed' && Boolean(asset.storageKey?.trim() && asset.contentHash && /^[a-f0-9]{64}$/i.test(asset.contentHash)));
   const verifiedExportAssets = exportAssets.filter(hasVerifiedFacebookQa);
   entries.push({ id: 'master-delivery', category: 'export', label: 'Approved master video', state: masterAssets.length ? 'complete' : 'missing', relatedIds: masterAssets.map(asset=>asset.id), details: masterAssets.length ? ['Master asset and storage evidence recorded', 'Verify Facebook profile metadata and run media QA against the actual export'] : ['No completed, stored master video asset'] });
   entries.push({
