@@ -30,4 +30,55 @@ small{color:#9eb3c1}.pill{display:inline-block;padding:5px 9px;border-radius:30p
 <section><h2>Catalogue</h2><p id="status">Management API is not yet connected. This private dashboard becomes operational after the D1 database, admin secret and access policy are configured.</p><table><thead><tr><th>Title</th><th>Format</th><th>Publication status</th><th>ISBN status</th></tr></thead><tbody id="catalogue"><tr><td colspan="4">No live catalogue connection.</td></tr></tbody></table></section>
 <small>Internal publishing operations • Release candidate only • Not an ISBN agency</small>
 </main>
+<script>
+(() => {
+  const tokenKey = "izakhono_isbn_admin_token";
+  const status = document.getElementById("status");
+  const body = document.getElementById("catalogue");
+  async function connect() {
+    let token = sessionStorage.getItem(tokenKey);
+    if (!token) {
+      token = window.prompt("Enter the private IZAKHONO registry access token:");
+      if (!token) return;
+      sessionStorage.setItem(tokenKey, token);
+    }
+    const headers = { Authorization: "Bearer " + token };
+    try {
+      const [dash, works, editions, applications] = await Promise.all([
+        fetch("/api/dashboard", {headers}),
+        fetch("/api/works", {headers}),
+        fetch("/api/editions", {headers}),
+        fetch("/api/applications", {headers})
+      ]);
+      if ([dash, works, editions, applications].some(r => r.status === 401)) {
+        sessionStorage.removeItem(tokenKey);
+        status.textContent = "Access token rejected. Reload and enter the correct token.";
+        return;
+      }
+      if (![dash, works, editions, applications].every(r => r.ok)) throw new Error("Registry API is not configured yet.");
+      const [d,w,e,a] = await Promise.all([dash.json(),works.json(),editions.json(),applications.json()]);
+      document.getElementById("works").textContent = d.works;
+      document.getElementById("editions").textContent = d.editions;
+      document.getElementById("isbns").textContent = d.verifiedIsbns;
+      document.getElementById("applications").textContent = d.openApplications;
+      const editionMap = new Map(e.items.map(x => [x.work_id, x]));
+      body.innerHTML = "";
+      for (const work of w.items) {
+        const edition = editionMap.get(work.id);
+        const tr = document.createElement("tr");
+        for (const value of [work.title, edition?.format_code || "—", edition?.status || work.publication_status, "Pending agency allocation"]) {
+          const td = document.createElement("td");
+          td.textContent = value;
+          tr.appendChild(td);
+        }
+        body.appendChild(tr);
+      }
+      status.textContent = "Connected securely. " + a.items.length + " agency application record(s) loaded.";
+    } catch (err) {
+      status.textContent = err.message + " The release remains private and non-production.";
+    }
+  }
+  connect();
+})();
+</script>
 </body></html>
