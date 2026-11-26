@@ -25,9 +25,13 @@ export function classifyAgentWorkerResult(result) {
     return { status: 'waiting', reason: 'agent-work-remains-queued', planId: queued?.planId || null };
   }
 
-  if (result.status === 'progressed' && Number(result.progressed) > 0 && plans.length > 0 && plans.every((plan) => plan.status === 'completed')) {
-    return { status: 'completed' };
+  if (result.status === 'idle' && plans.every((plan) => plan.status === 'completed')) {
+    return { status: 'completed', idle: true, reason: 'agent-queue-inspected-no-ready-work' };
   }
 
-  return { status: 'waiting', reason: result.status === 'idle' ? 'agent-queue-empty-or-no-ready-work' : `unconfirmed-agent-worker-status:${result.status || 'missing'}` };
+  if (result.status === 'progressed' && Number(result.progressed) > 0 && plans.length > 0 && plans.every((plan) => plan.status === 'completed')) {
+    return { status: 'completed', idle: false };
+  }
+
+  return { status: 'waiting', reason: `unconfirmed-agent-worker-status:${result.status || 'missing'}` };
 }
