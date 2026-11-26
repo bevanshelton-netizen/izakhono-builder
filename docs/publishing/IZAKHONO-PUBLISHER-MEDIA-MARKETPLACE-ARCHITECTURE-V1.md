@@ -347,3 +347,18 @@ The following require evidence and accountable owner approval before implementat
 - initial support coverage and service-level commitments.
 
 No default decision may silently turn these unresolved items into customer-facing promises.
+
+
+## 15. Persistence adapter and mutation boundary contracts
+
+The executable persistence-boundary contracts define the minimum envelope expected of a future storage adapter. They are conformance rules, not a database implementation or a replacement for FORTRESS.
+
+- Every record and idempotency receipt is scoped to both the canonical platform and entity identifiers. A mismatched scope is rejected before a storage adapter returns or mutates a record.
+- Every write carries a FORTRESS authorization decision reference, principal reference, exact permission, policy version and decision timestamp. The adapter must obtain that decision from FORTRESS for the current principal, tenant, resource and action; validating a supplied reference is not authorization.
+- Writes carry an expected record version. A stale writer receives a conflict rather than silently overwriting a newer version.
+- Idempotency is scoped to tenant, operation and key. The same key and request fingerprint replays the original result; reusing the key with a different operation or fingerprint conflicts.
+- Approval records bind the exact content asset and SHA-256 content hash to the approving principal, FORTRESS decision, purpose, timestamp and audit reference. Corrections are represented by a superseding approval; historical approval evidence is not edited in place.
+- Audit events identify tenant, principal, authorization decision, action, subject, version boundary, timestamp and correlation reference. The eventual store must be append-only for these events.
+- Creation and update timestamps are not substitutes for audit evidence. A mutation must carry an audit-event reference and commit the record change and audit evidence atomically, or use a documented recoverable outbox protocol.
+
+No database engine, migration, authentication middleware, runtime endpoint or adapter is selected by these contracts. Before persistence implementation, inspect and reuse the canonical DATABASE and FORTRESS integration patterns, establish transactional audit semantics, and obtain architecture/security review. PAY remains authoritative for payment state; no local payment ledger is introduced.
