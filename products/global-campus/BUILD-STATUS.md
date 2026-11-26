@@ -17,7 +17,7 @@
 
 ## Verification state
 
-The code and tests are committed to the feature branch. GitHub Actions run 7 (Global Campus CI) completed successfully on 26 November 2026. After adding the source-capture dataset and its tests, Global Campus CI run 12 was queued at the latest inspection; its final result has not yet been observed. Broader repository workflows were also still running.
+The code and tests are committed to the feature branch. GitHub Actions run 7 (Global Campus CI) completed successfully on 26 November 2026. After adding the source-capture dataset and its tests, GitHub Actions Global Campus CI run 12 completed successfully on 26 November 2026. The catalogue, importer and source-capture test suite passed. Broader repository workflows were also still running.
 
 The front-end is a local static prototype, not a deployed production website. The PostgreSQL schema is a migration file only; it has not been applied to any database. No production endpoint, payment integration, institution partnership or live curriculum catalogue has been activated.
 
