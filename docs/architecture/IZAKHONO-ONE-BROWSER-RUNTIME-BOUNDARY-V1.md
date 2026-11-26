@@ -163,10 +163,10 @@ Adoption decision:
 | Gate | Required evidence | Current status |
 |---|---|---|
 | A. Read-only policy | URL/task schemas and negative tests | Initial policy and fixture adapter authored; latest CI confirmation pending |
-| B. Session contract | Lifecycle, identity, protocol and audit contract | Specified by this document |
-| C. Runtime isolation | Disposable browser process/container, no shared mounts or host control | Not implemented |
+| B. Session contract | Lifecycle, identity, protocol and audit contract | In-memory reference state machine and deterministic tests authored; durable service not implemented |
+| C. Runtime isolation | Disposable browser process/container, no shared mounts or host control | Supervisor orchestration contract authored against an injected driver; no OS process/container or Chromium runtime implemented |
 | D. Network enforcement | DNS/IP pinning, full destination filtering and egress firewall | Not implemented; public browsing disabled |
-| E. Cancellation and cleanup | Deadline, process-tree termination, profile destruction, quarantine tests | Specified; not implemented |
+| E. Cancellation and cleanup | Deadline, process-tree termination, profile destruction, quarantine tests | Supervisor contract and fake-driver tests authored; real process-tree termination and profile destruction not implemented or verified |
 | F. Security verification | Adversarial tests, dependency review, threat model and independent review | Not started |
 | G. Controlled pilot | Explicit approval, bounded test environment and rollback evidence | Not authorised |
 
@@ -175,3 +175,13 @@ Adoption decision:
 This document authorises no spending, subscription, package installation, container image pull, compute provisioning, account connection, credential handling, production browser launch, deployment, DNS change, merge or production migration.
 
 The session-contract increment is now present as a dependency-free in-memory reference state machine with deterministic Node test cases. It binds sessions to owner, task and execution environment; checks policy version and request deadlines; permits only the read-only request methods; correlates completions; and requires explicit process-tree, profile and IPC cleanup confirmation. It is a contract/test harness, not a durable production session manager or runtime supervisor. CI validation for the latest commit remains unconfirmed. Any dependency, host runtime, infrastructure or production change requires separate explicit approval.
+
+## 12. Runtime supervisor reference implementation
+
+A dependency-free reference supervisor now exists at `products/izakhono-one/agent-browser/runtime-supervisor.mjs`. It accepts an injected runtime driver and coordinates the existing session registry. The narrow driver contract exposes only runtime creation, readiness probing, bounded read-only dispatch, process-tree termination, profile destruction and IPC closure. It does not expose shell execution, arbitrary host commands or generic IPC.
+
+The supervisor binds a runtime instance to the authorised session, owner, task and execution environment; rejects write-capable methods and policy-version mismatches; enforces request deadlines and result-size bounds; and does not retry uncertain dispatches. A lost bridge response, timeout or oversized result quarantines the session and triggers cleanup. Cleanup evidence separately records process-tree, profile and IPC outcomes. Incomplete cleanup retains a quarantine record.
+
+The implementation is deliberately a reference orchestration contract. The injected driver is not yet implemented. No operating-system process, container, Chromium instance, network namespace, firewall, DNS resolver or browser profile was created or tested. The current fake-driver tests verify orchestration decisions only; they do not prove operating-system isolation or safe network egress.
+
+The browser policy test command now includes the supervisor suite. CI for the current head must be checked before describing any suite as passing. This increment authorises no dependency installation, container image pull, runtime launch, infrastructure spend or deployment.
