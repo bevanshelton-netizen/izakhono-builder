@@ -1,0 +1,43 @@
+{
+  "apiVersion": "hosting.izakhono.africa/provider-discovery-v1",
+  "kind": "ProviderReadOnlyDiscovery",
+  "providerId": "synthetic-provider",
+  "adapterVersion": "0.1.0",
+  "retrievedAt": "2026-11-26T00:00:00Z",
+  "readOnly": true,
+  "capabilities": {
+    "regions": ["test-region"],
+    "resourceTypes": ["vps", "dedicated"],
+    "network": {
+      "staticIPv4": {"value": null, "evidenceStatus": "unknown", "evidenceReference": null},
+      "ipv6": {"value": null, "evidenceStatus": "unknown", "evidenceReference": null},
+      "reverseDnsControl": {"value": null, "evidenceStatus": "unknown", "evidenceReference": null},
+      "inboundTcpPorts": {"value": null, "evidenceStatus": "unknown", "evidenceReference": null},
+      "outboundTcpPorts": {"value": null, "evidenceStatus": "unknown", "evidenceReference": null}
+    },
+    "mail": {
+      "selfHostedMailPermitted": {"value": null, "evidenceStatus": "unknown", "evidenceReference": null},
+      "commercialMultiTenantMailPermitted": {"value": null, "evidenceStatus": "unknown", "evidenceReference": null},
+      "smtpPort25": {"value": null, "evidenceStatus": "unknown", "evidenceReference": null}
+    },
+    "storage": {
+      "persistentBlockStorage": {"value": null, "evidenceStatus": "unknown", "evidenceReference": null},
+      "snapshotSupport": {"value": null, "evidenceStatus": "unknown", "evidenceReference": null},
+      "performanceEvidence": {"value": null, "evidenceStatus": "unknown", "evidenceReference": null}
+    },
+    "backups": {"value": null, "evidenceStatus": "unknown", "evidenceReference": null},
+    "apiProvisioning": {"value": null, "evidenceStatus": "unknown", "evidenceReference": null}
+  },
+  "resources": [
+    {
+      "resourceId": "synthetic-resource-unallocated",
+      "resourceType": "vps",
+      "sku": "synthetic-test-shape",
+      "region": "test-region",
+      "state": "unknown",
+      "capacity": {"vcpus": null, "memoryGiB": null, "storageGiB": null},
+      "evidenceReferences": []
+    }
+  ],
+  "warnings": ["Synthetic fixture only; not a real provider response or availability claim."]
+}
