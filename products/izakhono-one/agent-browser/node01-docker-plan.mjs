@@ -148,6 +148,7 @@ export function validateNode01DockerPlan(plan) {
     return { ok: false, reason: "invalid_docker_argv" };
   }
   const hasPair = (flag, value) => argv.filter(arg => arg === flag).length === 1 && argv[argv.indexOf(flag) + 1] === value;
+  const hasOptionPair = (flag, value) => argv.some((arg, index) => arg === flag && argv[index + 1] === value);
   for (const required of ["--read-only", "--cap-drop", "ALL", "--user", "10001:10001",
     "--pull=never", "--init", "--tmpfs", `/tmp:rw,nosuid,nodev,size=${plan.limits?.tmpfsBytes}`,
     "--tmpfs", `/home/browser:rw,nosuid,nodev,size=${plan.limits?.tmpfsBytes}`,
@@ -158,8 +159,8 @@ export function validateNode01DockerPlan(plan) {
       argv.filter(arg => arg === "--tmpfs").length !== 3 ||
       argv.filter(arg => arg === "--user").length !== 1 ||
       argv.filter(arg => arg === "--cap-drop").length !== 1 ||
-      !hasPair("--security-opt", "no-new-privileges") ||
-      !hasPair("--security-opt", `seccomp=${plan.seccompPrerequisite?.profilePath}`) ||
+      !hasOptionPair("--security-opt", "no-new-privileges") ||
+      !hasOptionPair("--security-opt", `seccomp=${plan.seccompPrerequisite?.profilePath}`) ||
       !hasPair("--ipc", "private") || !hasPair("--cgroupns", "private") ||
       !hasPair("--network", plan.networkPrerequisite?.networkName) ||
       !argv.includes(`--proxy-server=http://${plan.networkPrerequisite?.proxyHost}:${plan.networkPrerequisite?.proxyPort}`)) {
