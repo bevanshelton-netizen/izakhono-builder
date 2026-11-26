@@ -54,10 +54,14 @@ export function verifySignedReleaseApproval({
 
   const key = keyring?.[statement.keyId];
   if (!key || !key.publicKey) return fail('unknown_key');
+  if (typeof key.principal !== 'string' || !key.principal.trim()) return fail('key_principal_missing');
+  if (key.principal !== statement.approvedBy) return fail('principal_key_mismatch');
+  for (const field of ['revokedAt', 'notBefore', 'notAfter']) {
+    if (key[field] !== undefined && key[field] !== null && !validTimestamp(key[field])) return fail('invalid_key_lifecycle_timestamp');
+  }
   if (key.revokedAt && Date.parse(key.revokedAt) <= now) return fail('revoked_key');
   if (key.notBefore && Date.parse(key.notBefore) > now + clockSkewMs) return fail('key_not_yet_valid');
   if (key.notAfter && Date.parse(key.notAfter) <= now) return fail('key_expired');
-  if (key.principal && key.principal !== statement.approvedBy) return fail('principal_key_mismatch');
 
   const scopeFields = ['repository', 'commitSha', 'workload', 'environment', 'action'];
   for (const field of scopeFields) {
