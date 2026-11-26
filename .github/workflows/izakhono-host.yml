@@ -41,6 +41,8 @@ jobs:
         run: npm --prefix products/izakhono-host run typecheck
       - name: Wrangler dry run
         run: npx wrangler deploy --dry-run --config products/izakhono-host/wrangler.jsonc
+      - name: Test owned DNS database invariants
+        run: python -m unittest discover -s products/izakhono-host/tests -p 'test_*.py' -v
       - name: Validate shell gates
         shell: bash
         run: |

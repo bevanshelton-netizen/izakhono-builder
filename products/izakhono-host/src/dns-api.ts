@@ -6,7 +6,8 @@ interface D1Statement {
   all<T = any>(): Promise<{ results?: T[] }>;
   run(): Promise<unknown>;
 }
-interface D1 { prepare(sql: string): D1Statement; }
+interface D1Result<T = any> { results?: T[]; success?: boolean; meta?: unknown; }
+interface D1 { prepare(sql: string): D1Statement; batch<T = any>(statements: D1Statement[]): Promise<D1Result<T>[]>; }
 interface DnsEnv { DB: D1; }
 
 const TYPES = new Set<DnsRecordType>(['A','AAAA','CNAME','MX','TXT','SRV','CAA']);
@@ -24,10 +25,10 @@ function validateNameserver(value: string): string {
   return name;
 }
 
-async function audit(env: DnsEnv, customerId: string, zoneId: string, action: string, details: unknown) {
-  await env.DB.prepare(
+function auditStatement(env: DnsEnv, zoneId: string, action: string, details: unknown): D1Statement {
+  return env.DB.prepare(
     'INSERT INTO dns_audit_events(id,zone_id,action,actor,details_json,created_at) VALUES(?,?,?,?,?,CURRENT_TIMESTAMP)'
-  ).bind(id('dns_evt'), zoneId, action, 'owner-api', JSON.stringify(details).slice(0, 8000)).run();
+  ).bind(id('dns_evt'), zoneId, action, 'owner-api', JSON.stringify(details).slice(0, 8000));
 }
 
 async function ownedZone(env: DnsEnv, zoneId: string, customerId: string) {
@@ -35,13 +36,16 @@ async function ownedZone(env: DnsEnv, zoneId: string, customerId: string) {
     .bind(zoneId, customerId).first<any>();
 }
 
-async function bumpSerial(env: DnsEnv, zoneId: string, customerId: string): Promise<number> {
+function serialStatement(env: DnsEnv, zoneId: string, customerId: string): D1Statement {
   const base = Number(new Date().toISOString().slice(0, 10).replaceAll('-', '') + '01');
-  const updated = await env.DB.prepare(
+  return env.DB.prepare(
     'UPDATE dns_zones SET serial=CASE WHEN serial>=? THEN serial+1 ELSE ? END,updated_at=CURRENT_TIMESTAMP WHERE id=? AND customer_id=? RETURNING serial'
-  ).bind(base, base, zoneId, customerId).first<{ serial: number }>();
-  if (!updated) throw new Error('Zone serial update failed');
-  return Number(updated.serial);
+  ).bind(base, base, zoneId, customerId);
+}
+function returnedSerial(result: D1Result<{ serial: number }> | undefined): number {
+  const serial = Number(result?.results?.[0]?.serial);
+  if (!Number.isSafeInteger(serial) || serial < 1) throw new Error('Zone serial update failed');
+  return serial;
 }
 
 /**
@@ -79,10 +83,12 @@ export async function handleDnsApi(req: Request, env: DnsEnv, url: URL): Promise
     if (!customer) return json({ ok: false, error: 'Customer not found' }, 404);
     const zoneId = id('zone');
     try {
-      await env.DB.prepare(
-        'INSERT INTO dns_zones(id,customer_id,zone_name,status,serial,primary_nameserver,secondary_nameserver,created_at,updated_at) VALUES(?,?,?,\'planned\',1,?,?,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)'
-      ).bind(zoneId, customerId, zoneName, primary, secondary).run();
-      await audit(env, customerId, zoneId, 'zone.created', { zone_name: zoneName, status: 'planned' });
+      await env.DB.batch([
+        env.DB.prepare(
+          'INSERT INTO dns_zones(id,customer_id,zone_name,status,serial,primary_nameserver,secondary_nameserver,created_at,updated_at) VALUES(?,?,?,\'planned\',1,?,?,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)'
+        ).bind(zoneId, customerId, zoneName, primary, secondary),
+        auditStatement(env, zoneId, 'zone.created', { zone_name: zoneName, status: 'planned' })
+      ]);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Zone creation failed';
       return json({ ok: false, error: message.includes('UNIQUE') ? 'Zone already exists' : message }, 409);
@@ -116,9 +122,12 @@ export async function handleDnsApi(req: Request, env: DnsEnv, url: URL): Promise
     const record = await env.DB.prepare('SELECT * FROM dns_records WHERE id=? AND zone_id=?')
       .bind(recordId, zoneId).first<any>();
     if (!record) return json({ ok: false, error: 'Record not found' }, 404);
-    await env.DB.prepare('DELETE FROM dns_records WHERE id=? AND zone_id=?').bind(recordId, zoneId).run();
-    const serial = await bumpSerial(env, zoneId, customerId);
-    await audit(env, customerId, zoneId, 'record.deleted', { record_id: recordId, serial });
+    const results = await env.DB.batch([
+      env.DB.prepare('DELETE FROM dns_records WHERE id=? AND zone_id=?').bind(recordId, zoneId),
+      serialStatement(env, zoneId, customerId),
+      auditStatement(env, zoneId, 'record.deleted', { record_id: recordId })
+    ]);
+    const serial = returnedSerial(results[1] as D1Result<{ serial: number }> | undefined);
     return json({ ok: true, deleted: recordId, serial, publication: 'not-published' });
   }
 
@@ -161,11 +170,14 @@ async function handleRecordRequest(req: Request, env: DnsEnv, zoneId: string, cu
   const recordId = id('rec');
   let serial: number;
   try {
-    serial = await bumpSerial(env, zoneId, customerId);
-    await env.DB.prepare(
-      'INSERT INTO dns_records(id,zone_id,name,type,ttl,priority,value,proxied,enabled,created_at,updated_at) VALUES(?,?,?,?,?,?,?,0,1,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)'
-    ).bind(recordId, zoneId, name, type, ttl, priority ?? null, value).run();
-    await audit(env, customerId, zoneId, 'record.created', { record_id: recordId, name, type, ttl, serial });
+    const results = await env.DB.batch([
+      serialStatement(env, zoneId, customerId),
+      env.DB.prepare(
+        'INSERT INTO dns_records(id,zone_id,name,type,ttl,priority,value,proxied,enabled,created_at,updated_at) VALUES(?,?,?,?,?,?,?,0,1,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)'
+      ).bind(recordId, zoneId, name, type, ttl, priority ?? null, value),
+      auditStatement(env, zoneId, 'record.created', { record_id: recordId, name, type, ttl })
+    ]);
+    serial = returnedSerial(results[0] as D1Result<{ serial: number }> | undefined);
   } catch (error) {
     return json({ ok: false, error: error instanceof Error ? error.message : 'Record creation failed' }, 409);
   }

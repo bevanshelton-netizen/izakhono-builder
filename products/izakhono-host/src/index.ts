@@ -1,5 +1,5 @@
 interface D1PreparedStatement { bind(...values: unknown[]): D1PreparedStatement; first<T = any>(): Promise<T | null>; all<T = any>(): Promise<{ results?: T[] }>; run(): Promise<unknown>; }
-interface D1Database { prepare(query: string): D1PreparedStatement; }
+interface D1Database { prepare(query: string): D1PreparedStatement; batch<T = any>(statements: D1PreparedStatement[]): Promise<Array<{ results?: T[]; success?: boolean; meta?: unknown }>>; }
 interface Fetcher { fetch(request: Request): Promise<Response>; }
 
 import { applyCloudflareDns, provisionOwnedSite, type HostProviderEnv } from './providers';
