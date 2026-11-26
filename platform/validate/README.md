@@ -13,6 +13,8 @@ This directory contains read-only validation and planning tools for service mani
 - `schemas/provider-readonly-discovery.schema.json` — normalized supplier capability/resource response contract with explicit evidence quality.
 - `provider_discovery.py` — read-only adapter protocol and offline fixture adapter; no live provider client or mutation method is implemented.
 - `fixtures/providers/` — synthetic discovery response; all unknown mail, networking and availability facts remain unknown.
+- `schemas/supplier-evaluation.schema.json` and `supplier_evaluate.py` — exact-SKU, role-specific hard-gate evaluation and evidence-backed weighted comparison.
+- `fixtures/suppliers/` — synthetic-only scoring example; not a real supplier or recommendation.
 - `tests/` — regression tests for validation and planning policy.
 
 ## Run locally
@@ -24,6 +26,7 @@ python -m pip install 'jsonschema==4.23.0'
 python platform/validate/validate.py
 python -m unittest discover -s platform/validate/tests -v
 python platform/validate/inventory_plan.py --service platform/validate/fixtures/services/caddy-staging.json --host-dir platform/validate/fixtures/hosts --environment staging --role staging-app
+python platform/validate/supplier_evaluate.py --input-dir platform/validate/fixtures/suppliers
 python scripts/architecture/check-node01-identity.py
 ```
 
@@ -55,6 +58,10 @@ The planner multiplies CPU and memory by replica count and sums persistent stora
 The provider adapter protocol exposes only `discover_capabilities()` and `list_resources()`. The offline `FixtureProviderAdapter` reads a local synthetic JSON fixture and makes no network calls. Future live adapters must use provider-enforced read-only credentials, bounded request timeouts, explicit pagination/rate-limit handling and auditable source references. Do not implement create, resize, delete, reboot, DNS, firewall, shell or mail-routing operations in this discovery layer.
 
 Every capability uses an evidence status: `verified`, `supplier-claimed`, `unknown`, or `not-applicable`. Unknown values remain null; supplier claims are not promoted to verified. In particular, TCP 25, reverse DNS/PTR, static IPv4 and commercial self-hosted multi-tenant mail permission remain unknown until supported by evidence. A resource state of `available` is only a provider-reported observation and does not reserve capacity or approve a host for deployment.
+
+## Supplier comparison
+
+Run the supplier evaluator against a directory containing one JSON evaluation per exact SKU. It applies mandatory role-specific gates before scoring and requires verified evidence references for every gate and weighted category. Supplier-claimed or unknown evidence blocks eligibility or ranking. The weights are technical fit 20, mail suitability 20, security/control 15, resilience/recovery 15, cost/contract clarity 15, portability/exit 10, and support/location 5. Mail, DNS-secondary and backup roles have additional hard gates. The result always records `purchasePermitted: false`; no aggregate score authorizes a pilot, purchase or deployment. See `docs/architecture/IZAKHONO-HOST-SUPPLIER-EVIDENCE-COMPARISON-ENGINE-V1.md` for the decision model.
 
 ## Safety properties
 
