@@ -65,7 +65,7 @@ test("exposes explicit start, inspect, kill and removal commands without shell s
 
 test("rejects injected privilege, host-network and security-profile overrides", () => {
   const plan = buildNode01DockerPlan(base);
-  assert.equal(validateNode01DockerPlan({ ...plan, createArgv: [...plan.createArgv, "--privileged"] }).reason, "host_mount_forbidden");
-  assert.equal(validateNode01DockerPlan({ ...plan, createArgv: [...plan.createArgv, "--network=host"] }).reason, "host_mount_forbidden");
-  assert.equal(validateNode01DockerPlan({ ...plan, createArgv: [...plan.createArgv, "seccomp=unconfined"] }).reason, "host_mount_forbidden");
+  assert.equal(validateNode01DockerPlan({ ...plan, createArgv: [...plan.createArgv, "--privileged"] }).reason, "unsafe_container_override");
+  assert.equal(validateNode01DockerPlan({ ...plan, createArgv: [...plan.createArgv, "--network=host"] }).reason, "unsafe_container_override");
+  assert.equal(validateNode01DockerPlan({ ...plan, createArgv: [...plan.createArgv, "seccomp=unconfined"] }).reason, "unsafe_container_override");
 });
