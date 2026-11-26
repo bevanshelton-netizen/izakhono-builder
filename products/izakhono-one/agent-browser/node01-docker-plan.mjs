@@ -150,8 +150,12 @@ export function validateNode01DockerPlan(plan) {
     if (!argv.includes(required)) return { ok: false, reason: "required_docker_hardening_missing" };
   }
   const forbidden = new Set(["-v", "--volume", "--mount", "--privileged", "--cap-add", "--device", "--publish", "-p", "--add-host", "--dns", "--env-file", "--entrypoint", "--network=host", "--pid=host", "--ipc=host", "--uts=host", "--userns=host", "--security-opt=seccomp=unconfined", "--read-only=false"]);
-  if (argv.some(arg => forbidden.has(arg) || arg.startsWith("--mount=") || arg.startsWith("--volume=") || arg.startsWith("--device=") || arg.startsWith("--cap-add=")) || argv.includes("seccomp=unconfined") || argv.includes("no-new-privileges:false")) {
+  if (argv.some(arg => arg === "-v" || arg === "--volume" || arg === "--mount" || arg.startsWith("--mount=") || arg.startsWith("--volume="))) {
     return { ok: false, reason: "host_mount_forbidden" };
+  }
+  if (argv.some(arg => forbidden.has(arg) || arg.startsWith("--device=") || arg.startsWith("--cap-add=")) ||
+      argv.includes("seccomp=unconfined") || argv.includes("no-new-privileges:false")) {
+    return { ok: false, reason: "unsafe_container_override" };
   }
   if (plan.networkPrerequisite.mustBeInternal !== true ||
       plan.networkPrerequisite.onlyPeer !== "approved-egress-proxy" ||
