@@ -54,8 +54,8 @@ export function createHttpRuntimeAdapter(config) {
       const result = await client.request('POST', '/v1/runtime-targets/' + encodeURIComponent(target.id) + '/workloads/' + encodeURIComponent(requireId(resource.id, 'RUNTIME_RESOURCE_ID')) + '/backup', {}, signal);
       return {
         backupId: requireId(result.backupId, 'BACKUP_ID'),
-        sha256: String(result.sha256 || '').toLowerCase(),
-        bytes: Number(result.bytes)
+        sha256: /^[a-f0-9]{64}$/i.test(String(result.sha256 || '')) ? String(result.sha256).toLowerCase() : (() => { throw new Error('BACKUP_SHA256_INVALID'); })(),
+        bytes: Number.isSafeInteger(result.bytes) && result.bytes > 0 ? result.bytes : (() => { throw new Error('BACKUP_SIZE_INVALID'); })()
       };
     },
 
