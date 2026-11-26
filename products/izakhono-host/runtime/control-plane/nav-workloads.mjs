@@ -87,7 +87,7 @@ export function createNavWorkloadController({ dataDir, provider = null, now = ()
 
   async function handle(req, res, url, readBody, sendJson) {
     const prefix = '/api/workloads/nav';
-    if (!url.pathname.startsWith(prefix)) return false;
+    if (url.pathname !== prefix && !url.pathname.startsWith(prefix + '/')) return false;
     if (req.method === 'GET' && url.pathname === prefix) {
       const state = await load();
       sendJson(res, 200, { ok: true, workloads: state.workloads, jobs: state.jobs.slice(-50) });
