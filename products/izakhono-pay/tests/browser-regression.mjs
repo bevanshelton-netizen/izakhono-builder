@@ -111,6 +111,8 @@ try {
   const device = await deviceContext.newPage();
   const browserDiagnostics = [];
   device.on('pageerror', error => browserDiagnostics.push('pageerror: ' + error.message + ' stack: ' + error.stack));
+  device.on('console', message => { if (message.type() === 'error') browserDiagnostics.push('console: ' + message.text() + ' location: ' + JSON.stringify(message.location())); });
+  await device.evaluate(() => window.addEventListener('error', event => { window.__scriptErrors = window.__scriptErrors || []; window.__scriptErrors.push({ message: event.message, filename: event.filename, lineno: event.lineno, colno: event.colno }); }));
   device.on('console', message => { if (message.type() === 'error') browserDiagnostics.push('console: ' + message.text()); });
   device.on('requestfailed', request => browserDiagnostics.push('request failed: ' + request.method() + ' ' + request.url() + ' ' + (request.failure()?.errorText || 'unknown')));
   device.on('response', response => { if (new URL(response.url()).pathname.startsWith('/v1/')) browserDiagnostics.push('API ' + response.status() + ' ' + new URL(response.url()).pathname); });
