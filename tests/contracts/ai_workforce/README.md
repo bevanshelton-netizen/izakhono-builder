@@ -130,3 +130,10 @@ services at their enforcement boundaries.
   blocking and restore-time byte/reference digest checks. This is a synthetic
   in-memory model; it does not prove database atomicity, object-store durability,
   distributed transaction behavior, backup isolation or production recovery.
+
+- Evidence service interface tests model the proposed exact-version resolver:
+  tenant and principal scope, FORTRESS allow/deny/audience/purpose checks,
+  revocation re-check on each read, rejection of caller storage locators and
+  mutable latest aliases, content-digest validation and scope-bound audit
+  references. The model is synthetic; it does not call FORTRESS, implement
+  cryptography, access an object store or prove production audit durability.
