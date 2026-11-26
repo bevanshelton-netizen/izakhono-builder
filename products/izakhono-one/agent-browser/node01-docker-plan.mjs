@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+
 const SAFE_ID = /^[a-zA-Z0-9][a-zA-Z0-9_.-]{0,62}$/;
 const SHA256_IMAGE = /^[a-z0-9./_-]+@sha256:[a-f0-9]{64}$/;
 
@@ -15,7 +17,8 @@ function linuxAbsolutePath(value, field) {
   return value;
 }
 function containerName(sessionId, runtimeId) {
-  return `iz1-browser-${sessionId.slice(0, 24)}-${runtimeId.slice(0, 24)}`.toLowerCase();
+  const suffix = createHash("sha256").update(`${sessionId}:${runtimeId}`).digest("hex").slice(0, 40);
+  return `iz1-browser-${suffix}`;
 }
 
 /**
@@ -146,7 +149,8 @@ export function validateNode01DockerPlan(plan) {
     "--network", plan.networkPrerequisite.networkName, "--pull=never", "--init"]) {
     if (!argv.includes(required)) return { ok: false, reason: "required_docker_hardening_missing" };
   }
-  if (argv.some(arg => arg === "-v" || arg === "--volume" || arg.startsWith("--mount"))) {
+  const forbidden = new Set(["-v", "--volume", "--mount", "--privileged", "--cap-add", "--device", "--publish", "-p", "--add-host", "--dns", "--env-file", "--entrypoint", "--network=host", "--pid=host", "--ipc=host", "--uts=host", "--userns=host", "--security-opt=seccomp=unconfined", "--read-only=false"]);
+  if (argv.some(arg => forbidden.has(arg) || arg.startsWith("--mount=") || arg.startsWith("--volume=") || arg.startsWith("--device="))) {
     return { ok: false, reason: "host_mount_forbidden" };
   }
   if (plan.networkPrerequisite.mustBeInternal !== true ||
