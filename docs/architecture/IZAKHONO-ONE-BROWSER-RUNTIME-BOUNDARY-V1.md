@@ -174,4 +174,4 @@ Adoption decision:
 
 This document authorises no spending, subscription, package installation, container image pull, compute provisioning, account connection, credential handling, production browser launch, deployment, DNS change, merge or production migration.
 
-The next code increment may implement only the session contract and deterministic local tests without launching a browser or enabling public network access. Any dependency, host runtime, infrastructure or production change requires separate explicit approval.
+The session-contract increment is now present as a dependency-free in-memory reference state machine with deterministic Node test cases. It binds sessions to owner, task and execution environment; checks policy version and request deadlines; permits only the read-only request methods; correlates completions; and requires explicit process-tree, profile and IPC cleanup confirmation. It is a contract/test harness, not a durable production session manager or runtime supervisor. CI validation for the latest commit remains unconfirmed. Any dependency, host runtime, infrastructure or production change requires separate explicit approval.
