@@ -161,3 +161,53 @@ The assessment also prevents a category error: Truehost's domain, shared web-hos
 - Contact/support: https://truehost.co.za/contact-us/
 
 **Next gate:** obtain written technical confirmation and a complete quotation for a specific VPS or dedicated-server SKU. No purchase or commitment is authorized by this document.
+
+
+## 11. Public-page verification addendum — 26 November 2026
+
+The following facts were checked against Truehost's public pages during this assessment. Public marketing information is useful for screening but is not a written, SKU-specific service commitment.
+
+### VPS offerings currently advertised
+
+Truehost's VPS page lists:
+- Cloud VPS 1: 1 vCPU, 2 GB RAM, 50 GB SSD, 1 TB transfer; R80/month equivalent when billed every three years.
+- Cloud VPS 2: 2 vCPU, 4 GB RAM, 100 GB SSD, 10 TB transfer; R140/month equivalent when billed every three years.
+- Cloud VPS 3: 4 vCPU, 8 GB RAM, 200 GB SSD, 25 TB transfer; R400/month equivalent when billed every three years.
+- The page describes Europe/USA data centres, Linux, full root access and KVM virtualization.
+
+These are advertised figures and terms observed on the page; checkout, billing period, VAT, setup, renewals and SKU availability must be confirmed before any future decision. Cloud VPS 3 is below the existing 8-vCPU production application baseline and should be treated as staging/integration capacity only unless a measured, approved architecture is split across resources.
+
+### Dedicated offerings currently advertised
+
+Truehost's dedicated page lists:
+- H1: 4 cores/8 threads, 32 GB RAM, 2 × 240 GB SSD; advertised R1,040/month on triennial billing (page also displays R1,300 before discount).
+- H2: 4 cores/8 threads, 32 GB RAM, 2 × 512 GB SSD; advertised R1,600/month on triennial billing.
+- H3: 6 cores/12 threads, 64 GB RAM, 2 × 2 TB SSD; advertised R1,920/month on triennial billing (page also displays R2,400 before discount).
+- The page identifies Germany as the data-centre location and one IP address in the plan details.
+
+A separate Truehost product/store page lists H1/H2/H3 at R1,300/R1,600/R2,400 monthly, without the same displayed promotional price presentation. Another Truehost article reports a different H3 promotional monthly figure. This discrepancy is a material quote-validation issue: do not treat any promotional monthly figure as the amount payable until the cart/quotation confirms total upfront charge, contract length, renewal, tax, setup and cancellation terms.
+
+### Software compatibility
+
+Truehost's developer VPS page states that Docker can be installed and that API access can automate server creation, resizing and teardown. This is a useful positive indicator for our IaC/orchestration direction, but exact API permissions, API documentation, Docker support, supported operating system and resource limits must be confirmed for the selected SKU.
+
+### Mail policy and delivery
+
+Truehost's public terms describe zero tolerance for spam and state that bulk mailing is not allowed from shared servers; the terms mention a separate service for high-volume sending. This is not enough to decide whether self-hosted Stalwart for ordinary transactional/customer mailbox traffic is permitted on a VPS or dedicated server. Obtain a written answer for the exact product and intended use.
+
+Truehost's own public business-email guidance emphasizes verifying outbound TCP 25, PTR/rDNS and IP reputation before purchase. This reinforces the mail gate in section 5 but does not confirm that Truehost will enable those capabilities for a particular account or server.
+
+### Sources reviewed
+
+- VPS plans and advertised terms: https://truehost.co.za/vps-hosting/
+- Dedicated plans and advertised terms: https://truehost.co.za/hosting/dedicated-servers/
+- Developer VPS / Docker / API information: https://truehost.co.za/vps-for-developers/
+- Terms of service / anti-spam policy: https://truehost.co.za/terms-of-service/
+- Truehost business-email VPS checklist: https://truehost.co.za/vps-for-hosting-business-email-in-south-africa/
+- Dedicated product/store listing: https://truehost.co.za/cloud/index.php/store/dedicated-servers
+
+### Updated screening conclusion
+
+Truehost appears technically plausible as a supplier for a controlled staging VPS and potentially a larger production host, but no specific product is accepted. Its published base VPS tiers do not meet our production application profile as a single host. Its listed dedicated H3 has substantial RAM/storage but only 6 physical cores/12 threads as advertised, so it does not directly match the 8-vCPU planning baseline without a workload benchmark and architecture review.
+
+The next external step is a supplier inquiry for written technical answers and a complete quote. No email has been sent, no account created, and no purchase or infrastructure change has occurred.
