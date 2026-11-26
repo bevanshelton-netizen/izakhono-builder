@@ -34,3 +34,13 @@ test('resumes completed stages after a later stage fails',async()=>{const root=a
  let saved=await store.get(job.id);assert.equal(saved.pipeline.stages['osm-source'].status,'succeeded');fail=false;clock=new Date(Date.parse(first.retryAfter)+1000);
  const second=await worker.runOnce();assert.equal(second.dataReady,true);saved=await store.get(job.id);assert.equal(saved.pipeline.state,'VERIFYING');
 }finally{await rm(root,{recursive:true,force:true});}});
+
+test('marks a NAV data job failed after the fifth bounded attempt',async()=>{const root=await mkdtemp(path.join(os.tmpdir(),'nav-data-jobs-'));try{
+ const store=createNavDataJobStore({filePath:path.join(root,'jobs.json')});const {job}=await store.create({workloadId:'izakhono-nav',releaseDigest:digest});
+ const adapter=Object.fromEntries(Object.values(methods).map(m=>[m,async()=>{throw new Error('persistent import failure');}]));
+ let clock=new Date('2026-11-21T12:00:00.000Z');const worker=createNavDataWorker({store,adapter,now:()=>clock});
+ let result;
+ for(let attempt=1;attempt<=5;attempt+=1){result=await worker.runOnce();assert.equal(result.terminal,attempt===5);if(result.retryAfter)clock=new Date(Date.parse(result.retryAfter)+1000);}
+ const saved=await store.get(job.id);assert.equal(saved.pipeline.state,'FAILED');assert.equal(saved.lease,null);assert.equal(saved.retryAfter,null);assert.equal(saved.attempts,5);
+ assert.equal((await worker.runOnce()).processed,false);
+}finally{await rm(root,{recursive:true,force:true});}});
