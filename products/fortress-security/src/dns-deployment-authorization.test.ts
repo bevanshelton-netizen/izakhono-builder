@@ -78,4 +78,7 @@ await assert.rejects(
   /audit store unavailable/,
 );
 
-console.log('FORTRESS DNS deployment authorization tests: PASS');\n}\n\nmain().catch(error => { console.error(error); process.exitCode = 1; });
+console.log('FORTRESS DNS deployment authorization tests: PASS');
+}
+
+main().catch(error => { console.error(error); process.exitCode = 1; });
