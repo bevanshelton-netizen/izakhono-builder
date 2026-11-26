@@ -25,7 +25,8 @@ export function createHttpRuntimeAdapter(config) {
         releaseDigest: workload.release_digest,
         healthPath: workload.health_path,
         internalPort: workload.internal_port,
-        providerTargetRef: target.providerTargetRef
+        providerTargetRef: target.providerTargetRef,
+        idempotencyKey: ['izakhono-nav', workload.workload_id, workload.release_digest, 'provision'].join(':')
       }, signal);
       return { id: requireId(result.resourceId, 'RUNTIME_RESOURCE_ID') };
     },
@@ -33,7 +34,8 @@ export function createHttpRuntimeAdapter(config) {
     async deploy({ target, resource, releaseDigest, workload, signal }) {
       return client.request('POST', '/v1/runtime-targets/' + encodeURIComponent(target.id) + '/workloads/' + encodeURIComponent(requireId(resource.id, 'RUNTIME_RESOURCE_ID')) + '/release', {
         releaseDigest,
-        workloadId: workload.workload_id
+        workloadId: workload.workload_id,
+        idempotencyKey: ['izakhono-nav', workload.workload_id, releaseDigest, 'deploy'].join(':')
       }, signal);
     },
 
@@ -43,15 +45,15 @@ export function createHttpRuntimeAdapter(config) {
     },
 
     async stop({ target, resource, signal }) {
-      return client.request('POST', '/v1/runtime-targets/' + encodeURIComponent(target.id) + '/workloads/' + encodeURIComponent(requireId(resource.id, 'RUNTIME_RESOURCE_ID')) + '/stop', {}, signal);
+      return client.request('POST', '/v1/runtime-targets/' + encodeURIComponent(target.id) + '/workloads/' + encodeURIComponent(requireId(resource.id, 'RUNTIME_RESOURCE_ID')) + '/stop', { idempotencyKey: ['izakhono-nav', resource.id, 'stop'].join(':') }, signal);
     },
 
     async destroy({ target, resource, signal }) {
-      return client.request('POST', '/v1/runtime-targets/' + encodeURIComponent(target.id) + '/workloads/' + encodeURIComponent(requireId(resource.id, 'RUNTIME_RESOURCE_ID')) + '/destroy', { preservePersistentData: true }, signal);
+      return client.request('POST', '/v1/runtime-targets/' + encodeURIComponent(target.id) + '/workloads/' + encodeURIComponent(requireId(resource.id, 'RUNTIME_RESOURCE_ID')) + '/destroy', { preservePersistentData: true, idempotencyKey: ['izakhono-nav', resource.id, 'destroy'].join(':') }, signal);
     },
 
     async backup({ target, resource, signal }) {
-      const result = await client.request('POST', '/v1/runtime-targets/' + encodeURIComponent(target.id) + '/workloads/' + encodeURIComponent(requireId(resource.id, 'RUNTIME_RESOURCE_ID')) + '/backup', {}, signal);
+      const result = await client.request('POST', '/v1/runtime-targets/' + encodeURIComponent(target.id) + '/workloads/' + encodeURIComponent(requireId(resource.id, 'RUNTIME_RESOURCE_ID')) + '/backup', { idempotencyKey: ['izakhono-nav', resource.id, 'backup'].join(':') }, signal);
       return {
         backupId: requireId(result.backupId, 'BACKUP_ID'),
         sha256: /^[a-f0-9]{64}$/i.test(String(result.sha256 || '')) ? String(result.sha256).toLowerCase() : (() => { throw new Error('BACKUP_SHA256_INVALID'); })(),
@@ -61,7 +63,8 @@ export function createHttpRuntimeAdapter(config) {
 
     async restore({ target, resource, backupId, signal }) {
       return client.request('POST', '/v1/runtime-targets/' + encodeURIComponent(target.id) + '/workloads/' + encodeURIComponent(requireId(resource.id, 'RUNTIME_RESOURCE_ID')) + '/restore', {
-        backupId: requireId(backupId, 'BACKUP_ID')
+        backupId: requireId(backupId, 'BACKUP_ID'),
+        idempotencyKey: ['izakhono-nav', resource.id, 'restore', backupId].join(':')
       }, signal);
     }
   });
