@@ -106,5 +106,5 @@ test('requires a local SHA-256 digest in addition to the official Geofabrik MD5'
  const {recordNavDataStage,createNavDataPipelineRecord}=await import('./nav-data-pipeline.mjs');
  const record=createNavDataPipelineRecord({workloadId:'izakhono-nav',releaseDigest:digest});
  const invalid={...evidence['osm-source']};delete invalid.sha256;
- assert.throws(()=>recordNavDataStage(record,'osm-source',invalid),/local SHA-256 content digest/);
+ assert.throws(()=>recordNavDataStage(record,'osm-source',invalid),/missing evidence: sha256/);
 });
