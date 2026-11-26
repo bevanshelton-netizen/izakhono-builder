@@ -38,7 +38,8 @@ export function validateIsolationAttestation(attestation, {
   expectedSessionId,
   expectedRuntimeInstanceId,
   expectedPolicyVersion,
-  verifySignature
+  verifySignature,
+  now = Date.now()
 } = {}) {
   if (!plainObject(attestation)) return { ok: false, reason: "invalid_attestation_shape" };
   const allowedKeys = new Set([
@@ -61,11 +62,12 @@ export function validateIsolationAttestation(attestation, {
       typeof verifySignature !== "function" || verifySignature(attestation) !== true) {
     return { ok: false, reason: "attestation_not_authenticated" };
   }
-  if (FORBIDDEN_NETWORK_MODES.has(attestation.networkMode)) {
+  if (FORBIDDEN_NETWORK_MODES.has(attestation.networkMode) || attestation.networkMode !== "isolated-egress-proxy-only") {
     return { ok: false, reason: "unsafe_network_mode" };
   }
   if (!Number.isInteger(attestation.issuedAt) || !Number.isInteger(attestation.expiresAt) ||
-      attestation.expiresAt <= attestation.issuedAt) {
+      !Number.isInteger(now) || attestation.expiresAt <= attestation.issuedAt ||
+      attestation.issuedAt > now || now >= attestation.expiresAt) {
     return { ok: false, reason: "invalid_attestation_lifetime" };
   }
   if (!plainObject(attestation.controls)) return { ok: false, reason: "missing_isolation_controls" };
