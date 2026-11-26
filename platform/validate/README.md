@@ -15,6 +15,8 @@ This directory contains read-only validation and planning tools for service mani
 - `fixtures/providers/` — synthetic discovery response; all unknown mail, networking and availability facts remain unknown.
 - `schemas/supplier-evaluation.schema.json` and `supplier_evaluate.py` — exact-SKU, role-specific hard-gate evaluation and evidence-backed weighted comparison.
 - `fixtures/suppliers/` — synthetic-only scoring example; not a real supplier or recommendation.
+- `schemas/supplier-evidence-event.schema.json` and `supplier_evidence_ledger.py` — append-only local evidence intake with SHA-256 hash-chain verification.
+- `fixtures/supplier-evidence/` — synthetic pending supplier claim; no real supplier evidence is included.
 - `tests/` — regression tests for validation and planning policy.
 
 ## Run locally
@@ -27,6 +29,7 @@ python platform/validate/validate.py
 python -m unittest discover -s platform/validate/tests -v
 python platform/validate/inventory_plan.py --service platform/validate/fixtures/services/caddy-staging.json --host-dir platform/validate/fixtures/hosts --environment staging --role staging-app
 python platform/validate/supplier_evaluate.py --input-dir platform/validate/fixtures/suppliers
+python platform/validate/supplier_evidence_ledger.py verify --ledger platform/validate/fixtures/supplier-evidence/synthetic-ledger.jsonl
 python scripts/architecture/check-node01-identity.py
 ```
 
@@ -62,6 +65,10 @@ Every capability uses an evidence status: `verified`, `supplier-claimed`, `unkno
 ## Supplier comparison
 
 Run the supplier evaluator against a directory containing one JSON evaluation per exact SKU. It applies mandatory role-specific gates before scoring and requires verified evidence references for every gate and weighted category. Supplier-claimed or unknown evidence blocks eligibility or ranking. The weights are technical fit 20, mail suitability 20, security/control 15, resilience/recovery 15, cost/contract clarity 15, portability/exit 10, and support/location 5. Mail, DNS-secondary and backup roles have additional hard gates. The result always records `purchasePermitted: false`; no aggregate score authorizes a pilot, purchase or deployment. See `docs/architecture/IZAKHONO-HOST-SUPPLIER-EVIDENCE-COMPARISON-ENGINE-V1.md` for the decision model.
+
+## Supplier evidence intake
+
+Use `supplier_evidence_ledger.py append --ledger /secure/path/evidence.jsonl --event /secure/path/event.json` to append a reviewed local event, and `verify --ledger /secure/path/evidence.jsonl` to validate the chain. The tool does not fetch URLs or store source documents. Keep contracts, private emails and source artifacts outside the repository in access-controlled storage. A supplier assertion remains pending until independently reviewed. See `docs/architecture/IZAKHONO-HOST-SUPPLIER-EVIDENCE-INTAKE-AUDIT-V1.md`.
 
 ## Safety properties
 
