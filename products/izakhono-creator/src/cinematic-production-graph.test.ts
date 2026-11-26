@@ -216,7 +216,8 @@ if (qaRecorded.assets.find(asset => asset.id === 'export-1')?.mediaQa?.assetCont
 if (qaRecorded.metadata.version !== qaAssetBase.metadata.version + 1) throw new Error('Recording QA evidence must increment the production graph version');
 if (!buildProductionManifest(qaRecorded).summary.readyForDistribution) throw new Error('Recorded hash-bound QA evidence should satisfy the export QA gate when other gates pass');
 const failedEvidence = { ...evidenceForRecording, passed: false, checks: facebookQaChecks.map(check => check.id === 'mp4-fast-start' ? { ...check, passed: false } : check) };
-const failedRecorded = recordMediaQaEvidence(qaAssetBase, 'export-1', failedEvidence);
+const failedExportForRecording: CinematicProduction = { ...qaAssetBase, assets: qaAssetBase.assets.map(asset => asset.id === 'export-1' ? { ...asset, status: 'failed' as const, storageKey: undefined } : asset) };
+const failedRecorded = recordMediaQaEvidence(failedExportForRecording, 'export-1', failedEvidence);
 if (failedRecorded.assets.find(asset => asset.id === 'export-1')?.mediaQa?.passed !== false) throw new Error('Failed QA evidence must remain available for audit');
 if (buildProductionManifest(failedRecorded).summary.readyForDistribution) throw new Error('Failed QA evidence must never unlock distribution');
 for (const invalidEvidence of [
