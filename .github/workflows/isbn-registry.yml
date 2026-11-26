@@ -1,0 +1,25 @@
+name: ISBN Registry Checks
+
+on:
+  pull_request:
+    paths:
+      - "products/izakhono-isbn/**"
+      - "package.json"
+      - ".github/workflows/isbn-registry.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  isbn-registry-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Run ISBN-13 validation tests
+        run: npx --yes tsx@4.20.3 products/izakhono-isbn/src/index.test.ts
