@@ -2,7 +2,8 @@
 
 ## Delivered in this branch
 - Cloudflare Worker API foundation.
-- D1 schema for publisher, imprint, author, work, edition, ISBN, application and audit records.
+- D1 schema for publisher, imprint, author, work, edition, ISBN, application, append-only agency correspondence history and audit records.
+- Preserves the 6 October and 14 October 2026 NLSA application emails and the 26 November 2026 escalation as dated correspondence records; no reply or ISBN allocation is implied.
 - Seeds the six first-season SELFHELP Stories titles as development works only; does not invent edition formats, author/pen-name assignments or ISBNs.
 - ISBN-13 checksum validation and digits-only canonicalisation; no ISBN generation/allocation.
 - Database-level SQLite triggers enforce ISBN-13 prefix/checksum, canonical storage, allocation authority/evidence and allocation dates before a record can be marked verified.
@@ -18,6 +19,10 @@
 - Automated GitHub Actions test workflow for ISBN validation and fail-closed API checks.
 - Operating boundary and deployment runbook.
 - Explicitly documented NODE01 as an IZAKHONO software node, not a physical server; no physical-server enrolment is required just to define or instantiate its software identity.
+
+## Latest verification (26 November 2026)
+- All 18 GitHub check-runs on the latest observed commit completed successfully, including ISBN Registry tests, NODE01 software identity enforcement, repository validation and Cloudflare Worker build.
+- The registry-specific Worker/D1 runtime is still not deployed; the successful Cloudflare check is a repository build/preview artifact, not proof of a provisioned registry database or production service.
 
 ## Not yet complete / not claimed
 - No official ISBN has been allocated or verified.
