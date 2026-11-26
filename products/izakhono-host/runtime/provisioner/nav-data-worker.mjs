@@ -85,7 +85,8 @@ export function createNavDataWorker({ store, adapter, workloadStore = null, work
           }
           if (workload?.state !== 'READY') throw new Error('NAV data pipeline completed but HOST workload readiness transition did not complete');
         }
-        await store.release(job.id, workerId, job.lease.leaseId);
+        const completed = await store.release(job.id, workerId, job.lease.leaseId, { completed: true });
+        job.pipeline = completed.pipeline;
         return { processed: true, jobId: job.id, state: job.pipeline.state, dataReady: true };
       } catch (error) {
         const nextAttempt = (job.attempts || 0) + 1;
