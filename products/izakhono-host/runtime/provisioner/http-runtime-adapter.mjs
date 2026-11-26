@@ -52,8 +52,9 @@ export function createHttpRuntimeAdapter(config) {
       return client.request('POST', '/v1/runtime-targets/' + encodeURIComponent(target.id) + '/workloads/' + encodeURIComponent(requireId(resource.id, 'RUNTIME_RESOURCE_ID')) + '/destroy', { preservePersistentData: true, idempotencyKey: ['izakhono-nav', resource.id, 'destroy'].join(':') }, signal);
     },
 
-    async backup({ target, resource, signal }) {
-      const result = await client.request('POST', '/v1/runtime-targets/' + encodeURIComponent(target.id) + '/workloads/' + encodeURIComponent(requireId(resource.id, 'RUNTIME_RESOURCE_ID')) + '/backup', { idempotencyKey: ['izakhono-nav', resource.id, 'backup'].join(':') }, signal);
+    async backup({ target, resource, idempotencyKey, signal }) {
+      const backupKey = requireId(idempotencyKey, 'BACKUP_IDEMPOTENCY_KEY');
+      const result = await client.request('POST', '/v1/runtime-targets/' + encodeURIComponent(target.id) + '/workloads/' + encodeURIComponent(requireId(resource.id, 'RUNTIME_RESOURCE_ID')) + '/backup', { idempotencyKey: backupKey }, signal);
       return {
         backupId: requireId(result.backupId, 'BACKUP_ID'),
         sha256: /^[a-f0-9]{64}$/i.test(String(result.sha256 || '')) ? String(result.sha256).toLowerCase() : (() => { throw new Error('BACKUP_SHA256_INVALID'); })(),
