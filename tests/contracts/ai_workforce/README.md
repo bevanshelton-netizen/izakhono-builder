@@ -115,3 +115,12 @@ services at their enforcement boundaries.
   an in-memory model only: it does not implement signatures, digest algorithms,
   snapshot APIs, immutable object storage, deterministic containers, trusted
   trust-anchor distribution, reviewer identity or production audit.
+
+
+- Evidence-package data-contract tests model tenant-scoped immutable object
+  versions, exact-version resolution, content-digest verification, canonical
+  manifest ordering and binding to tenant/operation/request fingerprint,
+  duplicate and unresolved reference rejection, legal-hold enforcement and
+  explicitly authorized disposition. This is a synthetic in-memory model; it
+  does not implement an object store, transaction coordinator, encryption,
+  signature verification, retention scheduler, backup/restore or legal process.
