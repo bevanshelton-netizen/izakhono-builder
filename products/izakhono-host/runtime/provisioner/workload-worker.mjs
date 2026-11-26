@@ -2,12 +2,13 @@ import { workloadRetryDelay } from './workload-state-machine.mjs';
 
 // One bounded execution pass. Provider selection is injected by trusted HOST
 // configuration; no request body can select code, credentials or provider APIs.
-export function createWorkloadWorker({ store, adapterRegistry, resolveBinding, workerId = 'host-nav-worker', leaseMs = 180000, now = () => new Date() }) {
+export function createWorkloadWorker({ store, adapterRegistry, resolveBinding, navDataJobStore = null, workerId = 'host-nav-worker', leaseMs = 180000, now = () => new Date() }) {
   if (!store || typeof store.claimNext !== 'function' || typeof store.recordExecution !== 'function' || typeof store.releaseClaim !== 'function') {
     throw new Error('A lease-capable durable workload store is required');
   }
   if (!adapterRegistry || typeof adapterRegistry.get !== 'function') throw new Error('A trusted runtime adapter registry is required');
   if (typeof resolveBinding !== 'function') throw new Error('A trusted runtime binding resolver is required');
+  if (navDataJobStore && typeof navDataJobStore.create !== 'function') throw new Error('A durable NAV data-job store is required when automatic data enqueue is enabled');
 
   return Object.freeze({
     async runOnce() {
@@ -62,8 +63,21 @@ export function createWorkloadWorker({ store, adapterRegistry, resolveBinding, w
           releaseDigest: claimed.release_digest,
           stage: 'runtime-deployed-awaiting-data-pipeline'
         }, now().toISOString(), leaseId);
+        let stage = 'runtime-deployed-awaiting-data-pipeline';
+        if (navDataJobStore) {
+          const job = await navDataJobStore.create({
+            workloadId: claimed.workload_id,
+            workloadRecordId: claimed.id,
+            releaseDigest: claimed.release_digest
+          });
+          const current = await store.get(claimed.id);
+          if (current?.state === 'PROVISIONING') {
+            await store.transition(claimed.id, 'IMPORTING_DATA', { dataJobId: job.job.id, automatic: true });
+          }
+          stage = 'data-import-queued';
+        }
         await store.releaseClaim(claimed.id, workerId, {}, now().toISOString(), leaseId);
-        return { processed: true, workloadId: claimed.id, stage: 'runtime-deployed-awaiting-data-pipeline' };
+        return { processed: true, workloadId: claimed.id, stage };
       } catch (error) {
         const nextAttempt = (claimed.attempts || 0) + 1;
         const terminal = nextAttempt >= 5;
