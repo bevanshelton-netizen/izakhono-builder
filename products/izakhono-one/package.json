@@ -20,7 +20,7 @@
     "search": "node test-search.mjs && node test-owned-search.mjs && node test-search-index.mjs && node test-search-ingest.mjs && node test-search-discovery.mjs && node test-search-source-registry.mjs && node test-search-index-state.mjs && node test-search-store.mjs && node test-supabase-search-store.mjs",
     "test": "node test-smoke.mjs && npm run adapter-routes && npm run contracts && npm run policy && npm run foundation && npm run dispatch && npm run runtime && npm run database-security && npm run node-control && npm run fortress && npm run fortress-routes && npm run search && npm run chat",
     "chat": "node test-chat.mjs",
-    "browser-policy": "node --test agent-browser/url-policy.test.mjs agent-browser/read-only-browser.test.mjs agent-browser/session-contract.test.mjs agent-browser/runtime-supervisor.test.mjs agent-browser/isolation-policy.test.mjs agent-browser/oci-runtime-spec.test.mjs"
+    "browser-policy": "node --test agent-browser/url-policy.test.mjs agent-browser/read-only-browser.test.mjs agent-browser/session-contract.test.mjs agent-browser/runtime-supervisor.test.mjs agent-browser/isolation-policy.test.mjs agent-browser/oci-runtime-spec.test.mjs agent-browser/node01-docker-plan.test.mjs"
   },
   "engines": {
     "node": ">=20"
