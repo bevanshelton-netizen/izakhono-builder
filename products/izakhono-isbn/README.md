@@ -32,6 +32,7 @@ ISBNs are never fabricated, auto-reserved, or inferred from a title. Every ISBN 
 - `GET|POST|PATCH /api/works`
 - `GET|POST|PATCH /api/editions`
 - `GET|POST|PATCH /api/applications`
+- `GET|POST /api/correspondence` — append-only agency correspondence history; no update/delete route exists
 - `GET|POST|PATCH /api/isbns`
 - `GET /api/export/catalogue.csv`
 
@@ -46,7 +47,7 @@ All non-health routes are protected. Input validation, audit logging and explici
 
 ## Agency correspondence history
 
-The database preserves dated outgoing and incoming agency correspondence as separate records linked to the application. Database triggers reject updates and deletions so the correspondence ledger remains immutable; corrections must be added as new records. Initial application (6 October 2026), follow-up (14 October 2026) and escalation (26 November 2026) are seeded. An outgoing email is not evidence of agency acknowledgement or ISBN allocation; attach agency replies and allocation documents when received.
+The database preserves dated outgoing and incoming agency correspondence as separate records linked to the application. The protected `/api/correspondence` endpoint allows retrieval and appending new evidence; it intentionally exposes no edit or delete operation. Database triggers reject updates and deletions so the correspondence ledger remains immutable; corrections must be added as new records. Initial application (6 October 2026), follow-up (14 October 2026) and escalation (26 November 2026) are seeded. An outgoing email is not evidence of agency acknowledgement or ISBN allocation; attach agency replies and allocation documents when received.
 
 ## Local development
 
