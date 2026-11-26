@@ -21,5 +21,8 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
+      - name: Check dashboard JavaScript syntax
+        run: |
+          node -e 'const fs=require("node:fs"); const html=fs.readFileSync("products/izakhono-isbn/public/index.html","utf8"); const match=html.match(/<script>([\\s\\S]*?)<\\/script>/); if (!match) throw new Error("Dashboard script missing"); new Function(match[1]); console.log("Dashboard JavaScript syntax passed");'
       - name: Run ISBN-13 validation tests
         run: npx --yes tsx@4.20.3 products/izakhono-isbn/src/index.test.ts
