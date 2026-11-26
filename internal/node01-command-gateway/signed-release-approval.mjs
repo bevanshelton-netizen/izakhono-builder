@@ -41,7 +41,7 @@ export function verifySignedReleaseApproval({
   if (statement.version !== 1) return fail('unsupported_version');
   if (!/^[0-9a-f]{40}$/.test(statement.commitSha)) return fail('invalid_commit_sha');
   if (typeof statement.approvalId !== 'string' || !statement.approvalId.trim()) return fail('invalid_approval_id');
-  if (REQUIRED_FIELDS.some((field) => typeof statement[field] !== 'string' || !statement[field].trim() && field !== 'version')) {
+  if (REQUIRED_FIELDS.some((field) => field !== 'version' && (typeof statement[field] !== 'string' || !statement[field].trim()))) {
     return fail('invalid_field');
   }
   if (!validTimestamp(statement.issuedAt) || !validTimestamp(statement.expiresAt)) return fail('invalid_timestamp');
