@@ -25,7 +25,7 @@ class IdempotencyModel:
             if prior["fingerprint"] != fp:
                 return {"state": "REJECTED", "error": "IDEMPOTENCY_CONFLICT"}
             return dict(prior)
-        record = {"state": "RECEIVED", "fingerprint": fp, "operation_id": "op-1"}
+        record = {"state": "RECEIVED", "fingerprint": fp, "operation_id": f"op-{len(self.records) + 1}"}
         self.records[identity] = record
         return dict(record)
 
