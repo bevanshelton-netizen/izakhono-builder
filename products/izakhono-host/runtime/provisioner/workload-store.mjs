@@ -78,7 +78,7 @@ export function createWorkloadStore({ filePath }) {
         return { created: true, workload };
       });
     },
-    async claimNext({ workerId, leaseMs = 60000, now = new Date() } = {}) {
+    async claimNext({ workerId, leaseMs = 60000, now = new Date(), includeRuntimeVerified = false } = {}) {
       return serialize(async () => {
         if (typeof workerId !== 'string' || !/^[a-z0-9][a-z0-9-]{2,62}$/.test(workerId)) throw new Error('workerId must be a stable lowercase identifier');
         if (!Number.isInteger(leaseMs) || leaseMs < 1000 || leaseMs > 300000) throw new Error('leaseMs must be between 1000 and 300000');
