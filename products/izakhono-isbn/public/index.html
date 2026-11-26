@@ -139,19 +139,32 @@ label{display:block;margin:12px 0;color:#b9c7d2}input,select{display:block;width
 
       const workSelect = document.getElementById("work-select");
       const editionSelect = document.getElementById("edition-select");
-      workSelect.replaceChildren();
-      editionSelect.replaceChildren();
+      const contributorWorkSelect = document.getElementById("contributor-work-select");
+      const authorSelect = document.getElementById("author-select");
+      const depositEditionSelect = document.getElementById("deposit-edition-select");
+      for (const select of [workSelect, editionSelect, contributorWorkSelect, authorSelect, depositEditionSelect]) select.replaceChildren();
       for (const work of w.items) {
         const option = document.createElement("option");
         option.value = work.id;
         option.textContent = work.title;
         workSelect.append(option);
+        contributorWorkSelect.append(option.cloneNode(true));
       }
       for (const edition of e.items) {
         const option = document.createElement("option");
         option.value = edition.id;
         option.textContent = edition.edition_statement + " • " + edition.format_code;
         editionSelect.append(option);
+        depositEditionSelect.append(option.cloneNode(true));
+      }
+      const authorsResponse = await fetch("/api/authors", { headers: adminHeaders });
+      if (!authorsResponse.ok) throw new Error("Could not load author records.");
+      const authorsData = await authorsResponse.json();
+      for (const author of authorsData.items) {
+        const option = document.createElement("option");
+        option.value = author.id;
+        option.textContent = author.display_name;
+        authorSelect.append(option);
       }
 
       body.replaceChildren();
