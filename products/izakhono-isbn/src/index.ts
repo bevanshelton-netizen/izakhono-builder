@@ -108,7 +108,10 @@ export default {
             const allowed = statusRules[key]?.[field];
             if (allowed && !allowed.includes(String(body[field]))) return error("invalid_" + field);
           }
-          if (key === "isbns" && body.isbn13 !== undefined && !validIsbn13(String(body.isbn13))) return error("invalid_isbn13_checksum");
+          if (key === "isbns" && body.isbn13 !== undefined) {
+            if (!validIsbn13(String(body.isbn13))) return error("invalid_isbn13_checksum");
+            body.isbn13 = normaliseIsbn13(String(body.isbn13));
+          }
           const assignments = values.map(field => field + "=?").join(",");
           const result = await db.prepare(`UPDATE ${spec.table} SET ${assignments} WHERE id=?`).bind(...values.map(field => body[field]), recordId).run();
           const changes = Number(result.meta?.changes ?? 0);
@@ -123,8 +126,9 @@ export default {
           if (key === "isbns") {
             const number = String(body.isbn13 ?? "");
             if (!validIsbn13(number)) return error("invalid_isbn13_checksum");
-            if (!body.allocation_authority || !body.publisher_of_record || !body.evidence_ref) return error("allocation_authority_publisher_and_evidence_required");
-            if (body.verification_status === "verified" && !body.evidence_ref) return error("verification_evidence_required");
+            body.isbn13 = normaliseIsbn13(number);
+            if (!String(body.allocation_authority ?? "").trim() || !String(body.publisher_of_record ?? "").trim() || !String(body.evidence_ref ?? "").trim()) return error("allocation_authority_publisher_and_evidence_required");
+            if (body.verification_status === "verified" && (!String(body.evidence_ref).trim() || !body.allocation_date)) return error("verified_isbn_requires_allocation_date_and_evidence");
             if (body.verification_status && !["unverified","evidence_pending","verified","disputed","withdrawn"].includes(String(body.verification_status))) return error("invalid_verification_status");
           }
           const recordId = id();
