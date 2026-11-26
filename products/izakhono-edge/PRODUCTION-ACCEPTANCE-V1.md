@@ -1,16 +1,16 @@
 # IZAKHONO EDGE — Production Acceptance v1
 
-This checklist is mandatory before calling IZAKHONO DNS or edge production-ready. NODE01 is the software runtime/orchestration layer; execution capacity and public network resources are separate dependencies.
+This checklist is mandatory before calling IZAKHONO DNS or edge production-ready. NODE01 is the logical software identity; Runtime Fabric owns workload scheduling/state; HOST is the separate execution boundary.
 
-## A. NODE01 software release and execution binding
+## A. Software workload and execution binding
 
-- [ ] EDGE workloads conform to the current canonical NODE01 manifest schema.
+- [ ] EDGE workload conforms to `izakhono.runtime-fabric.workload.v1`.
+- [ ] NODE01 command-gateway adapter is actually registered and exposes the required capabilities.
+- [ ] FORTRESS grants the exact tenant/workload/environment operation.
+- [ ] Correlated FORTRESS audit acknowledgement is persisted.
+- [ ] Runtime Fabric records workload state and selects an eligible node.
+- [ ] HOST execution environment is separately identified, registered and healthy.
 - [ ] Workload artifacts have immutable digests and source provenance.
-- [ ] Exact repository, commit, workload, environment and action scope are verified.
-- [ ] FORTRESS/owner approval is valid, time-bounded and replay-resistant.
-- [ ] NODE01 records workload lifecycle, health, audit and rollback evidence.
-- [ ] Workloads are bound to approved execution capacity with identified ownership and administrative authority.
-- [ ] Public IPs, routing and firewall policy are verified; management ports remain private.
 - [ ] Backup and restore destinations are verified.
 - [ ] No undocumented paid infrastructure has been provisioned.
 
@@ -18,7 +18,8 @@ This checklist is mandatory before calling IZAKHONO DNS or edge production-ready
 
 For each DNS workload instance, from at least two independent external networks:
 
-- [ ] Primary and secondary are distinct instances and independently placed across network/failure domains.
+- [ ] Primary and secondary have different execution-environment IDs.
+- [ ] Primary and secondary have different network failure-domain IDs.
 - [ ] UDP/53 SOA query succeeds.
 - [ ] TCP/53 SOA query succeeds.
 - [ ] AA flag is set.
@@ -81,6 +82,6 @@ A domain migration proceeds one domain at a time:
 
 **NOT READY FOR PUBLIC CUTOVER.**
 
-The software architecture and repository assets are present, but public DNS endpoints, independent execution/network failure domains, registrar delegation, live TLS, WAF/cache behavior and public edge health have not been demonstrated. Repository/CI evidence is not a substitute for live production acceptance.
+The software workload and fail-closed registration/placement validator are in source, but live gateway registration, FORTRESS production authorization, Runtime Fabric/HOST binding, public DNS endpoints, independent network failure domains, registrar delegation, TLS, WAF/cache behavior and public edge health have not been demonstrated. Synthetic tests are not live runtime evidence.
 
 No public DNS or registrar changes are authorized by this checklist.
