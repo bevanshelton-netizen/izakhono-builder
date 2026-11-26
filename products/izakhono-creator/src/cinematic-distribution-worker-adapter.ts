@@ -68,9 +68,30 @@ export async function handleDistributionExportRequest(
   if (!authenticated) return json({ error: 'Worker authentication required.' }, 401);
   if (!env.DB) return json({ error: 'Creator D1 storage is required.' }, 503);
 
-  const contentLength = Number(request.headers.get('content-length') || 0);
-  if (contentLength > 16_384) return json({ error: 'Export request exceeds the 16 KB limit.' }, 413);
-  const body = await request.json().catch(() => null) as ExportBody | null;
+  let rawBody = '';
+  if (!request.body) return json({ error: 'A JSON request body is required.' }, 400);
+  const reader = request.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let bodyBytes = 0;
+  try {
+    while (true) {
+      const part = await reader.read();
+      if (part.done) break;
+      bodyBytes += part.value.byteLength;
+      if (bodyBytes > 16_384) {
+        await reader.cancel();
+        return json({ error: 'Export request exceeds the 16 KB limit.' }, 413);
+      }
+      chunks.push(part.value);
+    }
+    const merged = new Uint8Array(bodyBytes);
+    let offset = 0;
+    for (const chunk of chunks) { merged.set(chunk, offset); offset += chunk.byteLength; }
+    rawBody = new TextDecoder().decode(merged);
+  } catch {
+    return json({ error: 'Could not read the export request body.' }, 400);
+  }
+  const body = (() => { try { return JSON.parse(rawBody) as ExportBody; } catch { return null; } })();
   if (!body || !isNonEmptyString(body.expectedUpdatedAt) ||
       !isNonEmptyString(body.masterAssetId) || !isNonEmptyString(body.exportTaskId) ||
       !isNonEmptyString(body.outputAssetId)) {
@@ -105,6 +126,13 @@ export async function handleDistributionExportRequest(
 
   const objectKey = `projects/${encodeURIComponent(projectId)}/exports/${encodeURIComponent(body.outputAssetId)}.mp4`;
   let uploaded = false;
+  let objectCommitted = false;
+  let cleanupAttempted = false;
+  const cleanupUncommittedObject = async () => {
+    if (!uploaded || objectCommitted || cleanupAttempted) return;
+    cleanupAttempted = true;
+    await dependencies.store.delete(objectKey);
+  };
   try {
     const outputPath = await dependencies.allocateOutputPath(projectId, body.outputAssetId);
     if (!isNonEmptyString(outputPath)) throw new Error('Trusted worker output-path allocator returned an empty path.');
@@ -151,7 +179,7 @@ export async function handleDistributionExportRequest(
       }, project.updatedAt);
     } catch (error) {
       try {
-        if (uploaded) await dependencies.store.delete(objectKey);
+        await cleanupUncommittedObject();
       } catch {
         return json({ error: 'Graph persistence failed and uploaded export cleanup failed; operator reconciliation is required.', objectKey }, 500);
       }
@@ -159,12 +187,13 @@ export async function handleDistributionExportRequest(
     }
     if (!committed) {
       try {
-        if (uploaded) await dependencies.store.delete(objectKey);
+        await cleanupUncommittedObject();
       } catch {
         return json({ error: 'Project version conflict and uploaded export cleanup failed; operator reconciliation is required.', objectKey }, 500);
       }
       return json({ error: 'Project changed during export; the uncommitted export object was removed. Reload and retry.' }, 409);
     }
+    objectCommitted = true;
     return json({
       status: 'completed',
       projectId,
@@ -176,6 +205,11 @@ export async function handleDistributionExportRequest(
       objectKey,
     }, 201);
   } catch (error) {
+    try {
+      await cleanupUncommittedObject();
+    } catch {
+      return json({ error: 'Export execution failed and uploaded object cleanup failed; operator reconciliation is required.', objectKey }, 500);
+    }
     return json({ error: error instanceof Error ? error.message : 'Distribution export failed.' }, 422);
   }
 }
