@@ -42,12 +42,12 @@ All non-health routes are protected. Input validation, audit logging and explici
 - Publisher: IZAKHONO AFRICA (PTY) LTD
 - Imprint: SELFHELP Stories
 - Initial application: THE BUSINESS OF MUSIC™ (EPUB), submitted 6 October 2026; follow-up 14 October 2026; no allocation verified in the correspondence reviewed.
-- Other planned books/formats are entered as works/editions with ISBN status `pending_agency`, never with invented numbers.
+- First-season SELFHELP Stories works seeded as development records: The Invitation, The Secret, The Door, The Choice, The Morning After and The Consequence. Format-specific editions and author/pen-name assignments are deliberately left unassigned until confirmed; each actual format/edition will receive its own agency-allocated ISBN record.
 
 ## Local development
 
 1. Create a D1 database and bind it as `DB` in `wrangler.jsonc`.
-2. Apply migrations in order: `0001_initial.sql`, `0002_seed_initial_publisher_and_application.sql`, then `0003_isbn_integrity_guards.sql`. The third migration adds database-level ISBN checksum/canonical-format and verification-evidence guards; the Worker also normalises accepted ISBNs to digits-only before storage.
+2. Apply migrations in order: `0001_initial.sql`, `0002_seed_initial_publisher_and_application.sql`, `0003_isbn_integrity_guards.sql`, then `0004_seed_selfhelp_first_season.sql`. The third migration adds database-level ISBN checksum/canonical-format and verification-evidence guards; the Worker also normalises accepted ISBNs to digits-only before storage.
 3. Set `ISBN_ADMIN_TOKEN` as a local secret.
 4. Run `npx wrangler dev --config products/izakhono-isbn/wrangler.jsonc`.
 
