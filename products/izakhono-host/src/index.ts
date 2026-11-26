@@ -3,6 +3,7 @@ interface D1Database { prepare(query: string): D1PreparedStatement; }
 interface Fetcher { fetch(request: Request): Promise<Response>; }
 
 import { applyCloudflareDns, provisionOwnedSite, type HostProviderEnv } from './providers';
+import { handleDnsApi } from './dns-api';
 
 interface Env extends HostProviderEnv {
   DB: D1Database;
@@ -29,6 +30,9 @@ async function api(req:Request,env:Env,url:URL):Promise<Response>{
     catch{return json({ok:false,service:'IZAKHONO HOST',database:'error'},503);}
   }
   if(!owner(req,env)) return json({ok:false,error:env.HOST_ADMIN_SECRET?'Unauthorized':'HOST_ADMIN_SECRET is not configured'},401);
+
+  const dnsResponse = await handleDnsApi(req, env, url);
+  if (dnsResponse) return dnsResponse;
 
   if(url.pathname==='/api/dashboard' && req.method==='GET'){
     const [customers,domains,sites,jobs,invoices]=await Promise.all([
