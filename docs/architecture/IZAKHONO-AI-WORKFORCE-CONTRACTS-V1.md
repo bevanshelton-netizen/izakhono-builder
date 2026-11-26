@@ -361,6 +361,23 @@ cryptographic profile, retention periods, service objectives and migration
 authority remain UNCONFIRMED. The interface proposal authorizes no provisioning,
 database initialization, migration, production write or deployment.
 
+
+### 7.4 Evidence-service security threat model
+
+The evidence service threat analysis and abuse-case register are maintained in
+`IZAKHONO-AI-WORKFORCE-EVIDENCE-SERVICE-THREAT-MODEL-V1.md`. It covers
+tenant spoofing and IDOR, confused-deputy behavior, FORTRESS decision replay,
+immutable-version substitution, metadata/content TOCTOU, malicious producers,
+canonicalization ambiguity, secret leakage, audit suppression, cleanup races,
+legal-hold bypass, cross-tenant cache/backup leakage, key compromise, operator
+abuse, restore rollback, auditor privilege escalation, replay, denial of service,
+dependency compromise, clock skew and false success from incomplete evidence.
+
+The threat model is a proposed design-review artifact. Its controls require
+source-enforced tests and independent evidence; synthetic abuse-case tests are
+not penetration testing, production assurance or certification. All accountable
+owners and residual-risk decisions remain UNCONFIRMED.
+
 ## 8. AgentSync export manifest
 
 Proposed manifest fields:
