@@ -36,11 +36,12 @@ test("reads fixture HTML using GET and extracts visible text only", async () => 
   }
 });
 
-test("rejects non-fixture destinations by default", async () => {
+test("rejects local and public destinations unless local fixtures are explicitly enabled", async () => {
   const adapter = createReadOnlyBrowserAdapter();
-  const result = await adapter.run({ type: "navigate", url: "http://127.0.0.1:1234" });
-  assert.equal(result.ok, false);
-  assert.equal(result.reason, "loopback_blocked");
+  const local = await adapter.run({ type: "navigate", url: "http://127.0.0.1:1234" });
+  const publicPage = await adapter.run({ type: "navigate", url: "https://example.com" });
+  assert.equal(local.reason, "loopback_blocked");
+  assert.equal(publicPage.reason, "public_navigation_not_enabled");
 });
 
 test("follows same-origin redirects and records the count", async () => {
