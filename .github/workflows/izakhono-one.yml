@@ -27,5 +27,7 @@ jobs:
         run: npm run contracts
       - name: Policy validation
         run: npm run policy
+      - name: Browser URL and read-only task policy
+        run: npm run browser-policy
       - name: Smoke validation
         run: npm run test
