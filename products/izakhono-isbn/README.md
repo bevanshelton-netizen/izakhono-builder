@@ -19,7 +19,7 @@ ISBNs are never fabricated, auto-reserved, or inferred from a title. Every ISBN 
 ## API
 
 - `GET /api/health` — public health and release state only.
-- `GET /api/dashboard` — counts and agency/application status.
+- `GET /api/dashboard` — counts and agency/application status.\n- `GET /api/catalogue` — edition-level catalogue with ISBN verification state.
 - `GET|POST /api/publishers`
 - `GET|POST /api/imprints`
 - `GET|POST /api/authors`
