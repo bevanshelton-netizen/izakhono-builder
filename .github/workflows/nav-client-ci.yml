@@ -1,0 +1,35 @@
+name: IZAKHONO NAV Client CI
+
+on:
+  pull_request:
+    paths:
+      - 'products/izakhono-nav/src/**'
+      - '.github/workflows/nav-client-ci.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'products/izakhono-nav/src/**'
+      - '.github/workflows/nav-client-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  client-validation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate browser client syntax
+        run: node --check products/izakhono-nav/src/main.js
+      - name: Validate live engine integration contract
+        run: node products/izakhono-nav/src/client-contract.test.mjs
+      - name: Validate client assets
+        run: |
+          test -f products/izakhono-nav/index.html
+          test -f products/izakhono-nav/src/style.css
+          test -f products/izakhono-nav/sw.js
+          test -f products/izakhono-nav/manifest.webmanifest
