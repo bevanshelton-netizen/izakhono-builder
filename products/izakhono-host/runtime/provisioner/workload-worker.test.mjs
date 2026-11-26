@@ -26,10 +26,10 @@ test('worker provisions only through a trusted adapter and stops before READY', 
     const registry = createRuntimeAdapterRegistry();
     const calls = [];
     registry.register('test-adapter', {
-      async resolveTarget(input) { calls.push('resolve'); return { id: input.runtimeTargetId }; },
-      async provision() { calls.push('provision'); return { id: 'opaque-resource-1' }; },
-      async deploy() { calls.push('deploy'); },
-      async inspect() { calls.push('inspect'); return { healthy: true, releaseDigest: spec.releaseDigest }; },
+      async resolveTarget(input) { assert.ok(input.signal instanceof AbortSignal); calls.push('resolve'); return { id: input.runtimeTargetId }; },
+      async provision(input) { assert.ok(input.signal instanceof AbortSignal); calls.push('provision'); return { id: 'opaque-resource-1' }; },
+      async deploy(input) { assert.ok(input.signal instanceof AbortSignal); calls.push('deploy'); },
+      async inspect(input) { assert.ok(input.signal instanceof AbortSignal); calls.push('inspect'); return { healthy: true, releaseDigest: spec.releaseDigest }; },
       async stop() {}, async destroy() {}, async backup() {}, async restore() {}
     });
     const worker = createWorkloadWorker({
