@@ -16,7 +16,7 @@ All routes are behind the existing `HOST_ADMIN_SECRET` owner authentication in `
 - `POST /api/dns/zones/<zone_id>/records` — add a record. JSON: `customer_id`, `name`, `type`, `value`, optional `ttl`, optional `priority`.
 - `DELETE /api/dns/zones/<zone_id>/records/<record_id>?customer_id=<id>` — delete one record.
 
-Supported writable record types: A, AAAA, CNAME, MX, TXT, SRV, CAA. SOA and NS remain controlled by the zone authority configuration. TTL is bounded to 30–86400 seconds; MX priority is validated; CNAME exclusivity is enforced. Every record mutation increments the zone serial and writes an audit event.
+Supported writable record types: A, AAAA, CNAME, MX, TXT, SRV, CAA. SOA and NS remain controlled by the zone authority configuration. TTL is bounded to 30–86400 seconds; MX priority is validated; CNAME exclusivity is enforced by both API preflight checks and SQLite triggers in migration `0004_dns_cname_exclusivity.sql`, including concurrent writes. Zone creation and record create/delete operations use D1 transactional batches so desired-state changes, serial increments and audit events commit or roll back together. The HOST CI suite runs SQLite contract tests for the CNAME invariant.
 
 ## Publication safety
 
