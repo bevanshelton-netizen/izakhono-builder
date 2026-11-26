@@ -22,9 +22,9 @@ BEGIN
       (CAST(substr(NEW.isbn13,12,1) AS INTEGER) * 3)
     ) % 10) % 10 <> CAST(substr(NEW.isbn13,13,1) AS INTEGER)
       THEN RAISE(ABORT, 'isbn13_checksum_invalid')
-    WHEN length(trim(NEW.allocation_authority)) = 0
-      OR length(trim(NEW.publisher_of_record)) = 0
-      OR length(trim(NEW.evidence_ref)) = 0
+    WHEN length(trim(COALESCE(NEW.allocation_authority, ''))) = 0
+      OR length(trim(COALESCE(NEW.publisher_of_record, ''))) = 0
+      OR length(trim(COALESCE(NEW.evidence_ref, ''))) = 0
       THEN RAISE(ABORT, 'isbn_allocation_authority_publisher_and_evidence_required')
     WHEN NEW.verification_status = 'verified'
       AND (NEW.allocation_date IS NULL OR length(trim(NEW.allocation_date)) = 0)
@@ -55,9 +55,9 @@ BEGIN
       (CAST(substr(NEW.isbn13,12,1) AS INTEGER) * 3)
     ) % 10) % 10 <> CAST(substr(NEW.isbn13,13,1) AS INTEGER)
       THEN RAISE(ABORT, 'isbn13_checksum_invalid')
-    WHEN length(trim(NEW.allocation_authority)) = 0
-      OR length(trim(NEW.publisher_of_record)) = 0
-      OR length(trim(NEW.evidence_ref)) = 0
+    WHEN length(trim(COALESCE(NEW.allocation_authority, ''))) = 0
+      OR length(trim(COALESCE(NEW.publisher_of_record, ''))) = 0
+      OR length(trim(COALESCE(NEW.evidence_ref, ''))) = 0
       THEN RAISE(ABORT, 'isbn_allocation_authority_publisher_and_evidence_required')
     WHEN NEW.verification_status = 'verified'
       AND (NEW.allocation_date IS NULL OR length(trim(NEW.allocation_date)) = 0)
