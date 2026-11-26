@@ -29,7 +29,7 @@ Runtime worker configuration: HOST_NAV_RUNTIME_ADAPTER_URL, HOST_NAV_RUNTIME_ADA
 
 Data worker configuration: HOST_NAV_DATA_ADAPTER_URL and HOST_NAV_DATA_ADAPTER_TOKEN. These may use the runtime adapter URL/token when the same trusted service implements both contracts.
 
-The runtime worker deploys an immutable digest and verifies the deployed release. The data worker verifies the South Africa Geofabrik source, Valhalla graph, Nominatim index, PMTiles archive, all five NAV service health checks and persistent-data health before HOST advances the workload to internal READY. Long-running imports use durable provider operation IDs and resumable polling.
+The runtime worker deploys an immutable digest, verifies the deployed release and automatically queues the South Africa data job. The data worker verifies the South Africa Geofabrik source, Valhalla graph, Nominatim index, PMTiles archive, all five NAV service health checks and persistent-data health before HOST advances the workload to internal READY. Long-running imports use durable provider operation IDs and resumable polling.
 
 The JSON workload/data-job stores are single-process/single-writer. Keep both worker loops in this same HOST process; do not scale multiple replicas against the same files. Move state to a transactional shared database before multi-replica operation. Public-live still requires independent backup/restore, HTTPS and DNS evidence.
 
