@@ -10,14 +10,14 @@ test("health endpoint works without a database", async () => {
   assert.equal(body.mode, "single-seller-core");
 });
 
-test("admin seller creation fails closed without an admin key", async () => {
+test("admin seller creation fails closed without a FORTRESS identity binding", async () => {
   const response = await worker.fetch(new Request("https://commerce.test/api/v1/admin/sellers", {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ slug: "acme", name: "Acme" })
-  }), { DB: {}, COMMERCE_ADMIN_KEY: "configured-secret" });
+  }), { DB: {} });
   assert.equal(response.status, 401);
-  assert.equal((await response.json()).error.code, "admin_access_required");
+  assert.equal((await response.json()).error.code, "fortress_session_required");
 });
 
 test("buyer order submission fails closed without buyer credential", async () => {
@@ -72,9 +72,9 @@ test("order validation rejects zero, fractional and excessive quantities", () =>
 test("invalid JSON is rejected with a structured error", async () => {
   const response = await worker.fetch(new Request("https://commerce.test/api/v1/admin/sellers", {
     method: "POST",
-    headers: { "content-type": "application/json", "x-izakhono-commerce-admin": "admin-key" },
+    headers: { "content-type": "application/json", "authorization": "Bearer valid-session-token-123456" },
     body: "{"
-  }), { COMMERCE_ADMIN_KEY: "admin-key", DB: {} });
+  }), { DB: {}, FORTRESS_IDENTITY: { fetch: async () => new Response(JSON.stringify({ valid: true, principal: { id: "principal-1", tenantId: "tenant-1", role: "OWNER" } }), { status: 200 }) } });
   assert.equal(response.status, 400);
   assert.equal((await response.json()).error.code, "invalid_json");
 });
