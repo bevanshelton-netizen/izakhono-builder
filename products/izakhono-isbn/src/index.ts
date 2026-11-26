@@ -40,7 +40,12 @@ export default {
     const actor = "registry-admin";
 
     try {
-      if (request.method === "GET" && url.pathname === "/api/catalogue") {\n        const result = await db.prepare(`SELECT w.id AS work_id,w.title,w.subtitle,w.language_code,e.id AS edition_id,e.edition_statement,e.format_code,e.publication_date,e.status AS edition_status,i.isbn13,i.verification_status,i.publisher_of_record FROM works w JOIN editions e ON e.work_id=w.id LEFT JOIN isbn_records i ON i.edition_id=e.id ORDER BY w.title,e.language_code,e.format_code`).all<Row>();\n        return json({ items: result.results ?? [] });\n      }\n\n      if (request.method === "GET" && url.pathname === "/api/dashboard") {
+      if (request.method === "GET" && url.pathname === "/api/catalogue") {
+        const result = await db.prepare(`SELECT w.id AS work_id,w.title,w.subtitle,w.language_code,e.id AS edition_id,e.edition_statement,e.format_code,e.publication_date,e.status AS edition_status,i.isbn13,i.verification_status,i.publisher_of_record FROM works w JOIN editions e ON e.work_id=w.id LEFT JOIN isbn_records i ON i.edition_id=e.id ORDER BY w.title,e.language_code,e.format_code`).all<Row>();
+        return json({ items: result.results ?? [] });
+      }
+
+      if (request.method === "GET" && url.pathname === "/api/dashboard") {
         const [works, editions, allocated, pending, applications] = await Promise.all([
           db.prepare("SELECT COUNT(*) n FROM works").first<Row>(),
           db.prepare("SELECT COUNT(*) n FROM editions").first<Row>(),
@@ -76,9 +81,10 @@ export default {
         works: { table: "works", fields: ["publisher_id","imprint_id","title","subtitle","language_code","description","subject_codes","publication_status"] },
         editions: { table: "editions", fields: ["work_id","edition_statement","format_code","language_code","publication_date","publication_place","publisher_display","page_count","duration_seconds","file_master_ref","distribution_channels","status"] },
         applications: { table: "agency_applications", fields: ["agency_name","contact_person","contact_email","submitted_at","follow_up_at","reference_number","status","titles_json","correspondence_notes","evidence_ref","next_action"] },
-        isbns: { table: "isbn_records", fields: ["edition_id","isbn13","allocation_authority","allocation_date","publisher_of_record","verification_status","evidence_ref","barcode_asset_ref"] },\n        "legal-deposits": { table: "legal_deposit_records", fields: ["edition_id","jurisdiction","required","due_date","submitted_at","recipient","proof_ref","status","notes"] }
+        isbns: { table: "isbn_records", fields: ["edition_id","isbn13","allocation_authority","allocation_date","publisher_of_record","verification_status","evidence_ref","barcode_asset_ref"] },
+        "legal-deposits": { table: "legal_deposit_records", fields: ["edition_id","jurisdiction","required","due_date","submitted_at","recipient","proof_ref","status","notes"] }
       };
-      const resource = url.pathname.match(/^\/api\/(publishers|imprints|authors|works|editions|applications|isbns)$/);
+      const resource = url.pathname.match(/^\/api\/(publishers|imprints|authors|works|editions|applications|isbns|legal-deposits)$/);
       if (resource) {
         const key = resource[1], spec = resources[key];
         if (request.method === "GET") {
@@ -93,7 +99,8 @@ export default {
             const number = String(body.isbn13 ?? "");
             if (!validIsbn13(number)) return error("invalid_isbn13_checksum");
             if (!body.allocation_authority || !body.publisher_of_record || !body.evidence_ref) return error("allocation_authority_publisher_and_evidence_required");
-            if (body.verification_status === "verified" && !body.evidence_ref) return error("verification_evidence_required");\n            if (body.verification_status && !["unverified","evidence_pending","verified","disputed","withdrawn"].includes(String(body.verification_status))) return error("invalid_verification_status");
+            if (body.verification_status === "verified" && !body.evidence_ref) return error("verification_evidence_required");
+            if (body.verification_status && !["unverified","evidence_pending","verified","disputed","withdrawn"].includes(String(body.verification_status))) return error("invalid_verification_status");
           }
           const recordId = id();
           const columns = ["id", ...values];
@@ -109,7 +116,8 @@ export default {
         const result = await db.prepare(`SELECT w.title,w.subtitle,w.language_code,e.edition_statement,e.format_code,e.publication_date,e.status,i.isbn13,i.verification_status,i.publisher_of_record FROM works w JOIN editions e ON e.work_id=w.id LEFT JOIN isbn_records i ON i.edition_id=e.id ORDER BY w.title,e.format_code`).all<Row>();
         const fields = ["title","subtitle","language_code","edition_statement","format_code","publication_date","status","isbn13","verification_status","publisher_of_record"];
         const lines = [fields.join(","), ...(result.results ?? []).map(row => fields.map(f => csvCell(row[f])).join(","))];
-        return new Response(lines.join("\r\n"), { headers: { "content-type": "text/csv; charset=utf-8", "content-disposition": 'attachment; filename="izakhono-publishing-catalogue.csv"', "cache-control": "no-store" } });
+        return new Response(lines.join("\r
+"), { headers: { "content-type": "text/csv; charset=utf-8", "content-disposition": 'attachment; filename="izakhono-publishing-catalogue.csv"', "cache-control": "no-store" } });
       }
       return env.ASSETS ? env.ASSETS.fetch(request) : error("not_found", 404);
     } catch (e) {
