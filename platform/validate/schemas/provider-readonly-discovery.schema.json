@@ -1,0 +1,110 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.izakhono.africa/hosting/provider-readonly-discovery/v1",
+  "title": "IZAKHONO HOST Provider Read-only Discovery v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["apiVersion", "kind", "providerId", "adapterVersion", "retrievedAt", "readOnly", "capabilities", "resources"],
+  "properties": {
+    "apiVersion": { "const": "hosting.izakhono.africa/provider-discovery-v1" },
+    "kind": { "const": "ProviderReadOnlyDiscovery" },
+    "providerId": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]{1,63}$" },
+    "adapterVersion": { "type": "string", "minLength": 1, "maxLength": 32 },
+    "retrievedAt": { "type": "string", "format": "date-time" },
+    "readOnly": { "const": true },
+    "capabilities": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["regions", "resourceTypes", "network", "mail", "storage", "backups", "apiProvisioning"],
+      "properties": {
+        "regions": { "type": "array", "items": { "type": "string", "minLength": 1 }, "uniqueItems": true },
+        "resourceTypes": { "type": "array", "items": { "enum": ["vps", "dedicated", "cloud-instance", "object-storage", "dns"] }, "uniqueItems": true },
+        "network": {
+          "type": "object", "additionalProperties": false,
+          "required": ["staticIPv4", "ipv6", "reverseDnsControl", "inboundTcpPorts", "outboundTcpPorts"],
+          "properties": {
+            "staticIPv4": { "$ref": "#/$defs/evidenceBoolean" },
+            "ipv6": { "$ref": "#/$defs/evidenceBoolean" },
+            "reverseDnsControl": { "$ref": "#/$defs/evidenceBoolean" },
+            "inboundTcpPorts": { "$ref": "#/$defs/evidencePortList" },
+            "outboundTcpPorts": { "$ref": "#/$defs/evidencePortList" }
+          }
+        },
+        "mail": {
+          "type": "object", "additionalProperties": false,
+          "required": ["selfHostedMailPermitted", "commercialMultiTenantMailPermitted", "smtpPort25"],
+          "properties": {
+            "selfHostedMailPermitted": { "$ref": "#/$defs/evidenceBoolean" },
+            "commercialMultiTenantMailPermitted": { "$ref": "#/$defs/evidenceBoolean" },
+            "smtpPort25": { "$ref": "#/$defs/evidenceBoolean" }
+          }
+        },
+        "storage": {
+          "type": "object", "additionalProperties": false,
+          "required": ["persistentBlockStorage", "snapshotSupport", "performanceEvidence"],
+          "properties": {
+            "persistentBlockStorage": { "$ref": "#/$defs/evidenceBoolean" },
+            "snapshotSupport": { "$ref": "#/$defs/evidenceBoolean" },
+            "performanceEvidence": { "$ref": "#/$defs/evidenceString" }
+          }
+        },
+        "backups": { "$ref": "#/$defs/evidenceBoolean" },
+        "apiProvisioning": { "$ref": "#/$defs/evidenceBoolean" }
+      }
+    },
+    "resources": {
+      "type": "array",
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["resourceId", "resourceType", "sku", "region", "state", "capacity", "evidenceReferences"],
+        "properties": {
+          "resourceId": { "type": "string", "minLength": 1, "maxLength": 256 },
+          "resourceType": { "enum": ["vps", "dedicated", "cloud-instance", "object-storage", "dns"] },
+          "sku": { "type": ["string", "null"] },
+          "region": { "type": ["string", "null"] },
+          "state": { "enum": ["available", "allocated", "unknown"] },
+          "capacity": {
+            "type": "object", "additionalProperties": false,
+            "required": ["vcpus", "memoryGiB", "storageGiB"],
+            "properties": {
+              "vcpus": { "type": ["integer", "null"], "minimum": 1 },
+              "memoryGiB": { "type": ["number", "null"], "exclusiveMinimum": 0 },
+              "storageGiB": { "type": ["number", "null"], "exclusiveMinimum": 0 }
+            }
+          },
+          "evidenceReferences": { "type": "array", "items": { "type": "string", "minLength": 1 } }
+        }
+      }
+    },
+    "warnings": { "type": "array", "items": { "type": "string" } }
+  },
+  "$defs": {
+    "evidenceBoolean": {
+      "type": "object", "additionalProperties": false,
+      "required": ["value", "evidenceStatus", "evidenceReference"],
+      "properties": {
+        "value": { "type": ["boolean", "null"] },
+        "evidenceStatus": { "enum": ["verified", "supplier-claimed", "unknown", "not-applicable"] },
+        "evidenceReference": { "type": ["string", "null"] }
+      }
+    },
+    "evidencePortList": {
+      "type": "object", "additionalProperties": false,
+      "required": ["value", "evidenceStatus", "evidenceReference"],
+      "properties": {
+        "value": { "type": ["array", "null"], "items": { "type": "integer", "minimum": 1, "maximum": 65535 }, "uniqueItems": true },
+        "evidenceStatus": { "enum": ["verified", "supplier-claimed", "unknown", "not-applicable"] },
+        "evidenceReference": { "type": ["string", "null"] }
+      }
+    },
+    "evidenceString": {
+      "type": "object", "additionalProperties": false,
+      "required": ["value", "evidenceStatus", "evidenceReference"],
+      "properties": {
+        "value": { "type": ["string", "null"] },
+        "evidenceStatus": { "enum": ["verified", "supplier-claimed", "unknown", "not-applicable"] },
+        "evidenceReference": { "type": ["string", "null"] }
+      }
+    }
+  }
+}
