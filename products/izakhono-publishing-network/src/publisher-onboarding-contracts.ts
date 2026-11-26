@@ -108,23 +108,25 @@ export function validatePublisherTransition(
   if (!transitions[transition.from]?.includes(transition.to)) errors.push('PUBLISHER_TRANSITION_NOT_ALLOWED');
   if (!nonBlank(transition.actor.principalRef) || !nonBlank(transition.actor.authorizationDecisionRef)) errors.push('FORTRESS_AUTHORIZATION_PROVENANCE_REQUIRED');
   const expectedPermission = transition.to === 'listed' ? 'publishing.publisher.list' :
+    transition.to === 'approved' ? 'publishing.publisher.approve' :
     transition.to === 'suspended' ? 'publishing.publisher.suspend' :
-    transition.to === 'rejected' ? 'publishing.publisher.reject' : 'publishing.publisher.review';
+    transition.to === 'rejected' ? 'publishing.publisher.reject' :
+    transition.to === 'expired' ? 'publishing.publisher.expire' : 'publishing.publisher.review';
   if (transition.actor.permission !== expectedPermission) errors.push('FORTRESS_PERMISSION_MISMATCH');
   if (!validTime(transition.occurredAt) || Date.parse(transition.occurredAt) < Date.parse(record.updatedAt)) errors.push('PUBLISHER_TRANSITION_TIMESTAMP_INVALID');
   if (transition.to === 'approved' || transition.to === 'listed') {
-    errors.push(...publisherApprovalGateErrors(record));
+    errors.push(...publisherApprovalGateErrors(record, transition.occurredAt));
   }
   if (transition.to === 'listed' && record.status !== 'approved') errors.push('PUBLISHER_APPROVAL_REQUIRED_BEFORE_LISTING');
   return [...new Set(errors)];
 }
 
-export function publisherApprovalGateErrors(record: PublisherOnboardingRecord): string[] {
-  const now = Date.now();
+export function publisherApprovalGateErrors(record: PublisherOnboardingRecord, now = new Date().toISOString()): string[] {
+  const nowMs = Date.parse(now);
   const verified = (kind: PublisherEvidenceKind): boolean => record.evidence.some(item =>
     item.kind === kind && item.status === 'verified' &&
     item.verifiedByPrincipalRef !== null && item.verificationDecisionRef !== null &&
-    (item.expiresAt === null || Date.parse(item.expiresAt) > now));
+    (item.expiresAt === null || Date.parse(item.expiresAt) > nowMs));
   const errors: string[] = [];
   if (!verified('legal_identity')) errors.push('LEGAL_IDENTITY_NOT_VERIFIED');
   if (!verified('authorized_representative')) errors.push('AUTHORIZED_REPRESENTATIVE_NOT_VERIFIED');
