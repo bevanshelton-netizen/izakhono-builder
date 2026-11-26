@@ -2,7 +2,7 @@
 
 ## Delivered in this branch
 - Cloudflare Worker API foundation.
-- D1 schema for publisher, imprint, author, work, edition, ISBN, application, append-only agency correspondence history and audit records.
+- D1 schema for publisher, imprint, author, work, edition, ISBN, application, append-only agency correspondence history and audit records; database triggers reject updates and deletions.
 - Preserves the 6 October and 14 October 2026 NLSA application emails and the 26 November 2026 escalation as dated correspondence records; no reply or ISBN allocation is implied.
 - Seeds the six first-season SELFHELP Stories titles as development works only; does not invent edition formats, author/pen-name assignments or ISBNs.
 - ISBN-13 checksum validation and digits-only canonicalisation; no ISBN generation/allocation.
