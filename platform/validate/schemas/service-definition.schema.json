@@ -1,0 +1,139 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.izakhono.africa/hosting/service-definition/v1",
+  "title": "IZAKHONO HOST ServiceDefinition v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["apiVersion", "kind", "metadata", "spec"],
+  "properties": {
+    "apiVersion": { "const": "hosting.izakhono.africa/v1" },
+    "kind": { "const": "ServiceDefinition" },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version", "owner"],
+      "properties": {
+        "name": { "type": "string", "pattern": "^[a-z][a-z0-9-]{1,62}$" },
+        "version": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "owner": { "type": "string", "pattern": "^[a-z][a-z0-9-]{1,62}$" },
+        "annotations": { "type": "object", "additionalProperties": { "type": "string" } }
+      }
+    },
+    "spec": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["image", "runtime", "network", "storage", "dependencies", "health", "security", "backup", "rollout"],
+      "properties": {
+        "image": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["reference", "digest"],
+          "properties": {
+            "reference": { "type": "string", "pattern": "^[a-z0-9.-]+(?::[0-9]+)?/[a-z0-9._/-]+$" },
+            "digest": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" }
+          }
+        },
+        "runtime": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "replicas", "resources"],
+          "properties": {
+            "type": { "const": "container" },
+            "replicas": { "type": "integer", "minimum": 1, "maximum": 100 },
+            "resources": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["cpu", "memory"],
+              "properties": {
+                "cpu": { "type": "string", "pattern": "^[1-9][0-9]*(m)?$" },
+                "memory": { "type": "string", "pattern": "^[1-9][0-9]*(Mi|Gi)$" }
+              }
+            }
+          }
+        },
+        "network": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["ingress"],
+          "properties": {
+            "ingress": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["name", "protocol", "port", "exposure"],
+                "properties": {
+                  "name": { "type": "string", "pattern": "^[a-z][a-z0-9-]{0,31}$" },
+                  "protocol": { "enum": ["tcp", "udp"] },
+                  "port": { "type": "integer", "minimum": 1, "maximum": 65535 },
+                  "exposure": { "enum": ["private", "public-approved"] },
+                  "approvalReference": { "type": "string", "minLength": 6, "maxLength": 128 }
+                }
+              }
+            }
+          }
+        },
+        "storage": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["mounts"],
+          "properties": {
+            "mounts": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["name", "mountPath", "size", "persistent"],
+                "properties": {
+                  "name": { "type": "string", "pattern": "^[a-z][a-z0-9-]{0,31}$" },
+                  "mountPath": { "type": "string", "pattern": "^/" },
+                  "size": { "type": "string", "pattern": "^[1-9][0-9]*(Gi|Ti)$" },
+                  "persistent": { "type": "boolean" }
+                }
+              }
+            }
+          }
+        },
+        "dependencies": { "type": "array", "uniqueItems": true, "items": { "type": "string", "pattern": "^[a-z][a-z0-9-]{1,62}$" } },
+        "health": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["readiness"],
+          "properties": {
+            "readiness": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["type", "path", "timeoutSeconds"],
+              "properties": {
+                "type": { "enum": ["http", "tcp", "exec"] },
+                "path": { "type": "string", "minLength": 1, "maxLength": 256 },
+                "timeoutSeconds": { "type": "integer", "minimum": 1, "maximum": 60 }
+              }
+            }
+          }
+        },
+        "security": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["runAsNonRoot", "privileged", "readOnlyRootFilesystem", "secretReferences"],
+          "properties": {
+            "runAsNonRoot": { "type": "boolean" },
+            "privileged": { "type": "boolean" },
+            "readOnlyRootFilesystem": { "type": "boolean" },
+            "secretReferences": { "type": "array", "uniqueItems": true, "items": { "type": "string", "pattern": "^[a-z][a-z0-9-]{1,62}$" } }
+          }
+        },
+        "backup": { "type": "object", "additionalProperties": false, "required": ["required"], "properties": { "required": { "type": "boolean" } } },
+        "rollout": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["strategy", "automaticRollback"],
+          "properties": {
+            "strategy": { "enum": ["replace-after-validation", "rolling", "blue-green", "manual"] },
+            "automaticRollback": { "type": "boolean" }
+          }
+        }
+      }
+    }
+  }
+}
