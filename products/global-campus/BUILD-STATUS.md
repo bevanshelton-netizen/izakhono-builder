@@ -8,7 +8,8 @@
 - Corrected 2024 DHET private higher-education institution baseline: 138 (not 137).
 - Global academic subject taxonomy starter set.
 - Node.js catalogue engine for multilingual text normalization, institution/module validation, verified-only student search, relevance ranking, curriculum alignment validation and publication release gates.
-- Automated tests for catalogue validation, verified-only discovery, endorsement evidence and rights/editorial gates.
+- Automated tests for catalogue validation, verified-only discovery, endorsement evidence, rights/editorial gates, CSV staging import and curriculum source-capture integrity.
+- Initial official curriculum source capture: 17 module records across a 2026 UCT BCom Financial Accounting pathway and a UNISA BEd Financial Accounting subject combination; all remain needs-review pending human academic verification.
 - PostgreSQL schema baseline for institutions, campuses, faculties, departments, qualifications, modules, learning outcomes, subject taxonomy, source provenance, publications, translations, alignments, reviews and change history.
 - Student discovery front-end prototype with a clearly labelled fictional demo dataset.
 - GitHub Actions test workflow for the catalogue engine.
@@ -16,7 +17,7 @@
 
 ## Verification state
 
-The code and tests are committed to the feature branch. GitHub Actions run 7 (Global Campus CI) completed successfully on 26 November 2026; the test job and its “Run Global Campus tests” step both reported success. Broader repository workflows were still running at the time of this status update.
+The code and tests are committed to the feature branch. GitHub Actions run 7 (Global Campus CI) completed successfully on 26 November 2026. After adding the source-capture dataset and its tests, Global Campus CI run 12 was queued at the latest inspection; its final result has not yet been observed. Broader repository workflows were also still running.
 
 The front-end is a local static prototype, not a deployed production website. The PostgreSQL schema is a migration file only; it has not been applied to any database. No production endpoint, payment integration, institution partnership or live curriculum catalogue has been activated.
 
