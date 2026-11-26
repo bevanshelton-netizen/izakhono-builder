@@ -11,10 +11,10 @@ const evidence={
 'routing-graph':{artifactPath:'router/graph',buildId:'valhalla-1',healthCheck:true},
 'search-index':{artifactPath:'search/index',importId:'nominatim-1',healthCheck:true},
 'map-tiles':{artifactPath:'tiles/sa.pmtiles',checksumAlgorithm:'sha256',checksum:'c'.repeat(64),tileCount:500},
-'service-acceptance':{releaseDigest:digest,services:Object.fromEntries(['nav-router','nav-search','nav-tiles','nav-engine','nav-web'].map(n=>[n,{healthy:true}]))}};
+'service-acceptance':{releaseDigest:digest,persistenceCheck:true,services:Object.fromEntries(['nav-router','nav-search','nav-tiles','nav-engine','nav-web'].map(n=>[n,{healthy:true}]))}};
 const methods={'osm-source':'fetchSource','routing-graph':'buildRoutingGraph','search-index':'importSearchIndex','map-tiles':'buildMapTiles','service-acceptance':'inspectServices'};
 test('durably executes South Africa data stages through trusted adapter',async()=>{const root=await mkdtemp(path.join(os.tmpdir(),'nav-data-jobs-'));try{
- const store=createNavDataJobStore({filePath:path.join(root,'jobs.json')});const created=await store.create({workloadId:'izakhono-nav',releaseDigest:digest});assert.equal(created.created,true);
+ const store=createNavDataJobStore({filePath:path.join(root,'jobs.json')});const created=await store.create({workloadId:'izakhono-nav',workloadRecordId:'nav-workload-0123456789abcdefabcd',releaseDigest:digest});assert.equal(created.created,true);
  const calls=[];const signals=[];const adapter=Object.fromEntries(Object.entries(methods).map(([s,m])=>[m,async({signal})=>{assert.ok(signal instanceof AbortSignal);signals.push(signal);calls.push(s);return evidence[s];}]));
  const worker=createNavDataWorker({store,adapter,now:()=>new Date('2026-11-21T12:00:00.000Z')});const result=await worker.runOnce();assert.equal(result.dataReady,true);assert.equal(result.state,'VERIFYING');assert.deepEqual(calls,Object.keys(methods));assert.equal(new Set(signals).size,1,'all stages share one bounded cancellation signal');
  const saved=await store.get(created.job.id);assert.equal(saved.pipeline.state,'VERIFYING');assert.equal(saved.lease,null);assert.equal(saved.pipeline.stages['osm-source'].evidence.checksum,'b'.repeat(32));
