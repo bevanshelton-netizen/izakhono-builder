@@ -97,6 +97,21 @@ async function run() {
   assert.equal(persistedAsset?.mediaQa?.passed, true, 'QA evidence is persisted in the canonical production graph');
   assert.equal(persistedAsset?.mediaQa?.assetContentHash, 'c'.repeat(64), 'persisted evidence remains bound to the exact export hash');
 
+
+  const persistedGraph = persisted.cinematicProduction;
+  const alteredEvidenceGraph = {
+    ...persistedGraph,
+    assets: persistedGraph.assets.map(asset => asset.id === 'facebook-export' ? {
+      ...asset, mediaQa: { ...asset.mediaQa!, recordedBy: 'spoofed-worker' },
+    } : asset),
+  };
+  const bypassAttempt = await handleCinematicApi(new Request('https://creator.example/api/cinematic/projects/qa-project', {
+    method: 'PATCH',
+    headers: { 'content-type': 'application/json', 'x-creator-generation-secret': 'server-only-secret' },
+    body: JSON.stringify({ production: alteredEvidenceGraph }),
+  }), env);
+  assert.equal(bypassAttempt?.status, 409, 'general graph PATCH cannot forge or alter machine QA evidence');
+
   const mismatched = await handleCinematicApi(new Request('https://creator.example/api/cinematic/projects/qa-project/assets/facebook-export/media-qa', {
     method: 'POST',
     headers: { 'content-type': 'application/json', 'x-creator-generation-secret': 'server-only-secret' },
