@@ -50,7 +50,7 @@ test("database-backed B2B flow persists orders, replays idempotently and isolate
   t.after(() => DB.close());
   const env = {
     DB,
-    FORTRESS_IDENTITY: {
+    FORTRESS_COMMERCE_IDENTITY: {
       fetch: async request => request.headers.get("authorization") === "Bearer integration-fortress-session-token"
         ? new Response(JSON.stringify({ valid: true, audience: "izakhono-commerce", principal: { id: "principal-owner-1", tenantId: "tenant-acme", role: "OWNER" } }), { status: 200 })
         : new Response(JSON.stringify({ valid: false }), { status: 401 })
@@ -150,7 +150,7 @@ test("database constraints reject duplicate seller slugs and duplicate seller SK
   t.after(() => DB.close());
   const env = {
     DB,
-    FORTRESS_IDENTITY: {
+    FORTRESS_COMMERCE_IDENTITY: {
       fetch: async () => new Response(JSON.stringify({ valid: true, audience: "izakhono-commerce", principal: { id: "principal-owner-2", tenantId: "tenant-unique", role: "OWNER" } }), { status: 200 })
     }
   };
