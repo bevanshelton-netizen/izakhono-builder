@@ -26,11 +26,11 @@ expect(normalizePublisherDomain('News.Example.co.za.') === 'news.example.co.za',
 expect(normalizePublisherDomain('https://example.com/path') === null, 'domain field must not accept URL or path');
 expect(normalizePublisherDomain('*.example.com') === null, 'wildcard domain must not be accepted as verified primary domain');
 expect(validatePublisherOnboarding(record, now).length === 0, 'complete publisher record should pass validation');
-expect(publisherApprovalGateErrors(record).length === 0, 'all required evidence should satisfy approval gate');
-expect(publisherApprovalGateErrors({ ...record, evidence: record.evidence.filter(e => e.kind !== 'domain_control') }).includes('DOMAIN_CONTROL_NOT_VERIFIED'), 'missing domain proof must block approval');
+expect(publisherApprovalGateErrors(record, now).length === 0, 'all required evidence should satisfy approval gate');
+expect(publisherApprovalGateErrors({ ...record, evidence: record.evidence.filter(e => e.kind !== 'domain_control') }, now).includes('DOMAIN_CONTROL_NOT_VERIFIED'), 'missing domain proof must block approval');
 
 const approve = { from: 'editorial_review' as const, to: 'approved' as const, occurredAt: now,
-  actor: { principalRef: 'principal:reviewer', authorizationDecisionRef: 'fortress:decision:approve', permission: 'publishing.publisher.review' } };
+  actor: { principalRef: 'principal:reviewer', authorizationDecisionRef: 'fortress:decision:approve', permission: 'publishing.publisher.approve' } };
 expect(validatePublisherTransition(record, approve).length === 0, 'properly authorized approval transition should pass');
 expect(validatePublisherTransition(record, { ...approve, actor: { ...approve.actor, permission: 'publishing.publisher.list' } }).includes('FORTRESS_PERMISSION_MISMATCH'), 'wrong permission must fail');
 expect(validatePublisherTransition(record, { ...approve, from: 'submitted' }).includes('PUBLISHER_STATUS_STALE'), 'stale source status must fail');
