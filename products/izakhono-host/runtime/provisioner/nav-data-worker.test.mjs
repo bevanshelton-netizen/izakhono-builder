@@ -6,12 +6,12 @@ import path from 'node:path';
 import {createNavDataJobStore} from './nav-data-job-store.mjs';
 import {createNavDataWorker} from './nav-data-worker.mjs';
 import {createWorkloadStore} from './workload-store.mjs';
-const digest='a'.repeat(64);
+const digest='a'.repeat(64);\nconst sourceDigest='e'.repeat(64);
 const evidence={
-'osm-source':{sourceUrl:'https://download.geofabrik.de/africa/south-africa-latest.osm.pbf',artifactPath:'osm/sa.pbf',checksumAlgorithm:'md5',checksum:'b'.repeat(32),bytes:1024},
-'routing-graph':{artifactPath:'router/graph',buildId:'valhalla-1',healthCheck:true},
-'search-index':{artifactPath:'search/index',importId:'nominatim-1',healthCheck:true},
-'map-tiles':{artifactPath:'tiles/sa.pmtiles',checksumAlgorithm:'sha256',checksum:'c'.repeat(64),tileCount:500},
+'osm-source':{sourceUrl:'https://download.geofabrik.de/africa/south-africa-latest.osm.pbf',artifactPath:'osm/sa.pbf',checksumAlgorithm:'md5',checksum:'b'.repeat(32),sha256:sourceDigest,bytes:1024},
+'routing-graph':{artifactPath:'router/graph',buildId:'valhalla-1',checksumAlgorithm:'sha256',checksum:'1'.repeat(64),sourceSha256:sourceDigest,healthCheck:true},
+'search-index':{artifactPath:'search/index',importId:'nominatim-1',checksumAlgorithm:'sha256',checksum:'2'.repeat(64),sourceSha256:sourceDigest,healthCheck:true},
+'map-tiles':{artifactPath:'tiles/sa.pmtiles',checksumAlgorithm:'sha256',checksum:'c'.repeat(64),sourceSha256:sourceDigest,tileCount:500},
 'service-acceptance':{releaseDigest:digest,persistenceCheck:true,services:Object.fromEntries(['nav-router','nav-search','nav-tiles','nav-engine','nav-web'].map(n=>[n,{healthy:true}]))}};
 const methods={'osm-source':'fetchSource','routing-graph':'buildRoutingGraph','search-index':'importSearchIndex','map-tiles':'buildMapTiles','service-acceptance':'inspectServices'};
 test('durably executes South Africa data stages through trusted adapter',async()=>{const root=await mkdtemp(path.join(os.tmpdir(),'nav-data-jobs-'));try{
@@ -87,3 +87,21 @@ test('stale data-job lease tokens cannot record stages after reclaim',async()=>{
  await store.recordStage(job.id,'host-data-b',second.lease.leaseId,'osm-source',evidence['osm-source'],'2026-11-21T12:00:02.000Z');
  await store.release(job.id,'host-data-b',second.lease.leaseId);
 }finally{await rm(root,{recursive:true,force:true});}});
+
+
+test('rejects routing, search and tile artifacts built from a different OSM source digest',async()=>{ 
+ const {recordNavDataStage,createNavDataPipelineRecord}=await import('./nav-data-pipeline.mjs');
+ const record=createNavDataPipelineRecord({workloadId:'izakhono-nav',releaseDigest:digest,now:'2026-11-21T12:00:00.000Z'});
+ const source=recordNavDataStage(record,'osm-source',evidence['osm-source']);
+ for(const stageId of ['routing-graph','search-index','map-tiles']){
+   const invalid={...evidence[stageId],sourceSha256:'f'.repeat(64)};
+   assert.throws(()=>recordNavDataStage(source,stageId,invalid),/sourceSha256 does not match/);
+ }
+});
+
+test('requires a local SHA-256 digest in addition to the official Geofabrik MD5',async()=>{
+ const {recordNavDataStage,createNavDataPipelineRecord}=await import('./nav-data-pipeline.mjs');
+ const record=createNavDataPipelineRecord({workloadId:'izakhono-nav',releaseDigest:digest});
+ const invalid={...evidence['osm-source']};delete invalid.sha256;
+ assert.throws(()=>recordNavDataStage(record,'osm-source',invalid),/local SHA-256 content digest/);
+});
