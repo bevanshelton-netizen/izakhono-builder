@@ -16,6 +16,7 @@ test('runtime adapter resolves only explicitly approved logical HOST targets', a
   assert.deepEqual(target, { id: 'nav-target-a', providerTargetRef: 'opaque-target-ref' });
   assert.equal(calls[0].url, 'https://runtime-fabric.example/v1/runtime-targets/nav-target-a');
   assert.equal(calls[0].init.headers.authorization, 'Bearer provider-test-token');
+  assert.equal(calls[0].init.redirect, 'error');
   assert.equal(calls[0].init.headers['cache-control'], 'no-store');
 });
 
