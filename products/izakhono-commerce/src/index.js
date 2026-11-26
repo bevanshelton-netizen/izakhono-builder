@@ -74,13 +74,17 @@ async function createBuyer(request, env) {
   const auth = await resolveCommerceAdmin(request, env);
   if (!auth.ok) return fail(auth.status, auth.code, "A valid FORTRESS administrator session is required.");
   const body = await readJson(request), organisationName = safeText(body?.organisation_name, 180);
-  if (!organisationName) return fail(422, "invalid_buyer", "A buyer organisation name is required.");
-  const db = await requireDb(env), id = makeId("buy"), apiKey = `izc_${randomSecret()}`;
+  const sellerSlug = safeText(body?.seller_slug, 60).toLowerCase();
+  if (!organisationName || !validSlug(sellerSlug)) return fail(422, "invalid_buyer", "A buyer organisation name and valid seller slug are required.");
+  const db = await requireDb(env);
+  const seller = await db.prepare("SELECT id FROM commerce_sellers WHERE slug=? AND tenant_id=? AND status='active'").bind(sellerSlug, auth.principal.tenantId).first();
+  if (!seller) return fail(404, "seller_not_found", "An active seller in the administrator tenant was not found.");
+  const id = makeId("buy"), apiKey = `izc_${randomSecret()}`;
   try {
-    await db.prepare("INSERT INTO commerce_buyers (id,organisation_name,api_key_hash,status) VALUES (?,?,?,'active')")
-      .bind(id, organisationName, await sha256Hex(apiKey)).run();
+    await db.prepare("INSERT INTO commerce_buyers (id,seller_id,organisation_name,api_key_hash,status) VALUES (?,?,?,?,'active')")
+      .bind(id, seller.id, organisationName, await sha256Hex(apiKey)).run();
   } catch { return fail(500, "buyer_create_failed", "The buyer account could not be created."); }
-  return json({ ok: true, buyer: { id, organisation_name: organisationName, status: "active" }, api_key: apiKey }, 201);
+  return json({ ok: true, buyer: { id, seller_id: seller.id, organisation_name: organisationName, status: "active" }, api_key: apiKey }, 201);
 }
 async function createProduct(request, env) {
   const auth = await resolveCommerceAdmin(request, env);
@@ -121,10 +125,11 @@ async function submitOrder(request, env) {
     return fail(422, "invalid_order", error.message);
   }
   const db = await requireDb(env), buyerKeyHash = await sha256Hex(apiKey);
-  const buyer = await db.prepare("SELECT id,organisation_name,status FROM commerce_buyers WHERE api_key_hash=?").bind(buyerKeyHash).first();
+  const buyer = await db.prepare("SELECT id,seller_id,organisation_name,status FROM commerce_buyers WHERE api_key_hash=?").bind(buyerKeyHash).first();
   if (!buyer || buyer.status !== "active") return fail(401, "buyer_access_invalid", "The buyer API key is invalid or inactive.");
   const seller = await db.prepare("SELECT id,slug,name,status FROM commerce_sellers WHERE slug=?").bind(orderInput.sellerSlug).first();
   if (!seller || seller.status !== "active") return fail(404, "seller_not_found", "An active seller was not found.");
+  if (buyer.seller_id !== seller.id) return fail(403, "buyer_seller_scope_denied", "This buyer credential is not authorised for the requested seller.");
   const placeholders = orderInput.items.map(() => "?").join(",");
   const productRows = await db.prepare(`SELECT id,sku,name,currency,unit_price_minor FROM commerce_products WHERE seller_id=? AND status='published' AND sku IN (${placeholders})`)
     .bind(seller.id, ...orderInput.items.map(x => x.sku)).all();
