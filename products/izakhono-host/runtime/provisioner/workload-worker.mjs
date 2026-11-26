@@ -12,7 +12,7 @@ export function createWorkloadWorker({ store, adapterRegistry, resolveBinding, n
 
   return Object.freeze({
     async runOnce() {
-      const claimed = await store.claimNext({ workerId, leaseMs, now: now() });
+      const claimed = await store.claimNext({ workerId, leaseMs, now: now(), includeRuntimeVerified: Boolean(navDataJobStore) });
       if (!claimed) return { processed: false, reason: 'no-runnable-bound-workload' };
 
       try {
