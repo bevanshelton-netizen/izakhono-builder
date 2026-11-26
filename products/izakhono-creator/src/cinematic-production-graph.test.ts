@@ -89,6 +89,49 @@ const readyManifest = buildProductionManifest(completeShotProject);
 if (!readyManifest.summary.readyForMaster) throw new Error('Manifest should recognize fully evidenced approved shot media');
 if (readyManifest.summary.readyForDistribution) throw new Error('Distribution must remain blocked until master and distribution exports are recorded');
 
+const facebookQaChecks = [
+  'container-mp4', 'duration-positive', 'video-stream-present', 'video-stream-count',
+  'video-h264', 'video-dimensions', 'video-pixel-format', 'video-frame-rate',
+  'audio-stream-present', 'audio-stream-count', 'audio-aac', 'audio-sample-rate',
+  'audio-stereo', 'mp4-fast-start',
+].map(id => ({ id, passed: true, actual: 'verified', expected: 'profile requirement' }));
+const distributionAssets: CinematicProduction = {
+  ...completeShotProject,
+  assets: [
+    ...completeShotProject.assets,
+    { id: 'master-1', kind: 'video', status: 'completed', source: 'assembled', role: 'master', storageKey: 'projects/p1/master.mp4', contentHash: 'master-sha256', parentAssetIds: [], provenance: { createdAt: '2026-11-25T00:00:00.000Z', licence: 'owned', consentRecordIds: [] } },
+    { id: 'export-1', kind: 'video', status: 'completed', source: 'assembled', role: 'distribution_export', storageKey: 'projects/p1/facebook.mp4', contentHash: 'export-sha256', parentAssetIds: ['master-1'], provenance: { createdAt: '2026-11-25T00:00:00.000Z', licence: 'owned', consentRecordIds: [] } },
+  ],
+};
+if (buildProductionManifest(distributionAssets).summary.readyForDistribution) throw new Error('A stored Facebook export without media QA evidence must not unlock distribution');
+const qaVerifiedDistribution: CinematicProduction = {
+  ...distributionAssets,
+  assets: distributionAssets.assets.map(asset => asset.id === 'export-1' ? {
+    ...asset,
+    mediaQa: {
+      schema: 'izakhono.creator/media-qa-evidence-v1' as const,
+      profileId: 'facebook-reels-1080x1920-v1',
+      passed: true,
+      assetContentHash: 'export-sha256',
+      recordedAt: '2026-11-25T00:05:00.000Z',
+      recordedBy: 'media-qa-worker',
+      checks: facebookQaChecks,
+    },
+  } : asset),
+};
+if (!buildProductionManifest(qaVerifiedDistribution).summary.readyForDistribution) throw new Error('Hash-bound, complete Facebook QA evidence should unlock distribution readiness when all approvals and master evidence exist');
+const mismatchedQaHash: CinematicProduction = {
+  ...qaVerifiedDistribution,
+  assets: qaVerifiedDistribution.assets.map(asset => asset.id === 'export-1' ? { ...asset, mediaQa: { ...asset.mediaQa!, assetContentHash: 'different-bytes' } } : asset),
+};
+if (buildProductionManifest(mismatchedQaHash).summary.readyForDistribution) throw new Error('QA evidence for different bytes must not unlock distribution');
+const missingFastStartQa: CinematicProduction = {
+  ...qaVerifiedDistribution,
+  assets: qaVerifiedDistribution.assets.map(asset => asset.id === 'export-1' ? { ...asset, mediaQa: { ...asset.mediaQa!, checks: asset.mediaQa!.checks.filter(check => check.id !== 'mp4-fast-start') } } : asset),
+};
+if (buildProductionManifest(missingFastStartQa).summary.readyForDistribution) throw new Error('Facebook QA without fast-start verification must not unlock distribution');
+
+
 
 const unstoredShotProject: CinematicProduction = {
   ...completeShotProject,
