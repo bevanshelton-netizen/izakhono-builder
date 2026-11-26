@@ -42,7 +42,7 @@ A provider's asynchronous acceptance response is not proof of readiness. HOST mu
 
 The current HOST API records workload requests as `queued-awaiting-runtime-adapter`. The adapter contract does not change that status and does not claim that NAV is running.
 
-The HOST process can start the bounded runtime and data worker loops when an owner-approved adapter URL, server-side token and logical target binding are configured. The runtime worker deploys the immutable release and records runtime-deployed-awaiting-data-pipeline. The data worker then executes the resumable South Africa data pipeline and transitions the workload through STARTING and VERIFYING to internal READY only after routing, search, tiles, engine, web and persistent-data evidence pass. Backup/restore, HTTPS, DNS and public activation remain separate acceptance gates.
+The HOST process can start the bounded runtime and data worker loops when an owner-approved adapter URL, server-side token and logical target binding are configured. The runtime worker deploys the immutable release, independently inspects the deployed digest, records runtime-deployed-awaiting-data-pipeline and automatically creates the durable data-import job. The data worker then executes the resumable South Africa data pipeline and transitions the workload through STARTING and VERIFYING to internal READY only after routing, search, tiles, engine, web and persistent-data evidence pass. Backup/restore, HTTPS, DNS and public activation remain separate acceptance gates.
 
 No adapter may promote a workload directly to READY or public-live.
 
