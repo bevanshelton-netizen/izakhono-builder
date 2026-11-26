@@ -185,3 +185,13 @@ The supervisor binds a runtime instance to the authorised session, owner, task a
 The implementation is deliberately a reference orchestration contract. The injected driver is not yet implemented. No operating-system process, container, Chromium instance, network namespace, firewall, DNS resolver or browser profile was created or tested. The current fake-driver tests verify orchestration decisions only; they do not prove operating-system isolation or safe network egress.
 
 The browser policy test command now includes the supervisor suite. CI for the current head must be checked before describing any suite as passing. This increment authorises no dependency installation, container image pull, runtime launch, infrastructure spend or deployment.
+
+## 13. Isolation policy and attestation gate
+
+`products/izakhono-one/agent-browser/isolation-policy.mjs` defines the minimum runtime controls and validates a controller-signed isolation attestation. The supervisor does not mark a runtime READY until the attestation binds the exact session, runtime instance and policy version, has an accepted signature through an injected trusted verifier, and asserts all mandatory controls.
+
+The required controls include a dedicated unprivileged identity, read-only root filesystem, per-session ephemeral profile, no host mounts or host IPC, no privileged mode, dropped capabilities, no-new-privileges, reviewed seccomp enforcement, resource limits, process-tree supervision, authenticated narrow bridge, runtime deadlines, egress firewall, DNS/IP pinning, private/reserved/metadata address blocking, and profile destruction.
+
+The attestation validator is only as trustworthy as its injected signature verifier and the controller producing the evidence. A test verifier is used in unit tests only. No production signing key, runtime controller, container profile, seccomp policy, firewall or network proxy has been implemented or deployed. The policy declaration is not proof that a running environment enforces these controls.
+
+A production runtime adapter must implement and independently test each control, sign evidence from a trusted controller, and fail closed when evidence is missing, stale, mismatched or unverifiable. The next gate is a reviewed, platform-specific runtime adapter plus integration tests in an isolated environment; public navigation remains disabled until DNS/IP pinning and egress enforcement are real.
