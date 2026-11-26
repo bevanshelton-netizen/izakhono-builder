@@ -7,6 +7,8 @@ on:
       - 'autonomy/ai-agent-worker.test.mjs'
       - 'autonomy/ai-agent.mjs'
       - 'autonomy/runner.mjs'
+      - 'autonomy/retry-policy.mjs'
+      - 'autonomy/retry-policy.test.mjs'
       - '.github/workflows/autonomy-worker-ci.yml'
   push:
     paths:
@@ -29,4 +31,4 @@ jobs:
         with:
           node-version: '22'
       - name: Exercise real worker and lock behavior
-        run: node autonomy/ai-agent-worker.test.mjs
+        run: node autonomy/retry-policy.test.mjs && node autonomy/ai-agent-worker.test.mjs
