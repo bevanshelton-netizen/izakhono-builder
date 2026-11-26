@@ -43,7 +43,7 @@ function requireText(value, name) {
 
 function requireSafeArtifactPath(value) {
   requireText(value, 'artifactPath');
-  if (value.startsWith('/') || value.includes('\\\\') || value.includes('\\0') ||
+  if (value.startsWith('/') ||
       value.split('/').some(part => !part || part === '.' || part === '..') ||
       !/^[A-Za-z0-9._/-]{1,512}$/.test(value)) {
     throw new Error('artifactPath must be a safe relative path without traversal segments');
