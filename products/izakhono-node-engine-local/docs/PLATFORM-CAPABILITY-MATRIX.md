@@ -24,8 +24,8 @@ One owner's existing computer or phone is the hosting machine. Its own processor
 | Local owner control panel | Implemented; loopback only |
 | Resource admission policy | Implemented as policy checks, not OS enforcement |
 | Per-workload monitoring | Not implemented |
-| OS-enforced CPU, RAM and disk limits | Not implemented |
-| Workload sandboxing / isolation | Not implemented |
+| OS-enforced CPU, RAM and disk limits | Read-only preflight contract added; actual enforcement not implemented |
+| Workload sandboxing / isolation | Not implemented; launch gate fails closed |
 | LAN access | Not implemented |
 | Public internet ingress | Not implemented |
 | Domain, TLS and relay automation | Not implemented |
