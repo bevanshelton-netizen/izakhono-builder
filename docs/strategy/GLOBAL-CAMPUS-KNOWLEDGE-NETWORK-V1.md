@@ -37,7 +37,7 @@ South Africa is the first national market because it provides a bounded, researc
 The South African Government's 2024 post-school education and training statistics report identifies:
 
 - 26 public higher-education institutions
-- 137 private higher-education institutions
+- 138 private higher-education institutions
 - 50 public TVET colleges
 - 146 private colleges
 - 9 community education and training colleges
