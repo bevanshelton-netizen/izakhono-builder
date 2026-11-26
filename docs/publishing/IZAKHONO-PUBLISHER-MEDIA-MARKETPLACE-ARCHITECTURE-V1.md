@@ -410,3 +410,15 @@ Every state transition requires a principal reference, FORTRESS authorization-de
 
 ### Implementation boundary
 No public publisher registration form, login, email verification, DNS challenge, external analytics connection, document upload, moderation console, database migration or public directory has been activated. Those require the canonical FORTRESS application authorization interface, approved DATABASE adapter, secure evidence storage, privacy/legal review and operational ownership. The current onboarding state machine and tests are the conformance specification for that implementation.
+
+
+## 18. Private publisher review queue contract
+
+The private review queue is the next deterministic operations layer. It is not a portal, account system, evidence vault or live moderation service.
+
+- Each review case is scoped to the canonical platform and entity, references one publisher, has an optimistic version, an optional due date and an explicitly assigned reviewer principal.
+- Review states are `open`, `in_review`, `awaiting_evidence`, `approved`, `rejected` and `closed`. State changes require a current FORTRESS decision reference, policy version, exact action permission, reason code, timestamp and expected version.
+- Evidence requests have their own lifecycle: `requested` → `submitted` → `accepted` or `rejected`; expired/rejected requests may be resubmitted only through the defined transition. Approval is blocked while any requested evidence is not accepted.
+- Evidence payloads are opaque references only. Raw identity documents, personal data, credentials and uploaded files must be held only by a future approved secure evidence-storage service; reviewer notes are references, not free-form personal-data fields.
+- Review decisions are immutable records with the case version, actor, FORTRESS decision, reason, evidence-request references, audit-event reference and timestamp. Corrections require a superseding decision, not editing history.
+- These functions validate conformance data only. They do not assign a real reviewer, call FORTRESS, verify a document, store evidence, notify a publisher or approve/list a publisher in production.
