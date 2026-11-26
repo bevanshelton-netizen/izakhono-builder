@@ -55,13 +55,30 @@ label{display:block;margin:12px 0;color:#b9c7d2}input,select{display:block;width
 <label>Verification status <select name="verification_status"><option value="evidence_pending">Evidence pending verification</option><option value="unverified">Unverified</option><option value="verified">Verified (evidence checked)</option></select></label>
 <button type="submit">Record ISBN</button>
 </form></section>
-<p id="form-status" role="status" aria-live="polite"></p>\n<small>Internal publishing operations • Release candidate only • Not an ISBN agency</small>
+<p id="form-status" role="status" aria-live="polite"></p>
+<small>Internal publishing operations • Release candidate only • Not an ISBN agency</small>
 </main>
 <script>
 (() => {
   const tokenKey = "izakhono_isbn_admin_token";
   const status = document.getElementById("status");
-  const body = document.getElementById("catalogue");\n  let adminHeaders = null;\n  const formStatus = document.getElementById("form-status");\n  const post = async (path, payload) => {\n    const response = await fetch(path, { method: "POST", headers: { ...adminHeaders, "Content-Type": "application/json" }, body: JSON.stringify(payload) });\n    const result = await response.json();\n    if (!response.ok) throw new Error(result.error || "Save failed");\n    return result;\n  };\n  const formData = form => Object.fromEntries(new FormData(form).entries());
+  const body = document.getElementById("catalogue");
+  const formStatus = document.getElementById("form-status");
+  let adminHeaders = null;
+
+  const formData = form => Object.fromEntries(new FormData(form).entries());
+  async function post(path, payload) {
+    if (!adminHeaders) throw new Error("Connect to the private registry before saving.");
+    const response = await fetch(path, {
+      method: "POST",
+      headers: { ...adminHeaders, "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || "Save failed");
+    return result;
+  }
+
   async function connect() {
     let token = sessionStorage.getItem(tokenKey);
     if (!token) {
@@ -69,31 +86,56 @@ label{display:block;margin:12px 0;color:#b9c7d2}input,select{display:block;width
       if (!token) return;
       sessionStorage.setItem(tokenKey, token);
     }
-    const headers = { Authorization: "Bearer " + token };\n    adminHeaders = headers;
+    adminHeaders = { Authorization: "Bearer " + token };
     try {
-      const [dash, works, editions, applications] = await Promise.all([
-        fetch("/api/dashboard", {headers}),
-        fetch("/api/works", {headers}),
-        fetch("/api/editions", {headers}),
-        fetch("/api/applications", {headers})
+      const [dash, catalogue, applications, works, editions] = await Promise.all([
+        fetch("/api/dashboard", { headers: adminHeaders }),
+        fetch("/api/catalogue", { headers: adminHeaders }),
+        fetch("/api/applications", { headers: adminHeaders }),
+        fetch("/api/works", { headers: adminHeaders }),
+        fetch("/api/editions", { headers: adminHeaders })
       ]);
-      if ([dash, works, editions, applications].some(r => r.status === 401)) {
+      if ([dash, catalogue, applications, works, editions].some(r => r.status === 401)) {
         sessionStorage.removeItem(tokenKey);
+        adminHeaders = null;
         status.textContent = "Access token rejected. Reload and enter the correct token.";
         return;
       }
-      if (![dash, works, editions, applications].every(r => r.ok)) throw new Error("Registry API is not configured yet.");
-      const [d,w,e,a] = await Promise.all([dash.json(),works.json(),editions.json(),applications.json()]);
+      if (![dash, catalogue, applications, works, editions].every(r => r.ok)) {
+        throw new Error("Registry API is not configured yet.");
+      }
+      const [d, c, a, w, e] = await Promise.all([
+        dash.json(), catalogue.json(), applications.json(), works.json(), editions.json()
+      ]);
       document.getElementById("works").textContent = d.works;
       document.getElementById("editions").textContent = d.editions;
       document.getElementById("isbns").textContent = d.verifiedIsbns;
       document.getElementById("applications").textContent = d.openApplications;
-      const editionMap = new Map(e.items.map(x => [x.work_id, x]));
-      body.innerHTML = "";
+
+      const workSelect = document.getElementById("work-select");
+      const editionSelect = document.getElementById("edition-select");
+      workSelect.replaceChildren();
+      editionSelect.replaceChildren();
       for (const work of w.items) {
-        const edition = editionMap.get(work.id);
+        const option = document.createElement("option");
+        option.value = work.id;
+        option.textContent = work.title;
+        workSelect.append(option);
+      }
+      for (const edition of e.items) {
+        const option = document.createElement("option");
+        option.value = edition.id;
+        option.textContent = edition.edition_statement + " • " + edition.format_code;
+        editionSelect.append(option);
+      }
+
+      body.replaceChildren();
+      for (const edition of c.items) {
         const tr = document.createElement("tr");
-        for (const value of [work.title, edition?.format_code || "—", edition?.status || work.publication_status, "Pending agency allocation"]) {
+        const isbnStatus = edition.verification_status === "verified"
+          ? "Verified: " + edition.isbn13
+          : (edition.isbn13 ? "Unverified: " + edition.isbn13 : "Pending agency allocation");
+        for (const value of [edition.title, edition.format_code, edition.edition_status, isbnStatus]) {
           const td = document.createElement("td");
           td.textContent = value;
           tr.appendChild(td);
@@ -105,6 +147,39 @@ label{display:block;margin:12px 0;color:#b9c7d2}input,select{display:block;width
       status.textContent = err.message + " The release remains private and non-production.";
     }
   }
+
+  document.getElementById("work-form").addEventListener("submit", async event => {
+    event.preventDefault();
+    try {
+      await post("/api/works", {
+        publisher_id: "pub-izakhono-africa",
+        imprint_id: "imprint-selfhelp-stories",
+        ...formData(event.currentTarget)
+      });
+      formStatus.textContent = "Work saved.";
+      event.currentTarget.reset();
+      await connect();
+    } catch (error) { formStatus.textContent = error.message; }
+  });
+
+  document.getElementById("edition-form").addEventListener("submit", async event => {
+    event.preventDefault();
+    try {
+      await post("/api/editions", { ...formData(event.currentTarget), status: "planned" });
+      formStatus.textContent = "Edition saved.";
+      await connect();
+    } catch (error) { formStatus.textContent = error.message; }
+  });
+
+  document.getElementById("isbn-form").addEventListener("submit", async event => {
+    event.preventDefault();
+    try {
+      await post("/api/isbns", formData(event.currentTarget));
+      formStatus.textContent = "ISBN record saved. Confirm the allocation evidence before marking it verified.";
+      await connect();
+    } catch (error) { formStatus.textContent = error.message; }
+  });
+
   connect();
 })();
 </script>
