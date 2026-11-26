@@ -138,12 +138,19 @@ export function createWorkloadStore({ filePath }) {
         return record;
       });
     },
-    async transition(id, next, metadata = {}, now = new Date().toISOString()) {
+    async transition(id, next, metadata = {}, now = new Date().toISOString(), lease = null) {
       return serialize(async () => {
         const state = await read();
         const index = state.workloads.findIndex(item => item.id === id);
         if (index < 0) return null;
-        state.workloads[index] = transitionWorkload(state.workloads[index], next, metadata, now);
+        const record = state.workloads[index];
+        if (lease) {
+          const currentLease = record.worker_lease;
+          if (currentLease?.worker_id !== lease.workerId || currentLease?.lease_id !== lease.leaseId || Date.parse(currentLease.expires_at) <= Date.parse(now)) {
+            throw new Error('Worker lease is missing, expired or superseded; workload transition rejected');
+          }
+        }
+        state.workloads[index] = transitionWorkload(record, next, metadata, now);
         await write(state);
         return state.workloads[index];
       });
