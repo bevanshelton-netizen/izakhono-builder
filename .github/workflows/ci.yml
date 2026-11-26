@@ -228,3 +228,5 @@ jobs:
 
       - name: Parse publisher marketplace profile schema
         run: node -e "JSON.parse(require('node:fs').readFileSync('schemas/publishing/publisher-profile-v1.schema.json', 'utf8')); console.log('Publisher profile schema: valid JSON')"
+      - name: Validate IZAKHONO Publisher Marketplace
+        run: npm run publishing:marketplace:test && npm run publishing:marketplace:typecheck
