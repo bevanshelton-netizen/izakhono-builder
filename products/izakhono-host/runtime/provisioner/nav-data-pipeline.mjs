@@ -41,6 +41,25 @@ function requireText(value, name) {
   if (typeof value !== 'string' || !value.trim()) throw new Error(`${name} is required`);
 }
 
+function requireSafeArtifactPath(value) {
+  requireText(value, 'artifactPath');
+  if (value.startsWith('/') || value.includes('\\\\') || value.includes('\\0') ||
+      value.split('/').some(part => !part || part === '.' || part === '..') ||
+      !/^[A-Za-z0-9._/-]{1,512}$/.test(value)) {
+    throw new Error('artifactPath must be a safe relative path without traversal segments');
+  }
+}
+
+function requireApprovedOsmSource(value) {
+  requireText(value, 'sourceUrl');
+  let parsed;
+  try { parsed = new URL(value); } catch { throw new Error('sourceUrl must be a valid HTTPS URL'); }
+  if (parsed.protocol !== 'https:' || parsed.hostname !== 'download.geofabrik.de' ||
+      parsed.pathname !== '/africa/south-africa-latest.osm.pbf' || parsed.search || parsed.hash) {
+    throw new Error('sourceUrl must identify the official Geofabrik South Africa OSM PBF extract');
+  }
+}
+
 export function createNavDataPipelineRecord({ workloadId, releaseDigest, now = new Date().toISOString() } = {}) {
   requireText(workloadId, 'workloadId');
   if (typeof releaseDigest !== 'string' || !SHA256.test(releaseDigest)) {
@@ -81,20 +100,20 @@ export function recordNavDataStage(record, stageId, evidence, now = new Date().t
   }
 
   if (stageId === 'osm-source') {
-    requireText(evidence.sourceUrl, 'sourceUrl');
-    requireText(evidence.artifactPath, 'artifactPath');
+    requireApprovedOsmSource(evidence.sourceUrl);
+    requireSafeArtifactPath(evidence.artifactPath);
     if (evidence.checksumAlgorithm !== 'md5' || !MD5.test(String(evidence.checksum))) {
       throw new Error('South Africa OSM source must include the verified Geofabrik MD5 checksum');
     }
     if (!Number.isSafeInteger(evidence.bytes) || evidence.bytes <= 0) throw new Error('OSM source bytes must be a positive safe integer');
   }
   if (stageId === 'routing-graph' || stageId === 'search-index') {
-    requireText(evidence.artifactPath, 'artifactPath');
+    requireSafeArtifactPath(evidence.artifactPath);
     requireText(evidence.buildId || evidence.importId, 'buildId/importId');
     if (evidence.healthCheck !== true) throw new Error(`${stageId} healthCheck must be true`);
   }
   if (stageId === 'map-tiles') {
-    requireText(evidence.artifactPath, 'artifactPath');
+    requireSafeArtifactPath(evidence.artifactPath);
     if (evidence.checksumAlgorithm !== 'sha256' || !SHA256.test(String(evidence.checksum))) {
       throw new Error('South Africa PMTiles archive must include a SHA-256 checksum');
     }
