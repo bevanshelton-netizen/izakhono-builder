@@ -42,7 +42,7 @@ A provider's asynchronous acceptance response is not proof of readiness. HOST mu
 
 The current HOST API records workload requests as `queued-awaiting-runtime-adapter`. The adapter contract does not change that status and does not claim that NAV is running.
 
-The worker module and durable lease/evidence primitives now exist. A worker pass can claim an explicitly target-bound request, resolve a trusted adapter binding, provision and deploy the immutable release, and inspect runtime health. It deliberately stops at `PROVISIONING` with `runtime-deployed-awaiting-data-pipeline`; it does not claim data import, application acceptance or READY. The worker is not yet started as a background service because no approved concrete adapter is registered. The next integration stage must add the NAV data-import and service-start pipeline, then independent routing, search, tile and persistence verification before READY. Backup/restore, HTTPS, DNS and public activation remain separate acceptance gates.
+The HOST process can start the bounded runtime and data worker loops when an owner-approved adapter URL, server-side token and logical target binding are configured. The runtime worker deploys the immutable release and records runtime-deployed-awaiting-data-pipeline. The data worker then executes the resumable South Africa data pipeline and transitions the workload through STARTING and VERIFYING to internal READY only after routing, search, tiles, engine, web and persistent-data evidence pass. Backup/restore, HTTPS, DNS and public activation remain separate acceptance gates.
 
 No adapter may promote a workload directly to READY or public-live.
 
@@ -53,6 +53,14 @@ The adapter contract is intentionally provider-neutral. The concrete provider mu
 ## Executable HTTP adapter and worker activation
 
 The trusted generic HTTP adapter is implemented in the HOST provisioner:
+
+- GET /v1/runtime-targets/{runtimeTargetId} returns the exact runtimeTargetId, approved=true, enabled=true and an opaque providerTargetRef.
+- POST /v1/runtime-targets/{runtimeTargetId}/workloads returns a stable resourceId.
+- POST /v1/runtime-targets/{runtimeTargetId}/workloads/{resourceId}/release deploys the requested releaseDigest; GET /v1/runtime-targets/{runtimeTargetId}/workloads/{resourceId} returns healthy=true and the exact releaseDigest only after independent runtime inspection.
+- Backup returns backupId, SHA-256 and a positive byte count. Restore accepts only a provider-issued backupId. Destroy preserves persistent data.
+- POST /v1/nav-data/{stage} must be idempotent by the supplied idempotencyKey and may return {status:"running",operationId} or {status:"succeeded",evidence}. GET /v1/nav-data/operations/{operationId} returns the same status contract. A failed operation returns {status:"failed"}; raw provider details are not exposed to HOST callers.
+- HOST validates all returned evidence; provider acceptance alone never marks a stage successful.
+
 - runtime operations use fixed routes under /v1/runtime-targets and require an explicitly approved target response;
 - data operations use fixed routes under /v1/nav-data for the five pipeline stages plus GET /v1/nav-data/operations/{operationId} for durable completion polling;
 - provider calls require HTTPS except loopback development, bearer authentication, bounded timeouts, normalized errors and no-store responses;
