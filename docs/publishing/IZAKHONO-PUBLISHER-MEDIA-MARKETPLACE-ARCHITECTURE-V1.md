@@ -373,3 +373,10 @@ Repository inspection identified an important boundary that must remain explicit
 - Therefore, neither implementation is to be silently repurposed as the marketplace's FORTRESS integration. In particular, the defensive scan environment flag is not an application authorization decision.
 
 Before any customer/publisher portal, API or database adapter is implemented, the owner and architecture reviewers must identify the actual canonical FORTRESS identity/authorization service, its supported interface and decision/audit contract, and the approved DATABASE persistence boundary. Until those are verified, marketplace authorization remains an explicit integration dependency and all code remains pure conformance logic.
+
+
+### FORTRESS repository cross-check
+
+A cross-repository check of `bevanshelton-netizen/SHELTON-FORTRESS` confirms that FORTRESS IDENTITY GUARD currently describes an explainable identity-risk layer around authentication performed by an authorised upstream system. Its documented `POST /api/v1/identity/risk` and `GET /api/v1/identity/events` interfaces assess and expose risk decisions; the documentation explicitly assumes banks already authenticate their customers and employees.
+
+For this marketplace, those risk interfaces may become a supplementary FORTRESS signal after their service authentication, tenant scope and data contract are verified. They must not be mistaken for a complete marketplace login, session, membership, role, delegation or per-resource authorization API. The FORTRESS product remains the intended canonical authority in the IZAKHONO architecture; the current implementation gap is to locate or define its approved application access-control interface, not to substitute another identity system.
