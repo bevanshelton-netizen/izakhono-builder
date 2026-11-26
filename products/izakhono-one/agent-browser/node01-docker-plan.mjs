@@ -108,6 +108,7 @@ export function buildNode01DockerPlan({
     platform: "NODE01-WINDOWS-WSL2-UBUNTU-DOCKER-ENGINE",
     containerName: name,
     imageReference,
+    limits: Object.freeze({ memoryBytes, cpuQuotaMicros, cpuPeriodMicros, pidsLimit, tmpfsBytes }),
     networkPrerequisite: Object.freeze({
       networkName: isolatedNetworkName,
       mustBeInternal: true,
@@ -148,24 +149,22 @@ export function validateNode01DockerPlan(plan) {
   }
   const hasPair = (flag, value) => argv.filter(arg => arg === flag).length === 1 && argv[argv.indexOf(flag) + 1] === value;
   for (const required of ["--read-only", "--cap-drop", "ALL", "--user", "10001:10001",
-    "--pull=never", "--init", "--tmpfs", "/tmp:rw,nosuid,nodev,size=134217728",
-    "--tmpfs", "/home/browser:rw,nosuid,nodev,size=134217728"]) {
+    "--pull=never", "--init", "--tmpfs", `/tmp:rw,nosuid,nodev,size=${plan.limits?.tmpfsBytes}`,
+    "--tmpfs", `/home/browser:rw,nosuid,nodev,size=${plan.limits?.tmpfsBytes}`]) {
     if (!argv.includes(required)) return { ok: false, reason: "required_docker_hardening_missing" };
   }
   if (!hasPair("--security-opt", "no-new-privileges") ||
       !hasPair("--security-opt", `seccomp=${plan.seccompPrerequisite?.profilePath}`) ||
       !hasPair("--ipc", "private") || !hasPair("--cgroupns", "private") ||
       !hasPair("--network", plan.networkPrerequisite?.networkName) ||
-      !hasPair("--proxy-server", "http://invalid")) {
-    if (!argv.includes(`--proxy-server=http://${plan.networkPrerequisite?.proxyHost}:${plan.networkPrerequisite?.proxyPort}`)) {
-      return { ok: false, reason: "required_docker_hardening_missing" };
-    }
-    if (!hasPair("--security-opt", "no-new-privileges") ||
-        !hasPair("--security-opt", `seccomp=${plan.seccompPrerequisite?.profilePath}`) ||
-        !hasPair("--ipc", "private") || !hasPair("--cgroupns", "private") ||
-        !hasPair("--network", plan.networkPrerequisite?.networkName)) {
-      return { ok: false, reason: "required_docker_hardening_missing" };
-    }
+      !argv.includes(`--proxy-server=http://${plan.networkPrerequisite?.proxyHost}:${plan.networkPrerequisite?.proxyPort}`)) {
+    return { ok: false, reason: "required_docker_hardening_missing" };
+  }
+  if (!hasPair("--memory", String(plan.limits?.memoryBytes)) ||
+      !hasPair("--cpu-quota", String(plan.limits?.cpuQuotaMicros)) ||
+      !hasPair("--cpu-period", String(plan.limits?.cpuPeriodMicros)) ||
+      !hasPair("--pids-limit", String(plan.limits?.pidsLimit))) {
+    return { ok: false, reason: "resource_limit_mismatch" };
   }
   if (!SHA256_IMAGE.test(plan.imageReference ?? "") || !argv.includes(plan.imageReference) ||
       !argv.includes("--disable-quic") || argv.includes("--no-sandbox") ||
