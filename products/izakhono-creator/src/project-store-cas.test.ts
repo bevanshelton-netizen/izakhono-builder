@@ -53,7 +53,7 @@ async function main() {
   );
   await assert.rejects(
     () => saveProjectIfUnchanged({ DB: db }, { id: ' ', brief: 'x', packageData: {} }, storedUpdatedAt),
-    /Project ID and expected update timestamp are required/,
+    /Project ID and a valid expected update timestamp are required/,
   );
   await assert.rejects(
     () => saveProjectIfUnchanged({ DB: db }, { id: 'film-1', brief: 'x', packageData: {} }, 'not-a-timestamp'),
