@@ -15,7 +15,13 @@ Independent, node-agnostic navigation API for IZAKHONO NAV.
 
 The engine never fabricates a straight-line route and calls it road navigation. If no approved router/search/tile backend exists, that capability returns 503.
 
-## Security configuration\n\n- Set `NAV_ALLOWED_ORIGINS` to a comma-separated list of exact trusted browser origins. An empty or unset value denies browser cross-origin access; the engine does not reflect arbitrary origins.\n- The in-memory rate limiter expires buckets by request window and caps its client-key store at 10,000 entries.\n- If the engine is deployed behind a proxy, enable `NAV_TRUST_PROXY` only when that proxy overwrites `X-Forwarded-For` with a trusted client address.\n\n## Start
+## Security configuration
+
+- Set `NAV_ALLOWED_ORIGINS` to a comma-separated list of exact trusted browser origins. An empty or unset value denies browser cross-origin access; the engine does not reflect arbitrary origins.
+- The in-memory rate limiter expires buckets by request window and caps its client-key store at 10,000 entries.
+- If the engine is deployed behind a proxy, enable `NAV_TRUST_PROXY` only when that proxy overwrites `X-Forwarded-For` with a trusted client address.
+
+## Start
 
 ```bash
 cp .env.example .env
