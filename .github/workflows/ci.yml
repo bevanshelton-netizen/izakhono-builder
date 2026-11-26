@@ -28,7 +28,7 @@ jobs:
       - name: Validate FORTRESS egress guard
         run: python -m unittest discover -s products/izakhono-fortress/tests -v
       - name: Validate FORTRESS entity isolation contract
-        run: python -m unittest products.izakhono_fortress.tests.test_entity_isolation_contract -v
+        run: python -m unittest discover -s products/izakhono-fortress/tests -p 'test_entity_isolation_contract.py' -v
 
       - name: Validate IZAKHONO CODE Agent
         run: |
