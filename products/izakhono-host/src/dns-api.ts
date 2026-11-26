@@ -1,4 +1,4 @@
-import { normalizeZoneName, nextSerial, validateDnsRecord, type DnsRecordType } from './dns';
+import { normalizeZoneName, validateDnsRecord, type DnsRecordType } from './dns';
 
 interface D1Statement {
   bind(...values: unknown[]): D1Statement;
@@ -33,6 +33,15 @@ async function audit(env: DnsEnv, customerId: string, zoneId: string, action: st
 async function ownedZone(env: DnsEnv, zoneId: string, customerId: string) {
   return env.DB.prepare('SELECT * FROM dns_zones WHERE id=? AND customer_id=?')
     .bind(zoneId, customerId).first<any>();
+}
+
+async function bumpSerial(env: DnsEnv, zoneId: string, customerId: string): Promise<number> {
+  const base = Number(new Date().toISOString().slice(0, 10).replaceAll('-', '') + '01');
+  const updated = await env.DB.prepare(
+    'UPDATE dns_zones SET serial=CASE WHEN serial>=? THEN serial+1 ELSE ? END,updated_at=CURRENT_TIMESTAMP WHERE id=? AND customer_id=? RETURNING serial'
+  ).bind(base, base, zoneId, customerId).first<{ serial: number }>();
+  if (!updated) throw new Error('Zone serial update failed');
+  return Number(updated.serial);
 }
 
 /**
@@ -108,9 +117,7 @@ export async function handleDnsApi(req: Request, env: DnsEnv, url: URL): Promise
       .bind(recordId, zoneId).first<any>();
     if (!record) return json({ ok: false, error: 'Record not found' }, 404);
     await env.DB.prepare('DELETE FROM dns_records WHERE id=? AND zone_id=?').bind(recordId, zoneId).run();
-    const serial = nextSerial(Number(zone.serial));
-    await env.DB.prepare('UPDATE dns_zones SET serial=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND customer_id=?')
-      .bind(serial, zoneId, customerId).run();
+    const serial = await bumpSerial(env, zoneId, customerId);
     await audit(env, customerId, zoneId, 'record.deleted', { record_id: recordId, serial });
     return json({ ok: true, deleted: recordId, serial, publication: 'not-published' });
   }
@@ -141,6 +148,9 @@ async function handleRecordRequest(req: Request, env: DnsEnv, zoneId: string, cu
   try { validateDnsRecord({ name, type, ttl, value, priority, enabled: true }); }
   catch (error) { return json({ ok: false, error: error instanceof Error ? error.message : 'Invalid DNS record' }, 400); }
 
+  if (type === 'A' && !/^(?:25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)(?:\\.(?:25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)){3}$/.test(value)) return json({ ok: false, error: 'A record requires a valid IPv4 address' }, 400);
+  if (type === 'AAAA') { try { new URL('http://[' + value + ']/'); } catch { return json({ ok: false, error: 'AAAA record requires a valid IPv6 address' }, 400); } }
+
   const conflicts = await env.DB.prepare(
     'SELECT type FROM dns_records WHERE zone_id=? AND name=? AND enabled=1'
   ).bind(zoneId, name).all<any>();
@@ -149,13 +159,11 @@ async function handleRecordRequest(req: Request, env: DnsEnv, zoneId: string, cu
   if (type !== 'CNAME' && existingTypes.includes('CNAME')) return json({ ok: false, error: 'A CNAME already exists at this name' }, 409);
 
   const recordId = id('rec');
-  const serial = nextSerial(Number(zone.serial));
   try {
+    const serial = await bumpSerial(env, zoneId, customerId);
     await env.DB.prepare(
       'INSERT INTO dns_records(id,zone_id,name,type,ttl,priority,value,proxied,enabled,created_at,updated_at) VALUES(?,?,?,?,?,?,?,0,1,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)'
     ).bind(recordId, zoneId, name, type, ttl, priority ?? null, value).run();
-    await env.DB.prepare('UPDATE dns_zones SET serial=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND customer_id=?')
-      .bind(serial, zoneId, customerId).run();
     await audit(env, customerId, zoneId, 'record.created', { record_id: recordId, name, type, ttl, serial });
   } catch (error) {
     return json({ ok: false, error: error instanceof Error ? error.message : 'Record creation failed' }, 409);
