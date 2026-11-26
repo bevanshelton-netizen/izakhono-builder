@@ -100,7 +100,7 @@ const distributionAssets: CinematicProduction = {
   assets: [
     ...completeShotProject.assets,
     { id: 'master-1', kind: 'video', status: 'completed', source: 'assembled', role: 'master', storageKey: 'projects/p1/master.mp4', contentHash: 'master-sha256', parentAssetIds: [], provenance: { createdAt: '2026-11-25T00:00:00.000Z', licence: 'owned', consentRecordIds: [] } },
-    { id: 'export-1', kind: 'video', status: 'completed', source: 'assembled', role: 'distribution_export', storageKey: 'projects/p1/facebook.mp4', contentHash: 'export-sha256', parentAssetIds: ['master-1'], provenance: { createdAt: '2026-11-25T00:00:00.000Z', licence: 'owned', consentRecordIds: [] } },
+    { id: 'export-1', kind: 'video', status: 'completed', source: 'assembled', role: 'distribution_export', storageKey: 'projects/p1/facebook.mp4', contentHash: 'eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee', parentAssetIds: ['master-1'], provenance: { createdAt: '2026-11-25T00:00:00.000Z', licence: 'owned', consentRecordIds: [] } },
   ],
 };
 if (buildProductionManifest(distributionAssets).summary.readyForDistribution) throw new Error('A stored Facebook export without media QA evidence must not unlock distribution');
@@ -112,7 +112,7 @@ const qaVerifiedDistribution: CinematicProduction = {
       schema: 'izakhono.creator/media-qa-evidence-v1' as const,
       profileId: 'facebook-reels-1080x1920-v1',
       passed: true,
-      assetContentHash: 'export-sha256',
+      assetContentHash: 'eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee',
       recordedAt: '2026-11-25T00:05:00.000Z',
       recordedBy: 'media-qa-worker',
       checks: facebookQaChecks,
@@ -122,7 +122,7 @@ const qaVerifiedDistribution: CinematicProduction = {
 if (!buildProductionManifest(qaVerifiedDistribution).summary.readyForDistribution) throw new Error('Hash-bound, complete Facebook QA evidence should unlock distribution readiness when all approvals and master evidence exist');
 const mismatchedQaHash: CinematicProduction = {
   ...qaVerifiedDistribution,
-  assets: qaVerifiedDistribution.assets.map(asset => asset.id === 'export-1' ? { ...asset, mediaQa: { ...asset.mediaQa!, assetContentHash: 'different-bytes' } } : asset),
+  assets: qaVerifiedDistribution.assets.map(asset => asset.id === 'export-1' ? { ...asset, mediaQa: { ...asset.mediaQa!, assetContentHash: 'ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff' } } : asset),
 };
 if (buildProductionManifest(mismatchedQaHash).summary.readyForDistribution) throw new Error('QA evidence for different bytes must not unlock distribution');
 const missingFastStartQa: CinematicProduction = {
@@ -130,6 +130,26 @@ const missingFastStartQa: CinematicProduction = {
   assets: qaVerifiedDistribution.assets.map(asset => asset.id === 'export-1' ? { ...asset, mediaQa: { ...asset.mediaQa!, checks: asset.mediaQa!.checks.filter(check => check.id !== 'mp4-fast-start') } } : asset),
 };
 if (buildProductionManifest(missingFastStartQa).summary.readyForDistribution) throw new Error('Facebook QA without fast-start verification must not unlock distribution');
+const duplicateQaCheck: CinematicProduction = {
+  ...qaVerifiedDistribution,
+  assets: qaVerifiedDistribution.assets.map(asset => asset.id === 'export-1' ? { ...asset, mediaQa: { ...asset.mediaQa!, checks: [...asset.mediaQa!.checks, asset.mediaQa!.checks[0]] } } : asset),
+};
+if (buildProductionManifest(duplicateQaCheck).summary.readyForDistribution) throw new Error('Duplicate QA check IDs must not unlock distribution');
+const unauditedQaTimestamp: CinematicProduction = {
+  ...qaVerifiedDistribution,
+  assets: qaVerifiedDistribution.assets.map(asset => asset.id === 'export-1' ? { ...asset, mediaQa: { ...asset.mediaQa!, recordedAt: 'not-a-timestamp' } } : asset),
+};
+if (buildProductionManifest(unauditedQaTimestamp).summary.readyForDistribution) throw new Error('Invalid QA timestamps must not unlock distribution');
+const malformedQaCheck: CinematicProduction = {
+  ...qaVerifiedDistribution,
+  assets: qaVerifiedDistribution.assets.map(asset => asset.id === 'export-1' ? { ...asset, mediaQa: { ...asset.mediaQa!, checks: asset.mediaQa!.checks.map((check, index) => index === 0 ? { ...check, actual: ' ' } : check) } } : asset),
+};
+if (buildProductionManifest(malformedQaCheck).summary.readyForDistribution) throw new Error('QA checks without actual evidence must not unlock distribution');
+const malformedQaHash: CinematicProduction = {
+  ...qaVerifiedDistribution,
+  assets: qaVerifiedDistribution.assets.map(asset => asset.id === 'export-1' ? { ...asset, contentHash: 'not-a-sha256' } : asset),
+};
+if (buildProductionManifest(malformedQaHash).summary.readyForDistribution) throw new Error('Non-SHA-256 export hashes must not unlock distribution');
 
 
 
