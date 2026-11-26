@@ -43,6 +43,7 @@ export async function executeProductionDistributionExport(
   if (!master || master.kind !== 'video' || master.role !== 'master' || master.status !== 'completed' || !master.storageKey?.trim()) {
     throw new Error('A completed, stored master video asset is required.');
   }
+  if (!master.provenance.licence?.trim()) throw new Error('The approved master must carry recorded licence evidence.');
   if (!master.contentHash || !/^[a-f0-9]{64}$/i.test(master.contentHash)) {
     throw new Error('The approved master must have a SHA-256 content hash.');
   }
