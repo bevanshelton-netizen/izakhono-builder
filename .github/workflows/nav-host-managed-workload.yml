@@ -1,0 +1,33 @@
+name: NAV HOST managed workload contract
+
+on:
+  pull_request:
+    paths:
+      - "products/izakhono-host/runtime/control-plane/**"
+      - "products/izakhono-nav/**"
+  push:
+    branches: [main]
+    paths:
+      - "products/izakhono-host/runtime/control-plane/**"
+      - "products/izakhono-nav/**"
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    name: HOST API and NAV workload contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: products/izakhono-host/runtime/control-plane
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Run syntax, lifecycle and native runtime smoke tests
+        run: npm run check
