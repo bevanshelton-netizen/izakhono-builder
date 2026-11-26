@@ -30,9 +30,15 @@ const requiredFacebookQaChecks = [
 const hasVerifiedFacebookQa = (asset: ProductionAsset): boolean => {
   const qa = asset.mediaQa;
   if (!qa || qa.schema !== 'izakhono.creator/media-qa-evidence-v1' || !qa.passed) return false;
-  if (qa.profileId !== 'facebook-reels-1080x1920-v1' || !asset.contentHash || qa.assetContentHash !== asset.contentHash) return false;
-  if (!qa.recordedAt || !qa.recordedBy) return false;
-  const checks = new Map(qa.checks.map(check => [check.id, check]));
+  if (qa.profileId !== 'facebook-reels-1080x1920-v1') return false;
+  if (!asset.contentHash || !/^[a-f0-9]{64}$/i.test(asset.contentHash) || qa.assetContentHash !== asset.contentHash) return false;
+  if (!qa.recordedAt || !Number.isFinite(Date.parse(qa.recordedAt)) || !qa.recordedBy?.trim()) return false;
+  if (!Array.isArray(qa.checks)) return false;
+  const checks = new Map<string, (typeof qa.checks)[number]>();
+  for (const check of qa.checks) {
+    if (!check.id?.trim() || checks.has(check.id) || !check.actual?.trim() || !check.expected?.trim()) return false;
+    checks.set(check.id, check);
+  }
   return requiredFacebookQaChecks.every(id => checks.get(id)?.passed === true);
 };
 const hasRightsEvidence = (project: CinematicProduction, asset: ProductionAsset): boolean => {
