@@ -94,16 +94,15 @@ test("enforces response size and content-type limits", async () => {
 });
 
 test("returns a bounded timeout result", async () => {
-  const slow = await fixture((_req, res) => setTimeout(() => {
-    if (!res.destroyed) res.writeHead(200, { "content-type": "text/plain" }).end("late");
-  }, 250));
-  try {
-    const result = await createReadOnlyBrowserAdapter({ allowLocalFixtures: true })
-      .run({ type: "navigate", url: slow.url, timeoutMs: 1000 });
-    assert.equal(result.ok, true);
-  } finally {
-    await slow.close();
-  }
+  const fetchImpl = (_url, { signal }) => new Promise((_resolve, reject) => {
+    signal.addEventListener("abort", () => reject(new Error("aborted")), { once: true });
+  });
+  const result = await createReadOnlyBrowserAdapter({
+    allowLocalFixtures: true,
+    fetchImpl
+  }).run({ type: "navigate", url: "http://127.0.0.1:1234", timeoutMs: 1000 });
+  assert.equal(result.ok, false);
+  assert.equal(result.reason, "task_timeout");
 });
 
 test("rejects all task fields that could enable interaction", async () => {
