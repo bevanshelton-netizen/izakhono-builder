@@ -113,7 +113,11 @@ const server = http.createServer(async (req, res) => {
   }
   if (!url.pathname.startsWith('/api/')) return serveSite(req, res);
   if (!authorized(req)) return json(res, 401, {ok:false,error:'Unauthorized'});
-  if (await navWorkloads.handle(req, res, url, body, json)) return;
+  try {
+    if (await navWorkloads.handle(req, res, url, body, json)) return;
+  } catch {
+    return json(res, 500, { ok: false, error: 'HOST_NAV_WORKLOAD_INTERNAL_ERROR' });
+  }
 
   if (req.method === 'GET' && url.pathname === '/api/sites') {
     const state=await loadState();
