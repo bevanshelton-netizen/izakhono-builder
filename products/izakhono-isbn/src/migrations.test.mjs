@@ -41,7 +41,7 @@ try {
   assert.throws(() => insertIsbn("isbn-missing-evidence", "test-missing-evidence", "9780262033848", { evidence: "" }), /allocation_authority_publisher_and_evidence_required/);
 
   addEdition("test-missing-date");
-  assert.throws(() => insertIsbn("isbn-missing-date", "test-missing-date", "9780201633610", { date: null }), /verified_isbn_requires_allocation_date/);
+  assert.throws(() => insertIsbn("isbn-missing-date", "test-missing-date", "9780201633610", { date: "" }), /verified_isbn_requires_allocation_date/);
 
   assert.throws(() => db.prepare("UPDATE isbn_records SET isbn13=? WHERE id=?").run("9780306406158", "isbn-valid-978"), /isbn13_checksum_invalid/);
   console.log("ISBN registry SQLite migration tests passed (8 assertions).");
