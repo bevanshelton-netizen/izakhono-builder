@@ -1,6 +1,8 @@
 services:
   host-runtime:
-    build: ./runtime/control-plane
+    build:
+      context: .
+      dockerfile: runtime/control-plane/Dockerfile
     restart: unless-stopped
     environment:
       PORT: 8080
