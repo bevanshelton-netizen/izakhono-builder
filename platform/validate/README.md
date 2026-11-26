@@ -10,6 +10,9 @@ This directory contains read-only validation and planning tools for service mani
 - `fixtures/services/` and `fixtures/hosts/` — synthetic, non-deployable test records.
 - `validate.py` — schema and policy validator; reads JSON only and makes no network or infrastructure changes.
 - `inventory_plan.py` — deterministic read-only placement planner. It compares declared service demand with explicitly approved inventory records.
+- `schemas/provider-readonly-discovery.schema.json` — normalized supplier capability/resource response contract with explicit evidence quality.
+- `provider_discovery.py` — read-only adapter protocol and offline fixture adapter; no live provider client or mutation method is implemented.
+- `fixtures/providers/` — synthetic discovery response; all unknown mail, networking and availability facts remain unknown.
 - `tests/` — regression tests for validation and planning policy.
 
 ## Run locally
@@ -20,6 +23,7 @@ Python 3.12 is used in CI. Install the pinned validation dependency and run:
 python -m pip install 'jsonschema==4.23.0'
 python platform/validate/validate.py
 python -m unittest discover -s platform/validate/tests -v
+python platform/validate/inventory_plan.py --service platform/validate/fixtures/services/caddy-staging.json --host-dir platform/validate/fixtures/hosts --environment staging --role staging-app
 python scripts/architecture/check-node01-identity.py
 ```
 
@@ -42,9 +46,15 @@ python platform/validate/inventory_plan.py \
   --format json
 ```
 
-The supplied host fixture is deliberately unverified, so this example must return `BLOCKED_NO_ELIGIBLE_HOST` (exit code 3). A `PLAN_READY` result requires an inventory record that passes schema and host policy checks, is approved for the requested environment and role, has a separately identified execution resource, supported OS, evidence and approval references, and sufficient declared schedulable capacity.
+The supplied host fixture is deliberately unverified, so the planner example must return `BLOCKED_NO_ELIGIBLE_HOST` (exit code 3). A `PLAN_READY` result requires an inventory record that passes schema and host policy checks, is approved for the requested environment and role, has a separately identified execution resource, supported OS, evidence and approval references, and sufficient declared schedulable capacity.
 
 The planner multiplies CPU and memory by replica count and sums persistent storage mounts. Inventory capacity is interpreted as schedulable capacity, not gross physical capacity. Keep those values current and do not claim already-allocated resources as available. Selection is deterministic by host ID; it is not a live utilisation-aware scheduler.
+
+## Provider discovery contract
+
+The provider adapter protocol exposes only `discover_capabilities()` and `list_resources()`. The offline `FixtureProviderAdapter` reads a local synthetic JSON fixture and makes no network calls. Future live adapters must use provider-enforced read-only credentials, bounded request timeouts, explicit pagination/rate-limit handling and auditable source references. Do not implement create, resize, delete, reboot, DNS, firewall, shell or mail-routing operations in this discovery layer.
+
+Every capability uses an evidence status: `verified`, `supplier-claimed`, `unknown`, or `not-applicable`. Unknown values remain null; supplier claims are not promoted to verified. In particular, TCP 25, reverse DNS/PTR, static IPv4 and commercial self-hosted multi-tenant mail permission remain unknown until supported by evidence. A resource state of `available` is only a provider-reported observation and does not reserve capacity or approve a host for deployment.
 
 ## Safety properties
 
