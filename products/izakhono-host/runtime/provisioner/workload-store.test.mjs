@@ -65,3 +65,26 @@ test('serializes concurrent creates so one idempotency key creates one record', 
     await rm(root, { recursive: true, force: true });
   }
 });
+
+test('stale workload lease tokens cannot write after a later worker reclaims the record', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'host-workload-lease-'));
+  try {
+    const store = createWorkloadStore({ filePath: path.join(root, 'workloads.json') });
+    const { workload } = await store.create({ ...spec, runtimeTargetId: 'nav-target-a' });
+    const first = await store.claimNext({ workerId: 'host-worker-a', leaseMs: 1000, now: new Date('2026-11-21T00:00:00.000Z') });
+    const second = await store.claimNext({ workerId: 'host-worker-b', leaseMs: 1000, now: new Date('2026-11-21T00:00:02.000Z') });
+    assert.notEqual(first.worker_lease.lease_id, second.worker_lease.lease_id);
+    await assert.rejects(
+      store.recordExecution(workload.id, 'host-worker-a', 'STALE_WRITE', {}, '2026-11-21T00:00:02.000Z', first.worker_lease.lease_id),
+      /lease is missing, expired or owned by another worker/
+    );
+    await assert.rejects(
+      store.releaseClaim(workload.id, 'host-worker-a', {}, '2026-11-21T00:00:02.000Z', first.worker_lease.lease_id),
+      /superseded/
+    );
+    await store.recordExecution(workload.id, 'host-worker-b', 'CURRENT_WRITE', {}, '2026-11-21T00:00:02.000Z', second.worker_lease.lease_id);
+    await store.releaseClaim(workload.id, 'host-worker-b', {}, '2026-11-21T00:00:02.000Z', second.worker_lease.lease_id);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
