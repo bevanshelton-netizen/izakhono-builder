@@ -12,8 +12,8 @@ try {
   assert.equal(seeded.legal_name, "IZAKHONO AFRICA (PTY) LTD");
 
   function addEdition(id) {
-    db.prepare("INSERT INTO editions (id,work_id,format_code) VALUES (?,?,?)")
-      .run(id, "work-business-of-music", "EPUB");
+    db.prepare("INSERT INTO editions (id,work_id,edition_statement,format_code) VALUES (?,?,?,?)")
+      .run(id, "work-business-of-music", "Test " + id, "EPUB");
   }
   function insertIsbn(id, editionId, isbn, extra = {}) {
     db.prepare("INSERT INTO isbn_records (id,edition_id,isbn13,allocation_authority,publisher_of_record,evidence_ref,allocation_date,verification_status) VALUES (?,?,?,?,?,?,?,?)").run(
