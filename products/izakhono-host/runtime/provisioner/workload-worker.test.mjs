@@ -6,6 +6,7 @@ import path from 'node:path';
 import { createWorkloadStore } from './workload-store.mjs';
 import { createRuntimeAdapterRegistry } from './runtime-adapter-contract.mjs';
 import { createWorkloadWorker } from './workload-worker.mjs';
+import { createNavDataJobStore } from './nav-data-job-store.mjs';
 
 const spec = {
   workloadId: 'izakhono-nav',
@@ -78,6 +79,39 @@ test('worker refuses an unregistered adapter and schedules a bounded retry', asy
     assert.equal(saved.worker_lease, undefined);
     assert.equal(saved.retry_after, undefined);
     assert.equal((await worker.runOnce()).processed, false);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('automatically queues the South Africa data pipeline after verified runtime deployment', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'host-worker-data-'));
+  try {
+    const store = createWorkloadStore({ filePath: path.join(root, 'workloads.json') });
+    const navDataJobStore = createNavDataJobStore({ filePath: path.join(root, 'nav-data-jobs.json') });
+    const { workload } = await store.create(spec);
+    const registry = createRuntimeAdapterRegistry();
+    registry.register('test-adapter', {
+      async resolveTarget() { return { id: 'nav-target-a' }; },
+      async provision() { return { id: 'runtime-resource-1' }; },
+      async deploy() {},
+      async inspect() { return { healthy: true, releaseDigest: spec.releaseDigest }; },
+      async stop() {}, async destroy() {}, async backup() {}, async restore() {}
+    });
+    const worker = createWorkloadWorker({
+      store, adapterRegistry: registry, navDataJobStore,
+      resolveBinding: async record => ({ adapterId: 'test-adapter', runtimeTargetId: record.runtime_target_id }),
+      now: () => new Date('2026-11-21T10:00:00.000Z')
+    });
+    const result = await worker.runOnce();
+    assert.equal(result.stage, 'data-import-queued');
+    const saved = await store.get(workload.id);
+    assert.equal(saved.state, 'IMPORTING_DATA');
+    assert.equal(saved.execution_stage, 'runtime-deployed-awaiting-data-pipeline');
+    const jobs = await navDataJobStore.list();
+    assert.equal(jobs.length, 1);
+    assert.equal(jobs[0].workloadRecordId, workload.id);
+    assert.equal(jobs[0].pipeline.releaseDigest, spec.releaseDigest);
   } finally {
     await rm(root, { recursive: true, force: true });
   }
