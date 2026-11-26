@@ -2,6 +2,8 @@ import http from 'node:http';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import { createNavWorkloadController } from './nav-workloads.mjs';
+import { createHttpNavProvider } from './nav-provider-http.mjs';
 
 const PORT = Number(process.env.PORT || 8080);
 const DATA_DIR = process.env.DATA_DIR || '/data';
@@ -13,6 +15,10 @@ const MAX_REQUEST_BYTES = 10 * 1024 * 1024;
 const MAX_FILES = 200;
 const MAX_FILE_BYTES = 512 * 1024;
 const MAX_TOTAL_BYTES = 8 * 1024 * 1024;
+const navProvider = process.env.HOST_NAV_PROVIDER_URL && process.env.HOST_NAV_PROVIDER_TOKEN
+  ? createHttpNavProvider({ baseUrl: process.env.HOST_NAV_PROVIDER_URL, token: process.env.HOST_NAV_PROVIDER_TOKEN })
+  : null;
+const navWorkloads = createNavWorkloadController({ dataDir: path.join(DATA_DIR, 'nav-workloads'), provider: navProvider });
 
 async function loadState() {
   await fs.mkdir(SITES_DIR, { recursive: true });
@@ -107,6 +113,7 @@ const server = http.createServer(async (req, res) => {
   }
   if (!url.pathname.startsWith('/api/')) return serveSite(req, res);
   if (!authorized(req)) return json(res, 401, {ok:false,error:'Unauthorized'});
+  if (await navWorkloads.handle(req, res, url, body, json)) return;
 
   if (req.method === 'GET' && url.pathname === '/api/sites') {
     const state=await loadState();
