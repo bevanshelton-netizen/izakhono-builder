@@ -28,7 +28,7 @@ fi
 # Publish only after the downloaded artifact has passed source checksum validation.
 mv -f "$TMP" "$PBF"
 mv -f "$MD5_TMP" "$PBF.md5.remote"
-printf '%s  %s\\n' "$actual" "$(basename "$PBF")" > "$PBF.md5"
+printf '%s  %s\n' "$actual" "$(basename "$PBF")" > "$PBF.md5"
 ln -s "$PBF" "$LINK_TMP"
 mv -Tf "$LINK_TMP" "$DATA_DIR/router/south-africa-latest.osm.pbf"
 echo "Verified and atomically published $PBF."
