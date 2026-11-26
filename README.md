@@ -23,6 +23,7 @@ The native Builder now includes a provider-neutral local-model adapter (Ollama-c
 ## Core capabilities
 
 - register applications and reusable product modules
+- curriculum-aware Global Campus institution, qualification and module discovery with rights-gated learning-resource alignment
 - generate build recipes and release candidates
 - deterministic validation and internal source snapshots
 - one-sentence Build Anything workflow
