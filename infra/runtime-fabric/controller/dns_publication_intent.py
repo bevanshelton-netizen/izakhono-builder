@@ -60,7 +60,7 @@ def _validate(request: DnsPublicationRequest, authorization: DnsPublicationAutho
         raise ValueError("tenant, zone and approval identifiers are required")
     zone = request.zone_name.strip().lower().removesuffix(".")
     if len(zone) > 253 or not re.fullmatch(
-        r"(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z]{2,63}", zone
+        r"(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}", zone
     ):
         raise ValueError("valid ASCII DNS zone name is required")
     if not isinstance(request.desired_serial, int) or request.desired_serial < 1:
