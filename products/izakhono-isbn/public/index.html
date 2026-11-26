@@ -12,7 +12,7 @@ main{max-width:1120px;margin:auto;padding:32px 20px}h1{margin:0 0 8px;font-size:
 .card{background:#1a2b38;border:1px solid #344958;border-radius:14px;padding:20px}.metric{font-size:34px;font-weight:750;margin-top:10px}
 section{margin-top:28px}.notice{padding:18px;border-left:4px solid #e6b65c;background:#2c2a21;border-radius:8px;color:#f6e8c4}
 table{width:100%;border-collapse:collapse;margin-top:14px}td,th{text-align:left;padding:12px;border-bottom:1px solid #344958}th{color:#9eb3c1}
-small{color:#9eb3c1}.pill{display:inline-block;padding:5px 9px;border-radius:30px;background:#263d4c;color:#9ee0c7;font-size:12px}
+label{display:block;margin:12px 0;color:#b9c7d2}input,select{display:block;width:100%;margin-top:6px;padding:11px;border:1px solid #526777;border-radius:7px;background:#101820;color:#edf2f7}button{padding:11px 16px;border:0;border-radius:7px;background:#79d3b4;color:#10221d;font-weight:700;cursor:pointer}form.card{max-width:680px}small{color:#9eb3c1}.pill{display:inline-block;padding:5px 9px;border-radius:30px;background:#263d4c;color:#9ee0c7;font-size:12px}
 </style>
 </head>
 <body>
@@ -28,13 +28,40 @@ small{color:#9eb3c1}.pill{display:inline-block;padding:5px 9px;border-radius:30p
 <section><h2>Publishing operations</h2><p>Publisher: <strong>IZAKHONO AFRICA (PTY) LTD</strong><br>Imprint: <strong>SELFHELP Stories</strong></p>
 <p>Planned formats are tracked as separate editions. ISBNs remain pending until official allocation evidence has been recorded and checked.</p></section>
 <section><h2>Catalogue</h2><p id="status">Management API is not yet connected. This private dashboard becomes operational after the D1 database, admin secret and access policy are configured.</p><table><thead><tr><th>Title</th><th>Format</th><th>Publication status</th><th>ISBN status</th></tr></thead><tbody id="catalogue"><tr><td colspan="4">No live catalogue connection.</td></tr></tbody></table></section>
-<small>Internal publishing operations • Release candidate only • Not an ISBN agency</small>
+<section><h2>Register a new work</h2>
+<form id="work-form" class="card">
+<label>Book title <input name="title" required maxlength="500"></label>
+<label>Subtitle <input name="subtitle" maxlength="500"></label>
+<button type="submit">Save work</button>
+</form></section>
+<section><h2>Add an edition</h2>
+<form id="edition-form" class="card">
+<label>Work <select name="work_id" id="work-select" required></select></label>
+<label>Edition statement <input name="edition_statement" value="First edition" required></label>
+<label>Format <select name="format_code" required><option>EPUB</option><option>PDF</option><option>PAPERBACK</option><option>HARDCOVER</option><option>AUDIOBOOK</option><option>OTHER</option></select></label>
+<label>Language code <input name="language_code" value="en" required maxlength="12"></label>
+<label>Publication date <input name="publication_date" type="date"></label>
+<button type="submit">Save edition</button>
+</form></section>
+<section><h2>Record an agency-allocated ISBN</h2>
+<p>Only enter an ISBN after the authorised agency has allocated it. Keep the allocation evidence reference with the record.</p>
+<form id="isbn-form" class="card">
+<label>Edition <select name="edition_id" id="edition-select" required></select></label>
+<label>ISBN-13 <input name="isbn13" inputmode="numeric" pattern="[0-9 -]{13,17}" required></label>
+<label>Allocation authority <input name="allocation_authority" value="National Library of South Africa" required></label>
+<label>Allocation date <input name="allocation_date" type="date"></label>
+<label>Publisher of record <input name="publisher_of_record" value="IZAKHONO AFRICA (PTY) LTD" required></label>
+<label>Evidence reference <input name="evidence_ref" placeholder="NLSA email, letter or allocation document reference" required></label>
+<label>Verification status <select name="verification_status"><option value="evidence_pending">Evidence pending verification</option><option value="unverified">Unverified</option><option value="verified">Verified (evidence checked)</option></select></label>
+<button type="submit">Record ISBN</button>
+</form></section>
+<p id="form-status" role="status" aria-live="polite"></p>\n<small>Internal publishing operations • Release candidate only • Not an ISBN agency</small>
 </main>
 <script>
 (() => {
   const tokenKey = "izakhono_isbn_admin_token";
   const status = document.getElementById("status");
-  const body = document.getElementById("catalogue");
+  const body = document.getElementById("catalogue");\n  let adminHeaders = null;\n  const formStatus = document.getElementById("form-status");\n  const post = async (path, payload) => {\n    const response = await fetch(path, { method: "POST", headers: { ...adminHeaders, "Content-Type": "application/json" }, body: JSON.stringify(payload) });\n    const result = await response.json();\n    if (!response.ok) throw new Error(result.error || "Save failed");\n    return result;\n  };\n  const formData = form => Object.fromEntries(new FormData(form).entries());
   async function connect() {
     let token = sessionStorage.getItem(tokenKey);
     if (!token) {
@@ -42,7 +69,7 @@ small{color:#9eb3c1}.pill{display:inline-block;padding:5px 9px;border-radius:30p
       if (!token) return;
       sessionStorage.setItem(tokenKey, token);
     }
-    const headers = { Authorization: "Bearer " + token };
+    const headers = { Authorization: "Bearer " + token };\n    adminHeaders = headers;
     try {
       const [dash, works, editions, applications] = await Promise.all([
         fetch("/api/dashboard", {headers}),
