@@ -8,7 +8,7 @@ export function retryDelayMs(attempts = 1) {
 }
 
 export function waitingRetryDue(task, now = Date.now()) {
-  if (task?.status !== 'waiting') return true;
+  if (!['waiting', 'waiting_owner'].includes(task?.status)) return true;
   const scheduled = task.retryAfter
     ? Date.parse(task.retryAfter)
     : Date.parse(task.updatedAt) + retryDelayMs(task.attempts);
