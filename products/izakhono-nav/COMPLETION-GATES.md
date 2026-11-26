@@ -28,7 +28,7 @@ The owned NAV engine, web client, Android wrapper and NODE01 deployment pipeline
 ## Owned production release gates
 
 1. **CI verification:** engine unit tests, owned-stack integration tests, Android APK build, shell syntax, Compose validation, backup verifier tests and production verifier syntax must pass on the current release commit.
-2. **Runtime access:** the self-hosted GitHub runner labelled `node01` must be online and able to execute the approved deployment workflow. NODE01 is an IZAKHONO software runtime target; proprietary physical navigation hardware is not required.
+2. **Runtime access:** HOST must be configured with an authenticated, approved Runtime Fabric provider adapter and a separately authorized execution-environment binding. NODE01 is a logical software runtime identity; it is not a self-hosted GitHub runner or physical host requirement. Provisioning must remain fail-closed until the provider is configured.
 3. **Capacity:** pass the owned-stack preflight. Current guidance is at least 8 GB RAM and 30 GB free disk, with 16 GB RAM and 60 GB free disk recommended for South Africa imports and tile generation.
 4. **Data activation:** verify the South Africa OSM extract, Nominatim database, Valhalla graph and PMTiles archive are present and healthy.
 5. **Network and DNS:** confirm public ingress on ports 80/443 and point `nav.izakhono.africa` to the owned edge. The domain is currently verified/assigned in the Vercel project; DNS cutover and rollback must be controlled and evidenced.
