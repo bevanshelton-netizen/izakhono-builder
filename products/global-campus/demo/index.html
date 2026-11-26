@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Global Campus Knowledge Network — curriculum-aware supplementary learning resource discovery prototype.">
+  <title>Global Campus | IZAKHONO</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="#" aria-label="Global Campus home">IZAKHONO <span>GLOBAL CAMPUS</span></a>
+    <span class="prototype">PROTOTYPE · DEMO DATA</span>
+  </header>
+  <main>
+    <section class="hero">
+      <p class="eyebrow">LEARN WITH YOUR CURRICULUM IN VIEW</p>
+      <h1>Find knowledge that meets you where you study.</h1>
+      <p class="intro">Search by subject, module code, qualification or learning outcome. Discover independent supplementary guides designed to make difficult topics clearer.</p>
+      <form id="search-form" role="search">
+        <label class="sr-only" for="query">Search your module, topic or qualification</label>
+        <input id="query" name="query" type="search" placeholder="Try “financial accounting” or “debits and credits”" autocomplete="off">
+        <button type="submit">Search resources</button>
+      </form>
+      <div class="search-hints"><span>Popular topics</span><button class="chip" data-query="accounting">Accounting</button><button class="chip" data-query="research methods">Research methods</button><button class="chip" data-query="data analysis">Data analysis</button></div>
+    </section>
+    <section class="trust-note" aria-label="Important prototype notice">
+      <strong>Demonstration only.</strong> The sample institution and module below are fictional test data. They do not represent a real university curriculum, prescribed module or institutional endorsement. Public results will only include institution and module records verified against current official sources.
+    </section>
+    <section class="results-section">
+      <div class="results-heading"><div><p class="eyebrow">DISCOVERY</p><h2 id="results-title">Explore learning resources</h2></div><span id="result-count" aria-live="polite">3 demo resources</span></div>
+      <div id="results" class="results-grid" aria-live="polite"></div>
+      <p id="empty-state" class="empty-state" hidden>No matching demo resources. Try another topic or module code.</p>
+    </section>
+    <section class="how-it-works">
+      <p class="eyebrow">HOW IT WORKS</p>
+      <div class="steps">
+        <article><span>01</span><h3>Find your module</h3><p>Search using the name or code in your institution's official handbook.</p></article>
+        <article><span>02</span><h3>Understand the topic</h3><p>Use original explanations, worked examples and practice activities.</p></article>
+        <article><span>03</span><h3>Learn with confidence</h3><p>Check source dates, review status and language availability before choosing a guide.</p></article>
+      </div>
+    </section>
+  </main>
+  <footer><span>IZAKHONO GLOBAL CAMPUS</span><span>Independent supplementary learning · Not a substitute for official teaching</span></footer>
+  <script src="./app.js" defer></script>
+</body>
+</html>
