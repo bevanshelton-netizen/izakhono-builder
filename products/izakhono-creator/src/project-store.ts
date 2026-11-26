@@ -48,9 +48,16 @@ export async function saveProjectIfUnchanged(
   expectedUpdatedAt: string,
 ): Promise<boolean> {
   if (!env.DB) throw new Error('Creator D1 storage is required for version-checked project persistence.');
-  if (!input.id.trim() || !expectedUpdatedAt.trim()) throw new Error('Project ID and expected update timestamp are required.');
+  if (!input.id.trim() || !expectedUpdatedAt.trim() || !Number.isFinite(Date.parse(expectedUpdatedAt))) {
+    throw new Error('Project ID and a valid expected update timestamp are required.');
+  }
   await ensureSchema(env.DB);
-  const timestamp = now();
+  // Keep the version token strictly monotonic even when two writes land in the
+  // same clock millisecond or the host clock is behind the stored timestamp.
+  const candidate = now();
+  const timestamp = Date.parse(candidate) > Date.parse(expectedUpdatedAt)
+    ? candidate
+    : new Date(Date.parse(expectedUpdatedAt) + 1).toISOString();
   const result = await env.DB.prepare(
     `UPDATE creator_projects
      SET brief = ?, package_json = ?, updated_at = ?
