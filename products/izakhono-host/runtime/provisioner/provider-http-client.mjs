@@ -17,6 +17,7 @@ export function createProviderHttpClient({ baseUrl, token, fetchImpl = fetch, ti
       try {
         response = await fetchImpl(new URL(pathname, base), {
           method,
+          redirect: 'error',
           headers: {
             authorization: 'Bearer ' + token,
             'content-type': 'application/json',
