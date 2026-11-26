@@ -1,7 +1,7 @@
 const app=document.querySelector("#root");
 let mode="drive", safety=true, emergency=false, panel="", monitoring=false, incident=null, routeStatus="ROUTE NOT CALCULATED", destination="Johannesburg CBD", gpsActive=false, motionActive=false, roadHazards=[];
 let engineStatus="CHECKING ENGINE", activeRoute=null, currentPosition=null;
-let lastSpeed=0,lastSpeedAt=0,safetyEvents=[],trustedContacts=[],journey={startedAt:new Date().toISOString(),distance:18.4,eta:23};
+let lastSpeed=0,lastSpeedAt=0,safetyEvents=[],trustedContacts=[],journey={startedAt:new Date().toISOString(),distance:0,eta:0};
 try{safetyEvents=JSON.parse(localStorage.getItem("izakhono_nav_events")||"[]")}catch(e){}
 try{trustedContacts=JSON.parse(localStorage.getItem("izakhono_nav_contacts")||"[]")}catch(e){}
 try{roadHazards=JSON.parse(localStorage.getItem("izakhono_nav_hazards")||"[]")}catch(e){}
