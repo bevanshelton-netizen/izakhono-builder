@@ -18,6 +18,7 @@ export interface ProductionReadinessReport {
   generatedAt: string;
   state: 'ready' | 'in_progress' | 'blocked';
   summary: ProductionManifest['summary'];
+  evidence: ManifestEntry[];
   actions: ReadinessAction[];
 }
 
@@ -46,7 +47,7 @@ export function buildProductionReadinessReport(project: CinematicProduction, gen
     })
     .sort((a,b) => priorityRank(a.priority)-priorityRank(b.priority) || a.category.localeCompare(b.category) || a.id.localeCompare(b.id));
   const state = manifest.summary.readyForDistribution ? 'ready' : actions.some(action => action.priority === 'critical') ? 'blocked' : actions.length ? 'in_progress' : 'ready';
-  return { schema: 'izakhono.creator/readiness-report-v1', productionId: project.id, productionTitle: project.title, generatedAt: manifest.generatedAt, state, summary: manifest.summary, actions };
+  return { schema: 'izakhono.creator/readiness-report-v1', productionId: project.id, productionTitle: project.title, generatedAt: manifest.generatedAt, state, summary: manifest.summary, evidence: manifest.entries.filter(entry => entry.state === 'complete'), actions };
 }
 
 function priorityRank(priority: ReadinessAction['priority']): number {
