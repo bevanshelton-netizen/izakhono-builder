@@ -148,7 +148,7 @@ async function handleRecordRequest(req: Request, env: DnsEnv, zoneId: string, cu
   try { validateDnsRecord({ name, type, ttl, value, priority, enabled: true }); }
   catch (error) { return json({ ok: false, error: error instanceof Error ? error.message : 'Invalid DNS record' }, 400); }
 
-  if (type === 'A' && !/^(?:25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)(?:\\.(?:25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)){3}$/.test(value)) return json({ ok: false, error: 'A record requires a valid IPv4 address' }, 400);
+  if (type === 'A' && !/^(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(?:\.(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}$/.test(value)) return json({ ok: false, error: 'A record requires a valid IPv4 address' }, 400);
   if (type === 'AAAA') { try { new URL('http://[' + value + ']/'); } catch { return json({ ok: false, error: 'AAAA record requires a valid IPv6 address' }, 400); } }
 
   const conflicts = await env.DB.prepare(
