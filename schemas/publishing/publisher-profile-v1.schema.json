@@ -1,0 +1,341 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.izakhono.example/publishing/publisher-profile-v1.schema.json",
+  "title": "IZAKHONO Publisher Profile v1",
+  "description": "Proposed strict domain contract for a publisher directory profile. This schema is documentation/conformance material only; it is not a production API or database migration.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "publisher_id",
+    "tenant_scope",
+    "display_name",
+    "publisher_type",
+    "domains",
+    "languages",
+    "topics",
+    "listing_state",
+    "editorial_policy",
+    "evidence",
+    "created_at",
+    "updated_at"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "publisher-profile.v1"
+    },
+    "publisher_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+    },
+    "tenant_scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "entity_id",
+        "platform_id"
+      ],
+      "properties": {
+        "entity_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "platform_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        }
+      }
+    },
+    "display_name": {
+      "type": "string",
+      "minLength": 2,
+      "maxLength": 200
+    },
+    "publisher_type": {
+      "enum": [
+        "blog",
+        "digital_magazine",
+        "news_outlet",
+        "trade_publication",
+        "professional_association",
+        "newsletter",
+        "other_editorial_channel"
+      ]
+    },
+    "domains": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "hostname",
+          "status"
+        ],
+        "properties": {
+          "hostname": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 253,
+            "pattern": "^(?=.{1,253}$)(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\\.)+[A-Za-z]{2,63}$"
+          },
+          "canonical_url": {
+            "type": "string",
+            "format": "uri",
+            "maxLength": 2048
+          },
+          "status": {
+            "enum": [
+              "unverified",
+              "pending_review",
+              "verified",
+              "suspended",
+              "rejected"
+            ]
+          },
+          "ownership_evidence_ref": {
+            "type": "string",
+            "maxLength": 512
+          },
+          "verified_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      }
+    },
+    "country_code": {
+      "type": "string",
+      "pattern": "^[A-Z]{2}$"
+    },
+    "region": {
+      "type": "string",
+      "maxLength": 120
+    },
+    "languages": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z]{2,3}(-[A-Z]{2})?$"
+      }
+    },
+    "topics": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 100,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 100
+      }
+    },
+    "audience_description": {
+      "type": "string",
+      "maxLength": 3000
+    },
+    "editorial_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "accepts_sponsored_content",
+        "accepts_contributed_content",
+        "final_editorial_control",
+        "disclosure_policy"
+      ],
+      "properties": {
+        "accepts_sponsored_content": {
+          "type": "boolean"
+        },
+        "accepts_contributed_content": {
+          "type": "boolean"
+        },
+        "final_editorial_control": {
+          "const": true
+        },
+        "disclosure_policy": {
+          "enum": [
+            "clearly_disclosed",
+            "publisher_defined",
+            "not_accepted",
+            "unknown"
+          ]
+        },
+        "link_policy": {
+          "enum": [
+            "sponsored_or_nofollow",
+            "nofollow",
+            "editorial_natural_only",
+            "publisher_defined",
+            "unknown"
+          ]
+        },
+        "content_requirements_url": {
+          "type": "string",
+          "format": "uri",
+          "maxLength": 2048
+        },
+        "prohibited_topics": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "maxLength": 100
+          }
+        }
+      }
+    },
+    "listing_state": {
+      "enum": [
+        "draft",
+        "submitted",
+        "under_review",
+        "approved",
+        "suspended",
+        "rejected",
+        "withdrawn",
+        "archived"
+      ]
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "evidence_id",
+          "dimension",
+          "source",
+          "observed_at",
+          "evidence_ref",
+          "review_state"
+        ],
+        "properties": {
+          "evidence_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "dimension": {
+            "enum": [
+              "domain_control",
+              "publisher_identity",
+              "editorial_history",
+              "audience",
+              "organic_traffic",
+              "domain_metric",
+              "outbound_links",
+              "reputation",
+              "disclosure_policy",
+              "legal_eligibility",
+              "other"
+            ]
+          },
+          "source": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "metric_name": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "metric_value": {
+            "type": [
+              "string",
+              "number",
+              "integer",
+              "boolean",
+              "null"
+            ]
+          },
+          "scope": {
+            "type": "string",
+            "maxLength": 300
+          },
+          "observed_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "evidence_ref": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 512
+          },
+          "limitations": {
+            "type": "string",
+            "maxLength": 2000
+          },
+          "review_state": {
+            "enum": [
+              "unreviewed",
+              "accepted",
+              "rejected",
+              "stale",
+              "disputed"
+            ]
+          }
+        }
+      }
+    },
+    "verification_summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "state",
+        "reviewed_at"
+      ],
+      "properties": {
+        "state": {
+          "enum": [
+            "unverified",
+            "in_review",
+            "verified",
+            "suspended",
+            "rejected",
+            "expired"
+          ]
+        },
+        "reviewed_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "reviewer_ref": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "next_review_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "decision_reason": {
+          "type": "string",
+          "maxLength": 2000
+        }
+      }
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "record_version": {
+      "type": "integer",
+      "minimum": 1
+    }
+  }
+}
