@@ -8,22 +8,22 @@ export const NAV_DATA_PIPELINE_STAGES = Object.freeze([
   Object.freeze({
     id: 'osm-source',
     dependsOn: [],
-    evidence: Object.freeze(['sourceUrl', 'artifactPath', 'checksumAlgorithm', 'checksum', 'bytes'])
+    evidence: Object.freeze(['sourceUrl', 'artifactPath', 'checksumAlgorithm', 'checksum', 'sha256', 'bytes'])
   }),
   Object.freeze({
     id: 'routing-graph',
     dependsOn: ['osm-source'],
-    evidence: Object.freeze(['artifactPath', 'buildId', 'healthCheck'])
+    evidence: Object.freeze(['artifactPath', 'buildId', 'checksumAlgorithm', 'checksum', 'sourceSha256', 'healthCheck'])
   }),
   Object.freeze({
     id: 'search-index',
     dependsOn: ['osm-source'],
-    evidence: Object.freeze(['artifactPath', 'importId', 'healthCheck'])
+    evidence: Object.freeze(['artifactPath', 'importId', 'checksumAlgorithm', 'checksum', 'sourceSha256', 'healthCheck'])
   }),
   Object.freeze({
     id: 'map-tiles',
     dependsOn: ['osm-source'],
-    evidence: Object.freeze(['artifactPath', 'checksumAlgorithm', 'checksum', 'tileCount'])
+    evidence: Object.freeze(['artifactPath', 'checksumAlgorithm', 'checksum', 'sourceSha256', 'tileCount'])
   }),
   Object.freeze({
     id: 'service-acceptance',
@@ -106,18 +106,29 @@ export function recordNavDataStage(record, stageId, evidence, now = new Date().t
     if (evidence.checksumAlgorithm !== 'md5' || !MD5.test(String(evidence.checksum))) {
       throw new Error('South Africa OSM source must include the verified Geofabrik MD5 checksum');
     }
+    if (!SHA256.test(String(evidence.sha256))) throw new Error('South Africa OSM source must include a local SHA-256 content digest');
     if (!Number.isSafeInteger(evidence.bytes) || evidence.bytes <= 0) throw new Error('OSM source bytes must be a positive safe integer');
   }
   if (stageId === 'routing-graph' || stageId === 'search-index') {
     requireSafeArtifactPath(evidence.artifactPath);
     if (stageId === 'routing-graph') requireText(evidence.buildId, 'buildId');
     if (stageId === 'search-index') requireText(evidence.importId, 'importId');
+    if (evidence.checksumAlgorithm !== 'sha256' || !SHA256.test(String(evidence.checksum))) {
+      throw new Error(`${stageId} must include a SHA-256 digest of its generated artifact`);
+    }
+    const sourceSha256 = record.stages['osm-source']?.evidence?.sha256;
+    if (String(evidence.sourceSha256).toLowerCase() !== sourceSha256) {
+      throw new Error(`${stageId} sourceSha256 does not match the verified South Africa OSM source`);
+    }
     if (evidence.healthCheck !== true) throw new Error(`${stageId} healthCheck must be true`);
   }
   if (stageId === 'map-tiles') {
     requireSafeArtifactPath(evidence.artifactPath);
     if (evidence.checksumAlgorithm !== 'sha256' || !SHA256.test(String(evidence.checksum))) {
       throw new Error('South Africa PMTiles archive must include a SHA-256 checksum');
+    }
+    if (String(evidence.sourceSha256).toLowerCase() !== record.stages['osm-source']?.evidence?.sha256) {
+      throw new Error('map-tiles sourceSha256 does not match the verified South Africa OSM source');
     }
     if (!Number.isSafeInteger(evidence.tileCount) || evidence.tileCount <= 0) throw new Error('tileCount must be a positive safe integer');
   }
