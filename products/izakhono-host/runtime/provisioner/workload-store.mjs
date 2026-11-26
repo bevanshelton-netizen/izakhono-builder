@@ -92,7 +92,7 @@ export function createWorkloadStore({ filePath }) {
           return runnableState && item.runtime_target_id && !item.execution_stage && leaseExpired && retryReady && Number(item.attempts || 0) < 5;
         });
         if (!candidate) return null;
-        const attempted = recordWorkloadAttempt(candidate, instant.toISOString());
+        const attempted = { ...candidate, lease_count: (candidate.lease_count || 0) + 1 };
         attempted.worker_lease = { worker_id: workerId, lease_id: crypto.randomUUID(), expires_at: new Date(instant.getTime() + leaseMs).toISOString() };
         attempted.retry_after = null;
         const index = state.workloads.findIndex(item => item.id === candidate.id);
@@ -128,7 +128,10 @@ export function createWorkloadStore({ filePath }) {
         if (record.worker_lease?.worker_id !== workerId || record.worker_lease?.lease_id !== leaseId) throw new Error('Worker lease is owned by another worker or has been superseded');
         delete record.worker_lease;
         if (retryAfter) record.retry_after = retryAfter;
-        if (errorCode) record.last_execution_error = String(errorCode).slice(0, 80);
+        if (errorCode) {
+          record.last_execution_error = String(errorCode).slice(0, 80);
+          record.attempts = (record.attempts || 0) + 1;
+        }
         record.updated_at = now;
         await write(state);
         return record;
