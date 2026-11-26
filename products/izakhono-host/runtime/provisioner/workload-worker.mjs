@@ -28,6 +28,19 @@ export function createWorkloadWorker({ store, adapterRegistry, resolveBinding, n
 
         const leaseId = claimed.worker_lease.lease_id;
         const workload = claimed;
+        if (navDataJobStore && workload.execution_stage === 'runtime-deployed-awaiting-data-pipeline') {
+          const job = await navDataJobStore.create({
+            workloadId: workload.workload_id,
+            workloadRecordId: workload.id,
+            releaseDigest: workload.release_digest
+          });
+          const current = await store.get(workload.id);
+          if (current?.state === 'PROVISIONING') {
+            await store.transition(workload.id, 'IMPORTING_DATA', { dataJobId: job.job.id, automatic: true });
+          }
+          await store.releaseClaim(workload.id, workerId, {}, now().toISOString(), leaseId);
+          return { processed: true, workloadId: workload.id, stage: 'data-import-queued', recovered: true };
+        }
         const target = await adapter.resolveTarget({ runtimeTargetId: claimed.runtime_target_id, workload, signal });
         if (!target) throw new Error('Runtime adapter could not resolve the approved target');
 
