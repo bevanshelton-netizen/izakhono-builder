@@ -50,6 +50,22 @@ async function requestSiteWithHostHeader() {
 }
 try {
   await waitForHealth();
+  const navUnauthorized = await fetch(base+'/api/workloads/nav');
+  if (navUnauthorized.status !== 401) throw new Error('NAV workload API authorization boundary failed');
+  const navUnavailable = await fetch(base+'/api/workloads/nav', {
+    method:'POST',
+    headers:{authorization:`Bearer ${token}`,'content-type':'application/json','idempotency-key':'smoke-nav-no-provider'},
+    body:JSON.stringify({
+      release_id:'smoke-release',
+      artifact_digest:'sha256:'+'a'.repeat(64),
+      logical_runtime_id:'NODE01',
+      secret_ref:'fortress://nav/smoke'
+    })
+  });
+  const navUnavailableBody = await navUnavailable.json();
+  if (navUnavailable.status !== 503 || navUnavailableBody.error !== 'NAV_RUNTIME_PROVIDER_UNAVAILABLE') {
+    throw new Error('NAV workload API did not fail closed without a configured provider');
+  }
   const provisioned = await request('/api/sites/provision', {method:'POST',body:JSON.stringify({site_id:'smoke_site',domain:'smoke.example.test',source_ref:'ci'})});
   if (provisioned.site?.domain !== 'smoke.example.test') throw new Error('provision failed');
   const page = await requestSiteWithHostHeader();
