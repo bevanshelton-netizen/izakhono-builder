@@ -10,7 +10,7 @@ const now = Date.parse('2026-11-26T10:00:00.000Z');
 assert.equal(waitingRetryDue({ status: 'waiting', retryAfter: '2026-11-26T10:05:00.000Z' }, now), false);
 assert.equal(waitingRetryDue({ status: 'waiting', retryAfter: '2026-11-26T09:59:00.000Z' }, now), true);
 assert.equal(waitingRetryDue({ status: 'waiting', attempts: 816, updatedAt: '2026-11-26T04:00:01.000Z' }, now), false);
-assert.equal(waitingRetryDue({ status: 'waiting', attempts: 816, updatedAt: '2026-11-26T04:00:01.000Z' }, now + 2), true);
+assert.equal(waitingRetryDue({ status: 'waiting', attempts: 816, updatedAt: '2026-11-26T04:00:01.000Z' }, now + 2000), true);
 assert.equal(waitingRetryDue({ status: 'completed' }, now), true);
 assert.equal(waitingRetryDue({ status: 'waiting_owner', retryAfter: '2026-11-26T10:05:00.000Z' }, now), false);
 assert.equal(waitingRetryDue({ status: 'waiting' }, now), true);
