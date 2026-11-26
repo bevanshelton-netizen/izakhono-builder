@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.izakhono.africa/hosting/supplier-evidence-event/v1",
+  "title": "IZAKHONO HOST Supplier Evidence Audit Event v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["apiVersion", "kind", "eventId", "sequence", "recordedAt", "eventType", "supplierId", "sku", "requirementId", "claimValue", "evidenceStatus", "sourceType", "sourceReference", "sourceSha256", "capturedAt", "validUntil", "verificationMethod", "reviewer", "rationale", "previousEventHash", "eventHash"],
+  "properties": {
+    "apiVersion": {"const": "hosting.izakhono.africa/supplier-evidence-event-v1"},
+    "kind": {"const": "SupplierEvidenceEvent"},
+    "eventId": {"type": "string", "minLength": 8, "maxLength": 128},
+    "sequence": {"type": "integer", "minimum": 1},
+    "recordedAt": {"type": "string", "format": "date-time"},
+    "eventType": {"enum": ["evidence-received", "evidence-reviewed", "evidence-rejected", "evidence-superseded", "evidence-expired", "claim-corrected"]},
+    "supplierId": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]{1,63}$"},
+    "sku": {"type": "string", "minLength": 1},
+    "requirementId": {"type": "string", "pattern": "^[a-z0-9][a-z0-9_.-]{1,95}$"},
+    "claimValue": {},
+    "evidenceStatus": {"enum": ["pending", "verified", "rejected", "superseded", "expired"]},
+    "sourceType": {"enum": ["supplier-document", "supplier-email", "public-source", "contract", "independent-test", "internal-review"]},
+    "sourceReference": {"type": "string", "minLength": 1, "maxLength": 2048},
+    "sourceSha256": {"type": ["string", "null"], "pattern": "^[a-f0-9]{64}$"},
+    "capturedAt": {"type": "string", "format": "date-time"},
+    "validUntil": {"type": ["string", "null"], "format": "date-time"},
+    "verificationMethod": {"enum": ["not-reviewed", "supplier-assertion", "document-authenticity-check", "independent-confirmation", "contract-reviewed", "test-observed"]},
+    "reviewer": {"type": ["string", "null"]},
+    "rationale": {"type": "string", "minLength": 1, "maxLength": 4000},
+    "previousEventHash": {"type": ["string", "null"], "pattern": "^[a-f0-9]{64}$"},
+    "eventHash": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"evidenceStatus": {"const": "verified"}}, "required": ["evidenceStatus"]},
+      "then": {
+        "properties": {
+          "verificationMethod": {"enum": ["document-authenticity-check", "independent-confirmation", "contract-reviewed", "test-observed"]},
+          "reviewer": {"type": "string", "minLength": 2},
+          "sourceSha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+        }
+      }
+    },
+    {
+      "if": {"properties": {"evidenceStatus": {"const": "pending"}}, "required": ["evidenceStatus"]},
+      "then": {"properties": {"verificationMethod": {"enum": ["not-reviewed", "supplier-assertion"]}}}
+    }
+  ]
+}
