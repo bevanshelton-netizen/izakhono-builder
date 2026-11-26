@@ -65,13 +65,20 @@ export function createWorkloadWorker({ store, adapterRegistry, resolveBinding, w
         await store.releaseClaim(claimed.id, workerId, {}, now().toISOString(), leaseId);
         return { processed: true, workloadId: claimed.id, stage: 'runtime-deployed-awaiting-data-pipeline' };
       } catch (error) {
+        const terminal = claimed.attempts >= 5;
         const delay = workloadRetryDelay(claimed.attempts);
-        const retryAfter = new Date(now().getTime() + delay).toISOString();
+        const retryAfter = terminal ? null : new Date(now().getTime() + delay).toISOString();
+        if (terminal) {
+          const current = await store.get(claimed.id);
+          if (current && ['REQUESTED','VALIDATING','PROVISIONING'].includes(current.state)) {
+            await store.transition(claimed.id, 'FAILED', { error: 'WORKLOAD_EXECUTION_RETRY_LIMIT_REACHED' }, now().toISOString());
+          }
+        }
         await store.releaseClaim(claimed.id, workerId, {
           retryAfter,
-          errorCode: 'WORKLOAD_EXECUTION_FAILED'
+          errorCode: terminal ? 'WORKLOAD_EXECUTION_RETRY_LIMIT_REACHED' : 'WORKLOAD_EXECUTION_FAILED'
         }, now().toISOString(), claimed.worker_lease.lease_id);
-        return { processed: true, workloadId: claimed.id, retryAfter, error: String(error?.message || 'Runtime execution failed').slice(0, 240) };
+        return { processed: true, workloadId: claimed.id, retryAfter, terminal, error: String(error?.message || 'Runtime execution failed').slice(0, 240) };
       }
     }
   });
