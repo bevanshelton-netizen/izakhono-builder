@@ -50,7 +50,7 @@ export function createWorkloadWorker({ store, adapterRegistry, resolveBinding, w
         await store.recordExecution(claimed.id, workerId, 'RELEASE_DEPLOYED', {
           adapterId: binding.adapterId,
           releaseDigest: claimed.release_digest
-        }, now().toISOString());
+        }, now().toISOString(), leaseId);
 
         const observation = await adapter.inspect({ target, resource, workload, signal });
         if (observation?.healthy !== true || String(observation.releaseDigest || '').toLowerCase() !== claimed.release_digest) {
@@ -61,7 +61,7 @@ export function createWorkloadWorker({ store, adapterRegistry, resolveBinding, w
           adapterId: binding.adapterId,
           releaseDigest: claimed.release_digest,
           stage: 'runtime-deployed-awaiting-data-pipeline'
-        }, now().toISOString());
+        }, now().toISOString(), leaseId);
         await store.releaseClaim(claimed.id, workerId, {}, now().toISOString(), leaseId);
         return { processed: true, workloadId: claimed.id, stage: 'runtime-deployed-awaiting-data-pipeline' };
       } catch (error) {
