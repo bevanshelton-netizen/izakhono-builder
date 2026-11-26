@@ -112,12 +112,15 @@ export function validateMessageTransition(
   if (!MESSAGE_TRANSITIONS[message.state].includes(next)) {
     errors.push("MESSAGE_TRANSITION_NOT_ALLOWED");
   }
-  if (["accepted_by_channel", "delivered", "read", "failed"].includes(next)) {
+  if (["accepted_by_channel", "delivered", "read", "failed", "unknown"].includes(next)) {
     if (!evidence) errors.push("MESSAGE_TRANSITION_EVIDENCE_REQUIRED");
     else {
       if (!evidence.provider_event_id.trim()) errors.push("PROVIDER_EVENT_ID_REQUIRED");
       if (!Number.isFinite(Date.parse(evidence.observed_at))) errors.push("INVALID_EVIDENCE_TIMESTAMP");
     }
+  }
+  if (next === "accepted_by_channel" && evidence?.source !== "provider_response" && evidence?.source !== "channel_webhook" && evidence?.source !== "reconciliation") {
+    errors.push("CHANNEL_ACCEPTANCE_SOURCE_NOT_TRUSTED");
   }
   if (next === "delivered" || next === "read") {
     if (evidence?.source !== "channel_webhook" && evidence?.source !== "reconciliation") {
@@ -249,6 +252,12 @@ export interface AgentActionDecision {
 }
 
 export function evaluateAgentAction(context: AgentActionContext): AgentActionDecision {
+  if (context.mode === "disabled") {
+    return { outcome: "deny", reason: "AI_AGENT_DISABLED" };
+  }
+  if (!Number.isFinite(context.confidence) || context.confidence < 0 || context.confidence > 1) {
+    return { outcome: "requires_human", reason: "INVALID_CONFIDENCE_SCORE" };
+  }
   const prohibited: AgentAction[] = [
     "issue_refund", "change_payment", "change_access", "make_regulated_decision",
   ];
@@ -258,8 +267,11 @@ export function evaluateAgentAction(context: AgentActionContext): AgentActionDec
   if (context.action === "classify_intent" || context.action === "qualify_lead" || context.action === "summarise_conversation") {
     return { outcome: "allow", reason: "ADVISORY_CONVERSATION_ACTION" };
   }
-  if (context.action === "draft_reply" || context.mode === "suggest_only" || context.mode === "draft_only" || context.mode === "disabled") {
-    return { outcome: "requires_human", reason: "HUMAN_REVIEW_REQUIRED_BY_AGENT_MODE" };
+  if (context.action === "draft_reply") {
+    return { outcome: "allow", reason: "DRAFT_GENERATION_ALLOWED_HUMAN_APPROVAL_REQUIRED_BEFORE_SEND" };
+  }
+  if (context.mode === "suggest_only" || context.mode === "draft_only") {
+    return { outcome: "requires_human", reason: "AUTOMATED_SEND_DISABLED_BY_AGENT_MODE" };
   }
   if (context.action === "create_booking") {
     const ready = context.customer_explicitly_confirmed
