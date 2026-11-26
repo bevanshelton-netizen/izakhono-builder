@@ -71,6 +71,7 @@ export function createNavDataWorker({ store, adapter, workloadStore = null, work
         if (workloadStore) {
           let workload = await workloadStore.get(job.workloadRecordId);
           if (!workload) throw new Error('HOST workload record is missing for completed NAV data job');
+          if (workload.state === 'PROVISIONING' && workload.execution_stage === 'runtime-deployed-awaiting-data-pipeline') workload = await workloadStore.transition(workload.id, 'IMPORTING_DATA', { dataJobId: job.id, recovered: true });
           if (workload.state === 'IMPORTING_DATA') workload = await workloadStore.transition(workload.id, 'STARTING', { dataJobId: job.id });
           if (workload?.state === 'STARTING') workload = await workloadStore.transition(workload.id, 'VERIFYING', { dataJobId: job.id });
           if (workload?.state === 'VERIFYING') {
