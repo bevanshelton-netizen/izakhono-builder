@@ -37,7 +37,8 @@ function plainObject(value) {
 export function validateIsolationAttestation(attestation, {
   expectedSessionId,
   expectedRuntimeInstanceId,
-  expectedPolicyVersion
+  expectedPolicyVersion,
+  verifySignature
 } = {}) {
   if (!plainObject(attestation)) return { ok: false, reason: "invalid_attestation_shape" };
   const allowedKeys = new Set([
@@ -56,7 +57,8 @@ export function validateIsolationAttestation(attestation, {
     return { ok: false, reason: "attestation_binding_mismatch" };
   }
   if (typeof attestation.controllerIdentity !== "string" || !attestation.controllerIdentity.trim() ||
-      typeof attestation.signature !== "string" || !attestation.signature.trim()) {
+      typeof attestation.signature !== "string" || !attestation.signature.trim() ||
+      typeof verifySignature !== "function" || verifySignature(attestation) !== true) {
     return { ok: false, reason: "attestation_not_authenticated" };
   }
   if (FORBIDDEN_NETWORK_MODES.has(attestation.networkMode)) {
