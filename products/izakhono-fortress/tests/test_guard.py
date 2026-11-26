@@ -125,7 +125,7 @@ class HttpBoundaryTests(unittest.TestCase):
         self.assertEqual((status, response["allowed"]), (200, True))
 
     def test_malformed_json_is_rejected(self):
-        self.assertEqual(self.post(b"{").0 if False else self.post(b"{")[0], 400)
+        self.assertEqual(self.post(b"{")[0], 400)
 
     def test_non_object_json_is_rejected(self):
         self.assertEqual(self.post(b"[]")[0], 400)
