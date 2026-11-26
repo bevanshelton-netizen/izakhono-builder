@@ -45,4 +45,32 @@ test('runtime adapter deploys and inspects the requested immutable digest', asyn
   assert.equal(observed.releaseDigest, 'a'.repeat(64));
   assert.match(calls[0].url, /\/release$/);
   assert.equal(JSON.parse(calls[0].init.body).releaseDigest, 'a'.repeat(64));
+  assert.equal(JSON.parse(calls[0].init.body).idempotencyKey, 'izakhono-nav:izakhono-nav:' + 'a'.repeat(64) + ':deploy');
+});
+
+test('runtime provisioning and release operations carry deterministic idempotency keys', async () => {
+  const calls = [];
+  const adapter = createHttpRuntimeAdapter({
+    baseUrl: 'https://runtime-fabric.example', token: 'test',
+    fetchImpl: async (url, init) => {
+      calls.push({ url: String(url), init });
+      return { ok: true, json: async () => ({ resourceId: 'runtime-resource-1' }) };
+    }
+  });
+  const target = { id: 'nav-target-a', providerTargetRef: 'opaque-target-ref' };
+  const workload = { workload_id: 'izakhono-nav', workload_class: 'navigation-platform', logical_node_id: 'NODE01', release_digest: 'c'.repeat(64), health_path: '/health', internal_port: 8080 };
+  const resource = await adapter.provision({ target, workload });
+  assert.equal(resource.id, 'runtime-resource-1');
+  const body = JSON.parse(calls[0].init.body);
+  assert.equal(body.idempotencyKey, 'izakhono-nav:izakhono-nav:' + 'c'.repeat(64) + ':provision');
+  assert.equal(body.logicalNodeId, 'NODE01');
+  assert.equal(body.providerTargetRef, 'opaque-target-ref');
+});
+
+test('runtime backups require a valid checksum and positive size', async () => {
+  const adapter = createHttpRuntimeAdapter({
+    baseUrl: 'https://runtime-fabric.example', token: 'test',
+    fetchImpl: async () => ({ ok: true, json: async () => ({ backupId: 'backup-001', sha256: 'invalid', bytes: 100 }) })
+  });
+  await assert.rejects(adapter.backup({ target: { id: 'nav-target-a' }, resource: { id: 'resource-001' } }), /BACKUP_SHA256_INVALID/);
 });
