@@ -30,6 +30,9 @@ export function createNavDataJobStore({ filePath }) {
         const job=state.jobs.find(j=>['IMPORTING_DATA','VERIFYING'].includes(j.pipeline.state)&&j.attempts<5&&(!j.retryAfter||Date.parse(j.retryAfter)<=instant.getTime())&&(!j.lease||Date.parse(j.lease.expiresAt)<=instant.getTime()));
         if(!job)return null; job.leaseCount=(job.leaseCount||0)+1; job.retryAfter=null; job.lease={workerId,leaseId:crypto.randomUUID(),expiresAt:new Date(instant.getTime()+leaseMs).toISOString()}; await write(state); return job; });
     },
+    async assertLease(id,workerId,leaseId,now=new Date().toISOString()) {
+      return serialize(async()=>{const state=await read();const job=state.jobs.find(j=>j.id===id);if(!job)throw new Error('NAV data job is missing');if(job.lease?.workerId!==workerId||job.lease?.leaseId!==leaseId||Date.parse(job.lease.expiresAt)<=Date.parse(now))throw new Error('NAV data-job lease is missing, expired or superseded');return true;});
+    },
     async recordOperation(id,workerId,leaseId,stageId,operationId,now=new Date().toISOString()) {
       return serialize(async()=>{const state=await read();const job=state.jobs.find(j=>j.id===id);if(!job)return null;if(job.lease?.workerId!==workerId||job.lease?.leaseId!==leaseId||Date.parse(job.lease.expiresAt)<=Date.parse(now))throw new Error('NAV data-job lease is missing, expired or owned by another worker');if(!job.pipeline.stages[stageId])throw new Error('Unknown NAV data pipeline stage');if(typeof operationId!=='string'||!/^[A-Za-z0-9._:-]{1,128}$/.test(operationId))throw new Error('NAV data operation ID is invalid');const previous=job.pipeline.stages[stageId];job.pipeline={...job.pipeline,stages:{...job.pipeline.stages,[stageId]:{...previous,status:'running',operationId,startedAt:previous.startedAt||now,lastPolledAt:now}},updatedAt:now};await write(state);return job;});
     },
