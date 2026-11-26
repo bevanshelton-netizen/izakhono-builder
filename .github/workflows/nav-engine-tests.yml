@@ -1,0 +1,39 @@
+name: IZAKHONO NAV engine tests
+
+on:
+  pull_request:
+    paths:
+      - "products/izakhono-nav/engine/**"
+      - ".github/workflows/nav-engine-tests.yml"
+  push:
+    branches:
+      - main
+      - "feat/nav-security-hardening-v1"
+    paths:
+      - "products/izakhono-nav/engine/**"
+      - ".github/workflows/nav-engine-tests.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  engine-tests:
+    name: Node 22 engine tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: products/izakhono-nav/engine
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Verify JavaScript syntax
+        run: |
+          node --check server.js
+          node --check config.js
+          node --check lib.js
+      - name: Run engine test suite
+        run: npm test
