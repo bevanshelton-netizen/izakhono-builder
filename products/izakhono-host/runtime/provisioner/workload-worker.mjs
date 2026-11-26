@@ -15,7 +15,10 @@ export function createWorkloadWorker({ store, adapterRegistry, resolveBinding, w
       if (!claimed) return { processed: false, reason: 'no-runnable-bound-workload' };
 
       try {
-        const binding = await resolveBinding(claimed);
+        // A single deadline covers target resolution, provisioning, deployment
+        // and post-deployment inspection. Never drop cancellation at a boundary.
+        const signal = AbortSignal.timeout(120000);
+        const binding = await resolveBinding(claimed, { signal });
         if (!binding || typeof binding.adapterId !== 'string' || binding.runtimeTargetId !== claimed.runtime_target_id) {
           throw new Error('No approved adapter binding matches this HOST runtime target');
         }
@@ -23,7 +26,6 @@ export function createWorkloadWorker({ store, adapterRegistry, resolveBinding, w
         if (!adapter) throw new Error('Approved runtime adapter is not registered');
 
         const workload = claimed;
-        const signal = AbortSignal.timeout(120000);
         const target = await adapter.resolveTarget({ runtimeTargetId: claimed.runtime_target_id, workload, signal });
         if (!target) throw new Error('Runtime adapter could not resolve the approved target');
 
@@ -43,13 +45,13 @@ export function createWorkloadWorker({ store, adapterRegistry, resolveBinding, w
           resourceId: typeof resource?.id === 'string' ? resource.id : null
         }, now().toISOString());
 
-        await adapter.deploy({ target, resource, releaseDigest: claimed.release_digest, workload, signal: undefined });
+        await adapter.deploy({ target, resource, releaseDigest: claimed.release_digest, workload, signal });
         await store.recordExecution(claimed.id, workerId, 'RELEASE_DEPLOYED', {
           adapterId: binding.adapterId,
           releaseDigest: claimed.release_digest
         }, now().toISOString());
 
-        const observation = await adapter.inspect({ target, resource, workload, signal: undefined });
+        const observation = await adapter.inspect({ target, resource, workload, signal });
         if (observation?.healthy !== true || String(observation.releaseDigest || '').toLowerCase() !== claimed.release_digest) {
           throw new Error('Runtime inspection did not confirm healthy execution of the requested immutable release');
         }
