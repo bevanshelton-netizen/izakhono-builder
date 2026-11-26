@@ -16,7 +16,7 @@
 
 ## Verification state
 
-The code and tests are committed to the feature branch. The test workflow has been added, but a passing GitHub Actions result has not yet been observed in this build session. Do not describe the code as CI-passing until the workflow run is green.
+The code and tests are committed to the feature branch. GitHub Actions run 7 (Global Campus CI) completed successfully on 26 November 2026; the test job and its “Run Global Campus tests” step both reported success. Broader repository workflows were still running at the time of this status update.
 
 The front-end is a local static prototype, not a deployed production website. The PostgreSQL schema is a migration file only; it has not been applied to any database. No production endpoint, payment integration, institution partnership or live curriculum catalogue has been activated.
 
