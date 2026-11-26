@@ -31,3 +31,5 @@ export { buildProductionReadinessReport, type ProductionReadinessReport, type Re
 export { executeMediaExport, exportAndStore, type MediaExportRuntime, type MediaExportRequest, type MediaExportResult } from './media-export-executor';
 
 export { recordMediaQaEvidence, type MediaQaEvidence } from './cinematic-production-graph';
+
+export { executeProductionDistributionExport, type ProductionExportRequest, type ProductionExportResult, type DistributionExportStore } from './cinematic-media-export-worker';
