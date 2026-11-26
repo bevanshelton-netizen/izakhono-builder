@@ -1,0 +1,36 @@
+{
+  "apiVersion": "hosting.izakhono.africa/supplier-evaluation-v1",
+  "kind": "SupplierSkuEvaluation",
+  "supplierId": "synthetic-example",
+  "supplierName": "Synthetic Example Provider",
+  "sku": "example-8vcpu-32gib",
+  "role": "production-app",
+  "evaluatedAt": "2026-11-26T00:00:00Z",
+  "hardGates": {
+    "owner_control": {"status": "pass", "evidenceStatus": "verified", "evidenceReference": "test:control"},
+    "capacity": {"status": "pass", "evidenceStatus": "verified", "evidenceReference": "test:capacity"},
+    "security": {"status": "pass", "evidenceStatus": "verified", "evidenceReference": "test:security"},
+    "resilience": {"status": "pass", "evidenceStatus": "verified", "evidenceReference": "test:resilience"},
+    "supplier_transparency": {"status": "pass", "evidenceStatus": "verified", "evidenceReference": "test:terms"},
+    "exit": {"status": "pass", "evidenceStatus": "verified", "evidenceReference": "test:exit"},
+    "quote_clarity": {"status": "pass", "evidenceStatus": "verified", "evidenceReference": "test:quote"}
+  },
+  "weightedScores": {
+    "technicalFit": {"value": 5, "evidenceStatus": "verified", "evidenceReference": "test:technical"},
+    "mailSuitability": {"value": 3, "evidenceStatus": "verified", "evidenceReference": "test:mail"},
+    "securityControl": {"value": 4, "evidenceStatus": "verified", "evidenceReference": "test:security-score"},
+    "resilienceRecovery": {"value": 4, "evidenceStatus": "verified", "evidenceReference": "test:recovery"},
+    "costContractClarity": {"value": 4, "evidenceStatus": "verified", "evidenceReference": "test:cost"},
+    "portabilityExit": {"value": 5, "evidenceStatus": "verified", "evidenceReference": "test:portability"},
+    "supportLocationFit": {"value": 4, "evidenceStatus": "verified", "evidenceReference": "test:support"}
+  },
+  "commercial": {
+    "currency": "ZAR",
+    "upfrontAmount": 0,
+    "recurringMonthly": 1600,
+    "renewalMonthly": 1600,
+    "vatIncluded": true,
+    "termMonths": 1
+  },
+  "purchaseApproval": "not-authorized"
+}
