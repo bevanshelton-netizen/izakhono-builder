@@ -68,7 +68,9 @@ test('device workspace supports request-scoped nonce markup', () => {
   const html = renderDeviceDashboard('unit-test-nonce');
   assert.match(html, /<style nonce="unit-test-nonce">/);
   assert.match(html, /<script nonce="unit-test-nonce">/);
-  assert.match(html, /<script nonce=\"unit-test-nonce\">window\.onload/);
+  assert.match(html, /w\\.onload=function\\(\\)\\{w\\.print\\(\\)\\}/);
+  assert.match(html, /doc\\.close\\(\\)/);
+  assert.doesNotMatch(html, /<script nonce=\"unit-test-nonce\">window\\.onload/);
 });
 
 test('merchant workspace removes inline event handlers and uses delegated actions', async () => {
