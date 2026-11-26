@@ -77,6 +77,32 @@ export default {
         }
       }
 
+      if (url.pathname === "/api/correspondence") {
+        if (request.method === "GET") {
+          const result = await db.prepare(
+            "SELECT c.*, a.agency_name FROM agency_correspondence c JOIN agency_applications a ON a.id=c.application_id ORDER BY c.occurred_at DESC LIMIT 500"
+          ).all<Row>();
+          return json({ items: result.results ?? [] });
+        }
+        if (request.method === "POST") {
+          const body = await request.json() as Row;
+          const applicationId = String(body.application_id ?? "").trim();
+          const direction = String(body.direction ?? "");
+          const occurredAt = String(body.occurred_at ?? "");
+          const summary = String(body.summary ?? "").trim();
+          if (!applicationId || !occurredAt || !summary) return error("application_date_and_summary_required");
+          if (!["outgoing","incoming"].includes(direction)) return error("invalid_correspondence_direction");
+          if (!/^\\d{4}-\\d{2}-\\d{2}(?:T\\d{2}:\\d{2}(?::\\d{2})?Z?)?$/.test(occurredAt)) return error("invalid_correspondence_date");
+          const recordId = id();
+          await db.prepare(
+            "INSERT INTO agency_correspondence (id,application_id,direction,occurred_at,recipient,cc,subject,evidence_ref,summary) VALUES (?,?,?,?,?,?,?,?,?)"
+          ).bind(recordId, applicationId, direction, occurredAt, body.recipient ?? null, body.cc ?? null, body.subject ?? null, body.evidence_ref ?? null, summary).run();
+          await audit(db, actor, "append_correspondence", "agency_correspondence", recordId, { application_id: applicationId, direction });
+          return json({ id: recordId, created: true, immutable: true }, 201);
+        }
+        return error("method_not_allowed", 405);
+      }
+
       const resources: Record<string, { table: string; fields: string[] }> = {
         publishers: { table: "publishers", fields: ["legal_name","company_registration","country_code","physical_address","postal_address","contact_name","contact_email","contact_phone","website_url"] },
         imprints: { table: "imprints", fields: ["publisher_id","name","description","active"] },
