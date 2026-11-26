@@ -60,7 +60,7 @@ async function main() {
   expect(result.status === 'committed' && result.reviewCase.status === 'approved', 'authorized transition should commit');
   expect(store.commit?.expectedVersion === 2 && store.commit.nextCase.version === 3, 'compare-and-swap version must advance once');
   expect(store.commit?.audit.authorizationDecisionRef === 'fortress:decision:1', 'audit draft must carry FORTRESS provenance');
-  expect(auth.requests[0].permission === 'publishing.review.approve', 'service must request exact action permission');
+  expect(auth.requests[0].permission === 'publishing:review:approve', 'service must request exact action permission');
   expect(auth.requests[0].identityRole === 'SECURITY_ADMIN', 'verified FORTRESS role is context, not caller input');
   expect(store.commit?.decision.auditEventRef === undefined, 'audit event reference is assigned atomically by persistence');
   const deniedAuth = new FakeAuthorization(); deniedAuth.allowed = false;
@@ -83,7 +83,7 @@ async function main() {
   expect(conflictCode === 'REVIEW_VERSION_CONFLICT', 'atomic persistence conflict must surface as conflict');
   const readAuth = new FakeAuthorization(); const readStore = new FakeStore();
   const read = await new PublisherReviewService({ sessions, authorization: readAuth, store: readStore, now: () => now }).readCase('fortress-session', 'review:1');
-  expect(read.caseId === 'review:1' && readAuth.requests[0].permission === 'publishing.review.read', 'read must be authorized at resource scope');
+  expect(read.caseId === 'review:1' && readAuth.requests[0].permission === 'publishing:review:read', 'read must be authorized at resource scope');
   const foreignStore = new FakeStore(); foreignStore.record = { ...base, tenant: { ...session.tenant, entityId: 'tenant:other' } };
   let foreignCode = '';
   try { await new PublisherReviewService({ sessions, authorization: new FakeAuthorization(), store: foreignStore, now: () => now }).readCase('fortress-session', 'review:1'); } catch (error) { foreignCode = (error as ReviewServiceError).code; }
