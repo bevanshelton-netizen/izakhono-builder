@@ -9,7 +9,8 @@ assert.equal(validIsbn13("978030640615"), false, "too short");
 assert.equal(validIsbn13("9770306406157"), false, "non-book EAN prefix");
 assert.equal(validIsbn13("978030640615X"), false, "non-numeric check digit");
 
-async function main() {\nconst health = await worker.fetch(new Request("https://registry.example/api/health"), {});
+async function main() {
+const health = await worker.fetch(new Request("https://registry.example/api/health"), {});
 assert.equal(health.status, 200, "health endpoint is public");
 assert.equal((await health.json()).productionReady, false, "foundation is not presented as production-ready");
 
@@ -21,4 +22,7 @@ const noDatabase = await worker.fetch(new Request("https://registry.example/api/
 }), { ISBN_ADMIN_TOKEN: "test-token" });
 assert.equal(noDatabase.status, 503, "management API fails closed without database");
 
-console.log("ISBN registry tests passed (11 assertions).");\n}\n\nvoid main();
+console.log("ISBN registry tests passed (11 assertions).");
+}
+
+void main();
