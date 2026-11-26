@@ -23,7 +23,15 @@ const noDatabase = await worker.fetch(new Request("https://registry.example/api/
 }), { ISBN_ADMIN_TOKEN: "test-token" });
 assert.equal(noDatabase.status, 503, "management API fails closed without database");
 
-console.log("ISBN registry tests passed (12 assertions).");
+const correspondenceUnauthorized = await worker.fetch(new Request("https://registry.example/api/correspondence"), { ISBN_ADMIN_TOKEN: "test-token" });
+assert.equal(correspondenceUnauthorized.status, 401, "correspondence history rejects missing bearer token");
+
+const correspondenceNoDatabase = await worker.fetch(new Request("https://registry.example/api/correspondence", {
+  headers: { Authorization: "Bearer test-token" }
+}), { ISBN_ADMIN_TOKEN: "test-token" });
+assert.equal(correspondenceNoDatabase.status, 503, "correspondence history fails closed without database");
+
+console.log("ISBN registry tests passed (14 assertions).");
 }
 
 void main();
