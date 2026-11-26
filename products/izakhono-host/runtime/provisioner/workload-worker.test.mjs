@@ -58,19 +58,26 @@ test('worker refuses an unregistered adapter and schedules a bounded retry', asy
   try {
     const store = createWorkloadStore({ filePath: path.join(root, 'workloads.json') });
     const { workload } = await store.create(spec);
+    let clock = new Date('2026-11-21T10:00:00.000Z');
     const worker = createWorkloadWorker({
       store, adapterRegistry: createRuntimeAdapterRegistry(),
       resolveBinding: async record => ({ adapterId: 'missing-adapter', runtimeTargetId: record.runtime_target_id }),
-      now: () => new Date('2026-11-21T10:00:00.000Z')
+      now: () => clock
     });
-    const result = await worker.runOnce();
-    assert.equal(result.processed, true);
+    let result;
+    for (let attempt = 1; attempt <= 5; attempt += 1) {
+      result = await worker.runOnce();
+      assert.equal(result.processed, true);
+      assert.equal(result.terminal, attempt === 5);
+      if (result.retryAfter) clock = new Date(Date.parse(result.retryAfter) + 1000);
+    }
     assert.match(result.error, /not registered/);
     const saved = await store.get(workload.id);
-    assert.equal(saved.state, 'REQUESTED');
-    assert.equal(saved.last_execution_error, 'WORKLOAD_EXECUTION_FAILED');
+    assert.equal(saved.state, 'FAILED');
+    assert.equal(saved.last_execution_error, 'WORKLOAD_EXECUTION_RETRY_LIMIT_REACHED');
     assert.equal(saved.worker_lease, undefined);
-    assert.ok(saved.retry_after);
+    assert.equal(saved.retry_after, undefined);
+    assert.equal((await worker.runOnce()).processed, false);
   } finally {
     await rm(root, { recursive: true, force: true });
   }
