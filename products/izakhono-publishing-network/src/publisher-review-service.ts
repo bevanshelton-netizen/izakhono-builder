@@ -1,10 +1,10 @@
 /**
  * Private publisher review application service.
  *
- * The ports are deliberately provider-neutral. A production composition root
- * must bind AuthorizationPort to the approved IZAKHONO ID/FORTRESS application
- * authorization interface and ReviewStore to the approved DATABASE adapter.
- * No caller-supplied permission is trusted; authorization is resolved server-side.
+ * Authentication is resolved from a live FORTRESS identity session. The
+ * authorization port must then make a separate resource/action decision.
+ * The persistence port must atomically commit case, immutable decision, audit
+ * evidence and idempotency receipt. No production adapters are wired here.
  */
 import {
   validateReviewAction,
@@ -19,10 +19,20 @@ import {
   type ReviewTenantScope,
 } from './publisher-review-queue-contracts';
 
-export interface ReviewActorContext { principalRef: string; }
+export type FortressIdentityRole = 'OWNER' | 'SECURITY_ADMIN' | 'ANALYST' | 'VIEWER';
+export interface VerifiedReviewSession {
+  principalRef: string;
+  tenant: ReviewTenantScope;
+  role: FortressIdentityRole;
+}
+export interface ReviewSessionVerifier {
+  /** Resolve a bearer/session credential through FORTRESS GET /api/fortress/session. */
+  verifySession(sessionCredential: string): Promise<VerifiedReviewSession | null>;
+}
 export interface AuthorizationRequest {
   tenant: ReviewTenantScope;
   principalRef: string;
+  identityRole: FortressIdentityRole;
   resourceRef: string;
   permission: string;
   purpose: 'publisher_review';
@@ -36,6 +46,7 @@ export interface AuthorizationDecision {
   decidedAt: string;
 }
 export interface ReviewAuthorizationPort {
+  /** Must evaluate the current principal, tenant, resource and permission; role alone is not sufficient. */
   authorize(request: AuthorizationRequest): Promise<AuthorizationDecision>;
 }
 export interface ReviewAuditDraft {
@@ -68,14 +79,14 @@ export interface ReviewStore {
   commitMutation(input: ReviewMutationCommit): Promise<ReviewCommitResult>;
 }
 export interface ReviewServicePorts {
+  sessions: ReviewSessionVerifier;
   authorization: ReviewAuthorizationPort;
   store: ReviewStore;
   now?: () => string;
 }
 export interface TransitionReviewCommand {
-  tenant: ReviewTenantScope;
+  sessionCredential: string;
   caseId: string;
-  actor: ReviewActorContext;
   action: ReviewDecisionKind;
   reasonCode: string;
   reviewerNoteRef: string | null;
@@ -84,6 +95,7 @@ export interface TransitionReviewCommand {
   correlationRef: string;
 }
 export type ReviewServiceErrorCode =
+  | 'REVIEW_SESSION_INVALID'
   | 'REVIEW_AUTHORIZATION_DENIED'
   | 'REVIEW_CASE_NOT_FOUND'
   | 'REVIEW_CASE_INVALID'
@@ -107,11 +119,14 @@ const targetByAction: Record<ReviewDecisionKind, ReviewCaseStatus> = {
   return_to_queue: 'open', close: 'closed',
 };
 const nonBlank = (value: string): boolean => typeof value === 'string' && value.trim().length > 0;
-async function fingerprint(command: TransitionReviewCommand): Promise<string> {
+function sameTenant(a: ReviewTenantScope, b: ReviewTenantScope): boolean {
+  return a.platformId === b.platformId && a.entityId === b.entityId;
+}
+async function fingerprint(command: TransitionReviewCommand, session: VerifiedReviewSession): Promise<string> {
   const canonical = JSON.stringify({
-    tenant: { platformId: command.tenant.platformId, entityId: command.tenant.entityId },
+    tenant: { platformId: session.tenant.platformId, entityId: session.tenant.entityId },
+    principalRef: session.principalRef,
     caseId: command.caseId,
-    principalRef: command.actor.principalRef,
     action: command.action,
     reasonCode: command.reasonCode,
     reviewerNoteRef: command.reviewerNoteRef,
@@ -121,41 +136,41 @@ async function fingerprint(command: TransitionReviewCommand): Promise<string> {
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(canonical));
   return Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('');
 }
-function sameTenant(a: ReviewTenantScope, b: ReviewTenantScope): boolean {
-  return a.platformId === b.platformId && a.entityId === b.entityId;
-}
 export class PublisherReviewService {
   constructor(private readonly ports: ReviewServicePorts) {}
-  async readCase(tenant: ReviewTenantScope, caseId: string, actor: ReviewActorContext): Promise<PublisherReviewCase> {
+  async readCase(sessionCredential: string, caseId: string): Promise<PublisherReviewCase> {
+    const session = await this.resolveSession(sessionCredential);
     const auth = await this.ports.authorization.authorize({
-      tenant, principalRef: actor.principalRef, resourceRef: `publisher-review:${caseId}`,
-      permission: 'publishing.review.read', purpose: 'publisher_review',
+      tenant: session.tenant, principalRef: session.principalRef, identityRole: session.role,
+      resourceRef: `publisher-review:${caseId}`, permission: 'publishing.review.read',
+      purpose: 'publisher_review',
     });
     if (!auth.allowed) throw new ReviewServiceError('REVIEW_AUTHORIZATION_DENIED');
-    if (!this.validAuthorization(auth, actor.principalRef, 'publishing.review.read')) throw new ReviewServiceError('REVIEW_AUTHORIZATION_RESPONSE_INVALID');
-    const record = await this.ports.store.getCase(tenant, caseId);
-    if (!record || !sameTenant(record.tenant, tenant)) throw new ReviewServiceError('REVIEW_CASE_NOT_FOUND');
+    if (!this.validAuthorization(auth, session.principalRef, 'publishing.review.read')) throw new ReviewServiceError('REVIEW_AUTHORIZATION_RESPONSE_INVALID');
+    const record = await this.ports.store.getCase(session.tenant, caseId);
+    if (!record || !sameTenant(record.tenant, session.tenant)) throw new ReviewServiceError('REVIEW_CASE_NOT_FOUND');
     const errors = validateReviewCase(record, this.clock());
     if (errors.length) throw new ReviewServiceError('REVIEW_CASE_INVALID', errors.join(','));
     return record;
   }
   async transition(command: TransitionReviewCommand): Promise<ReviewCommitResult> {
     if (!nonBlank(command.idempotencyKey) || command.idempotencyKey.length > 200) throw new ReviewServiceError('REVIEW_IDEMPOTENCY_KEY_REQUIRED');
-    if (!nonBlank(command.actor.principalRef) || !nonBlank(command.caseId) || !nonBlank(command.correlationRef)) throw new ReviewServiceError('REVIEW_ACTION_INVALID');
+    if (!nonBlank(command.caseId) || !nonBlank(command.correlationRef)) throw new ReviewServiceError('REVIEW_ACTION_INVALID');
+    const session = await this.resolveSession(command.sessionCredential);
     const permission = permissionByAction[command.action];
     const authorization = await this.ports.authorization.authorize({
-      tenant: command.tenant, principalRef: command.actor.principalRef,
+      tenant: session.tenant, principalRef: session.principalRef, identityRole: session.role,
       resourceRef: `publisher-review:${command.caseId}`, permission, purpose: 'publisher_review',
     });
     if (!authorization.allowed) throw new ReviewServiceError('REVIEW_AUTHORIZATION_DENIED');
-    if (!this.validAuthorization(authorization, command.actor.principalRef, permission)) throw new ReviewServiceError('REVIEW_AUTHORIZATION_RESPONSE_INVALID');
-    // Authorization is deliberately checked before reading the case to avoid existence leaks.
-    const current = await this.ports.store.getCase(command.tenant, command.caseId);
-    if (!current || !sameTenant(current.tenant, command.tenant)) throw new ReviewServiceError('REVIEW_CASE_NOT_FOUND');
+    if (!this.validAuthorization(authorization, session.principalRef, permission)) throw new ReviewServiceError('REVIEW_AUTHORIZATION_RESPONSE_INVALID');
+    // Authentication and resource authorization both precede case lookup to avoid existence leaks.
+    const current = await this.ports.store.getCase(session.tenant, command.caseId);
+    if (!current || !sameTenant(current.tenant, session.tenant)) throw new ReviewServiceError('REVIEW_CASE_NOT_FOUND');
     const now = this.clock();
     const caseErrors = validateReviewCase(current, now);
     if (caseErrors.length) throw new ReviewServiceError('REVIEW_CASE_INVALID', caseErrors.join(','));
-    const requestFingerprint = await fingerprint(command);
+    const requestFingerprint = await fingerprint(command, session);
     const action: ReviewAction = {
       from: current.status, to: targetByAction[command.action], action: command.action,
       actor: this.toReviewAuthorization(authorization), occurredAt: now,
@@ -172,28 +187,37 @@ export class PublisherReviewService {
     };
     const decision: Omit<ImmutableReviewDecision, 'auditEventRef'> = {
       decisionId: `decision:${requestFingerprint.slice(0, 32)}`, caseId: current.caseId,
-      tenant: command.tenant, kind: command.action, actorPrincipalRef: authorization.principalRef,
+      tenant: session.tenant, kind: command.action, actorPrincipalRef: authorization.principalRef,
       authorizationDecisionRef: authorization.decisionRef, reasonCode: command.reasonCode,
       reviewerNoteRef: command.reviewerNoteRef,
       evidenceRequestIds: current.evidenceRequests.map(item => item.requestId),
       caseVersion: nextCase.version, occurredAt: now,
     };
     const audit: ReviewAuditDraft = {
-      tenant: command.tenant, actorPrincipalRef: authorization.principalRef,
+      tenant: session.tenant, actorPrincipalRef: authorization.principalRef,
       authorizationDecisionRef: authorization.decisionRef, action: command.action,
       resourceRef: `publisher-review:${command.caseId}`, reasonCode: command.reasonCode,
       occurredAt: now, correlationRef: command.correlationRef,
     };
     const commit = await this.ports.store.commitMutation({
-      tenant: command.tenant, caseId: command.caseId, expectedVersion: command.expectedVersion,
-      nextCase, decision, audit, idempotencyKey: command.idempotencyKey,
-      requestFingerprint,
+      tenant: session.tenant, caseId: command.caseId, expectedVersion: command.expectedVersion,
+      nextCase, decision, audit, idempotencyKey: command.idempotencyKey, requestFingerprint,
     });
     if (commit.status === 'conflict') throw new ReviewServiceError('REVIEW_VERSION_CONFLICT');
-    if (!sameTenant(commit.reviewCase.tenant, command.tenant) || !sameTenant(commit.decision.tenant, command.tenant)) throw new ReviewServiceError('REVIEW_CASE_NOT_FOUND');
+    if (!sameTenant(commit.reviewCase.tenant, session.tenant) || !sameTenant(commit.decision.tenant, session.tenant)) throw new ReviewServiceError('REVIEW_CASE_NOT_FOUND');
     const decisionErrors = validateImmutableReviewDecision(commit.decision);
     if (decisionErrors.length) throw new ReviewServiceError('REVIEW_DECISION_INVALID', decisionErrors.join(','));
     return commit;
+  }
+  private async resolveSession(credential: string): Promise<VerifiedReviewSession> {
+    if (!nonBlank(credential) || credential.length > 8192) throw new ReviewServiceError('REVIEW_SESSION_INVALID');
+    const session = await this.ports.sessions.verifySession(credential);
+    if (!session || !nonBlank(session.principalRef) || !nonBlank(session.tenant.platformId)
+      || !nonBlank(session.tenant.entityId)
+      || !['OWNER', 'SECURITY_ADMIN', 'ANALYST', 'VIEWER'].includes(session.role)) {
+      throw new ReviewServiceError('REVIEW_SESSION_INVALID');
+    }
+    return session;
   }
   private clock(): string { return (this.ports.now ?? (() => new Date().toISOString()))(); }
   private validAuthorization(auth: AuthorizationDecision, principalRef: string, permission: string): boolean {
