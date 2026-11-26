@@ -145,3 +145,10 @@ services at their enforcement boundaries.
   disposition denial. These tests do not constitute penetration testing,
   cryptographic verification, source-enforced authorization or production
   storage assurance.
+
+- Evidence JSON Schema structural tests verify internal references, strict
+  property declarations, exact object/version requirements, operation and
+  fingerprint pairing, tenant/digest/manifest bindings and explicit (not
+  hard-coded) digest algorithm identifiers. These are structural checks; a
+  production API validator must additionally enforce the approved format,
+  canonicalization, authorization and cross-record semantic rules.
