@@ -69,3 +69,10 @@ test("rejects injected privilege, host-network and security-profile overrides", 
   assert.equal(validateNode01DockerPlan({ ...plan, createArgv: [...plan.createArgv, "--network=host"] }).reason, "unsafe_container_override");
   assert.equal(validateNode01DockerPlan({ ...plan, createArgv: [...plan.createArgv, "seccomp=unconfined"] }).reason, "unsafe_container_override");
 });
+
+test("requires user-namespace remapping, cgroup v2 and Docker seccomp support", () => {
+  const plan = buildNode01DockerPlan(base);
+  assert.equal(plan.daemonPrerequisite.userNamespaceRemapping, "rootless-or-userns-remap");
+  assert.equal(plan.daemonPrerequisite.cgroupVersion, "v2");
+  assert.equal(validateNode01DockerPlan({ ...plan, daemonPrerequisite: { ...plan.daemonPrerequisite, seccompEnabled: false } }).reason, "daemon_hardening_prerequisite_missing");
+});
