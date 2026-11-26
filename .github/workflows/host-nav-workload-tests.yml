@@ -16,7 +16,7 @@ on:
       - 'products/izakhono-host/runtime/provisioner/nav-data-pipeline.test.mjs'
       - 'products/izakhono-host/runtime/provisioner/nav-data-job-store.mjs'
       - 'products/izakhono-host/runtime/provisioner/nav-data-worker.mjs'
-      - 'products/izakhono-host/runtime/provisioner/nav-data-worker.test.mjs products/izakhono-host/runtime/provisioner/provider-http-client.test.mjs products/izakhono-host/runtime/provisioner/http-runtime-adapter.test.mjs products/izakhono-host/runtime/provisioner/nav-data-http-adapter.test.mjs'
+      - 'products/izakhono-host/runtime/provisioner/nav-data-worker.test.mjs'
       - 'products/izakhono-host/runtime/provisioner/provider-http-client.mjs'
       - 'products/izakhono-host/runtime/provisioner/provider-http-client.test.mjs'
       - 'products/izakhono-host/runtime/provisioner/http-runtime-adapter.mjs'
