@@ -197,4 +197,53 @@ const consentCoveredProject: CinematicProduction = {
 };
 if (!buildProductionManifest(consentCoveredProject).summary.readyForMaster) throw new Error('Recorded licence and applicable consent evidence should satisfy rights checks');
 
+
+const qaAssetBase: CinematicProduction = {
+  ...distributionAssets,
+  assets: distributionAssets.assets.map(asset => asset.id === 'export-1' ? { ...asset, contentHash: 'c'.repeat(64) } : asset),
+};
+const evidenceForRecording = {
+  schema: 'izakhono.creator/media-qa-evidence-v1' as const,
+  profileId: 'facebook-reels-1080x1920-v1',
+  passed: true,
+  assetContentHash: 'c'.repeat(64),
+  recordedAt: '2026-11-26T09:00:00.000Z',
+  recordedBy: 'media-qa-worker',
+  checks: facebookQaChecks,
+};
+const qaRecorded = recordMediaQaEvidence(qaAssetBase, 'export-1', evidenceForRecording);
+if (qaRecorded.assets.find(asset => asset.id === 'export-1')?.mediaQa?.assetContentHash !== 'c'.repeat(64)) throw new Error('Media QA evidence was not attached to the canonical export asset');
+if (qaRecorded.metadata.version !== qaAssetBase.metadata.version + 1) throw new Error('Recording QA evidence must increment the production graph version');
+if (!buildProductionManifest(qaRecorded).summary.readyForDistribution) throw new Error('Recorded hash-bound QA evidence should satisfy the export QA gate when other gates pass');
+const failedEvidence = { ...evidenceForRecording, passed: false, checks: facebookQaChecks.map(check => check.id === 'mp4-fast-start' ? { ...check, passed: false } : check) };
+const failedRecorded = recordMediaQaEvidence(qaAssetBase, 'export-1', failedEvidence);
+if (failedRecorded.assets.find(asset => asset.id === 'export-1')?.mediaQa?.passed !== false) throw new Error('Failed QA evidence must remain available for audit');
+if (buildProductionManifest(failedRecorded).summary.readyForDistribution) throw new Error('Failed QA evidence must never unlock distribution');
+for (const invalidEvidence of [
+  { ...evidenceForRecording, assetContentHash: 'd'.repeat(64) },
+  { ...evidenceForRecording, checks: facebookQaChecks.filter(check => check.id !== 'mp4-fast-start') },
+  { ...evidenceForRecording, recordedBy: ' ' },
+]) {
+  let rejected = false;
+  try { recordMediaQaEvidence(qaAssetBase, 'export-1', invalidEvidence); } catch { rejected = true; }
+  if (!rejected) throw new Error('Invalid or incomplete media QA evidence must be rejected');
+}
+const unstoredExport: CinematicProduction = {
+  ...qaAssetBase,
+  assets: qaAssetBase.assets.map(asset => asset.id === 'export-1' ? { ...asset, storageKey: undefined } : asset),
+};
+let unstoredExportRejected = false;
+try { recordMediaQaEvidence(unstoredExport, 'export-1', evidenceForRecording); } catch { unstoredExportRejected = true; }
+if (!unstoredExportRejected) throw new Error('QA evidence must not be attached before the export is stored');
+const incompleteExport: CinematicProduction = {
+  ...qaAssetBase,
+  assets: qaAssetBase.assets.map(asset => asset.id === 'export-1' ? { ...asset, status: 'processing' as const } : asset),
+};
+let incompleteExportRejected = false;
+try { recordMediaQaEvidence(incompleteExport, 'export-1', evidenceForRecording); } catch { incompleteExportRejected = true; }
+if (!incompleteExportRejected) throw new Error('QA evidence must not be attached to an incomplete export');
+let wrongRoleRejected = false;
+try { recordMediaQaEvidence(completeShotProject, 'video-sh1', evidenceForRecording); } catch { wrongRoleRejected = true; }
+if (!wrongRoleRejected) throw new Error('Media QA evidence must not be attached to a shot source asset');
+
 console.log('IZAKHONO CINEMATIC production graph: PASS');
