@@ -2,6 +2,7 @@
 -- Payment, inventory, accounting and fulfilment remain separate authorities.
 CREATE TABLE IF NOT EXISTS commerce_sellers (
   id TEXT PRIMARY KEY,
+  tenant_id TEXT NOT NULL,
   slug TEXT NOT NULL UNIQUE,
   name TEXT NOT NULL,
   status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active','suspended','closed')),
@@ -9,6 +10,7 @@ CREATE TABLE IF NOT EXISTS commerce_sellers (
 );
 CREATE TABLE IF NOT EXISTS commerce_buyers (
   id TEXT PRIMARY KEY,
+  seller_id TEXT NOT NULL REFERENCES commerce_sellers(id),
   organisation_name TEXT NOT NULL,
   api_key_hash TEXT NOT NULL UNIQUE,
   status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active','suspended','closed')),
