@@ -106,13 +106,14 @@ try {
   await deviceContext.addInitScript(() => {
     window.__cspViolations = [];
     document.addEventListener('securitypolicyviolation', event => window.__cspViolations.push(event.violatedDirective));
+    window.__scriptErrors = [];
+    window.addEventListener('error', event => window.__scriptErrors.push({ message: event.message, filename: event.filename, lineno: event.lineno, colno: event.colno }));
     Object.defineProperty(navigator, 'share', { configurable: true, value: async () => { window.__shareCalled = true; } });
   });
   const device = await deviceContext.newPage();
   const browserDiagnostics = [];
   device.on('pageerror', error => browserDiagnostics.push('pageerror: ' + error.message + ' stack: ' + error.stack));
   device.on('console', message => { if (message.type() === 'error') browserDiagnostics.push('console: ' + message.text() + ' location: ' + JSON.stringify(message.location())); });
-  await device.evaluate(() => window.addEventListener('error', event => { window.__scriptErrors = window.__scriptErrors || []; window.__scriptErrors.push({ message: event.message, filename: event.filename, lineno: event.lineno, colno: event.colno }); }));
   device.on('console', message => { if (message.type() === 'error') browserDiagnostics.push('console: ' + message.text()); });
   device.on('requestfailed', request => browserDiagnostics.push('request failed: ' + request.method() + ' ' + request.url() + ' ' + (request.failure()?.errorText || 'unknown')));
   device.on('response', response => { if (new URL(response.url()).pathname.startsWith('/v1/')) browserDiagnostics.push('API ' + response.status() + ' ' + new URL(response.url()).pathname); });
@@ -127,7 +128,8 @@ try {
     await device.locator('#app:not(.hidden)').waitFor({ timeout: 10000 });
   } catch (error) {
     const message = await device.locator('#connectMessage').textContent().catch(() => '');
-    throw new Error('Merchant workspace did not open. Connect message: ' + message + '. Browser diagnostics: ' + browserDiagnostics.join(' | '), { cause: error });
+    const scriptErrors = await device.evaluate(() => JSON.stringify(window.__scriptErrors));
+    throw new Error('Merchant workspace did not open. Connect message: ' + message + '. Script errors: ' + scriptErrors + '. Browser diagnostics: ' + browserDiagnostics.join(' | '), { cause: error });
   }
   await device.locator('#linkTitle').fill('Browser regression payment');
   await device.locator('#linkAmount').fill('125');
