@@ -9,6 +9,8 @@ on:
       - 'autonomy/runner.mjs'
       - 'autonomy/worker-result.mjs'
       - 'autonomy/worker-result.test.mjs'
+      - 'autonomy/worker-storage-policy.mjs'
+      - 'autonomy/worker-storage-policy.test.mjs'
       - '.github/workflows/autonomy-worker-ci.yml'
   push:
     paths:
@@ -34,5 +36,7 @@ jobs:
           node-version: '22'
       - name: Test worker outcome classification
         run: node autonomy/worker-result.test.mjs
+      - name: Test persistent worker storage gate
+        run: node autonomy/worker-storage-policy.test.mjs
       - name: Exercise real worker, storage locks and interrupted-work quarantine
         run: node autonomy/ai-agent-worker.test.mjs
