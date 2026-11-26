@@ -12,11 +12,10 @@ const error = (code: string, status = 400) => json({ error: code }, status);
 const id = () => crypto.randomUUID();
 
 export function normaliseIsbn13(input: string): string {
-  return input.replace(/[\\s-]/g, "");
+  return input.replace(/[\s-]/g, "");
 }
 export function validIsbn13(input: string): boolean {
   const digits = normaliseIsbn13(input);
-  //(/[\s-]/g, "");
   if (!/^97[89]\d{10}$/.test(digits)) return false;
   const sum = [...digits.slice(0, 12)].reduce((n, d, i) => n + Number(d) * (i % 2 ? 3 : 1), 0);
   return (10 - (sum % 10)) % 10 === Number(digits[12]);
