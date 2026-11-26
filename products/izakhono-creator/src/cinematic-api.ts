@@ -353,6 +353,15 @@ export async function handleCinematicApi(request: Request, env: CinematicEnv): P
     const body = await parseBody(request);
     const candidate = body?.production as CinematicProduction | undefined;
     if (!candidate || candidate.id !== id || candidate.metadata?.ownerId !== graph.metadata.ownerId || candidate.metadata?.tenantId !== graph.metadata.tenantId) return response({ error: 'A production graph with the same project and immutable owner is required.' }, 400);
+
+    const currentQa = new Map(graph.assets.map(asset => [asset.id, asset.mediaQa ?? null]));
+    const candidateQa = new Map(candidate.assets.map(asset => [asset.id, asset.mediaQa ?? null]));
+    const qaAssetIds = new Set([...currentQa.keys(), ...candidateQa.keys()]);
+    for (const assetId of qaAssetIds) {
+      if (JSON.stringify(currentQa.get(assetId) ?? null) !== JSON.stringify(candidateQa.get(assetId) ?? null)) {
+        return response({ error: 'Media QA evidence can only be added or changed through the dedicated authenticated media-qa endpoint.' }, 409);
+      }
+    }
     const checked = validate(candidate);
     if (!checked.valid) return response({ error: 'Production graph validation failed.', issues: checked.issues }, 422);
     const updated = { ...candidate, metadata: { ...candidate.metadata, updatedAt: new Date().toISOString(), version: graph.metadata.version + 1 } };
