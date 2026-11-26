@@ -96,6 +96,8 @@ export function buildProductionManifest(project: CinematicProduction, generatedA
         `kind=${asset.kind}`, `source=${asset.source}`, `status=${asset.status}`,
         linked ? 'Storage key or content hash recorded' : 'No storage key or content hash recorded',
         asset.provenance.createdAt ? `createdAt=${asset.provenance.createdAt}` : 'Creation timestamp not recorded',
+        asset.mediaQa ? `mediaQa=${asset.mediaQa.passed ? 'passed' : 'failed'}; profile=${asset.mediaQa.profileId}; hash=${asset.mediaQa.assetContentHash}; recordedBy=${asset.mediaQa.recordedBy}; recordedAt=${asset.mediaQa.recordedAt}` : 'No media QA evidence recorded',
+        asset.mediaQa ? `mediaQaChecks=${asset.mediaQa.checks.filter(check => check.passed).length}/${asset.mediaQa.checks.length} passed` : '',
         licenceRecorded ? `licence=${asset.provenance.licence}` : 'Licence not recorded',
         applicableConsentIds.length ? (consentCovered ? 'Applicable consent evidence linked' : 'Applicable consent evidence missing') : 'No character consent record is declared as applicable',
       ],
