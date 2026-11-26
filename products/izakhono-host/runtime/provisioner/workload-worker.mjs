@@ -65,8 +65,9 @@ export function createWorkloadWorker({ store, adapterRegistry, resolveBinding, w
         await store.releaseClaim(claimed.id, workerId, {}, now().toISOString(), leaseId);
         return { processed: true, workloadId: claimed.id, stage: 'runtime-deployed-awaiting-data-pipeline' };
       } catch (error) {
-        const terminal = claimed.attempts >= 5;
-        const delay = workloadRetryDelay(claimed.attempts);
+        const nextAttempt = (claimed.attempts || 0) + 1;
+        const terminal = nextAttempt >= 5;
+        const delay = workloadRetryDelay(nextAttempt);
         const retryAfter = terminal ? null : new Date(now().getTime() + delay).toISOString();
         if (terminal) {
           const current = await store.get(claimed.id);
