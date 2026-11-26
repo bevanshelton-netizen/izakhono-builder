@@ -17,9 +17,10 @@ export function createNavDataJobStore({ filePath }) {
   }
   function serialize(fn) { const result=queue.then(fn,fn); queue=result.then(()=>undefined,()=>undefined); return result; }
   return Object.freeze({
-    async create({workloadId,releaseDigest,now=new Date().toISOString()}) {
+    async create({workloadId,workloadRecordId,releaseDigest,now=new Date().toISOString()}) {
       return serialize(async()=>{ const state=await read(); const existing=state.jobs.find(j=>j.pipeline.workloadId===workloadId&&j.pipeline.releaseDigest===String(releaseDigest).toLowerCase()); if(existing)return {created:false,job:existing};
-        const job={id:`nav-data-${crypto.randomUUID().replaceAll('-','').slice(0,20)}`,attempts:0,retryAfter:null,lease:null,lastError:null,pipeline:createNavDataPipelineRecord({workloadId,releaseDigest,now})}; state.jobs.push(job); await write(state); return {created:true,job}; });
+        if(typeof workloadRecordId!=='string'||!/^nav-workload-[a-f0-9]{20}$/.test(workloadRecordId))throw new Error('A valid HOST workload record ID is required');
+        const job={id:`nav-data-${crypto.randomUUID().replaceAll('-','').slice(0,20)}`,workloadRecordId,attempts:0,retryAfter:null,lease:null,lastError:null,pipeline:createNavDataPipelineRecord({workloadId,releaseDigest,now})}; state.jobs.push(job); await write(state); return {created:true,job}; });
     },
     async list(){return (await read()).jobs;},
     async get(id){return (await read()).jobs.find(j=>j.id===id)||null;},
