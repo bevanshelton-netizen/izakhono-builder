@@ -81,6 +81,18 @@ test('NAV workload lifecycle is typed, idempotent and evidence-gated', async () 
     assert.equal(backup.status, 200);
     assert.equal((await backup.json()).workload.last_backup_ref, 'backup://nav/backup-1');
 
+    const unverifiedRestore = await fetch(app.base + '/api/workloads/nav/' + created.workload.id + '/restore', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ backup_ref: 'backup://nav/not-created-by-this-workload' })
+    });
+    assert.equal(unverifiedRestore.status, 400);
+
+    const invalidReplace = await fetch(app.base + '/api/workloads/nav/' + created.workload.id + '/replace', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ ...validSpec, logical_runtime_id: 'NODE02' })
+    });
+    assert.equal(invalidReplace.status, 409);
+
     const restore = await fetch(app.base + '/api/workloads/nav/' + created.workload.id + '/restore', {
       method: 'POST', headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ backup_ref: 'backup://nav/backup-1' })
