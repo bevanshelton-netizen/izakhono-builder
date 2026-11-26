@@ -1,0 +1,284 @@
+{
+  "suite_id": "fortress.entity.isolation.conformance.v1",
+  "suite_version": 1,
+  "status": "proposed_synthetic_conformance_vectors",
+  "scope": "Semantic contract scenarios; these are not evidence of an implemented tenant authority or passing production enforcement tests.",
+  "cases": [
+    [
+      "EI-001",
+      "same-tenant active member may read permitted resource",
+      "allow",
+      "active_user",
+      "tenant_a",
+      "tenant_a",
+      "document.read"
+    ],
+    [
+      "EI-002",
+      "same-tenant member requests action outside role",
+      "deny",
+      "active_user",
+      "tenant_a",
+      "tenant_a",
+      "billing.refund"
+    ],
+    [
+      "EI-003",
+      "caller substitutes foreign tenant identifier",
+      "deny",
+      "active_user",
+      "tenant_b",
+      "tenant_a",
+      "document.read"
+    ],
+    [
+      "EI-004",
+      "caller supplies tenant list claiming multiple memberships",
+      "deny",
+      "untrusted_claims",
+      "tenant_b",
+      "tenant_a",
+      "document.read"
+    ],
+    [
+      "EI-005",
+      "membership suspended",
+      "deny",
+      "suspended_user",
+      "tenant_a",
+      "tenant_a",
+      "document.read"
+    ],
+    [
+      "EI-006",
+      "membership expired",
+      "deny",
+      "expired_user",
+      "tenant_a",
+      "tenant_a",
+      "document.read"
+    ],
+    [
+      "EI-007",
+      "membership revoked after session issuance",
+      "deny",
+      "revoked_member",
+      "tenant_a",
+      "tenant_a",
+      "document.read"
+    ],
+    [
+      "EI-008",
+      "resource belongs to different tenant",
+      "deny",
+      "active_user",
+      "tenant_a",
+      "tenant_b",
+      "document.read"
+    ],
+    [
+      "EI-009",
+      "resource owner lookup unavailable",
+      "deny",
+      "active_user",
+      "tenant_a",
+      "unknown",
+      "document.read"
+    ],
+    [
+      "EI-010",
+      "unknown resource must not be distinguishable from foreign resource",
+      "deny",
+      "active_user",
+      "tenant_a",
+      "foreign_or_missing",
+      "document.read"
+    ],
+    [
+      "EI-011",
+      "caller supplies is_admin true",
+      "deny",
+      "untrusted_claims",
+      "tenant_a",
+      "tenant_a",
+      "admin.delete"
+    ],
+    [
+      "EI-012",
+      "caller supplies trusted principal object",
+      "deny",
+      "untrusted_claims",
+      "tenant_a",
+      "tenant_a",
+      "document.read"
+    ],
+    [
+      "EI-013",
+      "wrong credential audience",
+      "deny",
+      "wrong_audience",
+      "tenant_a",
+      "tenant_a",
+      "document.read"
+    ],
+    [
+      "EI-014",
+      "expired capability",
+      "deny",
+      "expired_capability",
+      "tenant_a",
+      "tenant_a",
+      "document.read"
+    ],
+    [
+      "EI-015",
+      "revoked parent session invalidates child capability",
+      "deny",
+      "parent_revoked",
+      "tenant_a",
+      "tenant_a",
+      "deploy.write"
+    ],
+    [
+      "EI-016",
+      "DEPLOY capability for another application",
+      "deny",
+      "scoped_capability",
+      "tenant_a",
+      "tenant_a",
+      "deploy.write"
+    ],
+    [
+      "EI-017",
+      "DEPLOY capability for another environment",
+      "deny",
+      "scoped_capability",
+      "tenant_a",
+      "tenant_a",
+      "deploy.write"
+    ],
+    [
+      "EI-018",
+      "service principal without tenant-bound service grant",
+      "deny",
+      "ungranted_service",
+      "tenant_a",
+      "tenant_a",
+      "queue.consume"
+    ],
+    [
+      "EI-019",
+      "service principal with active exact tenant grant",
+      "allow",
+      "granted_service",
+      "tenant_a",
+      "tenant_a",
+      "queue.consume"
+    ],
+    [
+      "EI-020",
+      "agent attempts action outside task grant",
+      "deny",
+      "delegated_agent",
+      "tenant_a",
+      "tenant_a",
+      "payments.refund"
+    ],
+    [
+      "EI-021",
+      "delegated agent exceeds delegator permission",
+      "deny",
+      "overprivileged_delegate",
+      "tenant_a",
+      "tenant_a",
+      "document.export"
+    ],
+    [
+      "EI-022",
+      "delegation expires or parent grant revoked",
+      "deny",
+      "revoked_delegation",
+      "tenant_a",
+      "tenant_a",
+      "document.read"
+    ],
+    [
+      "EI-023",
+      "agent supplies approval boolean without approval record",
+      "deny",
+      "agent_self_approval",
+      "tenant_a",
+      "tenant_a",
+      "deployment.approve"
+    ],
+    [
+      "EI-024",
+      "approval parameters changed after approval",
+      "deny",
+      "approval_parameter_mismatch",
+      "tenant_a",
+      "tenant_a",
+      "deployment.execute"
+    ],
+    [
+      "EI-025",
+      "approval replayed after one-time use",
+      "deny",
+      "approval_replay",
+      "tenant_a",
+      "tenant_a",
+      "deployment.execute"
+    ],
+    [
+      "EI-026",
+      "resource ownership changes during write",
+      "deny",
+      "ownership_race",
+      "tenant_a",
+      "tenant_b",
+      "document.update"
+    ],
+    [
+      "EI-027",
+      "cross-tenant cache key collision attempt",
+      "deny",
+      "cache_scope_missing",
+      "tenant_b",
+      "tenant_a",
+      "cache.read"
+    ],
+    [
+      "EI-028",
+      "cross-tenant queue message replay",
+      "deny",
+      "queue_scope_mismatch",
+      "tenant_b",
+      "tenant_a",
+      "job.execute"
+    ],
+    [
+      "EI-029",
+      "system principal attempts wildcard tenant access",
+      "deny",
+      "ambient_system_authority",
+      "*",
+      "tenant_a",
+      "tenant.read"
+    ],
+    [
+      "EI-030",
+      "valid separately approved, time-bounded cross-tenant support grant",
+      "allow",
+      "approved_support_grant",
+      "tenant_support",
+      "tenant_customer",
+      "support.case.read"
+    ]
+  ],
+  "assertions": [
+    "A deny is required when authentication, membership, resource ownership, policy, delegation or approval cannot be verified.",
+    "EI-030 is permitted only when a separate explicit cross-tenant grant is active, exact-scope, purpose-bound, independently approved where required and audited; ordinary membership does not satisfy it.",
+    "Public denial responses must not reveal whether a foreign tenant resource exists.",
+    "No fixture may be marked passed until exercised against the real enforcement point and authoritative persistence/identity adapters."
+  ]
+}
