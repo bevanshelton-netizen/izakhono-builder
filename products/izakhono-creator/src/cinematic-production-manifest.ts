@@ -21,6 +21,20 @@ export interface ProductionManifest {
 const isApproved = (project: CinematicProduction, gate: string) =>
   project.approvals.some(item => item.gate === gate && item.status === 'approved' && Boolean(item.approverId && item.decidedAt));
 const assetsForShot = (assets: ProductionAsset[], shotId: string) => assets.filter(asset => asset.shotId === shotId);
+const requiredFacebookQaChecks = [
+  'container-mp4', 'duration-positive', 'video-stream-present', 'video-stream-count',
+  'video-h264', 'video-dimensions', 'video-pixel-format', 'video-frame-rate',
+  'audio-stream-present', 'audio-stream-count', 'audio-aac', 'audio-sample-rate',
+  'audio-stereo', 'mp4-fast-start',
+];
+const hasVerifiedFacebookQa = (asset: ProductionAsset): boolean => {
+  const qa = asset.mediaQa;
+  if (!qa || qa.schema !== 'izakhono.creator/media-qa-evidence-v1' || !qa.passed) return false;
+  if (qa.profileId !== 'facebook-reels-1080x1920-v1' || !asset.contentHash || qa.assetContentHash !== asset.contentHash) return false;
+  if (!qa.recordedAt || !qa.recordedBy) return false;
+  const checks = new Map(qa.checks.map(check => [check.id, check]));
+  return requiredFacebookQaChecks.every(id => checks.get(id)?.passed === true);
+};
 const hasRightsEvidence = (project: CinematicProduction, asset: ProductionAsset): boolean => {
   if (!asset.provenance.licence?.trim()) return false;
   const shot = asset.shotId ? project.shots.find(item => item.id === asset.shotId) : undefined;
@@ -85,10 +99,20 @@ export function buildProductionManifest(project: CinematicProduction, generatedA
   for (const approval of project.approvals) entries.push({ id: approval.id, category: 'approval', label: `${approval.gate} approval`, state: approval.status === 'approved' ? 'complete' : approval.status === 'rejected' ? 'blocked' : 'missing', relatedIds: [], details: [`status=${approval.status}`,approval.approverId ? `approver=${approval.approverId}` : 'Approver not recorded',approval.decidedAt ? `decidedAt=${approval.decidedAt}` : 'Decision timestamp not recorded'] });
   const masterAssets = project.assets.filter(asset => asset.role === 'master' && asset.kind === 'video' && asset.status === 'completed' && Boolean(asset.storageKey || asset.contentHash));
   const exportAssets = project.assets.filter(asset => asset.role === 'distribution_export' && asset.kind === 'video' && asset.status === 'completed' && Boolean(asset.storageKey || asset.contentHash));
+  const verifiedExportAssets = exportAssets.filter(hasVerifiedFacebookQa);
   entries.push({ id: 'master-delivery', category: 'export', label: 'Approved master video', state: masterAssets.length ? 'complete' : 'missing', relatedIds: masterAssets.map(asset=>asset.id), details: masterAssets.length ? ['Master asset and storage evidence recorded', 'Verify Facebook profile metadata and run media QA against the actual export'] : ['No completed, stored master video asset'] });
-  entries.push({ id: 'distribution-delivery', category: 'export', label: 'Distribution export', state: exportAssets.length ? 'complete' : 'missing', relatedIds: exportAssets.map(asset=>asset.id), details: exportAssets.length ? ['Distribution export asset and storage evidence recorded', 'Required profile: MP4 H.264 1080x1920 30fps yuv420p AAC stereo 48kHz fast-start; attach actual media-QA evidence before approval'] : ['No completed, stored distribution export asset'] });
+  entries.push({
+    id: 'distribution-delivery', category: 'export', label: 'Distribution export',
+    state: verifiedExportAssets.length ? 'complete' : exportAssets.length ? 'blocked' : 'missing',
+    relatedIds: exportAssets.map(asset=>asset.id),
+    details: verifiedExportAssets.length
+      ? verifiedExportAssets.map(asset => `Asset ${asset.id}: Facebook profile QA passed for SHA-256 ${asset.contentHash}; recorded by ${asset.mediaQa!.recordedBy} at ${asset.mediaQa!.recordedAt}`)
+      : exportAssets.length
+        ? ['Stored export exists, but hash-bound Facebook QA evidence is missing, incomplete, failed or does not match the asset bytes']
+        : ['No completed, stored distribution export asset'],
+  });
   const count = (state: ManifestState) => entries.filter(entry=>entry.state===state).length;
   const readyForMaster = isApproved(project,'creative') && isApproved(project,'generation') && project.shots.length>0 && project.shots.every(shot=>assetsForShot(project.assets,shot.id).some(asset=>asset.kind==='video' && asset.role==='shot_video' && asset.status==='completed' && Boolean(asset.storageKey || asset.contentHash) && hasRightsEvidence(project, asset)));
-  const readyForDistribution = readyForMaster && isApproved(project,'master') && isApproved(project,'distribution') && masterAssets.length>0 && exportAssets.length>0;
+  const readyForDistribution = readyForMaster && isApproved(project,'master') && isApproved(project,'distribution') && masterAssets.length>0 && verifiedExportAssets.length>0;
   return { schema:'izakhono.creator/production-manifest-v1', productionId:project.id, productionTitle:project.title, generatedAt, summary:{total:entries.length,complete:count('complete'),inProgress:count('in_progress'),missing:count('missing'),blocked:count('blocked'),readyForMaster,readyForDistribution},entries };
 }
