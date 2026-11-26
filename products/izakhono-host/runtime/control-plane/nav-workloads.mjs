@@ -40,7 +40,7 @@ export function createNavWorkloadController({ dataDir, provider = null, now = ()
   let queue = Promise.resolve();
 
   async function load() {
-    await fs.mkdir(dataDir, { recursive: true });
+    await fs.mkdir(dataDir, { recursive: true, mode: 0o700 });
     try {
       const state = JSON.parse(await fs.readFile(stateFile, 'utf8'));
       if (state.version !== 1 || !Array.isArray(state.workloads) || !Array.isArray(state.jobs)) throw new Error('INVALID_NAV_WORKLOAD_STATE');
@@ -123,7 +123,7 @@ export function createNavWorkloadController({ dataDir, provider = null, now = ()
         try {
           const result = await providerCall('provision', { workload_id: workloadId, spec });
           record.provider_ref = String(result?.provider_ref || '');
-          if (!record.provider_ref || record.provider_ref.length > 256) throw Object.assign(new Error('NAV_PROVIDER_REFERENCE_MISSING'), { statusCode: 502, code: 'NAV_PROVIDER_REFERENCE_MISSING' });
+          if (!SAFE_ID.test(record.provider_ref)) throw Object.assign(new Error('NAV_PROVIDER_REFERENCE_INVALID'), { statusCode: 502, code: 'NAV_PROVIDER_REFERENCE_INVALID' });
           record.status = 'provisioned';
           record.updated_at = now().toISOString();
           task.status = 'verified';
