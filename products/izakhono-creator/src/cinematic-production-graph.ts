@@ -314,8 +314,13 @@ export function recordMediaQaEvidence(
 ): CinematicProduction {
   const asset = project.assets.find(item => item.id === assetId);
   if (!asset) throw new Error(`Unknown media QA asset: ${assetId}`);
-  if (asset.kind !== 'video' || asset.role !== 'distribution_export' || asset.status !== 'completed' || !asset.storageKey?.trim()) {
+  if (asset.kind !== 'video' || asset.role !== 'distribution_export') {
     throw new Error('Media QA evidence can only be recorded against a video distribution export.');
+  }
+  const passedEvidenceRequiresStoredAsset = evidence.passed && asset.status === 'completed' && Boolean(asset.storageKey?.trim());
+  const failedEvidenceCanBeRetainedLocally = !evidence.passed && asset.status === 'failed';
+  if (!passedEvidenceRequiresStoredAsset && !failedEvidenceCanBeRetainedLocally) {
+    throw new Error('Passing QA requires a completed stored export; failed QA may be retained on a failed export record.');
   }
   if (!asset.contentHash || !/^[a-f0-9]{64}$/i.test(asset.contentHash)) {
     throw new Error('Distribution export must have a SHA-256 content hash before QA evidence is recorded.');
@@ -328,12 +333,13 @@ export function recordMediaQaEvidence(
   if (!evidence.recordedBy.trim() || !Number.isFinite(Date.parse(evidence.recordedAt))) {
     throw new Error('Media QA evidence requires a worker identity and valid timestamp.');
   }
+  if (!Array.isArray(evidence.checks)) throw new Error('Media QA checks must be an array.');
   const checks = new Map(evidence.checks.map(check => [check.id, check]));
-  if (checks.size !== evidence.checks.length || !requiredMediaQaCheckIds.every(id => checks.has(id))) {
-    throw new Error('Media QA evidence must contain every required Facebook profile check exactly once.');
+  if (checks.size !== evidence.checks.length || !requiredMediaQaCheckIds.every(id => checks.has(id)) || evidence.checks.some(check => !check.id?.trim() || !check.actual?.trim() || !check.expected?.trim())) {
+    throw new Error('Media QA evidence must contain every required Facebook profile check exactly once with actual and expected values.');
   }
-  const checksPassed = requiredMediaQaCheckIds.every(id => checks.get(id)?.passed === true);
-  if (evidence.passed !== checksPassed) throw new Error('Media QA overall result must agree with all required checks.');
+  const checksPassed = evidence.checks.every(check => check.passed === true);
+  if (evidence.passed !== checksPassed) throw new Error('Media QA overall result must agree with all recorded checks.');
   return {
     ...project,
     assets: project.assets.map(item => item.id === assetId ? { ...item, mediaQa: { ...evidence, assetContentHash: evidence.assetContentHash.toLowerCase(), checks: evidence.checks.map(check => ({ ...check })) } } : item),
