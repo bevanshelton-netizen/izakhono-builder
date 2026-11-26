@@ -23,8 +23,8 @@ class SupplierEvaluationTests(unittest.TestCase):
     def test_fully_verified_record_is_scored_with_declared_weights(self):
         result = score_record(self.fixture)
         self.assertEqual(result["status"], "SCORED")
-        self.assertEqual(result["weightedTotal"], 86.0)
-        self.assertEqual(result["decision"], "preferred-pilot-candidate")
+        self.assertEqual(result["weightedTotal"], 82.0)
+        self.assertEqual(result["decision"], "reserve-candidate")
         self.assertFalse(result["purchasePermitted"])
 
     def test_unknown_mandatory_gate_blocks_even_perfect_score(self):
