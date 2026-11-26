@@ -23,7 +23,7 @@ The signature is Ed25519 over canonical JSON with recursively sorted object keys
 
 ## Verification contract
 
-The reference verifier checks statement shape, version, SHA format, timestamp validity, maximum validity window, key existence and lifecycle, optional principal binding, exact repository/commit/workload/environment/action scope, signature encoding and Ed25519 signature.
+The reference verifier checks statement shape, version, SHA format, timestamp validity, maximum validity window, key existence and lifecycle, **mandatory signer-principal binding** (the key's registered principal must exactly equal `approvedBy`), exact repository/commit/workload/environment/action scope, signature encoding and Ed25519 signature.
 
 The caller supplies the keyring and expected deployment scope. The module intentionally embeds no production public keys and has no authority to enrol or revoke keys.
 
